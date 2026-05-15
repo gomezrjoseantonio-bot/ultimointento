@@ -25,7 +25,7 @@ import type {
 import type { TipoActivo } from '../types/tipoActivo';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 70; // V70 (PR-C4 · sistémico patrón vs real): añade `historial?: NominaHistorialEntry[]` al patrón Nomina (registros con `tipo='nomina'` en store `ingresos`). Bump sin cambio de schema · campo opcional. Backfill idempotente vía `runV70NominaHistorialMigration` (keyval flag). 40 stores (sin cambio en número).
+const DB_VERSION = 71; // V71 (SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1 hueco 4): crea store `deudasFiscales` para deudas con AEAT (modelos 100/303/130/184). Solo creación de store (no se mueven datos: store empieza vacío y Jose añade manualmente desde UI F6). 41 stores totales.
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2095,6 +2095,34 @@ export interface VinculoAccesorio {
   updatedAt: string;
 }
 
+// V71 · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1 hueco 4
+export interface DeudaFiscal {
+  id?: number;
+  modelo: '100' | '303' | '130' | '184';
+  ejercicio: number;
+  periodo: '1T' | '2T' | '3T' | '4T' | 'anual';
+  principal: number;
+  recargoTipo:
+    | 'voluntario'
+    | 'ejecutivo_5'
+    | 'ejecutivo_10'
+    | 'ejecutivo_15'
+    | 'apremio_20'
+    | 'embargo';
+  recargoImporte: number;
+  interesesDemora?: number;
+  total: number;
+  estado: 'voluntario' | 'ejecutivo' | 'apremio' | 'embargo' | 'pagada' | 'aplazada';
+  notificada?: string;
+  ventanaPlazo?: string;
+  claveLiquidacion?: string;
+  documentIds?: number[];
+  pagadaEl?: string;
+  notas?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface AtlasHorizonDB {
   properties: Property;
   property_sales: PropertySale;
@@ -2352,6 +2380,7 @@ interface AtlasHorizonDB {
   objetivos: Objetivo;       // V5.5: lista de objetivos (acumular · amortizar · comprar · reducir)
   fondos_ahorro: FondoAhorro; // V5.6: fondos de ahorro con etiquetas de propósito
   retos: Reto;               // V5.7: retos mensuales (1 activo por mes)
+  deudasFiscales: DeudaFiscal; // V71: deudas fiscales con AEAT (modelos 100/303/130/184) · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1
 }
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
 
@@ -2878,6 +2907,19 @@ export const initDB = async () => {
           vinculosStore.createIndex('inmueblePrincipalId', 'inmueblePrincipalId', { unique: false });
           vinculosStore.createIndex('inmuebleAccesorioId', 'inmuebleAccesorioId', { unique: false });
           vinculosStore.createIndex('principal-accesorio-ejercicio', ['inmueblePrincipalId', 'inmuebleAccesorioId', 'ejercicio'], { unique: true });
+        }
+
+        // V71: deudas fiscales con AEAT (modelos 100/303/130/184)
+        // SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1 hueco 4
+        if (!db.objectStoreNames.contains('deudasFiscales')) {
+          const deudasStore = db.createObjectStore('deudasFiscales', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
+          deudasStore.createIndex('modelo', 'modelo', { unique: false });
+          deudasStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+          deudasStore.createIndex('estado', 'estado', { unique: false });
+          deudasStore.createIndex('notificada', 'notificada', { unique: false });
         }
 
         // V2.8: Allow multiple snapshots per ejercicio (force snapshots)
@@ -4127,6 +4169,17 @@ export const initDB = async () => {
           // de datos lo hace `runV70NominaHistorialMigration` desde
           // `App.tsx` la primera vez que arranca la app tras el upgrade
           // (idempotente vía keyval flag · ver `migrations/v70-nomina-historial.ts`).
+        }
+
+        if (oldVersion < 71) {
+          // ── V71 (SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1 hueco 4) ──
+          // Marker para upgrades incrementales V70→V71. La creación real del
+          // store `deudasFiscales` está en el bloque unconditional al inicio
+          // del callback (junto a `vinculosAccesorio`) para que se ejecute
+          // también en migraciones acumulativas que toman el camino IIFE de
+          // V65 (donde el `return` del IIFE corta la ejecución de bloques
+          // posteriores). El store empieza vacío · sin migración de datos
+          // (Jose lo poblará manualmente desde la UI F6).
         }
       },
       blocked() {

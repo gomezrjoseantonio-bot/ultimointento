@@ -421,3 +421,248 @@ export function formatFiscalValueShort(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return '—';
   return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(v)) + ' €';
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPEC-CC-FISCAL-UI-REPLACE-v1 · sub-tarea 1 · hueco 2 · getTimelineMultiAño
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ObligacionFiscalTimeline {
+  modelo: '100' | '303' | '130' | '184';
+  periodo: '1T' | '2T' | '3T' | '4T' | 'anual';
+  fechaLimite: string;
+  estado: 'cumplida' | 'pendiente' | 'vencida' | 'futura' | 'con_deuda';
+  importe?: number;
+}
+
+export interface TimelineAño {
+  año: number;
+  estado: EstadoEjercicioFiscal;
+  resultadoIRPF: number | null;
+  obligaciones: ObligacionFiscalTimeline[];
+  paralela?: { fecha: string; resultadoDesfase: number };
+  prescribe: string | null;
+}
+
+const PRESCRIPCION_AÑOS = 4;
+
+function calcularFechaPrescripcion(añoEjercicio: number): string {
+  // Construir en UTC para que toISOString().slice(0,10) no haga shift de día
+  // por timezone local (off-by-one en zonas distintas de UTC).
+  const fechaPrescripcion = new Date(Date.UTC(
+    añoEjercicio + 1 + PRESCRIPCION_AÑOS,
+    5, // junio (0-indexed)
+    30,
+  ));
+  return fechaPrescripcion.toISOString().slice(0, 10);
+}
+
+function yaPrescrito(añoEjercicio: number, hoy: Date): boolean {
+  const fechaPrescripcion = calcularFechaPrescripcion(añoEjercicio);
+  return new Date(fechaPrescripcion) < hoy;
+}
+
+function fechaLimiteIRPFAnual(añoEjercicio: number): string {
+  return `${añoEjercicio + 1}-06-30`;
+}
+
+function clasificarEstadoObligacion(
+  fechaLimiteISO: string,
+  estadoEjercicio: EstadoEjercicioFiscal,
+): 'cumplida' | 'pendiente' | 'vencida' | 'futura' {
+  const hoy = new Date();
+  const limite = new Date(fechaLimiteISO);
+  if (limite > hoy) return 'futura';
+  if (estadoEjercicio === 'declarado' || estadoEjercicio === 'prescrito' as any) return 'cumplida';
+  if (estadoEjercicio === 'pendiente') return 'pendiente';
+  return 'vencida';
+}
+
+export async function getTimelineMultiAño(minAño: number, maxAño: number): Promise<TimelineAño[]> {
+  if (minAño > maxAño) return [];
+  const años = Array.from({ length: maxAño - minAño + 1 }, (_, i) => minAño + i);
+  const hoy = new Date();
+
+  const results = await Promise.all(
+    años.map(async (año) => {
+      const datos = await resolverDatosEjercicio(año);
+      const obligaciones: ObligacionFiscalTimeline[] = [];
+
+      // Modelo 100 anual
+      const fechaIRPF = fechaLimiteIRPFAnual(año);
+      obligaciones.push({
+        modelo: '100',
+        periodo: 'anual',
+        fechaLimite: fechaIRPF,
+        estado: clasificarEstadoObligacion(fechaIRPF, datos.estado),
+        importe: datos.resultado ?? undefined,
+      });
+
+      // Prescripción · 4 años desde fin de campaña (30/06).
+      // prescribe = ISO date · null si el ejercicio ya prescribió o está en curso.
+      let prescribe: string | null;
+      if (datos.estado === 'en_curso') {
+        prescribe = null;
+      } else if (yaPrescrito(año, hoy)) {
+        prescribe = null;
+      } else {
+        prescribe = calcularFechaPrescripcion(año);
+      }
+
+      return {
+        año,
+        estado: datos.estado,
+        resultadoIRPF: datos.resultado,
+        obligaciones,
+        prescribe,
+      };
+    }),
+  );
+
+  return results.sort((a, b) => b.año - a.año);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPEC-CC-FISCAL-UI-REPLACE-v1 · sub-tarea 1 · hueco 3 · getResumenGlobal
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ResumenGlobalFiscal {
+  totalEjercicios: number;
+  enCurso: number;
+  pendientes: number;
+  declarados: number;
+  prescritos: number;
+
+  proyeccionAñoActual: number | null;
+  borradorAñoPendiente: number | null;
+  deudaAbierta: number;
+  arrastresVivos: number;
+
+  campañaActual?: { ejercicio: number; ventana: { from: string; to: string }; abierta: boolean };
+}
+
+// Tabla hardcoded de ventanas IRPF AEAT (datos públicos · campaña empieza ~abril
+// y cierra 30/06 del año siguiente al ejercicio).
+const VENTANAS_IRPF: Record<number, { from: string; to: string }> = {
+  2020: { from: '2021-04-07', to: '2021-06-30' },
+  2021: { from: '2022-04-06', to: '2022-06-30' },
+  2022: { from: '2023-04-11', to: '2023-06-30' },
+  2023: { from: '2024-04-03', to: '2024-07-01' },
+  2024: { from: '2025-04-02', to: '2025-06-30' },
+  2025: { from: '2026-04-01', to: '2026-06-30' },
+  2026: { from: '2027-04-07', to: '2027-06-30' },
+};
+
+function obtenerCampañaActual(): ResumenGlobalFiscal['campañaActual'] {
+  const hoy = new Date();
+  for (const [añoStr, ventana] of Object.entries(VENTANAS_IRPF)) {
+    const ejercicio = Number(añoStr);
+    const from = new Date(ventana.from);
+    const to = new Date(ventana.to);
+    if (hoy >= from && hoy <= to) {
+      return { ejercicio, ventana, abierta: true };
+    }
+  }
+  // Si ninguna ventana abierta · devolver la más próxima en el futuro
+  const futurasOrdenadas = Object.entries(VENTANAS_IRPF)
+    .map(([año, v]) => ({ ejercicio: Number(año), ventana: v, fromDate: new Date(v.from) }))
+    .filter((c) => c.fromDate > hoy)
+    .sort((a, b) => a.fromDate.getTime() - b.fromDate.getTime());
+  if (futurasOrdenadas.length > 0) {
+    const next = futurasOrdenadas[0];
+    return { ejercicio: next.ejercicio, ventana: next.ventana, abierta: false };
+  }
+  return undefined;
+}
+
+async function calcularArrastresVivos(añoActual: number): Promise<number> {
+  const db = await initDB();
+
+  // 1. Carryforwards de gastos (aeatCarryForwards) · vivos = remainingAmount > 0 y expirationYear >= añoActual
+  let totalCarry = 0;
+  try {
+    const all = (await db.getAll('aeatCarryForwards')) as Array<{
+      remainingAmount: number;
+      expirationYear: number;
+    }>;
+    totalCarry = all
+      .filter((cf) => cf.remainingAmount > 0 && cf.expirationYear >= añoActual)
+      .reduce((sum, cf) => sum + cf.remainingAmount, 0);
+  } catch { /* store puede no existir en DBs antiguas */ }
+
+  // 2. Pérdidas patrimoniales del ahorro pendientes
+  let totalPerdidas = 0;
+  try {
+    const todas = (await db.getAll('perdidasPatrimonialesAhorro')) as Array<{
+      importePendiente: number;
+      ejercicioCaducidad: number;
+      estado: string;
+    }>;
+    totalPerdidas = todas
+      .filter((p) => p.importePendiente > 0 && p.ejercicioCaducidad >= añoActual && p.estado !== 'caducado')
+      .reduce((sum, p) => sum + p.importePendiente, 0);
+  } catch { /* store puede no existir */ }
+
+  return Math.round((totalCarry + totalPerdidas) * 100) / 100;
+}
+
+export async function getResumenGlobal(): Promise<ResumenGlobalFiscal> {
+  const hoy = new Date();
+  const añoActual = hoy.getFullYear();
+  const añoPendiente = añoActual - 1;
+
+  // Counts por estado · 7 ejercicios (añoActual - 6 .. añoActual)
+  const ejercicios = await resolverTodosLosEjercicios();
+  let enCurso = 0;
+  let pendientes = 0;
+  let declarados = 0;
+  let prescritos = 0;
+  for (const ej of ejercicios) {
+    if (ej.estado === 'en_curso') enCurso++;
+    else if (ej.estado === 'pendiente') pendientes++;
+    else if (ej.estado === 'declarado') {
+      // Prescritos = la fecha de prescripción real ya ha pasado
+      // (30/06 del año siguiente al ejercicio + 4 años). Los demás
+      // declarados no prescritos se cuentan como `declarados`.
+      if (yaPrescrito(ej.año, hoy)) prescritos++;
+      else declarados++;
+    }
+  }
+
+  // Proyección año actual · estimacionFiscalEnCursoService
+  let proyeccionAñoActual: number | null = null;
+  try {
+    const { calcularEstimacionEnCurso } = await import('./estimacionFiscalEnCursoService');
+    const est = await calcularEstimacionEnCurso(añoActual);
+    proyeccionAñoActual = est?.resultadoEstimado.resultadoEstimado ?? null;
+  } catch { /* servicio no disponible o error · dejar null */ }
+
+  // Borrador año pendiente
+  let borradorAñoPendiente: number | null = null;
+  try {
+    const datos = await resolverDatosEjercicio(añoPendiente);
+    borradorAñoPendiente = datos.resultado;
+  } catch { /* dejar null */ }
+
+  // Deuda abierta · deudasFiscalesService
+  let deudaAbierta = 0;
+  try {
+    const { getTotalAbierto } = await import('./deudasFiscalesService');
+    deudaAbierta = await getTotalAbierto();
+  } catch { /* servicio no disponible */ }
+
+  // Arrastres vivos
+  const arrastresVivos = await calcularArrastresVivos(añoActual);
+
+  return {
+    totalEjercicios: ejercicios.length,
+    enCurso,
+    pendientes,
+    declarados,
+    prescritos,
+    proyeccionAñoActual,
+    borradorAñoPendiente,
+    deudaAbierta,
+    arrastresVivos,
+    campañaActual: obtenerCampañaActual(),
+  };
+}
