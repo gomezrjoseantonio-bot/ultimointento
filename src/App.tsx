@@ -136,7 +136,10 @@ const FiscalPage = lazyWithPreload(() => import('./modules/fiscal/FiscalPage'));
 // `pages/DashboardPage` (calendario placeholder) por la página v2 standalone.
 const FiscalDashboard = lazyWithPreload(() => import('./modules/fiscal/v2/FiscalDashboardPage'));
 const FiscalEjercicios = lazyWithPreload(() => import('./modules/fiscal/pages/EjerciciosPage'));
-const FiscalDetalleEjercicio = lazyWithPreload(() => import('./modules/fiscal/pages/DetalleEjercicioPage'));
+// SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 3 · F2 ejercicio detalle reemplaza
+// `pages/DetalleEjercicioPage` (dependiente del FiscalOutletContext)
+// por la página v2 standalone.
+const FiscalDetalleEjercicio = lazyWithPreload(() => import('./modules/fiscal/v2/FiscalEjercicioPage'));
 const FiscalDeudas = lazyWithPreload(() => import('./modules/fiscal/pages/DeudasPage'));
 const FiscalConfiguracion = lazyWithPreload(() => import('./modules/fiscal/pages/ConfiguracionPage'));
 const FiscalCalendarioCompleto = lazyWithPreload(() => import('./modules/fiscal/pages/CalendarioFiscalPage'));
