@@ -58,20 +58,35 @@ const EjercicioDocumentosTab: React.FC<EjercicioDocumentosTabProps> = ({
               </tr>
             </thead>
             <tbody>
-              {documentos.map((doc, idx) => (
-                <tr
-                  key={doc.id ?? `doc-${idx}`}
-                  onClick={() => onSelectDocumento && doc.id && onSelectDocumento(doc.id)}
-                  style={onSelectDocumento ? { cursor: 'pointer' } : undefined}
-                >
-                  <td className={styles.tStrong}>{doc.titulo}</td>
-                  <td>{doc.concepto ?? '—'}</td>
-                  <td>
-                    <span className={styles.mono}>{fmtFecha(doc.fecha)}</span>
-                  </td>
-                  <td>{doc.tipo ?? '—'}</td>
-                </tr>
-              ))}
+              {documentos.map((doc, idx) => {
+                const interactive = Boolean(onSelectDocumento && doc.id);
+                const onActivate = () => {
+                  if (onSelectDocumento && doc.id) onSelectDocumento(doc.id);
+                };
+                return (
+                  <tr
+                    key={doc.id ?? `doc-${idx}`}
+                    onClick={interactive ? onActivate : undefined}
+                    onKeyDown={interactive ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onActivate();
+                      }
+                    } : undefined}
+                    tabIndex={interactive ? 0 : undefined}
+                    role={interactive ? 'button' : undefined}
+                    aria-label={interactive ? `Abrir documento ${doc.titulo}` : undefined}
+                    className={interactive ? styles.trClickable : undefined}
+                  >
+                    <td className={styles.tStrong}>{doc.titulo}</td>
+                    <td>{doc.concepto ?? '—'}</td>
+                    <td>
+                      <span className={styles.mono}>{fmtFecha(doc.fecha)}</span>
+                    </td>
+                    <td>{doc.tipo ?? '—'}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

@@ -373,12 +373,17 @@ export function buildSeccionG(d: DatosFiscalesEjercicio): BoxSection {
     rows.push({ num: '0510', concepto: 'Base liquidable del ahorro', importe: box0510, subtotal: true });
   }
 
-  const total = (box0500 ?? box0435 ?? 0) + (box0510 ?? box0460 ?? 0);
+  // Coherencia con otras secciones (A, C, H): NO descartamos un 0 legítimo.
+  // El total queda null solo si no hay datos de base liquidable / imponible.
+  const tieneAlgunaBase = box0500 !== null || box0510 !== null || box0435 !== null || box0460 !== null;
+  const total = tieneAlgunaBase
+    ? ((box0500 ?? box0435 ?? 0) + (box0510 ?? box0460 ?? 0))
+    : null;
 
   return {
     letter: 'G',
     title: 'Bases imponible y liquidable',
-    total: total || null,
+    total,
     rows,
     empty: rows.length === 0,
     emptyText: 'Sin bases liquidables calculadas',

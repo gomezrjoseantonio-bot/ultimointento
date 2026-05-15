@@ -151,7 +151,7 @@ const EjercicioPagosTab: React.FC<EjercicioPagosTabProps> = ({
                       {fmtEuros(d.total)}
                     </span>
                   </td>
-                  <td>{ESTADO_LABEL[d.estado]}</td>
+                  <td>{ESTADO_LABEL[d.estado] ?? d.estado}</td>
                   <td>
                     <span className={styles.mono}>{fmtFecha(d.notificada)}</span>
                   </td>

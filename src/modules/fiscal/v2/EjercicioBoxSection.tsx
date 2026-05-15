@@ -68,21 +68,21 @@ const EjercicioBoxSection: React.FC<EjercicioBoxSectionProps> = ({
         <span className={styles.boxSectionChevron}>▼</span>
       </button>
       <div className={styles.boxSectionBd} id={`section-${section.letter}-body`}>
-        {section.empty && section.rows.length === 0 ? (
+        {/* children siempre se renderizan · permite slots custom (cards de
+            inmuebles · cards de venta · placeholder ilustración custom) sin
+            depender de que la sección tenga rows del helper. */}
+        {children}
+        {section.rows.map((row) => (
+          <BoxRowCasilla key={`${section.letter}-${row.num}`} row={row} />
+        ))}
+        {section.empty && section.rows.length === 0 && !children && (
           <div className={styles.boxRow}>
             <div className={styles.boxRowNum}>—</div>
-            <div className={styles.boxRowConcept} style={{ color: 'var(--atlas-v5-ink-3)' }}>
+            <div className={`${styles.boxRowConcept} ${styles.boxRowConceptMuted}`}>
               {section.emptyText ?? 'Sin datos en esta sección'}
             </div>
             <div className={`${styles.boxRowAmount} ${styles.muted}`}>0,00 €</div>
           </div>
-        ) : (
-          <>
-            {children}
-            {section.rows.map((row) => (
-              <BoxRowCasilla key={`${section.letter}-${row.num}`} row={row} />
-            ))}
-          </>
         )}
       </div>
     </section>

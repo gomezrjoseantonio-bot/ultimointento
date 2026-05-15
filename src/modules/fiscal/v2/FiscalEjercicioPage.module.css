@@ -383,6 +383,14 @@
   color: var(--atlas-v5-ink-2);
 }
 
+.boxRowConceptMuted {
+  color: var(--atlas-v5-ink-3);
+}
+
+.pillInline {
+  font-size: var(--atlas-v5-fs-label-sm);
+}
+
 .boxRowConceptSub {
   font-size: var(--atlas-v5-fs-chip);
   color: var(--atlas-v5-ink-4);
@@ -530,6 +538,19 @@
 }
 
 .tbl td.tdRight { text-align: right; }
+
+.trClickable {
+  cursor: pointer;
+}
+
+.trClickable:hover td {
+  background: var(--atlas-v5-card-alt);
+}
+
+.trClickable:focus {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: -2px;
+}
 .mono { font-family: var(--atlas-v5-font-mono-num); }
 .tStrong { font-weight: var(--atlas-v5-fw-semibold); color: var(--atlas-v5-ink); }
 .tMuted { font-size: var(--atlas-v5-fs-chip); color: var(--atlas-v5-ink-3); margin-top: 1px; }

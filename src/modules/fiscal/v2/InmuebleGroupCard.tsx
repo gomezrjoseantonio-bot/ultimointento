@@ -39,10 +39,7 @@ const InmuebleGroupCard: React.FC<InmuebleGroupCardProps> = ({ inmueble, onSelec
           <div className={styles.inmuebleGroupName}>
             {inmueble.alias}
             {inmueble.modoLabel && (
-              <span
-                className={styles.pill + ' ' + styles.pillCurso}
-                style={{ fontSize: '10px' }}
-              >
+              <span className={`${styles.pill} ${styles.pillCurso} ${styles.pillInline}`}>
                 {inmueble.modoLabel}
               </span>
             )}

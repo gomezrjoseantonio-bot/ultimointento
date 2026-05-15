@@ -56,7 +56,11 @@ function calcularFechaPrescripcion(añoEjercicio: number): string {
 }
 
 function yaPrescrito(añoEjercicio: number, hoy: Date): boolean {
-  return new Date(calcularFechaPrescripcion(añoEjercicio)) < hoy;
+  // Comparamos como strings ISO YYYY-MM-DD para evitar timezone-shift en el
+  // borde del día (la fecha de prescripción es "civil" · no depende de hora).
+  const fechaPrescripcion = calcularFechaPrescripcion(añoEjercicio);
+  const hoyIso = hoy.toISOString().slice(0, 10);
+  return fechaPrescripcion < hoyIso;
 }
 
 function detectarParalela(d: DatosFiscalesEjercicio, coordAeat: { paralela?: unknown } | null | undefined): boolean {
@@ -230,9 +234,17 @@ const FiscalEjercicioPage: React.FC = () => {
   const tieneParalela = detectarParalela(datos, coordAeat);
   const tipoMedio = calcularTipoMedio(datos);
 
-  const cuotaLiquidaTotal =
-    (datos.resumen.cuotaLiquidaEstatal ?? 0) + (datos.resumen.cuotaLiquidaAutonomica ?? 0)
-    || datos.casillas?.['0587'] || null;
+  // Preferimos casilla 0587 directa cuando existe (snapshot AEAT) · fallback
+  // a la suma de cuotas líquidas estatal + autonómica del resumen. Usamos `??`
+  // (no `||`) para no descartar 0 legítimo (declaración con cuota cero).
+  const cuotaLiquidaTotal = (() => {
+    const directa = datos.casillas?.['0587'];
+    if (typeof directa === 'number' && Number.isFinite(directa)) return directa;
+    const estatal = datos.resumen.cuotaLiquidaEstatal;
+    const auto = datos.resumen.cuotaLiquidaAutonomica;
+    if (estatal === null && auto === null) return null;
+    return (estatal ?? 0) + (auto ?? 0);
+  })();
 
   const versiones = buildVersiones(
     datos,

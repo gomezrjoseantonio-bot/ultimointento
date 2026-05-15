@@ -22,8 +22,16 @@ const TIPO_LABEL: Record<string, string> = {
   fiscal: 'Documento fiscal',
 };
 
+// Comparamos años por los 4 primeros caracteres del ISO date (UTC-stable)
+// para evitar timezone-shift en bordes (31/12 23:30Z o 01/01 00:00Z).
+function isoYear(iso?: string): string | null {
+  if (!iso || iso.length < 4) return null;
+  return iso.slice(0, 4);
+}
+
 export async function getDocumentosDelEjercicio(año: number): Promise<DocumentoRow[]> {
   const db = await initDB();
+  const añoStr = String(año);
   try {
     const todos = (await db.getAll('documents')) as Array<{
       id?: number;
@@ -42,7 +50,7 @@ export async function getDocumentosDelEjercicio(año: number): Promise<Documento
         const ej = d.metadata?.ejercicio;
         if (ej === año) return true;
         const issueDate = d.metadata?.financialData?.issueDate;
-        if (issueDate && new Date(issueDate).getFullYear() === año) return true;
+        if (issueDate && isoYear(issueDate) === añoStr) return true;
         return false;
       })
       .map((d) => ({
@@ -80,8 +88,9 @@ export async function getVentasDelAño(año: number): Promise<VentaRow[]> {
     for (const p of properties) {
       if (typeof p.id === 'number') aliasById.set(p.id, p.alias ?? `Inmueble ${p.id}`);
     }
+    const añoStr = String(año);
     return ventas
-      .filter((v) => v.saleDate && new Date(v.saleDate).getFullYear() === año && v.status !== 'cancelled')
+      .filter((v) => v.saleDate && isoYear(v.saleDate) === añoStr && v.status !== 'cancelled')
       .map((v) => ({
         id: v.id ?? v.propertyId,
         alias: aliasById.get(v.propertyId) ?? `Inmueble ${v.propertyId}`,
