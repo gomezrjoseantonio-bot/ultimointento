@@ -14,6 +14,7 @@
  */
 
 import { initDB } from '../../../../services/db';
+import type { ArrastrePerdida } from '../../../../services/db';
 
 export type TipoArrastreVivo = 'gasto' | 'perdida_ahorro';
 
@@ -134,17 +135,10 @@ export interface PerdidaPatrimonialViva {
   ejercicioCaducidad: number;
 }
 
-interface ArrastrePerdidaCoord {
-  tipo: 'ahorro_general' | 'ahorro_renta_variable' | 'patrimonial';
-  importePendiente: number;
-  añoOrigen: number;
-}
-
 function normalizarPerdidasCoord(
-  entradas: ArrastrePerdidaCoord[] | undefined,
+  entradas: ArrastrePerdida[],
   añoCorte: number,
 ): PerdidaPatrimonialViva[] {
-  if (!entradas || entradas.length === 0) return [];
   return entradas
     .filter((p) => p.tipo === 'ahorro_general')
     .filter((p) => p.importePendiente > 0)
@@ -161,20 +155,27 @@ async function leerPerdidasDesdeCoord(añoCorte: number): Promise<PerdidaPatrimo
   const db = await initDB();
   try {
     const ejAño = (await db.get('ejerciciosFiscalesCoord', añoCorte)) as
-      | { arrastresIn?: { perdidasPatrimoniales?: ArrastrePerdidaCoord[] } }
+      | { arrastresIn?: { perdidasPatrimoniales?: ArrastrePerdida[] } }
       | undefined;
-    const desdeIn = normalizarPerdidasCoord(ejAño?.arrastresIn?.perdidasPatrimoniales, añoCorte);
-    if (desdeIn.length > 0) return desdeIn;
+    const entradasIn = ejAño?.arrastresIn?.perdidasPatrimoniales;
+    // El fallback se decide en función del array crudo del coord (no del
+    // ya filtrado por `ahorro_general`). Si el coord tiene entradas pero
+    // son todas de otros tipos (e.g. `patrimonial`), devolvemos `[]` ·
+    // mezclar fuentes en ese caso sería incorrecto: el coord es la fuente
+    // de verdad de ese año, y la ausencia de ahorro_general allí significa
+    // que no hay ahorro_general vivo.
+    if (entradasIn && entradasIn.length > 0) {
+      return normalizarPerdidasCoord(entradasIn, añoCorte);
+    }
 
     // Cascada perdida · cae al `arrastresOut` del año anterior.
     const ejAnterior = (await db.get('ejerciciosFiscalesCoord', añoCorte - 1)) as
-      | { arrastresOut?: { perdidasPatrimoniales?: ArrastrePerdidaCoord[] } }
+      | { arrastresOut?: { perdidasPatrimoniales?: ArrastrePerdida[] } }
       | undefined;
-    const desdeOutPrevio = normalizarPerdidasCoord(
-      ejAnterior?.arrastresOut?.perdidasPatrimoniales,
-      añoCorte,
-    );
-    if (desdeOutPrevio.length > 0) return desdeOutPrevio;
+    const entradasOutPrevio = ejAnterior?.arrastresOut?.perdidasPatrimoniales;
+    if (entradasOutPrevio && entradasOutPrevio.length > 0) {
+      return normalizarPerdidasCoord(entradasOutPrevio, añoCorte);
+    }
 
     // Ambos sitios vacíos en el coord · devolvemos null para que el caller
     // pueda decidir si caer al store legacy (datos migrados antiguos).
