@@ -83,10 +83,10 @@ const InmuebleFiscalHeader: React.FC<InmuebleFiscalHeaderProps> = ({
               <>
                 {rc && <span className={styles.metaDot} />}
                 <span>
-                  <strong>{diasArrendado} días</strong>{' '}
-                  {diasArrendado === diasArrendado + diasDisposicion || diasDisposicion === 0
-                    ? 'arrendado'
-                    : 'arrendado'}
+                  <strong>{diasArrendado} días</strong> arrendado
+                  {diasDisposicion > 0 && (
+                    <> · <strong>{diasDisposicion}</strong> a disposición</>
+                  )}
                   {contratos && ` · ${contratos}`}
                 </span>
               </>

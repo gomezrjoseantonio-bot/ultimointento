@@ -84,11 +84,18 @@ function buildOptimizacionesLineas(
     });
   }
 
-  // Método de prorrateo en modo III
+  // Método de prorrateo en modo III · sólo informa qué se aplicó · no
+  // afirma optimización entre alternativas (el motor actual no compara
+  // métodos · aplica `dias_habitacion` por defecto).
   if (seccionesData.modoDeclaracion === 'III' && seccionesData.metodoProrrateo) {
+    const metodoTxt = seccionesData.metodoProrrateo === 'dias_habitacion'
+      ? 'días-habitación'
+      : seccionesData.metodoProrrateo === 'superficie'
+        ? 'superficie'
+        : 'ingresos';
     lineas.push({
-      titulo: 'Prorrateo más beneficioso escogido entre 4 métodos legales.',
-      detalle: 'ATLAS evalúa días-habitación · superficie · ingresos · y aplica el que minimiza el rendimiento neto reducido.',
+      titulo: 'Prorrateo de gastos compartidos en alquiler mixto.',
+      detalle: `ATLAS aplicó prorrateo por ${metodoTxt} sobre los gastos comunes a corta y larga estancia.`,
     });
   }
 
@@ -112,6 +119,9 @@ const FiscalInmueblePage: React.FC = () => {
   const hoy = useMemo(() => new Date(), []);
 
   const cargar = useCallback(async () => {
+    // Reset estado al entrar (parámetros de ruta cambiaron · evita arrastrar
+    // un not-found previo cuando navegamos a un inmueble válido).
+    setNotFound(false);
     if (!Number.isFinite(año) || !Number.isFinite(propertyId)) {
       setLoading(false);
       setNotFound(true);
@@ -170,15 +180,53 @@ const FiscalInmueblePage: React.FC = () => {
 
   const esPrescrito = datosEj.estado === 'declarado' && yaPrescrito(año, hoy);
 
-  // KPIs · ingresos (0102) · Σ gastos aplicados · rendimiento neto reducido (0154)
-  const gastos = secciones.secciones[2]?.total ?? null;
-  const gastosAbs = gastos !== null ? Math.abs(gastos) : null;
-  const amortInmuebleTotal = secciones.secciones[3]?.total ?? null;
-  const amortAbs = amortInmuebleTotal !== null ? Math.abs(amortInmuebleTotal) : 0;
+  // Verificación de actividad fiscal del inmueble en el año. Si no hay
+  // ingresos · gastos · ni amortización · es probable que la URL apunte
+  // a un inmueble que no estaba en la cartera ese año. Mostramos empty
+  // state en vez de un resumen con todo a 0.
+  const ingresosAño = extSummary.box0102 ?? 0;
   const arrastresAplicados = extSummary.box0104 ?? 0;
-  const gastosAplicadosKpi = gastosAbs !== null
-    ? Math.round((gastosAbs + amortAbs + arrastresAplicados) * 100) / 100
-    : null;
+  const gastosTotal = (extSummary.box0105 ?? 0) + (extSummary.box0106 ?? 0)
+    + (extSummary.box0109 ?? 0) + (extSummary.box0112 ?? 0)
+    + (extSummary.box0113 ?? 0) + (extSummary.box0114 ?? 0)
+    + (extSummary.box0115 ?? 0) + (extSummary.box0117 ?? 0);
+  const amortAño = extSummary.box0131 ?? 0;
+  const sinActividad = ingresosAño === 0 && arrastresAplicados === 0
+    && gastosTotal === 0 && amortAño === 0;
+  if (sinActividad) {
+    return (
+      <div className={ejercStyles.page}>
+        <InmuebleFiscalHeader
+          property={property}
+          año={año}
+          estadoEjercicio={datosEj.estado}
+          diasArrendado={0}
+          diasDisposicion={0}
+          esPrescrito={esPrescrito}
+          onBack={() => navigate(`/fiscal/ejercicio/${año}`)}
+          onGoDashboard={() => navigate('/fiscal')}
+          onGoEjercicio={() => navigate(`/fiscal/ejercicio/${año}`)}
+        />
+        <div className={ejercStyles.empty}>
+          {property.alias} no tuvo actividad fiscal en {año}.
+        </div>
+      </div>
+    );
+  }
+
+  // KPI Σ gastos aplicados = gastos del año + amortizaciones + arrastres
+  // aplicados. Construimos directamente desde componentes (con 0 por
+  // defecto) en vez de gatear sobre secciones[2].total · así un inmueble
+  // que sólo tiene amortización o arrastres muestra el KPI correctamente.
+  const amortMobiliario = extSummary.box0117 ?? 0;
+  const amortInmuebleSec = extSummary.box0131 ?? 0;
+  const gastosDirectos = (extSummary.box0107 ?? 0)
+    + (extSummary.box0109 ?? 0) + (extSummary.box0112 ?? 0)
+    + (extSummary.box0113 ?? 0) + (extSummary.box0114 ?? 0)
+    + (extSummary.box0115 ?? 0);
+  const gastosAplicadosKpi = Math.round(
+    (gastosDirectos + amortMobiliario + amortInmuebleSec + arrastresAplicados) * 100,
+  ) / 100;
 
   const optLineas = buildOptimizacionesLineas(extSummary, secciones);
 
@@ -218,6 +266,7 @@ const FiscalInmueblePage: React.FC = () => {
 
       <ModoDeclaracionCard
         modo={secciones.modoDeclaracion}
+        porcentajeReduccion={secciones.porcentajeReduccion}
         metodoProrrateo={secciones.metodoProrrateo}
         habitaciones={property.alquilerPorHabitaciones?.numeroHabitaciones ?? property.bedrooms}
       />

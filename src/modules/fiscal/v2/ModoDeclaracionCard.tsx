@@ -8,12 +8,13 @@
  */
 
 import React from 'react';
-import { MODO_LABEL } from './helpers/inmuebleCasillasService';
+import { getModoLabel } from './helpers/inmuebleCasillasService';
 import type { FiscalSummaryExtended } from '../../../services/fiscalSummaryService';
 import styles from './FiscalInmueblePage.module.css';
 
 export interface ModoDeclaracionCardProps {
   modo: FiscalSummaryExtended['modoDeclaracion'];
+  porcentajeReduccion: number;
   metodoProrrateo?: FiscalSummaryExtended['metodoProrrateo'];
   habitaciones?: number;
 }
@@ -26,17 +27,19 @@ const METODO_LABEL: Record<NonNullable<FiscalSummaryExtended['metodoProrrateo']>
 
 const ModoDeclaracionCard: React.FC<ModoDeclaracionCardProps> = ({
   modo,
+  porcentajeReduccion,
   metodoProrrateo,
   habitaciones,
 }) => {
-  const m = MODO_LABEL[modo];
+  const m = getModoLabel(modo, porcentajeReduccion);
 
-  // Sustituimos el body por uno enriquecido cuando hay método de prorrateo
-  // específico · sin alterar la lógica del helper (mantenido genérico).
+  // En modo III enriquecemos con el método real de prorrateo aplicado ·
+  // sin afirmaciones de "más beneficioso de los 4 métodos" (el motor
+  // sólo aplica el método configurado · no compara alternativas).
   let body = m.body;
   if (modo === 'III' && metodoProrrateo && habitaciones) {
     const metodoTxt = METODO_LABEL[metodoProrrateo];
-    body = `${habitaciones} habitaciones · ATLAS aplicó ${metodoTxt} · método más beneficioso de los 4 legalmente posibles.`;
+    body = `${habitaciones} habitaciones · ATLAS aplicó ${metodoTxt} sobre los gastos compartidos.`;
   }
 
   return (

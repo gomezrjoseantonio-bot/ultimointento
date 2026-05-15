@@ -48,6 +48,11 @@ function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 }
 
+function getPositiveNumber(n: unknown): number | null {
+  if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
 export async function getAmortizacionAcumulada(
   propertyId: number,
   añoCorte: number,
@@ -58,10 +63,20 @@ export async function getAmortizacionAcumulada(
     return { rows: [], acumuladoCierreEjercicio: 0, añoCorte };
   }
 
+  // Base de amortización · usamos guarda > 0 para permitir fallback a
+  // `fiscalData.baseAmortizacion` cuando `aeatAmortization.baseAmortizacion`
+  // exista pero sea 0 (registros parcialmente poblados).
   const baseAmortizacion =
-    property.aeatAmortization?.baseAmortizacion
-    ?? (property as any).fiscalData?.baseAmortizacion
-    ?? 0;
+    getPositiveNumber(property.aeatAmortization?.baseAmortizacion)
+    ?? getPositiveNumber((property as any).fiscalData?.baseAmortizacion);
+
+  // Sin base válida · empty state (la tabla mostrará "sin datos" desde
+  // `AmortizacionAcumuladaTable` cuando `rows.length === 0`). Evita
+  // generar filas con 0,00 € que parezcan un cálculo válido.
+  if (baseAmortizacion === null) {
+    return { rows: [], acumuladoCierreEjercicio: 0, añoCorte };
+  }
+
   const purchaseYear =
     yearFromIso(property.purchaseDate)
     ?? yearFromIso(property.aeatAmortization?.firstAcquisitionDate)

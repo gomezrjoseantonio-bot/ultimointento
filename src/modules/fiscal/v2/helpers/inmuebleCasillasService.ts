@@ -28,6 +28,13 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Devuelve el número solo si es finito y > 0 · null en otro caso. Permite
+ *  encadenar `??` para que un 0 explícito en AEAT no bloquee fallbacks. */
+function getPositive(n: number | undefined | null): number | null {
+  if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
 export function buildInmuebleSecciones(
   ext: FiscalSummaryExtended,
   property: Property | null,
@@ -159,19 +166,20 @@ export function buildInmuebleSecciones(
   };
 
   // ─── Amortización del inmueble (navy A) ────────────────────────────────
-  const valorCatastral = aeat?.cadastralValue ?? property?.fiscalData?.cadastralValue ?? 0;
-  const valorCatastralConstruccion = aeat?.constructionCadastralValue
-    ?? property?.fiscalData?.constructionCadastralValue ?? 0;
-  const pctConstruccion = aeat?.constructionPercentage
-    ?? property?.fiscalData?.constructionPercentage ?? null;
-  const importeAdq = aeat?.onerosoAcquisition?.acquisitionAmount
-    ?? property?.acquisitionCosts?.price ?? null;
-  const gastosAdq = aeat?.onerosoAcquisition?.acquisitionExpenses ?? null;
+  const valorCatastral = getPositive(aeat?.cadastralValue) ?? getPositive(property?.fiscalData?.cadastralValue) ?? 0;
+  const valorCatastralConstruccion = getPositive(aeat?.constructionCadastralValue)
+    ?? getPositive(property?.fiscalData?.constructionCadastralValue) ?? 0;
+  const pctConstruccion = getPositive(aeat?.constructionPercentage)
+    ?? getPositive(property?.fiscalData?.constructionPercentage);
+  const importeAdq = getPositive(aeat?.onerosoAcquisition?.acquisitionAmount)
+    ?? getPositive(property?.acquisitionCosts?.price);
+  const gastosAdq = getPositive(aeat?.onerosoAcquisition?.acquisitionExpenses);
   // `baseAmortizacion` vive en `Property.aeatAmortization` (no en
   // `fiscalData` directamente · cast permite leer el campo opcional).
   const fiscalData = property?.fiscalData as Record<string, unknown> | undefined;
-  const baseAmortizacion = (typeof aeat?.baseAmortizacion === 'number' ? aeat.baseAmortizacion : null)
-    ?? (typeof fiscalData?.baseAmortizacion === 'number' ? (fiscalData.baseAmortizacion as number) : null);
+  const baseAmortizacion =
+    getPositive(aeat?.baseAmortizacion)
+    ?? (typeof fiscalData?.baseAmortizacion === 'number' ? getPositive(fiscalData.baseAmortizacion as number) : null);
   // Amortización inmueble · valor en box0131 del summary base. El número
   // de casilla que se muestra varía con el modo: en modo III por habitaciones
   // (casos especiales) la AEAT lo coloca en 0132 · el resto en 0131.
@@ -181,7 +189,7 @@ export function buildInmuebleSecciones(
   const amortRows: BoxRow[] = [];
   if (valorCatastral > 0) amortRows.push({ num: '0123', concepto: 'Valor catastral total', importe: valorCatastral });
   if (valorCatastralConstruccion > 0) amortRows.push({ num: '0124', concepto: 'Valor catastral construcción', importe: valorCatastralConstruccion });
-  if (pctConstruccion !== null && pctConstruccion > 0) {
+  if (pctConstruccion !== null) {
     amortRows.push({
       num: '0125',
       concepto: '% construcción',
@@ -190,15 +198,15 @@ export function buildInmuebleSecciones(
       subtitulo: 'porcentaje sobre VC total',
     });
   }
-  if (importeAdq !== null && importeAdq > 0) amortRows.push({ num: '0126', concepto: 'Importe adquisición', importe: importeAdq });
-  if (gastosAdq !== null && gastosAdq > 0) {
+  if (importeAdq !== null) amortRows.push({ num: '0126', concepto: 'Importe adquisición', importe: importeAdq });
+  if (gastosAdq !== null) {
     amortRows.push({
       num: '0127',
       concepto: 'Gastos inherentes adquisición · ITP · notaría · registro',
       importe: gastosAdq,
     });
   }
-  if (baseAmortizacion !== null && baseAmortizacion > 0) {
+  if (baseAmortizacion !== null) {
     amortRows.push({
       num: '0130',
       concepto: 'Base de amortización',
@@ -282,34 +290,64 @@ function ingresosSubtitulo(ext: FiscalSummaryExtended): string {
 }
 
 // ── Labels humanas del modo de declaración ─────────────────────────────────
-export const MODO_LABEL: Record<FiscalSummaryExtended['modoDeclaracion'], {
+// El body se genera dinámicamente para reflejar el % de reducción real
+// (puede ser 50 · 60 · 70 · 90 según contratos · Ley Vivienda · zonas
+// tensionadas) en lugar de hardcodear 60%.
+export interface ModoLabel {
   tag: string;
   title: string;
   body: string;
-}> = {
-  I: {
-    tag: 'Larga estancia',
-    title: 'Vivienda habitual del inquilino',
-    body: 'Contrato de larga estancia · LAU. ATLAS aplicó la reducción del 60% sobre el rendimiento neto positivo (Ley Vivienda).',
-  },
-  II: {
-    tag: 'Parcial vacío',
-    title: 'Año con período sin alquilar',
-    body: 'Parte del año el inmueble estuvo arrendado y parte a disposición del titular. Los días sin alquilar generan imputación de renta · los arrendados rendimiento neto.',
-  },
-  III: {
-    tag: 'Alquiler mixto',
-    title: 'Casos especiales · habitaciones',
-    body: 'Habitaciones combinando corta y larga estancia. ATLAS aplicó prorrateo por días-habitación · método más beneficioso de los 4 legalmente posibles.',
-  },
-  IV: {
-    tag: 'Vivienda habitual',
-    title: 'Vivienda habitual del titular',
-    body: 'Vivienda habitual del propietario · sin rendimiento ni imputación.',
-  },
-  V: {
-    tag: 'Corta estancia',
-    title: 'Turístico o temporada',
-    body: 'Alquiler turístico o por temporada · sin derecho a reducción del 60% Ley Vivienda. Se grava como rendimiento de capital inmobiliario.',
-  },
+}
+
+export function getModoLabel(
+  modo: FiscalSummaryExtended['modoDeclaracion'],
+  porcentajeReduccion: number,
+): ModoLabel {
+  switch (modo) {
+    case 'I':
+      return {
+        tag: 'Larga estancia',
+        title: 'Vivienda habitual del inquilino',
+        body: porcentajeReduccion > 0
+          ? `Contrato de larga estancia · LAU. ATLAS aplicó la reducción del ${porcentajeReduccion}% sobre el rendimiento neto positivo (Ley Vivienda).`
+          : 'Contrato de larga estancia · LAU. Sin reducción aplicada en este ejercicio.',
+      };
+    case 'II':
+      return {
+        tag: 'Parcial vacío',
+        title: 'Año con período sin alquilar',
+        body: 'Parte del año el inmueble estuvo arrendado y parte a disposición del titular. Los días sin alquilar generan imputación de renta · los arrendados rendimiento neto.',
+      };
+    case 'III':
+      return {
+        tag: 'Alquiler mixto',
+        title: 'Casos especiales · habitaciones',
+        body: 'Habitaciones combinando corta y larga estancia. ATLAS aplicó prorrateo por días-habitación sobre los gastos compartidos.',
+      };
+    case 'IV':
+      return {
+        tag: 'Vivienda habitual',
+        title: 'Vivienda habitual del titular',
+        body: 'Vivienda habitual del propietario · sin rendimiento ni imputación.',
+      };
+    case 'V':
+      return {
+        tag: 'Corta estancia',
+        title: 'Turístico o temporada',
+        body: 'Alquiler turístico o por temporada · sin derecho a reducción Ley Vivienda. Se grava como rendimiento de capital inmobiliario.',
+      };
+  }
+}
+
+/**
+ * @deprecated Usar `getModoLabel(modo, porcentajeReduccion)` para que el
+ * texto refleje el % de reducción real. Mantenido por compatibilidad con
+ * pruebas que importan el mapa estático.
+ */
+export const MODO_LABEL: Record<FiscalSummaryExtended['modoDeclaracion'], ModoLabel> = {
+  I: getModoLabel('I', 60),
+  II: getModoLabel('II', 0),
+  III: getModoLabel('III', 0),
+  IV: getModoLabel('IV', 0),
+  V: getModoLabel('V', 0),
 };

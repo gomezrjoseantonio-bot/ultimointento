@@ -47,9 +47,12 @@ const AmortizacionAcumuladaTable: React.FC<AmortizacionAcumuladaTableProps> = ({
     <div className={styles.card}>
       <div className={styles.cardHd}>
         <div>
-          <div className={styles.cardTitle}>Amortización acumulada · vista para venta futura</div>
+          <div className={styles.cardTitle}>Amortización acumulada · vista preview para venta futura</div>
           <div className={styles.cardSub}>
-            año a año desde compra · se restará del valor adquisición si vendes
+            año a año desde compra · estimación lineal base × 3% × días. El
+            cálculo definitivo de la ganancia patrimonial se realiza en el
+            momento de la venta (puede diferir si hay mejoras · usufructo o
+            tasas especiales).
           </div>
         </div>
       </div>
