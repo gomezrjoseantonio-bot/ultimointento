@@ -456,15 +456,6 @@ function fechaLimiteIRPFAnual(añoEjercicio: number): string {
   return `${añoEjercicio + 1}-06-30`;
 }
 
-function fechaLimiteM303(añoEjercicio: number, periodo: '1T' | '2T' | '3T' | '4T'): string {
-  switch (periodo) {
-    case '1T': return `${añoEjercicio}-04-20`;
-    case '2T': return `${añoEjercicio}-07-20`;
-    case '3T': return `${añoEjercicio}-10-20`;
-    case '4T': return `${añoEjercicio + 1}-01-30`;
-  }
-}
-
 function clasificarEstadoObligacion(
   fechaLimiteISO: string,
   estadoEjercicio: EstadoEjercicioFiscal,
