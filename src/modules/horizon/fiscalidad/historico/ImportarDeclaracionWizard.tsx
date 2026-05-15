@@ -947,8 +947,15 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({
   // selección inicial para que el usuario no tenga que volver a
   // soltarlo. Solo lo aplicamos al montar/cambiar de archivo entrante,
   // no se resetea si el usuario luego cambia de selección manualmente.
+  // Replicamos el comportamiento del drop handler interno (líneas
+  // 308-310) · derivamos `metodo` desde la extensión del archivo para
+  // que un PDF entrante no quede en flujo XML y `handleNext` no intente
+  // parsearlo con `parseIrpfXml`.
   useEffect(() => {
     if (initialFile) {
+      const name = initialFile.name.toLowerCase();
+      if (name.endsWith('.xml')) setMetodo('xml');
+      else if (name.endsWith('.pdf')) setMetodo('pdf');
       setFile(initialFile);
       setError(null);
     }
