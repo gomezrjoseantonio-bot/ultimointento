@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>ATLAS · Fiscal v3 · mockup</title>
+<style>
+:root{
+  --bg:#f5f1e8;--surface:#ffffff;--surface-2:#faf7ef;
+  --ink:#1a2332;--ink-2:#3b475a;--ink-3:#6a7689;--ink-4:#9aa3b2;--ink-5:#c8ced8;
+  --line:#e3decf;--line-2:#ede7d4;
+  --navy:#0f1b2d;--navy-2:#1f2c44;--navy-3:#2e3c58;
+  --gold:#b08a3e;--gold-2:#c9a55a;--gold-wash:#f3e8d0;--gold-soft:#ebdcb8;
+  --pos:#2d6855;--pos-wash:#dfeae5;
+  --neg:#a8423a;--neg-wash:#f0dad7;
+  --warn:#b67a2a;--warn-wash:#f5e6cd;
+  --muted-wash:#ece7d8;
+  --shadow:0 1px 2px rgba(15,27,45,0.04),0 4px 12px rgba(15,27,45,0.05);
+  --radius:10px;--radius-sm:6px;
+  --mono:'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--sans);font-size:14px;color:var(--ink);background:var(--bg);line-height:1.45;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+a{color:inherit;text-decoration:none;cursor:pointer}
+.mono{font-family:var(--mono);font-feature-settings:"tnum" 1,"lnum" 1}
+
+.app{display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--navy);color:#fff;padding:20px 0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;flex-shrink:0}
+.sb-brand{display:flex;align-items:center;gap:12px;padding:0 20px 24px;border-bottom:1px solid var(--navy-3)}
+.sb-brand-logo{width:34px;height:34px;background:var(--gold-soft);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;border-radius:6px}
+.sb-brand-name{font-weight:700;letter-spacing:.5px}
+.sb-brand-sub{font-size:11px;letter-spacing:1.5px;color:var(--ink-4);text-transform:uppercase;margin-top:1px}
+.sb-section{padding:16px 20px 6px;font-size:10px;letter-spacing:1.5px;color:var(--ink-4);text-transform:uppercase}
+.sb-item{display:flex;align-items:center;gap:10px;padding:8px 20px;color:#cfd5e0;font-size:13px}
+.sb-item.active{color:var(--gold-2);border-left:3px solid var(--gold);background:rgba(176,138,62,0.08);padding-left:17px}
+.sb-item:hover{color:#fff}
+.sb-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;opacity:.85}
+
+.content{flex:1;min-width:0;padding:24px 32px 48px;overflow-x:hidden;max-width:100%}
+
+.page{display:none}
+.page.active{display:block}
+
+.breadcrumb{display:flex;align-items:center;gap:8px;color:var(--ink-3);font-size:12px;margin-bottom:14px;flex-wrap:wrap}
+.breadcrumb a:hover{color:var(--ink-2)}
+.breadcrumb .crumb-sep{opacity:.5}
+.breadcrumb .crumb-current{color:var(--ink-2);font-weight:600}
+.back-btn{display:inline-flex;align-items:center;gap:4px;color:var(--ink-3)}
+.back-btn:hover{color:var(--ink)}
+
+/* Page head limpia · sin counts · sin botones acción */
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:22px}
+.page-head h1{font-size:24px;font-weight:700;letter-spacing:-0.3px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.page-sub{font-size:13px;color:var(--ink-3);margin-top:4px}
+.page-sub .dot{display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--ink-4);margin:0 8px;vertical-align:middle}
+.page-action-link{font-size:13px;color:var(--gold);font-weight:600;flex-shrink:0;white-space:nowrap}
+.page-action-link:hover{color:#9d7733}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;font-size:13px;font-weight:600;border-radius:6px;border:1px solid transparent;transition:all .15s}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink-2)}
+.btn-ghost:hover{border-color:var(--ink-4);color:var(--ink)}
+.btn-primary{background:var(--gold);color:#fff}
+.btn-primary:hover{background:#9d7733}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:0.3px}
+.pill-declarado{background:var(--pos-wash);color:var(--pos)}
+.pill-pendiente{background:var(--warn-wash);color:var(--warn)}
+.pill-curso{background:var(--gold-wash);color:var(--gold)}
+.pill-prescrito{background:var(--muted-wash);color:var(--ink-3)}
+.pill-borrador{background:var(--gold-wash);color:var(--gold)}
+.pill-deuda{background:var(--neg-wash);color:var(--neg)}
+/* paralela ahora gold · NO lila */
+.pill-paralela{background:var(--gold-wash);color:var(--gold)}
+
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;position:relative;transition:border-color .15s}
+.kpi.clickable{cursor:pointer}
+.kpi.clickable:hover{border-color:var(--ink-4)}
+.kpi-lab{font-size:10px;letter-spacing:1.4px;color:var(--ink-3);text-transform:uppercase;font-weight:600;margin-bottom:6px}
+.kpi-val{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-0.5px}
+.kpi-val.pos{color:var(--pos)}
+.kpi-val.neg{color:var(--neg)}
+.kpi-val.warn{color:var(--warn)}
+.kpi-val.muted{color:var(--ink-3)}
+.kpi-hint{font-size:11px;color:var(--ink-3);margin-top:4px}
+.kpi-cta{font-size:11px;color:var(--gold);font-weight:600;margin-top:8px;display:flex;align-items:center;gap:3px}
+.kpi.accent-warn{border-left:3px solid var(--warn);padding-left:13px}
+.kpi.accent-neg{border-left:3px solid var(--neg);padding-left:13px}
+.kpi.accent-gold{border-left:3px solid var(--gold);padding-left:13px}
+.kpi.accent-pos{border-left:3px solid var(--pos);padding-left:13px}
+
+/* Tabs SIN iconos · solo texto + contador */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px}
+.tab{padding:10px 18px;font-size:13px;font-weight:600;color:var(--ink-3);border-bottom:2px solid transparent;display:flex;align-items:center;gap:6px;margin-bottom:-1px;cursor:pointer}
+.tab .tab-count{background:var(--muted-wash);color:var(--ink-3);padding:1px 7px;border-radius:999px;font-size:10px}
+.tab:hover{color:var(--ink-2)}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab.active .tab-count{background:var(--gold-wash);color:var(--gold)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;overflow:hidden}
+.card-hd{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.card-title{font-weight:700;font-size:14px;color:var(--ink)}
+.card-sub{font-size:12px;color:var(--ink-3);margin-top:2px}
+.card-action{font-size:12px;color:var(--gold);font-weight:600;cursor:pointer}
+.card-bd{padding:0}
+
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-size:10px;letter-spacing:1.2px;color:var(--ink-3);text-transform:uppercase;font-weight:600;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.tbl td{padding:11px 16px;border-bottom:1px solid var(--line-2);vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.clickable{cursor:pointer}
+.tbl tr.clickable:hover td{background:var(--surface-2)}
+.tbl td.r{text-align:right}
+.tbl td.c{text-align:center}
+.t-strong{font-weight:600;color:var(--ink)}
+.t-muted{font-size:11px;color:var(--ink-3);margin-top:1px}
+.td-amount{font-family:var(--mono);font-weight:600;text-align:right}
+.td-amount.pos{color:var(--pos)}
+.td-amount.neg{color:var(--neg)}
+
+/* Casillas · sin tag de fuente por línea · solo número + concepto + importe */
+.box-section{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin-bottom:12px;overflow:hidden}
+.box-section-hd{padding:12px 18px;display:flex;align-items:center;gap:10px;justify-content:space-between;cursor:pointer;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.box-section-hd.collapsed{border-bottom:none}
+.box-section-letter{width:24px;height:24px;border-radius:5px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;font-family:var(--mono);flex-shrink:0}
+.box-section-title{font-weight:700;font-size:14px;color:var(--ink);flex:1;min-width:0}
+.box-section-total{font-family:var(--mono);font-weight:700;color:var(--ink);font-size:14px;white-space:nowrap}
+.box-section-chevron{color:var(--ink-3);transition:transform .15s;flex-shrink:0}
+.box-section.collapsed .box-section-chevron{transform:rotate(-90deg)}
+.box-section.collapsed .box-section-bd{display:none}
+
+/* Grid de fila SIN columna de estado · solo num + concepto + importe */
+.box-row{display:grid;grid-template-columns:70px 1fr 140px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--line-2);gap:16px;font-size:13px}
+.box-row:last-child{border-bottom:none}
+.box-row.subtotal{background:var(--surface-2);font-weight:600}
+.box-row.subtotal .box-row-concept{color:var(--ink)}
+.box-row.subtotal .box-row-amount{color:var(--ink);font-weight:700}
+.box-row-num{font-family:var(--mono);font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:0.5px}
+.box-row-concept{color:var(--ink-2)}
+.box-row-concept-sub{font-size:11px;color:var(--ink-4);margin-top:1px}
+.box-row-amount{font-family:var(--mono);font-weight:600;text-align:right;color:var(--ink);white-space:nowrap}
+
+/* Inmueble subgroup · F2 sección B · simplificado */
+.inmueble-group{background:var(--surface-2);margin:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--line);overflow:hidden}
+.inmueble-group-hd{display:grid;grid-template-columns:1fr 160px 80px;align-items:center;padding:12px 14px;cursor:pointer;background:var(--surface);gap:12px}
+.inmueble-group-hd:hover{background:var(--gold-wash)}
+.inmueble-group-name{font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.inmueble-group-meta{font-size:11px;color:var(--ink-3);margin-top:3px}
+.inmueble-group-amt{font-family:var(--mono);font-weight:700;color:var(--ink);text-align:right;white-space:nowrap}
+.inmueble-group-amt-sub{font-size:10px;color:var(--ink-3);font-weight:400;margin-top:1px}
+.inmueble-group-link{color:var(--gold);font-size:12px;font-weight:600;text-align:right;white-space:nowrap}
+
+/* Nota descartable · sustituye al R10 block */
+.note-block{
+  background:var(--surface);border:1px solid var(--gold-soft);border-left:3px solid var(--gold);
+  padding:14px 18px;border-radius:var(--radius);margin-bottom:12px;position:relative;
+}
+.note-close{
+  position:absolute;top:10px;right:12px;
+  width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--ink-3);font-size:14px;
+  cursor:pointer;line-height:1;
+}
+.note-close:hover{background:var(--gold-wash);color:var(--ink)}
+.note-title{font-weight:700;color:var(--navy);font-size:13px;margin-bottom:6px}
+.note-body{font-size:12.5px;color:var(--ink-2);line-height:1.6;padding-right:28px}
+.note-body strong{color:var(--ink)}
+
+/* Calc step · F4 · arreglada composición · grid uniforme */
+.calc-step{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:14px;overflow:hidden}
+.calc-step-hd{padding:12px 18px;background:var(--surface-2);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:13px;gap:12px}
+.calc-step-hd .casilla-ref{font-family:var(--mono);font-size:11px;color:var(--ink-3);font-weight:600;white-space:nowrap}
+.calc-line{display:grid;grid-template-columns:24px 1fr 140px;align-items:center;padding:9px 18px;gap:12px;font-size:13px;border-bottom:1px solid var(--line-2)}
+.calc-line:last-child{border-bottom:none}
+.calc-line.indent{padding-left:46px;font-size:12px;color:var(--ink-3);background:var(--surface-2)}
+.calc-line.indent2{padding-left:66px;font-size:12px;color:var(--ink-3);background:var(--surface-2);font-style:italic}
+.calc-op{font-family:var(--mono);color:var(--ink-3);font-weight:600;font-size:14px;text-align:center}
+.calc-text{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calc-text-wrap{color:var(--ink-2)}
+.calc-amt{font-family:var(--mono);font-weight:600;text-align:right;color:var(--ink);white-space:nowrap}
+.calc-amt.neg-op{color:var(--neg)}
+.calc-amt.pend{color:var(--ink-3);font-style:italic;font-weight:400}
+.calc-line.subtotal{background:var(--surface-2);font-weight:700;border-top:1px solid var(--line)}
+.calc-line.subtotal .calc-amt{font-size:14px;color:var(--ink)}
+.calc-line.final{background:var(--navy);color:#fff}
+.calc-line.final .calc-op,.calc-line.final .calc-text,.calc-line.final .calc-amt{color:#fff}
+.calc-line.final .calc-amt{font-size:15px}
+
+/* Amort tbl · arreglada · grid fijo */
+.amort-tbl th,.amort-tbl td{font-family:var(--mono);white-space:nowrap}
+.amort-tbl td.year-cell{font-weight:700;color:var(--navy)}
+.amort-tbl tr.future td{color:var(--ink-3);font-style:italic}
+.amort-tbl tr.total-row td{background:var(--navy);color:#fff;font-weight:700;font-size:14px}
+
+/* Config accordion · F6 */
+.acc-item{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:12px;overflow:hidden}
+.acc-hd{padding:16px 20px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.acc-hd:hover{background:var(--surface-2)}
+.acc-title{font-weight:700;font-size:15px;color:var(--ink)}
+.acc-sub{font-size:12px;color:var(--ink-3);margin-top:2px}
+.acc-chevron{color:var(--ink-3);transition:transform .15s}
+.acc-item.open .acc-chevron{transform:rotate(90deg)}
+.acc-bd{display:none;padding:0 20px 20px;border-top:1px solid var(--line)}
+.acc-item.open .acc-bd{display:block}
+.acc-bd-content{padding-top:14px}
+
+.ej-row{display:grid;grid-template-columns:80px 130px 1fr 150px 130px 40px;align-items:center;gap:16px;padding:14px 18px;border-bottom:1px solid var(--line-2);cursor:pointer}
+.ej-row:hover{background:var(--surface-2)}
+.ej-row:last-child{border-bottom:none}
+.ej-year{font-family:var(--mono);font-weight:800;font-size:16px;color:var(--navy)}
+.ej-result{font-family:var(--mono);font-weight:700;font-size:14px;text-align:right;white-space:nowrap}
+.ej-result.pos{color:var(--pos)}
+.ej-result.neg{color:var(--neg)}
+.ej-meta{font-size:11px;color:var(--ink-3);margin-top:2px}
+.ej-chevron{color:var(--ink-3);text-align:center}
+
+.dropzone{border:2px dashed var(--line);border-radius:var(--radius);padding:24px;text-align:center;background:var(--surface-2);cursor:pointer}
+.dropzone:hover{border-color:var(--gold);background:var(--gold-wash)}
+.dropzone-icon{margin:0 auto 8px;color:var(--ink-4)}
+.dropzone-title{font-weight:700;color:var(--ink-2);margin-bottom:4px}
+.dropzone-sub{font-size:12px;color:var(--ink-3)}
+
+.fld{margin-bottom:14px}
+.fld-lab{display:block;font-size:12px;color:var(--ink-3);font-weight:600;margin-bottom:5px}
+.fld-input,.fld-select{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:6px;font-size:13px;color:var(--ink);background:var(--surface);font-family:var(--mono)}
+
+.demo-banner{background:var(--navy);color:#fff;padding:8px 16px;font-size:12px;display:flex;align-items:center;gap:14px;margin:-24px -32px 24px;flex-wrap:wrap}
+.demo-banner-tab{padding:4px 10px;border-radius:4px;cursor:pointer;font-weight:600;font-family:var(--mono);font-size:11px}
+.demo-banner-tab.active{background:var(--gold);color:#fff}
+.demo-banner-tab:hover{background:rgba(255,255,255,0.1)}
+.demo-banner-tab.active:hover{background:var(--gold)}
+
+.meta-line{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-3);margin-top:6px}
+.meta-line .dot{display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--ink-4)}
+
+/* Modo card · simplificado · sin acronimo R10 */
+.modo-card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--gold);padding:14px 18px;border-radius:var(--radius);margin-bottom:14px}
+.modo-card-hd{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.modo-card-tag{font-family:var(--mono);font-weight:700;font-size:11px;background:var(--navy);color:#fff;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.modo-card-title{font-weight:700;color:var(--ink);font-size:14px}
+.modo-card-body{font-size:13px;color:var(--ink-2);line-height:1.55}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-brand-logo">A</div>
+      <div>
+        <div class="sb-brand-name">ATLAS</div>
+        <div class="sb-brand-sub">Patrimonio</div>
+      </div>
+    </div>
+
+    <div class="sb-section">Activos</div>
+    <a class="sb-item"><span class="sb-icon">▦</span> Panel</a>
+    <a class="sb-item"><span class="sb-icon">▢</span> Inmuebles</a>
+    <a class="sb-item"><span class="sb-icon">↗</span> Inversiones</a>
+    <a class="sb-item"><span class="sb-icon">◫</span> Tesorería</a>
+    <a class="sb-item"><span class="sb-icon">▤</span> Financiación</a>
+    <a class="sb-item"><span class="sb-icon">●</span> Personal</a>
+
+    <div class="sb-section">Operativa</div>
+    <a class="sb-item"><span class="sb-icon">◳</span> Contratos</a>
+    <a class="sb-item"><span class="sb-icon">◎</span> Mi plan</a>
+    <a class="sb-item active"><span class="sb-icon">$</span> Fiscal</a>
+    <a class="sb-item"><span class="sb-icon">▭</span> Archivo</a>
+
+    <div style="margin-top:auto;padding:16px 20px;border-top:1px solid var(--navy-3)">
+      <a class="sb-item" style="padding:0"><span class="sb-icon">⚙</span> Ajustes</a>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <div class="demo-banner">
+      <span style="opacity:.7">Mockup v3 · navegación demo</span>
+      <span class="demo-banner-tab active" onclick="showPage('dashboard')">F1 Dashboard</span>
+      <span class="demo-banner-tab" onclick="showPage('ejercicio')">F2 Ejercicio 2024</span>
+      <span class="demo-banner-tab" onclick="showPage('inmueble')">F3 FA32 2024</span>
+      <span class="demo-banner-tab" onclick="showPage('venta')">F4 Venta T48 2025</span>
+      <span class="demo-banner-tab" onclick="showPage('config')">F6 Acciones</span>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         F1 · DASHBOARD
+         · sin counts en subtítulo
+         · sin botón "Configuración" en header · solo link gold
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="page active" id="page-dashboard">
+
+      <div class="page-head">
+        <div>
+          <h1>Fiscal</h1>
+          <div class="page-sub">Campaña IRPF 2025 abierta · <strong style="color:var(--ink)">2 abr – 30 jun 2026</strong></div>
+        </div>
+        <a class="page-action-link" onclick="showPage('config')">Acciones fiscales →</a>
+      </div>
+
+      <!-- KPI strip · 4 KPIs · "Próxima obligación" eliminada (calendario fuera) -->
+      <div class="kpi-strip">
+        <div class="kpi clickable accent-gold" onclick="showPage('ejercicio')">
+          <div class="kpi-lab">2026 · Proyección IRPF</div>
+          <div class="kpi-val warn">−1.180 €</div>
+          <div class="kpi-hint">a pagar estimado · enero–mayo confirmados</div>
+          <div class="kpi-cta">Ver detalle →</div>
+        </div>
+        <div class="kpi clickable accent-pos">
+          <div class="kpi-lab">2025 · Borrador pendiente</div>
+          <div class="kpi-val pos">+5.847 €</div>
+          <div class="kpi-hint">a devolver · venta T48 incluida</div>
+          <div class="kpi-cta">Ir al borrador →</div>
+        </div>
+        <div class="kpi clickable accent-neg">
+          <div class="kpi-lab">Deuda abierta</div>
+          <div class="kpi-val neg">977,70 €</div>
+          <div class="kpi-hint">IVA 3T-2024 · ejecutivo 5% · 23/11/24</div>
+          <div class="kpi-cta">Ver deuda →</div>
+        </div>
+        <div class="kpi clickable">
+          <div class="kpi-lab">Arrastres vivos</div>
+          <div class="kpi-val">29.109,22 €</div>
+          <div class="kpi-hint">2022 caduca 2026 · 2023 caduca 2027</div>
+          <div class="kpi-cta">Ver detalle →</div>
+        </div>
+      </div>
+
+      <!-- Tabs · SIN iconos · solo texto + contador -->
+      <div class="tabs">
+        <div class="tab active" onclick="showTab(this,'tab-ejercicios')">Ejercicios <span class="tab-count">7</span></div>
+        <div class="tab" onclick="showTab(this,'tab-deudas')">Deudas <span class="tab-count">1</span></div>
+        <div class="tab" onclick="showTab(this,'tab-arrastres')">Arrastres <span class="tab-count">2</span></div>
+      </div>
+
+      <!-- Tab Ejercicios · pill paralela ahora gold · NO lila -->
+      <div id="tab-ejercicios" class="tab-body">
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Tus ejercicios fiscales</div>
+              <div class="card-sub">click en cualquier año para ver detalle</div>
+            </div>
+          </div>
+          <div class="card-bd">
+
+            <div class="ej-row" onclick="showPage('ejercicio')">
+              <div class="ej-year">2026</div>
+              <span class="pill pill-curso">En curso</span>
+              <div>
+                <div class="t-strong">IRPF 2026 · proyección anual</div>
+                <div class="ej-meta">5 meses confirmados + 7 proyectados · refresca con cada nómina</div>
+              </div>
+              <div class="ej-result neg">−1.180 €</div>
+              <div class="ej-meta">prescribe en 2030</div>
+              <div class="ej-chevron">›</div>
+            </div>
+
+            <div class="ej-row" onclick="showPage('ejercicio')">
+              <div class="ej-year">2025</div>
+              <span class="pill pill-pendiente">Pendiente declarar</span>
+              <div>
+                <div class="t-strong">IRPF 2025 · borrador completo</div>
+                <div class="ej-meta">venta Tenderina 48 incluida · presentar entre 2 abr – 30 jun 2026</div>
+              </div>
+              <div class="ej-result pos">+5.847 €</div>
+              <div class="ej-meta">prescribirá 2030</div>
+              <div class="ej-chevron">›</div>
+            </div>
+
+            <div class="ej-row" onclick="showPage('ejercicio')">
+              <div class="ej-year">2024</div>
+              <span class="pill pill-declarado">Declarado</span>
+              <div>
+                <div class="t-strong">IRPF 2024 · presentado 24/06/2025</div>
+                <div class="ej-meta">v1 original · sin paralelas · justificante 1005624311754</div>
+              </div>
+              <div class="ej-result neg">−2.899,75 €</div>
+              <div class="ej-meta">prescribe 25/06/2029</div>
+              <div class="ej-chevron">›</div>
+            </div>
+
+            <div class="ej-row" onclick="showPage('ejercicio')">
+              <div class="ej-year">2023</div>
+              <span class="pill pill-declarado">Declarado</span>
+              <div>
+                <div class="t-strong">IRPF 2023 · corregido por paralela 15/10/2024 <span class="pill pill-paralela" style="margin-left:6px">v2</span></div>
+                <div class="ej-meta">desfase Modelo 130 · saldo 27.764,23 € arrastrado a 2025+</div>
+              </div>
+              <div class="ej-result pos">+5.509,89 €</div>
+              <div class="ej-meta">prescribe 16/10/2028</div>
+              <div class="ej-chevron">›</div>
+            </div>
+
+            <div class="ej-row" onclick="showPage('ejercicio')">
+              <div class="ej-year">2022</div>
+              <span class="pill pill-declarado">Declarado</span>
+              <div>
+                <div class="t-strong">IRPF 2022 · corregido por paralela 12/01/2024 <span class="pill pill-paralela" style="margin-left:6px">v2</span></div>
+                <div class="ej-meta">base amortizable Carles Buigas corregida · saldo 1.344,99 € arrastrado</div>
+              </div>
+              <div class="ej-result pos">+5.268,20 €</div>
+              <div class="ej-meta">prescribe 13/01/2028</div>
+              <div class="ej-chevron">›</div>
+            </div>
+
+            <div class="ej-row" onclick="showPage('ejercicio')">
+              <div class="ej-year">2021</div>
+              <span class="pill pill-declarado">Declarado</span>
+              <div>
+                <div class="t-strong">IRPF 2021 · presentado 28/06/2022</div>
+                <div class="ej-meta">v1 sin paralelas</div>
+              </div>
+              <div class="ej-result pos">+1.842,10 €</div>
+              <div class="ej-meta">prescribe 29/06/2026</div>
+              <div class="ej-chevron">›</div>
+            </div>
+
+            <div class="ej-row" style="opacity:.6" onclick="showPage('ejercicio')">
+              <div class="ej-year">2020</div>
+              <span class="pill pill-prescrito">Prescrito</span>
+              <div>
+                <div class="t-strong">IRPF 2020 · prescrito 26/06/2025</div>
+                <div class="ej-meta">consultable · intocable</div>
+              </div>
+              <div class="ej-result pos">+2.120,00 €</div>
+              <div class="ej-meta">cerrado</div>
+              <div class="ej-chevron">›</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-deudas" class="tab-body" style="display:none">
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Deudas fiscales abiertas</div>
+              <div class="card-sub">pendientes de pago a la AEAT</div>
+            </div>
+          </div>
+          <div class="card-bd">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Modelo</th>
+                  <th>Periodo</th>
+                  <th>Principal</th>
+                  <th>Recargo</th>
+                  <th>Total</th>
+                  <th>Estado</th>
+                  <th>Notificada</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="clickable">
+                  <td><span class="mono t-strong">303</span></td>
+                  <td><div class="t-strong">IVA 3T-2024</div><div class="t-muted">jul-sep 2024</div></td>
+                  <td class="r"><span class="mono">931,14 €</span></td>
+                  <td class="r"><span class="mono">+46,56 €</span><div class="t-muted">ejecutivo 5%</div></td>
+                  <td class="r"><span class="td-amount neg">977,70 €</span></td>
+                  <td><span class="pill pill-deuda">Ejecutivo</span></td>
+                  <td><span class="mono">23/11/2024</span></td>
+                  <td class="c"><span style="color:var(--ink-3)">›</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-arrastres" class="tab-body" style="display:none">
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Arrastres pendientes de compensar</div>
+              <div class="card-sub">pérdidas patrimoniales · ATLAS aplica primero los más antiguos</div>
+            </div>
+          </div>
+          <div class="card-bd">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Origen</th>
+                  <th>Tipo</th>
+                  <th>Importe original</th>
+                  <th>Aplicado</th>
+                  <th>Pendiente</th>
+                  <th>Caduca</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="mono t-strong">2022</span></td>
+                  <td>Pérdida patrimonial ahorro</td>
+                  <td class="r"><span class="mono">1.418,35 €</span></td>
+                  <td class="r"><span class="mono">73,36 €</span></td>
+                  <td class="r"><span class="mono t-strong">1.344,99 €</span></td>
+                  <td><span class="mono">31/12/2026</span><div class="t-muted" style="color:var(--warn)">caduca este año</div></td>
+                </tr>
+                <tr>
+                  <td><span class="mono t-strong">2023</span></td>
+                  <td>Pérdida patrimonial ahorro</td>
+                  <td class="r"><span class="mono">27.764,23 €</span></td>
+                  <td class="r"><span class="mono">0,00 €</span></td>
+                  <td class="r"><span class="mono t-strong">27.764,23 €</span></td>
+                  <td><span class="mono">31/12/2027</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Nota descartable · sin acrónimo R10 -->
+        <div class="note-block" id="note-arrastres">
+          <span class="note-close" onclick="document.getElementById('note-arrastres').style.display='none'">×</span>
+          <div class="note-title">ATLAS aplica los arrastres con el orden más beneficioso</div>
+          <div class="note-body">
+            Cuando hagas la declaración de 2025 (donde vendes T48 con ganancia ~39.590 €), ATLAS aplicará primero el saldo de 2022 (que caduca antes) y luego el de 2023. Si se aplicaran al revés, perderías <strong>1.344,99 €</strong> por caducidad y pagarías unos <strong>282 €</strong> más de impuesto.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         F2 · EJERCICIO 2024
+         · sin botones "Re-importar" "Aplicar paralela" "Exportar PDF"
+         · acciones → Acciones fiscales (F6)
+         · sin tags A.xml/calc por línea
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="page" id="page-ejercicio">
+
+      <div class="breadcrumb">
+        <span class="back-btn" onclick="showPage('dashboard')">‹ Volver</span>
+        <a onclick="showPage('dashboard')">Fiscal</a>
+        <span class="crumb-sep">›</span>
+        <span class="crumb-current">Ejercicio 2024</span>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <h1>
+            Ejercicio 2024
+            <span class="pill pill-declarado">Declarado</span>
+          </h1>
+          <div class="meta-line">
+            <span>presentado <strong style="color:var(--ink-2)" class="mono">24/06/2025</strong></span>
+            <span class="dot"></span>
+            <span>justificante <span class="mono" style="color:var(--ink-2)">1005624311754</span></span>
+            <span class="dot"></span>
+            <span>importado del XML AEAT</span>
+            <span class="dot"></span>
+            <span>prescribe 25/06/2029</span>
+          </div>
+        </div>
+        <a class="page-action-link" onclick="showPage('config')">Acciones fiscales →</a>
+      </div>
+
+      <div class="kpi-strip">
+        <div class="kpi accent-warn">
+          <div class="kpi-lab">Resultado autoliquidación</div>
+          <div class="kpi-val neg">−2.899,75 €</div>
+          <div class="kpi-hint">a pagar · pagado 30/06/2025</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lab">Cuota líquida total</div>
+          <div class="kpi-val">53.881,09 €</div>
+          <div class="kpi-hint">antes de retenciones</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lab">Σ retenciones aplicadas</div>
+          <div class="kpi-val">50.981,34 €</div>
+          <div class="kpi-hint">trabajo + capital mob + actividades</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lab">Tipo medio efectivo</div>
+          <div class="kpi-val">36,5 %</div>
+          <div class="kpi-hint">sobre base liquidable 147.665</div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active">Modelo 100 <span class="tab-count">8 secciones</span></div>
+        <div class="tab">Versiones <span class="tab-count">v1</span></div>
+        <div class="tab">Pagos <span class="tab-count">1</span></div>
+        <div class="tab">Documentos <span class="tab-count">12</span></div>
+      </div>
+
+      <!-- ════ A · Trabajo ════ -->
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter">A</div>
+          <div class="box-section-title">Rendimientos del trabajo</div>
+          <div class="box-section-total">133.005,37 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0003</div>
+            <div><div>Retribuciones dinerarias</div><div class="box-row-concept-sub">nómina Orange España · ene–dic</div></div>
+            <div class="box-row-amount">133.350,85 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0005</div>
+            <div><div>Retribuciones en especie</div><div class="box-row-concept-sub">seguro médico · ticket restaurante · uso vehículo</div></div>
+            <div class="box-row-amount">3.457,32 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0007</div>
+            <div><div>Contribuciones empresariales a plan de pensiones</div><div class="box-row-concept-sub">Orange aporta a PP empresa</div></div>
+            <div class="box-row-amount">1.862,16 €</div>
+          </div>
+          <div class="box-row subtotal">
+            <div class="box-row-num">0012</div>
+            <div>Total ingresos íntegros</div>
+            <div class="box-row-amount">138.670,33 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0013</div>
+            <div>Cotizaciones Seguridad Social</div>
+            <div class="box-row-amount">−3.664,96 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0019</div>
+            <div>Otros gastos deducibles (tope general)</div>
+            <div class="box-row-amount">−2.000,00 €</div>
+          </div>
+          <div class="box-row subtotal">
+            <div class="box-row-num">0022</div>
+            <div>Rendimiento neto del trabajo</div>
+            <div class="box-row-amount">133.005,37 €</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ B · Capital inmobiliario ════ -->
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter">B</div>
+          <div class="box-section-title">Capital inmobiliario · 6 inmuebles</div>
+          <div class="box-section-total">5.442,17 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd" style="padding:8px 4px">
+
+          <div class="inmueble-group">
+            <div class="inmueble-group-hd" onclick="showPage('inmueble')">
+              <div>
+                <div class="inmueble-group-name">FA32 · Fuertes Acevedo 32 · 1·02 <span class="pill pill-curso" style="font-size:10px">Mixto</span></div>
+                <div class="inmueble-group-meta">366 días arrendado · 5 habitaciones · 2 contratos</div>
+              </div>
+              <div>
+                <div class="inmueble-group-amt">3.943,75 €</div>
+                <div class="inmueble-group-amt-sub">rendimiento neto reducido</div>
+              </div>
+              <div class="inmueble-group-link">Ver →</div>
+            </div>
+          </div>
+
+          <div class="inmueble-group">
+            <div class="inmueble-group-hd" onclick="showPage('inmueble')">
+              <div>
+                <div class="inmueble-group-name">Carles Buigas · Sant Fruitós <span class="pill pill-curso" style="font-size:10px">Larga estancia</span></div>
+                <div class="inmueble-group-meta">366 días · contrato familiar · reducción 60%</div>
+              </div>
+              <div>
+                <div class="inmueble-group-amt">7,56 €</div>
+                <div class="inmueble-group-amt-sub">rendimiento neto reducido</div>
+              </div>
+              <div class="inmueble-group-link">Ver →</div>
+            </div>
+          </div>
+
+          <div class="inmueble-group">
+            <div class="inmueble-group-hd" onclick="showPage('inmueble')">
+              <div>
+                <div class="inmueble-group-name">Tenderina 48</div>
+                <div class="inmueble-group-meta">año completo · venta 18/11/2025 · solo afecta 2025</div>
+              </div>
+              <div>
+                <div class="inmueble-group-amt">6.108,79 €</div>
+                <div class="inmueble-group-amt-sub">rendimiento neto reducido</div>
+              </div>
+              <div class="inmueble-group-link">Ver →</div>
+            </div>
+          </div>
+
+          <div class="inmueble-group">
+            <div class="inmueble-group-hd" onclick="showPage('inmueble')">
+              <div>
+                <div class="inmueble-group-name">T64 · Tenderina 64 · 4D <span class="pill pill-curso" style="font-size:10px">Mixto</span> <span class="pill pill-pendiente" style="font-size:10px">Con accesorio</span></div>
+                <div class="inmueble-group-meta">184 días arrendado + 182 disposición · gran reforma 2024</div>
+              </div>
+              <div>
+                <div class="inmueble-group-amt" style="color:var(--neg)">−3.019,47 €</div>
+                <div class="inmueble-group-amt-sub">rendimiento neto reducido</div>
+              </div>
+              <div class="inmueble-group-link">Ver →</div>
+            </div>
+          </div>
+
+          <div class="inmueble-group">
+            <div class="inmueble-group-hd" onclick="showPage('inmueble')">
+              <div>
+                <div class="inmueble-group-name">T64 · Tenderina 64 · 4IZ <span class="pill pill-curso" style="font-size:10px">Mixto</span></div>
+                <div class="inmueble-group-meta">reforma 2024 · gemelo del anterior</div>
+              </div>
+              <div>
+                <div class="inmueble-group-amt" style="color:var(--neg)">−2.368,28 €</div>
+                <div class="inmueble-group-amt-sub">rendimiento neto reducido</div>
+              </div>
+              <div class="inmueble-group-link">Ver →</div>
+            </div>
+          </div>
+
+          <div class="inmueble-group">
+            <div class="inmueble-group-hd" onclick="showPage('inmueble')">
+              <div>
+                <div class="inmueble-group-name">Sant Joan · Manresa <span class="pill pill-curso" style="font-size:10px">Larga estancia</span></div>
+                <div class="inmueble-group-meta">año completo · contrato familiar · zona tensionada</div>
+              </div>
+              <div>
+                <div class="inmueble-group-amt">769,82 €</div>
+                <div class="inmueble-group-amt-sub">rendimiento neto reducido</div>
+              </div>
+              <div class="inmueble-group-link">Ver →</div>
+            </div>
+          </div>
+
+          <div class="box-row subtotal" style="margin-top:8px">
+            <div class="box-row-num">0156</div>
+            <div>Σ rendimientos netos reducidos de capital inmobiliario</div>
+            <div class="box-row-amount">5.442,17 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0155</div>
+            <div><div>Σ imputaciones renta a disposición</div><div class="box-row-concept-sub">solo T64 4D + 4IZ · días sin arrendar</div></div>
+            <div class="box-row-amount">562,89 €</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ C · Capital mobiliario ════ -->
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter">C</div>
+          <div class="box-section-title">Capital mobiliario · ahorro</div>
+          <div class="box-section-total">476,84 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0027</div>
+            <div><div>Intereses de cuentas · depósitos · activos financieros</div><div class="box-row-concept-sub">Santander · ING · BBVA</div></div>
+            <div class="box-row-amount">476,84 €</div>
+          </div>
+          <div class="box-row subtotal">
+            <div class="box-row-num">0041</div>
+            <div>Σ a integrar en base imponible del ahorro</div>
+            <div class="box-row-amount">476,84 €</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ D · Actividad económica ════ -->
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter">D</div>
+          <div class="box-section-title">Actividad económica · Unihouser · estimación directa simplificada</div>
+          <div class="box-section-total">11.905,45 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0167</div>
+            <div><div>Epígrafe IAE 724</div><div class="box-row-concept-sub">intermediarios del comercio</div></div>
+            <div class="box-row-amount">—</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0171</div>
+            <div>Ingresos de explotación</div>
+            <div class="box-row-amount">16.259,71 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0186</div>
+            <div>Seguridad Social del titular</div>
+            <div class="box-row-amount">−3.529,66 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0199</div>
+            <div>Servicios profesionales independientes</div>
+            <div class="box-row-amount">−198,00 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0221</div>
+            <div>Diferencia (ingresos − gastos)</div>
+            <div class="box-row-amount">12.532,05 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0222</div>
+            <div><div>Provisión 5% gastos difícil justificación</div><div class="box-row-concept-sub">deducción adicional propia del régimen simplificado</div></div>
+            <div class="box-row-amount">−626,60 €</div>
+          </div>
+          <div class="box-row subtotal">
+            <div class="box-row-num">0224</div>
+            <div>Rendimiento neto de la actividad</div>
+            <div class="box-row-amount">11.905,45 €</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ E · Ganancias patrimoniales · vacío ════ -->
+      <div class="box-section collapsed">
+        <div class="box-section-hd collapsed" onclick="toggleBox(this)">
+          <div class="box-section-letter">E</div>
+          <div class="box-section-title">Ganancias y pérdidas patrimoniales</div>
+          <div class="box-section-total" style="color:var(--ink-3)">sin operaciones</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">—</div>
+            <div style="color:var(--ink-3)">Sin transmisiones en 2024 · la venta de Tenderina 48 aparece en 2025</div>
+            <div class="box-row-amount" style="color:var(--ink-3)">0,00 €</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ F · Plan pensiones ════ -->
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter">F</div>
+          <div class="box-section-title">Reducción base imponible · planes de pensiones</div>
+          <div class="box-section-total">−3.258,84 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0397</div>
+            <div><div>NIF empleador con PP empresa</div><div class="box-row-concept-sub">A82009812 · Orange Espagne</div></div>
+            <div class="box-row-amount">—</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0426</div>
+            <div><div>Aportación del trabajador al PP empresa</div><div class="box-row-concept-sub">dentro del tope de 1.500 €</div></div>
+            <div class="box-row-amount">1.396,68 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0427</div>
+            <div><div>Contribución empresarial</div><div class="box-row-concept-sub">dentro del tope de 8.500 €</div></div>
+            <div class="box-row-amount">1.862,16 €</div>
+          </div>
+          <div class="box-row subtotal">
+            <div class="box-row-num">0492</div>
+            <div>Reducción aplicada a base general</div>
+            <div class="box-row-amount">−3.258,84 €</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ G · Bases ════ -->
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter">G</div>
+          <div class="box-section-title">Bases imponible y liquidable</div>
+          <div class="box-section-total">148.022,86 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0435</div>
+            <div>Base imponible general</div>
+            <div class="box-row-amount">150.924,07 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0460</div>
+            <div>Base imponible del ahorro</div>
+            <div class="box-row-amount">357,63 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0500</div>
+            <div>Base liquidable general · tras reducción PP</div>
+            <div class="box-row-amount">147.665,23 €</div>
+          </div>
+          <div class="box-row subtotal">
+            <div class="box-row-num">0510</div>
+            <div>Base liquidable del ahorro</div>
+            <div class="box-row-amount">357,63 €</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ H · Cuotas y resultado ════ -->
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter">H</div>
+          <div class="box-section-title">Cuotas y resultado final</div>
+          <div class="box-section-total" style="color:var(--neg)">−2.899,75 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0545</div>
+            <div>Cuota íntegra estatal</div>
+            <div class="box-row-amount">28.182,15 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0546</div>
+            <div>Cuota íntegra autonómica · Madrid</div>
+            <div class="box-row-amount">25.699,44 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0587</div>
+            <div>Cuota líquida total</div>
+            <div class="box-row-amount">53.881,09 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0609</div>
+            <div><div>Σ retenciones e ingresos a cuenta</div><div class="box-row-concept-sub">trabajo + actividad + capital mobiliario</div></div>
+            <div class="box-row-amount">−50.981,34 €</div>
+          </div>
+          <div class="box-row subtotal" style="background:var(--navy);color:#fff">
+            <div class="box-row-num" style="color:#fff">0670</div>
+            <div><div style="color:#fff">Resultado de la declaración · a pagar</div><div class="box-row-concept-sub" style="color:rgba(255,255,255,0.7)">pagado 30/06/2025 · IBAN ES59 0049 ...</div></div>
+            <div class="box-row-amount" style="color:#fff">−2.899,75 €</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════════
+         F3 · INMUEBLE FA32 2024
+         · sin botones header
+         · nota R10 reconvertida en bloque descartable sin nombre técnico
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="page" id="page-inmueble">
+
+      <div class="breadcrumb">
+        <span class="back-btn" onclick="showPage('ejercicio')">‹ Volver al ejercicio</span>
+        <a onclick="showPage('dashboard')">Fiscal</a>
+        <span class="crumb-sep">›</span>
+        <a onclick="showPage('ejercicio')">2024</a>
+        <span class="crumb-sep">›</span>
+        <span class="crumb-current">FA32</span>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <h1>
+            FA32 · Fuertes Acevedo 32 · 2024
+            <span class="pill pill-declarado">Declarado</span>
+          </h1>
+          <div class="meta-line">
+            <span class="mono" style="color:var(--ink-2)">RC 7949807TP6074N0006YM</span>
+            <span class="dot"></span>
+            <span><strong style="color:var(--ink-2)">366 días</strong> arrendado · 2 contratos</span>
+            <span class="dot"></span>
+            <span>5 habitaciones · 3 corta + 2 larga estancia</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-strip">
+        <div class="kpi accent-gold">
+          <div class="kpi-lab">Ingresos íntegros</div>
+          <div class="kpi-val">19.675,00 €</div>
+          <div class="kpi-hint">366 días arrendado · 2 contratos</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lab">Σ gastos deducibles aplicados</div>
+          <div class="kpi-val">14.340,31 €</div>
+          <div class="kpi-hint">incluye amortizaciones + arrastres</div>
+        </div>
+        <div class="kpi accent-pos">
+          <div class="kpi-lab">Rendimiento neto reducido</div>
+          <div class="kpi-val pos">3.943,75 €</div>
+          <div class="kpi-hint">tras reducción del 26,07%</div>
+        </div>
+      </div>
+
+      <!-- Modo declaración · sin "Modo III" como acrónimo · texto humano -->
+      <div class="modo-card">
+        <div class="modo-card-hd">
+          <span class="modo-card-tag">Alquiler mixto</span>
+          <span class="modo-card-title">Casos especiales · habitaciones</span>
+        </div>
+        <div class="modo-card-body">
+          5 habitaciones · 3 en corta estancia + 2 en larga estancia. ATLAS aplicó prorrateo por días-habitación · método más beneficioso de los 4 legalmente posibles.
+        </div>
+      </div>
+
+      <!-- Nota descartable · sin "R10" · botón cerrar -->
+      <div class="note-block" id="note-fa32">
+        <span class="note-close" onclick="document.getElementById('note-fa32').style.display='none'">×</span>
+        <div class="note-title">Optimizaciones aplicadas por ATLAS</div>
+        <div class="note-body">
+          <strong>Prorrateo días-habitación escogido entre 4 métodos.</strong> Alternativa más cercana (por superficie) daba 1.280,33 € de reducción. Diferencia · +110,61 € respecto al segundo método.<br>
+          <strong>Reducción 60% detectada automáticamente</strong> por obras de rehabilitación 2022-2023 (pre Ley Vivienda). Beneficio · ~232 € impuesto evitado.<br>
+          <strong>Aplicación máxima de arrastres entrantes.</strong> Disponible 6.157,99 € · aplicado 6.157,99 € (100%).
+        </div>
+      </div>
+
+      <!-- Casillas inmueble · sin tags A.xml · sin nombres N4/N2 · texto humano -->
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter" style="background:var(--gold);font-size:11px">€</div>
+          <div class="box-section-title">Ingresos del año</div>
+          <div class="box-section-total">19.675,00 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0102</div>
+            <div><div>Ingresos íntegros computables</div><div class="box-row-concept-sub">2 contratos · Y5617860D (4 meses) + 71682787K (8 meses)</div></div>
+            <div class="box-row-amount">19.675,00 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0101</div>
+            <div>Días arrendado</div>
+            <div class="box-row-amount">366</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter" style="background:var(--warn);font-size:11px">←</div>
+          <div class="box-section-title">Arrastres de años anteriores</div>
+          <div class="box-section-total">−6.157,99 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0103</div>
+            <div><div>Gastos pendientes deducir de 2020-2023</div><div class="box-row-concept-sub">disponible · origen gastos no aplicados años previos</div></div>
+            <div class="box-row-amount">6.157,99 €</div>
+          </div>
+          <div class="box-row subtotal">
+            <div class="box-row-num">0104</div>
+            <div><div>Aplicado este año</div><div class="box-row-concept-sub">se aplicó el 100% disponible · cabe entero</div></div>
+            <div class="box-row-amount">6.157,99 €</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter" style="background:var(--neg);font-size:11px">−</div>
+          <div class="box-section-title">Gastos del año</div>
+          <div class="box-section-total">−5.787,32 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0105</div>
+            <div><div>Intereses de préstamos</div><div class="box-row-concept-sub">hipoteca FA32 · 366 días afectación 100%</div></div>
+            <div class="box-row-amount">1.580,34 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0106</div>
+            <div>Reparación y conservación</div>
+            <div class="box-row-amount">209,33 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0107</div>
+            <div><div>Intereses + reparación aplicados</div><div class="box-row-concept-sub">dentro del límite anual · cabe el total</div></div>
+            <div class="box-row-amount">1.789,67 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0108</div>
+            <div>Exceso a deducir en 4 años siguientes</div>
+            <div class="box-row-amount">0,00 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0109</div>
+            <div>Gastos de comunidad</div>
+            <div class="box-row-amount">1.008,00 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0112</div>
+            <div>Servicios personales · jardinero · limpieza</div>
+            <div class="box-row-amount">296,45 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0113</div>
+            <div>Suministros · luz · agua · gas · internet</div>
+            <div class="box-row-amount">1.930,41 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0114</div>
+            <div>Primas de seguro · hogar</div>
+            <div class="box-row-amount">242,79 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0115</div>
+            <div>Tributos · IBI · tasa basuras</div>
+            <div class="box-row-amount">399,22 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0117</div>
+            <div><div>Amortización del mobiliario · 10% anual</div><div class="box-row-concept-sub">muebles y electrodomésticos</div></div>
+            <div class="box-row-amount">1.699,66 €</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter" style="background:var(--navy-3);font-size:11px">A</div>
+          <div class="box-section-title">Amortización del inmueble</div>
+          <div class="box-section-total">−816,12 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0123</div>
+            <div>Valor catastral total</div>
+            <div class="box-row-amount">68.371,03 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0124</div>
+            <div>Valor catastral construcción</div>
+            <div class="box-row-amount">37.294,08 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0125</div>
+            <div>% construcción</div>
+            <div class="box-row-amount">54,55 %</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0126</div>
+            <div>Importe adquisición</div>
+            <div class="box-row-amount">98.831,47 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0127</div>
+            <div>Gastos inherentes adquisición · ITP · notaría · registro</div>
+            <div class="box-row-amount">7.473,50 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0130</div>
+            <div><div>Base de amortización</div><div class="box-row-concept-sub">(precio + gastos) × % construcción · ganó este método</div></div>
+            <div class="box-row-amount">57.989,36 €</div>
+          </div>
+          <div class="box-row subtotal">
+            <div class="box-row-num">0132</div>
+            <div><div>Amortización casos especiales</div><div class="box-row-concept-sub">prorrateado por método días-habitación · 43,5% del total</div></div>
+            <div class="box-row-amount">−816,12 €</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box-section">
+        <div class="box-section-hd" onclick="toggleBox(this)">
+          <div class="box-section-letter" style="background:var(--pos);font-size:11px">∑</div>
+          <div class="box-section-title">Rendimiento del inmueble</div>
+          <div class="box-section-total">3.943,75 €</div>
+          <span class="box-section-chevron">▼</span>
+        </div>
+        <div class="box-section-bd">
+          <div class="box-row">
+            <div class="box-row-num">0149</div>
+            <div>Rendimiento neto · antes de reducción</div>
+            <div class="box-row-amount">5.334,69 €</div>
+          </div>
+          <div class="box-row">
+            <div class="box-row-num">0150</div>
+            <div><div>Reducción Ley Vivienda · 60%</div><div class="box-row-concept-sub">aplicada sobre la parte reducible (larga estancia)</div></div>
+            <div class="box-row-amount">−1.390,94 €</div>
+          </div>
+          <div class="box-row subtotal">
+            <div class="box-row-num">0154</div>
+            <div>Rendimiento neto reducido</div>
+            <div class="box-row-amount">3.943,75 €</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Amortización acumulada · tabla arreglada · grid fijo · sin texto vertical -->
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Amortización acumulada · vista para venta futura</div>
+            <div class="card-sub">año a año desde compra · se restará del valor adquisición si vendes</div>
+          </div>
+        </div>
+        <div class="card-bd" style="overflow-x:auto">
+          <table class="tbl amort-tbl">
+            <thead>
+              <tr>
+                <th style="min-width:60px">Año</th>
+                <th style="min-width:70px">Días arr.</th>
+                <th class="r" style="min-width:110px">Base amort.</th>
+                <th class="r" style="min-width:110px">Inmueble</th>
+                <th class="r" style="min-width:110px">Mobiliario</th>
+                <th class="r" style="min-width:120px">Acumulado total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="year-cell">2023</td><td>365</td><td class="r">57.989,36 €</td><td class="r">816,12 €</td><td class="r">1.699,66 €</td><td class="r"><strong>2.515,78 €</strong></td></tr>
+              <tr><td class="year-cell">2024</td><td>366</td><td class="r">57.989,36 €</td><td class="r">816,12 €</td><td class="r">1.699,66 €</td><td class="r"><strong>5.031,56 €</strong></td></tr>
+              <tr class="future"><td class="year-cell">2025</td><td>366</td><td class="r">57.989,36 €</td><td class="r">816,12 €</td><td class="r">1.699,66 €</td><td class="r"><strong>7.547,34 €</strong></td></tr>
+              <tr class="total-row"><td colspan="5" style="text-align:right">Acumulado a 31/12/2024</td><td class="r">5.031,56 €</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════════
+         F4 · VENTA T48 2025
+         · composición arreglada · grid uniforme · sin texto roto vertical
+         · cada "gasto venta" en una sola línea
+         · sin botones header
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="page" id="page-venta">
+
+      <div class="breadcrumb">
+        <span class="back-btn" onclick="showPage('ejercicio')">‹ Volver</span>
+        <a onclick="showPage('dashboard')">Fiscal</a>
+        <span class="crumb-sep">›</span>
+        <a>2025</a>
+        <span class="crumb-sep">›</span>
+        <span class="crumb-current">Venta · Tenderina 48</span>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <h1>
+            Venta · Tenderina 48
+            <span class="pill pill-borrador">Borrador 2025</span>
+          </h1>
+          <div class="meta-line">
+            <span>comprada <span class="mono" style="color:var(--ink-2)">23/09/2022</span></span>
+            <span class="dot"></span>
+            <span>vendida <span class="mono" style="color:var(--ink-2)">18/11/2025</span> · 3 años 2 meses</span>
+            <span class="dot"></span>
+            <span>precio venta <span class="mono" style="color:var(--ink-2)">185.000 €</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-strip">
+        <div class="kpi">
+          <div class="kpi-lab">Valor transmisión</div>
+          <div class="kpi-val">185.000 €</div>
+          <div class="kpi-hint">gastos venta pendientes confirmar</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lab">Valor adquisición actualizado</div>
+          <div class="kpi-val">145.410 €</div>
+          <div class="kpi-hint">original 151.380 − amort 5.970</div>
+        </div>
+        <div class="kpi accent-warn">
+          <div class="kpi-lab">Ganancia tributable estimada</div>
+          <div class="kpi-val warn">10.481 €</div>
+          <div class="kpi-hint">tras compensar arrastres 29.109</div>
+        </div>
+        <div class="kpi accent-neg">
+          <div class="kpi-lab">Impuesto ahorro estimado</div>
+          <div class="kpi-val neg">2.081 €</div>
+          <div class="kpi-hint">tramos 19% / 21%</div>
+        </div>
+      </div>
+
+      <!-- Nota descartable · sin "R10" -->
+      <div class="note-block" id="note-venta">
+        <span class="note-close" onclick="document.getElementById('note-venta').style.display='none'">×</span>
+        <div class="note-title">Optimizaciones aplicadas y pendientes</div>
+        <div class="note-body">
+          <strong>ATLAS aplica primero los arrastres más antiguos.</strong> Saldo 2022 (1.344,99 € · caduca 31/12/2026) antes que saldo 2023. Si fuera al revés, perderías 1.344,99 € por caducidad → ahorras unos 282 € de impuesto.<br>
+          <strong>Faltan gastos de venta por confirmar.</strong> No has introducido notaría, plusvalía municipal, cancelación hipoteca ni agencia. Si confirmas ~3.000 € de gastos, el impuesto baja unos 630 €.
+        </div>
+      </div>
+
+      <!-- STEP 1 · grid uniforme · sin text wrap vertical -->
+      <div class="calc-step">
+        <div class="calc-step-hd">
+          <span>1 · Valor de transmisión</span>
+          <span class="casilla-ref">casilla 0316</span>
+        </div>
+        <div class="calc-line"><span class="calc-op">+</span><span class="calc-text">Precio venta escritura</span><span class="calc-amt">185.000,00 €</span></div>
+        <div class="calc-line"><span class="calc-op">−</span><span class="calc-text">Gastos venta deducibles</span><span class="calc-amt pend">pendiente</span></div>
+        <div class="calc-line indent"><span></span><span class="calc-text">▸ Notaría venta</span><span class="calc-amt pend">—</span></div>
+        <div class="calc-line indent"><span></span><span class="calc-text">▸ Plusvalía municipal (IIVTNU)</span><span class="calc-amt pend">—</span></div>
+        <div class="calc-line indent"><span></span><span class="calc-text">▸ Cancelación hipoteca</span><span class="calc-amt pend">—</span></div>
+        <div class="calc-line indent"><span></span><span class="calc-text">▸ Agencia inmobiliaria</span><span class="calc-amt pend">—</span></div>
+        <div class="calc-line indent"><span></span><span class="calc-text">▸ IBI prorrateado entregado</span><span class="calc-amt pend">—</span></div>
+        <div class="calc-line subtotal"><span class="calc-op">=</span><span class="calc-text">Valor transmisión · sin gastos confirmados</span><span class="calc-amt">185.000,00 €</span></div>
+      </div>
+
+      <!-- STEP 2 · grid uniforme · cada año de amortización en una sola línea -->
+      <div class="calc-step">
+        <div class="calc-step-hd">
+          <span>2 · Valor de adquisición actualizado</span>
+          <span class="casilla-ref">casilla 0317</span>
+        </div>
+        <div class="calc-line"><span class="calc-op">+</span><span class="calc-text">Precio compra · 23/09/2022</span><span class="calc-amt">139.000,00 €</span></div>
+        <div class="calc-line"><span class="calc-op">+</span><span class="calc-text">Gastos inherentes adquisición (ITP · notaría · registro)</span><span class="calc-amt">12.380,36 €</span></div>
+        <div class="calc-line"><span class="calc-op">+</span><span class="calc-text">Mejoras realizadas durante tenencia</span><span class="calc-amt">0,00 €</span></div>
+        <div class="calc-line"><span class="calc-op">−</span><span class="calc-text">Amortizaciones acumuladas</span><span class="calc-amt neg-op">−5.970 €</span></div>
+        <div class="calc-line indent2"><span></span><span class="calc-text">2022 · 99 días (23/09 al 31/12)</span><span class="calc-amt">470 €</span></div>
+        <div class="calc-line indent2"><span></span><span class="calc-text">2023 · 365 días · año completo</span><span class="calc-amt">1.730 €</span></div>
+        <div class="calc-line indent2"><span></span><span class="calc-text">2024 · 366 días · año completo</span><span class="calc-amt">1.893 €</span></div>
+        <div class="calc-line indent2"><span></span><span class="calc-text">2025 · 322 días (1/1 al 18/11)</span><span class="calc-amt">1.534 €</span></div>
+        <div class="calc-line indent2"><span></span><span class="calc-text">+ mobiliario (proporcional)</span><span class="calc-amt">343 €</span></div>
+        <div class="calc-line subtotal"><span class="calc-op">=</span><span class="calc-text">Valor adquisición actualizado</span><span class="calc-amt">145.410,36 €</span></div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="calc-step">
+        <div class="calc-step-hd">
+          <span>3 · Ganancia patrimonial bruta</span>
+          <span class="casilla-ref">casilla 0320</span>
+        </div>
+        <div class="calc-line"><span class="calc-op">=</span><span class="calc-text">Valor transmisión − Valor adquisición actualizado</span><span class="calc-amt">39.589,64 €</span></div>
+        <div class="calc-line"><span class="calc-op">−</span><span class="calc-text">Reducción por adquisiciones antiguas · no aplica (compra 2022)</span><span class="calc-amt">0,00 €</span></div>
+        <div class="calc-line subtotal"><span class="calc-op">=</span><span class="calc-text">Ganancia reducida</span><span class="calc-amt">39.589,64 €</span></div>
+      </div>
+
+      <!-- STEP 4 · Compensación -->
+      <div class="calc-step">
+        <div class="calc-step-hd">
+          <span>4 · Compensación con arrastres anteriores</span>
+          <span class="casilla-ref">casillas 1264–1269</span>
+        </div>
+        <div class="calc-line"><span class="calc-op">+</span><span class="calc-text">Ganancia reducida · saldo a compensar</span><span class="calc-amt">39.589,64 €</span></div>
+        <div class="calc-line"><span class="calc-op">−</span><span class="calc-text">Saldo 2022 (caduca 31/12/2026)</span><span class="calc-amt neg-op">−1.344,99 €</span></div>
+        <div class="calc-line"><span class="calc-op">−</span><span class="calc-text">Saldo 2023 (caduca 31/12/2027)</span><span class="calc-amt neg-op">−27.764,23 €</span></div>
+        <div class="calc-line indent"><span></span><span class="calc-text">Total compensado · 29.109,22 €</span><span class="calc-amt">—</span></div>
+        <div class="calc-line subtotal"><span class="calc-op">=</span><span class="calc-text">Ganancia tributable final</span><span class="calc-amt">10.480,42 €</span></div>
+      </div>
+
+      <!-- STEP 5 · Impuesto -->
+      <div class="calc-step">
+        <div class="calc-step-hd">
+          <span>5 · Impuesto · tramos base ahorro 2025</span>
+          <span class="casilla-ref">casillas 0610 · 0670</span>
+        </div>
+        <div class="calc-line"><span class="calc-op">×</span><span class="calc-text">Primeros 6.000 € × 19%</span><span class="calc-amt">1.140,00 €</span></div>
+        <div class="calc-line"><span class="calc-op">×</span><span class="calc-text">Restantes 4.480,42 € × 21%</span><span class="calc-amt">940,89 €</span></div>
+        <div class="calc-line final"><span class="calc-op">=</span><span class="calc-text">Impuesto estimado por la venta</span><span class="calc-amt">2.080,89 €</span></div>
+      </div>
+
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════════
+         F6 · CONFIGURACIÓN / ACCIONES FISCALES
+         · ÚNICO sitio con botones operativos
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="page" id="page-config">
+
+      <div class="breadcrumb">
+        <span class="back-btn" onclick="showPage('dashboard')">‹ Volver</span>
+        <a onclick="showPage('dashboard')">Fiscal</a>
+        <span class="crumb-sep">›</span>
+        <span class="crumb-current">Acciones fiscales</span>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <h1>Acciones fiscales</h1>
+          <div class="page-sub">todas las operaciones sobre tu fiscalidad · importar · aplicar paralela · arrastres · histórico · exportar</div>
+        </div>
+      </div>
+
+      <!-- 1 · Perfil fiscal -->
+      <div class="acc-item open">
+        <div class="acc-hd" onclick="this.parentElement.classList.toggle('open')">
+          <div>
+            <div class="acc-title">Perfil fiscal</div>
+            <div class="acc-sub">situación familiar · CCAA · fuentes de renta · modelos activos</div>
+          </div>
+          <span class="acc-chevron">›</span>
+        </div>
+        <div class="acc-bd">
+          <div class="acc-bd-content">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
+              <div>
+                <div style="font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:1px;margin-bottom:4px">SITUACIÓN PERSONAL</div>
+                <div style="font-size:13px;color:var(--ink-2)">Soltero · sin descendientes · sin ascendientes</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:1px;margin-bottom:4px">COMUNIDAD AUTÓNOMA</div>
+                <div style="font-size:13px;color:var(--ink-2)">Madrid · tributación individual</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:1px;margin-bottom:4px">SITUACIÓN LABORAL</div>
+                <div style="font-size:13px;color:var(--ink-2)">Asalariado · Orange + Autónomo · Unihouser</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:1px;margin-bottom:4px">MODELOS ACTIVOS</div>
+                <div style="font-size:13px;color:var(--ink-2)">100 · 303 · 130 · 184</div>
+              </div>
+            </div>
+            <button class="btn btn-ghost">Editar perfil →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 · Importar declaración -->
+      <div class="acc-item">
+        <div class="acc-hd" onclick="this.parentElement.classList.toggle('open')">
+          <div>
+            <div class="acc-title">Importar declaración Modelo 100</div>
+            <div class="acc-sub">XML DeclaVisor · PDF · TXT · pantallazos AEAT</div>
+          </div>
+          <span class="acc-chevron">›</span>
+        </div>
+        <div class="acc-bd">
+          <div class="acc-bd-content">
+            <div class="fld">
+              <label class="fld-lab">Ejercicio fiscal destino</label>
+              <select class="fld-select"><option>2024 · declarado · sobrescribir</option><option>2025 · pendiente</option><option>2026 · en curso</option></select>
+            </div>
+            <div class="dropzone">
+              <div class="dropzone-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </div>
+              <div class="dropzone-title">Arrastra aquí XML · PDF · TXT del Modelo 100</div>
+              <div class="dropzone-sub">o haz click para seleccionar archivo</div>
+            </div>
+            <div style="margin-top:18px">
+              <div style="font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:1px;margin-bottom:8px">HISTÓRICO IMPORTACIONES</div>
+              <table class="tbl">
+                <tbody>
+                  <tr><td><span class="mono t-strong">2024</span></td><td>XML AEAT DeclaVisor</td><td><span class="mono">18/03/2026</span></td></tr>
+                  <tr><td><span class="mono t-strong">2023</span></td><td>XML AEAT DeclaVisor</td><td><span class="mono">18/03/2026</span></td></tr>
+                  <tr><td><span class="mono t-strong">2022</span></td><td>XML AEAT v2 (paralela)</td><td><span class="mono">12/01/2024</span></td></tr>
+                  <tr><td><span class="mono t-strong">2021</span></td><td>PDF Modelo 100</td><td><span class="mono">15/01/2026</span></td></tr>
+                  <tr><td><span class="mono t-strong">2020</span></td><td>PDF Modelo 100</td><td><span class="mono">15/01/2026</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 · Aplicar paralela -->
+      <div class="acc-item">
+        <div class="acc-hd" onclick="this.parentElement.classList.toggle('open')">
+          <div>
+            <div class="acc-title">Aplicar paralela AEAT</div>
+            <div class="acc-sub">liquidación firmada · cascada años posteriores</div>
+          </div>
+          <span class="acc-chevron">›</span>
+        </div>
+        <div class="acc-bd">
+          <div class="acc-bd-content">
+            <div style="font-size:12px;color:var(--ink-2);line-height:1.6;margin-bottom:14px">
+              Si Hacienda te ha enviado propuesta de liquidación · acta · o liquidación · y la has firmado en conformidad, aplícala aquí. ATLAS genera una versión v2 del ejercicio y propaga los cambios a años posteriores.
+              <strong style="color:var(--neg)">No apliques paralelas que estén en recurso.</strong>
+            </div>
+            <div class="fld">
+              <label class="fld-lab">Ejercicio a corregir</label>
+              <select class="fld-select"><option>2024 · declarado v1</option><option>2023 · declarado v2</option><option>2022 · declarado v2</option></select>
+            </div>
+            <button class="btn btn-primary">Iniciar wizard paralela →</button>
+            <div style="margin-top:18px">
+              <div style="font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:1px;margin-bottom:8px">HISTÓRICO PARALELAS</div>
+              <table class="tbl">
+                <tbody>
+                  <tr><td><span class="mono t-strong">2023 → v2</span></td><td>Desfase Modelo 130</td><td><span class="mono">15/10/2024</span></td><td class="r"><span class="td-amount pos">+5.509,89 €</span></td></tr>
+                  <tr><td><span class="mono t-strong">2022 → v2</span></td><td>Carles Buigas · base corregida</td><td><span class="mono">12/01/2024</span></td><td class="r"><span class="td-amount pos">+5.268,20 €</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 · Re-importar o exportar ejercicio -->
+      <div class="acc-item">
+        <div class="acc-hd" onclick="this.parentElement.classList.toggle('open')">
+          <div>
+            <div class="acc-title">Re-importar o exportar un ejercicio</div>
+            <div class="acc-sub">re-importar declaración existente · exportar PDF · comparar versiones</div>
+          </div>
+          <span class="acc-chevron">›</span>
+        </div>
+        <div class="acc-bd">
+          <div class="acc-bd-content">
+            <div class="fld">
+              <label class="fld-lab">Ejercicio</label>
+              <select class="fld-select"><option>2024 · declarado</option><option>2023 · declarado v2</option><option>2022 · declarado v2</option><option>2021 · declarado</option></select>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost">Re-importar declaración</button>
+              <button class="btn btn-ghost">Exportar PDF</button>
+              <button class="btn btn-ghost">Ver versiones</button>
+              <button class="btn btn-ghost">Comparar con otro año</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 · Arrastres manuales -->
+      <div class="acc-item">
+        <div class="acc-hd" onclick="this.parentElement.classList.toggle('open')">
+          <div>
+            <div class="acc-title">Arrastres manuales</div>
+            <div class="acc-sub">añadir arrastres de años no importados</div>
+          </div>
+          <span class="acc-chevron">›</span>
+        </div>
+        <div class="acc-bd">
+          <div class="acc-bd-content">
+            <div style="font-size:12px;color:var(--ink-2);line-height:1.6;margin-bottom:14px">
+              Solo necesitas esto si tienes arrastres pendientes de ejercicios que ATLAS no tiene importados. Para ti todos los arrastres están extraídos del XML AEAT 2024.
+            </div>
+            <button class="btn btn-ghost">+ Añadir arrastre manual</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6 · Histórico declaraciones -->
+      <div class="acc-item">
+        <div class="acc-hd" onclick="this.parentElement.classList.toggle('open')">
+          <div>
+            <div class="acc-title">Histórico completo de declaraciones</div>
+            <div class="acc-sub">todos los modelos presentados · 100 · 303 · 130 · 184</div>
+          </div>
+          <span class="acc-chevron">›</span>
+        </div>
+        <div class="acc-bd">
+          <div class="acc-bd-content">
+            <div style="font-size:12px;color:var(--ink-3)">15 declaraciones entre 2020 y 2024 · 9 modelos 100 · 4 modelos 303 · 1 modelo 184 · 1 modelo 130 fuera de plazo (deuda Q3-2024).</div>
+            <button class="btn btn-ghost" style="margin-top:10px">Ver listado completo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7 · Exportar -->
+      <div class="acc-item">
+        <div class="acc-hd" onclick="this.parentElement.classList.toggle('open')">
+          <div>
+            <div class="acc-title">Exportar todo</div>
+            <div class="acc-sub">JSON configuración · ZIP declaraciones · CSV casillas</div>
+          </div>
+          <span class="acc-chevron">›</span>
+        </div>
+        <div class="acc-bd">
+          <div class="acc-bd-content">
+            <button class="btn btn-ghost" style="margin-right:8px">Exportar config (JSON)</button>
+            <button class="btn btn-ghost" style="margin-right:8px">ZIP declaraciones</button>
+            <button class="btn btn-ghost">CSV casillas por año</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const map={dashboard:'page-dashboard',ejercicio:'page-ejercicio',inmueble:'page-inmueble',venta:'page-venta',config:'page-config'};
+  const target=document.getElementById(map[id]||id);
+  if(target)target.classList.add('active');
+  document.querySelectorAll('.demo-banner-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.demo-banner-tab').forEach(t=>{
+    if(t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'"+id+"'"))t.classList.add('active');
+  });
+  window.scrollTo(0,0);
+}
+
+function showTab(tabEl,bodyId){
+  const tabsBar=tabEl.parentElement;
+  tabsBar.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tabEl.classList.add('active');
+  const tabRoot=tabsBar.parentElement;
+  tabRoot.querySelectorAll('.tab-body').forEach(b=>b.style.display='none');
+  const body=document.getElementById(bodyId);
+  if(body)body.style.display='block';
+}
+
+function toggleBox(hd){hd.parentElement.classList.toggle('collapsed')}
+</script>
+
+</body>
+</html>
