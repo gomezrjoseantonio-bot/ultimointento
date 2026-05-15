@@ -111,11 +111,22 @@ export async function getArrastresVivos(añoActual: number): Promise<ArrastresVi
 }
 
 // ─── Helper compartido · perdidas patrimoniales del ahorro vivas ────────
-// Centraliza la query a `perdidasPatrimonialesAhorro` que necesitan tanto
-// el F1 dashboard (tab Arrastres), como el F4 venta (Step 4 compensación)
-// y la nota informativa del F4. Devuelve la lista ordenada por caducidad
-// (FIFO · más antiguos primero) para que el consumidor pueda iterar y
-// aplicar el saldo.
+// Fuente de verdad: `ejerciciosFiscalesCoord[añoCorte].arrastresIn.
+// perdidasPatrimoniales` (lo que llegó al año desde la cascada de
+// `guardarEjercicioFiscal`). Fallback a `[añoCorte-1].arrastresOut.
+// perdidasPatrimoniales` cuando el coord del año-corte no tenía la
+// cascada propagada al importar.
+//
+// Filtra `tipo === 'ahorro_general'` (lo que el distribuidor mapea desde
+// las pérdidas del ahorro del XML AEAT), aplica caducidad de 4 años
+// desde el año de origen y devuelve la lista ordenada FIFO por año de
+// origen (las más antiguas primero) para que el consumidor las aplique
+// en ese orden y maximice el aprovechamiento antes de la caducidad.
+//
+// Consumidores: F4 venta (`ventaCalculoService` step 4 compensación),
+// nota informativa del F4 (`FiscalVentaPage`).
+
+const CADUCIDAD_PERDIDAS_AHORRO_AÑOS = 4;
 
 export interface PerdidaPatrimonialViva {
   origen: number;
@@ -123,7 +134,57 @@ export interface PerdidaPatrimonialViva {
   ejercicioCaducidad: number;
 }
 
-export async function getPerdidasPatrimonialesVivas(añoCorte: number): Promise<PerdidaPatrimonialViva[]> {
+interface ArrastrePerdidaCoord {
+  tipo: 'ahorro_general' | 'ahorro_renta_variable' | 'patrimonial';
+  importePendiente: number;
+  añoOrigen: number;
+}
+
+function normalizarPerdidasCoord(
+  entradas: ArrastrePerdidaCoord[] | undefined,
+  añoCorte: number,
+): PerdidaPatrimonialViva[] {
+  if (!entradas || entradas.length === 0) return [];
+  return entradas
+    .filter((p) => p.tipo === 'ahorro_general')
+    .filter((p) => p.importePendiente > 0)
+    .map((p) => ({
+      origen: p.añoOrigen,
+      importePendiente: round2(p.importePendiente),
+      ejercicioCaducidad: p.añoOrigen + CADUCIDAD_PERDIDAS_AHORRO_AÑOS,
+    }))
+    .filter((p) => p.ejercicioCaducidad >= añoCorte)
+    .sort((a, b) => a.origen - b.origen);
+}
+
+async function leerPerdidasDesdeCoord(añoCorte: number): Promise<PerdidaPatrimonialViva[] | null> {
+  const db = await initDB();
+  try {
+    const ejAño = (await db.get('ejerciciosFiscalesCoord', añoCorte)) as
+      | { arrastresIn?: { perdidasPatrimoniales?: ArrastrePerdidaCoord[] } }
+      | undefined;
+    const desdeIn = normalizarPerdidasCoord(ejAño?.arrastresIn?.perdidasPatrimoniales, añoCorte);
+    if (desdeIn.length > 0) return desdeIn;
+
+    // Cascada perdida · cae al `arrastresOut` del año anterior.
+    const ejAnterior = (await db.get('ejerciciosFiscalesCoord', añoCorte - 1)) as
+      | { arrastresOut?: { perdidasPatrimoniales?: ArrastrePerdidaCoord[] } }
+      | undefined;
+    const desdeOutPrevio = normalizarPerdidasCoord(
+      ejAnterior?.arrastresOut?.perdidasPatrimoniales,
+      añoCorte,
+    );
+    if (desdeOutPrevio.length > 0) return desdeOutPrevio;
+
+    // Ambos sitios vacíos en el coord · devolvemos null para que el caller
+    // pueda decidir si caer al store legacy (datos migrados antiguos).
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function leerPerdidasDesdeStoreLegacy(añoCorte: number): Promise<PerdidaPatrimonialViva[]> {
   const db = await initDB();
   try {
     const todas = (await db.getAll('perdidasPatrimonialesAhorro')) as Array<{
@@ -140,11 +201,17 @@ export async function getPerdidasPatrimonialesVivas(añoCorte: number): Promise<
       )
       .map((p) => ({
         origen: p.ejercicioOrigen,
-        importePendiente: p.importePendiente,
+        importePendiente: round2(p.importePendiente),
         ejercicioCaducidad: p.ejercicioCaducidad,
       }))
-      .sort((a, b) => a.ejercicioCaducidad - b.ejercicioCaducidad);
+      .sort((a, b) => a.origen - b.origen);
   } catch {
     return [];
   }
+}
+
+export async function getPerdidasPatrimonialesVivas(añoCorte: number): Promise<PerdidaPatrimonialViva[]> {
+  const desdeCoord = await leerPerdidasDesdeCoord(añoCorte);
+  if (desdeCoord !== null) return desdeCoord;
+  return leerPerdidasDesdeStoreLegacy(añoCorte);
 }
