@@ -25,8 +25,14 @@ jest.mock('react-router-dom', () => {
 jest.mock('../../../../services/fiscalResolverService');
 jest.mock('../../../../services/deudasFiscalesService');
 jest.mock('../helpers/arrastresVivosService');
+jest.mock('../helpers/paralelaService');
 
 import FiscalDashboardPage from '../FiscalDashboardPage';
+import * as paralelaSvc from '../helpers/paralelaService';
+
+const mockedParalelaMulti = paralelaSvc.getParalelaInfoMultiAño as jest.MockedFunction<
+  typeof paralelaSvc.getParalelaInfoMultiAño
+>;
 
 const mockedGetResumen = fiscalResolver.getResumenGlobal as jest.MockedFunction<
   typeof fiscalResolver.getResumenGlobal
@@ -129,6 +135,8 @@ describe('FiscalDashboardPage · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 2', () =
         updatedAt: '2024-11-23T00:00:00Z',
       },
     ]);
+
+    mockedParalelaMulti.mockResolvedValue(new Map());
 
     mockedGetArrastres.mockResolvedValue({
       rows: [
@@ -265,5 +273,47 @@ describe('FiscalDashboardPage · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 2', () =
     renderPage();
     fireEvent.click(await screen.findByRole('tab', { name: /Arrastres/ }));
     expect(screen.queryByLabelText(/Descartar nota/)).not.toBeInTheDocument();
+  });
+
+  // ── Sub-tarea 3.x · ajustes Jose ───────────────────────────────────────
+  it('AJUSTE 1 · pill "Complementaria" para años con esComplementaria=true', async () => {
+    mockedParalelaMulti.mockResolvedValue(new Map([
+      [2023, { esComplementaria: true, justificanteAnterior: '1234567890123', versionLabel: 'v2' as const }],
+      [2022, { esComplementaria: true, versionLabel: 'v2' as const }],
+    ]));
+    renderPage();
+    // El tab Ejercicios es default · esperamos a que cargue
+    await screen.findByLabelText(/Abrir ejercicio 2023/);
+    // Pill Complementaria visible al menos 2 veces (2022 + 2023)
+    expect(screen.getAllByText(/Complementaria/).length).toBeGreaterThanOrEqual(2);
+    // El justificante anterior está como tooltip (title attr)
+    const pill2023 = screen.getAllByTitle(/justificante anterior 1234567890123/i);
+    expect(pill2023.length).toBeGreaterThan(0);
+  });
+
+  it('AJUSTE 2 · año en curso muestra "prescribe en {año+5}"', async () => {
+    renderPage();
+    const añoActual = new Date().getFullYear();
+    await screen.findByLabelText(`Abrir ejercicio ${añoActual}`);
+    // Esperamos el texto "prescribe en {añoActual + 5}" para el año en curso
+    const esperado = new RegExp(`prescribe en ${añoActual + 5}`);
+    expect(screen.getAllByText(esperado).length).toBeGreaterThan(0);
+  });
+
+  it('AJUSTE 2 · año pendiente muestra "prescribe en {año+5}"', async () => {
+    renderPage();
+    const añoActual = new Date().getFullYear();
+    const añoPendiente = añoActual - 1;
+    await screen.findByLabelText(`Abrir ejercicio ${añoPendiente}`);
+    // 2025 pendiente → prescribe en 2030
+    const esperado = new RegExp(`prescribe en ${añoPendiente + 5}`);
+    expect(screen.getAllByText(esperado).length).toBeGreaterThan(0);
+  });
+
+  it('AJUSTE 2 · año declarado sigue mostrando fecha completa de prescripción', async () => {
+    renderPage();
+    await screen.findByLabelText(/Abrir ejercicio 2024/);
+    // 2024 declarado · texto "prescribe DD/MM/YYYY"
+    expect(screen.getAllByText(/prescribe \d{2}\/\d{2}\/\d{4}/).length).toBeGreaterThan(0);
   });
 });
