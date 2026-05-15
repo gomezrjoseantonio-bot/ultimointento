@@ -33,11 +33,20 @@ import type {
   RendimientoInmueble,
   RendimientosCapitalMobiliario,
   GananciasPerdidasPatrimoniales,
+  ImputacionRenta,
   Liquidacion,
   Retenciones,
   MinimosPersonales,
 } from './irpfCalculationService';
 import type { Property } from './db';
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+}
+
+function diasDelAño(ejercicio: number): number {
+  return isLeapYear(ejercicio) ? 366 : 365;
+}
 
 function normalizeRef(value?: string | null): string {
   return (value ?? '').replace(/[\s.-]/g, '').trim().toUpperCase();
@@ -59,26 +68,36 @@ function sumDiasPorTipo(
 function buildRendimientosTrabajo(decl: DeclaracionCompleta): RendimientosTrabajo | null {
   const t = decl.trabajo;
   if (!t) return null;
-  // `salarioBrutoAnual` ≡ dinerario (sin especie). La AEAT separa
-  // dinerarias (0003) y valoración especie (0005). El motor Atlas mete
-  // el especie aparte (`especieAnual`).
+  // El desglose PP empleado/empresa vive en `decl.planPensiones` y
+  // `decl.integracion.reduccionPP`. Aquí mapeamos también `ppEmpleado`
+  // (aportación trabajador) para que la presentación de RendimientosTrabajo
+  // refleje las contribuciones reales del trabajador al PP.
+  const pp = decl.planPensiones;
+  const ppEmpleado = pp?.aportacionesTrabajador ?? 0;
+  const ppEmpresa = t.contribucionesPPEmpresa ?? pp?.contribucionesEmpresa ?? 0;
   return {
+    // `salarioBrutoAnual` ≡ dinerario (sin especie). La AEAT separa dinerarias
+    // (0003) y valoración especie (0005). El motor Atlas mete el especie aparte.
     salarioBrutoAnual: t.retribucionesDinerarias ?? 0,
     especieAnual: t.valoracionEspecie ?? 0,
     cotizacionSS: t.cotizacionesSS ?? 0,
     irpfRetenido: t.retenciones ?? 0,
     rendimientoNeto: t.rendimientoNeto ?? 0,
-    ppEmpleado: 0, // En XML AEAT el desglose PP empleado/empresa vive en
-    ppEmpresa: t.contribucionesPPEmpresa ?? 0,
-    ppTotalReduccion: 0, // `decl.planPensiones` y `decl.integracion.reduccionPP`.
+    ppEmpleado,
+    ppEmpresa,
+    ppTotalReduccion: decl.integracion?.reduccionPP ?? pp?.totalConDerechoReduccion ?? 0,
   };
 }
 
 function buildRendimientosAutonomo(decl: DeclaracionCompleta): RendimientosAutonomo | null {
   const a = decl.actividadEconomica;
   if (!a) return null;
+  // Unificamos en `totalIngresos` (que en el XML AEAT incluye subvenciones)
+  // tanto para el resumen top-level como para la entrada de `actividades[]`,
+  // de modo que el desglose no diverja del agregado.
+  const ingresos = a.totalIngresos ?? a.ingresosExplotacion ?? 0;
   return {
-    ingresos: a.ingresosExplotacion ?? a.totalIngresos ?? 0,
+    ingresos,
     gastos: a.totalGastos ?? 0,
     cuotaSS: a.gastosSS ?? 0,
     gastoDificilJustificacion: a.reduccionSimplificada,
@@ -90,7 +109,7 @@ function buildRendimientosAutonomo(decl: DeclaracionCompleta): RendimientosAuton
         epigrafe: a.iae,
         tipo: a.tipo,
         modalidad: a.modalidad,
-        ingresos: a.totalIngresos ?? 0,
+        ingresos,
         gastos: a.totalGastos ?? 0,
         cuotaSS: a.gastosSS ?? 0,
       },
@@ -102,24 +121,36 @@ function buildRendimientoInmueble(
   inm: InmuebleDeclarado,
   inmuebleId: number,
   alias: string,
+  ejercicio: number,
 ): RendimientoInmueble {
   const diasAlquilado = sumDiasPorTipo(inm, 'arrendado');
   const diasVacio = sumDiasPorTipo(inm, 'disposicion');
   const diasAccesorio = sumDiasPorTipo(inm, 'accesorio');
-  const diasTotal = diasAlquilado + diasVacio + diasAccesorio;
+  const diasUsos = diasAlquilado + diasVacio + diasAccesorio;
   const arr = inm.arrendamientos?.[0];
   const esHabitual = Boolean(
     inm.arrendamientos?.some((a) => a.esResidenciaHabitual === true),
   );
   const reduccion = inm.reduccionVivienda ?? 0;
   const rendNetoAntes = (inm.rendimientoNeto ?? 0) + reduccion;
+  // Imputación de renta del propio inmueble (días a disposición) · suma de
+  // `usos[].rentaImputada` para los tramos `disposicion`. Esto NO sustituye
+  // a `imputacionRentas[]` global (que recoge inmuebles 100 % a disposición),
+  // pero deja la información disponible aquí cuando el inmueble combina
+  // arrendamiento + disposición parcial.
+  const imputacionRenta = (inm.usos ?? [])
+    .filter((u) => u.tipo === 'disposicion')
+    .reduce((s, u) => s + (u.rentaImputada ?? 0), 0);
   return {
     inmuebleId,
     alias,
     diasAlquilado,
     diasVacio,
     diasEnObras: 0,
-    diasTotal: diasTotal > 0 ? diasTotal : 365,
+    // `diasTotal` debe ser 365 o 366 según el ejercicio (año bisiesto). El
+    // XML AEAT puede traer `usos[]` sumando un total > 0; lo usamos sólo si
+    // coincide con el calendario, si no normalizamos al año del ejercicio.
+    diasTotal: diasUsos > 0 ? diasUsos : diasDelAño(ejercicio),
     ingresosIntegros: arr?.ingresos ?? 0,
     gastosDeducibles:
       (inm.gastos?.interesesFinanciacion ?? 0) +
@@ -135,40 +166,78 @@ function buildRendimientoInmueble(
     reduccionHabitual: reduccion,
     rendimientoNetoAlquiler: round2(rendNetoAntes),
     rendimientoNetoReducido: inm.rendimientoNetoReducido ?? inm.rendimientoNeto ?? 0,
+    // `porcentajeReduccionHabitual` se expresa como fracción 0–1 (0.6 = 60 %)
+    // alineado con `calcularReduccionArrendamientoVivienda.porcentajeNormalizado`
+    // del motor Atlas (`irpfCalculationService.ts`). Cualquier UI que muestre
+    // un porcentaje debe multiplicar por 100.
     porcentajeReduccionHabitual: reduccion > 0 && rendNetoAntes > 0
-      ? round2((reduccion / rendNetoAntes) * 100) / 100
+      ? Math.round((reduccion / rendNetoAntes) * 10000) / 10000
       : 0,
     esHabitual,
-    imputacionRenta: 0,
+    imputacionRenta: round2(imputacionRenta),
     rendimientoNeto: inm.rendimientoNeto ?? 0,
   };
+}
+
+function buildImputacionesRenta(
+  decl: DeclaracionCompleta,
+  propertyByRefCatastral: Map<string, Property>,
+): ImputacionRenta[] {
+  // Inmuebles 100 % a disposición (sin ningún uso 'arrendado' ni 'accesorio')
+  // generan una entrada de imputación de renta. Los inmuebles con uso mixto
+  // ya llevan el `imputacionRenta` integrado en su `RendimientoInmueble`.
+  const out: ImputacionRenta[] = [];
+  (decl.inmuebles ?? []).forEach((inm, idx) => {
+    const usos = inm.usos ?? [];
+    const tieneArrendado = usos.some((u) => u.tipo === 'arrendado');
+    const tieneAccesorio = usos.some((u) => u.tipo === 'accesorio');
+    if (tieneArrendado || tieneAccesorio) return;
+    const disposicion = usos.filter((u) => u.tipo === 'disposicion');
+    if (disposicion.length === 0) return;
+    const imputacion = disposicion.reduce((s, u) => s + (u.rentaImputada ?? 0), 0);
+    if (imputacion <= 0) return;
+    const diasVacio = disposicion.reduce((s, u) => s + (u.dias ?? 0), 0);
+    const ref = normalizeRef(inm.refCatastral);
+    const prop = propertyByRefCatastral.get(ref);
+    const inmuebleId = prop?.id ?? -(idx + 1);
+    out.push({
+      inmuebleId,
+      alias: prop?.alias || prop?.address || inm.direccion || ref || `Inmueble ${inmuebleId}`,
+      valorCatastral: inm.valorCatastralTotal ?? inm.valorCatastral ?? 0,
+      porcentajeImputacion: inm.catastralRevisado ? 0.011 : 0.02,
+      diasVacio,
+      imputacion: round2(imputacion),
+    });
+  });
+  return out;
 }
 
 function buildBaseGeneral(
   decl: DeclaracionCompleta,
   propertyByRefCatastral: Map<string, Property>,
 ): BaseGeneral {
+  const ejercicio = decl.meta?.ejercicio ?? new Date().getFullYear();
   const trabajo = buildRendimientosTrabajo(decl);
   const autonomo = buildRendimientosAutonomo(decl);
-  const inmuebles: RendimientoInmueble[] = (decl.inmuebles ?? []).map((inm) => {
+  // Fallback `inmuebleId = -(idx + 1)` cuando no hay match por refCatastral:
+  // mantiene cada inmueble distinguible (sin colisión por id=0) y los hace
+  // detectables como "sin Property persistida" (id negativo).
+  const inmuebles: RendimientoInmueble[] = (decl.inmuebles ?? []).map((inm, idx) => {
     const ref = normalizeRef(inm.refCatastral);
     const prop = propertyByRefCatastral.get(ref);
-    const inmuebleId = prop?.id ?? 0;
+    const inmuebleId = prop?.id ?? -(idx + 1);
     const alias = prop?.alias || prop?.address || inm.direccion || ref || `Inmueble ${inmuebleId}`;
-    return buildRendimientoInmueble(inm, inmuebleId, alias);
+    return buildRendimientoInmueble(inm, inmuebleId, alias, ejercicio);
   });
-  const totalRendimientosInmuebles = inmuebles.reduce(
-    (s, i) => s + (i.rendimientoNetoReducido ?? i.rendimientoNeto ?? 0),
-    0,
-  );
-  const totalTrabajo = trabajo?.rendimientoNeto ?? 0;
-  const totalAutonomo = autonomo?.rendimientoNeto ?? 0;
   return {
     rendimientosTrabajo: trabajo,
     rendimientosAutonomo: autonomo,
     rendimientosInmuebles: inmuebles,
-    imputacionRentas: [],
-    total: round2(totalTrabajo + totalAutonomo + totalRendimientosInmuebles),
+    imputacionRentas: buildImputacionesRenta(decl, propertyByRefCatastral),
+    // `total` autoritativo desde AEAT (`integracion.baseImponibleGeneral`)
+    // para evitar drift con `Liquidacion.baseImponibleGeneral` cuando hay
+    // imputaciones de renta o capital mobiliario integrado en base general.
+    total: round2(decl.integracion?.baseImponibleGeneral ?? 0),
   };
 }
 
@@ -192,7 +261,10 @@ function buildBaseAhorro(decl: DeclaracionCompleta): BaseAhorro {
   return {
     capitalMobiliario,
     gananciasYPerdidas,
-    total: round2(capitalMobiliario.total + gananciasYPerdidas.compensado),
+    // `total` autoritativo desde AEAT (`integracion.baseImponibleAhorro`)
+    // para evitar drift con `Liquidacion.baseImponibleAhorro` y evitar
+    // double-counting de gain/loss ya compensadas a nivel AEAT.
+    total: round2(decl.integracion?.baseImponibleAhorro ?? 0),
   };
 }
 
@@ -213,11 +285,18 @@ function buildLiquidacion(decl: DeclaracionCompleta): Liquidacion {
   const r = decl.resultado;
   const cuotaIntegra = (r?.cuotaIntegraEstatal ?? 0) + (r?.cuotaIntegraAutonomica ?? 0);
   const cuotaLiquida = (r?.cuotaLiquidaEstatal ?? 0) + (r?.cuotaLiquidaAutonomica ?? 0);
+  // Los campos `cuotaBaseGeneral` y `cuotaBaseAhorro` del motor Atlas son
+  // las cuotas íntegras sobre la base general y sobre la base ahorro
+  // respectivamente (eje base) · NO el split estatal/autonómico (eje
+  // territorial). El XML AEAT no expone ese desglose por base, por lo que
+  // los dejamos en 0 antes que producir valores engañosos. Cualquier
+  // consumidor que necesite el desglose por base debe leer directamente
+  // del motor en años en curso, no de un import AEAT.
   return {
     baseImponibleGeneral: i?.baseImponibleGeneral ?? 0,
     baseImponibleAhorro: i?.baseImponibleAhorro ?? 0,
-    cuotaBaseGeneral: r?.cuotaIntegraEstatal ?? 0,
-    cuotaBaseAhorro: r?.cuotaIntegraAutonomica ?? 0,
+    cuotaBaseGeneral: 0,
+    cuotaBaseAhorro: 0,
     cuotaMinimosBaseGeneral: 0,
     cuotaIntegra,
     deduccionesDobleImposicion: 0,
@@ -229,21 +308,37 @@ function buildRetenciones(decl: DeclaracionCompleta): Retenciones {
   const trabajo = decl.trabajo?.retenciones ?? 0;
   const autonomo = decl.actividadEconomica?.retenciones ?? 0;
   const capMob = decl.capitalMobiliario?.retenciones ?? 0;
+  // `total` autoritativo desde AEAT (`resultado.totalRetencionesPagos`) que
+  // incluye también retenciones inmobiliarias y otros conceptos no
+  // desglosados en la interfaz `Retenciones` del motor. Si AEAT no lo
+  // expone, caemos a la suma de las 3 categorías.
+  const totalAEAT = decl.resultado?.totalRetencionesPagos;
+  const total = typeof totalAEAT === 'number' && Number.isFinite(totalAEAT)
+    ? round2(totalAEAT)
+    : round2(trabajo + autonomo + capMob);
   return {
     trabajo,
     autonomoM130: autonomo,
     capitalMobiliario: capMob,
-    total: round2(trabajo + autonomo + capMob),
+    total,
   };
 }
 
-function buildMinimoPersonal(): MinimosPersonales {
+function buildMinimoPersonal(decl: DeclaracionCompleta): MinimosPersonales {
+  // El XML AEAT no desglosa el mínimo personal por componentes (cónyuge,
+  // descendientes, etc.); sólo expone el global por administración (estatal
+  // y autonómico). Poblamos `contribuyente` y `total` con la suma de ambos
+  // para no perder el dato. Los demás componentes quedan a 0 al no estar
+  // disponibles · cualquier consumidor que los necesite debe recalcular.
+  const estatal = decl.integracion?.minimoPersonalEstatal ?? 0;
+  const autonomico = decl.integracion?.minimoPersonalAutonomico ?? 0;
+  const total = round2(estatal + autonomico);
   return {
-    contribuyente: 0,
+    contribuyente: total,
     descendientes: 0,
     ascendientes: 0,
     discapacidad: 0,
-    total: 0,
+    total,
   };
 }
 
@@ -266,7 +361,7 @@ export function declaracionCompletaToIRPF(
     baseGeneral: buildBaseGeneral(decl, propertyByRefCatastral),
     baseAhorro: buildBaseAhorro(decl),
     reducciones: buildReducciones(decl),
-    minimoPersonal: buildMinimoPersonal(),
+    minimoPersonal: buildMinimoPersonal(decl),
     liquidacion: buildLiquidacion(decl),
     retenciones: buildRetenciones(decl),
     resultado: decl.resultado?.resultadoDeclaracion ?? 0,
