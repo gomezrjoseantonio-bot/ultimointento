@@ -37,6 +37,7 @@ import {
   type VentaRow,
   type CuotaDiferencialInfo,
 } from './helpers/ejercicioDocumentosService';
+import { getParalelaInfo, type ParalelaInfo } from './helpers/paralelaService';
 import EjercicioHeader from './EjercicioHeader';
 import EjercicioKpiStrip from './EjercicioKpiStrip';
 import EjercicioBoxSection from './EjercicioBoxSection';
@@ -161,6 +162,7 @@ const FiscalEjercicioPage: React.FC = () => {
   const [ventas, setVentas] = useState<VentaRow[]>([]);
   const [deudas, setDeudas] = useState<DeudaFiscal[]>([]);
   const [cuotaInfo, setCuotaInfo] = useState<CuotaDiferencialInfo>({ cuota: null, pagos: [] });
+  const [paralela, setParalela] = useState<ParalelaInfo>({ esComplementaria: false, versionLabel: 'v1' });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('modelo100');
 
@@ -177,18 +179,20 @@ const FiscalEjercicioPage: React.FC = () => {
       setDatos(d);
       setSeccionesData(buildSecciones(d));
 
-      const [coord, docs, vs, ds, cuota] = await Promise.all([
+      const [coord, docs, vs, ds, cuota, par] = await Promise.all([
         getEjercicio(año).catch(() => null),
         getDocumentosDelEjercicio(año),
         getVentasDelAño(año),
         getDeudasDelEjercicio(año),
         getCuotaDiferencialDelEjercicio(año, d.resultado),
+        getParalelaInfo(año),
       ]);
       setCoordAeat(coord?.aeat ?? null);
       setDocumentos(docs);
       setVentas(vs);
       setDeudas(ds);
       setCuotaInfo(cuota);
+      setParalela(par);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[fiscal v2] error cargando ejercicio', año, err);
@@ -271,7 +275,9 @@ const FiscalEjercicioPage: React.FC = () => {
       <EjercicioHeader
         año={año}
         datos={datos}
-        tieneParalela={tieneParalela}
+        tieneParalela={tieneParalela || paralela.esComplementaria}
+        esComplementaria={paralela.esComplementaria}
+        justificanteAnterior={paralela.justificanteAnterior}
         fechaPresentacion={coordAeat?.fechaImportacion}
         prescribe={esPrescrito || datos.estado === 'en_curso' ? null : calcularFechaPrescripcion(año)}
         esPrescrito={esPrescrito}

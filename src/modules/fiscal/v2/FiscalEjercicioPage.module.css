@@ -174,6 +174,9 @@
 .kpiAccentWarn { border-left: 3px solid var(--atlas-v5-warn); padding-left: 13px; }
 .kpiAccentNeg { border-left: 3px solid var(--atlas-v5-neg); padding-left: 13px; }
 .kpiAccentPos { border-left: 3px solid var(--atlas-v5-pos); padding-left: 13px; }
+/* Sub-tarea 4 · variante gold para F3 (reutiliza este CSS module · evita
+   importar el módulo del dashboard desde InmuebleFiscalKpiStrip). */
+.kpiAccentGold { border-left: 3px solid var(--atlas-v5-gold); padding-left: 13px; }
 
 .kpiLab {
   font-size: var(--atlas-v5-fs-label-sm);
@@ -292,6 +295,12 @@
   font-family: var(--atlas-v5-font-mono-num);
   flex-shrink: 0;
 }
+
+/* Variantes de color del chip de letra · F3 inmueble (5 secciones) */
+.boxSectionLetterGold { background: var(--atlas-v5-gold); }
+.boxSectionLetterWarn { background: var(--atlas-v5-warn); }
+.boxSectionLetterNeg { background: var(--atlas-v5-neg); }
+.boxSectionLetterPos { background: var(--atlas-v5-pos); }
 
 .boxSectionTitle {
   font-weight: var(--atlas-v5-fw-bold);

@@ -1,0 +1,194 @@
+/* ============================================================
+   ATLAS · F3 Fiscal Inmueble del año v2
+   SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 4
+   Mockup canónico · docs/audit-inputs/atlas-fiscal-v3.html#page-inmueble
+   Comparte FiscalEjercicioPage.module.css para tokens de layout · este
+   módulo añade solo las clases específicas del inmueble.
+   ============================================================ */
+
+/* ── Modo declaración card ─────────────────────────────────── */
+.modoCard {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-left: 3px solid var(--atlas-v5-gold);
+  padding: var(--atlas-v5-sp-4) var(--atlas-v5-sp-6);
+  border-radius: var(--atlas-v5-radius-md);
+  margin-bottom: var(--atlas-v5-sp-4);
+}
+
+.modoCardHd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--atlas-v5-sp-1);
+  flex-wrap: wrap;
+}
+
+.modoCardTag {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: var(--atlas-v5-fs-chip);
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.modoCardTitle {
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  font-size: var(--atlas-v5-fs-h3);
+}
+
+.modoCardBody {
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink-2);
+  line-height: 1.55;
+}
+
+/* ── Nota descartable ──────────────────────────────────────── */
+.noteBlock {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-left: 3px solid var(--atlas-v5-gold);
+  padding: var(--atlas-v5-sp-4) var(--atlas-v5-sp-6);
+  border-radius: var(--atlas-v5-radius-md);
+  margin-bottom: var(--atlas-v5-sp-4);
+  position: relative;
+}
+
+.noteClose {
+  position: absolute;
+  top: 10px;
+  right: var(--atlas-v5-sp-3);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-3);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  background: none;
+  border: none;
+}
+
+.noteClose:hover {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-ink);
+}
+
+.noteTitle {
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-brand-ink);
+  font-size: var(--atlas-v5-fs-sub);
+  margin-bottom: var(--atlas-v5-sp-1);
+}
+
+.noteBody {
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-2);
+  line-height: 1.6;
+  padding-right: 28px;
+}
+
+.noteBody p {
+  margin: 0 0 var(--atlas-v5-sp-1);
+}
+
+.noteBody p:last-child {
+  margin-bottom: 0;
+}
+
+.noteBody strong {
+  color: var(--atlas-v5-ink);
+}
+
+/* ── Card genérica (reutilizada para tabla amort) ──────────── */
+.card {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  margin-bottom: var(--atlas-v5-sp-5);
+  overflow: hidden;
+}
+
+.cardHd {
+  padding: var(--atlas-v5-sp-4) var(--atlas-v5-sp-6);
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.cardTitle {
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: var(--atlas-v5-fs-h3);
+  color: var(--atlas-v5-ink);
+}
+
+.cardSub {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+  margin-top: 2px;
+}
+
+/* ── Tabla amortización acumulada ──────────────────────────── */
+.tableContainer {
+  overflow-x: auto;
+}
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--atlas-v5-fs-sub);
+}
+
+.tbl th {
+  text-align: left;
+  font-size: var(--atlas-v5-fs-label-sm);
+  letter-spacing: 1.2px;
+  color: var(--atlas-v5-ink-3);
+  text-transform: uppercase;
+  font-weight: var(--atlas-v5-fw-semibold);
+  padding: 10px var(--atlas-v5-sp-5);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card-alt);
+  white-space: nowrap;
+}
+
+.tbl td {
+  padding: 11px var(--atlas-v5-sp-5);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.tdRight { text-align: right; }
+.mono {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+.amortTbl td,
+.amortTbl th {
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.yearCell {
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-brand-ink);
+}
+
+.futureRow td {
+  color: var(--atlas-v5-ink-3);
+  font-style: italic;
+}
+
+.totalRow td {
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: var(--atlas-v5-fs-base);
+  border-bottom: none;
+}

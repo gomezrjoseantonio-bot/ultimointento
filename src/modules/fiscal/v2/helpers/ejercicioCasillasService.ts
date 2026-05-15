@@ -24,10 +24,17 @@ export interface BoxRow {
   subtotal?: boolean;
   negativeSign?: boolean;
   highlight?: boolean;
+  /** Unidad del importe · default '€' · usa 'días' para conteos y '%' para porcentajes */
+  unit?: 'eur' | 'dias' | 'pct';
 }
 
+export type BoxLetterVariant = 'navy' | 'gold' | 'warn' | 'neg' | 'pos';
+
 export interface BoxSection {
-  letter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H';
+  /** Identificador de la sección · "A"-"H" en F2 · "€" "←" "−" "A" "∑" en F3 */
+  letter: string;
+  /** Variante de color del chip · default 'navy' (F2) */
+  letterVariant?: BoxLetterVariant;
   title: string;
   total: number | null;
   rows: BoxRow[];

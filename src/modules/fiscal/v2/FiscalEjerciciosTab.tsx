@@ -13,6 +13,8 @@ export interface EjercicioRowVm {
   estado: DatosFiscalesEjercicio['estado'];
   resultado: number | null;
   tieneParalela: boolean;
+  esComplementaria: boolean;
+  justificanteAnterior?: string;
   prescribe: string | null;
   esPrescrito: boolean;
 }
@@ -50,12 +52,23 @@ function metaFor(row: EjercicioRowVm): string {
   if (row.esPrescrito) return 'consultable · intocable';
   if (row.estado === 'en_curso') return 'recalcula con cada movimiento del año';
   if (row.estado === 'pendiente') return 'ventana de presentación abierta · 2 abr – 30 jun';
+  if (row.esComplementaria) {
+    return row.justificanteAnterior
+      ? `complementaria · justificante anterior ${row.justificanteAnterior}`
+      : 'declaración complementaria';
+  }
   return row.tieneParalela ? 'corregido por paralela posterior' : 'v1 sin paralelas';
 }
 
 function prescripcionMeta(row: EjercicioRowVm): string {
-  if (row.estado === 'en_curso') return 'prescribirá tras 4 años desde campaña';
+  // Sub-tarea 3.x ajuste 2 · texto prescripción uniforme.
+  // Para en_curso / pendiente mostramos el año (año + 5) en vez de fecha
+  // completa o texto técnico ("tras 4 años desde campaña"). El cálculo
+  // real día-exacto solo es relevante para ejercicios declarados.
   if (row.esPrescrito) return 'cerrado';
+  if (row.estado === 'en_curso' || row.estado === 'pendiente') {
+    return `prescribe en ${row.año + 5}`;
+  }
   if (row.prescribe) return `prescribe ${formatIsoDateAsEs(row.prescribe)}`;
   return '';
 }
@@ -98,7 +111,17 @@ const FiscalEjerciciosTab: React.FC<FiscalEjerciciosTabProps> = ({ rows, onSelec
                 <div className={styles.ejYear}>{row.año}</div>
                 <div>
                   <span className={`${styles.pill} ${pill.cls}`}>{pill.label}</span>
-                  {row.tieneParalela && (
+                  {row.esComplementaria && (
+                    <span
+                      className={`${styles.pill} ${styles.pillParalela}`}
+                      title={row.justificanteAnterior
+                        ? `Complementaria · justificante anterior ${row.justificanteAnterior}`
+                        : 'Complementaria'}
+                    >
+                      Complementaria
+                    </span>
+                  )}
+                  {!row.esComplementaria && row.tieneParalela && (
                     <span className={`${styles.pill} ${styles.pillParalela}`}>v2</span>
                   )}
                 </div>

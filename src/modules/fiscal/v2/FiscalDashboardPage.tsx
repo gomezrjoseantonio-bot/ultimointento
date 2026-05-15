@@ -26,6 +26,7 @@ import {
 import { getDeudasAbiertas } from '../../../services/deudasFiscalesService';
 import type { DeudaFiscal } from '../../../services/db';
 import { getArrastresVivos, type ArrastresVivosData } from './helpers/arrastresVivosService';
+import { getParalelaInfoMultiAño, type ParalelaInfo } from './helpers/paralelaService';
 import FiscalKpiStrip from './FiscalKpiStrip';
 import FiscalEjerciciosTab, { type EjercicioRowVm } from './FiscalEjerciciosTab';
 import FiscalDeudasTab from './FiscalDeudasTab';
@@ -55,14 +56,18 @@ function detectarParalela(d: DatosFiscalesEjercicio): boolean {
 function buildEjerciciosVm(
   ejercicios: DatosFiscalesEjercicio[],
   hoy: Date,
+  paralelasByAño: Map<number, ParalelaInfo>,
 ): EjercicioRowVm[] {
   return ejercicios.map((d) => {
     const esPrescrito = d.estado === 'declarado' && yaPrescrito(d.año, hoy);
+    const paralela = paralelasByAño.get(d.año);
     return {
       año: d.año,
       estado: d.estado,
       resultado: d.resultado,
-      tieneParalela: detectarParalela(d),
+      tieneParalela: detectarParalela(d) || Boolean(paralela?.esComplementaria),
+      esComplementaria: Boolean(paralela?.esComplementaria),
+      justificanteAnterior: paralela?.justificanteAnterior,
       prescribe: esPrescrito || d.estado === 'en_curso'
         ? null
         : calcularFechaPrescripcion(d.año),
@@ -84,6 +89,7 @@ const FiscalDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [resumen, setResumen] = useState<ResumenGlobalFiscal | null>(null);
   const [ejercicios, setEjercicios] = useState<DatosFiscalesEjercicio[]>([]);
+  const [paralelas, setParalelas] = useState<Map<number, ParalelaInfo>>(() => new Map());
   const [deudas, setDeudas] = useState<DeudaFiscal[]>([]);
   const [arrastres, setArrastres] = useState<ArrastresVivosData>({ rows: [], totalPendiente: 0 });
   const [loading, setLoading] = useState(true);
@@ -102,8 +108,12 @@ const FiscalDashboardPage: React.FC = () => {
         getDeudasAbiertas(),
         getArrastresVivos(añoActual),
       ]);
+      // Paralelas/complementarias se resuelven en serie sobre los años
+      // efectivamente cargados (después de resolverTodosLosEjercicios).
+      const par = await getParalelaInfoMultiAño(ejs.map((e) => e.año));
       setResumen(r);
       setEjercicios(ejs);
+      setParalelas(par);
       setDeudas(ds);
       setArrastres(ar);
     } catch (err) {
@@ -118,7 +128,10 @@ const FiscalDashboardPage: React.FC = () => {
     cargar();
   }, [cargar]);
 
-  const ejerciciosVm = useMemo(() => buildEjerciciosVm(ejercicios, hoy), [ejercicios, hoy]);
+  const ejerciciosVm = useMemo(
+    () => buildEjerciciosVm(ejercicios, hoy, paralelas),
+    [ejercicios, hoy, paralelas],
+  );
 
   const goEjercicio = (año: number) => navigate(`/fiscal/ejercicio/${año}`);
   const goAcciones = () => navigate('/fiscal/configuracion');

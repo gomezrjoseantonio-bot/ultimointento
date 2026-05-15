@@ -11,6 +11,8 @@ export interface EjercicioHeaderProps {
   año: number;
   datos: DatosFiscalesEjercicio;
   tieneParalela: boolean;
+  esComplementaria?: boolean;
+  justificanteAnterior?: string;
   fechaPresentacion?: string;
   justificante?: string;
   prescribe: string | null;
@@ -48,6 +50,8 @@ const EjercicioHeader: React.FC<EjercicioHeaderProps> = ({
   año,
   datos,
   tieneParalela,
+  esComplementaria,
+  justificanteAnterior,
   fechaPresentacion,
   justificante,
   prescribe,
@@ -77,7 +81,17 @@ const EjercicioHeader: React.FC<EjercicioHeaderProps> = ({
           <h1 className={styles.pageHeadTitle}>
             Ejercicio {año}
             <span className={`${styles.pill} ${pill.cls}`}>{pill.label}</span>
-            {tieneParalela && (
+            {esComplementaria && (
+              <span
+                className={`${styles.pill} ${styles.pillParalela}`}
+                title={justificanteAnterior
+                  ? `Complementaria · justificante anterior ${justificanteAnterior}`
+                  : 'Declaración complementaria'}
+              >
+                Complementaria
+              </span>
+            )}
+            {!esComplementaria && tieneParalela && (
               <span className={`${styles.pill} ${styles.pillParalela}`}>v2</span>
             )}
           </h1>

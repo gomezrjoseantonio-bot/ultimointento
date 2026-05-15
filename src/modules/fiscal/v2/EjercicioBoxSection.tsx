@@ -44,6 +44,18 @@ const EjercicioBoxSection: React.FC<EjercicioBoxSectionProps> = ({
     return '';
   })();
 
+  const variantClass = (() => {
+    switch (section.letterVariant) {
+      case 'gold': return styles.boxSectionLetterGold;
+      case 'warn': return styles.boxSectionLetterWarn;
+      case 'neg': return styles.boxSectionLetterNeg;
+      case 'pos': return styles.boxSectionLetterPos;
+      case 'navy':
+      default:
+        return '';
+    }
+  })();
+
   return (
     <section
       className={`${styles.boxSection} ${collapsed ? styles.collapsed : ''}`}
@@ -56,7 +68,7 @@ const EjercicioBoxSection: React.FC<EjercicioBoxSectionProps> = ({
         aria-expanded={!collapsed}
         aria-controls={`section-${section.letter}-body`}
       >
-        <div className={styles.boxSectionLetter}>{section.letter}</div>
+        <div className={`${styles.boxSectionLetter} ${variantClass}`}>{section.letter}</div>
         <div className={styles.boxSectionTitle} id={`section-${section.letter}-title`}>
           {section.title}
         </div>
