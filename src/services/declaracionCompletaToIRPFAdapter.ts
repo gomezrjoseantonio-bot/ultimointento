@@ -79,7 +79,17 @@ function buildRendimientosTrabajo(decl: DeclaracionCompleta): RendimientosTrabaj
   // del XML), no de `planPensiones.contribucionesEmpresa` (rama RedRegimenGeneral)
   // que en producción se ve invertida (IEIP mal interpretado como aportación
   // titular en lugar de empresa). 0008 es la fuente fiable para 0427.
-  const ppEmpresa = t.contribucionesPPEmpresa ?? decl.planPensiones?.contribucionesEmpresa ?? 0;
+  //
+  // Cuidado: el parser usa `num()` que devuelve `0` cuando el campo está
+  // ausente del XML. Por eso `??` no basta: distinguimos "campo presente
+  // con 0 explícito" (sin PP empresa, caso legítimo) vs "campo ausente
+  // que vuelve 0" (caer al fallback de planPensiones). Si el total de
+  // reducción es > 0 y `t.contribucionesPPEmpresa` es 0, asumimos que
+  // ese campo no estaba en el XML y caemos al fallback.
+  const ppEmpresaFromT = t.contribucionesPPEmpresa ?? 0;
+  const ppEmpresa = ppEmpresaFromT > 0
+    ? ppEmpresaFromT
+    : (decl.planPensiones?.contribucionesEmpresa ?? 0);
   const pp = decl.planPensiones;
   const totalReduccion = decl.integracion?.reduccionPP ?? pp?.totalConDerechoReduccion ?? 0;
   // 0426 trabajador = total − empresa. Derivar evita la inversión y aplica
@@ -289,7 +299,15 @@ function buildReducciones(decl: DeclaracionCompleta): DeclaracionIRPF['reduccion
   // (trabajador) se deriva como total − empresa. Evita el cruce observado
   // cuando `planPensiones.aportacionesTrabajador`/`contribucionesEmpresa`
   // están invertidas en el parser.
-  const ppEmpresa = decl.trabajo?.contribucionesPPEmpresa ?? pp?.contribucionesEmpresa ?? 0;
+  //
+  // Manejo de "0 = campo ausente" del parser: si la 0008 vuelve 0 pero el
+  // total indica que hay PP de empresa, caer al fallback. Mantiene el caso
+  // legítimo "sin PP empresa, todo trabajador" cuando ambos son 0 (en ese
+  // caso `ppEmpleado = total − 0 = total`, correcto).
+  const ppEmpresaFromT = decl.trabajo?.contribucionesPPEmpresa ?? 0;
+  const ppEmpresa = ppEmpresaFromT > 0
+    ? ppEmpresaFromT
+    : (pp?.contribucionesEmpresa ?? 0);
   const ppEmpleado = Math.max(0, round2(total - ppEmpresa));
   return {
     ppEmpleado,
