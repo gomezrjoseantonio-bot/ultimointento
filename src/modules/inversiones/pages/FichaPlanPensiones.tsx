@@ -14,6 +14,8 @@ import { Icons } from '../../../design-system/v5';
 import { showToastV5 } from '../../../design-system/v5';
 import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
 import { calcularTotalAportadoPlan } from '../../../services/planesPensionesService';
+import { traspasosPlanPensionesService, valorTraspasoNormalizado } from '../../../services/traspasosPlanPensionesService';
+import { limitesFiscalesPlanesService } from '../../../services/limitesFiscalesPlanesService';
 import {
   getRentabilidadTotal,
   getRentabilidadPorBloque,
@@ -22,7 +24,14 @@ import {
 } from '../../../services/rentabilidadPlanService';
 import { getFiscalContextSafe } from '../../../services/fiscalContextService';
 import { calcularEstimacionEnCurso } from '../../../services/estimacionFiscalEnCursoService';
-import type { AportacionPlan, PlanPensiones, TipoAdministrativo } from '../../../types/planesPensiones';
+import { parseIsoDateAsUTC } from '../../../utils/recurrenceDateUtils';
+import type {
+  AportacionPlan,
+  PlanPensiones,
+  TipoAdministrativo,
+  TraspasoPlanPensiones,
+  ResultadoReduccionBaseImponible,
+} from '../../../types/planesPensiones';
 import type { ValoracionHistorica } from '../../../types/valoraciones';
 import ActualizarValorPlanDialog from '../components/ActualizarValorPlanDialog';
 import AportacionPlanDialog from '../components/AportacionPlanDialog';
@@ -94,6 +103,85 @@ const formatDate = (iso?: string): string => {
 };
 
 const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;
+
+// ── Fecha mínima de rescate (TAREA 13 v4 · Acción 3) ─────────────────────────
+//
+// PPI/PPA · RD-Ley 1/2015 disp. final 1ª · desde el 1-ene-2025 se pueden
+// rescatar las aportaciones con +10 años de antigüedad. La primera ventana
+// para un plan es `max(fechaContratacion + 10 años, 2025-01-01)` · planes
+// antiguos (contratados antes de 2015) están ya en la ventana desde
+// 2025-01-01 inclusive · planes posteriores activan ventana progresivamente.
+//
+// PPE/PPES · sin fecha concreta · supuestos legales (jubilación, incapacidad,
+// dependencia, fallecimiento, paro larga duración, enfermedad grave).
+export interface FechaMinimaRescate {
+  tipo: 'fecha' | 'supuestos';
+  /** Primera ventana de rescate efectiva. Solo en `tipo='fecha'`. */
+  fechaPrimeraVentana?: string;
+  /** Texto pensado para el copy del usuario · honesto sobre el matiz "aportaciones +10 años". */
+  descripcion: string;
+  supuestosLegales?: string[];
+}
+
+const SUPUESTOS_LEGALES_PPE_PPES = [
+  'Jubilación',
+  'Incapacidad permanente',
+  'Dependencia severa o gran dependencia',
+  'Fallecimiento del partícipe (beneficiarios)',
+  'Paro de larga duración',
+  'Enfermedad grave',
+];
+
+const RESCATE_LIQUIDEZ_INICIO_ISO = '2025-01-01';
+
+function formatCivilDate(d: Date): string {
+  // Formato es-ES "DD/MM/YYYY" usando campos UTC para evitar shifts de timezone.
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+export function getFechaMinimaRescate(plan: {
+  tipoAdministrativo: TipoAdministrativo;
+  fechaContratacion: string;
+}): FechaMinimaRescate {
+  if (plan.tipoAdministrativo === 'PPE' || plan.tipoAdministrativo === 'PPES') {
+    return {
+      tipo: 'supuestos',
+      descripcion:
+        'Los PPE/PPES solo se rescatan al concurrir un supuesto legal · jubilación o supuestos extraordinarios.',
+      supuestosLegales: SUPUESTOS_LEGALES_PPE_PPES,
+    };
+  }
+  // PPI / PPA · regla 10 años · aritmética en UTC para fechas civiles estables.
+  const fechaContratUTC = parseIsoDateAsUTC(plan.fechaContratacion);
+  if (Number.isNaN(fechaContratUTC.getTime())) {
+    return {
+      tipo: 'fecha',
+      descripcion:
+        'Las aportaciones a este plan podrán rescatarse cuando cumplan 10 años de antigüedad (RD-Ley 1/2015).',
+    };
+  }
+  const masDiez = new Date(
+    Date.UTC(
+      fechaContratUTC.getUTCFullYear() + 10,
+      fechaContratUTC.getUTCMonth(),
+      fechaContratUTC.getUTCDate(),
+    ),
+  );
+  const inicioLey = parseIsoDateAsUTC(RESCATE_LIQUIDEZ_INICIO_ISO);
+  // Clamp · planes anteriores a 2015 quedaban legalmente bloqueados hasta el
+  // 1-ene-2025 (entrada en vigor del derecho de rescate por antigüedad).
+  const efectiva = masDiez < inicioLey ? inicioLey : masDiez;
+  const fechaIso = efectiva.toISOString().slice(0, 10);
+  return {
+    tipo: 'fecha',
+    fechaPrimeraVentana: fechaIso,
+    descripcion:
+      `Desde ${formatCivilDate(efectiva)} podrás rescatar las aportaciones que tengan +10 años de antigüedad (RD-Ley 1/2015 disp. final 1ª). Las aportaciones posteriores maduran progresivamente.`,
+  };
+}
 
 // ── CAGR desde primera aportación hasta hoy ───────────────────────────────────
 function calcularCagr(
@@ -226,6 +314,10 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   const [rentabilidadTotal, setRentabilidadTotal] = useState<RentabilidadTotal | null>(null);
   const [bloques, setBloques] = useState<RentabilidadBloque[]>([]);
 
+  // TAREA 13 v4 · Acción 3 · trayectoria + datos fiscales formales.
+  const [traspasos, setTraspasos] = useState<TraspasoPlanPensiones[]>([]);
+  const [reduccionHogar, setReduccionHogar] = useState<ResultadoReduccionBaseImponible | null>(null);
+
   const [showActualizarValor, setShowActualizarValor] = useState(false);
   const [showAportar, setShowAportar] = useState(false);
   const [showEditar, setShowEditar] = useState(false);
@@ -241,7 +333,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
       if (!p) { setPlan(null); return; }
       setPlan(p);
 
-      const [aps, valHistoricas] = await Promise.all([
+      const [aps, valHistoricas, traspasosPlan] = await Promise.all([
         aportacionesPlanService.getAportacionesPorPlan(planId),
         // TAREA 13 v4 · Commit 3 (C4) · usa índice `tipo-activo` (V69) vía
         // valoracionesService · sustituye el getAll + filter inline.
@@ -258,10 +350,13 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
             return [];
           }
         })(),
+        // TAREA 13 v4 · Acción 3 · traspasos para la trayectoria timeline.
+        traspasosPlanPensionesService.getTraspasosPorPlan(planId).catch(() => []),
       ]);
 
       setAportaciones(aps);
       setValoraciones(valHistoricas);
+      setTraspasos(traspasosPlan);
 
       // TAREA 13 v4 · Commit 7 · cargar rentabilidad TWR/MWR/bloques.
       try {
@@ -276,6 +371,22 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
         console.warn('[inversiones] ficha plan · rentabilidad falló:', err);
         setRentabilidadTotal(null);
         setBloques([]);
+      }
+
+      // TAREA 13 v4 · Acción 3 · cargar reducción agregada del hogar para
+      // el bloque "Datos fiscales" · solo si el plan trae personalDataId.
+      try {
+        if (p.personalDataId) {
+          const r = await limitesFiscalesPlanesService.calcularReduccionBaseImponible(
+            p.personalDataId,
+            new Date().getFullYear(),
+          );
+          setReduccionHogar(r);
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[inversiones] ficha plan · reducción hogar falló:', err);
+        setReduccionHogar(null);
       }
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -387,6 +498,138 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
       ahorradoCuota: Math.round(reduccion * marginalIrpf * 100) / 100,
     };
   }, [hasFiscalContext, marginalIrpf, plan, aportaciones, ejercicioActual]);
+
+  // ── TAREA 13 v4 · Acción 3 · Datos fiscales (plan + hogar) ───────────────
+
+  // Datos fiscales atribuibles a este plan en el ejercicio actual.
+  // Se aplican los topes del propio plan (tipo + subtipo + discapacidad) para
+  // obtener `deduciblePlan` y `excesoPlan` aislados.
+  const fiscalPlan = useMemo(() => {
+    if (!plan) return null;
+    const aps = aportaciones.filter((a) => a.ejercicioFiscal === ejercicioActual);
+    const aportadoTitularAño = aps.reduce((s, a) => s + (a.importeTitular ?? 0), 0);
+    const aportadoEmpresaAño = aps.reduce((s, a) => s + (a.importeEmpresa ?? 0), 0);
+    const aportadoConyugeAño = aps.reduce((s, a) => s + (a.importeConyuge ?? 0), 0);
+    const aportadoTotalAño = aportadoTitularAño + aportadoEmpresaAño + aportadoConyugeAño;
+
+    const limites = limitesFiscalesPlanesService.getLimitesPorTipo(
+      plan.tipoAdministrativo,
+      plan.subtipoPPE,
+      plan.subtipoPPES,
+      plan.participeConDiscapacidad,
+    );
+    // Cap por rol primero, luego cap conjunto del plan. Para PPE empleador
+    // único limiteEconomico=8.500 € (sub-tope empresa) y limiteEfectivo=10.000 €
+    // (cap conjunto titular+empresa). Sumar caps por rol sin volver a capar al
+    // conjunto sobreestimaría el deducible · ej. titular 10k + empresa 8.5k
+    // daría 18.5k cuando el cap legal son 10k.
+    const deducibleTitularBruto = Math.min(aportadoTitularAño, limites.limiteEfectivo);
+    const deducibleEmpresaBruto = Math.min(aportadoEmpresaAño, limites.limiteEconomico);
+    const deduciblePlan = Math.min(
+      deducibleTitularBruto + deducibleEmpresaBruto,
+      limites.limiteEfectivo,
+    );
+    const excesoPlan = Math.max(0, aportadoTotalAño - deduciblePlan);
+    return {
+      aportadoTitularAño,
+      aportadoEmpresaAño,
+      aportadoConyugeAño,
+      aportadoTotalAño,
+      deduciblePlan,
+      excesoPlan,
+      limiteEfectivo: limites.limiteEfectivo,
+      limiteEconomico: limites.limiteEconomico,
+    };
+  }, [plan, aportaciones, ejercicioActual]);
+
+  // Tributación al rescatar · cota superior conservadora (valor actual ×
+  // marginal). Aviso de que el marginal real al jubilarse suele ser menor.
+  const tributacionRescateCotaSuperior = useMemo(() => {
+    if (marginalIrpf == null || valorActual <= 0) return null;
+    return Math.round(valorActual * marginalIrpf * 100) / 100;
+  }, [marginalIrpf, valorActual]);
+
+  // Fecha mínima de rescate (PPI/PPA · fecha real · PPE/PPES · supuestos).
+  const fechaMinimaRescate = useMemo(() => (plan ? getFechaMinimaRescate(plan) : null), [plan]);
+
+  // ── TAREA 13 v4 · Acción 3 · Trayectoria · eventos cronológicos ──────────
+
+  interface EventoTrayectoria {
+    fecha: string; // ISO date
+    año: number;
+    tipo: 'contratacion' | 'primera_aportacion' | 'traspaso' | 'ultima_valoracion';
+    titulo: string;
+    detalle?: string;
+  }
+
+  const eventosTrayectoria = useMemo<EventoTrayectoria[]>(() => {
+    if (!plan) return [];
+
+    // Gestora inicial · si hay traspasos, el primer `gestoraOrigen` · si no,
+    // la actual del plan.
+    const traspasosOrdenados = [...traspasos].sort((a, b) => a.fechaEjecucion.localeCompare(b.fechaEjecucion));
+    const gestoraInicial = traspasosOrdenados[0]?.gestoraOrigen ?? plan.gestoraActual;
+
+    const eventos: EventoTrayectoria[] = [];
+
+    // 1. Contratación.
+    eventos.push({
+      fecha: plan.fechaContratacion,
+      año: Number(plan.fechaContratacion.slice(0, 4)) || 0,
+      tipo: 'contratacion',
+      titulo: `Plan abierto en ${gestoraInicial || '—'}`,
+      detalle: plan.importeInicial != null && plan.importeInicial > 0
+        ? `Valor inicial · ${fmt(plan.importeInicial)}`
+        : undefined,
+    });
+
+    // 2. Primera aportación · solo si su fecha es distinta de contratación.
+    if (fechaPrimeraAportacion && fechaPrimeraAportacion !== plan.fechaContratacion) {
+      const primeraAp = [...aportaciones].sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
+      if (primeraAp) {
+        const total = (primeraAp.importeTitular ?? 0) + (primeraAp.importeEmpresa ?? 0) + (primeraAp.importeConyuge ?? 0);
+        eventos.push({
+          fecha: primeraAp.fecha,
+          año: Number(primeraAp.fecha.slice(0, 4)) || 0,
+          tipo: 'primera_aportacion',
+          titulo: 'Primera aportación',
+          detalle: total > 0 ? fmt(total) : undefined,
+        });
+      }
+    }
+
+    // 3. Cada traspaso (orden ascendente).
+    for (const t of traspasosOrdenados) {
+      const valor = valorTraspasoNormalizado(t);
+      const valorTxt = valor != null ? fmt(valor) : '—';
+      const tipoTxt = t.esTotal ? 'Traspaso total' : 'Traspaso parcial';
+      eventos.push({
+        fecha: t.fechaEjecucion,
+        año: Number(t.fechaEjecucion.slice(0, 4)) || 0,
+        tipo: 'traspaso',
+        titulo: `${tipoTxt} · ${t.gestoraOrigen} → ${t.gestoraDestino}`,
+        detalle: `Valor en el momento · ${valorTxt}`,
+      });
+    }
+
+    // 4. Última valoración · solo si su fecha es distinta del último evento.
+    const ultimaVal = [...valoraciones].sort((a, b) => a.fecha_valoracion.localeCompare(b.fecha_valoracion))[valoraciones.length - 1];
+    if (ultimaVal) {
+      const fechaVal = `${ultimaVal.fecha_valoracion}-01`;
+      const ultimoEvento = eventos[eventos.length - 1];
+      if (!ultimoEvento || ultimoEvento.fecha.slice(0, 7) !== ultimaVal.fecha_valoracion) {
+        eventos.push({
+          fecha: fechaVal,
+          año: Number(ultimaVal.fecha_valoracion.slice(0, 4)) || 0,
+          tipo: 'ultima_valoracion',
+          titulo: 'Última valoración registrada',
+          detalle: `${fmt(ultimaVal.valor)} · en ${plan.gestoraActual || '—'}`,
+        });
+      }
+    }
+
+    return eventos.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }, [plan, traspasos, aportaciones, valoraciones, fechaPrimeraAportacion]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -659,6 +902,111 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
               )}
             </div>
 
+            {/* ── 1.5.bis · Datos fiscales · TAREA 13 v4 · Acción 3 ─────── */}
+            <div className={styles.detailCard}>
+              <div className={styles.detailCardTit}>
+                Datos fiscales · ejercicio {ejercicioActual}
+              </div>
+              <div className={styles.composicionList}>
+
+                {/* Bloque A · este plan */}
+                <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                  Este plan
+                </div>
+                {fiscalPlan && fiscalPlan.aportadoTotalAño > 0 ? (
+                  <>
+                    <div className={styles.composicionRow}>
+                      <span className={styles.composicionRowLab}>Aportado este año</span>
+                      <span className={styles.composicionRowVal}>{fmt(fiscalPlan.aportadoTotalAño)}</span>
+                    </div>
+                    <div className={styles.composicionRow}>
+                      <span className={styles.composicionRowLab}>Deducible aplicable</span>
+                      <span className={`${styles.composicionRowVal} ${styles.pos}`}>{fmt(fiscalPlan.deduciblePlan)}</span>
+                    </div>
+                    {fiscalPlan.excesoPlan > 0 && (
+                      <div className={styles.composicionRow}>
+                        <span className={styles.composicionRowLab}>Exceso no deducible</span>
+                        <span className={`${styles.composicionRowVal} ${styles.neg}`}>{fmt(fiscalPlan.excesoPlan)}</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)' }}>
+                    Sin aportaciones este año a este plan.
+                  </div>
+                )}
+
+                {/* Bloque B · tu hogar (agregado · informativo) */}
+                {reduccionHogar && (
+                  <>
+                    <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12, marginBottom: 4, borderTop: '1px solid var(--atlas-v5-line)', paddingTop: 12 }}>
+                      Tu hogar
+                    </div>
+                    <div className={styles.composicionRow}>
+                      <span className={styles.composicionRowLab}>Total deducible aplicado</span>
+                      <span className={`${styles.composicionRowVal} ${styles.pos}`}>{fmt(reduccionHogar.totalDeducibleAplicado)}</span>
+                    </div>
+                    {reduccionHogar.excesoArrastrable > 0 && (
+                      <div className={styles.composicionRow}>
+                        <span className={styles.composicionRowLab}>Exceso arrastrable (5 años)</span>
+                        <span className={`${styles.composicionRowVal} ${styles.neg}`}>{fmt(reduccionHogar.excesoArrastrable)}</span>
+                      </div>
+                    )}
+                    {reduccionHogar.alertas.length > 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--atlas-v5-warn)', marginTop: 8 }}>
+                        {reduccionHogar.alertas.map((a, i) => (
+                          <div key={i}>· {a}</div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Bloque C · tributación al rescatar · cota superior */}
+                <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12, marginBottom: 4, borderTop: '1px solid var(--atlas-v5-line)', paddingTop: 12 }}>
+                  Al rescatar
+                </div>
+                {marginalIrpf != null && tributacionRescateCotaSuperior != null ? (
+                  <>
+                    <div className={styles.composicionRow}>
+                      <span className={styles.composicionRowLab}>Valor actual</span>
+                      <span className={styles.composicionRowVal}>{fmt(valorActual)}</span>
+                    </div>
+                    <div className={styles.composicionRow}>
+                      <span className={styles.composicionRowLab}>Tributación estimada (cota superior)</span>
+                      <span className={`${styles.composicionRowVal} ${styles.neg}`}>−{fmt(tributacionRescateCotaSuperior)}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginTop: 8 }}>
+                      Asumiendo rescate completo hoy como rendimiento del trabajo al marginal actual ({(marginalIrpf * 100).toFixed(0)} %). El marginal real al jubilarse suele ser menor.
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)' }}>
+                    Completa tu perfil fiscal para estimar la tributación al rescatar.
+                  </div>
+                )}
+
+                {/* Bloque D · fecha mínima de rescate */}
+                {fechaMinimaRescate && (
+                  <>
+                    <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12, marginBottom: 4, borderTop: '1px solid var(--atlas-v5-line)', paddingTop: 12 }}>
+                      Fecha mínima de rescate
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--atlas-v5-ink-2)' }}>
+                      {fechaMinimaRescate.descripcion}
+                    </div>
+                    {fechaMinimaRescate.supuestosLegales && fechaMinimaRescate.supuestosLegales.length > 0 && (
+                      <ul style={{ fontSize: 11, color: 'var(--atlas-v5-ink-3)', marginTop: 8, paddingLeft: 16 }}>
+                        {fechaMinimaRescate.supuestosLegales.map((s) => (
+                          <li key={s}>{s}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
           </div>
 
           {/* ── Columna derecha ───────────────────────────────────────────── */}
@@ -809,6 +1157,49 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
             <div style={{ fontSize: 10, color: 'var(--atlas-v5-ink-5)', marginTop: 8 }}>
               TWR · rentabilidad temporal pura (neutraliza efecto de aportaciones · idónea para
               comparar gestoras). Semáforo: ▲ mejor (+1 pp) · = igual (±1 pp) · ▼ peor (−1 pp).
+            </div>
+          </div>
+        )}
+
+        {/* ── 1.6.ter · Trayectoria · TAREA 13 v4 · Acción 3 ──────────────── */}
+        {eventosTrayectoria.length > 0 && (
+          <div className={styles.detailCard} style={{ marginTop: 16 }}>
+            <div className={styles.detailCardTit}>Trayectoria del plan</div>
+            <div className={styles.tablaWrap}>
+              <table className={styles.tabla}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 110 }}>Fecha</th>
+                    <th>Evento</th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eventosTrayectoria.map((ev, idx) => {
+                    const añoAnterior = idx > 0 ? eventosTrayectoria[idx - 1].año : null;
+                    const cambioAño = añoAnterior !== null && añoAnterior !== ev.año;
+                    return (
+                      <React.Fragment key={`${ev.fecha}-${ev.tipo}-${idx}`}>
+                        {cambioAño && (
+                          <tr style={{ background: 'var(--atlas-v5-bg-soft, transparent)' }}>
+                            <td colSpan={3} style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: 0.5, paddingTop: 8 }}>
+                              {ev.año}
+                            </td>
+                          </tr>
+                        )}
+                        <tr>
+                          <td className={styles.txt}>{formatDate(ev.fecha)}</td>
+                          <td className={styles.txt}>{ev.titulo}</td>
+                          <td className={styles.txt}>{ev.detalle ?? '—'}</td>
+                        </tr>
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--atlas-v5-ink-5)', marginTop: 8 }}>
+              Hitos del plan · contratación, primera aportación, traspasos entre gestoras y última valoración registrada. Las aportaciones individuales viven en la tabla "Aportaciones · histórico".
             </div>
           </div>
         )}
