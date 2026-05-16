@@ -74,7 +74,15 @@ export async function getRendimientoFiscal(
     if (inmDecl) {
       const arrends: any[] = inmDecl.arrendamientos ?? [];
       const rentasDeclaradas = arrends.reduce((s: number, a: any) => s + (a.ingresos ?? 0), 0);
-      const diasArrendado = arrends.reduce((s: number, a: any) => s + (a.diasArrendado ?? 0), 0);
+      // Los días arrendados son del INMUEBLE (C_DIASARRAM/C_DIASARR a nivel
+      // <Inmueble>), no la suma de los <Arrendamiento>. Si el inmueble tiene
+      // varias unidades (p. ej. habitaciones), cada arrendamiento puede llevar
+      // sus propios `diasArrendado` y sumarlos contaría dos veces el mismo
+      // calendario. El parser ya rellena `usos[tipo=arrendado].dias` desde
+      // el campo del inmueble; preferimos ese valor.
+      const usoArrendado = (inmDecl.usos ?? []).find((u: any) => u.tipo === 'arrendado');
+      const diasArrendado = usoArrendado?.dias
+        ?? arrends.reduce((s: number, a: any) => Math.max(s, a.diasArrendado ?? 0), 0);
 
       const disposicionUsos = (inmDecl.usos ?? []).filter((u: any) => u.tipo === 'disposicion');
       const rentaImputada = disposicionUsos.reduce((s: number, u: any) => s + (u.rentaImputada ?? 0), 0);
@@ -95,8 +103,13 @@ export async function getRendimientoFiscal(
       const amortInmueble = inmDecl.amortizacionAnualInmueble ?? 0;
       const baseAmortizacion = inmDecl.baseAmortizacion ?? 0;
 
-      const totalIngresos = rentasDeclaradas + rentaImputada;
-      // totalGastosDeducibles usa reparacionAplicada (no el total declarado)
+      // `totalIngresos` = SOLO rentas declaradas de arrendamiento (casilla
+      // 0102). La renta inmobiliaria imputada (0089) es un concepto distinto
+      // que se integra en la base general en otro punto del Modelo 100; no
+      // se debe sumar a la 0102 ni inflar los ingresos del inmueble. Se
+      // expone aparte como `rentaImputada` para que la UI la muestre como
+      // línea separada cuando el inmueble tuvo días a disposición.
+      const totalIngresos = rentasDeclaradas;
       const totalGastosDeducibles =
         interesesFinanciacion + reparacionAplicada + ibiTasas + comunidad +
         suministros + seguros + amortMobiliario + amortInmueble;

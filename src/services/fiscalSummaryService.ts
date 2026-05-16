@@ -22,33 +22,66 @@ import { getRendimientoFiscal } from './rendimientoActivoService';
 
 const isLeapYear = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 
+function normalizeRefCatastral(ref: string | undefined | null): string {
+  return (ref ?? '').replace(/[\s.-]/g, '').trim().toUpperCase();
+}
+
 /**
- * Extract a FiscalSummary-like object from an AEAT snapshot for a given property.
+ * Extract a FiscalSummary for the property from `aeat.declaracionCompleta`
+ * when the inmueble está identificado en la declaración (matching por
+ * refCatastral), o del snapshot global como fallback. El snapshot global
+ * AEAT solo trae 9 casillas G/H del bloque resumen — los gastos por
+ * inmueble (0105, 0109, 0112…0117) viven en `decl.inmuebles[i].gastos`.
  */
-function extraerSummaryDeSnapshot(
-  snapshot: Record<string, number>,
+async function extraerSummaryDeAEAT(
+  db: Awaited<ReturnType<typeof initDB>>,
+  aeat: NonNullable<Awaited<ReturnType<typeof getEjercicio>>>['aeat'],
   propertyId: number,
   exerciseYear: number,
-): FiscalSummary {
+): Promise<FiscalSummary> {
+  const snapshot = aeat?.snapshot ?? {};
+  const decl = aeat?.declaracionCompleta;
+
+  // Localiza el inmueble en la declaración matcheando por refCatastral
+  // del property (mismo patrón que usa el distribuidor de imports).
+  let inmDecl: any | undefined;
+  if (decl?.inmuebles && decl.inmuebles.length > 0) {
+    const property = await db.get('properties', propertyId);
+    const refProperty = normalizeRefCatastral(property?.cadastralReference);
+    if (refProperty) {
+      inmDecl = decl.inmuebles.find(
+        (i: any) => normalizeRefCatastral(i.refCatastral) === refProperty,
+      );
+    }
+  }
+
+  const g = inmDecl?.gastos ?? {};
+  const pickSnap = (casilla: string) =>
+    snapshot[`${propertyId}_${casilla}`] ?? snapshot[casilla];
+  const pickGasto = (declVal: number | undefined, casilla: string) =>
+    typeof declVal === 'number' && Number.isFinite(declVal)
+      ? declVal
+      : (pickSnap(casilla) ?? 0);
+
   return {
     propertyId,
     exerciseYear,
-    box0089: snapshot[`${propertyId}_0089`] ?? snapshot['0089'],
-    box0103: snapshot[`${propertyId}_0103`] ?? snapshot['0103'],
-    box0104: snapshot[`${propertyId}_0104`] ?? snapshot['0104'],
-    box0107: snapshot[`${propertyId}_0107`] ?? snapshot['0107'],
-    box0108: snapshot[`${propertyId}_0108`] ?? snapshot['0108'],
-    box0105: snapshot[`${propertyId}_0105`] ?? snapshot['0105'] ?? 0,
-    box0106: snapshot[`${propertyId}_0106`] ?? snapshot['0106'] ?? 0,
-    box0109: snapshot[`${propertyId}_0109`] ?? snapshot['0109'] ?? 0,
-    box0112: snapshot[`${propertyId}_0112`] ?? snapshot['0112'] ?? 0,
-    box0113: snapshot[`${propertyId}_0113`] ?? snapshot['0113'] ?? 0,
-    box0114: snapshot[`${propertyId}_0114`] ?? snapshot['0114'] ?? 0,
-    box0115: snapshot[`${propertyId}_0115`] ?? snapshot['0115'] ?? 0,
-    box0117: snapshot[`${propertyId}_0117`] ?? snapshot['0117'] ?? 0,
-    box0129: snapshot[`${propertyId}_0129`] ?? snapshot['0129'] ?? 0,
-    box0130: snapshot[`${propertyId}_0130`] ?? snapshot['0130'] ?? 0,
-    box0131: snapshot[`${propertyId}_0131`] ?? snapshot['0131'] ?? 0,
+    box0089: pickSnap('0089'),
+    box0103: inmDecl?.arrastresRecibidos ?? inmDecl?.gastosPendientesPrevios ?? pickSnap('0103'),
+    box0104: inmDecl?.gastosPendientesPreviosAplicados ?? pickSnap('0104'),
+    box0107: pickGasto(g.gastosAplicados, '0107'),
+    box0108: inmDecl?.gastosPendientesGenerados ?? pickSnap('0108'),
+    box0105: pickGasto(g.interesesFinanciacion, '0105'),
+    box0106: pickGasto(g.reparacionConservacion, '0106'),
+    box0109: pickGasto(g.comunidad, '0109'),
+    box0112: pickGasto(g.serviciosTerceros, '0112'),
+    box0113: pickGasto(g.suministros, '0113'),
+    box0114: pickGasto(g.seguros, '0114'),
+    box0115: pickGasto(g.ibiTasas, '0115'),
+    box0117: pickGasto(g.amortizacionMobiliario ?? inmDecl?.amortizacionMobiliario, '0117'),
+    box0129: pickSnap('0129') ?? 0,
+    box0130: inmDecl?.baseAmortizacion ?? pickSnap('0130') ?? 0,
+    box0131: inmDecl?.amortizacionAnualInmueble ?? pickSnap('0131') ?? 0,
     mejorasTotal: 0,
     deductibleExcess: 0,
     constructionValue: 0,
@@ -78,7 +111,7 @@ export const calculateFiscalSummary = async (
   }
 
   if (ej && (ej.estado === 'declarado' || ej.estado === 'prescrito') && ej.aeat) {
-    return extraerSummaryDeSnapshot(ej.aeat.snapshot, propertyId, exerciseYear);
+    return extraerSummaryDeAEAT(db, ej.aeat, propertyId, exerciseYear);
   }
 
   // ═══ FULL CALCULATION from gastosInmueble ═══
@@ -547,13 +580,19 @@ export const calculateFiscalSummaryExtended = async (
     box0150 = round2(rendimiento.reduccionVivienda);
     box0154 = round2(rendimiento.rendimientoNetoReducido);
 
-    // Cuando el snapshot XML AEAT está disponible, los ingresos íntegros del
-    // inmueble (0102) reflejan el dato declarado (rentasDeclaradas + imputada),
-    // no el recálculo en vivo desde contratos. Esto evita drift cuando los
-    // contratos en Atlas no reproducen exactamente lo declarado.
-    const ingresosXML = round2(rendimiento.rentasDeclaradas + rendimiento.rentaImputada);
+    // Cuando el snapshot XML AEAT está disponible, los ingresos íntegros de
+    // arrendamiento (0102) reflejan SOLO las rentas declaradas, no la renta
+    // imputada (0089). Mezclarlas inflaba la 0102 con los días a disposición
+    // de inmuebles mixtos (caso T64 4D 2024: 7.420,68 vs 7.160,00 correcto).
+    // La renta imputada se conserva en `summary.box0089` y la UI la pinta
+    // como línea separada en la sección de ingresos.
+    const ingresosXML = round2(rendimiento.rentasDeclaradas);
     if (ingresosXML > 0) {
       summary.box0102 = ingresosXML;
+    }
+    const imputadaXML = round2(rendimiento.rentaImputada);
+    if (imputadaXML > 0) {
+      summary.box0089 = imputadaXML;
     }
   } else {
     const ingresos = summary.box0102 ?? 0;
