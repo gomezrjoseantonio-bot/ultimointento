@@ -85,6 +85,12 @@ export interface RendimientosTrabajo {
   ppEmpleado: number;             // Aportación empleado PP (limitada a 1.500€)
   ppEmpresa: number;              // Aportación empresa PP (limitada a 8.500€)
   ppTotalReduccion: number;       // Total reducción PP (limitada a 10.000€)
+  // Campos auxiliares opcionales del Modelo 100 que sólo se rellenan desde
+  // el adapter XML AEAT (declaración importada). El motor en vivo no los
+  // calcula porque sólo necesita el agregado `especieAnual` y los `rendimiento*`.
+  valoracionEspecie?: number;       // 0004 — valoración de la retribución en especie
+  ingresosACuentaEspecie?: number;  // 0005 — ingresos a cuenta de la retribución en especie
+  otrosGastosDeducibles?: number;   // 0019 — otros gastos deducibles (tope general)
 }
 
 export interface ActividadEconomicaResumen {
