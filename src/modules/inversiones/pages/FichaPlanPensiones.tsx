@@ -24,6 +24,7 @@ import {
 } from '../../../services/rentabilidadPlanService';
 import { getFiscalContextSafe } from '../../../services/fiscalContextService';
 import { calcularEstimacionEnCurso } from '../../../services/estimacionFiscalEnCursoService';
+import { parseIsoDateAsUTC } from '../../../utils/recurrenceDateUtils';
 import type {
   AportacionPlan,
   PlanPensiones,
@@ -105,16 +106,17 @@ const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;
 
 // ── Fecha mínima de rescate (TAREA 13 v4 · Acción 3) ─────────────────────────
 //
-// PPI/PPA · RD-Ley 1/2015 disp. final 1ª · desde 2025 se pueden rescatar las
-// aportaciones con +10 años de antigüedad. La primera aportación que cumple
-// es la de `fechaContratacion + 10 años`. Aportaciones posteriores maduran
-// progresivamente.
+// PPI/PPA · RD-Ley 1/2015 disp. final 1ª · desde el 1-ene-2025 se pueden
+// rescatar las aportaciones con +10 años de antigüedad. La primera ventana
+// para un plan es `max(fechaContratacion + 10 años, 2025-01-01)` · planes
+// antiguos (contratados antes de 2015) están ya en la ventana desde
+// 2025-01-01 inclusive · planes posteriores activan ventana progresivamente.
 //
 // PPE/PPES · sin fecha concreta · supuestos legales (jubilación, incapacidad,
 // dependencia, fallecimiento, paro larga duración, enfermedad grave).
 export interface FechaMinimaRescate {
   tipo: 'fecha' | 'supuestos';
-  /** Primera ventana de rescate (`fechaContratacion + 10 años`). Solo en `tipo='fecha'`. */
+  /** Primera ventana de rescate efectiva. Solo en `tipo='fecha'`. */
   fechaPrimeraVentana?: string;
   /** Texto pensado para el copy del usuario · honesto sobre el matiz "aportaciones +10 años". */
   descripcion: string;
@@ -130,6 +132,16 @@ const SUPUESTOS_LEGALES_PPE_PPES = [
   'Enfermedad grave',
 ];
 
+const RESCATE_LIQUIDEZ_INICIO_ISO = '2025-01-01';
+
+function formatCivilDate(d: Date): string {
+  // Formato es-ES "DD/MM/YYYY" usando campos UTC para evitar shifts de timezone.
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 export function getFechaMinimaRescate(plan: {
   tipoAdministrativo: TipoAdministrativo;
   fechaContratacion: string;
@@ -142,23 +154,32 @@ export function getFechaMinimaRescate(plan: {
       supuestosLegales: SUPUESTOS_LEGALES_PPE_PPES,
     };
   }
-  // PPI / PPA · regla 10 años.
-  const fechaContrat = new Date(plan.fechaContratacion);
-  if (Number.isNaN(fechaContrat.getTime())) {
+  // PPI / PPA · regla 10 años · aritmética en UTC para fechas civiles estables.
+  const fechaContratUTC = parseIsoDateAsUTC(plan.fechaContratacion);
+  if (Number.isNaN(fechaContratUTC.getTime())) {
     return {
       tipo: 'fecha',
       descripcion:
         'Las aportaciones a este plan podrán rescatarse cuando cumplan 10 años de antigüedad (RD-Ley 1/2015).',
     };
   }
-  const primeraVentana = new Date(fechaContrat);
-  primeraVentana.setFullYear(primeraVentana.getFullYear() + 10);
-  const fechaIso = primeraVentana.toISOString().slice(0, 10);
+  const masDiez = new Date(
+    Date.UTC(
+      fechaContratUTC.getUTCFullYear() + 10,
+      fechaContratUTC.getUTCMonth(),
+      fechaContratUTC.getUTCDate(),
+    ),
+  );
+  const inicioLey = parseIsoDateAsUTC(RESCATE_LIQUIDEZ_INICIO_ISO);
+  // Clamp · planes anteriores a 2015 quedaban legalmente bloqueados hasta el
+  // 1-ene-2025 (entrada en vigor del derecho de rescate por antigüedad).
+  const efectiva = masDiez < inicioLey ? inicioLey : masDiez;
+  const fechaIso = efectiva.toISOString().slice(0, 10);
   return {
     tipo: 'fecha',
     fechaPrimeraVentana: fechaIso,
     descripcion:
-      `Desde ${primeraVentana.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' })} podrás rescatar las aportaciones que tengan +10 años de antigüedad (RD-Ley 1/2015 disp. final 1ª). Las aportaciones posteriores maduran progresivamente.`,
+      `Desde ${formatCivilDate(efectiva)} podrás rescatar las aportaciones que tengan +10 años de antigüedad (RD-Ley 1/2015 disp. final 1ª). Las aportaciones posteriores maduran progresivamente.`,
   };
 }
 
@@ -497,9 +518,17 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
       plan.subtipoPPES,
       plan.participeConDiscapacidad,
     );
-    const deducibleTitular = Math.min(aportadoTitularAño, limites.limiteEfectivo);
-    const deducibleEmpresa = Math.min(aportadoEmpresaAño, limites.limiteEconomico);
-    const deduciblePlan = deducibleTitular + deducibleEmpresa;
+    // Cap por rol primero, luego cap conjunto del plan. Para PPE empleador
+    // único limiteEconomico=8.500 € (sub-tope empresa) y limiteEfectivo=10.000 €
+    // (cap conjunto titular+empresa). Sumar caps por rol sin volver a capar al
+    // conjunto sobreestimaría el deducible · ej. titular 10k + empresa 8.5k
+    // daría 18.5k cuando el cap legal son 10k.
+    const deducibleTitularBruto = Math.min(aportadoTitularAño, limites.limiteEfectivo);
+    const deducibleEmpresaBruto = Math.min(aportadoEmpresaAño, limites.limiteEconomico);
+    const deduciblePlan = Math.min(
+      deducibleTitularBruto + deducibleEmpresaBruto,
+      limites.limiteEfectivo,
+    );
     const excesoPlan = Math.max(0, aportadoTotalAño - deduciblePlan);
     return {
       aportadoTitularAño,
@@ -924,7 +953,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                       </div>
                     )}
                     {reduccionHogar.alertas.length > 0 && (
-                      <div style={{ fontSize: 11, color: 'var(--atlas-v5-warn, #B07E2A)', marginTop: 8 }}>
+                      <div style={{ fontSize: 11, color: 'var(--atlas-v5-warn)', marginTop: 8 }}>
                         {reduccionHogar.alertas.map((a, i) => (
                           <div key={i}>· {a}</div>
                         ))}
