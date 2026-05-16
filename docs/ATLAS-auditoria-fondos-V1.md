@@ -22,7 +22,7 @@
 2. **Aportaciones embebidas** · `PosicionInversion.aportaciones: Aportacion[]` está embebido en el registro (`src/types/inversiones.ts:72`). NO hay store separado `aportacionesFondo`. Cada `Aportacion` discrimina entre `'aportacion' | 'reembolso' | 'dividendo'` · solo `'aportacion'` y `'reembolso'` son semánticamente válidos para fondos.
 3. **Régimen art. 94 LIRPF (diferimiento entre fondos) NO modelado** · cada `reembolso` dispara `calcularGananciaPerdidaFIFO` sin distinguir si es rescate (realización fiscal) o traspaso (neutro). `inversionesFiscalService.calcularGananciaPerdidaFIFO` (`src/services/inversionesFiscalService.ts:33`) asume siempre realización.
 4. **XML AEAT crea posiciones cerradas por transmisión declarada** · `declaracionDistributorService.persistirInversionesDeclaradas` (`declaracionDistributorService.ts:1043-1078`) crea una `PosicionInversion` cerrada (`activo:false`) por cada fondo en `gananciasPerdidas.fondos`. El único identificador disponible en el XML es `nifFondo` · que viene del campo `G2A_NIF` o `NIFFIN` (`irpfXmlParserService.ts:634`) · que es **NIF de la gestora · NO ISIN del fondo**. Crítico para D5 (backfill).
-5. **`valoraciones_historicas` no diferencia fondos** · `tipo_activo` solo admite `'inmueble' | 'inversion' | 'plan_pensiones'` (`src/types/valoraciones.ts:6`). Los fondos comparten bucket `'inversion'` con acciones · ETFs · cripto · etc. Hoy NADIE escribe valoraciones de fondos en este store · el `valor_actual` vive plano en el registro `inversiones`.
+5. **`valoraciones_historicas` no diferencia fondos** · `tipo_activo` solo admite `'inmueble' | 'inversion' | 'plan_pensiones'` (`src/types/valoraciones.ts:6`). Los fondos comparten bucket `'inversion'` con acciones · ETFs · cripto · etc. La ruta `/inmuebles/importar-valoraciones` (`src/App.tsx:762`) acepta filas `tipo_activo:'inversion'` y vía `valoracionesService.importarHistorico` (`valoracionesService.ts:530-580`) puede escribir valoraciones contra fondos si el nombre matchea. NO hay UI específica de fondos para esto · sí flujo productivo lateral disponible.
 6. **Lectores UI limpios** · `InversionesGaleria` (`/inversiones`) + `FichaPosicionPage` → `FichaValoracionSimple` (los fondos caen en el grupo `valoracion_simple` · `src/modules/inversiones/helpers.ts:287`). La UI legacy `/gestion/inversiones` fue eliminada con redirect en T13 v4 (`src/App.tsx:1215`). La ruta horizon `InversionesPage.tsx` está exportada pero NO routeada · zombie.
 7. **Acciones requeridas que T13-bis debe cerrar** · 6 decisiones arquitectónicas (D1-D6 §8). La principal · D1 (entidad estable de fondo) vs mantener modelo plano + traspasos como evento sobre `PosicionInversion`.
 
@@ -127,14 +127,14 @@ Todos los `add('inversiones', …)` / `put('inversiones', …)` del repo · `src
 | `declaracionDistributorService.persistirInversionesDeclaradas` | `declaracionDistributorService.ts:1043-1105` | **SÍ** · `tipo:'fondo_inversion'` (l. 1064) | Crea `PosicionInversion` cerrada (`activo:false`) por cada `OperacionFondo` en `gananciasPerdidas.fondos` | Vivo · canónico desde T11 |
 | `inversionesService.createPosicion` | `inversionesService.ts:82-127` | **SÍ** (cualquier `TipoPosicion`) · llamado por wizard UI con `tipoUI='fondo_inversion'` | Crea posición activa · genera aportación inicial automática (l. 87-94) | Vivo · canónico vía UI |
 | `inversionesService.updatePosicion` | `inversionesService.ts:130-142` | **SÍ** (UPDATE) | Edita campos · recalcula derivados vía `normalizePosicion` | Vivo |
-| `inversionesService.addAportacion` | `inversionesService.ts:145-179` | **SÍ** (añade aportación o reembolso) | Si `tipo:'reembolso'` invoca FIFO (l. 156) · si reembolso total descuenta `numero_participaciones` (no aplica a fondos · solo acciones · l. 168) | Vivo |
+| `inversionesService.addAportacion` | `inversionesService.ts:145-179` | **SÍ** (añade aportación o reembolso) | Si `tipo:'reembolso'` invoca FIFO (l. 156) · si reembolso agota `numero_participaciones` pone `valor_actual=0` (l. 167-174 · NO descuenta ni persiste participaciones · solo aplica a tipos con unidades · ver §4 nota) | Vivo |
 | `inversionesService.updateAportacion` | `inversionesService.ts:181-205` | UPDATE aportación · recalcula FIFO si tipo='reembolso' | Vivo |
 | `inversionesService.deleteAportacion` | `inversionesService.ts:207-214` | DELETE aportación · recalcula derivados | Vivo |
 | `inversionesService.deletePosicion` | `inversionesService.ts:217-219` | Soft delete · `activo:false` | Vivo |
 | `inversionesService.purgarPosicion` | `inversionesService.ts:222-254` | Hard delete + cascade (treasuryEvents · valoraciones_historicas) | **0 consumidores en producción** · zombie de service |
 | `inversionesAportacionesImportService.importarAportacionesHistoricasMasivas` | `inversionesAportacionesImportService.ts:419-523` | NO crea posiciones · solo añade aportaciones a fondos existentes vía `inversionesService.addAportacion` (l. 492) | Vivo |
 | `inversionesAportacionesImportService.importarFilasCorregidas` | `inversionesAportacionesImportService.ts:585-663` | Idem · solo aportaciones · `inversionesService.addAportacion` (l. 594) | Vivo |
-| `valoracionesService.guardarValoracionesMensuales` | `valoracionesService.ts:486-496` | UPDATE `valor_actual` cuando se carga una valoración mensual con `tipo_activo:'inversion'` | Vivo · puede tocar fondos indirectamente |
+| `valoracionesService.guardarValoracionesMensual` | `valoracionesService.ts:486-496` (singular) | UPDATE `valor_actual` cuando se carga una valoración mensual con `tipo_activo:'inversion'` | Vivo · puede tocar fondos indirectamente |
 | `rendimientosService.generarPago` (`updatePosicion` indirecto) | `rendimientosService.ts:117` (vía `inversionesService.updatePosicion`) | UPDATE para pagos recurrentes · **NO aplica a fondos** (solo cuenta_remunerada · prestamo · deposito) | Vivo · no toca fondos |
 | `indexaCapitalImportService.importarIndexaCapital` (rama `inversiones`) | `indexaCapitalImportService.ts:405-446` | UPDATE de una posición `tipo:'plan_pensiones'/'plan-pensiones'` legacy en `inversiones` · **NO crea ni toca fondos** | Vivo · solo planes legacy |
 | `migrateInversionesToNewModel` | `migrations/migrateInversiones.ts:12-42` | One-shot · backfilla `rentabilidad_euros` / `rentabilidad_porcentaje` en posiciones viejas · idempotente | Vivo · se ejecuta al cargar `/inversiones` |
@@ -200,7 +200,7 @@ Form en `src/modules/inversiones/components/wizard/PosicionFormV5.tsx:322-330` �
 
 `src/services/inversionesAportacionesImportService.ts` · NO crea fondos · solo añade `Aportacion` (tipo `'aportacion'`) a fondos preexistentes que coincidan por `posicion_id` exacto o por `posicion_nombre + entidad` (`mapRowsToAportaciones:200-291` · `findPosicionOrPlan:299-346`). Plantilla descargable en `descargarPlantillaImportacionAportaciones:665-688`.
 
-Comportamiento para fondos · ·
+Comportamiento para fondos ·
 
 - Si la fila NO es un plan de pensiones (detectado por tipo · `inversionesAportacionesImportService.ts:229-240`) · se trata como aportación a posición de inversiones (incluido fondo). Solo soporta tipo `'aportacion'` (l. 289) · NO `'reembolso'` ni `'dividendo'`. **Limitación** · un fondo importado vía Excel solo recibe compras · los rescates hay que registrarlos manualmente desde la UI.
 - NO crea posiciones nuevas · si no encuentra match dispara error en preview (`previsualizarImportacionAportaciones:369-388`).
@@ -287,17 +287,17 @@ Solo 3 valores · **NO existe `'fondo_inversion'` ni `'fondo'`**. Los fondos com
 | Escritor | Archivo · línea | tipo_activo escrito | ¿Toca fondos? |
 |---|---|---|---|
 | `valoracionesService.guardarValoracionActivo` | `valoracionesService.ts:393-410` | Cualquiera de los 3 · pasado por parámetro | Si llaman con `'inversion'` y `activo_id` apuntando a un fondo · sí (no hay nada que lo distinga de otra inversión) |
-| `valoracionesService.guardarValoracionesMensuales` | `valoracionesService.ts:399-510` | Cualquiera · si `tipo_activo === 'inversion'` actualiza también `inversiones.valor_actual` (l. 486-495) | Sí indirectamente · NO hay UI que invoque con fondos hoy |
-| `valoracionesService.importarHistorico` | `valoracionesService.ts:530-580` | Acepta fila `tipo_activo:'inversion'` y matchea por nombre contra `inversiones` (l. 574: `{ id: inv.id, store: 'inversiones' }`) | Sí · si Jose sube Excel con fila `tipo_activo:inversion, activo_nombre:"Indexa Cartera 10"` y existe un fondo así nombrado · se asocia. NO usado en flujos productivos hoy. |
+| `valoracionesService.guardarValoracionesMensual` | `valoracionesService.ts:434-509` (singular) | Cualquiera · si `tipo_activo === 'inversion'` actualiza también `inversiones.valor_actual` (l. 486-495) | Sí · invocable contra fondos vía `importarHistorico` (siguiente fila) y vía `indexaCapitalImportService` para planes |
+| `valoracionesService.importarHistorico` | `valoracionesService.ts:530-580` | Acepta fila `tipo_activo:'inversion'` y matchea por nombre contra `inversiones` (l. 574: `{ id: inv.id, store: 'inversiones' }`) | Sí · ruta `/inmuebles/importar-valoraciones` (`src/App.tsx:762`) live. Si Jose sube Excel con fila `tipo_activo:inversion, activo_nombre:"Indexa Cartera 10"` y existe un fondo así nombrado · se persiste valoración mensual en `valoraciones_historicas` |
 | `traspasosPlanPensionesService.registrarTraspaso` | `traspasosPlanPensionesService.ts:103-124` | `'plan_pensiones'` | NO toca fondos |
 | `indexaCapitalImportService.importarIndexaCapital` | `indexaCapitalImportService.ts:347-358` | `'plan_pensiones'` (l. 349) | NO toca fondos · solo planes Indexa |
 | `ActualizarValorPlanDialog` (vía service) | `modules/inversiones/components/ActualizarValorPlanDialog.tsx` | `'plan_pensiones'` | NO toca fondos |
 
-**Conclusión § 5** · hoy **NADIE escribe valoraciones de fondos en `valoraciones_historicas`** en flujos productivos. La sparkline de fondos en `FichaValoracionSimple` se construye desde `posicion.aportaciones` + `valor_actual` actual · NO desde histórico. El histórico mensual de un fondo simplemente NO existe en el modelo.
+**Conclusión § 5** · existe un camino vivo (`/inmuebles/importar-valoraciones` → `valoracionesService.importarHistorico` → `valoraciones_historicas` con `tipo_activo:'inversion'`) que puede escribir valoraciones mensuales contra fondos si el nombre matchea · pero NO hay UI dedicada a fondos para esto · ni los exporters de gestoras escriben aquí hoy. La sparkline de fondos en `FichaValoracionSimple` se construye desde `posicion.aportaciones` + `valor_actual` actual · NO desde histórico. En la práctica · el histórico mensual de un fondo solo existe si Jose lo ha cargado vía el importador de valoraciones para inmuebles · cosa no documentada al usuario.
 
 ### 5.3 · Implicaciones para T13-bis
 
-Si T13-bis quiere mostrar evolución mensual de un fondo (como hace `FichaPlanPensiones` para planes) · necesita ① decidir si añade `'fondo'` (o `'fondo_inversion'`) como cuarto `tipo_activo` (D4) · ② cablear escritura desde algún sitio (UI manual · importador Excel · scrape gestora) · ③ actualizar el índice compuesto `tipo-activo` (V69 · `db.ts:2851`) y posiblemente `tipo-activo-fecha` (V60 · `db.ts:2854`). Bump de DB_VERSION obligatorio.
+Si T13-bis quiere mostrar evolución mensual de un fondo (como hace `FichaPlanPensiones` para planes) · necesita ① decidir si añade `'fondo'` (o `'fondo_inversion'`) como cuarto `tipo_activo` (D4) · ② cablear escritura desde UI dedicada a fondos (manual · importador Excel · scrape gestora). Los índices `tipo-activo` (V69 · `db.ts:2860`) y `tipo-activo-fecha` (`db.ts:2854` · creado en el bloque inicial junto con el store) son índices sobre strings · aceptan cualquier valor nuevo sin recrearse · NO requieren bump por añadir un cuarto literal. Solo se necesita bump de DB_VERSION si se decide ejecutar un backfill que mueva registros de `'inversion'` a `'fondo'`.
 
 ---
 
@@ -306,7 +306,7 @@ Si T13-bis quiere mostrar evolución mensual de un fondo (como hace `FichaPlanPe
 **N/A · entorno aislado.** Conteo de `inversiones[tipo='fondo_inversion'][activo=true|false]` no es verificable desde código. Para Jose, ejecutar en consola DevTools en la app productiva ·
 
 ```javascript
-indexedDB.open('atlas-horizon-db').onsuccess = e => {
+indexedDB.open('AtlasHorizonDB').onsuccess = e => {
   const db = e.target.result;
   db.transaction('inversiones').objectStore('inversiones').getAll().onsuccess =
     ev => {
@@ -381,7 +381,7 @@ Ver §7. Atado a D1 · si se elige A · tiene sentido sacar a `aportacionesFondo
 
 ### D4 · `tipo_activo='fondo'` en `valoraciones_historicas`
 
-- **Opción A** · añadir 4º valor `'fondo'` · separar fondos del bucket genérico `'inversion'`. Requiere bump DB · regenerar índices `tipo-activo` y `tipo-activo-fecha`. Backfill puede mover registros existentes de `'inversion'` a `'fondo'` filtrando por `inversiones.tipo === 'fondo_inversion'`.
+- **Opción A** · añadir 4º valor `'fondo'` · separar fondos del bucket genérico `'inversion'`. Los índices existentes `tipo-activo` (`db.ts:2860`) y `tipo-activo-fecha` (`db.ts:2854`) son sobre strings y aceptan el nuevo literal sin recrearse · NO requieren bump DB por sí solos. Backfill opcional para mover registros existentes de `'inversion'` a `'fondo'` filtrando por `inversiones.tipo === 'fondo_inversion'` · ese sí requiere bump DB si se ejecuta como migración en `upgrade`.
 - **Opción B** · mantener bucket `'inversion'` · diferenciar consumiendo el campo `tipo` del registro en `inversiones`. Sin bump DB · queries más complejas.
 - **Trade-off** · A es limpio pero costoso · B es pragmático. Decisión depende de cuántos fondos prevé Jose hidratar con histórico mensual.
 
@@ -418,13 +418,13 @@ Preguntas que la auditoría NO ha podido cerrar leyendo el código · requieren 
 |---|---|---|---|
 | Q1 | ¿Cuántos fondos activos tiene Jose hoy? ¿Cuántos cerrados? ¿Cuántas gestoras distintas? | Dimensiona D5 (backfill) · si son 5 fondos · backfill manual · si son 50 · automático | Jose ejecuta script consola §6 y reporta |
 | Q2 | ¿Los fondos activos tienen ISIN bueno (UI manual) o son XML legacy con `isin=NIF gestora`? | Determina si el backfill puede agrupar automáticamente o necesita UI de revinculación | Jose revisa muestra |
-| Q3 | ¿Ha Jose hecho algún traspaso fondo → fondo en los últimos 5 años? ¿Cuántos? | Si 0 → T13-bis solo necesita modelar fondos · NO traspasos. Si N>0 → traspasos son requisito | Decisión funcional |
+| Q3 | ¿Jose ha hecho algún traspaso fondo → fondo en los últimos 5 años? ¿Cuántos? | Si 0 → T13-bis solo necesita modelar fondos · NO traspasos. Si N>0 → traspasos son requisito | Decisión funcional |
 | Q4 | ¿Quiere histórico mensual de valoración por fondo (sparkline gigante real · no estimada)? | Determina D4 y la necesidad de bump DB + escritores nuevos (importador valoraciones · scrape) | Decisión funcional · puede ser MVP sin (`FichaValoracionSimple` ya muestra sparkline estimada desde aportaciones) |
 | Q5 | ¿El régimen art. 94 LIRPF debe modelarse como "operación neutra" (no cierra posición · solo cambia gestora) o como "cierre + apertura" con flag de diferimiento? | Impacto en datos · impacto fiscal · impacto en UI (cómo se muestra en posiciones cerradas) | Recomendación CC · operación neutra · NO se cierra la posición · cambia `gestoraActual` y se registra entrada en store `traspasosFondos` |
 | Q6 | ¿Está el alta UI actual (`PosicionFormV5` para fondos) suficiente como input? | Captura mínima · no ISIN obligatorio · no fondo maestro · faltaría `politicaInversion`, `participeConDiscapacidad`, etc. (campos análogos a `PlanFormV5`) | Decisión depende de D1 |
 | Q7 | ¿`inversionesService.purgarPosicion` (hard delete) hay que cablearlo? Hoy 0 consumidores en producción. | Decidir si T13-bis aprovecha para limpiar posiciones cerradas duplicadas tras backfill (D5) | Decisión cosmética |
 | Q8 | ¿Borrar el zombie `modules/horizon/inversiones/InversionesPage` y submódulos? | Higiene · NO bloquea T13-bis | Recomendación CC · borrar al final · backlog |
-| Q9 | ¿Cómo se onboarding la posición histórica completa? ¿Se acepta que las posiciones cerradas vía XML (`activo:false`) tienen `aportaciones: []` y solo `total_aportado` + `valor_actual` sintetizados? | Limita la reconstrucción de FIFO histórica · pero la AEAT ya da ganancia/pérdida calculada | Probable aceptar · documentar en T13-bis |
+| Q9 | ¿Cómo se hace el onboarding de la posición histórica completa? ¿Se acepta que las posiciones cerradas vía XML (`activo:false`) tienen `aportaciones: []` y solo `total_aportado` + `valor_actual` sintetizados? | Limita la reconstrucción de FIFO histórica · pero la AEAT ya da ganancia/pérdida calculada | Probable aceptar · documentar en T13-bis |
 | Q10 | ¿La pérdida fiscal de un traspaso vacío (cuando hay minusvalía latente) debe materializarse o quedar diferida? | Cambia la interpretación legal del art. 94 · CC NO interpreta normativa | Pregunta a asesor fiscal o aceptar interpretación conservadora · diferimiento total |
 
 ---
