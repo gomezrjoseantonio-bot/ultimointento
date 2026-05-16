@@ -8,6 +8,21 @@
 import { initDB } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
 
+/**
+ * Normaliza una referencia catastral para matching property↔declaración.
+ *
+ * `[\s.-]` + `.toUpperCase()` + `.trim()` · igual de permisivo que la
+ * versión canónica de `declaracionDistributorService` que se usa al
+ * importar. Exportado para que cualquier servicio que matchee property
+ * con `coord.aeat.declaracionCompleta.inmuebles[].refCatastral` use
+ * exactamente la misma normalización y evite que un fix encuentre el
+ * inmueble mientras otro lo pierda (resultado: summary incoherente
+ * entre ramas xml_aeat/atlas).
+ */
+export function normalizeRefCatastral(ref: string | undefined | null): string {
+  return (ref ?? '').replace(/[\s.-]/g, '').trim().toUpperCase();
+}
+
 export interface RendimientoFiscal {
   // Ingresos
   rentasDeclaradas: number;
@@ -40,10 +55,6 @@ export interface RendimientoFiscal {
   fuente: 'xml_aeat' | 'atlas' | 'sin_datos';
 }
 
-function normalizeRef(ref: string): string {
-  return (ref ?? '').replace(/\s+/g, '').toUpperCase();
-}
-
 function emptyRendimiento(fuente: RendimientoFiscal['fuente'] = 'sin_datos'): RendimientoFiscal {
   return {
     rentasDeclaradas: 0, diasArrendado: 0, rentaImputada: 0, diasDisposicion: 0,
@@ -68,7 +79,7 @@ export async function getRendimientoFiscal(
     const ejercicio = await db.get('ejerciciosFiscalesCoord', año);
     const declInmuebles: any[] = ejercicio?.aeat?.declaracionCompleta?.inmuebles ?? [];
     const inmDecl = declInmuebles.find(
-      (i: any) => normalizeRef(i.refCatastral ?? '') === normalizeRef(referenciaCatastral),
+      (i: any) => normalizeRefCatastral(i.refCatastral ?? '') === normalizeRefCatastral(referenciaCatastral),
     );
 
     if (inmDecl) {

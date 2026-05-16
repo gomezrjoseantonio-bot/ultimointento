@@ -18,20 +18,18 @@ import {
   consumirArrastresAplicados,
 } from './carryForwardService';
 import { calcularImputacion } from './imputacionRentaService';
-import { getRendimientoFiscal } from './rendimientoActivoService';
+import { getRendimientoFiscal, normalizeRefCatastral } from './rendimientoActivoService';
 
 const isLeapYear = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 
-function normalizeRefCatastral(ref: string | undefined | null): string {
-  return (ref ?? '').replace(/[\s.-]/g, '').trim().toUpperCase();
-}
-
 /**
  * Extract a FiscalSummary for the property from `aeat.declaracionCompleta`
- * when the inmueble está identificado en la declaración (matching por
- * refCatastral), o del snapshot global como fallback. El snapshot global
- * AEAT solo trae 9 casillas G/H del bloque resumen — los gastos por
- * inmueble (0105, 0109, 0112…0117) viven en `decl.inmuebles[i].gastos`.
+ * cuando el inmueble está identificado en la declaración (matching por
+ * refCatastral · `normalizeRefCatastral` compartido con
+ * `rendimientoActivoService` para evitar drift), o del snapshot global como
+ * fallback. El snapshot global AEAT solo trae 9 casillas G/H del bloque
+ * resumen — los gastos por inmueble (0105, 0109, 0112…0117) viven en
+ * `decl.inmuebles[i].gastos`.
  */
 async function extraerSummaryDeAEAT(
   db: Awaited<ReturnType<typeof initDB>>,
