@@ -676,16 +676,18 @@ function extraerGananciasPerdidas(
 
 function extraerPlanPensiones(tda: Element | null): PlanPensionesDeclarado | undefined {
   const rg = tda?.querySelector('RedRegimenGeneral');
-  // RSUMAD = total titular + empresa. Existe en TODOS los años (2020–2024).
+  // RSUMAD = total titular + empresa (casilla 0467). Existe en TODOS los años (2020–2024).
   const total = num(rg, 'RSUMAD');
   if (total === 0) return undefined;
 
-  // IEIP = aportación del titular en RendimientoTrabajo. Más fiable que RGATEM (que puede ser 0 en años antiguos).
+  // IEIP en RendimientoTrabajo = contribución de la empresa al PP (casilla 0008 / 0427).
+  // Misma fuente que `extraerTrabajo` mapea a `contribucionesPPEmpresa`, y que
+  // `aeatParserService.ts` lee de la casilla 0008. RGATEM (RedRegimenGeneral)
+  // es el fallback equivalente para años antiguos.
+  // Aportación del titular (casilla 0426) = total − empresa.
   const rt = tda?.querySelector('RendimientoTrabajo');
-  const aportacionTitular = num(rt, 'IEIP') || num(rg, 'RGATEM');
-
-  // Empresa = total - titular. En 2020/2021 también existe V01PP2ORGEA y debe coincidir.
-  const contribucionEmpresa = Math.round((total - aportacionTitular) * 100) / 100;
+  const contribucionEmpresa = num(rt, 'IEIP') || num(rg, 'RGATEM');
+  const aportacionTitular = Math.round((total - contribucionEmpresa) * 100) / 100;
 
   const apcoppe = tda?.querySelector('DatosAPCOPPE');
   return {

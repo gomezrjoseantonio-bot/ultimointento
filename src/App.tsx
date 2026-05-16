@@ -22,6 +22,7 @@ import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacion
 import { runV68TipoFamiliaMigration } from './services/migrations/v68-tipoFamilia';
 import { runV70NominaHistorialMigration } from './services/migrations/v70-nomina-historial';
 import { cleanupCategoriasT34T35Fix2 } from './services/migrations/cleanupCategoriasT34T35fix2';
+import { fixAportacionesPlanCruceB6 } from './services/migrations/fixAportacionesPlanCruceB6';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -371,6 +372,18 @@ function App() {
         }
         if (t34Fix2Report.errors.length > 0) {
           console.warn('[ATLAS] Limpieza T34/T35-fix-2 · errores parciales:', t34Fix2Report.errors);
+        }
+      })
+      // FIX-B6 · one-shot · voltea importeTitular ↔ importeEmpresa en
+      // aportacionesPlan con origen='xml_aeat' escritas por el parser AEAT
+      // antes del fix de irpfXmlParserService.extraerPlanPensiones. Idempotente.
+      .then(() => fixAportacionesPlanCruceB6())
+      .then((b6Report) => {
+        if (!b6Report.skipped && b6Report.swapped > 0) {
+          console.log('[ATLAS] FIX-B6 aportacionesPlan · invertidos:', b6Report);
+        }
+        if (b6Report.errors.length > 0) {
+          console.warn('[ATLAS] FIX-B6 aportacionesPlan · errores parciales:', b6Report.errors);
         }
       })
       .catch((error) => {
