@@ -125,7 +125,15 @@ function hoyIso(): string {
 function anualizar(rPeriodo: number, años: number): number | null {
   if (años < 1) return null;
   if (años <= 0) return null;
-  return Math.pow(1 + rPeriodo, 1 / años) - 1;
+  // Pulido T13 v4 final · issue 3 · si `1 + rPeriodo <= 0`, anualizar implica
+  // `Math.pow(negativo, fracción)` que devuelve NaN. Esto pasa cuando hay
+  // aportaciones pero el plan no tiene valoraciones registradas (`valorFin=0`
+  // y `cashFlowNeto > valorInicio`) · el TWR no es calculable, devolvemos
+  // null para que el caller renderice '—' con tooltip explicativo en vez de
+  // "NaN%" o un -100 % engañoso.
+  const base = 1 + rPeriodo;
+  if (base <= 0) return null;
+  return Math.pow(base, 1 / años) - 1;
 }
 
 // ── TWR · Time-Weighted Return ───────────────────────────────────────────────

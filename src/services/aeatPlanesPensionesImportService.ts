@@ -152,7 +152,21 @@ async function asegurarPlanStub(
   nombreEmpleador?: string,
 ): Promise<{ plan: PlanPensiones; created: boolean }> {
   const existing = await buscarPlanTitular(personalDataId, titular, tipo, nifEmpleador);
-  if (existing) return { plan: existing, created: false };
+  if (existing) {
+    // Pulido T13 v4 final · issue 2 · `fechaContratacion` retroactiva.
+    // Si el plan se creó en una importación posterior (p.ej. 2024 primero) y
+    // ahora se importa un ejercicio anterior (p.ej. 2020), retrocedemos la
+    // fecha al 1-ene del ejercicio menor. Sin esto, la trayectoria muestra
+    // "Plan abierto 2024" pero aportaciones desde 2020 · incoherente.
+    const fechaEjercicio = `${ejercicio}-01-01`;
+    if (existing.fechaContratacion > fechaEjercicio) {
+      const actualizado = await planesPensionesService.updatePlan(existing.id, {
+        fechaContratacion: fechaEjercicio,
+      });
+      return { plan: actualizado, created: false };
+    }
+    return { plan: existing, created: false };
+  }
   const nombre = nombreEmpleador
     ? `Plan ${tipo} · ${nombreEmpleador}`
     : `Plan ${tipo} (importado AEAT ${ejercicio})`;
