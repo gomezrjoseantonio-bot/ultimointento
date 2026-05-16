@@ -39,8 +39,6 @@ export function buildInmuebleSecciones(
   ext: FiscalSummaryExtended,
   property: Property | null,
 ): InmuebleSeccionesData {
-  const aeat = property?.aeatAmortization;
-
   // ─── Ingresos del año (gold €) ──────────────────────────────────────────
   // La casilla 0102 representa SOLO los ingresos íntegros de arrendamiento.
   // Si el inmueble tuvo días a disposición del titular, la renta inmobiliaria
@@ -182,79 +180,12 @@ export function buildInmuebleSecciones(
   };
 
   // ─── Amortización del inmueble (navy A) ────────────────────────────────
-  const valorCatastral = getPositive(aeat?.cadastralValue) ?? getPositive(property?.fiscalData?.cadastralValue) ?? 0;
-  const valorCatastralConstruccion = getPositive(aeat?.constructionCadastralValue)
-    ?? getPositive(property?.fiscalData?.constructionCadastralValue) ?? 0;
-  const pctConstruccion = getPositive(aeat?.constructionPercentage)
-    ?? getPositive(property?.fiscalData?.constructionPercentage);
-  const importeAdq = getPositive(aeat?.onerosoAcquisition?.acquisitionAmount)
-    ?? getPositive(property?.acquisitionCosts?.price);
-  const gastosAdq = getPositive(aeat?.onerosoAcquisition?.acquisitionExpenses);
-  // `baseAmortizacion` vive en `Property.aeatAmortization` (no en
-  // `fiscalData` directamente · cast permite leer el campo opcional).
-  const fiscalData = property?.fiscalData as Record<string, unknown> | undefined;
-  const baseAmortizacion =
-    getPositive(aeat?.baseAmortizacion)
-    ?? (typeof fiscalData?.baseAmortizacion === 'number' ? getPositive(fiscalData.baseAmortizacion as number) : null);
-  // Amortización inmueble · valor en box0131 del summary base. El número
-  // de casilla que se muestra varía con el modo: en modo III por habitaciones
-  // (casos especiales) la AEAT lo coloca en 0132 · el resto en 0131.
-  const amortInmueble = ext.box0131 ?? 0;
-  const usaCasosEspeciales = ext.modoDeclaracion === 'III';
-
-  const amortRows: BoxRow[] = [];
-  if (valorCatastral > 0) amortRows.push({ num: '0123', concepto: 'Valor catastral total', importe: valorCatastral });
-  if (valorCatastralConstruccion > 0) amortRows.push({ num: '0124', concepto: 'Valor catastral construcción', importe: valorCatastralConstruccion });
-  if (pctConstruccion !== null) {
-    amortRows.push({
-      num: '0125',
-      concepto: '% construcción',
-      importe: round2(pctConstruccion),
-      unit: 'pct',
-      subtitulo: 'porcentaje sobre VC total',
-    });
-  }
-  if (importeAdq !== null) amortRows.push({ num: '0126', concepto: 'Importe adquisición', importe: importeAdq });
-  if (gastosAdq !== null) {
-    amortRows.push({
-      num: '0127',
-      concepto: 'Gastos inherentes adquisición · ITP · notaría · registro',
-      importe: gastosAdq,
-    });
-  }
-  if (baseAmortizacion !== null) {
-    amortRows.push({
-      num: '0130',
-      concepto: 'Base de amortización',
-      subtitulo: '(precio + gastos) × % construcción',
-      importe: baseAmortizacion,
-    });
-  }
-  if (amortInmueble > 0) {
-    amortRows.push({
-      num: usaCasosEspeciales ? '0132' : '0131',
-      concepto: usaCasosEspeciales
-        ? 'Amortización casos especiales'
-        : 'Amortización anual del inmueble',
-      subtitulo: usaCasosEspeciales
-        ? 'prorrateado por método aplicado'
-        : 'base × 3% · prorrateado a días',
-      importe: amortInmueble,
-      subtotal: true,
-      negativeSign: true,
-    });
-  }
-
-  const amortDisplayValue = amortInmueble;
-  const seccionAmort: BoxSection = {
-    letter: 'A',
-    letterVariant: 'navy',
-    title: 'Amortización del inmueble',
-    total: amortDisplayValue > 0 ? -round2(amortDisplayValue) : null,
-    rows: amortRows,
-    empty: amortRows.length === 0,
-    emptyText: 'Sin datos de amortización · falta valor catastral o adquisición',
-  };
+  // Para años declarados con el inmueble identificado en
+  // `coord.aeat.declaracionCompleta`, la fuente de verdad es
+  // `ext.declaracionInmueble`. Sólo se cae a `property.aeatAmortization` y
+  // `property.fiscalData` cuando NO hay snapshot declarado (año en curso,
+  // pendiente sin AEAT, o inmueble accesorio sin entrada en la declaración).
+  const seccionAmort = buildSeccionAmortizacion(ext, property);
 
   // ─── Rendimiento del inmueble (pos ∑) ───────────────────────────────────
   const seccionRendimiento: BoxSection = {
@@ -273,8 +204,14 @@ export function buildInmuebleSecciones(
         concepto: ext.porcentajeReduccion > 0
           ? `Reducción Ley Vivienda · ${ext.porcentajeReduccion}%`
           : 'Reducción Ley Vivienda',
+        // En modo III (mixto / habitaciones) la reducción se aplica SOLO al
+        // rendimiento neto de la parte de larga estancia; las habitaciones
+        // de temporada/turístico no entran. Aclararlo evita la impresión de
+        // que el 60 % se aplicó al total.
         subtitulo: ext.box0150 > 0
-          ? 'aplicada sobre la parte reducible'
+          ? (ext.modoDeclaracion === 'III'
+            ? 'aplicada sólo a la parte de larga estancia · habitaciones de temporada sin reducción'
+            : 'aplicada sobre la parte reducible')
           : 'no aplica · sin contrato larga estancia o vivienda no habitual',
         importe: ext.box0150,
         negativeSign: ext.box0150 > 0,
@@ -295,6 +232,119 @@ export function buildInmuebleSecciones(
     metodoProrrateo: ext.metodoProrrateo,
     diasArrendado: ext.diasArrendado,
     diasDisposicion: ext.diasDisposicion,
+  };
+}
+
+function buildSeccionAmortizacion(
+  ext: FiscalSummaryExtended,
+  property: Property | null,
+): BoxSection {
+  const inmDecl = ext.declaracionInmueble;
+  const amortRows: BoxRow[] = [];
+
+  // Modo III · casos especiales (alquiler de habitaciones, p. ej. FA32):
+  // la declaración trae amortización SIN bloque catastral (0123/0124/0125/
+  // 0126/0130). NO inventamos esas filas a partir de
+  // `property.aeatAmortization` (que sí las tiene como datos catastrales
+  // generales, pero no son lo declarado este año). Solo pintamos 0132.
+  if (inmDecl?.usaCasosEspeciales && (inmDecl.amortizacionAnualInmueble ?? 0) > 0) {
+    amortRows.push({
+      num: '0132',
+      concepto: 'Amortización en casos especiales',
+      subtitulo: 'prorrateado por método aplicado · sin base catastral declarada',
+      importe: inmDecl.amortizacionAnualInmueble ?? 0,
+      subtotal: true,
+      negativeSign: true,
+    });
+    const amortTotal = inmDecl.amortizacionAnualInmueble ?? 0;
+    return {
+      letter: 'A',
+      letterVariant: 'navy',
+      title: 'Amortización del inmueble',
+      total: amortTotal > 0 ? -round2(amortTotal) : null,
+      rows: amortRows,
+      empty: amortRows.length === 0,
+      emptyText: 'Sin datos de amortización · falta valor catastral o adquisición',
+    };
+  }
+
+  // Modo estándar. Cuando hay snapshot declarado (`inmDecl` presente y no
+  // es casos especiales), preferimos los valores de la declaración; si no,
+  // caemos a `property.aeatAmortization` / `fiscalData` (años no declarados,
+  // accesorios sin entrada en el XML).
+  const aeat = property?.aeatAmortization;
+  const fiscalData = property?.fiscalData as Record<string, unknown> | undefined;
+  const valorCatastral = inmDecl?.valorCatastralTotal
+    ?? getPositive(aeat?.cadastralValue)
+    ?? getPositive(property?.fiscalData?.cadastralValue)
+    ?? 0;
+  const valorCatastralConstruccion = inmDecl?.valorCatastralConstruccion
+    ?? getPositive(aeat?.constructionCadastralValue)
+    ?? getPositive(property?.fiscalData?.constructionCadastralValue)
+    ?? 0;
+  const pctConstruccion = inmDecl?.porcentajeConstruccion
+    ?? getPositive(aeat?.constructionPercentage)
+    ?? getPositive(property?.fiscalData?.constructionPercentage);
+  const importeAdq = inmDecl?.precioAdquisicion
+    ?? getPositive(aeat?.onerosoAcquisition?.acquisitionAmount)
+    ?? getPositive(property?.acquisitionCosts?.price);
+  const gastosAdq = inmDecl?.gastosAdquisicion
+    ?? getPositive(aeat?.onerosoAcquisition?.acquisitionExpenses);
+  const baseAmortizacion = inmDecl?.baseAmortizacion
+    ?? getPositive(aeat?.baseAmortizacion)
+    ?? (typeof fiscalData?.baseAmortizacion === 'number'
+      ? getPositive(fiscalData.baseAmortizacion as number)
+      : null);
+  const amortInmueble = inmDecl?.amortizacionAnualInmueble ?? ext.box0131 ?? 0;
+
+  if (valorCatastral > 0) amortRows.push({ num: '0123', concepto: 'Valor catastral total', importe: valorCatastral });
+  if (valorCatastralConstruccion > 0) amortRows.push({ num: '0124', concepto: 'Valor catastral construcción', importe: valorCatastralConstruccion });
+  if (pctConstruccion !== undefined && pctConstruccion !== null) {
+    amortRows.push({
+      num: '0125',
+      concepto: '% construcción',
+      importe: round2(pctConstruccion),
+      unit: 'pct',
+      subtitulo: 'porcentaje sobre VC total',
+    });
+  }
+  if (importeAdq !== undefined && importeAdq !== null) {
+    amortRows.push({ num: '0126', concepto: 'Importe adquisición', importe: importeAdq });
+  }
+  if (gastosAdq !== undefined && gastosAdq !== null) {
+    amortRows.push({
+      num: '0127',
+      concepto: 'Gastos inherentes adquisición · ITP · notaría · registro',
+      importe: gastosAdq,
+    });
+  }
+  if (baseAmortizacion !== undefined && baseAmortizacion !== null) {
+    amortRows.push({
+      num: '0130',
+      concepto: 'Base de amortización',
+      subtitulo: '(precio + gastos) × % construcción',
+      importe: baseAmortizacion,
+    });
+  }
+  if (amortInmueble > 0) {
+    amortRows.push({
+      num: '0131',
+      concepto: 'Amortización anual del inmueble',
+      subtitulo: 'base × 3% · prorrateado a días',
+      importe: amortInmueble,
+      subtotal: true,
+      negativeSign: true,
+    });
+  }
+
+  return {
+    letter: 'A',
+    letterVariant: 'navy',
+    title: 'Amortización del inmueble',
+    total: amortInmueble > 0 ? -round2(amortInmueble) : null,
+    rows: amortRows,
+    empty: amortRows.length === 0,
+    emptyText: 'Sin datos de amortización · falta valor catastral o adquisición',
   };
 }
 
