@@ -275,4 +275,17 @@ describe('rentabilidadPlanService · helpers internos', () => {
     expect(r).not.toBeNull();
     expect(r! * 100).toBeCloseTo(1.92, 1);
   });
+
+  // Pulido T13 v4 final · issue 3 · cuando `1 + rPeriodo <= 0` (valorFin=0 y
+  // cashFlow positivo), anualizar haría Math.pow(negativo, fracción)=NaN. El
+  // fix devuelve null para que el caller renderice '—' en lugar de "NaN%" o
+  // "-100,0%" engañoso.
+  it('anualizar · 1 + rPeriodo == 0 · null (sin valoración registrada)', async () => {
+    const { _internals } = await import('../rentabilidadPlanService');
+    expect(_internals.anualizar(-1, 5)).toBeNull();
+  });
+  it('anualizar · 1 + rPeriodo < 0 · null (no NaN)', async () => {
+    const { _internals } = await import('../rentabilidadPlanService');
+    expect(_internals.anualizar(-9.36, 5)).toBeNull();
+  });
 });

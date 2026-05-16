@@ -25,6 +25,8 @@ import { cleanupCategoriasT34T35Fix2 } from './services/migrations/cleanupCatego
 import { fixAportacionesPlanCruceB6 } from './services/migrations/fixAportacionesPlanCruceB6';
 import { fixDeclaracionCompletaCruceB6 } from './services/migrations/fixDeclaracionCompletaCruceB6';
 import { fixCasillaAEATOficial } from './services/migrations/fixCasillaAEATOficial';
+import { fixFechaContratacionRetroactiva } from './services/migrations/fixFechaContratacionRetroactiva';
+import { backfillAportacionesNotas } from './services/migrations/backfillAportacionesNotas';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -414,6 +416,30 @@ function App() {
         }
         if (casillaReport.errors.length > 0) {
           console.warn('[ATLAS] FIX-casillaAEAT oficial · errores parciales:', casillaReport.errors);
+        }
+      })
+      // Pulido T13 v4 final · issue 2 · retrocede `fechaContratacion` de planes
+      // XML AEAT a min(aportacionesPlan.fecha). Soluciona el caso de Jose
+      // (plan PPE Orange con fechaContratacion=2024 y aportaciones desde 2020).
+      .then(() => fixFechaContratacionRetroactiva())
+      .then((fechaReport) => {
+        if (!fechaReport.skipped && fechaReport.updated > 0) {
+          console.log('[ATLAS] FIX-fechaContratacion-retro · resultado:', fechaReport);
+        }
+        if (fechaReport.errors.length > 0) {
+          console.warn('[ATLAS] FIX-fechaContratacion-retro · errores parciales:', fechaReport.errors);
+        }
+      })
+      // Pulido T13 v4 final · issue 5 · genera `notas` descriptivas para
+      // aportaciones xml_aeat legacy donde quedaron en blanco tras la
+      // reescritura de `casillaAEAT`.
+      .then(() => backfillAportacionesNotas())
+      .then((notasReport) => {
+        if (!notasReport.skipped && notasReport.updated > 0) {
+          console.log('[ATLAS] BACKFILL-aportacionesPlan-notas · resultado:', notasReport);
+        }
+        if (notasReport.errors.length > 0) {
+          console.warn('[ATLAS] BACKFILL-aportacionesPlan-notas · errores parciales:', notasReport.errors);
         }
       })
       .catch((error) => {

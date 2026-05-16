@@ -584,16 +584,37 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
     });
 
     // 2. Primera aportación · solo si su fecha es distinta de contratación.
+    //    Pulido T13 v4 final · issue 6 · agregar TODAS las aportaciones del
+    //    primer ejercicio fiscal (no mostrar solo el primer registro). Si en
+    //    2020 hubo titular 1.203,36 + empresa 1.604,52, el detalle debe ser
+    //    el agregado (2.807,88) con desglose por rol.
     if (fechaPrimeraAportacion && fechaPrimeraAportacion !== plan.fechaContratacion) {
-      const primeraAp = [...aportaciones].sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
+      const ordenadas = [...aportaciones].sort((a, b) => a.fecha.localeCompare(b.fecha));
+      const primeraAp = ordenadas[0];
       if (primeraAp) {
-        const total = (primeraAp.importeTitular ?? 0) + (primeraAp.importeEmpresa ?? 0) + (primeraAp.importeConyuge ?? 0);
+        const ejercicioPrimero = primeraAp.ejercicioFiscal;
+        const apsPrimerEjercicio = ordenadas.filter((a) => a.ejercicioFiscal === ejercicioPrimero);
+        const sumTitular = apsPrimerEjercicio.reduce((s, a) => s + (a.importeTitular ?? 0), 0);
+        const sumEmpresa = apsPrimerEjercicio.reduce((s, a) => s + (a.importeEmpresa ?? 0), 0);
+        const sumConyuge = apsPrimerEjercicio.reduce((s, a) => s + (a.importeConyuge ?? 0), 0);
+        const total = sumTitular + sumEmpresa + sumConyuge;
+
+        const desglose: string[] = [];
+        if (sumTitular > 0) desglose.push(`${fmt(sumTitular)} titular`);
+        if (sumEmpresa > 0) desglose.push(`${fmt(sumEmpresa)} empresa`);
+        if (sumConyuge > 0) desglose.push(`${fmt(sumConyuge)} cónyuge`);
+        const detalle = total > 0
+          ? desglose.length > 1
+            ? `${fmt(total)} · ${desglose.join(' + ')}`
+            : fmt(total)
+          : undefined;
+
         eventos.push({
           fecha: primeraAp.fecha,
           año: Number(primeraAp.fecha.slice(0, 4)) || 0,
           tipo: 'primera_aportacion',
-          titulo: 'Primera aportación',
-          detalle: total > 0 ? fmt(total) : undefined,
+          titulo: `Primera aportación (${ejercicioPrimero})`,
+          detalle,
         });
       }
     }
@@ -698,35 +719,61 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
           },
           title: plan.nombre,
           meta: subtitle ? <>{subtitle}</> : null,
-          stats: [
-            {
-              lab: 'Valor actual',
-              val: fmtShort(valorActual),
-              valVariant: pgLatente > 0 ? 'pos' : pgLatente < 0 ? 'neg' : undefined,
-            },
-            {
-              lab: 'Aportado',
-              val: fmtShort(aportadoTotal),
-            },
-            {
-              lab: pgLatente >= 0 ? 'Ganancia' : 'Pérdida',
-              val: `${pgLatente >= 0 ? '+' : ''}${fmt(pgLatente)}`,
-              valVariant: pgLatente > 0 ? 'pos' : pgLatente < 0 ? 'neg' : undefined,
-            },
-            // TAREA 13 v4 · Commit 7 · sustituye CAGR por TWR/año (real,
-            // neutralizando el efecto de las aportaciones). Si no es
-            // calculable (plan reciente · <1 año · sin convergencia), cae
-            // a CAGR como fallback informativo.
-            {
-              lab: rentabilidadTotal?.TWR != null ? 'TWR/año' : 'CAGR',
-              val:
-                rentabilidadTotal?.TWR != null
+          stats: (() => {
+            // Pulido T13 v4 final · issue 4 · si el plan tiene aportaciones
+            // pero no tiene ninguna valoración registrada y `valorActual=0`,
+            // P/G latente y TWR/año son cálculos engañosos (interpretan que
+            // el plan vale 0 hoy, dando -100 % y latente negativo equivalente
+            // al aportado). En ese caso mostramos '—' como placeholder.
+            const sinValoracion =
+              valorActual === 0 && aportadoTotal > 0 && valoraciones.length === 0;
+            return [
+              {
+                lab: 'Valor actual',
+                val: sinValoracion ? '—' : fmtShort(valorActual),
+                valVariant: !sinValoracion && pgLatente > 0
+                  ? 'pos'
+                  : !sinValoracion && pgLatente < 0
+                  ? 'neg'
+                  : undefined,
+              },
+              {
+                lab: 'Aportado',
+                val: fmtShort(aportadoTotal),
+              },
+              {
+                lab: sinValoracion
+                  ? 'Latente'
+                  : pgLatente >= 0
+                  ? 'Ganancia'
+                  : 'Pérdida',
+                val: sinValoracion
+                  ? '—'
+                  : `${pgLatente >= 0 ? '+' : ''}${fmt(pgLatente)}`,
+                valVariant: sinValoracion
+                  ? undefined
+                  : pgLatente > 0
+                  ? 'pos'
+                  : pgLatente < 0
+                  ? 'neg'
+                  : undefined,
+              },
+              // TAREA 13 v4 · Commit 7 · sustituye CAGR por TWR/año (real,
+              // neutralizando el efecto de las aportaciones). Si no es
+              // calculable (plan reciente · <1 año · sin convergencia), cae
+              // a CAGR como fallback informativo.
+              {
+                lab: rentabilidadTotal?.TWR != null ? 'TWR/año' : 'CAGR',
+                val: sinValoracion
+                  ? '—'
+                  : rentabilidadTotal?.TWR != null
                   ? fmtPct(rentabilidadTotal.TWR)
                   : cagr != null
                   ? fmtPct(cagr)
                   : '—',
-              valVariant:
-                rentabilidadTotal?.TWR != null
+                valVariant: sinValoracion
+                  ? undefined
+                  : rentabilidadTotal?.TWR != null
                   ? rentabilidadTotal.TWR >= 0
                     ? 'pos'
                     : 'neg'
@@ -735,8 +782,9 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                     ? 'pos'
                     : 'neg'
                   : undefined,
-            },
-          ],
+              },
+            ];
+          })(),
         }}
         onBack={onBack}
         actions={[

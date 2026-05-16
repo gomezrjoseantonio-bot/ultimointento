@@ -71,6 +71,35 @@ const POLITICAS: { value: PoliticaInversion; label: string }[] = [
 // Formato laxo para no bloquear · solo bloquea entradas claramente inválidas.
 const CIF_REGEX = /^[ABCDEFGHJKLMNPQRSUVW][0-9]{7}[0-9A-J]$/i;
 
+// Pulido T13 v4 final · issue 1 · copy del límite fiscal dinámico.
+// El copy debe reflejar el régimen real del plan según tipo + discapacidad,
+// no el texto estático "hasta 24.250 €" que solo aplica con discapacidad.
+//
+// Caso discapacidad gana siempre (art. 52.1.c LIRPF). En el resto, el límite
+// depende del tipo administrativo y, para PPES, del subtipo (autónomos tienen
+// adicional de 4.250 €).
+export function getCopyLimiteFiscal(
+  tipo: TipoAdministrativo,
+  subtipoPPES: SubtipoPPES | undefined,
+  participeConDiscapacidad: boolean,
+): string {
+  if (participeConDiscapacidad) {
+    return 'Límite especial discapacidad · hasta 24.250 € (art. 52.1.c LIRPF).';
+  }
+  switch (tipo) {
+    case 'PPI':
+    case 'PPA':
+      return 'Límite anual deducible · 1.500 € (art. 51.6 LIRPF).';
+    case 'PPE':
+      return 'Límite conjunto · 1.500 € titular + 8.500 € empresa = 10.000 € (art. 51.7 LIRPF).';
+    case 'PPES':
+      if (subtipoPPES === 'autonomos') {
+        return 'Límite anual deducible · hasta 5.750 € · 1.500 € + 4.250 € adicionales (art. 51.8 · Ley 12/2022).';
+      }
+      return 'Límite anual deducible · 1.500 € (art. 51.6 LIRPF).';
+  }
+}
+
 interface EmpresaUnica {
   cif: string;
   nombre: string;
@@ -518,7 +547,11 @@ const PlanFormV5: React.FC<Props> = ({
                   <span>Partícipe con discapacidad ≥ 33 %</span>
                 </label>
                 <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginTop: 4 }}>
-                  Límite fiscal especial · hasta 24.250 € (art. 52.1.c LIRPF).
+                  {getCopyLimiteFiscal(
+                    formData.tipoAdministrativo,
+                    formData.subtipoPPES,
+                    formData.participeConDiscapacidad,
+                  )}
                 </div>
               </div>
             </div>
