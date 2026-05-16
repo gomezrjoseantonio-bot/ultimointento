@@ -12,7 +12,7 @@
 // Submit sigue escribiendo en `planesPensionesService`. NUNCA inversionesService.
 // Cero hex hardcoded · todo vía tokens v5.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { showToastV5 } from '../../../../design-system/v5';
 import { Icons } from '../../../../design-system/v5';
 import { planesPensionesService } from '../../../../services/planesPensionesService';
@@ -105,6 +105,12 @@ const PlanFormV5: React.FC<Props> = ({
   const [empresasNomina, setEmpresasNomina] = useState<EmpresaUnica[]>([]);
   const [formData, setFormData] = useState(emptyForm(tipoAdministrativoInicial));
 
+  // useId garantiza IDs únicos cuando el componente se monta varias veces
+  // (modales apilados, dev hot reload) · evita colisiones de DOM.
+  const baseId = useId();
+  const empresasCifDatalistId = `${baseId}-empresas-cif`;
+  const empresasNombreDatalistId = `${baseId}-empresas-nombre`;
+
   const esPPE = formData.tipoAdministrativo === 'PPE';
   const esPPES = formData.tipoAdministrativo === 'PPES';
   const esPPEoPPES = esPPE || esPPES;
@@ -120,9 +126,12 @@ const PlanFormV5: React.FC<Props> = ({
         // del titular para pre-rellenar el campo empresaPagadora cuando proceda.
         try {
           const nominas = await nominaService.getNominas(ctx.personalDataId);
+          // Normalizar CIFs a uppercase para que la comparación posterior con
+          // `cifUpper` en handleEmpresaCifChange matchee siempre, incluso si
+          // la nómina guardó el CIF en minúsculas.
           const map = new Map<string, EmpresaUnica>();
           for (const n of nominas) {
-            const cif = n.empresa?.cif?.trim();
+            const cif = n.empresa?.cif?.trim().toUpperCase();
             const nombre = n.empresa?.nombre?.trim();
             if (cif && nombre && !map.has(cif)) {
               map.set(cif, { cif, nombre });
@@ -172,23 +181,43 @@ const PlanFormV5: React.FC<Props> = ({
 
   // Cuando el usuario teclea/elige un nombre que coincide con una empresa
   // conocida, autocompletar el CIF (y viceversa). Pattern datalist HTML5.
+  //
+  // Coherencia · si la edición rompe un match previamente auto-rellenado
+  // (el OTRO campo apunta a una empresa conocida), limpiamos ese OTRO campo
+  // para evitar pares CIF/nombre desincronizados que validarían el form.
+  // Si el OTRO campo era texto manual (no estaba en empresasNomina), lo
+  // dejamos intacto · el usuario lo está rellenando explícitamente.
   const handleEmpresaNombreChange = (nombre: string) => {
     const match = empresasNomina.find((e) => e.nombre === nombre);
-    setFormData((prev) => ({
-      ...prev,
-      empresaNombre: nombre,
-      empresaCif: match ? match.cif : prev.empresaCif,
-    }));
+    setFormData((prev) => {
+      const cifPrevEraConocido = empresasNomina.some((e) => e.cif === prev.empresaCif);
+      return {
+        ...prev,
+        empresaNombre: nombre,
+        empresaCif: match
+          ? match.cif
+          : cifPrevEraConocido
+            ? ''
+            : prev.empresaCif,
+      };
+    });
   };
 
   const handleEmpresaCifChange = (cif: string) => {
     const cifUpper = cif.toUpperCase();
     const match = empresasNomina.find((e) => e.cif === cifUpper);
-    setFormData((prev) => ({
-      ...prev,
-      empresaCif: cifUpper,
-      empresaNombre: match ? match.nombre : prev.empresaNombre,
-    }));
+    setFormData((prev) => {
+      const nombrePrevEraConocido = empresasNomina.some((e) => e.nombre === prev.empresaNombre);
+      return {
+        ...prev,
+        empresaCif: cifUpper,
+        empresaNombre: match
+          ? match.nombre
+          : nombrePrevEraConocido
+            ? ''
+            : prev.empresaNombre,
+      };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -255,8 +284,6 @@ const PlanFormV5: React.FC<Props> = ({
       setLoading(false);
     }
   };
-
-  const empresasDatalistId = 'pf-empresas-datalist';
 
   return (
     <div
@@ -337,7 +364,12 @@ const PlanFormV5: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Empresa pagadora · CIF + nombre · solo PPE/PPES */}
+            {/* Empresa pagadora · CIF + nombre · solo PPE/PPES.
+                Dos datalists separados · el input de CIF sugiere CIFs
+                (option.value=cif) y el de nombre sugiere nombres
+                (option.value=nombre). Si fuesen compartidos, al elegir una
+                opción el navegador insertaría el `value` literal en el input,
+                rompiendo el flujo cruzado. */}
             {esPPEoPPES && (
               <>
                 <div className={dialog.row2}>
@@ -350,7 +382,7 @@ const PlanFormV5: React.FC<Props> = ({
                       onChange={(e) => handleEmpresaCifChange(e.target.value)}
                       placeholder="Ej: A82009812"
                       maxLength={9}
-                      list={empresasNomina.length > 0 ? empresasDatalistId : undefined}
+                      list={empresasNomina.length > 0 ? empresasCifDatalistId : undefined}
                     />
                   </div>
                   <div className={dialog.field}>
@@ -361,16 +393,23 @@ const PlanFormV5: React.FC<Props> = ({
                       value={formData.empresaNombre}
                       onChange={(e) => handleEmpresaNombreChange(e.target.value)}
                       placeholder="Ej: Orange España S.A.U."
-                      list={empresasNomina.length > 0 ? empresasDatalistId : undefined}
+                      list={empresasNomina.length > 0 ? empresasNombreDatalistId : undefined}
                     />
                   </div>
                 </div>
                 {empresasNomina.length > 0 && (
-                  <datalist id={empresasDatalistId}>
-                    {empresasNomina.map((e) => (
-                      <option key={e.cif} value={e.nombre}>{e.cif}</option>
-                    ))}
-                  </datalist>
+                  <>
+                    <datalist id={empresasCifDatalistId}>
+                      {empresasNomina.map((e) => (
+                        <option key={e.cif} value={e.cif}>{e.nombre}</option>
+                      ))}
+                    </datalist>
+                    <datalist id={empresasNombreDatalistId}>
+                      {empresasNomina.map((e) => (
+                        <option key={e.cif} value={e.nombre}>{e.cif}</option>
+                      ))}
+                    </datalist>
+                  </>
                 )}
               </>
             )}
