@@ -402,13 +402,16 @@ function App() {
         }
       })
       // TAREA 13 v4 · Acción 1 (D6) · one-shot · reescribe
-      // casillaAEAT='RSUMAD' → '0426'/'0427'/'0426/0427' en aportacionesPlan
-      // con origen='xml_aeat' escritas por el bloque viejo de
-      // declaracionDistributorService.persistirPlanPensiones. Idempotente.
+      // casillaAEAT='RSUMAD' → '0426'/'0427' en aportacionesPlan con
+      // origen='xml_aeat' escritas por el bloque viejo de
+      // declaracionDistributorService.persistirPlanPensiones. Para registros
+      // combinados (titular>0 && empresa>0) divide en 2 rows (uno por casilla)
+      // dejando el shape canónico que aeatPlanesPensionesImportService espera.
+      // Idempotente.
       .then(() => fixCasillaAEATOficial())
       .then((casillaReport) => {
-        if (!casillaReport.skipped && casillaReport.updated > 0) {
-          console.log('[ATLAS] FIX-casillaAEAT oficial · actualizados:', casillaReport);
+        if (!casillaReport.skipped && (casillaReport.updated > 0 || casillaReport.split > 0)) {
+          console.log('[ATLAS] FIX-casillaAEAT oficial · resultado:', casillaReport);
         }
         if (casillaReport.errors.length > 0) {
           console.warn('[ATLAS] FIX-casillaAEAT oficial · errores parciales:', casillaReport.errors);
