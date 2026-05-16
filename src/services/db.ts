@@ -2281,6 +2281,15 @@ interface AtlasHorizonDB {
    *       seguros_cuotas.seguro_otros).
    *     → Dueño: `services/migrations/cleanupCategoriasT34T35fix2.ts`
    *
+   *   `'migration_b6_aportacionesPlan_v1'` (D1 · KEEP)
+   *     → Flag idempotencia del fix FIX-B6 · voltea importeTitular ↔
+   *       importeEmpresa en aportacionesPlan con origen='xml_aeat' escritas
+   *       antes del fix de irpfXmlParserService.extraerPlanPensiones. Se
+   *       escribe en la misma transacción readwrite que los swaps · solo
+   *       si todos los put por registro tienen éxito.
+   *     → Dueño: `services/migrations/fixAportacionesPlanCruceB6.ts`
+   *     → Formato: string literal `'completed'`
+   *
    * ── Claves PROHIBIDAS (NO añadir bajo ningún concepto) ──────────────────
    *
    *   `'planpagos_${prestamoId}'` · datos del usuario · vive en
