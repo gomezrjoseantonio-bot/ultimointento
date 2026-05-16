@@ -1,5 +1,14 @@
 // src/services/planesInversionService.ts
 // Compatibility wrapper: delegates to the new planesPensionesService (TAREA 13 V65)
+//
+// TODO · backlog post-Acción 2 (D4) · consolidar wrapper · migrar los 3
+// consumidores productivos restantes a `planesPensionesService` directo y
+// eliminar este shim. Calibre 2-3 h:
+//   - `modules/horizon/inversiones/InversionesPage.tsx` (página horizon legacy)
+//   - `services/inversionesAportacionesImportService.ts` (importador aportaciones)
+//   - `services/indexaCapitalImportService.ts` (importador Indexa Capital)
+// Candidata a agrupar con T13-bis fondos cuando se consolide el módulo de
+// inversiones genérico.
 import { planesPensionesService } from './planesPensionesService';
 import type { PlanPensiones } from '../types/planesPensiones';
 import type { AportacionPeriodica } from '../types/personal';

@@ -1,7 +1,6 @@
 // src/services/__tests__/traspasosPlanPensionesService.personaldata.test.ts
-// TAREA 13 v4 · Commit 1 (C9) · tests del nuevo método
-// `getTraspasosPorPersonalData` y `eliminarTraspaso` que sustentan el
-// historial unificado en PlanesManager / GestionInversionesPage.
+// TAREA 13 v4 · Commit 1 (C9) · tests de `getTraspasosPorPersonalData` y
+// `eliminarTraspaso` (historial agregado a nivel hogar).
 
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';

@@ -139,8 +139,7 @@ export const traspasosPlanPensionesService = {
 
   /**
    * Devuelve todos los traspasos que afectan a algún plan del personalData
-   * indicado. Útil para el historial agregado de PlanesManager (TAREA 13 v4
-   * · Commit 1 (C9)).
+   * indicado. Útil para historiales agregados a nivel hogar.
    */
   async getTraspasosPorPersonalData(
     personalDataId: number,

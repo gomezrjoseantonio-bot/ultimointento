@@ -4,15 +4,28 @@
 // NO redibujar · solo migrar de AtlasModal a layout v5 (dialog.module.css)
 // y añadir prop `tipoAdministrativoInicial` para pre-selección desde el wizard.
 //
+// TAREA 13 v4 · Acción 2 (D4) · ampliado para capturar los 5 campos formales
+// que faltaban (subtipoPPE/PPES condicional, empresaPagadora cuando aplica,
+// politicaInversion siempre, participeConDiscapacidad siempre). Schema canon
+// como source-of-truth · spec v2 §1.B alineada a `types/planesPensiones.ts`.
+//
 // Submit sigue escribiendo en `planesPensionesService`. NUNCA inversionesService.
 // Cero hex hardcoded · todo vía tokens v5.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { showToastV5 } from '../../../../design-system/v5';
 import { Icons } from '../../../../design-system/v5';
 import { planesPensionesService } from '../../../../services/planesPensionesService';
 import { getFiscalContextSafe } from '../../../../services/fiscalContextService';
-import type { PlanPensiones, TipoAdministrativo, EstadoPlan } from '../../../../types/planesPensiones';
+import { nominaService } from '../../../../services/nominaService';
+import type {
+  PlanPensiones,
+  TipoAdministrativo,
+  EstadoPlan,
+  SubtipoPPE,
+  SubtipoPPES,
+  PoliticaInversion,
+} from '../../../../types/planesPensiones';
 import dialog from '../Dialog.module.css';
 import styles from './PlanFormV5.module.css';
 
@@ -31,9 +44,47 @@ const TIPOS_ADMIN: { value: TipoAdministrativo; label: string; desc: string }[] 
   { value: 'PPA', label: 'PPA — Asegurado', desc: 'Garantizado por aseguradora' },
 ];
 
+// Etiquetas UI · schema canon como value, copy amigable como label.
+const SUBTIPOS_PPE: { value: SubtipoPPE; label: string }[] = [
+  { value: 'empleador_unico', label: 'Empleador único' },
+  { value: 'promocion_conjunta', label: 'Promoción conjunta (PPEPC)' },
+];
+
+const SUBTIPOS_PPES: { value: SubtipoPPES; label: string }[] = [
+  { value: 'sectorial', label: 'Sectorial' },
+  { value: 'sector_publico', label: 'Sector público' },
+  { value: 'cooperativas', label: 'Cooperativas' },
+  { value: 'autonomos', label: 'Autónomos' },
+];
+
+const POLITICAS: { value: PoliticaInversion; label: string }[] = [
+  { value: 'desconocido', label: 'No especificada' },
+  { value: 'renta_fija_corto', label: 'Renta fija · corto plazo' },
+  { value: 'renta_fija_largo', label: 'Renta fija · largo plazo' },
+  { value: 'renta_variable', label: 'Renta variable' },
+  { value: 'renta_mixta', label: 'Mixta' },
+  { value: 'garantizado', label: 'Garantizado' },
+  { value: 'ciclo_vida', label: 'Ciclo de vida' },
+];
+
+// CIF español · letra + 7 dígitos + dígito control (letra o número).
+// Formato laxo para no bloquear · solo bloquea entradas claramente inválidas.
+const CIF_REGEX = /^[ABCDEFGHJKLMNPQRSUVW][0-9]{7}[0-9A-J]$/i;
+
+interface EmpresaUnica {
+  cif: string;
+  nombre: string;
+}
+
 const emptyForm = (tipoInicial: TipoAdministrativo = 'PPI') => ({
   nombre: '',
   tipoAdministrativo: tipoInicial,
+  subtipoPPE: 'empleador_unico' as SubtipoPPE,
+  subtipoPPES: 'sectorial' as SubtipoPPES,
+  politicaInversion: 'desconocido' as PoliticaInversion,
+  participeConDiscapacidad: false,
+  empresaCif: '',
+  empresaNombre: '',
   gestoraActual: '',
   isinActual: '',
   fechaContratacion: new Date().toISOString().split('T')[0],
@@ -51,13 +102,43 @@ const PlanFormV5: React.FC<Props> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
+  const [empresasNomina, setEmpresasNomina] = useState<EmpresaUnica[]>([]);
   const [formData, setFormData] = useState(emptyForm(tipoAdministrativoInicial));
+
+  // useId garantiza IDs únicos cuando el componente se monta varias veces
+  // (modales apilados, dev hot reload) · evita colisiones de DOM.
+  const baseId = useId();
+  const empresasCifDatalistId = `${baseId}-empresas-cif`;
+  const empresasNombreDatalistId = `${baseId}-empresas-nombre`;
+
+  const esPPE = formData.tipoAdministrativo === 'PPE';
+  const esPPES = formData.tipoAdministrativo === 'PPES';
+  const esPPEoPPES = esPPE || esPPES;
 
   useEffect(() => {
     (async () => {
       try {
         const ctx = await getFiscalContextSafe();
-        if (ctx) setPersonalDataId(ctx.personalDataId);
+        if (!ctx) return;
+        setPersonalDataId(ctx.personalDataId);
+
+        // PF-4 · cargar empresas únicas (CIF + nombre) desde nóminas previas
+        // del titular para pre-rellenar el campo empresaPagadora cuando proceda.
+        try {
+          const nominas = await nominaService.getNominas(ctx.personalDataId);
+          // Normalizar CIFs a uppercase para que la comparación posterior con
+          // `cifUpper` en handleEmpresaCifChange matchee siempre, incluso si
+          // la nómina guardó el CIF en minúsculas.
+          const map = new Map<string, EmpresaUnica>();
+          for (const n of nominas) {
+            const cif = n.empresa?.cif?.trim().toUpperCase();
+            const nombre = n.empresa?.nombre?.trim();
+            if (cif && nombre && !map.has(cif)) {
+              map.set(cif, { cif, nombre });
+            }
+          }
+          setEmpresasNomina(Array.from(map.values()));
+        } catch {/* sin nóminas · datalist vacío · usuario teclea manualmente */}
       } catch {/* ignore */}
     })();
   }, []);
@@ -67,6 +148,12 @@ const PlanFormV5: React.FC<Props> = ({
       setFormData({
         nombre: plan.nombre,
         tipoAdministrativo: plan.tipoAdministrativo,
+        subtipoPPE: plan.subtipoPPE ?? 'empleador_unico',
+        subtipoPPES: plan.subtipoPPES ?? 'sectorial',
+        politicaInversion: plan.politicaInversion ?? 'desconocido',
+        participeConDiscapacidad: plan.participeConDiscapacidad ?? false,
+        empresaCif: plan.empresaPagadora?.cif ?? '',
+        empresaNombre: plan.empresaPagadora?.nombre ?? '',
         gestoraActual: plan.gestoraActual,
         isinActual: plan.isinActual ?? '',
         fechaContratacion: plan.fechaContratacion,
@@ -92,6 +179,47 @@ const PlanFormV5: React.FC<Props> = ({
     return () => { document.body.style.overflow = ''; };
   }, []);
 
+  // Cuando el usuario teclea/elige un nombre que coincide con una empresa
+  // conocida, autocompletar el CIF (y viceversa). Pattern datalist HTML5.
+  //
+  // Coherencia · si la edición rompe un match previamente auto-rellenado
+  // (el OTRO campo apunta a una empresa conocida), limpiamos ese OTRO campo
+  // para evitar pares CIF/nombre desincronizados que validarían el form.
+  // Si el OTRO campo era texto manual (no estaba en empresasNomina), lo
+  // dejamos intacto · el usuario lo está rellenando explícitamente.
+  const handleEmpresaNombreChange = (nombre: string) => {
+    const match = empresasNomina.find((e) => e.nombre === nombre);
+    setFormData((prev) => {
+      const cifPrevEraConocido = empresasNomina.some((e) => e.cif === prev.empresaCif);
+      return {
+        ...prev,
+        empresaNombre: nombre,
+        empresaCif: match
+          ? match.cif
+          : cifPrevEraConocido
+            ? ''
+            : prev.empresaCif,
+      };
+    });
+  };
+
+  const handleEmpresaCifChange = (cif: string) => {
+    const cifUpper = cif.toUpperCase();
+    const match = empresasNomina.find((e) => e.cif === cifUpper);
+    setFormData((prev) => {
+      const nombrePrevEraConocido = empresasNomina.some((e) => e.nombre === prev.empresaNombre);
+      return {
+        ...prev,
+        empresaCif: cifUpper,
+        empresaNombre: match
+          ? match.nombre
+          : nombrePrevEraConocido
+            ? ''
+            : prev.empresaNombre,
+      };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!personalDataId) {
@@ -102,13 +230,35 @@ const PlanFormV5: React.FC<Props> = ({
       showToastV5('Completa todos los campos obligatorios');
       return;
     }
+    // Validación CIF cuando el usuario llena empresaPagadora · vacío es OK.
+    if (esPPEoPPES && formData.empresaCif.trim() && !CIF_REGEX.test(formData.empresaCif.trim())) {
+      showToastV5('El CIF de la empresa no tiene un formato válido (ej. A12345678)');
+      return;
+    }
+    // Coherencia · si llega CIF debe llegar también nombre, y al revés.
+    const cifLleno = formData.empresaCif.trim().length > 0;
+    const nombreLleno = formData.empresaNombre.trim().length > 0;
+    if (esPPEoPPES && cifLleno !== nombreLleno) {
+      showToastV5('Empresa pagadora · introduce CIF y nombre, o deja ambos vacíos');
+      return;
+    }
 
     setLoading(true);
     try {
+      const empresaPagadora =
+        esPPEoPPES && cifLleno && nombreLleno
+          ? { cif: formData.empresaCif.trim().toUpperCase(), nombre: formData.empresaNombre.trim() }
+          : undefined;
+
       const planData: Omit<PlanPensiones, 'id' | 'fechaCreacion' | 'fechaActualizacion'> = {
         personalDataId,
         nombre: formData.nombre.trim(),
         tipoAdministrativo: formData.tipoAdministrativo,
+        subtipoPPE: esPPE ? formData.subtipoPPE : undefined,
+        subtipoPPES: esPPES ? formData.subtipoPPES : undefined,
+        politicaInversion: formData.politicaInversion,
+        participeConDiscapacidad: formData.participeConDiscapacidad || undefined,
+        empresaPagadora,
         gestoraActual: formData.gestoraActual.trim(),
         isinActual: formData.isinActual.trim() || undefined,
         fechaContratacion: formData.fechaContratacion,
@@ -175,6 +325,94 @@ const PlanFormV5: React.FC<Props> = ({
                 </button>
               ))}
             </div>
+
+            {/* Subtipo PPE · solo cuando tipo=PPE */}
+            {esPPE && (
+              <div className={dialog.row2}>
+                <div className={dialog.field}>
+                  <label htmlFor="pf-subtipo-ppe">Subtipo PPE *</label>
+                  <select
+                    id="pf-subtipo-ppe"
+                    value={formData.subtipoPPE}
+                    onChange={(e) => setFormData(prev => ({ ...prev, subtipoPPE: e.target.value as SubtipoPPE }))}
+                  >
+                    {SUBTIPOS_PPE.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div />
+              </div>
+            )}
+
+            {/* Subtipo PPES · solo cuando tipo=PPES */}
+            {esPPES && (
+              <div className={dialog.row2}>
+                <div className={dialog.field}>
+                  <label htmlFor="pf-subtipo-ppes">Subtipo PPES *</label>
+                  <select
+                    id="pf-subtipo-ppes"
+                    value={formData.subtipoPPES}
+                    onChange={(e) => setFormData(prev => ({ ...prev, subtipoPPES: e.target.value as SubtipoPPES }))}
+                  >
+                    {SUBTIPOS_PPES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div />
+              </div>
+            )}
+
+            {/* Empresa pagadora · CIF + nombre · solo PPE/PPES.
+                Dos datalists separados · el input de CIF sugiere CIFs
+                (option.value=cif) y el de nombre sugiere nombres
+                (option.value=nombre). Si fuesen compartidos, al elegir una
+                opción el navegador insertaría el `value` literal en el input,
+                rompiendo el flujo cruzado. */}
+            {esPPEoPPES && (
+              <>
+                <div className={dialog.row2}>
+                  <div className={dialog.field}>
+                    <label htmlFor="pf-empresa-cif">CIF empresa pagadora</label>
+                    <input
+                      id="pf-empresa-cif"
+                      type="text"
+                      value={formData.empresaCif}
+                      onChange={(e) => handleEmpresaCifChange(e.target.value)}
+                      placeholder="Ej: A82009812"
+                      maxLength={9}
+                      list={empresasNomina.length > 0 ? empresasCifDatalistId : undefined}
+                    />
+                  </div>
+                  <div className={dialog.field}>
+                    <label htmlFor="pf-empresa-nombre">Nombre empresa pagadora</label>
+                    <input
+                      id="pf-empresa-nombre"
+                      type="text"
+                      value={formData.empresaNombre}
+                      onChange={(e) => handleEmpresaNombreChange(e.target.value)}
+                      placeholder="Ej: Orange España S.A.U."
+                      list={empresasNomina.length > 0 ? empresasNombreDatalistId : undefined}
+                    />
+                  </div>
+                </div>
+                {empresasNomina.length > 0 && (
+                  <>
+                    <datalist id={empresasCifDatalistId}>
+                      {empresasNomina.map((e) => (
+                        <option key={e.cif} value={e.cif}>{e.nombre}</option>
+                      ))}
+                    </datalist>
+                    <datalist id={empresasNombreDatalistId}>
+                      {empresasNomina.map((e) => (
+                        <option key={e.cif} value={e.nombre}>{e.cif}</option>
+                      ))}
+                    </datalist>
+                  </>
+                )}
+              </>
+            )}
 
             {/* Nombre y gestora */}
             <div className={dialog.row2}>
@@ -252,6 +490,36 @@ const PlanFormV5: React.FC<Props> = ({
                   onChange={(e) => setFormData(prev => ({ ...prev, valorActual: e.target.value }))}
                   placeholder="0.00"
                 />
+              </div>
+            </div>
+
+            {/* Política de inversión */}
+            <div className={dialog.row2}>
+              <div className={dialog.field}>
+                <label htmlFor="pf-politica">Política de inversión</label>
+                <select
+                  id="pf-politica"
+                  value={formData.politicaInversion}
+                  onChange={(e) => setFormData(prev => ({ ...prev, politicaInversion: e.target.value as PoliticaInversion }))}
+                >
+                  {POLITICAS.map((p) => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={dialog.field}>
+                <label htmlFor="pf-discap" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 24 }}>
+                  <input
+                    id="pf-discap"
+                    type="checkbox"
+                    checked={formData.participeConDiscapacidad}
+                    onChange={(e) => setFormData(prev => ({ ...prev, participeConDiscapacidad: e.target.checked }))}
+                  />
+                  <span>Partícipe con discapacidad ≥ 33 %</span>
+                </label>
+                <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginTop: 4 }}>
+                  Límite fiscal especial · hasta 24.250 € (art. 52.1.c LIRPF).
+                </div>
               </div>
             </div>
 
