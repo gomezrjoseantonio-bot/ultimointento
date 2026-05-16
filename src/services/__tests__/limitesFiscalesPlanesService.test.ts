@@ -275,31 +275,35 @@ describe('limitesFiscalesPlanesService', () => {
       // 30 % de 50.000 = 15.000 € · holgura amplia · sin alerta de tope 30 %.
       expect(r.alertas.some((a) => a.includes('30 %'))).toBe(false);
 
-      // 2. Validación individual titular · 1.396,68 dentro de 10.000 €
-      //    conjunto · esDeducible=true · sin exceso · tope económico es el
-      //    restrictivo, NO el 30 %.
+      // 2. Validación individual titular · simulamos añadir 100 € sobre los
+      //    1.396,68 ya aportados · total 1.496,68 sigue dentro del conjunto
+      //    10.000 € · esDeducible=true (importe > 0 + sin exceso) · tope
+      //    económico es el restrictivo, NO el 30 %.
       const vT = await limitesFiscalesPlanesService.validarAportacionDeducible(
         planId,
-        0, // validamos lo ya aportado, sin añadir.
+        100,
         2024,
         'titular',
       );
-      expect(vT.esDeducible).toBe(false); // no esDeducible porque importe=0; pero sí dentro de tope
-      expect(vT.totalAportadoEjercicio).toBeCloseTo(1396.68, 2);
+      expect(vT.esDeducible).toBe(true);
+      expect(vT.totalAportadoEjercicio).toBeCloseTo(1496.68, 2);
       expect(vT.excesoNoDeducible).toBe(0);
       expect(vT.topeEconomico).toBe(10000); // PPE empleador único · conjunto
       expect(vT.tope30Rendimientos).toBeCloseTo(15000, 2); // 30% de 50k
       expect(vT.limiteAplicable).toBe(10000); // económico es más restrictivo
 
-      // 3. Validación individual empresa · 1.862,16 dentro de 8.500 € ·
-      //    empresa NO aplica tope 30 % (rolAportante='empresa').
+      // 3. Validación individual empresa · simulamos añadir 100 € sobre los
+      //    1.862,16 ya aportados · total 1.962,16 dentro de 8.500 € ·
+      //    empresa NO aplica tope 30 % (rolAportante='empresa') ·
+      //    esDeducible=true.
       const vE = await limitesFiscalesPlanesService.validarAportacionDeducible(
         planId,
-        0,
+        100,
         2024,
         'empresa',
       );
-      expect(vE.totalAportadoEjercicio).toBeCloseTo(1862.16, 2);
+      expect(vE.esDeducible).toBe(true);
+      expect(vE.totalAportadoEjercicio).toBeCloseTo(1962.16, 2);
       expect(vE.excesoNoDeducible).toBe(0);
       expect(vE.topeEconomico).toBe(8500);
       expect(vE.tope30Rendimientos).toBeUndefined();
