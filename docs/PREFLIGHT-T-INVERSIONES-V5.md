@@ -8,25 +8,31 @@
 
 ## 1 · Inventario §0.1 · 14 componentes UI actuales
 
-| # | Componente · ruta real | Líneas | Consumidores | Estado | Acción spec |
+**Metodología de conteo:**
+- **Líneas** · `wc -l <ruta>` ejecutado sobre HEAD del branch (cuenta saltos de línea, no líneas visibles · GitHub UI puede mostrar n+1 para archivos sin newline final).
+- **Consumidores** · sólo imports reales del componente TS/TSX, excluyendo (a) auto-imports en el mismo archivo, (b) imports a `<Nombre>.module.css` (CSS-only, no consumen el código), (c) menciones en comentarios o tests. Incluye `lazyWithPreload(() => import('…'))` y `import('…')` dinámicos.
+
+| # | Componente · ruta real | Líneas (`wc -l`) | Consumidores | Estado | Acción spec |
 |---|---|---:|---:|---|---|
-| 1 | `src/modules/inversiones/InversionesGaleria.tsx` | 280 | 5 (App.tsx, navigationPerformanceService.ts, CartaAddPosicion.tsx, CartaPosicion.tsx + self) | vivo | Sustitución completa |
-| 2 | `src/modules/inversiones/components/WizardNuevaPosicion.tsx` | 240 | 1 (InversionesGaleria.tsx) | vivo | Sustitución (→ `SelectorNuevaPosicion`) |
-| 3 | `src/modules/inversiones/components/wizard/PosicionFormV5.tsx` | 1111 | 1 (WizardNuevaPosicion.tsx) | vivo · zombie tras PR3 | Sustitución parcial (§3) |
-| 3b | `src/modules/inversiones/components/wizard/PlanFormV5.tsx` | 612 | 4 (WizardNuevaPosicion.tsx, FichaPlanPensiones.tsx, test, self) | vivo | (no listado en §0.1 · ver Q1) |
-| 4 | `src/modules/inversiones/pages/FichaPosicionPage.tsx` | 279 | 2 (App.tsx, navigationPerformanceService.ts) | vivo | Reestructuración (§4) |
-| 5 | `src/modules/inversiones/components/FichaValoracionSimple.tsx` | 260 | 1 (FichaPosicionPage.tsx) | vivo | Sustitución (→ `FichaFondo` + `FichaAccion` + `FichaGenerica`) |
-| 6 | `src/modules/inversiones/pages/FichaPlanPensiones.tsx` *(spec dice `components/`, real `pages/`)* | 1336 | 2 (FichaPosicionPage.tsx + test) | vivo | **PRESERVAR 2 secciones T13v4** (§4.2) |
-| 7 | `src/modules/inversiones/components/FichaDividendos.tsx` | 323 | 1 (FichaPosicionPage.tsx) | vivo | Sustitución (absorbido por `FichaAccion`) |
-| 8 | `src/modules/inversiones/components/AportacionFormDialog.tsx` | 303 | 2 (DialogAportar.tsx, FichaPosicionPage.tsx) | vivo | Sustitución (→ `AportarModal`) |
-| 9 | `src/modules/inversiones/components/ActualizarValorPlanDialog.tsx` | 131 | 1 (FichaPlanPensiones.tsx) | vivo | Sustitución (→ `ActualizarValoracionModal`) |
-| 10 | `src/modules/inversiones/components/CintaResumenInversiones.tsx` | 174 | 2 (MainLayout.tsx + self) | vivo | **Preservar** · solo actualizar números |
-| 11 | `src/modules/inversiones/pages/PosicionesCerradasPage.tsx` | 313 | 2 (App.tsx, navigationPerformanceService.ts) | vivo | Renombrar UI (§5.4) |
-| 12 | `src/modules/inversiones/adapters/galeriaAdapter.ts` | 174 | 3 (InversionesGaleria.tsx, CintaResumenInversiones.tsx, PanelPage.tsx) | vivo | Ampliar · tags por tipo |
-| 13 | `src/modules/inversiones/helpers.ts` | 703 | 13 (todo el módulo `inversiones`) | vivo | Revisar `groupTipo` |
-| 14 | `src/modules/inversiones/types/cartaItem.ts` | 229 | 6 (InversionesGaleria.tsx, helpers.ts, CintaResumenInversiones.tsx, CartaPosicion.tsx, galeriaAdapter.ts, PanelPage.tsx) | vivo | Ampliar con tag por tipo |
+| 1 | `src/modules/inversiones/InversionesGaleria.tsx` | 280 | **2** · `App.tsx` (lazy), `services/navigationPerformanceService.ts` (dynamic) | vivo | Sustitución completa |
+| 2 | `src/modules/inversiones/components/WizardNuevaPosicion.tsx` | 240 | **1** · `InversionesGaleria.tsx` | vivo | Sustitución (→ `SelectorNuevaPosicion`) |
+| 3 | `src/modules/inversiones/components/wizard/PosicionFormV5.tsx` | 1111 | **1** · `WizardNuevaPosicion.tsx` | vivo · zombie tras PR3 | Sustitución parcial (§3) |
+| 3b | `src/modules/inversiones/components/wizard/PlanFormV5.tsx` | 612 | **2** · `WizardNuevaPosicion.tsx`, `pages/FichaPlanPensiones.tsx` (+ 1 test) | vivo | Sustitución (A1 · ver Q1) |
+| 4 | `src/modules/inversiones/pages/FichaPosicionPage.tsx` | 279 | **2** · `App.tsx`, `services/navigationPerformanceService.ts` | vivo | Reestructuración (§4) |
+| 5 | `src/modules/inversiones/components/FichaValoracionSimple.tsx` | 260 | **1** · `pages/FichaPosicionPage.tsx` | vivo | Sustitución (→ `FichaFondo` + `FichaAccion` + `FichaGenerica`) |
+| 6 | `src/modules/inversiones/pages/FichaPlanPensiones.tsx` *(spec dice `components/`, real `pages/`)* | 1336 | **1** · `pages/FichaPosicionPage.tsx` (+ 1 test) | vivo | **PRESERVAR 2 secciones T13v4** (§4.2) |
+| 7 | `src/modules/inversiones/components/FichaDividendos.tsx` | 323 | **1** · `pages/FichaPosicionPage.tsx` | vivo | Sustitución (absorbido por `FichaAccion`) |
+| 8 | `src/modules/inversiones/components/AportacionFormDialog.tsx` | 303 | **2** · `components/DialogAportar.tsx`, `pages/FichaPosicionPage.tsx` | vivo | Sustitución (→ `AportarModal`) |
+| 9 | `src/modules/inversiones/components/ActualizarValorPlanDialog.tsx` | 131 | **1** · `pages/FichaPlanPensiones.tsx` | vivo | Sustitución (→ `ActualizarValoracionModal`) |
+| 10 | `src/modules/inversiones/components/CintaResumenInversiones.tsx` | 174 | **1** · `layouts/MainLayout.tsx` | vivo | **Preservar** · solo actualizar números |
+| 11 | `src/modules/inversiones/pages/PosicionesCerradasPage.tsx` | 313 | **2** · `App.tsx`, `services/navigationPerformanceService.ts` | vivo | Renombrar UI (§5.4) |
+| 12 | `src/modules/inversiones/adapters/galeriaAdapter.ts` | 174 | **3** · `InversionesGaleria.tsx`, `components/CintaResumenInversiones.tsx`, `modules/panel/PanelPage.tsx` | vivo | Ampliar · tags por tipo |
+| 13 | `src/modules/inversiones/helpers.ts` | 703 | **13** · todo el módulo `inversiones` (galería · adapter · cintaResumen · fichas · diálogos) | vivo | Revisar `groupTipo` |
+| 14 | `src/modules/inversiones/types/cartaItem.ts` | 229 | **5** · `InversionesGaleria.tsx`, `helpers.ts`, `components/CintaResumenInversiones.tsx`, `components/CartaPosicion.tsx`, `adapters/galeriaAdapter.ts`, `modules/panel/PanelPage.tsx` | vivo | Ampliar con tag por tipo |
 
 Total · **14 archivos · 6 468 líneas · alcance bien delimitado**.
+
+> Nota sobre líneas · Copilot review observó cifras 281/241/613/1112 etc. La diferencia de 1 es esperable: `wc -l` cuenta saltos de línea y devuelve `n` para un archivo con `n+1` líneas visibles cuando falta el newline final, o `n` líneas visibles cuando termina con newline. Las cifras de esta tabla son `wc -l` directo · método consistente con la spec §0.1 («conteo de líneas (`wc -l`)»).
 
 ### Archivos relacionados no listados en §0.1 (descubiertos en pre-flight)
 
@@ -71,7 +77,17 @@ Las únicas apariciones de los nombres de store son **etiquetas de origen** (`_o
 GestionInversionesPage · PlanesManager · MisPlanesPensiones · PlanForm · TraspasoForm
 ```
 
-Búsqueda con `grep -rIn "\b<Zombi>\b" src/`:
+Búsqueda · un comando por zombi, con `\b` para evitar falsos positivos (p.ej. que `PlanForm` no matchee `PlanFormV5`):
+
+```bash
+grep -rIn '\bGestionInversionesPage\b' src/
+grep -rIn '\bPlanesManager\b'         src/
+grep -rIn '\bMisPlanesPensiones\b'    src/
+grep -rIn '\bPlanForm\b'              src/ | grep -v PlanFormV5
+grep -rIn '\bTraspasoForm\b'          src/
+```
+
+Resultado:
 
 | Zombi | Hits totales | Detalle |
 |---|---:|---|
@@ -173,3 +189,20 @@ Solo nota · la nueva `FichaPlanPensiones.tsx` (§4.1) según spec va en `compon
 | 0.4.5 · Preguntas abiertas a Jose | ✅ §6 arriba · 8 preguntas |
 
 **Stop-and-wait** · CC espera OK de Jose y respuestas a Q1-Q8 antes de abrir PR 1 de código.
+
+---
+
+## 8 · Respuestas de Jose · OK al pre-flight · ajustes spec
+
+| # | Respuesta de Jose | Ajuste resultante |
+|---|---|---|
+| Q1 | Sí · A1 sustituye `PlanFormV5` + `PosicionFormV5` por `AltaPlanWizard`. CRÍTICO · el nuevo wizard DEBE invocar `planesPensionesService.createPlan` con los mismos parámetros y preservar las 4 validaciones T13v4 (tipo administrativo · subtipo PPE · CIF+nombre empresa condicional · check discapacidad). | Si encuentro alguna validación T13v4 fuera del mockup · STOP y reporto. |
+| Q2 | El baseline son los tests rojos que `npm test` reporta en HEAD pre-commit · sea 42 · 43 · 44. La regla es: **el set rojo no se amplía**. Reportar número exacto en PR 1. | Mediré con `npm test` antes de tocar nada y lo dejo escrito en el comentario de PR 1. |
+| Q3 | Reutilizar y extender `FichaShell` existente. Si encuentro mismatch grande · STOP. | §4.1 spec · marcar `FichaShell` como «extender existente». |
+| Q4 | Idem `FichaGenerica`. | §4.1 spec · marcar `FichaGenerica` como «extender existente». |
+| Q5 | NO duplicar. Si los flags ya están en `keyval` como `completed`, retirar esas migraciones de PR 5. Reportar qué flags existen. | §7.2/§7.5 condicionales a que no exista. §7.7 (`normalizarNombresEmpresas`) sí se implementa en PR 5. |
+| Q6 | Convención del repo · `src/services/migrations/`. Patrón de nombre · sin prefijo `v71_`. | §8.3/§9.1 · ruta corregida. |
+| Q7 | Sí · `CartaAddPosicion.tsx` se borra en PR 5. PR 2 retira solo el uso. | Antes de borrar · `grep -r CartaAddPosicion src/` debe dar 0 hits. |
+| Q8 | Mantener `FichaPlanPensiones.tsx` en `pages/`. Solo refactorizar contenido (usar `FichaShell` + `FichaHero` + secciones T13v4). | §4.1 spec · path correcto es `pages/`. |
+
+**OK al PR 1.** Adelante con estructura shell + tokens CSS módulo + smoke tests + comentario de inventario completo. Recuerda · 0 cambios visibles en `/inversiones` tras PR 1.
