@@ -42,28 +42,44 @@ export function buildInmuebleSecciones(
   const aeat = property?.aeatAmortization;
 
   // ─── Ingresos del año (gold €) ──────────────────────────────────────────
+  // La casilla 0102 representa SOLO los ingresos íntegros de arrendamiento.
+  // Si el inmueble tuvo días a disposición del titular, la renta inmobiliaria
+  // imputada va en la 0089 (concepto distinto, se integra en la base general
+  // del Modelo 100) y se muestra como línea separada · NO se suma a la 0102.
+  const rentaImputada = ext.box0089 ?? 0;
+  const ingresosRows: BoxRow[] = [
+    {
+      num: '0102',
+      concepto: 'Ingresos íntegros de arrendamiento',
+      subtitulo: ingresosSubtitulo(ext),
+      importe: ext.box0102,
+    },
+  ];
+  if (rentaImputada > 0) {
+    ingresosRows.push({
+      num: '0089',
+      concepto: 'Renta inmobiliaria imputada',
+      subtitulo: ext.diasDisposicion > 0
+        ? `${ext.diasDisposicion} días a disposición · 1,1 % / 2 % VC`
+        : 'imputación por días a disposición',
+      importe: rentaImputada,
+    });
+  }
+  ingresosRows.push({
+    num: '0101',
+    concepto: 'Días arrendado',
+    importe: ext.box0101 ?? ext.diasArrendado,
+    unit: 'dias',
+    subtitulo: ext.diasDisposicion > 0
+      ? `${ext.diasDisposicion} días a disposición sin alquilar`
+      : 'año arrendado completo',
+  });
   const seccionIngresos: BoxSection = {
     letter: '€',
     letterVariant: 'gold',
     title: 'Ingresos del año',
     total: ext.box0102,
-    rows: [
-      {
-        num: '0102',
-        concepto: 'Ingresos íntegros computables',
-        subtitulo: ingresosSubtitulo(ext),
-        importe: ext.box0102,
-      },
-      {
-        num: '0101',
-        concepto: 'Días arrendado',
-        importe: ext.box0101 ?? ext.diasArrendado,
-        unit: 'dias',
-        subtitulo: ext.diasDisposicion > 0
-          ? `${ext.diasDisposicion} días a disposición sin alquilar`
-          : 'año arrendado completo',
-      },
-    ],
+    rows: ingresosRows,
   };
 
   // ─── Arrastres años anteriores (warn ←) ────────────────────────────────
