@@ -75,26 +75,10 @@ function buildRendimientosTrabajo(decl: DeclaracionCompleta): RendimientosTrabaj
   // en vez de 138.670,33 correcto = 0003 + 0007 + 0008).
   const especieNeta = t.retribucionEspecieNeta
     ?? ((t.valoracionEspecie ?? 0) + (t.ingresosACuentaEspecie ?? 0));
-  // ppEmpresa (0008) viene de `contribucionesPPEmpresa` (rama RendimientoTrabajo
-  // del XML), no de `planPensiones.contribucionesEmpresa` (rama RedRegimenGeneral)
-  // que en producción se ve invertida (IEIP mal interpretado como aportación
-  // titular en lugar de empresa). 0008 es la fuente fiable para 0427.
-  //
-  // Cuidado: el parser usa `num()` que devuelve `0` cuando el campo está
-  // ausente del XML. Por eso `??` no basta: distinguimos "campo presente
-  // con 0 explícito" (sin PP empresa, caso legítimo) vs "campo ausente
-  // que vuelve 0" (caer al fallback de planPensiones). Si el total de
-  // reducción es > 0 y `t.contribucionesPPEmpresa` es 0, asumimos que
-  // ese campo no estaba en el XML y caemos al fallback.
-  const ppEmpresaFromT = t.contribucionesPPEmpresa ?? 0;
-  const ppEmpresa = ppEmpresaFromT > 0
-    ? ppEmpresaFromT
-    : (decl.planPensiones?.contribucionesEmpresa ?? 0);
   const pp = decl.planPensiones;
   const totalReduccion = decl.integracion?.reduccionPP ?? pp?.totalConDerechoReduccion ?? 0;
-  // 0426 trabajador = total − empresa. Derivar evita la inversión y aplica
-  // la identidad que la AEAT garantiza (RSUMAD = titular + empresa).
-  const ppEmpleado = Math.max(0, round2(totalReduccion - ppEmpresa));
+  const ppEmpresa = pp?.contribucionesEmpresa ?? 0;
+  const ppEmpleado = pp?.aportacionesTrabajador ?? 0;
   return {
     salarioBrutoAnual: t.retribucionesDinerarias ?? 0,
     especieAnual: round2(especieNeta),
@@ -294,21 +278,8 @@ function buildBaseAhorro(decl: DeclaracionCompleta): BaseAhorro {
 function buildReducciones(decl: DeclaracionCompleta): DeclaracionIRPF['reducciones'] {
   const pp = decl.planPensiones;
   const total = decl.integracion?.reduccionPP ?? pp?.totalConDerechoReduccion ?? 0;
-  // Misma derivación que en `buildRendimientosTrabajo`: 0427 (empresa) viene
-  // de la 0008 (rama `RendimientoTrabajo` del XML, fuente fiable) y 0426
-  // (trabajador) se deriva como total − empresa. Evita el cruce observado
-  // cuando `planPensiones.aportacionesTrabajador`/`contribucionesEmpresa`
-  // están invertidas en el parser.
-  //
-  // Manejo de "0 = campo ausente" del parser: si la 0008 vuelve 0 pero el
-  // total indica que hay PP de empresa, caer al fallback. Mantiene el caso
-  // legítimo "sin PP empresa, todo trabajador" cuando ambos son 0 (en ese
-  // caso `ppEmpleado = total − 0 = total`, correcto).
-  const ppEmpresaFromT = decl.trabajo?.contribucionesPPEmpresa ?? 0;
-  const ppEmpresa = ppEmpresaFromT > 0
-    ? ppEmpresaFromT
-    : (pp?.contribucionesEmpresa ?? 0);
-  const ppEmpleado = Math.max(0, round2(total - ppEmpresa));
+  const ppEmpresa = pp?.contribucionesEmpresa ?? 0;
+  const ppEmpleado = pp?.aportacionesTrabajador ?? 0;
   return {
     ppEmpleado,
     ppEmpresa,
