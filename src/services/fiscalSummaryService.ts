@@ -475,6 +475,46 @@ export interface FiscalSummaryExtended extends FiscalSummary {
   diasDisposicion: number;
   porcentajeReduccion: number;
   metodoProrrateo?: MetodoProrrateoFiscal;
+
+  /**
+   * Subset de campos del inmueble en `coord.aeat.declaracionCompleta.inmuebles[]`
+   * relevantes para reconstruir la sección "Amortización" de F3 fielmente a
+   * la declaración. Sólo está poblado cuando el ejercicio está declarado y
+   * el inmueble se localizó en la declaración por refCatastral.
+   *
+   * Cuando este objeto está presente, `inmuebleCasillasService` lee la
+   * amortización SOLO de aquí — no del store `properties.aeatAmortization`
+   * (que contiene datos catastrales generales, no lo declarado).
+   */
+  declaracionInmueble?: DeclaracionInmuebleSnapshot;
+}
+
+export interface DeclaracionInmuebleSnapshot {
+  /** 0123 — valor catastral total declarado */
+  valorCatastralTotal?: number;
+  /** 0124 — valor catastral construcción */
+  valorCatastralConstruccion?: number;
+  /** 0125 — % construcción */
+  porcentajeConstruccion?: number;
+  /** 0126 — importe adquisición */
+  precioAdquisicion?: number;
+  /** 0127 — gastos inherentes adquisición */
+  gastosAdquisicion?: number;
+  /** 0130 — base de amortización (cuando se declara amortización estándar) */
+  baseAmortizacion?: number;
+  /** 0131 (estándar) o 0132 (casos especiales) según `usaCasosEspeciales` */
+  amortizacionAnualInmueble?: number;
+  /** True cuando el inmueble declara amortización por casos especiales
+   *  (modo III · alquiler de habitaciones o situaciones especiales). En ese
+   *  caso `inmuebleCasillasService` no debe pintar el bloque 0123/0124/
+   *  0125/0126/0130 (que no existe en la declaración) y debe etiquetar la
+   *  amortización como 0132 en lugar de 0131. */
+  usaCasosEspeciales: boolean;
+  /** Múltiples `<Arrendamiento>` con `tipoArrendamiento` distinto · señal
+   *  de inmueble mixto (larga + temporada). */
+  tieneArrendamientosMixtos: boolean;
+  /** Número total de `<Arrendamiento>` declarados (1 por unidad/habitación). */
+  numArrendamientos: number;
 }
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -484,8 +524,22 @@ function detectarModoDeclaracion(
   contractsDelAño: Array<{ modalidad?: string; unidadTipo?: string; fechaInicio?: string; fechaFin?: string }>,
   diasArrendado: number,
   diasTotal: number,
+  inmDecl?: DeclaracionInmuebleSnapshot | null,
 ): ModoDeclaracionFiscal {
   if (property?.usoTipo === 'vivienda_habitual') return 'IV';
+
+  // ── Señales fiables desde la declaración importada ────────────────────
+  // Cuando el año está declarado y tenemos el inmueble en el XML, los
+  // arrendamientos del propio Modelo 100 son la fuente más fiable: cada
+  // habitación o unidad va en un <Arrendamiento> separado y la modalidad
+  // (vivienda vs no_vivienda) está explícita. La presencia de amortización
+  // por casos especiales (`usaCasosEspeciales`) o de varios arrendamientos
+  // distintos es suficiente para clasificar como III.
+  if (inmDecl) {
+    if (inmDecl.usaCasosEspeciales) return 'III';
+    if (inmDecl.tieneArrendamientosMixtos) return 'III';
+    if (inmDecl.numArrendamientos > 1) return 'III';
+  }
 
   const habitaciones = contractsDelAño.some((c) => c.unidadTipo === 'habitacion');
   const modalidades = new Set(contractsDelAño.map((c) => c.modalidad).filter(Boolean));
@@ -518,6 +572,52 @@ function detectarPorcentajeReduccion(
   if (explicit.length > 0) return Math.max(...explicit);
   if (modo === 'I' || modo === 'II' || modo === 'III') return 60;
   return 0;
+}
+
+async function buildDeclaracionInmuebleSnapshot(
+  db: Awaited<ReturnType<typeof initDB>>,
+  propertyId: number,
+  exerciseYear: number,
+): Promise<DeclaracionInmuebleSnapshot | undefined> {
+  let ej;
+  try {
+    ej = await getEjercicio(exerciseYear);
+  } catch {
+    return undefined;
+  }
+  const decl = ej?.aeat?.declaracionCompleta;
+  if (!decl?.inmuebles || decl.inmuebles.length === 0) return undefined;
+
+  const property = await db.get('properties', propertyId);
+  const refProperty = normalizeRefCatastral(property?.cadastralReference);
+  if (!refProperty) return undefined;
+  const inm: any = decl.inmuebles.find(
+    (i: any) => normalizeRefCatastral(i.refCatastral) === refProperty,
+  );
+  if (!inm) return undefined;
+
+  const arrends: any[] = inm.arrendamientos ?? [];
+  const tiposArrendamiento = new Set(arrends.map((a) => a.tipoArrendamiento).filter(Boolean));
+  // Casos especiales (0132): la AEAT lo marca cuando hay amortización
+  // declarada SIN bloque catastral (sin base, sin VC construcción) — es la
+  // huella típica del alquiler por habitaciones / situaciones especiales.
+  // FA32 caso real: amortizacionAnualInmueble=816,12 con baseAmortizacion=0.
+  const amortInmueble = inm.amortizacionAnualInmueble ?? 0;
+  const baseAmort = inm.baseAmortizacion ?? 0;
+  const usaCasosEspeciales = amortInmueble > 0 && baseAmort === 0;
+
+  return {
+    valorCatastralTotal: inm.valorCatastralTotal ?? inm.valorCatastral,
+    valorCatastralConstruccion: inm.valorCatastralConstruccion,
+    porcentajeConstruccion: inm.porcentajeConstruccion,
+    precioAdquisicion: inm.precioAdquisicion,
+    gastosAdquisicion: inm.gastosAdquisicion,
+    baseAmortizacion: baseAmort > 0 ? baseAmort : undefined,
+    amortizacionAnualInmueble: amortInmueble > 0 ? amortInmueble : undefined,
+    usaCasosEspeciales,
+    tieneArrendamientosMixtos: tiposArrendamiento.size > 1,
+    numArrendamientos: arrends.length,
+  };
 }
 
 function detectarMetodoProrrateo(
@@ -557,7 +657,20 @@ export const calculateFiscalSummaryExtended = async (
     return inicio.getFullYear() <= exerciseYear && fin.getFullYear() >= exerciseYear;
   });
 
-  const modoDeclaracion = detectarModoDeclaracion(property as any, contractsDelAño, diasArrendado, diasTotal);
+  // ── Snapshot de la declaración del inmueble (cuando el año está
+  //    declarado y el inmueble se localiza por refCatastral). Alimenta
+  //    tanto la detección de modo (III/mixto/habitaciones) como la
+  //    sección "Amortización" de F3 (que en años declarados debe leer
+  //    SOLO de aquí, no de `property.aeatAmortization`). ─────────────
+  const declaracionInmueble = await buildDeclaracionInmuebleSnapshot(db, propertyId, exerciseYear);
+
+  const modoDeclaracion = detectarModoDeclaracion(
+    property as any,
+    contractsDelAño,
+    diasArrendado,
+    diasTotal,
+    declaracionInmueble,
+  );
   const porcentajeReduccion = detectarPorcentajeReduccion(modoDeclaracion, contractsDelAño);
   const metodoProrrateo = detectarMetodoProrrateo(modoDeclaracion, property as any);
 
@@ -648,5 +761,6 @@ export const calculateFiscalSummaryExtended = async (
     diasDisposicion,
     porcentajeReduccion,
     metodoProrrateo,
+    declaracionInmueble,
   };
 };
