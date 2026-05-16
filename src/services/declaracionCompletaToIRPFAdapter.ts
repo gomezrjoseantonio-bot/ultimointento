@@ -68,24 +68,37 @@ function sumDiasPorTipo(
 function buildRendimientosTrabajo(decl: DeclaracionCompleta): RendimientosTrabajo | null {
   const t = decl.trabajo;
   if (!t) return null;
-  // El desglose PP empleado/empresa vive en `decl.planPensiones` y
-  // `decl.integracion.reduccionPP`. Aquí mapeamos también `ppEmpleado`
-  // (aportación trabajador) para que la presentación de RendimientosTrabajo
-  // refleje las contribuciones reales del trabajador al PP.
+  // La 0007 "retribuciones en especie computables" = 0004 valoración + 0005
+  // ingresos a cuenta − repercutidos. El XML AEAT la pre-calcula en
+  // `retribucionEspecieNeta`. Antes mapeábamos `especieAnual = valoracionEspecie`
+  // (0004), lo que infracontaba la 0012 total (caso Jose 2024: 137.762,82
+  // en vez de 138.670,33 correcto = 0003 + 0007 + 0008).
+  const especieNeta = t.retribucionEspecieNeta
+    ?? ((t.valoracionEspecie ?? 0) + (t.ingresosACuentaEspecie ?? 0));
+  // ppEmpresa (0008) viene de `contribucionesPPEmpresa` (rama RendimientoTrabajo
+  // del XML), no de `planPensiones.contribucionesEmpresa` (rama RedRegimenGeneral)
+  // que en producción se ve invertida (IEIP mal interpretado como aportación
+  // titular en lugar de empresa). 0008 es la fuente fiable para 0427.
+  const ppEmpresa = t.contribucionesPPEmpresa ?? decl.planPensiones?.contribucionesEmpresa ?? 0;
   const pp = decl.planPensiones;
-  const ppEmpleado = pp?.aportacionesTrabajador ?? 0;
-  const ppEmpresa = t.contribucionesPPEmpresa ?? pp?.contribucionesEmpresa ?? 0;
+  const totalReduccion = decl.integracion?.reduccionPP ?? pp?.totalConDerechoReduccion ?? 0;
+  // 0426 trabajador = total − empresa. Derivar evita la inversión y aplica
+  // la identidad que la AEAT garantiza (RSUMAD = titular + empresa).
+  const ppEmpleado = Math.max(0, round2(totalReduccion - ppEmpresa));
   return {
-    // `salarioBrutoAnual` ≡ dinerario (sin especie). La AEAT separa dinerarias
-    // (0003) y valoración especie (0005). El motor Atlas mete el especie aparte.
     salarioBrutoAnual: t.retribucionesDinerarias ?? 0,
-    especieAnual: t.valoracionEspecie ?? 0,
+    especieAnual: round2(especieNeta),
     cotizacionSS: t.cotizacionesSS ?? 0,
     irpfRetenido: t.retenciones ?? 0,
     rendimientoNeto: t.rendimientoNeto ?? 0,
     ppEmpleado,
     ppEmpresa,
-    ppTotalReduccion: decl.integracion?.reduccionPP ?? pp?.totalConDerechoReduccion ?? 0,
+    ppTotalReduccion: totalReduccion,
+    // Campos auxiliares para que el builder de F2 sección A pueda
+    // renderizar las 9 filas con sus números de casilla correctos.
+    valoracionEspecie: t.valoracionEspecie,
+    ingresosACuentaEspecie: t.ingresosACuentaEspecie,
+    otrosGastosDeducibles: t.otrosGastosDeducibles,
   };
 }
 
@@ -271,9 +284,16 @@ function buildBaseAhorro(decl: DeclaracionCompleta): BaseAhorro {
 function buildReducciones(decl: DeclaracionCompleta): DeclaracionIRPF['reducciones'] {
   const pp = decl.planPensiones;
   const total = decl.integracion?.reduccionPP ?? pp?.totalConDerechoReduccion ?? 0;
+  // Misma derivación que en `buildRendimientosTrabajo`: 0427 (empresa) viene
+  // de la 0008 (rama `RendimientoTrabajo` del XML, fuente fiable) y 0426
+  // (trabajador) se deriva como total − empresa. Evita el cruce observado
+  // cuando `planPensiones.aportacionesTrabajador`/`contribucionesEmpresa`
+  // están invertidas en el parser.
+  const ppEmpresa = decl.trabajo?.contribucionesPPEmpresa ?? pp?.contribucionesEmpresa ?? 0;
+  const ppEmpleado = Math.max(0, round2(total - ppEmpresa));
   return {
-    ppEmpleado: pp?.aportacionesTrabajador ?? 0,
-    ppEmpresa: pp?.contribucionesEmpresa ?? 0,
+    ppEmpleado,
+    ppEmpresa,
     ppIndividual: 0,
     planPensiones: total,
     total,

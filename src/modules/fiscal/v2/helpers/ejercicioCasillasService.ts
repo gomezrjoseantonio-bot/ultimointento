@@ -75,21 +75,44 @@ export function buildSeccionA(d: DatosFiscalesEjercicio): BoxSection {
   const decl = d.declaracionCompleta;
   const t = decl?.baseGeneral?.rendimientosTrabajo ?? null;
 
+  // Numeración del Modelo 100 (no la del builder anterior, que las
+  // renombraba mal · 0004 etiquetada como 0005, 0008 como 0007):
+  //   0003 retribuciones dinerarias
+  //   0004 valoración retribución en especie
+  //   0005 ingresos a cuenta de la retribución en especie
+  //   0007 retribuciones en especie computables (0004 + 0005 − repercutidos)
+  //   0008 contribuciones empresariales al plan de pensiones
+  //   0012 total ingresos íntegros (0003 + 0007 + 0008)
+  //   0013 cotizaciones Seguridad Social
+  //   0019 otros gastos deducibles (tope general)
+  //   0022 rendimiento neto del trabajo
   const box0003 = getCasilla(c, '0003') ?? safeNum(t?.salarioBrutoAnual);
-  const box0005 = getCasilla(c, '0005') ?? safeNum(t?.especieAnual);
-  const box0007 = getCasilla(c, '0007') ?? safeNum(t?.ppEmpresa);
-  const box0012 = getCasilla(c, '0012') ?? ((box0003 ?? 0) + (box0005 ?? 0) + (box0007 ?? 0));
+  const box0004 = getCasilla(c, '0004') ?? safeNum(t?.valoracionEspecie);
+  const box0005 = getCasilla(c, '0005') ?? safeNum(t?.ingresosACuentaEspecie);
+  const box0007 = getCasilla(c, '0007') ?? safeNum(t?.especieAnual);
+  const box0008 = getCasilla(c, '0008') ?? safeNum(t?.ppEmpresa);
+  const box0012 = getCasilla(c, '0012') ?? ((box0003 ?? 0) + (box0007 ?? 0) + (box0008 ?? 0));
   const box0013 = getCasilla(c, '0013') ?? safeNum(t?.cotizacionSS);
-  const box0019 = getCasilla(c, '0019');
+  const box0019 = getCasilla(c, '0019') ?? safeNum(t?.otrosGastosDeducibles);
   const box0022 = getCasilla(c, '0022') ?? safeNum(t?.rendimientoNeto);
 
   const rows: BoxRow[] = [];
   if (box0003 !== null) rows.push({ num: '0003', concepto: 'Retribuciones dinerarias', importe: box0003 });
-  if (box0005 !== null) rows.push({ num: '0005', concepto: 'Retribuciones en especie', importe: box0005 });
-  if (box0007 !== null) rows.push({ num: '0007', concepto: 'Contribuciones empresariales a plan de pensiones', importe: box0007 });
+  if (box0004 !== null && box0004 !== 0) {
+    rows.push({ num: '0004', concepto: 'Valoración retribución en especie', importe: box0004 });
+  }
+  if (box0005 !== null && box0005 !== 0) {
+    rows.push({ num: '0005', concepto: 'Ingresos a cuenta retribución en especie', importe: box0005 });
+  }
+  if (box0007 !== null) rows.push({ num: '0007', concepto: 'Retribuciones en especie', importe: box0007 });
+  if (box0008 !== null && box0008 !== 0) {
+    rows.push({ num: '0008', concepto: 'Contribuciones empresariales a plan de pensiones', importe: box0008 });
+  }
   if (box0012 !== null) rows.push({ num: '0012', concepto: 'Total ingresos íntegros', importe: box0012, subtotal: true });
   if (box0013 !== null) rows.push({ num: '0013', concepto: 'Cotizaciones Seguridad Social', importe: box0013, negativeSign: true });
-  if (box0019 !== null) rows.push({ num: '0019', concepto: 'Otros gastos deducibles (tope general)', importe: box0019, negativeSign: true });
+  if (box0019 !== null && box0019 !== 0) {
+    rows.push({ num: '0019', concepto: 'Otros gastos deducibles (tope general)', importe: box0019, negativeSign: true });
+  }
   if (box0022 !== null) rows.push({ num: '0022', concepto: 'Rendimiento neto del trabajo', importe: box0022, subtotal: true });
 
   return {

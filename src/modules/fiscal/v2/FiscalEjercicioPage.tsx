@@ -155,6 +155,7 @@ const FiscalEjercicioPage: React.FC = () => {
   const [seccionesData, setSeccionesData] = useState<SeccionesData | null>(null);
   const [coordAeat, setCoordAeat] = useState<{
     fechaImportacion?: string;
+    fechaPresentacion?: string;
     fuenteImportacion?: 'xml' | 'pdf' | 'manual';
     paralela?: unknown;
   } | null>(null);
@@ -187,7 +188,18 @@ const FiscalEjercicioPage: React.FC = () => {
         getCuotaDiferencialDelEjercicio(año, d.resultado),
         getParalelaInfo(año),
       ]);
-      setCoordAeat(coord?.aeat ?? null);
+      // `fechaPresentacion` viene de `meta.fechaPresentacion` del XML AEAT
+      // (FechaHora del documento). `fechaImportacion` es la fecha en la que
+      // se subió el XML a la app — se mantiene como fallback para coords
+      // antiguos o importaciones manuales sin presentación AEAT registrada.
+      const aeat = coord?.aeat;
+      const meta = (aeat?.declaracionCompleta as { meta?: { fechaPresentacion?: string } } | undefined)?.meta;
+      setCoordAeat(aeat ? {
+        fechaImportacion: aeat.fechaImportacion,
+        fechaPresentacion: meta?.fechaPresentacion,
+        fuenteImportacion: aeat.fuenteImportacion,
+        paralela: (aeat as { paralela?: unknown }).paralela,
+      } : null);
       setDocumentos(docs);
       setVentas(vs);
       setDeudas(ds);
@@ -278,7 +290,7 @@ const FiscalEjercicioPage: React.FC = () => {
         tieneParalela={tieneParalela || paralela.esComplementaria}
         esComplementaria={paralela.esComplementaria}
         justificanteAnterior={paralela.justificanteAnterior}
-        fechaPresentacion={coordAeat?.fechaImportacion}
+        fechaPresentacion={coordAeat?.fechaPresentacion ?? coordAeat?.fechaImportacion}
         prescribe={esPrescrito || datos.estado === 'en_curso' ? null : calcularFechaPrescripcion(año)}
         esPrescrito={esPrescrito}
         onBack={() => navigate('/fiscal')}
