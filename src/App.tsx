@@ -23,6 +23,7 @@ import { runV68TipoFamiliaMigration } from './services/migrations/v68-tipoFamili
 import { runV70NominaHistorialMigration } from './services/migrations/v70-nomina-historial';
 import { cleanupCategoriasT34T35Fix2 } from './services/migrations/cleanupCategoriasT34T35fix2';
 import { fixAportacionesPlanCruceB6 } from './services/migrations/fixAportacionesPlanCruceB6';
+import { fixDeclaracionCompletaCruceB6 } from './services/migrations/fixDeclaracionCompletaCruceB6';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -384,6 +385,19 @@ function App() {
         }
         if (b6Report.errors.length > 0) {
           console.warn('[ATLAS] FIX-B6 aportacionesPlan · errores parciales:', b6Report.errors);
+        }
+      })
+      // FIX-B6-bis · one-shot · voltea aportacionesTrabajador ↔ contribucionesEmpresa
+      // en ejerciciosFiscalesCoord[año].aeat.declaracionCompleta.planPensiones
+      // para declaraciones con fuenteImportacion='xml' importadas con el parser
+      // viejo. Cierra el scope incompleto de B6 (que solo tocó aportacionesPlan).
+      .then(() => fixDeclaracionCompletaCruceB6())
+      .then((b6bisReport) => {
+        if (!b6bisReport.skipped && b6bisReport.swapped > 0) {
+          console.log('[ATLAS] FIX-B6-bis declaracionCompleta · invertidos:', b6bisReport);
+        }
+        if (b6bisReport.errors.length > 0) {
+          console.warn('[ATLAS] FIX-B6-bis declaracionCompleta · errores parciales:', b6bisReport.errors);
         }
       })
       .catch((error) => {

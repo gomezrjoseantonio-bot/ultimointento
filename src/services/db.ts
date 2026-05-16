@@ -2290,6 +2290,15 @@ interface AtlasHorizonDB {
    *     → Dueño: `services/migrations/fixAportacionesPlanCruceB6.ts`
    *     → Formato: string literal `'completed'`
    *
+   *   `'migration_b6_declaracionCompleta_v1'` (D1 · KEEP)
+   *     → Flag idempotencia del fix FIX-B6-bis · voltea aportacionesTrabajador ↔
+   *       contribucionesEmpresa en ejerciciosFiscalesCoord[año].aeat
+   *       .declaracionCompleta.planPensiones para declaraciones con
+   *       fuenteImportacion='xml' escritas por el parser viejo. Cierra el
+   *       scope incompleto de B6 (que solo tocó aportacionesPlan).
+   *     → Dueño: `services/migrations/fixDeclaracionCompletaCruceB6.ts`
+   *     → Formato: string literal `'completed'`
+   *
    * ── Claves PROHIBIDAS (NO añadir bajo ningún concepto) ──────────────────
    *
    *   `'planpagos_${prestamoId}'` · datos del usuario · vive en
