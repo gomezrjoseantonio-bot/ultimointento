@@ -292,6 +292,7 @@ Leyenda · ✅ ya existe correcto · 🟡 existe parcial o mal montado · ❌ no
 | F2 | bajo | `valoraciones_historicas` no admite `tipo_activo='fondo'` · los fondos comparten bucket `'inversion'`. | `src/services/valoracionesService.ts:8` | No | Si se modela traspaso de fondos · plantear si se desagrega. |
 | W1 | cosmético | `MisPlanesPensiones` no usa `design-system/v5` · tailwind directo. | `src/pages/GestionPersonal/MisPlanesPensiones.tsx` | No | Solo relevante si se cablea (Z2). |
 | W2 | cosmético | `MisPlanesPensiones` muestra "Límite deducción PPI/PPA · 1.500 €" hardcodeado en lugar de consultar `limitesFiscalesPlanesService.getLimitesPorTipo`. | `src/pages/GestionPersonal/MisPlanesPensiones.tsx:135-137` | No | Idem W1. |
+| W3 | cosmético | `empresaPagadora.nombre` queda como texto dependiente del XML AEAT · variantes "Orange España S.A.U." / "ORANGE ESPAÑA SAU" / "Orange" del mismo CIF aparecen como nombres distintos en el plan. El matching por `empresaPagadora.cif` (Acción 1 D6) protege la identidad funcional, pero la UI muestra el último valor importado. | `aeatPlanesPensionesImportService.ts` (escritor stub) · `FichaPlanPensiones`, `PlanesManager` (lectores cosméticos) | No (no bloqueante) | Normalizar en una iteración posterior · `trim` + colapsar espacios + opción "preferir el más legible de las variantes conocidas para ese CIF". Backlog. |
 
 ---
 

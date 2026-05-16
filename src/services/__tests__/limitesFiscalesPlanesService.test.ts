@@ -204,6 +204,10 @@ describe('limitesFiscalesPlanesService', () => {
       expect(r.alertas.some((a) => a.includes('5 ejercicios'))).toBe(true);
     });
 
+    // Consulta vinculante AEAT V0186-23: el límite general de 1.500 € puede
+    // aplicarse a PPI o al propio PPES · por eso PPES autónomos admite hasta
+    // 5.750 € en un solo plan (4.250 € adicional + 1.500 € general absorbido).
+    // No es bug · es by-design.
     it('PPES autónomos · 5.000 € · 4.250 € PPES + 750 € exceso', async () => {
       await seedNomina(1, 30_000);
       await seedPlan('plan-ppes', 1, 'PPES', undefined);
@@ -221,6 +225,88 @@ describe('limitesFiscalesPlanesService', () => {
       // El servicio aplica limiteEfectivo para titular · 5.000 < 5.750 → todo deducible.
       expect(r.totalAportadoTitular).toBe(5000);
       expect(r.desgloseDeduciblesPorTipo.PPES_autonomos).toBe(5000);
+    });
+
+    // TAREA 13 v4 · Acción 4 · caso real Jose 2024 · PPE Orange (CIF
+    // A82009812 · planId fijo del registro productivo). Aportaciones tras el
+    // split de la migración fixCasillaAEATOficial · un row 0426 titular y un
+    // row 0427 empresa. Validamos paridad fiscal end-to-end: validación
+    // individual y reducción agregada.
+    it('caso real Jose 2024 · PPE Orange · titular 1.396,68 + empresa 1.862,16 · todo deducible', async () => {
+      // Rendimiento neto del trabajo del XML AEAT 2024 ≫ 30k € · el helper
+      // `getRendimientosNetosAprox` aproxima por `salarioBrutoAnual` como cota
+      // superior conservadora. 50.000 € deja el 30 % en 15.000 € · más que
+      // suficiente para que el tope económico (10.000 €) sea el restrictivo.
+      await seedNomina(1, 50_000);
+
+      const { initDB } = await import('../db');
+      const db = await initDB();
+      const ahora = new Date().toISOString();
+      const planId = 'dcc95e8a-f408-4cb8-a52e-bfcec6b3517b';
+      await (db as any).add('planesPensiones', {
+        id: planId,
+        nombre: 'Plan PPE Orange',
+        titular: 'yo',
+        personalDataId: 1,
+        tipoAdministrativo: 'PPE',
+        subtipoPPE: 'empleador_unico',
+        empresaPagadora: { cif: 'A82009812', nombre: 'Orange' },
+        gestoraActual: 'Orange',
+        fechaContratacion: '2020-01-01',
+        estado: 'activo',
+        origen: 'xml_aeat',
+        fechaCreacion: ahora,
+        fechaActualizacion: ahora,
+      });
+      // Aportaciones split-shape (canónico post-migración) · un row 0426 con
+      // sólo titular y un row 0427 con sólo empresa.
+      await seedAportacion(planId, 2024, 1396.68, 0);
+      await seedAportacion(planId, 2024, 0, 1862.16);
+
+      const { limitesFiscalesPlanesService } = await import('../limitesFiscalesPlanesService');
+
+      // 1. Reducción agregada del ejercicio · todo deducible · sin exceso.
+      const r = await limitesFiscalesPlanesService.calcularReduccionBaseImponible(1, 2024);
+      expect(r.totalAportadoTitular).toBeCloseTo(1396.68, 2);
+      expect(r.totalAportadoEmpresa).toBeCloseTo(1862.16, 2);
+      expect(r.desgloseDeduciblesPorTipo.PPE).toBeCloseTo(3258.84, 2);
+      expect(r.totalDeducibleAplicado).toBeCloseTo(3258.84, 2);
+      expect(r.excesoArrastrable).toBeCloseTo(0, 2);
+      // 30 % de 50.000 = 15.000 € · holgura amplia · sin alerta de tope 30 %.
+      expect(r.alertas.some((a) => a.includes('30 %'))).toBe(false);
+
+      // 2. Validación individual titular · simulamos añadir 100 € sobre los
+      //    1.396,68 ya aportados · total 1.496,68 sigue dentro del conjunto
+      //    10.000 € · esDeducible=true (importe > 0 + sin exceso) · tope
+      //    económico es el restrictivo, NO el 30 %.
+      const vT = await limitesFiscalesPlanesService.validarAportacionDeducible(
+        planId,
+        100,
+        2024,
+        'titular',
+      );
+      expect(vT.esDeducible).toBe(true);
+      expect(vT.totalAportadoEjercicio).toBeCloseTo(1496.68, 2);
+      expect(vT.excesoNoDeducible).toBe(0);
+      expect(vT.topeEconomico).toBe(10000); // PPE empleador único · conjunto
+      expect(vT.tope30Rendimientos).toBeCloseTo(15000, 2); // 30% de 50k
+      expect(vT.limiteAplicable).toBe(10000); // económico es más restrictivo
+
+      // 3. Validación individual empresa · simulamos añadir 100 € sobre los
+      //    1.862,16 ya aportados · total 1.962,16 dentro de 8.500 € ·
+      //    empresa NO aplica tope 30 % (rolAportante='empresa') ·
+      //    esDeducible=true.
+      const vE = await limitesFiscalesPlanesService.validarAportacionDeducible(
+        planId,
+        100,
+        2024,
+        'empresa',
+      );
+      expect(vE.esDeducible).toBe(true);
+      expect(vE.totalAportadoEjercicio).toBeCloseTo(1962.16, 2);
+      expect(vE.excesoNoDeducible).toBe(0);
+      expect(vE.topeEconomico).toBe(8500);
+      expect(vE.tope30Rendimientos).toBeUndefined();
     });
   });
 
