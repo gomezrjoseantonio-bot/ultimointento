@@ -1007,96 +1007,32 @@ async function persistirVinculosAccesorio(
 }
 
 /**
- * Persiste el plan de pensiones de empleo declarado en el store planesPensiones.
- * Lógica upsert: UN solo registro por plan (deduplicado por NIF empresa o nombre base).
- * Las aportaciones del año se registran en aportacionesPlan (una entrada anual por ejercicio).
+ * Persiste el plan de pensiones de empleo declarado en `planesPensiones` +
+ * `aportacionesPlan`.
+ *
+ * TAREA 13 v4 · Acción 1 (D6) · este bloque era una implementación parcial
+ * paralela al servicio canónico `aeatPlanesPensionesImportService` que sí
+ * usa casillaAEAT oficial '0426'/'0427', sí infiere tipo correctamente y
+ * tiene cobertura de tests propia. Ahora delega.
  */
 async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: number): Promise<void> {
   const pp = decl.planPensiones;
-  // Usar totalConDerechoReduccion como criterio principal — es RSUMAD, fiable en todos los años.
   if (!pp || pp.totalConDerechoReduccion === 0) return;
 
   const perfiles = await db.getAll('personalData');
   const perfil = perfiles[0];
   if (!perfil?.id) return;
 
-  const ahora = new Date().toISOString();
-
-  const genUUID = (): string =>
-    typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2) + Date.now().toString(36);
-
-  const tipoAdm = pp.nifEmpleador ? 'PPE' : 'PPI';
-
-  // Buscar plan existente en planesPensiones
-  const planes = (await (db as any).getAll('planesPensiones')) as Array<{
-    id: string;
-    empresaPagadora?: { cif: string; nombre: string };
-    nombre: string;
-    personalDataId: number;
-  }>;
-  const planExistente = planes.find((p) =>
-    p.personalDataId === perfil.id &&
-    (pp.nifEmpleador
-      ? p.empresaPagadora?.cif === pp.nifEmpleador
-      : p.nombre === (pp.nombreEmpleador ?? 'Plan de pensiones')),
-  );
-
-  let planId: string;
-  if (planExistente) {
-    planId = planExistente.id;
-    await (db as any).put('planesPensiones', {
-      ...planExistente,
-      fechaActualizacion: ahora,
-    });
-  } else {
-    planId = genUUID();
-    await (db as any).add('planesPensiones', {
-      id: planId,
-      nombre: pp.nombreEmpleador ?? 'Plan de pensiones',
-      titular: 'yo' as const,
-      personalDataId: perfil.id,
-      tipoAdministrativo: tipoAdm,
-      ...(tipoAdm === 'PPE' && { subtipoPPE: 'empleador_unico' as const }),
-      ...(pp.nifEmpleador && { empresaPagadora: { cif: pp.nifEmpleador, nombre: pp.nombreEmpleador ?? '' } }),
-      gestoraActual: pp.nombreEmpleador ?? '',
-      estado: 'activo' as const,
-      origen: 'xml_aeat' as const,
-      fechaContratacion: `${año}-01-01`,
-      fechaCreacion: ahora,
-      fechaActualizacion: ahora,
-    });
-  }
-
-  // Crear/actualizar aportación del año en aportacionesPlan
-  const totalAño65 = (pp.aportacionesTrabajador ?? 0) + (pp.contribucionesEmpresa ?? 0);
-  if (totalAño65 > 0) {
-    // Verificar si ya existe aportación para este ejercicio
-    const aportaciones = (await (db as any).getAll('aportacionesPlan')) as Array<{
-      id: string;
-      planId: string;
-      ejercicioFiscal: number;
-    }>;
-    const aportExistente = aportaciones.find(
-      (a) => a.planId === planId && a.ejercicioFiscal === año,
-    );
-    if (!aportExistente) {
-      await (db as any).add('aportacionesPlan', {
-        id: genUUID(),
-        planId,
-        fecha: `${año}-12-31`,
-        ejercicioFiscal: año,
-        importeTitular: pp.aportacionesTrabajador ?? 0,
-        importeEmpresa: pp.contribucionesEmpresa ?? 0,
-        origen: 'xml_aeat' as const,
-        granularidad: 'anual' as const,
-        casillaAEAT: 'RSUMAD',
-        fechaCreacion: ahora,
-        fechaActualizacion: ahora,
-      });
-    }
-  }
+  const { importarAportacionesAEAT } = await import('./aeatPlanesPensionesImportService');
+  await importarAportacionesAEAT({
+    personalDataId: perfil.id,
+    titular: 'yo',
+    ejercicio: año,
+    aportacionesTrabajador: pp.aportacionesTrabajador ?? 0,
+    contribucionesEmpresariales: pp.contribucionesEmpresa ?? 0,
+    nifEmpleador: pp.nifEmpleador,
+    nombreEmpleador: pp.nombreEmpleador,
+  });
 }
 
 /**

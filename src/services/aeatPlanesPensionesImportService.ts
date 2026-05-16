@@ -1,16 +1,25 @@
 // src/services/aeatPlanesPensionesImportService.ts
-// TAREA 13 v4 · Commit 4 (F)
+// TAREA 13 v4 · Commit 4 (F) · ampliado en Acción 1 (D6) con identidad de
+// empresa pagadora (CIF + nombre) para paridad funcional con el bloque
+// `declaracionDistributorService.persistirPlanPensiones` que sustituye.
 //
 // Cablea la importación de aportaciones a planes de pensiones desde XML/PDF
 // AEAT al módulo dedicado V65. Antes de este commit el parser extraía las
 // casillas (0426 aportaciones partícipe, 0427 contribuciones empresa) pero
 // nadie las escribía en `aportacionesPlan`. Ahora:
 //
-//   1. Inferimos `tipoAdministrativo` desde la casilla AEAT.
-//   2. Buscamos un plan del titular en el ejercicio · si no existe, creamos
-//      uno stub con `origen: 'xml_aeat'` que el usuario podrá completar.
+//   1. Inferimos `tipoAdministrativo` desde la presencia de contribución
+//      empresarial (PPE) o solo aportación del partícipe (PPI). Para PPES y
+//      PPA con casilla origen ver TODO al final del archivo.
+//   2. Buscamos un plan del titular en el ejercicio · prioridad de matching:
+//        a) por CIF (`empresaPagadora.cif === nifEmpleador`) si llega
+//        b) si no, por `personalDataId + titular + estado='activo' + tipo`
+//      Si no existe, creamos un stub con `origen: 'xml_aeat'`,
+//      `empresaPagadora`, `gestoraActual = nombreEmpleador`, y
+//      `subtipoPPE: 'empleador_unico'` por defecto para PPE.
 //   3. Creamos `aportacionesPlan` con `granularidad: 'anual'`,
-//      `origen: 'xml_aeat'`, `casillaAEAT` e `ejercicioFiscal`.
+//      `origen: 'xml_aeat'`, `casillaAEAT` ('0426' titular / '0427' empresa)
+//      e `ejercicioFiscal`.
 //   4. Idempotente · no duplicamos aportaciones del mismo plan + ejercicio +
 //      origen='xml_aeat'.
 //
@@ -44,6 +53,18 @@ export interface ImportInput {
   aportacionesTrabajador: number;
   /** Importe de la casilla 0427 (contribuciones de la empresa · empresa). */
   contribucionesEmpresariales: number;
+  /**
+   * CIF de la empresa pagadora (campo `nifEmpleador` en la declaración AEAT).
+   * Si llega · prioriza matching por CIF sobre matching por tipo, y se
+   * propaga a `empresaPagadora.cif` del plan stub creado.
+   */
+  nifEmpleador?: string;
+  /**
+   * Nombre de la empresa pagadora (`nombreEmpleador` en la declaración AEAT).
+   * Si llega · se propaga a `empresaPagadora.nombre` y a `gestoraActual`
+   * del plan stub creado.
+   */
+  nombreEmpleador?: string;
   /**
    * Si el usuario ya seleccionó un plan al que atribuir la importación,
    * pásalo aquí · si no, el servicio decide automáticamente (ver §2 cabecera).
@@ -92,6 +113,7 @@ async function buscarPlanTitular(
   personalDataId: number,
   titular: 'yo' | 'pareja',
   preferTipo: TipoAdministrativo,
+  nifEmpleador?: string,
 ): Promise<PlanPensiones | undefined> {
   const candidatos = await planesPensionesService.getAllPlanes({
     personalDataId,
@@ -99,12 +121,19 @@ async function buscarPlanTitular(
     estado: 'activo',
   });
   if (candidatos.length === 0) return undefined;
-  // Si hay alguno del tipo preferido, devolverlo.
+  // 1. Si llega CIF empleador, match exacto por `empresaPagadora.cif`.
+  if (nifEmpleador) {
+    const porCif = candidatos.find(
+      (p) => p.empresaPagadora?.cif === nifEmpleador,
+    );
+    if (porCif) return porCif;
+  }
+  // 2. Si hay alguno del tipo preferido, devolverlo.
   const preferido = candidatos.find((p) => p.tipoAdministrativo === preferTipo);
   if (preferido) return preferido;
-  // Si solo hay 1 plan activo del titular, usarlo.
+  // 3. Si solo hay 1 plan activo del titular, usarlo.
   if (candidatos.length === 1) return candidatos[0];
-  // Varios planes y ninguno del tipo preferido · devolver el primero PPI/PPE
+  // 4. Varios planes y ninguno del tipo preferido · devolver el primero PPI/PPE
   // por orden de prioridad (PPE > PPES > PPI > PPA).
   const orden: TipoAdministrativo[] = ['PPE', 'PPES', 'PPI', 'PPA'];
   for (const t of orden) {
@@ -119,21 +148,33 @@ async function asegurarPlanStub(
   titular: 'yo' | 'pareja',
   tipo: TipoAdministrativo,
   ejercicio: number,
+  nifEmpleador?: string,
+  nombreEmpleador?: string,
 ): Promise<{ plan: PlanPensiones; created: boolean }> {
-  const existing = await buscarPlanTitular(personalDataId, titular, tipo);
+  const existing = await buscarPlanTitular(personalDataId, titular, tipo, nifEmpleador);
   if (existing) return { plan: existing, created: false };
-  const ahora = new Date().toISOString();
+  const nombre = nombreEmpleador
+    ? `Plan ${tipo} · ${nombreEmpleador}`
+    : `Plan ${tipo} (importado AEAT ${ejercicio})`;
   const plan = await planesPensionesService.createPlan({
-    nombre: `Plan ${tipo} (importado AEAT ${ejercicio})`,
+    nombre,
     titular,
     personalDataId,
     tipoAdministrativo: tipo,
-    gestoraActual: '—',
+    ...(tipo === 'PPE' ? { subtipoPPE: 'empleador_unico' as const } : {}),
+    ...(nifEmpleador
+      ? {
+          empresaPagadora: {
+            cif: nifEmpleador,
+            nombre: nombreEmpleador ?? '',
+          },
+        }
+      : {}),
+    gestoraActual: nombreEmpleador ?? '—',
     fechaContratacion: `${ejercicio}-01-01`,
     estado: 'activo',
     origen: 'xml_aeat',
   } as Omit<PlanPensiones, 'id' | 'fechaCreacion' | 'fechaActualizacion'>);
-  void ahora;
   return { plan, created: true };
 }
 
@@ -172,6 +213,8 @@ export async function importarAportacionesAEAT(
     ejercicio,
     aportacionesTrabajador,
     contribucionesEmpresariales,
+    nifEmpleador,
+    nombreEmpleador,
     planIdExplicito,
   } = input;
 
@@ -205,6 +248,8 @@ export async function importarAportacionesAEAT(
       titular,
       tipoPreferido,
       ejercicio,
+      nifEmpleador,
+      nombreEmpleador,
     );
     plan = r.plan;
     creado = r.created;
@@ -275,3 +320,14 @@ export async function importarAportacionesAEAT(
 
   return { planId: plan.id, aportacionesCreadas, warnings };
 }
+
+// TODO · TAREA 13 v4 · backlog post-Acción 1 (D6).
+// `inferirTipoDesdeCasilla` está exportada pero NO se invoca internamente · el
+// servicio infiere el tipo administrativo por presencia de contribución
+// empresarial (`contribucionesEmpresariales > 0 ? 'PPE' : 'PPI'`). Para los
+// casos PPI/PPE de Jose la inferencia actual da el resultado correcto.
+// Cablearla requiere que el parser AEAT pase la casilla origen
+// (0469/0470/0471/0472/0474) al servicio · eso modifica
+// `irpfXmlParserService.extraerPlanPensiones`, que está fuera del alcance de
+// Acción 1. Afecta a PPES (4 subtipos) y PPA cuando se modelen seriamente · no
+// a los datos productivos actuales.

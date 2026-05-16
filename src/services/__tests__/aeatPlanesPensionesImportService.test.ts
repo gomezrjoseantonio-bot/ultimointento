@@ -157,6 +157,107 @@ describe('aeatPlanesPensionesImportService', () => {
     expect(r.aportacionesCreadas[0].planId).toBe('plan-elegido-por-jose');
   });
 
+  // TAREA 13 v4 · Acción 1 (D6) · campos nifEmpleador / nombreEmpleador.
+
+  it('crea stub PPE con empresaPagadora + gestoraActual + subtipoPPE cuando llegan nifEmpleador/nombreEmpleador', async () => {
+    const { importarAportacionesAEAT } = await import(
+      '../aeatPlanesPensionesImportService'
+    );
+    const r = await importarAportacionesAEAT({
+      personalDataId: 1,
+      titular: 'yo',
+      ejercicio: 2024,
+      aportacionesTrabajador: 1396.68,
+      contribucionesEmpresariales: 1862.16,
+      nifEmpleador: 'A82009812',
+      nombreEmpleador: 'Orange',
+    });
+
+    expect(r.planId).toBeTruthy();
+    expect(r.aportacionesCreadas).toHaveLength(2);
+
+    const { initDB } = await import('../db');
+    const db = await initDB();
+    const planes = (await (db as any).getAll('planesPensiones')) as any[];
+    expect(planes).toHaveLength(1);
+    const plan = planes[0];
+    expect(plan.tipoAdministrativo).toBe('PPE');
+    expect(plan.subtipoPPE).toBe('empleador_unico');
+    expect(plan.empresaPagadora).toEqual({ cif: 'A82009812', nombre: 'Orange' });
+    expect(plan.gestoraActual).toBe('Orange');
+    expect(plan.nombre).toContain('Orange');
+    expect(plan.origen).toBe('xml_aeat');
+  });
+
+  it('matchea plan existente por CIF antes que por tipo', async () => {
+    const { initDB } = await import('../db');
+    const db = await initDB();
+    const ahora = new Date().toISOString();
+    // Plan PPI sin empresaPagadora (debe NO ganar).
+    await (db as any).add('planesPensiones', {
+      id: 'plan-ppi-otro',
+      nombre: 'PPI antiguo',
+      titular: 'yo',
+      personalDataId: 1,
+      tipoAdministrativo: 'PPI',
+      gestoraActual: 'MyInvestor',
+      fechaContratacion: '2018-01-01',
+      estado: 'activo',
+      origen: 'manual',
+      fechaCreacion: ahora,
+      fechaActualizacion: ahora,
+    });
+    // Plan PPE con CIF Orange (debe ganar pese a que la inferencia diría PPE
+    // y hay además otro PPE distinto).
+    await (db as any).add('planesPensiones', {
+      id: 'plan-ppe-orange',
+      nombre: 'Plan PPE Orange',
+      titular: 'yo',
+      personalDataId: 1,
+      tipoAdministrativo: 'PPE',
+      subtipoPPE: 'empleador_unico',
+      empresaPagadora: { cif: 'A82009812', nombre: 'Orange' },
+      gestoraActual: 'Orange',
+      fechaContratacion: '2020-01-01',
+      estado: 'activo',
+      origen: 'manual',
+      fechaCreacion: ahora,
+      fechaActualizacion: ahora,
+    });
+    await (db as any).add('planesPensiones', {
+      id: 'plan-ppe-otro',
+      nombre: 'Plan PPE empleador anterior',
+      titular: 'yo',
+      personalDataId: 1,
+      tipoAdministrativo: 'PPE',
+      empresaPagadora: { cif: 'B00000000', nombre: 'Empleador anterior' },
+      gestoraActual: 'Otra gestora',
+      fechaContratacion: '2015-01-01',
+      estado: 'activo',
+      origen: 'manual',
+      fechaCreacion: ahora,
+      fechaActualizacion: ahora,
+    });
+
+    const { importarAportacionesAEAT } = await import(
+      '../aeatPlanesPensionesImportService'
+    );
+    const r = await importarAportacionesAEAT({
+      personalDataId: 1,
+      titular: 'yo',
+      ejercicio: 2024,
+      aportacionesTrabajador: 1396.68,
+      contribucionesEmpresariales: 1862.16,
+      nifEmpleador: 'A82009812',
+      nombreEmpleador: 'Orange',
+    });
+
+    expect(r.planId).toBe('plan-ppe-orange');
+    expect(r.aportacionesCreadas).toHaveLength(2);
+    expect(r.aportacionesCreadas[0].planId).toBe('plan-ppe-orange');
+    expect(r.aportacionesCreadas[1].planId).toBe('plan-ppe-orange');
+  });
+
   it('inferirTipoDesdeCasilla mapea correctamente', async () => {
     const { inferirTipoDesdeCasilla } = await import(
       '../aeatPlanesPensionesImportService'

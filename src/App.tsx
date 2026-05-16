@@ -24,6 +24,7 @@ import { runV70NominaHistorialMigration } from './services/migrations/v70-nomina
 import { cleanupCategoriasT34T35Fix2 } from './services/migrations/cleanupCategoriasT34T35fix2';
 import { fixAportacionesPlanCruceB6 } from './services/migrations/fixAportacionesPlanCruceB6';
 import { fixDeclaracionCompletaCruceB6 } from './services/migrations/fixDeclaracionCompletaCruceB6';
+import { fixCasillaAEATOficial } from './services/migrations/fixCasillaAEATOficial';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -398,6 +399,19 @@ function App() {
         }
         if (b6bisReport.errors.length > 0) {
           console.warn('[ATLAS] FIX-B6-bis declaracionCompleta · errores parciales:', b6bisReport.errors);
+        }
+      })
+      // TAREA 13 v4 · Acción 1 (D6) · one-shot · reescribe
+      // casillaAEAT='RSUMAD' → '0426'/'0427'/'0426/0427' en aportacionesPlan
+      // con origen='xml_aeat' escritas por el bloque viejo de
+      // declaracionDistributorService.persistirPlanPensiones. Idempotente.
+      .then(() => fixCasillaAEATOficial())
+      .then((casillaReport) => {
+        if (!casillaReport.skipped && casillaReport.updated > 0) {
+          console.log('[ATLAS] FIX-casillaAEAT oficial · actualizados:', casillaReport);
+        }
+        if (casillaReport.errors.length > 0) {
+          console.warn('[ATLAS] FIX-casillaAEAT oficial · errores parciales:', casillaReport.errors);
         }
       })
       .catch((error) => {
