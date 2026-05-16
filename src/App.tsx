@@ -201,7 +201,6 @@ const PersonalPresupuesto = lazyWithPreload(() => import('./modules/personal/pag
 
 // Gestión Personal hub
 const GestionPersonalPage = lazyWithPreload(() => import('./pages/GestionPersonal/GestionPersonalPage'));
-const GestionInversionesPage = lazyWithPreload(() => import('./pages/GestionInversiones/GestionInversionesPage'));
 
 // Gestión Inmuebles hub
 const GestionInmueblesList = lazyWithPreload(() => import('./pages/GestionInmuebles/GestionInmueblesList'));
@@ -1184,11 +1183,10 @@ function App() {
                   <VentaWizard />
                 </React.Suspense>
               } />
-              <Route path="inversiones" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <GestionInversionesPage />
-                </React.Suspense>
-              } />
+              {/* TAREA 13 v4 · Acción 2 (D4) · /gestion/inversiones era una UI
+                  paralela (GestionInversionesPage) duplicada con la galería v5
+                  canónica /inversiones. Eliminada · redirect permanente. */}
+              <Route path="inversiones" element={<Navigate to="/inversiones" replace />} />
               <Route path="personal" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <GestionPersonalPage />
