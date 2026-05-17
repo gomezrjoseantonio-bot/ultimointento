@@ -13,14 +13,15 @@
 //
 // T23.6.2 · CintaResumenInversiones sticky añadida en la parte superior.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { showToastV5 } from '../../../design-system/v5';
 import { inversionesService } from '../../../services/inversionesService';
 import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
-import ActualizarValorDialog from '../components/ActualizarValorDialog';
-import AportacionFormDialog from '../components/AportacionFormDialog';
-import PosicionFormDialog from '../components/PosicionFormDialog';
+import AportarModal from '../components/modal/AportarModal';
+import ActualizarValoracionModal from '../components/modal/ActualizarValoracionModal';
+import EditarPosicionModal from '../components/modal/EditarPosicionModal';
+import VenderModal from '../components/modal/VenderModal';
 import RegistrarCobroDialog from '../components/RegistrarCobroDialog';
 import FichaValoracionSimple from '../components/FichaValoracionSimple';
 import FichaRendimientoPeriodico from '../components/FichaRendimientoPeriodico';
@@ -28,6 +29,7 @@ import FichaDividendos from '../components/FichaDividendos';
 import FichaGenerica from '../components/FichaGenerica';
 import FichaPlanPensiones from './FichaPlanPensiones';
 import { clasificarTipo } from '../helpers';
+import { inversionToCartaItem } from '../types/cartaItem';
 import styles from './FichaPosicion.module.css';
 
 type CobroVariant = 'cobro' | 'dividendo';
@@ -42,6 +44,7 @@ const FichaPosicionPage: React.FC = () => {
   const [showActualizarValor, setShowActualizarValor] = useState(false);
   const [showAportar, setShowAportar] = useState(false);
   const [showEditar, setShowEditar] = useState(false);
+  const [showVender, setShowVender] = useState(false);
   const [showCobro, setShowCobro] = useState<CobroVariant | null>(null);
 
   const idNumber = Number(posicionId);
@@ -93,21 +96,25 @@ const FichaPosicionPage: React.FC = () => {
 
   const handleBack = () => navigate('/inversiones');
 
+  // PR 4 review-fix · useMemo debe llamarse en cada render · no después de
+  // early returns (Rules of Hooks). Si posicion no está disponible aún,
+  // devolvemos null y los modales que dependen de cartaItem no se montan.
+  const cartaItem = useMemo(
+    () => (posicion ? inversionToCartaItem(posicion) : null),
+    [posicion],
+  );
+
   // T23.6.4 · Ficha completa de plan de pensiones · reemplaza placeholder T23.6.1
   if (esPlanPensiones) {
     return <FichaPlanPensiones planId={posicionId!} onBack={handleBack} />;
   }
 
-  // No relanzamos el error al modal · `ActualizarValorDialog` invoca
-  // `onSave` sin `await/catch` · si lanzáramos provocaríamos un Unhandled
-  // Promise Rejection. El modal se cierra al éxito (`setShow…(false)`) y
-  // permanece abierto si el toast de error ya alertó al usuario.
-  const handleSaveValor = async (nuevoValor: number, fechaValoracionISO: string) => {
+  const handleSaveValor = async (nuevoValor: number, fechaISO: string) => {
     if (!posicion) return;
     try {
       await inversionesService.updatePosicion(posicion.id, {
         valor_actual: nuevoValor,
-        fecha_valoracion: fechaValoracionISO,
+        fecha_valoracion: `${fechaISO}T12:00:00.000Z`,
       });
       showToastV5('Valor actualizado.');
       setShowActualizarValor(false);
@@ -215,7 +222,9 @@ const FichaPosicionPage: React.FC = () => {
           posicion={posicion}
           onBack={handleBack}
           onRegistrarDividendo={() => setShowCobro('dividendo')}
-          onComprarVender={() => setShowAportar(true)}
+          // PR 4 · "comprar/vender" abre `VenderModal` (flujo de venta con
+          // FIFO en vivo). El alta de compra adicional sigue por Aportar.
+          onComprarVender={() => setShowVender(true)}
           onActualizarValor={() => setShowActualizarValor(true)}
         />
       );
@@ -239,20 +248,26 @@ const FichaPosicionPage: React.FC = () => {
       {ficha}
 
       {showActualizarValor && (
-        <ActualizarValorDialog
-          posicionNombre={nombrePosicion}
-          valorActual={posicion.valor_actual}
+        <ActualizarValoracionModal
+          posicion={cartaItem!}
           onSave={handleSaveValor}
           onClose={() => setShowActualizarValor(false)}
         />
       )}
 
       {showAportar && (
-        <AportacionFormDialog
-          posicionNombre={nombrePosicion}
+        <AportarModal
+          posicion={cartaItem!}
+          onSaveInversion={async (_pos, aportacion) => handleSaveAportacion(aportacion)}
+          onClose={() => setShowAportar(false)}
+        />
+      )}
+
+      {showVender && (
+        <VenderModal
           posicion={posicion}
           onSave={handleSaveAportacion}
-          onClose={() => setShowAportar(false)}
+          onClose={() => setShowVender(false)}
         />
       )}
 
@@ -266,9 +281,22 @@ const FichaPosicionPage: React.FC = () => {
       )}
 
       {showEditar && (
-        <PosicionFormDialog
-          posicion={posicion}
-          onSave={handleSavePosicion}
+        <EditarPosicionModal
+          posicion={cartaItem!}
+          onSave={async ({ nombre, entidad, notas }) => {
+            await handleSavePosicion({ nombre, entidad, notas });
+          }}
+          onDelete={async () => {
+            try {
+              await inversionesService.deletePosicion(posicion.id);
+              showToastV5('Posición eliminada.');
+              navigate('/inversiones');
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('[inversiones] eliminar', err);
+              showToastV5('Error al eliminar la posición.');
+            }
+          }}
           onClose={() => setShowEditar(false)}
         />
       )}
