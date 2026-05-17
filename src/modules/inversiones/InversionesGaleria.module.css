@@ -577,3 +577,151 @@
 .cerradasArrow {
   color: var(--atlas-v5-ink-4);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+ * T-INVERSIONES-V5 PR 2 · filtros + tag por tipo + selector
+ * Mockup vinculante · docs/specs/atlas-inversiones-v3 (2).html
+ *   filters-bar (líneas 557-561)
+ *   tag-tipo (líneas 531-543)
+ *   page-head (línea 73)
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Hex hardcoded en el mockup · sin token global v5 análogo.
+ * Documentados aquí para futura promoción a tokens globales.
+ * Equivalente a la pauta del PR 1 (--atlas-neg-bright-local). */
+.filtersBar,
+.tagTipo {
+  /* Plan tag · PPE blue (B2B) */
+  --atlas-tag-ppe-bg: #DCE7F5;
+  --atlas-tag-ppe-fg: #1F4E8B;
+  /* Plan tag · PPES green (autónomo) */
+  --atlas-tag-ppes-bg: #E0E8E0;
+  --atlas-tag-ppes-fg: #2D5B3A;
+  /* Plan tag · PPA brown (autónomo PPA) */
+  --atlas-tag-ppa-bg: #F0E4E0;
+  --atlas-tag-ppa-fg: #8B5C42;
+  /* Fondo · purple */
+  --atlas-tag-fondo-bg: #EEE3F5;
+  --atlas-tag-fondo-fg: #6B3FAE;
+  /* ETF · azul */
+  --atlas-tag-etf-bg: #E8F0F5;
+  --atlas-tag-etf-fg: #2C6A8E;
+  /* REIT · ámbar */
+  --atlas-tag-reit-bg: #F5E8E0;
+  --atlas-tag-reit-fg: #8B4A1F;
+  /* Crypto · magenta */
+  --atlas-tag-crypto-bg: #F5E0E8;
+  --atlas-tag-crypto-fg: #9E2A5F;
+}
+
+/* ─── Filters bar ──────────────────────────────────────────────────── */
+
+.filtersBar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filterPill {
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-semibold, 600);
+  color: var(--atlas-v5-ink-3);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.14s, color 0.14s, background 0.14s;
+}
+
+.filterPill:hover {
+  border-color: var(--atlas-v5-ink-5);
+  color: var(--atlas-v5-ink-2);
+}
+
+.filterPill:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+.filterPill.active {
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  border-color: var(--atlas-v5-brand-ink);
+}
+
+.filterPillNum {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+  font-size: 10.5px;
+}
+
+.filtersBarSpacer { flex: 1; }
+
+.filterSort {
+  composes: filterPill;
+}
+
+/* ─── Tag por tipo · 13 variantes (§5.1) ───────────────────────────── */
+
+.tagTipo {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.tagTipo_ppi   { background: var(--atlas-v5-brand-wash, var(--atlas-v5-gold-wash)); color: var(--atlas-v5-brand, var(--atlas-v5-gold-ink)); }
+.tagTipo_ppe   { background: var(--atlas-tag-ppe-bg);   color: var(--atlas-tag-ppe-fg); }
+.tagTipo_ppes  { background: var(--atlas-tag-ppes-bg);  color: var(--atlas-tag-ppes-fg); }
+.tagTipo_ppa   { background: var(--atlas-tag-ppa-bg);   color: var(--atlas-tag-ppa-fg); }
+.tagTipo_fondo { background: var(--atlas-tag-fondo-bg); color: var(--atlas-tag-fondo-fg); }
+.tagTipo_etf   { background: var(--atlas-tag-etf-bg);   color: var(--atlas-tag-etf-fg); }
+.tagTipo_reit  { background: var(--atlas-tag-reit-bg);  color: var(--atlas-tag-reit-fg); }
+.tagTipo_accion {
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line);
+}
+/* P2P y Préstamo comparten paleta oro · diferenciados por el TEXTO del tag
+ * (P2P · PRÉSTAMO) y por el sub-label "Préstamo P2P" vs "Préstamo a empresa".
+ * Faithful con mockup línea 540 · pareja agrupada deliberadamente por Jose. */
+.tagTipo_p2p,
+.tagTipo_prestamo {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}
+.tagTipo_deposito {
+  background: var(--atlas-v5-pos-wash);
+  color: var(--atlas-v5-pos);
+}
+.tagTipo_crypto {
+  background: var(--atlas-tag-crypto-bg);
+  color: var(--atlas-tag-crypto-fg);
+}
+/* Otro y Acción comparten paleta neutra · diferenciados por el TEXTO
+ * (ACCIÓN · OTRO) y porque `Otro` típicamente NO aparece en producción
+ * (catch-all). Faithful con mockup líneas 539 + 543 · idénticas. */
+.tagTipo_otro {
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line);
+}
+
+/* Sección de cerradas · separación visual respecto al grid superior.
+ * Reemplaza el `marginTop: 18` inline que tenía PosicionesCerradasSection. */
+.cerradasHd {
+  margin-top: 18px;
+}
