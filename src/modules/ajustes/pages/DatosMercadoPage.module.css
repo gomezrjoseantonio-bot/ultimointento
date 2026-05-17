@@ -1,0 +1,215 @@
+/* ═══════════════════════════════════════════════════════════════════
+ * Ajustes → Datos de mercado · UI tabla benchmarks editable.
+ * T-INVERSIONES-DETALLE-PP-v1 · PR 2 · §7.1.
+ * Usa tokens globales --atlas-v5-* · sin hex hardcoded.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--atlas-v5-warn-wash);
+  border: 1px solid var(--atlas-v5-warn-border);
+  color: var(--atlas-v5-warn);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.bannerBody { flex: 1; }
+
+.bannerIcon {
+  flex-shrink: 0;
+  color: var(--atlas-v5-warn);
+  margin-top: 2px;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.tabla th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+  padding: 12px 16px;
+  background: var(--atlas-v5-card-alt);
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.tabla td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+  color: var(--atlas-v5-ink-2);
+  vertical-align: top;
+}
+
+.tabla tr:last-child td { border-bottom: none; }
+
+.row {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.row:hover {
+  background: var(--atlas-v5-card-alt);
+}
+
+.row.expanded {
+  background: var(--atlas-v5-gold-wash-2);
+}
+
+.codigo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--atlas-v5-ink);
+  font-weight: 600;
+}
+
+.nombre {
+  font-weight: 600;
+  color: var(--atlas-v5-ink);
+}
+
+.tipoCell {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.valorUltimoAno {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  text-align: right;
+}
+
+.valorUltimoAno.empty {
+  color: var(--atlas-v5-ink-5);
+  font-style: italic;
+}
+
+.fechaCell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.empty {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.editPanel {
+  background: var(--atlas-v5-card-alt);
+  border-top: 1px solid var(--atlas-v5-line);
+  padding: 18px 22px;
+}
+
+.editGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 22px;
+  margin-bottom: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fieldLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+}
+
+.input {
+  padding: 8px 10px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
+  font-family: inherit;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--atlas-v5-gold);
+}
+
+.input.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.subhd {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-3);
+  margin: 6px 0 10px;
+}
+
+.tablaAnual {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.tablaAnual th,
+.tablaAnual td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+  text-align: left;
+}
+
+.tablaAnual th {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+  font-weight: 600;
+}
+
+.tablaAnual td:last-child {
+  text-align: right;
+}
+
+.formAddAno {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.formAddAno .input { flex: 1 1 0; min-width: 0; }
+.formAddAno .input.year { max-width: 90px; }
+.formAddAno .input.value { max-width: 110px; }
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding-top: 6px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+  margin-top: 6px;
+}
+
+.spacer { flex: 1; }

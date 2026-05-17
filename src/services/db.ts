@@ -23,9 +23,10 @@ import type {
   OrigenDeclaracion,
 } from '../types/fiscal';
 import type { TipoActivo } from '../types/tipoActivo';
+import type { BenchmarkReferencia } from '../types/benchmarksReferencia';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 71; // V71 (SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1 hueco 4): crea store `deudasFiscales` para deudas con AEAT (modelos 100/303/130/184). Solo creación de store (no se mueven datos: store empieza vacío y Jose añade manualmente desde UI F6). 41 stores totales.
+const DB_VERSION = 72; // V72 (T-INVERSIONES-DETALLE-PP-v1 PR 2): crea store `benchmarksReferencia` para datos de mercado editables desde Ajustes → Datos de mercado. Precarga vacía (decisión Q-PRE-H opción B · Jose introduce valores manualmente). 42 stores totales.
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2399,6 +2400,7 @@ interface AtlasHorizonDB {
   fondos_ahorro: FondoAhorro; // V5.6: fondos de ahorro con etiquetas de propósito
   retos: Reto;               // V5.7: retos mensuales (1 activo por mes)
   deudasFiscales: DeudaFiscal; // V71: deudas fiscales con AEAT (modelos 100/303/130/184) · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1
+  benchmarksReferencia: BenchmarkReferencia; // V72: índices de referencia editables (MSCI World · S&P 500 · IPC ES · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.A
 }
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
 
@@ -2938,6 +2940,25 @@ export const initDB = async () => {
           deudasStore.createIndex('ejercicio', 'ejercicio', { unique: false });
           deudasStore.createIndex('estado', 'estado', { unique: false });
           deudasStore.createIndex('notificada', 'notificada', { unique: false });
+        }
+
+        // V72: benchmarks de referencia editables · datos de mercado
+        // T-INVERSIONES-DETALLE-PP-v1 §4.A · usados por `proyeccionActivoService`
+        // (PR 1) y la UI Ajustes → Datos de mercado (PR 2).
+        // Precarga: 6 benchmarks con metadata + `valoresAnuales: {}` vacío
+        // (decisión Q-PRE-H opción B). La precarga la hace el servicio
+        // `benchmarksReferenciaService.runMigration_v72()` POST-upgrade,
+        // controlada por el flag `migration_v72_benchmarksReferencia_v1`
+        // en `keyval` para que sea idempotente.
+        if (!db.objectStoreNames.contains('benchmarksReferencia')) {
+          const benchmarksStore = db.createObjectStore('benchmarksReferencia', {
+            keyPath: 'id',
+          });
+          benchmarksStore.createIndex('codigo', 'codigo', { unique: true });
+          benchmarksStore.createIndex('tipo', 'tipo', { unique: false });
+          benchmarksStore.createIndex('ultimaActualizacion', 'ultimaActualizacion', {
+            unique: false,
+          });
         }
 
         // V2.8: Allow multiple snapshots per ejercicio (force snapshots)

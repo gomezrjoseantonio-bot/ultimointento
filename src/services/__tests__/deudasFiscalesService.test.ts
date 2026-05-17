@@ -18,7 +18,10 @@ describe('deudasFiscalesService · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1 huec
     const { initDB } = await import('../db');
     const db = await initDB();
     expect(db.objectStoreNames.contains('deudasFiscales')).toBe(true);
-    expect(db.version).toBe(71);
+    // Aserción >= en lugar de === para no romper en bumps de DB_VERSION
+    // posteriores (mismo patrón que valoracionesService.indexV69.test.ts).
+    // T-INVERSIONES-DETALLE-PP-v1 PR 2 bumpea a v72 sin tocar el store.
+    expect(db.version).toBeGreaterThanOrEqual(71);
     db.close();
   });
 
