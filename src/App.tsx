@@ -296,6 +296,7 @@ const AjustesNotificaciones = lazyWithPreload(() => import('./modules/ajustes/pa
 const AjustesPlantillas = lazyWithPreload(() => import('./modules/ajustes/pages/PlantillasPage'));
 const AjustesPerfilFiscal = lazyWithPreload(() => import('./modules/ajustes/pages/PerfilFiscalPage'));
 const AjustesSeguridad = lazyWithPreload(() => import('./modules/ajustes/pages/SeguridadPage'));
+const AjustesDatosMercado = lazyWithPreload(() => import('./modules/ajustes/pages/DatosMercadoPage'));
 
 // CopilotWidget es un botón flotante rara vez usado. Cargarlo eager arrastra
 // dashboardService → proyeccionMensualService y toda la cadena de servicios
@@ -1401,6 +1402,11 @@ function App() {
               <Route path="seguridad" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <AjustesSeguridad />
+                </React.Suspense>
+              } />
+              <Route path="datos-mercado" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AjustesDatosMercado />
                 </React.Suspense>
               } />
             </Route>

@@ -18,6 +18,7 @@ const items: AjustesNavItem[] = [
   { key: 'notificaciones', label: 'Notificaciones', icon: Icons.Bell, path: '/ajustes/notificaciones' },
   { key: 'plantillas', label: 'Plantillas', icon: Icons.Contratos, path: '/ajustes/plantillas' },
   { key: 'fiscal', label: 'Perfil fiscal y convivencia', icon: Icons.Fiscal, path: '/ajustes/fiscal' },
+  { key: 'datos-mercado', label: 'Datos de mercado', icon: Icons.Proyeccion, path: '/ajustes/datos-mercado' },
   { key: 'seguridad', label: 'Seguridad y datos', icon: Icons.Lock, path: '/ajustes/seguridad' },
 ];
 
