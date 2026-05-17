@@ -15,8 +15,8 @@ import {
   restaurarSeedV72,
   runMigration_v72,
   setValorAnual,
-  todosVacios,
   updateBenchmark,
+  vaciosEnLista,
 } from '../../../services/benchmarksReferenciaService';
 import type { BenchmarkReferencia, TipoBenchmark } from '../../../types/benchmarksReferencia';
 
@@ -42,22 +42,38 @@ function valorUltimoAno(b: BenchmarkReferencia): { ano: number; pct: number } | 
 
 const DatosMercadoPage = () => {
   const [items, setItems] = useState<BenchmarkReferencia[]>([]);
-  const [vacios, setVacios] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Una única lectura · `vacios` se deriva de `items` con `useMemo`.
+  const vacios = useMemo(() => vaciosEnLista(items), [items]);
 
   const recargar = useCallback(async () => {
     const lista = await listBenchmarks();
     setItems(lista);
-    setVacios(await todosVacios());
   }, []);
 
   useEffect(() => {
+    let cancelado = false;
     (async () => {
-      await runMigration_v72();
-      await recargar();
+      try {
+        await runMigration_v72();
+        if (cancelado) return;
+        const lista = await listBenchmarks();
+        if (!cancelado) setItems(lista);
+      } catch (err) {
+        if (!cancelado) {
+          showToastV5(
+            `No se pudieron cargar los benchmarks · ${(err as Error).message}`,
+            'error',
+          );
+        }
+      }
     })();
-  }, [recargar]);
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const onRestaurar = async () => {
     if (
@@ -171,11 +187,7 @@ interface BenchmarkRowProps {
 const BenchmarkRow = ({ benchmark, ultimo, expanded, onToggle, onChanged }: BenchmarkRowProps) => {
   return (
     <>
-      <tr
-        className={`${styles.row} ${expanded ? styles.expanded : ''}`}
-        onClick={onToggle}
-        aria-expanded={expanded}
-      >
+      <tr className={`${styles.row} ${expanded ? styles.expanded : ''}`}>
         <td className={styles.codigo}>{benchmark.codigo}</td>
         <td className={styles.nombre}>{benchmark.nombre}</td>
         <td className={styles.tipoCell}>{TIPO_LABEL[benchmark.tipo]}</td>
@@ -189,18 +201,17 @@ const BenchmarkRow = ({ benchmark, ultimo, expanded, onToggle, onChanged }: Benc
           <button
             type="button"
             className={`${containerStyles.btn} ${containerStyles.btnGhost}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle();
-            }}
-            aria-label={expanded ? 'Cerrar edición' : 'Editar'}
+            onClick={onToggle}
+            aria-expanded={expanded}
+            aria-controls={`bench-edit-${benchmark.id}`}
+            aria-label={expanded ? `Cerrar edición de ${benchmark.codigo}` : `Editar ${benchmark.codigo}`}
           >
             {expanded ? 'Cerrar' : 'Editar'}
           </button>
         </td>
       </tr>
       {expanded && (
-        <tr>
+        <tr id={`bench-edit-${benchmark.id}`}>
           <td colSpan={6} style={{ padding: 0 }}>
             <EditarPanel benchmark={benchmark} onChanged={onChanged} />
           </td>

@@ -6,8 +6,13 @@
 //
 // 6 benchmarks con metadata completa (código · nombre · tipo · divisa ·
 // descripción · fuenteUrl sugerida) + `valoresAnuales: {}` vacío.
-// `ultimaActualizacion: null` señaliza al UI que muestre el banner
-// "Datos pendientes · introduce los valores manualmente".
+//
+// El banner "Datos pendientes · introduce manualmente" se dispara en la UI
+// cuando `vaciosEnLista(items)` es true (todos con `valoresAnuales == {}`),
+// no por `ultimaActualizacion`. Aquí dejamos `ultimaActualizacion: null`
+// como dato de presentación (la columna "Actualizado" muestra "—"). En
+// cuanto el usuario añada un valor anual desde la UI, el service pone
+// `ultimaActualizacion` a la fecha ISO de hoy.
 
 import type { BenchmarkReferencia } from '../../types/benchmarksReferencia';
 

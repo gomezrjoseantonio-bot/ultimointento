@@ -71,19 +71,23 @@ export async function createBenchmark(
   if (!input.nombre?.trim()) throw new Error('nombre es obligatorio');
   if (!input.divisa?.trim()) throw new Error('divisa es obligatoria');
 
-  const existente = await getBenchmarkByCodigo(input.codigo);
+  // Normaliza codigo UNA vez · trim + uppercase · evita falsos negativos en
+  // lookup unique cuando el usuario teclea con espacios o casing distinto.
+  const codigo = input.codigo.trim().toUpperCase();
+
+  const existente = await getBenchmarkByCodigo(codigo);
   if (existente) {
-    throw new Error(`Ya existe un benchmark con codigo '${input.codigo}'`);
+    throw new Error(`Ya existe un benchmark con codigo '${codigo}'`);
   }
 
   const ahora = nowISO();
   const tieneValores = !!input.valoresAnuales && Object.keys(input.valoresAnuales).length > 0;
   const bench: BenchmarkReferencia = {
     id: generateId(),
-    codigo: input.codigo.trim(),
+    codigo,
     nombre: input.nombre.trim(),
     tipo: input.tipo,
-    divisa: input.divisa.trim(),
+    divisa: input.divisa.trim().toUpperCase(),
     descripcion: input.descripcion?.trim() ?? '',
     valoresAnuales: input.valoresAnuales ?? {},
     fuenteUrl: input.fuenteUrl?.trim() || undefined,
@@ -100,7 +104,9 @@ export async function createBenchmark(
 export interface UpdateBenchmarkInput {
   nombre?: string;
   descripcion?: string;
+  /** undefined = no tocar · '' = limpiar el campo (se guarda como undefined). */
   fuenteUrl?: string;
+  /** undefined = no tocar · '' = limpiar el campo (se guarda como undefined). */
   notaInterna?: string;
   divisa?: string;
 }
@@ -112,13 +118,27 @@ export async function updateBenchmark(
   const db = await initDB();
   const actual = await db.get('benchmarksReferencia', id);
   if (!actual) throw new Error(`Benchmark '${id}' no encontrado`);
+
+  // `nombre` y `divisa` son obligatorios · si vienen vacíos en el patch
+  // se ignoran (se mantiene el valor actual).
+  // `fuenteUrl` y `notaInterna` son opcionales · distinguir entre "no viene
+  // en patch" (no tocar) y "viene cadena vacía" (limpiar → undefined).
+  const nombreNuevo = patch.nombre?.trim();
+  const divisaNueva = patch.divisa?.trim();
+
   const merged: BenchmarkReferencia = {
     ...actual,
-    nombre: patch.nombre?.trim() ?? actual.nombre,
+    nombre: nombreNuevo || actual.nombre,
     descripcion: patch.descripcion?.trim() ?? actual.descripcion,
-    fuenteUrl: patch.fuenteUrl?.trim() || actual.fuenteUrl,
-    notaInterna: patch.notaInterna?.trim() || actual.notaInterna,
-    divisa: patch.divisa?.trim() ?? actual.divisa,
+    fuenteUrl:
+      'fuenteUrl' in patch
+        ? patch.fuenteUrl?.trim() || undefined
+        : actual.fuenteUrl,
+    notaInterna:
+      'notaInterna' in patch
+        ? patch.notaInterna?.trim() || undefined
+        : actual.notaInterna,
+    divisa: divisaNueva ? divisaNueva.toUpperCase() : actual.divisa,
     fechaModificacion: nowISO(),
   };
   await db.put('benchmarksReferencia', merged);
@@ -189,24 +209,42 @@ export async function runMigration_v72(): Promise<{
   insertados: number;
 }> {
   const db = await initDB();
-  const flag = await db.get('keyval', MIGRATION_FLAG_KEY);
+
+  // Transacción multi-store · check flag + inserts + write flag son atómicos.
+  // Garantiza idempotencia frente a tabs concurrentes: si dos arranques
+  // corren a la vez · sólo uno verá `flag == null` y hará el seed; el otro
+  // verá el flag puesto y devolverá `{ejecutada: false}`. Además captura
+  // ConstraintError por si entre check y put alguien creó el código
+  // manualmente, sin abortar la migración completa.
+  const tx = db.transaction(['benchmarksReferencia', 'keyval'], 'readwrite');
+  const storeBench = tx.objectStore('benchmarksReferencia');
+  const storeKv = tx.objectStore('keyval');
+
+  const flag = await storeKv.get(MIGRATION_FLAG_KEY);
   if (flag) {
+    await tx.done;
     return { ejecutada: false, insertados: 0 };
   }
 
-  // Inserta cada seed solo si no existe ya un benchmark con ese código
-  // (defensivo · si el usuario creó algo manual con el mismo código entre
-  // bumps · no lo sobrescribimos).
   let insertados = 0;
+  const indexCodigo = storeBench.index('codigo');
   for (const seed of SEED_BENCHMARKS_V72) {
-    const existente = await db.getFromIndex('benchmarksReferencia', 'codigo', seed.codigo);
-    if (!existente) {
-      await db.put('benchmarksReferencia', { ...seed });
-      insertados++;
+    try {
+      const existente = await indexCodigo.get(seed.codigo);
+      if (!existente) {
+        await storeBench.put({ ...seed });
+        insertados++;
+      }
+    } catch (err) {
+      // ConstraintError (DOMException name) · alguien insertó el mismo
+      // codigo en una tx paralela · seguimos con el resto sin abortar.
+      const name = (err as { name?: string })?.name;
+      if (name !== 'ConstraintError') throw err;
     }
   }
 
-  await db.put('keyval', { ejecutada: nowISO(), seedCount: insertados }, MIGRATION_FLAG_KEY);
+  await storeKv.put({ ejecutada: nowISO(), seedCount: insertados }, MIGRATION_FLAG_KEY);
+  await tx.done;
   return { ejecutada: true, insertados };
 }
 
@@ -237,11 +275,20 @@ export async function restaurarSeedV72(): Promise<number> {
 }
 
 /**
+ * True si TODOS los benchmarks de la lista dada tienen `valoresAnuales` vacío.
+ * Predicado puro · sin I/O · útil cuando la UI ya tiene la lista cargada.
+ */
+export function vaciosEnLista(lista: ReadonlyArray<BenchmarkReferencia>): boolean {
+  if (lista.length === 0) return true;
+  return lista.every((b) => Object.keys(b.valoresAnuales).length === 0);
+}
+
+/**
  * True si TODOS los benchmarks del store tienen `valoresAnuales` vacío.
  * Usado por el banner de la UI "Datos pendientes · introduce manualmente".
+ * Hace una lectura completa · prefiere `vaciosEnLista` si ya tienes la lista.
  */
 export async function todosVacios(): Promise<boolean> {
   const lista = await listBenchmarks();
-  if (lista.length === 0) return true;
-  return lista.every((b) => Object.keys(b.valoresAnuales).length === 0);
+  return vaciosEnLista(lista);
 }

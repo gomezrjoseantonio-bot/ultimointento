@@ -3,11 +3,10 @@
 
 import '@testing-library/jest-dom';
 
-const mockState: { items: any[]; vacios: boolean } = { items: [], vacios: true };
+const mockState: { items: any[] } = { items: [] };
 
 const mockRunMigration = jest.fn();
 const mockListBenchmarks = jest.fn();
-const mockTodosVacios = jest.fn();
 const mockUpdateBenchmark = jest.fn();
 const mockSetValorAnual = jest.fn();
 const mockDeleteValorAnual = jest.fn();
@@ -17,7 +16,9 @@ const mockRestaurarSeed = jest.fn();
 jest.mock('../../../../services/benchmarksReferenciaService', () => ({
   runMigration_v72: (...args: any[]) => mockRunMigration(...args),
   listBenchmarks: (...args: any[]) => mockListBenchmarks(...args),
-  todosVacios: (...args: any[]) => mockTodosVacios(...args),
+  // `vaciosEnLista` es puro · usamos la implementación real para no acoplar el test.
+  vaciosEnLista: (lista: any[]) =>
+    lista.length === 0 || lista.every((b) => Object.keys(b.valoresAnuales).length === 0),
   updateBenchmark: (...args: any[]) => mockUpdateBenchmark(...args),
   setValorAnual: (...args: any[]) => mockSetValorAnual(...args),
   deleteValorAnual: (...args: any[]) => mockDeleteValorAnual(...args),
@@ -56,10 +57,8 @@ const seed: BenchmarkReferencia = {
 beforeEach(() => {
   jest.clearAllMocks();
   mockState.items = [seed];
-  mockState.vacios = true;
   mockRunMigration.mockResolvedValue({ ejecutada: false, insertados: 0 });
   mockListBenchmarks.mockImplementation(() => Promise.resolve(mockState.items));
-  mockTodosVacios.mockImplementation(() => Promise.resolve(mockState.vacios));
   mockRestaurarSeed.mockResolvedValue(6);
 });
 
@@ -73,18 +72,22 @@ describe('DatosMercadoPage · smoke PR 2', () => {
     expect(mockRunMigration).toHaveBeenCalledTimes(1);
   });
 
-  test('click en fila expande panel de edición · botón cambia a "Cerrar"', async () => {
+  test('click en botón "Editar" expande panel · label aria cambia a "Cerrar"', async () => {
     render(<DatosMercadoPage />);
-    const fila = await screen.findByText('MSCI World EUR');
-    fireEvent.click(fila.closest('tr')!);
+    await screen.findByText('MSCI World EUR');
+    const btn = screen.getByRole('button', { name: /^Editar MSCI_WORLD_EUR$/ });
+    expect(btn).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(btn);
     expect(await screen.findByText('Valores anuales (%)')).toBeInTheDocument();
-    expect(screen.getByText('Cerrar')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Cerrar edición de MSCI_WORLD_EUR/ }),
+    ).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('guardar metadata · llama updateBenchmark con el nuevo nombre y recarga', async () => {
     render(<DatosMercadoPage />);
-    const fila = await screen.findByText('MSCI World EUR');
-    fireEvent.click(fila.closest('tr')!);
+    await screen.findByText('MSCI World EUR');
+    fireEvent.click(screen.getByRole('button', { name: /^Editar MSCI_WORLD_EUR$/ }));
     await screen.findByText('Valores anuales (%)');
 
     const nombreInput = screen.getAllByDisplayValue('MSCI World EUR')[0] as HTMLInputElement;
@@ -107,8 +110,8 @@ describe('DatosMercadoPage · smoke PR 2', () => {
 
   test('añadir valor anual · llama setValorAnual', async () => {
     render(<DatosMercadoPage />);
-    const fila = await screen.findByText('MSCI World EUR');
-    fireEvent.click(fila.closest('tr')!);
+    await screen.findByText('MSCI World EUR');
+    fireEvent.click(screen.getByRole('button', { name: /^Editar MSCI_WORLD_EUR$/ }));
     await screen.findByText('Valores anuales (%)');
 
     fireEvent.change(screen.getByLabelText('Año a añadir'), { target: { value: '2024' } });
@@ -129,8 +132,21 @@ describe('DatosMercadoPage · smoke PR 2', () => {
 
   test('sin benchmarks · mensaje vacío con instrucción de restaurar', async () => {
     mockState.items = [];
-    mockState.vacios = true;
     render(<DatosMercadoPage />);
     expect(await screen.findByText(/No hay benchmarks/)).toBeInTheDocument();
+  });
+
+  test('runMigration falla · toast de error y la UI no rompe', async () => {
+    const { showToastV5 } = jest.requireMock('../../../../design-system/v5');
+    mockRunMigration.mockRejectedValueOnce(new Error('IndexedDB no disponible'));
+    render(<DatosMercadoPage />);
+    await waitFor(() =>
+      expect(showToastV5).toHaveBeenCalledWith(
+        expect.stringContaining('No se pudieron cargar los benchmarks'),
+        'error',
+      ),
+    );
+    // El head sigue rindiendo · no hay crash
+    expect(screen.getByText('Datos de mercado')).toBeInTheDocument();
   });
 });

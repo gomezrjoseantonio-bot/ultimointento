@@ -1,13 +1,44 @@
 // Tests · benchmarksReferenciaService (PR 2 · spec §11 fila 3).
 // CRUD básico + precarga inicial + update valor anual.
 
-const mockDB = {
+// ── Mock IndexedDB (idb wrapper) ──────────────────────────────────────────────
+// Soporte para tanto el path directo (db.get/put/...) como el path con
+// transacciones multi-store (db.transaction([...]).objectStore(...)).
+// Las funciones del store delegan a las mismas jest.fn del mockDB · una sola
+// fuente de verdad.
+
+const mockDB: any = {
   get: jest.fn(),
   put: jest.fn(),
   getAll: jest.fn(),
   getFromIndex: jest.fn(),
   delete: jest.fn(),
+  transaction: jest.fn(),
 };
+
+function buildStoreWrapper(storeName: string) {
+  return {
+    get: jest.fn((key: unknown) => mockDB.get(storeName, key)),
+    put: jest.fn((value: unknown, key?: unknown) =>
+      key !== undefined ? mockDB.put(storeName, value, key) : mockDB.put(storeName, value),
+    ),
+    delete: jest.fn((key: unknown) => mockDB.delete(storeName, key)),
+    index: jest.fn((indexName: string) => ({
+      get: jest.fn((value: unknown) => mockDB.getFromIndex(storeName, indexName, value)),
+    })),
+  };
+}
+
+function setupTxMock() {
+  mockDB.transaction.mockImplementation((stores: string[]) => {
+    const wrappers: Record<string, ReturnType<typeof buildStoreWrapper>> = {};
+    for (const name of stores) wrappers[name] = buildStoreWrapper(name);
+    return {
+      objectStore: (name: string) => wrappers[name],
+      done: Promise.resolve(),
+    };
+  });
+}
 
 jest.mock('../db', () => ({
   initDB: jest.fn(() => Promise.resolve(mockDB)),
@@ -25,6 +56,7 @@ import {
   setValorAnual,
   todosVacios,
   updateBenchmark,
+  vaciosEnLista,
 } from '../benchmarksReferenciaService';
 import { SEED_BENCHMARKS_V72 } from '../../data/seeds/benchmarksReferencia';
 import type { BenchmarkReferencia } from '../../types/benchmarksReferencia';
@@ -54,6 +86,7 @@ beforeEach(() => {
   mockDB.getAll.mockResolvedValue([]);
   mockDB.getFromIndex.mockResolvedValue(undefined);
   mockDB.delete.mockResolvedValue(undefined);
+  setupTxMock();
 });
 
 describe('benchmarksReferenciaService · lectura', () => {
@@ -130,6 +163,25 @@ describe('benchmarksReferenciaService · createBenchmark', () => {
       createBenchmark({ codigo: '', nombre: 'x', tipo: 'inflacion', divisa: 'EUR' }),
     ).rejects.toThrow(/codigo/);
   });
+
+  test('normaliza codigo (trim + upper) y divisa (upper) antes de lookup y persist', async () => {
+    mockDB.getFromIndex.mockResolvedValueOnce(undefined);
+    const b = await createBenchmark({
+      codigo: '  msci_em_eur  ',
+      nombre: 'MSCI EM',
+      tipo: 'indice_equity',
+      divisa: 'eur',
+    });
+    expect(b.codigo).toBe('MSCI_EM_EUR');
+    expect(b.divisa).toBe('EUR');
+    // El lookup también usó el código normalizado · evita falsos negativos
+    // que terminarían en ConstraintError en el put.
+    expect(mockDB.getFromIndex).toHaveBeenCalledWith(
+      'benchmarksReferencia',
+      'codigo',
+      'MSCI_EM_EUR',
+    );
+  });
 });
 
 describe('benchmarksReferenciaService · updateBenchmark + valores', () => {
@@ -145,6 +197,34 @@ describe('benchmarksReferenciaService · updateBenchmark + valores', () => {
   test('updateBenchmark · benchmark inexistente · error', async () => {
     mockDB.get.mockResolvedValueOnce(undefined);
     await expect(updateBenchmark('no-existe', { nombre: 'x' })).rejects.toThrow(/no encontrado/);
+  });
+
+  test('updateBenchmark · fuenteUrl="" limpia el campo (→ undefined)', async () => {
+    const actual = mockBench({ fuenteUrl: 'https://old.com' });
+    mockDB.get.mockResolvedValueOnce(actual);
+    const r = await updateBenchmark(actual.id, { fuenteUrl: '' });
+    expect(r.fuenteUrl).toBeUndefined();
+  });
+
+  test('updateBenchmark · fuenteUrl no en patch · mantiene valor actual', async () => {
+    const actual = mockBench({ fuenteUrl: 'https://old.com' });
+    mockDB.get.mockResolvedValueOnce(actual);
+    const r = await updateBenchmark(actual.id, { nombre: 'Otro nombre' });
+    expect(r.fuenteUrl).toBe('https://old.com');
+  });
+
+  test('updateBenchmark · notaInterna="" limpia el campo', async () => {
+    const actual = mockBench({ notaInterna: 'nota previa' });
+    mockDB.get.mockResolvedValueOnce(actual);
+    const r = await updateBenchmark(actual.id, { notaInterna: '' });
+    expect(r.notaInterna).toBeUndefined();
+  });
+
+  test('updateBenchmark · divisa vacía · ignorada (mantiene actual)', async () => {
+    const actual = mockBench({ divisa: 'EUR' });
+    mockDB.get.mockResolvedValueOnce(actual);
+    const r = await updateBenchmark(actual.id, { divisa: '   ' });
+    expect(r.divisa).toBe('EUR');
   });
 
   test('setValorAnual · añade año · actualiza ultimaActualizacion', async () => {
@@ -225,6 +305,27 @@ describe('benchmarksReferenciaService · runMigration_v72 (idempotente)', () => 
     // Solo un put · el del flag (ninguno del seed)
     expect(mockDB.put).toHaveBeenCalledTimes(1);
   });
+
+  test('ConstraintError en un put · no aborta · sigue con el resto', async () => {
+    mockDB.get.mockResolvedValueOnce(undefined); // flag ausente
+    // Todos los lookups dicen "no existe" → intenta insertar
+    mockDB.getFromIndex.mockResolvedValue(undefined);
+    // Primer put de benchmark falla con ConstraintError · resto OK
+    let llamada = 0;
+    mockDB.put.mockImplementation((store: string) => {
+      llamada++;
+      if (store === 'benchmarksReferencia' && llamada === 1) {
+        const err: any = new Error('Constraint');
+        err.name = 'ConstraintError';
+        return Promise.reject(err);
+      }
+      return Promise.resolve();
+    });
+    const r = await runMigration_v72();
+    // Ejecutada y flag escrito · aunque uno falló, los otros 5 se insertaron
+    expect(r.ejecutada).toBe(true);
+    expect(r.insertados).toBe(5);
+  });
 });
 
 describe('benchmarksReferenciaService · restaurarSeedV72', () => {
@@ -240,7 +341,7 @@ describe('benchmarksReferenciaService · restaurarSeedV72', () => {
   });
 });
 
-describe('benchmarksReferenciaService · todosVacios', () => {
+describe('benchmarksReferenciaService · todosVacios + vaciosEnLista', () => {
   test('lista vacía · true', async () => {
     mockDB.getAll.mockResolvedValueOnce([]);
     expect(await todosVacios()).toBe(true);
@@ -260,6 +361,17 @@ describe('benchmarksReferenciaService · todosVacios', () => {
       mockBench({ id: 'b', valoresAnuales: { 2024: 5 } }),
     ]);
     expect(await todosVacios()).toBe(false);
+  });
+
+  test('vaciosEnLista · predicado puro · sin I/O', () => {
+    expect(vaciosEnLista([])).toBe(true);
+    expect(vaciosEnLista([mockBench({ valoresAnuales: {} })])).toBe(true);
+    expect(
+      vaciosEnLista([
+        mockBench({ id: 'a', valoresAnuales: {} }),
+        mockBench({ id: 'b', valoresAnuales: { 2024: 5 } }),
+      ]),
+    ).toBe(false);
   });
 });
 

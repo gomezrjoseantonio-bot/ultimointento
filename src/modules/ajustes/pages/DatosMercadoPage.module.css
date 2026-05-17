@@ -58,7 +58,6 @@
 .tabla tr:last-child td { border-bottom: none; }
 
 .row {
-  cursor: pointer;
   transition: background 0.12s;
 }
 
