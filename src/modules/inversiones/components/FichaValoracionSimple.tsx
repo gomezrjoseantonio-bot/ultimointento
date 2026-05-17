@@ -54,6 +54,10 @@ const FichaValoracionSimple: React.FC<Props> = ({
   const rentEur = Number(posicion.rentabilidad_euros ?? valorActual - aportado);
   const rentPct = aportado > 0 ? (rentEur / aportado) * 100 : 0;
   const cagr = useMemo(() => calculateEstimatedCagr(posicion), [posicion]);
+  // T-INVERSIONES-V5 §7.4 · si valor_actual=0 y total_aportado>0 sin
+  // valoraciones, el hero mostraría -100% / -aportado€ latente, que
+  // es un artefacto · mostramos "Sin valoración" en su lugar.
+  const sinValoracion = valorActual === 0 && aportado > 0;
   const esPlan = posicion.tipo === 'plan_pensiones' || posicion.tipo === 'plan_empleo';
 
   const serie = useMemo(() => construirSerieValor(posicion), [posicion]);
@@ -104,10 +108,23 @@ const FichaValoracionSimple: React.FC<Props> = ({
           <>ISIN <strong>{posicion.isin}</strong></>
         ) : null,
         stats: [
-          { lab: 'Valor actual', val: formatCurrency(valorActual), valVariant: rentVariant === 'pos' ? 'pos' : undefined },
+          {
+            lab: 'Valor actual',
+            val: sinValoracion ? 'Sin valoración' : formatCurrency(valorActual),
+            valVariant: !sinValoracion && rentVariant === 'pos' ? 'pos' : undefined,
+            small: sinValoracion,
+          },
           { lab: 'Aportado', val: formatCurrency(aportado) },
-          { lab: 'Ganancia', val: formatDelta(rentEur), valVariant: rentVariant },
-          { lab: 'CAGR', val: Number.isFinite(cagr) ? formatPercent(cagr) : '—', valVariant: cagrVariant },
+          {
+            lab: 'Rentabilidad',
+            val: sinValoracion ? '—' : formatDelta(rentEur),
+            valVariant: sinValoracion ? undefined : rentVariant,
+          },
+          {
+            lab: 'CAGR',
+            val: sinValoracion ? '—' : Number.isFinite(cagr) ? formatPercent(cagr) : '—',
+            valVariant: sinValoracion ? undefined : cagrVariant,
+          },
         ],
       }}
       onBack={onBack}
