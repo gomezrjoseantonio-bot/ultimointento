@@ -6,7 +6,7 @@
 // se mantiene en los services del repositorio (NO se duplica aquí).
 
 import type { PosicionInversion, TipoPosicion } from '../../types/inversiones';
-import type { TipoAdministrativo } from '../../types/planesPensiones';
+import type { SubtipoPPES, TipoAdministrativo } from '../../types/planesPensiones';
 import type { PositionRow } from './types';
 import type { CartaItem } from './types/cartaItem';
 
@@ -778,4 +778,77 @@ export function getTipoTagCssKey(
   if (t === 'reit') return 'reit';
   if (t === 'crypto') return 'crypto';
   return 'otro';
+}
+
+// ── T-INVERSIONES-V5 §7.1 · cálculo fiscal límite plan pensiones ───────────
+
+export interface LimitePlan {
+  /** Límite total deducible en euros. */
+  limite: number;
+  /** Desglose textual cuando aplica (e.g. "1.500 titular + 8.500 empresa"). */
+  desglose?: string;
+  /** Referencia al artículo aplicable. */
+  articulo: string;
+  /** Copy narrativo completo (combina límite + desglose + artículo). */
+  copy: string;
+}
+
+/**
+ * Devuelve el límite fiscal deducible aplicable a un plan según tipo
+ * administrativo, subtipo PPES (relevante solo si tipo='PPES') y check
+ * de discapacidad ≥ 33%.
+ *
+ * Reglas (LIRPF · Ley 12/2022):
+ *   - Discapacidad ≥ 33%  → 24.250 € (art. 52.1.c LIRPF) · gana siempre.
+ *   - PPI / PPA           → 1.500 € (art. 51.6 LIRPF).
+ *   - PPE                 → 10.000 € (1.500 titular + 8.500 empresa · art. 51.7).
+ *   - PPES (autónomos)    → 5.750 € (1.500 + 4.250 adicionales · art. 51.8).
+ *   - PPES (otros)        → 1.500 € (art. 51.6).
+ *
+ * El cálculo se reusa en preview en vivo del wizard alta plan + en futuros
+ * cálculos del impacto IRPF.
+ */
+export function calcularLimitePlan(
+  tipo: TipoAdministrativo,
+  subtipoPPES?: SubtipoPPES,
+  hasDiscapacidad?: boolean,
+): LimitePlan {
+  if (hasDiscapacidad) {
+    return {
+      limite: 24_250,
+      articulo: 'art. 52.1.c LIRPF',
+      copy: 'Límite especial discapacidad · 24.250 € (art. 52.1.c LIRPF).',
+    };
+  }
+  switch (tipo) {
+    case 'PPE':
+      return {
+        limite: 10_000,
+        desglose: '1.500 € titular + 8.500 € empresa',
+        articulo: 'art. 51.7 LIRPF',
+        copy: 'Límite conjunto · 1.500 € titular + 8.500 € empresa = 10.000 € (art. 51.7 LIRPF).',
+      };
+    case 'PPES':
+      if (subtipoPPES === 'autonomos') {
+        return {
+          limite: 5_750,
+          desglose: '1.500 € + 4.250 € adicionales',
+          articulo: 'art. 51.8 LIRPF · Ley 12/2022',
+          copy: 'Límite anual · 1.500 € + 4.250 € adicionales = 5.750 € (art. 51.8 · Ley 12/2022).',
+        };
+      }
+      return {
+        limite: 1_500,
+        articulo: 'art. 51.6 LIRPF',
+        copy: 'Límite anual deducible · 1.500 € (art. 51.6 LIRPF).',
+      };
+    case 'PPI':
+    case 'PPA':
+    default:
+      return {
+        limite: 1_500,
+        articulo: 'art. 51.6 LIRPF',
+        copy: 'Límite anual deducible · 1.500 € (art. 51.6 LIRPF).',
+      };
+  }
 }

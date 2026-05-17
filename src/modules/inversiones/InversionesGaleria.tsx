@@ -20,12 +20,15 @@ import { inversionesService } from '../../services/inversionesService';
 import { rendimientosService } from '../../services/rendimientosService';
 import { migrateInversionesToNewModel } from '../../services/migrations/migrateInversiones';
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
-import type { TipoAdministrativo } from '../../types/planesPensiones';
 import CartaPosicion from './components/CartaPosicion';
 import DialogAportar from './components/DialogAportar';
 import SelectorNuevaPosicion, { type Familia } from './components/modal/SelectorNuevaPosicion';
-import PlanFormV5 from './components/wizard/PlanFormV5';
-import PosicionFormV5, { type TipoUI_V5 } from './components/wizard/PosicionFormV5';
+import AltaPlanWizard from './components/modal/AltaPlanWizard';
+import AltaFondoModal from './components/modal/AltaFondoModal';
+import AltaAccionModal from './components/modal/AltaAccionModal';
+import AltaPrestamoModal from './components/modal/AltaPrestamoModal';
+import AltaDepositoModal from './components/modal/AltaDepositoModal';
+import AltaCryptoModal from './components/modal/AltaCryptoModal';
 import GaleriaFiltros, { type FiltroCategoria } from './components/galeria/GaleriaFiltros';
 import PosicionesCerradasSection from './components/galeria/PosicionesCerradasSection';
 import {
@@ -38,19 +41,10 @@ import type { CartaItem } from './types/cartaItem';
 import { getCategoriaGaleria, type CategoriaGaleria } from './helpers';
 import styles from './InversionesGaleria.module.css';
 
-interface FamiliaDispatch {
-  tipoAdministrativoInicial?: TipoAdministrativo;
-  tipoInicial?: TipoUI_V5;
-}
-
-const FAMILIA_DISPATCH: Record<Familia, FamiliaDispatch> = {
-  plan: { tipoAdministrativoInicial: 'PPI' },
-  fondo: { tipoInicial: 'fondo_inversion' },
-  accion: { tipoInicial: 'accion' },
-  prestamo: { tipoInicial: 'prestamo_p2p' },
-  deposito: { tipoInicial: 'deposito_plazo' },
-  crypto: { tipoInicial: 'crypto' },
-};
+// Familia → modal componente ATLAS. PR 3 sustituye PlanFormV5/PosicionFormV5
+// del wizard legacy por los 6 modales de alta dedicados. Los componentes
+// legacy siguen vivos en el repo hasta PR 5 (regla "no retirar legacy hasta
+// PR final"), pero ya NO se invocan desde la galería.
 
 const InversionesGaleria: React.FC = () => {
   const navigate = useNavigate();
@@ -62,10 +56,11 @@ const InversionesGaleria: React.FC = () => {
   const [filtro, setFiltro] = useState<FiltroCategoria>('todas');
 
   // Estado del flujo de alta · el selector elige familia, luego se abre
-  // el form legacy con tipo preseleccionado. PR 3 sustituirá esto por
-  // modales de alta dedicados sin pasar por el form legacy.
+  // el modal ATLAS dedicado. Cada modal invoca el servicio correspondiente
+  // (plan → planesPensionesService.createPlan; resto → onSave →
+  // inversionesService.createPosicion vía handleSavePosicion del padre).
   const [showSelector, setShowSelector] = useState(false);
-  const [dispatchAlta, setDispatchAlta] = useState<FamiliaDispatch | null>(null);
+  const [altaModal, setAltaModal] = useState<Familia | null>(null);
   const [showAportar, setShowAportar] = useState(false);
 
   const load = useCallback(async () => {
@@ -141,10 +136,10 @@ const InversionesGaleria: React.FC = () => {
 
   const handlePickFamilia = (f: Familia) => {
     setShowSelector(false);
-    setDispatchAlta(FAMILIA_DISPATCH[f]);
+    setAltaModal(f);
   };
 
-  const closeAlta = () => setDispatchAlta(null);
+  const closeAlta = () => setAltaModal(null);
 
   const openAportar = () => {
     if (posicionesParaAportar.length === 0) {
@@ -270,10 +265,10 @@ const InversionesGaleria: React.FC = () => {
         />
       )}
 
-      {/* Wizard legacy con tipo preseleccionado · stub hasta PR 3. */}
-      {dispatchAlta?.tipoAdministrativoInicial && (
-        <PlanFormV5
-          tipoAdministrativoInicial={dispatchAlta.tipoAdministrativoInicial}
+      {/* Modales de alta ATLAS · uno por familia (PR 3). */}
+      {altaModal === 'plan' && (
+        <AltaPlanWizard
+          tipoInicial="PPE"
           onSaved={() => {
             load();
             closeAlta();
@@ -281,19 +276,20 @@ const InversionesGaleria: React.FC = () => {
           onClose={closeAlta}
         />
       )}
-      {dispatchAlta?.tipoInicial && (
-        <PosicionFormV5
-          tipoInicial={dispatchAlta.tipoInicial}
-          onSave={async (data) => {
-            try {
-              await handleSavePosicion(data);
-              closeAlta();
-            } catch {
-              /* toast ya mostrado */
-            }
-          }}
-          onClose={closeAlta}
-        />
+      {altaModal === 'fondo' && (
+        <AltaFondoModal onSave={handleSavePosicion} onClose={closeAlta} />
+      )}
+      {altaModal === 'accion' && (
+        <AltaAccionModal onSave={handleSavePosicion} onClose={closeAlta} />
+      )}
+      {altaModal === 'prestamo' && (
+        <AltaPrestamoModal onSave={handleSavePosicion} onClose={closeAlta} />
+      )}
+      {altaModal === 'deposito' && (
+        <AltaDepositoModal onSave={handleSavePosicion} onClose={closeAlta} />
+      )}
+      {altaModal === 'crypto' && (
+        <AltaCryptoModal onSave={handleSavePosicion} onClose={closeAlta} />
       )}
 
       {showAportar && (
