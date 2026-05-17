@@ -1,0 +1,584 @@
+/* ═══════════════════════════════════════════════════════════════════
+ * ATLAS Inversiones · módulo CSS común
+ * Tokens y selectores extraídos del mockup vinculante
+ * `docs/specs/atlas-inversiones-v3 (2).html` líneas 570-828.
+ * Patrón Modal ATLAS · header navy + body 2-col + preview en vivo + footer.
+ * Usa tokens globales --atlas-v5-* (src/design-system/v5/tokens.css).
+ * Sin hex hardcoded · spec §9.3 · excepto los marcados como TODO.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Overlay ─── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 18, 48, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 30px 16px;
+}
+
+/* ─── Modal container ─── */
+.modal {
+  background: var(--atlas-v5-card);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 1020px;
+  max-height: calc(100vh - 60px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(14, 20, 35, 0.18);
+  animation: atlasSlideDown 0.2s ease-out;
+  font-family: 'Inter', sans-serif;
+}
+
+.modal.noPreview { max-width: 720px; }
+.modal.narrow { max-width: 560px; }
+
+@keyframes atlasSlideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Header navy ─── */
+.header {
+  background: var(--atlas-v5-brand-ink);
+  color: #fff;
+  padding: 18px 24px;
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.headerIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-gold);
+}
+
+.headerTitleWrap { min-width: 0; }
+
+.headerTitle {
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.headerSub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.headerClose {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  transition: background 0.14s, color 0.14s;
+}
+
+.headerClose:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.headerClose:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+/* ─── Body ─── */
+.body {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.modal.noPreview .body { grid-template-columns: 1fr; }
+
+.form {
+  padding: 22px 26px;
+  overflow-y: auto;
+}
+
+.preview {
+  background: var(--atlas-v5-card-alt);
+  border-left: 1px solid var(--atlas-v5-line-2);
+  padding: 22px;
+  overflow-y: auto;
+}
+
+/* ─── Sections en el form ─── */
+.section { margin-bottom: 22px; }
+.section:last-child { margin-bottom: 0; }
+
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--atlas-v5-ink-3);
+  margin: 0 0 12px;
+}
+
+.sectionTitle .req {
+  color: var(--atlas-v5-neg);
+  margin-left: 3px;
+}
+
+/* ─── Selector horizontal de tipos (icono arriba + label + sub) ─── */
+.selectorH { display: grid; gap: 8px; }
+.selectorH.cols2 { grid-template-columns: repeat(2, 1fr); }
+.selectorH.cols3 { grid-template-columns: repeat(3, 1fr); }
+.selectorH.cols4 { grid-template-columns: repeat(4, 1fr); }
+
+.tab {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  padding: 14px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  color: var(--atlas-v5-ink-2);
+  font: inherit;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.14s, background 0.14s;
+  text-align: center;
+}
+
+.tab:hover { border-color: var(--atlas-v5-ink-5); }
+
+.tab.active {
+  background: var(--atlas-v5-gold-wash);
+  border-color: var(--atlas-v5-gold);
+  border-width: 1.5px;
+  padding: 13px 9px 11px;
+}
+
+.tabIcon {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-3);
+}
+
+.tab.active .tabIcon { color: var(--atlas-v5-gold-ink); }
+
+.tabLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.005em;
+}
+
+.tab.active .tabLabel { color: var(--atlas-v5-gold-ink); }
+
+.tabSub {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 1px;
+  line-height: 1.35;
+}
+
+.tab.active .tabSub { color: var(--atlas-v5-gold-ink); }
+
+/* ─── Filas de inputs ─── */
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.row.cols1 { grid-template-columns: 1fr; }
+.row.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+.row.cols4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.row:last-child { margin-bottom: 0; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--atlas-v5-ink-2);
+  letter-spacing: -0.005em;
+}
+
+.label .req {
+  color: var(--atlas-v5-neg);
+  font-weight: 700;
+  margin-left: 3px;
+}
+
+.label .opt {
+  color: var(--atlas-v5-ink-5);
+  font-size: 10.5px;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.input,
+.select,
+.textarea {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 7px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--atlas-v5-ink-2);
+  font-family: 'Inter', sans-serif;
+}
+
+.input.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--atlas-v5-gold);
+  box-shadow: 0 0 0 3px var(--atlas-v5-gold-wash);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--atlas-v5-ink-5);
+}
+
+.textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+/* ─── Toggle ─── */
+.toggle {
+  display: inline-flex;
+  background: var(--atlas-v5-bg);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 0;
+}
+
+.toggle button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-4);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: 'Inter', sans-serif;
+}
+
+.toggle button:hover { color: var(--atlas-v5-ink-2); }
+
+.toggle button.active {
+  background: var(--atlas-v5-ink);
+  color: #fff;
+}
+
+/* ─── Checkbox unificado ─── */
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.14s, background 0.14s;
+}
+
+.check:hover { border-color: var(--atlas-v5-ink-5); }
+
+.check.active {
+  background: var(--atlas-v5-gold-wash);
+  border-color: var(--atlas-v5-gold);
+}
+
+.checkBox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--atlas-v5-ink-5);
+  flex-shrink: 0;
+  margin-top: 1px;
+  background: var(--atlas-v5-card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+}
+
+.check.active .checkBox {
+  background: var(--atlas-v5-gold);
+  border-color: var(--atlas-v5-gold);
+  color: #fff;
+}
+
+.checkTit {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  letter-spacing: -0.005em;
+}
+
+.check.active .checkTit { color: var(--atlas-v5-gold-ink); }
+
+.checkSub {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+  line-height: 1.45;
+}
+
+.check.active .checkSub { color: var(--atlas-v5-gold-ink); }
+
+/* ─── Preview panel · derecha ─── */
+.previewHd {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-4);
+  margin-bottom: 14px;
+}
+
+.previewHd svg { color: var(--atlas-v5-gold); }
+
+.previewCardDark {
+  background: var(--atlas-v5-brand-ink);
+  color: #fff;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  /* TODO · token --atlas-v5-neg-bright (#F5A199) no existe en
+     src/design-system/v5/tokens.css. Definido como custom property
+     local hasta confirmar con Jose si se promociona a token global. */
+  --atlas-neg-bright-local: #F5A199;
+}
+
+.previewCardDark .lab {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.previewCardDark .val {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: #fff;
+}
+
+.previewCardDark .val.gold { color: var(--atlas-v5-gold-bright); }
+.previewCardDark .val.pos { color: var(--atlas-v5-pos-bright); }
+.previewCardDark .val.neg { color: var(--atlas-neg-bright-local); }
+
+.previewCardDark .sub {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 7px;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.previewCardDark .sub.wrap {
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: normal;
+}
+
+.previewRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  font-size: 12px;
+}
+
+.previewRow + .previewRow {
+  border-top: 1px solid var(--atlas-v5-line-2);
+}
+
+.previewRow .k { color: var(--atlas-v5-ink-3); }
+
+.previewRow .v {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--atlas-v5-ink-2);
+  font-size: 12.5px;
+}
+
+.previewRow .v.txt {
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: normal;
+  font-size: 12px;
+}
+
+.previewRow .v.pos { color: var(--atlas-v5-pos); }
+.previewRow .v.neg { color: var(--atlas-v5-neg); }
+.previewRow .v.gold { color: var(--atlas-v5-gold-ink); }
+
+.previewBlock {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+}
+
+.previewBlock:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.previewBanner {
+  background: var(--atlas-v5-card);
+  border-left: 3px solid var(--atlas-v5-gold);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+  line-height: 1.55;
+}
+
+.previewBanner strong {
+  color: var(--atlas-v5-ink);
+  font-weight: 700;
+}
+
+.previewBanner.warn { border-left-color: var(--atlas-v5-warn); }
+.previewBanner.pos { border-left-color: var(--atlas-v5-pos); }
+
+/* ─── Footer ─── */
+.footer {
+  background: var(--atlas-v5-card-alt);
+  border-top: 1px solid var(--atlas-v5-line-2);
+  padding: 13px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.footerInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  line-height: 1.4;
+}
+
+.footerInfo svg {
+  color: var(--atlas-v5-gold);
+  flex-shrink: 0;
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ─── Botones del footer ─── */
+.btn {
+  padding: 9px 16px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.14s, border-color 0.14s;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  background: transparent;
+  border-color: var(--atlas-v5-line);
+  color: var(--atlas-v5-ink-2);
+}
+
+.btnGhost:hover:not(:disabled) {
+  border-color: var(--atlas-v5-ink-5);
+  background: var(--atlas-v5-card-alt);
+}
+
+.btnGold {
+  background: var(--atlas-v5-gold);
+  border-color: var(--atlas-v5-gold);
+  color: #fff;
+}
+
+.btnGold:hover:not(:disabled) {
+  background: var(--atlas-v5-gold-2);
+  border-color: var(--atlas-v5-gold-2);
+}
