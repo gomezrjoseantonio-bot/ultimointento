@@ -5,8 +5,15 @@
 import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import SelectorNuevaPosicion, { type Familia } from '../SelectorNuevaPosicion';
+
+// Helper de testing · refleja la ruta actual en el DOM para verificar
+// navegación tras click en importer del footer.
+const LocationProbe: React.FC = () => {
+  const loc = useLocation();
+  return <span data-testid="location-probe">{loc.pathname}</span>;
+};
 
 const renderSelector = (
   props: Partial<React.ComponentProps<typeof SelectorNuevaPosicion>> = {},
@@ -14,11 +21,14 @@ const renderSelector = (
   const onPickFamilia = props.onPickFamilia ?? jest.fn();
   const onClose = props.onClose ?? jest.fn();
   const utils = render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/inversiones']}>
       <SelectorNuevaPosicion
         onPickFamilia={onPickFamilia}
         onClose={onClose}
       />
+      <Routes>
+        <Route path="*" element={<LocationProbe />} />
+      </Routes>
     </MemoryRouter>,
   );
   return { ...utils, onPickFamilia, onClose };
@@ -83,6 +93,24 @@ describe('SelectorNuevaPosicion · 6 familias', () => {
     renderSelector();
     expect(screen.getByText(/Indexa Capital/)).toBeInTheDocument();
     expect(screen.getByText(/Aportaciones CSV/)).toBeInTheDocument();
+  });
+
+  it('click en "Indexa Capital" cierra el selector y navega al importer', () => {
+    const { onClose } = renderSelector();
+    fireEvent.click(screen.getByRole('button', { name: /Indexa Capital/ }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('location-probe')).toHaveTextContent(
+      '/inversiones/importar-indexa',
+    );
+  });
+
+  it('click en "Aportaciones CSV" cierra el selector y navega al importer', () => {
+    const { onClose } = renderSelector();
+    fireEvent.click(screen.getByRole('button', { name: /Aportaciones CSV/ }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('location-probe')).toHaveTextContent(
+      '/inversiones/importar-aportaciones',
+    );
   });
 
   it('llama onClose al pulsar Escape', () => {

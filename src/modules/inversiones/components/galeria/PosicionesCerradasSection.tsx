@@ -32,7 +32,7 @@ const PosicionesCerradasSection: React.FC<PosicionesCerradasSectionProps> = ({
 
   return (
     <>
-      <div className={styles.galleryHd} style={{ marginTop: 18 }}>
+      <div className={`${styles.galleryHd} ${styles.cerradasHd}`}>
         <div className={styles.galleryTitle}>Posiciones cerradas</div>
         <div className={styles.galleryCount}>
           activos que ya has vendido o liquidado

@@ -719,8 +719,8 @@ export function getFooterMetaFromItem(item: CartaItem): string {
  *
  *   'planes'       · planes de pensiones (PPI/PPE/PPES/PPA)
  *   'equity'       · acciones · ETF · REIT · fondos
- *   'rentaFija'    · prestamos P2P · préstamos empresa · depósitos · cuentas remuneradas
- *   'otros'        · crypto · otro · legacy 'deposito'
+ *   'rentaFija'    · prestamos P2P · préstamos empresa · depósitos · cuentas remuneradas · legacy 'deposito'
+ *   'otros'        · crypto · otro
  *
  * El filtro "Todas" no usa esta función · simplemente muestra todo.
  */

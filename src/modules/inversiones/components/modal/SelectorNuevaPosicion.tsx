@@ -3,7 +3,7 @@
 // Spec · TAREA-CC-T-INVERSIONES-V5 §5.2
 //
 // Patrón ATLAS · header navy + cuerpo sin preview + footer con 2 hints.
-// Cada card abre el wizard de alta del familia correspondiente.
+// Cada card abre el wizard de alta de la familia correspondiente.
 // PR 2 · los handlers dispatch al wizard legacy (PlanFormV5 / PosicionFormV5)
 // con tipo preseleccionado · PR 3 los reemplaza por los nuevos modales.
 

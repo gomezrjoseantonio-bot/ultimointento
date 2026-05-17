@@ -652,7 +652,7 @@
 
 .filterPill.active {
   background: var(--atlas-v5-brand-ink);
-  color: #fff;
+  color: var(--atlas-v5-white);
   border-color: var(--atlas-v5-brand-ink);
 }
 
@@ -695,6 +695,9 @@
   color: var(--atlas-v5-ink-3);
   border: 1px solid var(--atlas-v5-line);
 }
+/* P2P y Préstamo comparten paleta oro · diferenciados por el TEXTO del tag
+ * (P2P · PRÉSTAMO) y por el sub-label "Préstamo P2P" vs "Préstamo a empresa".
+ * Faithful con mockup línea 540 · pareja agrupada deliberadamente por Jose. */
 .tagTipo_p2p,
 .tagTipo_prestamo {
   background: var(--atlas-v5-gold-wash);
@@ -708,8 +711,17 @@
   background: var(--atlas-tag-crypto-bg);
   color: var(--atlas-tag-crypto-fg);
 }
+/* Otro y Acción comparten paleta neutra · diferenciados por el TEXTO
+ * (ACCIÓN · OTRO) y porque `Otro` típicamente NO aparece en producción
+ * (catch-all). Faithful con mockup líneas 539 + 543 · idénticas. */
 .tagTipo_otro {
   background: var(--atlas-v5-bg);
   color: var(--atlas-v5-ink-3);
   border: 1px solid var(--atlas-v5-line);
+}
+
+/* Sección de cerradas · separación visual respecto al grid superior.
+ * Reemplaza el `marginTop: 18` inline que tenía PosicionesCerradasSection. */
+.cerradasHd {
+  margin-top: 18px;
 }
