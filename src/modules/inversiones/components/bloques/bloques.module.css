@@ -1,0 +1,187 @@
+/* ═══════════════════════════════════════════════════════════════════
+ * Bloques chicha · ficha plan pensiones (P1-P5)
+ * T-INVERSIONES-DETALLE-PP-v1 · tokens del mockup `atlas-inversiones-fichas-v2.html`.
+ * Usa tokens globales --atlas-v5-* (src/design-system/v5/tokens.css).
+ * Sin hex hardcoded · paleta sobria · Oxford Gold + neutros.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Card común a todos los bloques ─── */
+.bloque {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13.5px;
+  color: var(--atlas-v5-ink-2);
+}
+
+.bloqueHd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.bloqueHdLeft {
+  flex: 1;
+  min-width: 0;
+}
+
+.bloqueSupertitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-3);
+  margin-bottom: 8px;
+}
+
+.bloqueSupertitle svg {
+  color: var(--atlas-v5-gold);
+}
+
+.bloqueMensaje {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+
+.bloqueMensaje .big {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-v5-gold-ink);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.bloqueSub {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-4);
+  line-height: 1.45;
+}
+
+.bloqueBody {
+  padding: 18px 22px 22px;
+}
+
+.bloquePlaceholder {
+  padding: 38px 22px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-4);
+  font-style: italic;
+  background: var(--atlas-v5-card-alt);
+}
+
+/* ─── Source chips · "Edad rescate · Mi Plan" ─── */
+.srcChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.srcChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.14s, border-color 0.14s;
+}
+
+.srcChip:hover {
+  color: var(--atlas-v5-gold-ink);
+  border-color: var(--atlas-v5-gold-soft);
+}
+
+/* ─── Toggle escenarios (P1) ─── */
+.toggle {
+  display: inline-flex;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.toggle button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--atlas-v5-ink-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.14s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.toggle button:hover {
+  color: var(--atlas-v5-ink-2);
+}
+
+.toggle button.active {
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  box-shadow: 0 1px 3px rgba(14, 20, 35, 0.06);
+  font-weight: 600;
+}
+
+/* ─── Banner cerrable común a P2/P3/P4/C2/C5 ─── */
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-top: 14px;
+  border-radius: 8px;
+  background: var(--atlas-v5-gold-wash);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  color: var(--atlas-v5-gold-ink);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.banner.info {
+  background: var(--atlas-v5-brand-wash);
+  border-color: var(--atlas-v5-ink-5);
+  color: var(--atlas-v5-brand);
+}
+
+.bannerBody {
+  flex: 1;
+}
+
+.bannerClose {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.55;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.bannerClose:hover {
+  opacity: 1;
+}
