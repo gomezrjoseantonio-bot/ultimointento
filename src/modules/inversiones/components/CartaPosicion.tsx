@@ -15,6 +15,7 @@ import {
   formatPercent,
   getFooterMetaFromItem,
   getTipoLabel,
+  getTipoTagCssKey,
   getTipoTagLabel,
   mapTipoToCardClass,
   signClass,
@@ -157,10 +158,17 @@ const CartaTop: React.FC<{ item: CartaItem }> = ({ item }) => {
     tipoLabel = 'PRÉSTAMO A EMPRESA';
   }
 
-  let tipoTagLabel = getTipoTagLabel(item.tipo);
+  // T-INVERSIONES-V5 §5.1 · 13 tags diferenciados (PPI/PPE/PPES/PPA · Fondo ·
+  // ETF · REIT · Acción · P2P · Préstamo · Depósito · Crypto · Otro).
+  let tipoTagLabel = getTipoTagLabel(item.tipo, item.tipoAdministrativo);
   if (item.tipo === 'prestamo_p2p' && item.subtipo === 'empresa_propia') {
     tipoTagLabel = 'PRÉSTAMO';
   }
+  const tagCssKey = getTipoTagCssKey(
+    item.tipo,
+    item.tipoAdministrativo,
+    item.subtipo,
+  );
 
   // Si el logo tiene clase CSS definida, usamos la clase; si no, usamos inline style
   const logoStyle =
@@ -187,7 +195,8 @@ const CartaTop: React.FC<{ item: CartaItem }> = ({ item }) => {
         </div>
       </div>
       <span
-        className={`${styles.cartaTipo}${styles[cardClass] ? ' ' + styles[cardClass] : ''}`}
+        className={`${styles.cartaTipo} ${styles.tagTipo}${styles['tagTipo_' + tagCssKey] ? ' ' + styles['tagTipo_' + tagCssKey] : (styles[cardClass] ? ' ' + styles[cardClass] : '')}`}
+        data-tag-tipo={tagCssKey}
       >
         {tipoTagLabel}
       </span>

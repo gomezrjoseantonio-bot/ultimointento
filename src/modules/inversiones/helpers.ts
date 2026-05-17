@@ -6,6 +6,7 @@
 // se mantiene en los services del repositorio (NO se duplica aquí).
 
 import type { PosicionInversion, TipoPosicion } from '../../types/inversiones';
+import type { TipoAdministrativo } from '../../types/planesPensiones';
 import type { PositionRow } from './types';
 import type { CartaItem } from './types/cartaItem';
 
@@ -340,8 +341,17 @@ export function getTipoLabel(t: TipoPosicion): string {
 /**
  * Etiqueta compacta del tipo (chip top-right de la carta).
  * T23.6.2 · tabla exhaustiva §Z.2.2 spec.
+ *
+ * T-INVERSIONES-V5 §5.1 · si se pasa `tipoAdministrativo` para planes,
+ * devuelve PPI/PPE/PPES/PPA en lugar de "PLAN PP" / "PLAN PPE" genérico.
  */
-export function getTipoTagLabel(t: TipoPosicion): string {
+export function getTipoTagLabel(
+  t: TipoPosicion,
+  tipoAdministrativo?: TipoAdministrativo,
+): string {
+  if ((t === 'plan_pensiones' || t === 'plan_empleo') && tipoAdministrativo) {
+    return tipoAdministrativo;
+  }
   switch (t) {
     case 'plan_pensiones':
       return 'PLAN PP';
@@ -700,4 +710,72 @@ export function getFooterMetaFromItem(item: CartaItem): string {
     default:
       return '—';
   }
+}
+
+// ── T-INVERSIONES-V5 §5.1 · categorías y tag por tipo ──────────────────────
+
+/**
+ * Categoría de la galería · una sola pasada por las 5 pills horizontales.
+ *
+ *   'planes'       · planes de pensiones (PPI/PPE/PPES/PPA)
+ *   'equity'       · acciones · ETF · REIT · fondos
+ *   'rentaFija'    · prestamos P2P · préstamos empresa · depósitos · cuentas remuneradas
+ *   'otros'        · crypto · otro · legacy 'deposito'
+ *
+ * El filtro "Todas" no usa esta función · simplemente muestra todo.
+ */
+export type CategoriaGaleria = 'planes' | 'equity' | 'rentaFija' | 'otros';
+
+export function getCategoriaGaleria(t: TipoPosicion): CategoriaGaleria {
+  switch (t) {
+    case 'plan_pensiones':
+    case 'plan_empleo':
+      return 'planes';
+    case 'accion':
+    case 'etf':
+    case 'reit':
+    case 'fondo_inversion':
+      return 'equity';
+    case 'prestamo_p2p':
+    case 'deposito_plazo':
+    case 'cuenta_remunerada':
+    case 'deposito':
+      return 'rentaFija';
+    case 'crypto':
+    case 'otro':
+    default:
+      return 'otros';
+  }
+}
+
+/**
+ * Devuelve la clave CSS para el chip `.tagTipo.<key>` (estilos en
+ * `InversionesGaleria.module.css`). Permite las 13 variantes pedidas por
+ * spec §5.1 · PPI · PPE · PPES · PPA · Fondo · ETF · REIT · Acción · P2P ·
+ * Préstamo · Depósito · Crypto · Otro.
+ *
+ * Para planes, pasar `tipoAdministrativo`. Para préstamos a empresa propia,
+ * pasar `subtipo='empresa_propia'`.
+ */
+export function getTipoTagCssKey(
+  t: TipoPosicion,
+  tipoAdministrativo?: TipoAdministrativo,
+  subtipo?: string,
+): string {
+  if ((t === 'plan_pensiones' || t === 'plan_empleo') && tipoAdministrativo) {
+    return tipoAdministrativo.toLowerCase(); // 'ppi' | 'ppe' | 'ppes' | 'ppa'
+  }
+  if (t === 'plan_pensiones') return 'ppi'; // fallback histórico
+  if (t === 'plan_empleo') return 'ppe';
+  if (t === 'prestamo_p2p') {
+    return subtipo === 'empresa_propia' ? 'prestamo' : 'p2p';
+  }
+  if (t === 'cuenta_remunerada') return 'deposito';
+  if (t === 'deposito_plazo' || t === 'deposito') return 'deposito';
+  if (t === 'fondo_inversion') return 'fondo';
+  if (t === 'accion') return 'accion';
+  if (t === 'etf') return 'etf';
+  if (t === 'reit') return 'reit';
+  if (t === 'crypto') return 'crypto';
+  return 'otro';
 }

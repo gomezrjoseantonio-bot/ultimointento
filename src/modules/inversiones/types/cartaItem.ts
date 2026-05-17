@@ -7,7 +7,7 @@
 // NO entra en stores · NO se persiste · solo vive en UI.
 
 import type { PosicionInversion, TipoPosicion } from '../../../types/inversiones';
-import type { PlanPensiones } from '../../../types/planesPensiones';
+import type { PlanPensiones, TipoAdministrativo } from '../../../types/planesPensiones';
 import { calcularTotalAportadoPlan } from '../../../services/planesPensionesService';
 
 // ── Tipo unificado ────────────────────────────────────────────────────────────
@@ -61,6 +61,14 @@ export interface CartaItem {
    * Solo se usa para render UI · NO persiste en DB.
    */
   subtipo?: 'rsu' | 'empresa_propia' | string;
+  /**
+   * Tipo administrativo del plan (PPI · PPE · PPES · PPA).
+   *
+   * T-INVERSIONES-V5 §5.1 · permite que la card pinte el tag correcto
+   * por subtipo de plan en lugar del genérico "PLAN PP". Solo se rellena
+   * cuando `_origen === 'planesPensiones'`.
+   */
+  tipoAdministrativo?: TipoAdministrativo;
 }
 
 // ── Adaptadores ───────────────────────────────────────────────────────────────
@@ -225,5 +233,6 @@ export function planPensionToCartaItem(
     rentabilidad_porcentaje: rentPct,
     fecha_apertura: plan.fechaContratacion,
     cagr_pct: cagrPct,
+    tipoAdministrativo: plan.tipoAdministrativo,
   };
 }

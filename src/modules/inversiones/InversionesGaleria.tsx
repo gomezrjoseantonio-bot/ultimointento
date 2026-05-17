@@ -1,16 +1,17 @@
-// T23.1+T23.2 · <InversionesGaleria>.
+// T-INVERSIONES-V5 PR 2 · galería rediseñada · filtros + tags + selector 6 familias.
 //
-// Galería 3 columnas con cartas heterogéneas (visualización contextual por
-// tipo · § Z spec) + entry-point colapsable a "Posiciones cerradas" con
-// narrativa de inversor (§ 5.2 spec · prohibido lenguaje fiscal).
+// Cambios respecto a la versión T23 v4:
+//   - Eliminada card "Añadir posición" del grid (§5.1) · queda solo el
+//     botón "Nueva posición" en el page-head.
+//   - Filtros por categoría · pills horizontales (§5.1).
+//   - Sección "Posiciones cerradas" sustituye a "Histórico fiscal" (§5.4).
+//   - Selector "Nueva posición" reducido a 6 familias (§5.2) · NO 12 tipos.
+//     Cada familia dispatcha al wizard legacy (PlanFormV5 / PosicionFormV5)
+//     con tipo preseleccionado · PR 3 reemplaza por modales de alta dedicados.
 //
-// T23.2 conecta el wizard `<WizardNuevaPosicion>` (3 caminos) y el
-// `<DialogAportar>` (selector posición + form aportación) con los botones
-// del page-head. La sub-página de cerradas y la ficha detalle individual
-// se construyen en 23.3 y 23.4 · de momento son placeholders con TODO claro.
-//
-// T23.6.1 · fuente unificada (inversiones + planesPensiones) via getAllCartaItems().
-// T23.6.2 · CintaResumenInversiones sticky + CartaPosicion acepta CartaItem directamente.
+// Reglas inviolables · PR 2 NO toca servicios ni stores. Wizard legacy se
+// retira completamente en PR 3 (cuando los nuevos modales estén). Mientras,
+// CartaAddPosicion · WizardNuevaPosicion · etc. siguen vivos pero sin uso.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -19,10 +20,14 @@ import { inversionesService } from '../../services/inversionesService';
 import { rendimientosService } from '../../services/rendimientosService';
 import { migrateInversionesToNewModel } from '../../services/migrations/migrateInversiones';
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
+import type { TipoAdministrativo } from '../../types/planesPensiones';
 import CartaPosicion from './components/CartaPosicion';
-import CartaAddPosicion from './components/CartaAddPosicion';
-import WizardNuevaPosicion from './components/WizardNuevaPosicion';
 import DialogAportar from './components/DialogAportar';
+import SelectorNuevaPosicion, { type Familia } from './components/modal/SelectorNuevaPosicion';
+import PlanFormV5 from './components/wizard/PlanFormV5';
+import PosicionFormV5, { type TipoUI_V5 } from './components/wizard/PosicionFormV5';
+import GaleriaFiltros, { type FiltroCategoria } from './components/galeria/GaleriaFiltros';
+import PosicionesCerradasSection from './components/galeria/PosicionesCerradasSection';
 import {
   calcularKpisCerradas,
   getPosicionesCerradas,
@@ -30,29 +35,42 @@ import {
 } from './adapters/posicionesCerradas';
 import { getAllCartaItems } from './adapters/galeriaAdapter';
 import type { CartaItem } from './types/cartaItem';
-import {
-  formatCurrency,
-  formatDelta,
-  signClass,
-} from './helpers';
+import { getCategoriaGaleria, type CategoriaGaleria } from './helpers';
 import styles from './InversionesGaleria.module.css';
+
+interface FamiliaDispatch {
+  tipoAdministrativoInicial?: TipoAdministrativo;
+  tipoInicial?: TipoUI_V5;
+}
+
+const FAMILIA_DISPATCH: Record<Familia, FamiliaDispatch> = {
+  plan: { tipoAdministrativoInicial: 'PPI' },
+  fondo: { tipoInicial: 'fondo_inversion' },
+  accion: { tipoInicial: 'accion' },
+  prestamo: { tipoInicial: 'prestamo_p2p' },
+  deposito: { tipoInicial: 'deposito_plazo' },
+  crypto: { tipoInicial: 'crypto' },
+};
 
 const InversionesGaleria: React.FC = () => {
   const navigate = useNavigate();
-  // T23.6.1 · galería unificada · fuente: ambos stores (inversiones + planesPensiones)
   const [cartaItems, setCartaItems] = useState<CartaItem[]>([]);
   const [resumenCerradas, setResumenCerradas] = useState<KpisCerradas>(() =>
     calcularKpisCerradas([]),
   );
   const [loading, setLoading] = useState(true);
+  const [filtro, setFiltro] = useState<FiltroCategoria>('todas');
 
-  const [showWizard, setShowWizard] = useState(false);
+  // Estado del flujo de alta · el selector elige familia, luego se abre
+  // el form legacy con tipo preseleccionado. PR 3 sustituirá esto por
+  // modales de alta dedicados sin pasar por el form legacy.
+  const [showSelector, setShowSelector] = useState(false);
+  const [dispatchAlta, setDispatchAlta] = useState<FamiliaDispatch | null>(null);
   const [showAportar, setShowAportar] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      // Posiciones activas unificadas (inversiones + planesPensiones · dedup · ordenadas)
       const [items, cerradas] = await Promise.all([
         getAllCartaItems(),
         getPosicionesCerradas().catch(() => []),
@@ -86,14 +104,25 @@ const InversionesGaleria: React.FC = () => {
     };
   }, [load]);
 
-  const activas = useMemo(
-    () =>
-      // getAllCartaItems() ya devuelve items activos ordenados por valor_actual descendente
-      cartaItems,
-    [cartaItems],
-  );
+  // ── Conteos por categoría ──────────────────────────────────────────
+  const counts = useMemo<Record<CategoriaGaleria, number>>(() => {
+    const acc: Record<CategoriaGaleria, number> = {
+      planes: 0,
+      equity: 0,
+      rentaFija: 0,
+      otros: 0,
+    };
+    for (const item of cartaItems) {
+      acc[getCategoriaGaleria(item.tipo)] += 1;
+    }
+    return acc;
+  }, [cartaItems]);
 
-  // Posiciones nativas de inversiones (para DialogAportar · solo acepta PosicionInversion)
+  const itemsFiltrados = useMemo(() => {
+    if (filtro === 'todas') return cartaItems;
+    return cartaItems.filter((it) => getCategoriaGaleria(it.tipo) === filtro);
+  }, [cartaItems, filtro]);
+
   const posicionesParaAportar = useMemo(
     () =>
       cartaItems
@@ -102,11 +131,20 @@ const InversionesGaleria: React.FC = () => {
     [cartaItems],
   );
 
+  // ── Handlers ───────────────────────────────────────────────────────
   const handleClickCarta = (item: CartaItem) => {
     navigate(`/inversiones/${item._idOriginal}`);
   };
 
-  const openWizardNueva = () => setShowWizard(true);
+  const openSelector = () => setShowSelector(true);
+  const closeSelector = () => setShowSelector(false);
+
+  const handlePickFamilia = (f: Familia) => {
+    setShowSelector(false);
+    setDispatchAlta(FAMILIA_DISPATCH[f]);
+  };
+
+  const closeAlta = () => setDispatchAlta(null);
 
   const openAportar = () => {
     if (posicionesParaAportar.length === 0) {
@@ -132,8 +170,6 @@ const InversionesGaleria: React.FC = () => {
       // eslint-disable-next-line no-console
       console.error('[inversiones] save', err);
       showToastV5('Error al guardar la posición.');
-      // Relanzar para que el wizard mantenga el form abierto · el usuario
-      // no pierde lo que llevaba escrito si el service falla.
       throw err;
     }
   };
@@ -154,10 +190,15 @@ const InversionesGaleria: React.FC = () => {
     }
   };
 
+  const handleSortClick = () => {
+    showToastV5('Orden personalizado · disponible en próximos releases');
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
       {/* CintaResumenInversiones se monta desde MainLayout · ocupa el slot
-          del TopbarV5 global en /inversiones/* (mockup atlas-inversiones-v2). */}
+          del TopbarV5 global en /inversiones/* (mockup atlas-inversiones-v3). */}
       <PageHead
         title="Inversiones"
         sub="tus posiciones activas · click en cualquier carta para ver su detalle"
@@ -172,7 +213,7 @@ const InversionesGaleria: React.FC = () => {
             label: 'Nueva posición',
             variant: 'gold',
             icon: <Icons.PlusSquare size={14} strokeWidth={1.8} />,
-            onClick: openWizardNueva,
+            onClick: openSelector,
           },
         ]}
       />
@@ -181,88 +222,77 @@ const InversionesGaleria: React.FC = () => {
         <div className={styles.loading}>Cargando inversiones…</div>
       ) : (
         <>
+          <GaleriaFiltros
+            selected={filtro}
+            onSelect={setFiltro}
+            counts={counts}
+            onSortClick={handleSortClick}
+          />
+
           <div className={styles.galleryHd}>
             <div className={styles.galleryTitle}>Posiciones activas</div>
             <div className={styles.galleryCount}>
-              {activas.length} {activas.length === 1 ? 'activa' : 'activas'} · ordenadas por valor
+              {itemsFiltrados.length}{' '}
+              {itemsFiltrados.length === 1 ? 'activa' : 'activas'} ·{' '}
+              {filtro === 'todas'
+                ? 'ordenadas por valor'
+                : `filtradas · ${filtro === 'planes' ? 'planes pensiones' : filtro === 'equity' ? 'equity / fondos' : filtro === 'rentaFija' ? 'renta fija' : 'otros'}`}
             </div>
           </div>
 
           <div className={styles.galleryGrid}>
-            {/* T23.6.2 · CartaPosicion ya acepta CartaItem directamente */}
-            {activas.map((item) => (
+            {itemsFiltrados.map((item) => (
               <CartaPosicion
                 key={String(item._idOriginal)}
                 item={item}
                 onClick={handleClickCarta}
               />
             ))}
-            <CartaAddPosicion onClick={openWizardNueva} />
+            {itemsFiltrados.length === 0 && (
+              <div className={styles.cartaVizPlaceholder} role="status">
+                Sin posiciones en esta categoría
+              </div>
+            )}
           </div>
 
-          {resumenCerradas.count > 0 && (
-            <>
-              <div className={styles.galleryHd}>
-                <div className={styles.galleryTitle}>Histórico fiscal</div>
-                <div className={styles.galleryCount}>
-                  {resumenCerradas.rangoAnios
-                    ? `desde XML IRPF · ${resumenCerradas.rangoAnios}`
-                    : 'desde XML IRPF'}
-                </div>
-              </div>
-              <button
-                type="button"
-                className={styles.cerradasSec}
-                onClick={() => navigate('/inversiones/cerradas')}
-                aria-label="Ver posiciones cerradas"
-              >
-                <div className={styles.cerradasSecLeft}>
-                  <div className={styles.cerradasIcon}>
-                    <Icons.Fondos size={18} strokeWidth={1.8} />
-                  </div>
-                  <div className={styles.cerradasTextos}>
-                    <div className={styles.cerradasTitleRow}>
-                      <span className={styles.cerradasTitle}>Posiciones cerradas</span>
-                      <span className={styles.cerradasCount}>
-                        {resumenCerradas.count}{' '}
-                        {resumenCerradas.count === 1 ? 'operación' : 'operaciones'}
-                      </span>
-                    </div>
-                    <div className={styles.cerradasSub}>
-                      importadas desde declaraciones IRPF · ganancia/pérdida patrimonial declarada
-                    </div>
-                  </div>
-                </div>
-                <div className={styles.cerradasRight}>
-                  <div className={styles.cerradasTotal}>
-                    <span
-                      className={`${styles.cerradasTotalVal} ${styles[signClass(resumenCerradas.resultadoNeto)]}`}
-                    >
-                      {Math.abs(resumenCerradas.resultadoNeto) < 0.005
-                        ? formatCurrency(0)
-                        : formatDelta(resumenCerradas.resultadoNeto)}
-                    </span>
-                    <span className={styles.cerradasTotalLab}>
-                      {resumenCerradas.resultadoNeto >= 0
-                        ? 'ganancia neta declarada'
-                        : 'pérdida neta declarada'}
-                    </span>
-                  </div>
-                  <span className={styles.cerradasArrow} aria-hidden>
-                    <Icons.ChevronRight size={16} strokeWidth={2} />
-                  </span>
-                </div>
-              </button>
-            </>
-          )}
+          <PosicionesCerradasSection
+            kpis={resumenCerradas}
+            onClick={() => navigate('/inversiones/cerradas')}
+          />
         </>
       )}
 
-      {showWizard && (
-        <WizardNuevaPosicion
-          onSavePosicion={handleSavePosicion}
-          onPlanSaved={load}
-          onClose={() => setShowWizard(false)}
+      {/* Selector de familia · 6 cards · usa ModalAtlas (PR 1). */}
+      {showSelector && (
+        <SelectorNuevaPosicion
+          onPickFamilia={handlePickFamilia}
+          onClose={closeSelector}
+        />
+      )}
+
+      {/* Wizard legacy con tipo preseleccionado · stub hasta PR 3. */}
+      {dispatchAlta?.tipoAdministrativoInicial && (
+        <PlanFormV5
+          tipoAdministrativoInicial={dispatchAlta.tipoAdministrativoInicial}
+          onSaved={() => {
+            load();
+            closeAlta();
+          }}
+          onClose={closeAlta}
+        />
+      )}
+      {dispatchAlta?.tipoInicial && (
+        <PosicionFormV5
+          tipoInicial={dispatchAlta.tipoInicial}
+          onSave={async (data) => {
+            try {
+              await handleSavePosicion(data);
+              closeAlta();
+            } catch {
+              /* toast ya mostrado */
+            }
+          }}
+          onClose={closeAlta}
         />
       )}
 
