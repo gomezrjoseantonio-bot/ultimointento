@@ -100,15 +100,18 @@ describe('proyeccionActivoService · proyectarInversion', () => {
     expect(r.escenarioConMaxAportacion.valorFinal).toBeGreaterThan(r.valorFinalNominal);
   });
 
-  test('fechaNacimientoUsuario presente · calcula años hasta rescate', () => {
-    // Usuario nacido en 1984 · edad rescate 65 · debe quedar entre 22 y 24 años.
+  test('fechaNacimientoUsuario + fechaReferencia · cálculo determinista', () => {
+    // Usuario nacido 1984-06-15 · ref 2026-05-17 · edad rescate 65.
+    // Edad actual ≈ 41,9 años · 65 - 41,9 = 23,08 → round → 23 años.
     const r = proyectarInversion({
       ...inputsPlanOrange,
       fechaNacimientoUsuario: '1984-06-15',
+      fechaReferencia: '2026-05-17',
       anosHastaRescateFallback: undefined,
     });
-    expect(r.anosHastaRescate).toBeGreaterThanOrEqual(22);
-    expect(r.anosHastaRescate).toBeLessThanOrEqual(24);
+    expect(r.anosHastaRescate).toBe(23);
+    expect(r.anoRescate).toBe(2049);
+    expect(r.fechaRescate).toBe('2049-12-31');
   });
 
   test('fechaNacimientoUsuario inválida · cae al fallback', () => {

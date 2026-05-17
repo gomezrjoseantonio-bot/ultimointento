@@ -46,6 +46,11 @@ export interface ProyeccionInputs {
   benchmarkReferencia: BenchmarkReferencia | null;
   /** Override de años hasta rescate si no hay fecha de nacimiento. Opcional. */
   anosHastaRescateFallback?: number;
+  /**
+   * Fecha "hoy" inyectable para tests deterministas. ISO yyyy-mm-dd.
+   * Si se omite · se usa `new Date()` en runtime.
+   */
+  fechaReferencia?: string;
 }
 
 export interface ProyeccionPunto {
@@ -97,8 +102,14 @@ export interface ProyeccionResult {
 
 /**
  * TWR rolling 5 años del benchmark.
- * Toma los 5 valores anuales más recientes y compone CAGR.
+ * Toma los 5 valores anuales más recientes presentes en el mapa y compone CAGR.
  * Devuelve null si hay <2 años de datos.
+ *
+ * Asunción · `valoresAnuales` es una serie consecutiva y reciente mantenida
+ * por el usuario en Ajustes → Datos de mercado. La función NO valida
+ * contigüidad ni antigüedad · si la serie tiene huecos o el último año es
+ * muy antiguo, el CAGR mezclará años no contiguos. La UI de Ajustes (PR 2)
+ * es responsable de avisar al usuario para que mantenga la serie completa.
  */
 export function computeTwrRolling5y(
   benchmark: BenchmarkReferencia | null,
@@ -125,13 +136,14 @@ export function computeTwrRolling5y(
 function calcularAnosHastaRescate(
   fechaNacimientoUsuario: string | null,
   edadObjetivoRescate: number,
+  fechaReferencia: Date,
   fallback: number = 25,
 ): number {
   if (!fechaNacimientoUsuario) return Math.max(1, fallback);
   const nacimiento = new Date(fechaNacimientoUsuario);
   if (Number.isNaN(nacimiento.getTime())) return Math.max(1, fallback);
-  const hoy = new Date();
-  const edadActual = (hoy.getTime() - nacimiento.getTime()) / (365.25 * 24 * 3600 * 1000);
+  const edadActual =
+    (fechaReferencia.getTime() - nacimiento.getTime()) / (365.25 * 24 * 3600 * 1000);
   const anos = Math.round(edadObjetivoRescate - edadActual);
   return Math.max(1, anos);
 }
@@ -196,16 +208,21 @@ function ultimoValor(serie: ProyeccionPunto[]): number {
  * - Valor real · descuenta inflación nominal con (1 + π)^n.
  */
 export function proyectarInversion(inputs: ProyeccionInputs): ProyeccionResult {
+  const fechaReferencia = inputs.fechaReferencia
+    ? new Date(inputs.fechaReferencia)
+    : new Date();
+
   const anos = calcularAnosHastaRescate(
     inputs.fechaNacimientoUsuario,
     inputs.edadObjetivoRescate,
+    fechaReferencia,
     inputs.anosHastaRescateFallback ?? 25,
   );
 
   const twrBase = inputs.twrHistorico ?? computeTwrRolling5y(inputs.benchmarkReferencia) ?? 0.02;
   const twrBench = computeTwrRolling5y(inputs.benchmarkReferencia);
 
-  const anoBase = new Date().getFullYear();
+  const anoBase = fechaReferencia.getFullYear();
 
   const escenarioActual: ProyeccionEscenario = {
     twrAplicado: twrBase,
@@ -241,7 +258,9 @@ export function proyectarInversion(inputs: ProyeccionInputs): ProyeccionResult {
         })();
 
   const escenarioConMaxAportacion: ProyeccionEscenario = (() => {
-    const aporteMax = Math.max(inputs.aportacionAnualEstimada * 3, inputs.aportacionAnualEstimada);
+    // Tope orientativo · 3× la aportación actual (acotado a 0 por abajo
+    // para evitar valores negativos si llegan inputs erróneos).
+    const aporteMax = Math.max(0, inputs.aportacionAnualEstimada) * 3;
     const puntos = generarSerie(
       inputs.saldoActual,
       inputs.aportadoActual,
@@ -286,7 +305,9 @@ export function proyectarInversion(inputs: ProyeccionInputs): ProyeccionResult {
     ? round2(escenarioConBenchmark.valorFinal - valorFinalNominal)
     : null;
 
-  const fechaRescate = new Date(anoBase + anos, 11, 31).toISOString().slice(0, 10);
+  // Formato ISO manual · evita el shift de timezone que produciría
+  // `new Date(year, 11, 31).toISOString()` en zonas al oeste de UTC.
+  const fechaRescate = `${anoBase + anos}-12-31`;
 
   return {
     anosHastaRescate: anos,
