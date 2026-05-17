@@ -13,7 +13,7 @@ import React, { useCallback, useEffect, useMemo, useId, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import { showToastV5 } from '../../../design-system/v5';
 import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
-import { calcularTotalAportadoPlan } from '../../../services/planesPensionesService';
+import { calcularTotalAportadoPlan, planesPensionesService } from '../../../services/planesPensionesService';
 import { traspasosPlanPensionesService, valorTraspasoNormalizado } from '../../../services/traspasosPlanPensionesService';
 import { limitesFiscalesPlanesService } from '../../../services/limitesFiscalesPlanesService';
 import {
@@ -33,11 +33,15 @@ import type {
   ResultadoReduccionBaseImponible,
 } from '../../../types/planesPensiones';
 import type { ValoracionHistorica } from '../../../types/valoraciones';
-import ActualizarValorPlanDialog from '../components/ActualizarValorPlanDialog';
-import AportacionPlanDialog from '../components/AportacionPlanDialog';
+import ActualizarValoracionModal from '../components/modal/ActualizarValoracionModal';
+import AportarModal from '../components/modal/AportarModal';
+import EditarPosicionModal from '../components/modal/EditarPosicionModal';
+import TraspasoModal from '../components/modal/TraspasoModal';
+import { planPensionToCartaItem } from '../types/cartaItem';
+import { valoracionesService } from '../../../services/valoracionesService';
 import FichaShell from '../components/FichaShell';
-import PlanFormV5 from '../components/wizard/PlanFormV5';
-import TraspasoPlanDialog from '../components/TraspasoPlanDialog';
+// PlanFormV5 y TraspasoPlanDialog (T13v4) sustituidos por los modales
+// ATLAS PR 3/PR 4 · siguen vivos en el repo hasta PR 5 cleanup.
 import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import styles from './FichaPosicion.module.css';
 
@@ -1298,34 +1302,110 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
       {/* ── Modales ──────────────────────────────────────────────────────────── */}
 
       {showActualizarValor && (
-        <ActualizarValorPlanDialog
-          plan={plan}
-          onSaved={handleValorSaved}
+        <ActualizarValoracionModal
+          posicion={planPensionToCartaItem(plan)}
+          onSave={async (valor, fecha) => {
+            try {
+              // valoracionesService guarda por YYYY-MM (granularidad mensual).
+              const fechaMes = fecha.slice(0, 7);
+              await valoracionesService.guardarValoracionActivo(fechaMes, {
+                tipo_activo: 'plan_pensiones',
+                // UUID almacenado como string · la búsqueda usa String(activo_id).
+                activo_id: plan.id as unknown as number,
+                activo_nombre: plan.nombre,
+                valor,
+              });
+              // También sincroniza valorActual en el plan para reflejar el
+              // cambio en la galería inmediatamente.
+              await planesPensionesService.updatePlan(plan.id, {
+                valorActual: valor,
+                fechaUltimaValoracion: fecha,
+              });
+              handleValorSaved();
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('[planes] actualizar valor', err);
+              showToastV5('Error al actualizar la valoración');
+            }
+          }}
           onClose={() => setShowActualizarValor(false)}
         />
       )}
 
       {showAportar && (
-        <AportacionPlanDialog
-          plan={plan}
-          onSaved={handleAportacionSaved}
+        <AportarModal
+          posicion={planPensionToCartaItem(plan)}
+          onSavePlan={async (_p, input) => {
+            try {
+              await aportacionesPlanService.crearAportacion({
+                planId: plan.id,
+                fecha: input.fecha,
+                ejercicioFiscal: input.ejercicioFiscal,
+                importeTitular: input.importeTitular,
+                importeEmpresa: input.importeEmpresa,
+                origen: 'manual',
+                granularidad: 'puntual',
+                notas: input.notas,
+              });
+              handleAportacionSaved();
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('[planes] aportacion', err);
+              showToastV5('Error al guardar la aportación');
+            }
+          }}
           onClose={() => setShowAportar(false)}
         />
       )}
 
       {showEditar && (
-        <PlanFormV5
-          plan={plan}
-          onSaved={handlePlanSaved}
+        <EditarPosicionModal
+          posicion={planPensionToCartaItem(plan)}
+          onSave={async ({ nombre, entidad, politicaInversion }) => {
+            try {
+              const updated = await planesPensionesService.updatePlan(plan.id, {
+                nombre,
+                gestoraActual: entidad,
+                politicaInversion: politicaInversion ?? plan.politicaInversion,
+              });
+              handlePlanSaved(updated);
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('[planes] editar', err);
+              showToastV5('Error al actualizar el plan');
+            }
+          }}
           onClose={() => setShowEditar(false)}
         />
       )}
 
-      {/* T13 lote B · TraspasoPlanDialog v5 · plan origen pre-rellenado. */}
       {showTraspaso && (
-        <TraspasoPlanDialog
+        <TraspasoModal
           plan={plan}
-          onSaved={() => void load()}
+          onSave={async (input) => {
+            try {
+              // El campo "motivo" del modal queda en UI · el schema actual
+              // de traspasosPlanPensiones no lo persiste (TODO en T13-bis).
+              await traspasosPlanPensionesService.registrarTraspaso({
+                planId: plan.id,
+                gestoraOrigen: plan.gestoraActual,
+                isinOrigen: plan.isinActual,
+                gestoraDestino: input.gestoraDestino,
+                isinDestino: input.isinDestino,
+                fechaSolicitud: input.fechaSolicitud,
+                fechaEjecucion: input.fechaEjecucion,
+                valorTraspaso: input.valorTraspaso,
+                importeTraspasado: input.valorTraspaso,
+                esTotal: input.esTotal,
+              });
+              showToastV5('Traspaso registrado.');
+              void load();
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('[planes] traspaso', err);
+              showToastV5('Error al registrar el traspaso');
+            }
+          }}
           onClose={() => setShowTraspaso(false)}
         />
       )}

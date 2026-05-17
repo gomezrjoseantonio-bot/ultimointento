@@ -21,7 +21,7 @@ import { rendimientosService } from '../../services/rendimientosService';
 import { migrateInversionesToNewModel } from '../../services/migrations/migrateInversiones';
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
 import CartaPosicion from './components/CartaPosicion';
-import DialogAportar from './components/DialogAportar';
+import AportarModal from './components/modal/AportarModal';
 import SelectorNuevaPosicion, { type Familia } from './components/modal/SelectorNuevaPosicion';
 import AltaPlanWizard from './components/modal/AltaPlanWizard';
 import AltaFondoModal from './components/modal/AltaFondoModal';
@@ -293,9 +293,11 @@ const InversionesGaleria: React.FC = () => {
       )}
 
       {showAportar && (
-        <DialogAportar
-          posiciones={posicionesParaAportar}
-          onSave={handleSaveAportacion}
+        <AportarModal
+          posiciones={cartaItems.filter((it) => it._origen === 'inversiones')}
+          onSaveInversion={async (pos, aportacion) =>
+            handleSaveAportacion(pos, aportacion)
+          }
           onClose={() => setShowAportar(false)}
         />
       )}
