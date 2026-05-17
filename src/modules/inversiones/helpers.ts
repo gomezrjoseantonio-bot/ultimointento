@@ -852,3 +852,40 @@ export function calcularLimitePlan(
       };
   }
 }
+
+// ── T-INVERSIONES-V5 §7.3 · TWR con guards anti-NaN/outlier ────────────────
+
+/**
+ * Time-Weighted Return simplificado para una posición · cierra el ojo a los
+ * outliers que delatan datos sospechosos:
+ *
+ *   - 0 aportaciones → null (no hay base para calcular).
+ *   - total_aportado === 0 → null (división por cero).
+ *   - |twr| > 500% → null (outlier · típicamente datos mal cargados).
+ *
+ * Devuelve `null` para que la UI renderice "—" en lugar de "NaN%" o
+ * "−936.5%". Aplica a galería cards · ficha plan · ficha fondo.
+ */
+export function calcularTWR(
+  totalAportado: number,
+  valorActual: number,
+): number | null {
+  if (!Number.isFinite(totalAportado) || !Number.isFinite(valorActual)) return null;
+  if (totalAportado <= 0) return null;
+  const twr = ((valorActual - totalAportado) / totalAportado) * 100;
+  if (!Number.isFinite(twr)) return null;
+  if (Math.abs(twr) > 500) return null;
+  return twr;
+}
+
+/**
+ * Renderiza un % de rentabilidad de forma segura · si llega `null` muestra
+ * un guión largo `—`. Si llega un número finito · delega en `formatPercent`.
+ *
+ * Useful para slots de UI donde queremos un comportamiento uniforme entre
+ * "sin datos" (—) y "con datos" (+12,34%).
+ */
+export function formatRentPctOrDash(pct: number | null | undefined): string {
+  if (pct == null || !Number.isFinite(pct)) return '—';
+  return formatPercent(pct);
+}

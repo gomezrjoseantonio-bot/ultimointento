@@ -27,6 +27,7 @@ import { fixDeclaracionCompletaCruceB6 } from './services/migrations/fixDeclarac
 import { fixCasillaAEATOficial } from './services/migrations/fixCasillaAEATOficial';
 import { fixFechaContratacionRetroactiva } from './services/migrations/fixFechaContratacionRetroactiva';
 import { backfillAportacionesNotas } from './services/migrations/backfillAportacionesNotas';
+import { normalizarNombresEmpresas } from './services/migrations/normalizarNombresEmpresas';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -440,6 +441,18 @@ function App() {
         }
         if (notasReport.errors.length > 0) {
           console.warn('[ATLAS] BACKFILL-aportacionesPlan-notas · errores parciales:', notasReport.errors);
+        }
+      })
+      // T-INVERSIONES-V5 §7.7 · normaliza nombres comerciales de empresas
+      // pagadoras (Orange España S.A.U. vs "ORANGE ESPAGNE SA") por CIF
+      // canónico. Tabla en NOMBRES_NORMALIZADOS · ampliable.
+      .then(() => normalizarNombresEmpresas())
+      .then((nombresReport) => {
+        if (!nombresReport.skipped && nombresReport.updated > 0) {
+          console.log('[ATLAS] NORMALIZAR-nombres-empresas · resultado:', nombresReport);
+        }
+        if (nombresReport.errors.length > 0) {
+          console.warn('[ATLAS] NORMALIZAR-nombres-empresas · errores parciales:', nombresReport.errors);
         }
       })
       .catch((error) => {

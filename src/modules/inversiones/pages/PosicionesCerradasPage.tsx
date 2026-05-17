@@ -123,10 +123,16 @@ const PosicionesCerradasPage: React.FC = () => {
     );
   }
 
+  // T-INVERSIONES-V5 §5.4 · subtítulo canónico de la página interna:
+  // "activos que ya has vendido o liquidado · importados de tus
+  // declaraciones IRPF {rango}". El conteo va integrado.
+  const rangoFiscal = kpis.rangoAnios
+    ? `importados de tus declaraciones IRPF ${kpis.rangoAnios}`
+    : 'importados de tus declaraciones IRPF';
   const subtitulo =
     kpis.count === 0
-      ? 'tu trayectoria como inversor'
-      : `tu trayectoria como inversor · ${kpis.count} ${kpis.count === 1 ? 'posición cerrada' : 'posiciones cerradas'}${kpis.rangoAnios ? ` en ${kpis.rangoAnios}` : ''}`;
+      ? 'activos que ya has vendido o liquidado'
+      : `activos que ya has vendido o liquidado · ${rangoFiscal}`;
 
   return (
     <div className={styles.page}>
