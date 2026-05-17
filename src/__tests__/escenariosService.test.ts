@@ -210,4 +210,62 @@ describe('escenariosService', () => {
       expect(result[0].id).toBe('h1');
     });
   });
+
+  // ── T-INVERSIONES-DETALLE-PP-v1 PR 3 · §4.B · supuestos de proyección ─────
+
+  describe('edadObjetivoRescate + inflacionAnualAsumida (§4.B)', () => {
+    it('defaults · edad 65 e inflación 2 cuando no están en DB', async () => {
+      mockDB.get.mockResolvedValue(undefined);
+      const result = await getEscenarioActivo();
+      expect(result.edadObjetivoRescate).toBe(65);
+      expect(result.inflacionAnualAsumida).toBe(2);
+      // ESCENARIO_DEFAULTS expone los mismos valores
+      expect(ESCENARIO_DEFAULTS.edadObjetivoRescate).toBe(65);
+      expect(ESCENARIO_DEFAULTS.inflacionAnualAsumida).toBe(2);
+    });
+
+    it('preserva los valores guardados por el usuario', async () => {
+      mockDB.get.mockResolvedValue({
+        id: 1,
+        modoVivienda: 'alquiler',
+        gastosVidaLibertadMensual: 2500,
+        estrategia: 'hibrido',
+        hitos: [],
+        edadObjetivoRescate: 60,
+        inflacionAnualAsumida: 3.5,
+        updatedAt: '2026-05-17T00:00:00.000Z',
+      });
+      const result = await getEscenarioActivo();
+      expect(result.edadObjetivoRescate).toBe(60);
+      expect(result.inflacionAnualAsumida).toBe(3.5);
+    });
+
+    it('saveEscenarioActivo persiste sólo los campos del patch · resto del estado intacto', async () => {
+      mockDB.get.mockResolvedValue({
+        id: 1,
+        modoVivienda: 'alquiler',
+        gastosVidaLibertadMensual: 2500,
+        estrategia: 'hibrido',
+        hitos: [],
+        edadObjetivoRescate: 65,
+        inflacionAnualAsumida: 2,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      });
+      const updated = await saveEscenarioActivo({
+        edadObjetivoRescate: 70,
+        inflacionAnualAsumida: 2.5,
+      });
+      expect(updated.edadObjetivoRescate).toBe(70);
+      expect(updated.inflacionAnualAsumida).toBe(2.5);
+      expect(updated.modoVivienda).toBe('alquiler');
+      expect(updated.gastosVidaLibertadMensual).toBe(2500);
+      expect(mockDB.put).toHaveBeenCalledWith(
+        'escenarios',
+        expect.objectContaining({
+          edadObjetivoRescate: 70,
+          inflacionAnualAsumida: 2.5,
+        }),
+      );
+    });
+  });
 });

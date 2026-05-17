@@ -29,6 +29,9 @@ export const ESCENARIO_DEFAULTS: Escenario = {
   ltvMaximo: 50,
   yieldMinimaCartera: 8,
   tasaAhorroMinima: 15,
+  // T-INVERSIONES-DETALLE-PP-v1 PR 3 · §4.B · defaults para proyección.
+  edadObjetivoRescate: 65,
+  inflacionAnualAsumida: 2,
   updatedAt: new Date().toISOString(),
 };
 
