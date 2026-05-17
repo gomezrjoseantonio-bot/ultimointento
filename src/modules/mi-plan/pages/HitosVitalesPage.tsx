@@ -242,8 +242,9 @@ const HitosVitalesPage = () => {
         <div className={styles.formCard}>
           <div className={styles.formGrid}>
             <div className={styles.field}>
-              <label className={styles.fieldLabel}>Nombre</label>
+              <label className={styles.fieldLabel} htmlFor="hito-nombre">Nombre</label>
               <input
+                id="hito-nombre"
                 className={styles.input}
                 value={form.nombre}
                 onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
@@ -251,8 +252,9 @@ const HitosVitalesPage = () => {
               />
             </div>
             <div className={styles.field}>
-              <label className={styles.fieldLabel}>Tipo</label>
+              <label className={styles.fieldLabel} htmlFor="hito-tipo">Tipo</label>
               <select
+                id="hito-tipo"
                 className={styles.input}
                 value={form.tipo}
                 onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as TipoObjetivoVital }))}
@@ -263,8 +265,9 @@ const HitosVitalesPage = () => {
               </select>
             </div>
             <div className={styles.field}>
-              <label className={styles.fieldLabel}>Fecha estimada</label>
+              <label className={styles.fieldLabel} htmlFor="hito-fecha">Fecha estimada</label>
               <input
+                id="hito-fecha"
                 className={styles.input}
                 type="date"
                 value={form.fechaEstimada}
@@ -272,8 +275,9 @@ const HitosVitalesPage = () => {
               />
             </div>
             <div className={`${styles.field} ${styles.fieldFull}`}>
-              <label className={styles.fieldLabel}>Descripción (opcional)</label>
+              <label className={styles.fieldLabel} htmlFor="hito-desc">Descripción (opcional)</label>
               <input
+                id="hito-desc"
                 className={styles.input}
                 value={form.descripcion}
                 onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}

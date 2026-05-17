@@ -12,8 +12,8 @@ const mockDB: any = {
 function setupTxMock() {
   mockDB.transaction.mockImplementation(() => {
     const wrapper = {
-      getAllKeys: jest.fn(() => mockDB.getAll('avisosUsuario').then((rows: any[]) => rows.map((r) => r.avisoId))),
-      delete: jest.fn((key: unknown) => mockDB.delete('avisosUsuario', key)),
+      count: jest.fn(() => mockDB.getAll('avisosUsuario').then((rows: any[]) => rows.length)),
+      clear: jest.fn(() => mockDB.delete('avisosUsuario', '__all__')),
     };
     return {
       objectStore: () => wrapper,
@@ -111,7 +111,7 @@ describe('avisosUsuarioService · restaurar', () => {
     expect(mockDB.delete).not.toHaveBeenCalled();
   });
 
-  test('restaurarTodos · borra todos · devuelve cuenta', async () => {
+  test('restaurarTodos · usa store.clear() · devuelve count previo', async () => {
     mockDB.getAll.mockResolvedValueOnce([
       { avisoId: 'a', fechaCierre: '2026-05-01T00:00:00.000Z' },
       { avisoId: 'b', fechaCierre: '2026-05-02T00:00:00.000Z' },
@@ -119,14 +119,18 @@ describe('avisosUsuarioService · restaurar', () => {
     ]);
     const n = await restaurarTodos();
     expect(n).toBe(3);
-    expect(mockDB.delete).toHaveBeenCalledTimes(3);
+    // Una sola llamada (clear → mockDelete con '__all__' en el mock helper)
+    // confirma que NO se itera con N deletes individuales.
+    expect(mockDB.delete).toHaveBeenCalledTimes(1);
+    expect(mockDB.delete).toHaveBeenCalledWith('avisosUsuario', '__all__');
   });
 
-  test('restaurarTodos · 0 cerrados · no falla', async () => {
+  test('restaurarTodos · 0 cerrados · clear igual se llama · count = 0', async () => {
     mockDB.getAll.mockResolvedValueOnce([]);
     const n = await restaurarTodos();
     expect(n).toBe(0);
-    expect(mockDB.delete).not.toHaveBeenCalled();
+    // clear se llama siempre · idempotente para store vacío.
+    expect(mockDB.delete).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -114,17 +114,22 @@ export async function updateObjetivoVital(
     throw new Error(`fechaEstimada debe ser yyyy-mm-dd · recibido '${patch.fechaEstimada}'`);
   }
   const nombreNuevo = patch.nombre?.trim();
+  // Semántica de patch: `undefined` = no tocar · presente (incluso vacío
+  // o `null`) = aplicar. Usamos `!== undefined` para que un caller que
+  // construya el patch con spread/destructuring no borre campos por
+  // accidente (un `'descripcion' in patch` con `undefined` lo trataba
+  // como "presente" y rompía la semántica documentada).
   const merged: ObjetivoVital = {
     ...actual,
     nombre: nombreNuevo || actual.nombre,
     fechaEstimada: patch.fechaEstimada ?? actual.fechaEstimada,
     descripcion:
-      'descripcion' in patch
-        ? patch.descripcion?.trim() || undefined
+      patch.descripcion !== undefined
+        ? patch.descripcion.trim() || undefined
         : actual.descripcion,
     planFinancieroAsociado:
-      'planFinancieroAsociado' in patch
-        ? patch.planFinancieroAsociado ?? null
+      patch.planFinancieroAsociado !== undefined
+        ? patch.planFinancieroAsociado
         : actual.planFinancieroAsociado,
     tipo: patch.tipo ?? actual.tipo,
     fechaModificacion: nowISO(),

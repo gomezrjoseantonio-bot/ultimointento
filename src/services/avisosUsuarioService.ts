@@ -54,17 +54,18 @@ export async function restaurarAviso(avisoId: string): Promise<void> {
 /**
  * Restaura TODOS los avisos cerrados · borra el store entero.
  * Devuelve cuántos avisos había cerrados.
+ *
+ * Usa `store.clear()` (operación única dentro de la transacción) en lugar
+ * de iterar `delete` clave a clave · más eficiente y atómico.
  */
 export async function restaurarTodos(): Promise<number> {
   const db = await initDB();
   const tx = db.transaction('avisosUsuario', 'readwrite');
   const store = tx.objectStore('avisosUsuario');
-  const keys = await store.getAllKeys();
-  for (const k of keys) {
-    await store.delete(k);
-  }
+  const count = await store.count();
+  await store.clear();
   await tx.done;
-  return keys.length;
+  return count;
 }
 
 /**

@@ -15,34 +15,33 @@ import type { AvisoCerrado } from '../../../types/avisosUsuario';
 const AvisosPage = () => {
   const [items, setItems] = useState<AvisoCerrado[]>([]);
 
-  const recargar = useCallback(async () => {
-    try {
-      const lista = await listarCerrados();
-      setItems(lista);
-    } catch (err) {
-      showToastV5(`No se pudo cargar el centro de avisos · ${(err as Error).message}`, 'error');
-    }
-  }, []);
-
-  useEffect(() => {
-    let cancelado = false;
-    (async () => {
+  // Carga + manejo de errores en un único lugar · útil tanto en mount como
+  // tras acciones (restaurar/restaurar todos). El flag `cancelado` evita
+  // setState tras unmount cuando se invoca desde el efecto inicial.
+  const recargar = useCallback(
+    async (cancelado?: { current: boolean }) => {
       try {
         const lista = await listarCerrados();
-        if (!cancelado) setItems(lista);
+        if (!cancelado?.current) setItems(lista);
       } catch (err) {
-        if (!cancelado) {
+        if (!cancelado?.current) {
           showToastV5(
             `No se pudo cargar el centro de avisos · ${(err as Error).message}`,
             'error',
           );
         }
       }
-    })();
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const ref = { current: false };
+    recargar(ref);
     return () => {
-      cancelado = true;
+      ref.current = true;
     };
-  }, []);
+  }, [recargar]);
 
   const onRestaurar = async (avisoId: string) => {
     try {
