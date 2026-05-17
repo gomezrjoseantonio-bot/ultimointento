@@ -96,6 +96,14 @@ const FichaPosicionPage: React.FC = () => {
 
   const handleBack = () => navigate('/inversiones');
 
+  // PR 4 review-fix · useMemo debe llamarse en cada render · no después de
+  // early returns (Rules of Hooks). Si posicion no está disponible aún,
+  // devolvemos null y los modales que dependen de cartaItem no se montan.
+  const cartaItem = useMemo(
+    () => (posicion ? inversionToCartaItem(posicion) : null),
+    [posicion],
+  );
+
   // T23.6.4 · Ficha completa de plan de pensiones · reemplaza placeholder T23.6.1
   if (esPlanPensiones) {
     return <FichaPlanPensiones planId={posicionId!} onBack={handleBack} />;
@@ -183,7 +191,6 @@ const FichaPosicionPage: React.FC = () => {
     );
   }
 
-  const cartaItem = useMemo(() => inversionToCartaItem(posicion), [posicion]);
   const grupo = clasificarTipo(posicion.tipo);
 
   let ficha: React.ReactNode;
@@ -242,7 +249,7 @@ const FichaPosicionPage: React.FC = () => {
 
       {showActualizarValor && (
         <ActualizarValoracionModal
-          posicion={cartaItem}
+          posicion={cartaItem!}
           onSave={handleSaveValor}
           onClose={() => setShowActualizarValor(false)}
         />
@@ -250,7 +257,7 @@ const FichaPosicionPage: React.FC = () => {
 
       {showAportar && (
         <AportarModal
-          posicion={cartaItem}
+          posicion={cartaItem!}
           onSaveInversion={async (_pos, aportacion) => handleSaveAportacion(aportacion)}
           onClose={() => setShowAportar(false)}
         />
@@ -275,7 +282,7 @@ const FichaPosicionPage: React.FC = () => {
 
       {showEditar && (
         <EditarPosicionModal
-          posicion={cartaItem}
+          posicion={cartaItem!}
           onSave={async ({ nombre, entidad, notas }) => {
             await handleSavePosicion({ nombre, entidad, notas });
           }}

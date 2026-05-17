@@ -112,6 +112,10 @@ const AportarModal: React.FC<AportarModalProps> = ({
     setLoading(true);
     try {
       if (esPlan && onSavePlan) {
+        // Para planes · `fecha` queda en formato YYYY-MM-DD (el schema
+        // `AportacionPlan.fecha` se almacena así · ver
+        // `aportacionesPlanService.crearAportacion`). Para inversiones
+        // se serializa a ISO completo (campo `Aportacion.fecha`).
         await onSavePlan(seleccionada._original as PlanPensiones, {
           fecha,
           ejercicioFiscal: new Date(fecha).getUTCFullYear(),
@@ -143,7 +147,7 @@ const AportarModal: React.FC<AportarModalProps> = ({
         subtitle={
           seleccionada
             ? `${seleccionada.nombre} · ${seleccionada.entidad}`
-            : 'elige posición y cuanto aportas'
+            : 'elige posición y cuánto aportas'
         }
         onClose={onClose}
       />

@@ -189,7 +189,7 @@ const TraspasoModal: React.FC<TraspasoModalProps> = ({ plan, onSave, onClose }) 
               <div className={`${styles.row} ${styles.cols1}`}>
                 <div className={styles.field}>
                   <label className={styles.label}>
-                    Motivo<span className={styles.opt}>opcional</span>
+                    Motivo<span className={styles.opt}>opcional · no se persiste todavía</span>
                   </label>
                   <textarea
                     className={styles.textarea}
@@ -197,6 +197,10 @@ const TraspasoModal: React.FC<TraspasoModalProps> = ({ plan, onSave, onClose }) 
                     onChange={(e) => setMotivo(e.target.value)}
                     placeholder="Mejorar política de inversión, comisiones, etc."
                   />
+                  <div className={styles.hint}>
+                    El schema actual de `traspasosPlanPensiones` no guarda
+                    este campo · queda pendiente para T13-bis.
+                  </div>
                 </div>
               </div>
             </div>

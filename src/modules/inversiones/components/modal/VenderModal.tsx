@@ -94,6 +94,10 @@ const VenderModal: React.FC<VenderModalProps> = ({ posicion, onSave, onClose }) 
     }
     setLoading(true);
     try {
+      // Para tipo='reembolso', el campo `cuenta_cargo_id` del Aportacion se
+      // reutiliza como cuenta de ABONO (donde se recibe el dinero). La
+      // semántica cambia según el tipo · igual que en AportacionFormDialog
+      // legacy y en treasurySyncServiceInversiones. Documentado.
       await onSave({
         fecha: `${fecha}T12:00:00.000Z`,
         tipo: 'reembolso',
@@ -124,7 +128,7 @@ const VenderModal: React.FC<VenderModalProps> = ({ posicion, onSave, onClose }) 
               <div className={styles.row}>
                 <div className={styles.field}>
                   <label className={styles.label}>
-                    Importe a recibir<span className={styles.req}>€</span>
+                    Importe bruto de la venta<span className={styles.req}>€</span>
                   </label>
                   <input
                     type="number"
@@ -133,7 +137,7 @@ const VenderModal: React.FC<VenderModalProps> = ({ posicion, onSave, onClose }) 
                     className={`${styles.input} ${styles.mono}`}
                     value={importe}
                     onChange={(e) => setImporte(e.target.value)}
-                    aria-label="Importe a recibir"
+                    aria-label="Importe bruto de la venta"
                   />
                 </div>
                 {esFungible && (

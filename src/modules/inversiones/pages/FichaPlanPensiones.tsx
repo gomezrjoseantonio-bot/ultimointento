@@ -1337,6 +1337,45 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
           posicion={planPensionToCartaItem(plan)}
           onSavePlan={async (_p, input) => {
             try {
+              // Camino doble · si hay cuenta de cargo, crear movement +
+              // treasuryEvent primero (legacy AportacionPlanDialog parity).
+              let movementId: string | undefined;
+              if (input.cuentaCargoId) {
+                try {
+                  const { initDB } = await import('../../../services/db');
+                  const db = await initDB();
+                  const total = input.importeTitular + input.importeEmpresa;
+                  const now = new Date().toISOString();
+                  const mvId = await db.add('movements' as never, {
+                    accountId: input.cuentaCargoId,
+                    date: input.fecha,
+                    amount: -total,
+                    description: `Aportación plan pensiones: ${plan.nombre}`,
+                    type: 'Gasto',
+                    status: 'Confirmado',
+                    unifiedStatus: 'confirmado',
+                    source: 'manual',
+                    createdAt: now,
+                    updatedAt: now,
+                  } as never);
+                  await db.add('treasuryEvents' as never, {
+                    type: 'expense',
+                    amount: total,
+                    predictedDate: input.fecha,
+                    description: `Aportación plan pensiones: ${plan.nombre}`,
+                    sourceType: 'inversion_aportacion',
+                    status: 'executed',
+                    accountId: input.cuentaCargoId,
+                    movementId: mvId as number,
+                    createdAt: now,
+                    updatedAt: now,
+                  } as never);
+                  movementId = String(mvId);
+                } catch (mvErr) {
+                  // eslint-disable-next-line no-console
+                  console.warn('[planes] aportacion · movement (non-fatal)', mvErr);
+                }
+              }
               await aportacionesPlanService.crearAportacion({
                 planId: plan.id,
                 fecha: input.fecha,
@@ -1346,6 +1385,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                 origen: 'manual',
                 granularidad: 'puntual',
                 notas: input.notas,
+                movementId,
               });
               handleAportacionSaved();
             } catch (err) {

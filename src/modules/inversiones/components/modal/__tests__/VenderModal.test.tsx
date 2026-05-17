@@ -61,8 +61,8 @@ describe('VenderModal · preview FIFO', () => {
   it('calcula FIFO en vivo · vender 50 unidades por 6.000 € → ganancia 1.000 €', () => {
     render(<VenderModal posicion={mockPosicion} onSave={() => undefined} onClose={() => undefined} />);
 
-    // Importe a recibir · 6000 €
-    fireEvent.change(screen.getByLabelText(/Importe a recibir/), {
+    // Importe bruto · 6000 €
+    fireEvent.change(screen.getByLabelText(/Importe bruto de la venta/), {
       target: { value: '6000' },
     });
     // Unidades vendidas · 50 de las 100 (precio medio 100 €)
@@ -70,14 +70,17 @@ describe('VenderModal · preview FIFO', () => {
       target: { value: '50' },
     });
 
+    // Regex con anclas de no-dígito al inicio para evitar matchear 10.000
+    // como "0.000" o 15.000 como "5.000". `(?:^|\D)` exige límite no-dígito.
+    const allText = document.body.textContent || '';
     // Coste FIFO = 50 × 100 = 5.000 €
-    expect(screen.getAllByText(/5\.?000\s*€/).length).toBeGreaterThan(0);
+    expect(allText).toMatch(/(?:^|\D)5\.?000\s*€/);
     // Ganancia = 6000 - 5000 = 1.000 €
-    expect(screen.getAllByText(/1\.?000\s*€/).length).toBeGreaterThan(0);
+    expect(allText).toMatch(/(?:^|\D)1\.?000\s*€/);
     // Retención 19% sobre ganancia 1000 = 190 €
-    expect(screen.getAllByText(/190\s*€/).length).toBeGreaterThan(0);
+    expect(allText).toMatch(/(?:^|\D)190\s*€/);
     // Neto = 6000 - 190 = 5.810 €
-    expect(screen.getAllByText(/5\.?810\s*€/).length).toBeGreaterThan(0);
+    expect(allText).toMatch(/(?:^|\D)5\.?810\s*€/);
   });
 
   it('cancelar dispara onClose', () => {
@@ -91,7 +94,7 @@ describe('VenderModal · preview FIFO', () => {
     const onSave = jest.fn();
     render(<VenderModal posicion={mockPosicion} onSave={onSave} onClose={() => undefined} />);
 
-    fireEvent.change(screen.getByLabelText(/Importe a recibir/), {
+    fireEvent.change(screen.getByLabelText(/Importe bruto de la venta/), {
       target: { value: '6000' },
     });
     fireEvent.change(screen.getByLabelText(/Unidades vendidas/), {
