@@ -3,7 +3,7 @@
 // Preview · obligaciones fiscales · Modelo 721 umbral 50.000 € (informativo).
 
 import React, { useMemo, useState } from 'react';
-import { Icons } from '../../../../design-system/v5';
+import { Icons, showToastV5 } from '../../../../design-system/v5';
 import type { PosicionInversion, TipoPosicion } from '../../../../types/inversiones';
 import ModalAtlas, { ModalAtlasBody, ModalAtlasForm } from './ModalAtlas';
 import ModalAtlasHeader from './ModalAtlasHeader';
@@ -17,6 +17,7 @@ import ModalAtlasPreview, {
   ModalAtlasPreviewCardDark,
   ModalAtlasPreviewRow,
 } from './ModalAtlasPreview';
+import CuentaSelect from './CuentaSelect';
 import { formatCurrency } from '../../helpers';
 import styles from '../../styles/atlas-inversiones.module.css';
 
@@ -45,6 +46,7 @@ const AltaCryptoModal: React.FC<AltaCryptoModalProps> = ({ onSave, onClose }) =>
   const [precioMedio, setPrecioMedio] = useState('');
   const [precioActual, setPrecioActual] = useState('');
   const [fecha, setFecha] = useState(today());
+  const [cuentaCargo, setCuentaCargo] = useState('');
 
   const aportadoCalc = useMemo(() => {
     const n = parseFloat(unidades) || 0;
@@ -62,25 +64,40 @@ const AltaCryptoModal: React.FC<AltaCryptoModalProps> = ({ onSave, onClose }) =>
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const unidadesNum = parseFloat(unidades);
+    const precioNum = parseFloat(precioMedio);
     if (!nombre.trim() || !entidad.trim()) return;
+    if (!Number.isFinite(unidadesNum) || unidadesNum <= 0) {
+      showToastV5('Las unidades deben ser mayor que 0');
+      return;
+    }
+    if (!Number.isFinite(precioNum) || precioNum <= 0) {
+      showToastV5('El precio medio de compra debe ser mayor que 0');
+      return;
+    }
+    if (!cuentaCargo) {
+      showToastV5('Selecciona la cuenta de cargo de la compra');
+      return;
+    }
     setLoading(true);
     try {
       await onSave({
         nombre: nombre.trim(),
         tipo,
         entidad: entidad.trim(),
-        fecha_compra: fecha,
-        fecha_valoracion: fecha,
+        fecha_compra: `${fecha}T12:00:00.000Z`,
+        fecha_valoracion: `${fecha}T12:00:00.000Z`,
         valor_actual: valorCalc,
         importe_inicial: aportadoCalc,
         total_aportado: aportadoCalc,
         rentabilidad_euros: valorCalc - aportadoCalc,
         rentabilidad_porcentaje:
           aportadoCalc > 0 ? ((valorCalc - aportadoCalc) / aportadoCalc) * 100 : 0,
-        numero_participaciones: parseFloat(unidades) || undefined,
-        precio_medio_compra: parseFloat(precioMedio) || undefined,
+        numero_participaciones: unidadesNum,
+        precio_medio_compra: precioNum,
         aportaciones: [],
         activo: true,
+        cuenta_cargo_id: Number(cuentaCargo),
       });
       onClose();
     } finally {
@@ -212,6 +229,17 @@ const AltaCryptoModal: React.FC<AltaCryptoModalProps> = ({ onSave, onClose }) =>
                   />
                 </div>
                 <div />
+              </div>
+            </div>
+            <div className={styles.section}>
+              <div className={styles.sectionTitle}>Cuenta</div>
+              <div className={`${styles.row} ${styles.cols1}`}>
+                <CuentaSelect
+                  label="Cuenta de cargo de la compra"
+                  value={cuentaCargo}
+                  onChange={setCuentaCargo}
+                  required
+                />
               </div>
             </div>
           </ModalAtlasForm>

@@ -3,8 +3,9 @@
 // Preview · vista previa · liquidación + FGD en vivo.
 
 import React, { useMemo, useState } from 'react';
-import { Icons } from '../../../../design-system/v5';
+import { Icons, showToastV5 } from '../../../../design-system/v5';
 import type { PosicionInversion, TipoPosicion } from '../../../../types/inversiones';
+import type { RendimientoPeriodico } from '../../../../types/inversiones-extended';
 import ModalAtlas, { ModalAtlasBody, ModalAtlasForm } from './ModalAtlas';
 import ModalAtlasHeader from './ModalAtlasHeader';
 import ModalAtlasFooter, {
@@ -17,6 +18,7 @@ import ModalAtlasPreview, {
   ModalAtlasPreviewCardDark,
   ModalAtlasPreviewRow,
 } from './ModalAtlasPreview';
+import CuentaSelect from './CuentaSelect';
 import { formatCurrency } from '../../helpers';
 import styles from '../../styles/atlas-inversiones.module.css';
 
@@ -46,6 +48,7 @@ const AltaDepositoModal: React.FC<AltaDepositoModalProps> = ({ onSave, onClose }
   const [plazoMeses, setPlazoMeses] = useState('');
   const [retencion, setRetencion] = useState('19');
   const [fecha, setFecha] = useState(today());
+  const [cuentaCargo, setCuentaCargo] = useState('');
 
   const calc = useMemo(() => {
     const c = parseFloat(capital) || 0;
@@ -65,16 +68,44 @@ const AltaDepositoModal: React.FC<AltaDepositoModalProps> = ({ onSave, onClose }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cap = parseFloat(capital);
+    const taeNum = parseFloat(tae);
+    const plazo = parseFloat(plazoMeses);
     if (!nombre.trim() || !entidad.trim()) return;
+    if (!Number.isFinite(cap) || cap <= 0) {
+      showToastV5('El capital debe ser mayor que 0');
+      return;
+    }
+    if (!Number.isFinite(taeNum) || taeNum <= 0) {
+      showToastV5('La TAE debe ser mayor que 0');
+      return;
+    }
+    if (tipo === 'deposito_plazo' && (!Number.isFinite(plazo) || plazo <= 0)) {
+      showToastV5('El plazo del depósito debe ser mayor que 0 meses');
+      return;
+    }
+    if (!cuentaCargo) {
+      showToastV5('Selecciona la cuenta de cargo del capital');
+      return;
+    }
     setLoading(true);
     try {
-      const cap = parseFloat(capital) || 0;
+      const retencionNum = parseFloat(retencion) || 0;
+      const rendimiento: RendimientoPeriodico = {
+        tipo_rendimiento: 'interes_fijo',
+        tasa_interes_anual: taeNum,
+        frecuencia_pago: 'anual',
+        reinvertir: true,
+        fecha_inicio_rendimiento: `${fecha}T12:00:00.000Z`,
+        retencion_porcentaje: retencionNum,
+        pagos_generados: [],
+      };
       await onSave({
         nombre: nombre.trim(),
         tipo,
         entidad: entidad.trim(),
-        fecha_compra: fecha,
-        fecha_valoracion: fecha,
+        fecha_compra: `${fecha}T12:00:00.000Z`,
+        fecha_valoracion: `${fecha}T12:00:00.000Z`,
         valor_actual: cap,
         importe_inicial: cap,
         total_aportado: cap,
@@ -82,10 +113,11 @@ const AltaDepositoModal: React.FC<AltaDepositoModalProps> = ({ onSave, onClose }
         rentabilidad_porcentaje: 0,
         aportaciones: [],
         activo: true,
-        duracion_meses: tipo === 'deposito_plazo' ? parseFloat(plazoMeses) || undefined : undefined,
+        cuenta_cargo_id: Number(cuentaCargo),
+        duracion_meses: tipo === 'deposito_plazo' ? plazo : undefined,
         liquidacion_intereses: 'al_vencimiento',
-        retencion_fiscal: parseFloat(retencion) || undefined,
-        rendimiento: { tasa_interes_anual: parseFloat(tae) || 0 },
+        retencion_fiscal: retencionNum,
+        rendimiento,
       });
       onClose();
     } finally {
@@ -251,6 +283,17 @@ const AltaDepositoModal: React.FC<AltaDepositoModalProps> = ({ onSave, onClose }
                     />
                   </div>
                 )}
+              </div>
+            </div>
+            <div className={styles.section}>
+              <div className={styles.sectionTitle}>Cuenta</div>
+              <div className={`${styles.row} ${styles.cols1}`}>
+                <CuentaSelect
+                  label="Cuenta de cargo del capital"
+                  value={cuentaCargo}
+                  onChange={setCuentaCargo}
+                  required
+                />
               </div>
             </div>
           </ModalAtlasForm>

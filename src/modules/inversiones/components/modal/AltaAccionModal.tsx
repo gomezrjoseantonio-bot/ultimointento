@@ -3,7 +3,7 @@
 // Preview · informativo "Tramos base ahorro 19→28%".
 
 import React, { useMemo, useState } from 'react';
-import { Icons } from '../../../../design-system/v5';
+import { Icons, showToastV5 } from '../../../../design-system/v5';
 import type { PosicionInversion, TipoPosicion } from '../../../../types/inversiones';
 import ModalAtlas, { ModalAtlasBody, ModalAtlasForm } from './ModalAtlas';
 import ModalAtlasHeader from './ModalAtlasHeader';
@@ -17,6 +17,7 @@ import ModalAtlasPreview, {
   ModalAtlasPreviewCardDark,
   ModalAtlasPreviewRow,
 } from './ModalAtlasPreview';
+import CuentaSelect from './CuentaSelect';
 import { formatCurrency } from '../../helpers';
 import styles from '../../styles/atlas-inversiones.module.css';
 
@@ -46,6 +47,8 @@ const AltaAccionModal: React.FC<AltaAccionModalProps> = ({ onSave, onClose }) =>
   const [precioMedio, setPrecioMedio] = useState('');
   const [precioActual, setPrecioActual] = useState('');
   const [fechaCompra, setFechaCompra] = useState(today());
+  const [cuentaCargo, setCuentaCargo] = useState('');
+  const [cuentaCobro, setCuentaCobro] = useState('');
 
   const aportadoCalc = useMemo(() => {
     const n = parseFloat(unidades) || 0;
@@ -63,7 +66,21 @@ const AltaAccionModal: React.FC<AltaAccionModalProps> = ({ onSave, onClose }) =>
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const unidadesNum = parseFloat(unidades);
+    const precioNum = parseFloat(precioMedio);
     if (!nombre.trim() || !entidad.trim()) return;
+    if (!Number.isFinite(unidadesNum) || unidadesNum <= 0) {
+      showToastV5('Las unidades deben ser mayor que 0');
+      return;
+    }
+    if (!Number.isFinite(precioNum) || precioNum <= 0) {
+      showToastV5('El precio medio de compra debe ser mayor que 0');
+      return;
+    }
+    if (!cuentaCargo) {
+      showToastV5('Selecciona la cuenta de cargo de la compra');
+      return;
+    }
     setLoading(true);
     try {
       await onSave({
@@ -72,10 +89,10 @@ const AltaAccionModal: React.FC<AltaAccionModalProps> = ({ onSave, onClose }) =>
         entidad: entidad.trim(),
         ticker: ticker.trim() || undefined,
         isin: isin.trim() || undefined,
-        numero_participaciones: parseFloat(unidades) || undefined,
-        precio_medio_compra: parseFloat(precioMedio) || undefined,
-        fecha_compra: fechaCompra,
-        fecha_valoracion: fechaCompra,
+        numero_participaciones: unidadesNum,
+        precio_medio_compra: precioNum,
+        fecha_compra: `${fechaCompra}T12:00:00.000Z`,
+        fecha_valoracion: `${fechaCompra}T12:00:00.000Z`,
         valor_actual: valorCalc,
         importe_inicial: aportadoCalc,
         total_aportado: aportadoCalc,
@@ -83,6 +100,8 @@ const AltaAccionModal: React.FC<AltaAccionModalProps> = ({ onSave, onClose }) =>
         rentabilidad_porcentaje: aportadoCalc > 0 ? (plusvaliaCalc / aportadoCalc) * 100 : 0,
         aportaciones: [],
         activo: true,
+        cuenta_cargo_id: Number(cuentaCargo),
+        cuenta_cobro_id: cuentaCobro ? Number(cuentaCobro) : undefined,
       });
       onClose();
     } finally {
@@ -242,6 +261,22 @@ const AltaAccionModal: React.FC<AltaAccionModalProps> = ({ onSave, onClose }) =>
                   />
                 </div>
                 <div />
+              </div>
+            </div>
+            <div className={styles.section}>
+              <div className={styles.sectionTitle}>Cuentas</div>
+              <div className={styles.row}>
+                <CuentaSelect
+                  label="Cuenta de cargo"
+                  value={cuentaCargo}
+                  onChange={setCuentaCargo}
+                  required
+                />
+                <CuentaSelect
+                  label="Cuenta de cobro de dividendos"
+                  value={cuentaCobro}
+                  onChange={setCuentaCobro}
+                />
               </div>
             </div>
           </ModalAtlasForm>

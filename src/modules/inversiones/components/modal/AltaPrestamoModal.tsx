@@ -3,8 +3,9 @@
 // Preview · cálculo financiero · cobros netos previstos en vivo.
 
 import React, { useMemo, useState } from 'react';
-import { Icons } from '../../../../design-system/v5';
+import { Icons, showToastV5 } from '../../../../design-system/v5';
 import type { PosicionInversion } from '../../../../types/inversiones';
+import type { RendimientoPeriodico } from '../../../../types/inversiones-extended';
 import ModalAtlas, { ModalAtlasBody, ModalAtlasForm } from './ModalAtlas';
 import ModalAtlasHeader from './ModalAtlasHeader';
 import ModalAtlasFooter, {
@@ -17,6 +18,7 @@ import ModalAtlasPreview, {
   ModalAtlasPreviewCardDark,
   ModalAtlasPreviewRow,
 } from './ModalAtlasPreview';
+import CuentaSelect from './CuentaSelect';
 import { formatCurrency } from '../../helpers';
 import styles from '../../styles/atlas-inversiones.module.css';
 
@@ -61,8 +63,14 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
   const [frecuencia, setFrecuencia] = useState<Frecuencia>('mensual');
   const [retencion, setRetencion] = useState('19');
   const [fecha, setFecha] = useState(today());
+  const [cuentaCargo, setCuentaCargo] = useState('');
+  const [cuentaCobro, setCuentaCobro] = useState('');
 
   // ── Preview · cobros netos previstos ─────────────────────────────
+  // capital_e_intereses · cuota francesa real (PMT) · convertida a la
+  // frecuencia seleccionada. Fórmula: c × i / (1 − (1+i)^−n) con `i` la
+  // tasa periódica y `n` el nº de periodos. Resto modalidades · solo
+  // intereses devengados en el periodo o `neto` total al vencimiento.
   const calc = useMemo(() => {
     const c = parseFloat(capital) || 0;
     const t = parseFloat(tin) || 0;
@@ -76,25 +84,69 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
     const interesBruto = interesAnual * años;
     const retencionImporte = interesBruto * r;
     const neto = interesBruto - retencionImporte;
+
     const periodosAño =
       frecuencia === 'mensual' ? 12 : frecuencia === 'trimestral' ? 4 : frecuencia === 'semestral' ? 2 : 1;
-    const cuotaPeriodica =
-      modalidad === 'al_vencimiento' ? neto : interesAnual / periodosAño;
+
+    let cuotaPeriodica: number;
+    if (modalidad === 'al_vencimiento') {
+      cuotaPeriodica = neto;
+    } else if (modalidad === 'capital_e_intereses') {
+      // Cuota francesa · capital + intereses · periodicidad de la frecuencia.
+      const nPeriodos = Math.round((d / 12) * periodosAño);
+      const tasaPeriodo = t / 100 / periodosAño;
+      cuotaPeriodica = nPeriodos > 0 && tasaPeriodo > 0
+        ? (c * tasaPeriodo) / (1 - Math.pow(1 + tasaPeriodo, -nPeriodos))
+        : 0;
+    } else {
+      // solo_intereses · interés del periodo, sin amortizar principal.
+      cuotaPeriodica = interesAnual / periodosAño;
+    }
     return { interesBruto, retencionImporte, neto, cuotaPeriodica };
   }, [capital, tin, duracionMeses, retencion, frecuencia, modalidad]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cap = parseFloat(capital);
+    const tinNum = parseFloat(tin);
+    const duracion = parseFloat(duracionMeses);
     if (!nombre.trim() || !entidad.trim()) return;
+    if (!Number.isFinite(cap) || cap <= 0) {
+      showToastV5('El capital debe ser mayor que 0');
+      return;
+    }
+    if (!Number.isFinite(tinNum) || tinNum <= 0) {
+      showToastV5('El TIN debe ser mayor que 0');
+      return;
+    }
+    if (!Number.isFinite(duracion) || duracion <= 0) {
+      showToastV5('La duración debe ser mayor que 0 meses');
+      return;
+    }
+    if (!cuentaCargo) {
+      showToastV5('Selecciona la cuenta de cargo del capital');
+      return;
+    }
     setLoading(true);
     try {
-      const cap = parseFloat(capital) || 0;
+      const esVencimiento = modalidad === 'al_vencimiento';
+      const frecuenciaPago = esVencimiento ? 'anual' : frecuencia;
+      const retencionNum = parseFloat(retencion) || 0;
+      const rendimiento: RendimientoPeriodico = {
+        tipo_rendimiento: 'interes_fijo',
+        tasa_interes_anual: tinNum,
+        frecuencia_pago: frecuenciaPago,
+        reinvertir: esVencimiento,
+        fecha_inicio_rendimiento: `${fecha}T12:00:00.000Z`,
+        retencion_porcentaje: retencionNum,
+        pagos_generados: [],
+      };
       await onSave({
         nombre: nombre.trim(),
         tipo: 'prestamo_p2p',
         entidad: subtipo === 'empresa' ? entidad.trim() || 'propia' : entidad.trim(),
-        fecha_compra: fecha,
-        fecha_valoracion: fecha,
+        fecha_compra: `${fecha}T12:00:00.000Z`,
+        fecha_valoracion: `${fecha}T12:00:00.000Z`,
         valor_actual: cap,
         importe_inicial: cap,
         total_aportado: cap,
@@ -102,11 +154,13 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
         rentabilidad_porcentaje: 0,
         aportaciones: [],
         activo: true,
-        duracion_meses: parseFloat(duracionMeses) || undefined,
+        cuenta_cargo_id: Number(cuentaCargo),
+        cuenta_cobro_id: cuentaCobro ? Number(cuentaCobro) : undefined,
+        duracion_meses: duracion,
         modalidad_devolucion: modalidad,
-        frecuencia_cobro: frecuencia,
-        retencion_fiscal: parseFloat(retencion) || undefined,
-        rendimiento: { tasa_interes_anual: parseFloat(tin) || 0 },
+        frecuencia_cobro: esVencimiento ? 'al_vencimiento' : frecuencia,
+        retencion_fiscal: retencionNum,
+        rendimiento,
       });
       onClose();
     } finally {
@@ -283,6 +337,22 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
                   />
                 </div>
                 <div />
+              </div>
+            </div>
+            <div className={styles.section}>
+              <div className={styles.sectionTitle}>Cuentas</div>
+              <div className={styles.row}>
+                <CuentaSelect
+                  label="Cuenta de cargo del capital"
+                  value={cuentaCargo}
+                  onChange={setCuentaCargo}
+                  required
+                />
+                <CuentaSelect
+                  label="Cuenta de cobro de los rendimientos"
+                  value={cuentaCobro}
+                  onChange={setCuentaCobro}
+                />
               </div>
             </div>
           </ModalAtlasForm>

@@ -4,7 +4,7 @@
 // MVP minimal · modelo de datos fondos diferido a T13-bis (§1.2 spec).
 
 import React, { useState } from 'react';
-import { Icons } from '../../../../design-system/v5';
+import { Icons, showToastV5 } from '../../../../design-system/v5';
 import type { PosicionInversion } from '../../../../types/inversiones';
 import ModalAtlas, { ModalAtlasBody, ModalAtlasForm } from './ModalAtlas';
 import ModalAtlasHeader from './ModalAtlasHeader';
@@ -18,6 +18,7 @@ import ModalAtlasPreview, {
   ModalAtlasPreviewCardDark,
   ModalAtlasPreviewRow,
 } from './ModalAtlasPreview';
+import CuentaSelect from './CuentaSelect';
 import styles from '../../styles/atlas-inversiones.module.css';
 
 export interface AltaFondoModalProps {
@@ -35,21 +36,30 @@ const AltaFondoModal: React.FC<AltaFondoModalProps> = ({ onSave, onClose }) => {
   const [fechaCompra, setFechaCompra] = useState(today());
   const [importeInicial, setImporteInicial] = useState('');
   const [valorActual, setValorActual] = useState('');
+  const [cuentaCargo, setCuentaCargo] = useState('');
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombre.trim() || !entidad.trim()) return;
+    const importe = importeInicial ? parseFloat(importeInicial) : 0;
+    if (importeInicial && (!Number.isFinite(importe) || importe < 0)) {
+      showToastV5('El capital aportado no puede ser negativo');
+      return;
+    }
+    if (!cuentaCargo) {
+      showToastV5('Selecciona la cuenta de cargo de la compra');
+      return;
+    }
     setLoading(true);
     try {
-      const importe = importeInicial ? parseFloat(importeInicial) : 0;
       const valor = valorActual ? parseFloat(valorActual) : importe;
       await onSave({
         nombre: nombre.trim(),
         tipo: 'fondo_inversion',
         entidad: entidad.trim(),
         isin: isin.trim() || undefined,
-        fecha_compra: fechaCompra,
-        fecha_valoracion: fechaCompra,
+        fecha_compra: `${fechaCompra}T12:00:00.000Z`,
+        fecha_valoracion: `${fechaCompra}T12:00:00.000Z`,
         valor_actual: valor,
         importe_inicial: importe,
         total_aportado: importe,
@@ -57,6 +67,7 @@ const AltaFondoModal: React.FC<AltaFondoModalProps> = ({ onSave, onClose }) => {
         rentabilidad_porcentaje: importe > 0 ? ((valor - importe) / importe) * 100 : 0,
         aportaciones: [],
         activo: true,
+        cuenta_cargo_id: Number(cuentaCargo),
       });
       onClose();
     } finally {
@@ -164,6 +175,17 @@ const AltaFondoModal: React.FC<AltaFondoModalProps> = ({ onSave, onClose }) => {
                     placeholder="0.00"
                   />
                 </div>
+              </div>
+            </div>
+            <div className={styles.section}>
+              <div className={styles.sectionTitle}>Cuenta</div>
+              <div className={`${styles.row} ${styles.cols1}`}>
+                <CuentaSelect
+                  label="Cuenta de cargo de la compra"
+                  value={cuentaCargo}
+                  onChange={setCuentaCargo}
+                  required
+                />
               </div>
             </div>
           </ModalAtlasForm>
