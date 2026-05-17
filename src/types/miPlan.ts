@@ -40,6 +40,15 @@ export interface Escenario {
   /** T27.4.1 · configuración personalizada de cómo calcular la libertad financiera. Si undefined · usa STANDARD_LIBERTAD_CONFIG */
   libertadConfig?: LibertadConfig;
 
+  // ─── T-INVERSIONES-DETALLE-PP-v1 PR 3 · §4.B ────────────────────────────
+  // Campos opcionales · usados por `proyeccionActivoService` y por la
+  // ficha de inversiones (PR 4) para proyectar valor futuro · cono ±2 pp
+  // · valor real. Defaults aplicados en `escenariosService.ESCENARIO_DEFAULTS`.
+  /** Edad a la que el usuario planea rescatar · default 65. Slider 55-75 en UI. */
+  edadObjetivoRescate?: number;
+  /** Inflación anual asumida en % (ej. 2.0). Default 2. */
+  inflacionAnualAsumida?: number;
+
   updatedAt: string;
 }
 

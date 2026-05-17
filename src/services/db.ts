@@ -24,9 +24,11 @@ import type {
 } from '../types/fiscal';
 import type { TipoActivo } from '../types/tipoActivo';
 import type { BenchmarkReferencia } from '../types/benchmarksReferencia';
+import type { AvisoCerrado } from '../types/avisosUsuario';
+import type { ObjetivoVital } from '../types/objetivosVitales';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 72; // V72 (T-INVERSIONES-DETALLE-PP-v1 PR 2): crea store `benchmarksReferencia` para datos de mercado editables desde Ajustes → Datos de mercado. Precarga vacía (decisión Q-PRE-H opción B · Jose introduce valores manualmente). 42 stores totales.
+const DB_VERSION = 73; // V73 (T-INVERSIONES-DETALLE-PP-v1 PR 3): crea 2 stores nuevos · `avisosUsuario` (avisos cerrables · §4.E) y `objetivosVitales` (hitos vitales · §4.C Caso B). Convive con `objetivos` existente (operativos · T27.1). Decisión Q-PRE-I · un solo bump cubre ambos stores. 44 stores totales.
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2401,6 +2403,8 @@ interface AtlasHorizonDB {
   retos: Reto;               // V5.7: retos mensuales (1 activo por mes)
   deudasFiscales: DeudaFiscal; // V71: deudas fiscales con AEAT (modelos 100/303/130/184) · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1
   benchmarksReferencia: BenchmarkReferencia; // V72: índices de referencia editables (MSCI World · S&P 500 · IPC ES · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.A
+  avisosUsuario: AvisoCerrado; // V73: avisos cerrables (banners X) · T-INVERSIONES-DETALLE-PP-v1 §4.E
+  objetivosVitales: ObjetivoVital; // V73: hitos vitales (jubilación · salida empresa · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.C Caso B
 }
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
 
@@ -2959,6 +2963,27 @@ export const initDB = async () => {
           benchmarksStore.createIndex('ultimaActualizacion', 'ultimaActualizacion', {
             unique: false,
           });
+        }
+
+        // V73: avisos cerrables del usuario
+        // T-INVERSIONES-DETALLE-PP-v1 §4.E · banners de proyección · benchmark
+        // · costes · hitos · histograma · ranking · etc. Cada banner con X y
+        // persistencia aquí. Restaurables desde Ajustes → Avisos.
+        if (!db.objectStoreNames.contains('avisosUsuario')) {
+          db.createObjectStore('avisosUsuario', { keyPath: 'avisoId' });
+        }
+
+        // V73: hitos vitales (jubilación · salida empresa · compra vivienda
+        // · hijo a uni · herencia). T-INVERSIONES-DETALLE-PP-v1 §4.C Caso B
+        // · convive con `objetivos` (operativos) sin tocarlos. Usados por
+        // BloqueHitos en la ficha de inversiones (PR 4).
+        if (!db.objectStoreNames.contains('objetivosVitales')) {
+          const ovStore = db.createObjectStore('objetivosVitales', { keyPath: 'id' });
+          ovStore.createIndex('tipo', 'tipo', { unique: false });
+          ovStore.createIndex('planFinancieroAsociado', 'planFinancieroAsociado', {
+            unique: false,
+          });
+          ovStore.createIndex('fechaEstimada', 'fechaEstimada', { unique: false });
         }
 
         // V2.8: Allow multiple snapshots per ejercicio (force snapshots)

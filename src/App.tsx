@@ -283,6 +283,7 @@ const MiPlanLanding = lazyWithPreload(() => import('./modules/mi-plan/pages/Land
 const MiPlanProyeccion = lazyWithPreload(() => import('./modules/mi-plan/pages/ProyeccionPage'));
 const MiPlanLibertad = lazyWithPreload(() => import('./modules/mi-plan/pages/LibertadPage'));
 const MiPlanObjetivos = lazyWithPreload(() => import('./modules/mi-plan/pages/ObjetivosPage'));
+const MiPlanHitosVitales = lazyWithPreload(() => import('./modules/mi-plan/pages/HitosVitalesPage'));
 const MiPlanFondos = lazyWithPreload(() => import('./modules/mi-plan/pages/FondosPage'));
 // T27.2-skip · lazy import de MiPlanRetos comentada · la ruta redirige a
 // Objetivos. Para revivir · descomentar y restaurar el binding del Route.
@@ -297,6 +298,7 @@ const AjustesPlantillas = lazyWithPreload(() => import('./modules/ajustes/pages/
 const AjustesPerfilFiscal = lazyWithPreload(() => import('./modules/ajustes/pages/PerfilFiscalPage'));
 const AjustesSeguridad = lazyWithPreload(() => import('./modules/ajustes/pages/SeguridadPage'));
 const AjustesDatosMercado = lazyWithPreload(() => import('./modules/ajustes/pages/DatosMercadoPage'));
+const AjustesAvisos = lazyWithPreload(() => import('./modules/ajustes/pages/AvisosPage'));
 
 // CopilotWidget es un botón flotante rara vez usado. Cargarlo eager arrastra
 // dashboardService → proyeccionMensualService y toda la cadena de servicios
@@ -1087,6 +1089,11 @@ function App() {
                   <MiPlanObjetivos />
                 </React.Suspense>
               } />
+              <Route path="hitos-vitales" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanHitosVitales />
+                </React.Suspense>
+              } />
               <Route path="fondos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <MiPlanFondos />
@@ -1407,6 +1414,11 @@ function App() {
               <Route path="datos-mercado" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <AjustesDatosMercado />
+                </React.Suspense>
+              } />
+              <Route path="avisos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AjustesAvisos />
                 </React.Suspense>
               } />
             </Route>
