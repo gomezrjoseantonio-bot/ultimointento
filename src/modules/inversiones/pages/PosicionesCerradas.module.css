@@ -130,6 +130,377 @@
   background: var(--atlas-v5-card);
 }
 
+/* ============================================================
+   PR 5 · rediseño v5 · 4 bloques chicha + listado tabular
+   T-INVERSIONES-DETALLE-PP-v1 §6.
+   Paleta monocromática Oxford Gold + neutros · sin lavanda/rosa/azul claro.
+   ============================================================ */
+
+/* ─── C1 · Hero patrimonio cerrado ─── */
+.heroCerrado {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+  .heroCerrado { grid-template-columns: repeat(2, 1fr); }
+}
+
+.heroKpi {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 14px 18px;
+}
+
+.heroKpiLab {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: 600;
+}
+
+.heroKpiVal {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-top: 6px;
+  color: var(--atlas-v5-ink);
+}
+
+.heroKpiSub {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ─── C3 · Best/worst ─── */
+.bestWorst {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 700px) {
+  .bestWorst { grid-template-columns: 1fr; }
+}
+
+.bestWorstCard {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.bestWorstMejor { border-left: 4px solid var(--atlas-v5-pos); }
+.bestWorstPeor { border-left: 4px solid var(--atlas-v5-neg); }
+
+.bestWorstLab {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.bestWorstNombre {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.bestWorstStats {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.bestWorstPct {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.bestWorstEur {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.bestWorstMeta {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ─── Bloques C2/C5/Detalle · card común ─── */
+.bloque {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 16px;
+}
+
+.bloqueHd {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.bloqueSupertitle {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: 600;
+}
+
+.bloqueTit {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.bloqueSub {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 4px;
+}
+
+.linkInline {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--atlas-v5-gold-ink);
+  text-decoration: underline;
+  padding: 0;
+  font: inherit;
+}
+
+/* ─── C2 · Histograma ─── */
+.histoChart {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  height: 200px;
+  padding: 12px 0 0;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  margin-bottom: 14px;
+}
+
+.histoCol {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  position: relative;
+  padding-bottom: 36px;
+}
+
+.histoBar {
+  width: 60%;
+  min-height: 2px;
+  background: var(--atlas-v5-gold-soft);
+  border-radius: 4px 4px 0 0;
+  transition: height 0.18s;
+}
+
+.histoBar:hover { background: var(--atlas-v5-gold); }
+
+.histoBarNeg { background: var(--atlas-v5-ink-5); }
+.histoBarNeg:hover { background: var(--atlas-v5-ink-4); }
+
+.histoCount {
+  position: absolute;
+  bottom: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+}
+
+.histoBin {
+  position: absolute;
+  bottom: 0;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--atlas-v5-ink-4);
+}
+
+/* ─── Banner cerrable ─── */
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  background: var(--atlas-v5-gold-wash);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  color: var(--atlas-v5-gold-ink);
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+.banner > div:first-child { flex: 1; }
+
+.bannerClose {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.55;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.bannerClose:hover { opacity: 1; }
+
+/* ─── Tabla común (ranking + detalle) ─── */
+.tablaWrap {
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tabla th,
+.tabla td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.tabla th {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: 600;
+  background: var(--atlas-v5-card-alt);
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.tabla tbody tr:hover { background: var(--atlas-v5-card-alt); }
+
+.tabla tbody tr:last-child td { border-bottom: none; }
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.alignRight { text-align: right; }
+
+.pos { color: var(--atlas-v5-pos); font-weight: 600; }
+.neg { color: var(--atlas-v5-neg); font-weight: 600; }
+
+.tagTipo {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  color: var(--atlas-v5-ink-3);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  text-transform: lowercase;
+}
+
+.rankingLead {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── Detalle de operaciones · listado tabular ─── */
+.filtrosPill {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.pill {
+  padding: 5px 10px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-3);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.pill:hover { border-color: var(--atlas-v5-ink-5); }
+
+.pillActive {
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  border-color: var(--atlas-v5-brand-ink);
+}
+
+.filtroSpacer { flex: 1; }
+
+.celdaActivo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.celdaActivoCol {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.celdaActivoNombre {
+  color: var(--atlas-v5-ink);
+  font-weight: 600;
+}
+
+.celdaActivoMeta {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
 /* ── Carta cerrada (§ 5.3 spec) ───────────────────────────────── */
 .cartaCerrada {
   background: var(--atlas-v5-card-alt);
