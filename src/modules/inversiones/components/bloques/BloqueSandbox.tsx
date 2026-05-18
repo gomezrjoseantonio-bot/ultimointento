@@ -2,7 +2,7 @@
 // PR 4 · cableado · 3 sliders con topes por tipo (§5.6.1) · recálculo dinámico
 // vía fórmula VF anual idéntica a `proyeccionActivoService` (un escenario).
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getCopyPorTipo } from './tipoPlanCopy';
 import type { TipoActivoProyectable } from '../../../../services/proyeccionActivoService';
 import type { TipoPlanCoste } from './BloqueCostes';
@@ -80,11 +80,40 @@ const BloqueSandbox = ({
   );
 
   const topeAportacion = copy.topeAportacionAnualBase;
-  const initialAporte = Math.min(Math.max(0, aportacionAnualDefault), topeAportacion);
 
-  const [aporteAnual, setAporteAnual] = useState<number>(initialAporte);
+  // Step que divide todos los topes legales (1.500 · 5.750 · 10.000 · 24.250).
+  // 50 € es múltiplo común · garantiza que el slider llega al cap exacto.
+  const stepAporte = 50;
+
+  const [touched, setTouched] = useState<{ aporte: boolean; anos: boolean; twr: boolean }>({
+    aporte: false,
+    anos: false,
+    twr: false,
+  });
+  const [aporteAnual, setAporteAnual] = useState<number>(
+    Math.min(Math.max(0, aportacionAnualDefault), topeAportacion),
+  );
   const [anos, setAnos] = useState<number>(Math.max(5, Math.min(40, anosDefault)));
   const [twrPct, setTwrPct] = useState<number>(Math.max(0, Math.min(10, twrDefault * 100)));
+
+  // Sincroniza los sliders cuando llegan los datos reales del plan
+  // (FichaPlanPensiones monta este bloque antes de que `aportaciones` y
+  // `rentabilidadTotal` se carguen, así que los defaults iniciales son 0).
+  // Solo aplica si el usuario NO ha movido aún ese slider.
+  useEffect(() => {
+    if (touched.aporte) return;
+    setAporteAnual(Math.min(Math.max(0, aportacionAnualDefault), topeAportacion));
+  }, [aportacionAnualDefault, topeAportacion, touched.aporte]);
+
+  useEffect(() => {
+    if (touched.anos) return;
+    setAnos(Math.max(5, Math.min(40, anosDefault)));
+  }, [anosDefault, touched.anos]);
+
+  useEffect(() => {
+    if (touched.twr) return;
+    setTwrPct(Math.max(0, Math.min(10, twrDefault * 100)));
+  }, [twrDefault, touched.twr]);
 
   const valorFinal = useMemo(
     () => calcularVF(saldoActual, aporteAnual, twrPct / 100, anos),
@@ -141,9 +170,12 @@ const BloqueSandbox = ({
             label="Aportación anual"
             min={0}
             max={topeAportacion}
-            step={100}
+            step={stepAporte}
             value={aporteAnual}
-            onChange={setAporteAnual}
+            onChange={(v) => {
+              setAporteAnual(v);
+              setTouched((t) => ({ ...t, aporte: true }));
+            }}
             display={fmtEur(aporteAnual)}
           />
           <SliderRow
@@ -153,7 +185,10 @@ const BloqueSandbox = ({
             max={40}
             step={1}
             value={anos}
-            onChange={setAnos}
+            onChange={(v) => {
+              setAnos(v);
+              setTouched((t) => ({ ...t, anos: true }));
+            }}
             display={`${anos} años`}
           />
           <SliderRow
@@ -163,7 +198,10 @@ const BloqueSandbox = ({
             max={10}
             step={0.1}
             value={twrPct}
-            onChange={setTwrPct}
+            onChange={(v) => {
+              setTwrPct(v);
+              setTouched((t) => ({ ...t, twr: true }));
+            }}
             display={`${twrPct.toFixed(1)} %`}
           />
         </div>

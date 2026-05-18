@@ -124,11 +124,17 @@ const BloqueBenchmark = ({
       return `Tu ${nombrePosicion} pierde contra la inflación · ${delta} puntos reales perdidos al año.`;
     }
     const competidor = barras.find((b) => !b.esActivo && !b.esInflacion);
-    if (competidor && twrHistorico * 100 < competidor.twrPct) {
+    if (!competidor) {
+      // Sin benchmark competidor configurado · copy neutral · invita a configurar.
+      return inflacion
+        ? `Tu ${nombrePosicion} bate a la inflación · configura más benchmarks en Ajustes para comparar con índices de mercado.`
+        : `Configura tus benchmarks en Ajustes → Datos de mercado para ver una comparativa real.`;
+    }
+    if (twrHistorico * 100 < competidor.twrPct) {
       const delta = (competidor.twrPct - twrHistorico * 100).toFixed(1);
       return `Tu ${nombrePosicion} rinde ${delta} pp menos que su benchmark de referencia (${competidor.nombre}).`;
     }
-    return `Tu ${nombrePosicion} está batiendo a su benchmark de referencia · sigue así.`;
+    return `Tu ${nombrePosicion} está batiendo a su benchmark de referencia (${competidor.nombre}) · sigue así.`;
   }, [barras, twrHistorico, nombrePosicion]);
 
   // Escala automática · centra en 0 · rango +/- max absoluto.

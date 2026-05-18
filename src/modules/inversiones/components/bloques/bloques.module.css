@@ -255,7 +255,7 @@
   gap: 6px;
   padding: 9px 14px;
   background: var(--atlas-v5-gold);
-  color: #fff;
+  color: var(--atlas-v5-white);
   border: 1px solid var(--atlas-v5-gold);
   border-radius: 8px;
   font-size: 13px;
@@ -417,7 +417,7 @@
 
 .cardValorFinal {
   background: var(--atlas-v5-brand-ink);
-  color: #fff;
+  color: var(--atlas-v5-white);
   border-radius: 10px;
   padding: 14px 18px;
   min-width: 200px;
