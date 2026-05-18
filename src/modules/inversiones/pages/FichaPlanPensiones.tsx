@@ -43,7 +43,14 @@ import FichaShell from '../components/FichaShell';
 // PlanFormV5 y TraspasoPlanDialog (T13v4) sustituidos por los modales
 // ATLAS PR 3/PR 4 · siguen vivos en el repo hasta PR 5 cleanup.
 import { getEntidadLogoConfig } from '../utils/entidadLogo';
+// T-INVERSIONES-DETALLE-PP-v1 PR 4 · 5 bloques chicha cableados.
+import BloqueProyeccion from '../components/bloques/BloqueProyeccion';
+import BloqueBenchmark from '../components/bloques/BloqueBenchmark';
+import BloqueCostes from '../components/bloques/BloqueCostes';
+import BloqueHitos from '../components/bloques/BloqueHitos';
+import BloqueSandbox from '../components/bloques/BloqueSandbox';
 import styles from './FichaPosicion.module.css';
+import bloquesStyles from '../components/bloques/bloques.module.css';
 
 // ── Mapping label tipo administrativo ────────────────────────────────────────
 
@@ -819,6 +826,93 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
         ]}
       >
 
+        {/* ─── T-INVERSIONES-DETALLE-PP-v1 PR 4 · 5 bloques chicha ──────── */}
+        {/* P1 · Proyección "tu yo en X" */}
+        <BloqueProyeccion
+          posicionId={plan.id}
+          tipoActivo="plan_pensiones"
+          saldoActual={valorActual}
+          aportadoActual={aportadoTotal}
+          aportacionAnualEstimada={(() => {
+            // Proxy · aportes del último ejercicio · si no hay, 0.
+            const apsAno = aportaciones.filter((a) => a.ejercicioFiscal === ejercicioActual);
+            const total = apsAno.reduce(
+              (s, a) => s + (a.importeTitular ?? 0) + (a.importeEmpresa ?? 0) + (a.importeConyuge ?? 0),
+              0,
+            );
+            return total;
+          })()}
+          twrHistorico={rentabilidadTotal?.TWR ?? null}
+          anosTranscurridos={(() => {
+            if (!fechaPrimeraAportacion) return 0;
+            const t = Date.now() - new Date(fechaPrimeraAportacion).getTime();
+            return Math.max(0, Math.round(t / MS_PER_YEAR));
+          })()}
+          politicaInversion={plan.politicaInversion}
+          modoCopy={plan.tipoAdministrativo === 'PPE' ? 'informativo' : 'accionable'}
+        />
+
+        {/* P2 · Benchmark */}
+        <BloqueBenchmark
+          posicionId={plan.id}
+          tipoActivo="plan_pensiones"
+          nombrePosicion={plan.nombre}
+          twrHistorico={rentabilidadTotal?.TWR ?? null}
+          politicaInversion={plan.politicaInversion}
+        />
+
+        {/* P3 · Comisiones · TIPO-AWARE */}
+        <BloqueCostes
+          posicionId={plan.id}
+          tipoActivo="plan_pensiones"
+          tipoPlan={plan.tipoAdministrativo}
+          garantizado={plan.garantizado}
+          nombreEmpresa={plan.empresaPagadora?.nombre ?? null}
+          ter={0.015 /* TODO · planesPensiones aún no expone TER · default 1,5 % */}
+          saldoMedioAnual={Math.max(0, (valorActual + aportadoTotal) / 2)}
+          anosTranscurridos={(() => {
+            if (!fechaPrimeraAportacion) return 0;
+            const t = Date.now() - new Date(fechaPrimeraAportacion).getTime();
+            return Math.max(0, Math.round(t / MS_PER_YEAR));
+          })()}
+          anosHastaRescate={23 /* TODO · derivar de personal+escenario · PR 4 follow-up */}
+          saldoMedioProyectado={Math.max(valorActual, 1) * 1.5}
+        />
+
+        {/* P4 · Hitos vivos */}
+        <BloqueHitos
+          posicionId={plan.id}
+          tipoActivo="plan_pensiones"
+          fechaApertura={plan.fechaContratacion}
+        />
+
+        {/* P5 · Sandbox interactivo */}
+        <BloqueSandbox
+          posicionId={plan.id}
+          tipoActivo="plan_pensiones"
+          tipoPlan={plan.tipoAdministrativo}
+          esAutonomo={plan.subtipoPPES === 'autonomos'}
+          discapacidad={plan.participeConDiscapacidad}
+          saldoActual={valorActual}
+          aportacionAnualDefault={(() => {
+            const apsAno = aportaciones.filter((a) => a.ejercicioFiscal === ejercicioActual);
+            return apsAno.reduce(
+              (s, a) => s + (a.importeTitular ?? 0) + (a.importeEmpresa ?? 0),
+              0,
+            );
+          })()}
+          anosDefault={23}
+          twrDefault={rentabilidadTotal?.TWR ?? 0.03}
+          valorFinalActual={null /* PR 4 follow-up · pasar valor de proyección actual para mostrar diferencia */}
+        />
+
+        {/* ─── Detalle fiscal y aportaciones · T13v4 preservado (§5.7) ─── */}
+        <details className={bloquesStyles.detalleFiscalDetails} open>
+          <summary className={bloquesStyles.detalleFiscalSummary}>
+            Detalle fiscal y aportaciones
+          </summary>
+          <div className={bloquesStyles.detalleFiscalBody}>
+
         {/* ── 1.3 · Sparkline gigante ────────────────────────────────────── */}
         <div className={styles.detailCard} style={{ marginBottom: 16 }}>
           <div className={styles.detailCardTit}>Evolución del valor</div>
@@ -1297,6 +1391,9 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
             </div>
           )}
         </div>
+
+          </div>
+        </details>
       </FichaShell>
 
       {/* ── Modales ──────────────────────────────────────────────────────────── */}
