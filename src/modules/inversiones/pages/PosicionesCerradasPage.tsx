@@ -326,7 +326,7 @@ const PosicionesCerradasPage = () => {
                     <th style={{ textAlign: 'right' }}>Aportado</th>
                     <th>Tiempo</th>
                     <th style={{ textAlign: 'right' }}>Plusvalía</th>
-                    <th style={{ textAlign: 'right' }}>TWR</th>
+                    <th style={{ textAlign: 'right' }}>CAGR</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -470,11 +470,15 @@ function RankingTabla({ items }: { items: ReadonlyArray<RankingTipoItem> }) {
         <tbody>
           {items.map((it, idx) => {
             const positivo = it.plusvalia >= 0;
+            // "líder" solo si el primer item tiene CAGR calculable
+            // (el sort coloca los null al final · si idx 0 es null nadie es líder).
+            const esLider = idx === 0 && it.cagrMedio != null;
+            const cagrPositivo = (it.cagrMedio ?? 0) >= 0;
             return (
               <tr key={it.tipo}>
                 <td>
                   <span className={styles.tagTipo}>{it.tipo}</span>
-                  {idx === 0 && <span className={styles.rankingLead}>líder</span>}
+                  {esLider && <span className={styles.rankingLead}>líder</span>}
                 </td>
                 <td className={`${styles.mono} ${styles.alignRight}`}>{it.numOps}</td>
                 <td className={`${styles.mono} ${styles.alignRight}`}>
@@ -483,11 +487,11 @@ function RankingTabla({ items }: { items: ReadonlyArray<RankingTipoItem> }) {
                 <td className={`${styles.mono} ${styles.alignRight} ${positivo ? styles.pos : styles.neg}`}>
                   {fmtEur(it.plusvalia, { sign: true })}
                 </td>
-                <td className={`${styles.mono} ${styles.alignRight} ${it.cagrMedio >= 0 ? styles.pos : styles.neg}`}>
-                  {fmtPct(it.cagrMedio, { sign: true })}
+                <td className={`${styles.mono} ${styles.alignRight} ${it.cagrMedio != null && cagrPositivo ? styles.pos : it.cagrMedio != null ? styles.neg : ''}`}>
+                  {it.cagrMedio != null ? fmtPct(it.cagrMedio, { sign: true }) : '—'}
                 </td>
                 <td className={`${styles.mono} ${styles.alignRight}`}>
-                  {formatDuracion(it.tiempoMedioDias)}
+                  {it.tiempoMedioDias != null ? formatDuracion(it.tiempoMedioDias) : '—'}
                 </td>
               </tr>
             );

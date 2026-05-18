@@ -82,6 +82,32 @@ describe('cagrMedioPonderado', () => {
   });
 });
 
+describe('computeRankingPorTipo · cagrMedio nullable', () => {
+  test('todos sin cagr en el tipo · cagrMedio = null · ranking lo coloca al final', () => {
+    const sinCagr = [
+      mk({ id: 'a', tipo: 'fondo_inversion', aportado: 10_000, resultado: 100, cagr: undefined }),
+      mk({ id: 'b', tipo: 'fondo_inversion', aportado: 10_000, resultado: 200, cagr: undefined }),
+    ];
+    const conCagr = [
+      mk({ id: 'c', tipo: 'accion', aportado: 5_000, resultado: 300, cagr: 12 }),
+    ];
+    const r = computeRankingPorTipo([...sinCagr, ...conCagr]);
+    // Acciones (12 %) primero · Fondos (null) al final.
+    expect(r[0].tipo).toBe('Acciones');
+    expect(r[0].cagrMedio).toBeCloseTo(12, 4);
+    expect(r[1].tipo).toBe('Fondos');
+    expect(r[1].cagrMedio).toBeNull();
+  });
+
+  test('tiempoMedioDias = null si ninguna posición tiene duracion', () => {
+    const cs = [
+      mk({ id: 'a', tipo: 'crypto', aportado: 1_000, resultado: 200, cagr: undefined, duracionDias: undefined }),
+    ];
+    const r = computeRankingPorTipo(cs);
+    expect(r[0].tiempoMedioDias).toBeNull();
+  });
+});
+
 describe('bestWorstPorPorcentaje', () => {
   test('vacío · ambos null', () => {
     const r = bestWorstPorPorcentaje([]);
@@ -234,5 +260,15 @@ describe('analisisRankingCopy', () => {
     expect(c).toMatch(/acciones/i);
     expect(c).toMatch(/2 operac/);
     expect(c).toMatch(/16\.5/);
+  });
+
+  test('líder sin CAGR calculable · copy neutro que invita a revisar fechas', () => {
+    const r = computeRankingPorTipo([
+      mk({ tipo: 'fondo_inversion', cagr: undefined, aportado: 1_000 }),
+    ]);
+    const c = analisisRankingCopy(r);
+    expect(c).toMatch(/Sin CAGR calculable/i);
+    expect(c).toMatch(/fechas de apertura/i);
+    expect(c).not.toMatch(/te han funcionado mejor/i);
   });
 });

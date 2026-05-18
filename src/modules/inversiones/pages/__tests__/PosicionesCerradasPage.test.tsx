@@ -59,12 +59,14 @@ describe('PosicionesCerradasPage · estado vacío', () => {
 
 describe('PosicionesCerradasPage · render con datos · 4 KPIs + histograma + ranking', () => {
   beforeEach(() => {
+    // Nombres distintos por id · permite asertar que best/worst usan
+    // resultadoPercent (no resultado absoluto) y aparecen en las cards correctas.
     const cs = [
-      mk({ id: 'a', tipo: 'fondo_inversion', aportado: 10_000, vendido: 12_000, resultado: 2_000, resultadoPercent: 20, cagr: 8 }),
-      mk({ id: 'b', tipo: 'accion', aportado: 5_000, vendido: 6_500, resultado: 1_500, resultadoPercent: 30, cagr: 15 }),
-      mk({ id: 'c', tipo: 'accion', aportado: 3_000, vendido: 2_700, resultado: -300, resultadoPercent: -10, cagr: -5 }),
-      mk({ id: 'd', tipo: 'fondo_inversion', aportado: 8_000, vendido: 8_400, resultado: 400, resultadoPercent: 5, cagr: 2.5 }),
-      mk({ id: 'e', tipo: 'crypto', aportado: 2_000, vendido: 5_000, resultado: 3_000, resultadoPercent: 150, cagr: 50 }),
+      mk({ id: 'a', nombre: 'Fondo Indexado', tipo: 'fondo_inversion', aportado: 10_000, vendido: 12_000, resultado: 2_000, resultadoPercent: 20, cagr: 8 }),
+      mk({ id: 'b', nombre: 'Acción Inditex', tipo: 'accion', aportado: 5_000, vendido: 6_500, resultado: 1_500, resultadoPercent: 30, cagr: 15 }),
+      mk({ id: 'c', nombre: 'Acción Telefónica', tipo: 'accion', aportado: 3_000, vendido: 2_700, resultado: -300, resultadoPercent: -10, cagr: -5 }),
+      mk({ id: 'd', nombre: 'Plan BBVA', tipo: 'fondo_inversion', aportado: 8_000, vendido: 8_400, resultado: 400, resultadoPercent: 5, cagr: 2.5 }),
+      mk({ id: 'e', nombre: 'Bitcoin Spot', tipo: 'crypto', aportado: 2_000, vendido: 5_000, resultado: 3_000, resultadoPercent: 150, cagr: 50 }),
     ];
     mockGet.mockResolvedValue(cs);
   });
@@ -77,18 +79,26 @@ describe('PosicionesCerradasPage · render con datos · 4 KPIs + histograma + ra
     expect(screen.getByText('Tasa de acierto')).toBeInTheDocument();
   });
 
-  test('best/worst · 2 cards · mejor por % (no por € absoluto)', async () => {
-    renderConRouter(<PosicionesCerradasPage />);
+  test('best/worst · 2 cards · mejor por % (no por € absoluto) · asserts directos al nombre', async () => {
+    const { container } = renderConRouter(<PosicionesCerradasPage />);
     await screen.findByText('Capital invertido');
-    // Mejor = crypto (150 %) · NO el fondo que tiene mayor € absoluto.
     expect(screen.getByText('Mejor cierre')).toBeInTheDocument();
     expect(screen.getByText('Peor cierre')).toBeInTheDocument();
-    // El nombre del mejor (crypto) debe aparecer en la card best.
-    // El peor es 'c' (-10 %).
-    await waitFor(() => {
-      const text = document.body.textContent ?? '';
-      expect(text).toContain('Fondo Test'); // nombre genérico mock
-    });
+    // El mejor por % es Bitcoin Spot (150 %) · NO 'Fondo Indexado' que
+    // tiene 2.000 € absolutos (mayor que los 1.500 € de Inditex pero solo
+    // 20 % vs 150 %). El peor por % es Acción Telefónica (-10 %).
+    const mejorCard = container.querySelector(
+      '[aria-label="Mejor y peor cierre"]',
+    );
+    expect(mejorCard).not.toBeNull();
+    expect(mejorCard!.textContent).toContain('Bitcoin Spot');
+    expect(mejorCard!.textContent).toContain('Acción Telefónica');
+    // Confirma que Fondo Indexado (mayor € absoluto pero solo 20 %) NO
+    // aparece como mejor.
+    const mejorParte = mejorCard!.textContent ?? '';
+    expect(mejorParte.indexOf('Bitcoin Spot')).toBeLessThan(
+      mejorParte.indexOf('Telefónica'),
+    );
   });
 
   test('histograma · 5 bins fijos siempre presentes', async () => {
@@ -125,7 +135,8 @@ describe('PosicionesCerradasPage · render con datos · 4 KPIs + histograma + ra
     expect(screen.getByText('Tiempo')).toBeInTheDocument();
     // 'Plusvalía' aparece en ranking (totales) + detalle (por op).
     expect(screen.getAllByText('Plusvalía').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('TWR')).toBeInTheDocument();
+    // 'CAGR' aparece en ranking (media) + detalle (por op).
+    expect(screen.getAllByText(/CAGR/).length).toBeGreaterThanOrEqual(1);
     // NO debe aparecer ninguna columna fiscal.
     expect(screen.queryByText(/casilla/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/documento/i)).not.toBeInTheDocument();

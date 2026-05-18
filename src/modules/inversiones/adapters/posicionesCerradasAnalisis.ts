@@ -112,8 +112,15 @@ export interface RankingTipoItem {
   numOps: number;
   capital: number;
   plusvalia: number;
-  cagrMedio: number; // ponderado por capital · 0 si no calculable
-  tiempoMedioDias: number; // 0 si no calculable
+  /**
+   * CAGR medio ponderado por capital. `null` si NINGUNA posición del tipo
+   * tiene `cagr` calculable (suele ocurrir con cierres importados sin
+   * `fechaApertura`). El ranking ordena los `null` al final para no marcar
+   * un "líder" sin datos reales.
+   */
+  cagrMedio: number | null;
+  /** `null` si no calculable (mismas posiciones sin duracionDias). */
+  tiempoMedioDias: number | null;
 }
 
 function fmtTipoLabel(tipo: string): string {
@@ -175,16 +182,29 @@ export function computeRankingPorTipo(
       numOps: lista.length,
       capital,
       plusvalia,
-      cagrMedio: cagrDen > 0 ? cagrNum / cagrDen : 0,
-      tiempoMedioDias: tiempoDen > 0 ? Math.round(tiempoNum / tiempoDen) : 0,
+      cagrMedio: cagrDen > 0 ? cagrNum / cagrDen : null,
+      tiempoMedioDias: tiempoDen > 0 ? Math.round(tiempoNum / tiempoDen) : null,
     });
   }
-  return items.sort((a, b) => b.cagrMedio - a.cagrMedio);
+  // Orden · CAGR descendente entre los calculables; los `null` al final
+  // (no marcamos como "líder" un tipo sin datos reales).
+  return items.sort((a, b) => {
+    if (a.cagrMedio == null && b.cagrMedio == null) return 0;
+    if (a.cagrMedio == null) return 1;
+    if (b.cagrMedio == null) return -1;
+    return b.cagrMedio - a.cagrMedio;
+  });
 }
 
 export function analisisRankingCopy(items: ReadonlyArray<RankingTipoItem>): string {
   if (items.length === 0) return 'Aún no hay tipos cerrados para rankear.';
   const lider = items[0];
+  // Si el "líder" no tiene CAGR calculable, no hay base real para
+  // afirmar que "te ha funcionado mejor" · cae a copy neutro basado en
+  // plusvalía absoluta (siempre calculable).
+  if (lider.cagrMedio == null) {
+    return `Sin CAGR calculable para rankear · revisa las fechas de apertura de tus posiciones para una comparativa real.`;
+  }
   return `Los ${lider.tipo.toLowerCase()} te han funcionado mejor · ${lider.numOps} operación${lider.numOps === 1 ? '' : 'es'} · CAGR medio ${lider.cagrMedio.toFixed(1)} %.`;
 }
 
