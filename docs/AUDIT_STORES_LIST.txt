@@ -1,0 +1,51 @@
+src/services/db.ts:2519:          const propertyStore = db.createObjectStore('properties', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2525:          const propertySalesStore = db.createObjectStore('property_sales', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2535:          db.createObjectStore('objetivos_financieros', { keyPath: 'id' });
+src/services/db.ts:2540:          const documentStore = db.createObjectStore('documents', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2548:          const contractStore = db.createObjectStore('contracts', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2556:          const carryForwardStore = db.createObjectStore('aeatCarryForwards', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2564:          const propertyDaysStore = db.createObjectStore('propertyDays', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2574:          db.createObjectStore('proveedores', { keyPath: 'nif' });
+src/services/db.ts:2581:          const gastosStore = db.createObjectStore('gastosInmueble', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2600:          const mejorasStore = db.createObjectStore('mejorasInmueble', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2614:          const mueblesStore = db.createObjectStore('mueblesInmueble', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2655:          const accountsStore = db.createObjectStore('accounts', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2663:          const movementsStore = db.createObjectStore('movements', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2674:          const importBatchesStore = db.createObjectStore('importBatches', { keyPath: 'id' });
+src/services/db.ts:2681:          const treasuryEventsStore = db.createObjectStore('treasuryEvents', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2714:          const presupuestosStore = db.createObjectStore('presupuestos', { keyPath: 'id' });
+src/services/db.ts:2721:          const presupuestoLineasStore = db.createObjectStore('presupuestoLineas', { keyPath: 'id' });
+src/services/db.ts:2744:          const learningRulesStore = db.createObjectStore('movementLearningRules', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2756:          const personalDataStore = db.createObjectStore('personalData', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2762:          const configStore = db.createObjectStore('personalModuleConfig', { keyPath: 'personalDataId' });
+src/services/db.ts:2772:          const ingresosStore = db.createObjectStore('ingresos', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2784:            const planesLegacyStore = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2794:            const traspasosLegacyStore = db.createObjectStore('traspasosPlanes', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2807:          const planesStore = db.createObjectStore('planesPensiones', { keyPath: 'id' });
+src/services/db.ts:2815:          const aportacionesStore = db.createObjectStore('aportacionesPlan', { keyPath: 'id' });
+src/services/db.ts:2824:          const traspasosNuevoStore = db.createObjectStore('traspasosPlanPensiones', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2833:          const inversionesStore = db.createObjectStore('inversiones', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2843:          db.createObjectStore('keyval');
+src/services/db.ts:2848:          const prestamosStore = db.createObjectStore('prestamos', { keyPath: 'id' });
+src/services/db.ts:2856:          const valoracionesStore = db.createObjectStore('valoraciones_historicas', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2882:          const resultadosStore = db.createObjectStore('resultadosEjercicio', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2891:          const arrastresStore = db.createObjectStore('arrastresIRPF', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2901:          const perdidasStore = db.createObjectStore('perdidasPatrimonialesAhorro', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2909:          const snapshotsStore = db.createObjectStore('snapshotsDeclaracion', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2916:          const entidadesStore = db.createObjectStore('entidadesAtribucion', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2924:          const coordStore = db.createObjectStore('ejerciciosFiscalesCoord', { keyPath: 'año' });
+src/services/db.ts:2930:          const vinculosStore = db.createObjectStore('vinculosAccesorio', { keyPath: 'id', autoIncrement: true });
+src/services/db.ts:2939:          const deudasStore = db.createObjectStore('deudasFiscales', {
+src/services/db.ts:2958:          const benchmarksStore = db.createObjectStore('benchmarksReferencia', {
+src/services/db.ts:2973:          db.createObjectStore('avisosUsuario', { keyPath: 'avisoId' });
+src/services/db.ts:2981:          const ovStore = db.createObjectStore('objetivosVitales', { keyPath: 'id' });
+src/services/db.ts:3060:          const compromisosStore = db.createObjectStore('compromisosRecurrentes', {
+src/services/db.ts:3075:          const viviendaStore = db.createObjectStore('viviendaHabitual', {
+src/services/db.ts:3295:            db.createObjectStore('escenarios', { keyPath: 'id' });
+src/services/db.ts:3379:            const objetivosStore = db.createObjectStore('objetivos', { keyPath: 'id' });
+src/services/db.ts:3394:            const fondosStore = db.createObjectStore('fondos_ahorro', { keyPath: 'id' });
+src/services/db.ts:3407:            const retosStore = db.createObjectStore('retos', { keyPath: 'id' });
+src/services/db.ts:3446:            db.createObjectStore('escenarios', { keyPath: 'id' });
+src/services/db.ts:3986:            const planesStore = db.createObjectStore('planesPensiones', { keyPath: 'id' });
+src/services/db.ts:3993:            const aportacionesStore = db.createObjectStore('aportacionesPlan', { keyPath: 'id' });
+src/services/db.ts:4001:            const traspasosNuevoStore = db.createObjectStore('traspasosPlanPensiones', { keyPath: 'id', autoIncrement: true });

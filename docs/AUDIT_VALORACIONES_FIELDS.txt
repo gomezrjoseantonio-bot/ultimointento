@@ -1,0 +1,690 @@
+src/modules/fiscal/v2/helpers/ejercicioCasillasService.ts:86:  //   0013 cotizaciones Seguridad Social
+src/modules/fiscal/v2/helpers/ejercicioCasillasService.ts:95:  const box0013 = getCasilla(c, '0013') ?? safeNum(t?.cotizacionSS);
+src/modules/fiscal/v2/helpers/ventaCalculoService.ts:44:  valorAdquisicionActualizado: number;
+src/modules/fiscal/v2/helpers/ventaCalculoService.ts:359:    valorAdquisicionActualizado: snapshot.costeFiscalAdquisicion,
+src/modules/fiscal/v2/__tests__/FiscalVentaPage.test.tsx:166:    valorAdquisicionActualizado: 145410.36,
+src/modules/fiscal/v2/VentaKpiStrip.tsx:16:  valorAdquisicion: number;
+src/modules/fiscal/v2/VentaKpiStrip.tsx:37:  valorAdquisicion,
+src/modules/fiscal/v2/VentaKpiStrip.tsx:57:        <div className={styles.kpiVal}>{fmtEuros(valorAdquisicion)}</div>
+src/modules/fiscal/v2/helpers/inmuebleCasillasService.ts:277:  const valorCatastral = inmDecl?.valorCatastralTotal
+src/modules/fiscal/v2/helpers/inmuebleCasillasService.ts:281:  const valorCatastralConstruccion = inmDecl?.valorCatastralConstruccion
+src/modules/fiscal/v2/helpers/inmuebleCasillasService.ts:300:  if (valorCatastral > 0) amortRows.push({ num: '0123', concepto: 'Valor catastral total', importe: valorCatastral });
+src/modules/fiscal/v2/helpers/inmuebleCasillasService.ts:301:  if (valorCatastralConstruccion > 0) amortRows.push({ num: '0124', concepto: 'Valor catastral construcción', importe: valorCatastralConstruccion });
+src/modules/fiscal/v2/FiscalVentaPage.tsx:196:        valorAdquisicion={calculo.valorAdquisicionActualizado}
+src/modules/mi-plan/wizards/WizardNuevoFondo.tsx:198:    // valorActual del fondo (en el contexto · acumulado actual)
+src/modules/mi-plan/wizards/WizardNuevoFondo.tsx:199:    let valorActual = 0;
+src/modules/mi-plan/wizards/WizardNuevoFondo.tsx:201:      valorActual += a.importeAsignado;
+src/modules/mi-plan/wizards/WizardNuevoFondo.tsx:204:      valorActual,
+src/modules/mi-plan/wizards/WizardNuevoObjetivo.tsx:198:    let valorActual = 0;
+src/modules/mi-plan/wizards/WizardNuevoObjetivo.tsx:201:      valorActual = parseMetaNumeric(draft.acumularValorActual);
+src/modules/mi-plan/wizards/WizardNuevoObjetivo.tsx:204:      valorActual = draft.comprarMetric === 'unidades' ? inmueblesCount : 0;
+src/modules/mi-plan/wizards/WizardNuevoObjetivo.tsx:208:      valorActual = p?.principalVivo ?? 0;
+src/modules/mi-plan/wizards/WizardNuevoObjetivo.tsx:213:      valorActual,
+src/modules/mi-plan/wizards/utils/calcularRitmo.ts:11:  faltaImporte: number;             // valorMeta - valorActual · mínimo 0
+src/modules/mi-plan/wizards/utils/calcularRitmo.ts:42:  valorActual: number;
+src/modules/mi-plan/wizards/utils/calcularRitmo.ts:47:  const { valorActual, valorMeta, fechaObjetivo, capacidadAhorroActual } = params;
+src/modules/mi-plan/wizards/utils/calcularRitmo.ts:48:  const falta = Math.max(0, valorMeta - valorActual);
+src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts:124:  valorActual: number;
+src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts:129:function getLiquidationAmount(plan: PlanLiquidacion, valorActual: number): number {
+src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts:130:  return plan.liquidacion_total ? valorActual : (plan.importe_estimado ?? valorActual);
+src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts:161:  const bruto = (inv.valorActual * (rendimiento.tasa_interes_anual / 100)) / pagosAnuales;
+src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts:192:      return sum + getLiquidationAmount(planLiq, inv.valorActual);
+src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts:197:      return sum + inv.valorActual;
+src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts:852:          valorActual: inv.valor_actual,
+src/modules/horizon/informes/generators/generateSolvencia.ts:314:      fmtEur(item.valorActual),
+src/modules/horizon/informes/generators/generatePatrimonio.ts:88:      fmtEur(item.valorActual),
+src/modules/horizon/informes/generators/generateCartera.ts:15:  const valorTotal = inmueblesActivos.reduce((s, item) => s + item.valorActual, 0);
+src/modules/horizon/informes/generators/generateCartera.ts:70:      fmtEur(item.valorActual),
+src/modules/horizon/informes/generators/generateCartera.ts:130:      fmtEur(item.valorCatastral),
+src/modules/horizon/informes/generators/generateFiscal.ts:220:      fmtEur(item.valorAdquisicion),
+src/modules/horizon/informes/generators/generateFiscal.ts:234:        fmtEur(sumBy(ventasInmuebles, (item) => item.valorAdquisicion)),
+src/modules/horizon/tesoreria/HistoricoWizard.tsx:222:          .reduce((sum: number, inv: any) => sum + Number(inv.valor_actual ?? inv.valorActual ?? 0), 0);
+src/modules/horizon/tesoreria/services/treasurySyncService.ts:132:  valorActual: number,
+src/modules/horizon/tesoreria/services/treasurySyncService.ts:134:  return plan.liquidacion_total ? valorActual : (plan.importe_estimado ?? valorActual);
+src/modules/horizon/herramientas/exporters/mappers.ts:25:  precioCompra: number;
+src/modules/horizon/herramientas/exporters/mappers.ts:29:  valorActual: number;
+src/modules/horizon/herramientas/exporters/mappers.ts:39:  valorCatastral: number;
+src/modules/horizon/herramientas/exporters/mappers.ts:40:  valorCatastralConstruccion: number;
+src/modules/horizon/herramientas/exporters/mappers.ts:231:  const precioCompra = toNumber(inmueble.compra.precio_compra);
+src/modules/horizon/herramientas/exporters/mappers.ts:234:  const costeTotal = toNumber(inmueble.compra.coste_total_compra || precioCompra + gastosCompra + impuestosCompra);
+src/modules/horizon/herramientas/exporters/mappers.ts:235:  const valorActual = toNumber(
+src/modules/horizon/herramientas/exporters/mappers.ts:249:  const plusvalia = valorActual - costeTotal;
+src/modules/horizon/herramientas/exporters/mappers.ts:252:  const ltv = toRatioPercentage(deudaHipotecaria, valorActual);
+src/modules/horizon/herramientas/exporters/mappers.ts:265:    precioCompra,
+src/modules/horizon/herramientas/exporters/mappers.ts:269:    valorActual,
+src/modules/horizon/herramientas/exporters/mappers.ts:279:    valorCatastral: toNumber(inmueble.fiscalidad.valor_catastral_total || property?.fiscalData?.cadastralValue),
+src/modules/horizon/herramientas/exporters/mappers.ts:280:    valorCatastralConstruccion: toNumber(inmueble.fiscalidad.valor_catastral_construccion || property?.fiscalData?.constructionCadastralValue),
+src/modules/horizon/herramientas/exporters/atlasExportService.ts:306:    'Precio compra': row.precioCompra,
+src/modules/horizon/herramientas/exporters/atlasExportService.ts:310:    'Valor actual': row.valorActual,
+src/modules/horizon/herramientas/exporters/atlasExportService.ts:325:    precioCompra: acc.precioCompra + row.precioCompra,
+src/modules/horizon/herramientas/exporters/atlasExportService.ts:329:    valorActual: acc.valorActual + row.valorActual,
+src/modules/horizon/herramientas/exporters/atlasExportService.ts:338:    precioCompra: 0,
+src/modules/horizon/herramientas/exporters/atlasExportService.ts:342:    valorActual: 0,
+src/modules/horizon/herramientas/exporters/atlasExportService.ts:361:    'Precio compra': totals.precioCompra,
+src/modules/horizon/herramientas/exporters/atlasExportService.ts:365:    'Valor actual': totals.valorActual,
+src/modules/horizon/herramientas/exporters/atlasExportService.ts:382:      'Valor catastral': row.valorCatastral,
+src/modules/horizon/herramientas/exporters/atlasExportService.ts:383:      'Valor catastral construcción': row.valorCatastralConstruccion,
+src/modules/horizon/inversiones/InversionesPage.tsx:54:        const valorActual = plan.unidades ? plan.unidades * (plan.valorActual ?? 0) : (plan.valorActual ?? 0);
+src/modules/horizon/inversiones/InversionesPage.tsx:56:        const valor = valorActual > 0 ? valorActual : aportado;
+src/modules/horizon/inversiones/components/utils.ts:88:  const valorActual = Number(position.valor_actual || 0);
+src/modules/horizon/inversiones/components/utils.ts:89:  if (totalAportado <= 0 || valorActual <= 0) return 0;
+src/modules/horizon/inversiones/components/utils.ts:110:  return (Math.pow(valorActual / totalAportado, 1 / elapsedYears) - 1) * 100;
+src/modules/horizon/inversiones/components/ActualizarValorModal.tsx:9:  valorActual: number;
+src/modules/horizon/inversiones/components/ActualizarValorModal.tsx:16:  valorActual,
+src/modules/horizon/inversiones/components/ActualizarValorModal.tsx:20:  const [nuevoValor, setNuevoValor] = useState(valorActual);
+src/modules/horizon/inversiones/components/AportacionForm.tsx:32:    precioUnitario: initialAportacion?.precioUnitario || 0,
+src/modules/horizon/inversiones/components/AportacionForm.tsx:84:      ...(formData.tipo === 'aportacion' && formData.precioUnitario > 0 && { precioUnitario: formData.precioUnitario }),
+src/modules/horizon/inversiones/components/AportacionForm.tsx:217:                      const precioUnitario = unidades > 0 && formData.importe > 0
+src/modules/horizon/inversiones/components/AportacionForm.tsx:219:                        : formData.precioUnitario;
+src/modules/horizon/inversiones/components/AportacionForm.tsx:220:                      setFormData({ ...formData, unidades, precioUnitario });
+src/modules/horizon/inversiones/components/AportacionForm.tsx:234:                    value={formData.precioUnitario || ''}
+src/modules/horizon/inversiones/components/AportacionForm.tsx:235:                    onChange={(e) => setFormData({ ...formData, precioUnitario: parseFloat(e.target.value) || 0 })}
+src/modules/horizon/fiscalidad/mi-irpf/MiIRPFPage.tsx:112:          { label: 'Gastos deducibles (SS)', value: -(t.cotizacionSS ?? 0), accent: 'negative' as const },
+src/modules/horizon/fiscalidad/historico/ImportarDeclaracionWizard.tsx:130:        `VC: ${fmt(inm.valorCatastral ?? 0)} €${inm.catastralRevisado ? ' (revisado)' : ''} · Renta imputada: ${fmt(uso.rentaImputada)} €`,
+src/modules/horizon/fiscalidad/historico/ImportarDeclaracionWizard.tsx:589:          <KVRow label="Cotización SS" value={`${fmt(trabajo.cotizacionesSS)} €`} mono />
+src/modules/horizon/fiscalidad/historial/ImportarDatosFiscalesWizard.tsx:538:                          {inm.valorCatastralNuevo ? fmt(inm.valorCatastralNuevo) : '—'}
+src/modules/horizon/fiscalidad/historial/ImportarDatosFiscalesWizard.tsx:544:                          {inm.valorCatastralNuevo && inm.valorConstruccionNuevo
+src/modules/horizon/fiscalidad/historial/ImportarDatosFiscalesWizard.tsx:545:                            ? `${((inm.valorConstruccionNuevo / inm.valorCatastralNuevo) * 100).toFixed(1)}%`
+src/modules/horizon/fiscalidad/historial/ImportarDatosFiscalesWizard.tsx:566:                      {!inm.esNuevo && inm.valorCatastralAnterior != null && inm.valorCatastralNuevo != null
+src/modules/horizon/fiscalidad/historial/ImportarDatosFiscalesWizard.tsx:567:                        && Math.abs((inm.valorCatastralAnterior || 0) - (inm.valorCatastralNuevo || 0)) > 1 && (
+src/modules/horizon/fiscalidad/historial/ImportarDatosFiscalesWizard.tsx:575:                            En ATLAS: VC={fmt(inm.valorCatastralAnterior || 0)} → se actualizará a {fmt(inm.valorCatastralNuevo || 0)}
+src/modules/horizon/fiscalidad/declaracion/DeclaracionPage.tsx:116:      const trabajoGastos = trabajo?.cotizacionSS ?? 0;
+src/modules/horizon/fiscalidad/declaracion/DeclaracionCompletaPage.tsx:318:      if (trabajo.cotizacionSS) {
+src/modules/horizon/fiscalidad/declaracion/DeclaracionCompletaPage.tsx:319:        filas.push({ label: 'Retenciones', valor: -(trabajo.cotizacionSS ?? 0), esNegativo: true });
+src/modules/personal/pages/ViviendaPage.tsx:150:          valorCatastral: 0,
+src/modules/personal/pages/ViviendaPage.tsx:181:        valorCatastral: 0,
+src/modules/tesoreria/TesoreriaPage.tsx:147:    const saldoFinal = saldo + pendienteEntrar - pendienteSalir;
+src/modules/tesoreria/TesoreriaPage.tsx:153:      saldoFinal,
+src/modules/tesoreria/TesoreriaPage.tsx:213:              {formatEur(kpis.saldoFinal)} €
+src/modules/tesoreria/pages/VistaCuentaPage.tsx:420:    const saldoFinal = saldo + pendienteEntrar - pendienteSalir;
+src/modules/tesoreria/pages/VistaCuentaPage.tsx:437:      saldoFinal,
+src/modules/tesoreria/pages/VistaCuentaPage.tsx:1006:              {formatEur0(kpis.saldoFinal)} €
+src/modules/inmuebles/pages/DetallePage.tsx:112:  const valorAdquisicion = property.acquisitionCosts?.price ?? 0;
+src/modules/inmuebles/pages/DetallePage.tsx:114:    valorAdquisicion > 0 ? (rentaMensual * 12 * 100) / valorAdquisicion : 0;
+src/modules/inmuebles/pages/DetallePage.tsx:279:                sobre <MoneyValue value={valorAdquisicion} decimals={0} /> de adquisición
+src/modules/inversiones/helpers.ts:66:  const valorActual = Number(position.valor_actual || 0);
+src/modules/inversiones/helpers.ts:67:  if (totalAportado <= 0 || valorActual <= 0) return 0;
+src/modules/inversiones/helpers.ts:87:  return (Math.pow(valorActual / totalAportado, 1 / elapsedYears) - 1) * 100;
+src/modules/inversiones/helpers.ts:495:  const valorActual = Number(p.valor_actual ?? 0);
+src/modules/inversiones/helpers.ts:500:    puntos.push({ x: lastTs, y: valorActual, fecha: fechaValoracion });
+src/modules/inversiones/helpers.ts:504:    puntos[puntos.length - 1] = { ...lastPunto, y: valorActual };
+src/modules/inversiones/helpers.ts:871:  valorActual: number,
+src/modules/inversiones/helpers.ts:873:  if (!Number.isFinite(totalAportado) || !Number.isFinite(valorActual)) return null;
+src/modules/inversiones/helpers.ts:875:  const twr = ((valorActual - totalAportado) / totalAportado) * 100;
+src/modules/inversiones/types/cartaItem.ts:104:  const valorActual = safeNum(p.valor_actual);
+src/modules/inversiones/types/cartaItem.ts:106:  const rentEur = safeNum(p.rentabilidad_euros, valorActual - totalAportado);
+src/modules/inversiones/types/cartaItem.ts:109:    totalAportado > 0 ? ((valorActual - totalAportado) / totalAportado) * 100 : 0,
+src/modules/inversiones/types/cartaItem.ts:120:    p.tipo === 'prestamo_p2p' && typeof tin === 'number' && Number.isFinite(tin) && valorActual > 0
+src/modules/inversiones/types/cartaItem.ts:121:      ? (valorActual * tin) / 100
+src/modules/inversiones/types/cartaItem.ts:127:    p.tipo === 'prestamo_p2p' && cuotaMensual && capitalInicial && valorActual < capitalInicial
+src/modules/inversiones/types/cartaItem.ts:128:      ? ((capitalInicial - valorActual) / capitalInicial) * 100
+src/modules/inversiones/types/cartaItem.ts:154:    if (fechaInicio && valorActual > 0 && totalAportado > 0) {
+src/modules/inversiones/types/cartaItem.ts:158:        const cagr = (Math.pow(valorActual / totalAportado, 1 / years) - 1) * 100;
+src/modules/inversiones/types/cartaItem.ts:172:    valor_actual: valorActual,
+src/modules/inversiones/types/cartaItem.ts:205:  const valorActual = safeNum(plan.valorActual);
+src/modules/inversiones/types/cartaItem.ts:207:  const rentEur = valorActual - totalAportado;
+src/modules/inversiones/types/cartaItem.ts:212:  if (plan.fechaContratacion && valorActual > 0 && totalAportado > 0) {
+src/modules/inversiones/types/cartaItem.ts:217:      const cagr = (Math.pow(valorActual / totalAportado, 1 / años) - 1) * 100;
+src/modules/inversiones/types/cartaItem.ts:230:    valor_actual: valorActual,
+src/modules/inversiones/components/FichaDividendos.tsx:51:  const valorActual = Number(posicion.valor_actual ?? 0);
+src/modules/inversiones/components/FichaDividendos.tsx:154:          { lab: 'Valor total', val: formatCurrency(valorActual) },
+src/modules/inversiones/components/FichaDividendos.tsx:191:        const precioImplicito = valorActual / posicion.numero_participaciones;
+src/modules/inversiones/components/FichaDividendos.tsx:193:        const delta = valorActual - aportado;
+src/modules/inversiones/components/FichaDividendos.tsx:226:                <div className={styles.priceRangeVal}>{formatCurrency(valorActual)}</div>
+src/modules/inversiones/components/FichaValoracionSimple.tsx:53:  const valorActual = Number(posicion.valor_actual ?? 0);
+src/modules/inversiones/components/FichaValoracionSimple.tsx:54:  const rentEur = Number(posicion.rentabilidad_euros ?? valorActual - aportado);
+src/modules/inversiones/components/FichaValoracionSimple.tsx:60:  const sinValoracion = valorActual === 0 && aportado > 0;
+src/modules/inversiones/components/FichaValoracionSimple.tsx:113:            val: sinValoracion ? 'Sin valoración' : formatCurrency(valorActual),
+src/modules/inversiones/components/FichaValoracionSimple.tsx:193:                {formatCurrency(valorActual)}
+src/modules/inversiones/components/FichaValoracionSimple.tsx:264:                      {a.precioUnitario != null ? formatCurrency2(a.precioUnitario) : '—'}
+src/modules/inversiones/components/FichaGenerica.tsx:48:  const valorActual = Number(posicion.valor_actual ?? 0);
+src/modules/inversiones/components/FichaGenerica.tsx:49:  const rentEur = Number(posicion.rentabilidad_euros ?? valorActual - aportado);
+src/modules/inversiones/components/FichaGenerica.tsx:81:          { lab: 'Valor actual', val: formatCurrency(valorActual) },
+src/modules/inversiones/components/CartaPosicion.tsx:211:  const valorActual = item.valor_actual;
+src/modules/inversiones/components/CartaPosicion.tsx:226:        <div className={styles.cartaValor}>{formatCurrency(valorActual)}</div>
+src/modules/inversiones/components/CartaPosicion.tsx:251:        <div className={styles.cartaValor}>{formatCurrency(valorActual)}</div>
+src/modules/inversiones/components/CartaPosicion.tsx:276:        <div className={styles.cartaValor}>{formatCurrency(valorActual)}</div>
+src/modules/inversiones/components/CartaPosicion.tsx:292:      <div className={styles.cartaValor}>{formatCurrency(valorActual)}</div>
+src/modules/inversiones/components/modal/AltaPlanWizard.tsx:125:  const [valorActual, setValorActual] = useState('');
+src/modules/inversiones/components/modal/AltaPlanWizard.tsx:236:        valorActual: valorActual ? parseFloat(valorActual) : undefined,
+src/modules/inversiones/components/modal/AltaPlanWizard.tsx:468:                    value={valorActual}
+src/modules/inversiones/components/modal/TraspasoModal.tsx:45:  const [valorTraspaso, setValorTraspaso] = useState(String(plan.valorActual ?? 0));
+src/modules/inversiones/components/modal/AltaFondoModal.tsx:38:  const [valorActual, setValorActual] = useState('');
+src/modules/inversiones/components/modal/AltaFondoModal.tsx:55:      const valor = valorActual ? parseFloat(valorActual) : importe;
+src/modules/inversiones/components/modal/AltaFondoModal.tsx:173:                    value={valorActual}
+src/modules/inversiones/components/modal/__tests__/AportarModal.test.tsx:29:  valorActual: 50_000,
+src/modules/inversiones/components/modal/__tests__/VenderModal.test.tsx:41:      precioUnitario: 100,
+src/modules/inversiones/components/bloques/BloqueSandbox.tsx:21:  saldoActual: number;
+src/modules/inversiones/components/bloques/BloqueSandbox.tsx:66:  saldoActual,
+src/modules/inversiones/components/bloques/BloqueSandbox.tsx:119:    () => calcularVF(saldoActual, aporteAnual, twrPct / 100, anos),
+src/modules/inversiones/components/bloques/BloqueSandbox.tsx:120:    [saldoActual, aporteAnual, twrPct, anos],
+src/modules/inversiones/components/bloques/BloqueProyeccion.tsx:26:  saldoActual: number;
+src/modules/inversiones/components/bloques/BloqueProyeccion.tsx:89:  saldoActual,
+src/modules/inversiones/components/bloques/BloqueProyeccion.tsx:118:          saldoActual,
+src/modules/inversiones/components/bloques/BloqueProyeccion.tsx:145:    saldoActual,
+src/modules/inversiones/components/bloques/__tests__/BloqueSandbox.test.tsx:16:        saldoActual={35491}
+src/modules/inversiones/components/bloques/__tests__/BloqueSandbox.test.tsx:39:        saldoActual={35491}
+src/modules/inversiones/components/bloques/__tests__/BloqueSandbox.test.tsx:57:        saldoActual={1000}
+src/modules/inversiones/components/bloques/__tests__/BloqueSandbox.test.tsx:75:        saldoActual={1000}
+src/modules/inversiones/components/bloques/__tests__/BloqueSandbox.test.tsx:89:    const valorActualEscenario = 60000;
+src/modules/inversiones/components/bloques/__tests__/BloqueSandbox.test.tsx:95:        saldoActual={35491}
+src/modules/inversiones/components/bloques/__tests__/BloqueSandbox.test.tsx:99:        valorFinalActual={valorActualEscenario}
+src/modules/inversiones/components/bloques/__tests__/BloqueSandbox.test.tsx:115:    const dif = esperado - valorActualEscenario;
+src/modules/inversiones/components/bloques/__tests__/BloqueSandbox.test.tsx:125:        saldoActual={35491}
+src/modules/inversiones/components/bloques/__tests__/BloqueSandbox.test.tsx:146:        saldoActual={10000}
+src/modules/inversiones/components/bloques/__tests__/BloqueProyeccion.test.tsx:43:  saldoActual: 35491,
+src/modules/inversiones/adapters/posicionesCerradas.ts:6:// Ese modelo es FISCAL · expone `valorAdquisicion`, `valorTransmision`,
+src/modules/inversiones/adapters/posicionesCerradas.ts:120:  const aportado = safeNumber(op.valorAdquisicion);
+src/modules/inversiones/adapters/posicionesCerradas.ts:142:  const aportado = safeNumber(op.valorAdquisicion);
+src/modules/inversiones/adapters/posicionesCerradas.ts:164:  const aportado = safeNumber(op.valorAdquisicion);
+src/modules/inversiones/adapters/posicionesCerradas.ts:273:        const vendido = safeNumber(plan.valorActual);
+src/modules/panel/components/PulsoDelMes.tsx:11: *   saldo fin = saldoActual + cashflow pendiente de ejecutar en el mes
+src/types/declaracionCompleta.ts:92:  cotizacionesSS: number;
+src/types/declaracionCompleta.ts:161:  valorCatastralTotal?: number;
+src/types/declaracionCompleta.ts:162:  valorCatastral?: number;
+src/types/declaracionCompleta.ts:163:  valorCatastralConstruccion?: number;
+src/types/declaracionCompleta.ts:244:  valorCatastral?: number;
+src/types/declaracionCompleta.ts:245:  valorCatastralConstruccion?: number;
+src/types/declaracionCompleta.ts:279:  valorAdquisicion: number;
+src/types/declaracionCompleta.ts:288:  valorAdquisicion: number;
+src/types/declaracionCompleta.ts:295:  valorAdquisicion: number;
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:199:  valorActual: number,
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:203:  if (valorActual <= 0 || aportadoTotal <= 0) return null;
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:209:  return Math.pow(valorActual / aportadoTotal, 1 / elapsedYears) - 1;
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:444:  const valorActual = plan?.valorActual ?? 0;
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:459:  const pgLatente = valorActual - aportadoTotal;
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:468:    () => calcularCagr(valorActual, aportadoTotal, fechaPrimeraAportacion),
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:469:    [valorActual, aportadoTotal, fechaPrimeraAportacion],
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:559:    if (marginalIrpf == null || valorActual <= 0) return null;
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:560:    return Math.round(valorActual * marginalIrpf * 100) / 100;
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:561:  }, [marginalIrpf, valorActual]);
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:735:            // pero no tiene ninguna valoración registrada y `valorActual=0`,
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:740:              valorActual === 0 && aportadoTotal > 0 && valoraciones.length === 0;
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:744:                val: sinValoracion ? '—' : fmtShort(valorActual),
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:834:          saldoActual={valorActual}
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:872:          saldoMedioAnual={Math.max(0, (valorActual + aportadoTotal) / 2)}
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:879:          saldoMedioProyectado={Math.max(valorActual, 1) * 1.5}
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:896:          saldoActual={valorActual}
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:1119:                      <span className={styles.composicionRowVal}>{fmt(valorActual)}</span>
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:1415:              // También sincroniza valorActual en el plan para reflejar el
+src/modules/inversiones/pages/FichaPlanPensiones.tsx:1418:                valorActual: valor,
+src/types/inversiones.ts:31:  precioUnitario?: number; // Precio por unidad en el momento de la aportación (importe / unidades)
+src/types/planesPensiones.ts:53:  valorActual?: number;
+src/types/propertyAnalysis.ts:18:  valorActualActivo: number; // Current market value
+src/types/fiscal.ts:99:  cotizacionSS: number;
+src/types/fiscal.ts:137:  valorCatastral?: number;
+src/types/fiscal.ts:138:  valorCatastralConstruccion?: number;
+src/types/fiscal.ts:149:    valorCatastral?: number;
+src/types/fiscal.ts:150:    valorCatastralConstruccion?: number;
+src/types/viviendaHabitual.ts:30:  valorCatastral: number;
+src/types/viviendaHabitual.ts:31:  valorCatastralConstruccion?: number;
+src/types/personal.ts:480:  valorCompra: number;
+src/types/personal.ts:481:  valorActual: number;
+src/components/tax/taxHydrationMapper.test.ts:56:          valorCatastral: 100000,
+src/components/tax/blocks/PatrimGainsBlock.tsx:25:              <td><input type="number" value={g.valorAdquisicion} onChange={(e) => onUpdateGanancia(g.id, 'valorAdquisicion', Number(e.target.value))} /></td>
+src/components/tax/blocks/SavingsGPBlock.tsx:115:                value={ganancia.valorAdquisicion === 0 ? '' : ganancia.valorAdquisicion}
+src/components/tax/blocks/SavingsGPBlock.tsx:117:                onChange={readOnly ? undefined : (e) => dispatch(updateGanancia({ id: ganancia.id, data: { valorAdquisicion: parseFloat(e.target.value) || 0 } }))}
+src/components/tax/TaxView.tsx:24:      cotizacionSS: declaracion.trabajo.cotizacionSS ?? 0,
+src/components/tax/TaxView.tsx:43:      valorCatastral: inmueble.valorCatastral ?? 0,
+src/components/tax/TaxView.tsx:44:      valorCatastralConstruccion: inmueble.valorCatastralConstruccion ?? 0,
+src/components/tax/TaxView.tsx:47:      valorCatastralRevisado: false,
+src/components/tax/TaxView.tsx:215:    const trabajoNeto = trabajoBruto - tax.workIncome.cotizacionSS - tax.workIncome.otrosGastosDeducibles;
+src/components/tax/TaxView.tsx:228:          { label: 'Gastos deducibles trabajo', value: -(tax.workIncome.cotizacionSS + tax.workIncome.otrosGastosDeducibles), accent: 'negative' },
+src/components/tax/blocks/WorkIncomeBlock.tsx:30:  const rdtoNeto = totalIntegros - n(work.cotizacionSS) - n(work.otrosGastosDeducibles);
+src/components/tax/blocks/WorkIncomeBlock.tsx:46:        <Field label="Cotizaciones Seguridad Social" value={work.cotizacionSS} onChange={(v) => setWork('cotizacionSS', v)} readOnly={readOnly} />
+src/components/tax/blocks/RealEstateBlock.tsx:174:              <select className="field-input" value={i.valorCatastralRevisado ? 'si' : 'no'} onChange={readOnly ? undefined : (e) => onChange({ valorCatastralRevisado: e.target.value === 'si' })} disabled={readOnly}>
+src/components/tax/blocks/RealEstateBlock.tsx:216:        <F label="Valor catastral" field="valorCatastral" />
+src/components/tax/blocks/RealEstateBlock.tsx:217:        <F label="Valor catastral de la construcción" field="valorCatastralConstruccion" />
+src/components/tax/taxHydrationMapper.ts:40:  valorCatastral: number;
+src/components/tax/taxHydrationMapper.ts:41:  valorCatastralConstruccion: number;
+src/components/tax/taxHydrationMapper.ts:68:      valorCatastral: unified.cadastralValue,
+src/components/tax/taxHydrationMapper.ts:69:      valorCatastralConstruccion: unified.constructionCadastralValue,
+src/components/tax/taxHydrationMapper.ts:185:              propertyHints.get(propertyId)?.valorCatastral ?? 0,
+src/components/tax/taxHydrationMapper.ts:197:            hints.valorCatastral,
+src/components/tax/taxHydrationMapper.ts:198:            hints.valorCatastralConstruccion,
+src/components/tax/taxHydrationMapper.ts:221:        valorCatastral: 0,
+src/components/tax/taxHydrationMapper.ts:222:        valorCatastralConstruccion: 0,
+src/components/tax/taxHydrationMapper.ts:232:      valorCatastralRevisado: false,
+src/components/tax/taxHydrationMapper.ts:272:        valorCatastral: i.valorCatastral ?? 0,
+src/components/tax/taxHydrationMapper.ts:273:        valorCatastralConstruccion: 0,
+src/components/tax/taxHydrationMapper.ts:283:      valorCatastralRevisado: i.porcentajeImputacion === 0.011,
+src/components/tax/taxHydrationMapper.ts:298:          propertyHints.get(i.inmuebleId)?.valorCatastral ?? 0,
+src/components/tax/taxHydrationMapper.ts:299:          propertyHints.get(i.inmuebleId)?.valorCatastralConstruccion ?? 0,
+src/components/tax/taxHydrationMapper.ts:322:          valorCatastral: 0,
+src/components/tax/taxHydrationMapper.ts:323:          valorCatastralConstruccion: 0,
+src/components/tax/taxHydrationMapper.ts:333:        valorCatastralRevisado: false,
+src/components/tax/taxHydrationMapper.ts:348:            propertyHints.get(propertyId)?.valorCatastral ?? 0,
+src/components/tax/taxHydrationMapper.ts:349:            propertyHints.get(propertyId)?.valorCatastralConstruccion ?? 0,
+src/components/tax/taxHydrationMapper.ts:405:        valorAdquisicion: round2(gyp.minusvalias),
+src/components/tax/taxHydrationMapper.ts:425:      cotizacionSS: round2(trabajo?.cotizacionSS ?? 0),
+src/components/tax/blocks/ResultBlock.tsx:13:    { label: 'Rendimiento neto trabajo', value: n(tax.workIncome.dinerarias) + n(tax.workIncome.especieValoracion) + n(tax.workIncome.contribucionEmpresarialPP) - n(tax.workIncome.cotizacionSS) - n(tax.workIncome.otrosGastosDeducibles), indent: true },
+src/components/treasury/CalendarioMes12.tsx:123:  const saldoActual = useMemo(() => {
+src/components/treasury/CalendarioMes12.tsx:169:    //   saldoActual ya refleja todos los movements ejecutados hasta hoy.
+src/components/treasury/CalendarioMes12.tsx:172:    //   suman porque ya están en saldoActual.
+src/components/treasury/CalendarioMes12.tsx:192:      saldoActual + entradasRestantes - salidasRestantes;
+src/components/treasury/CalendarioMes12.tsx:243:        saldoHoy: esMesActual ? saldoActual : undefined,
+src/components/treasury/CalendarioMes12.tsx:254:  }, [events, _movements, inicioPagina, hoy, inicioMesActual, saldoActual]);
+src/components/treasury/CalendarioRolling24m.tsx:83:  saldoFinal: number;
+src/components/treasury/CalendarioRolling24m.tsx:173:        saldoFinal: saldoAcumulado,
+src/components/treasury/CalendarioRolling24m.tsx:389:        {formatEur(datos.saldoFinal)} €
+src/components/treasury/TreasuryReconciliationView.tsx:573:        saldoFinalPrevisto: summary.finMes,
+src/components/treasury/TreasuryReconciliationView.tsx:574:        saldoFinalReal: summary.totalPunteado,
+src/components/treasury/TreasuryReconciliationView.tsx:590:    const finMes = accounts.reduce((sum, account) => sum + (accountBreakdown.get(account.id)?.saldoFinalPrevisto ?? account.balance), 0);
+src/components/treasury/TreasuryReconciliationView.tsx:638:    return bd && bd.saldoFinalPrevisto < 0;
+src/components/treasury/TreasuryReconciliationView.tsx:933:                const isNeg = bd && bd.saldoFinalPrevisto < 0;
+src/components/treasury/TreasuryReconciliationView.tsx:936:                const displayedFinMes = bd?.saldoFinalPrevisto ?? account.balance;
+src/services/rentabilidadPlanService.ts:51:  valorActual: number;
+src/services/rentabilidadPlanService.ts:307:  const valorActual = plan.valorActual ?? valoraciones.at(-1)?.valor ?? 0;
+src/services/rentabilidadPlanService.ts:308:  const plusvaliaAbsoluta = valorActual - capitalAportadoTotal;
+src/services/rentabilidadPlanService.ts:323:  if (capitalAportadoTotal === 0 && valorActual === 0) {
+src/services/rentabilidadPlanService.ts:327:      valorActual,
+src/services/rentabilidadPlanService.ts:391:  if (valorActual > 0) {
+src/services/rentabilidadPlanService.ts:392:    cashFlows.push({ fecha: fechaFin, importe: -valorActual });
+src/services/rentabilidadPlanService.ts:403:    valorActual,
+src/services/rentabilidadPlanService.ts:427:  const valorActualPlan = plan.valorActual ?? 0;
+src/services/rentabilidadPlanService.ts:464:      valorFin: valorActualPlan,
+src/services/rentabilidadPlanService.ts:502:      valorFin: valorActualPlan,
+src/services/informesDataService.ts:66:    valorActual: number;
+src/services/informesDataService.ts:145:      valorAdquisicion: number;
+src/services/informesDataService.ts:157:      valorCatastral: number;
+src/services/informesDataService.ts:297:  valorCatastral: toNumber(inmueble.fiscalidad?.valor_catastral_total)
+src/services/informesDataService.ts:573:      const precioCompra = toNumber(inmueble.compra?.precio_compra);
+src/services/informesDataService.ts:578:      const costeSumado = precioCompra + totalGastos + totalImpuestos;
+src/services/informesDataService.ts:597:        costePersistido > precioCompra
+src/services/informesDataService.ts:599:          : costeSumado > precioCompra
+src/services/informesDataService.ts:601:            : costeLegacy > precioCompra
+src/services/informesDataService.ts:603:              : precioCompra;
+src/services/informesDataService.ts:604:      const valorActual = toNumber(
+src/services/informesDataService.ts:622:      const plusvalia = valorActual - costeTotal;
+src/services/informesDataService.ts:632:        valorActual,
+src/services/informesDataService.ts:643:    const valorTotal = inmueblesActivos.reduce((sum, item) => sum + item.valorActual, 0);
+src/services/informesDataService.ts:762:          valorAdquisicion: toNumber(venta.valorAdquisicion),
+src/services/informesDataService.ts:778:              valorCatastral: detalleFiscal.valorCatastral,
+src/services/fiscalLifecycleService.ts:292:        cadastralValue: fiscalData.cadastralValue || inmueble.valorCatastral || undefined,
+src/services/fiscalLifecycleService.ts:293:        constructionCadastralValue: fiscalData.constructionCadastralValue || inmueble.valorCatastralConstruccion || undefined,
+src/services/fiscalLifecycleService.ts:298:        cadastralValue: aeatAmortization.cadastralValue || inmueble.valorCatastral || 0,
+src/services/fiscalLifecycleService.ts:299:        constructionCadastralValue: aeatAmortization.constructionCadastralValue || inmueble.valorCatastralConstruccion || 0,
+src/services/documentIngestionService.ts:621:  if (name.includes('tasacion')) return 'Tasación';
+src/services/aeatXmlParserService.ts:63:  valorCatastral: number;
+src/services/aeatXmlParserService.ts:64:  valorCatastralRevisado: boolean;
+src/services/aeatXmlParserService.ts:72:  valorAdquisicion: number;
+src/services/aeatXmlParserService.ts:80:  valorAdquisicion: number;
+src/services/aeatXmlParserService.ts:89:  valorAdquisicion: number;
+src/services/aeatXmlParserService.ts:261:      valorCatastral: getNumEl(el, 'C_VC'),
+src/services/aeatXmlParserService.ts:262:      valorCatastralRevisado: getTextEl(el, 'C_REV') === 'SI',
+src/services/aeatXmlParserService.ts:276:      valorAdquisicion: getNumEl(el, 'G2VATF') || getNumEl(el, 'VAD1'),
+src/services/aeatXmlParserService.ts:293:      valorAdquisicion: getNumEl(el, 'G2B_B'),
+src/services/aeatXmlParserService.ts:311:      valorAdquisicion: getNumEl(el, 'IMP1VANA'),
+src/services/proyeccionActivoService.ts:26:  saldoActual: number;
+src/services/proyeccionActivoService.ts:230:      inputs.saldoActual,
+src/services/proyeccionActivoService.ts:246:            inputs.saldoActual,
+src/services/proyeccionActivoService.ts:265:      inputs.saldoActual,
+src/services/proyeccionActivoService.ts:278:      inputs.saldoActual,
+src/services/proyeccionActivoService.ts:291:      inputs.saldoActual,
+src/services/simuladorFiscalService.ts:287:        let valorCatastral = 0;
+src/services/simuladorFiscalService.ts:293:            valorCatastral =
+src/services/simuladorFiscalService.ts:306:          valorCatastral,
+src/services/simuladorFiscalService.ts:313:          valorCatastral,
+src/services/simuladorFiscalService.ts:397:        const cotizacionSS = round2(nuevoSalario * 0.0635);
+src/services/simuladorFiscalService.ts:399:        const nuevoNeto = round2(nuevoSalario - cotizacionSS - gastos);
+src/services/simuladorFiscalService.ts:404:          cotizacionSS,
+src/services/declaracionCompletaToIRPFAdapter.ts:85:    cotizacionSS: t.cotizacionesSS ?? 0,
+src/services/declaracionCompletaToIRPFAdapter.ts:213:      valorCatastral: inm.valorCatastralTotal ?? inm.valorCatastral ?? 0,
+src/services/datosFiscalesService.ts:72:  valorCatastral?: number;
+src/services/datosFiscalesService.ts:332:      cadastralValue: inmDF.valorCatastral || undefined,
+src/services/datosFiscalesService.ts:335:        inmDF.valorCatastral && inmDF.valorConstruccion
+src/services/datosFiscalesService.ts:336:          ? Math.round((inmDF.valorConstruccion / inmDF.valorCatastral) * 10000) / 100
+src/services/datosFiscalesService.ts:343:      cadastralValue: inmDF.valorCatastral || 0,
+src/services/datosFiscalesService.ts:346:        inmDF.valorCatastral && inmDF.valorConstruccion
+src/services/datosFiscalesService.ts:347:          ? Math.round((inmDF.valorConstruccion / inmDF.valorCatastral) * 10000) / 100
+src/services/datosFiscalesService.ts:371:  if (inmDF.valorCatastral && inmDF.valorCatastral > 0) {
+src/services/datosFiscalesService.ts:372:    if (!next.fiscalData!.cadastralValue || next.fiscalData!.cadastralValue === 0 || inmDF.valorCatastral !== next.fiscalData!.cadastralValue) {
+src/services/datosFiscalesService.ts:373:      next.fiscalData!.cadastralValue = inmDF.valorCatastral;
+src/services/datosFiscalesService.ts:374:      if (next.aeatAmortization) next.aeatAmortization.cadastralValue = inmDF.valorCatastral;
+src/services/treasuryOverviewService.ts:79:    const ss    = Number(dc.trabajo.cotizacionesSS ?? 0);
+src/services/fiscalResolverService.ts:34:  valorCatastral: number;
+src/services/fiscalResolverService.ts:142:        valorCatastral: c[`${propId}_VC`] ?? 0,
+src/services/fiscalResolverService.ts:326:      valorCatastral: 0,
+src/services/fiscalContextService.ts:67:    valorCatastral: number | null;
+src/services/fiscalContextService.ts:226:  let valorCatastral: number | null = null;
+src/services/fiscalContextService.ts:238:    valorCatastral = data.catastro.valorCatastral ?? null;
+src/services/fiscalContextService.ts:251:    valorCatastral,
+src/services/indexaCapitalImportService.ts:13:// It also updates the target plan's `valorActual` and `aportacionesRealizadas`.
+src/services/indexaCapitalImportService.ts:44:    saldoFinal: number;
+src/services/indexaCapitalImportService.ts:253:      saldoFinal: last.valorEuros,
+src/services/indexaCapitalImportService.ts:270:      saldoFinal: 0,
+src/services/indexaCapitalImportService.ts:307:  saldoActualizado: boolean;
+src/services/indexaCapitalImportService.ts:317: * - Updates the plan's current value (`valorActual` / `valor_actual`) with the last day's
+src/services/indexaCapitalImportService.ts:327:    return { valoracionesImportadas: 0, mesesConAportaciones: 0, saldoActualizado: false, errors: ['No hay filas para importar.'] };
+src/services/indexaCapitalImportService.ts:332:    ? { id: target, store: 'planesPensiones', nombre: '', entidad: '', valorActual: 0, aportacionesRealizadas: 0 }
+src/services/indexaCapitalImportService.ts:338:    return { valoracionesImportadas: 0, mesesConAportaciones: 0, saldoActualizado: false, errors: [`Plan con id ${planTarget.id} no encontrado en ${planTarget.store}.`] };
+src/services/indexaCapitalImportService.ts:344:  //    assets' monthly snapshots. The plan's valorActual is updated at the end in step 3.
+src/services/indexaCapitalImportService.ts:403:      valorActual: last.valorEuros,
+src/services/indexaCapitalImportService.ts:452:    saldoActualizado: true,
+src/services/indexaCapitalImportService.ts:462:  valorActual: number;
+src/services/indexaCapitalImportService.ts:484:      valorActual: p.valorActual ?? 0,
+src/services/indexaCapitalImportService.ts:497:      valorActual: inv.valor_actual ?? 0,
+src/services/historicalCashflowCalculator.ts:15:  nominaNeta: number;           // retribucionesDinerarias - retenciones - cotizacionesSS
+src/services/historicalCashflowCalculator.ts:95:    nominaSS = Number(decl.trabajo.cotizacionesSS ?? 0);
+src/services/irpfCalculationService.ts:82:  cotizacionSS: number;
+src/services/irpfCalculationService.ts:149:  valorCatastral: number;
+src/services/irpfCalculationService.ts:491:      cotizacionSS: round2(totalCotizacionSS),
+src/services/irpfCalculationService.ts:879:      const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;
+src/services/irpfCalculationService.ts:884:      const valorCatastralTotal = round2(
+src/services/irpfCalculationService.ts:885:        valorCatastral +
+src/services/irpfCalculationService.ts:890:      if (diasVacio > 0 && valorCatastralTotal > 0) {
+src/services/irpfCalculationService.ts:895:        imputacionRenta = round2(valorCatastralTotal * porcentajeImputacion * (diasVacio / diasTotal));
+src/services/irpfCalculationService.ts:925:      const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;
+src/services/irpfCalculationService.ts:930:      const valorCatastralTotal = round2(
+src/services/irpfCalculationService.ts:931:        valorCatastral +
+src/services/irpfCalculationService.ts:935:      if (valorCatastralTotal > 0) {
+src/services/irpfCalculationService.ts:940:        const imputacion = round2(valorCatastralTotal * porcentajeImputacion * (diasVacio / diasTotal));
+src/services/irpfCalculationService.ts:945:          valorCatastral: valorCatastralTotal,
+src/services/historicalTreasuryService.ts:54:  const nominaSS = Number(trabajo?.cotizacionesSS ?? casillas['0013'] ?? 0);
+src/services/inmuebleCalculatorService.ts:27:  valorCatastralTotal: number;
+src/services/inmuebleCalculatorService.ts:28:  valorCatastralConstruccion: number;
+src/services/inmuebleCalculatorService.ts:58:  const vctTotal = safe(input.valorCatastralTotal);
+src/services/inmuebleCalculatorService.ts:59:  const vctConstruccion = safe(input.valorCatastralConstruccion);
+src/services/imputacionRentaService.ts:13:  valorCatastral: number;
+src/services/imputacionRentaService.ts:14:  valorCatastralRevisado: boolean;
+src/services/imputacionRentaService.ts:52:  valorCatastral: number;
+src/services/imputacionRentaService.ts:67:        valorCatastral: input.valorCatastral,
+src/services/imputacionRentaService.ts:68:        valorCatastralRevisado: input.revisado,
+src/services/imputacionRentaService.ts:78:  const vc = toNum(input.valorCatastral);
+src/services/imputacionRentaService.ts:83:        valorCatastral: 0,
+src/services/imputacionRentaService.ts:84:        valorCatastralRevisado: input.revisado,
+src/services/imputacionRentaService.ts:102:      valorCatastral: vc,
+src/services/imputacionRentaService.ts:103:      valorCatastralRevisado: input.revisado,
+src/services/imputacionRentaService.ts:142:  const valorCatastral = toNum(fiscalData?.cadastralValue ?? aeat?.cadastralValue);
+src/services/imputacionRentaService.ts:151:  return computeImputacion({ diasDisposicion, valorCatastral, revisado, anio });
+src/services/__fiscalContextAudit.ts:244:    fieldAudit('data.catastro.valorCatastral', propData?.catastro?.valorCatastral,
+src/services/informesDataService.test.ts:196:        valorCatastral: 47656,
+src/services/nominaFormToPayload.ts:18:import type { getSSDefaults } from '../constants/cotizacionSS';
+src/services/rentabilidadInmuebleService.ts:118:        (prop.precioCompra ?? prop.purchasePrice ?? prop.fiscalData?.purchasePrice ?? 0) +
+src/services/declaracionFromCasillasService.ts:67:    valorCatastral: number;
+src/services/declaracionFromCasillasService.ts:68:    valorCatastralConstruccion: number;
+src/services/declaracionFromCasillasService.ts:95:        cotizacionSS: get('0013'),
+src/services/declaracionFromCasillasService.ts:145:        valorCatastral: inmueble.box0123,
+src/services/declaracionFromCasillasService.ts:146:        valorCatastralConstruccion: inmueble.box0124,
+src/services/declaracionFromCasillasService.ts:182:        valorCatastral: 0,
+src/services/declaracionFromCasillasService.ts:403:      valorCatastral: inmueble.box0123 || 0,
+src/services/declaracionFromCasillasService.ts:404:      valorCatastralConstruccion: inmueble.box0124 || 0,
+src/services/valoracionesService.ts:162:        ultima_valoracion: ultima?.valor ?? plan.valorActual,
+src/services/valoracionesService.ts:177:          ultima_valoracion: ultima?.valor ?? plan.valorActual ?? 0,
+src/services/valoracionesService.ts:430:   * 2. Actualiza valor_actual en inversiones / valorActual en planesPensiones
+src/services/valoracionesService.ts:481:            valorActual: v.valor,
+src/services/valoracionesService.ts:643:    // `guardarValoracionesMensual` reescribe `valorActual` del plan con el valor del mes
+src/services/valoracionesService.ts:644:    // procesado; si lo hiciéramos en otro orden, valorActual podría quedar desactualizado.
+src/services/valoracionesService.ts:683:    // Actualizar `valorActual` de cada plan con la valoración más reciente importada.
+src/services/valoracionesService.ts:693:          valorActual: valor,
+src/services/declaracionDistributorService.ts:553:      if (inm.valorCatastral && inm.valorCatastral > 0 && next.fiscalData.cadastralValue !== inm.valorCatastral) {
+src/services/declaracionDistributorService.ts:554:        next.fiscalData.cadastralValue = inm.valorCatastral;
+src/services/declaracionDistributorService.ts:555:        if (next.aeatAmortization) next.aeatAmortization.cadastralValue = inm.valorCatastral;
+src/services/declaracionDistributorService.ts:559:      if (inm.valorCatastralConstruccion && inm.valorCatastralConstruccion > 0 && next.fiscalData.constructionCadastralValue !== inm.valorCatastralConstruccion) {
+src/services/declaracionDistributorService.ts:560:        next.fiscalData.constructionCadastralValue = inm.valorCatastralConstruccion;
+src/services/declaracionDistributorService.ts:561:        if (next.aeatAmortization) next.aeatAmortization.constructionCadastralValue = inm.valorCatastralConstruccion;
+src/services/declaracionDistributorService.ts:567:      const vcTotalUsable = next.fiscalData.cadastralValue ?? inm.valorCatastral ?? 0;
+src/services/declaracionDistributorService.ts:569:        next.fiscalData.constructionCadastralValue ?? inm.valorCatastralConstruccion ?? 0;
+src/services/declaracionDistributorService.ts:817:    if (!next.fiscalData.cadastralValue && inm.accesorio.valorCatastral) {
+src/services/declaracionDistributorService.ts:818:      next.fiscalData.cadastralValue = inm.accesorio.valorCatastral;
+src/services/declaracionDistributorService.ts:819:      next.fiscalData.constructionCadastralValue = inm.accesorio.valorCatastralConstruccion || 0;
+src/services/declaracionDistributorService.ts:835:        cadastralValue: amortActual?.cadastralValue || inm.accesorio.valorCatastral || 0,
+src/services/declaracionDistributorService.ts:837:          amortActual?.constructionCadastralValue || inm.accesorio.valorCatastralConstruccion || 0,
+src/services/declaracionDistributorService.ts:926:      cadastralValue: inm.valorCatastral || 0,
+src/services/declaracionDistributorService.ts:927:      constructionCadastralValue: inm.valorCatastralConstruccion || 0,
+src/services/declaracionDistributorService.ts:942:      cadastralValue: inm.valorCatastral || 0,
+src/services/declaracionDistributorService.ts:943:      constructionCadastralValue: inm.valorCatastralConstruccion || 0,
+src/services/declaracionDistributorService.ts:1058:    const totalAportado = fondo.valorAdquisicion ?? 0;
+src/services/declaracionDistributorService.ts:1059:    const valorActual = fondo.valorTransmision ?? 0;
+src/services/declaracionDistributorService.ts:1067:      valor_actual: valorActual,
+src/services/declaracionDistributorService.ts:1085:    const totalAportado = cripto.valorAdquisicion ?? 0;
+src/services/declaracionDistributorService.ts:1086:    const valorActual = cripto.valorTransmision ?? 0;
+src/services/declaracionDistributorService.ts:1093:      valor_actual: valorActual,
+src/services/nominaService.ts:12:import { getBaseMaxima, getSSDefaults } from '../constants/cotizacionSS';
+src/services/nominaService.ts:173:    // Migrate old retencion format { irpfPorcentaje, cotizacionSS } → new RetencionNomina
+src/services/nominaService.ts:175:    if (nomina.retencion && typeof (nomina.retencion as any).cotizacionSS === 'number') {
+src/services/planesInversionService.ts:50:    valorActualTotal: number;
+src/services/planesInversionService.ts:55:    const valorActualTotal = plan.valorActual ?? 0;
+src/services/planesInversionService.ts:56:    const plusvaliaMinusvalia = valorActualTotal - totalInvertido;
+src/services/planesInversionService.ts:58:    return { totalInvertido, valorActualTotal, plusvaliaMinusvalia, porcentajeRentabilidad };
+src/services/planesInversionService.ts:79:    valorActualTotal: number;
+src/services/planesInversionService.ts:86:      const valorActualTotal = planes.reduce((s, p) => s + (p.valorActual ?? 0), 0);
+src/services/planesInversionService.ts:89:        valorActualTotal,
+src/services/planesInversionService.ts:90:        plusvaliasMinusvalias: valorActualTotal,
+src/services/planesInversionService.ts:95:      return { totalInvertido: 0, valorActualTotal: 0, plusvaliasMinusvalias: 0, rentabilidadPromedio: 0, planesTotales: 0 };
+src/services/planesInversionService.ts:100:    return planesPensionesService.updatePlan(String(id), { valorActual: nuevoValor });
+src/services/declaracionOnboardingService.ts:166:  valorCatastral?: number;
+src/services/declaracionOnboardingService.ts:167:  valorCatastralConstruccion?: number;
+src/services/declaracionOnboardingService.ts:422:  comparar('valorCatastral', 'Valor catastral', decl.valorCatastral, existente.valorCatastral);
+src/services/declaracionOnboardingService.ts:423:  comparar('valorCatastralConstruccion', 'VC construcción', decl.valorCatastralConstruccion, existente.valorCatastralConstruccion);
+src/services/declaracionOnboardingService.ts:436:  if (inm.valorCatastral) campos.push('Valor catastral');
+src/services/declaracionOnboardingService.ts:437:  if (inm.valorCatastralConstruccion) campos.push('VC construcción');
+src/services/declaracionOnboardingService.ts:800:      cadastralValue: datos.valorCatastral || undefined,
+src/services/declaracionOnboardingService.ts:801:      constructionCadastralValue: datos.valorCatastralConstruccion || undefined,
+src/services/declaracionOnboardingService.ts:811:        cadastralValue: datos.valorCatastral || 0,
+src/services/declaracionOnboardingService.ts:812:        constructionCadastralValue: datos.valorCatastralConstruccion || 0,
+src/services/declaracionOnboardingService.ts:825:      cadastralValue: datos.valorCatastral || 0,
+src/services/declaracionOnboardingService.ts:826:      constructionCadastralValue: datos.valorCatastralConstruccion || 0,
+src/services/declaracionOnboardingService.ts:858:      case 'valorCatastral':
+src/services/declaracionOnboardingService.ts:862:      case 'valorCatastralConstruccion':
+src/services/declaracionOnboardingService.ts:1299:      valorCatastral: property.fiscalData?.cadastralValue || property.aeatAmortization?.cadastralValue,
+src/services/declaracionOnboardingService.ts:1300:      valorCatastralConstruccion: property.fiscalData?.constructionCadastralValue || property.aeatAmortization?.constructionCadastralValue,
+src/services/propertyDisposalTaxService.ts:19:  precioCompra: number;
+src/services/propertyDisposalTaxService.ts:23:  valorAdquisicion: number;
+src/services/propertyDisposalTaxService.ts:210:  const valorAdquisicion = round2(acqData.purchasePrice + acqData.acquisitionExpenses + mejoras - amortizaciones.aplicada);
+src/services/propertyDisposalTaxService.ts:211:  const gananciaPatrimonial = round2(valorTransmision - valorAdquisicion);
+src/services/propertyDisposalTaxService.ts:221:    precioCompra: acqData.purchasePrice,
+src/services/propertyDisposalTaxService.ts:225:    valorAdquisicion,
+src/services/autoSaveService.ts:245:           filename.includes('tasacion') || filename.includes('notaria') ||
+src/services/datosFiscalesComparisonService.ts:28:  valorCatastralAnterior?: number;
+src/services/datosFiscalesComparisonService.ts:29:  valorCatastralNuevo?: number;
+src/services/datosFiscalesComparisonService.ts:82:      if (inmDF.valorCatastral && inmDF.valorCatastral > 0 && vcExistente > 0 && Math.abs(inmDF.valorCatastral - vcExistente) > 1) {
+src/services/datosFiscalesComparisonService.ts:86:          descripcion: `${existente.alias || existente.address}: VC ${fmtEur(vcExistente)} → ${fmtEur(inmDF.valorCatastral)}`,
+src/services/datosFiscalesComparisonService.ts:88:          valorNuevo: String(inmDF.valorCatastral),
+src/services/datosFiscalesComparisonService.ts:90:      } else if (inmDF.valorCatastral && inmDF.valorCatastral > 0 && (!vcExistente || vcExistente === 0)) {
+src/services/datosFiscalesComparisonService.ts:94:          descripcion: `${existente.alias || existente.address}: VC — → ${fmtEur(inmDF.valorCatastral)}`,
+src/services/datosFiscalesComparisonService.ts:96:          valorNuevo: String(inmDF.valorCatastral),
+src/services/datosFiscalesComparisonService.ts:218:      valorCatastralAnterior: existente?.fiscalData?.cadastralValue || existente?.aeatAmortization?.cadastralValue,
+src/services/datosFiscalesComparisonService.ts:219:      valorCatastralNuevo: inmDF.valorCatastral,
+src/services/inversionesService.ts:85:    const valorActual = Number(posicion.valor_actual || 0);
+src/services/inversionesService.ts:86:    const totalAportado = Number(posicion.total_aportado ?? posicion.importe_inicial ?? valorActual);
+src/services/inversionesService.ts:103:      valor_actual: valorActual,
+src/services/inversionesService.ts:107:      rentabilidad_euros: valorActual - totalAportado,
+src/services/inversionesService.ts:109:        ? ((valorActual - totalAportado) / totalAportado) * 100
+src/services/inversionesService.ts:269:    const planes = (await (db as any).getAll('planesPensiones')) as Array<{ valorActual?: number }>;
+src/services/inversionesService.ts:270:    const valorPlanes = planes.reduce((s, p) => s + (p.valorActual ?? 0), 0);
+src/services/traspasosPlanPensionesService.ts:38:   *      `isinActual = isinDestino`, `valorActual = valorTraspaso`,
+src/services/traspasosPlanPensionesService.ts:75:    // gestoraActual/isinActual/valorActual sería incorrecto.
+src/services/traspasosPlanPensionesService.ts:87:          valorActual: valorReferencia,
+src/services/__tests__/imputacionRentaService.test.ts:36:      valorCatastral: 47656.37,
+src/services/__tests__/imputacionRentaService.test.ts:51:      valorCatastral: 100000,
+src/services/__tests__/imputacionRentaService.test.ts:63:      valorCatastral: 100000,
+src/services/__tests__/imputacionRentaService.test.ts:74:      valorCatastral: 0,
+src/services/__tests__/propertyDisposalTaxService.test.ts:109:    expect(result?.valorAdquisicion).toBe(143984.04);
+src/services/__tests__/propertyDisposalTaxService.test.ts:174:    expect(result?.valorAdquisicion).toBe(153880.36);
+src/services/__tests__/traspasosPlanPensionesService.test.ts:6://   2. Actualiza planesPensiones.gestoraActual + isinActual + valorActual.
+src/services/__tests__/traspasosPlanPensionesService.test.ts:32:      valorActual: 45000,
+src/services/__tests__/traspasosPlanPensionesService.test.ts:66:    expect(plan.valorActual).toBe(56000);
+src/services/__tests__/declaracionFromCasillasService.test.ts:85:    expect(activos.inmueblesDatos[0]?.valorCatastral).toBe(100000);
+src/services/db.ts:4039:                    valorActual: typeof plan.valorActual === 'number' ? plan.valorActual : 0,
+src/services/db.ts:4095:                    valorActual: Number(inv.valor_actual ?? 0),
+src/services/__tests__/reconciliacionService.test.ts:30:    valorCatastral: 100000,
+src/services/__tests__/reconciliacionService.test.ts:31:    valorCatastralConstruccion: 70000,
+src/services/__tests__/reconciliacionService.test.ts:67:        valorCatastral: 100000,
+src/services/__tests__/reconciliacionService.test.ts:68:        valorCatastralConstruccion: 65000,
+src/services/__tests__/reconciliacionService.test.ts:77:    expect(campos.find((campo) => campo.campo === 'valorCatastral')?.tipo).toBe('coincide');
+src/services/__tests__/reconciliacionService.test.ts:78:    expect(campos.find((campo) => campo.campo === 'valorCatastralConstruccion')?.tipo).toBe('difiere');
+src/services/__tests__/reconciliacionService.test.ts:79:    expect(campos.find((campo) => campo.campo === 'valorCatastralConstruccion')?.decision).toBe('pendiente');
+src/services/__tests__/reconciliacionService.test.ts:92:              campo: 'valorCatastral',
+src/services/__tests__/simuladorFiscalService.test.ts:16:    precioCompra: 150000,
+src/services/__tests__/simuladorFiscalService.test.ts:20:    valorAdquisicion: 160000,
+src/services/__tests__/simuladorFiscalService.test.ts:50:      precioCompra: 150000,
+src/services/__tests__/simuladorFiscalService.test.ts:54:      valorAdquisicion: 160000,
+src/services/preDeclaracionService.ts:70:      valor: trabajo.cotizacionSS,
+src/services/preDeclaracionService.ts:180:      origenDetalle: `VC ${Math.round(imp.valorCatastral)} × ${imp.porcentajeImputacion * 100}% × ${imp.diasVacio}/365 ${imp.alias}`,
+src/services/__tests__/inmuebleCalculatorService.test.ts:10:      valorCatastralTotal: 89500,
+src/services/__tests__/inmuebleCalculatorService.test.ts:11:      valorCatastralConstruccion: 53700,
+src/services/__tests__/inmuebleCalculatorService.test.ts:35:      valorCatastralTotal: 89500,
+src/services/__tests__/inmuebleCalculatorService.test.ts:36:      valorCatastralConstruccion: 53700,
+src/services/__tests__/inmuebleCalculatorService.test.ts:55:      valorCatastralTotal: 200000,
+src/services/__tests__/inmuebleCalculatorService.test.ts:56:      valorCatastralConstruccion: 150000,
+src/services/__tests__/inmuebleCalculatorService.test.ts:72:      valorCatastralTotal: 100000,
+src/services/__tests__/inmuebleCalculatorService.test.ts:73:      valorCatastralConstruccion: 60000,
+src/services/__tests__/inmuebleCalculatorService.test.ts:90:      valorCatastralTotal: 0,
+src/services/__tests__/inmuebleCalculatorService.test.ts:91:      valorCatastralConstruccion: 0,
+src/services/__tests__/fiscalContextService.test.ts:85:        valorCatastral: 150000,
+src/services/__tests__/fiscalContextService.test.ts:139:    expect(ctx.viviendaHabitual?.valorCatastral).toBe(150000);
+src/services/__tests__/fiscalContextService.test.ts:203:          valorCatastral: 99999,
+src/services/__tests__/fiscalContextService.test.ts:227:    expect(ctx.viviendaHabitual?.valorCatastral).toBe(150000);
+src/services/__tests__/compensacionAhorroService.test.ts:80:        valorAdquisicion: 143984.04,
+src/services/__tests__/compensacionAhorroService.test.ts:91:        precioCompra: 139000,
+src/services/__tests__/dbV65Migration.test.ts:189:          valorCompra: 0,
+src/services/__tests__/dbV65Migration.test.ts:190:          valorActual: 9000,
+src/services/__tests__/compromisoDetectionService.test.ts:249:            catastro: { referenciaCatastral: 'REF1', valorCatastral: 100000, superficie: 80, porcentajeTitularidad: 100 },
+src/services/__tests__/irpfPropertyDisposalIntegration.test.ts:39:            precioCompra: 139000,
+src/services/__tests__/irpfPropertyDisposalIntegration.test.ts:43:            valorAdquisicion: 143984.04,
+src/services/__tests__/irpfPropertyDisposalIntegration.test.ts:117:              precioCompra: 139000,
+src/services/__tests__/irpfPropertyDisposalIntegration.test.ts:121:              valorAdquisicion: 143984.04,
+src/services/fiscalSummaryService.ts:494:  valorCatastralTotal?: number;
+src/services/fiscalSummaryService.ts:496:  valorCatastralConstruccion?: number;
+src/services/fiscalSummaryService.ts:610:    valorCatastralTotal: inm.valorCatastralTotal ?? inm.valorCatastral,
+src/services/fiscalSummaryService.ts:611:    valorCatastralConstruccion: inm.valorCatastralConstruccion,
+src/services/__tests__/rentabilidadPlanService.test.ts:31:    valorActual: 45_000,
+src/services/__tests__/rentabilidadPlanService.test.ts:76:    valorActual: 96_000,
+src/services/__tests__/rentabilidadPlanService.test.ts:147:    expect(r.valorActual).toBe(96_000);
+src/services/__tests__/rentabilidadPlanService.test.ts:183:      valorActual: 0,
+src/services/__tests__/rentabilidadPlanService.test.ts:209:      valorActual: 12_000,
+src/services/planesPensionesService.ts:130:    return plan?.valorActual ?? 0;
+src/services/migrations/migrateOrphanedInmuebleIds.ts:447:      if (!prop.fiscalData?.cadastralValue && xmlInm.valorCatastral) {
+src/services/migrations/migrateOrphanedInmuebleIds.ts:450:          cadastralValue: xmlInm.valorCatastral,
+src/services/migrations/migrateOrphanedInmuebleIds.ts:453:      if (!prop.fiscalData?.constructionCadastralValue && xmlInm.valorCatastralConstruccion) {
+src/services/migrations/migrateOrphanedInmuebleIds.ts:456:          constructionCadastralValue: xmlInm.valorCatastralConstruccion,
+src/services/__tests__/declaracionOnboardingService.test.ts:35:      cotizacionSS: 0,
+src/services/__tests__/declaracionOnboardingService.test.ts:71:        valorCatastral: 100000,
+src/services/__tests__/declaracionOnboardingService.test.ts:72:        valorCatastralConstruccion: 70000,
+src/services/aeatParserService.ts:940:    cotizacionSS: n('0013'),
+src/services/aeatParserService.ts:1075:      valorCatastral: n(`0123${suffix}`) || n(`0083${suffix}`) || undefined,
+src/services/aeatParserService.ts:1076:      valorCatastralConstruccion: n(`0124${suffix}`) || undefined,
+src/services/aeatParserService.ts:1117:    valorCatastral: n(`0138${suffix}`) || undefined,
+src/services/aeatParserService.ts:1118:    valorCatastralConstruccion: n(`0139${suffix}`) || undefined,
+src/services/aeatParserService.ts:1499:      cotizacionSS: 0,
+src/services/ocr/normalize-docai.ts:441:  if (lower.includes('tasación') || lower.includes('tasacion') || type.includes('appraisal') || type.includes('tasacion')) {
+src/services/ocr/normalize-docai.ts:442:    return 'tasacion';
+src/services/ocr/__tests__/normalize-docai.test.ts:198:          type: 'expenses.tasacion',
+src/services/ocr/__tests__/normalize-docai.test.ts:214:        tasacion: '400,00 €'
+src/services/irpfXmlParserService.ts:242:    cotizacionesSS: num(rt, 'TPGSS') || num(rend, 'GSS'),
+src/services/irpfXmlParserService.ts:340:        valorCatastralTotal: num(nodo, 'VACATOT') || undefined,
+src/services/irpfXmlParserService.ts:341:        valorCatastral: num(nodo, 'C_VCARR') || num(nodo, 'C_VC'),
+src/services/irpfXmlParserService.ts:342:        valorCatastralConstruccion: num(nodo, 'C_VCC'),
+src/services/irpfXmlParserService.ts:379:      valorCatastralTotal: num(nodo, 'VACATOT') || undefined,
+src/services/irpfXmlParserService.ts:380:      valorCatastral: num(nodo, 'C_VCARR') || num(datosArr, 'VC') || num(nodo, 'C_VC'),
+src/services/irpfXmlParserService.ts:381:      valorCatastralConstruccion: num(nodo, 'C_VCC') || num(datosArr, 'VCC'),
+src/services/irpfXmlParserService.ts:581:    valorCatastral: num(idAcc, 'VCACC') || num(nodo, 'C_VCACC'),
+src/services/irpfXmlParserService.ts:582:    valorCatastralConstruccion: num(idAcc, 'VCCACC') || num(nodo, 'C_VCCACC'),
+src/services/irpfXmlParserService.ts:636:      valorAdquisicion: num(f, 'G2VATF') || num(f, 'VAD1'),
+src/services/irpfXmlParserService.ts:653:      valorAdquisicion: va,
+src/tests/irpfAccesorios.test.ts:315:      expect(imputacion!.valorCatastral).toBe(110000);
+src/services/reconciliacionService.ts:68:  valorCatastral?: number;
+src/services/reconciliacionService.ts:69:  valorCatastralConstruccion?: number;
+src/services/reconciliacionService.ts:277:  add('valorCatastral', 'Valor catastral', 'catastral', aeat.valorCatastral, atlas.valorCatastral, 'alto', 'moneda');
+src/services/reconciliacionService.ts:278:  add('valorCatastralConstruccion', 'VC construcción', 'catastral', aeat.valorCatastralConstruccion, atlas.valorCatastralConstruccion, 'alto', 'moneda');
+src/services/reconciliacionService.ts:337:  add('valorCatastral', 'Valor catastral', 'catastral', aeat.valorCatastral, 'moneda');
+src/services/reconciliacionService.ts:338:  add('valorCatastralConstruccion', 'VC construcción', 'catastral', aeat.valorCatastralConstruccion, 'moneda');
+src/services/reconciliacionService.ts:469:      case 'valorCatastral': {
+src/services/reconciliacionService.ts:477:      case 'valorCatastralConstruccion': {
+src/services/reconciliacionService.ts:546:      cadastralValue: inmueble.valorCatastral,
+src/services/reconciliacionService.ts:547:      constructionCadastralValue: inmueble.valorCatastralConstruccion,
+src/services/reconciliacionService.ts:555:      cadastralValue: toNumber(inmueble.valorCatastral),
+src/services/reconciliacionService.ts:556:      constructionCadastralValue: toNumber(inmueble.valorCatastralConstruccion),
+src/services/reconciliacionService.ts:627:    valorCatastral: property.aeatAmortization?.cadastralValue ?? property.fiscalData?.cadastralValue,
+src/services/reconciliacionService.ts:628:    valorCatastralConstruccion: property.aeatAmortization?.constructionCadastralValue ?? property.fiscalData?.constructionCadastralValue,
+src/utils/taxCalculationUtils.ts:27:  precioCompra: number,
+src/utils/taxCalculationUtils.ts:39:    : precioCompra;
+src/utils/taxCalculationUtils.ts:54:export function calculateIVAAmount(precioCompra: number): {
+src/utils/taxCalculationUtils.ts:59:  const importe = Math.round((precioCompra * rate / 100) * 100) / 100;
+src/utils/taxCalculationUtils.ts:70:export function calculateAJDAmount(precioCompra: number): {
+src/utils/taxCalculationUtils.ts:75:  const importe = Math.round((precioCompra * rate / 100) * 100) / 100;
+src/utils/__tests__/propertyAnalysisUtils.test.ts:150:      expect(result.inputs.valorActualActivo).toBe(255000);
+src/pages/account/migracion/ImportarIndexaCapital.tsx:88:      if (result.valoracionesImportadas > 0 || result.saldoActualizado) {
+src/pages/account/migracion/ImportarIndexaCapital.tsx:337:            <SummaryItem label="Saldo final" value={formatCurrency(preview.summary.saldoFinal)} />
+src/pages/GestionPersonal/wizards/NominaPage.tsx:40:import { getBaseMaxima, getSSDefaults } from '../../../constants/cotizacionSS';
+src/store/taxSlice.ts:16:  cotizacionSS: number;
+src/store/taxSlice.ts:45:  valorCatastral: number;
+src/store/taxSlice.ts:46:  valorCatastralConstruccion: number;
+src/store/taxSlice.ts:50:  valorCatastralRevisado: boolean;
+src/store/taxSlice.ts:98:  valorAdquisicion: number;
+src/store/taxSlice.ts:196:  const pctConstr = n(i.valorCatastral) > 0
+src/store/taxSlice.ts:197:    ? n(i.valorCatastralConstruccion) / n(i.valorCatastral)
+src/store/taxSlice.ts:200:  const baseAmort = Math.max(n(i.valorCatastralConstruccion), costeAdq * pctConstr);
+src/store/taxSlice.ts:224:    ? n(i.valorCatastral) * (i.valorCatastralRevisado ? 0.011 : 0.02)
+src/store/taxSlice.ts:277:    - n(state.workIncome.cotizacionSS)
+src/store/taxSlice.ts:370:  cotizacionSS: 0,
+src/store/taxSlice.ts:483:        valorCatastral: 0,
+src/store/taxSlice.ts:484:        valorCatastralConstruccion: 0,
+src/store/taxSlice.ts:487:        valorCatastralRevisado: false,
+src/store/taxSlice.ts:556:        valorAdquisicion: 0,
+src/store/taxSlice.ts:566:        g.resultado = n(g.valorTransmision) - n(g.valorAdquisicion);
+src/services/__tests__/fiscalSummaryService.integration.test.ts:127:        valorCatastral: 47656.37,
+src/services/__tests__/fiscalSummaryService.integration.test.ts:128:        valorCatastralRevisado: true,
+src/utils/propertyAnalysisUtils.ts:20:  valorActualActivo: number;
+src/utils/propertyAnalysisUtils.ts:79:  valorActualActivo: number,
+src/utils/propertyAnalysisUtils.ts:88:  const equityActual = valorActualActivo - deudaPendiente;
+src/utils/propertyAnalysisUtils.ts:103:    valorActualActivo,
+src/utils/propertyAnalysisUtils.ts:157:  precioCompra: number,
+src/utils/propertyAnalysisUtils.ts:165:  const plusvaliaEstimada = precioVenta - (precioCompra + itpOIva + reformaTotal + gastosCompra);
+src/utils/propertyAnalysisUtils.ts:326:  const valorActualActivo = propertyValoraciones[0]?.valor || 0;
+src/utils/propertyAnalysisUtils.ts:327:  if (valorActualActivo <= 0) {
+src/utils/propertyAnalysisUtils.ts:332:  const revalorizacionAnual = previousValuation ? valorActualActivo - previousValuation : 0;
+src/utils/propertyAnalysisUtils.ts:365:      valorActualActivo,
+src/utils/propertyAnalysisUtils.ts:371:      precioVenta: valorActualActivo,
+src/services/__tests__/proyeccionActivoService.test.ts:22:  saldoActual: 35491,
+src/pages/inmuebles/InmueblesAnalisis.tsx:171:  valorActual: number,
+src/pages/inmuebles/InmueblesAnalisis.tsx:289:  const valor = valorActual;
+src/utils/inmuebleUtils.ts:36:export function calculateITP(precioCompra: number, ccaa: ComunidadAutonoma): {
+src/utils/inmuebleUtils.ts:41:  const importe = Math.round((precioCompra * rate / 100) * 100) / 100; // Round to 2 decimals
+src/utils/inmuebleUtils.ts:52:export function calculateIVA(precioCompra: number): {
+src/utils/inmuebleUtils.ts:56:  const importe = Math.round((precioCompra * IVA_RATE / 100) * 100) / 100; // Round to 2 decimals
+src/utils/inmuebleUtils.ts:67:export function calculateAJD(precioCompra: number): {
+src/utils/inmuebleUtils.ts:71:  const importe = Math.round((precioCompra * AJD_RATE / 100) * 100) / 100; // Round to 2 decimals
+src/utils/inmuebleUtils.ts:83:  precioCompra: number, 
+src/utils/inmuebleUtils.ts:88:    const itp = calculateITP(precioCompra, ccaa);
+src/utils/inmuebleUtils.ts:94:    const iva = calculateIVA(precioCompra);
+src/utils/inmuebleUtils.ts:95:    const ajd = calculateAJD(precioCompra);
+src/utils/inmuebleUtils.ts:130:  valorCatastralConstruccion: number, 
+src/utils/inmuebleUtils.ts:131:  valorCatastralTotal: number
+src/utils/inmuebleUtils.ts:133:  if (valorCatastralTotal === 0) return 0;
+src/utils/inmuebleUtils.ts:135:  const percentage = (valorCatastralConstruccion / valorCatastralTotal) * 100;
+src/utils/inmuebleUtils.ts:361:export function detectPercentageInput(input: number, precioCompra: number): {
+src/utils/inmuebleUtils.ts:367:  if (input > 0 && input < 1 && precioCompra > 0) {
+src/utils/inmuebleUtils.ts:368:    const convertedAmount = Math.round((input * precioCompra) * 100) / 100;
+src/pages/inmuebles/InmueblePage.tsx:87:  precioCompra: number;
+src/pages/inmuebles/InmueblePage.tsx:108:  valorCatastralTotal: number;
+src/pages/inmuebles/InmueblePage.tsx:109:  valorCatastralConstruccion: number;
+src/pages/inmuebles/InmueblePage.tsx:217:  precioCompra: 0,
+src/pages/inmuebles/InmueblePage.tsx:234:  valorCatastralTotal: 0,
+src/pages/inmuebles/InmueblePage.tsx:235:  valorCatastralConstruccion: 0,
+src/pages/inmuebles/InmueblePage.tsx:338:            precioCompra: precio,
+src/pages/inmuebles/InmueblePage.tsx:355:            valorCatastralTotal: prop.fiscalData?.cadastralValue || 0,
+src/pages/inmuebles/InmueblePage.tsx:356:            valorCatastralConstruccion: prop.fiscalData?.constructionCadastralValue || 0,
+src/pages/inmuebles/InmueblePage.tsx:442:    if (form.valorReferencia !== form.precioCompra) {
+src/pages/inmuebles/InmueblePage.tsx:443:      setForm((prev) => ({ ...prev, valorReferencia: form.precioCompra }));
+src/pages/inmuebles/InmueblePage.tsx:446:  }, [form.precioCompra, form.valorReferenciaIsManual]);
+src/pages/inmuebles/InmueblePage.tsx:452:        precio: form.precioCompra,
+src/pages/inmuebles/InmueblePage.tsx:461:        valorCatastralTotal: form.valorCatastralTotal,
+src/pages/inmuebles/InmueblePage.tsx:462:        valorCatastralConstruccion: form.valorCatastralConstruccion,
+src/pages/inmuebles/InmueblePage.tsx:592:    if (form.precioCompra <= 0) return 'El precio debe ser mayor que 0';
+src/pages/inmuebles/InmueblePage.tsx:632:          price: form.precioCompra,
+src/pages/inmuebles/InmueblePage.tsx:646:        // auto-fill desde precioCompra sigue funcionando.
+src/pages/inmuebles/InmueblePage.tsx:659:          cadastralValue: form.valorCatastralTotal || undefined,
+src/pages/inmuebles/InmueblePage.tsx:660:          constructionCadastralValue: form.valorCatastralConstruccion || undefined,
+src/pages/inmuebles/InmueblePage.tsx:662:            form.valorCatastralTotal > 0
+src/pages/inmuebles/InmueblePage.tsx:663:              ? (form.valorCatastralConstruccion / form.valorCatastralTotal) * 100
+src/pages/inmuebles/InmueblePage.tsx:904:                      value={form.precioCompra || ''}
+src/pages/inmuebles/InmueblePage.tsx:905:                      onChange={(e) => set('precioCompra', num(e.target.value))}
+src/pages/inmuebles/InmueblePage.tsx:1131:                      value={form.valorCatastralTotal || ''}
+src/pages/inmuebles/InmueblePage.tsx:1132:                      onChange={(e) => set('valorCatastralTotal', num(e.target.value))}
+src/pages/inmuebles/InmueblePage.tsx:1142:                      value={form.valorCatastralConstruccion || ''}
+src/pages/inmuebles/InmueblePage.tsx:1144:                        set('valorCatastralConstruccion', num(e.target.value))
+src/pages/inmuebles/InmueblePage.tsx:1454:                <span className={styles.value}>{formatCurrency(form.precioCompra)} €</span>
+src/pages/inmuebles/InmueblePage.tsx:1499:                  {formatInt(form.valorCatastralConstruccion)} € de{' '}
+src/pages/inmuebles/InmueblePage.tsx:1500:                  {formatInt(form.valorCatastralTotal)} € catastral

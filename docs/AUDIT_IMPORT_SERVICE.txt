@@ -1,0 +1,8 @@
+src/services/indexaCapitalImportService.ts:305:  valoracionesImportadas: number;
+src/services/indexaCapitalImportService.ts:327:    return { valoracionesImportadas: 0, mesesConAportaciones: 0, saldoActualizado: false, errors: ['No hay filas para importar.'] };
+src/services/indexaCapitalImportService.ts:338:    return { valoracionesImportadas: 0, mesesConAportaciones: 0, saldoActualizado: false, errors: [`Plan con id ${planTarget.id} no encontrado en ${planTarget.store}.`] };
+src/services/indexaCapitalImportService.ts:345:  let valoracionesImportadas = 0;
+src/services/indexaCapitalImportService.ts:355:      valoracionesImportadas += 1;
+src/services/indexaCapitalImportService.ts:450:    valoracionesImportadas,
+src/pages/account/migracion/ImportarIndexaCapital.tsx:88:      if (result.valoracionesImportadas > 0 || result.saldoActualizado) {
+src/pages/account/migracion/ImportarIndexaCapital.tsx:90:          `Importadas ${result.valoracionesImportadas} valoraciones mensuales y ${result.mesesConAportaciones} meses con aportaciones.`
