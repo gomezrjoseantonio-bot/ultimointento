@@ -28,7 +28,7 @@ import type { AvisoCerrado } from '../types/avisosUsuario';
 import type { ObjetivoVital } from '../types/objetivosVitales';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 73; // V73 (T-INVERSIONES-DETALLE-PP-v1 PR 3): crea 2 stores nuevos · `avisosUsuario` (avisos cerrables · §4.E) y `objetivosVitales` (hitos vitales · §4.C Caso B). Convive con `objetivos` existente (operativos · T27.1). Decisión Q-PRE-I · un solo bump cubre ambos stores. 44 stores totales.
+const DB_VERSION = 74; // V74 (T-VALORACIONES PR1): rename `valoraciones_historicas` → `valoracionesActivos` con schema camelCase, fechas YYYY-MM-DD, activoId siempre string, 5 índices nuevos. Transforma 100% de los registros existentes preservando datos. Snapshot en localStorage antes de tocar. 44 stores totales (sin cambio en número · solo rename).
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2219,15 +2219,29 @@ interface AtlasHorizonDB {
   // gastosPersonalesReal: ELIMINADO en V62 (sub-tarea 3) — futuro movements + treasuryEvents · 0 registros
   prestamos: any; // Financiacion: Loan records · V63 (sub-tarea 4): campo `liquidacion` absorbe los settlements del store eliminado `loan_settlements`.
   /**
-   * Monthly valuation: Historical valuations per asset.
+   * V74 (T-VALORACIONES PR1): store polimórfico de valoraciones temporales
+   * por activo. Reemplaza al anterior `valoraciones_historicas` (snake_case,
+   * YYYY-MM, cardinalidad 3 tipos) preservando datos.
    *
-   * V60 (TAREA 7 sub-tarea 1): este store absorbe las consultas mensuales
-   * que antes requerían el store separado `valoraciones_mensuales`
-   * (eliminado en sub-tarea 3). Para listar valoraciones de un mes
-   * concreto, usar el índice compuesto existente `tipo-activo-fecha`
-   * combinado con `IDBKeyRange.bound` sobre `fecha_valoracion`
-   * (`YYYY-MM-01` ≤ fecha ≤ `YYYY-MM-31`). Para snapshot mensual del
-   * patrimonio total, agregar runtime sobre los registros del rango.
+   * Schema:
+   * - `activoId` string (UUID o stringify del id numérico)
+   * - `tipoActivo`: 'inmueble' | 'inversion' | 'plan_pensiones' | 'deposito' | 'otro'
+   * - `subtipoInversion?`: 'fondo' | 'accion' | 'etf' | 'crypto' (solo si inversion)
+   * - `fecha` YYYY-MM-DD
+   * - `origen`: 'manual' | 'import_csv' | 'import_pdf' | 'api_gestora' | 'seed_migracion_v74' | 'seed_legacy_field_v74' | 'cierre_anual'
+   * - `deletedAt?` soft delete · null = activa
+   * - resto: ver `src/types/valoracionActivo.ts`
+   *
+   * Índices: `idx_activo`, `idx_activo_fecha`, `idx_tipo`, `idx_fecha`,
+   * `idx_anchor_fiscal`, `idx_tipo_subtipo`.
+   */
+  valoracionesActivos: any;
+  /**
+   * @deprecated V74 · store renombrado a `valoracionesActivos`. La key se mantiene
+   * en el type para permitir que `valoracionesService.ts` (PR2) compile mientras
+   * referencia ambos nombres durante la transición. El store físico ya NO existe
+   * tras la migración v73→v74 · llamadas a `db.getAll('valoraciones_historicas')`
+   * lanzarán NotFoundError en runtime.
    */
   valoraciones_historicas: any;
   // valoraciones_mensuales: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 115 registros
@@ -2851,19 +2865,25 @@ export const initDB = async () => {
           prestamosStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
-        // V2.1: Valoraciones historicas store for monthly valuation system
-        if (!db.objectStoreNames.contains('valoraciones_historicas')) {
-          const valoracionesStore = db.createObjectStore('valoraciones_historicas', { keyPath: 'id', autoIncrement: true });
-          valoracionesStore.createIndex('tipo_activo', 'tipo_activo', { unique: false });
-          valoracionesStore.createIndex('activo_id', 'activo_id', { unique: false });
-          valoracionesStore.createIndex('fecha_valoracion', 'fecha_valoracion', { unique: false });
-          valoracionesStore.createIndex('tipo-activo-fecha', ['tipo_activo', 'activo_id', 'fecha_valoracion'], { unique: false });
-          // V69 (TAREA 13 v4 · C4): índice 2-key `tipo-activo` para queries
-          // que solo filtran por tipo+id sin necesitar fecha (caso más común
-          // · 6 de las 8 queries documentadas). Más limpio que usar el 3-key
-          // con IDBKeyRange.bound. Coste: una entrada de índice extra por
-          // registro (~30 bytes) · ganancia: O(log n) directo.
-          valoracionesStore.createIndex('tipo-activo', ['tipo_activo', 'activo_id'], { unique: false });
+        // V74 (T-VALORACIONES PR1): store polimórfico `valoracionesActivos`.
+        // Sustituye al anterior `valoraciones_historicas` (V2.1 · snake_case ·
+        // YYYY-MM). La transformación de datos existente vive en el bloque
+        // `if (oldVersion < 74)` más abajo · este bloque solo garantiza que
+        // las DBs frescas (oldVersion === 0) reciban el store nuevo
+        // directamente sin pasar por el viejo. Schema camelCase, fechas
+        // YYYY-MM-DD, activoId siempre string, 5 tipos + subtipo opcional
+        // inversion, soft delete · ver `src/types/valoracionActivo.ts`.
+        if (!db.objectStoreNames.contains('valoracionesActivos')) {
+          const valoracionesActivosStore = db.createObjectStore('valoracionesActivos', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
+          valoracionesActivosStore.createIndex('idx_activo', 'activoId', { unique: false });
+          valoracionesActivosStore.createIndex('idx_activo_fecha', ['activoId', 'fecha'], { unique: false });
+          valoracionesActivosStore.createIndex('idx_tipo', 'tipoActivo', { unique: false });
+          valoracionesActivosStore.createIndex('idx_fecha', 'fecha', { unique: false });
+          valoracionesActivosStore.createIndex('idx_anchor_fiscal', ['esAnchorFiscal', 'activoId'], { unique: false });
+          valoracionesActivosStore.createIndex('idx_tipo_subtipo', ['tipoActivo', 'subtipoInversion'], { unique: false });
         }
 
         // valoraciones_mensuales: store removed in V62 (sub-tarea 3)
@@ -4244,6 +4264,122 @@ export const initDB = async () => {
           // V65 (donde el `return` del IIFE corta la ejecución de bloques
           // posteriores). El store empieza vacío · sin migración de datos
           // (Jose lo poblará manualmente desde la UI F6).
+        }
+
+        if (oldVersion < 74) {
+          // ── V74 (T-VALORACIONES PR1) ──
+          // Rename `valoraciones_historicas` → `valoracionesActivos` con
+          // transformación de schema · snake_case → camelCase, fecha
+          // YYYY-MM → YYYY-MM-01, `activo_id` number|string → string,
+          // mapeo `origen`. Preserva el 100% de los registros existentes.
+          //
+          // El store destino `valoracionesActivos` ya existe (creado en el
+          // bloque unconditional al inicio del callback, ~línea 2855).
+          // Aquí solo se hace data migration + delete del store viejo.
+          //
+          // Snapshot en localStorage antes de tocar nada · clave
+          // `atlas_db_snapshot_pre_v74` · recuperable manualmente si la
+          // migración corrompe algo. La transacción versionchange aborta
+          // atómicamente si el bloque lanza · DB queda en v73 íntegra.
+          //
+          // Idempotente: si `valoraciones_historicas` no existe (fresh
+          // install o re-migración tras rollback), el bloque es no-op.
+          return (async () => {
+            const OLD_STORE = 'valoraciones_historicas';
+            const NEW_STORE = 'valoracionesActivos';
+
+            if (!db.objectStoreNames.contains(OLD_STORE)) {
+              // Fresh install · no hay nada que migrar.
+              return;
+            }
+
+            // Leer todos los registros del store viejo dentro de la tx
+            // versionchange. `getAll` es seguro · idb lo soporta en upgrades.
+            const oldStore = (transaction as any).objectStore(OLD_STORE);
+            const oldRecords = ((await oldStore.getAll()) as any[]) ?? [];
+
+            // Snapshot best-effort · si localStorage llena o falla, log y
+            // continuamos (no es bloqueante · los datos siguen en la tx).
+            try {
+              localStorage.setItem(
+                'atlas_db_snapshot_pre_v74',
+                JSON.stringify({
+                  version: 73,
+                  timestamp: new Date().toISOString(),
+                  recordsCount: oldRecords.length,
+                  records: oldRecords,
+                }),
+              );
+            } catch (err) {
+              console.warn('[DB V74] Snapshot localStorage falló (cuota?):', err);
+            }
+
+            // Mapeo de `origen` antiguo → nuevo.
+            const origenMap: Record<string, string> = {
+              manual: 'manual',
+              importacion: 'import_csv',
+              api_externa: 'api_gestora',
+            };
+
+            const newStore = (transaction as any).objectStore(NEW_STORE);
+            const now = new Date().toISOString();
+            let migrados = 0;
+
+            for (const old of oldRecords) {
+              // Transformación de fecha · YYYY-MM → YYYY-MM-01.
+              // Si ya viene en YYYY-MM-DD se mantiene. Cualquier otro
+              // formato lo dejamos tal cual y la validación posterior del
+              // servicio (PR2) lo capturará.
+              const fechaOld = String(old.fecha_valoracion ?? '');
+              const fechaNueva =
+                /^\d{4}-\d{2}$/.test(fechaOld) ? `${fechaOld}-01` : fechaOld;
+
+              const tipoOld = old.tipo_activo;
+              // Los 3 tipos legacy mapean 1:1 a los 5 del nuevo schema.
+              // 'inmueble' | 'inversion' | 'plan_pensiones' son válidos.
+              const tipoNuevo =
+                tipoOld === 'inmueble' || tipoOld === 'inversion' || tipoOld === 'plan_pensiones'
+                  ? tipoOld
+                  : 'otro';
+
+              const record: Record<string, unknown> = {
+                // `id` omitido · autoIncrement asignará uno nuevo. El id
+                // antiguo se preserva en notas para trazabilidad.
+                activoId: String(old.activo_id ?? ''),
+                tipoActivo: tipoNuevo,
+                fecha: fechaNueva,
+                valor: typeof old.valor === 'number' ? old.valor : Number(old.valor ?? 0),
+                divisaOriginal: 'EUR',
+                origen: origenMap[String(old.origen ?? '')] ?? 'seed_migracion_v74',
+                notas:
+                  (typeof old.notas === 'string' && old.notas.length > 0
+                    ? old.notas + ' · '
+                    : '') +
+                  `Migrado v73→v74 · id antiguo ${old.id ?? '?'}` +
+                  (typeof old.activo_nombre === 'string' && old.activo_nombre.length > 0
+                    ? ` · activo "${old.activo_nombre}"`
+                    : ''),
+                esAnchorFiscal: false,
+                createdAt: typeof old.created_at === 'string' ? old.created_at : now,
+                updatedAt: now,
+                deletedAt: null,
+              };
+
+              await newStore.add(record);
+              migrados++;
+            }
+
+            // Borrar el store viejo · todas las llamadas posteriores a
+            // `db.transaction('valoraciones_historicas')` o
+            // `db.getAll('valoraciones_historicas')` lanzarán NotFoundError
+            // hasta que PR2 actualice `valoracionesService.ts` para apuntar
+            // al store nuevo.
+            db.deleteObjectStore(OLD_STORE);
+
+            console.log(
+              `[DB V74] T-VALORACIONES PR1 · ${migrados} valoraciones migradas a valoracionesActivos · store antiguo eliminado`,
+            );
+          })();
         }
       },
       blocked() {
