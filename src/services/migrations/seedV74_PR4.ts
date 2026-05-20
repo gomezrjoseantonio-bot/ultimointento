@@ -9,10 +9,17 @@
 // Reglas:
 // - `planesPensiones.valorActual` → tipoActivo='plan_pensiones'
 // - `inversiones.valor_actual` → tipoActivo='inversion' o 'plan_pensiones' o
-//   'deposito' según `inversiones.tipo`; subtipoInversion inferido si aplica
+//   'deposito' u 'otro' según `inversiones.tipo`; subtipoInversion inferido
+//   si aplica (acción/etf/fondo/crypto)
 // - Fecha · `fechaUltimaValoracion` (plan) o `fecha_valoracion` (inversion)
 //   o `today` (fallback)
-// - Inversiones/planes sin valor finito > 0 · se saltan con warning
+// - Inversiones/planes sin valor finito ESTRICTAMENTE > 0 · se saltan con
+//   warning. El cero en datos legacy típicamente es placeholder de "sin
+//   dato" · seedear 0 contaminaría detecciones posteriores que usan
+//   `valoraciones.length === 0` para identificar activos sin valoración.
+//   (Decisión review Copilot · alinea código con la regla documentada).
+//   Importante · el wizard interactivo (PR3) SÍ permite valor=0 porque
+//   ahí Jose lo introduce con intención explícita (activo liquidado).
 // - Si el activo ya tiene una valoración en `valoracionesActivos`, se salta
 //   (no duplicamos · respeta lo que pudo importar Jose manualmente)
 //
@@ -181,10 +188,11 @@ export async function runSeedV74PR4(): Promise<SeedV74PR4Report> {
         continue;
       }
       const valor = typeof plan.valorActual === 'number' ? plan.valorActual : NaN;
-      if (!Number.isFinite(valor) || valor < 0) {
+      // Estricto > 0 · datos legacy con valor 0 son placeholders, no real.
+      if (!Number.isFinite(valor) || valor <= 0) {
         // eslint-disable-next-line no-console
         console.warn(
-          `[Seed v74-PR4] Plan ${id} (${plan.nombre ?? '?'}) sin valorActual válido · saltando`,
+          `[Seed v74-PR4] Plan ${id} (${plan.nombre ?? '?'}) sin valorActual > 0 válido · saltando`,
         );
         report.planesSkippedSinValor++;
         continue;
@@ -220,10 +228,11 @@ export async function runSeedV74PR4(): Promise<SeedV74PR4Report> {
         continue;
       }
       const valor = typeof inv.valor_actual === 'number' ? inv.valor_actual : NaN;
-      if (!Number.isFinite(valor) || valor < 0) {
+      // Estricto > 0 · datos legacy con valor 0 son placeholders, no real.
+      if (!Number.isFinite(valor) || valor <= 0) {
         // eslint-disable-next-line no-console
         console.warn(
-          `[Seed v74-PR4] Inversión ${id} (${inv.nombre ?? '?'}) sin valor_actual válido · saltando`,
+          `[Seed v74-PR4] Inversión ${id} (${inv.nombre ?? '?'}) sin valor_actual > 0 válido · saltando`,
         );
         report.inversionesSkippedSinValor++;
         continue;

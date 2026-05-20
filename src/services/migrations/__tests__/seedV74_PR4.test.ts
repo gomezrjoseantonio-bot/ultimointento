@@ -5,8 +5,6 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { mapInversionTipo } from '../seedV74_PR4';
 
-const TEST_DB_NAME = 'AtlasHorizonDB';
-
 // Mock localStorage para el snapshot (jsdom lo provee pero el smoke test corre
 // como node sin DOM por defecto).
 beforeAll(() => {
@@ -261,6 +259,67 @@ describe('runSeedV74PR4 · seed migración', () => {
     const report = await runSeedV74PR4();
     expect(report.inversionesTotal).toBe(1);
     expect(report.inversionesSeeded).toBe(0);
+  });
+
+  it('plan con valorActual=0 se salta (legacy 0 = sin dato · review Copilot)', async () => {
+    await seedTestData(
+      [
+        {
+          id: 'plan-cero',
+          nombre: 'Plan placeholder',
+          valorActual: 0, // ← 0 en legacy es "sin dato", no valor real
+          estado: 'activo',
+          titular: 'yo',
+          tipoAdministrativo: 'PPI',
+          personalDataId: 1,
+          origen: 'manual',
+          fechaCreacion: '2020-01-01',
+          fechaActualizacion: '2024-01-01',
+        },
+      ],
+      [],
+    );
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { runSeedV74PR4 } = await import('../seedV74_PR4');
+    const report = await runSeedV74PR4();
+    expect(report.planesSeeded).toBe(0);
+    expect(report.planesSkippedSinValor).toBe(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Plan placeholder'),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('inversión con valor_actual=0 se salta (legacy 0 = sin dato · review Copilot)', async () => {
+    await seedTestData(
+      [],
+      [
+        {
+          id: 99,
+          nombre: 'Posición placeholder',
+          tipo: 'fondo_inversion',
+          entidad: 'X',
+          valor_actual: 0, // ← 0 en legacy es "sin dato"
+          fecha_valoracion: '2024-01-01',
+          activo: true,
+          aportaciones: [],
+          total_aportado: 0,
+          rentabilidad_euros: 0,
+          rentabilidad_porcentaje: 0,
+          created_at: '2024-01-01',
+          updated_at: '2024-01-01',
+        },
+      ],
+    );
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { runSeedV74PR4 } = await import('../seedV74_PR4');
+    const report = await runSeedV74PR4();
+    expect(report.inversionesSeeded).toBe(0);
+    expect(report.inversionesSkippedSinValor).toBe(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Posición placeholder'),
+    );
+    warnSpy.mockRestore();
   });
 
   it('plan estado=rescatado_total se salta', async () => {

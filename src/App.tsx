@@ -370,10 +370,14 @@ function App() {
           console.log('[ATLAS] Migración V70 nómina historial:', v70Report);
         }
       })
-      // T-VALORACIONES PR4 · seed migración planes pensiones + inversiones
-      // desde campos legacy (`valorActual`, `valor_actual`) al store nuevo
-      // `valoracionesActivos`. Idempotente vía keyval. Inmuebles seedeados
-      // en PR5, depósitos/otros en PR6.
+      // T-VALORACIONES PR4 · seed migración de planes pensiones (store
+      // `planesPensiones`) + posiciones del store `inversiones` (que
+      // incluye los 11 TipoPosicion: acciones, ETFs, fondos, crypto,
+      // depósitos, plan_pensiones legacy, otro, etc.) al store nuevo
+      // `valoracionesActivos` desde campos legacy (`valorActual`,
+      // `valor_actual`). Idempotente vía keyval. Inmuebles (store
+      // `properties`) se seedean en PR5. PR6 verificará invariantes y
+      // cubrirá tipos sin store dedicado (deposito como activo standalone).
       .then(() => runSeedV74PR4())
       .then((seedReport) => {
         if (!seedReport.skipped && (seedReport.planesSeeded > 0 || seedReport.inversionesSeeded > 0)) {
