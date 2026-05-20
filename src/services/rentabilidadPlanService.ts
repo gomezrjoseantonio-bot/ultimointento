@@ -428,12 +428,20 @@ export async function getRentabilidadPorBloque(
   if (!datos) return [];
   const { plan, aportaciones, traspasos, valoraciones } = datos;
 
-  const fechaFinPlan = plan.fechaUltimaValoracion ?? hoyIso();
-  // T-VALORACIONES PR7a' · idem `calcularRentabilidadTotal` · `plan.valorActual`
+  // T-VALORACIONES PR7a' · idem `getRentabilidadTotal` · `plan.valorActual`
   // gana sobre la última valoración del servicio (updates manuales tocan
   // el campo legacy de forma síncrona). Fallback a valoraciones · antes
   // era directamente 0 (sin fallback) · ahora preferencia ordenada.
-  const valorActualPlan = plan.valorActual ?? valoraciones.at(-1)?.valor ?? 0;
+  //
+  // CRÍTICO · `fechaFinPlan` debe alinearse con la fuente del valor para
+  // evitar calcular rentabilidad usando un valor de una fecha y un
+  // periodo de otra (review Copilot). Si caemos al fallback de
+  // valoraciones, también usamos la fecha de esa valoración.
+  const ultimaValoracion = valoraciones.at(-1);
+  const valorActualPlan = plan.valorActual ?? ultimaValoracion?.valor ?? 0;
+  const fechaFinPlan = plan.valorActual != null
+    ? (plan.fechaUltimaValoracion ?? hoyIso())
+    : (ultimaValoracion?.fecha_valoracion ?? hoyIso());
 
   // Construir delimitadores de bloque a partir de los traspasos:
   //   bloque 1 · [fechaContratacion, traspaso1.fechaEjecucion]

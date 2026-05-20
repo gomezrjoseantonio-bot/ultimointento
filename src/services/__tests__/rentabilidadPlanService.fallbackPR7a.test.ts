@@ -43,10 +43,12 @@ async function seedPlanSinValorActual() {
   });
 
   // Valoración SOLO en el store nuevo (sin tocar `plan.valorActual`).
+  // Fecha normalizada YYYY-MM-01 · canónico para granularidad mensual del
+  // store (consistente con `guardarValoracionActivo` · review Copilot).
   await (db as any).add('valoracionesActivos', {
     activoId: PLAN_ID,
     tipoActivo: 'plan_pensiones',
-    fecha: '2024-12-31',
+    fecha: '2024-12-01',
     valor: 13_500,
     origen: 'manual',
     divisaOriginal: 'EUR',
