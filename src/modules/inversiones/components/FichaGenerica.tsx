@@ -3,7 +3,7 @@
 //
 // Renderiza los KPIs canónicos + tabla de aportaciones + botones acción.
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../helpers';
 import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import FichaShell from './FichaShell';
+import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import styles from '../pages/FichaPosicion.module.css';
 
 interface Props {
@@ -61,6 +62,8 @@ const FichaGenerica: React.FC<Props> = ({
   const rentVariant: 'pos' | 'neg' | undefined =
     rentEur > 0 ? 'pos' : rentEur < 0 ? 'neg' : undefined;
 
+  const [showImportWizard, setShowImportWizard] = useState(false);
+
   return (
     <FichaShell
       hero={{
@@ -94,6 +97,12 @@ const FichaGenerica: React.FC<Props> = ({
           variant: 'ghost',
           icon: <Icons.Refresh size={14} strokeWidth={1.8} />,
           onClick: onActualizarValor,
+        },
+        {
+          label: 'Importar histórico',
+          variant: 'ghost',
+          icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+          onClick: () => setShowImportWizard(true),
         },
         {
           label: 'Aportar',
@@ -143,6 +152,23 @@ const FichaGenerica: React.FC<Props> = ({
           </div>
         )}
       </div>
+      {showImportWizard && (
+        <ImportValoracionesWizard
+          activoId={String(posicion.id)}
+          tipoActivo="inversion"
+          activoNombre={posicion.nombre}
+          onClose={() => setShowImportWizard(false)}
+          onSuccess={() => {
+            setShowImportWizard(false);
+            // El padre debería refrescar al cerrar el modal · esta ficha
+            // expone `onActualizarValor` que recarga datos · usarlo aquí
+            // sería incorrecto (abre otro modal). El refresh lo gestiona
+            // el caller cuando le pasa `key={posicion.updated_at}` o
+            // similar. Por ahora · sin acción · Jose verá los nuevos
+            // datos al navegar fuera y volver.
+          }}
+        />
+      )}
     </FichaShell>
   );
 };

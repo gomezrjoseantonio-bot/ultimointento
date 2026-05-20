@@ -2,7 +2,7 @@
 // § 4.3 spec · 4 KPIs · sparkline precio + markers cobro · tablas
 // dividendos y operaciones · botones acción.
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
 import {
@@ -17,6 +17,7 @@ import {
 import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import FichaShell from './FichaShell';
 import SparklineGigante from './SparklineGigante';
+import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import styles from '../pages/FichaPosicion.module.css';
 
 interface Props {
@@ -119,6 +120,8 @@ const FichaDividendos: React.FC<Props> = ({
   const logoCfg = getEntidadLogoConfig(posicion.entidad);
   const heroBadge = `${getTipoLabel(posicion.tipo)} · liquidez disponible · dividendos periódicos`;
 
+  const [showImportWizard, setShowImportWizard] = useState(false);
+
   return (
     <FichaShell
       hero={{
@@ -177,6 +180,12 @@ const FichaDividendos: React.FC<Props> = ({
           variant: 'ghost',
           icon: <Icons.ArrowUpRight size={14} strokeWidth={1.8} />,
           onClick: onComprarVender,
+        },
+        {
+          label: 'Importar histórico',
+          variant: 'ghost',
+          icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+          onClick: () => setShowImportWizard(true),
         },
         {
           label: 'Actualizar valor',
@@ -316,6 +325,15 @@ const FichaDividendos: React.FC<Props> = ({
           )}
         </div>
       </div>
+      {showImportWizard && (
+        <ImportValoracionesWizard
+          activoId={String(posicion.id)}
+          tipoActivo="inversion"
+          activoNombre={posicion.nombre}
+          onClose={() => setShowImportWizard(false)}
+          onSuccess={() => setShowImportWizard(false)}
+        />
+      )}
     </FichaShell>
   );
 };

@@ -27,6 +27,7 @@ import {
   type DeleteInmuebleCascadeReport,
 } from '../../../services/inmuebleDeleteService';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import styles from './DetallePage.module.css';
 
 
@@ -56,6 +57,8 @@ const DetallePage: React.FC = () => {
   const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
   const [pendingDelete, setPendingDelete] = useState<DeleteInmuebleCascadeReport | null>(null);
   const [isDeletingInmueble, setIsDeletingInmueble] = useState(false);
+  // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
+  const [showImportWizard, setShowImportWizard] = useState(false);
 
   useEffect(() => {
     void listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId }).then(setGastos);
@@ -178,6 +181,14 @@ const DetallePage: React.FC = () => {
           </div>
           </div>
           <div className={styles.heroActions}>
+            <button
+              type="button"
+              className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
+              onClick={() => setShowImportWizard(true)}
+            >
+              <Icons.Upload size={14} strokeWidth={1.8} />
+              Importar histórico
+            </button>
             <button
               type="button"
               className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
@@ -486,6 +497,19 @@ const DetallePage: React.FC = () => {
         variant="danger"
         isLoading={isDeletingInmueble}
       />
+
+      {showImportWizard && property.id != null && (
+        <ImportValoracionesWizard
+          activoId={String(property.id)}
+          tipoActivo="inmueble"
+          activoNombre={property.alias || property.address || `Inmueble ${property.id}`}
+          onClose={() => setShowImportWizard(false)}
+          onSuccess={() => {
+            setShowImportWizard(false);
+            reload();
+          }}
+        />
+      )}
     </>
   );
 };
