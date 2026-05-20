@@ -241,11 +241,11 @@ export const inversionesService = {
       }
     }
 
-    // Delete related historical valuations
-    const allValoraciones: any[] = await db.getAll('valoraciones_historicas');
+    // Delete related historical valuations (T-VALORACIONES PR2: store renamed v74)
+    const allValoraciones: any[] = await (db as any).getAll('valoracionesActivos');
     for (const v of allValoraciones) {
-      if (v.tipo_activo === 'inversion' && v.activo_id === id) {
-        await db.delete('valoraciones_historicas', v.id);
+      if (v.tipoActivo === 'inversion' && String(v.activoId) === String(id)) {
+        await (db as any).delete('valoracionesActivos', v.id);
       }
     }
 

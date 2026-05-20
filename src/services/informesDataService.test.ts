@@ -153,7 +153,7 @@ beforeEach(() => {
   mockedInitDB.mockResolvedValue({
     getAll: jest.fn(async (store: string) => {
       if (store === 'properties') return [];
-      if (store === 'valoraciones_historicas') return [];
+      if (store === 'valoracionesActivos') return [];
       if (store === 'contracts') return [];
       return [];
     }),
@@ -182,7 +182,7 @@ describe('informesDataService', () => {
             },
           }];
         }
-        if (store === 'valoraciones_historicas') return [];
+        if (store === 'valoracionesActivos') return [];
         if (store === 'contracts') return [];
         return [];
       }),

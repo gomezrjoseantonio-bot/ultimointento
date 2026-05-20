@@ -66,14 +66,14 @@ describe('traspasosPlanPensionesService · registrarTraspaso · side-effects', (
     expect(plan.valorActual).toBe(56000);
     expect(plan.fechaUltimaValoracion).toBe('2021-03-22');
 
-    // 2. Valoración histórica creada
-    const valoraciones = (await (db as any).getAll('valoraciones_historicas')) as any[];
+    // 2. Valoración histórica creada (T-VALORACIONES PR2: store renombrado v74)
+    const valoraciones = (await (db as any).getAll('valoracionesActivos')) as any[];
     const v = valoraciones.find(
-      (x) => x.tipo_activo === 'plan_pensiones' && String(x.activo_id) === planId,
+      (x) => x.tipoActivo === 'plan_pensiones' && String(x.activoId) === planId,
     );
     expect(v).toBeDefined();
     expect(v.valor).toBe(56000);
-    expect(v.fecha_valoracion).toBe('2021-03'); // YYYY-MM (composite index format)
+    expect(v.fecha).toBe('2021-03-01'); // YYYY-MM-DD (granularidad v74)
 
     // 3. Traspaso en store
     const traspasos = (await (db as any).getAll('traspasosPlanPensiones')) as any[];

@@ -157,11 +157,11 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
 };
 
 const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] }> = [
-  { match: (href) => href === '/panel', stores: ['accounts', 'treasuryEvents', 'movements', 'properties', 'contracts', 'valoraciones_historicas'] },
+  { match: (href) => href === '/panel', stores: ['accounts', 'treasuryEvents', 'movements', 'properties', 'contracts', 'valoracionesActivos'] },
   { match: (href) => href.startsWith('/inbox'), stores: ['documents'] },
   { match: (href) => href === '/archivo' || href.startsWith('/archivo/'), stores: ['documents', 'properties'] },
   { match: (href) => href.startsWith('/tesoreria'), stores: ['accounts', 'treasuryEvents', 'movements', 'contracts', 'properties'] },
-  { match: (href) => href.startsWith('/inmuebles/cartera'), stores: ['properties', 'contracts', 'valoraciones_historicas'] },
+  { match: (href) => href.startsWith('/inmuebles/cartera'), stores: ['properties', 'contracts', 'valoracionesActivos'] },
   // `/inmuebles/{supervision,resumen,individual}` redirigen a `/inmuebles` ·
   // precalentamos los mismos stores para que el redirect no cueste warm-up.
   {
@@ -171,7 +171,7 @@ const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] 
       href.startsWith('/inmuebles/supervision') ||
       href.startsWith('/inmuebles/resumen') ||
       href.startsWith('/inmuebles/individual'),
-    stores: ['properties', 'contracts', 'valoraciones_historicas', 'prestamos', 'expenses', 'compromisosRecurrentes'],
+    stores: ['properties', 'contracts', 'valoracionesActivos', 'prestamos', 'expenses', 'compromisosRecurrentes'],
   },
   { match: (href) => href.startsWith('/contratos'), stores: ['contracts', 'properties'] },
   { match: (href) => href.startsWith('/inversiones'), stores: ['inversiones', 'accounts', 'movements'] },

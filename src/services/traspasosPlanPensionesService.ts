@@ -6,7 +6,7 @@ import type {
   TraspasoPlanPensiones,
   PlanPensiones,
 } from '../types/planesPensiones';
-import type { ValoracionHistorica } from '../types/valoraciones';
+import { valoracionesService } from './valoracionesService';
 
 /**
  * Devuelve el valor del plan en el momento del traspaso aplicando el fallback
@@ -98,30 +98,18 @@ export const traspasosPlanPensionesService = {
 
         // Side-effect 3 · valoración histórica con valorTraspaso a fechaMes.
         // Idempotente: si ya existe valoración del mes, sobreescribe.
+        // T-VALORACIONES PR2 · usa valoracionesService.guardarValoracionActivo
+        // en lugar de escribir directo al store · transparente al refactor
+        // del store v74 (rename `valoraciones_historicas` → `valoracionesActivos`).
         if (valorReferencia > 0) {
           const fechaMes = data.fechaEjecucion.slice(0, 7); // YYYY-MM
-          const tx = db.transaction('valoraciones_historicas', 'readwrite');
-          const existing = (await tx.store
-            .index('tipo-activo-fecha')
-            .getAll(['plan_pensiones', plan.id as any, fechaMes])) as ValoracionHistorica[];
-          const prev = existing[0];
-          const record: ValoracionHistorica = {
+          await valoracionesService.guardarValoracionActivo(fechaMes, {
             tipo_activo: 'plan_pensiones',
             activo_id: plan.id as any,
             activo_nombre: plan.nombre,
-            fecha_valoracion: fechaMes,
             valor: valorReferencia,
-            origen: 'manual',
             notas: `Valor en traspaso ${data.gestoraOrigen} → ${data.gestoraDestino}`,
-            created_at: prev?.created_at ?? ahora,
-            updated_at: ahora,
-          };
-          if (prev?.id !== undefined) {
-            await tx.store.put({ ...record, id: prev.id });
-          } else {
-            await tx.store.add(record);
-          }
-          await tx.done;
+          });
         }
       }
     }
