@@ -4,7 +4,7 @@
 import { initDB } from './db';
 import { PosicionInversion, Aportacion } from '../types/inversiones';
 import { calcularGananciaPerdidaFIFO } from './inversionesFiscalService';
-import { deleteAllByActivo } from './valoracionesService';
+import { deleteAllByActivo, valoracionesService } from './valoracionesService';
 
 
 function isFiniteNumber(value: unknown): value is number {
@@ -39,6 +39,41 @@ function normalizePosicion(posicion: PosicionInversion): PosicionInversion {
   };
 }
 
+/**
+ * T-VALORACIONES PR7a'''' · hidrata `valor_actual` de cada posición con
+ * la última valoración del servicio nuevo (`valoracionesActivos`) si
+ * está disponible. Recalcula `rentabilidad_euros` y `rentabilidad_porcentaje`
+ * tras el cambio. Si la posición no tiene entrada en el mapa o falla la
+ * lectura · mantiene el `valor_actual` legacy intacto.
+ *
+ * Una sola lectura del mapa por llamada · independiente de N posiciones ·
+ * O(N) hidratación en memoria.
+ */
+async function hydrateValorActual(posiciones: PosicionInversion[]): Promise<PosicionInversion[]> {
+  if (posiciones.length === 0) return posiciones;
+  let mapa: Map<string, { valor: number; fecha_valoracion: string }>;
+  try {
+    mapa = await valoracionesService.getMapValoracionesMasRecientes('inversion');
+  } catch {
+    return posiciones; // fallback robusto · sin valoraciones disponibles, mantener legacy
+  }
+  return posiciones.map((p) => {
+    if (p.id == null) return p;
+    const match = mapa.get(String(p.id));
+    if (!match) return p;
+    const valor_actual = match.valor;
+    const rentabilidad_euros = valor_actual - p.total_aportado;
+    const rentabilidad_porcentaje =
+      p.total_aportado > 0 ? (rentabilidad_euros / p.total_aportado) * 100 : 0;
+    return {
+      ...p,
+      valor_actual,
+      rentabilidad_euros,
+      rentabilidad_porcentaje,
+    };
+  });
+}
+
 export const inversionesService = {
   recalculatePosition(aportaciones: Aportacion[]): Partial<PosicionInversion> {
     const total_aportado = calculateTotalAportado(aportaciones);
@@ -47,16 +82,23 @@ export const inversionesService = {
       total_aportado,
     };
   },
-  // Obtener todas las posiciones activas
+  // Obtener todas las posiciones activas.
+  // T-VALORACIONES PR7a'''' · hidrata `valor_actual` con la última valoración
+  // del servicio nuevo si está disponible · sobrescribe el campo legacy del
+  // store. Mantiene `valor_actual` legacy si el activo no tiene valoración
+  // en `valoracionesActivos`. Patrón "upstream hydration" · todos los
+  // componentes UI downstream reciben el valor correcto sin tocarlos.
   async getPosiciones(): Promise<PosicionInversion[]> {
     const db = await initDB();
     const posiciones = await db.getAll('inversiones');
-    return posiciones
+    const filtradas = posiciones
       .filter((p) => p.activo && !new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']).has((p as any).tipo))
       .map((p) => normalizePosicion(p as PosicionInversion));
+    return await hydrateValorActual(filtradas);
   },
 
-  // Obtener todas las posiciones (activas + cerradas)
+  // Obtener todas las posiciones (activas + cerradas).
+  // T-VALORACIONES PR7a'''' · hidratación upstream igual que `getPosiciones`.
   async getAllPosiciones(): Promise<{
     activas: PosicionInversion[];
     cerradas: PosicionInversion[];
@@ -66,10 +108,15 @@ export const inversionesService = {
     // plan_pensiones migrado a planesPensiones en V65 (TAREA 13)
     const TIPOS_PLAN_PENSIONES_ALL = new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']);
     const todasFiltradas = todas.filter((p: any) => !TIPOS_PLAN_PENSIONES_ALL.has(p.tipo));
-    return {
-      activas: todasFiltradas.filter((p: any) => p.activo !== false).map((p: any) => normalizePosicion(p as PosicionInversion)),
-      cerradas: todasFiltradas.filter((p: any) => p.activo === false).map((p: any) => normalizePosicion(p as PosicionInversion)),
-    };
+    const activas = todasFiltradas.filter((p: any) => p.activo !== false).map((p: any) => normalizePosicion(p as PosicionInversion));
+    const cerradas = todasFiltradas.filter((p: any) => p.activo === false).map((p: any) => normalizePosicion(p as PosicionInversion));
+    // Cerradas también se hidratan · útil para histórico (la última
+    // valoración antes del cierre suele estar en el servicio).
+    const [activasHidratadas, cerradasHidratadas] = await Promise.all([
+      hydrateValorActual(activas),
+      hydrateValorActual(cerradas),
+    ]);
+    return { activas: activasHidratadas, cerradas: cerradasHidratadas };
   },
 
   // Obtener una posición por ID
