@@ -6,6 +6,7 @@ import { prestamosService } from './prestamosService';
 import { generateProyeccionMensual } from '../modules/horizon/proyeccion/mensual/services/proyeccionMensualService';
 import { getCachedStoreRecords } from './indexedDbCacheService';
 import { valoracionesService } from './valoracionesService';
+import { mapInversionTipo } from './migrations/seedV74_PR4';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -599,9 +600,29 @@ class DashboardService {
       const saldoCuentas = toNumber(tesoreriaPanel.totales.hoy);
 
       // Inversiones: latest current valuation.
-      const inversiones = await getCachedStoreRecords<any>('inversiones');
+      // T-VALORACIONES PR7a · prefer valor del servicio nuevo `valoracionesActivos`
+      // sobre el campo legacy `inv.valor_actual`. Alinea con el patrón ya usado
+      // para inmuebles (matcher arriba). Fallback al campo legacy si el servicio
+      // no devuelve nada (DBs muy antiguas / activos recién creados).
+      //
+      // Carga inversiones + 2 mapas en paralelo · una sola lectura por colección
+      // (review Copilot · evita 3 scans secuenciales).
+      const emptyMap = new Map<string, { valor: number; fecha_valoracion: string }>();
+      const [inversiones, mapValoracionesInversion, mapValoracionesPlanes] = await Promise.all([
+        getCachedStoreRecords<any>('inversiones'),
+        valoracionesService.getMapValoracionesMasRecientes('inversion').catch(() => emptyMap),
+        valoracionesService.getMapValoracionesMasRecientes('plan_pensiones').catch(() => emptyMap),
+      ]);
       const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
-      const valorInversiones = inversionesActivas.reduce((sum: number, inv: any) => sum + toNumber(inv.valor_actual), 0);
+      const valorInversiones = inversionesActivas.reduce((sum: number, inv: any) => {
+        // Reusa `mapInversionTipo` de seedV74_PR4 como single source of truth
+        // del mapeo TipoPosicion → {tipoActivo, subtipoInversion?} · evita
+        // divergencias con otros sets hardcoded (review Copilot).
+        const mapped = mapInversionTipo(String(inv.tipo ?? ''));
+        const mapa = mapped.tipoActivo === 'plan_pensiones' ? mapValoracionesPlanes : mapValoracionesInversion;
+        const match = mapa.get(String(inv.id));
+        return sum + toNumber(match?.valor ?? inv.valor_actual);
+      }, 0);
 
       // Deuda: include active loans from prestamos store.
       const prestamos = await getCachedStoreRecords<any>('prestamos').catch(() => []);
