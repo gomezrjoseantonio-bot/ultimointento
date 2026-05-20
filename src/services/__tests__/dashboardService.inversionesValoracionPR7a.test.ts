@@ -1,5 +1,5 @@
 // src/services/__tests__/dashboardService.inversionesValoracionPR7a.test.ts
-// T-VALORACIONES PR7a · verifica que `getPatrimonio` del dashboard
+// T-VALORACIONES PR7a · verifica que `getPatrimonioNeto` del dashboard
 // prefiere valor del servicio nuevo `valoracionesActivos` sobre el
 // campo legacy `inv.valor_actual` para inversiones, alineado con el
 // comportamiento que ya tenía para inmuebles.

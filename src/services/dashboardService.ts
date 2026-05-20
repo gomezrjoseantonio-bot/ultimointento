@@ -6,6 +6,7 @@ import { prestamosService } from './prestamosService';
 import { generateProyeccionMensual } from '../modules/horizon/proyeccion/mensual/services/proyeccionMensualService';
 import { getCachedStoreRecords } from './indexedDbCacheService';
 import { valoracionesService } from './valoracionesService';
+import { mapInversionTipo } from './migrations/seedV74_PR4';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -603,20 +604,22 @@ class DashboardService {
       // sobre el campo legacy `inv.valor_actual`. Alinea con el patrón ya usado
       // para inmuebles (matcher arriba). Fallback al campo legacy si el servicio
       // no devuelve nada (DBs muy antiguas / activos recién creados).
-      const inversiones = await getCachedStoreRecords<any>('inversiones');
+      //
+      // Carga inversiones + 2 mapas en paralelo · una sola lectura por colección
+      // (review Copilot · evita 3 scans secuenciales).
+      const emptyMap = new Map<string, { valor: number; fecha_valoracion: string }>();
+      const [inversiones, mapValoracionesInversion, mapValoracionesPlanes] = await Promise.all([
+        getCachedStoreRecords<any>('inversiones'),
+        valoracionesService.getMapValoracionesMasRecientes('inversion').catch(() => emptyMap),
+        valoracionesService.getMapValoracionesMasRecientes('plan_pensiones').catch(() => emptyMap),
+      ]);
       const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
-      const mapValoracionesInversion = await valoracionesService
-        .getMapValoracionesMasRecientes('inversion')
-        .catch(() => new Map<string, { valor: number; fecha_valoracion: string }>());
-      const mapValoracionesPlanes = await valoracionesService
-        .getMapValoracionesMasRecientes('plan_pensiones')
-        .catch(() => new Map<string, { valor: number; fecha_valoracion: string }>());
       const valorInversiones = inversionesActivas.reduce((sum: number, inv: any) => {
-        // Mapeo · inversion.tipo plan_pensiones/plan_empleo se busca en
-        // el mapa de planes (alineado con seedV74_PR4).
-        const tipoCrudo = String(inv.tipo ?? '');
-        const esPlanLegacy = tipoCrudo === 'plan_pensiones' || tipoCrudo === 'plan-pensiones' || tipoCrudo === 'plan_empleo';
-        const mapa = esPlanLegacy ? mapValoracionesPlanes : mapValoracionesInversion;
+        // Reusa `mapInversionTipo` de seedV74_PR4 como single source of truth
+        // del mapeo TipoPosicion → {tipoActivo, subtipoInversion?} · evita
+        // divergencias con otros sets hardcoded (review Copilot).
+        const mapped = mapInversionTipo(String(inv.tipo ?? ''));
+        const mapa = mapped.tipoActivo === 'plan_pensiones' ? mapValoracionesPlanes : mapValoracionesInversion;
         const match = mapa.get(String(inv.id));
         return sum + toNumber(match?.valor ?? inv.valor_actual);
       }, 0);
