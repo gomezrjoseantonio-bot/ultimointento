@@ -4,6 +4,7 @@
 import { initDB } from './db';
 import { PosicionInversion, Aportacion } from '../types/inversiones';
 import { calcularGananciaPerdidaFIFO } from './inversionesFiscalService';
+import { deleteAllByActivo } from './valoracionesService';
 
 
 function isFiniteNumber(value: unknown): value is number {
@@ -241,13 +242,10 @@ export const inversionesService = {
       }
     }
 
-    // Delete related historical valuations
-    const allValoraciones: any[] = await db.getAll('valoraciones_historicas');
-    for (const v of allValoraciones) {
-      if (v.tipo_activo === 'inversion' && v.activo_id === id) {
-        await db.delete('valoraciones_historicas', v.id);
-      }
-    }
+    // Delete related historical valuations · centralizado vía helper
+    // `deleteAllByActivo` (v74 · review Copilot · evita full-scan y deja
+    // la lógica de borrado en un solo sitio).
+    await deleteAllByActivo(String(id));
 
     // Delete the position itself
     await db.delete('inversiones', id);

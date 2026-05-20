@@ -407,7 +407,7 @@ describe('dashboardService financial metrics', () => {
           currentValue: 155000
         }
       ],
-      valoraciones_historicas: [],
+      valoracionesActivos: [],
       accounts: [],
       inversiones: [],
       prestamos: []
@@ -497,7 +497,7 @@ describe('dashboardService financial metrics', () => {
   it('alinea deuda del dashboard con el capital vivo calculado en financiación', async () => {
     const datasets: Record<string, any[]> = {
       properties: [],
-      valoraciones_historicas: [],
+      valoracionesActivos: [],
       inversiones: [],
       accounts: [],
       treasuryEvents: [],
@@ -544,7 +544,7 @@ describe('dashboardService financial metrics', () => {
   it('alinea patrimonio cuentas con el saldo actual de tesorería sin descontar eventos ya reflejados', async () => {
     const datasets: Record<string, any[]> = {
       properties: [],
-      valoraciones_historicas: [],
+      valoracionesActivos: [],
       inversiones: [],
       prestamos: [],
       accounts: [
