@@ -599,9 +599,27 @@ class DashboardService {
       const saldoCuentas = toNumber(tesoreriaPanel.totales.hoy);
 
       // Inversiones: latest current valuation.
+      // T-VALORACIONES PR7a · prefer valor del servicio nuevo `valoracionesActivos`
+      // sobre el campo legacy `inv.valor_actual`. Alinea con el patrón ya usado
+      // para inmuebles (matcher arriba). Fallback al campo legacy si el servicio
+      // no devuelve nada (DBs muy antiguas / activos recién creados).
       const inversiones = await getCachedStoreRecords<any>('inversiones');
       const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
-      const valorInversiones = inversionesActivas.reduce((sum: number, inv: any) => sum + toNumber(inv.valor_actual), 0);
+      const mapValoracionesInversion = await valoracionesService
+        .getMapValoracionesMasRecientes('inversion')
+        .catch(() => new Map<string, { valor: number; fecha_valoracion: string }>());
+      const mapValoracionesPlanes = await valoracionesService
+        .getMapValoracionesMasRecientes('plan_pensiones')
+        .catch(() => new Map<string, { valor: number; fecha_valoracion: string }>());
+      const valorInversiones = inversionesActivas.reduce((sum: number, inv: any) => {
+        // Mapeo · inversion.tipo plan_pensiones/plan_empleo se busca en
+        // el mapa de planes (alineado con seedV74_PR4).
+        const tipoCrudo = String(inv.tipo ?? '');
+        const esPlanLegacy = tipoCrudo === 'plan_pensiones' || tipoCrudo === 'plan-pensiones' || tipoCrudo === 'plan_empleo';
+        const mapa = esPlanLegacy ? mapValoracionesPlanes : mapValoracionesInversion;
+        const match = mapa.get(String(inv.id));
+        return sum + toNumber(match?.valor ?? inv.valor_actual);
+      }, 0);
 
       // Deuda: include active loans from prestamos store.
       const prestamos = await getCachedStoreRecords<any>('prestamos').catch(() => []);
