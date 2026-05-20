@@ -86,6 +86,30 @@ describe('valoracionesService v2 · API nueva (top-level exports)', () => {
     expect(v!.notas).toBe('corregido');
   });
 
+  it('update · revalida invariantes post-merge · fecha YYYY-MM rechazada', async () => {
+    const m = await import('../valoracionesService');
+    const id = await m.create({
+      activoId: 'a1',
+      tipoActivo: 'inversion',
+      fecha: '2024-06-15',
+      valor: 100,
+      origen: 'manual',
+    });
+    await expect(m.update(id, { fecha: '2024-06' })).rejects.toThrow(/YYYY-MM-DD/);
+  });
+
+  it('update · revalida invariantes post-merge · valor no finito rechazado', async () => {
+    const m = await import('../valoracionesService');
+    const id = await m.create({
+      activoId: 'a1',
+      tipoActivo: 'inversion',
+      fecha: '2024-06-15',
+      valor: 100,
+      origen: 'manual',
+    });
+    await expect(m.update(id, { valor: NaN as any })).rejects.toThrow(/valor/);
+  });
+
   it('softDelete + getById devuelve null · restore reactiva', async () => {
     const m = await import('../valoracionesService');
     const id = await m.create({
@@ -186,6 +210,42 @@ describe('valoracionesService v2 · API nueva (top-level exports)', () => {
     expect(await m.getValorAFecha('a1', '2024-08-15')).toBe(300); // anterior
     expect(await m.getValorAFecha('a1', '2024-01-01')).toBe(100);
     expect(await m.getValorAFecha('a1', '2023-01-01')).toBeNull(); // antes de la 1ª
+  });
+
+  it('upsertByDate · soft-deletea TODAS las activas misma fecha (defense in depth)', async () => {
+    const m = await import('../valoracionesService');
+    // Crear 2 valoraciones activas misma (activoId, fecha) saltándose el upsert
+    // para simular datos inconsistentes legacy.
+    const { initDB } = await import('../db');
+    const db = await initDB();
+    const now = new Date().toISOString();
+    for (let i = 0; i < 2; i++) {
+      await (db as any).add('valoracionesActivos', {
+        activoId: 'a-dup',
+        tipoActivo: 'inversion',
+        fecha: '2024-06-01',
+        valor: i + 1,
+        divisaOriginal: 'EUR',
+        origen: 'manual',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      });
+    }
+    await m.upsertByDate({
+      activoId: 'a-dup',
+      tipoActivo: 'inversion',
+      fecha: '2024-06-01',
+      valor: 999,
+      origen: 'manual',
+    });
+    const serie = await m.getSerie('a-dup');
+    expect(serie).toHaveLength(1);
+    expect(serie[0].valor).toBe(999);
+    const todas = await m.getSerie('a-dup', { incluyeBorradas: true });
+    expect(todas).toHaveLength(3); // 2 duplicadas soft-deleted + 1 nueva
+    const borradas = todas.filter((v) => v.deletedAt);
+    expect(borradas).toHaveLength(2);
   });
 
   it('upsertByDate · soft-deletea la anterior y crea nueva', async () => {
@@ -396,6 +456,41 @@ describe('valoracionesService v2 · adapters legacy (firma intacta)', () => {
     expect(updated.valor).toBe(999);
     expect(updated.fecha_valoracion).toBe('2024-07');
     expect(updated.notas).toBe('edit');
+  });
+
+  it('getAllValoraciones · excluye tipos no-legacy (deposito/otro)', async () => {
+    const m = await import('../valoracionesService');
+    await m.create({ activoId: 'a1', tipoActivo: 'inversion', fecha: '2024-01-01', valor: 100, origen: 'manual' });
+    await m.create({ activoId: 'd1', tipoActivo: 'deposito', fecha: '2024-01-01', valor: 5000, origen: 'manual' });
+    await m.create({ activoId: 'o1', tipoActivo: 'otro', fecha: '2024-01-01', valor: 999, origen: 'manual' });
+    const { valoracionesService } = await import('../valoracionesService');
+    const all = await valoracionesService.getAllValoraciones();
+    expect(all).toHaveLength(1);
+    expect(all[0].tipo_activo).toBe('inversion');
+  });
+
+  it('listarValoraciones sin filtro · excluye tipos no-legacy', async () => {
+    const m = await import('../valoracionesService');
+    await m.create({ activoId: 'a1', tipoActivo: 'inmueble', fecha: '2024-01-01', valor: 100, origen: 'manual' });
+    await m.create({ activoId: 'd1', tipoActivo: 'deposito', fecha: '2024-01-01', valor: 5000, origen: 'manual' });
+    const { valoracionesService } = await import('../valoracionesService');
+    const all = await valoracionesService.listarValoraciones();
+    expect(all).toHaveLength(1);
+    expect(all[0].tipo_activo).toBe('inmueble');
+  });
+
+  it('getMapValoracionesMasRecientes · ordena por fecha completa (no solo mes)', async () => {
+    const m = await import('../valoracionesService');
+    // Dos valoraciones del mismo activo en el mismo mes · debe ganar la del día más alto
+    await m.create({ activoId: 'a1', tipoActivo: 'inversion', fecha: '2024-06-05', valor: 100, origen: 'manual' });
+    await m.create({ activoId: 'a1', tipoActivo: 'inversion', fecha: '2024-06-28', valor: 999, origen: 'manual' });
+    await m.create({ activoId: 'a1', tipoActivo: 'inversion', fecha: '2024-06-15', valor: 500, origen: 'manual' });
+    const { valoracionesService } = await import('../valoracionesService');
+    const map = await valoracionesService.getMapValoracionesMasRecientes('inversion');
+    const entry = map.get('a1');
+    expect(entry).toBeDefined();
+    expect(entry!.valor).toBe(999); // determinístico · día 28
+    expect(entry!.fecha_valoracion).toBe('2024-06');
   });
 
   it('eliminarValoracion · hard-delete (legacy)', async () => {

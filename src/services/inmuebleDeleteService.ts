@@ -103,16 +103,17 @@ export const previewDeleteInmuebleCascade = async (
     'propertyDays',
     (p) => p.propertyId === inmuebleId,
   );
+  // Cuenta TODAS las valoraciones del inmueble · incluidas las
+  // soft-deleted · para alinear con `deleteInmuebleWithCascade` que
+  // hace hard-delete sin filtrar `deletedAt` (review Copilot).
   report.valoracionesHistoricasDeleted = await countWhere<{
     tipoActivo?: string;
     activoId?: string;
-    deletedAt?: string | null;
   }>(
     'valoracionesActivos',
     (v) =>
       v.tipoActivo === 'inmueble' &&
-      String(v.activoId) === idStr &&
-      !v.deletedAt,
+      String(v.activoId) === idStr,
   );
   report.vinculosAccesorioDeleted = await countWhere<{
     inmueblePrincipalId?: number;

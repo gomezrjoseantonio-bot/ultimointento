@@ -63,16 +63,28 @@ function mapOrigenLegacyToNew(
 }
 
 /**
+ * `true` si el `tipoActivo` v74 tiene equivalente en el shape legacy
+ * (`'inmueble' | 'inversion' | 'plan_pensiones'`). Los tipos nuevos
+ * `'deposito'` y `'otro'` se excluyen de toda salida legacy para evitar
+ * que se reetiqueten silenciosamente como otro tipo (review Copilot
+ * sobre `toLegacyShape`).
+ */
+function isLegacyTipo(t: TipoActivoValoracion): t is TipoLegacy {
+  return t === 'inmueble' || t === 'inversion' || t === 'plan_pensiones';
+}
+
+/**
  * Convierte un registro nuevo `ValoracionActivo` al shape legacy
  * `ValoracionHistorica` para los callers que aún no han migrado.
- * El campo `activo_nombre` queda vacío si no se hidrata aparte.
+ * Solo seguro para registros con `tipoActivo` legacy · usar tras
+ * filtrar con `isLegacyTipo`. `activo_nombre` queda vacío si no se
+ * hidrata aparte.
  */
 function toLegacyShape(v: ValoracionActivo): ValoracionHistorica {
   return {
     id: v.id,
-    tipo_activo: v.tipoActivo === 'inmueble' || v.tipoActivo === 'inversion' || v.tipoActivo === 'plan_pensiones'
-      ? v.tipoActivo
-      : 'inversion', // fallback · 'deposito'|'otro' no existen en legacy
+    // `as TipoLegacy` seguro · el caller debe filtrar con `isLegacyTipo`.
+    tipo_activo: v.tipoActivo as TipoLegacy,
     activo_id: v.activoId as unknown as number, // legacy lo tipa number pero acepta string en runtime
     activo_nombre: (v as any).activoNombre ?? '',
     fecha_valoracion: fechaToMonth(v.fecha),
@@ -206,9 +218,22 @@ export async function update(
   const { activoId: _a, tipoActivo: _t, ...mutable } = patch;
   void _a;
   void _t;
+
+  // Revalidar invariantes del schema v2 sobre el objeto resultante.
+  // Patch parcial puede dejar la valoración inválida (fecha mal formada,
+  // subtipoInversion en tipoActivo no-inversion, valor no finito).
+  const merged = { ...existing, ...mutable };
+  validateValoracionInput({
+    activoId: merged.activoId,
+    tipoActivo: merged.tipoActivo,
+    subtipoInversion: merged.subtipoInversion,
+    fecha: merged.fecha,
+    valor: merged.valor,
+    origen: merged.origen,
+  });
+
   await (db as any).put(STORE, {
-    ...existing,
-    ...mutable,
+    ...merged,
     updatedAt: new Date().toISOString(),
   });
 }
@@ -242,24 +267,39 @@ export async function getById(id: number): Promise<ValoracionActivo | null> {
   return v;
 }
 
-/** Serie completa de un activo, ordenada asc por fecha. */
+/** Serie completa de un activo, ordenada asc por fecha.
+ *  Usa el índice `idx_activo_fecha` (v74) para evitar full-scan ·
+ *  IndexedDB devuelve el rango ordenado por [activoId, fecha] ASC. */
 export async function getSerie(
   activoId: string,
   options?: { desde?: string; hasta?: string; incluyeBorradas?: boolean },
 ): Promise<ValoracionActivo[]> {
   const db = await initDB();
-  const all = (await (db as any).getAll(STORE)) as ValoracionActivo[];
   const desde = options?.desde ?? '0000-01-01';
   const hasta = options?.hasta ?? '9999-12-31';
-  return all
-    .filter(
-      (v) =>
-        String(v.activoId) === activoId &&
-        (options?.incluyeBorradas || !v.deletedAt) &&
-        v.fecha >= desde &&
-        v.fecha <= hasta,
-    )
-    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const range = IDBKeyRange.bound([activoId, desde], [activoId, hasta]);
+  try {
+    const fromIdx = (await (db as any).getAllFromIndex(
+      STORE,
+      'idx_activo_fecha',
+      range,
+    )) as ValoracionActivo[];
+    return fromIdx
+      .filter((v) => options?.incluyeBorradas || !v.deletedAt)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  } catch {
+    // Fallback robusto · DB sin el índice (no debería ocurrir en v74+).
+    const all = (await (db as any).getAll(STORE)) as ValoracionActivo[];
+    return all
+      .filter(
+        (v) =>
+          String(v.activoId) === activoId &&
+          (options?.incluyeBorradas || !v.deletedAt) &&
+          v.fecha >= desde &&
+          v.fecha <= hasta,
+      )
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
 }
 
 /** Último valor del activo (la valoración no borrada más reciente). */
@@ -278,18 +318,22 @@ export async function getValorAFecha(
 }
 
 /**
- * Upsert por fecha · si ya existe valoración del activo en esa misma fecha,
- * se hace soft-delete con nota y se inserta la nueva.
+ * Upsert por fecha · si ya existen valoraciones activas del activo en esa
+ * misma fecha, se soft-deletean TODAS con nota y se inserta la nueva.
+ *
+ * Defense in depth · datos legacy o bugs anteriores pueden haber dejado
+ * múltiples valoraciones activas para (activoId, fecha) · este método
+ * garantiza unicidad post-llamada.
  */
 export async function upsertByDate(input: ValoracionInputV2): Promise<number> {
   validateValoracionInput(input);
   const db = await initDB();
   const all = (await (db as any).getAll(STORE)) as ValoracionActivo[];
-  const activa = all.find(
+  const activas = all.filter(
     (v) => String(v.activoId) === input.activoId && v.fecha === input.fecha && !v.deletedAt,
   );
   const now = new Date().toISOString();
-  if (activa) {
+  for (const activa of activas) {
     await (db as any).put(STORE, {
       ...activa,
       deletedAt: now,
@@ -413,34 +457,44 @@ export async function deleteAllByActivo(activoId: string): Promise<number> {
 // ── API legacy (objeto `valoracionesService`) ──────────────────────────────
 
 export const valoracionesService = {
-  /** Inmuebles activos con su última valoración (shape legacy). */
+  /** Inmuebles activos con su última valoración (shape legacy).
+   *  Precomputa el mapa de últimas valoraciones en 1 sola lectura
+   *  (en lugar de N llamadas a `getUltimaValoracion` que hacían
+   *  `getAll` + sort + hydrate por cada inmueble · review Copilot). */
   async getInmueblesParaActualizar(): Promise<ActivoParaActualizar[]> {
     const db = await initDB();
-    const properties = (await (db as any).getAll('properties')) as any[];
-    const activos = properties.filter((p) => p.state === 'activo');
-    const result: ActivoParaActualizar[] = [];
-    for (const prop of activos) {
-      const ultima = await this.getUltimaValoracion('inmueble', prop.id as number);
-      result.push({
+    const [properties, ultimasMap] = await Promise.all([
+      (db as any).getAll('properties') as Promise<any[]>,
+      this.getMapValoracionesMasRecientes('inmueble'),
+    ]);
+    const activos = properties.filter((p: any) => p.state === 'activo');
+    return activos.map((prop: any) => {
+      const ultima = ultimasMap.get(String(prop.id));
+      return {
         id: prop.id as number,
         nombre: prop.alias || prop.address,
-        tipo: 'inmueble',
+        tipo: 'inmueble' as const,
         ultima_valoracion: ultima?.valor ?? resolveCurrentPropertyValue(prop),
         fecha_ultima_valoracion: ultima?.fecha_valoracion,
-      });
-    }
-    return result;
+      };
+    });
   },
 
-  /** Inversiones activas + planes de pensiones con su última valoración (legacy). */
+  /** Inversiones activas + planes de pensiones con su última valoración (legacy).
+   *  Precomputa los 2 mapas de últimas valoraciones (inversion +
+   *  plan_pensiones) en 2 lecturas en lugar de N+M llamadas a
+   *  `getUltimaValoracion` · review Copilot. */
   async getInversionesParaActualizar(): Promise<ActivoParaActualizar[]> {
     const db = await initDB();
     const result: ActivoParaActualizar[] = [];
 
-    const inversiones = (await (db as any).getAll('inversiones')) as any[];
-    const activas = inversiones.filter((i) => i.activo);
+    const [inversiones, mapInv] = await Promise.all([
+      (db as any).getAll('inversiones') as Promise<any[]>,
+      this.getMapValoracionesMasRecientes('inversion'),
+    ]);
+    const activas = inversiones.filter((i: any) => i.activo);
     for (const inv of activas) {
-      const ultima = await this.getUltimaValoracion('inversion', inv.id as number);
+      const ultima = mapInv.get(String(inv.id));
       result.push({
         id: inv.id as number,
         nombre: inv.nombre,
@@ -451,13 +505,13 @@ export const valoracionesService = {
     }
 
     try {
-      const planes = (await (db as any).getAll('planesPensiones')) as any[];
+      const [planes, mapPlanes] = await Promise.all([
+        (db as any).getAll('planesPensiones') as Promise<any[]>,
+        this.getMapValoracionesMasRecientes('plan_pensiones'),
+      ]);
       for (const plan of planes) {
         if (plan.estado === 'rescatado_total') continue;
-        const ultima = await this.getUltimaValoracion(
-          'plan_pensiones',
-          plan.id as any,
-        );
+        const ultima = mapPlanes.get(String(plan.id));
         result.push({
           id: plan.id as any,
           nombre: plan.nombre + (plan.gestoraActual ? ` (${plan.gestoraActual})` : ''),
@@ -498,32 +552,39 @@ export const valoracionesService = {
     return legacy;
   },
 
-  /** Todas las valoraciones del store (legacy shape · excluye borradas). */
+  /** Todas las valoraciones del store (legacy shape · excluye borradas y tipos no-legacy). */
   async getAllValoraciones(): Promise<ValoracionHistorica[]> {
     const db = await initDB();
     const all = await readAllActive(db);
-    const legacy = all.map(toLegacyShape);
+    const legacy = all.filter((v) => isLegacyTipo(v.tipoActivo)).map(toLegacyShape);
     await hydrateActivoNombres(legacy, db);
     return legacy;
   },
 
-  /** Mapa activoId(string) → última valoración (valor + fecha_valoracion). */
+  /** Mapa activoId(string) → última valoración (valor + fecha_valoracion).
+   *  Comparación interna por `v.fecha` (YYYY-MM-DD) para determinismo con
+   *  granularidad v74 (múltiples valoraciones del mismo mes) · review
+   *  Copilot. La fecha se trunca a YYYY-MM solo al exponer. */
   async getMapValoracionesMasRecientes(
     tipo: TipoLegacy,
   ): Promise<Map<string, { valor: number; fecha_valoracion: string }>> {
     const db = await initDB();
     const all = await readAllActive(db);
-    const map = new Map<string, { valor: number; fecha_valoracion: string }>();
+    type Internal = { valor: number; fecha: string };
+    const internal = new Map<string, Internal>();
     for (const v of all) {
       if (v.tipoActivo !== tipo) continue;
       const key = String(v.activoId);
-      const fechaMes = fechaToMonth(v.fecha);
-      const existing = map.get(key);
-      if (!existing || fechaMes > existing.fecha_valoracion) {
-        map.set(key, { valor: v.valor, fecha_valoracion: fechaMes });
+      const existing = internal.get(key);
+      if (!existing || v.fecha > existing.fecha) {
+        internal.set(key, { valor: v.valor, fecha: v.fecha });
       }
     }
-    return map;
+    const out = new Map<string, { valor: number; fecha_valoracion: string }>();
+    for (const [k, { valor, fecha }] of internal) {
+      out.set(k, { valor, fecha_valoracion: fechaToMonth(fecha) });
+    }
+    return out;
   },
 
   /** Matcher robusto que cae back a matching por nombre normalizado (legacy). */
@@ -550,29 +611,43 @@ export const valoracionesService = {
     };
 
     type RawMatch = { valor: number; fecha_valoracion: string; activo_nombre: string };
-    const byId = new Map<string, RawMatch>();
-    const byNombre = new Map<string, RawMatch>();
+    // Internamente comparamos por `fecha` completa (YYYY-MM-DD) para
+    // determinismo · solo truncamos a YYYY-MM al exponer (review Copilot).
+    type Internal = RawMatch & { fechaFull: string };
+    const byIdInt = new Map<string, Internal>();
+    const byNombreInt = new Map<string, Internal>();
 
     for (const v of filtered) {
-      const fechaMes = fechaToMonth(v.fecha);
       const nombre = resolveNombre(v);
-      const candidato: RawMatch = {
+      const candidato: Internal = {
         valor: v.valor,
-        fecha_valoracion: fechaMes,
+        fecha_valoracion: fechaToMonth(v.fecha),
+        fechaFull: v.fecha,
         activo_nombre: nombre,
       };
       const keyId = String(v.activoId);
-      const existingId = byId.get(keyId);
-      if (!existingId || candidato.fecha_valoracion > existingId.fecha_valoracion) {
-        byId.set(keyId, candidato);
+      const existingId = byIdInt.get(keyId);
+      if (!existingId || candidato.fechaFull > existingId.fechaFull) {
+        byIdInt.set(keyId, candidato);
       }
       const keyNombre = nombre.toLowerCase().trim();
       if (keyNombre) {
-        const existingNombre = byNombre.get(keyNombre);
-        if (!existingNombre || candidato.fecha_valoracion > existingNombre.fecha_valoracion) {
-          byNombre.set(keyNombre, candidato);
+        const existingNombre = byNombreInt.get(keyNombre);
+        if (!existingNombre || candidato.fechaFull > existingNombre.fechaFull) {
+          byNombreInt.set(keyNombre, candidato);
         }
       }
+    }
+
+    const byId = new Map<string, RawMatch>();
+    const byNombre = new Map<string, RawMatch>();
+    for (const [k, { fechaFull: _ff, ...rest }] of byIdInt) {
+      void _ff;
+      byId.set(k, rest);
+    }
+    for (const [k, { fechaFull: _ff, ...rest }] of byNombreInt) {
+      void _ff;
+      byNombre.set(k, rest);
     }
 
     return {
@@ -961,6 +1036,8 @@ export const valoracionesService = {
     const db = await initDB();
     const all = await readAllActive(db);
     const filtered = all.filter((v) => {
+      // Excluir tipos no-legacy ('deposito'|'otro') del output legacy.
+      if (!isLegacyTipo(v.tipoActivo)) return false;
       if (filtro?.tipo_activo && v.tipoActivo !== filtro.tipo_activo) return false;
       if (filtro?.activo_id !== undefined && String(v.activoId) !== String(filtro.activo_id)) {
         return false;
