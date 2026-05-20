@@ -23,6 +23,7 @@ import { runV68TipoFamiliaMigration } from './services/migrations/v68-tipoFamili
 import { runV70NominaHistorialMigration } from './services/migrations/v70-nomina-historial';
 import { runSeedV74PR4 } from './services/migrations/seedV74_PR4';
 import { runSeedV74PR5 } from './services/migrations/seedV74_PR5';
+import { runAuditV74PR6 } from './services/migrations/auditV74_PR6';
 import { cleanupCategoriasT34T35Fix2 } from './services/migrations/cleanupCategoriasT34T35fix2';
 import { fixAportacionesPlanCruceB6 } from './services/migrations/fixAportacionesPlanCruceB6';
 import { fixDeclaracionCompletaCruceB6 } from './services/migrations/fixDeclaracionCompletaCruceB6';
@@ -395,6 +396,14 @@ function App() {
         if (!seedReport.skipped && seedReport.inmueblesSeeded > 0) {
           console.log('[ATLAS] Seed v74-PR5 valoraciones inmuebles:', seedReport);
         }
+      })
+      // T-VALORACIONES PR6 · auditoría de cobertura post-seeds. NO modifica
+      // datos · solo loguea cobertura % y activos sin valoración. Útil como
+      // health check vivo · si Jose añade un activo manualmente sin
+      // valoración inicial, el siguiente arranque lo flagueará con warning.
+      .then(() => runAuditV74PR6())
+      .catch((err) => {
+        console.warn('[ATLAS] Audit v74-PR6 falló (no bloqueante)', err);
       })
       // T34/T35-fix-2 · cleanup one-shot · categoría aplastada a 'otros.*'
       // en los 2 patrones documentados (dia_a_dia.otros + seguros_cuotas.seguro_otros).
