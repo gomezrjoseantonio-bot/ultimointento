@@ -21,6 +21,7 @@ import { cleanupConfigFiscalKeyval } from './services/migrations/cleanupConfigFi
 import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
 import { runV68TipoFamiliaMigration } from './services/migrations/v68-tipoFamilia';
 import { runV70NominaHistorialMigration } from './services/migrations/v70-nomina-historial';
+import { runSeedV74PR4 } from './services/migrations/seedV74_PR4';
 import { cleanupCategoriasT34T35Fix2 } from './services/migrations/cleanupCategoriasT34T35fix2';
 import { fixAportacionesPlanCruceB6 } from './services/migrations/fixAportacionesPlanCruceB6';
 import { fixDeclaracionCompletaCruceB6 } from './services/migrations/fixDeclaracionCompletaCruceB6';
@@ -367,6 +368,16 @@ function App() {
       .then((v70Report) => {
         if (!v70Report.skipped && v70Report.migrados > 0) {
           console.log('[ATLAS] Migración V70 nómina historial:', v70Report);
+        }
+      })
+      // T-VALORACIONES PR4 · seed migración planes pensiones + inversiones
+      // desde campos legacy (`valorActual`, `valor_actual`) al store nuevo
+      // `valoracionesActivos`. Idempotente vía keyval. Inmuebles seedeados
+      // en PR5, depósitos/otros en PR6.
+      .then(() => runSeedV74PR4())
+      .then((seedReport) => {
+        if (!seedReport.skipped && (seedReport.planesSeeded > 0 || seedReport.inversionesSeeded > 0)) {
+          console.log('[ATLAS] Seed v74-PR4 valoraciones planes/inversiones:', seedReport);
         }
       })
       // T34/T35-fix-2 · cleanup one-shot · categoría aplastada a 'otros.*'
