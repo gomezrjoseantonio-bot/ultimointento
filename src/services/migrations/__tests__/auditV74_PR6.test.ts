@@ -186,6 +186,69 @@ describe('auditValoracionesCobertura · invariante post-seeds', () => {
     expect(r.ok).toBe(true);
   });
 
+  it('inversiones legacy con tipo deposito/deposito_plazo/otro NO entran en cobertura (review Copilot)', async () => {
+    await setupFixture({
+      inversiones: [
+        { id: 1, nombre: 'Depo ING', tipo: 'deposito', activo: true },
+        { id: 2, nombre: 'Depo Sant', tipo: 'deposito_plazo', activo: true },
+        { id: 3, nombre: 'Otro xyz', tipo: 'otro', activo: true },
+        { id: 4, nombre: 'Fondo', tipo: 'fondo_inversion', activo: true },
+      ],
+      valoraciones: [valoracion('4', 'inversion', 5000)],
+    });
+    const { auditValoracionesCobertura } = await import('../auditV74_PR6');
+    const r = await auditValoracionesCobertura();
+    // Solo el fondo cuenta como `inversion` · deposito/otro no entran.
+    expect(r.totalesPorTipo).toEqual({ inmueble: 0, inversion: 1, plan_pensiones: 0 });
+    expect(r.conValoracionPorTipo.inversion).toBe(1);
+    expect(r.cobertura).toBe(100);
+    expect(r.sinValoracion).toHaveLength(0);
+    expect(r.ok).toBe(true);
+  });
+
+  it('valoración de inmueble vendido NO se marca como huérfana (review Copilot)', async () => {
+    // Inmueble existe pero está vendido · su valoración histórica sigue
+    // siendo legítima · NO debe ser huérfana ni contar en cobertura.
+    await setupFixture({
+      properties: [
+        { id: 1, alias: 'Vendido', state: 'vendido' },
+        { id: 2, alias: 'Activo', state: 'activo' },
+      ],
+      valoraciones: [
+        valoracion('1', 'inmueble', 200000), // del vendido · legítima
+        valoracion('2', 'inmueble', 250000),
+      ],
+    });
+    const { auditValoracionesCobertura } = await import('../auditV74_PR6');
+    const r = await auditValoracionesCobertura();
+    expect(r.huerfanas).toHaveLength(0); // ninguna huérfana
+    expect(r.totalesPorTipo.inmueble).toBe(1); // solo el activo
+    expect(r.cobertura).toBe(100);
+    expect(r.ok).toBe(true);
+  });
+
+  it('valoración de plan rescatado NO se marca como huérfana', async () => {
+    await setupFixture({
+      planes: [{ id: 'plan-r', nombre: 'Rescatado', estado: 'rescatado_total' }],
+      valoraciones: [valoracion('plan-r', 'plan_pensiones', 30000)],
+    });
+    const { auditValoracionesCobertura } = await import('../auditV74_PR6');
+    const r = await auditValoracionesCobertura();
+    expect(r.huerfanas).toHaveLength(0);
+    expect(r.totalesPorTipo.plan_pensiones).toBe(0); // rescatado no cuenta
+  });
+
+  it('valoración de inversión cerrada NO se marca como huérfana', async () => {
+    await setupFixture({
+      inversiones: [{ id: 1, nombre: 'Cerrada', tipo: 'fondo_inversion', activo: false }],
+      valoraciones: [valoracion('1', 'inversion', 5000)],
+    });
+    const { auditValoracionesCobertura } = await import('../auditV74_PR6');
+    const r = await auditValoracionesCobertura();
+    expect(r.huerfanas).toHaveLength(0);
+    expect(r.totalesPorTipo.inversion).toBe(0); // cerrada no cuenta
+  });
+
   it('DB vacía · cobertura 100% (vacuously true)', async () => {
     const { auditValoracionesCobertura } = await import('../auditV74_PR6');
     const r = await auditValoracionesCobertura();

@@ -401,10 +401,11 @@ function App() {
       // datos · solo loguea cobertura % y activos sin valoración. Útil como
       // health check vivo · si Jose añade un activo manualmente sin
       // valoración inicial, el siguiente arranque lo flagueará con warning.
-      .then(() => runAuditV74PR6())
-      .catch((err) => {
+      // El `.catch` está acotado al audit · NO captura errores previos de
+      // la cadena de migraciones para no ocultar fallos reales.
+      .then(() => runAuditV74PR6().catch((err) => {
         console.warn('[ATLAS] Audit v74-PR6 falló (no bloqueante)', err);
-      })
+      }))
       // T34/T35-fix-2 · cleanup one-shot · categoría aplastada a 'otros.*'
       // en los 2 patrones documentados (dia_a_dia.otros + seguros_cuotas.seguro_otros).
       .then(() => cleanupCategoriasT34T35Fix2())

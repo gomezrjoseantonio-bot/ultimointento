@@ -12,11 +12,16 @@
 // tener ≥1 valoración en `valoracionesActivos`". Detecta:
 //
 //   1. Activos sin valoración · inmuebles `state=activo`, inversiones
-//      `activo=true`, planes con `estado !== rescatado_total` que NO
-//      tienen ninguna valoración no borrada.
+//      `activo=true` cuyo `tipo` mapea a {inversion, plan_pensiones}
+//      (deposito/otro no se chequean · sin store dedicado actual),
+//      y planes con `estado !== rescatado_total` que NO tienen
+//      ninguna valoración no borrada.
 //   2. Valoraciones huérfanas · entradas en `valoracionesActivos` cuyo
-//      `activoId` no matchea ningún registro existente en el store
-//      correspondiente a su `tipoActivo`.
+//      `activoId` no matchea NINGÚN registro existente en el store
+//      correspondiente · INCLUYE activos vendidos/cerrados/rescatados
+//      (el activo existe pero no es "activo" · la valoración sigue
+//      siendo legítima). Solo se considera huérfano si el activo NO
+//      existe en absoluto.
 //
 // NO modifica datos · solo reporta. Se ejecuta al arrancar la app
 // como side-effect logging:
@@ -27,8 +32,14 @@
 //
 // Idempotente · siempre se ejecuta (sin flag) porque la cobertura puede
 // cambiar tras altas/bajas de activos · es útil como check vivo.
+//
+// Coste · `getAll` sobre `valoracionesActivos` materializa todos los
+// registros en memoria al arrancar. Para histórico < 10k registros
+// (caso típico Jose) el coste es despreciable. TODO si crece mucho ·
+// migrar a `openCursor` sobre `idx_tipo` para iterar sin materializar.
 
 import { initDB } from '../db';
+import { mapInversionTipo } from './seedV74_PR4';
 import type { TipoActivoValoracion } from '../../types/valoracionActivo';
 
 export interface CoberturaItem {
@@ -38,7 +49,7 @@ export interface CoberturaItem {
 }
 
 export interface AuditV74PR6Report {
-  /** Total de activos activos por tipo */
+  /** Total de activos activos por tipo (solo los que cuentan en cobertura) */
   totalesPorTipo: Record<'inmueble' | 'inversion' | 'plan_pensiones', number>;
   /** Total con valoración por tipo */
   conValoracionPorTipo: Record<'inmueble' | 'inversion' | 'plan_pensiones', number>;
@@ -46,16 +57,18 @@ export interface AuditV74PR6Report {
   porcentajeCoberturaPorTipo: Record<'inmueble' | 'inversion' | 'plan_pensiones', number>;
   /** Activos activos sin ninguna valoración no borrada */
   sinValoracion: CoberturaItem[];
-  /** Valoraciones huérfanas · activoId no existe en su store */
+  /** Valoraciones huérfanas · activoId no existe en NINGÚN registro del store fuente */
   huerfanas: Array<{
     valoracionId: number;
     activoId: string;
     tipoActivo: TipoActivoValoracion;
   }>;
-  /** Cobertura total · sin valoración / total activos × 100 */
+  /** Cobertura total · activos CON valoración / total activos × 100 */
   cobertura: number;
   /** true si la cobertura es 100% Y no hay huérfanas */
   ok: boolean;
+  /** true si la auditoría falló por excepción interna · report parcial/degradado */
+  errored?: boolean;
 }
 
 /**
@@ -75,7 +88,8 @@ export async function auditValoracionesCobertura(): Promise<AuditV74PR6Report> {
 
   const db = await initDB();
 
-  // Stores fuente · solo activos.
+  // Stores fuente · TODOS los registros (sin filtrar estado · necesario
+  // para la detección de huérfanas).
   const [properties, inversiones, planes, valoraciones] = await Promise.all([
     (db as any).getAll('properties') as Promise<any[]>,
     (db as any).getAll('inversiones') as Promise<any[]>,
@@ -83,30 +97,49 @@ export async function auditValoracionesCobertura(): Promise<AuditV74PR6Report> {
     (db as any).getAll('valoracionesActivos') as Promise<any[]>,
   ]);
 
-  // Set de claves activoId|tipoActivo con ≥1 valoración no borrada.
-  const conValoracion = new Set<string>();
-  // Set de ids existentes por tipo · para detectar huérfanas.
+  // ── Sets de IDs EXISTENTES en cada store (sin filtro de estado) ─────
+  // Para detección de huérfanas · una valoración es huérfana solo si su
+  // `activoId` NO existe en absoluto en el store fuente · NO si el
+  // activo está vendido/cerrado/rescatado (review Copilot).
   const idsExistentes: Record<'inmueble' | 'inversion' | 'plan_pensiones', Set<string>> = {
     inmueble: new Set(),
     inversion: new Set(),
     plan_pensiones: new Set(),
   };
+  for (const p of properties) {
+    if (p?.id != null) idsExistentes.inmueble.add(String(p.id));
+  }
+  for (const inv of inversiones) {
+    if (inv?.id == null) continue;
+    // Una inversión legacy con tipo plan_pensiones existe en el store
+    // `inversiones` pero su tipoActivo lógico es 'plan_pensiones'.
+    const mapped = mapInversionTipo(String(inv.tipo ?? ''));
+    if (mapped.tipoActivo === 'plan_pensiones' || mapped.tipoActivo === 'inversion') {
+      idsExistentes[mapped.tipoActivo].add(String(inv.id));
+    }
+    // deposito/otro · NO incluidos para huérfanas chequeo (no se
+    // contabilizan en cobertura · ver más abajo).
+  }
+  for (const plan of planes) {
+    if (plan?.id != null) idsExistentes.plan_pensiones.add(String(plan.id));
+  }
 
+  // ── Set de claves activoId|tipoActivo CON ≥1 valoración no borrada ──
+  const conValoracion = new Set<string>();
   for (const v of valoraciones) {
     if (v?.deletedAt) continue;
     const tipo = v?.tipoActivo as TipoActivoValoracion;
-    // Solo los 3 tipos legacy se contabilizan en cobertura · 'deposito'
-    // y 'otro' no tienen stores fuente todavía (ver spec §7).
     if (tipo === 'inmueble' || tipo === 'inversion' || tipo === 'plan_pensiones') {
       conValoracion.add(`${String(v.activoId)}|${tipo}`);
     }
   }
 
+  // ── Cobertura · solo activos ACTIVOS y solo tipos contabilizables ───
+
   // Inmuebles activos
   for (const p of properties) {
     if (p?.state !== 'activo' || p?.id == null) continue;
     const id = String(p.id);
-    idsExistentes.inmueble.add(id);
     report.totalesPorTipo.inmueble++;
     if (conValoracion.has(`${id}|inmueble`)) {
       report.conValoracionPorTipo.inmueble++;
@@ -119,21 +152,17 @@ export async function auditValoracionesCobertura(): Promise<AuditV74PR6Report> {
     }
   }
 
-  // Inversiones activas · cada `inversiones.tipo` se mapea a tipoActivo
-  // según seedV74_PR4 (accion → inversion, deposito → deposito, etc.).
-  // Para la auditoría solo contamos 'inversion' y 'plan_pensiones' como
-  // tipos cubiertos · `deposito`/`otro` se documentan pero no marcan
-  // sin-valoración (no hay store fuente para ellos en este momento).
-  const TIPO_INV_LEGACY_AS_PLAN = new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']);
-
+  // Inversiones activas · reusa `mapInversionTipo` (single source of truth ·
+  // alineado con seedV74_PR4). Tipos `deposito` y `otro` NO se contabilizan
+  // en cobertura · spec §7.1 (no hay store fuente dedicado).
   for (const inv of inversiones) {
     if (inv?.activo === false || inv?.id == null) continue;
+    const mapped = mapInversionTipo(String(inv.tipo ?? ''));
+    if (mapped.tipoActivo !== 'inversion' && mapped.tipoActivo !== 'plan_pensiones') {
+      continue; // deposito/otro · skip
+    }
     const id = String(inv.id);
-    const tipoCrudo = String(inv.tipo ?? '');
-    const tipoActivo: 'inversion' | 'plan_pensiones' = TIPO_INV_LEGACY_AS_PLAN.has(tipoCrudo)
-      ? 'plan_pensiones'
-      : 'inversion';
-    idsExistentes[tipoActivo].add(id);
+    const tipoActivo = mapped.tipoActivo;
     report.totalesPorTipo[tipoActivo]++;
     if (conValoracion.has(`${id}|${tipoActivo}`)) {
       report.conValoracionPorTipo[tipoActivo]++;
@@ -150,7 +179,6 @@ export async function auditValoracionesCobertura(): Promise<AuditV74PR6Report> {
   for (const plan of planes) {
     if (plan?.estado === 'rescatado_total' || plan?.id == null) continue;
     const id = String(plan.id);
-    idsExistentes.plan_pensiones.add(id);
     report.totalesPorTipo.plan_pensiones++;
     if (conValoracion.has(`${id}|plan_pensiones`)) {
       report.conValoracionPorTipo.plan_pensiones++;
@@ -163,7 +191,9 @@ export async function auditValoracionesCobertura(): Promise<AuditV74PR6Report> {
     }
   }
 
-  // Huérfanas · valoraciones cuyo activoId no existe en su store.
+  // ── Huérfanas · activoId NO existe en absoluto en el store fuente ───
+  // (independiente del estado · vendido/cerrado/rescatado NO es
+  // huérfano).
   for (const v of valoraciones) {
     if (v?.deletedAt) continue;
     const tipo = v?.tipoActivo as TipoActivoValoracion;
@@ -174,7 +204,7 @@ export async function auditValoracionesCobertura(): Promise<AuditV74PR6Report> {
     }
   }
 
-  // Porcentajes
+  // ── Porcentajes ─────────────────────────────────────────────────────
   for (const tipo of ['inmueble', 'inversion', 'plan_pensiones'] as const) {
     const total = report.totalesPorTipo[tipo];
     const con = report.conValoracionPorTipo[tipo];
@@ -195,6 +225,9 @@ export async function auditValoracionesCobertura(): Promise<AuditV74PR6Report> {
  *   - OK · debug log silencioso
  *   - Activos sin valoración · warning + lista breve
  *   - Huérfanas · error + lista breve (indica bug)
+ *   - Excepción interna · error + devuelve report degradado con
+ *     `errored=true` y `ok=false` (NO re-lanza · review Copilot · es
+ *     no-bloqueante por diseño).
  *
  * Se invoca en el bootstrap de la app tras los seeds. NO bloquea ni
  * fallea · solo reporta para que Jose vea qué está cubierto.
@@ -235,6 +268,18 @@ export async function runAuditV74PR6(): Promise<AuditV74PR6Report> {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[ATLAS Audit v74-PR6] Error ejecutando auditoría', err);
-    throw err;
+    // No re-lanzamos · diseño no-bloqueante · devolvemos report
+    // degradado con `errored=true` para que el caller pueda detectar
+    // el fallo sin tener que envolver en try/catch externo.
+    return {
+      totalesPorTipo: { inmueble: 0, inversion: 0, plan_pensiones: 0 },
+      conValoracionPorTipo: { inmueble: 0, inversion: 0, plan_pensiones: 0 },
+      porcentajeCoberturaPorTipo: { inmueble: 0, inversion: 0, plan_pensiones: 0 },
+      sinValoracion: [],
+      huerfanas: [],
+      cobertura: 0,
+      ok: false,
+      errored: true,
+    };
   }
 }
