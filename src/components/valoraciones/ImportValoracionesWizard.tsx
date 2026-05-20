@@ -10,6 +10,15 @@
 // Escribe directamente al store nuevo `valoracionesActivos` vía
 // `bulkInsert` del valoracionesService v2 (no usa la API legacy
 // importarHistorico).
+//
+// Contrato de callbacks (review Copilot):
+// - `onClose()` · cierre manual (botón X · click overlay · botón
+//   "Volver"). El wizard NO se cierra solo · el parent es quien
+//   pone `setShowWizard(false)`.
+// - `onSuccess(count)` · tras importar correctamente. El parent
+//   decide qué hacer (típicamente cerrar y refrescar la ficha). El
+//   wizard NO llama a `onClose` después de `onSuccess` · evita
+//   doble cierre.
 
 import React, { useCallback, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
@@ -21,6 +30,12 @@ import type {
   SubtipoInversion,
   ValoracionInput,
 } from '../../types/valoracionActivo';
+import {
+  detectColumns,
+  detectDelimiter,
+  parseRow,
+  type ParsedImportRow,
+} from './importParsers';
 
 export interface ImportValoracionesWizardProps {
   /** activoId pre-rellenado · todas las filas se importarán a este activo. */
@@ -31,17 +46,10 @@ export interface ImportValoracionesWizardProps {
   subtipoInversion?: SubtipoInversion;
   /** Etiqueta visible para el activo en el header del wizard. */
   activoNombre?: string;
-  /** Callback al cerrar (sin importar). */
+  /** Callback al cerrar (sin importar · cancel/X/overlay). El parent gestiona el cierre. */
   onClose: () => void;
-  /** Callback tras importar correctamente con el número de valoraciones creadas. */
+  /** Callback tras importar correctamente · parent decide cierre + refresh. */
   onSuccess: (count: number) => void;
-}
-
-interface ParsedRow {
-  fecha: string; // YYYY-MM-DD
-  valor: number;
-  raw: { fechaRaw: unknown; valorRaw: unknown };
-  invalid?: 'fecha' | 'valor';
 }
 
 const PREVIEW_LIMIT = 12;
@@ -54,77 +62,6 @@ const formatCurrency = (value: number): string =>
     maximumFractionDigits: 0,
   }).format(value);
 
-/**
- * Normaliza distintos formatos de fecha a YYYY-MM-DD.
- * Acepta · Excel serial · ISO YYYY-MM · ISO YYYY-MM-DD · DD/MM/YYYY ·
- * Date parseable. Devuelve '' si no se puede normalizar.
- */
-function normalizeFecha(value: unknown): string {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    const parsed = XLSX.SSF.parse_date_code(value);
-    if (parsed?.y && parsed?.m) {
-      const d = parsed.d || 1;
-      return `${String(parsed.y).padStart(4, '0')}-${String(parsed.m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    }
-    return '';
-  }
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
-  }
-  const s = String(value || '').trim();
-  if (!s) return '';
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // YYYY-MM → rellena día 01
-  const ym = s.match(/^(\d{4})[-/](\d{1,2})$/);
-  if (ym) return `${ym[1]}-${ym[2].padStart(2, '0')}-01`;
-  // DD/MM/YYYY o DD-MM-YYYY
-  const dmy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
-  // Fallback · intentar Date()
-  const d = new Date(s);
-  if (!Number.isNaN(d.getTime())) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-  return '';
-}
-
-function normalizeValor(value: unknown): number {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
-  const s = String(value || '').trim();
-  if (!s) return NaN;
-  // Eliminar símbolos · símbolo €/EUR/USD/etc, separador miles (.), reemplazar coma decimal
-  // Heurística simple · "1.234,56" → "1234.56" · "1234.56" → "1234.56"
-  const hasComma = s.includes(',');
-  const cleaned = s
-    .replace(/[€$£\s]/g, '')
-    .replace(/[a-zA-Z]/g, '');
-  const normalized = hasComma
-    ? cleaned.replace(/\./g, '').replace(',', '.')
-    : cleaned;
-  const n = Number(normalized);
-  return Number.isFinite(n) ? n : NaN;
-}
-
-/**
- * Detecta columnas `fecha` y `valor` en la primera fila del array.
- * Acepta variantes case-insensitive · 'fecha'/'date'/'mes' y 'valor'/
- * 'value'/'importe'/'saldo'. Si no encuentra, asume las primeras 2.
- */
-function detectColumns(headers: string[]): { fechaCol: string; valorCol: string } {
-  const lower = headers.map((h) => h.toLowerCase().trim());
-  const fechaIdx = lower.findIndex((h) =>
-    ['fecha', 'date', 'mes', 'periodo', 'periodo_valoracion'].includes(h),
-  );
-  const valorIdx = lower.findIndex((h) =>
-    ['valor', 'value', 'importe', 'saldo', 'amount', 'valor_eur'].includes(h),
-  );
-  return {
-    fechaCol: headers[fechaIdx >= 0 ? fechaIdx : 0],
-    valorCol: headers[valorIdx >= 0 ? valorIdx : 1],
-  };
-}
-
 const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
   activoId,
   tipoActivo,
@@ -133,7 +70,7 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const [rows, setRows] = useState<ParsedRow[] | null>(null);
+  const [rows, setRows] = useState<ParsedImportRow[] | null>(null);
   const [importing, setImporting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -143,13 +80,17 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
       toast.error('Formato no válido · usa .xlsx, .xls o .csv');
       return;
     }
+    const isCsv = file.name.toLowerCase().endsWith('.csv');
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, {
-          type: file.name.toLowerCase().endsWith('.csv') ? 'string' : 'array',
-        });
+        // Para CSV · detectar delimitador y pasarlo a XLSX (review Copilot ·
+        // CSVs europeos con `;` no se parseaban correctamente con el default).
+        const csvOpts = isCsv
+          ? { type: 'string' as const, FS: detectDelimiter(String(data)) }
+          : { type: 'array' as const };
+        const workbook = XLSX.read(data, csvOpts);
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const raw: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
         if (!raw.length) {
@@ -162,27 +103,14 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
           return;
         }
         const { fechaCol, valorCol } = detectColumns(headers);
-        const parsed: ParsedRow[] = raw.map((r) => {
-          const fechaRaw = r[fechaCol];
-          const valorRaw = r[valorCol];
-          const fecha = normalizeFecha(fechaRaw);
-          const valor = normalizeValor(valorRaw);
-          const row: ParsedRow = {
-            fecha,
-            valor,
-            raw: { fechaRaw, valorRaw },
-          };
-          if (!fecha) row.invalid = 'fecha';
-          else if (!Number.isFinite(valor) || valor <= 0) row.invalid = 'valor';
-          return row;
-        });
+        const parsed = raw.map((r) => parseRow(r[fechaCol], r[valorCol]));
         setRows(parsed);
       } catch (err) {
         console.error('[ImportValoracionesWizard] parse error:', err);
         toast.error('Error al leer el archivo');
       }
     };
-    if (file.name.toLowerCase().endsWith('.csv')) {
+    if (isCsv) {
       reader.readAsText(file);
     } else {
       reader.readAsArrayBuffer(file);
@@ -223,8 +151,9 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
       }));
       const ids = await bulkInsert(inputs);
       toast.success(`${ids.length} valoración${ids.length === 1 ? '' : 'es'} importada${ids.length === 1 ? '' : 's'}`);
+      // Solo onSuccess · el parent gestiona el cierre (review Copilot ·
+      // evita doble cierre cuando el parent ya hace setShowWizard(false)).
       onSuccess(ids.length);
-      onClose();
     } catch (err) {
       console.error('[ImportValoracionesWizard] import error:', err);
       toast.error('Error al importar las valoraciones');
@@ -301,7 +230,7 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
               Sube un archivo <strong>.xlsx</strong>, <strong>.xls</strong> o <strong>.csv</strong> con 2 columnas:
               <code style={{ padding: '0 4px', backgroundColor: 'var(--atlas-v5-card-alt)', borderRadius: '3px', marginLeft: '4px' }}>fecha</code> y
               <code style={{ padding: '0 4px', backgroundColor: 'var(--atlas-v5-card-alt)', borderRadius: '3px', marginLeft: '4px' }}>valor</code>.
-              Fecha acepta YYYY-MM-DD, YYYY-MM o DD/MM/YYYY.
+              Fecha acepta YYYY-MM-DD, YYYY-MM o DD/MM/YYYY · CSV admite separador <code>,</code> o <code>;</code>.
             </p>
             <div
               onDragOver={(e) => {

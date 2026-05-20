@@ -23,6 +23,8 @@ interface Props {
   onActualizarValor: () => void;
   onAportar: () => void;
   onEditar: () => void;
+  /** Callback opcional para recargar la posición tras importar histórico. */
+  onReload?: () => void | Promise<void>;
 }
 
 const formatDate = (iso?: string): string => {
@@ -44,6 +46,7 @@ const FichaGenerica: React.FC<Props> = ({
   onActualizarValor,
   onAportar,
   onEditar,
+  onReload,
 }) => {
   const aportado = Number(posicion.total_aportado ?? 0);
   const valorActual = Number(posicion.valor_actual ?? 0);
@@ -160,12 +163,7 @@ const FichaGenerica: React.FC<Props> = ({
           onClose={() => setShowImportWizard(false)}
           onSuccess={() => {
             setShowImportWizard(false);
-            // El padre debería refrescar al cerrar el modal · esta ficha
-            // expone `onActualizarValor` que recarga datos · usarlo aquí
-            // sería incorrecto (abre otro modal). El refresh lo gestiona
-            // el caller cuando le pasa `key={posicion.updated_at}` o
-            // similar. Por ahora · sin acción · Jose verá los nuevos
-            // datos al navegar fuera y volver.
+            void onReload?.();
           }}
         />
       )}

@@ -26,6 +26,8 @@ interface Props {
   onRegistrarDividendo: () => void;
   onComprarVender: () => void;
   onActualizarValor: () => void;
+  /** Callback opcional para recargar la posición tras importar histórico. */
+  onReload?: () => void | Promise<void>;
 }
 
 const formatDate = (iso?: string): string => {
@@ -47,6 +49,7 @@ const FichaDividendos: React.FC<Props> = ({
   onRegistrarDividendo,
   onComprarVender,
   onActualizarValor,
+  onReload,
 }) => {
   const aportado = Number(posicion.total_aportado ?? 0);
   const valorActual = Number(posicion.valor_actual ?? 0);
@@ -331,7 +334,10 @@ const FichaDividendos: React.FC<Props> = ({
           tipoActivo="inversion"
           activoNombre={posicion.nombre}
           onClose={() => setShowImportWizard(false)}
-          onSuccess={() => setShowImportWizard(false)}
+          onSuccess={() => {
+            setShowImportWizard(false);
+            void onReload?.();
+          }}
         />
       )}
     </FichaShell>

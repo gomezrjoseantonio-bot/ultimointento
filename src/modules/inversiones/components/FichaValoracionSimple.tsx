@@ -28,6 +28,8 @@ interface Props {
   onActualizarValor: () => void;
   onAportar: () => void;
   onEditar: () => void;
+  /** Callback opcional para recargar la posición tras importar histórico. */
+  onReload?: () => void | Promise<void>;
 }
 
 const formatDate = (iso?: string): string => {
@@ -49,6 +51,7 @@ const FichaValoracionSimple: React.FC<Props> = ({
   onActualizarValor,
   onAportar,
   onEditar,
+  onReload,
 }) => {
   const aportado = Number(posicion.total_aportado ?? 0);
   const valorActual = Number(posicion.valor_actual ?? 0);
@@ -293,7 +296,10 @@ const FichaValoracionSimple: React.FC<Props> = ({
           tipoActivo={tipoParaImport}
           activoNombre={posicion.nombre}
           onClose={() => setShowImportWizard(false)}
-          onSuccess={() => setShowImportWizard(false)}
+          onSuccess={() => {
+            setShowImportWizard(false);
+            void onReload?.();
+          }}
         />
       )}
     </FichaShell>
