@@ -280,8 +280,31 @@ const getEmploymentLabel = (personalData: PersonalData | null): string | undefin
   return undefined;
 };
 
-const getInversionesPensionesValue = (posiciones: Array<{ tipo: string; valor_actual: number }>): number => {
-  return posiciones.reduce((sum, posicion) => sum + toNumber(posicion.valor_actual), 0);
+/**
+ * Suma el valor actual de un set de posiciones de inversión.
+ *
+ * T-VALORACIONES PR7a''' · acepta opcionalmente mapas de
+ * `getMapValoracionesMasRecientes` para preferir valor del servicio
+ * nuevo sobre `inv.valor_actual` legacy con fallback. Sin mapas
+ * (back-compat) · suma solo el campo legacy.
+ */
+const getInversionesPensionesValue = (
+  posiciones: Array<{ id?: number | string; tipo: string; valor_actual: number }>,
+  mapas?: {
+    inversion: Map<string, { valor: number; fecha_valoracion: string }>;
+    plan_pensiones: Map<string, { valor: number; fecha_valoracion: string }>;
+  },
+): number => {
+  return posiciones.reduce((sum, posicion) => {
+    if (mapas && posicion.id != null) {
+      const esPlan =
+        posicion.tipo === 'plan_pensiones' || posicion.tipo === 'plan_empleo';
+      const mapa = esPlan ? mapas.plan_pensiones : mapas.inversion;
+      const match = mapa.get(String(posicion.id));
+      if (match) return sum + toNumber(match.valor);
+    }
+    return sum + toNumber(posicion.valor_actual);
+  }, 0);
 };
 
 const getLoanEndDate = (plan: PlanPagos | null, prestamo: Prestamo): string => (
@@ -458,6 +481,11 @@ class InformesDataService {
   async getInformesData(año: number): Promise<InformesData> {
     const generatedAt = new Date().toISOString();
 
+    // T-VALORACIONES PR7a''' · cargar mapas de valoraciones del servicio
+    // nuevo en paralelo · usados como fuente principal para inversiones y
+    // planes pensiones con fallback al campo legacy `valor_actual`.
+    const emptyValMap = new Map<string, { valor: number; fecha_valoracion: string }>();
+
     const [
       proyecciones,
       inmuebles,
@@ -469,6 +497,8 @@ class InformesDataService {
       tesoreriaPanel,
       dbPayload,
       declaracionIRPF,
+      mapValoracionesInversion,
+      mapValoracionesPlanes,
     ] = await Promise.all([
       safe(generateProyeccionMensual(), [] as ProyeccionAnual[]),
       safe(inmuebleService.getAll(), [] as Inmueble[]),
@@ -505,7 +535,14 @@ class InformesDataService {
         return { properties, valuations, contracts };
       })(), { properties: [] as ExtendedProperty[], valuations: [] as ValoracionHistorica[], contracts: [] as Contract[] }),
       safe(calcularDeclaracionIRPF(año), null as Awaited<ReturnType<typeof calcularDeclaracionIRPF>> | null),
+      safe(valoracionesService.getMapValoracionesMasRecientes('inversion'), emptyValMap),
+      safe(valoracionesService.getMapValoracionesMasRecientes('plan_pensiones'), emptyValMap),
     ]);
+
+    const mapasValoraciones = {
+      inversion: mapValoracionesInversion,
+      plan_pensiones: mapValoracionesPlanes,
+    };
 
     const eventosFiscales = declaracionIRPF
       ? await safe(generarEventosFiscales(año, declaracionIRPF), [] as EventoFiscal[])
@@ -518,7 +555,7 @@ class InformesDataService {
       ?? projectionSummary.totalesAnuales.patrimonioNetoFinal
       ?? toNumber(patrimonio.total);
     const fallbackDebt = toNumber(patrimonio.desglose.deuda);
-    const fallbackInversiones = getInversionesPensionesValue(inversiones as Array<{ tipo: string; valor_actual: number }>) || toNumber(patrimonio.desglose.inversiones);
+    const fallbackInversiones = getInversionesPensionesValue(inversiones as Array<{ id?: number; tipo: string; valor_actual: number }>, mapasValoraciones) || toNumber(patrimonio.desglose.inversiones);
 
     const fallbackMonths = Array.from({ length: 12 }, (_, index) => ({
       mes: `${año}-${String(index + 1).padStart(2, '0')}`,
@@ -682,7 +719,7 @@ class InformesDataService {
 
     const nombreCompleto = [personal?.nombre, personal?.apellidos].filter(Boolean).join(' ').trim();
     const ingresoLaboralAnual = projectionSummary.desglose.nominas + projectionSummary.desglose.autonomos;
-    const inversionesPensiones = getInversionesPensionesValue(inversiones as Array<{ tipo: string; valor_actual: number }>) || projectionSummary.meses[11]?.inversionesPensiones || toNumber(patrimonio.desglose.inversiones);
+    const inversionesPensiones = getInversionesPensionesValue(inversiones as Array<{ id?: number; tipo: string; valor_actual: number }>, mapasValoraciones) || projectionSummary.meses[11]?.inversionesPensiones || toNumber(patrimonio.desglose.inversiones);
 
     return {
       generadoEn: generatedAt,
