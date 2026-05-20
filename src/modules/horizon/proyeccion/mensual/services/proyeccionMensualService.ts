@@ -842,14 +842,31 @@ async function loadBaseData(): Promise<BaseData> {
   const inversionesProyeccion: InvestmentProjectionData[] = [];
   const liquidationMonthByInvestmentId = new Map<number, string>();
   try {
-    const inversiones = await inversionesService.getPosiciones();
+    // T-VALORACIONES PR7a' · cargar inversiones + mapas en paralelo. Prefer
+    // valor del servicio nuevo (`valoracionesActivos`) sobre `inv.valor_actual`
+    // legacy con fallback ordenado. Mismo patrón usado en `dashboardService`.
+    const emptyMap = new Map<string, { valor: number; fecha_valoracion: string }>();
+    const [inversiones, mapValoracionesInversion, mapValoracionesPlanes] = await Promise.all([
+      inversionesService.getPosiciones(),
+      valoracionesService.getMapValoracionesMasRecientes('inversion').catch(() => emptyMap),
+      valoracionesService.getMapValoracionesMasRecientes('plan_pensiones').catch(() => emptyMap),
+    ]);
+    /** Resuelve el mejor valor disponible para una posición · servicio gana
+     *  sobre `valor_actual` legacy con fallback. */
+    const valorPosicion = (inv: PosicionInversion): number => {
+      const esPlan = inv.tipo === 'plan_pensiones' || inv.tipo === 'plan_empleo';
+      const mapa = esPlan ? mapValoracionesPlanes : mapValoracionesInversion;
+      const match = mapa.get(String(inv.id));
+      return match?.valor ?? inv.valor_actual ?? 0;
+    };
     for (const inv of inversiones) {
       const invAny = inv as unknown as InversionRendimientoPeriodico & PosicionInversion;
+      const valorEfectivo = valorPosicion(inv);
       if (inv.id != null) {
         const invProjection: InvestmentProjectionData = {
           id: inv.id,
           tipo: inv.tipo,
-          valorActual: inv.valor_actual,
+          valorActual: valorEfectivo,
           rendimiento: invAny.rendimiento,
           planLiquidacion: invAny.plan_liquidacion,
         };
@@ -861,10 +878,12 @@ async function loadBaseData(): Promise<BaseData> {
         }
       }
       if (inv.tipo === 'plan_pensiones' || inv.tipo === 'plan_empleo') {
-        valorPlanesPension += inv.valor_actual;
+        valorPlanesPension += valorEfectivo;
       } else {
-        // Non-pension investments use historical valuations; valor_actual is the fallback
-        inversionInitialValues.push({ id: inv.id, initialValue: inv.valor_actual, nombre: (inv as { nombre?: string }).nombre });
+        // Non-pension investments use historical valuations; el valor
+        // efectivo (servicio o legacy) actúa como fallback inicial cuando
+        // el índice de valoraciones no tiene entrada para una fecha futura.
+        inversionInitialValues.push({ id: inv.id, initialValue: valorEfectivo, nombre: (inv as { nombre?: string }).nombre });
       }
       // Collect periodic return payments (cuenta_remunerada, prestamo_p2p, deposito_plazo)
       if (['cuenta_remunerada', 'prestamo_p2p', 'deposito_plazo'].includes(inv.tipo)) {
