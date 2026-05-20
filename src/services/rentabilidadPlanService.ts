@@ -304,6 +304,11 @@ export async function getRentabilidadTotal(
     (s, a) => s + importeAportacion(a),
     0,
   );
+  // Orden de preferencia · `plan.valorActual` gana sobre la última valoración
+  // del servicio porque updates manuales del usuario (modal "Actualizar
+  // valoración") tocan el campo legacy de forma síncrona · la valoración
+  // del store nuevo puede ir un paso atrás. Fallback a valoraciones si el
+  // campo legacy es nullish (caso plan recién creado sin manual update).
   const valorActual = plan.valorActual ?? valoraciones.at(-1)?.valor ?? 0;
   const plusvaliaAbsoluta = valorActual - capitalAportadoTotal;
   const plusvaliaRelativa =
@@ -421,10 +426,14 @@ export async function getRentabilidadPorBloque(
 ): Promise<RentabilidadBloque[]> {
   const datos = await cargarDatosPlan(planId);
   if (!datos) return [];
-  const { plan, aportaciones, traspasos } = datos;
+  const { plan, aportaciones, traspasos, valoraciones } = datos;
 
   const fechaFinPlan = plan.fechaUltimaValoracion ?? hoyIso();
-  const valorActualPlan = plan.valorActual ?? 0;
+  // T-VALORACIONES PR7a' · idem `calcularRentabilidadTotal` · `plan.valorActual`
+  // gana sobre la última valoración del servicio (updates manuales tocan
+  // el campo legacy de forma síncrona). Fallback a valoraciones · antes
+  // era directamente 0 (sin fallback) · ahora preferencia ordenada.
+  const valorActualPlan = plan.valorActual ?? valoraciones.at(-1)?.valor ?? 0;
 
   // Construir delimitadores de bloque a partir de los traspasos:
   //   bloque 1 · [fechaContratacion, traspaso1.fechaEjecucion]
