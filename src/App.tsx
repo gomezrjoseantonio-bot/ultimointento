@@ -22,6 +22,7 @@ import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacion
 import { runV68TipoFamiliaMigration } from './services/migrations/v68-tipoFamilia';
 import { runV70NominaHistorialMigration } from './services/migrations/v70-nomina-historial';
 import { runSeedV74PR4 } from './services/migrations/seedV74_PR4';
+import { runSeedV74PR5 } from './services/migrations/seedV74_PR5';
 import { cleanupCategoriasT34T35Fix2 } from './services/migrations/cleanupCategoriasT34T35fix2';
 import { fixAportacionesPlanCruceB6 } from './services/migrations/fixAportacionesPlanCruceB6';
 import { fixDeclaracionCompletaCruceB6 } from './services/migrations/fixDeclaracionCompletaCruceB6';
@@ -382,6 +383,17 @@ function App() {
       .then((seedReport) => {
         if (!seedReport.skipped && (seedReport.planesSeeded > 0 || seedReport.inversionesSeeded > 0)) {
           console.log('[ATLAS] Seed v74-PR4 valoraciones planes/inversiones:', seedReport);
+        }
+      })
+      // T-VALORACIONES PR5 · seed migración inmuebles activos (store
+      // `properties`) desde campos legacy de valoración al store nuevo
+      // `valoracionesActivos`. Idempotente vía keyval. Jerarquía de
+      // fallbacks · valor_actual > currentValue > marketValue > ... >
+      // tasacion (esAnchorFiscal=true) > acquisitionCosts.price (revisar).
+      .then(() => runSeedV74PR5())
+      .then((seedReport) => {
+        if (!seedReport.skipped && seedReport.inmueblesSeeded > 0) {
+          console.log('[ATLAS] Seed v74-PR5 valoraciones inmuebles:', seedReport);
         }
       })
       // T34/T35-fix-2 · cleanup one-shot · categoría aplastada a 'otros.*'
