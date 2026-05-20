@@ -3,9 +3,10 @@
 // § 4.3 spec · 4 KPIs · sparkline gigante · panel composición ·
 // tabla aportaciones · botones acción.
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
+import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import {
   calculateEstimatedCagr,
   construirSerieValor,
@@ -27,6 +28,8 @@ interface Props {
   onActualizarValor: () => void;
   onAportar: () => void;
   onEditar: () => void;
+  /** Callback opcional para recargar la posición tras importar histórico. */
+  onReload?: () => void | Promise<void>;
 }
 
 const formatDate = (iso?: string): string => {
@@ -48,6 +51,7 @@ const FichaValoracionSimple: React.FC<Props> = ({
   onActualizarValor,
   onAportar,
   onEditar,
+  onReload,
 }) => {
   const aportado = Number(posicion.total_aportado ?? 0);
   const valorActual = Number(posicion.valor_actual ?? 0);
@@ -82,6 +86,16 @@ const FichaValoracionSimple: React.FC<Props> = ({
       ? ' · liquidez en jubilación'
       : ''
   }`;
+
+  const [showImportWizard, setShowImportWizard] = useState(false);
+  // T-VALORACIONES PR3 · plan_pensiones y plan_empleo se importan al
+  // store nuevo como tipoActivo='plan_pensiones'; cualquier otra cosa
+  // como 'inversion' (fondo/etf/crypto/etc se discriminarán en PR
+  // futuros vía `subtipoInversion`).
+  const tipoParaImport: 'plan_pensiones' | 'inversion' =
+    posicion.tipo === 'plan_pensiones' || posicion.tipo === 'plan_empleo'
+      ? 'plan_pensiones'
+      : 'inversion';
 
   return (
     <FichaShell
@@ -134,6 +148,12 @@ const FichaValoracionSimple: React.FC<Props> = ({
           variant: 'ghost',
           icon: <Icons.Refresh size={14} strokeWidth={1.8} />,
           onClick: onActualizarValor,
+        },
+        {
+          label: 'Importar histórico',
+          variant: 'ghost',
+          icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+          onClick: () => setShowImportWizard(true),
         },
         {
           label: 'Aportar',
@@ -270,6 +290,18 @@ const FichaValoracionSimple: React.FC<Props> = ({
           </div>
         )}
       </div>
+      {showImportWizard && (
+        <ImportValoracionesWizard
+          activoId={String(posicion.id)}
+          tipoActivo={tipoParaImport}
+          activoNombre={posicion.nombre}
+          onClose={() => setShowImportWizard(false)}
+          onSuccess={() => {
+            setShowImportWizard(false);
+            void onReload?.();
+          }}
+        />
+      )}
     </FichaShell>
   );
 };

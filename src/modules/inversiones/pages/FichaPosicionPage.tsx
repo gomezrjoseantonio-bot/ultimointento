@@ -203,6 +203,7 @@ const FichaPosicionPage: React.FC = () => {
           onActualizarValor={() => setShowActualizarValor(true)}
           onAportar={() => setShowAportar(true)}
           onEditar={() => setShowEditar(true)}
+          onReload={reload}
         />
       );
       break;
@@ -226,6 +227,7 @@ const FichaPosicionPage: React.FC = () => {
           // FIFO en vivo). El alta de compra adicional sigue por Aportar.
           onComprarVender={() => setShowVender(true)}
           onActualizarValor={() => setShowActualizarValor(true)}
+          onReload={reload}
         />
       );
       break;
@@ -237,6 +239,7 @@ const FichaPosicionPage: React.FC = () => {
           onActualizarValor={() => setShowActualizarValor(true)}
           onAportar={() => setShowAportar(true)}
           onEditar={() => setShowEditar(true)}
+          onReload={reload}
         />
       );
   }

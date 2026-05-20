@@ -3,7 +3,7 @@
 //
 // Renderiza los KPIs canónicos + tabla de aportaciones + botones acción.
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../helpers';
 import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import FichaShell from './FichaShell';
+import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import styles from '../pages/FichaPosicion.module.css';
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
   onActualizarValor: () => void;
   onAportar: () => void;
   onEditar: () => void;
+  /** Callback opcional para recargar la posición tras importar histórico. */
+  onReload?: () => void | Promise<void>;
 }
 
 const formatDate = (iso?: string): string => {
@@ -43,6 +46,7 @@ const FichaGenerica: React.FC<Props> = ({
   onActualizarValor,
   onAportar,
   onEditar,
+  onReload,
 }) => {
   const aportado = Number(posicion.total_aportado ?? 0);
   const valorActual = Number(posicion.valor_actual ?? 0);
@@ -60,6 +64,8 @@ const FichaGenerica: React.FC<Props> = ({
   const logoCfg = getEntidadLogoConfig(posicion.entidad);
   const rentVariant: 'pos' | 'neg' | undefined =
     rentEur > 0 ? 'pos' : rentEur < 0 ? 'neg' : undefined;
+
+  const [showImportWizard, setShowImportWizard] = useState(false);
 
   return (
     <FichaShell
@@ -94,6 +100,12 @@ const FichaGenerica: React.FC<Props> = ({
           variant: 'ghost',
           icon: <Icons.Refresh size={14} strokeWidth={1.8} />,
           onClick: onActualizarValor,
+        },
+        {
+          label: 'Importar histórico',
+          variant: 'ghost',
+          icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+          onClick: () => setShowImportWizard(true),
         },
         {
           label: 'Aportar',
@@ -143,6 +155,18 @@ const FichaGenerica: React.FC<Props> = ({
           </div>
         )}
       </div>
+      {showImportWizard && (
+        <ImportValoracionesWizard
+          activoId={String(posicion.id)}
+          tipoActivo="inversion"
+          activoNombre={posicion.nombre}
+          onClose={() => setShowImportWizard(false)}
+          onSuccess={() => {
+            setShowImportWizard(false);
+            void onReload?.();
+          }}
+        />
+      )}
     </FichaShell>
   );
 };

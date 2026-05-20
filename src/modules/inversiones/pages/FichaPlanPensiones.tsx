@@ -39,6 +39,7 @@ import EditarPosicionModal from '../components/modal/EditarPosicionModal';
 import TraspasoModal from '../components/modal/TraspasoModal';
 import { planPensionToCartaItem } from '../types/cartaItem';
 import { valoracionesService } from '../../../services/valoracionesService';
+import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import FichaShell from '../components/FichaShell';
 // PlanFormV5 y TraspasoPlanDialog (T13v4) sustituidos por los modales
 // ATLAS PR 3/PR 4 · siguen vivos en el repo hasta PR 5 cleanup.
@@ -334,6 +335,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   const [showEditar, setShowEditar] = useState(false);
   // T13 lote B · sub-tarea 2 · entrada per-plan al TraspasoForm.
   const [showTraspaso, setShowTraspaso] = useState(false);
+  // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
+  const [showImportWizard, setShowImportWizard] = useState(false);
 
   // ── Carga plan + aportaciones + valoraciones ──────────────────────────────
 
@@ -804,6 +807,12 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
             variant: 'ghost',
             icon: <Icons.Refresh size={14} strokeWidth={1.8} />,
             onClick: () => setShowActualizarValor(true),
+          },
+          {
+            label: 'Importar histórico',
+            variant: 'ghost',
+            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+            onClick: () => setShowImportWizard(true),
           },
           {
             label: 'Aportar',
@@ -1544,6 +1553,19 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
             }
           }}
           onClose={() => setShowTraspaso(false)}
+        />
+      )}
+
+      {showImportWizard && (
+        <ImportValoracionesWizard
+          activoId={String(plan.id)}
+          tipoActivo="plan_pensiones"
+          activoNombre={plan.nombre}
+          onClose={() => setShowImportWizard(false)}
+          onSuccess={() => {
+            setShowImportWizard(false);
+            void load();
+          }}
         />
       )}
     </>
