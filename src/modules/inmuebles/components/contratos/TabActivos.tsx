@@ -1,0 +1,86 @@
+import React, { useMemo, useState } from 'react';
+import type { Contract } from '../../../../services/db';
+import { EmptyState, Icons } from '../../../../design-system/v5';
+import {
+  calcularStatsAgregados,
+  contarChips,
+  filtrarContratos,
+  FILTROS_INICIALES,
+} from '../../utils/filtrosActivos';
+import { useFiltrosActivos } from '../../hooks/useFiltrosActivos';
+import BarraFiltros from './BarraFiltros';
+import ToolbarTabla from './ToolbarTabla';
+import TablaActivos from './TablaActivos';
+import EmptyStateSinResultados from './EmptyStateSinResultados';
+import DrawerFichaContrato from './DrawerFichaContrato';
+
+export interface TabActivosProps {
+  contratos: Contract[];
+  inmuebleAliasById: Map<number, string>;
+  onNuevoContrato: () => void;
+}
+
+const TabActivos: React.FC<TabActivosProps> = ({
+  contratos,
+  inmuebleAliasById,
+  onNuevoContrato,
+}) => {
+  const [filtros, setFiltros] = useFiltrosActivos();
+  const hoy = useMemo(() => new Date(), []);
+
+  const counts = useMemo(() => contarChips(contratos, hoy), [contratos, hoy]);
+  const filtrados = useMemo(
+    () => filtrarContratos(contratos, filtros, hoy),
+    [contratos, filtros, hoy],
+  );
+  const stats = useMemo(() => calcularStatsAgregados(filtrados), [filtrados]);
+
+  const [contratoAbierto, setContratoAbierto] = useState<
+    (Contract & { id: number }) | null
+  >(null);
+
+  const algunFiltroActivo =
+    filtros.busqueda.trim() !== '' ||
+    filtros.tipo !== 'todos' ||
+    filtros.estado !== 'todos';
+
+  // Caso 1 · NO hay contratos activos en absoluto · empty state global del módulo
+  if (contratos.length === 0) {
+    return (
+      <EmptyState
+        icon={<Icons.Contratos size={20} />}
+        title="Sin contratos activos"
+        sub="No hay contratos en vigor a fecha de hoy."
+        ctaLabel="+ nuevo contrato"
+        onCtaClick={onNuevoContrato}
+      />
+    );
+  }
+
+  return (
+    <>
+      <BarraFiltros filtros={filtros} onChange={setFiltros} counts={counts} />
+      <ToolbarTabla stats={stats} />
+      {filtrados.length === 0 && algunFiltroActivo ? (
+        <EmptyStateSinResultados onLimpiar={() => setFiltros(FILTROS_INICIALES)} />
+      ) : (
+        <TablaActivos
+          contratos={filtrados}
+          inmuebleAliasById={inmuebleAliasById}
+          onAbrirFicha={setContratoAbierto}
+        />
+      )}
+      {contratoAbierto && (
+        <DrawerFichaContrato
+          contrato={contratoAbierto}
+          inmuebleAlias={inmuebleAliasById.get(contratoAbierto.inmuebleId)}
+          open
+          onClose={() => setContratoAbierto(null)}
+        />
+      )}
+    </>
+  );
+};
+
+export default TabActivos;
+export { TabActivos };

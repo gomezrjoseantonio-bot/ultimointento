@@ -1,0 +1,243 @@
+.tableWrap {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md, 11px);
+  overflow: hidden;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 10.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card-alt);
+}
+
+.table tbody td {
+  padding: 10px 12px;
+  color: var(--atlas-v5-ink-2);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.row {
+  cursor: pointer;
+  transition: background-color .08s;
+}
+
+.row:hover {
+  background: var(--atlas-v5-bg);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: -2px;
+}
+
+.rowNeg td:first-child {
+  box-shadow: inset 3px 0 0 var(--atlas-v5-neg);
+}
+.rowNeg:hover {
+  background: var(--atlas-v5-neg-wash);
+}
+
+.rowBrand td:first-child {
+  box-shadow: inset 3px 0 0 var(--atlas-v5-brand);
+}
+.rowBrand:hover {
+  background: var(--atlas-v5-brand-wash);
+}
+
+.colChk {
+  width: 32px;
+  text-align: center;
+  padding: 10px 8px;
+}
+
+.colTipo {
+  width: 56px;
+  text-align: center;
+}
+
+.colRight {
+  text-align: right;
+}
+
+.colMore {
+  width: 40px;
+  text-align: center;
+}
+
+/* Inquilino · avatar + nombre + email */
+.tenantCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-family: var(--atlas-v5-font-ui);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.tenantName {
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.tenantMeta {
+  color: var(--atlas-v5-ink-4);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.inmCell {
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-medium);
+  font-size: 12.5px;
+}
+
+.tipoIcono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-3);
+}
+
+.dateIndef {
+  color: var(--atlas-v5-ink-4);
+  font-style: italic;
+  font-size: 12.5px;
+}
+
+.dateMono {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-2);
+}
+
+.daysCell {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.daysOk {
+  color: var(--atlas-v5-ink-3);
+}
+
+.daysMuted {
+  color: var(--atlas-v5-ink-4);
+}
+
+.daysWarn {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}
+
+.daysNeg {
+  background: var(--atlas-v5-neg-wash);
+  color: var(--atlas-v5-neg);
+}
+
+.lastCobroEmpty {
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.moreBtn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--atlas-v5-ink-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moreBtn:hover {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink);
+  border-color: var(--atlas-v5-line);
+}
+
+.emptyResults {
+  padding: 36px 16px;
+  text-align: center;
+  background: var(--atlas-v5-card);
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md, 11px);
+  color: var(--atlas-v5-ink-3);
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.emptyResults h3 {
+  margin: 8px 0 4px;
+  font-size: 15px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.emptyResults p {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-4);
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.45;
+}
+
+.emptyResultsBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 7px;
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-medium);
+  cursor: pointer;
+}
+
+.emptyResultsBtn:hover {
+  border-color: var(--atlas-v5-gold);
+  color: var(--atlas-v5-gold-ink);
+}

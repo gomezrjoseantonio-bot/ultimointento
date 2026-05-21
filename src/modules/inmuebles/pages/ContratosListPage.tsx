@@ -26,6 +26,7 @@ import {
 import KpiContratoCard from '../components/contratos/KpiContratoCard';
 import DrawerLibres from '../components/contratos/DrawerLibres';
 import DrawerVencen from '../components/contratos/DrawerVencen';
+import TabActivos from '../components/contratos/TabActivos';
 import styles from './ContratosListPage.module.css';
 import { isContratoActivo } from '../utils/contratoEstado';
 
@@ -255,14 +256,10 @@ const ContratosListPage: React.FC = () => {
       </div>
 
       {tab === 'activos' && (
-        <ContractsTable
-          contracts={activos}
-          propertyById={propertyById}
-          today={today}
-          emptyTitle="Sin contratos activos"
-          emptySub="No hay contratos en vigor a fecha de hoy."
-          onNew={() => navigate('/contratos/nuevo')}
-          onDelete={requestDelete}
+        <TabActivos
+          contratos={activos}
+          inmuebleAliasById={propertyById}
+          onNuevoContrato={() => navigate('/contratos/nuevo')}
         />
       )}
 
