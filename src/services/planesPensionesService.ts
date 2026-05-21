@@ -7,6 +7,34 @@ import type {
   TipoAdministrativo,
   EstadoPlan,
 } from '../types/planesPensiones';
+import { valoracionesService } from './valoracionesService';
+
+/**
+ * T-VALORACIONES PR7a''''' · hidrata `valorActual` de cada plan con la
+ * última valoración del servicio nuevo (`valoracionesActivos`) si está
+ * disponible. Si no hay entrada en el mapa o falla la lectura · mantiene
+ * el `valorActual` legacy intacto. Una sola lectura del mapa por
+ * llamada · O(N) hidratación en memoria.
+ *
+ * Mismo patrón usado en `inversionesService.hydrateValorActual` ·
+ * "upstream hydration" · todos los componentes UI downstream que leen
+ * `plan.valorActual` reciben el valor correcto sin modificarlos.
+ */
+async function hydrateValorActualPlanes(planes: PlanPensiones[]): Promise<PlanPensiones[]> {
+  if (planes.length === 0) return planes;
+  let mapa: Map<string, { valor: number; fecha_valoracion: string }>;
+  try {
+    mapa = await valoracionesService.getMapValoracionesMasRecientes('plan_pensiones');
+  } catch {
+    return planes;
+  }
+  return planes.map((p) => {
+    if (p.id == null) return p;
+    const match = mapa.get(String(p.id));
+    if (!match) return p;
+    return { ...p, valorActual: match.valor };
+  });
+}
 
 const genUUID = (): string =>
   typeof crypto !== 'undefined' && crypto.randomUUID
@@ -72,7 +100,11 @@ export const planesPensionesService = {
   async getPlan(id: string): Promise<PlanPensiones | undefined> {
     const db = await initDB();
     const result = await db.get('planesPensiones', id);
-    return result as PlanPensiones | undefined;
+    if (!result) return undefined;
+    // T-VALORACIONES PR7a''''' · upstream hydration · valorActual del
+    // servicio gana sobre el legacy si hay valoración disponible.
+    const [hydrated] = await hydrateValorActualPlanes([result as PlanPensiones]);
+    return hydrated;
   },
 
   async getAllPlanes(filtros?: FiltrosPlanes): Promise<PlanPensiones[]> {
@@ -90,13 +122,13 @@ export const planesPensionesService = {
     if (filtros?.estado) {
       planes = planes.filter((p) => p.estado === filtros.estado);
     }
-    return planes;
+    return await hydrateValorActualPlanes(planes);
   },
 
   async getPlanesPorTipo(tipo: TipoAdministrativo): Promise<PlanPensiones[]> {
     const db = await initDB();
     const planes = (await db.getAll('planesPensiones')) as PlanPensiones[];
-    return planes.filter((p) => p.tipoAdministrativo === tipo);
+    return await hydrateValorActualPlanes(planes.filter((p) => p.tipoAdministrativo === tipo));
   },
 
   async eliminarPlan(id: string): Promise<void> {
