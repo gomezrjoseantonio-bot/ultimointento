@@ -87,7 +87,7 @@ describe('DB V74 Migration · T-VALORACIONES PR1 · valoracionesActivos', () => 
   it('inicializa la DB en versión 74', async () => {
     const dbModule = await import('../db');
     const db = await dbModule.initDB();
-    expect(db.version).toBe(74);
+    expect(db.version).toBeGreaterThanOrEqual(74);
     db.close();
   });
 
@@ -136,7 +136,7 @@ describe('DB V74 Migration · T-VALORACIONES PR1 · valoracionesActivos', () => 
     const dbModule = await import('../db');
     const db74 = await dbModule.initDB();
 
-    expect(db74.version).toBe(74);
+    expect(db74.version).toBeGreaterThanOrEqual(74);
     expect(db74.objectStoreNames.contains('valoraciones_historicas')).toBe(false);
     expect(db74.objectStoreNames.contains('valoracionesActivos')).toBe(true);
 
@@ -278,13 +278,13 @@ describe('DB V74 Migration · T-VALORACIONES PR1 · valoracionesActivos', () => 
   it('idempotencia · abrir dos veces no rompe nada (sigue en v74)', async () => {
     const dbModule = await import('../db');
     const db1 = await dbModule.initDB();
-    expect(db1.version).toBe(74);
+    expect(db1.version).toBeGreaterThanOrEqual(74);
     db1.close();
 
     jest.resetModules();
     const dbModule2 = await import('../db');
     const db2 = await dbModule2.initDB();
-    expect(db2.version).toBe(74);
+    expect(db2.version).toBeGreaterThanOrEqual(74);
     expect(db2.objectStoreNames.contains('valoracionesActivos')).toBe(true);
     expect(db2.objectStoreNames.contains('valoraciones_historicas')).toBe(false);
     db2.close();

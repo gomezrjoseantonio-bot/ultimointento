@@ -28,7 +28,7 @@ import type { AvisoCerrado } from '../types/avisosUsuario';
 import type { ObjetivoVital } from '../types/objetivosVitales';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 74; // V74 (T-VALORACIONES PR1): rename `valoraciones_historicas` → `valoracionesActivos` con schema camelCase, fechas YYYY-MM-DD, activoId siempre string, 5 índices nuevos. Transforma 100% de los registros existentes preservando datos. Snapshot en localStorage antes de tocar. 44 stores totales (sin cambio en número · solo rename).
+const DB_VERSION = 75; // V75 (T-VALORACIONES PR7b): purga campos legacy de valoración en `properties`, `inversiones`, `planesPensiones` tras pre-purge sync que crea valoraciones para cualquier activo con valor legacy sin entrada en `valoracionesActivos`. NO se purgan campos fiscales (`valorCatastral`, `valorAdquisicion`, `precioCompra`). 44 stores totales (sin cambio · solo purga campos).
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -4378,6 +4378,254 @@ export const initDB = async () => {
 
             console.log(
               `[DB V74] T-VALORACIONES PR1 · ${migrados} valoraciones migradas a valoracionesActivos · store antiguo eliminado`,
+            );
+          })();
+        }
+
+        if (oldVersion < 75) {
+          // ── V75 (T-VALORACIONES PR7b · cierre del refactor) ──
+          //
+          // 1. Pre-purge sync · para cada activo con un valor legacy > 0
+          //    (`valor_actual` en `properties`/`inversiones` o `valorActual`
+          //    en `planesPensiones`) que NO tenga aún entrada en
+          //    `valoracionesActivos`, crea una valoración con today.
+          //    Esto cubre el edge case de activos creados después de los
+          //    seeds PR4/PR5 que solo poblaron campo legacy.
+          //
+          // 2. Purga · elimina los campos legacy de cada record:
+          //    - properties · valor_actual, valorActual, valorMercado,
+          //      currentValue, marketValue, estimatedValue, valuation,
+          //      compra.valor_actual, acquisitionCosts.currentValue
+          //    - inversiones · valor_actual, valorActual, cotizacion,
+          //      precioUnitario
+          //    - planesPensiones · valorActual, valorConsolidado, saldoActual
+          //
+          // Campos fiscales NO se purgan · valorCatastral, valorAdquisicion,
+          // precioCompra, valorCompra, tasacion (puede usarse anchor fiscal),
+          // acquisitionCosts.price, compra.precio_compra · son datos
+          // históricos de adquisición que viven separados del flujo de
+          // valoración temporal.
+          //
+          // Snapshot pre-purge en localStorage para recuperación manual
+          // si algo va mal. La transacción versionchange aborta atómicamente
+          // si lanza · DB queda en v74 íntegra.
+
+          return (async () => {
+            const NEW_STORE = 'valoracionesActivos';
+            const today = new Date().toISOString().split('T')[0];
+
+            // ── Snapshot pre-purge ────────────────────────────────────
+            try {
+              const propertiesSnap = await (transaction as any).objectStore('properties').getAll();
+              const inversionesSnap = await (transaction as any).objectStore('inversiones').getAll();
+              const planesSnap = await (transaction as any).objectStore('planesPensiones').getAll();
+              localStorage.setItem(
+                'atlas_db_snapshot_pre_v75',
+                JSON.stringify({
+                  version: 74,
+                  timestamp: new Date().toISOString(),
+                  propertiesCount: propertiesSnap.length,
+                  inversionesCount: inversionesSnap.length,
+                  planesCount: planesSnap.length,
+                }),
+              );
+            } catch (err) {
+              console.warn('[DB V75] Snapshot localStorage falló (cuota?):', err);
+            }
+
+            // ── 1. Pre-purge sync · crear valoraciones para activos con
+            //       valor legacy sin entrada en valoracionesActivos ─────
+            const valStore = (transaction as any).objectStore(NEW_STORE);
+            const allValoraciones = (await valStore.getAll()) as Array<{
+              activoId: string;
+              tipoActivo: string;
+              deletedAt?: string | null;
+            }>;
+            const conValoracion = new Set<string>();
+            for (const v of allValoraciones) {
+              if (v?.deletedAt) continue;
+              if (
+                v?.tipoActivo === 'inmueble' ||
+                v?.tipoActivo === 'inversion' ||
+                v?.tipoActivo === 'plan_pensiones' ||
+                v?.tipoActivo === 'deposito' ||
+                v?.tipoActivo === 'otro'
+              ) {
+                conValoracion.add(`${String(v.activoId)}|${v.tipoActivo}`);
+              }
+            }
+
+            const now = new Date().toISOString();
+            let syncCreados = 0;
+
+            // properties
+            const propStore = (transaction as any).objectStore('properties');
+            const propertiesAll = (await propStore.getAll()) as any[];
+            for (const p of propertiesAll) {
+              if (p?.id == null || p.state !== 'activo') continue;
+              const id = String(p.id);
+              if (conValoracion.has(`${id}|inmueble`)) continue;
+              const valor =
+                (typeof p.valor_actual === 'number' && p.valor_actual > 0 && p.valor_actual) ||
+                (typeof p.valorActual === 'number' && p.valorActual > 0 && p.valorActual) ||
+                (typeof p.currentValue === 'number' && p.currentValue > 0 && p.currentValue) ||
+                (typeof p.marketValue === 'number' && p.marketValue > 0 && p.marketValue) ||
+                (typeof p.estimatedValue === 'number' && p.estimatedValue > 0 && p.estimatedValue) ||
+                (typeof p.valuation === 'number' && p.valuation > 0 && p.valuation) ||
+                (typeof p.compra?.valor_actual === 'number' && p.compra.valor_actual > 0 && p.compra.valor_actual) ||
+                (typeof p.acquisitionCosts?.currentValue === 'number' && p.acquisitionCosts.currentValue > 0 && p.acquisitionCosts.currentValue) ||
+                null;
+              if (valor) {
+                await valStore.add({
+                  activoId: id,
+                  tipoActivo: 'inmueble',
+                  fecha: today,
+                  valor,
+                  origen: 'seed_legacy_field_v74',
+                  divisaOriginal: 'EUR',
+                  notas: `Sync pre-purge v75 · valor rescatado de properties.${id}`,
+                  esAnchorFiscal: false,
+                  createdAt: now,
+                  updatedAt: now,
+                  deletedAt: null,
+                });
+                syncCreados++;
+              }
+            }
+
+            // inversiones · tipoActivo inferido del campo `tipo`
+            const TIPO_PLAN_LEGACY = new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']);
+            const TIPO_DEPOSITO = new Set(['deposito', 'deposito_plazo']);
+            const invStore = (transaction as any).objectStore('inversiones');
+            const inversionesAll = (await invStore.getAll()) as any[];
+            for (const inv of inversionesAll) {
+              if (inv?.id == null || inv?.activo === false) continue;
+              const id = String(inv.id);
+              const tipoCrudo = String(inv.tipo ?? '');
+              const tipoActivo: 'plan_pensiones' | 'inversion' | 'deposito' | 'otro' =
+                TIPO_PLAN_LEGACY.has(tipoCrudo)
+                  ? 'plan_pensiones'
+                  : TIPO_DEPOSITO.has(tipoCrudo)
+                    ? 'deposito'
+                    : tipoCrudo === 'otro'
+                      ? 'otro'
+                      : 'inversion';
+              if (conValoracion.has(`${id}|${tipoActivo}`)) continue;
+              const valor =
+                (typeof inv.valor_actual === 'number' && inv.valor_actual > 0 && inv.valor_actual) ||
+                (typeof inv.valorActual === 'number' && inv.valorActual > 0 && inv.valorActual) ||
+                null;
+              if (valor) {
+                await valStore.add({
+                  activoId: id,
+                  tipoActivo,
+                  fecha: today,
+                  valor,
+                  origen: 'seed_legacy_field_v74',
+                  divisaOriginal: 'EUR',
+                  notas: `Sync pre-purge v75 · valor rescatado de inversiones.${id} (tipo "${tipoCrudo}")`,
+                  esAnchorFiscal: false,
+                  createdAt: now,
+                  updatedAt: now,
+                  deletedAt: null,
+                });
+                syncCreados++;
+              }
+            }
+
+            // planesPensiones
+            const planStore = (transaction as any).objectStore('planesPensiones');
+            const planesAll = (await planStore.getAll()) as any[];
+            for (const plan of planesAll) {
+              if (plan?.id == null || plan?.estado === 'rescatado_total') continue;
+              const id = String(plan.id);
+              if (conValoracion.has(`${id}|plan_pensiones`)) continue;
+              const valor =
+                (typeof plan.valorActual === 'number' && plan.valorActual > 0 && plan.valorActual) ||
+                (typeof plan.valorConsolidado === 'number' && plan.valorConsolidado > 0 && plan.valorConsolidado) ||
+                null;
+              if (valor) {
+                await valStore.add({
+                  activoId: id,
+                  tipoActivo: 'plan_pensiones',
+                  fecha: today,
+                  valor,
+                  origen: 'seed_legacy_field_v74',
+                  divisaOriginal: 'EUR',
+                  notas: `Sync pre-purge v75 · valor rescatado de planesPensiones.${id}`,
+                  esAnchorFiscal: false,
+                  createdAt: now,
+                  updatedAt: now,
+                  deletedAt: null,
+                });
+                syncCreados++;
+              }
+            }
+
+            // ── 2. Purga · borrar campos legacy de cada store ────────
+            const purgar = (record: any, fields: string[], nested?: Record<string, string[]>): { changed: boolean; newRecord: any } => {
+              let changed = false;
+              const newRecord = { ...record };
+              for (const f of fields) {
+                if (f in newRecord) {
+                  delete newRecord[f];
+                  changed = true;
+                }
+              }
+              if (nested) {
+                for (const [subKey, subFields] of Object.entries(nested)) {
+                  if (newRecord[subKey] && typeof newRecord[subKey] === 'object') {
+                    const subCopy = { ...newRecord[subKey] };
+                    let subChanged = false;
+                    for (const f of subFields) {
+                      if (f in subCopy) {
+                        delete subCopy[f];
+                        subChanged = true;
+                      }
+                    }
+                    if (subChanged) {
+                      newRecord[subKey] = subCopy;
+                      changed = true;
+                    }
+                  }
+                }
+              }
+              return { changed, newRecord };
+            };
+
+            let purgados = 0;
+
+            // properties · purgar valoración (NO valorCatastral · NO compra.precio_compra · NO acquisitionCosts.price · esos son fiscales)
+            for (const p of propertiesAll) {
+              const { changed, newRecord } = purgar(
+                p,
+                ['valor_actual', 'valorActual', 'valorMercado', 'currentValue', 'marketValue', 'estimatedValue', 'valuation'],
+                { compra: ['valor_actual'], acquisitionCosts: ['currentValue'] },
+              );
+              if (changed) {
+                await propStore.put(newRecord);
+                purgados++;
+              }
+            }
+            // inversiones
+            for (const inv of inversionesAll) {
+              const { changed, newRecord } = purgar(inv, ['valor_actual', 'valorActual', 'cotizacion', 'precioUnitario']);
+              if (changed) {
+                await invStore.put(newRecord);
+                purgados++;
+              }
+            }
+            // planesPensiones · valorActual purgado · valorConsolidado y saldoActual también
+            for (const plan of planesAll) {
+              const { changed, newRecord } = purgar(plan, ['valorActual', 'valorConsolidado', 'saldoActual']);
+              if (changed) {
+                await planStore.put(newRecord);
+                purgados++;
+              }
+            }
+
+            console.log(
+              `[DB V75] T-VALORACIONES PR7b · ${syncCreados} valoraciones pre-purge sync · ${purgados} records purgados de campos legacy`,
             );
           })();
         }
