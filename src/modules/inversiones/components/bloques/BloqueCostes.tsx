@@ -231,7 +231,12 @@ const BloqueCostes = ({
               </span>
               {claseCompar && (
                 <span
-                  className={`${styles.badgeComparativa} ${styles[`badgeComparativa--${claseCompar}`]}`}
+                  className={[
+                    styles.badgeComparativa,
+                    styles[`badgeComparativa--${claseCompar}`],
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
                 >
                   {textoComparativa(claseCompar)}
                 </span>
