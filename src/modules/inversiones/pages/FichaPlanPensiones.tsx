@@ -13,7 +13,7 @@ import React, { useCallback, useEffect, useMemo, useId, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import { showToastV5 } from '../../../design-system/v5';
 import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
-import { calcularTotalAportadoPlan, planesPensionesService } from '../../../services/planesPensionesService';
+import { calcularTotalAportadoPlan, planesPensionesService, resolveTerPlan } from '../../../services/planesPensionesService';
 import { traspasosPlanPensionesService, valorTraspasoNormalizado } from '../../../services/traspasosPlanPensionesService';
 import { limitesFiscalesPlanesService } from '../../../services/limitesFiscalesPlanesService';
 import {
@@ -36,6 +36,7 @@ import type { ValoracionHistorica } from '../../../types/valoraciones';
 import ActualizarValoracionModal from '../components/modal/ActualizarValoracionModal';
 import AportarModal from '../components/modal/AportarModal';
 import EditarPosicionModal from '../components/modal/EditarPosicionModal';
+import EditorTerModal from '../components/modal/EditorTerModal';
 import TraspasoModal from '../components/modal/TraspasoModal';
 import { planPensionToCartaItem } from '../types/cartaItem';
 import { valoracionesService } from '../../../services/valoracionesService';
@@ -337,6 +338,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   const [showTraspaso, setShowTraspaso] = useState(false);
   // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
   const [showImportWizard, setShowImportWizard] = useState(false);
+  // T-FICHA-PP-PULIDO v1 · Bug #1 · editor manual de TER.
+  const [showEditTer, setShowEditTer] = useState(false);
 
   // ── Carga plan + aportaciones + valoraciones ──────────────────────────────
 
@@ -575,6 +578,29 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
     titulo: string;
     detalle?: string;
   }
+
+  // T-FICHA-PP-PULIDO v1 · Bug #6 · ocultar tabla "Aportaciones · histórico"
+  // si solo existe la aportación inicial (= primera, fecha = contratación e
+  // importe igual al `importeInicial` del plan). El evento de apertura ya
+  // aparece en "Trayectoria del plan" como contratación · evitamos
+  // duplicación y el estado chocante de tabla con 1-2 filas antiguas.
+  const aportacionesPostInicial = useMemo(() => {
+    if (!plan) return aportaciones;
+    return aportaciones.filter((a) => {
+      if (a.fecha !== plan.fechaContratacion) return true;
+      const total =
+        (a.importeTitular ?? 0) +
+        (a.importeEmpresa ?? 0) +
+        (a.importeConyuge ?? 0);
+      // Si la fecha coincide con la contratación y el importe casa con el
+      // valor inicial, la consideramos "aportación inicial" y la ocultamos
+      // (ya cubierta por el hito de contratación en Trayectoria).
+      const inicial = plan.importeInicial ?? 0;
+      return Math.abs(total - inicial) > 0.01;
+    });
+  }, [aportaciones, plan]);
+
+  const mostrarTablaAportaciones = aportacionesPostInicial.length >= 2;
 
   const eventosTrayectoria = useMemo<EventoTrayectoria[]>(() => {
     if (!plan) return [];
@@ -870,23 +896,33 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
           politicaInversion={plan.politicaInversion}
         />
 
-        {/* P3 · Comisiones · TIPO-AWARE */}
-        <BloqueCostes
-          posicionId={plan.id}
-          tipoActivo="plan_pensiones"
-          tipoPlan={plan.tipoAdministrativo}
-          garantizado={plan.garantizado}
-          nombreEmpresa={plan.empresaPagadora?.nombre ?? null}
-          ter={0.015 /* TODO · planesPensiones aún no expone TER · default 1,5 % */}
-          saldoMedioAnual={Math.max(0, (valorActual + aportadoTotal) / 2)}
-          anosTranscurridos={(() => {
-            if (!fechaPrimeraAportacion) return 0;
-            const t = Date.now() - new Date(fechaPrimeraAportacion).getTime();
-            return Math.max(0, Math.round(t / MS_PER_YEAR));
-          })()}
-          anosHastaRescate={23 /* TODO · derivar de personal+escenario · PR 4 follow-up */}
-          saldoMedioProyectado={Math.max(valorActual, 1) * 1.5}
-        />
+        {/* P3 · Comisiones · TIPO-AWARE · TER resuelto en runtime
+              (override manual > catálogo curado > sin dato).
+              T-FICHA-PP-PULIDO v1 · Bug #1. */}
+        {(() => {
+          const { ter, fuente, catalogoEntry } = resolveTerPlan(plan);
+          return (
+            <BloqueCostes
+              posicionId={plan.id}
+              tipoActivo="plan_pensiones"
+              tipoPlan={plan.tipoAdministrativo}
+              garantizado={plan.garantizado}
+              nombreEmpresa={plan.empresaPagadora?.nombre ?? null}
+              ter={ter}
+              terFuente={fuente}
+              terFuenteDetalle={catalogoEntry?.fuente}
+              onEditTer={() => setShowEditTer(true)}
+              saldoMedioAnual={Math.max(0, (valorActual + aportadoTotal) / 2)}
+              anosTranscurridos={(() => {
+                if (!fechaPrimeraAportacion) return 0;
+                const t = Date.now() - new Date(fechaPrimeraAportacion).getTime();
+                return Math.max(0, Math.round(t / MS_PER_YEAR));
+              })()}
+              anosHastaRescate={23 /* TODO · derivar de personal+escenario · PR 4 follow-up */}
+              saldoMedioProyectado={Math.max(valorActual, 1) * 1.5}
+            />
+          );
+        })()}
 
         {/* P4 · Hitos vivos */}
         <BloqueHitos
@@ -1036,21 +1072,21 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                   </div>
                   <div className={styles.composicionRow}>
                     <span className={styles.composicionRowLab}>
-                      Reducción base IRPF {ejercicioActual}
+                      Reducción base IRPF · este plan · {ejercicioActual}
                     </span>
                     <span className={`${styles.composicionRowVal} ${styles.pos}`}>
                       {reduccionBase != null ? `−${fmt(reduccionBase)}` : '—'}
                     </span>
                   </div>
                   <div className={styles.composicionRow} style={{ borderTop: '1px solid var(--atlas-v5-line)', marginTop: 8, paddingTop: 8 }}>
-                    <span className={styles.composicionRowLab}>Ahorrado en cuota estimado</span>
+                    <span className={styles.composicionRowLab}>Ahorrado en cuota · este plan</span>
                     <span className={`${styles.composicionRowVal} ${styles.pos}`}>
                       {ahorradoCuota != null && ahorradoCuota > 0 ? `−${fmt(ahorradoCuota)}` : '—'}
                     </span>
                   </div>
                   {(reduccionBase != null && reduccionBase === 0) && (
                     <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginTop: 8 }}>
-                      Sin aportaciones registradas en {ejercicioActual} · añade una aportación para ver el ahorro.
+                      Sin aportaciones registradas a este plan en {ejercicioActual}. Si hay aportaciones a otros planes de tu hogar, aparecen abajo en "Datos fiscales · Tu hogar".
                     </div>
                   )}
                 </div>
@@ -1095,10 +1131,10 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                 {reduccionHogar && (
                   <>
                     <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12, marginBottom: 4, borderTop: '1px solid var(--atlas-v5-line)', paddingTop: 12 }}>
-                      Tu hogar
+                      Tu hogar · todos los planes de pensiones declarados
                     </div>
                     <div className={styles.composicionRow}>
-                      <span className={styles.composicionRowLab}>Total deducible aplicado</span>
+                      <span className={styles.composicionRowLab}>Total deducible aplicado · hogar</span>
                       <span className={`${styles.composicionRowVal} ${styles.pos}`}>{fmt(reduccionHogar.totalDeducibleAplicado)}</span>
                     </div>
                     {reduccionHogar.excesoArrastrable > 0 && (
@@ -1359,14 +1395,14 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
           </div>
         )}
 
-        {/* ── 1.7 · Tabla aportaciones históricas ──────────────────────────── */}
-        <div className={styles.detailCard} style={{ marginTop: 16 }}>
-          <div className={styles.detailCardTit}>Aportaciones · histórico</div>
-          {aportaciones.length === 0 ? (
-            <div className={styles.tablaEmpty}>
-              Sin aportaciones registradas. Usa el botón "Aportar" para añadir la primera.
-            </div>
-          ) : (
+        {/* ── 1.7 · Tabla aportaciones históricas ────────────────────────────
+              T-FICHA-PP-PULIDO v1 · Bug #6 · sólo se muestra si hay ≥2
+              aportaciones post-inicial. Con 0-1 entradas reales la tabla
+              duplicaría el evento de apertura (ya visible en "Trayectoria
+              del plan"). */}
+        {mostrarTablaAportaciones && (
+          <div className={styles.detailCard} style={{ marginTop: 16 }}>
+            <div className={styles.detailCardTit}>Aportaciones · histórico</div>
             <div className={styles.tablaWrap}>
               <table className={styles.tabla}>
                 <thead>
@@ -1379,7 +1415,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {aportaciones.map((ap) => {
+                  {aportacionesPostInicial.map((ap) => {
                     const total = (ap.importeTitular ?? 0) + (ap.importeEmpresa ?? 0);
                     return (
                       <tr key={ap.id}>
@@ -1398,8 +1434,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
           </div>
         </details>
@@ -1568,6 +1604,36 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
           }}
         />
       )}
+
+      {showEditTer && (() => {
+        const { ter, fuente } = resolveTerPlan(plan);
+        return (
+          <EditorTerModal
+            planNombre={plan.nombre}
+            terActual={ter}
+            fuenteActual={fuente}
+            onSave={async (nuevoTer) => {
+              try {
+                // `null` · limpiar override · vuelve al catálogo.
+                await planesPensionesService.updatePlan(plan.id, {
+                  terOverride: nuevoTer ?? undefined,
+                });
+                showToastV5(
+                  nuevoTer == null
+                    ? 'TER restaurado desde catálogo.'
+                    : 'TER manual guardado.',
+                );
+                await load();
+              } catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('[planes] editar TER', err);
+                showToastV5('Error al guardar el TER');
+              }
+            }}
+            onClose={() => setShowEditTer(false)}
+          />
+        );
+      })()}
     </>
   );
 };

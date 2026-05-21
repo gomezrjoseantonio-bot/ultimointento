@@ -63,6 +63,14 @@ export interface PlanPensiones {
 
   participeConDiscapacidad?: boolean;
 
+  /**
+   * Override manual del TER (Total Expense Ratio) anual del plan en formato
+   * porcentual decimal · 1.5 = 1,50 %. Prevalece sobre el catálogo curado
+   * (`TER_CATALOGO_PP`). Vacío · resuelve por catálogo o cae a "sin dato".
+   * T-FICHA-PP-PULIDO v1 · Bug #1 · campo opcional · sin DB bump.
+   */
+  terOverride?: number;
+
   estado: EstadoPlan;
 
   fechaCreacion: string;

@@ -16,7 +16,11 @@ export interface CopyPorTipo {
   costesBannerTemplate: string;
   /** P3 banner · tono visual. */
   costesBannerTono: 'accionable' | 'educativo' | 'info-garantizado';
-  /** P3 · ¿muestra botón "Buscar plan con TER menor"? */
+  /**
+   * @deprecated T-FICHA-PP-PULIDO v1 · Bug #2 · el botón "Buscar plan con TER
+   * menor" se eliminó hasta que exista comparador real. El campo se conserva
+   * para evitar romper consumidores que lo lean · siempre `false`.
+   */
   mostrarBotonBuscarTerMenor: boolean;
   /** P5 · tope de aportación anual en € para el slider del sandbox. */
   topeAportacionAnualBase: number;
@@ -48,7 +52,7 @@ export function getCopyPorTipo(ctx: ContextoTipoPlan): CopyPorTipo {
         costesBannerTemplate:
           'Cambiando a un plan con TER 0,5 % ahorrarías {ahorro} € en comisiones futuras · traspaso fiscal-neutro.',
         costesBannerTono: 'accionable',
-        mostrarBotonBuscarTerMenor: true,
+        mostrarBotonBuscarTerMenor: false,
         topeAportacionAnualBase: discapacidad ? 24_250 : 1_500,
       };
 
@@ -60,7 +64,7 @@ export function getCopyPorTipo(ctx: ContextoTipoPlan): CopyPorTipo {
           ? 'Las comisiones ya están descontadas del rendimiento garantizado · informativo.'
           : 'Cambiando a un plan con TER 0,5 % ahorrarías {ahorro} € en comisiones futuras.',
         costesBannerTono: garantizado ? 'info-garantizado' : 'accionable',
-        mostrarBotonBuscarTerMenor: !garantizado,
+        mostrarBotonBuscarTerMenor: false,
         topeAportacionAnualBase: discapacidad ? 24_250 : 1_500,
       };
 
@@ -71,7 +75,7 @@ export function getCopyPorTipo(ctx: ContextoTipoPlan): CopyPorTipo {
         costesBannerTemplate:
           'Cambiando a un plan con TER 0,5 % ahorrarías {ahorro} € en comisiones futuras.',
         costesBannerTono: 'accionable',
-        mostrarBotonBuscarTerMenor: true,
+        mostrarBotonBuscarTerMenor: false,
         topeAportacionAnualBase: discapacidad ? 24_250 : esAutonomo ? 5_750 : 1_500,
       };
 
