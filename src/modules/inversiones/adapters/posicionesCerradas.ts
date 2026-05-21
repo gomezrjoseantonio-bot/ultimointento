@@ -227,6 +227,7 @@ export async function getPosicionesCerradas(): Promise<PosicionCerrada[]> {
     nombre?: string;
     tipo?: TipoPosicion;
     entidad?: string;
+    notas?: string;
     valor_actual?: number;
     total_aportado?: number;
     fecha_compra?: string;
@@ -234,8 +235,17 @@ export async function getPosicionesCerradas(): Promise<PosicionCerrada[]> {
     plan_liquidacion?: { fecha_estimada?: string };
   }>;
 
+  // Ignorar registros inyectados por importaciones AEAT XML antiguas.
+  // Estos duplicaban las transmisiones del XML y mostraban una fecha de
+  // cierre inventada (la fecha de importación). La fuente canónica son
+  // los `desdeXml` extraídos arriba con la fecha real del ejercicio.
+  const esInyectadoPorAeatXml = (p: { entidad?: string; notas?: string }): boolean =>
+    p.entidad === 'AEAT XML' ||
+    p.entidad === 'AEAT' ||
+    (typeof p.notas === 'string' && p.notas.startsWith('Transmisión declarada IRPF'));
+
   const desdeStore: PosicionCerrada[] = posicionesStore
-    .filter((p) => p.activo === false)
+    .filter((p) => p.activo === false && !esInyectadoPorAeatXml(p))
     .map((p): PosicionCerrada => {
       const aportado = safeNumber(p.total_aportado);
       const vendido = safeNumber(p.valor_actual);
