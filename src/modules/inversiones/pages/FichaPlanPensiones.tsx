@@ -10,6 +10,7 @@
 //  · "Editar" usa PlanFormV5 · NO toca movimientos.
 
 import React, { useCallback, useEffect, useMemo, useId, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
 import { showToastV5 } from '../../../design-system/v5';
 import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
@@ -327,6 +328,7 @@ interface Props {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
+  const navigate = useNavigate();
   const [plan, setPlan] = useState<PlanPensiones | null | undefined>(undefined);
   const [aportaciones, setAportaciones] = useState<AportacionPlan[]>([]);
   const [valoraciones, setValoraciones] = useState<ValoracionHistorica[]>([]);
@@ -458,11 +460,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   }, []);
 
   const handleIrAMiPlan = useCallback(() => {
-    // Navegación lightweight · evita acoplar el componente a react-router.
-    if (typeof window !== 'undefined') {
-      window.location.assign('/mi-plan');
-    }
-  }, []);
+    navigate('/mi-plan');
+  }, [navigate]);
 
   // ── Contexto fiscal + tipo marginal ──────────────────────────────────────
 
