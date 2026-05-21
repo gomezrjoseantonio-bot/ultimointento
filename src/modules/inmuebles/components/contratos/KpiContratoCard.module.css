@@ -1,0 +1,97 @@
+.card {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md, 11px);
+  padding: 14px 16px 14px 14px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .14s ease, transform .14s ease, box-shadow .14s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 92px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.card.clickable {
+  cursor: pointer;
+}
+
+.card.clickable:hover {
+  border-color: var(--atlas-v5-gold);
+  transform: translateY(-1px);
+  box-shadow: var(--atlas-v5-shadow-card-hover);
+}
+
+.card.clickable:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+.card.accent-neg {
+  border-left: 3px solid var(--atlas-v5-neg);
+}
+.card.accent-warn {
+  border-left: 3px solid var(--atlas-v5-gold);
+}
+.card.accent-muted {
+  border-left: 3px solid var(--atlas-v5-ink-4);
+}
+.card.accent-plain {
+  /* sin acento lateral */
+}
+
+.label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.card.accent-neg .label {
+  color: var(--atlas-v5-neg);
+}
+.card.accent-warn .label {
+  color: var(--atlas-v5-gold-ink);
+}
+.card.accent-muted .label {
+  color: var(--atlas-v5-ink-3);
+}
+
+.value {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 22px;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-top: 6px;
+}
+
+.valueNeg {
+  color: var(--atlas-v5-neg);
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 5px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.cta {
+  font-size: 10.5px;
+  color: var(--atlas-v5-gold-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-top: auto;
+  padding-top: 6px;
+  opacity: 0;
+  transition: opacity .14s;
+}
+
+.card.clickable:hover .cta,
+.card.clickable:focus-visible .cta {
+  opacity: 1;
+}
