@@ -143,6 +143,142 @@ export const TER_CATALOGO_PP: TerCatalogoEntry[] = [
     fuente: 'bestinver.es',
     fechaActualizacion: '2026-05-19',
   },
+
+  // === CaixaBank · T-FICHA-PP-DEUDA v1 · Fix #5 ===
+  // Fuente · estimación basada en segmento gestora bancaria española
+  // grande · pendiente verificar TER exacto en próxima revisión catálogo.
+  {
+    gestoraId: 'caixabank',
+    gestoraNombre: 'CaixaBank',
+    planSlug: 'caixabank-tendencias-rv',
+    planNombre: 'CaixaBank Tendencias RV',
+    tipoPlan: 'PPI',
+    ter: 1.5,
+    fuente: 'caixabank.es · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+  {
+    gestoraId: 'caixabank',
+    gestoraNombre: 'CaixaBank',
+    planSlug: 'caixabank-mixto-estable',
+    planNombre: 'CaixaBank Mixto Estable',
+    tipoPlan: 'PPI',
+    ter: 1.35,
+    fuente: 'caixabank.es · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+  {
+    gestoraId: 'caixabank',
+    gestoraNombre: 'CaixaBank',
+    planSlug: 'caixabank-empleo',
+    planNombre: 'CaixaBank Empleo',
+    tipoPlan: 'PPE',
+    ter: 1.2,
+    fuente: 'caixabank.es · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+
+  // === Santander · T-FICHA-PP-DEUDA v1 · Fix #5 ===
+  // Fuente · estimación basada en segmento gestora bancaria española
+  // grande · pendiente verificar TER exacto en próxima revisión catálogo.
+  {
+    gestoraId: 'santander',
+    gestoraNombre: 'Santander',
+    planSlug: 'santander-mi-jubilacion-rv',
+    planNombre: 'Santander Mi Jubilación RV',
+    tipoPlan: 'PPI',
+    ter: 1.5,
+    fuente: 'santander.es · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+  {
+    gestoraId: 'santander',
+    gestoraNombre: 'Santander',
+    planSlug: 'santander-mi-jubilacion-equilibrio',
+    planNombre: 'Santander Mi Jubilación Equilibrio',
+    tipoPlan: 'PPI',
+    ter: 1.4,
+    fuente: 'santander.es · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+  {
+    gestoraId: 'santander',
+    gestoraNombre: 'Santander',
+    planSlug: 'santander-empleados',
+    planNombre: 'Santander Empleados',
+    tipoPlan: 'PPE',
+    ter: 1.25,
+    fuente: 'santander.es · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+
+  // === Sabadell · T-FICHA-PP-DEUDA v1 · Fix #5 ===
+  // Fuente · estimación basada en segmento gestora bancaria española
+  // grande · pendiente verificar TER exacto en próxima revisión catálogo.
+  {
+    gestoraId: 'sabadell',
+    gestoraNombre: 'Sabadell',
+    planSlug: 'bs-plan-pensiones-renta-variable',
+    planNombre: 'BS Plan Pensiones Renta Variable',
+    tipoPlan: 'PPI',
+    ter: 1.5,
+    fuente: 'bancsabadell.com · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+  {
+    gestoraId: 'sabadell',
+    gestoraNombre: 'Sabadell',
+    planSlug: 'bs-plan-pensiones-mixto',
+    planNombre: 'BS Plan Pensiones Mixto',
+    tipoPlan: 'PPI',
+    ter: 1.4,
+    fuente: 'bancsabadell.com · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+  {
+    gestoraId: 'sabadell',
+    gestoraNombre: 'Sabadell',
+    planSlug: 'bs-plan-empleo',
+    planNombre: 'BS Plan Empleo',
+    tipoPlan: 'PPE',
+    ter: 1.25,
+    fuente: 'bancsabadell.com · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+
+  // === Kutxabank · T-FICHA-PP-DEUDA v1 · Fix #5 ===
+  // Fuente · estimación basada en segmento gestora bancaria española
+  // grande · pendiente verificar TER exacto en próxima revisión catálogo.
+  {
+    gestoraId: 'kutxabank',
+    gestoraNombre: 'Kutxabank',
+    planSlug: 'kutxabank-renta-variable',
+    planNombre: 'Kutxabank Renta Variable',
+    tipoPlan: 'PPI',
+    ter: 1.45,
+    fuente: 'kutxabank.es · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+  {
+    gestoraId: 'kutxabank',
+    gestoraNombre: 'Kutxabank',
+    planSlug: 'kutxabank-rendimiento',
+    planNombre: 'Kutxabank Rendimiento',
+    tipoPlan: 'PPI',
+    ter: 1.3,
+    fuente: 'kutxabank.es · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
+  {
+    gestoraId: 'kutxabank',
+    gestoraNombre: 'Kutxabank',
+    planSlug: 'kutxabank-empleo',
+    planNombre: 'Kutxabank Empleo',
+    tipoPlan: 'PPE',
+    ter: 1.2,
+    fuente: 'kutxabank.es · estimación segmento',
+    fechaActualizacion: '2026-05-21',
+  },
 ];
 
 /**

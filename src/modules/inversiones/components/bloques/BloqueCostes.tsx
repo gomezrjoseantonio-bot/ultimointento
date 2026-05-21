@@ -7,6 +7,12 @@
 //   · Bug #2 · botón "Buscar plan con TER menor" eliminado · el KPI de
 //     ahorro se conserva como dato educativo sin CTA. Cuando exista
 //     comparador real se reintroducirá.
+//
+// T-FICHA-PP-DEUDA v1 ·
+//   · Fix #3 · fila "Media del mercado" con badge comparativo (sin colores
+//     semánticos rojo/verde) usando `TER_MEDIA_MERCADO` por tipo de plan.
+//   · Fix #4 · banner orphan `coste-cambio-gestora-cta` eliminado · solo
+//     queda banner informativo para PPE/PPA-garantizado.
 
 import { useMemo } from 'react';
 import type { TipoActivoProyectable } from '../../../../services/proyeccionActivoService';
@@ -46,6 +52,39 @@ export interface BloqueCostesProps {
   saldoMedioProyectado: number;
   /** TER objetivo si se cambia a un plan más barato (default 0,5 %). */
   terObjetivo?: number;
+  /**
+   * TER medio del mercado para este tipo de plan, en formato porcentual.
+   * null · sin dato (ej. tipo desconocido). Fix #3.
+   */
+  terMediaMercado?: number | null;
+  /**
+   * Si `anosHastaRescate` viene de defaults educativos (sin fecha de
+   * nacimiento del usuario) la UI muestra un hint hacia Mi Plan. Fix #1.
+   */
+  esEstimacionPorDefecto?: boolean;
+  /** Navegar a Mi Plan desde el hint de estimación por defecto. */
+  onIrAMiPlan?: () => void;
+}
+
+type ClaseComparativa = 'por-debajo' | 'en-linea' | 'por-encima';
+
+function claseComparativa(ter: number, media: number): ClaseComparativa {
+  if (media <= 0) return 'en-linea';
+  const ratio = ter / media;
+  if (ratio < 0.9) return 'por-debajo';
+  if (ratio <= 1.1) return 'en-linea';
+  return 'por-encima';
+}
+
+function textoComparativa(clase: ClaseComparativa): string {
+  switch (clase) {
+    case 'por-debajo':
+      return '↓ Por debajo';
+    case 'en-linea':
+      return '= En línea';
+    case 'por-encima':
+      return '↑ Por encima';
+  }
 }
 
 function fmtEur(n: number): string {
@@ -72,6 +111,9 @@ const BloqueCostes = ({
   anosHastaRescate,
   saldoMedioProyectado,
   terObjetivo = 0.5,
+  terMediaMercado = null,
+  esEstimacionPorDefecto = false,
+  onIrAMiPlan,
 }: BloqueCostesProps) => {
   const copy = useMemo(
     () =>
@@ -111,12 +153,19 @@ const BloqueCostes = ({
     return Math.max(0, futuras - futurasObjetivo);
   }, [terDec, terObjetivoDec, saldoMedioProyectado, anosHastaRescate]);
 
-  // ID aviso depende del tipo · spec §9.1.
-  const avisoId = tipoPlan === 'PPE' ? 'coste-ppe-info' : 'coste-cambio-gestora-cta';
-  const { visible: bannerVisible, cerrar } = useAvisoCerrable(avisoId, {
+  // Fix #4 · el banner sólo se renderiza para tonos informativos
+  // (PPE / PPA-garantizado). El antiguo `coste-cambio-gestora-cta` queda
+  // eliminado · su CTA ya no existe desde #1383 y el comparativo lo
+  // sustituye visualmente en la fila "Media del mercado".
+  const mostrarBanner =
+    copy.costesBannerTono === 'educativo' ||
+    copy.costesBannerTono === 'info-garantizado';
+  const avisoId = tipoPlan === 'PPE' ? 'coste-ppe-info' : 'coste-ppa-info';
+  const { visible: bannerVisibleRaw, cerrar } = useAvisoCerrable(avisoId, {
     ubicacionContexto: `/inversiones/${posicionId}`,
     etiqueta: copy.costesTitulo,
   });
+  const bannerVisible = mostrarBanner && bannerVisibleRaw;
 
   // Bug #2 · sin botón · copy educativo seco con el ahorro hipotético al
   // pie del KPI · sustituye el "{ahorro}" del template.
@@ -129,6 +178,12 @@ const BloqueCostes = ({
           ),
         )
       : copy.costesBannerTemplate.replace('{ahorro}', '—');
+
+  // Fix #3 · fila comparativa "Media del mercado" con badge.
+  const claseCompar =
+    ter != null && terMediaMercado != null
+      ? claseComparativa(ter, terMediaMercado)
+      : null;
 
   const subFuente = (() => {
     if (terFuente === 'manual') return ' · dato introducido por ti';
@@ -163,6 +218,26 @@ const BloqueCostes = ({
               cuadro de comisiones de tu gestora y añádelo aquí.
             </div>
           )}
+          {terMediaMercado != null && (
+            <div
+              className={styles.filaComparativa}
+              data-testid="ter-fila-comparativa"
+            >
+              <span className={styles.filaComparativaLab}>
+                Media del mercado
+              </span>
+              <span className={styles.filaComparativaVal}>
+                {terMediaMercado.toFixed(2)} %
+              </span>
+              {claseCompar && (
+                <span
+                  className={`${styles.badgeComparativa} ${styles[`badgeComparativa--${claseCompar}`]}`}
+                >
+                  {textoComparativa(claseCompar)}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
       <div className={styles.bloqueBody}>
@@ -184,6 +259,23 @@ const BloqueCostes = ({
                   {comisionesFuturas != null ? fmtEur(comisionesFuturas) : '—'}
                 </div>
                 <div className={styles.miniSub}>{anosHastaRescate} años</div>
+                {esEstimacionPorDefecto && (
+                  <div className={styles.hintDefault}>
+                    Estimación por defecto ·{' '}
+                    {onIrAMiPlan ? (
+                      <button
+                        type="button"
+                        className={styles.linkInline}
+                        onClick={onIrAMiPlan}
+                      >
+                        configura tu escenario en Mi Plan
+                      </button>
+                    ) : (
+                      <span>configura tu escenario en Mi Plan</span>
+                    )}{' '}
+                    para una proyección personalizada.
+                  </div>
+                )}
               </div>
               <div className={styles.mini}>
                 <div className={styles.miniLab}>

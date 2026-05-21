@@ -104,3 +104,52 @@ describe('TER_CATALOGO_PP · invariantes', () => {
     }
   });
 });
+
+// T-FICHA-PP-DEUDA v1 · Fix #5 · ampliación con 4 gestoras españolas grandes.
+describe('TER_CATALOGO_PP · Fix #5 · gestoras españolas grandes', () => {
+  const NUEVAS_GESTORAS = [
+    'caixabank',
+    'santander',
+    'sabadell',
+    'kutxabank',
+  ];
+
+  test.each(NUEVAS_GESTORAS)(
+    'gestora %s · al menos una entrada PPI y otra PPE',
+    (slug) => {
+      const entradas = TER_CATALOGO_PP.filter((e) => e.gestoraId === slug);
+      expect(entradas.length).toBeGreaterThanOrEqual(2);
+      expect(entradas.some((e) => e.tipoPlan === 'PPI')).toBe(true);
+      expect(entradas.some((e) => e.tipoPlan === 'PPE')).toBe(true);
+    },
+  );
+
+  test('todas las entradas nuevas con TER en rango razonable (0,1 % - 2,5 %)', () => {
+    const nuevas = TER_CATALOGO_PP.filter((e) =>
+      NUEVAS_GESTORAS.includes(e.gestoraId),
+    );
+    expect(nuevas.length).toBeGreaterThanOrEqual(8);
+    for (const e of nuevas) {
+      expect(e.ter).toBeGreaterThanOrEqual(0.1);
+      expect(e.ter).toBeLessThanOrEqual(2.5);
+    }
+  });
+
+  test('matching loose · "CaixaBank Tendencias RV" → entrada concreta', () => {
+    const entry = lookupTerCatalogoFromNames(
+      'CaixaBank',
+      'CaixaBank Tendencias RV',
+    );
+    expect(entry).not.toBeNull();
+    expect(entry?.gestoraId).toBe('caixabank');
+    expect(entry?.tipoPlan).toBe('PPI');
+  });
+
+  test('matching loose · "Santander" + "Santander Mi Jubilación RV" → match', () => {
+    const entry = lookupTerCatalogoFromNames(
+      'Santander',
+      'Santander Mi Jubilación RV',
+    );
+    expect(entry?.gestoraId).toBe('santander');
+  });
+});
