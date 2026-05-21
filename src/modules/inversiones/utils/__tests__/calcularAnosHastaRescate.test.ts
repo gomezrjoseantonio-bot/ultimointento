@@ -65,4 +65,14 @@ describe('calcularAnosHastaRescate', () => {
     expect(r.anos).toBe(20);
     expect(r.esEstimacionPorDefecto).toBe(true);
   });
+
+  test('fecha de nacimiento en el futuro · cae a default 45 y marca estimación', () => {
+    const r = calcularAnosHastaRescate(
+      { edadObjetivoRescate: 65 },
+      '2040-01-01',
+      FECHA_REF,
+    );
+    expect(r.anos).toBe(20);
+    expect(r.esEstimacionPorDefecto).toBe(true);
+  });
 });

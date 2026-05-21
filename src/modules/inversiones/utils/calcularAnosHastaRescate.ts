@@ -29,7 +29,7 @@ export function calcularAnosHastaRescate(
 
   if (fechaNacimientoUsuario) {
     const nacimiento = new Date(fechaNacimientoUsuario);
-    if (Number.isNaN(nacimiento.getTime())) {
+    if (Number.isNaN(nacimiento.getTime()) || nacimiento > fechaReferencia) {
       edadActual = EDAD_ACTUAL_DEFAULT;
       esEstimacionPorDefecto = true;
     } else {
