@@ -18,6 +18,14 @@ import {
 } from '../../../services/contractService';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { esFechaIndefinida } from '../utils/formatFechaFin';
+import { calcularLibresAhora } from '../utils/calcularLibresAhora';
+import {
+  filtrarVencen30d,
+  filtrarVencen30a90d,
+} from '../utils/filtrosVencimiento';
+import KpiContratoCard from '../components/contratos/KpiContratoCard';
+import DrawerLibres from '../components/contratos/DrawerLibres';
+import DrawerVencen from '../components/contratos/DrawerVencen';
 import styles from './ContratosListPage.module.css';
 
 type Tab = 'disponibilidad' | 'tablero' | 'activos' | 'historico';
@@ -140,10 +148,16 @@ const ContratosListPage: React.FC = () => {
     [contracts],
   );
 
-  // Disponibilidad · unidades libres por inmueble
-  const totalUnidades = properties.reduce((sum, p) => sum + (p.bedrooms || 1), 0);
-  const ocupadas = activos.length;
-  const libres = totalUnidades - ocupadas;
+  // KPIs cabecera
+  const libresAhora = useMemo(
+    () => calcularLibresAhora(contracts, properties, today),
+    [contracts, properties, today],
+  );
+  const vencen30 = useMemo(() => filtrarVencen30d(contracts, today), [contracts, today]);
+  const vencen3090 = useMemo(() => filtrarVencen30a90d(contracts, today), [contracts, today]);
+  const libres = libresAhora.total;
+
+  const [drawerOpen, setDrawerOpen] = useState<null | 'libres' | 'd30' | 'd3090'>(null);
 
   const tabs: Array<{ key: Tab; label: string; count?: number; countTone?: 'neg' }> = [
     { key: 'disponibilidad', label: 'Disponibilidad', count: libres, countTone: libres > 0 ? 'neg' : undefined },
@@ -156,21 +170,6 @@ const ContratosListPage: React.FC = () => {
     <>
       <PageHead
         title="Contratos"
-        sub={
-          <>
-            <strong>{totalUnidades}</strong> unidades arrendables <span> · </span>
-            <strong>{ocupadas}</strong> activos · <strong>{libres}</strong> libres
-            <span> · </span>
-            renta mensual{' '}
-            <strong>
-              <MoneyValue
-                value={activos.reduce((s, c) => s + (c.rentaMensual ?? 0), 0)}
-                decimals={0}
-                tone="ink"
-              />
-            </strong>
-          </>
-        }
         actions={[
           {
             label: 'Importar contratos',
@@ -186,6 +185,50 @@ const ContratosListPage: React.FC = () => {
           },
         ]}
       />
+
+      <div className={styles.kpiStrip} role="group" aria-label="KPIs contratos">
+        <KpiContratoCard
+          label="Libres ahora"
+          value={libres}
+          accent="neg"
+          valueTone={libres > 0 ? 'neg' : 'ink'}
+          hint={
+            libres === 0
+              ? 'Todas las unidades ocupadas'
+              : libresAhora.unidades
+                  .slice(0, 2)
+                  .map((u) => u.inmuebleAlias)
+                  .join(' · ')
+          }
+          onClick={libres > 0 ? () => setDrawerOpen('libres') : undefined}
+        />
+        <KpiContratoCard
+          label="Vencen en 30 d"
+          value={vencen30.length}
+          accent="warn"
+          hint={vencen30.length === 0 ? 'Sin vencimientos próximos' : 'decisión urgente'}
+          onClick={vencen30.length > 0 ? () => setDrawerOpen('d30') : undefined}
+        />
+        <KpiContratoCard
+          label="Vencen en 30-90 d"
+          value={vencen3090.length}
+          accent="muted"
+          hint={vencen3090.length === 0 ? 'Sin vencimientos en este rango' : 'a planificar'}
+          onClick={vencen3090.length > 0 ? () => setDrawerOpen('d3090') : undefined}
+        />
+        <KpiContratoCard
+          label="Días vacíos YTD"
+          value={null}
+          accent="muted"
+          hint="cálculo en preparación"
+        />
+        <KpiContratoCard
+          label="Ingresos perdidos YTD"
+          value={null}
+          accent="plain"
+          hint="cálculo en preparación"
+        />
+      </div>
 
       <div className={styles.tabsBar} role="group" aria-label="Tabs contratos">
         {tabs.map((t) => {
@@ -311,6 +354,26 @@ const ContratosListPage: React.FC = () => {
         cancelText="Cancelar"
         variant="danger"
         isLoading={isDeleting}
+      />
+
+      <DrawerLibres
+        open={drawerOpen === 'libres'}
+        onClose={() => setDrawerOpen(null)}
+        data={libresAhora}
+      />
+      <DrawerVencen
+        variant="d30"
+        open={drawerOpen === 'd30'}
+        onClose={() => setDrawerOpen(null)}
+        contratos={vencen30}
+        inmuebleAliasById={propertyById}
+      />
+      <DrawerVencen
+        variant="d3090"
+        open={drawerOpen === 'd3090'}
+        onClose={() => setDrawerOpen(null)}
+        contratos={vencen3090}
+        inmuebleAliasById={propertyById}
       />
     </>
   );
