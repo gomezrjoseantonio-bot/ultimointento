@@ -1010,7 +1010,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
             );
           })()}
           anosDefault={anosHastaRescateInfo.anos}
-          twrDefault={rentabilidadTotal?.TWR ?? 0.03}
+          twrDefault={obtenerTwrEsperado(rentabilidadTotal?.TWR)}
           valorFinalActual={null /* PR 4 follow-up · pasar valor de proyección actual para mostrar diferencia */}
         />
 
