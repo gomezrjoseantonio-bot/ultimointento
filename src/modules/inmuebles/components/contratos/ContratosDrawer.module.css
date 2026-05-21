@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   background: rgba(14, 20, 35, 0.42);
-  z-index: 100;
+  z-index: var(--atlas-v5-z-modal);
   animation: fadeIn .18s ease;
 }
 
@@ -16,8 +16,8 @@
   min-width: 380px;
   background: var(--atlas-v5-card);
   border-left: 1px solid var(--atlas-v5-line);
-  box-shadow: -8px 0 24px rgba(14, 20, 35, 0.08);
-  z-index: 101;
+  box-shadow: var(--atlas-v5-shadow-modal);
+  z-index: calc(var(--atlas-v5-z-modal) + 1);
   display: flex;
   flex-direction: column;
   overflow: hidden;

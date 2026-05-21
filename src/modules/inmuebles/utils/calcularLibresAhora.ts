@@ -1,5 +1,5 @@
 import type { Contract, Property } from '../../../services/db';
-import { isContratoActivo } from '../pages/ContratosListPage';
+import { isContratoActivo } from './contratoEstado';
 import { esFechaIndefinida } from './formatFechaFin';
 import { parseIsoDateAsUTC } from '../../../utils/recurrenceDateUtils';
 
@@ -52,6 +52,8 @@ export function calcularLibresAhora(
     return { total: 0, unidades: [], diasTotalesAcumulados: 0, rentaPerdidaAcumulada: 0 };
   }
 
+  const hoyNorm = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate()));
+
   const contratosPorInmueble = new Map<number, Contract[]>();
   for (const c of contracts) {
     const lista = contratosPorInmueble.get(c.inmuebleId) ?? [];
@@ -78,7 +80,7 @@ export function calcularLibresAhora(
     const fechaLibreDesde = ultimoFinalizado?.fechaFin;
     const fechaLibreParsed = fechaLibreDesde ? parseIsoDateAsUTC(fechaLibreDesde) : null;
     const diasLibre = fechaLibreParsed && !Number.isNaN(fechaLibreParsed.getTime())
-      ? diasEntre(fechaLibreParsed, hoy)
+      ? diasEntre(fechaLibreParsed, hoyNorm)
       : null;
 
     const rentaReferencia =

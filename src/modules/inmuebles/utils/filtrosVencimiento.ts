@@ -1,5 +1,5 @@
 import type { Contract } from '../../../services/db';
-import { isContratoActivo } from '../pages/ContratosListPage';
+import { isContratoActivo } from './contratoEstado';
 import { esFechaIndefinida } from './formatFechaFin';
 import { parseIsoDateAsUTC } from '../../../utils/recurrenceDateUtils';
 
@@ -20,7 +20,7 @@ export function filtrarContratosVencenEn(
   diasMax: number,
   hoy: Date = new Date(),
 ): ContratoConVencimiento[] {
-  const hoyUTC = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  const hoyUTC = Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate());
 
   return contracts
     .filter((c): c is Contract & { id: number } => c.id != null)

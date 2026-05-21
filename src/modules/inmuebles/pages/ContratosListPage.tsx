@@ -27,6 +27,7 @@ import KpiContratoCard from '../components/contratos/KpiContratoCard';
 import DrawerLibres from '../components/contratos/DrawerLibres';
 import DrawerVencen from '../components/contratos/DrawerVencen';
 import styles from './ContratosListPage.module.css';
+import { isContratoActivo } from '../utils/contratoEstado';
 
 type Tab = 'disponibilidad' | 'tablero' | 'activos' | 'historico';
 
@@ -40,7 +41,6 @@ const normalizeTab = (raw: string | null): Tab | null => {
   return LEGACY_TAB_ALIAS[raw] ?? null;
 };
 
-export const isContratoActivo = (c: Contract): boolean => c.estadoContrato === 'activo';
 export const isContratoFinalizado = (c: Contract): boolean =>
   c.estadoContrato === 'finalizado' || c.estadoContrato === 'rescindido';
 
