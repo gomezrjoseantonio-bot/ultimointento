@@ -17,23 +17,27 @@ import {
   type DeleteContractCascadeReport,
 } from '../../../services/contractService';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { esFechaIndefinida } from '../utils/formatFechaFin';
 import styles from './ContratosListPage.module.css';
 
-type Tab = 'disponibilidad' | 'acciones' | 'activos' | 'historico';
+type Tab = 'disponibilidad' | 'tablero' | 'activos' | 'historico';
 
-const VALID_TABS: Tab[] = ['disponibilidad', 'acciones', 'activos', 'historico'];
+const VALID_TABS: Tab[] = ['disponibilidad', 'tablero', 'activos', 'historico'];
+const LEGACY_TAB_ALIAS: Record<string, Tab> = { acciones: 'tablero' };
 const isValidTab = (value: string | null): value is Tab =>
   value !== null && (VALID_TABS as string[]).includes(value);
-
-const isContractActiveAt = (c: Contract, today: Date): boolean => {
-  if (!c.fechaInicio || !c.fechaFin) return false;
-  const ini = new Date(c.fechaInicio);
-  const fin = new Date(c.fechaFin);
-  return !Number.isNaN(ini.getTime()) && !Number.isNaN(fin.getTime()) && ini <= today && today <= fin;
+const normalizeTab = (raw: string | null): Tab | null => {
+  if (raw === null) return null;
+  if (isValidTab(raw)) return raw;
+  return LEGACY_TAB_ALIAS[raw] ?? null;
 };
 
+export const isContratoActivo = (c: Contract): boolean => c.estadoContrato === 'activo';
+export const isContratoFinalizado = (c: Contract): boolean =>
+  c.estadoContrato === 'finalizado' || c.estadoContrato === 'rescindido';
+
 const isExpiringSoon = (c: Contract, today: Date, daysWindow = 90): boolean => {
-  if (!c.fechaFin) return false;
+  if (!c.fechaFin || esFechaIndefinida(c.fechaFin)) return false;
   const fin = new Date(c.fechaFin);
   if (Number.isNaN(fin.getTime())) return false;
   const diff = fin.getTime() - today.getTime();
@@ -45,7 +49,7 @@ const ContratosListPage: React.FC = () => {
   const navigate = useNavigate();
   const { properties, contracts, reload } = useOutletContext<InmueblesOutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab: Tab = isValidTab(searchParams.get('tab')) ? (searchParams.get('tab') as Tab) : 'activos';
+  const initialTab: Tab = normalizeTab(searchParams.get('tab')) ?? 'activos';
   const [tab, setTab] = useState<Tab>(initialTab);
   const today = useMemo(() => new Date(), []);
   const [pendingDelete, setPendingDelete] = useState<{
@@ -98,9 +102,14 @@ const ContratosListPage: React.FC = () => {
 
   // Sincronizar tab cuando cambia el query param (navegación externa · back/forward · enlace)
   useEffect(() => {
-    const queryTab = searchParams.get('tab');
-    if (isValidTab(queryTab) && queryTab !== tab) {
+    const rawTab = searchParams.get('tab');
+    const queryTab = normalizeTab(rawTab);
+    if (queryTab !== null && queryTab !== tab) {
       setTab(queryTab);
+      if (rawTab !== queryTab) {
+        // Reescribir URL legacy (?tab=acciones → ?tab=tablero) sin push extra
+        setSearchParams({ tab: queryTab }, { replace: true });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -118,18 +127,18 @@ const ContratosListPage: React.FC = () => {
     return map;
   }, [properties]);
 
-  const activos = useMemo(
-    () => contracts.filter((c) => isContractActiveAt(c, today)),
-    [contracts, today],
-  );
+  const activos = useMemo(() => contracts.filter(isContratoActivo), [contracts]);
   const acciones = useMemo(
     () =>
       contracts.filter(
-        (c) => isContractActiveAt(c, today) && isExpiringSoon(c, today, 90),
+        (c) => isContratoActivo(c) && isExpiringSoon(c, today, 90),
       ),
     [contracts, today],
   );
-  const historico = contracts;
+  const historico = useMemo(
+    () => contracts.filter(isContratoFinalizado),
+    [contracts],
+  );
 
   // Disponibilidad · unidades libres por inmueble
   const totalUnidades = properties.reduce((sum, p) => sum + (p.bedrooms || 1), 0);
@@ -138,7 +147,7 @@ const ContratosListPage: React.FC = () => {
 
   const tabs: Array<{ key: Tab; label: string; count?: number; countTone?: 'neg' }> = [
     { key: 'disponibilidad', label: 'Disponibilidad', count: libres, countTone: libres > 0 ? 'neg' : undefined },
-    { key: 'acciones', label: 'Acciones', count: acciones.length },
+    { key: 'tablero', label: 'Tablero', count: acciones.length },
     { key: 'activos', label: 'Activos', count: activos.length },
     { key: 'historico', label: 'Histórico', count: historico.length },
   ];
@@ -215,18 +224,26 @@ const ContratosListPage: React.FC = () => {
       )}
 
       {tab === 'historico' && (
-        <ContractsTable
-          contracts={historico}
-          propertyById={propertyById}
-          today={today}
-          emptyTitle="Sin contratos registrados"
-          emptySub="Aún no hay contratos en la base de datos."
-          onNew={() => navigate('/contratos/nuevo')}
-          onDelete={requestDelete}
-        />
+        historico.length === 0 ? (
+          <EmptyState
+            icon={<Icons.Success size={20} />}
+            title="Sin contratos finalizados"
+            sub="Cuando termines o archives un contrato aparecerá aquí su histórico."
+          />
+        ) : (
+          <ContractsTable
+            contracts={historico}
+            propertyById={propertyById}
+            today={today}
+            emptyTitle="Sin contratos finalizados"
+            emptySub="Cuando termines o archives un contrato aparecerá aquí su histórico."
+            onNew={() => navigate('/contratos/nuevo')}
+            onDelete={requestDelete}
+          />
+        )
       )}
 
-      {tab === 'acciones' && (
+      {tab === 'tablero' && (
         <>
           {acciones.length === 0 ? (
             <EmptyState
@@ -249,12 +266,35 @@ const ContratosListPage: React.FC = () => {
       )}
 
       {tab === 'disponibilidad' && (
-        <div className={styles.placeholder}>
-          <strong>Timeline 6 meses · disponibilidad por habitación</strong>
-          Vista timeline 6 meses prevista · pendiente de implementación
-          completa en sub-tarea follow-up. Por ahora · {libres} unidades
-          libres del total de {totalUnidades}.
-        </div>
+        <EmptyState
+          icon={<Icons.Calendar size={20} />}
+          title="Vista de disponibilidad en construcción"
+          sub={
+            <>
+              Estamos preparando un calendario de 6 meses por habitación para
+              ver de un vistazo qué está libre, qué se acerca a vencer y dónde
+              colocar nuevos inquilinos.{' '}
+              <br />
+              Mientras tanto, gestiona tus contratos desde{' '}
+              <button
+                type="button"
+                className={styles.linkInline}
+                onClick={() => handleTabChange('activos')}
+              >
+                Activos
+              </button>{' '}
+              o{' '}
+              <button
+                type="button"
+                className={styles.linkInline}
+                onClick={() => handleTabChange('tablero')}
+              >
+                Tablero
+              </button>
+              .
+            </>
+          }
+        />
       )}
 
       <ConfirmationModal
@@ -280,7 +320,9 @@ const buildDeleteMessage = (
   contract: Contract,
   cascade: DeleteContractCascadeReport,
 ): string => {
-  const tenant = `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`.trim();
+  const tenant =
+    `${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim() ||
+    'este contrato';
   const cascadaParts: string[] = [];
   if (cascade.treasuryEventsPredictedDeleted > 0) {
     cascadaParts.push(
@@ -360,20 +402,24 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
           {contracts
             .filter((c): c is Contract & { id: number } => c.id != null)
             .map((c) => {
-              const activo = isContractActiveAt(c, today);
-              const expiring = isExpiringSoon(c, today, 90);
+              const activo = isContratoActivo(c);
+              const expiring = activo && isExpiringSoon(c, today, 90);
               const propertyAlias = propertyById.get(c.inmuebleId) ?? `#${c.inmuebleId}`;
               const menuOpen = openMenuId === c.id;
+              const nombreCompleto = `${c.inquilino?.nombre ?? ''} ${
+                c.inquilino?.apellidos ?? ''
+              }`.trim();
+              const finIndefinida = esFechaIndefinida(c.fechaFin);
               return (
                 <tr
                   key={c.id}
-                  onClick={() => showToastV5(`Detalle contrato · ${c.inquilino.nombre}`)}
+                  onClick={() => showToastV5(`Detalle contrato · ${nombreCompleto || '—'}`)}
                 >
                   <td>
                     <div className={styles.tStrong}>
-                      {c.inquilino.nombre} {c.inquilino.apellidos}
+                      {nombreCompleto || '—'}
                     </div>
-                    {c.inquilino.email && (
+                    {c.inquilino?.email && (
                       <div className={styles.tMuted}>{c.inquilino.email}</div>
                     )}
                   </td>
@@ -385,23 +431,21 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                     <DateLabel value={c.fechaInicio} format="short" size="sm" />
                   </td>
                   <td>
-                    <DateLabel value={c.fechaFin} format="short" size="sm" />
+                    {finIndefinida ? (
+                      <span className={styles.fechaIndefinida}>Indefinido</span>
+                    ) : (
+                      <DateLabel value={c.fechaFin} format="short" size="sm" />
+                    )}
                   </td>
                   <td className="r">
                     <MoneyValue value={c.rentaMensual} decimals={0} />
                   </td>
                   <td className="c">
                     <Pill
-                      variant={
-                        activo && expiring ? 'warn' : activo ? 'pos' : 'gris'
-                      }
+                      variant={expiring ? 'warn' : 'gris'}
                       asTag
                     >
-                      {activo && expiring
-                        ? 'Vence pronto'
-                        : activo
-                          ? 'Activo'
-                          : 'Inactivo'}
+                      {expiring ? 'Vence pronto' : activo ? 'Activo' : 'Inactivo'}
                     </Pill>
                   </td>
                   <td
