@@ -10,10 +10,22 @@
 //  · "Editar" usa PlanFormV5 · NO toca movimientos.
 
 import React, { useCallback, useEffect, useMemo, useId, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
 import { showToastV5 } from '../../../design-system/v5';
 import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
 import { calcularTotalAportadoPlan, planesPensionesService, resolveTerPlan } from '../../../services/planesPensionesService';
+import { getEscenarioActivo } from '../../../services/escenariosService';
+import { personalDataService } from '../../../services/personalDataService';
+import { TER_MEDIA_MERCADO } from '../../../data/terCatalogoPP';
+import {
+  calcularAnosHastaRescate,
+  type ResultadoAnosHastaRescate,
+} from '../utils/calcularAnosHastaRescate';
+import {
+  calcularSaldoMedioProyectado,
+  obtenerTwrEsperado,
+} from '../utils/calcularSaldoMedioProyectado';
 import { traspasosPlanPensionesService, valorTraspasoNormalizado } from '../../../services/traspasosPlanPensionesService';
 import { limitesFiscalesPlanesService } from '../../../services/limitesFiscalesPlanesService';
 import {
@@ -316,6 +328,7 @@ interface Props {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
+  const navigate = useNavigate();
   const [plan, setPlan] = useState<PlanPensiones | null | undefined>(undefined);
   const [aportaciones, setAportaciones] = useState<AportacionPlan[]>([]);
   const [valoraciones, setValoraciones] = useState<ValoracionHistorica[]>([]);
@@ -340,6 +353,14 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   const [showImportWizard, setShowImportWizard] = useState(false);
   // T-FICHA-PP-PULIDO v1 · Bug #1 · editor manual de TER.
   const [showEditTer, setShowEditTer] = useState(false);
+
+  // T-FICHA-PP-DEUDA v1 · Fix #1 · años hasta rescate derivados de
+  // escenario activo + fechaNacimiento personal.
+  const [anosHastaRescateInfo, setAnosHastaRescateInfo] =
+    useState<ResultadoAnosHastaRescate>({
+      anos: 20,
+      esEstimacionPorDefecto: true,
+    });
 
   // ── Carga plan + aportaciones + valoraciones ──────────────────────────────
 
@@ -413,6 +434,34 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   }, [planId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // T-FICHA-PP-DEUDA v1 · Fix #1 · resolver años hasta rescate desde
+  // escenario activo + fecha de nacimiento personal (independiente de la
+  // carga del plan · no bloquea el render).
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const [esc, personal] = await Promise.all([
+          getEscenarioActivo().catch(() => null),
+          personalDataService.getPersonalData().catch(() => null),
+        ]);
+        if (cancelado) return;
+        setAnosHastaRescateInfo(
+          calcularAnosHastaRescate(esc, personal?.fechaNacimiento),
+        );
+      } catch {
+        // Defaults educativos ya cubiertos por el state inicial.
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  const handleIrAMiPlan = useCallback(() => {
+    navigate('/mi-plan');
+  }, [navigate]);
 
   // ── Contexto fiscal + tipo marginal ──────────────────────────────────────
 
@@ -898,9 +947,19 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
 
         {/* P3 · Comisiones · TIPO-AWARE · TER resuelto en runtime
               (override manual > catálogo curado > sin dato).
-              T-FICHA-PP-PULIDO v1 · Bug #1. */}
+              T-FICHA-PP-PULIDO v1 · Bug #1.
+              T-FICHA-PP-DEUDA v1 · Fix #1/#2/#3 · `anosHastaRescate` y
+              `saldoMedioProyectado` derivados · `terMediaMercado` cableado. */}
         {(() => {
           const { ter, fuente, catalogoEntry } = resolveTerPlan(plan);
+          const terMediaMercado =
+            TER_MEDIA_MERCADO[plan.tipoAdministrativo] ?? null;
+          const twrEsperado = obtenerTwrEsperado(rentabilidadTotal?.TWR);
+          const saldoMedioProyectado = calcularSaldoMedioProyectado(
+            valorActual,
+            anosHastaRescateInfo.anos,
+            twrEsperado,
+          );
           return (
             <BloqueCostes
               posicionId={plan.id}
@@ -911,6 +970,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
               ter={ter}
               terFuente={fuente}
               terFuenteDetalle={catalogoEntry?.fuente}
+              terMediaMercado={terMediaMercado}
               onEditTer={() => setShowEditTer(true)}
               saldoMedioAnual={Math.max(0, (valorActual + aportadoTotal) / 2)}
               anosTranscurridos={(() => {
@@ -918,8 +978,10 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                 const t = Date.now() - new Date(fechaPrimeraAportacion).getTime();
                 return Math.max(0, Math.round(t / MS_PER_YEAR));
               })()}
-              anosHastaRescate={23 /* TODO · derivar de personal+escenario · PR 4 follow-up */}
-              saldoMedioProyectado={Math.max(valorActual, 1) * 1.5}
+              anosHastaRescate={anosHastaRescateInfo.anos}
+              esEstimacionPorDefecto={anosHastaRescateInfo.esEstimacionPorDefecto}
+              onIrAMiPlan={handleIrAMiPlan}
+              saldoMedioProyectado={saldoMedioProyectado}
             />
           );
         })()}
@@ -946,8 +1008,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
               0,
             );
           })()}
-          anosDefault={23}
-          twrDefault={rentabilidadTotal?.TWR ?? 0.03}
+          anosDefault={anosHastaRescateInfo.anos}
+          twrDefault={obtenerTwrEsperado(rentabilidadTotal?.TWR)}
           valorFinalActual={null /* PR 4 follow-up · pasar valor de proyección actual para mostrar diferencia */}
         />
 

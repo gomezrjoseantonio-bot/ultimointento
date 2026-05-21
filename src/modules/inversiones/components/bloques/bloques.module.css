@@ -480,3 +480,67 @@
 .detalleFiscalBody {
   padding: 18px 22px 22px;
 }
+
+/* ─── Fila comparativa TER actual vs media del mercado (Fix #3) ─── */
+.filaComparativa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.filaComparativaLab {
+  color: var(--atlas-v5-ink-4);
+}
+
+.filaComparativaVal {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--atlas-v5-ink-2);
+  font-weight: 600;
+}
+
+.badgeComparativa {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  color: var(--atlas-v5-ink-3);
+}
+
+.badgeComparativa--por-debajo {
+  background: var(--atlas-v5-gold-wash);
+  border-color: var(--atlas-v5-gold-soft);
+  color: var(--atlas-v5-gold-ink);
+}
+
+/* `en-linea` y `por-encima` mantienen estilo neutro · sin colores semánticos
+ * (no usar rojo/verde · paleta navy/beige/gold + neutros). */
+
+/* ─── Hint "estimación por defecto" (Fix #1) ─── */
+.hintDefault {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  line-height: 1.4;
+}
+
+.linkInline {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--atlas-v5-gold-ink);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.linkInline:hover {
+  color: var(--atlas-v5-gold);
+}

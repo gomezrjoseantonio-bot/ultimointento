@@ -94,19 +94,7 @@ describe('BloqueCostes · tipo-aware copy (§5.4) + Bug #2', () => {
     );
   });
 
-  test('PPI · banner cerrable · click X llama cerrarAviso con id correcto', async () => {
-    render(<BloqueCostes {...baseProps} tipoPlan="PPI" />);
-    const cerrar = await screen.findByLabelText('Cerrar aviso de comisiones');
-    fireEvent.click(cerrar);
-    await waitFor(() =>
-      expect(mockCerrarAviso).toHaveBeenCalledWith(
-        'coste-cambio-gestora-cta',
-        expect.objectContaining({ ubicacionContexto: '/inversiones/plan-1' }),
-      ),
-    );
-  });
-
-  test('PPE · banner cerrable · usa avisoId distinto (coste-ppe-info)', async () => {
+  test('PPE · banner cerrable · usa avisoId coste-ppe-info', async () => {
     render(<BloqueCostes {...baseProps} tipoPlan="PPE" />);
     const cerrar = await screen.findByLabelText('Cerrar aviso de comisiones');
     fireEvent.click(cerrar);
@@ -118,9 +106,24 @@ describe('BloqueCostes · tipo-aware copy (§5.4) + Bug #2', () => {
     );
   });
 
-  test('aviso cerrado previamente · banner no se muestra', async () => {
-    mockEstaAvisoActivo.mockResolvedValueOnce(false);
+  // T-FICHA-PP-DEUDA v1 · Fix #4 · banner orphan eliminado para PPI/PPES.
+  test('PPI · sin banner orphan "coste-cambio-gestora-cta"', async () => {
     render(<BloqueCostes {...baseProps} tipoPlan="PPI" />);
+    await screen.findByText('Lo que te cobra la gestora');
+    await waitFor(() => {
+      expect(
+        screen.queryByLabelText('Cerrar aviso de comisiones'),
+      ).not.toBeInTheDocument();
+    });
+    // Verifica que la id legacy nunca se invoca en cerrarAviso.
+    expect(mockCerrarAviso).not.toHaveBeenCalledWith(
+      'coste-cambio-gestora-cta',
+      expect.anything(),
+    );
+  });
+
+  test('PPES · sin banner orphan (Fix #4)', async () => {
+    render(<BloqueCostes {...baseProps} tipoPlan="PPES" />);
     await screen.findByText('Lo que te cobra la gestora');
     await waitFor(() => {
       expect(
@@ -181,5 +184,120 @@ describe('BloqueCostes · TER · Bug #1', () => {
     const cta = screen.getByRole('button', { name: /editar TER/i });
     fireEvent.click(cta);
     expect(onEditTer).toHaveBeenCalled();
+  });
+});
+
+// T-FICHA-PP-DEUDA v1 · Fix #3 · fila comparativa "Media del mercado".
+describe('BloqueCostes · Fix #3 · comparativa media del mercado', () => {
+  test('ter por debajo de la media · badge "↓ Por debajo"', () => {
+    render(
+      <BloqueCostes
+        {...baseProps}
+        tipoPlan="PPI"
+        ter={0.43}
+        terMediaMercado={1.1}
+      />,
+    );
+    const fila = screen.getByTestId('ter-fila-comparativa');
+    expect(fila).toHaveTextContent('Media del mercado');
+    expect(fila).toHaveTextContent('1.10 %');
+    expect(fila).toHaveTextContent(/Por debajo/);
+  });
+
+  test('ter por encima de la media · badge "↑ Por encima"', () => {
+    render(
+      <BloqueCostes
+        {...baseProps}
+        tipoPlan="PPI"
+        ter={1.5}
+        terMediaMercado={1.1}
+      />,
+    );
+    expect(screen.getByTestId('ter-fila-comparativa')).toHaveTextContent(
+      /Por encima/,
+    );
+  });
+
+  test('ter en línea con la media · badge "= En línea"', () => {
+    render(
+      <BloqueCostes
+        {...baseProps}
+        tipoPlan="PPI"
+        ter={1.1}
+        terMediaMercado={1.1}
+      />,
+    );
+    expect(screen.getByTestId('ter-fila-comparativa')).toHaveTextContent(
+      /En línea/,
+    );
+  });
+
+  test('terMediaMercado=null · sin fila comparativa', () => {
+    render(
+      <BloqueCostes
+        {...baseProps}
+        tipoPlan="PPI"
+        ter={1.1}
+        terMediaMercado={null}
+      />,
+    );
+    expect(
+      screen.queryByTestId('ter-fila-comparativa'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('ter=null + terMediaMercado presente · fila visible sin badge', () => {
+    render(
+      <BloqueCostes
+        {...baseProps}
+        tipoPlan="PPI"
+        ter={null}
+        terFuente="desconocido"
+        terMediaMercado={1.1}
+      />,
+    );
+    const fila = screen.getByTestId('ter-fila-comparativa');
+    expect(fila).toHaveTextContent('Media del mercado');
+    expect(fila).toHaveTextContent('1.10 %');
+    // Sin TER del plan, no hay comparativa · ningún texto de badge.
+    expect(fila).not.toHaveTextContent(/Por debajo/);
+    expect(fila).not.toHaveTextContent(/Por encima/);
+    expect(fila).not.toHaveTextContent(/En línea/);
+  });
+});
+
+// T-FICHA-PP-DEUDA v1 · Fix #1 · hint "estimación por defecto" con link Mi Plan.
+describe('BloqueCostes · Fix #1 · hint estimación por defecto', () => {
+  test('esEstimacionPorDefecto=true · hint visible con link', () => {
+    const onIrAMiPlan = jest.fn();
+    render(
+      <BloqueCostes
+        {...baseProps}
+        tipoPlan="PPI"
+        esEstimacionPorDefecto
+        onIrAMiPlan={onIrAMiPlan}
+      />,
+    );
+    expect(
+      screen.getByText(/Estimación por defecto/i),
+    ).toBeInTheDocument();
+    const link = screen.getByRole('button', {
+      name: /configura tu escenario en Mi Plan/i,
+    });
+    fireEvent.click(link);
+    expect(onIrAMiPlan).toHaveBeenCalled();
+  });
+
+  test('esEstimacionPorDefecto=false · sin hint', () => {
+    render(
+      <BloqueCostes
+        {...baseProps}
+        tipoPlan="PPI"
+        esEstimacionPorDefecto={false}
+      />,
+    );
+    expect(
+      screen.queryByText(/Estimación por defecto/i),
+    ).not.toBeInTheDocument();
   });
 });
