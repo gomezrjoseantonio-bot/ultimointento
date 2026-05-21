@@ -442,7 +442,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                   </td>
                   <td className="c">
                     <Pill
-                      variant={expiring ? 'warn' : 'gris'}
+                      variant={expiring ? 'warn' : activo ? 'pos' : 'gris'}
                       asTag
                     >
                       {expiring ? 'Vence pronto' : activo ? 'Activo' : 'Inactivo'}
