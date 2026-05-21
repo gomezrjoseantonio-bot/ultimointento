@@ -1,3 +1,5 @@
+import { parseIsoDateAsUTC } from '../../../utils/recurrenceDateUtils';
+
 /**
  * Convención del proyecto · una fecha de fin "indefinida" se persiste como
  * 31-dic-2099. T1 de Contratos · cleanup quirúrgico de render únicamente; no
@@ -24,9 +26,12 @@ export function formatFechaFinContrato(
     return 'Indefinido';
   }
   if (formatFecha) return formatFecha(fechaFin!);
+  const parsed = parseIsoDateAsUTC(fechaFin!);
+  if (Number.isNaN(parsed.getTime())) return 'Fecha inválida';
   return new Intl.DateTimeFormat('es-ES', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(fechaFin!));
+    timeZone: 'UTC',
+  }).format(parsed);
 }

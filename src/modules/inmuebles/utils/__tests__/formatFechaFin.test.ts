@@ -58,4 +58,14 @@ describe('formatFechaFinContrato', () => {
     expect(result).not.toBe('Indefinido');
     expect(result).toMatch(/2026/);
   });
+
+  test('fecha inválida devuelve fallback seguro', () => {
+    expect(formatFechaFinContrato('no-es-fecha')).toBe('Fecha inválida');
+  });
+
+  test('string ISO con hora mantiene la fecha civil', () => {
+    const result = formatFechaFinContrato('2026-05-15T23:59:59.000Z');
+    expect(result).toMatch(/15/);
+    expect(result).toMatch(/2026/);
+  });
 });
