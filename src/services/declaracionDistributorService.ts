@@ -309,11 +309,16 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
     console.warn('Error al persistir plan de pensiones:', err);
   }
 
-  // Persistir fondos y criptomonedas en inversiones
+  // Limpiar registros de `inversiones` inyectados por importaciones AEAT
+  // XML previas. La fuente canónica de transmisiones declaradas es la
+  // propia declaración (`ejerciciosFiscalesCoord[].aeat.declaracionCompleta`),
+  // que `posicionesCerradas` ya lee con la fecha real del ejercicio.
+  // Duplicar la información en `inversiones` provocaba (a) duplicados en
+  // "Inversiones cerradas" y (b) una fecha de cierre inventada (hoy).
   try {
-    await persistirInversionesDeclaradas(db, decl, decl.meta.ejercicio);
+    await limpiarInversionesInyectadasPorAeatXml(db);
   } catch (err) {
-    console.warn('Error al persistir inversiones declaradas:', err);
+    console.warn('Error al limpiar inversiones inyectadas por AEAT XML:', err);
   }
 
   // GAP-3: Detectar si el año ya tiene cierre ATLAS para abrir ValidacionXMLDrawer en la UI
@@ -1036,71 +1041,27 @@ async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: n
 }
 
 /**
- * Persiste fondos de inversión y criptomonedas declarados en el store inversiones.
- * Cada transmisión genera una PosicionInversion cerrada (activo=false).
- * Deduplicación por nombre (nombre incluye el año).
+ * Borra del store `inversiones` los registros inyectados por importaciones
+ * AEAT XML anteriores. Estos se identifican por marcadores estables:
+ * `entidad === 'AEAT' | 'AEAT XML'` o `notas` que empiezan por
+ * "Transmisión declarada IRPF". La fuente canónica vive en
+ * `ejerciciosFiscalesCoord[].aeat.declaracionCompleta` y la lee el
+ * adapter `posicionesCerradas` con la fecha de cierre del ejercicio.
  */
-async function persistirInversionesDeclaradas(db: DB, decl: DeclaracionCompleta, año: number): Promise<void> {
-  const gp = decl.gananciasPerdidas;
-  if (!gp) return;
-
-  const ahora = new Date().toISOString();
-  const hoy = ahora.slice(0, 10);
-
-  const existentes = await db.getAll('inversiones');
-  const nombresExistentes = new Set(existentes.map((i: any) => i.nombre));
-
-  // Fondos de inversión
-  for (const fondo of gp.fondos ?? []) {
-    const nombre = `Fondo ${fondo.nifFondo || 'desconocido'} (${año})`;
-    if (nombresExistentes.has(nombre)) continue;
-
-    const totalAportado = fondo.valorAdquisicion ?? 0;
-    const valorActual = fondo.valorTransmision ?? 0;
-    const ganancia = fondo.ganancia ?? 0;
-
-    await db.add('inversiones', {
-      nombre,
-      tipo: 'fondo_inversion',
-      entidad: fondo.nifFondo || 'AEAT',
-      isin: fondo.nifFondo || undefined,
-      valor_actual: valorActual,
-      fecha_valoracion: hoy,
-      aportaciones: [],
-      total_aportado: totalAportado,
-      rentabilidad_euros: ganancia,
-      rentabilidad_porcentaje: totalAportado > 0 ? Math.round((ganancia / totalAportado) * 10000) / 100 : 0,
-      notas: `Transmisión declarada IRPF ${año}. Retención: ${fondo.retencion ?? 0} €`,
-      activo: false,
-      created_at: ahora,
-      updated_at: ahora,
-    } as any);
-  }
-
-  // Criptomonedas
-  for (const cripto of gp.criptomonedas ?? []) {
-    const nombre = `${cripto.moneda || 'Crypto'} (${año})`;
-    if (nombresExistentes.has(nombre)) continue;
-
-    const totalAportado = cripto.valorAdquisicion ?? 0;
-    const valorActual = cripto.valorTransmision ?? 0;
-    const ganancia = cripto.resultado ?? 0;
-
-    await db.add('inversiones', {
-      nombre,
-      tipo: 'crypto',
-      entidad: 'AEAT XML',
-      valor_actual: valorActual,
-      fecha_valoracion: hoy,
-      aportaciones: [],
-      total_aportado: totalAportado,
-      rentabilidad_euros: ganancia,
-      rentabilidad_porcentaje: totalAportado > 0 ? Math.round((ganancia / totalAportado) * 10000) / 100 : 0,
-      notas: `Transmisión declarada IRPF ${año}. Clave: ${cripto.claveContraprestacion || ''}`,
-      activo: false,
-      created_at: ahora,
-      updated_at: ahora,
-    } as any);
+async function limpiarInversionesInyectadasPorAeatXml(db: DB): Promise<void> {
+  const existentes = (await db.getAll('inversiones')) as Array<{
+    id: number;
+    entidad?: string;
+    notas?: string;
+  }>;
+  for (const inv of existentes) {
+    const esAeatXml =
+      inv.entidad === 'AEAT XML' ||
+      inv.entidad === 'AEAT' ||
+      (typeof inv.notas === 'string' && inv.notas.startsWith('Transmisión declarada IRPF'));
+    if (esAeatXml) {
+      await db.delete('inversiones', inv.id);
+    }
   }
 }
 
