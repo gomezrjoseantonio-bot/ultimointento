@@ -8,6 +8,10 @@ import type {
   EstadoPlan,
 } from '../types/planesPensiones';
 import { valoracionesService } from './valoracionesService';
+import {
+  lookupTerCatalogoFromNames,
+  type TerCatalogoEntry,
+} from '../data/terCatalogoPP';
 
 /**
  * T-VALORACIONES PR7a''''' · hidrata `valorActual` de cada plan con la
@@ -55,6 +59,40 @@ export function calcularTotalAportadoPlan(sumaAportaciones: number): number {
   const suma = Number(sumaAportaciones);
   if (!Number.isFinite(suma) || suma < 0) return 0;
   return suma;
+}
+
+/**
+ * T-FICHA-PP-PULIDO v1 · Bug #1.
+ *
+ * Resuelve el TER de un plan según prioridad:
+ *   1. Override manual del usuario (`plan.terOverride`)
+ *   2. Match en catálogo curado (`TER_CATALOGO_PP`) por nombres normalizados
+ *      de gestora y plan
+ *   3. null · sin dato · la UI muestra CTA "consulta a tu gestora"
+ *
+ * `ter` se devuelve siempre en formato porcentual (1.5 = 1,50%) para que
+ * el catálogo y el override usen las mismas unidades visibles al usuario.
+ * El consumidor que necesite decimal (ej. cálculos) divide entre 100.
+ */
+export function resolveTerPlan(
+  plan: Pick<PlanPensiones, 'terOverride' | 'gestoraActual' | 'nombre'> | null | undefined,
+): {
+  ter: number | null;
+  fuente: 'manual' | 'catalogo' | 'desconocido';
+  catalogoEntry?: TerCatalogoEntry;
+} {
+  if (!plan) return { ter: null, fuente: 'desconocido' };
+
+  if (typeof plan.terOverride === 'number' && plan.terOverride >= 0) {
+    return { ter: plan.terOverride, fuente: 'manual' };
+  }
+
+  const entry = lookupTerCatalogoFromNames(plan.gestoraActual, plan.nombre);
+  if (entry) {
+    return { ter: entry.ter, fuente: 'catalogo', catalogoEntry: entry };
+  }
+
+  return { ter: null, fuente: 'desconocido' };
 }
 
 export interface FiltrosPlanes {

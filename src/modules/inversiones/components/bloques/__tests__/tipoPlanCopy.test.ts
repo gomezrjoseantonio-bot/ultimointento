@@ -6,11 +6,13 @@
 import { getCopyPorTipo } from '../tipoPlanCopy';
 
 describe('getCopyPorTipo · §5.4 títulos tipo-aware', () => {
-  test('PPI · accionable · "Lo que te cobra la gestora" + botón TER menor', () => {
+  // T-FICHA-PP-PULIDO v1 · Bug #2 · `mostrarBotonBuscarTerMenor` siempre
+  // `false` · botón eliminado hasta que exista comparador real.
+  test('PPI · accionable · "Lo que te cobra la gestora" · sin botón TER menor', () => {
     const c = getCopyPorTipo({ tipoAdministrativo: 'PPI' });
     expect(c.costesTitulo).toBe('Lo que te cobra la gestora');
     expect(c.p1Modo).toBe('accionable');
-    expect(c.mostrarBotonBuscarTerMenor).toBe(true);
+    expect(c.mostrarBotonBuscarTerMenor).toBe(false);
     expect(c.costesBannerTono).toBe('accionable');
   });
 
@@ -31,10 +33,10 @@ describe('getCopyPorTipo · §5.4 títulos tipo-aware', () => {
     expect(c.costesBannerTemplate).toContain('la empresa');
   });
 
-  test('PPES · accionable · botón sí', () => {
+  test('PPES · accionable · sin botón (Bug #2)', () => {
     const c = getCopyPorTipo({ tipoAdministrativo: 'PPES' });
     expect(c.costesTitulo).toBe('Lo que te cobra la gestora');
-    expect(c.mostrarBotonBuscarTerMenor).toBe(true);
+    expect(c.mostrarBotonBuscarTerMenor).toBe(false);
   });
 
   test('PPA garantizado · banner info-garantizado · sin botón', () => {
@@ -44,10 +46,10 @@ describe('getCopyPorTipo · §5.4 títulos tipo-aware', () => {
     expect(c.costesBannerTemplate).toContain('garantizado');
   });
 
-  test('PPA NO garantizado · banner accionable', () => {
+  test('PPA NO garantizado · banner accionable · sin botón (Bug #2)', () => {
     const c = getCopyPorTipo({ tipoAdministrativo: 'PPA', garantizado: false });
     expect(c.costesBannerTono).toBe('accionable');
-    expect(c.mostrarBotonBuscarTerMenor).toBe(true);
+    expect(c.mostrarBotonBuscarTerMenor).toBe(false);
   });
 });
 

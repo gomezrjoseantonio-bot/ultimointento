@@ -1,5 +1,6 @@
 // Smoke test · BloqueCostes (PR 4 · spec §11 fila 8).
-// PPE NO muestra botón "Buscar plan con TER menor" · PPI sí.
+// T-FICHA-PP-PULIDO v1 · Bug #2 · el botón "Buscar plan con TER menor" ya
+// no existe en ningún tipo de plan · los tests comprueban su ausencia.
 // Verifica copy tipo-aware ("Lo que te cobra…" / "Lo que cuesta…").
 
 import '@testing-library/jest-dom';
@@ -22,7 +23,10 @@ import BloqueCostes from '../BloqueCostes';
 const baseProps = {
   posicionId: 'plan-1',
   tipoActivo: 'plan_pensiones' as const,
-  ter: 0.0138,
+  // ter en formato porcentual (1.38 = 1,38 %).
+  ter: 1.38,
+  terFuente: 'catalogo' as const,
+  terFuenteDetalle: 'bbva.es',
   saldoMedioAnual: 36000,
   anosTranscurridos: 17,
   anosHastaRescate: 23,
@@ -35,13 +39,13 @@ beforeEach(() => {
   mockCerrarAviso.mockResolvedValue(undefined);
 });
 
-describe('BloqueCostes · tipo-aware copy (§5.4)', () => {
-  test('PPI · título "Lo que te cobra la gestora" · botón "Buscar plan con TER menor"', async () => {
+describe('BloqueCostes · tipo-aware copy (§5.4) + Bug #2', () => {
+  test('PPI · título "Lo que te cobra la gestora" · SIN botón "Buscar plan con TER menor"', async () => {
     render(<BloqueCostes {...baseProps} tipoPlan="PPI" />);
     expect(await screen.findByText('Lo que te cobra la gestora')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /Buscar plan con TER menor/ }),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: /Buscar plan con TER menor/ }),
+    ).not.toBeInTheDocument();
   });
 
   test('PPE · título "Lo que cuesta tener este plan" · SIN botón "Buscar plan con TER menor"', async () => {
@@ -54,12 +58,12 @@ describe('BloqueCostes · tipo-aware copy (§5.4)', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('PPES · botón presente igual que PPI', async () => {
+  test('PPES · sin botón · igual que PPI (Bug #2)', async () => {
     render(<BloqueCostes {...baseProps} tipoPlan="PPES" />);
     await screen.findByText('Lo que te cobra la gestora');
     expect(
-      screen.getByRole('button', { name: /Buscar plan con TER menor/ }),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: /Buscar plan con TER menor/ }),
+    ).not.toBeInTheDocument();
   });
 
   test('PPA garantizado · SIN botón · banner info-garantizado visible', async () => {
@@ -73,12 +77,12 @@ describe('BloqueCostes · tipo-aware copy (§5.4)', () => {
     );
   });
 
-  test('PPA NO garantizado · botón presente', async () => {
+  test('PPA NO garantizado · sin botón (Bug #2)', async () => {
     render(<BloqueCostes {...baseProps} tipoPlan="PPA" garantizado={false} />);
     await screen.findByText('Lo que te cobra la gestora');
     expect(
-      screen.getByRole('button', { name: /Buscar plan con TER menor/ }),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: /Buscar plan con TER menor/ }),
+    ).not.toBeInTheDocument();
   });
 
   test('PPE · banner sustituye {nombreEmpresa}', async () => {
@@ -123,5 +127,59 @@ describe('BloqueCostes · tipo-aware copy (§5.4)', () => {
         screen.queryByLabelText('Cerrar aviso de comisiones'),
       ).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('BloqueCostes · TER · Bug #1', () => {
+  test('ter=null · sin KPIs · CTA "Añadir TER manualmente" visible', () => {
+    const onEditTer = jest.fn();
+    render(
+      <BloqueCostes
+        {...baseProps}
+        ter={null}
+        terFuente="desconocido"
+        tipoPlan="PPI"
+        onEditTer={onEditTer}
+      />,
+    );
+    expect(
+      screen.getByText(/No tenemos el TER de este plan/i),
+    ).toBeInTheDocument();
+    const cta = screen.getByRole('button', { name: /Añadir TER manualmente/ });
+    expect(cta).toBeInTheDocument();
+    fireEvent.click(cta);
+    expect(onEditTer).toHaveBeenCalled();
+  });
+
+  test('terFuente=catalogo · subtítulo incluye fuente del catálogo', () => {
+    render(<BloqueCostes {...baseProps} tipoPlan="PPI" />);
+    expect(
+      screen.getByText(/catálogo ATLAS · bbva\.es/i),
+    ).toBeInTheDocument();
+  });
+
+  test('terFuente=manual · subtítulo "dato introducido por ti"', () => {
+    render(
+      <BloqueCostes
+        {...baseProps}
+        tipoPlan="PPI"
+        ter={0.75}
+        terFuente="manual"
+        terFuenteDetalle={undefined}
+      />,
+    );
+    expect(
+      screen.getByText(/dato introducido por ti/i),
+    ).toBeInTheDocument();
+  });
+
+  test('ter visible · CTA "editar TER" llama onEditTer', () => {
+    const onEditTer = jest.fn();
+    render(
+      <BloqueCostes {...baseProps} tipoPlan="PPI" onEditTer={onEditTer} />,
+    );
+    const cta = screen.getByRole('button', { name: /editar TER/i });
+    fireEvent.click(cta);
+    expect(onEditTer).toHaveBeenCalled();
   });
 });

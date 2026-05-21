@@ -281,10 +281,15 @@ const BloqueProyeccion = ({
                 lab="Si cambias gestora"
                 val={`${view.data.diferenciaConBenchmark >= 0 ? '+' : ''}${fmtEur(view.data.diferenciaConBenchmark)}`}
                 tone={view.data.diferenciaConBenchmark >= 0 ? 'pos' : 'neg'}
-                sub={
+                // Bug #5 · explicar el contraste: "vs MSCI_WORLD_EUR" se leía
+                // como rentabilidad esperada · ahora dejamos claro que es
+                // diferencia frente a continuar con la rentabilidad histórica
+                // del propio plan, usando el benchmark sólo como referencia.
+                sub={`vs continuar con tu TWR histórico (${(view.data.escenarioActual.twrAplicado * 100).toFixed(1)} %)`}
+                detail={
                   view.benchmarkUsado
-                    ? `vs ${view.benchmarkUsado.codigo}`
-                    : undefined
+                    ? `Hipotético · si movieras a una gestora cuya rentabilidad coincidiese con el benchmark ${view.benchmarkUsado.codigo}. Mismo capital y horizonte de rescate.`
+                    : 'Hipotético · si movieras a una gestora más eficiente.'
                 }
               />
             )}
@@ -310,12 +315,36 @@ function SerieMiniSparkline({ puntos }: { puntos: { ano: number; valor: number }
   const ys = puntos.map((p) => p.valor);
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
-  const minY = Math.min(...ys, 0);
-  const maxY = Math.max(...ys, 1);
+
+  // Bug #3 · escala Y dinámica · arrancar en 0 hace que la curva 2026→2045
+  // se aplaste contra el techo. Usamos rango ajustado al dato (±5 %) para
+  // que la curva ocupe ~90 % del espacio vertical y se vea el crecimiento.
+  const dataMin = Math.min(...ys);
+  const dataMax = Math.max(...ys);
+  const spread = Math.max(1, dataMax - dataMin);
+  const minY = Math.max(0, dataMin - spread * 0.05);
+  const maxY = dataMax + spread * 0.05;
+
+  // Ticks anuales · cada ~5 años para no saturar.
+  const yearSpan = maxX - minX;
+  const tickStep = yearSpan <= 5 ? 1 : yearSpan <= 12 ? 2 : 5;
+  const ticksX: number[] = [];
+  for (let y = minX; y <= maxX; y += tickStep) ticksX.push(y);
+  if (ticksX[ticksX.length - 1] !== maxX) ticksX.push(maxX);
+
   const px = (x: number) => PAD + ((x - minX) / (maxX - minX || 1)) * (W - 2 * PAD);
   const py = (y: number) => H - PAD - ((y - minY) / (maxY - minY || 1)) * (H - 2 * PAD);
   const d = puntos.map((p, i) => `${i === 0 ? 'M' : 'L'} ${px(p.ano)} ${py(p.valor)}`).join(' ');
   const last = puntos[puntos.length - 1];
+
+  // Ticks Y · 3 niveles (min, medio, max) para dar referencia de magnitud.
+  const ticksY = [minY, (minY + maxY) / 2, maxY];
+  const fmtTickY = (v: number) => {
+    if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} M €`;
+    if (Math.abs(v) >= 1_000) return `${Math.round(v / 1_000)} k €`;
+    return `${Math.round(v)} €`;
+  };
+
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
@@ -324,35 +353,46 @@ function SerieMiniSparkline({ puntos }: { puntos: { ano: number; valor: number }
       role="img"
       aria-label="Curva de proyección anual"
     >
-      <line
-        x1={PAD}
-        y1={py(0)}
-        x2={W - PAD}
-        y2={py(0)}
-        stroke="var(--atlas-v5-line)"
-        strokeWidth="1"
-      />
+      {/* Grid horizontal · referencias de Y */}
+      {ticksY.map((v) => (
+        <g key={`y-${v}`}>
+          <line
+            x1={PAD}
+            y1={py(v)}
+            x2={W - PAD}
+            y2={py(v)}
+            stroke="var(--atlas-v5-line)"
+            strokeWidth="1"
+            strokeDasharray={v === minY ? undefined : '2 3'}
+          />
+          <text
+            x={PAD - 4}
+            y={py(v) + 3}
+            textAnchor="end"
+            fontSize="9"
+            fill="var(--atlas-v5-ink-4)"
+            fontFamily="JetBrains Mono"
+          >
+            {fmtTickY(v)}
+          </text>
+        </g>
+      ))}
       <path d={d} fill="none" stroke="var(--atlas-v5-gold)" strokeWidth="2" />
       <circle cx={px(last.ano)} cy={py(last.valor)} r="4" fill="var(--atlas-v5-gold-ink)" />
-      <text
-        x={px(minX) - 2}
-        y={py(minY) + 14}
-        fontSize="10"
-        fill="var(--atlas-v5-ink-4)"
-        fontFamily="JetBrains Mono"
-      >
-        {minX}
-      </text>
-      <text
-        x={px(maxX)}
-        y={py(minY) + 14}
-        textAnchor="end"
-        fontSize="10"
-        fill="var(--atlas-v5-ink-4)"
-        fontFamily="JetBrains Mono"
-      >
-        {maxX}
-      </text>
+      {/* Ticks X · años legibles */}
+      {ticksX.map((y) => (
+        <text
+          key={`x-${y}`}
+          x={px(y)}
+          y={H - PAD + 14}
+          textAnchor={y === maxX ? 'end' : y === minX ? 'start' : 'middle'}
+          fontSize="10"
+          fill="var(--atlas-v5-ink-4)"
+          fontFamily="JetBrains Mono"
+        >
+          {y}
+        </text>
+      ))}
     </svg>
   );
 }
@@ -362,11 +402,14 @@ function Mini({
   val,
   tone = 'ink',
   sub,
+  detail,
 }: {
   lab: string;
   val: string;
   tone?: 'ink' | 'pos' | 'neg';
   sub?: string;
+  /** Tooltip nativo con detalle largo · accesible por hover/focus. */
+  detail?: string;
 }) {
   const colorVar =
     tone === 'pos'
@@ -375,7 +418,7 @@ function Mini({
         ? 'var(--atlas-v5-neg)'
         : 'var(--atlas-v5-ink)';
   return (
-    <div className={styles.mini}>
+    <div className={styles.mini} title={detail}>
       <div className={styles.miniLab}>{lab}</div>
       <div className={styles.miniVal} style={{ color: colorVar }}>{val}</div>
       {sub && <div className={styles.miniSub}>{sub}</div>}
