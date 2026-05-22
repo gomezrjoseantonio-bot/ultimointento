@@ -232,7 +232,6 @@ const createIngresoFromDocument = async (document: Document): Promise<number> =>
 
 // Create Expense from Document
 const createGastoFromDocument = async (document: Document): Promise<number> => {
-  const db = await initDB();
   const { metadata } = document;
   const { financialData, aeatClassification } = metadata;
 
@@ -354,7 +353,6 @@ export const findReconciliationMatches = async (): Promise<{
       db.getAll('ingresos'),
       gastosInmuebleService.getAll(),
     ]);
-    const mejoras: any[] = []; // mejoras loaded from mejorasInmueble if needed
     // Map gastosInmueble to Gasto-like shape for reconciliation
     const gastos = allGastosInmueble.map(g => ({
       id: g.id, contraparte_nombre: g.proveedorNombre || '', total: g.importe,
@@ -365,7 +363,6 @@ export const findReconciliationMatches = async (): Promise<{
 
     const unreconciledIngresos = ingresos.filter(i => !i.movement_id);
     const unreconciledGastos = gastos.filter(g => !g.movement_id);
-    const unreconciledMejoras = mejoras.filter(c => !c.movement_id);
 
     // For each unreconciled movement, find potential matches
     for (const movement of unreconciledMovements) {
