@@ -15,6 +15,13 @@ import './index.css';
 import './design-system/v5/tokens.css';
 import App from './App';
 
+// Red de seguridad permanente · cualquier promesa no awaited que rechace
+// debe quedar en consola para diagnóstico (no debe ser silenciada).
+window.addEventListener('unhandledrejection', (event) => {
+  // eslint-disable-next-line no-console
+  console.error('[unhandledrejection]', event.reason);
+});
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );

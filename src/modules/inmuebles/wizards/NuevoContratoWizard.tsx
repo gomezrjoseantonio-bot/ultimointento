@@ -8,6 +8,8 @@ import {
   Icons,
   showToastV5,
 } from '../../../design-system/v5';
+import type { Contract } from '../../../services/db';
+import { saveContract, getContract } from '../../../services/contractService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import styles from './NuevoContratoWizard.module.css';
 
@@ -63,6 +65,8 @@ const NuevoContratoWizard: React.FC = () => {
     ...emptyForm,
     inmuebleId: initialInmuebleId,
   });
+  const [creando, setCreando] = useState(false);
+  const [errorSave, setErrorSave] = useState<string | null>(null);
 
   const update = <K extends keyof FormState>(key: K, val: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -101,17 +105,87 @@ const NuevoContratoWizard: React.FC = () => {
   const stepIndex = steps.findIndex((s) => s.key === step);
   const isLast = step === 'firma';
 
+  const construirPayloadContrato = (): Omit<Contract, 'id' | 'createdAt' | 'updatedAt'> | null => {
+    if (form.inmuebleId == null) return null;
+    const rentaMensualNum = Number(form.rentaMensual);
+    const diaPagoNum = Number(form.diaPago) || 1;
+    const fianzaMesesNum = Number(form.fianzaMensualidades) || 0;
+    if (!Number.isFinite(rentaMensualNum) || rentaMensualNum <= 0) return null;
+    const unidadTipo: 'vivienda' | 'habitacion' = form.habitacionId
+      ? 'habitacion'
+      : 'vivienda';
+    return {
+      inmuebleId: form.inmuebleId,
+      unidadTipo,
+      habitacionId: form.habitacionId || undefined,
+      modalidad: form.modalidad,
+      inquilino: {
+        nombre: form.inquilinoNombre.trim(),
+        apellidos: form.inquilinoApellidos.trim(),
+        dni: form.inquilinoNif.trim(),
+        telefono: form.inquilinoTelefono.trim(),
+        email: form.inquilinoEmail.trim(),
+      },
+      fechaInicio: form.fechaInicio,
+      fechaFin: form.fechaFin,
+      rentaMensual: rentaMensualNum,
+      diaPago: diaPagoNum,
+      margenGraciaDias: 5,
+      indexacion: form.indexacion,
+      historicoIndexaciones: [],
+      fianzaMeses: fianzaMesesNum,
+      fianzaImporte: Math.round(rentaMensualNum * fianzaMesesNum),
+      fianzaEstado: 'retenida',
+      cuentaCobroId: 0,
+      estadoContrato: 'activo',
+      // Legacy fields requeridos por el modelo Contract · saveContract
+      // los re-deriva (status del estadoContrato, documents por defecto a []).
+      status: 'active',
+      documents: [],
+    };
+  };
+
+  const handleCrearContrato = async (): Promise<void> => {
+    if (creando) return;
+    setErrorSave(null);
+    const payload = construirPayloadContrato();
+    if (!payload) {
+      setErrorSave('Faltan datos obligatorios para crear el contrato.');
+      return;
+    }
+    setCreando(true);
+    try {
+      const id = await saveContract(payload);
+      if (typeof id !== 'number') {
+        throw new Error('saveContract devolvió sin id');
+      }
+      const verificado = await getContract(id);
+      if (!verificado) {
+        throw new Error(`Contrato ${id} no se pudo recuperar tras guardar`);
+      }
+      showToastV5(
+        `Contrato creado · ${payload.inquilino.nombre} ${payload.inquilino.apellidos}`.trim(),
+        'success',
+      );
+      navigate('/contratos?tab=activos');
+    } catch (e) {
+      const mensaje = e instanceof Error ? e.message : 'error desconocido';
+      // eslint-disable-next-line no-console
+      console.error('[WizardNuevoContrato] error al guardar contrato:', e);
+      setErrorSave(`No se pudo guardar el contrato · ${mensaje}`);
+      showToastV5('Error al guardar el contrato · vuelve a intentarlo', 'error');
+    } finally {
+      setCreando(false);
+    }
+  };
+
   const handleNext = () => {
     if (!canAdvance) {
       showToastV5('Completa los campos obligatorios para continuar', 'warn');
       return;
     }
     if (isLast) {
-      showToastV5(
-        `Contrato generado · ${form.inquilinoNombre} ${form.inquilinoApellidos}`,
-        'success',
-      );
-      navigate('/contratos');
+      void handleCrearContrato();
       return;
     }
     setStep(steps[stepIndex + 1].key);
@@ -534,6 +608,24 @@ const NuevoContratoWizard: React.FC = () => {
             </>
           )}
 
+          {errorSave && (
+            <div
+              role="alert"
+              style={{
+                marginTop: 12,
+                padding: '10px 12px',
+                background: 'var(--atlas-v5-neg-wash)',
+                borderLeft: '3px solid var(--atlas-v5-neg)',
+                borderRadius: 4,
+                fontSize: 12,
+                color: 'var(--atlas-v5-neg)',
+                lineHeight: 1.5,
+              }}
+            >
+              {errorSave}
+            </div>
+          )}
+
           <div className={styles.footer}>
             <span className={styles.footerNote}>
               Paso {stepIndex + 1} de {steps.length} · cambios guardados como borrador
@@ -551,9 +643,10 @@ const NuevoContratoWizard: React.FC = () => {
                 type="button"
                 className={`${styles.btn} ${styles.btnGold}`}
                 onClick={handleNext}
-                disabled={!canAdvance}
+                disabled={!canAdvance || creando}
+                aria-busy={creando || undefined}
               >
-                {isLast ? 'Crear contrato' : 'Siguiente'}
+                {isLast ? (creando ? 'Creando...' : 'Crear contrato') : 'Siguiente'}
                 <Icons.ChevronRight size={14} strokeWidth={2} />
               </button>
             </div>
