@@ -1,0 +1,425 @@
+.root {
+  font-family: var(--atlas-v5-font-ui);
+}
+
+/* ── Cabecera ────────────────────────────────────────────────────────────── */
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 4px 0 14px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.headTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.01em;
+}
+
+.headSub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  max-width: 620px;
+  line-height: 1.45;
+}
+
+.toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  flex-shrink: 0;
+}
+
+.toggleBtn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-3);
+  cursor: pointer;
+}
+
+.toggleBtn:hover {
+  color: var(--atlas-v5-ink);
+}
+
+.toggleBtnActive {
+  background: var(--atlas-v5-ink);
+  color: var(--atlas-v5-card);
+}
+
+.toggleBtnActive:hover {
+  color: var(--atlas-v5-card);
+}
+
+/* ── Container y grid ────────────────────────────────────────────────────── */
+
+.container {
+  position: relative;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md, 11px);
+  padding: 10px 14px 14px;
+  overflow: hidden;
+}
+
+.headerRow {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+  font-size: 10px;
+  color: var(--atlas-v5-ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.headerLabCol {
+  padding-left: 4px;
+}
+
+.headerMonths {
+  display: grid;
+  position: relative;
+}
+
+.headerMonth {
+  padding: 0 6px;
+  border-left: 1px solid var(--atlas-v5-line);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10px;
+}
+
+.bodyWrap {
+  position: relative;
+  padding-top: 8px;
+}
+
+/* ── Línea HOY ───────────────────────────────────────────────────────────── */
+
+.todayLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--atlas-v5-neg);
+  z-index: 20;
+  pointer-events: none;
+  /* offset proporcional al ancho de la columna de track */
+  margin-left: 214px;
+}
+
+.todayLabel {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 9px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-card);
+  background: var(--atlas-v5-neg);
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+/* ── Propiedad group ─────────────────────────────────────────────────────── */
+
+.propGroup {
+  margin-top: 14px;
+}
+
+.propGroup:first-of-type {
+  margin-top: 0;
+}
+
+.propHead {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 14px;
+  padding: 6px 0;
+  align-items: center;
+  border-top: 1px solid var(--atlas-v5-ink);
+}
+
+.propHeadLab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.propAlias {
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-size: 12px;
+  color: var(--atlas-v5-ink);
+}
+
+.propMeta {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.propMetaWarn {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  font-family: inherit;
+}
+
+.linkInline {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--atlas-v5-brand);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.linkInline:hover {
+  color: var(--atlas-v5-ink);
+}
+
+/* ── Líneas y track ──────────────────────────────────────────────────────── */
+
+.lineasWrap {
+  position: relative;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 14px;
+  align-items: center;
+  height: 30px;
+}
+
+.rowLab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-2);
+}
+
+.rowColor {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.rowName {
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.rowSuffix {
+  color: var(--atlas-v5-ink-4);
+  font-size: 10px;
+  font-family: var(--atlas-v5-font-mono-num);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+.track {
+  position: relative;
+  height: 22px;
+  background: var(--atlas-v5-card-alt);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--atlas-v5-line-2);
+}
+
+/* ── Barras (segmentos) ──────────────────────────────────────────────────── */
+
+.bar {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 10.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  transition: opacity .14s;
+  font-family: inherit;
+}
+
+.barText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar:hover {
+  opacity: 0.88;
+}
+
+.bar:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 1px;
+}
+
+.bar-vigente-l {
+  background: var(--atlas-v5-brand);
+  color: #fff;
+}
+
+.bar-vigente-c {
+  background: var(--atlas-v5-gold);
+  color: #fff;
+}
+
+.bar-pendiente-firma {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--atlas-v5-brand) 0,
+    var(--atlas-v5-brand) 6px,
+    var(--atlas-v5-brand-2, #2A3875) 6px,
+    var(--atlas-v5-brand-2, #2A3875) 12px
+  );
+  color: #fff;
+}
+
+.bar-impago {
+  background: var(--atlas-v5-neg);
+  color: #fff;
+}
+
+.bar-renovado {
+  background: var(--atlas-v5-pos);
+  color: #fff;
+}
+
+.bar-libre {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(139, 142, 160, 0.35) 0,
+    rgba(139, 142, 160, 0.35) 3px,
+    transparent 3px,
+    transparent 8px
+  );
+  background-color: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-3);
+  border: 1.5px dashed var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-medium);
+  /* compensar el border 1.5px que sobresale */
+  top: 0;
+  bottom: 0;
+}
+
+/* ── Overlay piso completo ───────────────────────────────────────────────── */
+
+.overlayLayer {
+  position: absolute;
+  top: 0;
+  left: 200px;
+  right: 0;
+  margin-left: 14px;
+  pointer-events: none;
+}
+
+.overlay {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid var(--atlas-v5-card);
+  box-shadow: 0 0 0 1px var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold);
+  z-index: 10;
+  pointer-events: auto;
+  font-family: inherit;
+}
+
+.overlay:hover {
+  opacity: 0.92;
+}
+
+.overlay:focus-visible {
+  outline: 2px solid var(--atlas-v5-ink);
+  outline-offset: 2px;
+}
+
+/* ── Leyenda ─────────────────────────────────────────────────────────────── */
+
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md, 11px);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendSwatch {
+  width: 22px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.legendLab {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .headerRow,
+  .row,
+  .propHead {
+    grid-template-columns: 140px 1fr;
+  }
+  .todayLine {
+    margin-left: 154px;
+  }
+  .overlayLayer {
+    left: 140px;
+  }
+}

@@ -28,6 +28,7 @@ import DrawerLibres from '../components/contratos/DrawerLibres';
 import DrawerVencen from '../components/contratos/DrawerVencen';
 import TabActivos from '../components/contratos/TabActivos';
 import TabTablero from '../components/contratos/TabTablero';
+import TabDisponibilidad from '../components/contratos/TabDisponibilidad';
 import styles from './ContratosListPage.module.css';
 import { isContratoActivo } from '../utils/contratoEstado';
 
@@ -301,34 +302,17 @@ const ContratosListPage: React.FC = () => {
       )}
 
       {tab === 'disponibilidad' && (
-        <EmptyState
-          icon={<Icons.Calendar size={20} />}
-          title="Vista de disponibilidad en construcción"
-          sub={
-            <>
-              Estamos preparando un calendario de 6 meses por habitación para
-              ver de un vistazo qué está libre, qué se acerca a vencer y dónde
-              colocar nuevos inquilinos.{' '}
-              <br />
-              Mientras tanto, gestiona tus contratos desde{' '}
-              <button
-                type="button"
-                className={styles.linkInline}
-                onClick={() => handleTabChange('activos')}
-              >
-                Activos
-              </button>{' '}
-              o{' '}
-              <button
-                type="button"
-                className={styles.linkInline}
-                onClick={() => handleTabChange('tablero')}
-              >
-                Tablero
-              </button>
-              .
-            </>
+        <TabDisponibilidad
+          contratos={contracts}
+          properties={properties}
+          onNuevoContrato={(inmuebleId) =>
+            navigate(
+              inmuebleId != null
+                ? `/contratos/nuevo?inmueble=${inmuebleId}`
+                : '/contratos/nuevo',
+            )
           }
+          onIrAInmuebles={() => navigate('/inmuebles')}
         />
       )}
 
