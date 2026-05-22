@@ -27,6 +27,7 @@ import KpiContratoCard from '../components/contratos/KpiContratoCard';
 import DrawerLibres from '../components/contratos/DrawerLibres';
 import DrawerVencen from '../components/contratos/DrawerVencen';
 import TabActivos from '../components/contratos/TabActivos';
+import TabTablero from '../components/contratos/TabTablero';
 import styles from './ContratosListPage.module.css';
 import { isContratoActivo } from '../utils/contratoEstado';
 
@@ -284,25 +285,19 @@ const ContratosListPage: React.FC = () => {
       )}
 
       {tab === 'tablero' && (
-        <>
-          {acciones.length === 0 ? (
-            <EmptyState
-              icon={<Icons.Check size={20} />}
-              title="Sin acciones pendientes"
-              sub="Todos los contratos activos están en plazo · sin renovaciones próximas."
-            />
-          ) : (
-            <ContractsTable
-              contracts={acciones}
-              propertyById={propertyById}
-              today={today}
-              emptyTitle=""
-              emptySub=""
-              onNew={() => navigate('/contratos/nuevo')}
-              onDelete={requestDelete}
-            />
-          )}
-        </>
+        <TabTablero
+          contratos={activos}
+          properties={properties}
+          inmuebleAliasById={propertyById}
+          onSwitchTabActivos={() => handleTabChange('activos')}
+          onNuevoContrato={(inmuebleId) =>
+            navigate(
+              inmuebleId != null
+                ? `/contratos/nuevo?inmueble=${inmuebleId}`
+                : '/contratos/nuevo',
+            )
+          }
+        />
       )}
 
       {tab === 'disponibilidad' && (
