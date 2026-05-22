@@ -15,12 +15,23 @@ import './index.css';
 import './design-system/v5/tokens.css';
 import App from './App';
 
-// Red de seguridad permanente · cualquier promesa no awaited que rechace
-// debe quedar en consola para diagnóstico (no debe ser silenciada).
-window.addEventListener('unhandledrejection', (event) => {
-  // eslint-disable-next-line no-console
-  console.error('[unhandledrejection]', event.reason);
-});
+// Red de seguridad para desarrollo: cualquier promesa no awaited que rechace
+// debe quedar en consola para diagnóstico, evitando dobles registros con HMR.
+const UNHANDLED_REJECTION_LISTENER_KEY = '__appUnhandledRejectionListenerInstalled__';
+const windowWithListenerFlag = window as Window & {
+  [UNHANDLED_REJECTION_LISTENER_KEY]?: boolean;
+};
+
+if (
+  process.env.NODE_ENV === 'development' &&
+  !windowWithListenerFlag[UNHANDLED_REJECTION_LISTENER_KEY]
+) {
+  window.addEventListener('unhandledrejection', (event) => {
+    // eslint-disable-next-line no-console
+    console.error('[unhandledrejection]', event.reason);
+  });
+  windowWithListenerFlag[UNHANDLED_REJECTION_LISTENER_KEY] = true;
+}
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
