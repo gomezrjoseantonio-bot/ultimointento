@@ -39,9 +39,9 @@ export function resolverColorHabitacion(c: Contract): ColorHabitacion {
 }
 
 export const CSS_COLOR_HABITACION: Record<ColorHabitacion, string> = {
-  verde: 'var(--atlas-v5-room-green, #4A7C59)',
-  roja: 'var(--atlas-v5-room-red, #A23E3E)',
-  amarilla: 'var(--atlas-v5-room-yellow, #C89828)',
-  azul: 'var(--atlas-v5-room-blue, #3B5A7F)',
-  negra: 'var(--atlas-v5-room-bw, #2C2C2C)',
+  verde: 'var(--atlas-v5-room-green)',
+  roja: 'var(--atlas-v5-room-red)',
+  amarilla: 'var(--atlas-v5-room-yellow)',
+  azul: 'var(--atlas-v5-room-blue)',
+  negra: 'var(--atlas-v5-room-bw)',
 };

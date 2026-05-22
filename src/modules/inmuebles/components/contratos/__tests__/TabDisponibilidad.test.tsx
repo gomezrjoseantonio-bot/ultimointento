@@ -71,7 +71,7 @@ describe('TabDisponibilidad', () => {
     expect(onIr).toHaveBeenCalled();
   });
 
-  test('render con 1 propiedad de 1 habitación · cabecera "1 unidades"', () => {
+  test('render con 1 propiedad de 1 habitación · cabecera "1 unidad"', () => {
     render(
       wrap(
         <TabDisponibilidad
@@ -82,7 +82,7 @@ describe('TabDisponibilidad', () => {
         />,
       ),
     );
-    expect(screen.getByText(/1 unidades/)).toBeInTheDocument();
+    expect(screen.getByText(/1 unidad/)).toBeInTheDocument();
     expect(screen.getByText('Casa')).toBeInTheDocument();
     expect(screen.getByText('Piso')).toBeInTheDocument();
   });

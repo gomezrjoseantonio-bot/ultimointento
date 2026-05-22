@@ -59,6 +59,7 @@ const TabDisponibilidad: React.FC<TabDisponibilidadProps> = ({
     () => contarUnidadesArrendables(propiedadesAlquilables),
     [propiedadesAlquilables],
   );
+  const unidadesLabel = totalUnidades === 1 ? 'unidad' : 'unidades';
 
   if (propiedadesAlquilables.length === 0) {
     return (
@@ -77,7 +78,7 @@ const TabDisponibilidad: React.FC<TabDisponibilidadProps> = ({
       <div className={styles.head}>
         <div>
           <h2 className={styles.headTitle}>
-            Ocupación {RANGO_LABEL[rango]} · {totalUnidades} unidades
+            Ocupación {RANGO_LABEL[rango]} · {totalUnidades} {unidadesLabel}
           </h2>
           <p className={styles.headSub}>
             Vista cronológica por inmueble · cada habitación con su color · click en un hueco para crear contrato · click en barra existente para ver detalle.
@@ -253,7 +254,6 @@ const PropiedadGroup: React.FC<PropiedadGroupProps> = ({
           <div
             className={styles.overlayLayer}
             style={{ height: `${lineas.length * 30}px` }}
-            aria-hidden
           >
             {overlaysCompletos.map((ov) => (
               <Overlay

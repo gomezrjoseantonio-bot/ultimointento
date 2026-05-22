@@ -74,6 +74,11 @@ describe('calcularRangoFechas', () => {
     expect(r.inicio.getUTCDate()).toBe(1);
     expect(r.inicio.getUTCMonth()).toBe(3); // abril
   });
+
+  test('fin es exclusivo · primer día del mes siguiente al rango', () => {
+    const r = calcularRangoFechas('6m', HOY);
+    expect(r.fin.getUTCDate()).toBe(1);
+  });
 });
 
 describe('calcularLeftPorcentaje y calcularWidthPorcentaje', () => {
@@ -124,6 +129,11 @@ describe('intersectaConRango y rangoEfectivoContrato', () => {
     const ef = rangoEfectivoContrato(c({ fechaFin: '2099-12-31' }), r);
     expect(ef).not.toBeNull();
     expect(ef!.fin.getTime()).toBe(r.fin.getTime());
+  });
+
+  test('fechaFin inclusiva · contrato que termina en el inicio del rango intersecta', () => {
+    const inicioRangoIso = `${r.inicio.getUTCFullYear()}-${String(r.inicio.getUTCMonth() + 1).padStart(2, '0')}-${String(r.inicio.getUTCDate()).padStart(2, '0')}`;
+    expect(intersectaConRango(c({ fechaInicio: '2026-01-01', fechaFin: inicioRangoIso }), r)).toBe(true);
   });
 });
 

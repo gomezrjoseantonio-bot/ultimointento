@@ -202,6 +202,15 @@ describe('generarPropiedadGroupData', () => {
       lineas[0].segmentos.find((s) => s.tipo === 'contrato'),
     ).toBeDefined();
   });
+
+  test('ignora contratos con fechas inválidas sin crashear', () => {
+    const invalido = c(1, {
+      unidadTipo: 'habitacion',
+      habitacionId: 'hab-1',
+      fechaFin: 'invalid-date',
+    });
+    expect(() => generarPropiedadGroupData(prop(2), [invalido], rango, HOY)).not.toThrow();
+  });
 });
 
 describe('claseBarraContrato · prioridades', () => {

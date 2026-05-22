@@ -164,8 +164,11 @@ function generarSegmentos(
   const visibles = contratos
     .filter(isContratoActivo)
     .filter((c) => intersectaConRango(c, rangoFechas))
-    .map((c) => ({ c, ef: rangoEfectivoContrato(c, rangoFechas)! }))
-    .filter((x) => x.ef != null)
+    .map((c) => {
+      const ef = rangoEfectivoContrato(c, rangoFechas);
+      return ef ? { c, ef } : null;
+    })
+    .filter((x): x is { c: Contract & { id: number }; ef: { inicio: Date; fin: Date } } => x != null)
     .sort((a, b) => a.ef.inicio.getTime() - b.ef.inicio.getTime());
 
   const segmentos: Segmento[] = [];
@@ -249,7 +252,8 @@ export function generarPropiedadGroupData(
     .filter(isContratoActivo)
     .filter((c) => intersectaConRango(c, rangoFechas))
     .map((c) => {
-      const ef = rangoEfectivoContrato(c, rangoFechas)!;
+      const ef = rangoEfectivoContrato(c, rangoFechas);
+      if (!ef) return null;
       const inicioEnRango =
         ef.inicio < rangoFechas.inicio ? rangoFechas.inicio : ef.inicio;
       const finEnRango = ef.fin > rangoFechas.fin ? rangoFechas.fin : ef.fin;
@@ -260,7 +264,8 @@ export function generarPropiedadGroupData(
         textoBarra: textoBarraContrato(c, hoy),
         claseBarra: claseBarraContrato(c, hoy),
       };
-    });
+    })
+    .filter((x): x is OverlayCompleto => x != null);
 
   return { lineas, overlaysCompletos };
 }

@@ -36,21 +36,18 @@ export function calcularRangoFechas(
     Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - 1, 1),
   );
   const fin = new Date(
-    Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() + mesesAdelante + 1, 0),
+    Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() + mesesAdelante + 1, 1),
   );
 
   const meses: MesRango[] = [];
   let cursorYear = inicio.getUTCFullYear();
   let cursorMonth = inicio.getUTCMonth();
-  while (
-    cursorYear < fin.getUTCFullYear() ||
-    (cursorYear === fin.getUTCFullYear() && cursorMonth <= fin.getUTCMonth())
-  ) {
+  while (Date.UTC(cursorYear, cursorMonth, 1) < fin.getTime()) {
     meses.push({
       mes: cursorMonth,
       ano: cursorYear,
       inicio: new Date(Date.UTC(cursorYear, cursorMonth, 1)),
-      fin: new Date(Date.UTC(cursorYear, cursorMonth + 1, 0)),
+      fin: new Date(Date.UTC(cursorYear, cursorMonth + 1, 1)),
     });
     cursorMonth += 1;
     if (cursorMonth > 11) {
@@ -95,7 +92,7 @@ export function rangoEfectivoContrato(
   const inicio = parseIsoDateAsUTC(c.fechaInicio);
   if (Number.isNaN(inicio.getTime())) return null;
   const fin = c.fechaFin && !esFechaIndefinida(c.fechaFin)
-    ? parseIsoDateAsUTC(c.fechaFin)
+    ? new Date(parseIsoDateAsUTC(c.fechaFin).getTime() + 24 * 60 * 60 * 1000)
     : rangoFechas.fin;
   if (Number.isNaN(fin.getTime())) return null;
   return { inicio, fin };
