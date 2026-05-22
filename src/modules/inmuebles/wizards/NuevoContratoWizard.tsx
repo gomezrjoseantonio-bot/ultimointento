@@ -8,6 +8,9 @@ import {
   Icons,
   showToastV5,
 } from '../../../design-system/v5';
+import type { Contract } from '../../../services/db';
+import { saveContract, getContract, calculateHabitualEndDate } from '../../../services/contractService';
+import { treasuryAPI } from '../../../services/treasuryApiService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import styles from './NuevoContratoWizard.module.css';
 
@@ -63,6 +66,8 @@ const NuevoContratoWizard: React.FC = () => {
     ...emptyForm,
     inmuebleId: initialInmuebleId,
   });
+  const [creando, setCreando] = useState(false);
+  const [errorSave, setErrorSave] = useState<string | null>(null);
 
   const update = <K extends keyof FormState>(key: K, val: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -90,7 +95,11 @@ const NuevoContratoWizard: React.FC = () => {
           form.inquilinoNif.length > 0
         );
       case 'economico':
-        return Number(form.rentaMensual) > 0 && Number(form.diaPago) >= 1;
+        return (
+          Number(form.rentaMensual) > 0 &&
+          Number(form.diaPago) >= 1 &&
+          Number(form.diaPago) <= 31
+        );
       case 'documentos':
         return true;
       case 'firma':
@@ -101,17 +110,107 @@ const NuevoContratoWizard: React.FC = () => {
   const stepIndex = steps.findIndex((s) => s.key === step);
   const isLast = step === 'firma';
 
+  const construirPayloadContrato = async (): Promise<
+    Omit<Contract, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'documents'>
+  > => {
+    if (form.inmuebleId == null) {
+      throw new Error('Debe seleccionar un inmueble');
+    }
+    const rentaMensualNum = Number(form.rentaMensual);
+    const diaPagoNum = Number(form.diaPago);
+    const fianzaMesesNum = Number(form.fianzaMensualidades) || 0;
+    if (!Number.isFinite(rentaMensualNum) || rentaMensualNum <= 0) {
+      throw new Error('La renta mensual debe ser mayor que 0');
+    }
+    if (!Number.isFinite(diaPagoNum) || diaPagoNum < 1 || diaPagoNum > 31) {
+      throw new Error('El día de cobro debe estar entre 1 y 31');
+    }
+    if (!form.inquilinoTelefono.trim()) {
+      throw new Error('El teléfono del inquilino es obligatorio');
+    }
+    if (!form.inquilinoEmail.trim()) {
+      throw new Error('El email del inquilino es obligatorio');
+    }
+    const fechaFin = form.fechaFin.trim()
+      || (form.modalidad === 'habitual' ? calculateHabitualEndDate(form.fechaInicio) : '');
+    if (!fechaFin) {
+      throw new Error('La fecha de fin es obligatoria');
+    }
+    if (new Date(fechaFin) <= new Date(form.fechaInicio)) {
+      throw new Error('La fecha de fin debe ser posterior a la fecha de inicio');
+    }
+    const accounts = await treasuryAPI.accounts.getAccounts();
+    const cuentaCobroId = accounts.find((acc) => typeof acc.id === 'number')?.id;
+    if (typeof cuentaCobroId !== 'number') {
+      throw new Error('Debe seleccionar una cuenta bancaria de cobro');
+    }
+    const unidadTipo: 'vivienda' | 'habitacion' = form.habitacionId
+      ? 'habitacion'
+      : 'vivienda';
+    return {
+      inmuebleId: form.inmuebleId,
+      unidadTipo,
+      habitacionId: form.habitacionId || undefined,
+      modalidad: form.modalidad,
+      inquilino: {
+        nombre: form.inquilinoNombre.trim(),
+        apellidos: form.inquilinoApellidos.trim(),
+        dni: form.inquilinoNif.trim(),
+        telefono: form.inquilinoTelefono.trim(),
+        email: form.inquilinoEmail.trim(),
+      },
+      fechaInicio: form.fechaInicio,
+      fechaFin,
+      rentaMensual: rentaMensualNum,
+      diaPago: diaPagoNum,
+      margenGraciaDias: 5,
+      indexacion: form.indexacion,
+      historicoIndexaciones: [],
+      fianzaMeses: fianzaMesesNum,
+      fianzaImporte: Math.round(rentaMensualNum * fianzaMesesNum),
+      fianzaEstado: 'retenida',
+      cuentaCobroId,
+      estadoContrato: 'activo',
+    };
+  };
+
+  const handleCrearContrato = async (): Promise<void> => {
+    if (creando) return;
+    setErrorSave(null);
+    setCreando(true);
+    try {
+      const payload = await construirPayloadContrato();
+      const id = await saveContract(payload as Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>);
+      if (typeof id !== 'number') {
+        throw new Error('saveContract devolvió sin id');
+      }
+      const verificado = await getContract(id);
+      if (!verificado) {
+        throw new Error(`Contrato ${id} no se pudo recuperar tras guardar`);
+      }
+      showToastV5(
+        `Contrato creado · ${payload.inquilino.nombre} ${payload.inquilino.apellidos}`.trim(),
+        'success',
+      );
+      navigate('/contratos?tab=activos');
+    } catch (e) {
+      const mensaje = e instanceof Error ? e.message : 'error desconocido';
+      // eslint-disable-next-line no-console
+      console.error('[WizardNuevoContrato] error al guardar contrato:', e);
+      setErrorSave(`No se pudo guardar el contrato · ${mensaje}`);
+      showToastV5('Error al guardar el contrato · vuelve a intentarlo', 'error');
+    } finally {
+      setCreando(false);
+    }
+  };
+
   const handleNext = () => {
     if (!canAdvance) {
       showToastV5('Completa los campos obligatorios para continuar', 'warn');
       return;
     }
     if (isLast) {
-      showToastV5(
-        `Contrato generado · ${form.inquilinoNombre} ${form.inquilinoApellidos}`,
-        'success',
-      );
-      navigate('/contratos');
+      void handleCrearContrato();
       return;
     }
     setStep(steps[stepIndex + 1].key);
@@ -534,6 +633,15 @@ const NuevoContratoWizard: React.FC = () => {
             </>
           )}
 
+          {errorSave && (
+            <div
+              role="alert"
+              className={styles.errorAlert}
+            >
+              {errorSave}
+            </div>
+          )}
+
           <div className={styles.footer}>
             <span className={styles.footerNote}>
               Paso {stepIndex + 1} de {steps.length} · cambios guardados como borrador
@@ -551,9 +659,10 @@ const NuevoContratoWizard: React.FC = () => {
                 type="button"
                 className={`${styles.btn} ${styles.btnGold}`}
                 onClick={handleNext}
-                disabled={!canAdvance}
+                disabled={!canAdvance || creando}
+                aria-busy={creando || undefined}
               >
-                {isLast ? 'Crear contrato' : 'Siguiente'}
+                {isLast ? (creando ? 'Creando...' : 'Crear contrato') : 'Siguiente'}
                 <Icons.ChevronRight size={14} strokeWidth={2} />
               </button>
             </div>

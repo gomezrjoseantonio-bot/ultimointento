@@ -157,6 +157,17 @@
 
 .footerActions { display: flex; gap: 8px; }
 
+.errorAlert {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--atlas-v5-neg-wash);
+  border-left: 3px solid var(--atlas-v5-neg);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--atlas-v5-neg);
+  line-height: 1.5;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
