@@ -1,12 +1,12 @@
 import type { Contract } from '../../../services/db';
 
 const COLORES_AVATAR = [
-  '#5B9BD5', // azul
-  '#7AA873', // verde
-  '#D4A056', // gold
-  '#C95C5C', // rojo
-  '#8B8B8B', // gris
-  '#9B7CB6', // morado
+  'var(--atlas-v5-c1)', // azul
+  'var(--atlas-v5-c2)', // verde
+  'var(--atlas-v5-c3)', // gold
+  'var(--atlas-v5-c4)', // rojo
+  'var(--atlas-v5-c5)', // gris
+  'var(--atlas-v5-c6)', // morado
 ];
 
 export function getInquilinoNombre(c: Contract): string {
