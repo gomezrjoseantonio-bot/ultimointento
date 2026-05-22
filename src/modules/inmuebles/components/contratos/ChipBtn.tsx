@@ -39,7 +39,11 @@ const ChipBtn: React.FC<ChipBtnProps> = ({
     >
       {children}
       {count !== undefined && (
-        <span className={`${styles.chipCount} ${styles[`chipCount-${countTone}`]}`}>
+        <span
+          className={[styles.chipCount, styles[`chipCount-${countTone}`]]
+            .filter(Boolean)
+            .join(' ')}
+        >
           {count}
         </span>
       )}
