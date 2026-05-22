@@ -4,12 +4,22 @@ import { MemoryRouter, Routes, Route, Outlet } from 'react-router-dom';
 import NuevoContratoWizard from '../NuevoContratoWizard';
 import type { InmueblesOutletContext } from '../../InmueblesContext';
 import type { Property } from '../../../../services/db';
+import { calculateHabitualEndDate } from '../../../../services/contractService';
 
 const mockSaveContract = jest.fn();
 const mockGetContract = jest.fn();
+const mockGetAccounts = jest.fn();
 jest.mock('../../../../services/contractService', () => ({
+  ...jest.requireActual('../../../../services/contractService'),
   saveContract: (...args: unknown[]) => mockSaveContract(...args),
   getContract: (...args: unknown[]) => mockGetContract(...args),
+}));
+jest.mock('../../../../services/treasuryApiService', () => ({
+  treasuryAPI: {
+    accounts: {
+      getAccounts: (...args: unknown[]) => mockGetAccounts(...args),
+    },
+  },
 }));
 
 const mockShowToast = jest.fn();
@@ -78,6 +88,8 @@ const llenarPasos = async () => {
   fireEvent.change(inputs[0], { target: { value: 'PRUEBA' } });
   fireEvent.change(inputs[1], { target: { value: 'PRUEBA' } });
   fireEvent.change(inputs[2], { target: { value: '53069494F' } });
+  fireEvent.change(inputs[3], { target: { value: '600123123' } });
+  fireEvent.change(inputs[4], { target: { value: 'prueba@example.com' } });
   clickSiguiente();
 
   // Paso 3 · Económico · Renta mensual es el primer spinbutton · día pago el segundo · fianza el tercero
@@ -105,7 +117,9 @@ describe('NuevoContratoWizard · persistencia', () => {
   beforeEach(() => {
     mockSaveContract.mockReset();
     mockGetContract.mockReset();
+    mockGetAccounts.mockReset();
     mockShowToast.mockReset();
+    mockGetAccounts.mockResolvedValue([{ id: 7 }]);
   });
 
   test('click "Crear contrato" llama a saveContract con payload válido y navega', async () => {
@@ -123,10 +137,12 @@ describe('NuevoContratoWizard · persistencia', () => {
     expect(payload).toMatchObject({
       inmuebleId: 1,
       modalidad: 'habitual',
+      fechaFin: calculateHabitualEndDate(payload.fechaInicio),
       rentaMensual: 1350,
       diaPago: 1,
       fianzaMeses: 2,
       fianzaImporte: 2700,
+      cuentaCobroId: 7,
       estadoContrato: 'activo',
       indexacion: 'ipc',
       unidadTipo: 'vivienda',
@@ -135,8 +151,8 @@ describe('NuevoContratoWizard · persistencia', () => {
       nombre: 'PRUEBA',
       apellidos: 'PRUEBA',
       dni: '53069494F',
-      telefono: '',
-      email: '',
+      telefono: '600123123',
+      email: 'prueba@example.com',
     });
 
     await waitFor(() => expect(mockGetContract).toHaveBeenCalledWith(42));
