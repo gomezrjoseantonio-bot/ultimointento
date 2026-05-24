@@ -84,6 +84,7 @@ import {
   Inbox,
   Banknote,
   Sparkles,
+  Lightbulb,
   // Iconos T23 · galería Inversiones (§ AA spec)
   PlusSquare,
   PlusCircle,
@@ -188,6 +189,9 @@ export const Icons = {
   Inbox,
   Banknote,             // §AA.7 · timeline devolución
   Sparkles,
+  Lightbulb,            // T6 · insights del histórico
+  Star,                 // T6 · valoración (rating) ex-inquilino · soporta fill
+
   // ===== T23 · Inversiones · galería v2 (§ AA spec) =====
   PlusSquare,
   PlusCircle,

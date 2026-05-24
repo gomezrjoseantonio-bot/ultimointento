@@ -1,0 +1,144 @@
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  background: var(--atlas-v5-card);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.table thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+  color: var(--atlas-v5-ink-2);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.right { text-align: right; }
+.center { text-align: center; }
+
+.row {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.row:hover {
+  background: var(--atlas-v5-gold-wash-2);
+}
+.row:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: -2px;
+}
+
+/* ===== Ex-inquilino · avatar coloreado + texto plano ===== */
+.tenant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.avatar {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+}
+.tenantName {
+  font-weight: 600;
+  color: var(--atlas-v5-ink);
+}
+.tenantMeta {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 1px;
+}
+
+/* ===== Columnas fijas · evitar serpenteo ===== */
+.colInmueble {
+  width: var(--col-inmueble, 110px);
+  max-width: var(--col-inmueble, 110px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+}
+.colHabitacion {
+  width: var(--col-habitacion, 100px);
+  max-width: var(--col-habitacion, 100px);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+}
+.colHabitacionFull {
+  color: var(--atlas-v5-ink-4);
+  font-style: italic;
+  font-family: 'Inter', sans-serif;
+}
+.colTipo {
+  width: 56px;
+  text-align: center;
+  color: var(--atlas-v5-ink-3);
+}
+
+.date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  white-space: nowrap;
+}
+
+/* ===== Valoración · estrellas Lucide ===== */
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.starOn { color: var(--atlas-v5-gold); }
+.starOff { color: var(--atlas-v5-ink-5); }
+.starsEmpty {
+  color: var(--atlas-v5-ink-4);
+  font-size: 11px;
+}
+
+/* ===== Botón acciones ===== */
+.moreBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--atlas-v5-ink-4);
+  cursor: pointer;
+}
+.moreBtn:hover {
+  background: var(--atlas-v5-line-2);
+  color: var(--atlas-v5-ink-2);
+}

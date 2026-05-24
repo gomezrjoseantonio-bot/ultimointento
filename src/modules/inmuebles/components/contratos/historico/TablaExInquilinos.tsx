@@ -1,0 +1,184 @@
+import React from 'react';
+import { Icons, Pill, showToastV5 } from '../../../../../design-system/v5';
+import type { Contract } from '../../../../../services/db';
+import {
+  CSS_COLOR_HABITACION,
+  habitacionNumeroDe,
+  resolverColorHabitacion,
+} from '../../../utils/timelineColores';
+import { mapearTipoContrato } from '../../../utils/mapearTipoContrato';
+import {
+  generarIniciales,
+  getInquilinoNombre,
+} from '../../../utils/inquilinoUtils';
+import {
+  calcularDiasDesdeSalida,
+  calcularDuracionMeses,
+  fechaCierreEfectiva,
+  textoSalida,
+} from '../../../utils/historico/calculos';
+import { formatearMesAno } from '../../../utils/historico/formato';
+import type { MotivoFinKey } from '../../../utils/historico/tipos';
+import { MOTIVO_LABEL, MOTIVO_PILL_VARIANT } from './motivoConfig';
+import styles from './TablaExInquilinos.module.css';
+
+interface EstrellasProps {
+  n: 1 | 2 | 3 | 4 | 5 | null;
+}
+
+export const Estrellas: React.FC<EstrellasProps> = ({ n }) => {
+  if (n === null) {
+    return <span className={styles.starsEmpty}>—</span>;
+  }
+  return (
+    <span className={styles.stars} aria-label={`${n} de 5 estrellas`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Icons.Star
+          key={i}
+          size={12}
+          strokeWidth={1.8}
+          className={i <= n ? styles.starOn : styles.starOff}
+          fill={i <= n ? 'currentColor' : 'none'}
+        />
+      ))}
+    </span>
+  );
+};
+
+interface PillMotivoProps {
+  motivo: MotivoFinKey;
+}
+
+export const PillMotivo: React.FC<PillMotivoProps> = ({ motivo }) => (
+  <Pill variant={MOTIVO_PILL_VARIANT[motivo]} asTag>
+    {MOTIVO_LABEL[motivo]}
+  </Pill>
+);
+
+interface FilaProps {
+  contrato: Contract;
+  inmuebleAlias: string;
+  onClick: () => void;
+}
+
+const FilaExContrato: React.FC<FilaProps> = ({ contrato, inmuebleAlias, onClick }) => {
+  const nombre = getInquilinoNombre(contrato);
+  const tipo = mapearTipoContrato(contrato);
+  const duracion = Math.round(calcularDuracionMeses(contrato));
+  const motivo: MotivoFinKey = contrato.motivoFin ?? 'sin_clasificar';
+  const valoracion = contrato.valoracion ?? null;
+  const diasDesdeSalida = calcularDiasDesdeSalida(contrato);
+  const colorHab = resolverColorHabitacion(contrato);
+  const esPisoCompleto = contrato.unidadTipo === 'vivienda';
+  const habNum = habitacionNumeroDe(contrato);
+  const IconoTipo = tipo === 'corta' ? Icons.Cartera : Icons.Compra;
+
+  return (
+    <tr
+      className={styles.row}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
+      <td>
+        <div className={styles.tenant}>
+          <div
+            className={styles.avatar}
+            style={{ background: CSS_COLOR_HABITACION[colorHab] }}
+            aria-hidden
+          >
+            {generarIniciales(nombre)}
+          </div>
+          <div>
+            <div className={styles.tenantName}>{nombre}</div>
+            <div className={styles.tenantMeta}>{textoSalida(diasDesdeSalida, contrato)}</div>
+          </div>
+        </div>
+      </td>
+      <td className={styles.colInmueble} title={inmuebleAlias}>
+        {inmuebleAlias}
+      </td>
+      <td
+        className={`${styles.colHabitacion} ${esPisoCompleto ? styles.colHabitacionFull : ''}`}
+      >
+        {esPisoCompleto ? 'Piso completo' : `Hab ${habNum ?? '—'}`}
+      </td>
+      <td className={styles.colTipo}>
+        <IconoTipo
+          size={13}
+          strokeWidth={1.8}
+          aria-label={tipo === 'corta' ? 'Corta estancia' : 'Larga estancia'}
+        />
+      </td>
+      <td className={styles.date}>
+        {formatearMesAno(contrato.fechaInicio)} – {formatearMesAno(fechaCierreEfectiva(contrato))}
+      </td>
+      <td className={styles.right}>{duracion} m</td>
+      <td>
+        <PillMotivo motivo={motivo} />
+      </td>
+      <td className={styles.center}>
+        <Estrellas n={valoracion} />
+      </td>
+      <td className={styles.center} onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className={styles.moreBtn}
+          aria-label="Acciones"
+          onClick={() => showToastV5('Acciones de fila próximamente')}
+        >
+          <Icons.More size={14} strokeWidth={1.8} />
+        </button>
+      </td>
+    </tr>
+  );
+};
+
+export interface TablaExInquilinosProps {
+  contratos: Contract[];
+  inmuebleAliasById: Map<number, string>;
+  onAbrir: (c: Contract) => void;
+}
+
+const TablaExInquilinos: React.FC<TablaExInquilinosProps> = ({
+  contratos,
+  inmuebleAliasById,
+  onAbrir,
+}) => (
+  <div className={styles.tableWrap}>
+    <table className={styles.table}>
+      <thead>
+        <tr>
+          <th>Ex-inquilino</th>
+          <th className={styles.colInmueble}>Inmueble</th>
+          <th className={styles.colHabitacion}>Habitación</th>
+          <th className={styles.colTipo}>Tipo</th>
+          <th>Desde — Hasta</th>
+          <th className={styles.right}>Duración</th>
+          <th>Motivo salida</th>
+          <th className={styles.center}>Valoración</th>
+          <th className={styles.center} aria-label="Acciones" />
+        </tr>
+      </thead>
+      <tbody>
+        {contratos.map((c) => (
+          <FilaExContrato
+            key={c.id}
+            contrato={c}
+            inmuebleAlias={inmuebleAliasById.get(c.inmuebleId) ?? `#${c.inmuebleId}`}
+            onClick={() => onAbrir(c)}
+          />
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+export default TablaExInquilinos;
+export { TablaExInquilinos };

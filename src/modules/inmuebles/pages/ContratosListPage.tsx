@@ -2,21 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   PageHead,
-  MoneyValue,
-  DateLabel,
-  EmptyState,
-  Pill,
   Icons,
-  showToastV5,
 } from '../../../design-system/v5';
 import type { Contract } from '../../../services/db';
 import type { InmueblesOutletContext } from '../InmueblesContext';
-import {
-  deleteContractWithCascade,
-  previewDeleteContractCascade,
-  type DeleteContractCascadeReport,
-} from '../../../services/contractService';
-import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { esFechaIndefinida } from '../utils/formatFechaFin';
 import { calcularLibresAhora } from '../utils/calcularLibresAhora';
 import {
@@ -29,6 +18,7 @@ import DrawerVencen from '../components/contratos/DrawerVencen';
 import TabActivos from '../components/contratos/TabActivos';
 import TabTablero from '../components/contratos/TabTablero';
 import TabDisponibilidad from '../components/contratos/TabDisponibilidad';
+import TabHistorico from '../components/contratos/historico/TabHistorico';
 import styles from './ContratosListPage.module.css';
 import { isContratoActivo } from '../utils/contratoEstado';
 
@@ -58,58 +48,11 @@ const isExpiringSoon = (c: Contract, today: Date, daysWindow = 90): boolean => {
 
 const ContratosListPage: React.FC = () => {
   const navigate = useNavigate();
-  const { properties, contracts, reload } = useOutletContext<InmueblesOutletContext>();
+  const { properties, contracts } = useOutletContext<InmueblesOutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab: Tab = normalizeTab(searchParams.get('tab')) ?? 'activos';
   const [tab, setTab] = useState<Tab>(initialTab);
   const today = useMemo(() => new Date(), []);
-  const [pendingDelete, setPendingDelete] = useState<{
-    contract: Contract & { id: number };
-    cascade: DeleteContractCascadeReport;
-  } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const requestDelete = async (contract: Contract & { id: number }): Promise<void> => {
-    try {
-      const cascade = await previewDeleteContractCascade(contract.id);
-      setPendingDelete({ contract, cascade });
-    } catch (err) {
-      console.error('Error preparing contract deletion', err);
-      showToastV5('No se pudo preparar el borrado del contrato');
-    }
-  };
-
-  const cancelDelete = (): void => {
-    if (isDeleting) return;
-    setPendingDelete(null);
-  };
-
-  const confirmDelete = async (): Promise<void> => {
-    if (!pendingDelete) return;
-    setIsDeleting(true);
-    try {
-      const report = await deleteContractWithCascade(pendingDelete.contract.id);
-      const detalle: string[] = [];
-      if (report.treasuryEventsPredictedDeleted > 0) {
-        detalle.push(`${report.treasuryEventsPredictedDeleted} eventos previstos`);
-      }
-      if (report.treasuryEventsHistoricUnlinked > 0) {
-        detalle.push(`${report.treasuryEventsHistoricUnlinked} eventos históricos desvinculados`);
-      }
-      if (report.presupuestoLineasDeleted > 0) {
-        detalle.push(`${report.presupuestoLineasDeleted} líneas de presupuesto`);
-      }
-      const sufijo = detalle.length > 0 ? ` · ${detalle.join(' · ')}` : '';
-      showToastV5(`Contrato eliminado${sufijo}`);
-      setPendingDelete(null);
-      reload();
-    } catch (err) {
-      console.error('Error deleting contract', err);
-      showToastV5('Error al eliminar el contrato');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   // Sincronizar tab cuando cambia el query param (navegación externa · back/forward · enlace)
   useEffect(() => {
@@ -266,23 +209,11 @@ const ContratosListPage: React.FC = () => {
       )}
 
       {tab === 'historico' && (
-        historico.length === 0 ? (
-          <EmptyState
-            icon={<Icons.Success size={20} />}
-            title="Sin contratos finalizados"
-            sub="Cuando termines o archives un contrato aparecerá aquí su histórico."
-          />
-        ) : (
-          <ContractsTable
-            contracts={historico}
-            propertyById={propertyById}
-            today={today}
-            emptyTitle="Sin contratos finalizados"
-            emptySub="Cuando termines o archives un contrato aparecerá aquí su histórico."
-            onNew={() => navigate('/contratos/nuevo')}
-            onDelete={requestDelete}
-          />
-        )
+        <TabHistorico
+          contratos={historico}
+          properties={properties}
+          inmuebleAliasById={propertyById}
+        />
       )}
 
       {tab === 'tablero' && (
@@ -316,22 +247,6 @@ const ContratosListPage: React.FC = () => {
         />
       )}
 
-      <ConfirmationModal
-        isOpen={pendingDelete !== null}
-        onClose={cancelDelete}
-        onConfirm={confirmDelete}
-        title="Eliminar contrato"
-        message={
-          pendingDelete
-            ? buildDeleteMessage(pendingDelete.contract, pendingDelete.cascade)
-            : ''
-        }
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        variant="danger"
-        isLoading={isDeleting}
-      />
-
       <DrawerLibres
         open={drawerOpen === 'libres'}
         onClose={() => setDrawerOpen(null)}
@@ -352,182 +267,6 @@ const ContratosListPage: React.FC = () => {
         inmuebleAliasById={propertyById}
       />
     </>
-  );
-};
-
-const buildDeleteMessage = (
-  contract: Contract,
-  cascade: DeleteContractCascadeReport,
-): string => {
-  const tenant =
-    `${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim() ||
-    'este contrato';
-  const cascadaParts: string[] = [];
-  if (cascade.treasuryEventsPredictedDeleted > 0) {
-    cascadaParts.push(
-      `${cascade.treasuryEventsPredictedDeleted} eventos previstos de tesorería`,
-    );
-  }
-  if (cascade.treasuryEventsHistoricUnlinked > 0) {
-    cascadaParts.push(
-      `${cascade.treasuryEventsHistoricUnlinked} eventos históricos quedarán desvinculados (sin borrar)`,
-    );
-  }
-  if (cascade.presupuestoLineasDeleted > 0) {
-    cascadaParts.push(`${cascade.presupuestoLineasDeleted} líneas de presupuesto`);
-  }
-  const cascadaTexto = cascadaParts.length > 0
-    ? ` Se eliminarán también: ${cascadaParts.join(' · ')}.`
-    : '';
-  return `Vas a eliminar el contrato de ${tenant}.${cascadaTexto} Esta acción no se puede deshacer.`;
-};
-
-interface ContractsTableProps {
-  contracts: Contract[];
-  propertyById: Map<number, string>;
-  today: Date;
-  emptyTitle: string;
-  emptySub: string;
-  onNew: () => void;
-  onDelete: (contract: Contract & { id: number }) => void;
-}
-
-const ContractsTable: React.FC<ContractsTableProps> = ({
-  contracts,
-  propertyById,
-  today,
-  emptyTitle,
-  emptySub,
-  onNew,
-  onDelete,
-}) => {
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (openMenuId === null) return;
-    const close = (): void => setOpenMenuId(null);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [openMenuId]);
-
-  if (contracts.length === 0) {
-    return (
-      <EmptyState
-        icon={<Icons.Contratos size={20} />}
-        title={emptyTitle}
-        sub={emptySub}
-        ctaLabel={emptyTitle ? '+ nuevo contrato' : undefined}
-        onCtaClick={onNew}
-      />
-    );
-  }
-
-  return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Inquilino</th>
-            <th>Inmueble</th>
-            <th>Modalidad</th>
-            <th>Inicio</th>
-            <th>Fin</th>
-            <th className="r">Renta</th>
-            <th className="c">Estado</th>
-            <th className={styles.actionsCell} aria-label="Acciones" />
-          </tr>
-        </thead>
-        <tbody>
-          {contracts
-            .filter((c): c is Contract & { id: number } => c.id != null)
-            .map((c) => {
-              const activo = isContratoActivo(c);
-              const expiring = activo && isExpiringSoon(c, today, 90);
-              const propertyAlias = propertyById.get(c.inmuebleId) ?? `#${c.inmuebleId}`;
-              const menuOpen = openMenuId === c.id;
-              const nombreCompleto = `${c.inquilino?.nombre ?? ''} ${
-                c.inquilino?.apellidos ?? ''
-              }`.trim();
-              const finIndefinida = esFechaIndefinida(c.fechaFin);
-              return (
-                <tr
-                  key={c.id}
-                  onClick={() => showToastV5(`Detalle contrato · ${nombreCompleto || '—'}`)}
-                >
-                  <td>
-                    <div className={styles.tStrong}>
-                      {nombreCompleto || '—'}
-                    </div>
-                    {c.inquilino?.email && (
-                      <div className={styles.tMuted}>{c.inquilino.email}</div>
-                    )}
-                  </td>
-                  <td>{propertyAlias}</td>
-                  <td>
-                    <Pill variant="brand">{c.modalidad}</Pill>
-                  </td>
-                  <td>
-                    <DateLabel value={c.fechaInicio} format="short" size="sm" />
-                  </td>
-                  <td>
-                    {finIndefinida ? (
-                      <span className={styles.fechaIndefinida}>Indefinido</span>
-                    ) : (
-                      <DateLabel value={c.fechaFin} format="short" size="sm" />
-                    )}
-                  </td>
-                  <td className="r">
-                    <MoneyValue value={c.rentaMensual} decimals={0} />
-                  </td>
-                  <td className="c">
-                    <Pill
-                      variant={expiring ? 'warn' : activo ? 'pos' : 'gris'}
-                      asTag
-                    >
-                      {expiring ? 'Vence pronto' : activo ? 'Activo' : 'Inactivo'}
-                    </Pill>
-                  </td>
-                  <td
-                    className={styles.actionsCell}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      className={styles.kebabBtn}
-                      aria-label="Acciones del contrato"
-                      aria-haspopup="menu"
-                      aria-expanded={menuOpen}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenMenuId(menuOpen ? null : c.id);
-                      }}
-                    >
-                      <Icons.More size={16} strokeWidth={1.8} />
-                    </button>
-                    {menuOpen && (
-                      <div className={styles.menuPopover} role="menu">
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className={`${styles.menuItem} ${styles.menuItemDanger}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(null);
-                            onDelete(c);
-                          }}
-                        >
-                          <Icons.Delete size={14} strokeWidth={1.8} />
-                          Eliminar
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-        </tbody>
-      </table>
-    </div>
   );
 };
 
