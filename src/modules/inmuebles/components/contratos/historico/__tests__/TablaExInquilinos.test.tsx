@@ -76,11 +76,33 @@ describe('TablaExInquilinos', () => {
     expect(screen.queryByText(/^Hab /)).not.toBeInTheDocument();
   });
 
-  it('botón de acciones dispara stub sin caracteres icon-like', () => {
+  it('no usa caracteres icon-like (cero emojis)', () => {
     const { container } = render(
       <TablaExInquilinos contratos={[c()]} inmuebleAliasById={alias} onAbrir={() => {}} />,
     );
     expect(container.textContent ?? '').not.toMatch(EMOJI_REGEX);
+  });
+
+  it('menú de acciones permite eliminar el contrato', () => {
+    const onEliminar = jest.fn();
+    render(
+      <TablaExInquilinos
+        contratos={[c({ id: 7 })]}
+        inmuebleAliasById={alias}
+        onAbrir={() => {}}
+        onEliminar={onEliminar}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Acciones del contrato/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Eliminar/ }));
+    expect(onEliminar).toHaveBeenCalledTimes(1);
+    expect(onEliminar.mock.calls[0][0].id).toBe(7);
+  });
+
+  it('sin onEliminar no muestra menú', () => {
+    render(<TablaExInquilinos contratos={[c()]} inmuebleAliasById={alias} onAbrir={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: /Acciones del contrato/ }));
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
   });
 });
 

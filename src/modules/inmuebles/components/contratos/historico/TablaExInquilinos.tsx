@@ -1,5 +1,5 @@
-import React from 'react';
-import { Icons, Pill, showToastV5 } from '../../../../../design-system/v5';
+import React, { useEffect, useState } from 'react';
+import { Icons, Pill } from '../../../../../design-system/v5';
 import type { Contract } from '../../../../../services/db';
 import {
   CSS_COLOR_HABITACION,
@@ -59,9 +59,19 @@ interface FilaProps {
   contrato: Contract;
   inmuebleAlias: string;
   onClick: () => void;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onEliminar?: (c: Contract & { id: number }) => void;
 }
 
-const FilaExContrato: React.FC<FilaProps> = ({ contrato, inmuebleAlias, onClick }) => {
+const FilaExContrato: React.FC<FilaProps> = ({
+  contrato,
+  inmuebleAlias,
+  onClick,
+  menuOpen,
+  onToggleMenu,
+  onEliminar,
+}) => {
   const nombre = getInquilinoNombre(contrato);
   const tipo = mapearTipoContrato(contrato);
   const duracion = Math.round(calcularDuracionMeses(contrato));
@@ -126,15 +136,36 @@ const FilaExContrato: React.FC<FilaProps> = ({ contrato, inmuebleAlias, onClick 
       <td className={styles.center}>
         <Estrellas n={valoracion} />
       </td>
-      <td className={styles.center} onClick={(e) => e.stopPropagation()}>
+      <td className={`${styles.center} ${styles.colMore}`} onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           className={styles.moreBtn}
-          aria-label="Acciones"
-          onClick={() => showToastV5('Acciones de fila próximamente')}
+          aria-label="Acciones del contrato"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleMenu();
+          }}
         >
           <Icons.More size={14} strokeWidth={1.8} />
         </button>
+        {menuOpen && onEliminar && contrato.id != null && (
+          <div className={styles.menuPopover} role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              className={`${styles.menuItem} ${styles.menuItemDanger}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEliminar(contrato as Contract & { id: number });
+              }}
+            >
+              <Icons.Delete size={14} strokeWidth={1.8} />
+              Eliminar
+            </button>
+          </div>
+        )}
       </td>
     </tr>
   );
@@ -144,41 +175,59 @@ export interface TablaExInquilinosProps {
   contratos: Contract[];
   inmuebleAliasById: Map<number, string>;
   onAbrir: (c: Contract) => void;
+  onEliminar?: (c: Contract & { id: number }) => void;
 }
 
 const TablaExInquilinos: React.FC<TablaExInquilinosProps> = ({
   contratos,
   inmuebleAliasById,
   onAbrir,
-}) => (
-  <div className={styles.tableWrap}>
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          <th>Ex-inquilino</th>
-          <th className={styles.colInmueble}>Inmueble</th>
-          <th className={styles.colHabitacion}>Habitación</th>
-          <th className={styles.colTipo}>Tipo</th>
-          <th>Desde — Hasta</th>
-          <th className={styles.right}>Duración</th>
-          <th>Motivo salida</th>
-          <th className={styles.center}>Valoración</th>
-          <th className={styles.center} aria-label="Acciones" />
-        </tr>
-      </thead>
-      <tbody>
-        {contratos.map((c) => (
-          <FilaExContrato
-            key={c.id}
-            contrato={c}
-            inmuebleAlias={inmuebleAliasById.get(c.inmuebleId) ?? `#${c.inmuebleId}`}
-            onClick={() => onAbrir(c)}
-          />
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
+  onEliminar,
+}) => {
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (openMenuId === null) return;
+    const close = (): void => setOpenMenuId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openMenuId]);
+
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>Ex-inquilino</th>
+            <th className={styles.colInmueble}>Inmueble</th>
+            <th className={styles.colHabitacion}>Habitación</th>
+            <th className={styles.colTipo}>Tipo</th>
+            <th>Desde — Hasta</th>
+            <th className={styles.right}>Duración</th>
+            <th>Motivo salida</th>
+            <th className={styles.center}>Valoración</th>
+            <th className={`${styles.center} ${styles.colMore}`} aria-label="Acciones" />
+          </tr>
+        </thead>
+        <tbody>
+          {contratos.map((c) => (
+            <FilaExContrato
+              key={c.id}
+              contrato={c}
+              inmuebleAlias={inmuebleAliasById.get(c.inmuebleId) ?? `#${c.inmuebleId}`}
+              onClick={() => onAbrir(c)}
+              menuOpen={c.id != null && openMenuId === c.id}
+              onToggleMenu={() =>
+                setOpenMenuId((prev) => (prev === c.id ? null : c.id ?? null))
+              }
+              onEliminar={onEliminar}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 export default TablaExInquilinos;
 export { TablaExInquilinos };

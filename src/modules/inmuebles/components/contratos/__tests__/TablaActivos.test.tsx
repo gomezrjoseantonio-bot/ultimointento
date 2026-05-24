@@ -96,6 +96,28 @@ describe('TablaActivos', () => {
     expect(screen.getByText('JC')).toBeInTheDocument();
   });
 
+  test('columna Habitación · "Piso completo" para unidad vivienda', () => {
+    render(
+      <TablaActivos
+        contratos={[make(1)]}
+        inmuebleAliasById={aliasMap}
+        onAbrirFicha={() => {}}
+      />,
+    );
+    expect(screen.getByText('Piso completo')).toBeInTheDocument();
+  });
+
+  test('columna Habitación · "Hab N" para contrato por habitación', () => {
+    render(
+      <TablaActivos
+        contratos={[make(1, { unidadTipo: 'habitacion', habitacionId: 'hab-3' })]}
+        inmuebleAliasById={aliasMap}
+        onAbrirFicha={() => {}}
+      />,
+    );
+    expect(screen.getByText('Hab 3')).toBeInTheDocument();
+  });
+
   test('navegación con Enter activa la fila', () => {
     const onAbrir = jest.fn();
     render(
