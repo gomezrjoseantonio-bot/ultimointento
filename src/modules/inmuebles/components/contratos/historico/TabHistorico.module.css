@@ -1,0 +1,13 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+}
+.tablaSection {
+  margin-top: 4px;
+}
+.tablaTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  margin: 0 0 10px;
+}

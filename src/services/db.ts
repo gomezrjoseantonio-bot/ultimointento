@@ -28,7 +28,7 @@ import type { AvisoCerrado } from '../types/avisosUsuario';
 import type { ObjetivoVital } from '../types/objetivosVitales';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 75; // V75 (T-VALORACIONES PR7b): purga campos legacy de valoración en `properties`, `inversiones`, `planesPensiones` tras pre-purge sync que crea valoraciones para cualquier activo con valor legacy sin entrada en `valoracionesActivos`. NO se purgan campos fiscales (`valorCatastral`, `valorAdquisicion`, `precioCompra`). 44 stores totales (sin cambio · solo purga campos).
+const DB_VERSION = 76; // V76 (T6 histórico): añade campos opcionales a `contracts` (motivoFin, detalleMotivoFin, valoracion, volveriaAAlquilar, fianzaDevuelta, notasCasero, fechaCierre). Migración suave · sin cambios de stores/índices · contratos pre-V76 quedan con los campos undefined. 44 stores totales (sin cambio).
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -659,6 +659,22 @@ export interface HistoricoRenta {
   indexacionFecha?: string;
 }
 
+/**
+ * T6 · histórico · motivo por el que finalizó un contrato.
+ */
+export type MotivoFin =
+  | 'fin_natural'
+  | 'cambio_ciudad'
+  | 'no_renovacion_precio'
+  | 'incidencia_convivencia'
+  | 'rescision_impago'
+  | 'otros';
+
+/**
+ * T6 · histórico · respuesta del propietario a "¿volverías a alquilarle?".
+ */
+export type VolveriaAAlquilar = 'si' | 'con_reservas' | 'no';
+
 // Enhanced Contract interface according to CONTRATOS (HORIZON + PULSE) specification
 export interface Contract {
   id?: number;
@@ -772,7 +788,23 @@ export interface Contract {
     fecha: string; // Rescission date
     motivo: string; // Rescission reason
   };
-  
+
+  // ===== T6 (histórico) · V76 · campos opcionales · undefined en contratos pre-V76 =====
+  /** Motivo de salida clasificado · pill en tabla + caja en drawer ex-contrato. */
+  motivoFin?: MotivoFin;
+  /** Texto libre explicativo del motivo de salida. */
+  detalleMotivoFin?: string;
+  /** Valoración del inquilino · 1-5 estrellas. */
+  valoracion?: 1 | 2 | 3 | 4 | 5;
+  /** Respuesta del propietario a "¿volverías a alquilarle?". */
+  volveriaAAlquilar?: VolveriaAAlquilar;
+  /** Importe de fianza devuelta en € · 0 si retenida total · undefined si pendiente. */
+  fianzaDevuelta?: number;
+  /** Notas libres del casero sobre el inquilino. */
+  notasCasero?: string;
+  /** Fecha real de salida (ISO). Si undefined, se usa `fechaFin` como sustituto. */
+  fechaCierre?: string;
+
   // LEGACY FIELDS for backward compatibility
   propertyId?: number; // Maps to inmuebleId
   scope?: 'full-property' | 'units';
@@ -2561,6 +2593,14 @@ export const initDB = async () => {
         if (!db.objectStoreNames.contains('contracts')) {
           const contractStore = db.createObjectStore('contracts', { keyPath: 'id', autoIncrement: true });
           contractStore.createIndex('propertyId', 'propertyId', { unique: false });
+        }
+
+        // V76 (T6 histórico): los nuevos campos de `contracts` son opcionales y
+        // no requieren cambios de schema · migración suave sin reescritura.
+        // Los contratos existentes quedan con los campos undefined y el drawer
+        // ex-contrato muestra "—" en su lugar.
+        if (oldVersion < 76) {
+          // no-op intencionado · sin pérdida de datos · sin seed
         }
 
         // H5: expensesH5, reforms, reformLineItems — DELETED in V4.2
