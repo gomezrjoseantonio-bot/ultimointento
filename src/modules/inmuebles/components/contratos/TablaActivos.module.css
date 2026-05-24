@@ -69,6 +69,28 @@
   padding: 10px 8px;
 }
 
+.colInmueble {
+  width: var(--col-inmueble, 110px);
+  max-width: var(--col-inmueble, 110px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.colHabitacion {
+  width: var(--col-habitacion, 100px);
+  max-width: var(--col-habitacion, 100px);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.colHabitacionFull {
+  color: var(--atlas-v5-ink-4);
+  font-style: italic;
+  font-family: var(--atlas-v5-font-ui);
+}
+
 .colTipo {
   width: 56px;
   text-align: center;

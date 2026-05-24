@@ -13,6 +13,7 @@ import {
 } from '../../utils/calcularEstadoChip';
 import { esFechaIndefinida, formatFechaFinContrato } from '../../utils/formatFechaFin';
 import { mapearTipoContrato } from '../../utils/mapearTipoContrato';
+import { habitacionNumeroDe } from '../../utils/timelineColores';
 import {
   colorAvatarPorContrato,
   generarIniciales,
@@ -77,7 +78,8 @@ const TablaActivos: React.FC<TablaActivosProps> = ({
               />
             </th>
             <th>Inquilino</th>
-            <th>Inmueble</th>
+            <th className={styles.colInmueble}>Inmueble</th>
+            <th className={styles.colHabitacion}>Habitación</th>
             <th className={styles.colTipo}>Tipo</th>
             <th className={styles.colRight}>Renta</th>
             <th>Desde</th>
@@ -101,6 +103,8 @@ const TablaActivos: React.FC<TablaActivosProps> = ({
               const iniciales = generarIniciales(nombre);
               const colorAvatar = colorAvatarPorContrato(c);
               const alias = inmuebleAliasById.get(c.inmuebleId) ?? `#${c.inmuebleId}`;
+              const esPisoCompleto = c.unidadTipo === 'vivienda';
+              const habNum = habitacionNumeroDe(c);
               const rowClass = [
                 styles.row,
                 estado === 'impago' ? styles.rowNeg : '',
@@ -148,8 +152,15 @@ const TablaActivos: React.FC<TablaActivosProps> = ({
                       </div>
                     </div>
                   </td>
-                  <td>
+                  <td className={styles.colInmueble} title={alias}>
                     <span className={styles.inmCell}>{alias}</span>
+                  </td>
+                  <td
+                    className={`${styles.colHabitacion} ${
+                      esPisoCompleto ? styles.colHabitacionFull : ''
+                    }`}
+                  >
+                    {esPisoCompleto ? 'Piso completo' : `Hab ${habNum ?? '—'}`}
                   </td>
                   <td className={styles.colTipo}>
                     <TipoIcono tipo={tipo} />

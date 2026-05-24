@@ -10,12 +10,14 @@ export interface TabHistoricoProps {
   contratos: Contract[];
   properties: Property[];
   inmuebleAliasById: Map<number, string>;
+  onEliminar?: (c: Contract & { id: number }) => void;
 }
 
 const TabHistorico: React.FC<TabHistoricoProps> = ({
   contratos,
   properties,
   inmuebleAliasById,
+  onEliminar,
 }) => {
   const [contratoAbierto, setContratoAbierto] = useState<Contract | null>(null);
 
@@ -39,6 +41,7 @@ const TabHistorico: React.FC<TabHistoricoProps> = ({
           contratos={contratos}
           inmuebleAliasById={inmuebleAliasById}
           onAbrir={setContratoAbierto}
+          onEliminar={onEliminar}
         />
       </section>
 

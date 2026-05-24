@@ -3,9 +3,16 @@ import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom
 import {
   PageHead,
   Icons,
+  showToastV5,
 } from '../../../design-system/v5';
 import type { Contract } from '../../../services/db';
 import type { InmueblesOutletContext } from '../InmueblesContext';
+import {
+  deleteContractWithCascade,
+  previewDeleteContractCascade,
+  type DeleteContractCascadeReport,
+} from '../../../services/contractService';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { esFechaIndefinida } from '../utils/formatFechaFin';
 import { calcularLibresAhora } from '../utils/calcularLibresAhora';
 import {
@@ -48,11 +55,58 @@ const isExpiringSoon = (c: Contract, today: Date, daysWindow = 90): boolean => {
 
 const ContratosListPage: React.FC = () => {
   const navigate = useNavigate();
-  const { properties, contracts } = useOutletContext<InmueblesOutletContext>();
+  const { properties, contracts, reload } = useOutletContext<InmueblesOutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab: Tab = normalizeTab(searchParams.get('tab')) ?? 'activos';
   const [tab, setTab] = useState<Tab>(initialTab);
   const today = useMemo(() => new Date(), []);
+  const [pendingDelete, setPendingDelete] = useState<{
+    contract: Contract & { id: number };
+    cascade: DeleteContractCascadeReport;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const requestDelete = async (contract: Contract & { id: number }): Promise<void> => {
+    try {
+      const cascade = await previewDeleteContractCascade(contract.id);
+      setPendingDelete({ contract, cascade });
+    } catch (err) {
+      console.error('Error preparing contract deletion', err);
+      showToastV5('No se pudo preparar el borrado del contrato');
+    }
+  };
+
+  const cancelDelete = (): void => {
+    if (isDeleting) return;
+    setPendingDelete(null);
+  };
+
+  const confirmDelete = async (): Promise<void> => {
+    if (!pendingDelete) return;
+    setIsDeleting(true);
+    try {
+      const report = await deleteContractWithCascade(pendingDelete.contract.id);
+      const detalle: string[] = [];
+      if (report.treasuryEventsPredictedDeleted > 0) {
+        detalle.push(`${report.treasuryEventsPredictedDeleted} eventos previstos`);
+      }
+      if (report.treasuryEventsHistoricUnlinked > 0) {
+        detalle.push(`${report.treasuryEventsHistoricUnlinked} eventos históricos desvinculados`);
+      }
+      if (report.presupuestoLineasDeleted > 0) {
+        detalle.push(`${report.presupuestoLineasDeleted} líneas de presupuesto`);
+      }
+      const sufijo = detalle.length > 0 ? ` · ${detalle.join(' · ')}` : '';
+      showToastV5(`Contrato eliminado${sufijo}`);
+      setPendingDelete(null);
+      reload();
+    } catch (err) {
+      console.error('Error deleting contract', err);
+      showToastV5('Error al eliminar el contrato');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Sincronizar tab cuando cambia el query param (navegación externa · back/forward · enlace)
   useEffect(() => {
@@ -213,6 +267,7 @@ const ContratosListPage: React.FC = () => {
           contratos={historico}
           properties={properties}
           inmuebleAliasById={propertyById}
+          onEliminar={requestDelete}
         />
       )}
 
@@ -247,6 +302,22 @@ const ContratosListPage: React.FC = () => {
         />
       )}
 
+      <ConfirmationModal
+        isOpen={pendingDelete !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        title="Eliminar contrato"
+        message={
+          pendingDelete
+            ? buildDeleteMessage(pendingDelete.contract, pendingDelete.cascade)
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeleting}
+      />
+
       <DrawerLibres
         open={drawerOpen === 'libres'}
         onClose={() => setDrawerOpen(null)}
@@ -268,6 +339,33 @@ const ContratosListPage: React.FC = () => {
       />
     </>
   );
+};
+
+const buildDeleteMessage = (
+  contract: Contract,
+  cascade: DeleteContractCascadeReport,
+): string => {
+  const tenant =
+    `${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim() ||
+    'este contrato';
+  const cascadaParts: string[] = [];
+  if (cascade.treasuryEventsPredictedDeleted > 0) {
+    cascadaParts.push(
+      `${cascade.treasuryEventsPredictedDeleted} eventos previstos de tesorería`,
+    );
+  }
+  if (cascade.treasuryEventsHistoricUnlinked > 0) {
+    cascadaParts.push(
+      `${cascade.treasuryEventsHistoricUnlinked} eventos históricos quedarán desvinculados (sin borrar)`,
+    );
+  }
+  if (cascade.presupuestoLineasDeleted > 0) {
+    cascadaParts.push(`${cascade.presupuestoLineasDeleted} líneas de presupuesto`);
+  }
+  const cascadaTexto = cascadaParts.length > 0
+    ? ` Se eliminarán también: ${cascadaParts.join(' · ')}.`
+    : '';
+  return `Vas a eliminar el contrato de ${tenant}.${cascadaTexto} Esta acción no se puede deshacer.`;
 };
 
 export default ContratosListPage;
