@@ -97,6 +97,7 @@ describe('TablaExInquilinos', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: /Eliminar/ }));
     expect(onEliminar).toHaveBeenCalledTimes(1);
     expect(onEliminar.mock.calls[0][0].id).toBe(7);
+    expect(screen.queryByRole('menuitem', { name: /Eliminar/ })).not.toBeInTheDocument();
   });
 
   it('sin onEliminar no muestra menú', () => {

@@ -61,6 +61,7 @@ interface FilaProps {
   onClick: () => void;
   menuOpen: boolean;
   onToggleMenu: () => void;
+  onCloseMenu: () => void;
   onEliminar?: (c: Contract & { id: number }) => void;
 }
 
@@ -70,6 +71,7 @@ const FilaExContrato: React.FC<FilaProps> = ({
   onClick,
   menuOpen,
   onToggleMenu,
+  onCloseMenu,
   onEliminar,
 }) => {
   const nombre = getInquilinoNombre(contrato);
@@ -158,6 +160,7 @@ const FilaExContrato: React.FC<FilaProps> = ({
               className={`${styles.menuItem} ${styles.menuItemDanger}`}
               onClick={(e) => {
                 e.stopPropagation();
+                onCloseMenu();
                 onEliminar(contrato as Contract & { id: number });
               }}
             >
@@ -220,6 +223,7 @@ const TablaExInquilinos: React.FC<TablaExInquilinosProps> = ({
               onToggleMenu={() =>
                 setOpenMenuId((prev) => (prev === c.id ? null : c.id ?? null))
               }
+              onCloseMenu={() => setOpenMenuId(null)}
               onEliminar={onEliminar}
             />
           ))}
