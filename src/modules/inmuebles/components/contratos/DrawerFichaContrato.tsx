@@ -14,6 +14,7 @@ import {
   estaFirmado,
 } from '../../utils/calcularEstadoChip';
 import { formatFechaFinContrato } from '../../utils/formatFechaFin';
+import { habitacionNumeroDe } from '../../utils/timelineColores';
 import {
   colorAvatarPorContrato,
   generarIniciales,
@@ -123,7 +124,9 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
               <h2 className={styles.heroTitle}>{nombre}</h2>
               <p className={styles.heroSub}>
                 {inmuebleAlias ?? `Inmueble #${contrato.inmuebleId}`}
-                {contrato.habitacionId && ` · Hab ${contrato.habitacionId}`}
+                {contrato.unidadTipo === 'vivienda'
+                  ? ' · Piso completo'
+                  : ` · Hab ${habitacionNumeroDe(contrato) ?? '—'}`}
                 {' · '}
                 <Pill variant={pill.variant} asTag>{pill.label}</Pill>
               </p>

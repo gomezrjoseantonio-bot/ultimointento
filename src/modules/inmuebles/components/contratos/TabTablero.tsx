@@ -20,6 +20,7 @@ import {
   getInquilinoNombre,
 } from '../../utils/inquilinoUtils';
 import { formatFechaFinContrato } from '../../utils/formatFechaFin';
+import { habitacionNumeroDe } from '../../utils/timelineColores';
 import DrawerFichaContrato from './DrawerFichaContrato';
 import DrawerLibres from './DrawerLibres';
 import { calcularLibresAhora } from '../../utils/calcularLibresAhora';
@@ -35,6 +36,12 @@ export interface TabTableroProps {
 }
 
 const toast = (msg: string) => () => showToastV5(msg);
+
+function metaHabInmueble(contrato: Contract, alias: string): string {
+  if (contrato.unidadTipo === 'vivienda') return `Piso completo · ${alias}`;
+  const habNum = habitacionNumeroDe(contrato);
+  return `Hab ${habNum ?? '—'} · ${alias}`;
+}
 
 const TabTablero: React.FC<TabTableroProps> = ({
   contratos,
@@ -383,7 +390,7 @@ const BloqueUrgenteHoy: React.FC<BloqueUrgenteHoyProps> = ({
             avatarIniciales={generarIniciales(getInquilinoNombre(item.contrato))}
             avatarColor={colorAvatarPorContrato(item.contrato)}
             titulo={getInquilinoNombre(item.contrato)}
-            meta={<span>{item.inmuebleAlias}</span>}
+            meta={<span>{metaHabInmueble(item.contrato, item.inmuebleAlias)}</span>}
             detailValue="Impago activo"
             detailTone="neg"
             detailSub={
@@ -491,7 +498,7 @@ const CardFirma: React.FC<{
       avatarIniciales={generarIniciales(nombre)}
       avatarColor={colorAvatarPorContrato(item.contrato)}
       titulo={nombre}
-      meta={<span>{item.inmuebleAlias}</span>}
+      meta={<span>{metaHabInmueble(item.contrato, item.inmuebleAlias)}</span>}
       detailValue={`${dias} d sin firmar`}
       detailTone={tone}
       detailSub={
@@ -531,7 +538,7 @@ const CardVencimiento: React.FC<{
       avatarIniciales={generarIniciales(nombre)}
       avatarColor={colorAvatarPorContrato(item.contrato)}
       titulo={nombre}
-      meta={<span>{item.inmuebleAlias}</span>}
+      meta={<span>{metaHabInmueble(item.contrato, item.inmuebleAlias)}</span>}
       detailValue={`Vence en ${item.diasHastaVencimiento} d`}
       detailTone={tone}
       detailSub={
@@ -650,7 +657,9 @@ const BloquePlanificarMes: React.FC<BloquePlanificarMesProps> = ({
                 {generarIniciales(nombre)}
               </div>
               <span className={styles.compactName}>{nombre}</span>
-              <span className={styles.compactInm}>{item.inmuebleAlias}</span>
+              <span className={styles.compactInm}>
+                {metaHabInmueble(item.contrato, item.inmuebleAlias)}
+              </span>
             </div>
             <div className={styles.compactMid}>
               <MoneyValue
