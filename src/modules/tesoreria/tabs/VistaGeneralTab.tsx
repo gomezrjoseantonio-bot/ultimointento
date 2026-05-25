@@ -6,7 +6,7 @@ import {
   Icons,
   showToastV5,
 } from '../../../design-system/v5';
-import { EmptyState as EmptyStateCanonico } from '../../../components/common/EmptyState';
+import { EmptyState } from '../../../components/common/EmptyState';
 import {
   BankAccountCard,
   BankAccountAddCard,
@@ -135,7 +135,7 @@ const VistaGeneralTab: React.FC = () => {
               )}
             </div>
             {accounts.length === 0 ? (
-              <EmptyStateCanonico
+              <EmptyState
                 icon={Wallet}
                 title="Sin cuentas aún"
                 subtitle="Añade tu primera cuenta bancaria para empezar a ver el flujo de tesorería."

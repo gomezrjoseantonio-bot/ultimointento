@@ -4,10 +4,10 @@ import { Building2 } from 'lucide-react';
 import {
   PageHead,
   MoneyValue,
-  EmptyState,
+  EmptyState as EmptyStateV5,
   Icons,
 } from '../../../design-system/v5';
-import { EmptyState as EmptyStateCanonico } from '../../../components/common/EmptyState';
+import { EmptyState } from '../../../components/common/EmptyState';
 import type { Contract, Property } from '../../../services/db';
 import {
   TIPO_ACTIVO_LABELS,
@@ -515,7 +515,7 @@ const ListadoPage: React.FC = () => {
         <div className={styles.grid}>
           {filtered.length === 0 ? (
             derived.length === 0 ? (
-              <EmptyStateCanonico
+              <EmptyState
                 icon={Building2}
                 title="Sin inmuebles aún"
                 subtitle="Añade tu primer inmueble para empezar a ver tu cartera consolidada."
@@ -525,7 +525,7 @@ const ListadoPage: React.FC = () => {
                 }}
               />
             ) : (
-              <EmptyState
+              <EmptyStateV5
                 icon={<Icons.Inmuebles size={20} />}
                 title="Sin resultados con los filtros aplicados"
                 sub="Limpia los filtros o cambia la búsqueda."
