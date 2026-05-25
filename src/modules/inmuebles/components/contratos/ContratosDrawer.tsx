@@ -13,6 +13,8 @@ export interface ContratosDrawerProps {
   sub?: string;
   stats?: Array<{ label: string; value: React.ReactNode }>;
   footer?: React.ReactNode;
+  /** Drawer más ancho (~780px) · usado por el análisis anual (T7). */
+  wide?: boolean;
   children: React.ReactNode;
 }
 
@@ -31,6 +33,7 @@ const ContratosDrawer: React.FC<ContratosDrawerProps> = ({
   sub,
   stats,
   footer,
+  wide,
   children,
 }) => {
   useEffect(() => {
@@ -60,7 +63,7 @@ const ContratosDrawer: React.FC<ContratosDrawerProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={styles.drawer}
+        className={`${styles.drawer} ${wide ? styles.drawerWide : ''}`}
       >
         <div className={`${styles.hero} ${TONE_CLASS[tone]}`}>
           <button

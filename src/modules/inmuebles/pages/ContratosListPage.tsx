@@ -22,6 +22,7 @@ import {
 import KpiContratoCard from '../components/contratos/KpiContratoCard';
 import DrawerLibres from '../components/contratos/DrawerLibres';
 import DrawerVencen from '../components/contratos/DrawerVencen';
+import DrawerAnalisisAnual from '../components/contratos/DrawerAnalisisAnual';
 import TabActivos from '../components/contratos/TabActivos';
 import TabTablero from '../components/contratos/TabTablero';
 import TabDisponibilidad from '../components/contratos/TabDisponibilidad';
@@ -158,6 +159,7 @@ const ContratosListPage: React.FC = () => {
   const libres = libresAhora.total;
 
   const [drawerOpen, setDrawerOpen] = useState<null | 'libres' | 'd30' | 'd3090'>(null);
+  const [analisisAnualOpen, setAnalisisAnualOpen] = useState(false);
 
   const tabs: Array<{ key: Tab; label: string; count?: number; countTone?: 'neg' }> = [
     { key: 'disponibilidad', label: 'Disponibilidad', count: libres, countTone: libres > 0 ? 'neg' : undefined },
@@ -171,6 +173,12 @@ const ContratosListPage: React.FC = () => {
       <PageHead
         title="Contratos"
         actions={[
+          {
+            label: 'Análisis anual',
+            variant: 'ghost',
+            icon: <Icons.Panel size={14} strokeWidth={1.8} />,
+            onClick: () => setAnalisisAnualOpen(true),
+          },
           {
             label: 'Importar contratos',
             variant: 'ghost',
@@ -336,6 +344,12 @@ const ContratosListPage: React.FC = () => {
         onClose={() => setDrawerOpen(null)}
         contratos={vencen3090}
         inmuebleAliasById={propertyById}
+      />
+      <DrawerAnalisisAnual
+        open={analisisAnualOpen}
+        onClose={() => setAnalisisAnualOpen(false)}
+        contratos={contracts}
+        properties={properties}
       />
     </>
   );
