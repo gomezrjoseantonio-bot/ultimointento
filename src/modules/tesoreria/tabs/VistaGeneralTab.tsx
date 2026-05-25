@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { Wallet } from 'lucide-react';
 import {
   CardV5,
-  EmptyState,
   Icons,
   showToastV5,
 } from '../../../design-system/v5';
+import { EmptyState as EmptyStateCanonico } from '../../../components/common/EmptyState';
 import {
   BankAccountCard,
   BankAccountAddCard,
@@ -134,12 +135,14 @@ const VistaGeneralTab: React.FC = () => {
               )}
             </div>
             {accounts.length === 0 ? (
-              <EmptyState
-                icon={<Icons.Tesoreria size={20} />}
-                title="No hay cuentas registradas"
-                sub="Añade tu primera cuenta para empezar a ver el flujo de tesorería."
-                ctaLabel="+ añadir cuenta"
-                onCtaClick={openCreateAccount}
+              <EmptyStateCanonico
+                icon={Wallet}
+                title="Sin cuentas aún"
+                subtitle="Añade tu primera cuenta bancaria para empezar a ver el flujo de tesorería."
+                cta={{
+                  label: 'Añadir cuenta',
+                  onClick: openCreateAccount,
+                }}
               />
             ) : (
               <div className={styles.cuentasGrid}>

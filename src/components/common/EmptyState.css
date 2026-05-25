@@ -1,0 +1,148 @@
+/**
+ * TAREA-CC-FIX-EMPTY-STATES-UNIFICADOS · patrón P1 canónico.
+ *
+ * Estilos del componente `<EmptyState />` global de la aplicación.
+ * Usa tokens `--atlas-v5-*` del design system v5 · cero hex hardcoded.
+ *
+ * Estructura (BEM) ·
+ *   .atlas-empty                    bloque raíz centrado vertical+horizontal
+ *   .atlas-empty__icon-wrap         círculo con borde dorado (44px)
+ *   .atlas-empty__icon              icono Lucide dentro del círculo
+ *   .atlas-empty__title             título 14px bold sentence case
+ *   .atlas-empty__subtitle          subtítulo 12px gris descripción
+ *   .atlas-empty__cta               botón ghost dorado outline + icono Plus
+ *   .atlas-empty__cta-icon          icono del botón (Plus por defecto)
+ *
+ * Variantes de tamaño · --small (140px alt) · --normal (200px alt) · --large (320px alt)
+ */
+
+.atlas-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 24px;
+  min-height: 200px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.atlas-empty__icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid var(--atlas-v5-gold);
+  background: transparent;
+  color: var(--atlas-v5-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.atlas-empty__icon {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.8;
+}
+
+.atlas-empty__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+}
+
+.atlas-empty__subtitle {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  margin: 0 0 14px 0;
+  line-height: 1.45;
+  max-width: 320px;
+}
+
+.atlas-empty__cta {
+  background: transparent;
+  color: var(--atlas-v5-gold);
+  border: 1.5px solid var(--atlas-v5-gold);
+  padding: 7px 16px;
+  border-radius: 5px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.atlas-empty__cta:hover {
+  background: var(--atlas-v5-gold-wash);
+}
+
+.atlas-empty__cta:active {
+  transform: translateY(1px);
+}
+
+.atlas-empty__cta:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+.atlas-empty__cta-icon {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.2;
+}
+
+/* ═══ Variantes de tamaño ═══ */
+.atlas-empty--small {
+  padding: 20px 16px;
+  min-height: 140px;
+}
+
+.atlas-empty--small .atlas-empty__icon-wrap {
+  width: 36px;
+  height: 36px;
+}
+
+.atlas-empty--small .atlas-empty__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.atlas-empty--small .atlas-empty__title {
+  font-size: 13px;
+}
+
+.atlas-empty--small .atlas-empty__subtitle {
+  font-size: 11px;
+  max-width: 240px;
+}
+
+.atlas-empty--large {
+  padding: 48px 32px;
+  min-height: 320px;
+}
+
+.atlas-empty--large .atlas-empty__icon-wrap {
+  width: 56px;
+  height: 56px;
+}
+
+.atlas-empty--large .atlas-empty__icon {
+  width: 26px;
+  height: 26px;
+}
+
+.atlas-empty--large .atlas-empty__title {
+  font-size: 16px;
+}
+
+.atlas-empty--large .atlas-empty__subtitle {
+  font-size: 13px;
+  max-width: 380px;
+}

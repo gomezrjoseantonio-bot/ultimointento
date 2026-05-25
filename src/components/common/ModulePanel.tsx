@@ -1,6 +1,7 @@
 import React from 'react';
+import { Wrench } from 'lucide-react';
 import PageLayout from './PageLayout';
-import EmptyState from './EmptyState';
+import { EmptyState } from './EmptyState';
 
 interface ModulePanelProps {
   module: 'horizon' | 'pulse';
@@ -27,8 +28,9 @@ const ModulePanel: React.FC<ModulePanelProps> = ({ module }) => {
       showInfoIcon={true}
     >
       <EmptyState
+        icon={Wrench}
         title="Panel en construcción"
-        description="Próximo hito: funcionalidades de panel de control y resumen ejecutivo."
+        subtitle="Próximo hito: funcionalidades de panel de control y resumen ejecutivo."
       />
     </PageLayout>
   );

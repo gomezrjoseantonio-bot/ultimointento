@@ -9,7 +9,9 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Landmark } from 'lucide-react';
 import { PageHead, Icons, showToastV5 } from '../../design-system/v5';
+import { EmptyState } from '../../components/common/EmptyState';
 import {
   prestamosService,
   interesesTotalDeducible,
@@ -194,6 +196,16 @@ const FinanciacionPage: React.FC = () => {
       )}
       {loading ? (
         <div className={styles.loading}>Cargando financiación…</div>
+      ) : showTabs && rows.length === 0 ? (
+        <EmptyState
+          icon={Landmark}
+          title="Sin préstamos aún"
+          subtitle="Crea tu primer préstamo manualmente o impórtalo desde una FEIN."
+          cta={{
+            label: 'Nuevo préstamo',
+            onClick: () => navigate('/financiacion/nuevo'),
+          }}
+        />
       ) : (
         <Outlet context={ctx} />
       )}
