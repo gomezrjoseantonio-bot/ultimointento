@@ -57,7 +57,7 @@
   cursor: default;
 }
 
-.cell:hover:not(.n) {
+.cell:hover:not(.n):not(.cellToday) {
   outline: 2px solid var(--atlas-v5-gold);
   outline-offset: 1px;
   z-index: 5;

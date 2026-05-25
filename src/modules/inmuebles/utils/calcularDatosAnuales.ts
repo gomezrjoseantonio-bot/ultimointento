@@ -49,7 +49,7 @@ export function esPropiedadAlquilable(p: Property): boolean {
 /** Unidades arrendables de una propiedad · habitaciones si se alquila por cuartos, 1 si es vivienda completa. */
 function unidadesArrendables(p: Property): number {
   if (p.alquilerPorHabitaciones?.activo) {
-    return p.alquilerPorHabitaciones.numeroHabitaciones ?? p.bedrooms ?? 1;
+    return Math.max(1, p.alquilerPorHabitaciones.numeroHabitaciones ?? p.bedrooms ?? 1);
   }
   return 1;
 }
@@ -119,7 +119,7 @@ function construirTooltipDia(
   diaMs: number,
   ocupadas: number,
   arrendables: number,
-  contratos: Contract[],
+  contratos: ContratoConRango[],
   esHoy: boolean,
 ): string {
   const mesCorto = NOMBRES_MES_CORTO[mes - 1];
@@ -130,13 +130,11 @@ function construirTooltipDia(
 
   const eventos: string[] = [];
   for (const c of contratos) {
-    const fin = finEfectivoMs(c);
-    if (fin !== null && fin === diaMs) {
-      eventos.push(`vence ${nombreCorto(c)}`);
+    if (c.finMs !== null && c.finMs === diaMs) {
+      eventos.push(`vence ${nombreCorto(c.contrato)}`);
     }
-    const ini = parseIsoDateAsUTC(c.fechaInicio).getTime();
-    if (!Number.isNaN(ini) && ini === diaMs && ini > Date.now()) {
-      eventos.push(`entra ${nombreCorto(c)}`);
+    if (c.iniMs === diaMs) {
+      eventos.push(`entra ${nombreCorto(c.contrato)}`);
     }
   }
 
@@ -152,10 +150,30 @@ interface OcupacionDia {
   perdida: number;
 }
 
+interface ContratoConRango {
+  contrato: Contract;
+  iniMs: number;
+  finMs: number | null;
+}
+
+function crearContratoConRango(c: Contract): ContratoConRango | null {
+  const iniMs = parseIsoDateAsUTC(c.fechaInicio).getTime();
+  if (Number.isNaN(iniMs)) return null;
+  const finMs = finEfectivoMs(c);
+  if (finMs !== null && Number.isNaN(finMs)) return null;
+  return { contrato: c, iniMs, finMs };
+}
+
+function cubreElDiaRango(c: ContratoConRango, diaMs: number): boolean {
+  if (diaMs < c.iniMs) return false;
+  if (c.finMs === null) return true;
+  return diaMs <= c.finMs;
+}
+
 function calcularOcupacionDia(
   diaMs: number,
   alquilables: Property[],
-  contratosPorInmueble: Map<number, Contract[]>,
+  contratosPorInmueble: Map<number, ContratoConRango[]>,
   rentaPorInmueble: Map<number, number>,
 ): OcupacionDia {
   let ocupadas = 0;
@@ -165,8 +183,11 @@ function calcularOcupacionDia(
     const unidades = unidadesArrendables(p);
     arrendables += unidades;
     const delInmueble = contratosPorInmueble.get(p.id as number) ?? [];
-    const contratosDia = delInmueble.filter((c) => cubreElDia(c, diaMs));
-    const ocupadasP = unidadesOcupadas(contratosDia, unidades);
+    const contratosDia = delInmueble.filter((c) => cubreElDiaRango(c, diaMs));
+    const ocupadasP = unidadesOcupadas(
+      contratosDia.map((c) => c.contrato),
+      unidades,
+    );
     ocupadas += ocupadasP;
     const libres = unidades - ocupadasP;
     if (libres > 0) {
@@ -183,17 +204,23 @@ export function calcularDatosAnuales(
 ): DatosAnuales {
   const alquilables = propiedades.filter(esPropiedadAlquilable);
 
-  const contratosPorInmueble = new Map<number, Contract[]>();
+  const contratosPorInmueble = new Map<number, ContratoConRango[]>();
   for (const c of contratos) {
+    const conRango = crearContratoConRango(c);
+    if (!conRango) continue;
     const arr = contratosPorInmueble.get(c.inmuebleId);
-    if (arr) arr.push(c);
-    else contratosPorInmueble.set(c.inmuebleId, [c]);
+    if (arr) arr.push(conRango);
+    else contratosPorInmueble.set(c.inmuebleId, [conRango]);
   }
+  const idsAlquilables = new Set(alquilables.map((p) => p.id as number));
+  const contratosTooltip = [...contratosPorInmueble.entries()]
+    .filter(([inmuebleId]) => idsAlquilables.has(inmuebleId))
+    .flatMap(([, list]) => list);
   const rentaPorInmueble = new Map<number, number>();
   for (const p of alquilables) {
     rentaPorInmueble.set(
       p.id as number,
-      rentaDiariaUnidad(contratosPorInmueble.get(p.id as number) ?? []),
+      rentaDiariaUnidad((contratosPorInmueble.get(p.id as number) ?? []).map((c) => c.contrato)),
     );
   }
 
@@ -225,7 +252,7 @@ export function calcularDatosAnuales(
       const ocupacion = arrendables > 0 ? ocupadas / arrendables : 0;
       const esHoy = esAnoActual && diaMs === hoyMs;
       const tooltip = construirTooltipDia(
-        ano, mes, dia, diaMs, ocupadas, arrendables, contratos, esHoy,
+        ano, mes, dia, diaMs, ocupadas, arrendables, contratosTooltip, esHoy,
       );
       celdas.push({
         dia,

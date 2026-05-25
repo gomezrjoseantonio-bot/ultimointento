@@ -153,6 +153,52 @@ describe('calcularDatosAnuales', () => {
     );
     expect(conHueco.ingresosPerdidosProyectados).toBeGreaterThan(0);
   });
+
+  it('11 · alquiler por habitaciones con 0 dormitorios mantiene mínimo de 1 unidad', () => {
+    const propiedad = prop(1, {
+      bedrooms: 0,
+      alquilerPorHabitaciones: { activo: true, numeroHabitaciones: 0 },
+    });
+    const d = calcularDatosAnuales(
+      [con(1, { unidadTipo: 'habitacion', habitacionId: 'h1' })],
+      [propiedad],
+      ANO,
+    );
+    expect(d.ocupacionMedia).toBe(1);
+  });
+
+  it('12 · tooltip marca "entra" en día de inicio aunque sea pasado', () => {
+    const anoPasado = new Date().getFullYear() - 1;
+    const d = calcularDatosAnuales(
+      [con(1, { fechaInicio: `${anoPasado}-01-02`, fechaFin: `${anoPasado}-12-31` })],
+      [prop(1)],
+      anoPasado,
+    );
+    expect(d.meses[0].celdas[1].tooltip).toContain('entra');
+  });
+
+  it('13 · tooltip ignora contratos de inmuebles no alquilables', () => {
+    const contratos = [
+      con(1, {
+        inmuebleId: 1,
+        fechaInicio: `${ANO}-01-02`,
+        inquilino: { nombre: 'Ana', apellidos: 'Activa', dni: '1', telefono: '', email: '' },
+      }),
+      con(2, {
+        inmuebleId: 2,
+        fechaInicio: `${ANO}-01-02`,
+        inquilino: { nombre: 'Bruno', apellidos: 'Vendido', dni: '2', telefono: '', email: '' },
+      }),
+    ];
+    const d = calcularDatosAnuales(
+      contratos,
+      [prop(1), prop(2, { state: 'vendido' })],
+      ANO,
+    );
+    const tooltip = d.meses[0].celdas[1].tooltip;
+    expect(tooltip).toContain('entra Ana Activa');
+    expect(tooltip).not.toContain('Bruno Vendido');
+  });
 });
 
 describe('mapearClaseOcupacion', () => {
