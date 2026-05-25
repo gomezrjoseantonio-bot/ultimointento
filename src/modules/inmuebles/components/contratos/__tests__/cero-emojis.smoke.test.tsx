@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TablaActivos from '../TablaActivos';
 import TabTablero from '../TabTablero';
+import DrawerAnalisisAnual from '../DrawerAnalisisAnual';
 import type { Contract, Property } from '../../../../../services/db';
 
 // Regla global 1 · CERO emojis pictográficos · solo iconos Lucide.
@@ -95,6 +96,21 @@ describe('Contratos · cero emojis pictográficos', () => {
           onNuevoContrato={() => {}}
         />
       </MemoryRouter>,
+    );
+    expect(container.textContent ?? '').not.toMatch(EMOJI_REGEX);
+  });
+
+  it('DrawerAnalisisAnual (T7) no contiene ningún emoji pictográfico', () => {
+    const { container } = render(
+      <DrawerAnalisisAnual
+        open
+        onClose={() => {}}
+        contratos={[
+          contract(1),
+          contract(2, { unidadTipo: 'habitacion', habitacionId: 'hab-3' }),
+        ]}
+        properties={[property(1, 3)]}
+      />,
     );
     expect(container.textContent ?? '').not.toMatch(EMOJI_REGEX);
   });

@@ -25,6 +25,11 @@
   animation: slideIn .26s cubic-bezier(.32, .72, 0, 1);
 }
 
+.drawerWide {
+  width: 62%;
+  max-width: 780px;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
