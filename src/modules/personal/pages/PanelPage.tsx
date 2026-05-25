@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { User } from 'lucide-react';
-import { MoneyValue, DateLabel, Icons, showToastV5 } from '../../../design-system/v5';
+import { MoneyValue, DateLabel, showToastV5 } from '../../../design-system/v5';
 import { EmptyState } from '../../../components/common/EmptyState';
 import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
