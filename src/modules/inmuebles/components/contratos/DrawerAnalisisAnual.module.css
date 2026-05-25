@@ -94,6 +94,11 @@
   z-index: 6;
 }
 
+.cellToday:hover {
+  outline: 2px solid var(--atlas-v5-neg);
+  outline-offset: 0;
+}
+
 /* ─── Leyenda ──────────────────────────────────────────────────────────────── */
 
 .legend {
