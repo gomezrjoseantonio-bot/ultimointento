@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
+import { FileText } from 'lucide-react';
 import {
   PageHead,
   Icons,
   showToastV5,
 } from '../../../design-system/v5';
+import { EmptyState } from '../../../components/common/EmptyState';
 import type { Contract } from '../../../services/db';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import {
@@ -167,6 +169,39 @@ const ContratosListPage: React.FC = () => {
     { key: 'activos', label: 'Activos', count: activos.length },
     { key: 'historico', label: 'Histórico', count: historico.length },
   ];
+
+  if (contracts.length === 0) {
+    return (
+      <>
+        <PageHead
+          title="Contratos"
+          actions={[
+            {
+              label: 'Importar contratos',
+              variant: 'ghost',
+              icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+              onClick: () => navigate('/inmuebles/importar-contratos'),
+            },
+            {
+              label: 'Nuevo contrato',
+              variant: 'gold',
+              icon: <Icons.Plus size={14} strokeWidth={2} />,
+              onClick: () => navigate('/contratos/nuevo'),
+            },
+          ]}
+        />
+        <EmptyState
+          icon={FileText}
+          title="Sin contratos activos"
+          subtitle="No hay contratos en vigor hoy. Crea el primero cuando un inquilino entre."
+          cta={{
+            label: 'Nuevo contrato',
+            onClick: () => navigate('/contratos/nuevo'),
+          }}
+        />
+      </>
+    );
+  }
 
   return (
     <>

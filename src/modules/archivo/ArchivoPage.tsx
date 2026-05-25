@@ -7,7 +7,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Archive } from 'lucide-react';
 import { PageHead, Icons, MoneyValue, showToastV5 } from '../../design-system/v5';
+import { EmptyState } from '../../components/common/EmptyState';
 import { initDB } from '../../services/db';
 import type { Document } from '../../services/db';
 import styles from './ArchivoPage.module.css';
@@ -323,11 +325,21 @@ const ArchivoPage: React.FC = () => {
           </div>
 
           {filtered.length === 0 ? (
-            <div className={styles.empty}>
-              {docs.length === 0
-                ? 'Aún no tienes documentos registrados. Arrastra un PDF o usa el botón Subir documento.'
-                : 'No hay documentos que coincidan con los filtros aplicados.'}
-            </div>
+            docs.length === 0 ? (
+              <EmptyState
+                icon={Archive}
+                title="Sin documentos aún"
+                subtitle="Arrastra un PDF o sube tu primer documento para empezar a organizar tu archivo."
+                cta={{
+                  label: 'Subir documento',
+                  onClick: () => navigate('/inbox?upload=1'),
+                }}
+              />
+            ) : (
+              <div className={styles.empty}>
+                No hay documentos que coincidan con los filtros aplicados.
+              </div>
+            )
           ) : (
             <table className={styles.docsTable}>
               <thead>

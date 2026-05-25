@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { Building2 } from 'lucide-react';
 import {
   PageHead,
   MoneyValue,
-  EmptyState,
+  EmptyState as EmptyStateV5,
   Icons,
 } from '../../../design-system/v5';
+import { EmptyState } from '../../../components/common/EmptyState';
 import type { Contract, Property } from '../../../services/db';
 import {
   TIPO_ACTIVO_LABELS,
@@ -512,21 +514,23 @@ const ListadoPage: React.FC = () => {
       <div className={styles.layout}>
         <div className={styles.grid}>
           {filtered.length === 0 ? (
-            <EmptyState
-              icon={<Icons.Inmuebles size={20} />}
-              title={
-                derived.length === 0
-                  ? 'Sin inmuebles registrados'
-                  : 'Sin resultados con los filtros aplicados'
-              }
-              sub={
-                derived.length === 0
-                  ? 'Añade tu primer inmueble para empezar a ver tu cartera.'
-                  : 'Limpia los filtros o cambia la búsqueda.'
-              }
-              ctaLabel={derived.length === 0 ? '+ añadir inmueble' : undefined}
-              onCtaClick={() => navigate('/inmuebles/nuevo')}
-            />
+            derived.length === 0 ? (
+              <EmptyState
+                icon={Building2}
+                title="Sin inmuebles aún"
+                subtitle="Añade tu primer inmueble para empezar a ver tu cartera consolidada."
+                cta={{
+                  label: 'Añadir inmueble',
+                  onClick: () => navigate('/inmuebles/nuevo'),
+                }}
+              />
+            ) : (
+              <EmptyStateV5
+                icon={<Icons.Inmuebles size={20} />}
+                title="Sin resultados con los filtros aplicados"
+                sub="Limpia los filtros o cambia la búsqueda."
+              />
+            )
           ) : (
             filtered.map((d) => {
                 const compradoPor = d.property.acquisitionCosts?.price ?? 0;

@@ -16,6 +16,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons, PageHead, showToastV5 } from '../../design-system/v5';
+import { EmptyState } from '../../components/common/EmptyState';
+import { TrendingUp } from 'lucide-react';
 import { inversionesService } from '../../services/inversionesService';
 import { rendimientosService } from '../../services/rendimientosService';
 import { migrateInversionesToNewModel } from '../../services/migrations/migrateInversiones';
@@ -215,6 +217,16 @@ const InversionesGaleria: React.FC = () => {
 
       {loading ? (
         <div className={styles.loading}>Cargando inversiones…</div>
+      ) : cartaItems.length === 0 ? (
+        <EmptyState
+          icon={TrendingUp}
+          title="Sin posiciones aún"
+          subtitle="Crea una posición manualmente o importa tu cartera (IndexaCapital · MyInvestor · aportaciones)."
+          cta={{
+            label: 'Nueva posición',
+            onClick: openSelector,
+          }}
+        />
       ) : (
         <>
           <GaleriaFiltros

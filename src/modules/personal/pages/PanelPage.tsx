@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
-import { MoneyValue, DateLabel, EmptyState, Icons, showToastV5 } from '../../../design-system/v5';
+import { User } from 'lucide-react';
+import { MoneyValue, DateLabel, showToastV5 } from '../../../design-system/v5';
+import { EmptyState } from '../../../components/common/EmptyState';
 import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import {
@@ -158,11 +160,13 @@ const PanelPage: React.FC = () => {
   if (nominas.length === 0 && autonomos.length === 0 && compromisos.length === 0) {
     return (
       <EmptyState
-        icon={<Icons.Personal size={20} />}
-        title="Sin datos del hogar registrados"
-        sub="Añade nóminas, autónomos o compromisos para empezar a ver tu panel personal."
-        ctaLabel="+ ir a Gestión Personal"
-        onCtaClick={() => navigate('/gestion/personal')}
+        icon={User}
+        title="Sin datos del hogar aún"
+        subtitle="Añade nóminas, autónomos o compromisos para empezar a ver tu panel personal."
+        cta={{
+          label: 'Ir a Gestión Personal',
+          onClick: () => navigate('/gestion/personal'),
+        }}
       />
     );
   }

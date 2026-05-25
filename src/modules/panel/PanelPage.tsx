@@ -11,7 +11,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LayoutDashboard } from 'lucide-react';
 import { PageHead, Icons, MoneyValue, CompositionBar } from '../../design-system/v5';
+import { EmptyState } from '../../components/common/EmptyState';
 import { initDB } from '../../services/db';
 import type { Property, Account, TreasuryEvent, Contract } from '../../services/db';
 import type { Prestamo } from '../../types/prestamos';
@@ -489,41 +491,16 @@ const PanelPage: React.FC = () => {
       />
 
       {empty ? (
-        <div
-          style={{
-            background: 'var(--atlas-v5-card)',
-            border: '1px solid var(--atlas-v5-line)',
-            borderRadius: 14,
-            padding: 36,
-            textAlign: 'center',
-            color: 'var(--atlas-v5-ink-3)',
+        <EmptyState
+          icon={LayoutDashboard}
+          title="Aún no hay datos en tu Atlas"
+          subtitle="Empieza añadiendo inmuebles, cuentas o préstamos · todo lo demás se construye encima."
+          cta={{
+            label: 'Empezar onboarding',
+            onClick: () => navigate('/onboarding'),
           }}
-        >
-          <h2 style={{ marginBottom: 12, fontSize: 18, color: 'var(--atlas-v5-ink)' }}>
-            Bienvenido a Atlas
-          </h2>
-          <p style={{ marginBottom: 18, fontSize: 13.5 }}>
-            Empieza añadiendo tus inmuebles, cuentas o préstamos para ver tu patrimonio
-            consolidado aquí.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/onboarding')}
-            style={{
-              padding: '10px 20px',
-              background: 'var(--atlas-v5-gold)',
-              color: 'var(--atlas-v5-white)',
-              border: 0,
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            Empezar onboarding
-          </button>
-        </div>
+          size="large"
+        />
       ) : (
         <>
           <div className={styles.hero}>
