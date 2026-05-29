@@ -45,6 +45,8 @@ export interface InmueblePrefill {
   tipoActivo?: Property['tipoActivo'];
   subtipoVivienda?: Property['subtipoVivienda'];
   bedrooms?: number;
+  bathrooms?: number;
+  squareMeters?: number;
   anexos?: Property['anexos'];
   usoTipo?: Property['usoTipo'];
   alquilerPorHabitaciones?: Property['alquilerPorHabitaciones'];

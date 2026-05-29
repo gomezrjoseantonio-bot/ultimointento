@@ -488,6 +488,8 @@ async function aplicarInmueblesPrefill(
     if (pf.tipoActivo !== undefined) actualizado.tipoActivo = pf.tipoActivo;
     if (pf.subtipoVivienda !== undefined) actualizado.subtipoVivienda = pf.subtipoVivienda;
     if (pf.bedrooms !== undefined) actualizado.bedrooms = pf.bedrooms;
+    if (pf.bathrooms !== undefined) actualizado.bathrooms = pf.bathrooms;
+    if (pf.squareMeters !== undefined) actualizado.squareMeters = pf.squareMeters;
     if (pf.anexos !== undefined) actualizado.anexos = { ...property.anexos, ...pf.anexos };
     if (pf.usoTipo !== undefined) actualizado.usoTipo = pf.usoTipo;
     if (pf.alquilerPorHabitaciones !== undefined) {
