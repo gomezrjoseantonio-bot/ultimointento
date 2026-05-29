@@ -66,4 +66,26 @@ describe('detectarPlanesXml', () => {
     expect(detectarPlanesXml([decl({})])).toHaveLength(0);
     expect(detectarPlanesXml([decl({ planPensiones: { aportacionesTrabajador: 0, contribucionesEmpresa: 0, totalConDerechoReduccion: 0 } as any })])).toHaveLength(0);
   });
+
+  it('H1 · unifica en 1 card aunque el NIF empleador solo aparezca en algunos años (backfill)', () => {
+    const planes = detectarPlanesXml([
+      // 2020-2022 sin NIF empleador (XML no lo trae)
+      decl({ meta: { ejercicio: 2020, tipoDeclaracion: 'D' } as any, planPensiones: { aportacionesTrabajador: 1203.36, contribucionesEmpresa: 1604.52, totalConDerechoReduccion: 2807.88 } as any }),
+      decl({ meta: { ejercicio: 2022, tipoDeclaracion: 'D' } as any, planPensiones: { aportacionesTrabajador: 1281.6, contribucionesEmpresa: 1708.8, totalConDerechoReduccion: 2990.4 } as any }),
+      // 2024 con NIF + nombre empleador
+      decl({ meta: { ejercicio: 2024, tipoDeclaracion: 'D' } as any, planPensiones: { aportacionesTrabajador: 1396.68, contribucionesEmpresa: 1862.16, nifEmpleador: 'A82009812', nombreEmpleador: 'ORANGE ESPAGNE SA', totalConDerechoReduccion: 3258.84 } as any }),
+    ]);
+    expect(planes).toHaveLength(1); // 1 sola card
+    expect(planes[0].porAnio).toHaveLength(3); // los 3 años
+    expect(planes[0].nifEmpleador).toBe('A82009812'); // backfill
+    expect(planes[0].nombreEmpleador).toBe('ORANGE ESPAGNE SA');
+  });
+
+  it('H1 · separa en varias cards si hay NIF de empleador distintos', () => {
+    const planes = detectarPlanesXml([
+      decl({ meta: { ejercicio: 2023, tipoDeclaracion: 'D' } as any, planPensiones: { aportacionesTrabajador: 100, contribucionesEmpresa: 200, nifEmpleador: 'A11111111', totalConDerechoReduccion: 300 } as any }),
+      decl({ meta: { ejercicio: 2024, tipoDeclaracion: 'D' } as any, planPensiones: { aportacionesTrabajador: 100, contribucionesEmpresa: 200, nifEmpleador: 'B22222222', totalConDerechoReduccion: 300 } as any }),
+    ]);
+    expect(planes).toHaveLength(2);
+  });
 });

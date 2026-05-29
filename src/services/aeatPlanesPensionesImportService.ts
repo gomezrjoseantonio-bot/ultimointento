@@ -153,6 +153,7 @@ async function asegurarPlanStub(
 ): Promise<{ plan: PlanPensiones; created: boolean }> {
   const existing = await buscarPlanTitular(personalDataId, titular, tipo, nifEmpleador);
   if (existing) {
+    const updates: Partial<Omit<PlanPensiones, 'id' | 'fechaCreacion'>> = {};
     // Pulido T13 v4 final · issue 2 · `fechaContratacion` retroactiva.
     // Si el plan se creó en una importación posterior (p.ej. 2024 primero) y
     // ahora se importa un ejercicio anterior (p.ej. 2020), retrocedemos la
@@ -160,9 +161,20 @@ async function asegurarPlanStub(
     // "Plan abierto 2024" pero aportaciones desde 2020 · incoherente.
     const fechaEjercicio = `${ejercicio}-01-01`;
     if (existing.fechaContratacion > fechaEjercicio) {
-      const actualizado = await planesPensionesService.updatePlan(existing.id, {
-        fechaContratacion: fechaEjercicio,
-      });
+      updates.fechaContratacion = fechaEjercicio;
+    }
+    // H1 · backfill de identidad de empleador. El NIF (VNIFEMAPCOPPE/NIFEMPSPS)
+    // solo aparece en algunos años; cuando llega y el plan aún no lo tiene, lo
+    // rellenamos para que el PPE quede identificado (Orange A82009812) en lugar
+    // de "sin NIF empleador". Unifica los años sin identidad con el plan.
+    if (nifEmpleador && !existing.empresaPagadora?.cif) {
+      updates.empresaPagadora = { cif: nifEmpleador, nombre: nombreEmpleador ?? existing.empresaPagadora?.nombre ?? '' };
+      if ((!existing.gestoraActual || existing.gestoraActual === '—') && nombreEmpleador) {
+        updates.gestoraActual = nombreEmpleador;
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      const actualizado = await planesPensionesService.updatePlan(existing.id, updates);
       return { plan: actualizado, created: false };
     }
     return { plan: existing, created: false };
@@ -372,8 +384,11 @@ function normalizarCif(cif?: string): string {
 }
 
 /**
- * Detecta grupos de planes del titular que comparten el mismo CIF de empresa
- * pagadora (NIF empleador) y por tanto son candidatos a fusión.
+ * Detecta grupos de planes del titular candidatos a fusión.
+ *
+ * Agrupa por CIF de empresa pagadora y, además (H1), une los PPE SIN cif al
+ * único CIF de PPE cuando solo hay uno: corresponden al mismo plan de empleo
+ * importado en años donde el XML no traía el NIF del empleador.
  */
 export async function detectarDuplicadosPorEmpleador(
   personalDataId?: number,
@@ -388,10 +403,25 @@ export async function detectarDuplicadosPorEmpleador(
     arr.push(p);
     porCif.set(cif, arr);
   }
+  // H1 · si solo hay un CIF de PPE, los PPE sin cif del titular son el mismo plan.
+  const cifsPPE = Array.from(porCif.keys()).filter((c) =>
+    porCif.get(c)!.some((p) => p.tipoAdministrativo === 'PPE'),
+  );
+  if (cifsPPE.length === 1) {
+    const sinCif = planes.filter(
+      (p) => p.tipoAdministrativo === 'PPE' && !normalizarCif(p.empresaPagadora?.cif),
+    );
+    if (sinCif.length) porCif.get(cifsPPE[0])!.push(...sinCif);
+  }
   const grupos: GrupoDuplicadoPlan[] = [];
   for (const [cif, ps] of porCif) {
     if (ps.length > 1) {
-      grupos.push({ cif, nombre: ps[0].empresaPagadora?.nombre, planIds: ps.map((p) => p.id), total: ps.length });
+      grupos.push({
+        cif,
+        nombre: ps.find((p) => p.empresaPagadora?.nombre)?.empresaPagadora?.nombre,
+        planIds: ps.map((p) => p.id),
+        total: ps.length,
+      });
     }
   }
   return grupos;
@@ -409,9 +439,21 @@ export async function fusionarDuplicados(
   titular?: 'yo' | 'pareja',
 ): Promise<ResultadoFusionPlanes> {
   const cifNorm = normalizarCif(cif);
-  const planes = (await planesPensionesService.getAllPlanes({ personalDataId, titular })).filter(
-    (p) => normalizarCif(p.empresaPagadora?.cif) === cifNorm,
+  const todos = await planesPensionesService.getAllPlanes({ personalDataId, titular });
+  const conCif = todos.filter((p) => normalizarCif(p.empresaPagadora?.cif) === cifNorm);
+  // H1 · incluir PPE sin cif si este es el único CIF de PPE del titular.
+  const cifsPPE = Array.from(
+    new Set(
+      todos
+        .filter((p) => p.tipoAdministrativo === 'PPE' && normalizarCif(p.empresaPagadora?.cif))
+        .map((p) => normalizarCif(p.empresaPagadora!.cif)),
+    ),
   );
+  const ppeSinCif =
+    cifsPPE.length === 1 && cifsPPE[0] === cifNorm
+      ? todos.filter((p) => p.tipoAdministrativo === 'PPE' && !normalizarCif(p.empresaPagadora?.cif))
+      : [];
+  const planes = [...conCif, ...ppeSinCif];
   if (planes.length < 2) return { fusionados: 0, planCanonicoId: planes[0]?.id };
 
   const ordenados = [...planes].sort((a, b) =>
@@ -419,6 +461,8 @@ export async function fusionarDuplicados(
   );
   const canonico = ordenados[0];
   const duplicados = ordenados.slice(1);
+  // Nombre de empleador disponible en cualquiera de los planes (para backfill).
+  const nombreEmpleador = planes.find((p) => p.empresaPagadora?.nombre)?.empresaPagadora?.nombre ?? '';
 
   const db = await initDB();
   const clave = (a: AportacionPlan) =>
@@ -453,6 +497,15 @@ export async function fusionarDuplicados(
       if (t.planId === dup.id) await db.delete('traspasosPlanPensiones', t.id);
     }
     await db.delete('planesPensiones', dup.id);
+  }
+
+  // H1 · backfill del CIF/nombre sobre el canónico si era un PPE sin identidad
+  // (p. ej. el plan más antiguo creado en años sin NIF de empleador).
+  if (!normalizarCif(canonico.empresaPagadora?.cif)) {
+    await planesPensionesService.updatePlan(canonico.id, {
+      empresaPagadora: { cif: cifNorm, nombre: canonico.empresaPagadora?.nombre || nombreEmpleador },
+      ...(canonico.gestoraActual && canonico.gestoraActual !== '—' ? {} : nombreEmpleador ? { gestoraActual: nombreEmpleador } : {}),
+    });
   }
 
   return { fusionados: duplicados.length, planCanonicoId: canonico.id };
