@@ -28,7 +28,7 @@ import type { AvisoCerrado } from '../types/avisosUsuario';
 import type { ObjetivoVital } from '../types/objetivosVitales';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 76; // V76 (T6 histórico): añade campos opcionales a `contracts` (motivoFin, detalleMotivoFin, valoracion, volveriaAAlquilar, fianzaDevuelta, notasCasero, fechaCierre). Migración suave · sin cambios de stores/índices · contratos pre-V76 quedan con los campos undefined. 44 stores totales (sin cambio).
+const DB_VERSION = 77; // V77 (wizard import XML V2 · pilar 1): añade campos opcionales a `properties` para explotación/tipología (subtipoVivienda, anexos.plazasParking, explotacion{estadoOperativo, unidadesArrendables}). Se mapea sobre campos existentes (tipoActivo, anexos, usoTipo, alquilerPorHabitaciones) en lugar de duplicar. Migración suave · sin cambios de stores/índices · inmuebles pre-V77 quedan con los campos undefined. 44 stores totales (sin cambio · los 5 stores fiscales NO se eliminan: tienen lectores/escritores vivos).
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -112,6 +112,12 @@ export interface Property {
   };
   /** T29 · tipología del activo · default 'piso' efectivo si undefined (registros pre-T29) */
   tipoActivo?: TipoActivo;
+  /**
+   * V77 · wizard import XML V2 (pilar 1) · subtipo de vivienda que `tipoActivo` no captura.
+   * `tipoActivo` resuelve el eje activo/accesorio (piso/parking/trastero/local/otro); este campo
+   * refina la tipología edificatoria de la vivienda. Opcional · el wizard del paso 2 sugiere 'piso'.
+   */
+  subtipoVivienda?: 'piso' | 'casa' | 'chalet' | 'estudio' | 'edificio' | 'otro';
   /** T29 · foto principal del inmueble · base64 data URL · max 500KB tras compresión · undefined si no hay */
   foto?: string;
   /** S-WIZARD-INMUEBLE-V4 · base ITP/AJD desde Ley 11/2021 · auto-rellena con `acquisitionCosts.price` salvo edición manual */
@@ -120,6 +126,8 @@ export interface Property {
   anexos?: {
     tieneParking: boolean;
     tieneTrastero: boolean;
+    /** V77 · wizard import XML V2 (pilar 1) · nº de plazas de parking integradas sin RC propia. Sustituye al uso booleano puro cuando se conoce el número. */
+    plazasParking?: number;
   };
   /** S-WIZARD-INMUEBLE-V4 · uso fiscal del inmueble · `vendido` no entra (flujo aparte) */
   usoTipo?:
@@ -133,6 +141,18 @@ export interface Property {
   alquilerPorHabitaciones?: {
     activo: boolean;
     numeroHabitaciones?: number;
+  };
+  /**
+   * V77 · wizard import XML V2 (pilar 1) · bloque de explotación · sólo los conceptos que NO existen
+   * ya en el modelo. El resto se mapea sobre campos existentes:
+   *   · modoExplotacion (piso_completo/por_habitaciones) → `alquilerPorHabitaciones.activo`
+   *   · tipoAlquilerDominante (larga/temporada/vacacional/mixto) → `usoTipo`
+   *   · esAlquilable → derivable de `usoTipo` (≠ 'vivienda_habitual'/'disponible')
+   * Opcional · inmuebles pre-V77 quedan con el bloque undefined.
+   */
+  explotacion?: {
+    estadoOperativo?: 'operativo' | 'en_reforma' | 'vacante' | 'uso_propio';
+    unidadesArrendables?: number;
   };
   // H9-FISCAL: AEAT Amortization data
   aeatAmortization?: {
