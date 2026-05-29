@@ -33,8 +33,9 @@ const PasoFuente: React.FC<{ s: WizardImportState }> = ({ s }) => {
         <span className={styles.stepTitleNum}>01</span> Sube tu declaración IRPF
       </div>
       <div className={styles.stepSub}>
-        ATLAS lee XML AEAT y opcionalmente PDF · puedes subir varios ejercicios a la vez · cada uno
-        enriquecerá los datos del anterior. Aceptamos archivos sueltos.
+        ATLAS lee XML AEAT (Modelo 100 · Sede Electrónica · DeclaVisor / Renta Web) y opcionalmente
+        PDF · puedes subir varios ejercicios a la vez · cada uno enriquecerá los datos del anterior.
+        Si solo tienes el PDF, usa el wizard de Corrección desde el detalle del ejercicio.
       </div>
 
       <div

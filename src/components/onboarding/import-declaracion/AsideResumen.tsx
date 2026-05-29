@@ -8,6 +8,7 @@ import type { WizardImportState } from './useWizardImportState';
 import { useInmueblesDetectados } from './useInmueblesDetectados';
 import { detectarProveedores, detectarPlanesXml } from './deteccion';
 import { sugerenciasNomina, sugerenciasAutonomo } from './prefill';
+import { nombreCCAA } from '../../../utils/ccaa';
 import styles from './WizardImportarDeclaracion.module.css';
 
 function eur(n: number): string {
@@ -335,7 +336,7 @@ const AsideResumen: React.FC<{ s: WizardImportState }> = ({ s }) => {
               <div className={styles.asideSectionTitle}>Datos del declarante</div>
               <Row lab="NIF" val={d.nif} />
               <Row lab="Estado civil" val={d.estadoCivil ?? '—'} />
-              <Row lab="CCAA" val={d.nombreCCAA || d.codigoCCAA || '—'} />
+              <Row lab="CCAA" val={nombreCCAA(d.nombreCCAA || d.codigoCCAA)} />
               <Row lab="Tributación" val={d.tributacion === 'conjunta' ? 'Conjunta' : 'Individual'} />
             </div>
             <div className={styles.asideSection}>

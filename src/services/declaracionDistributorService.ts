@@ -394,17 +394,31 @@ function faseBTuvoOpciones(o: OpcionesDistribucion): boolean {
   );
 }
 
-/** Crea una cuenta a partir de un IBAN, absorbiendo los errores esperados de duplicado/validación. */
+function normalizarIban(iban: string): string {
+  return iban.replace(/\s+/g, '').toUpperCase();
+}
+
+/**
+ * Crea una cuenta a partir de un IBAN. Skip SILENCIOSO si ya existe (caso típico
+ * en multi-ejercicio: el IBAN se repite en varios años · solo se crea una vez).
+ * Solo se reportan como incidencia los errores reales (validación, fallo de DB).
+ */
 async function crearCuentaIbanSafe(iban: string, resultado: ResultadoFaseB): Promise<void> {
+  const norm = normalizarIban(iban);
   try {
+    // Pre-check de duplicado · evita ruido de "ya existe" en incidencias.
+    const existentes = await cuentasService.list();
+    if (existentes.some((c) => normalizarIban(c.iban ?? '') === norm)) {
+      return; // ya existe · skip silencioso, no es incidencia
+    }
     await cuentasService.create({ iban });
     resultado.cuentasCreadas++;
   } catch (error) {
     if (
       error instanceof Error &&
-      /already exists|duplicate|duplicado|validation|validación/i.test(error.message)
+      /already exists|duplicate|duplicad|validation|validación|ya existe/i.test(error.message)
     ) {
-      // Ya existe o error de validación — comportamiento legacy: ignorar.
+      // Duplicado/validación esperada (defensa en profundidad) · ignorar.
     } else {
       console.warn('Error inesperado al crear cuenta con IBAN en cuentasService.create:', error);
       resultado.errores.push(`IBAN ${iban}: ${mensajeError(error)}`);
