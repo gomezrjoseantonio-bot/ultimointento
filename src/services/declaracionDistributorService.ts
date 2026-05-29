@@ -33,6 +33,12 @@ import { crearContratoPendienteIdentificar } from './declaracionOnboardingServic
 import { ejecutarOnboardingPersonal } from './personalOnboardingService';
 import type { SituacionLaboral } from '../types/personal';
 import { cuentasService } from './cuentasService';
+import type {
+  OpcionesDistribucion,
+  InmueblePrefill,
+  ResultadoFaseB,
+} from '../types/opcionesDistribucion';
+import { OPCIONES_DEFAULT } from '../types/opcionesDistribucion';
 
 interface ResultadoInmuebles {
   distribuidos: InmuebleDistribuido[];
@@ -131,8 +137,15 @@ function extraerUbicacion(direccion: string): { province: string; municipality: 
   return { province: '', municipality: lastToken || '', ccaa: '' };
 }
 
-export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<InformeDistribucion> {
+export async function distribuirDeclaracion(
+  decl: DeclaracionCompleta,
+  opciones: OpcionesDistribucion = OPCIONES_DEFAULT,
+): Promise<InformeDistribucion> {
   const db = await initDB();
+
+  // ════════════════════════════════════════════════════════════════════
+  // FASE A · automática · SIEMPRE se ejecuta (verdad fiscal del XML).
+  // ════════════════════════════════════════════════════════════════════
 
   reportarArrastresRecibidos(decl);
 
@@ -232,6 +245,10 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   }
   invalidateCachedStores(['contracts']);
 
+  // Paso 2 · aplicar el pre-relleno físico/explotación sobre los inmuebles ya
+  // resueltos (mapeo sobre campos existentes · V77). Sin prefill no hace nada.
+  await aplicarInmueblesPrefill(db, opciones.inmueblesPrefill, porRefCatastral);
+
   // Crear/actualizar FiscalSummaries con ingresos y gastos desde la declaración
   await escribirFiscalSummaries(db, decl, porRefCatastral);
 
@@ -244,24 +261,20 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   // Escribir mobiliario activo desde V02MUEB
   await escribirMobiliario(db, decl, porRefCatastral);
 
-  // Persistir el IBAN via cuentasService (localStorage + IndexedDB sync)
-  const iban = decl.cuentaDevolucion?.iban || decl.cuentaIngreso?.iban;
-  if (iban) {
-    try {
-      await cuentasService.create({ iban });
-    } catch (error) {
-      // Ignorar errores esperados de duplicado/validación, pero avisar ante otros
-      if (
-        error instanceof Error &&
-        /already exists|duplicate|duplicado|validation|validación/i.test(error.message)
-      ) {
-        // Already exists or validation error — ignore
-      } else {
-        // Loguear errores inesperados para facilitar el diagnóstico
-        console.warn('Error inesperado al crear cuenta con IBAN en cuentasService.create:', error);
-      }
-    }
-  }
+  // Persistir el/los IBAN según las acciones decididas en el paso 3 del wizard.
+  // Con `ibanAcciones` vacío (default/legacy) se preserva el comportamiento previo:
+  // crear la cuenta del IBAN detectado.
+  const resultadoFaseB: ResultadoFaseB = {
+    nominaCreada: false,
+    actividadAutonomaCreada: false,
+    ventasRegistradas: 0,
+    cuentasCreadas: 0,
+    cuentasVinculadas: 0,
+    cuentasIgnoradas: 0,
+    conyugeAnadido: false,
+    errores: [],
+  };
+  await aplicarIbanAcciones(decl, opciones, resultadoFaseB);
 
   // Persistir vínculos accesorio (parking/trastero) al store vinculosAccesorio
   await persistirVinculosAccesorio(db, decl, porRefCatastral);
@@ -321,8 +334,24 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
     console.warn('Error al limpiar inversiones inyectadas por AEAT XML:', err);
   }
 
+  // ════════════════════════════════════════════════════════════════════
+  // FASE B · opt-in · sólo si el toggle del paso correspondiente está activo.
+  // Cada handler captura sus errores y los agrega en `resultadoFaseB.errores`
+  // sin abortar el resto (mantiene el patrón try/catch + log del distribuidor).
+  // ════════════════════════════════════════════════════════════════════
+  await aplicarFaseBNomina(opciones, resultadoFaseB);
+  await aplicarFaseBAutonomo(opciones, resultadoFaseB);
+  await aplicarFaseBVentas(opciones, resultadoFaseB);
+  await aplicarFaseBConyuge(decl, opciones, resultadoFaseB);
+
   // GAP-3: Detectar si el año ya tiene cierre ATLAS para abrir ValidacionXMLDrawer en la UI
   const informe = construirInforme(decl, resultadoInmuebles);
+
+  // Adjuntar el resultado de la fase B sólo si hubo algún opt-in activo
+  // (preserva un informe limpio en la llamada legacy sin opciones).
+  if (faseBTuvoOpciones(opciones)) {
+    informe.faseB = resultadoFaseB;
+  }
   try {
     const ejercicioExistente = await db.get('ejerciciosFiscalesCoord', decl.meta.ejercicio);
     if (ejercicioExistente?.estado === 'cerrado' && ejercicioExistente?.cierreAtlasMetadata) {
@@ -343,6 +372,235 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   }
 
   return informe;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Helpers de orquestación · IBAN · prefill inmuebles · fase B (opt-in).
+// ──────────────────────────────────────────────────────────────────────
+
+function mensajeError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** ¿Se invocó el distribuidor con algún opt-in activo? (decide si adjuntar `faseB`). */
+function faseBTuvoOpciones(o: OpcionesDistribucion): boolean {
+  return (
+    o.crearNominaActiva ||
+    o.crearActividadAutonoma ||
+    o.registrarVentasInmueble ||
+    o.conyugeAnadirPersonal ||
+    (o.ibanAcciones?.length ?? 0) > 0 ||
+    (o.inmueblesPrefill?.length ?? 0) > 0
+  );
+}
+
+/** Crea una cuenta a partir de un IBAN, absorbiendo los errores esperados de duplicado/validación. */
+async function crearCuentaIbanSafe(iban: string, resultado: ResultadoFaseB): Promise<void> {
+  try {
+    await cuentasService.create({ iban });
+    resultado.cuentasCreadas++;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /already exists|duplicate|duplicado|validation|validación/i.test(error.message)
+    ) {
+      // Ya existe o error de validación — comportamiento legacy: ignorar.
+    } else {
+      console.warn('Error inesperado al crear cuenta con IBAN en cuentasService.create:', error);
+      resultado.errores.push(`IBAN ${iban}: ${mensajeError(error)}`);
+    }
+  }
+}
+
+/**
+ * Paso 3 · aplica las acciones por IBAN. Con `ibanAcciones` vacío (default/legacy)
+ * persiste el IBAN detectado en el XML, igual que antes.
+ */
+async function aplicarIbanAcciones(
+  decl: DeclaracionCompleta,
+  opciones: OpcionesDistribucion,
+  resultado: ResultadoFaseB,
+): Promise<void> {
+  const acciones = opciones.ibanAcciones ?? [];
+
+  if (acciones.length === 0) {
+    const iban = decl.cuentaDevolucion?.iban || decl.cuentaIngreso?.iban;
+    if (iban) await crearCuentaIbanSafe(iban, resultado);
+    return;
+  }
+
+  for (const a of acciones) {
+    if (a.accion === 'ignorar') {
+      resultado.cuentasIgnoradas++;
+      continue;
+    }
+    if (a.accion === 'vincular') {
+      try {
+        // Best-effort: confirmamos que la cuenta destino existe. La asociación
+        // profunda del IBAN a la cuenta existente queda pendiente (UpdateAccountData
+        // no expone `iban` hoy) · se documenta como apunte.
+        if (a.cuentaIdVinculada != null) {
+          await cuentasService.get(a.cuentaIdVinculada);
+        }
+        resultado.cuentasVinculadas++;
+      } catch (err) {
+        resultado.errores.push(`IBAN ${a.iban} (vincular): ${mensajeError(err)}`);
+      }
+      continue;
+    }
+    // 'crear'
+    await crearCuentaIbanSafe(a.iban, resultado);
+  }
+}
+
+/**
+ * Paso 2 · vuelca el pre-relleno físico/explotación sobre los inmuebles ya
+ * resueltos. Mapea sobre campos existentes (V77): tipoActivo, subtipoVivienda,
+ * bedrooms, anexos, usoTipo, alquilerPorHabitaciones, explotacion.
+ * Sólo escribe los campos presentes en el prefill (merge no destructivo).
+ */
+async function aplicarInmueblesPrefill(
+  db: DB,
+  prefills: InmueblePrefill[] | undefined,
+  porRefCatastral: Map<string, Property>,
+): Promise<void> {
+  if (!prefills || prefills.length === 0) return;
+
+  // Índice auxiliar por dirección normalizada para el fallback de casado.
+  const porDireccion = new Map<string, Property>();
+  for (const p of porRefCatastral.values()) {
+    const dirN = normalizeDireccion(p.address);
+    if (dirN) porDireccion.set(dirN, p);
+    const aliasN = normalizeDireccion(p.alias);
+    if (aliasN) porDireccion.set(aliasN, p);
+  }
+
+  let huboCambios = false;
+  for (const pf of prefills) {
+    const rc = normalizeRef(pf.refCatastral);
+    let property = rc ? porRefCatastral.get(rc) : undefined;
+    if (!property && pf.direccion) {
+      property = porDireccion.get(normalizeDireccion(pf.direccion));
+    }
+    if (!property?.id) continue;
+
+    const actualizado: Property = { ...property };
+    if (pf.tipoActivo !== undefined) actualizado.tipoActivo = pf.tipoActivo;
+    if (pf.subtipoVivienda !== undefined) actualizado.subtipoVivienda = pf.subtipoVivienda;
+    if (pf.bedrooms !== undefined) actualizado.bedrooms = pf.bedrooms;
+    if (pf.bathrooms !== undefined) actualizado.bathrooms = pf.bathrooms;
+    if (pf.squareMeters !== undefined) actualizado.squareMeters = pf.squareMeters;
+    if (pf.anexos !== undefined) actualizado.anexos = { ...property.anexos, ...pf.anexos };
+    if (pf.usoTipo !== undefined) actualizado.usoTipo = pf.usoTipo;
+    if (pf.alquilerPorHabitaciones !== undefined) {
+      actualizado.alquilerPorHabitaciones = pf.alquilerPorHabitaciones;
+    }
+    if (pf.explotacion !== undefined) {
+      actualizado.explotacion = { ...property.explotacion, ...pf.explotacion };
+    }
+
+    await db.put('properties', actualizado);
+    if (rc) porRefCatastral.set(rc, actualizado);
+    huboCambios = true;
+  }
+
+  if (huboCambios) invalidateCachedStores(['properties']);
+}
+
+/** Fase B · paso 6 · crea/actualiza la nómina activa en Personal. */
+async function aplicarFaseBNomina(
+  opciones: OpcionesDistribucion,
+  resultado: ResultadoFaseB,
+): Promise<void> {
+  if (!opciones.crearNominaActiva || !opciones.nominaPrefill) return;
+  try {
+    const personalDataId = await resolverPersonalDataId(opciones.nominaPrefill.personalDataId);
+    const { nominaService } = await import('./nominaService');
+    await nominaService.saveNomina({ ...opciones.nominaPrefill, personalDataId });
+    resultado.nominaCreada = true;
+  } catch (err) {
+    console.warn('Fase B · error al crear nómina:', err);
+    resultado.errores.push(`Nómina: ${mensajeError(err)}`);
+  }
+}
+
+/** Fase B · paso 7 · crea/actualiza la actividad autónoma activa en Personal. */
+async function aplicarFaseBAutonomo(
+  opciones: OpcionesDistribucion,
+  resultado: ResultadoFaseB,
+): Promise<void> {
+  if (!opciones.crearActividadAutonoma || !opciones.autonomoPrefill) return;
+  try {
+    const personalDataId = await resolverPersonalDataId(opciones.autonomoPrefill.personalDataId);
+    const { autonomoService } = await import('./autonomoService');
+    await autonomoService.saveAutonomo({ ...opciones.autonomoPrefill, personalDataId });
+    resultado.actividadAutonomaCreada = true;
+  } catch (err) {
+    console.warn('Fase B · error al crear actividad autónoma:', err);
+    resultado.errores.push(`Autónomo: ${mensajeError(err)}`);
+  }
+}
+
+/**
+ * Resuelve el `personalDataId` real del titular. El prefill de la UI lo deja a 0
+ * porque personalData se crea en Fase A (antes que la fase B en la misma llamada).
+ */
+async function resolverPersonalDataId(prefillId: number): Promise<number> {
+  if (prefillId && prefillId > 0) return prefillId;
+  try {
+    const { personalDataService } = await import('./personalDataService');
+    const pd = await personalDataService.getPersonalData();
+    return pd?.id ?? 1;
+  } catch {
+    return 1;
+  }
+}
+
+/** Fase B · paso 8 · registra las ventas de inmueble confirmadas por el usuario. */
+async function aplicarFaseBVentas(
+  opciones: OpcionesDistribucion,
+  resultado: ResultadoFaseB,
+): Promise<void> {
+  if (!opciones.registrarVentasInmueble || !opciones.ventasConfirmadas?.length) return;
+  const { confirmPropertySale } = await import('./propertySaleService');
+  for (const venta of opciones.ventasConfirmadas) {
+    try {
+      await confirmPropertySale(venta);
+      resultado.ventasRegistradas++;
+    } catch (err) {
+      console.warn('Fase B · error al registrar venta de inmueble:', err);
+      resultado.errores.push(`Venta inmueble ${venta.propertyId}: ${mensajeError(err)}`);
+    }
+  }
+  if (resultado.ventasRegistradas > 0) {
+    invalidateCachedStores(['properties']);
+  }
+}
+
+/**
+ * Fase B · paso 9 · añade el cónyuge en Personal (sólo si tributación conjunta).
+ *
+ * APUNTE (foco aparte): `DeclaracionCompleta.declarante` no expone hoy la
+ * identidad del cónyuge (NIF/nombre), por lo que no es posible materializar un
+ * registro Personal del cónyuge desde el XML parseado. El flag se respeta y se
+ * registra la intención; la materialización requiere que el parser/PasoPersonales
+ * (commit 7) aporten los datos del cónyuge. No se inventa un registro vacío.
+ */
+async function aplicarFaseBConyuge(
+  decl: DeclaracionCompleta,
+  opciones: OpcionesDistribucion,
+  resultado: ResultadoFaseB,
+): Promise<void> {
+  if (!opciones.conyugeAnadirPersonal) return;
+  if (decl.declarante.tributacion !== 'conjunta') {
+    resultado.errores.push('Cónyuge: opt-in ignorado · la tributación no es conjunta.');
+    return;
+  }
+  // Sin datos de identidad del cónyuge en el XML actual → no se persiste nada.
+  console.info(
+    '[distribuidor] Fase B · cónyuge: opt-in activo pero el XML no aporta identidad del cónyuge. ' +
+      'Materialización pendiente del paso 9 (commit 7).',
+  );
 }
 
 async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promise<void> {
@@ -1451,9 +1709,11 @@ async function escribirProveedores(
           await db.put('proveedores', existing);
         }
       } else {
+        // Placeholder sin nombre conocido (pilar 3) · la UI muestra badge "sin nombre".
         await db.add('proveedores', {
           nif: p.nif,
           tipos: [p.tipo],
+          sinNombre: true,
           createdAt: ahora,
           updatedAt: ahora,
         });
@@ -1521,3 +1781,14 @@ export function acortarDireccion(dir: string): string {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
 }
+
+/** Helpers de orquestación expuestos sólo para tests unitarios (§ 3). */
+export const __testing = {
+  faseBTuvoOpciones,
+  aplicarIbanAcciones,
+  aplicarInmueblesPrefill,
+  aplicarFaseBNomina,
+  aplicarFaseBAutonomo,
+  aplicarFaseBVentas,
+  aplicarFaseBConyuge,
+};

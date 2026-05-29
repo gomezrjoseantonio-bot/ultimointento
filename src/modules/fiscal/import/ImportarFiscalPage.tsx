@@ -10,11 +10,11 @@
 // ejercicio · breadcrumb implícito) · todo lo demás se delega al
 // wizard legacy hasta que se migre profundamente.
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
-import ImportarDeclaracionWizard from '../../horizon/fiscalidad/historico/ImportarDeclaracionWizard';
+import { WizardImportarDeclaracion } from '../../../components/onboarding/import-declaracion';
 import type { FiscalOutletContext } from '../FiscalContext';
 import styles from './ImportarFiscalPage.module.css';
 
@@ -45,21 +45,7 @@ const ImportarFiscalPage: React.FC = () => {
     return [];
   }, [navState.archivosImportados, navState.archivoImportado]);
 
-  const initialFile = archivos[0] ?? null;
-  const archivosExtra = archivos.length - 1;
-
-  // Si el usuario soltó varios archivos en la dropzone de F6, informamos
-  // que solo se procesa el primero en este wizard (los demás se pueden
-  // subir uno a uno tras este). Sin esta nota la UX sería confusa.
-  useEffect(() => {
-    if (archivosExtra > 0) {
-      toast(`Procesando el primer archivo · los otros ${archivosExtra} podrás subirlos tras éste.`, {
-        icon: 'ℹ️',
-      });
-    }
-    // run-once on mount with the navigation state
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // El wizard V2 procesa todos los archivos preseleccionados (multi-ejercicio).
 
   // El wizard llama `onImported` tras distribuir y luego `onClose`. Para
   // evitar doble navegación · `onImported` sólo recarga el contexto y
@@ -119,12 +105,12 @@ const ImportarFiscalPage: React.FC = () => {
         </div>
       </div>
 
-      <ImportarDeclaracionWizard
+      <WizardImportarDeclaracion
+        open
+        embedded
+        initialFiles={archivos}
         onClose={handleClose}
         onImported={handleImported}
-        defaultMethod="xml"
-        embedded
-        initialFile={initialFile}
       />
     </div>
   );

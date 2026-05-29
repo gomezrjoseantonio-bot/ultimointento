@@ -345,3 +345,115 @@ export async function importarAportacionesAEAT(
 // `irpfXmlParserService.extraerPlanPensiones`, que está fuera del alcance de
 // Acción 1. Afecta a PPES (4 subtipos) y PPA cuando se modelen seriamente · no
 // a los datos productivos actuales.
+
+// ──────────────────────────────────────────────────────────────────────
+// Wizard import XML V2 · paso 5 · § 7.4 PP-2 · fusión de planes duplicados.
+//
+// El matching por CIF (NIF empleador) ya es estable en `importarAportacionesAEAT`
+// (buscarPlanTitular prioriza `empresaPagadora.cif`). Pero pueden existir planes
+// duplicados creados antes de ese matching (mismo empleador, distintos UUID).
+// Estas funciones detectan esos grupos y los fusionan en 1-click desde el paso 5.
+// ──────────────────────────────────────────────────────────────────────
+
+export interface GrupoDuplicadoPlan {
+  cif: string;
+  nombre?: string;
+  planIds: string[];
+  total: number;
+}
+
+export interface ResultadoFusionPlanes {
+  fusionados: number;
+  planCanonicoId?: string;
+}
+
+function normalizarCif(cif?: string): string {
+  return (cif ?? '').trim().toUpperCase();
+}
+
+/**
+ * Detecta grupos de planes del titular que comparten el mismo CIF de empresa
+ * pagadora (NIF empleador) y por tanto son candidatos a fusión.
+ */
+export async function detectarDuplicadosPorEmpleador(
+  personalDataId?: number,
+  titular?: 'yo' | 'pareja',
+): Promise<GrupoDuplicadoPlan[]> {
+  const planes = await planesPensionesService.getAllPlanes({ personalDataId, titular });
+  const porCif = new Map<string, PlanPensiones[]>();
+  for (const p of planes) {
+    const cif = normalizarCif(p.empresaPagadora?.cif);
+    if (!cif) continue;
+    const arr = porCif.get(cif) ?? [];
+    arr.push(p);
+    porCif.set(cif, arr);
+  }
+  const grupos: GrupoDuplicadoPlan[] = [];
+  for (const [cif, ps] of porCif) {
+    if (ps.length > 1) {
+      grupos.push({ cif, nombre: ps[0].empresaPagadora?.nombre, planIds: ps.map((p) => p.id), total: ps.length });
+    }
+  }
+  return grupos;
+}
+
+/**
+ * Fusiona en 1-click todos los planes del titular con el mismo CIF en un único
+ * plan canónico (el de contratación más antigua). Reasigna las aportaciones al
+ * canónico (dedupe por ejercicio+origen+importes) ANTES de borrar cada duplicado
+ * (`eliminarPlan` cascadea aportaciones, por eso el orden importa).
+ */
+export async function fusionarDuplicados(
+  cif: string,
+  personalDataId?: number,
+  titular?: 'yo' | 'pareja',
+): Promise<ResultadoFusionPlanes> {
+  const cifNorm = normalizarCif(cif);
+  const planes = (await planesPensionesService.getAllPlanes({ personalDataId, titular })).filter(
+    (p) => normalizarCif(p.empresaPagadora?.cif) === cifNorm,
+  );
+  if (planes.length < 2) return { fusionados: 0, planCanonicoId: planes[0]?.id };
+
+  const ordenados = [...planes].sort((a, b) =>
+    (a.fechaContratacion || a.fechaCreacion).localeCompare(b.fechaContratacion || b.fechaCreacion),
+  );
+  const canonico = ordenados[0];
+  const duplicados = ordenados.slice(1);
+
+  const db = await initDB();
+  const clave = (a: AportacionPlan) =>
+    `${a.ejercicioFiscal}|${a.origen}|${a.importeTitular}|${a.importeEmpresa}`;
+  const yaEnCanonico = new Set(
+    (await aportacionesPlanService.getAportacionesPorPlan(canonico.id)).map(clave),
+  );
+
+  for (const dup of duplicados) {
+    const aportaciones = await aportacionesPlanService.getAportacionesPorPlan(dup.id);
+    for (const ap of aportaciones) {
+      const k = clave(ap);
+      if (yaEnCanonico.has(k)) {
+        // Aportación idéntica ya presente en el canónico · se descarta.
+        await db.delete('aportacionesPlan', ap.id);
+      } else {
+        await db.put('aportacionesPlan', {
+          ...ap,
+          planId: canonico.id,
+          fechaActualizacion: new Date().toISOString(),
+        });
+        yaEnCanonico.add(k);
+      }
+    }
+    // Borrado directo del plan duplicado. NO usamos `planesPensionesService.eliminarPlan`
+    // a propósito: su cascade lee el store `valoraciones_historicas`, que no existe en el
+    // schema (el store real es `valoracionesActivos`) y lanza NotFoundError. Bug latente
+    // ajeno a esta tarea · APUNTE para Jose. Aquí las aportaciones ya están reasignadas;
+    // limpiamos además los traspasos que apunten al duplicado (best-effort).
+    const traspasos = (await db.getAll('traspasosPlanPensiones')) as Array<{ id: number; planId: string }>;
+    for (const t of traspasos) {
+      if (t.planId === dup.id) await db.delete('traspasosPlanPensiones', t.id);
+    }
+    await db.delete('planesPensiones', dup.id);
+  }
+
+  return { fusionados: duplicados.length, planCanonicoId: canonico.id };
+}
