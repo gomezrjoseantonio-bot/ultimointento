@@ -7,6 +7,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Lightbulb, X, Users } from 'lucide-react';
 import type { WizardImportState } from '../useWizardImportState';
+import { nombreCCAA } from '../../../../utils/ccaa';
 import styles from '../WizardImportarDeclaracion.module.css';
 
 const ESTADO_CIVIL: Record<string, string> = {
@@ -81,7 +82,7 @@ const PasoPersonales: React.FC<{ s: WizardImportState }> = ({ s }) => {
           </div>
           <div className={styles.persDataItem}>
             <div className={styles.persDataLab}>CCAA residencia</div>
-            <div className={styles.persDataVal}>{d.nombreCCAA || d.codigoCCAA || '—'}</div>
+            <div className={styles.persDataVal}>{nombreCCAA(d.nombreCCAA || d.codigoCCAA)}</div>
           </div>
           <div className={styles.persDataItem}>
             <div className={styles.persDataLab}>Tributación</div>

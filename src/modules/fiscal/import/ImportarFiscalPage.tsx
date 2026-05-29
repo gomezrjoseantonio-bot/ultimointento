@@ -92,19 +92,8 @@ const ImportarFiscalPage: React.FC = () => {
         </span>
       </div>
 
-      <div className={`${styles.banner} ${styles.info}`}>
-        <Icons.Info size={18} strokeWidth={1.8} />
-        <div>
-          Sube el <strong>XML del Modelo 100</strong> (Sede Electrónica AEAT ·
-          DeclaVisor / Renta Web). Atlas extrae automáticamente inmuebles ·
-          contratos · gastos · arrendamientos · plan pensiones · arrastres y
-          casillas · y los distribuye en los módulos correspondientes. La
-          importación por PDF llegará en una iteración posterior · si tu
-          ejercicio sólo lo tienes en PDF · usa el wizard de Corrección desde
-          el detalle del ejercicio para introducir los valores manualmente.
-        </div>
-      </div>
-
+      {/* Banner informativo retirado (H4): la ayuda contextual vive en el paso 1
+          del wizard · evita redundancia en pasos 2-10. */}
       <WizardImportarDeclaracion
         open
         embedded

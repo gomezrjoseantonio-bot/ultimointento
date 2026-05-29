@@ -9,7 +9,7 @@ import { OPCIONES_DEFAULT, type OpcionesDistribucion, type ResultadoFaseB } from
 
 // Mocks de los servicios destino (top-level y dynamic import).
 jest.mock('../cuentasService', () => ({
-  cuentasService: { create: jest.fn(), get: jest.fn(), update: jest.fn() },
+  cuentasService: { create: jest.fn(), get: jest.fn(), update: jest.fn(), list: jest.fn().mockResolvedValue([]) },
 }));
 jest.mock('../nominaService', () => ({
   nominaService: { saveNomina: jest.fn() },
@@ -46,6 +46,9 @@ function opciones(parcial: Partial<OpcionesDistribucion>): OpcionesDistribucion 
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // El pre-check de IBAN duplicado (H3) llama a cuentasService.list(); por
+  // defecto no hay cuentas (cada test que necesite duplicados lo sobreescribe).
+  (cuentasService.list as jest.Mock).mockResolvedValue([]);
 });
 
 describe('faseBTuvoOpciones', () => {
@@ -250,5 +253,32 @@ describe('aplicarInmueblesPrefill', () => {
     db.close();
     // no lanza
     expect(true).toBe(true);
+  });
+});
+
+describe('aplicarIbanAcciones · H3 · skip silencioso de IBAN duplicado', () => {
+  const declConIban: any = { cuentaDevolucion: { iban: 'ES7621000000000000000000' }, cuentaIngreso: undefined };
+
+  it('si el IBAN ya existe · NO crea cuenta ni añade incidencia', async () => {
+    (cuentasService.list as jest.Mock).mockResolvedValueOnce([{ iban: 'ES76 2100 0000 0000 0000 0000' }]);
+    const r = nuevoResultado();
+    await __testing.aplicarIbanAcciones(declConIban, OPCIONES_DEFAULT, r);
+    expect(cuentasService.create).not.toHaveBeenCalled();
+    expect(r.cuentasCreadas).toBe(0);
+    expect(r.errores).toHaveLength(0); // sin ruido
+  });
+
+  it('acción crear repetida (multi-año) · solo crea una vez, sin incidencias', async () => {
+    // 1er año: no existe → crea. 2º año: ya existe → skip silencioso.
+    (cuentasService.list as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ iban: 'ES99' }]);
+    const r = nuevoResultado();
+    const opc = opciones({ ibanAcciones: [{ iban: 'ES99', accion: 'crear' }] });
+    await __testing.aplicarIbanAcciones(declConIban, opc, r); // año 1
+    await __testing.aplicarIbanAcciones(declConIban, opc, r); // año 2
+    expect(cuentasService.create).toHaveBeenCalledTimes(1);
+    expect(r.cuentasCreadas).toBe(1);
+    expect(r.errores).toHaveLength(0);
   });
 });

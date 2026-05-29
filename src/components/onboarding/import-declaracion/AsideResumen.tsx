@@ -8,6 +8,7 @@ import type { WizardImportState } from './useWizardImportState';
 import { useInmueblesDetectados } from './useInmueblesDetectados';
 import { detectarProveedores, detectarPlanesXml } from './deteccion';
 import { sugerenciasNomina, sugerenciasAutonomo } from './prefill';
+import { nombreCCAA } from '../../../utils/ccaa';
 import styles from './WizardImportarDeclaracion.module.css';
 
 function eur(n: number): string {
@@ -62,6 +63,21 @@ const AsideResumen: React.FC<{ s: WizardImportState }> = ({ s }) => {
   // ── Paso 1 ──
   if (s.pasoActual === 1) {
     const ejercicios = [...decls].sort((a, b) => a.meta.ejercicio - b.meta.ejercicio);
+
+    // H5 · estado pre-carga · aún no hay archivos válidos.
+    if (decls.length === 0) {
+      return (
+        <aside className={styles.wizAside}>
+          <div className={styles.asideLabel}>Importación</div>
+          <div className={styles.asideTitle}>Aún no hay archivos</div>
+          <div className={styles.asidePrestate}>
+            Sube tu declaración para que ATLAS analice automáticamente inmuebles · arrendamientos ·
+            cuentas · proveedores · planes de pensiones · y más.
+          </div>
+        </aside>
+      );
+    }
+
     return (
       <aside className={styles.wizAside}>
         <div className={styles.asideLabel}>Importación</div>
@@ -335,7 +351,7 @@ const AsideResumen: React.FC<{ s: WizardImportState }> = ({ s }) => {
               <div className={styles.asideSectionTitle}>Datos del declarante</div>
               <Row lab="NIF" val={d.nif} />
               <Row lab="Estado civil" val={d.estadoCivil ?? '—'} />
-              <Row lab="CCAA" val={d.nombreCCAA || d.codigoCCAA || '—'} />
+              <Row lab="CCAA" val={nombreCCAA(d.nombreCCAA || d.codigoCCAA)} />
               <Row lab="Tributación" val={d.tributacion === 'conjunta' ? 'Conjunta' : 'Individual'} />
             </div>
             <div className={styles.asideSection}>

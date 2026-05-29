@@ -77,6 +77,19 @@ orden cronológico ascendente (el reciente gana al pisar), Fase A por cada año,
 opt-in que crean entidades únicas (nómina/autónomo/ventas/cónyuge) **solo en la
 última llamada**; IBAN y prefill de inmuebles se aplican en todas (idempotentes).
 
+### 5.1 · Matching de planes de pensiones (PPE)
+
+El NIF de empleador (`VNIFEMAPCOPPE`/`NIFEMPSPS`) solo aparece en algunos años,
+pero el PPE es el mismo. El matching unifica por identidad de empleador con
+**backfill**: si en todo el conjunto hay ≤1 NIF de empleador distinto, todas las
+aportaciones PPE se atribuyen al mismo plan y se rellena el NIF/nombre desde el
+año que lo trae (`detectarPlanesXml` en display; `asegurarPlanStub` en persistencia).
+`detectarDuplicadosPorEmpleador` + `fusionarDuplicados` migran a usuarios con
+planes ya duplicados (incluyen los PPE sin cif).
+
+⚠️ `NIF_EEDD` del XML (en `<Aux>`) **NO** se usa como clave: es la entidad que
+presenta la declaración (gestoría/DeclaVisor), no la gestora del plan.
+
 ## 6 · Schema V77
 
 `Property` (mapeo sobre campos existentes, no duplicación):
@@ -104,8 +117,6 @@ Props de integración: `embedded`, `initialFiles`, `onBack`, `onImported`.
 ## 8 · Apuntes pendientes (foco aparte / fix de Jose)
 
 - Tabla RETA 2024 · verificar cifras oficiales.
-- `planesPensionesService.eliminarPlan` lee store inexistente `valoraciones_historicas`
-  (bug latente · `fusionarDuplicados` lo evita borrando directamente).
 - Cónyuge · `DeclaracionCompleta.declarante` no expone identidad del cónyuge.
 - Paso 8 Ventas · transmisión de inmueble no expuesta a nivel de inmueble
   (vive en `gananciasPerdidas`) · detección fina diferida.

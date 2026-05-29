@@ -99,31 +99,60 @@ export interface PlanXmlDetectado {
   totalEmpresa: number;
 }
 
-/** Agrupa las aportaciones a plan de pensiones del XML por NIF empleador (PPE). */
+/**
+ * Agrupa las aportaciones a plan de pensiones del XML.
+ *
+ * H1 · el NIF de empleador (VNIFEMAPCOPPE/NIFEMPSPS) solo aparece en algunos
+ * años, pero el PPE es el mismo. Si en todo el conjunto hay como mucho UN NIF de
+ * empleador distinto, se unifica todo en un único plan, rellenando (backfill) la
+ * identidad del empleador desde el año que sí la trae. Solo se separan en varias
+ * cards si aparecen NIF de empleador DISTINTOS (varios PPE reales).
+ *
+ * (NIF_EEDD del XML NO se usa: es la entidad que presenta la declaración, no la
+ * gestora del plan.)
+ */
 export function detectarPlanesXml(decls: DeclaracionCompleta[]): PlanXmlDetectado[] {
-  const map = new Map<string, PlanXmlDetectado>();
+  interface Entrada extends PlanXmlAnio {
+    nifEmpleador?: string;
+    nombreEmpleador?: string;
+  }
+  const entradas: Entrada[] = [];
   for (const d of decls) {
     const pp = d.planPensiones;
     if (!pp) continue;
     const trabajador = pp.aportacionesTrabajador ?? 0;
     const empresa = pp.contribucionesEmpresa ?? 0;
     if (trabajador <= 0 && empresa <= 0) continue;
-    const key = (pp.nifEmpleador ?? '__sin_cif__').toUpperCase();
-    const e =
-      map.get(key) ??
-      ({
-        nifEmpleador: pp.nifEmpleador,
-        nombreEmpleador: pp.nombreEmpleador,
-        porAnio: [],
-        totalTrabajador: 0,
-        totalEmpresa: 0,
-      } as PlanXmlDetectado);
-    e.porAnio.push({ ejercicio: d.meta.ejercicio, trabajador, empresa });
-    e.totalTrabajador += trabajador;
-    e.totalEmpresa += empresa;
-    if (!e.nombreEmpleador && pp.nombreEmpleador) e.nombreEmpleador = pp.nombreEmpleador;
-    map.set(key, e);
+    entradas.push({
+      ejercicio: d.meta.ejercicio,
+      trabajador,
+      empresa,
+      nifEmpleador: pp.nifEmpleador?.trim().toUpperCase() || undefined,
+      nombreEmpleador: pp.nombreEmpleador || undefined,
+    });
   }
-  for (const e of map.values()) e.porAnio.sort((a, b) => a.ejercicio - b.ejercicio);
+  if (entradas.length === 0) return [];
+
+  const nifsDistintos = Array.from(new Set(entradas.map((e) => e.nifEmpleador).filter(Boolean))) as string[];
+
+  // Clave de agrupación: con ≤1 NIF distinto, todo es el mismo plan (backfill).
+  const claveDe = (e: Entrada): string =>
+    nifsDistintos.length <= 1 ? '__unico__' : (e.nifEmpleador ?? '__sin_cif__');
+
+  const map = new Map<string, PlanXmlDetectado>();
+  for (const e of entradas) {
+    const key = claveDe(e);
+    const grupo =
+      map.get(key) ??
+      ({ nifEmpleador: undefined, nombreEmpleador: undefined, porAnio: [], totalTrabajador: 0, totalEmpresa: 0 } as PlanXmlDetectado);
+    grupo.porAnio.push({ ejercicio: e.ejercicio, trabajador: e.trabajador, empresa: e.empresa });
+    grupo.totalTrabajador += e.trabajador;
+    grupo.totalEmpresa += e.empresa;
+    // Backfill de identidad desde el año que la trae.
+    if (!grupo.nifEmpleador && e.nifEmpleador) grupo.nifEmpleador = e.nifEmpleador;
+    if (!grupo.nombreEmpleador && e.nombreEmpleador) grupo.nombreEmpleador = e.nombreEmpleador;
+    map.set(key, grupo);
+  }
+  for (const g of map.values()) g.porAnio.sort((a, b) => a.ejercicio - b.ejercicio);
   return Array.from(map.values());
 }
