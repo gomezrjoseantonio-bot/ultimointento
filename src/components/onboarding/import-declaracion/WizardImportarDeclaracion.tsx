@@ -9,7 +9,7 @@
  * placeholder navegable (se implementan en commits 5·6·7).
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FileText, X, Check, ArrowRight, Info, AlertCircle } from 'lucide-react';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { useWizardImportState, PASOS, type PasoNum } from './useWizardImportState';
@@ -32,20 +32,45 @@ export interface WizardImportarDeclaracionProps {
   onClose: () => void;
   /** Se invoca tras una importación correcta (p. ej. para navegar a /panel). */
   onImported?: () => void;
+  /** Render embebido en página (sin overlay modal). */
+  embedded?: boolean;
+  /** Archivos preseleccionados · se cargan y parsean al montar (p. ej. drag&drop previo). */
+  initialFiles?: File[];
+  /** Si se provee, el paso 1 muestra "Volver" para regresar al selector de método. */
+  onBack?: () => void;
 }
 
-const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ open, onClose, onImported }) => {
+const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({
+  open,
+  onClose,
+  onImported,
+  embedded = false,
+  initialFiles,
+  onBack,
+}) => {
   const s = useWizardImportState();
-  const containerRef = useFocusTrap(open);
+  const containerRef = useFocusTrap(open && !embedded);
+  const archivosCargados = useRef(false);
 
   useEffect(() => {
+    if (embedded) return; // sin overlay no capturamos Escape global
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, embedded]);
+
+  // Precarga de archivos preseleccionados (una sola vez).
+  useEffect(() => {
+    if (!open || archivosCargados.current) return;
+    if (initialFiles && initialFiles.length > 0) {
+      archivosCargados.current = true;
+      void s.agregarArchivos(initialFiles);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialFiles]);
 
   if (!open) return null;
 
@@ -192,14 +217,14 @@ const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ o
     return <div className={styles.wizFootMeta} />;
   };
 
-  return (
-    <div
-      className={styles.overlay}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className={styles.wiz} ref={containerRef} role="dialog" aria-modal="true" aria-label="Importar declaración IRPF">
+  const wizContent = (
+      <div
+        className={`${styles.wiz} ${embedded ? styles.embedded : ''}`}
+        ref={containerRef}
+        role={embedded ? 'group' : 'dialog'}
+        aria-modal={embedded ? undefined : true}
+        aria-label="Importar declaración IRPF"
+      >
         {/* HEADER */}
         <div className={styles.wizHead}>
           <div className={styles.wizTitleWrap}>
@@ -254,6 +279,11 @@ const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ o
         <div className={styles.wizFooter}>
           {footerMeta()}
           <div className={styles.wizFootActions}>
+            {s.pasoActual === 1 && onBack && (
+              <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>
+                Volver
+              </button>
+            )}
             {s.pasoActual > 1 && (
               <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={s.anterior}>
                 Anterior
@@ -290,6 +320,20 @@ const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ o
           </div>
         </div>
       </div>
+  );
+
+  if (embedded) {
+    return <div className={styles.embeddedWrap}>{wizContent}</div>;
+  }
+
+  return (
+    <div
+      className={styles.overlay}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      {wizContent}
     </div>
   );
 };

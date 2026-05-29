@@ -18,8 +18,32 @@
   place-items: center;
   z-index: 200;
   padding: 24px;
+}
 
-  /* ── Alias mockup → design-system v5 (Oxford Gold) ── */
+/* Contenedor embebido (sin overlay · dentro de la página). */
+.embeddedWrap { width: 100%; }
+
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ═════ MODAL WIZARD ═════ */
+.wiz {
+  position: relative;
+  width: 100%;
+  max-width: 1380px;
+  height: calc(100vh - 48px);
+  max-height: 920px;
+  background: var(--card);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  grid-template-rows: 64px 1fr 72px;
+  grid-template-areas: "head aside" "body aside" "footer aside";
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(14, 20, 35, 0.18);
+  border: 1px solid var(--line);
+
+  /* ── Alias mockup → design-system v5 (Oxford Gold) · en .wiz para que
+        funcionen tanto en modal como embebido (sin overlay). ── */
   --bg: var(--atlas-v5-bg);
   --card: var(--atlas-v5-card);
   --card-alt: var(--atlas-v5-card-alt);
@@ -51,30 +75,17 @@
   --white: var(--atlas-v5-card);
   --font-ui: var(--atlas-v5-font-ui);
   --font-mono: var(--atlas-v5-font-mono-num);
-
   font-family: var(--font-ui);
   color: var(--ink-2);
   letter-spacing: -0.005em;
 }
 
-.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-
-/* ═════ MODAL WIZARD ═════ */
-.wiz {
-  position: relative;
-  width: 100%;
-  max-width: 1380px;
-  height: calc(100vh - 48px);
-  max-height: 920px;
-  background: var(--card);
-  border-radius: 14px;
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  grid-template-rows: 64px 1fr 72px;
-  grid-template-areas: "head aside" "body aside" "footer aside";
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(14, 20, 35, 0.18);
-  border: 1px solid var(--line);
+/* Modo embebido · ocupa el ancho de la página sin alto de viewport completo. */
+.wiz.embedded {
+  height: auto;
+  min-height: 680px;
+  max-height: none;
+  box-shadow: 0 2px 12px rgba(14, 20, 35, 0.08);
 }
 
 /* HEADER */

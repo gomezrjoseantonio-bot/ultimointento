@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FileText, Image, Edit3, Code2 } from 'lucide-react';
 import ImportarDeclaracionWizard from '../historico/ImportarDeclaracionWizard';
 import ImportarDatosFiscalesWizard from './ImportarDatosFiscalesWizard';
+import { WizardImportarDeclaracion } from '../../../../components/onboarding/import-declaracion';
 
 type TipoImportacion = 'xml' | 'pdf' | 'capturas' | 'manual' | null;
 
@@ -131,11 +132,11 @@ const ImportarDatosWizard: React.FC<Props> = ({ onClose, onImported }) => {
           </div>
         )}
 
-        {/* ── Sub-wizard: XML declaration ─────────────────── */}
+        {/* ── Sub-wizard: XML declaration · wizard V2 ─────── */}
         {tipo === 'xml' && (
-          <ImportarDeclaracionWizard
+          <WizardImportarDeclaracion
+            open
             embedded
-            defaultMethod="xml"
             onClose={onClose}
             onImported={onImported}
             onBack={handleBack}
