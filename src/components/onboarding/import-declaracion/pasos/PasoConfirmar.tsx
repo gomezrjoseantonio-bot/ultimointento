@@ -78,7 +78,10 @@ const PasoConfirmar: React.FC<Props> = ({ s, onClose, onImported }) => {
       </div>
       <div className={styles.resumenGrid}>
         <ResCard lab="Inmuebles nuevos" val={det.nuevos.length} sub="Se crean con perfil del paso 2" />
-        <ResCard lab="Inmuebles enriquecidos" val={det.existentes.length} sub="Se actualizan los existentes" variant="brand" />
+        {/* H6 · en onboarding desde cero (enriquecidos=0) la card vacía confunde · se oculta. */}
+        {det.existentes.length > 0 && (
+          <ResCard lab="Inmuebles enriquecidos" val={det.existentes.length} sub="Se actualizan los existentes" variant="brand" />
+        )}
         <ResCard lab="Accesorios vinculados" val={det.accesorios.length} sub="Parking / trastero" variant="soft" />
       </div>
 

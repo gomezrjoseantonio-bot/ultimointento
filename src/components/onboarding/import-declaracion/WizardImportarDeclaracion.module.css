@@ -370,6 +370,18 @@ select.inp { appearance: none; padding-right: 30px; }
 .asideOtherLine { font-size: 10.5px; color: rgba(255, 255, 255, 0.7); padding: 2px 0; }
 .asideOtherLine strong { color: var(--white); }
 
+/* H5 · aside paso 1 · estado pre-carga (sin archivos). */
+.asidePrestate {
+  margin-top: 4px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.75);
+}
+
 /* FOOTER */
 .wizFooter { grid-area: footer; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; background: var(--card-alt); border-top: 1px solid var(--line); }
 .wizFootMeta { font-size: 11px; color: var(--ink-4); font-family: var(--font-mono); display: flex; align-items: center; gap: 8px; }

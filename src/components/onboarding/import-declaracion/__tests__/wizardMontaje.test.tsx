@@ -18,6 +18,8 @@ describe('WizardImportarDeclaracion · montaje', () => {
     // El stepper muestra las píldoras.
     expect(screen.getByText('Fuente')).toBeInTheDocument();
     expect(screen.getAllByText('Inmuebles').length).toBeGreaterThan(0);
+    // H5 · aside en pre-estado cuando no hay archivos.
+    expect(screen.getByText('Aún no hay archivos')).toBeInTheDocument();
   });
 
   it('embebido con onBack · muestra "Volver" en el paso 1', () => {

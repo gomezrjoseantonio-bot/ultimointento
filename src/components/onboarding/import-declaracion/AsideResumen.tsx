@@ -63,6 +63,21 @@ const AsideResumen: React.FC<{ s: WizardImportState }> = ({ s }) => {
   // ── Paso 1 ──
   if (s.pasoActual === 1) {
     const ejercicios = [...decls].sort((a, b) => a.meta.ejercicio - b.meta.ejercicio);
+
+    // H5 · estado pre-carga · aún no hay archivos válidos.
+    if (decls.length === 0) {
+      return (
+        <aside className={styles.wizAside}>
+          <div className={styles.asideLabel}>Importación</div>
+          <div className={styles.asideTitle}>Aún no hay archivos</div>
+          <div className={styles.asidePrestate}>
+            Sube tu declaración para que ATLAS analice automáticamente inmuebles · arrendamientos ·
+            cuentas · proveedores · planes de pensiones · y más.
+          </div>
+        </aside>
+      );
+    }
+
     return (
       <aside className={styles.wizAside}>
         <div className={styles.asideLabel}>Importación</div>
