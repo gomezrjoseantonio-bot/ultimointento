@@ -23,14 +23,18 @@ import PasoPlanesPensiones from './pasos/PasoPlanesPensiones';
 import PasoNomina from './pasos/PasoNomina';
 import PasoAutonomos from './pasos/PasoAutonomos';
 import PasoVentas from './pasos/PasoVentas';
+import PasoPersonales from './pasos/PasoPersonales';
+import PasoConfirmar from './pasos/PasoConfirmar';
 import styles from './WizardImportarDeclaracion.module.css';
 
 export interface WizardImportarDeclaracionProps {
   open: boolean;
   onClose: () => void;
+  /** Se invoca tras una importación correcta (p. ej. para navegar a /panel). */
+  onImported?: () => void;
 }
 
-const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ open, onClose }) => {
+const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ open, onClose, onImported }) => {
   const s = useWizardImportState();
   const containerRef = useFocusTrap(open);
 
@@ -66,6 +70,10 @@ const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ o
         return <PasoAutonomos s={s} />;
       case 8:
         return <PasoVentas s={s} />;
+      case 9:
+        return <PasoPersonales s={s} />;
+      case 10:
+        return <PasoConfirmar s={s} onClose={onClose} onImported={onImported} />;
       default: {
         const def = PASOS.find((p) => p.num === s.pasoActual);
         return (
@@ -164,6 +172,20 @@ const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ o
       return (
         <div className={`${styles.wizFootMeta} ${styles.ok}`}>
           <Check size={12} /> Nada que importar en este paso
+        </div>
+      );
+    }
+    if (s.pasoActual === 9) {
+      return (
+        <div className={`${styles.wizFootMeta} ${styles.ok}`}>
+          <Check size={12} /> Datos personales auto-importados
+        </div>
+      );
+    }
+    if (s.pasoActual === 10) {
+      return (
+        <div className={`${styles.wizFootMeta} ${styles.ok}`}>
+          <Check size={12} /> Todo listo · pulsa "Importar todo"
         </div>
       );
     }

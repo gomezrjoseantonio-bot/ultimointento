@@ -14,6 +14,45 @@ import { parseIrpfXml } from '../../../services/irpfXmlParserService';
 import type { DeclaracionCompleta } from '../../../types/declaracionCompleta';
 import type { OpcionesDistribucion } from '../../../types/opcionesDistribucion';
 import { OPCIONES_DEFAULT } from '../../../types/opcionesDistribucion';
+import type { InformeDistribucion } from '../../../types/informeDistribucion';
+
+export interface ResultadoImportacion {
+  informes: InformeDistribucion[];
+  errores: string[];
+}
+
+export interface PlanLlamada {
+  decl: DeclaracionCompleta;
+  opciones: OpcionesDistribucion;
+  esUltima: boolean;
+}
+
+/**
+ * Planifica las llamadas a `distribuirDeclaracion` para multi-ejercicio:
+ * orden cronológico ascendente (el reciente gana al pisar) · Fase A por año ·
+ * los opt-in que crean entidades únicas (nómina/autónomo/ventas/cónyuge) solo
+ * en la última llamada · IBAN y prefill de inmuebles en todas (idempotentes).
+ */
+export function planificarImportacion(
+  declaraciones: DeclaracionCompleta[],
+  opciones: OpcionesDistribucion,
+): PlanLlamada[] {
+  const ordenadas = [...declaraciones].sort((a, b) => a.meta.ejercicio - b.meta.ejercicio);
+  return ordenadas.map((decl, i) => {
+    const esUltima = i === ordenadas.length - 1;
+    return {
+      decl,
+      esUltima,
+      opciones: esUltima
+        ? opciones
+        : {
+            ...OPCIONES_DEFAULT,
+            inmueblesPrefill: opciones.inmueblesPrefill,
+            ibanAcciones: opciones.ibanAcciones,
+          },
+    };
+  });
+}
 
 export type EstadoArchivo = 'validado' | 'error';
 
@@ -110,6 +149,8 @@ export interface WizardImportState {
   siguiente: () => void;
   anterior: () => void;
   puedeContinuar: boolean;
+  importando: boolean;
+  importar: () => Promise<ResultadoImportacion>;
 }
 
 function clasificarTipo(nombre: string): ArchivoSubido['tipo'] {
@@ -124,6 +165,7 @@ export function useWizardImportState(): WizardImportState {
   const [pasoActual, setPasoActual] = useState<PasoNum>(1);
   const [opciones, setOpcionesState] = useState<OpcionesDistribucion>(OPCIONES_DEFAULT);
   const [validaciones, setValidaciones] = useState<Record<number, boolean>>({});
+  const [importando, setImportando] = useState(false);
 
   const declaraciones = useMemo(
     () => archivos.filter((a) => a.estado === 'validado' && a.declaracion).map((a) => a.declaracion!),
@@ -215,6 +257,35 @@ export function useWizardImportState(): WizardImportState {
     });
   }, [pasosAplicables]);
 
+  /**
+   * Importa todas las declaraciones (multi-ejercicio) en orden cronológico para
+   * que los datos más recientes ganen. La Fase A se ejecuta por cada año; los
+   * opt-in de Fase B que crean entidades únicas (nómina, autónomo, ventas,
+   * cónyuge) se aplican SOLO en la última llamada para no duplicar. Las acciones
+   * de IBAN y el prefill de inmuebles se aplican en todas (idempotentes).
+   */
+  const importar = useCallback(async (): Promise<ResultadoImportacion> => {
+    setImportando(true);
+    const informes: InformeDistribucion[] = [];
+    const errores: string[] = [];
+    try {
+      const { distribuirDeclaracion } = await import('../../../services/declaracionDistributorService');
+      const plan = planificarImportacion(declaraciones, opciones);
+      for (const { decl, opciones: opc } of plan) {
+        try {
+          const informe = await distribuirDeclaracion(decl, opc);
+          informes.push(informe);
+          for (const e of informe.faseB?.errores ?? []) errores.push(`${decl.meta.ejercicio}: ${e}`);
+        } catch (err) {
+          errores.push(`${decl.meta.ejercicio}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    } finally {
+      setImportando(false);
+    }
+    return { informes, errores };
+  }, [declaraciones, opciones]);
+
   const estadoPaso = useCallback(
     (num: PasoNum): 'done' | 'active' | 'skipped' | 'pending' => {
       if (!pasosAplicables.includes(num)) return 'skipped';
@@ -249,5 +320,7 @@ export function useWizardImportState(): WizardImportState {
     siguiente,
     anterior,
     puedeContinuar,
+    importando,
+    importar,
   };
 }

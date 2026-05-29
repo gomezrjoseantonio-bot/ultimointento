@@ -320,7 +320,86 @@ const AsideResumen: React.FC<{ s: WizardImportState }> = ({ s }) => {
     );
   }
 
-  // ── Genérico (pasos 9-10, pendientes de commits posteriores) ──
+  // ── Paso 9 · personales ──
+  if (s.pasoActual === 9) {
+    const d = s.declaracionPrincipal?.declarante;
+    const asalariado = decls.some((x) => (x.trabajo?.retribucionesDinerarias ?? 0) > 0);
+    const autonomo = decls.some((x) => !!x.actividadEconomica);
+    return (
+      <aside className={styles.wizAside}>
+        <div className={styles.asideLabel}>Paso 9 · personales</div>
+        <div className={styles.asideTitle}>Titular detectado</div>
+        {d && (
+          <>
+            <div className={styles.asideSection}>
+              <div className={styles.asideSectionTitle}>Datos del declarante</div>
+              <Row lab="NIF" val={d.nif} />
+              <Row lab="Estado civil" val={d.estadoCivil ?? '—'} />
+              <Row lab="CCAA" val={d.nombreCCAA || d.codigoCCAA || '—'} />
+              <Row lab="Tributación" val={d.tributacion === 'conjunta' ? 'Conjunta' : 'Individual'} />
+            </div>
+            <div className={styles.asideSection}>
+              <div className={styles.asideSectionTitle}>Situación laboral</div>
+              <Row lab="Asalariado" val={asalariado ? 'sí' : 'no'} tone={asalariado ? 'pos' : 'dim'} />
+              <Row lab="Autónomo" val={autonomo ? 'sí' : 'no'} tone={autonomo ? 'pos' : 'dim'} />
+            </div>
+            <div className={styles.asideStatus}>
+              <div className={styles.asideStatusLab}>Actual no versionado</div>
+              <div className={styles.asideStatusText}>
+                Si en un año futuro cambias CCAA o estado civil, ATLAS actualiza personalData con el
+                último dato del XML.
+              </div>
+            </div>
+          </>
+        )}
+      </aside>
+    );
+  }
+
+  // ── Paso 10 · final ──
+  if (s.pasoActual === 10) {
+    return (
+      <aside className={styles.wizAside}>
+        <div className={styles.asideLabel}>Paso 10 · final</div>
+        <div className={styles.asideTitle}>Listo para importar</div>
+        <div className={styles.asideSection}>
+          <div className={styles.asideSectionTitle}>Resumen total</div>
+          <Row lab="Ejercicios" val={decls.length} />
+          <Row lab="Inmuebles" val={det.inmuebles.length} />
+          <Row lab="Proveedores" val={metricas.proveedores} />
+        </div>
+        <div className={styles.asideOther}>
+          <div className={styles.asideOtherTitle}>Tras importar verás</div>
+          <div className={styles.asideOtherLine}>
+            <strong>Inmuebles</strong> · {det.inmuebles.length} fichas · {det.nuevos.length} nuevas
+          </div>
+          <div className={styles.asideOtherLine}>
+            <strong>Contratos</strong> · arrendamientos por año · algunos sin identificar
+          </div>
+          <div className={styles.asideOtherLine}>
+            <strong>Tesorería</strong> · {(s.opciones.ibanAcciones ?? []).filter((a) => a.accion !== 'ignorar').length} cuentas
+          </div>
+          <div className={styles.asideOtherLine}>
+            <strong>Personal</strong> · {s.opciones.crearNominaActiva ? 'nómina ' : ''}
+            {s.opciones.crearActividadAutonoma ? '+ actividad' : ''}
+            {!s.opciones.crearNominaActiva && !s.opciones.crearActividadAutonoma ? 'datos del titular' : ' activas'}
+          </div>
+          <div className={styles.asideOtherLine}>
+            <strong>Fiscal</strong> · {decls.length} ejercicios cargados
+          </div>
+        </div>
+        <div className={styles.asideStatus}>
+          <div className={styles.asideStatusLab}>Operación final</div>
+          <div className={styles.asideStatusText}>
+            Al pulsar Importar, ATLAS procesa cada ejercicio cronológicamente para que el dato más
+            reciente gane.
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  // ── Genérico (fallback) ──
   const paso = s.pasosAplicables.includes(s.pasoActual) ? s.pasoActual : s.pasoActual;
   return (
     <aside className={styles.wizAside}>
