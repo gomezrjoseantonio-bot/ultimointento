@@ -13,10 +13,13 @@ import React, { useEffect } from 'react';
 import { FileText, X, Check, ArrowRight, Info, AlertCircle } from 'lucide-react';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { useWizardImportState, PASOS, type PasoNum } from './useWizardImportState';
+import { detectarProveedores, detectarPlanesXml } from './deteccion';
 import AsideResumen from './AsideResumen';
 import PasoFuente from './pasos/PasoFuente';
 import PasoInmuebles from './pasos/PasoInmuebles';
 import PasoIBAN from './pasos/PasoIBAN';
+import PasoProveedores from './pasos/PasoProveedores';
+import PasoPlanesPensiones from './pasos/PasoPlanesPensiones';
 import styles from './WizardImportarDeclaracion.module.css';
 
 export interface WizardImportarDeclaracionProps {
@@ -50,6 +53,10 @@ const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ o
         return <PasoInmuebles s={s} />;
       case 3:
         return <PasoIBAN s={s} />;
+      case 4:
+        return <PasoProveedores s={s} />;
+      case 5:
+        return <PasoPlanesPensiones s={s} />;
       default: {
         const def = PASOS.find((p) => p.num === s.pasoActual);
         return (
@@ -103,6 +110,22 @@ const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ o
       return (
         <div className={`${styles.wizFootMeta} ${styles.ok}`}>
           <Check size={12} /> {n} decisiones tomadas
+        </div>
+      );
+    }
+    if (s.pasoActual === 4) {
+      const n = detectarProveedores(s.declaraciones).length;
+      return (
+        <div className={`${styles.wizFootMeta} ${styles.ok}`}>
+          <Check size={12} /> {n} placeholders se crearán automáticamente
+        </div>
+      );
+    }
+    if (s.pasoActual === 5) {
+      const n = detectarPlanesXml(s.declaraciones).length;
+      return (
+        <div className={`${styles.wizFootMeta} ${styles.ok}`}>
+          <Check size={12} /> {n} plan(es) se unificarán por NIF empleador
         </div>
       );
     }

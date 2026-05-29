@@ -6,6 +6,7 @@
 import React, { useMemo } from 'react';
 import type { WizardImportState } from './useWizardImportState';
 import { useInmueblesDetectados } from './useInmueblesDetectados';
+import { detectarProveedores, detectarPlanesXml } from './deteccion';
 import styles from './WizardImportarDeclaracion.module.css';
 
 function eur(n: number): string {
@@ -169,7 +170,68 @@ const AsideResumen: React.FC<{ s: WizardImportState }> = ({ s }) => {
     );
   }
 
-  // ── Genérico (pasos 4-10, pendientes de commits posteriores) ──
+  // ── Paso 4 · proveedores ──
+  if (s.pasoActual === 4) {
+    const provs = detectarProveedores(decls);
+    const total = provs.reduce((acc, p) => acc + p.total, 0);
+    const porInmueble = new Map<string, number>();
+    for (const p of provs) for (const inm of p.inmuebles) porInmueble.set(inm, (porInmueble.get(inm) ?? 0) + 1);
+    const top = Array.from(porInmueble.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    return (
+      <aside className={styles.wizAside}>
+        <div className={styles.asideLabel}>Paso 4 · proveedores</div>
+        <div className={styles.asideTitle}>{provs.length} NIFs únicos</div>
+        <div className={styles.asideSection}>
+          <div className={styles.asideSectionTitle}>A crear</div>
+          <Row lab="Placeholders" val={provs.length} tone={provs.length > 0 ? 'warn' : undefined} />
+          <Row lab="Total gastado" val={`${Math.round(total).toLocaleString('es-ES')} €`} />
+        </div>
+        {top.length > 0 && (
+          <div className={styles.asideSection}>
+            <div className={styles.asideSectionTitle}>Distribución por inmueble</div>
+            {top.map(([inm, n]) => (
+              <Row key={inm} lab={inm} val={`${n} prov`} />
+            ))}
+          </div>
+        )}
+        <div className={styles.asideOther}>
+          <div className={styles.asideOtherTitle}>Sin nombre</div>
+          <div className={styles.asideOtherLine}>
+            Cada placeholder se marca <strong>Proveedor [NIF]</strong> con badge "sin nombre" ·
+            nómbralos cuando quieras desde <strong>Inmuebles</strong>.
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  // ── Paso 5 · planes de pensiones ──
+  if (s.pasoActual === 5) {
+    const planes = detectarPlanesXml(decls);
+    const totalT = planes.reduce((a, p) => a + p.totalTrabajador, 0);
+    const totalE = planes.reduce((a, p) => a + p.totalEmpresa, 0);
+    return (
+      <aside className={styles.wizAside}>
+        <div className={styles.asideLabel}>Paso 5 · pensiones</div>
+        <div className={styles.asideTitle}>{planes.length} plan(es) detectado(s)</div>
+        <div className={styles.asideSection}>
+          <div className={styles.asideSectionTitle}>Aportado (histórico XML)</div>
+          <Row lab="Trabajador" val={`${Math.round(totalT).toLocaleString('es-ES')} €`} />
+          <Row lab="Empresa" val={`${Math.round(totalE).toLocaleString('es-ES')} €`} />
+          <Row lab="Total" val={`${Math.round(totalT + totalE).toLocaleString('es-ES')} €`} />
+        </div>
+        <div className={styles.asideStatus}>
+          <div className={styles.asideStatusLab}>Matching estable</div>
+          <div className={styles.asideStatusText}>
+            Las aportaciones se unifican por NIF empleador · ejercicios futuros con el mismo NIF se
+            suman al mismo plan automáticamente.
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  // ── Genérico (pasos 6-10, pendientes de commits posteriores) ──
   const paso = s.pasosAplicables.includes(s.pasoActual) ? s.pasoActual : s.pasoActual;
   return (
     <aside className={styles.wizAside}>
