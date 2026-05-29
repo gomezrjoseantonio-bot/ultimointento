@@ -468,6 +468,12 @@ export interface Proveedor {
   nif: string;
   nombre?: string;
   tipos: string[];
+  /**
+   * V77 · wizard import XML V2 (pilar 3) · placeholder creado desde el XML sin
+   * nombre conocido. La UI muestra badge "sin nombre" y el usuario lo completa
+   * después desde el detalle del gasto. Sin índice · no requiere bump adicional.
+   */
+  sinNombre?: boolean;
   createdAt: string;
   updatedAt: string;
 }

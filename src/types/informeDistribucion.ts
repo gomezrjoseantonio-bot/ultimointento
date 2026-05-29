@@ -70,6 +70,21 @@ export interface InformeDistribucion {
     contratosDetectados: number;
     proveedoresNuevos: number;
   };
+
+  /**
+   * Wizard import XML V2 · § 3 · resultado agregado de la fase B (opt-in).
+   * Ausente cuando se invoca el distribuidor con las opciones por defecto.
+   */
+  faseB?: {
+    nominaCreada: boolean;
+    actividadAutonomaCreada: boolean;
+    ventasRegistradas: number;
+    cuentasCreadas: number;
+    cuentasVinculadas: number;
+    cuentasIgnoradas: number;
+    conyugeAnadido: boolean;
+    errores: string[];
+  };
 }
 
 export interface InmuebleDistribuido {
