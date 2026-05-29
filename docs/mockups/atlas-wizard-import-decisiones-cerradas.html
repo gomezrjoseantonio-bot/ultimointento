@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · wizard importar declaración · decisiones cerradas · ref</title>
+<meta name="viewport" content="width=1200" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-soft: #D9B576; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 40px 36px 80px; }
+  
+  /* HEAD */
+  .doc-hd { display: flex; align-items: flex-start; gap: 16px; padding-bottom: 22px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
+  .doc-hd-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--brand-ink); color: var(--gold); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .doc-hd h1 { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 4px; }
+  .doc-hd .sub { font-size: 12px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+  
+  /* META banner */
+  .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 28px; }
+  .meta-cell { background: var(--card); padding: 12px 14px; }
+  .meta-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-bottom: 4px; }
+  .meta-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .meta-val.pos { color: var(--pos); }
+  .meta-val.warn { color: var(--warn); }
+  
+  /* SECTION TITLES */
+  h2 { font-size: 17px; font-weight: 700; color: var(--ink); margin: 32px 0 14px; letter-spacing: -0.015em; display: flex; align-items: center; gap: 10px; }
+  h2 .sec-num { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-5); font-weight: 600; }
+  h3 { font-size: 14px; font-weight: 700; color: var(--ink); margin: 18px 0 8px; }
+  p { color: var(--ink-2); margin-bottom: 8px; }
+  
+  /* PILAR CARD */
+  .pilar { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; margin-bottom: 14px; border-left: 3px solid var(--gold); }
+  .pilar.fuera { border-left-color: var(--ink-5); background: var(--card-alt); }
+  .pilar.fuera .pilar-hd-tag { background: var(--bg); color: var(--ink-3); border-color: var(--line); }
+  
+  .pilar-hd { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .pilar-num { width: 30px; height: 30px; border-radius: 50%; background: var(--brand-ink); color: var(--gold); display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+  .pilar.fuera .pilar-num { background: var(--card-alt); color: var(--ink-4); border: 1.5px solid var(--ink-5); }
+  .pilar-name { font-size: 15px; font-weight: 700; color: var(--ink); flex: 1; }
+  .pilar-hd-tag { font-size: 9.5px; font-weight: 700; padding: 3px 8px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.06em; background: var(--gold-wash); color: var(--gold-ink); border: 1px solid var(--gold-soft); }
+  
+  /* DECISIONS TABLE */
+  .dec-table { width: 100%; border-collapse: collapse; margin: 8px 0 4px; font-size: 12.5px; }
+  .dec-table th { text-align: left; font-weight: 600; color: var(--ink-4); padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .dec-table td { padding: 7px 10px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  .dec-table tr:last-child td { border-bottom: none; }
+  .dec-table .id { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--ink); width: 70px; }
+  .dec-table .ans { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--gold-ink); background: var(--gold-wash); padding: 2px 6px; border-radius: 3px; display: inline-block; min-width: 22px; text-align: center; }
+  
+  /* CONTEXT / NOTE BOX */
+  .note { background: var(--card-alt); border: 1px solid var(--line-2); border-radius: 8px; padding: 12px 14px; margin: 10px 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+  .note strong { color: var(--ink); font-weight: 700; }
+  .note.warn { background: var(--gold-wash); border-color: var(--gold-soft); color: var(--gold-ink); }
+  .note.warn strong { color: var(--ink); }
+  
+  /* FINDING BOX (hallazgos XML) */
+  .finding { background: var(--brand-ink); color: rgba(255,255,255,0.92); border-radius: 8px; padding: 14px 16px; margin: 10px 0; font-size: 12.5px; line-height: 1.55; }
+  .finding strong { color: var(--gold-soft); font-weight: 700; }
+  .finding .mono { color: #fff; }
+  .finding-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--gold-soft); font-weight: 700; margin-bottom: 6px; }
+  
+  /* OUT-OF-SCOPE BIG BLOCK */
+  .scope-block { background: var(--card); border: 1px solid var(--ink-5); border-radius: 10px; padding: 22px; margin: 22px 0; }
+  .scope-block h3 { display: flex; align-items: center; gap: 8px; margin-top: 0; color: var(--ink); }
+  .scope-block ul { list-style: none; padding-left: 0; }
+  .scope-block li { padding: 6px 0; padding-left: 22px; position: relative; font-size: 13px; color: var(--ink-2); }
+  .scope-block li::before { content: ""; width: 5px; height: 5px; background: var(--gold); border-radius: 50%; position: absolute; left: 6px; top: 13px; }
+  
+  /* TWO COLS */
+  .two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 10px 0; }
+  
+  /* CASOS REALES */
+  .case-card { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 14px 16px; }
+  .case-card h4 { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+  .case-card .case-rc { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-4); margin-bottom: 8px; }
+  .case-card .case-status { font-size: 11px; color: var(--ink-3); }
+  .case-card .case-status .pill { display: inline-block; padding: 2px 7px; border-radius: 4px; font-weight: 600; font-size: 10.5px; }
+  .pill.tipo1 { background: var(--pos-wash); color: var(--pos); }
+  .pill.tipo2 { background: var(--warn-wash); color: var(--warn); }
+  .pill.tipo3 { background: var(--brand-wash); color: var(--brand); }
+  
+  /* RULES BLOCK */
+  .rules { background: var(--brand-ink); color: rgba(255,255,255,0.92); border-radius: 10px; padding: 22px; margin: 24px 0; }
+  .rules h3 { color: var(--gold-soft); font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; margin-bottom: 12px; }
+  .rules ol { list-style: none; padding-left: 0; counter-reset: rule-counter; }
+  .rules li { padding: 6px 0; padding-left: 28px; position: relative; font-size: 13px; counter-increment: rule-counter; }
+  .rules li::before { content: counter(rule-counter); position: absolute; left: 0; top: 6px; width: 20px; height: 20px; border-radius: 50%; background: var(--gold); color: #fff; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+  
+  /* FOOTER */
+  .doc-foot { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ═════ HEAD ═════ -->
+  <div class="doc-hd">
+    <div class="doc-hd-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6"/><path d="M9 17h3"/></svg>
+    </div>
+    <div>
+      <h1>Wizard de importación XML AEAT · decisiones cerradas</h1>
+      <div class="sub">documento de referencia · sesión 28 may 2026 · 9 pilares activos + 2 foco aparte</div>
+    </div>
+  </div>
+
+  <!-- ═════ META ═════ -->
+  <div class="meta">
+    <div class="meta-cell">
+      <div class="meta-lab">Pilares activos</div>
+      <div class="meta-val pos">9 / 11</div>
+    </div>
+    <div class="meta-cell">
+      <div class="meta-lab">Foco aparte</div>
+      <div class="meta-val warn">2</div>
+    </div>
+    <div class="meta-cell">
+      <div class="meta-lab">Audit XML Jose</div>
+      <div class="meta-val">7 XMLs · 2020-2024</div>
+    </div>
+    <div class="meta-cell">
+      <div class="meta-lab">DB bump previsto</div>
+      <div class="meta-val">v77 → v78</div>
+    </div>
+  </div>
+
+  <!-- ═════ PRINCIPIO RECTOR ═════ -->
+  <h2><span class="sec-num">01</span> Principio rector</h2>
+  
+  <div class="rules">
+    <h3>Reglas que guían el wizard</h3>
+    <ol>
+      <li><strong>El wizard puebla TODA la verdad fiscal disponible sin preguntar</strong> · incluido el cruzado entre años (cambios de inquilino · cambios de uso · fechas inferidas)</li>
+      <li><strong>Solo se pregunta lo que el cliente tiene fresco</strong> (datos personales · empleador actual · IBANs activos · inmuebles que reconoce). Lo demás se rellena automáticamente.</li>
+      <li><strong>Datos del XML = verdad consumada</strong> · ATLAS no juzga · no avisa · no recalcula. Si Hacienda dice X · ATLAS dice X.</li>
+      <li><strong>El usuario enriquece después desde los módulos correspondientes</strong> · no se le obliga a completar en el momento de la importación.</li>
+      <li><strong>Reutilizar wizards existentes</strong> (nómina · autónomos · venta inmueble) con pre-relleno y opt-in · no diseñar wizards nuevos.</li>
+      <li><strong>Patrón común</strong> · paso propio detectado en el wizard · pre-relleno + check "¿quieres crear?" · saltable.</li>
+    </ol>
+  </div>
+
+  <!-- ═════ PILAR 1 ═════ -->
+  <h2><span class="sec-num">02</span> 9 pilares activos del wizard</h2>
+  
+  <div class="pilar">
+    <div class="pilar-hd">
+      <div class="pilar-num">1</div>
+      <div class="pilar-name">Inmueble · características físicas y explotación</div>
+      <span class="pilar-hd-tag">cerrado</span>
+    </div>
+    <div class="note"><strong>Modelo Property V3 cerrado</strong> · separación física vs explotación anidada. Mockup paso 2 v3 aprobado · acordeón con tabla de inmuebles nuevos/existentes/accesorios · sugerencias del XML pre-rellenadas y cerrables.</div>
+    <h3>Modelo final · Property V3</h3>
+    <table class="dec-table">
+      <tr><td><strong>Físicas</strong></td><td><span class="mono">bedrooms · bathrooms · squareMeters · tipoInmueble (piso/casa/chalet/estudio/local/edificio/otro) · parkingIntegrado (nº plazas sin RC propia) · trasteroIntegrado (bool sin RC propia)</span></td></tr>
+      <tr><td><strong>Explotación</strong></td><td><span class="mono">explotacion · {esAlquilable · modoExplotacion (piso_completo / por_habitaciones / mixto) · estadoOperativo (operativo/en_reforma/vacante/uso_propio) · unidadesArrendables · tipoAlquilerDominante (larga/temporada/vacacional/mixto)}</span></td></tr>
+      <tr><td><strong>Accesorios con RC propia</strong></td><td>Se gestionan vía <span class="mono">vinculosAccesorio</span> (ya existe) · no entran en estos campos · matching por RC vinculada al principal</td></tr>
+      <tr><td><strong>UX wizard</strong></td><td>Paso intermedio (opción C) · acordeón con inmuebles nuevos/existentes/accesorios · primera card expandida · pre-relleno con sugerencias cerrables · saltable con "completar luego"</td></tr>
+    </table>
+  </div>
+
+  <!-- PILAR 2 -->
+  <div class="pilar">
+    <div class="pilar-hd">
+      <div class="pilar-num">2</div>
+      <div class="pilar-name">IBAN · cuenta declaración</div>
+      <span class="pilar-hd-tag">cerrado</span>
+    </div>
+    <div class="finding">
+      <div class="finding-lab">Hallazgos audit XMLs Jose</div>
+      Sólo <strong>1 IBAN por declaración</strong> · estructura cambia según tipo · <span class="mono">D → ADEVOLVER · DEV_CUENTACORRIENTE</span> (cobro) · <span class="mono">U → AINGRESAR · ING_CUENTACORRIENTE</span> (cargo) · <span class="mono">N</span> no trae cuenta.<br>
+      2 IBAN reales detectados Jose · <strong>ES7214 6501 0099...</strong> (5 años cobro devolución) + <strong>ES6100 4900 5263...</strong> (1 año cargo Hacienda 2024).
+    </div>
+    <table class="dec-table">
+      <thead><tr><th>ID</th><th>Decisión</th><th></th></tr></thead>
+      <tr><td class="id">IBAN-1</td><td>Paso intermedio breve · vincular existente / crear nueva / ignorar</td><td><span class="ans">B</span></td></tr>
+      <tr><td class="id">IBAN-2</td><td>Solo principal (el XML trae 1 sola por declaración · resuelto por estructura)</td><td><span class="ans">—</span></td></tr>
+      <tr><td class="id">IBAN-3</td><td>Al crear · NO indicar uso · queda como cuenta simple sin etiqueta</td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">IBAN-4</td><td>NO preguntar de quién es (no nos importa caso tributación conjunta)</td><td><span class="ans">A</span></td></tr>
+    </table>
+  </div>
+
+  <!-- PILAR 3 -->
+  <div class="pilar">
+    <div class="pilar-hd">
+      <div class="pilar-num">3</div>
+      <div class="pilar-name">Proveedores · NIFs de gastos</div>
+      <span class="pilar-hd-tag">cerrado</span>
+    </div>
+    <div class="finding">
+      <div class="finding-lab">Hallazgos audit XMLs Jose</div>
+      El XML AEAT trae solo NIF del proveedor + importe · sin nombre · sin categoría · sin contacto. NIFs proveedor en bloques <span class="mono">NIF1GCEM0</span> · <span class="mono">GRCNIF1</span> · <span class="mono">MRINIF1</span> (mejoras) · <span class="mono">CSPNIF1</span> (servicios).<br>
+      <strong>NIFMJ1 NO es mutualidad</strong> · es NIF del proveedor de MEJORA (casilla 1422). Confusión inicial corregida cruzando XML con PDF.
+    </div>
+    <table class="dec-table">
+      <thead><tr><th>ID</th><th>Decisión</th><th></th></tr></thead>
+      <tr><td class="id">PROV-1</td><td>Crear placeholder con <span class="mono">alias="Proveedor 51080608T"</span> + badge "sin nombre" para que el usuario los complete después en Tesorería/Inmuebles</td><td><span class="ans">C</span></td></tr>
+    </table>
+    <div class="note"><strong>Apuntado fuera del scope</strong> · capacidad módulo Archivo de adjuntar factura PDF al gasto + vista filtrada por NIF para agrupación. Acción manual desde detalle del gasto · "convertir NIF en proveedor con nombre y categoría". Esto NO toca este wizard.</div>
+  </div>
+
+  <!-- PILAR 4 -->
+  <div class="pilar">
+    <div class="pilar-hd">
+      <div class="pilar-num">4</div>
+      <div class="pilar-name">Planes de pensiones · matching estable</div>
+      <span class="pilar-hd-tag">cerrado</span>
+    </div>
+    <div class="finding">
+      <div class="finding-lab">Hallazgos audit XMLs Jose</div>
+      Jose 2024 · 1 SOLO plan (Orange PPE A82009812) con 2 aportaciones · 1.396,68€ trabajador + 1.862,16€ empresa = 3.258,84€ total. El bug "se duplica entre años" venía de matching frágil (no por NIF empleador).<br>
+      Jose tiene 2 planes reales · <strong>PPE Orange activo</strong> + <strong>PPI propio durmiente</strong> (Mapfre · sin aportar hace años · existe pero NO aparece en XMLs porque sin aportación no se reporta).
+    </div>
+    <table class="dec-table">
+      <thead><tr><th>ID</th><th>Decisión</th><th></th></tr></thead>
+      <tr><td class="id">PP-1</td><td>Matching por tipo · <span class="mono">PPE = NIF empleador</span> · <span class="mono">PPI = NIF gestora</span> · <span class="mono">MUT = NIF entidad</span></td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">PP-2</td><td>Limpieza data actual · banner en /inversiones "fusionar planes duplicados" con 1-click</td><td><span class="ans">B</span></td></tr>
+      <tr><td class="id">PP-3</td><td>Bug B6-bis (declaracionCompleta cruzado · F2 sección F al revés) · spec independiente · NO fusionar con esta tarea</td><td><span class="ans">B</span></td></tr>
+      <tr><td class="id">PP-4</td><td>Plan durmiente (PPI Mapfre Jose) · creación manual desde /inversiones · aportaciones futuras se vinculan automáticamente por NIF gestora cuando reaparezcan en XML</td><td><span class="ans">—</span></td></tr>
+    </table>
+  </div>
+
+  <!-- PILAR 5 -->
+  <div class="pilar">
+    <div class="pilar-hd">
+      <div class="pilar-num">5</div>
+      <div class="pilar-name">Stores fiscales puros · limpieza schema</div>
+      <span class="pilar-hd-tag">cerrado</span>
+    </div>
+    <div class="note">5 stores definidos en schema pero <strong>vacíos por diseño</strong> · todos los datos viven en <span class="mono">ejerciciosFiscalesCoord[año].aeat.declaracionCompleta</span>. Decisión histórica respetada · son deuda técnica de schema.</div>
+    <table class="dec-table">
+      <thead><tr><th>ID</th><th>Decisión</th><th></th></tr></thead>
+      <tr><td class="id">F2-1</td><td>Borrar los 5 stores muertos · <span class="mono">snapshotsDeclaracion · resultadosEjercicio · arrastresIRPF · aeatCarryForwards · perdidasPatrimonialesAhorro</span></td><td><span class="ans">B</span></td></tr>
+      <tr><td class="id">F2-2</td><td>Incluir limpieza dentro del spec global del wizard · DB bump único <span class="mono">v77 → v78</span></td><td><span class="ans">A</span></td></tr>
+    </table>
+  </div>
+
+  <!-- PILAR 7 -->
+  <div class="pilar">
+    <div class="pilar-hd">
+      <div class="pilar-num">7</div>
+      <div class="pilar-name">Nómina · rendimientos del trabajo</div>
+      <span class="pilar-hd-tag">cerrado</span>
+    </div>
+    <div class="note">El wizard de nómina <strong>ya existe</strong> en <span class="mono">/gestion/personal/nueva-nomina</span> con todos los campos · cálculo de retenciones · pagas extras · plan pensiones · beneficios en especie · vista previa mes a mes. El store ya existe y propaga a Tesorería/Mi Plan/Proyección.</div>
+    <div class="finding">
+      <div class="finding-lab">Pre-relleno desde XML</div>
+      Bruto fijo (<span class="mono">IDII</span>) · % IRPF (<span class="mono">IDRE/IDII</span>) · % SS (<span class="mono">GSS/IDII</span>) · toggle PP empresa si <span class="mono">IEIP&gt;0</span> · toggle especie si <span class="mono">IEVA&gt;0</span> · NIF empleador (casilla 0397 si hay PP empresa).<br>
+      <strong>NO pre-rellenable</strong> · nombre empresa · cuenta destino · día cobro · pagas extras concretas · separación fijo/variable.
+    </div>
+    <table class="dec-table">
+      <thead><tr><th>ID</th><th>Decisión</th><th></th></tr></thead>
+      <tr><td class="id">N-1</td><td>Solo cuando el usuario lo activa · "Detectamos nómina · ¿crear/actualizar la nómina activa en Personal?"</td><td><span class="ans">C</span></td></tr>
+      <tr><td class="id">N-2</td><td>Si ya hay nómina activa · avisar y preguntar (actualizar valores o mantener)</td><td><span class="ans">C</span></td></tr>
+      <tr><td class="id">N-3</td><td>Paso propio "Nómina detectada" en el wizard · pre-relleno + ajuste de campos no detectables</td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">N-4</td><td>No comprobar nada · acepta XML tal cual · si el usuario ve algo raro lo corrige en el wizard</td><td><span class="ans">A</span></td></tr>
+    </table>
+  </div>
+
+  <!-- PILAR 8 -->
+  <div class="pilar">
+    <div class="pilar-hd">
+      <div class="pilar-num">8</div>
+      <div class="pilar-name">Autónomos · actividad económica</div>
+      <span class="pilar-hd-tag">cerrado</span>
+    </div>
+    <div class="note">El wizard de autónomos <strong>ya existe</strong> en <span class="mono">/gestion/personal/nuevo-autonomo</span> con descripción actividad · IAE · modalidad · cuenta cobro · clientes con NIF/retención · tramos RETA (15 tramos · sugerencia automática) · gastos deducibles · provisión 5%.<br>
+    <strong>La cuota RETA mensual y modelos M303/M130/M390 viven en módulo Fiscal · NO en autónomos.</strong></div>
+    <div class="finding">
+      <div class="finding-lab">Hallazgos audit XMLs Jose</div>
+      Jose · arrancó autónomo en 2023 (modalidad NORMAL · perdió 498€) · 2024 cambió a SIMPLIFICADA (ganó 11.905€). IAE 724 informática ambos años. 0 actividad 2020-2022.<br>
+      Caso "ya no autónomo" · si en año posterior no aparece <span class="mono">RegEstimaDirecta</span> · ATLAS NO cierra solo · el usuario decide pausa/cierre desde Personal.
+    </div>
+    <table class="dec-table">
+      <thead><tr><th>ID</th><th>Decisión</th><th></th></tr></thead>
+      <tr><td class="id">Au-1</td><td>Solo cuando el usuario lo activa · "Detectamos actividad autónomo · ¿crear/actualizar?"</td><td><span class="ans">C</span></td></tr>
+      <tr><td class="id">Au-2</td><td>Si ya hay activa · avisar y preguntar</td><td><span class="ans">C</span></td></tr>
+      <tr><td class="id">Au-3</td><td>Paso propio "Actividad económica detectada"</td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">Au-4</td><td>No comprobar nada</td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">Au-5</td><td>Cambio modalidad entre años · usar la del año más reciente</td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">Au-6</td><td>"Ya no soy autónomo" · NO cerrar auto · usuario decide</td><td><span class="ans">B</span></td></tr>
+      <tr><td class="id">Au-7</td><td>Sugerir tramo RETA según total año pagado · permitir override + aviso</td><td><span class="ans">C</span></td></tr>
+    </table>
+  </div>
+
+  <!-- PILAR 9 -->
+  <div class="pilar">
+    <div class="pilar-hd">
+      <div class="pilar-num">9</div>
+      <div class="pilar-name">Venta de inmuebles · ganancias/pérdidas patrimoniales</div>
+      <span class="pilar-hd-tag">cerrado</span>
+    </div>
+    <div class="note">El wizard de venta de inmueble <strong>ya existe</strong> en <span class="mono">/gestion/inmuebles/{id}/vender</span> · 3 pasos · datos venta · cancelación hipoteca · confirmar y generar. Maneja cierre cadena amortización + contratos enganchados + arrastres.</div>
+    <div class="finding">
+      <div class="finding-lab">Hallazgos audit XMLs Jose</div>
+      0 ventas de inmueble en XMLs 2020-2024 (Tenderina 48 vendido 2025 · aparecerá en IRPF 2025 cuando se presente en 2026).<br>
+      Sí hay otras transmisiones · fondos 2021/2022/2023 · crypto 2022/2023/2024. Estas viven en módulo Inversiones · NO en este pilar.
+    </div>
+    <table class="dec-table">
+      <thead><tr><th>ID</th><th>Decisión</th><th></th></tr></thead>
+      <tr><td class="id">V-1</td><td>Solo cuando el usuario lo activa · matching por RC + confirmación 1-click</td><td><span class="ans">C</span></td></tr>
+      <tr><td class="id">V-2</td><td>Si la venta ya existe en ATLAS · avisar y preguntar</td><td><span class="ans">C</span></td></tr>
+      <tr><td class="id">V-3</td><td>Paso propio "Ventas detectadas" · saltable</td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">V-4</td><td>No comprobar nada</td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">V-5</td><td>Solo inmuebles en este pilar · fondos/acciones/crypto como pilar 9b futuro</td><td><span class="ans">A</span></td></tr>
+    </table>
+  </div>
+
+  <!-- PILAR 10 -->
+  <div class="pilar">
+    <div class="pilar-hd">
+      <div class="pilar-num">10</div>
+      <div class="pilar-name">Datos personales</div>
+      <span class="pilar-hd-tag">cerrado</span>
+    </div>
+    <div class="note">Store <span class="mono">personalData</span> ya existe con todos los campos · nombre · DNI · sexo · fecha nac · estado civil · CCAA · tributación · descendientes · ascendientes · situación laboral. El wizard de import ya escribe en él vía <span class="mono">declaracionDistributorService.ts:1004</span>.</div>
+    <table class="dec-table">
+      <thead><tr><th>ID</th><th>Decisión</th><th></th></tr></thead>
+      <tr><td class="id">DP-1</td><td>Onboarding · importar todo el bloque personal del XML más reciente</td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">DP-2</td><td>Si ya hay datos · XML siempre gana · sobreescribir. <strong>personalData actual · NO versionado por año</strong></td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">DP-3</td><td>Tributación conjunta · avisar al usuario · "¿quieres añadir cónyuge en Personal?" (opt-in)</td><td><span class="ans">C</span></td></tr>
+      <tr><td class="id">DP-4</td><td>Descendientes · ascendientes · auto-importar (afectan mínimos personales IRPF)</td><td><span class="ans">A</span></td></tr>
+      <tr><td class="id">DP-5</td><td>Situación laboral · mantener como hoy · auto-detección por secciones del XML</td><td><span class="ans">A</span></td></tr>
+    </table>
+  </div>
+
+  <!-- ═════ PILARES FUERA ═════ -->
+  <h2><span class="sec-num">03</span> 2 pilares foco aparte · fuera de este wizard</h2>
+
+  <!-- PILAR 6 ALQUILERES -->
+  <div class="pilar fuera">
+    <div class="pilar-hd">
+      <div class="pilar-num">6</div>
+      <div class="pilar-name">Alquileres · sesión propia futura</div>
+      <span class="pilar-hd-tag">foco aparte</span>
+    </div>
+    <p>Capítulo con su propia historia · requiere comprensión conjunta antes de proponer. La sesión propia se abrirá cuando toque · con su mockup + spec independientes.</p>
+    
+    <h3>Razón de ser foco aparte</h3>
+    <p>Al analizar Carles Buigas · Tenderina 48 y FA32 caso a caso · se descubrieron 5 sub-problemas distintos que se entrelazan · cada uno con tantas decisiones como un pilar completo. Meterlos en este wizard inflaba la spec y mezclaba decisiones de modelo con UX de import.</p>
+    
+    <h3>Hallazgos guardados de la sesión 28-may-2026</h3>
+    
+    <div class="two-cols">
+      <div class="case-card">
+        <h4>Carles Buigas (CB)</h4>
+        <div class="case-rc">RC 6533404DG0263S0002TP</div>
+        <div class="case-status"><span class="pill tipo1">Tipo 1 · LAU identificado</span></div>
+        <p style="font-size:11.5px;margin-top:8px;color:var(--ink-3)">2020-2021 sin uso · 2022 arranca alquiler · 2022-2023 con NIF 53639207X (renta bajó 500€→300€) · 2024 nuevo NIF 43508951N + nuevo contrato. Tiene NIF + fecha + reducción art.23.2 art.LAU.</p>
+      </div>
+      <div class="case-card">
+        <h4>Tenderina 48 (T48)</h4>
+        <div class="case-rc">RC 0454010TP7005S0012TS</div>
+        <div class="case-status"><span class="pill tipo2">Tipo 2 · sin identificar fiscal</span></div>
+        <p style="font-size:11.5px;margin-top:8px;color:var(--ink-3)">2022 (100 días) · 2023 (365 días · 18.277€) · 2024 (366 días · 17.710€). NUNCA NIF · NUNCA fecha contrato · NUNCA reducción. Turístico / temporada / habitaciones cortas. ~50€/día.</p>
+      </div>
+    </div>
+    
+    <div class="case-card" style="margin-top:14px;">
+      <h4>FA32 · Fuertes Acevedo 32 · CASO MIXTO</h4>
+      <div class="case-rc">RC 7949807TP6074N0006YM</div>
+      <div class="case-status"><span class="pill tipo3">Tipo 3 · mixto LAU + sin identificar</span></div>
+      <p style="font-size:11.5px;margin-top:8px;color:var(--ink-3)">XML 2024 tiene 1 InmuebleArrendado con 2 bloques Arrendamiento conviviendo · TAR1 (LAU · 2 NIFs pareja Y5617860D + 71682787K · 8.550€) + TAR2 (NO LAU · sin NIF · 11.125€). Reducción aplicada proporcionalmente solo a la parte LAU.</p>
+      <p style="font-size:11.5px;margin-top:4px;color:var(--ink-3)"><strong>Encaja con memoria</strong> · 5 hab · 2 larga (pareja LAU) + 3 corta/temporada.</p>
+    </div>
+    
+    <h3>Modelo conceptual descubierto · 3 tipos</h3>
+    <table class="dec-table">
+      <thead><tr><th>Tipo</th><th>Caso</th><th>Característica</th><th>ATLAS crea</th></tr></thead>
+      <tr><td><strong>1 · LAU identificado</strong></td><td>CB · FA32 parte LAU</td><td>Tiene NIF + fecha + reducción art.23.2</td><td>Contract con NIF · fecha · estado "auto_xml" (naming a decidir)</td></tr>
+      <tr><td><strong>2 · Sin identificar fiscal</strong></td><td>T48 · FA32 parte NO LAU</td><td>NO NIF · NO fecha · NO reducción · turístico/temporada/habitaciones cortas</td><td>Bote anual por año/inmueble con agregado fiscal · estado pendiente/parcial/cerrado · contratos reales descontando saldo</td></tr>
+      <tr><td><strong>3 · Mixto</strong></td><td>FA32 año 2024</td><td>Ambos tipos conviviendo en el mismo inmueble en el mismo año (habitaciones distintas)</td><td>Contract LAU + Bote NO LAU separados pero del mismo inmueble</td></tr>
+    </table>
+    
+    <h3>Sub-problemas a resolver en la sesión propia</h3>
+    <div class="scope-block">
+      <ul>
+        <li>Renaming · "sin_identificar" pierde sentido si tiene NIF · revisar para Tipo 1 vs Tipo 2 (sin_identificar es válido y necesario para T48 · pero hoy se aplica también a casos con DNI)</li>
+        <li>Entidad "Bote anual sin identificar" · nueva · store nuevo · estados (pendiente_total/parcial/cerrado/sobre_asignado)</li>
+        <li>Asignación retrospectiva · contratos reales que el usuario crea van descontando saldo del bote</li>
+        <li>Caso mixto · UX que permita Contract LAU + Bote NO LAU en mismo inmueble sin pisarse · cálculo de proración gastos</li>
+        <li>Cambios entre años detectables del XML · cierre automático de Contract LAU al cambiar NIF · creación nuevo Contract con fecha nueva</li>
+        <li>Datos del XML que hoy se pierden y deberían usarse · fechaContrato · TAR1/TAR2 · reducción art.23.2 · nifsDetectados</li>
+        <li>Modelo Contract V2 · añadir alcance · habitacionNumero · habitacionColor · tipoAlquiler (T5 mergeó UI pero NO modelo)</li>
+        <li>Vista "Sin identificar" en /contratos · UX de completar/asignar</li>
+      </ul>
+    </div>
+    
+    <h3>Mientras tanto · qué hace el wizard de import global</h3>
+    <div class="note warn">
+      <strong>Comportamiento actual sin tocar</strong> · ATLAS sigue creando 1 Contract <span class="mono">sin_identificar</span> por arrendamiento detectado en XML · como hoy · sin paso UI dedicado en el wizard.<br>
+      <strong>Único fix incluido</strong> · arreglar bug <span class="mono">nifsDetectados=[]</span> que vimos en el dump real · estos NIFs deben guardarse siempre · son la base del matching futuro cuando el usuario complete identificación.
+    </div>
+  </div>
+
+  <!-- PILAR 11 DATOS FISCALES -->
+  <div class="pilar fuera">
+    <div class="pilar-hd">
+      <div class="pilar-num">11</div>
+      <div class="pilar-name">Datos fiscales AEAT (capturas) · sesión propia futura</div>
+      <span class="pilar-hd-tag">foco aparte</span>
+    </div>
+    <p>Distintos del XML · son las capturas pantallazo de los datos fiscales que la AEAT pone a disposición antes de la campaña Renta. NO exportables · solo imágenes. Se tratará cuando trabajemos importación de datos fiscales.</p>
+    
+    <h3>Lo que aportan que el XML no</h3>
+    <ul style="padding-left:24px;font-size:12.5px;color:var(--ink-3);line-height:1.6;">
+      <li>Cuentas bancarias con intereses (IBANs adicionales · entidad · intereses · retenciones)</li>
+      <li>Préstamo hipotecario vivienda habitual (solo vivienda habitual · NO inversión)</li>
+      <li>Modelos M303 · M130 · M390 presentados</li>
+      <li>Crypto histórico completo reportado por exchanges</li>
+      <li>Cuotas asociaciones / colegios profesionales</li>
+      <li>Inmuebles que Hacienda sabe que tienes (incluyendo uso propio)</li>
+      <li>Compra/venta valores (M198)</li>
+    </ul>
+  </div>
+
+  <!-- ═════ ARQUITECTURA WIZARD ═════ -->
+  <h2><span class="sec-num">04</span> Arquitectura del wizard global</h2>
+  
+  <div class="note">
+    <strong>Pasos condicionales</strong> · solo se pintan los pasos relevantes según contenido del XML. Si subes solo IRPF 2020 (sin autónomo · sin PP empresa · sin ventas) verás menos pasos que si subes IRPF 2024.
+  </div>
+  
+  <table class="dec-table">
+    <thead><tr><th>#</th><th>Paso</th><th>Condicional</th></tr></thead>
+    <tr><td class="id">1</td><td><strong>Fuente</strong> · subir XMLs / opcional PDF</td><td>Siempre</td></tr>
+    <tr><td class="id">2</td><td><strong>Configurar inmuebles</strong> · acordeón nuevos/existentes/accesorios · mockup v3 aprobado</td><td>Solo si hay inmuebles en XML</td></tr>
+    <tr><td class="id">3</td><td><strong>Cuentas IBAN detectadas</strong> · vincular existente / crear nueva / ignorar</td><td>Solo si hay IBAN devolución/cargo</td></tr>
+    <tr><td class="id">4</td><td><strong>Proveedores detectados</strong> · informativo · placeholders auto</td><td>Solo si hay NIFs proveedor en gastos</td></tr>
+    <tr><td class="id">5</td><td><strong>Planes de pensiones detectados</strong> · matching por NIF empleador/gestora + banner fusión si duplicados</td><td>Solo si hay aportaciones PP en XML</td></tr>
+    <tr><td class="id">6</td><td><strong>Nómina detectada</strong> · pre-relleno wizard nómina · opt-in</td><td>Solo si hay RdtoTrabajo</td></tr>
+    <tr><td class="id">7</td><td><strong>Actividad autónoma detectada</strong> · pre-relleno wizard autónomos · sugerir tramo RETA · opt-in</td><td>Solo si hay ActividadEstDirecta</td></tr>
+    <tr><td class="id">8</td><td><strong>Ventas detectadas</strong> · solo inmuebles · pre-relleno wizard venta · 1-click · saltable</td><td>Solo si hay transmisión de inmueble</td></tr>
+    <tr><td class="id">9</td><td><strong>Datos personales</strong> · auto-import del último XML · cónyuge opt-in si conjunta</td><td>Siempre</td></tr>
+    <tr><td class="id">10</td><td><strong>Confirmar</strong> · resumen + cuenta de elementos a crear/actualizar · botón "Importar todo"</td><td>Siempre</td></tr>
+  </table>
+  
+  <h3>Aside lateral navy (siempre visible)</h3>
+  <div class="note">
+    Resumen vivo de qué se va a importar · contadores por categoría (inmuebles · gastos · arrendamientos · proveedores · cuentas · planes pensiones · nómina · autónomo · ventas). Sección "Lo que queda poblado silenciosamente" con N arrendamientos sin_identificar (verás en Contratos) · M gastos por inmueble (verás en Inmuebles) · K proveedores con nombre pendiente (verás en cada gasto).
+  </div>
+
+  <!-- ═════ DB ═════ -->
+  <h2><span class="sec-num">05</span> DB bump · cambios de schema</h2>
+  <table class="dec-table">
+    <tr><td class="id">v77 → v78</td><td>Borrar 5 stores muertos (pilar 5)</td></tr>
+    <tr><td class="id">v77 → v78</td><td>Añadir 4 campos a Property V3 · bathrooms · tipoInmueble · parkingIntegrado · trasteroIntegrado (pilar 1)</td></tr>
+    <tr><td class="id">v77 → v78</td><td>Añadir bloque explotacion anidado a Property (pilar 1)</td></tr>
+    <tr><td class="id">v77 → v78</td><td>Fix de matching de planes pensiones por NIF empleador/gestora (pilar 4)</td></tr>
+    <tr><td class="id">v77 → v78</td><td>Fix bug nifsDetectados=[] en Contract sin_identificar (pilar 6 limitado)</td></tr>
+  </table>
+  
+  <div class="note warn">
+    <strong>Un solo DB bump · una sola PR grande coherente</strong> · cero parches reactivos · checklist sección 22 GUIA-DISENO-V5-atlas.md aplicado antes de entregar.
+  </div>
+
+  <!-- ═════ FOOTER ═════ -->
+  <div class="doc-foot">
+    <span>atlas-wizard-import-decisiones-cerradas · v1</span>
+    <span>28 may 2026 · sesión integrada</span>
+  </div>
+
+</div>
+
+</body>
+</html>

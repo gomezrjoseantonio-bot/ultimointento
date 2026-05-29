@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · wizard importar declaración · paso 2 · v3</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-soft: #D9B576; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; min-height: 100vh; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .sc { text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; font-weight: 600; color: var(--ink-4); }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  button { background: none; border: none; cursor: pointer; }
+
+  /* Fondo modal */
+  .app-bg { background: rgba(14,20,35,.45); position: fixed; inset: 0; z-index: 1; }
+
+  /* Modal fullscreen */
+  .wiz {
+    position: fixed; inset: 20px; z-index: 2;
+    background: var(--card); border-radius: 14px;
+    display: grid; grid-template-columns: 1fr 380px;
+    grid-template-rows: 64px 1fr 72px;
+    grid-template-areas: "head aside" "body aside" "footer aside";
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(14,20,35,.2);
+  }
+
+  /* HEADER */
+  .wiz-head {
+    grid-area: head;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--card);
+  }
+  .wiz-title-wrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .wiz-title-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--brand-ink); color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wiz-title { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.1; }
+  .wiz-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .wiz-close {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--card-alt); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-3); cursor: pointer;
+  }
+  .wiz-close:hover { border-color: var(--ink-5); color: var(--ink); }
+
+  /* STEPS INDICATOR */
+  .wiz-steps { display: flex; align-items: center; gap: 4px; }
+  .wiz-step-ind {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 999px;
+    font-size: 11.5px; color: var(--ink-4); font-weight: 600;
+    background: transparent; cursor: pointer;
+  }
+  .wiz-step-ind:hover { color: var(--ink-2); }
+  .wiz-step-ind.done { color: var(--ink-2); }
+  .wiz-step-ind.active { color: var(--ink); background: var(--bg); }
+  .wiz-step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--card); color: var(--ink-4);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    border: 1.5px solid var(--line);
+  }
+  .wiz-step-ind.active .wiz-step-num { background: var(--brand-ink); color: var(--gold); border-color: var(--brand-ink); }
+  .wiz-step-ind.done .wiz-step-num { background: var(--card); color: var(--gold); border-color: var(--gold); }
+  .wiz-step-sep { width: 18px; height: 1px; background: var(--line-2); }
+
+  /* BODY */
+  .wiz-body { grid-area: body; overflow-y: auto; padding: 28px 36px 32px; background: var(--card); }
+  .step-title { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; display: flex; align-items: baseline; gap: 10px; }
+  .step-title-num { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--ink-5); font-weight: 600; }
+  .step-sub { font-size: 13px; color: var(--ink-4); margin-top: 6px; margin-bottom: 22px; max-width: 640px; }
+  .step-section { margin-bottom: 22px; }
+  .step-section-title {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--ink-4); font-weight: 600; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .step-section-count {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 1px 7px; font-size: 10px; color: var(--ink-3);
+    letter-spacing: 0;
+  }
+
+  /* SMART · sugerencia general · cerrable */
+  .smart {
+    position: relative;
+    display: flex; gap: 10px; padding: 12px 36px 12px 14px;
+    background: var(--gold-wash); border: 1px solid #E8D59E;
+    border-radius: 10px; font-size: 12px; color: var(--gold-ink);
+    line-height: 1.5; margin-bottom: 14px;
+  }
+  .smart svg.smart-icon { color: var(--gold); flex-shrink: 0; margin-top: 2px; }
+  .smart strong { color: #4A3A00; font-weight: 700; }
+  .smart-close {
+    position: absolute; top: 8px; right: 8px;
+    width: 22px; height: 22px; border-radius: 5px;
+    color: var(--gold-ink); display: flex; align-items: center; justify-content: center;
+  }
+  .smart-close:hover { background: rgba(184,138,62,0.15); }
+
+  /* INMUEBLE CARD · estilo rcard de la guía */
+  .inm-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: all .12s;
+  }
+  .inm-card.expanded {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--gold);
+  }
+
+  .inm-head {
+    padding: 14px 18px;
+    display: grid; grid-template-columns: 1fr auto auto;
+    gap: 14px; align-items: center;
+    cursor: pointer; user-select: none;
+  }
+  .inm-head:hover { background: var(--card-alt); }
+  .inm-card.expanded .inm-head:hover { background: var(--card); }
+
+  .inm-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .inm-alias { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .inm-rc { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-4); }
+
+  .inm-badges { display: flex; gap: 6px; align-items: center; }
+  .badge {
+    font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: 5px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .badge.nuevo { background: var(--gold-wash); color: var(--gold-ink); }
+  .badge.enriquecer { background: var(--brand-wash); color: var(--brand); }
+  .badge.accesorio { background: var(--bg); color: var(--ink-3); border: 1px solid var(--line); }
+  .badge.incompleto { background: var(--warn-wash); color: var(--warn); }
+  .badge.completo { background: var(--pos-wash); color: var(--pos); }
+
+  .inm-chevron { color: var(--ink-4); transition: transform .14s; }
+  .inm-card.expanded .inm-chevron { transform: rotate(180deg); color: var(--gold); }
+
+  /* INMUEBLE BODY */
+  .inm-body {
+    border-top: 1px solid var(--line-2);
+    padding: 22px 22px 22px;
+    background: var(--card-alt);
+    display: none;
+  }
+  .inm-card.expanded .inm-body { display: block; }
+
+  .inm-sub-section { margin-bottom: 22px; }
+  .inm-sub-section:last-child { margin-bottom: 0; }
+  .inm-sub-title {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--ink-4); font-weight: 600; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* FIELDS · siguiendo .fld pattern de la guía */
+  .fld-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .fld { display: flex; flex-direction: column; gap: 6px; }
+  .fld-lab { font-size: 12.5px; color: var(--ink-2); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+  .fld-lab .req { color: var(--neg); margin-left: 2px; font-weight: 700; }
+  .fld-lab svg { color: var(--ink-4); }
+  .fld-opt-tag {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    background: var(--bg); color: var(--ink-4);
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em;
+    margin-left: auto;
+  }
+  .inp {
+    width: 100%; height: 38px;
+    padding: 0 12px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--card);
+    font-size: 13px; color: var(--ink); outline: none;
+    transition: border-color .12s;
+  }
+  .inp:hover { border-color: var(--ink-5); }
+  .inp:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,138,62,0.15); }
+  .inp.mono { font-family: 'JetBrains Mono', monospace; }
+  .inp.with-suggestion { background: var(--gold-wash); border-color: var(--gold-soft); color: var(--gold-ink); font-weight: 600; }
+  select.inp {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A92A0' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+    background-repeat: no-repeat; background-position: right 10px center;
+    background-size: 14px; padding-right: 32px;
+  }
+  select.inp.with-suggestion {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237C5C1F' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-color: var(--gold-wash);
+    background-size: 14px;
+    padding-right: 32px;
+  }
+
+  /* fld-hint-inline · sugerencia cerrable bajo cada campo */
+  .fld-hint-inline {
+    position: relative;
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--gold-ink);
+    background: var(--gold-wash);
+    padding: 3px 24px 3px 8px;
+    border-radius: 4px;
+    align-self: flex-start;
+    max-width: 100%;
+  }
+  .fld-hint-inline svg.hint-icon { color: var(--gold); flex-shrink: 0; }
+  .hint-text { line-height: 1.3; }
+  .fld-hint-inline .hint-close {
+    position: absolute; top: 50%; right: 4px;
+    transform: translateY(-50%);
+    width: 16px; height: 16px;
+    border-radius: 3px;
+    color: var(--gold-ink);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fld-hint-inline .hint-close:hover { background: rgba(184,138,62,0.18); }
+
+  .fld-hint { font-size: 11px; color: var(--ink-4); line-height: 1.3; }
+
+  /* chk-item del wizard contrato */
+  .chk-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 7px;
+    background: var(--card); border: 1px solid var(--line);
+    cursor: pointer; transition: all .12s; height: 38px;
+  }
+  .chk-item:hover { border-color: var(--ink-5); }
+  .chk-item.checked { background: var(--card); border-color: var(--ink-5); }
+  .chk-box {
+    width: 18px; height: 18px; border-radius: 5px;
+    border: 1.5px solid var(--ink-5);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--card); flex-shrink: 0;
+  }
+  .chk-item.checked .chk-box { background: var(--brand-ink); border-color: var(--brand-ink); }
+  .chk-item.checked .chk-box::after {
+    content: ""; width: 10px; height: 10px;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='20 6 9 17 4 12'/%3e%3c/svg%3e");
+    background-repeat: no-repeat; background-position: center; background-size: contain;
+  }
+  .chk-label { font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
+
+  /* Toggle alquilable · estilo rcard */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card);
+    margin-bottom: 16px;
+    transition: all .12s;
+  }
+  .toggle-row.on {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--gold);
+    padding-left: 14px;
+  }
+  .toggle-info { display: flex; flex-direction: column; gap: 2px; }
+  .toggle-lab { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .toggle-sub { font-size: 11.5px; color: var(--ink-4); }
+  .toggle-switch {
+    width: 38px; height: 22px; background: var(--line);
+    border-radius: 11px; position: relative; cursor: pointer;
+    transition: background .14s; flex-shrink: 0;
+  }
+  .toggle-switch.on { background: var(--gold); }
+  .toggle-knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px;
+    background: #fff; border-radius: 50%;
+    transition: left .14s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle-switch.on .toggle-knob { left: 18px; }
+
+  /* Radio cards modo explotación · rcard pattern de la guía */
+  .rcard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .rcard {
+    padding: 14px 16px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card);
+    cursor: pointer; transition: all .12s;
+    position: relative;
+  }
+  .rcard:hover { border-color: var(--ink-5); }
+  .rcard.selected {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--gold);
+    padding-left: 14px;
+  }
+  .rcard-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--card-alt); color: var(--ink-3);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+    border: 1px solid var(--line);
+  }
+  .rcard.selected .rcard-icon { background: var(--brand-ink); color: var(--gold); border-color: var(--brand-ink); }
+  .rcard-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .rcard-sub { font-size: 11px; color: var(--ink-4); margin-top: 3px; line-height: 1.4; }
+  .rcard-sugg-tag {
+    position: absolute; top: 10px; right: 10px;
+    font-size: 9px; padding: 2px 6px; border-radius: 4px;
+    background: var(--gold); color: #fff; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+
+  /* compact rows · inmuebles existentes y accesorios */
+  .inm-compact {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 12px 16px;
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 16px; align-items: center; margin-bottom: 6px;
+  }
+  .inm-compact-info { font-size: 11.5px; color: var(--ink-4); margin-top: 3px; }
+  .inm-compact .inm-alias { font-size: 13px; }
+
+  /* ASIDE · navy oscuro · resumen */
+  .wiz-aside {
+    grid-area: aside;
+    background: var(--brand-ink);
+    color: #fff; overflow-y: auto;
+    padding: 24px 22px;
+  }
+  .aside-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255,255,255,0.6); font-weight: 600; margin-bottom: 4px; }
+  .aside-title { font-size: 17px; font-weight: 700; color: #fff; letter-spacing: -0.02em; margin-bottom: 20px; line-height: 1.2; }
+  .aside-section { padding: 14px 0; border-top: 1px solid rgba(255,255,255,0.1); }
+  .aside-section:first-of-type { border-top: none; padding-top: 0; }
+  .aside-section-title { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.15em; color: rgba(255,255,255,0.55); font-weight: 600; margin-bottom: 8px; }
+  .aside-row {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 10px; padding: 5px 0; font-size: 12px; align-items: baseline;
+  }
+  .aside-row-lab { color: rgba(255,255,255,0.7); }
+  .aside-row-val { color: #fff; font-weight: 600; font-family: 'JetBrains Mono', monospace; text-align: right; }
+  .aside-row-val.warn { color: #F0D58A; }
+  .aside-row-val.pos { color: #9DD4A8; }
+  .aside-status {
+    margin-top: 22px; padding: 14px;
+    background: linear-gradient(135deg, rgba(184,138,62,0.15), rgba(184,138,62,0.08));
+    border: 1px solid rgba(184,138,62,0.3);
+    border-radius: 10px;
+  }
+  .aside-status-lab {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em;
+    font-weight: 700; color: #E8D9AE; margin-bottom: 6px;
+  }
+  .aside-status-lab::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: #E8D9AE; animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .aside-status-text { font-size: 12px; color: rgba(255,255,255,0.85); line-height: 1.5; }
+
+  /* FOOTER */
+  .wiz-footer {
+    grid-area: footer;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    background: var(--card-alt);
+    border-top: 1px solid var(--line);
+  }
+  .wiz-foot-meta { font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; gap: 8px; }
+  .wiz-foot-meta svg { color: var(--warn); }
+  .wiz-foot-actions { display: flex; gap: 8px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer; transition: all .12s;
+  }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-pos { background: var(--gold); color: #fff; }
+  .btn-pos:hover { background: var(--gold-2); }
+
+  .wiz-body::-webkit-scrollbar, .wiz-aside::-webkit-scrollbar { width: 8px; }
+  .wiz-body::-webkit-scrollbar-track { background: transparent; }
+  .wiz-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  .wiz-aside::-webkit-scrollbar-track { background: transparent; }
+  .wiz-aside::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="app-bg"></div>
+
+<div class="wiz">
+
+  <!-- ═════════ HEADER ═════════ -->
+  <div class="wiz-head">
+    <div class="wiz-title-wrap">
+      <div class="wiz-title-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h3"/></svg>
+      </div>
+      <div>
+        <div class="wiz-title">Importar declaración IRPF · ejercicio 2024</div>
+        <div class="wiz-sub">3 pasos · ~2 min</div>
+      </div>
+    </div>
+
+    <div class="wiz-steps">
+      <div class="wiz-step-ind done">
+        <span class="wiz-step-num">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <span>Fuente</span>
+      </div>
+      <div class="wiz-step-sep"></div>
+      <div class="wiz-step-ind active">
+        <span class="wiz-step-num">2</span>
+        <span>Configurar inmuebles</span>
+      </div>
+      <div class="wiz-step-sep"></div>
+      <div class="wiz-step-ind">
+        <span class="wiz-step-num">3</span>
+        <span>Confirmar</span>
+      </div>
+    </div>
+
+    <button class="wiz-close" aria-label="Cerrar wizard">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- ═════════ BODY ═════════ -->
+  <div class="wiz-body">
+    <div class="step-title">
+      <span class="step-title-num">02</span>
+      Configurar inmuebles detectados
+    </div>
+    <div class="step-sub">El XML AEAT aporta datos catastrales y de adquisición · faltan habitaciones, baños y modo de explotación · ATLAS los necesita para configurar bien tu cartera. Saltable · podrás completarlo desde Inmuebles.</div>
+
+    <!-- SMART · sugerencia general cerrable -->
+    <div class="smart">
+      <svg class="smart-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M2 12c0-5 4-9 10-9s10 4 10 9c0 3-2 5-3 7H5c-1-2-3-4-3-7z"/></svg>
+      <div>
+        <strong>ATLAS infirió valores donde pudo</strong> a partir del XML · los campos en dorado son sugerencias · puedes editarlos o cerrar cada sugerencia que no aplique a tu caso. Los hints con la X se descartan individualmente.
+      </div>
+      <button class="smart-close" onclick="this.parentElement.style.display='none'" aria-label="Cerrar mensaje">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+
+    <!-- ═════════ SECCIÓN · NUEVOS ═════════ -->
+    <div class="step-section">
+      <div class="step-section-title">
+        Inmuebles nuevos · completar campos críticos
+        <span class="step-section-count">3</span>
+      </div>
+
+      <!-- FA32 · expandida -->
+      <div class="inm-card expanded">
+        <div class="inm-head" onclick="this.parentElement.classList.toggle('expanded')">
+          <div class="inm-id">
+            <div class="inm-alias">Fuertes Acevedo 32 · 1º 2 Dr Oviedo</div>
+            <div class="inm-rc">RC · 7949807TP6074N0006YM</div>
+          </div>
+          <div class="inm-badges">
+            <span class="badge nuevo">Nuevo</span>
+            <span class="badge incompleto">Incompleto</span>
+          </div>
+          <div class="inm-chevron">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+
+        <div class="inm-body">
+
+          <!-- Físicas -->
+          <div class="inm-sub-section">
+            <div class="inm-sub-title">Características físicas</div>
+
+            <div class="fld-grid-3">
+
+              <div class="fld">
+                <label class="fld-lab">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
+                  Habitaciones <span class="req">*</span>
+                </label>
+                <input class="inp mono with-suggestion" value="5" />
+                <div class="fld-hint-inline">
+                  <svg class="hint-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M2 12c0-5 4-9 10-9s10 4 10 9c0 3-2 5-3 7H5c-1-2-3-4-3-7z"/></svg>
+                  <span class="hint-text">Sugerido 5 · 4 NIFs + propietario</span>
+                  <button class="hint-close" onclick="this.parentElement.style.display='none'" aria-label="Descartar">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="fld">
+                <label class="fld-lab">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2"/><line x1="2" y1="21" x2="22" y2="21"/><path d="M22 13H4"/></svg>
+                  Baños <span class="req">*</span>
+                </label>
+                <input class="inp mono" placeholder="0" />
+                <div class="fld-hint">No detectable en XML · introduce manualmente</div>
+              </div>
+
+              <div class="fld">
+                <label class="fld-lab">
+                  Superficie m²
+                  <span class="fld-opt-tag">opcional</span>
+                </label>
+                <input class="inp mono" placeholder="0" />
+                <div class="fld-hint">Informativo · no afecta a cálculos</div>
+              </div>
+
+              <div class="fld">
+                <label class="fld-lab">Tipo de inmueble <span class="req">*</span></label>
+                <select class="inp with-suggestion">
+                  <option>Piso</option>
+                  <option>Casa</option>
+                  <option>Chalet</option>
+                  <option>Estudio</option>
+                  <option>Local</option>
+                  <option>Edificio</option>
+                  <option>Otro</option>
+                </select>
+                <div class="fld-hint-inline">
+                  <svg class="hint-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M2 12c0-5 4-9 10-9s10 4 10 9c0 3-2 5-3 7H5c-1-2-3-4-3-7z"/></svg>
+                  <span class="hint-text">Sugerido piso · dirección "1º 2 Dr"</span>
+                  <button class="hint-close" onclick="this.parentElement.style.display='none'" aria-label="Descartar">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="fld">
+                <label class="fld-lab">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17H3v-6l2-5h11l4 5h1a1 1 0 0 1 1 1v5h-2"/></svg>
+                  Parking integrado
+                  <span class="fld-opt-tag">opcional</span>
+                </label>
+                <input class="inp mono" placeholder="0" value="0" />
+                <div class="fld-hint">Plazas sin RC propia · si tiene RC se vincula como accesorio</div>
+              </div>
+
+              <div class="fld">
+                <label class="fld-lab">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/></svg>
+                  Trastero integrado
+                  <span class="fld-opt-tag">opcional</span>
+                </label>
+                <div class="chk-item">
+                  <div class="chk-box"></div>
+                  <span class="chk-label">Sí, tiene trastero integrado</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Toggle alquilable -->
+          <div class="toggle-row on">
+            <div class="toggle-info">
+              <div class="toggle-lab">Inmueble alquilable</div>
+              <div class="toggle-sub">Activa la configuración de explotación · entra en KPIs operativos de la cartera</div>
+            </div>
+            <div class="toggle-switch on">
+              <div class="toggle-knob"></div>
+            </div>
+          </div>
+
+          <!-- Explotación -->
+          <div class="inm-sub-section">
+            <div class="inm-sub-title">Configuración de explotación</div>
+
+            <div class="fld" style="margin-bottom: 4px;">
+              <label class="fld-lab">Modo de explotación <span class="req">*</span></label>
+            </div>
+            <div class="rcard-grid">
+              <div class="rcard">
+                <div class="rcard-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                </div>
+                <div class="rcard-title">Piso completo</div>
+                <div class="rcard-sub">1 contrato · 1 inquilino o grupo</div>
+              </div>
+              <div class="rcard selected">
+                <span class="rcard-sugg-tag">sugerido</span>
+                <div class="rcard-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/></svg>
+                </div>
+                <div class="rcard-title">Por habitaciones</div>
+                <div class="rcard-sub">N contratos · 4 NIFs en XML</div>
+              </div>
+              <div class="rcard">
+                <div class="rcard-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </div>
+                <div class="rcard-title">Mixto</div>
+                <div class="rcard-sub">Combinación según temporada</div>
+              </div>
+            </div>
+
+            <div class="fld-grid-3">
+
+              <div class="fld">
+                <label class="fld-lab">Unidades arrendables <span class="req">*</span></label>
+                <input class="inp mono with-suggestion" value="4" />
+                <div class="fld-hint-inline">
+                  <svg class="hint-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M2 12c0-5 4-9 10-9s10 4 10 9c0 3-2 5-3 7H5c-1-2-3-4-3-7z"/></svg>
+                  <span class="hint-text">Sugerido 4 · NIFs distintos en XML</span>
+                  <button class="hint-close" onclick="this.parentElement.style.display='none'" aria-label="Descartar">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="fld">
+                <label class="fld-lab">Estado operativo <span class="req">*</span></label>
+                <select class="inp with-suggestion">
+                  <option>Operativo</option>
+                  <option>En reforma</option>
+                  <option>Vacante</option>
+                  <option>Uso propio</option>
+                </select>
+                <div class="fld-hint-inline">
+                  <svg class="hint-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M2 12c0-5 4-9 10-9s10 4 10 9c0 3-2 5-3 7H5c-1-2-3-4-3-7z"/></svg>
+                  <span class="hint-text">Operativo · 366d arrendados en 2024</span>
+                  <button class="hint-close" onclick="this.parentElement.style.display='none'" aria-label="Descartar">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="fld">
+                <label class="fld-lab">
+                  Tipo de alquiler dominante
+                  <span class="fld-opt-tag">opcional</span>
+                </label>
+                <select class="inp">
+                  <option>Larga estancia</option>
+                  <option>Temporada</option>
+                  <option>Vacacional</option>
+                  <option>Mixto</option>
+                </select>
+                <div class="fld-hint">Para clasificar luego en analítica</div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- Carles Buigas · colapsado -->
+      <div class="inm-card">
+        <div class="inm-head" onclick="this.parentElement.classList.toggle('expanded')">
+          <div class="inm-id">
+            <div class="inm-alias">Carles Buigas 15 A · 0 2 Sant Fruitós De Bages</div>
+            <div class="inm-rc">RC · 6533404DG0263S0002TP</div>
+          </div>
+          <div class="inm-badges">
+            <span class="badge nuevo">Nuevo</span>
+            <span class="badge incompleto">Incompleto</span>
+          </div>
+          <div class="inm-chevron">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sant Joan d'En Coll · colapsado -->
+      <div class="inm-card">
+        <div class="inm-head" onclick="this.parentElement.classList.toggle('expanded')">
+          <div class="inm-id">
+            <div class="inm-alias">Sant Joan d'En Coll 53 B · 3 6 Manresa</div>
+            <div class="inm-rc">RC · 3308041DG0230A0041MP</div>
+          </div>
+          <div class="inm-badges">
+            <span class="badge nuevo">Nuevo</span>
+            <span class="badge incompleto">Incompleto</span>
+          </div>
+          <div class="inm-chevron">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ═════════ SECCIÓN · EXISTENTES ═════════ -->
+    <div class="step-section">
+      <div class="step-section-title">
+        Inmuebles existentes · se enriquecerán con datos 2024
+        <span class="step-section-count">4</span>
+      </div>
+
+      <div class="inm-compact">
+        <div class="inm-id">
+          <div class="inm-alias">Tenderina 48 · 1º 5 Dr Oviedo</div>
+          <div class="inm-rc">RC · 0454010TP7005S0012TS</div>
+        </div>
+        <div class="inm-badges">
+          <span class="badge enriquecer">Enriquecer</span>
+        </div>
+      </div>
+
+      <div class="inm-compact">
+        <div class="inm-id">
+          <div class="inm-alias">Tenderina 64 · 1º 4 D Oviedo</div>
+          <div class="inm-rc">RC · 0654104TP7005S0009SS · 5 habitaciones configuradas</div>
+        </div>
+        <div class="inm-badges">
+          <span class="badge enriquecer">Enriquecer</span>
+        </div>
+      </div>
+
+      <div class="inm-compact">
+        <div class="inm-id">
+          <div class="inm-alias">Tenderina 64 · 1º 4 Iz Oviedo</div>
+          <div class="inm-rc">RC · 0654104TP7005S0010PP · 5 habitaciones configuradas</div>
+        </div>
+        <div class="inm-badges">
+          <span class="badge enriquecer">Enriquecer</span>
+        </div>
+      </div>
+
+      <div class="inm-compact">
+        <div class="inm-id">
+          <div class="inm-alias">Vic 178 A · S2 30 Manresa</div>
+          <div class="inm-rc">RC · 3308041DG0230A0088SX</div>
+        </div>
+        <div class="inm-badges">
+          <span class="badge enriquecer">Enriquecer</span>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ═════════ SECCIÓN · ACCESORIOS ═════════ -->
+    <div class="step-section">
+      <div class="step-section-title">
+        Accesorios detectados · trastero · parking con RC propia
+        <span class="step-section-count">1</span>
+      </div>
+
+      <div class="inm-compact">
+        <div class="inm-id">
+          <div class="inm-alias">Tenderina 64 · trastero 5·01 Oviedo</div>
+          <div class="inm-rc">RC · 0654104TP7005S0011AA · vinculado a Tenderina 64 1º 4 D</div>
+        </div>
+        <div class="inm-badges">
+          <span class="badge accesorio">Accesorio</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═════════ ASIDE · resumen ═════════ -->
+  <aside class="wiz-aside">
+    <div class="aside-label">Resumen importación</div>
+    <div class="aside-title">IRPF 2024 · 8 inmuebles detectados</div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">Datos fiscales</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Ejercicio</span>
+        <span class="aside-row-val">2024</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Fuente</span>
+        <span class="aside-row-val">XML AEAT</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Liquidación</span>
+        <span class="aside-row-val pos">+2.899,75 €</span>
+      </div>
+    </div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">Inmuebles</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Nuevos</span>
+        <span class="aside-row-val warn">3</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Enriquecer</span>
+        <span class="aside-row-val">4</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Accesorios</span>
+        <span class="aside-row-val">1</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Configurados</span>
+        <span class="aside-row-val">0 / 3</span>
+      </div>
+    </div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">También se importa</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Gastos por inmueble</span>
+        <span class="aside-row-val">37</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Mobiliario</span>
+        <span class="aside-row-val">5</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Mejoras</span>
+        <span class="aside-row-val">4</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Arrastres</span>
+        <span class="aside-row-val">4</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Proveedores</span>
+        <span class="aside-row-val">8</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">IBAN devolución</span>
+        <span class="aside-row-val">1</span>
+      </div>
+    </div>
+
+    <div class="aside-status">
+      <div class="aside-status-lab">Saltable</div>
+      <div class="aside-status-text">Puedes continuar sin completar · los 3 inmuebles nuevos quedarán con perfil incompleto y aparecerán marcados en el módulo Inmuebles.</div>
+    </div>
+  </aside>
+
+  <!-- ═════════ FOOTER ═════════ -->
+  <div class="wiz-footer">
+    <div class="wiz-foot-meta">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      3 inmuebles incompletos
+    </div>
+    <div class="wiz-foot-actions">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Anterior
+      </button>
+      <button class="btn btn-ghost">Completar luego</button>
+      <button class="btn btn-pos">
+        Continuar
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
