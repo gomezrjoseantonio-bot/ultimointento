@@ -290,6 +290,17 @@ select.inp { appearance: none; padding-right: 30px; }
 .skipTitle { font-size: 13px; font-weight: 700; color: var(--ink-3); margin-bottom: 4px; }
 .skipSub { font-size: 11.5px; color: var(--ink-4); }
 
+/* TRAMOS RETA (paso 7) */
+.retaTramos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
+.retaTramo { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; cursor: pointer; transition: all 0.12s; }
+.retaTramo:hover { border-color: var(--ink-5); }
+.retaTramo.selected { background: var(--brand-ink); border-color: var(--brand-ink); }
+.retaTramo.suggested { border-color: var(--gold-soft); }
+.retaTramoRange { font-size: 10px; color: var(--ink-4); }
+.retaTramo.selected .retaTramoRange { color: rgba(255, 255, 255, 0.6); }
+.retaTramoVal { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--ink); margin-top: 2px; }
+.retaTramo.selected .retaTramoVal { color: var(--gold); }
+
 /* PROVEEDORES (paso 4) */
 .provList { background: var(--card); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .provItem { display: grid; grid-template-columns: 30px 130px 1fr auto; gap: 14px; padding: 10px 14px; align-items: center; font-size: 12px; border-bottom: 1px solid var(--line-2); }

@@ -20,6 +20,9 @@ import PasoInmuebles from './pasos/PasoInmuebles';
 import PasoIBAN from './pasos/PasoIBAN';
 import PasoProveedores from './pasos/PasoProveedores';
 import PasoPlanesPensiones from './pasos/PasoPlanesPensiones';
+import PasoNomina from './pasos/PasoNomina';
+import PasoAutonomos from './pasos/PasoAutonomos';
+import PasoVentas from './pasos/PasoVentas';
 import styles from './WizardImportarDeclaracion.module.css';
 
 export interface WizardImportarDeclaracionProps {
@@ -57,6 +60,12 @@ const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ o
         return <PasoProveedores s={s} />;
       case 5:
         return <PasoPlanesPensiones s={s} />;
+      case 6:
+        return <PasoNomina s={s} />;
+      case 7:
+        return <PasoAutonomos s={s} />;
+      case 8:
+        return <PasoVentas s={s} />;
       default: {
         const def = PASOS.find((p) => p.num === s.pasoActual);
         return (
@@ -126,6 +135,35 @@ const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ o
       return (
         <div className={`${styles.wizFootMeta} ${styles.ok}`}>
           <Check size={12} /> {n} plan(es) se unificarán por NIF empleador
+        </div>
+      );
+    }
+    if (s.pasoActual === 6) {
+      return s.opciones.crearNominaActiva ? (
+        <div className={styles.wizFootMeta}>
+          <AlertCircle size={12} /> Nómina activa · completa cuenta destino (opcional)
+        </div>
+      ) : (
+        <div className={`${styles.wizFootMeta} ${styles.ok}`}>
+          <Check size={12} /> Nómina no se creará
+        </div>
+      );
+    }
+    if (s.pasoActual === 7) {
+      return s.opciones.crearActividadAutonoma ? (
+        <div className={styles.wizFootMeta}>
+          <AlertCircle size={12} /> Descripción pendiente · saltable
+        </div>
+      ) : (
+        <div className={`${styles.wizFootMeta} ${styles.ok}`}>
+          <Check size={12} /> Actividad no se creará
+        </div>
+      );
+    }
+    if (s.pasoActual === 8) {
+      return (
+        <div className={`${styles.wizFootMeta} ${styles.ok}`}>
+          <Check size={12} /> Nada que importar en este paso
         </div>
       );
     }
@@ -202,6 +240,19 @@ const WizardImportarDeclaracion: React.FC<WizardImportarDeclaracionProps> = ({ o
             {s.pasoActual === 2 && hayPosterior && (
               <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={s.siguiente}>
                 Completar luego
+              </button>
+            )}
+            {(s.pasoActual === 6 || s.pasoActual === 7) && hayPosterior && (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={() => {
+                  if (s.pasoActual === 6) s.setOpciones({ crearNominaActiva: false, nominaPrefill: undefined });
+                  else s.setOpciones({ crearActividadAutonoma: false, autonomoPrefill: undefined });
+                  s.siguiente();
+                }}
+              >
+                Saltar
               </button>
             )}
             {hayPosterior && (

@@ -7,6 +7,7 @@ import React, { useMemo } from 'react';
 import type { WizardImportState } from './useWizardImportState';
 import { useInmueblesDetectados } from './useInmueblesDetectados';
 import { detectarProveedores, detectarPlanesXml } from './deteccion';
+import { sugerenciasNomina, sugerenciasAutonomo } from './prefill';
 import styles from './WizardImportarDeclaracion.module.css';
 
 function eur(n: number): string {
@@ -231,7 +232,95 @@ const AsideResumen: React.FC<{ s: WizardImportState }> = ({ s }) => {
     );
   }
 
-  // ── Genérico (pasos 6-10, pendientes de commits posteriores) ──
+  // ── Paso 6 · nómina ──
+  if (s.pasoActual === 6) {
+    const f = sugerenciasNomina(decls);
+    const m = (n: number) => `${Math.round(n).toLocaleString('es-ES')} €`;
+    const ret = f ? (f.brutoAnual * f.irpfPorcentaje) / 100 : 0;
+    const ss = f ? (f.brutoAnual * f.ssPorcentaje) / 100 : 0;
+    const neto = f ? f.brutoAnual - ret - ss : 0;
+    return (
+      <aside className={styles.wizAside}>
+        <div className={styles.asideLabel}>Paso 6 · nómina</div>
+        <div className={styles.asideTitle}>{f ? 'Nómina detectada' : 'Sin nómina'}</div>
+        {f && (
+          <>
+            <div className={styles.asideSection}>
+              <div className={styles.asideSectionTitle}>Datos XML {f.ejercicio}</div>
+              <Row lab="Bruto anual" val={m(f.brutoAnual)} />
+              <Row lab="Retenciones" val={m(ret)} />
+              <Row lab="SS empleado" val={m(ss)} />
+              <Row lab="% IRPF efectivo" val={`${f.irpfPorcentaje.toLocaleString('es-ES')} %`} />
+              <Row lab="Neto anual" val={m(neto)} tone="pos" />
+              <Row lab={`Neto / paga (${f.numPagas})`} val={m(neto / Math.max(f.numPagas, 1))} tone="pos" />
+            </div>
+            <div className={styles.asideStatus}>
+              <div className={styles.asideStatusLab}>Propagación</div>
+              <div className={styles.asideStatusText}>
+                Tras guardar la nómina, ATLAS proyecta cobros mes a mes en Tesorería + Mi Plan +
+                Proyección.
+              </div>
+            </div>
+          </>
+        )}
+      </aside>
+    );
+  }
+
+  // ── Paso 7 · autónomo ──
+  if (s.pasoActual === 7) {
+    const a = sugerenciasAutonomo(decls);
+    const m = (n: number) => `${Math.round(n).toLocaleString('es-ES')} €`;
+    return (
+      <aside className={styles.wizAside}>
+        <div className={styles.asideLabel}>Paso 7 · autónomo</div>
+        <div className={styles.asideTitle}>{a ? 'Actividad detectada' : 'Sin actividad'}</div>
+        {a && (
+          <>
+            <div className={styles.asideSection}>
+              <div className={styles.asideSectionTitle}>Datos XML {a.form.ejercicio}</div>
+              <Row lab="IAE" val={a.form.iae || '—'} />
+              <Row lab="Modalidad" val={a.form.modalidad === 'simplificada' ? 'Simplif.' : 'Normal'} />
+              <Row lab="Ingresos" val={m(a.ingresos)} />
+              <Row lab="Gastos" val={m(a.gastos)} />
+              <Row lab="Cuota RETA" val={m(a.totalRetaAnual)} />
+              <Row lab="Rendto neto" val={m(a.rendimientoNeto)} tone="pos" />
+            </div>
+            <div className={styles.asideStatus}>
+              <div className={styles.asideStatusLab}>Cuota RETA en Fiscal</div>
+              <div className={styles.asideStatusText}>
+                Las obligaciones M303/M130/M390 y el calendario fiscal se gestionan desde el módulo
+                Fiscal, no en este wizard.
+              </div>
+            </div>
+          </>
+        )}
+      </aside>
+    );
+  }
+
+  // ── Paso 8 · ventas ──
+  if (s.pasoActual === 8) {
+    return (
+      <aside className={styles.wizAside}>
+        <div className={styles.asideLabel}>Paso 8 · ventas</div>
+        <div className={styles.asideTitle}>Sin ventas detectadas</div>
+        <div className={styles.asideSection}>
+          <div className={styles.asideSectionTitle}>Inmuebles vendidos</div>
+          <Row lab="En los XMLs" val={0} tone="dim" />
+        </div>
+        <div className={styles.asideStatus}>
+          <div className={styles.asideStatusLab}>Fuera de scope</div>
+          <div className={styles.asideStatusText}>
+            Fondos y crypto se gestionan desde Inversiones · este paso solo trata venta de
+            inmuebles.
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  // ── Genérico (pasos 9-10, pendientes de commits posteriores) ──
   const paso = s.pasosAplicables.includes(s.pasoActual) ? s.pasoActual : s.pasoActual;
   return (
     <aside className={styles.wizAside}>

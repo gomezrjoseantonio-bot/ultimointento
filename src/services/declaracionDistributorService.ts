@@ -514,8 +514,9 @@ async function aplicarFaseBNomina(
 ): Promise<void> {
   if (!opciones.crearNominaActiva || !opciones.nominaPrefill) return;
   try {
+    const personalDataId = await resolverPersonalDataId(opciones.nominaPrefill.personalDataId);
     const { nominaService } = await import('./nominaService');
-    await nominaService.saveNomina(opciones.nominaPrefill);
+    await nominaService.saveNomina({ ...opciones.nominaPrefill, personalDataId });
     resultado.nominaCreada = true;
   } catch (err) {
     console.warn('Fase B · error al crear nómina:', err);
@@ -530,12 +531,28 @@ async function aplicarFaseBAutonomo(
 ): Promise<void> {
   if (!opciones.crearActividadAutonoma || !opciones.autonomoPrefill) return;
   try {
+    const personalDataId = await resolverPersonalDataId(opciones.autonomoPrefill.personalDataId);
     const { autonomoService } = await import('./autonomoService');
-    await autonomoService.saveAutonomo(opciones.autonomoPrefill);
+    await autonomoService.saveAutonomo({ ...opciones.autonomoPrefill, personalDataId });
     resultado.actividadAutonomaCreada = true;
   } catch (err) {
     console.warn('Fase B · error al crear actividad autónoma:', err);
     resultado.errores.push(`Autónomo: ${mensajeError(err)}`);
+  }
+}
+
+/**
+ * Resuelve el `personalDataId` real del titular. El prefill de la UI lo deja a 0
+ * porque personalData se crea en Fase A (antes que la fase B en la misma llamada).
+ */
+async function resolverPersonalDataId(prefillId: number): Promise<number> {
+  if (prefillId && prefillId > 0) return prefillId;
+  try {
+    const { personalDataService } = await import('./personalDataService');
+    const pd = await personalDataService.getPersonalData();
+    return pd?.id ?? 1;
+  } catch {
+    return 1;
   }
 }
 
