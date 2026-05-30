@@ -29,7 +29,8 @@ import type {
   DeclaracionCompleta,
   InmuebleDeclarado,
 } from '../types/declaracionCompleta';
-import { crearContratoPendienteIdentificar } from './declaracionOnboardingService';
+import { crearOActualizarContrato } from './declaracionOnboardingService';
+import { boteAnualService } from './boteAnualService';
 import { ejecutarOnboardingPersonal } from './personalOnboardingService';
 import type { SituacionLaboral } from '../types/personal';
 import { cuentasService } from './cuentasService';
@@ -137,6 +138,97 @@ function extraerUbicacion(direccion: string): { province: string; municipality: 
   return { province: '', municipality: lastToken || '', ccaa: '' };
 }
 
+/**
+ * V78 · decide el camino de un `<Arrendamiento>` según el modo de explotación del inmueble
+ * y el número de NIFs del bloque (regla validada con producto):
+ *   · por_habitaciones / mixto   → Camino 2 (bote)
+ *   · piso_completo + ≥1 NIF      → Camino 1 (contrato; incluido no_vivienda con NIF)
+ *   · piso_completo sin NIF       → Camino 2 (bote)
+ * Inmueble sin `modoExplotacion` (creado por XML antes del wizard) se trata como piso_completo.
+ */
+export function decidirRutaArrendamiento(
+  modoExplotacion: Property['modoExplotacion'] | undefined,
+  numNifs: number,
+): 'camino1' | 'camino2' {
+  const modo = modoExplotacion ?? 'piso_completo';
+  if (modo === 'piso_completo' && numNifs >= 1) return 'camino1';
+  return 'camino2';
+}
+
+/**
+ * V78 · enruta todos los `<Arrendamiento>` del XML a contratos identificados (Camino 1) o a
+ * botes anuales sin identificar (Camino 2). Los bloques que van al bote se AGREGAN por
+ * (inmueble · ejercicio) y se persisten con una sola llamada `crearOActualizarBote` (replace),
+ * de modo que re-importar una declaración corregida del mismo ejercicio es idempotente.
+ */
+export async function rutearArrendamientos(
+  decl: DeclaracionCompleta,
+  porRefCatastral: Map<string, Property>,
+): Promise<{ contratos: number; botes: number }> {
+  const ejercicio = decl.meta.ejercicio;
+  const botes = new Map<
+    number,
+    { importe: number; dias: number; nifs: Set<string>; tipos: Set<string> }
+  >();
+  let contratos = 0;
+
+  for (const inm of decl.inmuebles) {
+    if (inm.esAccesorioDe) continue;
+    const rc = normalizeRef(inm.refCatastral);
+    const property = porRefCatastral.get(rc);
+    if (!property?.id) continue;
+
+    for (const arr of inm.arrendamientos) {
+      const nifs = (arr.nifArrendatarios ?? [])
+        .map((n) => (n ?? '').trim())
+        .filter((n) => n.length > 0);
+      const tipo: 'vivienda' | 'no_vivienda' =
+        arr.tipoArrendamiento === 'no_vivienda' ? 'no_vivienda' : 'vivienda';
+
+      if (decidirRutaArrendamiento(property.modoExplotacion, nifs.length) === 'camino1') {
+        // Camino 1 · contrato identificado · dni = nif principal · resto = cotitulares
+        await crearOActualizarContrato({
+          propertyId: property.id,
+          nifArrendatario: nifs[0],
+          cotitulares: nifs.slice(1),
+          fechaContrato: arr.fechaContrato,
+          ingresosAnuales: arr.ingresos,
+          tipoArrendamiento: tipo,
+          ejercicio,
+          importeDeclarado: arr.ingresos,
+          diasDeclarados: arr.diasArrendado ?? 0,
+        });
+        contratos++;
+      } else {
+        // Camino 2 · acumular en el bote del (inmueble · ejercicio)
+        const acc =
+          botes.get(property.id) ??
+          { importe: 0, dias: 0, nifs: new Set<string>(), tipos: new Set<string>() };
+        acc.importe += arr.ingresos || 0;
+        acc.dias += arr.diasArrendado ?? 0;
+        for (const n of nifs) acc.nifs.add(n);
+        acc.tipos.add(tipo);
+        botes.set(property.id, acc);
+      }
+    }
+  }
+
+  for (const [inmuebleId, acc] of botes) {
+    if (acc.importe <= 0) continue;
+    await boteAnualService.crearOActualizarBote({
+      inmuebleId,
+      año: ejercicio,
+      importeDeclarado: acc.importe,
+      díasDeclarados: Math.min(366, acc.dias),
+      nifsDetectados: [...acc.nifs],
+      tiposArrendamientoOriginales: [...acc.tipos],
+      fuente: 'xml_aeat',
+    });
+  }
+
+  return { contratos, botes: botes.size };
+}
+
 export async function distribuirDeclaracion(
   decl: DeclaracionCompleta,
   opciones: OpcionesDistribucion = OPCIONES_DEFAULT,
@@ -223,26 +315,7 @@ export async function distribuirDeclaracion(
     console.log(`[distribuidor] Fallback dirección: ${rc} → property id=${propertyForRc.id} (${propertyForRc.alias})`);
   }
 
-  for (const inm of decl.inmuebles) {
-    if (inm.esAccesorioDe) continue;
-    const rc = normalizeRef(inm.refCatastral);
-    const property = porRefCatastral.get(rc);
-    if (!property?.id) continue;
-
-    for (const arr of inm.arrendamientos) {
-      // F1: Todos los arrendamientos van a sin_identificar.
-      // Los NIFs del XML se guardan como metadato para sugerir al vincular.
-      await crearContratoPendienteIdentificar({
-        propertyId: property.id,
-        ejercicio: decl.meta.ejercicio,
-        importeDeclarado: arr.ingresos,
-        dias: arr.diasArrendado ?? 0,
-        tipoArrendamiento: arr.tipoArrendamiento === 'no_vivienda' ? 'no_vivienda' : 'vivienda',
-        fechaContrato: arr.fechaContrato,
-        nifsDetectados: (arr.nifArrendatarios ?? []).filter(n => n && n.trim().length > 0),
-      });
-    }
-  }
+  await rutearArrendamientos(decl, porRefCatastral);
   invalidateCachedStores(['contracts']);
 
   // Paso 2 · aplicar el pre-relleno físico/explotación sobre los inmuebles ya

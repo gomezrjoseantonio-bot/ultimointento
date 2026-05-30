@@ -932,6 +932,12 @@ export async function crearOActualizarContrato(params: {
   propertyId: number;
   nifArrendatario: string;
   nifArrendatario2?: string;
+  /**
+   * V78 · cotitulares (NIFs adicionales) cuando un piso completo se declara con N NIFs en el
+   * mismo `<Arrendamiento>`. `nifArrendatario` es el principal; estos van a
+   * `inquilino.cotitulares`. Se crea 1 SOLO contrato y la renta NO se divide entre NIFs.
+   */
+  cotitulares?: string[];
   fechaContrato?: string;
   ingresosAnuales: number;
   tipoArrendamiento?: string;
@@ -942,10 +948,13 @@ export async function crearOActualizarContrato(params: {
   diasDeclarados?: number;
 }): Promise<void> {
   const {
-    propertyId, nifArrendatario, fechaContrato,
+    propertyId, nifArrendatario, cotitulares, fechaContrato,
     ingresosAnuales, tipoArrendamiento, tieneReduccion, ejercicio,
     importeDeclarado, diasDeclarados,
   } = params;
+  const cotitularesLimpios = (cotitulares ?? [])
+    .map((n) => (n ?? '').trim())
+    .filter((n) => n.length > 0 && normalizeNif(n) !== normalizeNif(nifArrendatario));
 
   if (!propertyId || !nifArrendatario) return;
 
@@ -1003,6 +1012,7 @@ export async function crearOActualizarContrato(params: {
         dni: nifArrendatario,
         telefono: '',
         email: '',
+        cotitulares: cotitularesLimpios,
       },
       fechaInicio,
       fechaFin: '2099-12-31', // Fin desconocido - importación AEAT
@@ -1044,19 +1054,34 @@ export async function crearOActualizarContrato(params: {
     });
   }
 
-  // Registrar ejercicio fiscal en el contrato
-  if (contratoId && importeDeclarado !== undefined) {
+  // Registrar ejercicio fiscal + cotitulares en el contrato (cubre rama duplicado y nuevo)
+  if (contratoId) {
     const contrato = await getContract(contratoId);
     if (contrato) {
-      const ejerciciosFiscales = contrato.ejerciciosFiscales ?? {};
-      ejerciciosFiscales[ejercicio] = {
-        estado: 'declarado',
-        importeDeclarado,
-        dias: diasDeclarados,
-        fuente: 'xml_aeat',
-        fechaImportacion: new Date().toISOString(),
-      };
-      await updateContract(contratoId, { ejerciciosFiscales });
+      const updates: Partial<Contract> = {};
+
+      if (importeDeclarado !== undefined) {
+        const ejerciciosFiscales = contrato.ejerciciosFiscales ?? {};
+        ejerciciosFiscales[ejercicio] = {
+          estado: 'declarado',
+          importeDeclarado,
+          dias: diasDeclarados,
+          fuente: 'xml_aeat',
+          fechaImportacion: new Date().toISOString(),
+        };
+        updates.ejerciciosFiscales = ejerciciosFiscales;
+      }
+
+      // V78 · cotitulares · unión con los ya existentes (idempotente); init [] si faltaba
+      if (cotitularesLimpios.length > 0) {
+        const previos = contrato.inquilino?.cotitulares ?? [];
+        const merged = Array.from(new Set([...previos, ...cotitularesLimpios]));
+        updates.inquilino = { ...contrato.inquilino, cotitulares: merged };
+      } else if (contrato.inquilino && contrato.inquilino.cotitulares === undefined) {
+        updates.inquilino = { ...contrato.inquilino, cotitulares: [] };
+      }
+
+      if (Object.keys(updates).length > 0) await updateContract(contratoId, updates);
     }
   }
 }

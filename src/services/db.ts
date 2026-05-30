@@ -28,7 +28,8 @@ import type { AvisoCerrado } from '../types/avisosUsuario';
 import type { ObjetivoVital } from '../types/objetivosVitales';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 77; // V77 (wizard import XML V2 · pilar 1): añade campos opcionales a `properties` para explotación/tipología (subtipoVivienda, anexos.plazasParking, explotacion{estadoOperativo, unidadesArrendables}). Se mapea sobre campos existentes (tipoActivo, anexos, usoTipo, alquilerPorHabitaciones) en lugar de duplicar. Migración suave · sin cambios de stores/índices · inmuebles pre-V77 quedan con los campos undefined. 44 stores totales (sin cambio · los 5 stores fiscales NO se eliminan: tienen lectores/escritores vivos).
+const DB_VERSION = 78; // V78 (refactor modelo alquileres v3): nuevo store `botesAnualesSinIdentificar` (Camino 2 del wizard XML AEAT) + campo persistido `Property.modoExplotacion` (piso_completo/por_habitaciones/mixto) + campo `Contract.inquilino.cotitulares[]` (N NIFs en piso completo). Migración post-upgrade idempotente: deriva `modoExplotacion` del legacy `alquilerPorHabitaciones.activo`, inicializa `cotitulares=[]`, y elimina Contracts huérfanos `estadoContrato='sin_identificar'` + sus treasuryEvents en cascada (decisión Jose · reimportar limpio). 45 stores totales.
+// V77 (wizard import XML V2 · pilar 1): añade campos opcionales a `properties` para explotación/tipología (subtipoVivienda, anexos.plazasParking, explotacion{estadoOperativo, unidadesArrendables}). Se mapea sobre campos existentes (tipoActivo, anexos, usoTipo, alquilerPorHabitaciones) en lugar de duplicar. Migración suave · sin cambios de stores/índices · inmuebles pre-V77 quedan con los campos undefined. 44 stores totales (sin cambio · los 5 stores fiscales NO se eliminan: tienen lectores/escritores vivos).
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -154,6 +155,15 @@ export interface Property {
     estadoOperativo?: 'operativo' | 'en_reforma' | 'vacante' | 'uso_propio';
     unidadesArrendables?: number;
   };
+  /**
+   * V78 · refactor modelo alquileres v3 · campo PERSISTIDO que decide el ruteo del
+   * wizard de import XML AEAT (Camino 1 · Contract identificado · vs Camino 2 · Bote anual).
+   * Reemplaza la derivación transitoria que sólo vivía en el wizard (`useInmueblesDetectados`).
+   * Migración V77→V78 lo deriva del legacy `alquilerPorHabitaciones.activo`
+   * (true → 'por_habitaciones' · false/undefined → 'piso_completo'). El valor 'mixto'
+   * sólo se asigna manualmente o por derivación del XML al importar (no se infiere del boolean).
+   */
+  modoExplotacion?: 'piso_completo' | 'por_habitaciones' | 'mixto';
   // H9-FISCAL: AEAT Amortization data
   aeatAmortization?: {
     // Acquisition type and dates
@@ -701,6 +711,42 @@ export type MotivoFin =
  */
 export type VolveriaAAlquilar = 'si' | 'con_reservas' | 'no';
 
+/**
+ * V78 · refactor modelo alquileres v3 · Camino 2 del wizard de import XML AEAT.
+ *
+ * Un `BoteAnualSinIdentificar` representa el importe de alquiler DECLARADO en la AEAT
+ * para un (inmueble · año) que NO pudo enrutarse a un Contract identificado (Camino 1):
+ * arrendamientos sin NIF, por habitaciones, mixtos, o no-vivienda. Es historia fiscal,
+ * NO genera cobros previstos en Tesorería. El usuario lo concilia después vinculando
+ * Contracts reales (manual o Rentila) que descuentan del `saldoPendiente`.
+ *
+ * Invariante: máximo 1 bote por (inmuebleId · año) — garantizado por índice único.
+ */
+export interface BoteAnualSinIdentificar {
+  id?: number;
+  inmuebleId: number;
+  año: number;                                   // ejercicio fiscal
+  importeDeclarado: number;                      // del XML AEAT · acumulado si varios bloques
+  díasDeclarados: number;                        // suma · cap 366
+  nifsDetectados: string[];                      // todos los NIFs hallados en bloques que van al bote
+  tiposArrendamientoOriginales: ('vivienda' | 'no_vivienda' | string)[]; // para auditoría
+  importeAsignado: number;                       // suma de lo vinculado · default 0
+  saldoPendiente: number;                        // = importeDeclarado - importeAsignado
+  estado: 'pendiente_total' | 'parcial' | 'cerrado' | 'sobre_asignado';
+  contractsVinculados: BoteContractLink[];       // default []
+  fuente: 'xml_aeat';
+  fechaImportación: string;                      // ISO
+  fechaUltimaModificación: string;               // ISO
+}
+
+/** V78 · vinculación de un Contract a un bote (puede ser parcial). */
+export interface BoteContractLink {
+  contractId: number;
+  importeAsignado: number;                       // cuánto del Contract se imputa al bote
+  fechaVinculación: string;                      // ISO
+  origen: 'sugerencia_atlas' | 'manual_usuario';
+}
+
 // Enhanced Contract interface according to CONTRATOS (HORIZON + PULSE) specification
 export interface Contract {
   id?: number;
@@ -720,6 +766,14 @@ export interface Contract {
     dni: string;
     telefono: string;
     email: string;
+    /**
+     * V78 · refactor modelo alquileres v3 · NIFs adicionales (cotitulares) cuando un
+     * piso completo se declara con N NIFs en el mismo `<Arrendamiento>` (p.ej. pareja).
+     * `dni` guarda el NIF principal (TANIFARREND1); `cotitulares` el resto (TANIFARREND2…).
+     * Se crea 1 solo Contract (NO N contratos) y la renta NO se divide entre NIFs.
+     * Default `[]`. La migración V77→V78 lo inicializa a `[]` en Contracts existentes.
+     */
+    cotitulares?: string[];
   };
   
   // NEW FIELDS: Contract dates (mandatory for all contracts)
@@ -2190,6 +2244,7 @@ interface AtlasHorizonDB {
   // loan_settlements: ELIMINADO en V63 (sub-tarea 4) — destino prestamos.liquidacion · 0 registros en producción
   documents: Document;
   contracts: Contract;
+  botesAnualesSinIdentificar: BoteAnualSinIdentificar; // V78: Camino 2 wizard XML AEAT · importes declarados pendientes de vincular
   // NOTE: rentCalendar and rentPayments removed in V4.5 — migrated to rentaMensual
   // rentaMensual: ELIMINADO en V62 (sub-tarea 3) — deprecated V5.6 · 0 registros
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
@@ -2627,6 +2682,19 @@ export const initDB = async () => {
         // ex-contrato muestra "—" en su lugar.
         if (oldVersion < 76) {
           // no-op intencionado · sin pérdida de datos · sin seed
+        }
+
+        // V78 · refactor modelo alquileres v3 · store del Camino 2 (botes anuales).
+        // Guardado con `!contains` para cubrir tanto DBs frescas (oldVersion 0) como
+        // upgrades v77→v78. La migración de DATOS (derivar modoExplotacion, init
+        // cotitulares, borrar Contracts huérfanos sin_identificar) corre en el hook
+        // post-upgrade idempotente más abajo (no aquí, para no chocar con el `return`
+        // de la rama V75 que cortaría la ejecución en DBs frescas).
+        if (!db.objectStoreNames.contains('botesAnualesSinIdentificar')) {
+          const botesStore = db.createObjectStore('botesAnualesSinIdentificar', { keyPath: 'id', autoIncrement: true });
+          botesStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          botesStore.createIndex('inmuebleId-año', ['inmuebleId', 'año'], { unique: true });
+          botesStore.createIndex('estado', 'estado', { unique: false });
         }
 
         // H5: expensesH5, reforms, reformLineItems — DELETED in V4.2
@@ -4784,6 +4852,88 @@ export const initDB = async () => {
         } catch (err) {
           console.warn('[DB V5.9 post-upgrade] merge a escenarios falló:', err);
         }
+      }
+      return db;
+    });
+
+    // ── V78 · refactor modelo alquileres v3 · migración de datos post-upgrade ──
+    // Idempotente vía flag en keyval. Se ejecuta con transacciones readwrite
+    // normales (fuera de la versionchange) para evitar el `return` de la rama
+    // V75 que cortaría la migración en DBs frescas. Pasos:
+    //   B · derivar `Property.modoExplotacion` del legacy `alquilerPorHabitaciones.activo`
+    //   C · inicializar `Contract.inquilino.cotitulares = []` en contratos existentes
+    //   D · eliminar Contracts huérfanos `estadoContrato='sin_identificar'` + cascada
+    //       de `treasuryEvents` (sourceType='contrato', sourceId=contractId)
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v78_alquileres';
+        const yaHecha = await db.get('keyval', FLAG);
+        if (yaHecha === 'completed') return db;
+
+        // Paso B · Property.modoExplotacion desde el boolean legacy
+        try {
+          const tx = db.transaction(['properties'], 'readwrite');
+          const store = tx.objectStore('properties');
+          const props = (await store.getAll()) as Property[];
+          for (const p of props) {
+            if (p?.id == null) continue;
+            if (p.modoExplotacion) continue; // ya poblado · idempotente
+            const activo = (p as any).alquilerPorHabitaciones?.activo === true;
+            p.modoExplotacion = activo ? 'por_habitaciones' : 'piso_completo';
+            await store.put(p);
+          }
+          await tx.done;
+        } catch (err) {
+          console.warn('[DB V78] Paso B (modoExplotacion) falló:', err);
+        }
+
+        // Paso C · inicializar cotitulares=[] en Contracts existentes
+        // Paso D · recolectar y eliminar Contracts huérfanos sin_identificar
+        const huerfanosIds: number[] = [];
+        try {
+          const tx = db.transaction(['contracts'], 'readwrite');
+          const store = tx.objectStore('contracts');
+          const contracts = (await store.getAll()) as Contract[];
+          for (const c of contracts) {
+            if (c?.id == null) continue;
+            if (c.estadoContrato === 'sin_identificar') {
+              huerfanosIds.push(c.id);
+              await store.delete(c.id);
+              continue;
+            }
+            if (c.inquilino && c.inquilino.cotitulares === undefined) {
+              c.inquilino.cotitulares = [];
+              await store.put(c);
+            }
+          }
+          await tx.done;
+        } catch (err) {
+          console.warn('[DB V78] Pasos C/D (cotitulares + borrado huérfanos) falló:', err);
+        }
+
+        // Paso D (cascada) · borrar treasuryEvents de los Contracts eliminados
+        if (huerfanosIds.length > 0) {
+          try {
+            const idSet = new Set(huerfanosIds);
+            const tx = db.transaction(['treasuryEvents'], 'readwrite');
+            const store = tx.objectStore('treasuryEvents');
+            const eventos = (await store.getAll()) as TreasuryEvent[];
+            for (const ev of eventos) {
+              if (ev?.id == null) continue;
+              if ((ev as any).sourceType === 'contrato' && idSet.has(Number((ev as any).sourceId))) {
+                await store.delete(ev.id);
+              }
+            }
+            await tx.done;
+          } catch (err) {
+            console.warn('[DB V78] Paso D cascada treasuryEvents falló:', err);
+          }
+          console.log(`[DB V78] Migración alquileres v3 · ${huerfanosIds.length} Contracts sin_identificar eliminados + treasuryEvents en cascada`);
+        }
+
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB V78 post-upgrade] migración alquileres falló:', err);
       }
       return db;
     });
