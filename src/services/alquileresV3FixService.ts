@@ -11,7 +11,7 @@ import type { Property, BoteAnualSinIdentificar } from './db';
 
 /** Normaliza una referencia catastral igual que el distribuidor (sin espacios/puntos/guiones). */
 const normRef = (v?: string | null): string =>
-  (v ?? '').replace(/[\s.\-]/g, '').trim().toUpperCase();
+  (v ?? '').replace(/[\s.-]/g, '').trim().toUpperCase();
 
 /**
  * V78.1 (fix H2) · repuebla `nifsDetectados` de los botes ya creados leyendo la declaración
