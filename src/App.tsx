@@ -205,8 +205,6 @@ const InmueblesNuevoGastoRecurrente = lazyWithPreload(
 const PersonalVivienda = lazyWithPreload(() => import('./modules/personal/pages/ViviendaPage'));
 const PersonalPresupuesto = lazyWithPreload(() => import('./modules/personal/pages/PresupuestoPage'));
 
-// Gestión Personal hub
-const GestionPersonalPage = lazyWithPreload(() => import('./pages/GestionPersonal/GestionPersonalPage'));
 
 // Gestión Inmuebles hub
 const GestionInmueblesList = lazyWithPreload(() => import('./pages/GestionInmuebles/GestionInmueblesList'));
@@ -1300,26 +1298,14 @@ function App() {
                   paralela (GestionInversionesPage) duplicada con la galería v5
                   canónica /inversiones. Eliminada · redirect permanente. */}
               <Route path="inversiones" element={<Navigate to="/inversiones" replace />} />
-              <Route path="personal" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <GestionPersonalPage />
-                </React.Suspense>
-              } />
-              <Route path="personal/nueva-nomina" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <NominaWizardPage />
-                </React.Suspense>
-              } />
-              <Route path="personal/nuevo-autonomo" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <AutonomoWizardPage />
-                </React.Suspense>
-              } />
-              <Route path="personal/otros-ingresos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <OtrosIngresosWizardPage />
-                </React.Suspense>
-              } />
+              {/* FIX consolidar módulo Personal · /gestion/personal DEPRECADA.
+                  El hub duplicaba /personal/ingresos y servía como redirect
+                  post-save con data stale. Toda la gestión vive en /personal/*.
+                  Mantener redirects de compat para enlaces/bookmarks antiguos. */}
+              <Route path="personal" element={<Navigate to="/personal/ingresos" replace />} />
+              <Route path="personal/nueva-nomina" element={<Navigate to="/personal/nomina/nueva" replace />} />
+              <Route path="personal/nuevo-autonomo" element={<Navigate to="/personal/autonomo/nuevo" replace />} />
+              <Route path="personal/otros-ingresos" element={<Navigate to="/personal/otros-ingresos/nuevo" replace />} />
             </Route>
 
             {/* T20 Fase 3a · Contratos v5 (sustituye pulse/contratos legacy)

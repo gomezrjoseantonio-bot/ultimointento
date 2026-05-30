@@ -21,28 +21,6 @@ import {
 const añoEnCurso = (): number => new Date().getFullYear();
 
 /**
- * Estimación bruta anual de ingresos para un autónomo.
- *
- * El tipo `Autonomo` NO tiene `ingresoBrutoAnualEstimado`. La fuente real
- * son `fuentesIngreso` (estimación con calendario) y `ingresosFacturados`
- * (registros históricos del año en curso). Preferimos `fuentesIngreso`
- * porque es proyección · `ingresosFacturados` cubre lo ya emitido.
- */
-export const computeAutonomoIngresoAnualEstimado = (a: Autonomo): number => {
-  if (a.fuentesIngreso && a.fuentesIngreso.length > 0) {
-    return a.fuentesIngreso.reduce((sum, f) => {
-      const meses = Array.isArray(f.meses) && f.meses.length > 0 ? f.meses.length : 12;
-      const importeAnual = (f.importeEstimado ?? 0) * meses;
-      return sum + importeAnual;
-    }, 0);
-  }
-  if (a.ingresosFacturados && a.ingresosFacturados.length > 0) {
-    return a.ingresosFacturados.reduce((sum, i) => sum + (i.importe ?? 0), 0);
-  }
-  return 0;
-};
-
-/**
  * Neto líquido de una nómina en un mes concreto · lo que llega al banco.
  * Delega en la ÚNICA FUENTE DE VERDAD `calcularNetoMesNomina`.
  *
