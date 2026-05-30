@@ -4937,6 +4937,151 @@ export const initDB = async () => {
       }
       return db;
     });
+
+    // ── V78.1 (fix post-deploy H1) · self-heal de `modoExplotacion` ──
+    // El Paso B original iba en el mismo flag que C/D y con un único try/catch (un put
+    // que fallara abortaba el resto · y si el flag ya estaba 'completed' no reintentaba).
+    // Este paso, con su PROPIO flag y try/catch POR property, rellena cualquier inmueble
+    // que siguiera sin `modoExplotacion` en producción (causa raíz de H1). Idempotente.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v78_modoExplotacion_selfheal_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+        let curados = 0;
+        const props = (await db.getAll('properties')) as Property[];
+        for (const p of props) {
+          if (p?.id == null || p.modoExplotacion) continue;
+          try {
+            const activo = (p as any).alquilerPorHabitaciones?.activo === true;
+            p.modoExplotacion = activo ? 'por_habitaciones' : 'piso_completo';
+            await db.put('properties', p);
+            curados++;
+          } catch (errP) {
+            console.warn(`[DB V78.1] self-heal modoExplotacion falló en property ${p.id}:`, errP);
+          }
+        }
+        if (curados > 0) console.log(`[DB V78.1] self-heal · ${curados} properties con modoExplotacion poblado`);
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB V78.1 self-heal modoExplotacion] falló:', err);
+      }
+      return db;
+    });
+
+    // ── V78.1 (fix post-deploy H1.4) · limpieza de Contracts huérfanos mal ruteados ──
+    // Un Contract creado desde XML AEAT (algún ejercicioFiscal con fuente='xml_aeat') sobre un
+    // inmueble que ahora es `por_habitaciones`/`mixto` está mal ruteado (debió ir al bote · caso
+    // "Fuertes Acevedo"/FA32). Se ELIMINA el Contract + sus treasuryEvents y se SALVA su importe
+    // y sus NIFs (inquilino.dni + cotitulares) al bote del (inmueble·año), de modo que no se
+    // pierde dato si el usuario no re-importa. Un re-import posterior REEMPLAZA el bote limpio.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v78_huerfanos_modo_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+
+        const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+        const estadoBote = (decl: number, asig: number): BoteAnualSinIdentificar['estado'] => {
+          const EPS = 0.005;
+          if (asig <= EPS) return 'pendiente_total';
+          if (asig > decl + EPS) return 'sobre_asignado';
+          if (asig >= decl - EPS) return 'cerrado';
+          return 'parcial';
+        };
+
+        const tx = db.transaction(
+          ['properties', 'contracts', 'treasuryEvents', 'botesAnualesSinIdentificar'],
+          'readwrite',
+        );
+        const propsStore = tx.objectStore('properties');
+        const contractsStore = tx.objectStore('contracts');
+        const eventsStore = tx.objectStore('treasuryEvents');
+        const botesStore = tx.objectStore('botesAnualesSinIdentificar');
+
+        const allProps = (await propsStore.getAll()) as Property[];
+        const modoById = new Map<number, Property['modoExplotacion']>();
+        for (const p of allProps) if (p?.id != null) modoById.set(p.id, p.modoExplotacion);
+
+        const allContracts = (await contractsStore.getAll()) as Contract[];
+        const orphanIds: number[] = [];
+
+        for (const c of allContracts) {
+          if (c?.id == null || c.inmuebleId == null) continue;
+          if (c.estadoContrato === 'sin_identificar') continue; // ya tratados en el flag anterior
+          const modo = modoById.get(c.inmuebleId);
+          if (modo !== 'por_habitaciones' && modo !== 'mixto') continue;
+          const ejercicios = c.ejerciciosFiscales ?? {};
+          const esXmlAeat = Object.values(ejercicios).some((e: any) => e?.fuente === 'xml_aeat');
+          if (!esXmlAeat) continue;
+
+          // NIFs atrapados en el contrato → al bote (recupera H2 para FA32)
+          const nifsContrato = [c.inquilino?.dni, ...((c.inquilino as any)?.cotitulares ?? [])]
+            .map((n) => (n ?? '').trim())
+            .filter((n) => n.length > 0);
+
+          for (const [añoStr, ef] of Object.entries(ejercicios) as Array<[string, any]>) {
+            const año = Number(añoStr);
+            const importe = Number(ef?.importeDeclarado) || 0;
+            if (!año || importe <= 0) continue;
+            const dias = Math.min(366, Number(ef?.dias) || 0);
+            const ahora = new Date().toISOString();
+            const existente = (await botesStore
+              .index('inmuebleId-año')
+              .get([c.inmuebleId, año])) as BoteAnualSinIdentificar | undefined;
+
+            if (existente) {
+              existente.importeDeclarado = round2(existente.importeDeclarado + importe);
+              existente.díasDeclarados = Math.min(366, (existente.díasDeclarados || 0) + dias);
+              existente.nifsDetectados = Array.from(
+                new Set([...(existente.nifsDetectados ?? []), ...nifsContrato]),
+              );
+              existente.saldoPendiente = round2(existente.importeDeclarado - (existente.importeAsignado || 0));
+              existente.estado = estadoBote(existente.importeDeclarado, existente.importeAsignado || 0);
+              existente.fechaUltimaModificación = ahora;
+              await botesStore.put(existente);
+            } else {
+              await botesStore.add({
+                inmuebleId: c.inmuebleId,
+                año,
+                importeDeclarado: round2(importe),
+                díasDeclarados: dias,
+                nifsDetectados: nifsContrato,
+                tiposArrendamientoOriginales: [],
+                importeAsignado: 0,
+                saldoPendiente: round2(importe),
+                estado: 'pendiente_total',
+                contractsVinculados: [],
+                fuente: 'xml_aeat',
+                fechaImportación: ahora,
+                fechaUltimaModificación: ahora,
+              } as BoteAnualSinIdentificar);
+            }
+          }
+
+          orphanIds.push(c.id);
+          await contractsStore.delete(c.id);
+        }
+
+        if (orphanIds.length > 0) {
+          const idSet = new Set(orphanIds);
+          const eventos = (await eventsStore.getAll()) as TreasuryEvent[];
+          for (const ev of eventos) {
+            if (ev?.id == null) continue;
+            if ((ev as any).sourceType === 'contrato' && idSet.has(Number((ev as any).sourceId))) {
+              await eventsStore.delete(ev.id);
+            }
+          }
+        }
+
+        await tx.done;
+        if (orphanIds.length > 0) {
+          console.log(`[DB V78.1] limpieza huérfanos · ${orphanIds.length} Contracts mal ruteados eliminados · importe+NIFs salvados al bote`);
+        }
+        await db.put('keyval', FLAG, 'completed');
+      } catch (err) {
+        console.warn('[DB V78.1 limpieza huérfanos] falló:', err);
+      }
+      return db;
+    });
   }
   return dbPromise;
 };
