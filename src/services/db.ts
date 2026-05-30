@@ -1,5 +1,6 @@
 import { openDB, IDBPDatabase } from 'idb';
 import type { DBSchema, IDBPObjectStore, IndexNames, StoreNames } from 'idb';
+import { repoblarNifsBotesDesdeArchivo } from './alquileresV3FixService';
 import type { DeclaracionCompleta } from '../types/declaracionCompleta';
 import { PosicionInversion } from '../types/inversiones';
 import type {
@@ -5079,6 +5080,24 @@ export const initDB = async () => {
         await db.put('keyval', FLAG, 'completed');
       } catch (err) {
         console.warn('[DB V78.1 limpieza huérfanos] falló:', err);
+      }
+      return db;
+    });
+
+    // ── V78.1 (fix post-deploy H2) · repoblar nifsDetectados de botes existentes ──
+    // Corre DESPUÉS del self-heal de modoExplotacion (lo necesita para acotar a botes de
+    // inmuebles por_habitaciones/mixto). Lee la declaración archivada en
+    // `ejerciciosFiscalesCoord[año].aeat.declaracionCompleta` y mergea los NIFs que faltaran
+    // (Opción B · sin requerir re-import). Idempotente vía flag.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v78_bote_nifs_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+        const n = await repoblarNifsBotesDesdeArchivo(db as unknown as IDBPDatabase<any>);
+        if (n > 0) console.log(`[DB V78.1] repoblado nifsDetectados en ${n} botes desde la declaración archivada`);
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB V78.1 repoblar nifs botes] falló:', err);
       }
       return db;
     });
