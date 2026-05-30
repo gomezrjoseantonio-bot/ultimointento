@@ -10,7 +10,7 @@ import type { ExtraccionCompleta } from './aeatParserService';
 import type { Prestamo } from '../types/prestamos';
 import type { PersonalData } from '../types/personal';
 import { prestamosService } from './prestamosService';
-import { saveContract, updateContract, getContractsByProperty, getContract } from './contractService';
+import { saveContract, updateContract, getContractsByProperty, getContract, calcularFechaFinLAUImport, FECHA_FIN_INDEFINIDO } from './contractService';
 import { declararEjercicio, ejercicioFiscalService } from './ejercicioFiscalService';
 import { ejecutarOnboardingPersonal, analizarDatosPersonales } from './personalOnboardingService';
 import type { AnalisisPersonal } from './personalOnboardingService';
@@ -1001,6 +1001,9 @@ export async function crearOActualizarContrato(params: {
     const fechaInicio = fechaContrato || `${ejercicio}-01-01`;
     const rentaMensual = ingresosAnuales > 0 ? Math.round(ingresosAnuales / 12) : 0;
     const esVivienda = !tipoArrendamiento || tipoArrendamiento === 'vivienda';
+    // V78.1 (Extra 1 · LAU 5 años) · habitual → inicio+5y si cae en el futuro, si no indefinido.
+    // Temporada/habitación: fin desconocido → sentinel indefinido (como hasta ahora).
+    const fechaFinContrato = esVivienda ? calcularFechaFinLAUImport(fechaInicio) : FECHA_FIN_INDEFINIDO;
 
     contratoId = await saveContract({
       inmuebleId: propertyId,
@@ -1015,7 +1018,7 @@ export async function crearOActualizarContrato(params: {
         cotitulares: cotitularesLimpios,
       },
       fechaInicio,
-      fechaFin: '2099-12-31', // Fin desconocido - importación AEAT
+      fechaFin: fechaFinContrato, // V78.1 · habitual: LAU +5y (si futuro), si no indefinido
       rentaMensual,
       diaPago: 1,
       margenGraciaDias: 5,
@@ -1045,7 +1048,7 @@ export async function crearOActualizarContrato(params: {
         email: '',
       },
       startDate: fechaInicio,
-      endDate: '2099-12-31',
+      endDate: fechaFinContrato,
       monthlyRent: rentaMensual,
       paymentDay: 1,
       periodicity: 'monthly',

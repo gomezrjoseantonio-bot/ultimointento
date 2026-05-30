@@ -1,6 +1,6 @@
 import { openDB, IDBPDatabase } from 'idb';
 import type { DBSchema, IDBPObjectStore, IndexNames, StoreNames } from 'idb';
-import { repoblarNifsBotesDesdeArchivo } from './alquileresV3FixService';
+import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT } from './alquileresV3FixService';
 import type { DeclaracionCompleta } from '../types/declaracionCompleta';
 import { PosicionInversion } from '../types/inversiones';
 import type {
@@ -5077,7 +5077,7 @@ export const initDB = async () => {
         if (orphanIds.length > 0) {
           console.log(`[DB V78.1] limpieza huérfanos · ${orphanIds.length} Contracts mal ruteados eliminados · importe+NIFs salvados al bote`);
         }
-        await db.put('keyval', FLAG, 'completed');
+        await db.put('keyval', 'completed', FLAG);
       } catch (err) {
         console.warn('[DB V78.1 limpieza huérfanos] falló:', err);
       }
@@ -5098,6 +5098,23 @@ export const initDB = async () => {
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
         console.warn('[DB V78.1 repoblar nifs botes] falló:', err);
+      }
+      return db;
+    });
+
+    // ── V78.1 (fix post-deploy · Extra 1 LAU 5 años) · recalcular fechaFin de contratos AEAT ──
+    // Los contratos habituales importados de AEAT quedaron con fechaFin sentinel (2099). Aplica la
+    // prórroga LAU (inicio+5y) SOLO si cae en el futuro y SOLO a contratos con fuente xml_aeat
+    // (no toca indefinidos creados a mano). Idempotente vía flag.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v78_fechafin_lau_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+        const n = await recalcularFechaFinContratosAEAT(db as unknown as IDBPDatabase<any>);
+        if (n > 0) console.log(`[DB V78.1] recalculada fechaFin (LAU +5y) en ${n} contratos AEAT habituales`);
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB V78.1 recalcular fechaFin LAU] falló:', err);
       }
       return db;
     });

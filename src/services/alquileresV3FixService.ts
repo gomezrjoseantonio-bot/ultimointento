@@ -7,7 +7,8 @@
 // tipos de db.ts, que se borran al compilar).
 
 import type { IDBPDatabase } from 'idb';
-import type { Property, BoteAnualSinIdentificar } from './db';
+import type { Property, BoteAnualSinIdentificar, Contract } from './db';
+import { calcularFechaFinLAUImport, FECHA_FIN_INDEFINIDO } from './contractService';
 
 /** Normaliza una referencia catastral igual que el distribuidor (sin espacios/puntos/guiones). */
 const normRef = (v?: string | null): string =>
@@ -72,6 +73,53 @@ export async function repoblarNifsBotesDesdeArchivo(db: IDBPDatabase<any>): Prom
         actualizados++;
       }
     }
+  }
+
+  return actualizados;
+}
+
+/** ¿El contrato proviene de una importación AEAT? (tiene algún ejercicio con fuente xml_aeat). */
+const esContratoImportadoAEAT = (c: Contract): boolean =>
+  Object.values(c.ejerciciosFiscales ?? {}).some((e: any) => e?.fuente === 'xml_aeat');
+
+/**
+ * V78.1 (Extra 1 · LAU 5 años) · recalcula `fechaFin`/`endDate` de los contratos HABITUALES
+ * ya creados por importación AEAT que quedaron con el sentinel indefinido (`2099-12-31`).
+ *
+ * Alcance acordado (ver decisiones del Commit 4):
+ *  - SOLO contratos con algún ejercicio `fuente === 'xml_aeat'` (no toca contratos manuales que
+ *    el usuario dejó indefinidos a propósito).
+ *  - SOLO `modalidad === 'habitual'` (temporada/vacacional conservan su fin).
+ *  - SOLO los que hoy tienen `fechaFin` indefinido (2099 o vacío); no pisa fechas ya concretas.
+ *  - Regla "+5y solo si futuro": si inicio+5y cae en el pasado respecto a `hoy`, se mantiene
+ *    indefinido (no se marca como vencido un contrato con fecha de inicio antigua/inventada).
+ *
+ * Idempotente y determinista (`hoy` inyectable). Devuelve el nº de contratos modificados.
+ */
+export async function recalcularFechaFinContratosAEAT(
+  db: IDBPDatabase<any>,
+  hoy: Date = new Date(),
+): Promise<number> {
+  const contratos = (await db.getAll('contracts')) as Contract[];
+  let actualizados = 0;
+
+  for (const c of contratos) {
+    if (c?.id == null) continue;
+    if (c.modalidad !== 'habitual') continue;
+    if (!esContratoImportadoAEAT(c)) continue;
+
+    const finActual = (c.fechaFin ?? '').slice(0, 10);
+    const esIndefinido = finActual === '' || finActual === FECHA_FIN_INDEFINIDO;
+    if (!esIndefinido) continue;
+    if (!c.fechaInicio) continue;
+
+    const nuevoFin = calcularFechaFinLAUImport(c.fechaInicio, hoy);
+    if (nuevoFin === finActual) continue; // sigue indefinido → no-op
+
+    c.fechaFin = nuevoFin;
+    (c as any).endDate = nuevoFin;
+    await db.put('contracts', c);
+    actualizados++;
   }
 
   return actualizados;
