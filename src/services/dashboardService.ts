@@ -1,5 +1,6 @@
 import { initDB } from './db';
 import { autonomoService } from './autonomoService';
+import { calcularNetoMesAutonomo } from './autonomoCalculoService';
 import { getFiscalContextSafe } from './fiscalContextService';
 import { rollForwardAccountBalancesToMonth } from './accountBalanceService';
 import { prestamosService } from './prestamosService';
@@ -981,8 +982,13 @@ class DashboardService {
         const personalDataId = ctx?.personalDataId ?? 1;
         const autonomos = await autonomoService.getAutonomosActivos(personalDataId);
         if (autonomos.length > 0) {
-          const annual = autonomoService.calculateEstimatedAnnualForAutonomos(autonomos);
-          autonomoNetoMensual = annual.rendimientoNeto / 12;
+          // FIX consolidar módulo Personal (F7) · ÚNICA FUENTE DE VERDAD
+          // (`calcularNetoMesAutonomo`) · neto del mes en curso = ingresos −
+          // cuotaRETA − gastos − retención IRPF. Coherente con panel/cards.
+          autonomoNetoMensual = autonomos.reduce(
+            (sum, a) => sum + calcularNetoMesAutonomo(a, currentMonth + 1, currentYear).netoMes,
+            0,
+          );
         }
       } catch {
         // No autonomo data

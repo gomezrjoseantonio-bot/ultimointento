@@ -164,8 +164,8 @@ const PanelPage: React.FC = () => {
         title="Sin datos del hogar aún"
         subtitle="Añade nóminas, autónomos o compromisos para empezar a ver tu panel personal."
         cta={{
-          label: 'Ir a Gestión Personal',
-          onClick: () => navigate('/gestion/personal'),
+          label: '+ Nueva nómina',
+          onClick: () => navigate('/personal/nomina/nueva'),
         }}
       />
     );

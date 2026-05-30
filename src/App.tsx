@@ -1240,6 +1240,35 @@ function App() {
               <Route path="importar-nominas" element={<Navigate to="/personal" replace />} />
             </Route>
 
+            {/* FIX consolidar módulo Personal · wizards bajo /personal/* (sustituyen
+                a /gestion/personal/*). Full-screen · fuera del layout de tabs.
+                Redirect post-save → /personal/ingresos. */}
+            <Route path="personal/nomina/nueva" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <NominaWizardPage />
+              </React.Suspense>
+            } />
+            <Route path="personal/nomina/:id/editar" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <NominaWizardPage />
+              </React.Suspense>
+            } />
+            <Route path="personal/autonomo/nuevo" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <AutonomoWizardPage />
+              </React.Suspense>
+            } />
+            <Route path="personal/autonomo/:id/editar" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <AutonomoWizardPage />
+              </React.Suspense>
+            } />
+            <Route path="personal/otros-ingresos/nuevo" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <OtrosIngresosWizardPage />
+              </React.Suspense>
+            } />
+
             {/* Gestión Personal + Gestión Inversiones + Gestión Inmuebles */}
             <Route path="gestion">
               <Route path="inmuebles" element={

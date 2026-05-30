@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CheckCircle, X, ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { autonomoService } from '../../../services/autonomoService';
 import { personalDataService } from '../../../services/personalDataService';
@@ -120,9 +120,11 @@ const Stepper: React.FC<{ step: number; steps: string[] }> = ({ step, steps }) =
 const AutonomoWizard: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const routeParams = useParams();
   const titularParam = (searchParams.get('titular') || 'yo') as 'yo' | 'pareja';
-  const idParam = searchParams.get('id');
-  const parsedAutonomoId = idParam ? Number(idParam) : null;
+  // Ruta nueva `/personal/autonomo/:id/editar` (path param) · compat con `?id=N`.
+  const idParam = routeParams.id ?? searchParams.get('id');
+  const parsedAutonomoId = idParam != null ? Number(idParam) : null;
   const autonomoId =
     parsedAutonomoId !== null && Number.isFinite(parsedAutonomoId) ? parsedAutonomoId : null;
   const isEditing = autonomoId !== null;
@@ -329,7 +331,7 @@ const AutonomoWizard: React.FC = () => {
       } else {
         await autonomoService.saveAutonomo(autonomoData);
       }
-      navigate('/gestion/personal');
+      navigate('/personal/ingresos');
     } catch (e) {
       console.error(e);
     } finally {
@@ -648,7 +650,7 @@ const AutonomoWizard: React.FC = () => {
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Nueva actividad autónoma</div>
           <div style={{ fontSize: 13, color: 'var(--grey-500)', fontFamily: FONT }}>{titularNombre}</div>
         </div>
-        <button onClick={() => navigate('/gestion/personal')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
+        <button onClick={() => navigate('/personal/ingresos')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
           <X size={20} />
         </button>
       </div>

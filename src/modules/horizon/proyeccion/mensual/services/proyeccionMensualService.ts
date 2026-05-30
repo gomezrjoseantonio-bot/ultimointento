@@ -3,6 +3,7 @@
 
 import { OpexRule, Contract } from '../../../../../services/db';
 import { nominaService } from '../../../../../services/nominaService';
+import { calcularNetoMesNomina } from '../../../../../services/nominaCalculoService';
 import { autonomoService } from '../../../../../services/autonomoService';
 import { pensionService } from '../../../../../services/pensionService';
 import { otrosIngresosService } from '../../../../../services/otrosIngresosService';
@@ -694,7 +695,8 @@ async function loadBaseData(): Promise<BaseData> {
   const personalDataId = ctx?.personalDataId ?? 1;
 
   // ── A. NÓMINAS ────────────────────────────────────────────────────────────
-  // Use calculateSalary() to get the exact monthly net distribution
+  // FIX consolidar módulo Personal (F6) · ÚNICA FUENTE DE VERDAD
+  // (`calcularNetoMesNomina`) · misma cifra que card/panel/wizard/Tesorería.
   const nominaNetaMensual: number[] = new Array(12).fill(0);
   const nominaDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
 
@@ -702,15 +704,13 @@ async function loadBaseData(): Promise<BaseData> {
     const nominas = await nominaService.getNominas(personalDataId);
     const nominasActivas = nominas.filter(n => n.activa);
     for (const nomina of nominasActivas) {
-      // PR-C4 · pasar `year` para que cada mes use el snapshot vigente.
-      const calculo = nominaService.calculateSalary(nomina, year);
-
-      for (const mesData of calculo.distribucionMensual) {
-        const idx = mesData.mes - 1; // 0-indexed
-        nominaNetaMensual[idx] += mesData.netoTotal;
+      for (let mes = 1; mes <= 12; mes++) {
+        const netoMes = calcularNetoMesNomina(nomina, mes, year).netoMes;
+        const idx = mes - 1; // 0-indexed
+        nominaNetaMensual[idx] += netoMes;
         nominaDrillDown[idx].push({
           concepto: nomina.nombre ?? 'Nómina',
-          importe: mesData.netoTotal,
+          importe: netoMes,
           fuente: nomina.nombre,
         });
       }

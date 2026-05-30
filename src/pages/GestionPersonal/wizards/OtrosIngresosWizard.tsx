@@ -188,7 +188,7 @@ const OtrosIngresosWizard: React.FC = () => {
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Otros ingresos</div>
           <div style={{ fontSize: 13, color: 'var(--grey-500)', fontFamily: FONT }}>{titularNombre}</div>
         </div>
-        <button onClick={() => navigate('/gestion/personal')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
+        <button onClick={() => navigate('/personal/ingresos')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
           <X size={20} />
         </button>
       </div>
@@ -385,7 +385,7 @@ const OtrosIngresosWizard: React.FC = () => {
       {/* Footer */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid var(--grey-200, #DDE3EC)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', zIndex: 10 }}>
         <button
-          onClick={() => navigate('/gestion/personal')}
+          onClick={() => navigate('/personal/ingresos')}
           style={{ padding: '10px 24px', borderRadius: 10, background: 'var(--navy-900, #042C5E)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: 'pointer' }}
         >
           Guardar

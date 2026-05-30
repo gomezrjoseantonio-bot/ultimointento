@@ -16,6 +16,7 @@ import { personalDataService } from '../../../../services/personalDataService';
 import { getFiscalContextSafe } from '../../../../services/fiscalContextService';
 import { patronGastosPersonalesService } from '../../../../services/patronGastosPersonalesService';
 import { nominaService } from '../../../../services/nominaService';
+import { calcularNetoMesNomina } from '../../../../services/nominaCalculoService';
 import { getAllContracts } from '../../../../services/contractService';
 import { prestamosService } from '../../../../services/prestamosService';
 import { autonomoService } from '../../../../services/autonomoService';
@@ -442,15 +443,14 @@ export async function generateMonthlyForecasts(
         continue;
       }
 
-      // PR-C4 · pasar `year` para que el snapshot vigente del mes/año
-      // del forecast sea el aplicado.
-      const calculo = nominaService.calculateSalary(nomina, year);
-      const mesData = calculo.distribucionMensual.find(d => d.mes === month);
-      if (!mesData || mesData.netoTotal <= 0) continue;
+      // FIX consolidar módulo Personal (F6) · ÚNICA FUENTE DE VERDAD.
+      // El cobro previsto debe coincidir con la card/panel/wizard.
+      const netoMes = calcularNetoMesNomina(nomina, month, year).netoMes;
+      if (netoMes <= 0) continue;
 
       await insertEvent({
         type: 'income' as const,
-        amount: mesData.netoTotal,
+        amount: netoMes,
         predictedDate: buildDate(year, month, 25),
         description: `Nómina – ${nomina.nombre ?? 'Empresa'}`,
         sourceType: 'nomina' as const,
