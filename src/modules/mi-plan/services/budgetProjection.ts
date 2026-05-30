@@ -25,11 +25,9 @@ import type { Nomina, Autonomo } from '../../../types/personal';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import type { Contract } from '../../../services/db';
 import { initDB } from '../../../services/db';
-import { nominaService } from '../../../services/nominaService';
-import {
-  computeAutonomoIngresoAnualEstimado,
-  computeCompromisoImporteEnMes,
-} from '../../personal/helpers';
+import { calcularNetoMesNomina } from '../../../services/nominaCalculoService';
+import { calcularNetoMesAutonomo } from '../../../services/autonomoCalculoService';
+import { computeCompromisoImporteEnMes } from '../../personal/helpers';
 
 const MONTH_LABELS = [
   'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
@@ -83,11 +81,9 @@ export interface BudgetProjectionData {
 }
 
 /**
- * Calcula la entrada NETA mensual que aporta una nómina en el mes `month` (0-11).
- * Usa `nominaService.calculateSalary` que ya distribuye variables/bonus/pagas
- * extra · resta retenciones (SS · IRPF · plan pensiones empleado · otras
- * deducciones). El neto mensual es comparable con los movimientos bancarios
- * reales (Tesorería).
+ * Entrada NETA mensual que aporta una nómina en el mes `month` (0-11).
+ * FIX consolidar módulo Personal (F6) · ÚNICA FUENTE DE VERDAD
+ * (`calcularNetoMesNomina`) · misma cifra que card/panel/wizard/Tesorería.
  */
 const ingresoNominaEnMes = (
   nomina: Nomina,
@@ -95,37 +91,22 @@ const ingresoNominaEnMes = (
   year: number,
 ): number => {
   if (!nomina.activa) return 0;
-  if (!nomina.salarioBrutoAnual || nomina.salarioBrutoAnual <= 0) return 0;
-  try {
-    // PR-C4 · pasar `year` para que el snapshot vigente del mes/año sea
-    // el aplicado en el cálculo del neto mensual.
-    const calc = nominaService.calculateSalary(nomina, year);
-    const mes = calc.distribucionMensual.find((d) => d.mes === month + 1);
-    return mes?.netoTotal ?? 0;
-  } catch {
-    // Fallback simple si calculateSalary falla por datos parciales.
-    const meses = nomina.distribucion?.meses ?? 12;
-    if (meses === 14) {
-      const mensualidad = nomina.salarioBrutoAnual / 14;
-      if (month === 5 || month === 11) return mensualidad * 2;
-      return mensualidad;
-    }
-    return nomina.salarioBrutoAnual / 12;
-  }
+  return calcularNetoMesNomina(nomina, month + 1, year).netoMes;
 };
 
-const ingresoAutonomoEnMes = (autonomo: Autonomo, month: number): number => {
+/**
+ * Entrada NETA mensual de un autónomo (0-11) · ingresos − cuotaRETA − gastos −
+ * retención IRPF. FIX consolidar módulo Personal (F7) · ÚNICA FUENTE DE VERDAD
+ * (`calcularNetoMesAutonomo`). Las salidas (cuota/gastos) NO van por separado en
+ * `salidas`, por eso aquí se computa el neto · sin doble conteo.
+ */
+const ingresoAutonomoEnMes = (
+  autonomo: Autonomo,
+  month: number,
+  year: number,
+): number => {
   if (!autonomo.activo) return 0;
-  if (autonomo.fuentesIngreso && autonomo.fuentesIngreso.length > 0) {
-    return autonomo.fuentesIngreso.reduce((sum, f) => {
-      const meses = f.meses ?? [];
-      if (meses.length === 0 || meses.includes(month + 1)) {
-        return sum + (f.importeEstimado ?? 0);
-      }
-      return sum;
-    }, 0);
-  }
-  return computeAutonomoIngresoAnualEstimado(autonomo) / 12;
+  return calcularNetoMesAutonomo(autonomo, month + 1, year).netoMes;
 };
 
 const gastoCompromisoEnMes = (
@@ -244,7 +225,7 @@ export const computeBudgetProjectionFromData = (
       entradas += ingresoNominaEnMes(n, i, year);
     });
     data.autonomos.forEach((a) => {
-      entradas += ingresoAutonomoEnMes(a, i);
+      entradas += ingresoAutonomoEnMes(a, i, year);
     });
     data.contracts.forEach((c) => {
       entradas += ingresoContratoEnMes(c, year, i);

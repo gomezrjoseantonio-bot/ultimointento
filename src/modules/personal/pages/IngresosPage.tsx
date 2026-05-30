@@ -36,8 +36,8 @@ const IngresosPage: React.FC = () => {
         icon={<Icons.Personal size={20} />}
         title="Sin fuentes de ingreso"
         sub="Da de alta tu nómina, actividad como autónomo o cualquier otro ingreso del hogar para ver el desglose mensual y anual."
-        ctaLabel="+ ir a Gestión Personal"
-        onCtaClick={() => navigate('/gestion/personal')}
+        ctaLabel="+ Nueva nómina"
+        onCtaClick={() => navigate('/personal/nomina/nueva')}
       />
     );
   }
@@ -47,7 +47,7 @@ const IngresosPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 16 }}>
         <button
           type="button"
-          onClick={() => navigate('/gestion/personal/nueva-nomina')}
+          onClick={() => navigate('/personal/nomina/nueva')}
           style={btnPrimary}
         >
           <Icons.Plus size={14} strokeWidth={2} />
@@ -55,7 +55,7 @@ const IngresosPage: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => navigate('/gestion/personal/nuevo-autonomo')}
+          onClick={() => navigate('/personal/autonomo/nuevo')}
           style={btnGhost}
         >
           <Icons.Plus size={14} strokeWidth={2} />
@@ -63,7 +63,7 @@ const IngresosPage: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => navigate('/gestion/personal/otros-ingresos')}
+          onClick={() => navigate('/personal/otros-ingresos/nuevo')}
           style={btnGhost}
         >
           <Icons.Plus size={14} strokeWidth={2} />
@@ -99,7 +99,7 @@ const IngresosPage: React.FC = () => {
                   const netoAnual = dist.reduce((s, v) => s + v, 0);
                   const netoMes = dist[mesActual - 1] ?? 0;
                   const editar = () => {
-                    if (n.id != null) navigate(`/gestion/personal/nueva-nomina?id=${n.id}`);
+                    if (n.id != null) navigate(`/personal/nomina/${n.id}/editar`);
                     else showToastV5('Nómina sin id · no se puede editar');
                   };
                   return (
@@ -178,7 +178,7 @@ const IngresosPage: React.FC = () => {
                   const netoAnual = dist.reduce((s, v) => s + v, 0);
                   const netoMes = dist[mesActual - 1] ?? 0;
                   const editar = () => {
-                    if (a.id != null) navigate(`/gestion/personal/nuevo-autonomo?id=${a.id}`);
+                    if (a.id != null) navigate(`/personal/autonomo/${a.id}/editar`);
                     else showToastV5('Autónomo sin id · no se puede editar');
                   };
                   return (
@@ -262,7 +262,7 @@ const IngresosPage: React.FC = () => {
                       key={o.id ?? `${o.nombre ?? 'sin-nombre'}-${index}`}
                       style={{ cursor: 'pointer' }}
                       title="Editar otro ingreso"
-                      onClick={() => navigate(`/gestion/personal/otros-ingresos?titular=${titular}`)}
+                      onClick={() => navigate(`/personal/otros-ingresos/nuevo?titular=${titular}`)}
                     >
                       <td style={tdStyle}>
                         <strong>{o.nombre ?? `Ingreso #${o.id}`}</strong>
@@ -286,7 +286,7 @@ const IngresosPage: React.FC = () => {
                           aria-label="Editar otro ingreso"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/gestion/personal/otros-ingresos?titular=${titular}`);
+                            navigate(`/personal/otros-ingresos/nuevo?titular=${titular}`);
                           }}
                           style={iconBtn}
                         >

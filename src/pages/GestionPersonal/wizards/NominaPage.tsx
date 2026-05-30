@@ -21,7 +21,7 @@
 // ============================================================================
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   Calendar,
@@ -109,9 +109,12 @@ type ModoEdicion = 'rectificacion' | 'cambio-desde-fecha';
 const NominaPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const idParam = searchParams.get('id');
+  const routeParams = useParams();
+  // Ruta nueva `/personal/nomina/:id/editar` (path param) · compat con la ruta
+  // antigua `?id=N` (query param).
+  const idParam = routeParams.id ?? searchParams.get('id');
   const titularParam = (searchParams.get('titular') || 'yo') as 'yo' | 'pareja';
-  const parsedId = idParam !== null ? Number(idParam) : null;
+  const parsedId = idParam != null ? Number(idParam) : null;
   const nominaId = parsedId !== null && Number.isFinite(parsedId) ? parsedId : null;
   const isEditing = nominaId !== null;
 
@@ -479,7 +482,7 @@ const NominaPage: React.FC = () => {
       const ok = window.confirm('Tienes cambios sin guardar. ¿Salir igualmente?');
       if (!ok) return;
     }
-    navigate(-1);
+    navigate('/personal/ingresos');
   };
 
   const handleSave = async () => {
@@ -530,7 +533,7 @@ const NominaPage: React.FC = () => {
       } else {
         await nominaService.saveNomina(payload);
       }
-      navigate('/gestion/personal');
+      navigate('/personal/ingresos');
     } catch (e) {
       console.error('[NominaPage] error guardando', e);
       setErrorMsg('No se ha podido guardar la nómina. Inténtalo de nuevo.');
