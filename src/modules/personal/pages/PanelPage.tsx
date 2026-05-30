@@ -112,9 +112,9 @@ const PanelPage: React.FC = () => {
   // Paga extra entera en junio/diciembre · variable/bonus en su mes pagadero.
   const mesActual = new Date().getMonth() + 1;
   // Distribución real de NETO líquido por mes (lo que llega al banco · 12 entradas).
-  // Calcula la distribución de cada nómina/autónomo UNA SOLA VEZ por cambio de
-  // datos · evita que `calculateSalary` y `getMonthlyDistribution` se ejecuten
-  // 12 × N veces dentro de un loop.
+  // Cada nómina/autónomo se calcula vía la ÚNICA FUENTE DE VERDAD
+  // (nominaCalculoService / autonomoCalculoService) una sola vez por cambio de
+  // datos · misma cifra que la card de Ingresos y el wizard.
   const ingresosPorMes = useMemo(() => {
     const nominaDists = nominas.map((n) => computeNominaNetoPorMes(n));
     const autonomoDists = autonomos.map((a) => computeAutonomoNetoPorMes(a));
