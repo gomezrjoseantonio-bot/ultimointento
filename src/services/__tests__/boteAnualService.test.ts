@@ -32,7 +32,7 @@ describe('boteAnualService · V78 Camino 2', () => {
     (globalThis as any).indexedDB = new IDBFactory();
   });
 
-  it('crea, acumula múltiples bloques y respeta el índice único (inmueble·año)', async () => {
+  it('reemplaza los datos declarados del mismo (inmueble·año) y respeta el índice único', async () => {
     await seedV77();
     const { boteAnualService } = require('../boteAnualService');
 
@@ -44,19 +44,40 @@ describe('boteAnualService · V78 Camino 2', () => {
     expect(b1.saldoPendiente).toBe(10000);
     expect(b1.estado).toBe('pendiente_total');
 
-    // Segundo bloque del mismo (inmueble·año) → acumula, NO crea otro
+    // Re-import (declaración corregida del mismo ejercicio) → REEMPLAZA, NO crea otro ni suma.
+    // El orquestador agrega los bloques antes de llamar, por eso aquí la semántica es replace.
     const b2 = await boteAnualService.crearOActualizarBote({
-      inmuebleId: 5, año: 2024, importeDeclarado: 2500, díasDeclarados: 200,
-      nifsDetectados: ['87654321X'], tiposArrendamientoOriginales: ['no_vivienda'],
+      inmuebleId: 5, año: 2024, importeDeclarado: 12500, díasDeclarados: 366,
+      nifsDetectados: ['12345678Z', '87654321X'], tiposArrendamientoOriginales: ['vivienda', 'no_vivienda'],
     });
     expect(b2.id).toBe(b1.id);
     expect(b2.importeDeclarado).toBe(12500);
-    expect(b2.díasDeclarados).toBe(366); // capado
+    expect(b2.díasDeclarados).toBe(366);
     expect(b2.nifsDetectados.sort()).toEqual(['12345678Z', '87654321X']);
     expect(b2.tiposArrendamientoOriginales.sort()).toEqual(['no_vivienda', 'vivienda']);
 
     const todos = await boteAnualService.listarBotes();
     expect(todos).toHaveLength(1);
+  });
+
+  it('al reemplazar preserva importeAsignado/vínculos y recalcula saldo+estado', async () => {
+    await seedV77();
+    const { boteAnualService } = require('../boteAnualService');
+    const bote = await boteAnualService.crearOActualizarBote({
+      inmuebleId: 8, año: 2024, importeDeclarado: 10000, díasDeclarados: 365,
+    });
+    await boteAnualService.vincularContract(bote.id, 50, 4000, 'manual_usuario');
+
+    // Re-import con importe declarado menor → links intactos, saldo recalculado
+    const r = await boteAnualService.crearOActualizarBote({
+      inmuebleId: 8, año: 2024, importeDeclarado: 6000, díasDeclarados: 365,
+    });
+    expect(r.id).toBe(bote.id);
+    expect(r.importeDeclarado).toBe(6000);
+    expect(r.importeAsignado).toBe(4000);       // preservado
+    expect(r.contractsVinculados).toHaveLength(1);
+    expect(r.saldoPendiente).toBe(2000);        // 6000 - 4000
+    expect(r.estado).toBe('parcial');
   });
 
   it('vincular recalcula estado: parcial → cerrado → sobre_asignado, y desvincular revierte', async () => {

@@ -87,15 +87,19 @@ export interface SugerenciaVinculacion {
 
 export const boteAnualService = {
   /**
-   * Crea el bote del (inmueble · año) o ACUMULA sobre el existente (varios bloques del XML
-   * que caen al mismo bote). Preserva `importeAsignado` y los links ya vinculados; recalcula
-   * saldo y estado. La deduplicación de re-imports es del orquestador (Commit 4).
+   * Crea el bote del (inmueble · año) o REEMPLAZA los datos declarados del existente,
+   * preservando `importeAsignado` y los Contracts ya vinculados (recalcula saldo y estado).
+   *
+   * Semántica REPLACE (no acumula): el orquestador de import (Commit 4) agrega previamente
+   * todos los bloques `<Arrendamiento>` que caen al mismo (inmueble · año) y llama UNA vez con
+   * el total. Así re-importar una declaración corregida del mismo ejercicio es idempotente
+   * (mismos totales → mismo estado), sin doble conteo ni flags frágiles.
    */
   async crearOActualizarBote(input: CrearOActualizarBoteInput): Promise<BoteAnualSinIdentificar> {
     const db = await initDB();
     const ahora = new Date().toISOString();
-    const nifs = input.nifsDetectados ?? [];
-    const tipos = input.tiposArrendamientoOriginales ?? [];
+    const nifs = Array.from(new Set(input.nifsDetectados ?? []));
+    const tipos = Array.from(new Set(input.tiposArrendamientoOriginales ?? []));
 
     const existente = (await db.getFromIndex(
       'botesAnualesSinIdentificar',
@@ -104,14 +108,12 @@ export const boteAnualService = {
     )) as BoteAnualSinIdentificar | undefined;
 
     if (existente) {
-      existente.importeDeclarado = round2(existente.importeDeclarado + input.importeDeclarado);
-      existente.díasDeclarados = Math.min(366, existente.díasDeclarados + input.díasDeclarados);
-      existente.nifsDetectados = Array.from(new Set([...(existente.nifsDetectados ?? []), ...nifs]));
-      existente.tiposArrendamientoOriginales = Array.from(
-        new Set([...(existente.tiposArrendamientoOriginales ?? []), ...tipos]),
-      );
+      existente.importeDeclarado = round2(input.importeDeclarado);
+      existente.díasDeclarados = Math.min(366, input.díasDeclarados);
+      existente.nifsDetectados = nifs;
+      existente.tiposArrendamientoOriginales = tipos;
       existente.fechaUltimaModificación = ahora;
-      recalcular(existente);
+      recalcular(existente); // preserva importeAsignado/links · recalcula saldo+estado
       await db.put('botesAnualesSinIdentificar', existente);
       return existente;
     }
@@ -121,8 +123,8 @@ export const boteAnualService = {
       año: input.año,
       importeDeclarado: round2(input.importeDeclarado),
       díasDeclarados: Math.min(366, input.díasDeclarados),
-      nifsDetectados: Array.from(new Set(nifs)),
-      tiposArrendamientoOriginales: Array.from(new Set(tipos)),
+      nifsDetectados: nifs,
+      tiposArrendamientoOriginales: tipos,
       importeAsignado: 0,
       saldoPendiente: round2(input.importeDeclarado),
       estado: 'pendiente_total',
