@@ -44,10 +44,11 @@ async function seedV77() {
 
 describe('V78 · migración modelo alquileres v3', () => {
   beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { IDBFactory } = require('fake-indexeddb');
-    (globalThis as any).indexedDB = new IDBFactory();
+    // DB limpia entre tests vía la IDBFactory GLOBAL (registrada por fake-indexeddb/auto);
+    // requerir una instancia fresca rompería el wrapping de `idb`. resetModules limpia el
+    // singleton dbPromise de db.ts.
     jest.resetModules();
+    (globalThis as any).indexedDB = new IDBFactory();
   });
 
   it('crea store, deriva modoExplotacion, init cotitulares, borra huérfanos + treasuryEvents', async () => {
