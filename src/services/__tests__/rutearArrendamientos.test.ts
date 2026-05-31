@@ -56,6 +56,41 @@ describe('decidirRutaArrendamiento · tabla de decisión', () => {
   });
 });
 
+describe('derivarModoExplotacionDelXml · fix H1', () => {
+  it('detecta mixto / por_habitaciones / piso_completo desde el conjunto de bloques', () => {
+    const { derivarModoExplotacionDelXml } = require('../declaracionDistributorService');
+    // bloques con NIF + bloques sin NIF → mixto (caso FA32 2024)
+    expect(derivarModoExplotacionDelXml([{ nifArrendatarios: ['A'] }, { nifArrendatarios: [] }])).toBe('mixto');
+    // todos con NIF → piso_completo
+    expect(derivarModoExplotacionDelXml([{ nifArrendatarios: ['A'] }, { nifArrendatarios: ['B'] }])).toBe('piso_completo');
+    // ninguno con NIF → por_habitaciones
+    expect(derivarModoExplotacionDelXml([{ nifArrendatarios: [] }, { nifArrendatarios: [] }])).toBe('por_habitaciones');
+    expect(derivarModoExplotacionDelXml([{ nifArrendatarios: ['  '] }])).toBe('por_habitaciones'); // trim
+    expect(derivarModoExplotacionDelXml([{ nifArrendatarios: ['A'] }])).toBe('piso_completo');
+    expect(derivarModoExplotacionDelXml([])).toBeUndefined();
+  });
+});
+
+describe('resolverModoExplotacion · fix H1', () => {
+  it('combina XML + boolean legacy + persistido por orden de fuerza', () => {
+    const { resolverModoExplotacion } = require('../declaracionDistributorService');
+    const mixtoXml = [{ nifArrendatarios: ['A'] }, { nifArrendatarios: [] }];
+    const pisoXml = [{ nifArrendatarios: ['A'] }];
+
+    // 1 · XML mixto manda (auto-corrige aunque persistido diga piso_completo)
+    expect(resolverModoExplotacion({ modoExplotacion: 'piso_completo' }, mixtoXml)).toBe('mixto');
+    // 2 · boolean legacy → por_habitaciones aunque el XML sugiera piso_completo
+    expect(resolverModoExplotacion({ alquilerPorHabitaciones: { activo: true } } as any, pisoXml)).toBe('por_habitaciones');
+    // 2 · persistido por_habitaciones se respeta
+    expect(resolverModoExplotacion({ modoExplotacion: 'por_habitaciones' }, pisoXml)).toBe('por_habitaciones');
+    // 3 · persistido piso_completo se respeta cuando no hay señal mixto/boolean
+    expect(resolverModoExplotacion({ modoExplotacion: 'piso_completo' }, pisoXml)).toBe('piso_completo');
+    // 4 · sin persistido ni boolean → lo del XML
+    expect(resolverModoExplotacion({}, [{ nifArrendatarios: [] }])).toBe('por_habitaciones');
+    expect(resolverModoExplotacion({}, pisoXml)).toBe('piso_completo');
+  });
+});
+
 describe('rutearArrendamientos · integración', () => {
   beforeEach(() => {
     jest.resetModules();
@@ -165,5 +200,41 @@ describe('rutearArrendamientos · integración', () => {
     const todos = await boteAnualService.listarBotes();
     expect(todos).toHaveLength(1);
     expect(todos[0].importeDeclarado).toBe(8000); // replace · no 16000
+  });
+
+  it('FA32 mixto · auto-corrige modoExplotacion a mixto y rutea TODO al bote (fix H1)', async () => {
+    // Property con boolean legacy true y persistido por_habitaciones (estado post self-heal)
+    await seedV77([
+      { id: 4, alias: 'FA32', cadastralReference: 'FA32', modoExplotacion: 'por_habitaciones', alquilerPorHabitaciones: { activo: true } },
+    ]);
+    const { rutearArrendamientos } = require('../declaracionDistributorService');
+    const { boteAnualService } = require('../boteAnualService');
+    const { initDB } = require('../db');
+
+    const porRef = new Map<string, any>([
+      ['FA32', { id: 4, modoExplotacion: 'por_habitaciones', alquilerPorHabitaciones: { activo: true } }],
+    ]);
+    // FA32 2024 · TAR1 vivienda 2 NIFs + TAR2 no_vivienda sin NIF → mixto
+    const decl = declConArrendamientos(2024, [
+      { refCatastral: 'FA32', arrendamientos: [
+        { tipoArrendamiento: 'vivienda', nifArrendatarios: ['Y5617860D', '71682787K'], ingresos: 8550, diasArrendado: 365 },
+        { tipoArrendamiento: 'no_vivienda', nifArrendatarios: [], ingresos: 11125, diasArrendado: 200 },
+      ] },
+    ]);
+
+    const res = await rutearArrendamientos(decl, porRef);
+    expect(res.contratos).toBe(0);       // NADA a Camino 1
+    expect(res.botes).toBe(1);
+    expect(res.modoCorregido).toBe(1);   // auto-corregido a mixto
+
+    const db = await initDB();
+    // modoExplotacion persistido auto-corregido a mixto
+    expect((await db.get('properties', 4)).modoExplotacion).toBe('mixto');
+    // no se creó ningún Contract
+    expect((await db.getAll('contracts'))).toHaveLength(0);
+    // bote con todo el importe y los 2 NIFs de TAR1
+    const bote = await boteAnualService.getBote(4, 2024);
+    expect(bote.importeDeclarado).toBe(19675); // 8550 + 11125
+    expect(bote.nifsDetectados.sort()).toEqual(['71682787K', 'Y5617860D']);
   });
 });

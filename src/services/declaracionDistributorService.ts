@@ -139,12 +139,56 @@ function extraerUbicacion(direccion: string): { province: string; municipality: 
 }
 
 /**
- * V78 · decide el camino de un `<Arrendamiento>` según el modo de explotación del inmueble
- * y el número de NIFs del bloque (regla validada con producto):
+ * V78.1 (fix post-deploy H1) · deriva el modo de explotación mirando el CONJUNTO de
+ * `<Arrendamiento>` de un inmueble en el XML (no bloque a bloque):
+ *   · bloques con NIF Y bloques sin NIF        → 'mixto'        (p.ej. FA32 2024: TAR1 LAU + TAR2 turístico)
+ *   · ningún bloque con NIF                     → 'por_habitaciones'
+ *   · todos los bloques con NIF                 → 'piso_completo'
+ * Devuelve undefined si no hay arrendamientos (no hay señal).
+ */
+export function derivarModoExplotacionDelXml(
+  arrendamientos: Array<{ nifArrendatarios?: string[] | null }>,
+): Property['modoExplotacion'] | undefined {
+  if (!arrendamientos || arrendamientos.length === 0) return undefined;
+  const bloquesConNif = arrendamientos.filter(
+    (a) => (a.nifArrendatarios ?? []).filter((n) => (n ?? '').trim().length > 0).length > 0,
+  ).length;
+  const bloquesSinNif = arrendamientos.length - bloquesConNif;
+  if (bloquesConNif > 0 && bloquesSinNif > 0) return 'mixto';
+  if (bloquesConNif === 0) return 'por_habitaciones';
+  return 'piso_completo';
+}
+
+/**
+ * V78.1 (fix post-deploy H1) · resuelve el modo de explotación EFECTIVO para el ruteo,
+ * combinando todas las señales por orden de fuerza (cierra H1 sin depender solo del campo
+ * persistido, que en producción podía faltar):
+ *   1. XML detecta 'mixto'                         → 'mixto'   (señal más fuerte · auto-corrige)
+ *   2. legacy boolean `alquilerPorHabitaciones.activo` o persistido 'por_habitaciones' → 'por_habitaciones'
+ *   3. persistido 'mixto' / 'piso_completo'        → ese valor
+ *   4. en su defecto, lo derivado del XML
+ */
+export function resolverModoExplotacion(
+  property: Pick<Property, 'modoExplotacion' | 'alquilerPorHabitaciones'>,
+  arrendamientos: Array<{ nifArrendatarios?: string[] | null }>,
+): NonNullable<Property['modoExplotacion']> {
+  const modoXml = derivarModoExplotacionDelXml(arrendamientos);
+  const boolHab = property.alquilerPorHabitaciones?.activo === true;
+  const persistido = property.modoExplotacion;
+
+  if (modoXml === 'mixto') return 'mixto';
+  if (boolHab || persistido === 'por_habitaciones') return 'por_habitaciones';
+  if (persistido === 'mixto') return 'mixto';
+  if (persistido === 'piso_completo') return 'piso_completo';
+  return modoXml ?? 'piso_completo';
+}
+
+/**
+ * V78 · decide el camino de un `<Arrendamiento>` según el modo de explotación EFECTIVO del
+ * inmueble y el número de NIFs del bloque:
  *   · por_habitaciones / mixto   → Camino 2 (bote)
  *   · piso_completo + ≥1 NIF      → Camino 1 (contrato; incluido no_vivienda con NIF)
  *   · piso_completo sin NIF       → Camino 2 (bote)
- * Inmueble sin `modoExplotacion` (creado por XML antes del wizard) se trata como piso_completo.
  */
 export function decidirRutaArrendamiento(
   modoExplotacion: Property['modoExplotacion'] | undefined,
@@ -156,27 +200,44 @@ export function decidirRutaArrendamiento(
 }
 
 /**
- * V78 · enruta todos los `<Arrendamiento>` del XML a contratos identificados (Camino 1) o a
- * botes anuales sin identificar (Camino 2). Los bloques que van al bote se AGREGAN por
- * (inmueble · ejercicio) y se persisten con una sola llamada `crearOActualizarBote` (replace),
- * de modo que re-importar una declaración corregida del mismo ejercicio es idempotente.
+ * V78 (fix post-deploy H1) · enruta los `<Arrendamiento>` del XML a contratos identificados
+ * (Camino 1) o a botes anuales sin identificar (Camino 2). El modo de explotación se resuelve
+ * UNA vez por inmueble (XML + boolean + persistido) y se AUTO-CORRIGE/POBLA en la property si
+ * difiere del persistido (cierra la brecha que dejaba inmuebles sin `modoExplotacion`). Los
+ * bloques que van al bote se agregan por (inmueble · ejercicio) y se persisten con una sola
+ * llamada `crearOActualizarBote` (replace · re-import idempotente).
  */
 export async function rutearArrendamientos(
   decl: DeclaracionCompleta,
   porRefCatastral: Map<string, Property>,
-): Promise<{ contratos: number; botes: number }> {
+): Promise<{ contratos: number; botes: number; modoCorregido: number }> {
+  const db = await initDB();
   const ejercicio = decl.meta.ejercicio;
   const botes = new Map<
     number,
     { importe: number; dias: number; nifs: Set<string>; tipos: Set<string> }
   >();
   let contratos = 0;
+  let modoCorregido = 0;
 
   for (const inm of decl.inmuebles) {
     if (inm.esAccesorioDe) continue;
+    if (!inm.arrendamientos?.length) continue;
     const rc = normalizeRef(inm.refCatastral);
     const property = porRefCatastral.get(rc);
     if (!property?.id) continue;
+
+    // Modo efectivo por inmueble (resuelve H1) + auto-corrección/poblado del campo persistido
+    const modoEfectivo = resolverModoExplotacion(property, inm.arrendamientos);
+    if (property.modoExplotacion !== modoEfectivo) {
+      const fresh = (await db.get('properties', property.id)) as Property | undefined;
+      if (fresh) {
+        fresh.modoExplotacion = modoEfectivo;
+        await db.put('properties', fresh);
+        property.modoExplotacion = modoEfectivo; // mantener el map al día para esta pasada
+        modoCorregido++;
+      }
+    }
 
     for (const arr of inm.arrendamientos) {
       const nifs = (arr.nifArrendatarios ?? [])
@@ -185,7 +246,7 @@ export async function rutearArrendamientos(
       const tipo: 'vivienda' | 'no_vivienda' =
         arr.tipoArrendamiento === 'no_vivienda' ? 'no_vivienda' : 'vivienda';
 
-      if (decidirRutaArrendamiento(property.modoExplotacion, nifs.length) === 'camino1') {
+      if (decidirRutaArrendamiento(modoEfectivo, nifs.length) === 'camino1') {
         // Camino 1 · contrato identificado · dni = nif principal · resto = cotitulares
         await crearOActualizarContrato({
           propertyId: property.id,
@@ -226,7 +287,7 @@ export async function rutearArrendamientos(
     });
   }
 
-  return { contratos, botes: botes.size };
+  return { contratos, botes: botes.size, modoCorregido };
 }
 
 export async function distribuirDeclaracion(

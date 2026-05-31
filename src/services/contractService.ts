@@ -19,6 +19,27 @@ export const calculateHabitualEndDate = (fechaInicio: string): string => {
   return startDate.toISOString().split('T')[0];
 };
 
+/** Sentinel de fechaFin "indefinido" (ver formatFechaFin.ts · esFechaIndefinida). */
+export const FECHA_FIN_INDEFINIDO = '2099-12-31';
+
+/**
+ * V78.1 (Extra 1 · LAU 5 años) · fechaFin para contratos habituales importados de AEAT.
+ *
+ * Regla acordada: aplicar la prórroga LAU (inicio + 5 años) SOLO si el resultado cae en el
+ * futuro respecto a `hoy`; si la fecha de inicio es antigua (o inventada como 1-ene del
+ * ejercicio en imports sin fechaContrato), el +5y caería en el pasado y marcaría el contrato
+ * como vencido por error → en ese caso devolvemos el sentinel indefinido (`2099-12-31`).
+ *
+ * `hoy` es inyectable para tests deterministas.
+ */
+export const calcularFechaFinLAUImport = (
+  fechaInicio: string,
+  hoy: Date = new Date(),
+): string => {
+  const fin = calculateHabitualEndDate(fechaInicio);
+  return new Date(fin) > hoy ? fin : FECHA_FIN_INDEFINIDO;
+};
+
 // Helper function to calculate duration for temporal contracts
 export const calculateDuration = (fechaInicio: string, fechaFin: string): string => {
   const start = new Date(fechaInicio);
