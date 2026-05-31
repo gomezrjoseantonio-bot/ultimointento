@@ -75,3 +75,72 @@ El cálculo es `Math.round(ingresosAnuales / 12)` sin dividir (`declaracionOnboa
 - **DB** · no requiere bump nuevo; sí re-correr la migración v78.
 
 **Punto a decidir con Jose (afecta a Commit 2):** ¿FA32 debe quedar en `por_habitaciones` (derivado del boolean, ya va a bote) o auto-corregir a `mixto` al detectar bloques con y sin NIF en 2024? La spec §1.3 propone NO auto-sobreescribir y emitir aviso en el paso 10. Lo confirmo antes de implementar.
+
+---
+
+# CIERRE · resultado final por hallazgo
+
+> Actualizado al completar la tarea · rama `claude/relaxed-wozniak-5h9hK`.
+> Todos los commits con `tsc` 0 errores + build CI (`react-scripts build`, lint estricto) limpio.
+
+## Mapa de commits
+
+| Commit | Hash | Contenido |
+|--------|------|-----------|
+| 1 | `ff34b2e` | Auditoría + diagnóstico H1 (este documento) · sin código |
+| 2 | `da16141` | H1 · `derivarModoExplotacionDelXml` + `resolverModoExplotacion` + self-heal re-migración + limpieza de huérfanos mal ruteados |
+| — | `7a727be` | Fix lint (`no-useless-escape`) que rompía el build CI de Netlify |
+| 3 | `a4c3ac3` | H2 · repoblar `nifsDetectados` de botes existentes desde la declaración archivada |
+| 4 | `df9cb4d` | Extra 1 · `fechaFin` LAU 5 años en import AEAT + recálculo de contratos existentes |
+| 5 | `920162e` | H3 · pestaña UI "Por conciliar" (vincular rentas declaradas AEAT ↔ contratos) |
+| 6 | `edb37e1` | Extra 2 · hook import Rentila · inicializar `cotitulares` merge-safe |
+| 7 | `a224847` | Verificación end-to-end (servicios reales, sin mocks) |
+| 8 | (este) | Cierre de la auditoría · documentación |
+
+## Resolución por hallazgo
+
+### H1 · ruteo mal por `modoExplotacion` no poblado — RESUELTO (Commit 2)
+- `derivarModoExplotacionDelXml(bloques)` deriva `mixto` (bloques con y sin NIF) / `piso_completo` (todos con NIF) / `por_habitaciones` (ninguno con NIF) desde el conjunto de bloques.
+- `resolverModoExplotacion(property, bloquesXml)` combina por orden de fuerza: **XML mixto** > boolean legacy `alquilerPorHabitaciones.activo` / persistido > XML. Cierra la brecha de origen (ya no depende solo del campo persistido).
+- Self-heal: re-corre la migración v78 con `try/catch` por property; limpieza de Contracts huérfanos mal ruteados salvando importe + NIFs al bote.
+- **Decisión de Jose:** auto-corregir FA32 a `mixto` (derivado del XML), no dejar en `por_habitaciones` ni limitarse a avisar.
+
+### H2 · `nifsDetectados: []` — RESUELTO (Commit 3) · no era bug de servicio
+- Confirmado: `crearOActualizarBote` y el orquestador ya persistían/agregaban NIFs. Los `[]` eran consecuencia de H1 (NIFs atrapados en el bloque mis-ruteado).
+- `repoblarNifsBotesDesdeArchivo(db)` repuebla los botes ya creados desde `ejerciciosFiscalesCoord[año].aeat.declaracionCompleta` (Opción B · sin requerir re-import), acotado a inmuebles `por_habitaciones`/`mixto`. Idempotente.
+
+### H3 · pestaña "Sin identificar" no existe — RESUELTO (Commit 5)
+- Pestaña **"Por conciliar"** (nombre elegido por Jose; key interna `conciliar`, el código sigue usando bote/boteAnualService).
+- `TabPorConciliar` (tabla de botes) + `DrawerConciliarBote` (sugerencias por NIF/meses solapados, vinculación con importe editable, desvinculación). Badge con nº de botes con saldo pendiente.
+
+### H4 · renta 713 € — NO era bug · sin cambio de cálculo
+- Confirmado: `Math.round(ingresosAnuales / 12)` sin dividir entre NIFs. El 713 € era el bloque TAR1 mis-ruteado (consecuencia de H1). Resuelto al corregir H1. El test e2e (Commit 7) verifica `round(12000/12)=1000`.
+
+### Extra 1 · LAU 5 años — IMPLEMENTADO (Commit 4)
+- `calcularFechaFinLAUImport(fechaInicio, hoy)`: `inicio+5y` **solo si cae en el futuro**; si no, sentinel indefinido `2099-12-31` (evita marcar como vencidos contratos con fecha de inicio antigua o inventada).
+- Camino 1 habitual usa la regla; temporada/habitación conservan el sentinel.
+- Migración `recalcularFechaFinContratosAEAT` (flag `migration_v78_fechafin_lau_v1`): recalcula solo contratos `habitual` con `fuente: 'xml_aeat'` que sigan indefinidos. No toca manuales, temporada ni fechas concretas.
+- **Decisiones de Jose:** (1) `+5y` solo si futuro, si no indefinido; (2) la migración solo toca importados AEAT, no indefinidos manuales.
+
+### Extra 2 · hook import Rentila — IMPLEMENTADO (Commit 6)
+- Altas Rentila inicializan `inquilino.cotitulares = []`; re-import preserva los cotitulares existentes (merge-safe).
+- **Decisión de Jose:** NO aplicar LAU a Rentila. A diferencia del XML AEAT, Rentila trae `finAlquiler` real y autoritativa en el fichero (obligatoria) → recalcularla corrompería el dato. La fecha del fichero se conserva.
+
+## Verificación end-to-end (Commit 7)
+`src/services/__tests__/alquileresV3EndToEnd.test.ts` recorre, con servicios reales: import mixto/piso/habitaciones → FA32 a `mixto` sin contrato + bote con 2 NIFs → contrato CB habitual con `fechaFin` LAU y renta `ingresos/12` → conciliación de HAB3 (`sugerirContracts` por NIF → `vincularContract` → bote `cerrado` → `desvincularContract` revierte).
+
+## Notas de cobertura / tests
+- `rutearArrendamientos.test.ts` · ruteo + derivación H1 + idempotencia + caso FA32.
+- `alquileresV3FixService.test.ts` · repoblación NIFs (H2).
+- `alquileresV3FechaFinLAU.test.ts` · regla LAU + alcance migración (Extra 1).
+- `contractsImportRentila.test.ts` · hook cotitulares (Extra 2).
+- `TabPorConciliar.test.tsx` · smoke UI (H3).
+- `alquileresV3EndToEnd.test.ts` · integración completa (Commit 7).
+
+## DB
+- Sin bump nuevo de `DB_VERSION` (sigue en 78, como concluyó la auditoría).
+- Flags de migración añadidos: `migration_v78_bote_nifs_v1`, `migration_v78_fechafin_lau_v1`. Corregido además el orden de args `put('keyval', value, key)` del hook de limpieza de huérfanos (Commit 4).
+
+## Pendientes / fuera de alcance
+- La pestaña "Por conciliar" no se muestra si el inmueble no tiene contratos (early-return del `ContratosListPage` con `contracts.length === 0`). No afecta al caso de Jose (tiene contratos); si se quisiera mostrar botes sin ningún contrato, habría que mover ese early-return después de las tabs.
+- `ejerciciosFiscales` en import Rentila no se inicializa (Rentila no aporta ejercicio/importe declarado AEAT). Se dejó fuera deliberadamente; añadir solo si una integración fiscal futura lo requiere.
