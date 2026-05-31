@@ -156,6 +156,9 @@ export const importContractsFromRentilaRows = async (
           dni: row.idExterno ? `IMP-${row.idExterno}` : `IMP-${property.id}-${row.inicioAlquiler}`,
           telefono: 'pendiente',
           email: 'pendiente@importado.local',
+          // V78.1 (Extra 2) · inicializar cotitulares en altas. NO se aplica LAU a fechaFin:
+          // Rentila trae fecha de fin real y autoritativa en el fichero (a diferencia del XML AEAT).
+          cotitulares: [],
         },
         fechaInicio: row.inicioAlquiler,
         fechaFin: row.finAlquiler,
@@ -181,7 +184,13 @@ export const importContractsFromRentilaRows = async (
       };
 
       if (existing?.id) {
-        await updateContract(existing.id, payload);
+        // V78.1 (Extra 2) · re-import merge-safe: no machacar los cotitulares ya existentes
+        // (p.ej. añadidos a mano o por un import AEAT previo) con el [] del payload.
+        const cotitularesPrevios = existing.inquilino?.cotitulares ?? [];
+        const payloadMerge: typeof payload = cotitularesPrevios.length > 0
+          ? { ...payload, inquilino: { ...payload.inquilino, cotitulares: cotitularesPrevios } }
+          : payload;
+        await updateContract(existing.id, payloadMerge);
         updated++;
       } else {
         await saveContract(payload);
