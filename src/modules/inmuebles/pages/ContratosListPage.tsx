@@ -29,12 +29,14 @@ import TabActivos from '../components/contratos/TabActivos';
 import TabTablero from '../components/contratos/TabTablero';
 import TabDisponibilidad from '../components/contratos/TabDisponibilidad';
 import TabHistorico from '../components/contratos/historico/TabHistorico';
+import TabPorConciliar from '../components/contratos/TabPorConciliar';
+import { boteAnualService } from '../../../services/boteAnualService';
 import styles from './ContratosListPage.module.css';
 import { isContratoActivo } from '../utils/contratoEstado';
 
-type Tab = 'disponibilidad' | 'tablero' | 'activos' | 'historico';
+type Tab = 'disponibilidad' | 'tablero' | 'activos' | 'historico' | 'conciliar';
 
-const VALID_TABS: Tab[] = ['disponibilidad', 'tablero', 'activos', 'historico'];
+const VALID_TABS: Tab[] = ['disponibilidad', 'tablero', 'activos', 'historico', 'conciliar'];
 const LEGACY_TAB_ALIAS: Record<string, Tab> = { acciones: 'tablero' };
 const isValidTab = (value: string | null): value is Tab =>
   value !== null && (VALID_TABS as string[]).includes(value);
@@ -151,6 +153,23 @@ const ContratosListPage: React.FC = () => {
     [contracts],
   );
 
+  // Botes "por conciliar" pendientes (rentas declaradas AEAT sin cuadrar) · solo para el badge.
+  const [porConciliarPendientes, setPorConciliarPendientes] = useState(0);
+  useEffect(() => {
+    let activo = true;
+    boteAnualService
+      .listarBotes()
+      .then((botes) => {
+        if (activo) {
+          setPorConciliarPendientes(botes.filter((b) => b.saldoPendiente > 0.005).length);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      activo = false;
+    };
+  }, [contracts]);
+
   // KPIs cabecera
   const libresAhora = useMemo(
     () => calcularLibresAhora(contracts, properties, today),
@@ -168,6 +187,7 @@ const ContratosListPage: React.FC = () => {
     { key: 'tablero', label: 'Tablero', count: acciones.length },
     { key: 'activos', label: 'Activos', count: activos.length },
     { key: 'historico', label: 'Histórico', count: historico.length },
+    { key: 'conciliar', label: 'Por conciliar', count: porConciliarPendientes },
   ];
 
   if (contracts.length === 0) {
@@ -328,6 +348,10 @@ const ContratosListPage: React.FC = () => {
             )
           }
         />
+      )}
+
+      {tab === 'conciliar' && (
+        <TabPorConciliar inmuebleAliasById={propertyById} />
       )}
 
       {tab === 'disponibilidad' && (
