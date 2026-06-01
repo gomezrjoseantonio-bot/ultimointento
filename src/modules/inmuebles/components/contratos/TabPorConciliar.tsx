@@ -28,15 +28,20 @@ const TabPorConciliar: React.FC<TabPorConciliarProps> = ({ inmuebleAliasById }) 
   const [cargando, setCargando] = useState(true);
   const [abierto, setAbierto] = useState<BoteConId | null>(null);
 
+  const [huboCerrados, setHuboCerrados] = useState(false);
+
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
       const todos = await boteAnualService.listarBotes();
-      const conId = todos.filter((b): b is BoteConId => b.id != null);
-      conId.sort((a, b) => b.año - a.año || a.inmuebleId - b.inmuebleId);
-      setBotes(conId);
+      // Un bote 'cerrado' es transitorio: ya conciliado, desaparece de "Por conciliar"
+      // (sigue en BD · visible en el histórico fiscal del inmueble).
+      const visibles = todos.filter((b): b is BoteConId => b.id != null && b.estado !== 'cerrado');
+      visibles.sort((a, b) => b.año - a.año || a.inmuebleId - b.inmuebleId);
+      setBotes(visibles);
+      setHuboCerrados(todos.some((b) => b.estado === 'cerrado'));
       // Mantener sincronizado el bote abierto tras un cambio
-      setAbierto((prev) => (prev ? conId.find((b) => b.id === prev.id) ?? null : null));
+      setAbierto((prev) => (prev ? visibles.find((b) => b.id === prev.id) ?? null : null));
     } finally {
       setCargando(false);
     }
@@ -51,6 +56,16 @@ const TabPorConciliar: React.FC<TabPorConciliarProps> = ({ inmuebleAliasById }) 
   }
 
   if (botes.length === 0) {
+    // Si hubo botes y todos quedaron cerrados → migración completada.
+    if (huboCerrados) {
+      return (
+        <EmptyState
+          icon={<Icons.Success size={28} />}
+          title="Todo conciliado"
+          sub="Has conciliado todas tus declaraciones fiscales. A partir de ahora ATLAS registrará tus ingresos en tiempo real desde tus contratos."
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<Icons.Fiscal size={20} />}
