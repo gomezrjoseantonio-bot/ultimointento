@@ -28,6 +28,7 @@ import {
 } from '../../../services/inmuebleDeleteService';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
+import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
 import styles from './DetallePage.module.css';
 
 
@@ -450,7 +451,13 @@ const DetallePage: React.FC = () => {
         </div>
       )}
 
-      {(tab === 'cobros' || tab === 'documentos' || tab === 'fiscalidad') && (
+      {tab === 'fiscalidad' && (
+        <div style={{ marginTop: 8 }}>
+          <SeccionHistoricoFiscal inmuebleId={propertyId} />
+        </div>
+      )}
+
+      {(tab === 'cobros' || tab === 'documentos') && (
         <div className={styles.placeholder}>
           <strong>{tabs.find((t) => t.key === tab)?.label}</strong>
           Pestaña en migración a UI v5 · funcionalidad pendiente de sub-tarea
