@@ -153,7 +153,9 @@ const ContratosListPage: React.FC = () => {
     [contracts],
   );
 
-  // Botes "por conciliar" pendientes (rentas declaradas AEAT sin cuadrar) · solo para el badge.
+  // Botes "por conciliar" visibles (rentas declaradas AEAT sin cuadrar) · solo para el badge.
+  // Cuenta los visibles en la pestaña = todos menos los 'cerrado' (transitorios, ya conciliados).
+  // Incluye 'sobre_asignado' (saldo negativo) para que el contador no los esconda.
   const [porConciliarPendientes, setPorConciliarPendientes] = useState(0);
   useEffect(() => {
     let activo = true;
@@ -161,7 +163,7 @@ const ContratosListPage: React.FC = () => {
       .listarBotes()
       .then((botes) => {
         if (activo) {
-          setPorConciliarPendientes(botes.filter((b) => b.saldoPendiente > 0.005).length);
+          setPorConciliarPendientes(botes.filter((b) => b.estado !== 'cerrado').length);
         }
       })
       .catch(() => undefined);
