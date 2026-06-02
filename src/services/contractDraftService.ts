@@ -19,6 +19,8 @@ export interface ContractDraft {
   inmuebleRaw: string;
   inmuebleIdSugerido: number | null;
   inmuebleIdConfirmado: number | null;
+  /** Paso 3 · el usuario eligió "crear inmueble nuevo" para una fila de la sección revisar. */
+  crearInmuebleNuevo?: boolean;
 
   // Inquilino
   inquilinoNombre: string;
@@ -375,4 +377,18 @@ export const construirDraftsRentila = async (rows: RentilaRow[]): Promise<Contra
 export const construirDraftsAtlas = async (rows: AtlasTemplateRow[]): Promise<ContractDraft[]> => {
   const { properties, contracts } = await loadContext();
   return normalizarAtlas(rows, properties, contracts);
+};
+
+export interface InmuebleOpcion {
+  id: number;
+  label: string;
+}
+
+/** Opciones de inmueble para el select de la sección "Requieren revisión" (paso 3). */
+export const listarInmueblesOpciones = async (): Promise<InmuebleOpcion[]> => {
+  const db = await initDB();
+  const properties = await db.getAll('properties');
+  return properties
+    .filter((p) => p.id != null)
+    .map((p) => ({ id: p.id as number, label: p.alias || p.address || `Inmueble ${p.id}` }));
 };

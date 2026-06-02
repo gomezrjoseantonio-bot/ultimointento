@@ -14,6 +14,10 @@ import { parseRentilaXlsx, RentilaRow, RentilaFormatError } from '../../../servi
 import {
   parseAtlasTemplateXlsx, AtlasTemplateRow, AtlasTemplateFormatError,
 } from '../../../services/atlasTemplateParserService';
+import {
+  ContractDraft, InmuebleOpcion, construirDraftsRentila, construirDraftsAtlas, listarInmueblesOpciones,
+} from '../../../services/contractDraftService';
+import PasoRevision from './PasoRevision';
 
 interface ImportarContratosWizardProps {
   onBack: () => void;
@@ -51,6 +55,10 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
   const rentilaInputRef = useRef<HTMLInputElement>(null);
   const atlasInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+
+  const [drafts, setDrafts] = useState<ContractDraft[]>([]);
+  const [inmuebleOpciones, setInmuebleOpciones] = useState<InmuebleOpcion[]>([]);
+  const [preparando, setPreparando] = useState(false);
 
   const totalContratos = useMemo(
     () =>
@@ -138,6 +146,33 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
   };
 
   const irAPaso = (n: number) => setStep(n);
+
+  // Construye los drafts (fuzzy match + duplicados) y carga las opciones de
+  // inmueble antes de entrar en el paso 3.
+  const irARevision = useCallback(async () => {
+    setPreparando(true);
+    try {
+      const [nuevosDrafts, opciones] = await Promise.all([
+        origen === 'rentila'
+          ? construirDraftsRentila(ficherosRentila.flatMap((f) => f.rows))
+          : construirDraftsAtlas(ficheroAtlas?.rows ?? []),
+        listarInmueblesOpciones(),
+      ]);
+      setDrafts(nuevosDrafts);
+      setInmuebleOpciones(opciones);
+      setStep(3);
+    } catch (error) {
+      toast.error('No se pudieron preparar los contratos para revisión');
+    } finally {
+      setPreparando(false);
+    }
+  }, [origen, ficherosRentila, ficheroAtlas]);
+
+  // Commit 6 · creación inyectada como placeholder (no toca BD). El commit 7 la
+  // sustituye por crearContractsDesdeDrafts + postContractCreated.
+  const crearDrafts = useCallback(async (_seleccion: ContractDraft[]) => {
+    // Intencionadamente vacío hasta el commit 7.
+  }, []);
 
   // ── Stepper ──
   const pasos = ['Origen', 'Subir fichero', 'Revisión y mapeo', 'Confirmar'];
@@ -270,8 +305,8 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
         <div className={styles.wizFoot}>
           <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={() => irAPaso(1)}><ArrowLeft size={14} /> Atrás</button>
           <div className={styles.wizFootInfo}>{ficherosRentila.length} ficheros · {totalContratos} contratos detectados</div>
-          <button type="button" className={cx(styles.btn, styles.btnPrimary)} disabled={!puedeContinuarPaso2} onClick={() => irAPaso(3)}>
-            Continuar a revisión <ArrowRight size={14} />
+          <button type="button" className={cx(styles.btn, styles.btnPrimary)} disabled={!puedeContinuarPaso2 || preparando} onClick={irARevision}>
+            {preparando ? 'Preparando...' : 'Continuar a revisión'} <ArrowRight size={14} />
           </button>
         </div>
       </div>
@@ -336,8 +371,8 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
         <div className={styles.wizFoot}>
           <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={() => irAPaso(1)}><ArrowLeft size={14} /> Atrás</button>
           <div className={styles.wizFootInfo}>{ficheroAtlas ? `${totalContratos} contratos detectados` : 'Sube el fichero rellenado para continuar'}</div>
-          <button type="button" className={cx(styles.btn, styles.btnPrimary)} disabled={!puedeContinuarPaso2} onClick={() => irAPaso(3)}>
-            Continuar a revisión <ArrowRight size={14} />
+          <button type="button" className={cx(styles.btn, styles.btnPrimary)} disabled={!puedeContinuarPaso2 || preparando} onClick={irARevision}>
+            {preparando ? 'Preparando...' : 'Continuar a revisión'} <ArrowRight size={14} />
           </button>
         </div>
       </div>
@@ -359,18 +394,14 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
       {step === 1 && renderPaso1()}
       {step === 2 && (origen === 'rentila' ? renderPaso2Rentila() : renderPaso2Atlas())}
       {step === 3 && (
-        // Paso 3 · revisión y mapeo · se implementa en el commit 6.
-        <section className={styles.stepContent}>
-          <div className={styles.panel}>
-            <div className={styles.panelH}>Revisión y mapeo</div>
-            <div className={styles.panelSub}>En construcción · commit 6.</div>
-            <div className={styles.wizFoot}>
-              <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={() => irAPaso(2)}><ArrowLeft size={14} /> Atrás</button>
-              <div className={styles.wizFootInfo}>{totalContratos} contratos detectados</div>
-              <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={() => irAPaso(4)}>Ir al resumen final <ArrowRight size={14} /></button>
-            </div>
-          </div>
-        </section>
+        <PasoRevision
+          drafts={drafts}
+          inmuebleOpciones={inmuebleOpciones}
+          origen={origen}
+          onCrear={crearDrafts}
+          onContinuar={() => irAPaso(4)}
+          onAtras={() => irAPaso(2)}
+        />
       )}
       {step === 4 && (
         // Paso 4 · resumen final · se implementa en el commit 8.
