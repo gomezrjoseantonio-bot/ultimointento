@@ -152,6 +152,15 @@ const ContratosListPage: React.FC = () => {
     () => contracts.filter(isContratoFinalizado),
     [contracts],
   );
+  // V79 · contratos importados SIN FIRMAR. Se muestran en la pestaña Activos
+  // (con chip "sin-firmar") hasta que el usuario los active. NO cuentan como
+  // ocupación (tablero/libres) ni como vencimientos: por eso van aparte de
+  // `activos` y solo se inyectan en la lista de la pestaña.
+  const sinFirmar = useMemo(
+    () => contracts.filter((c) => c.estadoContrato === 'sin_firmar'),
+    [contracts],
+  );
+  const activosTab = useMemo(() => [...activos, ...sinFirmar], [activos, sinFirmar]);
 
   // Botes "por conciliar" visibles (rentas declaradas AEAT sin cuadrar) · solo para el badge.
   // Cuenta los visibles en la pestaña = todos menos los 'cerrado' (transitorios, ya conciliados).
@@ -187,7 +196,7 @@ const ContratosListPage: React.FC = () => {
   const tabs: Array<{ key: Tab; label: string; count?: number; countTone?: 'neg' }> = [
     { key: 'disponibilidad', label: 'Disponibilidad', count: libres, countTone: libres > 0 ? 'neg' : undefined },
     { key: 'tablero', label: 'Tablero', count: acciones.length },
-    { key: 'activos', label: 'Activos', count: activos.length },
+    { key: 'activos', label: 'Activos', count: activosTab.length },
     { key: 'historico', label: 'Histórico', count: historico.length },
     { key: 'conciliar', label: 'Por conciliar', count: porConciliarPendientes },
   ];
@@ -321,7 +330,7 @@ const ContratosListPage: React.FC = () => {
 
       {tab === 'activos' && (
         <TabActivos
-          contratos={activos}
+          contratos={activosTab}
           inmuebleAliasById={propertyById}
           onNuevoContrato={() => navigate('/contratos/nuevo')}
         />

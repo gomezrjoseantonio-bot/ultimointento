@@ -70,6 +70,15 @@ describe('calcularEstadoChip', () => {
     ).toBe('al-dia');
   });
 
+  test('contrato importado SIN FIRMAR → sin-firmar (aunque tenga firma digital marcada)', () => {
+    expect(
+      calcularEstadoChip(
+        make({ estadoContrato: 'sin_firmar', firma: { metodo: 'digital', estado: 'firmado' } }),
+        HOY,
+      ),
+    ).toBe('sin-firmar');
+  });
+
   test('vencido (ayer) · todavía al-dia (no entra en vence-30d porque dias < 0)', () => {
     expect(calcularEstadoChip(make({ fechaFin: dayOffset(-1) }), HOY)).toBe('al-dia');
   });
