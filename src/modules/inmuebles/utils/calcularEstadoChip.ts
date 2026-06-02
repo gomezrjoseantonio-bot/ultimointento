@@ -40,6 +40,10 @@ export function calcularEstadoChip(
   c: Contract,
   hoy: Date = new Date(),
 ): EstadoChip {
+  // V79 · contratos importados nacen con estadoContrato='sin_firmar': se muestran
+  // siempre con el chip "sin-firmar" (independientemente de la firma digital).
+  if (c.estadoContrato === 'sin_firmar') return 'sin-firmar';
+
   // Sólo aplicamos chips a contratos activos · si está finalizado/rescindido
   // se trata como "al-dia" por defecto para evitar render roto, pero el chip
   // no debería verse en el tab Activos (este filtro vive aguas arriba).
