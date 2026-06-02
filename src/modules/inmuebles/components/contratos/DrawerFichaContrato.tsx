@@ -220,6 +220,7 @@ interface PanelFichaProps {
 
 const PanelFicha: React.FC<PanelFichaProps> = ({ contrato, firmado }) => {
   const inq = contrato.inquilino;
+  const esSinFirmar = contrato.estadoContrato === 'sin_firmar';
 
   return (
     <>
@@ -273,9 +274,17 @@ const PanelFicha: React.FC<PanelFichaProps> = ({ contrato, firmado }) => {
       <section className={styles.section}>
         <div className={styles.sectionHead}>
           <h3 className={styles.sectionTitle}>Términos del contrato</h3>
-          <span className={styles.lockedBadge}>
-            <Icons.Lock size={10} strokeWidth={1.8} /> Bloqueado · requiere anexo
-          </span>
+          {/* V79 · un contrato SIN FIRMAR es editable en su totalidad sin anexo;
+              la regla de bloqueo + anexo solo aplica a contratos ya activos. */}
+          {esSinFirmar ? (
+            <span className={styles.editableBadge}>
+              <Icons.Edit size={10} strokeWidth={1.8} /> Sin firmar · editable
+            </span>
+          ) : (
+            <span className={styles.lockedBadge}>
+              <Icons.Lock size={10} strokeWidth={1.8} /> Bloqueado · requiere anexo
+            </span>
+          )}
         </div>
         <div className={styles.fieldsGrid}>
           <Field label="Desde" value={<DateLabel value={contrato.fechaInicio} format="short" size="sm" />} />
@@ -303,23 +312,25 @@ const PanelFicha: React.FC<PanelFichaProps> = ({ contrato, firmado }) => {
             value={contrato.indexacion === 'none' ? 'No aplica' : (contrato.indexacion ?? '—')}
           />
         </div>
-        <div className={styles.anexoRow}>
-          <div>
-            <strong>¿Necesitas cambiar un término económico?</strong>
-            <p>
-              Modificar renta, fianza o fechas requiere firmar un anexo al
-              contrato. ATLAS generará el anexo automáticamente y lo enviará
-              al inquilino.
-            </p>
+        {!esSinFirmar && (
+          <div className={styles.anexoRow}>
+            <div>
+              <strong>¿Necesitas cambiar un término económico?</strong>
+              <p>
+                Modificar renta, fianza o fechas requiere firmar un anexo al
+                contrato. ATLAS generará el anexo automáticamente y lo enviará
+                al inquilino.
+              </p>
+            </div>
+            <button
+              type="button"
+              className={styles.anexoBtn}
+              onClick={() => showToastV5('Generación de anexos próximamente · T3.3')}
+            >
+              <Icons.Contratos size={12} strokeWidth={1.8} /> Generar anexo
+            </button>
           </div>
-          <button
-            type="button"
-            className={styles.anexoBtn}
-            onClick={() => showToastV5('Generación de anexos próximamente · T3.3')}
-          >
-            <Icons.Contratos size={12} strokeWidth={1.8} /> Generar anexo
-          </button>
-        </div>
+        )}
       </section>
 
       <section className={styles.section}>

@@ -17,6 +17,9 @@ import {
 import {
   ContractDraft, InmuebleOpcion, construirDraftsRentila, construirDraftsAtlas, listarInmueblesOpciones,
 } from '../../../services/contractDraftService';
+import {
+  crearContractsDesdeDrafts, combinarResultados, resultadoVacio, ResultadoCreacion,
+} from '../../../services/contractImportCreationService';
 import PasoRevision from './PasoRevision';
 
 interface ImportarContratosWizardProps {
@@ -59,6 +62,7 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
   const [drafts, setDrafts] = useState<ContractDraft[]>([]);
   const [inmuebleOpciones, setInmuebleOpciones] = useState<InmuebleOpcion[]>([]);
   const [preparando, setPreparando] = useState(false);
+  const [resultado, setResultado] = useState<ResultadoCreacion>(resultadoVacio);
 
   const totalContratos = useMemo(
     () =>
@@ -168,10 +172,16 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
     }
   }, [origen, ficherosRentila, ficheroAtlas]);
 
-  // Commit 6 · creación inyectada como placeholder (no toca BD). El commit 7 la
-  // sustituye por crearContractsDesdeDrafts + postContractCreated.
-  const crearDrafts = useCallback(async (_seleccion: ContractDraft[]) => {
-    // Intencionadamente vacío hasta el commit 7.
+  // Crea los Contracts de una sección (estado SIN FIRMAR) y dispara la
+  // vinculación retrospectiva al bote. Acumula el resultado para el paso 4.
+  const crearDrafts = useCallback(async (seleccion: ContractDraft[]) => {
+    try {
+      const parcial = await crearContractsDesdeDrafts(seleccion);
+      setResultado((prev) => combinarResultados(prev, parcial));
+    } catch (error) {
+      toast.error('No se pudieron crear algunos contratos');
+      throw error;
+    }
   }, []);
 
   // ── Stepper ──
@@ -407,8 +417,10 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
         // Paso 4 · resumen final · se implementa en el commit 8.
         <section className={styles.stepContent}>
           <div className={styles.panel}>
-            <div className={styles.panelH}>Resumen final</div>
-            <div className={styles.panelSub}>En construcción · commit 8.</div>
+            <div className={styles.panelH}>Listo · {resultado.creados} contratos importados</div>
+            <div className={styles.panelSub}>
+              {resultado.botesConSugerencia.length} contratos pueden vincularse en Por conciliar. Resumen completo · commit 8.
+            </div>
             <div className={styles.wizFoot}>
               <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={() => irAPaso(3)}><ArrowLeft size={14} /> Volver a revisión</button>
               <div />

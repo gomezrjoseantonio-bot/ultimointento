@@ -825,7 +825,12 @@ export interface Contract {
   cuentaCobroId: number; // ID of bank account for collections
   
   // NEW FIELDS: Contract status
-  estadoContrato: 'activo' | 'rescindido' | 'finalizado' | 'sin_identificar';
+  // `sin_firmar` (V79 · importador Rentila/plantilla ATLAS): contrato recién
+  // importado, editable en su totalidad hasta que el usuario lo marque activo.
+  estadoContrato: 'activo' | 'rescindido' | 'finalizado' | 'sin_identificar' | 'sin_firmar';
+
+  /** V79 · procedencia del Contract cuando se creó desde el importador de contratos. */
+  origenImportacion?: 'rentila' | 'plantilla_atlas';
 
   // NEW FIELDS: Document preparation for PDF generation
   documentoContrato?: {
