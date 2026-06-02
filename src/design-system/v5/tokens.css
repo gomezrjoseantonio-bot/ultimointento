@@ -176,6 +176,10 @@
   --atlas-v5-shadow-pulse-neg: 0 1px 3px rgba(164, 51, 40, 0.25);
   --atlas-v5-shadow-toast: 0 6px 16px rgba(12, 18, 48, 0.18);
 
+  /* Focus rings · anillos de foco/selección (raw values aquí, único sitio autorizado) */
+  --atlas-v5-focus-ring-gold: 0 0 0 3px rgba(184, 138, 62, 0.15);
+  --atlas-v5-focus-ring-warn: 0 0 0 3px rgba(138, 98, 19, 0.2);
+
   /* ===== Z-index ===== */
   --atlas-v5-z-dropdown: 50;
   --atlas-v5-z-sticky: 80;

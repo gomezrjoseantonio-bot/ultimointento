@@ -280,4 +280,39 @@ export const boteAnualService = {
     const db = await initDB();
     await db.delete('botesAnualesSinIdentificar', id);
   },
+
+  /**
+   * V79 · trigger de vinculación retrospectiva al bote tras crear un Contract
+   * (p.ej. desde el importador Rentila/plantilla ATLAS).
+   *
+   * NO auto-vincula: solo detecta los botes pendientes del mismo inmueble cuyo
+   * año solapa con el contrato y que aún tienen saldo. Esos botes mostrarán al
+   * Contract como sugerencia en "Por conciliar" (sugerirContracts lo recalcula
+   * al abrir el tab). Devuelve los ids de bote afectados para que el importador
+   * cuente "N contratos pueden vincularse en Por conciliar".
+   */
+  async postContractCreated(contractId: number): Promise<{ contractId: number; botesSugeridos: number[] }> {
+    const db = await initDB();
+    const contract = (await db.get('contracts', contractId)) as Contract | undefined;
+    if (!contract || contract.inmuebleId == null) return { contractId, botesSugeridos: [] };
+
+    const botes = (await db.getAllFromIndex(
+      'botesAnualesSinIdentificar',
+      'inmuebleId',
+      contract.inmuebleId,
+    )) as BoteAnualSinIdentificar[];
+
+    const botesSugeridos: number[] = [];
+    for (const bote of botes) {
+      if (bote.id == null) continue;
+      if (bote.estado === 'cerrado' || bote.saldoPendiente <= 0) continue;
+      const yaVinculado = (bote.contractsVinculados ?? []).some((l) => l.contractId === contractId);
+      if (yaVinculado) continue;
+      if (mesesSolapadosEnAño(contract.fechaInicio, contract.fechaFin, bote.año) > 0) {
+        botesSugeridos.push(bote.id);
+      }
+    }
+
+    return { contractId, botesSugeridos };
+  },
 };

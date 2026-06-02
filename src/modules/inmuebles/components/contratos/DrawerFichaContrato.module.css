@@ -232,6 +232,21 @@
   border-radius: 4px;
 }
 
+.editableBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-gold-ink);
+  background: var(--atlas-v5-gold-wash);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  padding: 3px 7px;
+  border-radius: 4px;
+}
+
 .tenantActions {
   display: flex;
   gap: 6px;

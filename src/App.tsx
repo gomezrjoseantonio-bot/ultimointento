@@ -97,7 +97,7 @@ const InmueblesNuevoContrato = lazyWithPreload(() => import('./modules/inmuebles
 // T20 Fase 3a · 3 importadores re-ubicados per decisión D3 de Jose.
 const ImportarInmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarInmuebles'));
 const ImportarValoracionesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarValoraciones'));
-const ImportarContratosPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarContratos'));
+const ImportarContratosPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarContratosWizard'));
 
 // Inversiones Module · T23.1 · galería v2 (sustituye los 4 tabs T20 Fase 3d)
 const InversionesGaleria = lazyWithPreload(() => import('./modules/inversiones/InversionesGaleria'));
