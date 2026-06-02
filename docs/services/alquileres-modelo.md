@@ -66,9 +66,50 @@ id con una cadena de fallbacks (`nombre + apellidos` → `DNI <dni>` →
 `Contrato #<id>`). Lo consumen tanto el drawer de conciliación ("Contratos
 vinculados") como la sección de histórico fiscal, que solo guardan `contractId`.
 
-## 6 · Apuntes futuros (fuera de alcance)
+## 6 · Importador de contratos (Rentila + plantilla ATLAS) · V79
 
-- Soporte de los 4 tipos Rentila (sesión propia).
+Pantalla `/inmuebles/importar-contratos` · wizard de 4 pasos
+(`ImportarContratosWizard`), réplica de `docs/mockups/atlas-importer-contratos-v4.html`.
+
+1. **Origen** · Rentila (12 columnas reales) · plantilla ATLAS (11 columnas,
+   descargable estática desde `public/templates/plantilla-contratos-atlas.xlsx`) ·
+   "Otro Excel" queda *Próximamente* (deshabilitado).
+2. **Subida** · multi-fichero si Rentila (activos + archivados por separado) ·
+   single si plantilla. Parsers: `rentilaParserService` / `atlasTemplateParserService`
+   (validan el header y lanzan `RentilaFormatError` / `AtlasTemplateFormatError`).
+3. **Revisión** · `contractDraftService` normaliza a `ContractDraft`, hace fuzzy
+   match de inmuebles (`sugerirInmueble`), detecta cotitulares (coma) y duplicados
+   (NIF o nombre fuzzy en el mismo inmueble) y clasifica en 3 secciones:
+   **listos** (verde) · **revisar** (ámbar · select obligatorio) · **duplicados**
+   (rojo · decisión omitir/fusionar/crear nuevo). Cada sección se crea por separado.
+4. **Resumen** · contadores + banner "N botes pueden vincularse en Por conciliar"
+   + botón a `/contratos?tab=conciliar`.
+
+### Estado `sin_firmar`
+
+Los Contracts importados nacen `estadoContrato='sin_firmar'` (nuevo valor del enum)
+con `origenImportacion='rentila'|'plantilla_atlas'`. **Mientras estén SIN FIRMAR son
+editables en su totalidad sin anexo**: el `DrawerFichaContrato` no muestra el badge
+"Bloqueado · requiere anexo" ni la fila de anexo para ese estado (la regla de
+bloqueo + anexo solo aplica a contratos `activo`). La edición granular es PR C aparte.
+
+### Vinculación retrospectiva al bote
+
+Tras crear cada Contract (`crearContractsDesdeDrafts`) se dispara
+`boteAnualService.postContractCreated(contractId)`, que **no auto-vincula**: detecta
+los botes pendientes del mismo inmueble cuyo año solapa (con saldo) para que
+"Por conciliar" los sugiera (`sugerirContracts` los recalcula al abrir el tab). El
+paso 4 cuenta esos botes.
+
+## 7 · Apuntes futuros (fuera de alcance)
+
+- Soporte de los 4 tipos Rentila con matiz fiscal art. 23.2 LAU (sesión propia);
+  hoy se mapean a `habitual` / `vacacional`.
+- "Otro Excel" con mapeo manual de columnas (sesión futura).
+- Edición granular de contratos SIN FIRMAR vs activos (PR C).
+- Alta de inmueble desde "Crear inmueble nuevo" en la sección revisar: hoy crea un
+  inmueble **mínimo** (alias + dirección = texto del Excel); el usuario completa el
+  resto en el módulo de inmuebles. Conviene refinar el alta guiada.
 - KPI "libres ahora" · limpieza.
 - Duplicación `inquilino` vs `tenant` en `Contract` · limpieza.
 - Los botes `cerrado` no se purgan de BD; si en el futuro se desea, sería una tarea

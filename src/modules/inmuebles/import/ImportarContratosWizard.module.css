@@ -499,6 +499,51 @@
 }
 .infoBannerBrand svg { color: var(--atlas-v5-brand-2); flex-shrink: 0; margin-top: 2px; }
 
+/* ── Paso 4 · resumen final ── */
+.finalHero { display: flex; align-items: flex-start; gap: 16px; margin-bottom: var(--atlas-v5-sp-2); }
+.finalIcon {
+  width: 56px; height: 56px;
+  border-radius: var(--atlas-v5-radius-lg);
+  background: var(--atlas-v5-pos-wash);
+  color: var(--atlas-v5-pos);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.summaryCard {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  padding: 22px;
+}
+.summaryLine {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--atlas-v5-line-2);
+  font-size: var(--atlas-v5-fs-sub);
+}
+.summaryLine:last-child { border-bottom: none; }
+.summaryKey { color: var(--atlas-v5-ink-3); }
+.summaryVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+.summaryVal.pos { color: var(--atlas-v5-pos); }
+.summaryVal.warn { color: var(--atlas-v5-warn); }
+.summaryVal.neg { color: var(--atlas-v5-neg); }
+.summaryBanner {
+  background: var(--atlas-v5-gold-wash);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-radius: var(--atlas-v5-radius-md);
+  padding: 16px 18px;
+  margin-top: var(--atlas-v5-sp-6);
+  display: flex; gap: 14px; align-items: flex-start;
+}
+.summaryBannerIcon { color: var(--atlas-v5-gold-ink); flex-shrink: 0; margin-top: 2px; }
+.summaryBannerH { font-size: var(--atlas-v5-fs-sub); font-weight: var(--atlas-v5-fw-semibold); color: var(--atlas-v5-gold-ink); }
+.summaryBannerD { font-size: var(--atlas-v5-fs-sub-sm); color: var(--atlas-v5-gold-ink); margin-top: 4px; line-height: var(--atlas-v5-lh-base); }
+
 /* ── Animación de paso ── */
 .stepContent { animation: fadeIn 0.25s ease; }
 @keyframes fadeIn {

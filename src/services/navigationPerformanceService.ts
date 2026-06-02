@@ -30,7 +30,7 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     return;
   }
   if (href.startsWith('/inmuebles/importar-contratos')) {
-    await import('../modules/inmuebles/import/ImportarContratos');
+    await import('../modules/inmuebles/import/ImportarContratosWizard');
     return;
   }
   if (href.startsWith('/inmuebles/importar')) {

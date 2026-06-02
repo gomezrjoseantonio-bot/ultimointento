@@ -3,12 +3,12 @@
 // docs/mockups/atlas-importer-contratos-v4.html. Los pasos 3 y 4 se completan
 // en los commits 6 y 8; aquí quedan como placeholders mínimos.
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, CheckCircle2, Download, FileSpreadsheet,
-  FileDown, FileQuestion, Info, UploadCloud, X, AlertCircle,
+  FileDown, FileQuestion, Info, Link2, UploadCloud, X, AlertCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
 import styles from './ImportarContratosWizard.module.css';
 import { parseRentilaXlsx, RentilaRow, RentilaFormatError } from '../../../services/rentilaParserService';
 import {
@@ -50,6 +50,7 @@ const formatBytes = (bytes: number): string => {
 };
 
 const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBack, onComplete }) => {
+  const navigate = useNavigate();
   const [step, setStep] = useState<number>(1);
   const [origen, setOrigen] = useState<Origen>('rentila');
   const [ficherosRentila, setFicherosRentila] = useState<FicheroRentila[]>([]);
@@ -132,21 +133,15 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
     }
   }, []);
 
-  // Plantilla ATLAS · descarga (commit 8 sustituye por fichero estático en public/).
+  // Plantilla ATLAS · fichero estático servido desde public/templates/.
   const descargarPlantillaAtlas = () => {
-    const headers = [
-      'Inmueble (nombre o ref. catastral)', 'Habitación', 'Tipo de contrato',
-      'Fecha inicio', 'Fecha fin', 'Inquilino nombre completo', 'DNI/NIF inquilino',
-      'Email inquilino', 'Teléfono inquilino', 'Renta mensual €', 'Fianza €',
-    ];
-    const ejemplos = [
-      ['CB Sant Fruitós', 'Hab 2', 'Vivienda LAU', '01/01/2024', '31/12/2028', 'CONCEPCION RAMIREZ GUERERO', '53639208B', 'contacto@ejemplo.com', '+34 666 555 444', 330, 330],
-    ];
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...ejemplos]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Contratos');
-    XLSX.writeFile(wb, 'plantilla-contratos-atlas.xlsx');
-    toast.success('Plantilla descargada correctamente');
+    const base = process.env.PUBLIC_URL || '';
+    const a = document.createElement('a');
+    a.href = `${base}/templates/plantilla-contratos-atlas.xlsx`;
+    a.download = 'plantilla-contratos-atlas.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   const irAPaso = (n: number) => setStep(n);
@@ -166,6 +161,7 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
       setInmuebleOpciones(opciones);
       setStep(3);
     } catch (error) {
+      console.error('[ImportarContratos] preparar revisión falló:', error);
       toast.error('No se pudieron preparar los contratos para revisión');
     } finally {
       setPreparando(false);
@@ -414,17 +410,76 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
         />
       )}
       {step === 4 && (
-        // Paso 4 · resumen final · se implementa en el commit 8.
         <section className={styles.stepContent}>
           <div className={styles.panel}>
-            <div className={styles.panelH}>Listo · {resultado.creados} contratos importados</div>
-            <div className={styles.panelSub}>
-              {resultado.botesConSugerencia.length} contratos pueden vincularse en Por conciliar. Resumen completo · commit 8.
+            <div className={styles.finalHero}>
+              <div className={styles.finalIcon}><CheckCircle2 size={28} strokeWidth={1.6} /></div>
+              <div>
+                <div className={styles.panelH}>Listo · {resultado.creados} contratos importados</div>
+                <div className={styles.panelSub}>
+                  {resultado.omitidos > 0
+                    ? `${resultado.omitidos} duplicados se omitieron · `
+                    : ''}
+                  todos los demás están ya en ATLAS como SIN FIRMAR.
+                </div>
+              </div>
             </div>
+
+            <div className={styles.panelSection}>
+              <div className={styles.summaryCard}>
+                <div className={styles.summaryLine}>
+                  <span className={styles.summaryKey}>Contratos creados</span>
+                  <span className={cx(styles.summaryVal, styles.pos)}>{resultado.creados}</span>
+                </div>
+                <div className={styles.summaryLine}>
+                  <span className={styles.summaryKey}>Duplicados omitidos</span>
+                  <span className={cx(styles.summaryVal, styles.neg)}>{resultado.omitidos}</span>
+                </div>
+                <div className={styles.summaryLine}>
+                  <span className={styles.summaryKey}>Inquilinos nuevos</span>
+                  <span className={styles.summaryVal}>{resultado.inquilinosNuevos}</span>
+                </div>
+                <div className={styles.summaryLine}>
+                  <span className={styles.summaryKey}>Inmuebles afectados</span>
+                  <span className={styles.summaryVal}>{resultado.inmueblesAfectados.length}</span>
+                </div>
+                <div className={styles.summaryLine}>
+                  <span className={styles.summaryKey}>Renta mensual total</span>
+                  <span className={styles.summaryVal}>
+                    {resultado.rentaMensualTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
+                  </span>
+                </div>
+                <div className={styles.summaryLine}>
+                  <span className={styles.summaryKey}>Estado</span>
+                  <span className={cx(styles.summaryVal, styles.warn)}>Sin firmar · editables</span>
+                </div>
+              </div>
+
+              {resultado.botesConSugerencia.length > 0 && (
+                <div className={styles.summaryBanner}>
+                  <Link2 size={18} className={styles.summaryBannerIcon} />
+                  <div>
+                    <div className={styles.summaryBannerH}>
+                      {resultado.botesConSugerencia.length} botes pueden vincularse en Por conciliar
+                    </div>
+                    <div className={styles.summaryBannerD}>
+                      ATLAS ha detectado que estos contratos cubren rentas declaradas a Hacienda que aún no están identificadas. Ve a la pestaña Por conciliar para vincularlos y cuadrar la declaración fiscal de cada año.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className={styles.wizFoot}>
               <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={() => irAPaso(3)}><ArrowLeft size={14} /> Volver a revisión</button>
               <div />
-              <button type="button" className={cx(styles.btn, styles.btnGold)} onClick={onComplete}><ArrowRight size={14} /> Ir a Por conciliar</button>
+              <button
+                type="button"
+                className={cx(styles.btn, styles.btnGold)}
+                onClick={() => { onComplete(); navigate('/contratos?tab=conciliar'); }}
+              >
+                <ArrowRight size={14} /> Ir a Por conciliar
+              </button>
             </div>
           </div>
         </section>

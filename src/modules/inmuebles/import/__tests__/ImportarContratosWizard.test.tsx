@@ -2,6 +2,7 @@
 import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import * as XLSX from 'xlsx';
 
@@ -11,6 +12,13 @@ jest.mock('react-hot-toast', () => ({
 }));
 
 import ImportarContratosWizard from '../ImportarContratosWizard';
+
+const renderWizard = () =>
+  render(
+    <MemoryRouter>
+      <ImportarContratosWizard onBack={() => {}} onComplete={() => {}} />
+    </MemoryRouter>,
+  );
 
 const HEADER_ES = [
   'ID', 'Propiedad', 'Tipo', 'Inicio de alquiler', 'Fin del alquiler',
@@ -34,7 +42,7 @@ function rentilaXlsxFile(name: string, nContratos: number): File {
 
 describe('ImportarContratosWizard', () => {
   it('paso 1 muestra los 3 orígenes con Rentila seleccionado y Otro Excel deshabilitado', () => {
-    render(<ImportarContratosWizard onBack={() => {}} onComplete={() => {}} />);
+    renderWizard();
 
     expect(screen.getByText('Importar contratos de alquiler')).toBeInTheDocument();
     expect(screen.getByText('Rentila')).toBeInTheDocument();
@@ -44,16 +52,19 @@ describe('ImportarContratosWizard', () => {
 
     // El banner de Rentila se muestra por defecto.
     expect(screen.getByText(/Desde Rentila ve a/)).toBeInTheDocument();
+
+    // Regresión bug IBAN: el wizard no tiene ningún selector de cuenta de cobro.
+    expect(screen.queryByRole('combobox')).toBeNull();
   });
 
   it('cambia a Plantilla ATLAS y oculta el banner Rentila', async () => {
-    render(<ImportarContratosWizard onBack={() => {}} onComplete={() => {}} />);
+    renderWizard();
     await userEvent.click(screen.getByText('Plantilla ATLAS'));
     expect(screen.queryByText(/Desde Rentila ve a/)).not.toBeInTheDocument();
   });
 
   it('sube 2 ficheros Rentila y los lista con sus contadores', async () => {
-    render(<ImportarContratosWizard onBack={() => {}} onComplete={() => {}} />);
+    renderWizard();
 
     // Ir al paso 2.
     await userEvent.click(screen.getByRole('button', { name: /Continuar/ }));
@@ -82,7 +93,7 @@ describe('ImportarContratosWizard', () => {
   });
 
   it('permite quitar un fichero de la lista', async () => {
-    render(<ImportarContratosWizard onBack={() => {}} onComplete={() => {}} />);
+    renderWizard();
     await userEvent.click(screen.getByRole('button', { name: /Continuar/ }));
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -96,7 +107,7 @@ describe('ImportarContratosWizard', () => {
   });
 
   it('el botón continuar a revisión está deshabilitado sin ficheros', async () => {
-    render(<ImportarContratosWizard onBack={() => {}} onComplete={() => {}} />);
+    renderWizard();
     await userEvent.click(screen.getByRole('button', { name: /Continuar/ }));
     expect(screen.getByRole('button', { name: /Continuar a revisión/ })).toBeDisabled();
   });

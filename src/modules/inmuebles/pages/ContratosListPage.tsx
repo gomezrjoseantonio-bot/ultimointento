@@ -37,7 +37,7 @@ import { isContratoActivo } from '../utils/contratoEstado';
 type Tab = 'disponibilidad' | 'tablero' | 'activos' | 'historico' | 'conciliar';
 
 const VALID_TABS: Tab[] = ['disponibilidad', 'tablero', 'activos', 'historico', 'conciliar'];
-const LEGACY_TAB_ALIAS: Record<string, Tab> = { acciones: 'tablero' };
+const LEGACY_TAB_ALIAS: Record<string, Tab> = { acciones: 'tablero', 'por-conciliar': 'conciliar' };
 const isValidTab = (value: string | null): value is Tab =>
   value !== null && (VALID_TABS as string[]).includes(value);
 const normalizeTab = (raw: string | null): Tab | null => {
