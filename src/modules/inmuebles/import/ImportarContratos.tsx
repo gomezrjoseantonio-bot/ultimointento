@@ -227,20 +227,16 @@ const ImportarContratos: React.FC<ImportarContratosProps> = ({ onBack, onComplet
         </div>
       </div>
 
+      {/*
+        Commit 2 · eliminado el selector de cuenta de cobro residual: renderizaba el
+        IBAN crudo (account.iban) junto al título, código de otro flujo sin sentido en
+        este importador. La cuenta de cobro se resuelve internamente por defecto hasta
+        que el wizard de 4 pasos (commits 5-8) sustituya esta pantalla por completo.
+      */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
         <button onClick={handleDescargarPlantilla} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--hz-neutral-300)', background: 'white', cursor: 'pointer' }}>
           <Download size={14} /> Descargar plantilla
         </button>
-        <select
-          value={selectedAccountId || ''}
-          onChange={(e) => setSelectedAccountId(normalizeAccountId(e.target.value))}
-          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--hz-neutral-300)', minWidth: '240px' }}
-        >
-          {!accounts.length && <option value="">No hay cuentas activas</option>}
-          {accounts.map((account) => (
-            <option key={account.id} value={account.id}>{account.alias || account.name || account.iban}</option>
-          ))}
-        </select>
       </div>
 
       {!preview && (
