@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>ATLAS · Importar contratos de alquiler</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .sc { text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; font-weight: 600; color: var(--ink-4); }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* Main */
+  .main { padding: 22px 32px 48px; max-width: 1280px; }
+  .page-back { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 12.5px; margin-bottom: 12px; }
+  .page-back:hover { color: var(--ink); }
+  h1 { font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1.1; letter-spacing: -0.025em; }
+  .page-sub { font-size: 13.5px; color: var(--ink-4); margin-top: 4px; max-width: 640px; }
+
+  /* Stepper */
+  .stepper { display: flex; align-items: center; gap: 6px; margin: 22px 0 26px; flex-wrap: wrap; }
+  .step-ind {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; border-radius: 999px;
+    font-size: 12px; color: var(--ink-4); font-weight: 600;
+  }
+  .step-ind.done { color: var(--ink-2); }
+  .step-ind.active { color: var(--ink); background: var(--card); border: 1px solid var(--line); }
+  .step-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); color: var(--ink-4);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+    border: 1.5px solid var(--line);
+  }
+  .step-ind.active .step-num { background: var(--brand-ink); color: var(--gold); border-color: var(--brand-ink); }
+  .step-ind.done .step-num { background: var(--card); color: var(--gold); border-color: var(--gold); }
+  .step-sep { width: 24px; height: 1px; background: var(--line-2); }
+
+  /* Cards */
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px; }
+  .panel + .panel { margin-top: 14px; }
+  .panel-h { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .panel-sub { font-size: 12.5px; color: var(--ink-4); margin-top: 4px; }
+  .panel-section { margin-top: 18px; }
+  .panel-section-h { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-bottom: 10px; }
+
+  /* Origin source cards · paso 1 */
+  .source-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+  .source { padding: 18px 18px 16px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--card); cursor: pointer; text-align: left; transition: all .12s; position: relative; display: flex; flex-direction: column; gap: 8px; }
+  .source:hover { border-color: var(--ink-5); }
+  .source.selected { border-color: var(--gold); background: var(--card); box-shadow: 0 0 0 3px rgba(184,138,62,0.15); }
+  .source.selected::before { content: ""; position: absolute; top: -1px; left: -1px; right: -1px; height: 3px; background: var(--gold); border-radius: 10px 10px 0 0; }
+  .source-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--card-alt); display: flex; align-items: center; justify-content: center; color: var(--ink-3); }
+  .source.selected .source-icon { background: var(--gold-wash); color: var(--gold-ink); }
+  .source-h { font-size: 14.5px; font-weight: 700; color: var(--ink); }
+  .source-d { font-size: 12px; color: var(--ink-4); line-height: 1.5; }
+  .source-foot { margin-top: auto; padding-top: 8px; font-size: 11px; color: var(--ink-4); display: flex; align-items: center; gap: 6px; }
+
+  /* Dropzone */
+  .dropzone { border: 2px dashed var(--line); border-radius: 10px; padding: 48px 24px; text-align: center; background: var(--card-alt); transition: all .15s; cursor: pointer; }
+  .dropzone:hover { border-color: var(--gold); background: var(--gold-wash); }
+  .dz-icon { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--gold); }
+  .dz-h { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .dz-sub { font-size: 12.5px; color: var(--ink-4); }
+  .dz-format { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); margin-top: 14px; padding: 4px 8px; border-radius: 4px; background: var(--card); display: inline-block; border: 1px solid var(--line); }
+
+  /* Template download */
+  .template-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--card-alt); border: 1px solid var(--line); border-radius: 10px; }
+  .template-icon { width: 40px; height: 40px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--gold); flex-shrink: 0; }
+  .template-info { flex: 1; }
+  .template-h { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .template-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+
+  /* File list (paso 2) */
+  .file-list { display: flex; flex-direction: column; gap: 8px; }
+  .file-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; }
+  .file-item-icon { width: 36px; height: 36px; border-radius: 7px; background: var(--card-alt); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--gold); flex-shrink: 0; }
+  .file-item-info { flex: 1; min-width: 0; }
+  .file-item-name { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-item-meta { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+  .file-item-remove { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--ink-4); border: 1px solid transparent; }
+  .file-item-remove:hover { color: var(--neg); background: var(--neg-wash); }
+  .file-total { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 14px; background: var(--pos-wash); border: 1px solid #C4DFCC; border-radius: 8px; font-size: 12.5px; color: var(--pos); }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
+  .btn-primary { background: var(--brand); color: #FFFFFF; }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-primary:disabled { background: var(--ink-5); cursor: not-allowed; }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-gold { background: var(--gold); color: #fff; }
+  .btn-gold:hover { background: var(--gold-2); }
+  .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+  .btn-link { padding: 0; font-size: 12.5px; color: var(--gold-ink); text-decoration: underline; font-weight: 500; background: none; border: none; }
+
+  /* Footer wizard navigation */
+  .wiz-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line-2); }
+  .wiz-foot-info { font-size: 12px; color: var(--ink-4); }
+
+  /* ── Paso 3 · header con format tip ── */
+  .rev-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .format-tip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--pos-wash); color: var(--pos); font-size: 11px; font-weight: 600; cursor: help; }
+
+  /* Sección colapsable */
+  .sect { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+  .sect-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; gap: 16px; border-bottom: 1px solid var(--line-2); flex-wrap: wrap; }
+  .sect-head-left { display: flex; align-items: center; gap: 12px; }
+  .sect-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sect-icon.ok { background: var(--pos-wash); color: var(--pos); }
+  .sect-icon.warn { background: var(--warn-wash); color: var(--warn); }
+  .sect-icon.neg { background: var(--neg-wash); color: var(--neg); }
+  .sect-title { font-size: 15px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 10px; }
+  .sect-count { font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 2px 8px; border-radius: 5px; background: var(--bg); color: var(--ink-2); font-weight: 700; }
+  .sect-count.warn { background: var(--warn-wash); color: var(--warn); }
+  .sect-count.neg { background: var(--neg-wash); color: var(--neg); }
+  .sect-sub { font-size: 12px; color: var(--ink-4); margin-top: 2px; }
+
+  /* Tabla dentro de sección · neutra · sin fondos por fila */
+  .sect-table { padding: 0; }
+  .sect-row { display: grid; gap: 14px; padding: 11px 20px; align-items: center; border-bottom: 1px solid var(--line-2); font-size: 12.5px; }
+  .sect-row:last-of-type { border-bottom: none; }
+  .sect-row.head { background: var(--card-alt); padding: 10px 20px; }
+  .sect-row.head > div { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-4); font-weight: 600; line-height: 1.3; }
+  .sect-row input[type="checkbox"] { accent-color: var(--gold); }
+  .sect-more { padding: 12px 20px; text-align: center; font-size: 12px; color: var(--ink-4); background: var(--card-alt); }
+  .rev-cell { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .rev-name { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rev-meta { font-size: 11px; color: var(--ink-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Grids específicos por sección */
+  .sect[data-sect="listos"] .sect-row,
+  .sect[data-sect="revisar"] .sect-row {
+    grid-template-columns: 32px 1.4fr 1.4fr 0.9fr 0.9fr 0.9fr;
+  }
+  .sect[data-sect="duplicados"] .sect-row {
+    grid-template-columns: 150px 1.3fr 1.4fr 0.9fr 1fr;
+  }
+  .sect[data-sect="duplicados"] .sect-row.head { padding-top: 12px; padding-bottom: 12px; }
+
+  /* Selects · solo donde hay decisión */
+  .sel-warn, .sel-neg { width: 100%; font-size: 12px; padding: 6px 8px; border-radius: 5px; background: var(--card); color: var(--ink); cursor: pointer; outline: none; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A92A0' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 8px center; background-size: 12px; padding-right: 24px; }
+  .sel-warn { border: 1px solid var(--warn); background-color: var(--warn-wash); color: var(--warn); font-weight: 600; }
+  .sel-warn option { color: var(--ink); font-weight: 500; background: var(--card); }
+  .sel-warn:focus { box-shadow: 0 0 0 3px rgba(138,98,19,0.2); }
+  .sel-neg { border: 1px solid var(--ink-5); }
+  .sel-neg:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,138,62,0.15); }
+
+  /* Botón disabled */
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  /* Paso 4 · Resumen final */
+  .final-hero { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
+  .final-icon { width: 56px; height: 56px; border-radius: 12px; background: var(--pos-wash); color: var(--pos); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .final-icon svg { width: 28px; height: 28px; }
+  .summary-card { background: var(--card-alt); border: 1px solid var(--line); border-radius: 10px; padding: 22px; }
+  .summary-line { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--line-2); font-size: 13px; }
+  .summary-line:last-child { border-bottom: none; }
+  .summary-key { color: var(--ink-3); }
+  .summary-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--ink); }
+  .summary-val.pos { color: var(--pos); }
+  .summary-val.warn { color: var(--warn); }
+  .summary-val.neg { color: var(--neg); }
+  .summary-banner { background: var(--gold-wash); border: 1px solid #E0CFA0; border-radius: 10px; padding: 16px 18px; margin-top: 18px; display: flex; gap: 14px; align-items: flex-start; }
+  .summary-banner-icon { color: var(--gold-ink); flex-shrink: 0; margin-top: 2px; }
+  .summary-banner-h { font-size: 13px; font-weight: 600; color: var(--gold-ink); }
+  .summary-banner-d { font-size: 12.5px; color: var(--gold-ink); margin-top: 4px; line-height: 1.5; }
+
+  /* Toggle entre vistas (solo demo) */
+  .demo-controls { position: fixed; bottom: 16px; right: 16px; display: flex; gap: 6px; padding: 6px; background: rgba(12,18,48,0.92); border-radius: 10px; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+  .demo-controls button { padding: 7px 11px; border-radius: 6px; font-size: 11.5px; font-weight: 600; color: rgba(255,255,255,0.6); }
+  .demo-controls button.active { background: var(--gold); color: var(--brand-ink); }
+  .demo-controls button:hover:not(.active) { color: #fff; }
+
+  /* Animations · paso transitions */
+  .step-content { animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  [hidden] { display: none !important; }
+
+  /* Banner info SIN FIRMAR */
+  .info-banner { background: var(--brand-wash); border: 1px solid #C9CFE0; border-radius: 8px; padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; color: var(--brand-2); line-height: 1.5; margin-top: 14px; }
+  .info-banner svg { color: var(--brand-2); flex-shrink: 0; margin-top: 2px; }
+
+  /* Format pill (origen detectado) */
+  .format-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--pos-wash); color: var(--pos); font-size: 11.5px; font-weight: 600; }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">ATLAS</div>
+        <div class="brand-sub">Patrimonio</div>
+      </div>
+    </div>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a><i data-lucide="layout-dashboard"></i>Panel</a>
+      <a class="active"><i data-lucide="building-2"></i>Inmuebles</a>
+      <a><i data-lucide="trending-up"></i>Inversiones</a>
+      <a><i data-lucide="wallet"></i>Tesorería</a>
+      <a><i data-lucide="landmark"></i>Financiación</a>
+      <a><i data-lucide="user"></i>Personal</a>
+    </nav>
+    <div class="nav-section">Operativa</div>
+    <nav class="nav">
+      <a><i data-lucide="file-text"></i>Contratos</a>
+      <a><i data-lucide="compass"></i>Mi plan</a>
+      <a><i data-lucide="banknote"></i>Fiscal</a>
+      <a><i data-lucide="archive"></i>Archivo</a>
+      <a><i data-lucide="settings"></i>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">UD</div>
+      <div>
+        <div class="side-foot-name">Usuario demo</div>
+        <div class="side-foot-sub">free</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <a class="page-back"><i data-lucide="arrow-left" style="width:14px;height:14px"></i> Volver a inmuebles</a>
+    <h1>Importar contratos de alquiler</h1>
+    <p class="page-sub">Sube tus contratos desde Rentila · una plantilla de ATLAS o tu propio Excel. ATLAS los revisa contigo antes de crearlos para evitar duplicados y errores.</p>
+
+    <!-- Stepper -->
+    <div class="stepper">
+      <button class="step-ind" data-go="1"><div class="step-num">1</div>Origen</button>
+      <div class="step-sep"></div>
+      <button class="step-ind" data-go="2"><div class="step-num">2</div>Subir fichero</button>
+      <div class="step-sep"></div>
+      <button class="step-ind" data-go="3"><div class="step-num">3</div>Revisión y mapeo</button>
+      <div class="step-sep"></div>
+      <button class="step-ind" data-go="4"><div class="step-num">4</div>Confirmar</button>
+    </div>
+
+    <!-- ────────── PASO 1 · ORIGEN ────────── -->
+    <section class="step-content" data-step="1">
+      <div class="panel">
+        <div class="panel-h">¿De dónde vienen tus contratos?</div>
+        <div class="panel-sub">Elige el origen para que ATLAS sepa cómo interpretar las columnas. Si tu fuente no aparece · descarga la plantilla de ATLAS.</div>
+
+        <div class="source-grid">
+          <button class="source selected" data-source="rentila">
+            <div class="source-icon"><i data-lucide="file-spreadsheet"></i></div>
+            <div class="source-h">Rentila</div>
+            <div class="source-d">Exportación directa del módulo Alquileres de Rentila · ATLAS reconoce las 12 columnas automáticamente.</div>
+            <div class="source-foot"><i data-lucide="check-circle-2" style="width:14px;height:14px;color:var(--pos)"></i> Formato auto-reconocido</div>
+          </button>
+
+          <button class="source" data-source="atlas">
+            <div class="source-icon"><i data-lucide="file-down"></i></div>
+            <div class="source-h">Plantilla ATLAS</div>
+            <div class="source-d">Plantilla Excel propia con las columnas que ATLAS usa internamente · ideal si no tienes Rentila.</div>
+            <div class="source-foot"><i data-lucide="download" style="width:14px;height:14px"></i> Descargar plantilla</div>
+          </button>
+
+          <button class="source" data-source="otro">
+            <div class="source-icon"><i data-lucide="file-question"></i></div>
+            <div class="source-h">Otro Excel</div>
+            <div class="source-d">Sube tu propio Excel · ATLAS te pedirá mapear cada columna a un campo conocido en el siguiente paso.</div>
+            <div class="source-foot"><i data-lucide="alert-circle" style="width:14px;height:14px;color:var(--warn)"></i> Próximamente</div>
+          </button>
+        </div>
+
+        <div class="panel-section" id="origen-rentila-info">
+          <div class="panel-section-h">Qué espera ATLAS de Rentila</div>
+          <div class="info-banner">
+            <i data-lucide="info" style="width:16px;height:16px"></i>
+            <div>
+              Desde Rentila ve a <strong>Alquileres → Exportar</strong> · marca todas las columnas por defecto · descarga el Excel y súbelo aquí. ATLAS reconoce ID · propiedad · tipo · fechas · inquilino · alquiler · gastos · fianza. No necesitas reformatear nada.
+            </div>
+          </div>
+        </div>
+
+        <div class="wiz-foot">
+          <div class="wiz-foot-info">1 de 4 · Origen</div>
+          <button class="btn btn-primary" onclick="goStep(2)">Continuar <i data-lucide="arrow-right" style="width:14px;height:14px"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────── PASO 2 · SUBIR FICHERO ────────── -->
+    <section class="step-content" data-step="2" hidden>
+      <div class="panel">
+        <div class="panel-h">Sube tus exportaciones de Rentila</div>
+        <div class="panel-sub">Rentila exporta los contratos activos y los archivados por separado · puedes subir ambos a la vez y ATLAS los procesa juntos. Acepta .xlsx y .xls.</div>
+
+        <div class="panel-section">
+          <div class="dropzone" onclick="document.getElementById('file-input').click()">
+            <input type="file" id="file-input" hidden accept=".xlsx,.xls" multiple>
+            <div class="dz-icon"><i data-lucide="upload-cloud" style="width:28px;height:28px"></i></div>
+            <div class="dz-h">Arrastra los Excel de Rentila o haz clic para seleccionar</div>
+            <div class="dz-sub">Puedes subir hasta 2 ficheros · activos y archivados · hasta 10 MB cada uno</div>
+            <div class="dz-format">.xlsx · .xls</div>
+          </div>
+        </div>
+
+        <!-- Lista de ficheros simulada (visible al subir) -->
+        <div class="panel-section">
+          <div class="panel-section-h">Ficheros subidos</div>
+          <div class="file-list">
+            <div class="file-item">
+              <div class="file-item-icon"><i data-lucide="file-spreadsheet"></i></div>
+              <div class="file-item-info">
+                <div class="file-item-name">Rentila-Alquileres-activos.xlsx</div>
+                <div class="file-item-meta"><span class="mono">7,3 KB</span> · 10 contratos detectados · <span style="color:var(--pos)">formato Rentila reconocido</span></div>
+              </div>
+              <button class="file-item-remove" title="Quitar"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+            </div>
+            <div class="file-item">
+              <div class="file-item-icon"><i data-lucide="file-spreadsheet"></i></div>
+              <div class="file-item-info">
+                <div class="file-item-name">Rentila-Alquileres-archivados.xlsx</div>
+                <div class="file-item-meta"><span class="mono">10,5 KB</span> · 50 contratos detectados · <span style="color:var(--pos)">formato Rentila reconocido</span></div>
+              </div>
+              <button class="file-item-remove" title="Quitar"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+            </div>
+          </div>
+          <div class="file-total"><i data-lucide="check-circle-2" style="width:14px;height:14px;color:var(--pos)"></i> <span><strong>60 contratos</strong> listos para revisión en el siguiente paso.</span></div>
+        </div>
+
+        <div class="wiz-foot">
+          <button class="btn btn-ghost" onclick="goStep(1)"><i data-lucide="arrow-left" style="width:14px;height:14px"></i> Atrás</button>
+          <div class="wiz-foot-info">2 ficheros · 60 contratos detectados</div>
+          <button class="btn btn-primary" onclick="goStep(3)">Continuar a revisión <i data-lucide="arrow-right" style="width:14px;height:14px"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────── PASO 2 · ALT · ORIGEN PLANTILLA ATLAS ────────── -->
+    <section class="step-content" data-step="2-atlas" hidden>
+      <div class="panel">
+        <div class="panel-h">Plantilla ATLAS</div>
+        <div class="panel-sub">Descarga la plantilla · rellénala con tus contratos · y súbela aquí.</div>
+
+        <div class="panel-section">
+          <div class="template-row">
+            <div class="template-icon"><i data-lucide="file-spreadsheet"></i></div>
+            <div class="template-info">
+              <div class="template-h">plantilla-contratos-atlas.xlsx</div>
+              <div class="template-sub">12 KB · 11 columnas con ejemplos rellenados · compatible con todos los inmuebles que ya tienes en ATLAS</div>
+            </div>
+            <button class="btn btn-gold btn-sm"><i data-lucide="download" style="width:14px;height:14px"></i> Descargar</button>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="dropzone" onclick="document.getElementById('file-input-atlas').click()">
+            <input type="file" id="file-input-atlas" hidden accept=".xlsx,.xls">
+            <div class="dz-icon"><i data-lucide="upload-cloud" style="width:28px;height:28px"></i></div>
+            <div class="dz-h">Sube la plantilla ATLAS rellenada</div>
+            <div class="dz-sub">Hasta 10 MB · una hoja por fichero</div>
+            <div class="dz-format">.xlsx · .xls</div>
+          </div>
+        </div>
+
+        <div class="wiz-foot">
+          <button class="btn btn-ghost" onclick="goStep(1)"><i data-lucide="arrow-left" style="width:14px;height:14px"></i> Atrás</button>
+          <div class="wiz-foot-info">Sube el fichero rellenado para continuar</div>
+          <button class="btn btn-primary" onclick="goStep(3)">Continuar a revisión <i data-lucide="arrow-right" style="width:14px;height:14px"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────── PASO 3 · REVISIÓN Y MAPEO ────────── -->
+    <section class="step-content" data-step="3" hidden>
+      <!-- Header con tooltip discreto -->
+      <div class="rev-header">
+        <div>
+          <div class="panel-h">Revisa los contratos antes de crearlos</div>
+          <div class="panel-sub">ATLAS ha leído <strong>60 contratos</strong> de tus 2 ficheros. Los hemos agrupado en 3 secciones · revisa cada una y crea por bloques.</div>
+        </div>
+        <div class="format-tip" title="ATLAS reconoció automáticamente las 12 columnas de Rentila">
+          <i data-lucide="check-circle-2" style="width:13px;height:13px"></i> Rentila reconocido
+        </div>
+      </div>
+
+      <!-- ── SECCIÓN 1 · Listos para crear ── -->
+      <div class="sect" data-sect="listos">
+        <div class="sect-head">
+          <div class="sect-head-left">
+            <div class="sect-icon ok"><i data-lucide="check-circle-2"></i></div>
+            <div>
+              <div class="sect-title">Listos para crear <span class="sect-count mono">52</span></div>
+              <div class="sect-sub">Mapeo automático correcto · todos los datos cuadran.</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="alert('Demo · se crearían los 52 contratos como SIN FIRMAR · sección desaparece')">
+            <i data-lucide="check" style="width:14px;height:14px"></i> Crear 52 contratos
+          </button>
+        </div>
+
+        <div class="sect-table">
+          <div class="sect-row head">
+            <div></div>
+            <div>Inmueble Rentila → ATLAS</div>
+            <div>Inquilino</div>
+            <div>Tipo</div>
+            <div>Fechas</div>
+            <div>Renta · fianza</div>
+          </div>
+
+          <div class="sect-row">
+            <div><input type="checkbox" checked></div>
+            <div class="rev-cell">
+              <div class="rev-name">1-SANT FRUITOS</div>
+              <div class="rev-meta">→ CB Sant Fruitós</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">CONCEPCION RAMIREZ GUERERO</div>
+              <div class="rev-meta">Nuevo inquilino</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">Habitual</div>
+              <div class="rev-meta">Vivienda LAU</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">01/01/24</div>
+              <div class="rev-meta mono">→ 31/12/28</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">337,92 €</div>
+              <div class="rev-meta mono">fianza 330 €</div>
+            </div>
+          </div>
+
+          <div class="sect-row">
+            <div><input type="checkbox" checked></div>
+            <div class="rev-cell">
+              <div class="rev-name">3-TENDERINA 48</div>
+              <div class="rev-meta">→ Tenderina 48 4D/4Iz</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">ALISSER REAL ESTATE</div>
+              <div class="rev-meta">Nuevo inquilino</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">Habitual</div>
+              <div class="rev-meta">Vivienda LAU</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">23/09/22</div>
+              <div class="rev-meta mono">→ 27/11/25</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">1.235,26 €</div>
+              <div class="rev-meta mono">fianza 2.000 €</div>
+            </div>
+          </div>
+
+          <div class="sect-row">
+            <div><input type="checkbox" checked></div>
+            <div class="rev-cell">
+              <div class="rev-name">6-TENDERINA, 64 4I -004</div>
+              <div class="rev-meta">→ T64 4Iz · Hab 4</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">GABRIELA JOSEFINA MEDINA GARCIA</div>
+              <div class="rev-meta">Nuevo inquilino</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">Vacacional</div>
+              <div class="rev-meta">Hab. temporada</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">10/11/25</div>
+              <div class="rev-meta mono">→ 30/06/26</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">465,00 €</div>
+              <div class="rev-meta mono">fianza 465 €</div>
+            </div>
+          </div>
+
+          <div class="sect-row">
+            <div><input type="checkbox" checked></div>
+            <div class="rev-cell">
+              <div class="rev-name">4-ACEVEDO-H2</div>
+              <div class="rev-meta">→ FA32 · Hab 2</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">JOSEPH PALMA GARCIA</div>
+              <div class="rev-meta">Nuevo inquilino</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">Habitual</div>
+              <div class="rev-meta">Habitación</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">04/02/23</div>
+              <div class="rev-meta mono">→ 03/04/23</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">320,00 €</div>
+              <div class="rev-meta mono">fianza 0 €</div>
+            </div>
+          </div>
+
+          <div class="sect-more">... y 48 contratos más en esta sección · <button class="btn-link">ver todos</button></div>
+        </div>
+      </div>
+
+      <!-- ── SECCIÓN 2 · Requieren revisión ── -->
+      <div class="sect" data-sect="revisar">
+        <div class="sect-head">
+          <div class="sect-head-left">
+            <div class="sect-icon warn"><i data-lucide="alert-triangle"></i></div>
+            <div>
+              <div class="sect-title">Requieren revisión <span class="sect-count mono warn">5</span></div>
+              <div class="sect-sub">ATLAS no ha podido mapear el inmueble · elige uno o crea uno nuevo.</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" disabled title="Resuelve todas las filas para activar">
+            <i data-lucide="check" style="width:14px;height:14px"></i> Crear cuando estén resueltos
+          </button>
+        </div>
+
+        <div class="sect-table">
+          <div class="sect-row head">
+            <div></div>
+            <div>Inmueble Rentila</div>
+            <div>Inmueble ATLAS · elige</div>
+            <div>Inquilino</div>
+            <div>Fechas</div>
+            <div>Renta · fianza</div>
+          </div>
+
+          <div class="sect-row">
+            <div><input type="checkbox" checked></div>
+            <div class="rev-cell">
+              <div class="rev-name">01-OVD-NICOLAI</div>
+              <div class="rev-meta">Vivienda · #024</div>
+            </div>
+            <div class="rev-cell">
+              <select class="sel-warn">
+                <option value="" selected disabled>Elegir inmueble...</option>
+                <option>FA32 Fuertes Acevedo</option>
+                <option>Sant Joan d'En Coll</option>
+                <option>+ Crear inmueble nuevo</option>
+              </select>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">JORGE ANDERSON RIOS POSADA</div>
+              <div class="rev-meta">+ 1 cotitular · Sandra Chalarca</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">15/08/24</div>
+              <div class="rev-meta mono">→ 14/08/29</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">535,00 €</div>
+              <div class="rev-meta mono">fianza 535 €</div>
+            </div>
+          </div>
+
+          <div class="sect-row">
+            <div><input type="checkbox" checked></div>
+            <div class="rev-cell">
+              <div class="rev-name">5-TENDERINA, 64 4D -003</div>
+              <div class="rev-meta">Habitación · #038</div>
+            </div>
+            <div class="rev-cell">
+              <select class="sel-warn">
+                <option value="" selected disabled>Elegir inmueble...</option>
+                <option>T64 4D · Hab 3</option>
+                <option>T64 4Iz · Hab 3</option>
+                <option>+ Crear inmueble nuevo</option>
+              </select>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">LUIS MONTES CHALARCA</div>
+              <div class="rev-meta">Nuevo inquilino</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">01/06/26</div>
+              <div class="rev-meta mono">→ 31/05/27</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">295,00 €</div>
+              <div class="rev-meta mono">fianza 0 €</div>
+            </div>
+          </div>
+
+          <div class="sect-more">... y 3 contratos más en esta sección</div>
+        </div>
+      </div>
+
+      <!-- ── SECCIÓN 3 · Posibles duplicados ── -->
+      <div class="sect" data-sect="duplicados">
+        <div class="sect-head">
+          <div class="sect-head-left">
+            <div class="sect-icon neg"><i data-lucide="copy"></i></div>
+            <div>
+              <div class="sect-title">Posibles duplicados <span class="sect-count mono neg">3</span></div>
+              <div class="sect-sub">El inquilino ya existe en ATLAS · decide qué hacer con cada uno.</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="alert('Demo · se aplicarían las decisiones seleccionadas')">
+            <i data-lucide="check" style="width:14px;height:14px"></i> Aplicar decisiones
+          </button>
+        </div>
+
+        <div class="sect-table">
+          <div class="sect-row head">
+            <div>Decisión</div>
+            <div>Inmueble Rentila → ATLAS</div>
+            <div>Inquilino · ya existe</div>
+            <div>Fechas Rentila</div>
+            <div>Diferencia detectada</div>
+          </div>
+
+          <div class="sect-row">
+            <div class="rev-cell">
+              <select class="sel-neg">
+                <option selected>Omitir esta fila</option>
+                <option>Fusionar con existente</option>
+                <option>Crear nuevo igualmente</option>
+              </select>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">2-MANRESA</div>
+              <div class="rev-meta">→ Sant Joan d'En Coll</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">IVAN DANIEL GOMEZ RAMIREZ</div>
+              <div class="rev-meta">DNI 53639208B · vino del XML AEAT</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">01/01/22</div>
+              <div class="rev-meta mono">→ 01/07/25</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">Renta · 430 €</div>
+              <div class="rev-meta">ATLAS tiene 420 €</div>
+            </div>
+          </div>
+
+          <div class="sect-row">
+            <div class="rev-cell">
+              <select class="sel-neg">
+                <option>Omitir esta fila</option>
+                <option selected>Fusionar con existente</option>
+                <option>Crear nuevo igualmente</option>
+              </select>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">1-SANT FRUITOS</div>
+              <div class="rev-meta">→ CB Sant Fruitós</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">AROA GOMEZ RAMIREZ</div>
+              <div class="rev-meta">DNI 53639207X · ya finalizado</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name mono">01/01/22</div>
+              <div class="rev-meta mono">→ 31/12/23</div>
+            </div>
+            <div class="rev-cell">
+              <div class="rev-name">Renta · 300 €</div>
+              <div class="rev-meta">coincide</div>
+            </div>
+          </div>
+
+          <div class="sect-more">... y 1 contrato más en esta sección</div>
+        </div>
+      </div>
+
+      <!-- Banner SIN FIRMAR + footer navegación -->
+      <div class="info-banner">
+        <i data-lucide="info" style="width:16px;height:16px"></i>
+        <div>
+          Los contratos se crean como <strong>SIN FIRMAR</strong>. Podrás completar DNIs · emails · documentos y corregir datos antes de marcarlos como activos. Una vez activos · cambiar términos requerirá un anexo.
+        </div>
+      </div>
+
+      <div class="wiz-foot">
+        <button class="btn btn-ghost" onclick="goStep(2)"><i data-lucide="arrow-left" style="width:14px;height:14px"></i> Atrás</button>
+        <div class="wiz-foot-info">Procesa las 3 secciones · cada una se crea por separado</div>
+        <button class="btn btn-ghost" onclick="goStep(4)">Ir al resumen final <i data-lucide="arrow-right" style="width:14px;height:14px"></i></button>
+      </div>
+    </section>
+
+    <!-- ────────── PASO 4 · PANTALLA FINAL POST-CREACIÓN ────────── -->
+    <section class="step-content" data-step="4" hidden>
+      <div class="panel">
+        <div class="final-hero">
+          <div class="final-icon"><i data-lucide="check-circle-2"></i></div>
+          <div>
+            <div class="panel-h" style="font-size:20px">Listo · 57 contratos importados</div>
+            <div class="panel-sub">Has procesado tus 60 contratos de Rentila. 3 duplicados se omitieron · todos los demás están ya en ATLAS como SIN FIRMAR.</div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="summary-card">
+            <div class="summary-line">
+              <span class="summary-key">Contratos creados</span>
+              <span class="summary-val pos">57</span>
+            </div>
+            <div class="summary-line">
+              <span class="summary-key">Duplicados omitidos</span>
+              <span class="summary-val neg">3</span>
+            </div>
+            <div class="summary-line">
+              <span class="summary-key">Inquilinos nuevos</span>
+              <span class="summary-val">54</span>
+            </div>
+            <div class="summary-line">
+              <span class="summary-key">Inmuebles afectados</span>
+              <span class="summary-val">7</span>
+            </div>
+            <div class="summary-line">
+              <span class="summary-key">Renta mensual total</span>
+              <span class="summary-val">17.835 €</span>
+            </div>
+            <div class="summary-line">
+              <span class="summary-key">Estado</span>
+              <span class="summary-val warn">Sin firmar · editables</span>
+            </div>
+          </div>
+
+          <div class="summary-banner">
+            <i data-lucide="link-2" class="summary-banner-icon"></i>
+            <div>
+              <div class="summary-banner-h">52 contratos pueden vincularse en Por conciliar</div>
+              <div class="summary-banner-d">
+                ATLAS ha detectado que estos contratos cubren rentas declaradas a Hacienda que aún no están identificadas (FA32 2023 · FA32 2024 · T48 2022·2023·2024 · T64-4D 2024 · T64-4Iz 2024). Ve a la pestaña <strong>Por conciliar</strong> para vincularlos y cuadrar la declaración fiscal de cada año.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="wiz-foot">
+          <button class="btn btn-ghost" onclick="goStep(3)"><i data-lucide="arrow-left" style="width:14px;height:14px"></i> Volver a revisión</button>
+          <div></div>
+          <button class="btn btn-gold" onclick="alert('Demo · iría a /contratos?tab=por-conciliar')"><i data-lucide="arrow-right" style="width:14px;height:14px"></i> Ir a Por conciliar</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Demo controls -->
+<div class="demo-controls">
+  <button class="active" data-go="1">1 · Origen</button>
+  <button data-go="2">2 · Subir</button>
+  <button data-go="3">3 · Revisión</button>
+  <button data-go="4">4 · Confirmar</button>
+</div>
+
+<script>
+  let currentStep = 1;
+  let selectedSource = 'rentila';
+
+  function goStep(n) {
+    // Si voy a paso 2 y el origen es plantilla atlas → ir a 2-atlas
+    let targetKey = String(n);
+    if (n === 2 && selectedSource === 'atlas') {
+      targetKey = '2-atlas';
+    }
+
+    currentStep = n;
+    document.querySelectorAll('[data-step]').forEach(el => {
+      el.hidden = el.dataset.step !== targetKey;
+    });
+    // Stepper indicators (siempre 1·2·3·4 · 2-atlas cuenta como paso 2)
+    document.querySelectorAll('.stepper .step-ind').forEach((el, i) => {
+      const idx = i + 1;
+      el.classList.remove('active', 'done');
+      if (idx < n) el.classList.add('done');
+      if (idx === n) el.classList.add('active');
+    });
+    // Demo controls
+    document.querySelectorAll('.demo-controls button').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.go) === n);
+    });
+    // Scroll top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Bind demo controls
+  document.querySelectorAll('.demo-controls button, .stepper .step-ind').forEach(b => {
+    b.addEventListener('click', () => goStep(parseInt(b.dataset.go)));
+  });
+
+  // Source selection
+  document.querySelectorAll('.source').forEach(s => {
+    s.addEventListener('click', () => {
+      document.querySelectorAll('.source').forEach(x => x.classList.remove('selected'));
+      s.classList.add('selected');
+      selectedSource = s.dataset.source;
+    });
+  });
+
+  // Init stepper
+  goStep(1);
+
+  // Lucide
+  lucide.createIcons();
+</script>
+</body>
+</html>
