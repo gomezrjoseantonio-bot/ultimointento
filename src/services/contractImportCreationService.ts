@@ -145,11 +145,16 @@ const fusionarEnExistente = async (existenteId: number, d: ContractDraft): Promi
 
   const updates: Partial<Contract> = { inquilino: inq };
   if (sinFirmar) {
+    const fechaFin = d.fechaFin || FECHA_FIN_INDEFINIDO;
     updates.rentaMensual = d.rentaMensual;
     updates.monthlyRent = d.rentaMensual;
     updates.fechaInicio = d.fechaInicio;
-    updates.fechaFin = d.fechaFin || FECHA_FIN_INDEFINIDO;
+    updates.fechaFin = fechaFin;
+    // Mantener sincronizados los mirrors legacy y los meses de fianza.
+    updates.startDate = d.fechaInicio;
+    updates.endDate = fechaFin;
     updates.fianzaImporte = d.fianza;
+    updates.fianzaMeses = d.fianza > 0 && d.rentaMensual > 0 ? Number((d.fianza / d.rentaMensual).toFixed(2)) : 1;
   }
 
   await updateContract(existenteId, updates);

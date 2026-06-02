@@ -77,31 +77,34 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
 
   // ── Parseo de ficheros Rentila (multi) ──
   const addRentilaFiles = useCallback(async (fileList: FileList | File[]) => {
-    const files = Array.from(fileList);
-    for (const file of files) {
+    const yaExiste = (f: File) =>
+      ficherosRentila.some((x) => x.file.name === f.name && x.file.size === f.size);
+
+    // Validar formato/límite/duplicados ANTES de parsear, para no leer Excels que
+    // luego se descartarían (importante con ficheros grandes).
+    const aceptados: File[] = [];
+    let hueco = MAX_FICHEROS_RENTILA - ficherosRentila.length;
+    for (const file of Array.from(fileList)) {
       if (!file.name.match(/\.(xlsx|xls)$/i)) {
         toast.error(`"${file.name}": formato no válido. Usa .xlsx o .xls`);
         continue;
       }
-      setFicherosRentila((prev) => {
-        if (prev.length >= MAX_FICHEROS_RENTILA) {
-          toast.error(`Solo puedes subir ${MAX_FICHEROS_RENTILA} ficheros de Rentila (activos + archivados)`);
-          return prev;
-        }
-        if (prev.some((f) => f.file.name === file.name && f.file.size === file.size)) {
-          toast.error(`"${file.name}" ya está en la lista`);
-          return prev;
-        }
-        return prev;
-      });
+      if (yaExiste(file) || aceptados.some((a) => a.name === file.name && a.size === file.size)) {
+        toast.error(`"${file.name}" ya está en la lista`);
+        continue;
+      }
+      if (hueco <= 0) {
+        toast.error(`Solo puedes subir ${MAX_FICHEROS_RENTILA} ficheros de Rentila (activos + archivados)`);
+        continue;
+      }
+      aceptados.push(file);
+      hueco -= 1;
+    }
 
+    const parseados: FicheroRentila[] = [];
+    for (const file of aceptados) {
       try {
-        const rows = await parseRentilaXlsx(file);
-        setFicherosRentila((prev) => {
-          if (prev.length >= MAX_FICHEROS_RENTILA) return prev;
-          if (prev.some((f) => f.file.name === file.name && f.file.size === file.size)) return prev;
-          return [...prev, { file, rows }];
-        });
+        parseados.push({ file, rows: await parseRentilaXlsx(file) });
       } catch (error) {
         if (error instanceof RentilaFormatError) {
           toast.error(`"${file.name}": ${error.message}`);
@@ -110,7 +113,9 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
         }
       }
     }
-  }, []);
+
+    if (parseados.length) setFicherosRentila((prev) => [...prev, ...parseados]);
+  }, [ficherosRentila]);
 
   const removeRentilaFile = (name: string, size: number) =>
     setFicherosRentila((prev) => prev.filter((f) => !(f.file.name === name && f.file.size === size)));
