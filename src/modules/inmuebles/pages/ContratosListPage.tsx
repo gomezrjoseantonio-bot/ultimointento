@@ -17,13 +17,8 @@ import {
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { esFechaIndefinida } from '../utils/formatFechaFin';
 import { calcularLibresAhora } from '../utils/calcularLibresAhora';
-import {
-  filtrarVencen30d,
-  filtrarVencen30a90d,
-} from '../utils/filtrosVencimiento';
-import KpiContratoCard from '../components/contratos/KpiContratoCard';
-import DrawerLibres from '../components/contratos/DrawerLibres';
-import DrawerVencen from '../components/contratos/DrawerVencen';
+import ContratosTopHero from '../components/contratos/ContratosTopHero';
+import { useContratosKPIs } from '../hooks/useContratosByTab';
 import DrawerAnalisisAnual from '../components/contratos/DrawerAnalisisAnual';
 import TabActivos from '../components/contratos/TabActivos';
 import TabTablero from '../components/contratos/TabTablero';
@@ -33,6 +28,8 @@ import TabPorConciliar from '../components/contratos/TabPorConciliar';
 import { boteAnualService } from '../../../services/boteAnualService';
 import styles from './ContratosListPage.module.css';
 import { isContratoActivo } from '../utils/contratoEstado';
+// Re-export · `contratoFiltros.test.ts` consume estos helpers desde la página.
+export { isContratoActivo };
 
 type Tab = 'disponibilidad' | 'tablero' | 'activos' | 'historico' | 'conciliar';
 
@@ -181,16 +178,16 @@ const ContratosListPage: React.FC = () => {
     };
   }, [contracts]);
 
-  // KPIs cabecera
+  // KPIs banda navy GESTIÓN · única fuente de los stats (estado efectivo por fechas).
+  const kpis = useContratosKPIs(contracts, properties);
+
+  // Disponibilidad · "libres ahora" alimenta el contador de su pestaña.
   const libresAhora = useMemo(
     () => calcularLibresAhora(contracts, properties, today),
     [contracts, properties, today],
   );
-  const vencen30 = useMemo(() => filtrarVencen30d(contracts, today), [contracts, today]);
-  const vencen3090 = useMemo(() => filtrarVencen30a90d(contracts, today), [contracts, today]);
   const libres = libresAhora.total;
 
-  const [drawerOpen, setDrawerOpen] = useState<null | 'libres' | 'd30' | 'd3090'>(null);
   const [analisisAnualOpen, setAnalisisAnualOpen] = useState(false);
 
   const tabs: Array<{ key: Tab; label: string; count?: number; countTone?: 'neg' }> = [
@@ -236,8 +233,11 @@ const ContratosListPage: React.FC = () => {
 
   return (
     <>
+      <ContratosTopHero kpis={kpis} />
+
       <PageHead
         title="Contratos"
+        sub="Gestiona tus alquileres · revisa histórico · concilia rentas declaradas"
         actions={[
           {
             label: 'Análisis anual',
@@ -259,50 +259,6 @@ const ContratosListPage: React.FC = () => {
           },
         ]}
       />
-
-      <div className={styles.kpiStrip} role="group" aria-label="KPIs contratos">
-        <KpiContratoCard
-          label="Libres ahora"
-          value={libres}
-          accent="neg"
-          valueTone={libres > 0 ? 'neg' : 'ink'}
-          hint={
-            libres === 0
-              ? 'Todas las unidades ocupadas'
-              : libresAhora.unidades
-                  .slice(0, 2)
-                  .map((u) => u.inmuebleAlias)
-                  .join(' · ')
-          }
-          onClick={libres > 0 ? () => setDrawerOpen('libres') : undefined}
-        />
-        <KpiContratoCard
-          label="Vencen en 30 d"
-          value={vencen30.length}
-          accent="warn"
-          hint={vencen30.length === 0 ? 'Sin vencimientos próximos' : 'decisión urgente'}
-          onClick={vencen30.length > 0 ? () => setDrawerOpen('d30') : undefined}
-        />
-        <KpiContratoCard
-          label="Vencen en 30-90 d"
-          value={vencen3090.length}
-          accent="muted"
-          hint={vencen3090.length === 0 ? 'Sin vencimientos en este rango' : 'a planificar'}
-          onClick={vencen3090.length > 0 ? () => setDrawerOpen('d3090') : undefined}
-        />
-        <KpiContratoCard
-          label="Días vacíos YTD"
-          value={null}
-          accent="muted"
-          hint="cálculo en preparación"
-        />
-        <KpiContratoCard
-          label="Ingresos perdidos YTD"
-          value={null}
-          accent="plain"
-          hint="cálculo en preparación"
-        />
-      </div>
 
       <div className={styles.tabsBar} role="group" aria-label="Tabs contratos">
         {tabs.map((t) => {
@@ -396,25 +352,6 @@ const ContratosListPage: React.FC = () => {
         isLoading={isDeleting}
       />
 
-      <DrawerLibres
-        open={drawerOpen === 'libres'}
-        onClose={() => setDrawerOpen(null)}
-        data={libresAhora}
-      />
-      <DrawerVencen
-        variant="d30"
-        open={drawerOpen === 'd30'}
-        onClose={() => setDrawerOpen(null)}
-        contratos={vencen30}
-        inmuebleAliasById={propertyById}
-      />
-      <DrawerVencen
-        variant="d3090"
-        open={drawerOpen === 'd3090'}
-        onClose={() => setDrawerOpen(null)}
-        contratos={vencen3090}
-        inmuebleAliasById={propertyById}
-      />
       <DrawerAnalisisAnual
         open={analisisAnualOpen}
         onClose={() => setAnalisisAnualOpen(false)}
