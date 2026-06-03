@@ -168,8 +168,8 @@ describe('TabDisponibilidad', () => {
     );
     const bar = screen.getByRole('button', { name: /Juan Calvo/ });
     fireEvent.click(bar);
-    // DrawerFichaContrato renderiza "Contrato de alquiler"
-    expect(screen.getByText('Contrato de alquiler')).toBeInTheDocument();
+    // DrawerFichaContrato · etiqueta por estado efectivo (C6) · contrato vigente
+    expect(screen.getByText('Inquilino actual · contrato vigente')).toBeInTheDocument();
   });
 
   test('click en hueco libre llama onNuevoContrato con inmuebleId', () => {
