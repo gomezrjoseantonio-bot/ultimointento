@@ -107,6 +107,8 @@ const construirPayload = (
     cuentaCobroId: 0, // pendiente · se completa antes de activar
     estadoContrato: 'sin_firmar',
     origenImportacion: d.origen,
+    // REORG Contratos · importado · ATLAS aún no tiene el PDF firmado.
+    documentoFirmado: false,
     // Legacy mirrors
     propertyId: inmuebleId,
     type: 'vivienda',

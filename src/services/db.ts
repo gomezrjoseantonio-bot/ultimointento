@@ -1,6 +1,6 @@
 import { openDB, IDBPDatabase } from 'idb';
 import type { DBSchema, IDBPObjectStore, IndexNames, StoreNames } from 'idb';
-import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT } from './alquileresV3FixService';
+import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfillDocumentoFirmado } from './alquileresV3FixService';
 import type { DeclaracionCompleta } from '../types/declaracionCompleta';
 import { PosicionInversion } from '../types/inversiones';
 import type {
@@ -831,6 +831,20 @@ export interface Contract {
 
   /** V79 · procedencia del Contract cuando se creó desde el importador de contratos. */
   origenImportacion?: 'rentila' | 'plantilla_atlas';
+
+  /**
+   * REORG Contratos · estado DOCUMENTAL · independiente del estado efectivo
+   * (vigente/próximo/finalizado, que se calcula por fechas en runtime).
+   *
+   * `true`  · ATLAS tiene soporte documental firmado del contrato.
+   * `false` · falta el PDF firmado (típico de importados Rentila/AEAT o
+   *           contratos marcados `sin_firmar`). Visualmente · avatar apagado.
+   *
+   * Opcional para tolerar lecturas legacy; la migración suave
+   * (`backfillDocumentoFirmado`, sin DB bump) lo deja definido en todos los
+   * Contracts existentes. Default `true` en contratos creados manualmente.
+   */
+  documentoFirmado?: boolean;
 
   // NEW FIELDS: Document preparation for PDF generation
   documentoContrato?: {
@@ -5120,6 +5134,24 @@ export const initDB = async () => {
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
         console.warn('[DB V78.1 recalcular fechaFin LAU] falló:', err);
+      }
+      return db;
+    });
+
+    // ── REORG Contratos · migración suave de `documentoFirmado` (SIN DB bump) ──
+    // Deja el flag documental definido en todos los Contracts existentes: `false`
+    // para importados sin firma registrada (sin_firmar / rentila / plantilla_atlas /
+    // xml_aeat), `true` para el resto. Idempotente (no pisa valores ya definidos) y
+    // gated por flag en keyval.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_documentoFirmado_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+        const n = await backfillDocumentoFirmado(db as unknown as IDBPDatabase<any>);
+        if (n > 0) console.log(`[DB REORG] documentoFirmado backfill · ${n} contratos`);
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB REORG documentoFirmado backfill] falló:', err);
       }
       return db;
     });
