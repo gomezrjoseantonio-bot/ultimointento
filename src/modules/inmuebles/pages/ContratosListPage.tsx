@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
-import { FileText, BarChart3 } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import {
   PageHead,
   Icons,
@@ -18,9 +18,9 @@ import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import ContratosTopHero from '../components/contratos/ContratosTopHero';
 import { useContratosKPIs } from '../hooks/useContratosByTab';
 import { getEstadoEfectivo } from '../utils/estadoEfectivoService';
-import DrawerAnalisisAnual from '../components/contratos/DrawerAnalisisAnual';
 import TabActivos from '../components/contratos/TabActivos';
 import TabProximos from '../components/contratos/TabProximos';
+import TabAnalisis from '../components/contratos/TabAnalisis';
 import TabDisponibilidad from '../components/contratos/TabDisponibilidad';
 import TabHistorico from '../components/contratos/historico/TabHistorico';
 import TabPorConciliar from '../components/contratos/TabPorConciliar';
@@ -160,8 +160,6 @@ const ContratosListPage: React.FC = () => {
   // KPIs banda navy GESTIÓN · única fuente de los stats (estado efectivo por fechas).
   const kpis = useContratosKPIs(contracts, properties);
 
-  const [analisisAnualOpen, setAnalisisAnualOpen] = useState(false);
-
   // Tabs · texto puro, sin contadores (mockup v5).
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: 'disponibilidad', label: 'Disponibilidad' },
@@ -213,12 +211,6 @@ const ContratosListPage: React.FC = () => {
         title="Contratos"
         sub="Gestiona tus alquileres · revisa histórico · concilia rentas declaradas"
         actions={[
-          {
-            label: 'Análisis anual',
-            variant: 'ghost',
-            icon: <Icons.Panel size={14} strokeWidth={1.8} />,
-            onClick: () => setAnalisisAnualOpen(true),
-          },
           {
             label: 'Importar contratos',
             variant: 'ghost',
@@ -273,15 +265,7 @@ const ContratosListPage: React.FC = () => {
       )}
 
       {tab === 'analisis' && (
-        <EmptyState
-          icon={BarChart3}
-          title="Análisis en preparación"
-          subtitle="Ocupación 12·hoy·12, rotación, ranking por inmueble y proyección de ingresos. Mientras tanto, usa «Análisis anual» en la cabecera."
-          cta={{
-            label: 'Abrir análisis anual',
-            onClick: () => setAnalisisAnualOpen(true),
-          }}
-        />
+        <TabAnalisis contratos={contracts} properties={properties} />
       )}
 
       {tab === 'conciliar' && (
@@ -317,13 +301,6 @@ const ContratosListPage: React.FC = () => {
         cancelText="Cancelar"
         variant="danger"
         isLoading={isDeleting}
-      />
-
-      <DrawerAnalisisAnual
-        open={analisisAnualOpen}
-        onClose={() => setAnalisisAnualOpen(false)}
-        contratos={contracts}
-        properties={properties}
       />
     </>
   );
