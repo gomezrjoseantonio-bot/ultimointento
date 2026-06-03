@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
-import { FileText } from 'lucide-react';
+import { FileText, BarChart3 } from 'lucide-react';
 import {
   PageHead,
   Icons,
@@ -15,26 +15,38 @@ import {
   type DeleteContractCascadeReport,
 } from '../../../services/contractService';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
-import { esFechaIndefinida } from '../utils/formatFechaFin';
-import { calcularLibresAhora } from '../utils/calcularLibresAhora';
 import ContratosTopHero from '../components/contratos/ContratosTopHero';
 import { useContratosKPIs } from '../hooks/useContratosByTab';
+import { getEstadoEfectivo } from '../utils/estadoEfectivoService';
 import DrawerAnalisisAnual from '../components/contratos/DrawerAnalisisAnual';
 import TabActivos from '../components/contratos/TabActivos';
-import TabTablero from '../components/contratos/TabTablero';
+import TabProximos from '../components/contratos/TabProximos';
 import TabDisponibilidad from '../components/contratos/TabDisponibilidad';
 import TabHistorico from '../components/contratos/historico/TabHistorico';
 import TabPorConciliar from '../components/contratos/TabPorConciliar';
-import { boteAnualService } from '../../../services/boteAnualService';
 import styles from './ContratosListPage.module.css';
 import { isContratoActivo } from '../utils/contratoEstado';
 // Re-export · `contratoFiltros.test.ts` consume estos helpers desde la página.
 export { isContratoActivo };
 
-type Tab = 'disponibilidad' | 'tablero' | 'activos' | 'historico' | 'conciliar';
+// Tabs nuevas (mockup v5) · sin Tablero · estado calculado por fechas.
+type Tab = 'disponibilidad' | 'vigentes' | 'proximos' | 'historico' | 'analisis' | 'conciliar';
 
-const VALID_TABS: Tab[] = ['disponibilidad', 'tablero', 'activos', 'historico', 'conciliar'];
-const LEGACY_TAB_ALIAS: Record<string, Tab> = { acciones: 'tablero', 'por-conciliar': 'conciliar' };
+const VALID_TABS: Tab[] = [
+  'disponibilidad',
+  'vigentes',
+  'proximos',
+  'historico',
+  'analisis',
+  'conciliar',
+];
+// Compatibilidad con URLs antiguas · activos/tablero/acciones → vigentes.
+const LEGACY_TAB_ALIAS: Record<string, Tab> = {
+  activos: 'vigentes',
+  tablero: 'vigentes',
+  acciones: 'vigentes',
+  'por-conciliar': 'conciliar',
+};
 const isValidTab = (value: string | null): value is Tab =>
   value !== null && (VALID_TABS as string[]).includes(value);
 const normalizeTab = (raw: string | null): Tab | null => {
@@ -43,25 +55,18 @@ const normalizeTab = (raw: string | null): Tab | null => {
   return LEGACY_TAB_ALIAS[raw] ?? null;
 };
 
+// Helpers documentales (estadoContrato persistido) · consumidos por
+// `contratoFiltros.test.ts`. El estado de pestaña ya NO depende de ellos:
+// las tabs filtran por estado efectivo (fechas) vía `getEstadoEfectivo`.
 export const isContratoFinalizado = (c: Contract): boolean =>
   c.estadoContrato === 'finalizado' || c.estadoContrato === 'rescindido';
-
-const isExpiringSoon = (c: Contract, today: Date, daysWindow = 90): boolean => {
-  if (!c.fechaFin || esFechaIndefinida(c.fechaFin)) return false;
-  const fin = new Date(c.fechaFin);
-  if (Number.isNaN(fin.getTime())) return false;
-  const diff = fin.getTime() - today.getTime();
-  const days = diff / (1000 * 60 * 60 * 24);
-  return days >= 0 && days <= daysWindow;
-};
 
 const ContratosListPage: React.FC = () => {
   const navigate = useNavigate();
   const { properties, contracts, reload } = useOutletContext<InmueblesOutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab: Tab = normalizeTab(searchParams.get('tab')) ?? 'activos';
+  const initialTab: Tab = normalizeTab(searchParams.get('tab')) ?? 'vigentes';
   const [tab, setTab] = useState<Tab>(initialTab);
-  const today = useMemo(() => new Date(), []);
   const [pendingDelete, setPendingDelete] = useState<{
     contract: Contract & { id: number };
     cascade: DeleteContractCascadeReport;
@@ -117,7 +122,7 @@ const ContratosListPage: React.FC = () => {
     if (queryTab !== null && queryTab !== tab) {
       setTab(queryTab);
       if (rawTab !== queryTab) {
-        // Reescribir URL legacy (?tab=acciones → ?tab=tablero) sin push extra
+        // Reescribir URL legacy (?tab=activos → ?tab=vigentes) sin push extra
         setSearchParams({ tab: queryTab }, { replace: true });
       }
     }
@@ -137,65 +142,34 @@ const ContratosListPage: React.FC = () => {
     return map;
   }, [properties]);
 
-  const activos = useMemo(() => contracts.filter(isContratoActivo), [contracts]);
-  const acciones = useMemo(
-    () =>
-      contracts.filter(
-        (c) => isContratoActivo(c) && isExpiringSoon(c, today, 90),
-      ),
-    [contracts, today],
+  // Filtrado por estado EFECTIVO (fechas) · un Rentila finalizado nunca cae en
+  // Vigentes; un firmado sin empezar vive en Próximos hasta su fechaInicio.
+  const vigentes = useMemo(
+    () => contracts.filter((c) => getEstadoEfectivo(c) === 'vigente'),
+    [contracts],
+  );
+  const proximos = useMemo(
+    () => contracts.filter((c) => getEstadoEfectivo(c) === 'proximo'),
+    [contracts],
   );
   const historico = useMemo(
-    () => contracts.filter(isContratoFinalizado),
+    () => contracts.filter((c) => getEstadoEfectivo(c) === 'finalizado'),
     [contracts],
   );
-  // V79 · contratos importados SIN FIRMAR. Se muestran en la pestaña Activos
-  // (con chip "sin-firmar") hasta que el usuario los active. NO cuentan como
-  // ocupación (tablero/libres) ni como vencimientos: por eso van aparte de
-  // `activos` y solo se inyectan en la lista de la pestaña.
-  const sinFirmar = useMemo(
-    () => contracts.filter((c) => c.estadoContrato === 'sin_firmar'),
-    [contracts],
-  );
-  const activosTab = useMemo(() => [...activos, ...sinFirmar], [activos, sinFirmar]);
-
-  // Botes "por conciliar" visibles (rentas declaradas AEAT sin cuadrar) · solo para el badge.
-  // Cuenta los visibles en la pestaña = todos menos los 'cerrado' (transitorios, ya conciliados).
-  // Incluye 'sobre_asignado' (saldo negativo) para que el contador no los esconda.
-  const [porConciliarPendientes, setPorConciliarPendientes] = useState(0);
-  useEffect(() => {
-    let activo = true;
-    boteAnualService
-      .listarBotes()
-      .then((botes) => {
-        if (activo) {
-          setPorConciliarPendientes(botes.filter((b) => b.estado !== 'cerrado').length);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      activo = false;
-    };
-  }, [contracts]);
 
   // KPIs banda navy GESTIÓN · única fuente de los stats (estado efectivo por fechas).
   const kpis = useContratosKPIs(contracts, properties);
 
-  // Disponibilidad · "libres ahora" alimenta el contador de su pestaña.
-  const libresAhora = useMemo(
-    () => calcularLibresAhora(contracts, properties, today),
-    [contracts, properties, today],
-  );
-  const libres = libresAhora.total;
-
   const [analisisAnualOpen, setAnalisisAnualOpen] = useState(false);
 
-  const tabs: Array<{ key: Tab; label: string; count?: number; countTone?: 'neg' }> = [
-    { key: 'disponibilidad', label: 'Disponibilidad', count: libres, countTone: libres > 0 ? 'neg' : undefined },
-    { key: 'tablero', label: 'Tablero', count: acciones.length },
-    { key: 'activos', label: 'Activos', count: activosTab.length },
-    { key: 'historico', label: 'Histórico', count: historico.length },
-    { key: 'conciliar', label: 'Por conciliar', count: porConciliarPendientes },
+  // Tabs · texto puro, sin contadores (mockup v5).
+  const tabs: Array<{ key: Tab; label: string }> = [
+    { key: 'disponibilidad', label: 'Disponibilidad' },
+    { key: 'vigentes', label: 'Vigentes' },
+    { key: 'proximos', label: 'Próximos' },
+    { key: 'historico', label: 'Histórico' },
+    { key: 'analisis', label: 'Análisis' },
+    { key: 'conciliar', label: 'Por conciliar' },
   ];
 
   if (contracts.length === 0) {
@@ -272,24 +246,21 @@ const ContratosListPage: React.FC = () => {
               aria-pressed={isActive}
             >
               {t.label}
-              {t.count != null && (
-                <span
-                  className={`${styles.tabCount} ${t.countTone === 'neg' ? styles.neg : ''}`}
-                >
-                  {t.countTone === 'neg' && t.count > 0 ? `${t.count} libres` : t.count}
-                </span>
-              )}
             </button>
           );
         })}
       </div>
 
-      {tab === 'activos' && (
+      {tab === 'vigentes' && (
         <TabActivos
-          contratos={activosTab}
+          contratos={vigentes}
           inmuebleAliasById={propertyById}
           onNuevoContrato={() => navigate('/contratos/nuevo')}
         />
+      )}
+
+      {tab === 'proximos' && (
+        <TabProximos contratos={proximos} inmuebleAliasById={propertyById} />
       )}
 
       {tab === 'historico' && (
@@ -301,19 +272,15 @@ const ContratosListPage: React.FC = () => {
         />
       )}
 
-      {tab === 'tablero' && (
-        <TabTablero
-          contratos={activos}
-          properties={properties}
-          inmuebleAliasById={propertyById}
-          onSwitchTabActivos={() => handleTabChange('activos')}
-          onNuevoContrato={(inmuebleId) =>
-            navigate(
-              inmuebleId != null
-                ? `/contratos/nuevo?inmueble=${inmuebleId}`
-                : '/contratos/nuevo',
-            )
-          }
+      {tab === 'analisis' && (
+        <EmptyState
+          icon={BarChart3}
+          title="Análisis en preparación"
+          subtitle="Ocupación 12·hoy·12, rotación, ranking por inmueble y proyección de ingresos. Mientras tanto, usa «Análisis anual» en la cabecera."
+          cta={{
+            label: 'Abrir análisis anual',
+            onClick: () => setAnalisisAnualOpen(true),
+          }}
         />
       )}
 
