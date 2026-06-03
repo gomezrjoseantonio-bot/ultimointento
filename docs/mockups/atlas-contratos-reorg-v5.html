@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>ATLAS · Contratos reorganizado v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+  input, select { font: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* ════ BANDA NAVY ARRIBA · patrón Tesorería/Inversiones ════ */
+  .top-hero {
+    background: var(--brand-ink);
+    color: #FFFFFF;
+    padding: 22px 32px 26px;
+    display: grid;
+    grid-template-columns: minmax(180px, 220px) repeat(4, 1fr);
+    gap: 28px;
+    align-items: center;
+  }
+  .hero-label {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11.5px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: rgba(255,255,255,.85);
+  }
+  .hero-label::before {
+    content: ""; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--gold);
+    box-shadow: 0 0 0 4px rgba(184,138,62,.18);
+  }
+  .hero-kpi-h {
+    font-size: 10.5px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: rgba(255,255,255,.55);
+  }
+  .hero-kpi-v {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700; font-size: 30px;
+    color: #FFFFFF;
+    margin-top: 6px;
+    letter-spacing: -0.025em; line-height: 1;
+  }
+  .hero-kpi-v.warn { color: #E8C57A; }
+  .hero-kpi-s {
+    font-size: 11.5px; color: rgba(255,255,255,.55);
+    margin-top: 6px; font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Main · zona blanca debajo */
+  .main { padding: 22px 32px 48px; max-width: 1400px; }
+
+  /* Header zona blanca · título + botones · sin stats inline (ya están arriba) */
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+  .head h1 { font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1.1; letter-spacing: -0.025em; }
+  .head-sub { font-size: 13px; color: var(--ink-4); margin-top: 4px; }
+  .head-actions { display: flex; gap: 10px; }
+
+  /* Botones · primario dorado · ghost transparente · patrón Inmuebles */
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px; font-size: 13.5px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
+  .btn-gold { background: var(--gold); color: #FFFFFF; }
+  .btn-gold:hover { background: var(--gold-2); }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+
+  /* Tabs · texto puro · sin iconos · sin números */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 22px; flex-wrap: wrap; }
+  .tab { padding: 11px 20px 12px; font-size: 14px; color: var(--ink-3); font-weight: 500; border-bottom: 2px solid transparent; cursor: pointer; margin-bottom: -1px; }
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--ink); font-weight: 700; border-bottom-color: var(--gold); }
+
+  /* Toolbar · buscador + dropdown · sin chips ni filtros redundantes */
+  .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .searchbox { position: relative; width: 360px; max-width: 100%; }
+  .searchbox input { width: 100%; padding: 9px 14px 9px 36px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; color: var(--ink); outline: none; }
+  .searchbox input:focus { border-color: var(--gold); }
+  .searchbox svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--ink-4); width: 15px; height: 15px; }
+
+  .filter-select { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; color: var(--ink-2); cursor: pointer; min-width: 220px; }
+  .filter-select select { border: none; background: none; outline: none; flex: 1; cursor: pointer; color: var(--ink-2); font-weight: 500; appearance: none; -webkit-appearance: none; padding-right: 18px; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A92A0' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0 center; background-size: 12px; }
+  .filter-select-label { font-size: 10.5px; color: var(--ink-4); text-transform: uppercase; letter-spacing: .12em; font-weight: 600; }
+
+  /* Tabla contratos · 7 cols · Inquilino ancho · Renta mensual + anual · sin Habitación · sin Documento */
+  .ctr-table { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .ctr-row { display: grid; grid-template-columns: 1.8fr 1.3fr 0.75fr 0.95fr 0.75fr 0.75fr 32px; gap: 14px; padding: 13px 18px; align-items: center; border-bottom: 1px solid var(--line-2); font-size: 12.5px; }
+  .ctr-row:last-child { border-bottom: none; }
+  .ctr-row.head { background: var(--card-alt); padding: 10px 18px; }
+  .ctr-row.head > div { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-4); font-weight: 600; }
+  .ctr-row:not(.head):hover { background: var(--card-alt); cursor: pointer; }
+  .ctr-cell { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .ctr-name { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ctr-meta { font-size: 11px; color: var(--ink-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ctr-dim { color: var(--ink-4); font-style: italic; }
+
+  .inq-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .inq-circle { width: 32px; height: 32px; border-radius: 50%; background: var(--ink-5); color: #FFFFFF; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  /* Avatar APAGADO · sin firmar · dashed border · fondo neutro · texto gris */
+  .inq-circle.unsigned { background: var(--card-alt); color: var(--ink-4); border: 1.5px dashed var(--ink-5); }
+  .inq-circle.unsigned-tip { position: relative; }
+  .inq-circle.unsigned-tip::after { content: ""; position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px; background: var(--warn); border: 2px solid var(--card); border-radius: 50%; }
+
+  /* Chip vence próximo */
+  .urg-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--warn-wash); color: var(--warn); }
+
+  .row-more { color: var(--ink-4); padding: 4px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .row-more:hover { background: var(--card-alt); color: var(--ink); }
+
+  /* Próximos · cards */
+  .next-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 10px; cursor: pointer; }
+  .next-card:hover { border-color: var(--ink-5); }
+  .next-icon { width: 42px; height: 42px; border-radius: 50%; background: var(--gold-wash); color: var(--gold-ink); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .next-info { flex: 1; min-width: 0; }
+  .next-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .next-meta { font-size: 12px; color: var(--ink-4); margin-top: 2px; }
+  .next-when-h { font-size: 11px; color: var(--ink-4); text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
+  .next-when-d { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--gold-ink); margin-top: 2px; }
+  .next-rent { text-align: right; min-width: 110px; }
+  .next-rent-v { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--ink); }
+  .next-rent-s { font-size: 11px; color: var(--ink-4); }
+
+  /* Histórico agrupado */
+  .hist-group { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+  .hist-group-head { padding: 14px 18px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .hist-group-head:hover { background: var(--card-alt); }
+  .hist-arrow { color: var(--ink-4); transition: transform .15s; display: inline-flex; }
+  .hist-group.open .hist-arrow { transform: rotate(90deg); }
+  .hist-group-info { flex: 1; }
+  .hist-group-h { font-size: 14.5px; font-weight: 700; color: var(--ink); }
+  .hist-group-s { font-size: 12px; color: var(--ink-4); margin-top: 2px; }
+  .hist-group-count { font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 3px 10px; border-radius: 6px; background: var(--bg); color: var(--ink-2); font-weight: 700; }
+  .hist-group-body { border-top: 1px solid var(--line-2); display: none; }
+  .hist-group.open .hist-group-body { display: block; }
+
+  .hist-sub-head { padding: 11px 18px 11px 38px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid var(--line-2); }
+  .hist-sub-head:hover { background: var(--card-alt); }
+  .hist-sub-info { flex: 1; }
+  .hist-sub-h { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .hist-sub-s { font-size: 11px; color: var(--ink-4); margin-top: 1px; }
+  .hist-sub-count { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; padding: 1px 8px; border-radius: 4px; background: var(--card-alt); color: var(--ink-3); font-weight: 600; }
+  .hist-sub.open .hist-sub-body { display: block; }
+  .hist-sub-body { display: none; background: var(--card-alt); }
+
+  .hist-row { display: grid; grid-template-columns: 1.5fr 0.95fr 0.7fr 0.7fr 0.8fr 32px; gap: 14px; padding: 11px 18px 11px 58px; align-items: center; border-bottom: 1px solid var(--line-2); font-size: 12.5px; cursor: pointer; }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-row:hover { background: var(--card); }
+  .hist-row.head { padding-top: 9px; padding-bottom: 9px; cursor: default; }
+  .hist-row.head:hover { background: var(--card-alt); }
+  .hist-row.head > div { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-4); font-weight: 600; }
+
+  /* Análisis */
+  .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .analysis-grid-2-1 { grid-template-columns: 2fr 1fr; }
+  .analysis-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+  .analysis-h { font-size: 14.5px; font-weight: 700; color: var(--ink); }
+
+  .ax-h-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .ax-h-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--ink-4); }
+  .ax-leg-item { display: inline-flex; align-items: center; gap: 6px; }
+  .ax-leg-sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .ax-leg-sw.ax-vacio { background: var(--card-alt); border: 1px solid var(--line); }
+  .ax-leg-sw.ax-parcial { background: rgba(44,53,71,0.18); }
+  .ax-leg-sw.ax-medio { background: rgba(44,53,71,0.42); }
+  .ax-leg-sw.ax-pleno { background: var(--ink-2); }
+  .ax-leg-sw.ax-now { background: var(--gold); }
+  .ax-leg-sw.ax-warn { background: var(--card-alt); border: 1.5px solid var(--neg); }
+
+  /* ── Mapa temporal · grid 24 meses ── */
+  .ax-timeline { width: 100%; margin-bottom: 12px; }
+  .ax-row { display: grid; grid-template-columns: 200px repeat(24, 1fr); gap: 2px; margin-bottom: 2px; align-items: stretch; }
+  .ax-row-head { margin-bottom: 6px; }
+  .ax-label { font-size: 12px; color: var(--ink-2); font-weight: 600; padding-right: 10px; line-height: 1.2; display: flex; flex-direction: column; justify-content: center; min-height: 28px; }
+  .ax-label small { font-size: 10.5px; color: var(--ink-4); font-weight: 500; margin-top: 1px; }
+  .ax-cell { height: 28px; border-radius: 4px; position: relative; }
+  .ax-cell.ax-month { background: transparent; border-radius: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 9.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .ax-cell.ax-month small { font-size: 8.5px; font-weight: 400; color: var(--gold-ink); }
+  .ax-cell.ax-now-cell { box-shadow: inset 0 0 0 2px var(--gold); border-radius: 4px; }
+  .ax-cell.ax-now { background: var(--gold) !important; }
+  .ax-cell.ax-vacio-now { background: var(--card-alt) !important; box-shadow: inset 0 0 0 2px var(--gold); }
+  .ax-row-head .ax-now-cell { background: rgba(184,138,62,.12); color: var(--gold-ink); }
+  .ax-cell.ax-year-sep { border-left: 1px solid var(--line-2); }
+  .ax-row-head .ax-cell.ax-year-sep { border-left: none; }
+
+  .ax-vacio { background: var(--card-alt); border: 1px solid var(--line-2); }
+  .ax-parcial { background: rgba(44,53,71,0.18); }
+  .ax-medio { background: rgba(44,53,71,0.42); }
+  .ax-pleno { background: var(--ink-2); }
+  .ax-warn { background: rgba(164,51,40,0.25); }
+  .ax-warn-border { box-shadow: inset 0 0 0 1.5px var(--neg); }
+
+  .ax-footnote { font-size: 11.5px; color: var(--ink-4); margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-2); }
+
+  /* ── Gráfico líneas · leyenda ── */
+  .ax-legend-line { display: flex; gap: 18px; justify-content: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); font-size: 12px; color: var(--ink-2); }
+  .ax-legend-line .ax-leg-item { display: inline-flex; align-items: center; gap: 6px; }
+  .ax-legend-line small { color: var(--ink-4); font-size: 10.5px; }
+  .ax-line-leg { display: inline-block; width: 18px; height: 3px; border-radius: 2px; }
+
+  /* ── Resumen anual ── */
+  .ax-yr-row { display: grid; grid-template-columns: 100px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line-2); align-items: baseline; }
+  .ax-yr-row:last-of-type { border-bottom: none; }
+  .ax-yr-label { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .ax-yr-label small { display: block; font-size: 10.5px; color: var(--ink-4); font-weight: 500; margin-top: 1px; }
+  .ax-yr-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--ink); }
+  .ax-yr-pace { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+  .ax-yr-pace.pos { color: var(--pos); font-weight: 600; }
+  .ax-pace-box { margin-top: 14px; padding: 14px 16px; background: var(--card-alt); border-radius: 9px; border-left: 3px solid var(--gold); }
+  .ax-pace-h { font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-4); font-weight: 600; }
+  .ax-pace-v { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; margin-top: 4px; letter-spacing: -0.02em; }
+  .ax-pace-v.pos { color: var(--pos); }
+  .ax-pace-v.neg { color: var(--neg); }
+  .ax-pace-s { font-size: 11.5px; color: var(--ink-4); margin-top: 4px; }
+
+  /* ── Ranking inmuebles ── */
+  .rk-row { display: grid; grid-template-columns: 280px 1fr 130px; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line-2); }
+  .rk-row:last-of-type { border-bottom: none; }
+  .rk-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .rk-name small { display: block; font-size: 11px; color: var(--ink-4); font-weight: 500; margin-top: 1px; }
+  .rk-bar-wrap { display: flex; align-items: center; gap: 10px; }
+  .rk-bar { flex: 1; background: var(--card-alt); height: 10px; border-radius: 5px; overflow: hidden; border: 1px solid var(--line-2); }
+  .rk-fill { height: 100%; border-radius: 4px; }
+  .rk-fill.rk-gold { background: var(--gold); }
+  .rk-fill.rk-mid { background: var(--ink-3); }
+  .rk-fill.rk-empty { background: transparent; }
+  .rk-occ { font-size: 12px; color: var(--ink-2); font-weight: 600; min-width: 42px; text-align: right; }
+  .rk-occ.dim { color: var(--ink-4); }
+  .rk-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--ink); text-align: right; }
+  .rk-val small { display: block; font-size: 10.5px; color: var(--ink-4); font-weight: 500; }
+  .rk-val.dim { color: var(--ink-4); }
+
+  /* ── Alarmas ── */
+  .alert-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line-2); }
+  .alert-row:last-of-type { border-bottom: none; }
+  .alert-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--warn-wash); color: var(--warn); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .alert-body { flex: 1; min-width: 0; }
+  .alert-title { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+  .alert-meta { font-size: 12px; color: var(--ink-4); margin-top: 2px; }
+  .alert-cta { padding: 8px 14px; background: var(--card-alt); border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .alert-cta:hover { border-color: var(--gold); color: var(--gold-ink); }
+
+  /* DRAWER · estilo cierre por la derecha */
+  .drawer-overlay {
+    position: fixed; inset: 0;
+    background: rgba(12,18,48,0.45);
+    z-index: 200;
+    display: none;
+  }
+  .drawer-overlay.open { display: block; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 580px; max-width: 100vw;
+    background: var(--card);
+    box-shadow: -8px 0 32px rgba(0,0,0,0.15);
+    z-index: 201;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .drawer.open { display: flex; }
+  .drawer-top {
+    background: var(--brand-ink);
+    color: #FFFFFF;
+    padding: 20px 24px 22px;
+  }
+  .drawer-top-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .drawer-top-label { font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+  .drawer-close { color: rgba(255,255,255,.7); padding: 6px; border-radius: 6px; cursor: pointer; }
+  .drawer-close:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .drawer-title { font-size: 22px; font-weight: 700; line-height: 1.15; }
+  .drawer-sub { font-size: 13px; color: rgba(255,255,255,.7); margin-top: 6px; }
+  .drawer-top-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.1); }
+  .drawer-stat-h { font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.55); }
+  .drawer-stat-v { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; margin-top: 4px; letter-spacing: -0.02em; }
+  .drawer-stat-v.dim { color: rgba(255,255,255,.55); }
+
+  .drawer-body { flex: 1; overflow-y: auto; padding: 22px 24px 22px; }
+  .drawer-section { background: var(--card-alt); border: 1px solid var(--line); border-radius: 11px; padding: 16px 18px; margin-bottom: 12px; }
+  .drawer-section-h { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 12px; }
+  .drawer-edit { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--gold-ink); font-weight: 600; cursor: pointer; }
+  .drawer-edit:hover { color: var(--gold); }
+
+  .drawer-person { display: flex; align-items: center; gap: 14px; }
+  .drawer-person-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--pos); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex-shrink: 0; }
+  .drawer-person-name { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .drawer-person-meta { font-size: 12px; color: var(--ink-4); margin-top: 2px; }
+  .drawer-cta-invite { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px; background: var(--gold-wash); color: var(--gold-ink); font-size: 12.5px; font-weight: 600; margin-top: 12px; }
+  .drawer-cta-invite:hover { background: #ECDDB4; }
+
+  .drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .drawer-field-h { font-size: 11px; color: var(--ink-4); text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
+  .drawer-field-v { font-size: 14px; color: var(--ink); font-weight: 600; margin-top: 4px; }
+  .drawer-field-v.mono { font-family: 'JetBrains Mono', monospace; letter-spacing: -0.01em; }
+
+  .drawer-info-box { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 11px 14px; display: flex; align-items: flex-start; gap: 10px; }
+  .drawer-info-box .icon { color: var(--ink-4); margin-top: 1px; flex-shrink: 0; }
+  .drawer-info-box .title { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .drawer-info-box .sub { font-size: 12px; color: var(--ink-4); margin-top: 2px; }
+
+  .drawer-payments { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .drawer-payment { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .drawer-payment-h { font-size: 10.5px; color: var(--ink-4); text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
+  .drawer-payment-v { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-4); margin-top: 4px; }
+
+  .drawer-foot { padding: 14px 24px; background: var(--card); border-top: 1px solid var(--line); display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* Demo controls */
+  .demo-controls { position: fixed; bottom: 16px; right: 16px; display: flex; gap: 4px; padding: 5px; background: rgba(12,18,48,0.92); border-radius: 9px; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+  .demo-controls button { padding: 6px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.65); }
+  .demo-controls button.active { background: var(--gold); color: var(--brand-ink); }
+  .demo-controls button:hover:not(.active) { color: #fff; }
+
+  [hidden] { display: none !important; }
+  .tab-content { animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+
+  .empty { padding: 60px 24px; text-align: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .empty-icon { width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%; background: var(--card-alt); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--ink-4); }
+  .empty-h { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .empty-s { font-size: 12.5px; color: var(--ink-4); max-width: 380px; margin: 0 auto; }
+
+  .right-pane { display: flex; flex-direction: column; }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">ATLAS</div>
+        <div class="brand-sub">Patrimonio</div>
+      </div>
+    </div>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a><i data-lucide="layout-dashboard"></i>Panel</a>
+      <a><i data-lucide="building-2"></i>Inmuebles</a>
+      <a><i data-lucide="trending-up"></i>Inversiones</a>
+      <a><i data-lucide="wallet"></i>Tesorería</a>
+      <a><i data-lucide="landmark"></i>Financiación</a>
+      <a><i data-lucide="user"></i>Personal</a>
+    </nav>
+    <div class="nav-section">Operativa</div>
+    <nav class="nav">
+      <a class="active"><i data-lucide="file-text"></i>Contratos</a>
+      <a><i data-lucide="compass"></i>Mi plan</a>
+      <a><i data-lucide="banknote"></i>Fiscal</a>
+      <a><i data-lucide="archive"></i>Archivo</a>
+      <a><i data-lucide="settings"></i>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">UD</div>
+      <div>
+        <div class="side-foot-name">Usuario demo</div>
+        <div class="side-foot-sub">free</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right pane · banda navy + main blanco -->
+  <div class="right-pane">
+
+    <!-- ════ BANDA NAVY · indicador + 4 KPIs · ÚNICA fuente de los stats ════ -->
+    <header class="top-hero">
+      <div class="hero-label">
+        <span>Mis contratos</span>
+      </div>
+      <div>
+        <div class="hero-kpi-h">Vigentes</div>
+        <div class="hero-kpi-v mono">8</div>
+        <div class="hero-kpi-s">de 31 unidades</div>
+      </div>
+      <div>
+        <div class="hero-kpi-h">Ocupación</div>
+        <div class="hero-kpi-v mono">26 %</div>
+        <div class="hero-kpi-s">unidades ocupadas</div>
+      </div>
+      <div>
+        <div class="hero-kpi-h">Renta mensual</div>
+        <div class="hero-kpi-v mono">3.000 €</div>
+        <div class="hero-kpi-s">anual 36.000 €</div>
+      </div>
+      <div>
+        <div class="hero-kpi-h">Vencen 30 días</div>
+        <div class="hero-kpi-v mono warn">1</div>
+        <div class="hero-kpi-s">Sant Joan d'En Coll</div>
+      </div>
+    </header>
+
+    <main class="main">
+
+      <!-- Header zona blanca · solo título + botones · stats NO duplicados -->
+      <div class="head">
+        <div>
+          <h1>Contratos</h1>
+          <div class="head-sub">Gestiona tus alquileres · revisa histórico · concilia rentas declaradas</div>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-ghost">Importar contratos</button>
+          <button class="btn btn-gold">+ Nuevo contrato</button>
+        </div>
+      </div>
+
+      <!-- Tabs · texto puro · sin iconos · sin números -->
+      <div class="tabs">
+        <div class="tab" data-tab="disponibilidad">Disponibilidad</div>
+        <div class="tab active" data-tab="activos">Vigentes</div>
+        <div class="tab" data-tab="proximos">Próximos</div>
+        <div class="tab" data-tab="historico">Histórico</div>
+        <div class="tab" data-tab="analisis">Análisis</div>
+        <div class="tab" data-tab="conciliar">Por conciliar</div>
+      </div>
+
+      <!-- ════ TAB ACTIVOS · sin columna Estado · documento minimal ════ -->
+      <section class="tab-content" data-tabc="activos">
+
+        <div class="toolbar">
+          <div class="searchbox">
+            <i data-lucide="search"></i>
+            <input type="text" placeholder="Buscar inquilino · DNI · email">
+          </div>
+          <div class="filter-select">
+            <span class="filter-select-label">Inmueble</span>
+            <select>
+              <option>Todos los inmuebles</option>
+              <option>CB Sant Fruitós</option>
+              <option>Sant Joan d'En Coll</option>
+              <option>Tenderina 48</option>
+              <option>Tenderina 64 4D</option>
+              <option>Tenderina 64 4Iz</option>
+              <option>FA32 Fuertes Acevedo</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ctr-table">
+          <div class="ctr-row head">
+            <div>Inquilino</div>
+            <div>Inmueble</div>
+            <div>Inicio</div>
+            <div>Fin</div>
+            <div>Renta mensual</div>
+            <div>Renta anual</div>
+            <div></div>
+          </div>
+
+          <div class="ctr-row" onclick="openDrawer('vigente-ivan')">
+            <div class="inq-cell">
+              <div class="inq-circle" style="background:var(--pos)">IG</div>
+              <div class="ctr-cell">
+                <div class="ctr-name">Ivan Daniel Gomez Ramirez</div>
+                <div class="ctr-meta">DNI 53639208B</div>
+              </div>
+            </div>
+            <div class="ctr-cell">
+              <div class="ctr-name">Sant Joan d'En Coll</div>
+              <div class="ctr-meta">Piso completo</div>
+            </div>
+            <div class="ctr-cell mono">01/01/22</div>
+            <div class="ctr-cell mono">
+              <div>01/07/26</div>
+              <div><span class="urg-chip"><i data-lucide="clock" style="width:11px;height:11px"></i> 29 d</span></div>
+            </div>
+            <div class="ctr-cell mono"><strong>420 €</strong></div>
+            <div class="ctr-cell mono">5.040 €</div>
+            <div class="row-more"><i data-lucide="more-horizontal" style="width:16px;height:16px"></i></div>
+          </div>
+
+          <div class="ctr-row">
+            <div class="inq-cell">
+              <div class="inq-circle" style="background:var(--gold)">CR</div>
+              <div class="ctr-cell">
+                <div class="ctr-name">Concepcion Ramirez Guerero</div>
+                <div class="ctr-meta">DNI 43508951N</div>
+              </div>
+            </div>
+            <div class="ctr-cell">
+              <div class="ctr-name">CB Sant Fruitós</div>
+              <div class="ctr-meta">Piso completo</div>
+            </div>
+            <div class="ctr-cell mono">01/01/24</div>
+            <div class="ctr-cell mono">31/12/28</div>
+            <div class="ctr-cell mono"><strong>330 €</strong></div>
+            <div class="ctr-cell mono">3.960 €</div>
+            <div class="row-more"><i data-lucide="more-horizontal" style="width:16px;height:16px"></i></div>
+          </div>
+
+          <div class="ctr-row">
+            <div class="inq-cell">
+              <div class="inq-circle" style="background:var(--brand-2)">GM</div>
+              <div class="ctr-cell">
+                <div class="ctr-name">Gabriela Josefina Medina Garcia</div>
+                <div class="ctr-meta">DNI Y3415922P</div>
+              </div>
+            </div>
+            <div class="ctr-cell">
+              <div class="ctr-name">Tenderina 64 4Iz</div>
+              <div class="ctr-meta">Hab 4</div>
+            </div>
+            <div class="ctr-cell mono">10/11/25</div>
+            <div class="ctr-cell mono">30/06/26</div>
+            <div class="ctr-cell mono"><strong>465 €</strong></div>
+            <div class="ctr-cell mono">5.580 €</div>
+            <div class="row-more"><i data-lucide="more-horizontal" style="width:16px;height:16px"></i></div>
+          </div>
+
+          <div class="ctr-row">
+            <div class="inq-cell">
+              <div class="inq-circle" style="background:var(--gold)">EL</div>
+              <div class="ctr-cell">
+                <div class="ctr-name">Eloy Gomez Ramirez</div>
+                <div class="ctr-meta">DNI 53639209M</div>
+              </div>
+            </div>
+            <div class="ctr-cell">
+              <div class="ctr-name">Tenderina 64 4D</div>
+              <div class="ctr-meta">Hab 4</div>
+            </div>
+            <div class="ctr-cell mono">15/09/24</div>
+            <div class="ctr-cell mono">14/09/29</div>
+            <div class="ctr-cell mono"><strong>295 €</strong></div>
+            <div class="ctr-cell mono">3.540 €</div>
+            <div class="row-more"><i data-lucide="more-horizontal" style="width:16px;height:16px"></i></div>
+          </div>
+
+          <div class="ctr-row" title="Sin firmar · falta soporte documental">
+            <div class="inq-cell">
+              <div class="inq-circle unsigned">CE</div>
+              <div class="ctr-cell">
+                <div class="ctr-name">Claudia Escudero Oria</div>
+                <div class="ctr-meta">DNI no registrado · sin firmar</div>
+              </div>
+            </div>
+            <div class="ctr-cell">
+              <div class="ctr-name">FA32 Fuertes Acevedo</div>
+              <div class="ctr-meta">Hab 5</div>
+            </div>
+            <div class="ctr-cell mono">31/08/25</div>
+            <div class="ctr-cell mono">31/03/26</div>
+            <div class="ctr-cell mono"><strong>385 €</strong></div>
+            <div class="ctr-cell mono">4.620 €</div>
+            <div class="row-more"><i data-lucide="more-horizontal" style="width:16px;height:16px"></i></div>
+          </div>
+
+          <div class="ctr-row">
+            <div class="inq-cell">
+              <div class="inq-circle" style="background:var(--brand-2)">AM</div>
+              <div class="ctr-cell">
+                <div class="ctr-name">Amin Moussadek Jalloul</div>
+                <div class="ctr-meta">DNI X9912345Z</div>
+              </div>
+            </div>
+            <div class="ctr-cell">
+              <div class="ctr-name">FA32 Fuertes Acevedo</div>
+              <div class="ctr-meta">Hab 3</div>
+            </div>
+            <div class="ctr-cell mono">31/10/24</div>
+            <div class="ctr-cell mono">31/05/27</div>
+            <div class="ctr-cell mono"><strong>375 €</strong></div>
+            <div class="ctr-cell mono">4.500 €</div>
+            <div class="row-more"><i data-lucide="more-horizontal" style="width:16px;height:16px"></i></div>
+          </div>
+
+          <div class="ctr-row" title="Sin firmar · falta soporte documental">
+            <div class="inq-cell">
+              <div class="inq-circle unsigned">CJ</div>
+              <div class="ctr-cell">
+                <div class="ctr-name">Claudia Jimenez Perez</div>
+                <div class="ctr-meta">DNI no registrado · sin firmar</div>
+              </div>
+            </div>
+            <div class="ctr-cell">
+              <div class="ctr-name">FA32 Fuertes Acevedo</div>
+              <div class="ctr-meta">Hab 2</div>
+            </div>
+            <div class="ctr-cell mono">13/09/25</div>
+            <div class="ctr-cell mono">31/03/26</div>
+            <div class="ctr-cell mono"><strong>380 €</strong></div>
+            <div class="ctr-cell mono">4.560 €</div>
+            <div class="row-more"><i data-lucide="more-horizontal" style="width:16px;height:16px"></i></div>
+          </div>
+
+          <div class="ctr-row">
+            <div class="inq-cell">
+              <div class="inq-circle" style="background:var(--brand-2)">JV</div>
+              <div class="ctr-cell">
+                <div class="ctr-name">Joaquin Villarroya Méndez</div>
+                <div class="ctr-meta">DNI 47012345A</div>
+              </div>
+            </div>
+            <div class="ctr-cell">
+              <div class="ctr-name">FA32 Fuertes Acevedo</div>
+              <div class="ctr-meta">Hab 1</div>
+            </div>
+            <div class="ctr-cell mono">15/05/26</div>
+            <div class="ctr-cell mono">15/11/26</div>
+            <div class="ctr-cell mono"><strong>350 €</strong></div>
+            <div class="ctr-cell mono">4.200 €</div>
+            <div class="row-more"><i data-lucide="more-horizontal" style="width:16px;height:16px"></i></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ TAB PRÓXIMOS ════ -->
+      <section class="tab-content" data-tabc="proximos" hidden>
+        <div style="padding: 4px 4px 14px; font-size: 12.5px; color: var(--ink-4);">
+          Contratos firmados que aún no han empezado. Pasarán a Vigentes automáticamente al llegar la fecha de inicio.
+        </div>
+
+        <div class="next-card">
+          <div class="next-icon"><i data-lucide="user-plus"></i></div>
+          <div class="next-info">
+            <div class="next-name">Joaquin Salazar Salazar</div>
+            <div class="next-meta">FA32 Fuertes Acevedo · Hab 1</div>
+          </div>
+          <div>
+            <div class="next-when-h">Empieza en</div>
+            <div class="next-when-d mono">12 d</div>
+          </div>
+          <div class="next-rent">
+            <div class="next-rent-v mono">320 €</div>
+            <div class="next-rent-s">renta mensual</div>
+          </div>
+        </div>
+
+        <div class="next-card">
+          <div class="next-icon"><i data-lucide="user-plus"></i></div>
+          <div class="next-info">
+            <div class="next-name">Sena Varona Valbuena</div>
+            <div class="next-meta">Tenderina 64 4D · Hab 3</div>
+          </div>
+          <div>
+            <div class="next-when-h">Empieza en</div>
+            <div class="next-when-d mono">28 d</div>
+          </div>
+          <div class="next-rent">
+            <div class="next-rent-v mono">295 €</div>
+            <div class="next-rent-s">renta mensual</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ TAB HISTÓRICO ════ -->
+      <section class="tab-content" data-tabc="historico" hidden>
+
+        <div class="toolbar">
+          <div class="searchbox">
+            <i data-lucide="search"></i>
+            <input type="text" placeholder="Buscar inquilino · DNI · email">
+          </div>
+          <div class="filter-select">
+            <span class="filter-select-label">Inmueble</span>
+            <select>
+              <option>Todos los inmuebles</option>
+              <option>FA32 Fuertes Acevedo</option>
+              <option>Tenderina 48</option>
+              <option>Tenderina 64 4D</option>
+              <option>Tenderina 64 4Iz</option>
+              <option>CB Sant Fruitós</option>
+            </select>
+          </div>
+          <div class="filter-select" style="min-width: 180px;">
+            <span class="filter-select-label">Año</span>
+            <select>
+              <option>Todos los años</option>
+              <option>2025</option>
+              <option>2024</option>
+              <option>2023</option>
+              <option>2022</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- FA32 expandido -->
+        <div class="hist-group open">
+          <div class="hist-group-head" onclick="this.parentElement.classList.toggle('open')">
+            <span class="hist-arrow"><i data-lucide="chevron-right" style="width:16px;height:16px"></i></span>
+            <div class="hist-group-info">
+              <div class="hist-group-h">FA32 Fuertes Acevedo</div>
+              <div class="hist-group-s">5 habitaciones · contratos 2022 - 2025</div>
+            </div>
+            <span class="hist-group-count">45</span>
+          </div>
+          <div class="hist-group-body">
+
+            <div class="hist-sub open">
+              <div class="hist-sub-head" onclick="this.parentElement.classList.toggle('open')">
+                <span class="hist-arrow" style="transform: rotate(90deg)"><i data-lucide="chevron-right" style="width:13px;height:13px"></i></span>
+                <div class="hist-sub-info">
+                  <div class="hist-sub-h">Habitación 1</div>
+                  <div class="hist-sub-s">12 contratos · rotación alta</div>
+                </div>
+                <span class="hist-sub-count">12</span>
+              </div>
+              <div class="hist-sub-body">
+                <div class="hist-row head">
+                  <div>Ex-inquilino</div>
+                  <div>Periodo</div>
+                  <div>Duración</div>
+                  <div>Renta</div>
+                  <div>Motivo salida</div>
+                  <div></div>
+                </div>
+                <div class="hist-row" onclick="openDrawer('finalizado-aroa')">
+                  <div class="inq-cell">
+                    <div class="inq-circle">JP</div>
+                    <div class="ctr-cell">
+                      <div class="ctr-name">Joseph Palma Garcia</div>
+                      <div class="ctr-meta">salió hace 38 meses</div>
+                    </div>
+                  </div>
+                  <div class="mono">04/02/23 → 03/04/23</div>
+                  <div class="mono">2 m</div>
+                  <div class="mono">320 €</div>
+                  <div><span style="color:var(--ink-4); font-size:11.5px;">Sin clasificar</span></div>
+                  <div class="row-more"><i data-lucide="more-horizontal" style="width:14px;height:14px"></i></div>
+                </div>
+                <div class="hist-row" onclick="openDrawer('finalizado-aroa')">
+                  <div class="inq-cell">
+                    <div class="inq-circle">EL</div>
+                    <div class="ctr-cell">
+                      <div class="ctr-name">Eugenio Lorenzo Cameron</div>
+                      <div class="ctr-meta">salió hace 35 meses</div>
+                    </div>
+                  </div>
+                  <div class="mono">03/05/23 → 04/07/23</div>
+                  <div class="mono">2 m</div>
+                  <div class="mono">320 €</div>
+                  <div><span style="color:var(--ink-4); font-size:11.5px;">Sin clasificar</span></div>
+                  <div class="row-more"><i data-lucide="more-horizontal" style="width:14px;height:14px"></i></div>
+                </div>
+                <div class="hist-row" onclick="openDrawer('finalizado-aroa')">
+                  <div class="inq-cell">
+                    <div class="inq-circle">GC</div>
+                    <div class="ctr-cell">
+                      <div class="ctr-name">Guillermo Campo Espias</div>
+                      <div class="ctr-meta">salió hace 26 meses</div>
+                    </div>
+                  </div>
+                  <div class="mono">15/06/23 → 04/04/24</div>
+                  <div class="mono">10 m</div>
+                  <div class="mono">350 €</div>
+                  <div><span style="color:var(--ink-4); font-size:11.5px;">Sin clasificar</span></div>
+                  <div class="row-more"><i data-lucide="more-horizontal" style="width:14px;height:14px"></i></div>
+                </div>
+                <div style="padding: 10px 18px 12px 58px; text-align: center; font-size: 11.5px; color: var(--ink-4);">
+                  ... y 9 contratos más en Habitación 1
+                </div>
+              </div>
+            </div>
+
+            <div class="hist-sub">
+              <div class="hist-sub-head" onclick="this.parentElement.classList.toggle('open')">
+                <span class="hist-arrow"><i data-lucide="chevron-right" style="width:13px;height:13px"></i></span>
+                <div class="hist-sub-info">
+                  <div class="hist-sub-h">Habitación 2</div>
+                  <div class="hist-sub-s">11 contratos</div>
+                </div>
+                <span class="hist-sub-count">11</span>
+              </div>
+              <div class="hist-sub-body"></div>
+            </div>
+
+            <div class="hist-sub">
+              <div class="hist-sub-head" onclick="this.parentElement.classList.toggle('open')">
+                <span class="hist-arrow"><i data-lucide="chevron-right" style="width:13px;height:13px"></i></span>
+                <div class="hist-sub-info">
+                  <div class="hist-sub-h">Habitación 3</div>
+                  <div class="hist-sub-s">9 contratos</div>
+                </div>
+                <span class="hist-sub-count">9</span>
+              </div>
+              <div class="hist-sub-body"></div>
+            </div>
+
+            <div class="hist-sub">
+              <div class="hist-sub-head" onclick="this.parentElement.classList.toggle('open')">
+                <span class="hist-arrow"><i data-lucide="chevron-right" style="width:13px;height:13px"></i></span>
+                <div class="hist-sub-info">
+                  <div class="hist-sub-h">Habitación 4</div>
+                  <div class="hist-sub-s">8 contratos</div>
+                </div>
+                <span class="hist-sub-count">8</span>
+              </div>
+              <div class="hist-sub-body"></div>
+            </div>
+
+            <div class="hist-sub">
+              <div class="hist-sub-head" onclick="this.parentElement.classList.toggle('open')">
+                <span class="hist-arrow"><i data-lucide="chevron-right" style="width:13px;height:13px"></i></span>
+                <div class="hist-sub-info">
+                  <div class="hist-sub-h">Habitación 5</div>
+                  <div class="hist-sub-s">5 contratos</div>
+                </div>
+                <span class="hist-sub-count">5</span>
+              </div>
+              <div class="hist-sub-body"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hist-group">
+          <div class="hist-group-head" onclick="this.parentElement.classList.toggle('open')">
+            <span class="hist-arrow"><i data-lucide="chevron-right" style="width:16px;height:16px"></i></span>
+            <div class="hist-group-info">
+              <div class="hist-group-h">Tenderina 48</div>
+              <div class="hist-group-s">Piso completo · contratos 2022 - 2025</div>
+            </div>
+            <span class="hist-group-count">1</span>
+          </div>
+          <div class="hist-group-body">
+            <div class="hist-row head">
+              <div>Ex-inquilino</div>
+              <div>Periodo</div>
+              <div>Duración</div>
+              <div>Renta</div>
+              <div>Motivo salida</div>
+              <div></div>
+            </div>
+            <div class="hist-row" onclick="openDrawer('finalizado-aroa')">
+              <div class="inq-cell">
+                <div class="inq-circle">AR</div>
+                <div class="ctr-cell">
+                  <div class="ctr-name">Alisser Real Estate</div>
+                  <div class="ctr-meta">salió hace 6 meses</div>
+                </div>
+              </div>
+              <div class="mono">23/09/22 → 27/11/25</div>
+              <div class="mono">38 m</div>
+              <div class="mono">1.235 €</div>
+              <div><span style="color:var(--ink-4); font-size:11.5px;">Sin clasificar</span></div>
+              <div class="row-more"><i data-lucide="more-horizontal" style="width:14px;height:14px"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hist-group">
+          <div class="hist-group-head" onclick="this.parentElement.classList.toggle('open')">
+            <span class="hist-arrow"><i data-lucide="chevron-right" style="width:16px;height:16px"></i></span>
+            <div class="hist-group-info">
+              <div class="hist-group-h">Tenderina 64 4D</div>
+              <div class="hist-group-s">4 habitaciones · contratos 2024 - 2025</div>
+            </div>
+            <span class="hist-group-count">4</span>
+          </div>
+          <div class="hist-group-body"></div>
+        </div>
+
+        <div class="hist-group">
+          <div class="hist-group-head" onclick="this.parentElement.classList.toggle('open')">
+            <span class="hist-arrow"><i data-lucide="chevron-right" style="width:16px;height:16px"></i></span>
+            <div class="hist-group-info">
+              <div class="hist-group-h">Tenderina 64 4Iz</div>
+              <div class="hist-group-s">4 habitaciones · contratos 2024 - 2025</div>
+            </div>
+            <span class="hist-group-count">3</span>
+          </div>
+          <div class="hist-group-body"></div>
+        </div>
+
+        <div class="hist-group">
+          <div class="hist-group-head" onclick="this.parentElement.classList.toggle('open')">
+            <span class="hist-arrow"><i data-lucide="chevron-right" style="width:16px;height:16px"></i></span>
+            <div class="hist-group-info">
+              <div class="hist-group-h">CB Sant Fruitós</div>
+              <div class="hist-group-s">Piso completo · contratos 2022 - 2023</div>
+            </div>
+            <span class="hist-group-count">1</span>
+          </div>
+          <div class="hist-group-body"></div>
+        </div>
+      </section>
+
+      <!-- ════ TAB ANÁLISIS · 4 bloques · pasado·presente·futuro · ingresos · ranking · alarmas ════ -->
+      <section class="tab-content" data-tabc="analisis" hidden>
+
+        <!-- ── Bloque 1 · MAPA TEMPORAL · 24 meses · pasado · HOY · futuro ── -->
+        <div class="analysis-card" style="margin-bottom: 14px;">
+          <div class="ax-h-row">
+            <div class="analysis-h">Ocupación · 12 meses atrás · hoy · 12 meses adelante</div>
+            <div class="ax-h-legend">
+              <span class="ax-leg-item"><span class="ax-leg-sw ax-vacio"></span> vacío</span>
+              <span class="ax-leg-item"><span class="ax-leg-sw ax-parcial"></span> parcial</span>
+              <span class="ax-leg-item"><span class="ax-leg-sw ax-pleno"></span> pleno</span>
+              <span class="ax-leg-item"><span class="ax-leg-sw ax-now"></span> activo hoy</span>
+              <span class="ax-leg-item"><span class="ax-leg-sw ax-warn"></span> vence pronto</span>
+            </div>
+          </div>
+
+          <div class="ax-timeline">
+            <!-- Encabezados de meses -->
+            <div class="ax-row ax-row-head">
+              <div class="ax-label"></div>
+              <div class="ax-cell ax-month">Jun</div>
+              <div class="ax-cell ax-month">Jul</div>
+              <div class="ax-cell ax-month">Ago</div>
+              <div class="ax-cell ax-month">Sep</div>
+              <div class="ax-cell ax-month">Oct</div>
+              <div class="ax-cell ax-month">Nov</div>
+              <div class="ax-cell ax-month">Dic</div>
+              <div class="ax-cell ax-month ax-year-sep">Ene<small>26</small></div>
+              <div class="ax-cell ax-month">Feb</div>
+              <div class="ax-cell ax-month">Mar</div>
+              <div class="ax-cell ax-month">Abr</div>
+              <div class="ax-cell ax-month">May</div>
+              <div class="ax-cell ax-now-cell ax-month">Jun<small>hoy</small></div>
+              <div class="ax-cell ax-month">Jul</div>
+              <div class="ax-cell ax-month">Ago</div>
+              <div class="ax-cell ax-month">Sep</div>
+              <div class="ax-cell ax-month">Oct</div>
+              <div class="ax-cell ax-month">Nov</div>
+              <div class="ax-cell ax-month">Dic</div>
+              <div class="ax-cell ax-month ax-year-sep">Ene<small>27</small></div>
+              <div class="ax-cell ax-month">Feb</div>
+              <div class="ax-cell ax-month">Mar</div>
+              <div class="ax-cell ax-month">Abr</div>
+              <div class="ax-cell ax-month">May</div>
+            </div>
+
+            <!-- CB Sant Fruitós · piso completo · vigente todo el periodo -->
+            <div class="ax-row">
+              <div class="ax-label">CB Sant Fruitós<small>Piso completo</small></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno ax-year-sep"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-now ax-now-cell"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno ax-year-sep"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+            </div>
+
+            <!-- Sant Joan d'En Coll · piso completo · vence julio 26 ⚠ -->
+            <div class="ax-row">
+              <div class="ax-label">Sant Joan d'En Coll<small>Piso completo</small></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno ax-year-sep"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-now ax-now-cell ax-warn-border"></div>
+              <div class="ax-cell ax-warn"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio ax-year-sep"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+            </div>
+
+            <!-- Tenderina 48 · vacío desde nov 25 -->
+            <div class="ax-row">
+              <div class="ax-label">Tenderina 48<small>Piso completo · vacío</small></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio ax-year-sep"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-now ax-now-cell ax-vacio-now"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio ax-year-sep"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+            </div>
+
+            <!-- Tenderina 64 4D · 4 hab · ocupación parcial -->
+            <div class="ax-row">
+              <div class="ax-label">Tenderina 64 4D<small>4 habitaciones · 1/4 hoy</small></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio ax-year-sep"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-now ax-now-cell"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio ax-year-sep"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+            </div>
+
+            <!-- Tenderina 64 4Iz · 4 hab · poca ocupación -->
+            <div class="ax-row">
+              <div class="ax-label">Tenderina 64 4Iz<small>4 habitaciones · 1/4 hoy</small></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial ax-year-sep"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-now ax-now-cell"></div>
+              <div class="ax-cell ax-parcial ax-warn-border"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio ax-year-sep"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+            </div>
+
+            <!-- FA32 · 5 hab · alta rotación · vacíos frecuentes -->
+            <div class="ax-row">
+              <div class="ax-label">FA32 Fuertes Acevedo<small>5 habitaciones · 4/5 hoy</small></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-pleno ax-year-sep"></div>
+              <div class="ax-cell ax-pleno"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-now ax-now-cell"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-medio"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial"></div>
+              <div class="ax-cell ax-parcial ax-year-sep"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+              <div class="ax-cell ax-vacio"></div>
+            </div>
+          </div>
+
+          <div class="ax-footnote">
+            Cada celda · 1 mes. Intensidad · % de unidades ocupadas. El borde dorado marca el mes actual. El borde rojo discreto avisa de vencimientos próximos.
+          </div>
+        </div>
+
+        <!-- ── Bloque 2 · INGRESOS · líneas comparativas por año ── -->
+        <div class="analysis-grid analysis-grid-2-1" style="margin-bottom: 14px;">
+          <div class="analysis-card">
+            <div class="analysis-h">Ingresos mensuales · evolución por año</div>
+
+            <svg viewBox="0 0 600 240" style="width:100%; height:auto; display:block;">
+              <!-- Grid horizontal -->
+              <line x1="50" y1="20" x2="590" y2="20" stroke="#EFECE5" stroke-width="1"/>
+              <line x1="50" y1="70" x2="590" y2="70" stroke="#EFECE5" stroke-width="1"/>
+              <line x1="50" y1="120" x2="590" y2="120" stroke="#EFECE5" stroke-width="1"/>
+              <line x1="50" y1="170" x2="590" y2="170" stroke="#EFECE5" stroke-width="1"/>
+              <line x1="50" y1="220" x2="590" y2="220" stroke="#E6E3DC" stroke-width="1"/>
+
+              <!-- Y axis labels -->
+              <text x="44" y="25" text-anchor="end" font-size="10" fill="#8A92A0" font-family="JetBrains Mono">4.000</text>
+              <text x="44" y="75" text-anchor="end" font-size="10" fill="#8A92A0" font-family="JetBrains Mono">3.000</text>
+              <text x="44" y="125" text-anchor="end" font-size="10" fill="#8A92A0" font-family="JetBrains Mono">2.000</text>
+              <text x="44" y="175" text-anchor="end" font-size="10" fill="#8A92A0" font-family="JetBrains Mono">1.000</text>
+              <text x="44" y="225" text-anchor="end" font-size="10" fill="#8A92A0" font-family="JetBrains Mono">0 €</text>
+
+              <!-- X axis labels (meses) -->
+              <text x="65" y="234" font-size="10" fill="#8A92A0">E</text>
+              <text x="110" y="234" font-size="10" fill="#8A92A0">F</text>
+              <text x="155" y="234" font-size="10" fill="#8A92A0">M</text>
+              <text x="200" y="234" font-size="10" fill="#8A92A0">A</text>
+              <text x="245" y="234" font-size="10" fill="#8A92A0">M</text>
+              <text x="290" y="234" font-size="10" fill="#8A92A0">J</text>
+              <text x="335" y="234" font-size="10" fill="#8A92A0">J</text>
+              <text x="380" y="234" font-size="10" fill="#8A92A0">A</text>
+              <text x="425" y="234" font-size="10" fill="#8A92A0">S</text>
+              <text x="470" y="234" font-size="10" fill="#8A92A0">O</text>
+              <text x="515" y="234" font-size="10" fill="#8A92A0">N</text>
+              <text x="560" y="234" font-size="10" fill="#8A92A0">D</text>
+
+              <!-- 2024 line · gris claro · 0.40 a 1.85k -->
+              <polyline points="65,202 110,200 155,195 200,180 245,165 290,150 335,140 380,135 425,130 470,138 515,145 560,138" fill="none" stroke="#B8BEC8" stroke-width="2"/>
+
+              <!-- 2025 line · gris medio · 1.5k a 2.85k -->
+              <polyline points="65,150 110,148 155,140 200,128 245,115 290,100 335,90 380,85 425,80 470,82 515,78 560,75" fill="none" stroke="#5B6474" stroke-width="2"/>
+
+              <!-- 2026 line · DORADO · año actual hasta junio · 2.4k a 3.0k -->
+              <polyline points="65,82 110,78 155,75 200,72 245,68 290,70" fill="none" stroke="#B88A3E" stroke-width="2.5"/>
+              <!-- Punto final año actual -->
+              <circle cx="290" cy="70" r="4" fill="#B88A3E"/>
+            </svg>
+
+            <div class="ax-legend-line">
+              <span class="ax-leg-item"><span class="ax-line-leg" style="background:#B88A3E"></span> 2026 <small>actual · hasta jun</small></span>
+              <span class="ax-leg-item"><span class="ax-line-leg" style="background:#5B6474"></span> 2025</span>
+              <span class="ax-leg-item"><span class="ax-line-leg" style="background:#B8BEC8"></span> 2024</span>
+            </div>
+          </div>
+
+          <!-- Resumen anual -->
+          <div class="analysis-card">
+            <div class="analysis-h">Resumen anual</div>
+
+            <div class="ax-yr-row">
+              <div class="ax-yr-label">2026<small>parcial</small></div>
+              <div class="ax-yr-val mono">17.520 €</div>
+              <div class="ax-yr-pace">ritmo · 36.000 €/año</div>
+            </div>
+            <div class="ax-yr-row">
+              <div class="ax-yr-label">2025</div>
+              <div class="ax-yr-val mono">28.450 €</div>
+              <div class="ax-yr-pace pos">+82 % vs 2024</div>
+            </div>
+            <div class="ax-yr-row">
+              <div class="ax-yr-label">2024</div>
+              <div class="ax-yr-val mono">15.620 €</div>
+              <div class="ax-yr-pace">año de arranque</div>
+            </div>
+
+            <div class="ax-pace-box">
+              <div class="ax-pace-h">Proyección 2026 vs 2025</div>
+              <div class="ax-pace-v pos mono">+ 26 %</div>
+              <div class="ax-pace-s">manteniendo ocupación y rentas actuales</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Bloque 3 · RANKING POR INMUEBLE · barras de ocupación ── -->
+        <div class="analysis-card" style="margin-bottom: 14px;">
+          <div class="analysis-h">Ingresos por inmueble · ranking anual</div>
+
+          <div class="rk-row">
+            <div class="rk-name">FA32 Fuertes Acevedo<small>5 hab · 4 ocupadas</small></div>
+            <div class="rk-bar-wrap">
+              <div class="rk-bar"><div class="rk-fill rk-gold" style="width:80%"></div></div>
+              <div class="rk-occ mono">80 %</div>
+            </div>
+            <div class="rk-val mono">17.880 €<small>/ año</small></div>
+          </div>
+
+          <div class="rk-row">
+            <div class="rk-name">Tenderina 64 4Iz<small>4 hab · 1 ocupada · vence 30/06/26</small></div>
+            <div class="rk-bar-wrap">
+              <div class="rk-bar"><div class="rk-fill rk-mid" style="width:25%"></div></div>
+              <div class="rk-occ mono">25 %</div>
+            </div>
+            <div class="rk-val mono">5.580 €<small>/ año</small></div>
+          </div>
+
+          <div class="rk-row">
+            <div class="rk-name">Sant Joan d'En Coll<small>Piso completo · vence 01/07/26</small></div>
+            <div class="rk-bar-wrap">
+              <div class="rk-bar"><div class="rk-fill rk-gold" style="width:100%"></div></div>
+              <div class="rk-occ mono">100 %</div>
+            </div>
+            <div class="rk-val mono">5.040 €<small>/ año</small></div>
+          </div>
+
+          <div class="rk-row">
+            <div class="rk-name">CB Sant Fruitós<small>Piso completo · vigente hasta 12/28</small></div>
+            <div class="rk-bar-wrap">
+              <div class="rk-bar"><div class="rk-fill rk-gold" style="width:100%"></div></div>
+              <div class="rk-occ mono">100 %</div>
+            </div>
+            <div class="rk-val mono">3.960 €<small>/ año</small></div>
+          </div>
+
+          <div class="rk-row">
+            <div class="rk-name">Tenderina 64 4D<small>4 hab · 1 ocupada</small></div>
+            <div class="rk-bar-wrap">
+              <div class="rk-bar"><div class="rk-fill rk-mid" style="width:25%"></div></div>
+              <div class="rk-occ mono">25 %</div>
+            </div>
+            <div class="rk-val mono">3.540 €<small>/ año</small></div>
+          </div>
+
+          <div class="rk-row">
+            <div class="rk-name">Tenderina 48<small>Piso completo · sin contrato</small></div>
+            <div class="rk-bar-wrap">
+              <div class="rk-bar"><div class="rk-fill rk-empty" style="width:0%"></div></div>
+              <div class="rk-occ mono dim">0 %</div>
+            </div>
+            <div class="rk-val mono dim">0 €<small>/ año</small></div>
+          </div>
+
+          <div class="ax-footnote">
+            Barras · % de unidades ocupadas. Importe · renta anualizada de los contratos vigentes hoy.
+          </div>
+        </div>
+
+        <!-- ── Bloque 4 · ALARMAS TEMPRANAS · accionable ── -->
+        <div class="analysis-card">
+          <div class="ax-h-row">
+            <div class="analysis-h">Atención · 4 cosas que requieren tu acción</div>
+          </div>
+
+          <div class="alert-row">
+            <div class="alert-icon"><i data-lucide="clock"></i></div>
+            <div class="alert-body">
+              <div class="alert-title">Sant Joan d'En Coll · vence en 29 días</div>
+              <div class="alert-meta">Ivan Daniel Gomez · sin renovación firmada · 420 €/mes en riesgo</div>
+            </div>
+            <button class="alert-cta">Contactar inquilino</button>
+          </div>
+
+          <div class="alert-row">
+            <div class="alert-icon"><i data-lucide="alert-triangle"></i></div>
+            <div class="alert-body">
+              <div class="alert-title">Tenderina 48 · vacío hace 7 meses</div>
+              <div class="alert-meta">Sin contrato activo desde 27/11/25 · capacidad estimada 1.235 €/mes</div>
+            </div>
+            <button class="alert-cta">Publicar anuncio</button>
+          </div>
+
+          <div class="alert-row">
+            <div class="alert-icon"><i data-lucide="file-warning"></i></div>
+            <div class="alert-body">
+              <div class="alert-title">FA32 Hab 5 · sin firmar hace 4 meses</div>
+              <div class="alert-meta">Claudia Escudero · ocupando · falta soporte documental</div>
+            </div>
+            <button class="alert-cta">Pedir firma</button>
+          </div>
+
+          <div class="alert-row">
+            <div class="alert-icon"><i data-lucide="rotate-ccw"></i></div>
+            <div class="alert-body">
+              <div class="alert-title">T64 4D Hab 3 · rotación alta</div>
+              <div class="alert-meta">2 inquilinos en 8 meses · considera revisar precio o condiciones</div>
+            </div>
+            <button class="alert-cta">Ver histórico</button>
+          </div>
+        </div>
+
+      </section>
+
+
+      <!-- ════ TAB DISPONIBILIDAD ════ -->
+      <section class="tab-content" data-tabc="disponibilidad" hidden>
+        <div class="empty">
+          <div class="empty-icon"><i data-lucide="calendar" style="width:28px;height:28px"></i></div>
+          <div class="empty-h">Vista calendario · disponibilidad de unidades</div>
+          <div class="empty-s">22 unidades libres · vista no replanteada en este mockup · queda como está</div>
+        </div>
+      </section>
+
+      <!-- ════ TAB POR CONCILIAR ════ -->
+      <section class="tab-content" data-tabc="conciliar" hidden>
+        <div class="empty">
+          <div class="empty-icon"><i data-lucide="link-2" style="width:28px;height:28px"></i></div>
+          <div class="empty-h">Botes pendientes de conciliar</div>
+          <div class="empty-s">7 botes · vista del PR de matching · sin cambios en este replanteo</div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ════ DRAWER · contrato finalizado · réplica del existente ════ -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+
+  <div class="drawer-top">
+    <div class="drawer-top-head">
+      <div class="drawer-top-label" id="drawer-label">Ex-inquilino · contrato finalizado</div>
+      <button class="drawer-close" onclick="closeDrawer()"><i data-lucide="x" style="width:20px;height:20px"></i></button>
+    </div>
+    <div class="drawer-title" id="drawer-title">Aroa Gomez Ramirez</div>
+    <div class="drawer-sub" id="drawer-sub">CB Sant Fruitós · piso completo</div>
+
+    <div class="drawer-top-stats">
+      <div>
+        <div class="drawer-stat-h">Duró</div>
+        <div class="drawer-stat-v mono">24 m</div>
+      </div>
+      <div>
+        <div class="drawer-stat-h">Salió</div>
+        <div class="drawer-stat-v mono">hace 29 m</div>
+      </div>
+      <div>
+        <div class="drawer-stat-h">Valoración</div>
+        <div class="drawer-stat-v mono dim">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-body">
+
+    <div class="drawer-section">
+      <div class="drawer-section-h">Ex-inquilino</div>
+      <div class="drawer-person">
+        <div class="drawer-person-avatar">AG</div>
+        <div>
+          <div class="drawer-person-name">Aroa Gomez Ramirez</div>
+          <div class="drawer-person-meta">DNI 53639207X</div>
+        </div>
+      </div>
+      <button class="drawer-cta-invite"><i data-lucide="star" style="width:14px;height:14px"></i> Invitar a volver</button>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-h">
+        <span>Resumen del contrato</span>
+      </div>
+      <div class="drawer-grid">
+        <div>
+          <div class="drawer-field-h">Desde</div>
+          <div class="drawer-field-v mono">01/01/2022</div>
+        </div>
+        <div>
+          <div class="drawer-field-h">Hasta</div>
+          <div class="drawer-field-v mono">30/12/2023</div>
+        </div>
+        <div>
+          <div class="drawer-field-h">Duración real</div>
+          <div class="drawer-field-v">24 meses</div>
+        </div>
+        <div>
+          <div class="drawer-field-h">Tipo</div>
+          <div class="drawer-field-v">Larga estancia</div>
+        </div>
+        <div>
+          <div class="drawer-field-h">Renta pagada</div>
+          <div class="drawer-field-v mono">300 €/mes</div>
+        </div>
+        <div>
+          <div class="drawer-field-h">Fianza devuelta</div>
+          <div class="drawer-field-v mono" style="color:var(--ink-4)">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-h">
+        <span>¿Volverías a alquilarle?</span>
+        <span class="drawer-edit"><i data-lucide="edit-3" style="width:13px;height:13px"></i> Editar</span>
+      </div>
+      <div style="font-size:13px; color:var(--ink-4); font-style:italic;">— sin respuesta</div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-h">
+        <span>Motivo de salida</span>
+        <span class="drawer-edit"><i data-lucide="edit-3" style="width:13px;height:13px"></i> Editar</span>
+      </div>
+      <div class="drawer-info-box">
+        <span class="icon"><i data-lucide="info" style="width:16px;height:16px"></i></span>
+        <div>
+          <div class="title">Sin clasificar</div>
+          <div class="sub">No se registró un motivo de salida para este contrato.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-h">
+        <span>Historial de pagos</span>
+      </div>
+      <div class="drawer-payments">
+        <div class="drawer-payment">
+          <div class="drawer-payment-h">Total cobrado</div>
+          <div class="drawer-payment-v">—</div>
+        </div>
+        <div class="drawer-payment">
+          <div class="drawer-payment-h">Impagos</div>
+          <div class="drawer-payment-v">—</div>
+        </div>
+        <div class="drawer-payment">
+          <div class="drawer-payment-h">Última factura</div>
+          <div class="drawer-payment-v">—</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="drawer-foot">
+    <button class="btn btn-ghost" onclick="closeDrawer()">Cerrar</button>
+    <button class="btn btn-ghost"><i data-lucide="download" style="width:14px;height:14px"></i> Descargar contrato</button>
+    <button class="btn btn-gold"><i data-lucide="rotate-cw" style="width:14px;height:14px"></i> Reactivar contrato</button>
+  </div>
+</aside>
+
+<!-- Demo controls -->
+<div class="demo-controls">
+  <button data-go="disponibilidad">Disponibilidad</button>
+  <button class="active" data-go="activos">Vigentes</button>
+  <button data-go="proximos">Próximos</button>
+  <button data-go="historico">Histórico</button>
+  <button data-go="analisis">Análisis</button>
+  <button data-go="conciliar">Por conciliar</button>
+</div>
+
+<script>
+  function goTab(name) {
+    document.querySelectorAll('.tab-content').forEach(s => s.hidden = s.dataset.tabc !== name);
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.demo-controls button').forEach(b => b.classList.toggle('active', b.dataset.go === name));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => goTab(t.dataset.tab)));
+  document.querySelectorAll('.demo-controls button').forEach(b => b.addEventListener('click', () => goTab(b.dataset.go)));
+
+  function openDrawer(id) {
+    document.getElementById('drawer-overlay').classList.add('open');
+    document.getElementById('drawer').classList.add('open');
+  }
+  function closeDrawer() {
+    document.getElementById('drawer-overlay').classList.remove('open');
+    document.getElementById('drawer').classList.remove('open');
+  }
+
+  lucide.createIcons();
+</script>
+</body>
+</html>
