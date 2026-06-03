@@ -182,7 +182,7 @@ const TablaActivos: React.FC<TablaActivosProps> = ({
                   </td>
                   <td className={styles.colRight}>
                     <span className={`${styles.daysCell} ${claseDiasRestantes(dias)}`}>
-                      {dias == null ? '—' : `${dias} d`}
+                      {dias == null ? '—' : dias < 0 ? 'Vencido' : `${dias} d`}
                     </span>
                   </td>
                   <td>

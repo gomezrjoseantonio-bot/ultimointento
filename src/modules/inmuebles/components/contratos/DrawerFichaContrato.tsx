@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Send, RotateCw } from 'lucide-react';
 import {
   Icons,
   MoneyValue,
@@ -13,6 +14,12 @@ import {
   type EstadoChip,
   estaFirmado,
 } from '../../utils/calcularEstadoChip';
+import {
+  getEstadoEfectivo,
+  diasHastaFin,
+  type EstadoEfectivo,
+} from '../../utils/estadoEfectivoService';
+import { parseIsoDateAsUTC } from '../../../../utils/recurrenceDateUtils';
 import { formatFechaFinContrato } from '../../utils/formatFechaFin';
 import { habitacionNumeroDe } from '../../utils/timelineColores';
 import {
@@ -44,6 +51,88 @@ const accionPorEstado = (estado: EstadoChip): { label: string; toastSuffix: stri
     case 'sin-firmar': return { label: 'Enviar a firma',       toastSuffix: 'T3.8' };
   }
 };
+
+// ── Commit 6 · 3 variantes del drawer según estado EFECTIVO (por fechas) ──
+
+/** Etiqueta del hero · cambia el tono según el contrato esté vivo, por empezar
+ *  o ya terminado (mockup v5). */
+export const DRAWER_LABEL: Record<EstadoEfectivo, string> = {
+  vigente: 'Inquilino actual · contrato vigente',
+  proximo: 'Próximo inquilino · aún no empieza',
+  finalizado: 'Ex-inquilino · contrato finalizado',
+};
+
+export type AccionIcon = 'refresh' | 'send' | 'rotate';
+
+export interface AccionPrincipal {
+  label: string;
+  icon: AccionIcon;
+  toastSuffix: string;
+}
+
+/**
+ * Acción primaria del footer según el estado efectivo:
+ *   · finalizado → Reactivar contrato
+ *   · proximo    → Enviar a firma (si no firmado) · Editar contrato (si firmado)
+ *   · vigente    → según el chip de cobro (Renovar / Proponer / Reclamar / firma)
+ */
+export function accionPrincipalPorEstado(
+  estadoEfectivo: EstadoEfectivo,
+  estadoChip: EstadoChip,
+  firmado: boolean,
+): AccionPrincipal {
+  if (estadoEfectivo === 'finalizado') {
+    return { label: 'Reactivar contrato', icon: 'rotate', toastSuffix: 'T4' };
+  }
+  if (estadoEfectivo === 'proximo') {
+    return firmado
+      ? { label: 'Editar contrato', icon: 'refresh', toastSuffix: 'T3.2' }
+      : { label: 'Enviar a firma', icon: 'send', toastSuffix: 'T3.8' };
+  }
+  const a = accionPorEstado(estadoChip);
+  return {
+    label: a.label,
+    icon: estadoChip === 'sin-firmar' ? 'send' : 'refresh',
+    toastSuffix: a.toastSuffix,
+  };
+}
+
+const MS_DIA = 1000 * 60 * 60 * 24;
+const diaUTC = (d: Date): number =>
+  Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+
+/** Días desde hoy hasta `fechaInicio` (ceil, min 0) · usado en variante proximo. */
+function diasHastaInicio(c: Contract, hoy: Date = new Date()): number {
+  const inicio = parseIsoDateAsUTC(c.fechaInicio);
+  if (Number.isNaN(inicio.getTime())) return 0;
+  return Math.max(0, Math.ceil((inicio.getTime() - diaUTC(hoy)) / MS_DIA));
+}
+
+/** Duración en meses redondeados entre inicio y fin · usado en variante finalizado. */
+function duracionMeses(c: Contract): number | null {
+  const ini = parseIsoDateAsUTC(c.fechaInicio);
+  const fin = parseIsoDateAsUTC(c.fechaFin ?? '');
+  if (Number.isNaN(ini.getTime()) || Number.isNaN(fin.getTime())) return null;
+  return Math.max(0, Math.round((fin.getTime() - ini.getTime()) / (MS_DIA * 30.44)));
+}
+
+/** Tercer stat del hero · contextual al estado efectivo. */
+function statContextual(
+  estadoEfectivo: EstadoEfectivo,
+  c: Contract,
+): { label: string; value: string; dim?: boolean } {
+  if (estadoEfectivo === 'proximo') {
+    return { label: 'Empieza en', value: `${diasHastaInicio(c)} d` };
+  }
+  if (estadoEfectivo === 'finalizado') {
+    const m = duracionMeses(c);
+    return { label: 'Duró', value: m != null ? `${m} m` : '—', dim: m == null };
+  }
+  const d = diasHastaFin(c);
+  return d == null
+    ? { label: 'Vence', value: 'Indefinido', dim: true }
+    : { label: 'Vence en', value: `${d} d` };
+}
 
 const REDUCCION_LABEL: Record<string, string> = {
   transitorio_pre_2023: 'Transitorio (pre-2023)',
@@ -90,8 +179,11 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
   const colorAvatar = colorAvatarPorContrato(contrato);
   const estado = calcularEstadoChip(contrato);
   const pill = PILL_LABEL[estado];
-  const accion = accionPorEstado(estado);
   const firmado = estaFirmado(contrato);
+  const estadoEfectivo = getEstadoEfectivo(contrato);
+  const accion = accionPrincipalPorEstado(estadoEfectivo, estado, firmado);
+  const statCtx = statContextual(estadoEfectivo, contrato);
+  const AccionIconCmp = accion.icon === 'send' ? Send : accion.icon === 'rotate' ? RotateCw : Icons.Refresh;
 
   return (
     <>
@@ -111,7 +203,7 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
           >
             <Icons.Close size={16} strokeWidth={1.8} />
           </button>
-          <div className={styles.heroLabel}>Contrato de alquiler</div>
+          <div className={styles.heroLabel}>{DRAWER_LABEL[estadoEfectivo]}</div>
           <div className={styles.heroNameRow}>
             <div
               className={styles.heroAvatar}
@@ -148,9 +240,12 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
               </div>
             </div>
             <div className={styles.heroStat}>
-              <div className={styles.heroStatLabel}>Modalidad</div>
-              <div className={styles.heroStatValue}>
-                {contrato.modalidad ?? '—'}
+              <div className={styles.heroStatLabel}>{statCtx.label}</div>
+              <div
+                className={styles.heroStatValue}
+                style={statCtx.dim ? { opacity: 0.6 } : undefined}
+              >
+                {statCtx.value}
               </div>
             </div>
           </div>
@@ -182,6 +277,7 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
             <PanelFicha
               contrato={contrato}
               firmado={firmado}
+              estadoEfectivo={estadoEfectivo}
             />
           ) : (
             <EmptyState
@@ -205,7 +301,7 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
             className={styles.btnPrimary}
             onClick={() => showToastV5(`${accion.label} próximamente · ${accion.toastSuffix}`)}
           >
-            <Icons.Refresh size={12} strokeWidth={1.8} /> {accion.label}
+            <AccionIconCmp size={12} strokeWidth={1.8} /> {accion.label}
           </button>
         </div>
       </aside>
@@ -216,11 +312,13 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
 interface PanelFichaProps {
   contrato: Contract & { id: number };
   firmado: boolean;
+  estadoEfectivo: EstadoEfectivo;
 }
 
-const PanelFicha: React.FC<PanelFichaProps> = ({ contrato, firmado }) => {
+const PanelFicha: React.FC<PanelFichaProps> = ({ contrato, firmado, estadoEfectivo }) => {
   const inq = contrato.inquilino;
   const esSinFirmar = contrato.estadoContrato === 'sin_firmar';
+  const esFinalizado = estadoEfectivo === 'finalizado';
 
   return (
     <>
@@ -276,7 +374,11 @@ const PanelFicha: React.FC<PanelFichaProps> = ({ contrato, firmado }) => {
           <h3 className={styles.sectionTitle}>Términos del contrato</h3>
           {/* V79 · un contrato SIN FIRMAR es editable en su totalidad sin anexo;
               la regla de bloqueo + anexo solo aplica a contratos ya activos. */}
-          {esSinFirmar ? (
+          {esFinalizado ? (
+            <span className={styles.lockedBadge}>
+              <Icons.Lock size={10} strokeWidth={1.8} /> Finalizado · solo lectura
+            </span>
+          ) : esSinFirmar ? (
             <span className={styles.editableBadge}>
               <Icons.Edit size={10} strokeWidth={1.8} /> Sin firmar · editable
             </span>
@@ -312,7 +414,7 @@ const PanelFicha: React.FC<PanelFichaProps> = ({ contrato, firmado }) => {
             value={contrato.indexacion === 'none' ? 'No aplica' : (contrato.indexacion ?? '—')}
           />
         </div>
-        {!esSinFirmar && (
+        {!esSinFirmar && !esFinalizado && (
           <div className={styles.anexoRow}>
             <div>
               <strong>¿Necesitas cambiar un término económico?</strong>

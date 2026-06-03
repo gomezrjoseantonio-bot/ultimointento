@@ -171,6 +171,8 @@ const NuevoContratoWizard: React.FC = () => {
       fianzaEstado: 'retenida',
       cuentaCobroId,
       estadoContrato: 'activo',
+      // REORG Contratos · alta manual → soporte documental disponible por defecto.
+      documentoFirmado: true,
     };
   };
 

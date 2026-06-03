@@ -124,3 +124,47 @@ export async function recalcularFechaFinContratosAEAT(
 
   return actualizados;
 }
+
+/** ¿El contrato tiene una firma registrada (digital o manual)? Mismo criterio que
+ *  `estaFirmado()` del módulo inmuebles, inlineado aquí para no importar desde
+ *  `modules/*` en la capa de servicios. */
+const tieneFirmaRegistrada = (c: Contract): boolean => {
+  if (c.firma?.estado === 'firmado') return true;
+  if (typeof c.fechaFirmaContrato === 'string' && c.fechaFirmaContrato.trim() !== '') return true;
+  return false;
+};
+
+/**
+ * REORG Contratos · migración SUAVE (sin DB bump) del flag `documentoFirmado`.
+ *
+ * Deja `documentoFirmado` definido en todos los Contracts existentes:
+ *  - `false` si el contrato carece de soporte documental firmado: `estadoContrato
+ *    === 'sin_firmar'`, o procede de importación (`origenImportacion` rentila/
+ *    plantilla_atlas, o algún ejercicio con `fuente === 'xml_aeat'`) y NO tiene
+ *    una firma registrada.
+ *  - `true` en el resto (creados manualmente o con firma registrada).
+ *
+ * Idempotente: NO pisa un `documentoFirmado` ya definido. Devuelve el nº de
+ * contratos modificados.
+ */
+export async function backfillDocumentoFirmado(db: IDBPDatabase<any>): Promise<number> {
+  const contratos = (await db.getAll('contracts')) as Contract[];
+  let actualizados = 0;
+
+  for (const c of contratos) {
+    if (c?.id == null) continue;
+    if (typeof c.documentoFirmado === 'boolean') continue; // ya definido · idempotente
+
+    const importadoSinFirma =
+      c.estadoContrato === 'sin_firmar' ||
+      c.origenImportacion === 'rentila' ||
+      c.origenImportacion === 'plantilla_atlas' ||
+      esContratoImportadoAEAT(c);
+
+    c.documentoFirmado = tieneFirmaRegistrada(c) ? true : !importadoSinFirma;
+    await db.put('contracts', c);
+    actualizados++;
+  }
+
+  return actualizados;
+}
