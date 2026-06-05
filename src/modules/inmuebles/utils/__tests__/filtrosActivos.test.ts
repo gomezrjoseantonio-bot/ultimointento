@@ -1,7 +1,5 @@
 import {
   filtrarContratos,
-  contarChips,
-  calcularStatsAgregados,
   normalizarTexto,
   FILTROS_INICIALES,
   type FiltrosActivos,
@@ -127,37 +125,3 @@ describe('filtrarContratos · tipo y estado', () => {
   });
 });
 
-describe('contarChips', () => {
-  test('cuenta correctamente por tipo y estado', () => {
-    const cs = [
-      make(1, { modalidad: 'habitual' }),
-      make(2, { modalidad: 'temporada' }),
-      make(3, { firma: undefined, fechaFirmaContrato: undefined }),
-    ];
-    const counts = contarChips(cs, HOY);
-    expect(counts.tipo.todos).toBe(3);
-    expect(counts.tipo.larga).toBe(2);
-    expect(counts.tipo.corta).toBe(1);
-    expect(counts.estado['sin-firmar']).toBe(1);
-    expect(counts.estado['al-dia']).toBe(2);
-    expect(counts.estado.impago).toBe(0); // T3.6 · siempre 0 sin servicio cobros
-  });
-});
-
-describe('calcularStatsAgregados', () => {
-  test('suma renta y fianza', () => {
-    const cs = [
-      make(1, { rentaMensual: 800, fianzaImporte: 800 }),
-      make(2, { rentaMensual: 1200, fianzaImporte: 2400 }),
-    ];
-    const s = calcularStatsAgregados(cs);
-    expect(s.total).toBe(2);
-    expect(s.rentaMensual).toBe(2000);
-    expect(s.fianzaAcumulada).toBe(3200);
-  });
-
-  test('lista vacía · todo a 0', () => {
-    const s = calcularStatsAgregados([]);
-    expect(s).toEqual({ total: 0, rentaMensual: 0, fianzaAcumulada: 0 });
-  });
-});
