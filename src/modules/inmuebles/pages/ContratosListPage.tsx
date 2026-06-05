@@ -170,60 +170,51 @@ const ContratosListPage: React.FC = () => {
     { key: 'conciliar', label: 'Por conciliar' },
   ];
 
+  const headActions = [
+    {
+      label: 'Importar contratos',
+      variant: 'ghost' as const,
+      icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+      onClick: () => navigate('/inmuebles/importar-contratos'),
+    },
+    {
+      label: 'Nuevo contrato',
+      variant: 'gold' as const,
+      icon: <Icons.Plus size={14} strokeWidth={2} />,
+      onClick: () => navigate('/contratos/nuevo'),
+    },
+  ];
+
   if (contracts.length === 0) {
     return (
-      <>
-        <PageHead
-          title="Contratos"
-          actions={[
-            {
-              label: 'Importar contratos',
-              variant: 'ghost',
-              icon: <Icons.Upload size={14} strokeWidth={1.8} />,
-              onClick: () => navigate('/inmuebles/importar-contratos'),
-            },
-            {
+      <div className={styles.mainContainer}>
+        <main className={styles.main}>
+          <PageHead title="Contratos" actions={headActions} />
+          <EmptyState
+            icon={FileText}
+            title="Sin contratos activos"
+            subtitle="No hay contratos en vigor hoy. Crea el primero cuando un inquilino entre."
+            cta={{
               label: 'Nuevo contrato',
-              variant: 'gold',
-              icon: <Icons.Plus size={14} strokeWidth={2} />,
               onClick: () => navigate('/contratos/nuevo'),
-            },
-          ]}
-        />
-        <EmptyState
-          icon={FileText}
-          title="Sin contratos activos"
-          subtitle="No hay contratos en vigor hoy. Crea el primero cuando un inquilino entre."
-          cta={{
-            label: 'Nuevo contrato',
-            onClick: () => navigate('/contratos/nuevo'),
-          }}
-        />
-      </>
+            }}
+          />
+        </main>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className={styles.mainContainer}>
+      {/* 1 · PERSISTENT BAR · navy · ARRIBA del todo · sticky · full-bleed */}
       <ContratosTopHero kpis={kpis} />
 
+      {/* 2 · MAIN · zona blanca con título · tabs · contenido */}
+      <main className={styles.main}>
       <PageHead
         title="Contratos"
         sub="Gestiona tus alquileres · revisa histórico · concilia rentas declaradas"
-        actions={[
-          {
-            label: 'Importar contratos',
-            variant: 'ghost',
-            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
-            onClick: () => navigate('/inmuebles/importar-contratos'),
-          },
-          {
-            label: 'Nuevo contrato',
-            variant: 'gold',
-            icon: <Icons.Plus size={14} strokeWidth={2} />,
-            onClick: () => navigate('/contratos/nuevo'),
-          },
-        ]}
+        actions={headActions}
       />
 
       <div className={styles.tabsBar} role="group" aria-label="Tabs contratos">
@@ -286,6 +277,7 @@ const ContratosListPage: React.FC = () => {
           onIrAInmuebles={() => navigate('/inmuebles')}
         />
       )}
+      </main>
 
       <ConfirmationModal
         isOpen={pendingDelete !== null}
@@ -302,7 +294,7 @@ const ContratosListPage: React.FC = () => {
         variant="danger"
         isLoading={isDeleting}
       />
-    </>
+    </div>
   );
 };
 

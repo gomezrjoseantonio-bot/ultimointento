@@ -1,11 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { initDB } from '../../services/db';
 import type { Property, Contract } from '../../services/db';
 import type { InmueblesOutletContext } from './InmueblesContext';
 import styles from './InmueblesPage.module.css';
 
 const InmueblesPage: React.FC = () => {
+  const { pathname } = useLocation();
+  // FIX § 1.1 · la lista de Contratos se renderiza full-bleed para que su
+  // persistent-bar (banda navy) llegue al borde superior y al sidebar. El resto
+  // de rutas (cartera, detalle, wizard) conservan el contenedor con padding.
+  const isContratosFullBleed = pathname === '/contratos' || pathname === '/contratos/lista';
+
   const [properties, setProperties] = useState<Property[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
 
@@ -37,7 +43,7 @@ const InmueblesPage: React.FC = () => {
   };
 
   return (
-    <div className={styles.page}>
+    <div className={isContratosFullBleed ? styles.pageFullBleed : styles.page}>
       <Outlet context={ctx} />
     </div>
   );

@@ -1,3 +1,18 @@
+/* FIX § 1.1 · contenedor full-bleed · la banda navy (persistent-bar) queda
+   pegada al borde superior y al sidebar; el contenido vive en .main con su
+   propio padding y max-width. */
+.mainContainer {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main {
+  padding: 22px 32px 48px;
+  max-width: var(--atlas-v5-main-max-width);
+  width: 100%;
+}
+
 /* Barra de tabs · texto puro, sin contadores (mockup v5).
    El resto de estilos (KPIs, tabla inline, menús) se retiraron en la reorg:
    las KPIs viven en la banda navy y cada tab renderiza su propio contenido. */

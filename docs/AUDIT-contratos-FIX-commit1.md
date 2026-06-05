@@ -1,5 +1,10 @@
 # AUDIT · PR FIX Contratos · Commit 1 · verificación grep + reporte
 
+> ⚠️ **AVISO · NO MERGEAR EN ESTE ESTADO.** El commit 1 es SOLO auditoría · NO
+> contiene ningún fix. Los 8 problemas de producción se corrigen en los commits
+> 2-6 (persistent-bar · limpieza tabla · importador Rentila · histórico ·
+> análisis). No aprobar ni mergear el PR hasta que esos commits estén presentes.
+
 > Correctivo post-merge del PR REORG · 8 problemas detectados en producción 03-06-26.
 > Commit 1 NO toca código · solo localiza el estado actual y prepara los commits 2-6.
 > Mockup vinculante · `docs/mockups/atlas-contratos-reorg-v5.html`.
