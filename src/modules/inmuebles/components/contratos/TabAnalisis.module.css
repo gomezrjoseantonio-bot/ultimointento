@@ -1,4 +1,4 @@
-/* REORG Contratos · Commit 7 · tab Análisis · 4 bloques (mockup v5). */
+/* FIX § 1.6 · tab Análisis · 4 bloques triple A. */
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -30,108 +30,200 @@
   color: var(--atlas-v5-ink);
   margin: 0 0 16px;
 }
-
-/* ── Bloque 1 · ocupación · tira de meses ── */
-.headline {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-size: 30px;
-  font-weight: var(--atlas-v5-fw-bold);
-  color: var(--atlas-v5-ink);
-  letter-spacing: -0.025em;
-  line-height: 1;
-}
 .headlineSub {
   font-size: 12px;
   color: var(--atlas-v5-ink-4);
   margin-top: 6px;
 }
-.monthStrip {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 4px;
-  margin-top: 16px;
-}
-.monthCol {
+
+/* ── Bloque 1 · mapa temporal 24 meses ── */
+.blockHead {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.blockHead .h {
+  margin: 0;
+}
+.legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+}
+.legend span {
+  display: inline-flex;
   align-items: center;
   gap: 5px;
 }
-.monthBar {
-  width: 100%;
-  height: 44px;
-  border-radius: 4px;
-  background: var(--atlas-v5-card-alt, #F4F5F7);
-  position: relative;
+.lgDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.lgWarn {
+  box-shadow: inset 0 0 0 1.5px var(--atlas-v5-neg);
+  background: var(--atlas-v5-card-alt);
+}
+
+.mapScroll {
+  overflow-x: auto;
+}
+.mapHeadRow,
+.mapRow {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 10px;
+  align-items: center;
+  min-width: 640px;
+}
+.mapRow {
+  padding: 3px 0;
+}
+.mapRowLabel {
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
   overflow: hidden;
-  display: flex;
-  align-items: flex-end;
+  text-overflow: ellipsis;
 }
-.monthFill {
-  width: 100%;
-  background: var(--atlas-v5-ink-2);
-  border-radius: 4px 4px 0 0;
+.mapCells {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 2px;
 }
-.monthFill.now {
-  background: var(--atlas-v5-gold);
-}
-.monthLabel {
-  font-size: 9.5px;
+.mapMonth {
+  font-size: 8px;
+  text-align: center;
   color: var(--atlas-v5-ink-4);
   font-family: var(--atlas-v5-font-mono-num);
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.mapMonthNow {
+  color: var(--atlas-v5-gold-ink);
+  font-weight: var(--atlas-v5-fw-bold);
 }
 
-/* ── Bloque 2 · resumen anual ── */
-.statRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--atlas-v5-line-2, #EEF0F3);
+.axCell {
+  height: 18px;
+  border-radius: 3px;
+  background: var(--atlas-v5-card-alt);
 }
-.statRow:last-of-type {
-  border-bottom: none;
+.axVacio {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line-2);
 }
-.statLabel {
-  font-size: 13px;
-  color: var(--atlas-v5-ink-3);
+.axParcial {
+  background: rgba(44, 53, 71, 0.18);
 }
-.statVal {
+.axMedio {
+  background: rgba(44, 53, 71, 0.42);
+}
+.axPleno {
+  background: var(--atlas-v5-ink-2);
+}
+/* Marca SOLO la celda del mes actual · pinta sobre la ocupación. */
+.axCell.axNow {
+  background: var(--atlas-v5-gold);
+}
+/* Borde rojo discreto · vencimiento en ese mes o 30 días después. */
+.axWarnBorder {
+  box-shadow: inset 0 0 0 1.5px var(--atlas-v5-neg);
+}
+
+/* ── Bloque 2 · ingresos · SVG líneas ── */
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.axisLine {
+  stroke: var(--atlas-v5-line-2);
+  stroke-width: 1;
+}
+.axisLabel {
+  fill: var(--atlas-v5-ink-4);
   font-family: var(--atlas-v5-font-mono-num);
-  font-size: 15px;
-  font-weight: var(--atlas-v5-fw-bold);
-  color: var(--atlas-v5-ink);
-  font-variant-numeric: tabular-nums;
+  font-size: 9px;
 }
-.statVal.neg {
-  color: var(--atlas-v5-neg, #A43328);
+.line2024 {
+  stroke: var(--atlas-v5-ink-5);
+  fill: none;
+  stroke-width: 2;
+  background: var(--atlas-v5-ink-5);
 }
-.paceBox {
-  margin-top: 14px;
-  padding: 14px 16px;
-  background: var(--atlas-v5-card-alt, #F4F5F7);
+.line2025 {
+  stroke: var(--atlas-v5-ink-3);
+  fill: none;
+  stroke-width: 2;
+  background: var(--atlas-v5-ink-3);
+}
+.line2026 {
+  stroke: var(--atlas-v5-gold);
+  fill: none;
+  stroke-width: 2.5;
+  background: var(--atlas-v5-gold);
+}
+.line2026Dot {
+  fill: var(--atlas-v5-gold);
+}
+.chartLegend {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+.chartLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.lgLine {
+  display: inline-block;
+  width: 16px;
+  height: 2px;
+  vertical-align: middle;
+}
+
+/* Proyección · caja simple con borde-left oro. */
+.proyBox {
+  padding: 16px 18px;
+  background: var(--atlas-v5-card-alt);
   border-radius: 9px;
   border-left: 3px solid var(--atlas-v5-gold);
 }
-.paceH {
+.proyH {
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--atlas-v5-ink-4);
   font-weight: var(--atlas-v5-fw-semibold);
 }
-.paceV {
+.proyV {
   font-family: var(--atlas-v5-font-mono-num);
-  font-size: 22px;
+  font-size: 30px;
   font-weight: var(--atlas-v5-fw-bold);
-  margin-top: 4px;
-  color: var(--atlas-v5-ink);
+  margin-top: 6px;
+  color: var(--atlas-v5-gold-ink);
+  letter-spacing: -0.02em;
 }
-.paceS {
+.proyV.neg {
+  color: var(--atlas-v5-neg);
+}
+.proyS {
   font-size: 11.5px;
   color: var(--atlas-v5-ink-4);
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 /* ── Bloque 3 · ranking ── */
@@ -153,7 +245,7 @@
 .rankBarTrack {
   height: 10px;
   border-radius: 5px;
-  background: var(--atlas-v5-card-alt, #F4F5F7);
+  background: var(--atlas-v5-card-alt);
   overflow: hidden;
 }
 .rankBarFill {
@@ -175,38 +267,42 @@
   text-align: right;
 }
 
-/* ── Bloque 4 · atención ── */
-.alarm {
+/* ── Bloque 4 · alarmas accionables ── */
+.alarmRow {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--atlas-v5-line-2, #EEF0F3);
+  align-items: center;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  background: var(--atlas-v5-card-alt);
+  border-radius: 9px;
+  border-left: 3px solid var(--atlas-v5-gold);
 }
-.alarm:last-child {
-  border-bottom: none;
+.alarmRow:last-child {
+  margin-bottom: 0;
 }
-.alarmDot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  margin-top: 5px;
+.alarmWarn {
+  border-left-color: var(--atlas-v5-gold);
+}
+.alarmNeg {
+  border-left-color: var(--atlas-v5-neg);
+}
+.alarmIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-gold-ink);
   flex-shrink: 0;
 }
-.alarmDot.neg {
-  background: var(--atlas-v5-neg, #A43328);
+.alarmNeg .alarmIcon {
+  color: var(--atlas-v5-neg);
 }
-.alarmDot.warn {
-  background: var(--atlas-v5-warn, #8A6213);
-}
-.alarmDot.info {
-  background: var(--atlas-v5-ink-4);
-}
-.alarmDot.ok {
-  background: var(--atlas-v5-pos, #1E7A57);
+.alarmBody {
+  flex: 1;
+  min-width: 0;
 }
 .alarmTitle {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: var(--atlas-v5-fw-semibold);
   color: var(--atlas-v5-ink);
 }
@@ -214,4 +310,22 @@
   font-size: 12px;
   color: var(--atlas-v5-ink-4);
   margin-top: 2px;
+}
+.alarmCta {
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-gold-ink);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.alarmEmpty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  font-size: 13px;
+  color: var(--atlas-v5-ink-3);
+}
+.alarmEmpty svg {
+  color: var(--atlas-v5-pos);
 }
