@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { Contract } from '../../../../services/db';
+import type { Contract, Property } from '../../../../services/db';
 import { EmptyState, Icons } from '../../../../design-system/v5';
 import {
   filtrarContratos,
@@ -14,12 +14,14 @@ import DrawerFichaContrato from './DrawerFichaContrato';
 export interface TabActivosProps {
   contratos: Contract[];
   inmuebleAliasById: Map<number, string>;
+  inmuebleModoById?: Map<number, Property['modoExplotacion']>;
   onNuevoContrato: () => void;
 }
 
 const TabActivos: React.FC<TabActivosProps> = ({
   contratos,
   inmuebleAliasById,
+  inmuebleModoById,
   onNuevoContrato,
 }) => {
   const [filtros, setFiltros] = useFiltrosActivos();
@@ -72,6 +74,7 @@ const TabActivos: React.FC<TabActivosProps> = ({
         <TablaActivos
           contratos={filtrados}
           inmuebleAliasById={inmuebleAliasById}
+          inmuebleModoById={inmuebleModoById}
           onAbrirFicha={setContratoAbierto}
         />
       )}

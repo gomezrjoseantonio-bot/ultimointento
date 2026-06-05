@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Icons, Pill } from '../../../../../design-system/v5';
-import type { Contract } from '../../../../../services/db';
+import type { Contract, Property } from '../../../../../services/db';
 import {
   CSS_COLOR_HABITACION,
-  habitacionNumeroDe,
   resolverColorHabitacion,
 } from '../../../utils/timelineColores';
+import { subMetaInmueble } from '../../../utils/subMetaInmueble';
 import { mapearTipoContrato } from '../../../utils/mapearTipoContrato';
 import {
   generarIniciales,
@@ -58,6 +58,7 @@ export const PillMotivo: React.FC<PillMotivoProps> = ({ motivo }) => (
 interface FilaProps {
   contrato: Contract;
   inmuebleAlias: string;
+  modo: Property['modoExplotacion'] | undefined;
   onClick: () => void;
   menuOpen: boolean;
   onToggleMenu: () => void;
@@ -68,6 +69,7 @@ interface FilaProps {
 const FilaExContrato: React.FC<FilaProps> = ({
   contrato,
   inmuebleAlias,
+  modo,
   onClick,
   menuOpen,
   onToggleMenu,
@@ -81,8 +83,10 @@ const FilaExContrato: React.FC<FilaProps> = ({
   const valoracion = contrato.valoracion ?? null;
   const diasDesdeSalida = calcularDiasDesdeSalida(contrato);
   const colorHab = resolverColorHabitacion(contrato);
-  const esPisoCompleto = contrato.unidadTipo === 'vivienda';
-  const habNum = habitacionNumeroDe(contrato);
+  const subInm = subMetaInmueble(contrato, modo);
+  // Estilo "apagado" para todo lo que no sea una habitación numerada concreta
+  // ("Piso completo" o "Hab pendiente").
+  const habMuted = !/^Hab \d/.test(subInm.text);
   const IconoTipo = tipo === 'corta' ? Icons.Cartera : Icons.Compra;
 
   return (
@@ -117,9 +121,10 @@ const FilaExContrato: React.FC<FilaProps> = ({
         {inmuebleAlias}
       </td>
       <td
-        className={`${styles.colHabitacion} ${esPisoCompleto ? styles.colHabitacionFull : ''}`}
+        className={`${styles.colHabitacion} ${habMuted ? styles.colHabitacionFull : ''}`}
+        title={subInm.pending ? 'Asignar habitación al editar' : undefined}
       >
-        {esPisoCompleto ? 'Piso completo' : `Hab ${habNum ?? '—'}`}
+        {subInm.text}
       </td>
       <td className={styles.colTipo}>
         <IconoTipo
@@ -177,6 +182,7 @@ const FilaExContrato: React.FC<FilaProps> = ({
 export interface TablaExInquilinosProps {
   contratos: Contract[];
   inmuebleAliasById: Map<number, string>;
+  inmuebleModoById?: Map<number, Property['modoExplotacion']>;
   onAbrir: (c: Contract) => void;
   onEliminar?: (c: Contract & { id: number }) => void;
 }
@@ -184,6 +190,7 @@ export interface TablaExInquilinosProps {
 const TablaExInquilinos: React.FC<TablaExInquilinosProps> = ({
   contratos,
   inmuebleAliasById,
+  inmuebleModoById,
   onAbrir,
   onEliminar,
 }) => {
@@ -218,6 +225,7 @@ const TablaExInquilinos: React.FC<TablaExInquilinosProps> = ({
               key={c.id}
               contrato={c}
               inmuebleAlias={inmuebleAliasById.get(c.inmuebleId) ?? `#${c.inmuebleId}`}
+              modo={inmuebleModoById?.get(c.inmuebleId)}
               onClick={() => onAbrir(c)}
               menuOpen={c.id != null && openMenuId === c.id}
               onToggleMenu={() =>

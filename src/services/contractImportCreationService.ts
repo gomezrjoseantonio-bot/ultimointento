@@ -77,14 +77,39 @@ const crearInmuebleMinimo = async (raw: string): Promise<number> => {
   return (await db.add('properties', nuevo)) as number;
 };
 
+/**
+ * FIX § 1.3 · resuelve unidad/habitación de un draft según el modoExplotacion
+ * del inmueble destino:
+ *  · por_habitaciones + HX parseado → habitación HX
+ *  · por_habitaciones + sin HX      → habitación PENDIENTE (habitacionId undefined →
+ *    la celda Inmueble pinta "Hab pendiente" · el usuario la asigna al editar)
+ *  · piso_completo (o sin modo)     → vivienda · se ignora cualquier HX
+ */
+const resolverUnidad = (
+  d: ContractDraft,
+  modoExplotacion: Property['modoExplotacion'] | undefined,
+): { unidadTipo: Contract['unidadTipo']; habitacionId?: string } => {
+  if (modoExplotacion === 'por_habitaciones') {
+    const num = d.habitacionParseada ?? d.habitacionConfirmada ?? null;
+    return {
+      unidadTipo: 'habitacion',
+      habitacionId: num != null ? `H${num}` : undefined,
+    };
+  }
+  return { unidadTipo: 'vivienda' };
+};
+
 const construirPayload = (
   d: ContractDraft,
   inmuebleId: number,
+  modoExplotacion: Property['modoExplotacion'] | undefined,
 ): Omit<Contract, 'id' | 'createdAt' | 'updatedAt'> => {
   const { nombre, apellidos } = partirNombre(d.inquilinoNombre);
+  const { unidadTipo, habitacionId } = resolverUnidad(d, modoExplotacion);
   return {
     inmuebleId,
-    unidadTipo: 'vivienda',
+    unidadTipo,
+    habitacionId,
     modalidad: d.modalidadAtlas,
     inquilino: {
       nombre,
@@ -111,7 +136,7 @@ const construirPayload = (
     documentoFirmado: false,
     // Legacy mirrors
     propertyId: inmuebleId,
-    type: 'vivienda',
+    type: unidadTipo,
     tenant: { nif: d.inquilinoDni || '' },
     startDate: d.fechaInicio,
     endDate: d.fechaFin || FECHA_FIN_INDEFINIDO,
@@ -172,6 +197,18 @@ export const crearContractsDesdeDrafts = async (drafts: ContractDraft[]): Promis
   const inmueblesSet = new Set<number>();
   const botesSet = new Set<number>();
 
+  // FIX § 1.3 · necesitamos el modoExplotacion del inmueble destino para decidir
+  // vivienda vs habitación. Se cachea por id (incluye los recién creados).
+  const db = await initDB();
+  const modoCache = new Map<number, Property['modoExplotacion'] | undefined>();
+  const resolverModo = async (inmuebleId: number): Promise<Property['modoExplotacion'] | undefined> => {
+    if (modoCache.has(inmuebleId)) return modoCache.get(inmuebleId);
+    const prop = (await db.get('properties', inmuebleId)) as Property | undefined;
+    const modo = prop?.modoExplotacion;
+    modoCache.set(inmuebleId, modo);
+    return modo;
+  };
+
   for (const d of drafts) {
     // Duplicados · aplicar decisión.
     if (d.seccion === 'duplicados') {
@@ -192,7 +229,8 @@ export const crearContractsDesdeDrafts = async (drafts: ContractDraft[]): Promis
 
     if (inmuebleId == null) { r.omitidos += 1; continue; }
 
-    const id = await saveContract(construirPayload(d, inmuebleId));
+    const modoExplotacion = await resolverModo(inmuebleId);
+    const id = await saveContract(construirPayload(d, inmuebleId, modoExplotacion));
     r.contractIdsCreados.push(id);
     r.creados += 1;
     if (d.inquilinoExistenteId == null) r.inquilinosNuevos += 1;

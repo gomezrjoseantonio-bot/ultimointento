@@ -25,6 +25,8 @@ const baseDraft = (overrides: Partial<ContractDraft>): ContractDraft => ({
   fechaFin: '2028-12-31',
   rentaMensual: 330,
   fianza: 330,
+  habitacionParseada: null,
+  habitacionConfirmada: null,
   seccion: 'listos',
   motivoSeccion: '',
   decisionDuplicado: null,
@@ -32,8 +34,9 @@ const baseDraft = (overrides: Partial<ContractDraft>): ContractDraft => ({
 });
 
 const opciones = [
-  { id: 1, label: 'CB Sant Fruitós' },
-  { id: 2, label: 'T48' },
+  { id: 1, label: 'CB Sant Fruitós', modoExplotacion: 'piso_completo' as const, habitaciones: 1 },
+  { id: 2, label: 'T48', modoExplotacion: 'piso_completo' as const, habitaciones: 1 },
+  { id: 3, label: 'FA32 (por habitaciones)', modoExplotacion: 'por_habitaciones' as const, habitaciones: 4 },
 ];
 
 function renderPaso(drafts: ContractDraft[], onCrear = jest.fn().mockResolvedValue(undefined)) {
@@ -102,6 +105,44 @@ describe('PasoRevision', () => {
     // Elegir un inmueble en el select de la fila.
     await userEvent.selectOptions(screen.getByLabelText('Inmueble para 01-OVD-NICOLAI'), '2');
 
+    expect(screen.getByRole('button', { name: /Crear 1 contratos/ })).not.toBeDisabled();
+  });
+
+  it('§1.3 · inmueble por_habitaciones sin HX · pide habitación antes de crear', async () => {
+    // Fila lista, inmueble por_habitaciones (id 3), sin sufijo HX parseado.
+    renderPaso([
+      baseDraft({
+        filaOriginal: 2,
+        seccion: 'listos',
+        inmuebleRaw: 'FA32',
+        inmuebleIdSugerido: 3,
+        inmuebleIdConfirmado: 3,
+        habitacionParseada: null,
+      }),
+    ]);
+
+    // Aparece el selector de habitación y el botón Crear está bloqueado.
+    const selectorHab = screen.getByLabelText('Habitación para FA32');
+    expect(selectorHab).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Crear 1 contratos/ })).toBeDisabled();
+
+    // Al elegir habitación, se habilita la creación.
+    await userEvent.selectOptions(selectorHab, '2');
+    expect(screen.getByRole('button', { name: /Crear 1 contratos/ })).not.toBeDisabled();
+  });
+
+  it('§1.3 · inmueble por_habitaciones CON HX parseado · NO pide habitación', () => {
+    renderPaso([
+      baseDraft({
+        filaOriginal: 2,
+        seccion: 'listos',
+        inmuebleRaw: 'FA32-H2',
+        inmuebleIdSugerido: 3,
+        inmuebleIdConfirmado: 3,
+        habitacionParseada: 2,
+      }),
+    ]);
+    expect(screen.queryByLabelText('Habitación para FA32-H2')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Crear 1 contratos/ })).not.toBeDisabled();
   });
 

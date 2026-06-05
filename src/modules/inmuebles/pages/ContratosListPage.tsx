@@ -7,7 +7,7 @@ import {
   showToastV5,
 } from '../../../design-system/v5';
 import { EmptyState } from '../../../components/common/EmptyState';
-import type { Contract } from '../../../services/db';
+import type { Contract, Property } from '../../../services/db';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import {
   deleteContractWithCascade,
@@ -142,6 +142,16 @@ const ContratosListPage: React.FC = () => {
     return map;
   }, [properties]);
 
+  // FIX § 1.3 · modoExplotacion por inmueble · la celda Inmueble decide
+  // "Piso completo" vs "Hab N" / "Hab pendiente" sin denormalizar en el Contract.
+  const modoById = useMemo(() => {
+    const map = new Map<number, Property['modoExplotacion']>();
+    properties.forEach((p) => {
+      if (p.id != null) map.set(p.id, p.modoExplotacion);
+    });
+    return map;
+  }, [properties]);
+
   // Filtrado por estado EFECTIVO (fechas) · un Rentila finalizado nunca cae en
   // Vigentes; un firmado sin empezar vive en Próximos hasta su fechaInicio.
   const vigentes = useMemo(
@@ -238,6 +248,7 @@ const ContratosListPage: React.FC = () => {
         <TabActivos
           contratos={vigentes}
           inmuebleAliasById={propertyById}
+          inmuebleModoById={modoById}
           onNuevoContrato={() => navigate('/contratos/nuevo')}
         />
       )}
@@ -251,6 +262,7 @@ const ContratosListPage: React.FC = () => {
           contratos={historico}
           properties={properties}
           inmuebleAliasById={propertyById}
+          inmuebleModoById={modoById}
           onEliminar={requestDelete}
         />
       )}

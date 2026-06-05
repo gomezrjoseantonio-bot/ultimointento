@@ -132,6 +132,12 @@
   margin-top: 2px;
 }
 
+/* Habitación sin asignar (por_habitaciones sin HX) · apagado + cursor help. */
+.inmSubPending {
+  font-style: italic;
+  cursor: help;
+}
+
 /* ── Fechas ── */
 .dateIndef {
   color: var(--atlas-v5-ink-4);

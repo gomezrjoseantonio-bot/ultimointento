@@ -5,16 +5,18 @@ import {
   DateLabel,
   showToastV5,
 } from '../../../../design-system/v5';
-import type { Contract } from '../../../../services/db';
+import type { Contract, Property } from '../../../../services/db';
 import { esFechaIndefinida, formatFechaFinContrato } from '../../utils/formatFechaFin';
-import { habitacionNumeroDe } from '../../utils/timelineColores';
 import { avatarInfoPorContrato } from '../../utils/inquilinoUtils';
+import { subMetaInmueble } from '../../utils/subMetaInmueble';
 import { parseIsoDateAsUTC } from '../../../../utils/recurrenceDateUtils';
 import styles from './TablaActivos.module.css';
 
 export interface TablaActivosProps {
   contratos: Contract[];
   inmuebleAliasById: Map<number, string>;
+  /** FIX § 1.3 · modoExplotacion por inmueble · decide "Piso completo" vs "Hab N". */
+  inmuebleModoById?: Map<number, Property['modoExplotacion']>;
   onAbrirFicha: (c: Contract & { id: number }) => void;
 }
 
@@ -26,14 +28,6 @@ function diasRestantes(c: Contract, hoy: Date): number | null {
   if (Number.isNaN(fin.getTime())) return null;
   const hoyUTC = Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate());
   return Math.ceil((fin.getTime() - hoyUTC) / MS_DIA);
-}
-
-/** Sub-meta del inmueble · "Piso completo" o "Hab N" (§ 1.2). */
-function subMetaInmueble(c: Contract): string {
-  const esPisoCompleto = c.unidadTipo === 'vivienda';
-  if (esPisoCompleto) return 'Piso completo';
-  const habNum = habitacionNumeroDe(c);
-  return habNum != null ? `Hab ${habNum}` : 'Hab —';
 }
 
 /** Sub-meta del inquilino · DNI [· sin firmar] (§ 1.2). */
@@ -48,6 +42,7 @@ function subMetaInquilino(c: Contract): string {
 const TablaActivos: React.FC<TablaActivosProps> = ({
   contratos,
   inmuebleAliasById,
+  inmuebleModoById,
   onAbrirFicha,
 }) => {
   const hoy = React.useMemo(() => new Date(), []);
@@ -76,6 +71,7 @@ const TablaActivos: React.FC<TablaActivosProps> = ({
               const venceCerca = dias != null && dias >= 0 && dias <= 30;
               const alias = inmuebleAliasById.get(c.inmuebleId) ?? `#${c.inmuebleId}`;
               const subInq = subMetaInquilino(c);
+              const subInm = subMetaInmueble(c, inmuebleModoById?.get(c.inmuebleId));
 
               return (
                 <tr
@@ -111,7 +107,12 @@ const TablaActivos: React.FC<TablaActivosProps> = ({
                   </td>
                   <td className={styles.colInmueble} title={alias}>
                     <div className={styles.inmName}>{alias}</div>
-                    <div className={styles.inmSub}>{subMetaInmueble(c)}</div>
+                    <div
+                      className={`${styles.inmSub} ${subInm.pending ? styles.inmSubPending : ''}`}
+                      title={subInm.pending ? 'Asignar habitación al editar' : undefined}
+                    >
+                      {subInm.text}
+                    </div>
                   </td>
                   <td className={styles.colFecha}>
                     <DateLabel value={c.fechaInicio} format="short" size="sm" />
