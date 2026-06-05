@@ -19,6 +19,23 @@ export function getInquilinoNombre(c: Contract): string {
 }
 
 /**
+ * FIX § 1.4 · ¿el contrato tiene un inquilino REAL identificado?
+ *
+ * `false` para los placeholders de renta declarada en IRPF/AEAT sin NIF de
+ * inquilino (`estadoContrato === 'sin_identificar'`) y para cualquier contrato
+ * sin nombre real ("—" / vacío / "sin identificar"). Estos NO deben aparecer en
+ * Vigentes · Próximos · Histórico: su sitio es exclusivamente Por conciliar
+ * (donde ya viven como rentas declaradas pendientes de vincular).
+ */
+export function esInquilinoIdentificado(c: Contract): boolean {
+  if (c.estadoContrato === 'sin_identificar') return false;
+  const nombre = getInquilinoNombre(c).trim().toLowerCase();
+  if (!nombre || nombre === '—') return false;
+  if (nombre.includes('sin identificar')) return false;
+  return true;
+}
+
+/**
  * Hash determinista de un string (djb2). Estable entre renders y sesiones · el
  * mismo nombre siempre cae en el mismo color de la paleta.
  */

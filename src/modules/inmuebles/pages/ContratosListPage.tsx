@@ -18,6 +18,7 @@ import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import ContratosTopHero from '../components/contratos/ContratosTopHero';
 import { useContratosKPIs } from '../hooks/useContratosByTab';
 import { getEstadoEfectivo } from '../utils/estadoEfectivoService';
+import { esInquilinoIdentificado } from '../utils/inquilinoUtils';
 import TabActivos from '../components/contratos/TabActivos';
 import TabProximos from '../components/contratos/TabProximos';
 import TabAnalisis from '../components/contratos/TabAnalisis';
@@ -154,16 +155,27 @@ const ContratosListPage: React.FC = () => {
 
   // Filtrado por estado EFECTIVO (fechas) · un Rentila finalizado nunca cae en
   // Vigentes; un firmado sin empezar vive en Próximos hasta su fechaInicio.
+  // FIX § 1.2/§ 1.4 · además se excluyen los contratos SIN inquilino real (rentas
+  // declaradas AEAT sin identificar): su sitio es exclusivamente Por conciliar.
   const vigentes = useMemo(
-    () => contracts.filter((c) => getEstadoEfectivo(c) === 'vigente'),
+    () =>
+      contracts.filter(
+        (c) => getEstadoEfectivo(c) === 'vigente' && esInquilinoIdentificado(c),
+      ),
     [contracts],
   );
   const proximos = useMemo(
-    () => contracts.filter((c) => getEstadoEfectivo(c) === 'proximo'),
+    () =>
+      contracts.filter(
+        (c) => getEstadoEfectivo(c) === 'proximo' && esInquilinoIdentificado(c),
+      ),
     [contracts],
   );
   const historico = useMemo(
-    () => contracts.filter((c) => getEstadoEfectivo(c) === 'finalizado'),
+    () =>
+      contracts.filter(
+        (c) => getEstadoEfectivo(c) === 'finalizado' && esInquilinoIdentificado(c),
+      ),
     [contracts],
   );
 

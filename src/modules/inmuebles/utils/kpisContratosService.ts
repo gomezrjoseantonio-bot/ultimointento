@@ -9,6 +9,7 @@ import {
   diasHastaFin,
   calcularUnidadesArrendables,
 } from './estadoEfectivoService';
+import { esInquilinoIdentificado } from './inquilinoUtils';
 
 export interface ContratosKPIs {
   vigentes: number;
@@ -34,7 +35,11 @@ export function calcularKpisContratos(
   properties: Property[],
   hoy: Date = new Date(),
 ): ContratosKPIs {
-  const vigentes = contracts.filter((c) => getEstadoEfectivo(c, hoy) === 'vigente');
+  // FIX § 1.2 · el KPI "Vigentes" cuenta solo contratos con inquilino real (no
+  // los placeholders AEAT sin identificar) · así la banda navy cuadra con el tab.
+  const vigentes = contracts.filter(
+    (c) => getEstadoEfectivo(c, hoy) === 'vigente' && esInquilinoIdentificado(c),
+  );
 
   const unidadesArrendables = calcularUnidadesArrendables(properties);
   const ocupacion =

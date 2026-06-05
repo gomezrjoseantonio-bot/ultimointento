@@ -1,6 +1,7 @@
 import {
   avatarInfoPorContrato,
   colorAvatarPorContrato,
+  esInquilinoIdentificado,
   generarIniciales,
   getInquilinoNombre,
 } from '../inquilinoUtils';
@@ -79,6 +80,26 @@ describe('colorAvatarPorContrato', () => {
     ];
     const colors = new Set(nombres.map(([n, a]) => colorAvatarPorContrato(conNombre(n, a))));
     expect(colors.size).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('esInquilinoIdentificado · § 1.4', () => {
+  test('inquilino con nombre real → identificado', () => {
+    expect(esInquilinoIdentificado(conNombre('Juan', 'Calvo'))).toBe(true);
+  });
+
+  test('estadoContrato sin_identificar → NO identificado (placeholder AEAT)', () => {
+    expect(
+      esInquilinoIdentificado(conNombre('Juan', 'Calvo', { estadoContrato: 'sin_identificar' })),
+    ).toBe(false);
+  });
+
+  test('sin nombre ("—") → NO identificado', () => {
+    expect(esInquilinoIdentificado(conNombre('', ''))).toBe(false);
+  });
+
+  test('nombre "sin identificar" → NO identificado', () => {
+    expect(esInquilinoIdentificado(conNombre('Sin', 'identificar'))).toBe(false);
   });
 });
 
