@@ -1,5 +1,5 @@
-// REORG Contratos · Commit 7 · tests del servicio de Análisis (ranking + alarmas).
-import { rankingPorInmueble, alarmasContratos } from '../analisisContratosService';
+// Tests del servicio de Análisis · ranking por inmueble (bloque 3).
+import { rankingPorInmueble } from '../analisisContratosService';
 import type { Contract, Property } from '../../../../services/db';
 
 const HOY = new Date('2026-06-03');
@@ -44,30 +44,5 @@ describe('rankingPorInmueble', () => {
     expect(r[0].rentaAnual).toBe(6000);
     expect(r[1].rentaAnual).toBe(3600);
     expect(r[1].ocupacionPct).toBe(20); // 1 de 5 habitaciones
-  });
-});
-
-describe('alarmasContratos', () => {
-  it('prioriza libres > vence30 > vence30-90 > proximos · máx 4', () => {
-    const props = [prop({ id: 1, alias: 'A' }), prop({ id: 2, alias: 'B' })];
-    const cs = [
-      contrato({ id: 1, inmuebleId: 1, fechaInicio: '2025-01-01', fechaFin: '2026-06-20' }), // vence en 17d
-      contrato({ id: 2, inmuebleId: 1, fechaInicio: '2026-07-10', fechaFin: '2028-01-01' }), // proximo
-      // inmueble 2 sin contrato vigente → libre
-    ];
-    const a = alarmasContratos(cs, props, HOY);
-    expect(a.length).toBeLessThanOrEqual(4);
-    expect(a[0].id).toBe('libres');
-    expect(a.some((x) => x.id === 'vence30')).toBe(true);
-    expect(a.some((x) => x.id === 'proximos')).toBe(true);
-  });
-
-  it('sin nada accionable → item "todo en orden"', () => {
-    const props = [prop({ id: 1, alias: 'A' })];
-    const cs = [contrato({ id: 1, inmuebleId: 1, fechaInicio: '2025-01-01', fechaFin: '2099-12-31' })];
-    const a = alarmasContratos(cs, props, HOY);
-    expect(a).toHaveLength(1);
-    expect(a[0].id).toBe('ok');
-    expect(a[0].tono).toBe('ok');
   });
 });

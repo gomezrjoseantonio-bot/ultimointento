@@ -62,7 +62,12 @@ const MainLayout: React.FC = () => {
     tesoreriaPath === '/tesoreria' ||
     tesoreriaPath === '/tesoreria/movimientos' ||
     tesoreriaPath.startsWith('/tesoreria/cuenta/');
-  const isFullBleedRoute = isInversionesRoute || isTesoreriaRoute;
+  // FIX Contratos § 1.1 · la lista de Contratos renderiza su propia banda navy
+  // (persistent-bar) que sustituye al TopbarV5 · igual que Tesorería/Inversiones.
+  // NO aplica al wizard /contratos/nuevo (flujo con padding estándar).
+  const isContratosRoute =
+    location.pathname === '/contratos' || location.pathname === '/contratos/lista';
+  const isFullBleedRoute = isInversionesRoute || isTesoreriaRoute || isContratosRoute;
   
   // Sprint 5: Command Palette (Cmd+K)
   const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette();

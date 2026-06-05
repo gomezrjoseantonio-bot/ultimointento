@@ -1,99 +1,96 @@
-/* REORG Contratos · Commit 4 · banda navy GESTIÓN.
-   Patrón Tesorería/Inversiones · full-bleed, queda unido al sidebar navy.
-   Única fuente de los stats: el head blanco de debajo NO duplica números. */
-.bannerNavy {
-  background: var(--atlas-v5-brand-ink);
-  color: var(--atlas-v5-white);
-  padding: 22px 32px 26px;
+/* REORG Contratos · FIX § 1.1 · persistent-bar canónico (patrón Tesorería /
+   Inversiones). Banda navy ARRIBA del todo · sticky · full-bleed · enlazada
+   visualmente al sidebar. Compacta: padding 14px 32px · valor 18px ·
+   separadores con border-left · sub en Mono. */
+.bar {
   position: sticky;
   top: 0;
   z-index: var(--atlas-v5-z-sticky);
-}
-
-.bannerRow {
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
   display: grid;
-  grid-template-columns: minmax(160px, 220px) repeat(4, minmax(0, 1fr));
-  gap: 28px;
+  grid-template-columns: 1fr auto auto auto auto;
+  gap: 32px;
   align-items: center;
-  max-width: var(--atlas-v5-main-max-width);
-  margin: 0 auto;
+  padding: 14px 32px;
+  box-shadow: 0 2px 12px rgba(14, 20, 35, 0.08);
 }
 
-.sectionTitle {
+.title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding-right: 10px;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.sectionTitle h2 {
+  gap: 12px;
   font-size: 12px;
-  font-weight: var(--atlas-v5-fw-bold);
-  letter-spacing: 1.6px;
   text-transform: uppercase;
-  color: var(--atlas-v5-white);
-  margin: 0;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: var(--atlas-v5-fw-semibold);
 }
 
-.goldDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.titleDot {
+  width: 6px;
+  height: 6px;
   background: var(--atlas-v5-gold);
+  border-radius: 50%;
   box-shadow: 0 0 0 4px rgba(184, 138, 62, 0.18);
   display: inline-block;
   flex-shrink: 0;
 }
 
-.kpi {
+.stat {
+  display: flex;
+  flex-direction: column;
+  padding-left: 24px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
   min-width: 0;
 }
 
-.kpiLabel {
-  font-size: 10.5px;
-  color: var(--atlas-v5-navy-text-2);
-  letter-spacing: 1.3px;
+.lab {
+  font-size: 10px;
   text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.5);
   font-weight: var(--atlas-v5-fw-semibold);
 }
 
-.kpiValue {
+.val {
   font-family: var(--atlas-v5-font-mono-num);
-  font-size: 30px;
+  font-size: 18px;
   font-weight: var(--atlas-v5-fw-bold);
   color: var(--atlas-v5-white);
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
-/* Vencimientos próximos · oro claro sobre navy (token canónico). */
-.kpiValue.warn {
+/* ámbar legible sobre navy oscuro · gold-bright · NO el token --warn directo
+   (demasiado oscuro sobre navy). */
+.val.gold,
+.val.warn {
   color: var(--atlas-v5-gold-bright);
 }
 
-.kpiSub {
-  font-size: 11.5px;
-  color: var(--atlas-v5-navy-text-2);
-  margin-top: 6px;
+.sub {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
   font-family: var(--atlas-v5-font-mono-num);
+  margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 @media (max-width: 900px) {
-  .bannerRow {
+  .bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
+    gap: 18px 24px;
   }
-  .sectionTitle {
+  .title {
     grid-column: 1 / -1;
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    padding-right: 0;
-    padding-bottom: 14px;
+  }
+  .stat:nth-of-type(odd) {
+    border-left: none;
+    padding-left: 0;
   }
 }

@@ -101,6 +101,46 @@ los botes pendientes del mismo inmueble cuyo año solapa (con saldo) para que
 "Por conciliar" los sugiera (`sugerirContracts` los recalcula al abrir el tab). El
 paso 4 cuenta esos botes.
 
+## 6 bis · PR FIX Contratos · parseo HX · Histórico · avatar firmado
+
+Correctivo post-merge de la reorg de la pestaña Contratos. Tres reglas a recordar:
+
+### Parseo del sufijo de habitación (Rentila)
+
+`parseHabitacionFromRentila(nombrePiso): number | null` (en `rentilaParserService`)
+extrae el sufijo `HX`/`HabX` que Rentila añade al nombre del piso
+(`"4-ACEVEDO-H2"` → `2`, `"Tenderina 64 4Iz Hab4"` → `4`). Devuelve `null` si no
+hay sufijo al final o el número cae fuera de `[1..20]`.
+
+La asignación final se decide en creación (`contractImportCreationService`) según el
+`modoExplotacion` del inmueble destino:
+
+| `modoExplotacion` | HX parseado | Resultado |
+|---|---|---|
+| `por_habitaciones` | sí | `unidadTipo='habitacion'` · `habitacionId='H{n}'` |
+| `por_habitaciones` | no | **pendiente** · el wizard pide la habitación con un `<select>` (la fila no se crea hasta resolverla); si se fuerza vacío, la celda Inmueble pinta "Hab pendiente" y se asigna al editar |
+| `piso_completo` | — | `unidadTipo='vivienda'` · se ignora cualquier HX |
+
+El `modoExplotacion` **NO se denormaliza** en el Contract: la celda Inmueble lo
+resuelve en render vía `subMetaInmueble(contract, modo)` (mapa `inmuebleId →
+modoExplotacion` construido en `ContratosListPage`).
+
+### Regla del Histórico (y Vigentes/Próximos)
+
+`esInquilinoIdentificado(c)` (en `inquilinoUtils`) es `false` para los placeholders
+de renta declarada AEAT (`estadoContrato==='sin_identificar'`) y para cualquier
+contrato sin nombre real (`—` / vacío / "sin identificar"). Esos contratos **no
+aparecen** en Vigentes · Próximos · Histórico (ni cuentan en el KPI "Vigentes"):
+su sitio es exclusivamente **Por conciliar**, donde ya viven como rentas declaradas.
+
+### Avatar firmado vs sin firmar
+
+`avatarInfoPorContrato(c)`: si `documentoFirmado === false` → clase `unsigned`
+(avatar apagado, dashed gris, sin color). Los firmados reciben un color de paleta
+por **hash determinista del nombre** del inquilino (no del id, no aleatorio): el
+mismo inquilino mantiene el mismo color en cualquier render. Los importados
+(Rentila/plantilla) nacen `documentoFirmado=false` → apagados hasta tener PDF firmado.
+
 ## 7 · Apuntes futuros (fuera de alcance)
 
 - Soporte de los 4 tipos Rentila con matiz fiscal art. 23.2 LAU (sesión propia);

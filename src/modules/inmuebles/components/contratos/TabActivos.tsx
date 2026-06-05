@@ -1,15 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import type { Contract } from '../../../../services/db';
+import type { Contract, Property } from '../../../../services/db';
 import { EmptyState, Icons } from '../../../../design-system/v5';
 import {
-  calcularStatsAgregados,
-  contarChips,
   filtrarContratos,
   FILTROS_INICIALES,
 } from '../../utils/filtrosActivos';
 import { useFiltrosActivos } from '../../hooks/useFiltrosActivos';
-import BarraFiltros from './BarraFiltros';
-import ToolbarTabla from './ToolbarTabla';
+import ToolbarVigentes from './ToolbarVigentes';
 import TablaActivos from './TablaActivos';
 import EmptyStateSinResultados from './EmptyStateSinResultados';
 import DrawerFichaContrato from './DrawerFichaContrato';
@@ -17,32 +14,39 @@ import DrawerFichaContrato from './DrawerFichaContrato';
 export interface TabActivosProps {
   contratos: Contract[];
   inmuebleAliasById: Map<number, string>;
+  inmuebleModoById?: Map<number, Property['modoExplotacion']>;
   onNuevoContrato: () => void;
 }
 
 const TabActivos: React.FC<TabActivosProps> = ({
   contratos,
   inmuebleAliasById,
+  inmuebleModoById,
   onNuevoContrato,
 }) => {
   const [filtros, setFiltros] = useFiltrosActivos();
   const hoy = useMemo(() => new Date(), []);
 
-  const counts = useMemo(() => contarChips(contratos, hoy), [contratos, hoy]);
   const filtrados = useMemo(
     () => filtrarContratos(contratos, filtros, hoy),
     [contratos, filtros, hoy],
   );
-  const stats = useMemo(() => calcularStatsAgregados(filtrados), [filtrados]);
+
+  // Inmuebles con contratos vigentes · alimentan el selector del toolbar.
+  const inmuebles = useMemo<Array<[number, string]>>(() => {
+    const ids = new Set<number>();
+    contratos.forEach((c) => ids.add(c.inmuebleId));
+    return Array.from(ids)
+      .map((id): [number, string] => [id, inmuebleAliasById.get(id) ?? `#${id}`])
+      .sort((a, b) => a[1].localeCompare(b[1], 'es'));
+  }, [contratos, inmuebleAliasById]);
 
   const [contratoAbierto, setContratoAbierto] = useState<
     (Contract & { id: number }) | null
   >(null);
 
   const algunFiltroActivo =
-    filtros.busqueda.trim() !== '' ||
-    filtros.tipo !== 'todos' ||
-    filtros.estado !== 'todos';
+    filtros.busqueda.trim() !== '' || filtros.inmueble !== 'todos';
 
   // Caso 1 · NO hay contratos activos en absoluto · empty state global del módulo
   if (contratos.length === 0) {
@@ -59,14 +63,18 @@ const TabActivos: React.FC<TabActivosProps> = ({
 
   return (
     <>
-      <BarraFiltros filtros={filtros} onChange={setFiltros} counts={counts} />
-      <ToolbarTabla stats={stats} />
+      <ToolbarVigentes
+        filtros={filtros}
+        onChange={setFiltros}
+        inmuebles={inmuebles}
+      />
       {filtrados.length === 0 && algunFiltroActivo ? (
         <EmptyStateSinResultados onLimpiar={() => setFiltros(FILTROS_INICIALES)} />
       ) : (
         <TablaActivos
           contratos={filtrados}
           inmuebleAliasById={inmuebleAliasById}
+          inmuebleModoById={inmuebleModoById}
           onAbrirFicha={setContratoAbierto}
         />
       )}

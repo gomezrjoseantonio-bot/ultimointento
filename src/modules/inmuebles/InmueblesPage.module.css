@@ -7,3 +7,13 @@
   margin: 0 auto;
   width: 100%;
 }
+
+/* FIX § 1.1 · variante full-bleed para la lista de Contratos · sin padding ni
+   max-width propios (los aporta .main dentro de ContratosListPage) · deja a la
+   banda navy llegar al borde superior y al sidebar. */
+.pageFullBleed {
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-2);
+  width: 100%;
+}

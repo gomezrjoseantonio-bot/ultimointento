@@ -29,17 +29,21 @@ const make = (id: number, overrides: Partial<Contract> = {}): Contract =>
     fianzaEstado: 'retenida',
     cuentaCobroId: 1,
     estadoContrato: 'activo',
+    documentoFirmado: true,
     firma: { metodo: 'digital', estado: 'firmado' },
     ...overrides,
   }) as Contract;
 
 const cs = [
-  make(1, { inquilino: { nombre: 'Juan', apellidos: 'Calvo', dni: '1', telefono: '', email: 'a@b.c' } }),
-  make(2, { inquilino: { nombre: 'María', apellidos: 'Gómez', dni: '2', telefono: '', email: 'm@b.c' }, modalidad: 'temporada' }),
-  make(3, { inquilino: { nombre: 'Laura', apellidos: 'Sanz', dni: '3', telefono: '', email: 'l@b.c' } }),
+  make(1, { inmuebleId: 1, inquilino: { nombre: 'Juan', apellidos: 'Calvo', dni: '1', telefono: '', email: 'a@b.c' } }),
+  make(2, { inmuebleId: 2, inquilino: { nombre: 'María', apellidos: 'Gómez', dni: '2', telefono: '', email: 'm@b.c' } }),
+  make(3, { inmuebleId: 1, inquilino: { nombre: 'Laura', apellidos: 'Sanz', dni: '3', telefono: '', email: 'l@b.c' } }),
 ];
 
-const aliasMap = new Map<number, string>([[1, 'Casa A']]);
+const aliasMap = new Map<number, string>([
+  [1, 'Casa A'],
+  [2, 'Casa B'],
+]);
 
 const wrap = (ui: React.ReactElement) => <MemoryRouter>{ui}</MemoryRouter>;
 
@@ -57,9 +61,19 @@ describe('TabActivos · integración', () => {
     expect(screen.getByText('Laura Sanz')).toBeInTheDocument();
   });
 
+  test('toolbar único · sin chips TIPO/ESTADO · sin botones Exportar/Imprimir/Columnas', () => {
+    render(wrap(<TabActivos contratos={cs} inmuebleAliasById={aliasMap} onNuevoContrato={() => {}} />));
+    expect(screen.queryByText('Larga')).toBeNull();
+    expect(screen.queryByText('Corta')).toBeNull();
+    expect(screen.queryByText('Más filtros')).toBeNull();
+    expect(screen.queryByText('Exportar Excel')).toBeNull();
+    expect(screen.queryByText('Imprimir')).toBeNull();
+    expect(screen.queryByText('Columnas')).toBeNull();
+  });
+
   test('búsqueda por nombre filtra a 1 resultado', () => {
     render(wrap(<TabActivos contratos={cs} inmuebleAliasById={aliasMap} onNuevoContrato={() => {}} />));
-    const input = screen.getByPlaceholderText(/Buscar por inquilino/);
+    const input = screen.getByPlaceholderText(/Buscar inquilino/);
     fireEvent.change(input, { target: { value: 'Calvo' } });
     act(() => {
       jest.advanceTimersByTime(220);
@@ -69,29 +83,17 @@ describe('TabActivos · integración', () => {
     expect(screen.queryByText('Laura Sanz')).toBeNull();
   });
 
-  test('chip Tipo "Corta" reduce a contratos de temporada/vacacional', () => {
+  test('selector de inmueble filtra por inmueble', () => {
     render(wrap(<TabActivos contratos={cs} inmuebleAliasById={aliasMap} onNuevoContrato={() => {}} />));
-    fireEvent.click(screen.getByText('Corta'));
+    fireEvent.change(screen.getByLabelText('Filtrar por inmueble'), { target: { value: '2' } });
     expect(screen.getByText('María Gómez')).toBeInTheDocument();
     expect(screen.queryByText('Juan Calvo')).toBeNull();
+    expect(screen.queryByText('Laura Sanz')).toBeNull();
   });
 
-  test('combinación búsqueda + chip · AND', () => {
+  test('búsqueda sin resultados · empty state con limpiar filtros', () => {
     render(wrap(<TabActivos contratos={cs} inmuebleAliasById={aliasMap} onNuevoContrato={() => {}} />));
-    fireEvent.click(screen.getByText('Larga'));
-    fireEvent.change(screen.getByPlaceholderText(/Buscar por inquilino/), {
-      target: { value: 'María' },
-    });
-    act(() => {
-      jest.advanceTimersByTime(220);
-    });
-    // María es temporada · al combinar Larga + María no debe haber resultados
-    expect(screen.getByText(/No hay contratos con esos filtros/)).toBeInTheDocument();
-  });
-
-  test('botón "Limpiar filtros" en empty state restaura todo', () => {
-    render(wrap(<TabActivos contratos={cs} inmuebleAliasById={aliasMap} onNuevoContrato={() => {}} />));
-    fireEvent.change(screen.getByPlaceholderText(/Buscar por inquilino/), {
+    fireEvent.change(screen.getByPlaceholderText(/Buscar inquilino/), {
       target: { value: 'zzz-no-existe' },
     });
     act(() => {
@@ -104,10 +106,10 @@ describe('TabActivos · integración', () => {
     expect(screen.getByText('Juan Calvo')).toBeInTheDocument();
   });
 
-  test('persistencia · filtros se restauran desde sessionStorage', () => {
+  test('persistencia · búsqueda se restaura desde sessionStorage', () => {
     sessionStorage.setItem(
       'atlas-contratos-filtros-activos',
-      JSON.stringify({ busqueda: 'Gómez', tipo: 'todos', estado: 'todos' }),
+      JSON.stringify({ busqueda: 'Gómez', inmueble: 'todos', tipo: 'todos', estado: 'todos' }),
     );
     render(wrap(<TabActivos contratos={cs} inmuebleAliasById={aliasMap} onNuevoContrato={() => {}} />));
     expect(screen.getByText('María Gómez')).toBeInTheDocument();

@@ -34,6 +34,24 @@ export class RentilaFormatError extends Error {
   }
 }
 
+/**
+ * FIX § 1.3 · extrae el número de habitación del sufijo HX que Rentila añade al
+ * nombre del piso (p.ej. "4-ACEVEDO-H2" → 2, "FA32 H1" → 1, "Tenderina 64 4Iz
+ * Hab4" → 4). Devuelve `null` si no hay sufijo HX al final o el número está
+ * fuera de rango [1..20].
+ *
+ * Acepta los separadores ` `, `-`, `_` antes de `H`/`Hab` y un espacio opcional
+ * entre la letra y el número. El ancla `$` evita falsos positivos con números
+ * que NO son habitación (p.ej. "Tenderina 48 1 5 Dr" → null, "H2-ACEVEDO" → null).
+ */
+export function parseHabitacionFromRentila(nombrePisoRentila: string): number | null {
+  const match = (nombrePisoRentila || '').match(/[\s\-_](Hab|H)\s?(\d+)\s*$/i);
+  if (!match) return null;
+  const num = parseInt(match[2], 10);
+  if (Number.isNaN(num) || num < 1 || num > 20) return null;
+  return num;
+}
+
 const normalizeHeader = (value: unknown): string =>
   String(value ?? '')
     .toLowerCase()

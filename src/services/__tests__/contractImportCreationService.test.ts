@@ -47,10 +47,17 @@ const makeDraft = (o: Partial<ContractDraft>): ContractDraft => ({
   fechaFin: '2028-12-31',
   rentaMensual: 400,
   fianza: 400,
+  habitacionParseada: null,
+  habitacionConfirmada: null,
   seccion: 'listos',
   motivoSeccion: '',
   decisionDuplicado: null,
   ...o,
+});
+
+const propModo = (id: number, alias: string, modo: 'piso_completo' | 'por_habitaciones') => ({
+  ...prop(id, alias),
+  modoExplotacion: modo,
 });
 
 describe('crearContractsDesdeDrafts', () => {
@@ -144,6 +151,45 @@ describe('crearContractsDesdeDrafts', () => {
     // Inmuebles 1·2·3 tienen contrato con solape; el 4 no.
     expect(r.botesConSugerencia.sort()).toEqual([b1.id, b2.id, b3.id].sort());
     expect(r.inmueblesAfectados.sort()).toEqual([1, 2, 3]);
+  });
+
+  it('§1.3 · por_habitaciones + HX parseado → asigna habitación HX', async () => {
+    await seedV77([propModo(1, 'FA32', 'por_habitaciones')]);
+    const { crearContractsDesdeDrafts } = require('../contractImportCreationService');
+    const { initDB } = require('../db');
+
+    await crearContractsDesdeDrafts([makeDraft({ habitacionParseada: 2 })]);
+
+    const db = await initDB();
+    const [c] = await db.getAll('contracts');
+    expect(c.unidadTipo).toBe('habitacion');
+    expect(c.habitacionId).toBe('H2');
+  });
+
+  it('§1.3 · por_habitaciones sin HX → habitación PENDIENTE (habitacionId vacío)', async () => {
+    await seedV77([propModo(1, 'FA32', 'por_habitaciones')]);
+    const { crearContractsDesdeDrafts } = require('../contractImportCreationService');
+    const { initDB } = require('../db');
+
+    await crearContractsDesdeDrafts([makeDraft({ habitacionParseada: null })]);
+
+    const db = await initDB();
+    const [c] = await db.getAll('contracts');
+    expect(c.unidadTipo).toBe('habitacion');
+    expect(c.habitacionId).toBeUndefined();
+  });
+
+  it('§1.3 · piso_completo → vivienda · ignora cualquier HX', async () => {
+    await seedV77([propModo(1, 'Sant Joan', 'piso_completo')]);
+    const { crearContractsDesdeDrafts } = require('../contractImportCreationService');
+    const { initDB } = require('../db');
+
+    await crearContractsDesdeDrafts([makeDraft({ habitacionParseada: 3 })]);
+
+    const db = await initDB();
+    const [c] = await db.getAll('contracts');
+    expect(c.unidadTipo).toBe('vivienda');
+    expect(c.habitacionId).toBeUndefined();
   });
 
   it('crea un inmueble nuevo cuando el draft lo pide', async () => {

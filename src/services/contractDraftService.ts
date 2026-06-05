@@ -7,7 +7,7 @@
 // PURAS: reciben los inmuebles y contratos existentes como parámetros para ser
 // testeables sin IndexedDB. Hay wrappers async que cargan de la BD para la UI.
 import { initDB, Contract, Property } from './db';
-import { RentilaRow } from './rentilaParserService';
+import { RentilaRow, parseHabitacionFromRentila } from './rentilaParserService';
 import { AtlasTemplateRow } from './atlasTemplateParserService';
 
 export interface ContractDraft {
@@ -36,6 +36,21 @@ export interface ContractDraft {
   fechaFin: string | null;
   rentaMensual: number;
   fianza: number;
+
+  /**
+   * FIX § 1.3 · número de habitación parseado del sufijo HX del nombre Rentila
+   * (p.ej. "4-ACEVEDO-H2" → 2). `null` si el nombre no trae sufijo. La decisión
+   * final (asignar / pedir / ignorar) se toma en creación según el
+   * `modoExplotacion` del inmueble resuelto. Solo aplica a origen Rentila.
+   */
+  habitacionParseada: number | null;
+
+  /**
+   * FIX § 1.3 · habitación elegida por el usuario en el wizard cuando el inmueble
+   * es `por_habitaciones` y el nombre Rentila NO traía sufijo HX. `null` hasta
+   * que se selecciona. En creación, `habitacionParseada ?? habitacionConfirmada`.
+   */
+  habitacionConfirmada: number | null;
 
   // Clasificación
   seccion: 'listos' | 'revisar' | 'duplicados';
@@ -297,6 +312,14 @@ export const normalizarRentila = (
     const { principal, cotitulares } = detectarCotitulares(row.inquilino);
     const inmuebleIdSugerido = confianza >= UMBRAL_CONFIANZA_INMUEBLE ? inmuebleId : null;
 
+    // FIX § 1.3 problema 3 · Rentila SIEMPRE trae nombre. Si llega vacío es un
+    // BUG del fichero/parseo · se reporta en consola (NO se pinta "—" en silencio).
+    if (!principal.trim()) {
+      console.error(
+        `[ImportarContratos] Rentila · contrato sin nombre de inquilino en fila ${row.filaOriginal} (${row.ficheroOrigen}) · propiedad "${row.propiedad}"`,
+      );
+    }
+
     const base = {
       filaOriginal: row.filaOriginal,
       ficheroOrigen: row.ficheroOrigen,
@@ -314,6 +337,10 @@ export const normalizarRentila = (
       fechaFin: row.finAlquiler,
       rentaMensual: row.alquiler,
       fianza: row.fianza,
+      // Sufijo HX del nombre del piso · se resuelve a habitación en creación
+      // según el modoExplotacion del inmueble (§ 1.3).
+      habitacionParseada: parseHabitacionFromRentila(row.propiedad),
+      habitacionConfirmada: null,
     };
 
     return clasificar(base, confianza, existingContracts);
@@ -347,6 +374,9 @@ export const normalizarAtlas = (
       fechaFin: row.fechaFin,
       rentaMensual: row.rentaMensual,
       fianza: row.fianza,
+      // La plantilla ATLAS no codifica habitación en el nombre · sin sufijo HX.
+      habitacionParseada: null,
+      habitacionConfirmada: null,
     };
 
     return clasificar(base, confianza, existingContracts);
@@ -382,7 +412,24 @@ export const construirDraftsAtlas = async (rows: AtlasTemplateRow[]): Promise<Co
 export interface InmuebleOpcion {
   id: number;
   label: string;
+  /** FIX § 1.3 · decide si el wizard pide habitación cuando no hay sufijo HX. */
+  modoExplotacion?: Property['modoExplotacion'];
+  /** Nº de habitaciones arrendables · alimenta el selector de habitación. */
+  habitaciones: number;
 }
+
+/** Nº de habitaciones arrendables de un inmueble (varias fuentes legacy). */
+export const contarHabitacionesArrendables = (p: Property): number => {
+  const n =
+    p.alquilerPorHabitaciones?.numeroHabitaciones ??
+    p.explotacion?.unidadesArrendables ??
+    p.bedrooms ??
+    0;
+  // Para inmuebles por habitaciones garantizamos al menos 2 opciones aunque el
+  // dato legacy venga incompleto; el resto se queda con su valor (mín. 1).
+  const min = p.modoExplotacion === 'por_habitaciones' ? 2 : 1;
+  return Math.max(min, n);
+};
 
 /** Opciones de inmueble para el select de la sección "Requieren revisión" (paso 3). */
 export const listarInmueblesOpciones = async (): Promise<InmuebleOpcion[]> => {
@@ -390,5 +437,10 @@ export const listarInmueblesOpciones = async (): Promise<InmuebleOpcion[]> => {
   const properties = await db.getAll('properties');
   return properties
     .filter((p) => p.id != null)
-    .map((p) => ({ id: p.id as number, label: p.alias || p.address || `Inmueble ${p.id}` }));
+    .map((p) => ({
+      id: p.id as number,
+      label: p.alias || p.address || `Inmueble ${p.id}`,
+      modoExplotacion: p.modoExplotacion,
+      habitaciones: contarHabitacionesArrendables(p),
+    }));
 };

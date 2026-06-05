@@ -9,6 +9,25 @@ import {
 import styles from './ImportarContratosWizard.module.css';
 import { ContractDraft, agruparPorSeccion, InmuebleOpcion } from '../../../services/contractDraftService';
 
+/** Selector de habitación · inmueble por_habitaciones sin sufijo HX (§ 1.3). */
+const SelectorHabitacion: React.FC<{
+  draft: ContractDraft;
+  habitaciones: number;
+  onChange: (value: string) => void;
+}> = ({ draft, habitaciones, onChange }) => (
+  <select
+    className={styles.selWarn}
+    value={draft.habitacionConfirmada != null ? String(draft.habitacionConfirmada) : ''}
+    aria-label={`Habitación para ${draft.inmuebleRaw}`}
+    onChange={(e) => onChange(e.target.value)}
+  >
+    <option value="" disabled>Elegir habitación...</option>
+    {Array.from({ length: habitaciones }, (_, i) => i + 1).map((n) => (
+      <option key={n} value={String(n)}>Habitación {n}</option>
+    ))}
+  </select>
+);
+
 interface PasoRevisionProps {
   drafts: ContractDraft[];
   inmuebleOpciones: InmuebleOpcion[];
@@ -52,23 +71,64 @@ const PasoRevision: React.FC<PasoRevisionProps> = ({
     return map;
   }, [inmuebleOpciones]);
 
+  // FIX § 1.3 · opciones de inmueble indexadas · para saber modoExplotacion y
+  // número de habitaciones del inmueble resuelto en cada fila.
+  const opcionById = useMemo(() => {
+    const map = new Map<number, InmuebleOpcion>();
+    inmuebleOpciones.forEach((o) => map.set(o.id, o));
+    return map;
+  }, [inmuebleOpciones]);
+
   const grupos = useMemo(() => agruparPorSeccion(items), [items]);
 
   const setInmuebleRevisar = (key: string, value: string) =>
     setItems((prev) =>
       prev.map((d) => {
         if (filaKey(d) !== key) return d;
-        if (value === VALOR_NUEVO) return { ...d, crearInmuebleNuevo: true, inmuebleIdConfirmado: null };
-        if (value === '') return { ...d, crearInmuebleNuevo: false, inmuebleIdConfirmado: null };
-        return { ...d, crearInmuebleNuevo: false, inmuebleIdConfirmado: Number(value) };
+        if (value === VALOR_NUEVO) return { ...d, crearInmuebleNuevo: true, inmuebleIdConfirmado: null, habitacionConfirmada: null };
+        if (value === '') return { ...d, crearInmuebleNuevo: false, inmuebleIdConfirmado: null, habitacionConfirmada: null };
+        // Al cambiar de inmueble, la habitación elegida deja de ser válida.
+        return { ...d, crearInmuebleNuevo: false, inmuebleIdConfirmado: Number(value), habitacionConfirmada: null };
       }),
     );
+
+  const setHabitacion = (key: string, value: string) =>
+    setItems((prev) =>
+      prev.map((d) =>
+        filaKey(d) === key
+          ? { ...d, habitacionConfirmada: value === '' ? null : Number(value) }
+          : d,
+      ),
+    );
+
+  // Inmueble destino actualmente resuelto para una fila (confirmado o sugerido).
+  const inmuebleResuelto = (d: ContractDraft): number | null =>
+    d.crearInmuebleNuevo ? null : d.inmuebleIdConfirmado ?? d.inmuebleIdSugerido;
+
+  // ¿Esta fila necesita que el usuario elija habitación? · inmueble
+  // por_habitaciones, sin sufijo HX parseado y sin elección previa (§ 1.3).
+  const necesitaHabitacion = (d: ContractDraft): boolean => {
+    const id = inmuebleResuelto(d);
+    if (id == null) return false;
+    const opt = opcionById.get(id);
+    return (
+      opt?.modoExplotacion === 'por_habitaciones' &&
+      d.habitacionParseada == null &&
+      d.habitacionConfirmada == null
+    );
+  };
+
+  const habitacionResuelta = (d: ContractDraft): boolean => !necesitaHabitacion(d);
 
   const setDecision = (key: string, value: ContractDraft['decisionDuplicado']) =>
     setItems((prev) => prev.map((d) => (filaKey(d) === key ? { ...d, decisionDuplicado: value } : d)));
 
-  const revisarResuelto = (d: ContractDraft): boolean => d.inmuebleIdConfirmado != null || d.crearInmuebleNuevo === true;
+  const revisarResuelto = (d: ContractDraft): boolean =>
+    (d.inmuebleIdConfirmado != null || d.crearInmuebleNuevo === true) && habitacionResuelta(d);
   const todosRevisarResueltos = grupos.revisar.every(revisarResuelto);
+  // Las filas "listas" cuyo inmueble es por_habitaciones sin HX también deben
+  // tener habitación antes de crear (§ 1.3 · NUNCA un default "no especificada").
+  const todasListosConHabitacion = grupos.listos.every(habitacionResuelta);
 
   const crearSeccion = async (seccion: 'listos' | 'revisar' | 'duplicados') => {
     setCreando(seccion);
@@ -121,7 +181,8 @@ const PasoRevision: React.FC<PasoRevisionProps> = ({
             <button
               type="button"
               className={cx(styles.btn, styles.btnPrimary)}
-              disabled={creando != null}
+              disabled={creando != null || !todasListosConHabitacion}
+              title={todasListosConHabitacion ? undefined : 'Asigna la habitación de las filas por habitaciones'}
               onClick={() => crearSeccion('listos')}
             >
               <Check size={14} /> Crear {grupos.listos.length} contratos
@@ -132,11 +193,21 @@ const PasoRevision: React.FC<PasoRevisionProps> = ({
             <div className={cx(styles.sectRow, styles.gridListos, styles.head)}>
               <div>Inmueble → ATLAS</div><div>Inquilino</div><div>Tipo</div><div>Fechas</div><div>Renta · fianza</div>
             </div>
-            {verListos.map((d) => (
+            {verListos.map((d) => {
+              const idResuelto = inmuebleResuelto(d);
+              const opt = idResuelto != null ? opcionById.get(idResuelto) : undefined;
+              return (
               <div key={filaKey(d)} className={cx(styles.sectRow, styles.gridListos)}>
                 <div className={styles.revCell}>
                   <div className={styles.revName}>{d.inmuebleRaw}</div>
                   <div className={styles.revMeta}>→ {opcionLabel.get(d.inmuebleIdConfirmado as number) ?? 'inmueble'}</div>
+                  {necesitaHabitacion(d) && opt && (
+                    <SelectorHabitacion
+                      draft={d}
+                      habitaciones={opt.habitaciones}
+                      onChange={(v) => setHabitacion(filaKey(d), v)}
+                    />
+                  )}
                 </div>
                 <div className={styles.revCell}>
                   <div className={styles.revName}>{d.inquilinoNombre}</div>
@@ -154,7 +225,8 @@ const PasoRevision: React.FC<PasoRevisionProps> = ({
                   <div className={cx(styles.revMeta, styles.mono)}>fianza {formatEuro(d.fianza)}</div>
                 </div>
               </div>
-            ))}
+              );
+            })}
             {grupos.listos.length > PREVIEW && (
               <div className={styles.sectMore}>
                 ... y {grupos.listos.length - PREVIEW} contratos más en esta sección ·{' '}
@@ -197,6 +269,8 @@ const PasoRevision: React.FC<PasoRevisionProps> = ({
               const key = filaKey(d);
               const resuelto = revisarResuelto(d);
               const valor = d.crearInmuebleNuevo ? VALOR_NUEVO : d.inmuebleIdConfirmado != null ? String(d.inmuebleIdConfirmado) : '';
+              const idResuelto = inmuebleResuelto(d);
+              const opt = idResuelto != null ? opcionById.get(idResuelto) : undefined;
               return (
                 <div key={key} className={cx(styles.sectRow, styles.gridListos)}>
                   <div className={styles.revCell}>
@@ -213,6 +287,13 @@ const PasoRevision: React.FC<PasoRevisionProps> = ({
                       ))}
                       <option value={VALOR_NUEVO}>+ Crear inmueble nuevo</option>
                     </select>
+                    {necesitaHabitacion(d) && opt && (
+                      <SelectorHabitacion
+                        draft={d}
+                        habitaciones={opt.habitaciones}
+                        onChange={(v) => setHabitacion(key, v)}
+                      />
+                    )}
                   </div>
                   <div className={styles.revCell}>
                     <div className={styles.revName}>{d.inquilinoNombre}</div>

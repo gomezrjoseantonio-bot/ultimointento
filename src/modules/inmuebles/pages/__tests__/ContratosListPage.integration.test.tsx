@@ -61,11 +61,21 @@ const FINALIZADO = contrato({
   fechaInicio: '2022-01-01',
   fechaFin: '2023-04-20',
 });
+// Placeholder AEAT · renta declarada sin inquilino real · NO debe salir en
+// Histórico ni Vigentes (§ 1.4) · su sitio es Por conciliar.
+const SIN_IDENTIFICAR = contrato({
+  id: 4,
+  inmuebleId: 1,
+  estadoContrato: 'sin_identificar',
+  inquilino: { nombre: '', apellidos: '', dni: '', telefono: '', email: '' },
+  fechaInicio: '2021-01-01',
+  fechaFin: '2022-06-30',
+});
 
 const renderPage = (): void => {
   const ctx: InmueblesOutletContext = {
     properties: [property(1, 'FA32'), property(2, 'Sant Joan')],
-    contracts: [VIGENTE, PROXIMO, FINALIZADO],
+    contracts: [VIGENTE, PROXIMO, FINALIZADO, SIN_IDENTIFICAR],
     reload: () => {},
   } as InmueblesOutletContext;
 
@@ -103,7 +113,7 @@ describe('ContratosListPage · integración', () => {
     expect(screen.queryByText('Ivan Vigente')).not.toBeInTheDocument();
   });
 
-  it('cambiar a Histórico muestra el contrato finalizado', () => {
+  it('cambiar a Histórico muestra el ex-inquilino real (el AEAT sin identificar se excluye · § 1.4)', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Histórico' }));
     expect(screen.getByText('Aroa Finalizada')).toBeInTheDocument();

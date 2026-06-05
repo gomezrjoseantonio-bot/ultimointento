@@ -12,10 +12,11 @@ function leerStorage(): FiltrosActivos {
     if (!raw) return FILTROS_INICIALES;
     const parsed = JSON.parse(raw) as Partial<FiltrosActivos>;
     if (typeof parsed?.busqueda !== 'string') return FILTROS_INICIALES;
-    if (typeof parsed?.tipo !== 'string') return FILTROS_INICIALES;
-    if (typeof parsed?.estado !== 'string') return FILTROS_INICIALES;
+    const inmueble =
+      typeof parsed?.inmueble === 'number' ? parsed.inmueble : 'todos';
     return {
       busqueda: parsed.busqueda,
+      inmueble,
       tipo: (parsed.tipo as FiltrosActivos['tipo']) ?? 'todos',
       estado: (parsed.estado as FiltrosActivos['estado']) ?? 'todos',
     };

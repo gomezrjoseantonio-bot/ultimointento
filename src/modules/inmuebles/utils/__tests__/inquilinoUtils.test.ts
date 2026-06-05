@@ -1,9 +1,17 @@
 import {
+  avatarInfoPorContrato,
   colorAvatarPorContrato,
+  esInquilinoIdentificado,
   generarIniciales,
   getInquilinoNombre,
 } from '../inquilinoUtils';
 import type { Contract } from '../../../../services/db';
+
+const conNombre = (nombre: string, apellidos: string, over: Partial<Contract> = {}): Contract =>
+  ({
+    inquilino: { nombre, apellidos, dni: '', telefono: '', email: '' },
+    ...over,
+  }) as Contract;
 
 describe('generarIniciales', () => {
   test('nombre de 1 palabra → 2 primeras letras mayúsculas', () => {
@@ -54,21 +62,62 @@ describe('getInquilinoNombre', () => {
 });
 
 describe('colorAvatarPorContrato', () => {
-  test('mismo id devuelve el mismo color (determinista)', () => {
-    const c = { id: 7 } as Contract;
-    expect(colorAvatarPorContrato(c)).toBe(colorAvatarPorContrato(c));
+  test('mismo nombre devuelve el mismo color (determinista por nombre)', () => {
+    const a = conNombre('Juan', 'Calvo', { id: 7 });
+    const b = conNombre('Juan', 'Calvo', { id: 999 });
+    // El color depende del nombre, NO del id · el mismo inquilino mantiene color.
+    expect(colorAvatarPorContrato(a)).toBe(colorAvatarPorContrato(b));
   });
 
-  test('ids distintos pueden dar colores distintos', () => {
-    const colors = new Set();
-    for (let i = 0; i < 6; i += 1) {
-      colors.add(colorAvatarPorContrato({ id: i } as Contract));
-    }
-    // hay 6 colores en la paleta · esperamos al menos 3 distintos en 6 ids
+  test('nombres distintos pueden dar colores distintos', () => {
+    const nombres: Array<[string, string]> = [
+      ['Juan', 'Calvo'],
+      ['María', 'Gómez'],
+      ['Laura', 'Sanz'],
+      ['Pedro', 'Ruiz'],
+      ['Ana', 'López'],
+      ['Luis', 'Díaz'],
+    ];
+    const colors = new Set(nombres.map(([n, a]) => colorAvatarPorContrato(conNombre(n, a))));
     expect(colors.size).toBeGreaterThanOrEqual(3);
   });
+});
 
-  test('contrato sin id usa hash 0', () => {
-    expect(colorAvatarPorContrato({} as Contract)).toBe(colorAvatarPorContrato({ id: 0 } as Contract));
+describe('esInquilinoIdentificado · § 1.4', () => {
+  test('inquilino con nombre real → identificado', () => {
+    expect(esInquilinoIdentificado(conNombre('Juan', 'Calvo'))).toBe(true);
+  });
+
+  test('estadoContrato sin_identificar → NO identificado (placeholder AEAT)', () => {
+    expect(
+      esInquilinoIdentificado(conNombre('Juan', 'Calvo', { estadoContrato: 'sin_identificar' })),
+    ).toBe(false);
+  });
+
+  test('sin nombre ("—") → NO identificado', () => {
+    expect(esInquilinoIdentificado(conNombre('', ''))).toBe(false);
+  });
+
+  test('nombre "sin identificar" → NO identificado', () => {
+    expect(esInquilinoIdentificado(conNombre('Sin', 'identificar'))).toBe(false);
+  });
+});
+
+describe('avatarInfoPorContrato', () => {
+  test('documentoFirmado === false → unsigned (sin color de paleta)', () => {
+    const info = avatarInfoPorContrato(conNombre('Juan', 'Calvo', { documentoFirmado: false }));
+    expect(info.unsigned).toBe(true);
+    expect(info.iniciales).toBe('JC');
+  });
+
+  test('documentoFirmado === true → firmado con color de paleta', () => {
+    const info = avatarInfoPorContrato(conNombre('Juan', 'Calvo', { documentoFirmado: true }));
+    expect(info.unsigned).toBe(false);
+    expect(info.color).toMatch(/var\(--atlas-v5-c\d\)/);
+  });
+
+  test('documentoFirmado ausente (legacy) → tratado como firmado', () => {
+    const info = avatarInfoPorContrato(conNombre('Ana', 'López'));
+    expect(info.unsigned).toBe(false);
   });
 });
