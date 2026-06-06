@@ -6,6 +6,7 @@ import {
   mapTipoAtlasToModalidad,
   detectarCotitulares,
   sugerirInmueble,
+  inferirHabitacion,
   detectarDuplicado,
   normalizarRentila,
   agruparPorSeccion,
@@ -217,5 +218,110 @@ describe('normalizarRentila · clasificación caso Jose', () => {
     // Cotitulares detectados en la cuarta fila.
     const conCotitulares = drafts.find((d) => d.inquilinoNombre === 'JORGE ANDERSON RIOS POSADA');
     expect(conCotitulares?.inquilinoCotitulares).toEqual(['SANDRA CHALARCA']);
+  });
+});
+
+// Caso Jose · "60 contratos por habitaciones" · inteligencia de habitación y planta.
+describe('inferirHabitacion · inteligencia de habitación', () => {
+  const tenderina64I = ({
+    id: 13, alias: 'Tenderina 64 4I', address: 'Calle Tenderina 64, 4 Izq', province: 'Oviedo',
+    modoExplotacion: 'por_habitaciones', explotacion: { unidadesArrendables: 4 },
+  } as unknown) as Property;
+  const acevedo = ({
+    id: 10, alias: 'Piso Oviedo', address: 'Calle Fuertes Acevedo 32, 1 Dr', province: 'Oviedo',
+    modoExplotacion: 'por_habitaciones', explotacion: { unidadesArrendables: 5 },
+  } as unknown) as Property;
+  const pisoCompleto = ({
+    id: 12, alias: 'Tenderina 48', address: 'Calle Tenderina 48', province: 'Oviedo',
+    modoExplotacion: 'piso_completo',
+  } as unknown) as Property;
+
+  it('sufijo HX explícito → ese número (formato Acevedo)', () => {
+    expect(inferirHabitacion('4-ACEVEDO-H2', acevedo)).toBe(2);
+    expect(inferirHabitacion('4-ACEVEDO-H5', acevedo)).toBe(5);
+  });
+
+  it('código de unidad zero-padded → habitación (formato Tenderina "-004")', () => {
+    expect(inferirHabitacion('6-TENDERINA, 64 4I -004 - 0654104TP7005S0010PP', tenderina64I)).toBe(4);
+    expect(inferirHabitacion('6-TENDERINA, 64 4I -001 - 0654104TP7005S0010PP', tenderina64I)).toBe(1);
+    expect(inferirHabitacion('6-TENDERINA, 64 4I -003', tenderina64I)).toBe(3);
+  });
+
+  it('NO confunde la planta ("4I") con la habitación', () => {
+    // El "4" de "4I" es planta, no habitación; la habitación es el código "001".
+    expect(inferirHabitacion('6-TENDERINA, 64 4I -001', tenderina64I)).toBe(1);
+  });
+
+  it('piso completo → null (no se asigna habitación)', () => {
+    expect(inferirHabitacion('3-TENDERINA 48', pisoCompleto)).toBeNull();
+  });
+
+  it('código fuera del nº de habitaciones → null (se pedirá)', () => {
+    expect(inferirHabitacion('6-TENDERINA, 64 4I -009', tenderina64I)).toBeNull();
+  });
+
+  it('sin inmueble resuelto y sin HX → null', () => {
+    expect(inferirHabitacion('2-MANRESA', null)).toBeNull();
+  });
+});
+
+describe('sugerirInmueble · planta Iz/Dr (notación 4I/4D)', () => {
+  const props = ([
+    { id: 13, alias: 'Tenderina 64 4 Iz', address: 'Calle Tenderina 64, 4 Izq, Oviedo' },
+    { id: 14, alias: 'Tenderina 64 4 Dr', address: 'Calle Tenderina 64, 4 Dcha, Oviedo' },
+  ] as unknown) as Property[];
+
+  it('"64 4I" → piso Izquierda · "64 4D" → piso Derecha (sin ambigüedad)', () => {
+    const iz = sugerirInmueble('6-TENDERINA, 64 4I -001', props);
+    expect(iz.inmuebleId).toBe(13);
+    expect(iz.confianza).toBeGreaterThanOrEqual(0.7);
+
+    const dr = sugerirInmueble('5-TENDERINA, 64 4D -002', props);
+    expect(dr.inmuebleId).toBe(14);
+    expect(dr.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+});
+
+describe('normalizarRentila · habitación auto en por_habitaciones (end-to-end)', () => {
+  it('asigna la habitación desde "-004" sin pedirla', () => {
+    const props = ([{
+      id: 13, alias: 'Tenderina 64 4I', address: 'Calle Tenderina 64, 4 Izq', province: 'Oviedo',
+      cadastralReference: '0654104TP7005S0010PP',
+      modoExplotacion: 'por_habitaciones', explotacion: { unidadesArrendables: 4 },
+    }] as unknown) as Property[];
+    const row = rentilaRow({
+      propiedad: '6-TENDERINA, 64 4I -004 - 0654104TP7005S0010PP',
+      inquilino: 'MARIA PERNICA',
+    });
+    const [draft] = normalizarRentila([row], props, []);
+    expect(draft.inmuebleIdConfirmado).toBe(13);
+    expect(draft.habitacionParseada).toBe(4);
+  });
+});
+
+// Caso Jose · "2-MANRESA" empataba piso vs parking → revisar. Si el parking está
+// declarado como ACCESORIO del piso (vínculo AEAT), pierde el empate frente al piso
+// pero sigue siendo asignable por RC explícita (accesoriedad por ejercicio).
+describe('sugerirInmueble · accesorios (parking/trastero) desempatan a favor del piso', () => {
+  const props = ([
+    { id: 14, alias: "Sant Joan d'En Coll", address: "Carrer Sant Joan d'En Coll 5", province: 'Manresa', cadastralReference: '1234567AB1234C1234DE' },
+    { id: 15, alias: 'Parking Manresa', address: "Carrer Sant Joan d'En Coll 5 parking", province: 'Manresa', cadastralReference: '7949807TP6074N0006YM' },
+  ] as unknown) as Property[];
+
+  it('sin info de accesorio → ambiguo → a revisar (comportamiento previo)', () => {
+    const r = sugerirInmueble('2-MANRESA', props);
+    expect(r.confianza).toBeLessThan(0.7);
+  });
+
+  it('con el parking marcado como accesorio → en empate de nombre gana el PISO', () => {
+    const r = sugerirInmueble('2-MANRESA', props, new Set([15]));
+    expect(r.inmuebleId).toBe(14);
+    expect(r.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it('RC explícita al accesorio SÍ lo asigna (ese año se alquila suelto · accesoriedad por ejercicio)', () => {
+    const r = sugerirInmueble('Parking - 7949807TP6074N0006YM', props, new Set([15]));
+    expect(r.inmuebleId).toBe(15);
+    expect(r.confianza).toBe(1.0);
   });
 });

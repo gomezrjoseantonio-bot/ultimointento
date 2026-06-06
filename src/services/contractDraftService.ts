@@ -132,6 +132,11 @@ const normalizeName = (text: string): string => {
   t = t.replace(RC_REGEX_GLOBAL, ' ');         // quitar referencias catastrales
   t = t.replace(/^\s*\d+\s*[-_.]\s*/, ' ');    // quitar prefijo "5-" / "01-"
   t = t.replace(/[^a-z0-9ñ]+/g, ' ');          // separadores → espacio
+  // Planta+mano canónica · "4i"/"4 izq" → "4 izquierda" · "4d"/"4 dcha" → "4 derecha".
+  // Así "TENDERINA 64 4I" casa con "Tenderina 64 4 Izq" y se distingue de "4D/Dr"
+  // sea cual sea la notación que use el usuario (caso Jose · pisos Iz/Dr).
+  t = t.replace(/\b(\d{1,2})\s*(izquierda|izqda|izda|izq|iz|i)\b/g, '$1 izquierda');
+  t = t.replace(/\b(\d{1,2})\s*(derecha|dcha|dch|der|dr|d)\b/g, '$1 derecha');
   return t.replace(/\s+/g, ' ').trim();
 };
 
@@ -196,12 +201,13 @@ export const similarity = (a: string, b: string): number => {
 const stripRoomSuffix = (t: string): string => (t || '').replace(/[\s\-_](hab|h)\s?\d+\s*$/i, '');
 
 // Palabras genéricas de dirección que NO identifican el inmueble (ES/CA).
+// OJO · "izquierda"/"derecha" NO van aquí: tras la normalización de planta son la
+// señal que distingue dos pisos del mismo número (4I vs 4D · caso Jose).
 const STOPWORDS_DIR = new Set([
   'de', 'del', 'la', 'el', 'los', 'las', 'y', 'o', 'a', 'en', 'un', 'una', 'al', 'con',
   'calle', 'carrer', 'c', 'avenida', 'avinguda', 'avda', 'av', 'passeig', 'paseo', 'pso',
   'plaza', 'plaça', 'pza', 'pl', 'carretera', 'ctra', 'camino', 'cami', 'ronda', 'via',
   'numero', 'num', 'n', 'piso', 'pta', 'puerta', 'escalera', 'esc', 'bajo', 'bis', 'sn',
-  'izq', 'izquierda', 'dcha', 'derecha', 'dr', 'iz', 'd',
 ]);
 
 const esTokenUtil = (w: string): boolean =>
@@ -242,8 +248,19 @@ const MARGEN_AMBIGUO = 0.15;
 export const sugerirInmueble = (
   textoExcel: string,
   properties: Property[],
+  accesorioIds?: Set<number>,
 ): { inmuebleId: number | null; confianza: number } => {
-  // 1 · Match exacto por referencia catastral.
+  // Un inmueble ACCESORIO (parking/trastero vinculado a un piso) NO compite con su
+  // piso: en un empate de nombre gana el piso (el contrato de inquilino recae en la
+  // vivienda, no en el accesorio · caso Jose "2-MANRESA" piso vs parking). Pero NO
+  // se excluye: la accesoriedad es por ejercicio (un año vinculado, otro suelto), así
+  // que el accesorio SIGUE siendo asignable si el contrato lo referencia de verdad
+  // —sobre todo por RC explícita, que es como se vincula en el propio contrato—.
+  const esAccesorio = (id: number | null | undefined): boolean =>
+    id != null && !!accesorioIds && accesorioIds.has(id);
+
+  // 1 · Match exacto por referencia catastral · señal EXPLÍCITA: vale también para
+  // un accesorio (si el contrato trae su RC es que ese año se alquila por separado).
   const rcMatch = (textoExcel || '').toUpperCase().match(RC_REGEX);
   if (rcMatch) {
     const rc = normalizeDni(rcMatch[0]);
@@ -255,8 +272,13 @@ export const sugerirInmueble = (
   const queryTokens = tokensInmueble(textoExcel);
   if (!queryTokens.length) return { inmuebleId: null, confianza: 0 };
 
-  let best: { inmuebleId: number | null; score: number } = { inmuebleId: null, score: 0 };
-  let second: { inmuebleId: number | null; score: number } = { inmuebleId: null, score: 0 };
+  type Cand = { inmuebleId: number | null; score: number; acc: boolean };
+  // Mejor candidato por score; a igualdad de score gana el NO accesorio (el piso).
+  const mejora = (a: Cand, b: Cand): boolean =>
+    a.score > b.score || (a.score === b.score && !a.acc && b.acc);
+
+  let best: Cand = { inmuebleId: null, score: 0, acc: false };
+  let second: Cand = { inmuebleId: null, score: 0, acc: false };
   for (const p of properties) {
     if (p.id == null) continue;
     // `province` se incluye a propósito: el import de la declaración AEAT guarda
@@ -265,23 +287,28 @@ export const sugerirInmueble = (
     const campos = [p.alias, p.globalAlias, p.address, p.province].filter(Boolean) as string[];
     let s = 0;
     for (const campo of campos) s = Math.max(s, puntuarInmueble(queryTokens, campo));
-    if (s > best.score) {
+    const cand: Cand = { inmuebleId: p.id, score: s, acc: esAccesorio(p.id) };
+    if (mejora(cand, best)) {
       second = best;
-      best = { inmuebleId: p.id, score: s };
-    } else if (s > second.score) {
-      second = { inmuebleId: p.id, score: s };
+      best = cand;
+    } else if (mejora(cand, second)) {
+      second = cand;
     }
   }
 
   // 3 · Guarda de ambigüedad · dos inmuebles DISTINTOS casi empatados ⇒ incierto.
   // Caso real: "2-MANRESA" cuando hay un piso Y un parking en Manresa; antes se
   // auto-asignaba al parking. Ahora la confianza baja del umbral y va a "revisar".
+  // EXCEPCIÓN: si el 2.º es un accesorio y el 1.º el piso, NO es ambiguo (el piso
+  // gana siempre al accesorio que cuelga de él).
   let confianza = best.score;
+  const empateConAccesorio = !best.acc && second.acc;
   if (
     best.inmuebleId != null &&
     second.inmuebleId != null &&
     second.inmuebleId !== best.inmuebleId &&
-    best.score - second.score < MARGEN_AMBIGUO
+    best.score - second.score < MARGEN_AMBIGUO &&
+    !empateConAccesorio
   ) {
     confianza = Math.min(best.score, UMBRAL_CONFIANZA_INMUEBLE - 0.1);
   }
@@ -375,11 +402,15 @@ export const normalizarRentila = (
   rows: RentilaRow[],
   properties: Property[],
   existingContracts: Contract[],
+  accesorioIds?: Set<number>,
 ): ContractDraft[] =>
   rows.map((row) => {
-    const { inmuebleId, confianza } = sugerirInmueble(row.propiedad, properties);
+    const { inmuebleId, confianza } = sugerirInmueble(row.propiedad, properties, accesorioIds);
     const { principal, cotitulares } = detectarCotitulares(row.inquilino);
     const inmuebleIdSugerido = confianza >= UMBRAL_CONFIANZA_INMUEBLE ? inmuebleId : null;
+    const inmuebleMatch = inmuebleIdSugerido != null
+      ? properties.find((p) => p.id === inmuebleIdSugerido) ?? null
+      : null;
 
     // FIX § 1.3 problema 3 · Rentila SIEMPRE trae nombre. Si llega vacío es un
     // BUG del fichero/parseo · se reporta en consola (NO se pinta "—" en silencio).
@@ -406,9 +437,10 @@ export const normalizarRentila = (
       fechaFin: row.finAlquiler,
       rentaMensual: row.alquiler,
       fianza: row.fianza,
-      // Sufijo HX del nombre del piso · se resuelve a habitación en creación
-      // según el modoExplotacion del inmueble (§ 1.3).
-      habitacionParseada: parseHabitacionFromRentila(row.propiedad),
+      // Habitación deducida del nombre · sufijo HX explícito o, si el inmueble
+      // resuelto se explota por habitaciones, el código de unidad ("…-004" → 4).
+      // Si no se puede deducir, el wizard la pide (§ 1.3 · caso Jose).
+      habitacionParseada: inferirHabitacion(row.propiedad, inmuebleMatch),
       habitacionConfirmada: null,
     };
 
@@ -420,9 +452,10 @@ export const normalizarAtlas = (
   rows: AtlasTemplateRow[],
   properties: Property[],
   existingContracts: Contract[],
+  accesorioIds?: Set<number>,
 ): ContractDraft[] =>
   rows.map((row) => {
-    const { inmuebleId, confianza } = sugerirInmueble(row.inmuebleNombreOrRC, properties);
+    const { inmuebleId, confianza } = sugerirInmueble(row.inmuebleNombreOrRC, properties, accesorioIds);
     const { principal, cotitulares } = detectarCotitulares(row.inquilinoNombre);
     const inmuebleIdSugerido = confianza >= UMBRAL_CONFIANZA_INMUEBLE ? inmuebleId : null;
 
@@ -462,20 +495,34 @@ export const agruparPorSeccion = (
 
 // ───────────────────────── Wrappers con BD (para la UI) ─────────────────────────
 
-const loadContext = async (): Promise<{ properties: Property[]; contracts: Contract[] }> => {
+const loadContext = async (): Promise<{
+  properties: Property[];
+  contracts: Contract[];
+  accesorioIds: Set<number>;
+}> => {
   const db = await initDB();
-  const [properties, contracts] = await Promise.all([db.getAll('properties'), db.getAll('contracts')]);
-  return { properties, contracts };
+  const [properties, contracts, vinculos] = await Promise.all([
+    db.getAll('properties'),
+    db.getAll('contracts'),
+    db.getAll('vinculosAccesorio'),
+  ]);
+  // IDs de inmuebles que son accesorios ACTIVOS (parking/trastero) de un piso.
+  // No se excluyen del match: sirven para deshacer empates a favor del piso (el
+  // contrato de inquilino recae en la vivienda) · siguen siendo asignables por RC.
+  const accesorioIds = new Set<number>(
+    vinculos.filter((v) => v.estado === 'activo').map((v) => v.inmuebleAccesorioId),
+  );
+  return { properties, contracts, accesorioIds };
 };
 
 export const construirDraftsRentila = async (rows: RentilaRow[]): Promise<ContractDraft[]> => {
-  const { properties, contracts } = await loadContext();
-  return normalizarRentila(rows, properties, contracts);
+  const { properties, contracts, accesorioIds } = await loadContext();
+  return normalizarRentila(rows, properties, contracts, accesorioIds);
 };
 
 export const construirDraftsAtlas = async (rows: AtlasTemplateRow[]): Promise<ContractDraft[]> => {
-  const { properties, contracts } = await loadContext();
-  return normalizarAtlas(rows, properties, contracts);
+  const { properties, contracts, accesorioIds } = await loadContext();
+  return normalizarAtlas(rows, properties, contracts, accesorioIds);
 };
 
 export interface InmuebleOpcion {
@@ -498,6 +545,50 @@ export const contarHabitacionesArrendables = (p: Property): number => {
   // dato legacy venga incompleto; el resto se queda con su valor (mín. 1).
   const min = p.modoExplotacion === 'por_habitaciones' ? 2 : 1;
   return Math.max(min, n);
+};
+
+/**
+ * Inteligencia de habitación (caso Jose · "60 contratos por habitaciones").
+ * Deduce el nº de habitación de un contrato Rentila SIN depender del formato
+ * exacto que use el usuario. Prioridad:
+ *   1) sufijo explícito HX / Hab X ("4-ACEVEDO-H2" → 2).
+ *   2) si el inmueble se explota POR HABITACIONES: el código de unidad que Rentila
+ *      añade tras la identidad del piso ("…64 4I -004" → 4). Se toma el token del
+ *      nombre que NO pertenece a la identidad del inmueble, priorizando el código
+ *      zero-padded ("004", que no se confunde con la planta "4"), y se valida que
+ *      esté en [1..nº de habitaciones].
+ * Devuelve `null` si no se puede deducir con seguridad (el wizard lo preguntará).
+ */
+export const inferirHabitacion = (nombreRentila: string, inmueble?: Property | null): number | null => {
+  const hx = parseHabitacionFromRentila(nombreRentila);
+  if (hx != null) return hx;
+
+  const porHabitaciones =
+    inmueble?.modoExplotacion === 'por_habitaciones' || inmueble?.modoExplotacion === 'mixto';
+  if (!inmueble || !porHabitaciones) return null;
+
+  const total = contarHabitacionesArrendables(inmueble);
+  const idTokens = tokensInmueble(
+    [inmueble.alias, inmueble.globalAlias, inmueble.address, inmueble.province].filter(Boolean).join(' '),
+  );
+  // Discriminador = lo que queda del nombre tras quitar la identidad del inmueble.
+  const propios = tokensInmueble(nombreRentila).filter((t) => !idTokens.some((p) => tokenNear(t, p)));
+  const numericos = propios.filter((t) => /^\d{1,3}$/.test(t));
+
+  const enRango = (n: number): boolean => n >= 1 && n <= total;
+
+  // 1) Código zero-padded ("001".."0NN") · el id de unidad/habitación de Rentila.
+  const padded = numericos.find((t) => /^0\d{1,2}$/.test(t));
+  if (padded) {
+    const n = parseInt(padded, 10);
+    if (enRango(n)) return n;
+  }
+  // 2) Un único numérico no ambiguo en rango.
+  if (numericos.length === 1) {
+    const n = parseInt(numericos[0], 10);
+    if (enRango(n)) return n;
+  }
+  return null;
 };
 
 /** Opciones de inmueble para el select de la sección "Requieren revisión" (paso 3). */
