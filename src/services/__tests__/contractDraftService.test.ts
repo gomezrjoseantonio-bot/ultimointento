@@ -111,6 +111,48 @@ describe('sugerirInmueble', () => {
   });
 });
 
+// Casos reportados por Jose · sensibilidad del fuzzy match de direcciones.
+describe('sugerirInmueble · casos reales (sensibilidad direcciones)', () => {
+  const props = ([
+    { id: 10, alias: 'Piso Oviedo', address: 'Calle Fuertes Acevedo 32, 1 Dr, Oviedo' },
+    { id: 11, alias: 'CB Sant Fruitós', address: 'Carrer de Carles Buïgas 12, Sant Fruitós de Bages' },
+    { id: 12, alias: 'Tenderina 48', address: 'Calle Tenderina 48, Oviedo' },
+    { id: 13, alias: 'Tenderina 64 4I', address: 'Calle Tenderina 64, 4 Izq, Oviedo' },
+    // Dos inmuebles en Manresa: el piso y un parking accesorio.
+    { id: 14, alias: "Sant Joan d'En Coll", address: "Carrer Sant Joan d'En Coll 5, Manresa" },
+    { id: 15, alias: 'Parking Vic', address: 'Carretera de Vic 100, Manresa' },
+  ] as unknown) as Property[];
+
+  it('"4-ACEVEDO-H1" asimila a "Fuertes Acevedo" (ignora el sufijo de habitación)', () => {
+    const r = sugerirInmueble('4-ACEVEDO-H1', props);
+    expect(r.inmuebleId).toBe(10);
+    expect(r.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it('"1-SANT FRUITOS" asimila a "Carles Buïgas, Sant Fruitós"', () => {
+    const r = sugerirInmueble('1-SANT FRUITOS', props);
+    expect(r.inmuebleId).toBe(11);
+    expect(r.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it('"6-TENDERINA, 64 4I -004" distingue Tenderina 64 de Tenderina 48', () => {
+    const r = sugerirInmueble('6-TENDERINA, 64 4I -004 - 0654104TP7005S0010PP', props);
+    expect(r.inmuebleId).toBe(13);
+    expect(r.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it('"2-MANRESA" con piso Y parking en Manresa → ambiguo → a revisar (no auto-asigna el parking)', () => {
+    const r = sugerirInmueble('2-MANRESA', props);
+    // Confianza por debajo del umbral ⇒ el wizard lo manda a "revisar".
+    expect(r.confianza).toBeLessThan(0.7);
+  });
+
+  it('typo/acento leve sigue casando ("acevdo" → Acevedo)', () => {
+    const r = sugerirInmueble('ACEVDO', props);
+    expect(r.inmuebleId).toBe(10);
+  });
+});
+
 describe('detectarDuplicado', () => {
   it('detecta duplicado por NIF en el mismo inmueble', () => {
     const r = detectarDuplicado(
