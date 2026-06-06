@@ -506,8 +506,9 @@ const loadContext = async (): Promise<{
     db.getAll('contracts'),
     db.getAll('vinculosAccesorio'),
   ]);
-  // IDs de inmuebles que son accesorios ACTIVOS (parking/trastero) de un piso:
-  // se excluyen del match porque un contrato de inquilino no recae en el accesorio.
+  // IDs de inmuebles que son accesorios ACTIVOS (parking/trastero) de un piso.
+  // No se excluyen del match: sirven para deshacer empates a favor del piso (el
+  // contrato de inquilino recae en la vivienda) · siguen siendo asignables por RC.
   const accesorioIds = new Set<number>(
     vinculos.filter((v) => v.estado === 'activo').map((v) => v.inmuebleAccesorioId),
   );

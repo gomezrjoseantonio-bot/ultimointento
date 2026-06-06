@@ -300,8 +300,9 @@ describe('normalizarRentila · habitación auto en por_habitaciones (end-to-end)
 });
 
 // Caso Jose · "2-MANRESA" empataba piso vs parking → revisar. Si el parking está
-// declarado como ACCESORIO del piso (vínculo AEAT), deja de competir y casa el piso.
-describe('sugerirInmueble · excluye inmuebles accesorios (parking/trastero)', () => {
+// declarado como ACCESORIO del piso (vínculo AEAT), pierde el empate frente al piso
+// pero sigue siendo asignable por RC explícita (accesoriedad por ejercicio).
+describe('sugerirInmueble · accesorios (parking/trastero) desempatan a favor del piso', () => {
   const props = ([
     { id: 14, alias: "Sant Joan d'En Coll", address: "Carrer Sant Joan d'En Coll 5", province: 'Manresa', cadastralReference: '1234567AB1234C1234DE' },
     { id: 15, alias: 'Parking Manresa', address: "Carrer Sant Joan d'En Coll 5 parking", province: 'Manresa', cadastralReference: '7949807TP6074N0006YM' },
