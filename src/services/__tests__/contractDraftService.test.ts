@@ -113,14 +113,16 @@ describe('sugerirInmueble', () => {
 
 // Casos reportados por Jose · sensibilidad del fuzzy match de direcciones.
 describe('sugerirInmueble · casos reales (sensibilidad direcciones)', () => {
+  // Réplica de cómo crea las fichas el import de la declaración AEAT:
+  // address = calle · province = MUNICIPIO (splitAddress → province: municipality).
   const props = ([
-    { id: 10, alias: 'Piso Oviedo', address: 'Calle Fuertes Acevedo 32, 1 Dr, Oviedo' },
-    { id: 11, alias: 'CB Sant Fruitós', address: 'Carrer de Carles Buïgas 12, Sant Fruitós de Bages' },
-    { id: 12, alias: 'Tenderina 48', address: 'Calle Tenderina 48, Oviedo' },
-    { id: 13, alias: 'Tenderina 64 4I', address: 'Calle Tenderina 64, 4 Izq, Oviedo' },
-    // Dos inmuebles en Manresa: el piso y un parking accesorio.
-    { id: 14, alias: "Sant Joan d'En Coll", address: "Carrer Sant Joan d'En Coll 5, Manresa" },
-    { id: 15, alias: 'Parking Vic', address: 'Carretera de Vic 100, Manresa' },
+    { id: 10, alias: 'Piso Oviedo', address: 'Calle Fuertes Acevedo 32, 1 Dr', province: 'Oviedo' },
+    { id: 11, alias: 'CB Sant Fruitós', address: 'Carrer de Carles Buïgas 12', province: 'Sant Fruitós de Bages' },
+    { id: 12, alias: 'Tenderina 48', address: 'Calle Tenderina 48', province: 'Oviedo' },
+    { id: 13, alias: 'Tenderina 64 4I', address: 'Calle Tenderina 64, 4 Izq', province: 'Oviedo' },
+    // Dos inmuebles en Manresa: el piso y un parking accesorio (municipio en province).
+    { id: 14, alias: "Sant Joan d'En Coll", address: "Carrer Sant Joan d'En Coll 5", province: 'Manresa' },
+    { id: 15, alias: 'Parking Vic', address: 'Carretera de Vic 100', province: 'Manresa' },
   ] as unknown) as Property[];
 
   it('"4-ACEVEDO-H1" asimila a "Fuertes Acevedo" (ignora el sufijo de habitación)', () => {

@@ -259,7 +259,10 @@ export const sugerirInmueble = (
   let second: { inmuebleId: number | null; score: number } = { inmuebleId: null, score: 0 };
   for (const p of properties) {
     if (p.id == null) continue;
-    const campos = [p.alias, p.globalAlias, p.address].filter(Boolean) as string[];
+    // `province` se incluye a propósito: el import de la declaración AEAT guarda
+    // ahí el MUNICIPIO (splitAddress → province: municipality), que es justo el
+    // identificador que usan los nombres Rentila ("1-SANT FRUITOS", "2-MANRESA").
+    const campos = [p.alias, p.globalAlias, p.address, p.province].filter(Boolean) as string[];
     let s = 0;
     for (const campo of campos) s = Math.max(s, puntuarInmueble(queryTokens, campo));
     if (s > best.score) {

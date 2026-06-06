@@ -33,10 +33,17 @@ const ESTADO_PILL: Record<BoteAnualSinIdentificar['estado'], { variant: PillVari
 // convención que formatFechaFinContrato.
 const MES_AÑO = new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
-/** "feb 2023" a partir de una fecha ISO; cadena vacía si no parsea. */
+/**
+ * "feb 2023" a partir de una fecha ISO; cadena vacía si no parsea.
+ * Construye el Date EXPLÍCITAMENTE en UTC desde la parte civil (YYYY-MM-DD) en
+ * lugar de fiarse de `new Date(iso)` (parseo de date-only históricamente
+ * inconsistente entre runtimes) · combinado con MES_AÑO en timeZone UTC, el
+ * resultado es estable en cualquier huso.
+ */
 function formatMesAño(iso?: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
+  const m = (iso ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
   return Number.isNaN(d.getTime()) ? '' : MES_AÑO.format(d).replace('.', '');
 }
 
