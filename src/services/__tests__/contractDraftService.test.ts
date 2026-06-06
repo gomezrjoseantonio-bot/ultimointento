@@ -303,8 +303,8 @@ describe('normalizarRentila · habitación auto en por_habitaciones (end-to-end)
 // declarado como ACCESORIO del piso (vínculo AEAT), deja de competir y casa el piso.
 describe('sugerirInmueble · excluye inmuebles accesorios (parking/trastero)', () => {
   const props = ([
-    { id: 14, alias: "Sant Joan d'En Coll", address: "Carrer Sant Joan d'En Coll 5", province: 'Manresa', cadastralReference: 'AAAA111' },
-    { id: 15, alias: 'Parking Manresa', address: 'Carrer Sant Joan d\'En Coll 5 parking', province: 'Manresa', cadastralReference: 'BBBB222' },
+    { id: 14, alias: "Sant Joan d'En Coll", address: "Carrer Sant Joan d'En Coll 5", province: 'Manresa', cadastralReference: '1234567AB1234C1234DE' },
+    { id: 15, alias: 'Parking Manresa', address: "Carrer Sant Joan d'En Coll 5 parking", province: 'Manresa', cadastralReference: '7949807TP6074N0006YM' },
   ] as unknown) as Property[];
 
   it('sin info de accesorio → ambiguo → a revisar (comportamiento previo)', () => {
@@ -312,14 +312,15 @@ describe('sugerirInmueble · excluye inmuebles accesorios (parking/trastero)', (
     expect(r.confianza).toBeLessThan(0.7);
   });
 
-  it('con el parking marcado como accesorio → casa el PISO con confianza alta', () => {
+  it('con el parking marcado como accesorio → en empate de nombre gana el PISO', () => {
     const r = sugerirInmueble('2-MANRESA', props, new Set([15]));
     expect(r.inmuebleId).toBe(14);
     expect(r.confianza).toBeGreaterThanOrEqual(0.7);
   });
 
-  it('una RC que apunta al accesorio NO lo asigna (no es destino de contrato)', () => {
-    const r = sugerirInmueble('Parking - BBBB222', props, new Set([15]));
-    expect(r.inmuebleId).not.toBe(15);
+  it('RC explícita al accesorio SÍ lo asigna (ese año se alquila suelto · accesoriedad por ejercicio)', () => {
+    const r = sugerirInmueble('Parking - 7949807TP6074N0006YM', props, new Set([15]));
+    expect(r.inmuebleId).toBe(15);
+    expect(r.confianza).toBe(1.0);
   });
 });

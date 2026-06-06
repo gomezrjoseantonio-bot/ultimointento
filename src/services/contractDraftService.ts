@@ -250,20 +250,21 @@ export const sugerirInmueble = (
   properties: Property[],
   accesorioIds?: Set<number>,
 ): { inmuebleId: number | null; confianza: number } => {
-  // Un inmueble ACCESORIO (parking/trastero vinculado a un piso en la declaración)
-  // NUNCA es destino de un contrato de inquilino: se alquila con el piso, no por
-  // separado. Se excluye de los candidatos para que no genere falsos empates
-  // (caso Jose · "2-MANRESA" empataba piso vs parking y caía a revisar).
+  // Un inmueble ACCESORIO (parking/trastero vinculado a un piso) NO compite con su
+  // piso: en un empate de nombre gana el piso (el contrato de inquilino recae en la
+  // vivienda, no en el accesorio · caso Jose "2-MANRESA" piso vs parking). Pero NO
+  // se excluye: la accesoriedad es por ejercicio (un año vinculado, otro suelto), así
+  // que el accesorio SIGUE siendo asignable si el contrato lo referencia de verdad
+  // —sobre todo por RC explícita, que es como se vincula en el propio contrato—.
   const esAccesorio = (id: number | null | undefined): boolean =>
     id != null && !!accesorioIds && accesorioIds.has(id);
 
-  // 1 · Match exacto por referencia catastral.
+  // 1 · Match exacto por referencia catastral · señal EXPLÍCITA: vale también para
+  // un accesorio (si el contrato trae su RC es que ese año se alquila por separado).
   const rcMatch = (textoExcel || '').toUpperCase().match(RC_REGEX);
   if (rcMatch) {
     const rc = normalizeDni(rcMatch[0]);
-    const byRc = properties.find(
-      (p) => p.cadastralReference && normalizeDni(p.cadastralReference) === rc && !esAccesorio(p.id),
-    );
+    const byRc = properties.find((p) => p.cadastralReference && normalizeDni(p.cadastralReference) === rc);
     if (byRc?.id != null) return { inmuebleId: byRc.id, confianza: 1.0 };
   }
 
@@ -271,33 +272,43 @@ export const sugerirInmueble = (
   const queryTokens = tokensInmueble(textoExcel);
   if (!queryTokens.length) return { inmuebleId: null, confianza: 0 };
 
-  let best: { inmuebleId: number | null; score: number } = { inmuebleId: null, score: 0 };
-  let second: { inmuebleId: number | null; score: number } = { inmuebleId: null, score: 0 };
+  type Cand = { inmuebleId: number | null; score: number; acc: boolean };
+  // Mejor candidato por score; a igualdad de score gana el NO accesorio (el piso).
+  const mejora = (a: Cand, b: Cand): boolean =>
+    a.score > b.score || (a.score === b.score && !a.acc && b.acc);
+
+  let best: Cand = { inmuebleId: null, score: 0, acc: false };
+  let second: Cand = { inmuebleId: null, score: 0, acc: false };
   for (const p of properties) {
-    if (p.id == null || esAccesorio(p.id)) continue;
+    if (p.id == null) continue;
     // `province` se incluye a propósito: el import de la declaración AEAT guarda
     // ahí el MUNICIPIO (splitAddress → province: municipality), que es justo el
     // identificador que usan los nombres Rentila ("1-SANT FRUITOS", "2-MANRESA").
     const campos = [p.alias, p.globalAlias, p.address, p.province].filter(Boolean) as string[];
     let s = 0;
     for (const campo of campos) s = Math.max(s, puntuarInmueble(queryTokens, campo));
-    if (s > best.score) {
+    const cand: Cand = { inmuebleId: p.id, score: s, acc: esAccesorio(p.id) };
+    if (mejora(cand, best)) {
       second = best;
-      best = { inmuebleId: p.id, score: s };
-    } else if (s > second.score) {
-      second = { inmuebleId: p.id, score: s };
+      best = cand;
+    } else if (mejora(cand, second)) {
+      second = cand;
     }
   }
 
   // 3 · Guarda de ambigüedad · dos inmuebles DISTINTOS casi empatados ⇒ incierto.
   // Caso real: "2-MANRESA" cuando hay un piso Y un parking en Manresa; antes se
   // auto-asignaba al parking. Ahora la confianza baja del umbral y va a "revisar".
+  // EXCEPCIÓN: si el 2.º es un accesorio y el 1.º el piso, NO es ambiguo (el piso
+  // gana siempre al accesorio que cuelga de él).
   let confianza = best.score;
+  const empateConAccesorio = !best.acc && second.acc;
   if (
     best.inmuebleId != null &&
     second.inmuebleId != null &&
     second.inmuebleId !== best.inmuebleId &&
-    best.score - second.score < MARGEN_AMBIGUO
+    best.score - second.score < MARGEN_AMBIGUO &&
+    !empateConAccesorio
   ) {
     confianza = Math.min(best.score, UMBRAL_CONFIANZA_INMUEBLE - 0.1);
   }
