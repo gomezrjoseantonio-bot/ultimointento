@@ -132,6 +132,11 @@ const normalizeName = (text: string): string => {
   t = t.replace(RC_REGEX_GLOBAL, ' ');         // quitar referencias catastrales
   t = t.replace(/^\s*\d+\s*[-_.]\s*/, ' ');    // quitar prefijo "5-" / "01-"
   t = t.replace(/[^a-z0-9ñ]+/g, ' ');          // separadores → espacio
+  // Planta+mano canónica · "4i"/"4 izq" → "4 izquierda" · "4d"/"4 dcha" → "4 derecha".
+  // Así "TENDERINA 64 4I" casa con "Tenderina 64 4 Izq" y se distingue de "4D/Dr"
+  // sea cual sea la notación que use el usuario (caso Jose · pisos Iz/Dr).
+  t = t.replace(/\b(\d{1,2})\s*(izquierda|izqda|izda|izq|iz|i)\b/g, '$1 izquierda');
+  t = t.replace(/\b(\d{1,2})\s*(derecha|dcha|dch|der|dr|d)\b/g, '$1 derecha');
   return t.replace(/\s+/g, ' ').trim();
 };
 
@@ -196,12 +201,13 @@ export const similarity = (a: string, b: string): number => {
 const stripRoomSuffix = (t: string): string => (t || '').replace(/[\s\-_](hab|h)\s?\d+\s*$/i, '');
 
 // Palabras genéricas de dirección que NO identifican el inmueble (ES/CA).
+// OJO · "izquierda"/"derecha" NO van aquí: tras la normalización de planta son la
+// señal que distingue dos pisos del mismo número (4I vs 4D · caso Jose).
 const STOPWORDS_DIR = new Set([
   'de', 'del', 'la', 'el', 'los', 'las', 'y', 'o', 'a', 'en', 'un', 'una', 'al', 'con',
   'calle', 'carrer', 'c', 'avenida', 'avinguda', 'avda', 'av', 'passeig', 'paseo', 'pso',
   'plaza', 'plaça', 'pza', 'pl', 'carretera', 'ctra', 'camino', 'cami', 'ronda', 'via',
   'numero', 'num', 'n', 'piso', 'pta', 'puerta', 'escalera', 'esc', 'bajo', 'bis', 'sn',
-  'izq', 'izquierda', 'dcha', 'derecha', 'dr', 'iz', 'd',
 ]);
 
 const esTokenUtil = (w: string): boolean =>
@@ -380,6 +386,9 @@ export const normalizarRentila = (
     const { inmuebleId, confianza } = sugerirInmueble(row.propiedad, properties);
     const { principal, cotitulares } = detectarCotitulares(row.inquilino);
     const inmuebleIdSugerido = confianza >= UMBRAL_CONFIANZA_INMUEBLE ? inmuebleId : null;
+    const inmuebleMatch = inmuebleIdSugerido != null
+      ? properties.find((p) => p.id === inmuebleIdSugerido) ?? null
+      : null;
 
     // FIX § 1.3 problema 3 · Rentila SIEMPRE trae nombre. Si llega vacío es un
     // BUG del fichero/parseo · se reporta en consola (NO se pinta "—" en silencio).
@@ -406,9 +415,10 @@ export const normalizarRentila = (
       fechaFin: row.finAlquiler,
       rentaMensual: row.alquiler,
       fianza: row.fianza,
-      // Sufijo HX del nombre del piso · se resuelve a habitación en creación
-      // según el modoExplotacion del inmueble (§ 1.3).
-      habitacionParseada: parseHabitacionFromRentila(row.propiedad),
+      // Habitación deducida del nombre · sufijo HX explícito o, si el inmueble
+      // resuelto se explota por habitaciones, el código de unidad ("…-004" → 4).
+      // Si no se puede deducir, el wizard la pide (§ 1.3 · caso Jose).
+      habitacionParseada: inferirHabitacion(row.propiedad, inmuebleMatch),
       habitacionConfirmada: null,
     };
 
@@ -498,6 +508,50 @@ export const contarHabitacionesArrendables = (p: Property): number => {
   // dato legacy venga incompleto; el resto se queda con su valor (mín. 1).
   const min = p.modoExplotacion === 'por_habitaciones' ? 2 : 1;
   return Math.max(min, n);
+};
+
+/**
+ * Inteligencia de habitación (caso Jose · "60 contratos por habitaciones").
+ * Deduce el nº de habitación de un contrato Rentila SIN depender del formato
+ * exacto que use el usuario. Prioridad:
+ *   1) sufijo explícito HX / Hab X ("4-ACEVEDO-H2" → 2).
+ *   2) si el inmueble se explota POR HABITACIONES: el código de unidad que Rentila
+ *      añade tras la identidad del piso ("…64 4I -004" → 4). Se toma el token del
+ *      nombre que NO pertenece a la identidad del inmueble, priorizando el código
+ *      zero-padded ("004", que no se confunde con la planta "4"), y se valida que
+ *      esté en [1..nº de habitaciones].
+ * Devuelve `null` si no se puede deducir con seguridad (el wizard lo preguntará).
+ */
+export const inferirHabitacion = (nombreRentila: string, inmueble?: Property | null): number | null => {
+  const hx = parseHabitacionFromRentila(nombreRentila);
+  if (hx != null) return hx;
+
+  const porHabitaciones =
+    inmueble?.modoExplotacion === 'por_habitaciones' || inmueble?.modoExplotacion === 'mixto';
+  if (!inmueble || !porHabitaciones) return null;
+
+  const total = contarHabitacionesArrendables(inmueble);
+  const idTokens = tokensInmueble(
+    [inmueble.alias, inmueble.globalAlias, inmueble.address, inmueble.province].filter(Boolean).join(' '),
+  );
+  // Discriminador = lo que queda del nombre tras quitar la identidad del inmueble.
+  const propios = tokensInmueble(nombreRentila).filter((t) => !idTokens.some((p) => tokenNear(t, p)));
+  const numericos = propios.filter((t) => /^\d{1,3}$/.test(t));
+
+  const enRango = (n: number): boolean => n >= 1 && n <= total;
+
+  // 1) Código zero-padded ("001".."0NN") · el id de unidad/habitación de Rentila.
+  const padded = numericos.find((t) => /^0\d{1,2}$/.test(t));
+  if (padded) {
+    const n = parseInt(padded, 10);
+    if (enRango(n)) return n;
+  }
+  // 2) Un único numérico no ambiguo en rango.
+  if (numericos.length === 1) {
+    const n = parseInt(numericos[0], 10);
+    if (enRango(n)) return n;
+  }
+  return null;
 };
 
 /** Opciones de inmueble para el select de la sección "Requieren revisión" (paso 3). */
