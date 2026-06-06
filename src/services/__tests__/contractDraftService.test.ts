@@ -298,3 +298,28 @@ describe('normalizarRentila · habitación auto en por_habitaciones (end-to-end)
     expect(draft.habitacionParseada).toBe(4);
   });
 });
+
+// Caso Jose · "2-MANRESA" empataba piso vs parking → revisar. Si el parking está
+// declarado como ACCESORIO del piso (vínculo AEAT), deja de competir y casa el piso.
+describe('sugerirInmueble · excluye inmuebles accesorios (parking/trastero)', () => {
+  const props = ([
+    { id: 14, alias: "Sant Joan d'En Coll", address: "Carrer Sant Joan d'En Coll 5", province: 'Manresa', cadastralReference: 'AAAA111' },
+    { id: 15, alias: 'Parking Manresa', address: 'Carrer Sant Joan d\'En Coll 5 parking', province: 'Manresa', cadastralReference: 'BBBB222' },
+  ] as unknown) as Property[];
+
+  it('sin info de accesorio → ambiguo → a revisar (comportamiento previo)', () => {
+    const r = sugerirInmueble('2-MANRESA', props);
+    expect(r.confianza).toBeLessThan(0.7);
+  });
+
+  it('con el parking marcado como accesorio → casa el PISO con confianza alta', () => {
+    const r = sugerirInmueble('2-MANRESA', props, new Set([15]));
+    expect(r.inmuebleId).toBe(14);
+    expect(r.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it('una RC que apunta al accesorio NO lo asigna (no es destino de contrato)', () => {
+    const r = sugerirInmueble('Parking - BBBB222', props, new Set([15]));
+    expect(r.inmuebleId).not.toBe(15);
+  });
+});

@@ -248,12 +248,22 @@ const MARGEN_AMBIGUO = 0.15;
 export const sugerirInmueble = (
   textoExcel: string,
   properties: Property[],
+  accesorioIds?: Set<number>,
 ): { inmuebleId: number | null; confianza: number } => {
+  // Un inmueble ACCESORIO (parking/trastero vinculado a un piso en la declaración)
+  // NUNCA es destino de un contrato de inquilino: se alquila con el piso, no por
+  // separado. Se excluye de los candidatos para que no genere falsos empates
+  // (caso Jose · "2-MANRESA" empataba piso vs parking y caía a revisar).
+  const esAccesorio = (id: number | null | undefined): boolean =>
+    id != null && !!accesorioIds && accesorioIds.has(id);
+
   // 1 · Match exacto por referencia catastral.
   const rcMatch = (textoExcel || '').toUpperCase().match(RC_REGEX);
   if (rcMatch) {
     const rc = normalizeDni(rcMatch[0]);
-    const byRc = properties.find((p) => p.cadastralReference && normalizeDni(p.cadastralReference) === rc);
+    const byRc = properties.find(
+      (p) => p.cadastralReference && normalizeDni(p.cadastralReference) === rc && !esAccesorio(p.id),
+    );
     if (byRc?.id != null) return { inmuebleId: byRc.id, confianza: 1.0 };
   }
 
@@ -264,7 +274,7 @@ export const sugerirInmueble = (
   let best: { inmuebleId: number | null; score: number } = { inmuebleId: null, score: 0 };
   let second: { inmuebleId: number | null; score: number } = { inmuebleId: null, score: 0 };
   for (const p of properties) {
-    if (p.id == null) continue;
+    if (p.id == null || esAccesorio(p.id)) continue;
     // `province` se incluye a propósito: el import de la declaración AEAT guarda
     // ahí el MUNICIPIO (splitAddress → province: municipality), que es justo el
     // identificador que usan los nombres Rentila ("1-SANT FRUITOS", "2-MANRESA").
@@ -381,9 +391,10 @@ export const normalizarRentila = (
   rows: RentilaRow[],
   properties: Property[],
   existingContracts: Contract[],
+  accesorioIds?: Set<number>,
 ): ContractDraft[] =>
   rows.map((row) => {
-    const { inmuebleId, confianza } = sugerirInmueble(row.propiedad, properties);
+    const { inmuebleId, confianza } = sugerirInmueble(row.propiedad, properties, accesorioIds);
     const { principal, cotitulares } = detectarCotitulares(row.inquilino);
     const inmuebleIdSugerido = confianza >= UMBRAL_CONFIANZA_INMUEBLE ? inmuebleId : null;
     const inmuebleMatch = inmuebleIdSugerido != null
@@ -430,9 +441,10 @@ export const normalizarAtlas = (
   rows: AtlasTemplateRow[],
   properties: Property[],
   existingContracts: Contract[],
+  accesorioIds?: Set<number>,
 ): ContractDraft[] =>
   rows.map((row) => {
-    const { inmuebleId, confianza } = sugerirInmueble(row.inmuebleNombreOrRC, properties);
+    const { inmuebleId, confianza } = sugerirInmueble(row.inmuebleNombreOrRC, properties, accesorioIds);
     const { principal, cotitulares } = detectarCotitulares(row.inquilinoNombre);
     const inmuebleIdSugerido = confianza >= UMBRAL_CONFIANZA_INMUEBLE ? inmuebleId : null;
 
@@ -472,20 +484,33 @@ export const agruparPorSeccion = (
 
 // ───────────────────────── Wrappers con BD (para la UI) ─────────────────────────
 
-const loadContext = async (): Promise<{ properties: Property[]; contracts: Contract[] }> => {
+const loadContext = async (): Promise<{
+  properties: Property[];
+  contracts: Contract[];
+  accesorioIds: Set<number>;
+}> => {
   const db = await initDB();
-  const [properties, contracts] = await Promise.all([db.getAll('properties'), db.getAll('contracts')]);
-  return { properties, contracts };
+  const [properties, contracts, vinculos] = await Promise.all([
+    db.getAll('properties'),
+    db.getAll('contracts'),
+    db.getAll('vinculosAccesorio'),
+  ]);
+  // IDs de inmuebles que son accesorios ACTIVOS (parking/trastero) de un piso:
+  // se excluyen del match porque un contrato de inquilino no recae en el accesorio.
+  const accesorioIds = new Set<number>(
+    vinculos.filter((v) => v.estado === 'activo').map((v) => v.inmuebleAccesorioId),
+  );
+  return { properties, contracts, accesorioIds };
 };
 
 export const construirDraftsRentila = async (rows: RentilaRow[]): Promise<ContractDraft[]> => {
-  const { properties, contracts } = await loadContext();
-  return normalizarRentila(rows, properties, contracts);
+  const { properties, contracts, accesorioIds } = await loadContext();
+  return normalizarRentila(rows, properties, contracts, accesorioIds);
 };
 
 export const construirDraftsAtlas = async (rows: AtlasTemplateRow[]): Promise<ContractDraft[]> => {
-  const { properties, contracts } = await loadContext();
-  return normalizarAtlas(rows, properties, contracts);
+  const { properties, contracts, accesorioIds } = await loadContext();
+  return normalizarAtlas(rows, properties, contracts, accesorioIds);
 };
 
 export interface InmuebleOpcion {
