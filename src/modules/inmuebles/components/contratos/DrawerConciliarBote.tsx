@@ -27,7 +27,11 @@ const ESTADO_PILL: Record<BoteAnualSinIdentificar['estado'], { variant: PillVari
   sobre_asignado: { variant: 'gold', label: 'Sobre-asignado' },
 };
 
-const MES_AÑO = new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' });
+// timeZone 'UTC' · las fechas de contrato son fechas-calendario ISO (YYYY-MM-DD).
+// `new Date('2024-09-01')` es medianoche UTC; sin fijar la zona, en husos detrás
+// de UTC se renderiza el día anterior ("ago 2024" en vez de "sept 2024"). Misma
+// convención que formatFechaFinContrato.
+const MES_AÑO = new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 /** "feb 2023" a partir de una fecha ISO; cadena vacía si no parsea. */
 function formatMesAño(iso?: string): string {
