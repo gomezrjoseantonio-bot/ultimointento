@@ -153,9 +153,19 @@ export const toIsoDate = (value: unknown): string => {
 
   const parts = raw.replace(/\./g, '/').replace(/-/g, '/').split('/');
   if (parts.length === 3) {
-    const [d, m, y] = parts;
-    if (y.length === 4) {
-      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    const [dStr, mStr, yStr] = parts;
+    if (yStr.length === 4) {
+      const y = Number(yStr);
+      const m = Number(mStr);
+      const d = Number(dStr);
+      if (Number.isInteger(y) && Number.isInteger(m) && m >= 1 && m <= 12 && Number.isInteger(d) && d >= 1) {
+        // Rentila exporta a veces días imposibles ("31/06/2026", junio no tiene 31).
+        // Acotamos al último día real del mes para NO saltar de mes en silencio
+        // (un `new Date('2026-06-31')` rodaría a julio y corrompería el dato).
+        const diasMes = new Date(Date.UTC(y, m, 0)).getUTCDate();
+        const dd = Math.min(d, diasMes);
+        return `${yStr}-${String(m).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+      }
     }
   }
 

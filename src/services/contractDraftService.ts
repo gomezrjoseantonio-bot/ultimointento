@@ -189,8 +189,56 @@ export const similarity = (a: string, b: string): number => {
 /**
  * Sugiere un inmueble para un texto crudo del Excel.
  * 1) RC exacta → confianza 1.0
- * 2) Nombre/alias/dirección normalizados → mejor similitud encontrada
+ * 2) Tokens identificativos → coeficiente de solapamiento + guarda de ambigüedad
  */
+
+/** Quita el sufijo de habitación (…-H1 / … Hab 4) antes de tokenizar. */
+const stripRoomSuffix = (t: string): string => (t || '').replace(/[\s\-_](hab|h)\s?\d+\s*$/i, '');
+
+// Palabras genéricas de dirección que NO identifican el inmueble (ES/CA).
+const STOPWORDS_DIR = new Set([
+  'de', 'del', 'la', 'el', 'los', 'las', 'y', 'o', 'a', 'en', 'un', 'una', 'al', 'con',
+  'calle', 'carrer', 'c', 'avenida', 'avinguda', 'avda', 'av', 'passeig', 'paseo', 'pso',
+  'plaza', 'plaça', 'pza', 'pl', 'carretera', 'ctra', 'camino', 'cami', 'ronda', 'via',
+  'numero', 'num', 'n', 'piso', 'pta', 'puerta', 'escalera', 'esc', 'bajo', 'bis', 'sn',
+  'izq', 'izquierda', 'dcha', 'derecha', 'dr', 'iz', 'd',
+]);
+
+const esTokenUtil = (w: string): boolean =>
+  !!w && w.length > 1 && !STOPWORDS_DIR.has(w) && !/^\d{5,}$/.test(w); // descarta CP y monosílabos
+
+/** Tokens identificativos (sin prefijo "N-", RC, sufijo de habitación ni ruido). */
+export const tokensInmueble = (texto: string): string[] =>
+  Array.from(new Set(normalizeName(stripRoomSuffix(texto)).split(' ').filter(esTokenUtil)));
+
+/** Dos tokens "iguales" tolerando un error tipográfico/acento en palabras largas. */
+const tokenNear = (a: string, b: string): boolean => {
+  if (a === b) return true;
+  if (a.length < 4 || b.length < 4 || Math.abs(a.length - b.length) > 2) return false;
+  return levenshtein(a, b) <= (Math.max(a.length, b.length) <= 6 ? 1 : 2);
+};
+
+/**
+ * Coeficiente de solapamiento (Szymkiewicz–Simpson) entre los tokens de la
+ * consulta y los del inmueble: `matched / min(|query|, |inmueble|)`. Premia que
+ * el conjunto más corto quede contenido en el otro, de modo que un nombre corto
+ * ("Acevedo") puntúe alto dentro de una dirección larga ("C/ Fuertes Acevedo 32…")
+ * sin que las palabras de relleno de la dirección lo penalicen.
+ */
+export const puntuarInmueble = (queryTokens: string[], propTexto: string): number => {
+  const propTokens = tokensInmueble(propTexto);
+  if (!queryTokens.length || !propTokens.length) return 0;
+  let matched = 0;
+  for (const q of queryTokens) {
+    if (propTokens.some((p) => tokenNear(q, p))) matched += 1;
+  }
+  if (matched === 0) return 0;
+  return matched / Math.min(queryTokens.length, propTokens.length);
+};
+
+/** Margen mínimo entre el 1.º y el 2.º candidato para considerar el match seguro. */
+const MARGEN_AMBIGUO = 0.15;
+
 export const sugerirInmueble = (
   textoExcel: string,
   properties: Property[],
@@ -203,21 +251,42 @@ export const sugerirInmueble = (
     if (byRc?.id != null) return { inmuebleId: byRc.id, confianza: 1.0 };
   }
 
-  // 2 · Match por nombre/alias/dirección normalizados.
-  const target = normalizeName(textoExcel);
-  if (!target) return { inmuebleId: null, confianza: 0 };
+  // 2 · Match por tokens identificativos contra alias/globalAlias/dirección.
+  const queryTokens = tokensInmueble(textoExcel);
+  if (!queryTokens.length) return { inmuebleId: null, confianza: 0 };
 
-  let best: { inmuebleId: number | null; confianza: number } = { inmuebleId: null, confianza: 0 };
+  let best: { inmuebleId: number | null; score: number } = { inmuebleId: null, score: 0 };
+  let second: { inmuebleId: number | null; score: number } = { inmuebleId: null, score: 0 };
   for (const p of properties) {
     if (p.id == null) continue;
-    const candidates = [p.alias, p.globalAlias, p.address].filter(Boolean) as string[];
-    for (const candidate of candidates) {
-      const score = similarity(target, normalizeName(candidate));
-      if (score > best.confianza) best = { inmuebleId: p.id, confianza: score };
+    // `province` se incluye a propósito: el import de la declaración AEAT guarda
+    // ahí el MUNICIPIO (splitAddress → province: municipality), que es justo el
+    // identificador que usan los nombres Rentila ("1-SANT FRUITOS", "2-MANRESA").
+    const campos = [p.alias, p.globalAlias, p.address, p.province].filter(Boolean) as string[];
+    let s = 0;
+    for (const campo of campos) s = Math.max(s, puntuarInmueble(queryTokens, campo));
+    if (s > best.score) {
+      second = best;
+      best = { inmuebleId: p.id, score: s };
+    } else if (s > second.score) {
+      second = { inmuebleId: p.id, score: s };
     }
   }
 
-  return best;
+  // 3 · Guarda de ambigüedad · dos inmuebles DISTINTOS casi empatados ⇒ incierto.
+  // Caso real: "2-MANRESA" cuando hay un piso Y un parking en Manresa; antes se
+  // auto-asignaba al parking. Ahora la confianza baja del umbral y va a "revisar".
+  let confianza = best.score;
+  if (
+    best.inmuebleId != null &&
+    second.inmuebleId != null &&
+    second.inmuebleId !== best.inmuebleId &&
+    best.score - second.score < MARGEN_AMBIGUO
+  ) {
+    confianza = Math.min(best.score, UMBRAL_CONFIANZA_INMUEBLE - 0.1);
+  }
+
+  return { inmuebleId: best.inmuebleId, confianza };
 };
 
 // ───────────────────────────── Duplicados ─────────────────────────────
