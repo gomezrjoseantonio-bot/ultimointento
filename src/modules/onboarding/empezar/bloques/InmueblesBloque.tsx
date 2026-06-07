@@ -8,8 +8,14 @@ import { useNavigate } from 'react-router-dom';
 import { Icons } from '../../../../design-system/v5';
 import DobleViaLayout from './DobleViaLayout';
 import ViaCard from './ViaCard';
-import ImportarInmueblesWizard from './ImportarInmueblesWizard';
+import ImportarPlantillaWizard, { type PlantillaRevisionView } from './ImportarPlantillaWizard';
 import { useOnboarding } from '../OnboardingContext';
+import {
+  parseInmueblesTemplateXlsx,
+  InmueblesTemplateFormatError,
+  type InmuebleTemplateRow,
+} from '../../../../services/inmueblesTemplateParserService';
+import { revisarRows, crearInmueblesDesdeRows } from '../../../../services/inmueblesImportCreationService';
 import styles from '../empezar.module.css';
 
 const InmueblesBloque: React.FC = () => {
@@ -51,10 +57,31 @@ const InmueblesBloque: React.FC = () => {
       </div>
 
       {mostrarPlantilla && (
-        <ImportarInmueblesWizard
-          onCreated={() => {
-            void refresh();
+        <ImportarPlantillaWizard<InmuebleTemplateRow>
+          templateFilename="plantilla-inmuebles-atlas.xlsx"
+          uploadSub="Una fila por inmueble · revisión antes de crear nada"
+          entidad="inmueble(s)"
+          parse={parseInmueblesTemplateXlsx}
+          revisar={(rows): PlantillaRevisionView[] =>
+            revisarRows(rows).map((r) => ({
+              label: r.row.alias || '(sin alias)',
+              sub: r.valido
+                ? `${r.row.modoExplotacion === 'por_habitaciones' ? 'Por habitaciones' : 'Piso completo'}${r.avisos.length ? ' · ' + r.avisos.join(' · ') : ''}`
+                : `No se creará · ${r.motivo}`,
+              amount: r.row.precioCompra,
+              valido: r.valido,
+            }))
+          }
+          crear={async (rows) => {
+            const res = await crearInmueblesDesdeRows(rows);
+            return {
+              creados: res.creados,
+              resumen: `${res.creados} inmueble(s) creados${res.saltados ? ` · ${res.saltados} ya existían` : ''}${res.errores.length ? ` · ${res.errores.length} con error` : ''}.`,
+              avisos: res.avisos.map((a) => `${a.alias} · ${a.aviso}`),
+            };
           }}
+          formatError={(e) => (e instanceof InmueblesTemplateFormatError ? e.message : 'No se pudo leer el fichero')}
+          onCreated={() => void refresh()}
         />
       )}
 
