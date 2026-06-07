@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Onboarding día 0 · v1</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+  input, select { font: inherit; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+  /* ═══ DEMO SELECTOR · solo mockup ═══ */
+  .demo-sel { position: fixed; top: 12px; right: 12px; z-index: 200; background: var(--brand-ink); color: #FFFFFF; padding: 8px 10px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; display: flex; gap: 6px; align-items: center; box-shadow: 0 4px 14px rgba(12,18,48,0.25); }
+  .demo-sel-label { opacity: .65; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; padding-right: 4px; }
+  .demo-sel select { background: rgba(255,255,255,0.08); color: #FFFFFF; border: 1px solid rgba(255,255,255,0.15); border-radius: 5px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-family: inherit; }
+
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: block; }
+
+  /* ═══ Topbar del flujo ═══ */
+  .ob-topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 32px; border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 50; }
+  .ob-brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: var(--ink); font-weight: 700; font-size: 16px; line-height: 1; }
+  .brand-sub { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-4); margin-top: 2px; font-weight: 600; }
+  .ob-progress { display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--ink-4); font-weight: 600; }
+  .ob-progress-bar { width: 220px; height: 6px; background: var(--line-2); border-radius: 999px; overflow: hidden; }
+  .ob-progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-2)); border-radius: 999px; }
+  .ob-progress-pct { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; color: var(--gold-ink); font-weight: 700; font-size: 12px; }
+  .ob-exit { font-size: 12px; color: var(--ink-4); display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--line); }
+  .ob-exit:hover { background: var(--card-alt); color: var(--ink-2); }
+
+  .ob-main { max-width: 1100px; margin: 0 auto; padding: 36px 32px 80px; }
+  .ob-kick { font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .16em; color: var(--gold-ink); font-weight: 700; margin-bottom: 10px; }
+  .ob-h1 { color: var(--ink); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .ob-sub { color: var(--ink-3); font-size: 14px; max-width: 640px; }
+
+  /* ═══ WELCOME ═══ */
+  .welcome { min-height: 100vh; background: radial-gradient(circle at 15% 20%, rgba(184,138,62,0.08), transparent 50%), radial-gradient(circle at 85% 80%, rgba(30,41,84,0.06), transparent 50%), linear-gradient(180deg, #FAF8F3 0%, #F5F4F1 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 60px; position: relative; }
+  .welcome-brand { position: absolute; top: 28px; left: 32px; display: flex; align-items: center; gap: 10px; }
+  .welcome-content { max-width: 720px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+  .welcome h1 { color: var(--ink); font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.2; }
+  .gold-txt { color: var(--gold-ink); }
+  .welcome p { color: var(--ink-3); font-size: 15px; max-width: 560px; }
+  .welcome-points { display: flex; gap: 26px; margin-top: 6px; }
+  .welcome-point { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
+  .welcome-point svg { color: var(--gold-ink); flex-shrink: 0; }
+  .btn-gold { background: var(--gold); color: #FFFFFF; font-weight: 600; padding: 8px 13px; border-radius: 7px; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; transition: transform .12s ease; }
+  .btn-gold:hover { transform: translateY(-1px); background: var(--gold-2); }
+  .btn-gold.big { padding: 12px 22px; font-size: 14.5px; }
+  .btn-ghost { border: 1px solid var(--line); color: var(--ink-3); font-weight: 600; padding: 8px 13px; border-radius: 7px; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; background: var(--card); }
+  .btn-ghost:hover { background: var(--card-alt); color: var(--ink-2); }
+  .welcome-note { font-size: 11.5px; color: var(--ink-4); }
+
+  /* ═══ HUB · mapa de bloques ═══ */
+  .hub-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 26px; }
+  .blk { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; position: relative; cursor: pointer; transition: transform .12s ease; border-top: 3px solid var(--line); }
+  .blk:hover { transform: translateY(-1px); }
+  .blk.done { border-top-color: var(--pos); }
+  .blk.partial { border-top-color: var(--gold); }
+  .blk.pending { border-top-color: var(--line); }
+  .blk.core::after { content: 'núcleo'; position: absolute; top: 12px; right: 14px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-ink); background: var(--gold-wash); padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+  .blk-head { display: flex; align-items: center; gap: 10px; }
+  .blk-icon { width: 34px; height: 34px; border-radius: 8px; background: var(--card-alt); border: 1px solid var(--line-2); display: flex; align-items: center; justify-content: center; color: var(--ink-3); flex-shrink: 0; }
+  .blk.done .blk-icon { background: var(--pos-wash); color: var(--pos); border-color: transparent; }
+  .blk.partial .blk-icon { background: var(--gold-wash); color: var(--gold-ink); border-color: transparent; }
+  .blk-title { color: var(--ink); font-weight: 700; font-size: 14px; }
+  .blk-status { font-size: 12px; color: var(--ink-4); }
+  .blk.done .blk-status { color: var(--pos); font-weight: 600; }
+  .blk.partial .blk-status { color: var(--gold-ink); font-weight: 600; }
+  .blk-foot { margin-top: auto; padding-top: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: var(--ink-4); }
+  .blk-time { display: flex; align-items: center; gap: 5px; }
+  .blk-cta { color: var(--gold-ink); font-weight: 600; display: flex; align-items: center; gap: 4px; }
+
+  .hub-bottom { margin-top: 26px; display: flex; align-items: center; justify-content: space-between; background: var(--brand-ink); border-radius: 11px; padding: 18px 22px; }
+  .hub-bottom-txt { color: #FFFFFF; font-weight: 600; font-size: 14px; }
+  .hub-bottom-sub { color: #E8D9AE; font-size: 12px; margin-top: 3px; }
+  .hub-save-note { margin-top: 14px; font-size: 11.5px; color: var(--ink-4); display: flex; align-items: center; gap: 6px; }
+
+  /* ═══ Doble vía ═══ */
+  .via-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 26px; }
+  .via { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 22px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: transform .12s ease; }
+  .via:hover { transform: translateY(-1px); }
+  .via.recommended { border: 1px solid var(--gold); position: relative; }
+  .via-badge { position: absolute; top: -9px; left: 18px; background: var(--gold); color: #FFFFFF; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+  .via-icon { width: 40px; height: 40px; border-radius: 9px; background: var(--gold-wash); color: var(--gold-ink); display: flex; align-items: center; justify-content: center; }
+  .via.manual .via-icon { background: var(--brand-wash); color: var(--brand); }
+  .via-title { color: var(--ink); font-weight: 700; font-size: 15px; }
+  .via-desc { color: var(--ink-3); font-size: 12.5px; }
+  .via-list { list-style: none; display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-3); }
+  .via-list li { display: flex; align-items: center; gap: 7px; }
+  .via-list svg { color: var(--pos); flex-shrink: 0; }
+  .via-time { margin-top: auto; padding-top: 8px; font-size: 11.5px; color: var(--ink-4); display: flex; align-items: center; gap: 5px; }
+  .step-nav { margin-top: 26px; display: flex; justify-content: space-between; }
+
+  /* ═══ Sugerencias de extractos ═══ */
+  .sug-summary { display: flex; gap: 12px; margin: 22px 0; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 14px 16px; flex: 1; display: flex; flex-direction: column; min-height: 92px; }
+  .kpi-label { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-4); font-weight: 700; }
+  .kpi-val { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1.15; margin-top: 6px; }
+  .kpi-sub { font-size: 11.5px; color: var(--ink-4); margin-top: auto; padding-top: 6px; }
+  .sug-group { margin-bottom: 22px; }
+  .sug-group-title { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 700; font-size: 13.5px; margin-bottom: 10px; }
+  .sug-group-title .cnt { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--gold-ink); background: var(--gold-wash); padding: 1px 8px; border-radius: 999px; font-weight: 700; }
+  .sug-row { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 12px 16px; display: grid; grid-template-columns: 1fr auto auto auto; gap: 16px; align-items: center; margin-bottom: 8px; }
+  .sug-concept { display: flex; flex-direction: column; gap: 2px; }
+  .sug-name { color: var(--ink); font-weight: 600; font-size: 13px; }
+  .sug-meta { font-size: 11.5px; color: var(--ink-4); }
+  .sug-amount { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); font-size: 14px; text-align: right; }
+  .sug-period { font-size: 11.5px; color: var(--ink-4); text-align: right; }
+  .sug-actions { display: flex; gap: 6px; }
+  .btn-mini { padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .btn-mini.ok { background: var(--pos-wash); color: var(--pos); }
+  .btn-mini.ok:hover { background: var(--pos); color: #FFFFFF; }
+  .btn-mini.no { border: 1px solid var(--line); color: var(--ink-4); }
+  .btn-mini.no:hover { background: var(--card-alt); }
+  .btn-mini.complete { background: var(--gold-wash); color: var(--gold-ink); }
+  .btn-mini.complete:hover { background: var(--gold); color: #FFFFFF; }
+  .sug-row.needs { border-left: 3px solid var(--gold); }
+  .sug-empty-note { font-size: 12px; color: var(--ink-4); background: var(--card-alt); border: 1px dashed var(--line); border-radius: 9px; padding: 12px 16px; }
+
+  /* ═══ Reveal ═══ */
+  .reveal-hero { background: var(--brand-ink); border-radius: 14px; padding: 28px 30px; margin-top: 26px; }
+  .reveal-hero-kick { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: #E8D9AE; font-weight: 700; margin-bottom: 8px; }
+  .reveal-hero h2 { color: #FFFFFF; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 20px; }
+  .reveal-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+  .rstat { padding: 0 22px; border-left: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; min-height: 70px; }
+  .rstat:first-of-type { border-left: none; padding-left: 0; }
+  .rstat-label { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,0.55); font-weight: 700; }
+  .rstat-val { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 700; color: #FFFFFF; line-height: 1.15; margin-top: 6px; }
+  .rstat-sub { font-size: 11px; color: #E8D9AE; margin-top: auto; padding-top: 5px; }
+  .reveal-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-top: 16px; }
+  .reveal-card { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 20px 22px; }
+  .reveal-card-title { color: var(--ink); font-weight: 700; font-size: 13.5px; margin-bottom: 14px; }
+  .chart-wrap { overflow-x: auto; }
+  .honesty { border-left: 3px solid var(--gold); background: var(--gold-wash); border-radius: 0 9px 9px 0; padding: 12px 16px; font-size: 12.5px; color: var(--gold-ink); margin-top: 14px; }
+  .honesty strong { color: var(--gold-ink); }
+  .honesty-list { list-style: none; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .honesty-list li { display: flex; align-items: center; gap: 7px; }
+  .reveal-cta { margin-top: 22px; display: flex; justify-content: center; }
+
+  /* ═══ Widget Panel ═══ */
+  .panel-demo-note { font-size: 12px; color: var(--ink-4); margin: 18px 0 12px; }
+  .panel-widget { max-width: 460px; background: var(--card); border: 1px solid var(--line); border-radius: 11px; border-top: 3px solid var(--gold); padding: 16px 18px; }
+  .pw-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .pw-title { color: var(--ink); font-weight: 700; font-size: 13.5px; }
+  .pw-pct { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; color: var(--gold-ink); font-weight: 700; font-size: 14px; }
+  .pw-bar { height: 6px; background: var(--line-2); border-radius: 999px; overflow: hidden; margin-bottom: 12px; }
+  .pw-fill { height: 100%; width: 70%; background: linear-gradient(90deg, var(--gold), var(--gold-2)); }
+  .pw-items { list-style: none; display: flex; flex-direction: column; gap: 7px; font-size: 12.5px; }
+  .pw-items li { display: flex; align-items: center; gap: 8px; color: var(--ink-3); }
+  .pw-items li.todo { color: var(--ink-2); font-weight: 500; }
+  .pw-items svg { flex-shrink: 0; }
+  .pw-items .ic-done { color: var(--pos); }
+  .pw-items .ic-todo { color: var(--gold-ink); }
+  .pw-link { color: var(--gold-ink); font-weight: 600; font-size: 12px; margin-left: auto; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--brand-ink); color: #FFFFFF; padding: 10px 18px; border-radius: 9px; font-size: 12.5px; opacity: 0; pointer-events: none; transition: all .25s ease; z-index: 300; box-shadow: 0 6px 20px rgba(12,18,48,0.3); }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="demo-sel">
+  <span class="demo-sel-label">Pantalla</span>
+  <select onchange="showPage(this.value)">
+    <option value="welcome">01 · Welcome</option>
+    <option value="hub">02 · Hub bloques + semáforo</option>
+    <option value="contratos">03 · Bloque contratos · doble vía</option>
+    <option value="inmuebles">04 · Bloque inmuebles · doble vía</option>
+    <option value="finanzas">05 · Bloque financiero · doble vía</option>
+    <option value="sugerencias">06 · Extractos → sugerencias</option>
+    <option value="prestamos">07 · Bloque préstamos · doble vía</option>
+    <option value="nomina">08 · Bloque nómina/autónomo</option>
+    <option value="inversiones">09 · Bloque inversiones · doble vía</option>
+    <option value="reveal">10 · Cierre · tu año previsto</option>
+    <option value="panel">11 · Widget semáforo en Panel</option>
+  </select>
+</div>
+
+<!-- ═══ 01 · WELCOME ═══ -->
+<div class="page welcome active" id="page-welcome">
+  <div class="welcome-brand">
+    <div class="brand-mark">A</div>
+    <div><div class="brand-name">ATLAS</div><div class="brand-sub">Patrimonio</div></div>
+  </div>
+  <div class="welcome-content">
+    <h1>Cuéntale a Atlas tu <span class="gold-txt">foto actual</span></h1>
+    <p>Lo que tienes hoy · quién te paga hoy · qué debes hoy. Con eso Atlas genera tu año entero por adelantado · tu caja prevista · tu IRPF estimado y tu camino hacia la libertad financiera.</p>
+    <div class="welcome-points">
+      <div class="welcome-point"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>30-45 min el caso típico</div>
+      <div class="welcome-point"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Tu progreso se guarda · vuelve cuando quieras</div>
+      <div class="welcome-point"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Sube ficheros y Atlas rellena por ti</div>
+    </div>
+    <button class="btn-gold big" onclick="showPage('hub')">Empezar mi foto actual <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+    <div class="welcome-note">Sin documentos a mano también puedes empezar · todo tiene vía manual.</div>
+  </div>
+</div>
+
+<!-- ═══ 02 · HUB ═══ -->
+<div class="page" id="page-hub">
+  <div class="ob-topbar">
+    <div class="ob-brand"><div class="brand-mark">A</div><div><div class="brand-name">ATLAS</div><div class="brand-sub">Tu foto actual</div></div></div>
+    <div class="ob-progress"><span>Completitud</span><div class="ob-progress-bar"><div class="ob-progress-fill" style="width:70%"></div></div><span class="ob-progress-pct">70%</span></div>
+    <button class="ob-exit" onclick="showToast('Progreso guardado · puedes volver desde el Panel')">Guardar y salir <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="ob-main">
+    <div class="ob-kick">Tu foto actual · 8 bloques</div>
+    <h1 class="ob-h1">¿Por dónde seguimos?</h1>
+    <p class="ob-sub">Los 4 bloques núcleo encienden Atlas. El resto lo completas cuando quieras · cada uno mejora una pieza de tu foto.</p>
+
+    <div class="hub-grid">
+      <div class="blk done core" onclick="showToast('Bloque persona · completado · click para revisar')">
+        <div class="blk-head"><div class="blk-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div><div class="blk-title">Quién eres</div><div class="blk-status">Completado · Madrid · soltero · asalariado</div></div></div>
+        <div class="blk-foot"><span class="blk-time">2 min</span><span class="blk-cta">Revisar</span></div>
+      </div>
+      <div class="blk done core" onclick="showPage('inmuebles')">
+        <div class="blk-head"><div class="blk-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><path d="M9 22V12h6v10"/></svg></div>
+        <div><div class="blk-title">Qué tienes · inmuebles</div><div class="blk-status">3 inmuebles · datos de adquisición completos</div></div></div>
+        <div class="blk-foot"><span class="blk-time">Plantilla o manual</span><span class="blk-cta">Revisar</span></div>
+      </div>
+      <div class="blk done core" onclick="showPage('contratos')">
+        <div class="blk-head"><div class="blk-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg></div>
+        <div><div class="blk-title">Quién te paga · contratos</div><div class="blk-status">4 contratos vigentes · 2.140 €/mes</div></div></div>
+        <div class="blk-foot"><span class="blk-time">Importar o manual</span><span class="blk-cta">Revisar</span></div>
+      </div>
+      <div class="blk done core" onclick="showToast('Bloque cuentas · 2 cuentas con saldo de hoy')">
+        <div class="blk-head"><div class="blk-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+        <div><div class="blk-title">Tus cuentas</div><div class="blk-status">2 cuentas · saldo de hoy 14.380 €</div></div></div>
+        <div class="blk-foot"><span class="blk-time">2 min/cuenta</span><span class="blk-cta">Revisar</span></div>
+      </div>
+      <div class="blk partial" onclick="showPage('finanzas')">
+        <div class="blk-head"><div class="blk-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+        <div><div class="blk-title">Tu vida financiera</div><div class="blk-status">8 sugerencias de extractos · 5 por revisar</div></div></div>
+        <div class="blk-foot"><span class="blk-time">Extractos o a mano · combinables</span><span class="blk-cta">Continuar</span></div>
+      </div>
+      <div class="blk partial" onclick="showPage('prestamos')">
+        <div class="blk-head"><div class="blk-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M15 9h.01M15 13h.01"/></svg></div>
+        <div><div class="blk-title">Qué debes · préstamos</div><div class="blk-status">1 detectado en extracto · completa TIN y plazo</div></div></div>
+        <div class="blk-foot"><span class="blk-time">5 min</span><span class="blk-cta">Completar</span></div>
+      </div>
+      <div class="blk pending" onclick="showPage('nomina')">
+        <div class="blk-head"><div class="blk-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+        <div><div class="blk-title">Tu nómina o autónomo</div><div class="blk-status">Pendiente · abono detectado en extracto · 2.340 €/mes</div></div></div>
+        <div class="blk-foot"><span class="blk-time">10 min · pre-rellenado</span><span class="blk-cta">Empezar</span></div>
+      </div>
+      <div class="blk pending" onclick="showPage('inversiones')">
+        <div class="blk-head"><div class="blk-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div>
+        <div><div class="blk-title">Tus inversiones</div><div class="blk-status">Pendiente · fondos · acciones · planes · con su coste</div></div></div>
+        <div class="blk-foot"><span class="blk-time">Plantilla o manual</span><span class="blk-cta">Empezar</span></div>
+      </div>
+    </div>
+
+    <div class="hub-bottom">
+      <div><div class="hub-bottom-txt">Núcleo completo · Atlas ya está vivo</div><div class="hub-bottom-sub">Tu año previsto te espera · lo pendiente lo completas desde el Panel</div></div>
+      <button class="btn-gold" onclick="showPage('reveal')">Ver mi año previsto <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+    <div class="hub-save-note"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>Todo se guarda solo · puedes salir y volver desde el Panel cuando quieras.</div>
+  </div>
+</div>
+
+<!-- ═══ 03 · CONTRATOS · doble vía ═══ -->
+<div class="page" id="page-contratos">
+  <div class="ob-topbar">
+    <div class="ob-brand"><div class="brand-mark">A</div><div><div class="brand-name">ATLAS</div><div class="brand-sub">Tu foto actual</div></div></div>
+    <div class="ob-progress"><span>Completitud</span><div class="ob-progress-bar"><div class="ob-progress-fill" style="width:45%"></div></div><span class="ob-progress-pct">45%</span></div>
+    <button class="ob-exit" onclick="showPage('hub')">Volver al mapa <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="ob-main">
+    <div class="ob-kick">Bloque núcleo · quién te paga</div>
+    <h1 class="ob-h1">Tus contratos vigentes</h1>
+    <p class="ob-sub">Los contratos encienden las rentas previstas de todo el año. Elige tu vía · puedes combinar las dos.</p>
+    <div class="via-grid">
+      <div class="via recommended" onclick="showToast('Abre el importador de contratos · Rentila o plantilla Atlas')">
+        <span class="via-badge">Recomendado</span>
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <div class="via-title">Importar de una vez</div>
+        <div class="via-desc">Sube tu export de Rentila o la plantilla Excel de Atlas con todos tus contratos.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Multi-fichero · activos y archivados</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Detecta inmueble y habitación solos</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Revisión antes de crear nada</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>2-5 min para todos</div>
+      </div>
+      <div class="via manual" onclick="showToast('Abre el wizard de nuevo contrato')">
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+        <div class="via-title">Uno a uno</div>
+        <div class="via-desc">El asistente de contrato de siempre · inquilino · renta · fechas · tipo y reducción.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Sin ficheros · ideal con pocos contratos</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Atlas te sugiere la reducción IRPF</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>5 min por contrato</div>
+      </div>
+    </div>
+    <div class="step-nav">
+      <button class="btn-ghost" onclick="showPage('hub')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Volver al mapa</button>
+      <button class="btn-ghost" onclick="showToast('Bloque saltado · queda en el semáforo del Panel')">Lo haré después</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 04 · INMUEBLES · doble vía ═══ -->
+<div class="page" id="page-inmuebles">
+  <div class="ob-topbar">
+    <div class="ob-brand"><div class="brand-mark">A</div><div><div class="brand-name">ATLAS</div><div class="brand-sub">Tu foto actual</div></div></div>
+    <div class="ob-progress"><span>Completitud</span><div class="ob-progress-bar"><div class="ob-progress-fill" style="width:25%"></div></div><span class="ob-progress-pct">25%</span></div>
+    <button class="ob-exit" onclick="showPage('hub')">Volver al mapa <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="ob-main">
+    <div class="ob-kick">Bloque núcleo · qué tienes</div>
+    <h1 class="ob-h1">Tus inmuebles</h1>
+    <p class="ob-sub">Con la fecha y el coste de compra Atlas calcula la amortización de este año él solo. Si no lo tienes a mano · puedes completarlo después.</p>
+    <div class="via-grid">
+      <div class="via recommended" onclick="showToast('Descarga plantilla-inmuebles-atlas.xlsx · rellena y sube')">
+        <span class="via-badge">Recomendado con varios</span>
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg></div>
+        <div class="via-title">Plantilla Excel · en lote</div>
+        <div class="via-desc">Descarga la plantilla · una fila por inmueble · súbela y Atlas los crea todos.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Dirección · referencia catastral · modo de explotación</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Precio · gastos de compra · valor catastral · fecha</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Aportación propia e importe financiado</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Revisión antes de crear nada</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>5-10 min para todos</div>
+      </div>
+      <div class="via manual" onclick="showToast('Abre el alta de inmueble actual')">
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+        <div class="via-title">Uno a uno</div>
+        <div class="via-desc">El formulario de inmueble de siempre · paso a paso.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Ideal con 1-2 inmuebles</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Lo no imprescindible se completa después</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>5-10 min por inmueble</div>
+      </div>
+    </div>
+    <div class="honesty" style="margin-top:16px;">
+      <strong>Estructura de compra · dato nuevo que Atlas te pide</strong>
+      <ul class="honesty-list">
+        <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>Ejemplo · <span class="mono">precio 100.000 € · gastos 12.000 € · aportaste 32.000 € · financiaste 80.000 €</span></li>
+        <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>Si financiaste · Atlas te pedirá vincular el préstamo en su bloque · y avisará en el semáforo si falta</li>
+        <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>Con tu aportación real Atlas calcula la rentabilidad sobre el dinero que TÚ pusiste · no sobre el precio del piso</li>
+      </ul>
+    </div>
+    <div class="step-nav">
+      <button class="btn-ghost" onclick="showPage('hub')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Volver al mapa</button>
+      <button class="btn-ghost" onclick="showToast('Bloque saltado · queda en el semáforo del Panel')">Lo haré después</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 05 · FINANZAS · doble vía ═══ -->
+<div class="page" id="page-finanzas">
+  <div class="ob-topbar">
+    <div class="ob-brand"><div class="brand-mark">A</div><div><div class="brand-name">ATLAS</div><div class="brand-sub">Tu foto actual</div></div></div>
+    <div class="ob-progress"><span>Completitud</span><div class="ob-progress-bar"><div class="ob-progress-fill" style="width:55%"></div></div><span class="ob-progress-pct">55%</span></div>
+    <button class="ob-exit" onclick="showPage('hub')">Volver al mapa <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="ob-main">
+    <div class="ob-kick">Tu vida financiera · recurrentes · préstamos · nómina</div>
+    <h1 class="ob-h1">¿Cómo quieres contárselo a Atlas?</h1>
+    <p class="ob-sub">Dos vías · combinables cuenta a cuenta. Sube extractos de las cuentas que quieras y declara a mano el resto.</p>
+    <div class="via-grid">
+      <div class="via recommended" onclick="showPage('sugerencias')">
+        <span class="via-badge">Acelerador</span>
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+        <div class="via-title">Sube extractos · Atlas deduce</div>
+        <div class="via-desc">De las cuentas que elijas · Atlas detecta recurrentes · cuotas de préstamo y nómina · y te los propone para confirmar.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Empieza por tus 2-3 cuentas principales</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Saldo real de cada cuenta · solo</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Nunca crea nada sin tu confirmación</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>5 min por cuenta · te ahorra ~25 min de tecleo</div>
+      </div>
+      <div class="via manual" onclick="showToast('Abre las altas manuales · recurrentes · préstamo · nómina')">
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+        <div class="via-title">Declarar a mano</div>
+        <div class="via-desc">Sin ficheros · das de alta tus recurrentes · préstamos y nómina con los formularios de siempre.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Ideal si tienes muchas cuentas y pocos cargos</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Cuentas declaradas con saldo de hoy a mano</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Los extractos podrás subirlos cuando quieras</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>15-30 min según tu caso</div>
+      </div>
+    </div>
+    <div class="sug-empty-note" style="margin-top:16px;">¿Tienes 10 cuentas? No hace falta subirlas todas hoy · cada cuenta queda marcada en el semáforo como "con extracto" o "declarada a mano" · y puedes mejorarla después.</div>
+    <div class="step-nav">
+      <button class="btn-ghost" onclick="showPage('hub')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Volver al mapa</button>
+      <button class="btn-ghost" onclick="showToast('Bloque saltado · queda en el semáforo del Panel')">Lo haré después</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 06 · SUGERENCIAS ═══ -->
+<div class="page" id="page-sugerencias">
+  <div class="ob-topbar">
+    <div class="ob-brand"><div class="brand-mark">A</div><div><div class="brand-name">ATLAS</div><div class="brand-sub">Tu foto actual</div></div></div>
+    <div class="ob-progress"><span>Completitud</span><div class="ob-progress-bar"><div class="ob-progress-fill" style="width:70%"></div></div><span class="ob-progress-pct">70%</span></div>
+    <button class="ob-exit" onclick="showPage('hub')">Volver al mapa <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="ob-main">
+    <div class="ob-kick">Acelerador · tus extractos hablan</div>
+    <h1 class="ob-h1">Esto es lo que Atlas ha encontrado</h1>
+    <p class="ob-sub">De los extractos de tus 2 cuentas · 6 meses. Atlas nunca crea nada solo · tú confirmas o descartas cada sugerencia.</p>
+
+    <div class="sug-summary">
+      <div class="kpi"><div class="kpi-label">Extractos leídos</div><div class="kpi-val mono">2 cuentas</div><div class="kpi-sub">ene — jun · 412 movimientos</div></div>
+      <div class="kpi"><div class="kpi-label">Sugerencias</div><div class="kpi-val mono">8</div><div class="kpi-sub">5 gastos · 1 préstamo · 1 nómina · 1 dudosa</div></div>
+      <div class="kpi"><div class="kpi-label">Confirmadas</div><div class="kpi-val mono">3</div><div class="kpi-sub">cada confirmación enseña a Atlas</div></div>
+      <div class="kpi"><div class="kpi-label">Tiempo que te ahorra</div><div class="kpi-val mono">~25 min</div><div class="kpi-sub">vs alta manual de todo</div></div>
+    </div>
+
+    <div class="sug-group">
+      <div class="sug-group-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Gastos recurrentes <span class="cnt">5</span></div>
+      <div class="sug-row">
+        <div class="sug-concept"><div class="sug-name">IBI · Ayto. recibo anual</div><div class="sug-meta">Visto 1 vez · cargo de septiembre · cuenta ···4127 · vinculable a inmueble</div></div>
+        <div class="sug-amount mono">412,00 €</div><div class="sug-period">anual</div>
+        <div class="sug-actions"><button class="btn-mini ok" onclick="showToast('Recurrente confirmado · alimentará la previsión')">Confirmar</button><button class="btn-mini no" onclick="showToast('Sugerencia descartada · Atlas aprende')">Descartar</button></div>
+      </div>
+      <div class="sug-row">
+        <div class="sug-concept"><div class="sug-name">Comunidad de propietarios</div><div class="sug-meta">Visto 6 veces · cargo mensual día 5 · cuenta ···4127</div></div>
+        <div class="sug-amount mono">68,00 €</div><div class="sug-period">mensual</div>
+        <div class="sug-actions"><button class="btn-mini ok" onclick="showToast('Recurrente confirmado')">Confirmar</button><button class="btn-mini no" onclick="showToast('Sugerencia descartada')">Descartar</button></div>
+      </div>
+      <div class="sug-row">
+        <div class="sug-concept"><div class="sug-name">Seguro hogar</div><div class="sug-meta">Visto 1 vez · cargo de abril · cuenta ···4127</div></div>
+        <div class="sug-amount mono">286,40 €</div><div class="sug-period">anual</div>
+        <div class="sug-actions"><button class="btn-mini ok" onclick="showToast('Recurrente confirmado')">Confirmar</button><button class="btn-mini no" onclick="showToast('Sugerencia descartada')">Descartar</button></div>
+      </div>
+      <div class="sug-row">
+        <div class="sug-concept"><div class="sug-name">Suministro · luz</div><div class="sug-meta">Visto 6 veces · importe variable 38-61 € · cuenta ···8830</div></div>
+        <div class="sug-amount mono">~47,00 €</div><div class="sug-period">mensual</div>
+        <div class="sug-actions"><button class="btn-mini ok" onclick="showToast('Recurrente confirmado con importe variable')">Confirmar</button><button class="btn-mini no" onclick="showToast('Sugerencia descartada')">Descartar</button></div>
+      </div>
+      <div class="sug-row">
+        <div class="sug-concept"><div class="sug-name">Cargo periódico sin clasificar</div><div class="sug-meta">Visto 6 veces · día 14 · concepto "RECIBO SERV" · cuenta ···8830</div></div>
+        <div class="sug-amount mono">19,90 €</div><div class="sug-period">mensual</div>
+        <div class="sug-actions"><button class="btn-mini complete" onclick="showToast('Abre clasificación · qué es este cargo')">Decirle qué es</button><button class="btn-mini no" onclick="showToast('Sugerencia descartada')">Descartar</button></div>
+      </div>
+    </div>
+
+    <div class="sug-group">
+      <div class="sug-group-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M15 9h.01M15 13h.01"/></svg>Posible préstamo <span class="cnt">1</span></div>
+      <div class="sug-row needs">
+        <div class="sug-concept"><div class="sug-name">Cuota idéntica mensual · "PRESTAMO HIPOTECARIO"</div><div class="sug-meta">Visto 6 veces · día 1 · cuenta ···4127 · falta TIN y plazo para el cuadro</div></div>
+        <div class="sug-amount mono">486,20 €</div><div class="sug-period">mensual</div>
+        <div class="sug-actions"><button class="btn-mini complete" onclick="showToast('Abre wizard de préstamo pre-rellenado con la cuota')">Completar préstamo</button><button class="btn-mini no" onclick="showToast('Sugerencia descartada')">Descartar</button></div>
+      </div>
+    </div>
+
+    <div class="sug-group">
+      <div class="sug-group-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Posible nómina <span class="cnt">1</span></div>
+      <div class="sug-row needs">
+        <div class="sug-concept"><div class="sug-name">Abono periódico · "NOMINA EMPRESA SL"</div><div class="sug-meta">Visto 6 veces · día 28 · cuenta ···8830 · falta bruto y nº de pagas</div></div>
+        <div class="sug-amount mono">2.340,00 €</div><div class="sug-period">mensual</div>
+        <div class="sug-actions"><button class="btn-mini complete" onclick="showToast('Abre wizard de nómina pre-rellenado con el neto')">Completar nómina</button><button class="btn-mini no" onclick="showToast('Sugerencia descartada')">Descartar</button></div>
+      </div>
+      <div class="sug-empty-note">Los abonos que cuadran con tus contratos de alquiler no aparecen aquí · esos los gestiona la conciliación normal de Atlas desde el primer día.</div>
+    </div>
+
+    <div class="step-nav">
+      <button class="btn-ghost" onclick="showPage('hub')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Volver al mapa</button>
+      <button class="btn-gold" onclick="showToast('Quedan 2 sugerencias en el semáforo del Panel')">Seguir más tarde</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 07 · PRÉSTAMOS ═══ -->
+<div class="page" id="page-prestamos">
+  <div class="ob-topbar">
+    <div class="ob-brand"><div class="brand-mark">A</div><div><div class="brand-name">ATLAS</div><div class="brand-sub">Tu foto actual</div></div></div>
+    <div class="ob-progress"><span>Completitud</span><div class="ob-progress-bar"><div class="ob-progress-fill" style="width:70%"></div></div><span class="ob-progress-pct">70%</span></div>
+    <button class="ob-exit" onclick="showPage('hub')">Volver al mapa <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="ob-main">
+    <div class="ob-kick">Bloque · qué debes</div>
+    <h1 class="ob-h1">Tus préstamos e hipotecas</h1>
+    <p class="ob-sub">Con el cuadro de cada préstamo Atlas separa solo capital e intereses · proyecta tus cuotas y deduce los intereses en tu IRPF.</p>
+
+    <div class="sug-row needs" style="margin-top:22px;">
+      <div class="sug-concept"><div class="sug-name">Detectado en tus extractos · "PRESTAMO HIPOTECARIO"</div><div class="sug-meta">Cuota idéntica · 6 meses · día 1 · cuenta ···4127 · falta TIN y plazo</div></div>
+      <div class="sug-amount mono">486,20 €</div><div class="sug-period">mensual</div>
+      <div class="sug-actions"><button class="btn-mini complete" onclick="showToast('Abre wizard de préstamo pre-rellenado con la cuota')">Completar</button><button class="btn-mini no" onclick="showToast('Sugerencia descartada')">Descartar</button></div>
+    </div>
+
+    <div class="via-grid">
+      <div class="via recommended" onclick="showToast('Descarga plantilla-prestamos-atlas.xlsx · rellena y sube')">
+        <span class="via-badge">Recomendado con varios</span>
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg></div>
+        <div class="via-title">Plantilla Excel · en lote</div>
+        <div class="via-desc">Descarga la plantilla · una fila por préstamo · súbela y Atlas crea todos con su cuadro de amortización.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Nombre · inmueble vinculado · cuenta de cargo</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Principal inicial y vivo · TIN · plazo · día de cargo</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Revisión antes de crear nada</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>5-10 min para todos</div>
+      </div>
+      <div class="via manual" onclick="showToast('Abre el wizard de préstamo actual')">
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+        <div class="via-title">Uno a uno</div>
+        <div class="via-desc">El wizard de préstamo de siempre · con tu escritura o el cuadro del banco delante.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Ideal con 1-2 préstamos</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Fijo · variable · mixto · con carencia</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>10 min por préstamo</div>
+      </div>
+    </div>
+    <div class="sug-empty-note" style="margin-top:16px;">Vincula cada préstamo a su inmueble · así se cierra el aviso de "compra financiada sin préstamo" del semáforo y los intereses se deducen en el inmueble correcto.</div>
+    <div class="step-nav">
+      <button class="btn-ghost" onclick="showPage('hub')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Volver al mapa</button>
+      <button class="btn-ghost" onclick="showToast('Bloque saltado · queda en el semáforo del Panel')">Lo haré después</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 08 · NÓMINA / AUTÓNOMO ═══ -->
+<div class="page" id="page-nomina">
+  <div class="ob-topbar">
+    <div class="ob-brand"><div class="brand-mark">A</div><div><div class="brand-name">ATLAS</div><div class="brand-sub">Tu foto actual</div></div></div>
+    <div class="ob-progress"><span>Completitud</span><div class="ob-progress-bar"><div class="ob-progress-fill" style="width:70%"></div></div><span class="ob-progress-pct">70%</span></div>
+    <button class="ob-exit" onclick="showPage('hub')">Volver al mapa <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="ob-main">
+    <div class="ob-kick">Bloque · quién te paga a ti</div>
+    <h1 class="ob-h1">Tu nómina o tu actividad</h1>
+    <p class="ob-sub">Es lo que enciende tu IRPF estimado · sin esto Atlas no puede decirte cuánto te saldrá la declaración.</p>
+    <div class="via-grid">
+      <div class="via recommended" onclick="showToast('Abre el wizard de nómina pre-rellenado con el neto detectado')">
+        <span class="via-badge">Detectado en tus extractos</span>
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+        <div class="via-title">Completar lo detectado</div>
+        <div class="via-desc">Atlas vio un abono periódico "NOMINA EMPRESA SL" · <span class="mono">2.340,00 €</span> netos el día 28. El wizard sale pre-rellenado · tú añades lo que el extracto no sabe.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Te falta · bruto anual · nº de pagas · retención</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Si aportas a plan de pensiones · se vincula aquí</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>5 min · enciende el IRPF estimado</div>
+      </div>
+      <div class="via manual" onclick="showToast('Abre los wizards de nómina o autónomo desde cero')">
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+        <div class="via-title">Desde cero · nómina o autónomo</div>
+        <div class="via-desc">Sin extractos · los asistentes de siempre · con tu recibo de nómina delante son 10 minutos.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Nómina · bruto · pagas · retención · especies</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Autónomo · rendimiento estimado y pagos M130</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>10 min</div>
+      </div>
+    </div>
+    <div class="sug-empty-note" style="margin-top:16px;">¿Autónomo? Atlas solo necesita tu rendimiento y tus pagos a cuenta (M130) porque alimentan tu declaración de la renta. Atlas no gestiona IVA ni otros modelos.</div>
+    <div class="step-nav">
+      <button class="btn-ghost" onclick="showPage('hub')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Volver al mapa</button>
+      <button class="btn-ghost" onclick="showToast('Bloque saltado · el IRPF estimado quedará apagado y el semáforo lo recordará')">Lo haré después</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 08 · INVERSIONES ═══ -->
+<div class="page" id="page-inversiones">
+  <div class="ob-topbar">
+    <div class="ob-brand"><div class="brand-mark">A</div><div><div class="brand-name">ATLAS</div><div class="brand-sub">Tu foto actual</div></div></div>
+    <div class="ob-progress"><span>Completitud</span><div class="ob-progress-bar"><div class="ob-progress-fill" style="width:70%"></div></div><span class="ob-progress-pct">70%</span></div>
+    <button class="ob-exit" onclick="showPage('hub')">Volver al mapa <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="ob-main">
+    <div class="ob-kick">Bloque · el resto de tu patrimonio</div>
+    <h1 class="ob-h1">Tus inversiones</h1>
+    <p class="ob-sub">Fondos · acciones · ETFs · crypto · planes de pensiones · depósitos · participaciones. Cada posición con su coste y fecha de compra · sin eso una venta futura no puede calcular su ganancia.</p>
+    <div class="via-grid">
+      <div class="via recommended" onclick="showToast('Descarga plantilla-inversiones-atlas.xlsx · rellena y sube')">
+        <span class="via-badge">Recomendado con varias</span>
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg></div>
+        <div class="via-title">Plantilla Excel · en lote</div>
+        <div class="via-desc">Descarga la plantilla · una fila por posición · súbela y Atlas las crea todas con su valoración inicial.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Tipo · entidad · producto · unidades</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Coste de adquisición y fecha · valor de hoy</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Revisión antes de crear nada</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>5-10 min para todas</div>
+      </div>
+      <div class="via manual" onclick="showToast('Abre el alta de posición actual · una a una')">
+        <div class="via-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+        <div class="via-title">Una a una</div>
+        <div class="via-desc">El alta de posición de siempre · ideal con pocas posiciones.</div>
+        <ul class="via-list">
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Plan de pensiones de empresa · se vincula a tu nómina</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Participaciones (CB · sociedades) · con su % y atribución</li>
+        </ul>
+        <div class="via-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>3 min por posición</div>
+      </div>
+    </div>
+    <div class="sug-empty-note" style="margin-top:16px;">El coste de compra importa aunque no pienses vender · los traspasos entre fondos lo conservan · y el día que vendas Atlas calculará tu ganancia al céntimo.</div>
+    <div class="step-nav">
+      <button class="btn-ghost" onclick="showPage('hub')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Volver al mapa</button>
+      <button class="btn-ghost" onclick="showToast('Bloque saltado · queda en el semáforo del Panel')">Lo haré después</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 09 · REVEAL ═══ -->
+<div class="page" id="page-reveal">
+  <div class="ob-topbar">
+    <div class="ob-brand"><div class="brand-mark">A</div><div><div class="brand-name">ATLAS</div><div class="brand-sub">Tu foto actual</div></div></div>
+    <div class="ob-progress"><span>Completitud</span><div class="ob-progress-bar"><div class="ob-progress-fill" style="width:70%"></div></div><span class="ob-progress-pct">70%</span></div>
+    <button class="ob-exit" onclick="showToast('Entrarías al Panel de Atlas')">Ir al Panel <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+  </div>
+  <div class="ob-main">
+    <div class="ob-kick">Tu foto está viva</div>
+    <h1 class="ob-h1">Este es tu año por adelantado</h1>
+    <p class="ob-sub">Generado con tu foto actual. Cada mes que vivas · lo previsto se convertirá en real y todo esto se irá afinando solo.</p>
+
+    <div class="reveal-hero">
+      <div class="reveal-hero-kick">Previsión 2026 · con lo que Atlas sabe hoy</div>
+      <h2>2.140 € de rentas al mes · 4 contratos vigentes</h2>
+      <div class="reveal-stats">
+        <div class="rstat"><div class="rstat-label">Rentas previstas</div><div class="rstat-val">25.680 €</div><div class="rstat-sub">año completo</div></div>
+        <div class="rstat"><div class="rstat-label">Gastos previstos</div><div class="rstat-val">9.420 €</div><div class="rstat-sub">cuotas · recurrentes confirmados</div></div>
+        <div class="rstat"><div class="rstat-label">Ocupación</div><div class="rstat-val">4 de 5</div><div class="rstat-sub">unidades · 1 libre ahora</div></div>
+        <div class="rstat"><div class="rstat-label">IRPF estimado</div><div class="rstat-val">—</div><div class="rstat-sub">se mostrará al completar nómina</div></div>
+      </div>
+    </div>
+
+    <div class="reveal-grid">
+      <div class="reveal-card">
+        <div class="reveal-card-title">Caja prevista · mes a mes</div>
+        <div class="chart-wrap">
+        <svg viewBox="0 0 600 240" style="min-width:520px; width:100%;" xmlns="http://www.w3.org/2000/svg">
+          <line x1="40" y1="220" x2="585" y2="220" stroke="var(--line)" stroke-width="1"/>
+          <line x1="40" y1="20" x2="40" y2="220" stroke="var(--line)" stroke-width="1"/>
+          <text x="36" y="24" font-size="10" fill="var(--ink-4)" text-anchor="end" font-family="JetBrains Mono">2.500</text>
+          <text x="36" y="122" font-size="10" fill="var(--ink-4)" text-anchor="end" font-family="JetBrains Mono">1.250</text>
+          <text x="36" y="222" font-size="10" fill="var(--ink-4)" text-anchor="end" font-family="JetBrains Mono">0</text>
+          <!-- Ingresos previstos 2.140/mes · Y = 220 - (2140/2500 × 200) = 48.8 -->
+          <polyline points="60,49 105,49 150,49 195,49 240,49 285,49 330,49 375,49 420,49 465,49 510,49 555,49" fill="none" stroke="var(--gold)" stroke-width="2.5"/>
+          <circle cx="555" cy="49" r="4" fill="var(--gold)"/>
+          <!-- Gastos previstos 785/mes · Y = 220 - (785/2500 × 200) = 157.2 -->
+          <polyline points="60,157 105,157 150,157 195,157 240,157 285,157 330,157 375,157 420,157 465,157 510,157 555,157" fill="none" stroke="var(--ink-5)" stroke-width="2"/>
+          <text x="555" y="40" font-size="10.5" fill="var(--gold-ink)" text-anchor="end" font-weight="700" font-family="JetBrains Mono">Ingresos 2.140</text>
+          <text x="555" y="172" font-size="10.5" fill="var(--ink-4)" text-anchor="end" font-weight="600" font-family="JetBrains Mono">Gastos 785</text>
+          <text x="60" y="234" font-size="9.5" fill="var(--ink-4)" font-family="JetBrains Mono" text-anchor="middle">ENE</text>
+          <text x="307" y="234" font-size="9.5" fill="var(--ink-4)" font-family="JetBrains Mono" text-anchor="middle">JUN</text>
+          <text x="555" y="234" font-size="9.5" fill="var(--ink-4)" font-family="JetBrains Mono" text-anchor="middle">DIC</text>
+        </svg>
+        </div>
+      </div>
+      <div class="reveal-card">
+        <div class="reveal-card-title">Para afinar tu foto</div>
+        <div class="honesty">
+          <strong>Tu estimación está al 70%</strong>
+          <ul class="honesty-list">
+            <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>Completa tu nómina · enciende el IRPF estimado</li>
+            <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>Completa el préstamo detectado · intereses deducibles</li>
+            <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>2 sugerencias de extracto por revisar</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal-cta">
+      <button class="btn-gold big" onclick="showToast('Entrarías al Panel · Atlas vivo')">Entrar a Atlas <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 07 · WIDGET PANEL ═══ -->
+<div class="page" id="page-panel">
+  <div class="ob-main" style="padding-top:60px;">
+    <div class="ob-kick">Referencia · así vive en el Panel</div>
+    <h1 class="ob-h1">El semáforo permanente de tu foto</h1>
+    <p class="ob-sub">Card del Panel · siempre visible mientras la foto no esté al 100% · cada item enlaza directo a su bloque del onboarding (reentrante).</p>
+    <div class="panel-demo-note">Mock del widget · el Panel real lo integra entre sus cards.</div>
+    <div class="panel-widget">
+      <div class="pw-head"><div class="pw-title">Tu foto actual</div><div class="pw-pct">70%</div></div>
+      <div class="pw-bar"><div class="pw-fill"></div></div>
+      <ul class="pw-items">
+        <li><svg class="ic-done" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Persona · inmuebles · contratos · cuentas</li>
+        <li class="todo"><svg class="ic-todo" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/></svg>Tu nómina · enciende el IRPF estimado <span class="pw-link">Completar →</span></li>
+        <li class="todo"><svg class="ic-todo" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/></svg>1 préstamo detectado · falta TIN y plazo <span class="pw-link">Completar →</span></li>
+        <li class="todo"><svg class="ic-todo" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/></svg>2 sugerencias de extracto por revisar <span class="pw-link">Revisar →</span></li>
+        <li class="todo"><svg class="ic-todo" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/></svg>Tus inversiones · pendiente <span class="pw-link">Empezar →</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    document.querySelector('.demo-sel select').value = id;
+    window.scrollTo(0, 0);
+  }
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+</script>
+</body>
+</html>
