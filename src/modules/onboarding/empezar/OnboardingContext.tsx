@@ -14,6 +14,7 @@ import {
   type BloqueId,
   type BloqueEstado,
 } from '../../../services/onboardingProgressService';
+import { syncNucleoFromData } from '../../../services/onboardingSyncService';
 
 interface OnboardingContextValue {
   state: OnboardingState;
@@ -30,6 +31,9 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    // Reentrante · primero refleja la realidad de los stores en los bloques
+    // de núcleo · luego lee el estado consolidado.
+    await syncNucleoFromData().catch(() => undefined);
     const fresh = await getOnboardingState();
     setState(fresh);
     setLoading(false);

@@ -7,10 +7,19 @@ import React from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { BLOQUES_META } from '../bloquesConfig';
 import BloquePlaceholder from './BloquePlaceholder';
+import PersonaBloque from './PersonaBloque';
+import InmueblesBloque from './InmueblesBloque';
+import ContratosBloque from './ContratosBloque';
+import CuentasBloque from './CuentasBloque';
 import type { BloqueId } from '../../../../services/onboardingProgressService';
 
 /** Registro de pantallas reales por bloque. Se rellena en C4-C6. */
-const BLOQUE_SCREENS: Partial<Record<BloqueId, React.ComponentType>> = {};
+const BLOQUE_SCREENS: Partial<Record<BloqueId, React.ComponentType>> = {
+  persona: PersonaBloque,
+  inmuebles: InmueblesBloque,
+  contratos: ContratosBloque,
+  cuentas: CuentasBloque,
+};
 
 const BloqueScreen: React.FC = () => {
   const { bloqueId } = useParams<{ bloqueId: string }>();

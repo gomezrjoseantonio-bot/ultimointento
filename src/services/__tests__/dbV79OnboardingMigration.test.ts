@@ -3,10 +3,11 @@
  *
  * Verifica (§3.1 · §5 · C2):
  *   · DB_VERSION subió a 79
- *   · Property.onerosoAcquisition admite los 3 campos nuevos (aportacionPropia,
- *     importeFinanciado, prestamoVinculadoId:string) en round-trip
- *   · La migración es NO DESTRUCTIVA: properties existentes sin los campos nuevos
- *     sobreviven intactas (los campos quedan undefined · no se reescribe nada)
+ *   · Property.estructuraCompra (campo raíz nuevo · decisión Jose) admite los 3
+ *     campos (aportacionPropia, importeFinanciado, prestamoVinculadoId:string)
+ *     en round-trip
+ *   · La migración es NO DESTRUCTIVA: properties existentes sin el campo nuevo
+ *     sobreviven intactas (queda undefined · no se reescribe nada)
  *
  * Patrón (igual que dbV78AlquileresMigration.test): pre-crea la DB en v78 y deja
  * que `initDB()` la suba a v79. El flag `migration_v78_alquileres` se marca en el
@@ -29,11 +30,11 @@ async function seedV78() {
   });
   // Property legacy sin onerosoAcquisition.
   await legacy.put('properties', { id: 1, alias: 'Legacy sin compra' });
-  // Property con onerosoAcquisition en la forma vieja (solo amount + expenses).
+  // Property con costes de adquisición previos · sin estructuraCompra.
   await legacy.put('properties', {
     id: 2,
     alias: 'Compra vieja',
-    onerosoAcquisition: { acquisitionAmount: 200000, acquisitionExpenses: 20000 },
+    acquisitionCosts: { price: 200000, notary: 2000 },
   });
   // Evita que el hook post-upgrade de v78 reescriba las properties.
   await legacy.put('keyval', 'completed', 'migration_v78_alquileres');
@@ -60,15 +61,12 @@ describe('V79 · estructura de compra en Property (onboarding día 0)', () => {
     expect(p1.onerosoAcquisition).toBeUndefined();
 
     const p2 = await db.get('properties', 2);
-    expect(p2.onerosoAcquisition.acquisitionAmount).toBe(200000);
-    expect(p2.onerosoAcquisition.acquisitionExpenses).toBe(20000);
-    // Los campos nuevos no se inventan en datos existentes.
-    expect(p2.onerosoAcquisition.aportacionPropia).toBeUndefined();
-    expect(p2.onerosoAcquisition.importeFinanciado).toBeUndefined();
-    expect(p2.onerosoAcquisition.prestamoVinculadoId).toBeUndefined();
+    expect(p2.acquisitionCosts.price).toBe(200000);
+    // El campo nuevo no se inventa en datos existentes.
+    expect(p2.estructuraCompra).toBeUndefined();
   });
 
-  it('round-trip de los 3 campos nuevos de estructura de compra', async () => {
+  it('round-trip de la estructura de compra (campo raíz nuevo)', async () => {
     await seedV78();
 
     const { initDB } = require('../db');
@@ -77,9 +75,8 @@ describe('V79 · estructura de compra en Property (onboarding día 0)', () => {
     await db.put('properties', {
       id: 3,
       alias: 'Compra financiada',
-      onerosoAcquisition: {
-        acquisitionAmount: 300000,
-        acquisitionExpenses: 30000,
+      acquisitionCosts: { price: 300000 },
+      estructuraCompra: {
         aportacionPropia: 90000,
         importeFinanciado: 240000,
         prestamoVinculadoId: 'prest-uuid-abc', // string (uuid · decisión Jose D1)
@@ -87,13 +84,11 @@ describe('V79 · estructura de compra en Property (onboarding día 0)', () => {
     });
 
     const p3 = await db.get('properties', 3);
-    expect(p3.onerosoAcquisition).toEqual({
-      acquisitionAmount: 300000,
-      acquisitionExpenses: 30000,
+    expect(p3.estructuraCompra).toEqual({
       aportacionPropia: 90000,
       importeFinanciado: 240000,
       prestamoVinculadoId: 'prest-uuid-abc',
     });
-    expect(typeof p3.onerosoAcquisition.prestamoVinculadoId).toBe('string');
+    expect(typeof p3.estructuraCompra.prestamoVinculadoId).toBe('string');
   });
 });
