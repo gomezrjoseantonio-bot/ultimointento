@@ -93,6 +93,9 @@ interface FormState {
   gestoria: number;
   otros: number;
   impuestos: number;
+  // Estructura de compra (onboarding día 0 · §3.1) · opcionales.
+  aportacionPropia: number;
+  importeFinanciado: number;
 
   // 5 · características físicas
   m2: number;
@@ -223,6 +226,8 @@ const initialForm = (): FormState => ({
   gestoria: 0,
   otros: 0,
   impuestos: 0,
+  aportacionPropia: 0,
+  importeFinanciado: 0,
   m2: 0,
   habitaciones: 0,
   banos: 0,
@@ -261,6 +266,8 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   // pestaña Documentos de DetallePage los lee). Este wizard no los gestiona,
   // así que NO debe pisarlos al guardar.
   const existingDocumentsRef = useRef<number[]>([]);
+  // Preserva `prestamoVinculadoId` de la estructura de compra al re-guardar (C4).
+  const existingPrestamoVinculadoRef = useRef<string | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // ─── carga inicial ───
@@ -324,6 +331,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
           const valorRefIsManualInit =
             typeof prop.valorReferencia === 'number' && Math.abs(vRef - precio) > 0.01;
           existingDocumentsRef.current = Array.isArray(prop.documents) ? prop.documents : [];
+          existingPrestamoVinculadoRef.current = prop.estructuraCompra?.prestamoVinculadoId;
           const next: FormState = {
             tipoActivo: prop.tipoActivo ?? 'piso',
             alias: prop.alias || '',
@@ -344,6 +352,8 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             gestoria: prop.acquisitionCosts.management || 0,
             otros,
             impuestos,
+            aportacionPropia: prop.estructuraCompra?.aportacionPropia || 0,
+            importeFinanciado: prop.estructuraCompra?.importeFinanciado || 0,
             m2: prop.squareMeters || 0,
             habitaciones: prop.bedrooms || 0,
             banos: prop.bathrooms || 0,
@@ -638,6 +648,22 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             ? { itp: form.impuestos || 0 }
             : { iva: form.impuestos || 0 }),
         },
+        // Estructura de compra (onboarding día 0 · campo raíz · decisión Jose) ·
+        // solo se persiste si el usuario aportó aportación/financiación (o ya
+        // había préstamo vinculado) · no se escribe en altas que no lo usan.
+        ...((form.aportacionPropia > 0 ||
+          form.importeFinanciado > 0 ||
+          existingPrestamoVinculadoRef.current)
+          ? {
+              estructuraCompra: {
+                ...(form.aportacionPropia > 0 ? { aportacionPropia: form.aportacionPropia } : {}),
+                ...(form.importeFinanciado > 0 ? { importeFinanciado: form.importeFinanciado } : {}),
+                ...(existingPrestamoVinculadoRef.current
+                  ? { prestamoVinculadoId: existingPrestamoVinculadoRef.current }
+                  : {}),
+              },
+            }
+          : {}),
         // Preserva los `documents` ya asociados (DetallePage los lee). Este
         // wizard no los gestiona · NO debe pisarlos.
         documents: existingDocumentsRef.current.length > 0 ? existingDocumentsRef.current : [],
@@ -998,6 +1024,28 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                       className={`${styles.input} ${styles.inputMono}`}
                       value={form.impuestos || ''}
                       onChange={(e) => set('impuestos', num(e.target.value))}
+                      inputMode="decimal"
+                    />
+                    <span className={styles.suffix}>€</span>
+                  </Suffix>
+                </Field>
+                <Field label="Aportación propia" hint="lo que pusiste">
+                  <Suffix>
+                    <input
+                      className={`${styles.input} ${styles.inputMono}`}
+                      value={form.aportacionPropia || ''}
+                      onChange={(e) => set('aportacionPropia', num(e.target.value))}
+                      inputMode="decimal"
+                    />
+                    <span className={styles.suffix}>€</span>
+                  </Suffix>
+                </Field>
+                <Field label="Importe financiado" hint="préstamo">
+                  <Suffix>
+                    <input
+                      className={`${styles.input} ${styles.inputMono}`}
+                      value={form.importeFinanciado || ''}
+                      onChange={(e) => set('importeFinanciado', num(e.target.value))}
                       inputMode="decimal"
                     />
                     <span className={styles.suffix}>€</span>

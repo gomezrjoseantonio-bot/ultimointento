@@ -1,0 +1,77 @@
+/* Widget "Tu foto actual" en el Panel · semáforo del onboarding (pantalla 11).
+   Tokens --atlas-v5-* · cero hex hardcoded. */
+.widget {
+  max-width: 460px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-lg);
+  border-top: 3px solid var(--atlas-v5-gold);
+  padding: 16px 18px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.title {
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 13.5px;
+}
+.pct {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-v5-gold-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 14px;
+}
+.bar {
+  height: 6px;
+  background: var(--atlas-v5-line-2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-2));
+  transition: width 0.3s ease;
+}
+.items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12.5px;
+  padding: 0;
+  margin: 0;
+}
+.items li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--atlas-v5-ink-3);
+}
+.items li.todo {
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+.items svg {
+  flex-shrink: 0;
+}
+.icDone {
+  color: var(--atlas-v5-pos);
+}
+.icTodo {
+  color: var(--atlas-v5-gold-ink);
+}
+.link {
+  color: var(--atlas-v5-gold-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-size: 12px;
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+}

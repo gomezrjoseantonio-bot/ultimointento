@@ -34,6 +34,7 @@ import PulsoDelMes from './components/PulsoDelMes';
 import AttentionList from './components/AttentionList';
 import MiPlanCompass from './components/MiPlanCompass';
 import YearTimeline from './components/YearTimeline';
+import FotoActualWidget from './components/FotoActualWidget';
 import type { AlertaItem } from './components/AttentionList';
 import { useProyeccionLibertad } from '../../hooks/useProyeccionLibertad';
 import styles from './PanelPage.module.css';
@@ -490,14 +491,19 @@ const PanelPage: React.FC = () => {
         ]}
       />
 
+      {/* Semáforo del onboarding día 0 · visible mientras la foto < 100% */}
+      <div style={{ marginBottom: 'var(--atlas-v5-sp-5)' }}>
+        <FotoActualWidget />
+      </div>
+
       {empty ? (
         <EmptyState
           icon={LayoutDashboard}
           title="Aún no hay datos en tu Atlas"
-          subtitle="Empieza añadiendo inmuebles, cuentas o préstamos · todo lo demás se construye encima."
+          subtitle="Cuéntale a Atlas tu foto actual · inmuebles, cuentas, contratos · y genera tu año previsto."
           cta={{
-            label: 'Empezar onboarding',
-            onClick: () => navigate('/onboarding'),
+            label: 'Empezar mi foto actual',
+            onClick: () => navigate('/empezar'),
           }}
           size="large"
         />

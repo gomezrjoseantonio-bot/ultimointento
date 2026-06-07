@@ -88,6 +88,11 @@ const ArchivoPage = lazyWithPreload(() => import('./modules/archivo/ArchivoPage'
 // welcome + hub.
 const OnboardingPage = lazyWithPreload(() => import('./modules/onboarding/OnboardingPage'));
 
+// Onboarding día 0 · `/empezar` · alta guiada de la foto actual (hueco 5.1).
+// Flujo a pantalla completa · coexiste con el `/onboarding` legacy (decisión Jose D2).
+const EmpezarApp = lazyWithPreload(() => import('./modules/onboarding/empezar/EmpezarApp'));
+const FirstRunRedirect = lazyWithPreload(() => import('./modules/onboarding/empezar/FirstRunRedirect'));
+
 // T20 Fase 3a · Inmuebles v5 module (sustituye horizon/inmuebles/* + pulse/contratos/*)
 const InmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/InmueblesPage'));
 const InmueblesListado = lazyWithPreload(() => import('./modules/inmuebles/pages/ListadoPage'));
@@ -681,13 +686,27 @@ function App() {
               />
             )}
 
+            {/* Onboarding día 0 · `/empezar` · pantalla completa SIN MainLayout
+                (el flujo trae su propia topbar · mockup atlas-onboarding-dia0-v4). */}
+            <Route path="/empezar/*" element={
+              <ProtectedRoute>
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <EmpezarApp />
+                </React.Suspense>
+              </ProtectedRoute>
+            } />
+
             {/* Protected App Routes */}
             <Route path="/" element={
               <ProtectedRoute>
                 <MainLayout />
               </ProtectedRoute>
             }>
-            <Route index element={<Navigate to="/panel" replace />} />
+            <Route index element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <FirstRunRedirect />
+              </React.Suspense>
+            } />
             <Route path="panel" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <PanelPage />

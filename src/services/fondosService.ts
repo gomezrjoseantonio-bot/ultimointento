@@ -8,6 +8,8 @@
 //   - Si el objetivo ya tenía OTRO fondo · ese fondo pierde su vinculación.
 
 import { initDB } from './db';
+import type { Account, Movement, TreasuryEvent } from './db';
+import { calculateAccountBalanceAtDate } from './accountBalanceService';
 import type { FondoAhorro, FondoTipo, CuentaAsignada, Objetivo } from '../types/miPlan';
 
 // ── UUID helper ───────────────────────────────────────────────────────────────
@@ -24,12 +26,20 @@ function generateId(): string {
 async function getSaldoCuenta(cuentaId: number): Promise<number> {
   const db = await initDB();
   try {
-    const cuenta = await db.get('accounts', cuentaId);
+    const cuenta = (await db.get('accounts', cuentaId)) as Account | undefined;
     if (!cuenta) return 0;
-    // El balance real se calcula con accountBalanceService; aquí usamos
-    // el saldo disponible estimado del objeto Account (campo openingBalance
-    // + movimientos, pero como aproximación usamos openingBalance si no hay más info).
-    return (cuenta as { openingBalance?: number }).openingBalance ?? 0;
+    // FIX onboarding día 0 (bug documentado · `getCurrentSaldoCuenta.ts:5`):
+    // NO devolver `openingBalance` crudo (queda obsoleto al haber movimientos).
+    // El saldo real se calcula con `accountBalanceService` · cutoff = mañana
+    // para incluir eventos confirmados de hoy · patrón canónico del repo.
+    const [treasuryEvents, movements] = await Promise.all([
+      db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+      db.getAll('movements') as Promise<Movement[]>,
+    ]);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const cutoffDate = tomorrow.toISOString().split('T')[0];
+    return calculateAccountBalanceAtDate({ account: cuenta, cutoffDate, treasuryEvents, movements });
   } catch {
     return 0;
   }
