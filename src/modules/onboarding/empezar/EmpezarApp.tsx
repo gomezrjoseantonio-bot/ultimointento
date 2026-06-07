@@ -10,6 +10,7 @@ import { OnboardingProvider, useOnboarding } from './OnboardingContext';
 import WelcomeScreen from './WelcomeScreen';
 import HubScreen from './HubScreen';
 import RevealScreen from './RevealScreen';
+import SugerenciasScreen from './SugerenciasScreen';
 import BloqueScreen from './bloques/BloqueScreen';
 import { BLOQUES_ORDEN } from '../../../services/onboardingProgressService';
 import styles from './empezar.module.css';
@@ -34,6 +35,7 @@ const EmpezarApp: React.FC = () => {
         <Routes>
           <Route index element={<EmpezarEntry />} />
           <Route path="hub" element={<HubScreen />} />
+          <Route path="sugerencias" element={<SugerenciasScreen />} />
           <Route path="reveal" element={<RevealScreen />} />
           <Route path=":bloqueId" element={<BloqueScreen />} />
           <Route path="*" element={<Navigate to="/empezar" replace />} />
