@@ -12,15 +12,21 @@ import InmueblesBloque from './InmueblesBloque';
 import ContratosBloque from './ContratosBloque';
 import CuentasBloque from './CuentasBloque';
 import FinanzasBloque from './FinanzasBloque';
+import PrestamosBloque from './PrestamosBloque';
+import NominaBloque from './NominaBloque';
+import InversionesBloque from './InversionesBloque';
 import type { BloqueId } from '../../../../services/onboardingProgressService';
 
-/** Registro de pantallas reales por bloque. Se rellena en C4-C6. */
+/** Registro de pantallas reales por bloque. */
 const BLOQUE_SCREENS: Partial<Record<BloqueId, React.ComponentType>> = {
   persona: PersonaBloque,
   inmuebles: InmueblesBloque,
   contratos: ContratosBloque,
   cuentas: CuentasBloque,
   finanzas: FinanzasBloque,
+  prestamos: PrestamosBloque,
+  nomina: NominaBloque,
+  inversiones: InversionesBloque,
 };
 
 const BloqueScreen: React.FC = () => {

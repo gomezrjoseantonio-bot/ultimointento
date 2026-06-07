@@ -49,4 +49,46 @@ write('plantilla-inmuebles-atlas.xlsx', [
   ],
 ]);
 
+// ── Préstamos (C6) ──────────────────────────────────────────────────────────
+write('plantilla-prestamos-atlas.xlsx', [
+  [
+    'Nombre',
+    'Inmueble vinculado (alias o RC)',
+    'Cuenta de cargo (IBAN o alias)',
+    'Principal inicial €',
+    'Principal vivo €',
+    'TIN %',
+    'Plazo total (meses)',
+    'Día de cargo',
+    'Fecha primer cargo',
+    'Tipo (fijo/variable/mixto)',
+  ],
+  [
+    'Hipoteca Piso Centro',
+    'Piso Centro',
+    'ES7620770024003102575766',
+    80000,
+    72000,
+    2.5,
+    300,
+    1,
+    '2021-07-01',
+    'fijo',
+  ],
+]);
+
+// ── Inversiones (C6) ────────────────────────────────────────────────────────
+write('plantilla-inversiones-atlas.xlsx', [
+  [
+    'Tipo (fondo/accion/etf/crypto/plan_pensiones/deposito/otro)',
+    'Entidad',
+    'Producto',
+    'Unidades',
+    'Coste adquisición €',
+    'Fecha compra',
+    'Valor de hoy €',
+  ],
+  ['fondo', 'Indexa Capital', 'Indexa RV Mixta', 120, 10000, '2022-03-10', 12500],
+]);
+
 console.log('Plantillas del onboarding generadas en', OUT_DIR);
