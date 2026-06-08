@@ -3,12 +3,13 @@
  * Cada tarjeta refleja el estado real del bloque (servicio único) y navega a
  * su bloque. Banda navy SOLO con núcleo completo. Guardado continuo.
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
 import { useOnboarding } from './OnboardingContext';
 import { BLOQUES_META_LIST } from './bloquesConfig';
 import OnboardingTopbar from './OnboardingTopbar';
+import { getAvisosOnboarding, type AvisoOnboarding } from '../../../services/onboardingAvisosService';
 import styles from './empezar.module.css';
 import type { BloqueEstado } from '../../../services/onboardingProgressService';
 
@@ -21,10 +22,12 @@ function ctaLabel(estado: BloqueEstado): string {
 const HubScreen: React.FC = () => {
   const navigate = useNavigate();
   const { state, progress, refresh } = useOnboarding();
+  const [avisos, setAvisos] = useState<AvisoOnboarding[]>([]);
 
   // Reentrante · refrescar al volver al hub (p.ej. tras completar un bloque).
   useEffect(() => {
     void refresh();
+    void getAvisosOnboarding().then(setAvisos);
   }, [refresh]);
 
   return (
@@ -79,6 +82,19 @@ const HubScreen: React.FC = () => {
             );
           })}
         </div>
+
+        {avisos.length > 0 && (
+          <div className={styles.honesty} style={{ marginTop: 18 }}>
+            <strong>Pendientes de tu foto</strong>
+            <ul className={styles.honestyList}>
+              {avisos.map((a) => (
+                <li key={a.clave} style={{ cursor: 'pointer' }} onClick={() => navigate(a.deepLink)}>
+                  <Icons.Alert size={12} strokeWidth={2.5} /> {a.label} · <span className={styles.goldTxt}>vincular →</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {progress.nucleoCompleto && (
           <div className={styles.hubBottom}>

@@ -9,7 +9,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Home as IconHome,
@@ -254,6 +254,11 @@ const initialForm = (): FormState => ({
 const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  // Onboarding día 0 · si venimos del bloque inmuebles de `/empezar`, al
+  // guardar/cancelar volvemos al mapa en vez de a /inmuebles (no abandonar el
+  // flujo · §2.1). El form real se reutiliza tal cual · sin duplicar.
+  const fromEmpezar = searchParams.get('from') === 'empezar';
   const propertyId = id ? parseInt(id, 10) : undefined;
 
   const [form, setForm] = useState<FormState>(initialForm);
@@ -756,7 +761,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       }
 
       toast.success(mode === 'edit' ? 'Inmueble actualizado' : 'Inmueble guardado');
-      navigate('/inmuebles?tab=cartera&refresh=1');
+      navigate(fromEmpezar ? '/empezar/inmuebles' : '/inmuebles?tab=cartera&refresh=1');
     } catch (e) {
       console.error('Error al guardar inmueble:', e);
       toast.error('Error al guardar el inmueble');
@@ -766,7 +771,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   };
 
   const handleCancel = () => {
-    navigate('/inmuebles?tab=cartera');
+    navigate(fromEmpezar ? '/empezar/inmuebles' : '/inmuebles?tab=cartera');
   };
   // Mantener cancelRef actualizado para el listener de Esc.
   cancelRef.current = handleCancel;

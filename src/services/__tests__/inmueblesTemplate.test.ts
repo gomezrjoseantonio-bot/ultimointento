@@ -65,9 +65,18 @@ describe('revisión de filas', () => {
     filaOriginal: 2,
     alias: 'Piso',
     direccion: null,
+    tipoActivo: 'piso' as const,
     refCatastral: null,
+    usoTipo: null,
+    alquilerPorHabitaciones: false,
     modoExplotacion: 'piso_completo' as const,
     numeroHabitaciones: null,
+    banos: null,
+    m2: null,
+    esUrbana: true,
+    porcentajePropiedad: null,
+    tieneParking: false,
+    tieneTrastero: false,
     fechaCompra: '2021-01-01',
     precioCompra: 100000,
     gastosCompra: 10000,
@@ -75,6 +84,7 @@ describe('revisión de filas', () => {
     importeFinanciado: 0,
     valorCatastral: 0,
     valorCatastralConstruccion: 0,
+    valorCatastralRevisado: false,
   };
 
   it('fila con financiado sin préstamo → aviso para el semáforo', () => {
