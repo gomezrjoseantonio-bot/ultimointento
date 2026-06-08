@@ -132,6 +132,15 @@ describe('sugerirInmueble · casos reales (sensibilidad direcciones)', () => {
     expect(r.confianza).toBeGreaterThanOrEqual(0.7);
   });
 
+  it('"4-ACEVEDO-H2 - <RC>" (marcador de habitación ANTES de la RC) sigue casando Acevedo', () => {
+    // Regresión real (pantallazo Jose): Rentila pone el "-H2" antes de la RC, así
+    // que el viejo stripRoomSuffix (solo sufijo final) no lo quitaba y el token "h2"
+    // diluía el score a 0.50 → "revisión". Ahora se quita en cualquier posición.
+    const r = sugerirInmueble('4-ACEVEDO-H2 - 7949807TP6074N0006YM', props);
+    expect(r.inmuebleId).toBe(10);
+    expect(r.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+
   it('"1-SANT FRUITOS" asimila a "Carles Buïgas, Sant Fruitós"', () => {
     const r = sugerirInmueble('1-SANT FRUITOS', props);
     expect(r.inmuebleId).toBe(11);
