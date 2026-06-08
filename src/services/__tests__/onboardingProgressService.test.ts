@@ -53,42 +53,42 @@ describe('computeProgress · ponderación del núcleo', () => {
     expect(p.pct).toBe(0);
     expect(p.nucleoCompleto).toBe(false);
     expect(p.completados).toBe(0);
-    expect(p.pendientes).toHaveLength(8);
+    expect(p.pendientes).toHaveLength(7);
   });
 
   it('un bloque de núcleo pesa DOBLE que uno de resto', () => {
     const conNucleo = defaultOnboardingState();
     conNucleo.bloques.persona.estado = 'completado'; // peso 2
     const conResto = defaultOnboardingState();
-    conResto.bloques.finanzas.estado = 'completado'; // peso 1
+    conResto.bloques.prestamos.estado = 'completado'; // peso 1
 
-    // peso total = 12 → 2/12 = 17% vs 1/12 = 8%
-    expect(computeProgress(conNucleo).pct).toBe(17);
-    expect(computeProgress(conResto).pct).toBe(8);
+    // peso total = 11 → 2/11 = 18% vs 1/11 = 9%
+    expect(computeProgress(conNucleo).pct).toBe(18);
+    expect(computeProgress(conResto).pct).toBe(9);
   });
 
-  it('los 4 bloques de núcleo completados → 67% y nucleoCompleto', () => {
+  it('los 4 bloques de núcleo completados → 73% y nucleoCompleto', () => {
     const state = defaultOnboardingState();
     for (const b of NUCLEO_BLOQUES) state.bloques[b].estado = 'completado';
     const p = computeProgress(state);
-    expect(p.pct).toBe(67); // (2*4)/12 = 0.6667
+    expect(p.pct).toBe(73); // (2*4)/11 = 0.7273
     expect(p.nucleoCompleto).toBe(true);
-    expect(p.pendientes).toEqual(['finanzas', 'prestamos', 'nomina', 'inversiones']);
+    expect(p.pendientes).toEqual(['prestamos', 'nomina', 'inversiones']);
   });
 
-  it('los 8 bloques completados → 100%', () => {
+  it('los 7 bloques completados → 100%', () => {
     const state = defaultOnboardingState();
     for (const b of BLOQUES_ORDEN) state.bloques[b].estado = 'completado';
     const p = computeProgress(state);
     expect(p.pct).toBe(100);
-    expect(p.completados).toBe(8);
+    expect(p.completados).toBe(7);
     expect(p.pendientes).toHaveLength(0);
   });
 
   it('estado parcial aporta medio peso', () => {
     const state = defaultOnboardingState();
-    state.bloques.persona.estado = 'parcial'; // 0.5 * 2 = 1 → 1/12 = 8%
-    expect(computeProgress(state).pct).toBe(8);
+    state.bloques.persona.estado = 'parcial'; // 0.5 * 2 = 1 → 1/11 = 9%
+    expect(computeProgress(state).pct).toBe(9);
     // parcial NO cuenta como completado en pendientes
     expect(computeProgress(state).pendientes).toContain('persona');
   });
@@ -107,7 +107,7 @@ describe('persistencia keyval', () => {
   it('estado vacío → devuelve default normalizado', async () => {
     const state = await getOnboardingState();
     expect(state.bloques.persona.estado).toBe('pendiente');
-    expect(Object.keys(state.bloques)).toHaveLength(8);
+    expect(Object.keys(state.bloques)).toHaveLength(7);
   });
 
   it('setBloqueEstado persiste y recalcula nucleoCompleto', async () => {
@@ -115,7 +115,7 @@ describe('persistencia keyval', () => {
     const state = await getOnboardingState();
     expect(state.nucleoCompleto).toBe(true);
     expect(state.bloques.contratos.estado).toBe('completado');
-    expect((await getProgress()).pct).toBe(67);
+    expect((await getProgress()).pct).toBe(73);
   });
 
   it('setBloqueEstado guarda el detalle', async () => {

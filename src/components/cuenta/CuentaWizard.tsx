@@ -148,10 +148,22 @@ const parseInt31 = (raw: string): number => {
   return Math.max(1, Math.min(31, n));
 };
 
+// FIX P3 (off-by-one) · un string date-only "YYYY-MM-DD" se construye con
+// componentes LOCALES. `new Date("YYYY-MM-DD")` se parsea como medianoche UTC y
+// al formatear en TZ local cae al día anterior (campo "08/06/2026" vs preview
+// "7 jun 2026"). Misma corrección de TZ que el fix de PUNTO 3 (`toLocalDate` en
+// NuevoContratoWizard). Local al wizard.
+const toLocalDate = (iso: string): Date | null => {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
 const fmtFechaCorta = (iso: string): string => {
   if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
+  const d = toLocalDate(iso);
+  if (!d) return iso;
   return `${d.getDate()} ${MESES_CORTOS[d.getMonth()]} ${d.getFullYear()}`;
 };
 

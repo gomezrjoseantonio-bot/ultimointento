@@ -46,8 +46,8 @@ it('flujo completo · núcleo → reveal · saltar bloque → semáforo · reent
   let state = await getOnboardingState();
   progress = computeProgress(state);
   expect(state.nucleoCompleto).toBe(true);
-  expect(progress.pct).toBe(67); // (2*4)/12
-  expect(progress.pendientes).toEqual(['finanzas', 'prestamos', 'nomina', 'inversiones']);
+  expect(progress.pct).toBe(73); // (2*4)/11
+  expect(progress.pendientes).toEqual(['prestamos', 'nomina', 'inversiones']);
 
   // 3 · ver el reveal (marca revealVisto)
   await setRevealVisto(true);
@@ -74,7 +74,7 @@ it('descartes sobreviven a la reentrada', async () => {
 });
 
 it('completar todos los bloques → 100% (el widget del Panel desaparece)', async () => {
-  const todos = ['persona', 'inmuebles', 'contratos', 'cuentas', 'finanzas', 'prestamos', 'nomina', 'inversiones'] as const;
+  const todos = ['persona', 'inmuebles', 'contratos', 'cuentas', 'prestamos', 'nomina', 'inversiones'] as const;
   for (const b of todos) await setBloqueEstado(b, 'completado');
   const progress = computeProgress(await getOnboardingState());
   expect(progress.pct).toBe(100);

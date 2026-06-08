@@ -2,9 +2,11 @@
 // usuario. NO usa `currentBalance` cacheado del Account ni `openingBalance`
 // (pueden estar obsoletos · es la causa de bugs en el panel de Financiación).
 //
-// JOSÉ § Etapa A B3 · `fondosService.getSaldoCuenta` actual usa
-// `openingBalance` · está mal · documentado en "Hallazgos laterales" del
-// PR · no se arregla aquí.
+// FIX PUNTO 4 (P4) · `fondosService.getSaldoCuenta` YA NO usa `openingBalance`
+// crudo: desde el deploy de onboarding día 0 calcula el saldo con
+// `accountBalanceService` (mismo patrón que aquí). El bug histórico está
+// muerto · el saldo inicial guardado se materializa como movimiento de apertura
+// (cuentasService.create) y es el que leen Tesorería y el cashflow.
 //
 // FIX postdeploy 2026-05 · usamos `cuentasService.list()` para resolver las
 // cuentas activas en lugar de filtrar manualmente. `cuentasService.list`

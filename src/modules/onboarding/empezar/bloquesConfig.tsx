@@ -1,6 +1,10 @@
 /**
- * Metadatos de los 8 bloques del onboarding (mockup pantalla 02 · hub).
+ * Metadatos de los 7 bloques del onboarding (mockup pantalla 02 · hub).
  * Orden, títulos, iconos, núcleo y textos · fuente única para hub + widget.
+ *
+ * FIX PUNTO 4 · la tarjeta "Tu vida financiera" (`finanzas`) desaparece: la
+ * subida de extractos y la revisión de sugerencias viven ahora DENTRO del
+ * bloque `cuentas` (fusión cuentas+extractos).
  */
 import { Icons } from '../../../design-system/v5';
 import type { IconComponent } from '../../../design-system/v5';
@@ -51,16 +55,8 @@ export const BLOQUES_META: Record<BloqueId, BloqueMeta> = {
     titulo: 'Tus cuentas',
     Icon: Icons.Tesoreria,
     nucleo: true,
-    pie: '2 min/cuenta',
+    pie: 'Saldo o extracto · por cuenta',
     pendienteText: 'Pendiente · tus cuentas con saldo de hoy',
-  },
-  finanzas: {
-    id: 'finanzas',
-    titulo: 'Tu vida financiera',
-    Icon: Icons.Zap,
-    nucleo: false,
-    pie: 'Extractos o a mano · combinables',
-    pendienteText: 'Pendiente · sube extractos o declara a mano',
   },
   prestamos: {
     id: 'prestamos',

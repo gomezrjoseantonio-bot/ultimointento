@@ -18,7 +18,7 @@ jest.mock('../../OnboardingContext', () => ({
       bloques: {
         persona: { estado: 'pendiente' }, inmuebles: { estado: 'pendiente' },
         contratos: { estado: 'pendiente' }, cuentas: { estado: 'pendiente' },
-        finanzas: { estado: 'pendiente' }, prestamos: { estado: 'pendiente' },
+        prestamos: { estado: 'pendiente' },
         nomina: { estado: 'pendiente' }, inversiones: { estado: 'pendiente' },
       },
       cuentas: {}, nucleoCompleto: false, revealVisto: false, updatedAt: '',

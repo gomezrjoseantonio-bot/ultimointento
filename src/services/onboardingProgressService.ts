@@ -10,7 +10,12 @@
  * Cálculo del % (§2.1): bloques ponderados · el núcleo (persona · inmuebles ·
  * contratos · cuentas) pesa DOBLE. Un bloque `completado` aporta su peso entero;
  * `parcial` aporta la mitad; `pendiente` aporta 0. Con 4 bloques de núcleo (peso
- * 2) y 4 de resto (peso 1), el peso total es 12.
+ * 2) y 3 de resto (peso 1), el peso total es 11.
+ *
+ * FIX PUNTO 4 (fusión cuentas+extractos) · el bloque `finanzas` ("Tu vida
+ * financiera") desaparece: sus extractos y sugerencias viven ahora DENTRO del
+ * bloque `cuentas`. El hub pasa de 8 a 7 bloques · el % se recalcula solo
+ * (PESO_TOTAL es derivado, no hardcodeado).
  */
 
 import { initDB } from './db';
@@ -22,7 +27,6 @@ export type BloqueId =
   | 'inmuebles'
   | 'contratos'
   | 'cuentas'
-  | 'finanzas'
   | 'prestamos'
   | 'nomina'
   | 'inversiones';
@@ -60,13 +64,12 @@ export interface OnboardingDescarte {
 const ONBOARDING_KEY = 'onboarding_v1';
 const DESCARTES_KEY = 'onboarding_v1_descartes';
 
-/** Orden canónico de los 8 bloques (mockup · selector 02-09). */
+/** Orden canónico de los 7 bloques (fusión cuentas+extractos · PUNTO 4). */
 export const BLOQUES_ORDEN: BloqueId[] = [
   'persona',
   'inmuebles',
   'contratos',
   'cuentas',
-  'finanzas',
   'prestamos',
   'nomina',
   'inversiones',
@@ -82,7 +85,7 @@ function pesoBloque(b: BloqueId): number {
   return NUCLEO_BLOQUES.includes(b) ? PESO_NUCLEO : PESO_RESTO;
 }
 
-/** Peso total (núcleo×2 + resto×1 = 12). Derivado, no hardcodeado. */
+/** Peso total (núcleo×2 + resto×1 = 11). Derivado, no hardcodeado. */
 const PESO_TOTAL = BLOQUES_ORDEN.reduce((acc, b) => acc + pesoBloque(b), 0);
 
 function contribucion(estado: BloqueEstado): number {
