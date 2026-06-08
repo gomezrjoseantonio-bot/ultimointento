@@ -1,7 +1,9 @@
 // FIX P3 · regresión del off-by-one de fechas en el resumen en vivo.
 // Se fuerza una TZ por DETRÁS de UTC (donde antes `new Date("YYYY-MM-DD")` caía
 // al día anterior al formatear): el resumen debe mostrar el MISMO día que el
-// campo (08/06/2026 → "8 jun 2026", nunca "7 jun 2026").
+// campo (08/06/2026 → "8 jun 2026", nunca "7 jun 2026"). Se guarda y restaura
+// la TZ para no filtrarla a otros tests del mismo worker (orden-independencia).
+const ORIGINAL_TZ = process.env.TZ;
 process.env.TZ = 'America/New_York';
 
 import '@testing-library/jest-dom';
@@ -34,6 +36,11 @@ const renderWizard = () =>
       </Routes>
     </MemoryRouter>,
   );
+
+afterAll(() => {
+  if (ORIGINAL_TZ === undefined) delete process.env.TZ;
+  else process.env.TZ = ORIGINAL_TZ;
+});
 
 describe('NuevoContratoWizard · resumen de fechas (P3)', () => {
   it('el resumen muestra el mismo día que el campo · sin off-by-one', () => {

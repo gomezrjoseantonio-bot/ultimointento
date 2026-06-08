@@ -13,27 +13,33 @@ import {
   type OnboardingProgress,
 } from '../../../services/onboardingProgressService';
 import { syncNucleoFromData } from '../../../services/onboardingSyncService';
+import { getAvisosOnboarding, type AvisoOnboarding } from '../../../services/onboardingAvisosService';
 import { BLOQUES_META } from '../../onboarding/empezar/bloquesConfig';
 import styles from './FotoActualWidget.module.css';
 
 const FotoActualWidget: React.FC = () => {
   const navigate = useNavigate();
   const [progress, setProgress] = useState<OnboardingProgress | null>(null);
+  const [avisos, setAvisos] = useState<AvisoOnboarding[]>([]);
 
   useEffect(() => {
     let alive = true;
     void (async () => {
       await syncNucleoFromData().catch(() => undefined);
-      const state = await getOnboardingState();
-      if (alive) setProgress(computeProgress(state));
+      const [state, av] = await Promise.all([getOnboardingState(), getAvisosOnboarding()]);
+      if (alive) {
+        setProgress(computeProgress(state));
+        setAvisos(av);
+      }
     })();
     return () => {
       alive = false;
     };
   }, []);
 
-  // Oculto mientras carga o al 100% (foto completa · §2.7).
-  if (!progress || progress.pct >= 100) return null;
+  // Oculto mientras carga · o al 100% sin avisos pendientes (§2.7). Si queda un
+  // aviso (p.ej. financiado sin préstamo) seguimos mostrándolo.
+  if (!progress || (progress.pct >= 100 && avisos.length === 0)) return null;
 
   const nucleoHechos = NUCLEO_BLOQUES.filter((b) => !progress.pendientes.includes(b));
 
@@ -59,6 +65,15 @@ const FotoActualWidget: React.FC = () => {
             {BLOQUES_META[id].titulo}
             <button type="button" className={styles.link} onClick={() => navigate(`/empezar/${id}`)}>
               Completar →
+            </button>
+          </li>
+        ))}
+        {avisos.map((a) => (
+          <li key={a.clave} className={styles.todo}>
+            <Icons.Alert className={styles.icTodo} size={14} strokeWidth={2.5} />
+            {a.label}
+            <button type="button" className={styles.link} onClick={() => navigate(a.deepLink)}>
+              Vincular →
             </button>
           </li>
         ))}

@@ -31,8 +31,16 @@ const ContratosBloque: React.FC = () => {
     if (!done || cierreLanzado.current) return;
     cierreLanzado.current = true;
     void (async () => {
-      await refresh();
-      showToastV5('Contratos guardados · bloque contratos completado', 'success');
+      // El contrato ya está creado por la vía; aquí solo refrescamos el progreso.
+      // Si la lectura del store falla, no dejamos una promesa sin gestionar: se
+      // avisa y se navega igualmente al mapa (el hub vuelve a sincronizar al
+      // montar, así que el bloque acabará marcado · el usuario no se queda atascado).
+      try {
+        await refresh();
+        showToastV5('Contratos guardados · bloque contratos completado', 'success');
+      } catch {
+        showToastV5('Contratos guardados · revisa el progreso en el mapa', 'warn');
+      }
       navigate('/empezar/hub', { replace: true });
     })();
   }, [done, refresh, navigate]);

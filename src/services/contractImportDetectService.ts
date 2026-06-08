@@ -30,8 +30,14 @@ const leerCabecera = async (file: File): Promise<unknown[]> => {
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  if (!sheet) return [];
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false, defval: '' });
+  if (!sheet || !sheet['!ref']) return [];
+  // Acota el rango a la PRIMERA fila para no materializar toda la hoja en matriz
+  // (basta la cabecera para detectar el formato · importante con Excels grandes).
+  const range = XLSX.utils.decode_range(sheet['!ref']);
+  range.e.r = range.s.r;
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1, blankrows: false, defval: '', range,
+  });
   return matrix[0] ?? [];
 };
 
