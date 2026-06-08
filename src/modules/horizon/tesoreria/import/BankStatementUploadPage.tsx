@@ -77,6 +77,16 @@ const BankStatementUploadPage: React.FC = () => {
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : null;
   })();
+  // FIX PUNTO 4 (P1/P7) · cuando se entra desde el bloque cuentas del onboarding
+  // (`?from=empezar&accountId=N`), la cuenta destino llega PREFIJADA y BLOQUEADA
+  // (nace de una fila de cuenta concreta · imposible un selector vacío) y al
+  // terminar se vuelve al bloque marcando esa cuenta como "con extracto".
+  const fromEmpezar = searchParams.get('from') === 'empezar';
+  const lockAccount = fromEmpezar && preselectAccountId != null;
+  const backToEmpezar = (extractoAccountId?: number) => {
+    const q = extractoAccountId != null ? `?extracto=${extractoAccountId}` : '';
+    navigate(`/empezar/cuentas${q}`);
+  };
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountId, setAccountId] = useState<number | ''>('');
@@ -228,6 +238,9 @@ const BankStatementUploadPage: React.FC = () => {
       setStatus('idle');
       setApprovedMatchIds(new Set());
       setMultiSelections(new Map());
+      // FIX PUNTO 4 · desde el onboarding, al confirmar volvemos al bloque
+      // cuentas marcando esta cuenta como "con extracto" (saldo ya actualizado).
+      if (fromEmpezar) backToEmpezar(typeof accountId === 'number' ? accountId : undefined);
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : 'Error confirmando los matches');
@@ -300,8 +313,12 @@ const BankStatementUploadPage: React.FC = () => {
         actions={
           <HeaderSecondaryButton
             icon={ArrowLeft}
-            label="Volver a Tesorería"
-            onClick={() => navigate('/tesoreria')}
+            label={fromEmpezar ? 'Volver al bloque cuentas' : 'Volver a Tesorería'}
+            onClick={() =>
+              fromEmpezar
+                ? backToEmpezar(typeof accountId === 'number' ? accountId : undefined)
+                : navigate('/tesoreria')
+            }
           />
         }
       />
@@ -311,6 +328,7 @@ const BankStatementUploadPage: React.FC = () => {
         accountsLoading={accountsLoading}
         accountId={accountId}
         onAccountChange={setAccountId}
+        locked={lockAccount}
         formatHint={formatHint}
         onFormatChange={setFormatHint}
         periodStart={periodStart}
@@ -419,6 +437,7 @@ interface UploadCardProps {
   accountsLoading: boolean;
   accountId: number | '';
   onAccountChange: (id: number | '') => void;
+  locked?: boolean;
   formatHint: FormatHint;
   onFormatChange: (hint: FormatHint) => void;
   periodStart: string;
@@ -438,6 +457,7 @@ const UploadCard: React.FC<UploadCardProps> = ({
   accountsLoading,
   accountId,
   onAccountChange,
+  locked,
   formatHint,
   onFormatChange,
   periodStart,
@@ -458,7 +478,7 @@ const UploadCard: React.FC<UploadCardProps> = ({
           <select
             value={accountId}
             onChange={e => onAccountChange(e.target.value === '' ? '' : Number(e.target.value))}
-            disabled={accountsLoading}
+            disabled={accountsLoading || locked}
             style={selectStyle}
           >
             {accountsLoading && <option value="">Cargando cuentas…</option>}

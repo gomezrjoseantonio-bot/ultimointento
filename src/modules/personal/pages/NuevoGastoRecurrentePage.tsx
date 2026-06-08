@@ -6,7 +6,7 @@
 // ============================================================================
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { Icons, showToastV5 } from '../../../design-system/v5';
 import { cuentasService } from '../../../services/cuentasService';
 import { personalDataService } from '../../../services/personalDataService';
@@ -324,6 +324,12 @@ const NuevoGastoRecurrentePage: React.FC = () => {
   useOutletContext<PersonalOutletContext>();
   const { gastoId } = useParams<{ gastoId?: string }>();
   const editMode = Boolean(gastoId);
+  // FIX PUNTO 4 · "Añadir recurrente a mano" entra desde el bloque cuentas del
+  // onboarding (`?from=empezar`) · al guardar/cancelar vuelve al bloque (la vía
+  // manual REAL que sustituye a la vía fantasma de "Tu vida financiera").
+  const [searchParams] = useSearchParams();
+  const fromEmpezar = searchParams.get('from') === 'empezar';
+  const backTarget = fromEmpezar ? '/empezar/cuentas' : '/personal/gastos';
 
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -537,7 +543,7 @@ const NuevoGastoRecurrentePage: React.FC = () => {
           : `Gasto recurrente creado · ${nCargos} cargos proyectados en Tesorería`,
         'success',
       );
-      navigate('/personal/gastos');
+      navigate(backTarget);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[T34] error al guardar compromiso', err);
@@ -549,7 +555,7 @@ const NuevoGastoRecurrentePage: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [form, tipoSeleccionado, subtipoSeleccionado, personalDataId, nCargos, navigate, editMode, gastoId]);
+  }, [form, tipoSeleccionado, subtipoSeleccionado, personalDataId, nCargos, navigate, editMode, gastoId, backTarget]);
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -1135,7 +1141,7 @@ const NuevoGastoRecurrentePage: React.FC = () => {
               <button
                 type="button"
                 style={styles.btnCancel}
-                onClick={() => navigate('/personal/gastos')}
+                onClick={() => navigate(backTarget)}
                 disabled={submitting}
               >
                 Cancelar

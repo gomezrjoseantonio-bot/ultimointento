@@ -228,3 +228,42 @@
 
 /* ═══ Loading ═══ */
 .loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; color: var(--atlas-v5-ink-4); font-size: 13px; }
+
+/* ═══ Bloque cuentas · lista + sección sugerencias (FIX PUNTO 4) ═══ */
+.acctToolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+.acctTotal { display: flex; flex-direction: column; align-items: flex-end; }
+.acctTotalLabel { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--atlas-v5-ink-4); font-weight: var(--atlas-v5-fw-bold); }
+.acctTotalVal { font-variant-numeric: tabular-nums; font-size: 18px; font-weight: var(--atlas-v5-fw-bold); color: var(--atlas-v5-ink); }
+.acctEmpty {
+  margin-top: 16px; font-size: 12.5px; color: var(--atlas-v5-ink-4); background: var(--atlas-v5-card-alt);
+  border: 1px dashed var(--atlas-v5-line); border-radius: var(--atlas-v5-radius-md); padding: 16px 18px;
+}
+.acctList { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.acctRow {
+  background: var(--atlas-v5-card); border: 1px solid var(--atlas-v5-line); border-radius: var(--atlas-v5-radius-md);
+  padding: 12px 16px; display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 14px; align-items: center;
+}
+.acctAvatar {
+  width: 34px; height: 34px; border-radius: 9px; background: var(--atlas-v5-brand-ink); color: var(--atlas-v5-white);
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: var(--atlas-v5-fw-bold);
+}
+.acctMain { min-width: 0; }
+.acctName { font-size: 13.5px; font-weight: var(--atlas-v5-fw-semibold); color: var(--atlas-v5-ink); }
+.acctMeta { font-size: 11.5px; color: var(--atlas-v5-ink-4); }
+.acctSaldo { font-variant-numeric: tabular-nums; font-size: 14px; font-weight: var(--atlas-v5-fw-bold); color: var(--atlas-v5-ink); }
+.acctActions { display: flex; gap: 8px; }
+.acctBtn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 7px; font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold); border: 1px solid var(--atlas-v5-line); color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-card); cursor: pointer;
+}
+.acctBtn:hover { background: var(--atlas-v5-card-alt); border-color: var(--atlas-v5-gold); color: var(--atlas-v5-gold-ink); }
+.chip {
+  font-size: 10.5px; font-weight: var(--atlas-v5-fw-bold); letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+.chipExtracto { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }
+.chipManual { background: var(--atlas-v5-card-alt); color: var(--atlas-v5-ink-4); border: 1px solid var(--atlas-v5-line); }
+.sugSectionWrap { margin-top: 34px; padding-top: 26px; border-top: 1px solid var(--atlas-v5-line); }
+.sugSectionHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sugSectionTitle { font-size: 19px; font-weight: var(--atlas-v5-fw-bold); letter-spacing: -0.02em; color: var(--atlas-v5-ink); margin: 4px 0 0; }

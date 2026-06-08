@@ -11,7 +11,6 @@ import PersonaBloque from './PersonaBloque';
 import InmueblesBloque from './InmueblesBloque';
 import ContratosBloque from './ContratosBloque';
 import CuentasBloque from './CuentasBloque';
-import FinanzasBloque from './FinanzasBloque';
 import PrestamosBloque from './PrestamosBloque';
 import NominaBloque from './NominaBloque';
 import InversionesBloque from './InversionesBloque';
@@ -23,7 +22,6 @@ const BLOQUE_SCREENS: Partial<Record<BloqueId, React.ComponentType>> = {
   inmuebles: InmueblesBloque,
   contratos: ContratosBloque,
   cuentas: CuentasBloque,
-  finanzas: FinanzasBloque,
   prestamos: PrestamosBloque,
   nomina: NominaBloque,
   inversiones: InversionesBloque,

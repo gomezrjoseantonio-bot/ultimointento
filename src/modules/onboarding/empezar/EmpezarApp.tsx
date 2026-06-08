@@ -10,7 +10,6 @@ import { OnboardingProvider, useOnboarding } from './OnboardingContext';
 import WelcomeScreen from './WelcomeScreen';
 import HubScreen from './HubScreen';
 import RevealScreen from './RevealScreen';
-import SugerenciasScreen from './SugerenciasScreen';
 import BloqueScreen from './bloques/BloqueScreen';
 import { BLOQUES_ORDEN } from '../../../services/onboardingProgressService';
 import styles from './empezar.module.css';
@@ -35,7 +34,11 @@ const EmpezarApp: React.FC = () => {
         <Routes>
           <Route index element={<EmpezarEntry />} />
           <Route path="hub" element={<HubScreen />} />
-          <Route path="sugerencias" element={<SugerenciasScreen />} />
+          {/* FIX PUNTO 4 · fusión cuentas+extractos · la pantalla doble vía
+              `finanzas` y la ruta huérfana `sugerencias` se BORRAN · ambas
+              redirigen al bloque cuentas (redirect interno del onboarding). */}
+          <Route path="finanzas" element={<Navigate to="/empezar/cuentas" replace />} />
+          <Route path="sugerencias" element={<Navigate to="/empezar/cuentas" replace />} />
           <Route path="reveal" element={<RevealScreen />} />
           <Route path=":bloqueId" element={<BloqueScreen />} />
           <Route path="*" element={<Navigate to="/empezar" replace />} />

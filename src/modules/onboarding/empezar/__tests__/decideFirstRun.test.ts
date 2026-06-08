@@ -22,7 +22,7 @@ jest.mock('../../../../services/db', () => ({
 
 jest.mock('../../../../services/onboardingProgressService', () => ({
   __esModule: true,
-  BLOQUES_ORDEN: ['persona', 'inmuebles', 'contratos', 'cuentas', 'finanzas', 'prestamos', 'nomina', 'inversiones'],
+  BLOQUES_ORDEN: ['persona', 'inmuebles', 'contratos', 'cuentas', 'prestamos', 'nomina', 'inversiones'],
   getOnboardingState: async () => mockState,
 }));
 
@@ -31,7 +31,7 @@ import { decideFirstRun } from '../FirstRunRedirect';
 const estadoPendiente = () => ({
   revealVisto: false,
   bloques: Object.fromEntries(
-    ['persona', 'inmuebles', 'contratos', 'cuentas', 'finanzas', 'prestamos', 'nomina', 'inversiones'].map((b) => [b, { estado: 'pendiente' }]),
+    ['persona', 'inmuebles', 'contratos', 'cuentas', 'prestamos', 'nomina', 'inversiones'].map((b) => [b, { estado: 'pendiente' }]),
   ),
 });
 
