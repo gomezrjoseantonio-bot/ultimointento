@@ -163,4 +163,14 @@ describe('revisión · válidas vs incidencias', () => {
     expect(res.creados).toBe(2);
     expect(res.errores).toHaveLength(1);
   });
+
+  it('idempotencia por dirección · no duplica un inmueble ya existente con esa dirección', async () => {
+    mockProperties.push({ id: 99, alias: 'Existente', address: 'Calle Repetida 1' });
+    // Fila sin alias · identificada por dirección coincidente → se salta.
+    const file = makeFile([HEADER_NUEVA, ['', 'Calle Repetida 1', 'piso', '', '', '', '', '', '', '', '', '', '', '', 100000, 0, 0, 0, 0, 0, '']]);
+    const rows = await parseInmueblesTemplateXlsx(file);
+    const res = await crearInmueblesDesdeRows(rows);
+    expect(res.creados).toBe(0);
+    expect(res.saltados).toBe(1);
+  });
 });

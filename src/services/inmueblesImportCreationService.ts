@@ -108,7 +108,17 @@ export async function crearInmueblesDesdeRows(rows: InmuebleTemplateRow[]): Prom
   const r = resultadoInmueblesVacio();
   const db = await initDB();
   const existentes = (await db.getAll('properties')) as Property[];
-  const aliasExistentes = new Set(existentes.map((p) => (p.alias ?? '').trim().toLowerCase()));
+  // Como una fila puede identificarse por alias O por dirección, la idempotencia
+  // contempla AMBOS: una fila se considera duplicada si su clave coincide con el
+  // alias o la dirección de un inmueble ya existente (o ya creado en este lote).
+  const clavesExistentes = new Set<string>();
+  const registrar = (alias?: string, direccion?: string | null) => {
+    const a = (alias ?? '').trim().toLowerCase();
+    if (a) clavesExistentes.add(a);
+    const d = (direccion ?? '').trim().toLowerCase();
+    if (d) clavesExistentes.add(d);
+  };
+  for (const p of existentes) registrar(p.alias, p.address);
 
   for (const row of rows) {
     const revision = revisarRow(row);
@@ -118,12 +128,12 @@ export async function crearInmueblesDesdeRows(rows: InmuebleTemplateRow[]): Prom
       continue;
     }
     const aliasKey = (row.alias || row.direccion || '').trim().toLowerCase();
-    if (aliasKey && aliasExistentes.has(aliasKey)) {
+    if (aliasKey && clavesExistentes.has(aliasKey)) {
       r.saltados += 1;
       continue;
     }
     const id = Number(await db.add('properties', rowToProperty(row)));
-    if (aliasKey) aliasExistentes.add(aliasKey);
+    registrar(row.alias, row.direccion);
     r.creados += 1;
     r.idsCreados.push(id);
     for (const aviso of revision.avisos) r.avisos.push({ fila: row.filaOriginal, alias: id_alias, aviso });

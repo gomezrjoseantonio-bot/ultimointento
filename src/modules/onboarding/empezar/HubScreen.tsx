@@ -88,8 +88,11 @@ const HubScreen: React.FC = () => {
             <strong>Pendientes de tu foto</strong>
             <ul className={styles.honestyList}>
               {avisos.map((a) => (
-                <li key={a.clave} style={{ cursor: 'pointer' }} onClick={() => navigate(a.deepLink)}>
-                  <Icons.Alert size={12} strokeWidth={2.5} /> {a.label} · <span className={styles.goldTxt}>vincular →</span>
+                <li key={a.clave}>
+                  <Icons.Alert size={12} strokeWidth={2.5} /> {a.label} ·{' '}
+                  <button type="button" className={styles.avisoLink} onClick={() => navigate(a.deepLink)}>
+                    vincular →
+                  </button>
                 </li>
               ))}
             </ul>
