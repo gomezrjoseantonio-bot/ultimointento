@@ -10,6 +10,7 @@ import {
   detectarDuplicado,
   normalizarRentila,
   agruparPorSeccion,
+  tokensInmueble,
 } from '../contractDraftService';
 import { Property, Contract } from '../db';
 import { RentilaRow } from '../rentilaParserService';
@@ -87,6 +88,20 @@ describe('detectarCotitulares', () => {
   });
 });
 
+describe('tokensInmueble · limpieza de códigos Rentila (review #1414)', () => {
+  it('quita el marcador de habitación en cualquier posición · también al inicio', () => {
+    expect(tokensInmueble('4-ACEVEDO-H2 - 7949807TP6074N0006YM')).toEqual(['acevedo']);
+    expect(tokensInmueble('H2 - ACEVEDO')).toEqual(['acevedo']); // marcador al inicio
+    expect(tokensInmueble('6-TENDERINA, 64 4I -004 - 0654104TP7005S0001AB'))
+      .toEqual(['tenderina', '64', 'izquierda']); // código zero-padded "-004" fuera
+  });
+
+  it('CONSERVA un número de identidad unido por guion (no es código de unidad)', () => {
+    expect(tokensInmueble('ACEVEDO-32')).toEqual(['acevedo', '32']);
+    expect(tokensInmueble('TENDERINA-64')).toEqual(['tenderina', '64']);
+  });
+});
+
 describe('sugerirInmueble', () => {
   it('match exacto por referencia catastral → confianza 1.0', () => {
     const r = sugerirInmueble('Piso - 7949807TP6074N0006YM', properties);
@@ -128,6 +143,15 @@ describe('sugerirInmueble · casos reales (sensibilidad direcciones)', () => {
 
   it('"4-ACEVEDO-H1" asimila a "Fuertes Acevedo" (ignora el sufijo de habitación)', () => {
     const r = sugerirInmueble('4-ACEVEDO-H1', props);
+    expect(r.inmuebleId).toBe(10);
+    expect(r.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it('"4-ACEVEDO-H2 - <RC>" (marcador de habitación ANTES de la RC) sigue casando Acevedo', () => {
+    // Regresión real (pantallazo Jose): Rentila pone el "-H2" antes de la RC, así
+    // que el viejo stripRoomSuffix (solo sufijo final) no lo quitaba y el token "h2"
+    // diluía el score a 0.50 → "revisión". Ahora se quita en cualquier posición.
+    const r = sugerirInmueble('4-ACEVEDO-H2 - 7949807TP6074N0006YM', props);
     expect(r.inmuebleId).toBe(10);
     expect(r.confianza).toBeGreaterThanOrEqual(0.7);
   });

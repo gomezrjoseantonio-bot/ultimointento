@@ -219,8 +219,26 @@ export const similarity = (a: string, b: string): number => {
  * 2) Tokens identificativos → coeficiente de solapamiento + guarda de ambigüedad
  */
 
-/** Quita el sufijo de habitación (…-H1 / … Hab 4) antes de tokenizar. */
-const stripRoomSuffix = (t: string): string => (t || '').replace(/[\s\-_](hab|h)\s?\d+\s*$/i, '');
+/**
+ * Quita SOLO el marcador de habitación explícito ("HN" / "Hab N") en cualquier
+ * posición —incluido el inicio del string ("H2 - ACEVEDO")— ("4-ACEVEDO-H2",
+ * "… Hab 4"). Conserva el código de unidad "-0NN" porque la inferencia de
+ * habitación lo necesita (de ahí saca el nº de cuarto).
+ */
+const stripRoomMarker = (t: string): string =>
+  (t || '').replace(/(?:^|[\s\-_,])(?:hab|h)\s?\d+\b/gi, ' ');
+
+/**
+ * Quita los códigos de UNIDAD/HABITACIÓN que Rentila añade al nombre del piso,
+ * en CUALQUIER posición (no solo al final), para que no diluyan el match:
+ *  · marcador de habitación "HN" / "Hab N" tras separador ("4-ACEVEDO-H2")
+ *  · código de unidad zero-padded de Rentila tras guion ("… 64 4I -004", "-001")
+ * Solo se borra el código REAL de Rentila (guion + "0NN") · NO un número de
+ * identidad con guion ("ACEVEDO-32"), ni el portal/planta+mano ("64", "4I"),
+ * ni la referencia catastral (alfanumérica · la quita `normalizeName` después).
+ */
+const stripUnitCodes = (t: string): string =>
+  stripRoomMarker(t).replace(/[\s]*[-_]\s*0\d+\b/g, ' '); // código Rentila zero-padded "-004"
 
 // Palabras genéricas de dirección que NO identifican el inmueble (ES/CA).
 // OJO · "izquierda"/"derecha" NO van aquí: tras la normalización de planta son la
@@ -235,9 +253,17 @@ const STOPWORDS_DIR = new Set([
 const esTokenUtil = (w: string): boolean =>
   !!w && w.length > 1 && !STOPWORDS_DIR.has(w) && !/^\d{5,}$/.test(w); // descarta CP y monosílabos
 
-/** Tokens identificativos (sin prefijo "N-", RC, sufijo de habitación ni ruido). */
+/** Tokens identificativos (sin prefijo "N-", RC, código de unidad/habitación ni ruido). */
 export const tokensInmueble = (texto: string): string[] =>
-  Array.from(new Set(normalizeName(stripRoomSuffix(texto)).split(' ').filter(esTokenUtil)));
+  Array.from(new Set(normalizeName(stripUnitCodes(texto)).split(' ').filter(esTokenUtil)));
+
+/**
+ * Como `tokensInmueble` pero CONSERVANDO el código de unidad "-NNN" (solo quita
+ * el marcador de habitación explícito). Lo usa `inferirHabitacion`, que deduce
+ * el nº de cuarto justo de ese código zero-padded ("…-004" → 4).
+ */
+const tokensConCodigoUnidad = (texto: string): string[] =>
+  Array.from(new Set(normalizeName(stripRoomMarker(texto)).split(' ').filter(esTokenUtil)));
 
 /** Dos tokens "iguales" tolerando un error tipográfico/acento en palabras largas. */
 const tokenNear = (a: string, b: string): boolean => {
@@ -604,7 +630,8 @@ export const inferirHabitacion = (nombreRentila: string, inmueble?: Property | n
     [inmueble.alias, inmueble.globalAlias, inmueble.address, inmueble.province].filter(Boolean).join(' '),
   );
   // Discriminador = lo que queda del nombre tras quitar la identidad del inmueble.
-  const propios = tokensInmueble(nombreRentila).filter((t) => !idTokens.some((p) => tokenNear(t, p)));
+  // Se conservan los códigos de unidad ("-004") porque son la señal del nº de cuarto.
+  const propios = tokensConCodigoUnidad(nombreRentila).filter((t) => !idTokens.some((p) => tokenNear(t, p)));
   const numericos = propios.filter((t) => /^\d{1,3}$/.test(t));
 
   const enRango = (n: number): boolean => n >= 1 && n <= total;
