@@ -1,0 +1,42 @@
+/* Formulario fiscal compartido · Ajustes ↔ onboarding. Tokens --atlas-v5-*. */
+.select {
+  width: 100%;
+  max-width: 280px;
+  padding: 8px 10px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-sm);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.select:focus {
+  outline: none;
+  border-color: var(--atlas-v5-gold);
+}
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--atlas-v5-ink-2);
+  cursor: pointer;
+}
+.check input {
+  accent-color: var(--atlas-v5-gold);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}

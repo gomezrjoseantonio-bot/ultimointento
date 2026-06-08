@@ -35,6 +35,7 @@ import AttentionList from './components/AttentionList';
 import MiPlanCompass from './components/MiPlanCompass';
 import YearTimeline from './components/YearTimeline';
 import FotoActualWidget from './components/FotoActualWidget';
+import { decideFirstRun } from '../onboarding/empezar/FirstRunRedirect';
 import type { AlertaItem } from './components/AttentionList';
 import { useProyeccionLibertad } from '../../hooks/useProyeccionLibertad';
 import styles from './PanelPage.module.css';
@@ -106,6 +107,20 @@ const campañaIRPF = (d: Date): string | null => {
 
 const PanelPage: React.FC = () => {
   const navigate = useNavigate();
+
+  // Puerta de entrada (onboarding día 0 · P1): si el usuario aterriza en el
+  // Panel sin datos reales y sin progreso de onboarding, lo llevamos a
+  // `/empezar`. Cubre las entradas que no pasan por el índice `/` (donde ya
+  // actúa FirstRunRedirect). Reentrante: nunca interrumpe a quien ya empezó.
+  useEffect(() => {
+    let alive = true;
+    void decideFirstRun().then((target) => {
+      if (alive && target === 'empezar') navigate('/empezar', { replace: true });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [navigate]);
 
   // T27.4.2 · proyección libertad financiera real
   const { data: libertadData, loading: libertadLoading, error: libertadError } = useProyeccionLibertad();
