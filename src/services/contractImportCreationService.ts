@@ -46,6 +46,12 @@ export const combinarResultados = (a: ResultadoCreacion, b: ResultadoCreacion): 
   botesConSugerencia: Array.from(new Set([...a.botesConSugerencia, ...b.botesConSugerencia])),
 });
 
+// P4 · día de pago de la plantilla acotado a [1..31] · default 1 si ausente.
+const diaPagoValido = (dia: number | null | undefined): number => {
+  if (dia == null || !Number.isFinite(dia)) return 1;
+  return Math.min(31, Math.max(1, Math.round(dia)));
+};
+
 // Divide el nombre completo en nombre + apellidos (último token = apellidos),
 // coherente con el resto de imports para que el match por nombre sea estable.
 const partirNombre = (full: string): { nombre: string; apellidos: string } => {
@@ -122,10 +128,16 @@ const construirPayload = (
     fechaInicio: d.fechaInicio,
     fechaFin: d.fechaFin || FECHA_FIN_INDEFINIDO,
     rentaMensual: d.rentaMensual,
-    diaPago: 1,
+    // P4 · usa el día de pago de la plantilla si vino · default 1.
+    diaPago: diaPagoValido(d.diaPago),
     margenGraciaDias: 5,
-    indexacion: 'none',
+    // P4 · usa la indexación de la plantilla si vino · default 'none'.
+    indexacion: d.indexacion ?? 'none',
     historicoIndexaciones: [],
+    // P4 · reducción IRPF declarada en la plantilla (>0 → activa).
+    ...(d.reduccionPct != null && d.reduccionPct > 0
+      ? { reduccion: { activa: true, porcentaje: d.reduccionPct } }
+      : {}),
     fianzaMeses: d.fianza > 0 && d.rentaMensual > 0 ? Number((d.fianza / d.rentaMensual).toFixed(2)) : 1,
     fianzaImporte: d.fianza,
     fianzaEstado: 'retenida',
@@ -141,7 +153,7 @@ const construirPayload = (
     startDate: d.fechaInicio,
     endDate: d.fechaFin || FECHA_FIN_INDEFINIDO,
     monthlyRent: d.rentaMensual,
-    paymentDay: 1,
+    paymentDay: diaPagoValido(d.diaPago),
     status: 'upcoming',
     documents: [],
   };

@@ -37,6 +37,12 @@ export interface ContractDraft {
   rentaMensual: number;
   fianza: number;
 
+  // P4 · campos opcionales de la plantilla ATLAS (espejo del wizard). `undefined`
+  // en origen Rentila y en plantillas viejas → el importador aplica sus defaults.
+  diaPago?: number | null;
+  indexacion?: 'none' | 'ipc' | 'irav' | 'otros' | null;
+  reduccionPct?: number | null;
+
   /**
    * FIX § 1.3 · número de habitación parseado del sufijo HX del nombre Rentila
    * (p.ej. "4-ACEVEDO-H2" → 2). `null` si el nombre no trae sufijo. La decisión
@@ -107,6 +113,22 @@ export const mapTipoAtlasToModalidad = (tipoContrato: string | undefined | null)
   const normalized = normalizeBasic(tipoContrato || '');
   if (normalized.includes('vacacional') || normalized.includes('temporada')) return 'vacacional';
   return 'habitual';
+};
+
+/**
+ * P4 · normaliza el texto de la columna "Indexación" de la plantilla ATLAS al
+ * enum de Contract. Tolerante a "IPC anual", "sin indexación", "no", etc.
+ * Devuelve `undefined` si la celda viene vacía (deja el default del importador).
+ */
+export const mapIndexacionAtlas = (
+  raw: string | null | undefined,
+): 'none' | 'ipc' | 'irav' | 'otros' | undefined => {
+  const n = normalizeBasic(raw || '');
+  if (!n) return undefined;
+  if (n.includes('ipc')) return 'ipc';
+  if (n.includes('irav')) return 'irav';
+  if (n.includes('sin') || n === 'no' || n.includes('none') || n.includes('ninguna')) return 'none';
+  return 'otros';
 };
 
 // ───────────────────────────── Cotitulares ─────────────────────────────
@@ -459,6 +481,12 @@ export const normalizarAtlas = (
     const { principal, cotitulares } = detectarCotitulares(row.inquilinoNombre);
     const inmuebleIdSugerido = confianza >= UMBRAL_CONFIANZA_INMUEBLE ? inmuebleId : null;
 
+    // P4 · cotitulares: los de la columna propia tienen prioridad; si no hay,
+    // se conservan los detectados en el nombre completo. Dedup preservando orden.
+    const cotitularesFinal = row.cotitulares.length > 0
+      ? Array.from(new Set([...row.cotitulares, ...cotitulares]))
+      : cotitulares;
+
     const base = {
       filaOriginal: row.filaOriginal,
       ficheroOrigen: 'plantilla-atlas',
@@ -467,7 +495,7 @@ export const normalizarAtlas = (
       inmuebleIdSugerido,
       inmuebleIdConfirmado: inmuebleIdSugerido,
       inquilinoNombre: principal,
-      inquilinoCotitulares: cotitulares,
+      inquilinoCotitulares: cotitularesFinal,
       inquilinoDni: row.dni,
       inquilinoEmail: row.email,
       inquilinoTelefono: row.telefono,
@@ -476,6 +504,10 @@ export const normalizarAtlas = (
       fechaFin: row.fechaFin,
       rentaMensual: row.rentaMensual,
       fianza: row.fianza,
+      // P4 · campos opcionales espejo del wizard (null/undefined si no vienen).
+      diaPago: row.diaPago,
+      indexacion: mapIndexacionAtlas(row.indexacion) ?? null,
+      reduccionPct: row.reduccionPct,
       // La plantilla ATLAS no codifica habitación en el nombre · sin sufijo HX.
       habitacionParseada: null,
       habitacionConfirmada: null,

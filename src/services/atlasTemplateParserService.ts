@@ -1,12 +1,17 @@
-// Commit 3 · Parser de la plantilla Excel propia de ATLAS (11 columnas).
+// Commit 3 · Parser de la plantilla Excel propia de ATLAS.
 //
-// Columnas (§ 1.6 del spec):
+// Columnas base obligatorias/mínimas (§ 1.6 del spec · 11 columnas):
 //   1 Inmueble (nombre o ref. catastral) · 2 Habitación · 3 Tipo de contrato ·
 //   4 Fecha inicio · 5 Fecha fin · 6 Inquilino nombre completo · 7 DNI/NIF ·
 //   8 Email · 9 Teléfono · 10 Renta mensual € · 11 Fianza €.
 //
+// FIX P4 (espejo del wizard) · columnas OPCIONALES añadidas, reconocidas por
+// NOMBRE de cabecera (no por posición) para ser RETROCOMPATIBLES con la plantilla
+// de 11 columnas: Día de pago · Indexación · Reducción IRPF % · Cotitulares (NIFs).
+// Si no están, los campos quedan a null/[] y el importador usa sus defaults.
+//
 // Se lee como matriz (header: 1) por coherencia con el parser Rentila y para
-// mapear por posición de columna.
+// mapear por posición de columna (las base) o por nombre (las opcionales).
 import * as XLSX from 'xlsx';
 import { toIsoDate } from './rentilaParserService';
 
@@ -23,6 +28,11 @@ export interface AtlasTemplateRow {
   telefono: string | null;
   rentaMensual: number;
   fianza: number;
+  // ── P4 · columnas opcionales (espejo del wizard) · null/[] si no vienen ──
+  diaPago: number | null;            // 1-31
+  indexacion: string | null;         // texto crudo (none/ipc/irav/otros · normaliza el draft)
+  reduccionPct: number | null;       // 0,50,60,70,90 (Ley 12/2023)
+  cotitulares: string[];             // NIFs adicionales declarados en columna propia
 }
 
 /** Error lanzado cuando el header no coincide con la plantilla ATLAS. */
@@ -63,6 +73,18 @@ const ATLAS_COLUMNS: ColumnSpec[] = [
 const headerMatches = (header: string, accept: string[]): boolean =>
   accept.some((token) => header === token || header.includes(token) || token.includes(header));
 
+// P4 · columnas opcionales reconocidas por NOMBRE (cualquier posición tras las
+// base). Retrocompatible: si la cabecera no contiene estos tokens, no se leen.
+const OPCIONALES_TOKENS = {
+  diaPago: ['dia de pago', 'día de pago', 'dia pago', 'dia de cobro', 'día de cobro'],
+  indexacion: ['indexacion', 'indexación'],
+  reduccionPct: ['reduccion irpf', 'reducción irpf', 'reduccion', 'reducción'],
+  cotitulares: ['cotitulares', 'nifs adicionales', 'cotitulares nifs'],
+} as const;
+
+const findOpcionalCol = (headers: string[], tokens: readonly string[]): number =>
+  headers.findIndex((h) => h.length > 0 && tokens.some((t) => h === t || h.includes(t)));
+
 export const validateAtlasTemplateHeader = (headerRow: unknown[]): void => {
   const headers = headerRow.map(normalizeHeader);
 
@@ -94,7 +116,7 @@ const toNullableText = (value: unknown): string | null => {
 
 const toNumber = (value: unknown): number => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  const raw = toText(value).replace(/€/g, '').trim();
+  const raw = toText(value).replace(/€/g, '').replace(/%/g, '').trim();
   if (!raw) return 0;
   let normalized = raw;
   if (raw.includes(',')) {
@@ -103,6 +125,20 @@ const toNumber = (value: unknown): number => {
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 };
+
+// P4 · número opcional · null si la celda viene vacía (distinto de 0).
+const toNullableNumber = (value: unknown): number | null => {
+  if (!toText(value)) return null;
+  const n = toNumber(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+// P4 · cotitulares declarados en columna propia · separa por , ; / y limpia.
+const splitCotitulares = (value: unknown): string[] =>
+  toText(value)
+    .split(/[,;/]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 
 const readSheetAsMatrix = async (file: File): Promise<unknown[][]> => {
   const buffer = await file.arrayBuffer();
@@ -126,6 +162,13 @@ export const parseAtlasTemplateXlsx = async (file: File): Promise<AtlasTemplateR
   const [headerRow, ...dataRows] = matrix;
   validateAtlasTemplateHeader(headerRow);
 
+  // P4 · localizar columnas opcionales por nombre (retrocompatible · -1 = ausente).
+  const headers = headerRow.map(normalizeHeader);
+  const colDiaPago = findOpcionalCol(headers, OPCIONALES_TOKENS.diaPago);
+  const colIndexacion = findOpcionalCol(headers, OPCIONALES_TOKENS.indexacion);
+  const colReduccion = findOpcionalCol(headers, OPCIONALES_TOKENS.reduccionPct);
+  const colCotitulares = findOpcionalCol(headers, OPCIONALES_TOKENS.cotitulares);
+
   const rows: AtlasTemplateRow[] = [];
 
   dataRows.forEach((cells, index) => {
@@ -147,6 +190,10 @@ export const parseAtlasTemplateXlsx = async (file: File): Promise<AtlasTemplateR
       telefono: toNullableText(cells[8]),
       rentaMensual: toNumber(cells[9]),
       fianza: toNumber(cells[10]),
+      diaPago: colDiaPago >= 0 ? toNullableNumber(cells[colDiaPago]) : null,
+      indexacion: colIndexacion >= 0 ? toNullableText(cells[colIndexacion]) : null,
+      reduccionPct: colReduccion >= 0 ? toNullableNumber(cells[colReduccion]) : null,
+      cotitulares: colCotitulares >= 0 ? splitCotitulares(cells[colCotitulares]) : [],
     });
   });
 

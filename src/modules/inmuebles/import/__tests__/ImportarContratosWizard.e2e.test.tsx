@@ -1,7 +1,8 @@
-// Commit 8 · E2E del flujo completo del importador (caso Jose) con BD real
-// (fake-indexeddb) y servicios reales: paso 1 → 2 (subir xlsx Rentila) → 3
-// (sección Listos · crear contratos SIN FIRMAR + trigger de bote) → 4 (resumen)
-// → "Ir a Por conciliar" navega a /contratos?tab=conciliar.
+// E2E del flujo completo del importador (caso Jose) con BD real
+// (fake-indexeddb) y servicios reales: Subir (xlsx Rentila autodetectado) →
+// Revisión (sección Listos · crear contratos SIN FIRMAR + trigger de bote) →
+// Confirmar (resumen) → "Ir a Por conciliar" navega a /contratos?tab=conciliar.
+// FIX P5 · el wizard ya NO tiene paso "Origen": arranca directamente en Subir.
 import 'fake-indexeddb/auto';
 import React from 'react';
 import '@testing-library/jest-dom';
@@ -62,7 +63,7 @@ describe('ImportarContratosWizard · E2E flujo Jose (BD real)', () => {
     (globalThis as any).indexedDB = new IDBFactory();
   });
 
-  it('recorre origen → subir → crear listos → resumen → Por conciliar', async () => {
+  it('recorre subir → crear listos → resumen → Por conciliar', async () => {
     await seedV77([
       { id: 1, alias: 'CB Sant Fruitós', globalAlias: '', address: 'Carrer Major, Sant Fruitós de Bages',
         postalCode: '', province: '', municipality: '', ccaa: '', purchaseDate: '2020-01-01',
@@ -77,10 +78,8 @@ describe('ImportarContratosWizard · E2E flujo Jose (BD real)', () => {
 
     renderApp();
 
-    // Paso 1 → 2.
-    await userEvent.click(screen.getByRole('button', { name: /Continuar/ }));
-
-    // Paso 2 · subir 1 fichero Rentila con 2 contratos que mapean a CB Sant Fruitós.
+    // Paso Subir · subir 1 fichero Rentila con 2 contratos que mapean a CB Sant
+    // Fruitós · el formato se reconoce solo por la cabecera (sin paso Origen).
     const file = rentilaFile('Rentila-activos.xlsx', [
       ['', '1-SANT FRUITOS', 'Contrato de arrendamiento de vivienda', '01/01/2024', '31/12/2028', 'CONCEPCION RAMIREZ', 330, 330, 0, '', 330, 0],
       ['', '1-SANT FRUITOS', 'Contrato de arrendamiento de vivienda', '01/01/2024', '31/12/2028', 'JOSEPH PALMA', 320, 320, 0, '', 0, 0],

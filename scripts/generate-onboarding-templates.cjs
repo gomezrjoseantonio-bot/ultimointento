@@ -17,8 +17,10 @@ const OUT_DIR = path.join(__dirname, '..', 'public', 'templates');
 /**
  * Escribe un .xlsx. `aoa` = matriz (fila 0 = cabeceras). Las celdas con valor
  * `Date` se formatean dd/mm/aaaa. `notas` (opcional) = líneas de una hoja Léeme.
+ * `sheetName` = nombre de la hoja de datos (la plantilla de contratos usa
+ * "Contratos" por compatibilidad con la plantilla original).
  */
-function write(filename, aoa, notas) {
+function write(filename, aoa, notas, sheetName = 'Atlas') {
   const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
   // Formato es-ES para toda celda de fecha (las que llevan Date en el aoa).
   for (let r = 1; r < aoa.length; r++) {
@@ -33,7 +35,7 @@ function write(filename, aoa, notas) {
     }
   }
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Atlas');
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
   if (notas && notas.length) {
     const wsNotas = XLSX.utils.aoa_to_sheet(notas.map((l) => [l]));
     XLSX.utils.book_append_sheet(wb, wsNotas, 'Léeme');
@@ -41,6 +43,54 @@ function write(filename, aoa, notas) {
   XLSX.writeFile(wb, path.join(OUT_DIR, filename));
   console.log('· escrito', filename);
 }
+
+// ── Contratos (FIX P4 · espejo del wizard) ───────────────────────────────────
+// Las 11 columnas base (obligatorias/mínimas) NO cambian de nombre ni posición
+// para mantener la retrocompatibilidad con plantillas ya rellenadas. Se AÑADEN
+// 4 columnas OPCIONALES al final (Día de pago · Indexación · Reducción IRPF % ·
+// Cotitulares) que reflejan el wizard de contrato. El parser las reconoce por
+// nombre, así que una plantilla vieja de 11 columnas sigue funcionando. Fechas
+// como celda Date real (es-ES dd/mm/aaaa · §2.7) · el parser acepta serial Excel.
+write(
+  'plantilla-contratos-atlas.xlsx',
+  [
+    [
+      'Inmueble (nombre o ref. catastral)',
+      'Habitación',
+      'Tipo de contrato',
+      'Fecha inicio',
+      'Fecha fin',
+      'Inquilino nombre completo',
+      'DNI/NIF inquilino',
+      'Email inquilino',
+      'Teléfono inquilino',
+      'Renta mensual €',
+      'Fianza €',
+      // ── Opcionales (espejo del wizard) ──
+      'Día de pago',
+      'Indexación',
+      'Reducción IRPF %',
+      'Cotitulares (NIFs)',
+    ],
+    [
+      'CB Sant Fruitós', 'Hab 2', 'Vivienda LAU', new Date(2024, 0, 1), new Date(2028, 11, 31),
+      'CONCEPCION RAMIREZ GUERERO', '53639208B', 'contacto@ejemplo.com', '+34 666 555 444', 330, 330,
+      1, 'IPC anual', 60, '',
+    ],
+    [
+      'RC 7949807TP6074N0006YM', '', 'Vivienda LAU', new Date(2024, 1, 1), '',
+      'JORGE ANDERSON RIOS POSADA', '', 'jorge@ejemplo.com', '+34 600 111 222', 600, 600,
+      5, 'Sin indexación', 50, '12345678Z',
+    ],
+    [
+      'Piso Centro Madrid', '', 'Vacacional', new Date(2024, 6, 1), new Date(2024, 7, 31),
+      'FAMILIA MARTINEZ', '', '', '', 1200, 0,
+      1, '', 0, '',
+    ],
+  ],
+  undefined,
+  'Contratos',
+);
 
 // ── Inmuebles ───────────────────────────────────────────────────────────────
 // Espejo del formulario de inmueble. Obligatorias SOLO: alias o dirección + tipo.

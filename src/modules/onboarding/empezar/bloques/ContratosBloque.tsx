@@ -1,17 +1,50 @@
 /**
  * Pantalla 03 · Bloque núcleo · contratos · doble vía.
- * REUTILIZA sin cambios el importador (`/inmuebles/importar-contratos`) y el
- * wizard de nuevo contrato (`/contratos/nuevo`).
+ * REUTILIZA sin cambios los pasos internos del importador
+ * (`/inmuebles/importar-contratos`) y del wizard de nuevo contrato
+ * (`/contratos/nuevo`): solo les pasa `?from=empezar` para que SEPAN volver.
+ *
+ * FIX P1/P2 · al confirmar el import o guardar el contrato, los wizards vuelven
+ * a `/empezar/contratos?done=…`; aquí se cierra el bucle: se marca el bloque
+ * `contratos` completado, se recalcula el % (toast) y se vuelve al mapa. Al
+ * cancelar vuelven a `/empezar/contratos` sin `done` → bloque sin marcar.
  */
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Icons } from '../../../../design-system/v5';
+import React, { useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Icons, showToastV5 } from '../../../../design-system/v5';
 import DobleViaLayout from './DobleViaLayout';
 import ViaCard from './ViaCard';
+import { useOnboarding } from '../OnboardingContext';
 import styles from '../empezar.module.css';
 
 const ContratosBloque: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { refresh } = useOnboarding();
+  const cierreLanzado = useRef(false);
+
+  // FIX P2 · cierre del bucle al volver de una vía con éxito (`?done=…`).
+  // `refresh()` reejecuta syncNucleoFromData, que marca `contratos` completado
+  // en cuanto existe ≥1 contrato y recalcula el % (hub + widget Panel).
+  const done = searchParams.get('done');
+  useEffect(() => {
+    if (!done || cierreLanzado.current) return;
+    cierreLanzado.current = true;
+    void (async () => {
+      // El contrato ya está creado por la vía; aquí solo refrescamos el progreso.
+      // Si la lectura del store falla, no dejamos una promesa sin gestionar: se
+      // avisa y se navega igualmente al mapa (el hub vuelve a sincronizar al
+      // montar, así que el bloque acabará marcado · el usuario no se queda atascado).
+      try {
+        await refresh();
+        showToastV5('Contratos guardados · bloque contratos completado', 'success');
+      } catch {
+        showToastV5('Contratos guardados · revisa el progreso en el mapa', 'warn');
+      }
+      navigate('/empezar/hub', { replace: true });
+    })();
+  }, [done, refresh, navigate]);
+
   return (
     <DobleViaLayout
       kick="Bloque núcleo · quién te paga"
@@ -31,7 +64,7 @@ const ContratosBloque: React.FC = () => {
             'Revisión antes de crear nada',
           ]}
           time="2-5 min para todos"
-          onClick={() => navigate('/inmuebles/importar-contratos')}
+          onClick={() => navigate('/inmuebles/importar-contratos?from=empezar')}
         />
         <ViaCard
           variant="manual"
@@ -40,7 +73,7 @@ const ContratosBloque: React.FC = () => {
           desc="El asistente de contrato de siempre · inquilino · renta · fechas · tipo y reducción."
           items={['Sin ficheros · ideal con pocos contratos', 'Atlas te sugiere la reducción IRPF']}
           time="5 min por contrato"
-          onClick={() => navigate('/contratos/nuevo')}
+          onClick={() => navigate('/contratos/nuevo?from=empezar')}
         />
       </div>
     </DobleViaLayout>

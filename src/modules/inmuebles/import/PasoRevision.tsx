@@ -31,7 +31,8 @@ const SelectorHabitacion: React.FC<{
 interface PasoRevisionProps {
   drafts: ContractDraft[];
   inmuebleOpciones: InmuebleOpcion[];
-  origen: 'rentila' | 'plantilla_atlas';
+  /** Formato del lote · undefined si es mixto (Rentila + plantilla ATLAS). */
+  origen?: 'rentila' | 'plantilla_atlas';
   onCrear: (drafts: ContractDraft[]) => Promise<void> | void;
   onContinuar: () => void;
   onAtras: () => void;
