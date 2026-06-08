@@ -138,7 +138,7 @@ const PerfilPage: React.FC = () => {
         <SetRow label="NIF/NIE">
           <SetRow.Input mono value={nif} onChange={(e) => setNif(e.target.value)} placeholder="12345678A" aria-label="NIF" />
           <SetRow.Sub>
-            usado para declaraciones fiscales · no editable tras firma de contratos
+            usado para tus declaraciones fiscales
           </SetRow.Sub>
         </SetRow>
       </SetSection>

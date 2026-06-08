@@ -28,7 +28,11 @@ jest.mock('../../OnboardingTopbar', () => ({
 }));
 jest.mock('../../../../../services/personalDataService', () => ({
   __esModule: true,
-  personalDataService: { getPersonalData: jest.fn(), savePersonalData: jest.fn() },
+  personalDataService: {
+    getPersonalData: jest.fn(),
+    savePersonalData: jest.fn(),
+    validateSituacionLaboral: () => ({ isValid: true }),
+  },
 }));
 
 import PersonaBloque from '../PersonaBloque';

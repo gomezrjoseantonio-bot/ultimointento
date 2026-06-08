@@ -67,13 +67,24 @@ const EMPTY: FormState = {
   numDescendientes: 0,
 };
 
+// `fechaNacimiento` puede venir como dd/mm/yyyy (import AEAT). `<input type="date">`
+// solo acepta YYYY-MM-DD · normalizamos al hidratar para no perder el valor.
+const toInputDate = (fecha: string): string => {
+  const m = fecha.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : fecha;
+};
+
+// Situaciones laborales que NO se combinan (espejo de
+// personalDataService.validateSituacionLaboral).
+const LABORALES_EXCLUSIVAS: SituacionLaboral[] = ['desempleado', 'jubilado'];
+
 function fromPersonalData(d: PersonalData): FormState {
   const numHijos = typeof d.hasChildren === 'number' ? d.hasChildren : d.descendientes?.length ?? 0;
   return {
     nombre: d.nombre ?? '',
     apellidos: d.apellidos ?? '',
     dni: d.dni ?? '',
-    fechaNacimiento: d.fechaNacimiento ?? '',
+    fechaNacimiento: d.fechaNacimiento ? toInputDate(d.fechaNacimiento) : '',
     situacionPersonal: d.situacionPersonal ?? 'soltero',
     comunidadAutonoma: d.comunidadAutonoma ?? '',
     situacionLaboral: d.situacionLaboral ?? [],
@@ -89,8 +100,8 @@ interface Props {
   submitLabel?: string;
   /** Acción secundaria opcional (p.ej. "Volver al mapa" en el onboarding). */
   secondary?: React.ReactNode;
-  /** Callback tras guardar con éxito (recibe el dato persistido). */
-  onSaved?: (data: PersonalData) => void;
+  /** Callback tras guardar con éxito (recibe el dato persistido). Puede ser async. */
+  onSaved?: (data: PersonalData) => void | Promise<void>;
 }
 
 const PerfilFiscalForm: React.FC<Props> = ({ submitLabel = 'Guardar cambios', secondary, onSaved }) => {
@@ -123,16 +134,32 @@ const PerfilFiscalForm: React.FC<Props> = ({ submitLabel = 'Guardar cambios', se
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const toggleLaboral = (value: SituacionLaboral) =>
-    setForm((prev) => ({
-      ...prev,
-      situacionLaboral: prev.situacionLaboral.includes(value)
-        ? prev.situacionLaboral.filter((v) => v !== value)
-        : [...prev.situacionLaboral, value],
-    }));
+    setForm((prev) => {
+      if (prev.situacionLaboral.includes(value)) {
+        return { ...prev, situacionLaboral: prev.situacionLaboral.filter((v) => v !== value) };
+      }
+      // "Desempleado" y "Jubilado" son exclusivas · al activarlas quedan solas;
+      // al activar otra, se retiran. Evita combinaciones que el store rechaza.
+      if (LABORALES_EXCLUSIVAS.includes(value)) {
+        return { ...prev, situacionLaboral: [value] };
+      }
+      return {
+        ...prev,
+        situacionLaboral: [...prev.situacionLaboral.filter((v) => !LABORALES_EXCLUSIVAS.includes(v)), value],
+      };
+    });
 
   const handleSave = async () => {
     if (!form.nombre.trim()) {
       showToastV5('Indica al menos tu nombre', 'warn');
+      return;
+    }
+    const situacionLaboral = form.situacionLaboral.length ? form.situacionLaboral : ['asalariado'];
+    // Valida combinaciones (jubilado/desempleado no combinables) con la regla
+    // canónica del servicio antes de tocar el store.
+    const laboralCheck = personalDataService.validateSituacionLaboral(situacionLaboral as SituacionLaboral[]);
+    if (!laboralCheck.isValid) {
+      showToastV5(laboralCheck.error ?? 'Situación laboral inválida', 'warn');
       return;
     }
     setSaving(true);
@@ -146,7 +173,7 @@ const PerfilFiscalForm: React.FC<Props> = ({ submitLabel = 'Guardar cambios', se
         dni: form.dni.trim(),
         direccion: existing?.direccion ?? '',
         situacionPersonal: form.situacionPersonal,
-        situacionLaboral: form.situacionLaboral.length ? form.situacionLaboral : ['asalariado'],
+        situacionLaboral: situacionLaboral as SituacionLaboral[],
         comunidadAutonoma: form.comunidadAutonoma || undefined,
         discapacidad: form.discapacidad,
         fechaNacimiento: form.fechaNacimiento || undefined,
@@ -155,7 +182,13 @@ const PerfilFiscalForm: React.FC<Props> = ({ submitLabel = 'Guardar cambios', se
       };
       const saved = await personalDataService.savePersonalData(payload);
       setExisting(saved);
-      onSaved?.(saved);
+      // `onSaved` puede ser async (marca bloque + navega en el onboarding) ·
+      // lo esperamos y aislamos su error para no dejar un rechazo sin manejar.
+      try {
+        await onSaved?.(saved);
+      } catch {
+        showToastV5('Datos guardados · hubo un problema al continuar', 'warn');
+      }
     } catch {
       showToastV5('No se pudieron guardar tus datos', 'error');
     } finally {

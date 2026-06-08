@@ -13,7 +13,15 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 jest.mock('../../../../services/personalDataService', () => ({
   __esModule: true,
-  personalDataService: { getPersonalData: jest.fn(), savePersonalData: jest.fn() },
+  personalDataService: {
+    getPersonalData: jest.fn(),
+    savePersonalData: jest.fn(),
+    // Regla real espejada: desempleado/jubilado no se combinan.
+    validateSituacionLaboral: (situaciones: string[]) =>
+      (situaciones.includes('desempleado') || situaciones.includes('jubilado')) && situaciones.length > 1
+        ? { isValid: false, error: 'no combinable' }
+        : { isValid: true },
+  },
 }));
 
 import PerfilFiscalForm from '../PerfilFiscalForm';
@@ -71,4 +79,37 @@ it('no guarda sin nombre (validación mínima)', async () => {
   await waitFor(() => expect(screen.getByLabelText('Nombre')).toBeInTheDocument());
   fireEvent.click(screen.getByText('Guardar cambios'));
   await waitFor(() => expect(mockSave).not.toHaveBeenCalled());
+});
+
+it('normaliza fechaNacimiento dd/mm/yyyy → YYYY-MM-DD al hidratar (no se pierde)', async () => {
+  mockGet.mockResolvedValue({
+    id: 1,
+    nombre: 'Eva',
+    apellidos: '',
+    dni: '',
+    direccion: '',
+    situacionPersonal: 'soltero',
+    situacionLaboral: ['asalariado'],
+    fechaNacimiento: '15/03/1980',
+    fechaCreacion: 'x',
+    fechaActualizacion: 'y',
+  });
+  render(<PerfilFiscalForm />);
+  await waitFor(() => expect(screen.getByLabelText('Fecha de nacimiento')).toHaveValue('1980-03-15'));
+});
+
+it('situación laboral · jubilado es exclusiva (no se combina)', async () => {
+  mockGet.mockResolvedValue(null);
+  render(<PerfilFiscalForm submitLabel="Guardar cambios" />);
+  await waitFor(() => expect(screen.getByLabelText('Nombre')).toBeInTheDocument());
+  fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Eva' } });
+  fireEvent.click(screen.getByLabelText('Asalariado/a'));
+  fireEvent.click(screen.getByLabelText('Jubilado/a'));
+  // Al activar jubilado, asalariado se retira.
+  expect(screen.getByLabelText('Asalariado/a')).not.toBeChecked();
+  expect(screen.getByLabelText('Jubilado/a')).toBeChecked();
+
+  fireEvent.click(screen.getByText('Guardar cambios'));
+  await waitFor(() => expect(mockSave).toHaveBeenCalledTimes(1));
+  expect(mockSave.mock.calls[0][0].situacionLaboral).toEqual(['jubilado']);
 });
