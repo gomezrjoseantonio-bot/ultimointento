@@ -761,7 +761,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       }
 
       toast.success(mode === 'edit' ? 'Inmueble actualizado' : 'Inmueble guardado');
-      navigate(fromEmpezar ? '/empezar/inmuebles' : '/inmuebles?tab=cartera&refresh=1');
+      // FIX P1 · al guardar con éxito desde el onboarding volvemos al bloque con
+      // `?done=…` para que cierre el bucle (marca bloque · toast · vuelta al mapa).
+      // Cancelar (handleCancel) vuelve SIN `done` → el bloque no marca nada.
+      navigate(fromEmpezar ? '/empezar/inmuebles?done=inmueble' : '/inmuebles?tab=cartera&refresh=1');
     } catch (e) {
       console.error('Error al guardar inmueble:', e);
       toast.error('Error al guardar el inmueble');
