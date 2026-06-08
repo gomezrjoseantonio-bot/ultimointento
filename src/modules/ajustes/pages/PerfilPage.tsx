@@ -1,24 +1,65 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Pill, Icons, showToastV5 } from '../../../design-system/v5';
 import SetSection from '../components/SetSection';
 import SetRow from '../components/SetRow';
 import Toggle from '../components/Toggle';
+import { getAccountProfile, saveAccountProfile } from '../../../services/accountProfileService';
 import containerStyles from '../AjustesPage.module.css';
 import styles from './PerfilPage.module.css';
 
+// El usuario demo del mock trae "Usuario Demo" · no lo mostramos como dato real
+// (P4). Si no hay nombre persistido ni nombre de auth real · placeholder.
+const DEMO_NAMES = new Set(['Usuario Demo', 'demo']);
+
 const PerfilPage: React.FC = () => {
   const { user } = useAuth();
-  const userName = user?.name ?? 'Usuario';
-  const userEmail = user?.email ?? 'demo@atlas.com';
-  const userId = user?.id ?? 'atl-u-demo';
+  const authName = user?.name && !DEMO_NAMES.has(user.name) ? user.name : '';
+  const authEmail = user?.email && user.email !== 'demo@atlas.com' ? user.email : '';
+  const userId = user?.id ?? '—';
   const createdAt = user?.createdAt
     ? new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
         new Date(user.createdAt),
       )
     : '—';
 
-  const initials = userName
+  // Campos editables · persistidos en local (account_profile_v1). Carga:
+  // persistido → auth real → vacío. "Guardar cambios" ahora SÍ persiste.
+  const [nombre, setNombre] = useState('');
+  const [email, setEmail] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [nif, setNif] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void getAccountProfile().then((p) => {
+      if (!alive) return;
+      setNombre(p.nombre ?? authName);
+      setEmail(p.email ?? authEmail);
+      setTelefono(p.telefono ?? '');
+      setNif(p.nif ?? '');
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveAccountProfile({ nombre, email, telefono, nif });
+      showToastV5('Cambios del perfil guardados', 'success');
+    } catch {
+      showToastV5('No se pudieron guardar los cambios', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const displayName = nombre.trim() || 'Tu cuenta';
+  const initials = (nombre.trim() || 'A')
     .split(/\s+/)
     .map((part) => part[0] ?? '')
     .slice(0, 2)
@@ -41,19 +82,20 @@ const PerfilPage: React.FC = () => {
         <button
           type="button"
           className={`${containerStyles.btn} ${containerStyles.btnGold}`}
-          onClick={() => showToastV5('Cambios del perfil guardados', 'success')}
+          onClick={handleSave}
+          disabled={saving}
         >
           <Icons.Check size={14} strokeWidth={1.8} />
-          Guardar cambios
+          {saving ? 'Guardando…' : 'Guardar cambios'}
         </button>
       </div>
 
       <div className={styles.hero}>
         <div className={styles.avatar} aria-hidden>
-          {initials || 'U'}
+          {initials || 'A'}
         </div>
         <div>
-          <div className={styles.name}>{userName}</div>
+          <div className={styles.name}>{displayName}</div>
           <div className={styles.meta}>
             cuenta creada <strong>{createdAt}</strong>
             <span className={styles.metaSep}>·</span>
@@ -76,27 +118,27 @@ const PerfilPage: React.FC = () => {
         sub="nombre · contacto · identificación fiscal"
       >
         <SetRow label="Nombre completo">
-          <SetRow.Input defaultValue={userName} aria-label="Nombre completo" />
+          <SetRow.Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre" aria-label="Nombre completo" />
         </SetRow>
         <SetRow
           label="Email"
-          trailing={<Pill variant="pos">Verificado</Pill>}
+          trailing={email ? <Pill variant="pos">Verificado</Pill> : undefined}
         >
-          <SetRow.Input defaultValue={userEmail} aria-label="Email" />
+          <SetRow.Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" aria-label="Email" />
           <SetRow.Sub>
-            verificado · usado para inicio de sesión y notificaciones
+            usado para inicio de sesión y notificaciones
           </SetRow.Sub>
         </SetRow>
         <SetRow
           label="Teléfono"
-          trailing={<Pill variant="warn">Sin verificar</Pill>}
+          trailing={telefono ? undefined : <Pill variant="warn">Sin verificar</Pill>}
         >
-          <SetRow.Input defaultValue="+34 612 34 56 78" aria-label="Teléfono" />
+          <SetRow.Input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="+34 600 00 00 00" aria-label="Teléfono" />
         </SetRow>
         <SetRow label="NIF/NIE">
-          <SetRow.Input mono defaultValue="12345678A" aria-label="NIF" />
+          <SetRow.Input mono value={nif} onChange={(e) => setNif(e.target.value)} placeholder="12345678A" aria-label="NIF" />
           <SetRow.Sub>
-            usado para declaraciones fiscales · no editable tras firma de contratos
+            usado para tus declaraciones fiscales
           </SetRow.Sub>
         </SetRow>
       </SetSection>

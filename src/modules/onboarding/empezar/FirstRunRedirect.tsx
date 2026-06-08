@@ -11,7 +11,13 @@ import { BLOQUES_ORDEN } from '../../../services/onboardingProgressService';
 
 type Decision = 'pending' | 'empezar' | 'panel';
 
-async function decide(): Promise<Exclude<Decision, 'pending'>> {
+/**
+ * Decide si el usuario debe entrar al onboarding: SIN datos reales
+ * (properties/accounts/contracts) y SIN progreso → `empezar`; si no → `panel`.
+ * Exportada para reutilizarla como guardia desde el Panel (cubre entradas que
+ * no pasan por el índice `/`, p.ej. ir directo a `/panel`).
+ */
+export async function decideFirstRun(): Promise<Exclude<Decision, 'pending'>> {
   try {
     const db = await initDB();
     const [properties, accounts, contracts] = await Promise.all([
@@ -37,7 +43,7 @@ const FirstRunRedirect: React.FC = () => {
 
   useEffect(() => {
     let alive = true;
-    void decide().then((d) => {
+    void decideFirstRun().then((d) => {
       if (alive) setDecision(d);
     });
     return () => {
