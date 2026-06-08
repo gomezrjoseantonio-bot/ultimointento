@@ -221,22 +221,24 @@ export const similarity = (a: string, b: string): number => {
 
 /**
  * Quita SOLO el marcador de habitación explícito ("HN" / "Hab N") en cualquier
- * posición ("4-ACEVEDO-H2", "… Hab 4"). Conserva el código de unidad "-NNN"
- * porque la inferencia de habitación lo necesita (de ahí saca el nº de cuarto).
+ * posición —incluido el inicio del string ("H2 - ACEVEDO")— ("4-ACEVEDO-H2",
+ * "… Hab 4"). Conserva el código de unidad "-0NN" porque la inferencia de
+ * habitación lo necesita (de ahí saca el nº de cuarto).
  */
 const stripRoomMarker = (t: string): string =>
-  (t || '').replace(/[\s\-_,]+(?:hab|h)\s?\d+\b/gi, ' ');
+  (t || '').replace(/(?:^|[\s\-_,])(?:hab|h)\s?\d+\b/gi, ' ');
 
 /**
  * Quita los códigos de UNIDAD/HABITACIÓN que Rentila añade al nombre del piso,
  * en CUALQUIER posición (no solo al final), para que no diluyan el match:
  *  · marcador de habitación "HN" / "Hab N" tras separador ("4-ACEVEDO-H2")
- *  · código de unidad/puerta tras guion ("… 64 4I -004", "-001")
- * NO toca el portal ni la planta+mano ("64", "4I") —que SÍ identifican el piso—
+ *  · código de unidad zero-padded de Rentila tras guion ("… 64 4I -004", "-001")
+ * Solo se borra el código REAL de Rentila (guion + "0NN") · NO un número de
+ * identidad con guion ("ACEVEDO-32"), ni el portal/planta+mano ("64", "4I"),
  * ni la referencia catastral (alfanumérica · la quita `normalizeName` después).
  */
 const stripUnitCodes = (t: string): string =>
-  stripRoomMarker(t).replace(/[\s]*[-_]\s*\d+\b/g, ' '); // código de unidad tras guion "-004"
+  stripRoomMarker(t).replace(/[\s]*[-_]\s*0\d+\b/g, ' '); // código Rentila zero-padded "-004"
 
 // Palabras genéricas de dirección que NO identifican el inmueble (ES/CA).
 // OJO · "izquierda"/"derecha" NO van aquí: tras la normalización de planta son la

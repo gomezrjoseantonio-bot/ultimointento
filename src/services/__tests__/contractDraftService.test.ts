@@ -10,6 +10,7 @@ import {
   detectarDuplicado,
   normalizarRentila,
   agruparPorSeccion,
+  tokensInmueble,
 } from '../contractDraftService';
 import { Property, Contract } from '../db';
 import { RentilaRow } from '../rentilaParserService';
@@ -84,6 +85,20 @@ describe('detectarCotitulares', () => {
     const r = detectarCotitulares('CONCEPCION RAMIREZ GUERERO');
     expect(r.principal).toBe('CONCEPCION RAMIREZ GUERERO');
     expect(r.cotitulares).toEqual([]);
+  });
+});
+
+describe('tokensInmueble · limpieza de códigos Rentila (review #1414)', () => {
+  it('quita el marcador de habitación en cualquier posición · también al inicio', () => {
+    expect(tokensInmueble('4-ACEVEDO-H2 - 7949807TP6074N0006YM')).toEqual(['acevedo']);
+    expect(tokensInmueble('H2 - ACEVEDO')).toEqual(['acevedo']); // marcador al inicio
+    expect(tokensInmueble('6-TENDERINA, 64 4I -004 - 0654104TP7005S0001AB'))
+      .toEqual(['tenderina', '64', 'izquierda']); // código zero-padded "-004" fuera
+  });
+
+  it('CONSERVA un número de identidad unido por guion (no es código de unidad)', () => {
+    expect(tokensInmueble('ACEVEDO-32')).toEqual(['acevedo', '32']);
+    expect(tokensInmueble('TENDERINA-64')).toEqual(['tenderina', '64']);
   });
 });
 
