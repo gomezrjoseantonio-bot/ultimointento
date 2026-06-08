@@ -218,6 +218,12 @@
 }
 .honestyList { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .honestyList li { display: flex; align-items: center; gap: 7px; }
+.avisoLink {
+  background: none; border: none; padding: 0; cursor: pointer; font: inherit;
+  color: var(--atlas-v5-gold-ink); font-weight: var(--atlas-v5-fw-semibold);
+}
+.avisoLink:hover { text-decoration: underline; }
+.avisoLink:focus-visible { outline: 2px solid var(--atlas-v5-gold); outline-offset: 2px; border-radius: 2px; }
 .revealCta { margin-top: 22px; display: flex; justify-content: center; }
 
 /* ═══ Loading ═══ */

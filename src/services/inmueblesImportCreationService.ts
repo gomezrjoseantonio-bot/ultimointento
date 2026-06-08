@@ -31,17 +31,22 @@ export interface InmuebleRevision {
   avisos: string[];
 }
 
+/** Etiqueta identificativa de la fila (alias o, si falta, dirección). */
+const etiqueta = (row: InmuebleTemplateRow): string => row.alias || row.direccion || '(sin identificar)';
+
 /** Valida una fila sin crear nada · alimenta la tabla de revisión. */
 export function revisarRow(row: InmuebleTemplateRow): InmuebleRevision {
   const avisos: string[] = [];
-  if (!row.alias) return { row, valido: false, motivo: 'Falta el alias', avisos };
-  if (row.precioCompra <= 0) return { row, valido: false, motivo: 'El precio de compra debe ser mayor que 0', avisos };
+  // Obligatorias SOLO · alias o dirección (+ tipo, que por defecto es "piso").
+  if (!row.alias && !row.direccion) {
+    return { row, valido: false, motivo: 'Falta el alias o la dirección', avisos };
+  }
 
   if (row.importeFinanciado > 0) {
     avisos.push('Compra financiada · habrá que vincular el préstamo (el semáforo lo recordará)');
   }
-  if (row.modoExplotacion === 'por_habitaciones' && !row.numeroHabitaciones) {
-    avisos.push('Explotación por habitaciones sin nº de habitaciones · se podrá completar después');
+  if (row.alquilerPorHabitaciones && !row.numeroHabitaciones) {
+    avisos.push('Alquiler por habitaciones sin nº de habitaciones · se podrá completar después');
   }
   return { row, valido: true, avisos };
 }
@@ -55,8 +60,12 @@ function rowToProperty(row: InmuebleTemplateRow): Omit<Property, 'id'> {
   if (row.aportacionPropia > 0) estructuraCompra.aportacionPropia = row.aportacionPropia;
   if (row.importeFinanciado > 0) estructuraCompra.importeFinanciado = row.importeFinanciado;
 
+  const esPiso = row.tipoActivo === 'piso';
+  const esParkingOTrastero = row.tipoActivo === 'parking' || row.tipoActivo === 'trastero';
+
   return {
-    alias: row.alias,
+    tipoActivo: row.tipoActivo,
+    alias: row.alias || row.direccion || '',
     address: row.direccion ?? '',
     postalCode: '',
     province: '',
@@ -64,13 +73,21 @@ function rowToProperty(row: InmuebleTemplateRow): Omit<Property, 'id'> {
     ccaa: '',
     purchaseDate: row.fechaCompra ?? '',
     cadastralReference: row.refCatastral ?? undefined,
-    squareMeters: 0,
+    squareMeters: row.m2 ?? 0,
     bedrooms: row.numeroHabitaciones ?? 0,
+    bathrooms: row.banos ?? undefined,
     transmissionRegime: 'usada',
     state: 'activo',
     documents: [],
-    porcentajePropiedad: 100,
+    porcentajePropiedad: row.porcentajePropiedad ?? 100,
+    esUrbana: row.esUrbana,
     modoExplotacion: row.modoExplotacion,
+    // Mismos campos que persiste el formulario real (InmueblePage).
+    ...(esPiso ? { anexos: { tieneParking: row.tieneParking, tieneTrastero: row.tieneTrastero } } : {}),
+    ...(!esParkingOTrastero && row.usoTipo ? { usoTipo: row.usoTipo } : {}),
+    ...(esPiso && row.alquilerPorHabitaciones
+      ? { alquilerPorHabitaciones: { activo: true, numeroHabitaciones: row.numeroHabitaciones ?? undefined } }
+      : {}),
     acquisitionCosts: { price: row.precioCompra, other: row.gastosCompra > 0 ? [{ concept: 'Gastos compra', amount: row.gastosCompra }] : undefined },
     ...(Object.keys(estructuraCompra).length > 0 ? { estructuraCompra } : {}),
     fiscalData: {
@@ -78,6 +95,7 @@ function rowToProperty(row: InmuebleTemplateRow): Omit<Property, 'id'> {
       constructionCadastralValue: row.valorCatastralConstruccion || undefined,
       constructionPercentage:
         row.valorCatastral > 0 ? (row.valorCatastralConstruccion / row.valorCatastral) * 100 : undefined,
+      cadastralRevised: row.valorCatastralRevisado,
     },
   };
 }
@@ -90,24 +108,35 @@ export async function crearInmueblesDesdeRows(rows: InmuebleTemplateRow[]): Prom
   const r = resultadoInmueblesVacio();
   const db = await initDB();
   const existentes = (await db.getAll('properties')) as Property[];
-  const aliasExistentes = new Set(existentes.map((p) => (p.alias ?? '').trim().toLowerCase()));
+  // Como una fila puede identificarse por alias O por dirección, la idempotencia
+  // contempla AMBOS: una fila se considera duplicada si su clave coincide con el
+  // alias o la dirección de un inmueble ya existente (o ya creado en este lote).
+  const clavesExistentes = new Set<string>();
+  const registrar = (alias?: string, direccion?: string | null) => {
+    const a = (alias ?? '').trim().toLowerCase();
+    if (a) clavesExistentes.add(a);
+    const d = (direccion ?? '').trim().toLowerCase();
+    if (d) clavesExistentes.add(d);
+  };
+  for (const p of existentes) registrar(p.alias, p.address);
 
   for (const row of rows) {
     const revision = revisarRow(row);
+    const id_alias = etiqueta(row);
     if (!revision.valido) {
-      r.errores.push({ fila: row.filaOriginal, alias: row.alias, motivo: revision.motivo ?? 'Fila inválida' });
+      r.errores.push({ fila: row.filaOriginal, alias: id_alias, motivo: revision.motivo ?? 'Fila inválida' });
       continue;
     }
-    const aliasKey = row.alias.trim().toLowerCase();
-    if (aliasExistentes.has(aliasKey)) {
+    const aliasKey = (row.alias || row.direccion || '').trim().toLowerCase();
+    if (aliasKey && clavesExistentes.has(aliasKey)) {
       r.saltados += 1;
       continue;
     }
     const id = Number(await db.add('properties', rowToProperty(row)));
-    aliasExistentes.add(aliasKey);
+    registrar(row.alias, row.direccion);
     r.creados += 1;
     r.idsCreados.push(id);
-    for (const aviso of revision.avisos) r.avisos.push({ fila: row.filaOriginal, alias: row.alias, aviso });
+    for (const aviso of revision.avisos) r.avisos.push({ fila: row.filaOriginal, alias: id_alias, aviso });
   }
   return r;
 }

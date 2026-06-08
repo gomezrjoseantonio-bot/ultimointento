@@ -3,7 +3,7 @@
  * Plantilla Excel NUEVA (acelerador · inline) + alta manual (InmueblePage).
  * Caja honestidad de la estructura de compra (mockup literal).
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons } from '../../../../design-system/v5';
 import DobleViaLayout from './DobleViaLayout';
@@ -22,6 +22,12 @@ const InmueblesBloque: React.FC = () => {
   const navigate = useNavigate();
   const { refresh } = useOnboarding();
   const [mostrarPlantilla, setMostrarPlantilla] = useState(false);
+
+  // P4 · al aterrizar en el bloque, arrancar arriba para que el topbar sticky
+  // no tape el título (la navegación previa podía dejar scroll heredado).
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <DobleViaLayout
@@ -52,7 +58,7 @@ const InmueblesBloque: React.FC = () => {
           desc="El formulario de inmueble de siempre · paso a paso."
           items={['Ideal con 1-2 inmuebles', 'Lo no imprescindible se completa después']}
           time="5-10 min por inmueble"
-          onClick={() => navigate('/inmuebles/nuevo')}
+          onClick={() => navigate('/inmuebles/nuevo?from=empezar')}
         />
       </div>
 
@@ -101,8 +107,7 @@ const InmueblesBloque: React.FC = () => {
           </li>
           <li>
             <Icons.ChevronRight size={12} strokeWidth={2.5} />
-            Con tu aportación real Atlas calcula la rentabilidad sobre el dinero que TÚ pusiste · no sobre el precio
-            del piso
+            La aportación propia se guarda para análisis futuros
           </li>
         </ul>
       </div>
