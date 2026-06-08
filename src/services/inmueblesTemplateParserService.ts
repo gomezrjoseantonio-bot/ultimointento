@@ -51,6 +51,7 @@ const normalizeHeader = (value: unknown): string =>
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
+    .replace(/²/g, '2') // "m² útiles" → "m2 utiles"
     .replace(/\s+/g, ' ')
     .trim();
 
