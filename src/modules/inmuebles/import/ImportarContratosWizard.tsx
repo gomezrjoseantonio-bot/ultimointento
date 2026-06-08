@@ -1,19 +1,26 @@
-// Commit 5 · Wizard de 4 pasos del importador de contratos.
-// Paso 1 (origen) + paso 2 (subida multi-fichero). Réplica de
-// docs/mockups/atlas-importer-contratos-v4.html. Los pasos 3 y 4 se completan
-// en los commits 6 y 8; aquí quedan como placeholders mínimos.
+// Importador de contratos · 3 pasos (FIX P5 · sin paso "Origen").
+//   1 Subir fichero (entrada única · multi-fichero · autodetección por cabecera)
+//   2 Revisión y mapeo
+//   3 Confirmar
+// El formato (Rentila / Plantilla ATLAS) se reconoce SOLO por las cabeceras
+// (huella de cada parser) · pueden mezclarse en el mismo lote · un fichero no
+// reconocido se lista como incidencia con la plantilla a mano y NO bloquea al
+// resto. La card "Otro Excel" (mapeo manual) se ELIMINA.
+//
+// FIX P1 · cuando se entra desde /empezar (`?from=empezar`) el wizard aprende a
+// volver al bloque de onboarding al confirmar (marca progreso) o al cancelar
+// (sin marcar). Sin `from` · comportamiento de siempre intacto.
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, CheckCircle2, Download, FileSpreadsheet,
-  FileDown, FileQuestion, Info, Link2, UploadCloud, X, AlertCircle,
+  Link2, UploadCloud, X, AlertCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import styles from './ImportarContratosWizard.module.css';
-import { parseRentilaXlsx, RentilaRow, RentilaFormatError } from '../../../services/rentilaParserService';
 import {
-  parseAtlasTemplateXlsx, AtlasTemplateRow, AtlasTemplateFormatError,
-} from '../../../services/atlasTemplateParserService';
+  detectarYParsearContrato, FicheroDetectado,
+} from '../../../services/contractImportDetectService';
 import {
   ContractDraft, InmuebleOpcion, construirDraftsRentila, construirDraftsAtlas, listarInmueblesOpciones,
 } from '../../../services/contractDraftService';
@@ -27,19 +34,6 @@ interface ImportarContratosWizardProps {
   onComplete: () => void;
 }
 
-type Origen = 'rentila' | 'plantilla_atlas';
-
-interface FicheroRentila {
-  file: File;
-  rows: RentilaRow[];
-}
-interface FicheroAtlas {
-  file: File;
-  rows: AtlasTemplateRow[];
-}
-
-const MAX_FICHEROS_RENTILA = 2;
-
 const cx = (...classes: Array<string | false | undefined>): string => classes.filter(Boolean).join(' ');
 
 const formatBytes = (bytes: number): string => {
@@ -49,132 +43,103 @@ const formatBytes = (bytes: number): string => {
   return `${(kb / 1024).toFixed(1).replace('.', ',')} MB`;
 };
 
+// Plantilla ATLAS · fichero estático servido desde public/templates/.
+const descargarPlantillaAtlas = (): void => {
+  const base = process.env.PUBLIC_URL || '';
+  const a = document.createElement('a');
+  a.href = `${base}/templates/plantilla-contratos-atlas.xlsx`;
+  a.download = 'plantilla-contratos-atlas.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+};
+
 const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBack, onComplete }) => {
   const navigate = useNavigate();
-  const [step, setStep] = useState<number>(1);
-  const [origen, setOrigen] = useState<Origen>('rentila');
-  const [ficherosRentila, setFicherosRentila] = useState<FicheroRentila[]>([]);
-  const [ficheroAtlas, setFicheroAtlas] = useState<FicheroAtlas | null>(null);
+  const [searchParams] = useSearchParams();
+  const fromEmpezar = searchParams.get('from') === 'empezar';
 
-  const rentilaInputRef = useRef<HTMLInputElement>(null);
-  const atlasInputRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState<number>(1);
+  const [ficheros, setFicheros] = useState<FicheroDetectado[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [procesando, setProcesando] = useState(false);
 
   const [drafts, setDrafts] = useState<ContractDraft[]>([]);
   const [inmuebleOpciones, setInmuebleOpciones] = useState<InmuebleOpcion[]>([]);
   const [preparando, setPreparando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoCreacion>(resultadoVacio);
 
-  const totalContratos = useMemo(
-    () =>
-      origen === 'rentila'
-        ? ficherosRentila.reduce((sum, f) => sum + f.rows.length, 0)
-        : ficheroAtlas?.rows.length ?? 0,
-    [origen, ficherosRentila, ficheroAtlas],
-  );
+  const reconocidos = useMemo(() => ficheros.filter((f) => f.formato !== 'desconocido'), [ficheros]);
+  const totalContratos = useMemo(() => reconocidos.reduce((sum, f) => sum + f.contratos, 0), [reconocidos]);
+  const puedeContinuar = totalContratos > 0;
 
-  const puedeContinuarPaso2 = origen === 'rentila' ? ficherosRentila.length > 0 : ficheroAtlas != null;
+  // ── P1 · destinos según origen (onboarding vs uso normal) ──
+  const volverAlSalir = useCallback(() => {
+    if (fromEmpezar) navigate('/empezar/contratos');
+    else onBack();
+  }, [fromEmpezar, navigate, onBack]);
 
-  // ── Parseo de ficheros Rentila (multi) ──
-  const addRentilaFiles = useCallback(async (fileList: FileList | File[]) => {
+  const finalizar = useCallback(() => {
+    onComplete();
+    if (fromEmpezar) navigate('/empezar/contratos?done=import');
+    else navigate('/contratos?tab=conciliar');
+  }, [fromEmpezar, navigate, onComplete]);
+
+  // ── Paso 1 · subida única multi-fichero con autodetección por cabecera ──
+  const addFiles = useCallback(async (fileList: FileList | File[]) => {
     const yaExiste = (f: File) =>
-      ficherosRentila.some((x) => x.file.name === f.name && x.file.size === f.size);
+      ficheros.some((x) => x.file.name === f.name && x.file.size === f.size);
 
-    // Validar formato/límite/duplicados ANTES de parsear, para no leer Excels que
-    // luego se descartarían (importante con ficheros grandes).
-    const aceptados: File[] = [];
-    let hueco = MAX_FICHEROS_RENTILA - ficherosRentila.length;
+    const nuevos: File[] = [];
     for (const file of Array.from(fileList)) {
-      if (!file.name.match(/\.(xlsx|xls)$/i)) {
-        toast.error(`"${file.name}": formato no válido. Usa .xlsx o .xls`);
-        continue;
-      }
-      if (yaExiste(file) || aceptados.some((a) => a.name === file.name && a.size === file.size)) {
+      if (yaExiste(file) || nuevos.some((n) => n.name === file.name && n.size === file.size)) {
         toast.error(`"${file.name}" ya está en la lista`);
         continue;
       }
-      if (hueco <= 0) {
-        toast.error(`Solo puedes subir ${MAX_FICHEROS_RENTILA} ficheros de Rentila (activos + archivados)`);
-        continue;
-      }
-      aceptados.push(file);
-      hueco -= 1;
+      nuevos.push(file);
     }
+    if (!nuevos.length) return;
 
-    const parseados: FicheroRentila[] = [];
-    for (const file of aceptados) {
-      try {
-        parseados.push({ file, rows: await parseRentilaXlsx(file) });
-      } catch (error) {
-        if (error instanceof RentilaFormatError) {
-          toast.error(`"${file.name}": ${error.message}`);
-        } else {
-          toast.error(`"${file.name}": no se pudo leer el Excel`);
-        }
-      }
-    }
-
-    if (parseados.length) setFicherosRentila((prev) => [...prev, ...parseados]);
-  }, [ficherosRentila]);
-
-  const removeRentilaFile = (name: string, size: number) =>
-    setFicherosRentila((prev) => prev.filter((f) => !(f.file.name === name && f.file.size === size)));
-
-  // ── Parseo de fichero plantilla ATLAS (single) ──
-  const setAtlasFile = useCallback(async (file: File) => {
-    if (!file.name.match(/\.(xlsx|xls)$/i)) {
-      toast.error('Formato no válido. Usa .xlsx o .xls');
-      return;
-    }
+    setProcesando(true);
     try {
-      const rows = await parseAtlasTemplateXlsx(file);
-      setFicheroAtlas({ file, rows });
-    } catch (error) {
-      if (error instanceof AtlasTemplateFormatError) {
-        toast.error(error.message);
-      } else {
-        toast.error('No se pudo leer el Excel');
-      }
+      const procesados = await Promise.all(nuevos.map((file) => detectarYParsearContrato(file)));
+      setFicheros((prev) => [...prev, ...procesados]);
+    } finally {
+      setProcesando(false);
     }
-  }, []);
+  }, [ficheros]);
 
-  // Plantilla ATLAS · fichero estático servido desde public/templates/.
-  const descargarPlantillaAtlas = () => {
-    const base = process.env.PUBLIC_URL || '';
-    const a = document.createElement('a');
-    a.href = `${base}/templates/plantilla-contratos-atlas.xlsx`;
-    a.download = 'plantilla-contratos-atlas.xlsx';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  };
+  const removeFile = (name: string, size: number) =>
+    setFicheros((prev) => prev.filter((f) => !(f.file.name === name && f.file.size === size)));
 
   const irAPaso = (n: number) => setStep(n);
 
-  // Construye los drafts (fuzzy match + duplicados) y carga las opciones de
-  // inmueble antes de entrar en el paso 3.
+  // Construye los drafts (fuzzy match + duplicados) de TODOS los ficheros
+  // reconocidos (Rentila + plantilla ATLAS, mezclados) antes de entrar al paso 2.
   const irARevision = useCallback(async () => {
     setPreparando(true);
     try {
-      const [nuevosDrafts, opciones] = await Promise.all([
-        origen === 'rentila'
-          ? construirDraftsRentila(ficherosRentila.flatMap((f) => f.rows))
-          : construirDraftsAtlas(ficheroAtlas?.rows ?? []),
+      const rentilaRows = reconocidos.flatMap((f) => f.rentilaRows ?? []);
+      const atlasRows = reconocidos.flatMap((f) => f.atlasRows ?? []);
+      const [draftsRentila, draftsAtlas, opciones] = await Promise.all([
+        rentilaRows.length ? construirDraftsRentila(rentilaRows) : Promise.resolve([] as ContractDraft[]),
+        atlasRows.length ? construirDraftsAtlas(atlasRows) : Promise.resolve([] as ContractDraft[]),
         listarInmueblesOpciones(),
       ]);
-      setDrafts(nuevosDrafts);
+      setDrafts([...draftsRentila, ...draftsAtlas]);
       setInmuebleOpciones(opciones);
-      setStep(3);
+      setStep(2);
     } catch (error) {
       console.error('[ImportarContratos] preparar revisión falló:', error);
       toast.error('No se pudieron preparar los contratos para revisión');
     } finally {
       setPreparando(false);
     }
-  }, [origen, ficherosRentila, ficheroAtlas]);
+  }, [reconocidos]);
 
   // Crea los Contracts de una sección (estado SIN FIRMAR) y dispara la
-  // vinculación retrospectiva al bote. Acumula el resultado para el paso 4.
+  // vinculación retrospectiva al bote. Acumula el resultado para el paso final.
   const crearDrafts = useCallback(async (seleccion: ContractDraft[]) => {
     try {
       const parcial = await crearContractsDesdeDrafts(seleccion);
@@ -185,8 +150,17 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
     }
   }, []);
 
-  // ── Stepper ──
-  const pasos = ['Origen', 'Subir fichero', 'Revisión y mapeo', 'Confirmar'];
+  // Para el chip informativo del paso de revisión: 'rentila' solo si TODOS los
+  // ficheros reconocidos son Rentila (preserva el comportamiento anterior).
+  const origenRevision: 'rentila' | 'plantilla_atlas' | undefined = useMemo(() => {
+    if (!reconocidos.length) return undefined;
+    if (reconocidos.every((f) => f.formato === 'rentila')) return 'rentila';
+    if (reconocidos.every((f) => f.formato === 'plantilla_atlas')) return 'plantilla_atlas';
+    return undefined;
+  }, [reconocidos]);
+
+  // ── Stepper (3 pasos) ──
+  const pasos = ['Subir fichero', 'Revisión y mapeo', 'Confirmar'];
   const renderStepper = () => (
     <div className={styles.stepper}>
       {pasos.map((label, i) => {
@@ -208,137 +182,29 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
     </div>
   );
 
-  // ── Paso 1 · origen ──
+  const formatoLabel = (f: FicheroDetectado): string =>
+    f.formato === 'rentila' ? 'Rentila' : 'Plantilla ATLAS';
+
+  // ── Paso 1 · subir ──
   const renderPaso1 = () => (
     <section className={styles.stepContent}>
       <div className={styles.panel}>
-        <div className={styles.panelH}>¿De dónde vienen tus contratos?</div>
+        <div className={styles.panelH}>Sube tus contratos</div>
         <div className={styles.panelSub}>
-          Elige el origen para que ATLAS sepa cómo interpretar las columnas. Si tu fuente no aparece, descarga la plantilla de ATLAS.
+          Arrastra tus exportaciones de Rentila o la plantilla ATLAS rellenada · puedes mezclar varios ficheros.
+          ATLAS reconoce el formato de cada uno por sus cabeceras · no tienes que declarar nada. Acepta .xlsx y .xls.
         </div>
 
-        <div className={styles.sourceGrid}>
-          <button type="button" className={cx(styles.source, origen === 'rentila' && styles.selected)} onClick={() => setOrigen('rentila')}>
-            <div className={styles.sourceIcon}><FileSpreadsheet size={20} strokeWidth={1.5} /></div>
-            <div className={styles.sourceH}>Rentila</div>
-            <div className={styles.sourceD}>Exportación directa del módulo Alquileres de Rentila · ATLAS reconoce las 12 columnas automáticamente.</div>
-            <div className={styles.sourceFoot}><CheckCircle2 size={14} className={styles.pillOk} /> Formato auto-reconocido</div>
-          </button>
-
-          <button type="button" className={cx(styles.source, origen === 'plantilla_atlas' && styles.selected)} onClick={() => setOrigen('plantilla_atlas')}>
-            <div className={styles.sourceIcon}><FileDown size={20} strokeWidth={1.5} /></div>
-            <div className={styles.sourceH}>Plantilla ATLAS</div>
-            <div className={styles.sourceD}>Plantilla Excel propia con las columnas que ATLAS usa internamente · ideal si no tienes Rentila.</div>
-            <div className={styles.sourceFoot}><Download size={14} /> Descargar plantilla</div>
-          </button>
-
-          <button type="button" className={cx(styles.source, styles.disabled)} disabled title="Próximamente">
-            <div className={styles.sourceIcon}><FileQuestion size={20} strokeWidth={1.5} /></div>
-            <div className={styles.sourceH}>Otro Excel</div>
-            <div className={styles.sourceD}>Sube tu propio Excel · ATLAS te pedirá mapear cada columna a un campo conocido en el siguiente paso.</div>
-            <div className={styles.sourceFoot}><AlertCircle size={14} /> Próximamente</div>
-          </button>
-        </div>
-
-        {origen === 'rentila' && (
-          <div className={styles.panelSection}>
-            <div className={styles.panelSectionH}>Qué espera ATLAS de Rentila</div>
-            <div className={styles.infoBanner}>
-              <Info size={16} />
-              <div>
-                Desde Rentila ve a <strong>Alquileres → Exportar</strong>, marca todas las columnas por defecto, descarga el Excel y súbelo aquí. ATLAS reconoce ID, propiedad, tipo, fechas, inquilino, alquiler, gastos y fianza. No necesitas reformatear nada.
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className={styles.wizFoot}>
-          <div className={styles.wizFootInfo}>1 de 4 · Origen</div>
-          <button type="button" className={cx(styles.btn, styles.btnPrimary)} onClick={() => irAPaso(2)}>
-            Continuar <ArrowRight size={14} />
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-
-  // ── Paso 2 · subida ──
-  const renderPaso2Rentila = () => (
-    <section className={styles.stepContent}>
-      <div className={styles.panel}>
-        <div className={styles.panelH}>Sube tus exportaciones de Rentila</div>
-        <div className={styles.panelSub}>
-          Rentila exporta los contratos activos y los archivados por separado · puedes subir ambos a la vez y ATLAS los procesa juntos. Acepta .xlsx y .xls.
-        </div>
-
-        <div className={styles.panelSection}>
-          <div
-            className={cx(styles.dropzone, dragging && styles.dragging)}
-            onClick={() => rentilaInputRef.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files.length) addRentilaFiles(e.dataTransfer.files); }}
-          >
-            <input ref={rentilaInputRef} type="file" accept=".xlsx,.xls" multiple hidden onChange={(e) => e.target.files && addRentilaFiles(e.target.files)} />
-            <div className={styles.dzIcon}><UploadCloud size={28} strokeWidth={1.5} /></div>
-            <div className={styles.dzH}>Arrastra los Excel de Rentila o haz clic para seleccionar</div>
-            <div className={styles.dzSub}>Puedes subir hasta 2 ficheros · activos y archivados · hasta 10 MB cada uno</div>
-            <div className={styles.dzFormat}>.xlsx · .xls</div>
-          </div>
-        </div>
-
-        {ficherosRentila.length > 0 && (
-          <div className={styles.panelSection}>
-            <div className={styles.panelSectionH}>Ficheros subidos</div>
-            <div className={styles.fileList}>
-              {ficherosRentila.map((f) => (
-                <div key={`${f.file.name}-${f.file.size}`} className={styles.fileItem}>
-                  <div className={styles.fileItemIcon}><FileSpreadsheet size={18} strokeWidth={1.5} /></div>
-                  <div className={styles.fileItemInfo}>
-                    <div className={styles.fileItemName}>{f.file.name}</div>
-                    <div className={styles.fileItemMeta}>
-                      <span className={styles.mono}>{formatBytes(f.file.size)}</span> · {f.rows.length} contratos detectados · <span className={styles.pillOk}>formato Rentila reconocido</span>
-                    </div>
-                  </div>
-                  <button type="button" className={styles.fileItemRemove} title="Quitar" onClick={() => removeRentilaFile(f.file.name, f.file.size)}>
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className={styles.fileTotal}>
-              <CheckCircle2 size={14} className={styles.pillOk} />
-              <span><strong>{totalContratos} contratos</strong> listos para revisión en el siguiente paso.</span>
-            </div>
-          </div>
-        )}
-
-        <div className={styles.wizFoot}>
-          <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={() => irAPaso(1)}><ArrowLeft size={14} /> Atrás</button>
-          <div className={styles.wizFootInfo}>{ficherosRentila.length} ficheros · {totalContratos} contratos detectados</div>
-          <button type="button" className={cx(styles.btn, styles.btnPrimary)} disabled={!puedeContinuarPaso2 || preparando} onClick={irARevision}>
-            {preparando ? 'Preparando...' : 'Continuar a revisión'} <ArrowRight size={14} />
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-
-  const renderPaso2Atlas = () => (
-    <section className={styles.stepContent}>
-      <div className={styles.panel}>
-        <div className={styles.panelH}>Plantilla ATLAS</div>
-        <div className={styles.panelSub}>Descarga la plantilla, rellénala con tus contratos y súbela aquí.</div>
-
+        {/* Descarga de la plantilla · vive en el paso Subir (FIX P5) */}
         <div className={styles.panelSection}>
           <div className={styles.templateRow}>
             <div className={styles.templateIcon}><FileSpreadsheet size={20} strokeWidth={1.5} /></div>
             <div className={styles.templateInfo}>
-              <div className={styles.templateH}>plantilla-contratos-atlas.xlsx</div>
-              <div className={styles.templateSub}>11 columnas con ejemplos rellenados · compatible con todos los inmuebles que ya tienes en ATLAS</div>
+              <div className={styles.templateH}>¿No usas Rentila? Descarga la plantilla ATLAS</div>
+              <div className={styles.templateSub}>Rellena una fila por contrato y súbela aquí · columnas compatibles con tus inmuebles.</div>
             </div>
             <button type="button" className={cx(styles.btn, styles.btnGold, styles.btnSm)} onClick={descargarPlantillaAtlas}>
-              <Download size={14} /> Descargar
+              <Download size={14} /> Descargar plantilla
             </button>
           </div>
         </div>
@@ -346,43 +212,69 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
         <div className={styles.panelSection}>
           <div
             className={cx(styles.dropzone, dragging && styles.dragging)}
-            onClick={() => atlasInputRef.current?.click()}
+            onClick={() => inputRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files[0]) setAtlasFile(e.dataTransfer.files[0]); }}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); }}
           >
-            <input ref={atlasInputRef} type="file" accept=".xlsx,.xls" hidden onChange={(e) => e.target.files?.[0] && setAtlasFile(e.target.files[0])} />
+            <input ref={inputRef} type="file" accept=".xlsx,.xls" multiple hidden onChange={(e) => e.target.files && addFiles(e.target.files)} />
             <div className={styles.dzIcon}><UploadCloud size={28} strokeWidth={1.5} /></div>
-            <div className={styles.dzH}>Sube la plantilla ATLAS rellenada</div>
-            <div className={styles.dzSub}>Hasta 10 MB · una hoja por fichero</div>
+            <div className={styles.dzH}>Arrastra tus Excel o haz clic para seleccionar</div>
+            <div className={styles.dzSub}>Rentila (activos + archivados) y/o plantilla ATLAS · varios ficheros · hasta 10 MB cada uno</div>
             <div className={styles.dzFormat}>.xlsx · .xls</div>
           </div>
         </div>
 
-        {ficheroAtlas && (
+        {ficheros.length > 0 && (
           <div className={styles.panelSection}>
-            <div className={styles.panelSectionH}>Fichero subido</div>
+            <div className={styles.panelSectionH}>Ficheros subidos</div>
             <div className={styles.fileList}>
-              <div className={styles.fileItem}>
-                <div className={styles.fileItemIcon}><FileSpreadsheet size={18} strokeWidth={1.5} /></div>
-                <div className={styles.fileItemInfo}>
-                  <div className={styles.fileItemName}>{ficheroAtlas.file.name}</div>
-                  <div className={styles.fileItemMeta}>
-                    <span className={styles.mono}>{formatBytes(ficheroAtlas.file.size)}</span> · {ficheroAtlas.rows.length} contratos detectados · <span className={styles.pillOk}>plantilla ATLAS reconocida</span>
+              {ficheros.map((f) => (
+                <div key={`${f.file.name}-${f.file.size}`} className={styles.fileItem}>
+                  <div className={styles.fileItemIcon}>
+                    {f.formato === 'desconocido'
+                      ? <AlertCircle size={18} strokeWidth={1.5} className={styles.warn} />
+                      : <FileSpreadsheet size={18} strokeWidth={1.5} />}
                   </div>
+                  <div className={styles.fileItemInfo}>
+                    <div className={styles.fileItemName}>{f.file.name}</div>
+                    {f.formato === 'desconocido' ? (
+                      <div className={styles.fileItemMeta}>
+                        <span className={styles.warn}>{f.error}</span>{' '}
+                        <button type="button" className={styles.btnLink} onClick={descargarPlantillaAtlas}>
+                          descargar plantilla ATLAS
+                        </button>
+                      </div>
+                    ) : (
+                      <div className={styles.fileItemMeta}>
+                        <span className={styles.mono}>{formatBytes(f.file.size)}</span> ·{' '}
+                        <span className={styles.pillOk}>{formatoLabel(f)} · {f.contratos} contratos</span>
+                      </div>
+                    )}
+                  </div>
+                  <button type="button" className={styles.fileItemRemove} title="Quitar" onClick={() => removeFile(f.file.name, f.file.size)}>
+                    <X size={14} />
+                  </button>
                 </div>
-                <button type="button" className={styles.fileItemRemove} title="Quitar" onClick={() => setFicheroAtlas(null)}>
-                  <X size={14} />
-                </button>
-              </div>
+              ))}
             </div>
+            {totalContratos > 0 && (
+              <div className={styles.fileTotal}>
+                <CheckCircle2 size={14} className={styles.pillOk} />
+                <span><strong>{totalContratos} contratos</strong> listos para revisión en el siguiente paso.</span>
+              </div>
+            )}
           </div>
         )}
 
         <div className={styles.wizFoot}>
-          <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={() => irAPaso(1)}><ArrowLeft size={14} /> Atrás</button>
-          <div className={styles.wizFootInfo}>{ficheroAtlas ? `${totalContratos} contratos detectados` : 'Sube el fichero rellenado para continuar'}</div>
-          <button type="button" className={cx(styles.btn, styles.btnPrimary)} disabled={!puedeContinuarPaso2 || preparando} onClick={irARevision}>
+          <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={volverAlSalir}>
+            <ArrowLeft size={14} /> {fromEmpezar ? 'Volver a Empezar' : 'Cancelar'}
+          </button>
+          <div className={styles.wizFootInfo}>
+            {procesando ? 'Reconociendo formato…' : `${reconocidos.length} ficheros · ${totalContratos} contratos detectados`}
+          </div>
+          <button type="button" className={cx(styles.btn, styles.btnPrimary)} disabled={!puedeContinuar || preparando || procesando} onClick={irARevision}>
             {preparando ? 'Preparando...' : 'Continuar a revisión'} <ArrowRight size={14} />
           </button>
         </div>
@@ -392,29 +284,28 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
 
   return (
     <div className={styles.root}>
-      <button type="button" className={styles.back} onClick={onBack}>
-        <ArrowLeft size={14} /> Volver a inmuebles
+      <button type="button" className={styles.back} onClick={volverAlSalir}>
+        <ArrowLeft size={14} /> {fromEmpezar ? 'Volver a Empezar' : 'Volver a inmuebles'}
       </button>
       <h1 className={styles.title}>Importar contratos de alquiler</h1>
       <p className={styles.sub}>
-        Sube tus contratos desde Rentila, una plantilla de ATLAS o tu propio Excel. ATLAS los revisa contigo antes de crearlos para evitar duplicados y errores.
+        Sube tus contratos desde Rentila o la plantilla de ATLAS. ATLAS reconoce el formato solo y los revisa contigo antes de crearlos para evitar duplicados y errores.
       </p>
 
       {renderStepper()}
 
       {step === 1 && renderPaso1()}
-      {step === 2 && (origen === 'rentila' ? renderPaso2Rentila() : renderPaso2Atlas())}
-      {step === 3 && (
+      {step === 2 && (
         <PasoRevision
           drafts={drafts}
           inmuebleOpciones={inmuebleOpciones}
-          origen={origen}
+          origen={origenRevision}
           onCrear={crearDrafts}
-          onContinuar={() => irAPaso(4)}
-          onAtras={() => irAPaso(2)}
+          onContinuar={() => irAPaso(3)}
+          onAtras={() => irAPaso(1)}
         />
       )}
-      {step === 4 && (
+      {step === 3 && (
         <section className={styles.stepContent}>
           <div className={styles.panel}>
             <div className={styles.finalHero}>
@@ -476,14 +367,14 @@ const ImportarContratosWizard: React.FC<ImportarContratosWizardProps> = ({ onBac
             </div>
 
             <div className={styles.wizFoot}>
-              <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={() => irAPaso(3)}><ArrowLeft size={14} /> Volver a revisión</button>
+              <button type="button" className={cx(styles.btn, styles.btnGhost)} onClick={() => irAPaso(2)}><ArrowLeft size={14} /> Volver a revisión</button>
               <div />
               <button
                 type="button"
                 className={cx(styles.btn, styles.btnGold)}
-                onClick={() => { onComplete(); navigate('/contratos?tab=conciliar'); }}
+                onClick={finalizar}
               >
-                <ArrowRight size={14} /> Ir a Por conciliar
+                <ArrowRight size={14} /> {fromEmpezar ? 'Volver a Empezar' : 'Ir a Por conciliar'}
               </button>
             </div>
           </div>

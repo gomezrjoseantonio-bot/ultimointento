@@ -33,6 +33,19 @@ interface FormState {
   indexacion: 'none' | 'ipc' | 'irav' | 'otros';
 }
 
+/**
+ * FIX P3 · convierte un string date-only "YYYY-MM-DD" en un Date construido con
+ * componentes LOCALES. Evita el off-by-one de `new Date("YYYY-MM-DD")` (que se
+ * parsea como medianoche UTC y al formatear en TZ local cae al día anterior),
+ * dejando el resumen en vivo SIEMPRE en el mismo día que el campo. Local al
+ * wizard · no se toca `DateLabel` (global).
+ */
+const toLocalDate = (iso: string): Date | null => {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+};
+
 const emptyForm: FormState = {
   inmuebleId: null,
   habitacionId: '',
@@ -54,6 +67,8 @@ const NuevoContratoWizard: React.FC = () => {
   const navigate = useNavigate();
   const { properties } = useOutletContext<InmueblesOutletContext>();
   const [searchParams] = useSearchParams();
+  // FIX P1 · entrada desde el onboarding · al guardar/cancelar vuelve a /empezar.
+  const fromEmpezar = searchParams.get('from') === 'empezar';
   const initialInmuebleId = (() => {
     const v = searchParams.get('inmueble');
     if (!v) return null;
@@ -194,7 +209,9 @@ const NuevoContratoWizard: React.FC = () => {
         `Contrato creado · ${payload.inquilino.nombre} ${payload.inquilino.apellidos}`.trim(),
         'success',
       );
-      navigate('/contratos?tab=activos');
+      // FIX P1/P2 · desde onboarding vuelve a cerrar el bucle (marca el bloque);
+      // en uso normal, al listado de activos de siempre.
+      navigate(fromEmpezar ? '/empezar/contratos?done=contrato' : '/contratos?tab=activos');
     } catch (e) {
       const mensaje = e instanceof Error ? e.message : 'error desconocido';
       // eslint-disable-next-line no-console
@@ -220,7 +237,9 @@ const NuevoContratoWizard: React.FC = () => {
 
   const handleBack = () => {
     if (stepIndex === 0) {
-      navigate(-1);
+      // FIX P1 · cancelar desde onboarding vuelve al bloque SIN marcar.
+      if (fromEmpezar) navigate('/empezar/contratos');
+      else navigate(-1);
       return;
     }
     setStep(steps[stepIndex - 1].key);
@@ -236,7 +255,7 @@ const NuevoContratoWizard: React.FC = () => {
           { label: 'Contratos', onClick: () => navigate('/contratos') },
           { label: 'Nuevo' },
         ]}
-        onBack={() => navigate('/contratos')}
+        onBack={() => navigate(fromEmpezar ? '/empezar/contratos' : '/contratos')}
         title="Nuevo contrato"
         sub="completa los 5 pasos · los cambios se guardan automáticamente como borrador"
       />
@@ -688,13 +707,13 @@ const NuevoContratoWizard: React.FC = () => {
           <div className={styles.asideRow}>
             <span className={styles.asideLab}>Inicio</span>
             <span className={`${styles.asideVal} ${!form.fechaInicio ? styles.muted : ''}`}>
-              {form.fechaInicio ? <DateLabel value={form.fechaInicio} format="short" size="sm" /> : '—'}
+              {form.fechaInicio ? <DateLabel value={toLocalDate(form.fechaInicio) ?? form.fechaInicio} format="short" size="sm" /> : '—'}
             </span>
           </div>
           <div className={styles.asideRow}>
             <span className={styles.asideLab}>Fin</span>
             <span className={`${styles.asideVal} ${!form.fechaFin ? styles.muted : ''}`}>
-              {form.fechaFin ? <DateLabel value={form.fechaFin} format="short" size="sm" /> : '—'}
+              {form.fechaFin ? <DateLabel value={toLocalDate(form.fechaFin) ?? form.fechaFin} format="short" size="sm" /> : '—'}
             </span>
           </div>
           <div className={styles.asideRow}>
