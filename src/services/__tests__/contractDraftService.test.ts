@@ -306,6 +306,40 @@ describe('sugerirInmueble · planta Iz/Dr (notación 4I/4D)', () => {
   });
 });
 
+describe('sugerirInmueble · dirección COMPARTIDA entre dos pisos (caso Jose · pantallazo)', () => {
+  // Dos pisos del mismo edificio con la MISMA dirección; solo el alias distingue
+  // la planta. Antes, la dirección compartida puntuaba 1.0 para ambos y el empate
+  // mandaba TODO a "revisión", borrando la ventaja del alias. El desempate por nº
+  // de tokens de la consulta lo resuelve.
+  const props = ([
+    { id: 1, alias: 'Tenderina 64 4I', address: 'Calle Tenderina 64' },
+    { id: 2, alias: 'Tenderina 64 4D', address: 'Calle Tenderina 64' },
+  ] as unknown) as Property[];
+
+  it('la planta del alias gana a la dirección compartida (4I→id1, 4D→id2)', () => {
+    const iz = sugerirInmueble('6-TENDERINA, 64 4I -004 - 0654104TP7005S0001AB', props);
+    expect(iz.inmuebleId).toBe(1);
+    expect(iz.confianza).toBeGreaterThanOrEqual(0.7);
+
+    const izSinRc = sugerirInmueble('6-TENDERINA, 64 4I -002', props);
+    expect(izSinRc.inmuebleId).toBe(1);
+    expect(izSinRc.confianza).toBeGreaterThanOrEqual(0.7);
+
+    const dr = sugerirInmueble('5-TENDERINA, 64 4D -001', props);
+    expect(dr.inmuebleId).toBe(2);
+    expect(dr.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it('si NINGÚN campo distingue la planta → sigue siendo ambiguo (a revisión)', () => {
+    const sinPlanta = ([
+      { id: 1, alias: 'Tenderina 64', address: 'Calle Tenderina 64' },
+      { id: 2, alias: 'Tenderina 64', address: 'Calle Tenderina 64' },
+    ] as unknown) as Property[];
+    const r = sugerirInmueble('6-TENDERINA, 64 4I -004', sinPlanta);
+    expect(r.confianza).toBeLessThan(0.7);
+  });
+});
+
 describe('normalizarRentila · habitación auto en por_habitaciones (end-to-end)', () => {
   it('asigna la habitación desde "-004" sin pedirla', () => {
     const props = ([{
