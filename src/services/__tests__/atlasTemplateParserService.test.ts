@@ -81,4 +81,54 @@ describe('parseAtlasTemplateXlsx', () => {
 
     await expect(parseAtlasTemplateXlsx(file)).rejects.toBeInstanceOf(AtlasTemplateFormatError);
   });
+
+  // ── FIX P4 · columnas opcionales (espejo del wizard) ──
+  describe('columnas opcionales · espejo del wizard (P4)', () => {
+    const HEADER_EXT = [
+      ...HEADER, 'Día de pago', 'Indexación', 'Reducción IRPF %', 'Cotitulares (NIFs)',
+    ];
+
+    it('lee Día de pago · Indexación · Reducción IRPF · Cotitulares cuando vienen', async () => {
+      const file = makeXlsxFile('plantilla-ext.xlsx', [
+        HEADER_EXT,
+        ['CB Sant Fruitós', '', 'Vivienda LAU', '01/01/2024', '31/12/2028',
+          'CONCEPCION RAMIREZ', '53639208B', 'c@e.com', '+34 600', 330, 660,
+          5, 'IPC anual', 60, '12345678Z; 87654321X'],
+      ]);
+
+      const r = (await parseAtlasTemplateXlsx(file))[0];
+      expect(r.diaPago).toBe(5);
+      expect(r.indexacion).toBe('IPC anual');
+      expect(r.reduccionPct).toBe(60);
+      expect(r.cotitulares).toEqual(['12345678Z', '87654321X']);
+    });
+
+    it('deja null/[] los opcionales vacíos aunque la columna exista', async () => {
+      const file = makeXlsxFile('plantilla-ext.xlsx', [
+        HEADER_EXT,
+        ['Piso Centro', '', 'Vacacional', '01/07/2024', '', 'FAMILIA', '', '', '', 1200, 0, '', '', '', ''],
+      ]);
+
+      const r = (await parseAtlasTemplateXlsx(file))[0];
+      expect(r.diaPago).toBeNull();
+      expect(r.indexacion).toBeNull();
+      expect(r.reduccionPct).toBeNull();
+      expect(r.cotitulares).toEqual([]);
+    });
+
+    it('retrocompatible · la plantilla vieja de 11 columnas deja opcionales a null/[]', async () => {
+      const file = makeXlsxFile('plantilla-vieja.xlsx', [
+        HEADER,
+        ['CB Sant Fruitós', '', 'Vivienda LAU', '01/01/2024', '31/12/2028',
+          'CONCEPCION RAMIREZ', '53639208B', 'c@e.com', '+34 600', 330, 330],
+      ]);
+
+      const r = (await parseAtlasTemplateXlsx(file))[0];
+      expect(r.rentaMensual).toBe(330);
+      expect(r.diaPago).toBeNull();
+      expect(r.indexacion).toBeNull();
+      expect(r.reduccionPct).toBeNull();
+      expect(r.cotitulares).toEqual([]);
+    });
+  });
 });
