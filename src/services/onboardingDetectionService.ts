@@ -307,10 +307,15 @@ async function reforzarLearning(sug: Sugerencia, override?: AmbitoRecurrente): P
     const db = await initDB();
     const mov = movId != null ? ((await db.get('movements', movId)) as Movement | undefined) : undefined;
     // El ámbito efectivo es el que confirmó el usuario · si no lo tocó, el de
-    // la propuesta del motor (P10 · nunca cruzar inmueble/personal).
+    // la propuesta del motor (P10 · nunca cruzar inmueble/personal). El
+    // `inmuebleId` SOLO viaja cuando el ámbito efectivo es inmueble · si el
+    // usuario lo pasó a personal nunca se arrastra un inmuebleId (no se sesga
+    // el learning).
     const ambitoEfectivo = override?.ambito ?? cand.propuesta.ambito;
     const inmuebleIdEfectivo =
-      override?.ambito === 'inmueble' ? override.inmuebleId : cand.propuesta.inmuebleId;
+      ambitoEfectivo === 'inmueble'
+        ? override?.inmuebleId ?? cand.propuesta.inmuebleId
+        : undefined;
     await createOrUpdateRule({
       learnKey: mov ? buildLearnKey(mov) : `onboarding:${cand.conceptoNormalizado}`,
       categoria: cand.propuesta.categoria || 'otros',

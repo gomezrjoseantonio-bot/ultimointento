@@ -412,7 +412,13 @@ const BankStatementUploadPage: React.FC = () => {
         type="file"
         accept={ACCEPTED_EXTENSIONS.join(',')}
         style={{ display: 'none' }}
-        onChange={e => handleFileChosen(e.target.files?.[0] ?? undefined)}
+        onChange={e => {
+          const file = e.target.files?.[0] ?? undefined;
+          // Reset · si el usuario cancela el prompt o hay error y reelige el
+          // MISMO fichero, muchos navegadores no disparan onChange sin esto.
+          e.target.value = '';
+          void handleFileChosen(file);
+        }}
       />
 
       {errorMessage && <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage(null)} />}
@@ -567,7 +573,7 @@ const UploadCard: React.FC<UploadCardProps> = ({
             ))}
           </select>
           {!locked && (
-            <p style={{ margin: '6px 0 0', fontSize: 12, color: '#64748b' }}>
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--grey-500)' }}>
               El extracto identifica su cuenta por el IBAN de la cabecera · si no existe,
               te ofreceremos crearla con su saldo y fecha. Solo elige cuenta aquí si el
               fichero no trae IBAN reconocible.
@@ -845,19 +851,19 @@ const CrearCuentaPrompt: React.FC<{
       marginTop: 16,
       padding: '16px 18px',
       borderRadius: 'var(--r-md)',
-      background: 'var(--grey-50, #f8fafc)',
+      background: 'var(--grey-50)',
       border: '1px solid var(--grey-300)',
       fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
     }}
   >
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--grey-800, #1e293b)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--grey-900)' }}>
       <ArrowRightLeft size={16} strokeWidth={1.6} aria-hidden="true" />
       Este extracto es de una cuenta nueva
     </div>
-    <p style={{ margin: '8px 0 12px', fontSize: 13, color: 'var(--grey-600, #475569)' }}>
+    <p style={{ margin: '8px 0 12px', fontSize: 13, color: 'var(--grey-700)' }}>
       No tienes ninguna cuenta con este IBAN. Podemos crearla con los datos de la cabecera:
     </p>
-    <ul style={{ margin: '0 0 14px', paddingLeft: 18, fontSize: 13, color: 'var(--grey-700, #334155)' }}>
+    <ul style={{ margin: '0 0 14px', paddingLeft: 18, fontSize: 13, color: 'var(--grey-700)' }}>
       {header.banco && <li>Banco · {header.banco}</li>}
       {header.iban && <li>IBAN · {formatIban(header.iban)}</li>}
       {header.titular && <li>Titular · {header.titular}</li>}
@@ -875,10 +881,10 @@ const CrearCuentaPrompt: React.FC<{
         disabled={creando}
         style={{
           padding: '9px 16px',
-          borderRadius: 'var(--r-sm, 6px)',
+          borderRadius: 'var(--r-sm)',
           border: 'none',
-          background: 'var(--atlas-blue, #0a5cff)',
-          color: '#fff',
+          background: 'var(--atlas-blue)',
+          color: 'var(--white)',
           fontSize: 13,
           fontWeight: 600,
           cursor: creando ? 'not-allowed' : 'pointer',
@@ -893,10 +899,10 @@ const CrearCuentaPrompt: React.FC<{
         disabled={creando}
         style={{
           padding: '9px 16px',
-          borderRadius: 'var(--r-sm, 6px)',
+          borderRadius: 'var(--r-sm)',
           border: '1px solid var(--grey-300)',
-          background: '#fff',
-          color: 'var(--grey-700, #334155)',
+          background: 'var(--white)',
+          color: 'var(--grey-700)',
           fontSize: 13,
           fontWeight: 600,
           cursor: 'pointer',

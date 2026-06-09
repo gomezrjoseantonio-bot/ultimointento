@@ -105,7 +105,7 @@ export function parseHeaderGrid(rows: string[][]): ExtractoHeader {
   // 3. Recorre celdas buscando etiquetas y su valor (en la misma celda tras el
   //    label, o en la siguiente celda no vacía de la fila).
   const valorTrasLabel = (row: string[], idx: number, label: RegExp): string | undefined => {
-    const propia = row[idx].replace(label, '').replace(/[:·\-]/g, ' ').trim();
+    const propia = row[idx].replace(label, '').replace(/[:·-]/g, ' ').trim();
     if (propia) return propia;
     for (let j = idx + 1; j < row.length; j++) {
       if (row[j] && row[j].trim()) return row[j].trim();
