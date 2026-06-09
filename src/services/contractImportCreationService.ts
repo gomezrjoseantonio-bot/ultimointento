@@ -219,7 +219,13 @@ export const crearContractsDesdeDrafts = async (drafts: ContractDraft[]): Promis
   const habsDetectadas = new Map<number, Set<number>>();
   for (const d of drafts) {
     if (d.seccion === 'duplicados' && (d.decisionDuplicado ?? 'omitir') === 'omitir') continue;
-    if (d.crearInmuebleNuevo) continue; // ids nuevos aún no existen; se gestiona aparte
+    // LIMITACIÓN conocida: los inmuebles "crear nuevo" no entran en este pre-pass
+    // (su id aún no existe). Hoy cada fila "crear nuevo" crea SU propio inmueble
+    // con un único contrato, así que nunca llegaría a ≥2 cuartos para el override
+    // y esos contratos saldrían como vivienda. El caso real (inmuebles ya
+    // existentes · Fuertes Acevedo) sí se cubre. Si en el futuro se agrupan varias
+    // filas en un único inmueble nuevo, habrá que detectar aquí sus habitaciones.
+    if (d.crearInmuebleNuevo) continue;
     const id = d.inmuebleIdConfirmado ?? d.inmuebleIdSugerido;
     const num = d.habitacionParseada ?? d.habitacionConfirmada ?? null;
     if (id != null && num != null) {
