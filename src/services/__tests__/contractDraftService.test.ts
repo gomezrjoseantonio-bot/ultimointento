@@ -11,6 +11,7 @@ import {
   normalizarRentila,
   agruparPorSeccion,
   tokensInmueble,
+  habitacionDesdeNombreRentila,
 } from '../contractDraftService';
 import { Property, Contract } from '../db';
 import { RentilaRow } from '../rentilaParserService';
@@ -99,6 +100,21 @@ describe('tokensInmueble · limpieza de códigos Rentila (review #1414)', () => 
   it('CONSERVA un número de identidad unido por guion (no es código de unidad)', () => {
     expect(tokensInmueble('ACEVEDO-32')).toEqual(['acevedo', '32']);
     expect(tokensInmueble('TENDERINA-64')).toEqual(['tenderina', '64']);
+  });
+});
+
+describe('habitacionDesdeNombreRentila · habitación del nombre sin config', () => {
+  it('extrae el sufijo HX', () => {
+    expect(habitacionDesdeNombreRentila('4-ACEVEDO-H2 - 7949807TP6074N0006YM')).toBe(2);
+    expect(habitacionDesdeNombreRentila('4-ACEVEDO-H1')).toBe(1);
+  });
+  it('extrae el código zero-padded "-004"', () => {
+    expect(habitacionDesdeNombreRentila('6-TENDERINA, 64 4I -004')).toBe(4);
+    expect(habitacionDesdeNombreRentila('5-TENDERINA, 64 4D -001 - 0654104TP7005S0002CD')).toBe(1);
+  });
+  it('NO confunde la referencia catastral con una habitación', () => {
+    expect(habitacionDesdeNombreRentila('Piso - 7949807TP6074N0006YM')).toBeNull();
+    expect(habitacionDesdeNombreRentila('2-MANRESA')).toBeNull();
   });
 });
 

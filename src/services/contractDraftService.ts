@@ -516,7 +516,11 @@ export const normalizarRentila = (
       // Habitación deducida del nombre · sufijo HX explícito o, si el inmueble
       // resuelto se explota por habitaciones, el código de unidad ("…-004" → 4).
       // Si no se puede deducir, el wizard la pide (§ 1.3 · caso Jose).
-      habitacionParseada: inferirHabitacion(row.propiedad, inmuebleMatch),
+      // Fallback config-independiente: si el inmueble aún no es "por habitaciones"
+      // pero el nombre Rentila trae habitación (H2 / -004), se deduce igual para
+      // crear el contrato como habitación (el importador marcará el inmueble).
+      habitacionParseada:
+        inferirHabitacion(row.propiedad, inmuebleMatch) ?? habitacionDesdeNombreRentila(row.propiedad),
       habitacionConfirmada: null,
     };
 
@@ -678,7 +682,29 @@ export const inferirHabitacion = (nombreRentila: string, inmueble?: Property | n
   return null;
 };
 
-/** Opciones de inmueble para el select de la sección "Requieren revisión" (paso 3). */
+/**
+ * FIX habitaciones · habitación deducida SOLO del nombre Rentila, sin depender de
+ * la config del inmueble: sufijo HX ("4-ACEVEDO-H2" → 2) o código de unidad
+ * zero-padded que Rentila añade al piso ("…-004" → 4). Permite crear el contrato
+ * como habitación aunque el inmueble aún no esté marcado "por habitaciones" (el
+ * importador lo marcará al crear). NO confunde con la RC (no tiene `\b` interno).
+ */
+export const habitacionDesdeNombreRentila = (nombreRentila: string): number | null => {
+  // Quita la RC primero: Rentila pone el marcador HX ANTES de la RC
+  // ("4-ACEVEDO-H2 - 7949807…"), y parseHabitacionFromRentila lo ancla al final,
+  // así que sin esto no lo encuentra.
+  const sinRc = (nombreRentila || '').replace(RC_REGEX_GLOBAL, ' ').trim();
+  const enRango = (n: number): number | null => (n >= 1 && n <= 30 ? n : null);
+  // 1) Marcador de habitación HX / Hab X en cualquier posición (incluido inicio).
+  const mh = sinRc.match(/(?:^|[\s\-_])(?:hab|h)\s?(\d{1,2})\b/i);
+  if (mh) return enRango(parseInt(mh[1], 10));
+  // 2) Código de unidad zero-padded de Rentila tras separador ("-004" → 4).
+  const mc = sinRc.match(/[\s\-_]0(\d{1,2})\b/);
+  if (mc) return enRango(parseInt(mc[1], 10));
+  return null;
+};
+
+
 export const listarInmueblesOpciones = async (): Promise<InmuebleOpcion[]> => {
   const db = await initDB();
   const properties = await db.getAll('properties');
