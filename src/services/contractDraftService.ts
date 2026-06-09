@@ -273,22 +273,32 @@ const tokenNear = (a: string, b: string): boolean => {
 };
 
 /**
+ * Evalúa un texto de inmueble contra los tokens de la consulta. Devuelve el
+ * coeficiente de solapamiento (Szymkiewicz–Simpson) Y el nº ABSOLUTO de tokens
+ * de la consulta que casan. El conteo desempata casos en que la dirección
+ * COMPARTIDA de dos pisos del mismo edificio puntúa 1.0 para ambos (ej. "Calle
+ * Tenderina 64") pero solo uno casa además la planta ("4I" → izquierda).
+ */
+const evaluarInmueble = (queryTokens: string[], propTexto: string): { score: number; matched: number } => {
+  const propTokens = tokensInmueble(propTexto);
+  if (!queryTokens.length || !propTokens.length) return { score: 0, matched: 0 };
+  let matched = 0;
+  for (const q of queryTokens) {
+    if (propTokens.some((p) => tokenNear(q, p))) matched += 1;
+  }
+  if (matched === 0) return { score: 0, matched: 0 };
+  return { score: matched / Math.min(queryTokens.length, propTokens.length), matched };
+};
+
+/**
  * Coeficiente de solapamiento (Szymkiewicz–Simpson) entre los tokens de la
  * consulta y los del inmueble: `matched / min(|query|, |inmueble|)`. Premia que
  * el conjunto más corto quede contenido en el otro, de modo que un nombre corto
  * ("Acevedo") puntúe alto dentro de una dirección larga ("C/ Fuertes Acevedo 32…")
  * sin que las palabras de relleno de la dirección lo penalicen.
  */
-export const puntuarInmueble = (queryTokens: string[], propTexto: string): number => {
-  const propTokens = tokensInmueble(propTexto);
-  if (!queryTokens.length || !propTokens.length) return 0;
-  let matched = 0;
-  for (const q of queryTokens) {
-    if (propTokens.some((p) => tokenNear(q, p))) matched += 1;
-  }
-  if (matched === 0) return 0;
-  return matched / Math.min(queryTokens.length, propTokens.length);
-};
+export const puntuarInmueble = (queryTokens: string[], propTexto: string): number =>
+  evaluarInmueble(queryTokens, propTexto).score;
 
 /** Margen mínimo entre el 1.º y el 2.º candidato para considerar el match seguro. */
 const MARGEN_AMBIGUO = 0.15;
@@ -320,22 +330,35 @@ export const sugerirInmueble = (
   const queryTokens = tokensInmueble(textoExcel);
   if (!queryTokens.length) return { inmuebleId: null, confianza: 0 };
 
-  type Cand = { inmuebleId: number | null; score: number; acc: boolean };
-  // Mejor candidato por score; a igualdad de score gana el NO accesorio (el piso).
+  type Cand = { inmuebleId: number | null; score: number; matched: number; acc: boolean };
+  // Mejor candidato por score; a igualdad de score gana el que casa MÁS tokens de
+  // la consulta (desempata la dirección compartida · "4I" vs "4D"); y a igualdad
+  // de ambos, el NO accesorio (el piso gana al parking/trastero que cuelga de él).
   const mejora = (a: Cand, b: Cand): boolean =>
-    a.score > b.score || (a.score === b.score && !a.acc && b.acc);
+    a.score > b.score ||
+    (a.score === b.score && a.matched > b.matched) ||
+    (a.score === b.score && a.matched === b.matched && !a.acc && b.acc);
 
-  let best: Cand = { inmuebleId: null, score: 0, acc: false };
-  let second: Cand = { inmuebleId: null, score: 0, acc: false };
+  let best: Cand = { inmuebleId: null, score: 0, matched: 0, acc: false };
+  let second: Cand = { inmuebleId: null, score: 0, matched: 0, acc: false };
   for (const p of properties) {
     if (p.id == null) continue;
     // `province` se incluye a propósito: el import de la declaración AEAT guarda
     // ahí el MUNICIPIO (splitAddress → province: municipality), que es justo el
     // identificador que usan los nombres Rentila ("1-SANT FRUITOS", "2-MANRESA").
     const campos = [p.alias, p.globalAlias, p.address, p.province].filter(Boolean) as string[];
+    // Mejor campo por score; a igualdad de score, el que casa más tokens (así el
+    // alias con planta gana a la dirección compartida sin planta, ambos a 1.0).
     let s = 0;
-    for (const campo of campos) s = Math.max(s, puntuarInmueble(queryTokens, campo));
-    const cand: Cand = { inmuebleId: p.id, score: s, acc: esAccesorio(p.id) };
+    let m = 0;
+    for (const campo of campos) {
+      const { score, matched } = evaluarInmueble(queryTokens, campo);
+      if (score > s || (score === s && matched > m)) {
+        s = score;
+        m = matched;
+      }
+    }
+    const cand: Cand = { inmuebleId: p.id, score: s, matched: m, acc: esAccesorio(p.id) };
     if (mejora(cand, best)) {
       second = best;
       best = cand;
@@ -347,16 +370,21 @@ export const sugerirInmueble = (
   // 3 · Guarda de ambigüedad · dos inmuebles DISTINTOS casi empatados ⇒ incierto.
   // Caso real: "2-MANRESA" cuando hay un piso Y un parking en Manresa; antes se
   // auto-asignaba al parking. Ahora la confianza baja del umbral y va a "revisar".
-  // EXCEPCIÓN: si el 2.º es un accesorio y el 1.º el piso, NO es ambiguo (el piso
-  // gana siempre al accesorio que cuelga de él).
+  // EXCEPCIONES (NO es ambiguo):
+  //  · el 2.º es un accesorio y el 1.º el piso (el piso gana al accesorio).
+  //  · el 1.º casa MÁS tokens de la consulta que el 2.º: el desempate ya lo
+  //    resolvió (ej. dos pisos del mismo edificio con dirección compartida,
+  //    pero el alias del 1.º casa además la planta "4I" → izquierda).
   let confianza = best.score;
   const empateConAccesorio = !best.acc && second.acc;
+  const desempatadoPorTokens = best.matched > second.matched;
   if (
     best.inmuebleId != null &&
     second.inmuebleId != null &&
     second.inmuebleId !== best.inmuebleId &&
     best.score - second.score < MARGEN_AMBIGUO &&
-    !empateConAccesorio
+    !empateConAccesorio &&
+    !desempatadoPorTokens
   ) {
     confianza = Math.min(best.score, UMBRAL_CONFIANZA_INMUEBLE - 0.1);
   }
@@ -488,7 +516,11 @@ export const normalizarRentila = (
       // Habitación deducida del nombre · sufijo HX explícito o, si el inmueble
       // resuelto se explota por habitaciones, el código de unidad ("…-004" → 4).
       // Si no se puede deducir, el wizard la pide (§ 1.3 · caso Jose).
-      habitacionParseada: inferirHabitacion(row.propiedad, inmuebleMatch),
+      // Fallback config-independiente: si el inmueble aún no es "por habitaciones"
+      // pero el nombre Rentila trae habitación (H2 / -004), se deduce igual para
+      // crear el contrato como habitación (el importador marcará el inmueble).
+      habitacionParseada:
+        inferirHabitacion(row.propiedad, inmuebleMatch) ?? habitacionDesdeNombreRentila(row.propiedad),
       habitacionConfirmada: null,
     };
 
@@ -650,7 +682,29 @@ export const inferirHabitacion = (nombreRentila: string, inmueble?: Property | n
   return null;
 };
 
-/** Opciones de inmueble para el select de la sección "Requieren revisión" (paso 3). */
+/**
+ * FIX habitaciones · habitación deducida SOLO del nombre Rentila, sin depender de
+ * la config del inmueble: sufijo HX ("4-ACEVEDO-H2" → 2) o código de unidad
+ * zero-padded que Rentila añade al piso ("…-004" → 4). Permite crear el contrato
+ * como habitación aunque el inmueble aún no esté marcado "por habitaciones" (el
+ * importador lo marcará al crear). NO confunde con la RC (no tiene `\b` interno).
+ */
+export const habitacionDesdeNombreRentila = (nombreRentila: string): number | null => {
+  // Quita la RC primero: Rentila pone el marcador HX ANTES de la RC
+  // ("4-ACEVEDO-H2 - 7949807…"), y parseHabitacionFromRentila lo ancla al final,
+  // así que sin esto no lo encuentra.
+  const sinRc = (nombreRentila || '').replace(RC_REGEX_GLOBAL, ' ').trim();
+  const enRango = (n: number): number | null => (n >= 1 && n <= 30 ? n : null);
+  // 1) Marcador de habitación HX / Hab X en cualquier posición (incluido inicio).
+  const mh = sinRc.match(/(?:^|[\s\-_])(?:hab|h)\s?(\d{1,2})\b/i);
+  if (mh) return enRango(parseInt(mh[1], 10));
+  // 2) Código de unidad zero-padded de Rentila tras separador ("-004" → 4).
+  const mc = sinRc.match(/[\s\-_]0(\d{1,2})\b/);
+  if (mc) return enRango(parseInt(mc[1], 10));
+  return null;
+};
+
+
 export const listarInmueblesOpciones = async (): Promise<InmuebleOpcion[]> => {
   const db = await initDB();
   const properties = await db.getAll('properties');

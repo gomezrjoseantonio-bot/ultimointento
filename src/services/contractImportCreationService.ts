@@ -95,7 +95,7 @@ const resolverUnidad = (
   d: ContractDraft,
   modoExplotacion: Property['modoExplotacion'] | undefined,
 ): { unidadTipo: Contract['unidadTipo']; habitacionId?: string } => {
-  if (modoExplotacion === 'por_habitaciones') {
+  if (modoExplotacion === 'por_habitaciones' || modoExplotacion === 'mixto') {
     const num = d.habitacionParseada ?? d.habitacionConfirmada ?? null;
     return {
       unidadTipo: 'habitacion',
@@ -209,6 +209,35 @@ export const crearContractsDesdeDrafts = async (drafts: ContractDraft[]): Promis
   const inmueblesSet = new Set<number>();
   const botesSet = new Set<number>();
 
+  // FIX habitaciones (caso Fuertes Acevedo · pantallazo Jose) · PRE-PASS:
+  // la migración deja en `piso_completo` los inmuebles sin configurar, así que
+  // no se distinguen de un piso completo deliberado. Pero si el lote Rentila
+  // revela ≥2 habitaciones DISTINTAS para el mismo inmueble (H1, H2, …, o
+  // códigos -001/-004), es por habitaciones sin lugar a dudas → se marca el
+  // inmueble y sus contratos van a habitación. Un único HX suelto NO override
+  // (respeta el piso_completo deliberado · §1.3).
+  const habsDetectadas = new Map<number, Set<number>>();
+  for (const d of drafts) {
+    if (d.seccion === 'duplicados' && (d.decisionDuplicado ?? 'omitir') === 'omitir') continue;
+    // LIMITACIÓN conocida: los inmuebles "crear nuevo" no entran en este pre-pass
+    // (su id aún no existe). Hoy cada fila "crear nuevo" crea SU propio inmueble
+    // con un único contrato, así que nunca llegaría a ≥2 cuartos para el override
+    // y esos contratos saldrían como vivienda. El caso real (inmuebles ya
+    // existentes · Fuertes Acevedo) sí se cubre. Si en el futuro se agrupan varias
+    // filas en un único inmueble nuevo, habrá que detectar aquí sus habitaciones.
+    if (d.crearInmuebleNuevo) continue;
+    const id = d.inmuebleIdConfirmado ?? d.inmuebleIdSugerido;
+    const num = d.habitacionParseada ?? d.habitacionConfirmada ?? null;
+    if (id != null && num != null) {
+      if (!habsDetectadas.has(id)) habsDetectadas.set(id, new Set());
+      habsDetectadas.get(id)!.add(num);
+    }
+  }
+  const esPorHabDetectado = (inmuebleId: number): boolean =>
+    (habsDetectadas.get(inmuebleId)?.size ?? 0) >= 2;
+  // Inmuebles a marcar "por habitaciones" al final (override del piso_completo).
+  const marcarPorHab = new Set<number>();
+
   // FIX § 1.3 · necesitamos el modoExplotacion del inmueble destino para decidir
   // vivienda vs habitación. Se cachea por id (incluye los recién creados).
   const db = await initDB();
@@ -241,8 +270,20 @@ export const crearContractsDesdeDrafts = async (drafts: ContractDraft[]): Promis
 
     if (inmuebleId == null) { r.omitidos += 1; continue; }
 
-    const modoExplotacion = await resolverModo(inmuebleId);
-    const id = await saveContract(construirPayload(d, inmuebleId, modoExplotacion));
+    const modoReal = await resolverModo(inmuebleId);
+    // Modo EFECTIVO: si el lote revela ≥2 habitaciones, se trata por habitaciones
+    // aunque el inmueble esté en piso_completo (por defecto de migración).
+    const modoEfectivo: Property['modoExplotacion'] | undefined =
+      modoReal === 'por_habitaciones' || modoReal === 'mixto'
+        ? modoReal
+        : esPorHabDetectado(inmuebleId)
+          ? 'por_habitaciones'
+          : modoReal;
+    if (modoEfectivo === 'por_habitaciones' && modoReal !== 'por_habitaciones' && modoReal !== 'mixto') {
+      marcarPorHab.add(inmuebleId);
+    }
+
+    const id = await saveContract(construirPayload(d, inmuebleId, modoEfectivo));
     r.contractIdsCreados.push(id);
     r.creados += 1;
     if (d.inquilinoExistenteId == null) r.inquilinosNuevos += 1;
@@ -251,6 +292,22 @@ export const crearContractsDesdeDrafts = async (drafts: ContractDraft[]): Promis
 
     const { botesSugeridos } = await boteAnualService.postContractCreated(id);
     botesSugeridos.forEach((b) => botesSet.add(b));
+  }
+
+  // FIX habitaciones · marcar "por habitaciones" los inmuebles que el lote reveló
+  // como tal (≥2 cuartos) y no lo estaban. El nº de habitaciones se sube al mayor
+  // detectado (nunca se baja); no se toca la modalidad de los demás.
+  for (const inmuebleId of marcarPorHab) {
+    const prop = (await db.get('properties', inmuebleId)) as Property | undefined;
+    if (!prop) continue;
+    const maxHab = Math.max(...Array.from(habsDetectadas.get(inmuebleId) ?? [2]));
+    const numeroHabitaciones = Math.max(maxHab, prop.alquilerPorHabitaciones?.numeroHabitaciones ?? 0, 2);
+    await db.put('properties', {
+      ...prop,
+      modoExplotacion: 'por_habitaciones',
+      alquilerPorHabitaciones: { activo: true, numeroHabitaciones },
+    });
+    modoCache.set(inmuebleId, 'por_habitaciones');
   }
 
   r.inmueblesAfectados = Array.from(inmueblesSet);

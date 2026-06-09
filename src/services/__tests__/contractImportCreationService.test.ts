@@ -192,6 +192,42 @@ describe('crearContractsDesdeDrafts', () => {
     expect(c.habitacionId).toBeUndefined();
   });
 
+  it('FIX habitaciones · inmueble SIN configurar + HX → habitación + marca el inmueble "por habitaciones"', async () => {
+    // Caso Fuertes Acevedo (pantallazo Jose): el inmueble no tiene modoExplotacion
+    // (prop() lo deja undefined). Antes salía "vivienda/Piso completo"; ahora la
+    // habitación de Rentila se respeta y el inmueble queda marcado por habitaciones.
+    await seedV77([prop(1, 'Fuertes Acevedo')]);
+    const { crearContractsDesdeDrafts } = require('../contractImportCreationService');
+    const { initDB } = require('../db');
+
+    await crearContractsDesdeDrafts([
+      makeDraft({ habitacionParseada: 2 }),
+      makeDraft({ filaOriginal: 2, habitacionParseada: 5 }),
+    ]);
+
+    const db = await initDB();
+    const contracts = await db.getAll('contracts');
+    expect(contracts.every((c: any) => c.unidadTipo === 'habitacion')).toBe(true);
+    expect(contracts.map((c: any) => c.habitacionId).sort()).toEqual(['H2', 'H5']);
+
+    const propActualizado = await db.get('properties', 1);
+    expect(propActualizado.modoExplotacion).toBe('por_habitaciones');
+    // nº de habitaciones = mayor habitación vista (5).
+    expect(propActualizado.alquilerPorHabitaciones).toEqual({ activo: true, numeroHabitaciones: 5 });
+  });
+
+  it('FIX habitaciones · piso_completo explícito NO se marca por habitaciones aunque venga HX', async () => {
+    await seedV77([propModo(1, 'Sant Joan', 'piso_completo')]);
+    const { crearContractsDesdeDrafts } = require('../contractImportCreationService');
+    const { initDB } = require('../db');
+
+    await crearContractsDesdeDrafts([makeDraft({ habitacionParseada: 3 })]);
+
+    const db = await initDB();
+    const propActualizado = await db.get('properties', 1);
+    expect(propActualizado.modoExplotacion).toBe('piso_completo'); // intacto
+  });
+
   it('crea un inmueble nuevo cuando el draft lo pide', async () => {
     await seedV77();
     const { crearContractsDesdeDrafts } = require('../contractImportCreationService');

@@ -11,6 +11,7 @@ import {
   normalizarRentila,
   agruparPorSeccion,
   tokensInmueble,
+  habitacionDesdeNombreRentila,
 } from '../contractDraftService';
 import { Property, Contract } from '../db';
 import { RentilaRow } from '../rentilaParserService';
@@ -99,6 +100,21 @@ describe('tokensInmueble · limpieza de códigos Rentila (review #1414)', () => 
   it('CONSERVA un número de identidad unido por guion (no es código de unidad)', () => {
     expect(tokensInmueble('ACEVEDO-32')).toEqual(['acevedo', '32']);
     expect(tokensInmueble('TENDERINA-64')).toEqual(['tenderina', '64']);
+  });
+});
+
+describe('habitacionDesdeNombreRentila · habitación del nombre sin config', () => {
+  it('extrae el sufijo HX', () => {
+    expect(habitacionDesdeNombreRentila('4-ACEVEDO-H2 - 7949807TP6074N0006YM')).toBe(2);
+    expect(habitacionDesdeNombreRentila('4-ACEVEDO-H1')).toBe(1);
+  });
+  it('extrae el código zero-padded "-004"', () => {
+    expect(habitacionDesdeNombreRentila('6-TENDERINA, 64 4I -004')).toBe(4);
+    expect(habitacionDesdeNombreRentila('5-TENDERINA, 64 4D -001 - 0654104TP7005S0002CD')).toBe(1);
+  });
+  it('NO confunde la referencia catastral con una habitación', () => {
+    expect(habitacionDesdeNombreRentila('Piso - 7949807TP6074N0006YM')).toBeNull();
+    expect(habitacionDesdeNombreRentila('2-MANRESA')).toBeNull();
   });
 });
 
@@ -303,6 +319,40 @@ describe('sugerirInmueble · planta Iz/Dr (notación 4I/4D)', () => {
     const dr = sugerirInmueble('5-TENDERINA, 64 4D -002', props);
     expect(dr.inmuebleId).toBe(14);
     expect(dr.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+});
+
+describe('sugerirInmueble · dirección COMPARTIDA entre dos pisos (caso Jose · pantallazo)', () => {
+  // Dos pisos del mismo edificio con la MISMA dirección; solo el alias distingue
+  // la planta. Antes, la dirección compartida puntuaba 1.0 para ambos y el empate
+  // mandaba TODO a "revisión", borrando la ventaja del alias. El desempate por nº
+  // de tokens de la consulta lo resuelve.
+  const props = ([
+    { id: 1, alias: 'Tenderina 64 4I', address: 'Calle Tenderina 64' },
+    { id: 2, alias: 'Tenderina 64 4D', address: 'Calle Tenderina 64' },
+  ] as unknown) as Property[];
+
+  it('la planta del alias gana a la dirección compartida (4I→id1, 4D→id2)', () => {
+    const iz = sugerirInmueble('6-TENDERINA, 64 4I -004 - 0654104TP7005S0001AB', props);
+    expect(iz.inmuebleId).toBe(1);
+    expect(iz.confianza).toBeGreaterThanOrEqual(0.7);
+
+    const izSinRc = sugerirInmueble('6-TENDERINA, 64 4I -002', props);
+    expect(izSinRc.inmuebleId).toBe(1);
+    expect(izSinRc.confianza).toBeGreaterThanOrEqual(0.7);
+
+    const dr = sugerirInmueble('5-TENDERINA, 64 4D -001', props);
+    expect(dr.inmuebleId).toBe(2);
+    expect(dr.confianza).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it('si NINGÚN campo distingue la planta → sigue siendo ambiguo (a revisión)', () => {
+    const sinPlanta = ([
+      { id: 1, alias: 'Tenderina 64', address: 'Calle Tenderina 64' },
+      { id: 2, alias: 'Tenderina 64', address: 'Calle Tenderina 64' },
+    ] as unknown) as Property[];
+    const r = sugerirInmueble('6-TENDERINA, 64 4I -004', sinPlanta);
+    expect(r.confianza).toBeLessThan(0.7);
   });
 });
 
