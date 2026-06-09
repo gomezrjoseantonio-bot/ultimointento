@@ -33,6 +33,12 @@ import {
   BankProfileNotDetectedError,
   OrchestratorResult,
 } from '../../../../services/bankStatementOrchestrator';
+import {
+  extractExtractoHeader,
+  type ExtractoHeader,
+} from '../../../../services/extractoHeaderService';
+import { cuentasService } from '../../../../services/cuentasService';
+import { normalizeIban, formatIban } from '../../../../utils/accountHelpers';
 
 type FormatHint = 'auto' | 'csv' | 'xlsx' | 'csb43';
 
@@ -100,6 +106,11 @@ const BankStatementUploadPage: React.FC = () => {
   const [approvedMatchIds, setApprovedMatchIds] = useState<Set<number>>(new Set());
   const [multiSelections, setMultiSelections] = useState<Map<number, number>>(new Map());
   const [confirming, setConfirming] = useState(false);
+  // FIX PUNTO 4 (P12) · cabecera de un extracto cuyo IBAN no casa con ninguna
+  // cuenta · se ofrece crearla al vuelo con esos datos (saldo + fecha) antes de
+  // procesar los movimientos. `null` = sin propuesta pendiente.
+  const [crearPrompt, setCrearPrompt] = useState<{ file: File; header: ExtractoHeader } | null>(null);
+  const [creandoCuenta, setCreandoCuenta] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,14 +122,13 @@ const BankStatementUploadPage: React.FC = () => {
         const active = list.filter(isActiveAccount);
         setAccounts(active);
         // Pre-seleccionar la cuenta indicada en `?accountId=N` cuando exista.
-        // Fallback · primera cuenta activa.
+        // FIX PUNTO 4 (P12) · sin preselección NO autoseleccionamos cuenta · el
+        // extracto identifica la suya por IBAN (la "cuenta destino" es respaldo).
         if (
           preselectAccountId != null &&
           active.some((a) => a.id === preselectAccountId)
         ) {
           setAccountId(preselectAccountId);
-        } else if (active.length > 0 && active[0].id != null) {
-          setAccountId(active[0].id);
         }
       } catch (error) {
         console.error('Failed to load accounts', error);
@@ -138,13 +148,9 @@ const BankStatementUploadPage: React.FC = () => {
     fileInputRef.current?.click();
   }
 
-  function handleFileChosen(file: File | undefined) {
+  async function handleFileChosen(file: File | undefined) {
     setErrorMessage(null);
     if (!file) return;
-    if (accountId === '') {
-      setErrorMessage('Selecciona la cuenta destino antes de subir el extracto.');
-      return;
-    }
     if (file.size > MAX_FILE_BYTES) {
       setErrorMessage(`El archivo supera el máximo permitido (10 MB). Tamaño actual: ${(file.size / (1024 * 1024)).toFixed(1)} MB.`);
       return;
@@ -154,10 +160,69 @@ const BankStatementUploadPage: React.FC = () => {
       setErrorMessage(`Extensión no soportada. Usa ${ACCEPTED_EXTENSIONS.join(' · ')}.`);
       return;
     }
-    void runOrchestrator(file);
+
+    // FIX PUNTO 4 (P12) · el extracto IDENTIFICA su cuenta. Salvo que la cuenta
+    // venga bloqueada desde el onboarding (lockAccount · nace de una fila), se
+    // lee la cabecera y se casa por IBAN · "cuenta destino" deja de ser
+    // obligatoria.
+    if (!lockAccount) {
+      const header = await extractExtractoHeader(file);
+      if (header.iban) {
+        const objetivo = normalizeIban(header.iban);
+        const match = accounts.find((a) => a.iban && normalizeIban(a.iban) === objetivo);
+        if (match && match.id != null) {
+          setAccountId(match.id);
+          toast.success(`Cuenta identificada por el extracto · ${(match.alias ?? match.bank ?? '').trim()}`);
+          void runOrchestrator(file, match.id);
+          return;
+        }
+        // IBAN reconocible pero sin cuenta → crear al vuelo con estos datos.
+        setCrearPrompt({ file, header });
+        return;
+      }
+    }
+
+    // Sin IBAN legible (o cuenta ya prefijada) → selector de respaldo.
+    if (accountId === '') {
+      setErrorMessage('No pudimos identificar la cuenta por el extracto · selecciona la cuenta destino y vuelve a subirlo.');
+      return;
+    }
+    void runOrchestrator(file, accountId as number);
   }
 
-  async function runOrchestrator(file: File) {
+  // P12 · crea la cuenta con los datos de la cabecera y procesa el extracto.
+  async function confirmarCrearCuenta() {
+    if (!crearPrompt || creandoCuenta) return;
+    setCreandoCuenta(true);
+    try {
+      const { file, header } = crearPrompt;
+      const created = await cuentasService.create({
+        alias: header.banco ?? 'Cuenta del extracto',
+        iban: header.iban,
+        tipo: 'CORRIENTE',
+        banco: header.banco ? { name: header.banco } : undefined,
+        titular: header.titular ? { nombre: header.titular } : undefined,
+        openingBalance: header.saldo ?? 0,
+        // Misma materialización de fecha que el wizard de cuenta (P3/P4).
+        openingBalanceDate: header.fecha ? new Date(header.fecha).toISOString() : undefined,
+      });
+      const db = await initDB();
+      const list = ((await db.getAll('accounts')) ?? []) as Account[];
+      setAccounts(list.filter(isActiveAccount));
+      setCrearPrompt(null);
+      if (created.id != null) {
+        setAccountId(created.id);
+        toast.success('Cuenta creada con los datos del extracto · saldo y fecha incluidos');
+        void runOrchestrator(file, created.id);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo crear la cuenta');
+    } finally {
+      setCreandoCuenta(false);
+    }
+  }
+
+  async function runOrchestrator(file: File, useAccountId: number) {
     setStatus('loading');
     setBundle(null);
     setApprovedMatchIds(new Set());
@@ -165,7 +230,7 @@ const BankStatementUploadPage: React.FC = () => {
 
     try {
       const result = await orchestratorProcessFile(file, {
-        accountId: accountId as number,
+        accountId: useAccountId,
         formatHint,
         periodStart: periodStart || undefined,
         periodEnd: periodEnd || undefined,
@@ -347,10 +412,25 @@ const BankStatementUploadPage: React.FC = () => {
         type="file"
         accept={ACCEPTED_EXTENSIONS.join(',')}
         style={{ display: 'none' }}
-        onChange={e => handleFileChosen(e.target.files?.[0] ?? undefined)}
+        onChange={e => {
+          const file = e.target.files?.[0] ?? undefined;
+          // Reset · si el usuario cancela el prompt o hay error y reelige el
+          // MISMO fichero, muchos navegadores no disparan onChange sin esto.
+          e.target.value = '';
+          void handleFileChosen(file);
+        }}
       />
 
       {errorMessage && <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage(null)} />}
+
+      {crearPrompt && (
+        <CrearCuentaPrompt
+          header={crearPrompt.header}
+          creando={creandoCuenta}
+          onCancel={() => setCrearPrompt(null)}
+          onConfirm={confirmarCrearCuenta}
+        />
+      )}
 
       {status === 'loading' && <LoadingCard />}
       {status === 'ready' && bundle && (
@@ -474,7 +554,7 @@ const UploadCard: React.FC<UploadCardProps> = ({
   <Card title="Subir extracto bancario" accent="navy">
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Field label="Cuenta destino">
+        <Field label={locked ? 'Cuenta destino' : 'Cuenta destino · respaldo'}>
           <select
             value={accountId}
             onChange={e => onAccountChange(e.target.value === '' ? '' : Number(e.target.value))}
@@ -482,7 +562,8 @@ const UploadCard: React.FC<UploadCardProps> = ({
             style={selectStyle}
           >
             {accountsLoading && <option value="">Cargando cuentas…</option>}
-            {!accountsLoading && accounts.length === 0 && (
+            {!accountsLoading && !locked && <option value="">Detectar por el extracto (IBAN)</option>}
+            {!accountsLoading && accounts.length === 0 && locked && (
               <option value="">No hay cuentas activas</option>
             )}
             {accounts.map(acc => (
@@ -491,6 +572,13 @@ const UploadCard: React.FC<UploadCardProps> = ({
               </option>
             ))}
           </select>
+          {!locked && (
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--grey-500)' }}>
+              El extracto identifica su cuenta por el IBAN de la cabecera · si no existe,
+              te ofreceremos crearla con su saldo y fecha. Solo elige cuenta aquí si el
+              fichero no trae IBAN reconocible.
+            </p>
+          )}
         </Field>
         <Field label="Formato">
           <select
@@ -744,6 +832,85 @@ const ErrorBanner: React.FC<{ message: string; onDismiss: () => void }> = ({ mes
     >
       <X size={14} strokeWidth={1.5} />
     </button>
+  </div>
+);
+
+// FIX PUNTO 4 (P12) · el extracto trae un IBAN que no casa con ninguna cuenta ·
+// ofrecemos crearla al vuelo con los datos de la cabecera (IBAN · banco · saldo
+// · fecha) · "cuenta destino" deja de ser obligatoria.
+const CrearCuentaPrompt: React.FC<{
+  header: ExtractoHeader;
+  creando: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ header, creando, onConfirm, onCancel }) => (
+  <div
+    role="region"
+    aria-label="Crear cuenta con los datos del extracto"
+    style={{
+      marginTop: 16,
+      padding: '16px 18px',
+      borderRadius: 'var(--r-md)',
+      background: 'var(--grey-50)',
+      border: '1px solid var(--grey-300)',
+      fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+    }}
+  >
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--grey-900)' }}>
+      <ArrowRightLeft size={16} strokeWidth={1.6} aria-hidden="true" />
+      Este extracto es de una cuenta nueva
+    </div>
+    <p style={{ margin: '8px 0 12px', fontSize: 13, color: 'var(--grey-700)' }}>
+      No tienes ninguna cuenta con este IBAN. Podemos crearla con los datos de la cabecera:
+    </p>
+    <ul style={{ margin: '0 0 14px', paddingLeft: 18, fontSize: 13, color: 'var(--grey-700)' }}>
+      {header.banco && <li>Banco · {header.banco}</li>}
+      {header.iban && <li>IBAN · {formatIban(header.iban)}</li>}
+      {header.titular && <li>Titular · {header.titular}</li>}
+      {header.saldo != null && (
+        <li>
+          Saldo inicial · {header.saldo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+        </li>
+      )}
+      {header.fecha && <li>A fecha · {header.fecha}</li>}
+    </ul>
+    <div style={{ display: 'flex', gap: 10 }}>
+      <button
+        type="button"
+        onClick={onConfirm}
+        disabled={creando}
+        style={{
+          padding: '9px 16px',
+          borderRadius: 'var(--r-sm)',
+          border: 'none',
+          background: 'var(--atlas-blue)',
+          color: 'var(--white)',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: creando ? 'not-allowed' : 'pointer',
+          opacity: creando ? 0.6 : 1,
+        }}
+      >
+        {creando ? 'Creando…' : 'Crear cuenta con estos datos'}
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={creando}
+        style={{
+          padding: '9px 16px',
+          borderRadius: 'var(--r-sm)',
+          border: '1px solid var(--grey-300)',
+          background: 'var(--white)',
+          color: 'var(--grey-700)',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        Cancelar
+      </button>
+    </div>
   </div>
 );
 

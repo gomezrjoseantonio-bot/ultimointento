@@ -21,12 +21,30 @@ import {
   detectCompromisos,
   type CandidatoCompromiso,
 } from './compromisoDetectionService';
-import { createCompromisosFromCandidatos } from './compromisoCreationService';
+import {
+  createCompromisosFromCandidatos,
+  type CreationOptions,
+} from './compromisoCreationService';
 import { createOrUpdateRule, buildLearnKey } from './movementLearningService';
 import { addDescarte, isDescartado } from './onboardingProgressService';
+import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 
 export type SugerenciaTipo = 'recurrente' | 'prestamo' | 'nomina';
 export type Cadencia = 'mensual' | 'trimestral' | 'anual';
+
+// FIX PUNTO 4 (P10) · ámbito de un recurrente · un gasto puede ser de un
+// INMUEBLE (IBI · comunidad · seguro · suministros de un piso de alquiler →
+// `gastosInmueble` · deducible) o PERSONAL (hogar). El motor pre-marca un
+// ámbito por el concepto, pero el usuario SIEMPRE confirma o cambia (§3.6).
+export interface InmuebleLite {
+  id: number;
+  alias?: string;
+  address?: string;
+}
+export interface AmbitoRecurrente {
+  ambito: 'personal' | 'inmueble';
+  inmuebleId?: number;
+}
 
 export interface PrestamoPrefill {
   cuota: number;
@@ -281,19 +299,28 @@ export async function detectarSugerencias(): Promise<Sugerencia[]> {
 
 // ── Decisiones · confirmar / descartar (§2.4) ─────────────────────────────────
 
-async function reforzarLearning(sug: Sugerencia): Promise<void> {
+async function reforzarLearning(sug: Sugerencia, override?: AmbitoRecurrente): Promise<void> {
   const cand = sug.candidato;
   if (!cand) return;
   try {
     const movId = cand.ocurrencias[0]?.movementId;
     const db = await initDB();
     const mov = movId != null ? ((await db.get('movements', movId)) as Movement | undefined) : undefined;
-    const ambito = cand.propuesta.ambito === 'inmueble' ? 'INMUEBLE' : 'PERSONAL';
+    // El ámbito efectivo es el que confirmó el usuario · si no lo tocó, el de
+    // la propuesta del motor (P10 · nunca cruzar inmueble/personal). El
+    // `inmuebleId` SOLO viaja cuando el ámbito efectivo es inmueble · si el
+    // usuario lo pasó a personal nunca se arrastra un inmuebleId (no se sesga
+    // el learning).
+    const ambitoEfectivo = override?.ambito ?? cand.propuesta.ambito;
+    const inmuebleIdEfectivo =
+      ambitoEfectivo === 'inmueble'
+        ? override?.inmuebleId ?? cand.propuesta.inmuebleId
+        : undefined;
     await createOrUpdateRule({
       learnKey: mov ? buildLearnKey(mov) : `onboarding:${cand.conceptoNormalizado}`,
       categoria: cand.propuesta.categoria || 'otros',
-      ambito,
-      inmuebleId: cand.propuesta.inmuebleId != null ? String(cand.propuesta.inmuebleId) : undefined,
+      ambito: ambitoEfectivo === 'inmueble' ? 'INMUEBLE' : 'PERSONAL',
+      inmuebleId: inmuebleIdEfectivo != null ? String(inmuebleIdEfectivo) : undefined,
       movement: mov,
     });
   } catch {
@@ -301,15 +328,66 @@ async function reforzarLearning(sug: Sugerencia): Promise<void> {
   }
 }
 
+// FIX PUNTO 4 (P10) · keywords típicas de un gasto recurrente de inmueble.
+const INMUEBLE_KEYWORDS =
+  /comunidad|administrador\s+de\s+fincas|\bibi\b|seguro\s+hogar|suministro|derrama|alcantarillado|basura|vado/i;
+
+/**
+ * Pre-marca el ámbito de un recurrente por su concepto (P10 · §3.6). El
+ * usuario SIEMPRE confirma o cambia · esto es solo el valor por defecto:
+ *   1. si el concepto menciona el alias/dirección de un inmueble → ese inmueble;
+ *   2. si trae palabras típicas de gasto de inmueble → el primer inmueble;
+ *   3. en cualquier otro caso → personal.
+ */
+export function adivinarAmbitoRecurrente(
+  concepto: string,
+  inmuebles: InmuebleLite[],
+): AmbitoRecurrente {
+  const texto = (concepto || '').toLowerCase();
+  for (const inm of inmuebles) {
+    const tokens = [inm.alias, inm.address]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length >= 4);
+    if (tokens.some((tok) => texto.includes(tok))) {
+      return { ambito: 'inmueble', inmuebleId: inm.id };
+    }
+  }
+  if (INMUEBLE_KEYWORDS.test(texto) && inmuebles.length > 0) {
+    return { ambito: 'inmueble', inmuebleId: inmuebles[0].id };
+  }
+  return { ambito: 'personal' };
+}
+
 /**
  * Confirma una sugerencia de RECURRENTE: crea el compromiso por su servicio
  * canónico, refuerza el learning rule y la marca para no reproponer.
  * (Préstamo/nómina se "completan" abriendo su wizard pre-rellenado en la UI.)
+ *
+ * FIX PUNTO 4 (P10) · `ambito` es el que confirmó el usuario. Si es inmueble,
+ * se reescribe la propuesta a `ambito='inmueble'` + `inmuebleId` + bolsa
+ * `inmueble` (deducible · NUNCA una renta) vía `ajustesPorCandidato`. Si es
+ * personal, se crea tal cual (Personal · Gastos). Jamás se cruzan.
  */
-export async function confirmarSugerencia(sug: Sugerencia): Promise<void> {
+export async function confirmarSugerencia(
+  sug: Sugerencia,
+  ambito?: AmbitoRecurrente,
+): Promise<void> {
   if (sug.tipo === 'recurrente' && sug.candidato) {
-    await createCompromisosFromCandidatos([sug.candidato]);
-    await reforzarLearning(sug);
+    let options: CreationOptions | undefined;
+    if (ambito?.ambito === 'inmueble' && ambito.inmuebleId != null) {
+      const override: Partial<CompromisoRecurrente> = {
+        ambito: 'inmueble',
+        inmuebleId: ambito.inmuebleId,
+        personalDataId: undefined,
+        bolsaPresupuesto: 'inmueble',
+      };
+      options = { ajustesPorCandidato: new Map([[sug.candidato.id, override]]) };
+    }
+    await createCompromisosFromCandidatos([sug.candidato], options);
+    await reforzarLearning(sug, ambito);
   }
   await addDescarte(sug.tipo, sug.clave); // gestionada · no reaparece
 }
