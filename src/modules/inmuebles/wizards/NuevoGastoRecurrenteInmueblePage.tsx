@@ -13,7 +13,7 @@
 // ============================================================================
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { Icons, showToastV5 } from '../../../design-system/v5';
 import { cuentasService } from '../../../services/cuentasService';
 import {
@@ -314,6 +314,12 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
   const propertyId = Number(id);
   const { properties } = useOutletContext<InmueblesOutletContext>();
   const editMode = Boolean(gastoId);
+  // FIX PUNTO 4 (P10) · alta de gasto de inmueble lanzada desde el onboarding
+  // (`?from=empezar`) · al guardar/cancelar se vuelve al bloque cuentas en vez
+  // de a la ficha del inmueble · cierra el bucle de la vía manual.
+  const [searchParams] = useSearchParams();
+  const fromEmpezar = searchParams.get('from') === 'empezar';
+  const backTarget = fromEmpezar ? '/empezar/cuentas' : `/inmuebles/${propertyId}`;
 
   const property = useMemo(
     () => properties.find((p) => p.id === propertyId),
@@ -532,7 +538,7 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
           : `Gasto recurrente del inmueble creado · ${nCargos} cargos proyectados en Tesorería`,
         'success',
       );
-      navigate(`/inmuebles/${propertyId}`);
+      navigate(backTarget);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[T35] error al guardar compromiso', err);
@@ -544,7 +550,7 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [form, tipoSeleccionado, subtipoSeleccionado, propertyId, nCargos, navigate, editMode, gastoId]);
+  }, [form, tipoSeleccionado, subtipoSeleccionado, propertyId, nCargos, navigate, editMode, gastoId, backTarget]);
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -1165,7 +1171,7 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
               <button
                 type="button"
                 style={styles.btnCancel}
-                onClick={() => navigate(`/inmuebles/${propertyId}`)}
+                onClick={() => navigate(backTarget)}
                 disabled={submitting}
               >
                 Cancelar

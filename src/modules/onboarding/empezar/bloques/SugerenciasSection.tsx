@@ -13,7 +13,7 @@
  * learning rules. Completar préstamo/nómina abre su wizard pre-rellenado
  * (deep-links a SUS bloques · intactos).
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons, showToastV5 } from '../../../../design-system/v5';
 import { useOnboarding } from '../OnboardingContext';
@@ -21,9 +21,21 @@ import {
   detectarSugerencias,
   confirmarSugerencia,
   descartarSugerencia,
+  adivinarAmbitoRecurrente,
   type Sugerencia,
+  type AmbitoRecurrente,
+  type InmuebleLite,
 } from '../../../../services/onboardingDetectionService';
+import { initDB } from '../../../../services/db';
+import AmbitoGastoModal from './AmbitoGastoModal';
 import styles from '../empezar.module.css';
+
+// Estado del modal de ámbito (P10): o un alta manual, o la confirmación de una
+// sugerencia detectada concreta. `null` = cerrado.
+type AmbitoModalState =
+  | { kind: 'manual' }
+  | { kind: 'confirmar'; sug: Sugerencia; guess: AmbitoRecurrente }
+  | null;
 
 const eur = (n: number) =>
   `${n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
@@ -34,6 +46,8 @@ const SugerenciasSection: React.FC = () => {
   const [sugerencias, setSugerencias] = useState<Sugerencia[]>([]);
   const [cargando, setCargando] = useState(true);
   const [confirmadas, setConfirmadas] = useState(0);
+  const [inmuebles, setInmuebles] = useState<InmuebleLite[]>([]);
+  const [ambitoModal, setAmbitoModal] = useState<AmbitoModalState>(null);
 
   useEffect(() => {
     let alive = true;
@@ -43,6 +57,26 @@ const SugerenciasSection: React.FC = () => {
         setCargando(false);
       }
     });
+    // Inmuebles del usuario · para enrutar el ámbito (P10). Lista ligera.
+    void (async () => {
+      try {
+        const db = await initDB();
+        const props = ((await db.getAll('properties')) ?? []) as Array<{
+          id?: number;
+          alias?: string;
+          address?: string;
+        }>;
+        if (alive) {
+          setInmuebles(
+            props
+              .filter((p): p is { id: number; alias?: string; address?: string } => p.id != null)
+              .map((p) => ({ id: p.id, alias: p.alias, address: p.address })),
+          );
+        }
+      } catch {
+        // Sin inmuebles disponibles · el modal ofrecerá solo "personal".
+      }
+    })();
     return () => {
       alive = false;
     };
@@ -64,12 +98,49 @@ const SugerenciasSection: React.FC = () => {
 
   const quitar = (clave: string) => setSugerencias((prev) => prev.filter((s) => s.clave !== clave));
 
-  const onConfirmar = async (sug: Sugerencia) => {
-    await confirmarSugerencia(sug);
-    quitar(sug.clave);
-    setConfirmadas((c) => c + 1);
-    showToastV5('Recurrente confirmado · alimentará la previsión', 'success');
-    void refresh();
+  // P10 · confirmar una sugerencia abre primero "¿De qué es este gasto?" con el
+  // ámbito pre-marcado por el motor · el usuario confirma o lo cambia.
+  const onConfirmar = (sug: Sugerencia) => {
+    const guess = adivinarAmbitoRecurrente(`${sug.nombre} ${sug.contraparte}`, inmuebles);
+    setAmbitoModal({ kind: 'confirmar', sug, guess });
+  };
+
+  const confirmarConAmbito = useCallback(
+    async (sug: Sugerencia, ambito: AmbitoRecurrente) => {
+      await confirmarSugerencia(sug, ambito);
+      quitar(sug.clave);
+      setConfirmadas((c) => c + 1);
+      showToastV5(
+        ambito.ambito === 'inmueble'
+          ? 'Gasto de inmueble confirmado · deducible y en la previsión'
+          : 'Recurrente confirmado · alimentará la previsión',
+        'success',
+      );
+      void refresh();
+    },
+    [refresh],
+  );
+
+  // P10 · "Añadir recurrente a mano" pregunta el ámbito y enruta al alta REAL:
+  // inmueble → `/inmuebles/:id/gastos/nuevo` (gastosInmueble), personal →
+  // `/personal/gastos/nuevo`. Ambas vuelven al bloque (`?from=empezar`).
+  const irAltaManual = (ambito: AmbitoRecurrente) => {
+    if (ambito.ambito === 'inmueble' && ambito.inmuebleId != null) {
+      navigate(`/inmuebles/${ambito.inmuebleId}/gastos/nuevo?from=empezar`);
+    } else {
+      navigate('/personal/gastos/nuevo?from=empezar');
+    }
+  };
+
+  const onAmbitoConfirm = (sel: AmbitoRecurrente) => {
+    const estado = ambitoModal;
+    setAmbitoModal(null);
+    if (!estado) return;
+    if (estado.kind === 'manual') {
+      irAltaManual(sel);
+    } else {
+      void confirmarConAmbito(estado.sug, sel);
+    }
   };
 
   const onDescartar = async (sug: Sugerencia) => {
@@ -113,6 +184,7 @@ const SugerenciasSection: React.FC = () => {
   );
 
   return (
+    <>
     <div className={styles.sugSectionWrap}>
       <div className={styles.sugSectionHead}>
         <div>
@@ -122,7 +194,7 @@ const SugerenciasSection: React.FC = () => {
         <button
           type="button"
           className={styles.btnGhost}
-          onClick={() => navigate('/personal/gastos/nuevo?from=empezar')}
+          onClick={() => setAmbitoModal({ kind: 'manual' })}
         >
           <Icons.Plus size={14} strokeWidth={2.5} /> Añadir recurrente a mano
         </button>
@@ -196,6 +268,17 @@ const SugerenciasSection: React.FC = () => {
         </>
       )}
     </div>
+
+      <AmbitoGastoModal
+        open={ambitoModal !== null}
+        inmuebles={inmuebles}
+        initial={ambitoModal?.kind === 'confirmar' ? ambitoModal.guess : undefined}
+        concepto={ambitoModal?.kind === 'confirmar' ? ambitoModal.sug.nombre : undefined}
+        confirmLabel={ambitoModal?.kind === 'confirmar' ? 'Confirmar' : 'Continuar'}
+        onClose={() => setAmbitoModal(null)}
+        onConfirm={onAmbitoConfirm}
+      />
+    </>
   );
 };
 
