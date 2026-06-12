@@ -105,8 +105,26 @@ type FormVariable = FormVariableState;
 type FormEspecie = FormEspecieState;
 type ModoEdicion = 'rectificacion' | 'cambio-desde-fecha';
 
+// ─── Props de embebido (FIX onboarding punto 6) ───────────────────────────────
+// El wizard aprende a abrirse EMBEBIDO sobre `/empezar` · pre-rellenarse desde
+// la detección de extractos y volver al flujo · SIN tocar su lógica interna.
+// Pre-relleno: empresa/cuenta/día salen puestos (el neto se muestra como aviso
+// porque el form pide bruto, no neto). `onSaved`/`onCancel` sustituyen la
+// navegación fija a `/personal/ingresos` cuando el wizard vive en el onboarding.
+export interface NominaEmbedPrefill {
+  neto?: number;
+  dia?: number;
+  cuentaId?: number;
+  empresa?: string;
+}
+export interface NominaPageProps {
+  prefill?: NominaEmbedPrefill;
+  onSaved?: () => void;
+  onCancel?: () => void;
+}
+
 // ─── Componente ─────────────────────────────────────────────────────────────
-const NominaPage: React.FC = () => {
+const NominaPage: React.FC<NominaPageProps> = ({ prefill, onSaved, onCancel }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const routeParams = useParams();
@@ -208,9 +226,19 @@ const NominaPage: React.FC = () => {
           if (existente && !cancelled) {
             hydrateFromNomina(existente);
           }
-        } else if (cuentas.length > 0 && !cancelled) {
-          const def = cuentas.find((c) => c.isDefault) ?? cuentas[0];
-          setCuentaId(def.id ?? null);
+        } else if (!cancelled) {
+          if (cuentas.length > 0) {
+            const def = cuentas.find((c) => c.isDefault) ?? cuentas[0];
+            setCuentaId(def.id ?? null);
+          }
+          // FIX onboarding punto 6 (P3) · pre-relleno desde la detección de
+          // extractos · empresa/cuenta/día puestos · sin detección queda en
+          // blanco (mismo form · la diferencia es solo el pre-relleno).
+          if (prefill) {
+            if (prefill.empresa) setEmpresa(prefill.empresa);
+            if (prefill.cuentaId != null) setCuentaId(prefill.cuentaId);
+            if (prefill.dia != null) setDiaCobro(String(prefill.dia));
+          }
         }
       } catch (e) {
         console.error('[NominaPage] error carga inicial', e);
@@ -482,6 +510,10 @@ const NominaPage: React.FC = () => {
       const ok = window.confirm('Tienes cambios sin guardar. ¿Salir igualmente?');
       if (!ok) return;
     }
+    if (onCancel) {
+      onCancel();
+      return;
+    }
     navigate('/personal/ingresos');
   };
 
@@ -533,7 +565,11 @@ const NominaPage: React.FC = () => {
       } else {
         await nominaService.saveNomina(payload);
       }
-      navigate('/personal/ingresos');
+      // FIX onboarding punto 6 (P4) · embebido · el bloque cierra el bucle
+      // (marca progreso · enciende IRPF estimado) vía `onSaved`. Suelto · va a
+      // su pantalla de ingresos como siempre.
+      if (onSaved) onSaved();
+      else navigate('/personal/ingresos');
     } catch (e) {
       console.error('[NominaPage] error guardando', e);
       setErrorMsg('No se ha podido guardar la nómina. Inténtalo de nuevo.');
@@ -608,6 +644,14 @@ const NominaPage: React.FC = () => {
 
             {/* COLUMNA IZQUIERDA · FORM */}
             <div className={styles.colForm}>
+
+              {/* Aviso de pre-relleno · solo embebido en `/empezar` (P3) */}
+              {prefill && (
+                <div className={styles.hintNote}>
+                  Rellenado desde tu extracto · vimos <b>{fmtEur(prefill.neto ?? 0)}</b> netos
+                  {prefill.dia != null ? ` el día ${prefill.dia}` : ''}. Completa bruto · nº de pagas · retención.
+                </div>
+              )}
 
               {/* BLOQUE 1 · Empresa y vigencia */}
               <section className={styles.block}>

@@ -117,7 +117,16 @@ const Stepper: React.FC<{ step: number; steps: string[] }> = ({ step, steps }) =
   </div>
 );
 
-const AutonomoWizard: React.FC = () => {
+// ─── Props de embebido (FIX onboarding punto 6) ───────────────────────────────
+// El wizard de autónomo aprende a abrirse EMBEBIDO sobre `/empezar` y volver al
+// flujo · SIN tocar su lógica interna. `onSaved`/`onCancel` sustituyen la
+// navegación fija a `/personal/ingresos` cuando vive dentro del onboarding.
+export interface AutonomoWizardProps {
+  onSaved?: () => void;
+  onCancel?: () => void;
+}
+
+const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const routeParams = useParams();
@@ -331,7 +340,10 @@ const AutonomoWizard: React.FC = () => {
       } else {
         await autonomoService.saveAutonomo(autonomoData);
       }
-      navigate('/personal/ingresos');
+      // FIX onboarding punto 6 (P4) · embebido · el bloque cierra el bucle vía
+      // `onSaved`. Suelto · va a su pantalla de ingresos como siempre.
+      if (onSaved) onSaved();
+      else navigate('/personal/ingresos');
     } catch (e) {
       console.error(e);
     } finally {
@@ -650,7 +662,7 @@ const AutonomoWizard: React.FC = () => {
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Nueva actividad autónoma</div>
           <div style={{ fontSize: 13, color: 'var(--grey-500)', fontFamily: FONT }}>{titularNombre}</div>
         </div>
-        <button onClick={() => navigate('/personal/ingresos')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
+        <button onClick={() => { if (onCancel) onCancel(); else navigate('/personal/ingresos'); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
           <X size={20} />
         </button>
       </div>

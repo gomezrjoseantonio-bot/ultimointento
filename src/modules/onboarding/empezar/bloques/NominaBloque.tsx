@@ -1,13 +1,25 @@
 /**
- * Pantalla 08 · Bloque nómina/autónomo · doble vía.
- * "Completar lo detectado" (wizard pre-rellenado desde la detección) vs
- * "Desde cero" (wizards existentes). Autónomo = rendimiento + M130 · NO IVA.
+ * Pantalla 08 · Bloque nómina/autónomo · dos entradas honestas.
+ *
+ * FIX onboarding punto 6 · se elimina la doble vía falsa: antes "Completar lo
+ * detectado" y "Desde cero" abrían EL MISMO wizard (sin aceleración real) y
+ * salían del flujo a `/personal/nomina/nueva`. Ahora hay dos entradas REALES y
+ * distintas · Nómina y Autónomo · y cada una abre su wizard real EMBEBIDO sobre
+ * el onboarding (P1 + P2). La de nómina sale pre-rellenada si la detección de
+ * extractos encontró un abono periódico (P3) · si no, en blanco · mismo form.
+ * Al guardar se cierra el bucle (P4): se marca el bloque, sube el % y se
+ * enciende el IRPF estimado (derivado · al haber renta de trabajo/actividad la
+ * estimación en curso deja de mostrar "—"). Autónomo = rendimiento + M130 · NO
+ * IVA. El wizard queda intacto · solo aprende a abrirse embebido y volver.
  */
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Icons } from '../../../../design-system/v5';
 import DobleViaLayout from './DobleViaLayout';
 import ViaCard from './ViaCard';
+import { useOnboarding } from '../OnboardingContext';
+import NominaPage from '../../../../pages/GestionPersonal/wizards/NominaPage';
+import AutonomoWizard from '../../../../pages/GestionPersonal/wizards/AutonomoWizard';
 import {
   detectarSugerencias,
   type Sugerencia,
@@ -17,9 +29,13 @@ import styles from '../empezar.module.css';
 
 const eur = (n: number) => `${n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 
+type Modo = 'elegir' | 'nomina' | 'autonomo';
+
 const NominaBloque: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setBloque, refresh } = useOnboarding();
+  const [modo, setModo] = useState<Modo>('elegir');
   const [detectada, setDetectada] = useState<Sugerencia | null>(
     (location.state as { prefill?: Sugerencia } | null)?.prefill ?? null,
   );
@@ -38,6 +54,35 @@ const NominaBloque: React.FC = () => {
 
   const prefill = detectada?.prefill as NominaPrefill | undefined;
 
+  // P4 · cierre del bucle · guardar (nómina o autónomo) marca el bloque, sube
+  // el % y enciende el IRPF estimado (derivado · al haber renta de trabajo o
+  // actividad la estimación en curso deja de estar apagada) y vuelve al flujo.
+  const cerrarBloque = async () => {
+    await setBloque('nomina', 'completado');
+    await refresh();
+    navigate('/empezar/hub');
+  };
+
+  const volverAElegir = () => setModo('elegir');
+
+  if (modo === 'nomina') {
+    return (
+      <NominaPage
+        prefill={
+          prefill
+            ? { neto: prefill.neto, dia: prefill.dia, cuentaId: prefill.cuentaId, empresa: prefill.pagador }
+            : undefined
+        }
+        onSaved={cerrarBloque}
+        onCancel={volverAElegir}
+      />
+    );
+  }
+
+  if (modo === 'autonomo') {
+    return <AutonomoWizard onSaved={cerrarBloque} onCancel={volverAElegir} />;
+  }
+
   return (
     <DobleViaLayout
       kick="Bloque · quién te paga a ti"
@@ -48,30 +93,30 @@ const NominaBloque: React.FC = () => {
         <ViaCard
           variant="recommended"
           badge={detectada ? 'Detectado en tus extractos' : 'Recomendado'}
-          Icon={Icons.Zap}
-          title="Completar lo detectado"
+          Icon={Icons.Banknote}
+          title="Nómina"
           desc={
             prefill ? (
               <>
                 Atlas vio un abono periódico "{prefill.pagador}" · <span className={styles.mono}>{eur(prefill.neto)}</span>{' '}
-                netos el día {prefill.dia}. El wizard sale pre-rellenado · tú añades lo que el extracto no sabe.
+                netos el día {prefill.dia}. El wizard sale pre-rellenado · tú añades bruto · pagas · retención.
               </>
             ) : (
-              'Sube extractos en el bloque financiero · Atlas detectará tu nómina y pre-rellenará el wizard.'
+              'Bruto · nº de pagas · retención · pagas extra · variables · plan de pensiones y especie. Con tu recibo de nómina delante son unos minutos.'
             )
           }
-          items={['Te falta · bruto anual · nº de pagas · retención', 'Si aportas a plan de pensiones · se vincula aquí']}
-          time="5 min · enciende el IRPF estimado"
-          onClick={() => navigate('/personal/nomina/nueva', detectada ? { state: { prefill: detectada } } : undefined)}
+          items={['Vista previa mes a mes con el neto en tu cuenta', 'Si aportas a plan de pensiones · se vincula aquí']}
+          time={prefill ? '5 min · enciende el IRPF estimado' : '10 min · enciende el IRPF estimado'}
+          onClick={() => setModo('nomina')}
         />
         <ViaCard
           variant="manual"
           Icon={Icons.Edit}
-          title="Desde cero · nómina o autónomo"
-          desc="Sin extractos · los asistentes de siempre · con tu recibo de nómina delante son 10 minutos."
-          items={['Nómina · bruto · pagas · retención · especies', 'Autónomo · rendimiento estimado y pagos M130']}
-          time="10 min"
-          onClick={() => navigate('/personal/nomina/nueva')}
+          title="Autónomo"
+          desc="Tu actividad por cuenta propia · Atlas solo necesita tu rendimiento y tus pagos a cuenta (M130) porque alimentan tu declaración de la renta."
+          items={['Rendimiento estimado y pagos M130', 'Cuota de autónomos · gastos deducibles']}
+          time="10 min · enciende el IRPF estimado"
+          onClick={() => setModo('autonomo')}
         />
       </div>
 
