@@ -3,7 +3,7 @@
 // primero presenta el upload FEIN y, al obtener un draft, hidrata la pantalla.
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import FEINUploader from '../../../components/financiacion/FEINUploader';
 import { FeinToPrestamoMapper } from '../../../services/fein/feinToPrestamoMapper';
@@ -18,6 +18,13 @@ interface Props {
 
 const WizardCreatePage: React.FC<Props> = ({ withFEIN = false }) => {
   const navigate = useNavigate();
+  // FIX PUNTO 5 · cuando el alta se lanza desde el bloque préstamos del
+  // onboarding (`?from=empezar`), al guardar/cancelar se vuelve SOBRE el flujo
+  // (`/empezar/prestamos`) en vez de a Financiación · el bloque se marca solo
+  // al re-montar /empezar (syncBloquesFromData detecta ≥1 préstamo). El wizard
+  // (PrestamoPageV2) queda intacto · solo cambia el destino de navegación.
+  const [searchParams] = useSearchParams();
+  const backTarget = searchParams.get('from') === 'empezar' ? '/empezar/prestamos' : '/financiacion';
   const [feinData, setFeinData] = useState<Partial<PrestamoFinanciacion> | null>(null);
   const [stage, setStage] = useState<'fein' | 'wizard'>(withFEIN ? 'fein' : 'wizard');
 
@@ -37,8 +44,8 @@ const WizardCreatePage: React.FC<Props> = ({ withFEIN = false }) => {
     setStage('wizard');
   };
 
-  const handleSuccess = () => navigate('/financiacion');
-  const handleCancel = () => navigate('/financiacion');
+  const handleSuccess = () => navigate(backTarget);
+  const handleCancel = () => navigate(backTarget);
 
   if (stage === 'fein') {
     return (

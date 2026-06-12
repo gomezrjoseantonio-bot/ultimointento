@@ -7,7 +7,7 @@
 import { initDB } from './db';
 import type { Account, Property } from './db';
 import { prestamosService } from './prestamosService';
-import type { Prestamo } from '../types/prestamos';
+import type { DestinoCapital, Garantia, Prestamo } from '../types/prestamos';
 import type { PrestamoTemplateRow } from './prestamosTemplateParserService';
 
 export interface ResultadoPrestamos {
@@ -65,11 +65,69 @@ export async function revisarRows(rows: PrestamoTemplateRow[]): Promise<Prestamo
   return rows.map((r) => revisarRow(r, accounts));
 }
 
-function rowToPrestamo(row: PrestamoTemplateRow, account: Account, property?: Property): Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> {
+const uid = (prefijo: string): string =>
+  `${prefijo}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+/**
+ * Destino del capital (P1) · 1 fila = 1 destino (multi-destino se edita en
+ * ficha). Determina la deducibilidad: ADQUISICION/REFORMA con inmuebleId →
+ * deducible. Retrocompat · si la fila legacy no trae destino pero sí inmueble
+ * vinculado, se asume ADQUISICION de ese inmueble (comportamiento previo).
+ */
+function buildDestinos(row: PrestamoTemplateRow, property?: Property): DestinoCapital[] | undefined {
+  const tipo: DestinoCapital['tipo'] | undefined =
+    row.destinoTipo ?? (property ? 'ADQUISICION' : undefined);
+  if (!tipo) return undefined;
+  const importe = row.destinoImporte ?? row.principalInicial;
+  const porcentaje =
+    row.destinoPorcentaje ??
+    (row.principalInicial > 0 ? Math.round((importe / row.principalInicial) * 1000) / 10 : undefined);
+  // El inmueble del destino · solo aplica a destinos sobre inmueble.
+  const inmuebleId =
+    (tipo === 'ADQUISICION' || tipo === 'REFORMA') && property?.id != null
+      ? String(property.id)
+      : undefined;
+  return [
+    {
+      id: uid('dest'),
+      tipo,
+      ...(inmuebleId ? { inmuebleId } : {}),
+      importe,
+      ...(porcentaje != null ? { porcentaje } : {}),
+    },
+  ];
+}
+
+/** Garantía (informativa · no afecta fiscalidad · P1). */
+function buildGarantias(row: PrestamoTemplateRow, garantiaProperty?: Property): Garantia[] | undefined {
+  if (!row.garantiaTipo) return undefined;
+  const inmuebleId =
+    row.garantiaTipo === 'HIPOTECARIA' && garantiaProperty?.id != null
+      ? String(garantiaProperty.id)
+      : undefined;
+  return [
+    {
+      tipo: row.garantiaTipo,
+      ...(inmuebleId ? { inmuebleId } : {}),
+      ...(row.garantiaInmuebleRef ? { descripcion: row.garantiaInmuebleRef } : {}),
+    },
+  ];
+}
+
+function rowToPrestamo(
+  row: PrestamoTemplateRow,
+  account: Account,
+  property?: Property,
+  garantiaProperty?: Property,
+): Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> {
   const fecha = row.fechaPrimerCargo ?? new Date().toISOString().split('T')[0];
   const completo = row.tipo === 'FIJO' && row.tin > 0 && row.plazoMeses > 0;
+  const destinos = buildDestinos(row, property);
+  const garantias = buildGarantias(row, garantiaProperty);
+  // El ámbito se deduce de los destinos sobre inmueble (regla del modelo).
+  const ambito = destinos?.some((d) => d.inmuebleId) ? 'INMUEBLE' : 'PERSONAL';
   return {
-    ambito: property ? 'INMUEBLE' : 'PERSONAL',
+    ambito,
     nombre: row.nombre,
     principalInicial: row.principalInicial,
     principalVivo: row.principalVivo,
@@ -80,24 +138,29 @@ function rowToPrestamo(row: PrestamoTemplateRow, account: Account, property?: Pr
     esquemaPrimerRecibo: 'NORMAL',
     tipo: row.tipo,
     sistema: 'FRANCES',
-    carencia: 'NINGUNA',
+    carencia: row.carenciaTipo ?? 'NINGUNA',
     cuentaCargoId: String(account.id),
     activo: true,
     cuotasPagadas: 0,
     origenCreacion: 'IMPORTACION',
     ...(row.tipo === 'FIJO' ? { tipoNominalAnualFijo: row.tin } : {}),
-    ...(property
-      ? {
-          destinos: [
-            {
-              id: `dest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-              tipo: 'ADQUISICION' as const,
-              inmuebleId: String(property.id),
-              importe: row.principalInicial,
-            },
-          ],
-        }
+    ...(row.carenciaMeses != null ? { carenciaMeses: row.carenciaMeses } : {}),
+    // Espejo del modal (P1) · opcionales · solo se escriben si la fila los trae.
+    ...(row.tipoPrestamoV2 ? { tipoPrestamoV2: row.tipoPrestamoV2 } : {}),
+    ...(row.interesDemoraPct != null ? { interesDemoraPct: row.interesDemoraPct } : {}),
+    ...(row.comisionApertura != null ? { comisionApertura: row.comisionApertura } : {}),
+    ...(row.comisionMantenimiento != null ? { comisionMantenimiento: row.comisionMantenimiento } : {}),
+    ...(row.comisionAmortizacionAnticipada != null
+      ? { comisionAmortizacionAnticipada: row.comisionAmortizacionAnticipada }
       : {}),
+    ...(row.comisionModificacionCondiciones != null
+      ? { comisionModificacionCondiciones: row.comisionModificacionCondiciones }
+      : {}),
+    ...(row.comisionCancelacionTotal != null
+      ? { comisionCancelacionTotal: row.comisionCancelacionTotal }
+      : {}),
+    ...(destinos ? { destinos } : {}),
+    ...(garantias ? { garantias } : {}),
     // Si no es FIJO o falta TIN/plazo · queda pendiente de completar (sin cuadro).
     estado: completo ? 'vivo' : 'pendiente_completar',
   };
@@ -121,8 +184,12 @@ export async function crearPrestamosDesdeRows(rows: PrestamoTemplateRow[]): Prom
     }
     const account = resolverCuenta(row.cuentaRef, accounts)!;
     const property = resolverInmueble(row.inmuebleRef, properties);
+    // Inmueble de la GARANTÍA (informativa) · puede diferir del vinculado.
+    const garantiaProperty = resolverInmueble(row.garantiaInmuebleRef ?? null, properties);
 
-    const creado = await prestamosService.createPrestamo(rowToPrestamo(row, account, property));
+    const creado = await prestamosService.createPrestamo(
+      rowToPrestamo(row, account, property, garantiaProperty),
+    );
     r.creados += 1;
     r.idsCreados.push(creado.id);
 
