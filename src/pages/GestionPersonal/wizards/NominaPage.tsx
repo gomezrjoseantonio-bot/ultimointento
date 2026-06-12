@@ -226,19 +226,9 @@ const NominaPage: React.FC<NominaPageProps> = ({ prefill, onSaved, onCancel }) =
           if (existente && !cancelled) {
             hydrateFromNomina(existente);
           }
-        } else if (!cancelled) {
-          if (cuentas.length > 0) {
-            const def = cuentas.find((c) => c.isDefault) ?? cuentas[0];
-            setCuentaId(def.id ?? null);
-          }
-          // FIX onboarding punto 6 (P3) · pre-relleno desde la detección de
-          // extractos · empresa/cuenta/día puestos · sin detección queda en
-          // blanco (mismo form · la diferencia es solo el pre-relleno).
-          if (prefill) {
-            if (prefill.empresa) setEmpresa(prefill.empresa);
-            if (prefill.cuentaId != null) setCuentaId(prefill.cuentaId);
-            if (prefill.dia != null) setDiaCobro(String(prefill.dia));
-          }
+        } else if (!cancelled && cuentas.length > 0) {
+          const def = cuentas.find((c) => c.isDefault) ?? cuentas[0];
+          setCuentaId(def.id ?? null);
         }
       } catch (e) {
         console.error('[NominaPage] error carga inicial', e);
@@ -251,6 +241,20 @@ const NominaPage: React.FC<NominaPageProps> = ({ prefill, onSaved, onCancel }) =
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nominaId, titular]);
+
+  // FIX onboarding punto 6 (P3) · pre-relleno desde la detección de extractos.
+  // Reactivo a los valores de `prefill` (la detección puede llegar DESPUÉS de
+  // montar el wizard) y solo mientras el usuario no haya tocado nada (`touched`)
+  // ni se esté editando · así no pisa ediciones del usuario.
+  const pfEmpresa = prefill?.empresa;
+  const pfCuenta = prefill?.cuentaId;
+  const pfDia = prefill?.dia;
+  useEffect(() => {
+    if (isEditing || touched) return;
+    if (pfEmpresa) setEmpresa(pfEmpresa);
+    if (pfCuenta != null) setCuentaId(pfCuenta);
+    if (pfDia != null) setDiaCobro(String(pfDia));
+  }, [pfEmpresa, pfCuenta, pfDia, isEditing, touched]);
 
   const hydrateFromNomina = (n: Nomina) => {
     setEmpresa(n.empresa?.nombre || n.nombre || '');
@@ -645,11 +649,18 @@ const NominaPage: React.FC<NominaPageProps> = ({ prefill, onSaved, onCancel }) =
             {/* COLUMNA IZQUIERDA · FORM */}
             <div className={styles.colForm}>
 
-              {/* Aviso de pre-relleno · solo embebido en `/empezar` (P3) */}
+              {/* Aviso de pre-relleno · solo embebido en `/empezar` (P3) · no
+                  imprime el neto si la detección no lo trae (evita "0,00 €"). */}
               {prefill && (
                 <div className={styles.hintNote}>
-                  Rellenado desde tu extracto · vimos <b>{fmtEur(prefill.neto ?? 0)}</b> netos
-                  {prefill.dia != null ? ` el día ${prefill.dia}` : ''}. Completa bruto · nº de pagas · retención.
+                  {prefill.neto != null ? (
+                    <>
+                      Rellenado desde tu extracto · vimos <b>{fmtEur(prefill.neto)}</b> netos
+                      {prefill.dia != null ? ` el día ${prefill.dia}` : ''}. Completa bruto · nº de pagas · retención.
+                    </>
+                  ) : (
+                    <>Rellenado desde tu extracto · completa bruto · nº de pagas · retención.</>
+                  )}
                 </div>
               )}
 

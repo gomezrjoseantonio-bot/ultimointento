@@ -137,6 +137,25 @@ describe('NominaBloque · /empezar · se adapta a la situación laboral (P5)', (
     expect(screen.queryByTestId('autonomo-wizard')).toBeNull();
   });
 
+  test('reentrada · asalariado con nómina ya creada → marca el bloque completado en la carga', async () => {
+    mockGetPersonalData.mockResolvedValue(persona(['asalariado']));
+    mockGetNominas.mockResolvedValue([{ id: 1 }]);
+    renderBloque();
+    await waitFor(() => expect(mockSetBloque).toHaveBeenCalledWith('nomina', 'completado'));
+    // No abre directo el formulario porque la nómina ya existe.
+    await screen.findByText('✓ Hecho');
+    expect(screen.queryByTestId('nomina-wizard')).toBeNull();
+  });
+
+  test('reentrada · ambos con solo la nómina creada → marca el bloque parcial en la carga', async () => {
+    mockGetPersonalData.mockResolvedValue(persona(['asalariado', 'autonomo']));
+    mockGetNominas.mockResolvedValue([{ id: 1 }]);
+    mockGetAutonomos.mockResolvedValue([]);
+    renderBloque();
+    await waitFor(() => expect(mockSetBloque).toHaveBeenCalledWith('nomina', 'parcial'));
+    expect(mockSetBloque).not.toHaveBeenCalledWith('nomina', 'completado');
+  });
+
   test('desempleado → no fuerza nómina · ofrece otro ingreso del trabajo', async () => {
     mockGetPersonalData.mockResolvedValue(persona(['desempleado']));
     renderBloque();
@@ -222,8 +241,9 @@ describe('NominaBloque · /empezar · pre-relleno y cierre del bucle', () => {
     await screen.findByText('Tu nómina');
 
     fireEvent.click(screen.getAllByText('Saltar')[0]); // salta nómina · aún falta actividad
-    await waitFor(() => expect(screen.getByText('Saltada')).toBeTruthy());
+    await waitFor(() => expect(mockSetBloque).toHaveBeenCalledWith('nomina', 'parcial'));
     expect(mockSetBloque).not.toHaveBeenCalledWith('nomina', 'completado');
+    expect(screen.getByText('Saltada')).toBeTruthy();
 
     fireEvent.click(screen.getByText('Saltar')); // salta actividad · se completa
     await waitFor(() => expect(mockSetBloque).toHaveBeenCalledWith('nomina', 'completado'));
