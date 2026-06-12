@@ -83,20 +83,21 @@ const SelectorNuevaPosicion: React.FC<SelectorNuevaPosicionProps> = ({
 }) => {
   const navigate = useNavigate();
   // FIX onboarding PUNTO 7 (P1) · si venimos de /empezar, propagamos
-  // `?from=empezar` al importador para que sepa volver al flujo. La navegación
-  // desmonta el modal · no se llama a `onClose()` antes (evita que el padre
-  // interprete un "cancelar" y navegue a otro sitio).
+  // `?from=empezar` al importador para que sepa volver al flujo (los wrappers
+  // de import leen ese flag · ver Importar{Indexa,Aportaciones}Page).
   const [searchParams] = useSearchParams();
   const fromEmpezar = searchParams.get('from') === 'empezar';
   const suffix = fromEmpezar ? '?from=empezar' : '';
 
   const handleIndexa = () => {
     showToastV5('Importer Indexa Capital · planes de pensiones');
+    onClose();
     navigate(`/inversiones/importar-indexa${suffix}`);
   };
 
   const handleCSV = () => {
     showToastV5('Importer aportaciones · CSV genérico');
+    onClose();
     navigate(`/inversiones/importar-aportaciones${suffix}`);
   };
 
