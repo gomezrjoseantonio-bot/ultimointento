@@ -68,6 +68,12 @@ describe('InversionesBloque · ida y vuelta (P1/P2)', () => {
     await waitFor(() => expect(screen.getByTestId('loc')).toHaveTextContent('/empezar/hub'));
   });
 
+  it('al volver de un importador (?done=import) el toast dice "Cartera importada"', async () => {
+    renderAt('/empezar/inversiones?done=import');
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+    expect(mockToast).toHaveBeenCalledWith(expect.stringMatching(/Cartera importada/), 'success');
+  });
+
   it('sin ?done (cancelar) no cierra el bucle (no refresh ni toast)', () => {
     renderAt('/empezar/inversiones');
     expect(mockRefresh).not.toHaveBeenCalled();

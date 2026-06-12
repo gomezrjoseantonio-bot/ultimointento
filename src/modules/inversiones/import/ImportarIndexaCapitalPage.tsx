@@ -14,8 +14,8 @@ const ImportarIndexaCapitalPage: React.FC = () => {
   const fromEmpezar = searchParams.get('from') === 'empezar';
   return (
     <ImportarIndexaCapital
-      onComplete={() => navigate(fromEmpezar ? '/empezar/inversiones?done=import' : '/inversiones')}
-      onBack={() => navigate(fromEmpezar ? '/empezar/inversiones' : '/inversiones')}
+      onComplete={() => navigate(fromEmpezar ? '/empezar/inversiones?done=import' : '/inversiones', fromEmpezar ? { replace: true } : undefined)}
+      onBack={() => navigate(fromEmpezar ? '/empezar/inversiones' : '/inversiones', fromEmpezar ? { replace: true } : undefined)}
     />
   );
 };

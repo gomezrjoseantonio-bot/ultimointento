@@ -155,7 +155,9 @@ const InversionesGaleria: React.FC = () => {
   const closeSelector = () => {
     setShowSelector(false);
     // Cancelar desde el onboarding · vuelta al mapa SIN marcar el bloque.
-    if (fromEmpezar) navigate('/empezar/inversiones');
+    // `replace` evita dejar `/inversiones?from=empezar` en el historial (atrás
+    // reabriría el selector en bucle).
+    if (fromEmpezar) navigate('/empezar/inversiones', { replace: true });
   };
 
   const handlePickFamilia = (f: Familia) => {

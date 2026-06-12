@@ -50,12 +50,15 @@ const InversionesBloque: React.FC = () => {
   useEffect(() => {
     if (!done || cierreLanzado.current) return;
     cierreLanzado.current = true;
+    const okMsg = done === 'import'
+      ? 'Cartera importada · bloque inversiones completado'
+      : 'Posición guardada · bloque inversiones completado';
     void (async () => {
       try {
         await refresh();
-        showToastV5('Posición guardada · bloque inversiones completado', 'success');
+        showToastV5(okMsg, 'success');
       } catch {
-        showToastV5('Posición guardada · revisa el progreso en el mapa', 'warn');
+        showToastV5('Inversiones guardadas · revisa el progreso en el mapa', 'warn');
       }
       navigate('/empezar/hub', { replace: true });
     })();
