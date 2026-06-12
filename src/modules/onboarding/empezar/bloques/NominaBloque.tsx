@@ -93,10 +93,26 @@ const NominaBloque: React.FC = () => {
       if (nReq === 1 && rN && !nHecha) setModo('nomina');
       else if (nReq === 1 && rA && !aHecha) setModo('actividad');
       else setModo('lista');
+
+      // Reentrada · refleja en el semáforo/% lo que YA existe: si todas las
+      // tareas que la situación laboral exige están creadas → bloque completado;
+      // si solo alguna → parcial. No degrada estados ni navega (solo sube).
+      if (rN || rA) {
+        const okN = !rN || nHecha;
+        const okA = !rA || aHecha;
+        if (okN && okA) {
+          await setBloque('nomina', 'completado');
+          await refresh();
+        } else if (nHecha || aHecha) {
+          await setBloque('nomina', 'parcial');
+          await refresh();
+        }
+      }
     })();
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Detección de extractos · solo alimenta el pre-relleno de la nómina ──────
@@ -147,7 +163,14 @@ const NominaBloque: React.FC = () => {
     setActividadSaltada(aS);
     const okN = !reqNomina || nominaHecha || nS;
     const okA = !reqActividad || actividadHecha || aS;
-    if (okN && okA) await completarBloque();
+    if (okN && okA) {
+      await completarBloque();
+    } else {
+      // Aún queda una tarea requerida pendiente · refleja el "parcial" en el
+      // semáforo/% en vez de dejar el bloque como pendiente.
+      await setBloque('nomina', 'parcial');
+      await refresh();
+    }
   };
 
   // ── Formularios embebidos ───────────────────────────────────────────────────
