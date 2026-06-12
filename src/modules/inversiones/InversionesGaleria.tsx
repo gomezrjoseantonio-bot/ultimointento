@@ -13,8 +13,8 @@
 // retira completamente en PR 3 (cuando los nuevos modales estén). Mientras,
 // CartaAddPosicion · WizardNuevaPosicion · etc. siguen vivos pero sin uso.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icons, PageHead, showToastV5 } from '../../design-system/v5';
 import { EmptyState } from '../../components/common/EmptyState';
 import { TrendingUp } from 'lucide-react';
@@ -50,6 +50,12 @@ import styles from './InversionesGaleria.module.css';
 
 const InversionesGaleria: React.FC = () => {
   const navigate = useNavigate();
+  // FIX onboarding PUNTO 7 (P1) · cuando se entra desde /empezar
+  // (`?from=empezar`) la galería aprende a abrir el selector directamente y a
+  // VOLVER al flujo al crear (o cancelar) · sin reescribir el modal.
+  const [searchParams] = useSearchParams();
+  const fromEmpezar = searchParams.get('from') === 'empezar';
+  const volviendoAlFlujo = useRef(false);
   const [cartaItems, setCartaItems] = useState<CartaItem[]>([]);
   const [resumenCerradas, setResumenCerradas] = useState<KpisCerradas>(() =>
     calcularKpisCerradas([]),
@@ -133,15 +139,36 @@ const InversionesGaleria: React.FC = () => {
     navigate(`/inversiones/${item._idOriginal}`);
   };
 
+  // Al entrar desde el onboarding, abrir directamente el selector de familia.
+  useEffect(() => {
+    if (fromEmpezar) setShowSelector(true);
+  }, [fromEmpezar]);
+
+  // Cierre del bucle · al crear una posición desde /empezar se vuelve al bloque
+  // con `?done` (marca el bloque · sube el % · vuelta al mapa).
+  const volverAlFlujo = useCallback(() => {
+    volviendoAlFlujo.current = true;
+    navigate('/empezar/inversiones?done=posicion', { replace: true });
+  }, [navigate]);
+
   const openSelector = () => setShowSelector(true);
-  const closeSelector = () => setShowSelector(false);
+  const closeSelector = () => {
+    setShowSelector(false);
+    // Cancelar desde el onboarding · vuelta al mapa SIN marcar el bloque.
+    if (fromEmpezar) navigate('/empezar/inversiones');
+  };
 
   const handlePickFamilia = (f: Familia) => {
     setShowSelector(false);
     setAltaModal(f);
   };
 
-  const closeAlta = () => setAltaModal(null);
+  const closeAlta = () => {
+    setAltaModal(null);
+    // En onboarding · cerrar el modal de alta (cancelar) reabre el selector;
+    // si se creó la posición, `volverAlFlujo` ya navegó fuera (no reabrir).
+    if (fromEmpezar && !volviendoAlFlujo.current) setShowSelector(true);
+  };
 
   const openAportar = () => {
     if (posicionesParaAportar.length === 0) {
@@ -163,6 +190,7 @@ const InversionesGaleria: React.FC = () => {
       showToastV5('Posición creada.');
       await rendimientosService.generarRendimientosPendientes();
       await load();
+      if (fromEmpezar) volverAlFlujo();
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[inversiones] save', err);
@@ -283,7 +311,8 @@ const InversionesGaleria: React.FC = () => {
           tipoInicial="PPE"
           onSaved={() => {
             load();
-            closeAlta();
+            if (fromEmpezar) volverAlFlujo();
+            else closeAlta();
           }}
           onClose={closeAlta}
         />

@@ -8,7 +8,7 @@
 // con tipo preseleccionado · PR 3 los reemplaza por los nuevos modales.
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icons, showToastV5 } from '../../../../design-system/v5';
 import ModalAtlas, { ModalAtlasBody, ModalAtlasForm } from './ModalAtlas';
 import ModalAtlasHeader from './ModalAtlasHeader';
@@ -82,17 +82,22 @@ const SelectorNuevaPosicion: React.FC<SelectorNuevaPosicionProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
+  // FIX onboarding PUNTO 7 (P1) · si venimos de /empezar, propagamos
+  // `?from=empezar` al importador para que sepa volver al flujo. La navegación
+  // desmonta el modal · no se llama a `onClose()` antes (evita que el padre
+  // interprete un "cancelar" y navegue a otro sitio).
+  const [searchParams] = useSearchParams();
+  const fromEmpezar = searchParams.get('from') === 'empezar';
+  const suffix = fromEmpezar ? '?from=empezar' : '';
 
   const handleIndexa = () => {
     showToastV5('Importer Indexa Capital · planes de pensiones');
-    onClose();
-    navigate('/inversiones/importar-indexa');
+    navigate(`/inversiones/importar-indexa${suffix}`);
   };
 
   const handleCSV = () => {
     showToastV5('Importer aportaciones · CSV genérico');
-    onClose();
-    navigate('/inversiones/importar-aportaciones');
+    navigate(`/inversiones/importar-aportaciones${suffix}`);
   };
 
   return (
