@@ -3,9 +3,9 @@
  * Plantilla Excel NUEVA (posiciones + valoración inicial) + alta manual
  * (galería de inversiones existente · /inversiones).
  */
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Icons } from '../../../../design-system/v5';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Icons, showToastV5 } from '../../../../design-system/v5';
 import DobleViaLayout from './DobleViaLayout';
 import ViaCard from './ViaCard';
 import ImportarPlantillaWizard, { type PlantillaRevisionView } from './ImportarPlantillaWizard';
@@ -13,20 +13,61 @@ import { useOnboarding } from '../OnboardingContext';
 import {
   parseInversionesTemplateXlsx,
   InversionesTemplateFormatError,
+  type FamiliaInversionTemplate,
   type InversionTemplateRow,
 } from '../../../../services/inversionesTemplateParserService';
 import { revisarRows, crearInversionesDesdeRows } from '../../../../services/inversionesImportCreationService';
 import styles from '../empezar.module.css';
 
+const FAMILIA_LABEL: Record<FamiliaInversionTemplate, string> = {
+  plan_pensiones: 'Plan de pensiones',
+  fondo: 'Fondo',
+  accion_etf_reit: 'Acción/ETF/REIT',
+  prestamo_activo: 'Préstamo',
+  deposito_cuenta: 'Depósito/cuenta',
+  crypto: 'Crypto',
+  otro: 'Otro',
+};
+
 const InversionesBloque: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { refresh } = useOnboarding();
   const [mostrarPlantilla, setMostrarPlantilla] = useState(false);
+  const cierreLanzado = useRef(false);
+
+  // Al aterrizar en el bloque, arrancar arriba (el topbar sticky no tapa el título).
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  // FIX P1/P2 · cierre del bucle al volver de la vía manual o de un importador
+  // con éxito (`?done=…`). `refresh()` reejecuta syncNucleoFromData, que marca
+  // `inversiones` completado en cuanto existe ≥1 posición y recalcula el %.
+  // Cancelar vuelve sin `done` → no se marca nada. La vía plantilla cierra por
+  // su cuenta (onCreated → refresh) mostrando su resumen inline.
+  const done = searchParams.get('done');
+  useEffect(() => {
+    if (!done || cierreLanzado.current) return;
+    cierreLanzado.current = true;
+    const okMsg = done === 'import'
+      ? 'Cartera importada · bloque inversiones completado'
+      : 'Posición guardada · bloque inversiones completado';
+    void (async () => {
+      try {
+        await refresh();
+        showToastV5(okMsg, 'success');
+      } catch {
+        showToastV5('Inversiones guardadas · revisa el progreso en el mapa', 'warn');
+      }
+      navigate('/empezar/hub', { replace: true });
+    })();
+  }, [done, refresh, navigate]);
 
   const revisar = (rows: InversionTemplateRow[]): PlantillaRevisionView[] =>
     revisarRows(rows).map((r) => ({
       label: r.row.producto || '(sin producto)',
-      sub: r.valido ? `${r.row.tipo} · ${r.row.entidad ?? '—'}${r.row.unidades ? ' · ' + r.row.unidades + ' uds' : ''}` : `No se creará · ${r.motivo}`,
+      sub: r.valido ? `${FAMILIA_LABEL[r.row.tipo]} · ${r.row.entidad ?? '—'}${r.row.unidades ? ' · ' + r.row.unidades + ' uds' : ''}` : `No se creará · ${r.motivo}`,
       amount: r.row.valorHoy || r.row.costeAdquisicion,
       valido: r.valido,
     }));
@@ -64,7 +105,7 @@ const InversionesBloque: React.FC = () => {
           desc="El alta de posición de siempre · ideal con pocas posiciones."
           items={['Plan de pensiones de empresa · se vincula a tu nómina', 'Participaciones (CB · sociedades) · con su % y atribución']}
           time="3 min por posición"
-          onClick={() => navigate('/inversiones')}
+          onClick={() => navigate('/inversiones?from=empezar')}
         />
       </div>
 

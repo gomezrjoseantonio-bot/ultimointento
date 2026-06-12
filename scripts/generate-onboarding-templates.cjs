@@ -236,18 +236,51 @@ write(
   ],
 );
 
-// ── Inversiones ─────────────────────────────────────────────────────────────
-write('plantilla-inversiones-atlas.xlsx', [
+// ── Inversiones (FIX PUNTO 7 · espejo de las 6 familias del modal) ────────────
+// Obligatorias SOLO: Tipo y Producto. El parser resuelve columnas POR NOMBRE,
+// así que una plantilla vieja de 7 columnas (sin Subtipo/ISIN/% atribución/TAE/
+// Plazo) sigue funcionando. Fechas como celda Date real (es-ES dd/mm/aaaa).
+write(
+  'plantilla-inversiones-atlas.xlsx',
   [
-    'Tipo (fondo/accion/etf/crypto/plan_pensiones/deposito/otro)',
-    'Entidad',
-    'Producto',
-    'Unidades',
-    'Coste adquisición €',
-    'Fecha compra',
-    'Valor de hoy €',
+    [
+      'Tipo (plan_pensiones/fondo/accion_etf_reit/prestamo_activo/deposito_cuenta/crypto)',
+      'Subtipo (PPE·PPI · accion·ETF·REIT · P2P·empresa · plazo·cuenta)',
+      'Entidad',
+      'Producto',
+      'ISIN o ticker',
+      'Unidades / participaciones',
+      'Coste adquisición €',
+      'Fecha compra',
+      'Valor de hoy €',
+      '% atribución (participaciones)',
+      'TAE/TIN %',
+      'Plazo (meses)',
+    ],
+    // Una fila de ejemplo por familia.
+    ['plan_pensiones', 'PPE', 'VidaCaixa', 'PPE Empresa', '', '', 8000, new Date(2020, 0, 15), 9200, '', '', ''], // 15/01/2020
+    ['fondo', 'FI', 'Indexa Capital', 'Indexa RV Mixta', 'IE00B4L5Y983', 120, 10000, new Date(2022, 2, 10), 12500, '', '', ''], // 10/03/2022
+    ['accion_etf_reit', 'ETF', 'DEGIRO', 'iShares Core S&P 500', 'IE00B5BMR087', 50, 18000, new Date(2021, 8, 1), 24500, '', '', ''], // 01/09/2021
+    ['accion_etf_reit', 'accion', 'CB Hermanos', 'Participación CB', '', 1, 30000, new Date(2019, 5, 1), 35000, 33.34, '', ''], // 01/06/2019
+    ['prestamo_activo', 'P2P', 'Mintos', 'Préstamo SmartFlip', '', '', 5000, new Date(2023, 0, 10), 5000, '', 10, 24], // 10/01/2023
+    ['deposito_cuenta', 'plazo', 'EBN Banco', 'Depósito 12 meses', '', '', 20000, new Date(2024, 2, 1), 20000, '', 3.2, 12], // 01/03/2024
+    ['crypto', '', 'Kraken', 'Bitcoin', '', 0.5, 15000, new Date(2021, 10, 5), 22000, '', '', ''], // 05/11/2021
   ],
-  ['fondo', 'Indexa Capital', 'Indexa RV Mixta', 120, 10000, new Date(2022, 2, 10), 12500], // 10/03/2022
-]);
+  [
+    'PLANTILLA DE INVERSIONES · Atlas',
+    '',
+    'Obligatorias: Tipo y Producto. El resto es opcional; lo que dejes vacío',
+    'lo podrás completar luego en la ficha de la posición.',
+    '',
+    'Tipo (familia): plan_pensiones · fondo · accion_etf_reit · prestamo_activo ·',
+    'deposito_cuenta · crypto. El Subtipo afina la clase (PPE, ETF, REIT, P2P,',
+    'cuenta, plazo…).',
+    '',
+    'Préstamo_activo = dinero que TE DEBEN (P2P o a empresa) · NO es tu hipoteca',
+    '(esa va en el bloque Préstamos).',
+    '',
+    'Fechas en formato DD/MM/AAAA. Importes con coma decimal (1.234,56).',
+  ],
+);
 
 console.log('Plantillas del onboarding generadas en', OUT_DIR);

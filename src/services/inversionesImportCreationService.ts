@@ -1,11 +1,14 @@
-// Onboarding día 0 · C6 · creación de inversiones desde la plantilla.
+// Onboarding día 0 · C6 / FIX PUNTO 7 · creación de inversiones desde la plantilla.
 //
 // Crea la posición vía `inversionesService.createPosicion` y su valoración
-// inicial (valor de hoy) vía `valoracionesService.upsertByDate` (§2.5).
+// inicial (valor de hoy) vía `valoracionesService.upsertByDate` (§2.5). La
+// familia de la plantilla (espejo del modal) se traduce al `TipoPosicion`
+// canónico del store de inversiones · NUNCA al store de préstamos-deuda (P4).
 import { inversionesService } from './inversionesService';
 import { upsertByDate } from './valoracionesService';
 import type { TipoActivoValoracion } from '../types/valoracionActivo';
-import type { InversionTemplateRow, TipoInversionTemplate } from './inversionesTemplateParserService';
+import type { TipoPosicion } from '../types/inversiones';
+import type { InversionTemplateRow, FamiliaInversionTemplate } from './inversionesTemplateParserService';
 
 export interface ResultadoInversiones {
   creadas: number;
@@ -37,10 +40,43 @@ export function revisarRows(rows: InversionTemplateRow[]): InversionRevision[] {
   return rows.map(revisarRow);
 }
 
-function tipoValoracion(tipo: TipoInversionTemplate): TipoActivoValoracion {
-  if (tipo === 'plan_pensiones') return 'plan_pensiones';
-  if (tipo === 'deposito') return 'deposito';
+// Familia (espejo modal) + subtipo libre → TipoPosicion canónico del store.
+export function tipoCanonico(familia: FamiliaInversionTemplate, subtipo: string | null): TipoPosicion {
+  const sub = (subtipo ?? '').toLowerCase();
+  switch (familia) {
+    case 'plan_pensiones':
+      return /ppe|emple/.test(sub) ? 'plan_empleo' : 'plan_pensiones';
+    case 'fondo':
+      return 'fondo_inversion';
+    case 'accion_etf_reit':
+      if (sub.includes('etf')) return 'etf';
+      if (sub.includes('reit')) return 'reit';
+      return 'accion';
+    case 'prestamo_activo':
+      return 'prestamo_p2p';
+    case 'deposito_cuenta':
+      return sub.includes('cuenta') ? 'cuenta_remunerada' : 'deposito_plazo';
+    case 'crypto':
+      return 'crypto';
+    default:
+      return 'otro';
+  }
+}
+
+function tipoValoracion(tipo: TipoPosicion): TipoActivoValoracion {
+  if (tipo === 'plan_pensiones' || tipo === 'plan_empleo') return 'plan_pensiones';
+  if (tipo === 'deposito_plazo' || tipo === 'cuenta_remunerada' || tipo === 'deposito') return 'deposito';
   return 'inversion';
+}
+
+// Datos propios sin campo nativo en el store (% atribución · TAE · plazo) se
+// preservan en `notas` para no perderlos sin tocar el esquema del módulo.
+function notasExtra(row: InversionTemplateRow): string {
+  const partes: string[] = [];
+  if (row.porcentajeAtribucion != null) partes.push(`% atribución: ${row.porcentajeAtribucion}`);
+  if (row.tae != null) partes.push(`TAE/TIN: ${row.tae}%`);
+  if (row.plazoMeses != null) partes.push(`plazo: ${row.plazoMeses} meses`);
+  return partes.length ? `Aportación inicial · ${partes.join(' · ')}` : 'Aportación inicial';
 }
 
 export async function crearInversionesDesdeRows(rows: InversionTemplateRow[]): Promise<ResultadoInversiones> {
@@ -53,18 +89,21 @@ export async function crearInversionesDesdeRows(rows: InversionTemplateRow[]): P
       r.errores.push({ fila: row.filaOriginal, producto: row.producto, motivo: revision.motivo ?? 'Fila inválida' });
       continue;
     }
+    const tipo = tipoCanonico(row.tipo, row.subtipo);
     const valor = row.valorHoy > 0 ? row.valorHoy : row.costeAdquisicion;
     const fechaCompra = row.fechaCompra ?? hoy;
     const id = await inversionesService.createPosicion({
       nombre: row.producto,
-      tipo: row.tipo,
+      tipo,
       entidad: row.entidad ?? '',
       valor_actual: valor,
       fecha_valoracion: hoy,
       fecha_compra: fechaCompra,
       total_aportado: row.costeAdquisicion,
       importe_inicial: row.costeAdquisicion,
+      notas: notasExtra(row),
       aportaciones: [],
+      ...(row.isin ? { isin: row.isin } : {}),
       ...(row.unidades > 0
         ? {
             numero_participaciones: row.unidades,
@@ -76,7 +115,7 @@ export async function crearInversionesDesdeRows(rows: InversionTemplateRow[]): P
     // Valoración inicial (valor de hoy) en el store canónico de valoraciones.
     await upsertByDate({
       activoId: String(id),
-      tipoActivo: tipoValoracion(row.tipo),
+      tipoActivo: tipoValoracion(tipo),
       fecha: hoy,
       valor,
       origen: 'manual',

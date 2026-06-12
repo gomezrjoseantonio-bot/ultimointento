@@ -4,10 +4,11 @@
  * dentro o fuera del onboarding), el bloque queda `completado` automáticamente
  * y el semáforo lo refleja.
  *
- * Cubre el NÚCLEO (persona · inmuebles · contratos · cuentas) y, desde el FIX
- * PUNTO 5, también `prestamos` (no-núcleo pero deducible de datos: ≥1 préstamo
- * en el store → bloque completado · cierra el bucle tanto de la plantilla como
- * de la vía manual al volver SOBRE el flujo).
+ * Cubre el NÚCLEO (persona · inmuebles · contratos · cuentas) y, además, los
+ * bloques no-núcleo deducibles de datos: `prestamos` (FIX PUNTO 5 · ≥1 préstamo
+ * en el store → completado) e `inversiones` (FIX PUNTO 7 · ≥1 posición en los
+ * stores `inversiones`/`planesPensiones` → completado). Cierra el bucle tanto de
+ * la plantilla como de la vía manual al volver SOBRE el flujo.
  *
  * Solo MARCA presencia · nunca desmarca un bloque (no destructivo).
  */
@@ -18,12 +19,14 @@ import type { Property } from './db';
 
 export async function syncNucleoFromData(): Promise<void> {
   const db = await initDB();
-  const [properties, contracts, accounts, prestamos, personal] = await Promise.all([
+  const [properties, contracts, accounts, prestamos, personal, inversiones, planes] = await Promise.all([
     db.getAll('properties') as Promise<Property[]>,
     db.getAll('contracts'),
     db.getAll('accounts'),
     db.getAll('prestamos').catch(() => [] as unknown[]),
     personalDataService.getPersonalData().catch(() => null),
+    db.getAll('inversiones').catch(() => []),
+    db.getAll('planesPensiones').catch(() => []),
   ]);
 
   const state = await getOnboardingState();
@@ -43,5 +46,12 @@ export async function syncNucleoFromData(): Promise<void> {
   // FIX PUNTO 5 · ≥1 préstamo → bloque préstamos completado (sube el %).
   if (prestamos.length > 0 && state.bloques.prestamos?.detalle !== `${prestamos.length} préstamo(s)`) {
     await setBloqueEstado('prestamos', 'completado', `${prestamos.length} préstamo(s)`);
+  }
+  // Bloque inversiones (resto · FIX PUNTO 7 · P2) · posiciones del store
+  // `inversiones` (préstamo-activo incluido · NUNCA del store `prestamos`) +
+  // planes de pensiones del store `planesPensiones`. Marca presencia · no desmarca.
+  const totalInversiones = inversiones.length + planes.length;
+  if (totalInversiones > 0 && state.bloques.inversiones.detalle !== `${totalInversiones} posición(es)`) {
+    await setBloqueEstado('inversiones', 'completado', `${totalInversiones} posición(es)`);
   }
 }
