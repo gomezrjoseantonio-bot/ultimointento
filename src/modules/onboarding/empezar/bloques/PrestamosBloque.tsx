@@ -86,7 +86,7 @@ const PrestamosBloque: React.FC = () => {
             <button
               type="button"
               className={`${styles.btnMini} ${styles.complete}`}
-              onClick={() => navigate('/financiacion/nuevo', { state: { prefill: banner } })}
+              onClick={() => navigate('/financiacion/nuevo?from=empezar', { state: { prefill: banner } })}
             >
               Completar
             </button>
@@ -127,7 +127,7 @@ const PrestamosBloque: React.FC = () => {
           desc="El wizard de préstamo de siempre · con tu escritura o el cuadro del banco delante."
           items={['Ideal con 1-2 préstamos', 'Fijo · variable · mixto · con carencia']}
           time="10 min por préstamo"
-          onClick={() => navigate('/financiacion/nuevo')}
+          onClick={() => navigate('/financiacion/nuevo?from=empezar')}
         />
       </div>
 
