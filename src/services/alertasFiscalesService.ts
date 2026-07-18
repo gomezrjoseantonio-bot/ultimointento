@@ -72,7 +72,7 @@ async function alertaArrastresCaducan(ejercicio: number): Promise<AlertaFiscal[]
           titulo: 'Arrastres que caducan',
           descripcion: `Las pérdidas patrimoniales de ${origen} (${fmtMoney(remaining)}) caducan este ejercicio.`,
           importeImpacto: round2(remaining),
-          accion: { label: 'Ver arrastres', ruta: '/fiscalidad/historial' },
+          accion: { label: 'Ver arrastres', ruta: '/fiscal/ejercicios' },
         });
       }
     }
@@ -197,7 +197,7 @@ async function alertaM130Pendiente(declaracion: DeclaracionIRPF, ejercicio: numb
         titulo: 'M130 pendiente',
         descripcion: `El M130 del ${trimestre} vence el ${fechaStr}. Importe estimado: ~${fmtMoney(importeEstimado)}.`,
         importeImpacto: importeEstimado,
-        accion: { label: 'Ver pagos', ruta: '/fiscalidad/historial' },
+        accion: { label: 'Ver pagos', ruta: '/fiscal/ejercicios' },
       });
     }
   }
@@ -215,7 +215,7 @@ function alertaDatosFiscalesDisponibles(ejercicio: number): AlertaFiscal[] {
     prioridad: 'baja',
     titulo: 'Datos Fiscales disponibles',
     descripcion: `Los Datos Fiscales ${ejercicio} ya están disponibles. Importarlos actualiza tus datos.`,
-    accion: { label: 'Importar datos', ruta: '/fiscalidad/historial' },
+    accion: { label: 'Importar datos', ruta: '/fiscal/ejercicios' },
   }];
 }
 

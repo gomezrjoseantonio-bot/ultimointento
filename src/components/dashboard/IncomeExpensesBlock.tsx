@@ -69,7 +69,7 @@ const IncomeExpensesBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate
   const handleNavigate = () => {
     if (onNavigate) {
       // Navigate to treasury module with income/expenses filters
-      const route = options.scope === 'portfolio' ? '/tesoreria#ingresos' : `/inmuebles/cartera/${options.selectedPropertyId}`;
+      const route = options.scope === 'portfolio' ? '/tesoreria#ingresos' : `/inmuebles/${options.selectedPropertyId}`;
       onNavigate(route, {
         period: options.period,
         scope: options.scope

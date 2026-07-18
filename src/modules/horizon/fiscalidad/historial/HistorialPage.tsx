@@ -287,7 +287,7 @@ const HistorialPage: React.FC = () => {
                 return (
                   <div
                     key={row.año}
-                    onClick={() => navigate(`/fiscalidad/mi-irpf?ejercicio=${row.año}`)}
+                    onClick={() => navigate(`/fiscal/ejercicio/${row.año}`)}
                     style={{
                       display: 'grid',
                       gridTemplateColumns: '70px 110px 90px 1fr 100px',
@@ -331,7 +331,7 @@ const HistorialPage: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}
                       onClick={(e) => e.stopPropagation()}>
                       <button type="button" title="Ver declaración"
-                        onClick={() => navigate(`/fiscalidad/mi-irpf?ejercicio=${row.año}`)}
+                        onClick={() => navigate(`/fiscal/ejercicio/${row.año}`)}
                         style={actionBtnStyle}>
                         <Eye size={16} />
                       </button>

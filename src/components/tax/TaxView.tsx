@@ -304,7 +304,7 @@ const TaxView: React.FC = () => {
 
         {shouldShowUploadButton && (
           <div className="tv-actions-row">
-            <button type="button" className="tv-upload-button" onClick={() => navigate('/fiscalidad/historial')}>
+            <button type="button" className="tv-upload-button" onClick={() => navigate('/fiscal/ejercicios')}>
               <Upload size={16} />
               Subir declaración AEAT
             </button>

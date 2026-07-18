@@ -2,13 +2,20 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T18:44:11.502Z",
+  "generatedAt": "2026-07-18T19:59:30.388Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "2e5067c"
+    "head": "fe8b087"
   },
-  "gobernanza": "La definición de un indicador solo se recalibra ANTES de una tarea de arreglo, nunca durante · autorización explícita de Jose · registro obligatorio.",
+  "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
+    {
+      "indicador": "lecturas_store_inexistente",
+      "fecha": "2026-07-18",
+      "anterior": 2,
+      "nueva": 0,
+      "motivo": "la definición contaba lecturas guardadas, que no pueden lanzar NotFoundError · autorizada por Jose antes de la tarea · no hay bug que tapar"
+    },
     {
       "indicador": "kpis_hardcoded",
       "fecha": "2026-07-18",
@@ -48,17 +55,19 @@
       "calibracion": null
     },
     "lecturas_store_inexistente": {
-      "value": 2,
+      "value": 0,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": [
-        "src/services/migracionGastosService.ts · getAll('fiscalSummaries')",
-        "src/services/migracionGastosService.ts · getAll('operacionesFiscales')"
-      ],
-      "calibracion": null
+      "detail": [],
+      "calibracion": {
+        "fecha": "2026-07-18",
+        "anterior": 2,
+        "nueva": 0,
+        "motivo": "la definición contaba lecturas guardadas, que no pueden lanzar NotFoundError · autorizada por Jose antes de la tarea · no hay bug que tapar"
+      }
     },
     "servicios_muertos": {
       "value": 33,
@@ -136,22 +145,13 @@
       "calibracion": null
     },
     "enlaces_rotos": {
-      "value": 8,
+      "value": 0,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": [
-        "/fiscalidad/declaracion  ← src/modules/horizon/fiscalidad/historico/HistoricoPage.tsx",
-        "/fiscalidad/historial  ← src/components/tax/TaxView.tsx",
-        "/fiscalidad/mi-irpf  ← src/modules/horizon/fiscalidad/historial/HistorialPage.tsx",
-        "/personal/fiscal  ← src/modules/inversiones/pages/FichaPlanPensiones.tsx",
-        "/portfolio  ← src/components/common/CommandPalette.tsx",
-        "/settings  ← src/components/common/CommandPalette.tsx",
-        "/tax  ← src/components/common/CommandPalette.tsx",
-        "/treasury  ← src/components/common/CommandPalette.tsx"
-      ],
+      "detail": [],
       "calibracion": null
     },
     "hex_hardcoded": {

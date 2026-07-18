@@ -137,7 +137,7 @@ const HistoricoPage: React.FC = () => {
                   <span style={{ ...monoTextStyle, fontSize: 18 }}>{row.fuente === 'sin_datos' ? '—' : `${row.tipoEfectivo.toFixed(1)}%`}</span>
                   <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                     {row.fuente !== 'sin_datos' && (
-                      <button type="button" onClick={() => navigate(`/fiscalidad/declaracion?ejercicio=${row.ejercicio}`)} style={actionButtonStyle} title="Ver declaración">
+                      <button type="button" onClick={() => navigate(`/fiscal/ejercicio/${row.ejercicio}`)} style={actionButtonStyle} title="Ver declaración">
                         <Eye size={20} />
                       </button>
                     )}

@@ -72,13 +72,13 @@ const ColdStartFiscal: React.FC<ColdStartFiscalProps> = ({ onDismiss }) => {
   const handleQuickAction = (action: typeof quickActions[number]['action']) => {
     switch (action) {
       case 'import-pdf':
-        navigate('/fiscalidad/historial');
+        navigate('/fiscal/ejercicios');
         break;
       case 'import-datos':
-        navigate('/fiscalidad/historial');
+        navigate('/fiscal/ejercicios');
         break;
       case 'manual':
-        navigate('/fiscalidad/historial');
+        navigate('/fiscal/ejercicios');
         break;
       case 'explore':
         onDismiss();

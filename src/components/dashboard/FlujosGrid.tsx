@@ -148,7 +148,7 @@ const FlujosGrid: React.FC<FlujosGridProps> = ({
 
       {/* INMUEBLES Card */}
       <button
-        onClick={() => onNavigate('/inmuebles/cartera')}
+        onClick={() => onNavigate('/inmuebles')}
         style={{
           display: 'flex',
           flexDirection: 'column',
