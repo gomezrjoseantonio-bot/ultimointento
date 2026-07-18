@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T19:10:30.704Z",
+  "generatedAt": "2026-07-18T19:54:04.818Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "d48005c"
+    "head": "07e6978"
   },
   "gobernanza": "La definición de un indicador solo se recalibra ANTES de una tarea de arreglo, nunca durante · autorización explícita de Jose · registro obligatorio.",
   "recalibraciones": [
@@ -145,22 +145,13 @@
       "calibracion": null
     },
     "enlaces_rotos": {
-      "value": 8,
+      "value": 0,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": [
-        "/fiscalidad/declaracion  ← src/modules/horizon/fiscalidad/historico/HistoricoPage.tsx",
-        "/fiscalidad/historial  ← src/components/tax/TaxView.tsx",
-        "/fiscalidad/mi-irpf  ← src/modules/horizon/fiscalidad/historial/HistorialPage.tsx",
-        "/personal/fiscal  ← src/modules/inversiones/pages/FichaPlanPensiones.tsx",
-        "/portfolio  ← src/components/common/CommandPalette.tsx",
-        "/settings  ← src/components/common/CommandPalette.tsx",
-        "/tax  ← src/components/common/CommandPalette.tsx",
-        "/treasury  ← src/components/common/CommandPalette.tsx"
-      ],
+      "detail": [],
       "calibracion": null
     },
     "hex_hardcoded": {

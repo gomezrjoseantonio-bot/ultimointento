@@ -287,7 +287,7 @@ const DeclaracionPage: React.FC = () => {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16 }}>
               <button
                 type="button"
-                onClick={() => navigate('/fiscalidad/historial')}
+                onClick={() => navigate('/fiscal/ejercicios')}
                 style={{
                   padding: '10px 16px',
                   borderRadius: 'var(--r-md, 8px)',
@@ -309,7 +309,7 @@ const DeclaracionPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/fiscalidad/historial')}
+                onClick={() => navigate('/fiscal/ejercicios')}
                 style={{
                   padding: '10px 16px',
                   borderRadius: 'var(--r-md, 8px)',
