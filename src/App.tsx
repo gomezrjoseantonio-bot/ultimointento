@@ -9,7 +9,6 @@ import { initializeAccountMigration } from './services/accountMigrationService';
 import { initDB } from './services/db';
 import { ejecutarMigracionFiscal } from './services/ejercicioFiscalMigration';
 import { limpiarEjerciciosCoordBasura } from './services/ejercicioResolverService';
-import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migracionGastosService';
 import { runMigrationIfNeeded as fixReparacionesDuplicadas } from './services/migrations/fixReparacionesDuplicadas';
 import { runMigrationIfNeeded as limpiarGastosReparacion0106 } from './services/migrations/limpiarGastosReparacionCasilla0106';
 import { runMigrationIfNeeded as backfillImporteBruto0106 } from './services/migrations/backfillImporteBruto0106';
@@ -317,7 +316,6 @@ function App() {
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
     void initDB()
-      .then(() => ejecutarMigracionGastos())
       .then(() => fixReparacionesDuplicadas())
       .then(() => limpiarGastosReparacion0106())
       .then(() => backfillImporteBruto0106())
