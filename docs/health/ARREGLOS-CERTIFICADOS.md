@@ -71,7 +71,7 @@ ese es el NUEVO BASELINE, no una regresión (regla asimétrica · ver GOBERNANZA
 | 2026-07-18 · bloque 2.3 | `migracionGastosService` borrado entero (migración legacy muerta · sin DBs antiguas) · 0 referencias fuera de tests | `grep -rn "migracionGastosService" src --include=*.ts --include=*.tsx \| grep -v "__tests__" \| wc -l` | `0` |
 | 2026-07-18 · bloque 2.2 | 4 claves fantasma fuera de la interfaz `AtlasHorizonDB` (gastos · propertyImprovements · fiscalSummaries · operacionesFiscales) | `grep -cE "^  (gastos\|propertyImprovements\|fiscalSummaries\|operacionesFiscales):" src/services/db.ts` | `0` |
 | 2026-07-18 · bloque 2.4 | 3 tipos legacy fuera del schema (traspasosPlanes · valoraciones_historicas · objetivos_financieros) | `grep -cE "^  (traspasosPlanes\|valoraciones_historicas\|objetivos_financieros):" src/services/db.ts` | `0` |
-| 2026-07-18 · bloque 2.4 | Cascada muerta sobre `valoraciones_historicas` eliminada de `eliminarPlan` (leía un store inexistente en v79 → NotFoundError antes de borrar el plan) | `grep -c "getAll('valoraciones_historicas'" src/services/planesPensionesService.ts` | `0` |
+| 2026-07-18 · bloque 2.4 | Cascada de `eliminarPlan` redirigida del store legacy `valoraciones_historicas` (inexistente en v79 → NotFoundError antes de borrar el plan) al actual `valoracionesActivos` vía `deleteAllByActivo` (review Copilot #1428) | `grep -c "getAll('valoraciones_historicas'" src/services/planesPensionesService.ts` | `0` |
 | 2026-07-18 · bloque 2.4 | Creación legacy de `objetivos_financieros` bajo guard `oldVersion<32` eliminada | `grep -c "createObjectStore('objetivos_financieros'" src/services/db.ts` | `0` |
 
 ### Retiradas (supersedidas por el bloque 2)

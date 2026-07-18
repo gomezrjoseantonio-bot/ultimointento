@@ -7,7 +7,7 @@ import type {
   TipoAdministrativo,
   EstadoPlan,
 } from '../types/planesPensiones';
-import { valoracionesService } from './valoracionesService';
+import { valoracionesService, deleteAllByActivo } from './valoracionesService';
 import {
   lookupTerCatalogoFromNames,
   type TerCatalogoEntry,
@@ -185,10 +185,14 @@ export const planesPensionesService = {
         await db.delete('traspasosPlanPensiones', t.id);
       }
     }
-    // Cascade de valoraciones ELIMINADA (bloque 2.4): leía el store `valoraciones_historicas`,
-    // renombrado a `valoracionesActivos` en V74 y físicamente inexistente en v79. `db.getAll`
-    // sobre un store inexistente lanza NotFoundError, así que esta cascada abortaba
-    // `eliminarPlan` antes del `delete('planesPensiones')` — el plan no llegaba a borrarse.
+    // Cascade: borrar valoraciones del plan en el store ACTUAL `valoracionesActivos`
+    // (activoId = id del plan · tipoActivo='plan_pensiones'). La versión anterior leía el
+    // store legacy `valoraciones_historicas` (renombrado a valoracionesActivos en V74,
+    // inexistente en v79) → `db.getAll` lanzaba NotFoundError y abortaba `eliminarPlan`
+    // antes de borrar el plan. Redirigido a `deleteAllByActivo` (review Copilot · PR #1428):
+    // mantiene consistencia con las cascadas de aportaciones/traspasos y evita valoraciones
+    // huérfanas.
+    await deleteAllByActivo(id);
     await db.delete('planesPensiones', id);
   },
 
