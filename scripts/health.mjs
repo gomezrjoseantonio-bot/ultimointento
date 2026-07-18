@@ -756,9 +756,21 @@ function ccaaNoVerificadas() {
 //   2. queda registrada (anterior · nueva · fecha · motivo) en el campo
 //      `calibracion` del indicador y se agrega a `recalibraciones` del JSON;
 //   3. se documenta en el docstring del indicador.
+//
+// REGLA ASIMÉTRICA (autorizada por Jose · 2026-07-18):
+//   · AMPLIAR una definición (capturar MÁS casos · p. ej. que enlaces_rotos
+//     también vea `onNavigate(`, rutas en variables, template strings, Link
+//     to=, href dinámicos) está SIEMPRE permitido y es deseable · NO requiere
+//     autorización. Si al ampliar el número sube, ese es el NUEVO BASELINE, no
+//     una regresión (el punto ciego ya existía, solo ahora se mide).
+//   · ESTRECHAR una definición (capturar MENOS casos) requiere autorización
+//     explícita de Jose y queda registrada en `recalibraciones`.
+// Así el sistema nunca puede usarse para ESCONDER, solo para DESCUBRIR.
 const GOBERNANZA_RECALIBRACION =
-  'La definición de un indicador solo se recalibra ANTES de una tarea de ' +
-  'arreglo, nunca durante · autorización explícita de Jose · registro obligatorio.';
+  'Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) ' +
+  'siempre permitido y deseable, sin autorización (si sube, es el nuevo ' +
+  'baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización ' +
+  'explícita de Jose y registro. El sistema descubre, no esconde.';
 
 // direction: 'down' = mejor bajar (empeora si sube) · 'up' = mejor subir
 const INDICATORS = [

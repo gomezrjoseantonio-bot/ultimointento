@@ -76,7 +76,7 @@ const TresBolsillosGrid: React.FC<TresBolsillosGridProps> = ({
         cantidad={formatAmount(inmuebles.cashflow)}
         subtitulo="Cashflow"
         link="/inmuebles"
-        onClick={() => onNavigate('/inmuebles/cartera')}
+        onClick={() => onNavigate('/inmuebles')}
         tendencia={inmuebles.tendencia}
       />
 

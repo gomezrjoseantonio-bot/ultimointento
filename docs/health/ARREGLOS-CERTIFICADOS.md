@@ -44,9 +44,28 @@ autorizado por Jose antes de la tarea, registrado en `recalibraciones` del JSON)
 para NO contar lecturas guardadas por nombre de store. Las dos filas de abajo
 protegen los guards: si alguien los borra, la regresión falla.
 
+**Hallazgo · punto ciego del indicador `enlaces_rotos` (`onNavigate`).** El
+regex del indicador casa `navigate(` pero NO `onNavigate(` (N mayúscula), ni
+rutas guardadas en variables, ni ciertos template strings. Toda esa clase de
+destinos de navegación es invisible a la métrica. Destinos rotos hallados vía
+`onNavigate` (todos en componentes muertos): `IncomeExpensesBlock:72`,
+`FlujosGrid:151`, `TresBolsillosGrid:79` (todos `/inmuebles/cartera` · mismo
+destino confirmado · YA corregidos a `/inmuebles`) y `TaxBlock:53`
+(`/fiscalidad/estado`, ruta inexistente · **PENDIENTE bloque 3**, junto con la
+decisión de si el componente muerto sobrevive · destino desconocido, no se
+inventa).
+
+Plan (autorizado por Jose): NO ampliar la definición ahora. Tarea aparte
+**antes del bloque 2** · auditar las 16 definiciones buscando puntos ciegos
+equivalentes (rutas en variables, template strings, `Link to=`, `href`
+dinámicos, cualquier patrón que el regex no vea). Al ampliar, si el número sube,
+ese es el NUEVO BASELINE, no una regresión (regla asimétrica · ver GOBERNANZA en
+`scripts/health.mjs`).
+
 ## Registro
 
 | Fecha | Qué se arregló | Comando de verificación | Esperado |
 |---|---|---|---|
 | 2026-07-18 | Guard de existencia de `fiscalSummaries` en migracionGastosService (no borrar · migra DBs antiguas) | `grep -c "objectStoreNames.contains('fiscalSummaries')" src/services/migracionGastosService.ts` | `1` |
 | 2026-07-18 | Guard de existencia de `operacionesFiscales` en migracionGastosService (no borrar · migra DBs antiguas) | `grep -c "objectStoreNames.contains('operacionesFiscales')" src/services/migracionGastosService.ts` | `1` |
+| 2026-07-18 | Enlaces de navegación rotos corregidos (grep de aceptación · excluye tests · el residuo `1` es TaxBlock `/fiscalidad/estado`, muerto, pendiente bloque 3) | `grep -rnE "'/portfolio'\|'/treasury'\|'/settings'\|'/tax'\|'/fiscalidad/" src --include=*.ts --include=*.tsx \| grep -vE "\.test\.\|__tests__\|\.spec\." \| wc -l` | `1` |

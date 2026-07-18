@@ -2,12 +2,12 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T19:54:04.818Z",
+  "generatedAt": "2026-07-18T19:59:30.388Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "07e6978"
+    "head": "fe8b087"
   },
-  "gobernanza": "La definición de un indicador solo se recalibra ANTES de una tarea de arreglo, nunca durante · autorización explícita de Jose · registro obligatorio.",
+  "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
     {
       "indicador": "lecturas_store_inexistente",
