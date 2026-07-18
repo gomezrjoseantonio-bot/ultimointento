@@ -2278,8 +2278,6 @@ interface AtlasHorizonDB {
   // rentaMensual: ELIMINADO en V62 (sub-tarea 3) — deprecated V5.6 · 0 registros
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
-  propertyImprovements: PropertyImprovement; // H9-FISCAL: Property improvements for AEAT
-  operacionesFiscales: OperacionFiscal; // Flujo fiscal unificado: operaciones deducibles por casilla
   proveedores: Proveedor; // V3.8: entidad única proveedor por NIF
   // operacionesProveedor: ELIMINADO en V62 (sub-tarea 3) — cache desnormalizada de gastosInmueble + proveedores · 15 registros
   // kpiConfigurations: ELIMINADO en V62 (sub-tarea 3) — sustituido por keyval['kpiConfig_*'] · 0 registros
@@ -2288,8 +2286,6 @@ interface AtlasHorizonDB {
   importBatches: ImportBatch; // H8: CSV import tracking
   treasuryEvents: TreasuryEvent; // H9: Treasury forecasting
   // treasuryRecommendations: ELIMINADO en V62 (sub-tarea 3) — derivable runtime · 0 registros
-  fiscalSummaries: FiscalSummary; // H9: Fiscal summaries by property/year
-  gastos: Gasto; // H10: Treasury expense records
   presupuestos: Presupuesto; // H9: New budget system per specification
   presupuestoLineas: PresupuestoLinea; // H9: New budget lines per specification
   // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros en producción
