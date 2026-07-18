@@ -29,20 +29,21 @@ Reglas del formato (las parsea `scripts/health.mjs --regresion`):
 FALSO POSITIVO de grep.** La auditoría marcó `migracionGastosService.ts:29,142`
 (`getAll('fiscalSummaries')` / `getAll('operacionesFiscales')`) como riesgo de
 `NotFoundError`. En realidad **ambas lecturas ya estaban guardadas** con
-`db.objectStoreNames.contains('<store>')` (líneas 28 y 141) **desde antes de
-`f97122b`** — la auditoría grepó el literal `getAll` sin ver el guard de la línea
-anterior. Un `getAll` guardado no puede lanzar `NotFoundError`.
+`db.objectStoreNames.contains('<store>')` (líneas 28 y 141) — un `getAll` guardado
+no puede lanzar `NotFoundError`. Por eso el indicador `lecturas_store_inexistente`
+se recalibró (2 → 0, autorizado por Jose antes de la tarea).
 
-**Los bloques NO deben borrarse.** El comentario *"store deleted in V4.2 — skip
-if absent"* indica que estos stores pudieron existir físicamente en DBs
-**antiguas**; en esas DBs `contains()` es `true` y la migración corre, llevando
-datos legacy reales a `gastosInmueble`. Borrarlos = posible pérdida de datos de
-migración. Cero cambios de código en el Arreglo 1.
-
-Consecuencia: el indicador `lecturas_store_inexistente` se recalibró (2 → 0,
-autorizado por Jose antes de la tarea, registrado en `recalibraciones` del JSON)
-para NO contar lecturas guardadas por nombre de store. Las dos filas de abajo
-protegen los guards: si alguien los borra, la regresión falla.
+**SUPERSEDIDO por el bloque 2 (2026-07-18).** La decisión anterior era *"los bloques
+NO deben borrarse · migran DBs antiguas"* y dos filas del registro protegían esos
+guards. El nuevo encargo de Jose (BLOQUE 2+3) **cambia la premisa**: ATLAS tiene un
+solo usuario, base en `DB_VERSION 79`, **no hay DBs antiguas que proteger**. Los
+stores `fiscalSummaries`/`operacionesFiscales` tienen 0 `createObjectStore` en
+cualquier versión (nunca existen en v79). Por tanto `migracionGastosService` migra
+desde stores inexistentes hacia stores ya poblados, para usuarios que no existen:
+**código muerto, borrado entero en el bloque 2.3.** Las dos filas que protegían sus
+guards quedan **RETIRADAS** (abajo, tachadas) y sustituidas por filas que certifican
+el borrado. Regla de supersesión: una decisión anulada por un encargo posterior de
+Jose no es una regresión.
 
 **Hallazgo · punto ciego del indicador `enlaces_rotos` (`onNavigate`).** El
 regex del indicador casa `navigate(` pero NO `onNavigate(` (N mayúscula), ni
@@ -66,6 +67,18 @@ ese es el NUEVO BASELINE, no una regresión (regla asimétrica · ver GOBERNANZA
 
 | Fecha | Qué se arregló | Comando de verificación | Esperado |
 |---|---|---|---|
-| 2026-07-18 | Guard de existencia de `fiscalSummaries` en migracionGastosService (no borrar · migra DBs antiguas) | `grep -c "objectStoreNames.contains('fiscalSummaries')" src/services/migracionGastosService.ts` | `1` |
-| 2026-07-18 | Guard de existencia de `operacionesFiscales` en migracionGastosService (no borrar · migra DBs antiguas) | `grep -c "objectStoreNames.contains('operacionesFiscales')" src/services/migracionGastosService.ts` | `1` |
 | 2026-07-18 | Enlaces de navegación rotos corregidos (grep de aceptación · excluye tests · el residuo `1` es TaxBlock `/fiscalidad/estado`, muerto, pendiente bloque 3) | `grep -rnE "'/portfolio'\|'/treasury'\|'/settings'\|'/tax'\|'/fiscalidad/" src --include=*.ts --include=*.tsx \| grep -vE "\.test\.\|__tests__\|\.spec\." \| wc -l` | `1` |
+| 2026-07-18 · bloque 2.3 | `migracionGastosService` borrado entero (migración legacy muerta · sin DBs antiguas) · 0 referencias fuera de tests | `grep -rn "migracionGastosService" src --include=*.ts --include=*.tsx \| grep -v "__tests__" \| wc -l` | `0` |
+| 2026-07-18 · bloque 2.2 | 4 claves fantasma fuera de la interfaz `AtlasHorizonDB` (gastos · propertyImprovements · fiscalSummaries · operacionesFiscales) | `grep -cE "^  (gastos\|propertyImprovements\|fiscalSummaries\|operacionesFiscales):" src/services/db.ts` | `0` |
+| 2026-07-18 · bloque 2.4 | 3 tipos legacy fuera del schema (traspasosPlanes · valoraciones_historicas · objetivos_financieros) | `grep -cE "^  (traspasosPlanes\|valoraciones_historicas\|objetivos_financieros):" src/services/db.ts` | `0` |
+| 2026-07-18 · bloque 2.4 | Cascada de `eliminarPlan` redirigida del store legacy `valoraciones_historicas` (inexistente en v79 → NotFoundError antes de borrar el plan) al actual `valoracionesActivos` vía `deleteAllByActivo` (review Copilot #1428) | `grep -c "getAll('valoraciones_historicas'" src/services/planesPensionesService.ts` | `0` |
+| 2026-07-18 · bloque 2.4 | Creación legacy de `objetivos_financieros` bajo guard `oldVersion<32` eliminada | `grep -c "createObjectStore('objetivos_financieros'" src/services/db.ts` | `0` |
+
+### Retiradas (supersedidas por el bloque 2)
+
+Estas dos filas certificaban guards dentro de `migracionGastosService`, borrado en
+el bloque 2.3. Se retiran del registro activo porque el código que protegían ya no
+existe **por decisión explícita de Jose** (no por regresión):
+
+- ~~Guard de existencia de `fiscalSummaries` en migracionGastosService~~
+- ~~Guard de existencia de `operacionesFiscales` en migracionGastosService~~

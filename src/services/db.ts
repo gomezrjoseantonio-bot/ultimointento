@@ -6,7 +6,6 @@ import { PosicionInversion } from '../types/inversiones';
 import type {
   PersonalData,
   PersonalModuleConfig,
-  TraspasoPlan,
   Ingreso as IngresoPersonal
 } from '../types/personal';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
@@ -29,7 +28,7 @@ import type { AvisoCerrado } from '../types/avisosUsuario';
 import type { ObjetivoVital } from '../types/objetivosVitales';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 79; // V79 (onboarding día 0 · hueco 5.1): campo raíz nuevo `Property.estructuraCompra` (decisión Jose · NO anidado en `aeatAmortization` fiscal del pasado · §1) con 3 opcionales `aportacionPropia` (lo que el usuario puso), `importeFinanciado` (lo financiado) y `prestamoVinculadoId` (FK string a `Prestamo.id` uuid · NO number · decisión Jose D1). Migración no destructiva: campo opcional sin reescritura · properties existentes quedan con `estructuraCompra` undefined (no-op en el upgrade callback). 45 stores totales. // V78 (refactor modelo alquileres v3): nuevo store `botesAnualesSinIdentificar` (Camino 2 del wizard XML AEAT) + campo persistido `Property.modoExplotacion` (piso_completo/por_habitaciones/mixto) + campo `Contract.inquilino.cotitulares[]` (N NIFs en piso completo). Migración post-upgrade idempotente: deriva `modoExplotacion` del legacy `alquilerPorHabitaciones.activo`, inicializa `cotitulares=[]`, y elimina Contracts huérfanos `estadoContrato='sin_identificar'` + sus treasuryEvents en cascada (decisión Jose · reimportar limpio).
+const DB_VERSION = 79; // V79 (onboarding día 0 · hueco 5.1): campo raíz nuevo `Property.estructuraCompra` (decisión Jose · NO anidado en `aeatAmortization` fiscal del pasado · §1) con 3 opcionales `aportacionPropia` (lo que el usuario puso), `importeFinanciado` (lo financiado) y `prestamoVinculadoId` (FK string a `Prestamo.id` uuid · NO number · decisión Jose D1). Migración no destructiva: campo opcional sin reescritura · properties existentes quedan con `estructuraCompra` undefined (no-op en el upgrade callback). 45 stores físicos en v79 (conteo canónico documentado sobre `interface AtlasHorizonDB`). // V78 (refactor modelo alquileres v3): nuevo store `botesAnualesSinIdentificar` (Camino 2 del wizard XML AEAT) + campo persistido `Property.modoExplotacion` (piso_completo/por_habitaciones/mixto) + campo `Contract.inquilino.cotitulares[]` (N NIFs en piso completo). Migración post-upgrade idempotente: deriva `modoExplotacion` del legacy `alquilerPorHabitaciones.activo`, inicializa `cotitulares=[]`, y elimina Contracts huérfanos `estadoContrato='sin_identificar'` + sus treasuryEvents en cascada (decisión Jose · reimportar limpio).
 // V77 (wizard import XML V2 · pilar 1): añade campos opcionales a `properties` para explotación/tipología (subtipoVivienda, anexos.plazasParking, explotacion{estadoOperativo, unidadesArrendables}). Se mapea sobre campos existentes (tipoActivo, anexos, usoTipo, alquilerPorHabitaciones) en lugar de duplicar. Migración suave · sin cambios de stores/índices · inmuebles pre-V77 quedan con los campos undefined. 44 stores totales (sin cambio · los 5 stores fiscales NO se eliminan: tienen lectores/escritores vivos).
 
 function ensureIndex<
@@ -2267,6 +2266,37 @@ export interface DeudaFiscal {
   updatedAt: string;
 }
 
+/**
+ * CONTEO DE STORES (canónico · bloque 2.6 · 2026-07) ─────────────────────────
+ *
+ * Sobre una base FRESCA en v79 persisten **45 stores físicos**. Se cuentan así:
+ *
+ *   1. Claves declaradas en esta interfaz .......................... 42
+ *      (todas respaldadas por un `createObjectStore` → 0 fantasma tras bloque 2.2/2.4)
+ *   2. Stores físicos SIN declarar en la interfaz .................. + 3
+ *      gastosInmueble · mejorasInmueble · mueblesInmueble
+ *      (indicador health `stores_no_tipados` = 3)
+ *   ────────────────────────────────────────────────────────────────
+ *   Total persistente en v79 ...................................... 45
+ *
+ * NO cuentan para el total de v79:
+ *   - planesPensionInversion · `createObjectStore` bajo guard `oldVersion<65`
+ *     y `deleteObjectStore` en el mismo camino de upgrade → nunca persiste en v79.
+ *   - stores legacy sin `createObjectStore` vigente, sólo con `deleteObjectStore`
+ *     de limpieza (importLogs · learningLogs · objetivos_financieros ·
+ *     reconciliationAuditLogs) → sólo existen transitoriamente en DBs antiguas.
+ *
+ * Recuento mecánico reproducible:
+ *   - claves interfaz:  líneas `^  clave:` entre `interface AtlasHorizonDB {` y su `}`.
+ *   - stores físicos:   `createObjectStore('X')` únicos, menos los que también
+ *                       tienen `deleteObjectStore('X')` en un camino de upgrade.
+ *
+ * ⚠ IMPORTANTE · esta interfaz NO extiende `DBSchema` de idb (sus valores son
+ * tipos de dominio, no `{ key; value; indexes }`). Por eso `StoreNames<AtlasHorizonDB>`
+ * colapsa a `string` y `StoreValue` a `any`: el compilador NO valida nombres de
+ * store ni formas de registro. La interfaz es un MAPA documental, no una garantía
+ * de tipos. Convertirla a `DBSchema` real es tarea aparte (ver docs/health).
+ */
 interface AtlasHorizonDB {
   properties: Property;
   property_sales: PropertySale;
@@ -2278,8 +2308,6 @@ interface AtlasHorizonDB {
   // rentaMensual: ELIMINADO en V62 (sub-tarea 3) — deprecated V5.6 · 0 registros
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
-  propertyImprovements: PropertyImprovement; // H9-FISCAL: Property improvements for AEAT
-  operacionesFiscales: OperacionFiscal; // Flujo fiscal unificado: operaciones deducibles por casilla
   proveedores: Proveedor; // V3.8: entidad única proveedor por NIF
   // operacionesProveedor: ELIMINADO en V62 (sub-tarea 3) — cache desnormalizada de gastosInmueble + proveedores · 15 registros
   // kpiConfigurations: ELIMINADO en V62 (sub-tarea 3) — sustituido por keyval['kpiConfig_*'] · 0 registros
@@ -2288,8 +2316,6 @@ interface AtlasHorizonDB {
   importBatches: ImportBatch; // H8: CSV import tracking
   treasuryEvents: TreasuryEvent; // H9: Treasury forecasting
   // treasuryRecommendations: ELIMINADO en V62 (sub-tarea 3) — derivable runtime · 0 registros
-  fiscalSummaries: FiscalSummary; // H9: Fiscal summaries by property/year
-  gastos: Gasto; // H10: Treasury expense records
   presupuestos: Presupuesto; // H9: New budget system per specification
   presupuestoLineas: PresupuestoLinea; // H9: New budget lines per specification
   // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros en producción
@@ -2344,17 +2370,10 @@ interface AtlasHorizonDB {
   planesPensiones: PlanPensiones;            // V65: entidad estable plan (UUID)
   aportacionesPlan: AportacionPlan;          // V65: eventos aportación (3 roles)
   traspasosPlanPensiones: TraspasoPlanPensiones; // V65: eventos traspaso fiscal neutro
-  /**
-   * @legacy V65 retiró este store del runtime; D-CRUD-MEDIA sub-tarea 18
-   * eliminó `traspasosPlanesService.ts` y limpió los 3 comentarios que lo
-   * referenciaban (PlanesManager · TraspasoForm · TraspasosHistorial).
-   *
-   * El tipo se mantiene en la interfaz porque la migración V65→V70 todavía
-   * llama `db.deleteObjectStore('traspasosPlanes')` en línea 4027 (idempotente
-   * para DBs viejas que conserven el store). Eliminar el tipo del schema
-   * requiere el siguiente bump de DB_VERSION.
-   */
-  traspasosPlanes: TraspasoPlan; // V5.2 LEGACY: store retirado en V65
+  // traspasosPlanes: TIPO fuera del schema (bloque 2.4) — store legacy retirado en V65,
+  //   nunca creado en DBs frescas (guard oldVersion<65). El lifecycle de upgrade
+  //   (create→migrar→delete) se CONSERVA: lo verifica dbV65Migration.test.ts. El resto
+  //   `deleteObjectStore` queda pendiente de decisión de Jose (retirar migración+test a la vez).
   // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' (+metadata.otro)
   // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
   // patronGastosPersonales: ELIMINADO en V62 (sub-tarea 3) — futuro compromisosRecurrentes · 7 registros
@@ -2378,14 +2397,8 @@ interface AtlasHorizonDB {
    * `idx_anchor_fiscal`, `idx_tipo_subtipo`.
    */
   valoracionesActivos: any;
-  /**
-   * @deprecated V74 · store renombrado a `valoracionesActivos`. La key se mantiene
-   * en el type para permitir que `valoracionesService.ts` (PR2) compile mientras
-   * referencia ambos nombres durante la transición. El store físico ya NO existe
-   * tras la migración v73→v74 · llamadas a `db.getAll('valoraciones_historicas')`
-   * lanzarán NotFoundError en runtime.
-   */
-  valoraciones_historicas: any;
+  // valoraciones_historicas: ELIMINADO del schema (bloque 2.4) — store renombrado a
+  //   `valoracionesActivos` en V74; el físico ya no existe tras la migración v73→v74.
   // valoraciones_mensuales: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 115 registros
   /**
    * General key-value store for application configuration.
@@ -2508,24 +2521,9 @@ interface AtlasHorizonDB {
    *     - `migration_limpiar_gastos_reparacion_0106_v1`
    */
   keyval: any;
-  // ⚠ DEPRECATED (V5.4): objetivos_financieros fue migrado a 'escenarios' · el store fue eliminado en la migración V5.4
-  // Se mantiene en la interfaz TypeScript únicamente para que el código de migración compile.
-  /**
-   * @legacy Solo para upgrade() callback que migra DBs antiguas (~líneas 2370 + 3096).
-   * NO usar en código nuevo. Eliminable solo si se confirma cero DBs antiguas
-   * en producción con este store.
-   */
-  objetivos_financieros: {
-    id: 1;
-    rentaPasivaObjetivo: number;
-    patrimonioNetoObjetivo: number;
-    cajaMinima: number;
-    dtiMaximo: number;
-    ltvMaximo: number;
-    yieldMinimaCartera: number;
-    tasaAhorroMinima: number;
-    updatedAt: string;
-  }; // V3.2 → V5.5 MIGRATED to 'escenarios'
+  // objetivos_financieros: ELIMINADO del schema (bloque 2.4) — migrado a 'escenarios'
+  //   en V5.4/V5.5; store físico eliminado en V5.9. Creación bajo guard oldVersion<32
+  //   y lifecycle de upgrade eliminados.
   // opexRules: ELIMINADO en V62 (sub-tarea 3) — ya migrado a compromisosRecurrentes en TAREA 2 · 0 registros
   // configuracion_fiscal: ELIMINADO en V62 (sub-tarea 3) — sin destino · defaults runtime · 1 registro
   // ejerciciosFiscales: ELIMINADO en V62 (sub-tarea 3) — sustituido por ejerciciosFiscalesCoord · 1 registro
@@ -2687,9 +2685,11 @@ export const initDB = async () => {
 
         // loan_settlements: ELIMINADO en V63 (sub-tarea 4) — destino prestamos.liquidacion · 0 registros
 
-        if (oldVersion < 32 && !db.objectStoreNames.contains('objetivos_financieros')) {
-          db.createObjectStore('objetivos_financieros', { keyPath: 'id' });
-        }
+        // objetivos_financieros: creación bajo guard oldVersion<32 ELIMINADA (bloque 2.4).
+        //   Store migrado a 'escenarios' (V5.4/V5.5) y físicamente eliminado (V5.9). El
+        //   tipo sale del schema. La migración de datos V5.5/V5.9 y su stash pre-upgrade se
+        //   conservan intactos: preservan KPIs macro de DBs antiguas hacia 'escenarios' (no
+        //   son limpieza sino migración de datos, y tocan el camino caliente de initDB).
 
         // Documents store
         if (!db.objectStoreNames.contains('documents')) {
@@ -2964,7 +2964,18 @@ export const initDB = async () => {
         // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
 
         // planesPensionInversion + traspasosPlanes: solo en DBs con oldVersion < 65
-        // (para migraciones); en DBs frescas V65 no se crean
+        // (para migraciones); en DBs frescas V65 no se crean.
+        //
+        // NOTA bloque 2.4 · el TIPO `traspasosPlanes` sale de la interfaz (era legacy),
+        // pero el LIFECYCLE de upgrade (create → migrar → delete, todo bajo oldVersion<65)
+        // se CONSERVA: está verificado por `dbV65Migration.test.ts` ('should migrate
+        // traspasosPlanes to traspasosPlanPensiones'), que puebla un store `traspasosPlanes`
+        // en una DB v64 y comprueba que la migración v65 lo vuelca y lo borra. Quitar el
+        // `deleteObjectStore` (resto que pedía la tarea) rompería ese test y eliminaría
+        // cobertura de una migración de datos real. Como la interfaz NO es un DBSchema real
+        // (StoreNames=string), estas llamadas compilan aunque el tipo no exista. Se deja el
+        // resto de `traspasosPlanes` para decisión de Jose (retirar migración + su test a la
+        // vez, o conservarlos). Ver PR bloque 2.
         if (oldVersion > 0 && oldVersion < 65) {
           if (!db.objectStoreNames.contains('planesPensionInversion')) {
             const planesLegacyStore = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
@@ -2975,7 +2986,7 @@ export const initDB = async () => {
             planesLegacyStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
           }
 
-          // V5.2: Traspasos entre planes de pensiones (legacy)
+          // V5.2: Traspasos entre planes de pensiones (legacy · tipo fuera del schema en 2.4)
           if (!db.objectStoreNames.contains('traspasosPlanes')) {
             const traspasosLegacyStore = db.createObjectStore('traspasosPlanes', { keyPath: 'id', autoIncrement: true });
             traspasosLegacyStore.createIndex('personalDataId', 'personalDataId', { unique: false });
@@ -4320,6 +4331,8 @@ export const initDB = async () => {
             }
 
             // 2c. Migrar traspasosPlanes → traspasosPlanPensiones
+            //     (tipo fuera del schema en bloque 2.4; lifecycle conservado · verificado
+            //      por dbV65Migration.test.ts · ver nota en el bloque de creación arriba)
             if (
               db.objectStoreNames.contains('traspasosPlanes') &&
               db.objectStoreNames.contains('traspasosPlanPensiones')

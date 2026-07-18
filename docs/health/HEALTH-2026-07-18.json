@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T20:58:55.976Z",
+  "generatedAt": "2026-07-18T22:09:06.831Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "a959303"
+    "head": "f32fb64"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -49,18 +49,13 @@
   ],
   "indicators": {
     "stores_fantasma": {
-      "value": 4,
+      "value": 0,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": [
-        "propertyImprovements",
-        "operacionesFiscales",
-        "fiscalSummaries",
-        "gastos"
-      ],
+      "detail": [],
       "calibracion": null
     },
     "stores_no_tipados": {
@@ -69,7 +64,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": null,
+      "note": "MIDE LO QUE NO IMPORTA (bloque 2.5 · diferido). Mide presencia en la interfaz AtlasHorizonDB, no seguridad de tipos: la interfaz NO extiende DBSchema, así que StoreNames colapsa a string y el compilador no valida stores. Tiparlos sería cosmético y bajaría esto a 0 en falso. Su significado cambiará al convertir la interfaz a DBSchema real. Ver docs/health/ESTIMACION-DBSCHEMA-2026-07-18.md.",
       "detail": [
         "gastosInmueble",
         "mejorasInmueble",
@@ -251,7 +246,7 @@
       "approx": false,
       "note": null,
       "detail": [
-        "5736 · src/services/db.ts",
+        "5700 · src/services/db.ts",
         "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
         "1943 · src/services/declaracionDistributorService.ts",
         "1886 · src/services/dashboardService.ts",
@@ -263,7 +258,7 @@
         "1620 · src/services/irpfCalculationService.ts",
         "1604 · src/modules/personal/pages/NuevoGastoRecurrentePage.tsx",
         "1550 · src/services/aeatParserService.ts",
-        "1543 · src/App.tsx",
+        "1541 · src/App.tsx",
         "1499 · src/components/treasury/MesDetalleDrawer.tsx",
         "1461 · src/services/declaracionOnboardingService.ts"
       ],
@@ -292,12 +287,12 @@
       "calibracion": null
     },
     "tests_rojos": {
-      "value": 44,
+      "value": null,
       "direction": "down",
       "objetivo": 0,
-      "measurable": true,
+      "measurable": false,
       "approx": false,
-      "note": "medido vía react-scripts test (CI)",
+      "note": "NO MEDIBLE · usa `npm run health:ci` (--with-tests) para ejecutar la suite",
       "detail": null,
       "calibracion": null
     },
