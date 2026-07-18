@@ -23,7 +23,30 @@ Reglas del formato (las parsea `scripts/health.mjs --regresion`):
 - Prefiere comandos deterministas y de una sola línea de salida.
 - El esperado se compara tras `trim()` (se ignoran espacios al principio/fin).
 
+## Hallazgos · falsos positivos de la auditoría
+
+**Hallazgo nº 2 de `AUDIT-ESTADO-REAL-2026-07` (lecturas a stores inexistentes) ·
+FALSO POSITIVO de grep.** La auditoría marcó `migracionGastosService.ts:29,142`
+(`getAll('fiscalSummaries')` / `getAll('operacionesFiscales')`) como riesgo de
+`NotFoundError`. En realidad **ambas lecturas ya estaban guardadas** con
+`db.objectStoreNames.contains('<store>')` (líneas 28 y 141) **desde antes de
+`f97122b`** — la auditoría grepó el literal `getAll` sin ver el guard de la línea
+anterior. Un `getAll` guardado no puede lanzar `NotFoundError`.
+
+**Los bloques NO deben borrarse.** El comentario *"store deleted in V4.2 — skip
+if absent"* indica que estos stores pudieron existir físicamente en DBs
+**antiguas**; en esas DBs `contains()` es `true` y la migración corre, llevando
+datos legacy reales a `gastosInmueble`. Borrarlos = posible pérdida de datos de
+migración. Cero cambios de código en el Arreglo 1.
+
+Consecuencia: el indicador `lecturas_store_inexistente` se recalibró (2 → 0,
+autorizado por Jose antes de la tarea, registrado en `recalibraciones` del JSON)
+para NO contar lecturas guardadas por nombre de store. Las dos filas de abajo
+protegen los guards: si alguien los borra, la regresión falla.
+
 ## Registro
 
 | Fecha | Qué se arregló | Comando de verificación | Esperado |
 |---|---|---|---|
+| 2026-07-18 | Guard de existencia de `fiscalSummaries` en migracionGastosService (no borrar · migra DBs antiguas) | `grep -c "objectStoreNames.contains('fiscalSummaries')" src/services/migracionGastosService.ts` | `1` |
+| 2026-07-18 | Guard de existencia de `operacionesFiscales` en migracionGastosService (no borrar · migra DBs antiguas) | `grep -c "objectStoreNames.contains('operacionesFiscales')" src/services/migracionGastosService.ts` | `1` |

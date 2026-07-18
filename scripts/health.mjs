@@ -182,16 +182,26 @@ function storesNoTipados() {
 
 /**
  * INDICADOR 3 · lecturas_store_inexistente
- * Lecturas (get/getAll/getFromIndex/getAllFromIndex/count) sobre un store que
- * NO se crea físicamente pero SÍ está declarado en la interfaz (los "fantasma"):
+ * Lecturas (get/getAll/getFromIndex/getAllFromIndex/count) sobre un store
+ * "fantasma" (declarado en la interfaz pero sin `createObjectStore`) que
+ * podrían lanzar `NotFoundError` en runtime:
  *   CUENTA  · llamada `.getAll('X')` etc. en producción con X ∈ stores_fantasma
- *   EXCLUYE · tests · reads sobre stores @deprecated (p. ej. valoraciones_historicas)
+ *             cuyo archivo NO contiene un guard `objectStoreNames.contains('X')`
+ *             para EL MISMO store X
+ *   EXCLUYE · tests
+ *   EXCLUYE · lecturas GUARDADAS: si el archivo comprueba la existencia del
+ *             mismo store con `db.objectStoreNames.contains('X')`, `getAll('X')`
+ *             NO puede lanzar NotFoundError → no cuenta.
  *   EXCLUYE · `.get('X')` sobre Maps/keyval/refs (X no es un store fantasma)
- * Por qué importa (CONTRADICCIÓN 3 de la auditoría): TypeScript acepta la
- * llamada (la clave está en la interfaz) pero en runtime `getAll` lanza
- * NotFoundError porque el store nunca se creó.
- * Resultado esperado por la auditoría: 2
- *   → migracionGastosService: getAll('fiscalSummaries') + getAll('operacionesFiscales')
+ * El guard se empareja POR NOMBRE de store, no por proximidad: un
+ * `contains('Y')` NO exime un `getAll('X')` (sería un agujero nuevo).
+ *
+ * RECALIBRACIÓN 2026-07-18 · anterior = 2 · nueva = 0. La definición vieja
+ * contaba lecturas guardadas (imposibles de lanzar NotFoundError). El hallazgo
+ * nº 2 de la auditoría (`migracionGastosService.ts:29,142`) fue un falso
+ * positivo de grep: los guards `objectStoreNames.contains(...)` existen desde
+ * antes de `f97122b`. Autorizada por Jose ANTES de la tarea (no hay bug que
+ * tapar). Ver GOBERNANZA DE RECALIBRACIÓN.
  */
 function lecturasStoreInexistente() {
   const fantasma = new Set(storesFantasma().detail);
@@ -201,10 +211,28 @@ function lecturasStoreInexistente() {
     const src = read(f);
     let m;
     while ((m = readRe.exec(src))) {
-      if (fantasma.has(m[3])) hits.push(`${rel(f)} · ${m[1]}('${m[3]}')`);
+      const store = m[3];
+      if (!fantasma.has(store)) continue;
+      // Guard emparejado POR NOMBRE del mismo store (no por proximidad).
+      const guarded = new RegExp(
+        `objectStoreNames\\.contains\\((['"])${store}\\1\\)`
+      ).test(src);
+      if (guarded) continue;
+      hits.push(`${rel(f)} · ${m[1]}('${store}')`);
     }
   }
-  return { value: hits.length, detail: hits };
+  return {
+    value: hits.length,
+    detail: hits,
+    calibracion: {
+      fecha: '2026-07-18',
+      anterior: 2,
+      nueva: hits.length,
+      motivo:
+        'la definición contaba lecturas guardadas, que no pueden lanzar ' +
+        'NotFoundError · autorizada por Jose antes de la tarea · no hay bug que tapar',
+    },
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -949,19 +977,25 @@ function main() {
   }
   console.log(C.gray('─'.repeat(W + 9 + 9 + 8 + 12)));
 
-  // Chequeo de calibración contra la auditoría 2026-07. Solo los dos
-  // indicadores cuya cifra de auditoría es una MEDICIÓN exacta y reproducible.
-  // `enlaces_rotos` NO se compara aquí: se calibró a 8 (opción estricta,
-  // autorizada por Jose) porque el "11" de la auditoría era una cifra manual
-  // imprecisa (su prosa enumera 10 y cuenta 2 redirects que sí tienen ruta).
-  const audit = { stores_fantasma: 4, lecturas_store_inexistente: 2 };
-  console.log('\n' + C.bold('Calibración vs auditoría 2026-07 (mediciones exactas):'));
+  // Chequeo de calibración contra la auditoría 2026-07. Solo `stores_fantasma`
+  // conserva la cifra de auditoría como medición exacta. `lecturas_store_
+  // inexistente` y `enlaces_rotos` se recalibraron (autorizado por Jose,
+  // registrado en `recalibraciones`): la auditoría los reportó a 2 y 11 pero
+  // ambas eran cifras imprecisas (lecturas guardadas · redirects con ruta).
+  const audit = { stores_fantasma: 4 };
+  console.log('\n' + C.bold('Calibración vs auditoría 2026-07 (medición exacta):'));
   for (const [k, exp] of Object.entries(audit)) {
     const got = indicators[k].value;
     console.log(
       `  ${got === exp ? C.green('OK ') : C.yellow('≠  ')} ${k.padEnd(30)} medido=${got}  auditoría=${exp}`
     );
   }
+  console.log(
+    C.gray(
+      `  ·   ${'lecturas_store_inexistente'.padEnd(30)} medido=${indicators.lecturas_store_inexistente.value}  ` +
+        `· recalibrado 2→0 (auditoría contaba lecturas guardadas = falso positivo)`
+    )
+  );
   console.log(
     C.gray(
       `  ·   ${'enlaces_rotos'.padEnd(30)} medido=${indicators.enlaces_rotos.value}  ` +
@@ -990,8 +1024,11 @@ function main() {
 /**
  * Parsea docs/health/ARREGLOS-CERTIFICADOS.md y re-ejecuta cada comando de la
  * columna "Comando de verificación", comparando su salida con "Esperado".
- * Formato de fila esperado (columnas separadas por '|'):
+ * Formato de fila esperado:
  *   | fecha | qué se arregló | `comando` | `esperado` |
+ * El comando y el esperado van SIEMPRE entre backticks; se extraen como las dos
+ * últimas secuencias `…` de la fila, NO partiendo por '|'. Así el comando puede
+ * contener tuberías (`grep … | wc -l`) sin romper el parseo de la tabla.
  * Si algún comando no devuelve lo esperado, un arreglo antiguo se rompió.
  */
 function regresion() {
@@ -1000,12 +1037,21 @@ function regresion() {
     console.log(C.yellow('No existe ARREGLOS-CERTIFICADOS.md · nada que regresar.'));
     return;
   }
-  const rows = read(file)
-    .split('\n')
-    .filter((l) => l.trim().startsWith('|'))
-    .map((l) => l.split('|').map((c) => c.trim()))
-    // columnas: ['', fecha, que, comando, esperado, '']
-    .filter((c) => c.length >= 6 && c[1] && !/^-+$/.test(c[1]) && c[1] !== 'Fecha');
+  const rows = [];
+  for (const l of read(file).split('\n')) {
+    if (!l.trim().startsWith('|')) continue;
+    if (/^\s*\|\s*-+/.test(l)) continue; // separador de tabla
+    if (/\|\s*Fecha\s*\|/.test(l)) continue; // cabecera
+    const spans = [...l.matchAll(/`([^`]*)`/g)].map((m) => m[1]);
+    if (spans.length < 2) continue; // fila sin comando+esperado (p. ej. nota)
+    // `\|` en la celda (escape de tubería para que GitHub renderice la tabla)
+    // se convierte en `|` real para el shell / grep -E.
+    const cmd = spans[spans.length - 2].replace(/\\\|/g, '|').trim();
+    const esperado = spans[spans.length - 1].replace(/\\\|/g, '|').trim();
+    // "qué": texto de la 2ª columna (antes del 1er backtick), sin tuberías
+    const que = (l.split('`')[0].split('|')[2] || '').trim();
+    rows.push({ que, cmd, esperado });
+  }
 
   if (!rows.length) {
     console.log(C.gray('Registro de arreglos vacío · 0 comandos que re-ejecutar. (OK)'));
@@ -1014,10 +1060,7 @@ function regresion() {
 
   console.log(C.bold(`\nREGRESIÓN · ${rows.length} arreglo(s) certificado(s)\n`));
   let failed = 0;
-  for (const cols of rows) {
-    const que = cols[2];
-    const cmd = cols[3].replace(/^`|`$/g, '').trim();
-    const esperado = cols[4].replace(/^`|`$/g, '').trim();
+  for (const { que, cmd, esperado } of rows) {
     let out;
     try {
       out = execSync(cmd, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] })
