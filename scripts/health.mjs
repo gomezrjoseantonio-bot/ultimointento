@@ -210,22 +210,32 @@ function lecturasStoreInexistente() {
   // (abrir una transacción/objectStore sobre un store inexistente TAMBIÉN lanza
   // NotFoundError). RESIDUO conocido: el nombre del store en una VARIABLE
   // (`const S='fiscalSummaries'; db.getAll(S)`) sigue sin verse.
-  const readRe =
-    /\.(get|getAll|getAllFromIndex|getFromIndex|count|objectStore)\((['"])([a-zA-Z0-9_]+)\2|\.(transaction)\(\s*\[?\s*(['"])([a-zA-Z0-9_]+)\5/g;
+  const readRe = /\.(get|getAll|getAllFromIndex|getFromIndex|count|objectStore)\((['"])([a-zA-Z0-9_]+)\2/g;
+  // transaction acepta 1 store o un ARRAY multi-store: `transaction(['a','b'])`.
+  // Se captura el argumento y se extraen TODOS los literales (no solo el 1º).
+  const txRe = /\.transaction\(\s*(\[[^\]]*\]|['"][a-zA-Z0-9_]+['"])/g;
+  const litRe = /['"]([a-zA-Z0-9_]+)['"]/g;
+  const guardedFor = (src, store) =>
+    new RegExp(`objectStoreNames\\.contains\\((['"])${store}\\1\\)`).test(src);
   const hits = [];
   for (const f of prodFiles(['.ts', '.tsx'])) {
     const src = read(f);
     let m;
     while ((m = readRe.exec(src))) {
-      const method = m[1] || m[4];
-      const store = m[3] || m[6];
-      if (!store || !fantasma.has(store)) continue;
-      // Guard emparejado POR NOMBRE del mismo store (no por proximidad).
-      const guarded = new RegExp(
-        `objectStoreNames\\.contains\\((['"])${store}\\1\\)`
-      ).test(src);
-      if (guarded) continue;
-      hits.push(`${rel(f)} · ${method}('${store}')`);
+      const store = m[3];
+      if (fantasma.has(store) && !guardedFor(src, store)) {
+        hits.push(`${rel(f)} · ${m[1]}('${store}')`);
+      }
+    }
+    while ((m = txRe.exec(src))) {
+      let sm;
+      const litScan = new RegExp(litRe.source, 'g');
+      while ((sm = litScan.exec(m[1]))) {
+        const store = sm[1];
+        if (fantasma.has(store) && !guardedFor(src, store)) {
+          hits.push(`${rel(f)} · transaction('${store}')`);
+        }
+      }
     }
   }
   return {
@@ -693,18 +703,21 @@ function pctV5() {
   // Ahora también consumo INDIRECTO vía un `.module.css` que usa tokens v5
   // (`var(--atlas-v5-*)`) — señal fiable del prefijo canónico de tokens.css.
   // Es indicador que SUBE; ampliarlo cuenta más consumidores reales → sube el %.
-  const v5Modules = new Set();
+  // Correlación por RUTA RESUELTA (no por basename · hay basenames duplicados
+  // como PanelPage.module.css en dos carpetas): se resuelve el import relativo
+  // contra la carpeta del .tsx y se comprueba ESE archivo exacto.
+  const v5Modules = new Set(); // rutas absolutas de .module.css que usan v5
   for (const f of walk(SRC, (p) => p.endsWith('.module.css') && !isTestPath(p))) {
-    if (/var\(--atlas-v5-/.test(read(f))) v5Modules.add(path.basename(f));
+    if (/var\(--atlas-v5-/.test(read(f))) v5Modules.add(path.resolve(f));
   }
   const tsx = walk(SRC, (p) => p.endsWith('.tsx') && !isTestPath(p));
   const withV5 = tsx.filter((f) => {
     const src = read(f);
     if (/design-system\/v5/.test(src)) return true;
-    const mods = [...src.matchAll(/from\s+['"]([^'"]+\.module\.css)['"]/g)].map((m) =>
-      path.basename(m[1])
+    const imports = [...src.matchAll(/from\s+['"]([^'"]+\.module\.css)['"]/g)].map((m) => m[1]);
+    return imports.some(
+      (imp) => imp.startsWith('.') && v5Modules.has(path.resolve(path.dirname(f), imp))
     );
-    return mods.some((mm) => v5Modules.has(mm));
   });
   const pct = tsx.length ? (withV5.length / tsx.length) * 100 : 0;
   return {
@@ -728,8 +741,11 @@ function prsAbiertos() {
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   const repo = process.env.GITHUB_REPOSITORY; // "owner/repo" · lo pone Actions
   if (!token || !repo) {
-    return { value: null, note: 'NO MEDIBLE · sin GITHUB_TOKEN + GITHUB_REPOSITORY (modo CI)' };
+    return { value: null, note: 'NO MEDIBLE · sin GITHUB_TOKEN/GH_TOKEN + GITHUB_REPOSITORY (modo CI)' };
   }
+  // Normaliza: el curl usa `$GITHUB_TOKEN`, así que se inyecta el token resuelto
+  // en el env (funciona aunque solo estuviera GH_TOKEN).
+  const env = { ...process.env, GITHUB_TOKEN: token };
   try {
     let page = 1;
     let total = 0;
@@ -738,10 +754,16 @@ function prsAbiertos() {
         'curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" ' +
           '-H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" ' +
           `"https://api.github.com/repos/${repo}/pulls?state=open&per_page=100&page=${page}"`,
-        { env: process.env, stdio: ['ignore', 'pipe', 'ignore'], timeout: 30000, maxBuffer: 32 * 1024 * 1024 }
+        { env, stdio: ['ignore', 'pipe', 'ignore'], timeout: 30000, maxBuffer: 32 * 1024 * 1024 }
       ).toString();
       const arr = JSON.parse(out);
-      if (!Array.isArray(arr) || arr.length === 0) break;
+      // Un error de la API (rate limit/permisos) devuelve un OBJETO, no un array:
+      // eso es NO MEDIBLE, nunca un 0 medido.
+      if (!Array.isArray(arr)) {
+        const msg = arr && arr.message ? arr.message : 'respuesta no-array';
+        return { value: null, note: 'NO MEDIBLE · API GitHub: ' + msg };
+      }
+      if (arr.length === 0) break;
       total += arr.length;
       if (arr.length < 100 || page >= 50) break;
       page++;

@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T20:48:18.356Z",
+  "generatedAt": "2026-07-18T20:58:55.976Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "c321dd8"
+    "head": "a959303"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -287,7 +287,7 @@
       "objetivo": 0,
       "measurable": false,
       "approx": false,
-      "note": "NO MEDIBLE · sin GITHUB_TOKEN + GITHUB_REPOSITORY (modo CI)",
+      "note": "NO MEDIBLE · sin GITHUB_TOKEN/GH_TOKEN + GITHUB_REPOSITORY (modo CI)",
       "detail": null,
       "calibracion": null
     },
