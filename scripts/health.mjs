@@ -205,20 +205,27 @@ function storesNoTipados() {
  */
 function lecturasStoreInexistente() {
   const fantasma = new Set(storesFantasma().detail);
-  const readRe = /\.(get|getAll|getAllFromIndex|getFromIndex|count)\((['"])([a-zA-Z0-9_]+)\2/g;
+  // AMPLIADO (auditoría puntos ciegos): además de get/getAll/…, ahora también
+  // accesos vía `transaction('X')` / `transaction(['X'])` y `objectStore('X')`
+  // (abrir una transacción/objectStore sobre un store inexistente TAMBIÉN lanza
+  // NotFoundError). RESIDUO conocido: el nombre del store en una VARIABLE
+  // (`const S='fiscalSummaries'; db.getAll(S)`) sigue sin verse.
+  const readRe =
+    /\.(get|getAll|getAllFromIndex|getFromIndex|count|objectStore)\((['"])([a-zA-Z0-9_]+)\2|\.(transaction)\(\s*\[?\s*(['"])([a-zA-Z0-9_]+)\5/g;
   const hits = [];
   for (const f of prodFiles(['.ts', '.tsx'])) {
     const src = read(f);
     let m;
     while ((m = readRe.exec(src))) {
-      const store = m[3];
-      if (!fantasma.has(store)) continue;
+      const method = m[1] || m[4];
+      const store = m[3] || m[6];
+      if (!store || !fantasma.has(store)) continue;
       // Guard emparejado POR NOMBRE del mismo store (no por proximidad).
       const guarded = new RegExp(
         `objectStoreNames\\.contains\\((['"])${store}\\1\\)`
       ).test(src);
       if (guarded) continue;
-      hits.push(`${rel(f)} · ${m[1]}('${store}')`);
+      hits.push(`${rel(f)} · ${method}('${store}')`);
     }
   }
   return {
@@ -376,8 +383,15 @@ function routeServes(dSegs) {
 /** Recolecta destinos de navegación estáticos (navigate/to/href) en producción. */
 function navDestinations() {
   const dests = new Map(); // key → {segs, files:Set}
-  const litRe = /(?:navigate\(\s*|\bto=|\bhref=)\{?\s*(['"])(\/[^'"]*)\1(\s*\+)?/g;
-  const tplRe = /(?:navigate\(\s*|\bto=|\bhref=)\{?\s*`(\/[^`]*)`/g;
+  // AMPLIADO (auditoría puntos ciegos): antes solo `navigate(`/`to=`/`href=`.
+  // Ahora también `onNavigate(` (callback · N mayúscula, invisible al viejo
+  // regex), `window.location.href=/assign/replace`. `Link`/`NavLink to=` ya
+  // los cubría `to=`. RESIDUO conocido: `navigate(variable)` / `onNavigate(var)`
+  // con la ruta en una constante (no literal) sigue sin verse.
+  const PREFIX =
+    "(?:navigate\\(\\s*|onNavigate\\(\\s*|\\bto=|\\bhref=|window\\.location\\.(?:href\\s*=|assign\\(|replace\\())\\{?\\s*";
+  const litRe = new RegExp(PREFIX + "(['\"])(\\/[^'\"]*)\\1(\\s*\\+)?", 'g');
+  const tplRe = new RegExp(PREFIX + '`(\\/[^`]*)`', 'g');
   const ASSET = /\.(md|html|pdf|png|jpe?g|svg|json|csv|txt|xml|ico)$/i;
   const add = (segs, f) => {
     if (!segs.length) return;
@@ -507,20 +521,30 @@ function enlacesRotos() {
 
 /**
  * INDICADOR 7 · hex_hardcoded
- * Colores `#RRGGBB` (6 dígitos) escritos a mano fuera del archivo de tokens:
- *   CUENTA  · ocurrencias de `#RRGGBB` en .ts/.tsx/.css de producción
+ * Colores escritos a mano fuera del archivo de tokens:
+ *   CUENTA  · `#RRGGBB` (6 díg) · `#RGB` (3 díg) · `rgb()/rgba()/hsl()/hsla()`
+ *             · tailwind arbitrario `[#…]` · en .ts/.tsx/.css de producción Y en
+ *             `tailwind.config.js` (fuente de la paleta v4 legacy · auditoría)
  *   EXCLUYE · tests · `src/design-system/v5/tokens.css` (paleta canónica)
- * OBJETIVO · baja. La auditoría reportó 902 (su recorte exacto no está
- * especificado; aquí se documenta la regla mecánica y se mide en consecuencia).
+ * OBJETIVO · baja.
+ *
+ * AMPLIADO (auditoría puntos ciegos): antes SOLO `#RRGGBB` de 6 díg en src.
+ * No veía 3 díg, funciones de color rgb/hsl, arbitrarios de tailwind, ni el
+ * `tailwind.config.js`. Todo eso es color hardcoded igual. Al ampliar sube el
+ * número → nuevo baseline (no regresión).
  */
 function hexHardcoded() {
-  const re = /#[0-9a-fA-F]{6}\b/g;
+  const hex = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
+  const fn = /\b(?:rgba?|hsla?)\(/g;
   let count = 0;
-  for (const f of walk(SRC, (p) => /\.(ts|tsx|css)$/.test(p) && !isTestPath(p))) {
+  const files = walk(SRC, (p) => /\.(ts|tsx|css)$/.test(p) && !isTestPath(p));
+  const twConfig = path.join(ROOT, 'tailwind.config.js');
+  if (fs.existsSync(twConfig)) files.push(twConfig);
+  for (const f of files) {
     if (rel(f) === TOKENS_FILE) continue;
     const src = read(f);
-    const m = src.match(re);
-    if (m) count += m.length;
+    count += (src.match(hex) || []).length;
+    count += (src.match(fn) || []).length;
   }
   return { value: count };
 }
@@ -529,8 +553,16 @@ function hexHardcoded() {
  * INDICADOR 8 · emojis_ui
  * Emojis en componentes `.tsx` de pantalla (producción):
  *   CUENTA  · caracteres en rangos emoji Unicode en .tsx no test
- *   EXCLUYE · tests · .ts puros (lógica) · .css
- * OBJETIVO · baja (~92 en la auditoría).
+ *   EXCLUYE · tests · .ts (ver nota)
+ * OBJETIVO · baja.
+ * NO AMPLIADO A .ts (decisión de la auditoría de puntos ciegos): los .ts
+ * contienen 122 caracteres de rango emoji, pero concentrados en SERVICIOS
+ * (logs, comentarios, constantes de `treasuryCreationService`, `ocrService`,
+ * `config/envFlags`…), NO en UI de pantalla. Ampliar a todo `.ts` haría DERIVAR
+ * el significado ("emojis de pantalla" → "cualquier emoji en TS") y metería
+ * ruido. Distinguir "string de UI" dentro de un servicio no es mecanizable
+ * limpio → se deja como hallazgo, no se amplía. RESIDUO: `content:` CSS y
+ * `\uXXXX` escapado tampoco se cuentan.
  */
 function emojisUi() {
   // Rangos emoji frecuentes (pictográficos, símbolos, dingbats, banderas)
@@ -614,14 +646,16 @@ function kpisHardcoded() {
 /**
  * INDICADOR 11 · todos_totales
  * Marcadores de deuda `TODO/FIXME/HACK/XXX` en src:
- *   CUENTA  · ocurrencias en .ts/.tsx/.css de producción
+ *   CUENTA  · ocurrencias en .ts/.tsx/.css/.js/.cjs/.mjs de producción
  *   EXCLUYE · tests
- * OBJETIVO · baja (~332 en la auditoría).
+ * OBJETIVO · baja.
+ * AMPLIADO (auditoría puntos ciegos): antes .ts/.tsx/.css · ahora también
+ * .js/.cjs/.mjs (había marcadores potenciales en archivos JS sueltos de src).
  */
 function todosTotales() {
   const re = /\b(TODO|FIXME|HACK|XXX)\b/g;
   let count = 0;
-  for (const f of walk(SRC, (p) => /\.(ts|tsx|css)$/.test(p) && !isTestPath(p))) {
+  for (const f of walk(SRC, (p) => /\.(ts|tsx|css|js|cjs|mjs)$/.test(p) && !isTestPath(p))) {
     const m = read(f).match(re);
     if (m) count += m.length;
   }
@@ -631,13 +665,15 @@ function todosTotales() {
 /**
  * INDICADOR 12 · archivos_800
  * Archivos de código de más de 800 líneas (candidatos a trocear):
- *   CUENTA  · .ts/.tsx de producción con > 800 líneas
- *   EXCLUYE · tests · .css · .json
- * OBJETIVO · baja (~49 en la auditoría).
+ *   CUENTA  · .ts/.tsx/.css/.js de producción con > 800 líneas
+ *   EXCLUYE · tests · .json
+ * OBJETIVO · baja.
+ * AMPLIADO (auditoría puntos ciegos): antes solo .ts/.tsx · ahora también .css
+ * y .js (había CSS grandes que no se veían).
  */
 function archivos800() {
   const big = [];
-  for (const f of prodFiles(['.ts', '.tsx'])) {
+  for (const f of walk(SRC, (p) => /\.(ts|tsx|css|js)$/.test(p) && !isTestPath(p))) {
     const n = read(f).split('\n').length;
     if (n > 800) big.push({ f: rel(f), n });
   }
@@ -653,23 +689,67 @@ function archivos800() {
  * OBJETIVO · sube. La auditoría midió 23,5 % (137/583).
  */
 function pctV5() {
+  // AMPLIADO (auditoría puntos ciegos): antes solo `import '…/design-system/v5'`.
+  // Ahora también consumo INDIRECTO vía un `.module.css` que usa tokens v5
+  // (`var(--atlas-v5-*)`) — señal fiable del prefijo canónico de tokens.css.
+  // Es indicador que SUBE; ampliarlo cuenta más consumidores reales → sube el %.
+  const v5Modules = new Set();
+  for (const f of walk(SRC, (p) => p.endsWith('.module.css') && !isTestPath(p))) {
+    if (/var\(--atlas-v5-/.test(read(f))) v5Modules.add(path.basename(f));
+  }
   const tsx = walk(SRC, (p) => p.endsWith('.tsx') && !isTestPath(p));
-  const withV5 = tsx.filter((f) => /design-system\/v5/.test(read(f)));
+  const withV5 = tsx.filter((f) => {
+    const src = read(f);
+    if (/design-system\/v5/.test(src)) return true;
+    const mods = [...src.matchAll(/from\s+['"]([^'"]+\.module\.css)['"]/g)].map((m) =>
+      path.basename(m[1])
+    );
+    return mods.some((mm) => v5Modules.has(mm));
+  });
   const pct = tsx.length ? (withV5.length / tsx.length) * 100 : 0;
   return {
     value: Math.round(pct * 10) / 10,
-    detail: [`${withV5.length} / ${tsx.length} componentes`],
+    detail: [`${withV5.length} / ${tsx.length} (directo o vía .module.css con var(--atlas-v5-*))`],
   };
 }
 
 /**
  * INDICADOR 14 · prs_abiertos
- * PRs abiertos sin mergear. NO MEDIBLE desde Node puro (requiere la API de
- * GitHub, fuera del alcance de un script de solo lectura del repo). Devuelve
- * null · marca NO MEDIBLE (nunca 0). La auditoría reportó 51 vía GitHub.
+ * PRs abiertos sin mergear.
+ *   MODO CI · con `GITHUB_TOKEN` + `GITHUB_REPOSITORY` (los pone GitHub Actions)
+ *             cuenta los PRs `state=open` vía la API, paginando. Requiere que el
+ *             workflow declare `permissions: pull-requests: read`.
+ *   LOCAL · sin token → NO MEDIBLE (nunca 0).
+ * El token NO se interpola en la cadena: se expande en el shell desde el env.
+ * NOTA · es estado EXTERNO y variable en el tiempo (no código); su baseline no
+ * se congela desde una medición de repo · ver informe.
  */
 function prsAbiertos() {
-  return { value: null, note: 'NO MEDIBLE · requiere API de GitHub (fuera de Node puro)' };
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  const repo = process.env.GITHUB_REPOSITORY; // "owner/repo" · lo pone Actions
+  if (!token || !repo) {
+    return { value: null, note: 'NO MEDIBLE · sin GITHUB_TOKEN + GITHUB_REPOSITORY (modo CI)' };
+  }
+  try {
+    let page = 1;
+    let total = 0;
+    for (;;) {
+      const out = execSync(
+        'curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" ' +
+          '-H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" ' +
+          `"https://api.github.com/repos/${repo}/pulls?state=open&per_page=100&page=${page}"`,
+        { env: process.env, stdio: ['ignore', 'pipe', 'ignore'], timeout: 30000, maxBuffer: 32 * 1024 * 1024 }
+      ).toString();
+      const arr = JSON.parse(out);
+      if (!Array.isArray(arr) || arr.length === 0) break;
+      total += arr.length;
+      if (arr.length < 100 || page >= 50) break;
+      page++;
+    }
+    return { value: total, note: 'medido vía API GitHub (CI)' };
+  } catch (e) {
+    return { value: null, note: 'NO MEDIBLE · error API GitHub: ' + e.message };
+  }
 }
 
 /**
@@ -771,6 +851,24 @@ const GOBERNANZA_RECALIBRACION =
   'siempre permitido y deseable, sin autorización (si sube, es el nuevo ' +
   'baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización ' +
   'explícita de Jose y registro. El sistema descubre, no esconde.';
+
+// ─────────────────────────────────────────────────────────────────────────
+// AMPLIACIONES DE DEFINICIÓN (auditoría de puntos ciegos · 2026-07-18)
+// ─────────────────────────────────────────────────────────────────────────
+// Al ampliar una definición el número puede SUBIR (se mide lo que antes era
+// invisible). Por gobernanza eso es el NUEVO BASELINE, no una regresión. Para
+// que el trinquete no falle en falso EN LA TRANSICIÓN, cada entrada exime a su
+// indicador de la subida SOLO mientras el baseline previo siga siendo el valor
+// `antes` (pre-ampliación). En cuanto `main` incorpora el nuevo número, `antes`
+// deja de coincidir y la exención SE DESACTIVA SOLA — no oculta subidas futuras
+// (eso sería esconder, prohibido). Solo se listan las que suben en dirección de
+// empeoramiento; las que bajan (rutas_huerfanas) o suben siendo 'up' (pct_v5)
+// no necesitan exención.
+const AMPLIACIONES = {
+  enlaces_rotos: { antes: 0, motivo: 've onNavigate( y window.location' },
+  hex_hardcoded: { antes: 974, motivo: 've #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js' },
+  archivos_800: { antes: 49, motivo: 've .css y .js' },
+};
 
 // direction: 'down' = mejor bajar (empeora si sube) · 'up' = mejor subir
 const INDICATORS = [
@@ -901,9 +999,16 @@ function measure() {
 }
 
 /** Compara y decide si un indicador EMPEORÓ respecto al previo. */
-function worsened(dir, prev, cur) {
+function worsened(key, dir, prev, cur) {
   if (prev == null || cur == null) return false;
-  return dir === 'up' ? cur < prev : cur > prev;
+  const empeora = dir === 'up' ? cur < prev : cur > prev;
+  if (!empeora) return false;
+  // Exención de AMPLIACIÓN, auto-desactivable: si el baseline previo es aún el
+  // valor pre-ampliación, la subida es la ampliación autorizada (nuevo
+  // baseline), no una regresión. Solo aplica en la transición.
+  const amp = AMPLIACIONES[key];
+  if (amp && prev === amp.antes) return false;
+  return empeora;
 }
 
 function main() {
@@ -932,6 +1037,13 @@ function main() {
     git: gitInfo(),
     gobernanza: GOBERNANZA_RECALIBRACION,
     recalibraciones,
+    ampliaciones: Object.entries(AMPLIACIONES).map(([indicador, a]) => ({
+      indicador,
+      antes: a.antes,
+      despues: indicators[indicador]?.value ?? null,
+      motivo: a.motivo,
+      exencion: 'transitoria · se desactiva cuando main incorpora el nuevo baseline',
+    })),
     indicators,
   };
 
@@ -969,9 +1081,15 @@ function main() {
       const d = Math.round((cur.value - prevVal) * 10) / 10;
       if (d === 0) deltaStr = C.gray('0');
       else {
-        const w = worsened(ind.dir, prevVal, cur.value);
+        const w = worsened(ind.key, ind.dir, prevVal, cur.value);
+        const rawWorse = ind.dir === 'up' ? cur.value < prevVal : cur.value > prevVal;
+        const exempt = rawWorse && !w; // subió pero es AMPLIACIÓN (nuevo baseline)
         const sign = d > 0 ? '+' : '';
-        deltaStr = w ? C.red(sign + d + ' ▲') : C.green(sign + d);
+        deltaStr = exempt
+          ? C.yellow(sign + d + ' ⇧amp')
+          : w
+            ? C.red(sign + d + ' ▲')
+            : C.green(sign + d);
         if (w) anyWorse = true;
       }
     }

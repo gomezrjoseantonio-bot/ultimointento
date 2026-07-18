@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T19:59:30.388Z",
+  "generatedAt": "2026-07-18T20:48:18.356Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "fe8b087"
+    "head": "c321dd8"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -22,6 +22,29 @@
       "anterior": 17,
       "nueva": 9,
       "motivo": "Definición A+B: solo placeholders vivos junto a un valor renderizado (comentarios // y JSX {/* */}); se excluyen las 8 menciones en cabeceras JSDoc /** */ (grupo C). Sin restricción por archivo."
+    }
+  ],
+  "ampliaciones": [
+    {
+      "indicador": "enlaces_rotos",
+      "antes": 0,
+      "despues": 1,
+      "motivo": "ve onNavigate( y window.location",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    },
+    {
+      "indicador": "hex_hardcoded",
+      "antes": 974,
+      "despues": 1689,
+      "motivo": "ve #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    },
+    {
+      "indicador": "archivos_800",
+      "antes": 49,
+      "despues": 53,
+      "motivo": "ve .css y .js",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     }
   ],
   "indicators": {
@@ -114,7 +137,7 @@
       "calibracion": null
     },
     "rutas_huerfanas": {
-      "value": 20,
+      "value": 19,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -135,7 +158,6 @@
         "/automatizaciones/historial",
         "/tareas/completadas",
         "/tareas/programadas",
-        "/configuracion/preferencias-datos",
         "/configuracion/email-entrante",
         "/configuracion/proveedores",
         "/ajustes/integraciones",
@@ -145,17 +167,19 @@
       "calibracion": null
     },
     "enlaces_rotos": {
-      "value": 0,
+      "value": 1,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": [],
+      "detail": [
+        "/fiscalidad/estado  ← src/components/dashboard/TaxBlock.tsx"
+      ],
       "calibracion": null
     },
     "hex_hardcoded": {
-      "value": 974,
+      "value": 1689,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -220,7 +244,7 @@
       "calibracion": null
     },
     "archivos_800": {
-      "value": 49,
+      "value": 53,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -228,6 +252,7 @@
       "note": null,
       "detail": [
         "5736 · src/services/db.ts",
+        "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
         "1943 · src/services/declaracionDistributorService.ts",
         "1886 · src/services/dashboardService.ts",
         "1789 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
@@ -240,20 +265,19 @@
         "1550 · src/services/aeatParserService.ts",
         "1543 · src/App.tsx",
         "1499 · src/components/treasury/MesDetalleDrawer.tsx",
-        "1461 · src/services/declaracionOnboardingService.ts",
-        "1435 · src/services/treasuryConfirmationService.ts"
+        "1461 · src/services/declaracionOnboardingService.ts"
       ],
       "calibracion": null
     },
     "pct_v5": {
-      "value": 23.5,
+      "value": 40.1,
       "direction": "up",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "137 / 583 componentes"
+        "234 / 583 (directo o vía .module.css con var(--atlas-v5-*))"
       ],
       "calibracion": null
     },
@@ -263,7 +287,7 @@
       "objetivo": 0,
       "measurable": false,
       "approx": false,
-      "note": "NO MEDIBLE · requiere API de GitHub (fuera de Node puro)",
+      "note": "NO MEDIBLE · sin GITHUB_TOKEN + GITHUB_REPOSITORY (modo CI)",
       "detail": null,
       "calibracion": null
     },
