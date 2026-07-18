@@ -1,0 +1,897 @@
+#!/usr/bin/env node
+// @ts-nocheck
+/**
+ * MARCADOR DE SALUD · ATLAS
+ * =========================
+ * Implementa el PROTOCOLO DE GARANTÍA (§2 / §6). Un único comando que MIDE
+ * el estado del repositorio en ~16 indicadores numéricos, en vez de narrarlo.
+ *
+ * Principios (§6 · requisitos):
+ *   1. Cero dependencias nuevas · Node puro.
+ *   2. NO modifica `src/` · solo lee.
+ *   3. Cada indicador documenta EN SU FUNCIÓN qué cuenta y qué excluye
+ *      (los tests SIEMPRE se excluyen).
+ *   4. Salida doble: docs/health/HEALTH-AAAA-MM-DD.json + tabla por consola.
+ *   5. Indicador no calculable en el entorno → `null` + marca NO MEDIBLE
+ *      (nunca 0).
+ *   6. Si existe un JSON anterior, imprime la diferencia y marca en rojo
+ *      cualquier empeoramiento.
+ *   7. Código de salida != 0 si algún indicador empeoró (para CI).
+ *
+ * Uso:
+ *   node scripts/health.mjs              → mide y escribe la foto de hoy
+ *   node scripts/health.mjs --regresion  → re-ejecuta ARREGLOS-CERTIFICADOS.md
+ *   node scripts/health.mjs --no-write   → mide e imprime, sin escribir JSON
+ */
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
+
+const ROOT = process.cwd();
+const SRC = path.join(ROOT, 'src');
+const HEALTH_DIR = path.join(ROOT, 'docs', 'health');
+const DB_FILE = path.join(SRC, 'services', 'db.ts');
+const APP_FILE = path.join(SRC, 'App.tsx');
+const TOKENS_FILE = path.join('src', 'design-system', 'v5', 'tokens.css');
+
+// ─────────────────────────────────────────────────────────────────────────
+// Utilidades de lectura (SOLO LECTURA · nunca escribe en src/)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** ¿Es un archivo de test/spec? Se excluyen SIEMPRE de todos los conteos. */
+function isTestPath(p) {
+  return /(\.test\.|\.spec\.|__tests__|(^|\/)tests?\/|tests_disabled|setupTests|__mocks__)/.test(
+    p.replace(/\\/g, '/')
+  );
+}
+
+/** Recorre un directorio y devuelve rutas de archivo que cumplan `match`. */
+function walk(dir, match, acc = []) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return acc;
+  }
+  for (const e of entries) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      if (e.name === 'node_modules' || e.name === '.git') continue;
+      walk(p, match, acc);
+    } else if (match(p)) {
+      acc.push(p);
+    }
+  }
+  return acc;
+}
+
+const read = (p) => {
+  try {
+    return fs.readFileSync(p, 'utf8');
+  } catch {
+    return '';
+  }
+};
+
+const rel = (p) => path.relative(ROOT, p).replace(/\\/g, '/');
+
+/** Archivos de código de PRODUCCIÓN (no test) bajo src/. */
+function prodFiles(exts) {
+  const set = new Set(exts);
+  return walk(SRC, (p) => set.has(path.extname(p)) && !isTestPath(p));
+}
+
+const DB_SRC = read(DB_FILE);
+const APP_SRC = read(APP_FILE);
+
+// ─────────────────────────────────────────────────────────────────────────
+// Modelo de datos: interfaz AtlasHorizonDB y stores físicos
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Claves declaradas de nivel superior en `interface AtlasHorizonDB { … }`. */
+function interfaceKeys() {
+  const m = DB_SRC.match(/interface AtlasHorizonDB\s*\{([\s\S]*?)\n\}/);
+  if (!m) return [];
+  const body = m[1];
+  const lines = body.split('\n');
+  const keys = [];
+  let depth = 0; // profundidad de llaves para ignorar props de objetos anidados
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (depth === 0) {
+      const km = trimmed.match(/^([a-zA-Z0-9_]+)\s*[:?]/);
+      if (km && !trimmed.startsWith('//') && !trimmed.startsWith('*')) keys.push(km[1]);
+    }
+    depth += (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+  }
+  return keys;
+}
+
+/** Nombres usados en `createObjectStore('X')` en db.ts. */
+function createdStores() {
+  return new Set(
+    [...DB_SRC.matchAll(/createObjectStore\((['"])([a-zA-Z0-9_]+)\1/g)].map((m) => m[2])
+  );
+}
+
+/** Nombres usados en `deleteObjectStore('X')` en db.ts (stores retirados). */
+function deletedStores() {
+  return new Set(
+    [...DB_SRC.matchAll(/deleteObjectStore\((['"])([a-zA-Z0-9_]+)\1/g)].map((m) => m[2])
+  );
+}
+
+/**
+ * ¿La declaración de la clave `key` está marcada como legacy/deprecated?
+ * Se inspecciona el bloque de comentario inmediatamente anterior + la línea.
+ */
+function keyIsDeprecated(key) {
+  const re = new RegExp('\\n\\s*' + key + '\\s*[:?]');
+  const idx = DB_SRC.search(re);
+  if (idx < 0) return false;
+  const before = DB_SRC.slice(Math.max(0, idx - 900), idx);
+  const lineEnd = DB_SRC.indexOf('\n', idx + 1);
+  const line = DB_SRC.slice(idx, lineEnd < 0 ? undefined : lineEnd);
+  return /@deprecated|@legacy|\bDEPRECATED\b|\bLEGACY\b/.test(before + line);
+}
+
+const IFACE_KEYS = interfaceKeys();
+const CREATED = createdStores();
+const DELETED = deletedStores();
+
+/**
+ * INDICADOR 1 · stores_fantasma
+ * Claves declaradas en la interfaz `AtlasHorizonDB` que NO tienen store físico:
+ *   CUENTA  · clave de la interfaz sin `createObjectStore('clave')`
+ *   EXCLUYE · claves con `deleteObjectStore('clave')` (store retirado a propósito)
+ *   EXCLUYE · claves anotadas @deprecated/@legacy (mantenidas solo para que
+ *             el código de migración compile · p. ej. `valoraciones_historicas`)
+ * Resultado esperado por la auditoría: 4
+ *   → gastos · propertyImprovements · fiscalSummaries · operacionesFiscales
+ */
+function storesFantasma() {
+  const list = IFACE_KEYS.filter(
+    (k) => !CREATED.has(k) && !DELETED.has(k) && !keyIsDeprecated(k)
+  );
+  return { value: list.length, detail: list };
+}
+
+/**
+ * INDICADOR 2 · stores_no_tipados
+ * Stores físicos (`createObjectStore`) que NO figuran como clave en la interfaz:
+ *   CUENTA  · nombre de `createObjectStore('X')` con X ausente de la interfaz
+ *   EXCLUYE · stores con `deleteObjectStore('X')` (creados-bajo-guard y luego
+ *             retirados para DBs viejas · p. ej. `planesPensionInversion`)
+ * Resultado esperado por la auditoría: 3
+ *   → gastosInmueble · mejorasInmueble · mueblesInmueble
+ */
+function storesNoTipados() {
+  const list = [...CREATED].filter((k) => !IFACE_KEYS.includes(k) && !DELETED.has(k)).sort();
+  return { value: list.length, detail: list };
+}
+
+/**
+ * INDICADOR 3 · lecturas_store_inexistente
+ * Lecturas (get/getAll/getFromIndex/getAllFromIndex/count) sobre un store que
+ * NO se crea físicamente pero SÍ está declarado en la interfaz (los "fantasma"):
+ *   CUENTA  · llamada `.getAll('X')` etc. en producción con X ∈ stores_fantasma
+ *   EXCLUYE · tests · reads sobre stores @deprecated (p. ej. valoraciones_historicas)
+ *   EXCLUYE · `.get('X')` sobre Maps/keyval/refs (X no es un store fantasma)
+ * Por qué importa (CONTRADICCIÓN 3 de la auditoría): TypeScript acepta la
+ * llamada (la clave está en la interfaz) pero en runtime `getAll` lanza
+ * NotFoundError porque el store nunca se creó.
+ * Resultado esperado por la auditoría: 2
+ *   → migracionGastosService: getAll('fiscalSummaries') + getAll('operacionesFiscales')
+ */
+function lecturasStoreInexistente() {
+  const fantasma = new Set(storesFantasma().detail);
+  const readRe = /\.(get|getAll|getAllFromIndex|getFromIndex|count)\((['"])([a-zA-Z0-9_]+)\2/g;
+  const hits = [];
+  for (const f of prodFiles(['.ts', '.tsx'])) {
+    const src = read(f);
+    let m;
+    while ((m = readRe.exec(src))) {
+      if (fantasma.has(m[3])) hits.push(`${rel(f)} · ${m[1]}('${m[3]}')`);
+    }
+  }
+  return { value: hits.length, detail: hits };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Servicios
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * INDICADOR 4 · servicios_muertos
+ * Archivos en `src/services/` (nivel superior) que NADIE importa fuera de su
+ * propio test:
+ *   CUENTA  · `services/*.ts` (no test) cuyo basename no aparece en ningún
+ *             `from '…/basename'` ni `import('…/basename')` de otro archivo src
+ *   EXCLUYE · tests · el propio archivo · `index.ts` · `*.d.ts`
+ * NOTA · es un SUELO (cota inferior): no detecta importadores que ya estén
+ * muertos aguas arriba, ni re-exports por barrel. La auditoría (manual) lo
+ * fijó en 30.
+ */
+function serviciosMuertos() {
+  const svcDir = path.join(SRC, 'services');
+  const services = walk(svcDir, (p) => {
+    if (path.dirname(p) !== svcDir) return false; // solo nivel superior
+    if (!p.endsWith('.ts') || p.endsWith('.d.ts')) return false;
+    if (isTestPath(p)) return false;
+    if (path.basename(p) === 'index.ts') return false;
+    return true;
+  });
+  const allSrc = prodFiles(['.ts', '.tsx']);
+  // Mapa archivo→contenido (una sola lectura)
+  const contents = new Map(allSrc.map((f) => [f, read(f)]));
+  const dead = [];
+  for (const svc of services) {
+    const name = path.basename(svc, '.ts');
+    const importRe = new RegExp(
+      `(from|import)\\s*\\(?\\s*['"][^'"]*\\/${name}['"]`
+    );
+    let imported = false;
+    for (const [f, c] of contents) {
+      if (f === svc) continue;
+      if (isTestPath(f)) continue;
+      if (importRe.test(c)) {
+        imported = true;
+        break;
+      }
+    }
+    if (!imported) dead.push(rel(svc));
+  }
+  return { value: dead.length, detail: dead };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Rutas y navegación (reconstrucción del árbol de <Route> de App.tsx)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Reconstruye las rutas absolutas registradas a partir del árbol JSX. */
+function parseRoutes() {
+  const src = APP_SRC;
+  const routes = [];
+  const stack = [];
+  const events = [];
+  for (const m of src.matchAll(/<Route\b/g)) events.push({ pos: m.index, type: 'open' });
+  for (const m of src.matchAll(/<\/Route>/g)) events.push({ pos: m.index, type: 'close' });
+  events.sort((a, b) => a.pos - b.pos);
+  for (const ev of events) {
+    if (ev.type === 'close') {
+      if (stack.length) stack.pop();
+      continue;
+    }
+    // Leer la etiqueta hasta su '>' de cierre (respetando llaves y strings)
+    let j = ev.pos + 5;
+    let depth = 0;
+    let inStr = null;
+    let selfClose = false;
+    for (; j < src.length; j++) {
+      const c = src[j];
+      if (inStr) {
+        if (c === inStr) inStr = null;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') {
+        inStr = c;
+        continue;
+      }
+      if (c === '{') depth++;
+      else if (c === '}') depth--;
+      else if (c === '>' && depth === 0) {
+        selfClose = src[j - 1] === '/';
+        break;
+      }
+    }
+    const tag = src.slice(ev.pos, j + 1);
+    const pm = tag.match(/\bpath=("([^"]*)"|'([^']*)'|\{`([^`]*)`\})/);
+    const isIndex = /\bindex\b/.test(tag) && !pm;
+    const p = pm ? pm[2] ?? pm[3] ?? pm[4] : null;
+    let full;
+    if (isIndex) full = '/' + stack.join('/');
+    else if (p == null) full = null;
+    else if (p.startsWith('/')) full = p;
+    else full = '/' + [...stack, p].join('/');
+    if (full) {
+      full = full.replace(/\/+/g, '/');
+      if (full.length > 1) full = full.replace(/\/$/, '');
+      routes.push(full);
+    }
+    if (!selfClose && p != null && p !== '*') stack.push(p.replace(/^\//, ''));
+  }
+  // Excluye el catch-all raíz ('*' / '/*'): su función es ABSORBER lo no
+  // registrado (→ /panel). Los splats anidados (/empezar/*, /dev/*) SÍ son
+  // manejadores reales y se conservan.
+  return [...new Set(routes)].filter((r) => r && r !== '*' && r !== '/*');
+}
+
+const REGISTERED = parseRoutes();
+const ROUTE_SEGS = REGISTERED.map((r) => r.split('/').filter(Boolean));
+
+/**
+ * ¿Algún route registrado sirve estos segmentos de destino?
+ * Emparejamiento con comodines SIMÉTRICO: un segmento `:param` del route, un
+ * splat `*` final, o un segmento COMPUTADO del destino (`${var}`) casan con
+ * cualquier valor. Así un destino calculado no se marca roto por no poder
+ * resolverse estáticamente (se le da el beneficio de la duda contra rutas
+ * hermanas del mismo patrón).
+ */
+function routeServes(dSegs) {
+  return ROUTE_SEGS.some((rs) => {
+    const splat = rs[rs.length - 1] === '*';
+    const rlen = splat ? rs.length - 1 : rs.length;
+    if (splat) {
+      if (dSegs.length < rlen) return false;
+    } else if (dSegs.length !== rs.length) return false;
+    for (let i = 0; i < rlen; i++) {
+      const r = rs[i];
+      const d = dSegs[i];
+      if (!d) return false;
+      if (r.startsWith(':') || d.c) continue; // comodín en cualquier lado
+      if (r !== d.v) return false;
+    }
+    return true;
+  });
+}
+
+/** Recolecta destinos de navegación estáticos (navigate/to/href) en producción. */
+function navDestinations() {
+  const dests = new Map(); // key → {segs, files:Set}
+  const litRe = /(?:navigate\(\s*|\bto=|\bhref=)\{?\s*(['"])(\/[^'"]*)\1(\s*\+)?/g;
+  const tplRe = /(?:navigate\(\s*|\bto=|\bhref=)\{?\s*`(\/[^`]*)`/g;
+  const ASSET = /\.(md|html|pdf|png|jpe?g|svg|json|csv|txt|xml|ico)$/i;
+  const add = (segs, f) => {
+    if (!segs.length) return;
+    const key = '/' + segs.map((s) => (s.c ? ':p' : s.v)).join('/');
+    const e = dests.get(key) || { segs, files: new Set() };
+    e.files.add(rel(f));
+    dests.set(key, e);
+  };
+  for (const f of prodFiles(['.ts', '.tsx'])) {
+    const s = read(f);
+    let m;
+    while ((m = litRe.exec(s))) {
+      let p = m[2].split(/[?#]/)[0];
+      const concat = !!m[3];
+      if (ASSET.test(p)) continue;
+      if (concat || /\/$/.test(p)) {
+        // concatenación (`'/x/' + v`): el segmento final es computado
+        const segs = p
+          .replace(/\/$/, '')
+          .split('/')
+          .filter(Boolean)
+          .map((v) => ({ v }));
+        segs.push({ c: true });
+        add(segs, f);
+      } else {
+        add(
+          p.split('/').filter(Boolean).map((v) => ({ v })),
+          f
+        );
+      }
+    }
+    while ((m = tplRe.exec(s))) {
+      const p = m[1].split(/[?#]/)[0];
+      if (ASSET.test(p)) continue;
+      const segs = p
+        .split('/')
+        .filter(Boolean)
+        .map((v) => (/\$\{/.test(v) ? { c: true } : { v }));
+      add(segs, f);
+    }
+  }
+  return dests;
+}
+
+/**
+ * INDICADOR 5 · rutas_huerfanas
+ * Rutas registradas que renderizan una pantalla real (no redirect) y a las que
+ * NADIE navega ni enlaza desde el menú:
+ *   CUENTA  · route no-comodín cuyo elemento NO es `<Navigate>` y que ningún
+ *             destino de navegación (ni entrada de navigation.ts) alcanza
+ *   EXCLUYE · comodines · redirects · rutas /dev/* y /login /register
+ * APROXIMADO · la auditoría lo estimó en ~18.
+ */
+function rutasHuerfanas() {
+  const dests = navDestinations();
+  const navKeys = [...dests.values()].map((e) => e.segs);
+  const navConfig = read(path.join(SRC, 'config', 'navigation.ts'));
+  // rutas que son redirect (elemento Navigate) — se detectan por su path en App
+  const redirectPaths = new Set(
+    [...APP_SRC.matchAll(/path=("([^"]*)"|'([^']*)')\s+element=\{<Navigate/g)].map(
+      (m) => m[2] ?? m[3]
+    )
+  );
+  const orphans = [];
+  for (const r of REGISTERED) {
+    if (r === '/' || /\/(login|register)$/.test(r)) continue;
+    if (r.startsWith('/dev') || r.includes('*')) continue;
+    const segs = r.split('/').filter(Boolean).map((v) => ({ v }));
+    // ¿es un redirect? (última porción del path coincide con un redirect path)
+    const isRedirect = [...redirectPaths].some((rp) => r.endsWith(rp.replace(/^\//, '')));
+    if (isRedirect) continue;
+    const reached = navKeys.some((dSegs) => sameRoute(dSegs, segs)) ||
+      navConfig.includes(`'${r}'`) || navConfig.includes(`"${r}"`);
+    if (!reached) orphans.push(r);
+  }
+  return { value: orphans.length, detail: orphans, approx: true };
+}
+
+/** ¿Dos listas de segmentos describen la misma ruta (comodines simétricos)? */
+function sameRoute(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    const y = b[i];
+    if (x.c || y.c || (x.v || '').startsWith(':') || (y.v || '').startsWith(':')) continue;
+    if (x.v !== y.v) return false;
+  }
+  return true;
+}
+
+/**
+ * INDICADOR 6 · enlaces_rotos
+ * Destinos de navegación que NINGUNA ruta registrada puede servir (caen al
+ * catch-all raíz → /panel):
+ *   CUENTA  · destino `navigate('/x')` / `to="/x"` sin ruta que case
+ *   EXCLUYE · tests · enlaces a assets (.md/.pdf/…) · el propio catch-all
+ *   TRATA   · segmentos computados (`${var}`, concatenación) como comodín →
+ *             no se marcan rotos si existe una ruta hermana del mismo patrón
+ *   TRATA   · redirects (`<Navigate>`) como rutas que SÍ sirven el destino
+ * NOTA DE CALIBRACIÓN · la auditoría (manual) reportó 11, pero su propia prosa
+ * enumera 10 destinos y contabiliza como rotos 2 que en realidad SÍ tienen ruta
+ * registrada (redirects con pérdida de intención: /inmuebles/cartera/*). Bajo
+ * la definición estricta y mecánica "sin ruta registrada", el valor honesto es
+ * menor. Ver ARREGLOS y el informe de entrega.
+ */
+function enlacesRotos() {
+  const dests = navDestinations();
+  const broken = [];
+  for (const [key, e] of dests) {
+    if (!routeServes(e.segs)) broken.push({ key, files: [...e.files].slice(0, 3) });
+  }
+  broken.sort((a, b) => a.key.localeCompare(b.key));
+  return { value: broken.length, detail: broken.map((b) => `${b.key}  ← ${b.files[0]}`) };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Guía de diseño V5
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * INDICADOR 7 · hex_hardcoded
+ * Colores `#RRGGBB` (6 dígitos) escritos a mano fuera del archivo de tokens:
+ *   CUENTA  · ocurrencias de `#RRGGBB` en .ts/.tsx/.css de producción
+ *   EXCLUYE · tests · `src/design-system/v5/tokens.css` (paleta canónica)
+ * OBJETIVO · baja. La auditoría reportó 902 (su recorte exacto no está
+ * especificado; aquí se documenta la regla mecánica y se mide en consecuencia).
+ */
+function hexHardcoded() {
+  const re = /#[0-9a-fA-F]{6}\b/g;
+  let count = 0;
+  for (const f of walk(SRC, (p) => /\.(ts|tsx|css)$/.test(p) && !isTestPath(p))) {
+    if (rel(f) === TOKENS_FILE) continue;
+    const src = read(f);
+    const m = src.match(re);
+    if (m) count += m.length;
+  }
+  return { value: count };
+}
+
+/**
+ * INDICADOR 8 · emojis_ui
+ * Emojis en componentes `.tsx` de pantalla (producción):
+ *   CUENTA  · caracteres en rangos emoji Unicode en .tsx no test
+ *   EXCLUYE · tests · .ts puros (lógica) · .css
+ * OBJETIVO · baja (~92 en la auditoría).
+ */
+function emojisUi() {
+  // Rangos emoji frecuentes (pictográficos, símbolos, dingbats, banderas)
+  const re =
+    /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F000}-\u{1F0FF}\u{FE00}-\u{FE0F}\u{1F1E6}-\u{1F1FF}]/gu;
+  let count = 0;
+  for (const f of walk(SRC, (p) => p.endsWith('.tsx') && !isTestPath(p))) {
+    const m = read(f).match(re);
+    if (m) count += m.length;
+  }
+  return { value: count };
+}
+
+/**
+ * INDICADOR 9 · iconos_no_lucide
+ * Imports de librerías de iconos distintas de `lucide-react`:
+ *   CUENTA  · imports de @heroicons / react-icons / @mui/icons / @fortawesome /
+ *             feather / react-feather en producción
+ *   EXCLUYE · tests · lucide-react (permitido)
+ * OBJETIVO · 0.
+ */
+function iconosNoLucide() {
+  const re = /from\s+['"](@heroicons|react-icons|@mui\/icons|@fortawesome|feather|react-feather)/;
+  const hits = [];
+  for (const f of prodFiles(['.ts', '.tsx'])) {
+    if (re.test(read(f))) hits.push(rel(f));
+  }
+  return { value: hits.length, detail: hits };
+}
+
+/**
+ * INDICADOR 10 · kpis_hardcoded
+ * Marcadores `TODO: conectar` en pantallas de KPI (Panel / dashboards):
+ *   CUENTA  · líneas con `TODO … conectar` en .tsx de producción
+ *   EXCLUYE · tests
+ * OBJETIVO · 0. La auditoría señaló 4 KPIs concretos del Panel; la regla
+ * mecánica cuenta todos los marcadores "TODO conectar" en pantalla.
+ */
+function kpisHardcoded() {
+  const re = /TODO:?\s*conectar/i;
+  let count = 0;
+  const detail = [];
+  for (const f of walk(SRC, (p) => p.endsWith('.tsx') && !isTestPath(p))) {
+    const lines = read(f).split('\n');
+    lines.forEach((l, i) => {
+      if (re.test(l)) {
+        count++;
+        if (detail.length < 20) detail.push(`${rel(f)}:${i + 1}`);
+      }
+    });
+  }
+  return { value: count, detail };
+}
+
+/**
+ * INDICADOR 11 · todos_totales
+ * Marcadores de deuda `TODO/FIXME/HACK/XXX` en src:
+ *   CUENTA  · ocurrencias en .ts/.tsx/.css de producción
+ *   EXCLUYE · tests
+ * OBJETIVO · baja (~332 en la auditoría).
+ */
+function todosTotales() {
+  const re = /\b(TODO|FIXME|HACK|XXX)\b/g;
+  let count = 0;
+  for (const f of walk(SRC, (p) => /\.(ts|tsx|css)$/.test(p) && !isTestPath(p))) {
+    const m = read(f).match(re);
+    if (m) count += m.length;
+  }
+  return { value: count };
+}
+
+/**
+ * INDICADOR 12 · archivos_800
+ * Archivos de código de más de 800 líneas (candidatos a trocear):
+ *   CUENTA  · .ts/.tsx de producción con > 800 líneas
+ *   EXCLUYE · tests · .css · .json
+ * OBJETIVO · baja (~49 en la auditoría).
+ */
+function archivos800() {
+  const big = [];
+  for (const f of prodFiles(['.ts', '.tsx'])) {
+    const n = read(f).split('\n').length;
+    if (n > 800) big.push({ f: rel(f), n });
+  }
+  big.sort((a, b) => b.n - a.n);
+  return { value: big.length, detail: big.slice(0, 15).map((b) => `${b.n} · ${b.f}`) };
+}
+
+/**
+ * INDICADOR 13 · pct_v5  (ÚNICO que SUBE · trinquete invertido)
+ * % de componentes .tsx de producción que importan el barrel `design-system/v5`:
+ *   NUMERADOR   · .tsx no test que contienen `design-system/v5`
+ *   DENOMINADOR · todos los .tsx no test
+ * OBJETIVO · sube. La auditoría midió 23,5 % (137/583).
+ */
+function pctV5() {
+  const tsx = walk(SRC, (p) => p.endsWith('.tsx') && !isTestPath(p));
+  const withV5 = tsx.filter((f) => /design-system\/v5/.test(read(f)));
+  const pct = tsx.length ? (withV5.length / tsx.length) * 100 : 0;
+  return {
+    value: Math.round(pct * 10) / 10,
+    detail: [`${withV5.length} / ${tsx.length} componentes`],
+  };
+}
+
+/**
+ * INDICADOR 14 · prs_abiertos
+ * PRs abiertos sin mergear. NO MEDIBLE desde Node puro (requiere la API de
+ * GitHub, fuera del alcance de un script de solo lectura del repo). Devuelve
+ * null · marca NO MEDIBLE (nunca 0). La auditoría reportó 51 vía GitHub.
+ */
+function prsAbiertos() {
+  return { value: null, note: 'NO MEDIBLE · requiere API de GitHub (fuera de Node puro)' };
+}
+
+/**
+ * INDICADOR 15 · tests_rojos
+ * Suites de test en rojo. Requiere `node_modules` (jest/react-scripts) y una
+ * ejecución pesada. Si no hay `node_modules`, NO MEDIBLE → null (nunca 0).
+ * Por defecto no ejecuta la suite (mantiene el marcador barato); si algún día
+ * se engancha a CI con deps instaladas, aquí iría la llamada al runner.
+ */
+function testsRojos() {
+  const hasNodeModules = fs.existsSync(path.join(ROOT, 'node_modules'));
+  if (!hasNodeModules) {
+    return { value: null, note: 'NO MEDIBLE · sin node_modules (jest no disponible)' };
+  }
+  return {
+    value: null,
+    note: 'NO MEDIBLE · ejecución de suite no automatizada en este marcador',
+  };
+}
+
+/**
+ * INDICADOR 16 · ccaa_no_verificadas
+ * Escalas autonómicas marcadas `verified: false` (sin auditar):
+ *   CUENTA  · ocurrencias de `verified: false` bajo services/fiscal/ccaaRules
+ *   EXCLUYE · tests
+ * OBJETIVO · 0 (~13 en la auditoría, por CCAA · aquí se cuentan ocurrencias).
+ */
+function ccaaNoVerificadas() {
+  const dir = path.join(SRC, 'services', 'fiscal', 'ccaaRules');
+  let count = 0;
+  const files = new Set();
+  for (const f of walk(dir, (p) => p.endsWith('.ts') && !isTestPath(p))) {
+    const m = read(f).match(/verified\s*:\s*false/g);
+    if (m) {
+      count += m.length;
+      files.add(rel(f));
+    }
+  }
+  return { value: count, detail: [`${files.size} archivos CCAA con verified:false`] };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Definición del marcador
+// ─────────────────────────────────────────────────────────────────────────
+
+// direction: 'down' = mejor bajar (empeora si sube) · 'up' = mejor subir
+const INDICATORS = [
+  { key: 'stores_fantasma', dir: 'down', obj: 0, fn: storesFantasma },
+  { key: 'stores_no_tipados', dir: 'down', obj: 0, fn: storesNoTipados },
+  { key: 'lecturas_store_inexistente', dir: 'down', obj: 0, fn: lecturasStoreInexistente },
+  { key: 'servicios_muertos', dir: 'down', obj: 0, fn: serviciosMuertos },
+  { key: 'rutas_huerfanas', dir: 'down', obj: null, fn: rutasHuerfanas },
+  { key: 'enlaces_rotos', dir: 'down', obj: 0, fn: enlacesRotos },
+  { key: 'hex_hardcoded', dir: 'down', obj: null, fn: hexHardcoded },
+  { key: 'emojis_ui', dir: 'down', obj: null, fn: emojisUi },
+  { key: 'iconos_no_lucide', dir: 'down', obj: 0, fn: iconosNoLucide },
+  { key: 'kpis_hardcoded', dir: 'down', obj: 0, fn: kpisHardcoded },
+  { key: 'todos_totales', dir: 'down', obj: null, fn: todosTotales },
+  { key: 'archivos_800', dir: 'down', obj: null, fn: archivos800 },
+  { key: 'pct_v5', dir: 'up', obj: null, fn: pctV5 },
+  { key: 'prs_abiertos', dir: 'down', obj: 0, fn: prsAbiertos },
+  { key: 'tests_rojos', dir: 'down', obj: 0, fn: testsRojos },
+  { key: 'ccaa_no_verificadas', dir: 'down', obj: 0, fn: ccaaNoVerificadas },
+];
+
+// ─────────────────────────────────────────────────────────────────────────
+// Ejecución, comparación y salida
+// ─────────────────────────────────────────────────────────────────────────
+
+const C = {
+  red: (s) => `\x1b[31m${s}\x1b[0m`,
+  green: (s) => `\x1b[32m${s}\x1b[0m`,
+  yellow: (s) => `\x1b[33m${s}\x1b[0m`,
+  gray: (s) => `\x1b[90m${s}\x1b[0m`,
+  bold: (s) => `\x1b[1m${s}\x1b[0m`,
+};
+
+function gitInfo() {
+  const run = (cmd) => {
+    try {
+      return execSync(cmd, { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString()
+        .trim();
+    } catch {
+      return null;
+    }
+  };
+  return { branch: run('git rev-parse --abbrev-ref HEAD'), head: run('git rev-parse --short HEAD') };
+}
+
+function todayISO() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** Busca el JSON de salud anterior más reciente (distinto del de hoy). */
+function previousReport(todayFile) {
+  if (!fs.existsSync(HEALTH_DIR)) return null;
+  const files = fs
+    .readdirSync(HEALTH_DIR)
+    .filter((f) => /^HEALTH-\d{4}-\d{2}-\d{2}\.json$/.test(f))
+    .sort();
+  const prior = files.filter((f) => path.join(HEALTH_DIR, f) !== todayFile);
+  if (!prior.length) return null;
+  try {
+    return JSON.parse(read(path.join(HEALTH_DIR, prior[prior.length - 1])));
+  } catch {
+    return null;
+  }
+}
+
+function measure() {
+  const indicators = {};
+  for (const ind of INDICATORS) {
+    let res;
+    try {
+      res = ind.fn();
+    } catch (e) {
+      res = { value: null, note: 'ERROR: ' + e.message };
+    }
+    indicators[ind.key] = {
+      value: res.value,
+      direction: ind.dir,
+      objetivo: ind.obj,
+      measurable: res.value !== null,
+      approx: res.approx || false,
+      note: res.note || null,
+      detail: res.detail || null,
+    };
+  }
+  return indicators;
+}
+
+/** Compara y decide si un indicador EMPEORÓ respecto al previo. */
+function worsened(dir, prev, cur) {
+  if (prev == null || cur == null) return false;
+  return dir === 'up' ? cur < prev : cur > prev;
+}
+
+function main() {
+  const args = process.argv.slice(2);
+  if (args.includes('--regresion')) return regresion();
+
+  const date = todayISO();
+  const outFile = path.join(HEALTH_DIR, `HEALTH-${date}.json`);
+  const indicators = measure();
+  const prev = previousReport(outFile);
+
+  const report = {
+    protocolo: 'GARANTIA-ATLAS-v1',
+    schema: 1,
+    date,
+    generatedAt: new Date().toISOString(),
+    git: gitInfo(),
+    indicators,
+  };
+
+  // Tabla
+  const W = 30;
+  console.log('\n' + C.bold('MARCADOR DE SALUD · ATLAS') + C.gray(`  ·  ${date}`));
+  console.log(
+    C.gray(`git ${report.git.branch || '?'} @ ${report.git.head || '?'}\n`)
+  );
+  console.log(
+    C.bold(
+      'indicador'.padEnd(W) +
+        'hoy'.padStart(9) +
+        'antes'.padStart(9) +
+        'Δ'.padStart(8) +
+        '  objetivo'
+    )
+  );
+  console.log(C.gray('─'.repeat(W + 9 + 9 + 8 + 12)));
+
+  let anyWorse = false;
+  for (const ind of INDICATORS) {
+    const cur = indicators[ind.key];
+    const p = prev?.indicators?.[ind.key];
+    const prevVal = p ? p.value : null;
+    const curStr = cur.value === null ? C.yellow('NO MEDIBLE') : String(cur.value);
+    const prevStr = prevVal === null || prevVal === undefined ? C.gray('—') : String(prevVal);
+    let deltaStr = C.gray('—');
+    if (cur.value !== null && prevVal !== null && prevVal !== undefined) {
+      const d = Math.round((cur.value - prevVal) * 10) / 10;
+      if (d === 0) deltaStr = C.gray('0');
+      else {
+        const w = worsened(ind.dir, prevVal, cur.value);
+        const sign = d > 0 ? '+' : '';
+        deltaStr = w ? C.red(sign + d + ' ▲') : C.green(sign + d);
+        if (w) anyWorse = true;
+      }
+    }
+    const objStr =
+      ind.obj === null ? (ind.dir === 'up' ? 'sube' : 'baja') : String(ind.obj);
+    const arrow = ind.dir === 'up' ? '↑' : '↓';
+    const name = (ind.key + (cur.approx ? ' ~' : '')).padEnd(W);
+    console.log(
+      name +
+        curStr.padStart(cur.value === null ? 18 : 9) +
+        prevStr.padStart(prevVal === null || prevVal === undefined ? 18 : 9) +
+        deltaStr.padStart(deltaStr === C.gray('—') ? 17 : 16) +
+        `  ${arrow} ${objStr}`
+    );
+  }
+  console.log(C.gray('─'.repeat(W + 9 + 9 + 8 + 12)));
+
+  // Prueba de aceptación de la propia construcción del marcador (§6)
+  const acc = {
+    stores_fantasma: [indicators.stores_fantasma.value, 4],
+    lecturas_store_inexistente: [indicators.lecturas_store_inexistente.value, 2],
+    enlaces_rotos: [indicators.enlaces_rotos.value, 11],
+  };
+  console.log('\n' + C.bold('Calibración vs auditoría 2026-07 (esperado 4·2·11):'));
+  for (const [k, [got, exp]] of Object.entries(acc)) {
+    const ok = got === exp;
+    console.log(
+      `  ${ok ? C.green('OK ') : C.yellow('≠  ')} ${k.padEnd(30)} medido=${got}  esperado=${exp}`
+    );
+  }
+
+  if (!args.includes('--no-write')) {
+    fs.mkdirSync(HEALTH_DIR, { recursive: true });
+    fs.writeFileSync(outFile, JSON.stringify(report, null, 2) + '\n');
+    console.log('\n' + C.gray('escrito → ' + rel(outFile)));
+  }
+
+  if (anyWorse) {
+    console.log('\n' + C.red('✗ TRINQUETE: al menos un indicador empeoró respecto al previo.'));
+    process.exit(1);
+  } else if (prev) {
+    console.log('\n' + C.green('✓ Trinquete OK: ningún indicador empeoró.'));
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Regresión · re-ejecuta ARREGLOS-CERTIFICADOS.md
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Parsea docs/health/ARREGLOS-CERTIFICADOS.md y re-ejecuta cada comando de la
+ * columna "Comando de verificación", comparando su salida con "Esperado".
+ * Formato de fila esperado (columnas separadas por '|'):
+ *   | fecha | qué se arregló | `comando` | `esperado` |
+ * Si algún comando no devuelve lo esperado, un arreglo antiguo se rompió.
+ */
+function regresion() {
+  const file = path.join(HEALTH_DIR, 'ARREGLOS-CERTIFICADOS.md');
+  if (!fs.existsSync(file)) {
+    console.log(C.yellow('No existe ARREGLOS-CERTIFICADOS.md · nada que regresar.'));
+    return;
+  }
+  const rows = read(file)
+    .split('\n')
+    .filter((l) => l.trim().startsWith('|'))
+    .map((l) => l.split('|').map((c) => c.trim()))
+    // columnas: ['', fecha, que, comando, esperado, '']
+    .filter((c) => c.length >= 6 && c[1] && !/^-+$/.test(c[1]) && c[1] !== 'Fecha');
+
+  if (!rows.length) {
+    console.log(C.gray('Registro de arreglos vacío · 0 comandos que re-ejecutar. (OK)'));
+    return;
+  }
+
+  console.log(C.bold(`\nREGRESIÓN · ${rows.length} arreglo(s) certificado(s)\n`));
+  let failed = 0;
+  for (const cols of rows) {
+    const que = cols[2];
+    const cmd = cols[3].replace(/^`|`$/g, '').trim();
+    const esperado = cols[4].replace(/^`|`$/g, '').trim();
+    let out;
+    try {
+      out = execSync(cmd, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] })
+        .toString()
+        .trim();
+    } catch (e) {
+      out = (e.stdout ? e.stdout.toString() : '').trim() || 'ERROR: ' + e.message;
+    }
+    const ok = out === esperado;
+    if (!ok) failed++;
+    console.log(
+      `  ${ok ? C.green('OK ') : C.red('FAIL')}  ${que}\n` +
+        C.gray(`       $ ${cmd}\n`) +
+        C.gray(`       esperado: ${esperado}   ·   obtenido: ${out.replace(/\n/g, ' ')}`)
+    );
+  }
+  console.log('');
+  if (failed) {
+    console.log(C.red(`✗ ${failed} arreglo(s) roto(s). Una regresión antigua ha reaparecido.`));
+    process.exit(1);
+  }
+  console.log(C.green('✓ Todos los arreglos certificados siguen verdes.'));
+}
+
+main();
