@@ -2,11 +2,21 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T17:55:29.113Z",
+  "generatedAt": "2026-07-18T18:15:15.882Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "50dc79e"
+    "head": "6592269"
   },
+  "gobernanza": "La definición de un indicador solo se recalibra ANTES de una tarea de arreglo, nunca durante · autorización explícita de Jose · registro obligatorio.",
+  "recalibraciones": [
+    {
+      "indicador": "kpis_hardcoded",
+      "fecha": "2026-07-18",
+      "anterior": 17,
+      "nueva": 9,
+      "motivo": "Definición A+B: solo placeholders vivos junto a un valor renderizado (comentarios // y JSX {/* */}); se excluyen las 8 menciones en cabeceras JSDoc /** */ (grupo C). Sin restricción por archivo."
+    }
+  ],
   "indicators": {
     "stores_fantasma": {
       "value": 4,
@@ -20,7 +30,8 @@
         "operacionesFiscales",
         "fiscalSummaries",
         "gastos"
-      ]
+      ],
+      "calibracion": null
     },
     "stores_no_tipados": {
       "value": 3,
@@ -33,7 +44,8 @@
         "gastosInmueble",
         "mejorasInmueble",
         "mueblesInmueble"
-      ]
+      ],
+      "calibracion": null
     },
     "lecturas_store_inexistente": {
       "value": 2,
@@ -45,7 +57,8 @@
       "detail": [
         "src/services/migracionGastosService.ts · getAll('fiscalSummaries')",
         "src/services/migracionGastosService.ts · getAll('operacionesFiscales')"
-      ]
+      ],
+      "calibracion": null
     },
     "servicios_muertos": {
       "value": 33,
@@ -88,7 +101,8 @@
         "src/services/unifiedOcrService.ts",
         "src/services/vinculosAccesorioService.ts",
         "src/services/wordToPdfService.ts"
-      ]
+      ],
+      "calibracion": null
     },
     "rutas_huerfanas": {
       "value": 19,
@@ -117,7 +131,8 @@
         "/ajustes/integraciones",
         "/ajustes/notificaciones",
         "/ajustes/avisos"
-      ]
+      ],
+      "calibracion": null
     },
     "enlaces_rotos": {
       "value": 8,
@@ -135,7 +150,8 @@
         "/settings  ← src/components/common/CommandPalette.tsx",
         "/tax  ← src/components/common/CommandPalette.tsx",
         "/treasury  ← src/components/common/CommandPalette.tsx"
-      ]
+      ],
+      "calibracion": null
     },
     "hex_hardcoded": {
       "value": 974,
@@ -144,7 +160,8 @@
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": null
+      "detail": null,
+      "calibracion": null
     },
     "emojis_ui": {
       "value": 124,
@@ -153,7 +170,8 @@
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": null
+      "detail": null,
+      "calibracion": null
     },
     "iconos_no_lucide": {
       "value": 0,
@@ -162,34 +180,33 @@
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": []
+      "detail": [],
+      "calibracion": null
     },
     "kpis_hardcoded": {
-      "value": 17,
+      "value": 9,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "src/modules/panel/PanelPage.tsx:312",
         "src/modules/panel/PanelPage.tsx:330",
-        "src/modules/panel/PanelPage.tsx:418",
-        "src/modules/panel/PanelPage.tsx:421",
-        "src/modules/panel/PanelPage.tsx:422",
         "src/modules/panel/PanelPage.tsx:610",
         "src/modules/panel/PanelPage.tsx:622",
         "src/modules/panel/PanelPage.tsx:634",
-        "src/modules/panel/components/MiPlanCompass.tsx:9",
-        "src/modules/panel/components/MiPlanCompass.tsx:14",
         "src/modules/panel/components/MiPlanCompass.tsx:122",
         "src/modules/panel/components/PulseAssetCard.tsx:117",
-        "src/modules/panel/components/PulsoDelMes.tsx:12",
-        "src/modules/panel/components/PulsoDelMes.tsx:30",
         "src/modules/panel/components/PulsoDelMes.tsx:92",
         "src/modules/panel/components/YearTimeline.tsx:114",
         "src/modules/panel/components/YearTimeline.tsx:156"
-      ]
+      ],
+      "calibracion": {
+        "fecha": "2026-07-18",
+        "anterior": 17,
+        "nueva": 9,
+        "motivo": "Definición A+B: solo placeholders vivos junto a un valor renderizado (comentarios // y JSX {/* */}); se excluyen las 8 menciones en cabeceras JSDoc /** */ (grupo C). Sin restricción por archivo."
+      }
     },
     "todos_totales": {
       "value": 270,
@@ -198,7 +215,8 @@
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": null
+      "detail": null,
+      "calibracion": null
     },
     "archivos_800": {
       "value": 49,
@@ -223,7 +241,8 @@
         "1499 · src/components/treasury/MesDetalleDrawer.tsx",
         "1461 · src/services/declaracionOnboardingService.ts",
         "1435 · src/services/treasuryConfirmationService.ts"
-      ]
+      ],
+      "calibracion": null
     },
     "pct_v5": {
       "value": 23.5,
@@ -234,7 +253,8 @@
       "note": null,
       "detail": [
         "137 / 583 componentes"
-      ]
+      ],
+      "calibracion": null
     },
     "prs_abiertos": {
       "value": null,
@@ -243,7 +263,8 @@
       "measurable": false,
       "approx": false,
       "note": "NO MEDIBLE · requiere API de GitHub (fuera de Node puro)",
-      "detail": null
+      "detail": null,
+      "calibracion": null
     },
     "tests_rojos": {
       "value": null,
@@ -252,7 +273,8 @@
       "measurable": false,
       "approx": false,
       "note": "NO MEDIBLE · sin node_modules (jest no disponible)",
-      "detail": null
+      "detail": null,
+      "calibracion": null
     },
     "ccaa_no_verificadas": {
       "value": 18,
@@ -263,7 +285,8 @@
       "note": null,
       "detail": [
         "15 archivos CCAA con verified:false"
-      ]
+      ],
+      "calibracion": null
     }
   }
 }

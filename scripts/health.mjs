@@ -30,6 +30,9 @@ import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 
 const ROOT = process.cwd();
+// Modo CI: `npm run health:ci` (--with-tests) autoriza ejecutar la suite de
+// tests para medir `tests_rojos` (solo si hay node_modules). Ver testsRojos().
+const WITH_TESTS = process.argv.includes('--with-tests');
 const SRC = path.join(ROOT, 'src');
 const HEALTH_DIR = path.join(ROOT, 'docs', 'health');
 const DB_FILE = path.join(SRC, 'services', 'db.ts');
@@ -441,11 +444,14 @@ function sameRoute(a, b) {
  *   TRATA   · segmentos computados (`${var}`, concatenación) como comodín →
  *             no se marcan rotos si existe una ruta hermana del mismo patrón
  *   TRATA   · redirects (`<Navigate>`) como rutas que SÍ sirven el destino
- * NOTA DE CALIBRACIÓN · la auditoría (manual) reportó 11, pero su propia prosa
- * enumera 10 destinos y contabiliza como rotos 2 que en realidad SÍ tienen ruta
- * registrada (redirects con pérdida de intención: /inmuebles/cartera/*). Bajo
- * la definición estricta y mecánica "sin ruta registrada", el valor honesto es
- * menor. Ver ARREGLOS y el informe de entrega.
+ * CALIBRACIÓN (autorizada por Jose · opción 1 · estricta) · baseline = 8.
+ * El "11" de la auditoría era una CIFRA MANUAL IMPRECISA, no una medición: su
+ * propia prosa enumera solo 10 destinos, y 2 de ellos (/inmuebles/cartera/nuevo
+ * y /inmuebles/cartera/:id) SÍ tienen ruta registrada (redirects a /inmuebles,
+ * App.tsx:861) → bajo esta definición NO son enlaces rotos. Esos 2 casos NO
+ * entran en este indicador, pero SÍ en la lista de arreglos del bloque 1 como
+ * "pierden la intención del usuario · redirect catch-all". Los 8 que sí cuentan
+ * son inequívocos (ver detail del JSON).
  */
 function enlacesRotos() {
   const dests = navDestinations();
@@ -519,11 +525,24 @@ function iconosNoLucide() {
 
 /**
  * INDICADOR 10 · kpis_hardcoded
- * Marcadores `TODO: conectar` en pantallas de KPI (Panel / dashboards):
- *   CUENTA  · líneas con `TODO … conectar` en .tsx de producción
+ * Placeholders vivos `TODO: conectar` que acompañan a un valor RENDERIZADO:
+ *   CUENTA  · línea con `TODO … conectar` que sea comentario de línea `//`
+ *             o comentario JSX inline `{/* … *​/}` (grupo A: 4 tarjetas KPI del
+ *             Panel · grupo B: 5 placeholders vivos en otros widgets/módulos)
  *   EXCLUYE · tests
- * OBJETIVO · 0. La auditoría señaló 4 KPIs concretos del Panel; la regla
- * mecánica cuenta todos los marcadores "TODO conectar" en pantalla.
+ *   EXCLUYE · líneas dentro de un bloque JSDoc/`/* … *​/` (grupo C: 8 menciones
+ *             en cabeceras de componente o prop) — se detectan porque su
+ *             contenido, tras `trim()`, empieza por `*` o `/*`. Describen la
+ *             intención en documentación, no son un KPI distinto en pantalla.
+ *   NO restringe por archivo · si mañana aparece un placeholder vivo en otro
+ *             módulo, DEBE contar.
+ * OBJETIVO · 0.
+ *
+ * RECALIBRACIÓN 2026-07-18 · definición ANTERIOR = 17 (toda línea "TODO
+ * conectar", incluidas cabeceras JSDoc) · NUEVA = 9 (solo placeholders vivos,
+ * A+B). Motivo: la definición vieja mezclaba documentación con KPIs vivos e
+ * inflaba el indicador. Autorizada por Jose ANTES de cualquier tarea de
+ * arreglo (ver GOBERNANZA DE RECALIBRACIÓN más abajo).
  */
 function kpisHardcoded() {
   const re = /TODO:?\s*conectar/i;
@@ -532,13 +551,26 @@ function kpisHardcoded() {
   for (const f of walk(SRC, (p) => p.endsWith('.tsx') && !isTestPath(p))) {
     const lines = read(f).split('\n');
     lines.forEach((l, i) => {
-      if (re.test(l)) {
-        count++;
-        if (detail.length < 20) detail.push(`${rel(f)}:${i + 1}`);
-      }
+      if (!re.test(l)) return;
+      const t = l.trim();
+      if (t.startsWith('*') || t.startsWith('/*')) return; // bloque JSDoc (grupo C)
+      count++;
+      if (detail.length < 20) detail.push(`${rel(f)}:${i + 1}`);
     });
   }
-  return { value: count, detail };
+  return {
+    value: count,
+    detail,
+    calibracion: {
+      fecha: '2026-07-18',
+      anterior: 17,
+      nueva: count,
+      motivo:
+        'Definición A+B: solo placeholders vivos junto a un valor renderizado ' +
+        '(comentarios // y JSX {/* */}); se excluyen las 8 menciones en ' +
+        'cabeceras JSDoc /** */ (grupo C). Sin restricción por archivo.',
+    },
+  };
 }
 
 /**
@@ -604,20 +636,49 @@ function prsAbiertos() {
 
 /**
  * INDICADOR 15 · tests_rojos
- * Suites de test en rojo. Requiere `node_modules` (jest/react-scripts) y una
- * ejecución pesada. Si no hay `node_modules`, NO MEDIBLE → null (nunca 0).
- * Por defecto no ejecuta la suite (mantiene el marcador barato); si algún día
- * se engancha a CI con deps instaladas, aquí iría la llamada al runner.
+ * Suites de test en rojo (Test Suites failed).
+ *   MODO CI · con `npm run health:ci` (--with-tests) Y `node_modules` presente,
+ *             ejecuta `react-scripts test` en modo CI y cuenta suites en rojo.
+ *   POR DEFECTO · `npm run health` NO ejecuta la suite (marcador barato) →
+ *             NO MEDIBLE. Sin `node_modules` → NO MEDIBLE (nunca 0).
+ * El script NUNCA instala dependencias (§6): la instalación va fuera (CI).
+ * NOTA · el camino que ejecuta jest se ejercita en CI (donde hay deps); en un
+ * entorno sin node_modules solo se ejercita el camino NO MEDIBLE.
  */
 function testsRojos() {
   const hasNodeModules = fs.existsSync(path.join(ROOT, 'node_modules'));
   if (!hasNodeModules) {
     return { value: null, note: 'NO MEDIBLE · sin node_modules (jest no disponible)' };
   }
-  return {
-    value: null,
-    note: 'NO MEDIBLE · ejecución de suite no automatizada en este marcador',
-  };
+  if (!WITH_TESTS) {
+    return {
+      value: null,
+      note: 'NO MEDIBLE · usa `npm run health:ci` (--with-tests) para ejecutar la suite',
+    };
+  }
+  let out;
+  try {
+    out = execSync('npx --no-install react-scripts test --watchAll=false 2>&1', {
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 20 * 60 * 1000, // corta cuelgues: 20 min
+      env: { ...process.env, CI: 'true' },
+    }).toString();
+  } catch (e) {
+    // jest sale con código != 0 cuando hay tests en rojo: NO es un fallo de
+    // medición · su salida trae el resumen "Test Suites: X failed".
+    out =
+      ((e.stdout ? e.stdout.toString() : '') + (e.stderr ? e.stderr.toString() : '')).trim();
+    if (!out) {
+      return { value: null, note: 'NO MEDIBLE · runner sin salida (¿timeout/cuelgue?): ' + e.message };
+    }
+  }
+  const failed = out.match(/Test Suites:[^\n]*?(\d+)\s+failed/);
+  if (failed) return { value: Number(failed[1]), note: 'medido vía react-scripts test (CI)' };
+  if (/Test Suites:[^\n]*\d+\s+passed/.test(out)) {
+    return { value: 0, note: 'medido vía react-scripts test (CI) · todas verdes' };
+  }
+  return { value: null, note: 'NO MEDIBLE · no se pudo parsear el resumen de jest' };
 }
 
 /**
@@ -644,6 +705,21 @@ function ccaaNoVerificadas() {
 // ─────────────────────────────────────────────────────────────────────────
 // Definición del marcador
 // ─────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────
+// GOBERNANZA DE RECALIBRACIÓN
+// ─────────────────────────────────────────────────────────────────────────
+// La DEFINICIÓN de un indicador (qué cuenta / qué excluye) SOLO puede cambiarse
+// ANTES de lanzar una tarea de arreglo, NUNCA durante. Si se pudiera recalibrar
+// a mitad de un arreglo, el trinquete sería burlable: bastaría relajar la regla
+// para que un indicador "bajara" sin tocar el código. Toda recalibración:
+//   1. la autoriza Jose explícitamente, antes de la tarea;
+//   2. queda registrada (anterior · nueva · fecha · motivo) en el campo
+//      `calibracion` del indicador y se agrega a `recalibraciones` del JSON;
+//   3. se documenta en el docstring del indicador.
+const GOBERNANZA_RECALIBRACION =
+  'La definición de un indicador solo se recalibra ANTES de una tarea de ' +
+  'arreglo, nunca durante · autorización explícita de Jose · registro obligatorio.';
 
 // direction: 'down' = mejor bajar (empeora si sube) · 'up' = mejor subir
 const INDICATORS = [
@@ -729,6 +805,7 @@ function measure() {
       approx: res.approx || false,
       note: res.note || null,
       detail: res.detail || null,
+      calibracion: res.calibracion || null,
     };
   }
   return indicators;
@@ -749,12 +826,19 @@ function main() {
   const indicators = measure();
   const prev = previousReport(outFile);
 
+  const recalibraciones = INDICATORS.filter((i) => indicators[i.key].calibracion).map((i) => ({
+    indicador: i.key,
+    ...indicators[i.key].calibracion,
+  }));
+
   const report = {
     protocolo: 'GARANTIA-ATLAS-v1',
     schema: 1,
     date,
     generatedAt: new Date().toISOString(),
     git: gitInfo(),
+    gobernanza: GOBERNANZA_RECALIBRACION,
+    recalibraciones,
     indicators,
   };
 
