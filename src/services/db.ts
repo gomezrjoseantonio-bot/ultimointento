@@ -2371,8 +2371,10 @@ interface AtlasHorizonDB {
   planesPensiones: PlanPensiones;            // V65: entidad estable plan (UUID)
   aportacionesPlan: AportacionPlan;          // V65: eventos aportación (3 roles)
   traspasosPlanPensiones: TraspasoPlanPensiones; // V65: eventos traspaso fiscal neutro
-  // traspasosPlanes: ELIMINADO del schema (bloque 2.4) — store legacy retirado en V65,
-  //   nunca creado en DBs frescas (guard oldVersion<65); lifecycle de upgrade eliminado.
+  // traspasosPlanes: TIPO fuera del schema (bloque 2.4) — store legacy retirado en V65,
+  //   nunca creado en DBs frescas (guard oldVersion<65). El lifecycle de upgrade
+  //   (create→migrar→delete) se CONSERVA: lo verifica dbV65Migration.test.ts. El resto
+  //   `deleteObjectStore` queda pendiente de decisión de Jose (retirar migración+test a la vez).
   // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' (+metadata.otro)
   // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
   // patronGastosPersonales: ELIMINADO en V62 (sub-tarea 3) — futuro compromisosRecurrentes · 7 registros
@@ -2962,10 +2964,19 @@ export const initDB = async () => {
 
         // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
 
-        // planesPensionInversion: solo en DBs con oldVersion < 65 (para migraciones);
-        // en DBs frescas V65 no se crea.
-        // (bloque 2.4: el sub-bloque legacy de `traspasosPlanes` se eliminó · store
-        //  retirado en V65, tipo fuera del schema, lifecycle completo eliminado.)
+        // planesPensionInversion + traspasosPlanes: solo en DBs con oldVersion < 65
+        // (para migraciones); en DBs frescas V65 no se crean.
+        //
+        // NOTA bloque 2.4 · el TIPO `traspasosPlanes` sale de la interfaz (era legacy),
+        // pero el LIFECYCLE de upgrade (create → migrar → delete, todo bajo oldVersion<65)
+        // se CONSERVA: está verificado por `dbV65Migration.test.ts` ('should migrate
+        // traspasosPlanes to traspasosPlanPensiones'), que puebla un store `traspasosPlanes`
+        // en una DB v64 y comprueba que la migración v65 lo vuelca y lo borra. Quitar el
+        // `deleteObjectStore` (resto que pedía la tarea) rompería ese test y eliminaría
+        // cobertura de una migración de datos real. Como la interfaz NO es un DBSchema real
+        // (StoreNames=string), estas llamadas compilan aunque el tipo no exista. Se deja el
+        // resto de `traspasosPlanes` para decisión de Jose (retirar migración + su test a la
+        // vez, o conservarlos). Ver PR bloque 2.
         if (oldVersion > 0 && oldVersion < 65) {
           if (!db.objectStoreNames.contains('planesPensionInversion')) {
             const planesLegacyStore = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
@@ -2975,10 +2986,20 @@ export const initDB = async () => {
             planesLegacyStore.createIndex('esHistorico', 'esHistorico', { unique: false });
             planesLegacyStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
           }
+
+          // V5.2: Traspasos entre planes de pensiones (legacy · tipo fuera del schema en 2.4)
+          if (!db.objectStoreNames.contains('traspasosPlanes')) {
+            const traspasosLegacyStore = db.createObjectStore('traspasosPlanes', { keyPath: 'id', autoIncrement: true });
+            traspasosLegacyStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+            traspasosLegacyStore.createIndex('planOrigenId', 'planOrigenId', { unique: false });
+            traspasosLegacyStore.createIndex('planDestinoId', 'planDestinoId', { unique: false });
+            traspasosLegacyStore.createIndex('fecha', 'fecha', { unique: false });
+          }
         }
 
         // V65 (TAREA 13): módulo planes de pensiones · stores nuevos
         // planesPensionInversion: se elimina en V65 para DBs frescas — véase bloque upgrade
+        // traspasosPlanes: se elimina en V65 para DBs frescas — véase bloque upgrade
 
         if (!db.objectStoreNames.contains('planesPensiones')) {
           const planesStore = db.createObjectStore('planesPensiones', { keyPath: 'id' });
@@ -4310,13 +4331,42 @@ export const initDB = async () => {
               }
             }
 
-            // 2c. Migrar traspasosPlanes → traspasosPlanPensiones: ELIMINADO (bloque 2.4).
-            //     Store legacy retirado en V65; tipo fuera del schema; sin DBs antiguas
-            //     que migrar (usuario único en v79).
+            // 2c. Migrar traspasosPlanes → traspasosPlanPensiones
+            //     (tipo fuera del schema en bloque 2.4; lifecycle conservado · verificado
+            //      por dbV65Migration.test.ts · ver nota en el bloque de creación arriba)
+            if (
+              db.objectStoreNames.contains('traspasosPlanes') &&
+              db.objectStoreNames.contains('traspasosPlanPensiones')
+            ) {
+              try {
+                const srcT = (transaction as any).objectStore('traspasosPlanes');
+                const dstT = transaction.objectStore('traspasosPlanPensiones');
+                const traspasos = (await srcT.getAll()) as Array<Record<string, unknown>>;
+                for (const t of traspasos) {
+                  const nuevoT: Record<string, unknown> = {
+                    planId: String(t.planOrigenId ?? ''),
+                    fechaEjecucion: String(t.fecha ?? ahora.slice(0, 10)),
+                    gestoraOrigen: String(t.planOrigenEntidad ?? ''),
+                    gestoraDestino: String(t.planDestinoEntidad ?? ''),
+                    importeTraspasado: Number(t.importe ?? 0),
+                    esTotal: Boolean(t.esTotal),
+                    notas: t.notas,
+                    fechaCreacion: String(t.fechaCreacion ?? ahora),
+                    fechaActualizacion: ahora,
+                  };
+                  try { await dstT.add(nuevoT as any); } catch { /* skip */ }
+                }
+              } catch (err) {
+                console.warn('[DB V65] migración traspasosPlanes→traspasosPlanPensiones falló:', err);
+              }
+            }
 
             // 3. Eliminar stores legacy
             if (db.objectStoreNames.contains('planesPensionInversion')) {
               db.deleteObjectStore('planesPensionInversion');
+            }
+            if (db.objectStoreNames.contains('traspasosPlanes')) {
+              db.deleteObjectStore('traspasosPlanes');
             }
           })();
         }
