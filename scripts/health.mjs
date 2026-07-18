@@ -261,11 +261,23 @@ function lecturasStoreInexistente() {
  * Archivos en `src/services/` (nivel superior) que NADIE importa fuera de su
  * propio test:
  *   CUENTA  · `services/*.ts` (no test) cuyo basename no aparece en ningún
- *             `from '…/basename'` ni `import('…/basename')` de otro archivo src
+ *             `from '…/basename'`, `import('…/basename')` ni
+ *             `require('…/basename')` de otro archivo src
  *   EXCLUYE · tests · el propio archivo · `index.ts` · `*.d.ts`
- * NOTA · es un SUELO (cota inferior): no detecta importadores que ya estén
- * muertos aguas arriba, ni re-exports por barrel. La auditoría (manual) lo
- * fijó en 30.
+ *
+ * DETECCIÓN ENDURECIDA (autorizado por Jose · 2026-07-18): se añade `require(`.
+ * Antes de esta pasada la cifra era 33, la auditoría manual daba 30. Se verificó
+ * INDIVIDUALMENTE cada uno de los 33 → **cero falsos muertos**: los 6 con
+ * mención al basename (budgetMatchingService, fiscalLifecycleService,
+ * fiscalYearLifecycleService, loanInterestService, loanService,
+ * transferDetectionService) solo aparecen en **comentarios/doc-strings**, no en
+ * imports; y los 3 que la auditoría no listaba (documentValidationService,
+ * documentaiClient, unicornioInboxProcessor) tienen **0 referencias** (archivos
+ * reales de 10-28 KB). Conclusión: la cifra 33 es CORRECTA; el 30 de la
+ * auditoría era un INFRA-conteo, no había falsos muertos. Endurecer la detección
+ * no baja el número (nadie usa `require` sobre estos). Por eso NO se registra
+ * recalibración: no hubo estrechamiento real. Los 33 están verificados como
+ * seguros de borrar en el bloque 3.
  */
 function serviciosMuertos() {
   const svcDir = path.join(SRC, 'services');
@@ -283,7 +295,7 @@ function serviciosMuertos() {
   for (const svc of services) {
     const name = path.basename(svc, '.ts');
     const importRe = new RegExp(
-      `(from|import)\\s*\\(?\\s*['"][^'"]*\\/${name}['"]`
+      `(from|import|require)\\s*\\(?\\s*['"][^'"]*\\/${name}['"]`
     );
     let imported = false;
     for (const [f, c] of contents) {
@@ -623,6 +635,15 @@ function iconosNoLucide() {
  * A+B). Motivo: la definición vieja mezclaba documentación con KPIs vivos e
  * inflaba el indicador. Autorizada por Jose ANTES de cualquier tarea de
  * arreglo (ver GOBERNANZA DE RECALIBRACIÓN más abajo).
+ *
+ * LIMITACIÓN CONOCIDA (auditoría puntos ciegos · confirmada, NO ampliable):
+ * el PEOR caso — un número clavado en una tarjeta SIN comentario `TODO`
+ * (`1.284 €` inventado, sin origen en props/estado) — es INVISIBLE a este
+ * indicador y NO es mecanizable limpio (buscar literales de importe/porcentaje
+ * daría un ruido enorme: fechas, cálculos, IDs, ejemplos). Decisión de Jose:
+ * NO se amplía con una regla ruidosa. Se resolverá por REVISIÓN MANUAL de las
+ * tarjetas KPI dentro del rediseño del Panel. Este `9` mide solo los
+ * placeholders que llevan `TODO`.
  */
 function kpisHardcoded() {
   const re = /TODO:?\s*conectar/i;
