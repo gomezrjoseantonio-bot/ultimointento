@@ -1054,14 +1054,16 @@ function regresion() {
     if (!l.trim().startsWith('|')) continue;
     if (/^\s*\|\s*-+/.test(l)) continue; // separador de tabla
     if (/\|\s*Fecha\s*\|/.test(l)) continue; // cabecera
-    const spans = [...l.matchAll(/`([^`]*)`/g)].map((m) => m[1]);
-    if (spans.length < 2) continue; // fila sin comando+esperado (p. ej. nota)
+    const matches = [...l.matchAll(/`([^`]*)`/g)];
+    if (matches.length < 2) continue; // fila sin comando+esperado (p. ej. nota)
+    // Comando y esperado son SIEMPRE las dos ÚLTIMAS secuencias `…` de la fila.
     // `\|` en la celda (escape de tubería para que GitHub renderice la tabla)
     // se convierte en `|` real para el shell / grep -E.
-    const cmd = spans[spans.length - 2].replace(/\\\|/g, '|').trim();
-    const esperado = spans[spans.length - 1].replace(/\\\|/g, '|').trim();
-    // "qué": texto de la 2ª columna (antes del 1er backtick), sin tuberías
-    const que = (l.split('`')[0].split('|')[2] || '').trim();
+    const cmd = matches[matches.length - 2][1].replace(/\\\|/g, '|').trim();
+    const esperado = matches[matches.length - 1][1].replace(/\\\|/g, '|').trim();
+    // "qué" = 2ª columna del texto ANTES de que empiece el comando (así el
+    // inline code de "qué", p. ej. `fiscalSummaries`, no trunca el mensaje).
+    const que = (l.slice(0, matches[matches.length - 2].index).split('|')[2] || '').trim();
     rows.push({ que, cmd, esperado });
   }
 
