@@ -29,7 +29,7 @@ import type { AvisoCerrado } from '../types/avisosUsuario';
 import type { ObjetivoVital } from '../types/objetivosVitales';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 79; // V79 (onboarding día 0 · hueco 5.1): campo raíz nuevo `Property.estructuraCompra` (decisión Jose · NO anidado en `aeatAmortization` fiscal del pasado · §1) con 3 opcionales `aportacionPropia` (lo que el usuario puso), `importeFinanciado` (lo financiado) y `prestamoVinculadoId` (FK string a `Prestamo.id` uuid · NO number · decisión Jose D1). Migración no destructiva: campo opcional sin reescritura · properties existentes quedan con `estructuraCompra` undefined (no-op en el upgrade callback). 45 stores totales. // V78 (refactor modelo alquileres v3): nuevo store `botesAnualesSinIdentificar` (Camino 2 del wizard XML AEAT) + campo persistido `Property.modoExplotacion` (piso_completo/por_habitaciones/mixto) + campo `Contract.inquilino.cotitulares[]` (N NIFs en piso completo). Migración post-upgrade idempotente: deriva `modoExplotacion` del legacy `alquilerPorHabitaciones.activo`, inicializa `cotitulares=[]`, y elimina Contracts huérfanos `estadoContrato='sin_identificar'` + sus treasuryEvents en cascada (decisión Jose · reimportar limpio).
+const DB_VERSION = 79; // V79 (onboarding día 0 · hueco 5.1): campo raíz nuevo `Property.estructuraCompra` (decisión Jose · NO anidado en `aeatAmortization` fiscal del pasado · §1) con 3 opcionales `aportacionPropia` (lo que el usuario puso), `importeFinanciado` (lo financiado) y `prestamoVinculadoId` (FK string a `Prestamo.id` uuid · NO number · decisión Jose D1). Migración no destructiva: campo opcional sin reescritura · properties existentes quedan con `estructuraCompra` undefined (no-op en el upgrade callback). 45 stores físicos en v79 (conteo canónico documentado sobre `interface AtlasHorizonDB`). // V78 (refactor modelo alquileres v3): nuevo store `botesAnualesSinIdentificar` (Camino 2 del wizard XML AEAT) + campo persistido `Property.modoExplotacion` (piso_completo/por_habitaciones/mixto) + campo `Contract.inquilino.cotitulares[]` (N NIFs en piso completo). Migración post-upgrade idempotente: deriva `modoExplotacion` del legacy `alquilerPorHabitaciones.activo`, inicializa `cotitulares=[]`, y elimina Contracts huérfanos `estadoContrato='sin_identificar'` + sus treasuryEvents en cascada (decisión Jose · reimportar limpio).
 // V77 (wizard import XML V2 · pilar 1): añade campos opcionales a `properties` para explotación/tipología (subtipoVivienda, anexos.plazasParking, explotacion{estadoOperativo, unidadesArrendables}). Se mapea sobre campos existentes (tipoActivo, anexos, usoTipo, alquilerPorHabitaciones) en lugar de duplicar. Migración suave · sin cambios de stores/índices · inmuebles pre-V77 quedan con los campos undefined. 44 stores totales (sin cambio · los 5 stores fiscales NO se eliminan: tienen lectores/escritores vivos).
 
 function ensureIndex<
@@ -2267,6 +2267,37 @@ export interface DeudaFiscal {
   updatedAt: string;
 }
 
+/**
+ * CONTEO DE STORES (canónico · bloque 2.6 · 2026-07) ─────────────────────────
+ *
+ * Sobre una base FRESCA en v79 persisten **45 stores físicos**. Se cuentan así:
+ *
+ *   1. Claves declaradas en esta interfaz .......................... 42
+ *      (todas respaldadas por un `createObjectStore` → 0 fantasma tras bloque 2.2/2.4)
+ *   2. Stores físicos SIN declarar en la interfaz .................. + 3
+ *      gastosInmueble · mejorasInmueble · mueblesInmueble
+ *      (indicador health `stores_no_tipados` = 3)
+ *   ────────────────────────────────────────────────────────────────
+ *   Total persistente en v79 ...................................... 45
+ *
+ * NO cuentan para el total de v79:
+ *   - planesPensionInversion · `createObjectStore` bajo guard `oldVersion<65`
+ *     y `deleteObjectStore` en el mismo camino de upgrade → nunca persiste en v79.
+ *   - stores legacy sin `createObjectStore` vigente, sólo con `deleteObjectStore`
+ *     de limpieza (importLogs · learningLogs · objetivos_financieros ·
+ *     reconciliationAuditLogs) → sólo existen transitoriamente en DBs antiguas.
+ *
+ * Recuento mecánico reproducible:
+ *   - claves interfaz:  líneas `^  clave:` entre `interface AtlasHorizonDB {` y su `}`.
+ *   - stores físicos:   `createObjectStore('X')` únicos, menos los que también
+ *                       tienen `deleteObjectStore('X')` en un camino de upgrade.
+ *
+ * ⚠ IMPORTANTE · esta interfaz NO extiende `DBSchema` de idb (sus valores son
+ * tipos de dominio, no `{ key; value; indexes }`). Por eso `StoreNames<AtlasHorizonDB>`
+ * colapsa a `string` y `StoreValue` a `any`: el compilador NO valida nombres de
+ * store ni formas de registro. La interfaz es un MAPA documental, no una garantía
+ * de tipos. Convertirla a `DBSchema` real es tarea aparte (ver docs/health).
+ */
 interface AtlasHorizonDB {
   properties: Property;
   property_sales: PropertySale;
