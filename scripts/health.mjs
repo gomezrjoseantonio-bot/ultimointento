@@ -174,10 +174,39 @@ function storesFantasma() {
  *             retirados para DBs viejas · p. ej. `planesPensionInversion`)
  * Resultado esperado por la auditoría: 3
  *   → gastosInmueble · mejorasInmueble · mueblesInmueble
+ *
+ * ⚠ LIMITACIÓN CONOCIDA · QUÉ MIDE HOY (bloque 2.5 · 2026-07)
+ * Este indicador mide PRESENCIA en la interfaz `AtlasHorizonDB`, NO seguridad
+ * de tipos. La interfaz NO extiende `DBSchema` de idb (sus valores son tipos
+ * de dominio, no `{ key; value; indexes }`), así que `StoreNames<AtlasHorizonDB>`
+ * colapsa a `string` y `StoreValue` a `any`: el compilador NO valida ningún
+ * nombre de store ni forma de registro. Verificado: asignar un nombre inexistente
+ * a `StoreNames<AtlasHorizonDB>` compila; quitar 7 claves dio 0 errores de tsc.
+ *
+ * Consecuencia: añadir gastosInmueble/mejorasInmueble/mueblesInmueble a la
+ * interfaz bajaría este contador a 0 SIN ganar seguridad de tipos real (sería
+ * cosmético). Por eso el bloque 2.5 se APLAZÓ (decisión Jose) y el indicador
+ * se deja en 3 a propósito — bajarlo a 0 sería un verde en falso.
+ *
+ * Hoy este indicador MIDE LO QUE NO IMPORTA (presencia en una interfaz
+ * decorativa), y un indicador que mide lo que no importa es peor que no tenerlo.
+ * Su SIGNIFICADO CAMBIARÁ cuando la interfaz se convierta a `DBSchema` real:
+ * entonces sí medirá stores sin tipar de verdad. Estimación de esa conversión
+ * en docs/health/ESTIMACION-DBSCHEMA-2026-07-18.md. Hasta entonces, tratar el
+ * `3` como deuda documentada, no como objetivo a forzar a 0.
  */
 function storesNoTipados() {
   const list = [...CREATED].filter((k) => !IFACE_KEYS.includes(k) && !DELETED.has(k)).sort();
-  return { value: list.length, detail: list };
+  return {
+    value: list.length,
+    detail: list,
+    note:
+      'MIDE LO QUE NO IMPORTA (bloque 2.5 · diferido). Mide presencia en la interfaz ' +
+      'AtlasHorizonDB, no seguridad de tipos: la interfaz NO extiende DBSchema, así que ' +
+      'StoreNames colapsa a string y el compilador no valida stores. Tiparlos sería ' +
+      'cosmético y bajaría esto a 0 en falso. Su significado cambiará al convertir la ' +
+      'interfaz a DBSchema real. Ver docs/health/ESTIMACION-DBSCHEMA-2026-07-18.md.',
+  };
 }
 
 /**
