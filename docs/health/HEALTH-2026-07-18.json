@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T22:57:21.098Z",
+  "generatedAt": "2026-07-18T23:21:30.079Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "6ed0f35"
+    "head": "e8336b7"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -20,7 +20,7 @@
       "indicador": "servicios_muertos",
       "fecha": "2026-07-18",
       "anterior": 33,
-      "nueva": 31,
+      "nueva": 0,
       "motivo": "el scan de importadores solo miraba src/ · se amplía a functions/ + scripts/ (Netlify + npm) · quita 2 falsos positivos vivos fuera de src: documentaiClient (functions/ocr-fein.ts) y optimizedDbService (scripts/completeDataCleanup.ts) · autorizada por Jose antes del borrado · no oculta problemas reales"
     },
     {
@@ -35,21 +35,21 @@
     {
       "indicador": "enlaces_rotos",
       "antes": 0,
-      "despues": 1,
+      "despues": 0,
       "motivo": "ve onNavigate( y window.location",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
     {
       "indicador": "hex_hardcoded",
       "antes": 974,
-      "despues": 1689,
+      "despues": 1632,
       "motivo": "ve #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
     {
       "indicador": "archivos_800",
       "antes": 49,
-      "despues": 53,
+      "despues": 51,
       "motivo": "ve .css y .js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     }
@@ -95,49 +95,17 @@
       }
     },
     "servicios_muertos": {
-      "value": 31,
+      "value": 0,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": [
-        "src/services/aeatXmlParserService.ts",
-        "src/services/autoDestinationService.ts",
-        "src/services/budgetMatchingService.ts",
-        "src/services/contractsImportService.ts",
-        "src/services/documentValidationService.ts",
-        "src/services/ejercicioLifecycleService.ts",
-        "src/services/emailInboxIntegrationService.ts",
-        "src/services/emailProcessingService.ts",
-        "src/services/enhancedDeduplicationService.ts",
-        "src/services/financiacionImputacionService.ts",
-        "src/services/fiscalLifecycleService.ts",
-        "src/services/fiscalYearLifecycleService.ts",
-        "src/services/loanInterestService.ts",
-        "src/services/loanService.ts",
-        "src/services/migrationService.ts",
-        "src/services/ocrExtractionService.ts",
-        "src/services/perdidasPatrimonialesService.ts",
-        "src/services/personalResumenService.ts",
-        "src/services/postalCodeApiService.ts",
-        "src/services/propertyAssignmentService.ts",
-        "src/services/propertyOccupancyService.ts",
-        "src/services/propertySaleProjectionService.ts",
-        "src/services/qaTestingService.ts",
-        "src/services/realPropertyService.ts",
-        "src/services/rentabilidadInmuebleService.ts",
-        "src/services/retosService.ts",
-        "src/services/transferDetectionService.ts",
-        "src/services/unicornioInboxProcessor.ts",
-        "src/services/unifiedOcrService.ts",
-        "src/services/vinculosAccesorioService.ts",
-        "src/services/wordToPdfService.ts"
-      ],
+      "detail": [],
       "calibracion": {
         "fecha": "2026-07-18",
         "anterior": 33,
-        "nueva": 31,
+        "nueva": 0,
         "motivo": "el scan de importadores solo miraba src/ · se amplía a functions/ + scripts/ (Netlify + npm) · quita 2 falsos positivos vivos fuera de src: documentaiClient (functions/ocr-fein.ts) y optimizedDbService (scripts/completeDataCleanup.ts) · autorizada por Jose antes del borrado · no oculta problemas reales"
       }
     },
@@ -172,19 +140,17 @@
       "calibracion": null
     },
     "enlaces_rotos": {
-      "value": 1,
+      "value": 0,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": [
-        "/fiscalidad/estado  ← src/components/dashboard/TaxBlock.tsx"
-      ],
+      "detail": [],
       "calibracion": null
     },
     "hex_hardcoded": {
-      "value": 1689,
+      "value": 1632,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -239,7 +205,7 @@
       }
     },
     "todos_totales": {
-      "value": 270,
+      "value": 261,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -249,14 +215,14 @@
       "calibracion": null
     },
     "archivos_800": {
-      "value": 53,
+      "value": 51,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "5749 · src/services/db.ts",
+        "5435 · src/services/db.ts",
         "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
         "1943 · src/services/declaracionDistributorService.ts",
         "1886 · src/services/dashboardService.ts",
@@ -275,14 +241,14 @@
       "calibracion": null
     },
     "pct_v5": {
-      "value": 40.1,
+      "value": 40.5,
       "direction": "up",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "234 / 583 (directo o vía .module.css con var(--atlas-v5-*))"
+        "234 / 578 (directo o vía .module.css con var(--atlas-v5-*))"
       ],
       "calibracion": null
     },
