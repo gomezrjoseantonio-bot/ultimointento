@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T22:09:06.831Z",
+  "generatedAt": "2026-07-18T22:57:21.098Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "f32fb64"
+    "head": "6ed0f35"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -15,6 +15,13 @@
       "anterior": 2,
       "nueva": 0,
       "motivo": "la definición contaba lecturas guardadas, que no pueden lanzar NotFoundError · autorizada por Jose antes de la tarea · no hay bug que tapar"
+    },
+    {
+      "indicador": "servicios_muertos",
+      "fecha": "2026-07-18",
+      "anterior": 33,
+      "nueva": 31,
+      "motivo": "el scan de importadores solo miraba src/ · se amplía a functions/ + scripts/ (Netlify + npm) · quita 2 falsos positivos vivos fuera de src: documentaiClient (functions/ocr-fein.ts) y optimizedDbService (scripts/completeDataCleanup.ts) · autorizada por Jose antes del borrado · no oculta problemas reales"
     },
     {
       "indicador": "kpis_hardcoded",
@@ -88,7 +95,7 @@
       }
     },
     "servicios_muertos": {
-      "value": 33,
+      "value": 31,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
@@ -100,7 +107,6 @@
         "src/services/budgetMatchingService.ts",
         "src/services/contractsImportService.ts",
         "src/services/documentValidationService.ts",
-        "src/services/documentaiClient.ts",
         "src/services/ejercicioLifecycleService.ts",
         "src/services/emailInboxIntegrationService.ts",
         "src/services/emailProcessingService.ts",
@@ -112,7 +118,6 @@
         "src/services/loanService.ts",
         "src/services/migrationService.ts",
         "src/services/ocrExtractionService.ts",
-        "src/services/optimizedDbService.ts",
         "src/services/perdidasPatrimonialesService.ts",
         "src/services/personalResumenService.ts",
         "src/services/postalCodeApiService.ts",
@@ -129,7 +134,12 @@
         "src/services/vinculosAccesorioService.ts",
         "src/services/wordToPdfService.ts"
       ],
-      "calibracion": null
+      "calibracion": {
+        "fecha": "2026-07-18",
+        "anterior": 33,
+        "nueva": 31,
+        "motivo": "el scan de importadores solo miraba src/ · se amplía a functions/ + scripts/ (Netlify + npm) · quita 2 falsos positivos vivos fuera de src: documentaiClient (functions/ocr-fein.ts) y optimizedDbService (scripts/completeDataCleanup.ts) · autorizada por Jose antes del borrado · no oculta problemas reales"
+      }
     },
     "rutas_huerfanas": {
       "value": 19,
@@ -246,7 +256,7 @@
       "approx": false,
       "note": null,
       "detail": [
-        "5700 · src/services/db.ts",
+        "5749 · src/services/db.ts",
         "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
         "1943 · src/services/declaracionDistributorService.ts",
         "1886 · src/services/dashboardService.ts",
