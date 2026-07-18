@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T18:15:15.882Z",
+  "generatedAt": "2026-07-18T18:32:19.013Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "6592269"
+    "head": "1eb6453"
   },
   "gobernanza": "La definición de un indicador solo se recalibra ANTES de una tarea de arreglo, nunca durante · autorización explícita de Jose · registro obligatorio.",
   "recalibraciones": [
@@ -267,12 +267,12 @@
       "calibracion": null
     },
     "tests_rojos": {
-      "value": null,
+      "value": 44,
       "direction": "down",
       "objetivo": 0,
-      "measurable": false,
+      "measurable": true,
       "approx": false,
-      "note": "NO MEDIBLE · sin node_modules (jest no disponible)",
+      "note": "medido vía react-scripts test (CI)",
       "detail": null,
       "calibracion": null
     },

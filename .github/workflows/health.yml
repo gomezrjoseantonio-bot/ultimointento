@@ -1,0 +1,44 @@
+# Puerta de calidad · PROTOCOLO DE GARANTÍA ATLAS
+# ================================================
+# Corre el marcador de salud en cada PR y en cada push a main. El job FALLA si
+# `npm run health:ci` devuelve código != 0, es decir, si algún indicador empeoró
+# respecto al baseline commiteado en main (el trinquete). No hay secretos, no
+# despliega, no toca Netlify.
+name: health
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancela corridas viejas del mismo PR/rama si llega un push nuevo.
+concurrency:
+  group: health-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  health:
+    name: marcador de salud + trinquete
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Historia completa: el trinquete compara contra el baseline
+          # commiteado en la rama destino (origin/main), no por fecha.
+          fetch-depth: 0
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # health:ci = --with-tests · en GitHub Actions (GITHUB_ACTIONS=true) el
+      # script mide tests_rojos y compara contra origin/main. Sale != 0 si algo
+      # empeoró → el job falla.
+      - name: Marcador de salud (trinquete)
+        run: npm run health:ci

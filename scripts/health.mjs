@@ -33,6 +33,12 @@ const ROOT = process.cwd();
 // Modo CI: `npm run health:ci` (--with-tests) autoriza ejecutar la suite de
 // tests para medir `tests_rojos` (solo si hay node_modules). Ver testsRojos().
 const WITH_TESTS = process.argv.includes('--with-tests');
+// Comparación del trinquete contra la rama destino (main) en vez de por fecha.
+// Se activa en GitHub Actions (env GITHUB_ACTIONS) o con --base-main. El ref se
+// puede sobreescribir con HEALTH_BASELINE_REF (útil para tests locales).
+const CI_BASELINE =
+  process.env.GITHUB_ACTIONS === 'true' || process.argv.includes('--base-main');
+const BASELINE_REF = process.env.HEALTH_BASELINE_REF || 'origin/main';
 const SRC = path.join(ROOT, 'src');
 const HEALTH_DIR = path.join(ROOT, 'docs', 'health');
 const DB_FILE = path.join(SRC, 'services', 'db.ts');
@@ -662,6 +668,7 @@ function testsRojos() {
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 20 * 60 * 1000, // corta cuelgues: 20 min
+      maxBuffer: 128 * 1024 * 1024, // la salida de 313 suites supera 1 MB (default)
       env: { ...process.env, CI: 'true' },
     }).toString();
   } catch (e) {
@@ -782,7 +789,45 @@ function previousReport(todayFile) {
   const prior = files.filter((f) => path.join(HEALTH_DIR, f) !== todayFile);
   if (!prior.length) return null;
   try {
-    return JSON.parse(read(path.join(HEALTH_DIR, prior[prior.length - 1])));
+    return { report: JSON.parse(read(path.join(HEALTH_DIR, prior[prior.length - 1]))), source: `local:${prior[prior.length - 1]}` };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Baseline del trinquete tomado de un ref de git (la rama destino en CI).
+ * Lee el HEALTH-*.json commiteado más reciente en `ref` (p. ej. origin/main).
+ * Así, en un PR del mismo día, se compara contra lo que ya está en main —no
+ * contra la foto de hoy, que se excluiría por fecha—. Solo lectura de git.
+ */
+function baselineFromRef(ref) {
+  const git = (cmd) =>
+    execSync(cmd, { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+  // Best-effort: asegurar el ref remoto (en CI con fetch-depth:0 ya está).
+  try {
+    execSync(`git fetch --depth=1 origin ${ref.replace(/^origin\//, '')}`, {
+      cwd: ROOT,
+      stdio: 'ignore',
+    });
+  } catch {
+    /* ref local o sin red: se intenta ls-tree igualmente */
+  }
+  let list;
+  try {
+    list = git(`git ls-tree --name-only ${ref} docs/health/`);
+  } catch {
+    return null;
+  }
+  const files = list
+    .trim()
+    .split('\n')
+    .filter((f) => /HEALTH-\d{4}-\d{2}-\d{2}\.json$/.test(f))
+    .sort();
+  if (!files.length) return null;
+  const latest = files[files.length - 1];
+  try {
+    return { report: JSON.parse(git(`git show ${ref}:${latest}`)), source: `${ref}:${latest}` };
   } catch {
     return null;
   }
@@ -824,7 +869,11 @@ function main() {
   const date = todayISO();
   const outFile = path.join(HEALTH_DIR, `HEALTH-${date}.json`);
   const indicators = measure();
-  const prev = previousReport(outFile);
+  // Fuente del "antes": en CI, el baseline commiteado en la rama destino
+  // (main); en local, el JSON de fecha anterior más reciente.
+  const prevWrap = CI_BASELINE ? baselineFromRef(BASELINE_REF) : previousReport(outFile);
+  const prev = prevWrap ? prevWrap.report : null;
+  const prevSource = prevWrap ? prevWrap.source : null;
 
   const recalibraciones = INDICATORS.filter((i) => indicators[i.key].calibracion).map((i) => ({
     indicador: i.key,
@@ -845,8 +894,13 @@ function main() {
   // Tabla
   const W = 30;
   console.log('\n' + C.bold('MARCADOR DE SALUD · ATLAS') + C.gray(`  ·  ${date}`));
+  console.log(C.gray(`git ${report.git.branch || '?'} @ ${report.git.head || '?'}`));
   console.log(
-    C.gray(`git ${report.git.branch || '?'} @ ${report.git.head || '?'}\n`)
+    C.gray(
+      `baseline (antes): ${prevSource || '— (sin baseline previo)'}` +
+        (CI_BASELINE ? '  [modo CI · contra rama destino]' : '  [modo local · por fecha]') +
+        '\n'
+    )
   );
   console.log(
     C.bold(
