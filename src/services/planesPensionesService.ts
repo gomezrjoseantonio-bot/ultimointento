@@ -185,13 +185,10 @@ export const planesPensionesService = {
         await db.delete('traspasosPlanPensiones', t.id);
       }
     }
-    // Cascade: borrar valoraciones (tipo_activo='plan_pensiones', activo_id=UUID)
-    const valoraciones = (await db.getAll('valoraciones_historicas' as any)) as Array<{ id: number; tipo_activo: string; activo_id: unknown }>;
-    for (const v of valoraciones) {
-      if (v.tipo_activo === 'plan_pensiones' && String(v.activo_id) === id) {
-        await db.delete('valoraciones_historicas' as any, v.id as any);
-      }
-    }
+    // Cascade de valoraciones ELIMINADA (bloque 2.4): leía el store `valoraciones_historicas`,
+    // renombrado a `valoracionesActivos` en V74 y físicamente inexistente en v79. `db.getAll`
+    // sobre un store inexistente lanza NotFoundError, así que esta cascada abortaba
+    // `eliminarPlan` antes del `delete('planesPensiones')` — el plan no llegaba a borrarse.
     await db.delete('planesPensiones', id);
   },
 
