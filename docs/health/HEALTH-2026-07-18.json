@@ -1,0 +1,293 @@
+{
+  "protocolo": "GARANTIA-ATLAS-v1",
+  "schema": 1,
+  "date": "2026-07-18",
+  "generatedAt": "2026-07-18T18:44:11.502Z",
+  "git": {
+    "branch": "claude/new-session-lqaa79",
+    "head": "2e5067c"
+  },
+  "gobernanza": "La definición de un indicador solo se recalibra ANTES de una tarea de arreglo, nunca durante · autorización explícita de Jose · registro obligatorio.",
+  "recalibraciones": [
+    {
+      "indicador": "kpis_hardcoded",
+      "fecha": "2026-07-18",
+      "anterior": 17,
+      "nueva": 9,
+      "motivo": "Definición A+B: solo placeholders vivos junto a un valor renderizado (comentarios // y JSX {/* */}); se excluyen las 8 menciones en cabeceras JSDoc /** */ (grupo C). Sin restricción por archivo."
+    }
+  ],
+  "indicators": {
+    "stores_fantasma": {
+      "value": 4,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "propertyImprovements",
+        "operacionesFiscales",
+        "fiscalSummaries",
+        "gastos"
+      ],
+      "calibracion": null
+    },
+    "stores_no_tipados": {
+      "value": 3,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "gastosInmueble",
+        "mejorasInmueble",
+        "mueblesInmueble"
+      ],
+      "calibracion": null
+    },
+    "lecturas_store_inexistente": {
+      "value": 2,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "src/services/migracionGastosService.ts · getAll('fiscalSummaries')",
+        "src/services/migracionGastosService.ts · getAll('operacionesFiscales')"
+      ],
+      "calibracion": null
+    },
+    "servicios_muertos": {
+      "value": 33,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "src/services/aeatXmlParserService.ts",
+        "src/services/autoDestinationService.ts",
+        "src/services/budgetMatchingService.ts",
+        "src/services/contractsImportService.ts",
+        "src/services/documentValidationService.ts",
+        "src/services/documentaiClient.ts",
+        "src/services/ejercicioLifecycleService.ts",
+        "src/services/emailInboxIntegrationService.ts",
+        "src/services/emailProcessingService.ts",
+        "src/services/enhancedDeduplicationService.ts",
+        "src/services/financiacionImputacionService.ts",
+        "src/services/fiscalLifecycleService.ts",
+        "src/services/fiscalYearLifecycleService.ts",
+        "src/services/loanInterestService.ts",
+        "src/services/loanService.ts",
+        "src/services/migrationService.ts",
+        "src/services/ocrExtractionService.ts",
+        "src/services/optimizedDbService.ts",
+        "src/services/perdidasPatrimonialesService.ts",
+        "src/services/personalResumenService.ts",
+        "src/services/postalCodeApiService.ts",
+        "src/services/propertyAssignmentService.ts",
+        "src/services/propertyOccupancyService.ts",
+        "src/services/propertySaleProjectionService.ts",
+        "src/services/qaTestingService.ts",
+        "src/services/realPropertyService.ts",
+        "src/services/rentabilidadInmuebleService.ts",
+        "src/services/retosService.ts",
+        "src/services/transferDetectionService.ts",
+        "src/services/unicornioInboxProcessor.ts",
+        "src/services/unifiedOcrService.ts",
+        "src/services/vinculosAccesorioService.ts",
+        "src/services/wordToPdfService.ts"
+      ],
+      "calibracion": null
+    },
+    "rutas_huerfanas": {
+      "value": 20,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": true,
+      "note": null,
+      "detail": [
+        "/inmuebles/:id/gastos/:gastoId/editar",
+        "/fiscal/calendario",
+        "/fiscal/borrador/:anio",
+        "/fiscalidad-legacy/declaracion/:anio",
+        "/proyeccion/valoraciones",
+        "/proyeccion/mensual",
+        "/personal/gastos/:gastoId/editar",
+        "/personal/vivienda",
+        "/contratos/lista",
+        "/firmas/completadas",
+        "/automatizaciones/flujos",
+        "/automatizaciones/historial",
+        "/tareas/completadas",
+        "/tareas/programadas",
+        "/configuracion/preferencias-datos",
+        "/configuracion/email-entrante",
+        "/configuracion/proveedores",
+        "/ajustes/integraciones",
+        "/ajustes/notificaciones",
+        "/ajustes/avisos"
+      ],
+      "calibracion": null
+    },
+    "enlaces_rotos": {
+      "value": 8,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "/fiscalidad/declaracion  ← src/modules/horizon/fiscalidad/historico/HistoricoPage.tsx",
+        "/fiscalidad/historial  ← src/components/tax/TaxView.tsx",
+        "/fiscalidad/mi-irpf  ← src/modules/horizon/fiscalidad/historial/HistorialPage.tsx",
+        "/personal/fiscal  ← src/modules/inversiones/pages/FichaPlanPensiones.tsx",
+        "/portfolio  ← src/components/common/CommandPalette.tsx",
+        "/settings  ← src/components/common/CommandPalette.tsx",
+        "/tax  ← src/components/common/CommandPalette.tsx",
+        "/treasury  ← src/components/common/CommandPalette.tsx"
+      ],
+      "calibracion": null
+    },
+    "hex_hardcoded": {
+      "value": 974,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": null,
+      "calibracion": null
+    },
+    "emojis_ui": {
+      "value": 124,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": null,
+      "calibracion": null
+    },
+    "iconos_no_lucide": {
+      "value": 0,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [],
+      "calibracion": null
+    },
+    "kpis_hardcoded": {
+      "value": 9,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "src/modules/panel/PanelPage.tsx:330",
+        "src/modules/panel/PanelPage.tsx:610",
+        "src/modules/panel/PanelPage.tsx:622",
+        "src/modules/panel/PanelPage.tsx:634",
+        "src/modules/panel/components/MiPlanCompass.tsx:122",
+        "src/modules/panel/components/PulseAssetCard.tsx:117",
+        "src/modules/panel/components/PulsoDelMes.tsx:92",
+        "src/modules/panel/components/YearTimeline.tsx:114",
+        "src/modules/panel/components/YearTimeline.tsx:156"
+      ],
+      "calibracion": {
+        "fecha": "2026-07-18",
+        "anterior": 17,
+        "nueva": 9,
+        "motivo": "Definición A+B: solo placeholders vivos junto a un valor renderizado (comentarios // y JSX {/* */}); se excluyen las 8 menciones en cabeceras JSDoc /** */ (grupo C). Sin restricción por archivo."
+      }
+    },
+    "todos_totales": {
+      "value": 270,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": null,
+      "calibracion": null
+    },
+    "archivos_800": {
+      "value": 49,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "5736 · src/services/db.ts",
+        "1943 · src/services/declaracionDistributorService.ts",
+        "1886 · src/services/dashboardService.ts",
+        "1789 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
+        "1715 · src/components/treasury/TesoreriaV4.tsx",
+        "1704 · src/modules/inversiones/pages/FichaPlanPensiones.tsx",
+        "1695 · src/modules/inmuebles/wizards/NuevoGastoRecurrenteInmueblePage.tsx",
+        "1695 · src/pages/inmuebles/InmueblePage.tsx",
+        "1620 · src/services/irpfCalculationService.ts",
+        "1604 · src/modules/personal/pages/NuevoGastoRecurrentePage.tsx",
+        "1550 · src/services/aeatParserService.ts",
+        "1543 · src/App.tsx",
+        "1499 · src/components/treasury/MesDetalleDrawer.tsx",
+        "1461 · src/services/declaracionOnboardingService.ts",
+        "1435 · src/services/treasuryConfirmationService.ts"
+      ],
+      "calibracion": null
+    },
+    "pct_v5": {
+      "value": 23.5,
+      "direction": "up",
+      "objetivo": null,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "137 / 583 componentes"
+      ],
+      "calibracion": null
+    },
+    "prs_abiertos": {
+      "value": null,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": false,
+      "approx": false,
+      "note": "NO MEDIBLE · requiere API de GitHub (fuera de Node puro)",
+      "detail": null,
+      "calibracion": null
+    },
+    "tests_rojos": {
+      "value": 44,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": "medido vía react-scripts test (CI)",
+      "detail": null,
+      "calibracion": null
+    },
+    "ccaa_no_verificadas": {
+      "value": 18,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "15 archivos CCAA con verified:false"
+      ],
+      "calibracion": null
+    }
+  }
+}
