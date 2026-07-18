@@ -1097,7 +1097,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                   <div>Para calcular la ventaja fiscal necesitas completar tu perfil fiscal (CCAA y datos de ingresos).</div>
                   <div style={{ marginTop: 8 }}>
                     <a
-                      href="/personal/fiscal"
+                      href="/ajustes/fiscal"
                       style={{ color: 'var(--atlas-v5-gold-ink)', fontSize: 12, fontWeight: 600 }}
                     >
                       Completa tu perfil fiscal →
@@ -1109,7 +1109,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                   <div>Añade datos de ingresos para calcular tu tipo marginal y la ventaja fiscal real.</div>
                   <div style={{ marginTop: 8 }}>
                     <a
-                      href="/personal/fiscal"
+                      href="/ajustes/fiscal"
                       style={{ color: 'var(--atlas-v5-gold-ink)', fontSize: 12, fontWeight: 600 }}
                     >
                       Completa tu perfil fiscal →

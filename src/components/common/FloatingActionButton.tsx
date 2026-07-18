@@ -45,7 +45,7 @@ const FloatingActionButton: React.FC = () => {
       label: 'Nuevo Inmueble',
       icon: Building,
       action: () => {
-        navigate('/portfolio?action=new');
+        navigate('/inmuebles?action=new');
         setIsOpen(false);
       },
       color: 'atlas-blue',
@@ -65,7 +65,7 @@ const FloatingActionButton: React.FC = () => {
       label: 'Importar Movimientos',
       icon: Banknote,
       action: () => {
-        navigate('/treasury?action=import');
+        navigate('/tesoreria?action=import');
         setIsOpen(false);
       },
       color: 'ok',

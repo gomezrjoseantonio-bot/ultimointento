@@ -1009,8 +1009,8 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
           {properties.map(p => <option key={p.id} value={p.id}>{p.alias} · {p.addr}</option>)}
         </select>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Ver / editar ficha"><Pencil size={18} color="var(--grey-500)" /></button>
-          <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}?tab=presupuesto`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Gastos del inmueble"><Receipt size={18} color="var(--grey-500)" /></button>
+          <button onClick={() => navigate(`/inmuebles/${prop.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Ver / editar ficha"><Pencil size={18} color="var(--grey-500)" /></button>
+          <button onClick={() => navigate(`/inmuebles/${prop.id}?tab=presupuesto`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Gastos del inmueble"><Receipt size={18} color="var(--grey-500)" /></button>
           <button onClick={() => toast('Venta: disponible desde la ficha del inmueble')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Simular venta"><LogOut size={18} color="var(--grey-500)" /></button>
         </div>
       </div>
@@ -1344,7 +1344,7 @@ export default function InmueblesAnalisis() {
               Añade tu primer inmueble para empezar a gestionar tu patrimonio inmobiliario
             </p>
             <button
-              onClick={() => navigate('/inmuebles/cartera/nuevo')}
+              onClick={() => navigate('/inmuebles/nuevo')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1385,7 +1385,7 @@ export default function InmueblesAnalisis() {
           ]}
           activeTab={activeTab}
           onTabChange={(id) => handleTabChange(id as Tab)}
-          actions={<HeaderPrimaryButton icon={Plus} label="Nuevo inmueble" onClick={() => navigate('/inmuebles/cartera/nuevo')} />}
+          actions={<HeaderPrimaryButton icon={Plus} label="Nuevo inmueble" onClick={() => navigate('/inmuebles/nuevo')} />}
         />
 
         {/* Tab content */}

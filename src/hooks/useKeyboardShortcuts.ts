@@ -62,11 +62,11 @@ export const useKeyboardShortcuts = (options?: UseKeyboardShortcutsOptions) => {
             break;
           case 'p':
             e.preventDefault();
-            navigate('/portfolio');
+            navigate('/inmuebles');
             break;
           case 't':
             e.preventDefault();
-            navigate('/treasury');
+            navigate('/tesoreria');
             break;
           case 'd':
             e.preventDefault();
@@ -74,7 +74,7 @@ export const useKeyboardShortcuts = (options?: UseKeyboardShortcutsOptions) => {
             break;
           case 's':
             e.preventDefault();
-            navigate('/settings');
+            navigate('/ajustes');
             break;
           default:
             break;
