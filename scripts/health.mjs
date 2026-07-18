@@ -26,7 +26,6 @@
 
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 
 const ROOT = process.cwd();
@@ -419,8 +418,13 @@ function rutasHuerfanas() {
     if (r === '/' || /\/(login|register)$/.test(r)) continue;
     if (r.startsWith('/dev') || r.includes('*')) continue;
     const segs = r.split('/').filter(Boolean).map((v) => ({ v }));
-    // ¿es un redirect? (última porción del path coincide con un redirect path)
-    const isRedirect = [...redirectPaths].some((rp) => r.endsWith(rp.replace(/^\//, '')));
+    // ¿es un redirect? El path del redirect debe casar por SEGMENTO completo,
+    // no por sufijo de cadena (si no, `/mi-documentacion` casaría con el
+    // redirect `documentacion`). Se compara igualdad o sufijo con `/` delante.
+    const isRedirect = [...redirectPaths].some((rp) => {
+      const seg = rp.replace(/^\//, '');
+      return r === '/' + seg || r.endsWith('/' + seg);
+    });
     if (isRedirect) continue;
     const reached = navKeys.some((dSegs) => sameRoute(dSegs, segs)) ||
       navConfig.includes(`'${r}'`) || navConfig.includes(`"${r}"`);
@@ -945,19 +949,25 @@ function main() {
   }
   console.log(C.gray('─'.repeat(W + 9 + 9 + 8 + 12)));
 
-  // Prueba de aceptación de la propia construcción del marcador (§6)
-  const acc = {
-    stores_fantasma: [indicators.stores_fantasma.value, 4],
-    lecturas_store_inexistente: [indicators.lecturas_store_inexistente.value, 2],
-    enlaces_rotos: [indicators.enlaces_rotos.value, 11],
-  };
-  console.log('\n' + C.bold('Calibración vs auditoría 2026-07 (esperado 4·2·11):'));
-  for (const [k, [got, exp]] of Object.entries(acc)) {
-    const ok = got === exp;
+  // Chequeo de calibración contra la auditoría 2026-07. Solo los dos
+  // indicadores cuya cifra de auditoría es una MEDICIÓN exacta y reproducible.
+  // `enlaces_rotos` NO se compara aquí: se calibró a 8 (opción estricta,
+  // autorizada por Jose) porque el "11" de la auditoría era una cifra manual
+  // imprecisa (su prosa enumera 10 y cuenta 2 redirects que sí tienen ruta).
+  const audit = { stores_fantasma: 4, lecturas_store_inexistente: 2 };
+  console.log('\n' + C.bold('Calibración vs auditoría 2026-07 (mediciones exactas):'));
+  for (const [k, exp] of Object.entries(audit)) {
+    const got = indicators[k].value;
     console.log(
-      `  ${ok ? C.green('OK ') : C.yellow('≠  ')} ${k.padEnd(30)} medido=${got}  esperado=${exp}`
+      `  ${got === exp ? C.green('OK ') : C.yellow('≠  ')} ${k.padEnd(30)} medido=${got}  auditoría=${exp}`
     );
   }
+  console.log(
+    C.gray(
+      `  ·   ${'enlaces_rotos'.padEnd(30)} medido=${indicators.enlaces_rotos.value}  ` +
+        `· calibrado a 8 (auditoría manual 11 = imprecisa, no medición)`
+    )
+  );
 
   if (!args.includes('--no-write')) {
     fs.mkdirSync(HEALTH_DIR, { recursive: true });

@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-18",
-  "generatedAt": "2026-07-18T18:32:19.013Z",
+  "generatedAt": "2026-07-18T18:44:11.502Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "1eb6453"
+    "head": "2e5067c"
   },
   "gobernanza": "La definición de un indicador solo se recalibra ANTES de una tarea de arreglo, nunca durante · autorización explícita de Jose · registro obligatorio.",
   "recalibraciones": [
@@ -105,7 +105,7 @@
       "calibracion": null
     },
     "rutas_huerfanas": {
-      "value": 19,
+      "value": 20,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -126,6 +126,7 @@
         "/automatizaciones/historial",
         "/tareas/completadas",
         "/tareas/programadas",
+        "/configuracion/preferencias-datos",
         "/configuracion/email-entrante",
         "/configuracion/proveedores",
         "/ajustes/integraciones",
