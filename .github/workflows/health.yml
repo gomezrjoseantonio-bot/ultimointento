@@ -16,6 +16,11 @@ concurrency:
   group: health-${{ github.ref }}
   cancel-in-progress: true
 
+# El indicador prs_abiertos lee la API de PRs en modo CI (GITHUB_TOKEN).
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   health:
     name: marcador de salud + trinquete
