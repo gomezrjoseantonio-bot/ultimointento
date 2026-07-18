@@ -6,7 +6,6 @@ import { PosicionInversion } from '../types/inversiones';
 import type {
   PersonalData,
   PersonalModuleConfig,
-  TraspasoPlan,
   Ingreso as IngresoPersonal
 } from '../types/personal';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
