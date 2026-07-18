@@ -2370,10 +2370,9 @@ interface AtlasHorizonDB {
   planesPensiones: PlanPensiones;            // V65: entidad estable plan (UUID)
   aportacionesPlan: AportacionPlan;          // V65: eventos aportación (3 roles)
   traspasosPlanPensiones: TraspasoPlanPensiones; // V65: eventos traspaso fiscal neutro
-  // traspasosPlanes: TIPO fuera del schema (bloque 2.4) — store legacy retirado en V65,
-  //   nunca creado en DBs frescas (guard oldVersion<65). El lifecycle de upgrade
-  //   (create→migrar→delete) se CONSERVA: lo verifica dbV65Migration.test.ts. El resto
-  //   `deleteObjectStore` queda pendiente de decisión de Jose (retirar migración+test a la vez).
+  // traspasosPlanes: ELIMINADO por completo del código (bloque 2.4 tipo · bloque 3
+  //   commit final A lifecycle de upgrade + su test). Store legacy retirado en V65,
+  //   nunca creado en DBs frescas; DB única en v79 → la migración no defiende a nadie.
   // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' (+metadata.otro)
   // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
   // patronGastosPersonales: ELIMINADO en V62 (sub-tarea 3) — futuro compromisosRecurrentes · 7 registros
@@ -2562,110 +2561,13 @@ interface AtlasHorizonDB {
 }
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
 
-/**
- * Stash de datos del store viejo `objetivos_financieros` leídos ANTES del
- * upgrade a V59. Si la migración V5.9 elimina el store en el upgrade
- * callback, estos datos se usan POST-upgrade para mergear los KPI macro
- * en `escenarios` sin pérdida.
- */
-let v59MergePayload: Record<string, unknown> | null = null;
-
-/**
- * Pre-upgrade hook: si la DB está actualmente en una versión < 59 y aún
- * tiene `objetivos_financieros`, leemos su singleton y lo guardamos en
- * `v59MergePayload`. Esta lectura ocurre en una transacción readonly
- * normal antes de invocar `openDB(..., 59, ...)`, así que no compite con
- * la versionchange transaction.
- *
- * Si la DB no existe (deploy nuevo), salimos sin tocar nada — abrir
- * sin versión dispararía un upgrade implícito a v1 que entraría en
- * conflicto con el `openDB(..., 59, ...)` posterior.
- */
-const stashOldObjetivosFinancieros = async (): Promise<void> => {
-  if (typeof indexedDB === 'undefined') return;
-
-  // Detectar si la DB existe usando indexedDB.databases() (Chrome/FF/Edge).
-  // Si la API no está disponible, asumimos que existe y procedemos con el
-  // open(); la lógica posterior maneja el caso "no había datos viejos".
-  let dbExists = true;
-  if (typeof (indexedDB as any).databases === 'function') {
-    try {
-      const list: Array<{ name?: string; version?: number }> =
-        await (indexedDB as any).databases();
-      dbExists = list.some((entry) => entry.name === DB_NAME);
-    } catch {
-      // Si databases() falla, asumimos que existe.
-      dbExists = true;
-    }
-  }
-
-  if (!dbExists) {
-    return;
-  }
-
-  await new Promise<void>((resolve) => {
-    let resolved = false;
-    let triggeredUpgrade = false;
-    const req = indexedDB.open(DB_NAME);
-
-    const safeResolve = () => {
-      if (resolved) return;
-      resolved = true;
-      resolve();
-    };
-
-    req.onsuccess = () => {
-      if (resolved) return;
-      const db = req.result;
-      // Si entramos por upgrade implícito (DB recién creada), no leemos
-      // nada y cerramos.
-      if (triggeredUpgrade) {
-        db.close();
-        safeResolve();
-        return;
-      }
-      const v = db.version;
-      const hasOld = Array.from(db.objectStoreNames).includes('objetivos_financieros');
-      if (hasOld && v < 59) {
-        try {
-          const tx = db.transaction(['objetivos_financieros'], 'readonly');
-          const store = tx.objectStore('objetivos_financieros');
-          const getReq = store.get(1);
-          getReq.onsuccess = () => {
-            v59MergePayload = (getReq.result as Record<string, unknown> | undefined) ?? null;
-            db.close();
-            safeResolve();
-          };
-          getReq.onerror = () => {
-            db.close();
-            safeResolve();
-          };
-        } catch {
-          db.close();
-          safeResolve();
-        }
-      } else {
-        db.close();
-        safeResolve();
-      }
-    };
-    req.onerror = () => safeResolve();
-    req.onupgradeneeded = () => {
-      // La DB no existía; el open la creó vacía a version 1.
-      // Marcamos para que onsuccess cierre sin leer.
-      triggeredUpgrade = true;
-    };
-    req.onblocked = () => safeResolve();
-  });
-};
+// Stash pre-upgrade de `objetivos_financieros` + merge post-upgrade a `escenarios`:
+// ELIMINADOS (bloque 3 · commit final B). Solo actuaban sobre DBs en oldVersion<59
+// con el store viejo; la DB única está en v79 y sus KPIs macro ya viven en
+// `escenarios`. Retirado para no correr un open/close extra en cada initDB.
 
 export const initDB = async () => {
   if (!dbPromise) {
-    // Stash de KPI macros antes de disparar la migración a V59. Sólo
-    // hace trabajo real si la DB está en una versión < 59 y aún tiene
-    // el store viejo `objetivos_financieros`.
-    await stashOldObjetivosFinancieros();
-
     dbPromise = openDB<AtlasHorizonDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, _newVersion, transaction) {
         // Properties store
@@ -2963,19 +2865,13 @@ export const initDB = async () => {
 
         // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
 
-        // planesPensionInversion + traspasosPlanes: solo en DBs con oldVersion < 65
-        // (para migraciones); en DBs frescas V65 no se crean.
+        // planesPensionInversion: solo en DBs con oldVersion < 65 (para migraciones);
+        // en DBs frescas V65 no se crea.
         //
-        // NOTA bloque 2.4 · el TIPO `traspasosPlanes` sale de la interfaz (era legacy),
-        // pero el LIFECYCLE de upgrade (create → migrar → delete, todo bajo oldVersion<65)
-        // se CONSERVA: está verificado por `dbV65Migration.test.ts` ('should migrate
-        // traspasosPlanes to traspasosPlanPensiones'), que puebla un store `traspasosPlanes`
-        // en una DB v64 y comprueba que la migración v65 lo vuelca y lo borra. Quitar el
-        // `deleteObjectStore` (resto que pedía la tarea) rompería ese test y eliminaría
-        // cobertura de una migración de datos real. Como la interfaz NO es un DBSchema real
-        // (StoreNames=string), estas llamadas compilan aunque el tipo no exista. Se deja el
-        // resto de `traspasosPlanes` para decisión de Jose (retirar migración + su test a la
-        // vez, o conservarlos). Ver PR bloque 2.
+        // NOTA bloque 3 (commit final A) · el lifecycle de `traspasosPlanes`
+        // (create → migrar → delete, todo bajo oldVersion<65) se RETIRÓ junto con su
+        // test (dbV65Migration): DB única en v79, el guard oldVersion<65 no puede
+        // dispararse y una base nueva arranca en 79. Autorizado por Jose.
         if (oldVersion > 0 && oldVersion < 65) {
           if (!db.objectStoreNames.contains('planesPensionInversion')) {
             const planesLegacyStore = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
@@ -2985,20 +2881,10 @@ export const initDB = async () => {
             planesLegacyStore.createIndex('esHistorico', 'esHistorico', { unique: false });
             planesLegacyStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
           }
-
-          // V5.2: Traspasos entre planes de pensiones (legacy · tipo fuera del schema en 2.4)
-          if (!db.objectStoreNames.contains('traspasosPlanes')) {
-            const traspasosLegacyStore = db.createObjectStore('traspasosPlanes', { keyPath: 'id', autoIncrement: true });
-            traspasosLegacyStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-            traspasosLegacyStore.createIndex('planOrigenId', 'planOrigenId', { unique: false });
-            traspasosLegacyStore.createIndex('planDestinoId', 'planDestinoId', { unique: false });
-            traspasosLegacyStore.createIndex('fecha', 'fecha', { unique: false });
-          }
         }
 
         // V65 (TAREA 13): módulo planes de pensiones · stores nuevos
         // planesPensionInversion: se elimina en V65 para DBs frescas — véase bloque upgrade
-        // traspasosPlanes: se elimina en V65 para DBs frescas — véase bloque upgrade
 
         if (!db.objectStoreNames.contains('planesPensiones')) {
           const planesStore = db.createObjectStore('planesPensiones', { keyPath: 'id' });
@@ -3488,10 +3374,9 @@ export const initDB = async () => {
 
         // ═══════════════════════════════════════════════════
         // V5.5 — Mi Plan v3 · escenarios (singleton)
-        //   Renombra objetivos_financieros → escenarios.
-        //   Preserva los 7 campos KPI existentes.
-        //   Añade: modoVivienda · gastosVidaLibertadMensual · estrategia · hitos[].
-        //   El store objetivos_financieros se elimina tras la copia.
+        //   Crea el store `escenarios` y su singleton con defaults para bases nuevas.
+        //   (La copia/borrado desde el legacy `objetivos_financieros` se retiró en el
+        //    bloque 3 · commit final B: DB única en v79, datos ya en escenarios.)
         // ═══════════════════════════════════════════════════
         if (oldVersion < 55) {
           if (!db.objectStoreNames.contains('escenarios')) {
@@ -3514,62 +3399,11 @@ export const initDB = async () => {
             updatedAt: new Date().toISOString(),
           };
 
-          if (db.objectStoreNames.contains('objetivos_financieros')) {
-            // Copiar usando raw IDB event handlers para garantizar que la
-            // versionchange transaction permanece activa durante el delete.
-            const rawGetReq = (transaction as unknown as IDBTransaction)
-              .objectStore('objetivos_financieros')
-              .get(1);
-
-            rawGetReq.onsuccess = () => {
-              const now = new Date().toISOString();
-              const old = rawGetReq.result as Record<string, unknown> | undefined;
-              const nuevo = {
-                ...defaultEscenario,
-                rentaPasivaObjetivo:
-                  typeof old?.rentaPasivaObjetivo === 'number'
-                    ? old.rentaPasivaObjetivo
-                    : defaultEscenario.rentaPasivaObjetivo,
-                patrimonioNetoObjetivo:
-                  typeof old?.patrimonioNetoObjetivo === 'number'
-                    ? old.patrimonioNetoObjetivo
-                    : defaultEscenario.patrimonioNetoObjetivo,
-                cajaMinima:
-                  typeof old?.cajaMinima === 'number'
-                    ? old.cajaMinima
-                    : defaultEscenario.cajaMinima,
-                dtiMaximo:
-                  typeof old?.dtiMaximo === 'number'
-                    ? old.dtiMaximo
-                    : defaultEscenario.dtiMaximo,
-                ltvMaximo:
-                  typeof old?.ltvMaximo === 'number'
-                    ? old.ltvMaximo
-                    : defaultEscenario.ltvMaximo,
-                yieldMinimaCartera:
-                  typeof old?.yieldMinimaCartera === 'number'
-                    ? old.yieldMinimaCartera
-                    : defaultEscenario.yieldMinimaCartera,
-                tasaAhorroMinima:
-                  typeof old?.tasaAhorroMinima === 'number'
-                    ? old.tasaAhorroMinima
-                    : defaultEscenario.tasaAhorroMinima,
-                updatedAt: now,
-              };
-              (transaction as unknown as IDBTransaction).objectStore('escenarios').put(nuevo);
-              // Eliminar store viejo (la versionchange transaction sigue activa en onsuccess)
-              (db as unknown as IDBDatabase).deleteObjectStore('objetivos_financieros');
-            };
-
-            rawGetReq.onerror = () => {
-              console.warn('[DB V5.5] No se pudo leer objetivos_financieros, usando defaults para escenarios');
-              (transaction as unknown as IDBTransaction).objectStore('escenarios').put(defaultEscenario);
-              (db as unknown as IDBDatabase).deleteObjectStore('objetivos_financieros');
-            };
-          } else {
-            // Instalación nueva (sin objetivos_financieros): crear singleton con defaults
-            transaction.objectStore('escenarios').put(defaultEscenario as unknown as Escenario);
-          }
+          // Copia de datos objetivos_financieros → escenarios ELIMINADA (bloque 3 ·
+          // commit final B). La DB única en v79 ya tiene sus KPIs macro en `escenarios`;
+          // una base nueva (oldVersion<55) nunca tuvo `objetivos_financieros`. Se crea el
+          // singleton `escenarios` con defaults, que es el único camino que queda.
+          transaction.objectStore('escenarios').put(defaultEscenario as unknown as Escenario);
         }
 
         // ═══════════════════════════════════════════════════
@@ -3615,58 +3449,10 @@ export const initDB = async () => {
         }
 
         // ═══════════════════════════════════════════════════
-        // V5.9 — Cierre forzoso de migración V5.5
-        //   La migración V5.5 dejó el store `objetivos_financieros` vivo en
-        //   producción porque sus deleteObjectStore dependían de onsuccess
-        //   anidados que no completaban antes del commit del versionchange
-        //   en algunos navegadores.
-        //
-        //   V5.9 hace todo síncronamente dentro del upgrade callback:
-        //     1. Lee el singleton viejo vía cursor (síncrono dentro de
-        //        un cursor.openCursor().onsuccess pre-commit).
-        //     2. Calcula el merge defensivo de los KPI macro.
-        //     3. Planifica el put sobre escenarios.
-        //     4. Llama db.deleteObjectStore SÍNCRONAMENTE en el mismo
-        //        callback synchronous antes de que el upgrade retorne.
-        //
-        //   Estrategia: usamos `getAll()` que devuelve todos los registros
-        //   en un solo request, y dentro de su onsuccess (que dispara
-        //   ANTES del commit porque es la única request pendiente y
-        //   ejecutamos sincrónicamente put + deleteObjectStore) cerramos
-        //   la migración.
-        //
-        //   Como respaldo: si por alguna razón el getAll no completa antes
-        //   del commit, registramos un fallback que ejecuta el delete en
-        //   una segunda apertura de la DB (no hay alternativa, pero al
-        //   menos la limpieza queda asegurada).
-        //
-        //   Idempotente: si el store ya no existe, no hace nada.
+        // V5.9 — Cierre forzoso de migración V5.5 (objetivos_financieros → escenarios):
+        //   ELIMINADO (bloque 3 · commit final B). Solo borraba `objetivos_financieros`
+        //   en DBs oldVersion<59 que aún lo tuvieran; la DB única en v79 no lo tiene.
         // ═══════════════════════════════════════════════════
-        if (oldVersion < 59 && db.objectStoreNames.contains('objetivos_financieros')) {
-          // En este punto `escenarios` SIEMPRE existe (creado en V5.5).
-          // Garantía adicional por si alguna instancia llegó hasta aquí sin él.
-          if (!db.objectStoreNames.contains('escenarios')) {
-            db.createObjectStore('escenarios', { keyPath: 'id' });
-          }
-
-          // Estrategia: el merge defensivo de KPI macro lo hace V5.5 (que ya
-          // se ejecutó si el usuario está actualizando desde una versión
-          // <55) o lo hará `runV59PostMigration` POST-upgrade (que abre una
-          // transacción normal readwrite sobre `escenarios` y `objetivos_financieros`).
-          //
-          // En el upgrade callback, lo único crítico es ELIMINAR el store
-          // viejo. `deleteObjectStore` es síncrono y no requiere request,
-          // así que se llama directamente y de forma determinista.
-          //
-          // ATENCIÓN: si `escenarios.id=1` no tiene KPI macro y el viejo
-          // store sí los tenía, esos datos se preservarán por
-          // `runV59PostMigration` justo después del upgrade.
-          try {
-            db.deleteObjectStore('objetivos_financieros');
-          } catch (err) {
-            console.warn('[DB V5.9] deleteObjectStore objetivos_financieros falló:', err);
-          }
-        }
 
         // ═══════════════════════════════════════════════════
         // V60 — TAREA 7 sub-tarea 1: Schema extensions on surviving stores
@@ -4330,42 +4116,13 @@ export const initDB = async () => {
               }
             }
 
-            // 2c. Migrar traspasosPlanes → traspasosPlanPensiones
-            //     (tipo fuera del schema en bloque 2.4; lifecycle conservado · verificado
-            //      por dbV65Migration.test.ts · ver nota en el bloque de creación arriba)
-            if (
-              db.objectStoreNames.contains('traspasosPlanes') &&
-              db.objectStoreNames.contains('traspasosPlanPensiones')
-            ) {
-              try {
-                const srcT = (transaction as any).objectStore('traspasosPlanes');
-                const dstT = transaction.objectStore('traspasosPlanPensiones');
-                const traspasos = (await srcT.getAll()) as Array<Record<string, unknown>>;
-                for (const t of traspasos) {
-                  const nuevoT: Record<string, unknown> = {
-                    planId: String(t.planOrigenId ?? ''),
-                    fechaEjecucion: String(t.fecha ?? ahora.slice(0, 10)),
-                    gestoraOrigen: String(t.planOrigenEntidad ?? ''),
-                    gestoraDestino: String(t.planDestinoEntidad ?? ''),
-                    importeTraspasado: Number(t.importe ?? 0),
-                    esTotal: Boolean(t.esTotal),
-                    notas: t.notas,
-                    fechaCreacion: String(t.fechaCreacion ?? ahora),
-                    fechaActualizacion: ahora,
-                  };
-                  try { await dstT.add(nuevoT as any); } catch { /* skip */ }
-                }
-              } catch (err) {
-                console.warn('[DB V65] migración traspasosPlanes→traspasosPlanPensiones falló:', err);
-              }
-            }
+            // 2c. Migración traspasosPlanes → traspasosPlanPensiones: RETIRADA
+            //     (bloque 3 · commit final A) junto con su test. DB única en v79,
+            //     el guard oldVersion<65 no puede dispararse.
 
             // 3. Eliminar stores legacy
             if (db.objectStoreNames.contains('planesPensionInversion')) {
               db.deleteObjectStore('planesPensionInversion');
-            }
-            if (db.objectStoreNames.contains('traspasosPlanes')) {
-              db.deleteObjectStore('traspasosPlanes');
             }
           })();
         }
@@ -4831,81 +4588,10 @@ export const initDB = async () => {
       throw error;
     });
 
-    // Post-upgrade hook: si stashOldObjetivosFinancieros guardó datos
-    // antes del upgrade, los mergeamos en `escenarios` ahora que la DB
-    // está en V59 (con objetivos_financieros ya eliminado).
-    // Esta lectura/escritura usa una transacción readwrite normal
-    // sobre `escenarios`.
-    dbPromise = dbPromise.then(async (db) => {
-      if (v59MergePayload) {
-        const stashed = v59MergePayload;
-        v59MergePayload = null;
-        try {
-          const tx = db.transaction(['escenarios'], 'readwrite');
-          const store = tx.objectStore('escenarios');
-          const existing = (await store.get(1)) as Record<string, unknown> | undefined;
-          const now = new Date().toISOString();
-          const baseDefaults = {
-            id: 1,
-            modoVivienda: 'alquiler',
-            gastosVidaLibertadMensual: 2500,
-            estrategia: 'hibrido',
-            hitos: [] as unknown[],
-            rentaPasivaObjetivo: 3000,
-            patrimonioNetoObjetivo: 600000,
-            cajaMinima: 10000,
-            dtiMaximo: 35,
-            ltvMaximo: 50,
-            yieldMinimaCartera: 8,
-            tasaAhorroMinima: 15,
-          };
-          const macro = (
-            key:
-              | 'rentaPasivaObjetivo'
-              | 'patrimonioNetoObjetivo'
-              | 'cajaMinima'
-              | 'dtiMaximo'
-              | 'ltvMaximo'
-              | 'yieldMinimaCartera'
-              | 'tasaAhorroMinima',
-          ): number => {
-            if (existing && typeof existing[key] === 'number') return existing[key] as number;
-            if (typeof stashed[key] === 'number') return stashed[key] as number;
-            return baseDefaults[key];
-          };
-          const merged = existing
-            ? {
-                ...baseDefaults,
-                ...existing,
-                rentaPasivaObjetivo: macro('rentaPasivaObjetivo'),
-                patrimonioNetoObjetivo: macro('patrimonioNetoObjetivo'),
-                cajaMinima: macro('cajaMinima'),
-                dtiMaximo: macro('dtiMaximo'),
-                ltvMaximo: macro('ltvMaximo'),
-                yieldMinimaCartera: macro('yieldMinimaCartera'),
-                tasaAhorroMinima: macro('tasaAhorroMinima'),
-                id: 1,
-                updatedAt: now,
-              }
-            : {
-                ...baseDefaults,
-                rentaPasivaObjetivo: macro('rentaPasivaObjetivo'),
-                patrimonioNetoObjetivo: macro('patrimonioNetoObjetivo'),
-                cajaMinima: macro('cajaMinima'),
-                dtiMaximo: macro('dtiMaximo'),
-                ltvMaximo: macro('ltvMaximo'),
-                yieldMinimaCartera: macro('yieldMinimaCartera'),
-                tasaAhorroMinima: macro('tasaAhorroMinima'),
-                updatedAt: now,
-              };
-          await store.put(merged as unknown as Escenario);
-          await tx.done;
-        } catch (err) {
-          console.warn('[DB V5.9 post-upgrade] merge a escenarios falló:', err);
-        }
-      }
-      return db;
-    });
+    // Merge post-upgrade de KPIs macro de objetivos_financieros → escenarios:
+    // ELIMINADO (bloque 3 · commit final B) junto con el stash que lo alimentaba.
+    // Solo actuaba sobre DBs oldVersion<59; la DB única en v79 ya tiene sus KPIs
+    // macro en `escenarios`.
 
     // ── V78 · refactor modelo alquileres v3 · migración de datos post-upgrade ──
     // Idempotente vía flag en keyval. Se ejecuta con transacciones readwrite

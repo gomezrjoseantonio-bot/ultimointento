@@ -295,19 +295,20 @@ function lecturasStoreInexistente() {
  *   EXCLUYE · tests · el propio archivo · `index.ts` · `*.d.ts`
  *
  * DETECCIÓN ENDURECIDA (autorizado por Jose · 2026-07-18): se añade `require(`.
- * Antes de esta pasada la cifra era 33, la auditoría manual daba 30. Se verificó
- * INDIVIDUALMENTE cada uno de los 33 → **cero falsos muertos**: los 6 con
- * mención al basename (budgetMatchingService, fiscalLifecycleService,
- * fiscalYearLifecycleService, loanInterestService, loanService,
- * transferDetectionService) solo aparecen en **comentarios/doc-strings**, no en
- * imports; y los 3 que la auditoría no listaba (documentValidationService,
- * documentaiClient, unicornioInboxProcessor) tienen **0 referencias** (archivos
- * reales de 10-28 KB). Conclusión: la cifra 33 es CORRECTA; el 30 de la
- * auditoría era un INFRA-conteo, no había falsos muertos. Endurecer la detección
- * no baja el número (nadie usa `require` sobre estos). Por eso NO se registra
- * recalibración: no hubo estrechamiento real. Los 33 están verificados como
- * seguros de borrar en el bloque 3.
+ *
+ * RECALIBRACIÓN 2026-07-18 (bloque 3 · autorizada por Jose · 2 FALSOS POSITIVOS):
+ * anterior = 33 · nueva = 31. El scan de importadores solo miraba `src/`, nunca
+ * los directorios de raíz `functions/` (Netlify) ni `scripts/` (npm). Dos
+ * servicios estaban vivos y contados como muertos por ese punto ciego:
+ *   - documentaiClient  ← functions/ocr-fein.ts (import + `processWithDocAI(...)`),
+ *                         función Netlify que src/feinOcrService.ts invoca.
+ *   - optimizedDbService ← scripts/completeDataCleanup.ts (script npm
+ *                         `cleanup:complete` · package.json).
+ * Se AMPLÍA el scan de importadores a `functions/` + `scripts/`. El número baja a
+ * 31 porque quita 2 falsos positivos (no oculta problemas reales). Los 31
+ * restantes se verificaron muertos en TODO el repo y se borran en el bloque 3.
  */
+const EXTRA_IMPORT_DIRS = ['functions', 'scripts']; // raíz del repo, fuera de src/
 function serviciosMuertos() {
   const svcDir = path.join(SRC, 'services');
   const services = walk(svcDir, (p) => {
@@ -318,8 +319,20 @@ function serviciosMuertos() {
     return true;
   });
   const allSrc = prodFiles(['.ts', '.tsx']);
+  // Importadores: src/ + directorios de raíz que también consumen servicios
+  // (functions/ Netlify · scripts/ npm). Sin esto, un servicio usado solo desde
+  // ahí se cuenta como muerto (falso positivo · bloque 3).
+  const extraFiles = [];
+  const impExts = new Set(['.ts', '.tsx', '.js', '.mjs']);
+  for (const d of EXTRA_IMPORT_DIRS) {
+    const dir = path.join(ROOT, d);
+    if (!fs.existsSync(dir)) continue;
+    for (const f of walk(dir, (p) => impExts.has(path.extname(p)) && !isTestPath(p))) {
+      extraFiles.push(f);
+    }
+  }
   // Mapa archivo→contenido (una sola lectura)
-  const contents = new Map(allSrc.map((f) => [f, read(f)]));
+  const contents = new Map([...allSrc, ...extraFiles].map((f) => [f, read(f)]));
   const dead = [];
   for (const svc of services) {
     const name = path.basename(svc, '.ts');
@@ -337,7 +350,20 @@ function serviciosMuertos() {
     }
     if (!imported) dead.push(rel(svc));
   }
-  return { value: dead.length, detail: dead };
+  return {
+    value: dead.length,
+    detail: dead,
+    calibracion: {
+      fecha: '2026-07-18',
+      anterior: 33,
+      nueva: dead.length,
+      motivo:
+        'el scan de importadores solo miraba src/ · se amplía a functions/ + scripts/ ' +
+        '(Netlify + npm) · quita 2 falsos positivos vivos fuera de src: documentaiClient ' +
+        '(functions/ocr-fein.ts) y optimizedDbService (scripts/completeDataCleanup.ts) · ' +
+        'autorizada por Jose antes del borrado · no oculta problemas reales',
+    },
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
