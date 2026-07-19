@@ -948,6 +948,14 @@ const AMPLIACIONES = {
       'importadores-directos → grafo de alcanzabilidad transitiva (raíces estrictas) · ' +
       'aflora deuda muerta antes invisible',
   },
+  rutas_huerfanas: {
+    antes: 19,
+    motivo:
+      'barrido de código muerto · /configuracion/preferencias-datos era alcanzable ' +
+      'SOLO desde el KPIsBlock muerto (deep-link «configurar KPIs», borrado) · ' +
+      'huérfano PREEXISTENTE que el código muerto tapaba, no una regresión · ' +
+      'autorizado por Jose · pantalla marcada como pieza a re-conectar',
+  },
 };
 
 // direction: 'down' = mejor bajar (empeora si sube) · 'up' = mejor subir
