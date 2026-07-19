@@ -17,20 +17,29 @@ import { analyzeReachability } from './lib/deadcode.mjs';
 const ROOT = process.cwd();
 const g = analyzeReachability(ROOT);
 
-// §5 (corregida por Adenda 2) · deben salir MUERTOS
+// §5 (corregida por Adenda 2) · deben salir MUERTOS. Los 4 nodos del árbol muerto
+// original (TesoreriaV4 · HistoricoWizard · historical{Cashflow,Treasury}) YA NO
+// figuran aquí: se BORRARON en paletas-fase-1 tras confirmarlos muertos → pasan a
+// MUST_BE_GONE. Quedan como muertos-estables las dos premisas del bloque 3 que se
+// cayeron al verificarlas (no se borran sin decisión propia · ver DEADCODE report §7).
 const MUST_BE_DEAD = [
-  'src/components/treasury/TesoreriaV4.tsx',
-  'src/modules/horizon/tesoreria/HistoricoWizard.tsx',
-  'src/services/historicalCashflowCalculator.ts',
-  'src/services/historicalTreasuryService.ts',
-  'scripts/completeDataCleanup.ts',
-  'src/services/optimizedDbService.ts',
+  'scripts/completeDataCleanup.ts', // huérfano · npm corre el .js
+  'src/services/optimizedDbService.ts', // solo lo importa completeDataCleanup.ts (muerto)
 ];
 
 // §5 · deben seguir VIVOS (guardia anti "solo persigue muertos")
 const MUST_BE_ALIVE = [
   'scripts/completeDataCleanup.js', // raíz: package.json scripts.cleanup:complete
   'src/services/documentaiClient.ts', // vía functions/ocr-fein.ts (handler Netlify)
+];
+
+// Árbol muerto BORRADO en paletas-fase-1 · el detector ya no debe verlos como nodos.
+// (Documenta que la detección se actuó: de dead → not-a-node por borrado.)
+const MUST_BE_GONE = [
+  'src/components/treasury/TesoreriaV4.tsx',
+  'src/modules/horizon/tesoreria/HistoricoWizard.tsx',
+  'src/services/historicalCashflowCalculator.ts',
+  'src/services/historicalTreasuryService.ts',
 ];
 
 const fails = [];
@@ -42,6 +51,10 @@ for (const p of MUST_BE_ALIVE) {
   const c = g.classOf(p);
   if (c !== 'alive') fails.push(`  ✗ esperado ALIVE · obtenido ${c.toUpperCase()} · ${p}`);
 }
+for (const p of MUST_BE_GONE) {
+  const c = g.classOf(p);
+  if (c !== 'not-a-node') fails.push(`  ✗ esperado BORRADO (not-a-node) · obtenido ${c.toUpperCase()} · ${p}`);
+}
 
 console.log(`\nACEPTACIÓN · detector de muerte transitiva`);
 console.log(
@@ -49,11 +62,11 @@ console.log(
     `dead ${g.counts.dead} · solo_tests ${g.counts.solo_tests} · ` +
     `solo_stories ${g.counts.solo_stories} · indeterminado ${g.counts.indeterminado}`
 );
-console.log(`  ${MUST_BE_DEAD.length} muertos exigidos · ${MUST_BE_ALIVE.length} vivos exigidos`);
+console.log(`  ${MUST_BE_DEAD.length} muertos exigidos · ${MUST_BE_ALIVE.length} vivos exigidos · ${MUST_BE_GONE.length} borrados exigidos`);
 
 if (fails.length) {
   console.log(`\n✗ ACEPTACIÓN FALLA (${fails.length}):`);
   console.log(fails.join('\n'));
   process.exit(1);
 }
-console.log(`\n✓ ACEPTACIÓN OK · ${MUST_BE_DEAD.length} muertos + ${MUST_BE_ALIVE.length} vivos correctos.`);
+console.log(`\n✓ ACEPTACIÓN OK · ${MUST_BE_DEAD.length} muertos + ${MUST_BE_ALIVE.length} vivos + ${MUST_BE_GONE.length} borrados correctos.`);

@@ -221,7 +221,7 @@ class CuentasService {
 
   /**
    * Find account index in cache by ID, with IBAN fallback for IndexedDB IDs.
-   * La tesorería lee cuentas de IndexedDB (auto-increment IDs) while the cache
+   * The treasury view reads accounts from IndexedDB (auto-increment IDs) while the cache
    * may use localStorage timestamp IDs — this resolves the mismatch.
    */
   private async findIndexById(id: number): Promise<number> {
