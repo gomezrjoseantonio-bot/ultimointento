@@ -298,11 +298,14 @@ export const getRentalDaysForYear = async (
     return Math.max(0, occupancy.daysRented);
   }
 
-  // Fallback: derive from active contracts
-  const allContracts = await db.getAllFromIndex('contracts', 'propertyId', propertyId);
+  // Fallback: derive from active contracts.
+  // El índice 'propertyId' (keyPath legacy `propertyId`) está muerto: contractService
+  // solo escribe `inmuebleId`. Se filtra por el campo canónico sobre getAll().
+  const allContracts = await db.getAll('contracts');
   const activeContracts = allContracts.filter(contract => {
-    const startYear = new Date(contract.startDate).getFullYear();
-    const endYear = contract.endDate ? new Date(contract.endDate).getFullYear() : 9999;
+    if (contract.inmuebleId !== propertyId) return false;
+    const startYear = new Date(contract.fechaInicio).getFullYear();
+    const endYear = contract.fechaFin ? new Date(contract.fechaFin).getFullYear() : 9999;
     return startYear <= exerciseYear && endYear >= exerciseYear;
   });
 
@@ -318,8 +321,8 @@ export const getRentalDaysForYear = async (
     const yearStart = new Date(exerciseYear, 0, 1);
     const yearEnd = new Date(exerciseYear, 11, 31);
     
-    const contractStart = new Date(contract.startDate);
-    const contractEnd = contract.endDate ? new Date(contract.endDate) : yearEnd;
+    const contractStart = new Date(contract.fechaInicio);
+    const contractEnd = contract.fechaFin ? new Date(contract.fechaFin) : yearEnd;
     
     const effectiveStart = contractStart > yearStart ? contractStart : yearStart;
     const effectiveEnd = contractEnd < yearEnd ? contractEnd : yearEnd;

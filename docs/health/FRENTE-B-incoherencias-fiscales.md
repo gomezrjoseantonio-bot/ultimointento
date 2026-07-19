@@ -81,11 +81,39 @@ contratos. No es dato fiscal declarado (proyección de presupuesto).
   `metodo ?? 'manual'`) o hacer opcionales los campos en `Contract` si de
   verdad lo son. A decidir al tipar.
 
-## Propuesta
+## Resolución (aprobada por Jose · "aplica B+D (+A+C) y tipa")
 
-A y C son no-fiscales: los resuelvo **de verdad** junto con el tipado de
-`contracts`/`properties` (migrar lecturas legacy→canónico, defaults en el
-normalizador). B y D tocan cálculo fiscal declarable → **no los toco sin tu OK**.
-El fix de ambos es mecánico y está avalado por el patrón que ya usa fiscal v2
-(leer canónico con fallback legacy). Con tu visto bueno, cierro los 2 stores en
-una tanda 1b y sigo.
+- **B** · `aeatAmortizationService.ts` · lecturas `startDate/endDate` →
+  `fechaInicio/fechaFin`. **Además** se descubrió que la query usaba el índice
+  `'propertyId'` (keyPath legacy, muerto): se cambió a `getAll('contracts')` +
+  filtro por `inmuebleId` (patrón de `getContractsByProperty`/`presupuestoService`).
+  Ahora el fallback de días de alquiler funciona sobre datos canónicos.
+- **D** · `rendimientoActivoService.ts` · coalescing canónico
+  `aeatAmortization?.baseAmortizacion ?? fiscalData?.baseAmortizacion` (patrón
+  fiscal v2). Se declararon `baseAmortizacion?`/`amortizacionAnualInmueble?` como
+  ubicación LEGACY en `Property.fiscalData` (db.ts) para leer el fallback sin `as any`.
+- **A** · `presupuestoService.ts` · lecturas de campos →
+  `inmuebleId/inquilino/rentaMensual/diaPago`. El **gate `status === 'active'`
+  NO se tocó** (lee campo legacy `status`, hoy el bucle está inactivo). Migrar
+  el gate activaría generación de líneas de presupuesto de forma silenciosa →
+  se deja como decisión explícita (ver "para la lista").
+- **C** · `contractService.ts` · nuevo tipo `ContractMetadataInput` (Partial
+  anidado) para los normalizadores → el merge `existing+updates` type-checkea
+  sin `as`. Los normalizadores ya rellenaban `plantilla`/`metodo`.
+
+`contracts` y `properties` quedan tipados. tsc 0. 18/45 stores tipados.
+
+## Para la lista (hallazgos · no son tareas)
+
+1. **`presupuestoService` · bucle de ingresos por contrato DORMIDO**: gate
+   `status === 'active'` sobre campo legacy que `contractService` no escribe
+   (canónico `estadoContrato === 'activo'`). Decidir si activar (¿genera líneas
+   duplicadas con otras fuentes?).
+2. **Índice `contracts.propertyId` muerto**: keyPath = campo legacy `propertyId`
+   nunca escrito. Cualquier `getAllFromIndex('contracts','propertyId',…)` devuelve
+   vacío. Candidato a retirar en un futuro bump de versión (DB_VERSION congelado en 79).
+3. **2 tests rojos pre-existentes** (ajenos a este cambio, ya rojos en main):
+   `aeatAmortizationService.test.ts` (0 tests · "suite must contain at least one
+   test") y `aeatAmortizationService.fallback.test.ts` (`improvementsAmortization`
+   espera 106.36 = full-year 3%, el código prorratea por días desde la fecha de
+   mejora → 0.29 para una mejora de 31-dic). Revisar cuál es el criterio correcto.

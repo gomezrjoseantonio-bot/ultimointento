@@ -300,24 +300,30 @@ export const sembrarPresupuesto = async (
   // Get active contracts for selected properties
   const contractsStore = db.transaction('contracts', 'readonly').store;
   const allContracts = await contractsStore.getAll();
+  // NOTA (Frente B · tipado contracts): el gate `status === 'active'` lee un campo
+  // LEGACY que contractService ya no escribe (canónico: estadoContrato === 'activo').
+  // Hoy el bucle está inactivo por eso. Se migran las LECTURAS de campos a canónico,
+  // pero NO se toca el gate para no activar generación de líneas de forma silenciosa
+  // (decisión de Jose · ver docs/health/FRENTE-B-incoherencias-fiscales.md).
   const activeContracts = allContracts.filter(
-    contract => 
+    contract =>
       contract.status === 'active' &&
-      (inmuebleIds.length === 0 || inmuebleIds.includes(contract.propertyId.toString()))
+      (inmuebleIds.length === 0 || inmuebleIds.includes(contract.inmuebleId.toString()))
   );
-  
+
   // Generate income from contracts
   for (const contract of activeContracts) {
     // Calculate monthly amounts (all 12 months with rent amount)
-    const amountByMonth = new Array(12).fill(contract.monthlyRent);
-    
+    const amountByMonth = new Array(12).fill(contract.rentaMensual);
+    const inquilinoNombre = `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`.trim();
+
     const lineaId = await createPresupuestoLinea({
       presupuestoId,
       scope: "INMUEBLES",
       type: "INGRESO",
-      inmuebleId: contract.propertyId.toString(),
+      inmuebleId: contract.inmuebleId.toString(),
       category: "Rentas de alquiler",
-      label: `Alquiler - ${contract.tenant.name}`,
+      label: `Alquiler - ${inquilinoNombre}`,
       amountByMonth,
       accountId: undefined, // Will be assigned later
       sourceRef: contract.id?.toString(),
@@ -325,10 +331,10 @@ export const sembrarPresupuesto = async (
       // Compatibility fields (deprecated but maintained)
       tipo: "Ingreso",
       categoria: "Alquiler",
-      tipoConcepto: `Alquiler - ${contract.tenant.name}`,
+      tipoConcepto: `Alquiler - ${inquilinoNombre}`,
       frecuencia: "Mensual",
-      dayOfMonth: contract.paymentDay || 1,
-      importeUnitario: contract.monthlyRent,
+      dayOfMonth: contract.diaPago || 1,
+      importeUnitario: contract.rentaMensual,
       ivaIncluido: true,
       origen: "SemillaAuto",
       editable: true,

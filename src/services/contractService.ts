@@ -2,6 +2,17 @@ import { initDB, Contract, HistoricoRenta, RentaMensual } from './db';
 
 type SignatureMetadata = NonNullable<Contract['firma']>;
 
+/**
+ * Entrada de los normalizadores de metadatos: aceptan metadatos PARCIALES
+ * (documentoContrato/firma con `plantilla`/`metodo` aún sin fijar) y devuelven
+ * la forma completa. Se expresa como Partial anidado para que el merge de
+ * `existing`+`updates` type-checkee sin `as`.
+ */
+type ContractMetadataInput = Partial<Omit<Contract, 'documentoContrato' | 'firma'>> & {
+  documentoContrato?: Partial<NonNullable<Contract['documentoContrato']>>;
+  firma?: Partial<SignatureMetadata>;
+};
+
 // Enhanced contract management service for CONTRATOS module
 
 // Helper function to suggest indexation based on start date
@@ -54,7 +65,7 @@ export const calculateDuration = (fechaInicio: string, fechaFin: string): string
   return `${months}m ${days}d`;
 };
 
-const normaliseDocumentMetadata = (contract: Partial<Contract>): Contract['documentoContrato'] => {
+const normaliseDocumentMetadata = (contract: ContractMetadataInput): Contract['documentoContrato'] => {
   const plantillaBase = contract.documentoContrato?.plantilla
     || (contract.unidadTipo === 'habitacion' ? 'habitacion'
     : contract.modalidad === 'vacacional' ? 'vacacional'
@@ -68,7 +79,7 @@ const normaliseDocumentMetadata = (contract: Partial<Contract>): Contract['docum
   };
 };
 
-const normaliseSignatureMetadata = (contract: Partial<Contract>): SignatureMetadata => {
+const normaliseSignatureMetadata = (contract: ContractMetadataInput): SignatureMetadata => {
   const metodo = contract.firma?.metodo || 'manual';
   const cleanedEmails = (contract.firma?.emails || [])
     .map(email => email?.trim())

@@ -106,6 +106,16 @@ export interface Property {
       cadastralValue: number;
       constructionCadastralValue: number;
     };
+    /**
+     * Ubicación LEGACY de la base/amortización anual del inmueble. La canónica
+     * es `aeatAmortization.baseAmortizacion` / `.amortizacionAnualInmueble`;
+     * datos antiguos las guardaron aquí. Los consumidores leen
+     * `aeatAmortization ?? fiscalData` (patrón fiscal v2 ·
+     * amortizacionAcumuladaService.ts:80-82). Se declaran para no necesitar
+     * `as any` al leer el fallback.
+     */
+    baseAmortizacion?: number;
+    amortizacionAnualInmueble?: number;
   };
   /** T29 · tipología del activo · default 'piso' efectivo si undefined (registros pre-T29) */
   tipoActivo?: TipoActivo;
@@ -2292,11 +2302,11 @@ export interface DeudaFiscal {
  * stores, el indicador health `stores_no_tipados` baja de 3 a 0.
  */
 interface AtlasHorizonDB extends DBSchema {
-  properties: { key: IDBValidKey; value: any; indexes: { 'address': IDBValidKey; 'alias': IDBValidKey } };
+  properties: { key: IDBValidKey; value: Property; indexes: { 'address': IDBValidKey; 'alias': IDBValidKey } };
   property_sales: { key: IDBValidKey; value: PropertySale; indexes: { 'property-status': IDBValidKey; 'propertyId': IDBValidKey; 'saleDate': IDBValidKey; 'status': IDBValidKey } };
   // loan_settlements: ELIMINADO en V63 (sub-tarea 4) — destino prestamos.liquidacion · 0 registros en producción
   documents: { key: IDBValidKey; value: Document; indexes: { 'entityId': IDBValidKey; 'entityType': IDBValidKey; 'type': IDBValidKey } };
-  contracts: { key: IDBValidKey; value: any; indexes: { 'propertyId': IDBValidKey } };
+  contracts: { key: IDBValidKey; value: Contract; indexes: { 'propertyId': IDBValidKey } };
   botesAnualesSinIdentificar: { key: IDBValidKey; value: BoteAnualSinIdentificar; indexes: { 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'inmuebleId-año': IDBValidKey } }; // V78: Camino 2 wizard XML AEAT · importes declarados pendientes de vincular
   // NOTE: rentCalendar and rentPayments removed in V4.5 — migrated to rentaMensual
   // rentaMensual: ELIMINADO en V62 (sub-tarea 3) — deprecated V5.6 · 0 registros
