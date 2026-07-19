@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { Icons } from '../../../design-system/v5';
 import SetSection from '../components/SetSection';
 import { exportSnapshot, importSnapshot, resetAllData } from '../../../services/db';
-import { confirmDelete } from '../../../services/confirmationService';
+import { showConfirmation } from '../../../services/confirmationService';
 import KpiBuilder from '../../../components/kpi/KpiBuilder';
 import DashboardConfig from '../../../components/dashboard/DashboardConfig';
 import containerStyles from '../AjustesPage.module.css';
@@ -65,15 +65,27 @@ const DatosPage: React.FC = () => {
 
     if (!file.name.endsWith('.zip')) {
       toast.error('Por favor selecciona un archivo ZIP válido');
+      event.target.value = ''; // limpia para permitir re-seleccionar el mismo fichero
       return;
     }
 
-    const confirmMessage =
+    // Confirmación acorde a la acción (importar), NO a "eliminar": título, texto y
+    // CTA propios del modo, con tono danger (reemplazar) o warning (fusionar).
+    const confirmed = await showConfirmation(
       importMode === 'replace'
-        ? `archivo ${file.name}? Esto reemplazará TODOS tus datos actuales. Esta acción no se puede deshacer.`
-        : `datos del archivo ${file.name} con tus datos actuales?`;
-
-    const confirmed = await confirmDelete(confirmMessage);
+        ? {
+            title: 'Reemplazar todos los datos',
+            message: `Vas a importar «${file.name}» en modo reemplazar. Esto borrará TODOS tus datos actuales y los sustituirá por los del snapshot. Esta acción no se puede deshacer.`,
+            confirmText: 'Reemplazar datos',
+            type: 'danger',
+          }
+        : {
+            title: 'Fusionar datos',
+            message: `Vas a importar «${file.name}» en modo fusionar: se actualizarán o añadirán los datos del snapshot respetando los existentes. ¿Continuar?`,
+            confirmText: 'Fusionar',
+            type: 'warning',
+          }
+    );
     if (!confirmed) {
       event.target.value = '';
       return;
@@ -125,12 +137,21 @@ const DatosPage: React.FC = () => {
       localStorage.clear();
       if ('indexedDB' in window) {
         const deleteRequest = indexedDB.deleteDatabase('AtlasHorizonDB');
-        await new Promise((resolve, reject) => {
-          deleteRequest.onsuccess = () => resolve(true);
+        await new Promise<void>((resolve, reject) => {
+          deleteRequest.onsuccess = () => resolve();
           deleteRequest.onerror = () => reject(deleteRequest.error);
+          // onblocked: hay conexiones abiertas (otras pestañas/workers) · el
+          // borrado queda pendiente. No dejar el await colgado: rechazar con un
+          // mensaje accionable en vez de esperar indefinidamente.
+          deleteRequest.onblocked = () =>
+            reject(
+              new Error(
+                'Hay otras pestañas de ATLAS abiertas. Ciérralas y vuelve a intentarlo.'
+              )
+            );
         });
       }
-      toast.success('Datos locales eliminados. Recarga para aplicar.');
+      toast.success('Datos locales eliminados. Recargando…');
       setShowAtlasResetConfirm(false);
       setAtlasResetText('');
       setTimeout(() => {
@@ -236,6 +257,7 @@ const DatosPage: React.FC = () => {
                 <input
                   type="file"
                   accept=".zip"
+                  aria-label="Importar snapshot (.zip)"
                   onChange={handleImportSnapshot}
                   disabled={isImporting}
                   className={styles.fileInput}
