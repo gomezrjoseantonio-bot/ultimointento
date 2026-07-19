@@ -77,6 +77,9 @@ ese es el NUEVO BASELINE, no una regresión (regla asimétrica · ver GOBERNANZA
 | 2026-07-18 · bloque 2.4 | 3 tipos legacy fuera del schema (traspasosPlanes · valoraciones_historicas · objetivos_financieros) | `grep -cE "^  (traspasosPlanes\|valoraciones_historicas\|objetivos_financieros):" src/services/db.ts` | `0` |
 | 2026-07-18 · bloque 2.4 | Cascada de `eliminarPlan` redirigida del store legacy `valoraciones_historicas` (inexistente en v79 → NotFoundError antes de borrar el plan) al actual `valoracionesActivos` vía `deleteAllByActivo` (review Copilot #1428) | `grep -c "getAll('valoraciones_historicas'" src/services/planesPensionesService.ts` | `0` |
 | 2026-07-18 · bloque 2.4 | Creación legacy de `objetivos_financieros` bajo guard `oldVersion<32` eliminada | `grep -c "createObjectStore('objetivos_financieros'" src/services/db.ts` | `0` |
+| 2026-07-19 · paletas-fase-1 | Árbol muerto borrado (TesoreriaV4 · HistoricoWizard · historicalCashflowCalculator · historicalTreasuryService) | `find src/components/treasury/TesoreriaV4.tsx src/modules/horizon/tesoreria/HistoricoWizard.tsx src/services/historicalCashflowCalculator.ts src/services/historicalTreasuryService.ts 2>/dev/null \| wc -l` | `0` |
+| 2026-07-19 · paletas-fase-1 | Subárbol muerto `modules/horizon/inversiones/` (v4 · superseded por galería v2) borrado entero | `find src/modules/horizon/inversiones -type f 2>/dev/null \| wc -l` | `0` |
+| 2026-07-19 · paletas-fase-1 | `gastosInmueble` endurecido a `GastoInmueble` (diferido de Tanda 1 · tras borrar los 2 lectores muertos) | `grep -c "gastosInmueble: { key: IDBValidKey; value: GastoInmueble;" src/services/db.ts` | `1` |
 
 ### Retiradas (supersedidas por el bloque 2)
 
