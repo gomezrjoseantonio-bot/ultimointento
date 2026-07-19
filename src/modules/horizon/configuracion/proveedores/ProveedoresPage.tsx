@@ -67,7 +67,7 @@ const ProveedoresPage: React.FC = () => {
       ) : (
         <div style={{ overflowX: 'auto', border: '1px solid var(--hz-neutral-300)', borderRadius: 12 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead style={{ background: 'var(--n-50, #f9fafb)' }}>
+            <thead style={{ background: 'var(--atlas-v5-bg)' }}>
               <tr>
                 {['NIF', 'Nombre', 'Tipos', 'Operaciones', ''].map((col) => (
                   <th key={col} style={{
@@ -114,7 +114,7 @@ const ProveedoresPage: React.FC = () => {
                       {isOpen && (
                         <div role="menu" onClick={(e) => e.stopPropagation()} style={{
                           position: 'absolute', right: 8, top: 'calc(100% - 4px)',
-                          zIndex: 50, background: '#fff',
+                          zIndex: 50, background: 'var(--atlas-v5-card)',
                           border: '1px solid var(--hz-neutral-300)', borderRadius: 8,
                           boxShadow: '0 6px 18px rgba(15,23,42,.12)',
                           minWidth: 200, padding: 4,
@@ -290,7 +290,7 @@ const ModalShell: React.FC<{
     alignItems: 'center', justifyContent: 'center', padding: 16,
   }}>
     <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,.8)', backdropFilter: 'blur(4px)' }} />
-    <div style={{ position: 'relative', background: '#fff', borderRadius: 8, boxShadow: '0 12px 36px rgba(15,23,42,.18)', maxWidth: 420, width: '100%' }}>
+    <div style={{ position: 'relative', background: 'var(--atlas-v5-card)', borderRadius: 8, boxShadow: '0 12px 36px rgba(15,23,42,.18)', maxWidth: 420, width: '100%' }}>
       <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hz-neutral-300)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <strong style={{ fontSize: 14, color: 'var(--atlas-navy-1)' }}>{title}</strong>
         <button type="button" onClick={onClose} aria-label="Cerrar" style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>

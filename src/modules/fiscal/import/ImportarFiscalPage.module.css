@@ -207,7 +207,7 @@
 
 .btn.gold {
   background: var(--atlas-v5-gold);
-  color: #fff;
+  color: var(--atlas-v5-on-gold);
 }
 
 .btn.gold:hover { background: var(--atlas-v5-gold-2); }

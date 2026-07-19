@@ -26,14 +26,14 @@ interface ImportarDeclaracionWizardProps {
 // ─── Design tokens V4 ────────────────────────────────────────────────────────
 const NAVY = '#042C5E';      // --navy-900: botones primarios, texto principal
 const TEAL = '#1DA0BA';      // --teal-600: acento UI, a devolver
-const TEAL_100 = '#E6F7FA';  // --teal-100: fondo badge teal
-const GREY_900 = '#1A2332';  // --grey-900: texto principal
-const GREY_700 = '#303A4C';  // --grey-700: texto cuerpo
-const GREY_400 = '#9CA3AF';  // --grey-400: texto deshabilitado
-const GREY_300 = '#C8D0DC';  // --grey-300: bordes
-const GREY_200 = '#DDE3EC';  // --grey-200: separadores
-const GREY_100 = '#EEF1F5';  // --grey-100: fondo sección, zebra rows
-const GREY_50 = '#F8F9FA';   // --grey-50: fondo de página
+const TEAL_100 = 'var(--atlas-v5-brand-wash)';  // --teal-100: fondo badge teal
+const GREY_900 = 'var(--atlas-v5-ink)';  // --grey-900: texto principal
+const GREY_700 = 'var(--atlas-v5-ink-2)';  // --grey-700: texto cuerpo
+const GREY_400 = 'var(--atlas-v5-ink-4)';  // --grey-400: texto deshabilitado
+const GREY_300 = 'var(--atlas-v5-ink-5)';  // --grey-300: bordes
+const GREY_200 = 'var(--atlas-v5-line)';  // --grey-200: separadores
+const GREY_100 = 'var(--atlas-v5-line-2)';  // --grey-100: fondo sección, zebra rows
+const GREY_50 = 'var(--atlas-v5-bg)';   // --grey-50: fondo de página
 const fontSans = "'IBM Plex Sans', system-ui, sans-serif";
 const fontMono = "'IBM Plex Mono', monospace";
 
@@ -323,7 +323,7 @@ function Paso1({
     borderRadius: 12,
     padding: '1rem',
     cursor: disabled ? 'not-allowed' : 'pointer',
-    background: selected ? '#F0F4FA' : disabled ? GREY_50 : 'white',
+    background: selected ? 'var(--atlas-v5-brand-wash)' : disabled ? GREY_50 : 'white',
     opacity: disabled ? 0.6 : 1,
     flex: 1,
     minWidth: 0,
@@ -638,7 +638,7 @@ function Paso2({
                   </div>
                   <div style={{ fontSize: '0.75rem', color: GREY_400, fontFamily: fontMono }}>
                     {inm.refCatastral}
-                    {inm.esAccesorioDe && <span style={{ marginLeft: '0.4rem', padding: '0.1rem 0.35rem', borderRadius: 4, background: '#E0F2FE', color: '#0369A1', fontSize: '0.68rem', fontFamily: fontSans, fontWeight: 600 }}>Accesorio</span>}
+                    {inm.esAccesorioDe && <span style={{ marginLeft: '0.4rem', padding: '0.1rem 0.35rem', borderRadius: 4, background: 'var(--atlas-v5-brand-wash)', color: 'var(--atlas-v5-brand)', fontSize: '0.68rem', fontFamily: fontSans, fontWeight: 600 }}>Accesorio</span>}
                     {diasArr > 0 && ` · ${diasArr}d arr.`}
                     {diasVac > 0 && ` + ${diasVac}d vacío`}
                   </div>

@@ -185,7 +185,7 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
           width: 'min(720px, 92vw)',
           maxHeight: '92vh',
           overflow: 'auto',
-          backgroundColor: 'var(--atlas-v5-white, #fff)',
+          backgroundColor: 'var(--atlas-v5-white)',
           borderRadius: '12px',
           padding: '24px',
           boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
@@ -252,7 +252,7 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
                 alignItems: 'center',
                 gap: '10px',
                 cursor: 'pointer',
-                backgroundColor: dragging ? 'var(--atlas-v5-brand-wash)' : 'var(--bg, #f9fafb)',
+                backgroundColor: dragging ? 'var(--atlas-v5-brand-wash)' : 'var(--bg, var(--atlas-v5-card-alt))',
                 transition: 'border-color 0.2s, background-color 0.2s',
               }}
             >
@@ -290,7 +290,7 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
                   flex: 1,
                   padding: '10px 14px',
                   borderRadius: '8px',
-                  backgroundColor: 'var(--atlas-v5-brand-wash, #eef2ff)',
+                  backgroundColor: 'var(--atlas-v5-brand-wash)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
@@ -308,13 +308,13 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
                     flex: 1,
                     padding: '10px 14px',
                     borderRadius: '8px',
-                    backgroundColor: 'var(--s-warn-bg, #fef3c7)',
+                    backgroundColor: 'var(--s-warn-bg, var(--atlas-v5-warn-wash))',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
                   }}
                 >
-                  <AlertCircle size={16} strokeWidth={1.5} style={{ color: 'var(--s-warn, #b45309)' }} />
+                  <AlertCircle size={16} strokeWidth={1.5} style={{ color: 'var(--s-warn, var(--atlas-v5-warn))' }} />
                   <div>
                     <div style={{ fontSize: '0.8125rem', color: 'var(--text-gray)' }}>Filas inválidas</div>
                     <div style={{ fontWeight: 600, color: 'var(--atlas-navy-1)' }}>{invalidRows.length}</div>
@@ -324,9 +324,9 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
             </div>
 
             {/* Tabla preview */}
-            <div style={{ maxHeight: '320px', overflowY: 'auto', marginBottom: '16px', border: '1px solid var(--hz-neutral-300, #e5e7eb)', borderRadius: '8px' }}>
+            <div style={{ maxHeight: '320px', overflowY: 'auto', marginBottom: '16px', border: '1px solid var(--hz-neutral-300, var(--atlas-v5-line))', borderRadius: '8px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--atlas-v5-card-alt, #f9fafb)' }}>
+                <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--atlas-v5-card-alt)' }}>
                   <tr>
                     <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-gray)' }}>Fecha</th>
                     <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: 'var(--text-gray)' }}>Valor</th>
@@ -335,26 +335,26 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
                 </thead>
                 <tbody>
                   {rows.slice(0, PREVIEW_LIMIT).map((r, i) => (
-                    <tr key={i} style={{ borderTop: '1px solid var(--hz-neutral-300, #e5e7eb)' }}>
+                    <tr key={i} style={{ borderTop: '1px solid var(--hz-neutral-300, var(--atlas-v5-line))' }}>
                       <td style={{ padding: '6px 12px', fontVariantNumeric: 'tabular-nums' }}>
                         {r.invalid === 'fecha' ? (
-                          <span style={{ color: 'var(--s-warn, #b45309)' }}>{String(r.raw.fechaRaw)} ✗</span>
+                          <span style={{ color: 'var(--s-warn, var(--atlas-v5-warn))' }}>{String(r.raw.fechaRaw)} ✗</span>
                         ) : (
                           r.fecha
                         )}
                       </td>
                       <td style={{ padding: '6px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {r.invalid === 'valor' ? (
-                          <span style={{ color: 'var(--s-warn, #b45309)' }}>{String(r.raw.valorRaw)} ✗</span>
+                          <span style={{ color: 'var(--s-warn, var(--atlas-v5-warn))' }}>{String(r.raw.valorRaw)} ✗</span>
                         ) : (
                           formatCurrency(r.valor)
                         )}
                       </td>
                       <td style={{ padding: '6px 12px' }}>
                         {r.invalid ? (
-                          <span style={{ color: 'var(--s-warn, #b45309)' }}>Inválido</span>
+                          <span style={{ color: 'var(--s-warn, var(--atlas-v5-warn))' }}>Inválido</span>
                         ) : (
-                          <span style={{ color: 'var(--ok, #059669)' }}>OK</span>
+                          <span style={{ color: 'var(--ok, var(--atlas-v5-pos))' }}>OK</span>
                         )}
                       </td>
                     </tr>
@@ -373,7 +373,7 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
                 onClick={() => setRows(null)}
                 style={{
                   padding: '8px 16px',
-                  border: '1px solid var(--hz-neutral-300, #e5e7eb)',
+                  border: '1px solid var(--hz-neutral-300, var(--atlas-v5-line))',
                   borderRadius: '6px',
                   backgroundColor: 'transparent',
                   color: 'var(--text-gray)',
@@ -392,8 +392,8 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
                   border: 'none',
                   borderRadius: '6px',
                   backgroundColor:
-                    importing || validRows.length === 0 ? 'var(--hz-neutral-300, #d1d5db)' : 'var(--atlas-blue)',
-                  color: 'var(--atlas-v5-white, #fff)',
+                    importing || validRows.length === 0 ? 'var(--hz-neutral-300, var(--atlas-v5-ink-5))' : 'var(--atlas-blue)',
+                  color: 'var(--atlas-v5-white)',
                   cursor: importing || validRows.length === 0 ? 'not-allowed' : 'pointer',
                   fontFamily: 'var(--font-inter)',
                   fontWeight: 600,

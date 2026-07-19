@@ -148,7 +148,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
             width: '40px',
             height: '40px',
             borderRadius: '10px',
-            backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+            backgroundColor: 'var(--atlas-blue-light, var(--atlas-v5-brand-wash))',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -213,7 +213,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
               fontSize: '0.875rem',
               fontFamily: 'var(--font-inter)',
               color: 'var(--atlas-navy-1)',
-              backgroundColor: '#fff',
+              backgroundColor: 'var(--atlas-v5-card)',
               cursor: 'pointer',
             }}
           >
@@ -260,7 +260,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
               alignItems: 'center',
               gap: '10px',
               cursor: canUpload ? (importing ? 'wait' : 'pointer') : 'not-allowed',
-              backgroundColor: dragging ? 'var(--n-100)' : 'var(--bg)',
+              backgroundColor: dragging ? 'var(--atlas-v5-line-2)' : 'var(--bg)',
               transition: 'all 150ms ease',
             }}
           >
@@ -326,7 +326,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
               gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
               gap: '12px',
               padding: '14px',
-              backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+              backgroundColor: 'var(--atlas-blue-light, var(--atlas-v5-brand-wash))',
               borderRadius: '8px',
               marginBottom: '16px',
             }}
@@ -350,7 +350,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
               display: 'flex',
               gap: '8px',
               padding: '10px 12px',
-              backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+              backgroundColor: 'var(--atlas-blue-light, var(--atlas-v5-brand-wash))',
               borderRadius: '8px',
               marginBottom: '12px',
             }}
@@ -391,7 +391,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
                     key={m.mes}
                     style={{
                       borderBottom: '1px solid var(--hz-neutral-300)',
-                      backgroundColor: index % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
+                      backgroundColor: index % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, var(--atlas-v5-card-alt))',
                     }}
                   >
                     <td style={{ padding: '8px 12px', fontVariantNumeric: 'tabular-nums' }}>{m.mes}</td>
@@ -403,7 +403,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
                         padding: '8px 12px',
                         textAlign: 'right',
                         fontVariantNumeric: 'tabular-nums',
-                        color: m.aportacionNetaMes < 0 ? 'var(--error, #ef4444)' : 'var(--atlas-navy-1)',
+                        color: m.aportacionNetaMes < 0 ? 'var(--error, var(--atlas-v5-neg))' : 'var(--atlas-navy-1)',
                       }}
                     >
                       {formatSignedCurrency(m.aportacionNetaMes)}
@@ -444,7 +444,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
                 border: 'none',
                 borderRadius: '8px',
                 backgroundColor: importing || !selectedPlan ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
-                color: '#fff',
+                color: 'var(--atlas-v5-on-navy-1)',
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 cursor: importing || !selectedPlan ? 'not-allowed' : 'pointer',

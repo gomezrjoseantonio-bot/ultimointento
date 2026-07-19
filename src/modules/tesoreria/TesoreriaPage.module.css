@@ -81,7 +81,7 @@
 }
 
 .kpiBannerValue.neg {
-  color: #FF8E83;
+  color: var(--atlas-v5-neg-wash);
 }
 
 .kpiBannerSub {

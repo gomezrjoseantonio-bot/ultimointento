@@ -28,7 +28,7 @@
 
 .pill.active {
   background: var(--atlas-v5-ink);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   border-color: var(--atlas-v5-ink);
 }
 
@@ -172,7 +172,7 @@
   justify-content: center;
   font-size: 9.5px;
   font-weight: var(--atlas-v5-fw-bold);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   font-family: var(--atlas-v5-font-mono-num);
   letter-spacing: 0.04em;
   padding: 0 4px;
@@ -181,7 +181,7 @@
 }
 
 .tlBar.vencida { background: var(--atlas-v5-neg); }
-.tlBar.futura { background: var(--atlas-v5-gold); color: #fff; }
+.tlBar.futura { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-gold); }
 .tlBar.cumplida { background: var(--atlas-v5-pos); }
 
 .tlToday {
