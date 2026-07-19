@@ -1,6 +1,6 @@
 // src/modules/horizon/tesoreria/services/treasurySyncService.ts
 // ATLAS HORIZON – Treasury Sync Service
-// Bridges the forecastEngine with the day-to-day treasury (TreasuryReconciliationView).
+// Bridges the forecastEngine with the day-to-day treasury (la vista de conciliación de tesorería).
 // Generates monthly forecast TreasuryEvents from projection rules so that the
 // "Previsiones" column is populated automatically.
 //
@@ -192,7 +192,7 @@ export async function generateMonthlyForecasts(
 
   // ── ACCOUNT ID RESOLUTION ─────────────────────────────────────────────────
   // NominaWizard and ContractsNuevo use cuentasService (localStorage) which assigns
-  // timestamp-based IDs (e.g., 1708726312345), while TreasuryReconciliationView
+  // timestamp-based IDs (e.g., 1708726312345), while la vista de conciliación de tesorería
   // displays accounts by their IndexedDB autoincrement IDs (1, 2, 3, …).
   // Build an IBAN-keyed lookup so that localStorage account IDs are resolved to
   // the correct IndexedDB account ID before being injected into TreasuryEvents.
@@ -215,7 +215,7 @@ export async function generateMonthlyForecasts(
   /**
    * Translates a raw account ID (which may be a localStorage timestamp ID or an
    * IndexedDB autoincrement ID) to the canonical IndexedDB account ID used by
-   * TreasuryReconciliationView.
+   * la vista de conciliación de tesorería.
    *
    * Resolution order:
    *  1. localStorage ID → IndexedDB ID (via IBAN lookup map)
