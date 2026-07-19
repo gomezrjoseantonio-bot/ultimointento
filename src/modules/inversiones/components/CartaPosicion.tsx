@@ -33,7 +33,8 @@ const MESES = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 // §5.1 · Tag de tipología neutro: el color ya no diferencia (todos card-alt),
 // un icono Lucide por tipo restaura la lectura. Solo los 7 tipos antes coloreados
 // (PPE/PPES/PPA · Fondo · ETF · REIT · Crypto); el resto se lee por texto/color propio.
-const TAG_ICON: Partial<Record<string, (typeof Icons)['PiggyBank']>> = {
+type IconComponent = (typeof Icons)[keyof typeof Icons];
+const TAG_ICON: Partial<Record<string, IconComponent>> = {
   ppe: Icons.PiggyBank,
   ppes: Icons.PiggyBank,
   ppa: Icons.Umbrella,
@@ -212,7 +213,9 @@ const CartaTop: React.FC<{ item: CartaItem }> = ({ item }) => {
         className={`${styles.cartaTipo} ${styles.tagTipo}${styles['tagTipo_' + tagCssKey] ? ' ' + styles['tagTipo_' + tagCssKey] : (styles[cardClass] ? ' ' + styles[cardClass] : '')}`}
         data-tag-tipo={tagCssKey}
       >
-        {TagIcon ? <TagIcon size={10} className={styles.tagIcon} /> : null}
+        {TagIcon ? (
+          <TagIcon size={10} className={styles.tagIcon} aria-hidden="true" focusable={false} />
+        ) : null}
         {tipoTagLabel}
       </span>
     </div>
