@@ -1,0 +1,211 @@
+/* Datos y preferencias · sub-página v5 de Ajustes.
+   Migración de la antigua /configuracion/preferencias-datos (v4 · PageLayout).
+   Solo tokens --atlas-v5-* · sin hex · calca el lenguaje de SeguridadPage. */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border: none;
+  background: transparent;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-medium);
+  font-family: var(--atlas-v5-font-ui);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.tab:hover { color: var(--atlas-v5-ink-2); }
+
+.tab.active {
+  color: var(--atlas-v5-gold-ink);
+  border-bottom-color: var(--atlas-v5-gold);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.tab.active svg { color: var(--atlas-v5-gold-ink); }
+
+/* Bloque de contenido dentro de una SetSection (la sección aporta la cabecera;
+   el bloque aporta su propio padding · igual criterio que .sesRow). */
+.block {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.block:last-child { border-bottom: none; }
+
+.blockTitle {
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.blockDesc {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 4px;
+  line-height: var(--atlas-v5-lh-base);
+}
+
+.blockDesc strong { color: var(--atlas-v5-ink-2); }
+
+.actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-tech);
+}
+
+/* Selección modo importación */
+.radioGroup {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radioRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-2);
+  cursor: pointer;
+}
+
+.radioRow input { margin-top: 2px; accent-color: var(--atlas-v5-gold); }
+
+.radioRow strong { color: var(--atlas-v5-ink); font-weight: var(--atlas-v5-fw-semibold); }
+
+.fileInput {
+  display: block;
+  width: 100%;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.fileInput::file-selector-button {
+  margin-right: 12px;
+  padding: 8px 14px;
+  border-radius: var(--atlas-v5-radius-sm);
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-medium);
+  font-family: var(--atlas-v5-font-ui);
+  cursor: pointer;
+}
+
+.fileInput::file-selector-button:hover { border-color: var(--atlas-v5-ink-5); }
+
+/* Cajas de confirmación */
+.confirmBox {
+  margin-top: 12px;
+  border: 1px solid var(--atlas-v5-neg-wash);
+  background: var(--atlas-v5-neg-wash);
+  border-radius: var(--atlas-v5-radius-sm);
+  padding: 16px;
+}
+
+.confirmBoxWarn {
+  margin-top: 12px;
+  border: 1px solid var(--atlas-v5-warn-border);
+  background: var(--atlas-v5-warn-wash);
+  border-radius: var(--atlas-v5-radius-sm);
+  padding: 16px;
+}
+
+.confirmHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.confirmTitle {
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.confirmText {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 6px;
+  line-height: var(--atlas-v5-lh-base);
+}
+
+.confirmText strong { color: var(--atlas-v5-ink); }
+
+.iconNeg { color: var(--atlas-v5-neg); flex-shrink: 0; margin-top: 1px; }
+.iconWarn { color: var(--atlas-v5-warn); flex-shrink: 0; margin-top: 1px; }
+
+.confirmActions {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.textInput {
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--atlas-v5-warn-border);
+  border-radius: var(--atlas-v5-radius-sm);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  font-size: 12.5px;
+  font-family: var(--atlas-v5-font-mono-tech);
+}
+
+.textInput:focus { outline: none; border-color: var(--atlas-v5-warn); }
+
+.smallNote {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 8px;
+}
+
+/* Información de datos */
+.infoList {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  list-style: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.infoNote {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 12px;
+  line-height: var(--atlas-v5-lh-base);
+}
+
+.infoNote strong { color: var(--atlas-v5-ink); }
+
+/* Contenedor para herramientas embebidas (DashboardConfig · KpiBuilder) */
+.embed { padding: 20px 24px; }

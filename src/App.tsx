@@ -227,7 +227,6 @@ const AutomatizacionesReglas = lazyWithPreload(() => import('./modules/pulse/aut
 const TareasPendientes = lazyWithPreload(() => import('./modules/pulse/tareas/pendientes/TareasPendientes'));
 
 // Legacy Pulse (Personal) Module Components - Keep for migration
-const HorizonPreferenciasDatos = lazyWithPreload(() => import('./modules/horizon/configuracion/preferencias-datos/PreferenciasDatos'));
 // D-CRUD-ALTA sub-tarea 9 · Catálogo proveedores
 const ConfigProveedores = lazyWithPreload(() => import('./modules/horizon/configuracion/proveedores/ProveedoresPage'));
 // Development only imports
@@ -305,6 +304,7 @@ const AjustesPerfilFiscal = lazyWithPreload(() => import('./modules/ajustes/page
 const AjustesSeguridad = lazyWithPreload(() => import('./modules/ajustes/pages/SeguridadPage'));
 const AjustesDatosMercado = lazyWithPreload(() => import('./modules/ajustes/pages/DatosMercadoPage'));
 const AjustesAvisos = lazyWithPreload(() => import('./modules/ajustes/pages/AvisosPage'));
+const AjustesDatos = lazyWithPreload(() => import('./modules/ajustes/pages/DatosPage'));
 
 // CopilotWidget es un botón flotante rara vez usado. Cargarlo eager arrastra
 // dashboardService → proyeccionMensualService y toda la cadena de servicios
@@ -1418,12 +1418,9 @@ function App() {
                   <UsuariosRoles />
                 </React.Suspense>
               } />
-              {/* Shared configuration - available for both modules */}
-              <Route path="preferencias-datos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <HorizonPreferenciasDatos />
-                </React.Suspense>
-              } />
+              {/* Preferencias & datos migrado a Ajustes v5 (/ajustes/datos).
+                  Redirect por compatibilidad con bookmarks/deep-links antiguos. */}
+              <Route path="preferencias-datos" element={<Navigate to="/ajustes/datos" replace />} />
               <Route path="email-entrante" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <EmailEntrante />
@@ -1490,6 +1487,11 @@ function App() {
               <Route path="avisos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <AjustesAvisos />
+                </React.Suspense>
+              } />
+              <Route path="datos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AjustesDatos />
                 </React.Suspense>
               } />
             </Route>
