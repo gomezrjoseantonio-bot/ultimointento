@@ -586,34 +586,6 @@
  *   page-head (línea 73)
  * ═══════════════════════════════════════════════════════════════════ */
 
-/* Hex hardcoded en el mockup · sin token global v5 análogo.
- * Documentados aquí para futura promoción a tokens globales.
- * Equivalente a la pauta del PR 1 (--atlas-neg-bright-local). */
-.filtersBar,
-.tagTipo {
-  /* Plan tag · PPE blue (B2B) */
-  --atlas-tag-ppe-bg: #DCE7F5;
-  --atlas-tag-ppe-fg: #1F4E8B;
-  /* Plan tag · PPES green (autónomo) */
-  --atlas-tag-ppes-bg: #E0E8E0;
-  --atlas-tag-ppes-fg: #2D5B3A;
-  /* Plan tag · PPA brown (autónomo PPA) */
-  --atlas-tag-ppa-bg: #F0E4E0;
-  --atlas-tag-ppa-fg: #8B5C42;
-  /* Fondo · purple */
-  --atlas-tag-fondo-bg: #EEE3F5;
-  --atlas-tag-fondo-fg: #6B3FAE;
-  /* ETF · azul */
-  --atlas-tag-etf-bg: #E8F0F5;
-  --atlas-tag-etf-fg: #2C6A8E;
-  /* REIT · ámbar */
-  --atlas-tag-reit-bg: #F5E8E0;
-  --atlas-tag-reit-fg: #8B4A1F;
-  /* Crypto · magenta */
-  --atlas-tag-crypto-bg: #F5E0E8;
-  --atlas-tag-crypto-fg: #9E2A5F;
-}
-
 /* ─── Filters bar ──────────────────────────────────────────────────── */
 
 .filtersBar {
@@ -680,16 +652,31 @@
   border-radius: 4px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
+/* Icono de tipología dentro del tag · un icono por tipo (§13). */
+.tagIcon {
+  flex-shrink: 0;
+}
+
+/* Tipología de inversión · tag neutro único. El color ya no diferencia:
+ * el tipo lo dicen la etiqueta y el icono Lucide. Reemplaza las 7 paletas
+ * por tipo (PPE/PPES/PPA · Fondo · ETF · REIT · Crypto). */
+.tagTipo_ppe,
+.tagTipo_ppes,
+.tagTipo_ppa,
+.tagTipo_fondo,
+.tagTipo_etf,
+.tagTipo_reit,
+.tagTipo_crypto {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line);
+}
 .tagTipo_ppi   { background: var(--atlas-v5-brand-wash, var(--atlas-v5-gold-wash)); color: var(--atlas-v5-brand, var(--atlas-v5-gold-ink)); }
-.tagTipo_ppe   { background: var(--atlas-tag-ppe-bg);   color: var(--atlas-tag-ppe-fg); }
-.tagTipo_ppes  { background: var(--atlas-tag-ppes-bg);  color: var(--atlas-tag-ppes-fg); }
-.tagTipo_ppa   { background: var(--atlas-tag-ppa-bg);   color: var(--atlas-tag-ppa-fg); }
-.tagTipo_fondo { background: var(--atlas-tag-fondo-bg); color: var(--atlas-tag-fondo-fg); }
-.tagTipo_etf   { background: var(--atlas-tag-etf-bg);   color: var(--atlas-tag-etf-fg); }
-.tagTipo_reit  { background: var(--atlas-tag-reit-bg);  color: var(--atlas-tag-reit-fg); }
 .tagTipo_accion {
   background: var(--atlas-v5-bg);
   color: var(--atlas-v5-ink-3);
@@ -706,10 +693,6 @@
 .tagTipo_deposito {
   background: var(--atlas-v5-pos-wash);
   color: var(--atlas-v5-pos);
-}
-.tagTipo_crypto {
-  background: var(--atlas-tag-crypto-bg);
-  color: var(--atlas-tag-crypto-fg);
 }
 /* Otro y Acción comparten paleta neutra · diferenciados por el TEXTO
  * (ACCIÓN · OTRO) y porque `Otro` típicamente NO aparece en producción

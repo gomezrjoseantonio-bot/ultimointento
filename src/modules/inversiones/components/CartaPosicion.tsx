@@ -30,6 +30,19 @@ interface CartaPosicionProps {
 
 const MESES = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
+// §5.1 · Tag de tipología neutro: el color ya no diferencia (todos card-alt),
+// un icono Lucide por tipo restaura la lectura. Solo los 7 tipos antes coloreados
+// (PPE/PPES/PPA · Fondo · ETF · REIT · Crypto); el resto se lee por texto/color propio.
+const TAG_ICON: Partial<Record<string, (typeof Icons)['PiggyBank']>> = {
+  ppe: Icons.PiggyBank,
+  ppes: Icons.PiggyBank,
+  ppa: Icons.Umbrella,
+  fondo: Icons.Boxes,
+  etf: Icons.Layers,
+  reit: Icons.Warehouse,
+  crypto: Icons.Bitcoin,
+};
+
 // ── Sparkline ──────────────────────────────────────────────────────────────
 
 const Sparkline: React.FC<{ data: { x: number; y: number }[]; color: string }> = ({
@@ -169,6 +182,7 @@ const CartaTop: React.FC<{ item: CartaItem }> = ({ item }) => {
     item.tipoAdministrativo,
     item.subtipo,
   );
+  const TagIcon = TAG_ICON[tagCssKey];
 
   // Si el logo tiene clase CSS definida, usamos la clase; si no, usamos inline style
   const logoStyle =
@@ -198,6 +212,7 @@ const CartaTop: React.FC<{ item: CartaItem }> = ({ item }) => {
         className={`${styles.cartaTipo} ${styles.tagTipo}${styles['tagTipo_' + tagCssKey] ? ' ' + styles['tagTipo_' + tagCssKey] : (styles[cardClass] ? ' ' + styles[cardClass] : '')}`}
         data-tag-tipo={tagCssKey}
       >
+        {TagIcon ? <TagIcon size={10} className={styles.tagIcon} /> : null}
         {tipoTagLabel}
       </span>
     </div>

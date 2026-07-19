@@ -91,6 +91,10 @@ import {
   PiggyBank,
   HandCoins,
   Bitcoin,
+  Boxes,
+  Umbrella,
+  Layers,
+  Warehouse,
   Zap,
   ShoppingCart,
   Tv,
@@ -198,6 +202,12 @@ export const Icons = {
   PiggyBank,
   HandCoins,
   Bitcoin,
+  // Iconos de tipología de inversión · tag neutro (§13 · InversionesGaleria).
+  // Un icono por tipo · el color del tag ya no diferencia (neutro único).
+  Boxes,      // Fondo
+  Umbrella,   // PPA (plan de pensiones asegurado)
+  Layers,     // ETF
+  Warehouse,  // REIT
   // ===== T34/T35 · Tipo gasto selector =====
   Zap,
   ShoppingCart,
