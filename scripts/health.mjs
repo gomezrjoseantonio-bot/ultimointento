@@ -168,45 +168,50 @@ function storesFantasma() {
 }
 
 /**
- * INDICADOR 2 · stores_no_tipados
- * Stores físicos (`createObjectStore`) que NO figuran como clave en la interfaz:
- *   CUENTA  · nombre de `createObjectStore('X')` con X ausente de la interfaz
- *   EXCLUYE · stores con `deleteObjectStore('X')` (creados-bajo-guard y luego
- *             retirados para DBs viejas · p. ej. `planesPensionInversion`)
- * Resultado esperado por la auditoría: 3
- *   → gastosInmueble · mejorasInmueble · mueblesInmueble
+ * INDICADOR 2 · stores_no_tipados · TIPADO REAL (value:any) desde 2026-07-19
+ * Claves de la interfaz `AtlasHorizonDB extends DBSchema` cuyo `value` sigue en
+ * `any` (sin endurecer a su tipo de dominio):
+ *   CUENTA  · `store: { key: …; value: any; indexes: … }` en la interfaz
+ *   EXCLUYE · las endurecidas (`value: <TipoReal>`)
  *
- * ⚠ LIMITACIÓN CONOCIDA · QUÉ MIDE HOY (bloque 2.5 · 2026-07)
- * Este indicador mide PRESENCIA en la interfaz `AtlasHorizonDB`, NO seguridad
- * de tipos. La interfaz NO extiende `DBSchema` de idb (sus valores son tipos
- * de dominio, no `{ key; value; indexes }`), así que `StoreNames<AtlasHorizonDB>`
- * colapsa a `string` y `StoreValue` a `any`: el compilador NO valida ningún
- * nombre de store ni forma de registro. Verificado: asignar un nombre inexistente
- * a `StoreNames<AtlasHorizonDB>` compila; quitar 7 claves dio 0 errores de tsc.
- *
- * Consecuencia: añadir gastosInmueble/mejorasInmueble/mueblesInmueble a la
- * interfaz bajaría este contador a 0 SIN ganar seguridad de tipos real (sería
- * cosmético). Por eso el bloque 2.5 se APLAZÓ (decisión Jose) y el indicador
- * se deja en 3 a propósito — bajarlo a 0 sería un verde en falso.
- *
- * Hoy este indicador MIDE LO QUE NO IMPORTA (presencia en una interfaz
- * decorativa), y un indicador que mide lo que no importa es peor que no tenerlo.
- * Su SIGNIFICADO CAMBIARÁ cuando la interfaz se convierta a `DBSchema` real:
- * entonces sí medirá stores sin tipar de verdad. Estimación de esa conversión
- * en docs/health/ESTIMACION-DBSCHEMA-2026-07-18.md. Hasta entonces, tratar el
- * `3` como deuda documentada, no como objetivo a forzar a 0.
+ * CAMBIO DE DEFINICIÓN (autorizado por Jose · ampliación libre · el nº sube 0→N):
+ * ANTES medía PRESENCIA (createObjectStore sin clave en la interfaz). Tras la
+ * Fase 0 de DBSchema las 45 claves están declaradas → ese contador daba 0 y ya
+ * no medía nada útil (un indicador que mide lo que no importa). AHORA mide TIPADO
+ * REAL: con `extends DBSchema`, `StoreValue<…>` SÍ se propaga, así que un `value`
+ * tipado es garantía de tsc de verdad (un `put`/`get` mal formado no compila · lo
+ * fijan los candados B de __typeguards__). El número sube porque mide algo más
+ * estricto (deuda antes invisible), no por regresión. BAJA al endurecer cada
+ * store en las tandas siguientes de DBSchema.
  */
 function storesNoTipados() {
-  const list = [...CREATED].filter((k) => !IFACE_KEYS.includes(k) && !DELETED.has(k)).sort();
+  // Cuerpo de `interface AtlasHorizonDB extends DBSchema { … }`. El `\s+extends\s+`
+  // desambigua de la línea `interface AtlasHorizonDB {` que aparece en un comentario.
+  const m = DB_SRC.match(/interface AtlasHorizonDB\s+extends\s+DBSchema\s*\{([\s\S]*?)\n\}/);
+  const body = m ? m[1] : '';
+  const untyped = [];
+  for (const line of body.split('\n')) {
+    // `store: { key: …; value: <tipo>; indexes: { … } };` · el `value` va antes del
+    // primer `}` (el de `indexes`), así que `[^}]*` no se lo salta.
+    const km = line.match(/^\s+([a-zA-Z0-9_]+)\s*:\s*\{[^}]*\bvalue:\s*([^;]+);/);
+    if (km && km[2].trim() === 'any') untyped.push(km[1]);
+  }
+  untyped.sort();
   return {
-    value: list.length,
-    detail: list,
+    value: untyped.length,
+    detail: untyped,
     note:
-      'MIDE LO QUE NO IMPORTA (bloque 2.5 · diferido). Mide presencia en la interfaz ' +
-      'AtlasHorizonDB, no seguridad de tipos: la interfaz NO extiende DBSchema, así que ' +
-      'StoreNames colapsa a string y el compilador no valida stores. Tiparlos sería ' +
-      'cosmético y bajaría esto a 0 en falso. Su significado cambiará al convertir la ' +
-      'interfaz a DBSchema real. Ver docs/health/ESTIMACION-DBSCHEMA-2026-07-18.md.',
+      'claves con `value: any` en la interfaz AtlasHorizonDB (DBSchema). Mide TIPADO ' +
+      'REAL, no presencia: baja al endurecer cada store a su tipo de dominio.',
+    calibracion: {
+      fecha: '2026-07-19',
+      anterior: 0,
+      nueva: untyped.length,
+      motivo:
+        'presencia-en-interfaz → tipado real (value: any). Tras Fase 0 las 45 claves ' +
+        'existen (presencia daba 0 e inútil); ahora mide cuántos value siguen en any. ' +
+        'Ampliación libre autorizada por Jose · sube porque mide algo más estricto.',
+    },
   };
 }
 
@@ -955,6 +960,12 @@ const AMPLIACIONES = {
       'SOLO desde el KPIsBlock muerto (deep-link «configurar KPIs», borrado) · ' +
       'huérfano PREEXISTENTE que el código muerto tapaba, no una regresión · ' +
       'autorizado por Jose · pantalla marcada como pieza a re-conectar',
+  },
+  stores_no_tipados: {
+    antes: 0,
+    motivo:
+      'nueva definición · presencia-en-interfaz → tipado real (value: any). Tras Fase 0 ' +
+      'la presencia daba 0; ahora mide cuántos value siguen en any (35). Ampliación libre.',
   },
 };
 
