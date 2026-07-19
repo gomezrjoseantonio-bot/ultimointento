@@ -152,7 +152,7 @@ export const HeaderPrimaryButton: React.FC<{
       borderRadius: 'var(--r-md, 8px)',
       border: 'none',
       background: 'var(--atlas-v5-brand)',
-      color: 'var(--atlas-v5-card)',
+      color: 'var(--atlas-v5-on-navy-1)',
       fontSize: 'var(--t-base, 0.875rem)',
       fontWeight: 500,
       cursor: 'pointer',

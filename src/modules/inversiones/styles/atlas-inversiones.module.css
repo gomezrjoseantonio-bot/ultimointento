@@ -404,9 +404,9 @@
   border-radius: 10px;
   padding: 18px 20px;
   margin-bottom: 16px;
-  /* TODO · token --atlas-v5-neg-bright (#F5A199) no existe en
-     src/design-system/v5/tokens.css. Definido como custom property
-     local hasta confirmar con Jose si se promociona a token global. */
+  /* --atlas-neg-bright-local · el rojo/rosa claro original se consolidó en el
+     muro a --atlas-v5-neg-wash (tabla FASE B · rojo/rosa lavado → neg-wash).
+     Se mantiene el alias local; retirarlo del todo queda como limpieza aparte. */
   --atlas-neg-bright-local: var(--atlas-v5-neg-wash);
 }
 
