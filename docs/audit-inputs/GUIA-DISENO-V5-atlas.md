@@ -924,6 +924,12 @@ Identificación visual rápida de cuenta bancaria por color oficial:
 | Amortizar | `landmark` | columnas |
 | Comprar | `home` | casa |
 | Reducir | `trending-down` | línea descendente |
+| Tipo · Plan de pensiones (PPE/PPES) | `piggy-bank` | hucha |
+| Tipo · Plan asegurado (PPA) | `umbrella` | paraguas |
+| Tipo · Fondo | `boxes` | cajas apiladas |
+| Tipo · ETF | `layers` | capas |
+| Tipo · REIT | `warehouse` | nave/almacén |
+| Tipo · Crypto | `bitcoin` | símbolo bitcoin |
 
 ### 13.2 · Tamaños canónicos
 
@@ -939,6 +945,35 @@ arrow circular:     11px stroke 2.5
 ### 13.3 · Stroke
 
 Siempre `stroke="currentColor"` · `fill="none"` salvo iconos llenos (estrella · estado) · `stroke-width` entre 1.7 (decorativo) y 2.5 (botones/CTAs).
+
+### 13.4 · Tag de tipología de inversión · neutro + icono
+
+Las tipologías de inversión (galería Inversiones) usan **un único estilo de tag
+neutro**; el color ya **no** diferencia el tipo. El tipo lo dicen la **etiqueta**
+(texto) y **un icono Lucide por tipo**. Esto retira las 14 variables locales
+`--atlas-tag-*` (7 parejas bg/fg) que existían solo aquí.
+
+**Estilo del tag neutro:**
+
+```
+background: var(--atlas-v5-card-alt)
+color:      var(--atlas-v5-ink-3)
+border:     1px solid var(--atlas-v5-line)
+```
+
+**Un icono por tipo** (10px, dentro del tag, antes de la etiqueta):
+
+| Tipo | Icono Lucide |
+|---|---|
+| PPE / PPES (plan de pensiones) | `piggy-bank` |
+| PPA (plan asegurado) | `umbrella` |
+| Fondo | `boxes` |
+| ETF | `layers` |
+| REIT | `warehouse` |
+| Crypto | `bitcoin` |
+
+Los tags con color propio deliberado se mantienen: **P2P/Préstamo** (oro),
+**Depósito** (positivo), **PPI** (brand/oro), **Acción/Otro** (neutro sin icono).
 
 ---
 
