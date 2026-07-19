@@ -499,7 +499,7 @@
 }
 
 .cuadroBadge.pagada { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }
-.cuadroBadge.actual { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-navy-1); }
+.cuadroBadge.actual { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-gold); }
 .cuadroBadge.futura { background: var(--atlas-v5-card-alt); color: var(--atlas-v5-ink-4); }
 
 .notFound {

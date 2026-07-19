@@ -290,7 +290,7 @@
   font-size: 12px;
 }
 
-.row.attacked .rowOrder { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-navy-1); }
+.row.attacked .rowOrder { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-gold); }
 
 .rowLogo {
   width: 32px;

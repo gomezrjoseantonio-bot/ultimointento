@@ -342,7 +342,7 @@ const SnowballPage: React.FC = () => {
             padding: '8px 16px',
             border: 'none',
             background: 'var(--atlas-v5-gold)',
-            color: 'var(--atlas-v5-on-navy-1)',
+            color: 'var(--atlas-v5-on-gold)',
             borderRadius: 8,
             fontSize: 13,
             fontWeight: 600,

@@ -225,7 +225,7 @@
 }
 
 .yrBarSeg.t1 { background: var(--atlas-v5-pos); }
-.yrBarSeg.t3 { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-navy-1); }
+.yrBarSeg.t3 { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-gold); }
 
 .cuotaCell.pagada { color: var(--atlas-v5-ink-4); text-decoration: line-through; }
 .cuotaCell.actual { background: var(--atlas-v5-gold-wash); font-weight: var(--atlas-v5-fw-bold); }
