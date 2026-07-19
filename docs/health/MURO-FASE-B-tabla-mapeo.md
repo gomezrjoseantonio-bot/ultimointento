@@ -12,6 +12,18 @@
 | top **40** filas | 623 | **83%** |
 | tabla entera (138) | 749 | 100% |
 
+## Correcciones de la 2ª pasada (review Jose)
+
+1. **`#059669`** reclasificado `d·entidad` → **`semantic · --pos`**. Es emerald de éxito (ImportValoracionesWizard); el "SmartFlip" del mockup era el verde-placeholder, no identidad.
+2. **`#b88a3e`** reclasificado `d·entidad` → **`exacto · --atlas-v5-gold`** (es EXACTAMENTE el oro de marca; "Unihouser"/fallback eran el oro-placeholder).
+3. **`#ffffff`** (195 occ) ya no es un solo `--white`: **contextual** → `--atlas-v5-card` (fondo tarjeta) · `--atlas-v5-on-navy-1` (texto sobre navy) · `--atlas-v5-white` (resto). Se separa por ocurrencia en FASE C.
+4. **`#1a1a1a` / `#aab3c4`** movidos de `c·tw-gray` → **`b·casi`** (no son grises de Tailwind; la categoría ahora dice la verdad).
+5. **InversionesGaleria** = **`identidad-cat` PENDIENTE** (no semántica). Ver auditoría abajo.
+
+**Auditoría de las 24 filas `d·entidad`** (una a una · la categoría exenta no debe atraer polizones): **22 confirmadas** identidad de tercero identificable (bancos/brokers/crypto, verificado en `entidadLogo.ts`/`accountHelpers.ts`/`financiacion/helpers.ts` con nombre de entidad). **2 expulsadas** (`#b88a3e`, `#059669`, arriba). Los logos de entidad en `InversionesGaleria` (`#7c3aed` MyInvestor, `#004481` BBVA, `#00915a` BNP) siguen siendo identidad (se consolidan al catálogo).
+
+**§11 de la guía**: define color por tipología SOLO para Objetivos/Fondos/Retos/Landing (todos con tokens de paleta). **NO** define colores por tipo de inversión → los 14 tags de `InversionesGaleria` (`--atlas-tag-{ppe,ppes,ppa,fondo,etf,reit,crypto}`) **no tienen destino** → diseño de paleta, **lo decides tú** (`identidad-cat` PENDIENTE, sin tocar).
+
 ## Decisiones de Jose aplicadas
 
 1. **Azul info · NO familia nueva.** Lavados → `--brand-wash`, sólidos → `--brand`. En ATLAS el azul es la marca; un azul info aparte es el problema con otro nombre. (`#5b8db8`/`#a8c4de` **salieron** de aquí → son serie de gráfico v3, categoría `chart`.)
@@ -38,7 +50,7 @@
 - **Infra de gráfico** (`chart-ink #0E2A47`, `chart-axis #6C757D`, `chart-border #C8D0DC`): reutilizan grises legacy. `#6c757d` (39 occ) en **UI** → `--ink-3`; el token `chart-axis` que reusa ese valor se reconcilia en el frente de gráficos. Marcado con nota.
 - **`#042c5e` / `#c8d0dc` · contextuales**: en UI → `--brand`/`--ink-5`; en gráfico → `#042c5e` queda `PENDIENTE` (frente gráficos v3) y `#c8d0dc` → token EXACTO `--atlas-v5-chart-border`. La tanda por fichero aplica el correcto (los ficheros de gráfico están señalados).
 - **`oro/ámbar`** (`a·gold`): `--gold` si es acento, `--warn` si transmite estado. Se decide por fichero en FASE C (categoría, no valor).
-- **`InversionesGaleria.module.css`**: cluster de colores de categoría de inversión (verde/marrón/púrpura/vino). Los mapeo a pos/cripto/neg/gold como propuesta; si en realidad es una **paleta de identidad de categorías** (como room-colors), dímelo y la trato como excepción, no como semántica.
+- **`InversionesGaleria` · 14 tags de tipología** (`--atlas-tag-*`): **RESUELTO** como `identidad-cat` PENDIENTE (decisión 5) · §11 no los define → esperan tu diseño de paleta · NO se tocan en FASE C.
 
 ## Plan de tandas propuesto (FASE C · por densidad de fichero · spec C.1)
 
@@ -64,11 +76,11 @@
 
 ## Tabla de mapeo completa (138 valores · por frecuencia)
 
-Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva v3/v4 → snap) · `c·tw-gray` (gris Tailwind → snap) · `b·beige` (casi · snap) · `d·entidad` (catálogo excepción) · `UI-info`/`UI-teal` (decisiones 1 y 3) · `semantic` (pos/neg/cripto) · `chart`/`chart/UI`/`teal/chart` (frente de gráficos · contextual).
+Categorías: `exacto` (ya es token · swap literal→var) · `exacto·ctx` (`#ffffff` · separar por contexto) · `a·legacy` (deriva v3/v4 → snap) · `c·tw-gray` (gris Tailwind → snap) · `b·casi`/`b·beige` (casi-idéntico · snap) · `d·entidad` (catálogo excepción · 22 valores) · `identidad-cat` (tipología inversión · PENDIENTE Jose) · `UI-info`/`UI-teal` (decisiones 1 y 3) · `semantic` (pos/neg/cripto) · `chart`/`chart/UI`/`teal/chart` (frente de gráficos · PENDIENTE).
 
 | # | Valor | Occ | Cat | Destino | Justificación | Ficheros (muestra) |
 |--:|---|--:|---|---|---|---|
-| 1 | `#ffffff` | 195 | exacto | `var(--atlas-v5-white)` | blanco puro | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +49 |
+| 1 | `#ffffff` | 195 | exacto·ctx | `var(--atlas-v5-card) [fondo tarjeta] · var(--atlas-v5-on-navy-1) [texto sobre navy] · var(--atlas-v5-white) [resto]` | blanco · SEPARAR por contexto en FASE C · un --white genérico no es cambiable (corrección 3) | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +49 |
 | 2 | `#042c5e` | 74 | chart/UI | `var(--atlas-v5-brand) [UI] · PENDIENTE frente-gráficos [chart]` | v3 --c1 · en UI → brand · en gráfico (src/index.css --c1) queda al frente gráficos v3↔v5 | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +17 |
 | 3 | `#6c757d` | 39 | a·legacy | `var(--atlas-v5-ink-3)` | deriva design-bible v3/v4 (spec B.3) · nota: --atlas-v5-chart-axis reusa este valor (reconciliar infra-chart) | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +16 |
 | 4 | `#dde3ec` | 31 | a·legacy | `var(--atlas-v5-line)` | deriva design-bible v3/v4 (spec B.3) | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +14 |
@@ -91,20 +103,20 @@ Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva
 | 21 | `#1f2937` | 5 | c·tw-gray | `var(--atlas-v5-ink)` | gris de Tailwind (spec B.3) | components/treasury/treasury-reconciliation.css |
 | 22 | `#b45309` | 5 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | components/valoraciones/ImportValoracionesWizard.tsx · modules/horizon/conciliacion/v2/components/AddMovementModal.tsx |
 | 23 | `#4ac8e0` | 5 | UI-teal | `var(--atlas-v5-brand)` | teal de UI · resto identidad v3 → brand (decisión Jose 3) | pages/GestionPersonal/wizards/AutonomoWizard.tsx · pages/GestionPersonal/wizards/OtrosIngresosWizard.tsx |
-| 24 | `#ec0000` | 4 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | components/treasury/MesDetalleDrawer.tsx · modules/financiacion/helpers.ts +2 |
+| 24 | `#ec0000` | 4 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | components/treasury/MesDetalleDrawer.tsx · modules/financiacion/helpers.ts +2 |
 | 25 | `#4b5563` | 4 | c·tw-gray | `var(--atlas-v5-ink-2)` | gris de Tailwind (spec B.3) | components/treasury/treasury-reconciliation.css · modules/horizon/conciliacion/v2/conciliacion-v2.css +1 |
 | 26 | `#e6f7fa` | 4 | teal-wash | `var(--atlas-v5-brand-wash)` | v3 --teal-100 · lavado teal · UI → brand-wash | index.css · modules/horizon/conciliacion/v2/conciliacion-v2.css +2 |
 | 27 | `#5b8db8` | 4 | chart | `PENDIENTE · frente-gráficos (v3 --c3 · src/index.css)` | serie azul · OJO: --atlas-v5-c3 = pos (verde) ≠ este azul · NO mapear a c-token v5 | index.css · modules/horizon/analisis-cartera/AnalisisCartera.tsx +2 |
-| 28 | `#004481` | 4 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts · modules/inversiones/InversionesGaleria.module.css +2 |
+| 28 | `#004481` | 4 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts · modules/inversiones/InversionesGaleria.module.css +2 |
 | 29 | `#f5f1e8` | 4 | b·beige | `var(--atlas-v5-bg) / var(--atlas-v5-card-alt)` | beige cálido → bg/card-alt según uso (aprobado) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
 | 30 | `#fdf4dc` | 4 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
 | 31 | `#0a1f3d` | 4 | UI-info | `var(--atlas-v5-brand)` | azul info sólido → brand (decisión Jose 1) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
 | 32 | `#b91c1c` | 4 | semantic | `var(--atlas-v5-neg)` | rojo → neg (aprobado) | modules/financiacion/wizards/PrestamoPageV2.module.css · modules/financiacion/wizards/PrestamoPageV2.tsx +2 |
 | 33 | `#111827` | 3 | c·tw-gray | `var(--atlas-v5-ink)` | gris de Tailwind (spec B.3) | components/treasury/treasury-reconciliation.css |
-| 34 | `#059669` | 3 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | components/valoraciones/ImportValoracionesWizard.tsx · modules/inversiones/InversionesGaleria.module.css +1 |
+| 34 | `#059669` | 3 | semantic | `var(--atlas-v5-pos)` | verde → pos (aprobado) | components/valoraciones/ImportValoracionesWizard.tsx · modules/inversiones/InversionesGaleria.module.css +1 |
 | 35 | `#f0f4fa` | 3 | UI-info | `var(--atlas-v5-brand-wash)` | azul info · en ATLAS el azul es la marca (decisión Jose 1) | index.css · modules/horizon/conciliacion/v2/conciliacion-v2.css +1 |
 | 36 | `#a8c4de` | 3 | chart | `PENDIENTE · frente-gráficos (v3 --c4 · src/index.css)` | serie azul claro · OJO: --atlas-v5-c4 = warn (ámbar) ≠ este azul · NO mapear a c-token v5 | index.css · modules/horizon/analisis-cartera/AnalisisCartera.tsx +1 |
-| 37 | `#b88a3e` | 3 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts · modules/inversiones/InversionesGaleria.module.css +1 |
+| 37 | `#b88a3e` | 3 | exacto | `var(--atlas-v5-gold)` | es EXACTAMENTE --atlas-v5-gold · usos "entidad" (Unihouser/fallback) son el oro-placeholder, no identidad (corrección 2) | modules/financiacion/helpers.ts · modules/inversiones/InversionesGaleria.module.css +1 |
 | 38 | `#faf8f3` | 3 | b·beige | `var(--atlas-v5-bg) / var(--atlas-v5-card-alt)` | beige cálido → bg/card-alt según uso (aprobado) | modules/financiacion/wizards/PrestamoPageV2.module.css · modules/onboarding/empezar/empezar.module.css +1 |
 | 39 | `#ff8e83` | 3 | semantic | `var(--atlas-v5-neg-wash)` | rojo/rosa lavado → neg-wash (aprobado) | modules/tesoreria/TesoreriaPage.module.css · modules/tesoreria/pages/VistaCuentaPage.module.css |
 | 40 | `#f8fafc` | 3 | UI-info | `var(--atlas-v5-brand-wash)` | azul info · en ATLAS el azul es la marca (decisión Jose 1) | pages/GestionPersonal/wizards/AutonomoWizard.tsx · pages/GestionPersonal/wizards/OtrosIngresosWizard.tsx |
@@ -112,11 +124,11 @@ Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva
 | 42 | `#063672` | 2 | UI-info | `var(--atlas-v5-brand)` | azul info sólido → brand (decisión Jose 1) | components/treasury/treasury-reconciliation.css |
 | 43 | `#0e2a47` | 2 | exacto | `var(--atlas-v5-chart-ink)` | ya es token --atlas-v5-chart-ink · swap literal→var | design-system/v5/useChartColors.ts · modules/inversiones/helpers.ts |
 | 44 | `#0a3a72` | 2 | UI-info | `var(--atlas-v5-brand)` | azul info sólido → brand (decisión Jose 1) | index.css · modules/horizon/conciliacion/v2/conciliacion-v2.css |
-| 45 | `#ff6200` | 2 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts · modules/inversiones/utils/entidadLogo.ts |
+| 45 | `#ff6200` | 2 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts · modules/inversiones/utils/entidadLogo.ts |
 | 46 | `#f0ebde` | 2 | b·beige | `var(--atlas-v5-bg) / var(--atlas-v5-card-alt)` | beige cálido → bg/card-alt según uso (aprobado) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
 | 47 | `#14294f` | 2 | UI-info | `var(--atlas-v5-brand)` | azul info sólido → brand (decisión Jose 1) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
-| 48 | `#1a1a1a` | 2 | c·tw-gray | `var(--atlas-v5-ink)` | gris/tinta neutra | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
-| 49 | `#aab3c4` | 2 | c·tw-gray | `var(--atlas-v5-ink-5)` | gris/tinta neutra | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
+| 48 | `#1a1a1a` | 2 | b·casi | `var(--atlas-v5-ink)` | casi-idéntico a un token (NO es gris de Tailwind · corrección 4) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
+| 49 | `#aab3c4` | 2 | b·casi | `var(--atlas-v5-ink-5)` | casi-idéntico a un token (NO es gris de Tailwind · corrección 4) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
 | 50 | `#c8a04a` | 2 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
 | 51 | `#e0c479` | 2 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
 | 52 | `#0d6868` | 2 | UI-teal | `var(--atlas-v5-brand)` | teal de UI · resto identidad v3 → brand (decisión Jose 3) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
@@ -126,8 +138,8 @@ Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva
 | 56 | `#e5dfd0` | 2 | b·beige | `var(--atlas-v5-bg) / var(--atlas-v5-card-alt)` | beige cálido → bg/card-alt según uso (aprobado) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
 | 57 | `#d4cdb8` | 2 | b·beige | `var(--atlas-v5-bg) / var(--atlas-v5-card-alt)` | beige cálido → bg/card-alt según uso (aprobado) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
 | 58 | `#f0b3ad` | 2 | semantic | `var(--atlas-v5-neg-wash)` | rojo/rosa lavado → neg-wash (aprobado) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
-| 59 | `#7c3aed` | 2 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/InversionesGaleria.module.css · modules/inversiones/utils/entidadLogo.ts |
-| 60 | `#00915a` | 2 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/InversionesGaleria.module.css · modules/inversiones/utils/entidadLogo.ts |
+| 59 | `#7c3aed` | 2 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/InversionesGaleria.module.css · modules/inversiones/utils/entidadLogo.ts |
+| 60 | `#00915a` | 2 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/InversionesGaleria.module.css · modules/inversiones/utils/entidadLogo.ts |
 | 61 | `#b07e2a` | 2 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/inversiones/pages/FichaPlanPensiones.tsx |
 | 62 | `#f5a199` | 2 | semantic | `var(--atlas-v5-neg-wash)` | rojo/rosa lavado → neg-wash (aprobado) | modules/inversiones/styles/atlas-inversiones.module.css |
 | 63 | `#f5a623` | 2 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/tesoreria/tabs/MovimientosTab.module.css |
@@ -151,13 +163,13 @@ Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva
 | 81 | `#fef3c7` | 1 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | components/valoraciones/ImportValoracionesWizard.tsx |
 | 82 | `#142c50` | 1 | a·legacy | `var(--atlas-v5-brand)` | deriva design-bible v3/v4 (spec B.3) | index.css |
 | 83 | `#1e3a5f` | 1 | UI-info | `var(--atlas-v5-brand)` | azul info sólido → brand (decisión Jose 1) | index.css |
-| 84 | `#0f4fa0` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
-| 85 | `#0e4f8c` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
-| 86 | `#00509d` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
-| 87 | `#ff6900` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
-| 88 | `#003b71` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
-| 89 | `#005eab` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
-| 90 | `#e2231a` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
+| 84 | `#0f4fa0` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
+| 85 | `#0e4f8c` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
+| 86 | `#00509d` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
+| 87 | `#ff6900` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
+| 88 | `#003b71` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
+| 89 | `#005eab` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
+| 90 | `#e2231a` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts |
 | 91 | `#e0f2fe` | 1 | UI-info | `var(--atlas-v5-brand-wash)` | azul info · en ATLAS el azul es la marca (decisión Jose 1) | modules/horizon/fiscalidad/historico/ImportarDeclaracionWizard.tsx |
 | 92 | `#0369a1` | 1 | UI-info | `var(--atlas-v5-brand)` | azul info sólido → brand (decisión Jose 1) | modules/horizon/fiscalidad/historico/ImportarDeclaracionWizard.tsx |
 | 93 | `#031f47` | 1 | UI-info | `var(--atlas-v5-brand)` | azul info sólido → brand (decisión Jose 1) | modules/horizon/proyeccion/comparativa/ProyeccionComparativa.tsx |
@@ -169,29 +181,29 @@ Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva
 | 99 | `#e8be84` | 1 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/inmuebles/components/contratos/historico/PanelAnalitico.module.css |
 | 100 | `#dc9a7a` | 1 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/inmuebles/components/contratos/historico/PanelAnalitico.module.css |
 | 101 | `#5c2718` | 1 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/inmuebles/components/contratos/historico/PanelAnalitico.module.css |
-| 102 | `#dce7f5` | 1 | UI-info | `var(--atlas-v5-brand-wash)` | azul info · en ATLAS el azul es la marca (decisión Jose 1) | modules/inversiones/InversionesGaleria.module.css |
-| 103 | `#1f4e8b` | 1 | UI-info | `var(--atlas-v5-brand)` | azul info sólido → brand (decisión Jose 1) | modules/inversiones/InversionesGaleria.module.css |
-| 104 | `#e0e8e0` | 1 | semantic | `var(--atlas-v5-pos)` | verde → pos (aprobado) | modules/inversiones/InversionesGaleria.module.css |
-| 105 | `#2d5b3a` | 1 | semantic | `var(--atlas-v5-pos)` | verde → pos (aprobado) | modules/inversiones/InversionesGaleria.module.css |
-| 106 | `#f0e4e0` | 1 | semantic | `var(--atlas-v5-neg-wash)` | rojo/rosa lavado → neg-wash (aprobado) | modules/inversiones/InversionesGaleria.module.css |
-| 107 | `#8b5c42` | 1 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/inversiones/InversionesGaleria.module.css |
-| 108 | `#eee3f5` | 1 | semantic | `var(--atlas-v5-cripto)` | púrpura → cripto (aprobado) | modules/inversiones/InversionesGaleria.module.css |
-| 109 | `#6b3fae` | 1 | semantic | `var(--atlas-v5-cripto)` | púrpura → cripto (aprobado) | modules/inversiones/InversionesGaleria.module.css |
-| 110 | `#e8f0f5` | 1 | UI-info | `var(--atlas-v5-brand-wash)` | azul info · en ATLAS el azul es la marca (decisión Jose 1) | modules/inversiones/InversionesGaleria.module.css |
-| 111 | `#2c6a8e` | 1 | UI-info | `var(--atlas-v5-brand)` | azul info sólido → brand (decisión Jose 1) | modules/inversiones/InversionesGaleria.module.css |
-| 112 | `#f5e8e0` | 1 | semantic | `var(--atlas-v5-neg-wash)` | rojo/rosa lavado → neg-wash (aprobado) | modules/inversiones/InversionesGaleria.module.css |
-| 113 | `#8b4a1f` | 1 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/inversiones/InversionesGaleria.module.css |
-| 114 | `#f5e0e8` | 1 | semantic | `var(--atlas-v5-neg-wash)` | rojo/rosa lavado → neg-wash (aprobado) | modules/inversiones/InversionesGaleria.module.css |
-| 115 | `#9e2a5f` | 1 | semantic | `var(--atlas-v5-neg)` | rojo → neg (aprobado) | modules/inversiones/InversionesGaleria.module.css |
+| 102 | `#dce7f5` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 103 | `#1f4e8b` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 104 | `#e0e8e0` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 105 | `#2d5b3a` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 106 | `#f0e4e0` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 107 | `#8b5c42` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 108 | `#eee3f5` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 109 | `#6b3fae` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 110 | `#e8f0f5` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 111 | `#2c6a8e` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 112 | `#f5e8e0` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 113 | `#8b4a1f` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 114 | `#f5e0e8` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
+| 115 | `#9e2a5f` | 1 | identidad-cat | `PENDIENTE · decide Jose` | tag de tipología de inversión (InversionesGaleria) · §11 NO lo define · identidad, NO semántica · no mapear a pos/neg/cripto | modules/inversiones/InversionesGaleria.module.css |
 | 116 | `#1f7a4d` | 1 | semantic | `var(--atlas-v5-pos)` | verde → pos (aprobado) | modules/inversiones/pages/FichaPlanPensiones.tsx |
 | 117 | `#b23a48` | 1 | semantic | `var(--atlas-v5-neg)` | rojo → neg (aprobado) | modules/inversiones/pages/FichaPlanPensiones.tsx |
 | 118 | `#4a3a00` | 1 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/inversiones/pages/FichaPosicion.module.css |
-| 119 | `#007faa` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
-| 120 | `#00497a` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
-| 121 | `#007f3d` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
-| 122 | `#2d9cdb` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
-| 123 | `#0052ff` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
-| 124 | `#f0b90b` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
+| 119 | `#007faa` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
+| 120 | `#00497a` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
+| 121 | `#007f3d` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
+| 122 | `#2d9cdb` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
+| 123 | `#0052ff` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
+| 124 | `#f0b90b` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/inversiones/utils/entidadLogo.ts |
 | 125 | `#e8d9ae` | 1 | exacto | `var(--atlas-v5-gold-bright)` | ya es token --atlas-v5-gold-bright · swap literal→var | modules/onboarding/OnboardingPage.module.css |
 | 126 | `#fffbf0` | 1 | b·beige | `var(--atlas-v5-bg) / var(--atlas-v5-card-alt)` | beige cálido → bg/card-alt según uso (aprobado) | modules/tesoreria/tabs/MovimientosTab.module.css |
 | 127 | `#b8860b` | 1 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/tesoreria/tabs/MovimientosTab.module.css |
@@ -202,7 +214,7 @@ Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva
 | 132 | `#e8f5e9` | 1 | semantic | `var(--atlas-v5-pos)` | verde → pos (aprobado) | pages/account/migracion/ImportarPrestamos.tsx |
 | 133 | `#2e7d32` | 1 | semantic | `var(--atlas-v5-pos)` | verde → pos (aprobado) | pages/account/migracion/ImportarPrestamos.tsx |
 | 134 | `#441144` | 1 | semantic | `var(--atlas-v5-cripto)` | púrpura → cripto (aprobado) | services/fiscalConciliationService.ts |
-| 135 | `#0066cc` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | utils/accountHelpers.ts |
-| 136 | `#0063b2` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | utils/accountHelpers.ts |
-| 137 | `#ff6600` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | utils/accountHelpers.ts |
-| 138 | `#00a000` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | utils/accountHelpers.ts |
+| 135 | `#0066cc` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | utils/accountHelpers.ts |
+| 136 | `#0063b2` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | utils/accountHelpers.ts |
+| 137 | `#ff6600` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | utils/accountHelpers.ts |
+| 138 | `#00a000` | 1 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero identificable · no paleta · se consolida y el fichero se excluye de hex_hardcoded | utils/accountHelpers.ts |
