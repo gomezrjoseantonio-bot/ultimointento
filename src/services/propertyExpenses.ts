@@ -1,5 +1,5 @@
 import { initDB } from './db';
-import type { Expense, Gasto } from './db';
+import type { Gasto } from './db';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type {
   PropertyExpense,
@@ -162,29 +162,14 @@ const mapGasto = (gasto: Gasto): PropertyExpense | null => {
   };
 };
 
-const mapLegacyExpense = (expense: Expense): PropertyExpense => ({
-  id: `legacy_expense:${expense.id}`,
-  propertyId: expense.propertyId,
-  category: expense.category,
-  concept: expense.description,
-  amount: expense.amount,
-  frequency: 'unico',
-  startDate: expense.date,
-  source: 'legacy_expense',
-  expenseClass: (expense.isMejora || (expense as any).isCapex) ? 'mejora' : 'opex',
-  isLegacy: true,
-  isActive: true,
-});
-
 const getPropertyExpensesSnapshot = async (propertyId: number): Promise<PropertyExpense[]> => {
   const db = await initDB();
   const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
   // V5.4+: read from compromisosRecurrentes (ambito='inmueble') instead of opexRules (DEPRECATED)
-  const [compromisos, gastosInm, expenses] = await Promise.all([
+  const [compromisos, gastosInm] = await Promise.all([
     db.getAllFromIndex('compromisosRecurrentes', 'inmuebleId', propertyId)
       .then((all) => all.filter((c) => c.ambito === 'inmueble')),
     gastosInmuebleService.getByInmueble(propertyId),
-    db.getAllFromIndex('expenses', 'propertyId', propertyId).catch(() => []),
   ]);
 
   // Map gastosInmueble to Gasto-like shape for mapGasto compatibility
@@ -201,7 +186,6 @@ const getPropertyExpensesSnapshot = async (propertyId: number): Promise<Property
   return [
     ...compromisos.map(mapCompromiso),
     ...mappedGastos,
-    ...expenses.map(mapLegacyExpense),
   ];
 };
 

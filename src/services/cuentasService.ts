@@ -822,41 +822,7 @@ class CuentasService {
         }
       }
       
-      // Step 2: Delete conciliations/reconciliations for this account
-      try {
-        const allReconciliations = await db.getAll('reconciliations');
-        const accountReconciliations = allReconciliations.filter(r => 
-          r.account_id === id || r.movement_account_id === id
-        );
-        
-        for (const reconciliation of accountReconciliations) {
-          if (reconciliation.id) {
-            await db.delete('reconciliations', reconciliation.id);
-          }
-        }
-        
-        console.info(`${LOG_PREFIX} Deleted ${accountReconciliations.length} reconciliations`);
-      } catch (error) {
-        console.warn(`${LOG_PREFIX} No reconciliations table or error deleting:`, error);
-      }
-      
-      // Step 3: Delete account-specific states and preferences
-      try {
-        const allStates = await db.getAll('accountStates');
-        const accountStates = allStates.filter(s => s.account_id === id);
-        
-        for (const state of accountStates) {
-          if (state.id) {
-            await db.delete('accountStates', state.id);
-          }
-        }
-        
-        console.info(`${LOG_PREFIX} Deleted ${accountStates.length} account states`);
-      } catch (error) {
-        console.warn(`${LOG_PREFIX} No accountStates table or error deleting:`, error);
-      }
-      
-      // Step 4: Clean localStorage/sessionStorage caches
+      // Step 2: Clean localStorage/sessionStorage caches
       this.cleanAccountCaches(id);
       
       // Step 5: Remove account from treasury storage
