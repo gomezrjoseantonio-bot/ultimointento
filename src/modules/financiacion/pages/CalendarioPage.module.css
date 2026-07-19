@@ -81,7 +81,7 @@
 
 .calPill.active {
   background: var(--atlas-v5-ink);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   border-color: var(--atlas-v5-ink);
 }
 
@@ -185,7 +185,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   font-size: 10px;
   font-weight: var(--atlas-v5-fw-bold);
   font-family: var(--atlas-v5-font-mono-num);
@@ -213,7 +213,7 @@
   font-size: 10px;
   font-weight: var(--atlas-v5-fw-bold);
   font-family: var(--atlas-v5-font-mono-num);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
 }
 
 .yrBarSeg {
@@ -225,7 +225,7 @@
 }
 
 .yrBarSeg.t1 { background: var(--atlas-v5-pos); }
-.yrBarSeg.t3 { background: var(--atlas-v5-gold); color: #fff; }
+.yrBarSeg.t3 { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-navy-1); }
 
 .cuotaCell.pagada { color: var(--atlas-v5-ink-4); text-decoration: line-through; }
 .cuotaCell.actual { background: var(--atlas-v5-gold-wash); font-weight: var(--atlas-v5-fw-bold); }

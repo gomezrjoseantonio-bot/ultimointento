@@ -77,7 +77,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
+  color: var(--atlas-v5-on-navy-1);
   font-weight: var(--atlas-v5-fw-bold);
   font-size: 15px;
   flex-shrink: 0;

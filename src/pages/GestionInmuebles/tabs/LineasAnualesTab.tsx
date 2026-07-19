@@ -23,15 +23,15 @@ import LineaAnualForm, { type LineaAnualFormData } from './LineaAnualForm';
 import FacturaSelectorModal from './FacturaSelectorModal';
 
 const C = {
-  navy900: 'var(--navy-900, #042C5E)',
-  teal600: 'var(--teal-600, #00A7B5)',
-  grey50: 'var(--grey-50, #F8F9FA)',
-  grey200: 'var(--grey-200, #DDE3EC)',
-  grey300: 'var(--grey-300, #C8D0DC)',
-  grey500: 'var(--grey-500, #6C757D)',
-  grey700: 'var(--grey-700, #303A4C)',
-  grey900: 'var(--grey-900, #1A2332)',
-  white: '#FFFFFF',
+  navy900: 'var(--atlas-v5-brand)',
+  teal600: 'var(--atlas-v5-brand)',
+  grey50: 'var(--atlas-v5-bg)',
+  grey200: 'var(--atlas-v5-line)',
+  grey300: 'var(--atlas-v5-ink-5)',
+  grey500: 'var(--atlas-v5-ink-3)',
+  grey700: 'var(--atlas-v5-ink-2)',
+  grey900: 'var(--atlas-v5-ink)',
+  white: 'var(--atlas-v5-white)',
 };
 
 export type Categoria = 'reparacion' | 'mejora' | 'mobiliario';
@@ -600,8 +600,8 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
                           alignItems: 'center',
                           padding: '2px 8px',
                           borderRadius: 4,
-                          background: 'var(--teal-100, #E0F7F9)',
-                          color: 'var(--teal-600, #00A7B5)',
+                          background: 'var(--atlas-v5-brand-wash)',
+                          color: 'var(--atlas-v5-brand)',
                           fontSize: 11,
                           fontWeight: 500,
                           letterSpacing: '.02em',
@@ -639,7 +639,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
                       >
                         <Paperclip
                           size={14}
-                          color={linea.documentId ? 'var(--teal-600, #00A7B5)' : undefined}
+                          color={linea.documentId ? 'var(--atlas-v5-brand)' : undefined}
                         />
                       </IconButton>
                     )}
@@ -651,7 +651,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
                           title="Confirmar (puntear)"
                           onClick={() => void handleQuickConfirm(linea.treasuryEventId as number)}
                         >
-                          <Check size={14} color="var(--teal-600, #00A7B5)" />
+                          <Check size={14} color="var(--atlas-v5-brand)" />
                         </IconButton>
                       )}
                       {linea.origen !== 'xml_aeat' && (
@@ -758,14 +758,14 @@ const Stat: React.FC<{ label: string; value: string; color?: string }> = ({ labe
         fontSize: 10,
         fontWeight: 600,
         textTransform: 'uppercase',
-        color: 'var(--grey-500, #6C757D)',
+        color: 'var(--atlas-v5-ink-3)',
         letterSpacing: '.06em',
         marginBottom: 4,
       }}
     >
       {label}
     </div>
-    <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace", color: color ?? 'var(--grey-900, #1A2332)' }}>
+    <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace", color: color ?? 'var(--atlas-v5-ink)' }}>
       {value}
     </div>
   </div>

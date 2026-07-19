@@ -72,7 +72,7 @@
 
 .tbBtn.primary {
   background: var(--atlas-v5-ink);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   border-color: var(--atlas-v5-ink);
 }
 
@@ -102,7 +102,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   font-size: 14px;
   font-weight: var(--atlas-v5-fw-bold);
   font-family: var(--atlas-v5-font-mono-num);
@@ -207,7 +207,7 @@
   width: 24px;
   height: 24px;
   background: var(--atlas-v5-brand);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -448,7 +448,7 @@
 
 .cuadroFilters button.active {
   background: var(--atlas-v5-ink);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   border-color: var(--atlas-v5-ink);
 }
 
@@ -499,7 +499,7 @@
 }
 
 .cuadroBadge.pagada { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }
-.cuadroBadge.actual { background: var(--atlas-v5-gold); color: #fff; }
+.cuadroBadge.actual { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-navy-1); }
 .cuadroBadge.futura { background: var(--atlas-v5-card-alt); color: var(--atlas-v5-ink-4); }
 
 .notFound {

@@ -186,7 +186,7 @@
   border-radius: 50%;
   background: var(--atlas-v5-gold);
   cursor: pointer;
-  border: 2px solid #fff;
+  border: 2px solid var(--atlas-v5-white);
   box-shadow: var(--atlas-v5-shadow-card);
 }
 
@@ -196,7 +196,7 @@
   border-radius: 50%;
   background: var(--atlas-v5-gold);
   cursor: pointer;
-  border: 2px solid #fff;
+  border: 2px solid var(--atlas-v5-white);
 }
 
 .extraRange {
@@ -236,7 +236,7 @@
 
 .preset.active {
   background: var(--atlas-v5-ink);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   border-color: var(--atlas-v5-ink);
 }
 
@@ -290,7 +290,7 @@
   font-size: 12px;
 }
 
-.row.attacked .rowOrder { background: var(--atlas-v5-gold); color: #fff; }
+.row.attacked .rowOrder { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-navy-1); }
 
 .rowLogo {
   width: 32px;
@@ -299,7 +299,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   font-size: 10px;
   font-weight: var(--atlas-v5-fw-bold);
   font-family: var(--atlas-v5-font-mono-num);
