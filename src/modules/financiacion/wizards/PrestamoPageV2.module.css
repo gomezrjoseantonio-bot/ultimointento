@@ -668,7 +668,7 @@
   color: var(--atlas-v5-brand-ink);
   font-weight: 700;
 }
-.btnPrimary:hover { background: var(--atlas-v5-gold); }
+.btnPrimary:hover { background: var(--atlas-v5-gold-2); }
 .btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn svg { width: 14px; height: 14px; }
 

@@ -54,7 +54,7 @@
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .cv2-btn-primary { background: var(--atlas-v5-brand); color: var(--atlas-v5-on-navy-1); }
-.cv2-btn-primary:hover { background: var(--atlas-v5-brand); }
+.cv2-btn-primary:hover { background: var(--atlas-v5-brand-2); }
 .cv2-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 .cv2-btn-secondary {
   background: var(--atlas-v5-card);
@@ -178,9 +178,9 @@
   border-color: var(--atlas-v5-brand);
 }
 .cv2-chip--active:hover {
-  background: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand-2);
   color: var(--atlas-v5-on-navy-1);
-  border-color: var(--atlas-v5-brand);
+  border-color: var(--atlas-v5-brand-2);
 }
 .cv2-search {
   flex: 1;

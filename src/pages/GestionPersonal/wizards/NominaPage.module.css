@@ -758,7 +758,7 @@
   font-weight: 700;
 }
 .btnPrimary:hover {
-  background: var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold-2);
 }
 .btnPrimary:disabled {
   opacity: 0.5;
