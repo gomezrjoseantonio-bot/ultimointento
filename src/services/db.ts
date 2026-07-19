@@ -5,6 +5,7 @@ import type { DeclaracionCompleta } from '../types/declaracionCompleta';
 // Fase 0 · los valores del schema son `any`, así que los tipos de dominio que solo
 // usaba la interfaz ya no se importan (volverán en Tanda N al endurecer cada store).
 import type { Escenario } from '../types/miPlan';
+import type { ViviendaHabitual } from '../types/viviendaHabitual';
 import type {
   ArrastresEjercicio,
   DeclaracionInmueble,
@@ -547,6 +548,31 @@ export interface OCRHistoryEntry {
   status: 'completed' | 'error';
 }
 
+/**
+ * Pieza 8: candidato de vinculación documento → operación declarada
+ * (`mejorasActivo` / `mobiliarioActivo`). Es la forma REAL que persiste en
+ * `documents.metadata.matchCandidates` — la produce `findCandidates`
+ * (documentMatchingService) y la consume `InboxV3ExtractedPanel` vía
+ * `.tipoGasto`. La definición canónica vive aquí (capa de esquema);
+ * `documentMatchingService` la reexporta como `CandidatoMatch`.
+ */
+export interface MatchCandidate {
+  id: number;
+  /** Store de origen de la operación candidata. */
+  tipo: 'mejoraActivo' | 'mobiliarioActivo';
+  inmuebleId: number;
+  inmuebleAlias: string;
+  ejercicio: number;
+  importe: number;
+  /** Tipo de gasto: 'mejora' | 'ampliacion' | 'reparacion' | 'mobiliario'. */
+  tipoGasto: string;
+  descripcion: string;
+  proveedorNIF: string;
+  proveedorNombre?: string;
+  alreadyLinked: boolean;
+  score: number;
+}
+
 export interface Document {
   id?: number;
   filename: string;
@@ -630,21 +656,8 @@ export interface Document {
     fechaImportacion?: string;
     casillasExtraidas?: number;
     metodoExtraccion?: 'texto' | 'ocr';
-    // Pieza 8: Document → operation matching
-    matchCandidates?: Array<{
-      store: 'mejorasActivo' | 'mobiliarioActivo';
-      id: number;
-      inmuebleId: number;
-      inmuebleAlias: string;
-      tipo: string;
-      ejercicio: number;
-      importe: number;
-      descripcion: string;
-      proveedorNIF: string;
-      proveedorNombre?: string;
-      alreadyLinked: boolean;
-      score: number;
-    }>;
+    // Pieza 8: Document → operation matching (forma canónica: MatchCandidate)
+    matchCandidates?: MatchCandidate[];
   };
   uploadDate: string;
 }
@@ -2280,16 +2293,16 @@ export interface DeudaFiscal {
  */
 interface AtlasHorizonDB extends DBSchema {
   properties: { key: IDBValidKey; value: any; indexes: { 'address': IDBValidKey; 'alias': IDBValidKey } };
-  property_sales: { key: IDBValidKey; value: any; indexes: { 'property-status': IDBValidKey; 'propertyId': IDBValidKey; 'saleDate': IDBValidKey; 'status': IDBValidKey } };
+  property_sales: { key: IDBValidKey; value: PropertySale; indexes: { 'property-status': IDBValidKey; 'propertyId': IDBValidKey; 'saleDate': IDBValidKey; 'status': IDBValidKey } };
   // loan_settlements: ELIMINADO en V63 (sub-tarea 4) — destino prestamos.liquidacion · 0 registros en producción
-  documents: { key: IDBValidKey; value: any; indexes: { 'entityId': IDBValidKey; 'entityType': IDBValidKey; 'type': IDBValidKey } };
+  documents: { key: IDBValidKey; value: Document; indexes: { 'entityId': IDBValidKey; 'entityType': IDBValidKey; 'type': IDBValidKey } };
   contracts: { key: IDBValidKey; value: any; indexes: { 'propertyId': IDBValidKey } };
-  botesAnualesSinIdentificar: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'inmuebleId-año': IDBValidKey } }; // V78: Camino 2 wizard XML AEAT · importes declarados pendientes de vincular
+  botesAnualesSinIdentificar: { key: IDBValidKey; value: BoteAnualSinIdentificar; indexes: { 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'inmuebleId-año': IDBValidKey } }; // V78: Camino 2 wizard XML AEAT · importes declarados pendientes de vincular
   // NOTE: rentCalendar and rentPayments removed in V4.5 — migrated to rentaMensual
   // rentaMensual: ELIMINADO en V62 (sub-tarea 3) — deprecated V5.6 · 0 registros
   aeatCarryForwards: { key: IDBValidKey; value: AEATCarryForward; indexes: { 'expirationYear': IDBValidKey; 'propertyId': IDBValidKey; 'taxYear': IDBValidKey } }; // H5: Tax carryforwards
-  propertyDays: { key: IDBValidKey; value: any; indexes: { 'property-year': IDBValidKey; 'propertyId': IDBValidKey; 'taxYear': IDBValidKey } }; // H5: Rental/availability days
-  proveedores: { key: IDBValidKey; value: any; indexes: {} }; // V3.8: entidad única proveedor por NIF
+  propertyDays: { key: IDBValidKey; value: PropertyDays; indexes: { 'property-year': IDBValidKey; 'propertyId': IDBValidKey; 'taxYear': IDBValidKey } }; // H5: Rental/availability days
+  proveedores: { key: IDBValidKey; value: Proveedor; indexes: {} }; // V3.8: entidad única proveedor por NIF
   // operacionesProveedor: ELIMINADO en V62 (sub-tarea 3) — cache desnormalizada de gastosInmueble + proveedores · 15 registros
   // kpiConfigurations: ELIMINADO en V62 (sub-tarea 3) — sustituido por keyval['kpiConfig_*'] · 0 registros
   accounts: { key: IDBValidKey; value: any; indexes: { 'bank': IDBValidKey; 'destination': IDBValidKey; 'isActive': IDBValidKey } }; // H8: Treasury accounts
@@ -2529,7 +2542,7 @@ interface AtlasHorizonDB extends DBSchema {
    * T14.3). El servicio dedicado `viviendaHabitualService` sigue siendo el
    * único dueño del store · el gateway solo lee.
    */
-  viviendaHabitual: { key: IDBValidKey; value: any; indexes: { 'activa': IDBValidKey; 'personalDataId': IDBValidKey; 'vigenciaDesde': IDBValidKey } };
+  viviendaHabitual: { key: IDBValidKey; value: ViviendaHabitual; indexes: { 'activa': IDBValidKey; 'personalDataId': IDBValidKey; 'vigenciaDesde': IDBValidKey } };
   // ─── Mi Plan v3 (V5.4–V5.7) ─────────────────────────────────────────────
   escenarios: { key: IDBValidKey; value: any; indexes: {} };     // V5.4: singleton escenario libertad activo (renombrado de objetivos_financieros)
   objetivos: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'fondoId': IDBValidKey; 'prestamoId': IDBValidKey; 'tipo': IDBValidKey } };       // V5.5: lista de objetivos (acumular · amortizar · comprar · reducir)

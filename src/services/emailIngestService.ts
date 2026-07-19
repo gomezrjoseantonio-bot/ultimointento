@@ -2,7 +2,6 @@
 // Handles email processing, alias generation, and document creation
 
 import { initDB } from './db';
-import { generateMovementHash } from '../utils/duplicateDetection';
 import { safeMatch } from '../utils/safe';
 
 // Issue 1: Email alias generation with tenant tokens
@@ -447,18 +446,12 @@ class EmailIngestService {
     try {
       const db = await initDB();
       const existingDocs = await db.getAll('documents');
-      
-      // Generate hash for this document
-      const documentHash = generateMovementHash({
-        date: new Date(document.uploadDate),
-        amount: document.size, // Use file size as amount proxy
-        description: document.filename
-      } as any);
 
-      // Check if hash exists
-      return existingDocs.some(doc => 
-        doc.metadata?.duplicateHash === documentHash ||
-        (doc.filename === document.filename && doc.size === document.size)
+      // Dedup por identidad de fichero (nombre + tamaño). `duplicateHash` es un
+      // campo de movimientos bancarios, nunca se persiste en documentos, por lo
+      // que su comparación estaba muerta (siempre `undefined`).
+      return existingDocs.some(doc =>
+        doc.filename === document.filename && doc.size === document.size
       );
     } catch (error) {
       console.error('Error checking duplicates:', error);
