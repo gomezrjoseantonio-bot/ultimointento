@@ -156,7 +156,7 @@ function bankColor(account: MesDrawerAccount): string {
   if (n.includes('sabadell')) return 'var(--atlas-v5-brand-sabadell)';
   if (n.includes('unicaja')) return 'var(--atlas-v5-brand-unicaja)';
   if (n.includes('myinvestor')) return 'var(--atlas-v5-cripto)';
-  if (n.includes('bbva')) return 'var(--atlas-v5-brand)';
+  if (n.includes('bbva')) return 'var(--atlas-v5-brand-bbva, #004481)';
   if (n.includes('trade')) return 'var(--atlas-v5-ink)';
   return 'var(--atlas-v5-brand)';
 }

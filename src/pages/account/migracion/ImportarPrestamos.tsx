@@ -716,7 +716,7 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
                           fontSize: '0.75rem',
                           fontWeight: 600,
                           backgroundColor: row._accion === 'completar'
-                            ? 'var(--ok-light, var(--atlas-v5-pos))'
+                            ? 'var(--ok-light, var(--atlas-v5-pos-wash))'
                             : 'var(--atlas-blue-light, var(--atlas-v5-brand-wash))',
                           color: row._accion === 'completar'
                             ? 'var(--ok, var(--atlas-v5-pos))'

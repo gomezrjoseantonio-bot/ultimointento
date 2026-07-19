@@ -129,7 +129,7 @@ const ProyeccionComparativa: React.FC = () => {
             {/* Export Button */}
             <button
               onClick={() => setShowExportModal(true)}
-              className="flex items-center space-x-2 bg-[var(--atlas-v5-brand)] text-white px-4 py-2 rounded-lg hover:bg-[var(--atlas-v5-brand)] transition-colors"
+              className="flex items-center space-x-2 bg-[var(--atlas-v5-brand)] text-white px-4 py-2 rounded-lg hover:bg-[var(--atlas-v5-brand-2)] transition-colors"
             >
               <Download className="h-4 w-4" />
               <span>Exportar</span>

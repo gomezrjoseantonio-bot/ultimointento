@@ -308,7 +308,7 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
                     flex: 1,
                     padding: '10px 14px',
                     borderRadius: '8px',
-                    backgroundColor: 'var(--s-warn-bg, var(--atlas-v5-warn))',
+                    backgroundColor: 'var(--s-warn-bg, var(--atlas-v5-warn-wash))',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',

@@ -52,10 +52,10 @@ const MAX_TAX_RATE_PERCENT = 47;
 const HIGHLIGHT_EXPENSE_THRESHOLD = 5000;
 
 const ESTADO_BADGE: Record<EstadoEjercicio, { bg: string; color: string; texto: string }> = {
-  en_curso: { bg: 'var(--atlas-v5-brand-wash)', color: 'var(--atlas-v5-brand)', texto: 'En curso' },
-  pendiente: { bg: 'var(--atlas-v5-line-2)', color: 'var(--atlas-v5-ink-2)', texto: 'Pendiente' },
-  declarado: { bg: 'var(--atlas-v5-brand-wash)', color: 'var(--atlas-v5-brand)', texto: 'Declarado' },
-  prescrito: { bg: 'var(--atlas-v5-line-2)', color: 'var(--atlas-v5-ink-4)', texto: 'Prescrito' },
+  en_curso: { bg: 'var(--teal-100)', color: 'var(--teal-600)', texto: 'En curso' },
+  pendiente: { bg: 'var(--grey-100)', color: 'var(--grey-700)', texto: 'Pendiente' },
+  declarado: { bg: 'var(--navy-100)', color: 'var(--navy-700)', texto: 'Declarado' },
+  prescrito: { bg: 'var(--grey-100)', color: 'var(--grey-400)', texto: 'Prescrito' },
 };
 
 // Format Euro (with 2 decimals)
@@ -77,8 +77,8 @@ const calcTipoEfectivo = (cuota: number | null, base: number | null): number => 
 // ══════════════════════════════════════════════════════════════
 
 const kpiCardStyle: React.CSSProperties = {
-  background: 'var(--atlas-v5-card)',
-  border: '1px solid var(--atlas-v5-line)',
+  background: 'var(--white)',
+  border: '1px solid var(--grey-200)',
   borderRadius: 12,
   padding: '16px 18px',
   boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
@@ -89,7 +89,7 @@ const kpiLabelStyle: React.CSSProperties = {
   fontWeight: 600,
   letterSpacing: '.08em',
   textTransform: 'uppercase' as const,
-  color: 'var(--atlas-v5-ink-4)',
+  color: 'var(--grey-400)',
   marginBottom: 6,
 };
 
@@ -101,9 +101,9 @@ const monoStyle: React.CSSProperties = {
 const pillStyle: React.CSSProperties = {
   padding: '4px 13px',
   borderRadius: 20,
-  border: '1.5px solid var(--atlas-v5-line)',
-  background: 'var(--atlas-v5-card)',
-  color: 'var(--atlas-v5-ink-3)',
+  border: '1.5px solid var(--grey-200)',
+  background: 'var(--white)',
+  color: 'var(--grey-500)',
   fontSize: 12,
   fontWeight: 500,
   cursor: 'pointer',
@@ -113,9 +113,9 @@ const pillStyle: React.CSSProperties = {
 
 const pillActiveStyle: React.CSSProperties = {
   ...pillStyle,
-  background: 'var(--atlas-v5-brand)',
-  borderColor: 'var(--atlas-v5-brand)',
-  color: 'var(--atlas-v5-on-navy-1)',
+  background: 'var(--navy-900)',
+  borderColor: 'var(--navy-900)',
+  color: '#fff',
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -124,17 +124,17 @@ const pillActiveStyle: React.CSSProperties = {
 
 const SupervisionHeader: React.FC = () => (
   <div style={{
-    background: 'var(--atlas-v5-card)',
-    borderBottom: '1px solid var(--atlas-v5-line)',
+    background: 'var(--white)',
+    borderBottom: '1px solid var(--grey-200)',
     padding: '18px 32px',
   }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-      <Scale size={20} color="var(--atlas-v5-ink-3)" strokeWidth={1.5} />
+      <Scale size={20} color="var(--grey-500)" strokeWidth={1.5} />
       <div>
         <h1 style={{
           fontSize: 22,
           fontWeight: 700,
-          color: 'var(--atlas-v5-ink)',
+          color: 'var(--grey-900)',
           lineHeight: 1,
           margin: 0,
           fontFamily: "'IBM Plex Sans', sans-serif",
@@ -143,7 +143,7 @@ const SupervisionHeader: React.FC = () => (
         </h1>
         <p style={{
           fontSize: 13,
-          color: 'var(--atlas-v5-ink-3)',
+          color: 'var(--grey-500)',
           marginTop: 2,
           margin: 0,
           fontFamily: "'IBM Plex Sans', sans-serif",
@@ -181,14 +181,14 @@ const YearPills: React.FC<YearPillsProps> = ({ años, añoActivo, onSelectAño, 
           style={año === añoActivo ? pillActiveStyle : pillStyle}
           onMouseEnter={(e) => {
             if (año !== añoActivo) {
-              e.currentTarget.style.borderColor = 'var(--atlas-v5-brand)';
-              e.currentTarget.style.color = 'var(--atlas-v5-brand)';
+              e.currentTarget.style.borderColor = 'var(--navy-700)';
+              e.currentTarget.style.color = 'var(--navy-700)';
             }
           }}
           onMouseLeave={(e) => {
             if (año !== añoActivo) {
-              e.currentTarget.style.borderColor = 'var(--atlas-v5-line)';
-              e.currentTarget.style.color = 'var(--atlas-v5-ink-3)';
+              e.currentTarget.style.borderColor = 'var(--grey-200)';
+              e.currentTarget.style.color = 'var(--grey-500)';
             }
           }}
         >
@@ -226,45 +226,45 @@ const TarjetaBaseImponible: React.FC<TarjetaBaseImponibleProps> = ({
   base,
   fuentes,
 }) => (
-  <div style={{ ...kpiCardStyle, borderTop: '3px solid var(--atlas-v5-brand)' }}>
+  <div style={{ ...kpiCardStyle, borderTop: '3px solid var(--navy-900)' }}>
     <div style={kpiLabelStyle}>Base imponible</div>
 
     {/* Ecuación visual */}
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 10 }}>
       <div>
-        <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--atlas-v5-ink-4)', marginBottom: 2 }}>
+        <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--grey-400)', marginBottom: 2 }}>
           Ingresos
         </div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--atlas-v5-brand)', ...monoStyle }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900)', ...monoStyle }}>
           {formatEur(ingresos)} €
         </div>
       </div>
-      <div style={{ fontSize: 20, color: 'var(--atlas-v5-ink-5)', paddingBottom: 2 }}>−</div>
+      <div style={{ fontSize: 20, color: 'var(--grey-300)', paddingBottom: 2 }}>−</div>
       <div>
-        <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--atlas-v5-ink-4)', marginBottom: 2 }}>
+        <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--grey-400)', marginBottom: 2 }}>
           Gastos ded.
         </div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--atlas-v5-brand)', ...monoStyle }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--teal-600)', ...monoStyle }}>
           {formatEur(gastos)} €
         </div>
       </div>
-      <div style={{ fontSize: 20, color: 'var(--atlas-v5-ink-5)', paddingBottom: 2 }}>=</div>
+      <div style={{ fontSize: 20, color: 'var(--grey-300)', paddingBottom: 2 }}>=</div>
       <div>
-        <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--atlas-v5-ink-4)', marginBottom: 2 }}>
+        <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--grey-400)', marginBottom: 2 }}>
           Base
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--atlas-v5-brand)', ...monoStyle }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--navy-900)', ...monoStyle }}>
           {formatEur(base)} €
         </div>
       </div>
     </div>
 
     {/* Desglose de fuentes */}
-    <div style={{ height: 1, background: 'var(--atlas-v5-line-2)', marginBottom: 8 }} />
+    <div style={{ height: 1, background: 'var(--grey-100)', marginBottom: 8 }} />
     {fuentes.filter(f => f.importe > 0).map(f => (
       <div key={f.nombre} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '1px 0' }}>
-        <span style={{ color: 'var(--atlas-v5-ink-3)' }}>{f.nombre}</span>
-        <span style={{ color: 'var(--atlas-v5-ink-2)', ...monoStyle }}>{formatEur(f.importe)} €</span>
+        <span style={{ color: 'var(--grey-500)' }}>{f.nombre}</span>
+        <span style={{ color: 'var(--grey-700)', ...monoStyle }}>{formatEur(f.importe)} €</span>
       </div>
     ))}
   </div>
@@ -280,21 +280,21 @@ interface TarjetaCuotaProps {
 }
 
 const TarjetaCuota: React.FC<TarjetaCuotaProps> = ({ cuota, tipoEfectivo }) => (
-  <div style={{ ...kpiCardStyle, borderTop: '3px solid var(--atlas-v5-ink-5)' }}>
+  <div style={{ ...kpiCardStyle, borderTop: '3px solid var(--grey-300)' }}>
     <div style={kpiLabelStyle}>Cuota íntegra</div>
-    <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--atlas-v5-ink-2)', lineHeight: 1, marginBottom: 4, ...monoStyle }}>
+    <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--grey-700)', lineHeight: 1, marginBottom: 4, ...monoStyle }}>
       {formatEur0(cuota)} €
     </div>
-    <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)' }}>Tipo efectivo</div>
-    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--atlas-v5-ink-2)', marginTop: 2, ...monoStyle }}>
+    <div style={{ fontSize: 11, color: 'var(--grey-400)' }}>Tipo efectivo</div>
+    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--grey-700)', marginTop: 2, ...monoStyle }}>
       {tipoEfectivo.toFixed(2).replace('.', ',')}%
     </div>
     {/* Mini scale bar showing tipo efectivo relative to max rate */}
-    <div style={{ marginTop: 10, height: 4, background: 'var(--atlas-v5-line-2)', borderRadius: 2 }}>
+    <div style={{ marginTop: 10, height: 4, background: 'var(--grey-100)', borderRadius: 2 }}>
       <div style={{
         height: 4,
         width: `${Math.min((tipoEfectivo / MAX_TAX_RATE_PERCENT) * 100, 100)}%`,
-        background: 'var(--atlas-v5-ink-5)',
+        background: 'var(--grey-300)',
         borderRadius: 2,
       }} />
     </div>
@@ -311,17 +311,17 @@ interface TarjetaRetencionesProps {
 }
 
 const TarjetaRetenciones: React.FC<TarjetaRetencionesProps> = ({ retenciones, cuota }) => (
-  <div style={{ ...kpiCardStyle, borderTop: '3px solid var(--atlas-v5-brand)' }}>
+  <div style={{ ...kpiCardStyle, borderTop: '3px solid var(--teal-600)' }}>
     <div style={kpiLabelStyle}>Retenciones</div>
-    <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--atlas-v5-brand)', lineHeight: 1, marginBottom: 4, ...monoStyle }}>
+    <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--teal-600)', lineHeight: 1, marginBottom: 4, ...monoStyle }}>
       −{formatEur0(retenciones)} €
     </div>
-    <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)' }}>Ya pagadas durante el año</div>
+    <div style={{ fontSize: 11, color: 'var(--grey-400)' }}>Ya pagadas durante el año</div>
     <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-3)' }}>
+      <div style={{ fontSize: 11, color: 'var(--grey-500)' }}>
         Cuota: {formatEur0(cuota)} €
       </div>
-      <div style={{ fontSize: 11, color: 'var(--atlas-v5-brand)' }}>
+      <div style={{ fontSize: 11, color: 'var(--teal-600)' }}>
         Pagado: {formatEur0(retenciones)} €
       </div>
     </div>
@@ -345,7 +345,7 @@ const TarjetaResultado: React.FC<TarjetaResultadoProps> = ({ resultado, tipoEfec
   return (
     <div style={{
       ...kpiCardStyle,
-      borderTop: `3px solid ${esDevolver ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-brand)'}`,
+      borderTop: `3px solid ${esDevolver ? 'var(--teal-600)' : 'var(--navy-900)'}`,
     }}>
       <div style={kpiLabelStyle}>Resultado</div>
 
@@ -355,21 +355,21 @@ const TarjetaResultado: React.FC<TarjetaResultadoProps> = ({ resultado, tipoEfec
           <div style={{
             fontSize: 28,
             fontWeight: 700,
-            color: esDevolver ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-brand)',
+            color: esDevolver ? 'var(--teal-600)' : 'var(--navy-900)',
             lineHeight: 1,
             ...monoStyle,
           }}>
             {esDevolver ? '−' : ''}{formatEur0(Math.abs(resultado))} €
           </div>
-          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--atlas-v5-ink-3)', marginTop: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--grey-500)', marginTop: 4 }}>
             {esDevolver ? 'A devolver' : 'A pagar'}
           </div>
         </div>
 
         {/* Right: Tipo efectivo */}
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)' }}>Tipo efectivo</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--atlas-v5-brand)', ...monoStyle }}>
+          <div style={{ fontSize: 11, color: 'var(--grey-400)' }}>Tipo efectivo</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--teal-600)', ...monoStyle }}>
             {tipoEfectivo.toFixed(1).replace('.', ',')}%
           </div>
         </div>
@@ -385,7 +385,7 @@ const TarjetaResultado: React.FC<TarjetaResultadoProps> = ({ resultado, tipoEfec
           border: 'none',
           fontSize: 11,
           fontWeight: 500,
-          color: 'var(--atlas-v5-brand)',
+          color: 'var(--teal-600)',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -418,21 +418,21 @@ const GraficaEvolucion: React.FC<GraficaEvolucionProps> = ({ años, añoActivo, 
     <div style={{ ...kpiCardStyle, padding: '18px 22px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--atlas-v5-ink)' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--grey-900)' }}>
             Resultado por ejercicio
           </div>
-          <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginTop: 1 }}>
+          <div style={{ fontSize: 11, color: 'var(--grey-400)', marginTop: 1 }}>
             Clic en un año para ver su detalle
           </div>
         </div>
         {/* Legend */}
-        <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--atlas-v5-ink-3)' }}>
+        <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--grey-500)' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--atlas-v5-brand)' }} />
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--navy-900)' }} />
             Pagar
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--atlas-v5-brand)' }} />
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--teal-600)' }} />
             Devolver
           </span>
         </div>
@@ -457,20 +457,20 @@ const GraficaEvolucion: React.FC<GraficaEvolucionProps> = ({ años, añoActivo, 
               alignItems: 'center',
               gap: 8,
               padding: '8px 4px',
-              borderBottom: '1px solid var(--atlas-v5-bg)',
+              borderBottom: '1px solid var(--grey-50)',
               borderRadius: 6,
               cursor: 'pointer',
-              background: isSel ? 'var(--atlas-v5-brand-wash)' : 'transparent',
+              background: isSel ? 'var(--navy-50)' : 'transparent',
               transition: 'background 0.15s',
             }}
-            onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'var(--atlas-v5-bg)'; }}
+            onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'var(--grey-50)'; }}
             onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}
           >
             {/* Year */}
             <div style={{
               fontSize: 12,
               fontWeight: isSel ? 700 : 400,
-              color: isSel ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-2)',
+              color: isSel ? 'var(--navy-900)' : 'var(--grey-700)',
               width: 34,
             }}>
               {ej.año}
@@ -494,7 +494,7 @@ const GraficaEvolucion: React.FC<GraficaEvolucionProps> = ({ años, añoActivo, 
             <div style={{
               flex: 1,
               height: 14,
-              background: 'var(--atlas-v5-bg)',
+              background: 'var(--grey-50)',
               borderRadius: 3,
               overflow: 'hidden',
             }}>
@@ -502,8 +502,8 @@ const GraficaEvolucion: React.FC<GraficaEvolucionProps> = ({ años, añoActivo, 
                 height: '100%',
                 width: `${pct}%`,
                 background: isPagar
-                  ? (isSel ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-5)')
-                  : (isSel ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-brand-wash)'),
+                  ? (isSel ? 'var(--navy-900)' : 'var(--grey-300)')
+                  : (isSel ? 'var(--teal-600)' : 'var(--teal-100)'),
                 borderRadius: 3,
                 transition: 'width 0.3s',
               }} />
@@ -513,7 +513,7 @@ const GraficaEvolucion: React.FC<GraficaEvolucionProps> = ({ años, añoActivo, 
             <div style={{
               fontSize: 12,
               fontWeight: isSel ? 700 : 400,
-              color: isSel ? (isPagar ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-brand)') : 'var(--atlas-v5-ink)',
+              color: isSel ? (isPagar ? 'var(--navy-900)' : 'var(--teal-600)') : 'var(--grey-900)',
               width: 64,
               textAlign: 'right',
               ...monoStyle,
@@ -524,7 +524,7 @@ const GraficaEvolucion: React.FC<GraficaEvolucionProps> = ({ años, añoActivo, 
             {/* Delta */}
             <div style={{
               fontSize: 10,
-              color: 'var(--atlas-v5-ink-4)',
+              color: 'var(--grey-400)',
               width: 58,
               textAlign: 'right',
               ...monoStyle,
@@ -564,12 +564,12 @@ const PanelTipoEfectivo: React.FC<PanelTipoEfectivoProps> = ({ años, añoActivo
             alignItems: 'center',
             gap: 8,
             padding: '6px 0',
-            borderBottom: '1px solid var(--atlas-v5-bg)',
+            borderBottom: '1px solid var(--grey-50)',
           }}>
             <div style={{
               fontSize: 11,
               fontWeight: isSel ? 700 : 400,
-              color: isSel ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-2)',
+              color: isSel ? 'var(--navy-900)' : 'var(--grey-700)',
               width: 32,
             }}>
               {ej.año}
@@ -577,21 +577,21 @@ const PanelTipoEfectivo: React.FC<PanelTipoEfectivoProps> = ({ años, añoActivo
             <div style={{
               flex: 1,
               height: 5,
-              background: 'var(--atlas-v5-line-2)',
+              background: 'var(--grey-100)',
               borderRadius: 3,
               overflow: 'hidden',
             }}>
               <div style={{
                 height: '100%',
                 width: `${pct}%`,
-                background: isSel ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-5)',
+                background: isSel ? 'var(--navy-900)' : 'var(--grey-300)',
                 borderRadius: 3,
               }} />
             </div>
             <div style={{
               fontSize: 11,
               fontWeight: isSel ? 700 : 400,
-              color: isSel ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-2)',
+              color: isSel ? 'var(--navy-900)' : 'var(--grey-700)',
               width: 34,
               textAlign: 'right',
               ...monoStyle,
@@ -630,11 +630,11 @@ const PanelFuentes: React.FC<PanelFuentesProps> = ({ fuentes, añoActivo }) => {
             alignItems: 'center',
             gap: 8,
             padding: '6px 0',
-            borderBottom: '1px solid var(--atlas-v5-bg)',
+            borderBottom: '1px solid var(--grey-50)',
           }}>
             <div style={{
               fontSize: 11,
-              color: hasValue ? 'var(--atlas-v5-ink)' : 'var(--atlas-v5-ink-4)',
+              color: hasValue ? 'var(--grey-900)' : 'var(--grey-400)',
               fontWeight: hasValue ? 500 : 400,
               flex: 1,
             }}>
@@ -643,21 +643,21 @@ const PanelFuentes: React.FC<PanelFuentesProps> = ({ fuentes, añoActivo }) => {
             <div style={{
               width: 80,
               height: 5,
-              background: 'var(--atlas-v5-line-2)',
+              background: 'var(--grey-100)',
               borderRadius: 3,
               overflow: 'hidden',
             }}>
               <div style={{
                 height: '100%',
                 width: hasValue ? `${pct}%` : '0%',
-                background: 'var(--atlas-v5-brand)',
+                background: 'var(--navy-900)',
                 borderRadius: 3,
               }} />
             </div>
             <div style={{
               fontSize: 11,
               fontWeight: 600,
-              color: hasValue ? 'var(--atlas-v5-ink)' : 'var(--atlas-v5-ink-4)',
+              color: hasValue ? 'var(--grey-900)' : 'var(--grey-400)',
               width: 58,
               textAlign: 'right',
               ...monoStyle,
@@ -683,8 +683,8 @@ interface FilaInmProps {
 
 const FilaInm: React.FC<FilaInmProps> = ({ label, valor, color }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '2px 0' }}>
-    <span style={{ color: 'var(--atlas-v5-ink-3)' }}>{label}</span>
-    <span style={{ color: color || 'var(--atlas-v5-ink-2)', ...monoStyle }}>
+    <span style={{ color: 'var(--grey-500)' }}>{label}</span>
+    <span style={{ color: color || 'var(--grey-700)', ...monoStyle }}>
       {valor < 0 ? '−' : ''}{formatEur(Math.abs(valor))} €
     </span>
   </div>
@@ -697,16 +697,16 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
 
   const iconoTipoInmueble = (tipo: string) => {
     switch (tipo) {
-      case 'parking': return <Car size={13} color="var(--atlas-v5-brand)" />;
-      case 'trastero': return <Package size={13} color="var(--atlas-v5-brand)" />;
-      default: return <Home size={13} color="var(--atlas-v5-brand)" />;
+      case 'parking': return <Car size={13} color="var(--navy-900)" />;
+      case 'trastero': return <Package size={13} color="var(--navy-900)" />;
+      default: return <Home size={13} color="var(--navy-900)" />;
     }
   };
 
   return (
     <div style={{
       ...kpiCardStyle,
-      borderTop: `3px solid ${esNegativo ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-brand)'}`,
+      borderTop: `3px solid ${esNegativo ? 'var(--teal-600)' : 'var(--navy-900)'}`,
     }}>
       {/* Header: icon + name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -714,7 +714,7 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
           width: 26,
           height: 26,
           borderRadius: 7,
-          background: 'var(--atlas-v5-brand-wash)',
+          background: 'var(--navy-50)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -722,7 +722,7 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
           {iconoTipoInmueble(inm.tipo)}
         </div>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--atlas-v5-ink)' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--grey-900)' }}>
             {inm.direccion}
           </div>
           {inm.reduccion_pct > 0 && (
@@ -731,8 +731,8 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
               fontWeight: 600,
               padding: '1px 5px',
               borderRadius: 3,
-              background: 'var(--atlas-v5-brand-wash)',
-              color: 'var(--atlas-v5-brand)',
+              background: 'var(--navy-100)',
+              color: 'var(--navy-700)',
             }}>
               Red. {inm.reduccion_pct}%
             </span>
@@ -742,9 +742,9 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
 
       {/* Sequence: ingresos → gastos → reducción → resultado */}
       <FilaInm label="Ingresos íntegros" valor={inm.ingresos_integros} />
-      <FilaInm label="Total gastos" valor={-gastoTotal} color="var(--atlas-v5-brand)" />
+      <FilaInm label="Total gastos" valor={-gastoTotal} color="var(--teal-600)" />
       {inm.reduccion_importe > 0 && (
-        <FilaInm label={`Reducción ${inm.reduccion_pct}%`} valor={-inm.reduccion_importe} color="var(--atlas-v5-brand)" />
+        <FilaInm label={`Reducción ${inm.reduccion_pct}%`} valor={-inm.reduccion_importe} color="var(--teal-600)" />
       )}
 
       {/* Resultado del inmueble */}
@@ -753,14 +753,14 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
         justifyContent: 'space-between',
         fontSize: 12,
         padding: '5px 4px',
-        background: 'var(--atlas-v5-brand-wash)',
+        background: 'var(--navy-50)',
         borderRadius: 4,
         marginTop: 6,
       }}>
-        <span style={{ fontWeight: 600, color: 'var(--atlas-v5-ink)' }}>Rto. neto reducido</span>
+        <span style={{ fontWeight: 600, color: 'var(--grey-900)' }}>Rto. neto reducido</span>
         <span style={{
           fontWeight: 700,
-          color: esNegativo ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-brand)',
+          color: esNegativo ? 'var(--teal-600)' : 'var(--navy-900)',
           ...monoStyle,
         }}>
           {esNegativo ? '−' : ''}{formatEur(Math.abs(inm.rnr))} €
@@ -772,7 +772,7 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
         onClick={() => setOpen(!open)}
         style={{
           fontSize: 11,
-          color: 'var(--atlas-v5-brand)',
+          color: 'var(--teal-600)',
           background: 'none',
           border: 'none',
           cursor: 'pointer',
@@ -789,7 +789,7 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
       </button>
 
       {open && (
-        <div style={{ marginTop: 8, borderTop: '1px solid var(--atlas-v5-line-2)', paddingTop: 7 }}>
+        <div style={{ marginTop: 8, borderTop: '1px solid var(--grey-100)', paddingTop: 7 }}>
           {inm.gastos.map((g, idx) => (
             <div key={`${g.concepto}-${idx}`} style={{
               display: 'flex',
@@ -798,13 +798,13 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
               padding: '2px 0',
             }}>
               <span style={{
-                color: g.destacado ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-3)',
+                color: g.destacado ? 'var(--navy-900)' : 'var(--grey-500)',
                 fontWeight: g.destacado ? 600 : 400,
               }}>
                 {g.concepto}
               </span>
               <span style={{
-                color: g.destacado ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-2)',
+                color: g.destacado ? 'var(--navy-900)' : 'var(--grey-700)',
                 ...monoStyle,
               }}>
                 −{formatEur(g.importe)} €
@@ -1011,7 +1011,7 @@ const ImpuestosSupervisionPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ background: 'var(--atlas-v5-bg)', minHeight: '100vh' }}>
+      <div style={{ background: 'var(--grey-50)', minHeight: '100vh' }}>
         <SupervisionHeader />
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
@@ -1019,7 +1019,7 @@ const ImpuestosSupervisionPage: React.FC = () => {
               width: 32,
               height: 32,
               borderRadius: '50%',
-              border: '2px solid var(--atlas-v5-brand)',
+              border: '2px solid var(--navy-900)',
               borderTopColor: 'transparent',
               animation: 'spin 0.8s linear infinite',
             }} />
@@ -1031,7 +1031,7 @@ const ImpuestosSupervisionPage: React.FC = () => {
   }
 
   return (
-    <div style={{ background: 'var(--atlas-v5-bg)', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--grey-50)', minHeight: '100vh' }}>
       <SupervisionHeader />
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 24px 56px' }}>
@@ -1100,7 +1100,7 @@ const ImpuestosSupervisionPage: React.FC = () => {
               fontWeight: 600,
               letterSpacing: '.07em',
               textTransform: 'uppercase',
-              color: 'var(--atlas-v5-ink-4)',
+              color: 'var(--grey-400)',
               marginBottom: 10,
             }}>
               Desglose fiscal por inmueble · {añoActivo}
