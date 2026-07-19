@@ -86,7 +86,7 @@
 }
 
 .tbBtn:hover { border-color: var(--atlas-v5-ink-5); }
-.tbBtn.gold { background: var(--atlas-v5-gold); color: #fff; border-color: var(--atlas-v5-gold); }
+.tbBtn.gold { background: var(--atlas-v5-gold); color: var(--atlas-v5-on-gold); border-color: var(--atlas-v5-gold); }
 
 .heroResult {
   background: var(--atlas-v5-card);

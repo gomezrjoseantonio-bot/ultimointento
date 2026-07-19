@@ -197,7 +197,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
         key={`${row.fila}-${index}`}
         style={{
           borderBottom: '1px solid var(--hz-neutral-300)',
-          backgroundColor: isVerified ? 'color-mix(in srgb, var(--ok, #22c55e) 8%, white)' : '#fff9f9',
+          backgroundColor: isVerified ? 'color-mix(in srgb, var(--ok, var(--atlas-v5-pos)) 8%, white)' : 'var(--atlas-v5-neg-wash)',
         }}
       >
         <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{row.fila}</td>
@@ -218,7 +218,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
               style={{
                 width: '100%',
                 padding: '5px 8px',
-                border: `1px solid ${isNotFound ? 'var(--error, #ef4444)' : 'var(--hz-neutral-300)'}`,
+                border: `1px solid ${isNotFound ? 'var(--error, var(--atlas-v5-neg))' : 'var(--hz-neutral-300)'}`,
                 borderRadius: 6,
                 fontSize: '0.8125rem',
                 fontFamily: 'inherit',
@@ -242,7 +242,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
               style={{
                 width: '100%',
                 padding: '5px 8px',
-                border: `1px solid ${isNotFound ? 'var(--error, #ef4444)' : 'var(--hz-neutral-300)'}`,
+                border: `1px solid ${isNotFound ? 'var(--error, var(--atlas-v5-neg))' : 'var(--hz-neutral-300)'}`,
                 borderRadius: 6,
                 fontSize: '0.8125rem',
                 fontFamily: 'inherit',
@@ -253,7 +253,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
         <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: '0.8125rem' }}>{formatCurrency(row.importe)}</td>
         <td style={{ padding: '8px 12px' }}>
           {isVerified ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--ok, #16a34a)', fontSize: '0.8125rem', fontWeight: 500 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--ok, var(--atlas-v5-pos))', fontSize: '0.8125rem', fontWeight: 500 }}>
               <Check size={13} />
               Corregida
             </span>
@@ -288,7 +288,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
       key={`${row.fila}-${index}`}
       style={{
         borderBottom: '1px solid var(--hz-neutral-300)',
-        backgroundColor: index % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
+        backgroundColor: index % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, var(--atlas-v5-card-alt))',
       }}
     >
       <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{row.fila}</td>
@@ -296,7 +296,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
       <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{row.posicionNombre || row.posicionId}</td>
       <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{row.entidad}</td>
       <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: '0.8125rem' }}>{formatCurrency(row.importe)}</td>
-      <td style={{ padding: '8px 12px', color: 'var(--ok, #16a34a)', fontSize: '0.8125rem' }}>Lista para importar</td>
+      <td style={{ padding: '8px 12px', color: 'var(--ok, var(--atlas-v5-pos))', fontSize: '0.8125rem' }}>Lista para importar</td>
     </tr>
   );
 
@@ -335,7 +335,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
             width: '40px',
             height: '40px',
             borderRadius: '10px',
-            backgroundColor: 'var(--n-100)',
+            backgroundColor: 'var(--atlas-v5-line-2)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -419,7 +419,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
               alignItems: 'center',
               gap: '10px',
               cursor: importing ? 'wait' : 'pointer',
-              backgroundColor: dragging ? 'var(--n-100)' : 'var(--bg)',
+              backgroundColor: dragging ? 'var(--atlas-v5-line-2)' : 'var(--bg)',
               transition: 'all 150ms ease',
             }}
           >
@@ -484,7 +484,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
               display: 'flex',
               gap: '8px',
               padding: '10px 12px',
-              backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+              backgroundColor: 'var(--atlas-blue-light, var(--atlas-v5-brand-wash))',
               borderRadius: '8px',
               marginBottom: '12px',
             }}
@@ -590,7 +590,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
                 border: 'none',
                 borderRadius: '8px',
                 backgroundColor: importing || totalToImport === 0 ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
-                color: '#fff',
+                color: 'var(--atlas-v5-on-navy-1)',
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 cursor: importing || totalToImport === 0 ? 'not-allowed' : 'pointer',

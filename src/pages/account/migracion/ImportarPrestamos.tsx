@@ -512,7 +512,7 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
             width: '40px',
             height: '40px',
             borderRadius: '10px',
-            backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+            backgroundColor: 'var(--atlas-blue-light, var(--atlas-v5-brand-wash))',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -599,7 +599,7 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
               alignItems: 'center',
               gap: '10px',
               cursor: 'pointer',
-              backgroundColor: dragging ? 'var(--atlas-blue-light, #EBF3FF)' : 'var(--bg)',
+              backgroundColor: dragging ? 'var(--atlas-blue-light, var(--atlas-v5-brand-wash))' : 'var(--bg)',
               transition: 'border-color 0.2s, background-color 0.2s',
             }}
           >
@@ -663,7 +663,7 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
               display: 'flex',
               gap: '8px',
               padding: '10px 12px',
-              backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+              backgroundColor: 'var(--atlas-blue-light, var(--atlas-v5-brand-wash))',
               borderRadius: '8px',
               marginBottom: '12px',
             }}
@@ -705,7 +705,7 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
                     key={i}
                     style={{
                       borderBottom: '1px solid var(--hz-neutral-300)',
-                      backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
+                      backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, var(--atlas-v5-card-alt))',
                     }}
                   >
                     <td style={{ padding: '8px 12px' }}>
@@ -716,10 +716,10 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
                           fontSize: '0.75rem',
                           fontWeight: 600,
                           backgroundColor: row._accion === 'completar'
-                            ? 'var(--ok-light, #E8F5E9)'
-                            : 'var(--atlas-blue-light, #EBF3FF)',
+                            ? 'var(--ok-light, var(--atlas-v5-pos))'
+                            : 'var(--atlas-blue-light, var(--atlas-v5-brand-wash))',
                           color: row._accion === 'completar'
-                            ? 'var(--ok, #2E7D32)'
+                            ? 'var(--ok, var(--atlas-v5-pos))'
                             : 'var(--atlas-blue)',
                         }}
                       >
@@ -741,7 +741,7 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
                           borderRadius: '12px',
                           fontSize: '0.75rem',
                           fontWeight: 600,
-                          backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+                          backgroundColor: 'var(--atlas-blue-light, var(--atlas-v5-brand-wash))',
                           color: 'var(--atlas-blue)',
                         }}
                       >
@@ -781,7 +781,7 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
                 border: 'none',
                 borderRadius: '8px',
                 backgroundColor: importing ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
-                color: '#fff',
+                color: 'var(--atlas-v5-on-navy-1)',
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 cursor: importing ? 'not-allowed' : 'pointer',

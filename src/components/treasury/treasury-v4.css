@@ -9,9 +9,9 @@
   flex-direction: column;
   flex: 1;
   min-height: 100%;
-  background: var(--grey-50);
+  background: var(--atlas-v5-bg);
   font-family: 'IBM Plex Sans', sans-serif;
-  color: var(--grey-700);
+  color: var(--atlas-v5-ink-2);
 }
 
 .tv4-content {
@@ -46,8 +46,8 @@
   padding: 8px 16px;
   border-radius: 8px;
   border: none;
-  background: var(--white);
-  color: var(--navy-900);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-brand);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -59,33 +59,33 @@
 /* ── Period selector (year) — rectangular, V4 ── */
 .period-btn {
   padding: 7px 14px;
-  border: 1.5px solid var(--grey-300);
-  background: var(--white);
-  color: var(--grey-700);
+  border: 1.5px solid var(--atlas-v5-ink-5);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
   font-size: 13px;
   font-family: 'IBM Plex Sans', sans-serif;
   cursor: pointer;
   transition: background 0.12s;
 }
-.period-btn:hover { background: var(--grey-50); }
+.period-btn:hover { background: var(--atlas-v5-bg); }
 .period-btn-left  { border-radius: 8px 0 0 8px; }
 .period-btn-right { border-radius: 0 8px 8px 0; }
 .period-btn-active {
-  border-top: 1.5px solid var(--navy-900);
-  border-bottom: 1.5px solid var(--navy-900);
+  border-top: 1.5px solid var(--atlas-v5-brand);
+  border-bottom: 1.5px solid var(--atlas-v5-brand);
   border-left: none;
   border-right: none;
-  background: var(--grey-100);
-  color: var(--grey-900);
+  background: var(--atlas-v5-line-2);
+  color: var(--atlas-v5-ink);
   font-weight: 700;
 }
 
 /* ── Vista toggle ── */
 .toggle-vista {
   padding: 7px 14px;
-  border: 1.5px solid var(--grey-300);
-  background: var(--white);
-  color: var(--grey-500);
+  border: 1.5px solid var(--atlas-v5-ink-5);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-3);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -95,9 +95,9 @@
 .toggle-vista:first-child { border-radius: 8px 0 0 8px; }
 .toggle-vista:last-child  { border-radius: 0 8px 8px 0; }
 .toggle-vista.on {
-  border-color: var(--navy-900);
-  background: var(--navy-900);
-  color: #fff;
+  border-color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-on-navy-1);
 }
 
 /* ── Filter buttons (movimiento list) ── */
@@ -108,45 +108,45 @@
   font-weight: 500;
   cursor: pointer;
   font-family: 'IBM Plex Sans', sans-serif;
-  border: 1.5px solid var(--grey-200);
-  background: var(--white);
-  color: var(--grey-500);
+  border: 1.5px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-3);
   transition: all 0.12s;
 }
 .filtro-btn.on {
-  border-color: var(--navy-900);
-  background: var(--navy-900);
-  color: #fff;
+  border-color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-on-navy-1);
 }
 .filtro-btn-navy {
-  border-color: var(--navy-700);
-  background: var(--navy-50);
-  color: var(--navy-700);
+  border-color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-brand);
 }
 .filtro-btn-navy.on {
-  border-color: var(--navy-900);
-  background: var(--navy-900);
-  color: #fff;
+  border-color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-on-navy-1);
 }
 .filtro-btn-grey {
-  border-color: var(--grey-500);
-  background: var(--grey-100);
-  color: var(--grey-700);
+  border-color: var(--atlas-v5-ink-3);
+  background: var(--atlas-v5-line-2);
+  color: var(--atlas-v5-ink-2);
 }
 .filtro-btn-grey.on {
-  border-color: var(--grey-700);
-  background: var(--grey-700);
-  color: #fff;
+  border-color: var(--atlas-v5-ink-2);
+  background: var(--atlas-v5-ink-2);
+  color: var(--atlas-v5-on-navy-1);
 }
 .filtro-btn-teal {
-  border-color: var(--teal-600);
-  background: var(--teal-100);
-  color: var(--teal-600);
+  border-color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-brand);
 }
 .filtro-btn-teal.on {
-  border-color: var(--teal-600);
-  background: var(--teal-600);
-  color: #fff;
+  border-color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-on-navy-1);
 }
 
 /* ── Small utility buttons ── */
@@ -156,16 +156,16 @@
   gap: 4px;
   padding: 6px 12px;
   border-radius: 7px;
-  border: 1.5px solid var(--grey-200);
-  background: var(--white);
-  color: var(--grey-700);
+  border: 1.5px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   font-family: 'IBM Plex Sans', sans-serif;
   transition: background 0.12s;
 }
-.btn-ghost-small:hover { background: var(--grey-50); }
+.btn-ghost-small:hover { background: var(--atlas-v5-bg); }
 
 .btn-icon-sm {
   display: inline-flex;
@@ -174,13 +174,13 @@
   width: 30px;
   height: 30px;
   border-radius: 7px;
-  border: 1.5px solid var(--grey-200);
-  background: var(--white);
-  color: var(--grey-700);
+  border: 1.5px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
   cursor: pointer;
   transition: background 0.12s;
 }
-.btn-icon-sm:hover { background: var(--grey-50); }
+.btn-icon-sm:hover { background: var(--atlas-v5-bg); }
 
 /* ── Primary button (content area) ── */
 .btn-primary-v4 {
@@ -190,8 +190,8 @@
   padding: 8px 14px;
   border-radius: 8px;
   border: none;
-  background: var(--navy-900);
-  color: #fff;
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-on-navy-1);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -207,13 +207,13 @@
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 99px;
-  background: var(--teal-100);
-  color: var(--teal-600);
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-brand);
 }
 
 /* ── Month card grid ── */
 .tv4-month-card {
-  background: var(--white);
+  background: var(--atlas-v5-card);
   border-radius: 10px;
   padding: 11px 12px;
   cursor: pointer;
@@ -223,7 +223,7 @@
 
 /* ── Bank account selector cards ── */
 .tv4-bank-card {
-  background: var(--white);
+  background: var(--atlas-v5-card);
   border-radius: 10px;
   padding: 12px 14px;
   cursor: pointer;
@@ -233,8 +233,8 @@
 
 /* ── Movement list ── */
 .tv4-mov-panel {
-  background: var(--white);
-  border: 1px solid var(--grey-200);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
   border-radius: 12px;
   overflow: clip; /* clip instead of hidden so position:sticky on date headers still works */
   overflow-y: auto;
@@ -246,10 +246,10 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: .04em;
-  color: var(--grey-400);
+  color: var(--atlas-v5-ink-4);
   text-transform: lowercase;
-  background: var(--grey-50);
-  border-bottom: 1px solid var(--grey-100);
+  background: var(--atlas-v5-bg);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -260,19 +260,19 @@
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--grey-50);
+  border-bottom: 1px solid var(--atlas-v5-bg);
   background: transparent;
   transition: background 0.1s;
 }
-.tv4-mov-row:hover { background: var(--navy-50); }
+.tv4-mov-row:hover { background: var(--atlas-v5-brand-wash); }
 .tv4-mov-row:last-child { border-bottom: none; }
 
 .tv4-punteo-btn {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 1.5px solid var(--grey-300);
-  background: var(--white);
+  border: 1.5px solid var(--atlas-v5-ink-5);
+  background: var(--atlas-v5-card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -281,8 +281,8 @@
   transition: all 0.15s;
 }
 .tv4-punteo-btn--done {
-  border-color: var(--teal-600);
-  background: var(--teal-100);
+  border-color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand-wash);
 }
 
 .tv4-tipo-icon {
@@ -294,9 +294,9 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.tv4-tipo-icon--income  { background: var(--navy-50);  }
-.tv4-tipo-icon--expense { background: var(--grey-100); }
-.tv4-tipo-icon--financing { background: var(--teal-100); }
+.tv4-tipo-icon--income  { background: var(--atlas-v5-brand-wash);  }
+.tv4-tipo-icon--expense { background: var(--atlas-v5-line-2); }
+.tv4-tipo-icon--financing { background: var(--atlas-v5-brand-wash); }
 
 .tv4-amount-input {
   width: 90px;
@@ -304,24 +304,24 @@
   font-size: 13px;
   font-weight: 600;
   text-align: right;
-  border: 1.5px solid var(--navy-900);
+  border: 1.5px solid var(--atlas-v5-brand);
   border-radius: 6px;
   padding: 3px 7px;
-  color: var(--navy-900);
+  color: var(--atlas-v5-brand);
   outline: none;
 }
 
 /* ── Cuentas bancarias grid ── */
 .tv4-cuenta-card {
-  background: var(--white);
-  border: 1.5px solid var(--grey-200);
+  background: var(--atlas-v5-card);
+  border: 1.5px solid var(--atlas-v5-line);
   border-radius: 10px;
   padding: 12px 14px;
 }
 
 .tv4-cuenta-dashed {
-  background: var(--white);
-  border: 1.5px dashed var(--grey-300);
+  background: var(--atlas-v5-card);
+  border: 1.5px dashed var(--atlas-v5-ink-5);
   border-radius: 10px;
   padding: 12px 14px;
   cursor: pointer;
@@ -330,12 +330,12 @@
   align-items: center;
   justify-content: center;
   min-height: 110px;
-  color: var(--grey-400);
+  color: var(--atlas-v5-ink-4);
   transition: border-color 0.15s, color 0.15s;
 }
 .tv4-cuenta-dashed:hover {
-  border-color: var(--grey-400);
-  color: var(--grey-500);
+  border-color: var(--atlas-v5-ink-4);
+  color: var(--atlas-v5-ink-3);
 }
 
 /* ── Drawer (add movement) ── */
@@ -358,7 +358,7 @@
   position: fixed;
   top: 0; right: 0; bottom: 0;
   width: 380px;
-  background: var(--white);
+  background: var(--atlas-v5-card);
   box-shadow: -8px 0 30px rgba(0,0,0,0.1);
   z-index: 50;
   display: flex;

@@ -224,7 +224,7 @@
 
 /* ── Treasury event (PREVISTO) rows ─────────────────────────────────────── */
 
-.previstoRow { border-left: 3px solid var(--atlas-v5-gold, #f5a623); }
+.previstoRow { border-left: 3px solid var(--atlas-v5-gold); }
 .previstoRow:hover { background: var(--atlas-v5-bg); }
 
 .previstoChk {
@@ -234,9 +234,9 @@
   color: var(--atlas-v5-gold);
 }
 .previstoChk:hover:not(:disabled) {
-  background: var(--atlas-v5-gold-wash, #fffbf0);
-  border-color: var(--atlas-v5-gold-2, #e6a000);
-  color: var(--atlas-v5-gold-2, #e6a000);
+  background: var(--atlas-v5-gold-wash);
+  border-color: var(--atlas-v5-gold-2);
+  color: var(--atlas-v5-gold-2);
 }
 .previstoChk:disabled { opacity: 0.4; cursor: default; }
 
@@ -252,8 +252,8 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   background: transparent;
-  color: var(--atlas-v5-gold-2, #b8860b);
-  border: 1px solid var(--atlas-v5-gold, #f5a623);
+  color: var(--atlas-v5-gold-2);
+  border: 1px solid var(--atlas-v5-gold);
   font-family: var(--atlas-v5-font-ui);
 }
 
@@ -302,7 +302,7 @@
 }
 
 .filtChipClear:hover {
-  background: var(--atlas-v5-neg-wash, #fff0f0);
+  background: var(--atlas-v5-neg-wash);
 }
 
 /* ── Date group row ─────────────────────────────────────────────────────── */

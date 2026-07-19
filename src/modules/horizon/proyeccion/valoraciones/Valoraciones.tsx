@@ -174,7 +174,7 @@ const TablaHistorico: React.FC<{ snapshots: ValoracionesMensuales[] }> = ({ snap
             key={s.id ?? i}
             style={{
               borderBottom: '1px solid var(--hz-neutral-300)',
-              backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
+              backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, var(--atlas-v5-card-alt))',
             }}
           >
             <td style={{ padding: '10px 16px', color: 'var(--atlas-navy-1)', fontWeight: 500 }}>
@@ -341,7 +341,7 @@ const TablaIndividuales: React.FC<TablaIndividualesProps> = ({ valoraciones, onC
                   key={v.id ?? `${v.tipo_activo}-${v.activo_id}-${v.fecha_valoracion}-${i}`}
                   style={{
                     borderBottom: '1px solid var(--hz-neutral-300)',
-                    backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
+                    backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, var(--atlas-v5-card-alt))',
                   }}
                 >
                   <td style={{ padding: '10px 16px', color: 'var(--atlas-navy-1)', fontWeight: 500 }}>
@@ -396,7 +396,7 @@ const TablaIndividuales: React.FC<TablaIndividualesProps> = ({ valoraciones, onC
                           right: 8,
                           top: 'calc(100% - 4px)',
                           zIndex: 50,
-                          background: 'var(--surface-card, #fff)',
+                          background: 'var(--surface-card, var(--atlas-v5-card))',
                           border: '1px solid var(--hz-neutral-300)',
                           borderRadius: 8,
                           boxShadow: '0 6px 18px rgba(15,23,42,.12)',
@@ -508,7 +508,7 @@ const EditValoracionModal: React.FC<{
       alignItems: 'center', justifyContent: 'center', padding: 16,
     }}>
       <div onClick={() => !saving && onClose()} style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,.8)', backdropFilter: 'blur(4px)' }} />
-      <div style={{ position: 'relative', background: '#fff', borderRadius: 8, boxShadow: '0 12px 36px rgba(15,23,42,.18)', maxWidth: 420, width: '100%' }}>
+      <div style={{ position: 'relative', background: 'var(--atlas-v5-card)', borderRadius: 8, boxShadow: '0 12px 36px rgba(15,23,42,.18)', maxWidth: 420, width: '100%' }}>
         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hz-neutral-300)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <strong style={{ fontSize: 14, color: 'var(--atlas-navy-1)' }}>Editar valoración</strong>
           <button type="button" onClick={() => !saving && onClose()} aria-label="Cerrar" style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
@@ -588,7 +588,7 @@ const ConfirmDeleteValoracion: React.FC<{
       alignItems: 'center', justifyContent: 'center', padding: 16,
     }}>
       <div onClick={() => !deleting && onClose()} style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,.8)', backdropFilter: 'blur(4px)' }} />
-      <div style={{ position: 'relative', background: '#fff', borderRadius: 8, boxShadow: '0 12px 36px rgba(15,23,42,.18)', maxWidth: 380, width: '100%', padding: 18 }}>
+      <div style={{ position: 'relative', background: 'var(--atlas-v5-card)', borderRadius: 8, boxShadow: '0 12px 36px rgba(15,23,42,.18)', maxWidth: 380, width: '100%', padding: 18 }}>
         <strong style={{ fontSize: 14, color: 'var(--atlas-navy-1)' }}>Eliminar valoración</strong>
         <p style={{ fontSize: 13, color: 'var(--text-gray)', marginTop: 8 }}>
           Vas a eliminar la valoración de <strong>{valoracion.activo_nombre}</strong> ({valoracion.fecha_valoracion}) por {formatCurrency(valoracion.valor)}. Esta acción no se puede deshacer.

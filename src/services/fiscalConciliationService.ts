@@ -1,4 +1,4 @@
-// ATLAS HORIZON: Conciliación Fiscal (Tarea 1.9 Epic #414)
+// ATLAS HORIZON: Conciliación Fiscal (Tarea 1.9 Epic var(--atlas-v5-cripto))
 // Produce una estructura de conciliación partida a partida: estimado vs real (Tesorería).
 
 import { initDB } from './db';

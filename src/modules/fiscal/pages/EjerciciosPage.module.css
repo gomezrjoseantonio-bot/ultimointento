@@ -31,7 +31,7 @@
 
 .pill.active {
   background: var(--atlas-v5-ink);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   border-color: var(--atlas-v5-ink);
 }
 
@@ -46,7 +46,7 @@
 
 .pill.active .pillCount {
   background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
 }
 
 .tableWrap {

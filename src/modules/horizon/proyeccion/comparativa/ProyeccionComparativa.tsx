@@ -61,10 +61,10 @@ const ProyeccionComparativa: React.FC = () => {
       <PageLayout title="Real vs Previsto" subtitle="No hay datos disponibles">
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-[var(--n-700)] mb-2">
+          <h3 className="text-lg font-medium text-[var(--atlas-v5-ink-2)] mb-2">
             No hay datos para mostrar
           </h3>
-          <p className="text-[var(--n-500)]">
+          <p className="text-[var(--atlas-v5-ink-3)]">
             Asegúrate de tener presupuestos confirmados para el año seleccionado
           </p>
         </div>
@@ -77,12 +77,12 @@ const ProyeccionComparativa: React.FC = () => {
       <div className="space-y-6">
         {/* Header Controls */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-[var(--n-700)]">Real vs Previsto</h1>
+          <h1 className="text-2xl font-semibold text-[var(--atlas-v5-ink-2)]">Real vs Previsto</h1>
           
           <div className="flex items-center space-x-4">
             {/* Year Selector */}
             <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-[var(--n-500)]" />
+              <Calendar className="h-4 w-4 text-[var(--atlas-v5-ink-3)]" />
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -96,7 +96,7 @@ const ProyeccionComparativa: React.FC = () => {
 
             {/* Scope Selector */}
             <div className="flex items-center space-x-2">
-              <Building className="h-4 w-4 text-[var(--n-500)]" />
+              <Building className="h-4 w-4 text-[var(--atlas-v5-ink-3)]" />
               <select
                 value={selectedScope}
                 onChange={(e) => {
@@ -129,7 +129,7 @@ const ProyeccionComparativa: React.FC = () => {
             {/* Export Button */}
             <button
               onClick={() => setShowExportModal(true)}
-              className="flex items-center space-x-2 bg-[var(--blue)] text-white px-4 py-2 rounded-lg hover:bg-[#031F47] transition-colors"
+              className="flex items-center space-x-2 bg-[var(--atlas-v5-brand)] text-white px-4 py-2 rounded-lg hover:bg-[var(--atlas-v5-brand)] transition-colors"
             >
               <Download className="h-4 w-4" />
               <span>Exportar</span>
@@ -141,45 +141,45 @@ const ProyeccionComparativa: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Ingresos YTD */}
           <div className="bg-white p-4 rounded-lg shadow border-l-4 border-[var(--c1)]">
-            <p className="text-sm font-medium text-[var(--n-500)]">Ingresos YTD</p>
+            <p className="text-sm font-medium text-[var(--atlas-v5-ink-3)]">Ingresos YTD</p>
             <div className="space-y-1 mt-2">
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--n-500)]">Budget:</span>
-                <span className="text-[var(--n-700)] tabular-nums">{formatEuro(data.kpis.ingresosYTD.budget)}</span>
+                <span className="text-[var(--atlas-v5-ink-3)]">Budget:</span>
+                <span className="text-[var(--atlas-v5-ink-2)] tabular-nums">{formatEuro(data.kpis.ingresosYTD.budget)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--n-500)]">Forecast:</span>
-                <span className="text-[var(--n-700)] tabular-nums">{formatEuro(data.kpis.ingresosYTD.forecast)}</span>
+                <span className="text-[var(--atlas-v5-ink-3)]">Forecast:</span>
+                <span className="text-[var(--atlas-v5-ink-2)] tabular-nums">{formatEuro(data.kpis.ingresosYTD.forecast)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold">
-                <span className="text-[var(--n-700)]">Actual:</span>
-                <span className="text-[var(--blue)] tabular-nums">{formatEuro(data.kpis.ingresosYTD.actual)}</span>
+                <span className="text-[var(--atlas-v5-ink-2)]">Actual:</span>
+                <span className="text-[var(--atlas-v5-brand)] tabular-nums">{formatEuro(data.kpis.ingresosYTD.actual)}</span>
               </div>
             </div>
           </div>
           
           {/* Gastos YTD */}
           <div className="bg-white p-4 rounded-lg shadow border-l-4 border-[var(--c1)]">
-            <p className="text-sm font-medium text-[var(--n-500)]">Gastos YTD</p>
+            <p className="text-sm font-medium text-[var(--atlas-v5-ink-3)]">Gastos YTD</p>
             <div className="space-y-1 mt-2">
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--n-500)]">Budget:</span>
-                <span className="text-[var(--n-700)] tabular-nums">{formatEuro(data.kpis.gastosYTD.budget)}</span>
+                <span className="text-[var(--atlas-v5-ink-3)]">Budget:</span>
+                <span className="text-[var(--atlas-v5-ink-2)] tabular-nums">{formatEuro(data.kpis.gastosYTD.budget)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--n-500)]">Forecast:</span>
-                <span className="text-[var(--n-700)] tabular-nums">{formatEuro(data.kpis.gastosYTD.forecast)}</span>
+                <span className="text-[var(--atlas-v5-ink-3)]">Forecast:</span>
+                <span className="text-[var(--atlas-v5-ink-2)] tabular-nums">{formatEuro(data.kpis.gastosYTD.forecast)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold">
-                <span className="text-[var(--n-700)]">Actual:</span>
-                <span className="text-[var(--blue)] tabular-nums">{formatEuro(data.kpis.gastosYTD.actual)}</span>
+                <span className="text-[var(--atlas-v5-ink-2)]">Actual:</span>
+                <span className="text-[var(--atlas-v5-brand)] tabular-nums">{formatEuro(data.kpis.gastosYTD.actual)}</span>
               </div>
             </div>
           </div>
           
           {/* Resultado neto YTD */}
           <div className="bg-white p-4 rounded-lg shadow border-l-4 border-[var(--c3)]">
-            <p className="text-sm font-medium text-[var(--n-500)]">Resultado neto YTD</p>
+            <p className="text-sm font-medium text-[var(--atlas-v5-ink-3)]">Resultado neto YTD</p>
             <p className={`text-2xl font-semibold tabular-nums mt-2 ${data.kpis.resultadoNetoYTD >= 0 ? 'text-[var(--s-pos)]' : 'text-[var(--s-neg)]'}`}>
               {formatEuro(data.kpis.resultadoNetoYTD)}
             </p>
@@ -188,7 +188,7 @@ const ProyeccionComparativa: React.FC = () => {
           {/* DSCR YTD (if applicable) */}
           {data.kpis.dscrYTD !== null && (
             <div className="bg-white p-4 rounded-lg shadow border-l-4 border-[var(--c3)]">
-              <p className="text-sm font-medium text-[var(--n-500)]">DSCR YTD</p>
+              <p className="text-sm font-medium text-[var(--atlas-v5-ink-3)]">DSCR YTD</p>
               <p className={`text-2xl font-semibold tabular-nums mt-2 ${data.kpis.dscrYTD >= 1.25 ? 'text-[var(--s-pos)]' : 'text-[var(--s-neg)]'}`}>
                 {data.kpis.dscrYTD.toFixed(2)} x
               </p>
@@ -197,10 +197,10 @@ const ProyeccionComparativa: React.FC = () => {
         </div>
 
         {/* Main Comparison Table */}
-        <div className="bg-white border border-[var(--n-200)] rounded-lg">
-          <div className="px-6 py-4 border-b border-[var(--n-200)]">
-            <h3 className="font-semibold text-[var(--n-700)]">Comparativa mensual</h3>
-            <p className="text-sm text-[var(--n-500)]">
+        <div className="bg-white border border-[var(--atlas-v5-line)] rounded-lg">
+          <div className="px-6 py-4 border-b border-[var(--atlas-v5-line)]">
+            <h3 className="font-semibold text-[var(--atlas-v5-ink-2)]">Comparativa mensual</h3>
+            <p className="text-sm text-[var(--atlas-v5-ink-3)]">
               Budget (presupuesto) vs Forecast (proyección) vs Actual (real conciliado)
             </p>
           </div>
