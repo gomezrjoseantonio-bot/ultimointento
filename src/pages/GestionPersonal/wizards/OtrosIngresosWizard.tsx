@@ -34,12 +34,12 @@ function calcAnual(item: OtrosIngresos): number {
 
 const inputSt: React.CSSProperties = {
   width: '100%', padding: '8px 12px', borderRadius: 8,
-  border: '1.5px solid var(--grey-300, #C8D0DC)',
-  fontSize: 14, fontFamily: FONT, color: 'var(--navy-900, #042C5E)',
-  background: '#fff', boxSizing: 'border-box' as const, outline: 'none',
+  border: '1.5px solid var(--atlas-v5-ink-5)',
+  fontSize: 14, fontFamily: FONT, color: 'var(--atlas-v5-brand)',
+  background: 'var(--atlas-v5-card)', boxSizing: 'border-box' as const, outline: 'none',
 };
 const labelSt: React.CSSProperties = {
-  fontSize: 12, fontWeight: 600, color: 'var(--grey-600, #4A5568)',
+  fontSize: 12, fontWeight: 600, color: 'var(--atlas-v5-ink-2)',
   fontFamily: FONT, marginBottom: 4, display: 'block',
 };
 
@@ -181,14 +181,14 @@ const OtrosIngresosWizard: React.FC = () => {
   }, [modal]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8FAFC', fontFamily: FONT }}>
+    <div style={{ minHeight: '100vh', background: 'var(--atlas-v5-bg)', fontFamily: FONT }}>
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid var(--grey-200, #DDE3EC)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: 'var(--atlas-v5-card)', borderBottom: '1px solid var(--atlas-v5-line)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Otros ingresos</div>
-          <div style={{ fontSize: 13, color: 'var(--grey-500)', fontFamily: FONT }}>{titularNombre}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--atlas-v5-brand)', fontFamily: FONT }}>Otros ingresos</div>
+          <div style={{ fontSize: 13, color: 'var(--atlas-v5-ink-3)', fontFamily: FONT }}>{titularNombre}</div>
         </div>
-        <button onClick={() => navigate('/personal/ingresos')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
+        <button onClick={() => navigate('/personal/ingresos')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--atlas-v5-ink-3)' }}>
           <X size={20} />
         </button>
       </div>
@@ -196,24 +196,24 @@ const OtrosIngresosWizard: React.FC = () => {
       {/* Content */}
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 100px' }}>
         {/* Type grid */}
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT, marginBottom: 16 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--atlas-v5-brand)', fontFamily: FONT, marginBottom: 16 }}>
           Añadir ingreso
         </h2>
         {/* T30.5 · banner informativo · alquileres → Inmuebles · dividendos → Inversiones */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', marginBottom: 16, background: 'var(--grey-100, #EEF1F5)', borderRadius: 10, border: '1px solid var(--grey-200, #DDE3EC)' }}>
-          <span style={{ color: 'var(--navy-900, #042C5E)', flexShrink: 0, marginTop: 1 }}><Info size={14} /></span>
-          <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--grey-700, #303A4C)', fontFamily: FONT }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', marginBottom: 16, background: 'var(--atlas-v5-line-2)', borderRadius: 10, border: '1px solid var(--atlas-v5-line)' }}>
+          <span style={{ color: 'var(--atlas-v5-brand)', flexShrink: 0, marginTop: 1 }}><Info size={14} /></span>
+          <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--atlas-v5-ink-2)', fontFamily: FONT }}>
             Si tu ingreso es de <strong>alquiler</strong>, regístralo en{' '}
-            <button type="button" onClick={() => navigate('/inmuebles')} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--navy-900, #042C5E)', textDecoration: 'underline', cursor: 'pointer', fontFamily: FONT, fontSize: 12 }}>Inmuebles › Contratos</button>.{' '}
+            <button type="button" onClick={() => navigate('/inmuebles')} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--atlas-v5-brand)', textDecoration: 'underline', cursor: 'pointer', fontFamily: FONT, fontSize: 12 }}>Inmuebles › Contratos</button>.{' '}
             Si es un <strong>dividendo</strong> o cupón de inversión, regístralo en{' '}
-            <button type="button" onClick={() => navigate('/inversiones')} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--navy-900, #042C5E)', textDecoration: 'underline', cursor: 'pointer', fontFamily: FONT, fontSize: 12 }}>Inversiones</button>.
+            <button type="button" onClick={() => navigate('/inversiones')} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--atlas-v5-brand)', textDecoration: 'underline', cursor: 'pointer', fontFamily: FONT, fontSize: 12 }}>Inversiones</button>.
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 32 }}>
           {TIPOS.map(t => (
             <button key={t.tipo} onClick={() => openModal(t.tipo)}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 10, border: '1.5px solid var(--grey-200, #DDE3EC)', background: '#fff', cursor: 'pointer', fontFamily: FONT, color: 'var(--navy-900, #042C5E)', textAlign: 'left' as const }}>
-              <span style={{ color: 'var(--navy-900, #042C5E)', flexShrink: 0 }}>{t.icon}</span>
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 10, border: '1.5px solid var(--atlas-v5-line)', background: 'var(--atlas-v5-card)', cursor: 'pointer', fontFamily: FONT, color: 'var(--atlas-v5-brand)', textAlign: 'left' as const }}>
+              <span style={{ color: 'var(--atlas-v5-brand)', flexShrink: 0 }}>{t.icon}</span>
               <span style={{ fontSize: 13, fontWeight: 500 }}>{t.label}</span>
             </button>
           ))}
@@ -222,45 +222,45 @@ const OtrosIngresosWizard: React.FC = () => {
         {/* Existing items */}
         {items.length > 0 && (
           <div>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT, marginBottom: 12 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--atlas-v5-brand)', fontFamily: FONT, marginBottom: 12 }}>
               Ingresos configurados
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
               {items.map(item => {
                 const cfg = TIPOS.find(t => t.existingTipo === item.tipo) || TIPOS[TIPOS.length - 1];
                 return (
-                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', background: '#fff', border: '1px solid var(--grey-200, #DDE3EC)', borderRadius: 10 }}>
-                    <span style={{ color: 'var(--navy-900)', flexShrink: 0 }}>{cfg.icon}</span>
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', background: 'var(--atlas-v5-card)', border: '1px solid var(--atlas-v5-line)', borderRadius: 10 }}>
+                    <span style={{ color: 'var(--atlas-v5-brand)', flexShrink: 0 }}>{cfg.icon}</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--navy-900)', fontFamily: FONT }}>{item.nombre}</div>
-                      <div style={{ fontSize: 12, color: 'var(--grey-500)', fontFamily: FONT }}>{cfg.label} · {item.frecuencia}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--atlas-v5-brand)', fontFamily: FONT }}>{item.nombre}</div>
+                      <div style={{ fontSize: 12, color: 'var(--atlas-v5-ink-3)', fontFamily: FONT }}>{cfg.label} · {item.frecuencia}</div>
                     </div>
-                    <div style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontSize: 14, fontWeight: 600, color: 'var(--navy-900)', marginRight: 8 }}>
-                      {fmtEur(item.importe)}<span style={{ color: 'var(--grey-400)', fontSize: 11 }}>/mes</span>
+                    <div style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontSize: 14, fontWeight: 600, color: 'var(--atlas-v5-brand)', marginRight: 8 }}>
+                      {fmtEur(item.importe)}<span style={{ color: 'var(--atlas-v5-ink-4)', fontSize: 11 }}>/mes</span>
                     </div>
-                    <button onClick={() => handleEdit(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-400)', padding: 4 }}><Pencil size={14} /></button>
-                    <button onClick={() => item.id != null && handleDelete(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-400)', padding: 4 }}><Trash2 size={14} /></button>
+                    <button onClick={() => handleEdit(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--atlas-v5-ink-4)', padding: 4 }}><Pencil size={14} /></button>
+                    <button onClick={() => item.id != null && handleDelete(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--atlas-v5-ink-4)', padding: 4 }}><Trash2 size={14} /></button>
                   </div>
                 );
               })}
             </div>
 
             {/* Summary */}
-            <div style={{ background: 'var(--navy-900, #042C5E)', borderRadius: 12, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: 'var(--atlas-v5-brand)', borderRadius: 12, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 4 }}>Total estimado / año</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalAnual)}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalAnual)}</div>
               </div>
               <div style={{ textAlign: 'right' as const }}>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 4 }}>Media mensual</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--teal-400, #4AC8E0)', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalAnual / 12)}</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--atlas-v5-on-navy-1)', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalAnual / 12)}</div>
               </div>
             </div>
           </div>
         )}
 
         {items.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--grey-400)', fontSize: 14, fontFamily: FONT }}>
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--atlas-v5-ink-4)', fontSize: 14, fontFamily: FONT }}>
             Sin otros ingresos configurados. Selecciona un tipo arriba para añadir.
           </div>
         )}
@@ -271,14 +271,14 @@ const OtrosIngresosWizard: React.FC = () => {
         const cfg = tipoConfig(modal.tipo);
         return (
           <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(2px)' }}>
-            <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.12)', width: '100%', maxWidth: 480, maxHeight: '90vh', overflow: 'auto', margin: '0 16px' }}>
+            <div style={{ background: 'var(--atlas-v5-card)', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.12)', width: '100%', maxWidth: 480, maxHeight: '90vh', overflow: 'auto', margin: '0 16px' }}>
               {/* Modal header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--grey-100)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ color: 'var(--navy-900)' }}>{cfg.icon}</span>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>{cfg.label}</span>
+                  <span style={{ color: 'var(--atlas-v5-brand)' }}>{cfg.icon}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--atlas-v5-brand)', fontFamily: FONT }}>{cfg.label}</span>
                 </div>
-                <button onClick={closeModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-400)' }}><X size={18} /></button>
+                <button onClick={closeModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--atlas-v5-ink-4)' }}><X size={18} /></button>
               </div>
 
               {/* Modal body */}
@@ -305,11 +305,11 @@ const OtrosIngresosWizard: React.FC = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={labelSt}>Fecha inicio <span style={{ color: 'var(--grey-400)', fontWeight: 400 }}>Mes desde el que se percibe</span></label>
+                    <label style={labelSt}>Fecha inicio <span style={{ color: 'var(--atlas-v5-ink-4)', fontWeight: 400 }}>Mes desde el que se percibe</span></label>
                     <input type="month" value={modal.fechaInicio} onChange={e => setModal(m => m ? { ...m, fechaInicio: e.target.value } : m)} style={inputSt} />
                   </div>
                   <div>
-                    <label style={labelSt}>Fecha fin <span style={{ color: 'var(--grey-400)', fontWeight: 400 }}>Vacío = indefinido</span></label>
+                    <label style={labelSt}>Fecha fin <span style={{ color: 'var(--atlas-v5-ink-4)', fontWeight: 400 }}>Vacío = indefinido</span></label>
                     <input type="month" value={modal.fechaFin} onChange={e => setModal(m => m ? { ...m, fechaFin: e.target.value } : m)} style={inputSt} />
                   </div>
                 </div>
@@ -317,7 +317,7 @@ const OtrosIngresosWizard: React.FC = () => {
                 {cfg.hasFrecuencia && (
                   <div>
                     <label style={labelSt}>Frecuencia</label>
-                    <div style={{ display: 'flex', gap: 0, borderRadius: 8, overflow: 'hidden', border: '1.5px solid var(--grey-300, #C8D0DC)' }}>
+                    <div style={{ display: 'flex', gap: 0, borderRadius: 8, overflow: 'hidden', border: '1.5px solid var(--atlas-v5-ink-5)' }}>
                       {([
                         { value: 'mensual', label: 'Mensual' },
                         { value: 'trimestral', label: 'Trimestral' },
@@ -333,9 +333,9 @@ const OtrosIngresosWizard: React.FC = () => {
                             flex: 1,
                             padding: '8px 4px',
                             border: 'none',
-                            borderLeft: i > 0 ? '1px solid var(--grey-300, #C8D0DC)' : 'none',
-                            background: modal.frecuencia === value ? 'var(--navy-900, #042C5E)' : '#fff',
-                            color: modal.frecuencia === value ? '#fff' : 'var(--grey-700, #303A4C)',
+                            borderLeft: i > 0 ? '1px solid var(--atlas-v5-ink-5)' : 'none',
+                            background: modal.frecuencia === value ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-card)',
+                            color: modal.frecuencia === value ? 'var(--atlas-v5-on-navy-1)' : 'var(--atlas-v5-ink-2)',
                             fontSize: 12,
                             fontWeight: modal.frecuencia === value ? 600 : 400,
                             fontFamily: FONT,
@@ -352,29 +352,29 @@ const OtrosIngresosWizard: React.FC = () => {
                 )}
 
                 {cfg.hasIRPF && (
-                  <div style={{ fontSize: 12, color: 'var(--grey-500)', fontFamily: FONT, padding: '8px 12px', background: 'var(--grey-100, #EEF1F5)', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--atlas-v5-ink-3)', fontFamily: FONT, padding: '8px 12px', background: 'var(--atlas-v5-line-2)', borderRadius: 8 }}>
                     Si este ingreso tiene retención IRPF, el pagador la retiene directamente. El importe registrado aquí es el bruto; la retención se reflejará en tu declaración.
                   </div>
                 )}
 
                 {/* Preview */}
                 {modalPreview && (
-                  <div style={{ background: 'var(--navy-900, #042C5E)', borderRadius: 10, padding: '16px', marginTop: 4 }}>
+                  <div style={{ background: 'var(--atlas-v5-brand)', borderRadius: 10, padding: '16px', marginTop: 4 }}>
                     <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 10, fontWeight: 700 }}>ESTIMACIÓN CON ESTOS DATOS</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 4 }}>
                       <span style={{ color: 'rgba(255,255,255,0.7)' }}>Total estimado / año</span>
-                      <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.brutoAnual)} €</span>
+                      <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.brutoAnual)} €</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 4 }}>
                       <span style={{ color: 'rgba(255,255,255,0.7)' }}>Por cobro</span>
-                      <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--teal-400, #4AC8E0)' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.porCobro)} €</span>
+                      <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.porCobro)} €</span>
                     </div>
                   </div>
                 )}
 
                 {/* Save button */}
                 <button onClick={handleSave} disabled={saving || modal.importe <= 0}
-                  style={{ width: '100%', padding: '12px', borderRadius: 10, background: 'var(--navy-900, #042C5E)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: modal.importe > 0 ? 'pointer' : 'not-allowed', opacity: modal.importe > 0 ? 1 : 0.5, marginTop: 4 }}>
+                  style={{ width: '100%', padding: '12px', borderRadius: 10, background: 'var(--atlas-v5-brand)', color: 'var(--atlas-v5-on-navy-1)', border: 'none', fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: modal.importe > 0 ? 'pointer' : 'not-allowed', opacity: modal.importe > 0 ? 1 : 0.5, marginTop: 4 }}>
                   {saving ? 'Guardando...' : modal.editingId != null ? 'Actualizar ingreso' : 'Añadir ingreso'}
                 </button>
               </div>
@@ -383,10 +383,10 @@ const OtrosIngresosWizard: React.FC = () => {
         );
       })()}
       {/* Footer */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid var(--grey-200, #DDE3EC)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', zIndex: 10 }}>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--atlas-v5-card)', borderTop: '1px solid var(--atlas-v5-line)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', zIndex: 10 }}>
         <button
           onClick={() => navigate('/personal/ingresos')}
-          style={{ padding: '10px 24px', borderRadius: 10, background: 'var(--navy-900, #042C5E)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: 'pointer' }}
+          style={{ padding: '10px 24px', borderRadius: 10, background: 'var(--atlas-v5-brand)', color: 'var(--atlas-v5-on-navy-1)', border: 'none', fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: 'pointer' }}
         >
           Guardar
         </button>
