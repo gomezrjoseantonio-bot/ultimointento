@@ -187,14 +187,39 @@ function storesFantasma() {
 function storesNoTipados() {
   // Cuerpo de `interface AtlasHorizonDB extends DBSchema { … }`. El `\s+extends\s+`
   // desambigua de la línea `interface AtlasHorizonDB {` que aparece en un comentario.
-  const m = DB_SRC.match(/interface AtlasHorizonDB\s+extends\s+DBSchema\s*\{([\s\S]*?)\n\}/);
-  const body = m ? m[1] : '';
+  // `\r?\n` tolera CRLF; el cierre es `\r?\n\s*\}` (permite indentación del `}`).
+  const m = DB_SRC.match(/interface AtlasHorizonDB\s+extends\s+DBSchema\s*\{([\s\S]*?)\r?\n\s*\}/);
+  // FALLO EXPLÍCITO, no verde-en-falso (review Copilot #1435): si el regex no casa
+  // (cambio de formato/indentación), NO caer a 0 en silencio — eso escondería toda
+  // la deuda de tipado y pasaría el trinquete en falso. Se marca NO MEDIBLE (null).
+  if (!m) {
+    return {
+      value: null,
+      note:
+        'NO MEDIBLE · no se pudo parsear `interface AtlasHorizonDB extends DBSchema { … }` ' +
+        '(¿cambió el formato/indentación?). No se cae a 0 en silencio para no esconder deuda.',
+    };
+  }
+  const body = m[1];
   const untyped = [];
-  for (const line of body.split('\n')) {
+  let parsed = 0;
+  for (const line of body.split(/\r?\n/)) {
     // `store: { key: …; value: <tipo>; indexes: { … } };` · el `value` va antes del
     // primer `}` (el de `indexes`), así que `[^}]*` no se lo salta.
     const km = line.match(/^\s+([a-zA-Z0-9_]+)\s*:\s*\{[^}]*\bvalue:\s*([^;]+);/);
-    if (km && km[2].trim() === 'any') untyped.push(km[1]);
+    if (!km) continue;
+    parsed++;
+    if (km[2].trim() === 'any') untyped.push(km[1]);
+  }
+  // Sanidad: la interfaz tiene decenas de stores. 0 claves parseadas = regex roto,
+  // no un schema vacío → NO MEDIBLE, no 0 (mismo motivo que arriba).
+  if (parsed === 0) {
+    return {
+      value: null,
+      note:
+        'NO MEDIBLE · la interfaz existe pero no se parseó ninguna clave `store: { … }` ' +
+        '(regex de línea roto). No se cae a 0 en silencio.',
+    };
   }
   untyped.sort();
   return {
