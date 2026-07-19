@@ -396,7 +396,7 @@ const DocumentPickerPopover: React.FC<DocumentPickerPopoverProps> = ({
               >
                 Quitar asociación
               </button>
-              <span style={{ color: 'var(--cv2-grey-500)', fontSize: 11 }}>
+              <span style={{ color: 'var(--atlas-v5-ink-3)', fontSize: 11 }}>
                 {currentDocUploadedAt ? new Date(currentDocUploadedAt).toLocaleDateString('es-ES') : ''}
               </span>
             </>

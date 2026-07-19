@@ -420,7 +420,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
         <div className="cv2-modal-header">
           <div>
             <h2>
-              <Plus size={15} style={{ marginRight: 6, color: 'var(--cv2-grey-500)' }} />
+              <Plus size={15} style={{ marginRight: 6, color: 'var(--atlas-v5-ink-3)' }} />
               Añadir movimiento
             </h2>
             <div className="cv2-modal-subtitle">{subtitleByTipo[tipo]}</div>
@@ -539,8 +539,8 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
                   value={lockedInmuebleAlias ?? '—'}
                   readOnly
                   style={{
-                    background: 'var(--cv2-grey-100, #EEF1F5)',
-                    color: 'var(--cv2-grey-700, #303A4C)',
+                    background: 'var(--atlas-v5-line-2)',
+                    color: 'var(--atlas-v5-ink-2)',
                     cursor: 'not-allowed',
                   }}
                 />
@@ -841,7 +841,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
                     disabled={busy}
                   />
                   {!nifLooksOk && (
-                    <div className="cv2-hint" style={{ color: 'var(--cv2-warning-600, #B45309)' }}>
+                    <div className="cv2-hint" style={{ color: 'var(--atlas-v5-warn)' }}>
                       El NIF no tiene formato español estándar. Puedes guardarlo igual.
                     </div>
                   )}
