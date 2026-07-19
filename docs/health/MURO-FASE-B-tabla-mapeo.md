@@ -22,19 +22,21 @@
 ## Reporte teal · `--atlas-v5-chart-accent` `#1DA0BA` (lo que pediste)
 
 **Dónde se usa** (dos mundos distintos):
-- **Infra de gráficos**: `useChartColors.ts` (`accent`), `ProjectionChart.tsx` (como `c3`, fallback `#1DA0BA`), `AnalisisCartera.tsx`, `index.css` (`--c2`, `--teal-600`).
+- **Infra de gráficos**: `useChartColors.ts` (`accent`), `ProjectionChart.tsx` (como `c3`, fallback `#1DA0BA`), `AnalisisCartera.tsx`, `src/index.css` (`--c2`, `--teal-600`).
 - **UI (badges/acento)**: `CuentaWizard.module.css`, `InmueblePage.module.css`, `AutonomoWizard.tsx`, `EjecucionesRecurrentesSection.tsx` (vía `--teal-600`).
 
-**¿Convive con `c1..c6` en el mismo gráfico?** **SÍ.** En `AnalisisCartera.tsx:83` el dataset es `['#042C5E', '#5B8DB8', '#1DA0BA', '#A8C4DE']` — el teal es una **serie de datos** junto a los otros. Por tanto **no puede ir a `--gold`** (colisionaría con `c2`, que ya es oro), como advertiste.
+**¿Convive con `c1..c6` en el mismo gráfico?** **SÍ.** En `AnalisisCartera.tsx:83` el dataset es `['#042C5E', '#5B8DB8', '#1DA0BA', '#A8C4DE']` — el teal es una **serie de datos** junto a los otros. Por tanto **no puede ir a `--gold`** (colisionaría con `--atlas-v5-c2` de v5, que es oro), como advertiste.
 
 **Propuesta (no la ejecuto sin tu OK):** separar los dos usos —
 - los **teales de UI** ya van a `--brand`/`--brand-wash` (decisión 3, en la tabla);
-- el **teal de gráfico** (chart-accent + serie en ProjectionChart/AnalisisCartera + `index.css --c1..c6`/`--teal`) **queda fuera de esta campaña**: es reconciliación de la **paleta de gráficos v3 (`index.css`) vs v5 (`tokens.css` c1..c6)**, un frente propio. Lo marco `teal/chart` y NO lo toco en FASE C hasta que decidas ese frente.
+- el **teal de gráfico** (chart-accent + serie en ProjectionChart/AnalisisCartera + `src/index.css --c1..c6`/`--teal`) **queda fuera de esta campaña**: es reconciliación de la **paleta de gráficos v3 (`src/index.css`) vs los tokens chart v5 (`tokens.css --atlas-v5-c1..c6`, que son OTROS colores)**, un frente propio. Lo marco `teal/chart` y NO lo toco en FASE C hasta que decidas ese frente.
+
+> **Aviso clave (review Copilot):** `src/index.css --c1..c6` (navy/teal/azules/gris) y `tokens.css --atlas-v5-c1..c6` (brand/gold/**pos**/**warn**/gold-soft/ink-3) son **paletas distintas con el mismo nombre**. Por eso las series de gráfico v3 (`#5b8db8`, `#a8c4de`) **no** mapean a `--atlas-v5-cN` — quedan `PENDIENTE` al frente de gráficos.
 
 ## Puntos que llevo a la tabla como PROPUESTA (no decido solo · spec)
 
 - **Infra de gráfico** (`chart-ink #0E2A47`, `chart-axis #6C757D`, `chart-border #C8D0DC`): reutilizan grises legacy. `#6c757d` (39 occ) en **UI** → `--ink-3`; el token `chart-axis` que reusa ese valor se reconcilia en el frente de gráficos. Marcado con nota.
-- **`#042c5e` / `#c8d0dc` · contextuales**: en gráfico → `c1`/`c5`; en UI → `--brand`/`--ink-5`. La tanda por fichero aplica el correcto (los ficheros de gráfico están señalados).
+- **`#042c5e` / `#c8d0dc` · contextuales**: en UI → `--brand`/`--ink-5`; en gráfico → `#042c5e` queda `PENDIENTE` (frente gráficos v3) y `#c8d0dc` → token EXACTO `--atlas-v5-chart-border`. La tanda por fichero aplica el correcto (los ficheros de gráfico están señalados).
 - **`oro/ámbar`** (`a·gold`): `--gold` si es acento, `--warn` si transmite estado. Se decide por fichero en FASE C (categoría, no valor).
 - **`InversionesGaleria.module.css`**: cluster de colores de categoría de inversión (verde/marrón/púrpura/vino). Los mapeo a pos/cripto/neg/gold como propuesta; si en realidad es una **paleta de identidad de categorías** (como room-colors), dímelo y la trato como excepción, no como semántica.
 
@@ -49,14 +51,14 @@
 | 3 | `pages/GestionPersonal/wizards/OtrosIngresosWizard.tsx` | 43 | 32% | wizard ingresos |
 | 4 | `components/treasury/TreasuryReconciliationView.tsx` | 26 | 36% | idem tesorería |
 | 5 | `modules/inversiones/utils/entidadLogo.ts` | 26 | 39% | **catálogo entidades** · consolidar aquí + excluir de hex_hardcoded (decisión 2) |
-| 6 | `index.css` | 24 | 42% | **contiene la paleta chart v3 `--c1..c6`/`--teal`** · tocar con cuidado (frente gráficos) |
+| 6 | `src/index.css` | 24 | 42% | **contiene la paleta chart v3 `--c1..c6`/`--teal`** · tocar con cuidado (frente gráficos) |
 | 7 | `modules/financiacion/wizards/PrestamoPageV2.module.css` | 24 | 46% | wizard préstamo · gold/beige/rojo |
 | 8 | `pages/GestionPersonal/wizards/NominaPage.module.css` | 24 | 49% | wizard nómina |
 | 9 | `modules/financiacion/helpers.ts` | 22 | 52% | colores banco → migrar a catálogo entidades (decisión 2) |
 | 10 | `modules/inversiones/InversionesGaleria.module.css` | 19 | 54% | cluster categorías inversión (ver punto abierto) |
 | … | (62 ficheros restantes) | 356 | →100% | cola larga · 1-15 occ/fichero |
 
-**Recomendación de arranque**: tanda 1 = `treasury-reconciliation.css` (146→0, un fichero, 19% del muro, sin contexto de gráfico → mapeo limpio a·legacy/c·tw-gray/UI-info). Es el mejor primer commit para fijar el patrón y la verificación visual.
+**Recomendación de arranque**: tanda 1 = `treasury-reconciliation.css` (140→0, un fichero, 19% del muro, sin contexto de gráfico → mapeo limpio a·legacy/c·tw-gray/UI-info). Es el mejor primer commit para fijar el patrón y la verificación visual.
 
 ---
 
@@ -67,11 +69,11 @@ Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva
 | # | Valor | Occ | Cat | Destino | Justificación | Ficheros (muestra) |
 |--:|---|--:|---|---|---|---|
 | 1 | `#ffffff` | 195 | exacto | `var(--atlas-v5-white)` | blanco puro | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +49 |
-| 2 | `#042c5e` | 74 | chart/UI | `var(--atlas-v5-c1) [chart] · var(--atlas-v5-brand) [UI]` | v3 --c1 = brand navy · en gráficos → c1, en UI → brand | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +17 |
+| 2 | `#042c5e` | 74 | chart/UI | `var(--atlas-v5-brand) [UI] · PENDIENTE frente-gráficos [chart]` | v3 --c1 · en UI → brand · en gráfico (src/index.css --c1) queda al frente gráficos v3↔v5 | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +17 |
 | 3 | `#6c757d` | 39 | a·legacy | `var(--atlas-v5-ink-3)` | deriva design-bible v3/v4 (spec B.3) · nota: --atlas-v5-chart-axis reusa este valor (reconciliar infra-chart) | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +16 |
 | 4 | `#dde3ec` | 31 | a·legacy | `var(--atlas-v5-line)` | deriva design-bible v3/v4 (spec B.3) | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +14 |
 | 5 | `#303a4c` | 25 | a·legacy | `var(--atlas-v5-ink-2)` | deriva design-bible v3/v4 (spec B.3) | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +15 |
-| 6 | `#c8d0dc` | 21 | chart/UI | `var(--atlas-v5-c5) [chart] · var(--atlas-v5-ink-5) [UI]` | v3 --c5 · en gráfico → c5, en UI (borde) → ink-5 | components/shared/PageHeader.tsx · design-system/v5/useChartColors.ts +14 |
+| 6 | `#c8d0dc` | 21 | chart/UI | `var(--atlas-v5-chart-border) [chart] · var(--atlas-v5-ink-5) [UI]` | v3 --c5 · en gráfico → token EXACTO chart-border (#C8D0DC) · en UI (borde) → ink-5 | components/shared/PageHeader.tsx · design-system/v5/useChartColors.ts +14 |
 | 7 | `#1a2332` | 19 | a·legacy | `var(--atlas-v5-ink)` | deriva design-bible v3/v4 (spec B.3) | components/shared/PageHeader.tsx · components/treasury/TreasuryReconciliationView.tsx +12 |
 | 8 | `#f3f4f6` | 16 | c·tw-gray | `var(--atlas-v5-line-3)` | gris de Tailwind (spec B.3) | components/treasury/treasury-reconciliation.css |
 | 9 | `#9ca3af` | 16 | c·tw-gray | `var(--atlas-v5-ink-4)` | gris de Tailwind (spec B.3) | components/treasury/treasury-reconciliation.css · index.css +4 |
@@ -79,7 +81,7 @@ Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva
 | 11 | `#f9fafb` | 15 | c·tw-gray | `var(--atlas-v5-card-alt)` | gris de Tailwind (spec B.3) | components/inbox/EditDocumentMetadataModal.tsx · components/treasury/treasury-reconciliation.css +6 |
 | 12 | `#f8f9fa` | 14 | a·legacy | `var(--atlas-v5-bg)` | deriva design-bible v3/v4 (spec B.3) | components/treasury/treasury-reconciliation.css · index.css +11 |
 | 13 | `#6b7280` | 12 | c·tw-gray | `var(--atlas-v5-ink-3)` | gris de Tailwind (spec B.3) | components/treasury/treasury-reconciliation.css · modules/financiacion/wizards/PrestamoPageV2.module.css +2 |
-| 14 | `#1da0ba` | 11 | teal/chart | `PENDIENTE (reporte teal)` | v3 --c2/--teal-600 · chart-accent vivo · UI badge → brand · en gráfico convive con serie (AnalisisCartera) · NO forzar a gold (colisión c2) | design-system/v5/useChartColors.ts · index.css +7 |
+| 14 | `#1da0ba` | 11 | teal/chart | `PENDIENTE · frente-gráficos (reporte teal)` | v3 --c2/--teal-600 · chart-accent vivo · UI badge → brand · en gráfico convive con serie (AnalisisCartera) · NO forzar a --atlas-v5-c2 (=oro) | design-system/v5/useChartColors.ts · index.css +7 |
 | 15 | `#e5e7eb` | 9 | c·tw-gray | `var(--atlas-v5-line)` | gris de Tailwind (spec B.3) | components/treasury/treasury-reconciliation.css · components/valoraciones/ImportValoracionesWizard.tsx |
 | 16 | `#00a7b5` | 9 | UI-teal | `var(--atlas-v5-brand)` | teal de UI · resto identidad v3 → brand (decisión Jose 3) | pages/GestionInmuebles/GestionInmueblesList.tsx · pages/GestionInmuebles/tabs/FacturaSelectorModal.tsx +4 |
 | 17 | `#ebf3ff` | 9 | UI-info | `var(--atlas-v5-brand-wash)` | azul info · en ATLAS el azul es la marca (decisión Jose 1) | pages/account/migracion/ImportarAportaciones.tsx · pages/account/migracion/ImportarIndexaCapital.tsx +1 |
@@ -92,7 +94,7 @@ Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva
 | 24 | `#ec0000` | 4 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | components/treasury/MesDetalleDrawer.tsx · modules/financiacion/helpers.ts +2 |
 | 25 | `#4b5563` | 4 | c·tw-gray | `var(--atlas-v5-ink-2)` | gris de Tailwind (spec B.3) | components/treasury/treasury-reconciliation.css · modules/horizon/conciliacion/v2/conciliacion-v2.css +1 |
 | 26 | `#e6f7fa` | 4 | teal-wash | `var(--atlas-v5-brand-wash)` | v3 --teal-100 · lavado teal · UI → brand-wash | index.css · modules/horizon/conciliacion/v2/conciliacion-v2.css +2 |
-| 27 | `#5b8db8` | 4 | chart | `var(--atlas-v5-c3)` | v3 --c3 · serie de gráfico (AnalisisCartera/ProjectionChart) · NO es UI | index.css · modules/horizon/analisis-cartera/AnalisisCartera.tsx +2 |
+| 27 | `#5b8db8` | 4 | chart | `PENDIENTE · frente-gráficos (v3 --c3 · src/index.css)` | serie azul · OJO: --atlas-v5-c3 = pos (verde) ≠ este azul · NO mapear a c-token v5 | index.css · modules/horizon/analisis-cartera/AnalisisCartera.tsx +2 |
 | 28 | `#004481` | 4 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts · modules/inversiones/InversionesGaleria.module.css +2 |
 | 29 | `#f5f1e8` | 4 | b·beige | `var(--atlas-v5-bg) / var(--atlas-v5-card-alt)` | beige cálido → bg/card-alt según uso (aprobado) | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
 | 30 | `#fdf4dc` | 4 | a·gold | `var(--atlas-v5-gold) / var(--atlas-v5-warn)` | oro/ámbar → gold o warn según si es acento o estado | modules/financiacion/wizards/PrestamoPageV2.module.css · pages/GestionPersonal/wizards/NominaPage.module.css |
@@ -101,7 +103,7 @@ Categorías: `exacto` (ya es token · swap literal→var) · `a·legacy` (deriva
 | 33 | `#111827` | 3 | c·tw-gray | `var(--atlas-v5-ink)` | gris de Tailwind (spec B.3) | components/treasury/treasury-reconciliation.css |
 | 34 | `#059669` | 3 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | components/valoraciones/ImportValoracionesWizard.tsx · modules/inversiones/InversionesGaleria.module.css +1 |
 | 35 | `#f0f4fa` | 3 | UI-info | `var(--atlas-v5-brand-wash)` | azul info · en ATLAS el azul es la marca (decisión Jose 1) | index.css · modules/horizon/conciliacion/v2/conciliacion-v2.css +1 |
-| 36 | `#a8c4de` | 3 | chart | `var(--atlas-v5-c4)` | v3 --c4 · serie de gráfico · NO es UI | index.css · modules/horizon/analisis-cartera/AnalisisCartera.tsx +1 |
+| 36 | `#a8c4de` | 3 | chart | `PENDIENTE · frente-gráficos (v3 --c4 · src/index.css)` | serie azul claro · OJO: --atlas-v5-c4 = warn (ámbar) ≠ este azul · NO mapear a c-token v5 | index.css · modules/horizon/analisis-cartera/AnalisisCartera.tsx +1 |
 | 37 | `#b88a3e` | 3 | d·entidad | `catálogo entidadLogo.ts (excepción §12.5)` | identidad de tercero · no paleta · se consolida y el fichero se excluye de hex_hardcoded | modules/financiacion/helpers.ts · modules/inversiones/InversionesGaleria.module.css +1 |
 | 38 | `#faf8f3` | 3 | b·beige | `var(--atlas-v5-bg) / var(--atlas-v5-card-alt)` | beige cálido → bg/card-alt según uso (aprobado) | modules/financiacion/wizards/PrestamoPageV2.module.css · modules/onboarding/empezar/empezar.module.css +1 |
 | 39 | `#ff8e83` | 3 | semantic | `var(--atlas-v5-neg-wash)` | rojo/rosa lavado → neg-wash (aprobado) | modules/tesoreria/TesoreriaPage.module.css · modules/tesoreria/pages/VistaCuentaPage.module.css |

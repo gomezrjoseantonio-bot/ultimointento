@@ -59,9 +59,11 @@ ATLAS es **sobrio · profesional · honesto**. No es app de banca alegre · no e
 
 ### 2.1 · Paleta Oxford Gold (única autorizada)
 
-Los nombres de token aquí son **idénticos a `src/design-system/v5/tokens.css`**
-(prefijo `--atlas-v5-*`). No se usa forma corta: esa ambigüedad (guía en corto,
-código con prefijo) es lo que hizo que spec y código no coincidieran.
+Los nombres de token **en este snippet** son **idénticos a
+`src/design-system/v5/tokens.css`** (prefijo `--atlas-v5-*`). El código real usa
+esos nombres completos; la forma corta que aparece en otras tablas de esta guía
+(p. ej. §2.2) es solo taquigrafía de lectura, no el nombre del token. Esa
+ambigüedad es lo que hizo que spec y código no coincidieran.
 
 ```css
 :root {
