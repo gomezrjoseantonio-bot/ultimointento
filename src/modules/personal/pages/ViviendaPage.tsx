@@ -977,7 +977,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1.5px solid var(--atlas-v5-neg)',
     borderRadius: 7,
     background: 'var(--atlas-v5-neg)',
-    color: 'var(--atlas-v5-white, #fff)',
+    color: 'var(--atlas-v5-white)',
     fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',

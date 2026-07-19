@@ -1320,7 +1320,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
               <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginBottom: 8 }}>
                 MWR/año (rentabilidad ponderada por capital y tiempo): {fmtPct(rentabilidadTotal.MWR)}
                 {rentabilidadTotal.conDatosParciales && (
-                  <span style={{ marginLeft: 8, color: 'var(--atlas-v5-warn, #B07E2A)' }}>
+                  <span style={{ marginLeft: 8, color: 'var(--atlas-v5-warn)' }}>
                     · datos parciales (plan migrado)
                   </span>
                 )}
@@ -1349,11 +1349,11 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                       sem === 'mejor' ? '▲' : sem === 'peor' ? '▼' : sem === 'igual' ? '=' : '—';
                     const semColor =
                       sem === 'mejor'
-                        ? 'var(--atlas-v5-pos, #1F7A4D)'
+                        ? 'var(--atlas-v5-pos)'
                         : sem === 'peor'
-                        ? 'var(--atlas-v5-neg, #B23A48)'
+                        ? 'var(--atlas-v5-neg)'
                         : sem === 'igual'
-                        ? 'var(--atlas-v5-warn, #B07E2A)'
+                        ? 'var(--atlas-v5-warn)'
                         : 'var(--atlas-v5-ink-5)';
                     const periodoTxt =
                       b.periodoAños < 1

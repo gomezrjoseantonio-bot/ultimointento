@@ -586,13 +586,13 @@ const ChartInteresesAcumulados: React.FC<ChartProps> = ({
         textAnchor="middle"
         fontFamily="var(--atlas-v5-font-mono-num)"
         fontSize={9}
-        fill="#fff"
+        fill="var(--atlas-v5-on-navy-1)"
         fontWeight={700}
       >
         HOY
       </text>
       {/* Pelota HOY con importe */}
-      <circle cx={xHoy} cy={yHoy} r={5} fill="#fff" stroke="var(--atlas-v5-gold)" strokeWidth={2.5} />
+      <circle cx={xHoy} cy={yHoy} r={5} fill="var(--atlas-v5-on-navy-1)" stroke="var(--atlas-v5-gold)" strokeWidth={2.5} />
       <text
         x={xHoy + 10}
         y={yHoy + 3}

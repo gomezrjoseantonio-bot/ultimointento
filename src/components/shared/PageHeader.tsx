@@ -53,12 +53,12 @@ const PageHeader: React.FC<PageHeaderProps> = ({
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: subtitle ? 2 : 0 }}>
             {/* Icono: 20px, gris, SIN fondo, SIN círculo, SIN cuadrado */}
-            <Icon size={20} color="var(--grey-500, #6C757D)" strokeWidth={1.5} />
+            <Icon size={20} color="var(--atlas-v5-ink-3)" strokeWidth={1.5} />
             <h1
               style={{
                 fontSize: 'var(--t-xl, 1.375rem)',
                 fontWeight: 700,
-                color: 'var(--grey-900, #1A2332)',
+                color: 'var(--atlas-v5-ink)',
                 margin: 0,
                 fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
                 lineHeight: 1.2,
@@ -71,7 +71,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
             <p
               style={{
                 fontSize: 'var(--t-sm, 0.8125rem)',
-                color: 'var(--grey-500, #6C757D)',
+                color: 'var(--atlas-v5-ink-3)',
                 margin: 0,
                 paddingLeft: 30,
                 fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
@@ -96,7 +96,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
           style={{
             display: 'flex',
             gap: 32,
-            borderBottom: '1px solid var(--grey-200, #DDE3EC)',
+            borderBottom: '1px solid var(--atlas-v5-line)',
             paddingLeft: 30,
           }}
         >
@@ -108,11 +108,11 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                 padding: '10px 0',
                 fontSize: 'var(--t-base, 0.875rem)',
                 fontWeight: activeTab === tab.id ? 500 : 400,
-                color: activeTab === tab.id ? 'var(--grey-900, #1A2332)' : 'var(--grey-500, #6C757D)',
+                color: activeTab === tab.id ? 'var(--atlas-v5-ink)' : 'var(--atlas-v5-ink-3)',
                 background: 'transparent',
                 border: 'none',
                 borderBottom: activeTab === tab.id
-                  ? '2px solid var(--navy-900, #042C5E)'
+                  ? '2px solid var(--atlas-v5-brand)'
                   : '2px solid transparent',
                 marginBottom: -1,
                 cursor: 'pointer',
@@ -151,8 +151,8 @@ export const HeaderPrimaryButton: React.FC<{
       padding: '10px 16px',
       borderRadius: 'var(--r-md, 8px)',
       border: 'none',
-      background: 'var(--navy-900, #042C5E)',
-      color: 'var(--white, #FFFFFF)',
+      background: 'var(--atlas-v5-brand)',
+      color: 'var(--atlas-v5-on-navy-1)',
       fontSize: 'var(--t-base, 0.875rem)',
       fontWeight: 500,
       cursor: 'pointer',
@@ -181,9 +181,9 @@ export const HeaderSecondaryButton: React.FC<{
       gap: 6,
       padding: '8px 16px',
       borderRadius: 'var(--r-md, 8px)',
-      border: '1.5px solid var(--grey-300, #C8D0DC)',
-      background: 'var(--white, #FFFFFF)',
-      color: 'var(--grey-700, #303A4C)',
+      border: '1.5px solid var(--atlas-v5-ink-5)',
+      background: 'var(--atlas-v5-card)',
+      color: 'var(--atlas-v5-ink-2)',
       fontSize: 'var(--t-base, 0.875rem)',
       fontWeight: 500,
       cursor: disabled ? 'not-allowed' : 'pointer',
