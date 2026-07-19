@@ -87,6 +87,7 @@ ese es el NUEVO BASELINE, no una regresión (regla asimétrica · ver GOBERNANZA
 | 2026-07-19 · preferencias-datos a v5 | Pantalla huérfana migrada a Ajustes v5 (`DatosPage`) y la vieja `PreferenciasDatos` (v4 · PageLayout) borrada | `find src/modules/ajustes/pages/DatosPage.tsx src/modules/horizon/configuracion/preferencias-datos/PreferenciasDatos.tsx 2>/dev/null \| wc -l` | `1` |
 | 2026-07-19 · preferencias-datos a v5 | Ruta legacy `/configuracion/preferencias-datos` reconvertida en redirect a `/ajustes/datos` (deja de ser huérfana · rutas_huerfanas 20→19) | `grep -cF 'path="preferencias-datos" element={<Navigate to="/ajustes/datos"' src/App.tsx` | `1` |
 | 2026-07-19 · preferencias-datos a v5 | Nueva sub-página enganchada al sidebar de Ajustes v5 (`/ajustes/datos`) | `grep -cF "path: '/ajustes/datos'" src/modules/ajustes/AjustesPage.tsx` | `1` |
+| 2026-07-19 · muro/deadcode | Clúster `TreasuryReconciliationView` v3 borrado (render `solo_tests` · superseded por ConciliacionPageV2 · −172 hex) + util huérfano `normalizeText` | `find src/components/treasury/TreasuryReconciliationView.tsx src/components/treasury/treasury-reconciliation.css src/components/treasury/treasuryBalanceSummary.ts src/utils/normalizeText.ts 2>/dev/null \| wc -l` | `0` |
 
 ### Retiradas (supersedidas por el bloque 2)
 

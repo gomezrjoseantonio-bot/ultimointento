@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-19",
-  "generatedAt": "2026-07-19T14:32:49.845Z",
+  "generatedAt": "2026-07-19T18:17:12.706Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "6d6f82e"
+    "head": "3fd0b86"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -49,14 +49,14 @@
     {
       "indicador": "hex_hardcoded",
       "antes": 974,
-      "despues": 1188,
+      "despues": 1016,
       "motivo": "ve #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
     {
       "indicador": "archivos_800",
       "antes": 49,
-      "despues": 45,
+      "despues": 43,
       "motivo": "ve .css y .js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -158,7 +158,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 755 · dead 0 · solo_tests 42 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 755 · dead 0 · solo_tests 39 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -208,7 +208,7 @@
       "calibracion": null
     },
     "hex_hardcoded": {
-      "value": 1188,
+      "value": 1016,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -218,7 +218,7 @@
       "calibracion": null
     },
     "emojis_ui": {
-      "value": 69,
+      "value": 64,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -273,7 +273,7 @@
       "calibracion": null
     },
     "archivos_800": {
-      "value": 45,
+      "value": 43,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -299,14 +299,14 @@
       "calibracion": null
     },
     "pct_v5": {
-      "value": 60.6,
+      "value": 60.8,
       "direction": "up",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "231 / 381 (directo o vía .module.css con var(--atlas-v5-*))"
+        "231 / 380 (directo o vía .module.css con var(--atlas-v5-*))"
       ],
       "calibracion": null
     },

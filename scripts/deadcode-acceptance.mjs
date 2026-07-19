@@ -43,6 +43,10 @@ const MUST_BE_GONE = [
   'src/modules/horizon/fiscalidad/components/FiscalPageShell.tsx',
   'src/components/common/FormErrorSummary.tsx',
   'src/utils/formValidation.ts',
+  // clúster TreasuryReconciliationView v3 (solo_tests · superseded por ConciliacionPageV2)
+  'src/components/treasury/TreasuryReconciliationView.tsx',
+  'src/components/treasury/treasuryBalanceSummary.ts',
+  'src/utils/normalizeText.ts',
 ];
 
 const fails = [];
