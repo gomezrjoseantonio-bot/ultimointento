@@ -60,11 +60,11 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
     setLinking(true);
     setError(null);
     try {
-      // Support both new shape (tipo = store name) and old shape (store field)
-      const store =
-        (candidate as any).store ??
-        (candidate.tipo === 'mobiliarioActivo' ? 'mobiliarioActivo' : 'mejorasActivo');
-      await confirmLink(store as 'mejorasActivo' | 'mobiliarioActivo', candidate.id, documentId);
+      // Los stores reales son mejorasInmueble/mueblesInmueble (renombrados desde
+      // los antiguos mejorasActivo/mobiliarioActivo). El candidato conserva la
+      // etiqueta antigua en `tipo`; se mapea al store real aquí.
+      const store = candidate.tipo === 'mobiliarioActivo' ? 'mueblesInmueble' : 'mejorasInmueble';
+      await confirmLink(store, candidate.id, documentId);
 
       // Update document status to Asignado
       const db = await initDB();

@@ -290,11 +290,11 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
     if (!document?.id) return;
     setLinking(true);
     try {
-      // Support both new shape (tipo = store name) and old shape (store field)
-      const store =
-        (candidate as any).store ??
-        (candidate.tipo === 'mobiliarioActivo' ? 'mobiliarioActivo' : 'mejorasActivo');
-      await confirmLink(store as 'mejorasActivo' | 'mobiliarioActivo', candidate.id, document.id);
+      // Los stores reales son mejorasInmueble/mueblesInmueble (renombrados desde
+      // los antiguos mejorasActivo/mobiliarioActivo). El candidato conserva la
+      // etiqueta antigua en `tipo`; se mapea al store real aquí.
+      const store = candidate.tipo === 'mobiliarioActivo' ? 'mueblesInmueble' : 'mejorasInmueble';
+      await confirmLink(store, candidate.id, document.id);
 
       // Update document status
       const db = await initDB();
