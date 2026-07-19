@@ -100,6 +100,19 @@ ATLAS es **sobrio · profesional · honesto**. No es app de banca alegre · no e
 
   --warn: #8A6213;      /* advertencia · ámbar · en-riesgo */
   --warn-wash: #F5ECD6; /* advertencia tinted */
+
+  /* Tinta SOBRE navy · rampa 7 niveles (FASE A muro · para héroes navy).
+     La tinta clara (--ink…) es para fondo claro; sobre navy no había destino. */
+  --on-navy-1: #FFFFFF; /* valor principal · títulos sobre navy */
+  --on-navy-2: #E4E8F0; /* texto principal sobre navy */
+  --on-navy-3: #C7CDDC; /* texto secundario */
+  --on-navy-4: #AEB6C8; /* terciario · nav lateral */
+  --on-navy-5: #8E96AA; /* etiquetas · sutil */
+  --on-navy-6: #7E869A; /* ejes de gráfico · muy sutil */
+  --on-navy-7: #6E7688; /* separadores de escala */
+
+  /* Tinta SOBRE oro */
+  --on-gold: #2A1F08;
 }
 ```
 
