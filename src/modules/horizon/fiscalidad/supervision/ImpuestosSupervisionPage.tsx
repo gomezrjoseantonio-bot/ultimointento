@@ -345,7 +345,7 @@ const TarjetaResultado: React.FC<TarjetaResultadoProps> = ({ resultado, tipoEfec
   return (
     <div style={{
       ...kpiCardStyle,
-      borderTop: `3px solid ${esDevolver ? 'var(--teal-600)' : 'var(--navy-900)'}`,
+      borderTop: '3px solid var(--atlas-v5-brand)',
     }}>
       <div style={kpiLabelStyle}>Resultado</div>
 
@@ -355,7 +355,7 @@ const TarjetaResultado: React.FC<TarjetaResultadoProps> = ({ resultado, tipoEfec
           <div style={{
             fontSize: 28,
             fontWeight: 700,
-            color: esDevolver ? 'var(--teal-600)' : 'var(--navy-900)',
+            color: 'var(--atlas-v5-ink)',
             lineHeight: 1,
             ...monoStyle,
           }}>
@@ -425,17 +425,6 @@ const GraficaEvolucion: React.FC<GraficaEvolucionProps> = ({ años, añoActivo, 
             Clic en un año para ver su detalle
           </div>
         </div>
-        {/* Legend */}
-        <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--grey-500)' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--navy-900)' }} />
-            Pagar
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--teal-600)' }} />
-            Devolver
-          </span>
-        </div>
       </div>
 
       {sortedAños.map(ej => {
@@ -501,9 +490,7 @@ const GraficaEvolucion: React.FC<GraficaEvolucionProps> = ({ años, añoActivo, 
               <div style={{
                 height: '100%',
                 width: `${pct}%`,
-                background: isPagar
-                  ? (isSel ? 'var(--navy-900)' : 'var(--grey-300)')
-                  : (isSel ? 'var(--teal-600)' : 'var(--teal-100)'),
+                background: isSel ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-5)',
                 borderRadius: 3,
                 transition: 'width 0.3s',
               }} />
@@ -513,7 +500,7 @@ const GraficaEvolucion: React.FC<GraficaEvolucionProps> = ({ años, añoActivo, 
             <div style={{
               fontSize: 12,
               fontWeight: isSel ? 700 : 400,
-              color: isSel ? (isPagar ? 'var(--navy-900)' : 'var(--teal-600)') : 'var(--grey-900)',
+              color: isSel ? 'var(--atlas-v5-ink)' : 'var(--atlas-v5-ink-3)',
               width: 64,
               textAlign: 'right',
               ...monoStyle,
@@ -706,7 +693,7 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
   return (
     <div style={{
       ...kpiCardStyle,
-      borderTop: `3px solid ${esNegativo ? 'var(--teal-600)' : 'var(--navy-900)'}`,
+      borderTop: '3px solid var(--atlas-v5-brand)',
     }}>
       {/* Header: icon + name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -760,7 +747,7 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
         <span style={{ fontWeight: 600, color: 'var(--grey-900)' }}>Rto. neto reducido</span>
         <span style={{
           fontWeight: 700,
-          color: esNegativo ? 'var(--teal-600)' : 'var(--navy-900)',
+          color: 'var(--atlas-v5-ink)',
           ...monoStyle,
         }}>
           {esNegativo ? '−' : ''}{formatEur(Math.abs(inm.rnr))} €
