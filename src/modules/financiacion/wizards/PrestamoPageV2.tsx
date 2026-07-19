@@ -1673,7 +1673,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                   )}
                 </>
               ) : (
-                <div style={{ padding: 20, color: 'var(--v8-txt-muted, #6b7280)', fontSize: 12 }}>
+                <div style={{ padding: 20, color: 'var(--atlas-v5-ink-3)', fontSize: 12 }}>
                   Completa capital, plazo, TIN y fechas para ver el cálculo financiero en directo.
                 </div>
               )}
@@ -1686,7 +1686,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
             <div className={styles.footerMeta}>
               <Info />
               {submitError ? (
-                <span style={{ color: 'var(--v8-danger, #b91c1c)' }}>{submitError}</span>
+                <span style={{ color: 'var(--atlas-v5-neg)' }}>{submitError}</span>
               ) : (
                 'Al guardar se generan los cargos previstos en Tesorería y el cuadro de amortización completo'
               )}
