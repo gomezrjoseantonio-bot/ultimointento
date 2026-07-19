@@ -47,3 +47,9 @@ jobs:
       # empeoró → el job falla.
       - name: Marcador de salud (trinquete)
         run: npm run health:ci
+
+      # Prueba de aceptación del detector de muerte transitiva (§5): 6 muertos
+      # conocidos deben salir muertos y 2 vivos conocidos deben seguir vivos.
+      # Falla el job si el grafo de alcanzabilidad se rompe en cualquier dirección.
+      - name: Detector de muerte transitiva (aceptación)
+        run: npm run test:deadcode

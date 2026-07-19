@@ -27,6 +27,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { analyzeReachability } from './lib/deadcode.mjs';
 
 const ROOT = process.cwd();
 // Modo CI: `npm run health:ci` (--with-tests) autoriza ejecutar la suite de
@@ -286,82 +287,57 @@ function lecturasStoreInexistente() {
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * INDICADOR 4 · servicios_muertos
- * Archivos en `src/services/` (nivel superior) que NADIE importa fuera de su
- * propio test:
- *   CUENTA  · `services/*.ts` (no test) cuyo basename no aparece en ningún
- *             `from '…/basename'`, `import('…/basename')` ni
- *             `require('…/basename')` de otro archivo src
- *   EXCLUYE · tests · el propio archivo · `index.ts` · `*.d.ts`
+ * INDICADOR 4 · servicios_muertos · DETECCIÓN POR ALCANZABILIDAD TRANSITIVA
+ * (TAREA-CC-DETECTOR-MUERTE-TRANSITIVA · Adenda 2 · raíces ESTRICTAS · 2026-07-19)
  *
- * DETECCIÓN ENDURECIDA (autorizado por Jose · 2026-07-18): se añade `require(`.
+ * ANTES (importadores directos · bloque 3): un módulo con ≥1 importador se
+ * contaba VIVO, aunque ese importador fuera él mismo inalcanzable. Punto ciego
+ * demostrado: el árbol muerto TesoreriaV4 → HistoricoWizard → historical{Cashflow,
+ * Treasury} pasaba como vivo porque HistoricoWizard los importa — pero a
+ * HistoricoWizard solo lo alcanza TesoreriaV4, que NO está enrutado. También ese
+ * método daba por vivo a `optimizedDbService` "porque lo usa un script npm": falso,
+ * lo importa solo `completeDataCleanup.ts`, huérfano (npm corre el `.js`).
  *
- * RECALIBRACIÓN 2026-07-18 (bloque 3 · autorizada por Jose · 2 FALSOS POSITIVOS):
- * anterior = 33 · nueva = 31. El scan de importadores solo miraba `src/`, nunca
- * los directorios de raíz `functions/` (Netlify) ni `scripts/` (npm). Dos
- * servicios estaban vivos y contados como muertos por ese punto ciego:
- *   - documentaiClient  ← functions/ocr-fein.ts (import + `processWithDocAI(...)`),
- *                         función Netlify que src/feinOcrService.ts invoca.
- *   - optimizedDbService ← scripts/completeDataCleanup.ts (script npm
- *                         `cleanup:complete` · package.json).
- * Se AMPLÍA el scan de importadores a `functions/` + `scripts/`. El número baja a
- * 31 porque quita 2 falsos positivos (no oculta problemas reales). Los 31
- * restantes se verificaron muertos en TODO el repo y se borran en el bloque 3.
+ * AHORA (grafo de alcanzabilidad · scripts/lib/deadcode.mjs): un módulo está VIVO
+ * solo si hay un camino de imports desde una RAÍZ ejecutable. Raíz = EVIDENCIA de
+ * ejecución (Adenda 2 · estricto · NUNCA por convención/homonimia/shebang):
+ *   1. app-entry        · src/index.tsx (entry fijo react-scripts)
+ *   2. netlify-function · functions/*.ts que exporta handler (netlify.toml)
+ *   3. npm-script       · fichero referenciado en package.json > scripts
+ * Categorías: alive · solo_tests (§4) · solo_stories · indeterminado (§3 · import()
+ * NO literal · hoy 0) · dead. `import()`/`React.lazy` con string literal SÍ se
+ * resuelven (rutas del router incluidas).
+ *
+ * CUENTA · los `dead`: módulos de src/·functions/·scripts/ (no test/story, no
+ * `.d.ts`) inalcanzables desde CUALQUIER raíz. No solo servicios: componentes,
+ * hooks y utilidades muertas también cuentan (§1 de la tarea).
+ *
+ * AMPLIACIÓN (autorizada · amplía la búsqueda de problemas): el número SUBE de 0 a
+ * N porque aflora deuda antes invisible (árboles muertos completos), NO por una
+ * regresión. Exención transitoria en AMPLIACIONES (antes:0) · se desactiva sola
+ * cuando main incorpora el nuevo baseline. NO se borra nada aquí (§8): detecta,
+ * no limpia. El borrado es tarea posterior, con la lista delante.
  */
-const EXTRA_IMPORT_DIRS = ['functions', 'scripts']; // raíz del repo, fuera de src/
 function serviciosMuertos() {
-  const svcDir = path.join(SRC, 'services');
-  const services = walk(svcDir, (p) => {
-    if (path.dirname(p) !== svcDir) return false; // solo nivel superior
-    if (!p.endsWith('.ts') || p.endsWith('.d.ts')) return false;
-    if (isTestPath(p)) return false;
-    if (path.basename(p) === 'index.ts') return false;
-    return true;
-  });
-  const allSrc = prodFiles(['.ts', '.tsx']);
-  // Importadores: src/ + directorios de raíz que también consumen servicios
-  // (functions/ Netlify · scripts/ npm). Sin esto, un servicio usado solo desde
-  // ahí se cuenta como muerto (falso positivo · bloque 3).
-  const extraFiles = [];
-  const impExts = new Set(['.ts', '.tsx', '.js', '.mjs']);
-  for (const d of EXTRA_IMPORT_DIRS) {
-    const dir = path.join(ROOT, d);
-    if (!fs.existsSync(dir)) continue;
-    for (const f of walk(dir, (p) => impExts.has(path.extname(p)) && !isTestPath(p))) {
-      extraFiles.push(f);
-    }
-  }
-  // Mapa archivo→contenido (una sola lectura)
-  const contents = new Map([...allSrc, ...extraFiles].map((f) => [f, read(f)]));
-  const dead = [];
-  for (const svc of services) {
-    const name = path.basename(svc, '.ts');
-    const importRe = new RegExp(
-      `(from|import|require)\\s*\\(?\\s*['"][^'"]*\\/${name}['"]`
-    );
-    let imported = false;
-    for (const [f, c] of contents) {
-      if (f === svc) continue;
-      if (isTestPath(f)) continue;
-      if (importRe.test(c)) {
-        imported = true;
-        break;
-      }
-    }
-    if (!imported) dead.push(rel(svc));
-  }
+  const g = analyzeReachability(ROOT);
   return {
-    value: dead.length,
-    detail: dead,
+    value: g.counts.dead,
+    detail: g.dead,
+    note:
+      `grafo de alcanzabilidad desde ${g.roots.length} raíces estrictas · ` +
+      `alive ${g.counts.alive} · dead ${g.counts.dead} · solo_tests ${g.counts.solo_tests} · ` +
+      `solo_stories ${g.counts.solo_stories} · indeterminado ${g.counts.indeterminado}. ` +
+      `Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz ` +
+      `(app-entry · netlify · npm script). Antes se miraban importadores directos ` +
+      `(ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.`,
     calibracion: {
-      fecha: '2026-07-18',
-      anterior: 33,
-      nueva: dead.length,
+      fecha: '2026-07-19',
+      anterior: 0,
+      nueva: g.counts.dead,
       motivo:
-        'el scan de importadores solo miraba src/ · se amplía a functions/ + scripts/ ' +
-        '(Netlify + npm) · quita 2 falsos positivos vivos fuera de src: documentaiClient ' +
-        '(functions/ocr-fein.ts) y optimizedDbService (scripts/completeDataCleanup.ts) · ' +
-        'autorizada por Jose antes del borrado · no oculta problemas reales',
+        'importadores-directos → grafo de alcanzabilidad transitiva (Adenda 2 · ' +
+        'raíces estrictas por evidencia). Amplía la búsqueda: aflora deuda muerta ' +
+        'antes invisible (árboles muertos completos, no solo hojas). No borra nada.',
     },
   };
 }
@@ -966,6 +942,12 @@ const AMPLIACIONES = {
   enlaces_rotos: { antes: 0, motivo: 've onNavigate( y window.location' },
   hex_hardcoded: { antes: 974, motivo: 've #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js' },
   archivos_800: { antes: 49, motivo: 've .css y .js' },
+  servicios_muertos: {
+    antes: 0,
+    motivo:
+      'importadores-directos → grafo de alcanzabilidad transitiva (raíces estrictas) · ' +
+      'aflora deuda muerta antes invisible',
+  },
 };
 
 // direction: 'down' = mejor bajar (empeora si sube) · 'up' = mejor subir

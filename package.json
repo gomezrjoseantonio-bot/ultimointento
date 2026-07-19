@@ -54,6 +54,7 @@
     "health": "node scripts/health.mjs",
     "health:ci": "node scripts/health.mjs --with-tests",
     "health:regresion": "node scripts/health.mjs --regresion",
+    "test:deadcode": "node scripts/deadcode-acceptance.mjs",
     "build:bank-profiles": "node scripts/build-bank-profiles.js",
     "cleanup:complete": "node scripts/completeDataCleanup.js",
     "cleanup:complete:confirm": "node scripts/completeDataCleanup.js --confirm",
