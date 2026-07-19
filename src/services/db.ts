@@ -2297,32 +2297,32 @@ export interface DeudaFiscal {
  * store ni formas de registro. La interfaz es un MAPA documental, no una garantía
  * de tipos. Convertirla a `DBSchema` real es tarea aparte (ver docs/health).
  */
-interface AtlasHorizonDB {
-  properties: Property;
-  property_sales: PropertySale;
+interface AtlasHorizonDB extends DBSchema {
+  properties: { key: IDBValidKey; value: any; indexes: { 'address': IDBValidKey; 'alias': IDBValidKey } };
+  property_sales: { key: IDBValidKey; value: any; indexes: { 'property-status': IDBValidKey; 'propertyId': IDBValidKey; 'saleDate': IDBValidKey; 'status': IDBValidKey } };
   // loan_settlements: ELIMINADO en V63 (sub-tarea 4) — destino prestamos.liquidacion · 0 registros en producción
-  documents: Document;
-  contracts: Contract;
-  botesAnualesSinIdentificar: BoteAnualSinIdentificar; // V78: Camino 2 wizard XML AEAT · importes declarados pendientes de vincular
+  documents: { key: IDBValidKey; value: any; indexes: { 'entityId': IDBValidKey; 'entityType': IDBValidKey; 'type': IDBValidKey } };
+  contracts: { key: IDBValidKey; value: any; indexes: { 'propertyId': IDBValidKey } };
+  botesAnualesSinIdentificar: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'inmuebleId-año': IDBValidKey } }; // V78: Camino 2 wizard XML AEAT · importes declarados pendientes de vincular
   // NOTE: rentCalendar and rentPayments removed in V4.5 — migrated to rentaMensual
   // rentaMensual: ELIMINADO en V62 (sub-tarea 3) — deprecated V5.6 · 0 registros
-  aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
-  propertyDays: PropertyDays; // H5: Rental/availability days
-  proveedores: Proveedor; // V3.8: entidad única proveedor por NIF
+  aeatCarryForwards: { key: IDBValidKey; value: any; indexes: { 'expirationYear': IDBValidKey; 'propertyId': IDBValidKey; 'taxYear': IDBValidKey } }; // H5: Tax carryforwards
+  propertyDays: { key: IDBValidKey; value: any; indexes: { 'property-year': IDBValidKey; 'propertyId': IDBValidKey; 'taxYear': IDBValidKey } }; // H5: Rental/availability days
+  proveedores: { key: IDBValidKey; value: any; indexes: {} }; // V3.8: entidad única proveedor por NIF
   // operacionesProveedor: ELIMINADO en V62 (sub-tarea 3) — cache desnormalizada de gastosInmueble + proveedores · 15 registros
   // kpiConfigurations: ELIMINADO en V62 (sub-tarea 3) — sustituido por keyval['kpiConfig_*'] · 0 registros
-  accounts: Account; // H8: Treasury accounts
-  movements: Movement; // H8: Bank movements
-  importBatches: ImportBatch; // H8: CSV import tracking
-  treasuryEvents: TreasuryEvent; // H9: Treasury forecasting
+  accounts: { key: IDBValidKey; value: any; indexes: { 'bank': IDBValidKey; 'destination': IDBValidKey; 'isActive': IDBValidKey } }; // H8: Treasury accounts
+  movements: { key: IDBValidKey; value: any; indexes: { 'accountId': IDBValidKey; 'date': IDBValidKey; 'duplicate-key': IDBValidKey; 'importBatch': IDBValidKey; 'status': IDBValidKey } }; // H8: Bank movements
+  importBatches: { key: IDBValidKey; value: any; indexes: { 'accountId': IDBValidKey; 'createdAt': IDBValidKey } }; // H8: CSV import tracking
+  treasuryEvents: { key: IDBValidKey; value: any; indexes: { 'accountId': IDBValidKey; 'ambito': IDBValidKey; 'año': IDBValidKey; 'certeza': IDBValidKey; 'generadoPor': IDBValidKey; 'inmuebleId': IDBValidKey; 'predictedDate': IDBValidKey; 'sourceId': IDBValidKey; 'sourceType': IDBValidKey; 'status': IDBValidKey; 'type': IDBValidKey } }; // H9: Treasury forecasting
   // treasuryRecommendations: ELIMINADO en V62 (sub-tarea 3) — derivable runtime · 0 registros
-  presupuestos: Presupuesto; // H9: New budget system per specification
-  presupuestoLineas: PresupuestoLinea; // H9: New budget lines per specification
+  presupuestos: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'year': IDBValidKey } }; // H9: New budget system per specification
+  presupuestoLineas: { key: IDBValidKey; value: any; indexes: { 'categoria': IDBValidKey; 'contratoId': IDBValidKey; 'cuentaId': IDBValidKey; 'frecuencia': IDBValidKey; 'inmuebleId': IDBValidKey; 'origen': IDBValidKey; 'prestamoId': IDBValidKey; 'presupuestoId': IDBValidKey; 'tipo': IDBValidKey } }; // H9: New budget lines per specification
   // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros en producción
   // reconciliationAuditLogs: ELIMINADO en V64 (sub-tarea 5) — deuda técnica · 0 lectores · wipe
-  movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
+  movementLearningRules: { key: IDBValidKey; value: any; indexes: { 'ambito': IDBValidKey; 'appliedCount': IDBValidKey; 'categoria': IDBValidKey; 'createdAt': IDBValidKey; 'learnKey': IDBValidKey } }; // V1.1: Learning rules for automatic classification
   // learningLogs: ELIMINADO en V64 (sub-tarea 5) — absorbido en movementLearningRules.history[]
-  inversiones: PosicionInversion; // V1.3: Investment positions
+  inversiones: { key: IDBValidKey; value: any; indexes: { 'activo': IDBValidKey; 'entidad': IDBValidKey; 'tipo': IDBValidKey } }; // V1.3: Investment positions
   // patrimonioSnapshots: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 1 registro
   /**
    * V1.2 · perfil fiscal NÚCLEO del titular (singleton · `id=1`).
@@ -2334,7 +2334,7 @@ interface AtlasHorizonDB {
    * un puñado de wizards mantienen lectura directa por necesitar el objeto
    * completo (excepciones documentadas en cada llamada T14.4).
    */
-  personalData: PersonalData;
+  personalData: { key: IDBValidKey; value: any; indexes: { 'dni': IDBValidKey; 'fechaActualizacion': IDBValidKey } };
   /**
    * V1.2 · flags UI/integración derivados automáticamente de `personalData`.
    *
@@ -2345,7 +2345,7 @@ interface AtlasHorizonDB {
    * · todos hardcoded `true` excepto `seccionesActivas.{nomina|autonomo}` que
    * se derivan de `personalData.situacionLaboral`.
    */
-  personalModuleConfig: PersonalModuleConfig;
+  personalModuleConfig: { key: IDBValidKey; value: any; indexes: { 'fechaActualizacion': IDBValidKey } };
   // nominas: ELIMINADO en V63 (sub-tarea 4 · deuda sub-tarea 2) — datos ya copiados a `ingresos` con tipo='nomina' en V61
   /**
    * V61 (TAREA 7 sub-tarea 2): nuevo store unificado de ingresos personales.
@@ -2363,13 +2363,13 @@ interface AtlasHorizonDB {
    * Nota TS: en este módulo se importa con alias `IngresoPersonal` para no
    * colisionar con la interfaz local `Ingreso` (H10 · Treasury income).
    */
-  ingresos: IngresoPersonal;
+  ingresos: { key: IDBValidKey; value: any; indexes: { 'fechaActualizacion': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } };
   // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
   // planesPensionInversion: eliminado en V65 — datos migrados a planesPensiones
   // ─── Módulo planes de pensiones (V65 · TAREA 13) ────────────────────────
-  planesPensiones: PlanPensiones;            // V65: entidad estable plan (UUID)
-  aportacionesPlan: AportacionPlan;          // V65: eventos aportación (3 roles)
-  traspasosPlanPensiones: TraspasoPlanPensiones; // V65: eventos traspaso fiscal neutro
+  planesPensiones: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'personalDataId': IDBValidKey; 'tipoAdministrativo': IDBValidKey; 'titular': IDBValidKey } };            // V65: entidad estable plan (UUID)
+  aportacionesPlan: { key: IDBValidKey; value: any; indexes: { 'ejercicioFiscal': IDBValidKey; 'ingresoIdNomina': IDBValidKey; 'origen': IDBValidKey; 'planId': IDBValidKey; 'planId+ejercicioFiscal': IDBValidKey } };          // V65: eventos aportación (3 roles)
+  traspasosPlanPensiones: { key: IDBValidKey; value: any; indexes: { 'fechaEjecucion': IDBValidKey; 'planId': IDBValidKey } }; // V65: eventos traspaso fiscal neutro
   // traspasosPlanes: ELIMINADO por completo del código (bloque 2.4 tipo · bloque 3
   //   commit final A lifecycle de upgrade + su test). Store legacy retirado en V65,
   //   nunca creado en DBs frescas; DB única en v79 → la migración no defiende a nadie.
@@ -2377,7 +2377,7 @@ interface AtlasHorizonDB {
   // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
   // patronGastosPersonales: ELIMINADO en V62 (sub-tarea 3) — futuro compromisosRecurrentes · 7 registros
   // gastosPersonalesReal: ELIMINADO en V62 (sub-tarea 3) — futuro movements + treasuryEvents · 0 registros
-  prestamos: any; // Financiacion: Loan records · V63 (sub-tarea 4): campo `liquidacion` absorbe los settlements del store eliminado `loan_settlements`.
+  prestamos: { key: IDBValidKey; value: any; indexes: { 'createdAt': IDBValidKey; 'inmuebleId': IDBValidKey; 'tipo': IDBValidKey } }; // Financiacion: Loan records · V63 (sub-tarea 4): campo `liquidacion` absorbe los settlements del store eliminado `loan_settlements`.
   /**
    * V74 (T-VALORACIONES PR1): store polimórfico de valoraciones temporales
    * por activo. Reemplaza al anterior `valoraciones_historicas` (snake_case,
@@ -2395,7 +2395,7 @@ interface AtlasHorizonDB {
    * Índices: `idx_activo`, `idx_activo_fecha`, `idx_tipo`, `idx_fecha`,
    * `idx_anchor_fiscal`, `idx_tipo_subtipo`.
    */
-  valoracionesActivos: any;
+  valoracionesActivos: { key: IDBValidKey; value: any; indexes: { 'idx_activo': IDBValidKey; 'idx_activo_fecha': IDBValidKey; 'idx_anchor_fiscal': IDBValidKey; 'idx_fecha': IDBValidKey; 'idx_tipo': IDBValidKey; 'idx_tipo_subtipo': IDBValidKey } };
   // valoraciones_historicas: ELIMINADO del schema (bloque 2.4) — store renombrado a
   //   `valoracionesActivos` en V74; el físico ya no existe tras la migración v73→v74.
   // valoraciones_mensuales: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 115 registros
@@ -2519,7 +2519,7 @@ interface AtlasHorizonDB {
    *     - `migration_fix_reparaciones_duplicadas_v1`
    *     - `migration_limpiar_gastos_reparacion_0106_v1`
    */
-  keyval: any;
+  keyval: { key: IDBValidKey; value: any; indexes: {} };
   // objetivos_financieros: ELIMINADO del schema (bloque 2.4) — migrado a 'escenarios'
   //   en V5.4/V5.5; store físico eliminado en V5.9. Creación bajo guard oldVersion<32
   //   y lifecycle de upgrade eliminados.
@@ -2528,15 +2528,15 @@ interface AtlasHorizonDB {
   // ejerciciosFiscales: ELIMINADO en V62 (sub-tarea 3) — sustituido por ejerciciosFiscalesCoord · 1 registro
   // documentosFiscales: ELIMINADO en V63 (sub-tarea 4) — destino documents.metadata.tipo='fiscal' · 0 registros en producción
   // arrastresManual: ELIMINADO en V63 (sub-tarea 4) — destino arrastresIRPF.origen='manual' · 0 registros en producción
-  resultadosEjercicio: ResultadoEjercicio; // V2.9: Immutable yearly fiscal snapshots
-  arrastresIRPF: ArrastreIRPF; // V2.7: IRPF carry-forwards cross-year
-  perdidasPatrimonialesAhorro: PerdidaPatrimonialAhorro; // V3.4: pérdidas ahorro unificadas
-  snapshotsDeclaracion: SnapshotDeclaracion; // V2.7: Frozen declaration snapshots
-  entidadesAtribucion: EntidadAtribucionRentas; // V3.4: entidades en atribución de rentas
-  ejerciciosFiscalesCoord: EjercicioFiscalCoord; // V3.7: Modelo fiscal coordinador (4 regímenes)
-  vinculosAccesorio: VinculoAccesorio; // V3.9: Vínculos temporales accesorio (parking/trastero) por ejercicio
+  resultadosEjercicio: { key: IDBValidKey; value: any; indexes: { 'ejercicio': IDBValidKey; 'ejercicio-estado': IDBValidKey; 'estadoEjercicio': IDBValidKey; 'origen': IDBValidKey } }; // V2.9: Immutable yearly fiscal snapshots
+  arrastresIRPF: { key: IDBValidKey; value: any; indexes: { 'ejercicioCaducidad': IDBValidKey; 'ejercicioOrigen': IDBValidKey; 'ejercicioOrigen-tipo': IDBValidKey; 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'origen': IDBValidKey; 'tipo': IDBValidKey } }; // V2.7: IRPF carry-forwards cross-year
+  perdidasPatrimonialesAhorro: { key: IDBValidKey; value: any; indexes: { 'ejercicioCaducidad': IDBValidKey; 'ejercicioOrigen': IDBValidKey; 'estado': IDBValidKey } }; // V3.4: pérdidas ahorro unificadas
+  snapshotsDeclaracion: { key: IDBValidKey; value: any; indexes: { 'ejercicio': IDBValidKey; 'fechaSnapshot': IDBValidKey; 'origen': IDBValidKey } }; // V2.7: Frozen declaration snapshots
+  entidadesAtribucion: { key: IDBValidKey; value: any; indexes: { 'nif': IDBValidKey; 'tipoRenta': IDBValidKey } }; // V3.4: entidades en atribución de rentas
+  ejerciciosFiscalesCoord: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey } }; // V3.7: Modelo fiscal coordinador (4 regímenes)
+  vinculosAccesorio: { key: IDBValidKey; value: any; indexes: { 'inmuebleAccesorioId': IDBValidKey; 'inmueblePrincipalId': IDBValidKey; 'principal-accesorio-ejercicio': IDBValidKey } }; // V3.9: Vínculos temporales accesorio (parking/trastero) por ejercicio
   // ─── ATLAS Personal v1.1 (V5.3) ────────────────────────────────────────
-  compromisosRecurrentes: CompromisoRecurrente; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01) · TAREA 9: bootstrap desde histórico vía `compromisoDetectionService` + creación idempotente vía `compromisoCreationService` · activa la vía A del `movementSuggestionService` cuando el store deja de estar vacío. Ver `docs/T9-cierre.md`.
+  compromisosRecurrentes: { key: IDBValidKey; value: any; indexes: { 'ambito': IDBValidKey; 'categoria': IDBValidKey; 'cuentaCargo': IDBValidKey; 'estado': IDBValidKey; 'fechaInicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } }; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01) · TAREA 9: bootstrap desde histórico vía `compromisoDetectionService` + creación idempotente vía `compromisoCreationService` · activa la vía A del `movementSuggestionService` cuando el store deja de estar vacío. Ver `docs/T9-cierre.md`.
   /**
    * V5.3 · ficha de la vivienda habitual del hogar · genera derivados
    * (sección 6 del modelo Personal v1.1).
@@ -2548,17 +2548,25 @@ interface AtlasHorizonDB {
    * T14.3). El servicio dedicado `viviendaHabitualService` sigue siendo el
    * único dueño del store · el gateway solo lee.
    */
-  viviendaHabitual: ViviendaHabitual;
+  viviendaHabitual: { key: IDBValidKey; value: any; indexes: { 'activa': IDBValidKey; 'personalDataId': IDBValidKey; 'vigenciaDesde': IDBValidKey } };
   // ─── Mi Plan v3 (V5.4–V5.7) ─────────────────────────────────────────────
-  escenarios: Escenario;     // V5.4: singleton escenario libertad activo (renombrado de objetivos_financieros)
-  objetivos: Objetivo;       // V5.5: lista de objetivos (acumular · amortizar · comprar · reducir)
-  fondos_ahorro: FondoAhorro; // V5.6: fondos de ahorro con etiquetas de propósito
-  retos: Reto;               // V5.7: retos mensuales (1 activo por mes)
-  deudasFiscales: DeudaFiscal; // V71: deudas fiscales con AEAT (modelos 100/303/130/184) · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1
-  benchmarksReferencia: BenchmarkReferencia; // V72: índices de referencia editables (MSCI World · S&P 500 · IPC ES · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.A
-  avisosUsuario: AvisoCerrado; // V73: avisos cerrables (banners X) · T-INVERSIONES-DETALLE-PP-v1 §4.E
-  objetivosVitales: ObjetivoVital; // V73: hitos vitales (jubilación · salida empresa · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.C Caso B
+  escenarios: { key: IDBValidKey; value: any; indexes: {} };     // V5.4: singleton escenario libertad activo (renombrado de objetivos_financieros)
+  objetivos: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'fondoId': IDBValidKey; 'prestamoId': IDBValidKey; 'tipo': IDBValidKey } };       // V5.5: lista de objetivos (acumular · amortizar · comprar · reducir)
+  fondos_ahorro: { key: IDBValidKey; value: any; indexes: { 'activo': IDBValidKey; 'tipo': IDBValidKey } }; // V5.6: fondos de ahorro con etiquetas de propósito
+  retos: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'mes': IDBValidKey; 'tipo': IDBValidKey } };               // V5.7: retos mensuales (1 activo por mes)
+  deudasFiscales: { key: IDBValidKey; value: any; indexes: { 'ejercicio': IDBValidKey; 'estado': IDBValidKey; 'modelo': IDBValidKey; 'notificada': IDBValidKey } }; // V71: deudas fiscales con AEAT (modelos 100/303/130/184) · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1
+  benchmarksReferencia: { key: IDBValidKey; value: any; indexes: { 'codigo': IDBValidKey; 'tipo': IDBValidKey; 'ultimaActualizacion': IDBValidKey } }; // V72: índices de referencia editables (MSCI World · S&P 500 · IPC ES · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.A
+  avisosUsuario: { key: IDBValidKey; value: any; indexes: {} }; // V73: avisos cerrables (banners X) · T-INVERSIONES-DETALLE-PP-v1 §4.E
+  objetivosVitales: { key: IDBValidKey; value: any; indexes: { 'fechaEstimada': IDBValidKey; 'planFinancieroAsociado': IDBValidKey; 'tipo': IDBValidKey } }; // V73: hitos vitales (jubilación · salida empresa · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.C Caso B
+  // ─── Stores físicos declarados en Fase 0 (antes sin tipar · stores_no_tipados) ───
+  gastosInmueble: { key: IDBValidKey; value: any; indexes: { 'casillaAEAT': IDBValidKey; 'ejercicio': IDBValidKey; 'estado': IDBValidKey; 'inmueble-ejercicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'movimientoId': IDBValidKey; 'origen': IDBValidKey; 'origen-origenId': IDBValidKey; 'treasuryEventId': IDBValidKey } };
+  mejorasInmueble: { key: IDBValidKey; value: any; indexes: { 'ejercicio': IDBValidKey; 'inmueble-ejercicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'movimientoId': IDBValidKey; 'treasuryEventId': IDBValidKey } };
+  mueblesInmueble: { key: IDBValidKey; value: any; indexes: { 'ejercicio': IDBValidKey; 'inmueble-ejercicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'movimientoId': IDBValidKey; 'treasuryEventId': IDBValidKey } };
 }
+
+/** Nombre de un store válido del schema (Fase 0 DBSchema). Exportado para tipar
+ *  utilidades genéricas fuera de db.ts (§3/§4.2 · sin casts). */
+export type AtlasStoreName = StoreNames<AtlasHorizonDB>;
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
 
 // Stash pre-upgrade de `objetivos_financieros` + merge post-upgrade a `escenarios`:
@@ -2711,29 +2719,6 @@ export const initDB = async () => {
           ensureIndex(mueblesStore, 'treasuryEventId', 'treasuryEventId', { unique: false });
         }
 
-        // V4.2+: Delete legacy stores — all runtime references removed
-        {
-          const storesToDelete = [
-            'fiscalSummaries',
-            'operacionesFiscales',
-            'gastos',
-            'propertyImprovements',
-            'mejorasActivo',
-            'mobiliarioActivo',
-            'expensesH5',
-            'reforms',
-            'reformLineItems',
-            'capex',
-            'gastosRecurrentes',
-            'gastosPuntuales',
-          ];
-          for (const store of storesToDelete) {
-            if (db.objectStoreNames.contains(store)) {
-              db.deleteObjectStore(store);
-            }
-          }
-        }
-
         // NOTE: rentCalendar and rentPayments stores removed in V4.5 — migrated to rentaMensual
         // rentaMensual: store removed in V62 (sub-tarea 3)
         // kpiConfigurations: store removed in V62 (sub-tarea 3)
@@ -2818,11 +2803,6 @@ export const initDB = async () => {
           presupuestoLineasStore.createIndex('prestamoId', 'prestamoId', { unique: false });
         }
 
-        // V4.7: importLogs store removed — orphan (no reads/writes)
-        if (oldVersion < 47 && db.objectStoreNames.contains('importLogs')) {
-          db.deleteObjectStore('importLogs');
-        }
-
         // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros
 
         // reconciliationAuditLogs: ELIMINADO en V64 (sub-tarea 5) — no se crea en DBs frescas
@@ -2865,26 +2845,7 @@ export const initDB = async () => {
 
         // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
 
-        // planesPensionInversion: solo en DBs con oldVersion < 65 (para migraciones);
-        // en DBs frescas V65 no se crea.
-        //
-        // NOTA bloque 3 (commit final A) · el lifecycle de `traspasosPlanes`
-        // (create → migrar → delete, todo bajo oldVersion<65) se RETIRÓ junto con su
-        // test (dbV65Migration): DB única en v79, el guard oldVersion<65 no puede
-        // dispararse y una base nueva arranca en 79. Autorizado por Jose.
-        if (oldVersion > 0 && oldVersion < 65) {
-          if (!db.objectStoreNames.contains('planesPensionInversion')) {
-            const planesLegacyStore = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
-            planesLegacyStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-            planesLegacyStore.createIndex('tipo', 'tipo', { unique: false });
-            planesLegacyStore.createIndex('titularidad', 'titularidad', { unique: false });
-            planesLegacyStore.createIndex('esHistorico', 'esHistorico', { unique: false });
-            planesLegacyStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
-          }
-        }
-
         // V65 (TAREA 13): módulo planes de pensiones · stores nuevos
-        // planesPensionInversion: se elimina en V65 para DBs frescas — véase bloque upgrade
 
         if (!db.objectStoreNames.contains('planesPensiones')) {
           const planesStore = db.createObjectStore('planesPensiones', { keyPath: 'id' });
@@ -3092,43 +3053,6 @@ export const initDB = async () => {
         //    personalExpenses store is deleted in LIMPIEZA V44 below.
 
         // ═══════════════════════════════════════════════════
-        // LIMPIEZA V44 — Eliminación de stores obsoletos
-        //
-        // NOTA: el antiguo store legacy `ingresos` (eliminado aquí desde V44)
-        // se REUTILIZA como store principal a partir de V61 (TAREA 7
-        // sub-tarea 2 · rename `nominas → ingresos` con unión discriminada
-        // `Ingreso`). Por eso ya NO se incluye en esta lista: cualquier DB
-        // que pasase por V44 ya lo eliminó hace años, y la creación V61 está
-        // a salvo del barrido.
-        // ═══════════════════════════════════════════════════
-        const STORES_OBSOLETOS = [
-          'capex',
-          'gastosRecurrentes',
-          'gastosPuntuales',
-          'expenses',
-          'mejorasActivo',
-          'mobiliarioActivo',
-          'personalExpenses',
-          'movimientosPersonales',
-        ];
-
-        for (const store of STORES_OBSOLETOS) {
-          if (db.objectStoreNames.contains(store)) {
-            db.deleteObjectStore(store);
-          }
-        }
-
-        // ═══════════════════════════════════════════════════
-        // LIMPIEZA V45 — Eliminación de stores rentCalendar y rentPayments (migrados a rentaMensual)
-        // ═══════════════════════════════════════════════════
-        const STORES_LEGACY_RENTAS = ['rentCalendar', 'rentPayments'];
-        for (const store of STORES_LEGACY_RENTAS) {
-          if (db.objectStoreNames.contains(store)) {
-            db.deleteObjectStore(store);
-          }
-        }
-
-        // ═══════════════════════════════════════════════════
         // V4.8 — Cuenta remunerada: campos opcionales en accounts
         // Sin cambios estructurales — los campos esRemunerada y
         // remuneracion son opcionales y no requieren migración.
@@ -3168,208 +3092,6 @@ export const initDB = async () => {
           ensureIndex(viviendaStore, 'personalDataId', 'personalDataId', { unique: false });
           ensureIndex(viviendaStore, 'activa', 'activa', { unique: false });
           ensureIndex(viviendaStore, 'vigenciaDesde', 'vigenciaDesde', { unique: false });
-        }
-
-        // Migración V5.3 · opexRules → compromisosRecurrentes (ambito='inmueble')
-        // Se ejecuta solo en la transición desde una versión < 53 y solo si
-        // ambos stores están disponibles dentro de la transacción de upgrade.
-        if (
-          oldVersion < 53 &&
-          db.objectStoreNames.contains('opexRules') &&
-          db.objectStoreNames.contains('compromisosRecurrentes')
-        ) {
-          const opexStore = transaction.objectStore('opexRules');
-          const targetStore = transaction.objectStore('compromisosRecurrentes');
-
-          opexStore.openCursor().then(async function migrate(cursor) {
-            while (cursor) {
-              const opex = cursor.value as OpexRule;
-              const ahora = new Date().toISOString();
-
-              // Mapea OpexFrequency → PatronRecurrente (best-effort)
-              let patron: any;
-              if (opex.frecuencia === 'mensual') {
-                patron = { tipo: 'mensualDiaFijo', dia: opex.diaCobro ?? 1 };
-              } else if (opex.frecuencia === 'meses_especificos' && opex.mesesCobro?.length) {
-                patron = {
-                  tipo: 'anualMesesConcretos',
-                  mesesPago: opex.mesesCobro,
-                  diaPago: opex.diaCobro ?? 5,
-                };
-              } else if (opex.frecuencia === 'trimestral') {
-                patron = {
-                  tipo: 'cadaNMeses',
-                  cadaNMeses: 3,
-                  mesAncla: opex.mesInicio ?? 1,
-                  dia: opex.diaCobro ?? 5,
-                };
-              } else if (opex.frecuencia === 'semestral') {
-                patron = {
-                  tipo: 'cadaNMeses',
-                  cadaNMeses: 6,
-                  mesAncla: opex.mesInicio ?? 1,
-                  dia: opex.diaCobro ?? 5,
-                };
-              } else if (opex.frecuencia === 'anual') {
-                patron = {
-                  tipo: 'anualMesesConcretos',
-                  mesesPago: [opex.mesInicio ?? 1],
-                  diaPago: opex.diaCobro ?? 5,
-                };
-              } else {
-                patron = { tipo: 'mensualDiaFijo', dia: opex.diaCobro ?? 1 };
-              }
-
-              // Mapea importe (asymmetric → porPago · resto → fijo)
-              let importe: any;
-              if (opex.asymmetricPayments?.length) {
-                const importesPorPago: Record<number, number> = {};
-                for (const p of opex.asymmetricPayments) {
-                  importesPorPago[p.mes] = p.importe;
-                }
-                importe = { modo: 'porPago', importesPorPago };
-              } else {
-                importe = { modo: 'fijo', importe: opex.importeEstimado };
-              }
-
-              const compromiso: CompromisoRecurrente = {
-                ambito: 'inmueble',
-                inmuebleId: opex.propertyId,
-                alias: opex.concepto,
-                tipo: 'otros',
-                subtipo: opex.subtypeKey,
-                proveedor: {
-                  nombre: opex.proveedorNombre || 'Sin proveedor',
-                  nif: opex.proveedorNIF,
-                  referencia: opex.invoiceNumber,
-                },
-                patron,
-                importe,
-                cuentaCargo: opex.accountId ?? 0,
-                conceptoBancario: opex.proveedorNombre || opex.concepto,
-                metodoPago: 'domiciliacion',
-                categoria: 'inmueble.opex',
-                bolsaPresupuesto: 'inmueble',
-                responsable: 'titular',
-                fechaInicio: opex.createdAt || ahora,
-                estado: opex.activo ? 'activo' : 'pausado',
-                derivadoDe: { fuente: 'opexRule', refId: opex.id, bloqueado: false },
-                createdAt: opex.createdAt || ahora,
-                updatedAt: ahora,
-              };
-
-              try {
-                await targetStore.add(compromiso);
-              } catch (err) {
-                console.warn('[DB V5.3] migración opexRule → compromisoRecurrente falló para id=', opex.id, err);
-              }
-
-              cursor = await cursor.continue();
-            }
-          }).catch((err) => {
-            console.warn('[DB V5.3] migración opexRules → compromisosRecurrentes interrumpida:', err);
-          });
-        }
-
-        // ═══════════════════════════════════════════════════
-        // V5.4 — Cierre G-01: copia registros NUEVOS de opexRules →
-        //   compromisosRecurrentes (idempotente: salta los que ya tienen
-        //   derivadoDe.refId = opex.id). Ejecutado solo al subir desde < 54.
-        //   No elimina opexRules — queda deprecated hasta V5.5.
-        // ═══════════════════════════════════════════════════
-        if (
-          oldVersion < 54 &&
-          db.objectStoreNames.contains('opexRules') &&
-          db.objectStoreNames.contains('compromisosRecurrentes')
-        ) {
-          const opexStore54 = transaction.objectStore('opexRules');
-          const targetStore54 = transaction.objectStore('compromisosRecurrentes');
-
-          const OPEX_CAT_MAP: Record<string, string> = {
-            comunidad: 'inmueble.comunidad',
-            impuesto: 'inmueble.ibi',
-            seguro: 'inmueble.seguros',
-            suministro: 'inmueble.suministros',
-            gestion: 'inmueble.gestionAlquiler',
-            servicio: 'inmueble.opex',
-          };
-          const OPEX_CAT_TO_TIPO: Record<string, string> = {
-            comunidad: 'comunidad',
-            impuesto: 'impuesto',
-            seguro: 'seguro',
-            suministro: 'suministro',
-            gestion: 'otros',
-            servicio: 'otros',
-          };
-
-          targetStore54.getAll().then(async (existentes: any[]) => {
-            const existingRefs = new Set<number>(
-              existentes
-                .filter((c: any) => c.derivadoDe?.fuente === 'opexRule' && c.derivadoDe?.refId != null)
-                .map((c: any) => c.derivadoDe.refId as number)
-            );
-
-            let cursor54 = await opexStore54.openCursor();
-            while (cursor54) {
-              const opex = cursor54.value as OpexRule;
-              if (opex.id != null && !existingRefs.has(opex.id)) {
-                const ahora = new Date().toISOString();
-                let patron: any;
-                if (opex.frecuencia === 'mensual') {
-                  patron = { tipo: 'mensualDiaFijo', dia: opex.diaCobro ?? 1 };
-                } else if (opex.frecuencia === 'meses_especificos' && opex.mesesCobro?.length) {
-                  patron = { tipo: 'anualMesesConcretos', mesesPago: opex.mesesCobro, diaPago: opex.diaCobro ?? 5 };
-                } else if (opex.frecuencia === 'trimestral') {
-                  patron = { tipo: 'cadaNMeses', cadaNMeses: 3, mesAncla: opex.mesInicio ?? 1, dia: opex.diaCobro ?? 5 };
-                } else if (opex.frecuencia === 'semestral') {
-                  patron = { tipo: 'cadaNMeses', cadaNMeses: 6, mesAncla: opex.mesInicio ?? 1, dia: opex.diaCobro ?? 5 };
-                } else if (opex.frecuencia === 'anual') {
-                  patron = { tipo: 'anualMesesConcretos', mesesPago: [opex.mesInicio ?? 1], diaPago: opex.diaCobro ?? 5 };
-                } else {
-                  patron = { tipo: 'mensualDiaFijo', dia: opex.diaCobro ?? 1 };
-                }
-                let importe: any;
-                if (opex.asymmetricPayments?.length) {
-                  const iP: Record<number, number> = {};
-                  for (const p of opex.asymmetricPayments) { iP[p.mes] = p.importe; }
-                  importe = { modo: 'porPago', importesPorPago: iP };
-                } else {
-                  importe = { modo: 'fijo', importe: opex.importeEstimado };
-                }
-                const compromiso54: any = {
-                  ambito: 'inmueble',
-                  inmuebleId: opex.propertyId,
-                  alias: opex.concepto,
-                  tipo: OPEX_CAT_TO_TIPO[opex.categoria] ?? 'otros',
-                  subtipo: opex.subtypeKey,
-                  proveedor: { nombre: opex.proveedorNombre || 'Sin proveedor', nif: opex.proveedorNIF, referencia: opex.invoiceNumber },
-                  patron,
-                  importe,
-                  cuentaCargo: opex.accountId ?? 0,
-                  conceptoBancario: opex.proveedorNombre || opex.concepto,
-                  metodoPago: 'domiciliacion',
-                  categoria: OPEX_CAT_MAP[opex.categoria] ?? 'inmueble.opex',
-                  bolsaPresupuesto: 'inmueble',
-                  responsable: 'titular',
-                  fechaInicio: opex.createdAt || ahora,
-                  estado: opex.activo ? 'activo' : 'pausado',
-                  derivadoDe: { fuente: 'opexRule', refId: opex.id, bloqueado: false },
-                  notas: JSON.stringify({ _opexCategoria: opex.categoria, _opexCasillaAEAT: opex.casillaAEAT }),
-                  createdAt: opex.createdAt || ahora,
-                  updatedAt: ahora,
-                };
-                try {
-                  await targetStore54.add(compromiso54);
-                  existingRefs.add(opex.id);
-                } catch (err) {
-                  console.warn('[DB V5.4] migración opexRule → compromisoRecurrente falló para id=', opex.id, err);
-                }
-              }
-              cursor54 = await cursor54.continue();
-            }
-          }).catch((err) => {
-            console.warn('[DB V5.4] migración V5.4 opexRules → compromisosRecurrentes interrumpida:', err);
-          });
         }
 
         // ═══════════════════════════════════════════════════
@@ -3531,443 +3253,7 @@ export const initDB = async () => {
         //     evitando duplicados si la migración se ejecutase dos veces
         //     (p.ej. tras una recuperación de error).
         // ═══════════════════════════════════════════════════
-        if (oldVersion < 61) {
-          if (
-            db.objectStoreNames.contains('ingresos') &&
-            db.objectStoreNames.contains('nominas')
-          ) {
-            const ingresosStore = transaction.objectStore('ingresos');
-            const nominasStore = transaction.objectStore('nominas');
-
-            // Sólo rellenamos `ingresos` si está vacío; protege ante
-            // re-ejecuciones del upgrade y evita pisar registros ya
-            // migrados manualmente.
-            ingresosStore.count().then(async (count) => {
-              if (count > 0) return;
-              // Iteramos `nominas` con cursor promise-based (mismo patrón
-              // que la migración V60 backfill arrastresIRPF y la V5.4
-              // opexRules → compromisosRecurrentes). Para cada registro
-              // añadimos `tipo='nomina'` y lo escribimos en `ingresos`
-              // preservando el id original.
-              let cursor = await nominasStore.openCursor();
-              while (cursor) {
-                const value = cursor.value as Record<string, unknown>;
-                const ingresoNomina = { ...value, tipo: 'nomina' as const };
-                // `put` con la key explícita preserva el id original,
-                // permitiendo correlacionar registros de `nominas` y
-                // `ingresos` durante la fase de transición (sub-tareas
-                // 2–6). Usamos un cast porque la unión `Ingreso` se
-                // valida estructuralmente en TS pero `put` admite el
-                // shape al runtime sin ambigüedad.
-                await ingresosStore.put(ingresoNomina as unknown as IngresoPersonal);
-                cursor = await cursor.continue();
-              }
-            }).catch((err) => {
-              console.warn('[DB V61] copia nominas → ingresos falló:', err);
-            });
-          }
-        }
-
         // ═══════════════════════════════════════════════════════════════════════
-        // V62 — TAREA 7 sub-tarea 3: eliminar 11 stores duplicados/fósiles V1
-        //   ⚠ DESTRUCTIVO: estrategia wipe + reimport · datos NO productivos.
-        //
-        //   Stores eliminados (con razón):
-        //     1. kpiConfigurations     · 0 reg · sustituido por keyval['kpiConfig_*']
-        //     2. configuracion_fiscal  · 1 reg · sin destino · defaults runtime
-        //     3. treasuryRecommendations · 0 reg · derivable runtime
-        //     4. valoraciones_mensuales  · 115 reg · derivable de valoraciones_historicas
-        //     5. patrimonioSnapshots   · 1 reg · derivable de valoraciones_historicas
-        //     6. operacionesProveedor  · 15 reg · cache desnormalizada de
-        //                                gastosInmueble + proveedores
-        //     7. patronGastosPersonales · 7 reg · futuro compromisosRecurrentes
-        //     8. gastosPersonalesReal  · 0 reg · futuro movements + treasuryEvents
-        //     9. opexRules             · 0 reg · ya migrado en TAREA 2
-        //    10. rentaMensual          · 0 reg · deprecado en BUG-07
-        //    11. ejerciciosFiscales    · 1 reg · sustituido por ejerciciosFiscalesCoord
-        //
-        //   Idempotente: el guard `objectStoreNames.contains(name)` permite
-        //   re-ejecuciones tras error y DBs frescas que nunca tuvieron el store.
-        // ═══════════════════════════════════════════════════════════════════════
-        if (oldVersion < 62) {
-          const storesToDelete = [
-            'kpiConfigurations',
-            'configuracion_fiscal',
-            'treasuryRecommendations',
-            'valoraciones_mensuales',
-            'patrimonioSnapshots',
-            'operacionesProveedor',
-            'patronGastosPersonales',
-            'gastosPersonalesReal',
-            'opexRules',
-            'rentaMensual',
-            'ejerciciosFiscales',
-          ];
-          for (const store of storesToDelete) {
-            if (db.objectStoreNames.contains(store)) {
-              db.deleteObjectStore(store);
-            }
-          }
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // V63+V64 — TAREA 7 sub-tareas 4+4-bis+5: bloque async combinado.
-        //   Se ejecuta en una única IIFE async devuelta al callback `upgrade`
-        //   para que `idb` espere su finalización antes de cerrar la
-        //   transacción versionchange.
-        //
-        //   V63 (oldVersion < 63) — 8 stores huérfanos:
-        //     1. nominas              · deuda sub-tarea 2 · sólo deleteObjectStore
-        //     2. autonomos            → `ingresos.tipo='autonomo'`
-        //     3. pensiones            → `ingresos.tipo='pension'`
-        //     4. otrosIngresos        → `ingresos.tipo='otro'` + metadata.otro
-        //     5. arrastresManual      → `arrastresIRPF.origen='manual'`
-        //     6. documentosFiscales   → `documents.metadata.tipo='fiscal'`
-        //     7. loan_settlements     → `prestamos.liquidacion[]`
-        //     8. matchingConfiguration → `keyval['matchingConfig']`
-        //
-        //   V64 (sub-tarea 5) — 2 stores AMBIGUOS:
-        //     1. learningLogs         → `movementLearningRules.history[]`
-        //                                (agrupado por ruleId · FIFO max 50)
-        //     2. reconciliationAuditLogs · wipe sin destino (0 lectores)
-        //
-        //   Idempotente: el guard `objectStoreNames.contains(name)` permite
-        //   re-ejecuciones y DBs frescas que nunca tuvieron el store.
-        // ═══════════════════════════════════════════════════════════════════════
-        if (oldVersion < 64) {
-          return (async () => {
-
-            // ──────────── V63 migrations (solo si venimos de < V63) ────────────
-            if (oldVersion < 63) {
-            // 1. nominas → ingresos (deuda sub-tarea 2 · safety net)
-            //
-            //   La migración V61 ya copia `nominas → ingresos` en sub-tarea
-            //   2, pero en saltos directos V60 → V63 (ej. cuando V61 se
-            //   ejecuta como microtask fire-and-forget y V63 cierra la
-            //   transacción antes de que se complete) podríamos perder los
-            //   datos. Hacemos la copia aquí también de forma idempotente
-            //   (`add` → ingresos sólo si todavía no contiene ningún
-            //   registro con `tipo='nomina'`) antes de borrar el store.
-            if (
-              db.objectStoreNames.contains('nominas') &&
-              db.objectStoreNames.contains('ingresos')
-            ) {
-              try {
-                const src = (transaction as any).objectStore('nominas');
-                const dst = transaction.objectStore('ingresos');
-                const dstAll = (await dst.getAll()) as Array<any>;
-                const yaHayNomina = dstAll.some((r) => r?.tipo === 'nomina');
-                if (!yaHayNomina) {
-                  const records = await src.getAll();
-                  for (const rec of records) {
-                    const value = { ...(rec as Record<string, unknown>), tipo: 'nomina' as const };
-                    // `put` con la key explícita preserva el id original.
-                    const id = (rec as { id?: number }).id;
-                    if (typeof id === 'number') {
-                      await dst.put(value as any);
-                    } else {
-                      await dst.add(value as any);
-                    }
-                  }
-                }
-              } catch (err) {
-                console.warn('[DB V63] copia nominas→ingresos (deuda sub-tarea 2) falló:', err);
-              }
-            }
-
-            // 2. autonomos → ingresos
-            if (
-              db.objectStoreNames.contains('autonomos') &&
-              db.objectStoreNames.contains('ingresos')
-            ) {
-              try {
-                const src = (transaction as any).objectStore('autonomos');
-                const dst = transaction.objectStore('ingresos');
-                const records = await src.getAll();
-                for (const rec of records) {
-                  const { id, ...rest } = rec as Record<string, unknown>;
-                  void id;
-                  await dst.add({ ...rest, tipo: 'autonomo' } as any);
-                }
-              } catch (err) {
-                console.warn('[DB V63] copia autonomos→ingresos falló:', err);
-              }
-            }
-
-            // 3. pensiones → ingresos
-            if (
-              db.objectStoreNames.contains('pensiones') &&
-              db.objectStoreNames.contains('ingresos')
-            ) {
-              try {
-                const src = (transaction as any).objectStore('pensiones');
-                const dst = transaction.objectStore('ingresos');
-                const records = await src.getAll();
-                for (const rec of records) {
-                  const { id, ...rest } = rec as Record<string, unknown>;
-                  void id;
-                  await dst.add({ ...rest, tipo: 'pension' } as any);
-                }
-              } catch (err) {
-                console.warn('[DB V63] copia pensiones→ingresos falló:', err);
-              }
-            }
-
-            // 4. otrosIngresos → ingresos.tipo='otro' (+ metadata.otro)
-            if (
-              db.objectStoreNames.contains('otrosIngresos') &&
-              db.objectStoreNames.contains('ingresos')
-            ) {
-              try {
-                const src = (transaction as any).objectStore('otrosIngresos');
-                const dst = transaction.objectStore('ingresos');
-                const records = await src.getAll();
-                for (const rec of records) {
-                  const { id, ...rest } = rec as Record<string, unknown>;
-                  void id;
-                  // Best-effort mapping legacy `OtrosIngresos.tipo` → `OtroIngresoMetadata.subtipo`.
-                  // El set canónico V63 no se solapa con el legacy, así que
-                  // todos quedan como 'otro' con `concepto` igual al `nombre`
-                  // legacy y `fecha` la `fechaCreacion`.
-                  const metadataOtro = {
-                    subtipo: 'otro' as const,
-                    concepto: String((rest as any).nombre ?? ''),
-                    fecha: String(
-                      (rest as any).fechaInicio
-                        ?? (rest as any).fechaCreacion
-                        ?? new Date().toISOString()
-                    ),
-                  };
-                  await dst.add({
-                    ...rest,
-                    tipo: 'otro',
-                    metadata: { otro: metadataOtro },
-                  } as any);
-                }
-              } catch (err) {
-                console.warn('[DB V63] copia otrosIngresos→ingresos falló:', err);
-              }
-            }
-
-            // 5. arrastresManual → arrastresIRPF.origen='manual'
-            if (
-              db.objectStoreNames.contains('arrastresManual') &&
-              db.objectStoreNames.contains('arrastresIRPF')
-            ) {
-              try {
-                const src = (transaction as any).objectStore('arrastresManual');
-                const dst = transaction.objectStore('arrastresIRPF');
-                const records = await src.getAll();
-                const tipoMap: Record<string, string> = {
-                  gastos_0105_0106: 'exceso_gastos_0105_0106',
-                  perdidas_ahorro: 'perdidas_patrimoniales_ahorro',
-                  perdidas_general: 'perdidas_patrimoniales_general',
-                };
-                for (const rec of records) {
-                  const r = rec as Record<string, unknown>;
-                  const legacyTipo = String(r.tipo ?? '');
-                  const importe = Number(r.importe ?? 0);
-                  const ejercicioOrigen = Number(r.ejercicioOrigen ?? new Date().getFullYear());
-                  const inmuebleIdRaw = r.inmuebleId;
-                  const createdAt = String(r.createdAt ?? new Date().toISOString());
-                  const inmuebleIdNum =
-                    typeof inmuebleIdRaw === 'number'
-                      ? inmuebleIdRaw
-                      : typeof inmuebleIdRaw === 'string' && inmuebleIdRaw.length > 0 && !Number.isNaN(Number(inmuebleIdRaw))
-                        ? Number(inmuebleIdRaw)
-                        : undefined;
-                  const arrastre: Record<string, unknown> = {
-                    ejercicioOrigen,
-                    tipo: tipoMap[legacyTipo] ?? 'otros',
-                    importeOriginal: importe,
-                    importePendiente: importe,
-                    origen: 'manual',
-                    aplicaciones: [],
-                    estado: 'pendiente',
-                    createdAt,
-                    updatedAt: createdAt,
-                  };
-                  if (inmuebleIdNum != null) arrastre.inmuebleId = inmuebleIdNum;
-                  await dst.add(arrastre as any);
-                }
-              } catch (err) {
-                console.warn('[DB V63] copia arrastresManual→arrastresIRPF falló:', err);
-              }
-            }
-
-            // 6. documentosFiscales → documents.metadata.tipo='fiscal'
-            if (
-              db.objectStoreNames.contains('documentosFiscales') &&
-              db.objectStoreNames.contains('documents')
-            ) {
-              try {
-                const src = (transaction as any).objectStore('documentosFiscales');
-                const dst = transaction.objectStore('documents');
-                const records = await src.getAll();
-                for (const rec of records) {
-                  const r = rec as Record<string, unknown>;
-                  const fechaSubida = String(r.fechaSubida ?? r.fechaDocumento ?? new Date().toISOString());
-                  const docToAdd: Record<string, unknown> = {
-                    type: 'fiscal',
-                    filename: String(r.archivoNombre ?? `doc_fiscal_${r.id ?? ''}`),
-                    uploadDate: fechaSubida,
-                    metadata: {
-                      tipo: 'fiscal',
-                      ejercicio: r.ejercicio,
-                      conceptoFiscal: r.concepto,
-                      inmuebleId:
-                        typeof r.inmuebleId === 'string' && !Number.isNaN(Number(r.inmuebleId))
-                          ? Number(r.inmuebleId)
-                          : r.inmuebleId,
-                      financialData: r.importe != null ? { amount: Number(r.importe) } : undefined,
-                      provider: r.proveedorNombre,
-                      proveedorNif: r.proveedorNif,
-                      notas: r.descripcion,
-                      archivoRef: r.archivoRef,
-                      archivoTipo: r.archivoTipo,
-                      fechaDocumento: r.fechaDocumento,
-                    },
-                  };
-                  await dst.add(docToAdd as any);
-                }
-              } catch (err) {
-                console.warn('[DB V63] copia documentosFiscales→documents falló:', err);
-              }
-            }
-
-            // 7. loan_settlements → prestamos.liquidacion[]
-            if (
-              db.objectStoreNames.contains('loan_settlements') &&
-              db.objectStoreNames.contains('prestamos')
-            ) {
-              try {
-                const src = (transaction as any).objectStore('loan_settlements');
-                const dst = transaction.objectStore('prestamos');
-                const records = (await src.getAll()) as Array<Record<string, unknown>>;
-                // Agrupar settlements por loanId
-                const byLoan: Map<string, Array<Record<string, unknown>>> = new Map();
-                for (const rec of records) {
-                  const loanId = String(rec.loanId ?? '');
-                  if (!loanId) continue;
-                  const list = byLoan.get(loanId) ?? [];
-                  list.push(rec);
-                  byLoan.set(loanId, list);
-                }
-                // Adjuntar al prestamo correspondiente
-                for (const [loanId, settlements] of byLoan.entries()) {
-                  const prestamo = (await dst.get(loanId)) as Record<string, unknown> | undefined;
-                  if (!prestamo) continue;
-                  const existing = Array.isArray(prestamo.liquidacion) ? prestamo.liquidacion : [];
-                  await dst.put({
-                    ...prestamo,
-                    liquidacion: [...(existing as unknown[]), ...settlements],
-                  } as any);
-                }
-              } catch (err) {
-                console.warn('[DB V63] copia loan_settlements→prestamos.liquidacion falló:', err);
-              }
-            }
-
-            // 8. matchingConfiguration → keyval['matchingConfig']
-            if (
-              db.objectStoreNames.contains('matchingConfiguration') &&
-              db.objectStoreNames.contains('keyval')
-            ) {
-              try {
-                const src = (transaction as any).objectStore('matchingConfiguration');
-                const dst = transaction.objectStore('keyval');
-                const records = (await src.getAll()) as Array<Record<string, unknown>>;
-                if (records.length > 0) {
-                  // Sólo se preserva la configuración más reciente (ordenada
-                  // por createdAt desc, fallback al último). Coincide con la
-                  // semántica previa de `getMatchingConfiguration` que
-                  // devolvía `configs[0]`.
-                  const latest = records.slice().sort((a, b) => {
-                    const ca = String(a.createdAt ?? '');
-                    const cb = String(b.createdAt ?? '');
-                    return cb.localeCompare(ca);
-                  })[0];
-                  if (latest) {
-                    const { id, ...rest } = latest;
-                    void id;
-                    await dst.put(rest as any, 'matchingConfig');
-                  }
-                }
-              } catch (err) {
-                console.warn('[DB V63] copia matchingConfiguration→keyval falló:', err);
-              }
-            }
-
-            // Eliminar los 8 stores legacy (idempotente)
-            const storesToDeleteV63 = [
-              'nominas',
-              'autonomos',
-              'pensiones',
-              'otrosIngresos',
-              'arrastresManual',
-              'documentosFiscales',
-              'loan_settlements',
-              'matchingConfiguration',
-            ];
-            for (const store of storesToDeleteV63) {
-              if (db.objectStoreNames.contains(store)) {
-                db.deleteObjectStore(store);
-              }
-            }
-            } // end if (oldVersion < 63)
-
-            // ──────────── V64 migrations (sub-tarea 5) ────────────────────────
-            // 1. learningLogs → movementLearningRules.history[] (FIFO max 50)
-            if (
-              db.objectStoreNames.contains('learningLogs') &&
-              db.objectStoreNames.contains('movementLearningRules')
-            ) {
-              try {
-                const logsSrc = (transaction as any).objectStore('learningLogs');
-                const rulesDst = transaction.objectStore('movementLearningRules');
-                const logRecords = (await logsSrc.getAll()) as Array<Record<string, unknown>>;
-
-                // Agrupar logs por ruleId
-                const byRule = new Map<number, Array<Record<string, unknown>>>();
-                for (const rec of logRecords) {
-                  const ruleId = typeof rec.ruleId === 'number' ? rec.ruleId : undefined;
-                  if (ruleId == null) continue;
-                  const list = byRule.get(ruleId) ?? [];
-                  list.push(rec);
-                  byRule.set(ruleId, list);
-                }
-
-                // Adjuntar al campo history[] de cada regla (FIFO max 50)
-                for (const [ruleId, logs] of byRule.entries()) {
-                  const rule = (await rulesDst.get(ruleId)) as Record<string, unknown> | undefined;
-                  if (!rule) continue;
-                  const existing: unknown[] = Array.isArray(rule.history) ? (rule.history as unknown[]) : [];
-                  const newEntries = logs
-                    .sort((a, b) => String(a.ts ?? '').localeCompare(String(b.ts ?? '')))
-                    .map((l) => ({
-                      action: l.action,
-                      ...(l.movimientoId != null && { movimientoId: l.movimientoId }),
-                      ts: l.ts,
-                    }));
-                  const merged = [...existing, ...newEntries];
-                  rule.history = merged.length > 50 ? merged.slice(merged.length - 50) : merged;
-                  await rulesDst.put(rule as any);
-                }
-              } catch (err) {
-                console.warn('[DB V64] migración learningLogs→movementLearningRules.history falló:', err);
-              }
-            }
-
-            // 2. Eliminar los 2 stores AMBIGUOS (idempotente)
-            if (db.objectStoreNames.contains('learningLogs')) {
-              db.deleteObjectStore('learningLogs');
-            }
-            if (db.objectStoreNames.contains('reconciliationAuditLogs')) {
-              db.deleteObjectStore('reconciliationAuditLogs');
-            }
-          })();
-        }
-
         if (oldVersion < 65) {
           // ── V65 (TAREA 13): módulo planes de pensiones ──────────────────────
           // 1. Crear nuevos stores si no existen
@@ -4000,67 +3286,6 @@ export const initDB = async () => {
                 : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
             const ahora = new Date().toISOString();
-
-            // 2a. Migrar planesPensionInversion → planesPensiones + aportacionesPlan
-            if (db.objectStoreNames.contains('planesPensionInversion')) {
-              try {
-                const srcPlanes = (transaction as any).objectStore('planesPensionInversion');
-                const dstPlanes = transaction.objectStore('planesPensiones');
-                const dstAportaciones = transaction.objectStore('aportacionesPlan');
-
-                const planes = (await srcPlanes.getAll()) as Array<Record<string, unknown>>;
-                for (const plan of planes) {
-                  // Solo migrar planes de pensiones (no inversiones ni acciones)
-                  if ((plan.tipo as string) !== 'plan-pensiones') continue;
-
-                  const tipoAdm = (plan.empresaNif || plan.empresaNombre) ? 'PPE' : 'PPI';
-                  const newId = genUUID();
-                  const ahora2 = String(plan.fechaCreacion ?? ahora);
-
-                  const nuevoPlan: Record<string, unknown> = {
-                    id: newId,
-                    nombre: plan.nombre ?? 'Plan de pensiones',
-                    titular: (plan.titularidad === 'pareja' ? 'pareja' : 'yo') as 'yo' | 'pareja',
-                    personalDataId: plan.personalDataId,
-                    tipoAdministrativo: tipoAdm,
-                    ...(tipoAdm === 'PPE' ? { subtipoPPE: 'empleador_unico' as const } : {}),
-                    gestoraActual: String(plan.entidad ?? ''),
-                    valorActual: typeof plan.valorActual === 'number' ? plan.valorActual : 0,
-                    fechaContratacion: String(plan.fechaApertura ?? ahora2.slice(0, 10)),
-                    ...(plan.empresaNif ? { empresaPagadora: { cif: plan.empresaNif, nombre: String(plan.empresaNombre ?? '') } } : {}),
-                    estado: 'activo' as const,
-                    origen: 'migrado_v60' as const,
-                    fechaCreacion: ahora2,
-                    fechaActualizacion: ahora,
-                  };
-                  try { await dstPlanes.add(nuevoPlan as any); } catch { /* ya existe */ }
-
-                  // Migrar historialAportaciones
-                  if (plan.historialAportaciones && typeof plan.historialAportaciones === 'object') {
-                    for (const [clave, entrada] of Object.entries(plan.historialAportaciones as Record<string, any>)) {
-                      if (clave.startsWith('evento_')) continue;
-                      const añoNum = parseInt(clave.slice(0, 4), 10);
-                      if (!Number.isFinite(añoNum)) continue;
-                      const aportacion: Record<string, unknown> = {
-                        id: genUUID(),
-                        planId: newId,
-                        fecha: clave.length === 7 ? `${clave}-01` : `${clave}-01-01`,
-                        ejercicioFiscal: añoNum,
-                        importeTitular: Number(entrada.titular ?? 0),
-                        importeEmpresa: Number(entrada.empresa ?? 0),
-                        origen: entrada.fuente === 'xml_aeat' ? 'xml_aeat' : 'migrado_v60',
-                        granularidad: clave.length === 7 ? 'mensual' : 'anual',
-                        fechaCreacion: ahora,
-                        fechaActualizacion: ahora,
-                      };
-                      try { await dstAportaciones.add(aportacion as any); } catch { /* skip dup */ }
-                    }
-                  }
-                }
-              } catch (err) {
-                console.warn('[DB V65] migración planesPensionInversion→planesPensiones falló:', err);
-              }
-            }
 
             // 2b. Migrar inversiones con tipo='plan_pensiones' o tipo='plan-pensiones'
             if (db.objectStoreNames.contains('inversiones')) {
@@ -4116,14 +3341,6 @@ export const initDB = async () => {
               }
             }
 
-            // 2c. Migración traspasosPlanes → traspasosPlanPensiones: RETIRADA
-            //     (bloque 3 · commit final A) junto con su test. DB única en v79,
-            //     el guard oldVersion<65 no puede dispararse.
-
-            // 3. Eliminar stores legacy
-            if (db.objectStoreNames.contains('planesPensionInversion')) {
-              db.deleteObjectStore('planesPensionInversion');
-            }
           })();
         }
 
@@ -4163,28 +3380,6 @@ export const initDB = async () => {
           // App.tsx via `runV68TipoFamiliaMigration` (idempotente · keyval).
         }
 
-        if (oldVersion < 69) {
-          // ── V69 (TAREA 13 v4 · cierre lote B+C · C4 review Copilot) ──
-          // Añade índice compuesto 2-key `tipo-activo` [tipo_activo, activo_id]
-          // en `valoraciones_historicas` para evitar full-scan en queries
-          // que filtran por tipo+id sin fecha (6 de 8 queries documentadas
-          // en `valoracionesService` y `rentabilidadPlanService`).
-          //
-          // Solo schema · NO migra datos · IndexedDB recalcula el índice
-          // automáticamente sobre los registros existentes (sin pérdida).
-          // 40 stores activos antes y después (sin cambio en número).
-          if (db.objectStoreNames.contains('valoraciones_historicas')) {
-            const store = (transaction as any).objectStore(
-              'valoraciones_historicas',
-            );
-            if (!store.indexNames.contains('tipo-activo')) {
-              store.createIndex('tipo-activo', ['tipo_activo', 'activo_id'], {
-                unique: false,
-              });
-            }
-          }
-        }
-
         if (oldVersion < 70) {
           // ── V70 (PR-C4 · sistémico patrón vs real) ──
           // Añade `historial?: NominaHistorialEntry[]` al patrón Nomina
@@ -4206,122 +3401,6 @@ export const initDB = async () => {
           // V65 (donde el `return` del IIFE corta la ejecución de bloques
           // posteriores). El store empieza vacío · sin migración de datos
           // (Jose lo poblará manualmente desde la UI F6).
-        }
-
-        if (oldVersion < 74) {
-          // ── V74 (T-VALORACIONES PR1) ──
-          // Rename `valoraciones_historicas` → `valoracionesActivos` con
-          // transformación de schema · snake_case → camelCase, fecha
-          // YYYY-MM → YYYY-MM-01, `activo_id` number|string → string,
-          // mapeo `origen`. Preserva el 100% de los registros existentes.
-          //
-          // El store destino `valoracionesActivos` ya existe (creado en el
-          // bloque unconditional al inicio del callback, ~línea 2855).
-          // Aquí solo se hace data migration + delete del store viejo.
-          //
-          // Snapshot en localStorage antes de tocar nada · clave
-          // `atlas_db_snapshot_pre_v74` · recuperable manualmente si la
-          // migración corrompe algo. La transacción versionchange aborta
-          // atómicamente si el bloque lanza · DB queda en v73 íntegra.
-          //
-          // Idempotente: si `valoraciones_historicas` no existe (fresh
-          // install o re-migración tras rollback), el bloque es no-op.
-          return (async () => {
-            const OLD_STORE = 'valoraciones_historicas';
-            const NEW_STORE = 'valoracionesActivos';
-
-            if (!db.objectStoreNames.contains(OLD_STORE)) {
-              // Fresh install · no hay nada que migrar.
-              return;
-            }
-
-            // Leer todos los registros del store viejo dentro de la tx
-            // versionchange. `getAll` es seguro · idb lo soporta en upgrades.
-            const oldStore = (transaction as any).objectStore(OLD_STORE);
-            const oldRecords = ((await oldStore.getAll()) as any[]) ?? [];
-
-            // Snapshot best-effort · si localStorage llena o falla, log y
-            // continuamos (no es bloqueante · los datos siguen en la tx).
-            try {
-              localStorage.setItem(
-                'atlas_db_snapshot_pre_v74',
-                JSON.stringify({
-                  version: 73,
-                  timestamp: new Date().toISOString(),
-                  recordsCount: oldRecords.length,
-                  records: oldRecords,
-                }),
-              );
-            } catch (err) {
-              console.warn('[DB V74] Snapshot localStorage falló (cuota?):', err);
-            }
-
-            // Mapeo de `origen` antiguo → nuevo.
-            const origenMap: Record<string, string> = {
-              manual: 'manual',
-              importacion: 'import_csv',
-              api_externa: 'api_gestora',
-            };
-
-            const newStore = (transaction as any).objectStore(NEW_STORE);
-            const now = new Date().toISOString();
-            let migrados = 0;
-
-            for (const old of oldRecords) {
-              // Transformación de fecha · YYYY-MM → YYYY-MM-01.
-              // Si ya viene en YYYY-MM-DD se mantiene. Cualquier otro
-              // formato lo dejamos tal cual y la validación posterior del
-              // servicio (PR2) lo capturará.
-              const fechaOld = String(old.fecha_valoracion ?? '');
-              const fechaNueva =
-                /^\d{4}-\d{2}$/.test(fechaOld) ? `${fechaOld}-01` : fechaOld;
-
-              const tipoOld = old.tipo_activo;
-              // Los 3 tipos legacy mapean 1:1 a los 5 del nuevo schema.
-              // 'inmueble' | 'inversion' | 'plan_pensiones' son válidos.
-              const tipoNuevo =
-                tipoOld === 'inmueble' || tipoOld === 'inversion' || tipoOld === 'plan_pensiones'
-                  ? tipoOld
-                  : 'otro';
-
-              const record: Record<string, unknown> = {
-                // `id` omitido · autoIncrement asignará uno nuevo. El id
-                // antiguo se preserva en notas para trazabilidad.
-                activoId: String(old.activo_id ?? ''),
-                tipoActivo: tipoNuevo,
-                fecha: fechaNueva,
-                valor: typeof old.valor === 'number' ? old.valor : Number(old.valor ?? 0),
-                divisaOriginal: 'EUR',
-                origen: origenMap[String(old.origen ?? '')] ?? 'seed_migracion_v74',
-                notas:
-                  (typeof old.notas === 'string' && old.notas.length > 0
-                    ? old.notas + ' · '
-                    : '') +
-                  `Migrado v73→v74 · id antiguo ${old.id ?? '?'}` +
-                  (typeof old.activo_nombre === 'string' && old.activo_nombre.length > 0
-                    ? ` · activo "${old.activo_nombre}"`
-                    : ''),
-                esAnchorFiscal: false,
-                createdAt: typeof old.created_at === 'string' ? old.created_at : now,
-                updatedAt: now,
-                deletedAt: null,
-              };
-
-              await newStore.add(record);
-              migrados++;
-            }
-
-            // Borrar el store viejo · todas las llamadas posteriores a
-            // `db.transaction('valoraciones_historicas')` o
-            // `db.getAll('valoraciones_historicas')` lanzarán NotFoundError
-            // hasta que PR2 actualice `valoracionesService.ts` para apuntar
-            // al store nuevo.
-            db.deleteObjectStore(OLD_STORE);
-
-            console.log(
-              `[DB V74] T-VALORACIONES PR1 · ${migrados} valoraciones migradas a valoracionesActivos · store antiguo eliminado`,
-            );
-          })();
         }
 
         if (oldVersion < 75) {
@@ -5387,7 +4466,7 @@ const exposeAtlasDBHandle = (): void => {
 exposeAtlasDBHandle();
 
 // Performance-optimized bulk data operations
-export const bulkClearStores = async (storeNames: string[]): Promise<void> => {
+export const bulkClearStores = async (storeNames: StoreNames<AtlasHorizonDB>[]): Promise<void> => {
   const db = await initDB();
   const BATCH_SIZE = 5;
   
