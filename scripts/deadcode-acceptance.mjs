@@ -17,14 +17,12 @@ import { analyzeReachability } from './lib/deadcode.mjs';
 const ROOT = process.cwd();
 const g = analyzeReachability(ROOT);
 
-// §5 (corregida por Adenda 2) · deben salir MUERTOS. Los 4 nodos del árbol muerto
-// original (TesoreriaV4 · HistoricoWizard · historical{Cashflow,Treasury}) YA NO
-// figuran aquí: se BORRARON en paletas-fase-1 tras confirmarlos muertos → pasan a
-// MUST_BE_GONE. Quedan como muertos-estables las dos premisas del bloque 3 que se
-// cayeron al verificarlas (no se borran sin decisión propia · ver DEADCODE report §7).
+// §5 · deben salir MUERTOS. Muertos-ESTABLES tras el barrido: los apartados por la
+// regla especial (no se borran por decisión · infra + candados). Sirven de fixture
+// de que el detector sigue distinguiendo muerto de vivo.
 const MUST_BE_DEAD = [
-  'scripts/completeDataCleanup.ts', // huérfano · npm corre el .js
-  'src/services/optimizedDbService.ts', // solo lo importa completeDataCleanup.ts (muerto)
+  'src/components/common/ErrorBoundary.tsx', // apartado (infra · límite de error)
+  'src/services/__typeguards__/dbschema-valores.ts', // candado B · muerto por import, load-bearing
 ];
 
 // §5 · deben seguir VIVOS (guardia anti "solo persigue muertos")
@@ -33,13 +31,16 @@ const MUST_BE_ALIVE = [
   'src/services/documentaiClient.ts', // vía functions/ocr-fein.ts (handler Netlify)
 ];
 
-// Árbol muerto BORRADO en paletas-fase-1 · el detector ya no debe verlos como nodos.
-// (Documenta que la detección se actuó: de dead → not-a-node por borrado.)
+// BORRADOS al actuar la detección · el detector ya no debe verlos como nodos.
+// Árbol muerto (paletas-fase-1) + el par completeDataCleanup.ts/optimizedDbService
+// (barrido · commit final). de dead → not-a-node por borrado.
 const MUST_BE_GONE = [
   'src/components/treasury/TesoreriaV4.tsx',
   'src/modules/horizon/tesoreria/HistoricoWizard.tsx',
   'src/services/historicalCashflowCalculator.ts',
   'src/services/historicalTreasuryService.ts',
+  'scripts/completeDataCleanup.ts',
+  'src/services/optimizedDbService.ts',
 ];
 
 const fails = [];
