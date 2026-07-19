@@ -313,7 +313,7 @@ export class TreasuryAccountsAPI {
       // 2. Delete the account itself
       await db.delete('accounts', id);
 
-      // 4. Emit domain event for hard delete
+      // 3. Emit domain event for hard delete
       try {
         await emitTreasuryEvent({
           type: 'ACCOUNT_DELETED',

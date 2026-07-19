@@ -2255,33 +2255,28 @@ export interface DeudaFiscal {
 /**
  * CONTEO DE STORES (canónico · bloque 2.6 · 2026-07) ─────────────────────────
  *
- * Sobre una base FRESCA en v79 persisten **45 stores físicos**. Se cuentan así:
- *
- *   1. Claves declaradas en esta interfaz .......................... 42
- *      (todas respaldadas por un `createObjectStore` → 0 fantasma tras bloque 2.2/2.4)
- *   2. Stores físicos SIN declarar en la interfaz .................. + 3
- *      gastosInmueble · mejorasInmueble · mueblesInmueble
- *      (indicador health `stores_no_tipados` = 3)
- *   ────────────────────────────────────────────────────────────────
- *   Total persistente en v79 ...................................... 45
+ * Sobre una base FRESCA en v79 persisten **45 stores físicos**, y desde la Fase 0
+ * de DBSchema las **45 están declaradas** en la interfaz: las 42 previas + los 3
+ * físicos que antes no se declaraban (gastosInmueble · mejorasInmueble · mueblesInmueble).
+ * Todas respaldadas por un `createObjectStore` → 0 fantasma.
  *
  * NO cuentan para el total de v79:
- *   - planesPensionInversion · `createObjectStore` bajo guard `oldVersion<65`
- *     y `deleteObjectStore` en el mismo camino de upgrade → nunca persiste en v79.
- *   - stores legacy sin `createObjectStore` vigente, sólo con `deleteObjectStore`
- *     de limpieza (importLogs · learningLogs · objetivos_financieros ·
- *     reconciliationAuditLogs) → sólo existen transitoriamente en DBs antiguas.
+ *   - planesPensionInversion · store legacy retirado en V65 · ya no se crea ni se
+ *     declara (lifecycle de upgrade eliminado en Fase 0).
+ *   - stores legacy borrados (importLogs · learningLogs · objetivos_financieros ·
+ *     reconciliationAuditLogs · …) → su limpieza del upgrade se retiró en Fase 0.
  *
  * Recuento mecánico reproducible:
  *   - claves interfaz:  líneas `^  clave:` entre `interface AtlasHorizonDB {` y su `}`.
  *   - stores físicos:   `createObjectStore('X')` únicos, menos los que también
  *                       tienen `deleteObjectStore('X')` en un camino de upgrade.
  *
- * ⚠ IMPORTANTE · esta interfaz NO extiende `DBSchema` de idb (sus valores son
- * tipos de dominio, no `{ key; value; indexes }`). Por eso `StoreNames<AtlasHorizonDB>`
- * colapsa a `string` y `StoreValue` a `any`: el compilador NO valida nombres de
- * store ni formas de registro. La interfaz es un MAPA documental, no una garantía
- * de tipos. Convertirla a `DBSchema` real es tarea aparte (ver docs/health).
+ * ✓ FASE 0 (DBSchema) · esta interfaz YA extiende `DBSchema` de idb: cada valor tiene
+ * forma `{ key; value; indexes }`, así que `StoreNames<AtlasHorizonDB>` valida los
+ * NOMBRES de store e índice en toda la capa de datos (candado en
+ * `__typeguards__/dbschema-nombres.ts`). `value` sigue en `any`: el endurecimiento
+ * de valores por store llega en las Tandas siguientes. Al declararse ahora los 45
+ * stores, el indicador health `stores_no_tipados` baja de 3 a 0.
  */
 interface AtlasHorizonDB extends DBSchema {
   properties: { key: IDBValidKey; value: any; indexes: { 'address': IDBValidKey; 'alias': IDBValidKey } };

@@ -825,7 +825,7 @@ class CuentasService {
       // Step 2: Clean localStorage/sessionStorage caches
       this.cleanAccountCaches(id);
       
-      // Step 5: Remove account from treasury storage
+      // Step 3: Remove account from treasury storage
       try {
         const treasuryAccounts = await db.getAll('accounts');
         const treasuryAccount = treasuryAccounts.find(acc => acc.id === id);
@@ -836,7 +836,7 @@ class CuentasService {
         console.warn(`${LOG_PREFIX} Error deleting from treasury accounts:`, error);
       }
       
-      // Step 6: Mark as deleted in main accounts service (soft delete for audit)
+      // Step 4: Mark as deleted in main accounts service (soft delete for audit)
       account.deleted_at = new Date().toISOString();
       account.activa = false;
       account.isDefault = false;
@@ -844,7 +844,7 @@ class CuentasService {
 
       this.saveAccounts();
 
-      // Step 7: Create comprehensive audit log
+      // Step 5: Create comprehensive audit log
       const auditLog = {
         action: 'ACCOUNT_CASCADE_DELETE',
         accountId: id,
@@ -865,7 +865,7 @@ class CuentasService {
         console.error(`${LOG_PREFIX} Failed to save audit log:`, error);
       }
 
-      // Step 8: Telemetry and logging
+      // Step 6: Telemetry and logging
       console.info(`${LOG_PREFIX} Cascade deletion completed successfully`, {
         accountId: id,
         alias: account.alias,
