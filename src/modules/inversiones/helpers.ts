@@ -13,11 +13,11 @@ import type { CartaItem } from './types/cartaItem';
 // Paleta de gráficos · ciclamos colores entre posiciones para diferenciar
 // líneas y donut sin acoplarnos a tokens semánticos. Ver §5.1 guía v5.
 export const POSITION_COLORS = [
-  '#0E2A47',
+  'var(--atlas-v5-chart-ink)',
   '#5B8DB8',
   '#1DA0BA',
   '#A8C4DE',
-  '#C8D0DC',
+  'var(--atlas-v5-ink-5)',
 ];
 
 const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;

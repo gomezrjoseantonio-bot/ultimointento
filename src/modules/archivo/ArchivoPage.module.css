@@ -56,7 +56,7 @@
   height: 36px;
   border-radius: 10px;
   background: var(--atlas-v5-gold);
-  color: #fff;
+  color: var(--atlas-v5-on-gold);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -79,7 +79,7 @@
   font-size: 16px;
   font-weight: var(--atlas-v5-fw-bold);
   background: var(--atlas-v5-gold);
-  color: #fff;
+  color: var(--atlas-v5-on-gold);
   padding: 4px 12px;
   border-radius: 999px;
 }
@@ -196,7 +196,7 @@
 
 .docsTabs button.active {
   background: var(--atlas-v5-ink);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   border-color: var(--atlas-v5-ink);
 }
 
@@ -209,7 +209,7 @@
   border-radius: 4px;
 }
 
-.docsTabs button.active .tc { background: rgba(255,255,255,0.18); color: #fff; }
+.docsTabs button.active .tc { background: rgba(255,255,255,0.18); color: var(--atlas-v5-on-navy-1); }
 
 .docsMeta {
   display: flex;

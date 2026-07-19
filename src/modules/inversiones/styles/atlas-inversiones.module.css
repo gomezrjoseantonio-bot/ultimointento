@@ -46,7 +46,7 @@
 /* ─── Header navy ─── */
 .header {
   background: var(--atlas-v5-brand-ink);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   padding: 18px 24px;
   display: grid;
   grid-template-columns: 42px 1fr auto;
@@ -72,7 +72,7 @@
 .headerTitle {
   font-size: 17px;
   font-weight: 700;
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   letter-spacing: -0.015em;
   line-height: 1.15;
   margin: 0;
@@ -103,7 +103,7 @@
 
 .headerClose:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
 }
 
 .headerClose:focus-visible {
@@ -322,7 +322,7 @@
 
 .toggle button.active {
   background: var(--atlas-v5-ink);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
 }
 
 /* ─── Checkbox unificado ─── */
@@ -362,7 +362,7 @@
 .check.active .checkBox {
   background: var(--atlas-v5-gold);
   border-color: var(--atlas-v5-gold);
-  color: #fff;
+  color: var(--atlas-v5-on-gold);
 }
 
 .checkTit {
@@ -400,14 +400,14 @@
 
 .previewCardDark {
   background: var(--atlas-v5-brand-ink);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   border-radius: 10px;
   padding: 18px 20px;
   margin-bottom: 16px;
   /* TODO · token --atlas-v5-neg-bright (#F5A199) no existe en
      src/design-system/v5/tokens.css. Definido como custom property
      local hasta confirmar con Jose si se promociona a token global. */
-  --atlas-neg-bright-local: #F5A199;
+  --atlas-neg-bright-local: var(--atlas-v5-neg-wash);
 }
 
 .previewCardDark .lab {
@@ -426,7 +426,7 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1;
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
 }
 
 .previewCardDark .val.gold { color: var(--atlas-v5-gold-bright); }
@@ -575,7 +575,7 @@
 .btnGold {
   background: var(--atlas-v5-gold);
   border-color: var(--atlas-v5-gold);
-  color: #fff;
+  color: var(--atlas-v5-on-gold);
 }
 
 .btnGold:hover:not(:disabled) {

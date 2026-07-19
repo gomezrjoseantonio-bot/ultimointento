@@ -108,7 +108,7 @@
 
 .btnGold {
   background: var(--atlas-v5-gold);
-  color: #fff;
+  color: var(--atlas-v5-on-gold);
   border-color: var(--atlas-v5-gold);
 }
 

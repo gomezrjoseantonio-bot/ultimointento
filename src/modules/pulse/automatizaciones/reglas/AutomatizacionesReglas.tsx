@@ -109,7 +109,7 @@ const AutomatizacionesReglas: React.FC = () => {
                         aria-label={`Eliminar regla ${r.counterpartyPattern}`}
                         title="Eliminar regla"
                         className="inline-flex items-center justify-center p-1.5 rounded border border-transparent hover:border-gray-200 hover:bg-gray-50"
-                        style={{ color: 'var(--s-neg, #b91c1c)' }}
+                        style={{ color: 'var(--s-neg, var(--atlas-v5-neg))' }}
                       >
                         <Trash2 size={14} />
                       </button>
