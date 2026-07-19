@@ -68,33 +68,33 @@ function clienteMesImporte(c: WizardCliente, mesIdx: number): number {
 
 const inputSt: React.CSSProperties = {
   width: '100%', padding: '8px 12px', borderRadius: 8,
-  border: '1.5px solid var(--grey-300, #C8D0DC)',
-  fontSize: 14, fontFamily: FONT, color: 'var(--navy-900, #042C5E)',
-  background: '#fff', boxSizing: 'border-box' as const, outline: 'none',
+  border: '1.5px solid var(--atlas-v5-ink-5)',
+  fontSize: 14, fontFamily: FONT, color: 'var(--atlas-v5-brand)',
+  background: 'var(--atlas-v5-card)', boxSizing: 'border-box' as const, outline: 'none',
 };
 const labelSt: React.CSSProperties = {
-  fontSize: 12, fontWeight: 600, color: 'var(--grey-600, #4A5568)',
+  fontSize: 12, fontWeight: 600, color: 'var(--atlas-v5-ink-2)',
   fontFamily: FONT, marginBottom: 4, display: 'block',
 };
 const cardSt: React.CSSProperties = {
-  background: '#fff', border: '1px solid var(--grey-200, #DDE3EC)',
+  background: 'var(--atlas-v5-card)', border: '1px solid var(--atlas-v5-line)',
   borderRadius: 12, padding: '20px 24px',
 };
 const navyCard: React.CSSProperties = {
-  background: 'var(--navy-900, #042C5E)', borderRadius: 12,
-  padding: '20px 24px', color: '#fff',
+  background: 'var(--atlas-v5-brand)', borderRadius: 12,
+  padding: '20px 24px', color: 'var(--atlas-v5-on-navy-1)',
 };
 const primaryBtn: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 8,
   padding: '10px 24px', borderRadius: 10,
-  background: 'var(--navy-900, #042C5E)', color: '#fff',
+  background: 'var(--atlas-v5-brand)', color: 'var(--atlas-v5-on-navy-1)',
   border: 'none', fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: 'pointer',
 };
 const ghostBtn: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
   padding: '8px 16px', borderRadius: 8,
-  background: 'transparent', color: 'var(--navy-900, #042C5E)',
-  border: '1.5px solid var(--grey-300, #C8D0DC)',
+  background: 'transparent', color: 'var(--atlas-v5-brand)',
+  border: '1.5px solid var(--atlas-v5-ink-5)',
   fontSize: 13, fontWeight: 500, fontFamily: FONT, cursor: 'pointer',
 };
 
@@ -105,12 +105,12 @@ const Stepper: React.FC<{ step: number; steps: string[] }> = ({ step, steps }) =
       return (
         <React.Fragment key={label}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done || active ? 'var(--navy-900, #042C5E)' : 'var(--grey-200, #DDE3EC)', color: done || active ? '#fff' : 'var(--grey-500, #6C757D)', fontSize: 12, fontWeight: 700, fontFamily: FONT }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done || active ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-line)', color: done || active ? 'var(--atlas-v5-on-navy-1)' : 'var(--atlas-v5-ink-3)', fontSize: 12, fontWeight: 700, fontFamily: FONT }}>
               {done ? <CheckCircle size={14} /> : i + 1}
             </div>
-            <span style={{ fontSize: 11, fontWeight: active ? 700 : 400, color: active ? 'var(--navy-900)' : 'var(--grey-500)', fontFamily: FONT, whiteSpace: 'nowrap' as const }}>{label}</span>
+            <span style={{ fontSize: 11, fontWeight: active ? 700 : 400, color: active ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-3)', fontFamily: FONT, whiteSpace: 'nowrap' as const }}>{label}</span>
           </div>
-          {i < steps.length - 1 && <div style={{ flex: 1, height: 2, margin: '0 8px', marginBottom: 20, background: i < step ? 'var(--navy-900, #042C5E)' : 'var(--grey-200, #DDE3EC)' }} />}
+          {i < steps.length - 1 && <div style={{ flex: 1, height: 2, margin: '0 8px', marginBottom: 20, background: i < step ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-line)' }} />}
         </React.Fragment>
       );
     })}
@@ -354,7 +354,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
   const renderStep1 = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={cardSt}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Datos de la actividad</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: 'var(--atlas-v5-brand)', fontFamily: FONT }}>Datos de la actividad</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={labelSt}>Descripción actividad</label>
@@ -381,23 +381,23 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
       </div>
 
       <div style={cardSt}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Clientes y fuentes de facturación</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: 'var(--atlas-v5-brand)', fontFamily: FONT }}>Clientes y fuentes de facturación</h3>
         {clientes.map(c => (
-          <div key={c.id} style={{ border: '1px solid var(--grey-200, #DDE3EC)', borderRadius: 10, marginBottom: 10, overflow: 'hidden' }}>
+          <div key={c.id} style={{ border: '1px solid var(--atlas-v5-line)', borderRadius: 10, marginBottom: 10, overflow: 'hidden' }}>
             <div
-              style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', cursor: 'pointer', background: 'var(--grey-50, #F8FAFC)' }}
+              style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', cursor: 'pointer', background: 'var(--atlas-v5-bg)' }}
               onClick={() => updateCliente(c.id, { expanded: !c.expanded })}
             >
               <div style={{ flex: 1, fontSize: 13, fontFamily: FONT }}>
-                <span style={{ fontWeight: 600, color: 'var(--navy-900)' }}>{c.nombre || 'Nuevo cliente'}</span>
-                {c.nif && <span style={{ color: 'var(--grey-400)', marginLeft: 8 }}>{c.nif}</span>}
-                <span style={{ color: 'var(--grey-400)', marginLeft: 8 }}>Ret. {c.retencion}%</span>
-                <span style={{ color: 'var(--grey-500)', marginLeft: 8, fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(clienteTotal(c))}</span>
+                <span style={{ fontWeight: 600, color: 'var(--atlas-v5-brand)' }}>{c.nombre || 'Nuevo cliente'}</span>
+                {c.nif && <span style={{ color: 'var(--atlas-v5-ink-4)', marginLeft: 8 }}>{c.nif}</span>}
+                <span style={{ color: 'var(--atlas-v5-ink-4)', marginLeft: 8 }}>Ret. {c.retencion}%</span>
+                <span style={{ color: 'var(--atlas-v5-ink-3)', marginLeft: 8, fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(clienteTotal(c))}</span>
               </div>
-              <button onClick={ev => { ev.stopPropagation(); removeCliente(c.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-400)' }}><Trash2 size={14} /></button>
+              <button onClick={ev => { ev.stopPropagation(); removeCliente(c.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--atlas-v5-ink-4)' }}><Trash2 size={14} /></button>
             </div>
             {c.expanded && (
-              <div style={{ padding: '16px', borderTop: '1px solid var(--grey-100)' }}>
+              <div style={{ padding: '16px', borderTop: '1px solid var(--atlas-v5-line-2)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
                   <div>
                     <label style={labelSt}>Nombre cliente</label>
@@ -408,14 +408,14 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
                     <input style={inputSt} value={c.nif} onChange={e => updateCliente(c.id, { nif: e.target.value })} />
                   </div>
                   <div>
-                    <label style={labelSt}>% Retención IRPF <span style={{ color: 'var(--grey-400)', fontWeight: 400 }}>15% / 7% primer año</span></label>
+                    <label style={labelSt}>% Retención IRPF <span style={{ color: 'var(--atlas-v5-ink-4)', fontWeight: 400 }}>15% / 7% primer año</span></label>
                     <input type="number" style={inputSt} value={c.retencion} onChange={e => updateCliente(c.id, { retencion: Number(e.target.value) })} />
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   {(['mensual', 'irregular'] as const).map(t => (
                     <button key={t} onClick={() => updateCliente(c.id, { tipo: t })}
-                      style={{ padding: '6px 16px', borderRadius: 8, border: '1.5px solid var(--grey-300)', background: c.tipo === t ? 'var(--navy-900, #042C5E)' : '#fff', color: c.tipo === t ? '#fff' : 'var(--navy-900)', fontSize: 13, fontFamily: FONT, cursor: 'pointer' }}>
+                      style={{ padding: '6px 16px', borderRadius: 8, border: '1.5px solid var(--atlas-v5-ink-5)', background: c.tipo === t ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-card)', color: c.tipo === t ? 'var(--atlas-v5-on-navy-1)' : 'var(--atlas-v5-brand)', fontSize: 13, fontFamily: FONT, cursor: 'pointer' }}>
                       {t === 'mensual' ? 'Mensual fijo' : 'Por meses / irregular'}
                     </button>
                   ))}
@@ -424,7 +424,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
                   <div>
                     <label style={labelSt}>Importe mensual (€)</label>
                     <input type="number" style={{ ...inputSt, width: 160, fontFamily: MONO }} value={c.importeMensual} onChange={e => updateCliente(c.id, { importeMensual: Number(e.target.value) })} />
-                    <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--grey-400)', fontFamily: FONT }}>= {fmtEur(c.importeMensual * 12)} / año</span>
+                    <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--atlas-v5-ink-4)', fontFamily: FONT }}>= {fmtEur(c.importeMensual * 12)} / año</span>
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
@@ -457,7 +457,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
           </div>
         ))}
         <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-          <button onClick={addCliente} style={{ flex: 1, padding: '10px', border: '2px dashed var(--navy-900, #042C5E)', borderRadius: 8, background: 'transparent', color: 'var(--navy-900)', fontSize: 13, fontFamily: FONT, cursor: 'pointer' }}>
+          <button onClick={addCliente} style={{ flex: 1, padding: '10px', border: '2px dashed var(--atlas-v5-brand)', borderRadius: 8, background: 'transparent', color: 'var(--atlas-v5-brand)', fontSize: 13, fontFamily: FONT, cursor: 'pointer' }}>
             + Añadir cliente
           </button>
         </div>
@@ -472,15 +472,15 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
           ].map(({ label, val, neg }) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, fontFamily: FONT }}>
               <span style={{ color: 'rgba(255,255,255,0.8)' }}>{label}</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : '#fff' }}>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : 'var(--atlas-v5-on-navy-1)' }}>
                 {neg ? fmtNeg(val) : fmtEur(val)}
               </span>
             </div>
           ))}
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: 8, paddingTop: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontWeight: 700, color: '#fff', fontFamily: FONT }}>Cobrado en cuenta / año</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 16, color: 'var(--teal-400, #4AC8E0)' }}>{fmtEur(cobradoEnCuenta)}</span>
+              <span style={{ fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)', fontFamily: FONT }}>Cobrado en cuenta / año</span>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 16, color: 'var(--atlas-v5-brand)' }}>{fmtEur(cobradoEnCuenta)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: FONT }}>Media mensual en cuenta</span>
@@ -495,17 +495,17 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
   const renderStep2 = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={cardSt}>
-        <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Cuota SS autónomo 2026</h3>
+        <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: 'var(--atlas-v5-brand)', fontFamily: FONT }}>Cuota SS autónomo 2026</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <span style={{ fontSize: 13, color: 'var(--grey-600)', fontFamily: FONT }}>Tramo de cotización</span>
+          <span style={{ fontSize: 13, color: 'var(--atlas-v5-ink-2)', fontFamily: FONT }}>Tramo de cotización</span>
           <button
             onClick={() => selectTramo(suggestedTramo)}
-            style={{ padding: '2px 8px', borderRadius: 6, background: 'rgba(29,160,186,0.12)', color: 'var(--teal-600, #1DA0BA)', fontSize: 12, fontWeight: 600, fontFamily: FONT, border: 'none', cursor: 'pointer' }}>
+            style={{ padding: '2px 8px', borderRadius: 6, background: 'rgba(29,160,186,0.12)', color: 'var(--atlas-v5-brand)', fontSize: 12, fontWeight: 600, fontFamily: FONT, border: 'none', cursor: 'pointer' }}>
             ATLAS sugiere: {TRAMOS_SS_2026[suggestedTramo].cuotaMin} €/mes
           </button>
         </div>
         {rendimientoNeto > 0 && (
-          <div style={{ fontSize: 11, color: 'var(--grey-400)', fontFamily: FONT, marginBottom: 12 }}>
+          <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', fontFamily: FONT, marginBottom: 12 }}>
             Rendimiento neto estimado: {fmtEur(rendimientoNeto / 12)}/mes · Puedes cambiar hasta 6 veces al año
           </div>
         )}
@@ -513,9 +513,9 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
           {TRAMOS_SS_2026.map((t, i) => (
             <button key={i} onClick={() => selectTramo(i)}
               style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid', textAlign: 'left' as const, cursor: 'pointer', fontFamily: FONT,
-                borderColor: tramoSS === i ? 'var(--navy-900, #042C5E)' : 'var(--grey-200, #DDE3EC)',
-                background: tramoSS === i ? 'var(--navy-900, #042C5E)' : '#fff',
-                color: tramoSS === i ? '#fff' : 'var(--navy-900, #042C5E)' }}>
+                borderColor: tramoSS === i ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-line)',
+                background: tramoSS === i ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-card)',
+                color: tramoSS === i ? 'var(--atlas-v5-on-navy-1)' : 'var(--atlas-v5-brand)' }}>
               <div style={{ fontSize: 11, marginBottom: 2, opacity: 0.8 }}>{t.label}</div>
               <div style={{ fontSize: 13, fontWeight: 700, fontFamily: MONO }}>{t.cuotaMin} €/mes</div>
             </button>
@@ -524,13 +524,13 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
       </div>
 
       <div style={cardSt}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Gastos deducibles</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: 'var(--atlas-v5-brand)', fontFamily: FONT }}>Gastos deducibles</h3>
         {gastos.map(g => (
           <div key={g.id} style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
             {g.editable ? (
               <input value={g.nombre} onChange={e => updateGasto(g.id, { nombre: e.target.value })} style={{ ...inputSt, flex: 2 }} placeholder="Nombre del gasto" />
             ) : (
-              <span style={{ flex: 2, fontSize: 13, fontFamily: FONT, color: 'var(--navy-900)', fontWeight: 600 }}>{g.nombre}</span>
+              <span style={{ flex: 2, fontSize: 13, fontFamily: FONT, color: 'var(--atlas-v5-brand)', fontWeight: 600 }}>{g.nombre}</span>
             )}
             <input type="number" value={g.importe} onChange={e => updateGasto(g.id, { importe: Number(e.target.value) })}
               style={{ ...inputSt, width: 100, fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }} />
@@ -539,14 +539,14 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
               <option value="anual">Anual</option>
             </select>
             {g.editable ? (
-              <button onClick={() => removeGasto(g.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-400)' }}><Trash2 size={16} /></button>
+              <button onClick={() => removeGasto(g.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--atlas-v5-ink-4)' }}><Trash2 size={16} /></button>
             ) : <div style={{ width: 20 }} />}
           </div>
         ))}
         <button onClick={addGasto} style={{ ...ghostBtn, width: '100%', justifyContent: 'center', marginTop: 8 }}>
           <Plus size={14} /> Añadir gasto deducible
         </button>
-        <div style={{ fontSize: 11, color: 'var(--grey-400)', fontFamily: FONT, marginTop: 12 }}>
+        <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', fontFamily: FONT, marginTop: 12 }}>
           Estimación directa simplificada: puedes añadir además un 5% por gastos de difícil justificación (máx. 2.000 €/año).
         </div>
       </div>
@@ -559,13 +559,13 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
         ].map(({ label, val, neg }) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, fontFamily: FONT }}>
             <span style={{ color: 'rgba(255,255,255,0.8)' }}>{label}</span>
-            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : '#fff' }}>{neg ? fmtNeg(val) : fmtEur(val)}</span>
+            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : 'var(--atlas-v5-on-navy-1)' }}>{neg ? fmtNeg(val) : fmtEur(val)}</span>
           </div>
         ))}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', margin: '8px 0', paddingTop: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
-            <span style={{ fontWeight: 600, color: '#fff' }}>Rendimiento neto (base IRPF)</span>
-            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: '#fff', fontWeight: 600 }}>{fmtEur(rendimientoNeto)}</span>
+            <span style={{ fontWeight: 600, color: 'var(--atlas-v5-on-navy-1)' }}>Rendimiento neto (base IRPF)</span>
+            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)', fontWeight: 600 }}>{fmtEur(rendimientoNeto)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT }}>
             <span style={{ color: 'rgba(255,255,255,0.6)' }}>Rendimiento neto / mes</span>
@@ -575,15 +575,15 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', marginTop: 8, paddingTop: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
             <span style={{ color: 'rgba(255,255,255,0.8)' }}>Cobrado neto de retención / año</span>
-            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{fmtEur(cobradoEnCuenta)}</span>
+            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(cobradoEnCuenta)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
             <span style={{ color: 'rgba(255,255,255,0.8)' }}>− SS autónomo ({TRAMOS_SS_2026[tramoSS].cuotaMin} €/mes)</span>
             <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'rgba(255,255,255,0.7)' }}>{fmtNeg(cuotaSSAnual)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FONT }}>
-            <span style={{ fontWeight: 700, color: '#fff' }}>En cuenta cada mes</span>
-            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 16, color: 'var(--teal-400, #4AC8E0)' }}>{fmtEur(enCuentaAnual / 12)}</span>
+            <span style={{ fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)' }}>En cuenta cada mes</span>
+            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 16, color: 'var(--atlas-v5-brand)' }}>{fmtEur(enCuentaAnual / 12)}</span>
           </div>
         </div>
       </div>
@@ -602,21 +602,21 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
-          <CheckCircle size={28} color="var(--teal-600, #1DA0BA)" />
+          <CheckCircle size={28} color="var(--atlas-v5-brand)" />
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--atlas-v5-brand)', fontFamily: FONT }}>
               Actividad configurada · {actividad || '—'}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--grey-500)', fontFamily: FONT }}>
+            <div style={{ fontSize: 13, color: 'var(--atlas-v5-ink-3)', fontFamily: FONT }}>
               Estimación de ingresos mensuales netos
             </div>
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
           {calendario.map((m, i) => (
-            <div key={m.mes} style={{ border: '1px solid var(--grey-200, #DDE3EC)', borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--grey-500)', fontFamily: FONT, letterSpacing: '0.05em', marginBottom: 6 }}>{MESES_CORTO[i]}</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: m.ingresoMes > 0 ? 'var(--navy-900, #042C5E)' : 'var(--grey-300)', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>
+            <div key={m.mes} style={{ border: '1px solid var(--atlas-v5-line)', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--atlas-v5-ink-3)', fontFamily: FONT, letterSpacing: '0.05em', marginBottom: 6 }}>{MESES_CORTO[i]}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: m.ingresoMes > 0 ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-5)', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>
                 {m.ingresoMes > 0 ? fmtEur(m.netoMes) : '—'}
               </div>
             </div>
@@ -631,21 +631,21 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
           ].map(({ label, val, neg }) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, fontFamily: FONT }}>
               <span style={{ color: 'rgba(255,255,255,0.8)' }}>{label}</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : '#fff' }}>{neg ? fmtNeg(val) : fmtEur(val)}</span>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : 'var(--atlas-v5-on-navy-1)' }}>{neg ? fmtNeg(val) : fmtEur(val)}</span>
             </div>
           ))}
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: 8, paddingTop: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
-              <span style={{ fontWeight: 600, color: '#fff' }}>Rendimiento neto</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#fff' }}>{fmtEur(rendimientoNeto)}</span>
+              <span style={{ fontWeight: 600, color: 'var(--atlas-v5-on-navy-1)' }}>Rendimiento neto</span>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(rendimientoNeto)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
               <span style={{ color: 'rgba(255,255,255,0.8)' }}>SS autónomo ({TRAMOS_SS_2026[tramoSS].cuotaMin} €/mes)</span>
               <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'rgba(255,255,255,0.7)' }}>{fmtNeg(cuotaSSAnual)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 700, color: '#fff', fontFamily: FONT }}>En cuenta / año</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 18, color: 'var(--teal-400, #4AC8E0)' }}>{fmtEur(enCuentaAnual)}</span>
+              <span style={{ fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)', fontFamily: FONT }}>En cuenta / año</span>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 18, color: 'var(--atlas-v5-brand)' }}>{fmtEur(enCuentaAnual)}</span>
             </div>
           </div>
         </div>
@@ -656,13 +656,13 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
   const STEPS = ['Ingresos', 'Gastos y SS', 'Confirmación'];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8FAFC', fontFamily: FONT }}>
-      <div style={{ background: '#fff', borderBottom: '1px solid var(--grey-200, #DDE3EC)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--atlas-v5-bg)', fontFamily: FONT }}>
+      <div style={{ background: 'var(--atlas-v5-card)', borderBottom: '1px solid var(--atlas-v5-line)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Nueva actividad autónoma</div>
-          <div style={{ fontSize: 13, color: 'var(--grey-500)', fontFamily: FONT }}>{titularNombre}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--atlas-v5-brand)', fontFamily: FONT }}>Nueva actividad autónoma</div>
+          <div style={{ fontSize: 13, color: 'var(--atlas-v5-ink-3)', fontFamily: FONT }}>{titularNombre}</div>
         </div>
-        <button onClick={() => { if (onCancel) onCancel(); else navigate('/personal/ingresos'); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
+        <button onClick={() => { if (onCancel) onCancel(); else navigate('/personal/ingresos'); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--atlas-v5-ink-3)' }}>
           <X size={20} />
         </button>
       </div>
@@ -672,7 +672,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
         {step === 1 && renderStep2()}
         {step === 2 && renderStep3()}
       </div>
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid var(--grey-200, #DDE3EC)', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--atlas-v5-card)', borderTop: '1px solid var(--atlas-v5-line)', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
         <div>
           {step > 0 && (
             <button onClick={() => setStep(s => s - 1)} style={ghostBtn}>
