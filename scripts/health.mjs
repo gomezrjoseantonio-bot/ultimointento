@@ -40,6 +40,10 @@ const CI_BASELINE =
   process.env.GITHUB_ACTIONS === 'true' || process.argv.includes('--base-main');
 const BASELINE_REF = process.env.HEALTH_BASELINE_REF || 'origin/main';
 const SRC = path.join(ROOT, 'src');
+// Frente A · áreas de código además de src/ · un indicador escanea todo lo que
+// le corresponda (functions = serverless Netlify · scripts = tooling/build).
+const FUNCTIONS = path.join(ROOT, 'functions');
+const SCRIPTS = path.join(ROOT, 'scripts');
 const HEALTH_DIR = path.join(ROOT, 'docs', 'health');
 const DB_FILE = path.join(SRC, 'services', 'db.ts');
 const APP_FILE = path.join(SRC, 'App.tsx');
@@ -620,7 +624,11 @@ function hexHardcoded() {
   const hex = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
   const fn = /\b(?:rgba?|hsla?)\(/g;
   let count = 0;
-  const files = walk(SRC, (p) => /\.(ts|tsx|css)$/.test(p) && !isTestPath(p));
+  // Frente A · src/ + functions/ (serverless puede renderizar HTML/email con
+  // color). scripts/ NO: su hex es dato de tooling (mapa de migración de color,
+  // p.ej. replace-hardcoded-colors.js), no paleta de producto → no corresponde.
+  const colorMatch = (p) => /\.(ts|tsx|css)$/.test(p) && !isTestPath(p);
+  const files = [...walk(SRC, colorMatch), ...walk(FUNCTIONS, colorMatch)];
   const twConfig = path.join(ROOT, 'tailwind.config.js');
   if (fs.existsSync(twConfig)) files.push(twConfig);
   for (const f of files) {
@@ -710,7 +718,9 @@ function kpisHardcoded() {
   const re = /TODO:?\s*conectar/i;
   let count = 0;
   const detail = [];
-  for (const f of walk(SRC, (p) => p.endsWith('.tsx') && !isTestPath(p))) {
+  // Frente A · el docstring ya dice "sin restricción por archivo": también src .ts,
+  // no solo .tsx (un placeholder vivo en un .ts de módulo también cuenta).
+  for (const f of walk(SRC, (p) => /\.(ts|tsx)$/.test(p) && !isTestPath(p))) {
     const lines = read(f).split('\n');
     lines.forEach((l, i) => {
       if (!re.test(l)) return;
@@ -747,7 +757,9 @@ function kpisHardcoded() {
 function todosTotales() {
   const re = /\b(TODO|FIXME|HACK|XXX)\b/g;
   let count = 0;
-  for (const f of walk(SRC, (p) => /\.(ts|tsx|css|js|cjs|mjs)$/.test(p) && !isTestPath(p))) {
+  // Frente A · deuda-marcador es real en cualquier área de código.
+  const match = (p) => /\.(ts|tsx|css|js|cjs|mjs)$/.test(p) && !isTestPath(p);
+  for (const f of [...walk(SRC, match), ...walk(FUNCTIONS, match), ...walk(SCRIPTS, match)]) {
     const m = read(f).match(re);
     if (m) count += m.length;
   }
@@ -765,7 +777,9 @@ function todosTotales() {
  */
 function archivos800() {
   const big = [];
-  for (const f of walk(SRC, (p) => /\.(ts|tsx|css|js)$/.test(p) && !isTestPath(p))) {
+  // Frente A · fichero grande = candidato a trocear en cualquier área (+ .mjs/.cjs).
+  const match = (p) => /\.(ts|tsx|css|js|mjs|cjs)$/.test(p) && !isTestPath(p);
+  for (const f of [...walk(SRC, match), ...walk(FUNCTIONS, match), ...walk(SCRIPTS, match)]) {
     const n = read(f).split('\n').length;
     if (n > 800) big.push({ f: rel(f), n });
   }
@@ -971,7 +985,9 @@ const GOBERNANZA_RECALIBRACION =
 const AMPLIACIONES = {
   enlaces_rotos: { antes: 0, motivo: 've onNavigate( y window.location' },
   hex_hardcoded: { antes: 974, motivo: 've #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js' },
-  archivos_800: { antes: 49, motivo: 've .css y .js' },
+  // Frente A · directorios · antes = valor de main pre-ampliación (se desactiva solo).
+  archivos_800: { antes: 43, motivo: 'Frente A · ve functions/ y scripts/ + .mjs/.cjs (antes solo src)' },
+  todos_totales: { antes: 250, motivo: 'Frente A · ve functions/ y scripts/ (antes solo src)' },
   servicios_muertos: {
     antes: 0,
     motivo:

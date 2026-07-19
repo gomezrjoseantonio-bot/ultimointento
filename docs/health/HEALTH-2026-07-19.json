@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-19",
-  "generatedAt": "2026-07-19T18:56:52.677Z",
+  "generatedAt": "2026-07-19T22:33:00.117Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "5b4ad18"
+    "head": "f74060a"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -49,15 +49,22 @@
     {
       "indicador": "hex_hardcoded",
       "antes": 974,
-      "despues": 914,
+      "despues": 546,
       "motivo": "ve #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
     {
       "indicador": "archivos_800",
-      "antes": 49,
-      "despues": 43,
-      "motivo": "ve .css y .js",
+      "antes": 43,
+      "despues": 44,
+      "motivo": "Frente A · ve functions/ y scripts/ + .mjs/.cjs (antes solo src)",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    },
+    {
+      "indicador": "todos_totales",
+      "antes": 250,
+      "despues": 263,
+      "motivo": "Frente A · ve functions/ y scripts/ (antes solo src)",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
     {
@@ -208,7 +215,7 @@
       "calibracion": null
     },
     "hex_hardcoded": {
-      "value": 914,
+      "value": 546,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -263,7 +270,7 @@
       }
     },
     "todos_totales": {
-      "value": 250,
+      "value": 263,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -273,7 +280,7 @@
       "calibracion": null
     },
     "archivos_800": {
-      "value": 43,
+      "value": 44,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -299,14 +306,14 @@
       "calibracion": null
     },
     "pct_v5": {
-      "value": 60.8,
+      "value": 61.3,
       "direction": "up",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "231 / 380 (directo o vía .module.css con var(--atlas-v5-*))"
+        "233 / 380 (directo o vía .module.css con var(--atlas-v5-*))"
       ],
       "calibracion": null
     },
