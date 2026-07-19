@@ -59,60 +59,64 @@ ATLAS es **sobrio · profesional · honesto**. No es app de banca alegre · no e
 
 ### 2.1 · Paleta Oxford Gold (única autorizada)
 
+Los nombres de token aquí son **idénticos a `src/design-system/v5/tokens.css`**
+(prefijo `--atlas-v5-*`). No se usa forma corta: esa ambigüedad (guía en corto,
+código con prefijo) es lo que hizo que spec y código no coincidieran.
+
 ```css
 :root {
   /* Backgrounds */
-  --bg: #F5F4F1;        /* fondo página · beige cálido */
-  --card: #FFFFFF;      /* card primaria */
-  --card-alt: #FBFAF6;  /* card secundaria · footer · hover sutil */
+  --atlas-v5-bg: #F5F4F1;        /* fondo página · beige cálido */
+  --atlas-v5-card: #FFFFFF;      /* card primaria */
+  --atlas-v5-card-alt: #FBFAF6;  /* card secundaria · footer · hover sutil */
 
   /* Líneas */
-  --line: #E6E3DC;      /* borde card */
-  --line-2: #EFECE5;    /* separador interno */
-  --line-3: #F3F1EB;    /* separador muy sutil */
+  --atlas-v5-line: #E6E3DC;      /* borde card */
+  --atlas-v5-line-2: #EFECE5;    /* separador interno */
+  --atlas-v5-line-3: #F3F1EB;    /* separador muy sutil */
 
   /* Tinta · 5 niveles */
-  --ink: #141B2E;       /* títulos · valor principal */
-  --ink-2: #2C3547;     /* texto principal */
-  --ink-3: #5B6474;     /* texto secundario */
-  --ink-4: #8A92A0;     /* placeholder · subtítulos */
-  --ink-5: #B8BEC8;     /* iconos sutiles · borde hover */
+  --atlas-v5-ink: #141B2E;       /* títulos · valor principal */
+  --atlas-v5-ink-2: #2C3547;     /* texto principal */
+  --atlas-v5-ink-3: #5B6474;     /* texto secundario */
+  --atlas-v5-ink-4: #8A92A0;     /* placeholder · subtítulos */
+  --atlas-v5-ink-5: #B8BEC8;     /* iconos sutiles · borde hover */
 
   /* Brand · navy Oxford */
-  --brand: #1E2954;     /* navy principal */
-  --brand-2: #2A3875;   /* navy hover */
-  --brand-ink: #0C1230; /* navy oscuro · sidebar */
-  --brand-wash: #E8EAF0;/* navy tinted · chips · backgrounds */
+  --atlas-v5-brand: #1E2954;     /* navy principal */
+  --atlas-v5-brand-2: #2A3875;   /* navy hover */
+  --atlas-v5-brand-ink: #0C1230; /* navy oscuro · sidebar */
+  --atlas-v5-brand-wash: #E8EAF0;/* navy tinted · chips · backgrounds */
 
   /* Gold · acento oro Oxford */
-  --gold: #B88A3E;      /* oro principal */
-  --gold-2: #C59A47;    /* oro hover · gradient */
-  --gold-soft: #D9B576; /* oro suave · borders sutiles */
-  --gold-wash: #F3EAD6; /* oro tinted · chips · backgrounds */
-  --gold-ink: #7C5C1F;  /* oro oscuro · texto sobre oro-wash */
+  --atlas-v5-gold: #B88A3E;      /* oro principal */
+  --atlas-v5-gold-2: #C59A47;    /* oro hover · gradient */
+  --atlas-v5-gold-soft: #D9B576; /* oro suave · borders sutiles */
+  --atlas-v5-gold-wash: #F3EAD6; /* oro tinted · chips · backgrounds */
+  --atlas-v5-gold-ink: #7C5C1F;  /* oro oscuro · texto sobre oro-wash */
 
   /* Acentos semánticos */
-  --pos: #1E6B3A;       /* positivo · ahorro · ingreso */
-  --pos-wash: #E4F0E8;  /* positivo tinted */
+  --atlas-v5-pos: #1E6B3A;       /* positivo · ahorro · ingreso */
+  --atlas-v5-pos-wash: #E4F0E8;  /* positivo tinted */
 
-  --neg: #A43328;       /* negativo · gasto · alerta · fallado */
-  --neg-wash: #F5E3E0;  /* negativo tinted */
+  --atlas-v5-neg: #A43328;       /* negativo · gasto · alerta · fallado */
+  --atlas-v5-neg-wash: #F5E3E0;  /* negativo tinted */
 
-  --warn: #8A6213;      /* advertencia · ámbar · en-riesgo */
-  --warn-wash: #F5ECD6; /* advertencia tinted */
+  --atlas-v5-warn: #8A6213;      /* advertencia · ámbar · en-riesgo */
+  --atlas-v5-warn-wash: #F5ECD6; /* advertencia tinted */
 
   /* Tinta SOBRE navy · rampa 7 niveles (FASE A muro · para héroes navy).
-     La tinta clara (--ink…) es para fondo claro; sobre navy no había destino. */
-  --on-navy-1: #FFFFFF; /* valor principal · títulos sobre navy */
-  --on-navy-2: #E4E8F0; /* texto principal sobre navy */
-  --on-navy-3: #C7CDDC; /* texto secundario */
-  --on-navy-4: #AEB6C8; /* terciario · nav lateral */
-  --on-navy-5: #8E96AA; /* etiquetas · sutil */
-  --on-navy-6: #7E869A; /* ejes de gráfico · muy sutil */
-  --on-navy-7: #6E7688; /* separadores de escala */
+     La tinta clara (--atlas-v5-ink…) es para fondo claro; sobre navy no había destino. */
+  --atlas-v5-on-navy-1: #FFFFFF; /* valor principal · títulos sobre navy */
+  --atlas-v5-on-navy-2: #E4E8F0; /* texto principal sobre navy */
+  --atlas-v5-on-navy-3: #C7CDDC; /* texto secundario */
+  --atlas-v5-on-navy-4: #AEB6C8; /* terciario · nav lateral */
+  --atlas-v5-on-navy-5: #8E96AA; /* etiquetas · sutil */
+  --atlas-v5-on-navy-6: #7E869A; /* ejes de gráfico · muy sutil */
+  --atlas-v5-on-navy-7: #6E7688; /* separadores de escala */
 
   /* Tinta SOBRE oro */
-  --on-gold: #2A1F08;
+  --atlas-v5-on-gold: #2A1F08;
 }
 ```
 
