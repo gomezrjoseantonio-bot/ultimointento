@@ -68,12 +68,14 @@ export async function candadoValor_vinculosAccesorio() {
   await db.put('vinculosAccesorio', { __basura__: true });
 }
 
-// gastosInmueble · DIFERIDO (Caso 2 · hallazgo) · sigue en `value: any`, sin candado.
-// historicalCashflowCalculator.ts:155-162 y historicalTreasuryService.ts:285,310 leen
-// campos de agregado fiscal (interesesFinanciacion, reparacionConservacion, ibiTasas,
-// comunidad, suministros, seguros, serviciosTerceros, año) que NO existen en GastoInmueble
-// (registro por gasto). En runtime esas lecturas dan `undefined ?? 0 = 0` → posible bug
-// vivo: esos servicios cuentan 0 de este store. Corrección = tocar lógica → fuera de Tanda 1.
+// gastosInmueble · ENDURECIDO en paletas-fase-1 (tras borrar los 2 servicios muertos
+// historical* que lo leían con forma de agregado fiscal). Ya no hay lector con forma
+// incompatible → se tipa limpio a GastoInmueble.
+export async function candadoValor_gastosInmueble() {
+  const db = await initDB();
+  // @ts-expect-error — debe fallar cuando gastosInmueble tenga tipo real
+  await db.put('gastosInmueble', { __basura__: true });
+}
 
 export async function candadoValor_mejorasInmueble() {
   const db = await initDB();
