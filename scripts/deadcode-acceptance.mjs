@@ -17,23 +17,21 @@ import { analyzeReachability } from './lib/deadcode.mjs';
 const ROOT = process.cwd();
 const g = analyzeReachability(ROOT);
 
-// §5 · deben salir MUERTOS. Muertos-ESTABLES tras el barrido: los apartados por la
-// regla especial (no se borran por decisión · infra + candados). Sirven de fixture
-// de que el detector sigue distinguiendo muerto de vivo.
-const MUST_BE_DEAD = [
-  'src/components/common/ErrorBoundary.tsx', // apartado (infra · límite de error)
-  'src/services/__typeguards__/dbschema-valores.ts', // candado B · muerto por import, load-bearing
-];
-
-// §5 · deben seguir VIVOS (guardia anti "solo persigue muertos")
+// §5 · deben seguir VIVOS (guardia anti "solo persigue muertos"). Incluye los dos
+// tipos de raíz menos obvios, para fijar que se detectan: la función Netlify y el
+// candado de tsc (__typeguards__ · raíz typecheck-guard) + el ErrorBoundary ya
+// enchufado a nivel app.
 const MUST_BE_ALIVE = [
   'scripts/completeDataCleanup.js', // raíz: package.json scripts.cleanup:complete
   'src/services/documentaiClient.ts', // vía functions/ocr-fein.ts (handler Netlify)
+  'src/services/__typeguards__/dbschema-valores.ts', // raíz typecheck-guard (candado tsc)
+  'src/services/__typeguards__/dbschema-nombres.ts', // raíz typecheck-guard (candado tsc)
+  'src/components/common/ErrorBoundary.tsx', // enchufado en App.tsx (envuelve <Routes>)
 ];
 
 // BORRADOS al actuar la detección · el detector ya no debe verlos como nodos.
-// Árbol muerto (paletas-fase-1) + el par completeDataCleanup.ts/optimizedDbService
-// (barrido · commit final). de dead → not-a-node por borrado.
+// Árbol muerto (#1433) + par completeDataCleanup.ts/optimizedDbService (barrido #1434)
+// + las piezas apartadas resueltas (Header, FiscalPageShell, FormErrorSummary+dep).
 const MUST_BE_GONE = [
   'src/components/treasury/TesoreriaV4.tsx',
   'src/modules/horizon/tesoreria/HistoricoWizard.tsx',
@@ -41,13 +39,13 @@ const MUST_BE_GONE = [
   'src/services/historicalTreasuryService.ts',
   'scripts/completeDataCleanup.ts',
   'src/services/optimizedDbService.ts',
+  'src/components/navigation/Header.tsx',
+  'src/modules/horizon/fiscalidad/components/FiscalPageShell.tsx',
+  'src/components/common/FormErrorSummary.tsx',
+  'src/utils/formValidation.ts',
 ];
 
 const fails = [];
-for (const p of MUST_BE_DEAD) {
-  const c = g.classOf(p);
-  if (c !== 'dead') fails.push(`  ✗ esperado DEAD · obtenido ${c.toUpperCase()} · ${p}`);
-}
 for (const p of MUST_BE_ALIVE) {
   const c = g.classOf(p);
   if (c !== 'alive') fails.push(`  ✗ esperado ALIVE · obtenido ${c.toUpperCase()} · ${p}`);
@@ -56,6 +54,11 @@ for (const p of MUST_BE_GONE) {
   const c = g.classOf(p);
   if (c !== 'not-a-node') fails.push(`  ✗ esperado BORRADO (not-a-node) · obtenido ${c.toUpperCase()} · ${p}`);
 }
+// Invariante de barrido: tras resolver las apartadas, NO deben quedar muertos.
+// Si aparece uno nuevo, decidir (enchufar/borrar) o justificar antes de tocar esto.
+if (g.counts.dead !== 0) {
+  fails.push(`  ✗ esperado dead=0 (barrido completo) · obtenido dead=${g.counts.dead}: ${g.dead.join(', ')}`);
+}
 
 console.log(`\nACEPTACIÓN · detector de muerte transitiva`);
 console.log(
@@ -63,11 +66,11 @@ console.log(
     `dead ${g.counts.dead} · solo_tests ${g.counts.solo_tests} · ` +
     `solo_stories ${g.counts.solo_stories} · indeterminado ${g.counts.indeterminado}`
 );
-console.log(`  ${MUST_BE_DEAD.length} muertos exigidos · ${MUST_BE_ALIVE.length} vivos exigidos · ${MUST_BE_GONE.length} borrados exigidos`);
+console.log(`  ${MUST_BE_ALIVE.length} vivos exigidos · ${MUST_BE_GONE.length} borrados exigidos · dead=0`);
 
 if (fails.length) {
   console.log(`\n✗ ACEPTACIÓN FALLA (${fails.length}):`);
   console.log(fails.join('\n'));
   process.exit(1);
 }
-console.log(`\n✓ ACEPTACIÓN OK · ${MUST_BE_DEAD.length} muertos + ${MUST_BE_ALIVE.length} vivos + ${MUST_BE_GONE.length} borrados correctos.`);
+console.log(`\n✓ ACEPTACIÓN OK · ${MUST_BE_ALIVE.length} vivos + ${MUST_BE_GONE.length} borrados + dead=0 correctos.`);
