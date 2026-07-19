@@ -480,7 +480,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: 8, paddingTop: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)', fontFamily: FONT }}>Cobrado en cuenta / año</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 16, color: 'var(--atlas-v5-brand)' }}>{fmtEur(cobradoEnCuenta)}</span>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 16, color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(cobradoEnCuenta)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: FONT }}>Media mensual en cuenta</span>
@@ -583,7 +583,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FONT }}>
             <span style={{ fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)' }}>En cuenta cada mes</span>
-            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 16, color: 'var(--atlas-v5-brand)' }}>{fmtEur(enCuentaAnual / 12)}</span>
+            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 16, color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(enCuentaAnual / 12)}</span>
           </div>
         </div>
       </div>
@@ -645,7 +645,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)', fontFamily: FONT }}>En cuenta / año</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 18, color: 'var(--atlas-v5-brand)' }}>{fmtEur(enCuentaAnual)}</span>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 18, color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(enCuentaAnual)}</span>
             </div>
           </div>
         </div>

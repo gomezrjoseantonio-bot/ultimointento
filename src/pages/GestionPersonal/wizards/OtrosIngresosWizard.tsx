@@ -253,7 +253,7 @@ const OtrosIngresosWizard: React.FC = () => {
               </div>
               <div style={{ textAlign: 'right' as const }}>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 4 }}>Media mensual</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--atlas-v5-brand)', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalAnual / 12)}</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--atlas-v5-on-navy-1)', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalAnual / 12)}</div>
               </div>
             </div>
           </div>
@@ -367,7 +367,7 @@ const OtrosIngresosWizard: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 4 }}>
                       <span style={{ color: 'rgba(255,255,255,0.7)' }}>Por cobro</span>
-                      <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-brand)' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.porCobro)} €</span>
+                      <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.porCobro)} €</span>
                     </div>
                   </div>
                 )}
