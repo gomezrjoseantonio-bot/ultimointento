@@ -978,14 +978,12 @@ const AMPLIACIONES = {
       'importadores-directos → grafo de alcanzabilidad transitiva (raíces estrictas) · ' +
       'aflora deuda muerta antes invisible',
   },
-  rutas_huerfanas: {
-    antes: 19,
-    motivo:
-      'barrido de código muerto · /configuracion/preferencias-datos era alcanzable ' +
-      'SOLO desde el KPIsBlock muerto (deep-link «configurar KPIs», borrado) · ' +
-      'huérfano PREEXISTENTE que el código muerto tapaba, no una regresión · ' +
-      'autorizado por Jose · pantalla marcada como pieza a re-conectar',
-  },
+  // rutas_huerfanas · exención RETIRADA (2026-07-19). Cubría la transición
+  // 19→20 al aflorar /configuracion/preferencias-datos (el KPIsBlock muerto que
+  // la enlazaba se borró en el barrido). Ya no hace falta: la pantalla se migró
+  // a Ajustes v5 (/ajustes/datos) y la ruta vieja es ahora un redirect, así que
+  // el indicador vuelve a 19 de raíz. Sin exención, re-huerfanar una ruta en el
+  // futuro vuelve a fallar el trinquete (que es lo correcto).
   stores_no_tipados: {
     antes: 0,
     motivo:

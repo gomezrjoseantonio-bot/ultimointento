@@ -21,6 +21,9 @@ const items: AjustesNavItem[] = [
   { key: 'datos-mercado', label: 'Datos de mercado', icon: Icons.Proyeccion, path: '/ajustes/datos-mercado' },
   { key: 'avisos', label: 'Avisos', icon: Icons.Bell, path: '/ajustes/avisos' },
   { key: 'seguridad', label: 'Seguridad y datos', icon: Icons.Lock, path: '/ajustes/seguridad' },
+  // 'datos' va DESPUÉS de 'datos-mercado' a propósito: activeKey usa
+  // startsWith y '/ajustes/datos-mercado' empieza por '/ajustes/datos'.
+  { key: 'datos', label: 'Datos y preferencias', icon: Icons.Archivo, path: '/ajustes/datos' },
 ];
 
 const AjustesPage: React.FC = () => {
