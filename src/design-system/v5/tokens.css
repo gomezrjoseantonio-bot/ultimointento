@@ -63,7 +63,7 @@
      CLARO y ninguno para fondo OSCURO → cada héroe navy acababa con hex
      hardcodeado por no tener token al que apuntar. Rampa canónica de 7 niveles
      sobre navy + tinta sobre oro. Guía v5 §2.1.
-     NOTA · on-navy-1 coincide con --white; navy-text-2 / navy-text-disabled
+     NOTA · on-navy-1 coincide con --atlas-v5-white; navy-text-2 / navy-text-disabled
      (arriba) se solapan con los niveles 4 y 7 · pendiente de consolidar (A.2). */
   --atlas-v5-on-navy-1: #FFFFFF; /* valor principal · títulos sobre navy */
   --atlas-v5-on-navy-2: #E4E8F0; /* texto principal sobre navy */
