@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-19",
-  "generatedAt": "2026-07-19T02:31:28.288Z",
+  "generatedAt": "2026-07-19T09:48:33.263Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "afe04c3"
+    "head": "a8b1140"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -20,7 +20,7 @@
       "indicador": "servicios_muertos",
       "fecha": "2026-07-19",
       "anterior": 0,
-      "nueva": 288,
+      "nueva": 259,
       "motivo": "importadores-directos → grafo de alcanzabilidad transitiva (Adenda 2 · raíces estrictas por evidencia). Amplía la búsqueda: aflora deuda muerta antes invisible (árboles muertos completos, no solo hojas). No borra nada."
     },
     {
@@ -42,21 +42,21 @@
     {
       "indicador": "hex_hardcoded",
       "antes": 974,
-      "despues": 1632,
+      "despues": 1355,
       "motivo": "ve #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
     {
       "indicador": "archivos_800",
       "antes": 49,
-      "despues": 51,
+      "despues": 48,
       "motivo": "ve .css y .js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
     {
       "indicador": "servicios_muertos",
       "antes": 0,
-      "despues": 288,
+      "despues": 259,
       "motivo": "importadores-directos → grafo de alcanzabilidad transitiva (raíces estrictas) · aflora deuda muerta antes invisible",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     }
@@ -98,12 +98,12 @@
       }
     },
     "servicios_muertos": {
-      "value": 288,
+      "value": 259,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 22 raíces estrictas · alive 752 · dead 288 · solo_tests 42 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 22 raíces estrictas · alive 752 · dead 259 · solo_tests 42 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [
         "functions/normalize-docai.ts",
         "scripts/atlas-final-cleanup.js",
@@ -237,7 +237,6 @@
         "src/components/treasury/PendientesDelDia.tsx",
         "src/components/treasury/ReconciliationModal.tsx",
         "src/components/treasury/SummaryFlipCard.tsx",
-        "src/components/treasury/TesoreriaV4.tsx",
         "src/components/treasury/TreasuryEvolucion.tsx",
         "src/components/treasury/TreasuryUXComponents.tsx",
         "src/examples/enhancedFunctionalityDemo.ts",
@@ -294,31 +293,6 @@
         "src/modules/horizon/inmuebles/prestamos/components/PrestamoDetail.tsx",
         "src/modules/horizon/inmuebles/prestamos/components/PrestamosList.tsx",
         "src/modules/horizon/inmuebles/prestamos/components/StandardBonificationsSelector.tsx",
-        "src/modules/horizon/inversiones/InversionesPage.tsx",
-        "src/modules/horizon/inversiones/components/ActualizarValorModal.tsx",
-        "src/modules/horizon/inversiones/components/AportacionForm.tsx",
-        "src/modules/horizon/inversiones/components/CarteraResumen.tsx",
-        "src/modules/horizon/inversiones/components/FormField.tsx",
-        "src/modules/horizon/inversiones/components/PosicionCard.tsx",
-        "src/modules/horizon/inversiones/components/PosicionDetailModal.tsx",
-        "src/modules/horizon/inversiones/components/PosicionForm.tsx",
-        "src/modules/horizon/inversiones/components/PreviewCard.tsx",
-        "src/modules/horizon/inversiones/components/RendimientosTab.tsx",
-        "src/modules/horizon/inversiones/components/Section.tsx",
-        "src/modules/horizon/inversiones/components/StatusBadge.tsx",
-        "src/modules/horizon/inversiones/components/cards/ChartCard.tsx",
-        "src/modules/horizon/inversiones/components/cards/Chip.tsx",
-        "src/modules/horizon/inversiones/components/cards/KpiCard.tsx",
-        "src/modules/horizon/inversiones/components/cards/ResultRow.tsx",
-        "src/modules/horizon/inversiones/components/cards/index.ts",
-        "src/modules/horizon/inversiones/components/tabs/TabCartera.tsx",
-        "src/modules/horizon/inversiones/components/tabs/TabIndividual.tsx",
-        "src/modules/horizon/inversiones/components/tabs/TabRendimientos.tsx",
-        "src/modules/horizon/inversiones/components/tabs/TabResumen.tsx",
-        "src/modules/horizon/inversiones/components/tabs/index.ts",
-        "src/modules/horizon/inversiones/components/types.ts",
-        "src/modules/horizon/inversiones/components/utils.ts",
-        "src/modules/horizon/inversiones/index.ts",
         "src/modules/horizon/proyeccion/presupuesto/PresupuestoNuevo.tsx",
         "src/modules/horizon/proyeccion/presupuesto/components/PresupuestoCalendario.tsx",
         "src/modules/horizon/proyeccion/presupuesto/components/PresupuestoHeader.tsx",
@@ -328,7 +302,6 @@
         "src/modules/horizon/proyeccion/presupuesto/components/WizardStepAlcance.tsx",
         "src/modules/horizon/proyeccion/presupuesto/components/WizardStepConfiguracion.tsx",
         "src/modules/horizon/proyeccion/presupuesto/components/WizardStepRevision_Legacy.tsx",
-        "src/modules/horizon/tesoreria/HistoricoWizard.tsx",
         "src/modules/inmuebles/components/PhotoUpload.tsx",
         "src/modules/inmuebles/utils/compressImage.ts",
         "src/modules/inversiones/components/CartaCerrada.tsx",
@@ -353,8 +326,6 @@
         "src/services/feinLoanCreationService.ts",
         "src/services/fieldValidationService.ts",
         "src/services/fiscalHistoryService.ts",
-        "src/services/historicalCashflowCalculator.ts",
-        "src/services/historicalTreasuryService.ts",
         "src/services/inboxProcessingService.ts",
         "src/services/incomeReconciliationService.ts",
         "src/services/liveCalculationService.ts",
@@ -397,7 +368,7 @@
       "calibracion": {
         "fecha": "2026-07-19",
         "anterior": 0,
-        "nueva": 288,
+        "nueva": 259,
         "motivo": "importadores-directos → grafo de alcanzabilidad transitiva (Adenda 2 · raíces estrictas por evidencia). Amplía la búsqueda: aflora deuda muerta antes invisible (árboles muertos completos, no solo hojas). No borra nada."
       }
     },
@@ -442,7 +413,7 @@
       "calibracion": null
     },
     "hex_hardcoded": {
-      "value": 1632,
+      "value": 1355,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -452,7 +423,7 @@
       "calibracion": null
     },
     "emojis_ui": {
-      "value": 124,
+      "value": 120,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -507,7 +478,7 @@
       "calibracion": null
     },
     "archivos_800": {
-      "value": 51,
+      "value": 48,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -519,7 +490,6 @@
         "1943 · src/services/declaracionDistributorService.ts",
         "1886 · src/services/dashboardService.ts",
         "1789 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
-        "1715 · src/components/treasury/TesoreriaV4.tsx",
         "1704 · src/modules/inversiones/pages/FichaPlanPensiones.tsx",
         "1695 · src/modules/inmuebles/wizards/NuevoGastoRecurrenteInmueblePage.tsx",
         "1695 · src/pages/inmuebles/InmueblePage.tsx",
@@ -528,19 +498,20 @@
         "1550 · src/services/aeatParserService.ts",
         "1541 · src/App.tsx",
         "1499 · src/components/treasury/MesDetalleDrawer.tsx",
-        "1461 · src/services/declaracionOnboardingService.ts"
+        "1461 · src/services/declaracionOnboardingService.ts",
+        "1435 · src/services/treasuryConfirmationService.ts"
       ],
       "calibracion": null
     },
     "pct_v5": {
-      "value": 40.5,
+      "value": 42.1,
       "direction": "up",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "234 / 578 (directo o vía .module.css con var(--atlas-v5-*))"
+        "234 / 556 (directo o vía .module.css con var(--atlas-v5-*))"
       ],
       "calibracion": null
     },
