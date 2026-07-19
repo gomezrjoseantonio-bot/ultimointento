@@ -610,9 +610,10 @@ function enlacesRotos() {
  * INDICADOR 7 · hex_hardcoded
  * Colores escritos a mano fuera del archivo de tokens:
  *   CUENTA  · `#RRGGBB` (6 díg) · `#RGB` (3 díg) · `rgb()/rgba()/hsl()/hsla()`
- *             · tailwind arbitrario `[#…]` · en .ts/.tsx/.css de producción Y en
- *             `tailwind.config.js` (fuente de la paleta v4 legacy · auditoría)
- *   EXCLUYE · tests · `src/design-system/v5/tokens.css` (paleta canónica)
+ *             · tailwind arbitrario `[#…]` · en .ts/.tsx/.css de `src/` **+
+ *             `functions/`** (Frente A) Y en `tailwind.config.js` (paleta v4 · auditoría)
+ *   EXCLUYE · tests · `src/design-system/v5/tokens.css` (paleta canónica) ·
+ *             `scripts/` (su hex es dato de tooling, no paleta de producto)
  * OBJETIVO · baja.
  *
  * AMPLIADO (auditoría puntos ciegos): antes SOLO `#RRGGBB` de 6 díg en src.
@@ -747,8 +748,9 @@ function kpisHardcoded() {
 
 /**
  * INDICADOR 11 · todos_totales
- * Marcadores de deuda `TODO/FIXME/HACK/XXX` en src:
- *   CUENTA  · ocurrencias en .ts/.tsx/.css/.js/.cjs/.mjs de producción
+ * Marcadores de deuda `TODO/FIXME/HACK/XXX` en código:
+ *   CUENTA  · ocurrencias en .ts/.tsx/.css/.js/.cjs/.mjs de `src/` **+
+ *             `functions/` + `scripts/`** (Frente A · la deuda es real en cualquier área)
  *   EXCLUYE · tests
  * OBJETIVO · baja.
  * AMPLIADO (auditoría puntos ciegos): antes .ts/.tsx/.css · ahora también
@@ -769,7 +771,8 @@ function todosTotales() {
 /**
  * INDICADOR 12 · archivos_800
  * Archivos de código de más de 800 líneas (candidatos a trocear):
- *   CUENTA  · .ts/.tsx/.css/.js de producción con > 800 líneas
+ *   CUENTA  · .ts/.tsx/.css/.js/.mjs/.cjs de `src/` **+ `functions/` + `scripts/`**
+ *             (Frente A) con > 800 líneas
  *   EXCLUYE · tests · .json
  * OBJETIVO · baja.
  * AMPLIADO (auditoría puntos ciegos): antes solo .ts/.tsx · ahora también .css
