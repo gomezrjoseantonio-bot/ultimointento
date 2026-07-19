@@ -2,13 +2,20 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-19",
-  "generatedAt": "2026-07-19T10:49:47.144Z",
+  "generatedAt": "2026-07-19T11:46:28.657Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "d2ef26f"
+    "head": "0f316f4"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
+    {
+      "indicador": "stores_no_tipados",
+      "fecha": "2026-07-19",
+      "anterior": 0,
+      "nueva": 35,
+      "motivo": "presencia-en-interfaz → tipado real (value: any). Tras Fase 0 las 45 claves existen (presencia daba 0 e inútil); ahora mide cuántos value siguen en any. Ampliación libre autorizada por Jose · sube porque mide algo más estricto."
+    },
     {
       "indicador": "lecturas_store_inexistente",
       "fecha": "2026-07-18",
@@ -66,6 +73,13 @@
       "despues": 20,
       "motivo": "barrido de código muerto · /configuracion/preferencias-datos era alcanzable SOLO desde el KPIsBlock muerto (deep-link «configurar KPIs», borrado) · huérfano PREEXISTENTE que el código muerto tapaba, no una regresión · autorizado por Jose · pantalla marcada como pieza a re-conectar",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    },
+    {
+      "indicador": "stores_no_tipados",
+      "antes": 0,
+      "despues": 35,
+      "motivo": "nueva definición · presencia-en-interfaz → tipado real (value: any). Tras Fase 0 la presencia daba 0; ahora mide cuántos value siguen en any (35). Ampliación libre.",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     }
   ],
   "indicators": {
@@ -80,14 +94,55 @@
       "calibracion": null
     },
     "stores_no_tipados": {
-      "value": 0,
+      "value": 35,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "MIDE LO QUE NO IMPORTA (bloque 2.5 · diferido). Mide presencia en la interfaz AtlasHorizonDB, no seguridad de tipos: la interfaz NO extiende DBSchema, así que StoreNames colapsa a string y el compilador no valida stores. Tiparlos sería cosmético y bajaría esto a 0 en falso. Su significado cambiará al convertir la interfaz a DBSchema real. Ver docs/health/ESTIMACION-DBSCHEMA-2026-07-18.md.",
-      "detail": [],
-      "calibracion": null
+      "note": "claves con `value: any` en la interfaz AtlasHorizonDB (DBSchema). Mide TIPADO REAL, no presencia: baja al endurecer cada store a su tipo de dominio.",
+      "detail": [
+        "accounts",
+        "aportacionesPlan",
+        "arrastresIRPF",
+        "avisosUsuario",
+        "benchmarksReferencia",
+        "botesAnualesSinIdentificar",
+        "compromisosRecurrentes",
+        "contracts",
+        "documents",
+        "ejerciciosFiscalesCoord",
+        "escenarios",
+        "fondos_ahorro",
+        "importBatches",
+        "ingresos",
+        "inversiones",
+        "keyval",
+        "movementLearningRules",
+        "movements",
+        "objetivos",
+        "objetivosVitales",
+        "personalData",
+        "personalModuleConfig",
+        "planesPensiones",
+        "prestamos",
+        "presupuestoLineas",
+        "presupuestos",
+        "properties",
+        "propertyDays",
+        "property_sales",
+        "proveedores",
+        "retos",
+        "traspasosPlanPensiones",
+        "treasuryEvents",
+        "valoracionesActivos",
+        "viviendaHabitual"
+      ],
+      "calibracion": {
+        "fecha": "2026-07-19",
+        "anterior": 0,
+        "nueva": 35,
+        "motivo": "presencia-en-interfaz → tipado real (value: any). Tras Fase 0 las 45 claves existen (presencia daba 0 e inútil); ahora mide cuántos value siguen en any. Ampliación libre autorizada por Jose · sube porque mide algo más estricto."
+      }
     },
     "lecturas_store_inexistente": {
       "value": 0,
