@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-19",
-  "generatedAt": "2026-07-19T11:46:28.657Z",
+  "generatedAt": "2026-07-19T13:49:35.904Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "0f316f4"
+    "head": "751bc1c"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -27,7 +27,7 @@
       "indicador": "servicios_muertos",
       "fecha": "2026-07-19",
       "anterior": 0,
-      "nueva": 7,
+      "nueva": 0,
       "motivo": "importadores-directos → grafo de alcanzabilidad transitiva (Adenda 2 · raíces estrictas por evidencia). Amplía la búsqueda: aflora deuda muerta antes invisible (árboles muertos completos, no solo hojas). No borra nada."
     },
     {
@@ -63,7 +63,7 @@
     {
       "indicador": "servicios_muertos",
       "antes": 0,
-      "despues": 7,
+      "despues": 0,
       "motivo": "importadores-directos → grafo de alcanzabilidad transitiva (raíces estrictas) · aflora deuda muerta antes invisible",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -160,25 +160,17 @@
       }
     },
     "servicios_muertos": {
-      "value": 7,
+      "value": 0,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 22 raíces estrictas · alive 752 · dead 7 · solo_tests 42 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
-      "detail": [
-        "src/components/common/ErrorBoundary.tsx",
-        "src/components/common/FormErrorSummary.tsx",
-        "src/components/navigation/Header.tsx",
-        "src/modules/horizon/fiscalidad/components/FiscalPageShell.tsx",
-        "src/services/__typeguards__/dbschema-nombres.ts",
-        "src/services/__typeguards__/dbschema-valores.ts",
-        "src/utils/formValidation.ts"
-      ],
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 755 · dead 0 · solo_tests 42 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
         "anterior": 0,
-        "nueva": 7,
+        "nueva": 0,
         "motivo": "importadores-directos → grafo de alcanzabilidad transitiva (Adenda 2 · raíces estrictas por evidencia). Amplía la búsqueda: aflora deuda muerta antes invisible (árboles muertos completos, no solo hojas). No borra nada."
       }
     },
@@ -307,7 +299,7 @@
         "1620 · src/services/irpfCalculationService.ts",
         "1604 · src/modules/personal/pages/NuevoGastoRecurrentePage.tsx",
         "1550 · src/services/aeatParserService.ts",
-        "1541 · src/App.tsx",
+        "1544 · src/App.tsx",
         "1499 · src/components/treasury/MesDetalleDrawer.tsx",
         "1461 · src/services/declaracionOnboardingService.ts",
         "1435 · src/services/treasuryConfirmationService.ts"
@@ -315,14 +307,14 @@
       "calibracion": null
     },
     "pct_v5": {
-      "value": 59.9,
+      "value": 60.4,
       "direction": "up",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "230 / 384 (directo o vía .module.css con var(--atlas-v5-*))"
+        "230 / 381 (directo o vía .module.css con var(--atlas-v5-*))"
       ],
       "calibracion": null
     },

@@ -31,6 +31,7 @@ import { fixFechaContratacionRetroactiva } from './services/migrations/fixFechaC
 import { backfillAportacionesNotas } from './services/migrations/backfillAportacionesNotas';
 import { normalizarNombresEmpresas } from './services/migrations/normalizarNombresEmpresas';
 import MainLayout from './layouts/MainLayout';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Loading component for better UX - ATLAS compliant
@@ -631,6 +632,7 @@ function App() {
               <CopilotWidget />
             </React.Suspense>
           )}
+          <ErrorBoundary>
           <Routes>
             {/* Auth por email desactivada temporalmente */}
             <Route path="/login" element={<Navigate to="/" replace />} />
@@ -1531,6 +1533,7 @@ function App() {
             <Route path="*" element={<Navigate to="/panel" replace />} />
           </Route>
         </Routes>
+          </ErrorBoundary>
       </Router>
       </AuthProvider>
     </ThemeProvider>

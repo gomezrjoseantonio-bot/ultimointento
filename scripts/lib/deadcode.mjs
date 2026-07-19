@@ -210,6 +210,16 @@ export function analyzeReachability(ROOT) {
       addRoot(path.join(ROOT, m[1]), 'npm-script', `package.json scripts.${name}`);
     }
   }
+  // 3d · candados de tipos (`src/services/__typeguards__/*`). Existen para ser
+  // CHEQUEADOS por `tsc`, no para ser importados: nadie los importa POR DISEÑO
+  // (un `@ts-expect-error` que sólo se consume si el schema tiene el tipo real).
+  // Son entradas del gate de tsc, igual que un test lo es de jest → son raíces.
+  // Sin esto, cuentan como "muertos" siendo load-bearing (falso positivo).
+  for (const n of nodes) {
+    if (n.replace(/\\/g, '/').includes('/__typeguards__/')) {
+      addRoot(n, 'typecheck-guard', 'candado chequeado por tsc · no importable por diseño');
+    }
+  }
 
   // 4 · alcanzabilidad (BFS)
   const bfs = (seeds) => {
