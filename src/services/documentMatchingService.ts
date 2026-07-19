@@ -262,7 +262,7 @@ export async function findCandidates(params: FindCandidatesParams): Promise<Cand
  * Confirm a link: write documentId into the matching mejora or mobiliario record.
  */
 export async function confirmLink(
-  store: 'mejorasActivo' | 'mobiliarioActivo',
+  store: 'mejorasInmueble' | 'mueblesInmueble',
   recordId: number,
   documentId: number
 ): Promise<void> {

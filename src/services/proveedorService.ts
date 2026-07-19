@@ -9,7 +9,7 @@
 // es la clave). Por ahora se permite editar `nombre` y `tipos`; la mutación
 // de NIF se cubrirá en spec posterior si se demuestra necesaria.
 
-import { initDB, type Proveedor } from './db';
+import { initDB, type Proveedor, type AtlasStoreName } from './db';
 
 export interface ProveedorConUso extends Proveedor {
   /** Nº de operaciones encontradas en stores cuyo campo proveedor coincide. */
@@ -24,7 +24,7 @@ const matchesNif = (campo: unknown, nif: string): boolean => {
 };
 
 const STORES_CON_PROVEEDOR: Array<{
-  store: string;
+  store: AtlasStoreName;
   campos: string[];
 }> = [
   { store: 'gastosInmueble', campos: ['proveedorNif', 'providerNif', 'counterpartyNif'] },

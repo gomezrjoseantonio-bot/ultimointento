@@ -12,7 +12,7 @@
 // NOTA: inmuebleService.delete() (HTTP fantasma) se conserva sin tocar · NO
 // tiene callers reales (verificado con grep duro).
 
-import { initDB } from './db';
+import { initDB, type AtlasStoreName } from './db';
 import {
   deleteContractWithCascade,
   previewDeleteContractCascade,
@@ -54,12 +54,12 @@ const emptyReport = (): DeleteInmuebleCascadeReport => ({
 });
 
 const countWhere = async <T = unknown>(
-  storeName: string,
+  storeName: AtlasStoreName,
   predicate: (row: T) => boolean,
 ): Promise<number> => {
   const db = await initDB();
   if (!db.objectStoreNames.contains(storeName)) return 0;
-  const all = (await db.getAll(storeName as never)) as T[];
+  const all = (await db.getAll(storeName)) as T[];
   return all.filter(predicate).length;
 };
 
@@ -150,12 +150,12 @@ export const previewDeleteInmuebleCascade = async (
 };
 
 const deleteAllMatching = async <T extends { id?: number | string }>(
-  storeName: string,
+  storeName: AtlasStoreName,
   predicate: (row: T) => boolean,
 ): Promise<number> => {
   const db = await initDB();
   if (!db.objectStoreNames.contains(storeName)) return 0;
-  const all = (await db.getAll(storeName as never)) as T[];
+  const all = (await db.getAll(storeName)) as T[];
   const matching = all.filter(predicate);
   let n = 0;
   for (const row of matching) {

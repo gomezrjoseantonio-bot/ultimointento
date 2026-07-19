@@ -310,27 +310,10 @@ export class TreasuryAccountsAPI {
         }
       }
 
-      // 2. Handle reconciliations
-      try {
-        const allReconciliations = await db.getAll('reconciliations');
-        const accountReconciliations = allReconciliations.filter(r => 
-          r.account_id === id || r.movement_account_id === id
-        );
-        
-        for (const reconciliation of accountReconciliations) {
-          if (reconciliation.id) {
-            await db.delete('reconciliations', reconciliation.id);
-          }
-        }
-        summary.removedItems['reconciliations'] = accountReconciliations.length;
-      } catch (error) {
-        console.warn('No reconciliations table or error deleting:', error);
-      }
-
-      // 3. Delete the account itself
+      // 2. Delete the account itself
       await db.delete('accounts', id);
 
-      // 4. Emit domain event for hard delete
+      // 3. Emit domain event for hard delete
       try {
         await emitTreasuryEvent({
           type: 'ACCOUNT_DELETED',
