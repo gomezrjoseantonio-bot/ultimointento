@@ -28,8 +28,8 @@
 .hero {
   position: relative;
   padding: 24px 24px 20px;
-  background: linear-gradient(135deg, #5B6474 0%, #2C3547 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--atlas-v5-ink-3) 0%, var(--atlas-v5-ink-2) 100%);
+  color: var(--atlas-v5-on-navy-1);
 }
 .closeBtn {
   position: absolute;
@@ -40,7 +40,7 @@
   border: none;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -136,7 +136,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--atlas-v5-on-navy-1);
   font-weight: 700;
   font-size: 14px;
 }
@@ -180,7 +180,7 @@
 .tBtnInvitar:hover {
   background: var(--atlas-v5-gold);
   border-color: var(--atlas-v5-gold);
-  color: #fff;
+  color: var(--atlas-v5-on-gold);
 }
 
 /* ===== Resumen ===== */
@@ -363,6 +363,6 @@
 .btnPrimary {
   border: 1px solid var(--atlas-v5-gold);
   background: var(--atlas-v5-gold);
-  color: #fff;
+  color: var(--atlas-v5-on-gold);
 }
 .btnPrimary:hover { background: var(--atlas-v5-gold-2); border-color: var(--atlas-v5-gold-2); }

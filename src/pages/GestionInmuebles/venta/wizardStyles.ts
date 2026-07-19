@@ -5,18 +5,18 @@
 import type { CSSProperties } from 'react';
 
 export const W = {
-  navy900: 'var(--navy-900, #042C5E)',
-  navy800: 'var(--navy-800, #0A3F7A)',
-  teal600: 'var(--teal-600, #00A7B5)',
-  teal100: 'var(--teal-100, #E0F7F9)',
-  grey50: 'var(--grey-50, #F8F9FA)',
-  grey100: 'var(--grey-100, #EEF1F5)',
-  grey200: 'var(--grey-200, #DDE3EC)',
-  grey300: 'var(--grey-300, #C8D0DC)',
-  grey500: 'var(--grey-500, #6C757D)',
-  grey700: 'var(--grey-700, #303A4C)',
-  grey900: 'var(--grey-900, #1A2332)',
-  white: '#FFFFFF',
+  navy900: 'var(--atlas-v5-brand)',
+  navy800: 'var(--atlas-v5-brand)',
+  teal600: 'var(--atlas-v5-brand)',
+  teal100: 'var(--atlas-v5-brand-wash)',
+  grey50: 'var(--atlas-v5-bg)',
+  grey100: 'var(--atlas-v5-line-2)',
+  grey200: 'var(--atlas-v5-line)',
+  grey300: 'var(--atlas-v5-ink-5)',
+  grey500: 'var(--atlas-v5-ink-3)',
+  grey700: 'var(--atlas-v5-ink-2)',
+  grey900: 'var(--atlas-v5-ink)',
+  white: 'var(--atlas-v5-white)',
 };
 
 export const fontFamily = "'IBM Plex Sans', system-ui, sans-serif";

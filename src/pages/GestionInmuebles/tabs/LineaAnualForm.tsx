@@ -7,14 +7,14 @@ import type { Account } from '../../../services/db';
 import type { Categoria } from './LineasAnualesTab';
 
 const C = {
-  navy900: 'var(--navy-900, #042C5E)',
-  grey50: 'var(--grey-50, #F8F9FA)',
-  grey200: 'var(--grey-200, #DDE3EC)',
-  grey300: 'var(--grey-300, #C8D0DC)',
-  grey500: 'var(--grey-500, #6C757D)',
-  grey700: 'var(--grey-700, #303A4C)',
-  grey900: 'var(--grey-900, #1A2332)',
-  white: '#FFFFFF',
+  navy900: 'var(--atlas-v5-brand)',
+  grey50: 'var(--atlas-v5-bg)',
+  grey200: 'var(--atlas-v5-line)',
+  grey300: 'var(--atlas-v5-ink-5)',
+  grey500: 'var(--atlas-v5-ink-3)',
+  grey700: 'var(--atlas-v5-ink-2)',
+  grey900: 'var(--atlas-v5-ink)',
+  white: 'var(--atlas-v5-white)',
 };
 
 const fmtEuro = (n: number) =>
@@ -252,7 +252,7 @@ const LineaAnualForm: React.FC<Props> = ({ categoria, accounts, initial, pendien
                   );
                 })}
             </select>
-            <span style={{ fontSize: 11, color: 'var(--grey-500, #6C757D)', marginTop: 4, display: 'block' }}>
+            <span style={{ fontSize: 11, color: 'var(--atlas-v5-ink-3)', marginTop: 4, display: 'block' }}>
               Se creará un movimiento conciliado en Tesorería
             </span>
           </Field>

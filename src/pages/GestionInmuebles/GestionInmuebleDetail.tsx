@@ -13,12 +13,12 @@ import GastosRecurrentesTab from './tabs/GastosRecurrentesTab';
 import LineasAnualesTab from './tabs/LineasAnualesTab';
 
 const C = {
-  navy900: 'var(--navy-900, #042C5E)',
-  grey50: 'var(--grey-50, #F8F9FA)',
-  grey200: 'var(--grey-200, #DDE3EC)',
-  grey500: 'var(--grey-500, #6C757D)',
-  grey700: 'var(--grey-700, #303A4C)',
-  grey900: 'var(--grey-900, #1A2332)',
+  navy900: 'var(--atlas-v5-brand)',
+  grey50: 'var(--atlas-v5-bg)',
+  grey200: 'var(--atlas-v5-line)',
+  grey500: 'var(--atlas-v5-ink-3)',
+  grey700: 'var(--atlas-v5-ink-2)',
+  grey900: 'var(--atlas-v5-ink)',
 };
 
 type TabId = 'ficha' | 'gastos' | 'reparaciones' | 'mejoras' | 'mobiliario';
