@@ -1003,12 +1003,11 @@ const AMPLIACIONES = {
   // a Ajustes v5 (/ajustes/datos) y la ruta vieja es ahora un redirect, así que
   // el indicador vuelve a 19 de raíz. Sin exención, re-huerfanar una ruta en el
   // futuro vuelve a fallar el trinquete (que es lo correcto).
-  stores_no_tipados: {
-    antes: 0,
-    motivo:
-      'nueva definición · presencia-en-interfaz → tipado real (value: any). Tras Fase 0 ' +
-      'la presencia daba 0; ahora mide cuántos value siguen en any (35). Ampliación libre.',
-  },
+  // stores_no_tipados · exención RETIRADA (Frente B · cerrar DBSchema). Cubría la
+  // subida 0→35 al cambiar la definición (presencia-en-interfaz → tipado real
+  // `value: any`). Frente B endureció los 45 stores a su tipo (43 concretos +
+  // keyval/ingresos `unknown`), así que el indicador está en 0 (objetivo). Sin
+  // exención, volver a introducir un `value: any` fallará el trinquete (correcto).
 };
 
 // direction: 'down' = mejor bajar (empeora si sube) · 'up' = mejor subir
