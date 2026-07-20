@@ -1,0 +1,79 @@
+/* Anillo de libertad · sobre navy · solo tokens --atlas-v5-* (rampa on-navy). */
+
+.ring {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-left: auto;
+  padding-left: 24px;
+  border-left: 1px solid var(--atlas-v5-brand-2);
+}
+
+.wrap {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  flex-shrink: 0;
+}
+
+.svg {
+  transform: rotate(-90deg);
+}
+
+.track {
+  stroke: var(--atlas-v5-brand-2);
+}
+
+.arc {
+  stroke: var(--atlas-v5-gold);
+}
+
+.txt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-on-navy-1);
+  letter-spacing: -0.03em;
+}
+
+.lab {
+  font-size: 10.5px;
+  color: var(--atlas-v5-on-navy-5);
+  letter-spacing: 0.04em;
+}
+
+.val {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-on-navy-2);
+  margin-top: 3px;
+}
+
+.sub {
+  font-size: 11px;
+  color: var(--atlas-v5-gold-soft);
+  margin-top: 3px;
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.cta {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-gold-soft);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.cta:hover {
+  text-decoration: underline;
+  color: var(--atlas-v5-gold-2);
+}

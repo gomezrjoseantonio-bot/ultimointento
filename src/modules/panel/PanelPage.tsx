@@ -1,18 +1,28 @@
-// Panel · home v5. Sustituye `HorizonPanel` legacy con vista alineada al
-// mockup `docs/audit-inputs/atlas-panel.html` ·
-//   - Saludo personalizado + fecha + campaña IRPF + número de cosas pidiendo atención (22.2)
-//   - Hero patrimonial · valor neto + activos + deuda + composición γ (22.2)
-//   - Grid 4 activos · Inmuebles · Inversiones · Tesorería · Financiación (22.3)
-//   - Pulso del mes · ingresos · gastos · cashflow · saldo fin (22.4)
-//   - Piden tu atención · AttentionList · MAX 5 alertas por urgencia (22.5)
+// Panel · home · versión C. Pantalla de SUPERVISIÓN.
 //
-// Lee de · properties · inversiones · accounts · prestamos · treasuryEvents · contracts.
-// NO toca services internos.
+// Referencia de composición · `docs/audit-inputs/atlas-panel-v3-version-c.html`
+// Autoridad de diseño · `docs/audit-inputs/GUIA-DISENO-V5-atlas.md`
+// Fuentes verificadas · `docs/audits/T-CC-PANEL-VERSION-C-FASE-A-INFORME.md`
+//
+// Estructura (§B.1):
+//   1. Cabecera blanca · saludo según la hora + fecha
+//   2. Héroe navy · patrimonio · composición · activos/deuda/cuota · anillo libertad
+//      (la curva de patrimonio a 20 años es FASE C · motor C-PROY-5 no existe → vacío)
+//   3. Cómo va el mes · cinco celdas (split cobrado/pendiente por `type` + `status`)
+//   4. Puedes estar tranquilo · cuatro tarjetas (callado cuando todo va bien · §B.2)
+//   5. Acciones rápidas · cuatro botones
+//
+// Principio de honestidad (§1): si un dato no tiene fuente fiable, lleva estado
+// vacío, nunca un valor de ejemplo ni un cero que parezca real.
+//
+// PanelPage centraliza la carga y el CÁLCULO de datos; los componentes de
+// sección (HeroPatrimonio · ComoVaElMes · PuedesEstarTranquilo · AccionesRapidas)
+// son presentacionales.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard } from 'lucide-react';
-import { PageHead, Icons, MoneyValue, CompositionBar } from '../../design-system/v5';
+import { PageHead } from '../../design-system/v5';
 import { EmptyState } from '../../components/common/EmptyState';
 import { initDB } from '../../services/db';
 import type { Property, Account, TreasuryEvent, Contract } from '../../services/db';
@@ -29,26 +39,22 @@ import {
   generarAlertasFiscales,
   type AlertaFiscal,
 } from '../../services/alertasFiscalesService';
-import PulseAssetCard from './components/PulseAssetCard';
-import PulsoDelMes from './components/PulsoDelMes';
-import AttentionList from './components/AttentionList';
-import MiPlanCompass from './components/MiPlanCompass';
-import YearTimeline from './components/YearTimeline';
+import {
+  calcularEstimacionEnCurso,
+  type EstimacionEjercicioEnCurso,
+} from '../../services/estimacionFiscalEnCursoService';
 import FotoActualWidget from './components/FotoActualWidget';
+import HeroPatrimonio from './components/HeroPatrimonio';
+import ComoVaElMes from './components/ComoVaElMes';
+import PuedesEstarTranquilo from './components/PuedesEstarTranquilo';
+import AccionesRapidas from './components/AccionesRapidas';
+import type { AnilloState } from './components/types';
 import { decideFirstRun } from '../onboarding/empezar/FirstRunRedirect';
-import type { AlertaItem } from './components/AttentionList';
 import { useProyeccionLibertad } from '../../hooks/useProyeccionLibertad';
 import styles from './PanelPage.module.css';
 
 /**
- * Formatea un importe monetario como string resumido para las extra-métricas
- * de las cards de activos. Ej: 1234 → "1.234 €"
- */
-const fmtImporte = (n: number): string =>
-  `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n)} €`;
-
-/**
- * Saludo según hora del día · § Z.6 spec T22.2
+ * Saludo según hora del día · § Z.6
  * 00-12 → Buenos días · 12-20 → Buenas tardes · 20-24 → Buenas noches
  */
 const saludo = (d: Date): string => {
@@ -58,60 +64,25 @@ const saludo = (d: Date): string => {
   return 'Buenas noches';
 };
 
-/**
- * T-RECONNECT-1 · Hallazgo 6.A · mapeo AlertaFiscal → AlertaItem para
- * consumo en `AttentionList`. Los 6 tipos del servicio fiscal se traducen
- * a los iconos / severidades del componente Panel.
- */
-const mapAlertaFiscalToItem = (a: AlertaFiscal): AlertaItem => {
-  const severity: AlertaItem['severity'] =
-    a.prioridad === 'alta' ? 'neg' : a.prioridad === 'media' ? 'warn' : 'muted';
-  const iconType: AlertaItem['iconType'] =
-    a.tipo === 'arrastre_caduca' || a.tipo === 'm130_pendiente'
-      ? 'calendar'
-      : a.tipo === 'retenciones_insuficientes' || a.tipo === 'plan_pensiones'
-        ? 'warning'
-        : 'filetext';
-  return {
-    id: a.id,
-    severity,
-    valueSeverity: severity,
-    iconType,
-    title: a.titulo,
-    meta: a.descripcion,
-    value: a.importeImpacto ?? 0,
-    timeWindow: 'fiscal',
-    href: a.accion?.ruta ?? '/fiscal',
-  };
+/** ¿La fecha ISO cae en el mismo mes/año que `ref`? */
+const mismoMes = (iso: string | undefined, ref: Date): boolean => {
+  if (!iso) return false;
+  const d = new Date(iso);
+  return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
 };
 
-/**
- * Campaña IRPF · activa entre 1 abril y 30 junio inclusive · § T22.2
- * Devuelve "campaña IRPF {ejercicio} activa" o null si no es temporada.
- */
-const campañaIRPF = (d: Date): string | null => {
-  const mes = d.getMonth() + 1; // 1-based
-  const dia = d.getDate();
-  const año = d.getFullYear();
-  // Abril (mes 4), Mayo (mes 5) y hasta el 30 de Junio (mes 6)
-  const enCampana =
-    mes === 4 ||
-    mes === 5 ||
-    (mes === 6 && dia <= 30);
-  if (enCampana) {
-    // El ejercicio IRPF es el año anterior
-    return `campaña IRPF ${año - 1} activa`;
-  }
-  return null;
-};
+const esSalida = (ev: TreasuryEvent): boolean =>
+  ev.type === 'expense' || ev.type === 'financing';
+
+/** Magnitud del evento en positivo · robusto ante datos con signo heredado. */
+const magnitud = (ev: TreasuryEvent, usarActual = false): number =>
+  Math.abs((usarActual ? ev.actualAmount ?? ev.amount : ev.amount) ?? 0);
 
 const PanelPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Puerta de entrada (onboarding día 0 · P1): si el usuario aterriza en el
-  // Panel sin datos reales y sin progreso de onboarding, lo llevamos a
-  // `/empezar`. Cubre las entradas que no pasan por el índice `/` (donde ya
-  // actúa FirstRunRedirect). Reentrante: nunca interrumpe a quien ya empezó.
+  // Puerta de entrada onboarding día 0: si el usuario aterriza sin datos y sin
+  // progreso, lo llevamos a `/empezar`. Reentrante · nunca interrumpe a quien ya empezó.
   useEffect(() => {
     let alive = true;
     void decideFirstRun().then((target) => {
@@ -122,8 +93,9 @@ const PanelPage: React.FC = () => {
     };
   }, [navigate]);
 
-  // T27.4.2 · proyección libertad financiera real
-  const { data: libertadData, loading: libertadLoading, error: libertadError } = useProyeccionLibertad();
+  // Proyección libertad financiera real (renta pasiva neta vs gasto objetivo).
+  const { data: libertadData, loading: libertadLoading, error: libertadError } =
+    useProyeccionLibertad();
 
   const [properties, setProperties] = useState<Property[]>([]);
   const [cartaItems, setCartaItems] = useState<CartaItem[]>([]);
@@ -135,24 +107,14 @@ const PanelPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [nombreUsuario, setNombreUsuario] = useState<string>('usuario');
   const [valoracionMatcher, setValoracionMatcher] = useState<ValoracionMatcher | null>(null);
-  // T-RECONNECT-1 · Hallazgo 6.A · alertas fiscales reales en el bloque
-  // "Piden tu atención" · sustituye los TODO previos (deudas ejecutiva ·
-  // borradores fiscales · obligaciones próximas 30d).
   const [alertasFiscales, setAlertasFiscales] = useState<AlertaFiscal[]>([]);
-  // TODO T25.2 · delta 30d real cuando exista snapshot histórico de patrimonio.
-  // patrimonioSnapshots fue eliminado en V62; las valoraciones_historicas solo cubren
-  // inmuebles/inversiones/planes pero no cuentas ni deuda viva, así que no podemos
-  // reconstruir patrimonioNeto a fecha pasada con honestidad. Hasta entonces · null.
-  const [delta30d] = useState<{ valor: number; pct: number } | null>(null);
+  const [estimacionFiscal, setEstimacionFiscal] = useState<EstimacionEjercicioEnCurso | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [db, ctx] = await Promise.all([
-          initDB(),
-          getFiscalContextSafe(),
-        ]);
+        const [db, ctx] = await Promise.all([initDB(), getFiscalContextSafe()]);
         const [props, items, accs, prest, tevents, conts] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           getAllCartaItems(),
@@ -169,14 +131,13 @@ const PanelPage: React.FC = () => {
         setTreasuryEvents(tevents);
         setContracts(conts);
         if (ctx?.nombre) setNombreUsuario(ctx.nombre);
-        // T22.6 · Cargar escenario Mi Plan para datos brújula
-        // El store 'escenarios' es un singleton (id=1) · solo existe una entrada
-        const escenarios = await db.getAll('escenarios') as Escenario[];
+
+        const escenarios = (await db.getAll('escenarios')) as Escenario[];
         if (!cancelled) setEscenario(escenarios[0] ?? null);
 
-        // T25.1 · matcher con fallback por nombre
         try {
-          const matcher = await valoracionesService.getMapValoracionesMasRecientesConMatchingPorNombre('inmueble');
+          const matcher =
+            await valoracionesService.getMapValoracionesMasRecientesConMatchingPorNombre('inmueble');
           if (!cancelled) setValoracionMatcher(matcher);
         } catch (e) {
           // eslint-disable-next-line no-console
@@ -194,9 +155,7 @@ const PanelPage: React.FC = () => {
     };
   }, []);
 
-  // T-RECONNECT-1 · Hallazgo 6.A · cargar alertas fiscales para el ejercicio
-  // en curso. Si el ejercicio ya está declarado/prescrito · no se generan.
-  // Errores capturados sin propagar (panel no puede romper por fiscal).
+  // Alertas fiscales del ejercicio en curso · alimentan "Próximos 30 días" (modelo 130).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -225,12 +184,30 @@ const PanelPage: React.FC = () => {
     };
   }, []);
 
+  // Impuesto acumulado · IRPF devengado del ejercicio en curso.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const est = await calcularEstimacionEnCurso();
+        if (!cancelled) setEstimacionFiscal(est);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[panel] no se pudo calcular la estimación fiscal en curso', err);
+        if (!cancelled) setEstimacionFiscal(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const today = useMemo(() => new Date(), []);
 
+  // ── Patrimonio · composición · deuda ────────────────────────────────────
   const valorInmuebles = useMemo(() => {
-    const stats = { porId: 0, porNombre: 0, sinMatch: 0 };
-    const total = properties.reduce((s, p) => {
-      const propertyValue = p as Property & {
+    return properties.reduce((s, p) => {
+      const pv = p as Property & {
         currentValue?: number;
         acquisitionCosts?: { price?: number; currentValue?: number };
         valor_actual?: number;
@@ -238,33 +215,19 @@ const PanelPage: React.FC = () => {
         estimatedValue?: number;
         valuation?: number;
       };
-      const propNombre = (p.alias || p.address || '');
+      const propNombre = p.alias || p.address || '';
       const match = valoracionMatcher?.getByIdOrNombre(p.id ?? '', propNombre);
-      if (match?.matchedBy === 'id') stats.porId++;
-      else if (match?.matchedBy === 'nombre') stats.porNombre++;
-      else stats.sinMatch++;
-
       const fallback =
-        propertyValue.valor_actual
-        ?? propertyValue.currentValue
-        ?? propertyValue.marketValue
-        ?? propertyValue.estimatedValue
-        ?? propertyValue.valuation
-        ?? propertyValue.acquisitionCosts?.currentValue
-        ?? propertyValue.acquisitionCosts?.price
-        ?? 0;
+        pv.valor_actual ??
+        pv.currentValue ??
+        pv.marketValue ??
+        pv.estimatedValue ??
+        pv.valuation ??
+        pv.acquisitionCosts?.currentValue ??
+        pv.acquisitionCosts?.price ??
+        0;
       return s + (match?.valor ?? fallback);
     }, 0);
-
-    if (valoracionMatcher) {
-      // eslint-disable-next-line no-console
-      console.log('[panel] valoraciones inmuebles · matches:', {
-        totalValoraciones: valoracionMatcher.totalValoraciones,
-        propiedades: properties.length,
-        ...stats,
-      });
-    }
-    return total;
   }, [properties, valoracionMatcher]);
 
   const valorInversiones = useMemo(
@@ -295,166 +258,126 @@ const PanelPage: React.FC = () => {
   const activosTotales = valorInmuebles + valorInversiones + saldoTesoreria;
   const patrimonioNeto = activosTotales - deudaViva;
 
-  const cosasAtencion = useMemo(() => {
-    let n = 0;
-    // Préstamos que parecen requerir atención inicial · sin cuotas pagadas
-    // y no marcados como "pendiente completar" (datos faltantes esperados).
-    if (prestamos.some((p) => p.cuotasPagadas === 0 && p.estado !== 'pendiente_completar')) n += 1;
-    return n;
-  }, [prestamos]);
+  // ── Cómo va el mes · split cobrado/pendiente por `type` + `status` ───────
+  // Partimos por `type` (no por el signo de `amount`, que se guarda en positivo).
+  const mes = useMemo(() => {
+    const enMes = treasuryEvents.filter(
+      (ev) =>
+        mismoMes(ev.actualDate ?? ev.predictedDate, today) || mismoMes(ev.predictedDate, today),
+    );
+    const inicioHoy = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const ejecutado = (ev: TreasuryEvent) => ev.status === 'executed';
+    const pendienteFuturo = (ev: TreasuryEvent) =>
+      ev.status !== 'executed' &&
+      mismoMes(ev.predictedDate, today) &&
+      new Date(ev.predictedDate) >= inicioHoy;
+    const ejecutadoEnMes = (ev: TreasuryEvent) =>
+      ejecutado(ev) && mismoMes(ev.actualDate ?? ev.predictedDate, today);
 
-  /**
-   * Pulso del mes · § Z.10 · T22.4
-   * ingresos  = sum treasuryEvents con amount > 0 del mes en curso
-   * gastos    = sum |treasuryEvents con amount < 0| del mes en curso
-   * cashflow  = ingresos - gastos
-   * saldo fin = saldoTesoreria + cashflow (proyección sobre saldo actual)
-   *             TODO: conectar con servicio de proyección cuando esté disponible
-   */
-  const pulsoMes = useMemo(() => {
-    const mesActual = today.getMonth() + 1; // 1-based
-    const añoActual = today.getFullYear();
-    const eventosMes = treasuryEvents.filter((ev) => {
-      const dateStr = ev.actualDate ?? ev.predictedDate;
-      if (!dateStr) return false;
-      const d = new Date(dateStr);
-      return d.getFullYear() === añoActual && d.getMonth() + 1 === mesActual;
-    });
-    const ingresos = eventosMes
-      .filter((ev) => ev.amount > 0)
-      .reduce((s, ev) => s + ev.amount, 0);
-    const gastos = eventosMes
-      .filter((ev) => ev.amount < 0)
-      .reduce((s, ev) => s + Math.abs(ev.amount), 0);
-    const cashflow = ingresos - gastos;
-    // TODO: conectar con servicio de proyección para obtener saldo fin de mes real
-    const saldoFin = saldoTesoreria + cashflow;
-    return { ingresos, gastos, cashflow, saldoFin };
+    const ingresosCobrados = enMes.filter((ev) => ev.type === 'income' && ejecutadoEnMes(ev));
+    const ingresosPendientes = enMes.filter((ev) => ev.type === 'income' && pendienteFuturo(ev));
+    const salidasHechas = enMes.filter((ev) => esSalida(ev) && ejecutadoEnMes(ev));
+    const salidasPendientes = enMes.filter((ev) => esSalida(ev) && pendienteFuturo(ev));
+
+    const haEntrado = ingresosCobrados.reduce((s, ev) => s + magnitud(ev, true), 0);
+    const quedaEntrar = ingresosPendientes.reduce((s, ev) => s + magnitud(ev), 0);
+    const haSalido = salidasHechas.reduce((s, ev) => s + magnitud(ev, true), 0);
+    const quedaSalir = salidasPendientes.reduce((s, ev) => s + magnitud(ev), 0);
+
+    // Saldo a fin de mes = saldo actual + lo que aún debe entrar − lo que aún debe salir.
+    const saldoFin = saldoTesoreria + quedaEntrar - quedaSalir;
+
+    return {
+      haEntrado,
+      nEntrado: ingresosCobrados.length,
+      quedaEntrar,
+      nQuedaEntrar: ingresosPendientes.length,
+      haSalido,
+      nSalido: salidasHechas.length,
+      quedaSalir,
+      nQuedaSalir: salidasPendientes.length,
+      saldoFin,
+    };
   }, [treasuryEvents, today, saldoTesoreria]);
 
-  /**
-   * Alertas "Piden tu atención" · § Z.11 · T22.5
-   * MAX 5 · prioridad:
-   *   1. Alertas fiscales (alta prioridad)   → alertasFiscalesService · T-RECONNECT-1 6.A
-   *      cubre · arrastres caducan · M130 pendiente · retenciones insuficientes
-   *      · gastos faltantes · plan pensiones · datos fiscales disponibles
-   *   2. Contratos vencer en 60d             → derivado de contracts store
-   *   3. Pagos vencidos sin conciliar        → derivado de treasuryEvents store
-   *   4. Resto alertas fiscales (media/baja)
-   */
-  const alertas = useMemo((): AlertaItem[] => {
-    const lista: AlertaItem[] = [];
-    const hoy = today;
+  // ── Puedes estar tranquilo ───────────────────────────────────────────────
 
-    // 1. Alertas fiscales · prioridad alta primero (T-RECONNECT-1 · Hallazgo 6.A)
-    const fiscalAlta = alertasFiscales.filter((a) => a.prioridad === 'alta');
-    for (const a of fiscalAlta) {
-      lista.push(mapAlertaFiscalToItem(a));
-    }
+  // Colchón · divisor = SOLO cuota mensual de préstamos (decisión Jose · los
+  // gastos recurrentes de inmueble no son calculables de forma fiable · FASE A §3).
+  const colchon = useMemo(() => {
+    if (cuotaMensualPrestamos <= 0) return { estado: 'sin-cuotas' as const };
+    return { estado: 'ok' as const, meses: saldoTesoreria / cuotaMensualPrestamos };
+  }, [saldoTesoreria, cuotaMensualPrestamos]);
 
-    // 2. Contratos activos que vencen en los próximos 60 días · § AA.6 Calendar · warn
-    const en60dias = new Date(hoy.getTime() + 60 * 24 * 60 * 60 * 1000);
+  // Sin conciliar · ingreso previsto ya vencido y sin cuadrar con el banco (de
+  // cualquier periodo). NO afirma impago (FASE A §3, gate 2).
+  const sinConciliar = useMemo(() => {
+    const inicioHoy = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const pendientes = treasuryEvents.filter((ev) => {
+      if (ev.type !== 'income') return false;
+      if (ev.status === 'executed' || ev.movementId !== undefined) return false;
+      return new Date(ev.actualDate ?? ev.predictedDate) < inicioHoy;
+    });
+    return {
+      count: pendientes.length,
+      total: pendientes.reduce((s, ev) => s + magnitud(ev), 0),
+    };
+  }, [treasuryEvents, today]);
+
+  // Próximos 30 días · alcance LIMITADO Y DECLARADO: contratos + modelo 130.
+  // Seguros e IBI no se vigilan (no existe fuente · FASE A §3, gate 3).
+  const proximos30 = useMemo(() => {
+    const en30 = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
     const contratosVencen = contracts.filter((c) => {
       if (c.estadoContrato !== 'activo') return false;
-      // fechaFin es el campo canónico · endDate es el campo legacy (db.ts Contract)
       const fechaFin = c.fechaFin ?? c.endDate;
       if (!fechaFin) return false;
       const d = new Date(fechaFin);
-      return d >= hoy && d <= en60dias;
+      return d >= today && d <= en30;
     });
-    if (contratosVencen.length > 0) {
-      const rentaTotal = contratosVencen.reduce((s, c) => s + (c.rentaMensual ?? 0), 0);
-      lista.push({
-        id: 'contratos-vencer',
-        severity: 'warn',
-        valueSeverity: 'warn',
-        iconType: 'calendar',
-        title: `${contratosVencen.length} contrato${contratosVencen.length === 1 ? '' : 's'} vence${contratosVencen.length === 1 ? '' : 'n'} pronto`,
-        meta: `Vencimiento en los próximos 60 días`,
-        value: rentaTotal,
-        timeWindow: '60 días',
-        href: '/contratos?tab=acciones',
-      });
-    }
+    const m130 = alertasFiscales.filter((a) => a.tipo === 'm130_pendiente');
+    const primero =
+      contratosVencen.length > 0
+        ? 'contrato próximo a vencer'
+        : m130.length > 0
+          ? 'modelo 130 por presentar'
+          : null;
+    return { count: contratosVencen.length + m130.length, primero };
+  }, [contracts, alertasFiscales, today]);
 
-    // 3. Pagos vencidos (amount < 0, fecha pasada) sin conciliar con movimiento real · neg
-    const pagosVencidos = treasuryEvents.filter((ev) => {
-      if (ev.amount >= 0) return false;
-      if (ev.status === 'executed' || ev.movementId !== undefined) return false;
-      const fecha = new Date(ev.actualDate ?? ev.predictedDate);
-      return fecha < hoy;
-    });
-    if (pagosVencidos.length > 0) {
-      const totalVencido = pagosVencidos.reduce((s, ev) => s + Math.abs(ev.amount), 0);
-      lista.push({
-        id: 'pagos-vencidos',
-        severity: 'neg',
-        valueSeverity: 'neg',
-        iconType: 'filetext',
-        title: `${pagosVencidos.length} pago${pagosVencidos.length === 1 ? '' : 's'} vencido${pagosVencidos.length === 1 ? '' : 's'} sin conciliar`,
-        meta: `Movimientos pasados pendientes de conciliación`,
-        value: totalVencido,
-        timeWindow: 'pendiente',
-        href: '/tesoreria',
-      });
-    }
-
-    // 4. Resto de alertas fiscales (media/baja prioridad) al final
-    const fiscalRestoMediaBaja = alertasFiscales.filter((a) => a.prioridad !== 'alta');
-    for (const a of fiscalRestoMediaBaja) {
-      lista.push(mapAlertaFiscalToItem(a));
-    }
-
-    // Limite MAX 5 · ordenado ya por prioridad de inserción
-    return lista.slice(0, 5);
-  }, [contracts, treasuryEvents, today, alertasFiscales]);
-
-  /**
-   * Mi Plan · brújula · § Z.11 · T22.6
-   *
-   * rentaPasiva  = sum rentaMensual de contratos arrendamiento activos
-   * gastoVida    = escenario.gastosVidaLibertadMensual si > 0
-   *               · si no · derivado de gastos del mes en curso (pulsoMes.gastos)
-   *               · TODO conectar con proyección de gastos reales cuando esté disponible
-   * mesesColchon = floor(saldo / gastoVida) · null si gastoVida = 0
-   * pctCobertura = (rentaPasiva / gastoVida) * 100 · 0 si gastoVida = 0
-   * añoLibertad  = TODO conectar simulador Mi Plan · "—" mientras no disponible
-   * metaInmuebles = TODO conectar simulador Mi Plan · null mientras no disponible
-   */
-  const planMetrics = useMemo(() => {
-    // Renta pasiva = sum rentaMensual de contratos activos (arrendamiento)
-    const rentaPasiva = contracts
-      .filter((c) => c.estadoContrato === 'activo')
-      .reduce((s, c) => s + (c.rentaMensual ?? 0), 0);
-
-    // Gasto vida = escenario o gastos del mes actual como fallback
-    const gastoVida =
-      (escenario?.gastosVidaLibertadMensual ?? 0) > 0
-        ? (escenario?.gastosVidaLibertadMensual as number)
-        : pulsoMes.gastos;
-
-    const pctCobertura = gastoVida > 0 ? (rentaPasiva / gastoVida) * 100 : 0;
-
-    const mesesColchon =
-      gastoVida > 0 ? Math.floor(saldoTesoreria / gastoVida) : null;
-
-    // TODO: obtener metaInmuebles desde escenario/simulador Mi Plan
-    const metaInmuebles: number | null = null;
-
+  // Impuesto acumulado · IRPF devengado del ejercicio en curso.
+  const irpf = useMemo(() => {
+    if (!estimacionFiscal) return null;
     return {
-      rentaPasiva,
-      gastoVida,
-      pctCobertura,
-      mesesColchon,
-      metaInmuebles,
-      inmueblesActivos: properties.length,
+      cuota: estimacionFiscal.resultadoEstimado.cuotaLiquida,
+      ejercicio: estimacionFiscal.ejercicio,
+      mesesConDatos: estimacionFiscal.cobertura.mesesConDatos,
     };
-  }, [contracts, escenario, pulsoMes.gastos, saldoTesoreria, properties]);
+  }, [estimacionFiscal]);
+
+  // ── Anillo de libertad · solo con objetivo de gasto REAL (Mi Plan) ───────
+  const objetivoDefinido = (escenario?.gastosVidaLibertadMensual ?? 0) > 0;
+  const anillo = useMemo<AnilloState>(() => {
+    if (!objetivoDefinido) return { estado: 'sin-objetivo' };
+    if (libertadLoading) return { estado: 'cargando' };
+    if (libertadError || !libertadData) return { estado: 'error' };
+    const punto = libertadData.serie[0];
+    const pct = Math.max(0, Math.min(100, Math.round(libertadData.pctCoberturaActual)));
+    const anioLibertad = libertadData.cruceLibertad?.anio ?? null;
+    return {
+      estado: 'ok',
+      pct,
+      rentaActual: punto?.rentaPasiva ?? 0,
+      objetivo: punto?.gastosVida ?? escenario?.gastosVidaLibertadMensual ?? 0,
+      anioLibertad,
+      añosRestantes: anioLibertad != null ? Math.max(0, anioLibertad - today.getFullYear()) : null,
+    };
+  }, [objetivoDefinido, libertadLoading, libertadError, libertadData, escenario, today]);
 
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.empty}>Cargando panel…</div>
+        <div className={styles.loading}>Cargando panel…</div>
       </div>
     );
   }
@@ -465,49 +388,16 @@ const PanelPage: React.FC = () => {
     month: 'long',
     year: 'numeric',
   });
-
   const mesNombre = today.toLocaleDateString('es-ES', { month: 'long' });
-  const añoActual = today.getFullYear();
-
-  const campañaLabel = campañaIRPF(today);
   const empty = activosTotales === 0 && deudaViva === 0;
 
   return (
     <div className={styles.page}>
-      <PageHead
-        title={`${saludo(today)}, ${nombreUsuario}`}
-        sub={
-          <>
-            hoy es <strong>{fechaLabel}</strong>
-            {campañaLabel && (
-              <>
-                <span style={{ color: 'var(--atlas-v5-ink-5)', margin: '0 8px' }}>·</span>
-                {campañaLabel}
-              </>
-            )}
-            {cosasAtencion > 0 && (
-              <>
-                <span style={{ color: 'var(--atlas-v5-ink-5)', margin: '0 8px' }}>·</span>
-                <strong>
-                  {cosasAtencion} cosa{cosasAtencion === 1 ? '' : 's'} pide{cosasAtencion === 1 ? '' : 'n'} tu
-                  atención
-                </strong>
-              </>
-            )}
-          </>
-        }
-        actions={[
-          {
-            label: 'Últimos 30 días',
-            variant: 'ghost',
-            icon: <Icons.Clock size={14} strokeWidth={1.8} />,
-            onClick: () => undefined,
-          },
-        ]}
-      />
+      {/* 1 · Cabecera blanca · saludo + fecha (sin subtítulos de estado) */}
+      <PageHead title={`${saludo(today)}, ${nombreUsuario}`} sub={fechaLabel} />
 
-      {/* Semáforo del onboarding día 0 · visible mientras la foto < 100% */}
-      <div style={{ marginBottom: 'var(--atlas-v5-sp-5)' }}>
+      {/* Semáforo onboarding · se auto-oculta cuando la foto está al 100% */}
+      <div className={styles.fotoWrap}>
         <FotoActualWidget />
       </div>
 
@@ -516,190 +406,39 @@ const PanelPage: React.FC = () => {
           icon={LayoutDashboard}
           title="Aún no hay datos en tu Atlas"
           subtitle="Cuéntale a Atlas tu foto actual · inmuebles, cuentas, contratos · y genera tu año previsto."
-          cta={{
-            label: 'Empezar mi foto actual',
-            onClick: () => navigate('/empezar'),
-          }}
+          cta={{ label: 'Empezar mi foto actual', onClick: () => navigate('/empezar') }}
           size="large"
         />
       ) : (
         <>
-          <div className={styles.hero}>
-            <div className={styles.heroHead}>
-              <div>
-                <div className={styles.heroLab}>Patrimonio neto</div>
-                <div className={styles.heroValor}>
-                  <MoneyValue value={patrimonioNeto} decimals={0} tone="ink" size="kpiStar" />
-                </div>
-                <div
-                  className={[
-                    styles.heroDelta,
-                    delta30d ? (delta30d.valor >= 0 ? styles.pos : styles.neg) : styles.muted,
-                  ].filter(Boolean).join(' ')}
-                >
-                  {delta30d ? (
-                    <>
-                      {delta30d.valor >= 0
-                        ? <Icons.ArrowUpRight size={14} strokeWidth={2} />
-                        : <Icons.ArrowDownRight size={14} strokeWidth={2} />
-                      }
-                      <MoneyValue value={delta30d.valor} decimals={0} showSign tone="auto" />
-                      <span>
-                        ({new Intl.NumberFormat('es-ES', { signDisplay: 'exceptZero', maximumFractionDigits: 1 }).format(delta30d.pct)}%)
-                      </span>
-                      <span className={styles.heroDeltaMeta}>· últimos 30 días</span>
-                    </>
-                  ) : (
-                    <span className={styles.heroDeltaMeta}>histórico no disponible</span>
-                  )}
-                </div>
-              </div>
-              <div className={styles.heroMetaRight}>
-                <div className={styles.heroMetaLab}>Activos totales</div>
-                <div className={styles.heroMetaVal}>
-                  <MoneyValue value={activosTotales} decimals={0} tone="ink" />
-                </div>
-                <div className={styles.heroMetaLab} style={{ marginTop: 10 }}>
-                  Deuda viva
-                </div>
-                <div className={`${styles.heroMetaVal} ${styles.neg}`}>
-                  <MoneyValue value={-deudaViva} decimals={0} showSign tone="neg" />
-                </div>
-              </div>
-            </div>
+          <HeroPatrimonio
+            patrimonioNeto={patrimonioNeto}
+            activosTotales={activosTotales}
+            deudaViva={deudaViva}
+            cuotaMensual={cuotaMensualPrestamos}
+            valorInmuebles={valorInmuebles}
+            saldoTesoreria={saldoTesoreria}
+            valorInversiones={valorInversiones}
+            anillo={anillo}
+            onNavigate={navigate}
+          />
 
-            {/* Composición γ · 3 segmentos activos · NO Financiación · § Z.8 T22.2 */}
-            <CompositionBar
-              segments={[
-                {
-                  key: 'inmuebles',
-                  label: 'Inmuebles',
-                  value: valorInmuebles,
-                  color: 'brand',
-                  onClick: () => navigate('/inmuebles'),
-                },
-                {
-                  key: 'inversiones',
-                  label: 'Inversiones',
-                  value: valorInversiones,
-                  color: 'gold',
-                  onClick: () => navigate('/inversiones'),
-                },
-                {
-                  key: 'tesoreria',
-                  label: 'Tesorería',
-                  value: saldoTesoreria,
-                  color: 'pos',
-                  onClick: () => navigate('/tesoreria'),
-                },
-              ]}
-            />
-          </div>
-
-          {/* Pulso 4 activos · § Z.9 · § AA.4 · T22.3 */}
-          <div className={styles.secTitle}>Pulso de los 4 activos</div>
-          <div className={styles.activosGrid}>
-            {/* Inmuebles · § AA.4 Building2 */}
-            <PulseAssetCard
-              variant="inmuebles"
-              label="Inmuebles"
-              value={valorInmuebles}
-              delta={null}
-              extraLabel="Rdto neto mes"
-              extraValue={null}
-              // TODO: conectar con servicio inmuebles para mostrar rdto neto mensual real
-              onClick={() => navigate('/inmuebles')}
-            />
-
-            {/* Inversiones · § AA.4 TrendingUp */}
-            <PulseAssetCard
-              variant="inversiones"
-              label="Inversiones"
-              value={valorInversiones}
-              delta={null}
-              extraLabel="Rentab. YTD"
-              extraValue={null}
-              // TODO: conectar con servicio inversiones para mostrar rentabilidad YTD real
-              onClick={() => navigate('/inversiones')}
-            />
-
-            {/* Tesorería · § AA.4 Wallet */}
-            <PulseAssetCard
-              variant="tesoreria"
-              label="Tesorería"
-              value={saldoTesoreria}
-              delta={null}
-              extraLabel="Meses colchón"
-              extraValue={null}
-              // TODO: conectar con tesorería/gastoMedio para mostrar meses colchón reales
-              onClick={() => navigate('/tesoreria')}
-            />
-
-            {/* Financiación · § AA.4 Landmark */}
-            <PulseAssetCard
-              variant="financiacion"
-              label="Financiación"
-              value={-deudaViva}
-              valueNeg
-              valueShowSign
-              delta={null}
-              extraLabel="Cuota mes"
-              extraValue={cuotaMensualPrestamos > 0 ? `−${fmtImporte(cuotaMensualPrestamos)}` : null}
-              extraNeg={cuotaMensualPrestamos > 0}
-              onClick={() => navigate('/financiacion')}
-            />
-          </div>
-
-          {/* Pulso del mes · § Z.10 · T22.4 */}
-          <PulsoDelMes
-            ingresos={pulsoMes.ingresos}
-            gastos={pulsoMes.gastos}
-            cashflow={pulsoMes.cashflow}
-            saldoFin={pulsoMes.saldoFin}
+          <ComoVaElMes
             mesNombre={mesNombre}
-            año={añoActual}
+            hayDatos={treasuryEvents.length > 0}
+            mes={mes}
+            saldoActual={saldoTesoreria}
+            onIrTesoreria={() => navigate('/tesoreria')}
           />
 
-          {/* Two-cols · Piden tu atención + Mi Plan brújula · § Z.11 · T22.5/T22.6 */}
-          <div className={styles.twoColsGrid}>
-            {/* Piden tu atención · § Z.11 · § AA.6 · T22.5 */}
-            <AttentionList
-              alertas={alertas}
-              onVerTodas={() => navigate('/tesoreria')}
-              onAlertaClick={(a) => navigate(a.href)}
-            />
-
-            {/* Mi Plan brújula · § Z.11 · T22.6 · T27.4.2 KPIs reales */}
-            <MiPlanCompass
-              pctCobertura={
-                // Usar % de cobertura de la proyección neta cuando disponible
-                // para alinear con el año mostrado (ambos usan renta neta)
-                libertadData?.pctCoberturaActual ?? planMetrics.pctCobertura
-              }
-              añoLibertad={
-                libertadLoading
-                  ? '…'
-                  : libertadError
-                    ? 'error al calcular'
-                    : libertadData?.cruceLibertad
-                      ? String(libertadData.cruceLibertad.anio)
-                      : '—'
-              }
-              mesesColchon={planMetrics.mesesColchon}
-              rentaPasiva={planMetrics.rentaPasiva}
-              gastoVida={planMetrics.gastoVida}
-              inmueblesActivos={planMetrics.inmueblesActivos}
-              metaInmuebles={planMetrics.metaInmuebles}
-            />
-          </div>
-
-          {/* Timeline 12 meses · § Z.12 · § AA.7 · T22.7 */}
-          <YearTimeline
-            treasuryEvents={treasuryEvents}
-            contracts={contracts}
-            prestamos={prestamos}
-            today={today}
+          <PuedesEstarTranquilo
+            colchon={colchon}
+            sinConciliar={sinConciliar}
+            proximos30={proximos30}
+            irpf={irpf}
           />
+
+          <AccionesRapidas onNavigate={navigate} />
         </>
       )}
     </div>
