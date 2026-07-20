@@ -27,12 +27,29 @@ export interface MesVM {
   quedaSalir: number;
   nQuedaSalir: number;
   saldoFin: number;
+  /**
+   * false si hay compromisos recurrentes activos este mes pero NO se generó
+   * ningún evento (la regla opex no ha corrido) · entonces el saldo a fin de
+   * mes no es fiable y se muestra estado vacío (decisión Jose).
+   */
+  saldoFinFiable: boolean;
 }
 
-/** Colchón · divisor = cuota mensual de préstamos (decisión Jose). */
+/**
+ * Colchón · divisor = TODO lo que sale al mes aunque no entre ingreso
+ * (cuota de préstamos + gastos fijos recurrentes prorrateados). Decisión Jose.
+ * Los flags permiten declarar en el subtítulo qué NO se está contando.
+ */
 export type ColchonVM =
-  | { estado: 'sin-cuotas' }
-  | { estado: 'ok'; meses: number };
+  | { estado: 'sin-datos' }
+  | {
+      estado: 'ok';
+      meses: number;
+      /** true si el divisor incluye gastos fijos de vida/recurrentes registrados. */
+      cuentaVida: boolean;
+      /** true si hay inmuebles cuya comunidad/IBI no se está contando. */
+      hayInmuebles: boolean;
+    };
 
 export interface SinConciliarVM {
   count: number;

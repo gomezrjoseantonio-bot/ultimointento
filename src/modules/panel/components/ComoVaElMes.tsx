@@ -69,8 +69,24 @@ const ComoVaElMes: React.FC<ComoVaElMesProps> = ({
         </div>
         <div className={`${styles.c} ${styles.cierre}`}>
           <div className={styles.lab}>Saldo a fin de mes</div>
-          <div className={`${styles.mval} mono`}>{fmtEur(mes.saldoFin)}</div>
-          <div className={styles.msub}>hoy tienes {fmtEur(saldoActual)}</div>
+          {mes.saldoFinFiable ? (
+            <>
+              <div className={`${styles.mval} mono`}>{fmtEur(mes.saldoFin)}</div>
+              <div className={styles.msub}>
+                hoy tienes {fmtEur(saldoActual)} · no incluye gastos recurrentes aún no generados
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={`${styles.mval} mono`}>—</div>
+              <div className={styles.msub}>
+                no fiable · faltan gastos recurrentes por generar
+                <button className={styles.emptyCta} onClick={onIrTesoreria}>
+                  actualiza en Tesorería
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     )}

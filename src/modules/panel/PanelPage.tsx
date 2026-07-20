@@ -49,6 +49,8 @@ import ComoVaElMes from './components/ComoVaElMes';
 import PuedesEstarTranquilo from './components/PuedesEstarTranquilo';
 import AccionesRapidas from './components/AccionesRapidas';
 import type { AnilloState } from './components/types';
+import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
+import { costeMensualRecurrente, importeRecurrenteEnMes } from './compromisosMensual';
 import { decideFirstRun } from '../onboarding/empezar/FirstRunRedirect';
 import { useProyeccionLibertad } from '../../hooks/useProyeccionLibertad';
 import styles from './PanelPage.module.css';
@@ -104,6 +106,7 @@ const PanelPage: React.FC = () => {
   const [treasuryEvents, setTreasuryEvents] = useState<TreasuryEvent[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [escenario, setEscenario] = useState<Escenario | null>(null);
+  const [compromisos, setCompromisos] = useState<CompromisoRecurrente[]>([]);
   const [loading, setLoading] = useState(true);
   const [nombreUsuario, setNombreUsuario] = useState<string>('usuario');
   const [valoracionMatcher, setValoracionMatcher] = useState<ValoracionMatcher | null>(null);
@@ -115,13 +118,14 @@ const PanelPage: React.FC = () => {
     (async () => {
       try {
         const [db, ctx] = await Promise.all([initDB(), getFiscalContextSafe()]);
-        const [props, items, accs, prest, tevents, conts] = await Promise.all([
+        const [props, items, accs, prest, tevents, conts, comps] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           getAllCartaItems(),
           db.getAll('accounts') as Promise<Account[]>,
           db.getAll('prestamos') as Promise<Prestamo[]>,
           db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
           db.getAll('contracts') as Promise<Contract[]>,
+          db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
         ]);
         if (cancelled) return;
         setProperties(props);
@@ -130,6 +134,7 @@ const PanelPage: React.FC = () => {
         setPrestamos(prest.filter((p) => p.activo !== false && p.estado !== 'cancelado'));
         setTreasuryEvents(tevents);
         setContracts(conts);
+        setCompromisos(comps);
         if (ctx?.nombre) setNombreUsuario(ctx.nombre);
 
         const escenarios = (await db.getAll('escenarios')) as Escenario[];
@@ -287,6 +292,20 @@ const PanelPage: React.FC = () => {
     // Saldo a fin de mes = saldo actual + lo que aún debe entrar − lo que aún debe salir.
     const saldoFin = saldoTesoreria + quedaEntrar - quedaSalir;
 
+    // Fiabilidad del saldo · la regla opex regenera treasuryEvents de forma
+    // perezosa (al visitar Tesorería/Gastos/Inmueble). Si hay compromisos que
+    // deberían descargar gasto ESTE mes pero no se generó NINGÚN evento
+    // recurrente, al saldo le falta gasto → no es fiable (decisión Jose).
+    const esperadoRecurrenteMes = importeRecurrenteEnMes(compromisos, today);
+    const generadoRecurrenteMes = enMes
+      .filter(
+        (ev) =>
+          esSalida(ev) &&
+          (ev.sourceType === 'opex_rule' || ev.sourceType === 'gasto_recurrente'),
+      )
+      .reduce((s, ev) => s + magnitud(ev), 0);
+    const saldoFinFiable = !(esperadoRecurrenteMes > 0 && generadoRecurrenteMes === 0);
+
     return {
       haEntrado,
       nEntrado: ingresosCobrados.length,
@@ -297,17 +316,34 @@ const PanelPage: React.FC = () => {
       quedaSalir,
       nQuedaSalir: salidasPendientes.length,
       saldoFin,
+      saldoFinFiable,
     };
-  }, [treasuryEvents, today, saldoTesoreria]);
+  }, [treasuryEvents, today, saldoTesoreria, compromisos]);
 
   // ── Puedes estar tranquilo ───────────────────────────────────────────────
 
-  // Colchón · divisor = SOLO cuota mensual de préstamos (decisión Jose · los
-  // gastos recurrentes de inmueble no son calculables de forma fiable · FASE A §3).
+  // Colchón · "si no entrara ningún ingreso (ni alquileres ni nómina), ¿cuánto
+  // aguanta la cartera?". Divisor = TODO lo que sale al mes (decisión Jose):
+  //   · cuota de préstamos ................. cuotaMensualPrestamos (fiable)
+  //   · gastos fijos recurrentes + de vida . compromisosRecurrentes prorrateados
+  //   · comunidad/IBI de inmuebles de inversión → NO modelados como compromiso
+  //     (types/compromisosRecurrentes.ts:56-58) → NO se cuentan → se declara.
+  // Como puede faltar parte del divisor, el número es optimista y el subtítulo
+  // dice expresamente qué no está contando.
+  const gastoFijoRecurrenteMensual = useMemo(
+    () => costeMensualRecurrente(compromisos, today),
+    [compromisos, today],
+  );
   const colchon = useMemo(() => {
-    if (cuotaMensualPrestamos <= 0) return { estado: 'sin-cuotas' as const };
-    return { estado: 'ok' as const, meses: saldoTesoreria / cuotaMensualPrestamos };
-  }, [saldoTesoreria, cuotaMensualPrestamos]);
+    const divisor = cuotaMensualPrestamos + gastoFijoRecurrenteMensual;
+    if (divisor <= 0) return { estado: 'sin-datos' as const };
+    return {
+      estado: 'ok' as const,
+      meses: saldoTesoreria / divisor,
+      cuentaVida: gastoFijoRecurrenteMensual > 0,
+      hayInmuebles: properties.length > 0,
+    };
+  }, [saldoTesoreria, cuotaMensualPrestamos, gastoFijoRecurrenteMensual, properties]);
 
   // Sin conciliar · ingreso previsto ya vencido y sin cuadrar con el banco (de
   // cualquier periodo). NO afirma impago (FASE A §3, gate 2).
@@ -396,11 +432,6 @@ const PanelPage: React.FC = () => {
       {/* 1 · Cabecera blanca · saludo + fecha (sin subtítulos de estado) */}
       <PageHead title={`${saludo(today)}, ${nombreUsuario}`} sub={fechaLabel} />
 
-      {/* Semáforo onboarding · se auto-oculta cuando la foto está al 100% */}
-      <div className={styles.fotoWrap}>
-        <FotoActualWidget />
-      </div>
-
       {empty ? (
         <EmptyState
           icon={LayoutDashboard}
@@ -439,6 +470,12 @@ const PanelPage: React.FC = () => {
           />
 
           <AccionesRapidas onNavigate={navigate} />
+
+          {/* Semáforo onboarding · andamio de arranque · va al final, después de
+              acciones rápidas (decisión Jose) · se auto-oculta al 100%. */}
+          <div className={styles.fotoWrap}>
+            <FotoActualWidget />
+          </div>
         </>
       )}
     </div>

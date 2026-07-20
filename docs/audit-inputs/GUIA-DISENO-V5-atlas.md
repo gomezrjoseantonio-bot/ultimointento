@@ -113,9 +113,15 @@ ambigüedad es lo que hizo que spec y código no coincidieran.
   --atlas-v5-on-navy-2: #E4E8F0; /* texto principal sobre navy */
   --atlas-v5-on-navy-3: #C7CDDC; /* texto secundario */
   --atlas-v5-on-navy-4: #AEB6C8; /* terciario · nav lateral */
-  --atlas-v5-on-navy-5: #8E96AA; /* etiquetas · sutil */
-  --atlas-v5-on-navy-6: #7E869A; /* ejes de gráfico · muy sutil */
-  --atlas-v5-on-navy-7: #6E7688; /* separadores de escala */
+  --atlas-v5-on-navy-5: #8E96AA; /* DECORACIÓN · etiquetas de escala · sutil */
+  --atlas-v5-on-navy-6: #7E869A; /* DECORACIÓN · ejes de gráfico · muy sutil */
+  --atlas-v5-on-navy-7: #6E7688; /* DECORACIÓN · separadores de escala */
+
+  /* REGLA DE CONTRASTE SOBRE NAVY (decisión Jose · T-CC-PANEL versión C):
+     Ningún dato INFORMATIVO por debajo de on-navy-4. Si algo comunica un valor
+     (importe · etiqueta de KPI · fecha · texto de estado vacío), va de
+     on-navy-4 hacia arriba. Los niveles 5-6-7 quedan RESERVADOS a decoración
+     pura: ejes, marcas de escala, separadores, bordes punteados, iconos sutiles. */
 
   /* Tinta SOBRE oro */
   --atlas-v5-on-gold: #2A1F08;

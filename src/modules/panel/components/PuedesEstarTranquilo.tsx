@@ -32,6 +32,15 @@ const PuedesEstarTranquilo: React.FC<PuedesEstarTranquiloProps> = ({
   const conciliarAlerta = sinConciliar.count > 0;
   const proximosAlerta = proximos30.count > 0;
 
+  // Subtítulo del colchón · declara el escenario y QUÉ no está contando (Jose).
+  const colchonSub = (() => {
+    if (colchon.estado !== 'ok') return 'sin cuotas ni gastos fijos que cubrir';
+    const base = 'si no entrara ningún ingreso · ni alquileres ni nómina';
+    if (!colchon.cuentaVida) return `${base} · aún no cuenta tus gastos fijos de vida`;
+    if (colchon.hayInmuebles) return `${base} · no incluye comunidad ni IBI de tus inmuebles`;
+    return base;
+  })();
+
   return (
     <section className={styles.sec}>
       <div className={styles.head}>
@@ -48,20 +57,13 @@ const PuedesEstarTranquilo: React.FC<PuedesEstarTranquiloProps> = ({
             <span className={styles.lab}>Colchón</span>
           </div>
           {colchon.estado === 'ok' ? (
-            <>
-              <div className={`${styles.val} ${colchonAlerta ? styles.warn : ''} mono`}>
-                {fmtMeses(colchon.meses)} meses
-              </div>
-              <div className={styles.cardSub}>
-                aguantas las cuotas de tus préstamos sin que entre un euro de alquiler
-              </div>
-            </>
+            <div className={`${styles.val} ${colchonAlerta ? styles.warn : ''} mono`}>
+              {fmtMeses(colchon.meses)} meses
+            </div>
           ) : (
-            <>
-              <div className={`${styles.val} mono`}>—</div>
-              <div className={styles.cardSub}>no tienes préstamos con cuota que cubrir</div>
-            </>
+            <div className={`${styles.val} mono`}>—</div>
           )}
+          <div className={styles.cardSub}>{colchonSub}</div>
         </div>
 
         {/* Sin conciliar */}

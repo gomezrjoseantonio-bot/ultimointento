@@ -40,7 +40,7 @@
 .delta {
   margin-top: 10px;
   font-size: 12.5px;
-  color: var(--atlas-v5-on-navy-5);
+  color: var(--atlas-v5-on-navy-3);
 }
 
 .compo {
@@ -120,7 +120,7 @@
 
 .hdLab {
   font-size: 10.5px;
-  color: var(--atlas-v5-on-navy-5);
+  color: var(--atlas-v5-on-navy-4);
   letter-spacing: 0.04em;
 }
 
@@ -160,7 +160,7 @@
 
 .chartSub {
   font-size: 11px;
-  color: var(--atlas-v5-on-navy-5);
+  color: var(--atlas-v5-on-navy-4);
   margin-top: 6px;
   line-height: 1.45;
 }
