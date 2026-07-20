@@ -10,12 +10,12 @@ module.exports = {
         // ATLAS v4 — Solo 3 familias: Navy, Teal, Gris
         'atlas-blue': 'var(--atlas-v5-brand)',
         'atlas-blue-dark': 'var(--atlas-v5-brand)',
-        'atlas-navy-1': '#303A4C',
+        'atlas-navy-1': 'var(--atlas-v5-ink-2)',
         'atlas-navy-2': 'var(--atlas-v5-brand)',
         'atlas-teal': '#1DA0BA',
         'atlas-teal-dark': '#178999',
-        'bg': '#F8F9FA',
-        'text-gray': '#6C757D',
+        'bg': 'var(--atlas-v5-bg)',
+        'text-gray': 'var(--atlas-v5-ink-3)',
 
         // v4: Functional states mapped to navy/teal/gris (NO semaphore)
         'ok': '#042C5E',
@@ -35,7 +35,7 @@ module.exports = {
         // ATLAS Utility Tokens
         'primary-50': 'var(--atlas-v5-brand-wash)',
         'primary-100': 'var(--atlas-v5-brand-wash)',
-        'primary-200': '#C8D0DC',
+        'primary-200': 'var(--atlas-v5-ink-5)',
 
         // Legacy brand colors (backward compatibility)
         'brand-navy': 'var(--atlas-v5-brand)',
@@ -44,8 +44,8 @@ module.exports = {
         // v4: Horizon tokens → navy
         'hz-primary': 'var(--atlas-v5-brand)',
         'hz-primary-dark': 'var(--atlas-v5-brand)',
-        'hz-bg': '#F8F9FA',
-        'hz-text': '#303A4C',
+        'hz-bg': 'var(--atlas-v5-bg)',
+        'hz-text': 'var(--atlas-v5-ink-2)',
         'hz-success': '#042C5E',
         'hz-warning': '#6C757D',
         'hz-error': '#303A4C',
@@ -58,22 +58,22 @@ module.exports = {
         'movement-vencido': '#6C757D',
         'movement-no-previsto': '#6C757D',
 
-        // v4: Horizon Neutral Colors
-        'hz-neutral-900': '#303A4C',
-        'hz-neutral-700': '#6C757D',
-        'hz-neutral-500': '#6C757D',
-        'hz-neutral-300': '#DDE3EC',
-        'hz-neutral-100': '#F8F9FA',
-        'hz-card-bg': '#FFFFFF',
+        // v4: Horizon Neutral Colors → repuntado a v5 (Fase B · grises)
+        'hz-neutral-900': 'var(--atlas-v5-ink-2)',
+        'hz-neutral-700': 'var(--atlas-v5-ink-3)',
+        'hz-neutral-500': 'var(--atlas-v5-ink-3)',
+        'hz-neutral-300': 'var(--atlas-v5-line)',
+        'hz-neutral-100': 'var(--atlas-v5-bg)',
+        'hz-card-bg': 'var(--atlas-v5-card)',
 
         // Legacy horizon colors (backward compat)
         'horizon-navy': 'var(--atlas-v5-brand)',
 
-        // Navy palette — repuntado a v5 (Fase B · azules)
+        // Navy palette — repuntado a v5 (Fase B · azules + grises)
         navy: {
           50: 'var(--atlas-v5-brand-wash)',
           100: 'var(--atlas-v5-brand-wash)',
-          200: '#C8D0DC',
+          200: 'var(--atlas-v5-ink-5)',
           500: 'var(--atlas-v5-brand-2)',
           600: 'var(--atlas-v5-brand)',
           700: 'var(--atlas-v5-brand)',
@@ -81,11 +81,11 @@ module.exports = {
           900: 'var(--atlas-v5-brand)',
         },
 
-        // Primary = navy (Fase B · azules)
+        // Primary = navy (Fase B · azules + grises)
         primary: {
           50: 'var(--atlas-v5-brand-wash)',
           100: 'var(--atlas-v5-brand-wash)',
-          200: '#C8D0DC',
+          200: 'var(--atlas-v5-ink-5)',
           500: 'var(--atlas-v5-brand-2)',
           600: 'var(--atlas-v5-brand)',
           700: 'var(--atlas-v5-brand)',
@@ -135,32 +135,30 @@ module.exports = {
         // Semantic aliases
         danger: '#303A4C',
 
-        // Neutral colors
+        // Neutral colors — repuntado a v5 (Fase B · grises)
         neutral: {
-          50: '#FFFFFF',
-          100: '#F8F9FA',
-          200: '#DDE3EC',
-          300: '#C8D0DC',
-          400: '#9CA3AF',
-          500: '#6C757D',
-          600: '#475569',
-          700: '#303A4C',
-          800: '#1A2332',
-          900: '#1A2332',
-          950: '#0F172A',
+          50: 'var(--atlas-v5-card)',
+          100: 'var(--atlas-v5-bg)',
+          200: 'var(--atlas-v5-line)',
+          300: 'var(--atlas-v5-ink-5)',
+          400: 'var(--atlas-v5-ink-4)',
+          500: 'var(--atlas-v5-ink-3)',
+          600: 'var(--atlas-v5-ink-3)',
+          700: 'var(--atlas-v5-ink-2)',
+          800: 'var(--atlas-v5-ink)',
+          900: 'var(--atlas-v5-ink)',
         },
         gray: {
-          50: '#FFFFFF',
-          100: '#F8F9FA',
-          200: '#DDE3EC',
-          300: '#C8D0DC',
-          400: '#9CA3AF',
-          500: '#6C757D',
-          600: '#475569',
-          700: '#303A4C',
-          800: '#1A2332',
-          900: '#1A2332',
-          950: '#0F172A',
+          50: 'var(--atlas-v5-card)',
+          100: 'var(--atlas-v5-bg)',
+          200: 'var(--atlas-v5-line)',
+          300: 'var(--atlas-v5-ink-5)',
+          400: 'var(--atlas-v5-ink-4)',
+          500: 'var(--atlas-v5-ink-3)',
+          600: 'var(--atlas-v5-ink-3)',
+          700: 'var(--atlas-v5-ink-2)',
+          800: 'var(--atlas-v5-ink)',
+          900: 'var(--atlas-v5-ink)',
         }
       },
       fontFamily: {
