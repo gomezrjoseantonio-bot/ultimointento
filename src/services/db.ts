@@ -4,7 +4,11 @@ import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfil
 import type { DeclaracionCompleta } from '../types/declaracionCompleta';
 // Fase 0 · los valores del schema son `any`, así que los tipos de dominio que solo
 // usaba la interfaz ya no se importan (volverán en Tanda N al endurecer cada store).
-import type { Escenario } from '../types/miPlan';
+import type { Escenario, Objetivo, FondoAhorro, Reto } from '../types/miPlan';
+import type { BenchmarkReferencia } from '../types/benchmarksReferencia';
+import type { AvisoCerrado } from '../types/avisosUsuario';
+import type { ObjetivoVital } from '../types/objetivosVitales';
+import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type { ViviendaHabitual } from '../types/viviendaHabitual';
 import type {
   ArrastresEjercicio,
@@ -2540,7 +2544,7 @@ interface AtlasHorizonDB extends DBSchema {
   ejerciciosFiscalesCoord: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey } }; // V3.7: Modelo fiscal coordinador (4 regímenes) · TANDA1-DIFERIDO(Caso 2): tipo real=EjercicioFiscalCoord, discrepancia en declaracionDistributorService.ts:491,500
   vinculosAccesorio: { key: IDBValidKey; value: VinculoAccesorio; indexes: { 'inmuebleAccesorioId': IDBValidKey; 'inmueblePrincipalId': IDBValidKey; 'principal-accesorio-ejercicio': IDBValidKey } }; // V3.9: Vínculos temporales accesorio (parking/trastero) por ejercicio
   // ─── ATLAS Personal v1.1 (V5.3) ────────────────────────────────────────
-  compromisosRecurrentes: { key: IDBValidKey; value: any; indexes: { 'ambito': IDBValidKey; 'categoria': IDBValidKey; 'cuentaCargo': IDBValidKey; 'estado': IDBValidKey; 'fechaInicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } }; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01) · TAREA 9: bootstrap desde histórico vía `compromisoDetectionService` + creación idempotente vía `compromisoCreationService` · activa la vía A del `movementSuggestionService` cuando el store deja de estar vacío. Ver `docs/T9-cierre.md`.
+  compromisosRecurrentes: { key: IDBValidKey; value: CompromisoRecurrente; indexes: { 'ambito': IDBValidKey; 'categoria': IDBValidKey; 'cuentaCargo': IDBValidKey; 'estado': IDBValidKey; 'fechaInicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } }; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01) · TAREA 9: bootstrap desde histórico vía `compromisoDetectionService` + creación idempotente vía `compromisoCreationService` · activa la vía A del `movementSuggestionService` cuando el store deja de estar vacío. Ver `docs/T9-cierre.md`.
   /**
    * V5.3 · ficha de la vivienda habitual del hogar · genera derivados
    * (sección 6 del modelo Personal v1.1).
@@ -2554,14 +2558,14 @@ interface AtlasHorizonDB extends DBSchema {
    */
   viviendaHabitual: { key: IDBValidKey; value: ViviendaHabitual; indexes: { 'activa': IDBValidKey; 'personalDataId': IDBValidKey; 'vigenciaDesde': IDBValidKey } };
   // ─── Mi Plan v3 (V5.4–V5.7) ─────────────────────────────────────────────
-  escenarios: { key: IDBValidKey; value: any; indexes: {} };     // V5.4: singleton escenario libertad activo (renombrado de objetivos_financieros)
-  objetivos: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'fondoId': IDBValidKey; 'prestamoId': IDBValidKey; 'tipo': IDBValidKey } };       // V5.5: lista de objetivos (acumular · amortizar · comprar · reducir)
-  fondos_ahorro: { key: IDBValidKey; value: any; indexes: { 'activo': IDBValidKey; 'tipo': IDBValidKey } }; // V5.6: fondos de ahorro con etiquetas de propósito
-  retos: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'mes': IDBValidKey; 'tipo': IDBValidKey } };               // V5.7: retos mensuales (1 activo por mes)
+  escenarios: { key: IDBValidKey; value: Escenario; indexes: {} };     // V5.4: singleton escenario libertad activo (renombrado de objetivos_financieros)
+  objetivos: { key: IDBValidKey; value: Objetivo; indexes: { 'estado': IDBValidKey; 'fondoId': IDBValidKey; 'prestamoId': IDBValidKey; 'tipo': IDBValidKey } };       // V5.5: lista de objetivos (acumular · amortizar · comprar · reducir)
+  fondos_ahorro: { key: IDBValidKey; value: FondoAhorro; indexes: { 'activo': IDBValidKey; 'tipo': IDBValidKey } }; // V5.6: fondos de ahorro con etiquetas de propósito
+  retos: { key: IDBValidKey; value: Reto; indexes: { 'estado': IDBValidKey; 'mes': IDBValidKey; 'tipo': IDBValidKey } };               // V5.7: retos mensuales (1 activo por mes)
   deudasFiscales: { key: IDBValidKey; value: DeudaFiscal; indexes: { 'ejercicio': IDBValidKey; 'estado': IDBValidKey; 'modelo': IDBValidKey; 'notificada': IDBValidKey } }; // V71: deudas fiscales con AEAT (modelos 100/303/130/184) · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1
-  benchmarksReferencia: { key: IDBValidKey; value: any; indexes: { 'codigo': IDBValidKey; 'tipo': IDBValidKey; 'ultimaActualizacion': IDBValidKey } }; // V72: índices de referencia editables (MSCI World · S&P 500 · IPC ES · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.A
-  avisosUsuario: { key: IDBValidKey; value: any; indexes: {} }; // V73: avisos cerrables (banners X) · T-INVERSIONES-DETALLE-PP-v1 §4.E
-  objetivosVitales: { key: IDBValidKey; value: any; indexes: { 'fechaEstimada': IDBValidKey; 'planFinancieroAsociado': IDBValidKey; 'tipo': IDBValidKey } }; // V73: hitos vitales (jubilación · salida empresa · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.C Caso B
+  benchmarksReferencia: { key: IDBValidKey; value: BenchmarkReferencia; indexes: { 'codigo': IDBValidKey; 'tipo': IDBValidKey; 'ultimaActualizacion': IDBValidKey } }; // V72: índices de referencia editables (MSCI World · S&P 500 · IPC ES · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.A
+  avisosUsuario: { key: IDBValidKey; value: AvisoCerrado; indexes: {} }; // V73: avisos cerrables (banners X) · T-INVERSIONES-DETALLE-PP-v1 §4.E
+  objetivosVitales: { key: IDBValidKey; value: ObjetivoVital; indexes: { 'fechaEstimada': IDBValidKey; 'planFinancieroAsociado': IDBValidKey; 'tipo': IDBValidKey } }; // V73: hitos vitales (jubilación · salida empresa · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.C Caso B
   // ─── Stores físicos declarados en Fase 0 (antes sin tipar · stores_no_tipados) ───
   gastosInmueble: { key: IDBValidKey; value: GastoInmueble; indexes: { 'casillaAEAT': IDBValidKey; 'ejercicio': IDBValidKey; 'estado': IDBValidKey; 'inmueble-ejercicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'movimientoId': IDBValidKey; 'origen': IDBValidKey; 'origen-origenId': IDBValidKey; 'treasuryEventId': IDBValidKey } };
   mejorasInmueble: { key: IDBValidKey; value: MejoraInmueble; indexes: { 'ejercicio': IDBValidKey; 'inmueble-ejercicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'movimientoId': IDBValidKey; 'treasuryEventId': IDBValidKey } };
