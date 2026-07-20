@@ -344,8 +344,9 @@ export const resetAllData = async (): Promise<void> => {
 /**
  * Versión JSON ligera del snapshot — útil para inspección manual y para el
  * helper expuesto en `window.atlasDB`. Itera dinámicamente sobre TODOS los
- * stores reales presentes en la DB (no hardcodeada) y serializa los blobs
- * de `documents` como base64 in-memory.
+ * stores reales presentes en la DB (no hardcodeada). Los blobs de `documents`
+ * NO se serializan: se omiten poniendo `content: null` y marcando
+ * `_blobStripped: true` (esta vista JSON es solo para inspección de metadatos).
  *
  * Para backups completos con ficheros adjuntos, seguir usando exportSnapshot
  * (formato ZIP).

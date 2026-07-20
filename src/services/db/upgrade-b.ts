@@ -87,8 +87,8 @@ export function applyUpgradeB(db: UpgradeDB, oldVersion: number, transaction: Up
         //   Cambios NO destructivos · sólo añade campos opcionales,
         //   índices y backfill no rompedor sobre stores que SOBREVIVEN
         //   en V60. Las eliminaciones de los 19 stores se hacen en
-        //   sub-tareas 3-8. El rename `nominas → ingresos` lo cubre
-        //   sub-tarea 2 (bloque V61 más abajo).
+        //   sub-tareas 3-8. (El bloque V61 más abajo documenta que el rename
+        //   `nominas → ingresos` quedó sin copia de datos implementada.)
         //
         //   Stores afectados:
         //     1. arrastresIRPF       · añadir índice 'origen' + backfill
@@ -144,23 +144,18 @@ export function applyUpgradeB(db: UpgradeDB, oldVersion: number, transaction: Up
         }
 
         // ═══════════════════════════════════════════════════
-        // V61 — TAREA 7 sub-tarea 2: rename `nominas → ingresos`
-        //   Crea el store unificado `ingresos` (unión discriminada
-        //   `Ingreso = IngresoNomina | IngresoAutonomo | IngresoPension`)
-        //   y copia los registros existentes de `nominas` añadiendo
-        //   `tipo='nomina'`. Cambio NO destructivo: el store `nominas`
-        //   se mantiene intacto · los consumidores siguen usándolo hasta
-        //   sub-tarea 6 (cambio de consumidores). `autonomos` y
-        //   `pensiones` se absorberán en sub-tareas posteriores con su
-        //   propio mapeo de campos a la unión `Ingreso`.
-        //
-        //   Idempotencia:
-        //   - El bloque de creación de stores ya garantiza que `ingresos`
-        //     existe antes de entrar aquí.
-        //   - El backfill sólo añade registros si `ingresos` está vacío,
-        //     evitando duplicados si la migración se ejecutase dos veces
-        //     (p.ej. tras una recuperación de error).
-        // ═══════════════════════════════════════════════════
+        // V61 — store unificado `ingresos` (tipo='nomina'|'autonomo'|'pension')
+        //   El store `ingresos` se crea en la creación de stores (upgrade-a).
+        //   OJO — NO hay copia automática `nominas → ingresos` aquí: la
+        //   migración de datos que este bloque describía en su día NUNCA se
+        //   implementó (nunca existió en la historia de git). Los stores
+        //   legacy `nominas`/`autonomos`/`pensiones` tampoco se crean ya, así
+        //   que una DB moderna escribe sus rentas directamente en `ingresos`
+        //   vía el asistente de nómina (nominaService: STORE='ingresos').
+        //   Consecuencia conocida: si existiera una DB antigua con registros
+        //   físicos en un store `nominas` previo a v61, esos datos quedarían
+        //   huérfanos (no se copian). No es un caso alcanzable con el flujo
+        //   actual; documentado como deuda por si algún día reaparece.
         // ═══════════════════════════════════════════════════════════════════════
         if (oldVersion < 65) {
           // ── V65 (TAREA 13): módulo planes de pensiones ──────────────────────

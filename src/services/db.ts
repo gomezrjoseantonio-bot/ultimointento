@@ -135,17 +135,17 @@ export interface AtlasHorizonDB extends DBSchema {
    * se derivan de `personalData.situacionLaboral`.
    */
   personalModuleConfig: { key: IDBValidKey; value: PersonalModuleConfig; indexes: { 'fechaActualizacion': IDBValidKey } };
-  // nominas: ELIMINADO en V63 (sub-tarea 4 · deuda sub-tarea 2) — datos ya copiados a `ingresos` con tipo='nomina' en V61
+  // nominas: store legacy ya no se crea (su createObjectStore se retiró) — las
+  // nóminas viven en `ingresos` con tipo='nomina', escritas por nominaService.
   /**
-   * V61 (TAREA 7 sub-tarea 2): nuevo store unificado de ingresos personales.
+   * V61: store unificado de ingresos personales.
    *
    * Unifica `nominas`, `autonomos` y `pensiones` bajo una unión discriminada
-   * por `tipo`. La migración V60→V61 copia los registros de `nominas` (con
-   * `tipo='nomina'`) preservando id. V63 (sub-tarea 4) absorbe `autonomos`
-   * (con `tipo='autonomo'`) y `pensiones` (con `tipo='pension'`)
-   * reasignando ids vía autoincrement (los stores legacy se eliminan tras
-   * la copia, incluyendo `nominas` cuyo borrado quedó pendiente desde
-   * sub-tarea 2).
+   * por `tipo`. En el flujo actual las rentas se escriben directamente aquí
+   * (nominaService: STORE='ingresos'); los stores legacy `nominas`/`autonomos`/
+   * `pensiones` ya no se crean. NOTA: la copia automática `nominas → ingresos`
+   * que se describía para DBs antiguas nunca se implementó (ver upgrade-b, bloque
+   * V61) — sin impacto con el flujo actual, documentado como deuda.
    *
    * Índices: `personalDataId`, `tipo`, `fechaActualizacion`.
    *

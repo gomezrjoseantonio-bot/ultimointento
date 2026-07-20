@@ -265,11 +265,12 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
           configStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
         }
 
-        // nominas: ELIMINADO en V63 (sub-tarea 4 · deuda sub-tarea 2) — datos en `ingresos` con tipo='nomina'
+        // nominas: store legacy ya no se crea — las nóminas viven en `ingresos`
+        // con tipo='nomina' (nominaService escribe directamente ahí).
 
-        // V61 (TAREA 7 sub-tarea 2): store unificado `ingresos`. Para DBs
-        // frescas se crea aquí; para DBs existentes se crea + se rellena en
-        // el bloque `if (oldVersion < 61)` más abajo.
+        // V61: store unificado `ingresos`. Se crea aquí para cualquier DB. NO se
+        // rellena desde `nominas`: la copia para DBs antiguas nunca se implementó
+        // (ver upgrade-b, bloque V61). Sin impacto con el flujo actual.
         if (!db.objectStoreNames.contains('ingresos')) {
           const ingresosStore = db.createObjectStore('ingresos', { keyPath: 'id', autoIncrement: true });
           ingresosStore.createIndex('personalDataId', 'personalDataId', { unique: false });
