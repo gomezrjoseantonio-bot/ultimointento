@@ -1,5 +1,5 @@
 import { initDB, TreasuryEvent, Document, Movement } from './db';
-import type { OpexRule, Contract } from './db';
+import type { OpexRule, Contract, Ingreso } from './db';
 import { isCapexType } from './aeatClassificationService';
 import { calculateRentPeriodsFromContract } from './contractService';
 import { prestamosCalculationService } from './prestamosCalculationService';
@@ -88,7 +88,9 @@ export const updateTreasuryEventFromDocument = async (document: Document): Promi
  */
 export const createTreasuryEventFromIngreso = async (ingresoId: number): Promise<void> => {
   const db = await initDB();
-  const ingreso = await db.get('ingresos', ingresoId);
+  // `ingresos` es un store heterogéneo (value: unknown). Aquí se lee un registro
+  // de tesorería (escrito por treasuryCreationService) → se estrecha a Ingreso.
+  const ingreso = await db.get('ingresos', ingresoId) as Ingreso | undefined;
   if (!ingreso || ingreso.importe <= 0) return;
 
   const event: TreasuryEvent = {
@@ -111,7 +113,9 @@ export const createTreasuryEventFromIngreso = async (ingresoId: number): Promise
  */
 export const updateTreasuryEventFromIngreso = async (ingresoId: number): Promise<void> => {
   const db = await initDB();
-  const ingreso = await db.get('ingresos', ingresoId);
+  // `ingresos` es un store heterogéneo (value: unknown). Aquí se lee un registro
+  // de tesorería (escrito por treasuryCreationService) → se estrecha a Ingreso.
+  const ingreso = await db.get('ingresos', ingresoId) as Ingreso | undefined;
   if (!ingreso) return;
 
   const events = await db.getAllFromIndex('treasuryEvents', 'sourceId', ingresoId);

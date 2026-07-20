@@ -2376,7 +2376,7 @@ interface AtlasHorizonDB extends DBSchema {
    * Nota TS: en este módulo se importa con alias `IngresoPersonal` para no
    * colisionar con la interfaz local `Ingreso` (H10 · Treasury income).
    */
-  ingresos: { key: IDBValidKey; value: any; indexes: { 'fechaActualizacion': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } };
+  ingresos: { key: IDBValidKey; value: unknown; indexes: { 'fechaActualizacion': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } };
   // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
   // planesPensionInversion: eliminado en V65 — datos migrados a planesPensiones
   // ─── Módulo planes de pensiones (V65 · TAREA 13) ────────────────────────

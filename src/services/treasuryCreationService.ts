@@ -294,7 +294,7 @@ export const reconcileTreasuryRecord = async (
   try {
     // Update the Treasury record with movement link
     if (recordType === 'ingreso') {
-      const ingreso = await db.get('ingresos', recordId);
+      const ingreso = await db.get('ingresos', recordId) as Ingreso | undefined;
       if (ingreso) {
         ingreso.movement_id = movementId;
         ingreso.estado = 'cobrado';
@@ -353,7 +353,8 @@ export const findReconciliationMatches = async (): Promise<{
 
     // Get unreconciled treasury records
     const [ingresos, allGastosInmueble] = await Promise.all([
-      db.getAll('ingresos'),
+      // store heterogéneo (unknown): aquí se reconcilian registros de tesorería
+      db.getAll('ingresos') as Promise<Ingreso[]>,
       gastosInmuebleService.getAll(),
     ]);
     // Map gastosInmueble to Gasto-like shape for reconciliation
@@ -679,7 +680,7 @@ export const markAsPaidWithoutStatement = async (
   
   try {
     if (recordType === 'ingreso') {
-      const ingreso = await db.get('ingresos', recordId);
+      const ingreso = await db.get('ingresos', recordId) as Ingreso | undefined;
       if (ingreso) {
         ingreso.estado = 'cobrado';
         ingreso.movement_id = -1; // Special ID to indicate paid without statement

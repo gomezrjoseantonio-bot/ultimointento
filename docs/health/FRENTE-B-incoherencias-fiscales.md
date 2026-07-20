@@ -103,6 +103,37 @@ contratos. No es dato fiscal declarado (proyección de presupuesto).
 
 `contracts` y `properties` quedan tipados. tsc 0. 18/45 stores tipados.
 
+## `ingresos` · investigación (Tanda final) · ¿el write de tesorería es un bug? → NO
+
+El store `ingresos` es **deliberadamente heterogéneo**: conviven dos familias de
+registro y cada lector estrecha a la suya, sin contaminación cruzada.
+
+- **Personal** `Ingreso = IngresoNomina | IngresoAutonomo | IngresoPension |
+  IngresoOtro` (`types/personal.ts:468`) · discriminado por `tipo`, con
+  `personalDataId`. Son los índices del store (`tipo`, `personalDataId`,
+  `fechaActualizacion`).
+- **Tesorería** `Ingreso` (`db.ts:1725`) · `origen`/`contraparte`/`fecha_emision`/
+  `fecha_prevista_cobro`/`importe`/`destino`/`estado`. Sin `tipo` ni
+  `personalDataId`. Lo escribe `treasuryCreationService` (rentas de contratos, nóminas).
+
+Cómo conviven sin pisarse (verificado sitio a sitio):
+- `budgetProjection:288` estrecha por `.tipo` → solo personal.
+- `limitesFiscalesPlanesService:70` estrecha por `.personalDataId`+`.tipo` → solo personal.
+- lectores IRPF/conciliación/declaración usan `getAllFromIndex('tipo',…)` → solo personal.
+- **`fiscalSummaryService:366`** (excesos deducibles / carryforward · FISCAL) estrecha por
+  `.destino==='inmueble_id' && .estado==='cobrado'` y suma `.importe` → **solo tesorería**.
+- `treasuryForecastService:91,114` lee por id lo que escribió → solo tesorería.
+
+**Conclusión**: el write de tesorería NO es un bug. Es más, `fiscalSummaryService`
+(carryforward) LO NECESITA para leer las rentas de alquiler cobradas. Quitarlo
+rompería ese cálculo fiscal declarable.
+
+**Tipado** (DB_VERSION congelado → no se puede escindir): `value: unknown` (como
+`keyval`). Los 15 lectores de tesorería (`treasuryCreationService`,
+`treasuryForecastService`) que acceden a campos de tesorería sin estrechar se
+narrowean a `Ingreso` en el `get`/`getAll` (una aserción por fetch). Los lectores
+personales ya casteaban. Behavior-preserving (tests fiscales verdes).
+
 ## Para la lista (hallazgos · no son tareas)
 
 1. **`presupuestoService` · bucle de ingresos por contrato DORMIDO**: gate
