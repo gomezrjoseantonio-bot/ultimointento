@@ -657,29 +657,61 @@ function hexHardcoded() {
 
 /**
  * INDICADOR 8 · emojis_ui
- * Emojis en componentes `.tsx` de pantalla (producción):
- *   CUENTA  · caracteres en rangos emoji Unicode en .tsx no test
- *   EXCLUYE · tests · .ts (ver nota)
+ * Emojis en la interfaz de producción:
+ *   CUENTA  · caracteres en rangos emoji Unicode en .tsx no test, MÁS los emojis
+ *             en cadenas `.ts` que llevan una SEÑAL de entrega a UI en la misma
+ *             línea (`toast(`, `message:`, `title:`, `label:`, `notify`,
+ *             `snackbar`, `alert(`, `description:`, `subtitle:`, `placeholder:`).
+ *   EXCLUYE · tests · comentarios · `console.*`.
  * OBJETIVO · baja.
- * NO AMPLIADO A .ts (decisión de la auditoría de puntos ciegos): los .ts
- * contienen 122 caracteres de rango emoji, pero concentrados en SERVICIOS
- * (logs, comentarios, constantes de `treasuryCreationService`, `ocrService`,
- * `config/envFlags`…), NO en UI de pantalla. Ampliar a todo `.ts` haría DERIVAR
- * el significado ("emojis de pantalla" → "cualquier emoji en TS") y metería
- * ruido. Distinguir "string de UI" dentro de un servicio no es mecanizable
- * limpio → se deja como hallazgo, no se amplía. RESIDUO: `content:` CSS y
- * `\uXXXX` escapado tampoco se cuentan.
+ * AMPLIADO A .ts SOLO con señal de entrega (Frente A · autorizado por Jose):
+ * un servicio que devuelve `message: '✓ Guardado'` para un toast ES interfaz. La
+ * señal léxica en la misma línea distingue el string de UI del ruido de logs sin
+ * derivar el significado. Lo que NO se cuenta por diseño: emojis DEVUELTOS sueltos
+ * desde servicios (`return '🟢'`, `reasons.push('💰 …')` en ocrService,
+ * propertyAnalysisUtils, treasuryCreationService, generateLibertad) — eso es deuda
+ * de ARQUITECTURA (la capa de servicio devuelve presentación en vez de estado), se
+ * resuelve cambiando el contrato, no el escáner → va a la lista, no al indicador.
+ * RESIDUO: `content:` CSS y `\uXXXX` escapado tampoco se cuentan.
  */
 function emojisUi() {
   // Rangos emoji frecuentes (pictográficos, símbolos, dingbats, banderas)
   const re =
     /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F000}-\u{1F0FF}\u{FE00}-\u{FE0F}\u{1F1E6}-\u{1F1FF}]/gu;
+  // Señal léxica de entrega a UI (misma línea): distingue cadena de pantalla de log.
+  const uiSignal =
+    /(toast\(|showToast|notify|snackbar|alert\(|message\s*:|title\s*:|label\s*:|description\s*:|subtitle\s*:|placeholder\s*:)/i;
   let count = 0;
   for (const f of walk(SRC, (p) => p.endsWith('.tsx') && !isTestPath(p))) {
     const m = read(f).match(re);
     if (m) count += m.length;
   }
-  return { value: count };
+  // Ampliación .ts con señal de entrega a UI (no .tsx, no test).
+  for (const f of walk(SRC, (p) => p.endsWith('.ts') && !p.endsWith('.tsx') && !isTestPath(p))) {
+    for (const rawLn of read(f).split('\n')) {
+      const t = rawLn.trimStart();
+      // Salta líneas de comentario completo (// · * · /* · /**).
+      if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) continue;
+      // Descarta cualquier console.* (trace/dir/table/groupEnd/…), no solo algunos.
+      if (/console\.\w+\s*\(/.test(rawLn)) continue;
+      // Quita comentarios inline (bloque `/* … */` y línea `// …`) para no contar
+      // sus emojis; el `(^|\s)` antes de `//` preserva el `://` de las URLs.
+      const ln = rawLn.replace(/\/\*.*?\*\//g, '').replace(/(^|\s)\/\/.*$/, '$1');
+      if (!uiSignal.test(ln)) continue;
+      const m = ln.match(re);
+      if (m) count += m.length;
+    }
+  }
+  return {
+    value: count,
+    calibracion: {
+      fecha: '2026-07-20',
+      anterior: 64,
+      nueva: count,
+      motivo:
+        'Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose.',
+    },
+  };
 }
 
 /**
@@ -1018,6 +1050,7 @@ const AMPLIACIONES = {
   // Frente A · directorios · antes = valor de main pre-ampliación (se desactiva solo).
   archivos_800: { antes: 43, motivo: 'Frente A · ve functions/ y scripts/ + .mjs/.cjs (antes solo src)' },
   todos_totales: { antes: 250, motivo: 'Frente A · ve functions/ y scripts/ (antes solo src)' },
+  emojis_ui: { antes: 64, motivo: 'Frente A · ve cadenas .ts con señal de entrega a UI (toast/message:/…) · antes solo .tsx' },
   servicios_muertos: {
     antes: 0,
     motivo:
