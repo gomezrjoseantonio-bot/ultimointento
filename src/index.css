@@ -8,12 +8,14 @@
    ============================================================ */
 :root {
   /* ===== NAVY (identidad, acción, texto) ===== */
-  --navy-900: #042C5E;
-  --navy-800: #0A3A72;
-  --navy-700: #142C50;
-  --navy-600: #1E3A5F;
-  --navy-100: #E8EFF7;
-  --navy-50: #F0F4FA;
+  /* Unificado a la paleta v5: elimina la 2ª fuente de azul (navy v4) que
+     coexistia con --atlas-v5-brand. --blue/--blue-* encadenan a estos. */
+  --navy-900: var(--atlas-v5-brand);
+  --navy-800: var(--atlas-v5-brand-2);
+  --navy-700: var(--atlas-v5-brand);
+  --navy-600: var(--atlas-v5-brand-2);
+  --navy-100: var(--atlas-v5-brand-wash);
+  --navy-50: var(--atlas-v5-brand-wash);
 
   /* ===== TEAL (acento, dato vivo) ===== */
   --teal-600: #1DA0BA;
