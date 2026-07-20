@@ -1,0 +1,123 @@
+/* Cómo va el mes · cinco celdas · solo tokens --atlas-v5-*. */
+
+.sec {
+  margin-bottom: 20px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+.tit {
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-3);
+}
+
+.sub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.empty {
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: 11px;
+  padding: 22px 20px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.emptyCta {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-gold-ink);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.emptyCta:hover {
+  text-decoration: underline;
+}
+
+.mov {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 11px;
+  overflow: hidden;
+}
+
+.c {
+  padding: 15px 20px;
+  border-right: 1px solid var(--atlas-v5-line-2);
+  display: flex;
+  flex-direction: column;
+  min-height: 92px;
+}
+
+.c:last-child {
+  border-right: none;
+}
+
+.cierre {
+  background: var(--atlas-v5-card-alt);
+}
+
+.lab {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0.03em;
+}
+
+.mval {
+  font-size: 22px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  margin-top: 5px;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.mval.pos {
+  color: var(--atlas-v5-pos);
+}
+
+.mval.neg {
+  color: var(--atlas-v5-neg);
+}
+
+.msub {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: auto;
+  padding-top: 6px;
+  line-height: 1.35;
+}
+
+@media (max-width: 1180px) {
+  .mov {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .c {
+    border-bottom: 1px solid var(--atlas-v5-line-2);
+  }
+}
+
+@media (max-width: 640px) {
+  .mov {
+    grid-template-columns: 1fr;
+  }
+}

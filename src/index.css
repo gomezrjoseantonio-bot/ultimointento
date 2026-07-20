@@ -632,3 +632,10 @@ table td, .kpi, .financial-data {
   background: var(--grey-100);
   color: var(--grey-700);
 }
+
+/* Utilidad · números en JetBrains Mono con tabular-nums (§B.4 · guía v5).
+   Usa el token canónico · cero hex. Consumida por el Panel (versión C). */
+.mono {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+}
