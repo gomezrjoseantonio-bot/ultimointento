@@ -226,8 +226,8 @@ export const getTreasuryProjections = async (
     const outflow = accountEvents.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
     
     accountBalances.set(account.id!, {
-      current: account.balance,
-      projected: account.balance + inflow - outflow
+      current: account.balance ?? 0,
+      projected: (account.balance ?? 0) + inflow - outflow
     });
   }
 
@@ -272,9 +272,9 @@ export const generateTreasuryRecommendations = async (): Promise<void> => {
       // Find account with highest balance to suggest transfer from
       const sortedAccounts = accounts
         .filter(acc => acc.isActive && acc.id !== account.id)
-        .map(acc => ({ 
-          account: acc, 
-          balance: accountBalances.get(acc.id!)?.projected || acc.balance 
+        .map(acc => ({
+          account: acc,
+          balance: accountBalances.get(acc.id!)?.projected || acc.balance || 0
         }))
         .sort((a, b) => b.balance - a.balance);
       

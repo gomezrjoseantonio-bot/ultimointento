@@ -332,18 +332,15 @@ export const deleteContractWithCascade = async (
     const eventsStore = tx.objectStore('treasuryEvents');
     const events = await eventsStore.getAll();
     for (const ev of events) {
-      const contratoId = (ev as { contratoId?: number }).contratoId;
-      if (contratoId !== id) continue;
-      const evId = (ev as { id?: number }).id;
-      const status = (ev as { status?: string }).status;
-      if (evId == null) continue;
-      if (status === 'predicted') {
-        await eventsStore.delete(evId);
+      if (ev.contratoId !== id) continue;
+      if (ev.id == null) continue;
+      if (ev.status === 'predicted') {
+        await eventsStore.delete(ev.id);
         report.treasuryEventsPredictedDeleted += 1;
       } else {
-        const updated = { ...(ev as Record<string, unknown>) };
-        delete (updated as { contratoId?: number }).contratoId;
-        await eventsStore.put(updated as never);
+        const updated = { ...ev };
+        delete updated.contratoId;
+        await eventsStore.put(updated);
         report.treasuryEventsHistoricUnlinked += 1;
       }
     }

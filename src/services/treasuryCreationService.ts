@@ -344,8 +344,11 @@ export const findReconciliationMatches = async (): Promise<{
   try {
     // Get unreconciled movements
     const movements = await db.getAll('movements');
-    const unreconciledMovements = movements.filter(m => 
-      !m.estado_conciliacion || m.estado_conciliacion === 'pendiente'
+    // "No conciliado" = ausente o 'sin_conciliar'. El `=== 'pendiente'` anterior
+    // comparaba contra un valor de MovementStatus, no de ReconciliationStatus
+    // ('sin_conciliar' | 'conciliado'), así que nunca casaba.
+    const unreconciledMovements = movements.filter(m =>
+      m.estado_conciliacion !== 'conciliado'
     );
 
     // Get unreconciled treasury records

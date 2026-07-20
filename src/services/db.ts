@@ -2315,16 +2315,16 @@ interface AtlasHorizonDB extends DBSchema {
   proveedores: { key: IDBValidKey; value: Proveedor; indexes: {} }; // V3.8: entidad única proveedor por NIF
   // operacionesProveedor: ELIMINADO en V62 (sub-tarea 3) — cache desnormalizada de gastosInmueble + proveedores · 15 registros
   // kpiConfigurations: ELIMINADO en V62 (sub-tarea 3) — sustituido por keyval['kpiConfig_*'] · 0 registros
-  accounts: { key: IDBValidKey; value: any; indexes: { 'bank': IDBValidKey; 'destination': IDBValidKey; 'isActive': IDBValidKey } }; // H8: Treasury accounts
-  movements: { key: IDBValidKey; value: any; indexes: { 'accountId': IDBValidKey; 'date': IDBValidKey; 'duplicate-key': IDBValidKey; 'importBatch': IDBValidKey; 'status': IDBValidKey } }; // H8: Bank movements
-  importBatches: { key: IDBValidKey; value: any; indexes: { 'accountId': IDBValidKey; 'createdAt': IDBValidKey } }; // H8: CSV import tracking
-  treasuryEvents: { key: IDBValidKey; value: any; indexes: { 'accountId': IDBValidKey; 'ambito': IDBValidKey; 'año': IDBValidKey; 'certeza': IDBValidKey; 'generadoPor': IDBValidKey; 'inmuebleId': IDBValidKey; 'predictedDate': IDBValidKey; 'sourceId': IDBValidKey; 'sourceType': IDBValidKey; 'status': IDBValidKey; 'type': IDBValidKey } }; // H9: Treasury forecasting
+  accounts: { key: IDBValidKey; value: Account; indexes: { 'bank': IDBValidKey; 'destination': IDBValidKey; 'isActive': IDBValidKey } }; // H8: Treasury accounts
+  movements: { key: IDBValidKey; value: Movement; indexes: { 'accountId': IDBValidKey; 'date': IDBValidKey; 'duplicate-key': IDBValidKey; 'importBatch': IDBValidKey; 'status': IDBValidKey } }; // H8: Bank movements
+  importBatches: { key: IDBValidKey; value: ImportBatch; indexes: { 'accountId': IDBValidKey; 'createdAt': IDBValidKey } }; // H8: CSV import tracking
+  treasuryEvents: { key: IDBValidKey; value: TreasuryEvent; indexes: { 'accountId': IDBValidKey; 'ambito': IDBValidKey; 'año': IDBValidKey; 'certeza': IDBValidKey; 'generadoPor': IDBValidKey; 'inmuebleId': IDBValidKey; 'predictedDate': IDBValidKey; 'sourceId': IDBValidKey; 'sourceType': IDBValidKey; 'status': IDBValidKey; 'type': IDBValidKey } }; // H9: Treasury forecasting
   // treasuryRecommendations: ELIMINADO en V62 (sub-tarea 3) — derivable runtime · 0 registros
-  presupuestos: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'year': IDBValidKey } }; // H9: New budget system per specification
-  presupuestoLineas: { key: IDBValidKey; value: any; indexes: { 'categoria': IDBValidKey; 'contratoId': IDBValidKey; 'cuentaId': IDBValidKey; 'frecuencia': IDBValidKey; 'inmuebleId': IDBValidKey; 'origen': IDBValidKey; 'prestamoId': IDBValidKey; 'presupuestoId': IDBValidKey; 'tipo': IDBValidKey } }; // H9: New budget lines per specification
+  presupuestos: { key: IDBValidKey; value: Presupuesto; indexes: { 'estado': IDBValidKey; 'year': IDBValidKey } }; // H9: New budget system per specification
+  presupuestoLineas: { key: IDBValidKey; value: PresupuestoLinea; indexes: { 'categoria': IDBValidKey; 'contratoId': IDBValidKey; 'cuentaId': IDBValidKey; 'frecuencia': IDBValidKey; 'inmuebleId': IDBValidKey; 'origen': IDBValidKey; 'prestamoId': IDBValidKey; 'presupuestoId': IDBValidKey; 'tipo': IDBValidKey } }; // H9: New budget lines per specification
   // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros en producción
   // reconciliationAuditLogs: ELIMINADO en V64 (sub-tarea 5) — deuda técnica · 0 lectores · wipe
-  movementLearningRules: { key: IDBValidKey; value: any; indexes: { 'ambito': IDBValidKey; 'appliedCount': IDBValidKey; 'categoria': IDBValidKey; 'createdAt': IDBValidKey; 'learnKey': IDBValidKey } }; // V1.1: Learning rules for automatic classification
+  movementLearningRules: { key: IDBValidKey; value: MovementLearningRule; indexes: { 'ambito': IDBValidKey; 'appliedCount': IDBValidKey; 'categoria': IDBValidKey; 'createdAt': IDBValidKey; 'learnKey': IDBValidKey } }; // V1.1: Learning rules for automatic classification
   // learningLogs: ELIMINADO en V64 (sub-tarea 5) — absorbido en movementLearningRules.history[]
   inversiones: { key: IDBValidKey; value: any; indexes: { 'activo': IDBValidKey; 'entidad': IDBValidKey; 'tipo': IDBValidKey } }; // V1.3: Investment positions
   // patrimonioSnapshots: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 1 registro

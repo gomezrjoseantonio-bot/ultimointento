@@ -4,7 +4,7 @@
  * Enhanced with Treasury v1.2 cascade deletion capabilities
  */
 
-import { Account, initDB } from '../services/db';
+import { Account, Movement, initDB } from '../services/db';
 import { validateIbanEs, normalizeIban, detectBankByIBAN } from '../utils/accountHelpers';
 
 // Logging prefix for Treasury operations
@@ -135,7 +135,8 @@ class CuentasService {
         iban: account.iban,
         banco: account.banco,
         bank: account.banco?.name || 'Banco',
-        destination: 'horizon', // Set the required destination field
+        destination: 'horizon' as const, // Set the required destination field
+        status: account.status,
         activa: account.activa ?? true,
         isActive: account.activa ?? true,
         logoUser: account.logoUser,
@@ -158,7 +159,7 @@ class CuentasService {
         openingBalance: account.openingBalance ?? existingAccount?.openingBalance ?? 0,
         openingBalanceDate: account.openingBalanceDate ?? existingAccount?.openingBalanceDate ?? account.createdAt,
         includeInConsolidated: true,
-        usage_scope: 'mixto',
+        usage_scope: 'mixto' as const,
         deleted_at: account.deleted_at, // Preserve deletion status
         esRemunerada: account.esRemunerada ?? false,
         remuneracion: account.remuneracion,
@@ -392,7 +393,7 @@ class CuentasService {
         const openingBalanceDate = openingBalanceDateISO.includes('T')
           ? openingBalanceDateISO.split('T')[0]
           : openingBalanceDateISO;
-        const openingMovement = {
+        const openingMovement: Movement = {
           accountId: dbAccountId,
           date: openingBalanceDate,
           amount: openingBalance,
@@ -400,8 +401,8 @@ class CuentasService {
           counterparty: 'Sistema',
           reference: `APERTURA-${dbAccountId}`,
           balance: openingBalance,
-          status: 'conciliado',
-          state: 'confirmed',
+          status: 'conciliado' as const,
+          state: 'reconciled', // TransactionState legacy ('confirmed' no era un valor válido) · apertura = conciliada
           type: openingBalance >= 0 ? 'Ingreso' : 'Gasto',
           origin: 'Manual' as const,
           movementState: 'Confirmado',
@@ -631,7 +632,7 @@ class CuentasService {
         // Also delete from IndexedDB treasury storage
         const db = await initDB();
         const allTreasuryMovements = await db.getAll('movements');
-        const treasuryAccountMovements = allTreasuryMovements.filter(m => m.account_id === resolvedId || m.account_id === id);
+        const treasuryAccountMovements = allTreasuryMovements.filter(m => m.accountId === resolvedId || m.accountId === id);
 
         for (const movement of treasuryAccountMovements) {
           if (movement.id) {
@@ -811,7 +812,7 @@ class CuentasService {
       
       // Get all movements for this account
       const allMovements = await db.getAll('movements');
-      const accountMovements = allMovements.filter(m => m.account_id === id);
+      const accountMovements = allMovements.filter(m => m.accountId === id);
       
       console.info(`${LOG_PREFIX} Found ${accountMovements.length} movements to delete`);
       
