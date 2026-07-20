@@ -151,7 +151,9 @@ function resolveCounterpartyFromSource(
 
   if (event.sourceType === 'contract' || event.sourceType === 'contrato') {
     if (event.sourceId != null) {
-      const c = contractsById.get(event.sourceId);
+      // sourceId de un evento de contrato es el id numérico del contrato
+      // (sólo los eventos de autónomo usan clave string compuesta).
+      const c = contractsById.get(Number(event.sourceId));
       if (c) {
         const full = `${c.inquilino?.nombre ?? c.tenant?.name ?? ''} ${c.inquilino?.apellidos ?? ''}`.trim();
         if (full) return full;

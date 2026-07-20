@@ -1366,8 +1366,10 @@ export interface TreasuryEvent {
   predictedDate: string;
   description: string;
   // Source tracking
-  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'otros_ingresos' | 'inversion_compra' | 'inversion_aportacion' | 'inversion_rendimiento' | 'inversion_dividendo' | 'inversion_liquidacion' | 'irpf_prevision';
-  sourceId?: number; // Document ID or Contract ID
+  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'autonomo_gasto' | 'autonomo_cuota' | 'autonomo_gasto_legacy' | 'otros_ingresos' | 'inversion_compra' | 'inversion_aportacion' | 'inversion_rendimiento' | 'inversion_dividendo' | 'inversion_liquidacion' | 'irpf_prevision';
+  // Document/Contract ID (número) o clave compuesta (string · p.ej. autonomo:
+  // `${autonomoId}-cuota`). `isDuplicate`/`insertEvent` ya asumían number|string.
+  sourceId?: number | string;
   // GAP-3: Clasificación histórica
   año?: number;                          // Ejercicio fiscal del evento
   mes?: number;                          // Mes (1-12) si el dato es mensual
@@ -2149,7 +2151,24 @@ export interface ConfiguracionFiscal {
 export interface EjercicioFiscalCoord {
   año: number;  // keyPath — 2020, 2021, ..., 2026
 
-  estado: 'en_curso' | 'pendiente' | 'declarado' | 'prescrito';
+  // 'cerrado': el ejercicio tiene cierre ATLAS confirmado (ver cierreAtlasMetadata).
+  estado: 'en_curso' | 'pendiente' | 'declarado' | 'prescrito' | 'cerrado';
+
+  // Fecha (ISO) en que se marcó 'declarado' tras importar el XML AEAT.
+  declaradoAt?: string;
+
+  // GAP-3: metadatos del cierre ATLAS (forma canónica · ver comentario db.ts:~1529).
+  cierreAtlasMetadata?: {
+    fechaCierre: string;
+    fuenteDatos: ('xml_aeat' | 'pdf_aeat' | 'print_aeat' | 'atlas_nativo' | 'manual')[];
+    confirmadoPorUsuario: boolean;
+    fechaConfirmacion?: string;
+    gastosPersonalesEstimados: number;
+    gastosPersonalesAjustadosPorUsuario: boolean;
+    totalIngresos: number;
+    totalGastos: number;
+    cashflowNeto: number;
+  };
 
   // Fecha de prescripción (calculada: 30 jun del año+5)
   fechaPrescripcion?: string;
@@ -2542,11 +2561,11 @@ interface AtlasHorizonDB extends DBSchema {
   // documentosFiscales: ELIMINADO en V63 (sub-tarea 4) — destino documents.metadata.tipo='fiscal' · 0 registros en producción
   // arrastresManual: ELIMINADO en V63 (sub-tarea 4) — destino arrastresIRPF.origen='manual' · 0 registros en producción
   resultadosEjercicio: { key: IDBValidKey; value: ResultadoEjercicio; indexes: { 'ejercicio': IDBValidKey; 'ejercicio-estado': IDBValidKey; 'estadoEjercicio': IDBValidKey; 'origen': IDBValidKey } }; // V2.9: Immutable yearly fiscal snapshots
-  arrastresIRPF: { key: IDBValidKey; value: any; indexes: { 'ejercicioCaducidad': IDBValidKey; 'ejercicioOrigen': IDBValidKey; 'ejercicioOrigen-tipo': IDBValidKey; 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'origen': IDBValidKey; 'tipo': IDBValidKey } }; // V2.7: IRPF carry-forwards cross-year · TANDA1-DIFERIDO(§5 upgrade): tipo real=ArrastreIRPF, bloqueado por cursor.update en backfill V60
+  arrastresIRPF: { key: IDBValidKey; value: ArrastreIRPF; indexes: { 'ejercicioCaducidad': IDBValidKey; 'ejercicioOrigen': IDBValidKey; 'ejercicioOrigen-tipo': IDBValidKey; 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'origen': IDBValidKey; 'tipo': IDBValidKey } }; // V2.7: IRPF carry-forwards cross-year · TANDA1-DIFERIDO(§5 upgrade): tipo real=ArrastreIRPF, bloqueado por cursor.update en backfill V60
   perdidasPatrimonialesAhorro: { key: IDBValidKey; value: PerdidaPatrimonialAhorro; indexes: { 'ejercicioCaducidad': IDBValidKey; 'ejercicioOrigen': IDBValidKey; 'estado': IDBValidKey } }; // V3.4: pérdidas ahorro unificadas
   snapshotsDeclaracion: { key: IDBValidKey; value: SnapshotDeclaracion; indexes: { 'ejercicio': IDBValidKey; 'fechaSnapshot': IDBValidKey; 'origen': IDBValidKey } }; // V2.7: Frozen declaration snapshots
   entidadesAtribucion: { key: IDBValidKey; value: EntidadAtribucionRentas; indexes: { 'nif': IDBValidKey; 'tipoRenta': IDBValidKey } }; // V3.4: entidades en atribución de rentas
-  ejerciciosFiscalesCoord: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey } }; // V3.7: Modelo fiscal coordinador (4 regímenes) · TANDA1-DIFERIDO(Caso 2): tipo real=EjercicioFiscalCoord, discrepancia en declaracionDistributorService.ts:491,500
+  ejerciciosFiscalesCoord: { key: IDBValidKey; value: EjercicioFiscalCoord; indexes: { 'estado': IDBValidKey } }; // V3.7: Modelo fiscal coordinador (4 regímenes) · TANDA1-DIFERIDO(Caso 2): tipo real=EjercicioFiscalCoord, discrepancia en declaracionDistributorService.ts:491,500
   vinculosAccesorio: { key: IDBValidKey; value: VinculoAccesorio; indexes: { 'inmuebleAccesorioId': IDBValidKey; 'inmueblePrincipalId': IDBValidKey; 'principal-accesorio-ejercicio': IDBValidKey } }; // V3.9: Vínculos temporales accesorio (parking/trastero) por ejercicio
   // ─── ATLAS Personal v1.1 (V5.3) ────────────────────────────────────────
   compromisosRecurrentes: { key: IDBValidKey; value: CompromisoRecurrente; indexes: { 'ambito': IDBValidKey; 'categoria': IDBValidKey; 'cuentaCargo': IDBValidKey; 'estado': IDBValidKey; 'fechaInicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } }; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01) · TAREA 9: bootstrap desde histórico vía `compromisoDetectionService` + creación idempotente vía `compromisoCreationService` · activa la vía A del `movementSuggestionService` cuando el store deja de estar vacío. Ver `docs/T9-cierre.md`.
@@ -3231,7 +3250,9 @@ export const initDB = async () => {
             // que la migración V5.4 (opexRules → compromisosRecurrentes).
             arrastresStore.openCursor().then(async function backfillArrastres(cursor) {
               while (cursor) {
-                const value = cursor.value as { origen?: string };
+                // cursor.value ya es ArrastreIRPF (store tipado); `origen` es
+                // opcional, así que los registros pre-V60 lo traen ausente.
+                const value = cursor.value;
                 if (!value.origen) {
                   await cursor.update({ ...value, origen: 'aeat' });
                 }

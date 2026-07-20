@@ -320,7 +320,8 @@ export const reconcileTreasuryEvent = async (
     movement.documentIds = [];
   }
   if (event.sourceType === 'document' && event.sourceId) {
-    movement.documentIds.push(event.sourceId);
+    // sourceId de un evento 'document' es el id numérico del documento.
+    movement.documentIds.push(Number(event.sourceId));
   }
   movement.status = 'conciliado';
   movement.updatedAt = new Date().toISOString();
