@@ -12,8 +12,7 @@ module.exports = {
         'atlas-blue-dark': 'var(--atlas-v5-brand)',
         'atlas-navy-1': 'var(--atlas-v5-ink-2)',
         'atlas-navy-2': 'var(--atlas-v5-brand)',
-        'atlas-teal': '#1DA0BA',
-        'atlas-teal-dark': '#178999',
+        'atlas-teal': '#1DA0BA', // teal · frente gráficos (pendiente · no repuntado)
         'bg': 'var(--atlas-v5-bg)',
         'text-gray': 'var(--atlas-v5-ink-3)',
 
