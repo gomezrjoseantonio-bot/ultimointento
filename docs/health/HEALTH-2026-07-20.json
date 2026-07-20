@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-20",
-  "generatedAt": "2026-07-20T06:50:14.663Z",
+  "generatedAt": "2026-07-20T17:16:14.961Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "d27cefe"
+    "head": "468295c"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -56,7 +56,7 @@
     {
       "indicador": "archivos_800",
       "antes": 43,
-      "despues": 44,
+      "despues": 43,
       "motivo": "Frente A · ve functions/ y scripts/ + .mjs/.cjs (antes solo src)",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -122,7 +122,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 755 · dead 0 · solo_tests 39 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 766 · dead 0 · solo_tests 39 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -237,14 +237,13 @@
       "calibracion": null
     },
     "archivos_800": {
-      "value": 44,
+      "value": 43,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "4554 · src/services/db.ts",
         "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
         "1943 · src/services/declaracionDistributorService.ts",
         "1886 · src/services/dashboardService.ts",
@@ -258,7 +257,8 @@
         "1546 · src/App.tsx",
         "1499 · src/components/treasury/MesDetalleDrawer.tsx",
         "1461 · src/services/declaracionOnboardingService.ts",
-        "1435 · src/services/treasuryConfirmationService.ts"
+        "1435 · src/services/treasuryConfirmationService.ts",
+        "1388 · src/services/propertySaleService.ts"
       ],
       "calibracion": null
     },

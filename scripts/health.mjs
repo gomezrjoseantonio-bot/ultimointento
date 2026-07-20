@@ -99,6 +99,20 @@ function prodFiles(exts) {
 const DB_SRC = read(DB_FILE);
 const APP_SRC = read(APP_FILE);
 
+// Frente C · troceo: la creación/borrado de object stores se movió de db.ts a
+// services/db/ (upgrade-a.ts, etc.). La INTERFAZ sigue en db.ts (DB_SRC), pero
+// para contar createObjectStore/deleteObjectStore se escanea db.ts + services/db/*.ts.
+const DB_DIR = path.join(SRC, 'services', 'db');
+const DB_STORES_SRC = (() => {
+  let src = DB_SRC;
+  try {
+    for (const f of fs.readdirSync(DB_DIR)) {
+      if (f.endsWith('.ts') && !isTestPath(f)) src += '\n' + read(path.join(DB_DIR, f));
+    }
+  } catch { /* dir puede no existir en ramas viejas · db.ts basta */ }
+  return src;
+})();
+
 // ─────────────────────────────────────────────────────────────────────────
 // Modelo de datos: interfaz AtlasHorizonDB y stores físicos
 // ─────────────────────────────────────────────────────────────────────────
@@ -122,17 +136,17 @@ function interfaceKeys() {
   return keys;
 }
 
-/** Nombres usados en `createObjectStore('X')` en db.ts. */
+/** Nombres usados en `createObjectStore('X')` en db.ts + services/db/*.ts. */
 function createdStores() {
   return new Set(
-    [...DB_SRC.matchAll(/createObjectStore\((['"])([a-zA-Z0-9_]+)\1/g)].map((m) => m[2])
+    [...DB_STORES_SRC.matchAll(/createObjectStore\((['"])([a-zA-Z0-9_]+)\1/g)].map((m) => m[2])
   );
 }
 
-/** Nombres usados en `deleteObjectStore('X')` en db.ts (stores retirados). */
+/** Nombres usados en `deleteObjectStore('X')` en db.ts + services/db/*.ts (stores retirados). */
 function deletedStores() {
   return new Set(
-    [...DB_SRC.matchAll(/deleteObjectStore\((['"])([a-zA-Z0-9_]+)\1/g)].map((m) => m[2])
+    [...DB_STORES_SRC.matchAll(/deleteObjectStore\((['"])([a-zA-Z0-9_]+)\1/g)].map((m) => m[2])
   );
 }
 
