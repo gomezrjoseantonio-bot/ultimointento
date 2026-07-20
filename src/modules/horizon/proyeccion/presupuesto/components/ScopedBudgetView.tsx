@@ -135,7 +135,7 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
           {onExport && (
             <button
               onClick={() => onExport(activeTab)}
-              className="inline-flex items-center px-4 py-2 bg-gray-600"
+              className="atlas-btn-secondary atlas-btn-sm"
             >
               <Download className="h-4 w-4 mr-2" />
               Exportar CSV

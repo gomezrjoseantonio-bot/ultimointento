@@ -8,163 +8,156 @@ module.exports = {
     extend: {
       colors: {
         // ATLAS v4 — Solo 3 familias: Navy, Teal, Gris
-        'atlas-blue': '#042C5E',
-        'atlas-blue-dark': '#0A3A72',
-        'atlas-navy-1': '#303A4C',
-        'atlas-navy-2': '#142C50',
-        'atlas-teal': '#1DA0BA',
-        'atlas-teal-dark': '#178999',
-        'bg': '#F8F9FA',
-        'text-gray': '#6C757D',
+        'atlas-blue': 'var(--atlas-v5-brand)',
+        'atlas-blue-dark': 'var(--atlas-v5-brand)',
+        'atlas-navy-1': 'var(--atlas-v5-ink-2)',
+        'atlas-navy-2': 'var(--atlas-v5-brand)',
+        'atlas-teal': '#1DA0BA', // teal · frente gráficos (pendiente · no repuntado)
+        'bg': 'var(--atlas-v5-bg)',
+        'text-gray': 'var(--atlas-v5-ink-3)',
 
-        // v4: Functional states mapped to navy/teal/gris (NO semaphore)
-        'ok': '#042C5E',
-        'ok-dark': '#0A3A72',
-        'ok-50': '#F0F4FA',
-        'ok-200': '#E8EFF7',
-        'ok-700': '#042C5E',
-        'warn': '#6C757D',
+        // v4: Functional states → navy/gris (NO semaphore) · repuntado a v5 (Fase B · semánticos)
+        'ok': 'var(--atlas-v5-brand)',
+        'ok-dark': 'var(--atlas-v5-brand)',
+        'ok-50': 'var(--atlas-v5-brand-wash)',
+        'ok-200': 'var(--atlas-v5-brand-wash)',
+        'ok-700': 'var(--atlas-v5-brand)',
+        'warn': 'var(--atlas-v5-ink-3)',
         'warn-bg': 'rgba(108, 117, 125, 0.1)',
-        'error': '#303A4C',
-        'error-50': '#EEF1F5',
-        'error-200': '#DDE3EC',
-        'error-500': '#303A4C',
-        'error-600': '#303A4C',
-        'error-700': '#303A4C',
+        'error': 'var(--atlas-v5-ink-2)',
+        'error-50': 'var(--atlas-v5-line-2)',
+        'error-200': 'var(--atlas-v5-line)',
+        'error-500': 'var(--atlas-v5-ink-2)',
+        'error-600': 'var(--atlas-v5-ink-2)',
+        'error-700': 'var(--atlas-v5-ink-2)',
 
         // ATLAS Utility Tokens
-        'primary-50': '#F0F4FA',
-        'primary-100': '#E8EFF7',
-        'primary-200': '#C8D0DC',
+        'primary-50': 'var(--atlas-v5-brand-wash)',
+        'primary-100': 'var(--atlas-v5-brand-wash)',
+        'primary-200': 'var(--atlas-v5-ink-5)',
 
         // Legacy brand colors (backward compatibility)
-        'brand-navy': '#042C5E',
+        'brand-navy': 'var(--atlas-v5-brand)',
         'brand-teal': '#1DA0BA',
 
         // v4: Horizon tokens → navy
-        'hz-primary': '#042C5E',
-        'hz-primary-dark': '#0A3A72',
-        'hz-bg': '#F8F9FA',
-        'hz-text': '#303A4C',
-        'hz-success': '#042C5E',
-        'hz-warning': '#6C757D',
-        'hz-error': '#303A4C',
-        'hz-info': '#042C5E',
+        'hz-primary': 'var(--atlas-v5-brand)',
+        'hz-primary-dark': 'var(--atlas-v5-brand)',
+        'hz-bg': 'var(--atlas-v5-bg)',
+        'hz-text': 'var(--atlas-v5-ink-2)',
+        'hz-success': 'var(--atlas-v5-brand)',
+        'hz-warning': 'var(--atlas-v5-ink-3)',
+        'hz-error': 'var(--atlas-v5-ink-2)',
+        'hz-info': 'var(--atlas-v5-brand)',
 
-        // v4: Movement States — navy/gris only
-        'movement-previsto-ingreso': '#042C5E',
-        'movement-previsto-gasto': '#303A4C',
-        'movement-confirmado': '#042C5E',
-        'movement-vencido': '#6C757D',
-        'movement-no-previsto': '#6C757D',
+        // v4: Movement States — navy/gris only · repuntado a v5 (Fase B · semánticos)
+        'movement-previsto-ingreso': 'var(--atlas-v5-brand)',
+        'movement-previsto-gasto': 'var(--atlas-v5-ink-2)',
+        'movement-confirmado': 'var(--atlas-v5-brand)',
+        'movement-vencido': 'var(--atlas-v5-ink-3)',
+        'movement-no-previsto': 'var(--atlas-v5-ink-3)',
 
-        // v4: Horizon Neutral Colors
-        'hz-neutral-900': '#303A4C',
-        'hz-neutral-700': '#6C757D',
-        'hz-neutral-500': '#6C757D',
-        'hz-neutral-300': '#DDE3EC',
-        'hz-neutral-100': '#F8F9FA',
-        'hz-card-bg': '#FFFFFF',
+        // v4: Horizon Neutral Colors → repuntado a v5 (Fase B · grises)
+        'hz-neutral-900': 'var(--atlas-v5-ink-2)',
+        'hz-neutral-700': 'var(--atlas-v5-ink-3)',
+        'hz-neutral-500': 'var(--atlas-v5-ink-3)',
+        'hz-neutral-300': 'var(--atlas-v5-line)',
+        'hz-neutral-100': 'var(--atlas-v5-bg)',
+        'hz-card-bg': 'var(--atlas-v5-card)',
 
         // Legacy horizon colors (backward compat)
-        'horizon-navy': '#042C5E',
+        'horizon-navy': 'var(--atlas-v5-brand)',
 
-        // Navy palette — v4
+        // Navy palette — repuntado a v5 (Fase B · azules + grises)
         navy: {
-          50: '#F0F4FA',
-          100: '#E8EFF7',
-          200: '#C8D0DC',
-          300: '#8ca4ce',
-          400: '#5d7cb7',
-          500: '#3a5998',
-          600: '#1E3A5F',
-          700: '#142C50',
-          800: '#0A3A72',
-          900: '#042C5E',
+          50: 'var(--atlas-v5-brand-wash)',
+          100: 'var(--atlas-v5-brand-wash)',
+          200: 'var(--atlas-v5-ink-5)',
+          500: 'var(--atlas-v5-brand-2)',
+          600: 'var(--atlas-v5-brand)',
+          700: 'var(--atlas-v5-brand)',
+          800: 'var(--atlas-v5-brand)',
+          900: 'var(--atlas-v5-brand)',
         },
 
-        // Primary = navy
+        // Primary = navy (Fase B · azules + grises)
         primary: {
-          50: '#F0F4FA',
-          100: '#E8EFF7',
-          200: '#C8D0DC',
-          300: '#8ca4ce',
-          400: '#5d7cb7',
-          500: '#3a5998',
-          600: '#1E3A5F',
-          700: '#042C5E',
-          800: '#0A3A72',
-          900: '#042C5E',
+          50: 'var(--atlas-v5-brand-wash)',
+          100: 'var(--atlas-v5-brand-wash)',
+          200: 'var(--atlas-v5-ink-5)',
+          500: 'var(--atlas-v5-brand-2)',
+          600: 'var(--atlas-v5-brand)',
+          700: 'var(--atlas-v5-brand)',
+          800: 'var(--atlas-v5-brand)',
+          900: 'var(--atlas-v5-brand)',
         },
 
-        // v4: Success → navy (no green)
+        // v4: Success → navy (no green) · repuntado a v5 (Fase B · semánticos)
         success: {
-          50: '#F0F4FA',
-          100: '#E8EFF7',
-          200: '#C8D0DC',
-          500: '#042C5E',
-          600: '#0A3A72',
-          700: '#042C5E',
+          50: 'var(--atlas-v5-brand-wash)',
+          100: 'var(--atlas-v5-brand-wash)',
+          200: 'var(--atlas-v5-ink-5)',
+          500: 'var(--atlas-v5-brand)',
+          600: 'var(--atlas-v5-brand)',
+          700: 'var(--atlas-v5-brand)',
         },
 
-        // v4: Warning → grey (no yellow)
+        // v4: Warning → grey (no yellow) · repuntado a v5 (Fase B · semánticos)
         warning: {
-          50: '#EEF1F5',
-          100: '#EEF1F5',
-          200: '#DDE3EC',
-          500: '#6C757D',
-          600: '#6C757D',
-          700: '#303A4C',
+          50: 'var(--atlas-v5-line-2)',
+          100: 'var(--atlas-v5-line-2)',
+          200: 'var(--atlas-v5-line)',
+          500: 'var(--atlas-v5-ink-3)',
+          600: 'var(--atlas-v5-ink-3)',
+          700: 'var(--atlas-v5-ink-2)',
         },
 
-        // v4: Error → grey-dark (no red)
+        // v4: Error → grey-dark (no red) · repuntado a v5 (Fase B · semánticos)
         error: {
-          50: '#EEF1F5',
-          100: '#EEF1F5',
-          200: '#DDE3EC',
-          500: '#303A4C',
-          600: '#303A4C',
-          700: '#303A4C',
+          50: 'var(--atlas-v5-line-2)',
+          100: 'var(--atlas-v5-line-2)',
+          200: 'var(--atlas-v5-line)',
+          500: 'var(--atlas-v5-ink-2)',
+          600: 'var(--atlas-v5-ink-2)',
+          700: 'var(--atlas-v5-ink-2)',
         },
 
-        // Info → navy
+        // Info → navy · repuntado a v5 (Fase B · semánticos)
         info: {
-          50: '#F0F4FA',
-          100: '#E8EFF7',
-          500: '#042C5E',
-          600: '#0A3A72',
-          700: '#042C5E',
+          50: 'var(--atlas-v5-brand-wash)',
+          100: 'var(--atlas-v5-brand-wash)',
+          500: 'var(--atlas-v5-brand)',
+          600: 'var(--atlas-v5-brand)',
+          700: 'var(--atlas-v5-brand)',
         },
 
         // Semantic aliases
-        danger: '#303A4C',
+        danger: 'var(--atlas-v5-ink-2)',
 
-        // Neutral colors
+        // Neutral colors — repuntado a v5 (Fase B · grises)
         neutral: {
-          50: '#FFFFFF',
-          100: '#F8F9FA',
-          200: '#DDE3EC',
-          300: '#C8D0DC',
-          400: '#9CA3AF',
-          500: '#6C757D',
-          600: '#475569',
-          700: '#303A4C',
-          800: '#1A2332',
-          900: '#1A2332',
-          950: '#0F172A',
+          50: 'var(--atlas-v5-card)',
+          100: 'var(--atlas-v5-bg)',
+          200: 'var(--atlas-v5-line)',
+          300: 'var(--atlas-v5-ink-5)',
+          400: 'var(--atlas-v5-ink-4)',
+          500: 'var(--atlas-v5-ink-3)',
+          600: 'var(--atlas-v5-ink-3)',
+          700: 'var(--atlas-v5-ink-2)',
+          800: 'var(--atlas-v5-ink)',
+          900: 'var(--atlas-v5-ink)',
         },
         gray: {
-          50: '#FFFFFF',
-          100: '#F8F9FA',
-          200: '#DDE3EC',
-          300: '#C8D0DC',
-          400: '#9CA3AF',
-          500: '#6C757D',
-          600: '#475569',
-          700: '#303A4C',
-          800: '#1A2332',
-          900: '#1A2332',
-          950: '#0F172A',
+          50: 'var(--atlas-v5-card)',
+          100: 'var(--atlas-v5-bg)',
+          200: 'var(--atlas-v5-line)',
+          300: 'var(--atlas-v5-ink-5)',
+          400: 'var(--atlas-v5-ink-4)',
+          500: 'var(--atlas-v5-ink-3)',
+          600: 'var(--atlas-v5-ink-3)',
+          700: 'var(--atlas-v5-ink-2)',
+          800: 'var(--atlas-v5-ink)',
+          900: 'var(--atlas-v5-ink)',
         }
       },
       fontFamily: {

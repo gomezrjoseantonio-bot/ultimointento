@@ -215,7 +215,7 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
       <div className="flex justify-between items-center">
         <button
           onClick={() => handleExportCSV('CONSOLIDADO')}
-          className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          className="atlas-btn-secondary atlas-btn-sm"
         >
           <Download className="h-4 w-4 mr-2" />
           Previsualizar CSV
