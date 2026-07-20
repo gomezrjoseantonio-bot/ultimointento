@@ -2,6 +2,17 @@ import { initDB, Contract, HistoricoRenta, RentaMensual } from './db';
 
 type SignatureMetadata = NonNullable<Contract['firma']>;
 
+/**
+ * Entrada de los normalizadores de metadatos: aceptan metadatos PARCIALES
+ * (documentoContrato/firma con `plantilla`/`metodo` aún sin fijar) y devuelven
+ * la forma completa. Se expresa como Partial anidado para que el merge de
+ * `existing`+`updates` type-checkee sin `as`.
+ */
+type ContractMetadataInput = Partial<Omit<Contract, 'documentoContrato' | 'firma'>> & {
+  documentoContrato?: Partial<NonNullable<Contract['documentoContrato']>>;
+  firma?: Partial<SignatureMetadata>;
+};
+
 // Enhanced contract management service for CONTRATOS module
 
 // Helper function to suggest indexation based on start date
@@ -54,7 +65,7 @@ export const calculateDuration = (fechaInicio: string, fechaFin: string): string
   return `${months}m ${days}d`;
 };
 
-const normaliseDocumentMetadata = (contract: Partial<Contract>): Contract['documentoContrato'] => {
+const normaliseDocumentMetadata = (contract: ContractMetadataInput): Contract['documentoContrato'] => {
   const plantillaBase = contract.documentoContrato?.plantilla
     || (contract.unidadTipo === 'habitacion' ? 'habitacion'
     : contract.modalidad === 'vacacional' ? 'vacacional'
@@ -68,7 +79,7 @@ const normaliseDocumentMetadata = (contract: Partial<Contract>): Contract['docum
   };
 };
 
-const normaliseSignatureMetadata = (contract: Partial<Contract>): SignatureMetadata => {
+const normaliseSignatureMetadata = (contract: ContractMetadataInput): SignatureMetadata => {
   const metodo = contract.firma?.metodo || 'manual';
   const cleanedEmails = (contract.firma?.emails || [])
     .map(email => email?.trim())
@@ -321,18 +332,15 @@ export const deleteContractWithCascade = async (
     const eventsStore = tx.objectStore('treasuryEvents');
     const events = await eventsStore.getAll();
     for (const ev of events) {
-      const contratoId = (ev as { contratoId?: number }).contratoId;
-      if (contratoId !== id) continue;
-      const evId = (ev as { id?: number }).id;
-      const status = (ev as { status?: string }).status;
-      if (evId == null) continue;
-      if (status === 'predicted') {
-        await eventsStore.delete(evId);
+      if (ev.contratoId !== id) continue;
+      if (ev.id == null) continue;
+      if (ev.status === 'predicted') {
+        await eventsStore.delete(ev.id);
         report.treasuryEventsPredictedDeleted += 1;
       } else {
-        const updated = { ...(ev as Record<string, unknown>) };
-        delete (updated as { contratoId?: number }).contratoId;
-        await eventsStore.put(updated as never);
+        const updated = { ...ev };
+        delete updated.contratoId;
+        await eventsStore.put(updated);
         report.treasuryEventsHistoricUnlinked += 1;
       }
     }

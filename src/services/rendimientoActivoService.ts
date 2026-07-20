@@ -170,12 +170,15 @@ export async function getRendimientoFiscal(
     }
   }
 
-  // Amortización: desde property.fiscalData
+  // Amortización: canónica en aeatAmortization, fallback legacy en fiscalData
+  // (mismo coalescing que fiscal v2 · amortizacionAcumuladaService.ts:80-82)
   const property = await db.get('properties', propertyId);
-  const baseAmortizacion = property?.fiscalData?.baseAmortizacion ?? 0;
+  const baseAmortizacion = property?.aeatAmortization?.baseAmortizacion
+    ?? property?.fiscalData?.baseAmortizacion ?? 0;
   const amortInmueble = baseAmortizacion > 0
     ? Math.round(baseAmortizacion * 0.03 * 100) / 100
-    : (property?.fiscalData?.amortizacionAnualInmueble ?? 0);
+    : (property?.aeatAmortization?.amortizacionAnualInmueble
+       ?? property?.fiscalData?.amortizacionAnualInmueble ?? 0);
 
   // Mapeo casillas según CATEGORIA_A_CASILLA del gastosInmuebleService:
   //   seguro → 0114, ibi → 0115, gestion/servicio → 0112

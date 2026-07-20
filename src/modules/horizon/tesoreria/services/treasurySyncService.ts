@@ -9,6 +9,7 @@
 // of truth for all amounts, ensuring the treasury events match the P&L at the cent.
 
 import { initDB } from '../../../../services/db';
+import type { TreasuryEvent } from '../../../../services/db';
 // T14.4 · `personalDataService` se mantiene SOLO para la lectura de
 // `direccion` en la sección 1 (alquiler · housing pattern matching).
 // Resto de lecturas migradas al gateway `fiscalContextService`.
@@ -162,7 +163,7 @@ export async function generateMonthlyForecasts(
   }
 
   // Helper: upsert an event by sourceType/sourceId for the month
-  async function insertEvent(event: Parameters<typeof db.add>[1]): Promise<void> {
+  async function insertEvent(event: TreasuryEvent): Promise<void> {
     const sourceId = (event as { sourceId?: number | string }).sourceId;
     const sourceType = (event as { sourceType?: string }).sourceType;
     if (sourceId != null && sourceType) {

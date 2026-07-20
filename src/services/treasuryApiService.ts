@@ -9,7 +9,7 @@
  * - POST /api/treasury/import → importa movimientos
  */
 
-import { initDB, Account, Movement, ImportBatch } from './db';
+import { initDB, Account, AccountStatus, Movement, ImportBatch } from './db';
 import { performAutoReconciliation } from './treasuryCreationService';
 import { emitTreasuryEvent } from './treasuryEventsService';
 
@@ -56,16 +56,20 @@ export class TreasuryAccountsAPI {
     // DELETED accounts are never returned (hard deleted from storage)
     // Legacy support: also filter out accounts with deleted_at set
     const visibleAccounts = allAccounts.filter(acc => {
+      // `status` es requerido en el tipo, pero registros legacy pueden no traerlo:
+      // se lee ensanchado a `| undefined` para conservar el fallback a `activa`.
+      const status: AccountStatus | undefined = acc.status;
       // Never show truly deleted accounts - enhanced defensive filtering
-      if (acc.status === 'DELETED' || acc.deleted_at || acc.activa === false) return false;
-      
+      if (status === 'DELETED' || acc.deleted_at || acc.activa === false) return false;
+
+      // Nota: la guarda anterior ya excluyó `activa === false`, así que aquí
+      // `activa` es siempre true → el fallback legacy se reduce a `!status`.
       if (includeInactive) {
         // Return both ACTIVE and INACTIVE when requested
-        return acc.status === 'ACTIVE' || acc.status === 'INACTIVE' || 
-               (!acc.status && acc.activa !== false); // Enhanced legacy fallback
+        return status === 'ACTIVE' || status === 'INACTIVE' || !status;
       } else {
         // Only return ACTIVE accounts by default
-        return acc.status === 'ACTIVE' || (!acc.status && acc.activa !== false); // Enhanced legacy fallback
+        return status === 'ACTIVE' || !status;
       }
     });
     
@@ -773,7 +777,7 @@ export class TreasuryImportAPI {
         fileName: file.name,
         fileSize: file.size,
         parseTimeMs: 0, // We don't track this separately in this context
-        bankDetected: account.bank,
+        bankDetected: account.bank ?? null,
         confidence: 1.0,
         movementsCount: results.inserted,
         needsManualMapping: results.failed > 0

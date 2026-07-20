@@ -4,7 +4,17 @@ import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfil
 import type { DeclaracionCompleta } from '../types/declaracionCompleta';
 // Fase 0 · los valores del schema son `any`, así que los tipos de dominio que solo
 // usaba la interfaz ya no se importan (volverán en Tanda N al endurecer cada store).
-import type { Escenario } from '../types/miPlan';
+import type { Escenario, Objetivo, FondoAhorro, Reto } from '../types/miPlan';
+import type { BenchmarkReferencia } from '../types/benchmarksReferencia';
+import type { AvisoCerrado } from '../types/avisosUsuario';
+import type { ObjetivoVital } from '../types/objetivosVitales';
+import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
+import type { PosicionInversion } from '../types/inversiones';
+import type { PlanPensiones, AportacionPlan, TraspasoPlanPensiones } from '../types/planesPensiones';
+import type { ValoracionActivo } from '../types/valoracionActivo';
+import type { Prestamo } from '../types/prestamos';
+import type { PersonalData, PersonalModuleConfig } from '../types/personal';
+import type { ViviendaHabitual } from '../types/viviendaHabitual';
 import type {
   ArrastresEjercicio,
   DeclaracionInmueble,
@@ -105,6 +115,16 @@ export interface Property {
       cadastralValue: number;
       constructionCadastralValue: number;
     };
+    /**
+     * Ubicación LEGACY de la base/amortización anual del inmueble. La canónica
+     * es `aeatAmortization.baseAmortizacion` / `.amortizacionAnualInmueble`;
+     * datos antiguos las guardaron aquí. Los consumidores leen
+     * `aeatAmortization ?? fiscalData` (patrón fiscal v2 ·
+     * amortizacionAcumuladaService.ts:80-82). Se declaran para no necesitar
+     * `as any` al leer el fallback.
+     */
+    baseAmortizacion?: number;
+    amortizacionAnualInmueble?: number;
   };
   /** T29 · tipología del activo · default 'piso' efectivo si undefined (registros pre-T29) */
   tipoActivo?: TipoActivo;
@@ -547,6 +567,31 @@ export interface OCRHistoryEntry {
   status: 'completed' | 'error';
 }
 
+/**
+ * Pieza 8: candidato de vinculación documento → operación declarada
+ * (`mejorasActivo` / `mobiliarioActivo`). Es la forma REAL que persiste en
+ * `documents.metadata.matchCandidates` — la produce `findCandidates`
+ * (documentMatchingService) y la consume `InboxV3ExtractedPanel` vía
+ * `.tipoGasto`. La definición canónica vive aquí (capa de esquema);
+ * `documentMatchingService` la reexporta como `CandidatoMatch`.
+ */
+export interface MatchCandidate {
+  id: number;
+  /** Store de origen de la operación candidata. */
+  tipo: 'mejoraActivo' | 'mobiliarioActivo';
+  inmuebleId: number;
+  inmuebleAlias: string;
+  ejercicio: number;
+  importe: number;
+  /** Tipo de gasto: 'mejora' | 'ampliacion' | 'reparacion' | 'mobiliario'. */
+  tipoGasto: string;
+  descripcion: string;
+  proveedorNIF: string;
+  proveedorNombre?: string;
+  alreadyLinked: boolean;
+  score: number;
+}
+
 export interface Document {
   id?: number;
   filename: string;
@@ -630,21 +675,8 @@ export interface Document {
     fechaImportacion?: string;
     casillasExtraidas?: number;
     metodoExtraccion?: 'texto' | 'ocr';
-    // Pieza 8: Document → operation matching
-    matchCandidates?: Array<{
-      store: 'mejorasActivo' | 'mobiliarioActivo';
-      id: number;
-      inmuebleId: number;
-      inmuebleAlias: string;
-      tipo: string;
-      ejercicio: number;
-      importe: number;
-      descripcion: string;
-      proveedorNIF: string;
-      proveedorNombre?: string;
-      alreadyLinked: boolean;
-      score: number;
-    }>;
+    // Pieza 8: Document → operation matching (forma canónica: MatchCandidate)
+    matchCandidates?: MatchCandidate[];
   };
   uploadDate: string;
 }
@@ -1334,8 +1366,10 @@ export interface TreasuryEvent {
   predictedDate: string;
   description: string;
   // Source tracking
-  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'otros_ingresos' | 'inversion_compra' | 'inversion_aportacion' | 'inversion_rendimiento' | 'inversion_dividendo' | 'inversion_liquidacion' | 'irpf_prevision';
-  sourceId?: number; // Document ID or Contract ID
+  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'autonomo_gasto' | 'autonomo_cuota' | 'autonomo_gasto_legacy' | 'otros_ingresos' | 'inversion_compra' | 'inversion_aportacion' | 'inversion_rendimiento' | 'inversion_dividendo' | 'inversion_liquidacion' | 'irpf_prevision';
+  // Document/Contract ID (número) o clave compuesta (string · p.ej. autonomo:
+  // `${autonomoId}-cuota`). `isDuplicate`/`insertEvent` ya asumían number|string.
+  sourceId?: number | string;
   // GAP-3: Clasificación histórica
   año?: number;                          // Ejercicio fiscal del evento
   mes?: number;                          // Mes (1-12) si el dato es mensual
@@ -2117,7 +2151,24 @@ export interface ConfiguracionFiscal {
 export interface EjercicioFiscalCoord {
   año: number;  // keyPath — 2020, 2021, ..., 2026
 
-  estado: 'en_curso' | 'pendiente' | 'declarado' | 'prescrito';
+  // 'cerrado': el ejercicio tiene cierre ATLAS confirmado (ver cierreAtlasMetadata).
+  estado: 'en_curso' | 'pendiente' | 'declarado' | 'prescrito' | 'cerrado';
+
+  // Fecha (ISO) en que se marcó 'declarado' tras importar el XML AEAT.
+  declaradoAt?: string;
+
+  // GAP-3: metadatos del cierre ATLAS (forma canónica · ver comentario db.ts:~1529).
+  cierreAtlasMetadata?: {
+    fechaCierre: string;
+    fuenteDatos: ('xml_aeat' | 'pdf_aeat' | 'print_aeat' | 'atlas_nativo' | 'manual')[];
+    confirmadoPorUsuario: boolean;
+    fechaConfirmacion?: string;
+    gastosPersonalesEstimados: number;
+    gastosPersonalesAjustadosPorUsuario: boolean;
+    totalIngresos: number;
+    totalGastos: number;
+    cashflowNeto: number;
+  };
 
   // Fecha de prescripción (calculada: 30 jun del año+5)
   fechaPrescripcion?: string;
@@ -2279,31 +2330,31 @@ export interface DeudaFiscal {
  * stores, el indicador health `stores_no_tipados` baja de 3 a 0.
  */
 interface AtlasHorizonDB extends DBSchema {
-  properties: { key: IDBValidKey; value: any; indexes: { 'address': IDBValidKey; 'alias': IDBValidKey } };
-  property_sales: { key: IDBValidKey; value: any; indexes: { 'property-status': IDBValidKey; 'propertyId': IDBValidKey; 'saleDate': IDBValidKey; 'status': IDBValidKey } };
+  properties: { key: IDBValidKey; value: Property; indexes: { 'address': IDBValidKey; 'alias': IDBValidKey } };
+  property_sales: { key: IDBValidKey; value: PropertySale; indexes: { 'property-status': IDBValidKey; 'propertyId': IDBValidKey; 'saleDate': IDBValidKey; 'status': IDBValidKey } };
   // loan_settlements: ELIMINADO en V63 (sub-tarea 4) — destino prestamos.liquidacion · 0 registros en producción
-  documents: { key: IDBValidKey; value: any; indexes: { 'entityId': IDBValidKey; 'entityType': IDBValidKey; 'type': IDBValidKey } };
-  contracts: { key: IDBValidKey; value: any; indexes: { 'propertyId': IDBValidKey } };
-  botesAnualesSinIdentificar: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'inmuebleId-año': IDBValidKey } }; // V78: Camino 2 wizard XML AEAT · importes declarados pendientes de vincular
+  documents: { key: IDBValidKey; value: Document; indexes: { 'entityId': IDBValidKey; 'entityType': IDBValidKey; 'type': IDBValidKey } };
+  contracts: { key: IDBValidKey; value: Contract; indexes: { 'propertyId': IDBValidKey } };
+  botesAnualesSinIdentificar: { key: IDBValidKey; value: BoteAnualSinIdentificar; indexes: { 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'inmuebleId-año': IDBValidKey } }; // V78: Camino 2 wizard XML AEAT · importes declarados pendientes de vincular
   // NOTE: rentCalendar and rentPayments removed in V4.5 — migrated to rentaMensual
   // rentaMensual: ELIMINADO en V62 (sub-tarea 3) — deprecated V5.6 · 0 registros
   aeatCarryForwards: { key: IDBValidKey; value: AEATCarryForward; indexes: { 'expirationYear': IDBValidKey; 'propertyId': IDBValidKey; 'taxYear': IDBValidKey } }; // H5: Tax carryforwards
-  propertyDays: { key: IDBValidKey; value: any; indexes: { 'property-year': IDBValidKey; 'propertyId': IDBValidKey; 'taxYear': IDBValidKey } }; // H5: Rental/availability days
-  proveedores: { key: IDBValidKey; value: any; indexes: {} }; // V3.8: entidad única proveedor por NIF
+  propertyDays: { key: IDBValidKey; value: PropertyDays; indexes: { 'property-year': IDBValidKey; 'propertyId': IDBValidKey; 'taxYear': IDBValidKey } }; // H5: Rental/availability days
+  proveedores: { key: IDBValidKey; value: Proveedor; indexes: {} }; // V3.8: entidad única proveedor por NIF
   // operacionesProveedor: ELIMINADO en V62 (sub-tarea 3) — cache desnormalizada de gastosInmueble + proveedores · 15 registros
   // kpiConfigurations: ELIMINADO en V62 (sub-tarea 3) — sustituido por keyval['kpiConfig_*'] · 0 registros
-  accounts: { key: IDBValidKey; value: any; indexes: { 'bank': IDBValidKey; 'destination': IDBValidKey; 'isActive': IDBValidKey } }; // H8: Treasury accounts
-  movements: { key: IDBValidKey; value: any; indexes: { 'accountId': IDBValidKey; 'date': IDBValidKey; 'duplicate-key': IDBValidKey; 'importBatch': IDBValidKey; 'status': IDBValidKey } }; // H8: Bank movements
-  importBatches: { key: IDBValidKey; value: any; indexes: { 'accountId': IDBValidKey; 'createdAt': IDBValidKey } }; // H8: CSV import tracking
-  treasuryEvents: { key: IDBValidKey; value: any; indexes: { 'accountId': IDBValidKey; 'ambito': IDBValidKey; 'año': IDBValidKey; 'certeza': IDBValidKey; 'generadoPor': IDBValidKey; 'inmuebleId': IDBValidKey; 'predictedDate': IDBValidKey; 'sourceId': IDBValidKey; 'sourceType': IDBValidKey; 'status': IDBValidKey; 'type': IDBValidKey } }; // H9: Treasury forecasting
+  accounts: { key: IDBValidKey; value: Account; indexes: { 'bank': IDBValidKey; 'destination': IDBValidKey; 'isActive': IDBValidKey } }; // H8: Treasury accounts
+  movements: { key: IDBValidKey; value: Movement; indexes: { 'accountId': IDBValidKey; 'date': IDBValidKey; 'duplicate-key': IDBValidKey; 'importBatch': IDBValidKey; 'status': IDBValidKey } }; // H8: Bank movements
+  importBatches: { key: IDBValidKey; value: ImportBatch; indexes: { 'accountId': IDBValidKey; 'createdAt': IDBValidKey } }; // H8: CSV import tracking
+  treasuryEvents: { key: IDBValidKey; value: TreasuryEvent; indexes: { 'accountId': IDBValidKey; 'ambito': IDBValidKey; 'año': IDBValidKey; 'certeza': IDBValidKey; 'generadoPor': IDBValidKey; 'inmuebleId': IDBValidKey; 'predictedDate': IDBValidKey; 'sourceId': IDBValidKey; 'sourceType': IDBValidKey; 'status': IDBValidKey; 'type': IDBValidKey } }; // H9: Treasury forecasting
   // treasuryRecommendations: ELIMINADO en V62 (sub-tarea 3) — derivable runtime · 0 registros
-  presupuestos: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'year': IDBValidKey } }; // H9: New budget system per specification
-  presupuestoLineas: { key: IDBValidKey; value: any; indexes: { 'categoria': IDBValidKey; 'contratoId': IDBValidKey; 'cuentaId': IDBValidKey; 'frecuencia': IDBValidKey; 'inmuebleId': IDBValidKey; 'origen': IDBValidKey; 'prestamoId': IDBValidKey; 'presupuestoId': IDBValidKey; 'tipo': IDBValidKey } }; // H9: New budget lines per specification
+  presupuestos: { key: IDBValidKey; value: Presupuesto; indexes: { 'estado': IDBValidKey; 'year': IDBValidKey } }; // H9: New budget system per specification
+  presupuestoLineas: { key: IDBValidKey; value: PresupuestoLinea; indexes: { 'categoria': IDBValidKey; 'contratoId': IDBValidKey; 'cuentaId': IDBValidKey; 'frecuencia': IDBValidKey; 'inmuebleId': IDBValidKey; 'origen': IDBValidKey; 'prestamoId': IDBValidKey; 'presupuestoId': IDBValidKey; 'tipo': IDBValidKey } }; // H9: New budget lines per specification
   // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros en producción
   // reconciliationAuditLogs: ELIMINADO en V64 (sub-tarea 5) — deuda técnica · 0 lectores · wipe
-  movementLearningRules: { key: IDBValidKey; value: any; indexes: { 'ambito': IDBValidKey; 'appliedCount': IDBValidKey; 'categoria': IDBValidKey; 'createdAt': IDBValidKey; 'learnKey': IDBValidKey } }; // V1.1: Learning rules for automatic classification
+  movementLearningRules: { key: IDBValidKey; value: MovementLearningRule; indexes: { 'ambito': IDBValidKey; 'appliedCount': IDBValidKey; 'categoria': IDBValidKey; 'createdAt': IDBValidKey; 'learnKey': IDBValidKey } }; // V1.1: Learning rules for automatic classification
   // learningLogs: ELIMINADO en V64 (sub-tarea 5) — absorbido en movementLearningRules.history[]
-  inversiones: { key: IDBValidKey; value: any; indexes: { 'activo': IDBValidKey; 'entidad': IDBValidKey; 'tipo': IDBValidKey } }; // V1.3: Investment positions
+  inversiones: { key: IDBValidKey; value: PosicionInversion; indexes: { 'activo': IDBValidKey; 'entidad': IDBValidKey; 'tipo': IDBValidKey } }; // V1.3: Investment positions
   // patrimonioSnapshots: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 1 registro
   /**
    * V1.2 · perfil fiscal NÚCLEO del titular (singleton · `id=1`).
@@ -2315,7 +2366,7 @@ interface AtlasHorizonDB extends DBSchema {
    * un puñado de wizards mantienen lectura directa por necesitar el objeto
    * completo (excepciones documentadas en cada llamada T14.4).
    */
-  personalData: { key: IDBValidKey; value: any; indexes: { 'dni': IDBValidKey; 'fechaActualizacion': IDBValidKey } };
+  personalData: { key: IDBValidKey; value: PersonalData; indexes: { 'dni': IDBValidKey; 'fechaActualizacion': IDBValidKey } };
   /**
    * V1.2 · flags UI/integración derivados automáticamente de `personalData`.
    *
@@ -2326,7 +2377,7 @@ interface AtlasHorizonDB extends DBSchema {
    * · todos hardcoded `true` excepto `seccionesActivas.{nomina|autonomo}` que
    * se derivan de `personalData.situacionLaboral`.
    */
-  personalModuleConfig: { key: IDBValidKey; value: any; indexes: { 'fechaActualizacion': IDBValidKey } };
+  personalModuleConfig: { key: IDBValidKey; value: PersonalModuleConfig; indexes: { 'fechaActualizacion': IDBValidKey } };
   // nominas: ELIMINADO en V63 (sub-tarea 4 · deuda sub-tarea 2) — datos ya copiados a `ingresos` con tipo='nomina' en V61
   /**
    * V61 (TAREA 7 sub-tarea 2): nuevo store unificado de ingresos personales.
@@ -2344,13 +2395,13 @@ interface AtlasHorizonDB extends DBSchema {
    * Nota TS: en este módulo se importa con alias `IngresoPersonal` para no
    * colisionar con la interfaz local `Ingreso` (H10 · Treasury income).
    */
-  ingresos: { key: IDBValidKey; value: any; indexes: { 'fechaActualizacion': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } };
+  ingresos: { key: IDBValidKey; value: unknown; indexes: { 'fechaActualizacion': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } };
   // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
   // planesPensionInversion: eliminado en V65 — datos migrados a planesPensiones
   // ─── Módulo planes de pensiones (V65 · TAREA 13) ────────────────────────
-  planesPensiones: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'personalDataId': IDBValidKey; 'tipoAdministrativo': IDBValidKey; 'titular': IDBValidKey } };            // V65: entidad estable plan (UUID)
-  aportacionesPlan: { key: IDBValidKey; value: any; indexes: { 'ejercicioFiscal': IDBValidKey; 'ingresoIdNomina': IDBValidKey; 'origen': IDBValidKey; 'planId': IDBValidKey; 'planId+ejercicioFiscal': IDBValidKey } };          // V65: eventos aportación (3 roles)
-  traspasosPlanPensiones: { key: IDBValidKey; value: any; indexes: { 'fechaEjecucion': IDBValidKey; 'planId': IDBValidKey } }; // V65: eventos traspaso fiscal neutro
+  planesPensiones: { key: IDBValidKey; value: PlanPensiones; indexes: { 'estado': IDBValidKey; 'personalDataId': IDBValidKey; 'tipoAdministrativo': IDBValidKey; 'titular': IDBValidKey } };            // V65: entidad estable plan (UUID)
+  aportacionesPlan: { key: IDBValidKey; value: AportacionPlan; indexes: { 'ejercicioFiscal': IDBValidKey; 'ingresoIdNomina': IDBValidKey; 'origen': IDBValidKey; 'planId': IDBValidKey; 'planId+ejercicioFiscal': IDBValidKey } };          // V65: eventos aportación (3 roles)
+  traspasosPlanPensiones: { key: IDBValidKey; value: TraspasoPlanPensiones; indexes: { 'fechaEjecucion': IDBValidKey; 'planId': IDBValidKey } }; // V65: eventos traspaso fiscal neutro
   // traspasosPlanes: ELIMINADO por completo del código (bloque 2.4 tipo · bloque 3
   //   commit final A lifecycle de upgrade + su test). Store legacy retirado en V65,
   //   nunca creado en DBs frescas; DB única en v79 → la migración no defiende a nadie.
@@ -2358,7 +2409,7 @@ interface AtlasHorizonDB extends DBSchema {
   // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
   // patronGastosPersonales: ELIMINADO en V62 (sub-tarea 3) — futuro compromisosRecurrentes · 7 registros
   // gastosPersonalesReal: ELIMINADO en V62 (sub-tarea 3) — futuro movements + treasuryEvents · 0 registros
-  prestamos: { key: IDBValidKey; value: any; indexes: { 'createdAt': IDBValidKey; 'inmuebleId': IDBValidKey; 'tipo': IDBValidKey } }; // Financiacion: Loan records · V63 (sub-tarea 4): campo `liquidacion` absorbe los settlements del store eliminado `loan_settlements`.
+  prestamos: { key: IDBValidKey; value: Prestamo; indexes: { 'createdAt': IDBValidKey; 'inmuebleId': IDBValidKey; 'tipo': IDBValidKey } }; // Financiacion: Loan records · V63 (sub-tarea 4): campo `liquidacion` absorbe los settlements del store eliminado `loan_settlements`.
   /**
    * V74 (T-VALORACIONES PR1): store polimórfico de valoraciones temporales
    * por activo. Reemplaza al anterior `valoraciones_historicas` (snake_case,
@@ -2376,7 +2427,7 @@ interface AtlasHorizonDB extends DBSchema {
    * Índices: `idx_activo`, `idx_activo_fecha`, `idx_tipo`, `idx_fecha`,
    * `idx_anchor_fiscal`, `idx_tipo_subtipo`.
    */
-  valoracionesActivos: { key: IDBValidKey; value: any; indexes: { 'idx_activo': IDBValidKey; 'idx_activo_fecha': IDBValidKey; 'idx_anchor_fiscal': IDBValidKey; 'idx_fecha': IDBValidKey; 'idx_tipo': IDBValidKey; 'idx_tipo_subtipo': IDBValidKey } };
+  valoracionesActivos: { key: IDBValidKey; value: ValoracionActivo; indexes: { 'idx_activo': IDBValidKey; 'idx_activo_fecha': IDBValidKey; 'idx_anchor_fiscal': IDBValidKey; 'idx_fecha': IDBValidKey; 'idx_tipo': IDBValidKey; 'idx_tipo_subtipo': IDBValidKey } };
   // valoraciones_historicas: ELIMINADO del schema (bloque 2.4) — store renombrado a
   //   `valoracionesActivos` en V74; el físico ya no existe tras la migración v73→v74.
   // valoraciones_mensuales: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 115 registros
@@ -2500,7 +2551,7 @@ interface AtlasHorizonDB extends DBSchema {
    *     - `migration_fix_reparaciones_duplicadas_v1`
    *     - `migration_limpiar_gastos_reparacion_0106_v1`
    */
-  keyval: { key: IDBValidKey; value: any; indexes: {} };
+  keyval: { key: IDBValidKey; value: unknown; indexes: {} };
   // objetivos_financieros: ELIMINADO del schema (bloque 2.4) — migrado a 'escenarios'
   //   en V5.4/V5.5; store físico eliminado en V5.9. Creación bajo guard oldVersion<32
   //   y lifecycle de upgrade eliminados.
@@ -2510,14 +2561,14 @@ interface AtlasHorizonDB extends DBSchema {
   // documentosFiscales: ELIMINADO en V63 (sub-tarea 4) — destino documents.metadata.tipo='fiscal' · 0 registros en producción
   // arrastresManual: ELIMINADO en V63 (sub-tarea 4) — destino arrastresIRPF.origen='manual' · 0 registros en producción
   resultadosEjercicio: { key: IDBValidKey; value: ResultadoEjercicio; indexes: { 'ejercicio': IDBValidKey; 'ejercicio-estado': IDBValidKey; 'estadoEjercicio': IDBValidKey; 'origen': IDBValidKey } }; // V2.9: Immutable yearly fiscal snapshots
-  arrastresIRPF: { key: IDBValidKey; value: any; indexes: { 'ejercicioCaducidad': IDBValidKey; 'ejercicioOrigen': IDBValidKey; 'ejercicioOrigen-tipo': IDBValidKey; 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'origen': IDBValidKey; 'tipo': IDBValidKey } }; // V2.7: IRPF carry-forwards cross-year · TANDA1-DIFERIDO(§5 upgrade): tipo real=ArrastreIRPF, bloqueado por cursor.update en backfill V60
+  arrastresIRPF: { key: IDBValidKey; value: ArrastreIRPF; indexes: { 'ejercicioCaducidad': IDBValidKey; 'ejercicioOrigen': IDBValidKey; 'ejercicioOrigen-tipo': IDBValidKey; 'estado': IDBValidKey; 'inmuebleId': IDBValidKey; 'origen': IDBValidKey; 'tipo': IDBValidKey } }; // V2.7: IRPF carry-forwards cross-year · TANDA1-DIFERIDO(§5 upgrade): tipo real=ArrastreIRPF, bloqueado por cursor.update en backfill V60
   perdidasPatrimonialesAhorro: { key: IDBValidKey; value: PerdidaPatrimonialAhorro; indexes: { 'ejercicioCaducidad': IDBValidKey; 'ejercicioOrigen': IDBValidKey; 'estado': IDBValidKey } }; // V3.4: pérdidas ahorro unificadas
   snapshotsDeclaracion: { key: IDBValidKey; value: SnapshotDeclaracion; indexes: { 'ejercicio': IDBValidKey; 'fechaSnapshot': IDBValidKey; 'origen': IDBValidKey } }; // V2.7: Frozen declaration snapshots
   entidadesAtribucion: { key: IDBValidKey; value: EntidadAtribucionRentas; indexes: { 'nif': IDBValidKey; 'tipoRenta': IDBValidKey } }; // V3.4: entidades en atribución de rentas
-  ejerciciosFiscalesCoord: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey } }; // V3.7: Modelo fiscal coordinador (4 regímenes) · TANDA1-DIFERIDO(Caso 2): tipo real=EjercicioFiscalCoord, discrepancia en declaracionDistributorService.ts:491,500
+  ejerciciosFiscalesCoord: { key: IDBValidKey; value: EjercicioFiscalCoord; indexes: { 'estado': IDBValidKey } }; // V3.7: Modelo fiscal coordinador (4 regímenes) · TANDA1-DIFERIDO(Caso 2): tipo real=EjercicioFiscalCoord, discrepancia en declaracionDistributorService.ts:491,500
   vinculosAccesorio: { key: IDBValidKey; value: VinculoAccesorio; indexes: { 'inmuebleAccesorioId': IDBValidKey; 'inmueblePrincipalId': IDBValidKey; 'principal-accesorio-ejercicio': IDBValidKey } }; // V3.9: Vínculos temporales accesorio (parking/trastero) por ejercicio
   // ─── ATLAS Personal v1.1 (V5.3) ────────────────────────────────────────
-  compromisosRecurrentes: { key: IDBValidKey; value: any; indexes: { 'ambito': IDBValidKey; 'categoria': IDBValidKey; 'cuentaCargo': IDBValidKey; 'estado': IDBValidKey; 'fechaInicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } }; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01) · TAREA 9: bootstrap desde histórico vía `compromisoDetectionService` + creación idempotente vía `compromisoCreationService` · activa la vía A del `movementSuggestionService` cuando el store deja de estar vacío. Ver `docs/T9-cierre.md`.
+  compromisosRecurrentes: { key: IDBValidKey; value: CompromisoRecurrente; indexes: { 'ambito': IDBValidKey; 'categoria': IDBValidKey; 'cuentaCargo': IDBValidKey; 'estado': IDBValidKey; 'fechaInicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'personalDataId': IDBValidKey; 'tipo': IDBValidKey } }; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01) · TAREA 9: bootstrap desde histórico vía `compromisoDetectionService` + creación idempotente vía `compromisoCreationService` · activa la vía A del `movementSuggestionService` cuando el store deja de estar vacío. Ver `docs/T9-cierre.md`.
   /**
    * V5.3 · ficha de la vivienda habitual del hogar · genera derivados
    * (sección 6 del modelo Personal v1.1).
@@ -2529,16 +2580,16 @@ interface AtlasHorizonDB extends DBSchema {
    * T14.3). El servicio dedicado `viviendaHabitualService` sigue siendo el
    * único dueño del store · el gateway solo lee.
    */
-  viviendaHabitual: { key: IDBValidKey; value: any; indexes: { 'activa': IDBValidKey; 'personalDataId': IDBValidKey; 'vigenciaDesde': IDBValidKey } };
+  viviendaHabitual: { key: IDBValidKey; value: ViviendaHabitual; indexes: { 'activa': IDBValidKey; 'personalDataId': IDBValidKey; 'vigenciaDesde': IDBValidKey } };
   // ─── Mi Plan v3 (V5.4–V5.7) ─────────────────────────────────────────────
-  escenarios: { key: IDBValidKey; value: any; indexes: {} };     // V5.4: singleton escenario libertad activo (renombrado de objetivos_financieros)
-  objetivos: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'fondoId': IDBValidKey; 'prestamoId': IDBValidKey; 'tipo': IDBValidKey } };       // V5.5: lista de objetivos (acumular · amortizar · comprar · reducir)
-  fondos_ahorro: { key: IDBValidKey; value: any; indexes: { 'activo': IDBValidKey; 'tipo': IDBValidKey } }; // V5.6: fondos de ahorro con etiquetas de propósito
-  retos: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'mes': IDBValidKey; 'tipo': IDBValidKey } };               // V5.7: retos mensuales (1 activo por mes)
+  escenarios: { key: IDBValidKey; value: Escenario; indexes: {} };     // V5.4: singleton escenario libertad activo (renombrado de objetivos_financieros)
+  objetivos: { key: IDBValidKey; value: Objetivo; indexes: { 'estado': IDBValidKey; 'fondoId': IDBValidKey; 'prestamoId': IDBValidKey; 'tipo': IDBValidKey } };       // V5.5: lista de objetivos (acumular · amortizar · comprar · reducir)
+  fondos_ahorro: { key: IDBValidKey; value: FondoAhorro; indexes: { 'activo': IDBValidKey; 'tipo': IDBValidKey } }; // V5.6: fondos de ahorro con etiquetas de propósito
+  retos: { key: IDBValidKey; value: Reto; indexes: { 'estado': IDBValidKey; 'mes': IDBValidKey; 'tipo': IDBValidKey } };               // V5.7: retos mensuales (1 activo por mes)
   deudasFiscales: { key: IDBValidKey; value: DeudaFiscal; indexes: { 'ejercicio': IDBValidKey; 'estado': IDBValidKey; 'modelo': IDBValidKey; 'notificada': IDBValidKey } }; // V71: deudas fiscales con AEAT (modelos 100/303/130/184) · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 1
-  benchmarksReferencia: { key: IDBValidKey; value: any; indexes: { 'codigo': IDBValidKey; 'tipo': IDBValidKey; 'ultimaActualizacion': IDBValidKey } }; // V72: índices de referencia editables (MSCI World · S&P 500 · IPC ES · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.A
-  avisosUsuario: { key: IDBValidKey; value: any; indexes: {} }; // V73: avisos cerrables (banners X) · T-INVERSIONES-DETALLE-PP-v1 §4.E
-  objetivosVitales: { key: IDBValidKey; value: any; indexes: { 'fechaEstimada': IDBValidKey; 'planFinancieroAsociado': IDBValidKey; 'tipo': IDBValidKey } }; // V73: hitos vitales (jubilación · salida empresa · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.C Caso B
+  benchmarksReferencia: { key: IDBValidKey; value: BenchmarkReferencia; indexes: { 'codigo': IDBValidKey; 'tipo': IDBValidKey; 'ultimaActualizacion': IDBValidKey } }; // V72: índices de referencia editables (MSCI World · S&P 500 · IPC ES · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.A
+  avisosUsuario: { key: IDBValidKey; value: AvisoCerrado; indexes: {} }; // V73: avisos cerrables (banners X) · T-INVERSIONES-DETALLE-PP-v1 §4.E
+  objetivosVitales: { key: IDBValidKey; value: ObjetivoVital; indexes: { 'fechaEstimada': IDBValidKey; 'planFinancieroAsociado': IDBValidKey; 'tipo': IDBValidKey } }; // V73: hitos vitales (jubilación · salida empresa · etc.) · T-INVERSIONES-DETALLE-PP-v1 §4.C Caso B
   // ─── Stores físicos declarados en Fase 0 (antes sin tipar · stores_no_tipados) ───
   gastosInmueble: { key: IDBValidKey; value: GastoInmueble; indexes: { 'casillaAEAT': IDBValidKey; 'ejercicio': IDBValidKey; 'estado': IDBValidKey; 'inmueble-ejercicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'movimientoId': IDBValidKey; 'origen': IDBValidKey; 'origen-origenId': IDBValidKey; 'treasuryEventId': IDBValidKey } };
   mejorasInmueble: { key: IDBValidKey; value: MejoraInmueble; indexes: { 'ejercicio': IDBValidKey; 'inmueble-ejercicio': IDBValidKey; 'inmuebleId': IDBValidKey; 'movimientoId': IDBValidKey; 'treasuryEventId': IDBValidKey } };
@@ -3199,7 +3250,9 @@ export const initDB = async () => {
             // que la migración V5.4 (opexRules → compromisosRecurrentes).
             arrastresStore.openCursor().then(async function backfillArrastres(cursor) {
               while (cursor) {
-                const value = cursor.value as { origen?: string };
+                // cursor.value ya es ArrastreIRPF (store tipado); `origen` es
+                // opcional, así que los registros pre-V60 lo traen ausente.
+                const value = cursor.value;
                 if (!value.origen) {
                   await cursor.update({ ...value, origen: 'aeat' });
                 }
@@ -3274,7 +3327,13 @@ export const initDB = async () => {
                 const invStore = transaction.objectStore('inversiones');
                 const dstPlanes = transaction.objectStore('planesPensiones');
                 const dstAportaciones = transaction.objectStore('aportacionesPlan');
-                const inversiones = (await invStore.getAll()) as Array<Record<string, unknown>>;
+                // Migración V60: los registros almacenados son la forma PRE-V60
+                // (campos snake_case legacy: valor_actual, fecha_compra, empresaNif…),
+                // que no coinciden con PosicionInversion. Se leen como registros
+                // sueltos vía `unknown` intermedio (no es silenciar una incoherencia:
+                // el dato histórico realmente no es del tipo actual).
+                const rawInversiones: unknown = await invStore.getAll();
+                const inversiones = rawInversiones as Array<Record<string, unknown>>;
                 const PLAN_TIPOS = new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']);
                 for (const inv of inversiones) {
                   if (!PLAN_TIPOS.has(String(inv.tipo ?? ''))) continue;

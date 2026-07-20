@@ -241,7 +241,7 @@ const createTreasuryEvent = ({
     ? `Cancelación total préstamo ${prestamo.nombre}`
     : `Amortización parcial préstamo ${prestamo.nombre}`,
   sourceType: 'manual' as const,
-  sourceId: loanId,
+  sourceId: loanId, // Prestamo.id es string; TreasuryEvent.sourceId admite number|string → se persiste tal cual (Number(loanId) daría NaN si no es numérico).
   accountId: settlementAccountId,
   status: 'confirmed' as const,
   prestamoId: loanId,

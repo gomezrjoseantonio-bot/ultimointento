@@ -294,7 +294,7 @@ export const reconcileTreasuryRecord = async (
   try {
     // Update the Treasury record with movement link
     if (recordType === 'ingreso') {
-      const ingreso = await db.get('ingresos', recordId);
+      const ingreso = await db.get('ingresos', recordId) as Ingreso | undefined;
       if (ingreso) {
         ingreso.movement_id = movementId;
         ingreso.estado = 'cobrado';
@@ -344,15 +344,25 @@ export const findReconciliationMatches = async (): Promise<{
   try {
     // Get unreconciled movements
     const movements = await db.getAll('movements');
-    const unreconciledMovements = movements.filter(m => 
-      !m.estado_conciliacion || m.estado_conciliacion === 'pendiente'
+    // "No conciliado" = ausente o 'sin_conciliar'. El `=== 'pendiente'` anterior
+    // comparaba contra un valor de MovementStatus, no de ReconciliationStatus
+    // ('sin_conciliar' | 'conciliado'), así que nunca casaba.
+    const unreconciledMovements = movements.filter(m =>
+      m.estado_conciliacion !== 'conciliado'
     );
 
     // Get unreconciled treasury records
-    const [ingresos, allGastosInmueble] = await Promise.all([
+    const [ingresosRaw, allGastosInmueble] = await Promise.all([
       db.getAll('ingresos'),
       gastosInmuebleService.getAll(),
     ]);
+    // store heterogéneo (unknown): conviven ingresos de tesorería y de Personal.
+    // La conciliación asume campos de tesorería (fecha_prevista_cobro, importe,
+    // contraparte); se filtra por shape para no iterar registros de Personal
+    // (evita lecturas undefined / Invalid Date en el matching).
+    const ingresos = ingresosRaw.filter(
+      (i): i is Ingreso => !!i && typeof i === 'object' && 'fecha_prevista_cobro' in i,
+    );
     // Map gastosInmueble to Gasto-like shape for reconciliation
     const gastos = allGastosInmueble.map(g => ({
       id: g.id, contraparte_nombre: g.proveedorNombre || '', total: g.importe,
@@ -676,7 +686,7 @@ export const markAsPaidWithoutStatement = async (
   
   try {
     if (recordType === 'ingreso') {
-      const ingreso = await db.get('ingresos', recordId);
+      const ingreso = await db.get('ingresos', recordId) as Ingreso | undefined;
       if (ingreso) {
         ingreso.estado = 'cobrado';
         ingreso.movement_id = -1; // Special ID to indicate paid without statement

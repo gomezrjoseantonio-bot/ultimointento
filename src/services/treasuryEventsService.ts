@@ -152,7 +152,7 @@ export const updateRiskFlags = async (): Promise<number> => {
       
       // Get 30-day projection for this account
       const { accountBalances } = await getTreasuryProjections(30, [account.id]);
-      const projectedBalance = accountBalances.get(account.id)?.projected || account.balance;
+      const projectedBalance = accountBalances.get(account.id)?.projected || account.balance || 0;
       
       // Check if account is at risk (projected balance < minimum balance)
       const minimumBalance = account.minimumBalance || 200; // Default minimum

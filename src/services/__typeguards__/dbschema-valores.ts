@@ -16,10 +16,14 @@
 // eso es el STOP de §1 — el tipo no protege nada y hay que revisarlo.
 import { initDB } from '../db';
 
-// ejerciciosFiscalesCoord · DIFERIDO (Caso 2) · sigue en `value: any`, sin candado.
-// declaracionDistributorService.ts:491,500 lee/escribe campos ausentes del tipo
-// EjercicioFiscalCoord (`estado: 'cerrado'`, `cierreAtlasMetadata`, `declaradoAt`).
-// Endurecer aquí exige tocar lógica de negocio (fuera de Tanda 1 · §4 Caso 2).
+// ejerciciosFiscalesCoord · RESUELTO en Frente B (cerrar DBSchema · Caso 2, con OK de
+// Jose): EjercicioFiscalCoord ganó `estado: 'cerrado'`, `cierreAtlasMetadata`,
+// `declaradoAt`; el store ya es `value: EjercicioFiscalCoord`. Candado activo abajo.
+export async function candadoValor_ejerciciosFiscalesCoord() {
+  const db = await initDB();
+  // @ts-expect-error — debe fallar cuando ejerciciosFiscalesCoord tenga tipo real
+  await db.put('ejerciciosFiscalesCoord', { __basura__: true });
+}
 
 export async function candadoValor_resultadosEjercicio() {
   const db = await initDB();
@@ -27,10 +31,14 @@ export async function candadoValor_resultadosEjercicio() {
   await db.put('resultadosEjercicio', { __basura__: true });
 }
 
-// arrastresIRPF · DIFERIDO (§5 upgrade) · sigue en `value: any`, sin candado.
-// El único punto que rompe al endurecer es un `cursor.update({...value, origen:'aeat'})`
-// dentro del `upgrade` (backfill V60, db.ts:~3204), y §5 prohíbe tocar el upgrade.
-// No es discrepancia de datos: es un cast local en la migración que no puedo editar.
+// arrastresIRPF · RESUELTO en Frente B (cerrar DBSchema · §5-upgrade, con OK de Jose):
+// se quitó el `as { origen?: string }` del backfill V60 (cursor.value ya es
+// ArrastreIRPF · origen es opcional); el store ya es `value: ArrastreIRPF`. Candado:
+export async function candadoValor_arrastresIRPF() {
+  const db = await initDB();
+  // @ts-expect-error — debe fallar cuando arrastresIRPF tenga tipo real
+  await db.put('arrastresIRPF', { __basura__: true });
+}
 
 export async function candadoValor_perdidasPatrimonialesAhorro() {
   const db = await initDB();

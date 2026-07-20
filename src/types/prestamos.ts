@@ -142,6 +142,10 @@ export interface Prestamo {
   fechaUltimaCuotaPagada?: string;
   estado?: 'vivo' | 'cancelado' | 'pendiente_cancelacion_venta' | 'pendiente_completar';
   fechaCancelacion?: string;
+  /** Marcado cuando la venta del inmueble deja pendiente la cancelación del préstamo. */
+  cancelacionPendienteVenta?: boolean;
+  /** Fecha (ISO) en que la venta del inmueble solicitó la cancelación del préstamo. */
+  fechaSolicitudCancelacionVenta?: string;
 
   // Intereses anuales declarados por ejercicio fiscal (ej: { 2023: 1200.50 })
   interesesAnualesDeclarados?: Record<number, number>;

@@ -12,25 +12,13 @@
  *  - Solo candidatos con score ≥ 2
  */
 
-import { initDB, MejoraActivo, MobiliarioActivo, Property } from './db';
+import { initDB, MejoraActivo, MobiliarioActivo, Property, MatchCandidate } from './db';
 
-export interface CandidatoMatch {
-  id: number;
-  tipo: 'mejoraActivo' | 'mobiliarioActivo';
-  inmuebleId: number;
-  inmuebleAlias: string;
-  ejercicio: number;
-  importe: number;
-  tipoGasto: string; // 'mejora' | 'ampliacion' | 'reparacion' | 'mobiliario'
-  descripcion: string;
-  proveedorNIF: string;
-  proveedorNombre?: string;
-  alreadyLinked: boolean;
-  score: number;
-}
-
-// Keep the old MatchCandidate name as alias for backwards compatibility with DocumentLinkingPanel
-export type MatchCandidate = CandidatoMatch;
+// La forma canónica de un candidato vive en db.ts (capa de esquema · es lo que
+// persiste en `documents.metadata.matchCandidates`). Aquí se reexporta con los
+// nombres históricos que consume la UI del inbox.
+export type CandidatoMatch = MatchCandidate;
+export type { MatchCandidate };
 
 interface FindCandidatesParams {
   nif?: string;

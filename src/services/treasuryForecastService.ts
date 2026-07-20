@@ -1,5 +1,5 @@
 import { initDB, TreasuryEvent, Document, Movement } from './db';
-import type { OpexRule, Contract } from './db';
+import type { OpexRule, Contract, Ingreso } from './db';
 import { isCapexType } from './aeatClassificationService';
 import { calculateRentPeriodsFromContract } from './contractService';
 import { prestamosCalculationService } from './prestamosCalculationService';
@@ -88,7 +88,9 @@ export const updateTreasuryEventFromDocument = async (document: Document): Promi
  */
 export const createTreasuryEventFromIngreso = async (ingresoId: number): Promise<void> => {
   const db = await initDB();
-  const ingreso = await db.get('ingresos', ingresoId);
+  // `ingresos` es un store heterogéneo (value: unknown). Aquí se lee un registro
+  // de tesorería (escrito por treasuryCreationService) → se estrecha a Ingreso.
+  const ingreso = await db.get('ingresos', ingresoId) as Ingreso | undefined;
   if (!ingreso || ingreso.importe <= 0) return;
 
   const event: TreasuryEvent = {
@@ -111,7 +113,9 @@ export const createTreasuryEventFromIngreso = async (ingresoId: number): Promise
  */
 export const updateTreasuryEventFromIngreso = async (ingresoId: number): Promise<void> => {
   const db = await initDB();
-  const ingreso = await db.get('ingresos', ingresoId);
+  // `ingresos` es un store heterogéneo (value: unknown). Aquí se lee un registro
+  // de tesorería (escrito por treasuryCreationService) → se estrecha a Ingreso.
+  const ingreso = await db.get('ingresos', ingresoId) as Ingreso | undefined;
   if (!ingreso) return;
 
   const events = await db.getAllFromIndex('treasuryEvents', 'sourceId', ingresoId);
@@ -226,8 +230,8 @@ export const getTreasuryProjections = async (
     const outflow = accountEvents.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
     
     accountBalances.set(account.id!, {
-      current: account.balance,
-      projected: account.balance + inflow - outflow
+      current: account.balance ?? 0,
+      projected: (account.balance ?? 0) + inflow - outflow
     });
   }
 
@@ -272,9 +276,9 @@ export const generateTreasuryRecommendations = async (): Promise<void> => {
       // Find account with highest balance to suggest transfer from
       const sortedAccounts = accounts
         .filter(acc => acc.isActive && acc.id !== account.id)
-        .map(acc => ({ 
-          account: acc, 
-          balance: accountBalances.get(acc.id!)?.projected || acc.balance 
+        .map(acc => ({
+          account: acc,
+          balance: accountBalances.get(acc.id!)?.projected || acc.balance || 0
         }))
         .sort((a, b) => b.balance - a.balance);
       
@@ -315,8 +319,14 @@ export const reconcileTreasuryEvent = async (
   if (!movement.documentIds) {
     movement.documentIds = [];
   }
-  if (event.sourceType === 'document' && event.sourceId) {
-    movement.documentIds.push(event.sourceId);
+  if (event.sourceType === 'document' && event.sourceId != null) {
+    // sourceId de un evento 'document' es el id numérico del documento. Se
+    // convierte defensivamente: sourceId admite string (claves compuestas de
+    // otros sourceType) → sólo se empuja si el resultado es un id finito.
+    const docId = Number(event.sourceId);
+    if (Number.isFinite(docId)) {
+      movement.documentIds.push(docId);
+    }
   }
   movement.status = 'conciliado';
   movement.updatedAt = new Date().toISOString();

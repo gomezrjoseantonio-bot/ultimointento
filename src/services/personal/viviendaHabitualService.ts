@@ -351,12 +351,15 @@ async function generarEventosHipoteca(
           : data.hipoteca.prestamoId;
       const prestamo = await db.get(STORE_PRESTAMOS, idNum);
       prestamoData = prestamo;
-      // Best-effort · busca un campo de cuota en estructuras conocidas
+      // La cuota mensual no es un campo del Prestamo: vive en el plan de pagos
+      // (planPagos.periodos[].cuota). Se toma el próximo periodo no pagado, o el
+      // primero como fallback. Los campos cuotaMensual/cuotaActual/cuota que se
+      // leían antes no existen en Prestamo → daban siempre 0.
       if (prestamo) {
+        const periodos = prestamo.planPagos?.periodos;
         cuotaMensual =
-          prestamo.cuotaMensual ??
-          prestamo.cuotaActual ??
-          prestamo.cuota ??
+          periodos?.[prestamo.cuotasPagadas]?.cuota ??
+          periodos?.[0]?.cuota ??
           0;
       }
     }
