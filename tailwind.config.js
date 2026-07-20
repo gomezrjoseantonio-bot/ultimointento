@@ -8,10 +8,10 @@ module.exports = {
     extend: {
       colors: {
         // ATLAS v4 — Solo 3 familias: Navy, Teal, Gris
-        'atlas-blue': '#042C5E',
-        'atlas-blue-dark': '#0A3A72',
+        'atlas-blue': 'var(--atlas-v5-brand)',
+        'atlas-blue-dark': 'var(--atlas-v5-brand)',
         'atlas-navy-1': '#303A4C',
-        'atlas-navy-2': '#142C50',
+        'atlas-navy-2': 'var(--atlas-v5-brand)',
         'atlas-teal': '#1DA0BA',
         'atlas-teal-dark': '#178999',
         'bg': '#F8F9FA',
@@ -33,17 +33,17 @@ module.exports = {
         'error-700': '#303A4C',
 
         // ATLAS Utility Tokens
-        'primary-50': '#F0F4FA',
-        'primary-100': '#E8EFF7',
+        'primary-50': 'var(--atlas-v5-brand-wash)',
+        'primary-100': 'var(--atlas-v5-brand-wash)',
         'primary-200': '#C8D0DC',
 
         // Legacy brand colors (backward compatibility)
-        'brand-navy': '#042C5E',
+        'brand-navy': 'var(--atlas-v5-brand)',
         'brand-teal': '#1DA0BA',
 
         // v4: Horizon tokens → navy
-        'hz-primary': '#042C5E',
-        'hz-primary-dark': '#0A3A72',
+        'hz-primary': 'var(--atlas-v5-brand)',
+        'hz-primary-dark': 'var(--atlas-v5-brand)',
         'hz-bg': '#F8F9FA',
         'hz-text': '#303A4C',
         'hz-success': '#042C5E',
@@ -67,34 +67,30 @@ module.exports = {
         'hz-card-bg': '#FFFFFF',
 
         // Legacy horizon colors (backward compat)
-        'horizon-navy': '#042C5E',
+        'horizon-navy': 'var(--atlas-v5-brand)',
 
-        // Navy palette — v4
+        // Navy palette — repuntado a v5 (Fase B · azules)
         navy: {
-          50: '#F0F4FA',
-          100: '#E8EFF7',
+          50: 'var(--atlas-v5-brand-wash)',
+          100: 'var(--atlas-v5-brand-wash)',
           200: '#C8D0DC',
-          300: '#8ca4ce',
-          400: '#5d7cb7',
-          500: '#3a5998',
-          600: '#1E3A5F',
-          700: '#142C50',
-          800: '#0A3A72',
-          900: '#042C5E',
+          500: 'var(--atlas-v5-brand-2)',
+          600: 'var(--atlas-v5-brand)',
+          700: 'var(--atlas-v5-brand)',
+          800: 'var(--atlas-v5-brand)',
+          900: 'var(--atlas-v5-brand)',
         },
 
-        // Primary = navy
+        // Primary = navy (Fase B · azules)
         primary: {
-          50: '#F0F4FA',
-          100: '#E8EFF7',
+          50: 'var(--atlas-v5-brand-wash)',
+          100: 'var(--atlas-v5-brand-wash)',
           200: '#C8D0DC',
-          300: '#8ca4ce',
-          400: '#5d7cb7',
-          500: '#3a5998',
-          600: '#1E3A5F',
-          700: '#042C5E',
-          800: '#0A3A72',
-          900: '#042C5E',
+          500: 'var(--atlas-v5-brand-2)',
+          600: 'var(--atlas-v5-brand)',
+          700: 'var(--atlas-v5-brand)',
+          800: 'var(--atlas-v5-brand)',
+          900: 'var(--atlas-v5-brand)',
         },
 
         // v4: Success → navy (no green)
