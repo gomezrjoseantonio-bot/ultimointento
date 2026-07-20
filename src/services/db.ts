@@ -12,6 +12,8 @@ import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type { PosicionInversion } from '../types/inversiones';
 import type { PlanPensiones, AportacionPlan, TraspasoPlanPensiones } from '../types/planesPensiones';
 import type { ValoracionActivo } from '../types/valoracionActivo';
+import type { Prestamo } from '../types/prestamos';
+import type { PersonalData, PersonalModuleConfig } from '../types/personal';
 import type { ViviendaHabitual } from '../types/viviendaHabitual';
 import type {
   ArrastresEjercicio,
@@ -2345,7 +2347,7 @@ interface AtlasHorizonDB extends DBSchema {
    * un puñado de wizards mantienen lectura directa por necesitar el objeto
    * completo (excepciones documentadas en cada llamada T14.4).
    */
-  personalData: { key: IDBValidKey; value: any; indexes: { 'dni': IDBValidKey; 'fechaActualizacion': IDBValidKey } };
+  personalData: { key: IDBValidKey; value: PersonalData; indexes: { 'dni': IDBValidKey; 'fechaActualizacion': IDBValidKey } };
   /**
    * V1.2 · flags UI/integración derivados automáticamente de `personalData`.
    *
@@ -2356,7 +2358,7 @@ interface AtlasHorizonDB extends DBSchema {
    * · todos hardcoded `true` excepto `seccionesActivas.{nomina|autonomo}` que
    * se derivan de `personalData.situacionLaboral`.
    */
-  personalModuleConfig: { key: IDBValidKey; value: any; indexes: { 'fechaActualizacion': IDBValidKey } };
+  personalModuleConfig: { key: IDBValidKey; value: PersonalModuleConfig; indexes: { 'fechaActualizacion': IDBValidKey } };
   // nominas: ELIMINADO en V63 (sub-tarea 4 · deuda sub-tarea 2) — datos ya copiados a `ingresos` con tipo='nomina' en V61
   /**
    * V61 (TAREA 7 sub-tarea 2): nuevo store unificado de ingresos personales.
@@ -2388,7 +2390,7 @@ interface AtlasHorizonDB extends DBSchema {
   // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
   // patronGastosPersonales: ELIMINADO en V62 (sub-tarea 3) — futuro compromisosRecurrentes · 7 registros
   // gastosPersonalesReal: ELIMINADO en V62 (sub-tarea 3) — futuro movements + treasuryEvents · 0 registros
-  prestamos: { key: IDBValidKey; value: any; indexes: { 'createdAt': IDBValidKey; 'inmuebleId': IDBValidKey; 'tipo': IDBValidKey } }; // Financiacion: Loan records · V63 (sub-tarea 4): campo `liquidacion` absorbe los settlements del store eliminado `loan_settlements`.
+  prestamos: { key: IDBValidKey; value: Prestamo; indexes: { 'createdAt': IDBValidKey; 'inmuebleId': IDBValidKey; 'tipo': IDBValidKey } }; // Financiacion: Loan records · V63 (sub-tarea 4): campo `liquidacion` absorbe los settlements del store eliminado `loan_settlements`.
   /**
    * V74 (T-VALORACIONES PR1): store polimórfico de valoraciones temporales
    * por activo. Reemplaza al anterior `valoraciones_historicas` (snake_case,
@@ -2530,7 +2532,7 @@ interface AtlasHorizonDB extends DBSchema {
    *     - `migration_fix_reparaciones_duplicadas_v1`
    *     - `migration_limpiar_gastos_reparacion_0106_v1`
    */
-  keyval: { key: IDBValidKey; value: any; indexes: {} };
+  keyval: { key: IDBValidKey; value: unknown; indexes: {} };
   // objetivos_financieros: ELIMINADO del schema (bloque 2.4) — migrado a 'escenarios'
   //   en V5.4/V5.5; store físico eliminado en V5.9. Creación bajo guard oldVersion<32
   //   y lifecycle de upgrade eliminados.
