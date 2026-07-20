@@ -17,20 +17,20 @@ module.exports = {
         'bg': 'var(--atlas-v5-bg)',
         'text-gray': 'var(--atlas-v5-ink-3)',
 
-        // v4: Functional states mapped to navy/teal/gris (NO semaphore)
-        'ok': '#042C5E',
-        'ok-dark': '#0A3A72',
-        'ok-50': '#F0F4FA',
-        'ok-200': '#E8EFF7',
-        'ok-700': '#042C5E',
-        'warn': '#6C757D',
+        // v4: Functional states → navy/gris (NO semaphore) · repuntado a v5 (Fase B · semánticos)
+        'ok': 'var(--atlas-v5-brand)',
+        'ok-dark': 'var(--atlas-v5-brand)',
+        'ok-50': 'var(--atlas-v5-brand-wash)',
+        'ok-200': 'var(--atlas-v5-brand-wash)',
+        'ok-700': 'var(--atlas-v5-brand)',
+        'warn': 'var(--atlas-v5-ink-3)',
         'warn-bg': 'rgba(108, 117, 125, 0.1)',
-        'error': '#303A4C',
-        'error-50': '#EEF1F5',
-        'error-200': '#DDE3EC',
-        'error-500': '#303A4C',
-        'error-600': '#303A4C',
-        'error-700': '#303A4C',
+        'error': 'var(--atlas-v5-ink-2)',
+        'error-50': 'var(--atlas-v5-line-2)',
+        'error-200': 'var(--atlas-v5-line)',
+        'error-500': 'var(--atlas-v5-ink-2)',
+        'error-600': 'var(--atlas-v5-ink-2)',
+        'error-700': 'var(--atlas-v5-ink-2)',
 
         // ATLAS Utility Tokens
         'primary-50': 'var(--atlas-v5-brand-wash)',
@@ -46,17 +46,17 @@ module.exports = {
         'hz-primary-dark': 'var(--atlas-v5-brand)',
         'hz-bg': 'var(--atlas-v5-bg)',
         'hz-text': 'var(--atlas-v5-ink-2)',
-        'hz-success': '#042C5E',
-        'hz-warning': '#6C757D',
-        'hz-error': '#303A4C',
-        'hz-info': '#042C5E',
+        'hz-success': 'var(--atlas-v5-brand)',
+        'hz-warning': 'var(--atlas-v5-ink-3)',
+        'hz-error': 'var(--atlas-v5-ink-2)',
+        'hz-info': 'var(--atlas-v5-brand)',
 
-        // v4: Movement States — navy/gris only
-        'movement-previsto-ingreso': '#042C5E',
-        'movement-previsto-gasto': '#303A4C',
-        'movement-confirmado': '#042C5E',
-        'movement-vencido': '#6C757D',
-        'movement-no-previsto': '#6C757D',
+        // v4: Movement States — navy/gris only · repuntado a v5 (Fase B · semánticos)
+        'movement-previsto-ingreso': 'var(--atlas-v5-brand)',
+        'movement-previsto-gasto': 'var(--atlas-v5-ink-2)',
+        'movement-confirmado': 'var(--atlas-v5-brand)',
+        'movement-vencido': 'var(--atlas-v5-ink-3)',
+        'movement-no-previsto': 'var(--atlas-v5-ink-3)',
 
         // v4: Horizon Neutral Colors → repuntado a v5 (Fase B · grises)
         'hz-neutral-900': 'var(--atlas-v5-ink-2)',
@@ -93,47 +93,47 @@ module.exports = {
           900: 'var(--atlas-v5-brand)',
         },
 
-        // v4: Success → navy (no green)
+        // v4: Success → navy (no green) · repuntado a v5 (Fase B · semánticos)
         success: {
-          50: '#F0F4FA',
-          100: '#E8EFF7',
-          200: '#C8D0DC',
-          500: '#042C5E',
-          600: '#0A3A72',
-          700: '#042C5E',
+          50: 'var(--atlas-v5-brand-wash)',
+          100: 'var(--atlas-v5-brand-wash)',
+          200: 'var(--atlas-v5-ink-5)',
+          500: 'var(--atlas-v5-brand)',
+          600: 'var(--atlas-v5-brand)',
+          700: 'var(--atlas-v5-brand)',
         },
 
-        // v4: Warning → grey (no yellow)
+        // v4: Warning → grey (no yellow) · repuntado a v5 (Fase B · semánticos)
         warning: {
-          50: '#EEF1F5',
-          100: '#EEF1F5',
-          200: '#DDE3EC',
-          500: '#6C757D',
-          600: '#6C757D',
-          700: '#303A4C',
+          50: 'var(--atlas-v5-line-2)',
+          100: 'var(--atlas-v5-line-2)',
+          200: 'var(--atlas-v5-line)',
+          500: 'var(--atlas-v5-ink-3)',
+          600: 'var(--atlas-v5-ink-3)',
+          700: 'var(--atlas-v5-ink-2)',
         },
 
-        // v4: Error → grey-dark (no red)
+        // v4: Error → grey-dark (no red) · repuntado a v5 (Fase B · semánticos)
         error: {
-          50: '#EEF1F5',
-          100: '#EEF1F5',
-          200: '#DDE3EC',
-          500: '#303A4C',
-          600: '#303A4C',
-          700: '#303A4C',
+          50: 'var(--atlas-v5-line-2)',
+          100: 'var(--atlas-v5-line-2)',
+          200: 'var(--atlas-v5-line)',
+          500: 'var(--atlas-v5-ink-2)',
+          600: 'var(--atlas-v5-ink-2)',
+          700: 'var(--atlas-v5-ink-2)',
         },
 
-        // Info → navy
+        // Info → navy · repuntado a v5 (Fase B · semánticos)
         info: {
-          50: '#F0F4FA',
-          100: '#E8EFF7',
-          500: '#042C5E',
-          600: '#0A3A72',
-          700: '#042C5E',
+          50: 'var(--atlas-v5-brand-wash)',
+          100: 'var(--atlas-v5-brand-wash)',
+          500: 'var(--atlas-v5-brand)',
+          600: 'var(--atlas-v5-brand)',
+          700: 'var(--atlas-v5-brand)',
         },
 
         // Semantic aliases
-        danger: '#303A4C',
+        danger: 'var(--atlas-v5-ink-2)',
 
         // Neutral colors — repuntado a v5 (Fase B · grises)
         neutral: {
