@@ -5,7 +5,6 @@
 // db.ts → aquí).
 import type { OpenDBCallbacks } from 'idb';
 import type { AtlasHorizonDB } from '../db';
-import type { Escenario } from '../../types/miPlan';
 import { ensureIndex } from './ensure-index';
 
 type UpgradeArgs = Parameters<NonNullable<OpenDBCallbacks<AtlasHorizonDB>['upgrade']>>;

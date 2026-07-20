@@ -1,7 +1,6 @@
 // Frente C · troceo de initDB · SEGUNDA mitad del callback `upgrade` (migraciones
 // por versión oldVersion<55…75), extraída LITERALMENTE de db.ts. Se ejecuta tras
 // applyUpgradeA en el mismo upgrade() (orden preservado).
-import type { AtlasHorizonDB } from '../db';
 import type { Escenario } from '../../types/miPlan';
 import { ensureIndex } from './ensure-index';
 import type { UpgradeDB, UpgradeTx } from './upgrade-a';
