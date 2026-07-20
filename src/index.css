@@ -9,7 +9,7 @@
 :root {
   /* ===== NAVY (identidad, acción, texto) ===== */
   /* Unificado a la paleta v5: elimina la 2ª fuente de azul (navy v4) que
-     coexistia con --atlas-v5-brand. --blue/--blue-* encadenan a estos. */
+     coexistía con --atlas-v5-brand. --blue/--blue-* encadenan a estos. */
   --navy-900: var(--atlas-v5-brand);
   --navy-800: var(--atlas-v5-brand-2);
   --navy-700: var(--atlas-v5-brand);
@@ -22,14 +22,18 @@
   --teal-100: #E6F7FA;
 
   /* ===== GRIS (estructura, texto, fondos) ===== */
-  --grey-900: #1A2332;
-  --grey-700: #303A4C;
-  --grey-500: #6C757D;
-  --grey-400: #9CA3AF;
-  --grey-300: #C8D0DC;
-  --grey-200: #DDE3EC;
-  --grey-100: #EEF1F5;
-  --grey-50: #F8F9FA;
+  /* Unificado a la paleta v5 (misma razón que navy): elimina la 2ª fuente de
+     gris que coexistía con la rampa --atlas-v5-ink/line/bg. Los alias --gray-N y
+     los usos de var(--grey-N) encadenan a estos. La rampa v5 es más oscura en
+     tinta (mejor contraste) y cálida en fondos. */
+  --grey-900: var(--atlas-v5-ink);
+  --grey-700: var(--atlas-v5-ink-2);
+  --grey-500: var(--atlas-v5-ink-3);
+  --grey-400: var(--atlas-v5-ink-4);
+  --grey-300: var(--atlas-v5-ink-5);
+  --grey-200: var(--atlas-v5-line);
+  --grey-100: var(--atlas-v5-line-2);
+  --grey-50: var(--atlas-v5-bg);
   --white: #FFFFFF;
 
   /* ===== Aliases de compatibilidad v3→v4 ===== */
