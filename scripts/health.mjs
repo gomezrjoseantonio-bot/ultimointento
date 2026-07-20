@@ -805,37 +805,50 @@ function archivos800() {
 }
 
 /**
- * INDICADOR 13 · pct_v5  (ÚNICO que SUBE · trinquete invertido)
- * % de componentes .tsx de producción que importan el barrel `design-system/v5`:
- *   NUMERADOR   · .tsx no test que contienen `design-system/v5`
- *   DENOMINADOR · todos los .tsx no test
- * OBJETIVO · sube. La auditoría midió 23,5 % (137/583).
+ * INDICADOR 13 · ficheros_no_v5  (baja · dirección estándar hacia 0)
+ * Nº de componentes .tsx de producción que AÚN NO consumen el design-system v5.
+ * Es el complemento del antiguo `pct_v5` (que subía): mide lo que FALTA por
+ * migrar, no lo migrado, así que BAJA como el resto de indicadores. «Consume v5»
+ * = importa el barrel `design-system/v5` directamente, o vía un `.module.css`
+ * que usa tokens v5 (`var(--atlas-v5-*)`).
+ *   MEDIDA · #(.tsx no test) − #(.tsx no test que consumen v5)
+ * Sustituye a `pct_v5` (retirado): mismo criterio de detección, presentación
+ * como conteo descendente para encajar en el trinquete estándar.
  */
-function pctV5() {
-  // AMPLIADO (auditoría puntos ciegos): antes solo `import '…/design-system/v5'`.
-  // Ahora también consumo INDIRECTO vía un `.module.css` que usa tokens v5
-  // (`var(--atlas-v5-*)`) — señal fiable del prefijo canónico de tokens.css.
-  // Es indicador que SUBE; ampliarlo cuenta más consumidores reales → sube el %.
-  // Correlación por RUTA RESUELTA (no por basename · hay basenames duplicados
-  // como PanelPage.module.css en dos carpetas): se resuelve el import relativo
-  // contra la carpeta del .tsx y se comprueba ESE archivo exacto.
+function ficherosNoV5() {
+  // Detección idéntica a la del antiguo pct_v5 (consumo directo o INDIRECTO vía
+  // un `.module.css` con tokens v5). Correlación por RUTA RESUELTA (no basename ·
+  // hay basenames duplicados como PanelPage.module.css en dos carpetas): se
+  // resuelve el import relativo contra la carpeta del .tsx y se comprueba ESE
+  // archivo exacto.
   const v5Modules = new Set(); // rutas absolutas de .module.css que usan v5
   for (const f of walk(SRC, (p) => p.endsWith('.module.css') && !isTestPath(p))) {
     if (/var\(--atlas-v5-/.test(read(f))) v5Modules.add(path.resolve(f));
   }
   const tsx = walk(SRC, (p) => p.endsWith('.tsx') && !isTestPath(p));
-  const withV5 = tsx.filter((f) => {
+  const noV5 = tsx.filter((f) => {
     const src = read(f);
-    if (/design-system\/v5/.test(src)) return true;
+    if (/design-system\/v5/.test(src)) return false;
     const imports = [...src.matchAll(/from\s+['"]([^'"]+\.module\.css)['"]/g)].map((m) => m[1]);
-    return imports.some(
+    const consumeV5 = imports.some(
       (imp) => imp.startsWith('.') && v5Modules.has(path.resolve(path.dirname(f), imp))
     );
+    return !consumeV5;
   });
-  const pct = tsx.length ? (withV5.length / tsx.length) * 100 : 0;
+  const conV5 = tsx.length - noV5.length;
   return {
-    value: Math.round(pct * 10) / 10,
-    detail: [`${withV5.length} / ${tsx.length} (directo o vía .module.css con var(--atlas-v5-*))`],
+    value: noV5.length,
+    detail: [
+      `${noV5.length} / ${tsx.length} .tsx sin v5 (consumen v5: ${conV5} · directo o vía .module.css con var(--atlas-v5-*))`,
+      ...noV5.slice(0, 15).map((f) => rel(f)),
+    ],
+    calibracion: {
+      fecha: '2026-07-20',
+      anterior: 'pct_v5 = 61.3 % (subía · trinquete invertido)',
+      nueva: noV5.length,
+      motivo:
+        'pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total).',
+    },
   };
 }
 
@@ -997,8 +1010,8 @@ const GOBERNANZA_RECALIBRACION =
 // `antes` (pre-ampliación). En cuanto `main` incorpora el nuevo número, `antes`
 // deja de coincidir y la exención SE DESACTIVA SOLA — no oculta subidas futuras
 // (eso sería esconder, prohibido). Solo se listan las que suben en dirección de
-// empeoramiento; las que bajan (rutas_huerfanas) o suben siendo 'up' (pct_v5)
-// no necesitan exención.
+// empeoramiento; las que bajan (rutas_huerfanas, ficheros_no_v5) no necesitan
+// exención.
 const AMPLIACIONES = {
   enlaces_rotos: { antes: 0, motivo: 've onNavigate( y window.location' },
   hex_hardcoded: { antes: 974, motivo: 've #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js' },
@@ -1038,7 +1051,7 @@ const INDICATORS = [
   { key: 'kpis_hardcoded', dir: 'down', obj: 0, fn: kpisHardcoded },
   { key: 'todos_totales', dir: 'down', obj: null, fn: todosTotales },
   { key: 'archivos_800', dir: 'down', obj: null, fn: archivos800 },
-  { key: 'pct_v5', dir: 'up', obj: null, fn: pctV5 },
+  { key: 'ficheros_no_v5', dir: 'down', obj: null, fn: ficherosNoV5 },
   { key: 'prs_abiertos', dir: 'down', obj: 0, fn: prsAbiertos },
   { key: 'tests_rojos', dir: 'down', obj: 0, fn: testsRojos },
   { key: 'ccaa_no_verificadas', dir: 'down', obj: 0, fn: ccaaNoVerificadas },

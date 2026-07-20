@@ -90,6 +90,7 @@ ese es el NUEVO BASELINE, no una regresión (regla asimétrica · ver GOBERNANZA
 | 2026-07-19 · muro/deadcode | Clúster `TreasuryReconciliationView` v3 borrado (render `solo_tests` · superseded por ConciliacionPageV2 · −172 hex) + util huérfano `normalizeText` | `find src/components/treasury/TreasuryReconciliationView.tsx src/components/treasury/treasury-reconciliation.css src/components/treasury/treasuryBalanceSummary.ts src/utils/normalizeText.ts 2>/dev/null \| wc -l` | `0` |
 | 2026-07-19 · muro tanda 1 | `AutonomoWizard.tsx` (pantalla viva `/personal/autonomo/*`) migrado a tokens v5 · 0 hex (−59) | `grep -oE "#[0-9a-fA-F]{3,6}" src/pages/GestionPersonal/wizards/AutonomoWizard.tsx \| wc -l` | `0` |
 | 2026-07-19 · muro tanda 2 | `OtrosIngresosWizard.tsx` (pantalla viva) migrado a tokens v5 · 0 hex (−43) | `grep -oE "#[0-9a-fA-F]{3,6}" src/pages/GestionPersonal/wizards/OtrosIngresosWizard.tsx \| wc -l` | `0` |
+| 2026-07-20 · pct_v5→ficheros_no_v5 | Indicador 13 `pct_v5` (% ascendente · trinquete invertido) RETIRADO y sustituido por `ficheros_no_v5` (conteo descendente hacia 0, complemento). Misma detección; encaja en el trinquete estándar. Recalibración registrada en el JSON | `node scripts/health.mjs >/dev/null; node -e "const j=require('./docs/health/HEALTH-2026-07-20.json'); process.stdout.write(String(('pct_v5' in j.indicators)+' '+('ficheros_no_v5' in j.indicators)))"` | `false true` |
 
 ### Retiradas (supersedidas por el bloque 2)
 
