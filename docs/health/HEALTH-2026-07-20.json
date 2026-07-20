@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-20",
-  "generatedAt": "2026-07-20T18:10:38.327Z",
+  "generatedAt": "2026-07-20T19:02:08.038Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "97ba887"
+    "head": "ca5f21d"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -29,6 +29,13 @@
       "anterior": 0,
       "nueva": 0,
       "motivo": "importadores-directos → grafo de alcanzabilidad transitiva (Adenda 2 · raíces estrictas por evidencia). Amplía la búsqueda: aflora deuda muerta antes invisible (árboles muertos completos, no solo hojas). No borra nada."
+    },
+    {
+      "indicador": "emojis_ui",
+      "fecha": "2026-07-20",
+      "anterior": 64,
+      "nueva": 71,
+      "motivo": "Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose."
     },
     {
       "indicador": "kpis_hardcoded",
@@ -72,6 +79,13 @@
       "antes": 250,
       "despues": 239,
       "motivo": "Frente A · ve functions/ y scripts/ (antes solo src)",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    },
+    {
+      "indicador": "emojis_ui",
+      "antes": 64,
+      "despues": 71,
+      "motivo": "Frente A · ve cadenas .ts con señal de entrega a UI (toast/message:/…) · antes solo .tsx",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
     {
@@ -189,14 +203,19 @@
       "calibracion": null
     },
     "emojis_ui": {
-      "value": 64,
+      "value": 71,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": null,
-      "calibracion": null
+      "calibracion": {
+        "fecha": "2026-07-20",
+        "anterior": 64,
+        "nueva": 71,
+        "motivo": "Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose."
+      }
     },
     "iconos_no_lucide": {
       "value": 0,
@@ -255,7 +274,7 @@
         "1499 · src/components/treasury/MesDetalleDrawer.tsx",
         "1461 · src/services/declaracionOnboardingService.ts",
         "1435 · src/services/treasuryConfirmationService.ts",
-        "1388 · src/services/propertySaleService.ts"
+        "1421 · scripts/health.mjs"
       ],
       "calibracion": null
     },

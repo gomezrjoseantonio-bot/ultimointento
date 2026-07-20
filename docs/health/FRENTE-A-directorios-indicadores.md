@@ -21,7 +21,7 @@
 | 5 | rutas_huerfanas | rutas sin destino de nav | `src/` (App.tsx + nav) | = (router solo en src) | 19 | 19 |
 | 6 | enlaces_rotos | destinos sin ruta | `src/` (App.tsx + nav) | = (nav cliente solo en src) | 0 | 0 |
 | 7 | **hex_hardcoded** | color hardcoded (`#hex`/`rgb`/`hsl`) | `src/` .ts/.tsx/.css + `tailwind.config.js` | **+ `functions/`** .ts/.tsx/.css | 546 | 546 |
-| 8 | emojis_ui | emojis en `.tsx` de pantalla | `src/` .tsx | = (decisión del indicador · solo UI de pantalla) | 64 | 64 |
+| 8 | **emojis_ui** | emojis en UI de producción | `src/` .tsx | **+ cadenas `src/` .ts con señal de entrega a UI** (`toast(`/`message:`/`title:`/…) | 64 | **71** |
 | 9 | iconos_no_lucide | imports de icon-libs ≠ lucide | `src/` .ts/.tsx | = (iconos solo en UI) | 0 | 0 |
 | 10 | **kpis_hardcoded** | placeholders `TODO: conectar` vivos | `src/` **.tsx** | **`src/` .ts + .tsx** (el docstring ya decía "sin restricción por archivo") | 9 | 9 |
 | 11 | **todos_totales** | marcadores TODO/FIXME/HACK/XXX | `src/` .ts/.tsx/.css/.js/.cjs/.mjs | **+ `functions/` + `scripts/`** | 250 | 263 |
@@ -73,3 +73,10 @@ como "color hardcoded a tokenizar" corrompería el indicador. `functions/` sí e
 4. **hex baseline committeado estaba stale** (914 vs 546 real) · esta ampliación
    lo refresca; conviene regenerar el baseline JSON tras cada campaña que baje
    mucho un indicador, aunque el trinquete no lo exija (down-movers siempre pasan).
+5. **17 emojis de UI devueltos desde servicios** (`ocrService`,
+   `propertyAnalysisUtils`, `treasuryCreationService`, `generateLibertad`) · no es
+   deuda de medición sino de arquitectura: la capa de servicio devuelve
+   presentación en vez de estado · se resuelve cambiando el contrato, no el
+   escáner. Por eso `emojis_ui` NO los cuenta (no son mecanizables sin falsos
+   positivos); sí cuenta los 6 con señal de entrega a UI (`toast(`/`message:`),
+   recalibración 64→71.
