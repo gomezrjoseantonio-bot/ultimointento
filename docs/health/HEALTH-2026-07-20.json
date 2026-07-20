@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-20",
-  "generatedAt": "2026-07-20T17:53:18.355Z",
+  "generatedAt": "2026-07-20T18:10:38.327Z",
   "git": {
     "branch": "claude/new-session-lqaa79",
-    "head": "5d151b6"
+    "head": "97ba887"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -36,6 +36,13 @@
       "anterior": 17,
       "nueva": 0,
       "motivo": "Definición A+B: solo placeholders vivos junto a un valor renderizado (comentarios // y JSX {/* */}); se excluyen las 8 menciones en cabeceras JSDoc /** */ (grupo C). Sin restricción por archivo."
+    },
+    {
+      "indicador": "ficheros_no_v5",
+      "fecha": "2026-07-20",
+      "anterior": "pct_v5 = 61.3 % (subía · trinquete invertido)",
+      "nueva": 147,
+      "motivo": "pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total)."
     }
   ],
   "ampliaciones": [
@@ -252,17 +259,37 @@
       ],
       "calibracion": null
     },
-    "pct_v5": {
-      "value": 61.3,
-      "direction": "up",
+    "ficheros_no_v5": {
+      "value": 147,
+      "direction": "down",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "233 / 380 (directo o vía .module.css con var(--atlas-v5-*))"
+        "147 / 380 .tsx sin v5 (consumen v5: 233 · directo o vía .module.css con var(--atlas-v5-*))",
+        "src/App.tsx",
+        "src/components/ImageDescriptionComponent.tsx",
+        "src/components/InvoiceBreakdownModal.tsx",
+        "src/components/atlas/AtlasButton.stories.tsx",
+        "src/components/atlas/AtlasButton.tsx",
+        "src/components/atlas/AtlasText.stories.tsx",
+        "src/components/atlas/AtlasText.tsx",
+        "src/components/auth/ProtectedRoute.tsx",
+        "src/components/common/AccountOption.tsx",
+        "src/components/common/Badge.tsx",
+        "src/components/common/CommandPalette.tsx",
+        "src/components/common/ConfirmationModal.tsx",
+        "src/components/common/CopilotWidget.tsx",
+        "src/components/common/DataTable.tsx",
+        "src/components/common/EmptyState.tsx"
       ],
-      "calibracion": null
+      "calibracion": {
+        "fecha": "2026-07-20",
+        "anterior": "pct_v5 = 61.3 % (subía · trinquete invertido)",
+        "nueva": 147,
+        "motivo": "pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total)."
+      }
     },
     "prs_abiertos": {
       "value": null,

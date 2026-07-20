@@ -26,7 +26,7 @@
 | 10 | **kpis_hardcoded** | placeholders `TODO: conectar` vivos | `src/` **.tsx** | **`src/` .ts + .tsx** (el docstring ya decía "sin restricción por archivo") | 9 | 9 |
 | 11 | **todos_totales** | marcadores TODO/FIXME/HACK/XXX | `src/` .ts/.tsx/.css/.js/.cjs/.mjs | **+ `functions/` + `scripts/`** | 250 | 263 |
 | 12 | **archivos_800** | ficheros > 800 líneas | `src/` .ts/.tsx/.css/.js | **+ `functions/` + `scripts/` + .mjs/.cjs** | 43 | 44 |
-| 13 | pct_v5 | % `.tsx` que consumen v5 | `src/` .tsx/.module.css | = (ratio de front) | 60.8 | 61.3 |
+| 13 | ficheros_no_v5 | `.tsx` que AÚN NO consumen v5 (baja · sustituye a `pct_v5`) | `src/` .tsx/.module.css | conteo descendente (antes % ascendente) | — | 147 |
 | 14 | prs_abiertos | PRs abiertos | GitHub API | = (estado externo · sin rutas) | — | — |
 | 15 | tests_rojos | suites en rojo | runner de tests | = (CI · sin rutas) | — | — |
 | 16 | ccaa_no_verificadas | reglas CCAA `verified:false` | `src/services/fiscal/ccaaRules` | = (dir de datos específico) | 18 | 18 |
