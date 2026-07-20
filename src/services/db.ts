@@ -9,6 +9,9 @@ import type { BenchmarkReferencia } from '../types/benchmarksReferencia';
 import type { AvisoCerrado } from '../types/avisosUsuario';
 import type { ObjetivoVital } from '../types/objetivosVitales';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
+import type { PosicionInversion } from '../types/inversiones';
+import type { PlanPensiones, AportacionPlan, TraspasoPlanPensiones } from '../types/planesPensiones';
+import type { ValoracionActivo } from '../types/valoracionActivo';
 import type { ViviendaHabitual } from '../types/viviendaHabitual';
 import type {
   ArrastresEjercicio,
@@ -2330,7 +2333,7 @@ interface AtlasHorizonDB extends DBSchema {
   // reconciliationAuditLogs: ELIMINADO en V64 (sub-tarea 5) — deuda técnica · 0 lectores · wipe
   movementLearningRules: { key: IDBValidKey; value: MovementLearningRule; indexes: { 'ambito': IDBValidKey; 'appliedCount': IDBValidKey; 'categoria': IDBValidKey; 'createdAt': IDBValidKey; 'learnKey': IDBValidKey } }; // V1.1: Learning rules for automatic classification
   // learningLogs: ELIMINADO en V64 (sub-tarea 5) — absorbido en movementLearningRules.history[]
-  inversiones: { key: IDBValidKey; value: any; indexes: { 'activo': IDBValidKey; 'entidad': IDBValidKey; 'tipo': IDBValidKey } }; // V1.3: Investment positions
+  inversiones: { key: IDBValidKey; value: PosicionInversion; indexes: { 'activo': IDBValidKey; 'entidad': IDBValidKey; 'tipo': IDBValidKey } }; // V1.3: Investment positions
   // patrimonioSnapshots: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 1 registro
   /**
    * V1.2 · perfil fiscal NÚCLEO del titular (singleton · `id=1`).
@@ -2375,9 +2378,9 @@ interface AtlasHorizonDB extends DBSchema {
   // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
   // planesPensionInversion: eliminado en V65 — datos migrados a planesPensiones
   // ─── Módulo planes de pensiones (V65 · TAREA 13) ────────────────────────
-  planesPensiones: { key: IDBValidKey; value: any; indexes: { 'estado': IDBValidKey; 'personalDataId': IDBValidKey; 'tipoAdministrativo': IDBValidKey; 'titular': IDBValidKey } };            // V65: entidad estable plan (UUID)
-  aportacionesPlan: { key: IDBValidKey; value: any; indexes: { 'ejercicioFiscal': IDBValidKey; 'ingresoIdNomina': IDBValidKey; 'origen': IDBValidKey; 'planId': IDBValidKey; 'planId+ejercicioFiscal': IDBValidKey } };          // V65: eventos aportación (3 roles)
-  traspasosPlanPensiones: { key: IDBValidKey; value: any; indexes: { 'fechaEjecucion': IDBValidKey; 'planId': IDBValidKey } }; // V65: eventos traspaso fiscal neutro
+  planesPensiones: { key: IDBValidKey; value: PlanPensiones; indexes: { 'estado': IDBValidKey; 'personalDataId': IDBValidKey; 'tipoAdministrativo': IDBValidKey; 'titular': IDBValidKey } };            // V65: entidad estable plan (UUID)
+  aportacionesPlan: { key: IDBValidKey; value: AportacionPlan; indexes: { 'ejercicioFiscal': IDBValidKey; 'ingresoIdNomina': IDBValidKey; 'origen': IDBValidKey; 'planId': IDBValidKey; 'planId+ejercicioFiscal': IDBValidKey } };          // V65: eventos aportación (3 roles)
+  traspasosPlanPensiones: { key: IDBValidKey; value: TraspasoPlanPensiones; indexes: { 'fechaEjecucion': IDBValidKey; 'planId': IDBValidKey } }; // V65: eventos traspaso fiscal neutro
   // traspasosPlanes: ELIMINADO por completo del código (bloque 2.4 tipo · bloque 3
   //   commit final A lifecycle de upgrade + su test). Store legacy retirado en V65,
   //   nunca creado en DBs frescas; DB única en v79 → la migración no defiende a nadie.
@@ -2403,7 +2406,7 @@ interface AtlasHorizonDB extends DBSchema {
    * Índices: `idx_activo`, `idx_activo_fecha`, `idx_tipo`, `idx_fecha`,
    * `idx_anchor_fiscal`, `idx_tipo_subtipo`.
    */
-  valoracionesActivos: { key: IDBValidKey; value: any; indexes: { 'idx_activo': IDBValidKey; 'idx_activo_fecha': IDBValidKey; 'idx_anchor_fiscal': IDBValidKey; 'idx_fecha': IDBValidKey; 'idx_tipo': IDBValidKey; 'idx_tipo_subtipo': IDBValidKey } };
+  valoracionesActivos: { key: IDBValidKey; value: ValoracionActivo; indexes: { 'idx_activo': IDBValidKey; 'idx_activo_fecha': IDBValidKey; 'idx_anchor_fiscal': IDBValidKey; 'idx_fecha': IDBValidKey; 'idx_tipo': IDBValidKey; 'idx_tipo_subtipo': IDBValidKey } };
   // valoraciones_historicas: ELIMINADO del schema (bloque 2.4) — store renombrado a
   //   `valoracionesActivos` en V74; el físico ya no existe tras la migración v73→v74.
   // valoraciones_mensuales: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 115 registros
@@ -3301,7 +3304,13 @@ export const initDB = async () => {
                 const invStore = transaction.objectStore('inversiones');
                 const dstPlanes = transaction.objectStore('planesPensiones');
                 const dstAportaciones = transaction.objectStore('aportacionesPlan');
-                const inversiones = (await invStore.getAll()) as Array<Record<string, unknown>>;
+                // Migración V60: los registros almacenados son la forma PRE-V60
+                // (campos snake_case legacy: valor_actual, fecha_compra, empresaNif…),
+                // que no coinciden con PosicionInversion. Se leen como registros
+                // sueltos vía `unknown` intermedio (no es silenciar una incoherencia:
+                // el dato histórico realmente no es del tipo actual).
+                const rawInversiones: unknown = await invStore.getAll();
+                const inversiones = rawInversiones as Array<Record<string, unknown>>;
                 const PLAN_TIPOS = new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']);
                 for (const inv of inversiones) {
                   if (!PLAN_TIPOS.has(String(inv.tipo ?? ''))) continue;
