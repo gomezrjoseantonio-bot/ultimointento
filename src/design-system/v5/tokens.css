@@ -195,6 +195,7 @@
   /* Focus rings · anillos de foco/selección (raw values aquí, único sitio autorizado) */
   --atlas-v5-focus-ring-gold: 0 0 0 3px rgba(184, 138, 62, 0.15);
   --atlas-v5-focus-ring-warn: 0 0 0 3px rgba(138, 98, 19, 0.2);
+  --atlas-v5-focus-ring-neutral: 0 0 0 3px rgba(10, 31, 61, 0.06); /* foco neutro navy · inputs/selects */
 
   /* ===== Hover · superposiciones sutiles (frente rgba · efectos) =====
      Veladura de hover por propósito, no por valor. Antes cada :hover repetía

@@ -208,7 +208,7 @@
 .input:focus, .select:focus {
   outline: none;
   border-color: var(--atlas-v5-brand-ink);
-  box-shadow: 0 0 0 3px rgba(20, 27, 46, 0.06);
+  box-shadow: var(--atlas-v5-focus-ring-neutral);
 }
 .inputMono { font-family: var(--atlas-v5-font-mono-num); font-weight: 600; }
 .inputReadonly { background: var(--atlas-v5-line-3); }

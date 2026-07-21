@@ -327,7 +327,7 @@ select.inp { appearance: none; padding-right: 30px; }
 .retaTramo.selected { background: var(--brand-ink); border-color: var(--brand-ink); }
 .retaTramo.suggested { border-color: var(--gold-soft); }
 .retaTramoRange { font-size: 10px; color: var(--ink-4); }
-.retaTramo.selected .retaTramoRange { color: var(--atlas-v5-on-navy-5); }
+.retaTramo.selected .retaTramoRange { color: var(--atlas-v5-on-navy-4); }
 .retaTramoVal { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--ink); margin-top: 2px; }
 .retaTramo.selected .retaTramoVal { color: var(--gold); }
 
@@ -360,7 +360,7 @@ select.inp { appearance: none; padding-right: 30px; }
 .asideRowVal { color: var(--white); font-weight: 600; font-family: var(--font-mono); text-align: right; }
 .asideRowVal.warn { color: var(--gold-light); }
 .asideRowVal.pos { color: var(--pos-bright); }
-.asideRowVal.dim { color: var(--atlas-v5-on-navy-7); font-style: italic; font-weight: 400; }
+.asideRowVal.dim { color: var(--atlas-v5-on-navy-4); font-style: italic; font-weight: 400; }
 .asideStatus { margin-top: 16px; padding: 12px; background: linear-gradient(135deg, rgba(184, 138, 62, 0.15), rgba(184, 138, 62, 0.05)); border: 1px solid rgba(184, 138, 62, 0.3); border-radius: 8px; }
 .asideStatusLab { display: inline-flex; align-items: center; gap: 5px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; color: var(--gold-light); margin-bottom: 5px; }
 .asideStatusLab::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--gold-light); }
