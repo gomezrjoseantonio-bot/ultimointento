@@ -46,7 +46,7 @@
   justify-content: center;
   cursor: pointer;
 }
-.closeBtn:hover { background: rgba(255, 255, 255, 0.22); }
+.closeBtn:hover { background: var(--atlas-v5-hover-navy-strong); }
 .heroLabel {
   font-size: 11px;
   text-transform: uppercase;

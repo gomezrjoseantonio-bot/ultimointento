@@ -37,7 +37,7 @@
   font-family: 'IBM Plex Sans', sans-serif;
   transition: background 0.15s;
 }
-.btn-navy-ghost:hover { background: rgba(255,255,255,0.12); }
+.btn-navy-ghost:hover { background: var(--atlas-v5-hover-navy-strong); }
 
 .btn-navy-primary {
   display: inline-flex;

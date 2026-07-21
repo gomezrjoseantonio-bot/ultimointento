@@ -196,6 +196,13 @@
   --atlas-v5-focus-ring-gold: 0 0 0 3px rgba(184, 138, 62, 0.15);
   --atlas-v5-focus-ring-warn: 0 0 0 3px rgba(138, 98, 19, 0.2);
 
+  /* ===== Hover · superposiciones sutiles (frente rgba · efectos) =====
+     Veladura de hover por propósito, no por valor. Antes cada :hover repetía
+     su propio rgba de blanco-sobre-navy o navy-sobre-claro con alfas dispersos. */
+  --atlas-v5-hover-light: rgba(4, 44, 94, 0.06);      /* overlay navy sobre superficie clara · btn secundario */
+  --atlas-v5-hover-navy: rgba(255, 255, 255, 0.08);   /* overlay blanco sutil sobre navy · close/step/pager */
+  --atlas-v5-hover-navy-strong: rgba(255, 255, 255, 0.16); /* overlay blanco marcado sobre navy · botones ghost/bulk */
+
   /* ===== Z-index ===== */
   --atlas-v5-z-dropdown: 50;
   --atlas-v5-z-sticky: 80;

@@ -93,7 +93,7 @@
   cursor: pointer;
 }
 .headerClose:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--atlas-v5-hover-navy);
   color: var(--atlas-v5-on-navy-1);
 }
 
