@@ -97,7 +97,7 @@
   display: grid;
   place-items: center;
   color: var(--atlas-v5-navy-text-2);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--atlas-v5-border-translucent-strong);
   background: transparent;
   cursor: pointer;
   font-family: inherit;
@@ -107,7 +107,7 @@
 .pagerArrow:hover:not(:disabled) {
   background: var(--atlas-v5-hover-navy);
   color: var(--atlas-v5-white);
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--atlas-v5-border-translucent-strong);
 }
 
 .pagerArrow:disabled {
@@ -124,7 +124,7 @@
 
 .kpiBanner {
   padding-left: 20px;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid var(--atlas-v5-border-translucent);
   min-width: 0;
 }
 

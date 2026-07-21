@@ -88,7 +88,7 @@
   display: grid;
   place-items: center;
   color: var(--atlas-v5-on-navy-4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--atlas-v5-border-translucent);
   background: transparent;
   cursor: pointer;
 }

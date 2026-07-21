@@ -477,7 +477,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
               </span>
             </div>
           ))}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: 8, paddingTop: 10 }}>
+          <div style={{ borderTop: '1px solid var(--atlas-v5-border-translucent-strong)', marginTop: 8, paddingTop: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)', fontFamily: FONT }}>Cobrado en cuenta / año</span>
               <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 16, color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(cobradoEnCuenta)}</span>
@@ -562,7 +562,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
             <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : 'var(--atlas-v5-on-navy-1)' }}>{neg ? fmtNeg(val) : fmtEur(val)}</span>
           </div>
         ))}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', margin: '8px 0', paddingTop: 8 }}>
+        <div style={{ borderTop: '1px solid var(--atlas-v5-border-translucent-strong)', margin: '8px 0', paddingTop: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
             <span style={{ fontWeight: 600, color: 'var(--atlas-v5-on-navy-1)' }}>Rendimiento neto (base IRPF)</span>
             <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)', fontWeight: 600 }}>{fmtEur(rendimientoNeto)}</span>
@@ -572,7 +572,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
             <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'rgba(255,255,255,0.6)' }}>{fmtEur(rendimientoNeto / 12)}</span>
           </div>
         </div>
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', marginTop: 8, paddingTop: 8 }}>
+        <div style={{ borderTop: '1px solid var(--atlas-v5-border-translucent-strong)', marginTop: 8, paddingTop: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
             <span style={{ color: 'rgba(255,255,255,0.8)' }}>Cobrado neto de retención / año</span>
             <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(cobradoEnCuenta)}</span>
@@ -634,7 +634,7 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
               <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : 'var(--atlas-v5-on-navy-1)' }}>{neg ? fmtNeg(val) : fmtEur(val)}</span>
             </div>
           ))}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: 8, paddingTop: 10 }}>
+          <div style={{ borderTop: '1px solid var(--atlas-v5-border-translucent-strong)', marginTop: 8, paddingTop: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
               <span style={{ fontWeight: 600, color: 'var(--atlas-v5-on-navy-1)' }}>Rendimiento neto</span>
               <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(rendimientoNeto)}</span>

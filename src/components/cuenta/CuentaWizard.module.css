@@ -80,7 +80,7 @@
   border-radius: 6px;
   display: grid; place-items: center;
   color: var(--atlas-v5-navy-text-2);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid var(--atlas-v5-border-translucent);
   background: none;
   cursor: pointer;
   flex-shrink: 0;

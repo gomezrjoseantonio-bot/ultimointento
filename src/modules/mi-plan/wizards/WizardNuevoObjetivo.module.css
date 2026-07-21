@@ -41,7 +41,7 @@
   align-items: center;
   padding: 0 22px;
   gap: 22px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--atlas-v5-border-translucent);
 }
 .titleWrap {
   display: flex;
@@ -883,7 +883,7 @@
   color: var(--atlas-v5-on-navy-1);
   padding: 22px 22px 22px 24px;
   overflow-y: auto;
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 1px solid var(--atlas-v5-border-translucent);
   display: flex;
   flex-direction: column;
 }
@@ -915,7 +915,7 @@
   color: var(--atlas-v5-gold-bright);
   margin-bottom: 8px;
   padding-bottom: 5px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--atlas-v5-border-translucent);
 }
 .asideRow {
   display: flex;
@@ -956,7 +956,7 @@
 }
 .asideProgress {
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--atlas-v5-border-translucent);
   border-radius: 8px;
   padding: 12px 14px;
   margin-top: 14px;
@@ -996,7 +996,7 @@
 .asideStatus {
   margin-top: auto;
   padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--atlas-v5-border-translucent);
   font-size: 11px;
   color: var(--atlas-v5-navy-text-2);
   line-height: 1.5;

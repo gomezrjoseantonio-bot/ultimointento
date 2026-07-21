@@ -133,7 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
 
   const navSepStyle: React.CSSProperties = {
     margin: '14px 22px 4px',
-    borderTop: '1px solid rgba(255,255,255,.06)',
+    borderTop: '1px solid var(--atlas-v5-border-translucent)',
   };
 
   return (
@@ -159,7 +159,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
         <div
           style={{
             padding: '4px 22px 20px',
-            borderBottom: '1px solid rgba(255,255,255,.06)',
+            borderBottom: '1px solid var(--atlas-v5-border-translucent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -295,7 +295,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
             style={{
               marginTop: 'auto',
               padding: '14px 22px 4px',
-              borderTop: '1px solid rgba(255,255,255,.06)',
+              borderTop: '1px solid var(--atlas-v5-border-translucent)',
               position: 'relative',
             }}
           >
