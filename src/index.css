@@ -275,7 +275,7 @@ html, #root { min-height: 100vh; }
   color: var(--blue);
   border: 1px solid var(--blue);
 }
-.atlas-btn-secondary:hover { background: rgba(4, 44, 94, 0.06); }
+.atlas-btn-secondary:hover { background: var(--atlas-v5-hover-light); }
 
 .atlas-btn-ghost {
   padding: 10px 16px;

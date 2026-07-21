@@ -17,7 +17,7 @@
   z-index: 1001;
   display: flex;
   flex-direction: column;
-  box-shadow: -8px 0 32px rgba(20, 27, 46, 0.2);
+  box-shadow: var(--atlas-v5-shadow-modal);
   animation: slide 0.2s ease;
 }
 
@@ -46,7 +46,7 @@
   justify-content: center;
   cursor: pointer;
 }
-.closeBtn:hover { background: rgba(255, 255, 255, 0.22); }
+.closeBtn:hover { background: var(--atlas-v5-hover-navy-strong); }
 .heroLabel {
   font-size: 11px;
   text-transform: uppercase;

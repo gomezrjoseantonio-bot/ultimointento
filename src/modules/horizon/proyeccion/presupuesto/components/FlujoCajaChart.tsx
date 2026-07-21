@@ -106,7 +106,7 @@ export default function FlujoCajaChart({ data, year }: FlujoCajaChartProps) {
                   <div style={{
                     background: palette.white,
                     border: `1px solid ${palette.n200}`,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    boxShadow: 'var(--atlas-v5-shadow-card)',
                     borderRadius: 'var(--r-md)',
                     padding: 'var(--s3)',
                   }}>

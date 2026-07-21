@@ -33,7 +33,7 @@
   border-radius: 14px;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  box-shadow: 0 20px 60px rgba(20, 27, 46, 0.25);
+  box-shadow: var(--atlas-v5-shadow-modal);
   overflow: hidden;
 }
 
@@ -85,7 +85,7 @@
   cursor: pointer;
   flex-shrink: 0;
 }
-.headerClose:hover { background: rgba(255,255,255,0.06); color: var(--atlas-v5-card-alt); }
+.headerClose:hover { background: var(--atlas-v5-hover-navy); color: var(--atlas-v5-card-alt); }
 
 /* ─── BODY ─── */
 .body {
@@ -150,7 +150,7 @@
   background: var(--atlas-v5-card);
   border-radius: 50%;
   transition: transform 0.15s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  box-shadow: var(--atlas-v5-shadow-card-hover);
 }
 .toggleOn { background: var(--atlas-v5-brand-ink); }
 .toggleOn::after { transform: translateX(15px); }

@@ -145,7 +145,7 @@
 .toggleBtn.toggleActive {
   background: var(--atlas-v5-brand);
   color: var(--atlas-v5-white);
-  box-shadow: 0 1px 3px rgba(12, 18, 48, 0.12);
+  box-shadow: var(--atlas-v5-shadow-card);
 }
 
 .toggleInfo {

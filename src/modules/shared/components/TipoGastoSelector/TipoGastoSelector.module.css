@@ -90,7 +90,7 @@
   background: var(--atlas-v5-card);
   border: 1.5px solid var(--atlas-v5-line);
   border-radius: var(--atlas-v5-radius-md);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--atlas-v5-shadow-modal);
   max-height: 380px;
   overflow-y: auto;
   outline: none;

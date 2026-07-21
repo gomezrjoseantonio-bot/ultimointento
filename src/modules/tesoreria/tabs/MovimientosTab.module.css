@@ -91,7 +91,7 @@
   font-family: var(--atlas-v5-font-ui);
 }
 
-.bulkActions button:hover { background: rgba(255, 255, 255, 0.15); }
+.bulkActions button:hover { background: var(--atlas-v5-hover-navy-strong); }
 
 .bulkActions button.primary { background: var(--atlas-v5-gold); }
 .bulkActions button.primary:hover { background: var(--atlas-v5-gold-2); }

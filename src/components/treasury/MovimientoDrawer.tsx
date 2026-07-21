@@ -188,7 +188,7 @@ const MovimientoDrawer: React.FC<MovimientoDrawerProps> = ({
           minWidth: 380,
           background: 'var(--atlas-v5-card)',
           borderLeft: '1px solid var(--atlas-v5-line)',
-          boxShadow: '-8px 0 24px rgba(14,20,35,0.08)',
+          boxShadow: 'var(--atlas-v5-shadow-modal)',
           transform: open ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform .26s cubic-bezier(.32,.72,0,1)',
           zIndex: 111,

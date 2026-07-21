@@ -433,7 +433,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ catalog, compromiso, mode, onCl
           width: 'min(480px, 100vw)',
           background: 'var(--atlas-v5-bg)',
           borderLeft: '1px solid var(--atlas-v5-line)',
-          boxShadow: '-8px 0 32px rgba(0,0,0,0.15)',
+          boxShadow: 'var(--atlas-v5-shadow-modal)',
           zIndex: 201,
           display: 'flex',
           flexDirection: 'column',
@@ -825,7 +825,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ catalog, compromiso, mode, onCl
               padding: 24,
               maxWidth: 360,
               width: '90%',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+              boxShadow: 'var(--atlas-v5-shadow-modal)',
             }}
           >
             <div

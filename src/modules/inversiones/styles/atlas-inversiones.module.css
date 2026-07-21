@@ -30,7 +30,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(14, 20, 35, 0.18);
+  box-shadow: var(--atlas-v5-shadow-modal);
   animation: atlasSlideDown 0.2s ease-out;
   font-family: 'Inter', sans-serif;
 }
@@ -102,7 +102,7 @@
 }
 
 .headerClose:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--atlas-v5-hover-navy);
   color: var(--atlas-v5-on-navy-1);
 }
 

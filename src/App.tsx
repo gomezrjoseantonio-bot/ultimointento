@@ -611,7 +611,7 @@ function App() {
                 background: 'white',
                 border: '1px solid var(--hz-neutral-300)',
                 borderRadius: '10px',
-                boxShadow: '0 2px 4px rgba(156, 163, 175, 0.1)',
+                boxShadow: 'var(--atlas-v5-shadow-card)',
               },
               success: {
                 iconTheme: {

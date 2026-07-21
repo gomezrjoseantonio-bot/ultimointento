@@ -155,7 +155,7 @@
   background: var(--atlas-v5-card);
   border: 1px solid var(--atlas-v5-line);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(20, 27, 46, 0.14);
+  box-shadow: var(--atlas-v5-shadow-modal);
   padding: 4px;
 }
 .menuItem {

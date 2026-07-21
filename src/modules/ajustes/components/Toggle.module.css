@@ -21,7 +21,7 @@
   height: 18px;
   background: var(--atlas-v5-white);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(14, 20, 35, 0.15);
+  box-shadow: var(--atlas-v5-shadow-card);
   transition: left 0.14s;
 }
 

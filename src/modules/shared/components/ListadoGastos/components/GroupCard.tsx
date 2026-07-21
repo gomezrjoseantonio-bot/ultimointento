@@ -177,7 +177,7 @@ const groupWrap: React.CSSProperties = {
   overflow: 'hidden',
   background: 'var(--atlas-v5-card)',
   marginBottom: 14,
-  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+  boxShadow: 'var(--atlas-v5-shadow-card)',
 };
 const groupHeader: React.CSSProperties = {
   display: 'flex',
