@@ -426,7 +426,7 @@
   gap: 4px;
 }
 
-.cardValorFinal .miniLab { color: rgba(255, 255, 255, 0.55); }
+.cardValorFinal .miniLab { color: var(--atlas-v5-on-navy-5); }
 
 .cardValorFinalVal {
   font-size: 22px;

@@ -23,7 +23,7 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--atlas-v5-on-navy-5);
   font-weight: var(--atlas-v5-fw-semibold);
 }
 
@@ -41,7 +41,7 @@
   display: flex;
   flex-direction: column;
   padding-left: 24px;
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 1px solid var(--atlas-v5-border-translucent-strong);
   min-width: 0;
 }
 
@@ -49,7 +49,7 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--atlas-v5-on-navy-6);
   font-weight: var(--atlas-v5-fw-semibold);
 }
 
@@ -73,7 +73,7 @@
 
 .sub {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--atlas-v5-on-navy-6);
   font-family: var(--atlas-v5-font-mono-num);
   margin-top: 2px;
   white-space: nowrap;

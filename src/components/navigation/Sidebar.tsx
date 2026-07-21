@@ -128,12 +128,12 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
         fontWeight: 600,
         letterSpacing: '.2em',
         textTransform: 'uppercase',
-        color: 'rgba(255,255,255,.38)',
+        color: 'var(--atlas-v5-on-navy-7)',
       };
 
   const navSepStyle: React.CSSProperties = {
     margin: '14px 22px 4px',
-    borderTop: '1px solid rgba(255,255,255,.06)',
+    borderTop: '1px solid var(--atlas-v5-border-translucent)',
   };
 
   return (
@@ -159,7 +159,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
         <div
           style={{
             padding: '4px 22px 20px',
-            borderBottom: '1px solid rgba(255,255,255,.06)',
+            borderBottom: '1px solid var(--atlas-v5-border-translucent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -201,7 +201,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
                     fontSize: 10,
                     letterSpacing: '.18em',
                     textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,.42)',
+                    color: 'var(--atlas-v5-on-navy-7)',
                     marginTop: 3,
                   }}
                 >
@@ -235,7 +235,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           <button
             className="hidden md:flex"
             style={{
-              color: 'rgba(255,255,255,.4)',
+              color: 'var(--atlas-v5-on-navy-7)',
               background: 'none',
               border: 'none',
               cursor: 'pointer',
@@ -254,7 +254,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           {/* Mobile close button */}
           <button
             className="md:hidden"
-            style={{ color: 'rgba(255,255,255,.6)', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ color: 'var(--atlas-v5-on-navy-5)', background: 'none', border: 'none', cursor: 'pointer' }}
             onClick={() => setSidebarOpen(false)}
             aria-label="Cerrar menú"
           >
@@ -295,7 +295,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
             style={{
               marginTop: 'auto',
               padding: '14px 22px 4px',
-              borderTop: '1px solid rgba(255,255,255,.06)',
+              borderTop: '1px solid var(--atlas-v5-border-translucent)',
               position: 'relative',
             }}
           >
@@ -386,7 +386,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
                     </p>
                     <p
                       className="side-foot-sub"
-                      style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', marginTop: 1 }}
+                      style={{ fontSize: 11, color: 'var(--atlas-v5-on-navy-6)', marginTop: 1 }}
                     >
                       {user.subscriptionPlan}
                     </p>
@@ -394,7 +394,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
                   <ChevronUp
                     size={14}
                     className={`transition-transform ${accountMenuOpen ? '' : 'rotate-180'}`}
-                    style={{ color: 'rgba(255,255,255,.5)', flexShrink: 0 }}
+                    style={{ color: 'var(--atlas-v5-on-navy-6)', flexShrink: 0 }}
                   />
                 </>
               )}

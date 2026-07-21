@@ -203,6 +203,13 @@
   --atlas-v5-hover-navy: rgba(255, 255, 255, 0.08);   /* overlay blanco sutil sobre navy · close/step/pager */
   --atlas-v5-hover-navy-strong: rgba(255, 255, 255, 0.16); /* overlay blanco marcado sobre navy · botones ghost/bulk */
 
+  /* ===== Borde translúcido (frente rgba · efectos) =====
+     Bordes/hairlines translúcidos sobre navy. Todos eran blanco-sobre-oscuro con
+     alfas dispersos (0.06-0.3). Dos niveles por propósito: separador fino vs borde
+     de contenedor. No hay caso sobre fondo claro. */
+  --atlas-v5-border-translucent: rgba(255, 255, 255, 0.08);        /* separador/hairline fino sobre navy */
+  --atlas-v5-border-translucent-strong: rgba(255, 255, 255, 0.16); /* borde de card/contenedor sobre navy */
+
   /* ===== Z-index ===== */
   --atlas-v5-z-dropdown: 50;
   --atlas-v5-z-sticky: 80;
