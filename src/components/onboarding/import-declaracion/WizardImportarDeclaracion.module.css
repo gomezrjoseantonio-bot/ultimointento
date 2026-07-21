@@ -39,7 +39,7 @@
   grid-template-rows: 64px 1fr 72px;
   grid-template-areas: "head aside" "body aside" "footer aside";
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(14, 20, 35, 0.18);
+  box-shadow: var(--atlas-v5-shadow-modal);
   border: 1px solid var(--line);
 
   /* ── Alias mockup → design-system v5 (Oxford Gold) · en .wiz para que
@@ -85,7 +85,7 @@
   height: auto;
   min-height: 680px;
   max-height: none;
-  box-shadow: 0 2px 12px rgba(14, 20, 35, 0.08);
+  box-shadow: var(--atlas-v5-shadow-card);
 }
 
 /* HEADER */
@@ -250,7 +250,7 @@ select.inp { appearance: none; padding-right: 30px; }
 .toggleSub { font-size: 11px; color: var(--ink-4); }
 .toggleSwitch { width: 34px; height: 20px; background: var(--line); border-radius: 10px; position: relative; flex-shrink: 0; }
 .toggleSwitch.on { background: var(--gold); }
-.toggleKnob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: var(--white); border-radius: 50%; transition: left 0.14s; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
+.toggleKnob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: var(--white); border-radius: 50%; transition: left 0.14s; box-shadow: var(--atlas-v5-shadow-card); }
 .toggleSwitch.on .toggleKnob { left: 16px; }
 
 /* ACTION PILLS */

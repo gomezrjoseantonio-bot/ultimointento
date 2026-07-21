@@ -188,7 +188,7 @@ const ImportValoracionesWizard: React.FC<ImportValoracionesWizardProps> = ({
           backgroundColor: 'var(--atlas-v5-white)',
           borderRadius: '12px',
           padding: '24px',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+          boxShadow: 'var(--atlas-v5-shadow-modal)',
         }}
       >
         {/* Header */}

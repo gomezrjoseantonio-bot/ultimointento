@@ -37,7 +37,7 @@
   border-radius: 14px;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  box-shadow: 0 20px 60px rgba(20, 27, 46, 0.25);
+  box-shadow: var(--atlas-v5-shadow-modal);
   overflow: hidden;
 }
 
@@ -143,7 +143,7 @@
   background: var(--atlas-v5-card);
   border-radius: 50%;
   transition: transform 0.15s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  box-shadow: var(--atlas-v5-shadow-card-hover);
 }
 .toggleOn { background: var(--atlas-v5-brand-ink); }
 .toggleOn::after { transform: translateX(15px); }

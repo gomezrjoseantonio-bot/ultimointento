@@ -143,7 +143,7 @@ const LineaAnualForm: React.FC<Props> = ({ categoria, accounts, initial, pendien
           maxWidth: 560,
           maxHeight: '90vh',
           overflow: 'auto',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+          boxShadow: 'var(--atlas-v5-shadow-modal)',
         }}
       >
         <div

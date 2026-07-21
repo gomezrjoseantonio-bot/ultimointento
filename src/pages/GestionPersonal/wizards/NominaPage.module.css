@@ -198,7 +198,7 @@
   background: white;
   border-radius: 50%;
   transition: transform 0.15s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--atlas-v5-shadow-card-hover);
 }
 .toggle.on {
   background: var(--atlas-v5-brand-ink);

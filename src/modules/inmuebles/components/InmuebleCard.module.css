@@ -17,7 +17,7 @@
 .card:hover {
   border-color: var(--atlas-v5-gold);
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px rgba(14, 20, 35, 0.06);
+  box-shadow: var(--atlas-v5-shadow-card-hover);
 }
 
 .card:focus-visible {
@@ -73,7 +73,7 @@
   text-transform: uppercase;
   background: var(--atlas-v5-card);
   color: var(--atlas-v5-ink);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--atlas-v5-shadow-card);
 }
 
 .stateBadge::before {

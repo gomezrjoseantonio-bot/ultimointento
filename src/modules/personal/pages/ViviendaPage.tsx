@@ -756,7 +756,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--atlas-v5-card)',
     border: '1px solid var(--atlas-v5-line)',
     borderRadius: 8,
-    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+    boxShadow: 'var(--atlas-v5-shadow-modal)',
     padding: 4,
     zIndex: 50, /* --atlas-v5-z-dropdown */
   },
@@ -942,7 +942,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid var(--atlas-v5-line)',
     borderRadius: 12,
     padding: '20px 22px',
-    boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
+    boxShadow: 'var(--atlas-v5-shadow-modal)',
   },
   modalTitle: {
     fontSize: 15,

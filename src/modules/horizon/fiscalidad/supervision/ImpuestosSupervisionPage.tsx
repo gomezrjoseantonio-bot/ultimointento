@@ -81,7 +81,7 @@ const kpiCardStyle: React.CSSProperties = {
   border: '1px solid var(--grey-200)',
   borderRadius: 12,
   padding: '16px 18px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+  boxShadow: 'var(--atlas-v5-shadow-card)',
 };
 
 const kpiLabelStyle: React.CSSProperties = {

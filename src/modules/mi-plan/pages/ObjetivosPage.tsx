@@ -268,7 +268,7 @@ const ObjetivoCard: React.FC<CardProps> = ({ objetivo, onArchivar, onEliminar })
                 background: 'var(--atlas-v5-card)',
                 border: '1px solid var(--atlas-v5-line)',
                 borderRadius: 8,
-                boxShadow: '0 6px 18px rgba(15,23,42,.12)',
+                boxShadow: 'var(--atlas-v5-shadow-card)',
                 minWidth: 180,
                 padding: 4,
               }}

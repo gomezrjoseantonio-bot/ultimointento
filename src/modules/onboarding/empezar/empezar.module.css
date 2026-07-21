@@ -275,7 +275,7 @@
 }
 .ambModal {
   width: 100%; max-width: 440px; background: var(--atlas-v5-card); border: 1px solid var(--atlas-v5-line);
-  border-radius: var(--atlas-v5-radius-lg); padding: 22px; box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22);
+  border-radius: var(--atlas-v5-radius-lg); padding: 22px; box-shadow: var(--atlas-v5-shadow-modal);
 }
 .ambTitle { font-size: 17px; font-weight: var(--atlas-v5-fw-bold); letter-spacing: -0.02em; color: var(--atlas-v5-ink); margin: 0; }
 .ambSub { font-size: 12.5px; color: var(--atlas-v5-ink-3); margin: 6px 0 16px; }

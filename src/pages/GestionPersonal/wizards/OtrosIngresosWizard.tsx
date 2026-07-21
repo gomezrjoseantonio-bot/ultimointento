@@ -271,7 +271,7 @@ const OtrosIngresosWizard: React.FC = () => {
         const cfg = tipoConfig(modal.tipo);
         return (
           <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(2px)' }}>
-            <div style={{ background: 'var(--atlas-v5-card)', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.12)', width: '100%', maxWidth: 480, maxHeight: '90vh', overflow: 'auto', margin: '0 16px' }}>
+            <div style={{ background: 'var(--atlas-v5-card)', borderRadius: 16, boxShadow: 'var(--atlas-v5-shadow-modal)', width: '100%', maxWidth: 480, maxHeight: '90vh', overflow: 'auto', margin: '0 16px' }}>
               {/* Modal header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

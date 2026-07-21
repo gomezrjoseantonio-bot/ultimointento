@@ -185,7 +185,7 @@
   --atlas-v5-shadow-card-hover: 0 1px 3px rgba(0, 0, 0, 0.04);
   --atlas-v5-shadow-card-active: 0 1px 3px rgba(0, 0, 0, 0.06);
   --atlas-v5-shadow-card: 0 1px 4px rgba(0, 0, 0, 0.05);
-  --atlas-v5-shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --atlas-v5-shadow-modal: 0 12px 32px rgba(0, 0, 0, 0.15);
   --atlas-v5-shadow-banner-prom: 0 2px 6px rgba(184, 138, 62, 0.3);
   --atlas-v5-shadow-pulse-pos: 0 1px 3px rgba(30, 107, 58, 0.25);
   --atlas-v5-shadow-pulse-warn: 0 1px 3px rgba(138, 98, 19, 0.25);

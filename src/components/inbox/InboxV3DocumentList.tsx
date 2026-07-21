@@ -94,7 +94,7 @@ const KebabMenu: React.FC<{ onDelete: () => void }> = ({ onDelete }) => {
       {open && (
         <div
           className="absolute right-0 z-20 py-1"
-          style={{ top: 'calc(100% + 4px)', minWidth: 160, background: 'var(--white)', border: '1px solid var(--n-200)', borderRadius: 'var(--r-md)', boxShadow: '0 4px 12px rgba(0,0,0,.08)' }}
+          style={{ top: 'calc(100% + 4px)', minWidth: 160, background: 'var(--white)', border: '1px solid var(--n-200)', borderRadius: 'var(--r-md)', boxShadow: 'var(--atlas-v5-shadow-card)' }}
         >
           <button
             type="button"
@@ -117,7 +117,7 @@ const KebabMenu: React.FC<{ onDelete: () => void }> = ({ onDelete }) => {
 
 const DeleteModal: React.FC<{ filename: string; onConfirm: () => void; onCancel: () => void }> = ({ filename, onConfirm, onCancel }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(26,35,50,.45)' }} onClick={onCancel}>
-    <div className="w-full max-w-sm mx-4 p-6" style={{ background: 'var(--white)', borderRadius: 'var(--r-lg)', boxShadow: '0 16px 40px rgba(0,0,0,.18)' }} onClick={(e) => e.stopPropagation()}>
+    <div className="w-full max-w-sm mx-4 p-6" style={{ background: 'var(--white)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--atlas-v5-shadow-modal)' }} onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-center w-10 h-10 mb-4" style={{ background: 'var(--s-neg-bg)', borderRadius: 'var(--r-md)' }}>
         <Trash2 size={20} style={{ color: 'var(--s-neg)' }} />
       </div>

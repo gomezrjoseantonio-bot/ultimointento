@@ -84,7 +84,7 @@ const cardStyle: React.CSSProperties = {
   background: 'var(--white)',
   border: '1px solid var(--grey-200)',
   borderRadius: 12,
-  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+  boxShadow: 'var(--atlas-v5-shadow-card)',
 };
 
 // ══════════════════════════════════════════════════════════════

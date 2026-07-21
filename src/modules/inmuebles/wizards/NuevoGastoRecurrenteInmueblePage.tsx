@@ -1466,7 +1466,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderTop: '4px solid var(--atlas-v5-gold)',
     borderRadius: 10,
     padding: '20px 22px',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+    boxShadow: 'var(--atlas-v5-shadow-card)',
   },
   sectionTitle: {
     fontSize: 15,
