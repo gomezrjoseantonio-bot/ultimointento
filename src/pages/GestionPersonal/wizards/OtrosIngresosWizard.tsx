@@ -248,11 +248,11 @@ const OtrosIngresosWizard: React.FC = () => {
             {/* Summary */}
             <div style={{ background: 'var(--atlas-v5-brand)', borderRadius: 12, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 4 }}>Total estimado / año</div>
+                <div style={{ fontSize: 12, color: 'var(--atlas-v5-on-navy-4)', fontFamily: FONT, marginBottom: 4 }}>Total estimado / año</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalAnual)}</div>
               </div>
               <div style={{ textAlign: 'right' as const }}>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 4 }}>Media mensual</div>
+                <div style={{ fontSize: 12, color: 'var(--atlas-v5-on-navy-4)', fontFamily: FONT, marginBottom: 4 }}>Media mensual</div>
                 <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--atlas-v5-on-navy-1)', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalAnual / 12)}</div>
               </div>
             </div>
@@ -360,13 +360,13 @@ const OtrosIngresosWizard: React.FC = () => {
                 {/* Preview */}
                 {modalPreview && (
                   <div style={{ background: 'var(--atlas-v5-brand)', borderRadius: 10, padding: '16px', marginTop: 4 }}>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 10, fontWeight: 700 }}>ESTIMACIÓN CON ESTOS DATOS</div>
+                    <div style={{ fontSize: 11, color: 'var(--atlas-v5-on-navy-4)', fontFamily: FONT, marginBottom: 10, fontWeight: 700 }}>ESTIMACIÓN CON ESTOS DATOS</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 4 }}>
-                      <span style={{ color: 'rgba(255,255,255,0.7)' }}>Total estimado / año</span>
+                      <span style={{ color: 'var(--atlas-v5-on-navy-4)' }}>Total estimado / año</span>
                       <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.brutoAnual)} €</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 4 }}>
-                      <span style={{ color: 'rgba(255,255,255,0.7)' }}>Por cobro</span>
+                      <span style={{ color: 'var(--atlas-v5-on-navy-4)' }}>Por cobro</span>
                       <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.porCobro)} €</span>
                     </div>
                   </div>

@@ -465,14 +465,14 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
 
       {facturacionBruta > 0 && (
         <div style={navyCard}>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 12 }}>Total ingresos estimados</div>
+          <div style={{ fontSize: 12, color: 'var(--atlas-v5-on-navy-4)', fontFamily: FONT, marginBottom: 12 }}>Total ingresos estimados</div>
           {[
             { label: 'Facturación bruta anual', val: facturacionBruta, neg: false },
             { label: 'Retenciones a cuenta IRPF', val: retenciones, neg: true },
           ].map(({ label, val, neg }) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, fontFamily: FONT }}>
-              <span style={{ color: 'rgba(255,255,255,0.8)' }}>{label}</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : 'var(--atlas-v5-on-navy-1)' }}>
+              <span style={{ color: 'var(--atlas-v5-on-navy-3)' }}>{label}</span>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'var(--atlas-v5-on-navy-4)' : 'var(--atlas-v5-on-navy-1)' }}>
                 {neg ? fmtNeg(val) : fmtEur(val)}
               </span>
             </div>
@@ -483,8 +483,8 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
               <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 16, color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(cobradoEnCuenta)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: FONT }}>Media mensual en cuenta</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{fmtEur(cobradoEnCuenta / 12)}</span>
+              <span style={{ color: 'var(--atlas-v5-on-navy-4)', fontSize: 12, fontFamily: FONT }}>Media mensual en cuenta</span>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--atlas-v5-on-navy-4)' }}>{fmtEur(cobradoEnCuenta / 12)}</span>
             </div>
           </div>
         </div>
@@ -552,14 +552,14 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
       </div>
 
       <div style={navyCard}>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 12 }}>Resultado estimado de la actividad</div>
+        <div style={{ fontSize: 12, color: 'var(--atlas-v5-on-navy-4)', fontFamily: FONT, marginBottom: 12 }}>Resultado estimado de la actividad</div>
         {[
           { label: 'Facturación anual', val: facturacionBruta, neg: false },
           { label: '− Gastos deducibles', val: totalGastosAnual, neg: true },
         ].map(({ label, val, neg }) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, fontFamily: FONT }}>
-            <span style={{ color: 'rgba(255,255,255,0.8)' }}>{label}</span>
-            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : 'var(--atlas-v5-on-navy-1)' }}>{neg ? fmtNeg(val) : fmtEur(val)}</span>
+            <span style={{ color: 'var(--atlas-v5-on-navy-3)' }}>{label}</span>
+            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'var(--atlas-v5-on-navy-4)' : 'var(--atlas-v5-on-navy-1)' }}>{neg ? fmtNeg(val) : fmtEur(val)}</span>
           </div>
         ))}
         <div style={{ borderTop: '1px solid var(--atlas-v5-border-translucent-strong)', margin: '8px 0', paddingTop: 8 }}>
@@ -568,18 +568,18 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
             <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)', fontWeight: 600 }}>{fmtEur(rendimientoNeto)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT }}>
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Rendimiento neto / mes</span>
-            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'rgba(255,255,255,0.6)' }}>{fmtEur(rendimientoNeto / 12)}</span>
+            <span style={{ color: 'var(--atlas-v5-on-navy-4)' }}>Rendimiento neto / mes</span>
+            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-4)' }}>{fmtEur(rendimientoNeto / 12)}</span>
           </div>
         </div>
         <div style={{ borderTop: '1px solid var(--atlas-v5-border-translucent-strong)', marginTop: 8, paddingTop: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
-            <span style={{ color: 'rgba(255,255,255,0.8)' }}>Cobrado neto de retención / año</span>
+            <span style={{ color: 'var(--atlas-v5-on-navy-3)' }}>Cobrado neto de retención / año</span>
             <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(cobradoEnCuenta)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
-            <span style={{ color: 'rgba(255,255,255,0.8)' }}>− SS autónomo ({TRAMOS_SS_2026[tramoSS].cuotaMin} €/mes)</span>
-            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'rgba(255,255,255,0.7)' }}>{fmtNeg(cuotaSSAnual)}</span>
+            <span style={{ color: 'var(--atlas-v5-on-navy-3)' }}>− SS autónomo ({TRAMOS_SS_2026[tramoSS].cuotaMin} €/mes)</span>
+            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-4)' }}>{fmtNeg(cuotaSSAnual)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FONT }}>
             <span style={{ fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)' }}>En cuenta cada mes</span>
@@ -623,15 +623,15 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
           ))}
         </div>
         <div style={navyCard}>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 12, fontWeight: 700, letterSpacing: '0.04em' }}>RESUMEN ANUAL</div>
+          <div style={{ fontSize: 12, color: 'var(--atlas-v5-on-navy-4)', fontFamily: FONT, marginBottom: 12, fontWeight: 700, letterSpacing: '0.04em' }}>RESUMEN ANUAL</div>
           {[
             { label: 'Facturación bruta anual', val: facturacionBruta, neg: false },
             { label: '− Retenciones IRPF', val: retenciones, neg: true },
             { label: '− Gastos deducibles', val: totalGastosAnual, neg: true },
           ].map(({ label, val, neg }) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, fontFamily: FONT }}>
-              <span style={{ color: 'rgba(255,255,255,0.8)' }}>{label}</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'rgba(255,255,255,0.7)' : 'var(--atlas-v5-on-navy-1)' }}>{neg ? fmtNeg(val) : fmtEur(val)}</span>
+              <span style={{ color: 'var(--atlas-v5-on-navy-3)' }}>{label}</span>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: neg ? 'var(--atlas-v5-on-navy-4)' : 'var(--atlas-v5-on-navy-1)' }}>{neg ? fmtNeg(val) : fmtEur(val)}</span>
             </div>
           ))}
           <div style={{ borderTop: '1px solid var(--atlas-v5-border-translucent-strong)', marginTop: 8, paddingTop: 10 }}>
@@ -640,8 +640,8 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
               <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--atlas-v5-on-navy-1)' }}>{fmtEur(rendimientoNeto)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, fontFamily: FONT }}>
-              <span style={{ color: 'rgba(255,255,255,0.8)' }}>SS autónomo ({TRAMOS_SS_2026[tramoSS].cuotaMin} €/mes)</span>
-              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'rgba(255,255,255,0.7)' }}>{fmtNeg(cuotaSSAnual)}</span>
+              <span style={{ color: 'var(--atlas-v5-on-navy-3)' }}>SS autónomo ({TRAMOS_SS_2026[tramoSS].cuotaMin} €/mes)</span>
+              <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-v5-on-navy-4)' }}>{fmtNeg(cuotaSSAnual)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 700, color: 'var(--atlas-v5-on-navy-1)', fontFamily: FONT }}>En cuenta / año</span>

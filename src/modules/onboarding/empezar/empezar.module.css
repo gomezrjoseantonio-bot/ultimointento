@@ -205,7 +205,7 @@
 .revealStats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
 .rstat { padding: 0 22px; border-left: 1px solid var(--atlas-v5-border-translucent-strong); display: flex; flex-direction: column; min-height: 70px; }
 .rstat:first-of-type { border-left: none; padding-left: 0; }
-.rstatLabel { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); font-weight: var(--atlas-v5-fw-bold); }
+.rstatLabel { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--atlas-v5-on-navy-5); font-weight: var(--atlas-v5-fw-bold); }
 .rstatVal { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; font-size: 20px; font-weight: var(--atlas-v5-fw-bold); color: var(--atlas-v5-white); line-height: var(--atlas-v5-lh-kpi); margin-top: 6px; }
 .rstatSub { font-size: 11px; color: var(--atlas-v5-gold-light); margin-top: auto; padding-top: 5px; }
 .revealGrid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-top: 16px; }

@@ -81,7 +81,7 @@ const countStyle = (active: boolean): React.CSSProperties => ({
   padding: '1px 6px',
   borderRadius: 99,
   background: active ? 'rgba(255,255,255,0.15)' : 'var(--atlas-v5-bg)',
-  color: active ? 'rgba(255,255,255,0.9)' : 'var(--atlas-v5-ink-4)',
+  color: active ? 'var(--atlas-v5-on-navy-2)' : 'var(--atlas-v5-ink-4)',
   fontWeight: 600,
 });
 
