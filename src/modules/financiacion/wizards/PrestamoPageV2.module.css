@@ -264,7 +264,7 @@
 .select:focus {
   outline: none;
   border-color: var(--atlas-v5-brand-ink);
-  box-shadow: 0 0 0 3px rgba(10, 31, 61, 0.06);
+  box-shadow: var(--atlas-v5-focus-ring-neutral);
 }
 .inputMono {
   font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
