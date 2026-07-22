@@ -1,7 +1,7 @@
 // src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts
 // ATLAS HORIZON: Monthly financial projection calculation engine
 
-import { OpexRule, Contract } from '../../../../../services/db';
+import { Contract } from '../../../../../services/db';
 import { nominaService } from '../../../../../services/nominaService';
 import { calcularNetoMesNomina } from '../../../../../services/nominaCalculoService';
 import { autonomoService } from '../../../../../services/autonomoService';
@@ -23,11 +23,11 @@ import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/p
 import { calcularDeclaracionIRPF } from '../../../../../services/irpfCalculationService';
 import { generarEventosFiscales, getConfiguracionFiscal } from '../../../../../services/fiscalPaymentsService';
 import { valoracionesService } from '../../../../../services/valoracionesService';
-import {
-  calculateOpexForMonth,
-  calculateOpexBreakdownForMonth,
-  calculatePersonalExpensesForMonth,
-} from './forecastEngine';
+import { calculatePersonalExpensesForMonth } from './forecastEngine';
+import { buildOpexPorMes } from './opexCompromisosEngine';
+import type { OpexMes } from './opexCompromisosEngine';
+import { listarCompromisos } from '../../../../../services/personal/compromisosRecurrentesService';
+import { getSupuestosProyeccion } from '../../../../../services/escenariosService';
 
 const PROJECTION_YEARS = 20;
 const START_YEAR = new Date().getFullYear();
@@ -235,9 +235,11 @@ interface BaseData {
   // Flat drill-down arrays (same items every month, amounts are monthly equivalents)
   pensionDrillDown: DrillDownItem[];
 
-  // Passed to forecastEngine functions
-  /** All OpexRules across all properties */
-  opexRules: OpexRule[];
+  /**
+   * OPEX de inmuebles por mes 'YYYY-MM' para el horizonte completo · expandido
+   * desde compromisosRecurrentes por la vía directa con su variación (B2).
+   */
+  opexPorMes: Map<string, OpexMes>;
   /** Maps property numeric ID → alias for drill-down labels */
   propertyAliasMap: Map<number, string>;
   /** Active OPEX-style personal expenses */
@@ -524,15 +526,12 @@ function buildMonthRow(
     otrosIngresosMensual;
 
   // ── GASTOS ────────────────────────────────────────────────────────────────
-  // C. OPEX: use forecastEngine for frequency-aware OpexRule calculation — flat, no inflation applied
-  const gastosOperativos = calculateOpexForMonth(baseData.opexRules, month1to12);
-
-  // Per-property/concept breakdown — flat, no growth factor applied
-  const opexDesglose = calculateOpexBreakdownForMonth(
-    baseData.opexRules,
-    month1to12,
-    baseData.propertyAliasMap,
-  );
+  // C. OPEX (C-PROY-5 · B2): compromisos recurrentes de inmueble expandidos
+  // por la vía directa (patrón + importe + variación / inflación B1) ·
+  // precomputado en loadBaseData para todo el horizonte · lookup por mes
+  const opexMes = baseData.opexPorMes.get(monthStr);
+  const gastosOperativos = opexMes?.total ?? 0;
+  const opexDesglose = opexMes?.desglose ?? [];
 
   // E. Personal expenses
   const gastosPersonales =
@@ -785,7 +784,6 @@ async function loadBaseData(): Promise<BaseData> {
   const rentaDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
 
   // ── C. INMUEBLES - OPEX + property values ─────────────────────────────────
-  let opexRules: OpexRule[] = [];
   const propertyAliasMap = new Map<number, string>();
   const inmuebleInitialValues: AssetInitialValue[] = [];
 
@@ -829,10 +827,30 @@ async function loadBaseData(): Promise<BaseData> {
       }
     }
 
-    // Load all OpexRules for use by forecastEngine functions (cached to avoid repeated DB reads)
-    opexRules = []; // opexRules store eliminado en V62 — migrado a compromisosRecurrentes
   } catch {
     // No property/contract data available
+  }
+
+  // OPEX de inmuebles (C-PROY-5 · B2) · vía directa desde compromisosRecurrentes.
+  // Cierra el agujero `opexRules = []` que dejó la migración V62: el motor
+  // proyectaba gastos operativos 0 los 20 años. La inflación de gastos sale
+  // del supuesto único (B1) y cada compromiso puede sobrescribirla con su
+  // `variacion` (ipcAnual · aniversarioContrato · sinVariacion explícito).
+  let opexPorMes: Map<string, OpexMes> = new Map();
+  try {
+    const [compromisos, supuestos] = await Promise.all([
+      listarCompromisos({ ambito: 'inmueble', soloActivos: true }),
+      getSupuestosProyeccion(),
+    ]);
+    opexPorMes = buildOpexPorMes(
+      compromisos,
+      supuestos.inflacionGastosPct,
+      propertyAliasMap,
+      START_YEAR,
+      PROJECTION_YEARS,
+    );
+  } catch {
+    // Sin compromisos disponibles · OPEX vacío
   }
 
   // Investment values
@@ -936,7 +954,7 @@ async function loadBaseData(): Promise<BaseData> {
     rentaDrillDown,
     autonomosData,
     pensionDrillDown,
-    opexRules,
+    opexPorMes,
     propertyAliasMap,
     personalExpenses,
     valoracionIndex,
