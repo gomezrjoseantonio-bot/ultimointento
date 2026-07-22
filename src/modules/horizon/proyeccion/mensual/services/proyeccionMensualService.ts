@@ -1,7 +1,7 @@
 // src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts
 // ATLAS HORIZON: Monthly financial projection calculation engine
 
-import { OpexRule, Contract } from '../../../../../services/db';
+import { Contract } from '../../../../../services/db';
 import { nominaService } from '../../../../../services/nominaService';
 import { calcularNetoMesNomina } from '../../../../../services/nominaCalculoService';
 import { autonomoService } from '../../../../../services/autonomoService';
@@ -19,15 +19,26 @@ import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { PeriodoPago } from '../../../../../types/prestamos';
 import { InversionRendimientoPeriodico, PagoRendimiento } from '../../../../../types/inversiones-extended';
 import { PosicionInversion, PlanLiquidacion } from '../../../../../types/inversiones';
-import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
+import {
+  MonthlyProjectionRow,
+  ProyeccionAnual,
+  DrillDownItem,
+  PuntoPatrimonioAnual,
+} from '../types/proyeccionMensual';
 import { calcularDeclaracionIRPF } from '../../../../../services/irpfCalculationService';
 import { generarEventosFiscales, getConfiguracionFiscal } from '../../../../../services/fiscalPaymentsService';
 import { valoracionesService } from '../../../../../services/valoracionesService';
+import { calculatePersonalExpensesForMonth } from './forecastEngine';
+import { buildOpexPorMes } from './opexCompromisosEngine';
+import type { OpexMes } from './opexCompromisosEngine';
 import {
-  calculateOpexForMonth,
-  calculateOpexBreakdownForMonth,
-  calculatePersonalExpensesForMonth,
-} from './forecastEngine';
+  buildRentaPorMes,
+  contratosSimuladosParaEjercicio,
+} from './rentasContratosEngine';
+import type { RentaMes } from './rentasContratosEngine';
+import { listarCompromisos } from '../../../../../services/personal/compromisosRecurrentesService';
+import { getSupuestosProyeccion } from '../../../../../services/escenariosService';
+import type { SupuestosProyeccion } from '../../../../../types/supuestosProyeccion';
 
 const PROJECTION_YEARS = 20;
 const START_YEAR = new Date().getFullYear();
@@ -93,20 +104,8 @@ export function calculateLoanPayment(
   return { cuota, amortizacion: Math.max(0, amortizacion), intereses };
 }
 
-/**
- * Check whether a contract is active during a given year/month.
- * month is 0-indexed (0 = January).
- */
-function isContractActiveInMonth(contract: Contract, year: number, month: number): boolean {
-  if (contract.estadoContrato === 'rescindido' || contract.estadoContrato === 'finalizado') {
-    return false;
-  }
-  const monthStart = new Date(year, month, 1);
-  const monthEnd = new Date(year, month + 1, 0);
-  const fechaInicio = new Date(contract.fechaInicio);
-  const fechaFin = new Date(contract.fechaFin);
-  return monthStart <= fechaFin && monthEnd >= fechaInicio;
-}
+// B3 · el filtrado de contratos por mes vive en rentasContratosEngine
+// (ciclo de vida completo: vencimiento · renovación · indexación).
 
 interface LoanInfo {
   principalInicial: number; // fallback for months before first payment
@@ -221,13 +220,23 @@ interface AutonomoProjectionData {
 }
 
 interface BaseData {
-  // Monthly arrays for base year (index 0 = January, 11 = December)
-  nominaNetaMensual: number[];  // Exact net per month from calculateSalary()
-  rentaMensualPorMes: number[]; // Rental income per month (contract date-filtered, flat)
+  /** Supuestos de proyección efectivos (fuente única B1) · usados por las dinámicas B3. */
+  supuestos: SupuestosProyeccion;
 
-  // DrillDown arrays (12 entries, one per month)
-  nominaDrillDown: DrillDownItem[][];
-  rentaDrillDown: DrillDownItem[][];
+  /**
+   * Nómina neta por año del horizonte · [yearIndex][mes0-11] (B3). Cada año
+   * se recalcula con `calcularNetoMesNomina(nomina, mes, year)` — el historial
+   * `vigenciaDesde` manda — y el % anual de B1 solo compone DESPUÉS del último
+   * cambio registrado (ancla por nómina · B0.1).
+   */
+  nominaNetaPorAnio: number[][];
+  nominaDrillDownPorAnio: DrillDownItem[][][];
+
+  /**
+   * Rentas por mes 'YYYY-MM' para el horizonte completo (B3) · contratos con
+   * ciclo de vida: vencen, se renuevan (con vacancia) e indexan.
+   */
+  rentaPorMes: Map<string, RentaMes>;
 
   // Per-autonomo structured data (replaces flat freelanceMensual + gastosAutonomoMensual)
   autonomosData: AutonomoProjectionData[];
@@ -235,9 +244,11 @@ interface BaseData {
   // Flat drill-down arrays (same items every month, amounts are monthly equivalents)
   pensionDrillDown: DrillDownItem[];
 
-  // Passed to forecastEngine functions
-  /** All OpexRules across all properties */
-  opexRules: OpexRule[];
+  /**
+   * OPEX de inmuebles por mes 'YYYY-MM' para el horizonte completo · expandido
+   * desde compromisosRecurrentes por la vía directa con su variación (B2).
+   */
+  opexPorMes: Map<string, OpexMes>;
   /** Maps property numeric ID → alias for drill-down labels */
   propertyAliasMap: Map<number, string>;
   /** Active OPEX-style personal expenses */
@@ -346,7 +357,10 @@ function sumAssetValuesForMonth(
   );
 }
 
-async function loadIrpfForecastByMonth(): Promise<Map<string, number>> {
+async function loadIrpfForecastByMonth(
+  contracts: Contract[],
+  supuestos: SupuestosProyeccion,
+): Promise<Map<string, number>> {
   const irpfForecastByMonth = new Map<string, number>();
 
   try {
@@ -367,7 +381,18 @@ async function loadIrpfForecastByMonth(): Promise<Map<string, number>> {
       ejercicios.map(async (ejercicio) => {
         try {
           const usarConciliacion = ejercicio <= currentYear;
-          const declaracion = await calcularDeclaracionIRPF(ejercicio, { usarConciliacion });
+          // B3 · coherencia fiscal-cashflow (B0.4 · opción a): los ejercicios
+          // FUTUROS tributan sobre los MISMOS contratos que proyecta el
+          // cashflow (renovados e indexados) en vez de sobre la DB cruda,
+          // donde los contratos mueren al vencer. Pasado/presente: datos reales.
+          const contratosOverride =
+            ejercicio > currentYear
+              ? contratosSimuladosParaEjercicio(contracts, supuestos, ejercicio, START_YEAR)
+              : undefined;
+          const declaracion = await calcularDeclaracionIRPF(ejercicio, {
+            usarConciliacion,
+            contratosOverride,
+          });
           return await generarEventosFiscales(ejercicio, declaracion);
         } catch (error) {
           console.warn(`[proyeccionMensualService] No se pudo calcular el IRPF ${ejercicio}:`, error);
@@ -403,15 +428,23 @@ function buildMonthRow(
   deudaState: DeudaState,
   cajaAnterior: number,
 ): MonthlyProjectionRow {
-  const year = START_YEAR + Math.floor(absoluteMonthIndex / 12);
+  const yearIndex = Math.floor(absoluteMonthIndex / 12);
+  const year = START_YEAR + yearIndex;
   const monthOfYear = absoluteMonthIndex % 12; // 0-11
   const month1to12 = monthOfYear + 1;
   // Format month string "YYYY-MM"
   const monthStr = `${year}-${String(month1to12).padStart(2, '0')}`;
 
+  const { supuestos } = baseData;
+  // Factores de dinámica anual (B3) · cada uno lee su supuesto de B1
+  const factorSubidaAutonomo = Math.pow(1 + supuestos.subidaAutonomoPct / 100, yearIndex);
+  const factorInflacionGastos = Math.pow(1 + supuestos.inflacionGastosPct / 100, yearIndex);
+  const factorRevalorizacion = Math.pow(1 + supuestos.revalorizacionInmueblesPct / 100, yearIndex);
+
   // ── INGRESOS ──────────────────────────────────────────────────────────────
-  // A. Nóminas: use actual monthly distribution from calculateSalary() — flat, no growth applied
-  const nomina = baseData.nominaNetaMensual[monthOfYear];
+  // A. Nóminas (B3): distribución mensual recalculada por año — el historial
+  // `vigenciaDesde` manda y el % de B1 compone tras el último cambio registrado
+  const nomina = baseData.nominaNetaPorAnio[yearIndex][monthOfYear];
 
   // B. Autónomo income: exact per-month calculation using fuentesIngreso meses arrays
   let serviciosFreelance = 0;
@@ -432,6 +465,8 @@ function buildMonthRow(
       // Old-model fallback: flat monthly average
       ingresosEsteMes = a.ingresosAnualesFallback / 12;
     }
+    // B3 · subida anual de ingresos de actividad (supuesto B1 · B0.1 dos mandos)
+    ingresosEsteMes *= factorSubidaAutonomo;
 
     serviciosFreelance += ingresosEsteMes;
     if (ingresosEsteMes > 0) {
@@ -456,6 +491,8 @@ function buildMonthRow(
     }
     // CRITICAL: add cuotaAutonomos (Seguridad Social for self-employed) to activity expenses
     gastosEsteMes += a.cuotaAutonomos;
+    // B3 · los gastos de actividad (incl. cuota) siguen la inflación de gastos de B1
+    gastosEsteMes *= factorInflacionGastos;
     gastosAutonomo += gastosEsteMes;
     if (gastosEsteMes > 0) {
       gastosAutonomoDrillDown.push({
@@ -468,8 +505,10 @@ function buildMonthRow(
 
   const pensiones = baseData.pensionNetaMensual;
 
-  // C. Rentas: flat — no IPC applied. The contracted rent is what the tenant pays.
-  const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear];
+  // C. Rentas (B3): ciclo de vida de contratos · vencen, se renuevan
+  // (con vacancia) e indexan · precomputado en rentasContratosEngine
+  const rentaMes = baseData.rentaPorMes.get(monthStr);
+  const rentasAlquiler = rentaMes?.total ?? 0;
 
   // D. Intereses Inversiones: sum pagos_generados whose fecha_pago falls in the current month
   const dividendosGenerados = baseData.pagosRendimiento
@@ -524,19 +563,17 @@ function buildMonthRow(
     otrosIngresosMensual;
 
   // ── GASTOS ────────────────────────────────────────────────────────────────
-  // C. OPEX: use forecastEngine for frequency-aware OpexRule calculation — flat, no inflation applied
-  const gastosOperativos = calculateOpexForMonth(baseData.opexRules, month1to12);
+  // C. OPEX (C-PROY-5 · B2): compromisos recurrentes de inmueble expandidos
+  // por la vía directa (patrón + importe + variación / inflación B1) ·
+  // precomputado en loadBaseData para todo el horizonte · lookup por mes
+  const opexMes = baseData.opexPorMes.get(monthStr);
+  const gastosOperativos = opexMes?.total ?? 0;
+  const opexDesglose = opexMes?.desglose ?? [];
 
-  // Per-property/concept breakdown — flat, no growth factor applied
-  const opexDesglose = calculateOpexBreakdownForMonth(
-    baseData.opexRules,
-    month1to12,
-    baseData.propertyAliasMap,
-  );
-
-  // E. Personal expenses
+  // E. Personal expenses · B3: siguen la inflación de gastos de B1
   const gastosPersonales =
-    calculatePersonalExpensesForMonth(baseData.personalExpenses, month1to12);
+    calculatePersonalExpensesForMonth(baseData.personalExpenses, month1to12) *
+    factorInflacionGastos;
 
   const irpf = baseData.irpfForecastByMonth.get(monthStr) ?? 0;
 
@@ -572,17 +609,25 @@ function buildMonthRow(
     monthStr,
     baseData.inversionesProyeccion,
   );
-  const flujoCajaMes = totalIngresos - totalGastos - totalFinanciacion + liquidacionesInversiones;
+  // B3 · rentabilidad del ahorro (supuesto B1): la caja positiva se remunera
+  // mensualmente · el interés entra en el flujo del mes (cajaFinal =
+  // cajaInicial + flujoCajaMes se mantiene como invariante)
+  const interesAhorro =
+    Math.max(0, cajaAnterior) * (supuestos.rentabilidadAhorroPct / 100 / 12);
+  const flujoCajaMes =
+    totalIngresos - totalGastos - totalFinanciacion + liquidacionesInversiones + interesAhorro;
   const cajaFinal = cajaAnterior + flujoCajaMes;
 
   // ── PATRIMONIO ────────────────────────────────────────────────────────────
-  // Inmuebles: use last known historical valuation at or before this month; fallback to purchase price
-  const inmuebles = sumAssetValuesForMonth(
-    baseData.valoracionIndex,
-    'inmueble',
-    baseData.inmuebleInitialValues,
-    monthStr,
-  );
+  // Inmuebles (B3): última valoración conocida ≤ mes (fallback precio compra)
+  // × revalorización anual compuesta de B1 desde el año base
+  const inmuebles =
+    sumAssetValuesForMonth(
+      baseData.valoracionIndex,
+      'inmueble',
+      baseData.inmuebleInitialValues,
+      monthStr,
+    ) * factorRevalorizacion;
 
   // Remaining debt: use principalFinal from the amortization schedule.
   // For months before first payment, fall back to principalInicial.
@@ -619,10 +664,9 @@ function buildMonthRow(
   const activos = cajaFinal + inmuebles + planesPension + otrasInversiones;
   const patrimonioNeto = activos - deudaTotal;
 
-  // DrillDown: flat base-year arrays — no growth scaling applied
-  const scaledNominaDrillDown = baseData.nominaDrillDown[monthOfYear];
-  // Rent drilldown is flat — no IPC growth applied
-  const scaledRentaDrillDown = baseData.rentaDrillDown[monthOfYear];
+  // DrillDown (B3): arrays por año/mes coherentes con los importes dinámicos
+  const scaledNominaDrillDown = baseData.nominaDrillDownPorAnio[yearIndex][monthOfYear];
+  const scaledRentaDrillDown = rentaMes?.drillDown ?? [];
 
   return {
     month: monthStr,
@@ -688,31 +732,54 @@ function buildMonthRow(
  * Load and aggregate all base financial data from the database
  */
 async function loadBaseData(): Promise<BaseData> {
-  const year = START_YEAR;
-
   // Personal data · T14.4 · migrado a fiscalContextService gateway
   const ctx = await getFiscalContextSafe();
   const personalDataId = ctx?.personalDataId ?? 1;
 
-  // ── A. NÓMINAS ────────────────────────────────────────────────────────────
-  // FIX consolidar módulo Personal (F6) · ÚNICA FUENTE DE VERDAD
-  // (`calcularNetoMesNomina`) · misma cifra que card/panel/wizard/Tesorería.
-  const nominaNetaMensual: number[] = new Array(12).fill(0);
-  const nominaDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
+  // Supuestos de proyección · fuente única B1 · una sola lectura para todas
+  // las dinámicas (OPEX, rentas, salario, revalorización, ahorro).
+  const supuestos = await getSupuestosProyeccion();
+
+  // ── A. NÓMINAS (B3: por año del horizonte) ────────────────────────────────
+  // ÚNICA FUENTE DE VERDAD (`calcularNetoMesNomina`) · misma cifra que
+  // card/panel/wizard/Tesorería. Cada año se recalcula con su `year` real,
+  // así el historial `vigenciaDesde` (subidas registradas con fecha) manda.
+  // El % anual de B1 solo compone después del último cambio registrado.
+  const nominaNetaPorAnio: number[][] = Array.from(
+    { length: PROJECTION_YEARS },
+    () => new Array(12).fill(0),
+  );
+  const nominaDrillDownPorAnio: DrillDownItem[][][] = Array.from(
+    { length: PROJECTION_YEARS },
+    () => Array.from({ length: 12 }, () => [] as DrillDownItem[]),
+  );
 
   try {
     const nominas = await nominaService.getNominas(personalDataId);
     const nominasActivas = nominas.filter(n => n.activa);
     for (const nomina of nominasActivas) {
-      for (let mes = 1; mes <= 12; mes++) {
-        const netoMes = calcularNetoMesNomina(nomina, mes, year).netoMes;
-        const idx = mes - 1; // 0-indexed
-        nominaNetaMensual[idx] += netoMes;
-        nominaDrillDown[idx].push({
-          concepto: nomina.nombre ?? 'Nómina',
-          importe: netoMes,
-          fuente: nomina.nombre,
-        });
+      // Ancla del % anual: año del último cambio registrado (o el año base)
+      const aniosVigencia = (nomina.historial ?? [])
+        .map((h) => new Date(h.vigenciaDesde).getFullYear())
+        .filter((y) => !Number.isNaN(y));
+      const anchorYear = Math.max(START_YEAR, ...(aniosVigencia.length ? aniosVigencia : [START_YEAR]));
+
+      for (let yearIndex = 0; yearIndex < PROJECTION_YEARS; yearIndex++) {
+        const anio = START_YEAR + yearIndex;
+        const factor = Math.pow(
+          1 + supuestos.subidaNominaPct / 100,
+          Math.max(0, anio - anchorYear),
+        );
+        for (let mes = 1; mes <= 12; mes++) {
+          const netoMes = calcularNetoMesNomina(nomina, mes, anio).netoMes * factor;
+          const idx = mes - 1; // 0-indexed
+          nominaNetaPorAnio[yearIndex][idx] += netoMes;
+          nominaDrillDownPorAnio[yearIndex][idx].push({
+            concepto: nomina.nombre ?? 'Nómina',
+            importe: netoMes,
+            fuente: nomina.nombre,
+          });
+        }
       }
     }
   } catch {
@@ -779,21 +846,17 @@ async function loadBaseData(): Promise<BaseData> {
     // No otrosIngresos data available
   }
 
-  // ── B. INMUEBLES - INGRESOS (RENTAS) ──────────────────────────────────────
-  // Filter by contract active date range for each month of the projection year
-  const rentaMensualPorMes: number[] = new Array(12).fill(0);
-  const rentaDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
-
-  // ── C. INMUEBLES - OPEX + property values ─────────────────────────────────
-  let opexRules: OpexRule[] = [];
+  // ── B/C. INMUEBLES · contratos + alias + valores ──────────────────────────
   const propertyAliasMap = new Map<number, string>();
   const inmuebleInitialValues: AssetInitialValue[] = [];
+  let allContracts: Contract[] = [];
 
   try {
     const [contracts, inmuebles] = await Promise.all([
       getAllContracts(),
       inmuebleService.getAll(),
     ]);
+    allContracts = contracts;
 
     // Build a property alias lookup and collect purchase prices as fallback values
     for (const inm of inmuebles) {
@@ -812,27 +875,39 @@ async function loadBaseData(): Promise<BaseData> {
       }
     }
 
-    // Populate per-month rental income (date-range filtered)
-    for (const contract of contracts) {
-      for (let m = 0; m < 12; m++) {
-        if (isContractActiveInMonth(contract, year, m)) {
-          const renta = contract.rentaMensual ?? 0;
-          rentaMensualPorMes[m] += renta;
-          const propertyAlias = propertyAliasMap.get(contract.inmuebleId) ?? (contract.inmuebleId ? `Inmueble ${contract.inmuebleId}` : 'Inmueble');
-          const inquilino = `${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim();
-          rentaDrillDown[m].push({
-            concepto: inquilino || 'Inquilino',
-            importe: renta,
-            fuente: propertyAlias,
-          });
-        }
-      }
-    }
-
-    // Load all OpexRules for use by forecastEngine functions (cached to avoid repeated DB reads)
-    opexRules = []; // opexRules store eliminado en V62 — migrado a compromisosRecurrentes
   } catch {
     // No property/contract data available
+  }
+
+  // ── B. RENTAS (B3) · ciclo de vida de contratos en el horizonte completo:
+  // vencen, se renuevan (con la vacancia de B1 como riesgo de re-alquiler) e
+  // indexan (tasa del contrato o global de B1). Antes: array del año base
+  // congelado los 20 años.
+  const rentaPorMes = buildRentaPorMes(
+    allContracts,
+    supuestos,
+    propertyAliasMap,
+    START_YEAR,
+    PROJECTION_YEARS,
+  );
+
+  // OPEX de inmuebles (C-PROY-5 · B2) · vía directa desde compromisosRecurrentes.
+  // Cierra el agujero `opexRules = []` que dejó la migración V62: el motor
+  // proyectaba gastos operativos 0 los 20 años. La inflación de gastos sale
+  // del supuesto único (B1) y cada compromiso puede sobrescribirla con su
+  // `variacion` (ipcAnual · aniversarioContrato · sinVariacion explícito).
+  let opexPorMes: Map<string, OpexMes> = new Map();
+  try {
+    const compromisos = await listarCompromisos({ ambito: 'inmueble', soloActivos: true });
+    opexPorMes = buildOpexPorMes(
+      compromisos,
+      supuestos.inflacionGastosPct,
+      propertyAliasMap,
+      START_YEAR,
+      PROJECTION_YEARS,
+    );
+  } catch {
+    // Sin compromisos disponibles · OPEX vacío
   }
 
   // Investment values
@@ -927,16 +1002,16 @@ async function loadBaseData(): Promise<BaseData> {
     // No PersonalExpense data available
   }
 
-  const irpfForecastByMonth = await loadIrpfForecastByMonth();
+  const irpfForecastByMonth = await loadIrpfForecastByMonth(allContracts, supuestos);
 
   return {
-    nominaNetaMensual,
-    rentaMensualPorMes,
-    nominaDrillDown,
-    rentaDrillDown,
+    supuestos,
+    nominaNetaPorAnio,
+    nominaDrillDownPorAnio,
+    rentaPorMes,
     autonomosData,
     pensionDrillDown,
-    opexRules,
+    opexPorMes,
     propertyAliasMap,
     personalExpenses,
     valoracionIndex,
@@ -997,6 +1072,45 @@ export function invalidateProyeccionCache(): void {
   proyeccionCache = null;
   proyeccionCacheExpiresAt = 0;
   proyeccionPending = null;
+}
+
+/**
+ * B4 · Deriva la salida canónica (un punto por año · cierre a diciembre)
+ * desde la proyección mensual. Pura · testable.
+ */
+export function derivarSeriePatrimonio(proyecciones: ProyeccionAnual[]): PuntoPatrimonioAnual[] {
+  return proyecciones.map((anual) => {
+    const dic = anual.months[anual.months.length - 1];
+    const rentasAnuales = anual.months.reduce((s, m) => s + m.ingresos.rentasAlquiler, 0);
+    const gastosOperativosAnuales = anual.months.reduce((s, m) => s + m.gastos.gastosOperativos, 0);
+    return {
+      año: anual.year,
+      patrimonioNeto: dic.patrimonio.patrimonioNeto,
+      activosTotales:
+        dic.patrimonio.caja +
+        dic.patrimonio.inmuebles +
+        dic.patrimonio.planesPension +
+        dic.patrimonio.otrasInversiones,
+      caja: dic.patrimonio.caja,
+      inmuebles: dic.patrimonio.inmuebles,
+      inversiones: dic.patrimonio.planesPension + dic.patrimonio.otrasInversiones,
+      deudaTotal: dic.patrimonio.deudaTotal,
+      ingresosAnuales: anual.totalesAnuales.ingresosTotales,
+      gastosAnuales: anual.totalesAnuales.gastosTotales,
+      rentasAnuales,
+      gastosOperativosAnuales,
+      servicioDeudaAnual: anual.totalesAnuales.financiacionTotal,
+      flujoNetoAnual: anual.totalesAnuales.flujoNetoAnual,
+    };
+  });
+}
+
+/**
+ * B4 · LA salida que consumen las pantallas (héroe del Panel · Mi Plan ·
+ * panel de KPIs). Comparte caché con `generateProyeccionMensual`.
+ */
+export async function getSeriePatrimonio(): Promise<PuntoPatrimonioAnual[]> {
+  return derivarSeriePatrimonio(await generateProyeccionMensual());
 }
 
 /**

@@ -4,14 +4,16 @@ import {
 } from '../services/libertadService';
 import type {
   ResultadoLibertad,
-  SupuestosLibertad,
   LibertadConfig,
 } from '../types/libertad';
-import { SUPUESTOS_NEUTROS_LIBERTAD } from '../types/libertad';
+import type { SupuestosProyeccion } from '../types/supuestosProyeccion';
 
 export interface UseProyeccionLibertadOptions {
-  /** Override de supuestos · default neutros · usado por T27.4.3 simulador con sliders */
-  supuestos?: SupuestosLibertad;
+  /**
+   * Override parcial de supuestos (sliders del simulador). Si undefined, el
+   * servicio resuelve de la fuente única (Escenario · C-PROY-5 B1).
+   */
+  supuestos?: Partial<SupuestosProyeccion>;
   /** Override de config · si undefined usa STANDARD o lo que tenga el escenario */
   configOverride?: LibertadConfig;
   /** Si false · no dispara el fetch · permite uso condicional · default true */
@@ -28,13 +30,14 @@ export function useProyeccionLibertad(
   options: UseProyeccionLibertadOptions = {},
 ): UseProyeccionLibertadResult {
   const {
-    supuestos = SUPUESTOS_NEUTROS_LIBERTAD,
+    supuestos,
     configOverride,
     enabled = true,
   } = options;
 
   // Primitivos extraídos para deps estables (sin objetos que cambien referencia cada render)
-  const { inflacionAnualPct, subidaAnualRentasPct, subidaAnualGastosVidaPct } = supuestos;
+  const inflacionGastosPct = supuestos?.inflacionGastosPct;
+  const subidaRentasPct = supuestos?.subidaRentasPct;
   const alcance = configOverride?.alcanceRentaPasiva;
   const reglaCruce = configOverride?.reglaCruce;
   const horizonte = configOverride?.horizonteAnios;
@@ -77,9 +80,8 @@ export function useProyeccionLibertad(
     };
   }, [
     enabled,
-    inflacionAnualPct,
-    subidaAnualRentasPct,
-    subidaAnualGastosVidaPct,
+    inflacionGastosPct,
+    subidaRentasPct,
     alcance,
     reglaCruce,
     horizonte,

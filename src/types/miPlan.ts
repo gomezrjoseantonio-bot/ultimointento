@@ -3,6 +3,7 @@
 //   escenarios · objetivos · fondos_ahorro · retos
 
 import type { LibertadConfig } from './libertad';
+import type { SupuestosProyeccion } from './supuestosProyeccion';
 
 // ═══════════════════════════════════════════════════
 // ESCENARIOS
@@ -41,13 +42,17 @@ export interface Escenario {
   libertadConfig?: LibertadConfig;
 
   // ─── T-INVERSIONES-DETALLE-PP-v1 PR 3 · §4.B ────────────────────────────
-  // Campos opcionales · usados por `proyeccionActivoService` y por la
-  // ficha de inversiones (PR 4) para proyectar valor futuro · cono ±2 pp
-  // · valor real. Defaults aplicados en `escenariosService.ESCENARIO_DEFAULTS`.
   /** Edad a la que el usuario planea rescatar · default 65. Slider 55-75 en UI. */
   edadObjetivoRescate?: number;
-  /** Inflación anual asumida en % (ej. 2.0). Default 2. */
-  inflacionAnualAsumida?: number;
+
+  // ─── C-PROY-5 · Fase B1 · fuente única de supuestos ─────────────────────
+  /**
+   * Supuestos económicos de proyección FIJADOS por el usuario. Solo contiene
+   * lo que el usuario tocó; lo ausente usa `SUPUESTOS_PROYECCION_DEFAULTS`.
+   * Leer siempre vía `escenariosService.getSupuestosProyeccion()`.
+   * (Sustituye al campo `inflacionAnualAsumida`, borrado en B1.)
+   */
+  supuestos?: Partial<SupuestosProyeccion>;
 
   updatedAt: string;
 }

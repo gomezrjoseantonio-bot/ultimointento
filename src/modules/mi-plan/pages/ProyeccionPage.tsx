@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CardV5,
   MoneyValue,
@@ -6,6 +6,21 @@ import {
   showToastV5,
 } from '../../../design-system/v5';
 import { computeBudgetProjection12mAsync, type BudgetProjection } from '../services/budgetProjection';
+import {
+  getSeriePatrimonio,
+  invalidateProyeccionCache,
+} from '../../horizon/proyeccion/mensual/services/proyeccionMensualService';
+import type { PuntoPatrimonioAnual } from '../../horizon/proyeccion/mensual/types/proyeccionMensual';
+import CurvaPatrimonio from '../../../components/proyeccion/CurvaPatrimonio';
+import SupuestosPanel from '../components/SupuestosPanel';
+import {
+  getSupuestosProyeccion,
+  saveSupuestosProyeccion,
+} from '../../../services/escenariosService';
+import type { SupuestosProyeccion } from '../../../types/supuestosProyeccion';
+import { listarCompromisos } from '../../../services/personal/compromisosRecurrentesService';
+import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
+import { useProyeccionLibertad } from '../../../hooks/useProyeccionLibertad';
 
 const formatYearLabel = (year: number) => `${year}`;
 
@@ -13,6 +28,83 @@ const ProyeccionPage: React.FC = () => {
   const year = new Date().getFullYear();
   const [projection, setProjection] = useState<BudgetProjection | null>(null);
   const [projectionError, setProjectionError] = useState<string | null>(null);
+  const [serie, setSerie] = useState<PuntoPatrimonioAnual[] | null>(null);
+
+  // ── Supuestos (B5) · los mandos de la curva · fuente única B1 ─────────────
+  // `supuestos` = valor instantáneo de los sliders (UI) · `aplicados` = valor
+  // con debounce ya persistido, que alimenta motor y libertad.
+  const [supuestos, setSupuestos] = useState<SupuestosProyeccion | null>(null);
+  const [aplicados, setAplicados] = useState<SupuestosProyeccion | null>(null);
+  const [compromisos, setCompromisos] = useState<CompromisoRecurrente[]>([]);
+  const [recalculando, setRecalculando] = useState(false);
+  const pendingRef = useRef<Partial<SupuestosProyeccion>>({});
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Patrimonio a 20 años (C-PROY-5 · B4/B5) · LA misma salida canónica que
+  // leen el héroe del Panel y /proyeccion/escenarios.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      getSeriePatrimonio(),
+      getSupuestosProyeccion(),
+      listarCompromisos({ ambito: 'inmueble', soloActivos: true }).catch(
+        () => [] as CompromisoRecurrente[],
+      ),
+    ])
+      .then(([s, sup, comps]) => {
+        if (cancelled) return;
+        setSerie(s);
+        setSupuestos(sup);
+        setAplicados(sup);
+        setCompromisos(comps);
+      })
+      .catch(() => {
+        if (!cancelled) setSerie(null);
+      });
+    return () => {
+      cancelled = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  // Un mando se mueve: la UI responde al instante · a los 500 ms se persiste
+  // el patch (solo lo tocado · los defaults siguen siendo visibles como
+  // defaults), se invalida la caché del motor y la curva se recalcula.
+  const onCambioSupuesto = (campo: keyof SupuestosProyeccion, valor: number) => {
+    setSupuestos((prev) => (prev ? { ...prev, [campo]: valor } : prev));
+    pendingRef.current[campo] = valor;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      const patch = pendingRef.current;
+      pendingRef.current = {};
+      setRecalculando(true);
+      saveSupuestosProyeccion(patch)
+        .then((resueltos) => {
+          setAplicados(resueltos);
+          invalidateProyeccionCache();
+          return getSeriePatrimonio();
+        })
+        .then((s) => setSerie(s))
+        .catch((err) => {
+          showToastV5(
+            err instanceof Error ? err.message : 'No se pudo recalcular la proyección',
+            'error',
+          );
+        })
+        .finally(() => setRecalculando(false));
+    }, 500);
+  };
+
+  // Año de libertad · misma pantalla · responde a los supuestos aplicados
+  const { data: libertad } = useProyeccionLibertad({
+    supuestos: aplicados
+      ? {
+          subidaRentasPct: aplicados.subidaRentasPct,
+          inflacionGastosPct: aplicados.inflacionGastosPct,
+        }
+      : undefined,
+    enabled: aplicados !== null,
+  });
 
   // T-RECONNECT-1 · Hallazgo 5.A · capturamos errores de la proyección y
   // los exponemos en banner · NO mostramos 0€ silenciosamente.
@@ -75,6 +167,40 @@ const ProyeccionPage: React.FC = () => {
           {projectionError} · revisa la consola para más detalle.
         </div>
       )}
+      {serie && serie.length > 1 && (
+        <CardV5 accent="brand" style={{ marginBottom: 14 }}>
+          <CardV5.Title>Patrimonio a 20 años</CardV5.Title>
+          <CardV5.Subtitle>
+            patrimonio neto a {serie[serie.length - 1].año}:{' '}
+            <MoneyValue value={serie[serie.length - 1].patrimonioNeto} size="inline" /> · año de
+            libertad:{' '}
+            {libertad?.cruceLibertad
+              ? libertad.cruceLibertad.anio
+              : 'fuera del horizonte'}
+            {recalculando ? ' · recalculando…' : ''}
+          </CardV5.Subtitle>
+          <CardV5.Body>
+            <CurvaPatrimonio serie={serie} variante="clara" alto={170} />
+          </CardV5.Body>
+        </CardV5>
+      )}
+
+      {supuestos && (
+        <CardV5 accent="brand" style={{ marginBottom: 14 }}>
+          <CardV5.Title>Supuestos de la proyección</CardV5.Title>
+          <CardV5.Subtitle>
+            los mandos de la curva de arriba · cada cambio recalcula patrimonio y año de libertad
+          </CardV5.Subtitle>
+          <CardV5.Body>
+            <SupuestosPanel
+              valores={supuestos}
+              onCambio={onCambioSupuesto}
+              compromisos={compromisos}
+            />
+          </CardV5.Body>
+        </CardV5>
+      )}
+
       <CardV5 accent="brand" style={{ marginBottom: 14 }}>
         <CardV5.Title>Resultado caja · {formatYearLabel(year)}</CardV5.Title>
         <CardV5.Subtitle>

@@ -53,6 +53,8 @@ import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import { costeMensualRecurrente, importeRecurrenteEnMes } from './compromisosMensual';
 import { decideFirstRun } from '../onboarding/empezar/FirstRunRedirect';
 import { useProyeccionLibertad } from '../../hooks/useProyeccionLibertad';
+import { getSeriePatrimonio } from '../horizon/proyeccion/mensual/services/proyeccionMensualService';
+import type { PuntoPatrimonioAnual } from '../horizon/proyeccion/mensual/types/proyeccionMensual';
 import styles from './PanelPage.module.css';
 
 /**
@@ -112,6 +114,23 @@ const PanelPage: React.FC = () => {
   const [valoracionMatcher, setValoracionMatcher] = useState<ValoracionMatcher | null>(null);
   const [alertasFiscales, setAlertasFiscales] = useState<AlertaFiscal[]>([]);
   const [estimacionFiscal, setEstimacionFiscal] = useState<EstimacionEjercicioEnCurso | null>(null);
+  const [seriePatrimonio, setSeriePatrimonio] = useState<PuntoPatrimonioAnual[] | null>(null);
+
+  // Curva del héroe (B4) · salida canónica del motor · carga no bloqueante:
+  // el Panel pinta sus escalares al instante y la curva llega cuando llega.
+  useEffect(() => {
+    let cancelled = false;
+    getSeriePatrimonio()
+      .then((serie) => {
+        if (!cancelled) setSeriePatrimonio(serie);
+      })
+      .catch(() => {
+        if (!cancelled) setSeriePatrimonio(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -452,6 +471,7 @@ const PanelPage: React.FC = () => {
             valorInversiones={valorInversiones}
             anillo={anillo}
             onNavigate={navigate}
+            seriePatrimonio={seriePatrimonio}
           />
 
           <ComoVaElMes

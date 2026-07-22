@@ -12,6 +12,7 @@
 //   · GAP 5.6 guard sobre `tributacion` eliminado (gateway garantiza valor)
 
 import { initDB } from './db';
+import type { Contract } from './db';
 import {
   getFiscalContextSafe,
   type FiscalContext,
@@ -632,6 +633,7 @@ export function separarAccesorios(activeProperties: any[]): {
 async function recopilarDatosInmuebles(
   ejercicio: number,
   ctx: FiscalContext | null,
+  contratosOverride?: Contract[],
 ): Promise<{
   inmuebles: RendimientoInmueble[];
   imputaciones: ImputacionRenta[];
@@ -639,7 +641,11 @@ async function recopilarDatosInmuebles(
 }> {
   const db = await initDB();
   const properties = await db.getAll('properties');
-  const contracts = await db.getAll('contracts');
+  // C-PROY-5 · B3 · coherencia fiscal-cashflow: el motor de proyección puede
+  // inyectar contratos SIMULADOS (renovados + indexados) para ejercicios
+  // futuros, de modo que el IRPF proyectado tribute por las mismas rentas que
+  // ingresa el cashflow. Sin override · comportamiento intacto (DB).
+  const contracts = contratosOverride ?? (await db.getAll('contracts'));
 
   const inmuebles: RendimientoInmueble[] = [];
   const imputaciones: ImputacionRenta[] = [];
@@ -1321,10 +1327,19 @@ export function calcularCuotaBaseGeneralCCAA(
 
 export async function calcularDeclaracionIRPF(
   ejercicio: number,
-  opciones?: { usarConciliacion?: boolean }
+  opciones?: {
+    usarConciliacion?: boolean;
+    /**
+     * C-PROY-5 · B3 · contratos simulados del motor de proyección para
+     * ejercicios futuros (renovados + indexados). Con override la caché se
+     * omite en lectura Y escritura: una declaración simulada jamás debe
+     * pisar la caché de declaraciones reales.
+     */
+    contratosOverride?: Contract[];
+  }
 ): Promise<DeclaracionIRPF> {
   // Check cache first (skip cache for conciliation mode as it has side effects)
-  if (!opciones?.usarConciliacion) {
+  if (!opciones?.usarConciliacion && !opciones?.contratosOverride) {
     const cached = await getCachedDeclaracion(ejercicio);
     if (cached) return cached;
   }
@@ -1344,7 +1359,7 @@ export async function calcularDeclaracionIRPF(
     await Promise.all([
       recopilarDatosTrabajo(ejercicio),
       recopilarDatosAutonomo(ejercicio),
-      recopilarDatosInmuebles(ejercicio, ctx),
+      recopilarDatosInmuebles(ejercicio, ctx, opciones?.contratosOverride),
       recopilarDatosInversiones(ejercicio),
       getRendimientosAtribuidosEjercicio(ejercicio),
     ]);
@@ -1610,8 +1625,9 @@ export async function calcularDeclaracionIRPF(
     ...(conciliacionResult !== undefined ? { conciliacion: conciliacionResult } : {}),
   };
 
-  // Store in cache for fast subsequent access
-  if (!opciones?.usarConciliacion) {
+  // Store in cache for fast subsequent access. Con contratosOverride NO se
+  // escribe: es una declaración simulada del motor de proyección (B3).
+  if (!opciones?.usarConciliacion && !opciones?.contratosOverride) {
     void setCachedDeclaracion(ejercicio, declaracionResult);
   }
 

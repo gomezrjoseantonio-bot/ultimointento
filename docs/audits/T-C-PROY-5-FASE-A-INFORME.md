@@ -151,3 +151,118 @@ Verificado contra PRs de GitHub (el historial local está truncado a 50 commits)
 ---
 
 **STOP.** Fin de la fase A · cero código tocado fuera de este informe.
+
+---
+
+# ANEXO B0 · Verificaciones previas a la fase B (2026-07-22)
+
+> Pedidas por `TAREA CC · C-PROY-5 · FASE B` §B0. Cero código. Limpieza hecha al empezar: **PR #1302 (duplicado de C-PROY-3) cerrado sin mergear.**
+
+## B0.1 · El salario · el sexto supuesto
+
+**Cómo se modela hoy el ingreso personal en el motor mensual:**
+
+- **Nóminas** · `loadBaseData` calcula el neto de cada mes del **año base** con `calcularNetoMesNomina(nomina, mes, year)` y `year = START_YEAR` fijo (`proyeccionMensualService.ts:691,700-717`); `buildMonthRow` repite ese array de 12 los 20 años, *"flat, no growth applied"* (`:413-414`). Varias nóminas activas se suman al mismo array.
+- **Autónomo** · entidad completamente aparte (`autonomoService`), estructurada **por negocio**: `fuentesIngreso[]` con `importeEstimado` y `meses` de impacto (`src/types/personal.ts:317-326`), `gastosRecurrentesActividad[]` y `cuotaAutonomos` (`proyeccionMensualService.ts:422-467`). También plano: `FuenteIngreso` no tiene ningún campo de crecimiento.
+- **¿Supuesto de subida en algún sitio?** · **No existe hoy** — grep de `subidaSalar|salaryGrowth|incrementoSalarial|crecimientoSalar` en `src/` = 0 resultados. Existió: `FIXED_ASSUMPTIONS.salaryGrowth` (2 % oculto), borrado en PR #326 (ver B0.2).
+
+**¿Distingue las dos fuentes?** Sí, de punta a punta: stores distintos, servicios distintos y filas distintas en la salida (`ingresos.nomina` vs `ingresos.serviciosFreelance` + `gastos.gastosAutonomo`, `proyeccionMensual.ts:18-19,39`). **Dos sliders son viables sin tocar el modelo de datos**; un slider único sería decisión de producto, no limitación técnica.
+
+**Matiz que cambia el diseño del slider de nómina:** la nómina ya tiene mecanismo de subidas **con fecha**: `Nomina.historial[]` con `vigenciaDesde` (`src/types/personal.ts:143,157`; cable C-4). `calcularNetoMesNomina` resuelve el snapshot vigente por mes **si se le pasa el año** — pero el motor congela `year = START_YEAR`, así que una subida ya registrada con vigencia futura hoy **se ignora** en la proyección. Es decir: para nómina, las subidas *conocidas* ya tienen dónde vivir (historial) y el supuesto % anual solo debería cubrir lo *desconocido* a partir del último snapshot; para autónomo no existe mecanismo equivalente y el % anual lo es todo. Argumento a favor de **dos mandos** (o al menos de no aplicar el % de nómina pisando el historial).
+
+## B0.2 · Por qué se quitó la dinámica
+
+Commit `fc53a3dd` = **PR #326**, merged 2026-02-24, titulado *"Remove forecast inflation assumptions and fix loan classification"*. Leído el PR completo, incluida la instrucción original:
+
+- **Se quitó a petición explícita de Jose**, no por error de cálculo: *"ELIMINAR INFLACIÓN/IPC AL 100 % … Los valores proyectados deben ser rígidamente PLANOS … limpia el motor de estas 'asunciones inteligentes'"*.
+- **El pecado no era la matemática, era el gobierno**: los crecimientos eran constantes **ocultas y no configurables** — `FIXED_ASSUMPTIONS` con `salaryGrowth` 2 %, `expenseInflation` y `investmentReturn` 4 % aplicado a planes de pensión — que según el propio PR *"producían proyecciones que se alejaban de los valores definidos por el usuario"*. El usuario veía crecer sus planes de pensión un 4 % que nadie había pactado y no podía apagarlo. El mismo PR borró el banner informativo que lo "explicaba".
+- (El resto del PR — clasificación hipoteca vs préstamo personal — es ajeno a la dinámica.)
+
+**Lección para B3**: lo vetado no es el crecimiento año a año; es el crecimiento **invisible con default escondido**. Reponer la dinámica exige exactamente lo que impone B1: cada tasa visible, editable y con default declarado en un único sitio. Si B3 introdujera cualquier constante local tipo `FIXED_ASSUMPTIONS`, estaría repitiendo el error que motivó el borrado.
+
+## B0.3 · La vía de OPEX · directa, confirmada
+
+**La vía directa es invocable desde el motor mensual y sirve para 20 años:**
+
+- `expandirPatron(patron, desdeISO, hastaISO): Date[]` (`patronCalendario.ts:121-128`) — horizonte arbitrario: los bucles avanzan hasta `hasta` sin límite de año. Vale `('2026-01-01', '2045-12-31')`.
+- `calcularImporte(importe, fecha): number` (`:277-300`) — regla #4, nunca prorratea. ⚠️ el modo `porPago` **lanza excepción** si el mes no está definido (`:294-296`); los consumidores actuales envuelven en try/catch (`compromisosMensual.ts:22-28,53-58`) — el motor deberá hacer lo mismo.
+- `aplicarVariacion(base, variacion, fechaInicio, fechaEvento): number` (`:307-349`) — crecimiento **compuesto** `Math.pow(1 + tasa, revisiones)` tanto para `ipcAnual` (`:333`, usa `ultimoIpcAplicado` como tasa) como para `aniversarioContrato` (`:346`).
+- `patronCalendario.ts` es un módulo **puro** (importa solo tipos, cero DB) → importable desde `proyeccionMensualService` sin ciclos. Los datos entran por `listarCompromisos({ambito:'inmueble', soloActivos:true})` (`compromisosRecurrentesService.ts:38-50`).
+- **Forma que devuelve**: fechas de evento + importe por evento. El motor agrega por mes `YYYY-MM` — exactamente lo que hace `importeRecurrenteEnMes` del Panel (`compromisosMensual.ts:44-60`). Matiz de coherencia entre pantallas: la **fuente y la expansión** son las mismas, pero el colchón del Panel muestra el prorrateo anual /12 (`costeMensualRecurrente`, `:35-41`) mientras el motor debe imputar al mes del evento (regla #4). Mismo euro, dos agregaciones declaradas — no es contradicción, pero conviene decirlo en la UI.
+
+**El adaptador queda prohibido con más motivos de los que contó el sondeo.** `mapCompromisoToOpexRule` (`opexService.ts:249-280`) pierde **cuatro** cosas, no una:
+1. **`variacion`** — el objeto de salida (`:261-279`) no la incluye; `OpexRule` no tiene el campo. El IPC/aniversario compuesto se aplana.
+2. **`puntual` → anual recurrente** (`:178-185`): una derrama única de 3.000 € se convertiría en 3.000 €/año × 20 años.
+3. **Vigencia** — `fechaInicio`/`fechaFin` del compromiso no viajan: un compromiso que termina en 2028 seguiría cobrándose hasta 2045.
+4. `mensualDiaRelativo` pierde el día real (`:133-134`) — menor, pero suma.
+
+Para el horizonte de 12 meses de `GastosRecurrentesTab` esas pérdidas eran tolerables; a 20 años, las tres primeras son estructurales. **Confirmado: el motor entra por `listarCompromisos` + `expandirPatron` + `calcularImporte` + `aplicarVariacion`.**
+
+## B0.4 · La incoherencia fiscal-cashflow · NO se corrige sola · se invierte
+
+**Hoy** · el IRPF de ejercicios futuros lee los contratos **de la DB** y hace `renta × meses` recortando por las fechas del contrato en cada ejercicio (`irpfCalculationService.ts:748-756`): respeta vencimientos y usa la `rentaMensual` actual sin indexar. El cashflow del motor mantiene la renta plana para siempre (`proyeccionMensualService.ts:815-830`). Incoherencia actual: **tributa por rentas que deja de ingresar… no; al revés: ingresa rentas por las que deja de tributar** — el cashflow sigue cobrando tras el vencimiento, el fiscal no.
+
+**Tras B3, sin acción explícita, empeora invertida**: B3 hará que el cashflow venza, renueve e indexe contratos **en memoria** (con supuestos de B1). Pero `calcularDeclaracionIRPF` seguirá leyendo la DB cruda: no verá renovaciones simuladas, ni rentas indexadas, ni vacancia. Resultado: el cashflow ingresaría rentas renovadas e indexadas mientras el fiscal tributaría por las de DB, menores y extinguidas al vencer.
+
+**Hace falta algo explícito en B3.** Dos salidas posibles (decisión de diseño, no la tomo aquí):
+- **(a)** Inyectar la serie de rentas simulada del motor al cálculo fiscal de ejercicios futuros — implica que `loadIrpfForecastByMonth` (`proyeccionMensualService.ts:349-395`) deje de delegar en `calcularDeclaracionIRPF(ejercicio)` a ciegas y le pase overrides de ingresos inmobiliarios.
+- **(b)** Congelar el IRPF proyectado sobre datos DB hasta C-PROY-8 y **declararlo** en la nota honesta de B5 ("la fiscalidad futura no refleja renovaciones ni indexación").
+
+Con (b) la incoherencia persiste pero pasa de silenciosa a declarada; con (a) se paga complejidad en B3 que roza el territorio de C-PROY-8. Lo único inaceptable es no elegir. Dato de alcance: la previsión cubre ejercicios `START_YEAR-1 … +18` y solo eventos `irpf_declaracion` (`proyeccionMensualService.ts:358-361,379-388`).
+
+---
+
+**STOP B0.** Cuatro respuestas listas para validar el orden antes de tocar código.
+
+---
+
+# ANEXO B · CIERRE DE LA FASE B (2026-07-22)
+
+> Fases B1-B5 implementadas y mergeadas en la rama de trabajo. Commits:
+> B1 `c32b099` · B2 `46bb07e` · B3 `38f93b6` · B4 `516dbee` · B5 `8025d05`.
+
+## 1 · Qué supuestos quedaron y de dónde lee cada dinámica
+
+Fuente única: `SupuestosProyeccion` (`src/types/supuestosProyeccion.ts`) · persistido como `Escenario.supuestos` (solo lo tocado; defaults visibles) · resuelto por `escenariosService.getSupuestosProyeccion()`. Los tres sitios viejos borrados.
+
+| Supuesto | Default | Quién lo lee |
+|---|---|---|
+| `revalorizacionInmueblesPct` | 3,0 | patrimonio inmuebles del motor (factor compuesto sobre última valoración) |
+| `subidaRentasPct` | 2,5 | `rentasContratosEngine` (default global · el contrato lo sobrescribe: `indexacion='none'` → 0 · legacy `fixed-percentage` → su %) + curva libertad |
+| `inflacionGastosPct` | 2,5 | `opexCompromisosEngine` (el compromiso lo sobrescribe con su `variacion`) · gastos personales · gastos actividad autónomo · gastos vida de libertad · deflactor de `proyectarInversion` |
+| `vacanciaPct` | 5,0 | renovaciones simuladas de contratos (no aplica mientras el contrato firmado vive · no aplica al lado fiscal · declarado) |
+| `rentabilidadAhorroPct` | 2,0 | remuneración mensual de la caja positiva del motor |
+| `subidaNominaPct` | 2,0 | nómina por año (compone solo tras el último `vigenciaDesde` del historial) |
+| `subidaAutonomoPct` | 2,0 | ingresos de actividad (los gastos de actividad siguen la inflación) |
+
+Coherencia fiscal (B0.4 · opción a): `calcularDeclaracionIRPF` acepta `contratosOverride` y el motor le inyecta los mismos contratos simulados (renovados+indexados) para ejercicios futuros · caché fiscal omitida en lectura y escritura con override.
+
+Quedan planos y declarados (sin supuesto · no se inventa): pensiones, otros ingresos, valor de inversiones/planes de pensión.
+
+## 2 · Cómo cambió cada pantalla
+
+| Pantalla | Cambio |
+|---|---|
+| **Héroe del Panel** | La mitad derecha pinta la curva real de 20 años (salida canónica · solo lectura · "según tus supuestos de Mi Plan · sin fiscalidad futura"). Sin datos → estado vacío honesto. |
+| **Mi Plan · Proyección** | Card "Patrimonio a 20 años" (misma curva) + card "Supuestos de la proyección" con los mandos: 3 de impacto arriba, 4 en segundo plano, sobrescritura por compromiso plegada, nota fiscal. Mover un mando persiste solo lo tocado, invalida caché y recalcula curva y año de libertad en la misma pantalla. |
+| **`/proyeccion/escenarios`** | KPI "Patrimonio neto estimado (20a)" y gráfica salen del motor real (deuda con cuadro francés · OPEX de compromisos · dinámica anual). El motor legacy con `debtService: 0` fue **borrado**. Los números cambian de forma visible: era el engaño, no una regresión. |
+| **Previsiones** | Fila de gastos operativos poblada (antes 0 los 20 años) con drill-down por inmueble; rentas que vencen/renuevan/indexan (drill-down marca "renovación estimada"); nómina que respeta el historial; flujo y patrimonio en cascada. |
+| **KPI cashflow inmuebles del dashboard** | Baja al valor honesto (ahora resta OPEX real). |
+| **Curva de libertad (Panel · Landing · LibertadPage)** | Deja de asumir 0 % por defecto: proyecta con los supuestos del Escenario (2,5/2,5 default). El año de cruce se acerca. |
+| **No cambiaron** (verificado) | Colchón del Panel (ya leía compromisos directos) · rentabilidad neta de Inmuebles (lee `gastosInmueble` reales del ejercicio). |
+
+## 3 · Para la lista · descubierto y NO tocado
+
+1. **Datos huérfanos** para una pasada de limpieza keyval: `'base-assumptions'`, `'base-projection'`, localStorage `'atlas-proyeccion-base-assumptions'` y el campo persistido `inflacionAnualAsumida` en escenarios existentes (valor custom no migrado · "git es el archivo").
+2. **`treasurySyncService:254`** conserva su propio `opexRules = []` — ramal legacy de tesorería; los compromisos llegan por eventos, pero conviene revisar el ramal en su frente.
+3. **Indexación en paso anual (enero)**, no en el mes de aniversario de cada contrato — simplificación declarada; afinado si algún contrato lo exige.
+4. **`aplicarVariacion` ancla en `fechaInicio`**: un compromiso antiguo con `ipcAnual` e importe ya actualizado puede sobre-inflarse (semántica heredada del generador canónico de eventos · no introducida aquí).
+5. **Vacancia solo en renovaciones simuladas** y sin lado fiscal — modelo declarado; si se quiere vacancia estructural (también bajo contrato firmado) es decisión de producto.
+6. **Rentabilidad de inversiones/planes en el motor**: sin supuesto en B1 quedan planos; conectar el TWR por activo (motor `proyectarInversion`) al patrimonio consolidado es trabajo nuevo (relacionado con C-PROY del frente inversiones).
+7. **Revalorización por inmueble**: frontera explícita de la spec · sigue global.
+8. **`atlas-supuestos-proyeccion.html`** citado como referencia visual en la spec **no existe en el repo** — B5 siguió el patrón V5 de Mi Plan.
+9. **Rendimiento de los sliders**: cada recálculo con supuestos nuevos recomputa 18 declaraciones IRPF futuras sin caché (correcto pero costoso); si se nota, cachear por hash de supuestos.
+10. **HitosVitalesPage** conserva su mando de inflación (misma fuente única · no puede divergir) — decidir si sobra tras B5.
+11. **C-PROY-8 (fiscal plurianual)** sigue sin existir y la curva lo declara — la nota está en el panel de supuestos y en el héroe.
+
+**Fin de la fase B.**

@@ -5,20 +5,32 @@
 import '@testing-library/jest-dom';
 
 // Mock servicios de datos · evita IndexedDB y deps en tests.
-jest.mock('../../../../../services/escenariosService', () => ({
-  getEscenarioActivo: jest.fn(() =>
-    Promise.resolve({
-      id: 1,
-      modoVivienda: 'alquiler',
-      gastosVidaLibertadMensual: 2500,
-      estrategia: 'hibrido',
-      hitos: [],
-      edadObjetivoRescate: 65,
-      inflacionAnualAsumida: 2,
-      updatedAt: '2026-05-17T00:00:00.000Z',
-    }),
-  ),
-}));
+jest.mock('../../../../../services/escenariosService', () => {
+  const { SUPUESTOS_PROYECCION_DEFAULTS } = jest.requireActual(
+    '../../../../../types/supuestosProyeccion',
+  );
+  return {
+    getEscenarioActivo: jest.fn(() =>
+      Promise.resolve({
+        id: 1,
+        modoVivienda: 'alquiler',
+        gastosVidaLibertadMensual: 2500,
+        estrategia: 'hibrido',
+        hitos: [],
+        edadObjetivoRescate: 65,
+        supuestos: { inflacionGastosPct: 2 },
+        updatedAt: '2026-05-17T00:00:00.000Z',
+      }),
+    ),
+    // Igual que la real: DEFAULTS ← overrides del escenario (B1)
+    resolveSupuestosProyeccion: jest.fn(
+      (esc: { supuestos?: Record<string, number> }) => ({
+        ...SUPUESTOS_PROYECCION_DEFAULTS,
+        ...(esc.supuestos ?? {}),
+      }),
+    ),
+  };
+});
 
 jest.mock('../../../../../services/benchmarksReferenciaService', () => ({
   listBenchmarks: jest.fn(() => Promise.resolve([])),

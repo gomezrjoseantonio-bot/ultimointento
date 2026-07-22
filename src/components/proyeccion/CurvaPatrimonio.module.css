@@ -1,0 +1,59 @@
+/* CurvaPatrimonio · C-PROY-5 · B4 · solo tokens --atlas-v5-* */
+
+.wrap {
+  width: 100%;
+}
+
+/* Variantes · custom props locales resueltas desde la rampa v5 */
+.navy {
+  --curva-linea: var(--atlas-v5-gold);
+  --curva-base: var(--atlas-v5-on-navy-7);
+  --curva-texto: var(--atlas-v5-on-navy-4);
+  --curva-valor: var(--atlas-v5-on-navy-1);
+}
+
+.clara {
+  --curva-linea: var(--atlas-v5-brand);
+  --curva-base: var(--atlas-v5-line);
+  --curva-texto: var(--atlas-v5-ink-3);
+  --curva-valor: var(--atlas-v5-ink);
+}
+
+.svg {
+  display: block;
+  width: 100%;
+}
+
+.area {
+  fill: var(--curva-linea);
+  opacity: 0.12;
+}
+
+.linea {
+  fill: none;
+  stroke: var(--curva-linea);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.cero {
+  stroke: var(--curva-base);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--curva-texto);
+}
+
+.labels b {
+  color: var(--curva-valor);
+  font-weight: var(--atlas-v5-fw-semibold);
+}

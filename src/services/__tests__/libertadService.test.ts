@@ -1,6 +1,16 @@
 import { proyectarRentaPasivaLibertad } from '../libertadService';
-import type { DatosRealesLibertad, LibertadConfig, SupuestosLibertad } from '../../types/libertad';
-import { STANDARD_LIBERTAD_CONFIG, SUPUESTOS_NEUTROS_LIBERTAD } from '../../types/libertad';
+import type { DatosRealesLibertad, LibertadConfig } from '../../types/libertad';
+import { STANDARD_LIBERTAD_CONFIG } from '../../types/libertad';
+import type { SupuestosProyeccion } from '../../types/supuestosProyeccion';
+import { SUPUESTOS_PROYECCION_DEFAULTS } from '../../types/supuestosProyeccion';
+
+// Supuestos neutros para tests deterministas: la fuente única con las tasas
+// que afectan a libertad (rentas · gastos) a cero.
+const SUPUESTOS_NEUTROS: SupuestosProyeccion = {
+  ...SUPUESTOS_PROYECCION_DEFAULTS,
+  subidaRentasPct: 0,
+  inflacionGastosPct: 0,
+};
 
 function datosBase(
   rentaPasivaActualMensual: number,
@@ -20,7 +30,7 @@ describe('proyectarRentaPasivaLibertad', () => {
     it('no cruza cuando renta es muy inferior a gastos', () => {
       const resultado = proyectarRentaPasivaLibertad(
         datosBase(1000, 4000),
-        SUPUESTOS_NEUTROS_LIBERTAD,
+        SUPUESTOS_NEUTROS,
         STANDARD_LIBERTAD_CONFIG,
       );
 
@@ -36,7 +46,7 @@ describe('proyectarRentaPasivaLibertad', () => {
     it('detecta cruce en el mes de referencia cuando renta supera gastos', () => {
       const resultado = proyectarRentaPasivaLibertad(
         datosBase(5000, 4000),
-        SUPUESTOS_NEUTROS_LIBERTAD,
+        SUPUESTOS_NEUTROS,
         STANDARD_LIBERTAD_CONFIG,
       );
 
@@ -59,7 +69,7 @@ describe('proyectarRentaPasivaLibertad', () => {
             impactoMensual: 2500,
           },
         ]),
-        SUPUESTOS_NEUTROS_LIBERTAD,
+        SUPUESTOS_NEUTROS,
         STANDARD_LIBERTAD_CONFIG,
       );
 
@@ -75,7 +85,7 @@ describe('proyectarRentaPasivaLibertad', () => {
     it('alcanza libertad gracias al crecimiento compuesto de rentas', () => {
       const resultado = proyectarRentaPasivaLibertad(
         datosBase(3000, 4000),
-        { inflacionAnualPct: 0, subidaAnualRentasPct: 5 },
+        { ...SUPUESTOS_NEUTROS, subidaRentasPct: 5 },
         STANDARD_LIBERTAD_CONFIG,
       );
 
@@ -104,7 +114,7 @@ describe('proyectarRentaPasivaLibertad', () => {
       };
 
       expect(() =>
-        proyectarRentaPasivaLibertad(datosBase(1000, 2000), SUPUESTOS_NEUTROS_LIBERTAD, configNoImpl),
+        proyectarRentaPasivaLibertad(datosBase(1000, 2000), SUPUESTOS_NEUTROS, configNoImpl),
       ).toThrow("T27.4.1 solo soporta alcanceRentaPasiva='alquiler-neto'");
     });
 
@@ -115,7 +125,7 @@ describe('proyectarRentaPasivaLibertad', () => {
       };
 
       expect(() =>
-        proyectarRentaPasivaLibertad(datosBase(1000, 2000), SUPUESTOS_NEUTROS_LIBERTAD, configNoImpl),
+        proyectarRentaPasivaLibertad(datosBase(1000, 2000), SUPUESTOS_NEUTROS, configNoImpl),
       ).toThrow("T27.4.1 solo soporta reglaCruce='simple'");
     });
   });
@@ -129,7 +139,7 @@ describe('proyectarRentaPasivaLibertad', () => {
 
       const resultado = proyectarRentaPasivaLibertad(
         datosBase(1000, 4000),
-        SUPUESTOS_NEUTROS_LIBERTAD,
+        SUPUESTOS_NEUTROS,
         config,
       );
 
@@ -139,9 +149,9 @@ describe('proyectarRentaPasivaLibertad', () => {
 
   describe('Casos borde', () => {
     it('faltanTexto muestra solo meses cuando cruce es en menos de un año', () => {
-      const supuestos: SupuestosLibertad = {
-        inflacionAnualPct: 0,
-        subidaAnualRentasPct: 50,
+      const supuestos: SupuestosProyeccion = {
+        ...SUPUESTOS_NEUTROS,
+        subidaRentasPct: 50,
       };
 
       const resultado = proyectarRentaPasivaLibertad(
@@ -159,7 +169,7 @@ describe('proyectarRentaPasivaLibertad', () => {
     it('gastosVida 0 no divide por cero', () => {
       const resultado = proyectarRentaPasivaLibertad(
         datosBase(1000, 0),
-        SUPUESTOS_NEUTROS_LIBERTAD,
+        SUPUESTOS_NEUTROS,
         STANDARD_LIBERTAD_CONFIG,
       );
 

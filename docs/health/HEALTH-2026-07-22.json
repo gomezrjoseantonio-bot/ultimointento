@@ -1,0 +1,346 @@
+{
+  "protocolo": "GARANTIA-ATLAS-v1",
+  "schema": 1,
+  "date": "2026-07-22",
+  "generatedAt": "2026-07-22T19:08:10.862Z",
+  "git": {
+    "branch": "claude/new-session-fnt2cy",
+    "head": "516dbee"
+  },
+  "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
+  "recalibraciones": [
+    {
+      "indicador": "stores_no_tipados",
+      "fecha": "2026-07-19",
+      "anterior": 0,
+      "nueva": 0,
+      "motivo": "presencia-en-interfaz → tipado real (value: any). Tras Fase 0 las 45 claves existen (presencia daba 0 e inútil); ahora mide cuántos value siguen en any. Ampliación libre autorizada por Jose · sube porque mide algo más estricto."
+    },
+    {
+      "indicador": "lecturas_store_inexistente",
+      "fecha": "2026-07-18",
+      "anterior": 2,
+      "nueva": 0,
+      "motivo": "la definición contaba lecturas guardadas, que no pueden lanzar NotFoundError · autorizada por Jose antes de la tarea · no hay bug que tapar"
+    },
+    {
+      "indicador": "servicios_muertos",
+      "fecha": "2026-07-19",
+      "anterior": 0,
+      "nueva": 0,
+      "motivo": "importadores-directos → grafo de alcanzabilidad transitiva (Adenda 2 · raíces estrictas por evidencia). Amplía la búsqueda: aflora deuda muerta antes invisible (árboles muertos completos, no solo hojas). No borra nada."
+    },
+    {
+      "indicador": "emojis_ui",
+      "fecha": "2026-07-20",
+      "anterior": 64,
+      "nueva": 71,
+      "motivo": "Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose."
+    },
+    {
+      "indicador": "kpis_hardcoded",
+      "fecha": "2026-07-18",
+      "anterior": 17,
+      "nueva": 0,
+      "motivo": "Definición A+B: solo placeholders vivos junto a un valor renderizado (comentarios // y JSX {/* */}); se excluyen las 8 menciones en cabeceras JSDoc /** */ (grupo C). Sin restricción por archivo."
+    },
+    {
+      "indicador": "ficheros_no_v5",
+      "fecha": "2026-07-20",
+      "anterior": "pct_v5 = 61.3 % (subía · trinquete invertido)",
+      "nueva": 147,
+      "motivo": "pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total)."
+    }
+  ],
+  "ampliaciones": [
+    {
+      "indicador": "enlaces_rotos",
+      "antes": 0,
+      "despues": 0,
+      "motivo": "ve onNavigate( y window.location",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    },
+    {
+      "indicador": "hex_hardcoded",
+      "antes": 974,
+      "despues": 252,
+      "motivo": "ve #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    },
+    {
+      "indicador": "archivos_800",
+      "antes": 43,
+      "despues": 43,
+      "motivo": "Frente A · ve functions/ y scripts/ + .mjs/.cjs (antes solo src)",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    },
+    {
+      "indicador": "todos_totales",
+      "antes": 250,
+      "despues": 239,
+      "motivo": "Frente A · ve functions/ y scripts/ (antes solo src)",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    },
+    {
+      "indicador": "emojis_ui",
+      "antes": 64,
+      "despues": 71,
+      "motivo": "Frente A · ve cadenas .ts con señal de entrega a UI (toast/message:/…) · antes solo .tsx",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    },
+    {
+      "indicador": "servicios_muertos",
+      "antes": 0,
+      "despues": 0,
+      "motivo": "importadores-directos → grafo de alcanzabilidad transitiva (raíces estrictas) · aflora deuda muerta antes invisible",
+      "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
+    }
+  ],
+  "indicators": {
+    "stores_fantasma": {
+      "value": 0,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [],
+      "calibracion": null
+    },
+    "stores_no_tipados": {
+      "value": 0,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": "claves con `value: any` en la interfaz AtlasHorizonDB (DBSchema). Mide TIPADO REAL, no presencia: baja al endurecer cada store a su tipo de dominio.",
+      "detail": [],
+      "calibracion": {
+        "fecha": "2026-07-19",
+        "anterior": 0,
+        "nueva": 0,
+        "motivo": "presencia-en-interfaz → tipado real (value: any). Tras Fase 0 las 45 claves existen (presencia daba 0 e inútil); ahora mide cuántos value siguen en any. Ampliación libre autorizada por Jose · sube porque mide algo más estricto."
+      }
+    },
+    "lecturas_store_inexistente": {
+      "value": 0,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [],
+      "calibracion": {
+        "fecha": "2026-07-18",
+        "anterior": 2,
+        "nueva": 0,
+        "motivo": "la definición contaba lecturas guardadas, que no pueden lanzar NotFoundError · autorizada por Jose antes de la tarea · no hay bug que tapar"
+      }
+    },
+    "servicios_muertos": {
+      "value": 0,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 773 · dead 0 · solo_tests 39 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "detail": [],
+      "calibracion": {
+        "fecha": "2026-07-19",
+        "anterior": 0,
+        "nueva": 0,
+        "motivo": "importadores-directos → grafo de alcanzabilidad transitiva (Adenda 2 · raíces estrictas por evidencia). Amplía la búsqueda: aflora deuda muerta antes invisible (árboles muertos completos, no solo hojas). No borra nada."
+      }
+    },
+    "rutas_huerfanas": {
+      "value": 19,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": true,
+      "note": null,
+      "detail": [
+        "/inmuebles/:id/gastos/:gastoId/editar",
+        "/fiscal/calendario",
+        "/fiscal/borrador/:anio",
+        "/fiscalidad-legacy/declaracion/:anio",
+        "/proyeccion/valoraciones",
+        "/proyeccion/mensual",
+        "/personal/gastos/:gastoId/editar",
+        "/personal/vivienda",
+        "/contratos/lista",
+        "/firmas/completadas",
+        "/automatizaciones/flujos",
+        "/automatizaciones/historial",
+        "/tareas/completadas",
+        "/tareas/programadas",
+        "/configuracion/email-entrante",
+        "/configuracion/proveedores",
+        "/ajustes/integraciones",
+        "/ajustes/notificaciones",
+        "/ajustes/avisos"
+      ],
+      "calibracion": null
+    },
+    "enlaces_rotos": {
+      "value": 0,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [],
+      "calibracion": null
+    },
+    "hex_hardcoded": {
+      "value": 252,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": null,
+      "calibracion": null
+    },
+    "emojis_ui": {
+      "value": 71,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": null,
+      "calibracion": {
+        "fecha": "2026-07-20",
+        "anterior": 64,
+        "nueva": 71,
+        "motivo": "Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose."
+      }
+    },
+    "iconos_no_lucide": {
+      "value": 0,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [],
+      "calibracion": null
+    },
+    "kpis_hardcoded": {
+      "value": 0,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [],
+      "calibracion": {
+        "fecha": "2026-07-18",
+        "anterior": 17,
+        "nueva": 0,
+        "motivo": "Definición A+B: solo placeholders vivos junto a un valor renderizado (comentarios // y JSX {/* */}); se excluyen las 8 menciones en cabeceras JSDoc /** */ (grupo C). Sin restricción por archivo."
+      }
+    },
+    "todos_totales": {
+      "value": 239,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": null,
+      "calibracion": null
+    },
+    "archivos_800": {
+      "value": 43,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
+        "1943 · src/services/declaracionDistributorService.ts",
+        "1886 · src/services/dashboardService.ts",
+        "1789 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
+        "1704 · src/modules/inversiones/pages/FichaPlanPensiones.tsx",
+        "1695 · src/modules/inmuebles/wizards/NuevoGastoRecurrenteInmueblePage.tsx",
+        "1695 · src/pages/inmuebles/InmueblePage.tsx",
+        "1636 · src/services/irpfCalculationService.ts",
+        "1604 · src/modules/personal/pages/NuevoGastoRecurrentePage.tsx",
+        "1550 · src/services/aeatParserService.ts",
+        "1546 · src/App.tsx",
+        "1499 · src/components/treasury/MesDetalleDrawer.tsx",
+        "1461 · src/services/declaracionOnboardingService.ts",
+        "1435 · src/services/treasuryConfirmationService.ts",
+        "1421 · scripts/health.mjs"
+      ],
+      "calibracion": null
+    },
+    "ficheros_no_v5": {
+      "value": 147,
+      "direction": "down",
+      "objetivo": null,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "147 / 382 .tsx sin v5 (consumen v5: 235 · directo o vía .module.css con var(--atlas-v5-*))",
+        "src/App.tsx",
+        "src/components/ImageDescriptionComponent.tsx",
+        "src/components/InvoiceBreakdownModal.tsx",
+        "src/components/atlas/AtlasButton.stories.tsx",
+        "src/components/atlas/AtlasButton.tsx",
+        "src/components/atlas/AtlasText.stories.tsx",
+        "src/components/atlas/AtlasText.tsx",
+        "src/components/auth/ProtectedRoute.tsx",
+        "src/components/common/AccountOption.tsx",
+        "src/components/common/Badge.tsx",
+        "src/components/common/CommandPalette.tsx",
+        "src/components/common/ConfirmationModal.tsx",
+        "src/components/common/CopilotWidget.tsx",
+        "src/components/common/DataTable.tsx",
+        "src/components/common/EmptyState.tsx"
+      ],
+      "calibracion": {
+        "fecha": "2026-07-20",
+        "anterior": "pct_v5 = 61.3 % (subía · trinquete invertido)",
+        "nueva": 147,
+        "motivo": "pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total)."
+      }
+    },
+    "prs_abiertos": {
+      "value": null,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": false,
+      "approx": false,
+      "note": "NO MEDIBLE · sin GITHUB_TOKEN/GH_TOKEN + GITHUB_REPOSITORY (modo CI)",
+      "detail": null,
+      "calibracion": null
+    },
+    "tests_rojos": {
+      "value": null,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": false,
+      "approx": false,
+      "note": "NO MEDIBLE · usa `npm run health:ci` (--with-tests) para ejecutar la suite",
+      "detail": null,
+      "calibracion": null
+    },
+    "ccaa_no_verificadas": {
+      "value": 18,
+      "direction": "down",
+      "objetivo": 0,
+      "measurable": true,
+      "approx": false,
+      "note": null,
+      "detail": [
+        "15 archivos CCAA con verified:false"
+      ],
+      "calibracion": null
+    }
+  }
+}

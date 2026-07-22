@@ -13,7 +13,7 @@ import {
   type TipoActivoProyectable,
 } from '../../../../services/proyeccionActivoService';
 import { listBenchmarks } from '../../../../services/benchmarksReferenciaService';
-import { getEscenarioActivo } from '../../../../services/escenariosService';
+import { getEscenarioActivo, resolveSupuestosProyeccion } from '../../../../services/escenariosService';
 import { personalDataService } from '../../../../services/personalDataService';
 import type { BenchmarkReferencia } from '../../../../types/benchmarksReferencia';
 import styles from './bloques.module.css';
@@ -114,6 +114,8 @@ const BloqueProyeccion = ({
           personalDataService.getPersonalData().catch(() => null),
         ]);
         const benchmarkUsado = pickBenchmarkParaPolitica(benchmarks, politicaInversion);
+        // C-PROY-5 · B1 · inflación desde la fuente única de supuestos
+        const supuestos = resolveSupuestosProyeccion(esc);
         const inputs: ProyeccionInputs = {
           saldoActual,
           aportadoActual,
@@ -122,7 +124,7 @@ const BloqueProyeccion = ({
           twrHistorico,
           fechaNacimientoUsuario: personal?.fechaNacimiento ?? null,
           edadObjetivoRescate: esc.edadObjetivoRescate ?? 65,
-          inflacionAnualAsumida: esc.inflacionAnualAsumida ?? 2,
+          inflacionAnualAsumida: supuestos.inflacionGastosPct,
           benchmarkReferencia: benchmarkUsado,
         };
         const data = proyectarInversion(inputs);
@@ -130,7 +132,7 @@ const BloqueProyeccion = ({
           setView({
             data,
             edadRescate: esc.edadObjetivoRescate ?? 65,
-            inflacion: esc.inflacionAnualAsumida ?? 2,
+            inflacion: supuestos.inflacionGastosPct,
             benchmarkUsado,
           });
         }
