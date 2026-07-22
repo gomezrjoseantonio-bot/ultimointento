@@ -213,3 +213,56 @@ Con (b) la incoherencia persiste pero pasa de silenciosa a declarada; con (a) se
 ---
 
 **STOP B0.** Cuatro respuestas listas para validar el orden antes de tocar código.
+
+---
+
+# ANEXO B · CIERRE DE LA FASE B (2026-07-22)
+
+> Fases B1-B5 implementadas y mergeadas en la rama de trabajo. Commits:
+> B1 `c32b099` · B2 `46bb07e` · B3 `38f93b6` · B4 `516dbee` · B5 `8025d05`.
+
+## 1 · Qué supuestos quedaron y de dónde lee cada dinámica
+
+Fuente única: `SupuestosProyeccion` (`src/types/supuestosProyeccion.ts`) · persistido como `Escenario.supuestos` (solo lo tocado; defaults visibles) · resuelto por `escenariosService.getSupuestosProyeccion()`. Los tres sitios viejos borrados.
+
+| Supuesto | Default | Quién lo lee |
+|---|---|---|
+| `revalorizacionInmueblesPct` | 3,0 | patrimonio inmuebles del motor (factor compuesto sobre última valoración) |
+| `subidaRentasPct` | 2,5 | `rentasContratosEngine` (default global · el contrato lo sobrescribe: `indexacion='none'` → 0 · legacy `fixed-percentage` → su %) + curva libertad |
+| `inflacionGastosPct` | 2,5 | `opexCompromisosEngine` (el compromiso lo sobrescribe con su `variacion`) · gastos personales · gastos actividad autónomo · gastos vida de libertad · deflactor de `proyectarInversion` |
+| `vacanciaPct` | 5,0 | renovaciones simuladas de contratos (no aplica mientras el contrato firmado vive · no aplica al lado fiscal · declarado) |
+| `rentabilidadAhorroPct` | 2,0 | remuneración mensual de la caja positiva del motor |
+| `subidaNominaPct` | 2,0 | nómina por año (compone solo tras el último `vigenciaDesde` del historial) |
+| `subidaAutonomoPct` | 2,0 | ingresos de actividad (los gastos de actividad siguen la inflación) |
+
+Coherencia fiscal (B0.4 · opción a): `calcularDeclaracionIRPF` acepta `contratosOverride` y el motor le inyecta los mismos contratos simulados (renovados+indexados) para ejercicios futuros · caché fiscal omitida en lectura y escritura con override.
+
+Quedan planos y declarados (sin supuesto · no se inventa): pensiones, otros ingresos, valor de inversiones/planes de pensión.
+
+## 2 · Cómo cambió cada pantalla
+
+| Pantalla | Cambio |
+|---|---|
+| **Héroe del Panel** | La mitad derecha pinta la curva real de 20 años (salida canónica · solo lectura · "según tus supuestos de Mi Plan · sin fiscalidad futura"). Sin datos → estado vacío honesto. |
+| **Mi Plan · Proyección** | Card "Patrimonio a 20 años" (misma curva) + card "Supuestos de la proyección" con los mandos: 3 de impacto arriba, 4 en segundo plano, sobrescritura por compromiso plegada, nota fiscal. Mover un mando persiste solo lo tocado, invalida caché y recalcula curva y año de libertad en la misma pantalla. |
+| **`/proyeccion/escenarios`** | KPI "Patrimonio neto estimado (20a)" y gráfica salen del motor real (deuda con cuadro francés · OPEX de compromisos · dinámica anual). El motor legacy con `debtService: 0` fue **borrado**. Los números cambian de forma visible: era el engaño, no una regresión. |
+| **Previsiones** | Fila de gastos operativos poblada (antes 0 los 20 años) con drill-down por inmueble; rentas que vencen/renuevan/indexan (drill-down marca "renovación estimada"); nómina que respeta el historial; flujo y patrimonio en cascada. |
+| **KPI cashflow inmuebles del dashboard** | Baja al valor honesto (ahora resta OPEX real). |
+| **Curva de libertad (Panel · Landing · LibertadPage)** | Deja de asumir 0 % por defecto: proyecta con los supuestos del Escenario (2,5/2,5 default). El año de cruce se acerca. |
+| **No cambiaron** (verificado) | Colchón del Panel (ya leía compromisos directos) · rentabilidad neta de Inmuebles (lee `gastosInmueble` reales del ejercicio). |
+
+## 3 · Para la lista · descubierto y NO tocado
+
+1. **Datos huérfanos** para una pasada de limpieza keyval: `'base-assumptions'`, `'base-projection'`, localStorage `'atlas-proyeccion-base-assumptions'` y el campo persistido `inflacionAnualAsumida` en escenarios existentes (valor custom no migrado · "git es el archivo").
+2. **`treasurySyncService:254`** conserva su propio `opexRules = []` — ramal legacy de tesorería; los compromisos llegan por eventos, pero conviene revisar el ramal en su frente.
+3. **Indexación en paso anual (enero)**, no en el mes de aniversario de cada contrato — simplificación declarada; afinado si algún contrato lo exige.
+4. **`aplicarVariacion` ancla en `fechaInicio`**: un compromiso antiguo con `ipcAnual` e importe ya actualizado puede sobre-inflarse (semántica heredada del generador canónico de eventos · no introducida aquí).
+5. **Vacancia solo en renovaciones simuladas** y sin lado fiscal — modelo declarado; si se quiere vacancia estructural (también bajo contrato firmado) es decisión de producto.
+6. **Rentabilidad de inversiones/planes en el motor**: sin supuesto en B1 quedan planos; conectar el TWR por activo (motor `proyectarInversion`) al patrimonio consolidado es trabajo nuevo (relacionado con C-PROY del frente inversiones).
+7. **Revalorización por inmueble**: frontera explícita de la spec · sigue global.
+8. **`atlas-supuestos-proyeccion.html`** citado como referencia visual en la spec **no existe en el repo** — B5 siguió el patrón V5 de Mi Plan.
+9. **Rendimiento de los sliders**: cada recálculo con supuestos nuevos recomputa 18 declaraciones IRPF futuras sin caché (correcto pero costoso); si se nota, cachear por hash de supuestos.
+10. **HitosVitalesPage** conserva su mando de inflación (misma fuente única · no puede divergir) — decidir si sobra tras B5.
+11. **C-PROY-8 (fiscal plurianual)** sigue sin existir y la curva lo declara — la nota está en el panel de supuestos y en el héroe.
+
+**Fin de la fase B.**
