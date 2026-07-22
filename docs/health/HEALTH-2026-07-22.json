@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-22",
-  "generatedAt": "2026-07-22T06:59:42.733Z",
+  "generatedAt": "2026-07-22T18:39:25.441Z",
   "git": {
     "branch": "claude/new-session-fnt2cy",
-    "head": "c32b099"
+    "head": "46bb07e"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -143,7 +143,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 771 · dead 0 · solo_tests 39 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 772 · dead 0 · solo_tests 39 · solo_stories 1 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -267,7 +267,7 @@
         "1704 · src/modules/inversiones/pages/FichaPlanPensiones.tsx",
         "1695 · src/modules/inmuebles/wizards/NuevoGastoRecurrenteInmueblePage.tsx",
         "1695 · src/pages/inmuebles/InmueblePage.tsx",
-        "1620 · src/services/irpfCalculationService.ts",
+        "1636 · src/services/irpfCalculationService.ts",
         "1604 · src/modules/personal/pages/NuevoGastoRecurrentePage.tsx",
         "1550 · src/services/aeatParserService.ts",
         "1546 · src/App.tsx",
