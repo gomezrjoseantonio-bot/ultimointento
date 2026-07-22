@@ -1,0 +1,123 @@
+/* SupuestosPanel · C-PROY-5 · B5 · solo tokens --atlas-v5-* */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  min-width: 0;
+}
+
+.fieldLabel {
+  display: block;
+  font-size: var(--atlas-v5-fs-label);
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-2);
+}
+
+.fieldDefault {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 1px;
+}
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.slider {
+  flex: 1;
+  accent-color: var(--atlas-v5-brand);
+  min-width: 0;
+}
+
+.sliderValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  min-width: 52px;
+  text-align: right;
+}
+
+.detalle {
+  margin-top: 16px;
+  border-top: 1px solid var(--atlas-v5-line);
+  padding-top: 10px;
+}
+
+.detalleSummary {
+  cursor: pointer;
+  font-size: var(--atlas-v5-fs-label);
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-2);
+  list-style: none;
+}
+
+.detalleSummary::-webkit-details-marker {
+  display: none;
+}
+
+.detalleSummary::before {
+  content: '▸ ';
+  color: var(--atlas-v5-ink-4);
+}
+
+details[open] > .detalleSummary::before {
+  content: '▾ ';
+}
+
+.detalleBody {
+  margin-top: 12px;
+}
+
+.overrideLista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overrideItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  font-size: 12px;
+  color: var(--atlas-v5-ink-2);
+}
+
+.overrideItem:last-child {
+  border-bottom: none;
+}
+
+.overrideEtiqueta {
+  color: var(--atlas-v5-ink-3);
+  white-space: nowrap;
+}
+
+.overrideVacio {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.notaFiscal {
+  margin-top: 16px;
+  padding: 10px 12px;
+  background: var(--atlas-v5-warn-wash);
+  border: 1px solid var(--atlas-v5-warn-border);
+  border-radius: var(--atlas-v5-radius-md);
+  font-size: 12px;
+  color: var(--atlas-v5-ink-2);
+}
