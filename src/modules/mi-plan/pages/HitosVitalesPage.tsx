@@ -15,7 +15,11 @@ import {
   deleteObjetivoVital,
   updateObjetivoVital,
 } from '../../../services/objetivosVitalesService';
-import { saveEscenarioActivo } from '../../../services/escenariosService';
+import {
+  resolveSupuestosProyeccion,
+  saveEscenarioActivo,
+  saveSupuestosProyeccion,
+} from '../../../services/escenariosService';
 import styles from './HitosVitalesPage.module.css';
 
 const TIPO_LABEL: Record<TipoObjetivoVital, string> = {
@@ -59,14 +63,16 @@ const HitosVitalesPage = () => {
   const [working, setWorking] = useState(false);
 
   // Supuestos de proyección · edad rescate + inflación (§4.B).
-  // Estado local sincronizado con `escenario` del context.
+  // Inflación desde la fuente única (C-PROY-5 · B1).
   const [edadRescate, setEdadRescate] = useState<number>(escenario?.edadObjetivoRescate ?? 65);
-  const [inflacion, setInflacion] = useState<number>(escenario?.inflacionAnualAsumida ?? 2);
+  const [inflacion, setInflacion] = useState<number>(
+    escenario ? resolveSupuestosProyeccion(escenario).inflacionGastosPct : 2.5,
+  );
 
   useEffect(() => {
     if (escenario) {
       setEdadRescate(escenario.edadObjetivoRescate ?? 65);
-      setInflacion(escenario.inflacionAnualAsumida ?? 2);
+      setInflacion(resolveSupuestosProyeccion(escenario).inflacionGastosPct);
     }
   }, [escenario]);
 
@@ -80,10 +86,8 @@ const HitosVitalesPage = () => {
       return;
     }
     try {
-      await saveEscenarioActivo({
-        edadObjetivoRescate: edadRescate,
-        inflacionAnualAsumida: inflacion,
-      });
+      await saveEscenarioActivo({ edadObjetivoRescate: edadRescate });
+      await saveSupuestosProyeccion({ inflacionGastosPct: inflacion });
       showToastV5('Supuestos guardados', 'success');
       reload();
     } catch (err) {

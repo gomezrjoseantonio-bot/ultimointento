@@ -5,14 +5,16 @@ import { formatEuro, formatPercentage } from '../../../../utils/formatUtils';
 import AdjustAssumptionsModal from './components/AdjustAssumptionsModal';
 import ProjectionChart from './components/ProjectionChart';
 import { proyeccionService } from './services/proyeccionService';
-import type { BaseAssumptions, BaseProjection } from './services/proyeccionService';
+import type { BaseProjection } from './services/proyeccionService';
+import { getSupuestosProyeccion, saveSupuestosProyeccion } from '../../../../services/escenariosService';
+import type { SupuestosProyeccion } from '../../../../types/supuestosProyeccion';
 
 interface ProyeccionBaseProps {
   isEmbedded?: boolean;
 }
 
 const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): React.ReactElement => {
-  const [assumptions, setAssumptions] = useState<BaseAssumptions | null>(null);
+  const [assumptions, setAssumptions] = useState<SupuestosProyeccion | null>(null);
   const [projection, setProjection] = useState<BaseProjection | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -24,13 +26,12 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
   const loadBaseData = async () => {
     try {
       setLoading(true);
-      // getBaseAssumptions uses in-memory cache, so calling both in parallel is fine.
-      // The service itself avoids a double DB fetch internally.
-      const [baseAssumptions, baseProjection] = await Promise.all([
-        proyeccionService.getBaseAssumptions(),
+      // Supuestos desde la fuente única (C-PROY-5 · B1)
+      const [supuestos, baseProjection] = await Promise.all([
+        getSupuestosProyeccion(),
         proyeccionService.getBaseProjection(),
       ]);
-      setAssumptions(baseAssumptions);
+      setAssumptions(supuestos);
       setProjection(baseProjection);
     } catch (error) {
       console.error('Error loading base data:', error);
@@ -39,11 +40,12 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
     }
   };
 
-  const handleAssumptionsUpdate = async (newAssumptions: BaseAssumptions) => {
+  const handleAssumptionsUpdate = async (newAssumptions: SupuestosProyeccion) => {
     try {
-      await proyeccionService.saveBaseAssumptions(newAssumptions);
+      const saved = await saveSupuestosProyeccion(newAssumptions);
+      await proyeccionService.invalidateProjection();
       const updatedProjection = await proyeccionService.getBaseProjection();
-      setAssumptions(newAssumptions);
+      setAssumptions(saved);
       setProjection(updatedProjection);
       setShowModal(false);
     } catch (error) {
@@ -166,36 +168,30 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           <h3 className="text-lg font-semibold text-neutral-900 mb-4">
             Supuestos base
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <p className="text-2xl font-semibold text-primary-700 tabular-nums">
-                {formatPercentage(assumptions.rentGrowth / 100)}
+                {formatPercentage(assumptions.subidaRentasPct / 100)}
               </p>
               <p className="text-sm text-gray-500">Crecimiento rentas</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-semibold text-primary-700 tabular-nums">
-                {formatPercentage(assumptions.expenseInflation / 100)}
+                {formatPercentage(assumptions.inflacionGastosPct / 100)}
               </p>
               <p className="text-sm text-gray-500">Inflación gastos</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-semibold text-primary-700 tabular-nums">
-                {formatPercentage(assumptions.propertyAppreciation / 100)}
+                {formatPercentage(assumptions.revalorizacionInmueblesPct / 100)}
               </p>
-              <p className="text-sm text-gray-500">Revalorización activos</p>
+              <p className="text-sm text-gray-500">Revalorización inmuebles</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-semibold text-primary-700 tabular-nums">
-                {formatPercentage(assumptions.vacancyRate / 100)}
+                {formatPercentage(assumptions.vacanciaPct / 100)}
               </p>
               <p className="text-sm text-gray-500">Vacancia</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-semibold text-primary-700 tabular-nums">
-                {formatPercentage(assumptions.referenceRate / 100)}
-              </p>
-              <p className="text-sm text-gray-500">Tipo de interés ref.</p>
             </div>
           </div>
         </div>

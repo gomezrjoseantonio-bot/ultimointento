@@ -83,25 +83,9 @@ export interface HitoLibertad {
   impactoMensual: number;    // € · positivo o negativo
 }
 
-/**
- * Supuestos macro del simulador. Por defecto cero (no asume inflación ni subidas).
- * El simulador (T27.4.3) los pasará como parámetro cuando el usuario mueva sliders.
- */
-export interface SupuestosLibertad {
-  /** Inflación anual proyectada en % · ej 2.5 = 2.5% */
-  inflacionAnualPct: number;
-
-  /** Subida anual de rentas en % · ej 3.0 = 3% */
-  subidaAnualRentasPct: number;
-
-  /** Subida anual de gastos vida en % · default = inflacionAnualPct */
-  subidaAnualGastosVidaPct?: number;
-}
-
-export const SUPUESTOS_NEUTROS_LIBERTAD: SupuestosLibertad = {
-  inflacionAnualPct: 0,
-  subidaAnualRentasPct: 0,
-};
+// C-PROY-5 · B1: `SupuestosLibertad` + `SUPUESTOS_NEUTROS_LIBERTAD` borrados.
+// Los supuestos macro viven en la fuente única `SupuestosProyeccion`
+// (types/supuestosProyeccion.ts) · resueltos vía escenariosService.
 
 /**
  * Resultado de la proyección.

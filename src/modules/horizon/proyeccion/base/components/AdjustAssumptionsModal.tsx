@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { X, Save, RotateCcw } from 'lucide-react';
 import { formatPercentage } from '../../../../../utils/formatUtils';
-import type { BaseAssumptions } from '../services/proyeccionService';
+import type { SupuestosProyeccion } from '../../../../../types/supuestosProyeccion';
+import { SUPUESTOS_PROYECCION_DEFAULTS } from '../../../../../types/supuestosProyeccion';
 
 interface AdjustAssumptionsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  assumptions: BaseAssumptions;
-  onSave: (assumptions: BaseAssumptions) => void;
+  assumptions: SupuestosProyeccion;
+  onSave: (assumptions: SupuestosProyeccion) => void;
 }
 
 const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
@@ -16,10 +17,10 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
   assumptions,
   onSave
 }) => {
-  const [formData, setFormData] = useState<BaseAssumptions>({ ...assumptions });
+  const [formData, setFormData] = useState<SupuestosProyeccion>({ ...assumptions });
   const [hasChanges, setHasChanges] = useState(false);
 
-  const handleInputChange = (field: keyof BaseAssumptions, value: number) => {
+  const handleInputChange = (field: keyof SupuestosProyeccion, value: number) => {
     const newData = { ...formData, [field]: value };
     setFormData(newData);
     setHasChanges(JSON.stringify(newData) !== JSON.stringify(assumptions));
@@ -35,15 +36,8 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
   };
 
   const resetToDefaults = () => {
-    const defaults = {
-      rentGrowth: 3.5,
-      expenseInflation: 2.5,
-      propertyAppreciation: 4.0,
-      vacancyRate: 5.0,
-      referenceRate: 4.5,
-      lastModified: new Date().toISOString()
-    };
-    setFormData(defaults);
+    // Defaults de la fuente única (C-PROY-5 · B1) · visibles, no copiados a mano
+    setFormData({ ...SUPUESTOS_PROYECCION_DEFAULTS });
     setHasChanges(true);
   };
 
@@ -83,18 +77,18 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             {/* Rent Growth */}
             <div>
               <label className="block text-sm font-medium text-neutral-900 mb-2">
-                Crecimiento rentas anual: {formatPercentage(formData.rentGrowth / 100)}
+                Crecimiento rentas anual: {formatPercentage(formData.subidaRentasPct / 100)}
               </label>
               <input
                 type="range"
                 min="0"
                 max="10"
                 step="0.1"
-                value={formData.rentGrowth}
-                onChange={(e) => handleInputChange('rentGrowth', parseFloat(e.target.value))}
+                value={formData.subidaRentasPct}
+                onChange={(e) => handleInputChange('subidaRentasPct', parseFloat(e.target.value))}
                 className="w-full h-2 bg-hz-neutral-100 appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${formData.rentGrowth * 10}%, var(--bg) ${formData.rentGrowth * 10}%, var(--bg) 100%)`
+                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${formData.subidaRentasPct * 10}%, var(--bg) ${formData.subidaRentasPct * 10}%, var(--bg) 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -106,18 +100,18 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             {/* Expense Inflation */}
             <div>
               <label className="block text-sm font-medium text-neutral-900 mb-2">
-                Inflación gastos anual: {formatPercentage(formData.expenseInflation / 100)}
+                Inflación gastos anual: {formatPercentage(formData.inflacionGastosPct / 100)}
               </label>
               <input
                 type="range"
                 min="0"
                 max="8"
                 step="0.1"
-                value={formData.expenseInflation}
-                onChange={(e) => handleInputChange('expenseInflation', parseFloat(e.target.value))}
+                value={formData.inflacionGastosPct}
+                onChange={(e) => handleInputChange('inflacionGastosPct', parseFloat(e.target.value))}
                 className="w-full h-2 bg-hz-neutral-100 appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.expenseInflation / 8) * 100}%, var(--bg) ${(formData.expenseInflation / 8) * 100}%, var(--bg) 100%)`
+                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.inflacionGastosPct / 8) * 100}%, var(--bg) ${(formData.inflacionGastosPct / 8) * 100}%, var(--bg) 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -129,18 +123,18 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             {/* Property Appreciation */}
             <div>
               <label className="block text-sm font-medium text-neutral-900 mb-2">
-                Revalorización activos anual: {formatPercentage(formData.propertyAppreciation / 100)}
+                Revalorización inmuebles anual: {formatPercentage(formData.revalorizacionInmueblesPct / 100)}
               </label>
               <input
                 type="range"
                 min="0"
                 max="12"
                 step="0.1"
-                value={formData.propertyAppreciation}
-                onChange={(e) => handleInputChange('propertyAppreciation', parseFloat(e.target.value))}
+                value={formData.revalorizacionInmueblesPct}
+                onChange={(e) => handleInputChange('revalorizacionInmueblesPct', parseFloat(e.target.value))}
                 className="w-full h-2 bg-hz-neutral-100 appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.propertyAppreciation / 12) * 100}%, var(--bg) ${(formData.propertyAppreciation / 12) * 100}%, var(--bg) 100%)`
+                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.revalorizacionInmueblesPct / 12) * 100}%, var(--bg) ${(formData.revalorizacionInmueblesPct / 12) * 100}%, var(--bg) 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -152,50 +146,24 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             {/* Vacancy Rate */}
             <div>
               <label className="block text-sm font-medium text-neutral-900 mb-2">
-                Vacancia: {formatPercentage(formData.vacancyRate / 100)}
+                Vacancia: {formatPercentage(formData.vacanciaPct / 100)}
               </label>
               <input
                 type="range"
                 min="0"
                 max="20"
                 step="0.5"
-                value={formData.vacancyRate}
-                onChange={(e) => handleInputChange('vacancyRate', parseFloat(e.target.value))}
+                value={formData.vacanciaPct}
+                onChange={(e) => handleInputChange('vacanciaPct', parseFloat(e.target.value))}
                 className="w-full h-2 bg-hz-neutral-100 appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.vacancyRate / 20) * 100}%, var(--bg) ${(formData.vacancyRate / 20) * 100}%, var(--bg) 100%)`
+                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.vacanciaPct / 20) * 100}%, var(--bg) ${(formData.vacanciaPct / 20) * 100}%, var(--bg) 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0%</span>
                 <span>20%</span>
               </div>
-            </div>
-
-            {/* Reference Rate */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 mb-2">
-                Tipo de interés de referencia: {formatPercentage(formData.referenceRate / 100)}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="15"
-                step="0.1"
-                value={formData.referenceRate}
-                onChange={(e) => handleInputChange('referenceRate', parseFloat(e.target.value))}
-                className="w-full h-2 bg-hz-neutral-100 appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.referenceRate / 15) * 100}%, var(--bg) ${(formData.referenceRate / 15) * 100}%, var(--bg) 100%)`
-                }}
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>0%</span>
-                <span>15%</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Solo para forecast de hipotecas con tipo variable
-              </p>
             </div>
 
             {/* Reset to Defaults */}

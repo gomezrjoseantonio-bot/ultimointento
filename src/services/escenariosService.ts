@@ -3,6 +3,8 @@
 
 import { initDB } from './db';
 import type { Escenario, Hito } from '../types/miPlan';
+import type { SupuestosProyeccion } from '../types/supuestosProyeccion';
+import { SUPUESTOS_PROYECCION_DEFAULTS } from '../types/supuestosProyeccion';
 
 // ── UUID helper ───────────────────────────────────────────────────────────────
 
@@ -31,7 +33,6 @@ export const ESCENARIO_DEFAULTS: Escenario = {
   tasaAhorroMinima: 15,
   // T-INVERSIONES-DETALLE-PP-v1 PR 3 · §4.B · defaults para proyección.
   edadObjetivoRescate: 65,
-  inflacionAnualAsumida: 2,
   updatedAt: new Date().toISOString(),
 };
 
@@ -70,6 +71,40 @@ export async function saveEscenarioActivo(
   };
   await db.put('escenarios', updated);
   return updated;
+}
+
+// ── Supuestos de proyección · fuente única (C-PROY-5 · B1) ───────────────────
+
+/**
+ * Resuelve los supuestos efectivos a partir de un Escenario ya cargado:
+ * DEFAULTS ← overrides del usuario. Pura · para callers que ya tienen el
+ * escenario en mano y no quieren otra lectura de DB.
+ */
+export function resolveSupuestosProyeccion(escenario: Escenario): SupuestosProyeccion {
+  return {
+    ...SUPUESTOS_PROYECCION_DEFAULTS,
+    ...(escenario.supuestos ?? {}),
+  };
+}
+
+/** Supuestos efectivos de proyección · única puerta de lectura con DB. */
+export async function getSupuestosProyeccion(): Promise<SupuestosProyeccion> {
+  const escenario = await getEscenarioActivo();
+  return resolveSupuestosProyeccion(escenario);
+}
+
+/**
+ * Persiste SOLO los campos tocados (merge sobre `Escenario.supuestos`).
+ * Lo no incluido conserva su estado (default o valor previo del usuario).
+ */
+export async function saveSupuestosProyeccion(
+  patch: Partial<SupuestosProyeccion>,
+): Promise<SupuestosProyeccion> {
+  const current = await getEscenarioActivo();
+  const updated = await saveEscenarioActivo({
+    supuestos: { ...(current.supuestos ?? {}), ...patch },
+  });
+  return resolveSupuestosProyeccion(updated);
 }
 
 // ── resetEscenario ────────────────────────────────────────────────────────────

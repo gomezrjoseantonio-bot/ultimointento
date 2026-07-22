@@ -1,15 +1,11 @@
 import { initDB } from '../../../../../services/db';
 import { getCachedStoreRecords } from '../../../../../services/indexedDbCacheService';
+import { getSupuestosProyeccion } from '../../../../../services/escenariosService';
 
-// Types for base projections
-export interface BaseAssumptions {
-  rentGrowth: number; // Annual rent growth percentage (e.g., 3.5)
-  expenseInflation: number; // Annual expense inflation percentage (e.g., 2.5)
-  propertyAppreciation: number; // Annual property appreciation percentage (e.g., 4.0)
-  vacancyRate: number; // Vacancy rate percentage (e.g., 5.0)
-  referenceRate: number; // Reference interest rate for variable loans (e.g., 4.5)
-  lastModified: string; // ISO timestamp
-}
+// C-PROY-5 · B1: `BaseAssumptions` + keyval 'base-assumptions' borrados.
+// Los supuestos se leen de la fuente única (`Escenario.supuestos` ·
+// escenariosService.getSupuestosProyeccion). Este motor legacy muere en B4;
+// hasta entonces al menos proyecta con los mismos supuestos que todo lo demás.
 
 export interface YearlyProjectionData {
   year: number;
@@ -37,88 +33,29 @@ export interface BaseProjection {
   lastCalculated: string; // ISO timestamp
 }
 
-// Default assumptions
-const DEFAULT_ASSUMPTIONS: BaseAssumptions = {
-  rentGrowth: 3.5,
-  expenseInflation: 2.5,
-  propertyAppreciation: 4.0,
-  vacancyRate: 5.0,
-  referenceRate: 4.5,
-  lastModified: new Date().toISOString()
-};
-
 // IndexedDB keys
-const ASSUMPTIONS_KEY = 'base-assumptions';
 const PROJECTION_KEY = 'base-projection';
-
-// localStorage fallback key (assumptions only — projection is too large)
-const ASSUMPTIONS_STORAGE_KEY = 'atlas-proyeccion-base-assumptions';
 
 // Projection cache TTL: 5 minutes
 const PROJECTION_CACHE_TTL_MS = 5 * 60 * 1000;
 
 class ProyeccionService {
   // In-memory cache so repeated calls within the same session are instant
-  private cachedAssumptions: BaseAssumptions | null = null;
   private cachedProjection: BaseProjection | null = null;
   private projectionCachedAt = 0;
 
   /**
-   * Get base assumptions — returns in-memory cache when available.
+   * Invalidate the projection cache (memory + persisted). Call after the
+   * unified assumptions change so the next read recalculates.
    */
-  async getBaseAssumptions(): Promise<BaseAssumptions> {
-    if (this.cachedAssumptions) return this.cachedAssumptions;
-
-    try {
-      const db = await initDB();
-      const stored = await db.get('keyval', ASSUMPTIONS_KEY);
-      if (stored && this.isValidAssumptions(stored)) {
-        this.cachedAssumptions = stored;
-        return stored;
-      }
-    } catch (error) {
-      console.warn('Error loading assumptions from IndexedDB:', error);
-    }
-
-    try {
-      const stored = localStorage.getItem(ASSUMPTIONS_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (this.isValidAssumptions(parsed)) {
-          this.cachedAssumptions = parsed;
-          return parsed;
-        }
-      }
-    } catch (error) {
-      console.warn('Error loading assumptions from localStorage:', error);
-    }
-
-    const defaults = { ...DEFAULT_ASSUMPTIONS };
-    this.cachedAssumptions = defaults;
-    return defaults;
-  }
-
-  /**
-   * Save base assumptions and invalidate the projection cache.
-   */
-  async saveBaseAssumptions(assumptions: BaseAssumptions): Promise<void> {
-    const toSave = { ...assumptions, lastModified: new Date().toISOString() };
-    this.cachedAssumptions = toSave;
-    // Invalidate projection cache so next call recalculates with new assumptions
+  async invalidateProjection(): Promise<void> {
     this.cachedProjection = null;
     this.projectionCachedAt = 0;
-
     try {
       const db = await initDB();
-      await db.put('keyval', toSave, ASSUMPTIONS_KEY);
-    } catch (error) {
-      console.warn('Error saving assumptions to IndexedDB:', error);
-    }
-
-    try {
-      localStorage.setItem(ASSUMPTIONS_STORAGE_KEY, JSON.stringify(toSave));
-    } catch (error) {
-      console.warn('Error saving assumptions to localStorage:', error);
+      await db.delete('keyval', PROJECTION_KEY);
+    } catch {
+      // Persisted cache is best-effort; memory invalidation already done.
     }
   }
 
@@ -156,8 +93,8 @@ class ProyeccionService {
    * Force a fresh calculation (e.g. after assumptions change).
    */
   private async recalculateProjection(): Promise<BaseProjection> {
-    // Reuse already-loaded assumptions — avoids a second DB round-trip
-    const assumptions = await this.getBaseAssumptions();
+    // Fuente única de supuestos (C-PROY-5 · B1)
+    const supuestos = await getSupuestosProyeccion();
     const currentYear = new Date().getFullYear();
 
     const { rentalIncome, expenses, debtService, propertyValue, outstandingDebt } =
@@ -169,11 +106,11 @@ class ProyeccionService {
     for (let i = 0; i <= 20; i++) {
       const adjustedRentalIncome =
         rentalIncome *
-        Math.pow(1 + assumptions.rentGrowth / 100, i) *
-        (1 - assumptions.vacancyRate / 100);
-      const adjustedExpenses = expenses * Math.pow(1 + assumptions.expenseInflation / 100, i);
+        Math.pow(1 + supuestos.subidaRentasPct / 100, i) *
+        (1 - supuestos.vacanciaPct / 100);
+      const adjustedExpenses = expenses * Math.pow(1 + supuestos.inflacionGastosPct / 100, i);
       const adjustedPropertyValue =
-        propertyValue * Math.pow(1 + assumptions.propertyAppreciation / 100, i);
+        propertyValue * Math.pow(1 + supuestos.revalorizacionInmueblesPct / 100, i);
 
       const debtReduction = i > 0 ? debtService * 0.3 : 0;
       currentOutstandingDebt = Math.max(0, currentOutstandingDebt - debtReduction);
@@ -213,18 +150,6 @@ class ProyeccionService {
       .catch((err) => console.warn('Error caching projection to IndexedDB:', err));
 
     return projection;
-  }
-
-  private isValidAssumptions(obj: any): obj is BaseAssumptions {
-    return (
-      obj &&
-      typeof obj.rentGrowth === 'number' &&
-      typeof obj.expenseInflation === 'number' &&
-      typeof obj.propertyAppreciation === 'number' &&
-      typeof obj.vacancyRate === 'number' &&
-      typeof obj.referenceRate === 'number' &&
-      typeof obj.lastModified === 'string'
-    );
   }
 
   /**

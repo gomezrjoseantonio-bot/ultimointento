@@ -23,7 +23,11 @@ import {
   removeHito,
   listHitos,
   ESCENARIO_DEFAULTS,
+  getSupuestosProyeccion,
+  saveSupuestosProyeccion,
+  resolveSupuestosProyeccion,
 } from '../services/escenariosService';
+import { SUPUESTOS_PROYECCION_DEFAULTS } from '../types/supuestosProyeccion';
 import { initDB } from '../services/db';
 
 describe('escenariosService', () => {
@@ -211,61 +215,71 @@ describe('escenariosService', () => {
     });
   });
 
-  // ── T-INVERSIONES-DETALLE-PP-v1 PR 3 · §4.B · supuestos de proyección ─────
+  // ── C-PROY-5 · B1 · fuente única de supuestos de proyección ───────────────
 
-  describe('edadObjetivoRescate + inflacionAnualAsumida (§4.B)', () => {
-    it('defaults · edad 65 e inflación 2 cuando no están en DB', async () => {
+  describe('supuestos de proyección · fuente única (B1)', () => {
+    it('defaults visibles cuando no hay nada en DB · edad 65 · supuestos = DEFAULTS', async () => {
       mockDB.get.mockResolvedValue(undefined);
       const result = await getEscenarioActivo();
       expect(result.edadObjetivoRescate).toBe(65);
-      expect(result.inflacionAnualAsumida).toBe(2);
-      // ESCENARIO_DEFAULTS expone los mismos valores
       expect(ESCENARIO_DEFAULTS.edadObjetivoRescate).toBe(65);
-      expect(ESCENARIO_DEFAULTS.inflacionAnualAsumida).toBe(2);
+
+      const supuestos = await getSupuestosProyeccion();
+      expect(supuestos).toEqual(SUPUESTOS_PROYECCION_DEFAULTS);
+      // Defaults de la spec B1
+      expect(supuestos.revalorizacionInmueblesPct).toBe(3.0);
+      expect(supuestos.subidaRentasPct).toBe(2.5);
+      expect(supuestos.inflacionGastosPct).toBe(2.5);
+      expect(supuestos.vacanciaPct).toBe(5.0);
+      expect(supuestos.rentabilidadAhorroPct).toBe(2.0);
+      expect(supuestos.subidaNominaPct).toBe(2.0);
+      expect(supuestos.subidaAutonomoPct).toBe(2.0);
     });
 
-    it('preserva los valores guardados por el usuario', async () => {
+    it('los overrides del usuario pisan el default · lo no tocado sigue en default', async () => {
       mockDB.get.mockResolvedValue({
         id: 1,
         modoVivienda: 'alquiler',
         gastosVidaLibertadMensual: 2500,
         estrategia: 'hibrido',
         hitos: [],
-        edadObjetivoRescate: 60,
-        inflacionAnualAsumida: 3.5,
+        supuestos: { inflacionGastosPct: 3.5 },
         updatedAt: '2026-05-17T00:00:00.000Z',
       });
-      const result = await getEscenarioActivo();
-      expect(result.edadObjetivoRescate).toBe(60);
-      expect(result.inflacionAnualAsumida).toBe(3.5);
+      const supuestos = await getSupuestosProyeccion();
+      expect(supuestos.inflacionGastosPct).toBe(3.5);
+      expect(supuestos.revalorizacionInmueblesPct).toBe(3.0); // default intacto
     });
 
-    it('saveEscenarioActivo persiste sólo los campos del patch · resto del estado intacto', async () => {
+    it('saveSupuestosProyeccion mergea el patch sin pisar otros overrides', async () => {
       mockDB.get.mockResolvedValue({
         id: 1,
         modoVivienda: 'alquiler',
         gastosVidaLibertadMensual: 2500,
         estrategia: 'hibrido',
         hitos: [],
-        edadObjetivoRescate: 65,
-        inflacionAnualAsumida: 2,
+        supuestos: { vacanciaPct: 8 },
         updatedAt: '2026-01-01T00:00:00.000Z',
       });
-      const updated = await saveEscenarioActivo({
-        edadObjetivoRescate: 70,
-        inflacionAnualAsumida: 2.5,
-      });
-      expect(updated.edadObjetivoRescate).toBe(70);
-      expect(updated.inflacionAnualAsumida).toBe(2.5);
-      expect(updated.modoVivienda).toBe('alquiler');
-      expect(updated.gastosVidaLibertadMensual).toBe(2500);
+      const resolved = await saveSupuestosProyeccion({ subidaRentasPct: 3 });
+      expect(resolved.subidaRentasPct).toBe(3);
+      expect(resolved.vacanciaPct).toBe(8); // override previo intacto
+      expect(resolved.inflacionGastosPct).toBe(2.5); // default intacto
       expect(mockDB.put).toHaveBeenCalledWith(
         'escenarios',
         expect.objectContaining({
-          edadObjetivoRescate: 70,
-          inflacionAnualAsumida: 2.5,
+          supuestos: expect.objectContaining({ vacanciaPct: 8, subidaRentasPct: 3 }),
         }),
       );
+    });
+
+    it('resolveSupuestosProyeccion es pura · no toca DB', () => {
+      const resolved = resolveSupuestosProyeccion({
+        ...ESCENARIO_DEFAULTS,
+        supuestos: { subidaNominaPct: 4 },
+      });
+      expect(resolved.subidaNominaPct).toBe(4);
+      expect(resolved.subidaAutonomoPct).toBe(2.0);
     });
   });
 });

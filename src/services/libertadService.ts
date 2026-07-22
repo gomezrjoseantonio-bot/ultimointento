@@ -4,16 +4,13 @@ import type {
   LibertadConfig,
   PuntoSerieLibertad,
   ResultadoLibertad,
-  SupuestosLibertad,
 } from '../types/libertad';
-import {
-  STANDARD_LIBERTAD_CONFIG,
-  SUPUESTOS_NEUTROS_LIBERTAD,
-} from '../types/libertad';
+import { STANDARD_LIBERTAD_CONFIG } from '../types/libertad';
+import type { SupuestosProyeccion } from '../types/supuestosProyeccion';
 import { getAllContracts } from './contractService';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { prestamosService } from './prestamosService';
-import { getEscenarioActivo } from './escenariosService';
+import { getEscenarioActivo, resolveSupuestosProyeccion } from './escenariosService';
 
 /**
  * Función pura · proyecta renta pasiva mensual mes a mes hasta el horizonte
@@ -22,12 +19,13 @@ import { getEscenarioActivo } from './escenariosService';
  * NO accede a DB · NO hace fetch · NO tiene side effects · 100% testable.
  *
  * @param datos     datos reales del usuario en mesReferencia
- * @param supuestos macro (inflación · subida rentas) · default neutros
+ * @param supuestos fuente única `SupuestosProyeccion` (C-PROY-5 · B1) · sin default:
+ *                  el caller resuelve (el wrapper lee del Escenario)
  * @param config    cómo calcular · default STANDARD
  */
 export function proyectarRentaPasivaLibertad(
   datos: DatosRealesLibertad,
-  supuestos: SupuestosLibertad = SUPUESTOS_NEUTROS_LIBERTAD,
+  supuestos: SupuestosProyeccion,
   config: LibertadConfig = STANDARD_LIBERTAD_CONFIG,
 ): ResultadoLibertad {
   if (config.alcanceRentaPasiva !== 'alquiler-neto') {
@@ -42,9 +40,8 @@ export function proyectarRentaPasivaLibertad(
   }
 
   const horizonteMeses = config.horizonteAnios * 12;
-  const subidaGastosMensual =
-    (supuestos.subidaAnualGastosVidaPct ?? supuestos.inflacionAnualPct) / 100 / 12;
-  const subidaRentasMensual = supuestos.subidaAnualRentasPct / 100 / 12;
+  const subidaGastosMensual = supuestos.inflacionGastosPct / 100 / 12;
+  const subidaRentasMensual = supuestos.subidaRentasPct / 100 / 12;
 
   let rentaActual = datos.rentaPasivaActualMensual;
   let gastosActuales = datos.gastosVidaMensual;
@@ -138,12 +135,21 @@ export function proyectarRentaPasivaLibertad(
 /**
  * Wrapper · carga datos reales del repo y llama a la función pura.
  * Es la API principal que consumirán componentes UI (T27.4.2).
+ *
+ * Supuestos (C-PROY-5 · B1): se resuelven del Escenario (fuente única ·
+ * DEFAULTS ← usuario) y `supuestosOverride` solo pisa lo que el simulador
+ * quiera tocar en vivo (sliders).
  */
 export async function proyectarLibertadDesdeRepo(
-  supuestos: SupuestosLibertad = SUPUESTOS_NEUTROS_LIBERTAD,
+  supuestosOverride?: Partial<SupuestosProyeccion>,
   configOverride?: LibertadConfig,
 ): Promise<ResultadoLibertad> {
   const escenario = await getEscenarioActivo();
+
+  const supuestos: SupuestosProyeccion = {
+    ...resolveSupuestosProyeccion(escenario),
+    ...(supuestosOverride ?? {}),
+  };
 
   // Merge defensivo: STANDARD como base, luego config persistida, luego override.
   // Garantiza que campos requeridos nunca sean undefined aunque IndexedDB entregue
