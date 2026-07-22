@@ -4,8 +4,11 @@ import PageLayout from '../../../../components/common/PageLayout';
 import { formatEuro, formatPercentage } from '../../../../utils/formatUtils';
 import AdjustAssumptionsModal from './components/AdjustAssumptionsModal';
 import ProjectionChart from './components/ProjectionChart';
-import { proyeccionService } from './services/proyeccionService';
-import type { BaseProjection } from './services/proyeccionService';
+import {
+  getSeriePatrimonio,
+  invalidateProyeccionCache,
+} from '../mensual/services/proyeccionMensualService';
+import type { PuntoPatrimonioAnual } from '../mensual/types/proyeccionMensual';
 import { getSupuestosProyeccion, saveSupuestosProyeccion } from '../../../../services/escenariosService';
 import type { SupuestosProyeccion } from '../../../../types/supuestosProyeccion';
 
@@ -15,24 +18,26 @@ interface ProyeccionBaseProps {
 
 const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): React.ReactElement => {
   const [assumptions, setAssumptions] = useState<SupuestosProyeccion | null>(null);
-  const [projection, setProjection] = useState<BaseProjection | null>(null);
+  const [serie, setSerie] = useState<PuntoPatrimonioAnual[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     loadBaseData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadBaseData = async () => {
     try {
       setLoading(true);
-      // Supuestos desde la fuente única (C-PROY-5 · B1)
-      const [supuestos, baseProjection] = await Promise.all([
+      // B4 · LA salida canónica del motor real (deuda con cuadro francés ·
+      // OPEX de compromisos · dinámica B3) · supuestos de la fuente única B1
+      const [supuestos, seriePatrimonio] = await Promise.all([
         getSupuestosProyeccion(),
-        proyeccionService.getBaseProjection(),
+        getSeriePatrimonio(),
       ]);
       setAssumptions(supuestos);
-      setProjection(baseProjection);
+      setSerie(seriePatrimonio);
     } catch (error) {
       console.error('Error loading base data:', error);
     } finally {
@@ -43,10 +48,11 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
   const handleAssumptionsUpdate = async (newAssumptions: SupuestosProyeccion) => {
     try {
       const saved = await saveSupuestosProyeccion(newAssumptions);
-      await proyeccionService.invalidateProjection();
-      const updatedProjection = await proyeccionService.getBaseProjection();
+      // El motor cachea 3 min · invalidar para que los supuestos nuevos se noten ya
+      invalidateProyeccionCache();
+      const seriePatrimonio = await getSeriePatrimonio();
       setAssumptions(saved);
-      setProjection(updatedProjection);
+      setSerie(seriePatrimonio);
       setShowModal(false);
     } catch (error) {
       console.error('Error updating assumptions:', error);
@@ -69,7 +75,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
     );
   }
 
-  if (!projection || !assumptions) {
+  if (!serie || serie.length === 0 || !assumptions) {
     const content = (
       <div className="text-center py-12 bg-gray-50">
         <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -81,15 +87,23 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
         </p>
       </div>
     );
-    
+
     if (isEmbedded) return content;
-    
+
     return (
       <PageLayout title="Proyección Base" subtitle="No hay datos disponibles">
         {content}
       </PageLayout>
     );
   }
+
+  // KPIs desde la salida canónica (B4) · deuda real del cuadro de amortización
+  const anioActual = serie[0];
+  const patrimonio20a = serie[serie.length - 1].patrimonioNeto;
+  const dscr =
+    anioActual.servicioDeudaAnual > 0
+      ? anioActual.rentasAnuales / anioActual.servicioDeudaAnual
+      : 0;
 
   const content = (
     <div className="space-y-6">
@@ -120,7 +134,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
               </div>
             </div>
             <p className="text-2xl font-semibold text-neutral-900 tabular-nums">
-              {formatEuro(projection.currentAnnualCashflow)}
+              {formatEuro(anioActual.flujoNetoAnual)}
             </p>
           </div>
 
@@ -135,7 +149,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
               </div>
             </div>
             <p className="text-2xl font-semibold text-neutral-900 tabular-nums">
-              {formatEuro(projection.netWorth20Y)}
+              {formatEuro(patrimonio20a)}
             </p>
           </div>
 
@@ -150,7 +164,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
               </div>
             </div>
             <p className="text-2xl font-semibold text-neutral-900 tabular-nums">
-              {projection.currentDSCR.toFixed(2)} x
+              {dscr.toFixed(2)} x
             </p>
           </div>
         </div>
@@ -160,7 +174,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           <h3 className="text-lg font-semibold text-neutral-900 mb-6">
             Proyección a 20 años
           </h3>
-          <ProjectionChart data={projection.yearlyData} />
+          <ProjectionChart data={serie} />
         </div>
 
         {/* Assumptions Summary */}
@@ -195,25 +209,6 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
             </div>
           </div>
         </div>
-
-        {/* Top Impacts */}
-        {projection.upcomingImpacts.length > 0 && (
-          <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-neutral-900 mb-4">
-              Top impactos próximos 90 días
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {projection.upcomingImpacts.map((impact, index) => (
-                <div
-                  key={index}
-                  className="inline-flex items-center px-3 py-1 text-sm bg-hz-neutral-100 text-primary-700 border border-hz-neutral-300"
-                >
-                  {impact.description}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Adjust Assumptions Modal */}
         {showModal && (

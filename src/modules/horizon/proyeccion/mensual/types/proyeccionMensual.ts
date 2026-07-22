@@ -90,3 +90,32 @@ export interface ProyeccionMensualState {
   loading: boolean;
   error: string | null;
 }
+
+/**
+ * C-PROY-5 · Fase B4 · LA salida canónica del motor de proyección.
+ *
+ * Un punto por año del horizonte (cierre a diciembre). Los tres consumidores
+ * (curva del héroe del Panel · Mi Plan · panel de KPIs de /proyeccion/escenarios)
+ * leen ESTA forma; ninguno calcula la suya. Sustituye a `YearlyProjectionData`/
+ * `BaseProjection` del motor legacy (borrados en B4).
+ */
+export interface PuntoPatrimonioAnual {
+  /** Año natural (ej. 2026). */
+  año: number;
+  /** Patrimonio neto al cierre del año (activos − deuda). */
+  patrimonioNeto: number;
+  /** Total de activos al cierre (caja + inmuebles + planes + inversiones). */
+  activosTotales: number;
+  caja: number;
+  inmuebles: number;
+  /** Planes de pensión + otras inversiones. */
+  inversiones: number;
+  deudaTotal: number;
+  /** Flujos del año. */
+  ingresosAnuales: number;
+  gastosAnuales: number;
+  rentasAnuales: number;
+  gastosOperativosAnuales: number;
+  servicioDeudaAnual: number;
+  flujoNetoAnual: number;
+}

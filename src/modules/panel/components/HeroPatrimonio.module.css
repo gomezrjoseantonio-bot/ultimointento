@@ -142,6 +142,23 @@
   padding: 20px;
 }
 
+/* Con curva real (B4): borde sólido · contenido en columna a ancho completo */
+.chartConCurva {
+  border-style: solid;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 12px;
+}
+
+.chartHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .chartEmpty {
   text-align: center;
   max-width: 340px;

@@ -1,11 +1,13 @@
 // Panel · héroe navy · patrimonio neto + composición + activos/deuda/cuota +
-// anillo de libertad. La mitad derecha (curva a 20 años) es FASE C: el motor
-// C-PROY-5 no existe, así que muestra estado vacío honesto (nunca una curva
-// inventada · informe FASE A §2.3).
+// anillo de libertad. Mitad derecha: curva de patrimonio a 20 años leyendo LA
+// salida canónica del motor (C-PROY-5 · B4) · SOLO lectura — los supuestos se
+// configuran en Mi Plan (B5). Sin serie → estado vacío honesto.
 
 import React from 'react';
 import { Icons } from '../../../design-system/v5';
 import LibertadRing from './LibertadRing';
+import CurvaPatrimonio from '../../../components/proyeccion/CurvaPatrimonio';
+import type { PuntoPatrimonioAnual } from '../../horizon/proyeccion/mensual/types/proyeccionMensual';
 import { fmtEur } from './format';
 import type { AnilloState } from './types';
 import styles from './HeroPatrimonio.module.css';
@@ -20,6 +22,8 @@ export interface HeroPatrimonioProps {
   valorInversiones: number;
   anillo: AnilloState;
   onNavigate: (ruta: string) => void;
+  /** Salida canónica del motor (B4) · null/vacía → estado vacío honesto. */
+  seriePatrimonio?: PuntoPatrimonioAnual[] | null;
 }
 
 const HeroPatrimonio: React.FC<HeroPatrimonioProps> = ({
@@ -32,7 +36,12 @@ const HeroPatrimonio: React.FC<HeroPatrimonioProps> = ({
   valorInversiones,
   anillo,
   onNavigate,
+  seriePatrimonio,
 }) => {
+  const haySerie =
+    Array.isArray(seriePatrimonio) &&
+    seriePatrimonio.length > 1 &&
+    seriePatrimonio.some((p) => p.patrimonioNeto !== 0);
   const total = valorInmuebles + saldoTesoreria + valorInversiones || 1;
   const pct = (v: number) => `${(v / total) * 100}%`;
 
@@ -93,17 +102,28 @@ const HeroPatrimonio: React.FC<HeroPatrimonioProps> = ({
           </div>
         </div>
 
-        {/* Mitad derecha · curva a 20 años · FASE C · motor C-PROY-5 no existe */}
-        <div className={styles.chart}>
-          <div className={styles.chartEmpty}>
-            <Icons.Proyeccion size={26} strokeWidth={1.6} className={styles.chartIcon} />
-            <div className={styles.chartTit}>Trayectoria a 20 años</div>
-            <div className={styles.chartSub}>
-              La proyección de patrimonio a largo plazo aún no está disponible · llegará con el motor
-              de proyección
+        {/* Mitad derecha · curva a 20 años · salida canónica del motor (B4) */}
+        {haySerie ? (
+          <div className={`${styles.chart} ${styles.chartConCurva}`}>
+            <div className={styles.chartHead}>
+              <span className={styles.chartTit}>Trayectoria a 20 años</span>
+              <span className={styles.chartSub}>
+                según tus supuestos de Mi Plan · sin fiscalidad futura
+              </span>
+            </div>
+            <CurvaPatrimonio serie={seriePatrimonio!} variante="navy" alto={150} />
+          </div>
+        ) : (
+          <div className={styles.chart}>
+            <div className={styles.chartEmpty}>
+              <Icons.Proyeccion size={26} strokeWidth={1.6} className={styles.chartIcon} />
+              <div className={styles.chartTit}>Trayectoria a 20 años</div>
+              <div className={styles.chartSub}>
+                La proyección de patrimonio a largo plazo aparecerá cuando haya datos que proyectar
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </section>
   );

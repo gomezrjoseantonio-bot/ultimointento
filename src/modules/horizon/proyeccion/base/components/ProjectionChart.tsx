@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { YearlyProjectionData } from '../services/proyeccionService';
+import type { PuntoPatrimonioAnual } from '../../mensual/types/proyeccionMensual';
 import { formatEuro } from '../../../../../utils/formatUtils';
 
+// B4 · consume LA salida canónica del motor (antes: YearlyProjectionData del
+// motor legacy con deuda 0 · borrado).
 interface ProjectionChartProps {
-  data: YearlyProjectionData[];
+  data: PuntoPatrimonioAnual[];
 }
 
 const cssVar = (variable: string, fallback: string): string => {
@@ -32,11 +34,11 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
 
   // Transform data for recharts format
   const chartData = filteredData.map(d => ({
-    year: d.year.toString(),
-    'Ingresos de alquiler (netos)': d.rentalIncome,
-    'Gastos (operativos + impuestos + seguros + comunidad)': -d.operatingExpenses,
-    'Servicio de deuda': -d.debtService,
-    'Flujo neto': d.netCashflow,
+    year: d.año.toString(),
+    'Rentas de alquiler': d.rentasAnuales,
+    'Gastos operativos': -d.gastosOperativosAnuales,
+    'Servicio de deuda': -d.servicioDeudaAnual,
+    'Flujo neto': d.flujoNetoAnual,
   }));
 
   // Custom tooltip
@@ -106,7 +108,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
             />
             <Line 
               type="monotone" 
-              dataKey="Ingresos de alquiler (netos)" 
+              dataKey="Rentas de alquiler" 
               stroke={palette.c1} 
               strokeWidth={2}
               dot={{ r: 3 }}
@@ -114,7 +116,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
             />
             <Line 
               type="monotone" 
-              dataKey="Gastos (operativos + impuestos + seguros + comunidad)" 
+              dataKey="Gastos operativos" 
               stroke={palette.c5} 
               strokeWidth={2}
               dot={{ r: 3 }}

@@ -19,7 +19,12 @@ import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { PeriodoPago } from '../../../../../types/prestamos';
 import { InversionRendimientoPeriodico, PagoRendimiento } from '../../../../../types/inversiones-extended';
 import { PosicionInversion, PlanLiquidacion } from '../../../../../types/inversiones';
-import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
+import {
+  MonthlyProjectionRow,
+  ProyeccionAnual,
+  DrillDownItem,
+  PuntoPatrimonioAnual,
+} from '../types/proyeccionMensual';
 import { calcularDeclaracionIRPF } from '../../../../../services/irpfCalculationService';
 import { generarEventosFiscales, getConfiguracionFiscal } from '../../../../../services/fiscalPaymentsService';
 import { valoracionesService } from '../../../../../services/valoracionesService';
@@ -1067,6 +1072,45 @@ export function invalidateProyeccionCache(): void {
   proyeccionCache = null;
   proyeccionCacheExpiresAt = 0;
   proyeccionPending = null;
+}
+
+/**
+ * B4 · Deriva la salida canónica (un punto por año · cierre a diciembre)
+ * desde la proyección mensual. Pura · testable.
+ */
+export function derivarSeriePatrimonio(proyecciones: ProyeccionAnual[]): PuntoPatrimonioAnual[] {
+  return proyecciones.map((anual) => {
+    const dic = anual.months[anual.months.length - 1];
+    const rentasAnuales = anual.months.reduce((s, m) => s + m.ingresos.rentasAlquiler, 0);
+    const gastosOperativosAnuales = anual.months.reduce((s, m) => s + m.gastos.gastosOperativos, 0);
+    return {
+      año: anual.year,
+      patrimonioNeto: dic.patrimonio.patrimonioNeto,
+      activosTotales:
+        dic.patrimonio.caja +
+        dic.patrimonio.inmuebles +
+        dic.patrimonio.planesPension +
+        dic.patrimonio.otrasInversiones,
+      caja: dic.patrimonio.caja,
+      inmuebles: dic.patrimonio.inmuebles,
+      inversiones: dic.patrimonio.planesPension + dic.patrimonio.otrasInversiones,
+      deudaTotal: dic.patrimonio.deudaTotal,
+      ingresosAnuales: anual.totalesAnuales.ingresosTotales,
+      gastosAnuales: anual.totalesAnuales.gastosTotales,
+      rentasAnuales,
+      gastosOperativosAnuales,
+      servicioDeudaAnual: anual.totalesAnuales.financiacionTotal,
+      flujoNetoAnual: anual.totalesAnuales.flujoNetoAnual,
+    };
+  });
+}
+
+/**
+ * B4 · LA salida que consumen las pantallas (héroe del Panel · Mi Plan ·
+ * panel de KPIs). Comparte caché con `generateProyeccionMensual`.
+ */
+export async function getSeriePatrimonio(): Promise<PuntoPatrimonioAnual[]> {
+  return derivarSeriePatrimonio(await generateProyeccionMensual());
 }
 
 /**

@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-22",
-  "generatedAt": "2026-07-22T18:39:25.441Z",
+  "generatedAt": "2026-07-22T18:51:56.048Z",
   "git": {
     "branch": "claude/new-session-fnt2cy",
-    "head": "46bb07e"
+    "head": "38f93b6"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -286,7 +286,7 @@
       "approx": false,
       "note": null,
       "detail": [
-        "147 / 380 .tsx sin v5 (consumen v5: 233 · directo o vía .module.css con var(--atlas-v5-*))",
+        "147 / 381 .tsx sin v5 (consumen v5: 234 · directo o vía .module.css con var(--atlas-v5-*))",
         "src/App.tsx",
         "src/components/ImageDescriptionComponent.tsx",
         "src/components/InvoiceBreakdownModal.tsx",

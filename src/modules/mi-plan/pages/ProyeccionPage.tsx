@@ -6,6 +6,9 @@ import {
   showToastV5,
 } from '../../../design-system/v5';
 import { computeBudgetProjection12mAsync, type BudgetProjection } from '../services/budgetProjection';
+import { getSeriePatrimonio } from '../../horizon/proyeccion/mensual/services/proyeccionMensualService';
+import type { PuntoPatrimonioAnual } from '../../horizon/proyeccion/mensual/types/proyeccionMensual';
+import CurvaPatrimonio from '../../../components/proyeccion/CurvaPatrimonio';
 
 const formatYearLabel = (year: number) => `${year}`;
 
@@ -13,6 +16,23 @@ const ProyeccionPage: React.FC = () => {
   const year = new Date().getFullYear();
   const [projection, setProjection] = useState<BudgetProjection | null>(null);
   const [projectionError, setProjectionError] = useState<string | null>(null);
+  const [serie, setSerie] = useState<PuntoPatrimonioAnual[] | null>(null);
+
+  // Patrimonio a 20 años (C-PROY-5 · B4) · LA misma salida canónica que leen
+  // el héroe del Panel y /proyeccion/escenarios. Los sliders llegan en B5.
+  useEffect(() => {
+    let cancelled = false;
+    getSeriePatrimonio()
+      .then((s) => {
+        if (!cancelled) setSerie(s);
+      })
+      .catch(() => {
+        if (!cancelled) setSerie(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // T-RECONNECT-1 · Hallazgo 5.A · capturamos errores de la proyección y
   // los exponemos en banner · NO mostramos 0€ silenciosamente.
@@ -75,6 +95,20 @@ const ProyeccionPage: React.FC = () => {
           {projectionError} · revisa la consola para más detalle.
         </div>
       )}
+      {serie && serie.length > 1 && (
+        <CardV5 accent="brand" style={{ marginBottom: 14 }}>
+          <CardV5.Title>Patrimonio a 20 años</CardV5.Title>
+          <CardV5.Subtitle>
+            proyección con tus supuestos · patrimonio neto a {serie[serie.length - 1].año}:{' '}
+            <MoneyValue value={serie[serie.length - 1].patrimonioNeto} size="inline" /> · ningún
+            supuesto fiscal a futuro está incluido todavía
+          </CardV5.Subtitle>
+          <CardV5.Body>
+            <CurvaPatrimonio serie={serie} variante="clara" alto={170} />
+          </CardV5.Body>
+        </CardV5>
+      )}
+
       <CardV5 accent="brand" style={{ marginBottom: 14 }}>
         <CardV5.Title>Resultado caja · {formatYearLabel(year)}</CardV5.Title>
         <CardV5.Subtitle>
