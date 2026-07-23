@@ -16,7 +16,7 @@ import {
   showToastV5,
 } from '../../../design-system/v5';
 import type { TesoreriaContext } from '../TesoreriaPage';
-import type { Movement, ReconciliationStatus, TreasuryEvent } from '../../../services/db';
+import type { Movement, TreasuryEvent } from '../../../services/db';
 import {
   confirmTreasuryEvent,
   updateTreasuryEventFields,
@@ -36,7 +36,6 @@ import styles from './MovimientosTab.module.css';
 type StatusFilter = 'todos' | 'pendientes' | 'conciliados';
 
 const isReconciled = (m: Movement): boolean =>
-  m.estado_conciliacion === 'conciliado' ||
   m.unifiedStatus === 'conciliado' ||
   m.status === 'conciliado';
 
@@ -555,8 +554,8 @@ const MovimientosTab: React.FC = () => {
                   const reconciled = isReconciled(m);
                   const accountName = accountById.get(m.accountId) ?? `#${m.accountId}`;
                   const dotColor = accountColorById.get(m.accountId) ?? 'var(--atlas-v5-brand)';
-                  const reconciliationStatus: ReconciliationStatus =
-                    m.estado_conciliacion ?? (reconciled ? 'conciliado' : 'sin_conciliar');
+                  const reconciliationStatus: 'conciliado' | 'sin_conciliar' =
+                    reconciled ? 'conciliado' : 'sin_conciliar';
                   const inmuebleAlias = m.inmuebleAlias;
                   return (
                     <tr

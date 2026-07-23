@@ -312,7 +312,8 @@ export const reconcileTreasuryRecord = async (
     // Update the Movement with reconciliation info
     const movement = await db.get('movements', movementId);
     if (movement) {
-      movement.estado_conciliacion = 'conciliado';
+      // V81 (TAREA CC · Bloque B.1): campo único de conciliación = `unifiedStatus`.
+      movement.unifiedStatus = 'conciliado';
       movement.linked_registro = {
         type: recordType,
         id: recordId
@@ -344,11 +345,10 @@ export const findReconciliationMatches = async (): Promise<{
   try {
     // Get unreconciled movements
     const movements = await db.getAll('movements');
-    // "No conciliado" = ausente o 'sin_conciliar'. El `=== 'pendiente'` anterior
-    // comparaba contra un valor de MovementStatus, no de ReconciliationStatus
-    // ('sin_conciliar' | 'conciliado'), así que nunca casaba.
+    // "No conciliado" = `unifiedStatus` distinto de 'conciliado' (V81 · Bloque B.1:
+    // campo único de conciliación).
     const unreconciledMovements = movements.filter(m =>
-      m.estado_conciliacion !== 'conciliado'
+      m.unifiedStatus !== 'conciliado'
     );
 
     // Get unreconciled treasury records

@@ -3,12 +3,14 @@
 // importan del barril ./types (import de tipos · ciclo permitido en TS).
 
 import type { ArrastresEjercicio, DeclaracionInmueble, DeclaracionIRPF, OrigenDeclaracion } from '../../types/fiscal';
+import type { BolsaPresupuesto } from '../../types/compromisosRecurrentes';
 
 export type MovementStatus = 'pendiente' | 'parcial' | 'conciliado' | 'no-documentado';
 export type TransactionState = 'pending' | 'reconciled' | 'ignored'; // New field for treasury_transactions
 
-// H10: Treasury reconciliation status
-export type ReconciliationStatus = 'sin_conciliar' | 'conciliado';
+// H10 · ReconciliationStatus (`estado_conciliacion`): ELIMINADO en V81 (TAREA CC · Bloque B.1).
+// Campo redundante que solo codificaba el booleano "conciliado". Fuente única de conciliación:
+// `unifiedStatus === 'conciliado'` (modelo unificado ATLAS HORIZON, escrito por todos los flujos).
 
 // V1.0: Enhanced movement types and statuses per requirements
 export type MovementType = 'Ingreso' | 'Gasto' | 'Transferencia' | 'Ajuste';
@@ -73,7 +75,8 @@ export interface Movement {
   // H10: Enhanced reconciliation fields
   saldo?: number;
   id_import?: string;
-  estado_conciliacion?: ReconciliationStatus; // Default to 'sin_conciliar'
+  // estado_conciliacion: ELIMINADO en V81 (TAREA CC · Bloque B.1) — la conciliación
+  // se lee de `unifiedStatus === 'conciliado'` (campo único). Migración de datos post-open.
   linked_registro?: {
     type: 'ingreso' | 'gasto' | 'mejora';
     id: number;
@@ -215,6 +218,9 @@ export interface TreasuryEvent {
   actualDate?: string;
   actualAmount?: number;
   movementId?: number; // Link to actual bank movement
+  // V81 (TAREA CC · Bloque B.4): bolsa 50/30/20 copiada desde el CompromisoRecurrente
+  // que generó el evento · permite agrupar el gasto real por necesidades/deseos/ahorro.
+  bolsaPresupuesto?: BolsaPresupuesto;
   // Loan installment reference (for hipoteca / prestamo events)
   prestamoId?: string;
   numeroCuota?: number;

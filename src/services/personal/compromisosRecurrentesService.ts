@@ -259,6 +259,10 @@ export async function puedeCrearCompromiso(
 export function generarEventosDesdeCompromiso(
   compromiso: CompromisoRecurrente,
   hasta?: Date,
+  // V81 (TAREA CC · Bloque B.3): `desdeOverride` permite pedir un rango PASADO al motor
+  // (reconstruir qué se preveía en un mes ya cerrado). Sin él, la capa viva sigue
+  // proyectando desde HOY (comportamiento intacto). Ver `generarEventosHistoricos`.
+  desdeOverride?: Date,
 ): Array<Omit<TreasuryEvent, 'id'>> {
   const fechaInicio = new Date(compromiso.fechaInicio);
   const horizonteFin =
@@ -277,9 +281,11 @@ export function generarEventosDesdeCompromiso(
   }
 
   // Las fechas se proyectan desde HOY · no desde el inicio del compromiso
-  // (los eventos pasados ya están confirmados por extracto bancario)
+  // (los eventos pasados ya están confirmados por extracto bancario). Con
+  // `desdeOverride` (Bloque B.3) se permite un origen pasado explícito.
   const hoy = new Date();
-  const desdeProyeccion = hoy.getTime() > fechaInicio.getTime() ? hoy : fechaInicio;
+  const desdeProyeccion =
+    desdeOverride ?? (hoy.getTime() > fechaInicio.getTime() ? hoy : fechaInicio);
   const isoDesde = desdeProyeccion.toISOString().slice(0, 10);
   const isoHasta = fechaTope.toISOString().slice(0, 10);
 
@@ -314,6 +320,9 @@ export function generarEventosDesdeCompromiso(
       accountId: compromiso.cuentaCargo,
       paymentMethod: paymentMethodFromCompromiso(compromiso.metodoPago),
       status: 'predicted',
+      // V81 (TAREA CC · Bloque B.4): la bolsa 50/30/20 viaja al evento para poder
+      // agrupar el gasto real por necesidades/deseos/ahorro.
+      bolsaPresupuesto: compromiso.bolsaPresupuesto,
       ambito: compromiso.ambito === 'inmueble' ? 'INMUEBLE' : 'PERSONAL',
       inmuebleId: compromiso.ambito === 'inmueble' ? compromiso.inmuebleId : undefined,
       categoryLabel: compromiso.alias,
@@ -327,6 +336,23 @@ export function generarEventosDesdeCompromiso(
     };
     return evento;
   });
+}
+
+/**
+ * V81 (TAREA CC · Bloque B.3) · Reconstruye qué se preveía en un rango YA PASADO.
+ *
+ * La capa viva (`generarEventosDesdeCompromiso` sin override) proyecta siempre desde
+ * HOY porque los eventos pasados ya están confirmados por extracto. Para comparar
+ * "previsto vs real" de un mes cerrado hace falta saber qué se preveía ENTONCES: esta
+ * vía pide al motor `expandirPatron` un origen pasado explícito, sin tocar el
+ * comportamiento de la capa viva. NO persiste — es pura, como su hermana.
+ */
+export function generarEventosHistoricos(
+  compromiso: CompromisoRecurrente,
+  desde: Date,
+  hasta: Date,
+): Array<Omit<TreasuryEvent, 'id'>> {
+  return generarEventosDesdeCompromiso(compromiso, hasta, desde);
 }
 
 function paymentMethodFromCompromiso(
