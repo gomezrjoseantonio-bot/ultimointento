@@ -12,9 +12,11 @@ import { getAllContracts } from '../../../../../services/contractService';
 import { inmuebleService } from '../../../../../services/inmuebleService';
 import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
-import { personalExpensesService } from '../../../../../services/personalExpensesService';
 import { calculateTotalInitialCash } from '../../../../../services/accountBalanceService';
-import { PersonalExpense, OtrosIngresos, FuenteIngreso, GastoRecurrenteActividad } from '../../../../../types/personal';
+import { OtrosIngresos, FuenteIngreso, GastoRecurrenteActividad } from '../../../../../types/personal';
+// V81 (TAREA CC · Bloque C): fuente única de gasto personal = compromisosRecurrentes.
+import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
+import { gastoPersonalCompromisoEnMes } from '../../../../personal/helpers';
 import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { PeriodoPago } from '../../../../../types/prestamos';
 import { InversionRendimientoPeriodico, PagoRendimiento } from '../../../../../types/inversiones-extended';
@@ -28,7 +30,6 @@ import {
 import { calcularDeclaracionIRPF } from '../../../../../services/irpfCalculationService';
 import { generarEventosFiscales, getConfiguracionFiscal } from '../../../../../services/fiscalPaymentsService';
 import { valoracionesService } from '../../../../../services/valoracionesService';
-import { calculatePersonalExpensesForMonth } from './forecastEngine';
 import { buildOpexPorMes } from './opexCompromisosEngine';
 import type { OpexMes } from './opexCompromisosEngine';
 import {
@@ -251,8 +252,8 @@ interface BaseData {
   opexPorMes: Map<string, OpexMes>;
   /** Maps property numeric ID → alias for drill-down labels */
   propertyAliasMap: Map<number, string>;
-  /** Active OPEX-style personal expenses */
-  personalExpenses: PersonalExpense[];
+  /** V81 (Bloque C): compromisos recurrentes ámbito personal · fuente única de gasto personal */
+  compromisosPersonales: CompromisoRecurrente[];
 
   // Historical valuations index for real patrimonio calculation (pre-built for performance)
   valoracionIndex: ValoracionIndex;
@@ -570,10 +571,15 @@ function buildMonthRow(
   const gastosOperativos = opexMes?.total ?? 0;
   const opexDesglose = opexMes?.desglose ?? [];
 
-  // E. Personal expenses · B3: siguen la inflación de gastos de B1
+  // E. Gasto personal · V81 (Bloque C): FUENTE ÚNICA = compromisosRecurrentes ámbito
+  // personal, con la misma función que Mi Plan (`gastoPersonalCompromisoEnMes`) → ambos
+  // motores dan la misma cifra. Sigue la inflación de gastos de B1 (en el año base,
+  // yearIndex 0, el factor es 1 · coincide exactamente con Mi Plan).
   const gastosPersonales =
-    calculatePersonalExpensesForMonth(baseData.personalExpenses, month1to12) *
-    factorInflacionGastos;
+    baseData.compromisosPersonales.reduce(
+      (sum, c) => sum + gastoPersonalCompromisoEnMes(c, year, monthOfYear),
+      0,
+    ) * factorInflacionGastos;
 
   const irpf = baseData.irpfForecastByMonth.get(monthStr) ?? 0;
 
@@ -992,14 +998,14 @@ async function loadBaseData(): Promise<BaseData> {
   }
 
   // ── E. GASTOS PERSONALES ─────────────────────────────────────────────────
-  // Load PersonalExpense records (new model with advanced frequency fields)
-  // All expenses come from personalExpenses (patronGastosPersonales)
-  let personalExpenses: PersonalExpense[] = [];
+  // V81 (TAREA CC · Bloque C): FUENTE ÚNICA = compromisosRecurrentes ámbito personal
+  // (misma fuente que Mi Plan). Antes leía de `patronGastosPersonales` (store eliminado
+  // en V62 · stub que devolvía []), por lo que el gasto personal de Horizon era siempre 0.
+  let compromisosPersonales: CompromisoRecurrente[] = [];
   try {
-    const allPersonalExpenses = await personalExpensesService.getExpenses(personalDataId);
-    personalExpenses = allPersonalExpenses.filter(e => e.activo && e.importe > 0);
+    compromisosPersonales = await listarCompromisos({ ambito: 'personal', soloActivos: true });
   } catch {
-    // No PersonalExpense data available
+    // Sin compromisos personales
   }
 
   const irpfForecastByMonth = await loadIrpfForecastByMonth(allContracts, supuestos);
@@ -1013,7 +1019,7 @@ async function loadBaseData(): Promise<BaseData> {
     pensionDrillDown,
     opexPorMes,
     propertyAliasMap,
-    personalExpenses,
+    compromisosPersonales,
     valoracionIndex,
     inmuebleInitialValues,
     inversionInitialValues,

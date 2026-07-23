@@ -114,6 +114,68 @@ export const computeCompromisoImporteEnMes = (
 };
 
 /**
+ * V81 (TAREA CC · Bloque C) · FUENTE ÚNICA del gasto personal por mes.
+ *
+ * Importe de un compromiso recurrente ámbito PERSONAL en el mes `month` (0-11)
+ * del año `year`. Extraído de `budgetProjection` (Mi Plan) para que los DOS
+ * motores de proyección — `budgetProjection` (Mi Plan) y `proyeccionMensualService`
+ * (Horizon) — calculen exactamente lo mismo desde `compromisosRecurrentes`.
+ * Antes Horizon leía de `patronGastosPersonales` (store eliminado en V62 · stub
+ * que devolvía []), por lo que su gasto personal era siempre 0.
+ */
+export const gastoPersonalCompromisoEnMes = (
+  compromiso: CompromisoRecurrente,
+  year: number,
+  month: number, // 0-11
+): number => {
+  if (compromiso.estado !== 'activo') return 0;
+  if (compromiso.ambito !== 'personal') return 0;
+
+  const patron = compromiso.patron;
+
+  switch (patron.tipo) {
+    case 'mensualDiaFijo':
+    case 'mensualDiaRelativo':
+      return computeCompromisoImporteEnMes(compromiso, month);
+    case 'cadaNMeses': {
+      const offset = (month + 1 - patron.mesAncla) % patron.cadaNMeses;
+      if (offset !== 0) return 0;
+      return computeCompromisoImporteEnMes(compromiso, month);
+    }
+    case 'anualMesesConcretos': {
+      const meses = patron.mesesPago ?? [];
+      if (!meses.includes(month + 1)) return 0;
+      return computeCompromisoImporteEnMes(compromiso, month);
+    }
+    case 'trimestralFiscal': {
+      if (![1, 4, 7, 10].includes(month + 1)) return 0;
+      return computeCompromisoImporteEnMes(compromiso, month);
+    }
+    case 'pagasExtra': {
+      const meses = patron.mesesExtra ?? [];
+      if (!meses.includes(month + 1)) return 0;
+      return computeCompromisoImporteEnMes(compromiso, month);
+    }
+    case 'variablePorMes': {
+      const meses = patron.mesesPago ?? [];
+      if (!meses.includes(month + 1)) return 0;
+      const por = meses.length > 0 ? patron.importeObjetivoAnual / meses.length : 0;
+      return por;
+    }
+    case 'puntual': {
+      // Compara contra el `year` de la proyección · NO contra el actual.
+      const d = new Date(patron.fecha);
+      if (Number.isNaN(d.getTime())) return 0;
+      if (d.getFullYear() !== year) return 0;
+      if (d.getMonth() !== month) return 0;
+      return patron.importe;
+    }
+    default:
+      return 0;
+  }
+};
+
+/**
  * Reparto canónico de categorías → bolsa 50/30/20 según prefijo.
  */
 export const bolsaForCategoria = (
