@@ -38,9 +38,6 @@ jest.mock('../../../../../../services/prestamosService', () => ({
 jest.mock('../../../../../../services/inversionesService', () => ({
   inversionesService: { getPosiciones: jest.fn() },
 }));
-jest.mock('../../../../../../services/personalExpensesService', () => ({
-  personalExpensesService: { getExpenses: jest.fn() },
-}));
 jest.mock('../../../../../../services/accountBalanceService', () => ({
   calculateTotalInitialCash: jest.fn(),
 }));
@@ -78,7 +75,6 @@ import { getAllContracts } from '../../../../../../services/contractService';
 import { inmuebleService } from '../../../../../../services/inmuebleService';
 import { prestamosService } from '../../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../../services/inversionesService';
-import { personalExpensesService } from '../../../../../../services/personalExpensesService';
 import { calculateTotalInitialCash } from '../../../../../../services/accountBalanceService';
 import { valoracionesService } from '../../../../../../services/valoracionesService';
 import { listarCompromisos } from '../../../../../../services/personal/compromisosRecurrentesService';
@@ -127,7 +123,6 @@ beforeEach(() => {
   (prestamosService.getAllPrestamos as jest.Mock).mockResolvedValue([]);
   (prestamosService.getPaymentPlan as jest.Mock).mockResolvedValue(null);
   (inversionesService.getPosiciones as jest.Mock).mockResolvedValue([]);
-  (personalExpensesService.getExpenses as jest.Mock).mockResolvedValue([]);
   (calculateTotalInitialCash as jest.Mock).mockResolvedValue(0);
   (valoracionesService.getAllValoraciones as jest.Mock).mockResolvedValue([]);
   (valoracionesService.getMapValoracionesMasRecientes as jest.Mock).mockResolvedValue(
