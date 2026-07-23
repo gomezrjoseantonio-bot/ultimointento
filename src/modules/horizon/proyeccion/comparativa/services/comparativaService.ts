@@ -184,42 +184,73 @@ class ComparativaService {
   }
 
   private async getActualData(params: ComparativaParams): Promise<number[]> {
+    // V81 (TAREA CC · Bloque B.2): el "real" CRUZA el enlace previsión↔movimiento en vez
+    // de sumar movimientos conciliados por fecha a ciegas. Así "lo previsto para marzo" y
+    // "lo que pasó de verdad" caen en la MISMA línea (mes de la previsión), no en dos sumas
+    // que casualmente coinciden. Además usa `unifiedStatus` (campo único · Bloque B.1).
     const db = await initDB();
-    const currentMonth = new Date().getMonth();
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const isCurrentYear = params.year === now.getFullYear();
     const monthlyActual = new Array(12).fill(0);
-    
+
+    const beyondCurrentMonth = (monthIndex: number): boolean =>
+      isCurrentYear && monthIndex > currentMonth;
+
     try {
-      // Get all treasury movements for the year
-      const movements = await db.getAll('movements');
-      const yearMovements = movements.filter(movement => {
-        const moveDate = new Date(movement.date);
-        return moveDate.getFullYear() === params.year && 
-               movement.estado_conciliacion === 'conciliado'; // Only reconciled movements
-      });
+      const [events, movements] = await Promise.all([
+        db.getAll('treasuryEvents'),
+        db.getAll('movements'),
+      ]);
+      const movementById = new Map<number, typeof movements[number]>();
+      for (const mv of movements) {
+        if (mv.id != null) movementById.set(mv.id, mv);
+      }
 
-      // Filter by property if needed (would need property linkage in movements)
-      // For now, use all movements for consolidado view
-      
-      yearMovements.forEach(movement => {
-        const moveDate = new Date(movement.date);
+      // 1) Eventos EJECUTADOS → su movimiento real, atribuido al MES DE LA PREVISIÓN.
+      //    Este es el cruce del enlace (executedMovementId / movementId).
+      const linkedMovementIds = new Set<number>();
+      for (const ev of events) {
+        if (ev.status !== 'executed') continue;
+        const evYear = ev.año ?? new Date(ev.predictedDate).getFullYear();
+        if (evYear !== params.year) continue;
+        const monthIndex = ev.mes != null ? ev.mes - 1 : new Date(ev.predictedDate).getMonth();
+        if (monthIndex < 0 || monthIndex > 11 || beyondCurrentMonth(monthIndex)) continue;
+
+        const linkedId = ev.executedMovementId ?? ev.movementId;
+        if (linkedId != null) linkedMovementIds.add(linkedId);
+
+        // Importe real: actualAmount del evento → si no, el del movimiento vinculado → si no, el previsto.
+        let realAmount = ev.actualAmount;
+        if (realAmount == null && linkedId != null) {
+          const mv = movementById.get(linkedId);
+          if (mv) realAmount = Math.abs(mv.amount);
+        }
+        if (realAmount == null) realAmount = Math.abs(ev.amount);
+
+        // income → entra (+) · expense/financing → sale (−).
+        monthlyActual[monthIndex] += ev.type === 'income' ? Math.abs(realAmount) : -Math.abs(realAmount);
+      }
+
+      // 2) Real NO planificado: movimientos conciliados SIN evento vinculado, por su fecha.
+      for (const mv of movements) {
+        if (mv.unifiedStatus !== 'conciliado') continue;
+        if (mv.id != null && linkedMovementIds.has(mv.id)) continue;
+        const moveDate = new Date(mv.date);
+        if (moveDate.getFullYear() !== params.year) continue;
         const monthIndex = moveDate.getMonth();
-        
-        // Only include data up to current month for current year
-        if (params.year === new Date().getFullYear() && monthIndex > currentMonth) {
-          return;
-        }
-        
-        // Classify movement as income or expense based on linked records or amount
-        if (movement.linked_registro?.type === 'ingreso' || 
-            (movement.amount > 0 && !movement.linked_registro)) {
-          monthlyActual[monthIndex] += Math.abs(movement.amount);
-        } else if (movement.linked_registro?.type === 'gasto' || 
-                   movement.linked_registro?.type === 'mejora' ||
-                   (movement.amount < 0 && !movement.linked_registro)) {
-          monthlyActual[monthIndex] -= Math.abs(movement.amount);
-        }
-      });
+        if (beyondCurrentMonth(monthIndex)) continue;
 
+        if (mv.linked_registro?.type === 'ingreso' || (mv.amount > 0 && !mv.linked_registro)) {
+          monthlyActual[monthIndex] += Math.abs(mv.amount);
+        } else if (
+          mv.linked_registro?.type === 'gasto' ||
+          mv.linked_registro?.type === 'mejora' ||
+          (mv.amount < 0 && !mv.linked_registro)
+        ) {
+          monthlyActual[monthIndex] -= Math.abs(mv.amount);
+        }
+      }
     } catch (error) {
       console.error('Error calculating actual data:', error);
     }

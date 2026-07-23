@@ -68,7 +68,7 @@ const VistaGeneralTab: React.FC = () => {
     const map = new Map<number, number>();
     movements.forEach((m) => {
       if (
-        m.estado_conciliacion === 'sin_conciliar' ||
+        // V81 (Bloque B.1): sin clasificar = unifiedStatus 'no_planificado' (campo único).
         m.unifiedStatus === 'no_planificado'
       ) {
         const cur = map.get(m.accountId) ?? 0;

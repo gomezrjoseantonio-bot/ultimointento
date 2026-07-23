@@ -226,7 +226,6 @@ interface UnifiedRow {
 }
 
 const isMovementReconciled = (m: Movement): boolean =>
-  m.estado_conciliacion === 'conciliado' ||
   m.unifiedStatus === 'conciliado' ||
   m.status === 'conciliado';
 

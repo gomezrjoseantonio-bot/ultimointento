@@ -410,7 +410,7 @@ class CuentasService {
           statusConciliacion: 'sin_match' as const,
           currency: 'EUR',
           saldo: openingBalance,
-          estado_conciliacion: 'conciliado',
+          // V81 (Bloque B.1): estado_conciliacion retirado · unifiedStatus es el campo único.
           isOpeningBalance: true,
           unifiedStatus: 'conciliado',
           source: 'manual',

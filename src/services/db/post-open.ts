@@ -280,5 +280,43 @@ export function runPostOpenMigrations(
       }
       return db;
     });
+
+    // ── V81 · TAREA CC · Bloque B.1 · campo único de conciliación ──
+    // `estado_conciliacion` (legacy) se retira; la fuente única es `unifiedStatus`.
+    // Preserva la señal histórica: si un movimiento estaba conciliado por el campo viejo
+    // pero su `unifiedStatus` no lo refleja, lo sube a 'conciliado'. Luego borra la
+    // propiedad legacy. Idempotente vía flag en keyval.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v81_conciliacion_unifiedStatus_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+        const tx = db.transaction(['movements'], 'readwrite');
+        const store = tx.objectStore('movements');
+        const movs = await store.getAll();
+        let migrados = 0;
+        for (const m of movs) {
+          const legacy = (m as { estado_conciliacion?: string }).estado_conciliacion;
+          let cambiado = false;
+          if (legacy === 'conciliado' && m.unifiedStatus !== 'conciliado') {
+            m.unifiedStatus = 'conciliado';
+            cambiado = true;
+          }
+          if (legacy !== undefined) {
+            delete (m as { estado_conciliacion?: string }).estado_conciliacion;
+            cambiado = true;
+          }
+          if (cambiado) {
+            await store.put(m);
+            migrados += 1;
+          }
+        }
+        await tx.done;
+        if (migrados > 0) console.log(`[DB REORG] V81 conciliación · ${migrados} movimientos migrados a unifiedStatus`);
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB REORG V81 conciliación unifiedStatus] falló:', err);
+      }
+      return db;
+    });
   return dbPromise;
 }
