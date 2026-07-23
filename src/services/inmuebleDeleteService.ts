@@ -28,7 +28,7 @@ export interface DeleteInmuebleCascadeReport {
   propertyDaysDeleted: number;
   valoracionesHistoricasDeleted: number;
   vinculosAccesorioDeleted: number;
-  presupuestoLineasDeleted: number;
+  // presupuestoLineasDeleted: eliminado en V80 (TAREA CC · Bloque A) — store `presupuestoLineas` retirado.
   documentsDeleted: number;
   treasuryEventsDeleted: number;
   propertySalesPreserved: number;
@@ -39,7 +39,6 @@ const emptyReport = (): DeleteInmuebleCascadeReport => ({
   contractsCascade: {
     treasuryEventsPredictedDeleted: 0,
     treasuryEventsHistoricUnlinked: 0,
-    presupuestoLineasDeleted: 0,
   },
   gastosInmuebleDeleted: 0,
   mejorasInmuebleDeleted: 0,
@@ -47,7 +46,6 @@ const emptyReport = (): DeleteInmuebleCascadeReport => ({
   propertyDaysDeleted: 0,
   valoracionesHistoricasDeleted: 0,
   vinculosAccesorioDeleted: 0,
-  presupuestoLineasDeleted: 0,
   documentsDeleted: 0,
   treasuryEventsDeleted: 0,
   propertySalesPreserved: 0,
@@ -83,7 +81,6 @@ export const previewDeleteInmuebleCascade = async (
       const sub = await previewDeleteContractCascade(cid);
       report.contractsCascade.treasuryEventsPredictedDeleted += sub.treasuryEventsPredictedDeleted;
       report.contractsCascade.treasuryEventsHistoricUnlinked += sub.treasuryEventsHistoricUnlinked;
-      report.contractsCascade.presupuestoLineasDeleted += sub.presupuestoLineasDeleted;
     }
   }
 
@@ -124,11 +121,7 @@ export const previewDeleteInmuebleCascade = async (
       v.inmueblePrincipalId === inmuebleId ||
       v.inmuebleAccesorioId === inmuebleId,
   );
-  // presupuestoLineas.inmuebleId es UUID (string)
-  report.presupuestoLineasDeleted = await countWhere<{ inmuebleId?: string }>(
-    'presupuestoLineas',
-    (l) => l.inmuebleId === idStr,
-  );
+  // presupuestoLineas: store eliminado en V80 (TAREA CC · Bloque A) — sin preview.
   report.documentsDeleted = await countWhere<{
     metadata?: { entityType?: string; entityId?: number | string };
   }>(
@@ -175,7 +168,7 @@ export const deleteInmuebleWithCascade = async (
 
   // 1. Contratos · usar el cascade dedicado para que purguen sus dependencias.
   //    Se hace fuera de una única transacción global porque deleteContractWithCascade
-  //    abre la suya propia (treasuryEvents+presupuestoLineas+contracts).
+  //    abre la suya propia (treasuryEvents+contracts).
   if (db.objectStoreNames.contains('contracts')) {
     const allContracts = await db.getAll('contracts');
     const matching = allContracts.filter(
@@ -188,7 +181,6 @@ export const deleteInmuebleWithCascade = async (
       report.contractsDeleted += 1;
       report.contractsCascade.treasuryEventsPredictedDeleted += sub.treasuryEventsPredictedDeleted;
       report.contractsCascade.treasuryEventsHistoricUnlinked += sub.treasuryEventsHistoricUnlinked;
-      report.contractsCascade.presupuestoLineasDeleted += sub.presupuestoLineasDeleted;
     }
   }
 
@@ -235,10 +227,7 @@ export const deleteInmuebleWithCascade = async (
       v.inmuebleAccesorioId === inmuebleId,
   );
 
-  report.presupuestoLineasDeleted = await deleteAllMatching<{
-    id?: string;
-    inmuebleId?: string;
-  }>('presupuestoLineas', (l) => l.inmuebleId === idStr);
+  // presupuestoLineas: store eliminado en V80 (TAREA CC · Bloque A) — sin borrado en cascada.
 
   report.documentsDeleted = await deleteAllMatching<{
     id?: number;
@@ -276,7 +265,6 @@ export const summarizeCascadeReport = (
     const subParts: string[] = [];
     if (sub.treasuryEventsPredictedDeleted > 0) subParts.push(`${sub.treasuryEventsPredictedDeleted} eventos previstos`);
     if (sub.treasuryEventsHistoricUnlinked > 0) subParts.push(`${sub.treasuryEventsHistoricUnlinked} eventos históricos desvinculados`);
-    if (sub.presupuestoLineasDeleted > 0) subParts.push(`${sub.presupuestoLineasDeleted} líneas de presupuesto`);
     const subText = subParts.length > 0 ? ` (incl. ${subParts.join(' · ')})` : '';
     items.push(`${report.contractsDeleted} contrato(s)${subText}`);
   }
@@ -286,7 +274,6 @@ export const summarizeCascadeReport = (
   if (report.propertyDaysDeleted > 0) items.push(`${report.propertyDaysDeleted} registro(s) días`);
   if (report.valoracionesHistoricasDeleted > 0) items.push(`${report.valoracionesHistoricasDeleted} valoración(es)`);
   if (report.vinculosAccesorioDeleted > 0) items.push(`${report.vinculosAccesorioDeleted} vínculo(s) accesorio`);
-  if (report.presupuestoLineasDeleted > 0) items.push(`${report.presupuestoLineasDeleted} línea(s) presupuesto`);
   if (report.documentsDeleted > 0) items.push(`${report.documentsDeleted} documento(s)`);
   if (report.treasuryEventsDeleted > 0) items.push(`${report.treasuryEventsDeleted} evento(s) tesorería`);
   if (report.propertySalesPreserved > 0) items.push(`${report.propertySalesPreserved} venta(s) histórica(s) CONSERVADAS`);

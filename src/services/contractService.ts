@@ -240,18 +240,9 @@ export interface DeleteContractCascadeReport {
   treasuryEventsPredictedDeleted: number;
   /** Eventos confirmed+executed que quedan pero con contratoId anulado. */
   treasuryEventsHistoricUnlinked: number;
-  presupuestoLineasDeleted: number;
+  // presupuestoLineasDeleted: eliminado en V80 (TAREA CC · Bloque A) — el store
+  // `presupuestoLineas` ya no existe, así que no hay líneas que borrar en cascada.
 }
-
-// Match presupuestoLineas que apuntan al contrato.
-// Notas:
-// - PresupuestoLinea.contratoId es UUID (string) y está marcado DEPRECATED.
-// - PresupuestoLinea.sourceRef es el campo canónico actual (también UUID/string).
-// - El id del contrato es numérico (autoIncrement IndexedDB) — comparar como string.
-const matchesContrato = (linea: unknown, contratoIdStr: string): boolean => {
-  const l = linea as { contratoId?: unknown; sourceRef?: unknown };
-  return l.contratoId === contratoIdStr || l.sourceRef === contratoIdStr;
-};
 
 // Cuenta las dependencias que se verían afectadas si se borra el contrato.
 // Útil para mostrar al usuario en la modal de confirmación antes de ejecutar
@@ -260,11 +251,9 @@ export const previewDeleteContractCascade = async (
   id: number,
 ): Promise<DeleteContractCascadeReport> => {
   const db = await initDB();
-  const idStr = String(id);
   const report: DeleteContractCascadeReport = {
     treasuryEventsPredictedDeleted: 0,
     treasuryEventsHistoricUnlinked: 0,
-    presupuestoLineasDeleted: 0,
   };
 
   if (db.objectStoreNames.contains('treasuryEvents')) {
@@ -279,52 +268,30 @@ export const previewDeleteContractCascade = async (
     }
   }
 
-  if (db.objectStoreNames.contains('presupuestoLineas')) {
-    // Usa el índice contratoId para no escanear todo el store; complementa con
-    // un getAll para captar las líneas que sólo llevan sourceRef (nuevo canónico).
-    const porIndice = await db.getAllFromIndex(
-      'presupuestoLineas',
-      'contratoId',
-      idStr,
-    );
-    const ya = new Set(porIndice.map((l) => (l as { id?: string }).id));
-    const todas = await db.getAll('presupuestoLineas');
-    let count = porIndice.length;
-    for (const linea of todas) {
-      const lid = (linea as { id?: string }).id;
-      if (lid && ya.has(lid)) continue;
-      if (matchesContrato(linea, idStr)) count += 1;
-    }
-    report.presupuestoLineasDeleted = count;
-  }
-
   return report;
 };
 
 // Borrado en cascada del contrato. Atómico — todas las operaciones viajan en
-// una única transacción readwrite sobre treasuryEvents + presupuestoLineas +
-// contracts. Si algo falla, IDB aborta la transacción y nada se persiste.
+// una única transacción readwrite sobre treasuryEvents + contracts. Si algo
+// falla, IDB aborta la transacción y nada se persiste.
 //
 // - treasuryEvents.status='predicted' con contratoId === id → borrar
 // - treasuryEvents 'confirmed'/'executed' con contratoId === id → conservar pero anular contratoId
-// - presupuestoLineas con contratoId === idStr || sourceRef === idStr → borrar
 // - propertyDays / valoraciones / gastosInmueble → no referencian contrato · sin cambios
+// V80 (TAREA CC · Bloque A): retirada la cascada sobre `presupuestoLineas` (store eliminado).
 export const deleteContractWithCascade = async (
   id: number,
 ): Promise<DeleteContractCascadeReport> => {
   const db = await initDB();
-  const idStr = String(id);
   const report: DeleteContractCascadeReport = {
     treasuryEventsPredictedDeleted: 0,
     treasuryEventsHistoricUnlinked: 0,
-    presupuestoLineasDeleted: 0,
   };
 
-  const stores: Array<'treasuryEvents' | 'presupuestoLineas' | 'contracts'> = [
+  const stores: Array<'treasuryEvents' | 'contracts'> = [
     'contracts',
   ];
   if (db.objectStoreNames.contains('treasuryEvents')) stores.push('treasuryEvents');
-  if (db.objectStoreNames.contains('presupuestoLineas')) stores.push('presupuestoLineas');
 
   const tx = db.transaction(stores, 'readwrite');
 
@@ -343,18 +310,6 @@ export const deleteContractWithCascade = async (
         await eventsStore.put(updated);
         report.treasuryEventsHistoricUnlinked += 1;
       }
-    }
-  }
-
-  if (db.objectStoreNames.contains('presupuestoLineas')) {
-    const lineasStore = tx.objectStore('presupuestoLineas');
-    const lineas = await lineasStore.getAll();
-    for (const linea of lineas) {
-      if (!matchesContrato(linea, idStr)) continue;
-      const lineaId = (linea as { id?: string }).id;
-      if (lineaId == null) continue;
-      await lineasStore.delete(lineaId);
-      report.presupuestoLineasDeleted += 1;
     }
   }
 
