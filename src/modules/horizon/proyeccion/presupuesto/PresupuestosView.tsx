@@ -9,11 +9,12 @@ import { AtlasButton } from '../../../../components/atlas/AtlasButton';
 import PageHeader, { HeaderSecondaryButton } from '../../../../components/shared/PageHeader';
 import ProyeccionAutomaticaView from './components/ProyeccionAutomaticaView';
 import type { ProyeccionMensualData } from './types/ProyeccionData';
-import ProyeccionPresupuesto from './ProyeccionPresupuesto';
 import ProyeccionComparativa from '../comparativa/ProyeccionComparativa';
 import './components/proyeccion-automatica.css';
 
-type PresupuestosTab = 'proyeccion' | 'presupuesto' | 'comparativa';
+// V80 (TAREA CC · Bloque A): eliminada la pestaña "Crear Presupuesto"
+// (wizard `ProyeccionPresupuesto` + sistema de presupuesto persistido).
+type PresupuestosTab = 'proyeccion' | 'comparativa';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MONTH_ABBR = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
@@ -74,8 +75,6 @@ export default function PresupuestosView() {
     switch (activeTab) {
       case 'proyeccion':
         return <ProyeccionAutomaticaView year={year} onDataReady={setProjectionData} />;
-      case 'presupuesto':
-        return <ProyeccionPresupuesto />;
       case 'comparativa':
         return <ProyeccionComparativa />;
       default:
@@ -90,7 +89,6 @@ export default function PresupuestosView() {
         title="Proyección mensual"
         tabs={[
           { id: 'proyeccion', label: 'Proyección Automática' },
-          { id: 'presupuesto', label: 'Crear Presupuesto' },
           { id: 'comparativa', label: 'Real vs Previsión' },
         ]}
         activeTab={activeTab}

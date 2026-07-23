@@ -215,63 +215,11 @@ export type OrigenLinea =
   | "ManualUsuario"    // creada o editada por el usuario
   | "AjusteSistema";   // recalculada por compra/venta, prorrateos, etc.
 
-// H9: New Budget Model per specification
-export interface Presupuesto {
-  id: UUID;
-  year: number;                // año del presupuesto
-  creadoEn: string;            // ISO
-  actualizadoEn: string;       // ISO
-  estado: "Borrador" | "Activo" | "Cerrado";
-  // metadatos de generación
-  generadoDesde?: {
-    fecha: string;             // ISO
-    porcentajeComplecionInicial: number; // 0-100 estimado
-  };
-}
-
-export interface PresupuestoLinea {
-  id: UUID;
-  presupuestoId: UUID;
-  scope: "INMUEBLES" | "PERSONAL";     // Ámbito: Inmuebles o Personal
-  type: "INGRESO" | "COSTE";           // Tipo: Ingreso o Coste
-  inmuebleId?: UUID;                   // requerido salvo líneas globales
-  roomId?: UUID;                       // opcional; si aplica por habitación
-  // Categorización AEAT
-  category: string;                    // Categoría principal: "Rentas de alquiler", "Nómina", "IBI", "Suministros", etc.
-  subcategory?: string;                // Subcategoría: "Luz", "Agua", "Gas", "Telco" para Suministros
-  label: string;                       // Texto libre: "Renta Piso Tenderina", "IBI piso X"
-  counterpartyName?: string;           // Contraparte: "Endesa", opcional
-  accountId?: UUID;                    // Cuenta de cargo/abono (obligatorio antes de guardar)
-  sourceRef?: UUID;                    // ID de Contrato, Préstamo, etc. (opcional)
-  // Importes mensuales - Array de 12 posiciones para ENE...DIC
-  amountByMonth: number[];             // DEPRECATED gradual: mantener compatibilidad con forecastAmountByMonth
-  planAmountByMonth?: number[];        // Nuevo: baseline anual (budget)
-  forecastAmountByMonth?: number[];    // Nuevo: mejor estimación viva
-  actualAmountByMonth?: number[];      // Nuevo: movimientos reales conciliados
-  statusCertidumbreByMonth?: EstadoCertidumbre[]; // Nuevo: estado de confianza por mes
-  planningLayer?: PlanningLayer;       // Nuevo: capa principal de la línea
-  note?: string;                       // Nota opcional
-  // Campos de compatibilidad (mantener por ahora)
-  tipo?: TipoLinea;                    // DEPRECATED: usar type
-  categoria?: CategoriaGasto | CategoriaIngreso; // DEPRECATED: usar category
-  tipoConcepto?: string;               // DEPRECATED: usar label
-  proveedor?: string;                  // DEPRECATED: usar counterpartyName
-  proveedorNif?: string;               // DEPRECATED: usar counterpartyNif
-  cuentaId?: UUID;                     // DEPRECATED: usar accountId
-  frecuencia?: FrecuenciaPago;         // DEPRECATED
-  dayOfMonth?: number;                 // DEPRECATED
-  mesesActivos?: number[];             // DEPRECATED
-  fechaUnica?: string;                 // DEPRECATED
-  importeUnitario?: number;            // DEPRECATED
-  ivaIncluido?: boolean;               // DEPRECATED
-  desde?: string;                      // DEPRECATED
-  hasta?: string;                      // DEPRECATED
-  origen?: OrigenLinea;                // DEPRECATED
-  editable?: boolean;                  // DEPRECATED
-  notas?: string;                      // DEPRECATED: usar note
-  contratoId?: UUID;                   // DEPRECATED: usar sourceRef
-  prestamoId?: UUID;                   // DEPRECATED: usar sourceRef
-}
+// H9 Budget Model (`Presupuesto` / `PresupuestoLinea`): ELIMINADO en V80
+// (TAREA CC · Bloque A). Stores `presupuestos`/`presupuestoLineas` retirados;
+// el sistema de presupuesto persistido nunca se usó en producción. Los tipos
+// legacy `Budget` / `BudgetLine` (abajo) se conservan a propósito: los sigue
+// referenciando `comparativaService` y se resuelven en el Bloque B.
 
 // Legacy Budget Line interface (keep for backward compatibility)
 export interface BudgetLine {

@@ -101,9 +101,6 @@ const ContratosListPage: React.FC = () => {
       if (report.treasuryEventsHistoricUnlinked > 0) {
         detalle.push(`${report.treasuryEventsHistoricUnlinked} eventos históricos desvinculados`);
       }
-      if (report.presupuestoLineasDeleted > 0) {
-        detalle.push(`${report.presupuestoLineasDeleted} líneas de presupuesto`);
-      }
       const sufijo = detalle.length > 0 ? ` · ${detalle.join(' · ')}` : '';
       showToastV5(`Contrato eliminado${sufijo}`);
       setPendingDelete(null);
@@ -339,9 +336,6 @@ const buildDeleteMessage = (
     cascadaParts.push(
       `${cascade.treasuryEventsHistoricUnlinked} eventos históricos quedarán desvinculados (sin borrar)`,
     );
-  }
-  if (cascade.presupuestoLineasDeleted > 0) {
-    cascadaParts.push(`${cascade.presupuestoLineasDeleted} líneas de presupuesto`);
   }
   const cascadaTexto = cascadaParts.length > 0
     ? ` Se eliminarán también: ${cascadaParts.join(' · ')}.`

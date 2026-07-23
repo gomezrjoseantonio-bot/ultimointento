@@ -216,25 +216,20 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
 
         // gastos (treasury) — DELETED in V4.2
 
-        // H9: New Budget System - Presupuestos store (per specification)
-        if (!db.objectStoreNames.contains('presupuestos')) {
-          const presupuestosStore = db.createObjectStore('presupuestos', { keyPath: 'id' });
-          presupuestosStore.createIndex('year', 'year', { unique: false });
-          presupuestosStore.createIndex('estado', 'estado', { unique: false });
-        }
-
-        // H9: New Budget System - Presupuesto Lineas store (per specification)
-        if (!db.objectStoreNames.contains('presupuestoLineas')) {
-          const presupuestoLineasStore = db.createObjectStore('presupuestoLineas', { keyPath: 'id' });
-          presupuestoLineasStore.createIndex('presupuestoId', 'presupuestoId', { unique: false });
-          presupuestoLineasStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
-          presupuestoLineasStore.createIndex('tipo', 'tipo', { unique: false });
-          presupuestoLineasStore.createIndex('categoria', 'categoria', { unique: false });
-          presupuestoLineasStore.createIndex('frecuencia', 'frecuencia', { unique: false });
-          presupuestoLineasStore.createIndex('origen', 'origen', { unique: false });
-          presupuestoLineasStore.createIndex('cuentaId', 'cuentaId', { unique: false });
-          presupuestoLineasStore.createIndex('contratoId', 'contratoId', { unique: false });
-          presupuestoLineasStore.createIndex('prestamoId', 'prestamoId', { unique: false });
+        // presupuestos + presupuestoLineas: ELIMINADOS en V80 (TAREA CC · Bloque A).
+        // El sistema de presupuesto persistido (modelo H9 `Presupuesto`/`PresupuestoLinea`)
+        // nunca se usó en producción: el wizard era inalcanzable (`/proyeccion/*` fuera del
+        // menú) y Jose confirmó el store vacío. Se retiran ambos stores. Sin migración de
+        // datos (no hay dato que preservar). El guard `contains()` cubre DBs frescas (no-op)
+        // y upgrades desde v79 (borra). `as never`: los nombres ya no están en el schema.
+        if (oldVersion < 80) {
+          for (const legacyStore of ['presupuestos', 'presupuestoLineas'] as const) {
+            // `as never`: los nombres ya no están en el schema `AtlasHorizonDB`,
+            // así que ni `.contains()` ni `.deleteObjectStore()` los aceptan tipados.
+            if (db.objectStoreNames.contains(legacyStore as never)) {
+              db.deleteObjectStore(legacyStore as never);
+            }
+          }
         }
 
         // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros
