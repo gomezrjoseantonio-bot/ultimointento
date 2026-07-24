@@ -13,6 +13,7 @@
 import { initDB } from './db';
 import type { Property, EjercicioFiscalCoord, Document, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
+import { baseAmortizableEjercicioService } from './baseAmortizableEjercicioService';
 import { invalidateCachedStores } from './indexedDbCacheService';
 import { CCAA_LIST } from '../utils/locationUtils';
 import type {
@@ -1735,6 +1736,22 @@ async function escribirFiscalSummaries(
         proveedorNIF: 'AEAT',
         proveedorNombre: 'Declaración AEAT',
       });
+
+      // V82 · Bloque B · escribe la base amortizable SOLO del año que se importa
+      // (regla 1). No pisa una corrección `paralela` previa (regla 3, en el servicio).
+      if (casilla === '0130') {
+        try {
+          await baseAmortizableEjercicioService.upsertBaseEjercicio(
+            property.id,
+            decl.meta.ejercicio,
+            importe,
+            'xml',
+            { baseDeclarada: importe },
+          );
+        } catch (e) {
+          console.warn('[V82] upsert base amortizable por ejercicio (import) falló:', e);
+        }
+      }
     }
   }
 }

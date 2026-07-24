@@ -139,6 +139,17 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
           ensureIndex(mejorasStore, 'treasuryEventId', 'treasuryEventId', { unique: false });
         }
 
+        // V82 · TAREA CC · Bloque B: baseAmortizableEjercicio — base amortizable
+        // por (inmueble·ejercicio) con procedencia. Índice único `inmueble-ejercicio`
+        // (una sola base por año). Guard `!contains` cubre DBs frescas y migradas.
+        if (!db.objectStoreNames.contains('baseAmortizableEjercicio')) {
+          const baseStore = db.createObjectStore('baseAmortizableEjercicio', { keyPath: 'id', autoIncrement: true });
+          baseStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          baseStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+          baseStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: true });
+          baseStore.createIndex('origen', 'origen', { unique: false });
+        }
+
         // V4.0: mueblesInmueble — mobiliario amortizable por inmueble
         if (!db.objectStoreNames.contains('mueblesInmueble')) {
           const mueblesStore = db.createObjectStore('mueblesInmueble', { keyPath: 'id', autoIncrement: true });

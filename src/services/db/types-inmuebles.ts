@@ -341,6 +341,42 @@ export type GastoCategoria =
 export type GastoOrigen =
   'xml_aeat' | 'prestamo' | 'recurrente' | 'tesoreria' | 'manual';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// V82 · TAREA CC · Bloque B · Base amortizable POR EJERCICIO
+// La base amortizable deja de ser un campo único del inmueble
+// (`aeatAmortization.baseAmortizacion`, last-write-wins) y pasa a ser un dato por
+// (inmueble · ejercicio), con procedencia y trazabilidad. Fuente de verdad = la
+// casilla 0130 declarada de cada año (decisión Jose · P1). Un año en `conflicto`
+// (el 0130 del año difiere del campo único del inmueble = huella de una paralela)
+// no se usa para calcular hasta resolverse.
+// ─────────────────────────────────────────────────────────────────────────────
+export type BaseAmortizableOrigen =
+  | 'xml'        // sembrada / escrita desde la casilla 0130 declarada de ese año
+  | 'paralela'   // corregida por una inspección (acta de conformidad)
+  | 'manual'     // introducida a mano
+  | 'heredada'   // migrada del campo único sin verificar (no había 0130 propio)
+  | 'conflicto'; // el 0130 del año ≠ campo único del inmueble → bloqueada hasta resolver
+
+export interface BaseAmortizableEjercicio {
+  id?: number;
+  inmuebleId: number;
+  ejercicio: number;
+  /** Base amortizable del ejercicio. Verdad = casilla 0130 declarada. */
+  base: number;
+  origen: BaseAmortizableOrigen;
+  /** Lo que dice la casilla 0130 de ese ejercicio (trazabilidad del conflicto). */
+  baseDeclarada?: number;
+  /** `aeatAmortization.baseAmortizacion` del inmueble al migrar (trazabilidad). */
+  baseCampoUnico?: number;
+  /** Si `origen === 'paralela'`: referencia y fecha del acta. */
+  actaRef?: string;
+  fechaActa?: string;
+  /** Trazabilidad de reemplazo: base que esta fila sustituyó, si la hubo. */
+  reemplazaA?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type GastoEstadoNuevo =
   'previsto' | 'confirmado' | 'declarado';
 
