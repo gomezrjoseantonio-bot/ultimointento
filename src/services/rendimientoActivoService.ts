@@ -7,6 +7,8 @@
 
 import { initDB } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
+// V82 · Bloque C · base amortizable por ejercicio (casilla 0130 declarada del año).
+import { baseAmortizableEjercicioService } from './baseAmortizableEjercicioService';
 
 /**
  * Normaliza una referencia catastral para matching property↔declaración.
@@ -173,8 +175,17 @@ export async function getRendimientoFiscal(
   // Amortización: canónica en aeatAmortization, fallback legacy en fiscalData
   // (mismo coalescing que fiscal v2 · amortizacionAcumuladaService.ts:80-82)
   const property = await db.get('properties', propertyId);
-  const baseAmortizacion = property?.aeatAmortization?.baseAmortizacion
-    ?? property?.fiscalData?.baseAmortizacion ?? 0;
+  // V82 · Bloque C · usa la base declarada de ESE año (casilla 0130) si existe;
+  // para un año ya declarado, ese es el valor correcto (incl. el de un año en
+  // conflicto, que es lo que se declaró). Fallback al campo único/legacy.
+  let perEjBase: Awaited<ReturnType<typeof baseAmortizableEjercicioService.getBaseParaCalculo>> | null = null;
+  try {
+    perEjBase = await baseAmortizableEjercicioService.getBaseParaCalculo(propertyId, año, property as any);
+  } catch { perEjBase = null; }
+  const baseAmortizacion = perEjBase && (perEjBase.fuente === 'propio' || perEjBase.fuente === 'heredado') && perEjBase.base != null
+    ? perEjBase.base
+    : (property?.aeatAmortization?.baseAmortizacion
+        ?? property?.fiscalData?.baseAmortizacion ?? 0);
   const amortInmueble = baseAmortizacion > 0
     ? Math.round(baseAmortizacion * 0.03 * 100) / 100
     : (property?.aeatAmortization?.amortizacionAnualInmueble

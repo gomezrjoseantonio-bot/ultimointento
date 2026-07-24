@@ -9,6 +9,9 @@
 
 import { initDB } from './db';
 import { getTotalMejorasHastaEjercicio } from './mejoraActivoService';
+// V82 · Bloque C · la base amortizable es un dato por ejercicio (casilla 0130).
+import { baseAmortizableEjercicioService } from './baseAmortizableEjercicioService';
+import type { BaseAmortizableOrigen } from './db';
 
 export interface BaseAmortizacionDesglose {
   precioAdquisicion: number;
@@ -23,6 +26,15 @@ export interface BaseAmortizacionResult {
   base: number;
   metodo: 'por_coste' | 'por_vc_construccion';
   desglose: BaseAmortizacionDesglose;
+  // V82 · Bloque C · procedencia de la base cuando viene del store por ejercicio.
+  /** Origen de la base del ejercicio, si se usó el dato por ejercicio (casilla 0130). */
+  origenEjercicio?: BaseAmortizableOrigen;
+  /** `true` → el año está en conflicto (0130 ≠ campo único): cálculo BLOQUEADO. */
+  bloqueado?: boolean;
+  /** `true` → la base se heredó/es del campo único, sin verificar. */
+  heredada?: boolean;
+  /** Base calculada por la regla N2 (max coste/VC + mejoras), antes del override 0130. */
+  baseCalculada?: number;
 }
 
 const toNum = (v: unknown): number => {
@@ -103,7 +115,34 @@ export async function calcularBaseAmortizacion(
   const mejorasAcumuladas = await getTotalMejorasHastaEjercicio(propertyId, hastaAnio);
 
   // Regla N1 · mejoras se suman ENTERAS
-  const base = baseSinMejoras + mejorasAcumuladas;
+  const baseCalculada = baseSinMejoras + mejorasAcumuladas;
+
+  // V82 · Bloque C · la casilla 0130 declarada de cada año es la VERDAD de la base.
+  // Si existe base por ejercicio (propia o heredada de un año con dato), sustituye
+  // a la calculada. El fallback al campo único (`campo_unico`) NO sustituye — la
+  // regla N2 calculada es más rica. Un año en conflicto se devuelve con
+  // `bloqueado: true` para que el consumidor (venta) lo declare y no dé cifra firme.
+  // Defensivo: si la lectura por ejercicio falla (store no disponible), se
+  // mantiene la base calculada (comportamiento previo · no rompe el cálculo).
+  let base = baseCalculada;
+  let origenEjercicio: BaseAmortizableOrigen | undefined;
+  let bloqueado: boolean | undefined;
+  let heredada: boolean | undefined;
+  try {
+    const perEj = await baseAmortizableEjercicioService.getBaseParaCalculo(
+      propertyId,
+      hastaAnio,
+      property as any,
+    );
+    if ((perEj.fuente === 'propio' || perEj.fuente === 'heredado') && perEj.base != null) {
+      base = perEj.base;
+      origenEjercicio = perEj.origen;
+      bloqueado = perEj.bloqueado;
+      heredada = perEj.heredada;
+    }
+  } catch {
+    // sin override
+  }
 
   return {
     base,
@@ -116,5 +155,9 @@ export async function calcularBaseAmortizacion(
       baseporVC,
       mejorasAcumuladas,
     },
+    origenEjercicio,
+    bloqueado,
+    heredada,
+    baseCalculada,
   };
 }

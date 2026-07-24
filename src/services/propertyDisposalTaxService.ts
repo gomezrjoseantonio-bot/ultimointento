@@ -31,6 +31,11 @@ export interface PropertyDisposalTaxResult {
   amortizacionDeducida: number;
   amortizacionEstandar: number;
   amortizacionAplicada: number;
+  // V82 · Bloque C · la base amortizable se lee por ejercicio (casilla 0130).
+  /** `true` → algún año de la cadena está en conflicto (base sin resolver): NO tratar como firme. */
+  baseBloqueada?: boolean;
+  /** `true` → algún año se apoya en una base heredada sin verificar. */
+  baseHeredada?: boolean;
 }
 
 type SaleBreakdown = PropertyDisposalTaxResult['gastosVentaDesglose'];
@@ -142,17 +147,21 @@ async function calcularAmortizacionesAcumuladas(
   propertyId: number,
   fechaCompra: string,
   fechaVenta: string
-): Promise<{ deducida: number; estandar: number; aplicada: number }> {
+): Promise<{ deducida: number; estandar: number; aplicada: number; bloqueada: boolean; heredada: boolean }> {
   const compra = parseIsoDate(fechaCompra);
   const venta = parseIsoDate(fechaVenta);
   if (!compra || !venta || venta < compra) {
-    return { deducida: 0, estandar: 0, aplicada: 0 };
+    return { deducida: 0, estandar: 0, aplicada: 0, bloqueada: false, heredada: false };
   }
 
   const añoCompra = compra.getUTCFullYear();
   const añoVenta = venta.getUTCFullYear();
   let totalDeducida = 0;
   let totalEstandar = 0;
+  // V82 · Bloque C · si algún año de la cadena está en conflicto (base sin resolver)
+  // o se apoya en una base heredada sin verificar, la venta lo declara.
+  let bloqueada = false;
+  let heredada = false;
 
   for (let año = añoCompra; año <= añoVenta; año += 1) {
     const inicioAño = `${año}-01-01`;
@@ -177,6 +186,8 @@ async function calcularAmortizacionesAcumuladas(
     const calc = await calculateAEATAmortization(propertyId, año, Math.max(0, diasArrendados));
     totalDeducida += Number(calc.propertyAmortization || 0) + Number(calc.improvementsAmortization || 0);
     totalEstandar += (Number(calc.baseAmount || 0) * 0.03 * Math.max(0, diasArrendados)) / diasDisponibles;
+    if (calc.baseBloqueada) bloqueada = true;
+    if (calc.baseHeredada) heredada = true;
   }
 
   const deducida = round2(totalDeducida);
@@ -185,6 +196,8 @@ async function calcularAmortizacionesAcumuladas(
     deducida,
     estandar,
     aplicada: round2(Math.max(deducida, estandar)),
+    bloqueada,
+    heredada,
   };
 }
 
@@ -233,6 +246,8 @@ async function buildResult(
     amortizacionDeducida: amortizaciones.deducida,
     amortizacionEstandar: amortizaciones.estandar,
     amortizacionAplicada: amortizaciones.aplicada,
+    baseBloqueada: amortizaciones.bloqueada,
+    baseHeredada: amortizaciones.heredada,
   };
 }
 
