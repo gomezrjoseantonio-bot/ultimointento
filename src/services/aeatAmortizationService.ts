@@ -1,5 +1,6 @@
 // H9-FISCAL: AEAT Amortization Service
 import { initDB, Property, PropertyImprovement, FiscalSummary } from './db';
+import type { BaseAmortizableOrigen } from './db';
 import { actualizarMejora, crearMejora, eliminarMejora, getMejorasHastaEjercicio } from './mejoraActivoService';
 import { mejorasInmuebleService } from './mejorasInmuebleService';
 import { calcularBaseAmortizacion } from './baseAmortizacionService';
@@ -129,6 +130,14 @@ export interface AEATAmortizationCalculation {
     historicalImprovements: number;
     selectedBase: 'construction-cost' | 'cadastral-value';
   };
+
+  // V82 · Bloque C · procedencia de la base del ejercicio (casilla 0130).
+  /** Origen de la base usada, si vino del store por ejercicio. */
+  baseOrigenEjercicio?: BaseAmortizableOrigen;
+  /** `true` → el año está en conflicto: el cálculo que lo use debe declararse bloqueado. */
+  baseBloqueada?: boolean;
+  /** `true` → la base es heredada/campo único sin verificar. */
+  baseHeredada?: boolean;
 }
 
 /**
@@ -278,7 +287,11 @@ export const calculateAEATAmortization = async (
       cadastralConstructionValue,
       historicalImprovements,
       selectedBase
-    }
+    },
+    // V82 · Bloque C · propaga la procedencia de la base del ejercicio.
+    baseOrigenEjercicio: baseAmortResult.origenEjercicio,
+    baseBloqueada: baseAmortResult.bloqueado,
+    baseHeredada: baseAmortResult.heredada,
   };
 };
 

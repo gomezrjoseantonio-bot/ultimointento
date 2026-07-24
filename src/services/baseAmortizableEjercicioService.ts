@@ -40,6 +40,12 @@ export interface BaseParaCalculo {
   heredada: boolean;
   /** Si se heredó, de qué ejercicio salió la base. */
   ejercicioFuente?: number;
+  /**
+   * De dónde sale la base (para que el consumidor decida si sustituye su
+   * cálculo): `propio` = fila del año; `heredado` = fila de un año anterior;
+   * `campo_unico` = fallback al campo único del inmueble; `ninguno` = sin dato.
+   */
+  fuente: 'propio' | 'heredado' | 'campo_unico' | 'ninguno';
 }
 
 type DB = IDBPDatabase<AtlasHorizonDB>;
@@ -170,13 +176,14 @@ export const baseAmortizableEjercicioService = {
     const row = await this.getPorInmuebleYEjercicio(inmuebleId, ejercicio);
     if (row) {
       if (row.origen === 'conflicto') {
-        return { base: row.base, origen: 'conflicto', bloqueado: true, heredada: false };
+        return { base: row.base, origen: 'conflicto', bloqueado: true, heredada: false, fuente: 'propio' };
       }
       return {
         base: row.base,
         origen: row.origen,
         bloqueado: false,
         heredada: row.origen === 'heredada',
+        fuente: 'propio',
       };
     }
 
@@ -192,16 +199,19 @@ export const baseAmortizableEjercicioService = {
         bloqueado: false,
         heredada: true,
         ejercicioFuente: prev.ejercicio,
+        fuente: 'heredado',
       };
     }
 
     // Fallback: campo único del inmueble (sin verificar).
     const campoUnico = property?.aeatAmortization?.baseAmortizacion;
     if (typeof campoUnico === 'number' && campoUnico > 0) {
-      return { base: round2(campoUnico), origen: 'heredada', bloqueado: false, heredada: true };
+      return { base: round2(campoUnico), origen: 'heredada', bloqueado: false, heredada: true, fuente: 'campo_unico' };
     }
 
-    return { base: null, origen: 'heredada', bloqueado: true, heredada: true };
+    // Sin dato utilizable: no se heredó nada (heredada: false · no confunde a los
+    // consumidores que usan `heredada` como señal de procedencia).
+    return { base: null, origen: 'heredada', bloqueado: true, heredada: false, fuente: 'ninguno' };
   },
 };
 

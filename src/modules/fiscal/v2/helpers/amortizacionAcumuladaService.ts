@@ -20,6 +20,8 @@ import type { Property, Contract } from '../../../../services/db';
 import { getRentalDaysForYear } from '../../../../services/aeatAmortizationService';
 import { calcularAmortizacionMobiliarioAnual } from '../../../../services/mobiliarioActivoService';
 import { calcularDiasArrendadoAno } from '../../../../services/gananciaPatrimonialService';
+// V82 · Bloque C · base amortizable por ejercicio (casilla 0130 declarada del año).
+import { baseAmortizableEjercicioService } from '../../../../services/baseAmortizableEjercicioService';
 
 export interface AmortRow {
   año: number;
@@ -135,9 +137,21 @@ export async function getAmortizacionAcumulada(
     }
     if (!Number.isFinite(dias) || dias < 0) dias = 0;
 
+    // V82 · Bloque C · base por ejercicio si viene de una fila (propia del año o
+    // heredada de un año anterior con dato · casilla 0130); si no hay fila, la base
+    // única del inmueble (comportamiento previo). Para años ya declarados, la 0130
+    // del año es el valor correcto (incl. el de un año en conflicto).
+    let perEjAño: Awaited<ReturnType<typeof baseAmortizableEjercicioService.getBaseParaCalculo>> | null = null;
+    try {
+      perEjAño = await baseAmortizableEjercicioService.getBaseParaCalculo(propertyId, año, property);
+    } catch { perEjAño = null; }
+    const baseAño = perEjAño && (perEjAño.fuente === 'propio' || perEjAño.fuente === 'heredado') && perEjAño.base != null
+      ? perEjAño.base
+      : baseAmortizacion;
+
     let amortInmueble = 0;
-    if (baseAmortizacion > 0 && dias > 0) {
-      amortInmueble = Math.round((baseAmortizacion * TASA_INMUEBLE * dias / diasAño) * 100) / 100;
+    if (baseAño > 0 && dias > 0) {
+      amortInmueble = Math.round((baseAño * TASA_INMUEBLE * dias / diasAño) * 100) / 100;
     }
 
     let amortMobiliario = 0;
@@ -154,7 +168,7 @@ export async function getAmortizacionAcumulada(
     rows.push({
       año,
       diasArrendado: dias,
-      baseAmortizacion,
+      baseAmortizacion: baseAño,
       amortInmueble,
       amortMobiliario,
       acumuladoTotal: esFuturo
