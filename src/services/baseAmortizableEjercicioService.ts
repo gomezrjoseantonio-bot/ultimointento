@@ -209,7 +209,9 @@ export const baseAmortizableEjercicioService = {
       return { base: round2(campoUnico), origen: 'heredada', bloqueado: false, heredada: true, fuente: 'campo_unico' };
     }
 
-    return { base: null, origen: 'heredada', bloqueado: true, heredada: true, fuente: 'ninguno' };
+    // Sin dato utilizable: no se heredó nada (heredada: false · no confunde a los
+    // consumidores que usan `heredada` como señal de procedencia).
+    return { base: null, origen: 'heredada', bloqueado: true, heredada: false, fuente: 'ninguno' };
   },
 };
 

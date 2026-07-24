@@ -132,7 +132,7 @@ export async function calcularBaseAmortizacion(
     const perEj = await baseAmortizableEjercicioService.getBaseParaCalculo(
       propertyId,
       hastaAnio,
-      property as any,
+      property,
     );
     if ((perEj.fuente === 'propio' || perEj.fuente === 'heredado') && perEj.base != null) {
       base = perEj.base;

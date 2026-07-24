@@ -137,9 +137,10 @@ export async function getAmortizacionAcumulada(
     }
     if (!Number.isFinite(dias) || dias < 0) dias = 0;
 
-    // V82 · Bloque C · base declarada de ESE año (casilla 0130) si existe; si no,
-    // la base única del inmueble (comportamiento previo). Para años ya declarados,
-    // la 0130 del año es el valor correcto (incl. el de un año en conflicto).
+    // V82 · Bloque C · base por ejercicio si viene de una fila (propia del año o
+    // heredada de un año anterior con dato · casilla 0130); si no hay fila, la base
+    // única del inmueble (comportamiento previo). Para años ya declarados, la 0130
+    // del año es el valor correcto (incl. el de un año en conflicto).
     let perEjAño: Awaited<ReturnType<typeof baseAmortizableEjercicioService.getBaseParaCalculo>> | null = null;
     try {
       perEjAño = await baseAmortizableEjercicioService.getBaseParaCalculo(propertyId, año, property);

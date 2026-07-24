@@ -1,5 +1,6 @@
 // H9-FISCAL: AEAT Amortization Service
 import { initDB, Property, PropertyImprovement, FiscalSummary } from './db';
+import type { BaseAmortizableOrigen } from './db';
 import { actualizarMejora, crearMejora, eliminarMejora, getMejorasHastaEjercicio } from './mejoraActivoService';
 import { mejorasInmuebleService } from './mejorasInmuebleService';
 import { calcularBaseAmortizacion } from './baseAmortizacionService';
@@ -132,7 +133,7 @@ export interface AEATAmortizationCalculation {
 
   // V82 · Bloque C · procedencia de la base del ejercicio (casilla 0130).
   /** Origen de la base usada, si vino del store por ejercicio. */
-  baseOrigenEjercicio?: string;
+  baseOrigenEjercicio?: BaseAmortizableOrigen;
   /** `true` → el año está en conflicto: el cálculo que lo use debe declararse bloqueado. */
   baseBloqueada?: boolean;
   /** `true` → la base es heredada/campo único sin verificar. */
