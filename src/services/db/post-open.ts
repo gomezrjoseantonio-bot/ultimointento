@@ -5,6 +5,7 @@ import type { IDBPDatabase } from 'idb';
 import type { AtlasHorizonDB } from '../db';
 import type { BoteAnualSinIdentificar,Contract,Property,TreasuryEvent } from './types';
 import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfillDocumentoFirmado } from '../alquileresV3FixService';
+import { migrarBaseAmortizableEjercicio } from '../baseAmortizableEjercicioService';
 
 export function runPostOpenMigrations(
   dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>,
@@ -315,6 +316,25 @@ export function runPostOpenMigrations(
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
         console.warn('[DB REORG V81 conciliación unifiedStatus] falló:', err);
+      }
+      return db;
+    });
+
+    // ── V82 · TAREA CC · Bloque B · sembrar base amortizable por ejercicio ──
+    // Siembra la base de cada año desde su casilla 0130 declarada (origen 'xml') y
+    // marca 'conflicto' los años cuyo 0130 difiere del campo único del inmueble
+    // (huella de una paralela · caso Carles Buigas 2022: 67.436 vs 57.989). No
+    // inventa filas para años sin 0130 (se heredan en lectura). Idempotente vía
+    // flag en keyval + guard por (inmueble·ejercicio) dentro de la migración.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v82_base_amortizable_ejercicio_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+        const n = await migrarBaseAmortizableEjercicio(db);
+        if (n > 0) console.log(`[DB V82] base amortizable por ejercicio · ${n} filas sembradas (0130) · conflictos marcados`);
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB V82 base amortizable por ejercicio] falló:', err);
       }
       return db;
     });

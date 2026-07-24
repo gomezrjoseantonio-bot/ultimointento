@@ -19,7 +19,7 @@ describe('initDB · bloque 3 commit B · sin stash/migración de objetivos_finan
     const dbModule = await import('../db');
     const db = await dbModule.initDB();
 
-    expect(db.version).toBe(79);
+    expect(db.version).toBe(dbModule.DB_VERSION);
     // El store `escenarios` (que antes creaba la rama de migración) se sigue
     // creando con su singleton por defecto para bases nuevas.
     expect(db.objectStoreNames.contains('escenarios')).toBe(true);
@@ -35,7 +35,7 @@ describe('initDB · bloque 3 commit B · sin stash/migración de objetivos_finan
     // 1ª apertura: crea la base a v79.
     const m1 = await import('../db');
     const db1 = await m1.initDB();
-    expect(db1.version).toBe(79);
+    expect(db1.version).toBe(m1.DB_VERSION);
     // Marca propia en el singleton para comprobar que la 2ª apertura NO lo pisa.
     await db1.put('escenarios', {
       id: 1,
@@ -50,7 +50,7 @@ describe('initDB · bloque 3 commit B · sin stash/migración de objetivos_finan
     const m2 = await import('../db');
     const db2 = await m2.initDB();
 
-    expect(db2.version).toBe(79);
+    expect(db2.version).toBe(m2.DB_VERSION);
     const esc = (await db2.get('escenarios', 1)) as any;
     expect(esc.marcaTest).toBe('no-tocar'); // nada re-migró ni sobrescribió el singleton
     db2.close();
