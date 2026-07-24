@@ -1749,7 +1749,10 @@ async function escribirFiscalSummaries(
             { baseDeclarada: importe },
           );
         } catch (e) {
-          console.warn('[V82] upsert base amortizable por ejercicio (import) falló:', e);
+          console.warn(
+            `[V82] upsert base amortizable por ejercicio (import) falló · inmueble ${property.id} · ejercicio ${decl.meta.ejercicio} · casilla ${casilla}:`,
+            e,
+          );
         }
       }
     }

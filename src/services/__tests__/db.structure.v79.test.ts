@@ -1,7 +1,8 @@
 // Network-first · red de seguridad del troceo de db.ts (Frente C).
 //
-// Verifica que initDB abre una base NUEVA a v79 con EXACTAMENTE los 45 stores
-// físicos y, para cada uno, TODOS sus índices. Es el candado que protege la
+// Verifica que initDB abre una base NUEVA a la versión vigente (DB_VERSION) con
+// EXACTAMENTE sus stores físicos y, para cada uno, TODOS sus índices. El conteo
+// se deriva de EXPECTED_STORES (no se hardcodea). Es el candado que protege la
 // extracción de la creación de stores / migraciones fuera de `initDB`: si al
 // mover código se pierde un store o un índice, este test falla (la app no
 // arrancaría o una query indexada rompería en runtime, y ningún otro indicador
@@ -9,7 +10,7 @@
 //
 // El mapa EXPECTED_STORES se deriva de `interface AtlasHorizonDB extends DBSchema`.
 // Si se añade/quita un store o índice a propósito, actualiza este mapa en el
-// mismo commit — así el test documenta el esquema físico canónico de v79.
+// mismo commit — así el test documenta el esquema físico canónico vigente.
 
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
@@ -21,6 +22,7 @@ const EXPECTED_STORES: Record<string, string[]> = {
   aportacionesPlan: ['ejercicioFiscal', 'ingresoIdNomina', 'origen', 'planId', 'planId+ejercicioFiscal'],
   arrastresIRPF: ['ejercicioCaducidad', 'ejercicioOrigen', 'ejercicioOrigen-tipo', 'estado', 'inmuebleId', 'origen', 'tipo'],
   avisosUsuario: [],
+  baseAmortizableEjercicio: ['ejercicio', 'inmueble-ejercicio', 'inmuebleId', 'origen'],
   benchmarksReferencia: ['codigo', 'tipo', 'ultimaActualizacion'],
   botesAnualesSinIdentificar: ['estado', 'inmuebleId', 'inmuebleId-año'],
   compromisosRecurrentes: ['ambito', 'categoria', 'cuentaCargo', 'estado', 'fechaInicio', 'inmuebleId', 'personalDataId', 'tipo'],
@@ -47,8 +49,6 @@ const EXPECTED_STORES: Record<string, string[]> = {
   personalModuleConfig: ['fechaActualizacion'],
   planesPensiones: ['estado', 'personalDataId', 'tipoAdministrativo', 'titular'],
   prestamos: ['createdAt', 'inmuebleId', 'tipo'],
-  presupuestoLineas: ['categoria', 'contratoId', 'cuentaId', 'frecuencia', 'inmuebleId', 'origen', 'prestamoId', 'presupuestoId', 'tipo'],
-  presupuestos: ['estado', 'year'],
   properties: ['address', 'alias'],
   propertyDays: ['property-year', 'propertyId', 'taxYear'],
   property_sales: ['property-status', 'propertyId', 'saleDate', 'status'],
@@ -69,16 +69,16 @@ describe('db · estructura física v79 (network-first · red de troceo)', () => 
     jest.resetModules();
   });
 
-  it('abre una base NUEVA a v79 con exactamente los 45 stores esperados', async () => {
+  it('abre una base NUEVA a la versión vigente con exactamente los stores esperados', async () => {
     const dbModule = await import('../db');
     const db = await dbModule.initDB();
 
-    expect(db.version).toBe(79);
+    expect(db.version).toBe(dbModule.DB_VERSION);
 
     const actual = Array.from(db.objectStoreNames).sort();
     const expected = Object.keys(EXPECTED_STORES).sort();
     expect(actual).toEqual(expected);
-    expect(actual).toHaveLength(45);
+    expect(actual).toHaveLength(Object.keys(EXPECTED_STORES).length);
 
     db.close();
   });

@@ -231,13 +231,19 @@ export async function migrarBaseAmortizableEjercicio(db: DB): Promise<number> {
       inmuebleId,
     )) as GastoInmueble[];
     const base0130: Map<number, number> = new Map();
+    const base0130Id: Map<number, number> = new Map();
     for (const g of gastos) {
       if (g.casillaAEAT !== '0130') continue;
       const imp = Number(g.importe) || 0;
       if (imp <= 0) continue;
-      // Si hubiera varias 0130 del mismo año (re-imports), gana la de id mayor.
-      const prev = base0130.get(g.ejercicio);
-      if (prev === undefined || (g.id ?? 0) >= 0) base0130.set(g.ejercicio, imp);
+      // Si hubiera varias 0130 del mismo año (re-imports), gana la de id mayor
+      // (comparación explícita contra el id ganador · no depende del orden del array).
+      const gid = Number(g.id ?? 0);
+      const prevId = base0130Id.get(g.ejercicio);
+      if (prevId === undefined || gid >= prevId) {
+        base0130.set(g.ejercicio, imp);
+        base0130Id.set(g.ejercicio, gid);
+      }
     }
 
     for (const [ejercicio, baseDeclarada] of base0130) {

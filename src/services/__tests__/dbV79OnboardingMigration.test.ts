@@ -50,10 +50,10 @@ describe('V79 · estructura de compra en Property (onboarding día 0)', () => {
   it('sube DB_VERSION a 79 sin destruir properties existentes', async () => {
     await seedV78();
 
-    const { initDB } = require('../db');
+    const { initDB, DB_VERSION } = require('../db');
     const db = await initDB();
 
-    expect(db.version).toBe(79);
+    expect(db.version).toBe(DB_VERSION);
 
     // ── No destructivo ──
     const p1 = await db.get('properties', 1);
