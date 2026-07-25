@@ -251,6 +251,49 @@ describe('presupuestoAnualService · reconciliación por grupo y mes (sección 1
   });
 });
 
+describe('presupuestoAnualService · el mes de la foto cuenta desde hoy (sección 4)', () => {
+  beforeEach(async () => {
+    const db = await initDB();
+    await db.clear('treasuryEvents');
+    await db.clear('movements');
+    await db.clear('accounts');
+    await db.clear('keyval');
+  });
+
+  it('cuando el ancla es el mes en curso: Saldo = saldo vivo + pendiente desde la foto (como Tesorería)', async () => {
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const db = await initDB();
+    const now = new Date();
+    const cy = now.getFullYear();
+    const cm = now.getMonth();                       // mes en curso (0-11)
+    const mm = String(cm + 1).padStart(2, '0');
+    const ultimoDia = new Date(cy, cm + 1, 0).getDate();
+    const finMes = `${cy}-${mm}-${String(ultimoDia).padStart(2, '0')}`; // vence hoy o después
+
+    // Cuenta con saldo VIVO 5000 y observación este mes → el ancla es el mes en curso.
+    await db.add('accounts', {
+      id: 1, name: 'Cuenta', status: 'ACTIVE', balance: 5000,
+      openingBalance: 5000, openingBalanceDate: `${cy}-${mm}-01`,
+    } as any);
+    // Un ingreso PREDICHO (no ejecutado) que vence a fin de mes → pendiente desde la foto.
+    await db.add('treasuryEvents', {
+      id: 9001, type: 'income', sourceType: 'nomina', status: 'predicted',
+      amount: 1000, predictedDate: finMes, año: cy, mes: cm + 1, description: 'Nómina pendiente',
+    } as any);
+
+    const p = await buildPresupuestoAnual(cy);
+    expect(p.ancla?.month).toBe(cm);                 // el ancla es el mes en curso
+    expect(p.saldoPartida).toBe(5000);               // saldo VIVO (no el 1 de enero)
+    // La celda del mes en curso muestra el pendiente (1000), no el previsto del motor.
+    const nomina = p.grupos.find((g) => g.key === 'nomina')!;
+    expect(nomina.meses[cm].previsto).toBe(1000);
+    // Saldo a fin del mes de la foto = vivo + pendiente neto (criterio 5, estilo Tesorería).
+    expect(p.saldoFinMes[cm].efectivo).toBe(6000);
+    // Recorte: los meses anteriores al mes de la foto no se pintan.
+    for (let i = 0; i < cm; i++) expect(p.saldoFinMes[i].efectivo).toBe(0);
+  });
+});
+
 describe('presupuestoAnualService · modo rodante (sección 2)', () => {
   beforeEach(async () => {
     const db = await initDB();

@@ -471,20 +471,28 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
   const ancla = await computeAncla();
   const desdeMes = ancla && year === ancla.year ? ancla.month : 0;
 
-  // Mes en curso del calendario · SOLO para marcar la columna «hoy». No recorta el
-  // previsto (que está completo de enero a diciembre · corrige P1).
+  // Mes en curso del calendario · marca la columna «hoy». No recorta el previsto.
   const now = new Date();
   const mesActualIndex = year === now.getFullYear() ? now.getMonth() : -1;
 
-  // Construir las FilaGrupo con motivo de vacío (regla 1).
-  const filas: FilaGrupo[] = ORDEN.map((key) => makeFila(key, grupos.get(key)!));
-
-  // Saldo de PARTIDA · la ÚNICA lectura de cuentas (sección 1.1). En el año del
-  // ancla se lee en la FECHA DE LA OBSERVACIÓN (no el 1 de enero · sección 4.1):
-  // ese saldo ya contiene todo lo anterior. En años posteriores, el 1 de enero.
-  const cutoff = ancla && year === ancla.year ? ancla.dateISO : `${year}-01-01`;
+  // Saldo de PARTIDA · la ÚNICA lectura de cuentas (§7).
+  // §4 · si el mes del ancla es el mes EN CURSO, ese mes cuenta SOLO lo que vence
+  // DESPUÉS de la foto (como Tesorería · criterio 5), sobre el saldo VIVO. Se
+  // sobreescriben sus celdas (antes de makeFila, para recalcular el vacío) por el
+  // pendiente por grupo, y el saldo de partida pasa a ser el saldo vivo.
+  const anclaEsHoy = !!ancla && year === ancla.year && year === now.getFullYear() && ancla.month === now.getMonth();
   let saldoPartida = 0;
-  try { saldoPartida = round2(await calculateTotalInitialCash(cutoff)); } catch { saldoPartida = 0; }
+  if (anclaEsHoy && ancla) {
+    saldoPartida = await overrideDesdeFoto((k) => grupos.get(k)!, ancla.month, year, ancla.month, now);
+  } else {
+    // En el año del ancla (mes ya pasado o futuro), el saldo se lee en la fecha de
+    // la observación; en años posteriores, el 1 de enero.
+    const cutoff = ancla && year === ancla.year ? ancla.dateISO : `${year}-01-01`;
+    try { saldoPartida = round2(await calculateTotalInitialCash(cutoff)); } catch { saldoPartida = 0; }
+  }
+
+  // Construir las FilaGrupo con motivo de vacío (regla 1) · tras el override de §4.
+  const filas: FilaGrupo[] = ORDEN.map((key) => makeFila(key, grupos.get(key)!));
 
   // Te queda (FLUJO) + Saldo a fin de mes (STOCK · escalera desde el saldo de
   // partida, que NACE en el mes del ancla · sección 1.4). Ninguna celda lee saldo.
@@ -564,6 +572,53 @@ async function computeAncla(): Promise<Ancla | null> {
   } catch {
     return null;
   }
+}
+
+// ── §4 · el mes de la foto cuenta SOLO lo que vence después de la observación ──
+// Reproduce el cierre del mes en curso de Tesorería (CalendarioMes12): sobre el
+// saldo VIVO de las cuentas, suma únicamente los eventos PREDICHOS no ejecutados
+// cuya fecha (predictedDate) cae este mes y a partir de HOY. Clasifica cada uno
+// en su grupo (misma lógica que el real). Sobreescribe las celdas de ese mes con
+// el pendiente por grupo y devuelve el saldo vivo (base de la escalera · §7 lo
+// permite solo aquí). Así Total entra/Total sale/Saldo cuadran con Tesorería.
+async function overrideDesdeFoto(
+  getCells: (key: GrupoKey) => CeldaGrupo[],
+  colIndex: number, calYear: number, calMonth: number, today: Date,
+): Promise<number> {
+  const db = await initDB();
+  const [accounts, events] = await Promise.all([
+    db.getAll('accounts') as Promise<Array<{ id?: number; status?: string; activa?: boolean; balance?: number }>>,
+    db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+  ]);
+  const liveSaldo = round2(accounts
+    .filter((a) => a.id != null && (a.status === 'ACTIVE' || a.activa))
+    .reduce((s, a) => s + (a.balance ?? 0), 0));
+  const diaHoy = today.getDate();
+  const pend = new Map<GrupoKey, number>();
+  const lines = new Map<GrupoKey, LineaDesglose[]>();
+  for (const ev of events) {
+    if (ev.status !== 'predicted' || ev.executedMovementId) continue;
+    const d = ev.predictedDate ? new Date(ev.predictedDate) : null;
+    if (!d || d.getFullYear() !== calYear || d.getMonth() !== calMonth) continue;
+    if (d.getDate() < diaHoy) continue;                 // solo lo que vence DESPUÉS de la foto
+    const amt = Math.abs(ev.amount ?? 0);
+    const grp = ev.type === 'income'
+      ? grupoDeIngresoReal(ev)
+      : grupoDeGastoReal(ev as unknown as Parameters<typeof grupoDeGastoReal>[0]);
+    if (grp === 'residuo') continue;                    // sin grupo (edge · raro) · no se pinta
+    const signed = ev.type === 'income' ? amt : -amt;
+    pend.set(grp, round2((pend.get(grp) ?? 0) + signed));
+    const arr = lines.get(grp) ?? [];
+    arr.push({ concepto: ev.description ?? (ev.type === 'income' ? 'Pendiente de entrar' : 'Pago pendiente'), importe: round2(signed) });
+    lines.set(grp, arr);
+  }
+  for (const key of ORDEN) {
+    const cells = getCells(key);
+    // El mes de la foto muestra el REMANENTE (puede ser 0 si ya no queda nada por
+    // caer): no es un cero mudo, es «nada pendiente este mes» (§4).
+    cells[colIndex] = { previsto: round2(pend.get(key) ?? 0), real: null, desglose: lines.get(key) ?? [] };
+  }
+  return liveSaldo;
 }
 
 // ── Motivo de vacío por grupo (regla 1 · criterio 9). Nunca cero mudo ──
@@ -665,29 +720,27 @@ async function buildPresupuestoRodante(): Promise<PresupuestoAnual> {
   };
 
   // Grupos recompuestos columna a columna (mismas celdas, reordenadas).
-  const filas: FilaGrupo[] = ORDEN.map((key) => {
+  const stitched = new Map<GrupoKey, CeldaGrupo[]>();
+  for (const key of ORDEN) {
     const gA = a.grupos.find((f) => f.key === key)!;
     const gB = b.grupos.find((f) => f.key === key)!;
-    const cells: CeldaGrupo[] = Array.from({ length: MESES }, (_, j) => {
+    stitched.set(key, Array.from({ length: MESES }, (_, j) => {
       const { p, m } = src(j);
       return (p === a ? gA : gB).meses[m];
-    });
-    return makeFila(key, cells);
-  });
+    }));
+  }
+
+  // §4 · la PRIMERA columna es el mes en curso → cuenta solo lo que vence desde la
+  // foto, sobre el saldo vivo (como Tesorería). El resto de columnas, completas.
+  const saldoPartida = await overrideDesdeFoto((k) => stitched.get(k)!, 0, yA, startMonth, now);
+  const filas: FilaGrupo[] = ORDEN.map((key) => makeFila(key, stitched.get(key)!));
 
   const punteado = Array.from({ length: MESES }, (_, j) => { const { p, m } = src(j); return p.punteado[m]; });
   const residuoReal = Array.from({ length: MESES }, (_, j) => { const { p, m } = src(j); return p.residuoReal[m]; });
   // La cabecera usa el real por grupo de las celdas (teQueda.real) · sin comparativa
   // por año cruzado. Se pasa null para que buildTira caiga a teQueda.real.
   const netoRealOficial: (number | null)[] = Array.from({ length: MESES }, () => null);
-
-  // Saldo de partida · observado en el mes en curso (nace aquí · 1.4). Si el mes en
-  // curso es el mes del ancla, se lee en la fecha exacta de la observación.
   const ancla = a.ancla;
-  const startFirst = `${yA}-${String(startMonth + 1).padStart(2, '0')}-01`;
-  const cutoff = ancla && ancla.year === yA && ancla.month === startMonth ? ancla.dateISO : startFirst;
-  let saldoPartida = 0;
-  try { saldoPartida = round2(await calculateTotalInitialCash(cutoff)); } catch { saldoPartida = 0; }
 
   // Escalera continua · desdeMes = 0 (las 12 columnas se pintan).
   const { teQueda, saldoFinMes, tira } = ensamblarFlujoStock(
