@@ -202,9 +202,9 @@ async function buildPrevisto(
       concepto: it.concepto, importe: round2(it.importe), fuente: it.fuente,
     }));
 
-    // SALE · Tus inmuebles (opex por inmueble+concepto · motor)
+    // SALE · Tus inmuebles (opex por inmueble+concepto · motor) · signo negativo
     const inmCell = g.get('inmuebles')![i];
-    inmCell.previsto = round2(r.gastos.gastosOperativos);
+    inmCell.previsto = round2(-Math.abs(r.gastos.gastosOperativos));
     inmCell.desglose = (r.gastos.opexDesglose ?? [])
       .filter((it) => !esDeuda({ categoria: (it as { concepto?: string }).concepto }))
       .map((it) => ({
@@ -213,15 +213,15 @@ async function buildPrevisto(
         fuente: (it as { fuente?: string }).fuente,
       }));
 
-    // SALE · Deuda (una línea por préstamo · motor)
+    // SALE · Deuda (una línea por préstamo · motor) · signo negativo
     const deuCell = g.get('deuda')![i];
-    deuCell.previsto = round2(r.financiacion.total);
+    deuCell.previsto = round2(-Math.abs(r.financiacion.total));
     deuCell.desglose = (r.financiacion.drillDown?.prestamos ?? []).map((it) => ({
       concepto: it.concepto, importe: round2(-Math.abs(it.importe)), fuente: it.fuente,
     }));
 
-    // SALE · Impuestos (escalar · SIN chevron · sección 4.2)
-    g.get('impuestos')![i].previsto = round2(r.gastos.irpf);
+    // SALE · Impuestos (escalar · SIN chevron · sección 4.2) · signo negativo
+    g.get('impuestos')![i].previsto = round2(-Math.abs(r.gastos.irpf));
   }
 
   // SALE · Hogar y familia + Deseos · desde compromisos personales, split por
@@ -420,10 +420,8 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
   let accPrev = 0;
   let accReal = 0;
   for (let i = 0; i < MESES; i++) {
-    const netoPrev = round2(filas.reduce(
-      (s, f) => s + (f.signo === 'entra' ? f.meses[i].previsto : -Math.abs(f.meses[i].previsto)),
-      0,
-    ));
+    // Todos los grupos ya vienen firmados (ingreso +, gasto −).
+    const netoPrev = round2(filas.reduce((s, f) => s + f.meses[i].previsto, 0));
     const cerrado = esCerrado(i);
     const netoRealCell = cerrado
       ? (netoRealOficial[i] ?? round2(
@@ -473,7 +471,7 @@ function buildTira(
     let dp = 0;
     let dr = 0;
     for (let i = 0; i < Math.max(0, cerrados); i++) {
-      dp += f.signo === 'entra' ? f.meses[i].previsto : -Math.abs(f.meses[i].previsto);
+      dp += f.meses[i].previsto;       // ya firmado (ingreso +, gasto −)
       dr += f.meses[i].real ?? 0;
     }
     return { concepto: f.label, importe: round2(dr - dp) };

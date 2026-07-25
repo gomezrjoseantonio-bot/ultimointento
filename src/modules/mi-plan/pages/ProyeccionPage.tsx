@@ -1,471 +1,294 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+// PANTALLA-PRESUPUESTO · la vista del año
+// =====================================================================
+// Presupuesto leído (nunca tecleado) de lo ya registrado. Dos pestañas:
+// «Este año» (tabla 12 meses × 8 grupos, previsto vs real) y «A largo plazo»
+// (estado vacío honesto · el motor de 20 años no existe · sección 4.5).
+// Fiel a `atlas-mi-plan-e2e2.html` vista v-pre. Colores por token V5.
+import React, { useCallback, useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight, CalendarClock } from 'lucide-react';
 import {
-  CardV5,
-  MoneyValue,
-  Icons,
-  showToastV5,
-} from '../../../design-system/v5';
-import { computeBudgetProjection12mAsync, type BudgetProjection } from '../services/budgetProjection';
-import {
-  getSeriePatrimonio,
-  invalidateProyeccionCache,
-} from '../../horizon/proyeccion/mensual/services/proyeccionMensualService';
-import type { PuntoPatrimonioAnual } from '../../horizon/proyeccion/mensual/types/proyeccionMensual';
-import CurvaPatrimonio from '../../../components/proyeccion/CurvaPatrimonio';
-import SupuestosPanel from '../components/SupuestosPanel';
-import {
-  getSupuestosProyeccion,
-  saveSupuestosProyeccion,
-} from '../../../services/escenariosService';
-import type { SupuestosProyeccion } from '../../../types/supuestosProyeccion';
-import { listarCompromisos } from '../../../services/personal/compromisosRecurrentesService';
-import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
-import { useProyeccionLibertad } from '../../../hooks/useProyeccionLibertad';
+  buildPresupuestoAnual,
+  type PresupuestoAnual,
+  type FilaGrupo,
+  type GrupoKey,
+} from '../services/presupuestoAnualService';
+import './PresupuestoAnual.css';
 
-const formatYearLabel = (year: number) => `${year}`;
+const MES_ABBR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const fmt = (n: number): string => Math.round(n).toLocaleString('es-ES');
+const fmtEuro = (n: number): string => `${Math.round(n).toLocaleString('es-ES')} €`;
+
+/** Desviación significativa (sección 4.1): más de 100 € o más del 25 %. */
+const significativa = (real: number, previsto: number): boolean => {
+  const d = Math.abs(real - previsto);
+  return d > 100 || (Math.abs(previsto) > 0 && d / Math.abs(previsto) > 0.25);
+};
+
+interface HijoPivot { concepto: string; fuente?: string; meses: number[]; }
+
+/** Pivota el desglose (que es por mes) a una fila por concepto con 12 valores. */
+function pivotDesglose(fila: FilaGrupo): HijoPivot[] {
+  const map = new Map<string, HijoPivot>();
+  fila.meses.forEach((cell, i) => {
+    for (const d of cell.desglose) {
+      const key = `${d.concepto}|${d.fuente ?? ''}`;
+      let row = map.get(key);
+      if (!row) { row = { concepto: d.concepto, fuente: d.fuente, meses: Array(12).fill(0) }; map.set(key, row); }
+      row.meses[i] = Math.round((row.meses[i] + d.importe) * 100) / 100;
+    }
+  });
+  return [...map.values()];
+}
 
 const ProyeccionPage: React.FC = () => {
-  const year = new Date().getFullYear();
-  const [projection, setProjection] = useState<BudgetProjection | null>(null);
-  const [projectionError, setProjectionError] = useState<string | null>(null);
-  const [serie, setSerie] = useState<PuntoPatrimonioAnual[] | null>(null);
+  const [year, setYear] = useState<number>(() => new Date().getFullYear());
+  const [tab, setTab] = useState<'anio' | 'largo'>('anio');
+  const [data, setData] = useState<PresupuestoAnual | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [abiertos, setAbiertos] = useState<Set<GrupoKey>>(new Set());
 
-  // ── Supuestos (B5) · los mandos de la curva · fuente única B1 ─────────────
-  // `supuestos` = valor instantáneo de los sliders (UI) · `aplicados` = valor
-  // con debounce ya persistido, que alimenta motor y libertad.
-  const [supuestos, setSupuestos] = useState<SupuestosProyeccion | null>(null);
-  const [aplicados, setAplicados] = useState<SupuestosProyeccion | null>(null);
-  const [compromisos, setCompromisos] = useState<CompromisoRecurrente[]>([]);
-  const [recalculando, setRecalculando] = useState(false);
-  const pendingRef = useRef<Partial<SupuestosProyeccion>>({});
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Patrimonio a 20 años (C-PROY-5 · B4/B5) · LA misma salida canónica que
-  // leen el héroe del Panel y /proyeccion/escenarios.
   useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      getSeriePatrimonio(),
-      getSupuestosProyeccion(),
-      listarCompromisos({ ambito: 'inmueble', soloActivos: true }).catch(
-        () => [] as CompromisoRecurrente[],
-      ),
-    ])
-      .then(([s, sup, comps]) => {
-        if (cancelled) return;
-        setSerie(s);
-        setSupuestos(sup);
-        setAplicados(sup);
-        setCompromisos(comps);
-      })
-      .catch(() => {
-        if (!cancelled) setSerie(null);
-      });
-    return () => {
-      cancelled = true;
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  // Un mando se mueve: la UI responde al instante · a los 500 ms se persiste
-  // el patch (solo lo tocado · los defaults siguen siendo visibles como
-  // defaults), se invalida la caché del motor y la curva se recalcula.
-  const onCambioSupuesto = (campo: keyof SupuestosProyeccion, valor: number) => {
-    setSupuestos((prev) => (prev ? { ...prev, [campo]: valor } : prev));
-    pendingRef.current[campo] = valor;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      const patch = pendingRef.current;
-      pendingRef.current = {};
-      setRecalculando(true);
-      saveSupuestosProyeccion(patch)
-        .then((resueltos) => {
-          setAplicados(resueltos);
-          invalidateProyeccionCache();
-          return getSeriePatrimonio();
-        })
-        .then((s) => setSerie(s))
-        .catch((err) => {
-          showToastV5(
-            err instanceof Error ? err.message : 'No se pudo recalcular la proyección',
-            'error',
-          );
-        })
-        .finally(() => setRecalculando(false));
-    }, 500);
-  };
-
-  // Año de libertad · misma pantalla · responde a los supuestos aplicados
-  const { data: libertad } = useProyeccionLibertad({
-    supuestos: aplicados
-      ? {
-          subidaRentasPct: aplicados.subidaRentasPct,
-          inflacionGastosPct: aplicados.inflacionGastosPct,
-        }
-      : undefined,
-    enabled: aplicados !== null,
-  });
-
-  // T-RECONNECT-1 · Hallazgo 5.A · capturamos errores de la proyección y
-  // los exponemos en banner · NO mostramos 0€ silenciosamente.
-  useEffect(() => {
-    let cancelled = false;
-    computeBudgetProjection12mAsync(year)
-      .then((p) => {
-        if (!cancelled) {
-          setProjection(p);
-          setProjectionError(null);
-        }
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error('[mi-plan/proyeccion] error proyección · banner UI', err);
-        if (!cancelled) {
-          setProjection(null);
-          setProjectionError(
-            err instanceof Error ? err.message : 'Error cargando proyección',
-          );
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
+    let cancel = false;
+    setLoading(true);
+    setError(null);
+    buildPresupuestoAnual(year)
+      .then((d) => { if (!cancel) { setData(d); setLoading(false); } })
+      .catch((e) => { if (!cancel) { setError(e?.message ?? String(e)); setLoading(false); } });
+    return () => { cancel = true; };
   }, [year]);
 
-  const months = useMemo(() => projection?.months ?? [], [projection]);
-  const balanceAnual = useMemo(
-    () => (projection ? projection.entradasAnuales + projection.salidasAnuales : 0),
-    [projection],
-  );
+  const toggle = useCallback((k: GrupoKey) => {
+    setAbiertos((prev) => {
+      const n = new Set(prev);
+      if (n.has(k)) n.delete(k); else n.add(k);
+      return n;
+    });
+  }, []);
 
-  // Para el waterfall · escala según valor abs máximo.
-  const maxAbs = useMemo(
-    () => months.reduce((m, x) => Math.max(m, Math.abs(x.flujoNeto)), 1),
-    [months],
-  );
+  const mesActual = data?.mesActualIndex ?? -1;
 
-  // Hitos · meses con flujo más positivo y más negativo.
-  const mejorMes = months.reduce((best, m) => (m.flujoNeto > (best?.flujoNeto ?? -Infinity) ? m : best), null as null | typeof months[number]);
-  const peorMes = months.reduce((worst, m) => (m.flujoNeto < (worst?.flujoNeto ?? Infinity) ? m : worst), null as null | typeof months[number]);
+  // Celdas de una fila: real hasta el mes cerrado, previsto de ahí en adelante.
+  const celdas = (meses: FilaGrupo['meses'], magnitud = true): React.ReactNode[] => {
+    const out: React.ReactNode[] = [];
+    for (let i = 0; i < 12; i++) {
+      const cell = meses[i];
+      const closed = i <= mesActual;
+      const raw = closed ? (cell.real ?? 0) : cell.previsto;
+      const desv = closed && cell.real != null && significativa(cell.real, cell.previsto);
+      const v = magnitud ? Math.abs(raw) : raw;
+      out.push(
+        <span key={i} className={`yc ${closed ? 'real' : 'fut'}${desv ? ' desv' : ''}`}>{fmt(v)}</span>,
+      );
+    }
+    return out;
+  };
+  const anioMostrado = (fila: FilaGrupo, magnitud = true): number => {
+    let s = 0;
+    for (let i = 0; i < 12; i++) {
+      const raw = i <= mesActual ? (fila.meses[i].real ?? 0) : fila.meses[i].previsto;
+      s += magnitud ? Math.abs(raw) : raw;
+    }
+    return s;
+  };
 
-  return (
-    <>
-      {projectionError && (
-        <div
-          role="alert"
-          style={{
-            background: 'var(--s-neg-bg)',
-            color: 'var(--s-neg)',
-            border: '1px solid var(--s-neg)',
-            borderRadius: 10,
-            padding: '12px 16px',
-            marginBottom: 14,
-            fontSize: 13,
-          }}
-        >
-          <strong>No se pudo calcular la proyección.</strong>{' '}
-          {projectionError} · revisa la consola para más detalle.
+  const filaGrupo = (fila: FilaGrupo): React.ReactNode => {
+    if (fila.vacio) {
+      return (
+        <div className="yl vacia" key={fila.key}>
+          <span className="ycon">{fila.label}</span>
+          <span className="motivo">{fila.vacio.motivo}</span>
         </div>
-      )}
-      {serie && serie.length > 1 && (
-        <CardV5 accent="brand" style={{ marginBottom: 14 }}>
-          <CardV5.Title>Patrimonio a 20 años</CardV5.Title>
-          <CardV5.Subtitle>
-            patrimonio neto a {serie[serie.length - 1].año}:{' '}
-            <MoneyValue value={serie[serie.length - 1].patrimonioNeto} size="inline" /> · año de
-            libertad:{' '}
-            {libertad?.cruceLibertad
-              ? libertad.cruceLibertad.anio
-              : 'fuera del horizonte'}
-            {recalculando ? ' · recalculando…' : ''}
-          </CardV5.Subtitle>
-          <CardV5.Body>
-            <CurvaPatrimonio serie={serie} variante="clara" alto={170} />
-          </CardV5.Body>
-        </CardV5>
-      )}
-
-      {supuestos && (
-        <CardV5 accent="brand" style={{ marginBottom: 14 }}>
-          <CardV5.Title>Supuestos de la proyección</CardV5.Title>
-          <CardV5.Subtitle>
-            los mandos de la curva de arriba · cada cambio recalcula patrimonio y año de libertad
-          </CardV5.Subtitle>
-          <CardV5.Body>
-            <SupuestosPanel
-              valores={supuestos}
-              onCambio={onCambioSupuesto}
-              compromisos={compromisos}
-            />
-          </CardV5.Body>
-        </CardV5>
-      )}
-
-      <CardV5 accent="brand" style={{ marginBottom: 14 }}>
-        <CardV5.Title>Resultado caja · {formatYearLabel(year)}</CardV5.Title>
-        <CardV5.Subtitle>
-          proyección estructural mes a mes · ingresos − gastos del hogar
-        </CardV5.Subtitle>
-        <CardV5.Body>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 14,
-              marginBottom: 14,
-            }}
-          >
-            <ProjectionKpi
-              label="Entradas anuales"
-              value={projection?.entradasAnuales ?? 0}
-              tone="pos"
-            />
-            <ProjectionKpi
-              label="Salidas anuales"
-              value={projection?.salidasAnuales ?? 0}
-              tone="neg"
-            />
-            <ProjectionKpi
-              label="Balance neto"
-              value={balanceAnual}
-              tone={balanceAnual >= 0 ? 'pos' : 'neg'}
-              showSign
-            />
-            <ProjectionKpi
-              label="Mes más positivo"
-              value={mejorMes?.flujoNeto ?? 0}
-              tone="pos"
-              footLabel={mejorMes?.label}
-              showSign
-            />
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(12, 1fr)',
-              gap: 6,
-              alignItems: 'end',
-              height: 200,
-              padding: '20px 4px 30px',
-              borderTop: '1px dashed var(--atlas-v5-line-2)',
-              borderBottom: '1px solid var(--atlas-v5-line-2)',
-              position: 'relative',
-            }}
-          >
-            <span
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: 0,
-                right: 0,
-                borderTop: '1px solid var(--atlas-v5-line-2)',
-                pointerEvents: 'none',
-              }}
-            />
-            {months.map((m, idx) => {
-              const totalH = 70; // % desde la línea 0 hasta extremos
-              const heightPct = maxAbs > 0 ? (Math.abs(m.flujoNeto) / maxAbs) * totalH : 0;
-              const isPositive = m.flujoNeto >= 0;
+      );
+    }
+    const hijos = fila.desplegable ? pivotDesglose(fila) : [];
+    const abierto = abiertos.has(fila.key);
+    return (
+      <React.Fragment key={fila.key}>
+        <div
+          className="yl pad"
+          onClick={fila.desplegable ? () => toggle(fila.key) : undefined}
+          role={fila.desplegable ? 'button' : undefined}
+          tabIndex={fila.desplegable ? 0 : undefined}
+        >
+          <span className="ycon">
+            <span className={`chv${abierto ? ' op' : ''}`} style={fila.desplegable ? undefined : { visibility: 'hidden' }}>›</span>
+            {fila.label}
+            {fila.desplegable && hijos.length > 0 && <em>{hijos.length}</em>}
+          </span>
+          {celdas(fila.meses)}
+          <span className="yc tot">{fmt(anioMostrado(fila))}</span>
+        </div>
+        {fila.desplegable && abierto && hijos.length > 0 && (
+          <div className="hijos">
+            {hijos.map((h, hi) => {
+              const cero = h.meses.every((m) => Math.abs(m) < 0.005);
               return (
-                <button
-                  key={m.month}
-                  type="button"
-                  onClick={() =>
-                    showToastV5(
-                      `${m.label} ${year} · entradas ${m.entradas.toFixed(0)} € · salidas ${m.salidas.toFixed(0)} €`,
-                    )
-                  }
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    height: '100%',
-                    position: 'relative',
-                    cursor: 'pointer',
-                    padding: 0,
-                    fontFamily: 'var(--atlas-v5-font-ui)',
-                  }}
-                  aria-label={`${m.label} ${year} · flujo ${m.flujoNeto.toFixed(0)} €`}
-                >
-                  <span
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      bottom: isPositive ? '50%' : 'auto',
-                      top: isPositive ? 'auto' : '50%',
-                      width: '85%',
-                      height: `${heightPct}%`,
-                      background: isPositive ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)',
-                      borderRadius: isPositive ? '4px 4px 0 0' : '0 0 4px 4px',
-                      outline: m.isCurrent ? '2px solid var(--atlas-v5-gold)' : 'none',
-                      outlineOffset: 2,
-                    }}
-                  />
-                  <span
-                    style={{
-                      position: 'absolute',
-                      bottom: -22,
-                      left: 0,
-                      right: 0,
-                      textAlign: 'center',
-                      fontSize: 10,
-                      fontFamily: 'var(--atlas-v5-font-mono-num)',
-                      color: m.isCurrent ? 'var(--atlas-v5-ink)' : 'var(--atlas-v5-ink-4)',
-                      fontWeight: m.isCurrent ? 700 : 500,
-                    }}
-                  >
-                    {m.label}
-                  </span>
-                </button>
+                <div className={`yl hijo${cero ? ' cero' : ''}`} key={hi}>
+                  <span className="ycon">{h.concepto}{h.fuente ? ` · ${h.fuente}` : ''}</span>
+                  {h.meses.map((m, mi) => (
+                    <span key={mi} className={`yc ${mi <= mesActual ? 'real' : 'fut'}`}>{fmt(Math.abs(m))}</span>
+                  ))}
+                  <span className="yc tot">{fmt(h.meses.reduce((s, m) => s + Math.abs(m), 0))}</span>
+                </div>
               );
             })}
           </div>
+        )}
+      </React.Fragment>
+    );
+  };
 
-          <div
-            style={{
-              display: 'flex',
-              gap: 18,
-              fontSize: 11.5,
-              color: 'var(--atlas-v5-ink-3)',
-              marginTop: 18,
-              flexWrap: 'wrap',
-            }}
-          >
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: 3,
-                  background: 'var(--atlas-v5-pos)',
-                }}
-              />
-              Mes con superávit · {months.filter((m) => m.flujoNeto >= 0).length}
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: 3,
-                  background: 'var(--atlas-v5-neg)',
-                }}
-              />
-              Mes con déficit · {months.filter((m) => m.flujoNeto < 0).length}
-            </span>
-            {peorMes && peorMes.flujoNeto < 0 && (
-              <span style={{ marginLeft: 'auto', color: 'var(--atlas-v5-neg)' }}>
-                <Icons.Warning size={13} strokeWidth={1.8} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-                Atención · {peorMes.label} prevé{' '}
-                <MoneyValue value={peorMes.flujoNeto} decimals={0} showSign tone="neg" />
-              </span>
-            )}
+  const filaTotal = (label: string, cls: string, meses: PresupuestoAnual['teQueda'], firmado = false): React.ReactNode => {
+    const out: React.ReactNode[] = [];
+    let anio = 0;
+    for (let i = 0; i < 12; i++) {
+      const cell = meses[i];
+      const closed = i <= mesActual;
+      const raw = closed ? (cell.real ?? 0) : cell.previsto;
+      const v = firmado ? raw : Math.abs(raw);
+      anio += cls === 'saldo' ? 0 : v;
+      out.push(<span key={i} className={`yc ${closed ? 'real' : 'fut'}`}>{fmt(v)}</span>);
+    }
+    // Para «Saldo» el Año es el saldo de diciembre; para el resto, la suma.
+    const anioVal = cls === 'saldo'
+      ? (() => { const c = meses[11]; const closed = 11 <= mesActual; return firmado ? (closed ? (c.real ?? 0) : c.previsto) : Math.abs(closed ? (c.real ?? 0) : c.previsto); })()
+      : anio;
+    return (
+      <div className={`yl ${cls}`}>
+        <span className="ycon">{label}</span>
+        {out}
+        <span className="yc tot">{fmt(anioVal)}</span>
+      </div>
+    );
+  };
+
+  const entra = data?.grupos.filter((g) => g.signo === 'entra') ?? [];
+  const sale = data?.grupos.filter((g) => g.signo === 'sale') ?? [];
+
+  return (
+    <div className="presAnual">
+      {/* Cabecera · controles en la misma fila que el título */}
+      <div className="head">
+        <div>
+          <h1 className="h1">Presupuesto</h1>
+          <div className="hsub">Se lee de lo que ya tienes registrado · pincha una fila para su desglose</div>
+        </div>
+        <div className="ctl">
+          <div className="anosel">
+            <button type="button" aria-label="Año anterior" onClick={() => setYear((y) => y - 1)}>
+              <ChevronLeft size={15} strokeWidth={2.2} />
+            </button>
+            <span>{year}</span>
+            <button type="button" aria-label="Año siguiente" onClick={() => setYear((y) => y + 1)}>
+              <ChevronRight size={15} strokeWidth={2.2} />
+            </button>
           </div>
-        </CardV5.Body>
-      </CardV5>
+          <div className="tabs">
+            <button type="button" className={`tb${tab === 'anio' ? ' on' : ''}`} onClick={() => setTab('anio')}>Este año</button>
+            <button type="button" className={`tb${tab === 'largo' ? ' on' : ''}`} onClick={() => setTab('largo')}>A largo plazo</button>
+          </div>
+        </div>
+      </div>
 
-      <CardV5>
-        <CardV5.Title>Tabla mes a mes</CardV5.Title>
-        <CardV5.Body>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--atlas-v5-font-ui)' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--atlas-v5-line)' }}>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10.5, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Mes</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 10.5, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Entradas</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 10.5, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Salidas</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 10.5, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Flujo neto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {months.map((m) => (
-                <tr
-                  key={m.month}
-                  style={{
-                    borderBottom: '1px solid var(--atlas-v5-line-2)',
-                    background: m.isCurrent ? 'var(--atlas-v5-gold-wash)' : 'transparent',
-                  }}
-                >
-                  <td style={{ padding: '10px 12px', fontFamily: 'var(--atlas-v5-font-mono-num)', fontWeight: m.isCurrent ? 700 : 600 }}>
-                    {m.label}
-                  </td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)' }}>
-                    <MoneyValue value={m.entradas} decimals={0} tone="pos" />
-                  </td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)' }}>
-                    <MoneyValue value={m.salidas} decimals={0} tone="neg" />
-                  </td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)', fontWeight: 700 }}>
-                    <MoneyValue value={m.flujoNeto} decimals={0} showSign tone="auto" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardV5.Body>
-      </CardV5>
-    </>
+      {error && <div className="tabla-vacia">No se pudo calcular el presupuesto: {error}</div>}
+
+      {tab === 'anio' && (
+        loading || !data ? (
+          <div className="cargando">Calculando…</div>
+        ) : (
+          <>
+            {/* La tira superior · cinco cifras calculadas */}
+            <div className="tira">
+              <div className="ti">
+                <div className="ti-l">Hasta {MES_ABBR[Math.max(0, mesActual)].toLowerCase()} preveías</div>
+                <div className="ti-v">{fmtEuro(data.tira.previstoAcumulado)}</div>
+                <div className="ti-s">de ahorro acumulado</div>
+              </div>
+              <div className="ti">
+                <div className="ti-l">Llevas de verdad</div>
+                <div className="ti-v">{data.esFuturo ? '—' : fmtEuro(data.tira.realAcumulado)}</div>
+                <div className="ti-s">{data.tira.mesesCerrados} {data.tira.mesesCerrados === 1 ? 'mes cerrado' : 'meses cerrados'}</div>
+              </div>
+              <div className="ti">
+                <div className="ti-l">Desviación</div>
+                <div className={`ti-v${data.tira.desviacion < 0 ? ' mal' : ''}`}>{data.esFuturo ? '—' : fmtEuro(data.tira.desviacion)}</div>
+                <div className="ti-s">
+                  {data.tira.desviacionConceptos.length > 0
+                    ? data.tira.desviacionConceptos.map((c) => c.concepto.toLowerCase()).join(' y ')
+                    : 'sin desvíos relevantes'}
+                </div>
+              </div>
+              <div className="ti">
+                <div className="ti-l">El mes más justo</div>
+                <div className="ti-v">{data.tira.mesMasJusto ? MES_ABBR[data.tira.mesMasJusto.mes - 1] : '—'}</div>
+                <div className="ti-s">{data.tira.mesMasJusto ? `te quedan ${fmtEuro(data.tira.mesMasJusto.teQueda)}` : ''}</div>
+              </div>
+              <div className="ti">
+                <div className="ti-l">Cierras el año con</div>
+                <div className="ti-v gold">{fmtEuro(data.tira.cierreAnio.previsto)}</div>
+                <div className="ti-s">previsto</div>
+              </div>
+            </div>
+
+            {/* La tabla */}
+            <div className="tabla-scroll">
+              <div className="tab-c">
+                <div className="yl head">
+                  <span className="ycon">Concepto</span>
+                  {MES_ABBR.map((m, i) => (
+                    <span key={i} className={`yc${i === mesActual ? ' hoy' : ''}`}>{m}</span>
+                  ))}
+                  <span className="yc tot">Año</span>
+                </div>
+
+                <div className="ygrp">Entra</div>
+                {entra.map(filaGrupo)}
+                {filaTotal('Total entra', 'sum', data.teQueda.map((_, i) => ({
+                  previsto: entra.reduce((s, g) => s + g.meses[i].previsto, 0),
+                  real: entra.some((g) => g.meses[i].real != null) ? entra.reduce((s, g) => s + (g.meses[i].real ?? 0), 0) : null,
+                })))}
+
+                <div className="ygrp">Sale</div>
+                {sale.map(filaGrupo)}
+                {filaTotal('Total sale', 'sum', data.teQueda.map((_, i) => ({
+                  previsto: sale.reduce((s, g) => s + g.meses[i].previsto, 0),
+                  real: sale.some((g) => g.meses[i].real != null) ? sale.reduce((s, g) => s + (g.meses[i].real ?? 0), 0) : null,
+                })))}
+
+                {filaTotal('Te queda', 'queda', data.teQueda, true)}
+                {filaTotal('Saldo a fin de mes', 'saldo', data.saldoFinMes, true)}
+              </div>
+            </div>
+
+            {/* Pie de lectura · hasta 3 frases · nada si no hay nada que decir */}
+            {data.pie.length > 0 && (
+              <div className="avisos">
+                {data.pie.map((frase, i) => (
+                  <div className="av" key={i}>
+                    <span className="av-p" />
+                    <span className="av-c">{frase}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )
+      )}
+
+      {tab === 'largo' && (
+        <div className="vacio-lp">
+          <div className="icono"><CalendarClock size={38} strokeWidth={1.5} /></div>
+          <div className="titulo">La proyección a largo plazo aún no está disponible</div>
+          <div className="texto">
+            La vista a diez años necesita el motor de proyección de veinte años, que hoy solo
+            cubre el año en curso. No se muestra una serie estimada para no dar cifras que no
+            se pueden calcular.
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
-
-interface ProjectionKpiProps {
-  label: string;
-  value: number;
-  tone?: 'pos' | 'neg';
-  showSign?: boolean;
-  footLabel?: string;
-}
-
-const ProjectionKpi: React.FC<ProjectionKpiProps> = ({ label, value, tone, showSign, footLabel }) => (
-  <div
-    style={{
-      background: 'var(--atlas-v5-card-alt)',
-      border: '1px solid var(--atlas-v5-line)',
-      borderRadius: 10,
-      padding: '12px 14px',
-    }}
-  >
-    <div
-      style={{
-        fontSize: 10.5,
-        textTransform: 'uppercase',
-        letterSpacing: '0.12em',
-        color: 'var(--atlas-v5-ink-4)',
-        fontWeight: 600,
-        marginBottom: 6,
-      }}
-    >
-      {label}
-    </div>
-    <div
-      style={{
-        fontFamily: 'var(--atlas-v5-font-mono-num)',
-        fontWeight: 700,
-        fontSize: 20,
-        color:
-          tone === 'pos'
-            ? 'var(--atlas-v5-pos)'
-            : tone === 'neg'
-              ? 'var(--atlas-v5-neg)'
-              : 'var(--atlas-v5-ink)',
-        letterSpacing: '-0.025em',
-      }}
-    >
-      <MoneyValue value={value} decimals={0} showSign={showSign} tone={tone === 'pos' ? 'pos' : tone === 'neg' ? 'neg' : 'auto'} />
-    </div>
-    {footLabel && (
-      <div
-        style={{
-          fontSize: 11,
-          color: 'var(--atlas-v5-ink-4)',
-          marginTop: 4,
-          fontFamily: 'var(--atlas-v5-font-mono-num)',
-        }}
-      >
-        {footLabel}
-      </div>
-    )}
-  </div>
-);
 
 export default ProyeccionPage;
