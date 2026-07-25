@@ -1,22 +1,25 @@
 // PANTALLA-PRESUPUESTO · la vista del año
 // =====================================================================
-// Presupuesto leído (nunca tecleado) de lo ya registrado. Dos pestañas:
-// «Este año» (tabla 12 meses × 8 grupos, previsto vs real) y «A largo plazo»
-// (estado vacío honesto · el motor de 20 años no existe · sección 4.5).
-// Fiel a `atlas-mi-plan-e2e2.html` vista v-pre. Colores por token V5.
+// Presupuesto leído (nunca tecleado). El PREVISTO está completo de enero a
+// diciembre SIEMPRE (sección 1.2); lo único que cambia es si un mes está
+// PUNTEADO en Tesorería (esta pantalla lo refleja, no lo decide · 1.3).
+// «Te queda» es flujo (entra − sale del mes); «Saldo a fin de mes» es stock
+// (escalera desde el saldo de partida de enero · 1.1). Ninguna celda lee el
+// saldo de una cuenta. El selector arranca en el año en curso y navega solo
+// hacia delante (sección 2). Fiel a atlas-mi-plan-e2e2 · v-pre.
 import React, { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, CalendarClock } from 'lucide-react';
 import {
   buildPresupuestoAnual,
   type PresupuestoAnual,
   type FilaGrupo,
+  type CeldaNeta,
   type GrupoKey,
 } from '../services/presupuestoAnualService';
 import './PresupuestoAnual.css';
 
 const MES_ABBR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 const fmt = (n: number): string => Math.round(n).toLocaleString('es-ES');
-const fmtEuro = (n: number): string => `${Math.round(n).toLocaleString('es-ES')} €`;
 
 /** Desviación significativa (sección 4.1): más de 100 € o más del 25 %. */
 const significativa = (real: number, previsto: number): boolean => {
@@ -26,7 +29,7 @@ const significativa = (real: number, previsto: number): boolean => {
 
 interface HijoPivot { concepto: string; fuente?: string; meses: number[]; }
 
-/** Pivota el desglose (que es por mes) a una fila por concepto con 12 valores. */
+/** Pivota el desglose (por mes) a una fila por concepto con 12 valores previstos. */
 function pivotDesglose(fila: FilaGrupo): HijoPivot[] {
   const map = new Map<string, HijoPivot>();
   fila.meses.forEach((cell, i) => {
@@ -41,7 +44,8 @@ function pivotDesglose(fila: FilaGrupo): HijoPivot[] {
 }
 
 const ProyeccionPage: React.FC = () => {
-  const [year, setYear] = useState<number>(() => new Date().getFullYear());
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState<number>(currentYear);
   const [tab, setTab] = useState<'anio' | 'largo'>('anio');
   const [data, setData] = useState<PresupuestoAnual | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -66,31 +70,23 @@ const ProyeccionPage: React.FC = () => {
     });
   }, []);
 
+  const punteado = data?.punteado ?? Array(12).fill(false);
   const mesActual = data?.mesActualIndex ?? -1;
 
-  // Celdas de una fila: real hasta el mes cerrado, previsto de ahí en adelante.
-  const celdas = (meses: FilaGrupo['meses'], magnitud = true): React.ReactNode[] => {
-    const out: React.ReactNode[] = [];
-    for (let i = 0; i < 12; i++) {
-      const cell = meses[i];
-      const closed = i <= mesActual;
-      const raw = closed ? (cell.real ?? 0) : cell.previsto;
-      const desv = closed && cell.real != null && significativa(cell.real, cell.previsto);
-      const v = magnitud ? Math.abs(raw) : raw;
-      out.push(
-        <span key={i} className={`yc ${closed ? 'real' : 'fut'}${desv ? ' desv' : ''}`}>{fmt(v)}</span>,
-      );
-    }
-    return out;
+  // Celda de grupo/hijo: SIEMPRE muestra el previsto (magnitud). Los meses
+  // punteados se marcan (clase `real`); si en un mes punteado el real se desvía,
+  // se subraya (`desv`). El valor mostrado no cambia: el previsto está completo.
+  const celdaGrupo = (cell: FilaGrupo['meses'][number], i: number): React.ReactNode => {
+    const punt = punteado[i];
+    const desv = punt && cell.real != null && significativa(cell.real, cell.previsto);
+    return (
+      <span key={i} className={`yc ${punt ? 'real' : 'fut'}${desv ? ' desv' : ''}`}>
+        {fmt(Math.abs(cell.previsto))}
+      </span>
+    );
   };
-  const anioMostrado = (fila: FilaGrupo, magnitud = true): number => {
-    let s = 0;
-    for (let i = 0; i < 12; i++) {
-      const raw = i <= mesActual ? (fila.meses[i].real ?? 0) : fila.meses[i].previsto;
-      s += magnitud ? Math.abs(raw) : raw;
-    }
-    return s;
-  };
+  const anioAbs = (meses: FilaGrupo['meses']): number =>
+    Math.abs(meses.reduce((s, c) => s + c.previsto, 0));
 
   const filaGrupo = (fila: FilaGrupo): React.ReactNode => {
     if (fila.vacio) {
@@ -116,8 +112,8 @@ const ProyeccionPage: React.FC = () => {
             {fila.label}
             {fila.desplegable && hijos.length > 0 && <em>{hijos.length}</em>}
           </span>
-          {celdas(fila.meses)}
-          <span className="yc tot">{fmt(anioMostrado(fila))}</span>
+          {fila.meses.map((cell, i) => celdaGrupo(cell, i))}
+          <span className="yc tot">{fmt(anioAbs(fila.meses))}</span>
         </div>
         {fila.desplegable && abierto && hijos.length > 0 && (
           <div className="hijos">
@@ -125,11 +121,11 @@ const ProyeccionPage: React.FC = () => {
               const cero = h.meses.every((m) => Math.abs(m) < 0.005);
               return (
                 <div className={`yl hijo${cero ? ' cero' : ''}`} key={hi}>
-                  <span className="ycon">{h.concepto}{h.fuente ? ` · ${h.fuente}` : ''}</span>
+                  <span className="ycon">{h.concepto}{h.fuente && !h.concepto.includes(h.fuente) ? ` · ${h.fuente}` : ''}</span>
                   {h.meses.map((m, mi) => (
-                    <span key={mi} className={`yc ${mi <= mesActual ? 'real' : 'fut'}`}>{fmt(Math.abs(m))}</span>
+                    <span key={mi} className={`yc ${punteado[mi] ? 'real' : 'fut'}`}>{fmt(Math.abs(m))}</span>
                   ))}
-                  <span className="yc tot">{fmt(h.meses.reduce((s, m) => s + Math.abs(m), 0))}</span>
+                  <span className="yc tot">{fmt(Math.abs(h.meses.reduce((s, m) => s + m, 0)))}</span>
                 </div>
               );
             })}
@@ -139,36 +135,30 @@ const ProyeccionPage: React.FC = () => {
     );
   };
 
-  const filaTotal = (label: string, cls: string, meses: PresupuestoAnual['teQueda'], firmado = false): React.ReactNode => {
-    const out: React.ReactNode[] = [];
-    let anio = 0;
-    for (let i = 0; i < 12; i++) {
-      const cell = meses[i];
-      const closed = i <= mesActual;
-      const raw = closed ? (cell.real ?? 0) : cell.previsto;
-      const v = firmado ? raw : Math.abs(raw);
-      anio += cls === 'saldo' ? 0 : v;
-      out.push(<span key={i} className={`yc ${closed ? 'real' : 'fut'}`}>{fmt(v)}</span>);
-    }
-    // Para «Saldo» el Año es el saldo de diciembre; para el resto, la suma.
-    const anioVal = cls === 'saldo'
-      ? (() => { const c = meses[11]; const closed = 11 <= mesActual; return firmado ? (closed ? (c.real ?? 0) : c.previsto) : Math.abs(closed ? (c.real ?? 0) : c.previsto); })()
-      : anio;
-    return (
-      <div className={`yl ${cls}`}>
-        <span className="ycon">{label}</span>
-        {out}
-        <span className="yc tot">{fmt(anioVal)}</span>
-      </div>
-    );
-  };
+  // Fila de total/queda/saldo: valor FIRMADO del previsto (Te queda y Saldo pueden
+  // ser negativos). Nunca lee el saldo de tesorería.
+  const filaTotal = (label: string, cls: string, meses: CeldaNeta[], anioEsSaldo = false): React.ReactNode => (
+    <div className={`yl ${cls}`}>
+      <span className="ycon">{label}</span>
+      {meses.map((cell, i) => (
+        <span key={i} className={`yc ${punteado[i] ? 'real' : 'fut'}`}>{fmt(cell.previsto)}</span>
+      ))}
+      <span className="yc tot">
+        {fmt(anioEsSaldo ? meses[11].previsto : meses.reduce((s, c) => s + c.previsto, 0))}
+      </span>
+    </div>
+  );
 
   const entra = data?.grupos.filter((g) => g.signo === 'entra') ?? [];
   const sale = data?.grupos.filter((g) => g.signo === 'sale') ?? [];
+  const totalMeses = (grupos: FilaGrupo[]): CeldaNeta[] =>
+    Array.from({ length: 12 }, (_, i) => ({
+      previsto: grupos.reduce((s, g) => s + Math.abs(g.meses[i].previsto), 0),
+      real: null,
+    }));
 
   return (
     <div className="presAnual">
-      {/* Cabecera · controles en la misma fila que el título */}
       <div className="head">
         <div>
           <h1 className="h1">Presupuesto</h1>
@@ -176,7 +166,13 @@ const ProyeccionPage: React.FC = () => {
         </div>
         <div className="ctl">
           <div className="anosel">
-            <button type="button" aria-label="Año anterior" onClick={() => setYear((y) => y - 1)}>
+            {/* Solo hacia delante desde el año en curso (sección 2) · sin flecha atrás en el año actual */}
+            <button
+              type="button"
+              aria-label="Año anterior"
+              onClick={() => setYear((y) => Math.max(currentYear, y - 1))}
+              style={year <= currentYear ? { visibility: 'hidden' } : undefined}
+            >
               <ChevronLeft size={15} strokeWidth={2.2} />
             </button>
             <span>{year}</span>
@@ -198,36 +194,38 @@ const ProyeccionPage: React.FC = () => {
           <div className="cargando">Calculando…</div>
         ) : (
           <>
-            {/* La tira superior · cinco cifras calculadas */}
+            {/* La tira superior · cinco cifras, todas de la tabla pintada */}
             <div className="tira">
               <div className="ti">
-                <div className="ti-l">Hasta {MES_ABBR[Math.max(0, mesActual)].toLowerCase()} preveías</div>
-                <div className="ti-v">{fmtEuro(data.tira.previstoAcumulado)}</div>
-                <div className="ti-s">de ahorro acumulado</div>
+                <div className="ti-l">Hasta ahora preveías</div>
+                <div className="ti-v">{data.tira.mesesCerrados > 0 ? fmt(data.tira.previstoAcumulado) + ' €' : '—'}</div>
+                <div className="ti-s">{data.tira.mesesCerrados > 0 ? 'de ahorro acumulado' : 'nada punteado aún'}</div>
               </div>
               <div className="ti">
                 <div className="ti-l">Llevas de verdad</div>
-                <div className="ti-v">{data.esFuturo ? '—' : fmtEuro(data.tira.realAcumulado)}</div>
-                <div className="ti-s">{data.tira.mesesCerrados} {data.tira.mesesCerrados === 1 ? 'mes cerrado' : 'meses cerrados'}</div>
+                <div className="ti-v">{data.tira.mesesCerrados > 0 ? fmt(data.tira.realAcumulado) + ' €' : '—'}</div>
+                <div className="ti-s">{data.tira.mesesCerrados} {data.tira.mesesCerrados === 1 ? 'mes punteado' : 'meses punteados'}</div>
               </div>
               <div className="ti">
                 <div className="ti-l">Desviación</div>
-                <div className={`ti-v${data.tira.desviacion < 0 ? ' mal' : ''}`}>{data.esFuturo ? '—' : fmtEuro(data.tira.desviacion)}</div>
+                <div className={`ti-v${data.tira.desviacion < 0 ? ' mal' : ''}`}>{data.tira.mesesCerrados > 0 ? fmt(data.tira.desviacion) + ' €' : '—'}</div>
                 <div className="ti-s">
-                  {data.tira.desviacionConceptos.length > 0
-                    ? data.tira.desviacionConceptos.map((c) => c.concepto.toLowerCase()).join(' y ')
-                    : 'sin desvíos relevantes'}
+                  {data.tira.mesesCerrados === 0
+                    ? 'sin meses punteados'
+                    : data.tira.desviacionConceptos.length > 0
+                      ? data.tira.desviacionConceptos.map((c) => c.concepto.toLowerCase()).join(' y ')
+                      : 'sin desvíos relevantes'}
                 </div>
               </div>
               <div className="ti">
                 <div className="ti-l">El mes más justo</div>
                 <div className="ti-v">{data.tira.mesMasJusto ? MES_ABBR[data.tira.mesMasJusto.mes - 1] : '—'}</div>
-                <div className="ti-s">{data.tira.mesMasJusto ? `te quedan ${fmtEuro(data.tira.mesMasJusto.teQueda)}` : ''}</div>
+                <div className="ti-s">{data.tira.mesMasJusto ? `te quedan ${fmt(data.tira.mesMasJusto.teQueda)} €` : ''}</div>
               </div>
               <div className="ti">
                 <div className="ti-l">Cierras el año con</div>
-                <div className="ti-v gold">{fmtEuro(data.tira.cierreAnio.previsto)}</div>
-                <div className="ti-s">previsto</div>
+                <div className="ti-v gold">{fmt(data.tira.cierreAnio.previsto)} €</div>
+                <div className="ti-s">empezaste con {fmt(data.tira.cierreAnio.inicioCaja)} €</div>
               </div>
             </div>
 
@@ -244,19 +242,13 @@ const ProyeccionPage: React.FC = () => {
 
                 <div className="ygrp">Entra</div>
                 {entra.map(filaGrupo)}
-                {filaTotal('Total entra', 'sum', data.teQueda.map((_, i) => ({
-                  previsto: entra.reduce((s, g) => s + g.meses[i].previsto, 0),
-                  real: entra.some((g) => g.meses[i].real != null) ? entra.reduce((s, g) => s + (g.meses[i].real ?? 0), 0) : null,
-                })))}
+                {filaTotal('Total entra', 'sum', totalMeses(entra))}
 
                 <div className="ygrp">Sale</div>
                 {sale.map(filaGrupo)}
-                {filaTotal('Total sale', 'sum', data.teQueda.map((_, i) => ({
-                  previsto: sale.reduce((s, g) => s + g.meses[i].previsto, 0),
-                  real: sale.some((g) => g.meses[i].real != null) ? sale.reduce((s, g) => s + (g.meses[i].real ?? 0), 0) : null,
-                })))}
+                {filaTotal('Total sale', 'sum', totalMeses(sale))}
 
-                {filaTotal('Te queda', 'queda', data.teQueda, true)}
+                {filaTotal('Te queda', 'queda', data.teQueda)}
                 {filaTotal('Saldo a fin de mes', 'saldo', data.saldoFinMes, true)}
               </div>
             </div>
