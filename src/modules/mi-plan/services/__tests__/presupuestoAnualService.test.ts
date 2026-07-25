@@ -94,7 +94,7 @@ describe('presupuestoAnualService · modelo flujo/stock (correctiva · criterios
 
   it('Te queda = Σ grupos del mes; Saldo = escalera desde el saldo de partida; ningún cero de real inyectado', async () => {
     const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
-    const year = new Date().getFullYear();
+    const year = 2999; // año fijo · determinista (no depende del reloj del sistema)
     const p = await buildPresupuestoAnual(year);
 
     // Criterio 3 · Te queda[m] = suma firmada de los grupos de ese mes (flujo).

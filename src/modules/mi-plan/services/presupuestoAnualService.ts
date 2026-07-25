@@ -294,7 +294,12 @@ async function buildPrevisto(
     if (key === 'impuestos') continue;
     const cells = g.get(key)!;
     for (let i = 0; i < MESES; i++) {
-      cells[i].previsto = round2(cells[i].desglose.reduce((s, d) => s + d.importe, 0));
+      // Solo si HAY desglose: así el padre cuadra con sus hijos (criterio 1). Si
+      // un grupo trae escalar del motor sin drilldown, se conserva ese escalar (no
+      // se pisa con 0 · un cálculo válido no se pierde).
+      if (cells[i].desglose.length > 0) {
+        cells[i].previsto = round2(cells[i].desglose.reduce((s, d) => s + d.importe, 0));
+      }
     }
   }
 
@@ -400,7 +405,7 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
   const anual = proyecciones.find((p) => p.year === year)
     ?? ({ year, months: [] } as unknown as ProyeccionAnual);
 
-  const { grupos, comprVacios } = await buildPrevisto(year, anual);
+  const { grupos } = await buildPrevisto(year, anual);
   const real = await buildReal(year);
 
   // Punteado (1.3) · un mes está punteado si Tesorería tiene actividad reconciliada
@@ -415,7 +420,9 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
   try {
     const comp = await comparativaService.getComparativaData({ year, scope: 'consolidado' });
     const monthly = (comp as { monthly?: Array<{ actual?: number }> }).monthly ?? [];
-    netoRealOficial = monthly.map((m) => (typeof m.actual === 'number' ? m.actual : null));
+    // Longitud SIEMPRE 12 (se indexa por mes en buildTira) · aunque `monthly` venga corto.
+    netoRealOficial = Array.from({ length: MESES }, (_, i) =>
+      typeof monthly[i]?.actual === 'number' ? (monthly[i].actual as number) : null);
   } catch {
     // sin comparativa → cabecera sin real
   }
