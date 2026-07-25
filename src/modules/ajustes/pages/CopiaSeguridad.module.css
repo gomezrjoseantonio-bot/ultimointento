@@ -1,0 +1,228 @@
+/* Copia de seguridad · sección propia de Ajustes → Datos.
+   Solo tokens --atlas-v5-* · sin hex · calca el lenguaje de DatosPage. */
+
+.block {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.block:last-child {
+  border-bottom: none;
+}
+
+.blockDesc {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  line-height: var(--atlas-v5-lh-base);
+}
+
+.blockDesc strong {
+  color: var(--atlas-v5-ink-2);
+}
+
+.blockDesc code {
+  font-family: var(--atlas-v5-font-mono-tech);
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-2);
+}
+
+.actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.fileInput {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.fileInput::file-selector-button {
+  margin-right: 10px;
+  padding: 7px 12px;
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: var(--atlas-v5-radius-sm);
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-2);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-medium);
+  cursor: pointer;
+}
+
+/* ── Aviso de copia antigua (§4) ──────────────────────────────────────────── */
+.avisoAntigua {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  margin-bottom: 18px;
+  border: 1px solid var(--atlas-v5-line-2);
+  border-left: 3px solid var(--atlas-v5-gold);
+  border-radius: var(--atlas-v5-radius-md);
+  background: var(--atlas-v5-gold-wash);
+}
+
+.avisoIcon {
+  color: var(--atlas-v5-gold-ink);
+  flex-shrink: 0;
+}
+
+.avisoText {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-2);
+  line-height: var(--atlas-v5-lh-snug);
+}
+
+/* ── Estado / última copia ────────────────────────────────────────────────── */
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.metaIcon {
+  color: var(--atlas-v5-ink-3);
+  flex-shrink: 0;
+}
+
+.metaTitle {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.metaSub {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+}
+
+/* ── Preview de la copia ──────────────────────────────────────────────────── */
+.previewHead {
+  font-size: 13.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.previewVersion {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+}
+
+.previewTag {
+  color: var(--atlas-v5-gold-ink);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+.previewTable {
+  margin-top: 14px;
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: var(--atlas-v5-radius-md);
+  overflow: hidden;
+}
+
+.previewRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 14px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.previewRow:last-child {
+  border-bottom: none;
+}
+
+.previewStore {
+  color: var(--atlas-v5-ink-3);
+  font-family: var(--atlas-v5-font-mono-tech);
+}
+
+.previewCount {
+  color: var(--atlas-v5-ink);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+.previewTotal {
+  background: var(--atlas-v5-card-alt);
+}
+
+.previewTotal .previewStore,
+.previewTotal .previewCount {
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.previewWarn {
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: var(--atlas-v5-radius-md);
+  background: var(--atlas-v5-neg-wash);
+  font-size: 12px;
+  color: var(--atlas-v5-ink-2);
+  line-height: var(--atlas-v5-lh-base);
+}
+
+.previewWarn strong {
+  color: var(--atlas-v5-neg);
+}
+
+.previewNote {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  line-height: var(--atlas-v5-lh-base);
+}
+
+/* ── Pasos de reemplazo (copia obligatoria → reemplazar) ──────────────────── */
+.steps {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: var(--atlas-v5-radius-md);
+}
+
+.stepDone {
+  border-color: var(--atlas-v5-pos-border);
+  background: var(--atlas-v5-pos-wash);
+}
+
+.stepText {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  line-height: var(--atlas-v5-lh-base);
+}
+
+.stepText strong {
+  color: var(--atlas-v5-ink);
+}
+
+.stepActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
