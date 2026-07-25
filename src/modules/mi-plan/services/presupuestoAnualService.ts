@@ -556,12 +556,15 @@ function maxOpeningBalanceDate(accounts: Array<{
 async function computeAncla(): Promise<Ancla | null> {
   try {
     const db = await initDB();
-    // 1) Si ya está congelada, se usa tal cual (nunca se mueve hacia delante · 2.1).
+    // 1) Si ya está congelada Y es válida, se usa tal cual (nunca se mueve · 2.1).
+    //    Si el valor guardado está corrupto (p. ej. mes inválido), se ignora y se
+    //    recomputa/re-congela abajo (no dejar la pantalla sin ancla para siempre).
     const guardada = (await db.get('keyval', ANCLA_KEY)) as unknown;
-    if (typeof guardada === 'string' && /^\d{4}-\d{2}/.test(guardada)) {
-      return anclaFromISO(guardada);
+    if (typeof guardada === 'string') {
+      const a = anclaFromISO(guardada);
+      if (a) return a;
     }
-    // 2) Primera vez · se fija con la observación MÁX actual y se CONGELA.
+    // 2) Primera vez (o valor corrupto) · se fija con la observación MÁX actual y se CONGELA.
     const accounts = (await db.getAll('accounts')) as Array<{
       id?: number; status?: string; activa?: boolean; openingBalanceDate?: string;
     }>;
@@ -598,8 +601,12 @@ async function overrideDesdeFoto(
   const lines = new Map<GrupoKey, LineaDesglose[]>();
   for (const ev of events) {
     if (ev.status !== 'predicted' || ev.executedMovementId) continue;
-    const d = ev.predictedDate ? new Date(ev.predictedDate) : null;
-    if (!d || d.getFullYear() !== calYear || d.getMonth() !== calMonth) continue;
+    // Parseo coherente con Tesorería (CalendarioMes12): a las fechas sin hora se les
+    // añade T00:00:00 para leerlas en hora LOCAL (si no, `YYYY-MM-DD` se interpreta
+    // en UTC y getDate()/getMonth() se desplazan un día en husos no-UTC). NaN fuera.
+    const raw = ev.predictedDate;
+    const d = raw ? new Date(raw.includes('T') ? raw : `${raw}T00:00:00`) : null;
+    if (!d || Number.isNaN(d.getTime()) || d.getFullYear() !== calYear || d.getMonth() !== calMonth) continue;
     if (d.getDate() < diaHoy) continue;                 // solo lo que vence DESPUÉS de la foto
     const amt = Math.abs(ev.amount ?? 0);
     const grp = ev.type === 'income'
