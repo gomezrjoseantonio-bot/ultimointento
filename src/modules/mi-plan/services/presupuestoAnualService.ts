@@ -35,6 +35,7 @@ import { listarCompromisos } from '../../../services/personal/compromisosRecurre
 import { gastoPersonalCompromisoEnMes, bolsaForCategoria } from '../../personal/helpers';
 import { initDB } from '../../../services/db';
 import type { TreasuryEvent, Movement } from '../../../services/db';
+import { calculateTotalInitialCash } from '../../../services/accountBalanceService';
 
 export type GrupoKey =
   | 'nomina' | 'autonomo' | 'alquileres'   // ENTRA
@@ -80,11 +81,17 @@ export interface TiraResumen {
 
 export interface PresupuestoAnual {
   year: number;
-  esFuturo: boolean;            // año sin ningún mes cerrado
-  mesActualIndex: number;       // 0-11 del último mes con real (−1 si ninguno)
+  /** Índice 0-11 del mes en curso del calendario si `year` es el año actual;
+   *  −1 en un año futuro. Solo marca la columna «hoy» · NO recorta el previsto. */
+  mesActualIndex: number;
+  /** Qué meses están PUNTEADOS en Tesorería (reconciliados). Esta pantalla lo
+   *  refleja, no lo decide (sección 1.3). Determina la marca y la cabecera. */
+  punteado: boolean[];          // 12
+  /** Saldo de partida de enero · única lectura de cuentas (sección 1.1). */
+  saldoPartida: number;
   grupos: FilaGrupo[];
-  teQueda: CeldaNeta[];         // 12
-  saldoFinMes: CeldaNeta[];     // 12
+  teQueda: CeldaNeta[];         // 12 · flujo: Total entra − Total sale del mes
+  saldoFinMes: CeldaNeta[];     // 12 · stock: escalera desde el saldo de partida
   residuoReal: number[];        // 12 · real no clasificable (regla 4.3.4)
   tira: TiraResumen;
   pie: string[];                // hasta 3 frases · [] si no hay nada que decir
@@ -255,11 +262,13 @@ async function buildPrevisto(
   try {
     const db = await initDB();
     const [props, ventas, vinculos] = await Promise.all([
-      db.getAll('properties') as Promise<Array<{ id?: number; alias?: string }>>,
+      db.getAll('properties') as Promise<Array<{ id?: number; alias?: string; state?: string }>>,
       db.getAll('property_sales').catch(() => []) as Promise<Array<{ propertyId?: number; saleDate?: string }>>,
       db.getAll('vinculosAccesorio').catch(() => []) as Promise<Array<{ inmuebleAccesorioId?: number }>>,
     ]);
     const accesorios = new Set(vinculos.map((v) => v.inmuebleAccesorioId));
+    // P4 · vendido/baja se lee de dos fuentes: property_sales (hoy vacío) Y el
+    // campo `Property.state` ('vendido'|'baja'). Un inmueble vendido queda fuera.
     const vendidos = new Set(
       ventas.filter((v) => v.saleDate && new Date(v.saleDate).getFullYear() <= year).map((v) => v.propertyId),
     );
@@ -268,6 +277,7 @@ async function buildPrevisto(
     for (const cell of alqCells) for (const d of cell.desglose) if (d.fuente) rentadas.add(d.fuente);
     for (const p of props) {
       if (p.id == null || accesorios.has(p.id) || vendidos.has(p.id)) continue;
+      if (p.state === 'vendido' || p.state === 'baja') continue; // fuera desde la venta (regla 5)
       const alias = p.alias ?? `Inmueble ${p.id}`;
       if (rentadas.has(alias)) continue;
       // Fila a cero visible (regla 3): se añade una línea 0 · el pivote la pinta `.cero`.
@@ -275,6 +285,17 @@ async function buildPrevisto(
     }
   } catch {
     // sin inmuebles legibles → la fila Alquileres queda como esté
+  }
+
+  // Normalización · el previsto del grupo es la SUMA de su desglose (garantiza
+  // padre = suma de hijos · criterio 1, y da el neto correcto en autónomo · P7).
+  // Impuestos no tiene desglose: conserva el escalar del motor.
+  for (const key of ORDEN) {
+    if (key === 'impuestos') continue;
+    const cells = g.get(key)!;
+    for (let i = 0; i < MESES; i++) {
+      cells[i].previsto = round2(cells[i].desglose.reduce((s, d) => s + d.importe, 0));
+    }
   }
 
   return { grupos: g, comprVacios };
@@ -382,35 +403,37 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
   const { grupos, comprVacios } = await buildPrevisto(year, anual);
   const real = await buildReal(year);
 
-  // Neto real por mes de getActualData (público vía getComparativaData) para la
-  // reconciliación · NO se recalcula, se compara.
+  // Punteado (1.3) · un mes está punteado si Tesorería tiene actividad reconciliada
+  // ese mes (evento ejecutado o movimiento conciliado). Esta pantalla lo REFLEJA;
+  // no decide el cierre. Reemplaza al índice por calendario del código anterior.
+  const punteado = real.map((r) => r.porGrupo.size > 0 || r.residuo !== 0);
+
+  // Neto real por mes de getActualData (canónico · NO se toca). Se usa SOLO para
+  // el real acumulado de la cabecera; NUNCA para Te queda ni Saldo (eso es flujo /
+  // stock del previsto · corrige P2).
   let netoRealOficial: (number | null)[] = Array.from({ length: MESES }, () => null);
-  let mesActualIndex = -1;
   try {
     const comp = await comparativaService.getComparativaData({ year, scope: 'consolidado' });
-    const monthly = (comp as { monthly?: Array<{ actual?: number; isPast?: boolean; isClosed?: boolean }> }).monthly ?? [];
+    const monthly = (comp as { monthly?: Array<{ actual?: number }> }).monthly ?? [];
     netoRealOficial = monthly.map((m) => (typeof m.actual === 'number' ? m.actual : null));
-    mesActualIndex = monthly.reduce((acc, m, i) => (m.isPast || m.isClosed ? i : acc), -1);
   } catch {
-    // sin comparativa → todos los meses futuros (real null)
+    // sin comparativa → cabecera sin real
   }
-  // Fallback del índice de mes cerrado: último mes con algún real agregado.
-  if (mesActualIndex < 0) {
-    for (let i = 0; i < MESES; i++) {
-      const hasReal = real[i].residuo !== 0 || real[i].porGrupo.size > 0;
-      if (hasReal) mesActualIndex = i;
-    }
-  }
-  const esCerrado = (i: number): boolean => mesActualIndex >= 0 && i <= mesActualIndex;
 
-  // Volcar el real por grupo en las celdas (solo meses cerrados).
+  // Real por grupo en las celdas · solo meses punteados (el resto no ha pasado · no
+  // se rellena con nada).
   for (const key of ORDEN) {
     const cells = grupos.get(key)!;
     for (let i = 0; i < MESES; i++) {
-      cells[i].real = esCerrado(i) ? (real[i].porGrupo.get(key) ?? 0) : null;
+      cells[i].real = punteado[i] ? (real[i].porGrupo.get(key) ?? 0) : null;
     }
   }
-  const residuoReal = real.map((r, i) => (esCerrado(i) ? r.residuo : 0));
+  const residuoReal = real.map((r, i) => (punteado[i] ? r.residuo : 0));
+
+  // Mes en curso del calendario · SOLO para marcar la columna «hoy». No recorta el
+  // previsto (que está completo de enero a diciembre · corrige P1).
+  const now = new Date();
+  const mesActualIndex = year === now.getFullYear() ? now.getMonth() : -1;
 
   // Construir las FilaGrupo con totales de año y motivo de vacío (regla 1).
   const filas: FilaGrupo[] = ORDEN.map((key) => {
@@ -427,48 +450,45 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
       meses: cells,
       totalAnio: { previsto: previstoAnio, real: realAnio },
     };
-    // Filas sin datos → vacías CON motivo (sección 2 · criterio 5).
+    // Filas sin datos → vacías CON motivo (regla 1 · criterio 9). Nunca cero mudo.
     const sinPrevisto = previstoAnio === 0 && cells.every((c) => c.desglose.length === 0);
-    const sinReal = realAnio == null || realAnio === 0;
-    if (sinPrevisto && sinReal) {
-      if ((key === 'hogar' || key === 'deseos' || key === 'inmuebles') && comprVacios) {
-        fila.vacio = { motivo: 'Sin compromisos recurrentes registrados' };
-      } else if (key === 'alquileres') {
-        fila.vacio = { motivo: 'Sin contratos activos' };
-      } else {
-        fila.vacio = { motivo: 'Sin datos registrados' };
-      }
+    if (sinPrevisto) {
+      if (key === 'hogar' || key === 'deseos') fila.vacio = { motivo: 'Sin compromisos recurrentes registrados' };
+      else if (key === 'inmuebles') fila.vacio = { motivo: 'Sin gastos de inmueble registrados' };
+      else if (key === 'alquileres') fila.vacio = { motivo: 'Sin inmuebles ni contratos' };
+      else if (key === 'impuestos') fila.vacio = { motivo: 'Sin previsión de impuestos calculable' };
+      else fila.vacio = { motivo: 'Sin datos registrados' };
     }
     return fila;
   });
 
-  // Te queda / Saldo a fin de mes.
+  // Saldo de partida de enero · ÚNICA lectura de cuentas (sección 1.1).
+  let saldoPartida = 0;
+  try { saldoPartida = round2(await calculateTotalInitialCash(`${year}-01-01`)); } catch { saldoPartida = 0; }
+
+  // Te queda (FLUJO · Total entra − Total sale del mes) + Saldo a fin de mes (STOCK
+  // · escalera desde el saldo de partida). Ninguna celda lee saldo de tesorería.
   const teQueda: CeldaNeta[] = [];
   const saldoFinMes: CeldaNeta[] = [];
-  let accPrev = 0;
-  let accReal = 0;
+  let acc = saldoPartida;
   for (let i = 0; i < MESES; i++) {
-    // Todos los grupos ya vienen firmados (ingreso +, gasto −).
-    const netoPrev = round2(filas.reduce((s, f) => s + f.meses[i].previsto, 0));
-    const cerrado = esCerrado(i);
-    const netoRealCell = cerrado
-      ? (netoRealOficial[i] ?? round2(
-          filas.reduce((s, f) => s + (f.meses[i].real ?? 0), 0) + residuoReal[i],
-        ))
+    const netoPrev = round2(filas.reduce((s, f) => s + f.meses[i].previsto, 0)); // firmado
+    const netoReal = punteado[i]
+      ? round2(filas.reduce((s, f) => s + (f.meses[i].real ?? 0), 0) + residuoReal[i])
       : null;
-    teQueda.push({ previsto: netoPrev, real: netoRealCell });
-    accPrev = round2(accPrev + netoPrev);
-    accReal = netoRealCell != null ? round2(accReal + netoRealCell) : accReal;
-    saldoFinMes.push({ previsto: accPrev, real: cerrado ? accReal : null });
+    teQueda.push({ previsto: netoPrev, real: netoReal });
+    acc = round2(acc + netoPrev);                     // escalera de PREVISTO (stock)
+    saldoFinMes.push({ previsto: acc, real: null });  // el saldo real es de Tesorería, no del presupuesto
   }
 
-  const tira = buildTira(filas, teQueda, mesActualIndex);
-  const pie = buildPie(filas, teQueda, mesActualIndex);
+  const tira = buildTira(filas, teQueda, punteado, netoRealOficial, saldoPartida);
+  const pie = buildPie(filas);
 
   return {
     year,
-    esFuturo: mesActualIndex < 0,
     mesActualIndex,
+    punteado,
+    saldoPartida,
     grupos: filas,
     teQueda,
     saldoFinMes,
@@ -482,26 +502,27 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
 function buildTira(
   filas: FilaGrupo[],
   teQueda: CeldaNeta[],
-  mesActualIndex: number,
+  punteado: boolean[],
+  netoRealOficial: (number | null)[],
+  saldoPartida: number,
 ): TiraResumen {
-  const cerrados = mesActualIndex + 1;
+  // Las cifras se derivan de la tabla pintada; los meses «cerrados» son los
+  // PUNTEADOS, no los que han pasado por calendario (corrige P3).
+  const idx = punteado.map((p, i) => (p ? i : -1)).filter((i) => i >= 0);
   let previstoAcc = 0;
   let realAcc = 0;
-  for (let i = 0; i < Math.max(0, cerrados); i++) {
+  for (const i of idx) {
     previstoAcc = round2(previstoAcc + teQueda[i].previsto);
-    if (teQueda[i].real != null) realAcc = round2(realAcc + (teQueda[i].real ?? 0));
+    const r = netoRealOficial[i] ?? teQueda[i].real ?? 0;
+    realAcc = round2(realAcc + r);
   }
   const desviacion = round2(realAcc - previstoAcc);
 
-  // Los dos conceptos que más pesan en la desviación: por grupo, real − previsto
-  // acumulado hasta el mes cerrado.
+  // Dos conceptos que más pesan (real − previsto por grupo, sobre meses punteados).
   const pesos: LineaDesglose[] = filas.map((f) => {
     let dp = 0;
     let dr = 0;
-    for (let i = 0; i < Math.max(0, cerrados); i++) {
-      dp += f.meses[i].previsto;       // ya firmado (ingreso +, gasto −)
-      dr += f.meses[i].real ?? 0;
-    }
+    for (const i of idx) { dp += f.meses[i].previsto; dr += f.meses[i].real ?? 0; }
     return { concepto: f.label, importe: round2(dr - dp) };
   }).filter((x) => Math.abs(x.importe) >= 0.01)
     .sort((a, b) => Math.abs(b.importe) - Math.abs(a.importe))
@@ -515,16 +536,17 @@ function buildTira(
     }
   }
 
-  const cierrePrevisto = round2(teQueda.reduce((s, c) => s + c.previsto, 0));
+  // Cierre del año = saldo final = saldo de partida + Σ Te queda previsto (stock).
+  const cierrePrevisto = round2(saldoPartida + teQueda.reduce((s, c) => s + c.previsto, 0));
 
   return {
     previstoAcumulado: previstoAcc,
     realAcumulado: realAcc,
-    mesesCerrados: Math.max(0, cerrados),
+    mesesCerrados: idx.length,
     desviacion,
     desviacionConceptos: pesos,
     mesMasJusto,
-    cierreAnio: { previsto: cierrePrevisto, inicioCaja: 0 },
+    cierreAnio: { previsto: cierrePrevisto, inicioCaja: saldoPartida },
   };
 }
 
@@ -532,11 +554,7 @@ function buildTira(
 const NOMBRE_MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
-function buildPie(
-  filas: FilaGrupo[],
-  teQueda: CeldaNeta[],
-  mesActualIndex: number,
-): string[] {
+function buildPie(filas: FilaGrupo[]): string[] {
   const frases: string[] = [];
 
   // Frase 1 · el mes más duro por concentración de gastos de inmueble.
@@ -559,19 +577,21 @@ function buildPie(
     }
   }
 
-  // Frase 2 · inmuebles sin rentar (unidades a 0 · regla 3).
+  // Frase 2 · inmuebles sin rentar · el contador coincide con las LÍNEAS PINTADAS
+  // (misma clave `concepto|fuente` que el pivote del componente · corrige P8).
   const alq = filas.find((f) => f.key === 'alquileres');
   if (alq?.vacio) {
     frases.push('Ninguna unidad tiene contrato activo este año');
   } else if (alq) {
-    const conceptos = new Map<string, number>();
+    const lineas = new Map<string, number>();
     for (const cell of alq.meses) {
       for (const d of cell.desglose) {
-        conceptos.set(d.concepto, (conceptos.get(d.concepto) ?? 0) + Math.abs(d.importe));
+        const k = `${d.concepto}|${d.fuente ?? ''}`;
+        lineas.set(k, (lineas.get(k) ?? 0) + Math.abs(d.importe));
       }
     }
-    const total = conceptos.size;
-    const sinRentar = [...conceptos.values()].filter((v) => v < 0.005).length;
+    const total = lineas.size;
+    const sinRentar = [...lineas.values()].filter((v) => v < 0.005).length;
     if (total > 0 && sinRentar > 0) {
       frases.push(`${sinRentar} de ${total} ${total === 1 ? 'unidad no renta' : 'unidades no rentan'}`);
     }

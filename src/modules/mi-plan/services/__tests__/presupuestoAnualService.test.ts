@@ -88,3 +88,34 @@ describe('presupuestoAnualService · agregador de real por grupo (sección 4.3)'
     expect(m.porGrupo.get('inmuebles')).toBeUndefined();
   });
 });
+
+describe('presupuestoAnualService · modelo flujo/stock (correctiva · criterios 3/4)', () => {
+  beforeEach(reset);
+
+  it('Te queda = Σ grupos del mes; Saldo = escalera desde el saldo de partida; ningún cero de real inyectado', async () => {
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const year = new Date().getFullYear();
+    const p = await buildPresupuestoAnual(year);
+
+    // Criterio 3 · Te queda[m] = suma firmada de los grupos de ese mes (flujo).
+    for (let i = 0; i < 12; i++) {
+      const sumaGrupos = p.grupos.reduce((s, g) => s + g.meses[i].previsto, 0);
+      expect(Math.round(p.teQueda[i].previsto)).toBe(Math.round(sumaGrupos));
+    }
+
+    // Criterio 4 · Saldo[m] = Saldo[m-1] + Te queda[m], base = saldo de partida.
+    let acc = p.saldoPartida;
+    for (let i = 0; i < 12; i++) {
+      acc = Math.round((acc + p.teQueda[i].previsto) * 100) / 100;
+      expect(Math.round(p.saldoFinMes[i].previsto)).toBe(Math.round(acc));
+    }
+
+    // P2 · el saldo real de la tabla es de Tesorería, no del presupuesto → null.
+    expect(p.saldoFinMes.every((c) => c.real === null)).toBe(true);
+
+    // Criterio 2 · el previsto está definido en los 12 meses (número, no undefined).
+    for (const g of p.grupos) {
+      for (let i = 0; i < 12; i++) expect(typeof g.meses[i].previsto).toBe('number');
+    }
+  });
+});
