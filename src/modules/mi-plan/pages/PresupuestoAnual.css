@@ -28,6 +28,8 @@
   font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700;
   color: var(--atlas-v5-ink); padding: 0 8px; min-width: 52px; text-align: center;
 }
+/* Rango de la ventana rodante (sección 2) · más ancho, sin flechas */
+.presAnual .anosel .rango { min-width: auto; font-size: 12.5px; letter-spacing: .01em; }
 .presAnual .tabs { display: flex; gap: 5px; }
 .presAnual .tb {
   padding: 8px 14px; border-radius: 8px; border: 1px solid var(--atlas-v5-line);
@@ -62,7 +64,7 @@
   border-radius: 12px; overflow: hidden;
 }
 .presAnual .yl {
-  display: grid; grid-template-columns: 214px repeat(12, 1fr) 80px;
+  display: grid; grid-template-columns: 214px repeat(var(--pa-cols, 12), 1fr) 80px;
   align-items: center; border-bottom: 1px solid var(--atlas-v5-line-3);
 }
 .presAnual .yl:last-child { border-bottom: none; }
@@ -100,6 +102,9 @@
 .presAnual .yc.tot { background: var(--atlas-v5-card-alt); font-weight: 700; color: var(--atlas-v5-ink); font-size: 11.5px; padding-right: 11px; }
 /* Desviación · colorea el NÚMERO en ámbar (no lo subraya) · sobre el real pintado */
 .presAnual .yc.desv { color: var(--atlas-v5-warn); font-weight: 700; }
+/* Mes en curso · borde oro de 3 px («aquí estás» · sección 1.4). Sin color nuevo:
+   solo marca la columna, no la semántica del dato. */
+.presAnual .yc.enc { box-shadow: inset 3px 0 0 var(--atlas-v5-gold); }
 
 .presAnual .ygrp {
   font-size: 9.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
