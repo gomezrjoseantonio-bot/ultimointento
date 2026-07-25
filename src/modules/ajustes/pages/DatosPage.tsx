@@ -7,6 +7,7 @@ import { exportSnapshot, importSnapshot, resetAllData } from '../../../services/
 import { showConfirmation } from '../../../services/confirmationService';
 import KpiBuilder from '../../../components/kpi/KpiBuilder';
 import DashboardConfig from '../../../components/dashboard/DashboardConfig';
+import CopiaSeguridad from './CopiaSeguridad';
 import containerStyles from '../AjustesPage.module.css';
 import styles from './DatosPage.module.css';
 
@@ -15,9 +16,10 @@ import styles from './DatosPage.module.css';
 // showToastV5 aquí caería a console.info (feedback invisible). Estas acciones
 // (export/import/reset) son reales y necesitan un toast visible.
 
-type PreferencesTab = 'datos' | 'panel' | 'kpis';
+type PreferencesTab = 'copia' | 'datos' | 'panel' | 'kpis';
 
 const TABS: { key: PreferencesTab; label: string; icon: IconRender }[] = [
+  { key: 'copia', label: 'Copia de seguridad', icon: (p) => <Icons.Archivo {...p} /> },
   { key: 'datos', label: 'Datos & Snapshots', icon: (p) => <Icons.Archivo {...p} /> },
   { key: 'panel', label: 'Panel', icon: (p) => <Icons.Panel {...p} /> },
   { key: 'kpis', label: 'KPIs & Métricas', icon: (p) => <Icons.Proyeccion {...p} /> },
@@ -39,7 +41,7 @@ const DatosPage: React.FC = () => {
   // Sincroniza pestaña con el hash de la URL (deep-link · #datos/#panel/#kpis).
   useEffect(() => {
     const hash = location.hash.replace('#', '') as PreferencesTab;
-    if (['datos', 'panel', 'kpis'].includes(hash)) {
+    if (['copia', 'datos', 'panel', 'kpis'].includes(hash)) {
       setActiveTab(hash);
     }
   }, [location.hash]);
@@ -194,6 +196,8 @@ const DatosPage: React.FC = () => {
           );
         })}
       </div>
+
+      {activeTab === 'copia' && <CopiaSeguridad />}
 
       {activeTab === 'datos' && (
         <>
