@@ -273,6 +273,28 @@ describe('copia-y-restauración · backup.ts', () => {
     dbi.close();
   });
 
+  it('referencia compartida (diamante) · se exporta sin fallar', async () => {
+    const { db, backup } = await loadFresh();
+    const dbi = await db.initDB();
+    // Dos campos apuntando al MISMO sub-objeto (no es ciclo).
+    const compartido = { etiqueta: 'x' };
+    await dbi.put('keyval', { a: compartido, b: compartido }, 'diamante');
+
+    await expect(backup.buildBackup()).resolves.toBeDefined();
+    dbi.close();
+  });
+
+  it('referencia circular · aborta la exportación con error claro (no rompe en silencio)', async () => {
+    const { db, backup } = await loadFresh();
+    const dbi = await db.initDB();
+    const ciclo: any = { nombre: 'c' };
+    ciclo.self = ciclo; // arista hacia un ancestro
+    await dbi.put('keyval', ciclo, 'ciclo');
+
+    await expect(backup.buildBackup()).rejects.toThrow(backup.BackupError);
+    dbi.close();
+  });
+
   it('metadatos · guarda y detecta la última copia (aviso §4)', async () => {
     const { backup } = await loadFresh();
 

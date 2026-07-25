@@ -7,7 +7,7 @@
 // Reglas duras (ver TAREACCCOPIAYRESTAURACION.md):
 //   · TODOS los stores del esquema, recorriendo `db.objectStoreNames` (sin listas
 //     blancas). Los vacíos también salen, como array vacío.
-//   · Reemplazo TOTAL y TODO-O-NADA: una única transacción readwrite sobre todos
+//   · Reemplazo total y todo-o-nada: una única transacción readwrite sobre todos
 //     los stores. Si algo falla a mitad, la transacción aborta y la base queda
 //     como estaba. Nada de fusión (evita colisiones de claves autoincrementales).
 //   · Los binarios (`documents.content: Blob`, único binario del esquema · ver
@@ -115,9 +115,15 @@ function isBlobMarker(value: unknown): value is AtlasBlobMarker {
 // ── Serialización de binarios dentro de un registro ──────────────────────────
 // Recorre el registro y sustituye cada Blob por su marca base64. Es genérico (no
 // sólo `documents.content`): si mañana otro store guardara un Blob, viajaría igual
-// en vez de perderse en silencio. `seen` corta ciclos.
+// en vez de perderse en silencio.
+//
+// `ancestors` es el CAMINO actual (se añade al entrar, se quita al salir), no un
+// «visto alguna vez». Así una referencia compartida en forma de diamante (dos
+// campos apuntando al mismo sub-objeto, sin ciclo) se serializa bien, mientras que
+// un ciclo real (arista hacia un ancestro) se detecta y ABORTA con un error claro,
+// en vez de reintroducir la circularidad y romper `JSON.stringify` en silencio.
 
-async function encodeBlobs(value: unknown, seen: WeakSet<object>): Promise<unknown> {
+async function encodeBlobs(value: unknown, ancestors: Set<object>): Promise<unknown> {
   if (value instanceof Blob) {
     return {
       __atlasBlob: true,
@@ -126,18 +132,26 @@ async function encodeBlobs(value: unknown, seen: WeakSet<object>): Promise<unkno
       base64: await blobToBase64(value),
     } as AtlasBlobMarker;
   }
-  if (Array.isArray(value)) {
-    const out: unknown[] = [];
-    for (const item of value) out.push(await encodeBlobs(item, seen));
-    return out;
-  }
   if (value && typeof value === 'object') {
-    if (seen.has(value as object)) return value;
-    seen.add(value as object);
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = await encodeBlobs(v, seen);
+    if (ancestors.has(value as object)) {
+      throw new BackupError(
+        'No se puede exportar la copia: un registro contiene una referencia circular.',
+      );
     }
+    ancestors.add(value as object);
+    let out: unknown;
+    if (Array.isArray(value)) {
+      const arr: unknown[] = [];
+      for (const item of value) arr.push(await encodeBlobs(item, ancestors));
+      out = arr;
+    } else {
+      const obj: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        obj[k] = await encodeBlobs(v, ancestors);
+      }
+      out = obj;
+    }
+    ancestors.delete(value as object);
     return out;
   }
   return value;
@@ -177,14 +191,13 @@ export const buildBackup = async (): Promise<AtlasBackupFile> => {
   let totalRegistros = 0;
 
   for (const storeName of storeNames) {
-    const seen = new WeakSet<object>();
     if (storeName === 'keyval') {
       // Store fuera de línea: capturamos clave + valor por separado.
       const keys = (await db.getAllKeys(storeName as StoreNames<AtlasHorizonDB>)) as IDBValidKey[];
       const values = await db.getAll(storeName as StoreNames<AtlasHorizonDB>);
       const entries: AtlasKeyvalEntry[] = [];
       for (let i = 0; i < keys.length; i++) {
-        entries.push({ k: keys[i], v: await encodeBlobs(values[i], seen) });
+        entries.push({ k: keys[i], v: await encodeBlobs(values[i], new Set<object>()) });
       }
       datos[storeName] = entries;
       resumen[storeName] = entries.length;
@@ -192,7 +205,7 @@ export const buildBackup = async (): Promise<AtlasBackupFile> => {
     } else {
       const records = await db.getAll(storeName as StoreNames<AtlasHorizonDB>);
       const encoded: unknown[] = [];
-      for (const record of records) encoded.push(await encodeBlobs(record, seen));
+      for (const record of records) encoded.push(await encodeBlobs(record, new Set<object>()));
       datos[storeName] = encoded;
       resumen[storeName] = encoded.length;
       totalRegistros += encoded.length;
@@ -426,9 +439,13 @@ export const importBackup = async (
   }
 
   // 3 · restaurar localStorage (estado secundario · fuera de la atomicidad de IDB).
+  //     Reemplazo TOTAL, coherente con el de IndexedDB: se vacía primero para no
+  //     dejar claves antiguas que la copia no tenía. Sólo se limpia cuando hay
+  //     snapshot que rehidratar (una copia sin `otros.localStorage` no toca nada).
   const ls = archivo.otros?.localStorage;
   if (ls && typeof ls === 'object') {
     try {
+      localStorage.clear();
       for (const [key, val] of Object.entries(ls)) {
         if (typeof val === 'string') localStorage.setItem(key, val);
       }
