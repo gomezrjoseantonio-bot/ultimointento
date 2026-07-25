@@ -28,7 +28,7 @@
   font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700;
   color: var(--atlas-v5-ink); padding: 0 8px; min-width: 52px; text-align: center;
 }
-.presAnual .tabs { display: flex; gap: 5px; }
+.presAnual .tabs, .presAnual .modosel { display: flex; gap: 5px; }
 .presAnual .tb {
   padding: 8px 14px; border-radius: 8px; border: 1px solid var(--atlas-v5-line);
   background: var(--atlas-v5-card); font-size: 12.5px; font-weight: 600;
@@ -62,7 +62,7 @@
   border-radius: 12px; overflow: hidden;
 }
 .presAnual .yl {
-  display: grid; grid-template-columns: 214px repeat(12, 1fr) 80px;
+  display: grid; grid-template-columns: 214px repeat(var(--cols, 12), 1fr) 80px;
   align-items: center; border-bottom: 1px solid var(--atlas-v5-line-3);
 }
 .presAnual .yl:last-child { border-bottom: none; }
@@ -100,6 +100,20 @@
 .presAnual .yc.tot { background: var(--atlas-v5-card-alt); font-weight: 700; color: var(--atlas-v5-ink); font-size: 11.5px; padding-right: 11px; }
 /* Desviación · colorea el NÚMERO en ámbar (no lo subraya) · sobre el real pintado */
 .presAnual .yc.desv { color: var(--atlas-v5-warn); font-weight: 700; }
+
+/* Los tres espacios temporales (sección 1.4) · SIN colores nuevos, sin semántica
+   de color sobre el dato:
+   · cerrado (ya pasó) y en curso → tinta normal (`.real`)
+   · futuro → tinta apagada (`.fut`)
+   · mes en curso → borde de 3px en oro «aquí estás»: rieles a los lados en cada
+     fila + marco arriba (cabecera) y abajo (saldo) para cerrar la columna. Es
+     marca de posición, no dato · el oro no colorea ningún número. */
+.presAnual .yc.hoy-col {
+  border-left: 3px solid var(--atlas-v5-gold);
+  border-right: 3px solid var(--atlas-v5-gold);
+}
+.presAnual .yl.head .yc.hoy-col { border-top: 3px solid var(--atlas-v5-gold); }
+.presAnual .yl.saldo .yc.hoy-col { border-bottom: 3px solid var(--atlas-v5-gold); }
 
 .presAnual .ygrp {
   font-size: 9.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
