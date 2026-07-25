@@ -25,6 +25,7 @@ async function reset() {
   const db = await initDB();
   await db.clear('treasuryEvents');
   await db.clear('movements');
+  await db.clear('accounts');
   return db;
 }
 
@@ -117,5 +118,72 @@ describe('presupuestoAnualService · modelo flujo/stock (correctiva · criterios
     for (const g of p.grupos) {
       for (let i = 0; i < 12; i++) expect(typeof g.meses[i].previsto).toBe('number');
     }
+  });
+});
+
+describe('presupuestoAnualService · el ancla y la ventana temporal (secciones 1.1–1.4 / 2)', () => {
+  beforeEach(reset);
+
+  it('modo rodante · 12 columnas consecutivas desde el mes en curso; la escalera NACE en el saldo observado', async () => {
+    const db = await initDB();
+    const iso = new Date().toISOString();
+    // El saldo observado del usuario = 10.000 €, dado de alta HOY (el ancla).
+    await db.add('accounts', {
+      id: 1, iban: 'ES0000000000000000000000', status: 'ACTIVE', activa: true,
+      openingBalance: 10000, openingBalanceDate: iso, createdAt: iso, updatedAt: iso,
+    } as any);
+
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const p = await buildPresupuestoAnual(new Date().getFullYear(), 'rodante');
+
+    // Doce meses · consecutivos · cruzan el cambio de año (sección 2).
+    expect(p.columnas.length).toBe(12);
+    for (let k = 1; k < 12; k++) {
+      const prev = p.columnas[k - 1].year * 12 + p.columnas[k - 1].mesIndex;
+      expect(p.columnas[k].year * 12 + p.columnas[k].mesIndex - prev).toBe(1);
+    }
+    // La primera columna es el mes en curso (sección 1.4).
+    expect(p.columnas[0].espacio).toBe('curso');
+    // Criterio 1 · el saldo del mes del ancla = el saldo real de las cuentas.
+    expect(p.saldoPartida).toBe(10000);
+    // La escalera NACE ahí: saldo[0] = saldo observado (no suma el flujo del mes · 1.4).
+    expect(p.saldoFinMes[0].previsto).toBe(10000);
+    // Criterio 2 · de ahí en adelante la escalera cuadra.
+    let acc = p.saldoPartida;
+    for (let k = 1; k < 12; k++) {
+      acc = Math.round((acc + p.teQueda[k].previsto) * 100) / 100;
+      expect(Math.round(p.saldoFinMes[k].previsto)).toBe(Math.round(acc));
+    }
+    // Criterio 11 · la columna se llama «Total 12 meses», no «Año».
+    expect(p.totalLabel).toBe('Total 12 meses');
+  });
+
+  it('modo natural · un año POSTERIOR al ancla se pinta entero (enero–diciembre) y sí suma el flujo de enero', async () => {
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const future = new Date().getFullYear() + 3; // > año del ancla (hoy)
+    const p = await buildPresupuestoAnual(future, 'natural');
+
+    // Sin recorte: 12 columnas arrancando en enero.
+    expect(p.columnas.length).toBe(12);
+    expect(p.columnas[0].mesIndex).toBe(0);
+    expect(p.totalLabel).toBe('Año');
+    // En un año posterior al ancla la escalera arranca del arrastre a 1-ene y SÍ
+    // suma el flujo de enero (a diferencia del mes del ancla).
+    expect(Math.round(p.saldoFinMes[0].previsto)).toBe(Math.round(p.saldoPartida + p.teQueda[0].previsto));
+  });
+
+  it('un movimiento POSTERIOR al ancla, al puntearlo, no cambia el total del saldo (criterio 5)', async () => {
+    const db = await initDB();
+    const iso = new Date().toISOString();
+    await db.add('accounts', {
+      id: 1, iban: 'ES0000000000000000000000', status: 'ACTIVE', activa: true,
+      openingBalance: 5000, openingBalanceDate: iso, createdAt: iso, updatedAt: iso,
+    } as any);
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+
+    // El saldo (stock) sale SOLO del previsto: puntear o no un movimiento no lo
+    // mueve (el real de la escalera es siempre null · lo lleva Tesorería).
+    const p = await buildPresupuestoAnual(new Date().getFullYear(), 'rodante');
+    expect(p.saldoFinMes.every((c) => c.real === null)).toBe(true);
   });
 });
