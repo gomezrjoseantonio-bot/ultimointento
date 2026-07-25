@@ -25,6 +25,8 @@ async function reset() {
   const db = await initDB();
   await db.clear('treasuryEvents');
   await db.clear('movements');
+  await db.clear('accounts');
+  await db.clear('keyval');   // el ancla estable se congela aquí · limpiar entre tests
   return db;
 }
 
@@ -126,6 +128,7 @@ describe('presupuestoAnualService · el ancla y el recorte (modelo temporal)', (
     await db.clear('treasuryEvents');
     await db.clear('movements');
     await db.clear('accounts');
+    await db.clear('keyval');
   });
 
   it('la escalera NACE en el mes del ancla con el saldo observado; antes del ancla no se pinta', async () => {
@@ -175,6 +178,24 @@ describe('presupuestoAnualService · el ancla y el recorte (modelo temporal)', (
     expect(despues.saldoFinMes.every((c) => c.real === null)).toBe(true);
   });
 
+  it('el ancla NO se mueve al dar de alta una cuenta después (congelada · criterio 7)', async () => {
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const db = await initDB();
+    await db.add('accounts', {
+      id: 1, name: 'Cuenta', status: 'ACTIVE', openingBalance: 10000, openingBalanceDate: '2999-07-15',
+    } as any);
+    const antes = await buildPresupuestoAnual(2999);
+    expect(antes.ancla).toEqual({ year: 2999, month: 6, dateISO: '2999-07-15' });
+    // Alta de una cuenta nueva en noviembre (fecha posterior al ancla).
+    await db.add('accounts', {
+      id: 2, name: 'Nueva', status: 'ACTIVE', openingBalance: 5000, openingBalanceDate: '2999-11-20',
+    } as any);
+    const despues = await buildPresupuestoAnual(2999);
+    // El ancla sigue en julio · NO salta a noviembre ni oculta agosto-octubre.
+    expect(despues.ancla).toEqual({ year: 2999, month: 6, dateISO: '2999-07-15' });
+    expect(despues.desdeMes).toBe(6);
+  });
+
   it('sin fecha de observación en ninguna cuenta, no hay ancla ni recorte', async () => {
     const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
     const db = await initDB();
@@ -190,7 +211,8 @@ describe('presupuestoAnualService · reconciliación por grupo y mes (sección 1
     const db = await initDB();
     await db.clear('treasuryEvents');
     await db.clear('movements');
-    await db.clear('accounts');   // sin cuentas → sin ancla ni recorte (12 meses visibles)
+    await db.clear('accounts');
+    await db.clear('keyval');   // sin cuentas → sin ancla ni recorte (12 meses visibles)
   });
 
   it('el punteo es por grupo: el grupo conciliado muestra real, los demás previsto (no 0)', async () => {
@@ -235,6 +257,7 @@ describe('presupuestoAnualService · modo rodante (sección 2)', () => {
     await db.clear('treasuryEvents');
     await db.clear('movements');
     await db.clear('accounts');
+    await db.clear('keyval');
   });
 
   it('doce columnas continuas, columna «Total 12 meses» y escalera que cuadra', async () => {

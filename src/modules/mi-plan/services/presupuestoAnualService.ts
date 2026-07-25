@@ -514,31 +514,53 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
   };
 }
 
-// ── El ancla · MÁX(openingBalanceDate) de las cuentas activas (sección 1.1) ──
-// Es el único instante en que TODAS las cuentas están observadas, así el saldo de
-// partida es completo. `null` si ninguna cuenta tiene fecha de observación → la
-// escalera cae al comportamiento previo (1 de enero), sin recorte.
+// ── El ancla ESTABLE (sección 2) ──────────────────────────────────────────
+// El ancla se fija UNA vez —la primera observación de la caja al montar ATLAS— y
+// NO se mueve nunca hacia delante. Se persiste en `keyval` (schemaless · sin DB
+// bump). Dar de alta una cuenta después NO cambia el ancla ni oculta meses ya
+// visibles (criterio 7). El valor inicial es la MÁX(openingBalanceDate) de las
+// cuentas de ese momento (todas observadas por esa fecha → saldo de partida
+// completo; prohibido MÍN · §7), y a partir de ahí queda congelado.
+const ANCLA_KEY = 'primera_observacion_v1';
+
+function anclaFromISO(iso: string): Ancla | null {
+  const m = /^(\d{4})-(\d{2})/.exec(iso);
+  if (!m) return null;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  if (!Number.isFinite(y) || mo < 1 || mo > 12) return null;  // mes válido → month ∈ [0,11]
+  return { year: y, month: mo - 1, dateISO: iso.includes('T') ? iso.split('T')[0] : iso };
+}
+
+/** MÁX(openingBalanceDate) de las cuentas activas · null si ninguna tiene fecha. */
+function maxOpeningBalanceDate(accounts: Array<{
+  id?: number; status?: string; activa?: boolean; openingBalanceDate?: string;
+}>): string | null {
+  const fechas = accounts
+    .filter((a) => a.id != null && (a.status === 'ACTIVE' || a.activa))
+    .map((a) => a.openingBalanceDate)
+    .filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}/.test(d))
+    .map((d) => (d.includes('T') ? d.split('T')[0] : d));
+  if (fechas.length === 0) return null;
+  return fechas.reduce((m, d) => (d > m ? d : m));
+}
+
 async function computeAncla(): Promise<Ancla | null> {
   try {
     const db = await initDB();
+    // 1) Si ya está congelada, se usa tal cual (nunca se mueve hacia delante · 2.1).
+    const guardada = (await db.get('keyval', ANCLA_KEY)) as unknown;
+    if (typeof guardada === 'string' && /^\d{4}-\d{2}/.test(guardada)) {
+      return anclaFromISO(guardada);
+    }
+    // 2) Primera vez · se fija con la observación MÁX actual y se CONGELA.
     const accounts = (await db.getAll('accounts')) as Array<{
       id?: number; status?: string; activa?: boolean; openingBalanceDate?: string;
     }>;
-    // Solo fechas con formato válido `YYYY-MM(-DD)`: una fecha corrupta no debe
-    // colarse y dejar `desdeMes` fuera de rango (rompería el recorte/columnas).
-    const fechas = accounts
-      .filter((a) => a.id != null && (a.status === 'ACTIVE' || a.activa))
-      .map((a) => a.openingBalanceDate)
-      .filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}/.test(d))
-      .map((d) => (d.includes('T') ? d.split('T')[0] : d));
-    if (fechas.length === 0) return null;
-    const maxFecha = fechas.reduce((m, d) => (d > m ? d : m));
-    const m = /^(\d{4})-(\d{2})/.exec(maxFecha);
-    if (!m) return null;
-    const y = parseInt(m[1], 10);
-    const mo = parseInt(m[2], 10);
-    if (!Number.isFinite(y) || mo < 1 || mo > 12) return null;  // mes válido → month ∈ [0,11]
-    return { year: y, month: mo - 1, dateISO: maxFecha };
+    const maxFecha = maxOpeningBalanceDate(accounts);
+    if (!maxFecha) return null;   // sin observación → sin ancla ni recorte (no se congela nada)
+    await db.put('keyval', maxFecha, ANCLA_KEY);
+    return anclaFromISO(maxFecha);
   } catch {
     return null;
   }
