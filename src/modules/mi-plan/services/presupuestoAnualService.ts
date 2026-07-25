@@ -78,15 +78,33 @@ export interface TiraResumen {
   cierreAnio: { previsto: number; inicioCaja: number };
 }
 
+export type Modo = 'natural' | 'rodante';
+
+/** El ancla · la observación con fecha del saldo de las cuentas (sección 1.1).
+ *  `month` es 0-11. Es la MÁXIMA `openingBalanceDate` de las cuentas activas: el
+ *  único instante en que TODAS están observadas, así el total de partida es
+ *  completo. `null` si ninguna cuenta tiene fecha de observación. */
+export interface Ancla { year: number; month: number; dateISO: string; }
+
 export interface PresupuestoAnual {
   year: number;
-  /** Índice 0-11 del mes en curso del calendario si `year` es el año actual;
-   *  −1 en un año futuro. Solo marca la columna «hoy» · NO recorta el previsto. */
+  modo: Modo;
+  /** El ancla del saldo · `null` si no hay ninguna observación con fecha. */
+  ancla: Ancla | null;
+  /** Primera columna PINTADA (0-11). En modo natural del año del ancla vale el
+   *  mes del ancla (recorte · sección 1.3); en el resto vale 0. */
+  desdeMes: number;
+  /** Etiqueta de cada columna (12) · en rodante son los meses rodantes. */
+  mesLabels: string[];
+  /** Etiqueta de la columna de total: «Año» (natural) o «Total 12 meses» (rodante · sección 2). */
+  columnaAnioLabel: string;
+  /** Índice 0-11 de la columna del mes en curso; −1 si no cae en la vista. Marca
+   *  la columna «hoy» (borde oro · sección 1.4). NO recorta el previsto. */
   mesActualIndex: number;
   /** Qué meses están PUNTEADOS en Tesorería (reconciliados). Esta pantalla lo
    *  refleja, no lo decide (sección 1.3). Determina la marca y la cabecera. */
   punteado: boolean[];          // 12
-  /** Saldo de partida de enero · única lectura de cuentas (sección 1.1). */
+  /** Saldo observado en el ancla · única lectura de cuentas (sección 1.1). */
   saldoPartida: number;
   grupos: FilaGrupo[];
   teQueda: CeldaNeta[];         // 12 · flujo: Total entra − Total sale del mes
@@ -94,9 +112,12 @@ export interface PresupuestoAnual {
   residuoReal: number[];        // 12 · real no clasificable (regla 4.3.4)
   tira: TiraResumen;
   pie: string[];                // hasta 3 frases · [] si no hay nada que decir
+  /** Avisos de acción · meses ya transcurridos y sin puntear (sección 4.5). */
+  sinPuntear: string[];
 }
 
 const MESES = 12;
+const MES_ABBR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 const LABELS: Record<GrupoKey, string> = {
   nomina: 'Nómina',
   autonomo: 'Actividad de autónomo',
@@ -436,58 +457,41 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
   }
   const residuoReal = real.map((r, i) => (punteado[i] ? r.residuo : 0));
 
+  // El ANCLA (sección 1.1) · la observación con fecha del saldo. Recorta la vista:
+  // en el año del ancla, la tabla empieza en el mes del ancla (sección 1.3).
+  const ancla = await computeAncla();
+  const desdeMes = ancla && year === ancla.year ? ancla.month : 0;
+
   // Mes en curso del calendario · SOLO para marcar la columna «hoy». No recorta el
   // previsto (que está completo de enero a diciembre · corrige P1).
   const now = new Date();
   const mesActualIndex = year === now.getFullYear() ? now.getMonth() : -1;
 
-  // Construir las FilaGrupo con totales de año y motivo de vacío (regla 1).
-  const filas: FilaGrupo[] = ORDEN.map((key) => {
-    const cells = grupos.get(key)!;
-    const previstoAnio = round2(cells.reduce((s, c) => s + c.previsto, 0));
-    const fila: FilaGrupo = {
-      key,
-      label: LABELS[key],
-      signo: ENTRA.includes(key) ? 'entra' : 'sale',
-      desplegable: key !== 'impuestos',
-      meses: cells,
-    };
-    // Filas sin datos → vacías CON motivo (regla 1 · criterio 9). Nunca cero mudo.
-    const sinPrevisto = previstoAnio === 0 && cells.every((c) => c.desglose.length === 0);
-    if (sinPrevisto) {
-      if (key === 'hogar' || key === 'deseos') fila.vacio = { motivo: 'Sin compromisos recurrentes registrados' };
-      else if (key === 'inmuebles') fila.vacio = { motivo: 'Sin gastos de inmueble registrados' };
-      else if (key === 'alquileres') fila.vacio = { motivo: 'Sin inmuebles ni contratos' };
-      else if (key === 'impuestos') fila.vacio = { motivo: 'Sin previsión de impuestos calculable' };
-      else fila.vacio = { motivo: 'Sin datos registrados' };
-    }
-    return fila;
-  });
+  // Construir las FilaGrupo con motivo de vacío (regla 1).
+  const filas: FilaGrupo[] = ORDEN.map((key) => makeFila(key, grupos.get(key)!));
 
-  // Saldo de partida de enero · ÚNICA lectura de cuentas (sección 1.1).
+  // Saldo de PARTIDA · la ÚNICA lectura de cuentas (sección 1.1). En el año del
+  // ancla se lee en la FECHA DE LA OBSERVACIÓN (no el 1 de enero · sección 4.1):
+  // ese saldo ya contiene todo lo anterior. En años posteriores, el 1 de enero.
+  const cutoff = ancla && year === ancla.year ? ancla.dateISO : `${year}-01-01`;
   let saldoPartida = 0;
-  try { saldoPartida = round2(await calculateTotalInitialCash(`${year}-01-01`)); } catch { saldoPartida = 0; }
+  try { saldoPartida = round2(await calculateTotalInitialCash(cutoff)); } catch { saldoPartida = 0; }
 
-  // Te queda (FLUJO · Total entra − Total sale del mes) + Saldo a fin de mes (STOCK
-  // · escalera desde el saldo de partida). Ninguna celda lee saldo de tesorería.
-  const teQueda: CeldaNeta[] = [];
-  const saldoFinMes: CeldaNeta[] = [];
-  let acc = saldoPartida;
-  for (let i = 0; i < MESES; i++) {
-    const netoPrev = round2(filas.reduce((s, f) => s + f.meses[i].previsto, 0)); // firmado
-    const netoReal = punteado[i]
-      ? round2(filas.reduce((s, f) => s + (f.meses[i].real ?? 0), 0) + residuoReal[i])
-      : null;
-    teQueda.push({ previsto: netoPrev, real: netoReal });
-    acc = round2(acc + netoPrev);                     // escalera de PREVISTO (stock)
-    saldoFinMes.push({ previsto: acc, real: null });  // el saldo real es de Tesorería, no del presupuesto
-  }
-
-  const tira = buildTira(filas, teQueda, punteado, netoRealOficial, saldoPartida);
+  // Te queda (FLUJO) + Saldo a fin de mes (STOCK · escalera desde el saldo de
+  // partida, que NACE en el mes del ancla · sección 1.4). Ninguna celda lee saldo.
+  const { teQueda, saldoFinMes, tira } = ensamblarFlujoStock(
+    filas, punteado, residuoReal, netoRealOficial, saldoPartida, desdeMes,
+  );
   const pie = buildPie(filas);
+  const sinPuntear = buildSinPuntear(year, desdeMes, punteado, now);
 
   return {
     year,
+    modo: 'natural',
+    ancla,
+    desdeMes,
+    mesLabels: MES_ABBR.slice(),
+    columnaAnioLabel: 'Año',
     mesActualIndex,
     punteado,
     saldoPartida,
@@ -497,7 +501,183 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
     residuoReal,
     tira,
     pie,
+    sinPuntear,
   };
+}
+
+// ── El ancla · MÁX(openingBalanceDate) de las cuentas activas (sección 1.1) ──
+// Es el único instante en que TODAS las cuentas están observadas, así el saldo de
+// partida es completo. `null` si ninguna cuenta tiene fecha de observación → la
+// escalera cae al comportamiento previo (1 de enero), sin recorte.
+async function computeAncla(): Promise<Ancla | null> {
+  try {
+    const db = await initDB();
+    const accounts = (await db.getAll('accounts')) as Array<{
+      id?: number; status?: string; activa?: boolean; openingBalanceDate?: string;
+    }>;
+    const fechas = accounts
+      .filter((a) => a.id != null && (a.status === 'ACTIVE' || a.activa))
+      .map((a) => a.openingBalanceDate)
+      .filter((d): d is string => typeof d === 'string' && d.length >= 7)
+      .map((d) => (d.includes('T') ? d.split('T')[0] : d));
+    if (fechas.length === 0) return null;
+    const maxFecha = fechas.reduce((m, d) => (d > m ? d : m));
+    const [y, mo] = maxFecha.split('-').map((n) => parseInt(n, 10));
+    if (!Number.isFinite(y) || !Number.isFinite(mo)) return null;
+    return { year: y, month: mo - 1, dateISO: maxFecha };
+  } catch {
+    return null;
+  }
+}
+
+// ── Motivo de vacío por grupo (regla 1 · criterio 9). Nunca cero mudo ──
+function motivoVacio(key: GrupoKey): { motivo: string } {
+  if (key === 'hogar' || key === 'deseos') return { motivo: 'Sin compromisos recurrentes registrados' };
+  if (key === 'inmuebles') return { motivo: 'Sin gastos de inmueble registrados' };
+  if (key === 'alquileres') return { motivo: 'Sin inmuebles ni contratos' };
+  if (key === 'impuestos') return { motivo: 'Sin previsión de impuestos calculable' };
+  return { motivo: 'Sin datos registrados' };
+}
+
+function makeFila(key: GrupoKey, cells: CeldaGrupo[]): FilaGrupo {
+  const previstoAnio = round2(cells.reduce((s, c) => s + c.previsto, 0));
+  const fila: FilaGrupo = {
+    key,
+    label: LABELS[key],
+    signo: ENTRA.includes(key) ? 'entra' : 'sale',
+    desplegable: key !== 'impuestos',
+    meses: cells,
+  };
+  if (previstoAnio === 0 && cells.every((c) => c.desglose.length === 0)) {
+    fila.vacio = motivoVacio(key);
+  }
+  return fila;
+}
+
+// ── Flujo (Te queda) + Stock (Saldo) · compartido por natural y rodante ──
+// La escalera del saldo SOLO acumula desde `desdeMes` (nace en el ancla · 1.4).
+// Los meses anteriores al recorte no se pintan (el componente los omite).
+function ensamblarFlujoStock(
+  filas: FilaGrupo[],
+  punteado: boolean[],
+  residuoReal: number[],
+  netoRealOficial: (number | null)[],
+  saldoPartida: number,
+  desdeMes: number,
+): { teQueda: CeldaNeta[]; saldoFinMes: CeldaNeta[]; tira: TiraResumen } {
+  const teQueda: CeldaNeta[] = [];
+  const saldoFinMes: CeldaNeta[] = [];
+  let acc = saldoPartida;
+  for (let i = 0; i < MESES; i++) {
+    const netoPrev = round2(filas.reduce((s, f) => s + f.meses[i].previsto, 0)); // firmado
+    const netoReal = punteado[i]
+      ? round2(filas.reduce((s, f) => s + (f.meses[i].real ?? 0), 0) + residuoReal[i])
+      : null;
+    teQueda.push({ previsto: netoPrev, real: netoReal });
+    if (i >= desdeMes) acc = round2(acc + netoPrev);   // escalera de PREVISTO (stock)
+    saldoFinMes.push({ previsto: i >= desdeMes ? acc : 0, real: null });
+  }
+  const tira = buildTira(filas, teQueda, punteado, netoRealOficial, saldoPartida, desdeMes);
+  return { teQueda, saldoFinMes, tira };
+}
+
+// ── Meses ya transcurridos y sin puntear · acción, en TEXTO (sección 4.5) ──
+// «marzo lleva cuatro meses sin puntear». Solo meses pintados (>= recorte) que ya
+// pasaron por calendario. Si está punteado, no dice nada. En rodante no hay
+// transcurridos (empieza en el mes en curso), así que sale vacío.
+function buildSinPuntear(
+  year: number, desdeMes: number, punteado: boolean[], now: Date,
+): string[] {
+  const cy = now.getFullYear();
+  const cm = now.getMonth();
+  const out: string[] = [];
+  for (let i = desdeMes; i < MESES; i++) {
+    const transcurrido = year < cy || (year === cy && i < cm);
+    if (!transcurrido || punteado[i]) continue;
+    const n = (cy - year) * 12 + (cm - i);            // meses que lleva sin puntear
+    out.push(`${cap(NOMBRE_MES[i])} lleva ${n === 1 ? 'un mes' : `${n} meses`} sin puntear`);
+  }
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MODO RODANTE · doce meses desde el mes en curso hacia delante (sección 2)
+// ─────────────────────────────────────────────────────────────────────────
+// Cose dos años naturales y recompone la escalera de forma CONTINUA a través del
+// cambio de año. La columna de total se llama «Total 12 meses» (no es año fiscal).
+async function buildPresupuestoRodante(): Promise<PresupuestoAnual> {
+  const now = new Date();
+  const yA = now.getFullYear();
+  const startMonth = now.getMonth();
+  const yB = yA + 1;
+
+  // Los dos años naturales que cubre la ventana rodante.
+  const [a, b] = await Promise.all([buildPresupuestoAnual(yA), buildPresupuestoAnual(yB)]);
+  // columna j (0-11) → mes calendario del año A (si startMonth+j<12) o del B.
+  const src = (j: number): { p: PresupuestoAnual; m: number; yr: number } => {
+    const t = startMonth + j;
+    return t < 12 ? { p: a, m: t, yr: yA } : { p: b, m: t - 12, yr: yB };
+  };
+
+  // Grupos recompuestos columna a columna (mismas celdas, reordenadas).
+  const filas: FilaGrupo[] = ORDEN.map((key) => {
+    const gA = a.grupos.find((f) => f.key === key)!;
+    const gB = b.grupos.find((f) => f.key === key)!;
+    const cells: CeldaGrupo[] = Array.from({ length: MESES }, (_, j) => {
+      const { p, m } = src(j);
+      return (p === a ? gA : gB).meses[m];
+    });
+    return makeFila(key, cells);
+  });
+
+  const punteado = Array.from({ length: MESES }, (_, j) => { const { p, m } = src(j); return p.punteado[m]; });
+  const residuoReal = Array.from({ length: MESES }, (_, j) => { const { p, m } = src(j); return p.residuoReal[m]; });
+  // La cabecera usa el real por grupo de las celdas (teQueda.real) · sin comparativa
+  // por año cruzado. Se pasa null para que buildTira caiga a teQueda.real.
+  const netoRealOficial: (number | null)[] = Array.from({ length: MESES }, () => null);
+
+  // Saldo de partida · observado en el mes en curso (nace aquí · 1.4). Si el mes en
+  // curso es el mes del ancla, se lee en la fecha exacta de la observación.
+  const ancla = a.ancla;
+  const startFirst = `${yA}-${String(startMonth + 1).padStart(2, '0')}-01`;
+  const cutoff = ancla && ancla.year === yA && ancla.month === startMonth ? ancla.dateISO : startFirst;
+  let saldoPartida = 0;
+  try { saldoPartida = round2(await calculateTotalInitialCash(cutoff)); } catch { saldoPartida = 0; }
+
+  // Escalera continua · desdeMes = 0 (las 12 columnas se pintan).
+  const { teQueda, saldoFinMes, tira } = ensamblarFlujoStock(
+    filas, punteado, residuoReal, netoRealOficial, saldoPartida, 0,
+  );
+
+  // Etiquetas de columna rodantes · el año se marca en cada enero (cruce · 2).
+  const mesLabels = Array.from({ length: MESES }, (_, j) => {
+    const { m, yr } = src(j);
+    return m === 0 ? `${MES_ABBR[0]} ${String(yr).slice(2)}` : MES_ABBR[m];
+  });
+
+  return {
+    year: yA,
+    modo: 'rodante',
+    ancla,
+    desdeMes: 0,
+    mesLabels,
+    columnaAnioLabel: 'Total 12 meses',
+    mesActualIndex: 0,             // la primera columna ES el mes en curso
+    punteado,
+    saldoPartida,
+    grupos: filas,
+    teQueda,
+    saldoFinMes,
+    residuoReal,
+    tira,
+    pie: buildPie(filas),
+    sinPuntear: [],               // rodante empieza en el mes en curso · nada transcurrido
+  };
+}
+
+/** Punto de entrada único del componente · elige natural o rodante (sección 2). */
+export async function buildPresupuesto(opts: { modo: Modo; year: number }): Promise<PresupuestoAnual> {
+  return opts.modo === 'rodante' ? buildPresupuestoRodante() : buildPresupuestoAnual(opts.year);
 }
 
 // ── La tira superior (sección 4.1) ──
@@ -507,10 +687,11 @@ function buildTira(
   punteado: boolean[],
   netoRealOficial: (number | null)[],
   saldoPartida: number,
+  desdeMes: number,
 ): TiraResumen {
-  // Las cifras se derivan de la tabla pintada; los meses «cerrados» son los
-  // PUNTEADOS, no los que han pasado por calendario (corrige P3).
-  const idx = punteado.map((p, i) => (p ? i : -1)).filter((i) => i >= 0);
+  // Las cifras se derivan de la tabla PINTADA; los meses «cerrados» son los
+  // PUNTEADOS dentro del recorte, no los que han pasado por calendario (P3 · 1.3).
+  const idx = punteado.map((p, i) => (p && i >= desdeMes ? i : -1)).filter((i) => i >= 0);
   let previstoAcc = 0;
   let realAcc = 0;
   for (const i of idx) {
@@ -530,16 +711,18 @@ function buildTira(
     .sort((a, b) => Math.abs(b.importe) - Math.abs(a.importe))
     .slice(0, 2);
 
-  // Mes más justo del año (menor "Te queda" previsto).
+  // Mes más justo del año (menor "Te queda" previsto) · solo meses pintados.
   let mesMasJusto: { mes: number; teQueda: number } | null = null;
-  for (let i = 0; i < MESES; i++) {
+  for (let i = desdeMes; i < MESES; i++) {
     if (mesMasJusto == null || teQueda[i].previsto < mesMasJusto.teQueda) {
       mesMasJusto = { mes: i + 1, teQueda: teQueda[i].previsto };
     }
   }
 
-  // Cierre del año = saldo final = saldo de partida + Σ Te queda previsto (stock).
-  const cierrePrevisto = round2(saldoPartida + teQueda.reduce((s, c) => s + c.previsto, 0));
+  // Cierre = saldo final = saldo de partida + Σ Te queda previsto pintado (stock).
+  const cierrePrevisto = round2(
+    saldoPartida + teQueda.reduce((s, c, i) => (i >= desdeMes ? s + c.previsto : s), 0),
+  );
 
   return {
     previstoAcumulado: previstoAcc,
