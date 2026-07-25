@@ -9,25 +9,26 @@ jest.mock('../../services/presupuestoAnualService', () => {
     Array.from({ length: 12 }, () => ({ previsto, real: null, desglose: [] }));
   const FAKE = {
     year: 2026,
-    esFuturo: true,
-    mesActualIndex: -1,
+    mesActualIndex: 6,
+    punteado: Array(12).fill(false),
+    saldoPartida: 14740,
     grupos: [
       { key: 'nomina', label: 'Nómina', signo: 'entra', desplegable: true, meses: meses(4200), totalAnio: { previsto: 50400, real: null } },
       { key: 'autonomo', label: 'Actividad de autónomo', signo: 'entra', desplegable: true, meses: meses(1500), totalAnio: { previsto: 18000, real: null } },
       { key: 'alquileres', label: 'Alquileres', signo: 'entra', desplegable: true, meses: meses(500), totalAnio: { previsto: 6000, real: null } },
       { key: 'hogar', label: 'Hogar y familia', signo: 'sale', desplegable: true, meses: meses(0), totalAnio: { previsto: 0, real: null }, vacio: { motivo: 'Sin compromisos recurrentes registrados' } },
-      { key: 'inmuebles', label: 'Tus inmuebles', signo: 'sale', desplegable: true, meses: meses(0), totalAnio: { previsto: 0, real: null }, vacio: { motivo: 'Sin compromisos recurrentes registrados' } },
+      { key: 'inmuebles', label: 'Tus inmuebles', signo: 'sale', desplegable: true, meses: meses(0), totalAnio: { previsto: 0, real: null }, vacio: { motivo: 'Sin gastos de inmueble registrados' } },
       { key: 'deuda', label: 'Deuda', signo: 'sale', desplegable: true, meses: meses(-720), totalAnio: { previsto: -8640, real: null } },
       { key: 'impuestos', label: 'Impuestos', signo: 'sale', desplegable: false, meses: meses(-137), totalAnio: { previsto: -1637, real: null } },
       { key: 'deseos', label: 'Deseos', signo: 'sale', desplegable: true, meses: meses(0), totalAnio: { previsto: 0, real: null }, vacio: { motivo: 'Sin compromisos recurrentes registrados' } },
     ],
     teQueda: Array.from({ length: 12 }, () => ({ previsto: 5343, real: null })),
-    saldoFinMes: Array.from({ length: 12 }, () => ({ previsto: 5343, real: null })),
+    saldoFinMes: Array.from({ length: 12 }, (_, i) => ({ previsto: 14740 + 5343 * (i + 1), real: null })),
     residuoReal: Array(12).fill(0),
     tira: {
       previstoAcumulado: 0, realAcumulado: 0, mesesCerrados: 0, desviacion: 0,
       desviacionConceptos: [], mesMasJusto: { mes: 8, teQueda: 5343 },
-      cierreAnio: { previsto: 64116, inicioCaja: 0 },
+      cierreAnio: { previsto: 78856, inicioCaja: 14740 },
     },
     pie: [],
   };
