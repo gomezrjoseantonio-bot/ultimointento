@@ -7,8 +7,14 @@ import ProyeccionPage from '../ProyeccionPage';
 jest.mock('../../services/presupuestoAnualService', () => {
   const meses = (previsto: number) =>
     Array.from({ length: 12 }, () => ({ previsto, real: null, desglose: [] }));
+  const ABBR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   const FAKE = {
     year: 2026,
+    modo: 'natural',
+    ancla: null,
+    desdeMes: 0,
+    mesLabels: ABBR,
+    columnaAnioLabel: 'Año',
     mesActualIndex: 6,
     punteado: Array(12).fill(false),
     saldoPartida: 14740,
@@ -31,9 +37,10 @@ jest.mock('../../services/presupuestoAnualService', () => {
       cierreAnio: { previsto: 78856, inicioCaja: 14740 },
     },
     pie: [],
+    sinPuntear: [],
   };
   // Función plana (no jest.fn) · CRA activa resetMocks y vaciaría su implementación.
-  return { buildPresupuestoAnual: () => Promise.resolve(FAKE) };
+  return { buildPresupuesto: () => Promise.resolve(FAKE) };
 });
 
 describe('ProyeccionPage · smoke', () => {
