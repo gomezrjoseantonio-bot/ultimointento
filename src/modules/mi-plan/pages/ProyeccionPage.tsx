@@ -73,17 +73,16 @@ const ProyeccionPage: React.FC = () => {
   const punteado = data?.punteado ?? Array(12).fill(false);
   const mesActual = data?.mesActualIndex ?? -1;
 
-  // Celda de grupo/hijo: SIEMPRE muestra el previsto (magnitud). Los meses
-  // punteados se marcan (clase `real`); si en un mes punteado el real se desvía,
-  // se subraya (`desv`). El valor mostrado no cambia: el previsto está completo.
+  // Celda de grupo/hijo: en un mes PUNTEADO (Tesorería tiene actividad
+  // conciliada · 1.3) se pinta el REAL; el resto de meses pintan el previsto
+  // (que está calculado completo de enero a diciembre). El previsto se calcula
+  // siempre; lo que se PINTA depende de si el mes está punteado. Si en un mes
+  // punteado el real se desvía, la desviación colorea ese mismo número (`desv`).
   const celdaGrupo = (cell: FilaGrupo['meses'][number], i: number): React.ReactNode => {
     const punt = punteado[i];
-    const hayReal = punt && cell.real != null;
-    const desv = hayReal && significativa(cell.real as number, cell.previsto);
-    // Mes punteado → se pinta el REAL; el resto → el previsto (el previsto está
-    // calculado completo; lo que está punteado lo decide Tesorería · 1.3). La
-    // desviación colorea ese mismo número (clase `desv`), no lo subraya.
-    const valor = hayReal ? (cell.real as number) : cell.previsto;
+    const real = punt ? cell.real : null; // number | null (narrowing directo, sin cast)
+    const desv = real != null && significativa(real, cell.previsto);
+    const valor = real != null ? real : cell.previsto;
     return (
       <span key={i} className={`yc ${punt ? 'real' : 'fut'}${desv ? ' desv' : ''}`}>
         {fmt(Math.abs(valor))}
