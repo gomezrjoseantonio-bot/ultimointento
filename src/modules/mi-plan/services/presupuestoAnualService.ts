@@ -62,7 +62,6 @@ export interface FilaGrupo {
   signo: Signo;
   desplegable: boolean;         // Impuestos = false (sección 4.2 · sin chevron)
   meses: CeldaGrupo[];          // 12
-  totalAnio: { previsto: number; real: number | null };
   /** Si la fila no tiene datos, sale vacía DICIENDO por qué (regla 1). */
   vacio?: { motivo: string };
 }
@@ -446,16 +445,12 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
   const filas: FilaGrupo[] = ORDEN.map((key) => {
     const cells = grupos.get(key)!;
     const previstoAnio = round2(cells.reduce((s, c) => s + c.previsto, 0));
-    const realAnio = cells.some((c) => c.real != null)
-      ? round2(cells.reduce((s, c) => s + (c.real ?? 0), 0))
-      : null;
     const fila: FilaGrupo = {
       key,
       label: LABELS[key],
       signo: ENTRA.includes(key) ? 'entra' : 'sale',
       desplegable: key !== 'impuestos',
       meses: cells,
-      totalAnio: { previsto: previstoAnio, real: realAnio },
     };
     // Filas sin datos → vacías CON motivo (regla 1 · criterio 9). Nunca cero mudo.
     const sinPrevisto = previstoAnio === 0 && cells.every((c) => c.desglose.length === 0);

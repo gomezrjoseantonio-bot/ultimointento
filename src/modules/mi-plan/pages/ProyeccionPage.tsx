@@ -78,10 +78,15 @@ const ProyeccionPage: React.FC = () => {
   // se subraya (`desv`). El valor mostrado no cambia: el previsto está completo.
   const celdaGrupo = (cell: FilaGrupo['meses'][number], i: number): React.ReactNode => {
     const punt = punteado[i];
-    const desv = punt && cell.real != null && significativa(cell.real, cell.previsto);
+    const hayReal = punt && cell.real != null;
+    const desv = hayReal && significativa(cell.real as number, cell.previsto);
+    // Mes punteado → se pinta el REAL; el resto → el previsto (el previsto está
+    // calculado completo; lo que está punteado lo decide Tesorería · 1.3). La
+    // desviación colorea ese mismo número (clase `desv`), no lo subraya.
+    const valor = hayReal ? (cell.real as number) : cell.previsto;
     return (
       <span key={i} className={`yc ${punt ? 'real' : 'fut'}${desv ? ' desv' : ''}`}>
-        {fmt(Math.abs(cell.previsto))}
+        {fmt(Math.abs(valor))}
       </span>
     );
   };
