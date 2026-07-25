@@ -31,9 +31,12 @@ const SUBTABS: SubTabsConfig = {
     { label: 'Individual', path: '/inversiones/individual' },
   ],
   // fiscalidad: No tabs - single supervision view with interactive chart
+  // PANTALLA-PRESUPUESTO · el presupuesto se unificó en /mi-plan/proyeccion; se
+  // retiran las pestañas cruzadas 'Proyección'/'Presupuesto' que apuntaban a las
+  // dos pantallas Horizon borradas. Quedan las rutas /proyeccion vivas.
   proyeccion: [
-    { label: 'Proyección', path: '/proyeccion/presupuesto' },
-    { label: 'Presupuesto', path: '/proyeccion/comparativa' },
+    { label: 'Escenarios', path: '/proyeccion/escenarios' },
+    { label: 'Valoraciones', path: '/proyeccion/valoraciones' },
     { label: 'Real vs Previsión', path: '/proyeccion/mensual' },
   ],
 };

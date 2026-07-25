@@ -1,0 +1,152 @@
+/* PANTALLA-PRESUPUESTO · la vista del año · estilos
+   Fiel a `atlas-mi-plan-e2e2.html` vista v-pre. TODOS los colores por token V5
+   (--atlas-v5-*). Cero hex sueltos. Scope bajo `.presAnual`. */
+
+.presAnual { max-width: 1420px; margin: 0 auto; }
+
+/* ── Cabecera · controles dentro de la misma fila que el título ── */
+.presAnual .head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 18px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.presAnual .h1 {
+  font-size: 32px; font-weight: 700; color: var(--atlas-v5-ink);
+  letter-spacing: -.03em; line-height: 1.12;
+}
+.presAnual .hsub { font-size: 13.5px; color: var(--atlas-v5-ink-4); margin-top: 7px; line-height: 1.5; }
+.presAnual .ctl { display: flex; gap: 9px; align-items: center; }
+.presAnual .anosel {
+  display: flex; align-items: center; gap: 3px; background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line); border-radius: 9px; padding: 4px;
+}
+.presAnual .anosel button {
+  border: none; background: transparent; color: var(--atlas-v5-ink-4);
+  cursor: pointer; display: flex; padding: 5px; border-radius: 6px;
+}
+.presAnual .anosel button:hover { background: var(--atlas-v5-card-alt); color: var(--atlas-v5-gold-ink); }
+.presAnual .anosel span {
+  font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700;
+  color: var(--atlas-v5-ink); padding: 0 8px; min-width: 52px; text-align: center;
+}
+.presAnual .tabs { display: flex; gap: 5px; }
+.presAnual .tb {
+  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card); font-size: 12.5px; font-weight: 600;
+  color: var(--atlas-v5-ink-4); cursor: pointer; font-family: inherit;
+}
+.presAnual .tb.on { background: var(--atlas-v5-brand); color: var(--atlas-v5-on-navy-1); border-color: var(--atlas-v5-brand); }
+
+/* ── La tira superior ── */
+.presAnual .tira {
+  display: flex; align-items: center; gap: 0; background: var(--atlas-v5-brand);
+  border-top: 3px solid var(--atlas-v5-gold); border-radius: 11px;
+  margin-bottom: 11px; overflow: hidden;
+}
+.presAnual .ti { padding: 13px 20px; border-right: 1px solid var(--atlas-v5-brand-2); flex: 1; }
+.presAnual .ti:last-child { border-right: none; }
+.presAnual .ti-l {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--atlas-v5-on-navy-5);
+}
+.presAnual .ti-v {
+  font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700;
+  color: var(--atlas-v5-on-navy-1); margin-top: 4px;
+}
+.presAnual .ti-v.gold { color: var(--atlas-v5-gold-soft); }
+.presAnual .ti-v.mal { color: var(--atlas-v5-warn); }
+.presAnual .ti-s { font-size: 10.5px; color: var(--atlas-v5-on-navy-4); margin-top: 2px; }
+
+/* ── La tabla ── */
+.presAnual .tab-c {
+  background: var(--atlas-v5-card); border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px; overflow: hidden;
+}
+.presAnual .yl {
+  display: grid; grid-template-columns: 214px repeat(12, 1fr) 80px;
+  align-items: center; border-bottom: 1px solid var(--atlas-v5-line-3);
+}
+.presAnual .yl:last-child { border-bottom: none; }
+.presAnual .yl.pad { cursor: pointer; }
+.presAnual .yl.pad:hover { background: var(--atlas-v5-card-alt); }
+.presAnual .yl.head { background: var(--atlas-v5-brand); border-bottom: none; }
+.presAnual .yl.head .ycon {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--atlas-v5-on-navy-4); padding: 9px 14px;
+}
+.presAnual .yl.head .yc {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--atlas-v5-on-navy-4);
+  padding: 9px 5px; text-align: right;
+}
+.presAnual .yl.head .yc.hoy { color: var(--atlas-v5-gold-soft); }
+.presAnual .yl.head .yc.tot { background: var(--atlas-v5-brand-2); color: var(--atlas-v5-on-navy-3); padding-right: 11px; }
+
+.presAnual .ycon {
+  font-size: 12px; font-weight: 600; color: var(--atlas-v5-ink-2); padding: 10px 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 7px;
+}
+.presAnual .ycon em {
+  font-style: normal; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--atlas-v5-ink-5); background: var(--atlas-v5-card-alt);
+  padding: 1px 6px; border-radius: 4px; margin-left: auto;
+}
+.presAnual .chv { display: inline-block; color: var(--atlas-v5-ink-5); font-size: 14px; transition: transform .15s; width: 9px; }
+.presAnual .chv.op { transform: rotate(90deg); color: var(--atlas-v5-gold-ink); }
+
+.presAnual .yc { font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: right; padding: 10px 5px; position: relative; }
+.presAnual .yc.real { color: var(--atlas-v5-ink-2); font-weight: 600; }
+.presAnual .yc.fut { color: var(--atlas-v5-ink-5); }
+.presAnual .yc.tot { background: var(--atlas-v5-card-alt); font-weight: 700; color: var(--atlas-v5-ink); font-size: 11.5px; padding-right: 11px; }
+.presAnual .yc.desv { color: var(--atlas-v5-warn); font-weight: 700; }
+.presAnual .yc.desv:after {
+  content: ''; position: absolute; left: 4px; right: 4px; bottom: 4px;
+  height: 2px; border-radius: 1px; background: var(--atlas-v5-warn); opacity: .35;
+}
+
+.presAnual .ygrp {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--atlas-v5-ink-3); padding: 10px 14px 6px; background: var(--atlas-v5-card-alt);
+  border-bottom: 1px solid var(--atlas-v5-line-2); border-top: 1px solid var(--atlas-v5-line-2);
+}
+.presAnual .hijos { background: var(--atlas-v5-bg); }
+.presAnual .yl.hijo .ycon { padding-left: 34px; font-weight: 400; font-size: 11.5px; color: var(--atlas-v5-ink-3); }
+.presAnual .yl.hijo .yc { font-size: 10.5px; padding: 7px 5px; }
+.presAnual .yl.hijo.cero .ycon, .presAnual .yl.hijo.cero .yc { color: var(--atlas-v5-ink-5); }
+
+.presAnual .yl.sum { background: var(--atlas-v5-card-alt); }
+.presAnual .yl.sum .ycon, .presAnual .yl.sum .yc { font-weight: 700; color: var(--atlas-v5-ink); }
+.presAnual .yl.queda { background: var(--atlas-v5-brand-wash); border-top: 2px solid var(--atlas-v5-brand); }
+.presAnual .yl.queda .ycon { font-weight: 700; color: var(--atlas-v5-ink); }
+.presAnual .yl.queda .yc { font-weight: 700; color: var(--atlas-v5-brand); font-size: 11.5px; }
+.presAnual .yl.saldo { background: var(--atlas-v5-brand); border-top: 2px solid var(--atlas-v5-gold); }
+.presAnual .yl.saldo .ycon { font-weight: 700; color: var(--atlas-v5-on-navy-1); }
+.presAnual .yl.saldo .yc { font-weight: 700; color: var(--atlas-v5-gold-soft); font-size: 11.5px; }
+.presAnual .yl.saldo .yc.tot { background: var(--atlas-v5-brand-2); color: var(--atlas-v5-gold-soft); }
+
+/* fila vacía con motivo (regla 1) */
+.presAnual .yl.vacia .ycon { color: var(--atlas-v5-ink-4); }
+.presAnual .yl.vacia .motivo { grid-column: 2 / -1; font-size: 11px; color: var(--atlas-v5-ink-5); padding: 10px 14px; text-align: left; font-style: italic; }
+
+/* ── Pie de lectura (avisos) ── */
+.presAnual .avisos { display: flex; flex-direction: column; gap: 7px; margin-top: 11px; }
+.presAnual .av {
+  display: flex; align-items: center; gap: 11px; background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line); border-radius: 9px; padding: 9px 13px;
+}
+.presAnual .av-p { width: 3px; height: 20px; border-radius: 2px; background: var(--atlas-v5-ink-5); flex-shrink: 0; }
+.presAnual .av-c { font-size: 12px; color: var(--atlas-v5-ink-4); line-height: 1.45; }
+
+/* ── Estado vacío honesto (A largo plazo · 4.5) ── */
+.presAnual .vacio-lp {
+  background: var(--atlas-v5-card); border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px; padding: 48px 32px; text-align: center;
+}
+.presAnual .vacio-lp .icono { color: var(--atlas-v5-ink-5); margin-bottom: 14px; display: flex; justify-content: center; }
+.presAnual .vacio-lp .titulo { font-size: 15px; font-weight: 700; color: var(--atlas-v5-ink-2); margin-bottom: 8px; }
+.presAnual .vacio-lp .texto { font-size: 13px; color: var(--atlas-v5-ink-4); line-height: 1.5; max-width: 460px; margin: 0 auto; }
+
+.presAnual .cargando, .presAnual .tabla-vacia {
+  padding: 40px; text-align: center; color: var(--atlas-v5-ink-4); font-size: 13px;
+}
+.presAnual .tabla-scroll { overflow-x: auto; }

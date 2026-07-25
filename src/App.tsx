@@ -179,12 +179,13 @@ const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/
 const ImpuestosSupervisionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/supervision/ImpuestosSupervisionPage'));
 const DeclaracionCompletaPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionCompletaPage'));
 
-const ProyeccionComparativa = lazyWithPreload(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
+// PANTALLA-PRESUPUESTO · ProyeccionComparativa y PresupuestosView retirados · el
+// presupuesto vive ahora en una sola pantalla en /mi-plan/proyeccion. Se conserva
+// `comparativaService.getActualData`, que la pantalla nueva sigue usando.
 const ProyeccionEscenarios = lazyWithPreload(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
 const ProyeccionValoraciones = lazyWithPreload(() => import('./modules/horizon/proyeccion/valoraciones/Valoraciones'));
 const ProyeccionMensual = lazyWithPreload(() => import('./modules/horizon/proyeccion/mensual/ProyeccionMensual'));
 const InformesPage = lazyWithPreload(() => import('./modules/horizon/informes/InformesPage'));
-const PresupuestosView = lazyWithPreload(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestosView'));
 const UsuariosRoles = lazyWithPreload(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = lazyWithPreload(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
 // S-WIZARD-INMUEBLE-V4 · pantalla única estilo ATLAS v8 · reemplaza PropertyForm legacy.
@@ -1164,21 +1165,13 @@ function App() {
             </Route>
 
             <Route path="proyeccion">
-              <Route index element={<Navigate to="/proyeccion/presupuesto" replace />} />
+              <Route index element={<Navigate to="/proyeccion/escenarios" replace />} />
               <Route path="cartera" element={<Navigate to="/inmuebles/cartera" replace />} />
-              <Route path="consolidado" element={<Navigate to="/proyeccion/comparativa" replace />} />
-              
-              {/* Main proyeccion tabs */}
-              <Route path="presupuesto" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PresupuestosView />
-                </React.Suspense>
-              } />
-              <Route path="comparativa" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <ProyeccionComparativa />
-                </React.Suspense>
-              } />
+              {/* PANTALLA-PRESUPUESTO · el presupuesto se unificó en /mi-plan/proyeccion.
+                  Enlaces antiguos redirigen ahí; no hay pantalla de presupuesto aquí. */}
+              <Route path="consolidado" element={<Navigate to="/mi-plan/proyeccion" replace />} />
+              <Route path="presupuesto" element={<Navigate to="/mi-plan/proyeccion" replace />} />
+              <Route path="comparativa" element={<Navigate to="/mi-plan/proyeccion" replace />} />
               <Route path="escenarios" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <ProyeccionEscenarios />
