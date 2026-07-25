@@ -103,22 +103,23 @@ const ProyeccionPage: React.FC = () => {
   );
   const gridStyle = { '--pa-cols': cols.length } as React.CSSProperties;
 
-  // Celda de grupo/hijo: en un mes PUNTEADO se pinta el REAL; el resto pinta el
-  // previsto. La desviación colorea ese mismo número (`desv`), no lo subraya. El
-  // mes en curso lleva el borde oro (`enc`) · marca «aquí estás» (1.4).
+  // Celda de grupo/hijo: el punteo es del GRUPO, no del mes (1.1). Si el grupo tiene
+  // real ese mes (`cell.real != null`) se pinta el real; si no, el previsto (nunca 0
+  // mudo). La desviación colorea ese mismo número (`desv`). El mes en curso lleva el
+  // borde oro (`enc`) · «aquí estás» (1.4).
   const celdaGrupo = (cell: FilaGrupo['meses'][number], i: number): React.ReactNode => {
-    const punt = punteado[i];
-    const real = punt ? cell.real : null; // number | null (narrowing directo, sin cast)
+    const real = cell.real; // number | null · null → el grupo no conció ese mes
     const desv = real != null && significativa(real, cell.previsto);
-    const valor = real != null ? real : cell.previsto;
+    const valor = real != null ? real : cell.previsto; // efectivo
     const enc = i === mesActual ? ' enc' : '';
     return (
-      <span key={i} className={`yc ${punt ? 'real' : 'fut'}${desv ? ' desv' : ''}${enc}`}>
+      <span key={i} className={`yc ${real != null ? 'real' : 'fut'}${desv ? ' desv' : ''}${enc}`}>
         {fmt(Math.abs(valor))}
       </span>
     );
   };
-  // Total de la fila · SOLO sobre los meses pintados (respeta el recorte).
+  // Total de año de la fila · el previsto es el plan (la columna Año es correcta en
+  // previsto · P1); solo sobre los meses pintados (respeta el recorte).
   const anioAbs = (meses: FilaGrupo['meses']): number =>
     Math.abs(cols.reduce((s, i) => s + meses[i].previsto, 0));
 
@@ -169,28 +170,37 @@ const ProyeccionPage: React.FC = () => {
     );
   };
 
-  // Fila de total/queda/saldo: valor FIRMADO del previsto (Te queda y Saldo pueden
-  // ser negativos). Nunca lee el saldo de tesorería. El total del saldo es el del
-  // último mes pintado (stock); el resto suma los meses pintados (flujo).
-  const filaTotal = (label: string, cls: string, meses: CeldaNeta[], anioEsSaldo = false): React.ReactNode => (
-    <div className={`yl ${cls}`}>
-      <span className="ycon">{label}</span>
-      {cols.map((i) => (
-        <span key={i} className={`yc ${punteado[i] ? 'real' : 'fut'}${i === mesActual ? ' enc' : ''}`}>{fmt(meses[i].previsto)}</span>
-      ))}
-      <span className="yc tot">
-        {fmt(anioEsSaldo ? meses[11].previsto : cols.reduce((s, i) => s + meses[i].previsto, 0))}
-      </span>
-    </div>
-  );
+  // Fila de total/queda/saldo: valor EFECTIVO firmado (real donde lo hay, previsto
+  // donde no · 1.2). Nunca lee el saldo de tesorería. El total del saldo es el del
+  // último mes pintado (stock); el resto suma los meses pintados (flujo). `saleAbs`
+  // muestra la magnitud (Total sale se ve positivo aunque el flujo sea negativo).
+  const filaTotal = (
+    label: string, cls: string, meses: CeldaNeta[], anioEsSaldo = false, saleAbs = false,
+  ): React.ReactNode => {
+    const disp = (v: number): number => (saleAbs ? Math.abs(v) : v);
+    const suma = cols.reduce((s, i) => s + meses[i].efectivo, 0);
+    return (
+      <div className={`yl ${cls}`}>
+        <span className="ycon">{label}</span>
+        {cols.map((i) => (
+          <span key={i} className={`yc ${punteado[i] ? 'real' : 'fut'}${i === mesActual ? ' enc' : ''}`}>{fmt(disp(meses[i].efectivo))}</span>
+        ))}
+        <span className="yc tot">{fmt(anioEsSaldo ? meses[11].efectivo : disp(suma))}</span>
+      </div>
+    );
+  };
 
   const entra = data?.grupos.filter((g) => g.signo === 'entra') ?? [];
   const sale = data?.grupos.filter((g) => g.signo === 'sale') ?? [];
+  // Total de un conjunto de grupos por mes · EFECTIVO firmado (real donde lo hay).
+  // Firmado, sin Math.abs: así un autónomo en pérdidas RESTA de «Total entra» y
+  // Total entra − Total sale = Te queda con los números que se ven (P3 · criterio 1).
   const totalMeses = (grupos: FilaGrupo[]): CeldaNeta[] =>
-    Array.from({ length: 12 }, (_, i) => ({
-      previsto: grupos.reduce((s, g) => s + Math.abs(g.meses[i].previsto), 0),
-      real: null,
-    }));
+    Array.from({ length: 12 }, (_, i) => {
+      const efectivo = grupos.reduce((s, g) => s + (g.meses[i].real ?? g.meses[i].previsto), 0);
+      const previsto = grupos.reduce((s, g) => s + g.meses[i].previsto, 0);
+      return { previsto, real: null, efectivo };
+    });
 
   const rangoRodante = data ? `${mesLabels[cols[0]]} – ${mesLabels[cols[cols.length - 1]]}` : '';
 
@@ -295,7 +305,7 @@ const ProyeccionPage: React.FC = () => {
 
                 <div className="ygrp">Sale</div>
                 {sale.map(filaGrupo)}
-                {filaTotal('Total sale', 'sum', totalMeses(sale))}
+                {filaTotal('Total sale', 'sum', totalMeses(sale), false, true)}
 
                 {filaTotal('Te queda', 'queda', data.teQueda)}
                 {filaTotal('Saldo a fin de mes', 'saldo', data.saldoFinMes, true)}

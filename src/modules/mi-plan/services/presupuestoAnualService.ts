@@ -66,7 +66,10 @@ export interface FilaGrupo {
   vacio?: { motivo: string };
 }
 
-export interface CeldaNeta { previsto: number; real: number | null; }
+// `efectivo` = el valor que se PINTA y con el que corre la escalera: el real
+// donde lo hay (grupo con actividad conciliada ese mes), el previsto donde no
+// (sección 1.2). `real` es el neto reconciliado del mes (flujo · para la cabecera).
+export interface CeldaNeta { previsto: number; real: number | null; efectivo: number; }
 
 export interface TiraResumen {
   previstoAcumulado: number;                 // ahorro previsto hasta el mes actual
@@ -389,6 +392,9 @@ export async function buildReal(year: number): Promise<RealMes[]> {
   // 2) Movimientos conciliados SIN evento asociado · inferir bolsa por categoría
   for (const mv of allMovs) {
     if (mv.unifiedStatus !== 'conciliado') continue;
+    // El saldo de apertura NO es un flujo · es el stock de partida. Contarlo aquí
+    // inflaba el real de la cabecera con la caja (corrige P5 · «Llevas de verdad»).
+    if ((mv as { isOpeningBalance?: boolean }).isOpeningBalance) continue;
     if (mv.id != null && usados.has(mv.id as number)) continue;
     const d = mv.date ? new Date(mv.date) : null;
     if (!d || d.getFullYear() !== year) continue;
@@ -447,14 +453,17 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
     // sin comparativa → cabecera sin real
   }
 
-  // Real por grupo en las celdas · solo meses punteados (el resto no ha pasado · no
-  // se rellena con nada).
+  // Real por grupo en las celdas · el punteo es de la LÍNEA/GRUPO, no del mes
+  // (sección 1.1). Un grupo lleva real SOLO si tiene actividad conciliada ESE mes
+  // (`porGrupo.has(key)`); si no, queda `null` y la celda pinta el previsto (nunca
+  // 0 mudo). Esto reemplaza el gate por mes que ponía 0 en grupos sin conciliar.
   for (const key of ORDEN) {
     const cells = grupos.get(key)!;
     for (let i = 0; i < MESES; i++) {
-      cells[i].real = punteado[i] ? (real[i].porGrupo.get(key) ?? 0) : null;
+      cells[i].real = real[i].porGrupo.has(key) ? real[i].porGrupo.get(key)! : null;
     }
   }
+  // Residuo reconciliado (no clasificable) · solo cuenta en meses con algo punteado.
   const residuoReal = real.map((r, i) => (punteado[i] ? r.residuo : 0));
 
   // El ANCLA (sección 1.1) · la observación con fecha del saldo. Recorta la vista:
@@ -462,20 +471,28 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
   const ancla = await computeAncla();
   const desdeMes = ancla && year === ancla.year ? ancla.month : 0;
 
-  // Mes en curso del calendario · SOLO para marcar la columna «hoy». No recorta el
-  // previsto (que está completo de enero a diciembre · corrige P1).
+  // Mes en curso del calendario · marca la columna «hoy». No recorta el previsto.
   const now = new Date();
   const mesActualIndex = year === now.getFullYear() ? now.getMonth() : -1;
 
-  // Construir las FilaGrupo con motivo de vacío (regla 1).
-  const filas: FilaGrupo[] = ORDEN.map((key) => makeFila(key, grupos.get(key)!));
-
-  // Saldo de PARTIDA · la ÚNICA lectura de cuentas (sección 1.1). En el año del
-  // ancla se lee en la FECHA DE LA OBSERVACIÓN (no el 1 de enero · sección 4.1):
-  // ese saldo ya contiene todo lo anterior. En años posteriores, el 1 de enero.
-  const cutoff = ancla && year === ancla.year ? ancla.dateISO : `${year}-01-01`;
+  // Saldo de PARTIDA · la ÚNICA lectura de cuentas (§7).
+  // §4 · si el mes del ancla es el mes EN CURSO, ese mes cuenta SOLO lo que vence
+  // DESPUÉS de la foto (como Tesorería · criterio 5), sobre el saldo VIVO. Se
+  // sobreescriben sus celdas (antes de makeFila, para recalcular el vacío) por el
+  // pendiente por grupo, y el saldo de partida pasa a ser el saldo vivo.
+  const anclaEsHoy = !!ancla && year === ancla.year && year === now.getFullYear() && ancla.month === now.getMonth();
   let saldoPartida = 0;
-  try { saldoPartida = round2(await calculateTotalInitialCash(cutoff)); } catch { saldoPartida = 0; }
+  if (anclaEsHoy && ancla) {
+    saldoPartida = await overrideDesdeFoto((k) => grupos.get(k)!, ancla.month, year, ancla.month, now);
+  } else {
+    // En el año del ancla (mes ya pasado o futuro), el saldo se lee en la fecha de
+    // la observación; en años posteriores, el 1 de enero.
+    const cutoff = ancla && year === ancla.year ? ancla.dateISO : `${year}-01-01`;
+    try { saldoPartida = round2(await calculateTotalInitialCash(cutoff)); } catch { saldoPartida = 0; }
+  }
+
+  // Construir las FilaGrupo con motivo de vacío (regla 1) · tras el override de §4.
+  const filas: FilaGrupo[] = ORDEN.map((key) => makeFila(key, grupos.get(key)!));
 
   // Te queda (FLUJO) + Saldo a fin de mes (STOCK · escalera desde el saldo de
   // partida, que NACE en el mes del ancla · sección 1.4). Ninguna celda lee saldo.
@@ -505,34 +522,110 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
   };
 }
 
-// ── El ancla · MÁX(openingBalanceDate) de las cuentas activas (sección 1.1) ──
-// Es el único instante en que TODAS las cuentas están observadas, así el saldo de
-// partida es completo. `null` si ninguna cuenta tiene fecha de observación → la
-// escalera cae al comportamiento previo (1 de enero), sin recorte.
+// ── El ancla ESTABLE (sección 2) ──────────────────────────────────────────
+// El ancla se fija UNA vez —la primera observación de la caja al montar ATLAS— y
+// NO se mueve nunca hacia delante. Se persiste en `keyval` (schemaless · sin DB
+// bump). Dar de alta una cuenta después NO cambia el ancla ni oculta meses ya
+// visibles (criterio 7). El valor inicial es la MÁX(openingBalanceDate) de las
+// cuentas de ese momento (todas observadas por esa fecha → saldo de partida
+// completo; prohibido MÍN · §7), y a partir de ahí queda congelado.
+const ANCLA_KEY = 'primera_observacion_v1';
+
+function anclaFromISO(iso: string): Ancla | null {
+  const m = /^(\d{4})-(\d{2})/.exec(iso);
+  if (!m) return null;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  if (!Number.isFinite(y) || mo < 1 || mo > 12) return null;  // mes válido → month ∈ [0,11]
+  return { year: y, month: mo - 1, dateISO: iso.includes('T') ? iso.split('T')[0] : iso };
+}
+
+/** MÁX(openingBalanceDate) de las cuentas activas · null si ninguna tiene fecha. */
+function maxOpeningBalanceDate(accounts: Array<{
+  id?: number; status?: string; activa?: boolean; openingBalanceDate?: string;
+}>): string | null {
+  const fechas = accounts
+    .filter((a) => a.id != null && (a.status === 'ACTIVE' || a.activa))
+    .map((a) => a.openingBalanceDate)
+    .filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}/.test(d))
+    .map((d) => (d.includes('T') ? d.split('T')[0] : d));
+  if (fechas.length === 0) return null;
+  return fechas.reduce((m, d) => (d > m ? d : m));
+}
+
 async function computeAncla(): Promise<Ancla | null> {
   try {
     const db = await initDB();
+    // 1) Si ya está congelada Y es válida, se usa tal cual (nunca se mueve · 2.1).
+    //    Si el valor guardado está corrupto (p. ej. mes inválido), se ignora y se
+    //    recomputa/re-congela abajo (no dejar la pantalla sin ancla para siempre).
+    const guardada = (await db.get('keyval', ANCLA_KEY)) as unknown;
+    if (typeof guardada === 'string') {
+      const a = anclaFromISO(guardada);
+      if (a) return a;
+    }
+    // 2) Primera vez (o valor corrupto) · se fija con la observación MÁX actual y se CONGELA.
     const accounts = (await db.getAll('accounts')) as Array<{
       id?: number; status?: string; activa?: boolean; openingBalanceDate?: string;
     }>;
-    // Solo fechas con formato válido `YYYY-MM(-DD)`: una fecha corrupta no debe
-    // colarse y dejar `desdeMes` fuera de rango (rompería el recorte/columnas).
-    const fechas = accounts
-      .filter((a) => a.id != null && (a.status === 'ACTIVE' || a.activa))
-      .map((a) => a.openingBalanceDate)
-      .filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}/.test(d))
-      .map((d) => (d.includes('T') ? d.split('T')[0] : d));
-    if (fechas.length === 0) return null;
-    const maxFecha = fechas.reduce((m, d) => (d > m ? d : m));
-    const m = /^(\d{4})-(\d{2})/.exec(maxFecha);
-    if (!m) return null;
-    const y = parseInt(m[1], 10);
-    const mo = parseInt(m[2], 10);
-    if (!Number.isFinite(y) || mo < 1 || mo > 12) return null;  // mes válido → month ∈ [0,11]
-    return { year: y, month: mo - 1, dateISO: maxFecha };
+    const maxFecha = maxOpeningBalanceDate(accounts);
+    if (!maxFecha) return null;   // sin observación → sin ancla ni recorte (no se congela nada)
+    await db.put('keyval', maxFecha, ANCLA_KEY);
+    return anclaFromISO(maxFecha);
   } catch {
     return null;
   }
+}
+
+// ── §4 · el mes de la foto cuenta SOLO lo que vence después de la observación ──
+// Reproduce el cierre del mes en curso de Tesorería (CalendarioMes12): sobre el
+// saldo VIVO de las cuentas, suma únicamente los eventos PREDICHOS no ejecutados
+// cuya fecha (predictedDate) cae este mes y a partir de HOY. Clasifica cada uno
+// en su grupo (misma lógica que el real). Sobreescribe las celdas de ese mes con
+// el pendiente por grupo y devuelve el saldo vivo (base de la escalera · §7 lo
+// permite solo aquí). Así Total entra/Total sale/Saldo cuadran con Tesorería.
+async function overrideDesdeFoto(
+  getCells: (key: GrupoKey) => CeldaGrupo[],
+  colIndex: number, calYear: number, calMonth: number, today: Date,
+): Promise<number> {
+  const db = await initDB();
+  const [accounts, events] = await Promise.all([
+    db.getAll('accounts') as Promise<Array<{ id?: number; status?: string; activa?: boolean; balance?: number }>>,
+    db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+  ]);
+  const liveSaldo = round2(accounts
+    .filter((a) => a.id != null && (a.status === 'ACTIVE' || a.activa))
+    .reduce((s, a) => s + (a.balance ?? 0), 0));
+  const diaHoy = today.getDate();
+  const pend = new Map<GrupoKey, number>();
+  const lines = new Map<GrupoKey, LineaDesglose[]>();
+  for (const ev of events) {
+    if (ev.status !== 'predicted' || ev.executedMovementId) continue;
+    // Parseo coherente con Tesorería (CalendarioMes12): a las fechas sin hora se les
+    // añade T00:00:00 para leerlas en hora LOCAL (si no, `YYYY-MM-DD` se interpreta
+    // en UTC y getDate()/getMonth() se desplazan un día en husos no-UTC). NaN fuera.
+    const raw = ev.predictedDate;
+    const d = raw ? new Date(raw.includes('T') ? raw : `${raw}T00:00:00`) : null;
+    if (!d || Number.isNaN(d.getTime()) || d.getFullYear() !== calYear || d.getMonth() !== calMonth) continue;
+    if (d.getDate() < diaHoy) continue;                 // solo lo que vence DESPUÉS de la foto
+    const amt = Math.abs(ev.amount ?? 0);
+    const grp = ev.type === 'income'
+      ? grupoDeIngresoReal(ev)
+      : grupoDeGastoReal(ev as unknown as Parameters<typeof grupoDeGastoReal>[0]);
+    if (grp === 'residuo') continue;                    // sin grupo (edge · raro) · no se pinta
+    const signed = ev.type === 'income' ? amt : -amt;
+    pend.set(grp, round2((pend.get(grp) ?? 0) + signed));
+    const arr = lines.get(grp) ?? [];
+    arr.push({ concepto: ev.description ?? (ev.type === 'income' ? 'Pendiente de entrar' : 'Pago pendiente'), importe: round2(signed) });
+    lines.set(grp, arr);
+  }
+  for (const key of ORDEN) {
+    const cells = getCells(key);
+    // El mes de la foto muestra el REMANENTE (puede ser 0 si ya no queda nada por
+    // caer): no es un cero mudo, es «nada pendiente este mes» (§4).
+    cells[colIndex] = { previsto: round2(pend.get(key) ?? 0), real: null, desglose: lines.get(key) ?? [] };
+  }
+  return liveSaldo;
 }
 
 // ── Motivo de vacío por grupo (regla 1 · criterio 9). Nunca cero mudo ──
@@ -572,15 +665,24 @@ function ensamblarFlujoStock(
 ): { teQueda: CeldaNeta[]; saldoFinMes: CeldaNeta[]; tira: TiraResumen } {
   const teQueda: CeldaNeta[] = [];
   const saldoFinMes: CeldaNeta[] = [];
-  let acc = saldoPartida;
+  let accEf = saldoPartida;   // escalera con el Te queda EFECTIVO (real donde lo hay · 1.2)
+  let accPrev = saldoPartida; // escalera solo-previsto (referencia)
   for (let i = 0; i < MESES; i++) {
-    const netoPrev = round2(filas.reduce((s, f) => s + f.meses[i].previsto, 0)); // firmado
+    const netoPrev = round2(filas.reduce((s, f) => s + f.meses[i].previsto, 0));      // firmado
+    // Efectivo = real del grupo donde lo hay, previsto donde no (mismos números que
+    // se pintan en las celdas · criterio 1). La escalera corre con esto (criterio 4).
+    const netoEfec = round2(filas.reduce((s, f) => s + (f.meses[i].real ?? f.meses[i].previsto), 0));
+    // Real "de verdad" del mes (flujo reconciliado) · solo para la cabecera (P5).
     const netoReal = punteado[i]
       ? round2(filas.reduce((s, f) => s + (f.meses[i].real ?? 0), 0) + residuoReal[i])
       : null;
-    teQueda.push({ previsto: netoPrev, real: netoReal });
-    if (i >= desdeMes) acc = round2(acc + netoPrev);   // escalera de PREVISTO (stock)
-    saldoFinMes.push({ previsto: i >= desdeMes ? acc : 0, real: null });
+    teQueda.push({ previsto: netoPrev, real: netoReal, efectivo: netoEfec });
+    if (i >= desdeMes) { accEf = round2(accEf + netoEfec); accPrev = round2(accPrev + netoPrev); }
+    saldoFinMes.push({
+      previsto: i >= desdeMes ? accPrev : 0,
+      real: null,
+      efectivo: i >= desdeMes ? accEf : 0,   // el saldo recoge la realidad punteada (1.2)
+    });
   }
   const tira = buildTira(filas, teQueda, punteado, netoRealOficial, saldoPartida, desdeMes);
   return { teQueda, saldoFinMes, tira };
@@ -625,29 +727,27 @@ async function buildPresupuestoRodante(): Promise<PresupuestoAnual> {
   };
 
   // Grupos recompuestos columna a columna (mismas celdas, reordenadas).
-  const filas: FilaGrupo[] = ORDEN.map((key) => {
+  const stitched = new Map<GrupoKey, CeldaGrupo[]>();
+  for (const key of ORDEN) {
     const gA = a.grupos.find((f) => f.key === key)!;
     const gB = b.grupos.find((f) => f.key === key)!;
-    const cells: CeldaGrupo[] = Array.from({ length: MESES }, (_, j) => {
+    stitched.set(key, Array.from({ length: MESES }, (_, j) => {
       const { p, m } = src(j);
       return (p === a ? gA : gB).meses[m];
-    });
-    return makeFila(key, cells);
-  });
+    }));
+  }
+
+  // §4 · la PRIMERA columna es el mes en curso → cuenta solo lo que vence desde la
+  // foto, sobre el saldo vivo (como Tesorería). El resto de columnas, completas.
+  const saldoPartida = await overrideDesdeFoto((k) => stitched.get(k)!, 0, yA, startMonth, now);
+  const filas: FilaGrupo[] = ORDEN.map((key) => makeFila(key, stitched.get(key)!));
 
   const punteado = Array.from({ length: MESES }, (_, j) => { const { p, m } = src(j); return p.punteado[m]; });
   const residuoReal = Array.from({ length: MESES }, (_, j) => { const { p, m } = src(j); return p.residuoReal[m]; });
   // La cabecera usa el real por grupo de las celdas (teQueda.real) · sin comparativa
   // por año cruzado. Se pasa null para que buildTira caiga a teQueda.real.
   const netoRealOficial: (number | null)[] = Array.from({ length: MESES }, () => null);
-
-  // Saldo de partida · observado en el mes en curso (nace aquí · 1.4). Si el mes en
-  // curso es el mes del ancla, se lee en la fecha exacta de la observación.
   const ancla = a.ancla;
-  const startFirst = `${yA}-${String(startMonth + 1).padStart(2, '0')}-01`;
-  const cutoff = ancla && ancla.year === yA && ancla.month === startMonth ? ancla.dateISO : startFirst;
-  let saldoPartida = 0;
-  try { saldoPartida = round2(await calculateTotalInitialCash(cutoff)); } catch { saldoPartida = 0; }
 
   // Escalera continua · desdeMes = 0 (las 12 columnas se pintan).
   const { teQueda, saldoFinMes, tira } = ensamblarFlujoStock(
@@ -706,10 +806,12 @@ function buildTira(
   let realAcc = 0;
   for (const i of idx) {
     previstoAcc = round2(previstoAcc + teQueda[i].previsto);
-    const r = netoRealOficial[i] ?? teQueda[i].real ?? 0;
+    // «Llevas de verdad» = Σ Te queda REALES (flujo de la tabla · P5). Se prefiere
+    // el neto reconciliado de la tabla; getActualData queda de respaldo.
+    const r = teQueda[i].real ?? netoRealOficial[i] ?? 0;
     realAcc = round2(realAcc + r);
   }
-  const desviacion = round2(realAcc - previstoAcc);
+  const desviacion = round2(realAcc - previstoAcc);   // real − previsto · MISMO periodo (P5)
 
   // Dos conceptos que más pesan (real − previsto por grupo, sobre meses punteados).
   const pesos: LineaDesglose[] = filas.map((f) => {
@@ -729,9 +831,10 @@ function buildTira(
     }
   }
 
-  // Cierre = saldo final = saldo de partida + Σ Te queda previsto pintado (stock).
+  // Cierre = saldo final = saldo de partida + Σ Te queda EFECTIVO pintado (stock ·
+  // la escalera recoge la realidad punteada · 1.2).
   const cierrePrevisto = round2(
-    saldoPartida + teQueda.reduce((s, c, i) => (i >= desdeMes ? s + c.previsto : s), 0),
+    saldoPartida + teQueda.reduce((s, c, i) => (i >= desdeMes ? s + c.efectivo : s), 0),
   );
 
   return {

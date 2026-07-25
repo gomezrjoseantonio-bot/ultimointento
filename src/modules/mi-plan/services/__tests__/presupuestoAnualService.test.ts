@@ -25,6 +25,8 @@ async function reset() {
   const db = await initDB();
   await db.clear('treasuryEvents');
   await db.clear('movements');
+  await db.clear('accounts');
+  await db.clear('keyval');   // el ancla estable se congela aquí · limpiar entre tests
   return db;
 }
 
@@ -126,6 +128,7 @@ describe('presupuestoAnualService · el ancla y el recorte (modelo temporal)', (
     await db.clear('treasuryEvents');
     await db.clear('movements');
     await db.clear('accounts');
+    await db.clear('keyval');
   });
 
   it('la escalera NACE en el mes del ancla con el saldo observado; antes del ancla no se pinta', async () => {
@@ -175,6 +178,24 @@ describe('presupuestoAnualService · el ancla y el recorte (modelo temporal)', (
     expect(despues.saldoFinMes.every((c) => c.real === null)).toBe(true);
   });
 
+  it('el ancla NO se mueve al dar de alta una cuenta después (congelada · criterio 7)', async () => {
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const db = await initDB();
+    await db.add('accounts', {
+      id: 1, name: 'Cuenta', status: 'ACTIVE', openingBalance: 10000, openingBalanceDate: '2999-07-15',
+    } as any);
+    const antes = await buildPresupuestoAnual(2999);
+    expect(antes.ancla).toEqual({ year: 2999, month: 6, dateISO: '2999-07-15' });
+    // Alta de una cuenta nueva en noviembre (fecha posterior al ancla).
+    await db.add('accounts', {
+      id: 2, name: 'Nueva', status: 'ACTIVE', openingBalance: 5000, openingBalanceDate: '2999-11-20',
+    } as any);
+    const despues = await buildPresupuestoAnual(2999);
+    // El ancla sigue en julio · NO salta a noviembre ni oculta agosto-octubre.
+    expect(despues.ancla).toEqual({ year: 2999, month: 6, dateISO: '2999-07-15' });
+    expect(despues.desdeMes).toBe(6);
+  });
+
   it('sin fecha de observación en ninguna cuenta, no hay ancla ni recorte', async () => {
     const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
     const db = await initDB();
@@ -185,12 +206,101 @@ describe('presupuestoAnualService · el ancla y el recorte (modelo temporal)', (
   });
 });
 
+describe('presupuestoAnualService · reconciliación por grupo y mes (sección 1)', () => {
+  beforeEach(async () => {
+    const db = await initDB();
+    await db.clear('treasuryEvents');
+    await db.clear('movements');
+    await db.clear('accounts');
+    await db.clear('keyval');   // sin cuentas → sin ancla ni recorte (12 meses visibles)
+  });
+
+  it('el punteo es por grupo: el grupo conciliado muestra real, los demás previsto (no 0)', async () => {
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const db = await initDB();
+    // Un ingreso conciliado de nómina en marzo · ningún otro grupo conciliado.
+    await db.add('movements', {
+      id: 601, accountId: 1, amount: 3000, date: '2999-03-10',
+      unifiedStatus: 'conciliado', categoria: 'nomina', description: 'Nómina marzo',
+    } as any);
+    const p = await buildPresupuestoAnual(2999);
+    const nomina = p.grupos.find((g) => g.key === 'nomina')!;
+    const deuda = p.grupos.find((g) => g.key === 'deuda')!;
+    // Nómina concilió en marzo → real presente; en otro mes, null (se pinta previsto).
+    expect(nomina.meses[2].real).toBe(3000);
+    expect(nomina.meses[0].real).toBeNull();
+    // Deuda no concilió en marzo → real null · la celda pinta el previsto, NO 0 mudo.
+    expect(deuda.meses[2].real).toBeNull();
+    // Criterio 1 · Te queda efectivo = Σ efectivo (real donde lo hay, previsto donde no).
+    const efec = (i: number) => p.grupos.reduce((s, g) => s + (g.meses[i].real ?? g.meses[i].previsto), 0);
+    expect(Math.round(p.teQueda[2].efectivo)).toBe(Math.round(efec(2)));
+  });
+
+  it('el saldo de apertura conciliado NO cuenta como flujo real (P5)', async () => {
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const db = await initDB();
+    // Movimiento de saldo de apertura, conciliado: es stock, no flujo.
+    await db.add('movements', {
+      id: 701, accountId: 1, amount: 40000, date: '2999-01-01',
+      unifiedStatus: 'conciliado', isOpeningBalance: true, description: 'Saldo inicial',
+    } as any);
+    const p = await buildPresupuestoAnual(2999);
+    // No infla ningún real de enero (ni grupo ni residuo).
+    expect(p.residuoReal[0]).toBe(0);
+    expect(p.teQueda[0].real).toBeNull();
+  });
+});
+
+describe('presupuestoAnualService · el mes de la foto cuenta desde hoy (sección 4)', () => {
+  beforeEach(async () => {
+    const db = await initDB();
+    await db.clear('treasuryEvents');
+    await db.clear('movements');
+    await db.clear('accounts');
+    await db.clear('keyval');
+  });
+
+  it('cuando el ancla es el mes en curso: Saldo = saldo vivo + pendiente desde la foto (como Tesorería)', async () => {
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const db = await initDB();
+    const now = new Date();
+    const cy = now.getFullYear();
+    const cm = now.getMonth();                       // mes en curso (0-11)
+    const mm = String(cm + 1).padStart(2, '0');
+    const ultimoDia = new Date(cy, cm + 1, 0).getDate();
+    const finMes = `${cy}-${mm}-${String(ultimoDia).padStart(2, '0')}`; // vence hoy o después
+
+    // Cuenta con saldo VIVO 5000 y observación este mes → el ancla es el mes en curso.
+    await db.add('accounts', {
+      id: 1, name: 'Cuenta', status: 'ACTIVE', balance: 5000,
+      openingBalance: 5000, openingBalanceDate: `${cy}-${mm}-01`,
+    } as any);
+    // Un ingreso PREDICHO (no ejecutado) que vence a fin de mes → pendiente desde la foto.
+    await db.add('treasuryEvents', {
+      id: 9001, type: 'income', sourceType: 'nomina', status: 'predicted',
+      amount: 1000, predictedDate: finMes, año: cy, mes: cm + 1, description: 'Nómina pendiente',
+    } as any);
+
+    const p = await buildPresupuestoAnual(cy);
+    expect(p.ancla?.month).toBe(cm);                 // el ancla es el mes en curso
+    expect(p.saldoPartida).toBe(5000);               // saldo VIVO (no el 1 de enero)
+    // La celda del mes en curso muestra el pendiente (1000), no el previsto del motor.
+    const nomina = p.grupos.find((g) => g.key === 'nomina')!;
+    expect(nomina.meses[cm].previsto).toBe(1000);
+    // Saldo a fin del mes de la foto = vivo + pendiente neto (criterio 5, estilo Tesorería).
+    expect(p.saldoFinMes[cm].efectivo).toBe(6000);
+    // Recorte: los meses anteriores al mes de la foto no se pintan.
+    for (let i = 0; i < cm; i++) expect(p.saldoFinMes[i].efectivo).toBe(0);
+  });
+});
+
 describe('presupuestoAnualService · modo rodante (sección 2)', () => {
   beforeEach(async () => {
     const db = await initDB();
     await db.clear('treasuryEvents');
     await db.clear('movements');
     await db.clear('accounts');
+    await db.clear('keyval');
   });
 
   it('doce columnas continuas, columna «Total 12 meses» y escalera que cuadra', async () => {
