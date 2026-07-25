@@ -515,15 +515,20 @@ async function computeAncla(): Promise<Ancla | null> {
     const accounts = (await db.getAll('accounts')) as Array<{
       id?: number; status?: string; activa?: boolean; openingBalanceDate?: string;
     }>;
+    // Solo fechas con formato válido `YYYY-MM(-DD)`: una fecha corrupta no debe
+    // colarse y dejar `desdeMes` fuera de rango (rompería el recorte/columnas).
     const fechas = accounts
       .filter((a) => a.id != null && (a.status === 'ACTIVE' || a.activa))
       .map((a) => a.openingBalanceDate)
-      .filter((d): d is string => typeof d === 'string' && d.length >= 7)
+      .filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}/.test(d))
       .map((d) => (d.includes('T') ? d.split('T')[0] : d));
     if (fechas.length === 0) return null;
     const maxFecha = fechas.reduce((m, d) => (d > m ? d : m));
-    const [y, mo] = maxFecha.split('-').map((n) => parseInt(n, 10));
-    if (!Number.isFinite(y) || !Number.isFinite(mo)) return null;
+    const m = /^(\d{4})-(\d{2})/.exec(maxFecha);
+    if (!m) return null;
+    const y = parseInt(m[1], 10);
+    const mo = parseInt(m[2], 10);
+    if (!Number.isFinite(y) || mo < 1 || mo > 12) return null;  // mes válido → month ∈ [0,11]
     return { year: y, month: mo - 1, dateISO: maxFecha };
   } catch {
     return null;
@@ -675,8 +680,13 @@ async function buildPresupuestoRodante(): Promise<PresupuestoAnual> {
   };
 }
 
-/** Punto de entrada único del componente · elige natural o rodante (sección 2). */
-export async function buildPresupuesto(opts: { modo: Modo; year: number }): Promise<PresupuestoAnual> {
+/** Punto de entrada único del componente · elige natural o rodante (sección 2).
+ *  El modo rodante NO toma año: siempre son 12 meses desde el mes en curso
+ *  (`new Date()`), así que se modela con una unión discriminada y `year` solo
+ *  existe en el modo natural (evita un parámetro engañoso). */
+export async function buildPresupuesto(
+  opts: { modo: 'natural'; year: number } | { modo: 'rodante' },
+): Promise<PresupuestoAnual> {
   return opts.modo === 'rodante' ? buildPresupuestoRodante() : buildPresupuestoAnual(opts.year);
 }
 

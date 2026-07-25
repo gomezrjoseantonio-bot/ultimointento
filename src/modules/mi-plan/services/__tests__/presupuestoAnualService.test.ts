@@ -195,7 +195,7 @@ describe('presupuestoAnualService · modo rodante (sección 2)', () => {
 
   it('doce columnas continuas, columna «Total 12 meses» y escalera que cuadra', async () => {
     const { buildPresupuesto } = await import('../presupuestoAnualService');
-    const p = await buildPresupuesto({ modo: 'rodante', year: 2999 });
+    const p = await buildPresupuesto({ modo: 'rodante' });
     expect(p.modo).toBe('rodante');
     expect(p.columnaAnioLabel).toBe('Total 12 meses'); // criterio 11
     expect(p.desdeMes).toBe(0);                          // rodante pinta las 12 columnas

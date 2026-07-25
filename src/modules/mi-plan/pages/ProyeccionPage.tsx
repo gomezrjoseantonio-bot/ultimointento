@@ -69,7 +69,7 @@ const ProyeccionPage: React.FC = () => {
     let cancel = false;
     setLoading(true);
     setError(null);
-    buildPresupuesto({ modo, year })
+    buildPresupuesto(modo === 'rodante' ? { modo: 'rodante' } : { modo: 'natural', year })
       .then((d) => { if (!cancel) { setData(d); setLoading(false); } })
       .catch((e) => { if (!cancel) { setError(e?.message ?? String(e)); setLoading(false); } });
     return () => { cancel = true; };
@@ -205,8 +205,8 @@ const ProyeccionPage: React.FC = () => {
           {tab === 'anio' && (
             <div className="tabs" role="group" aria-label="Modo de vista">
               {/* Año natural o año rodante · se recuerda la elección (sección 2) */}
-              <button type="button" className={`tb${modo === 'natural' ? ' on' : ''}`} onClick={() => setModo('natural')}>Natural</button>
-              <button type="button" className={`tb${modo === 'rodante' ? ' on' : ''}`} onClick={() => setModo('rodante')}>Rodante</button>
+              <button type="button" aria-pressed={modo === 'natural'} className={`tb${modo === 'natural' ? ' on' : ''}`} onClick={() => setModo('natural')}>Natural</button>
+              <button type="button" aria-pressed={modo === 'rodante'} className={`tb${modo === 'rodante' ? ' on' : ''}`} onClick={() => setModo('rodante')}>Rodante</button>
             </div>
           )}
           {tab === 'anio' && modo === 'natural' && (
