@@ -249,6 +249,34 @@ async function buildPrevisto(
     }
   }
 
+  // Regla 3/4/5 · los 8 inmuebles se resuelven: los que no rentan salen a 0
+  // DICIENDO que no tienen contrato; los accesorios no aparecen solos (van con su
+  // principal); los vendidos quedan fuera desde su fecha de venta.
+  try {
+    const db = await initDB();
+    const [props, ventas, vinculos] = await Promise.all([
+      db.getAll('properties') as Promise<Array<{ id?: number; alias?: string }>>,
+      db.getAll('property_sales').catch(() => []) as Promise<Array<{ propertyId?: number; saleDate?: string }>>,
+      db.getAll('vinculosAccesorio').catch(() => []) as Promise<Array<{ inmuebleAccesorioId?: number }>>,
+    ]);
+    const accesorios = new Set(vinculos.map((v) => v.inmuebleAccesorioId));
+    const vendidos = new Set(
+      ventas.filter((v) => v.saleDate && new Date(v.saleDate).getFullYear() <= year).map((v) => v.propertyId),
+    );
+    const alqCells = g.get('alquileres')!;
+    const rentadas = new Set<string>();
+    for (const cell of alqCells) for (const d of cell.desglose) if (d.fuente) rentadas.add(d.fuente);
+    for (const p of props) {
+      if (p.id == null || accesorios.has(p.id) || vendidos.has(p.id)) continue;
+      const alias = p.alias ?? `Inmueble ${p.id}`;
+      if (rentadas.has(alias)) continue;
+      // Fila a cero visible (regla 3): se añade una línea 0 · el pivote la pinta `.cero`.
+      alqCells[0].desglose.push({ concepto: `${alias} · sin contrato`, importe: 0, fuente: alias });
+    }
+  } catch {
+    // sin inmuebles legibles → la fila Alquileres queda como esté
+  }
+
   return { grupos: g, comprVacios };
 }
 
@@ -531,10 +559,22 @@ function buildPie(
     }
   }
 
-  // Frase 2 · inmuebles sin rentar (fila alquileres vacía o con unidades a 0).
+  // Frase 2 · inmuebles sin rentar (unidades a 0 · regla 3).
   const alq = filas.find((f) => f.key === 'alquileres');
   if (alq?.vacio) {
     frases.push('Ninguna unidad tiene contrato activo este año');
+  } else if (alq) {
+    const conceptos = new Map<string, number>();
+    for (const cell of alq.meses) {
+      for (const d of cell.desglose) {
+        conceptos.set(d.concepto, (conceptos.get(d.concepto) ?? 0) + Math.abs(d.importe));
+      }
+    }
+    const total = conceptos.size;
+    const sinRentar = [...conceptos.values()].filter((v) => v < 0.005).length;
+    if (total > 0 && sinRentar > 0) {
+      frases.push(`${sinRentar} de ${total} ${total === 1 ? 'unidad no renta' : 'unidades no rentan'}`);
+    }
   }
 
   return frases.slice(0, 3);
