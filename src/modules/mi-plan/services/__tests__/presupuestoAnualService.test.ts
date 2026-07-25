@@ -185,6 +185,50 @@ describe('presupuestoAnualService · el ancla y el recorte (modelo temporal)', (
   });
 });
 
+describe('presupuestoAnualService · reconciliación por grupo y mes (sección 1)', () => {
+  beforeEach(async () => {
+    const db = await initDB();
+    await db.clear('treasuryEvents');
+    await db.clear('movements');
+    await db.clear('accounts');   // sin cuentas → sin ancla ni recorte (12 meses visibles)
+  });
+
+  it('el punteo es por grupo: el grupo conciliado muestra real, los demás previsto (no 0)', async () => {
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const db = await initDB();
+    // Un ingreso conciliado de nómina en marzo · ningún otro grupo conciliado.
+    await db.add('movements', {
+      id: 601, accountId: 1, amount: 3000, date: '2999-03-10',
+      unifiedStatus: 'conciliado', categoria: 'nomina', description: 'Nómina marzo',
+    } as any);
+    const p = await buildPresupuestoAnual(2999);
+    const nomina = p.grupos.find((g) => g.key === 'nomina')!;
+    const deuda = p.grupos.find((g) => g.key === 'deuda')!;
+    // Nómina concilió en marzo → real presente; en otro mes, null (se pinta previsto).
+    expect(nomina.meses[2].real).toBe(3000);
+    expect(nomina.meses[0].real).toBeNull();
+    // Deuda no concilió en marzo → real null · la celda pinta el previsto, NO 0 mudo.
+    expect(deuda.meses[2].real).toBeNull();
+    // Criterio 1 · Te queda efectivo = Σ efectivo (real donde lo hay, previsto donde no).
+    const efec = (i: number) => p.grupos.reduce((s, g) => s + (g.meses[i].real ?? g.meses[i].previsto), 0);
+    expect(Math.round(p.teQueda[2].efectivo)).toBe(Math.round(efec(2)));
+  });
+
+  it('el saldo de apertura conciliado NO cuenta como flujo real (P5)', async () => {
+    const { buildPresupuestoAnual } = await import('../presupuestoAnualService');
+    const db = await initDB();
+    // Movimiento de saldo de apertura, conciliado: es stock, no flujo.
+    await db.add('movements', {
+      id: 701, accountId: 1, amount: 40000, date: '2999-01-01',
+      unifiedStatus: 'conciliado', isOpeningBalance: true, description: 'Saldo inicial',
+    } as any);
+    const p = await buildPresupuestoAnual(2999);
+    // No infla ningún real de enero (ni grupo ni residuo).
+    expect(p.residuoReal[0]).toBe(0);
+    expect(p.teQueda[0].real).toBeNull();
+  });
+});
+
 describe('presupuestoAnualService · modo rodante (sección 2)', () => {
   beforeEach(async () => {
     const db = await initDB();

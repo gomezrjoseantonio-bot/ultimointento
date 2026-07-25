@@ -28,8 +28,8 @@ jest.mock('../../services/presupuestoAnualService', () => {
       { key: 'impuestos', label: 'Impuestos', signo: 'sale', desplegable: false, meses: meses(-137) },
       { key: 'deseos', label: 'Deseos', signo: 'sale', desplegable: true, meses: meses(0), vacio: { motivo: 'Sin compromisos recurrentes registrados' } },
     ],
-    teQueda: Array.from({ length: 12 }, () => ({ previsto: 5343, real: null })),
-    saldoFinMes: Array.from({ length: 12 }, (_, i) => ({ previsto: 14740 + 5343 * (i + 1), real: null })),
+    teQueda: Array.from({ length: 12 }, () => ({ previsto: 5343, real: null, efectivo: 5343 })),
+    saldoFinMes: Array.from({ length: 12 }, (_, i) => ({ previsto: 14740 + 5343 * (i + 1), real: null, efectivo: 14740 + 5343 * (i + 1) })),
     residuoReal: Array(12).fill(0),
     tira: {
       previstoAcumulado: 0, realAcumulado: 0, mesesCerrados: 0, desviacion: 0,

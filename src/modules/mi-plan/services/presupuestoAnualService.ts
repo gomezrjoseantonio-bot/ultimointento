@@ -66,7 +66,10 @@ export interface FilaGrupo {
   vacio?: { motivo: string };
 }
 
-export interface CeldaNeta { previsto: number; real: number | null; }
+// `efectivo` = el valor que se PINTA y con el que corre la escalera: el real
+// donde lo hay (grupo con actividad conciliada ese mes), el previsto donde no
+// (sección 1.2). `real` es el neto reconciliado del mes (flujo · para la cabecera).
+export interface CeldaNeta { previsto: number; real: number | null; efectivo: number; }
 
 export interface TiraResumen {
   previstoAcumulado: number;                 // ahorro previsto hasta el mes actual
@@ -389,6 +392,9 @@ export async function buildReal(year: number): Promise<RealMes[]> {
   // 2) Movimientos conciliados SIN evento asociado · inferir bolsa por categoría
   for (const mv of allMovs) {
     if (mv.unifiedStatus !== 'conciliado') continue;
+    // El saldo de apertura NO es un flujo · es el stock de partida. Contarlo aquí
+    // inflaba el real de la cabecera con la caja (corrige P5 · «Llevas de verdad»).
+    if ((mv as { isOpeningBalance?: boolean }).isOpeningBalance) continue;
     if (mv.id != null && usados.has(mv.id as number)) continue;
     const d = mv.date ? new Date(mv.date) : null;
     if (!d || d.getFullYear() !== year) continue;
@@ -447,14 +453,17 @@ export async function buildPresupuestoAnual(year: number): Promise<PresupuestoAn
     // sin comparativa → cabecera sin real
   }
 
-  // Real por grupo en las celdas · solo meses punteados (el resto no ha pasado · no
-  // se rellena con nada).
+  // Real por grupo en las celdas · el punteo es de la LÍNEA/GRUPO, no del mes
+  // (sección 1.1). Un grupo lleva real SOLO si tiene actividad conciliada ESE mes
+  // (`porGrupo.has(key)`); si no, queda `null` y la celda pinta el previsto (nunca
+  // 0 mudo). Esto reemplaza el gate por mes que ponía 0 en grupos sin conciliar.
   for (const key of ORDEN) {
     const cells = grupos.get(key)!;
     for (let i = 0; i < MESES; i++) {
-      cells[i].real = punteado[i] ? (real[i].porGrupo.get(key) ?? 0) : null;
+      cells[i].real = real[i].porGrupo.has(key) ? real[i].porGrupo.get(key)! : null;
     }
   }
+  // Residuo reconciliado (no clasificable) · solo cuenta en meses con algo punteado.
   const residuoReal = real.map((r, i) => (punteado[i] ? r.residuo : 0));
 
   // El ANCLA (sección 1.1) · la observación con fecha del saldo. Recorta la vista:
@@ -572,15 +581,24 @@ function ensamblarFlujoStock(
 ): { teQueda: CeldaNeta[]; saldoFinMes: CeldaNeta[]; tira: TiraResumen } {
   const teQueda: CeldaNeta[] = [];
   const saldoFinMes: CeldaNeta[] = [];
-  let acc = saldoPartida;
+  let accEf = saldoPartida;   // escalera con el Te queda EFECTIVO (real donde lo hay · 1.2)
+  let accPrev = saldoPartida; // escalera solo-previsto (referencia)
   for (let i = 0; i < MESES; i++) {
-    const netoPrev = round2(filas.reduce((s, f) => s + f.meses[i].previsto, 0)); // firmado
+    const netoPrev = round2(filas.reduce((s, f) => s + f.meses[i].previsto, 0));      // firmado
+    // Efectivo = real del grupo donde lo hay, previsto donde no (mismos números que
+    // se pintan en las celdas · criterio 1). La escalera corre con esto (criterio 4).
+    const netoEfec = round2(filas.reduce((s, f) => s + (f.meses[i].real ?? f.meses[i].previsto), 0));
+    // Real "de verdad" del mes (flujo reconciliado) · solo para la cabecera (P5).
     const netoReal = punteado[i]
       ? round2(filas.reduce((s, f) => s + (f.meses[i].real ?? 0), 0) + residuoReal[i])
       : null;
-    teQueda.push({ previsto: netoPrev, real: netoReal });
-    if (i >= desdeMes) acc = round2(acc + netoPrev);   // escalera de PREVISTO (stock)
-    saldoFinMes.push({ previsto: i >= desdeMes ? acc : 0, real: null });
+    teQueda.push({ previsto: netoPrev, real: netoReal, efectivo: netoEfec });
+    if (i >= desdeMes) { accEf = round2(accEf + netoEfec); accPrev = round2(accPrev + netoPrev); }
+    saldoFinMes.push({
+      previsto: i >= desdeMes ? accPrev : 0,
+      real: null,
+      efectivo: i >= desdeMes ? accEf : 0,   // el saldo recoge la realidad punteada (1.2)
+    });
   }
   const tira = buildTira(filas, teQueda, punteado, netoRealOficial, saldoPartida, desdeMes);
   return { teQueda, saldoFinMes, tira };
@@ -706,10 +724,12 @@ function buildTira(
   let realAcc = 0;
   for (const i of idx) {
     previstoAcc = round2(previstoAcc + teQueda[i].previsto);
-    const r = netoRealOficial[i] ?? teQueda[i].real ?? 0;
+    // «Llevas de verdad» = Σ Te queda REALES (flujo de la tabla · P5). Se prefiere
+    // el neto reconciliado de la tabla; getActualData queda de respaldo.
+    const r = teQueda[i].real ?? netoRealOficial[i] ?? 0;
     realAcc = round2(realAcc + r);
   }
-  const desviacion = round2(realAcc - previstoAcc);
+  const desviacion = round2(realAcc - previstoAcc);   // real − previsto · MISMO periodo (P5)
 
   // Dos conceptos que más pesan (real − previsto por grupo, sobre meses punteados).
   const pesos: LineaDesglose[] = filas.map((f) => {
@@ -729,9 +749,10 @@ function buildTira(
     }
   }
 
-  // Cierre = saldo final = saldo de partida + Σ Te queda previsto pintado (stock).
+  // Cierre = saldo final = saldo de partida + Σ Te queda EFECTIVO pintado (stock ·
+  // la escalera recoge la realidad punteada · 1.2).
   const cierrePrevisto = round2(
-    saldoPartida + teQueda.reduce((s, c, i) => (i >= desdeMes ? s + c.previsto : s), 0),
+    saldoPartida + teQueda.reduce((s, c, i) => (i >= desdeMes ? s + c.efectivo : s), 0),
   );
 
   return {
