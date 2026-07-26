@@ -1,12 +1,11 @@
-// Fila de la tabla de gastos recurrentes (§3.1). Cinco columnas de datos —
-// concepto · importe · cuándo · cuenta/medio · al año— más el interruptor de
-// estado y el botón de suprimir. El importe y los selectores de cuándo y cuenta
-// se editan EN LA PROPIA FILA (sin abrir nada). Un gasto sin importe pinta «—»,
-// nunca 0. El detalle completo (proveedor, CUPS, contrato, variación…) vive en
-// la fila desplegada (RowForm), que se abre al pulsar el concepto.
+// Fila de la tabla de gastos recurrentes (§3.1). Ocho columnas de anchos fijos
+// (switch · chevron · concepto · importe · cuándo · cuenta/medio · al año · menú)
+// para que el concepto no serpentee. El importe y los selectores de cuándo y
+// cuenta se editan EN LA PROPIA FILA. Un gasto sin importe pinta «—», nunca 0.
+// El detalle completo vive en la fila desplegada (RowForm), que abre el chevron.
 
 import React, { useMemo, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { ChevronRight, Trash2 } from 'lucide-react';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import type { Account } from '../../../../../services/db';
 import {
@@ -33,8 +32,9 @@ interface ExpenseRowProps {
   onInlineSaved: () => void;
 }
 
-// switch | concepto | importe | cuándo | cuenta/medio | al año | suprimir
-const ROW_GRID = '40px 1fr 116px 184px 184px 104px 48px';
+// switch 52 · chevron 30 · concepto flexible · importe 128 · cuándo 198 ·
+// cuenta 172 · al año 104 · menú 38 (§3.1 · sin scroll horizontal).
+const ROW_GRID = '52px 30px minmax(0,1fr) 128px 198px 172px 104px 38px';
 
 const MESES_BAJA = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 function fechaBajaLabel(iso?: string): string {
@@ -110,7 +110,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
         any = true;
       }
     }
-    return any ? s : null;
+    return any && s > 0 ? s : null;
   }, [c]);
 
   const persistir = async (patch: Partial<Omit<CompromisoRecurrente, 'id' | 'createdAt'>>) => {
@@ -123,6 +123,12 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
     }
   };
 
+  const guardarImporte = async (n: number) => {
+    if (savingImp) return;
+    setSavingImp(true);
+    await persistir({ importe: { modo: 'fijo', importe: n } });
+    setSavingImp(false);
+  };
   const commitImporte = async () => {
     const n = parseFloat(impDraft);
     const actual = impCargo ?? 0;
@@ -132,19 +138,13 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
     }
     if (n !== actual) await guardarImporte(n);
   };
-  const guardarImporte = async (n: number) => {
-    if (savingImp) return;
-    setSavingImp(true);
-    await persistir({ importe: { modo: 'fijo', importe: n } });
-    setSavingImp(false);
-  };
 
   const cambiarCuando = async (atajo: AtajoRejilla) => {
     const dia = diaDePatron(c.patron);
-    const meses = mesesDeAtajo(atajo, Math.min(...(patronToMeses(c.patron).length ? patronToMeses(c.patron) : [new Date().getMonth() + 1])));
-    await persistir({ patron: mesesToPatron(meses, dia) });
+    const mesesActuales = patronToMeses(c.patron);
+    const ancla = Math.min(...(mesesActuales.length ? mesesActuales : [new Date().getMonth() + 1]));
+    await persistir({ patron: mesesToPatron(mesesDeAtajo(atajo, ancla), dia) });
   };
-
   const cambiarCuenta = async (accountId: number) => {
     await persistir({ cuentaCargo: accountId });
   };
@@ -157,6 +157,8 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
     return '';
   })();
 
+  const esMedioSinCuenta = c.metodoPago === 'tarjeta' || c.metodoPago === 'efectivo' || c.metodoPago === 'bizum';
+
   return (
     <div
       role="row"
@@ -164,15 +166,16 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
         display: 'grid',
         gridTemplateColumns: ROW_GRID,
         gap: 12,
-        padding: '10px 16px',
-        borderBottom: '1px solid var(--atlas-v5-line-2)',
+        padding: '9px 12px',
+        borderBottom: '1px solid var(--atlas-v5-line-3)',
         alignItems: 'center',
         background: isExpanded ? 'var(--atlas-v5-gold-wash-2)' : undefined,
         transition: 'background 120ms ease',
         fontFamily: 'var(--atlas-v5-font-ui)',
+        opacity: isActivo ? 1 : 0.82,
       }}
     >
-      {/* Col 1 · interruptor de estado */}
+      {/* Col 1 · interruptor de estado (oro = activo) */}
       <div role="cell" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
@@ -183,7 +186,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
           onClick={onToggleEstado}
           style={{
             ...switchTrack,
-            background: isActivo ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-line-2)',
+            background: isActivo ? 'var(--atlas-v5-gold)' : 'var(--atlas-v5-line)',
             justifyContent: isActivo ? 'flex-end' : 'flex-start',
           }}
         >
@@ -191,31 +194,46 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
         </button>
       </div>
 
-      {/* Col 2 · concepto (abre la fila desplegada) */}
-      <div role="cell" style={{ minWidth: 0 }}>
+      {/* Col 2 · chevron (abre la fila desplegada) */}
+      <div role="cell">
         <button
           type="button"
           onClick={onToggle}
-          style={conceptoBtn}
           aria-expanded={isExpanded}
-          aria-label={`Ver y editar ${c.alias}`}
+          aria-label={`${isExpanded ? 'Cerrar' : 'Abrir'} ${c.alias}`}
+          style={chevronBtn}
         >
+          <ChevronRight
+            size={15}
+            strokeWidth={2}
+            style={{
+              color: 'var(--atlas-v5-ink-4)',
+              transform: isExpanded ? 'rotate(90deg)' : 'none',
+              transition: 'transform 120ms ease',
+            }}
+          />
+        </button>
+      </div>
+
+      {/* Col 3 · concepto */}
+      <div role="cell" style={{ minWidth: 0 }}>
+        <button type="button" onClick={onToggle} style={conceptoBtn} aria-label={`Editar ${c.alias}`}>
           <span style={iconWrap}>
             <SubIcon size={13} strokeWidth={1.8} style={{ color: 'var(--atlas-v5-ink-3)' }} />
           </span>
           <span style={{ minWidth: 0 }}>
             <span style={rowName}>{c.alias}</span>
             {subLabel && <span style={rowSub}>{subLabel}</span>}
-            {c.estado !== 'activo' && (
-              <span style={estadoChip}>
-                {isPreparado ? 'aún no' : `baja · ${fechaBajaLabel(c.fechaFin)}`}
-              </span>
-            )}
           </span>
+          {c.estado !== 'activo' && (
+            <span style={{ ...estadoChip, ...(isPreparado ? chipPrep : chipBaja) }}>
+              {isPreparado ? 'aún no' : `baja · ${fechaBajaLabel(c.fechaFin)}`}
+            </span>
+          )}
         </button>
       </div>
 
-      {/* Col 3 · importe (inline) */}
+      {/* Col 4 · importe (inline) */}
       <div role="cell" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'right' }}>
         {importeEditable ? (
           <input
@@ -237,7 +255,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
         )}
       </div>
 
-      {/* Col 4 · cuándo (inline) */}
+      {/* Col 5 · cuándo (inline) */}
       <div role="cell" onClick={(e) => e.stopPropagation()}>
         <select
           aria-label={`Cuándo se cobra ${c.alias}`}
@@ -256,9 +274,9 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
         </select>
       </div>
 
-      {/* Col 5 · cuenta / medio (inline) */}
+      {/* Col 6 · cuenta / medio (inline) */}
       <div role="cell" onClick={(e) => e.stopPropagation()}>
-        {c.metodoPago === 'tarjeta' || c.metodoPago === 'efectivo' || c.metodoPago === 'bizum' ? (
+        {esMedioSinCuenta ? (
           <span style={medioLabel}>
             {c.metodoPago === 'tarjeta' ? 'Tarjeta' : c.metodoPago === 'efectivo' ? 'Efectivo' : 'Bizum'}
           </span>
@@ -279,14 +297,13 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
         )}
       </div>
 
-      {/* Col 6 · al año (canónico · «—» si no calculable) */}
+      {/* Col 7 · al año (canónico · «—» si no calculable) */}
       <div role="cell" style={{ textAlign: 'right' }}>
         <span style={alAnioValue}>{alAnio != null ? formatEur(-Math.abs(alAnio)) : '—'}</span>
-        <span style={alAnioSub}>al año</span>
       </div>
 
-      {/* Col 7 · suprimir */}
-      <div role="cell" style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+      {/* Col 8 · menú (suprimir) */}
+      <div role="cell" style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           aria-label={`Suprimir ${c.alias}`}
@@ -294,11 +311,9 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
           onClick={onDelete}
           style={iconBtn}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'var(--atlas-v5-neg-wash)';
             (e.currentTarget as HTMLButtonElement).style.color = 'var(--atlas-v5-neg)';
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
             (e.currentTarget as HTMLButtonElement).style.color = 'var(--atlas-v5-ink-4)';
           }}
         >
@@ -312,8 +327,8 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
 const switchTrack: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
-  width: 32,
-  height: 18,
+  width: 30,
+  height: 17,
   borderRadius: 99,
   border: 'none',
   padding: 2,
@@ -322,17 +337,26 @@ const switchTrack: React.CSSProperties = {
   transition: 'background 120ms ease',
 };
 const switchKnob: React.CSSProperties = {
-  width: 14,
-  height: 14,
+  width: 13,
+  height: 13,
   borderRadius: '50%',
   background: 'var(--atlas-v5-white)',
   display: 'block',
   boxShadow: 'var(--atlas-v5-shadow-card-active)',
 };
+const chevronBtn: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
 const conceptoBtn: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: 10,
+  gap: 9,
   minWidth: 0,
   width: '100%',
   background: 'none',
@@ -343,9 +367,9 @@ const conceptoBtn: React.CSSProperties = {
   fontFamily: 'var(--atlas-v5-font-ui)',
 };
 const iconWrap: React.CSSProperties = {
-  width: 26,
-  height: 26,
-  borderRadius: 7,
+  width: 24,
+  height: 24,
+  borderRadius: 6,
   background: 'var(--atlas-v5-bg)',
   display: 'inline-flex',
   alignItems: 'center',
@@ -354,32 +378,38 @@ const iconWrap: React.CSSProperties = {
 };
 const rowName: React.CSSProperties = {
   display: 'block',
-  fontSize: 13,
+  fontSize: 12.5,
   fontWeight: 600,
-  color: 'var(--atlas-v5-ink)',
+  color: 'var(--atlas-v5-ink-2)',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 };
 const rowSub: React.CSSProperties = {
   display: 'block',
-  fontSize: 11,
+  fontSize: 10.5,
   color: 'var(--atlas-v5-ink-4)',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 };
 const estadoChip: React.CSSProperties = {
-  display: 'inline-block',
-  marginTop: 2,
+  flexShrink: 0,
+  marginLeft: 6,
   fontSize: 9.5,
   fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
-  color: 'var(--atlas-v5-ink-4)',
-  background: 'var(--atlas-v5-line-2)',
   borderRadius: 99,
-  padding: '1px 7px',
+  padding: '2px 7px',
+};
+const chipPrep: React.CSSProperties = {
+  background: 'var(--atlas-v5-brand-wash)',
+  color: 'var(--atlas-v5-brand)',
+};
+const chipBaja: React.CSSProperties = {
+  background: 'var(--atlas-v5-line-3)',
+  color: 'var(--atlas-v5-ink-4)',
 };
 const impInput: React.CSSProperties = {
   width: '100%',
@@ -387,18 +417,18 @@ const impInput: React.CSSProperties = {
   padding: '6px 8px',
   borderRadius: 7,
   border: '1px solid var(--atlas-v5-line)',
-  fontSize: 13,
+  fontSize: 12.5,
   fontWeight: 700,
   fontFamily: 'var(--atlas-v5-font-mono-num)',
-  color: 'var(--atlas-v5-neg)',
+  color: 'var(--atlas-v5-ink)',
   background: 'var(--atlas-v5-card)',
   boxSizing: 'border-box',
 };
 const impReadonly: React.CSSProperties = {
   fontFamily: 'var(--atlas-v5-font-mono-num)',
-  fontSize: 13,
+  fontSize: 12.5,
   fontWeight: 700,
-  color: 'var(--atlas-v5-neg)',
+  color: 'var(--atlas-v5-ink)',
 };
 const cellSelect: React.CSSProperties = {
   width: '100%',
@@ -416,20 +446,14 @@ const medioLabel: React.CSSProperties = {
   color: 'var(--atlas-v5-ink-3)',
 };
 const alAnioValue: React.CSSProperties = {
-  display: 'block',
   fontFamily: 'var(--atlas-v5-font-mono-num)',
-  fontSize: 13,
+  fontSize: 12.5,
   fontWeight: 700,
-  color: 'var(--atlas-v5-neg)',
-};
-const alAnioSub: React.CSSProperties = {
-  display: 'block',
-  fontSize: 10,
-  color: 'var(--atlas-v5-ink-4)',
+  color: 'var(--atlas-v5-ink-2)',
 };
 const iconBtn: React.CSSProperties = {
-  width: 28,
-  height: 28,
+  width: 26,
+  height: 26,
   borderRadius: 6,
   color: 'var(--atlas-v5-ink-4)',
   background: 'transparent',
@@ -438,7 +462,7 @@ const iconBtn: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: 'all 120ms ease',
+  transition: 'color 120ms ease',
 };
 
 export { ROW_GRID };

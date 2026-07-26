@@ -455,6 +455,7 @@ const DetallePage: React.FC = () => {
             inmuebleId={propertyId}
             onDelete={handleDeleteGasto}
             onReload={reloadGastos}
+            contextoNombre={property.alias}
           />
         </div>
       )}

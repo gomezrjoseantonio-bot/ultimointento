@@ -10,12 +10,8 @@ export interface ListadoGastosRecurrentesProps {
   inmuebleId?: number;
   onImportar?: () => void;
   onDetectar?: () => void;
-}
-
-export type SortField = 'nombre' | 'importe';
-export type SortDir = 'asc' | 'desc';
-
-export interface SortState {
-  field: SortField | null;
-  dir: SortDir;
+  /** Subtítulo bajo el H1 (§3.1). Por defecto se deriva del modo. */
+  subtitulo?: string;
+  /** Nombre del inmueble para la miga de pan (modo inmueble). */
+  contextoNombre?: string;
 }
