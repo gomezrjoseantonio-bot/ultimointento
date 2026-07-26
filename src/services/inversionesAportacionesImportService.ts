@@ -352,6 +352,24 @@ const findPosicionOrPlan = (
     }
   }
 
+  // 4. Fallback para filas de plan (traen desglose empresa/individuo) que NO
+  //    han casado por nombre: intentar por ENTIDAD → gestoraActual /
+  //    empresaPagadora.nombre, aceptando sólo si hay un único plan para esa
+  //    entidad. Cubre el caso habitual de un extracto cuyo `posicion_nombre` es
+  //    genérico ("Plan de pensiones de empleo") mientras el plan se dio de alta
+  //    con otro nombre (p. ej. "BBVA"): la entidad basta para desambiguar y
+  //    evita tener que corregir a mano cada fila. Se limita a filas de plan para
+  //    no arrastrar una posición normal (fondo, acción…) hacia un plan.
+  const esFilaPlan = row.importeEmpresa !== undefined || row.importeIndividuo !== undefined;
+  if (esFilaPlan && entidadNorm) {
+    const porEntidad = planes.filter((p) => {
+      const ent = (p.gestoraActual ?? '').toLowerCase();
+      const emp = (p.empresaPagadora?.nombre ?? '').toLowerCase();
+      return ent === entidadNorm || emp === entidadNorm;
+    });
+    if (porEntidad.length === 1) return { kind: 'plan', value: porEntidad[0] };
+  }
+
   return null;
 };
 

@@ -103,6 +103,35 @@ describe('previsualizarImportacionAportaciones · desglose de plan de pensiones'
     expect(preview.rows[0].importe).toBeCloseTo(223.32, 2);
   });
 
+  it('casa por entidad cuando el plan se llamó distinto (nombre genérico en el fichero, plan único de esa entidad)', async () => {
+    // El fichero trae posicion_nombre "Plan de pensiones de empleo" pero el
+    // usuario dio de alta el plan como "BBVA". La entidad (BBVA) identifica un
+    // único plan → deben quedar válidas sin editar 122 filas a mano.
+    mockGetAllPlanes.mockResolvedValue([
+      { id: 'plan_bbva', nombre: 'BBVA', gestoraActual: 'BBVA' },
+    ]);
+    const file = makeXlsx([filaPension]);
+
+    const preview = await previsualizarImportacionAportaciones(file);
+
+    expect(preview.totalValidas).toBe(1);
+    expect(preview.rows[0].estado).toBe('valida');
+  });
+
+  it('NO casa por entidad si hay más de un plan de esa entidad (evita adivinar)', async () => {
+    mockGetAllPlanes.mockResolvedValue([
+      { id: 'plan_a', nombre: 'BBVA Empleo', gestoraActual: 'BBVA' },
+      { id: 'plan_b', nombre: 'BBVA Individual', gestoraActual: 'BBVA' },
+    ]);
+    const file = makeXlsx([filaPension]);
+
+    const preview = await previsualizarImportacionAportaciones(file);
+
+    // Ambiguo → error corregible (el usuario decide), no un match a ciegas.
+    expect(preview.totalValidas).toBe(0);
+    expect(preview.rows[0].estado).toBe('error');
+  });
+
   it('no confunde una posición normal con importe simple (sin regresión)', async () => {
     mockGetPosiciones.mockResolvedValue([
       { id: 5, nombre: 'Fondo RV', entidad: 'BBVA', tipo: 'fondo' },
