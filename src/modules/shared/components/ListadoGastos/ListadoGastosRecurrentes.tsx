@@ -5,18 +5,30 @@ import { EmptyState, Icons, showToastV5 } from '../../../../design-system/v5';
 import ConfirmationModal from '../../../../components/common/ConfirmationModal';
 import { cuentasService } from '../../../../services/cuentasService';
 import type { Account } from '../../../../services/db';
-import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
+import type { CompromisoRecurrente, MotivoBaja } from '../../../../types/compromisosRecurrentes';
+import {
+  pasarAPreparado,
+  darDeBajaCompromiso,
+  activarCompromiso,
+  reactivarCompromiso,
+  puedeReactivar,
+  faltantesParaActivar,
+  tieneCargosCuadrados,
+} from '../../../../services/personal/compromisosRecurrentesService';
 import type {
   ListadoGastosRecurrentesProps,
   SortField,
   SortState,
 } from './ListadoGastosRecurrentes.types';
 import { groupByCatalog, groupByBlocksInmueble } from './utils/groupingHelpers';
+import type { GastoGroup } from './utils/groupingHelpers';
 import { getFamilyIcon } from './utils/iconMapping';
 import KpiStrip from './components/KpiStrip';
 import FilterPills from './components/FilterPills';
 import GroupCard from './components/GroupCard';
 import EditDrawer from './components/EditDrawer';
+import BajaModal from './components/BajaModal';
+import ReactivarModal from './components/ReactivarModal';
 
 const LS_KEY = (mode: string) => `listadoGastos.expandedGroups.${mode}`;
 
@@ -119,6 +131,99 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   const [deleteTarget, setDeleteTarget] = useState<(CompromisoRecurrente & { id: number }) | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Estados (§2.3/§2.4)
+  const [bajaTarget, setBajaTarget] = useState<(CompromisoRecurrente & { id: number }) | null>(null);
+  const [reactivarTarget, setReactivarTarget] = useState<(CompromisoRecurrente & { id: number }) | null>(null);
+  const [pendingActivarId, setPendingActivarId] = useState<number | null>(null);
+
+  // El interruptor de la fila: apaga un activo (→ preparado o baja), activa un
+  // preparado (→ pide las cuatro cosas) o reactiva una baja (→ pide fecha).
+  const handleToggleEstado = useCallback(
+    async (c: CompromisoRecurrente & { id: number }) => {
+      try {
+        if (c.estado === 'activo') {
+          const cuadrados = await tieneCargosCuadrados(c.id);
+          if (cuadrados) {
+            setBajaTarget(c); // había cargos → pedir fecha del último cobro
+          } else {
+            await pasarAPreparado(c.id);
+            showToastV5(`"${c.alias}" pasa a preparado`, 'success');
+            onReload?.();
+          }
+        } else if (c.estado === 'preparado') {
+          const faltan = faltantesParaActivar(c);
+          const que = [
+            faltan.importe && 'importe',
+            faltan.primerCobro && 'primer cobro',
+            faltan.calendario && 'calendario',
+            faltan.medioPago && 'medio de pago',
+          ].filter(Boolean) as string[];
+          if (que.length === 0) {
+            await activarCompromiso(c.id);
+            showToastV5(`"${c.alias}" activado`, 'success');
+            onReload?.();
+          } else {
+            // Nunca activo a medias: se abre la fila/edición para completar.
+            showToastV5(`Para activar falta: ${que.join(', ')}`, 'warn');
+            setPendingActivarId(c.id);
+            setEditTarget(c);
+          }
+        } else if (c.estado === 'baja') {
+          if (puedeReactivar(c)) {
+            setReactivarTarget(c);
+          } else {
+            showToastV5(
+              'La baja fue por cambio de proveedor · crea uno nuevo copiando lo que valga',
+              'warn',
+            );
+          }
+        }
+      } catch (err) {
+        showToastV5(
+          `No se pudo cambiar el estado: ${err instanceof Error ? err.message : String(err)}`,
+          'error',
+        );
+      }
+    },
+    [onReload],
+  );
+
+  const handleBajaConfirm = useCallback(
+    async (fecha: string, motivo: MotivoBaja) => {
+      if (!bajaTarget) return;
+      try {
+        await darDeBajaCompromiso(bajaTarget.id, fecha, motivo);
+        showToastV5(`"${bajaTarget.alias}" dado de baja`, 'success');
+        setBajaTarget(null);
+        onReload?.();
+      } catch (err) {
+        showToastV5(
+          `Error al dar de baja: ${err instanceof Error ? err.message : String(err)}`,
+          'error',
+        );
+      }
+    },
+    [bajaTarget, onReload],
+  );
+
+  const handleReactivarConfirm = useCallback(
+    async (fecha: string) => {
+      if (!reactivarTarget) return;
+      try {
+        await reactivarCompromiso(reactivarTarget.id, fecha);
+        showToastV5(`"${reactivarTarget.alias}" reactivado desde ${fecha}`, 'success');
+        setReactivarTarget(null);
+        onReload?.();
+      } catch (err) {
+        showToastV5(
+          `Error al reactivar: ${err instanceof Error ? err.message : String(err)}`,
+          'error',
+        );
+      }
+    },
+    [reactivarTarget, onReload],
+  );
+
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -158,13 +263,38 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
     });
   }, [compromisos, filterFamilia, search, catalog]);
 
-  // Inmueble: bloques del mockup §3.1 (comunidad y tributos · suministros ·
-  // seguros · administración · propias de la modalidad · otros). Personal
-  // conserva su agrupación por familias de catálogo (§3.5).
-  const groups = useMemo(
-    () => (mode === 'inmueble' ? groupByBlocksInmueble(filtered) : groupByCatalog(filtered, catalog, mode)),
-    [filtered, catalog, mode],
-  );
+  // Estados (§2.3/§2.4): los activos se agrupan por categoría/bloque; los
+  // preparados y las bajas caen a sus propios grupos, que solo existen si hay
+  // alguno. El grupo "Preparados" solo aparece si queda alguno (§2.3).
+  const groups = useMemo(() => {
+    const activos = filtered.filter((c) => c.estado === 'activo');
+    const preparados = filtered.filter(
+      (c): c is CompromisoRecurrente & { id: number } => c.estado === 'preparado' && c.id != null,
+    );
+    const bajas = filtered.filter(
+      (c): c is CompromisoRecurrente & { id: number } => c.estado === 'baja' && c.id != null,
+    );
+
+    const activeGroups =
+      mode === 'inmueble' ? groupByBlocksInmueble(activos) : groupByCatalog(activos, catalog, mode);
+
+    const estadoGroups: GastoGroup[] = [];
+    if (preparados.length > 0) {
+      estadoGroups.push({
+        familiaId: '__preparados__',
+        familiaLabel: 'Preparados · sin activar todavía',
+        compromisos: preparados,
+      });
+    }
+    if (bajas.length > 0) {
+      estadoGroups.push({
+        familiaId: '__bajas__',
+        familiaLabel: 'Dados de baja',
+        compromisos: bajas,
+      });
+    }
+    return [...activeGroups, ...estadoGroups];
+  }, [filtered, catalog, mode]);
 
   const pillOptions = useMemo(
     () =>
@@ -303,6 +433,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
             }
           }}
           onDelete={(c) => setDeleteTarget(c as CompromisoRecurrente & { id: number })}
+          onToggleEstado={(c) => void handleToggleEstado(c)}
           accountsById={accountsById}
           sort={sort}
           onSort={handleSort}
@@ -315,11 +446,46 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
           catalog={catalog}
           compromiso={editTarget}
           mode={mode}
-          onClose={() => setEditTarget(null)}
-          onSaved={() => {
+          onClose={() => {
             setEditTarget(null);
-            onReload?.();
+            setPendingActivarId(null);
           }}
+          onSaved={(updated) => {
+            setEditTarget(null);
+            // Si veníamos de activar un preparado, intentamos activarlo ahora que
+            // se han completado los campos. Si aún falta algo, sigue preparado.
+            const activarId = pendingActivarId;
+            setPendingActivarId(null);
+            if (activarId != null && updated.id === activarId) {
+              void activarCompromiso(activarId)
+                .then(() => showToastV5(`"${updated.alias}" activado`, 'success'))
+                .catch((err) =>
+                  showToastV5(
+                    `Guardado, pero sigue preparado: ${err instanceof Error ? err.message : String(err)}`,
+                    'warn',
+                  ),
+                )
+                .finally(() => onReload?.());
+            } else {
+              onReload?.();
+            }
+          }}
+        />
+      )}
+
+      {bajaTarget && (
+        <BajaModal
+          alias={bajaTarget.alias}
+          onCancel={() => setBajaTarget(null)}
+          onConfirm={(fecha, motivo) => void handleBajaConfirm(fecha, motivo)}
+        />
+      )}
+
+      {reactivarTarget && (
+        <ReactivarModal
+          alias={reactivarTarget.alias}
+          onCancel={() => setReactivarTarget(null)}
+          onConfirm={(fecha) => void handleReactivarConfirm(fecha)}
         />
       )}
 

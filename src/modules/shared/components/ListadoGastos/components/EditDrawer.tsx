@@ -338,7 +338,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ catalog, compromiso, mode, onCl
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.45)',
+          background: 'var(--atlas-v5-overlay)',
           zIndex: 200,
           opacity: visible ? 1 : 0,
           transition: 'opacity 200ms ease',

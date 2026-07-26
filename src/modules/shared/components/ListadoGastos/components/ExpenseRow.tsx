@@ -14,9 +14,20 @@ interface ExpenseRowProps {
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** Interruptor de estado (§2.3): apagar un activo · activar un preparado · reactivar una baja. */
+  onToggleEstado: () => void;
 }
 
-const ROW_GRID = '36px 1fr 200px 200px 130px 80px 70px';
+const ROW_GRID = '36px 1fr 200px 200px 130px 120px 70px';
+
+/** Fecha de baja legible a partir de fechaFin ISO (chip "baja · 30 abr 2026"). */
+const MESES_BAJA = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+function fechaBajaLabel(iso?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getDate()} ${MESES_BAJA[d.getMonth()] ?? ''} ${d.getFullYear()}`;
+}
 
 function formatAccountLabel(account: Account | null): string {
   if (!account) return '—';
@@ -77,6 +88,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
   onToggle,
   onEdit,
   onDelete,
+  onToggleEstado,
 }) => {
   const monthly = computeMonthly(c);
   const pattern = formatPattern(c.patron, c.fechaInicio);
@@ -169,16 +181,35 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
         <div style={rowAmountSub}>{amountSub}</div>
       </div>
 
-      {/* Col 6 · estado */}
-      <div role="cell">
+      {/* Col 6 · estado · interruptor (§2.3) */}
+      <div role="cell" style={estadoCell} onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isActivo}
+          aria-label={
+            isActivo
+              ? `Apagar ${c.alias}`
+              : isPreparado
+                ? `Activar ${c.alias}`
+                : `Reactivar ${c.alias}`
+          }
+          title={isActivo ? 'Apagar' : isPreparado ? 'Activar' : 'Reactivar'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleEstado();
+          }}
+          style={{
+            ...switchTrack,
+            background: isActivo ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-line-2)',
+            justifyContent: isActivo ? 'flex-end' : 'flex-start',
+          }}
+        >
+          <span style={switchKnob} />
+        </button>
         <span
           style={{
-            ...rowStatusBase,
-            background: isActivo
-              ? 'var(--atlas-v5-pos-wash)'
-              : isPreparado
-                ? 'var(--atlas-v5-warn-wash)'
-                : 'var(--atlas-v5-line-2)',
+            ...estadoLabel,
             color: isActivo
               ? 'var(--atlas-v5-pos)'
               : isPreparado
@@ -186,7 +217,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
                 : 'var(--atlas-v5-ink-4)',
           }}
         >
-          {isActivo ? 'Activo' : isPreparado ? 'Preparado' : 'Baja'}
+          {isActivo ? 'Activo' : isPreparado ? 'Preparado' : `Baja · ${fechaBajaLabel(c.fechaFin)}`}
         </span>
       </div>
 
@@ -295,16 +326,40 @@ const rowAmountSub: React.CSSProperties = {
   fontFamily: 'var(--atlas-v5-font-mono-num)',
   marginTop: 1,
 };
-const rowStatusBase: React.CSSProperties = {
+const estadoCell: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  minWidth: 0,
+};
+const switchTrack: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
+  width: 32,
+  height: 18,
+  borderRadius: 99,
+  border: 'none',
+  padding: 2,
+  cursor: 'pointer',
+  flexShrink: 0,
+  transition: 'background 120ms ease',
+};
+const switchKnob: React.CSSProperties = {
+  width: 14,
+  height: 14,
+  borderRadius: '50%',
+  background: 'var(--atlas-v5-white)',
+  display: 'block',
+  boxShadow: 'var(--atlas-v5-shadow-card-active)',
+};
+const estadoLabel: React.CSSProperties = {
   fontSize: 10.5,
   fontWeight: 700,
   textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  padding: '3px 9px',
-  borderRadius: 99,
-  width: 'fit-content',
+  letterSpacing: '0.05em',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
 };
 const rowActions: React.CSSProperties = {
   display: 'flex',

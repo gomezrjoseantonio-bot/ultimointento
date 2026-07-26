@@ -181,6 +181,9 @@
   --atlas-v5-radius-icon: 8px; /* icon-btn */
   --atlas-v5-radius-pill: 14px;/* pill rounded grande */
 
+  /* ===== Velo modal (scrim) ===== */
+  --atlas-v5-overlay: rgba(0, 0, 0, 0.45);
+
   /* ===== Sombras (§2.7) ===== */
   --atlas-v5-shadow-card-hover: 0 1px 3px rgba(0, 0, 0, 0.04);
   --atlas-v5-shadow-card-active: 0 1px 3px rgba(0, 0, 0, 0.06);
