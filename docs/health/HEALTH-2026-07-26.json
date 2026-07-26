@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-26",
-  "generatedAt": "2026-07-26T00:32:54.101Z",
+  "generatedAt": "2026-07-26T21:06:14.781Z",
   "git": {
     "branch": "claude/new-session-ufzfpm",
-    "head": "1e01538"
+    "head": "2f12679"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -48,7 +48,7 @@
       "indicador": "ficheros_no_v5",
       "fecha": "2026-07-20",
       "anterior": "pct_v5 = 61.3 % (subía · trinquete invertido)",
-      "nueva": 128,
+      "nueva": 129,
       "motivo": "pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total)."
     }
   ],
@@ -143,7 +143,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 747 · dead 0 · solo_tests 39 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 750 · dead 0 · solo_tests 40 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -265,28 +265,28 @@
         "1886 · src/services/dashboardService.ts",
         "1789 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
         "1704 · src/modules/inversiones/pages/FichaPlanPensiones.tsx",
-        "1695 · src/modules/inmuebles/wizards/NuevoGastoRecurrenteInmueblePage.tsx",
         "1695 · src/pages/inmuebles/InmueblePage.tsx",
         "1636 · src/services/irpfCalculationService.ts",
-        "1604 · src/modules/personal/pages/NuevoGastoRecurrentePage.tsx",
         "1550 · src/services/aeatParserService.ts",
         "1539 · src/App.tsx",
         "1499 · src/components/treasury/MesDetalleDrawer.tsx",
         "1461 · src/services/declaracionOnboardingService.ts",
+        "1441 · src/modules/inmuebles/wizards/NuevoGastoRecurrenteInmueblePage.tsx",
         "1435 · src/services/treasuryConfirmationService.ts",
-        "1421 · scripts/health.mjs"
+        "1421 · scripts/health.mjs",
+        "1388 · src/services/propertySaleService.ts"
       ],
       "calibracion": null
     },
     "ficheros_no_v5": {
-      "value": 128,
+      "value": 129,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "128 / 362 .tsx sin v5 (consumen v5: 234 · directo o vía .module.css con var(--atlas-v5-*))",
+        "129 / 363 .tsx sin v5 (consumen v5: 234 · directo o vía .module.css con var(--atlas-v5-*))",
         "src/App.tsx",
         "src/components/ImageDescriptionComponent.tsx",
         "src/components/InvoiceBreakdownModal.tsx",
@@ -306,7 +306,7 @@
       "calibracion": {
         "fecha": "2026-07-20",
         "anterior": "pct_v5 = 61.3 % (subía · trinquete invertido)",
-        "nueva": 128,
+        "nueva": 129,
         "motivo": "pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total)."
       }
     },
