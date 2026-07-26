@@ -21,6 +21,7 @@ interface GroupCardProps {
   onToggleRow: (id: number) => void;
   onEdit: (c: CompromisoRecurrente) => void;
   onDelete: (c: CompromisoRecurrente) => void;
+  onToggleEstado: (c: CompromisoRecurrente & { id: number }) => void;
   accountsById: Record<number, Account>;
   sort: SortState;
   onSort: (field: SortField) => void;
@@ -38,6 +39,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
   onToggleRow,
   onEdit,
   onDelete,
+  onToggleEstado,
   accountsById,
   sort,
   onSort,
@@ -159,6 +161,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
                     onToggle={() => onToggleRow(c.id)}
                     onEdit={() => onEdit(c)}
                     onDelete={() => onDelete(c)}
+                    onToggleEstado={() => onToggleEstado(c)}
                   />
                   {expandedRowId === c.id && <RowExpandedDetail compromiso={c} />}
                 </React.Fragment>
