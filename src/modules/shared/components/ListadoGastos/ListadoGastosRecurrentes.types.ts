@@ -8,15 +8,8 @@ export interface ListadoGastosRecurrentesProps {
   onDelete: (c: CompromisoRecurrente) => Promise<void>;
   onReload?: () => void;
   inmuebleId?: number;
-  onNuevo?: () => void;
   onImportar?: () => void;
   onDetectar?: () => void;
-  /**
-   * Optional override for the edit action. By default the listing opens an
-   * internal `<EditDrawer />`. Pass this to navigate to a full-page editor
-   * instead (legacy callers may still rely on it).
-   */
-  onEdit?: (c: CompromisoRecurrente) => void;
 }
 
 export type SortField = 'nombre' | 'importe';

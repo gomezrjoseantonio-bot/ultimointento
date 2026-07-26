@@ -200,14 +200,6 @@ const PersonalGastos = lazyWithPreload(() => import('./modules/personal/pages/Ga
 const PersonalDetectarCompromisos = lazyWithPreload(
   () => import('./modules/personal/pages/DetectarCompromisosPage'),
 );
-// T34 · Wizard "Nuevo gasto recurrente personal"
-const PersonalNuevoGastoRecurrente = lazyWithPreload(
-  () => import('./modules/personal/pages/NuevoGastoRecurrentePage'),
-);
-// T35 · Wizard "Nuevo gasto recurrente · inmueble"
-const InmueblesNuevoGastoRecurrente = lazyWithPreload(
-  () => import('./modules/inmuebles/wizards/NuevoGastoRecurrenteInmueblePage'),
-);
 const PersonalVivienda = lazyWithPreload(() => import('./modules/personal/pages/ViviendaPage'));
 const PersonalPresupuesto = lazyWithPreload(() => import('./modules/personal/pages/PresupuestoPage'));
 
@@ -791,17 +783,7 @@ function App() {
                   <InmueblesDetalle />
                 </React.Suspense>
               } />
-              {/* T35 · Wizard "Nuevo gasto recurrente · inmueble" */}
-              <Route path=":id/gastos/nuevo" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InmueblesNuevoGastoRecurrente />
-                </React.Suspense>
-              } />
-              <Route path=":id/gastos/:gastoId/editar" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InmueblesNuevoGastoRecurrente />
-                </React.Suspense>
-              } />
+              {/* Alta/edición de gasto recurrente · en la propia tabla (§3.2) · sin wizard */}
             </Route>
 
             {/* Inmuebles · sub-rutas fuera del Outlet · forms y supervision legacy */}
@@ -1217,16 +1199,6 @@ function App() {
               <Route path="gastos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <PersonalGastos />
-                </React.Suspense>
-              } />
-              <Route path="gastos/nuevo" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PersonalNuevoGastoRecurrente />
-                </React.Suspense>
-              } />
-              <Route path="gastos/:gastoId/editar" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PersonalNuevoGastoRecurrente />
                 </React.Suspense>
               } />
               <Route path="gastos/detectar-compromisos" element={

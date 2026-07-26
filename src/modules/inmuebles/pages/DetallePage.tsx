@@ -446,7 +446,6 @@ const DetallePage: React.FC = () => {
             inmuebleId={propertyId}
             onDelete={handleDeleteGasto}
             onReload={reloadGastos}
-            onNuevo={() => navigate(`/inmuebles/${property.id}/gastos/nuevo`)}
           />
         </div>
       )}

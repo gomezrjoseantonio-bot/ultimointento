@@ -8,7 +8,7 @@ import { getFamilyIcon } from '../utils/iconMapping';
 import { sortCompromisos } from '../utils/sortingHelpers';
 import { formatEur } from '../utils/amountFormatter';
 import ExpenseRow, { ROW_GRID } from './ExpenseRow';
-import RowExpandedDetail from './RowExpandedDetail';
+import RowForm from './RowForm';
 
 interface GroupCardProps {
   familiaId: string;
@@ -19,10 +19,11 @@ interface GroupCardProps {
   onToggleGroup: () => void;
   expandedRowId: number | null;
   onToggleRow: (id: number) => void;
-  onEdit: (c: CompromisoRecurrente) => void;
   onDelete: (c: CompromisoRecurrente) => void;
   onToggleEstado: (c: CompromisoRecurrente & { id: number }) => void;
+  onRowSaved: () => void;
   accountsById: Record<number, Account>;
+  accounts: Account[];
   sort: SortState;
   onSort: (field: SortField) => void;
   showHeader: boolean;
@@ -37,10 +38,11 @@ const GroupCard: React.FC<GroupCardProps> = ({
   onToggleGroup,
   expandedRowId,
   onToggleRow,
-  onEdit,
   onDelete,
   onToggleEstado,
+  onRowSaved,
   accountsById,
+  accounts,
   sort,
   onSort,
   showHeader,
@@ -91,8 +93,8 @@ const GroupCard: React.FC<GroupCardProps> = ({
                 style={{
                   display: 'grid',
                   gridTemplateColumns: ROW_GRID,
-                  gap: 16,
-                  padding: '10px 20px',
+                  gap: 12,
+                  padding: '10px 16px',
                   borderBottom: '1px solid var(--atlas-v5-line)',
                   background: 'var(--atlas-v5-card-alt)',
                   fontSize: 10.5,
@@ -119,11 +121,12 @@ const GroupCard: React.FC<GroupCardProps> = ({
                     onClick={() => onSort('nombre')}
                     style={sortableHeaderBtn}
                   >
-                    Nombre{sortIndicator('nombre')}
+                    Concepto{sortIndicator('nombre')}
                   </button>
                 </span>
-                <span role="columnheader">Patrón</span>
-                <span role="columnheader">Cuenta</span>
+                <span role="columnheader" style={{ textAlign: 'right' }}>Importe</span>
+                <span role="columnheader">Cuándo</span>
+                <span role="columnheader">Cuenta o medio</span>
                 <span
                   role="columnheader"
                   style={{ textAlign: 'right' }}
@@ -140,10 +143,9 @@ const GroupCard: React.FC<GroupCardProps> = ({
                     onClick={() => onSort('importe')}
                     style={{ ...sortableHeaderBtn, textAlign: 'right' }}
                   >
-                    Importe{sortIndicator('importe')}
+                    Al año{sortIndicator('importe')}
                   </button>
                 </span>
-                <span role="columnheader">Estado</span>
                 <span role="columnheader" />
               </div>
             </div>
@@ -157,13 +159,16 @@ const GroupCard: React.FC<GroupCardProps> = ({
                   <ExpenseRow
                     compromiso={c}
                     account={account}
+                    accounts={accounts}
                     isExpanded={expandedRowId === c.id}
                     onToggle={() => onToggleRow(c.id)}
-                    onEdit={() => onEdit(c)}
                     onDelete={() => onDelete(c)}
                     onToggleEstado={() => onToggleEstado(c)}
+                    onInlineSaved={onRowSaved}
                   />
-                  {expandedRowId === c.id && <RowExpandedDetail compromiso={c} />}
+                  {expandedRowId === c.id && (
+                    <RowForm compromiso={c} accounts={accounts} onSaved={onRowSaved} />
+                  )}
                 </React.Fragment>
               );
             })}
