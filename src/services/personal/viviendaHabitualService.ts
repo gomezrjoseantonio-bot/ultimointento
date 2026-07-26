@@ -29,7 +29,8 @@ const STORE_VIVIENDA = 'viviendaHabitual';
 const STORE_TREASURY = 'treasuryEvents';
 const STORE_PRESTAMOS = 'prestamos';
 
-// Horizonte de proyección (24 meses)
+// Horizonte por defecto de la ventana materializada cuando el llamante no pide
+// uno. No es un límite: el bootstrap de Tesorería pasa su propio `hasta`.
 const HORIZONTE_MESES = 24;
 
 // ─── CRUD ──────────────────────────────────────────────────────────────────
@@ -444,6 +445,7 @@ export async function borrarEventosFuturosVivienda(viviendaId: number): Promise<
 
 export async function regenerarEventosVivienda(
   vivienda: ViviendaHabitual,
+  hasta?: Date,
 ): Promise<number> {
   if (!vivienda.id) {
     throw new Error('regenerarEventosVivienda requiere vivienda.id');
@@ -451,7 +453,7 @@ export async function regenerarEventosVivienda(
   await borrarEventosFuturosVivienda(vivienda.id);
   if (!vivienda.activa) return 0;
 
-  const eventos = await generarEventosVivienda(vivienda);
+  const eventos = await generarEventosVivienda(vivienda, hasta);
   if (eventos.length === 0) return 0;
 
   const db = await initDB();

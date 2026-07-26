@@ -236,6 +236,14 @@ function mapImporteToImporteEstimado(
       const promedio = asymmetricPayments.length > 0 ? total / asymmetricPayments.length : 0;
       return { importeEstimado: Math.round(promedio * 100) / 100, asymmetricPayments };
     }
+    case 'porTramos': {
+      // OpexRule legacy no modela tramos · se estima con el tramo más reciente.
+      const ultimo = [...importe.tramos].sort((a, b) => (a.desde < b.desde ? -1 : 1)).pop();
+      return { importeEstimado: ultimo?.importe ?? 0 };
+    }
+    case 'porcentajeRenta':
+      // Sin importe fijo (depende de la renta) · el legacy no lo representa.
+      return { importeEstimado: 0 };
   }
 }
 
@@ -309,7 +317,7 @@ export function mapOpexRuleToCompromiso(
     bolsaPresupuesto: 'inmueble',
     responsable: 'titular',
     fechaInicio: new Date().toISOString().slice(0, 10),
-    estado: rule.activo ? 'activo' : 'pausado',
+    estado: rule.activo ? 'activo' : 'preparado',
     derivadoDe: { fuente: 'opexRule', refId: rule.id },
   };
 }

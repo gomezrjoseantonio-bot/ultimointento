@@ -85,7 +85,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
   const subLabel = buildSubLabel(c);
   const amountSub = buildAmountSub(c);
   const isActivo = c.estado === 'activo';
-  const isPausado = c.estado === 'pausado';
+  const isPreparado = c.estado === 'preparado';
 
   return (
     <div
@@ -176,17 +176,17 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
             ...rowStatusBase,
             background: isActivo
               ? 'var(--atlas-v5-pos-wash)'
-              : isPausado
+              : isPreparado
                 ? 'var(--atlas-v5-warn-wash)'
                 : 'var(--atlas-v5-line-2)',
             color: isActivo
               ? 'var(--atlas-v5-pos)'
-              : isPausado
+              : isPreparado
                 ? 'var(--atlas-v5-warn)'
                 : 'var(--atlas-v5-ink-4)',
           }}
         >
-          {isActivo ? 'Activo' : isPausado ? 'Pausado' : 'Baja'}
+          {isActivo ? 'Activo' : isPreparado ? 'Preparado' : 'Baja'}
         </span>
       </div>
 

@@ -16,7 +16,7 @@ import { calculateTotalInitialCash } from '../../../../../services/accountBalanc
 import { OtrosIngresos, FuenteIngreso, GastoRecurrenteActividad } from '../../../../../types/personal';
 // V81 (TAREA CC · Bloque C): fuente única de gasto personal = compromisosRecurrentes.
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
-import { gastoPersonalCompromisoEnMes } from '../../../../personal/helpers';
+import { importeCompromisoEnMes } from '../../../../../services/personal/compromisosRecurrentesService';
 import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { PeriodoPago } from '../../../../../types/prestamos';
 import { InversionRendimientoPeriodico, PagoRendimiento } from '../../../../../types/inversiones-extended';
@@ -571,13 +571,14 @@ function buildMonthRow(
   const gastosOperativos = opexMes?.total ?? 0;
   const opexDesglose = opexMes?.desglose ?? [];
 
-  // E. Gasto personal · V81 (Bloque C): FUENTE ÚNICA = compromisosRecurrentes ámbito
-  // personal, con la misma función que Mi Plan (`gastoPersonalCompromisoEnMes`) → ambos
-  // motores dan la misma cifra. Sigue la inflación de gastos de B1 (en el año base,
+  // E. Gasto personal · FUENTE ÚNICA = compromisosRecurrentes ámbito personal,
+  // con el cálculo canónico `importeCompromisoEnMes` (mismo que Mi Plan, Panel,
+  // Presupuesto y el materializador) → todos dan la misma cifra. Sigue la
+  // inflación de gastos de B1 (en el año base,
   // yearIndex 0, el factor es 1 · coincide exactamente con Mi Plan).
   const gastosPersonales =
     baseData.compromisosPersonales.reduce(
-      (sum, c) => sum + gastoPersonalCompromisoEnMes(c, year, monthOfYear),
+      (sum, c) => sum + (importeCompromisoEnMes(c, year, monthOfYear) ?? 0),
       0,
     ) * factorInflacionGastos;
 
