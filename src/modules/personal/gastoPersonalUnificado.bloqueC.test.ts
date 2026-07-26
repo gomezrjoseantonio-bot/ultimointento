@@ -1,12 +1,12 @@
 // V81 · TAREA CC · Bloque C — prueba de aceptación:
 // los DOS motores de proyección calculan la MISMA cifra de gasto personal para el
 // mismo mes, porque ambos derivan de la MISMA fuente (compromisosRecurrentes) con la
-// MISMA función compartida `gastoPersonalCompromisoEnMes` (personal/helpers).
+// MISMA función canónica `importeCompromisoEnMes` (compromisosRecurrentesService).
 //
-// - Mi Plan (budgetProjection) usa `gastoPersonalCompromisoEnMes` vía su alias local.
-// - Horizon (proyeccionMensualService) suma `gastoPersonalCompromisoEnMes` sobre los
-//   compromisos personales activos (año base · sin inflación → factor 1).
-import { gastoPersonalCompromisoEnMes } from './helpers';
+// - Mi Plan (budgetProjection) y Horizon (proyeccionMensualService) consumen la
+//   MISMA fuente única. Antes había un segundo motor sin variación (Fase 4a lo
+//   borró): esta prueba fija que ambos siguen coincidiendo.
+import { importeCompromisoEnMes } from '../../services/personal/compromisosRecurrentesService';
 import { computeBudgetProjectionFromData } from '../mi-plan/services/budgetProjection';
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 
@@ -39,7 +39,7 @@ const compromisos = (): CompromisoRecurrente[] =>
       alias: 'Seguro anual',
       tipo: 'seguro',
       proveedor: { nombre: 'AseguraCo' },
-      patron: { tipo: 'anualMesesConcretos', mesesPago: [3] },
+      patron: { tipo: 'anualMesesConcretos', mesesPago: [3], diaPago: 1 },
       importe: { modo: 'fijo', importe: 600 },
       cuentaCargo: 0,
       conceptoBancario: 'SEGURO',
@@ -57,7 +57,7 @@ const compromisos = (): CompromisoRecurrente[] =>
 // Réplica del cálculo que hace Horizon (proyeccionMensualService.buildMonthRow) para el
 // gasto personal en el año base (factorInflacionGastos = 1): suma de la fuente única.
 const horizonGastoPersonal = (month0: number): number =>
-  compromisos().reduce((sum, c) => sum + gastoPersonalCompromisoEnMes(c, YEAR, month0), 0);
+  compromisos().reduce((sum, c) => sum + (importeCompromisoEnMes(c, YEAR, month0) ?? 0), 0);
 
 describe('Bloque C · una sola fuente de gasto personal · ambos motores coinciden', () => {
   it('Mi Plan y Horizon dan la MISMA cifra de gasto personal para cada mes del año base', () => {

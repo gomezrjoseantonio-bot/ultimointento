@@ -253,6 +253,51 @@ export async function puedeCrearCompromiso(
   return { ok: true };
 }
 
+// ─── Cálculo canónico del importe (FUENTE ÚNICA) ───────────────────────────
+//
+// Toda cifra de un compromiso en una fecha/mes sale de AQUÍ · aplica
+// `calcularImporte` + `aplicarVariacion`, la MISMA matemática que el
+// materializador de `treasuryEvents`. Antes había un segundo motor en
+// `personal/helpers` (sin variación, con otra fuente de importe para
+// variablePorMes) que hacía que Tesorería y Presupuesto dieran cifras distintas
+// del mismo mes. Ese motor se borró: esta es la única puerta.
+//
+// Regla dura: si no se puede calcular (sin importe o sin patrón · un preparado
+// sin activar), devuelve `null` · NUNCA 0 ni NaN. Quien consuma pinta hueco.
+
+/** Importe de un cargo del compromiso en una fecha concreta. `null` si no hay
+ *  importe/patrón/fechaInicio con que calcular. */
+export function importeCompromisoEnFecha(
+  c: CompromisoRecurrente,
+  fecha: Date,
+): number | null {
+  if (!c.importe || !c.patron || !c.fechaInicio) return null;
+  const base = calcularImporte(c.importe, fecha);
+  return aplicarVariacion(base, c.variacion, new Date(c.fechaInicio), fecha);
+}
+
+/** Importe total del compromiso en un mes (`month0` 0-11): suma los cargos que
+ *  caen en el mes según el patrón. `null` si no se puede calcular; `0` si el
+ *  patrón no cae ese mes (eso SÍ es calculable). */
+export function importeCompromisoEnMes(
+  c: CompromisoRecurrente,
+  year: number,
+  month0: number,
+): number | null {
+  if (!c.importe || !c.patron || !c.fechaInicio) return null;
+  const mm = String(month0 + 1).padStart(2, '0');
+  const finMes = new Date(year, month0 + 1, 0).getDate();
+  const desde = `${year}-${mm}-01`;
+  const hasta = `${year}-${mm}-${String(finMes).padStart(2, '0')}`;
+  const fechas = expandirPatron(c.patron, desde, hasta);
+  let total = 0;
+  for (const f of fechas) {
+    const v = importeCompromisoEnFecha(c, f);
+    if (v != null) total += v;
+  }
+  return total;
+}
+
 // ─── Generación de eventos (sección 3.2) ───────────────────────────────────
 
 /**
@@ -299,13 +344,9 @@ export function generarEventosDesdeCompromiso(
   const ahora = new Date().toISOString();
 
   return fechas.map((fecha) => {
-    const importeBruto = calcularImporte(compromiso.importe, fecha);
-    const importeAjustado = aplicarVariacion(
-      importeBruto,
-      compromiso.variacion,
-      fechaInicio,
-      fecha,
-    );
+    // FUENTE ÚNICA · el importe por fecha sale del cálculo canónico (mismo que
+    // consumen Presupuesto/Panel/proyección) para que nunca diverjan.
+    const importeAjustado = importeCompromisoEnFecha(compromiso, fecha) ?? 0;
 
     // Pago = negativo · cobro = positivo. Categorías de ingreso son raras
     // en compromisos (la mayoría son pagos).

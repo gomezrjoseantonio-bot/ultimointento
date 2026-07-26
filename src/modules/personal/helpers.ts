@@ -88,92 +88,12 @@ export const computeCompromisoMonthly = (c: CompromisoRecurrente): number => {
   }
 };
 
-/**
- * Importe esperado en un mes concreto · usa estacionalidad si la hay.
- * @param month 0-11 (estilo Date)
- */
-export const computeCompromisoImporteEnMes = (
-  c: CompromisoRecurrente,
-  month: number,
-): number => {
-  switch (c.importe.modo) {
-    case 'fijo':
-      return c.importe.importe;
-    case 'variable':
-      return c.importe.importeMedio;
-    case 'diferenciadoPorMes':
-      return c.importe.importesPorMes[month] ?? 0;
-    case 'porPago': {
-      // mes 1-12 · convertir desde el month 0-11
-      const value = c.importe.importesPorPago[month + 1] ?? 0;
-      return value;
-    }
-    default:
-      return 0;
-  }
-};
-
-/**
- * V81 (TAREA CC · Bloque C) · FUENTE ÚNICA del gasto personal por mes.
- *
- * Importe de un compromiso recurrente ámbito PERSONAL en el mes `month` (0-11)
- * del año `year`. Extraído de `budgetProjection` (Mi Plan) para que los DOS
- * motores de proyección — `budgetProjection` (Mi Plan) y `proyeccionMensualService`
- * (Horizon) — calculen exactamente lo mismo desde `compromisosRecurrentes`.
- * Antes Horizon leía de `patronGastosPersonales` (store eliminado en V62 · stub
- * que devolvía []), por lo que su gasto personal era siempre 0.
- */
-export const gastoPersonalCompromisoEnMes = (
-  compromiso: CompromisoRecurrente,
-  year: number,
-  month: number, // 0-11
-): number => {
-  if (compromiso.estado !== 'activo') return 0;
-  if (compromiso.ambito !== 'personal') return 0;
-
-  const patron = compromiso.patron;
-
-  switch (patron.tipo) {
-    case 'mensualDiaFijo':
-    case 'mensualDiaRelativo':
-      return computeCompromisoImporteEnMes(compromiso, month);
-    case 'cadaNMeses': {
-      const offset = (month + 1 - patron.mesAncla) % patron.cadaNMeses;
-      if (offset !== 0) return 0;
-      return computeCompromisoImporteEnMes(compromiso, month);
-    }
-    case 'anualMesesConcretos': {
-      const meses = patron.mesesPago ?? [];
-      if (!meses.includes(month + 1)) return 0;
-      return computeCompromisoImporteEnMes(compromiso, month);
-    }
-    case 'trimestralFiscal': {
-      if (![1, 4, 7, 10].includes(month + 1)) return 0;
-      return computeCompromisoImporteEnMes(compromiso, month);
-    }
-    case 'pagasExtra': {
-      const meses = patron.mesesExtra ?? [];
-      if (!meses.includes(month + 1)) return 0;
-      return computeCompromisoImporteEnMes(compromiso, month);
-    }
-    case 'variablePorMes': {
-      const meses = patron.mesesPago ?? [];
-      if (!meses.includes(month + 1)) return 0;
-      const por = meses.length > 0 ? patron.importeObjetivoAnual / meses.length : 0;
-      return por;
-    }
-    case 'puntual': {
-      // Compara contra el `year` de la proyección · NO contra el actual.
-      const d = new Date(patron.fecha);
-      if (Number.isNaN(d.getTime())) return 0;
-      if (d.getFullYear() !== year) return 0;
-      if (d.getMonth() !== month) return 0;
-      return patron.importe;
-    }
-    default:
-      return 0;
-  }
-};
+// `computeCompromisoImporteEnMes` y `gastoPersonalCompromisoEnMes` BORRADOS
+// (TAREA CC · GASTOS-RECURRENTES · Fase 4a). Eran un segundo motor de cálculo
+// —sin `aplicarVariacion` y con otra fuente de importe para variablePorMes— que
+// hacía que Tesorería y Presupuesto/Panel/proyección dieran cifras distintas del
+// mismo mes. La FUENTE ÚNICA es ahora `importeCompromisoEnMes` /
+// `importeCompromisoEnFecha` en `services/personal/compromisosRecurrentesService`.
 
 /**
  * Reparto canónico de categorías → bolsa 50/30/20 según prefijo.

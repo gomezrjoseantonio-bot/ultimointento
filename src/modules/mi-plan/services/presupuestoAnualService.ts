@@ -31,8 +31,8 @@ import { nominaService } from '../../../services/nominaService';
 import { autonomoService } from '../../../services/autonomoService';
 import { calcularNetoMesNomina } from '../../../services/nominaCalculoService';
 import { calcularNetoMesAutonomo } from '../../../services/autonomoCalculoService';
-import { listarCompromisos } from '../../../services/personal/compromisosRecurrentesService';
-import { gastoPersonalCompromisoEnMes, bolsaForCategoria } from '../../personal/helpers';
+import { listarCompromisos, importeCompromisoEnMes } from '../../../services/personal/compromisosRecurrentesService';
+import { bolsaForCategoria } from '../../personal/helpers';
 import { initDB } from '../../../services/db';
 import type { TreasuryEvent, Movement } from '../../../services/db';
 import { calculateTotalInitialCash } from '../../../services/accountBalanceService';
@@ -268,8 +268,8 @@ async function buildPrevisto(
     if (!destino) continue; // obligaciones/ahorro personal no son Hogar/Deseos
     const cells = g.get(destino)!;
     for (let i = 0; i < MESES; i++) {
-      const imp = gastoPersonalCompromisoEnMes(c, year, i);
-      if (imp === 0) continue;
+      const imp = importeCompromisoEnMes(c, year, i);
+      if (imp == null || imp === 0) continue; // null = no calculable → hueco
       cells[i].previsto = round2(cells[i].previsto - Math.abs(imp)); // gasto = negativo
       cells[i].desglose.push({
         concepto: (c as { nombre?: string; alias?: string }).nombre

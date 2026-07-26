@@ -27,7 +27,7 @@ import type { Contract } from '../../../services/db';
 import { initDB } from '../../../services/db';
 import { calcularNetoMesNomina } from '../../../services/nominaCalculoService';
 import { calcularNetoMesAutonomo } from '../../../services/autonomoCalculoService';
-import { gastoPersonalCompromisoEnMes } from '../../personal/helpers';
+import { importeCompromisoEnMes } from '../../../services/personal/compromisosRecurrentesService';
 
 const MONTH_LABELS = [
   'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
@@ -109,10 +109,9 @@ const ingresoAutonomoEnMes = (
   return calcularNetoMesAutonomo(autonomo, month + 1, year).netoMes;
 };
 
-// V81 (TAREA CC · Bloque C): `gastoCompromisoEnMes` movido a `personal/helpers`
-// (`gastoPersonalCompromisoEnMes`) como FUENTE ÚNICA compartida con el motor de
-// Horizon (`proyeccionMensualService`). Aquí solo se reexpone el alias local.
-const gastoCompromisoEnMes = gastoPersonalCompromisoEnMes;
+// FUENTE ÚNICA · `importeCompromisoEnMes` (compromisosRecurrentesService), el
+// mismo cálculo canónico que consumen Presupuesto, Panel y la proyección de
+// Horizon · aplica calcularImporte + aplicarVariacion.
 
 /**
  * Renta mensual de un contrato en el mes `month` del año `year`.
@@ -184,7 +183,11 @@ export const computeBudgetProjectionFromData = (
       entradas += ingresoContratoEnMes(c, year, i);
     });
     data.compromisos.forEach((c) => {
-      const importe = gastoCompromisoEnMes(c, year, i);
+      // El guard de estado/ámbito lo hacía antes el helper borrado · ahora es
+      // explícito (solo gastos personales activos entran en el presupuesto).
+      if (c.estado !== 'activo' || c.ambito !== 'personal') return;
+      const importe = importeCompromisoEnMes(c, year, i);
+      if (importe == null) return; // no calculable → hueco (no suma)
       // Garantizamos signo negativo para gastos.
       salidas += -Math.abs(importe);
     });

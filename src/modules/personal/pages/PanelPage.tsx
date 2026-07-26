@@ -8,11 +8,11 @@ import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes
 import {
   computeAutonomoNetoPorMes,
   computeCompromisoMonthly,
-  computeCompromisoImporteEnMes,
   computeNominaNetoPorMes,
   familiaForCategoria,
   safeDayOfMonth,
 } from '../helpers';
+import { importeCompromisoEnMes } from '../../../services/personal/compromisosRecurrentesService';
 import styles from './PanelPage.module.css';
 
 const MONTH_LABELS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -88,9 +88,9 @@ const computeProximosCompromisos = (
           next = new Date(today.getFullYear(), nextMonth, nextDia);
         }
         if (next <= limit) {
-          // Importe del mes correspondiente (cubre fijo · variable · porPago · diferenciadoPorMes).
-          const importeMes = computeCompromisoImporteEnMes(c, next.getMonth());
-          if (importeMes !== 0) {
+          // Importe del mes correspondiente (cálculo canónico · null = hueco).
+          const importeMes = importeCompromisoEnMes(c, next.getFullYear(), next.getMonth());
+          if (importeMes != null && importeMes !== 0) {
             items.push({
               fecha: next.toISOString().slice(0, 10),
               concepto: c.alias,
@@ -128,7 +128,7 @@ const PanelPage: React.FC = () => {
       Array.from({ length: 12 }, (_, i) =>
         compromisos
           .filter((c) => c.estado === 'activo' && c.ambito === 'personal')
-          .reduce((sum, c) => sum + computeCompromisoImporteEnMes(c, i), 0),
+          .reduce((sum, c) => sum + (importeCompromisoEnMes(c, new Date().getFullYear(), i) ?? 0), 0),
       ),
     [compromisos],
   );
