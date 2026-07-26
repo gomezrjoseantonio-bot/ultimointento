@@ -222,15 +222,25 @@ function mapRowsToAportaciones(
       ? notasRaw.trim()
       : 'Importación histórica';
 
-    // Detect if this refers to a pension plan — check both inversiones store type
-    // AND planesPensiones by name (entidad/proveedor is optional; we also match
-    // by empresaNombre for plans imported from the AEAT XML, which often leave
-    // `entidad` empty but record the plan sponsor in `empresaNombre`).
+    // Detect if this refers to a pension plan — check three signals:
+    //  1. la posición ya existe en inversiones con tipo plan_*,
+    //  2. coincide por nombre (+entidad) con un planesPensiones existente, o
+    //  3. la propia fila trae el desglose empresa/individuo (columnas
+    //     `importe_empresa` / `importe_individuo`). Esta tercera señal es clave:
+    //     un extracto de plan de empleo llega SIN `importe` y sólo con el
+    //     desglose · sin ella la fila caería al ramo de posición normal y se
+    //     descartaría en silencio como «importe no válido» (0 detectadas), aun
+    //     cuando el plan todavía no se ha dado de alta.
     const tipoPosicion = posicionId ? posicionesById.get(posicionId)?.tipo : undefined;
     const nombreNormLower = posicionNombre.toLowerCase();
     const entidadNormLower = entidad.toLowerCase();
+    const desgloseEmpresaRaw = getRowValue(row, ['importe_empresa', 'aportacion_empresa']);
+    const desgloseIndividuoRaw = getRowValue(row, ['importe_individuo', 'aportacion_individuo']);
+    const tieneDesglosePension =
+      desgloseEmpresaRaw !== undefined || desgloseIndividuoRaw !== undefined;
     const esPlanPensiones =
       tipoPosicion === 'plan_pensiones' || tipoPosicion === 'plan_empleo' ||
+      tieneDesglosePension ||
       planes.some((p) => {
         if (p.nombre.toLowerCase() !== nombreNormLower) return false;
         if (!entidadNormLower) return true;

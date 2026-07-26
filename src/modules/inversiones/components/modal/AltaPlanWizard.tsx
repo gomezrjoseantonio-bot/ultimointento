@@ -20,6 +20,7 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { Icons, showToastV5 } from '../../../../design-system/v5';
 import { planesPensionesService } from '../../../../services/planesPensionesService';
+import { personalDataService } from '../../../../services/personalDataService';
 import { getFiscalContextSafe } from '../../../../services/fiscalContextService';
 import { nominaService } from '../../../../services/nominaService';
 import type {
@@ -194,13 +195,25 @@ const AltaPlanWizard: React.FC<AltaPlanWizardProps> = ({
   // ── Submit ──────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!personalDataId) {
-      showToastV5('Error: No se encontraron datos personales');
-      return;
-    }
     if (!nombre.trim() || !gestoraActual.trim() || !fechaContratacion) {
       showToastV5('Completa todos los campos obligatorios');
       return;
+    }
+    // El plan necesita un `personalDataId` válido, pero no debemos bloquear el
+    // alta si el usuario aún no ha rellenado su perfil en Personal: creamos un
+    // registro mínimo (id=1) al vuelo y seguimos.
+    let pdId = personalDataId;
+    if (!pdId) {
+      try {
+        const ensured = await personalDataService.ensurePersonalData();
+        pdId = ensured.id ?? 1;
+        setPersonalDataId(pdId);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[inversiones] ensure personalData', err);
+        showToastV5('No se pudo preparar el perfil personal. Inténtalo de nuevo.');
+        return;
+      }
     }
     if (esPPEoPPES && empresaCif.trim() && !CIF_REGEX.test(empresaCif.trim())) {
       showToastV5('El CIF de la empresa no tiene un formato válido (ej. A12345678)');
@@ -221,7 +234,7 @@ const AltaPlanWizard: React.FC<AltaPlanWizardProps> = ({
           : undefined;
 
       const planData: Omit<PlanPensiones, 'id' | 'fechaCreacion' | 'fechaActualizacion'> = {
-        personalDataId,
+        personalDataId: pdId,
         nombre: nombre.trim(),
         tipoAdministrativo,
         subtipoPPE: esPPE ? subtipoPPE : undefined,

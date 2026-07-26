@@ -114,6 +114,26 @@ class PersonalDataService {
   }
 
   /**
+   * Devuelve el registro de datos personales del titular, creando uno mínimo
+   * (id=1) si aún no existe. Pensado para flujos que NECESITAN un
+   * `personalDataId` válido (p. ej. alta de un plan de pensiones) pero que no
+   * deben quedar bloqueados si el usuario todavía no ha completado su perfil en
+   * Personal · los campos vacíos se rellenan luego desde Ajustes.
+   */
+  async ensurePersonalData(): Promise<PersonalData> {
+    const existing = await this.getPersonalData();
+    if (existing) return existing;
+    return this.savePersonalData({
+      nombre: '',
+      apellidos: '',
+      dni: '',
+      direccion: '',
+      situacionPersonal: 'soltero',
+      situacionLaboral: [],
+    });
+  }
+
+  /**
    * Check if personal data is configured
    */
   async isPersonalDataConfigured(): Promise<boolean> {
