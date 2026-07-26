@@ -27,7 +27,7 @@ const AccionesRapidas: React.FC<AccionesRapidasProps> = ({ onNavigate }) => (
           <span className={styles.s}>foto o PDF · se clasifica solo</span>
         </span>
       </button>
-      <button className={styles.btn} onClick={() => onNavigate('/personal/gastos/nuevo')}>
+      <button className={styles.btn} onClick={() => onNavigate('/personal/gastos')}>
         <span className={styles.ic}>
           <Icons.PlusCircle size={18} strokeWidth={1.8} />
         </span>

@@ -1,247 +1,110 @@
+// Sección de un bloque dentro de la tabla (§3.1): una cabecera de grupo en gris
+// sobre fondo crema (comunidad y tributos · suministros · seguros · … ·
+// preparados · dados de baja) y sus filas. NO es un acordeón ni una tarjeta
+// aparte: vive dentro de la única tabla, bajo la cabecera navy común. La fila
+// desplegada (RowForm) se pinta justo debajo de su fila, dentro de la tabla.
+
 import React from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import type { Account } from '../../../../../services/db';
-import type { SortField, SortState } from '../ListadoGastosRecurrentes.types';
-import { computeMonthly } from '../../../utils/compromisoUtils';
-import { getFamilyIcon } from '../utils/iconMapping';
-import { sortCompromisos } from '../utils/sortingHelpers';
-import { formatEur } from '../utils/amountFormatter';
 import ExpenseRow, { ROW_GRID } from './ExpenseRow';
-import RowExpandedDetail from './RowExpandedDetail';
+import RowForm from './RowForm';
 
-interface GroupCardProps {
-  familiaId: string;
+interface GroupSectionProps {
   familiaLabel: string;
   compromisos: (CompromisoRecurrente & { id: number })[];
-  mode: 'personal' | 'inmueble';
-  isExpanded: boolean;
-  onToggleGroup: () => void;
   expandedRowId: number | null;
   onToggleRow: (id: number) => void;
-  onEdit: (c: CompromisoRecurrente) => void;
   onDelete: (c: CompromisoRecurrente) => void;
   onToggleEstado: (c: CompromisoRecurrente & { id: number }) => void;
+  onRowSaved: () => void;
   accountsById: Record<number, Account>;
-  sort: SortState;
-  onSort: (field: SortField) => void;
-  showHeader: boolean;
+  accounts: Account[];
 }
 
-const GroupCard: React.FC<GroupCardProps> = ({
-  familiaId,
+const GroupSection: React.FC<GroupSectionProps> = ({
   familiaLabel,
   compromisos,
-  mode,
-  isExpanded,
-  onToggleGroup,
   expandedRowId,
   onToggleRow,
-  onEdit,
   onDelete,
   onToggleEstado,
+  onRowSaved,
   accountsById,
-  sort,
-  onSort,
-  showHeader,
+  accounts,
 }) => {
-  const FamilyIcon = getFamilyIcon(familiaId, mode);
-  const totalMensual = compromisos.reduce((s, c) => s + computeMonthly(c), 0);
-  const sorted = sortCompromisos(compromisos, sort);
-
-  const sortIndicator = (field: SortField): string =>
-    sort.field === field ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : '';
-
   return (
-    <div style={groupWrap}>
-      <button
-        type="button"
-        style={groupHeader}
-        onClick={onToggleGroup}
-        aria-expanded={isExpanded}
-        aria-label={`${familiaLabel} · ${compromisos.length} ${compromisos.length === 1 ? 'patrón' : 'patrones'}`}
-      >
-        <div style={iconBg}>
-          <FamilyIcon size={18} strokeWidth={1.8} style={{ color: 'var(--atlas-v5-gold-ink)' }} />
-        </div>
-        <span style={groupTitle}>{familiaLabel}</span>
-        <span style={groupMeta}>
-          · {compromisos.length} {compromisos.length === 1 ? 'patrón' : 'patrones'}
-        </span>
-        <div style={{ flex: 1 }} />
-        <div style={{ textAlign: 'right' }}>
-          <div style={groupTotal}>{formatEur(-Math.abs(totalMensual))}</div>
-          <div style={groupTotalSub}>mensual estimado</div>
-        </div>
-        <div style={{ marginLeft: 12 }}>
-          {isExpanded ? (
-            <ChevronDown size={14} strokeWidth={2} style={{ color: 'var(--atlas-v5-ink-4)' }} />
-          ) : (
-            <ChevronRight size={14} strokeWidth={2} style={{ color: 'var(--atlas-v5-ink-4)' }} />
-          )}
-        </div>
-      </button>
-
-      {isExpanded && (
-        <div role="table" aria-label={`Gastos de ${familiaLabel}`}>
-          {showHeader && (
-            <div role="rowgroup">
-              <div
-                role="row"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: ROW_GRID,
-                  gap: 16,
-                  padding: '10px 20px',
-                  borderBottom: '1px solid var(--atlas-v5-line)',
-                  background: 'var(--atlas-v5-card-alt)',
-                  fontSize: 10.5,
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  color: 'var(--atlas-v5-ink-4)',
-                  fontFamily: 'var(--atlas-v5-font-ui)',
-                }}
-              >
-                <span role="columnheader" />
-                <span
-                  role="columnheader"
-                  aria-sort={
-                    sort.field === 'nombre'
-                      ? sort.dir === 'asc'
-                        ? 'ascending'
-                        : 'descending'
-                      : 'none'
-                  }
-                >
-                  <button
-                    type="button"
-                    onClick={() => onSort('nombre')}
-                    style={sortableHeaderBtn}
-                  >
-                    Nombre{sortIndicator('nombre')}
-                  </button>
-                </span>
-                <span role="columnheader">Patrón</span>
-                <span role="columnheader">Cuenta</span>
-                <span
-                  role="columnheader"
-                  style={{ textAlign: 'right' }}
-                  aria-sort={
-                    sort.field === 'importe'
-                      ? sort.dir === 'asc'
-                        ? 'ascending'
-                        : 'descending'
-                      : 'none'
-                  }
-                >
-                  <button
-                    type="button"
-                    onClick={() => onSort('importe')}
-                    style={{ ...sortableHeaderBtn, textAlign: 'right' }}
-                  >
-                    Importe{sortIndicator('importe')}
-                  </button>
-                </span>
-                <span role="columnheader">Estado</span>
-                <span role="columnheader" />
-              </div>
-            </div>
-          )}
-
-          <div role="rowgroup">
-            {sorted.map((c) => {
-              const account = accountsById[c.cuentaCargo] ?? null;
-              return (
-                <React.Fragment key={c.id}>
-                  <ExpenseRow
-                    compromiso={c}
-                    account={account}
-                    isExpanded={expandedRowId === c.id}
-                    onToggle={() => onToggleRow(c.id)}
-                    onEdit={() => onEdit(c)}
-                    onDelete={() => onDelete(c)}
-                    onToggleEstado={() => onToggleEstado(c)}
-                  />
-                  {expandedRowId === c.id && <RowExpandedDetail compromiso={c} />}
-                </React.Fragment>
-              );
-            })}
-          </div>
-        </div>
-      )}
+    <div role="rowgroup">
+      {/* Cabecera de grupo (§3.1) */}
+      <div role="row" style={grpHeader}>
+        {familiaLabel}
+      </div>
+      {compromisos.map((c) => {
+        const account = accountsById[c.cuentaCargo] ?? null;
+        return (
+          <React.Fragment key={c.id}>
+            <ExpenseRow
+              compromiso={c}
+              account={account}
+              accounts={accounts}
+              isExpanded={expandedRowId === c.id}
+              onToggle={() => onToggleRow(c.id)}
+              onDelete={() => onDelete(c)}
+              onToggleEstado={() => onToggleEstado(c)}
+              onInlineSaved={onRowSaved}
+            />
+            {expandedRowId === c.id && (
+              <RowForm compromiso={c} accounts={accounts} onSaved={onRowSaved} />
+            )}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 };
 
-const groupWrap: React.CSSProperties = {
-  border: '1px solid var(--atlas-v5-line)',
-  borderRadius: 12,
-  overflow: 'hidden',
-  background: 'var(--atlas-v5-card)',
-  marginBottom: 14,
-  boxShadow: 'var(--atlas-v5-shadow-card)',
-};
-const groupHeader: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 14,
-  width: '100%',
-  padding: '14px 20px',
+const grpHeader: React.CSSProperties = {
+  gridColumn: '1 / -1',
+  padding: '8px 14px',
   background: 'var(--atlas-v5-card-alt)',
-  border: 'none',
+  borderTop: '1px solid var(--atlas-v5-line-2)',
   borderBottom: '1px solid var(--atlas-v5-line-2)',
-  cursor: 'pointer',
+  fontSize: 9.5,
+  fontWeight: 700,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase',
+  color: 'var(--atlas-v5-ink-4)',
   fontFamily: 'var(--atlas-v5-font-ui)',
-  textAlign: 'left',
-};
-const iconBg: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: 9,
-  background: 'var(--atlas-v5-gold-wash)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexShrink: 0,
-};
-const groupTitle: React.CSSProperties = {
-  fontSize: 15,
-  fontWeight: 700,
-  color: 'var(--atlas-v5-ink)',
-  letterSpacing: '-0.01em',
-};
-const groupMeta: React.CSSProperties = {
-  fontSize: 11.5,
-  color: 'var(--atlas-v5-ink-4)',
-  marginLeft: 4,
-};
-const groupTotal: React.CSSProperties = {
-  fontFamily: 'var(--atlas-v5-font-mono-num)',
-  fontSize: 14,
-  fontWeight: 700,
-  color: 'var(--atlas-v5-neg)',
-  letterSpacing: '-0.02em',
-  lineHeight: 1.2,
-};
-const groupTotalSub: React.CSSProperties = {
-  fontSize: 11,
-  color: 'var(--atlas-v5-ink-4)',
-  marginTop: 1,
-  textAlign: 'right',
-};
-const sortableHeaderBtn: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  padding: 0,
-  cursor: 'pointer',
-  fontSize: 'inherit',
-  fontWeight: 'inherit',
-  letterSpacing: 'inherit',
-  textTransform: 'inherit',
-  color: 'inherit',
-  fontFamily: 'inherit',
-  textAlign: 'left',
 };
 
-export default GroupCard;
+// Cabecera navy de columnas (una sola vez, encima de todos los grupos).
+export const TableHead: React.FC = () => (
+  <div role="row" style={theadRow}>
+    <span style={th} />
+    <span style={th} />
+    <span style={th}>Concepto</span>
+    <span style={{ ...th, textAlign: 'right' }}>Importe</span>
+    <span style={th}>Cuándo se cobra</span>
+    <span style={th}>Cuenta de cargo</span>
+    <span style={{ ...th, textAlign: 'right' }}>Al año</span>
+    <span style={th} />
+  </div>
+);
+
+const theadRow: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: ROW_GRID,
+  gap: 12,
+  padding: '10px 12px',
+  background: 'var(--atlas-v5-brand)',
+};
+const th: React.CSSProperties = {
+  fontSize: 9.5,
+  fontWeight: 600,
+  letterSpacing: '0.09em',
+  textTransform: 'uppercase',
+  color: 'var(--atlas-v5-on-navy-3)',
+  fontFamily: 'var(--atlas-v5-font-ui)',
+};
+
+export default GroupSection;

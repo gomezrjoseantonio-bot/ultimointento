@@ -83,9 +83,9 @@ const RejillaMeses: React.FC<RejillaMesesProps> = ({
               aria-pressed={on}
               style={{
                 ...celda,
-                background: on ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-card)',
-                color: on ? 'var(--atlas-v5-white)' : 'var(--atlas-v5-ink-3)',
-                borderColor: on ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-line)',
+                background: on ? 'var(--atlas-v5-gold)' : 'var(--atlas-v5-card)',
+                color: on ? 'var(--atlas-v5-brand-ink)' : 'var(--atlas-v5-ink-3)',
+                borderColor: on ? 'var(--atlas-v5-gold)' : 'var(--atlas-v5-line)',
                 cursor: disabled ? 'not-allowed' : 'pointer',
               }}
             >
