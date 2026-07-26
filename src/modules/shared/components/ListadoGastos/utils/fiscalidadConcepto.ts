@@ -93,9 +93,11 @@ export function fiscalidadDeConcepto(
   const pregunta = conceptoPregunta(tipoFamilia, subtipo);
   const esDerrama = tipoFamilia === 'comunidad' && subtipo === 'derrama';
 
-  const familia: FamiliaFiscal | null = pregunta
-    ? familiaFiscalManual ?? null
-    : familiaBaseDe(tipoFamilia);
+  // Una elección manual SIEMPRE manda (la fija la excepción que pregunta, o el
+  // alta del seguro de vida vinculado a hipoteca → financiación). Si no la hay,
+  // los conceptos que preguntan quedan sin resolver y el resto derivan del catálogo.
+  const familia: FamiliaFiscal | null =
+    familiaFiscalManual ?? (pregunta ? null : familiaBaseDe(tipoFamilia));
 
   if (familia == null) {
     return {

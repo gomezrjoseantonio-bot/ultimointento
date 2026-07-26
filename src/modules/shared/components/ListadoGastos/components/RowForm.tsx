@@ -110,9 +110,10 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) =
         proveedor: { ...c.proveedor, nombre: proveedor.trim() || nombre, nif: nif.trim() || undefined },
         cups: cups.trim() || undefined,
         numeroContrato: numeroContrato.trim() || undefined,
-        // La familia fiscal NO se persiste (se deriva del concepto). Sólo se guarda
-        // la elección manual cuando el concepto pregunta (derrama · «Otro»).
-        familiaFiscalManual: fisc.pregunta && familiaManual ? familiaManual : undefined,
+        // La familia fiscal normal NO se persiste (se deriva del concepto). Se
+        // conserva la elección manual: la de la excepción que pregunta (derrama ·
+        // «Otro») y la que fija el alta (seguro de vida vinculado → financiación).
+        familiaFiscalManual: familiaManual || undefined,
         metodoPago: medio,
         cuentaCargo,
         fechaInicio: fechaInicio || c.fechaInicio,

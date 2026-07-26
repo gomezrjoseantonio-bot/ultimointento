@@ -61,6 +61,9 @@ export const TIPOS_GASTO_INMUEBLE_V2: TipoGastoInmueble[] = [
     subtipos: [
       { id: 'hogar', label: 'Hogar', tipoCompromiso: 'seguro', categoria: 'inmueble.seguros' },
       { id: 'impago', label: 'Impago', tipoCompromiso: 'seguro', categoria: 'inmueble.seguros' },
+      // Vida: sólo tiene sentido en el inmueble si está vinculado a la hipoteca.
+      // Se resuelve al alta (ver SeguroVidaModal · decisión Jose §4).
+      { id: 'vida', label: 'Vida', tipoCompromiso: 'seguro', categoria: 'inmueble.seguros' },
       { id: 'otros', label: 'Otros', tipoCompromiso: 'seguro', categoria: 'inmueble.seguros' },
     ],
   },
