@@ -127,9 +127,9 @@ describe('buildOpexPorMes · vía directa', () => {
     expect([...map.keys()]).toHaveLength(1);
   });
 
-  it('ignora compromisos personales · pausados · y agrega varios inmuebles con alias fallback', () => {
+  it('ignora compromisos personales · preparados · y agrega varios inmuebles con alias fallback', () => {
     const personal = compromisoBase({ id: 2, ambito: 'personal', personalDataId: 1, inmuebleId: undefined });
-    const pausado = compromisoBase({ id: 3, estado: 'pausado' });
+    const preparado = compromisoBase({ id: 3, estado: 'preparado' });
     const otroInmueble = compromisoBase({
       id: 4,
       inmuebleId: 99, // sin alias en el mapa
@@ -138,7 +138,7 @@ describe('buildOpexPorMes · vía directa', () => {
       variacion: { tipo: 'sinVariacion' },
     });
     const map = buildOpexPorMes(
-      [compromisoBase({ variacion: { tipo: 'sinVariacion' } }), personal, pausado, otroInmueble],
+      [compromisoBase({ variacion: { tipo: 'sinVariacion' } }), personal, preparado, otroInmueble],
       2.5,
       aliasMap,
       START_YEAR,

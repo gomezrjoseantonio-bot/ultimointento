@@ -39,7 +39,16 @@ export type ImporteEvento =
   | { modo: 'fijo'; importe: number }
   | { modo: 'variable'; importeMedio: number }
   | { modo: 'diferenciadoPorMes'; importesPorMes: number[] /* 12 elementos · ene→dic */ }
-  | { modo: 'porPago'; importesPorPago: Record<number, number> /* mes → importe */ };
+  | { modo: 'porPago'; importesPorPago: Record<number, number> /* mes → importe */ }
+  // Por tramos · la cuota cambia en una fecha (ej. gas: 56 € hasta mayo, 38 €
+  // desde junio). Se aplica el tramo cuyo `desde` (ISO date) es el más reciente
+  // ≤ la fecha del cargo. Sección 2.6.
+  | { modo: 'porTramos'; tramos: Array<{ desde: string; importe: number }> }
+  // Porcentaje de la renta · gestión del alquiler, comisiones de plataforma. El
+  // importe se resuelve con la renta del contrato del inmueble (contexto que NO
+  // tiene `calcularImporte`; lo aporta el consumidor con acceso al contrato ·
+  // sección 2.6). Sin ese contexto no se proyecta cifra.
+  | { modo: 'porcentajeRenta'; porcentaje: number /* 0-100 */ };
 
 // ─── Variación (sección 2.3) ───────────────────────────────────────────────
 
@@ -123,8 +132,34 @@ export type BolsaPresupuesto =
   | 'inmueble'; // ambito='inmueble' no entra en 50/30/20 personal
 
 export type ResponsableCompromiso = 'titular' | 'pareja' | 'hogarCompartido';
-export type MetodoPagoCompromiso = 'domiciliacion' | 'transferencia' | 'tarjeta' | 'efectivo';
-export type EstadoCompromiso = 'activo' | 'pausado' | 'baja';
+// `bizum` añadido (sección 2.8). NO existe "lo paga otra persona": si no mueve
+// una cuenta propia no es una fila del presupuesto (decisión Jose).
+export type MetodoPagoCompromiso =
+  | 'domiciliacion'
+  | 'transferencia'
+  | 'tarjeta'
+  | 'efectivo'
+  | 'bizum';
+// Los tres estados de la sección 2.3. `pausado` ELIMINADO (no convive con
+// `preparado`). `preparado` = existe en el plan, nunca ha tenido un cargo · sin
+// fecha · NO se proyecta. `baja` = se cobraba y dejó de llegar · lleva la fecha
+// del último cobro en `fechaFin`.
+export type EstadoCompromiso = 'activo' | 'preparado' | 'baja';
+
+// Motivo de baja estructurado (sección 2.4). `cambioProveedor` BLOQUEA la
+// reactivación (el viejo queda de baja para siempre y se crea uno nuevo).
+export type MotivoBaja = 'cambioProveedor' | 'yaNoAplica' | 'finContrato' | 'otro';
+
+// Reparto de un mismo recibo entre varios inmuebles (sección 2.7 · embebido, no
+// store aparte · decisión Jose). Se guarda el importe COMPLETO del recibo en el
+// compromiso; el reparto solo se usa al declarar. Cada línea lleva `porcentaje`
+// (0-100) O `importe` fijo; el total debe cuadrar al 100 % o al importe completo
+// (se valida al guardar).
+export interface RepartoInmueble {
+  inmuebleId: number;
+  porcentaje?: number;
+  importe?: number;
+}
 
 // ─── Origen (cuando viene derivado de otra entidad) ────────────────────────
 
@@ -152,11 +187,25 @@ export interface CompromisoRecurrente {
   proveedor: {
     nombre: string;
     nif?: string;
-    referencia?: string; // CUPS · ID póliza · número cliente
+    referencia?: string; // legacy · CUPS/póliza/cliente mezclados (retrocompat)
   };
+
+  // Identificadores que permiten cuadrar la factura aunque cambie la compañía
+  // (sección 3.2 · campos editables separados). `referencia` (arriba) se
+  // conserva por retrocompat; los nuevos son la fuente canónica.
+  cups?: string;
+  numeroContrato?: string; // número de contrato o póliza
 
   // Calendario (sección 2.1)
   patron: PatronRecurrente;
+
+  // Día del cargo "no lo sé todavía" (sección 2.2): cuando es true, el cargo se
+  // proyecta a mitad de mes (día 15) porque aún no se conoce el día real.
+  diaCargoIncierto?: boolean;
+
+  // Margen de gracia en días (sección 3.2): tolerancia al cuadrar el cargo real
+  // contra la fecha prevista.
+  margenGraciaDias?: number;
 
   // Importe (sección 2.2)
   importe: ImporteEvento;
@@ -176,11 +225,16 @@ export interface CompromisoRecurrente {
   responsable: ResponsableCompromiso;
   porcentajeTitular?: number; // 0-100 · si hogar compartido y % no es 50/50
 
+  // Reparto de un mismo recibo entre varios inmuebles (sección 2.7). Si está
+  // presente, `importe` es el importe COMPLETO del recibo y `reparto` dice cómo
+  // se atribuye a cada inmueble al declarar. Ausente = gasto de un solo inmueble.
+  reparto?: RepartoInmueble[];
+
   // Vigencia
   fechaInicio: string; // ISO date
   fechaFin?: string; // null si indefinido
   estado: EstadoCompromiso;
-  motivoBaja?: string;
+  motivoBaja?: MotivoBaja;
 
   // Origen
   derivadoDe?: OrigenCompromiso;

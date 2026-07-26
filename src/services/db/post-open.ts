@@ -338,5 +338,38 @@ export function runPostOpenMigrations(
       }
       return db;
     });
+
+    // ── V83 · GASTOS-RECURRENTES · guard del estado `pausado` retirado ──────
+    // `EstadoCompromiso` elimina `pausado` (queda activo/preparado/baja). Jose
+    // verificó 0 registros en la copia del 26/07, así que no hay nada que
+    // migrar. Este guard NO inventa: si encontrara algún compromiso con estado
+    // `pausado`, lo deja intacto, lo registra en keyval y avisa fuerte para que
+    // se decida a mano (PARA · decisión Jose) en vez de convertirlo a ciegas.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v83_estado_preparado_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+        const todos = (await db.getAll('compromisosRecurrentes')) as Array<{
+          id?: number;
+          estado?: string;
+        }>;
+        const pausados = todos.filter((c) => c.estado === 'pausado');
+        if (pausados.length === 0) {
+          await db.put('keyval', 'completed', FLAG);
+          return db;
+        }
+        // Hay registros `pausado` inesperados: NO convertir · dejar rastro y
+        // avisar. No se marca `completed` para que el aviso persista.
+        const ids = pausados.map((c) => c.id).filter((id) => id != null);
+        await db.put('keyval', ids, 'migration_v83_pausado_encontrados');
+        console.error(
+          `[DB V83] ${pausados.length} compromiso(s) con estado 'pausado' (retirado). ` +
+            `IDs: ${ids.join(', ')}. NO se han convertido · revisar a mano (activo/preparado/baja).`,
+        );
+      } catch (err) {
+        console.warn('[DB V83 guard estado pausado] falló:', err);
+      }
+      return db;
+    });
   return dbPromise;
 }

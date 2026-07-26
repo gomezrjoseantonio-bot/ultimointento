@@ -296,6 +296,25 @@ export function calcularImporte(importe: ImporteEvento, fecha: Date): number {
       }
       return v;
     }
+    case 'porTramos': {
+      // El tramo aplicable es el de `desde` más reciente que sea ≤ la fecha del
+      // cargo. Antes del primer tramo no hay cuota definida → 0 (no se inventa).
+      const iso = fecha.toISOString().slice(0, 10);
+      let elegido: number | null = null;
+      let mejorDesde = '';
+      for (const t of importe.tramos) {
+        if (t.desde <= iso && t.desde >= mejorDesde) {
+          mejorDesde = t.desde;
+          elegido = t.importe;
+        }
+      }
+      return elegido ?? 0;
+    }
+    case 'porcentajeRenta':
+      // El % se aplica sobre la renta del contrato del inmueble · contexto que
+      // esta función pura NO tiene. El consumidor con acceso al contrato resuelve
+      // la cifra (sección 2.6 · Fase 4). Sin renta no se proyecta importe.
+      return 0;
   }
 }
 

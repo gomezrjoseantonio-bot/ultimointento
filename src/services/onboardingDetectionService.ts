@@ -237,8 +237,16 @@ function importeRepresentativo(imp: CandidatoCompromiso['importeInferido']): num
     const xs = imp.importesPorMes.filter((n) => n > 0);
     return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
   }
-  const vals = Object.values(imp.importesPorPago);
-  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  if (imp.modo === 'porPago') {
+    const vals = Object.values(imp.importesPorPago);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  }
+  if (imp.modo === 'porTramos') {
+    const xs = imp.tramos.map((t) => t.importe).filter((n) => n > 0);
+    return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+  }
+  // porcentajeRenta · sin renta no hay cifra representativa en detección.
+  return 0;
 }
 
 function candidatoToSugerencia(c: CandidatoCompromiso): Sugerencia {
