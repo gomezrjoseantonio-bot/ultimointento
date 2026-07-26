@@ -71,18 +71,16 @@ const HABITACIONES: CatalogoModalidad = {
   disponibles: [TELEFONIA, ALARMA, OTRO],
 };
 
-// ── §3.3 · Temporada o turístico · precarga 15 ────────────────────────────
-// El texto dice "los de habitaciones (13) más 5", que sumaría 18, pero el conteo
-// autoritativo es 15. Interpretación (FLAG · confirmar con Jose): en turístico
-// caen los 3 conceptos propios del arrendamiento de larga duración —seguro de
-// IMPAGO (no hay inquilino estable), GESTIÓN del alquiler (la sustituye la
-// comisión de plataformas) y limpieza de ZONAS COMUNES (la sustituye la limpieza
-// por estancia)— y entran los 5 turísticos. 13 − 3 + 5 = 15.
+// ── §3.3 · Temporada o turístico · precarga 16 (decisión Jose) ────────────
+// De los 13 de habitaciones caen 2: seguro de IMPAGO (se cobra por adelantado,
+// no hay inquilino que impague) y limpieza de ZONAS COMUNES (aquí es limpieza
+// por estancia). GESTIÓN del alquiler SE QUEDA (un turístico gestionado por una
+// empresa es de lo más normal). Entran los 5 turísticos. 13 − 2 + 5 = 16.
 const TURISTICO: CatalogoModalidad = {
   precargados: [
     COMUNIDAD, IBI, BASURAS, SEGURO_HOGAR,
     LUZ, AGUA, GAS, INTERNET,
-    CALDERA, DERRAMAS,
+    CALDERA, DERRAMAS, GESTION_ALQUILER,
     LIMPIEZA_ESTANCIA, ROPA_CAMA, COMISION_PLATAFORMAS, CONSUMIBLES, LICENCIA_TURISTICA,
   ],
   disponibles: [ALARMA, OTRO],
