@@ -186,7 +186,9 @@ export async function regenerateForecastsForward(
     const activas = viviendas.filter((v) => v.activa && v.id != null);
     for (const v of activas) {
       try {
-        const creados = await regenerarEventosVivienda(v);
+        // Pasa el horizonte del bootstrap para que la ventana materializada la
+        // decida el llamante (fuera el 24 fijo · sección 2.1 / 3.2).
+        const creados = await regenerarEventosVivienda(v, hasta);
         result.eventosCreados += creados;
       } catch (err) {
         result.errores.push({
@@ -208,7 +210,8 @@ export async function regenerateForecastsForward(
     for (const c of compromisos) {
       if (c.id == null) continue;
       try {
-        const creados = await regenerarEventosCompromiso(c);
+        // Horizonte del bootstrap → ventana materializada caller-driven.
+        const creados = await regenerarEventosCompromiso(c, hasta);
         result.eventosCreados += creados;
       } catch (err) {
         result.errores.push({

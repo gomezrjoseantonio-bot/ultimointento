@@ -36,6 +36,26 @@ describe('compromisosRecurrentesService · Bloque B.4 · la bolsa viaja al event
   });
 });
 
+describe('compromisosRecurrentesService · el patrón NO tiene tope de 24 meses', () => {
+  it('expande a demanda hasta el horizonte que pida el llamante (20 años · criterio §6)', () => {
+    const desde = new Date();
+    // 20 años vista · 240 meses.
+    const hasta = new Date(desde.getFullYear() + 20, desde.getMonth(), 28);
+    const eventos = generarEventosDesdeCompromiso(compromiso(), hasta);
+
+    // Mensual → ~240 cargos. Muy por encima de 24: el límite ha desaparecido.
+    expect(eventos.length).toBeGreaterThan(200);
+    const añoMax = Math.max(...eventos.map((e) => e.año));
+    expect(añoMax).toBeGreaterThanOrEqual(desde.getFullYear() + 19);
+  });
+
+  it('sin horizonte explícito materializa una ventana por defecto acotada (no 20 años)', () => {
+    const eventos = generarEventosDesdeCompromiso(compromiso());
+    // El default es una ventana corta (rolling ~24m), no un horizonte infinito.
+    expect(eventos.length).toBeLessThan(40);
+  });
+});
+
 describe('compromisosRecurrentesService · Bloque B.3 · proyección hacia atrás', () => {
   it('generarEventosHistoricos devuelve eventos de un rango YA PASADO', () => {
     const desde = new Date('2020-01-01');

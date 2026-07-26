@@ -589,8 +589,8 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
 
           <h1 style={styles.pageTitle}>Nuevo gasto recurrente</h1>
           <p style={styles.pageSubtitle}>
-            Configura un patrón de gasto del inmueble · ATLAS proyectará los próximos 24 meses en
-            Tesorería automáticamente
+            Configura un patrón de gasto del inmueble · ATLAS lo proyectará en
+            Tesorería y hasta donde haga falta (Presupuesto, proyección a largo plazo)
           </p>
         </div>
 
@@ -1165,7 +1165,7 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
           {/* ── Footer ───────────────────────────────────────── */}
           <div style={styles.footer}>
             <span style={styles.footerHelper}>
-              Al guardar · ATLAS proyectará 24 cargos previstos en Tesorería
+              Al guardar · ATLAS proyectará este gasto en Tesorería y donde haga falta
             </span>
             <div style={styles.footerBtns}>
               <button

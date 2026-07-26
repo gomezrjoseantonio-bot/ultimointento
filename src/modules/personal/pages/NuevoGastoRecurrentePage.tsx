@@ -1135,7 +1135,7 @@ const NuevoGastoRecurrentePage: React.FC = () => {
           {/* ── Footer ───────────────────────────────────────── */}
           <div style={styles.footer}>
             <span style={styles.footerHelper}>
-              Al guardar · ATLAS proyectará 24 cargos previstos en Tesorería
+              Al guardar · ATLAS proyectará este gasto en Tesorería y donde haga falta
             </span>
             <div style={styles.footerBtns}>
               <button

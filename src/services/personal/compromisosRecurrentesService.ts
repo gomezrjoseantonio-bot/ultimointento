@@ -30,7 +30,13 @@ const STORE_COMPROMISOS = 'compromisosRecurrentes';
 const STORE_TREASURY = 'treasuryEvents';
 const STORE_VIVIENDA = 'viviendaHabitual';
 
-// Horizonte de proyección por defecto (24 meses · sección 3.2)
+// Horizonte por defecto de la VENTANA MATERIALIZADA en `treasuryEvents` cuando
+// nadie pide un horizonte explícito. NO es un límite del patrón: un compromiso
+// se expande a demanda hasta donde pida quien pregunte (el Presupuesto pide 12
+// meses, la proyección a largo plazo pide 20 años vía `opexCompromisosEngine` /
+// `expandirPatron`, sin materializar). Los llamantes vivos (bootstrap de
+// Tesorería) pasan su propio `hasta`; esta constante solo cubre el caso de un
+// llamante directo que no especifica ventana.
 const HORIZONTE_MESES_DEFECTO = 24;
 
 // ─── CRUD ──────────────────────────────────────────────────────────────────
@@ -398,12 +404,13 @@ export async function borrarEventosFuturosCompromiso(compromisoId: number): Prom
  */
 export async function regenerarEventosCompromiso(
   compromiso: CompromisoRecurrente,
+  hasta?: Date,
 ): Promise<number> {
   if (!compromiso.id) {
     throw new Error('regenerarEventosCompromiso requiere compromiso.id');
   }
   await borrarEventosFuturosCompromiso(compromiso.id);
-  const eventos = generarEventosDesdeCompromiso(compromiso);
+  const eventos = generarEventosDesdeCompromiso(compromiso, hasta);
   if (eventos.length === 0) return 0;
 
   const db = await initDB();
@@ -420,11 +427,13 @@ export async function regenerarEventosCompromiso(
  * Regenera eventos para todos los compromisos activos. Útil tras cambios de
  * configuración global (ej. ampliación del horizonte).
  */
-export async function regenerarTodosLosEventos(): Promise<{ compromisos: number; eventos: number }> {
+export async function regenerarTodosLosEventos(
+  hasta?: Date,
+): Promise<{ compromisos: number; eventos: number }> {
   const compromisos = await listarCompromisos({ soloActivos: true });
   let total = 0;
   for (const c of compromisos) {
-    total += await regenerarEventosCompromiso(c);
+    total += await regenerarEventosCompromiso(c, hasta);
   }
   return { compromisos: compromisos.length, eventos: total };
 }
