@@ -20,6 +20,7 @@ import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes
 import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
 import { ListadoGastosRecurrentes } from '../../shared/components/ListadoGastos';
 import { TIPOS_GASTO_INMUEBLE_V2 } from '../wizards/utils/tiposDeGastoInmueble';
+import { catalogoSugeridoPorModalidad } from '../wizards/utils/catalogoModalidadInmueble';
 import {
   deleteInmuebleWithCascade,
   previewDeleteInmuebleCascade,
@@ -102,6 +103,15 @@ const DetallePage: React.FC = () => {
     () => propertyContracts.filter((c) => isContractActiveAt(c, today)),
     [propertyContracts, today],
   );
+
+  // §3.3 · conceptos sugeridos por la modalidad del contrato (se resaltan al
+  // añadir un gasto). ATLAS ya sabe la modalidad · no se pregunta.
+  const conceptosSugeridos = useMemo(() => {
+    const modalidad = contratosActivos[0]?.modalidad ?? propertyContracts[0]?.modalidad;
+    const unidadTipo =
+      property?.modoExplotacion === 'por_habitaciones' ? ('habitacion' as const) : ('vivienda' as const);
+    return catalogoSugeridoPorModalidad(modalidad, unidadTipo).precargados;
+  }, [contratosActivos, propertyContracts, property]);
 
   if (!property) {
     return (
@@ -456,6 +466,7 @@ const DetallePage: React.FC = () => {
             onDelete={handleDeleteGasto}
             onReload={reloadGastos}
             contextoNombre={property.alias}
+            conceptosSugeridos={conceptosSugeridos}
           />
         </div>
       )}

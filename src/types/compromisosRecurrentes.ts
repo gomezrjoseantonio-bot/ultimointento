@@ -150,6 +150,21 @@ export type EstadoCompromiso = 'activo' | 'preparado' | 'baja';
 // reactivación (el viejo queda de baja para siempre y se crea uno nuevo).
 export type MotivoBaja = 'cambioProveedor' | 'yaNoAplica' | 'finContrato' | 'otro';
 
+// Familia fiscal (§3.2 · cómo cuenta el gasto en la previsión de impuestos). NO
+// se pregunta: se DERIVA del concepto del catálogo. Sólo se guarda cuando el
+// concepto es una excepción que pregunta (derrama · «Otro»), en el único campo
+// opcional `familiaFiscalManual`. Ver utils/fiscalidadConcepto.
+export type FamiliaFiscal =
+  | 'comunidad'
+  | 'ibi_tasas'
+  | 'seguros'
+  | 'suministros'
+  | 'reparaciones_conservacion'
+  | 'servicios_profesionales'
+  | 'intereses_financiacion'
+  | 'mejora'
+  | 'no_deducible';
+
 // Reparto de un mismo recibo entre varios inmuebles (sección 2.7 · embebido, no
 // store aparte · decisión Jose). Se guarda el importe COMPLETO del recibo en el
 // compromiso; el reparto solo se usa al declarar. Cada línea lleva `porcentaje`
@@ -206,6 +221,11 @@ export interface CompromisoRecurrente {
   // Margen de gracia en días (sección 3.2): tolerancia al cuadrar el cargo real
   // contra la fecha prevista.
   margenGraciaDias?: number;
+
+  // Familia fiscal ELEGIDA A MANO · SÓLO para conceptos que preguntan (derrama:
+  // conservación vs mejora · «Otro»: sin catálogo que lo diga). La familia normal
+  // se deriva del concepto y NO se persiste. Ausente = usa la del catálogo.
+  familiaFiscalManual?: FamiliaFiscal;
 
   // Importe (sección 2.2)
   importe: ImporteEvento;

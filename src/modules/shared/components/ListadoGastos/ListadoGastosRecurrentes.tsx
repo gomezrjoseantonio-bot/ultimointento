@@ -33,6 +33,7 @@ import KpiStrip from './components/KpiStrip';
 import GroupSection, { TableHead } from './components/GroupCard';
 import BajaModal from './components/BajaModal';
 import ReactivarModal from './components/ReactivarModal';
+import ConceptoPickerModal, { type ConceptoElegido } from './components/ConceptoPickerModal';
 
 const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   catalog,
@@ -45,6 +46,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   inmuebleId,
   subtitulo,
   contextoNombre,
+  conceptosSugeridos,
 }) => {
   const navigate = useNavigate();
 
@@ -67,6 +69,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   const [deleting, setDeleting] = useState(false);
   const [bajaTarget, setBajaTarget] = useState<(CompromisoRecurrente & { id: number }) | null>(null);
   const [reactivarTarget, setReactivarTarget] = useState<(CompromisoRecurrente & { id: number }) | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Contexto de financiación (§3.1): la hipoteca / los préstamos NO se editan
   // aquí (viven en Financiación). Se suma de los treasuryEvents hipoteca/prestamo
@@ -127,38 +130,48 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
       }, 0);
   }, [compromisos]);
 
-  // Alta EN LA TABLA (§3.2 · sin wizard): crea un preparado mínimo y despliega su
-  // fila-formulario. Importe 0 → «—» hasta rellenarlo. Nace preparado (§2.3).
-  const handleNuevo = useCallback(() => {
-    void (async () => {
-      try {
-        const now = new Date();
-        const skeleton = {
-          ambito: mode === 'inmueble' ? 'inmueble' : 'personal',
-          inmuebleId: mode === 'inmueble' ? inmuebleId : undefined,
-          personalDataId: mode === 'personal' ? 1 : undefined,
-          alias: 'Nuevo gasto',
-          tipo: 'otros',
-          proveedor: { nombre: '' },
-          patron: { tipo: 'mensualDiaFijo', dia: 1 },
-          importe: { modo: 'fijo', importe: 0 },
-          cuentaCargo: accounts[0]?.id ?? 0,
-          conceptoBancario: '',
-          metodoPago: 'domiciliacion',
-          categoria: 'otros',
-          bolsaPresupuesto: mode === 'inmueble' ? 'inmueble' : 'necesidades',
-          responsable: 'titular',
-          fechaInicio: now.toISOString().slice(0, 10),
-          estado: 'preparado',
-        } as unknown as Omit<CompromisoRecurrente, 'id' | 'createdAt' | 'updatedAt'>;
-        const creado = await crearCompromiso(skeleton);
-        onReload?.();
-        if (creado.id != null) setExpandedRowId(creado.id);
-      } catch (err) {
-        showToastV5(`No se pudo crear el gasto: ${err instanceof Error ? err.message : String(err)}`, 'error');
-      }
-    })();
-  }, [mode, inmuebleId, accounts, onReload]);
+  // Alta EN LA TABLA (§3.2/§3.3 · sin wizard): "Añadir gasto" abre el catálogo de
+  // conceptos; al elegir uno, la fila nace con su nombre y su familia (de ahí se
+  // deriva la fiscalidad) y se despliega para completar importe/calendario/cuenta.
+  // Nace preparado (§2.3): importe 0 → «—» hasta rellenarlo.
+  const handleNuevo = useCallback(() => setPickerOpen(true), []);
+
+  const handlePickConcepto = useCallback(
+    (concepto: ConceptoElegido) => {
+      setPickerOpen(false);
+      void (async () => {
+        try {
+          const now = new Date();
+          const skeleton = {
+            ambito: mode === 'inmueble' ? 'inmueble' : 'personal',
+            inmuebleId: mode === 'inmueble' ? inmuebleId : undefined,
+            personalDataId: mode === 'personal' ? 1 : undefined,
+            alias: concepto.label,
+            tipo: concepto.tipoCompromiso,
+            subtipo: concepto.subtipoId,
+            tipoFamilia: concepto.tipoId,
+            proveedor: { nombre: '' },
+            patron: { tipo: 'mensualDiaFijo', dia: 1 },
+            importe: { modo: 'fijo', importe: 0 },
+            cuentaCargo: accounts[0]?.id ?? 0,
+            conceptoBancario: '',
+            metodoPago: 'domiciliacion',
+            categoria: concepto.categoria,
+            bolsaPresupuesto: mode === 'inmueble' ? 'inmueble' : 'necesidades',
+            responsable: 'titular',
+            fechaInicio: now.toISOString().slice(0, 10),
+            estado: 'preparado',
+          } as unknown as Omit<CompromisoRecurrente, 'id' | 'createdAt' | 'updatedAt'>;
+          const creado = await crearCompromiso(skeleton);
+          onReload?.();
+          if (creado.id != null) setExpandedRowId(creado.id);
+        } catch (err) {
+          showToastV5(`No se pudo crear el gasto: ${err instanceof Error ? err.message : String(err)}`, 'error');
+        }
+      })();
+    },
+    [mode, inmuebleId, accounts, onReload],
+  );
 
   const handleToggleEstado = useCallback(
     async (c: CompromisoRecurrente & { id: number }) => {
@@ -322,6 +335,9 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
             </button>
           </div>
         )}
+        {pickerOpen && (
+          <ConceptoPickerModal catalog={catalog} sugeridos={conceptosSugeridos} onCancel={() => setPickerOpen(false)} onPick={handlePickConcepto} />
+        )}
       </div>
     );
   }
@@ -362,6 +378,10 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
           <span style={tfootTotal}>{costeAnualVigente > 0 ? formatEur(-Math.abs(costeAnualVigente)) : '—'}</span>
         </div>
       </div>
+
+      {pickerOpen && (
+        <ConceptoPickerModal catalog={catalog} sugeridos={conceptosSugeridos} onCancel={() => setPickerOpen(false)} onPick={handlePickConcepto} />
+      )}
 
       {bajaTarget && (
         <BajaModal

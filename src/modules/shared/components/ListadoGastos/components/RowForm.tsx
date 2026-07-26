@@ -14,10 +14,12 @@ import type {
   ImporteEvento,
   PatronVariacion,
   MetodoPagoCompromiso,
+  FamiliaFiscal,
 } from '../../../../../types/compromisosRecurrentes';
 import type { Account } from '../../../../../services/db';
 import RejillaMeses from './RejillaMeses';
 import { patronToMeses, mesesToPatron, diaDePatron } from '../utils/rejillaMeses';
+import { fiscalidadDeConcepto, FAMILIAS_FISCALES } from '../utils/fiscalidadConcepto';
 
 interface RowFormProps {
   compromiso: CompromisoRecurrente & { id: number };
@@ -27,19 +29,8 @@ interface RowFormProps {
 
 type SubeCadaAnio = 'no' | 'ipc' | 'contrato';
 
-// Familias fiscales reales (§3.2 · "cómo se declara"). Se guardan en `categoria`
-// (que no dirige la agrupación por bloque · esa va por tipoFamilia).
-const FISCAL: Array<{ id: string; label: string }> = [
-  { id: 'comunidad', label: 'Comunidad' },
-  { id: 'ibi_tasas', label: 'IBI y tasas' },
-  { id: 'seguros', label: 'Seguros' },
-  { id: 'suministros', label: 'Suministros' },
-  { id: 'reparaciones_conservacion', label: 'Reparaciones y conservación' },
-  { id: 'servicios_profesionales', label: 'Servicios profesionales' },
-  { id: 'intereses_financiacion', label: 'Intereses de financiación' },
-  { id: 'mejora', label: 'Mejora' },
-  { id: 'no_deducible', label: 'No deducible' },
-];
+// Opciones que ofrece la excepción de la derrama (§3 · conservación vs mejora).
+const DERRAMA_OPCIONES: FamiliaFiscal[] = ['reparaciones_conservacion', 'mejora'];
 
 const MEDIOS: Array<{ id: MetodoPagoCompromiso; label: string }> = [
   { id: 'domiciliacion', label: 'Domiciliación' },
@@ -59,10 +50,8 @@ function variacionInicial(v?: PatronVariacion): SubeCadaAnio {
   if (v?.tipo === 'aniversarioContrato') return 'contrato';
   return 'no';
 }
-/** Extrae la familia fiscal de `categoria` (si casa con alguna de la lista). */
-function fiscalInicial(categoria?: string): string {
-  if (!categoria) return '';
-  return FISCAL.find((f) => categoria.includes(f.id))?.id ?? '';
+function labelFamilia(id: FamiliaFiscal): string {
+  return FAMILIAS_FISCALES.find((f) => f.id === id)?.label ?? id;
 }
 
 const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) => {
@@ -71,7 +60,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) =
   const [nif, setNif] = useState(c.proveedor?.nif ?? '');
   const [cups, setCups] = useState(c.cups ?? '');
   const [numeroContrato, setNumeroContrato] = useState(c.numeroContrato ?? '');
-  const [fiscal, setFiscal] = useState<string>(() => fiscalInicial(c.categoria));
+  const [familiaManual, setFamiliaManual] = useState<FamiliaFiscal | ''>(c.familiaFiscalManual ?? '');
   const [medio, setMedio] = useState<MetodoPagoCompromiso>(c.metodoPago);
   const [cuentaCargo, setCuentaCargo] = useState<number>(c.cuentaCargo);
   const [fechaInicio, setFechaInicio] = useState(c.fechaInicio ?? '');
@@ -94,6 +83,9 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) =
 
   const mesAncla = useMemo(() => (meses.length ? Math.min(...meses) : new Date().getMonth() + 1), [meses]);
   const estadoLabel = c.estado === 'activo' ? 'Activo · se proyecta' : c.estado === 'preparado' ? 'Preparado · aún no se proyecta' : 'Dado de baja';
+  // Fiscalidad DERIVADA del concepto (informativa · no se pregunta salvo excepción).
+  const fisc = fiscalidadDeConcepto(c.tipoFamilia, c.subtipo, familiaManual || undefined);
+  const opcionesExcepcion = fisc.esDerrama ? DERRAMA_OPCIONES : FAMILIAS_FISCALES.map((f) => f.id);
 
   const handleSave = async () => {
     if (saving) return;
@@ -118,7 +110,9 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) =
         proveedor: { ...c.proveedor, nombre: proveedor.trim() || nombre, nif: nif.trim() || undefined },
         cups: cups.trim() || undefined,
         numeroContrato: numeroContrato.trim() || undefined,
-        categoria: fiscal || c.categoria,
+        // La familia fiscal NO se persiste (se deriva del concepto). Sólo se guarda
+        // la elección manual cuando el concepto pregunta (derrama · «Otro»).
+        familiaFiscalManual: fisc.pregunta && familiaManual ? familiaManual : undefined,
         metodoPago: medio,
         cuentaCargo,
         fechaInicio: fechaInicio || c.fechaInicio,
@@ -148,12 +142,23 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) =
         <Field label="Concepto"><input style={inp} value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Luz, comunidad, seguro…" /></Field>
         <Field label="Proveedor"><input style={inp} value={proveedor} onChange={(e) => setProveedor(e.target.value)} /></Field>
         <Field label="CIF o NIF"><input style={inp} value={nif} onChange={(e) => setNif(e.target.value)} placeholder="A12345678" /></Field>
-        <Field label="Cómo se declara">
-          <select style={inp} value={fiscal} onChange={(e) => setFiscal(e.target.value)}>
-            <option value="">— Elegir —</option>
-            {FISCAL.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
-          </select>
-        </Field>
+        {/* Fiscalidad: informativa (derivada) salvo la excepción que pregunta */}
+        {fisc.pregunta ? (
+          <Field
+            label={fisc.esDerrama ? 'La derrama · ¿conservación o mejora?' : 'Cómo cuenta fiscalmente'}
+            hint={fisc.esDerrama ? 'Conservación arregla lo que ya había · mejora añade algo nuevo (lo dice el acta)' : 'Este concepto no lo trae el catálogo · dinos cómo cuenta'}
+          >
+            <select style={inp} value={familiaManual} onChange={(e) => setFamiliaManual(e.target.value as FamiliaFiscal | '')}>
+              <option value="">— Elegir —</option>
+              {opcionesExcepcion.map((id) => <option key={id} value={id}>{labelFamilia(id)}</option>)}
+            </select>
+          </Field>
+        ) : (
+          <div style={{ minWidth: 0 }}>
+            <label style={lab}>Cómo cuenta fiscalmente</label>
+            <div style={fiscalInfo}>{fisc.frase}</div>
+          </div>
+        )}
       </div>
       <div style={dgrid2}>
         <Field label="CUPS · para luz y gas" hint="Con el CUPS, ATLAS cuadra la factura aunque cambies de compañía">
@@ -281,6 +286,15 @@ const inp: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 const inpSmall: React.CSSProperties = { ...inp, width: 84 };
+const fiscalInfo: React.CSSProperties = {
+  fontSize: 12,
+  color: 'var(--atlas-v5-ink-3)',
+  background: 'var(--atlas-v5-gold-wash)',
+  border: '1px solid var(--atlas-v5-gold-soft)',
+  borderRadius: 7,
+  padding: '7px 10px',
+  lineHeight: 1.4,
+};
 const inlineRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 };
 const hint: React.CSSProperties = { fontSize: 10.5, color: 'var(--atlas-v5-ink-4)' };
 const hint2: React.CSSProperties = { fontSize: 10.5, color: 'var(--atlas-v5-ink-5)', marginTop: 5, lineHeight: 1.45 };

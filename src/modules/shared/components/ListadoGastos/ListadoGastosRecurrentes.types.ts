@@ -14,4 +14,6 @@ export interface ListadoGastosRecurrentesProps {
   subtitulo?: string;
   /** Nombre del inmueble para la miga de pan (modo inmueble). */
   contextoNombre?: string;
+  /** Conceptos sugeridos por la modalidad del contrato (§3.3) · se resaltan en el picker. */
+  conceptosSugeridos?: Array<{ tipoId: string; subtipoId: string }>;
 }
