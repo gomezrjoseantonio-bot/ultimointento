@@ -12,20 +12,13 @@ import type {
   ImporteEvento,
   MetodoPagoCompromiso,
   PatronRecurrente,
-  ReferenciaDiaRelativo,
 } from '../../../../../types/compromisosRecurrentes';
 import type { TipoGasto } from '../../TipoGastoSelector/TipoGastoSelector.types';
 import { TipoGastoSelector } from '../../TipoGastoSelector';
 import type { TipoGastoValue } from '../../TipoGastoSelector';
 import { buildGastoAlias } from '../../../utils/compromisoUtils';
-
-type PatronUI =
-  | 'mensualDiaFijo'
-  | 'mensualDiaRelativo'
-  | 'bimestral'
-  | 'trimestral'
-  | 'anual1pago'
-  | 'anual2pagos';
+import RejillaMeses from './RejillaMeses';
+import { patronToMeses, mesesToPatron, diaDePatron } from '../utils/rejillaMeses';
 
 type ModoImporte = 'fijo' | 'variable' | 'estacional';
 
@@ -36,13 +29,8 @@ interface DrawerFormState {
   proveedor: string;
   nif: string;
   referencia: string;
-  patronUI: PatronUI | '';
+  meses: number[]; // 1-12 marcados en la rejilla
   diaMes: string;
-  diaRelativo: string;
-  mesAncla: string;
-  mesAnual1: string;
-  mesAnual2a: string;
-  mesAnual2b: string;
   modoImporte: ModoImporte | '';
   importeFijo: string;
   importeVariable: string;
@@ -55,7 +43,7 @@ interface DrawerFormErrors {
   tipoGastoId?: string;
   subtipoId?: string;
   nombrePersonalizado?: string;
-  patronUI?: string;
+  meses?: string;
   diaMes?: string;
   modoImporte?: string;
   importeFijo?: string;
@@ -84,37 +72,8 @@ const BOLSA_LABELS: Record<BolsaPresupuesto, string> = {
 };
 
 function initFormFromCompromiso(c: CompromisoRecurrente): DrawerFormState {
-  let patronUI: PatronUI | '' = '';
-  let diaMes = '5';
-  let diaRelativo = 'ultimoHabil';
-  let mesAncla = '1';
-  let mesAnual1 = '1';
-  let mesAnual2a = '6';
-  let mesAnual2b = '11';
-
-  const p = c.patron;
-  if (p.tipo === 'mensualDiaFijo') {
-    patronUI = 'mensualDiaFijo';
-    diaMes = String(p.dia);
-  } else if (p.tipo === 'mensualDiaRelativo') {
-    patronUI = 'mensualDiaRelativo';
-    diaRelativo = p.referencia;
-  } else if (p.tipo === 'cadaNMeses') {
-    patronUI = p.cadaNMeses === 2 ? 'bimestral' : 'trimestral';
-    diaMes = String(p.dia);
-    mesAncla = String(p.mesAncla);
-  } else if (p.tipo === 'anualMesesConcretos') {
-    if (p.mesesPago.length === 1) {
-      patronUI = 'anual1pago';
-      mesAnual1 = String(p.mesesPago[0]);
-      diaMes = String(p.diaPago);
-    } else if (p.mesesPago.length >= 2) {
-      patronUI = 'anual2pagos';
-      mesAnual2a = String(p.mesesPago[0]);
-      mesAnual2b = String(p.mesesPago[1]);
-      diaMes = String(p.diaPago);
-    }
-  }
+  const meses = patronToMeses(c.patron);
+  const diaMes = String(diaDePatron(c.patron));
 
   let modoImporte: ModoImporte | '' = '';
   let importeFijo = '';
@@ -143,13 +102,8 @@ function initFormFromCompromiso(c: CompromisoRecurrente): DrawerFormState {
     proveedor: c.proveedor?.nombre ?? '',
     nif: c.proveedor?.nif ?? '',
     referencia: c.proveedor?.referencia ?? '',
-    patronUI,
+    meses,
     diaMes,
-    diaRelativo,
-    mesAncla,
-    mesAnual1,
-    mesAnual2a,
-    mesAnual2b,
     modoImporte,
     importeFijo,
     importeVariable,
@@ -161,36 +115,9 @@ function initFormFromCompromiso(c: CompromisoRecurrente): DrawerFormState {
 
 function buildPatronFromForm(form: DrawerFormState): PatronRecurrente | null {
   const dia = parseInt(form.diaMes, 10);
-  switch (form.patronUI) {
-    case 'mensualDiaFijo':
-      if (isNaN(dia) || dia < 1 || dia > 31) return null;
-      return { tipo: 'mensualDiaFijo', dia };
-    case 'mensualDiaRelativo':
-      return { tipo: 'mensualDiaRelativo', referencia: form.diaRelativo as ReferenciaDiaRelativo };
-    case 'bimestral': {
-      const ancla = parseInt(form.mesAncla, 10);
-      if (isNaN(dia) || isNaN(ancla)) return null;
-      return { tipo: 'cadaNMeses', cadaNMeses: 2, mesAncla: ancla, dia };
-    }
-    case 'trimestral': {
-      const ancla = parseInt(form.mesAncla, 10);
-      if (isNaN(dia) || isNaN(ancla)) return null;
-      return { tipo: 'cadaNMeses', cadaNMeses: 3, mesAncla: ancla, dia };
-    }
-    case 'anual1pago': {
-      const mes = parseInt(form.mesAnual1, 10);
-      if (isNaN(dia) || isNaN(mes)) return null;
-      return { tipo: 'anualMesesConcretos', mesesPago: [mes], diaPago: dia };
-    }
-    case 'anual2pagos': {
-      const m2a = parseInt(form.mesAnual2a, 10);
-      const m2b = parseInt(form.mesAnual2b, 10);
-      if (isNaN(dia) || isNaN(m2a) || isNaN(m2b)) return null;
-      return { tipo: 'anualMesesConcretos', mesesPago: [m2a, m2b], diaPago: dia };
-    }
-    default:
-      return null;
-  }
+  if (isNaN(dia) || dia < 1 || dia > 28) return null;
+  if (!form.meses || form.meses.length === 0) return null;
+  return mesesToPatron(form.meses, dia);
 }
 
 function buildImporteFromForm(form: DrawerFormState): ImporteEvento | null {
@@ -221,10 +148,11 @@ function buildImporteFromForm(form: DrawerFormState): ImporteEvento | null {
 function validateForm(form: DrawerFormState, mode: 'personal' | 'inmueble'): DrawerFormErrors {
   const errors: DrawerFormErrors = {};
   if (!form.tipoGastoId) errors.tipoGastoId = 'Selecciona el tipo de gasto';
-  if (!form.patronUI) errors.patronUI = 'Selecciona el patrón de cobro';
-  else if (form.patronUI !== 'mensualDiaRelativo') {
+  if (!form.meses || form.meses.length === 0) {
+    errors.meses = 'Marca al menos un mes en el calendario';
+  } else {
     const dia = parseInt(form.diaMes, 10);
-    if (isNaN(dia) || dia < 1 || dia > 31) errors.diaMes = 'Día del mes inválido (1-31)';
+    if (isNaN(dia) || dia < 1 || dia > 28) errors.diaMes = 'Día del cargo inválido (1-28)';
   }
   if (!form.modoImporte) errors.modoImporte = 'Selecciona el modo de importe';
   else if (form.modoImporte === 'fijo') {
@@ -533,128 +461,18 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ catalog, compromiso, mode, onCl
             </div>
           </div>
 
-          {/* Patrón de cobro */}
+          {/* Calendario de cobro (§2.2 · rejilla de 12 meses) */}
           <div style={sectionCard}>
-            <div style={sectionTitle}>Patrón de cobro</div>
-            <div style={fieldRow}>
-              <label style={fieldLabel}>Frecuencia</label>
-              <select
-                value={form.patronUI}
-                onChange={(e) => setField('patronUI', e.target.value as PatronUI | '')}
-                style={selectStyle}
-              >
-                <option value="">— Selecciona —</option>
-                <option value="mensualDiaFijo">Mensual · día fijo</option>
-                <option value="mensualDiaRelativo">Mensual · día relativo</option>
-                <option value="bimestral">Bimestral (cada 2 meses)</option>
-                <option value="trimestral">Trimestral (cada 3 meses)</option>
-                <option value="anual1pago">Anual · 1 pago</option>
-                <option value="anual2pagos">Anual · 2 pagos</option>
-              </select>
-              {errors.patronUI && <div style={errorText}>{errors.patronUI}</div>}
-            </div>
-
-            {form.patronUI === 'mensualDiaRelativo' && (
-              <div style={fieldRow}>
-                <label style={fieldLabel}>Día relativo</label>
-                <select
-                  value={form.diaRelativo}
-                  onChange={(e) => setField('diaRelativo', e.target.value)}
-                  style={selectStyle}
-                >
-                  <option value="ultimoHabil">Último hábil</option>
-                  <option value="primerHabil">Primer hábil</option>
-                  <option value="primerLunes">Primer lunes</option>
-                  <option value="segundoLunes">Segundo lunes</option>
-                  <option value="tercerLunes">Tercer lunes</option>
-                  <option value="ultimoLunes">Último lunes</option>
-                  <option value="ultimoViernes">Último viernes</option>
-                  <option value="primerViernes">Primer viernes</option>
-                </select>
-              </div>
-            )}
-
-            {form.patronUI && form.patronUI !== 'mensualDiaRelativo' && (
-              <div style={fieldRow}>
-                <label style={fieldLabel}>Día del mes</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={form.diaMes}
-                  onChange={(e) => setField('diaMes', e.target.value)}
-                  style={inputStyle}
-                />
-                {errors.diaMes && <div style={errorText}>{errors.diaMes}</div>}
-              </div>
-            )}
-
-            {(form.patronUI === 'bimestral' || form.patronUI === 'trimestral') && (
-              <div style={fieldRow}>
-                <label style={fieldLabel}>Mes ancla</label>
-                <select
-                  value={form.mesAncla}
-                  onChange={(e) => setField('mesAncla', e.target.value)}
-                  style={selectStyle}
-                >
-                  {MESES_LABELS.map((m, i) => (
-                    <option key={i} value={String(i + 1)}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {form.patronUI === 'anual1pago' && (
-              <div style={fieldRow}>
-                <label style={fieldLabel}>Mes de pago</label>
-                <select
-                  value={form.mesAnual1}
-                  onChange={(e) => setField('mesAnual1', e.target.value)}
-                  style={selectStyle}
-                >
-                  {MESES_LABELS.map((m, i) => (
-                    <option key={i} value={String(i + 1)}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {form.patronUI === 'anual2pagos' && (
-              <>
-                <div style={fieldRow}>
-                  <label style={fieldLabel}>Primer mes</label>
-                  <select
-                    value={form.mesAnual2a}
-                    onChange={(e) => setField('mesAnual2a', e.target.value)}
-                    style={selectStyle}
-                  >
-                    {MESES_LABELS.map((m, i) => (
-                      <option key={i} value={String(i + 1)}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div style={fieldRow}>
-                  <label style={fieldLabel}>Segundo mes</label>
-                  <select
-                    value={form.mesAnual2b}
-                    onChange={(e) => setField('mesAnual2b', e.target.value)}
-                    style={selectStyle}
-                  >
-                    {MESES_LABELS.map((m, i) => (
-                      <option key={i} value={String(i + 1)}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
+            <div style={sectionTitle}>Calendario de cobro</div>
+            <RejillaMeses
+              meses={form.meses}
+              dia={parseInt(form.diaMes, 10) || 1}
+              mesAncla={form.meses.length ? Math.min(...form.meses) : new Date().getMonth() + 1}
+              onMesesChange={(meses) => setForm((prev) => ({ ...prev, meses }))}
+              onDiaChange={(dia) => setField('diaMes', String(dia))}
+            />
+            {errors.meses && <div style={errorText}>{errors.meses}</div>}
+            {errors.diaMes && <div style={errorText}>{errors.diaMes}</div>}
           </div>
 
           {/* Importe */}

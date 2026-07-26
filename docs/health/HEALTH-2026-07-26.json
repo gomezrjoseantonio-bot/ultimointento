@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-26",
-  "generatedAt": "2026-07-26T21:06:14.781Z",
+  "generatedAt": "2026-07-26T21:10:23.839Z",
   "git": {
     "branch": "claude/new-session-ufzfpm",
-    "head": "2f12679"
+    "head": "b27df40"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -70,7 +70,7 @@
     {
       "indicador": "archivos_800",
       "antes": 43,
-      "despues": 44,
+      "despues": 43,
       "motivo": "Frente A · ve functions/ y scripts/ + .mjs/.cjs (antes solo src)",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -253,7 +253,7 @@
       "calibracion": null
     },
     "archivos_800": {
-      "value": 44,
+      "value": 43,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
