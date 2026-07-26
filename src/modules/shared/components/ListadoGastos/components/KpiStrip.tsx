@@ -1,85 +1,47 @@
 import React from 'react';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
-import { computeMonthly } from '../../../utils/compromisoUtils';
-import {
-  aplicarVariacion,
-  calcularImporte,
-} from '../../../../../services/personal/patronCalendario';
 import { formatEur } from '../utils/amountFormatter';
-import { formatPattern } from '../utils/patternFormatter';
+import { computeTiraMetrics, nombreMes } from '../utils/tiraMetrics';
 
 interface KpiStripProps {
   compromisos: CompromisoRecurrente[];
 }
 
-const MESES_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-
-function formatDateShort(d: Date): string {
-  return `${String(d.getDate()).padStart(2, '0')} ${MESES_SHORT[d.getMonth()] ?? ''}`;
-}
-
+// Tira superior §3.1 · coste anual · gastos vigentes · sin importe todavía ·
+// el mes más cargado. Todo desde el cálculo canónico (misma cifra que Tesorería).
 const KpiStrip: React.FC<KpiStripProps> = ({ compromisos }) => {
-  const activos = compromisos.filter((c) => c.estado === 'activo');
-  const mensual = activos.reduce((s, c) => s + computeMonthly(c), 0);
-  const anual = mensual * 12;
-
-  let nextDate: Date | null = null;
-  let nextAlias: string | null = null;
-  let nextAmount: number | null = null;
-  let nearestMs = Infinity;
-
-  for (const c of activos) {
-    const fp = formatPattern(c.patron, c.fechaInicio);
-    if (fp.nextDate) {
-      const ms = fp.nextDate.getTime() - Date.now();
-      if (ms >= -86_400_000 && ms < nearestMs) {
-        nearestMs = ms;
-        nextDate = fp.nextDate;
-        nextAlias = c.alias;
-        // Importe REAL del próximo evento (NO mensual prorrateado).
-        try {
-          const base = calcularImporte(c.importe, fp.nextDate);
-          const conVariacion = aplicarVariacion(
-            base,
-            c.variacion,
-            new Date(c.fechaInicio),
-            fp.nextDate,
-          );
-          nextAmount = -Math.abs(conVariacion);
-        } catch {
-          nextAmount = -Math.abs(computeMonthly(c));
-        }
-      }
-    }
-  }
+  const year = new Date().getFullYear();
+  const { costeAnual, vigentes, sinImporte, mesMasCargado } = computeTiraMetrics(
+    compromisos,
+    year,
+  );
 
   return (
     <div style={strip}>
       <div style={{ ...kpiCard, borderTop: '3px solid var(--atlas-v5-neg)' }}>
-        <div style={kpiLabel}>Coste mensual estimado</div>
+        <div style={kpiLabel}>Coste anual de gastos</div>
         <div style={{ ...kpiValue, color: 'var(--atlas-v5-neg)' }}>
-          {formatEur(-Math.abs(mensual))}
+          {formatEur(-Math.abs(costeAnual))}
         </div>
-        <div style={kpiHint}>
-          {activos.length} {activos.length === 1 ? 'patrón activo' : 'patrones activos'}
-        </div>
+        <div style={kpiHint}>solo lo vigente · {year}</div>
       </div>
       <div style={{ ...kpiCard, borderTop: '3px solid var(--atlas-v5-brand)' }}>
-        <div style={kpiLabel}>Coste anual previsto</div>
-        <div style={{ ...kpiValue, color: 'var(--atlas-v5-ink)' }}>
-          {formatEur(-Math.abs(anual))}
-        </div>
-        <div style={kpiHint}>proyectado a 12 meses</div>
+        <div style={kpiLabel}>Gastos vigentes</div>
+        <div style={{ ...kpiValue, color: 'var(--atlas-v5-ink)' }}>{vigentes}</div>
+        <div style={kpiHint}>{vigentes === 1 ? 'activo' : 'activos'}</div>
       </div>
       <div style={{ ...kpiCard, borderTop: '3px solid var(--atlas-v5-gold)' }}>
-        <div style={kpiLabel}>Próximo cargo</div>
-        <div style={{ ...kpiValue, color: 'var(--atlas-v5-ink)' }}>
-          {nextDate ? formatDateShort(nextDate) : '—'}
+        <div style={kpiLabel}>Sin importe todavía</div>
+        <div style={{ ...kpiValue, color: 'var(--atlas-v5-ink)' }}>{sinImporte}</div>
+        <div style={kpiHint}>{sinImporte === 0 ? 'todos con importe' : 'no se proyectan'}</div>
+      </div>
+      <div style={{ ...kpiCard, borderTop: '3px solid var(--atlas-v5-ink-4)' }}>
+        <div style={kpiLabel}>El mes más cargado</div>
+        <div style={{ ...kpiValue, color: 'var(--atlas-v5-ink)', textTransform: 'capitalize' }}>
+          {mesMasCargado ? nombreMes(mesMasCargado.month0) : '—'}
         </div>
         <div style={kpiHint}>
-          {nextAlias && nextAmount != null
-            ? `${nextAlias} · ${formatEur(nextAmount)}`
-            : 'sin próximos cargos'}
+          {mesMasCargado ? formatEur(-Math.abs(mesMasCargado.total)) : 'sin cargos'}
         </div>
       </div>
     </div>
@@ -88,7 +50,7 @@ const KpiStrip: React.FC<KpiStripProps> = ({ compromisos }) => {
 
 const strip: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, 1fr)',
+  gridTemplateColumns: 'repeat(4, 1fr)',
   gap: 14,
   marginBottom: 22,
 };
