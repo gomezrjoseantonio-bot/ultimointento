@@ -11,7 +11,7 @@ import type {
   SortField,
   SortState,
 } from './ListadoGastosRecurrentes.types';
-import { groupByCatalog } from './utils/groupingHelpers';
+import { groupByCatalog, groupByBlocksInmueble } from './utils/groupingHelpers';
 import { getFamilyIcon } from './utils/iconMapping';
 import KpiStrip from './components/KpiStrip';
 import FilterPills from './components/FilterPills';
@@ -158,8 +158,11 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
     });
   }, [compromisos, filterFamilia, search, catalog]);
 
+  // Inmueble: bloques del mockup §3.1 (comunidad y tributos · suministros ·
+  // seguros · administración · propias de la modalidad · otros). Personal
+  // conserva su agrupación por familias de catálogo (§3.5).
   const groups = useMemo(
-    () => groupByCatalog(filtered, catalog, mode),
+    () => (mode === 'inmueble' ? groupByBlocksInmueble(filtered) : groupByCatalog(filtered, catalog, mode)),
     [filtered, catalog, mode],
   );
 

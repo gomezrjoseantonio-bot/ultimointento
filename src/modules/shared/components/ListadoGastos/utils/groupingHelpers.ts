@@ -36,3 +36,50 @@ export function groupByCatalog(
   }));
   return groups.filter((g) => g.compromisos.length > 0);
 }
+
+// ── Agrupación por BLOQUES del mockup §3.1 (solo inmueble) ────────────────────
+// Bloques: comunidad y tributos · suministros · seguros · administración ·
+// propias de la modalidad · otros. Los grupos de estado (preparados · dados de
+// baja) los añade la fase de estados (4c), no esto.
+
+// «Propias de la modalidad» se define por CONCEPTO (subtipos turísticos de §3.3),
+// no por familia de catálogo.
+const SUBTIPOS_MODALIDAD = new Set([
+  'limpieza_por_estancia',
+  'ropa_cama_lavanderia',
+  'comision_plataformas',
+  'consumibles_bienvenida',
+  'licencia_turistica',
+]);
+
+const BLOQUES_INMUEBLE_ORDEN: Array<{ id: string; label: string }> = [
+  { id: 'comunidad_tributos', label: 'Comunidad y tributos' },
+  { id: 'suministros', label: 'Suministros' },
+  { id: 'seguros', label: 'Seguros' },
+  { id: 'administracion', label: 'Administración' },
+  { id: 'modalidad', label: 'Propias de la modalidad' },
+  // Reparación/mantenimiento y "otros": §2.10 deja su ubicación SIN decidir (a la
+  // lista) · aquí caen en un bloque neutro para no perderlos ni inventar sitio.
+  { id: 'otros', label: 'Otros' },
+];
+
+export function blockForInmueble(c: CompromisoRecurrente): { id: string; label: string } {
+  if (c.subtipo && SUBTIPOS_MODALIDAD.has(c.subtipo)) {
+    return { id: 'modalidad', label: 'Propias de la modalidad' };
+  }
+  const fam = inferFamilia(c, 'inmueble');
+  if (fam === 'comunidad' || fam === 'tributos') return { id: 'comunidad_tributos', label: 'Comunidad y tributos' };
+  if (fam === 'suministros') return { id: 'suministros', label: 'Suministros' };
+  if (fam === 'seguros') return { id: 'seguros', label: 'Seguros' };
+  if (fam === 'gestion') return { id: 'administracion', label: 'Administración' };
+  return { id: 'otros', label: 'Otros' };
+}
+
+export function groupByBlocksInmueble(compromisos: CompromisoRecurrente[]): GastoGroup[] {
+  const withIds = compromisos.filter((c): c is CompromisoRecurrente & { id: number } => c.id != null);
+  return BLOQUES_INMUEBLE_ORDEN.map((b) => ({
+    familiaId: b.id,
+    familiaLabel: b.label,
+    compromisos: withIds.filter((c) => blockForInmueble(c).id === b.id),
+  })).filter((g) => g.compromisos.length > 0);
+}
