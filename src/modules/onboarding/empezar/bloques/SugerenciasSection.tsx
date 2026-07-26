@@ -121,14 +121,14 @@ const SugerenciasSection: React.FC = () => {
     [refresh],
   );
 
-  // P10 · "Añadir recurrente a mano" pregunta el ámbito y enruta al alta REAL:
-  // inmueble → `/inmuebles/:id/gastos/nuevo` (gastosInmueble), personal →
-  // `/personal/gastos/nuevo`. Ambas vuelven al bloque (`?from=empezar`).
+  // P10 · "Añadir recurrente a mano" pregunta el ámbito y enruta a la TABLA de
+  // gastos (el alta es en la propia tabla · sin wizard): inmueble → pestaña
+  // Gastos del detalle, personal → `/personal/gastos`. Vuelven con `?from=empezar`.
   const irAltaManual = (ambito: AmbitoRecurrente) => {
     if (ambito.ambito === 'inmueble' && ambito.inmuebleId != null) {
-      navigate(`/inmuebles/${ambito.inmuebleId}/gastos/nuevo?from=empezar`);
+      navigate(`/inmuebles/${ambito.inmuebleId}?tab=gastos&from=empezar`);
     } else {
-      navigate('/personal/gastos/nuevo?from=empezar');
+      navigate('/personal/gastos?from=empezar');
     }
   };
 

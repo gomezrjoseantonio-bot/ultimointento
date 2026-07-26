@@ -171,7 +171,6 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
         transition: 'background 120ms ease',
         fontFamily: 'var(--atlas-v5-font-ui)',
       }}
-      aria-expanded={isExpanded}
     >
       {/* Col 1 · interruptor de estado */}
       <div role="cell" onClick={(e) => e.stopPropagation()}>
@@ -193,26 +192,28 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
       </div>
 
       {/* Col 2 · concepto (abre la fila desplegada) */}
-      <button
-        type="button"
-        role="cell"
-        onClick={onToggle}
-        style={conceptoBtn}
-        aria-label={`Ver y editar ${c.alias}`}
-      >
-        <span style={iconWrap}>
-          <SubIcon size={13} strokeWidth={1.8} style={{ color: 'var(--atlas-v5-ink-3)' }} />
-        </span>
-        <span style={{ minWidth: 0 }}>
-          <span style={rowName}>{c.alias}</span>
-          {subLabel && <span style={rowSub}>{subLabel}</span>}
-          {c.estado !== 'activo' && (
-            <span style={estadoChip}>
-              {isPreparado ? 'aún no' : `baja · ${fechaBajaLabel(c.fechaFin)}`}
-            </span>
-          )}
-        </span>
-      </button>
+      <div role="cell" style={{ minWidth: 0 }}>
+        <button
+          type="button"
+          onClick={onToggle}
+          style={conceptoBtn}
+          aria-expanded={isExpanded}
+          aria-label={`Ver y editar ${c.alias}`}
+        >
+          <span style={iconWrap}>
+            <SubIcon size={13} strokeWidth={1.8} style={{ color: 'var(--atlas-v5-ink-3)' }} />
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span style={rowName}>{c.alias}</span>
+            {subLabel && <span style={rowSub}>{subLabel}</span>}
+            {c.estado !== 'activo' && (
+              <span style={estadoChip}>
+                {isPreparado ? 'aún no' : `baja · ${fechaBajaLabel(c.fechaFin)}`}
+              </span>
+            )}
+          </span>
+        </button>
+      </div>
 
       {/* Col 3 · importe (inline) */}
       <div role="cell" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'right' }}>
@@ -333,6 +334,7 @@ const conceptoBtn: React.CSSProperties = {
   alignItems: 'center',
   gap: 10,
   minWidth: 0,
+  width: '100%',
   background: 'none',
   border: 'none',
   padding: 0,

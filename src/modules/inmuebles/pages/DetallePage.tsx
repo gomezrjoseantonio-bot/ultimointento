@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import {
   MoneyValue,
   DateLabel,
@@ -54,7 +54,16 @@ const DetallePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const propertyId = Number(id);
   const { properties, contracts, reload } = useOutletContext<InmueblesOutletContext>();
-  const [tab, setTab] = useState<Tab>('resumen');
+  // Permite abrir directamente una pestaña vía `?tab=gastos` (p. ej. desde el
+  // onboarding, que ya no enruta a un wizard sino a la tabla de gastos).
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tabInicial: Tab =
+    tabParam === 'gastos' || tabParam === 'contratos' || tabParam === 'cobros' ||
+    tabParam === 'documentos' || tabParam === 'fiscalidad'
+      ? tabParam
+      : 'resumen';
+  const [tab, setTab] = useState<Tab>(tabInicial);
   const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
   const [pendingDelete, setPendingDelete] = useState<DeleteInmuebleCascadeReport | null>(null);
   const [isDeletingInmueble, setIsDeletingInmueble] = useState(false);

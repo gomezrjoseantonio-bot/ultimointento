@@ -132,7 +132,9 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [mode, inmuebleId, compromisos]);
+    // La financiación (hipoteca/préstamos) no depende de `compromisos`: solo del
+    // ámbito. No la recalculamos al editar un gasto.
+  }, [mode, inmuebleId]);
 
   // Pie de tabla (§3.1): coste anual · solo lo vigente (compromisos activos),
   // con el cálculo canónico. Un mes no calculable no suma (hueco).

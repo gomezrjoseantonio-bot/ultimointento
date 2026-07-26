@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-26",
-  "generatedAt": "2026-07-26T22:40:07.446Z",
+  "generatedAt": "2026-07-26T22:54:14.502Z",
   "git": {
     "branch": "claude/new-session-ufzfpm",
-    "head": "9099ced"
+    "head": "14e2d5b"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -56,7 +56,7 @@
     {
       "indicador": "enlaces_rotos",
       "antes": 0,
-      "despues": 2,
+      "despues": 0,
       "motivo": "ve onNavigate( y window.location",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -181,16 +181,13 @@
       "calibracion": null
     },
     "enlaces_rotos": {
-      "value": 2,
+      "value": 0,
       "direction": "down",
       "objetivo": 0,
       "measurable": true,
       "approx": false,
       "note": null,
-      "detail": [
-        "/inmuebles/:p/gastos/nuevo  ← src/modules/onboarding/empezar/bloques/SugerenciasSection.tsx",
-        "/personal/gastos/nuevo  ← src/modules/onboarding/empezar/bloques/SugerenciasSection.tsx"
-      ],
+      "detail": [],
       "calibracion": null
     },
     "hex_hardcoded": {

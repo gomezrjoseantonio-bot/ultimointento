@@ -172,6 +172,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) =
           </select>
           <label style={lbl} htmlFor={`rf-cuenta-${c.id}`}>Cuenta de cargo</label>
           <select id={`rf-cuenta-${c.id}`} style={inp} value={cuentaCargo} onChange={(e) => setCuentaCargo(parseInt(e.target.value, 10))}>
+            {accounts.length === 0 && <option value={cuentaCargo}>Sin cuentas · añade una en Cuentas</option>}
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.alias ?? a.name ?? a.banco?.name ?? `Cuenta ${a.id}`}
