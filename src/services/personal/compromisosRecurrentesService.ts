@@ -18,6 +18,7 @@ import type {
   CompromisoRecurrente,
   PatronRecurrente,
   ImporteEvento,
+  MotivoBaja,
   ValidationResult,
 } from '../../types/compromisosRecurrentes';
 import {
@@ -129,6 +130,197 @@ export async function eliminarCompromiso(id: number): Promise<void> {
   }
   await borrarEventosFuturosCompromiso(id);
   await db.delete(STORE_COMPROMISOS, id);
+}
+
+// ─── Estados: preparado · baja · reactivación (secciones 2.3 y 2.4) ─────────
+
+/**
+ * ¿El compromiso ha tenido alguna vez un cargo CUADRADO (evento ejecutado y
+ * ligado a un movimiento real)? Decide el destino del interruptor: apagar uno
+ * que nunca cuadró → `preparado` (sin fecha); apagar uno que sí → `baja` con
+ * fecha del último cobro. Ver §2.3.
+ */
+export async function tieneCargosCuadrados(compromisoId: number): Promise<boolean> {
+  const db = await initDB();
+  const idx = db.transaction(STORE_TREASURY, 'readonly').objectStore(STORE_TREASURY).index('sourceId');
+  const eventos = (await idx.getAll(compromisoId)) as TreasuryEvent[];
+  return eventos.some(
+    (e) =>
+      e.sourceType === 'gasto_recurrente' &&
+      e.status === 'executed' &&
+      e.executedMovementId != null,
+  );
+}
+
+/**
+ * Apaga un compromiso que nunca ha tenido un cargo cuadrado → `preparado`.
+ * No lleva fecha y no se proyecta: se retiran sus previsiones. §2.3.
+ */
+export async function pasarAPreparado(id: number): Promise<CompromisoRecurrente> {
+  const db = await initDB();
+  const existente = await db.get(STORE_COMPROMISOS, id);
+  if (!existente) throw new Error(`Compromiso ${id} no existe`);
+
+  const actualizado: CompromisoRecurrente = {
+    ...existente,
+    estado: 'preparado',
+    // preparado no arrastra fecha de fin ni motivo de baja
+    fechaFin: undefined,
+    motivoBaja: undefined,
+    updatedAt: new Date().toISOString(),
+  };
+  await db.put(STORE_COMPROMISOS, actualizado);
+  // Preparado NO se proyecta · fuera sus previsiones
+  await borrarEventosFuturosCompromiso(id);
+  return actualizado;
+}
+
+/**
+ * Da de baja un compromiso que sí ha tenido cargos → `baja` con la fecha del
+ * último cobro. Los cargos anteriores se conservan (siguen siendo deducibles);
+ * las previsiones desde esa fecha se retiran. §2.4.
+ */
+export async function darDeBajaCompromiso(
+  id: number,
+  fechaUltimoCobro: string,
+  motivo: MotivoBaja,
+): Promise<CompromisoRecurrente> {
+  const db = await initDB();
+  const existente = await db.get(STORE_COMPROMISOS, id);
+  if (!existente) throw new Error(`Compromiso ${id} no existe`);
+
+  const actualizado: CompromisoRecurrente = {
+    ...existente,
+    estado: 'baja',
+    fechaFin: fechaUltimoCobro, // ISO date del último cobro
+    motivoBaja: motivo,
+    updatedAt: new Date().toISOString(),
+  };
+  await db.put(STORE_COMPROMISOS, actualizado);
+  // Las previsiones futuras (predicted) se retiran; los ejecutados se conservan
+  await borrarEventosFuturosCompromiso(id);
+  return actualizado;
+}
+
+/** Faltantes para activar un `preparado` (§2.3): importe, primer cobro, calendario, medio de pago. */
+export interface FaltantesActivacion {
+  importe: boolean;
+  primerCobro: boolean;
+  calendario: boolean;
+  medioPago: boolean;
+}
+
+/** Qué le falta a un compromiso para poder activarse. Vacío (todo false) = listo. */
+export function faltantesParaActivar(c: CompromisoRecurrente): FaltantesActivacion {
+  const importeVacio =
+    !c.importe ||
+    (c.importe.modo === 'fijo' && !(c.importe.importe > 0)) ||
+    (c.importe.modo === 'variable' && !(c.importe.importeMedio > 0));
+  return {
+    importe: importeVacio,
+    primerCobro: !c.fechaInicio,
+    calendario: !c.patron,
+    medioPago: !c.metodoPago,
+  };
+}
+
+/**
+ * Activa un `preparado`. Exige las cuatro cosas (§2.3): importe, primer cobro,
+ * calendario y medio de pago. Si falta alguna, lanza y el compromiso NO cambia
+ * de estado (nunca queda activo a medias). Al activarse, se regeneran sus
+ * previsiones.
+ */
+export async function activarCompromiso(
+  id: number,
+  datos: Partial<Omit<CompromisoRecurrente, 'id' | 'createdAt'>> = {},
+): Promise<CompromisoRecurrente> {
+  const db = await initDB();
+  const existente = await db.get(STORE_COMPROMISOS, id);
+  if (!existente) throw new Error(`Compromiso ${id} no existe`);
+
+  const candidato: CompromisoRecurrente = { ...existente, ...datos, id };
+  const faltan = faltantesParaActivar(candidato);
+  if (faltan.importe || faltan.primerCobro || faltan.calendario || faltan.medioPago) {
+    const que = [
+      faltan.importe && 'importe',
+      faltan.primerCobro && 'primer cobro',
+      faltan.calendario && 'calendario',
+      faltan.medioPago && 'medio de pago',
+    ].filter(Boolean);
+    throw new Error(`No se puede activar · falta: ${que.join(', ')}`);
+  }
+
+  const actualizado: CompromisoRecurrente = {
+    ...candidato,
+    estado: 'activo',
+    fechaFin: undefined,
+    motivoBaja: undefined,
+    createdAt: existente.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+  await db.put(STORE_COMPROMISOS, actualizado);
+  await regenerarEventosCompromiso(actualizado);
+  return actualizado;
+}
+
+/**
+ * ¿Se puede reactivar? Solo un `baja` cuyo motivo NO sea cambio de proveedor.
+ * "Cambié de proveedor" bloquea la reactivación (§2.4): el viejo queda de baja
+ * y hay que crear uno nuevo.
+ */
+export function puedeReactivar(c: CompromisoRecurrente): boolean {
+  return c.estado === 'baja' && c.motivoBaja !== 'cambioProveedor';
+}
+
+/**
+ * Reactiva un compromiso dado de baja porque el mismo servicio vuelve (§2.4).
+ * Conserva CUPS, contrato, historial y cadena fiscal; se retoma la proyección
+ * desde `fechaNuevoCobro`, dejando un hueco sin cargos entre la baja y ahora —
+ * que es la verdad. Bloquea si el motivo fue cambio de proveedor.
+ */
+export async function reactivarCompromiso(
+  id: number,
+  fechaNuevoCobro: string,
+): Promise<CompromisoRecurrente> {
+  const db = await initDB();
+  const existente = await db.get(STORE_COMPROMISOS, id);
+  if (!existente) throw new Error(`Compromiso ${id} no existe`);
+  if (existente.estado !== 'baja') {
+    throw new Error('Solo se reactiva un compromiso dado de baja');
+  }
+  if (existente.motivoBaja === 'cambioProveedor') {
+    throw new Error(
+      'No se reactiva: la baja fue por cambio de proveedor · crea uno nuevo',
+    );
+  }
+
+  const actualizado: CompromisoRecurrente = {
+    ...existente,
+    estado: 'activo',
+    fechaFin: undefined, // se quita el tope de la baja
+    motivoBaja: undefined,
+    updatedAt: new Date().toISOString(),
+  };
+  await db.put(STORE_COMPROMISOS, actualizado);
+
+  // Retomar la proyección desde el nuevo cobro. El hueco (entre la baja y el
+  // nuevo cobro) queda vacío: los ejecutados pasados se conservan y no se
+  // generan previsiones retroactivas.
+  await borrarEventosFuturosCompromiso(id);
+  const desde = new Date(fechaNuevoCobro);
+  const hoy = new Date();
+  const eventos = generarEventosDesdeCompromiso(
+    actualizado,
+    undefined,
+    desde.getTime() > hoy.getTime() ? desde : undefined,
+  );
+  if (eventos.length > 0) {
+    const tx = db.transaction(STORE_TREASURY, 'readwrite');
+    const store = tx.objectStore(STORE_TREASURY);
+    for (const ev of eventos) await store.add(ev as TreasuryEvent);
+    await tx.done;
+  }
+  return actualizado;
 }
 
 // ─── Validación de creación (sección 6.5) ──────────────────────────────────
