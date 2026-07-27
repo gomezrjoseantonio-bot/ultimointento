@@ -45,10 +45,11 @@ export function patronToMeses(patron: PatronRecurrente): number[] {
 /**
  * Construye el patrón desde los meses marcados + el día fijo del cargo. Los 12
  * meses → `mensualDiaFijo`; cualquier subconjunto → `anualMesesConcretos`.
- * `dia` se clampa a 1-28 (día seguro en todos los meses).
+ * `dia` se clampa a 1-31 (los cargos en España van del 1 al 31); el motor de
+ * calendario recorta al último día real de cada mes (día 31 → 28/29 en febrero).
  */
 export function mesesToPatron(meses: number[], dia: number): PatronRecurrente {
-  const diaPago = Math.min(28, Math.max(1, Math.trunc(dia) || 1));
+  const diaPago = Math.min(31, Math.max(1, Math.trunc(dia) || 1));
   const unicos = Array.from(new Set(meses.filter((m) => m >= 1 && m <= 12))).sort((a, b) => a - b);
   if (unicos.length === 12) return { tipo: 'mensualDiaFijo', dia: diaPago };
   return { tipo: 'anualMesesConcretos', mesesPago: unicos, diaPago };
