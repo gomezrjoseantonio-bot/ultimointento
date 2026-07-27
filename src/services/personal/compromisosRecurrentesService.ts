@@ -26,6 +26,7 @@ import {
   calcularImporte,
   aplicarVariacion,
 } from './patronCalendario';
+import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 
 const STORE_COMPROMISOS = 'compromisosRecurrentes';
 const STORE_TREASURY = 'treasuryEvents';
@@ -577,8 +578,8 @@ export function generarEventosDesdeCompromiso(
   const hoy = new Date();
   const desdeProyeccion =
     desdeOverride ?? (hoy.getTime() > fechaInicio.getTime() ? hoy : fechaInicio);
-  const isoDesde = desdeProyeccion.toISOString().slice(0, 10);
-  const isoHasta = fechaTope.toISOString().slice(0, 10);
+  const isoDesde = toISODateLocal(desdeProyeccion);
+  const isoHasta = toISODateLocal(fechaTope);
 
   const fechas = expandirPatron(compromiso.patron, isoDesde, isoHasta);
   const ahora = new Date().toISOString();
@@ -596,7 +597,7 @@ export function generarEventosDesdeCompromiso(
     const evento: Omit<TreasuryEvent, 'id'> = {
       type: 'expense',
       amount: importeFinal,
-      predictedDate: fecha.toISOString(),
+      predictedDate: toISODateLocal(fecha),
       description: compromiso.alias,
       sourceType: 'gasto_recurrente',
       sourceId: compromiso.id,

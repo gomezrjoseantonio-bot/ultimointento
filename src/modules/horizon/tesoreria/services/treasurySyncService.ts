@@ -452,7 +452,7 @@ export async function generateMonthlyForecasts(
       await insertEvent({
         type: 'income' as const,
         amount: netoMes,
-        predictedDate: buildDate(year, month, 25),
+        predictedDate: getBusinessDayForRule(year, month, nomina.reglaCobroDia, 25),
         description: `Nómina – ${nomina.nombre ?? 'Empresa'}`,
         sourceType: 'nomina' as const,
         sourceId: nomina.id,
