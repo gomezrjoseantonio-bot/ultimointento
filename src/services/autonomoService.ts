@@ -21,13 +21,47 @@ const TIPO = 'autonomo' as const;
 
 type StoredAutonomo = Autonomo & { tipo: typeof TIPO };
 
+/**
+ * Sanea `gastosRecurrentesActividad` en LECTURA para curar datos ya corruptos.
+ *
+ * Bug: la cuota de la Seguridad Social NO es un gasto de actividad (se modela
+ * aparte con `cuotaAutonomos` + `reglaPagoDia`), pero el wizard la colaba en el
+ * array y la re-guardaba en cada edición → un duplicado por cada «entro y
+ * guardo», con fechas (día 5) que el usuario nunca puso, doble conteo, y un array
+ * que crecía sin fin hasta atascar Presupuesto/Fiscal. Aquí se descartan esas
+ * entradas «ss» y se deduplica por id, así TODOS los consumidores (proyección,
+ * fiscal, tesorería) ven datos limpios de inmediato sin borrar nada real.
+ */
+export function sanitizeGastosActividad(
+  gastos: GastoRecurrenteActividad[] | undefined,
+): GastoRecurrenteActividad[] {
+  if (!Array.isArray(gastos)) return [];
+  const vistos = new Set<string>();
+  const limpios: GastoRecurrenteActividad[] = [];
+  for (const g of gastos) {
+    if (!g) continue;
+    const id = (g as { id?: string }).id;
+    if (g.categoria === 'ss' || id === 'ss') continue; // cuota SS · no es gasto de actividad
+    if (id != null) {
+      if (vistos.has(id)) continue; // dedupe defensivo por id
+      vistos.add(id);
+    }
+    limpios.push(g);
+  }
+  return limpios;
+}
+
 function asAutonomo(rec: any): Autonomo | null {
   if (!rec || rec.tipo !== TIPO) return null;
   // El `tipo` discriminador es interno al store unificado; los consumidores
   // siguen viendo la forma `Autonomo` original (sin `tipo`).
   const { tipo, ...rest } = rec as StoredAutonomo;
   void tipo;
-  return rest as Autonomo;
+  const autonomo = rest as Autonomo;
+  autonomo.gastosRecurrentesActividad = sanitizeGastosActividad(
+    autonomo.gastosRecurrentesActividad,
+  );
+  return autonomo;
 }
 
 class AutonomoService {

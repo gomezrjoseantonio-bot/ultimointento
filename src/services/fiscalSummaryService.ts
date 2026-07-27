@@ -19,6 +19,9 @@ import {
 } from './carryForwardService';
 import { calcularImputacion } from './imputacionRentaService';
 import { getRendimientoFiscal, normalizeRefCatastral } from './rendimientoActivoService';
+import { memoizeFiscalSummary, clearFiscalSummaryMemo } from './fiscalSummaryMemo';
+
+export { clearFiscalSummaryMemo };
 
 const isLeapYear = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 
@@ -91,10 +94,12 @@ async function extraerSummaryDeAEAT(
 }
 
 /**
- * Calculate fiscal summary for a property and year — computed in memory from gastosInmueble.
- * Does NOT persist to any store.
+ * Cálculo REAL del resumen fiscal de un inmueble/ejercicio. Es CARO y además
+ * ESCRIBE en IndexedDB (materializa operaciones de gastos recurrentes/intereses
+ * y arrastres). No llamar directamente: usar `calculateFiscalSummary`, que lo
+ * memoiza para no repetir el cálculo (ni sus escrituras) en abanico.
  */
-export const calculateFiscalSummary = async (
+const computeFiscalSummary = async (
   propertyId: number,
   exerciseYear: number
 ): Promise<FiscalSummary> => {
@@ -273,6 +278,20 @@ export const calculateFiscalSummary = async (
   return summary;
 };
 
+/**
+ * Resumen fiscal de un inmueble/ejercicio. Memoizado por (inmueble, ejercicio)
+ * ~30s (ver `fiscalSummaryMemo`) para colapsar el abanico recursivo del cálculo
+ * de IRPF y evitar que Presupuesto/Fiscal se cuelguen recalculando (y
+ * reescribiendo) sin fin.
+ */
+export const calculateFiscalSummary = (
+  propertyId: number,
+  exerciseYear: number,
+): Promise<FiscalSummary> =>
+  memoizeFiscalSummary(propertyId, exerciseYear, () =>
+    computeFiscalSummary(propertyId, exerciseYear),
+  );
+
 export const getFiscalSummary = async (
   propertyId: number,
   exerciseYear: number
@@ -282,6 +301,9 @@ export const getFiscalSummary = async (
 
 export const refreshFiscalSummariesForDocument = async (document: Document): Promise<void> => {
   if (document.metadata.entityType !== 'property' || !document.metadata.entityId) return;
+  // Refresco explícito tras importar un documento: forzar recálculo (y
+  // re-materialización de gastos) saltándose el memo.
+  clearFiscalSummaryMemo();
   const exerciseYear = document.metadata.aeatClassification?.exerciseYear
     || (document.metadata.financialData?.issueDate
       ? new Date(document.metadata.financialData.issueDate).getFullYear()
