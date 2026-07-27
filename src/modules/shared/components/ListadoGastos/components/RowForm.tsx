@@ -44,6 +44,22 @@ const MEDIOS: Array<{ id: MetodoPagoCompromiso; label: string }> = [
   { id: 'bizum', label: 'Bizum' },
 ];
 
+type ModoImporteUI = 'fijo' | 'variable' | 'porTramos' | 'porcentajeRenta';
+
+const MODOS_IMPORTE: Array<{ id: ModoImporteUI; label: string }> = [
+  { id: 'fijo', label: 'Fijo · igual cada cargo' },
+  { id: 'variable', label: 'Media · varía cada mes' },
+  { id: 'porTramos', label: 'Por tramos · cambia en una fecha' },
+  { id: 'porcentajeRenta', label: '% de la renta' },
+];
+
+function modoImporteInicial(imp: ImporteEvento): ModoImporteUI {
+  if (imp.modo === 'variable') return 'variable';
+  if (imp.modo === 'porTramos') return 'porTramos';
+  if (imp.modo === 'porcentajeRenta') return 'porcentajeRenta';
+  return 'fijo';
+}
+
 function importeToFijo(imp: ImporteEvento): string {
   if (imp.modo === 'fijo') return imp.importe > 0 ? String(imp.importe) : '';
   if (imp.modo === 'variable') return imp.importeMedio > 0 ? String(imp.importeMedio) : '';
@@ -69,6 +85,15 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
   const [cuentaCargo, setCuentaCargo] = useState<number>(c.cuentaCargo);
   const [fechaInicio, setFechaInicio] = useState(c.fechaInicio ?? '');
   const [importe, setImporte] = useState(importeToFijo(c.importe));
+  const [modoImporte, setModoImporte] = useState<ModoImporteUI>(() => modoImporteInicial(c.importe));
+  const [tramos, setTramos] = useState<Array<{ desde: string; importe: string }>>(() =>
+    c.importe.modo === 'porTramos' && c.importe.tramos.length > 0
+      ? c.importe.tramos.map((t) => ({ desde: t.desde.slice(0, 10), importe: String(t.importe) }))
+      : [{ desde: '', importe: '' }],
+  );
+  const [pctRenta, setPctRenta] = useState<string>(
+    c.importe.modo === 'porcentajeRenta' ? String(c.importe.porcentaje) : '',
+  );
   const [meses, setMeses] = useState<number[]>(() => patronToMeses(c.patron));
   const [dia, setDia] = useState<number>(() => diaDePatron(c.patron));
   const [diaIncierto, setDiaIncierto] = useState<boolean>(!!c.diaCargoIncierto);
@@ -113,8 +138,19 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
     setSaving(true);
     try {
       const impNum = parseFloat(importe);
-      const importeEvento: ImporteEvento =
-        !Number.isNaN(impNum) && impNum > 0 ? { modo: 'fijo', importe: impNum } : { modo: 'fijo', importe: 0 };
+      let importeEvento: ImporteEvento;
+      if (modoImporte === 'variable') {
+        importeEvento = { modo: 'variable', importeMedio: !Number.isNaN(impNum) && impNum > 0 ? impNum : 0 };
+      } else if (modoImporte === 'porcentajeRenta') {
+        importeEvento = { modo: 'porcentajeRenta', porcentaje: Math.min(100, Math.max(0, parseFloat(pctRenta) || 0)) };
+      } else if (modoImporte === 'porTramos') {
+        const tr = tramos
+          .filter((t) => t.desde && !Number.isNaN(parseFloat(t.importe)))
+          .map((t) => ({ desde: t.desde, importe: parseFloat(t.importe) }));
+        importeEvento = tr.length > 0 ? { modo: 'porTramos', tramos: tr } : { modo: 'fijo', importe: 0 };
+      } else {
+        importeEvento = { modo: 'fijo', importe: !Number.isNaN(impNum) && impNum > 0 ? impNum : 0 };
+      }
 
       let variacion: PatronVariacion;
       if (sube === 'ipc') variacion = { tipo: 'ipcAnual', mesRevision: ipcMes };
@@ -196,7 +232,23 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       {/* ── Cuánto ── */}
       <div style={dtit}>Cuánto</div>
       <div style={dgrid}>
-        <Field label="Importe €/cargo"><input type="number" min={0} step="0.01" style={{ ...inp, textAlign: 'right' }} value={importe} onChange={(e) => setImporte(e.target.value)} placeholder="—" /></Field>
+        <Field label="Modo de importe">
+          <select style={inp} value={modoImporte} onChange={(e) => setModoImporte(e.target.value as ModoImporteUI)}>
+            {MODOS_IMPORTE.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+        </Field>
+        {modoImporte === 'fijo' && (
+          <Field label="Importe €/cargo"><input type="number" min={0} step="0.01" style={{ ...inp, textAlign: 'right' }} value={importe} onChange={(e) => setImporte(e.target.value)} placeholder="—" /></Field>
+        )}
+        {modoImporte === 'variable' && (
+          <Field label="Importe medio €" hint="ATLAS usará esta estimación hasta que llegue el real"><input type="number" min={0} step="0.01" style={{ ...inp, textAlign: 'right' }} value={importe} onChange={(e) => setImporte(e.target.value)} placeholder="—" /></Field>
+        )}
+        {modoImporte === 'porcentajeRenta' && (
+          <Field label="% de la renta" hint="Se calcula sobre la renta del inmueble"><input type="number" min={0} max={100} step="0.1" style={{ ...inp, textAlign: 'right' }} value={pctRenta} onChange={(e) => setPctRenta(e.target.value)} placeholder="%" /></Field>
+        )}
+        {modoImporte === 'porTramos' && (
+          <Field label="Importe"><div style={{ fontSize: 12, color: 'var(--atlas-v5-ink-4)', padding: '7px 0' }}>por tramos ↓</div></Field>
+        )}
         <Field label="Medio de pago">
           <select style={inp} value={medio} onChange={(e) => setMedio(e.target.value as MetodoPagoCompromiso)}>
             {MEDIOS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
@@ -222,6 +274,41 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
           )}
         </Field>
       </div>
+
+      {modoImporte === 'porTramos' && (
+        <div style={{ marginTop: 12 }}>
+          <label style={lab}>Tramos · el importe cambia a partir de cada fecha</label>
+          {tramos.map((t, i) => (
+            <div key={i} style={tramoRow}>
+              <input
+                type="date"
+                style={{ ...inp, maxWidth: 170 }}
+                value={t.desde}
+                onChange={(e) => setTramos((prev) => prev.map((x, j) => (j === i ? { ...x, desde: e.target.value } : x)))}
+                aria-label={`Desde (tramo ${i + 1})`}
+              />
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                style={{ ...inp, maxWidth: 120, textAlign: 'right' }}
+                value={t.importe}
+                placeholder="€"
+                onChange={(e) => setTramos((prev) => prev.map((x, j) => (j === i ? { ...x, importe: e.target.value } : x)))}
+                aria-label={`Importe (tramo ${i + 1})`}
+              />
+              {tramos.length > 1 && (
+                <button type="button" style={tramoDel} onClick={() => setTramos((prev) => prev.filter((_, j) => j !== i))} aria-label="Quitar tramo">
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+          <button type="button" style={btnLinkTramo} onClick={() => setTramos((prev) => [...prev, { desde: '', importe: '' }])}>
+            + Añadir tramo
+          </button>
+        </div>
+      )}
 
       {/* ── Cuándo ── */}
       <div style={dtit}>Cuándo se cobra</div>
@@ -342,6 +429,14 @@ const inp: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 const inpSmall: React.CSSProperties = { ...inp, width: 84 };
+const tramoRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 };
+const tramoDel: React.CSSProperties = {
+  background: 'none', border: 'none', color: 'var(--atlas-v5-ink-4)', cursor: 'pointer', fontSize: 16, lineHeight: 1,
+};
+const btnLinkTramo: React.CSSProperties = {
+  background: 'none', border: 'none', color: 'var(--atlas-v5-gold-ink)', fontSize: 11.5, fontWeight: 600,
+  cursor: 'pointer', fontFamily: 'var(--atlas-v5-font-ui)', padding: 0, marginTop: 2,
+};
 const fiscalInfo: React.CSSProperties = {
   fontSize: 12,
   color: 'var(--atlas-v5-ink-3)',
