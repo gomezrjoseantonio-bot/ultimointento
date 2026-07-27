@@ -136,7 +136,13 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   // conceptos; al elegir uno, la fila nace con su nombre y su familia (de ahí se
   // deriva la fiscalidad) y se despliega para completar importe/calendario/cuenta.
   // Nace preparado (§2.3): importe 0 → «—» hasta rellenarlo.
-  const handleNuevo = useCallback(() => setPickerOpen(true), []);
+  const handleNuevo = useCallback(() => {
+    if (accounts.length === 0) {
+      showToastV5('Añade una cuenta en Cuentas antes de crear un gasto', 'warn');
+      return;
+    }
+    setPickerOpen(true);
+  }, [accounts]);
 
   // Crea el gasto desde un concepto del catálogo. `forzarPersonal` lo manda a
   // gastos personales (seguro de vida NO vinculado a la hipoteca · §4).
@@ -147,6 +153,12 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
       opts?: { forzarPersonal?: boolean; familiaFiscalManual?: FamiliaFiscal },
     ) => {
       const personal = opts?.forzarPersonal || mode === 'personal';
+      // `cuentaCargo` no puede ser 0 (la validación lo rechaza) · las cuentas se
+      // cargan async. Si aún no hay ninguna, no se crea a ciegas.
+      const cuenta = accounts[0]?.id;
+      if (cuenta == null) {
+        throw new Error('Añade una cuenta en Cuentas antes de crear un gasto');
+      }
       const now = new Date();
       const skeleton = {
         ambito: personal ? 'personal' : 'inmueble',
@@ -159,7 +171,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
         proveedor: { nombre: '' },
         patron: { tipo: 'mensualDiaFijo', dia: 1 },
         importe: { modo: 'fijo', importe: 0 },
-        cuentaCargo: accounts[0]?.id ?? 0,
+        cuentaCargo: cuenta,
         conceptoBancario: '',
         metodoPago: 'domiciliacion',
         categoria: concepto.categoria,
@@ -414,7 +426,6 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
 
       {seguroVidaConcepto && (
         <SeguroVidaModal
-          onCancel={() => setSeguroVidaConcepto(null)}
           onVinculado={() => {
             const concepto = seguroVidaConcepto;
             setSeguroVidaConcepto(null);
