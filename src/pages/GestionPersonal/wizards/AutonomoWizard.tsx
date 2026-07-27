@@ -305,12 +305,18 @@ const AutonomoWizard: React.FC<AutonomoWizardProps> = ({ onSaved, onCancel }) =>
         meses: c.tipo === 'mensual' ? [1,2,3,4,5,6,7,8,9,10,11,12] : c.meses.map((m, i) => m.activo ? i + 1 : null).filter(Boolean) as number[],
         aplIrpf: c.retencion > 0,
       }));
-      const gastosRec = gastos.map(g => ({
-        id: g.id,
-        descripcion: g.nombre,
-        importe: g.frecuencia === 'mensual' ? g.importe : g.importe / 12,
-        categoria: g.tipo,
-      }));
+      // La cuota de SS (línea sintética `id:'ss'` / `tipo:'ss'`, no editable) NO
+      // es un gasto de actividad: se modela con `cuotaAutonomos` + `reglaPagoDia`.
+      // Si se persiste aquí, en la siguiente carga se vuelve a anteponer y a
+      // guardar → un duplicado por cada «entro y guardo». Se excluye siempre.
+      const gastosRec = gastos
+        .filter(g => g.tipo !== 'ss' && g.id !== 'ss')
+        .map(g => ({
+          id: g.id,
+          descripcion: g.nombre,
+          importe: g.frecuencia === 'mensual' ? g.importe : g.importe / 12,
+          categoria: g.tipo,
+        }));
       const avgRetencion = facturacionBruta > 0
         ? clientes.reduce((s, c) => s + clienteTotal(c) * c.retencion / 100, 0) / facturacionBruta * 100
         : 0;
