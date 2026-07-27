@@ -13,7 +13,7 @@ import ConfirmationModal from '../../../../components/common/ConfirmationModal';
 import { cuentasService } from '../../../../services/cuentasService';
 import { initDB } from '../../../../services/db';
 import type { Account, TreasuryEvent } from '../../../../services/db';
-import type { CompromisoRecurrente, MotivoBaja } from '../../../../types/compromisosRecurrentes';
+import type { CompromisoRecurrente, MotivoBaja, FamiliaFiscal } from '../../../../types/compromisosRecurrentes';
 import {
   crearCompromiso,
   pasarAPreparado,
@@ -34,6 +34,7 @@ import GroupSection, { TableHead } from './components/GroupCard';
 import BajaModal from './components/BajaModal';
 import ReactivarModal from './components/ReactivarModal';
 import ConceptoPickerModal, { type ConceptoElegido } from './components/ConceptoPickerModal';
+import SeguroVidaModal from './components/SeguroVidaModal';
 
 const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   catalog,
@@ -70,6 +71,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   const [bajaTarget, setBajaTarget] = useState<(CompromisoRecurrente & { id: number }) | null>(null);
   const [reactivarTarget, setReactivarTarget] = useState<(CompromisoRecurrente & { id: number }) | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [seguroVidaConcepto, setSeguroVidaConcepto] = useState<ConceptoElegido | null>(null);
 
   // Contexto de financiación (§3.1): la hipoteca / los préstamos NO se editan
   // aquí (viven en Financiación). Se suma de los treasuryEvents hipoteca/prestamo
@@ -134,43 +136,82 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   // conceptos; al elegir uno, la fila nace con su nombre y su familia (de ahí se
   // deriva la fiscalidad) y se despliega para completar importe/calendario/cuenta.
   // Nace preparado (§2.3): importe 0 → «—» hasta rellenarlo.
-  const handleNuevo = useCallback(() => setPickerOpen(true), []);
+  const handleNuevo = useCallback(() => {
+    if (accounts.length === 0) {
+      showToastV5('Añade una cuenta en Cuentas antes de crear un gasto', 'warn');
+      return;
+    }
+    setPickerOpen(true);
+  }, [accounts]);
+
+  // Crea el gasto desde un concepto del catálogo. `forzarPersonal` lo manda a
+  // gastos personales (seguro de vida NO vinculado a la hipoteca · §4).
+  // `familiaFiscalManual` fija la familia (seguro de vida vinculado → financiación).
+  const crearGasto = useCallback(
+    async (
+      concepto: ConceptoElegido,
+      opts?: { forzarPersonal?: boolean; familiaFiscalManual?: FamiliaFiscal },
+    ) => {
+      const personal = opts?.forzarPersonal || mode === 'personal';
+      // `cuentaCargo` no puede ser 0 (la validación lo rechaza) · las cuentas se
+      // cargan async. Si aún no hay ninguna, no se crea a ciegas.
+      const cuenta = accounts[0]?.id;
+      if (cuenta == null) {
+        throw new Error('Añade una cuenta en Cuentas antes de crear un gasto');
+      }
+      const now = new Date();
+      const skeleton = {
+        ambito: personal ? 'personal' : 'inmueble',
+        inmuebleId: personal ? undefined : inmuebleId,
+        personalDataId: personal ? 1 : undefined,
+        alias: concepto.label,
+        tipo: concepto.tipoCompromiso,
+        subtipo: concepto.subtipoId,
+        tipoFamilia: concepto.tipoId,
+        proveedor: { nombre: '' },
+        patron: { tipo: 'mensualDiaFijo', dia: 1 },
+        importe: { modo: 'fijo', importe: 0 },
+        cuentaCargo: cuenta,
+        conceptoBancario: '',
+        metodoPago: 'domiciliacion',
+        categoria: concepto.categoria,
+        bolsaPresupuesto: personal ? 'necesidades' : 'inmueble',
+        responsable: 'titular',
+        fechaInicio: now.toISOString().slice(0, 10),
+        estado: 'preparado',
+        familiaFiscalManual: opts?.familiaFiscalManual,
+      } as unknown as Omit<CompromisoRecurrente, 'id' | 'createdAt' | 'updatedAt'>;
+      const creado = await crearCompromiso(skeleton);
+      onReload?.();
+      // Sólo se despliega si ha caído en ESTA tabla (mismo ámbito).
+      if (!opts?.forzarPersonal && creado.id != null) setExpandedRowId(creado.id);
+      return creado;
+    },
+    [mode, inmuebleId, accounts, onReload],
+  );
 
   const handlePickConcepto = useCallback(
     (concepto: ConceptoElegido) => {
       setPickerOpen(false);
-      void (async () => {
-        try {
-          const now = new Date();
-          const skeleton = {
-            ambito: mode === 'inmueble' ? 'inmueble' : 'personal',
-            inmuebleId: mode === 'inmueble' ? inmuebleId : undefined,
-            personalDataId: mode === 'personal' ? 1 : undefined,
-            alias: concepto.label,
-            tipo: concepto.tipoCompromiso,
-            subtipo: concepto.subtipoId,
-            tipoFamilia: concepto.tipoId,
-            proveedor: { nombre: '' },
-            patron: { tipo: 'mensualDiaFijo', dia: 1 },
-            importe: { modo: 'fijo', importe: 0 },
-            cuentaCargo: accounts[0]?.id ?? 0,
-            conceptoBancario: '',
-            metodoPago: 'domiciliacion',
-            categoria: concepto.categoria,
-            bolsaPresupuesto: mode === 'inmueble' ? 'inmueble' : 'necesidades',
-            responsable: 'titular',
-            fechaInicio: now.toISOString().slice(0, 10),
-            estado: 'preparado',
-          } as unknown as Omit<CompromisoRecurrente, 'id' | 'createdAt' | 'updatedAt'>;
-          const creado = await crearCompromiso(skeleton);
-          onReload?.();
-          if (creado.id != null) setExpandedRowId(creado.id);
-        } catch (err) {
-          showToastV5(`No se pudo crear el gasto: ${err instanceof Error ? err.message : String(err)}`, 'error');
+      // Seguro de vida en inmueble (§4): si el inmueble tiene hipoteca, pregunta
+      // obligatoria de vinculación; si no la tiene, no hay financiación posible →
+      // va a personal y no es deducible.
+      const esVida = mode === 'inmueble' && concepto.tipoId === 'seguros' && concepto.subtipoId === 'vida';
+      if (esVida) {
+        if (financiacionAnual != null) {
+          setSeguroVidaConcepto(concepto);
+        } else {
+          void crearGasto(concepto, { forzarPersonal: true, familiaFiscalManual: 'no_deducible' })
+            .then(() => showToastV5('Seguro de vida guardado en tus gastos personales · no es deducible del inmueble', 'info'))
+            .catch((err) => showToastV5(`No se pudo crear: ${err instanceof Error ? err.message : String(err)}`, 'error'));
         }
-      })();
+        return;
+      }
+      void crearGasto(concepto).catch((err) =>
+        showToastV5(`No se pudo crear el gasto: ${err instanceof Error ? err.message : String(err)}`, 'error'),
+      );
     },
-    [mode, inmuebleId, accounts, onReload],
+    [mode, financiacionAnual, crearGasto],
   );
 
   const handleToggleEstado = useCallback(
@@ -381,6 +422,25 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
 
       {pickerOpen && (
         <ConceptoPickerModal catalog={catalog} sugeridos={conceptosSugeridos} onCancel={() => setPickerOpen(false)} onPick={handlePickConcepto} />
+      )}
+
+      {seguroVidaConcepto && (
+        <SeguroVidaModal
+          onVinculado={() => {
+            const concepto = seguroVidaConcepto;
+            setSeguroVidaConcepto(null);
+            void crearGasto(concepto, { familiaFiscalManual: 'intereses_financiacion' })
+              .then(() => showToastV5('Seguro de vida vinculado a la hipoteca · cuenta como financiación', 'success'))
+              .catch((err) => showToastV5(`No se pudo crear: ${err instanceof Error ? err.message : String(err)}`, 'error'));
+          }}
+          onNoVinculado={() => {
+            const concepto = seguroVidaConcepto;
+            setSeguroVidaConcepto(null);
+            void crearGasto(concepto, { forzarPersonal: true, familiaFiscalManual: 'no_deducible' })
+              .then(() => showToastV5('Seguro de vida guardado en tus gastos personales · no es deducible del inmueble', 'info'))
+              .catch((err) => showToastV5(`No se pudo crear: ${err instanceof Error ? err.message : String(err)}`, 'error'));
+          }}
+        />
       )}
 
       {bajaTarget && (
