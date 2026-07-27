@@ -8,6 +8,36 @@ import {
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
+describe('expandirPatron · blindaje anti-cuelgue (datos corruptos)', () => {
+  // REGRESIÓN · un patrón con un campo numérico NaN generaba un Invalid Date
+  // cuya comparación con dHasta era siempre `NaN > 0 === false` → el `while(true)`
+  // giraba PARA SIEMPRE y congelaba la pestaña (Presupuesto/Fiscal «in eternum»).
+  // Debe LANZAR de inmediato (lo captura el llamante y se salta el compromiso),
+  // nunca colgarse. El `timeout` bajo de Jest falla si volviera a girar sin fin.
+  it('mensualDiaFijo con dia NaN → lanza, no cuelga', () => {
+    expect(() =>
+      expandirPatron({ tipo: 'mensualDiaFijo', dia: NaN } as never, '2026-01-01', '2046-12-31'),
+    ).toThrow(/dia inválido/);
+  }, 2000);
+
+  it('cadaNMeses con campos NaN → lanza, no cuelga', () => {
+    expect(() =>
+      expandirPatron(
+        { tipo: 'cadaNMeses', cadaNMeses: NaN, mesAncla: NaN, dia: NaN } as never,
+        '2026-01-01',
+        '2046-12-31',
+      ),
+    ).toThrow(/campos inválidos/);
+  }, 2000);
+
+  it('mensualDiaFijo válido a 20 años termina y no explota en número de fechas', () => {
+    const fechas = expandirPatron({ tipo: 'mensualDiaFijo', dia: 15 }, '2026-01-01', '2046-12-31');
+    // 21 años · 12 meses ≈ 252, con backstop de +2 años nunca es ilimitado.
+    expect(fechas.length).toBeGreaterThan(200);
+    expect(fechas.length).toBeLessThan(300);
+  }, 2000);
+});
+
 describe('expandirPatron', () => {
   describe('mensualDiaFijo', () => {
     it('proyecta una fecha por mes en el día indicado', () => {

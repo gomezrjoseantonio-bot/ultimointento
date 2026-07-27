@@ -1134,6 +1134,7 @@ export async function generateProyeccionMensual(): Promise<ProyeccionAnual[]> {
   }
 
   proyeccionPending = (async () => {
+   try {
     const [baseData, deudaState] = await Promise.all([
       loadBaseData(),
       loadDeudaState(),
@@ -1189,8 +1190,13 @@ export async function generateProyeccionMensual(): Promise<ProyeccionAnual[]> {
 
     proyeccionCache = proyecciones;
     proyeccionCacheExpiresAt = Date.now() + PROYECCION_CACHE_TTL_MS;
-    proyeccionPending = null;
     return proyecciones;
+   } finally {
+    // Libera SIEMPRE el promise en vuelo · si la generación falla, dejarlo
+    // colgado envenenaba la caché de módulo y todas las llamadas posteriores
+    // (Presupuesto, patrimonio…) esperaban un promise que nunca resolvía.
+    proyeccionPending = null;
+   }
   })();
 
   return proyeccionPending;
