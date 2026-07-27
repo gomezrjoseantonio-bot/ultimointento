@@ -7,7 +7,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Save, Copy, Sparkles } from 'lucide-react';
+import { Plus, Save, Copy, Sparkles, Upload } from 'lucide-react';
 import { EmptyState, Icons, showToastV5 } from '../../../../design-system/v5';
 import ConfirmationModal from '../../../../components/common/ConfirmationModal';
 import { cuentasService } from '../../../../services/cuentasService';
@@ -35,6 +35,8 @@ import BajaModal from './components/BajaModal';
 import ReactivarModal from './components/ReactivarModal';
 import ConceptoPickerModal, { type ConceptoElegido } from './components/ConceptoPickerModal';
 import SeguroVidaModal from './components/SeguroVidaModal';
+import CopiarGastosModal from './components/CopiarGastosModal';
+import ImportarGastosModal from './components/ImportarGastosModal';
 
 const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   catalog,
@@ -73,6 +75,8 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   const [reactivarTarget, setReactivarTarget] = useState<(CompromisoRecurrente & { id: number }) | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [seguroVidaConcepto, setSeguroVidaConcepto] = useState<ConceptoElegido | null>(null);
+  const [copiarOpen, setCopiarOpen] = useState(false);
+  const [importarOpen, setImportarOpen] = useState(false);
 
   // Contexto de financiación (§3.1): la hipoteca / los préstamos NO se editan
   // aquí (viven en Financiación). Se suma de los treasuryEvents hipoteca/prestamo
@@ -317,11 +321,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
         </div>
         <div style={hact}>
           {mode === 'inmueble' ? (
-            <button
-              type="button"
-              style={btnOutline}
-              onClick={() => showToastV5('Copiar de otro inmueble · disponible próximamente', 'info')}
-            >
+            <button type="button" style={btnOutline} onClick={() => setCopiarOpen(true)}>
               <Copy size={13} strokeWidth={2} />
               Copiar de otro inmueble
             </button>
@@ -335,6 +335,10 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
               Detectar
             </button>
           )}
+          <button type="button" style={btnOutline} onClick={() => setImportarOpen(true)}>
+            <Upload size={13} strokeWidth={2} />
+            Importar de Excel
+          </button>
           <button type="button" style={btnOutline} onClick={handleNuevo}>
             <Plus size={13} strokeWidth={2.5} />
             Añadir gasto
@@ -368,17 +372,26 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
         />
         {mode === 'personal' && (
           <div style={{ marginTop: 10, textAlign: 'center' }}>
-            <button
-              type="button"
-              style={btnGhostLink}
-              onClick={onImportar ?? (() => navigate('/inmuebles/importar-contratos'))}
-            >
-              o importar desde un fichero
+            <button type="button" style={btnGhostLink} onClick={() => setImportarOpen(true)}>
+              o importar desde un Excel
             </button>
           </div>
         )}
         {pickerOpen && (
           <ConceptoPickerModal catalog={catalog} sugeridos={conceptosSugeridos} onCancel={() => setPickerOpen(false)} onPick={handlePickConcepto} />
+        )}
+        {importarOpen && (
+          <ImportarGastosModal
+            mode={mode}
+            inmuebleId={inmuebleId}
+            accounts={accounts}
+            catalog={catalog}
+            onCancel={() => setImportarOpen(false)}
+            onImportado={() => {
+              setImportarOpen(false);
+              onReload?.();
+            }}
+          />
         )}
       </div>
     );
@@ -424,6 +437,33 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
 
       {pickerOpen && (
         <ConceptoPickerModal catalog={catalog} sugeridos={conceptosSugeridos} onCancel={() => setPickerOpen(false)} onPick={handlePickConcepto} />
+      )}
+
+      {copiarOpen && mode === 'inmueble' && inmuebleId != null && (
+        <CopiarGastosModal
+          inmuebleDestinoId={inmuebleId}
+          inmuebleDestinoLabel={contextoNombre ?? 'este inmueble'}
+          inmueblesOrigen={(inmueblesDisponibles ?? []).filter((i) => i.id !== inmuebleId)}
+          onCancel={() => setCopiarOpen(false)}
+          onCopiado={() => {
+            setCopiarOpen(false);
+            onReload?.();
+          }}
+        />
+      )}
+
+      {importarOpen && (
+        <ImportarGastosModal
+          mode={mode}
+          inmuebleId={inmuebleId}
+          accounts={accounts}
+          catalog={catalog}
+          onCancel={() => setImportarOpen(false)}
+          onImportado={() => {
+            setImportarOpen(false);
+            onReload?.();
+          }}
+        />
       )}
 
       {seguroVidaConcepto && (

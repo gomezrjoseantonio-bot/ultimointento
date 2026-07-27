@@ -121,6 +121,54 @@ export async function actualizarCompromiso(
   return actualizado;
 }
 
+/** Qué se copia al clonar gastos de otro inmueble (§ copiar · mockup v2_3). */
+export interface OpcionesCopia {
+  importes: boolean; // copiar los importes (si no, quedan vacíos)
+  cuenta: boolean; // copiar la cuenta de cargo
+}
+
+/**
+ * Copia los gastos (activos + preparados) de un inmueble ORIGEN a otro DESTINO.
+ * Se añaden como NUEVOS y nacen `preparado` (no se toca nada de lo que ya tenga
+ * el destino). Concepto, proveedor y calendario van siempre; el importe y la
+ * cuenta según `opts`; CUPS, nº de contrato y repartos NO se copian (son propios
+ * de cada inmueble · se revisan uno a uno después). Devuelve cuántos se crearon.
+ */
+export async function copiarGastosDeInmueble(
+  inmuebleOrigenId: number,
+  inmuebleDestinoId: number,
+  opts: OpcionesCopia,
+): Promise<number> {
+  const origen = await listarCompromisos({ ambito: 'inmueble', inmuebleId: inmuebleOrigenId });
+  const copiables = origen.filter((c) => c.estado === 'activo' || c.estado === 'preparado');
+  let creados = 0;
+  for (const c of copiables) {
+    const nuevo: Omit<CompromisoRecurrente, 'id' | 'createdAt' | 'updatedAt'> = {
+      ...c,
+      inmuebleId: inmuebleDestinoId,
+      estado: 'preparado',
+      importe: opts.importes ? c.importe : { modo: 'fijo', importe: 0 },
+      cuentaCargo: opts.cuenta ? c.cuentaCargo : 0,
+      // Propios de cada inmueble · no se copian
+      cups: undefined,
+      numeroContrato: undefined,
+      reparto: undefined,
+      fechaFin: undefined,
+      motivoBaja: undefined,
+      derivadoDe: undefined,
+    };
+    // `id`/`createdAt`/`updatedAt` se descartan al ser Omit; borramos por si acaso.
+    delete (nuevo as Partial<CompromisoRecurrente>).id;
+    try {
+      await crearCompromiso(nuevo);
+      creados += 1;
+    } catch {
+      // Si alguno choca con una validación (p.ej. derivado), se salta.
+    }
+  }
+  return creados;
+}
+
 export async function eliminarCompromiso(id: number): Promise<void> {
   const db = await initDB();
   const existente = await db.get(STORE_COMPROMISOS, id);
