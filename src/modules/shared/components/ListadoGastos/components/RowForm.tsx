@@ -15,15 +15,19 @@ import type {
   PatronVariacion,
   MetodoPagoCompromiso,
   FamiliaFiscal,
+  RepartoInmueble,
 } from '../../../../../types/compromisosRecurrentes';
 import type { Account } from '../../../../../services/db';
 import RejillaMeses from './RejillaMeses';
 import { patronToMeses, mesesToPatron, diaDePatron } from '../utils/rejillaMeses';
 import { fiscalidadDeConcepto, FAMILIAS_FISCALES } from '../utils/fiscalidadConcepto';
+import RepartoEditor, { repartoCuadra, type InmuebleOpcion } from './RepartoEditor';
 
 interface RowFormProps {
   compromiso: CompromisoRecurrente & { id: number };
   accounts: Account[];
+  /** Inmuebles para el reparto de un recibo entre varios (§2.7). Incluye el actual. */
+  inmueblesDisponibles?: InmuebleOpcion[];
   onSaved: (updated: CompromisoRecurrente) => void;
 }
 
@@ -54,7 +58,7 @@ function labelFamilia(id: FamiliaFiscal): string {
   return FAMILIAS_FISCALES.find((f) => f.id === id)?.label ?? id;
 }
 
-const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) => {
+const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDisponibles, onSaved }) => {
   const [alias, setAlias] = useState(c.alias === 'Nuevo gasto' ? '' : c.alias);
   const [proveedor, setProveedor] = useState(c.proveedor?.nombre ?? '');
   const [nif, setNif] = useState(c.proveedor?.nif ?? '');
@@ -79,7 +83,18 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) =
   const [contratoPct, setContratoPct] = useState<string>(
     c.variacion?.tipo === 'aniversarioContrato' ? String(c.variacion.porcentajeAnual) : '',
   );
+  const [comparte, setComparte] = useState<boolean>(!!(c.reparto && c.reparto.length > 0));
+  const [reparto, setReparto] = useState<RepartoInmueble[]>(c.reparto ?? []);
   const [saving, setSaving] = useState(false);
+
+  // Reparto entre inmuebles (§2.7): sólo tiene sentido en ámbito inmueble y si
+  // hay más de un inmueble donde repartir.
+  const inmuebleActual =
+    c.ambito === 'inmueble' && c.inmuebleId != null
+      ? (inmueblesDisponibles ?? []).find((i) => i.id === c.inmuebleId) ?? { id: c.inmuebleId, label: c.alias }
+      : null;
+  const puedeRepartir = inmuebleActual != null && (inmueblesDisponibles ?? []).length > 1;
+  const importeNum = parseFloat(importe) || 0;
 
   const mesAncla = useMemo(() => (meses.length ? Math.min(...meses) : new Date().getMonth() + 1), [meses]);
   const estadoLabel = c.estado === 'activo' ? 'Activo · se proyecta' : c.estado === 'preparado' ? 'Preparado · aún no se proyecta' : 'Dado de baja';
@@ -89,6 +104,12 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) =
 
   const handleSave = async () => {
     if (saving) return;
+    // Reparto (§2.7): si se comparte, el total debe cuadrar (100 % o el importe
+    // completo) · si no, no se puede guardar.
+    if (comparte && puedeRepartir && !repartoCuadra(reparto, importeNum)) {
+      showToastV5('El reparto no cuadra · ajusta las partes antes de guardar', 'warn');
+      return;
+    }
     setSaving(true);
     try {
       const impNum = parseFloat(importe);
@@ -122,6 +143,8 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) =
         variacion,
         diaCargoIncierto: diaIncierto || undefined,
         margenGraciaDias: Number.isNaN(margen) ? undefined : margen,
+        // El reparto sólo se guarda si se comparte y cuadra; si no, se limpia.
+        reparto: comparte && puedeRepartir && reparto.length > 0 ? reparto : undefined,
       };
 
       const updated = await actualizarCompromiso(c.id, payload);
@@ -213,6 +236,38 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, onSaved }) =
           <span>No sé el día del cargo todavía (se proyecta a mitad de mes)</span>
         </label>
       </div>
+
+      {/* ── Se comparte con otros inmuebles (§2.7) ── */}
+      {puedeRepartir && inmuebleActual && (
+        <>
+          <div style={dtit}>Se comparte con otros inmuebles</div>
+          <label style={checkRow}>
+            <input
+              type="checkbox"
+              checked={comparte}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setComparte(on);
+                if (on && reparto.length === 0) {
+                  setReparto([{ inmuebleId: inmuebleActual.id, porcentaje: 100 }]);
+                }
+              }}
+            />
+            <span>Un solo recibo para varios inmuebles · se guarda el importe completo y el reparto</span>
+          </label>
+          {comparte && (
+            <div style={{ marginTop: 12 }}>
+              <RepartoEditor
+                importeCompleto={importeNum}
+                inmuebleActual={inmuebleActual}
+                inmueblesDisponibles={inmueblesDisponibles ?? []}
+                reparto={reparto}
+                onChange={setReparto}
+              />
+            </div>
+          )}
+        </>
+      )}
 
       {/* ── Estado ── */}
       <div style={dtit}>Estado</div>

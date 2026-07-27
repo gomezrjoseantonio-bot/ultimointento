@@ -48,6 +48,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   subtitulo,
   contextoNombre,
   conceptosSugeridos,
+  inmueblesDisponibles,
 }) => {
   const navigate = useNavigate();
 
@@ -412,6 +413,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
             onRowSaved={() => onReload?.()}
             accountsById={accountsById}
             accounts={accounts}
+            inmueblesDisponibles={inmueblesDisponibles}
           />
         ))}
         <div style={tfoot}>
