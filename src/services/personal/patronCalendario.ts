@@ -18,6 +18,7 @@ import type {
   ImporteEvento,
   ReferenciaDiaRelativo,
 } from '../../types/compromisosRecurrentes';
+import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 
 // ─── Helpers de calendario ─────────────────────────────────────────────────
 
@@ -299,7 +300,7 @@ export function calcularImporte(importe: ImporteEvento, fecha: Date): number {
     case 'porTramos': {
       // El tramo aplicable es el de `desde` más reciente que sea ≤ la fecha del
       // cargo. Antes del primer tramo no hay cuota definida → 0 (no se inventa).
-      const iso = fecha.toISOString().slice(0, 10);
+      const iso = toISODateLocal(fecha);
       let elegido: number | null = null;
       let mejorDesde = '';
       for (const t of importe.tramos) {

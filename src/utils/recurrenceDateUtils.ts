@@ -7,6 +7,20 @@ const MONTHS_BY_FREQUENCY: Record<FrecuenciaRecurrencia, number> = {
   anual: 12,
 };
 
+/**
+ * Formatea una fecha de CALENDARIO (no un instante) a `YYYY-MM-DD` usando sus
+ * componentes LOCALES. Evita el bug clásico de `date.toISOString().slice(0,10)`:
+ * ese convierte a UTC y, en zonas UTC+ (España UTC+1/+2), la medianoche local
+ * cae en el día ANTERIOR → el día 1 se guardaba como el 31. Aquí no hay desfase.
+ */
+export function toISODateLocal(date: Date): string {
+  if (Number.isNaN(date.getTime())) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export function parseIsoDateAsUTC(dateLike: string): Date {
   const [year, month, day] = dateLike.slice(0, 10).split('-').map(Number);
   if (!year || !month || !day) return new Date(NaN);
