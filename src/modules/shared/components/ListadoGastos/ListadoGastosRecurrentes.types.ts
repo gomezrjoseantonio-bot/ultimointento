@@ -16,4 +16,6 @@ export interface ListadoGastosRecurrentesProps {
   contextoNombre?: string;
   /** Conceptos sugeridos por la modalidad del contrato (§3.3) · se resaltan en el picker. */
   conceptosSugeridos?: Array<{ tipoId: string; subtipoId: string }>;
+  /** Inmuebles para el reparto de un recibo entre varios (§2.7). Incluye el actual. */
+  inmueblesDisponibles?: Array<{ id: number; label: string }>;
 }

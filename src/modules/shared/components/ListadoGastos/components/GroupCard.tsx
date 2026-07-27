@@ -20,6 +20,7 @@ interface GroupSectionProps {
   onRowSaved: () => void;
   accountsById: Record<number, Account>;
   accounts: Account[];
+  inmueblesDisponibles?: Array<{ id: number; label: string }>;
 }
 
 const GroupSection: React.FC<GroupSectionProps> = ({
@@ -32,6 +33,7 @@ const GroupSection: React.FC<GroupSectionProps> = ({
   onRowSaved,
   accountsById,
   accounts,
+  inmueblesDisponibles,
 }) => {
   return (
     <div role="rowgroup">
@@ -54,7 +56,12 @@ const GroupSection: React.FC<GroupSectionProps> = ({
               onInlineSaved={onRowSaved}
             />
             {expandedRowId === c.id && (
-              <RowForm compromiso={c} accounts={accounts} onSaved={onRowSaved} />
+              <RowForm
+                compromiso={c}
+                accounts={accounts}
+                inmueblesDisponibles={inmueblesDisponibles}
+                onSaved={onRowSaved}
+              />
             )}
           </React.Fragment>
         );

@@ -230,6 +230,9 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
               {isPreparado ? 'aún no' : `baja · ${fechaBajaLabel(c.fechaFin)}`}
             </span>
           )}
+          {c.reparto && c.reparto.length > 0 && (
+            <span style={{ ...estadoChip, ...chipReparto }}>se reparte</span>
+          )}
         </button>
       </div>
 
@@ -410,6 +413,10 @@ const chipPrep: React.CSSProperties = {
 const chipBaja: React.CSSProperties = {
   background: 'var(--atlas-v5-line-3)',
   color: 'var(--atlas-v5-ink-4)',
+};
+const chipReparto: React.CSSProperties = {
+  background: 'var(--atlas-v5-brand-wash)',
+  color: 'var(--atlas-v5-brand)',
 };
 const impInput: React.CSSProperties = {
   width: '100%',

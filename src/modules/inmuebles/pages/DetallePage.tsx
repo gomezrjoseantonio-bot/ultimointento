@@ -467,6 +467,9 @@ const DetallePage: React.FC = () => {
             onReload={reloadGastos}
             contextoNombre={property.alias}
             conceptosSugeridos={conceptosSugeridos}
+            inmueblesDisponibles={properties
+              .filter((p): p is typeof p & { id: number } => p.id != null)
+              .map((p) => ({ id: p.id, label: p.alias }))}
           />
         </div>
       )}
