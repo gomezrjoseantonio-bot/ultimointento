@@ -128,7 +128,31 @@ export function expandirPatron(
   const dHasta = parseFechaISO(hasta);
   if (compararSoloFecha(dDesde, dHasta) > 0) return [];
 
+  // BLINDAJE ANTI-CUELGUE · los bucles `while(true)` de abajo solo rompen cuando
+  // la fecha calculada supera `dHasta`. Si un campo numérico del patrón viene
+  // corrupto (p. ej. `dia`/`cadaNMeses`/`mesAncla` = NaN por una importación
+  // defectuosa), `fechaDiaFijoDelMes` produce un `Invalid Date` y
+  // `compararSoloFecha(NaN, dHasta)` es `NaN`, que nunca es `> 0` → el bucle
+  // giraba para SIEMPRE y colgaba Presupuesto/Fiscal «in eternum». Validamos
+  // ANTES de expandir: si algo no es finito lanzamos (el llamante `buildOpexPorMes`
+  // lo captura y se salta ese compromiso) en vez de girar sin fin.
+  const finito = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
+  if (patron.tipo === 'mensualDiaFijo' && !finito(patron.dia)) {
+    throw new Error(`expandirPatron · mensualDiaFijo con dia inválido: ${patron.dia}`);
+  }
+  if (
+    patron.tipo === 'cadaNMeses' &&
+    (!finito(patron.cadaNMeses) || !finito(patron.mesAncla) || !finito(patron.dia))
+  ) {
+    throw new Error(
+      `expandirPatron · cadaNMeses con campos inválidos (cada=${patron.cadaNMeses} ancla=${patron.mesAncla} dia=${patron.dia})`,
+    );
+  }
+
   const fechas: Date[] = [];
+  // Tope de años defensivo · backstop absoluto para que ningún bucle mensual
+  // pueda girar sin fin aunque se cuele un dato inesperado.
+  const yTope = dHasta.getFullYear() + 2;
 
   switch (patron.tipo) {
     case 'puntual': {
@@ -145,10 +169,11 @@ export function expandirPatron(
       let m = dDesde.getMonth();
       while (true) {
         const f = fechaDiaFijoDelMes(y, m, patron.dia);
-        if (compararSoloFecha(f, dHasta) > 0) break;
+        if (Number.isNaN(f.getTime()) || compararSoloFecha(f, dHasta) > 0) break;
         if (compararSoloFecha(f, dDesde) >= 0) fechas.push(f);
         m++;
         if (m > 11) { m = 0; y++; }
+        if (y > yTope) break;
       }
       break;
     }
@@ -158,17 +183,18 @@ export function expandirPatron(
       let m = dDesde.getMonth();
       while (true) {
         const f = fechaSegunReferencia(y, m, patron.referencia);
-        if (compararSoloFecha(f, dHasta) > 0) break;
+        if (Number.isNaN(f.getTime()) || compararSoloFecha(f, dHasta) > 0) break;
         if (compararSoloFecha(f, dDesde) >= 0) fechas.push(f);
         m++;
         if (m > 11) { m = 0; y++; }
+        if (y > yTope) break;
       }
       break;
     }
 
     case 'cadaNMeses': {
       // Se proyecta a partir del mes ancla · año del `desde`
-      const cada = Math.max(1, patron.cadaNMeses);
+      const cada = finito(patron.cadaNMeses) ? Math.max(1, patron.cadaNMeses) : 1;
       const mesAncla0 = (patron.mesAncla - 1 + 12) % 12; // 1-indexed → 0-indexed
       let y = dDesde.getFullYear();
       // Encuentra el primer mes >= desde alineado al ancla
@@ -176,13 +202,15 @@ export function expandirPatron(
       while (new Date(y, m, 1).getTime() < new Date(dDesde.getFullYear(), dDesde.getMonth(), 1).getTime()) {
         m += cada;
         while (m > 11) { m -= 12; y++; }
+        if (y > yTope) break;
       }
       while (true) {
         const f = fechaDiaFijoDelMes(y, m, patron.dia);
-        if (compararSoloFecha(f, dHasta) > 0) break;
+        if (Number.isNaN(f.getTime()) || compararSoloFecha(f, dHasta) > 0) break;
         if (compararSoloFecha(f, dDesde) >= 0) fechas.push(f);
         m += cada;
         while (m > 11) { m -= 12; y++; }
+        if (y > yTope) break;
       }
       break;
     }
