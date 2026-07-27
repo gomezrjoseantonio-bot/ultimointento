@@ -35,6 +35,7 @@ import {
   getBusinessDayForRule,
   getPropertyLiteral,
 } from './treasurySyncHelpers';
+import type { ReglaDia } from '../../../../types/personal';
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -60,6 +61,27 @@ function buildDate(year: number, month: number, day: number): string {
   const mm = String(safeMonth).padStart(2, '0');
   const dd = String(effectiveDay).padStart(2, '0');
   return `${year}-${mm}-${dd}`;
+}
+
+/**
+ * Resuelve la regla del DÍA DE COBRO de una nómina para proyectar su evento.
+ * Preferimos `reglaCobroDia` (fuente canónica que escribe el wizard). Si una
+ * nómina legacy no la tiene (registros creados antes de que existiera el campo),
+ * caemos a `cuentaCobroIBAN.diaAbono`. Solo si NO hay nada configurado se usa el
+ * día por defecto del llamante. Antes se fijaba el día 25 a ciegas → el usuario
+ * marcaba 28 y la Tesorería mostraba 25.
+ */
+export function resolveReglaCobroNomina(nomina: {
+  reglaCobroDia?: ReglaDia;
+  cuentaCobroIBAN?: { diaAbono?: number | 'ultimoHabil' };
+}): ReglaDia | undefined {
+  if (nomina.reglaCobroDia) return nomina.reglaCobroDia;
+  const diaAbono = nomina.cuentaCobroIBAN?.diaAbono;
+  if (diaAbono === 'ultimoHabil') return { tipo: 'ultimo-habil' };
+  if (typeof diaAbono === 'number' && diaAbono >= 1 && diaAbono <= 31) {
+    return { tipo: 'fijo', dia: diaAbono };
+  }
+  return undefined;
 }
 
 function otrosIngresosAppliesToMonth(
@@ -452,7 +474,7 @@ export async function generateMonthlyForecasts(
       await insertEvent({
         type: 'income' as const,
         amount: netoMes,
-        predictedDate: getBusinessDayForRule(year, month, nomina.reglaCobroDia, 25),
+        predictedDate: getBusinessDayForRule(year, month, resolveReglaCobroNomina(nomina), 25),
         description: `Nómina – ${nomina.nombre ?? 'Empresa'}`,
         sourceType: 'nomina' as const,
         sourceId: nomina.id,

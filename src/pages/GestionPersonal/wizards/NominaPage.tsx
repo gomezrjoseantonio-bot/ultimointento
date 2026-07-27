@@ -33,6 +33,7 @@ import {
   X,
 } from 'lucide-react';
 import { nominaService, buildSnapshotFromNomina } from '../../../services/nominaService';
+import { regenerateForecastsForward } from '../../../services/treasuryBootstrapService';
 import { personalDataService } from '../../../services/personalDataService';
 import { cuentasService } from '../../../services/cuentasService';
 import { planesPensionesService } from '../../../services/planesPensionesService';
@@ -569,6 +570,12 @@ const NominaPage: React.FC<NominaPageProps> = ({ prefill, onSaved, onCancel }) =
       } else {
         await nominaService.saveNomina(payload);
       }
+      // Regenera los eventos de Tesorería tras guardar · igual que gastos y
+      // compromisos. Sin esto, editar el día de cobro solo invalidaba una caché
+      // pero NO reescribía el evento previsto persistido → seguía mostrando el
+      // día antiguo hasta reabrir Tesorería. `force` regenera aunque no cambie
+      // el importe (el cambio puede ser solo la fecha).
+      await regenerateForecastsForward({ force: true }).catch(() => {});
       // FIX onboarding punto 6 (P4) · embebido · el bloque cierra el bucle
       // (marca progreso · enciende IRPF estimado) vía `onSaved`. Suelto · va a
       // su pantalla de ingresos como siempre.
