@@ -10,7 +10,7 @@ import { mesesDeAtajo, type AtajoRejilla } from '../utils/rejillaMeses';
 
 interface RejillaMesesProps {
   meses: number[]; // 1-12 marcados
-  dia: number; // día del cargo (1-28)
+  dia: number; // día del cargo (1-31)
   /** Mes de anclaje para los atajos (normalmente el del primer cobro). 1-12. */
   mesAncla?: number;
   onMesesChange: (meses: number[]) => void;
@@ -102,16 +102,16 @@ const RejillaMeses: React.FC<RejillaMesesProps> = ({
           id="rejilla-dia"
           type="number"
           min={1}
-          max={28}
+          max={31}
           value={dia || ''}
           disabled={disabled}
           onChange={(e) => {
             const n = parseInt(e.target.value, 10);
-            onDiaChange(Number.isNaN(n) ? 1 : Math.min(28, Math.max(1, n)));
+            onDiaChange(Number.isNaN(n) ? 1 : Math.min(31, Math.max(1, n)));
           }}
           style={diaInput}
         />
-        <span style={diaHint}>del mes (1-28)</span>
+        <span style={diaHint}>del mes (1-31)</span>
       </div>
     </div>
   );

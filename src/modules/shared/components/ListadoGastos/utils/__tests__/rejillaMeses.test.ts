@@ -24,8 +24,9 @@ describe('rejillaMeses · mesesToPatron', () => {
   it('un subconjunto → anualMesesConcretos', () => {
     expect(mesesToPatron([6], 5)).toEqual({ tipo: 'anualMesesConcretos', mesesPago: [6], diaPago: 5 });
   });
-  it('clampa el día a 1-28', () => {
-    expect((mesesToPatron([1], 31) as { diaPago: number }).diaPago).toBe(28);
+  it('clampa el día a 1-31 (los cargos en España van del 1 al 31)', () => {
+    expect((mesesToPatron([1], 31) as { diaPago: number }).diaPago).toBe(31);
+    expect((mesesToPatron([1], 45) as { diaPago: number }).diaPago).toBe(31);
     expect((mesesToPatron([1], 0) as { diaPago: number }).diaPago).toBe(1);
   });
 });
