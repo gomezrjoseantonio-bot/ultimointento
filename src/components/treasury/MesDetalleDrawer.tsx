@@ -212,7 +212,10 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
     for (const e of eventosMes) {
       const dia = eventDay(e)?.d;
       if (dia == null) continue;
-      const signed = e.type === 'income' ? e.amount : -e.amount;
+      // Magnitud SIEMPRE por |amount| y dirección por `type`: algunos orígenes
+      // guardan el gasto en negativo y otros en positivo, y sin `Math.abs` el
+      // neto (y el «−» del display) se duplicaba (p. ej. «−-1.350 €»).
+      const signed = e.type === 'income' ? Math.abs(e.amount) : -Math.abs(e.amount);
       map.set(dia, (map.get(dia) ?? 0) + signed);
     }
     return map;
@@ -237,8 +240,8 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
 
   const ingresos = eventosMes.filter((e) => e.type === 'income');
   const gastos = eventosMes.filter((e) => e.type === 'expense' || e.type === 'financing');
-  const totalEntradas = ingresos.reduce((s, e) => s + e.amount, 0);
-  const totalSalidas = gastos.reduce((s, e) => s + e.amount, 0);
+  const totalEntradas = ingresos.reduce((s, e) => s + Math.abs(e.amount), 0);
+  const totalSalidas = gastos.reduce((s, e) => s + Math.abs(e.amount), 0);
   const balanceNeto = totalEntradas - totalSalidas;
 
   const titulo =
@@ -737,17 +740,17 @@ const NivelDia: React.FC<NivelDiaProps> = ({
 
         const saldoBase = a.balance ?? a.openingBalance ?? 0;
         const flujoPrevio = eventosPrevios.reduce(
-          (s, e) => s + (e.type === 'income' ? e.amount : -e.amount),
+          (s, e) => s + (e.type === 'income' ? Math.abs(e.amount) : -Math.abs(e.amount)),
           0,
         );
         const saldoInicio = saldoBase + flujoPrevio;
 
         const entradasDia = eventosDelDia
           .filter((e) => e.type === 'income')
-          .reduce((s, e) => s + e.amount, 0);
+          .reduce((s, e) => s + Math.abs(e.amount), 0);
         const salidasDia = eventosDelDia
           .filter((e) => e.type === 'expense' || e.type === 'financing')
-          .reduce((s, e) => s + e.amount, 0);
+          .reduce((s, e) => s + Math.abs(e.amount), 0);
         const saldoFin = saldoInicio + entradasDia - salidasDia;
 
         return {
@@ -1120,7 +1123,7 @@ const BankDayCard: React.FC<{
                   color: isPos ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)',
                 }}
               >
-                {isPos ? '+' : '−'}{formatEur(e.amount)} €
+                {isPos ? '+' : '−'}{formatEur(Math.abs(e.amount))} €
               </span>
             </>
           );
@@ -1360,7 +1363,7 @@ const EventoRow: React.FC<{
           color: isPos ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)',
         }}
       >
-        {isPos ? '+' : '−'}{formatEur(evento.amount)} €
+        {isPos ? '+' : '−'}{formatEur(Math.abs(evento.amount))} €
       </div>
     </>
   );
