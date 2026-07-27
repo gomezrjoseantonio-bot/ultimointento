@@ -9,6 +9,7 @@ import type { Account, Property } from './db';
 import { prestamosService } from './prestamosService';
 import type { DestinoCapital, Garantia, Prestamo } from '../types/prestamos';
 import type { PrestamoTemplateRow } from './prestamosTemplateParserService';
+import { toISODateLocal } from '../utils/recurrenceDateUtils';
 
 export interface ResultadoPrestamos {
   creados: number;
@@ -120,7 +121,7 @@ function rowToPrestamo(
   property?: Property,
   garantiaProperty?: Property,
 ): Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> {
-  const fecha = row.fechaPrimerCargo ?? new Date().toISOString().split('T')[0];
+  const fecha = row.fechaPrimerCargo ?? toISODateLocal(new Date());
   const completo = row.tipo === 'FIJO' && row.tin > 0 && row.plazoMeses > 0;
   const destinos = buildDestinos(row, property);
   const garantias = buildGarantias(row, garantiaProperty);
