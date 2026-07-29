@@ -257,6 +257,17 @@ describe('GAP 5.3 · filtrarViviendaHabitualDePropiedades', () => {
     expect(r.excluida).toBe(false);
     expect(r.propiedades).toHaveLength(1);
   });
+
+  test('inmueble usoTipo vivienda_habitual · excluido sin depender de la RC', () => {
+    const props = [
+      { id: 1, usoTipo: 'vivienda_habitual', cadastralReference: 'X' },
+      { id: 2, cadastralReference: 'Y' },
+    ];
+    const r = filtrarViviendaHabitualDePropiedades(props, null);
+    expect(r.excluida).toBe(true);
+    expect(r.propiedades).toHaveLength(1);
+    expect(r.propiedades[0].id).toBe(2);
+  });
 });
 
 // ─── GAP 5.6 · tributacion default garantizada por gateway ──────────────────

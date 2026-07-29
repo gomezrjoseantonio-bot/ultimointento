@@ -1213,12 +1213,15 @@ export function filtrarViviendaHabitualDePropiedades(
   viviendaHabitualRef: string | null | undefined,
 ): { propiedades: any[]; excluida: boolean } {
   const ref = viviendaHabitualRef?.trim();
-  if (!ref) {
-    return { propiedades: properties, excluida: false };
-  }
   const filtered = properties.filter((p: any) => {
-    const refProp = (p.cadastralReference ?? '').trim();
-    return refProp !== ref;
+    // Modelo unificado · la vivienda habitual es un inmueble marcado con
+    // `usoTipo === 'vivienda_habitual'` (opción ya existente en la ficha). No
+    // imputa renta · se excluye siempre, sin depender de la referencia catastral.
+    if (p.usoTipo === 'vivienda_habitual') return false;
+    // Compat · red de seguridad: si se registró la vivienda habitual sin marcar
+    // el uso, se matchea por referencia catastral con la ficha ViviendaHabitual.
+    if (ref && (p.cadastralReference ?? '').trim() === ref) return false;
+    return true;
   });
   return {
     propiedades: filtered,
