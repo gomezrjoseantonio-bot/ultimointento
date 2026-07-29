@@ -1201,10 +1201,13 @@ export function calcularMinimosPersonalesFromContext(
 }
 
 /**
- * GAP 5.3 · Excluye de una lista de inmuebles la vivienda habitual
- * (matchada por `cadastralReference` con la referencia catastral del
- * `FiscalContext.viviendaHabitual`). LIRPF art. 85 · la vivienda habitual
- * no genera imputación de renta inmobiliaria.
+ * GAP 5.3 · Excluye de una lista de inmuebles la vivienda habitual, que no
+ * genera imputación de renta inmobiliaria (LIRPF art. 85). Dos criterios:
+ *   1. Principal · inmueble con `usoTipo === 'vivienda_habitual'` (rol en la
+ *      propia ficha del inmueble) · se excluye siempre.
+ *   2. Compat · match de `cadastralReference` con la referencia catastral del
+ *      `FiscalContext.viviendaHabitual` · red de seguridad si el inmueble no
+ *      lleva el `usoTipo` marcado.
  *
  * Pure function · exportada para testing directo.
  */
@@ -1213,12 +1216,15 @@ export function filtrarViviendaHabitualDePropiedades(
   viviendaHabitualRef: string | null | undefined,
 ): { propiedades: any[]; excluida: boolean } {
   const ref = viviendaHabitualRef?.trim();
-  if (!ref) {
-    return { propiedades: properties, excluida: false };
-  }
   const filtered = properties.filter((p: any) => {
-    const refProp = (p.cadastralReference ?? '').trim();
-    return refProp !== ref;
+    // Modelo unificado · la vivienda habitual es un inmueble marcado con
+    // `usoTipo === 'vivienda_habitual'` (opción ya existente en la ficha). No
+    // imputa renta · se excluye siempre, sin depender de la referencia catastral.
+    if (p.usoTipo === 'vivienda_habitual') return false;
+    // Compat · red de seguridad: si se registró la vivienda habitual sin marcar
+    // el uso, se matchea por referencia catastral con la ficha ViviendaHabitual.
+    if (ref && (p.cadastralReference ?? '').trim() === ref) return false;
+    return true;
   });
   return {
     propiedades: filtered,
