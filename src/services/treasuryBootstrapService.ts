@@ -10,8 +10,10 @@
 // Fuentes procesadas:
 //   - Nóminas activas      → vía generateMonthlyForecasts
 //   - Préstamos / hipotecas → vía generateMonthlyForecasts
-//   - Vivienda habitual     → vía regenerarEventosVivienda
 //   - Compromisos activos   → vía regenerarEventosCompromiso
+//   - Vivienda habitual     → SOLO limpieza (Fase 4 · generador retirado): se
+//     borran los eventos previstos que la ficha legacy hubiera dejado, vía
+//     borrarEventosFuturosVivienda. Los gastos del hogar viven como compromisos.
 //
 // Fuera de scope T31 (futuro):
 //   - Contratos / alquileres (T31.no)
@@ -26,7 +28,7 @@ import {
   listarCompromisos,
   regenerarEventosCompromiso,
 } from './personal/compromisosRecurrentesService';
-import { regenerarEventosVivienda } from './personal/viviendaHabitualService';
+import { borrarEventosFuturosVivienda } from './personal/viviendaHabitualService';
 import type { ViviendaHabitual } from '../types/viviendaHabitual';
 
 const DEFAULT_HORIZONTE_MESES = 24;
@@ -179,21 +181,21 @@ export async function regenerateForecastsForward(
     }
   }
 
-  // 2. Recorrer vivienda habitual activa. La vivienda es excepción al modelo
-  //    de compromisos: genera eventos directamente vía su propio servicio.
+  // 2. (Fase 4 vivienda habitual · generador retirado) La ficha ViviendaHabitual
+  //    ya NO genera eventos: los gastos del hogar viven como compromisos
+  //    (sección 3) y la cuota de hipoteca la genera Financiación. Aquí solo se
+  //    limpian los eventos futuros que la ficha hubiera dejado, para que no
+  //    queden previsiones huérfanas duplicando a los compromisos.
   try {
     const db = await initDB();
     const viviendas: ViviendaHabitual[] = await db.getAll(STORE_VIVIENDA);
-    const activas = viviendas.filter((v) => v.activa && v.id != null);
-    for (const v of activas) {
+    for (const v of viviendas) {
+      if (v.id == null) continue;
       try {
-        // Pasa el horizonte del bootstrap para que la ventana materializada la
-        // decida el llamante (fuera el 24 fijo · sección 2.1 / 3.2).
-        const creados = await regenerarEventosVivienda(v, hasta);
-        result.eventosCreados += creados;
+        await borrarEventosFuturosVivienda(v.id);
       } catch (err) {
         result.errores.push({
-          contexto: `regenerarEventosVivienda id=${v.id}`,
+          contexto: `borrarEventosFuturosVivienda id=${v.id}`,
           mensaje: err instanceof Error ? err.message : String(err),
         });
       }

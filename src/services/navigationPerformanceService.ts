@@ -143,11 +143,9 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
       ? import('../modules/personal/pages/IngresosPage')
       : href.startsWith('/personal/gastos')
         ? import('../modules/personal/pages/GastosPage')
-        : href.startsWith('/personal/vivienda')
-          ? import('../modules/personal/pages/ViviendaPage')
-          : href.startsWith('/personal/presupuesto')
-            ? import('../modules/personal/pages/PresupuestoPage')
-            : import('../modules/personal/pages/PanelPage');
+        : href.startsWith('/personal/presupuesto')
+          ? import('../modules/personal/pages/PresupuestoPage')
+          : import('../modules/personal/pages/PanelPage');
     await Promise.all([import('../modules/personal/PersonalPage'), subPage]);
     return;
   }

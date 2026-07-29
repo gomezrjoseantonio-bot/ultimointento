@@ -12,7 +12,7 @@ import type { PersonalOutletContext } from './PersonalContext';
 import styles from './PersonalPage.module.css';
 
 interface TabItem {
-  key: 'panel' | 'ingresos' | 'gastos' | 'vivienda' | 'presupuesto';
+  key: 'panel' | 'ingresos' | 'gastos' | 'presupuesto';
   label: string;
   path: string;
   countFn?: (ctx: PersonalOutletContext, eventos: TreasuryEvent[]) => number | undefined;
@@ -35,7 +35,6 @@ const tabs: TabItem[] = [
     countFn: (ctx) =>
       ctx.compromisos.filter((c) => c.ambito === 'personal' && c.estado === 'activo').length,
   },
-  { key: 'vivienda', label: 'Mi vivienda', path: '/personal/vivienda' },
   { key: 'presupuesto', label: 'Presupuesto', path: '/personal/presupuesto' },
 ];
 
@@ -93,7 +92,6 @@ const PersonalPage: React.FC = () => {
     if (location.pathname === '/personal' || location.pathname === '/personal/') return 'panel';
     if (location.pathname.startsWith('/personal/ingresos')) return 'ingresos';
     if (location.pathname.startsWith('/personal/gastos')) return 'gastos';
-    if (location.pathname.startsWith('/personal/vivienda')) return 'vivienda';
     if (location.pathname.startsWith('/personal/presupuesto')) return 'presupuesto';
     return 'panel';
   })();
@@ -102,7 +100,7 @@ const PersonalPage: React.FC = () => {
     <div className={styles.page}>
       <PageHead
         title="Personal"
-        sub="ingresos · gastos · mi vivienda · presupuesto del hogar"
+        sub="ingresos · gastos · presupuesto del hogar"
         actions={[
           {
             label: 'Hogar · soltero · asalariado',

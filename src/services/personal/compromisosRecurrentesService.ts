@@ -30,7 +30,6 @@ import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 
 const STORE_COMPROMISOS = 'compromisosRecurrentes';
 const STORE_TREASURY = 'treasuryEvents';
-const STORE_VIVIENDA = 'viviendaHabitual';
 
 // Horizonte por defecto de la VENTANA MATERIALIZADA en `treasuryEvents` cuando
 // nadie pide un horizonte explícito. NO es un límite del patrón: un compromiso
@@ -375,13 +374,15 @@ export async function reactivarCompromiso(
 // ─── Validación de creación (sección 6.5) ──────────────────────────────────
 
 /**
- * Aplica las restricciones de no-duplicación contra `viviendaHabitual` y
- * contra los compromisos derivados de inmuebles de inversión.
+ * Valida los campos mínimos del discriminador (ámbito + FK) y la
+ * no-duplicación contra los gastos reales de inmuebles de inversión.
  *
- * Los tipos `vivienda.alquiler` y `vivienda.hipoteca` ya NO existen como
- * `TipoCompromiso` (TypeScript bloquea su creación). Aquí validamos los que
- * sí existen pero pueden chocar con derivados (seguro hogar · IBI ·
- * comunidad).
+ * Fase 4 vivienda habitual: las restricciones contra la ficha
+ * `viviendaHabitual` se retiraron con su generador — los gastos del hogar
+ * (alquiler · IBI · comunidad · seguro) viven ÚNICAMENTE como compromisos en
+ * Gastos, así que no hay derivados con los que chocar. La hipoteca sigue sin
+ * poder crearse como compromiso (`TipoCompromiso` no la incluye · la cuota la
+ * genera Financiación).
  */
 export async function puedeCrearCompromiso(
   nuevo: Partial<CompromisoRecurrente>,
@@ -397,75 +398,11 @@ export async function puedeCrearCompromiso(
     return { ok: false, motivo: 'Falta `personalDataId` para ambito=personal' };
   }
 
-  // 2. Si es personal, validar que no choque con derivados de viviendaHabitual
-  if (nuevo.ambito === 'personal') {
-    const db = await initDB();
-    const viviendas = await db.getAll(STORE_VIVIENDA);
-    const vh = viviendas.find(
-      (v) => v.personalDataId === nuevo.personalDataId && v.activa,
-    );
-    if (vh) {
-      const data = vh.data;
-
-      // Seguro hogar de vivienda habitual ya gestionado en ficha vivienda
-      if (
-        nuevo.tipo === 'seguro' &&
-        nuevo.subtipo === 'hogar' &&
-        data.tipo !== 'inquilino' &&
-        data.seguros?.hogar
-      ) {
-        return {
-          ok: false,
-          motivo: 'Seguro hogar de vivienda habitual gestionado en ficha vivienda',
-          redirigirA: 'viviendaHabitual',
-        };
-      }
-
-      // Comunidad de vivienda habitual
-      if (
-        nuevo.tipo === 'comunidad' &&
-        data.tipo !== 'inquilino' &&
-        data.comunidad
-      ) {
-        return {
-          ok: false,
-          motivo: 'Comunidad de vivienda habitual gestionada en ficha vivienda',
-          redirigirA: 'viviendaHabitual',
-        };
-      }
-
-      // IBI de vivienda habitual
-      if (
-        nuevo.categoria === 'vivienda.ibi' &&
-        data.tipo !== 'inquilino' &&
-        data.ibi
-      ) {
-        return {
-          ok: false,
-          motivo: 'IBI de vivienda habitual gestionado en ficha vivienda',
-          redirigirA: 'viviendaHabitual',
-        };
-      }
-
-      // Renta alquiler vivienda habitual NO debe ir aquí
-      if (nuevo.categoria === 'vivienda.alquiler' && data.tipo === 'inquilino') {
-        return {
-          ok: false,
-          motivo: 'Renta de vivienda habitual gestionada en ficha vivienda',
-          redirigirA: 'viviendaHabitual',
-        };
-      }
-
-      // Hipoteca vivienda habitual NO debe ir aquí
-      if (nuevo.categoria === 'vivienda.hipoteca' && data.tipo === 'propietarioConHipoteca') {
-        return {
-          ok: false,
-          motivo: 'Hipoteca de vivienda habitual gestionada desde Financiación',
-          redirigirA: 'viviendaHabitual',
-        };
-      }
-    }
-  }
+  // 2. (Fase 4 vivienda habitual · guardia retirada) Los gastos del hogar
+  // (alquiler · IBI · comunidad · seguro) viven ÚNICAMENTE en Gastos: la ficha
+  // ViviendaHabitual ya no genera derivados, así que no hay choque que vigilar.
+  // La hipoteca sigue sin poder crearse como compromiso (TipoCompromiso no la
+  // incluye · la cuota la genera Financiación).
 
   // 3. Si es inmueble, validar que no choque con `gastosInmueble` reales
   //    Esta validación es laxa · los gastos reales viven en otro store y

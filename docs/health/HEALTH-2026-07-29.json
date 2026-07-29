@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-07-29",
-  "generatedAt": "2026-07-29T21:11:50.691Z",
+  "generatedAt": "2026-07-29T21:31:59.785Z",
   "git": {
     "branch": "claude/new-session-ufzfpm",
-    "head": "ee11075"
+    "head": "3113c9d"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -63,14 +63,14 @@
     {
       "indicador": "hex_hardcoded",
       "antes": 974,
-      "despues": 249,
+      "despues": 247,
       "motivo": "ve #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
     {
       "indicador": "archivos_800",
       "antes": 43,
-      "despues": 41,
+      "despues": 40,
       "motivo": "Frente A · ve functions/ y scripts/ + .mjs/.cjs (antes solo src)",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -143,7 +143,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 755 · dead 0 · solo_tests 40 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 754 · dead 0 · solo_tests 40 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -153,7 +153,7 @@
       }
     },
     "rutas_huerfanas": {
-      "value": 17,
+      "value": 16,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -165,7 +165,6 @@
         "/fiscalidad-legacy/declaracion/:anio",
         "/proyeccion/valoraciones",
         "/proyeccion/mensual",
-        "/personal/vivienda",
         "/contratos/lista",
         "/firmas/completadas",
         "/automatizaciones/flujos",
@@ -191,7 +190,7 @@
       "calibracion": null
     },
     "hex_hardcoded": {
-      "value": 249,
+      "value": 247,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -251,7 +250,7 @@
       "calibracion": null
     },
     "archivos_800": {
-      "value": 41,
+      "value": 40,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -266,7 +265,7 @@
         "1716 · src/services/irpfCalculationService.ts",
         "1704 · src/modules/inversiones/pages/FichaPlanPensiones.tsx",
         "1550 · src/services/aeatParserService.ts",
-        "1511 · src/App.tsx",
+        "1509 · src/App.tsx",
         "1504 · src/components/treasury/MesDetalleDrawer.tsx",
         "1461 · src/services/declaracionOnboardingService.ts",
         "1435 · src/services/treasuryConfirmationService.ts",
@@ -284,7 +283,7 @@
       "approx": false,
       "note": null,
       "detail": [
-        "129 / 366 .tsx sin v5 (consumen v5: 237 · directo o vía .module.css con var(--atlas-v5-*))",
+        "129 / 365 .tsx sin v5 (consumen v5: 236 · directo o vía .module.css con var(--atlas-v5-*))",
         "src/App.tsx",
         "src/components/ImageDescriptionComponent.tsx",
         "src/components/InvoiceBreakdownModal.tsx",

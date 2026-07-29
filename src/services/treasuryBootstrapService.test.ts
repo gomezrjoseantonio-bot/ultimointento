@@ -20,7 +20,7 @@ const inMemoryStore: { events: StoredEvent[]; viviendas: any[] } = {
 
 let nextEventId = 1;
 let generateMonthlyForecastsMock: jest.Mock;
-let regenerarEventosViviendaMock: jest.Mock;
+let borrarEventosFuturosViviendaMock: jest.Mock;
 let regenerarEventosCompromisoMock: jest.Mock;
 let listarCompromisosMock: jest.Mock;
 
@@ -66,7 +66,7 @@ jest.mock('../modules/horizon/tesoreria/services/treasurySyncService', () => ({
 }));
 
 jest.mock('./personal/viviendaHabitualService', () => ({
-  regenerarEventosVivienda: jest.fn(),
+  borrarEventosFuturosVivienda: jest.fn(),
 }));
 
 jest.mock('./personal/compromisosRecurrentesService', () => ({
@@ -110,17 +110,17 @@ beforeEach(() => {
   const compromisos = jest.requireMock('./personal/compromisosRecurrentesService');
 
   generateMonthlyForecastsMock = sync.generateMonthlyForecasts as jest.Mock;
-  regenerarEventosViviendaMock = vivienda.regenerarEventosVivienda as jest.Mock;
+  borrarEventosFuturosViviendaMock = vivienda.borrarEventosFuturosVivienda as jest.Mock;
   regenerarEventosCompromisoMock = compromisos.regenerarEventosCompromiso as jest.Mock;
   listarCompromisosMock = compromisos.listarCompromisos as jest.Mock;
 
   generateMonthlyForecastsMock.mockReset();
-  regenerarEventosViviendaMock.mockReset();
+  borrarEventosFuturosViviendaMock.mockReset();
   regenerarEventosCompromisoMock.mockReset();
   listarCompromisosMock.mockReset();
 
   generateMonthlyForecastsMock.mockResolvedValue({ created: 0, skipped: 0, updated: 0 });
-  regenerarEventosViviendaMock.mockResolvedValue(0);
+  borrarEventosFuturosViviendaMock.mockResolvedValue(undefined);
   regenerarEventosCompromisoMock.mockResolvedValue(0);
   listarCompromisosMock.mockResolvedValue([]);
 });
@@ -249,23 +249,23 @@ describe('treasuryBootstrapService · regenerateForecastsForward', () => {
     expect(result.eventosCreados).toBe(2);
   });
 
-  it('procesa viviendas activas y compromisos activos', async () => {
+  it('limpia eventos de vivienda (Fase 4 · generador retirado) y procesa compromisos', async () => {
     inMemoryStore.viviendas.push({ id: 1, activa: true });
-    inMemoryStore.viviendas.push({ id: 2, activa: false }); // ignorada
+    inMemoryStore.viviendas.push({ id: 2, activa: false }); // tambien se limpia
     listarCompromisosMock.mockResolvedValue([
       { id: 10, estado: 'activo' },
       { id: 11, estado: 'activo' },
     ]);
-    regenerarEventosViviendaMock.mockResolvedValue(3);
     regenerarEventosCompromisoMock.mockResolvedValue(2);
 
     const { regenerateForecastsForward } = await import('./treasuryBootstrapService');
     const result = await regenerateForecastsForward({ horizonteMeses: 1 });
 
-    expect(regenerarEventosViviendaMock).toHaveBeenCalledTimes(1);
+    // La ficha ya no genera: se limpian los eventos futuros de TODAS las fichas
+    expect(borrarEventosFuturosViviendaMock).toHaveBeenCalledTimes(2);
     expect(regenerarEventosCompromisoMock).toHaveBeenCalledTimes(2);
-    // 3 (vivienda) + 2*2 (compromisos)
-    expect(result.eventosCreados).toBe(3 + 4);
+    // Solo compromisos crean eventos (2*2)
+    expect(result.eventosCreados).toBe(4);
   });
 });
 
