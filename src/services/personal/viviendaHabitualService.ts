@@ -27,7 +27,6 @@ import type {
 
 const STORE_VIVIENDA = 'viviendaHabitual';
 const STORE_TREASURY = 'treasuryEvents';
-const STORE_PRESTAMOS = 'prestamos';
 
 // Horizonte por defecto de la ventana materializada cuando el llamante no pide
 // uno. No es un límite: el bootstrap de Tesorería pasa su propio `hasta`.
@@ -140,7 +139,10 @@ export async function generarEventosVivienda(
       break;
     case 'propietarioConHipoteca':
       eventos.push(...generarEventosPropietario(vivienda, data, horizonteFin));
-      eventos.push(...(await generarEventosHipoteca(vivienda, data, horizonteFin)));
+      // La CUOTA DE HIPOTECA la genera SOLO el módulo de Préstamos (§5 de
+      // generateMonthlyForecasts itera todos los préstamos, incluido el de esta
+      // vivienda vía `prestamoId`). Antes la emitía también aquí → hipoteca
+      // DUPLICADA en Tesorería. Vivienda solo aporta comunidad/IBI/seguro.
       break;
   }
 
@@ -326,86 +328,6 @@ function generarEventosPropietario(
       }
       y++;
     }
-  }
-
-  return eventos;
-}
-
-async function generarEventosHipoteca(
-  vivienda: ViviendaHabitual,
-  data: Extract<ViviendaHabitualData, { tipo: 'propietarioConHipoteca' }>,
-  horizonteFin: Date,
-): Promise<Array<Omit<TreasuryEvent, 'id'>>> {
-  const eventos: Array<Omit<TreasuryEvent, 'id'>> = [];
-  const ahora = new Date().toISOString();
-  const desde = new Date();
-
-  // Lee la cuota actual del préstamo (cuadro de amortización en `prestamos`)
-  let cuotaMensual = 0;
-  let prestamoData: any = null;
-  try {
-    const db = await initDB();
-    if (db.objectStoreNames.contains(STORE_PRESTAMOS)) {
-      const idNum =
-        typeof data.hipoteca.prestamoId === 'string'
-          ? parseInt(data.hipoteca.prestamoId, 10)
-          : data.hipoteca.prestamoId;
-      const prestamo = await db.get(STORE_PRESTAMOS, idNum);
-      prestamoData = prestamo;
-      // La cuota mensual no es un campo del Prestamo: vive en el plan de pagos
-      // (planPagos.periodos[].cuota). Se toma el próximo periodo no pagado, o el
-      // primero como fallback. Los campos cuotaMensual/cuotaActual/cuota que se
-      // leían antes no existen en Prestamo → daban siempre 0.
-      if (prestamo) {
-        const periodos = prestamo.planPagos?.periodos;
-        cuotaMensual =
-          periodos?.[prestamo.cuotasPagadas]?.cuota ??
-          periodos?.[0]?.cuota ??
-          0;
-      }
-    }
-  } catch (err) {
-    console.warn('[viviendaHabitualService] no se pudo leer cuota de préstamo:', err);
-  }
-
-  if (cuotaMensual <= 0) {
-    // Si no podemos leer la cuota · no generamos eventos · evita ruido
-    return [];
-  }
-
-  let y = desde.getFullYear();
-  let m = desde.getMonth();
-  // Día 1 del mes por defecto (el cuadro de amortización suele cargar a mes vencido)
-  const diaCuota = 1;
-  while (true) {
-    const fecha = new Date(y, m, diaCuota);
-    if (fecha.getTime() > horizonteFin.getTime()) break;
-    if (fecha.getTime() >= desde.getTime()) {
-      eventos.push({
-        type: 'expense',
-        amount: -cuotaMensual,
-        predictedDate: fecha.toISOString(),
-        description: 'Cuota hipoteca vivienda habitual',
-        sourceType: 'hipoteca',
-        sourceId: vivienda.id,
-        prestamoId: String(data.hipoteca.prestamoId),
-        año: fecha.getFullYear(),
-        mes: fecha.getMonth() + 1,
-        certeza: 'estimado',
-        generadoPor: 'treasurySyncService',
-        accountId: data.cuentaCargo,
-        paymentMethod: 'Domiciliado',
-        status: 'predicted',
-        ambito: 'PERSONAL',
-        categoryLabel: 'Cuota hipoteca vivienda habitual',
-        categoryKey: 'vivienda.hipoteca',
-        providerName: prestamoData?.entidad ?? prestamoData?.banco ?? 'Banco hipoteca',
-        createdAt: ahora,
-        updatedAt: ahora,
-      });
-    }
-    m++;
-    if (m > 11) { m = 0; y++; }
   }
 
   return eventos;
