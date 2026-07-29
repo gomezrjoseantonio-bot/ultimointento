@@ -19,8 +19,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CardV5, Icons, showToastV5 } from '../../../design-system/v5';
 import { personalDataService } from '../../../services/personalDataService';
-import { cuentasService } from '../../../services/cuentasService';
-import { prestamosService } from '../../../services/prestamosService';
 import {
   obtenerViviendaActiva,
   guardarVivienda,
@@ -44,23 +42,6 @@ interface FormState {
   provincia: string;
   referenciaCatastral: string;
   notas: string;
-  // ─── Gastos que propagan a Tesorería (PR-B-bis) ───
-  cuentaCargo: string;      // accountId de la cuenta de cargo/pago
-  // Inquilino
-  rentaMensual: string;
-  diaCobro: string;
-  arrendadorNombre: string;
-  // Propietario · gastos periódicos (opcionales)
-  comunidadImporte: string;
-  comunidadDia: string;
-  ibiImporteAnual: string;
-  ibiMes: string;
-  ibiDia: string;
-  seguroHogarAnual: string;
-  seguroHogarMes: string;
-  seguroHogarDia: string;
-  // Propietario con hipoteca
-  prestamoId: string;       // ref a un préstamo de Financiación
 }
 
 interface FormErrors {
@@ -99,11 +80,6 @@ const REGIMEN_OPTIONS: Array<{
   },
 ];
 
-const MESES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-
 const initialForm = (): FormState => ({
   regimen: '',
   direccion: '',
@@ -112,30 +88,7 @@ const initialForm = (): FormState => ({
   provincia: '',
   referenciaCatastral: '',
   notas: '',
-  cuentaCargo: '',
-  rentaMensual: '',
-  diaCobro: '1',
-  arrendadorNombre: '',
-  comunidadImporte: '',
-  comunidadDia: '1',
-  ibiImporteAnual: '',
-  ibiMes: '11',
-  ibiDia: '5',
-  seguroHogarAnual: '',
-  seguroHogarMes: '1',
-  seguroHogarDia: '5',
-  prestamoId: '',
 });
-
-// Parseo tolerante de importes/enteros del formulario.
-const numOrNull = (s: string): number | null => {
-  const n = parseFloat(String(s).replace(',', '.').replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(n) ? n : null;
-};
-const intOr = (s: string, def: number): number => {
-  const n = parseInt(String(s), 10);
-  return Number.isFinite(n) ? n : def;
-};
 
 // ─── Adaptación entre form ↔ schema TS ────────────────────────────────────
 
@@ -158,58 +111,27 @@ function fillDataFromForm(
 
   const regimen = form.regimen as RegimenUI;
 
-  const cuentaCargo = intOr(form.cuentaCargo, 0);
-
   if (regimen === 'inquilino') {
     const previaInq =
       previa && previa.tipo === 'inquilino' ? previa : null;
-    const hoy = new Date().toISOString().slice(0, 10);
-    const realDesde = (v?: string) => (v && v !== STUB_FECHA_NEUTRA ? v : undefined);
     return {
       tipo: 'inquilino',
       direccion,
-      contrato: {
-        arrendador: {
-          nombre: form.arrendadorNombre.trim() || previaInq?.contrato.arrendador.nombre || '',
-          nif: previaInq?.contrato.arrendador.nif,
-        },
-        fechaFirma: realDesde(previaInq?.contrato.fechaFirma) ?? hoy,
-        vigenciaDesde: realDesde(previaInq?.contrato.vigenciaDesde) ?? hoy,
-        // Sin fin explícito · proyectamos 5 años (LAU) para que la renta se
-        // materialice en Tesorería. El usuario puede acotar al renovar.
-        vigenciaHasta:
-          realDesde(previaInq?.contrato.vigenciaHasta) ?? `${new Date().getFullYear() + 5}-12-31`,
-        rentaMensual: numOrNull(form.rentaMensual) ?? 0,
-        diaCobro: intOr(form.diaCobro, 1),
-        fianza: previaInq?.contrato.fianza ?? 0,
-        revisionIPC: previaInq?.contrato.revisionIPC ?? { aplica: false },
-        gastosIncluidos: previaInq?.contrato.gastosIncluidos ?? [],
+      contrato: previaInq?.contrato ?? {
+        arrendador: { nombre: '' },
+        fechaFirma: STUB_FECHA_NEUTRA,
+        vigenciaDesde: STUB_FECHA_NEUTRA,
+        vigenciaHasta: STUB_FECHA_NEUTRA,
+        rentaMensual: 0,
+        diaCobro: 1,
+        fianza: 0,
+        revisionIPC: { aplica: false },
+        gastosIncluidos: [],
       },
-      cuentaCargo,
+      cuentaCargo: previaInq?.cuentaCargo ?? 0,
       conceptoBancarioEsperado: previaInq?.conceptoBancarioEsperado ?? '',
     };
   }
-
-  // Gastos periódicos comunes a propietario (con y sin hipoteca).
-  const comunidadImporte = numOrNull(form.comunidadImporte);
-  const comunidad =
-    comunidadImporte && comunidadImporte > 0
-      ? { importe: comunidadImporte, diaCargo: intOr(form.comunidadDia, 1) }
-      : undefined;
-  const ibiImporte = numOrNull(form.ibiImporteAnual);
-  const ibi =
-    ibiImporte && ibiImporte > 0
-      ? { importeAnual: ibiImporte, mesesPago: [intOr(form.ibiMes, 11)], diaPago: intOr(form.ibiDia, 5) }
-      : { importeAnual: 0, mesesPago: [], diaPago: intOr(form.ibiDia, 5) };
-  const seguroHogarImporte = numOrNull(form.seguroHogarAnual);
-  const seguroHogar =
-    seguroHogarImporte && seguroHogarImporte > 0
-      ? {
-          importeAnual: seguroHogarImporte,
-          mesPago: intOr(form.seguroHogarMes, 1),
-          diaPago: intOr(form.seguroHogarDia, 5),
-        }
-      : undefined;
 
   // Para propietarios la referencia catastral canónica vive en
   // `data.catastro.referenciaCatastral` (la consume `fiscalContextService`).
@@ -237,10 +159,14 @@ function fillDataFromForm(
         gastosAdquisicion: 0,
         mejorasAcumuladas: [],
       },
-      comunidad,
-      ibi,
-      seguros: { ...(previaProp?.seguros ?? {}), hogar: seguroHogar },
-      cuentaCargo,
+      comunidad: previaProp?.comunidad,
+      ibi: previaProp?.ibi ?? {
+        importeAnual: 0,
+        mesesPago: [],
+        diaPago: 1,
+      },
+      seguros: previaProp?.seguros ?? {},
+      cuentaCargo: previaProp?.cuentaCargo ?? 0,
     };
   }
 
@@ -264,11 +190,15 @@ function fillDataFromForm(
       gastosAdquisicion: 0,
       mejorasAcumuladas: [],
     },
-    comunidad,
-    ibi,
-    seguros: { ...(previaHip?.seguros ?? {}), hogar: seguroHogar },
-    cuentaCargo,
-    hipoteca: { prestamoId: form.prestamoId || previaHip?.hipoteca.prestamoId || 0 },
+    comunidad: previaHip?.comunidad,
+    ibi: previaHip?.ibi ?? {
+      importeAnual: 0,
+      mesesPago: [],
+      diaPago: 1,
+    },
+    seguros: previaHip?.seguros ?? {},
+    cuentaCargo: previaHip?.cuentaCargo ?? 0,
+    hipoteca: previaHip?.hipoteca ?? { prestamoId: 0 },
     beneficioFiscal: previaHip?.beneficioFiscal,
   };
 }
@@ -282,11 +212,7 @@ function formFromVivienda(v: ViviendaHabitual): FormState {
     v.data.tipo === 'inquilino'
       ? d.referenciaCatastral
       : v.data.catastro.referenciaCatastral || d.referenciaCatastral;
-
-  const numStr = (n: number | undefined): string => (n && n > 0 ? String(n) : '');
-
-  const base: FormState = {
-    ...initialForm(),
+  return {
     regimen: v.data.tipo,
     direccion: d.calle ?? '',
     cp: d.cp ?? '',
@@ -294,37 +220,6 @@ function formFromVivienda(v: ViviendaHabitual): FormState {
     provincia: d.provincia ?? '',
     referenciaCatastral: refCatastral ?? '',
     notas: v.notas ?? '',
-    cuentaCargo: v.data.cuentaCargo ? String(v.data.cuentaCargo) : '',
-  };
-
-  if (v.data.tipo === 'inquilino') {
-    const c = v.data.contrato;
-    return {
-      ...base,
-      rentaMensual: numStr(c.rentaMensual),
-      diaCobro: String(c.diaCobro || 1),
-      arrendadorNombre: c.arrendador?.nombre ?? '',
-    };
-  }
-
-  // Propietario (con y sin hipoteca)
-  const comunidad = v.data.comunidad;
-  const ibi = v.data.ibi;
-  const hogar = v.data.seguros?.hogar;
-  return {
-    ...base,
-    comunidadImporte: numStr(comunidad?.importe),
-    comunidadDia: String(comunidad?.diaCargo ?? 1),
-    ibiImporteAnual: numStr(ibi?.importeAnual),
-    ibiMes: String(ibi?.mesesPago?.[0] ?? 11),
-    ibiDia: String(ibi?.diaPago ?? 5),
-    seguroHogarAnual: numStr(hogar?.importeAnual),
-    seguroHogarMes: String(hogar?.mesPago ?? 1),
-    seguroHogarDia: String(hogar?.diaPago ?? 5),
-    prestamoId:
-      v.data.tipo === 'propietarioConHipoteca' && v.data.hipoteca?.prestamoId
-        ? String(v.data.hipoteca.prestamoId)
-        : '',
   };
 }
 
@@ -378,8 +273,6 @@ const ViviendaPage: React.FC = () => {
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
   const [vivienda, setVivienda] = useState<ViviendaHabitual | null>(null);
   const [form, setForm] = useState<FormState>(initialForm);
-  const [cuentas, setCuentas] = useState<Array<{ id: number; label: string }>>([]);
-  const [prestamos, setPrestamos] = useState<Array<{ id: string; label: string }>>([]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [showBanner, setShowBanner] = useState(false);
   const kebabRef = useRef<HTMLDivElement | null>(null);
@@ -393,34 +286,6 @@ const ViviendaPage: React.FC = () => {
       const personalData = await personalDataService.getPersonalData();
       const pdId = personalData?.id ?? 1;
       setPersonalDataId(pdId);
-
-      // Cuentas (para «cuenta de cargo») y préstamos (para vincular hipoteca).
-      try {
-        const lista = await cuentasService.list();
-        setCuentas(
-          (lista as Array<{ id?: number; alias?: string; name?: string; iban?: string; banco?: { name?: string } }>)
-            .filter((c) => c.id != null)
-            .map((c) => ({
-              id: c.id as number,
-              label:
-                c.alias || c.name || c.banco?.name || (c.iban ? `···${String(c.iban).slice(-4)}` : `Cuenta ${c.id}`),
-            })),
-        );
-      } catch {
-        setCuentas([]);
-      }
-      try {
-        const todos = await prestamosService.getAllPrestamos();
-        setPrestamos(
-          (todos as Array<{ id: string; nombre?: string; banco?: string }>).map((p) => ({
-            id: p.id,
-            label: p.nombre || p.banco || `Préstamo ${p.id}`,
-          })),
-        );
-      } catch {
-        setPrestamos([]);
-      }
-
       const activa = await obtenerViviendaActiva(pdId);
       if (activa) {
         setVivienda(activa);
@@ -457,9 +322,7 @@ const ViviendaPage: React.FC = () => {
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
-    if ((errors as Partial<Record<keyof FormState, string>>)[key]) {
-      setErrors((prev) => ({ ...prev, [key]: undefined }));
-    }
+    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
     if (showBanner) setShowBanner(false);
   };
 
@@ -730,189 +593,6 @@ const ViviendaPage: React.FC = () => {
               )}
             </div>
           </div>
-
-          {/* SECCIÓN C · Gastos que propagan a Tesorería (según régimen) */}
-          {form.regimen && (
-            <div style={styles.section}>
-              <div style={styles.sectionTitle}>
-                {form.regimen === 'inquilino' ? 'Alquiler' : 'Gastos de la vivienda'}
-              </div>
-
-              <div style={styles.fieldGroup}>
-                <label htmlFor="vh-cuenta" style={styles.label}>
-                  Cuenta de cargo<span style={styles.optionalHint}> · de dónde salen los pagos</span>
-                </label>
-                <select
-                  id="vh-cuenta"
-                  value={form.cuentaCargo}
-                  onChange={(e) => setField('cuentaCargo', e.target.value)}
-                  style={styles.input}
-                >
-                  <option value="">Selecciona una cuenta</option>
-                  {cuentas.map((c) => (
-                    <option key={c.id} value={String(c.id)}>{c.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {form.regimen === 'inquilino' && (
-                <>
-                  <div style={styles.fieldRow3}>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-renta" style={styles.label}>Renta mensual (€)</label>
-                      <input
-                        id="vh-renta" type="text" inputMode="decimal"
-                        value={form.rentaMensual}
-                        onChange={(e) => setField('rentaMensual', e.target.value)}
-                        placeholder="950" style={styles.input}
-                      />
-                    </div>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-diacobro" style={styles.label}>Día de cargo</label>
-                      <input
-                        id="vh-diacobro" type="text" inputMode="numeric"
-                        value={form.diaCobro}
-                        onChange={(e) => setField('diaCobro', e.target.value.replace(/\D/g, '').slice(0, 2))}
-                        placeholder="1" style={styles.input}
-                      />
-                    </div>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-arrendador" style={styles.label}>
-                        Arrendador<span style={styles.optionalHint}> · opcional</span>
-                      </label>
-                      <input
-                        id="vh-arrendador" type="text"
-                        value={form.arrendadorNombre}
-                        onChange={(e) => setField('arrendadorNombre', e.target.value)}
-                        placeholder="Nombre" style={styles.input}
-                      />
-                    </div>
-                  </div>
-                  <div style={styles.helperText}>
-                    La renta se proyecta en Tesorería el día indicado hasta 5 años (LAU).
-                  </div>
-                </>
-              )}
-
-              {(form.regimen === 'propietarioSinHipoteca' || form.regimen === 'propietarioConHipoteca') && (
-                <>
-                  {/* Comunidad */}
-                  <div style={styles.fieldRow3}>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-comunidad" style={styles.label}>
-                        Comunidad (€/mes)<span style={styles.optionalHint}> · opcional</span>
-                      </label>
-                      <input
-                        id="vh-comunidad" type="text" inputMode="decimal"
-                        value={form.comunidadImporte}
-                        onChange={(e) => setField('comunidadImporte', e.target.value)}
-                        placeholder="60" style={styles.input}
-                      />
-                    </div>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-comunidad-dia" style={styles.label}>Día de cargo</label>
-                      <input
-                        id="vh-comunidad-dia" type="text" inputMode="numeric"
-                        value={form.comunidadDia}
-                        onChange={(e) => setField('comunidadDia', e.target.value.replace(/\D/g, '').slice(0, 2))}
-                        placeholder="1" style={styles.input}
-                      />
-                    </div>
-                    <div />
-                  </div>
-                  {/* IBI */}
-                  <div style={styles.fieldRow3}>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-ibi" style={styles.label}>
-                        IBI (€/año)<span style={styles.optionalHint}> · opcional</span>
-                      </label>
-                      <input
-                        id="vh-ibi" type="text" inputMode="decimal"
-                        value={form.ibiImporteAnual}
-                        onChange={(e) => setField('ibiImporteAnual', e.target.value)}
-                        placeholder="450" style={styles.input}
-                      />
-                    </div>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-ibi-mes" style={styles.label}>Mes de pago</label>
-                      <select
-                        id="vh-ibi-mes" value={form.ibiMes}
-                        onChange={(e) => setField('ibiMes', e.target.value)}
-                        style={styles.input}
-                      >
-                        {MESES.map((m, i) => <option key={i} value={String(i + 1)}>{m}</option>)}
-                      </select>
-                    </div>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-ibi-dia" style={styles.label}>Día</label>
-                      <input
-                        id="vh-ibi-dia" type="text" inputMode="numeric"
-                        value={form.ibiDia}
-                        onChange={(e) => setField('ibiDia', e.target.value.replace(/\D/g, '').slice(0, 2))}
-                        placeholder="5" style={styles.input}
-                      />
-                    </div>
-                  </div>
-                  {/* Seguro hogar */}
-                  <div style={styles.fieldRow3}>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-seguro" style={styles.label}>
-                        Seguro hogar (€/año)<span style={styles.optionalHint}> · opcional</span>
-                      </label>
-                      <input
-                        id="vh-seguro" type="text" inputMode="decimal"
-                        value={form.seguroHogarAnual}
-                        onChange={(e) => setField('seguroHogarAnual', e.target.value)}
-                        placeholder="220" style={styles.input}
-                      />
-                    </div>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-seguro-mes" style={styles.label}>Mes de pago</label>
-                      <select
-                        id="vh-seguro-mes" value={form.seguroHogarMes}
-                        onChange={(e) => setField('seguroHogarMes', e.target.value)}
-                        style={styles.input}
-                      >
-                        {MESES.map((m, i) => <option key={i} value={String(i + 1)}>{m}</option>)}
-                      </select>
-                    </div>
-                    <div style={styles.fieldGroup}>
-                      <label htmlFor="vh-seguro-dia" style={styles.label}>Día</label>
-                      <input
-                        id="vh-seguro-dia" type="text" inputMode="numeric"
-                        value={form.seguroHogarDia}
-                        onChange={(e) => setField('seguroHogarDia', e.target.value.replace(/\D/g, '').slice(0, 2))}
-                        placeholder="5" style={styles.input}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {form.regimen === 'propietarioConHipoteca' && (
-                <div style={styles.fieldGroup}>
-                  <label htmlFor="vh-hipoteca" style={styles.label}>
-                    Préstamo hipotecario<span style={styles.optionalHint}> · se da de alta en Financiación</span>
-                  </label>
-                  <select
-                    id="vh-hipoteca" value={form.prestamoId}
-                    onChange={(e) => setField('prestamoId', e.target.value)}
-                    style={styles.input}
-                  >
-                    <option value="">Selecciona el préstamo…</option>
-                    {prestamos.map((p) => (
-                      <option key={p.id} value={p.id}>{p.label}</option>
-                    ))}
-                  </select>
-                  <div style={styles.helperText}>
-                    {prestamos.length === 0
-                      ? 'No hay préstamos dados de alta · créalo en Financiación y aparecerá aquí.'
-                      : 'La cuota la genera Financiación (no se duplica el cuadro de amortización).'}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* SECCIÓN D · Notas */}
           <div style={styles.section}>
