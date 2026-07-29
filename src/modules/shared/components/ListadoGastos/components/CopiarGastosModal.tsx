@@ -101,11 +101,11 @@ const CopiarGastosModal: React.FC<CopiarGastosModalProps> = ({
         <div style={quePart}>Qué se copia</div>
         <div style={fijoRow}>Concepto, proveedor y calendario · siempre</div>
         <label style={optRow}>
-          <input type="checkbox" checked={copiarImportes} onChange={(e) => setCopiarImportes(e.target.checked)} />
+          <input type="checkbox" style={{ accentColor: 'var(--atlas-v5-brand)' }} checked={copiarImportes} onChange={(e) => setCopiarImportes(e.target.checked)} />
           <span>Los importes <span style={optSub}>· los copias y los ajustas; si no, quedan vacíos</span></span>
         </label>
         <label style={optRow}>
-          <input type="checkbox" checked={copiarCuenta} onChange={(e) => setCopiarCuenta(e.target.checked)} />
+          <input type="checkbox" style={{ accentColor: 'var(--atlas-v5-brand)' }} checked={copiarCuenta} onChange={(e) => setCopiarCuenta(e.target.checked)} />
           <span>La cuenta de cargo</span>
         </label>
         <div style={fijoRowMuted}>CUPS, contratos y repartos · no se copian (son propios de cada inmueble)</div>

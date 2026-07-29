@@ -265,6 +265,7 @@ const ImportarGastosModal: React.FC<ImportarGastosModalProps> = ({
                   <div key={i} style={{ ...filaP, opacity: l.entra ? 1 : 0.5 }}>
                     <input
                       type="checkbox"
+                      style={{ accentColor: 'var(--atlas-v5-brand)' }}
                       checked={l.entra}
                       onChange={(e) => setLineas((prev) => prev.map((x, j) => (j === i ? { ...x, entra: e.target.checked } : x)))}
                       aria-label={`Importar ${l.conceptoRaw}`}
