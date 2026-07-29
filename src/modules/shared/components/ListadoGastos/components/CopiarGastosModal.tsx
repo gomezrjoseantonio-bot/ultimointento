@@ -7,9 +7,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { showToastV5 } from '../../../../../design-system/v5';
 import {
+
   listarCompromisos,
   copiarGastosDeInmueble,
 } from '../../../../../services/personal/compromisosRecurrentesService';
+
+// Checkbox nativo tintado con el navy ATLAS · sin él, el navegador pinta su
+// azul por defecto (fuera de paleta).
+const checkInput: React.CSSProperties = { accentColor: 'var(--atlas-v5-brand)' };
+
 
 interface CopiarGastosModalProps {
   inmuebleDestinoId: number;
@@ -101,11 +107,11 @@ const CopiarGastosModal: React.FC<CopiarGastosModalProps> = ({
         <div style={quePart}>Qué se copia</div>
         <div style={fijoRow}>Concepto, proveedor y calendario · siempre</div>
         <label style={optRow}>
-          <input type="checkbox" checked={copiarImportes} onChange={(e) => setCopiarImportes(e.target.checked)} />
+          <input type="checkbox" style={checkInput} checked={copiarImportes} onChange={(e) => setCopiarImportes(e.target.checked)} />
           <span>Los importes <span style={optSub}>· los copias y los ajustas; si no, quedan vacíos</span></span>
         </label>
         <label style={optRow}>
-          <input type="checkbox" checked={copiarCuenta} onChange={(e) => setCopiarCuenta(e.target.checked)} />
+          <input type="checkbox" style={checkInput} checked={copiarCuenta} onChange={(e) => setCopiarCuenta(e.target.checked)} />
           <span>La cuenta de cargo</span>
         </label>
         <div style={fijoRowMuted}>CUPS, contratos y repartos · no se copian (son propios de cada inmueble)</div>

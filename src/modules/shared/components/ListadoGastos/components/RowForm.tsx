@@ -219,7 +219,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
                 type="checkbox"
                 checked={esVH}
                 onChange={(e) => setEsVH(e.target.checked)}
-                style={{ marginRight: 6 }}
+                style={{ ...checkInput, marginRight: 6 }}
               />
               Es mi vivienda habitual
             </label>
@@ -347,7 +347,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       <div style={{ marginTop: 4 }}>
         <RejillaMeses meses={meses} dia={dia} mesAncla={mesAncla} onMesesChange={setMeses} onDiaChange={setDia} disabled={diaIncierto} />
         <label style={checkRow}>
-          <input type="checkbox" checked={diaIncierto} onChange={(e) => setDiaIncierto(e.target.checked)} />
+          <input type="checkbox" style={checkInput} checked={diaIncierto} onChange={(e) => setDiaIncierto(e.target.checked)} />
           <span>No sé el día del cargo todavía (se proyecta a mitad de mes)</span>
         </label>
       </div>
@@ -359,6 +359,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
           <label style={checkRow}>
             <input
               type="checkbox"
+              style={checkInput}
               checked={comparte}
               onChange={(e) => {
                 const on = e.target.checked;
@@ -486,6 +487,9 @@ const checkRow: React.CSSProperties = {
   marginTop: 10,
   cursor: 'pointer',
 };
+// Checkbox nativo tintado con el navy ATLAS · sin él, el navegador pinta su
+// azul por defecto (fuera de paleta).
+const checkInput: React.CSSProperties = { accentColor: 'var(--atlas-v5-brand)' };
 const estadoBox: React.CSSProperties = {
   fontSize: 12,
   color: 'var(--atlas-v5-ink-3)',

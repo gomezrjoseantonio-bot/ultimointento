@@ -13,6 +13,7 @@ import type { CompromisoRecurrente } from '../../../../../types/compromisosRecur
 import { crearCompromiso } from '../../../../../services/personal/compromisosRecurrentesService';
 import { mesesToPatron } from '../utils/rejillaMeses';
 import {
+
   autoMapColumns,
   nReconocidas,
   parseImporteEs,
@@ -21,6 +22,11 @@ import {
   type MapeoColumnas,
   type CampoGasto,
 } from '../utils/importarGastos';
+
+// Checkbox nativo tintado con el navy ATLAS · sin él, el navegador pinta su
+// azul por defecto (fuera de paleta).
+const checkInput: React.CSSProperties = { accentColor: 'var(--atlas-v5-brand)' };
+
 
 interface ImportarGastosModalProps {
   mode: 'personal' | 'inmueble';
@@ -265,6 +271,7 @@ const ImportarGastosModal: React.FC<ImportarGastosModalProps> = ({
                   <div key={i} style={{ ...filaP, opacity: l.entra ? 1 : 0.5 }}>
                     <input
                       type="checkbox"
+                      style={checkInput}
                       checked={l.entra}
                       onChange={(e) => setLineas((prev) => prev.map((x, j) => (j === i ? { ...x, entra: e.target.checked } : x)))}
                       aria-label={`Importar ${l.conceptoRaw}`}
