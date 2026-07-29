@@ -41,7 +41,9 @@ const formatEur = (v: number): string =>
 const formatCompact = (v: number): string => {
   const abs = Math.abs(v);
   if (abs >= 1000) {
-    const k = (v / 1000).toFixed(1).replace(/\.0$/, '');
+    // `abs`, no `v`: si usáramos v el signo quedaba duplicado con el prefijo
+    // («−-3K»). El signo lo pone SOLO el prefijo `v < 0 ? '−' : '+'`.
+    const k = (abs / 1000).toFixed(1).replace(/\.0$/, '');
     return `${v < 0 ? '−' : '+'}${k}K`;
   }
   return `${v < 0 ? '−' : '+'}${formatEur(Math.abs(v))}`;
