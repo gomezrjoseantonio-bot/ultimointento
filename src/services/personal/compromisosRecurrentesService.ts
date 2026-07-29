@@ -374,13 +374,15 @@ export async function reactivarCompromiso(
 // ─── Validación de creación (sección 6.5) ──────────────────────────────────
 
 /**
- * Aplica las restricciones de no-duplicación contra `viviendaHabitual` y
- * contra los compromisos derivados de inmuebles de inversión.
+ * Valida los campos mínimos del discriminador (ámbito + FK) y la
+ * no-duplicación contra los gastos reales de inmuebles de inversión.
  *
- * Los tipos `vivienda.alquiler` y `vivienda.hipoteca` ya NO existen como
- * `TipoCompromiso` (TypeScript bloquea su creación). Aquí validamos los que
- * sí existen pero pueden chocar con derivados (seguro hogar · IBI ·
- * comunidad).
+ * Fase 4 vivienda habitual: las restricciones contra la ficha
+ * `viviendaHabitual` se retiraron con su generador — los gastos del hogar
+ * (alquiler · IBI · comunidad · seguro) viven ÚNICAMENTE como compromisos en
+ * Gastos, así que no hay derivados con los que chocar. La hipoteca sigue sin
+ * poder crearse como compromiso (`TipoCompromiso` no la incluye · la cuota la
+ * genera Financiación).
  */
 export async function puedeCrearCompromiso(
   nuevo: Partial<CompromisoRecurrente>,

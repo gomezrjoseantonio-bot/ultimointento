@@ -10,8 +10,10 @@
 // Fuentes procesadas:
 //   - Nóminas activas      → vía generateMonthlyForecasts
 //   - Préstamos / hipotecas → vía generateMonthlyForecasts
-//   - Vivienda habitual     → vía regenerarEventosVivienda
 //   - Compromisos activos   → vía regenerarEventosCompromiso
+//   - Vivienda habitual     → SOLO limpieza (Fase 4 · generador retirado): se
+//     borran los eventos previstos que la ficha legacy hubiera dejado, vía
+//     borrarEventosFuturosVivienda. Los gastos del hogar viven como compromisos.
 //
 // Fuera de scope T31 (futuro):
 //   - Contratos / alquileres (T31.no)
