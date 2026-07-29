@@ -6,8 +6,12 @@ function toDateOnly(date: string | undefined): string | undefined {
 }
 
 function getSignedEventAmount(event: TreasuryEvent): number {
-  if (event.type === 'income') return event.amount;
-  return -event.amount;
+  // Magnitud SIEMPRE por |amount| y dirección por `type`. Los generadores no
+  // comparten convención de signo: treasurySyncService guarda gastos en POSITIVO
+  // y compromisos/vivienda en NEGATIVO. Sin Math.abs, un gasto negativo se contaba
+  // como INGRESO (`-(-100)=+100`) → saldos mal y que bailan al regenerar.
+  const magnitude = Math.abs(event.amount);
+  return event.type === 'income' ? magnitude : -magnitude;
 }
 
 function isCommittedTreasuryEvent(event: TreasuryEvent): boolean {

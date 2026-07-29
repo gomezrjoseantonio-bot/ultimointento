@@ -174,13 +174,23 @@ export async function generateMonthlyForecasts(
   // Ensure each month's opening balance starts from prior months' net available balance.
   await rollForwardAccountBalancesToMonth(year, month);
 
+  // Un evento CONCILIADO es intocable: representa un movimiento bancario real.
+  // Antes solo se protegía `status==='confirmed'`, pero las conciliaciones reales
+  // (punteo manual, conciliación v2, match de extracto) escriben `'executed'` +
+  // `executedMovementId`. Sin esto, la regeneración revertía el evento a
+  // `predicted` y el barrido posterior lo BORRABA → «acepté y desapareció».
+  const isReconciled = (e: TreasuryEvent): boolean =>
+    e.status === 'confirmed' ||
+    e.status === 'executed' ||
+    (e as { executedMovementId?: number | string | null }).executedMovementId != null;
+
   // Helper: check if a forecast already exists for this sourceType + sourceId in this month
   async function isDuplicate(sourceType: string, sourceId: number | string): Promise<boolean> {
     const existing = await db.getAllFromIndex('treasuryEvents', 'sourceId', sourceId);
     return existing.some(e =>
       e.sourceType === sourceType &&
       e.predictedDate.startsWith(monthPrefix) &&
-      e.status === 'confirmed',
+      isReconciled(e),
     );
   }
 
@@ -194,7 +204,8 @@ export async function generateMonthlyForecasts(
         e => e.sourceType === sourceType && e.predictedDate.startsWith(monthPrefix),
       );
       if (currentMonthEvent) {
-        if (currentMonthEvent.status === 'confirmed') {
+        if (isReconciled(currentMonthEvent)) {
+          // NO revertir un evento conciliado a `predicted` · se respeta la realidad.
           skipped++;
           return;
         }

@@ -143,6 +143,7 @@ export async function regenerateForecastsForward(
       const ev = cursor.value as TreasuryEvent;
       if (
         ev.status === 'predicted' &&
+        (ev as { executedMovementId?: number | string | null }).executedMovementId == null &&
         typeof ev.predictedDate === 'string' &&
         ev.predictedDate >= desdeIso
       ) {
@@ -239,6 +240,7 @@ export async function regenerateForecastsForward(
       const ev = cursor.value as TreasuryEvent;
       if (
         ev.status === 'predicted' &&
+        (ev as { executedMovementId?: number | string | null }).executedMovementId == null &&
         typeof ev.predictedDate === 'string' &&
         ev.predictedDate < desdeIso
       ) {

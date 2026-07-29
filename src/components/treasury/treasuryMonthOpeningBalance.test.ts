@@ -96,4 +96,22 @@ describe('calculateTreasuryMonthOpeningBalance', () => {
 
     expect(balance).toBeCloseTo(1150, 2);
   });
+
+  it('trata un gasto con amount NEGATIVO como salida (convención compromisos/vivienda)', () => {
+    // Los generadores no comparten signo: compromisos/vivienda guardan el gasto en
+    // NEGATIVO. Antes `-event.amount` lo convertía en INGRESO (`-(-50)=+50`) e
+    // inflaba el saldo. Con |amount|+type el gasto resta igual que uno positivo.
+    const balance = calculateTreasuryMonthOpeningBalance({
+      account: makeAccount({ openingBalance: 1000, openingBalanceDate: '2026-03-01' }),
+      selectedMonth: '2026-05',
+      treasuryEvents: [
+        makeEvent({ type: 'income', amount: 200, predictedDate: '2026-03-15', status: 'predicted' }),
+        makeEvent({ type: 'expense', amount: -50, predictedDate: '2026-04-10', status: 'predicted' }),
+      ],
+      movements: [],
+      today: new Date('2026-03-20T12:00:00.000Z'),
+    });
+
+    expect(balance).toBeCloseTo(1150, 2);
+  });
 });
