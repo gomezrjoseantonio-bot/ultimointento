@@ -21,21 +21,34 @@ const CACHE_TTL_MS = 60_000;
  * Build a fast hash string from record counts and key sums.
  * This avoids reading all data — just metadata queries.
  */
+// Un `.catch()` sobre la promesa NO protege de que `db.count` no exista
+// (p.ej. mocks parciales de initDB en jest): la llamada lanza TypeError
+// SÍNCRONO y, si nadie espera la promesa (setCachedDeclaracion se usa
+// fire-and-forget), el unhandled rejection tumba el proceso. `safeCount`
+// captura ambas rutas (throw síncrono y rejection) y degrada a 0.
+const safeCount = async (fn: () => Promise<number>): Promise<number> => {
+  try {
+    return await fn();
+  } catch {
+    return 0;
+  }
+};
+
 async function calcularHashInputs(ejercicio: number): Promise<string> {
   const db = await initDB();
 
   const counts = await Promise.all([
-    db.count('properties').catch(() => 0),
-    db.count('contracts').catch(() => 0),
-    db.count('compromisosRecurrentes').catch(() => 0),  // opexRules eliminado en V62
-    db.count('prestamos').catch(() => 0),
-    db.count('gastosInmueble').catch(() => 0),
+    safeCount(() => db.count('properties')),
+    safeCount(() => db.count('contracts')),
+    safeCount(() => db.count('compromisosRecurrentes')),  // opexRules eliminado en V62
+    safeCount(() => db.count('prestamos')),
+    safeCount(() => db.count('gastosInmueble')),
     // V63 (sub-tarea 4): el store `autonomos` se eliminó; los registros
     // viven en `ingresos` con `tipo='autonomo'`.
-    db.countFromIndex('ingresos', 'tipo', 'autonomo').catch(() => 0),
-    db.count('inversiones').catch(() => 0),
+    safeCount(() => db.countFromIndex('ingresos', 'tipo', 'autonomo')),
+    safeCount(() => db.count('inversiones')),
     Promise.resolve(0),  // rentaMensual store eliminado en V62
-    db.count('gastosInmueble').catch(() => 0),
+    safeCount(() => db.count('gastosInmueble')),
   ]);
 
   return `${ejercicio}-${counts.join('-')}`;
