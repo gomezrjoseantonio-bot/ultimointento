@@ -408,12 +408,15 @@ const VistaCuentaPage: React.FC = () => {
     const gastos = eventosMesPredicted.filter(
       (e) => e.type === 'expense' || e.type === 'financing',
     );
+    // Magnitud por |amount|: el gasto se guarda con signo inconsistente entre
+    // orígenes; sin Math.abs, `pendienteSalir` podía salir negativo y el saldo
+    // final quedaba mal (sumaba el gasto en vez de restarlo).
     const pendienteEntrar = ingresos.reduce(
-      (s, e) => s + (e.amount ?? 0),
+      (s, e) => s + Math.abs(e.amount ?? 0),
       0,
     );
     const pendienteSalir = gastos.reduce(
-      (s, e) => s + (e.amount ?? 0),
+      (s, e) => s + Math.abs(e.amount ?? 0),
       0,
     );
     const saldoFinal = saldo + pendienteEntrar - pendienteSalir;

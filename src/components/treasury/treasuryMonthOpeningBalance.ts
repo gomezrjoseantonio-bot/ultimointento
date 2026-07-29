@@ -20,7 +20,13 @@ const nextMonthKey = (monthKey: string): string => {
 
 const getMonthStart = (monthKey: string): string => `${monthKey}-01`;
 
-const getEventSignedAmount = (event: DBTreasuryEvent): number => (event.type === 'income' ? event.amount : -event.amount);
+// Magnitud por |amount| y dirección por `type`: los generadores guardan el gasto
+// con signo inconsistente (positivo unos, negativo otros). Sin Math.abs el saldo
+// futuro sumaba gastos negativos como ingresos y bailaba al regenerar.
+const getEventSignedAmount = (event: DBTreasuryEvent): number => {
+  const magnitude = Math.abs(event.amount);
+  return event.type === 'income' ? magnitude : -magnitude;
+};
 
 const calculateMonthDelta = ({
   accountId,

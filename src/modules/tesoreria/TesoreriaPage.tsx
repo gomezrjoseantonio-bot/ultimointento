@@ -136,12 +136,14 @@ const TesoreriaPage: React.FC = () => {
     const gastos = eventosMesPredicted.filter(
       (e: any) => e.type === 'expense' || e.type === 'financing',
     );
+    // Magnitud por |amount|: el gasto se guarda con signo inconsistente entre
+    // orígenes; sin Math.abs el saldo final quedaba mal.
     const pendienteEntrar = ingresos.reduce(
-      (s: number, e: any) => s + (e.amount ?? 0),
+      (s: number, e: any) => s + Math.abs(e.amount ?? 0),
       0,
     );
     const pendienteSalir = gastos.reduce(
-      (s: number, e: any) => s + (e.amount ?? 0),
+      (s: number, e: any) => s + Math.abs(e.amount ?? 0),
       0,
     );
     const saldoFinal = saldo + pendienteEntrar - pendienteSalir;
