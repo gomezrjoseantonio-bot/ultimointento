@@ -1201,10 +1201,13 @@ export function calcularMinimosPersonalesFromContext(
 }
 
 /**
- * GAP 5.3 · Excluye de una lista de inmuebles la vivienda habitual
- * (matchada por `cadastralReference` con la referencia catastral del
- * `FiscalContext.viviendaHabitual`). LIRPF art. 85 · la vivienda habitual
- * no genera imputación de renta inmobiliaria.
+ * GAP 5.3 · Excluye de una lista de inmuebles la vivienda habitual, que no
+ * genera imputación de renta inmobiliaria (LIRPF art. 85). Dos criterios:
+ *   1. Principal · inmueble con `usoTipo === 'vivienda_habitual'` (rol en la
+ *      propia ficha del inmueble) · se excluye siempre.
+ *   2. Compat · match de `cadastralReference` con la referencia catastral del
+ *      `FiscalContext.viviendaHabitual` · red de seguridad si el inmueble no
+ *      lleva el `usoTipo` marcado.
  *
  * Pure function · exportada para testing directo.
  */

@@ -24,8 +24,12 @@ export interface Property {
   state: 'activo' | 'vendido' | 'baja';
   notes?: string;
   porcentajePropiedad?: number;          // % del declarante (casilla AEAT 0063)
-  titularidad?: 'yo' | 'pareja' | 'ambos'; // quién es titular · default 'yo'
-  porcentajePropiedadPareja?: number;    // % de la pareja (solo si 'pareja' o 'ambos')
+  // Titularidad · `undefined` se interpreta como 'yo' (inmuebles previos a este
+  // campo). El formulario siempre persiste un valor explícito al guardar.
+  titularidad?: 'yo' | 'pareja' | 'ambos';
+  // % de la pareja · solo relevante con titularidad 'pareja' o 'ambos'. Con 'yo'
+  // se persiste 0 y el cálculo lo ignora.
+  porcentajePropiedadPareja?: number;
   esUrbana?: boolean;
   acquisitionCosts: {
     price: number;
