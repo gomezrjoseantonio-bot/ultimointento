@@ -34,10 +34,13 @@ import {
 // T18.0 · motor elegibilidad deducciones autonómicas + reglas CCAA por archivo.
 // `calcularCuotaBaseGeneralCCAA` deja de leer tablas inline · pasa a leer del
 // módulo `src/services/fiscal/ccaaRules/` · Madrid verified=true.
-import { getReglasCcaa } from './fiscal/deduccionesAutonomicasService';
+import { getReglasCcaa, getDeduccionesAutonomicasEvaluadas } from './fiscal/deduccionesAutonomicasService';
+import type { DatosBaseDeduccion } from './fiscal/tipos';
 import { BASE_ESTATAL_RULES } from './fiscal/ccaaRules/_base_estatal';
 // Fase 2 vivienda habitual · deducción DT 18ª (inversión VH pre-2013).
 import { calcularDeduccionViviendaHabitualEjercicio } from './deduccionViviendaHabitualService';
+// Fase 3 vivienda habitual · alquiler VH → deducciones autonómicas.
+import { calcularAlquilerVHAnual } from './fiscal/alquilerViviendaHabitualService';
 import type { NivelDiscapacidad } from '../types/personal';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
@@ -217,6 +220,8 @@ export interface Liquidacion {
   deduccionesDobleImposicion: number;
   /** DT 18ª LIRPF · deducción por inversión en vivienda habitual (pre-2013). */
   deduccionViviendaHabitual?: number;
+  /** Deducciones autonómicas aplicadas (T18.x · hoy: alquiler vivienda habitual). */
+  deduccionesAutonomicas?: number;
   cuotaLiquida: number;
 }
 
@@ -1575,8 +1580,52 @@ export async function calcularDeclaracionIRPF(
     Math.min(dvh.deduccion, Math.max(0, cuotaIntegra - deduccionesDobleImposicion)),
   );
 
+  // Fase 3 · deducciones autonómicas (motor T18.x · por fin enchufado): la
+  // primera con dato real es el alquiler de vivienda habitual, que sale del
+  // gasto recurrente personal 'vivienda.alquiler' (esViviendaHabitual !== false).
+  // Nunca rompe el cálculo · si falla, deducción 0.
+  let deduccionesAutonomicasBrutas = 0;
+  const warningsAlquilerVH: string[] = [];
+  try {
+    const alquilerVH = await calcularAlquilerVHAnual(ejercicio);
+    if (ctx && alquilerVH.importeAnual > 0) {
+      const datosBase: DatosBaseDeduccion = {
+        baseImponibleIndividual: round2(baseImponibleGeneral + baseImponibleAhorro),
+        alquilerAnual: alquilerVH.importeAnual,
+        esTitularContrato: true,
+        tipoVivienda: 'habitual',
+      };
+      const evaluadas = await getDeduccionesAutonomicasEvaluadas(ctx, datosBase);
+      deduccionesAutonomicasBrutas = round2(
+        evaluadas
+          .filter((r) => r.elegible && r.importeAplicable > 0)
+          .reduce((s, r) => s + r.importeAplicable, 0),
+      );
+      // Near-miss accionable: deducción de alquiler existente pero no elegible
+      // (p.ej. Madrid exige fianza depositada · dato que la app aún no captura).
+      for (const r of evaluadas) {
+        if (!r.elegible && /alquiler|arrendamiento/i.test(r.deduccion.nombre) && r.motivosNoElegible.length > 0) {
+          warningsAlquilerVH.push(
+            `deducción autonómica «${r.deduccion.nombre}» no aplicada · ${r.motivosNoElegible.join(' · ')}`,
+          );
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[irpf] error evaluando deducciones autonómicas por alquiler', err);
+  }
+  const deduccionesAutonomicas = round2(
+    Math.min(
+      deduccionesAutonomicasBrutas,
+      Math.max(0, cuotaIntegra - deduccionesDobleImposicion - deduccionViviendaHabitual),
+    ),
+  );
+
   const cuotaLiquida = round2(
-    Math.max(0, cuotaIntegra - deduccionesDobleImposicion - deduccionViviendaHabitual),
+    Math.max(
+      0,
+      cuotaIntegra - deduccionesDobleImposicion - deduccionViviendaHabitual - deduccionesAutonomicas,
+    ),
   );
 
   const liquidacion: Liquidacion = {
@@ -1588,6 +1637,7 @@ export async function calcularDeclaracionIRPF(
     cuotaIntegra,
     deduccionesDobleImposicion,
     deduccionViviendaHabitual,
+    deduccionesAutonomicas,
     cuotaLiquida,
   };
 
@@ -1636,6 +1686,8 @@ export async function calcularDeclaracionIRPF(
   // Warnings de la deducción VH SIEMPRE (aplicable o no) · p.ej. "vivienda
   // pre-2013 sin préstamo vinculado" es accionable precisamente cuando NO aplica.
   declaracionWarnings.push(...dvh.warnings);
+  // Near-miss de deducciones autonómicas por alquiler (no elegibles con motivo).
+  declaracionWarnings.push(...warningsAlquilerVH);
 
   const declaracionResult: DeclaracionIRPF = {
     ejercicio,

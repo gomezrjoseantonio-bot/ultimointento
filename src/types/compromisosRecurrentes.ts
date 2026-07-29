@@ -240,6 +240,12 @@ export interface CompromisoRecurrente {
 
   // Categorización
   categoria: string; // normalizado a "familia.subfamilia" en T38; retrocompatible con CategoriaGastoCompromiso legacy
+  // Fase 3 vivienda habitual · SOLO relevante en ámbito personal con categoria
+  // 'vivienda.alquiler': marca si este alquiler es el de la vivienda habitual
+  // del titular (alimenta la deducción autonómica por alquiler). Semántica
+  // default-true: `undefined` cuenta como vivienda habitual; `false` explícito
+  // la excluye (alquiler de otra cosa: trastero, segunda vivienda…).
+  esViviendaHabitual?: boolean;
   bolsaPresupuesto: BolsaPresupuesto;
   tipoFamilia?: string; // T38: familia real ('vivienda' | 'suministros' | 'dia_a_dia' | 'suscripciones' | 'seguros_cuotas' | 'otros' | 'tributos' | 'comunidad' | 'seguros' | 'gestion' | 'reparacion')
   responsable: ResponsableCompromiso;

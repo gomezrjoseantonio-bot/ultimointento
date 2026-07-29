@@ -110,6 +110,10 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
   );
   const [comparte, setComparte] = useState<boolean>(!!(c.reparto && c.reparto.length > 0));
   const [reparto, setReparto] = useState<RepartoInmueble[]>(c.reparto ?? []);
+  // Fase 3 VH · solo para alquiler personal: ¿es el alquiler de mi vivienda
+  // habitual? (alimenta la deducción autonómica). Default-true.
+  const esAlquilerPersonal = c.ambito === 'personal' && c.categoria === 'vivienda.alquiler';
+  const [esVH, setEsVH] = useState<boolean>(c.esViviendaHabitual !== false);
   const [saving, setSaving] = useState(false);
 
   // Reparto entre inmuebles (§2.7): sólo tiene sentido en ámbito inmueble y si
@@ -181,6 +185,9 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
         margenGraciaDias: Number.isNaN(margen) ? undefined : margen,
         // El reparto sólo se guarda si se comparte y cuadra; si no, se limpia.
         reparto: comparte && puedeRepartir && reparto.length > 0 ? reparto : undefined,
+        // Fase 3 VH · solo se persiste en el alquiler personal (default-true:
+        // se guarda `false` explícito al desmarcar · `true` al remarcar).
+        ...(esAlquilerPersonal ? { esViviendaHabitual: esVH } : {}),
       };
 
       const updated = await actualizarCompromiso(c.id, payload);
@@ -201,7 +208,28 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       <div style={dgrid}>
         <Field label="Concepto"><input style={inp} value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Luz, comunidad, seguro…" /></Field>
         <Field label="Proveedor"><input style={inp} value={proveedor} onChange={(e) => setProveedor(e.target.value)} /></Field>
-        <Field label="CIF o NIF"><input style={inp} value={nif} onChange={(e) => setNif(e.target.value)} placeholder="A12345678" /></Field>
+        <Field
+          label="CIF o NIF"
+          hint={esAlquilerPersonal ? 'El NIF del arrendador lo pide Hacienda para la deducción por alquiler' : undefined}
+        ><input style={inp} value={nif} onChange={(e) => setNif(e.target.value)} placeholder="A12345678" /></Field>
+        {esAlquilerPersonal && (
+          <div style={{ minWidth: 0 }}>
+            <label style={lab}>
+              <input
+                type="checkbox"
+                checked={esVH}
+                onChange={(e) => setEsVH(e.target.checked)}
+                style={{ marginRight: 6 }}
+              />
+              Es mi vivienda habitual
+            </label>
+            <div style={fiscalInfo}>
+              {esVH
+                ? 'Cuenta para la deducción autonómica por alquiler (si tu CCAA la tiene)'
+                : 'No cuenta para la deducción por alquiler (trastero, segunda vivienda…)'}
+            </div>
+          </div>
+        )}
         {/* Fiscalidad: informativa (derivada) salvo la excepción que pregunta */}
         {fisc.pregunta ? (
           <Field
