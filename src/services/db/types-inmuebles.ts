@@ -23,7 +23,9 @@ export interface Property {
   transmissionRegime: 'usada' | 'obra-nueva';
   state: 'activo' | 'vendido' | 'baja';
   notes?: string;
-  porcentajePropiedad?: number;
+  porcentajePropiedad?: number;          // % del declarante (casilla AEAT 0063)
+  titularidad?: 'yo' | 'pareja' | 'ambos'; // quién es titular · default 'yo'
+  porcentajePropiedadPareja?: number;    // % de la pareja (solo si 'pareja' o 'ambos')
   esUrbana?: boolean;
   acquisitionCosts: {
     price: number;

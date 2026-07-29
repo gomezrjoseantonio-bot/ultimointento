@@ -104,6 +104,8 @@ interface FormState {
   anioConstruccion: number;
   esUrbana: boolean;
   porcentajePropiedad: number;
+  titularidad: 'yo' | 'pareja' | 'ambos';
+  porcentajePropiedadPareja: number;
   tieneParking: boolean;
   tieneTrastero: boolean;
 
@@ -234,6 +236,8 @@ const initialForm = (): FormState => ({
   anioConstruccion: 0,
   esUrbana: true,
   porcentajePropiedad: 100,
+  titularidad: 'yo',
+  porcentajePropiedadPareja: 0,
   tieneParking: false,
   tieneTrastero: false,
   valorCatastralTotal: 0,
@@ -365,6 +369,8 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             anioConstruccion: 0,
             esUrbana: prop.esUrbana ?? true,
             porcentajePropiedad: prop.porcentajePropiedad ?? 100,
+            titularidad: prop.titularidad ?? 'yo',
+            porcentajePropiedadPareja: prop.porcentajePropiedadPareja ?? 0,
             tieneParking: prop.anexos?.tieneParking ?? false,
             tieneTrastero: prop.anexos?.tieneTrastero ?? false,
             valorCatastralTotal: prop.fiscalData?.cadastralValue || 0,
@@ -506,6 +512,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }));
 
+  // Clamp a [0..100] SIN inventar defaults · vacío/NaN/negativo → 0 (nunca 100).
+  const clampPct = (v: number): number =>
+    Number.isFinite(v) && v > 0 ? Math.min(v, 100) : 0;
+
   const num = (v: string): number => {
     if (v === '' || v == null) return 0;
     const cleaned = v.replace(/[^0-9.,-]/g, '').replace(',', '.');
@@ -605,6 +615,14 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     if (!/^\d{5}$/.test(form.cp)) return 'El código postal debe tener 5 dígitos';
     if (!form.fechaCompra) return 'La fecha de compra es obligatoria';
     if (form.precioCompra <= 0) return 'El precio debe ser mayor que 0';
+    // Titularidad · cada % en [0..100] y, con dos titulares, la suma no puede
+    // superar el 100% (sí puede ser menor: el resto vive en otra familia).
+    const pctMio = form.titularidad === 'pareja' ? 0 : form.porcentajePropiedad;
+    const pctPareja = form.titularidad === 'yo' ? 0 : form.porcentajePropiedadPareja;
+    if (pctMio < 0 || pctMio > 100 || pctPareja < 0 || pctPareja > 100)
+      return 'El % de propiedad debe estar entre 0 y 100';
+    if (form.titularidad === 'ambos' && pctMio + pctPareja > 100)
+      return 'La suma de los % de ambos titulares no puede superar el 100%';
     return null;
   };
 
@@ -639,9 +657,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
         transmissionRegime: form.estado,
         state: 'activo',
         porcentajePropiedad:
-          form.porcentajePropiedad > 0 && form.porcentajePropiedad <= 100
-            ? form.porcentajePropiedad
-            : 100,
+          form.titularidad === 'pareja' ? 0 : clampPct(form.porcentajePropiedad),
+        titularidad: form.titularidad,
+        porcentajePropiedadPareja:
+          form.titularidad === 'yo' ? 0 : clampPct(form.porcentajePropiedadPareja),
         esUrbana: form.esUrbana,
         acquisitionCosts: {
           price: form.precioCompra,
@@ -1134,17 +1153,68 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                     </label>
                   </div>
                 </Field>
-                <Field label="% propiedad">
-                  <Suffix>
-                    <input
-                      className={`${styles.input} ${styles.inputMono}`}
-                      value={form.porcentajePropiedad || ''}
-                      onChange={(e) => set('porcentajePropiedad', num(e.target.value))}
-                      inputMode="decimal"
-                    />
-                    <span className={styles.suffix}>%</span>
-                  </Suffix>
+                <Field label="Titularidad">
+                  <select
+                    className={styles.input}
+                    value={form.titularidad}
+                    onChange={(e) => {
+                      const t = e.target.value as 'yo' | 'pareja' | 'ambos';
+                      // No se zera el campo del otro titular al cambiar de modo
+                      // (así un cambio por error no borra lo tecleado; el guardado
+                      // ya ignora el % que no aplica). 'ambos' arranca 50/50.
+                      setForm((prev) => ({
+                        ...prev,
+                        titularidad: t,
+                        porcentajePropiedad:
+                          t === 'ambos'
+                            ? 50
+                            : t === 'yo'
+                              ? prev.porcentajePropiedad > 0
+                                ? prev.porcentajePropiedad
+                                : 100
+                              : prev.porcentajePropiedad,
+                        porcentajePropiedadPareja:
+                          t === 'ambos'
+                            ? 50
+                            : t === 'pareja'
+                              ? prev.porcentajePropiedadPareja > 0
+                                ? prev.porcentajePropiedadPareja
+                                : 100
+                              : prev.porcentajePropiedadPareja,
+                      }));
+                    }}
+                  >
+                    <option value="yo">Yo</option>
+                    <option value="pareja">Mi pareja</option>
+                    <option value="ambos">Ambos</option>
+                  </select>
                 </Field>
+                {form.titularidad !== 'pareja' && (
+                  <Field label={form.titularidad === 'ambos' ? '% tuyo' : '% propiedad'}>
+                    <Suffix>
+                      <input
+                        className={`${styles.input} ${styles.inputMono}`}
+                        value={form.porcentajePropiedad || ''}
+                        onChange={(e) => set('porcentajePropiedad', num(e.target.value))}
+                        inputMode="decimal"
+                      />
+                      <span className={styles.suffix}>%</span>
+                    </Suffix>
+                  </Field>
+                )}
+                {form.titularidad !== 'yo' && (
+                  <Field label={form.titularidad === 'ambos' ? '% pareja' : '% propiedad'}>
+                    <Suffix>
+                      <input
+                        className={`${styles.input} ${styles.inputMono}`}
+                        value={form.porcentajePropiedadPareja || ''}
+                        onChange={(e) => set('porcentajePropiedadPareja', num(e.target.value))}
+                        inputMode="decimal"
+                      />
+                      <span className={styles.suffix}>%</span>
+                    </Suffix>
+                  </Field>
+                )}
               </div>
 
               {showAnexos && (
