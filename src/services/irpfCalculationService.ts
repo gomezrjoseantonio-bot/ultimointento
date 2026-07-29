@@ -1633,9 +1633,9 @@ export async function calcularDeclaracionIRPF(
       'viviendaHabitual detectada en `properties` · excluida de imputación de renta (LIRPF art. 85)',
     );
   }
-  if (dvh.aplicable) {
-    declaracionWarnings.push(...dvh.warnings);
-  }
+  // Warnings de la deducción VH SIEMPRE (aplicable o no) · p.ej. "vivienda
+  // pre-2013 sin préstamo vinculado" es accionable precisamente cuando NO aplica.
+  declaracionWarnings.push(...dvh.warnings);
 
   const declaracionResult: DeclaracionIRPF = {
     ejercicio,

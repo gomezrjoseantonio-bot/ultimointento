@@ -83,8 +83,11 @@ export function sumarPagosEjercicio(
 ): { intereses: number; capital: number; total: number } {
   let intereses = 0;
   let capital = 0;
+  // Año por slice del ISO (no new Date().getFullYear()) · evita el shift de
+  // timezone en el borde de año ('2024-01-01' → 2023 en zonas UTC-negativas).
+  const anio = String(ejercicio);
   for (const p of plan.periodos) {
-    if (new Date(p.fechaCargo).getFullYear() === ejercicio) {
+    if (p.fechaCargo?.slice(0, 4) === anio) {
       intereses += p.interes;
       capital += p.amortizacion;
     }

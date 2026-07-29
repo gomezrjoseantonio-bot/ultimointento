@@ -196,13 +196,15 @@ describe('GAP 5.1 · calcularCuotaBaseGeneralCCAA', () => {
     expect(r.escalaAutonomicaUsada.fuente).toMatch(/Decreto Legislativo 1\/2010/);
   });
 
-  test('Asturias · post-T18.0 · sin implementar en módulo nuevo · fallback estatal con warning', () => {
-    // T18.0 solo cubre Madrid · Asturias entrará en T18.2.
-    // Resultado · cuota autonómica = supletoria · reason explica fallback.
+  test('Asturias · escala no verificada · fallback supletoria con warning', () => {
+    // Asturias está implementada pero con escala verified=false (pendiente de
+    // auditar valores BOE) · el motor cae a la supletoria como fallback seguro.
+    // Lo invariante es el RESULTADO (cuota = supletoria + reason explicativo);
+    // el texto exacto del reason varía según el estado de implementación.
     const ctx = buildCtx({ comunidadAutonoma: 'Asturias' });
     const r = calcularCuotaBaseGeneralCCAA(30000, ctx, 2024);
     expect(r.escalaAutonomicaAplicada).toBe(false);
-    expect(r.reason).toMatch(/Asturias.*no implementada/);
+    expect(r.reason).toMatch(/Asturias.*(no implementada|verified=false)/);
     expect(r.cuotaAutonomica).toBe(
       calcularCuotaPorTramos(30000, ESCALA_AUTONOMICA_SUPLETORIA_2024.tramos),
     );
