@@ -36,6 +36,8 @@ import {
 // módulo `src/services/fiscal/ccaaRules/` · Madrid verified=true.
 import { getReglasCcaa } from './fiscal/deduccionesAutonomicasService';
 import { BASE_ESTATAL_RULES } from './fiscal/ccaaRules/_base_estatal';
+// Fase 2 vivienda habitual · deducción DT 18ª (inversión VH pre-2013).
+import { calcularDeduccionViviendaHabitualEjercicio } from './deduccionViviendaHabitualService';
 import type { NivelDiscapacidad } from '../types/personal';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
@@ -213,6 +215,8 @@ export interface Liquidacion {
   cuotaMinimosBaseGeneral: number;
   cuotaIntegra: number;
   deduccionesDobleImposicion: number;
+  /** DT 18ª LIRPF · deducción por inversión en vivienda habitual (pre-2013). */
+  deduccionViviendaHabitual?: number;
   cuotaLiquida: number;
 }
 
@@ -1559,7 +1563,21 @@ export async function calcularDeclaracionIRPF(
   const cuotaMinimosBaseGeneral = cuotaMinimos.cuotaTotal;
   const cuotaIntegra = round2((cuotaBaseGeneral - cuotaMinimosBaseGeneral) + cuotaBaseAhorro);
   const deduccionesDobleImposicion = baseAhorroCapitalMobiliario.retenciones; // Solo retenciones integradas en base del ahorro
-  const cuotaLiquida = round2(Math.max(0, cuotaIntegra - deduccionesDobleImposicion));
+
+  // DT 18ª LIRPF · deducción por inversión en vivienda habitual (adquisición
+  // pre-2013 · inmueble usoTipo 'vivienda_habitual' + préstamo vinculado).
+  // Se recorta a la cuota disponible: nunca genera cuota líquida negativa.
+  const dvh = await calcularDeduccionViviendaHabitualEjercicio(
+    ejercicio,
+    ctx?.tributacion ?? 'individual',
+  );
+  const deduccionViviendaHabitual = round2(
+    Math.min(dvh.deduccion, Math.max(0, cuotaIntegra - deduccionesDobleImposicion)),
+  );
+
+  const cuotaLiquida = round2(
+    Math.max(0, cuotaIntegra - deduccionesDobleImposicion - deduccionViviendaHabitual),
+  );
 
   const liquidacion: Liquidacion = {
     baseImponibleGeneral,
@@ -1569,6 +1587,7 @@ export async function calcularDeclaracionIRPF(
     cuotaMinimosBaseGeneral,
     cuotaIntegra,
     deduccionesDobleImposicion,
+    deduccionViviendaHabitual,
     cuotaLiquida,
   };
 
@@ -1613,6 +1632,9 @@ export async function calcularDeclaracionIRPF(
     declaracionWarnings.push(
       'viviendaHabitual detectada en `properties` · excluida de imputación de renta (LIRPF art. 85)',
     );
+  }
+  if (dvh.aplicable) {
+    declaracionWarnings.push(...dvh.warnings);
   }
 
   const declaracionResult: DeclaracionIRPF = {
