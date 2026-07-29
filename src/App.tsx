@@ -200,7 +200,6 @@ const PersonalGastos = lazyWithPreload(() => import('./modules/personal/pages/Ga
 const PersonalDetectarCompromisos = lazyWithPreload(
   () => import('./modules/personal/pages/DetectarCompromisosPage'),
 );
-const PersonalVivienda = lazyWithPreload(() => import('./modules/personal/pages/ViviendaPage'));
 const PersonalPresupuesto = lazyWithPreload(() => import('./modules/personal/pages/PresupuestoPage'));
 
 
@@ -1206,11 +1205,10 @@ function App() {
                   <PersonalDetectarCompromisos />
                 </React.Suspense>
               } />
-              <Route path="vivienda" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PersonalVivienda />
-                </React.Suspense>
-              } />
+              {/* Fase 4 VH · «Mi vivienda» retirada: los gastos del hogar viven en
+                  Gastos · la hipoteca en Financiación · el rol fiscal en el
+                  inmueble (usoTipo). Redirect de compat. */}
+              <Route path="vivienda" element={<Navigate to="/personal/gastos" replace />} />
               <Route path="presupuesto" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <PersonalPresupuesto />
