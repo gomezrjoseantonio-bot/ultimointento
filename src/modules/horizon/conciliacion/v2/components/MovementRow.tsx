@@ -28,7 +28,7 @@ const MovementRow: React.FC<MovementRowProps> = ({
   onOpenDocPopover,
 }) => {
   const rowClasses = ['cv2-row'];
-  rowClasses.push(row.state === 'confirmed' ? 'cv2-row--confirmed' : 'cv2-row--predicted');
+  rowClasses.push(row.state !== 'predicted' ? 'cv2-row--confirmed' : 'cv2-row--predicted');
 
   const amountClass = row.amount >= 0 ? 'cv2-amount--positive' : 'cv2-amount--negative';
 

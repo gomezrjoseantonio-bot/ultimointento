@@ -311,6 +311,9 @@
   background: var(--atlas-v5-white);
   border-radius: 1px;
   position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 /* Cells */

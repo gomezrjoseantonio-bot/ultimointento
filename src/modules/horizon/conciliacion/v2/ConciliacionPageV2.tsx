@@ -288,7 +288,7 @@ const ConciliacionPageV2: React.FC = () => {
           <div className="cv2-empty">Cargando…</div>
         ) : days.length === 0 ? (
           <div className="cv2-empty">
-            No hay movimientos previstos ni confirmados en este mes.
+            No hay movimientos para los filtros aplicados en este mes.
           </div>
         ) : (
           days.map((bucket) => (
