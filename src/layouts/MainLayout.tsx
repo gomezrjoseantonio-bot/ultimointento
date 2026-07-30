@@ -129,18 +129,22 @@ const MainLayout: React.FC = () => {
       
       <div className="flex flex-col flex-1 overflow-hidden min-h-0">
         {/* TopbarV5 · persistente · oculto en /inversiones/* (la cinta de
-            inversiones la reemplaza como topbar · mockup atlas-inversiones-v2). */}
-        {!isFullBleedRoute && <TopbarV5 showSearch={isPanelRoute} />}
+            inversiones la reemplaza como topbar · mockup atlas-inversiones-v2).
+            Oculto también en /panel: sin buscador (decisión Jose) el topbar solo
+            ocupaba espacio · el Panel sube y debe caber sin scroll. */}
+        {!isFullBleedRoute && !isPanelRoute && <TopbarV5 />}
         {isInversionesRoute && <CintaResumenInversiones />}
 
+        {/* /panel · overflow-y-hidden obligatorio: el Panel NUNCA hace scroll ·
+            PanelPage se auto-ajusta a la altura disponible. */}
         <main
           id="main-content"
-          className={`flex-1 overflow-x-hidden overflow-y-auto min-h-0 ${
+          className={`flex-1 overflow-x-hidden min-h-0 ${
             isPanelRoute
-              ? 'px-8 pb-12'
+              ? 'overflow-y-hidden px-8'
               : isFullBleedRoute
-                ? ''
-                : 'p-3 sm:p-4 lg:p-6'
+                ? 'overflow-y-auto'
+                : 'overflow-y-auto p-3 sm:p-4 lg:p-6'
           }`}
           tabIndex={-1}
         >

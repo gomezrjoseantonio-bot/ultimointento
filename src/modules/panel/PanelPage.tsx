@@ -55,6 +55,7 @@ import { decideFirstRun } from '../onboarding/empezar/FirstRunRedirect';
 import { useProyeccionLibertad } from '../../hooks/useProyeccionLibertad';
 import { getSeriePatrimonio } from '../horizon/proyeccion/mensual/services/proyeccionMensualService';
 import type { PuntoPatrimonioAnual } from '../horizon/proyeccion/mensual/types/proyeccionMensual';
+import { useAutoFitHeight } from './useAutoFitHeight';
 import styles from './PanelPage.module.css';
 
 /**
@@ -84,6 +85,11 @@ const magnitud = (ev: TreasuryEvent, usarActual = false): number =>
 
 const PanelPage: React.FC = () => {
   const navigate = useNavigate();
+
+  // El Panel NO hace scroll (requisito duro) · el par outer/inner escala el
+  // contenido si no cabe en la altura disponible. Los wrappers se montan
+  // SIEMPRE (también en carga) para que las refs midan desde el primer render.
+  const fit = useAutoFitHeight();
 
   // Puerta de entrada onboarding día 0: si el usuario aterriza sin datos y sin
   // progreso, lo llevamos a `/empezar`. Reentrante · nunca interrumpe a quien ya empezó.
@@ -432,7 +438,11 @@ const PanelPage: React.FC = () => {
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.loading}>Cargando panel…</div>
+        <div ref={fit.outerRef} style={fit.outerStyle}>
+          <div ref={fit.innerRef} style={fit.innerStyle}>
+            <div className={styles.loading}>Cargando panel…</div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -448,6 +458,8 @@ const PanelPage: React.FC = () => {
 
   return (
     <div className={styles.page}>
+      <div ref={fit.outerRef} style={fit.outerStyle}>
+      <div ref={fit.innerRef} style={fit.innerStyle}>
       {/* 1 · Cabecera blanca · saludo + fecha (sin subtítulos de estado) */}
       <PageHead title={`${saludo(today)}, ${nombreUsuario}`} sub={fechaLabel} />
 
@@ -498,6 +510,8 @@ const PanelPage: React.FC = () => {
           </div>
         </>
       )}
+      </div>
+      </div>
     </div>
   );
 };
