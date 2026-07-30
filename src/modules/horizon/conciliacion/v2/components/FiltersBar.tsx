@@ -8,6 +8,9 @@ interface FiltersBarProps {
   filters: Filters;
   accounts: Account[];
   onChange: (patch: Partial<Filters>) => void;
+  /** P5 punteo · recuentos para la regla canónica de ocultar chips a 0
+   * (salvo Todos y Previstos · el chip activo nunca desaparece). */
+  stateCounts?: { confirmados: number; conciliados: number };
 }
 
 const accountShortLabel = (account: Account): string => {
@@ -18,7 +21,7 @@ const accountShortLabel = (account: Account): string => {
   return iban ? `·${iban.slice(-4)}` : `Cuenta ${account.id ?? ''}`;
 };
 
-const FiltersBar: React.FC<FiltersBarProps> = ({ filters, accounts, onChange }) => {
+const FiltersBar: React.FC<FiltersBarProps> = ({ filters, accounts, onChange, stateCounts }) => {
   const prevMonth = () => {
     const d = new Date(filters.year, filters.month0 - 1, 1);
     onChange({ year: d.getFullYear(), month0: d.getMonth() });
@@ -92,7 +95,15 @@ const FiltersBar: React.FC<FiltersBarProps> = ({ filters, accounts, onChange }) 
           { v: 'all', label: 'Todos' },
           { v: 'pending', label: 'Previstos' },
           { v: 'confirmed', label: 'Confirmados' },
-        ].map((o) => (
+          { v: 'conciliado', label: 'Conciliados' },
+        ]
+          .filter((o) => {
+            if (o.v === 'all' || o.v === 'pending') return true;
+            if (filters.stateFilter === o.v) return true; // el activo no desaparece
+            if (!stateCounts) return o.v !== 'conciliado';
+            return o.v === 'confirmed' ? stateCounts.confirmados > 0 : stateCounts.conciliados > 0;
+          })
+          .map((o) => (
           <button
             key={o.v}
             type="button"

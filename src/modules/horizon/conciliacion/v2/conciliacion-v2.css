@@ -301,43 +301,20 @@
 .cv2-row--confirmed .cv2-cat-icon { color: var(--atlas-v5-ink-3); }
 
 /* Check circle */
-.cv2-check {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  /* Punteo canónico (Bloque 3 · Registro v2): previsto = discontinuo oro ·
-     confirmado = navy. El verde conciliado llegará cuando esta vista cruce
-     con el source del movimiento (P5). */
-  border: 1.6px dashed var(--atlas-v5-gold-soft);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background: var(--atlas-v5-card);
-  transition: all 0.15s;
-  padding: 0;
-  color: var(--atlas-v5-on-navy-1);
-}
-.cv2-check:hover { border-color: var(--atlas-v5-brand); }
-.cv2-check--checked { background: var(--atlas-v5-brand); border-color: var(--atlas-v5-brand); border-style: solid; }
-.cv2-check--indeterminate {
-  background: var(--atlas-v5-brand);
-  border-color: var(--atlas-v5-brand);
-  border-style: solid;
-  position: relative;
-}
+/* P5 punteo · el check usa las clases canónicas de Punteo.module.css.
+   Aquí queda solo el modificador de grupo parcial (barra en vez de check). */
+.cv2-check--indeterminate { position: relative; border-style: solid; }
 .cv2-check--indeterminate::after {
   content: '';
   width: 8px;
   height: 2px;
-  background: white;
+  background: var(--atlas-v5-white);
   border-radius: 1px;
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
 }
-.cv2-check svg { width: 12px; height: 12px; }
 
 /* Cells */
 .cv2-cat-icon {

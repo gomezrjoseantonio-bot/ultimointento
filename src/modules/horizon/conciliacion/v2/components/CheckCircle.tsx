@@ -1,7 +1,10 @@
 import React from 'react';
 import { Check } from 'lucide-react';
+// P5 punteo · un solo estilo de check para toda la app: las clases canónicas
+// del Punteo (Registro v2). Se retira el cv2-check duplicado.
+import punteo from '../../../../shared/components/Punteo/Punteo.module.css';
 
-export type CheckState = 'empty' | 'checked' | 'indeterminate';
+export type CheckState = 'empty' | 'checked' | 'conciliado' | 'indeterminate';
 
 interface CheckCircleProps {
   state: CheckState;
@@ -16,8 +19,10 @@ const CheckCircle: React.FC<CheckCircleProps> = ({
   disabled,
   ariaLabel,
 }) => {
-  const classes = ['cv2-check'];
-  if (state === 'checked') classes.push('cv2-check--checked');
+  const classes = [punteo.tick];
+  if (state === 'empty') classes.push(punteo.tickPrevisto);
+  if (state === 'checked' || state === 'indeterminate') classes.push(punteo.tickConfirmado);
+  if (state === 'conciliado') classes.push(punteo.tickConciliado);
   if (state === 'indeterminate') classes.push('cv2-check--indeterminate');
 
   return (
@@ -25,10 +30,18 @@ const CheckCircle: React.FC<CheckCircleProps> = ({
       type="button"
       className={classes.join(' ')}
       onClick={onClick}
-      disabled={disabled}
-      aria-label={ariaLabel ?? (state === 'checked' ? 'Desconciliar' : 'Puntear')}
+      // Conciliado = la palabra del banco · se deshace desde el movimiento.
+      disabled={disabled || state === 'conciliado'}
+      aria-label={
+        ariaLabel ??
+        (state === 'conciliado'
+          ? 'Conciliado con el banco'
+          : state === 'checked'
+            ? 'Desconciliar'
+            : 'Puntear')
+      }
     >
-      {state === 'checked' && <Check strokeWidth={3} />}
+      {(state === 'checked' || state === 'conciliado') && <Check size={11} strokeWidth={3} />}
     </button>
   );
 };

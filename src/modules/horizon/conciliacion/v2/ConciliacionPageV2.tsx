@@ -88,6 +88,22 @@ const ConciliacionPageV2: React.FC = () => {
 
   const { loading, days, kpis, accounts, properties, reload } = useMonthConciliacion(filters);
 
+  // P5 punteo · recuentos por estado para la regla de chips ocultos a 0.
+  const stateCounts = useMemo(() => {
+    let confirmados = 0;
+    let conciliados = 0;
+    for (const day of days) {
+      for (const row of day.items) {
+        const singles = row.type === 'rent_group' ? row.children : [row];
+        for (const r of singles) {
+          if (r.state === 'confirmed') confirmados += 1;
+          else if (r.state === 'conciliado') conciliados += 1;
+        }
+      }
+    }
+    return { confirmados, conciliados };
+  }, [days]);
+
   const [editingRow, setEditingRow] = useState<SingleRow | null>(null);
   const [deletingRow, setDeletingRow] = useState<SingleRow | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -266,13 +282,13 @@ const ConciliacionPageV2: React.FC = () => {
 
         <KpiRow kpis={kpis} year={filters.year} month0={filters.month0} />
 
-        <FiltersBar filters={filters} accounts={accounts} onChange={handleFilterChange} />
+        <FiltersBar filters={filters} accounts={accounts} onChange={handleFilterChange} stateCounts={stateCounts} />
 
         {loading ? (
           <div className="cv2-empty">Cargando…</div>
         ) : days.length === 0 ? (
           <div className="cv2-empty">
-            No hay movimientos previstos ni confirmados en este mes.
+            No hay movimientos para los filtros aplicados en este mes.
           </div>
         ) : (
           days.map((bucket) => (
