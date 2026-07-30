@@ -212,6 +212,9 @@ export const Icons = {
   Zap,
   ShoppingCart,
   Tv,
+  // ===== Bloque 3 · Punteo unificado (§13 · conceptos de origen) =====
+  Suministro: Zap,        // luz · agua · gas · internet
+  Ingreso: HandCoins,     // nómina · renta · intereses (ArrowUpRight reservado a deltas §AA.8)
   SelectorUsers: Users,
   CirclePlus,
 } as const;
