@@ -9,7 +9,6 @@
  * día agrupador (iconos ↑↓ + totales) y su bulk action bar sobrio.
  *
  * Reutiliza:
- *   - MovimientoDrawer (intacto · click en fila lo invoca con eventId)
  *   - AddMovementModal (con `defaultAccountId` añadido en sub-tarea 2)
  *   - BankStatementUploadPage (con `?accountId=N` añadido en sub-tarea 2)
  *   - tesoreriaSearch utils (matchesAmountQuery, normalizeSearchText)
@@ -28,17 +27,9 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
-  ChevronDown,
   Upload,
   Plus,
   Search,
-  TrendingUp,
-  CreditCard,
-  Home,
-  Zap,
-  Briefcase,
-  ArrowDownLeft,
 } from 'lucide-react';
 import {
   initDB,
@@ -56,18 +47,21 @@ import {
   bulkConfirmTreasuryEvents,
   confirmTreasuryEvent,
   deleteTreasuryEventCompletely,
-  updateTreasuryEventFields,
 } from '../../../services/treasuryConfirmationService';
+import PunteoList, {
+  type CambiosPunteo,
+} from '../../shared/components/Punteo/PunteoList';
+import {
+  eventoAItem,
+  movimientoAItem,
+} from '../../../services/punteo/punteoAdapter';
+import type { ChipEstado, ItemPunteo } from '../../../services/punteo/punteoModel';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import {
   matchesAmountQuery,
   normalizeSearchText,
 } from '../../../utils/tesoreriaSearch';
 import { showToastV5 } from '../../../design-system/v5';
-import MovimientoDrawer, {
-  type MovimientoDrawerData,
-  type MovimientoDrawerPatch,
-} from '../../../components/treasury/MovimientoDrawer';
 import AddMovementModal from '../../horizon/conciliacion/v2/components/AddMovementModal';
 import styles from './VistaCuentaPage.module.css';
 
@@ -127,11 +121,6 @@ const formatEur0 = (v: number): string => {
   return abs.toLocaleString('es-ES');
 };
 
-const formatSignedEur0 = (v: number): string => {
-  if (v === 0) return '0 €';
-  const sign = v > 0 ? '+' : '−';
-  return `${sign}${formatEur0(v)} €`;
-};
 
 const MONTH_NAMES_LONG = [
   'enero',
@@ -148,21 +137,11 @@ const MONTH_NAMES_LONG = [
   'diciembre',
 ];
 
-const formatDayLabel = (iso: string): string => {
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  const dow = d.toLocaleDateString('es-ES', { weekday: 'long' });
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mmm = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
-  const yyyy = d.getFullYear();
-  return `${dow} · ${dd} ${mmm} ${yyyy}`;
-};
 
 // ── Filters ──────────────────────────────────────────────────────────────────
 
 type PeriodFilter = 'hoy' | '7d' | '15d' | '30d' | 'mes' | 'anio' | 'todo';
 type TypeFilter = 'todos' | 'ingresos' | 'gastos';
-type StatusFilter = 'todos' | 'pendientes' | 'conciliados';
 
 const PERIOD_LABELS: Record<PeriodFilter, string> = {
   hoy: 'Hoy',
@@ -229,37 +208,9 @@ const isMovementReconciled = (m: Movement): boolean =>
   m.unifiedStatus === 'conciliado' ||
   m.status === 'conciliado';
 
-// ── Icons per row type ───────────────────────────────────────────────────────
-
-const getExpenseIcon = (categoryLabel: string | undefined): React.ReactElement => {
-  const cat = (categoryLabel ?? '').toLowerCase();
-  if (cat.includes('vivienda') || cat.includes('alquiler'))
-    return <Home size={14} color="var(--atlas-v5-pos)" />;
-  if (cat.includes('suministro') || cat.includes('gas') || cat.includes('luz'))
-    return <Zap size={14} color="var(--atlas-v5-pos)" />;
-  if (cat.includes('gestión') || cat.includes('gestion') || cat.includes('honorario'))
-    return <Briefcase size={14} color="var(--atlas-v5-pos)" />;
-  if (
-    cat.includes('cuota') ||
-    cat.includes('hipoteca') ||
-    cat.includes('financiación') ||
-    cat.includes('financiacion')
-  )
-    return <CreditCard size={14} color="var(--atlas-v5-pos)" />;
-  return <ArrowDownLeft size={14} color="var(--atlas-v5-pos)" />;
-};
-
-const getRowIcon = (row: UnifiedRow): React.ReactElement => {
-  if (row.type === 'income')
-    return <TrendingUp size={14} color="var(--atlas-v5-ink)" />;
-  if (row.type === 'financing')
-    return <CreditCard size={14} color="var(--atlas-v5-pos)" />;
-  return getExpenseIcon(row.categoryLabel);
-};
-
 // ── Pagination ───────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 50;
+const MAX_FILAS = 250;
 
 // ── Debounce ─────────────────────────────────────────────────────────────────
 
@@ -447,15 +398,9 @@ const VistaCuentaPage: React.FC = () => {
   // ── Filters state ─────────────────────────────────────────────────────────
   const [period, setPeriod] = useState<PeriodFilter>('hoy');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('todos');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pendientes');
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, 300);
-  const [page, setPage] = useState(0);
 
-  // Resetear paginación al cambiar filtros.
-  useEffect(() => {
-    setPage(0);
-  }, [period, typeFilter, statusFilter, search, accountId]);
 
   // ── Build unified rows for this account ───────────────────────────────────
   const accountRows = useMemo((): UnifiedRow[] => {
@@ -518,42 +463,6 @@ const VistaCuentaPage: React.FC = () => {
   }, [movements, treasuryEvents, accountId]);
 
   // Counts para los pills "Estado" (sobre periodo+tipo+search aplicados).
-  const counts = useMemo(() => {
-    const matchesType = (r: UnifiedRow): boolean => {
-      if (typeFilter === 'todos') return true;
-      if (typeFilter === 'ingresos') return r.type === 'income';
-      return r.type === 'expense' || r.type === 'financing';
-    };
-    const matchesPeriod = (r: UnifiedRow): boolean => isWithinPeriod(r.date, period);
-    const matchesSearch = (r: UnifiedRow): boolean => {
-      if (!search) return true;
-      const needle = normalizeSearchText(search);
-      if (!needle) return true;
-      const haystack = [
-        r.description,
-        r.counterparty,
-        r.categoryLabel,
-        (r.raw as Movement).providerNif,
-        (r.raw as Movement).invoiceNumber,
-      ]
-        .map(normalizeSearchText)
-        .join(' ');
-      if (haystack.includes(needle)) return true;
-      return matchesAmountQuery(Math.abs(r.amount), search);
-    };
-
-    const base = accountRows
-      .filter(matchesType)
-      .filter(matchesPeriod)
-      .filter(matchesSearch);
-
-    return {
-      todos: base.length,
-      pendientes: base.filter((r) => !r.isReconciled).length,
-      conciliados: base.filter((r) => r.isReconciled).length,
-    };
-  }, [accountRows, typeFilter, period, search]);
-
   // Filtered rows according to all 4 axes (estado included).
   const filtered = useMemo((): UnifiedRow[] => {
     return accountRows.filter((r) => {
@@ -565,8 +474,6 @@ const VistaCuentaPage: React.FC = () => {
       )
         return false;
       if (!isWithinPeriod(r.date, period)) return false;
-      if (statusFilter === 'pendientes' && r.isReconciled) return false;
-      if (statusFilter === 'conciliados' && !r.isReconciled) return false;
       if (search) {
         const needle = normalizeSearchText(search);
         if (needle) {
@@ -589,35 +496,34 @@ const VistaCuentaPage: React.FC = () => {
       }
       return true;
     });
-  }, [accountRows, typeFilter, period, statusFilter, search]);
+  }, [accountRows, typeFilter, period, search]);
 
-  // ── Pagination ────────────────────────────────────────────────────────────
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages - 1);
-  const visibleRows = filtered.slice(
-    safePage * PAGE_SIZE,
-    (safePage + 1) * PAGE_SIZE,
-  );
+  // ── Items canónicos para PunteoList (P3 · pantalla B de punteo) ───────────
+  // El eje de estado vive en los chips de PunteoList; aquí solo periodo/tipo/
+  // búsqueda. Cap de seguridad (periodo «Todo» puede traer miles de filas).
+  const [chip, setChip] = useState<ChipEstado>('previstos');
+  const [busyPunteo, setBusyPunteo] = useState(false);
 
-  // ── Day grouping (over visibleRows) ───────────────────────────────────────
-  const dayGroups = useMemo(() => {
-    const map = new Map<string, UnifiedRow[]>();
-    for (const r of visibleRows) {
-      const key = r.date || '0000-00-00';
-      const list = map.get(key) ?? [];
-      list.push(r);
-      map.set(key, list);
-    }
-    return Array.from(map.entries()).map(([day, rows]) => {
-      const totalIn = rows
-        .filter((r) => r.amount > 0)
-        .reduce((s, r) => s + r.amount, 0);
-      const totalOut = rows
-        .filter((r) => r.amount < 0)
-        .reduce((s, r) => s + r.amount, 0);
-      return { day, rows, totalIn, totalOut };
+  const aliasInmueble = useMemo(() => {
+    const m = new Map<string, string>();
+    properties.forEach((p) => {
+      if (p.id != null) m.set(String(p.id), p.alias);
     });
-  }, [visibleRows]);
+    return (id: number | string) => m.get(String(id));
+  }, [properties]);
+
+  const items = useMemo((): ItemPunteo[] => {
+    const mapped = filtered.map((r) =>
+      r.kind === 'movement'
+        ? movimientoAItem(r.raw as Movement & { id: number }, aliasInmueble)
+        : eventoAItem(r.raw as TreasuryEvent & { id: number }, aliasInmueble),
+    );
+    if (mapped.length <= MAX_FILAS) return mapped;
+    return mapped
+      .slice()
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+      .slice(0, MAX_FILAS);
+  }, [filtered, aliasInmueble]);
 
   // Footer scope totals (over filtered, NOT just visibleRows).
   const scopeTotals = useMemo(() => {
@@ -630,250 +536,73 @@ const VistaCuentaPage: React.FC = () => {
     return { totalIn, totalOut };
   }, [filtered]);
 
-  // ── Selection (bulk bar) ──────────────────────────────────────────────────
-  // Key = `${kind}:${id}` para evitar colisiones entre movement.id y event.id.
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  const rowKey = (r: UnifiedRow): string => `${r.kind}:${r.id}`;
-
-  const toggleRow = (r: UnifiedRow) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      const key = rowKey(r);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-
-  const visibleSelectableKeys = useMemo(
-    () => visibleRows.map(rowKey),
-    [visibleRows],
-  );
-
-  const allVisibleSelected =
-    visibleSelectableKeys.length > 0 &&
-    visibleSelectableKeys.every((k) => selected.has(k));
-
-  const toggleSelectAllVisible = () => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (allVisibleSelected) {
-        for (const k of visibleSelectableKeys) next.delete(k);
-      } else {
-        for (const k of visibleSelectableKeys) next.add(k);
-      }
-      return next;
-    });
-  };
-
-  const clearSelection = () => setSelected(new Set());
-
-  // ── Drawer (movimiento previsto) ──────────────────────────────────────────
-  const [drawerEventId, setDrawerEventId] = useState<number | null>(null);
-
-  const drawerData = useMemo((): MovimientoDrawerData | null => {
-    if (drawerEventId == null) return null;
-    const ev = treasuryEvents.find((e) => e.id === drawerEventId);
-    if (!ev) return null;
-    const accountAlias =
-      account?.alias ?? account?.banco?.name ?? account?.name;
-    // Hidratar inmueble desde properties si el evento no trae alias
-    // denormalizado.
-    const inmuebleId = (ev as any).inmuebleId;
-    const inmuebleAlias =
-      ev.inmuebleAlias ||
-      (inmuebleId != null
-        ? properties.find((p) => p.id === inmuebleId)?.alias
-        : undefined);
-    return {
-      id: ev.id!,
-      description: ev.description,
-      predictedDate: ev.predictedDate,
-      type: ev.type,
-      amount: ev.amount,
-      status: ev.status,
-      accountAlias,
-      inmuebleAlias,
-      contratoAlias: (ev as any).contratoAlias,
-      categoryLabel: ev.categoryLabel,
-    };
-  }, [drawerEventId, treasuryEvents, account, properties]);
-
-  const handleSaveEvent = async (
-    id: number | string,
-    patch: MovimientoDrawerPatch,
-  ) => {
-    const dbId = typeof id === 'number' ? id : Number(id);
-    if (!Number.isFinite(dbId)) return;
+  const onConfirmarItem = async (item: ItemPunteo, cambios?: CambiosPunteo) => {
+    if (item.kind !== 'evento' || busyPunteo) return;
+    setBusyPunteo(true);
     try {
-      await updateTreasuryEventFields(dbId, patch);
+      await confirmTreasuryEvent(item.refId, {
+        amount: cambios?.importe,
+        date: cambios?.fecha,
+        accountId: cambios?.cuentaId,
+      });
+      showToastV5('Punteado · movimiento real creado', 'success');
+      invalidateCachedStores(['treasuryEvents', 'movements', 'accounts']);
+      reload();
+    } catch (err) {
+      showToastV5(err instanceof Error ? err.message : 'No se pudo puntear', 'error');
+    } finally {
+      setBusyPunteo(false);
+    }
+  };
+
+  const onNoPasoItem = async (item: ItemPunteo) => {
+    if (item.kind !== 'evento' || busyPunteo) return;
+    setBusyPunteo(true);
+    try {
+      await deleteTreasuryEventCompletely(item.refId);
+      showToastV5('Previsión descartada · este mes no pasa', 'success');
       invalidateCachedStores(['treasuryEvents']);
       reload();
-      setDrawerEventId(null);
-      showToastV5('Cambios guardados', 'success');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'No se pudo guardar';
-      showToastV5(msg, 'error');
+      showToastV5(err instanceof Error ? err.message : 'No se pudo descartar', 'error');
+    } finally {
+      setBusyPunteo(false);
     }
   };
 
-  const handleConfirmFromDrawer = async (id: number | string) => {
-    const dbId = typeof id === 'number' ? id : Number(id);
-    if (!Number.isFinite(dbId)) return;
-    try {
-      await confirmTreasuryEvent(dbId);
-      invalidateCachedStores(['treasuryEvents', 'movements']);
-      reload();
-      setDrawerEventId(null);
-      showToastV5('Pago confirmado', 'success');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'No se pudo confirmar';
-      showToastV5(msg, 'error');
-    }
-  };
+  // Puntear en lote TODAS las previsiones visibles del scope (sustituye a la
+  // selección por checkbox · usa el mismo bulkConfirmTreasuryEvents real).
+  const previstosVisibles = useMemo(
+    () => items.filter((i) => i.kind === 'evento' && i.estado === 'previsto'),
+    [items],
+  );
 
-  // ── Bulk actions ──────────────────────────────────────────────────────────
-  const handleBulkConfirm = async () => {
-    // Sólo afectamos a pendientes (events o movements no conciliados).
-    const ids: number[] = [];
-    for (const key of selected) {
-      const [kind, idStr] = key.split(':');
-      const id = Number(idStr);
-      if (kind === 'event' && Number.isFinite(id)) {
-        ids.push(id);
-      }
-    }
-    if (ids.length === 0) {
-      showToastV5(
-        'No hay previsiones pendientes en la selección',
-        'warn',
-      );
-      return;
-    }
+  const handlePuntearTodos = async () => {
+    if (previstosVisibles.length === 0 || busyPunteo) return;
+    setBusyPunteo(true);
     try {
-      const result = await bulkConfirmTreasuryEvents(ids);
+      const result = await bulkConfirmTreasuryEvents(previstosVisibles.map((i) => i.refId));
       invalidateCachedStores(['treasuryEvents', 'movements', 'accounts']);
       reload();
-      clearSelection();
       const ok = result.ok.length;
       const failed = result.failed.length;
-      if (ok > 0 && failed === 0) {
-        showToastV5(
-          `${ok} movimiento${ok === 1 ? '' : 's'} conciliado${ok === 1 ? '' : 's'}`,
-          'success',
-        );
-      } else if (ok > 0 && failed > 0) {
-        showToastV5(
-          `Conciliados: ${ok} · fallidos: ${failed} · ver consola`,
-          'error',
-        );
+      if (failed === 0) {
+        showToastV5(`${ok} previsi${ok === 1 ? 'ón punteada' : 'ones punteadas'}`, 'success');
       } else {
-        showToastV5('No se pudo conciliar · ver consola', 'error');
+        showToastV5(`Punteadas: ${ok} · fallidas: ${failed} · ver consola`, 'error');
       }
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('[VistaCuenta] bulk confirm falló', err);
-      showToastV5('Error al conciliar · ver consola', 'error');
+      console.error('[VistaCuenta] puntear todos falló', err);
+      showToastV5('Error al puntear · ver consola', 'error');
+    } finally {
+      setBusyPunteo(false);
     }
   };
 
-  const handleBulkDelete = async () => {
-    // Sólo afecta a pendientes · events sin executedMovementId o movements no
-    // conciliados.
-    const eventIds: number[] = [];
-    const movementIds: number[] = [];
-    for (const key of selected) {
-      const [kind, idStr] = key.split(':');
-      const id = Number(idStr);
-      if (!Number.isFinite(id)) continue;
-      if (kind === 'event') eventIds.push(id);
-      else if (kind === 'movement') {
-        const mv = movements.find((m) => m.id === id);
-        if (mv && !isMovementReconciled(mv)) movementIds.push(id);
-      }
-    }
-    const total = eventIds.length + movementIds.length;
-    if (total === 0) {
-      showToastV5(
-        'No hay pendientes en la selección que se puedan eliminar',
-        'warn',
-      );
-      return;
-    }
-    // Modal confirmación (window.confirm como mínimo · evita dependencia
-    // adicional · spec pide "modal de confirmación con count").
-    const ok = window.confirm(
-      `¿Eliminar ${total} movimiento${total === 1 ? '' : 's'} pendiente${total === 1 ? '' : 's'}?\n\nLos movimientos conciliados no se eliminarán.`,
-    );
-    if (!ok) return;
-
-    let okCount = 0;
-    let failed = 0;
-    try {
-      for (const id of eventIds) {
-        try {
-          await deleteTreasuryEventCompletely(id);
-          okCount += 1;
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error('[VistaCuenta] delete event falló', id, err);
-          failed += 1;
-        }
-      }
-      if (movementIds.length > 0) {
-        const db = await initDB();
-        for (const id of movementIds) {
-          try {
-            await db.delete('movements', id);
-            okCount += 1;
-          } catch (err) {
-            // eslint-disable-next-line no-console
-            console.error('[VistaCuenta] delete movement falló', id, err);
-            failed += 1;
-          }
-        }
-      }
-      invalidateCachedStores(['treasuryEvents', 'movements', 'accounts']);
-      reload();
-      clearSelection();
-      if (okCount > 0 && failed === 0) {
-        showToastV5(
-          `${okCount} movimiento${okCount === 1 ? '' : 's'} eliminado${okCount === 1 ? '' : 's'}`,
-          'success',
-        );
-      } else if (okCount > 0 && failed > 0) {
-        showToastV5(
-          `Eliminados: ${okCount} · fallidos: ${failed} · ver consola`,
-          'error',
-        );
-      } else {
-        showToastV5('No se pudo eliminar · ver consola', 'error');
-      }
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[VistaCuenta] bulk delete falló', err);
-      showToastV5('Error al eliminar · ver consola', 'error');
-    }
-  };
-
-  const selectedHasPendientes = useMemo(() => {
-    for (const key of selected) {
-      const [kind] = key.split(':');
-      if (kind === 'event') return true;
-      if (kind === 'movement') {
-        const id = Number(key.split(':')[1]);
-        const mv = movements.find((m) => m.id === id);
-        if (mv && !isMovementReconciled(mv)) return true;
-      }
-    }
-    return false;
-  }, [selected, movements]);
-
-  // ── AddMovementModal ──────────────────────────────────────────────────────
+  // ── Modal alta + navegación (conservados) ─────────────────────────────────
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // ── Actions ───────────────────────────────────────────────────────────────
   const handleSubirExtracto = () => {
     if (accountId == null) return;
     navigate(`/tesoreria/importar?accountId=${accountId}`);
@@ -881,17 +610,6 @@ const VistaCuentaPage: React.FC = () => {
 
   const handleNuevoMovimiento = () => setShowAddModal(true);
 
-  const handleRowClick = (r: UnifiedRow) => {
-    if (r.kind === 'event') {
-      setDrawerEventId(r.id);
-    } else {
-      // Movements no abren el drawer Movimiento previsto · llevarlos al filtro
-      // de movimientos para edición. Mantiene compat con el flujo actual.
-      const params = new URLSearchParams();
-      params.set('cuenta', String(accountId ?? ''));
-      navigate(`/tesoreria/movimientos?${params.toString()}`);
-    }
-  };
 
   // ── Render ────────────────────────────────────────────────────────────────
   if (loading) {
@@ -1093,179 +811,41 @@ const VistaCuentaPage: React.FC = () => {
                 aria-label="Buscar movimientos"
               />
             </div>
-            <span className={styles.toolbarLabel}>Estado</span>
-            <div className={styles.pillGroup}>
-              <button
-                type="button"
-                className={`${styles.pill} ${statusFilter === 'todos' ? styles.pillActive : ''}`}
-                onClick={() => setStatusFilter('todos')}
-                aria-pressed={statusFilter === 'todos'}
-              >
-                Todos <span className={styles.pillCount}>{counts.todos}</span>
-              </button>
-              <button
-                type="button"
-                className={`${styles.pill} ${statusFilter === 'pendientes' ? styles.pillActive : ''}`}
-                onClick={() => setStatusFilter('pendientes')}
-                aria-pressed={statusFilter === 'pendientes'}
-              >
-                Pendientes{' '}
-                <span className={styles.pillCount}>{counts.pendientes}</span>
-              </button>
-              <button
-                type="button"
-                className={`${styles.pill} ${statusFilter === 'conciliados' ? styles.pillActive : ''}`}
-                onClick={() => setStatusFilter('conciliados')}
-                aria-pressed={statusFilter === 'conciliados'}
-              >
-                Conciliados{' '}
-                <span className={styles.pillCount}>{counts.conciliados}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Bulk action bar */}
-        {selected.size > 0 && (
-          <div className={styles.bulkBar} role="region" aria-label="Acciones en bloque">
-            <div className={styles.bulkInfo}>
-              <b>{selected.size}</b> movimiento
-              {selected.size === 1 ? '' : 's'} seleccionado
-              {selected.size === 1 ? '' : 's'}
-            </div>
-            <div className={styles.bulkActions}>
-              <button
-                type="button"
-                className={styles.bulkBtn}
-                onClick={handleBulkDelete}
-                disabled={!selectedHasPendientes}
-                title={
-                  selectedHasPendientes
-                    ? 'Eliminar pendientes seleccionados'
-                    : 'Sólo afecta a pendientes'
-                }
-              >
-                Eliminar
-              </button>
+            {previstosVisibles.length > 0 && (
               <button
                 type="button"
                 className={styles.bulkBtnPrimary}
-                onClick={handleBulkConfirm}
-                disabled={!selectedHasPendientes}
+                onClick={handlePuntearTodos}
+                disabled={busyPunteo}
+                title="Puntear todas las previsiones visibles"
               >
-                Conciliar seleccionados
+                Puntear {previstosVisibles.length} prevista{previstosVisibles.length === 1 ? '' : 's'}
               </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Tabla */}
-        <div className={styles.movList}>
-          <div className={styles.movHeader}>
-            <input
-              type="checkbox"
-              checked={allVisibleSelected}
-              onChange={toggleSelectAllVisible}
-              aria-label="Seleccionar todos los visibles"
-            />
-            <div>Concepto</div>
-            <div>Contraparte</div>
-            <div className={styles.movHeaderImporte}>Importe</div>
-            <div>Estado</div>
-          </div>
-
-          {visibleRows.length === 0 ? (
-            <div className={styles.emptyRow}>
-              No hay movimientos para los filtros aplicados.
-            </div>
-          ) : (
-            dayGroups.map(({ day, rows, totalIn, totalOut }) => (
-              <React.Fragment key={day}>
-                <div className={styles.daySep}>
-                  <span className={styles.dayLabel}>{formatDayLabel(day)}</span>
-                  <span className={styles.dayStats}>
-                    <span className={`${styles.dayStat} ${styles.dayStatIn}`}>
-                      <ChevronUp size={12} strokeWidth={2.5} />
-                      {totalIn === 0 ? '0 €' : `+${formatEur0(totalIn)} €`}
-                    </span>
-                    <span className={`${styles.dayStat} ${styles.dayStatOut}`}>
-                      <ChevronDown size={12} strokeWidth={2.5} />
-                      {totalOut === 0 ? '0 €' : `−${formatEur0(totalOut)} €`}
-                    </span>
-                  </span>
-                </div>
-                {rows.map((r) => {
-                  const key = rowKey(r);
-                  const isSelected = selected.has(key);
-                  const tagLabel =
-                    r.type === 'income'
-                      ? 'Ingreso'
-                      : r.type === 'financing'
-                        ? 'Financiación'
-                        : 'Gasto';
-                  return (
-                    <div
-                      key={key}
-                      className={`${styles.movRow} ${isSelected ? styles.movRowSelected : ''}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleRowClick(r)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleRowClick(r);
-                        }
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={() => toggleRow(r)}
-                        aria-label="Seleccionar movimiento"
-                      />
-                      <div className={styles.movConcepto}>
-                        <div className={styles.movConceptoMain}>
-                          {r.description || '—'}
-                        </div>
-                        <div className={styles.movConceptoSub}>
-                          <span className={styles.movTag}>
-                            {tagLabel}
-                            {r.categoryLabel ? ` · ${r.categoryLabel}` : ''}
-                          </span>
-                          <span aria-hidden style={{ display: 'inline-flex' }}>
-                            {getRowIcon(r)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className={styles.movContraparte}>
-                        {r.counterparty || '—'}
-                      </div>
-                      <div
-                        className={`${styles.movImporte} ${r.amount >= 0 ? styles.movImporteIn : styles.movImporteOut}`}
-                      >
-                        {formatSignedEur0(r.amount)}
-                      </div>
-                      <div>
-                        <span
-                          className={`${styles.statePill} ${r.isReconciled ? styles.statePillConciliado : styles.statePillPendiente}`}
-                        >
-                          {r.isReconciled ? 'Conciliado' : 'Pendiente'}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </React.Fragment>
-            ))
-          )}
-
-          {/* Footer · totales scope + paginación */}
+        {/* Lista canónica de punteo (P3 · pantalla B · cuenta fijada) */}
+        <div className={styles.movList} style={{ padding: '10px 14px' }}>
+          <PunteoList
+            items={items}
+            chip={chip}
+            onChipChange={setChip}
+            cuentas={accounts
+              .filter((a) => a.id != null)
+              .map((a) => ({
+                id: a.id as number,
+                label: a.alias ?? a.banco?.name ?? a.name ?? `#${a.id}`,
+              }))}
+            ocultarCuenta
+            onConfirmar={onConfirmarItem}
+            onNoPaso={onNoPasoItem}
+          />
           <div className={styles.movFooter}>
             <div className={styles.movFooterTotals}>
               <span>
                 <span className={styles.movFooterLbl}>Mostrando</span>
-                {visibleRows.length} de {filtered.length}
+                {items.length} de {filtered.length}
               </span>
               <span>
                 <span className={styles.movFooterLbl}>Entradas</span>
@@ -1284,42 +864,9 @@ const VistaCuentaPage: React.FC = () => {
                 </span>
               </span>
             </div>
-            <div className={styles.pagerFooter}>
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={safePage === 0}
-                aria-label="Página anterior"
-              >
-                ‹ Anterior
-              </button>
-              <span className={styles.pagerFooterPos}>
-                {safePage + 1} / {totalPages}
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  setPage((p) => Math.min(totalPages - 1, p + 1))
-                }
-                disabled={safePage >= totalPages - 1}
-                aria-label="Página siguiente"
-              >
-                Siguiente ›
-              </button>
-            </div>
           </div>
         </div>
       </div>
-
-      {/* Drawer movimiento previsto */}
-      <MovimientoDrawer
-        open={drawerEventId !== null}
-        data={drawerData}
-        accounts={accounts}
-        onClose={() => setDrawerEventId(null)}
-        onSave={handleSaveEvent}
-        onConfirmar={handleConfirmFromDrawer}
-      />
 
       {/* Add movement modal */}
       {showAddModal && accountId != null && (
