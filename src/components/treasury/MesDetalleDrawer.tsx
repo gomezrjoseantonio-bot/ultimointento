@@ -952,7 +952,7 @@ const BankDayCard: React.FC<{
     pendientesCount > 0 && confirmados > 0
       ? `${confirmados} confirmados · ${pendientesCount} previstos`
       : pendientesCount > 0
-        ? `${pendientesCount} pendiente${pendientesCount === 1 ? '' : 's'}`
+        ? `${pendientesCount} previsto${pendientesCount === 1 ? '' : 's'}`
         : `${confirmados} confirmado${confirmados === 1 ? '' : 's'}`;
   return (
     <div
@@ -1130,8 +1130,8 @@ const BankDayCard: React.FC<{
                 <div
                   style={{
                     fontSize: 12.5,
-                    fontWeight: 600,
-                    color: 'var(--atlas-v5-ink)',
+                    fontWeight: isConfirmed ? 600 : 400,
+                    color: isConfirmed ? 'var(--atlas-v5-ink)' : 'var(--atlas-v5-ink-3)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -1153,14 +1153,21 @@ const BankDayCard: React.FC<{
             </>
           );
           return clickable ? (
-            <button
+            <div
               key={`bev-${e.id ?? idx}`}
-              type="button"
-              style={baseStyle}
+              role="button"
+              tabIndex={0}
+              style={{ ...baseStyle, cursor: 'pointer' }}
               onClick={() => onEventClick!(e.id!)}
+              onKeyDown={(ev) => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                  ev.preventDefault();
+                  onEventClick!(e.id!);
+                }
+              }}
             >
               {inner}
-            </button>
+            </div>
           ) : (
             <div key={`bev-${e.id ?? idx}`} style={baseStyle}>
               {inner}
@@ -1416,14 +1423,23 @@ const EventoRow: React.FC<{
   };
 
   if (clickable) {
+    // div role=button (no <button>): el círculo de punteo interior ya es un
+    // <button> y anidarlos es HTML inválido (review #1501).
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onClick!(evento.id!)}
+        onKeyDown={(ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            onClick!(evento.id!);
+          }
+        }}
         style={{ ...baseStyle, cursor: 'pointer' }}
       >
         {content}
-      </button>
+      </div>
     );
   }
   return <div style={baseStyle}>{content}</div>;
