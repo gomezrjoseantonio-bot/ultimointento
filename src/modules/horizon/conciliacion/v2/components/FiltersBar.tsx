@@ -90,7 +90,7 @@ const FiltersBar: React.FC<FiltersBarProps> = ({ filters, accounts, onChange }) 
         <span className="cv2-filter-label">Estado</span>
         {[
           { v: 'all', label: 'Todos' },
-          { v: 'pending', label: 'Pendientes' },
+          { v: 'pending', label: 'Previstos' },
           { v: 'confirmed', label: 'Confirmados' },
         ].map((o) => (
           <button
