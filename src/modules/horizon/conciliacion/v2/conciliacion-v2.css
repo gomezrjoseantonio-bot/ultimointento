@@ -305,7 +305,10 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 1.5px solid var(--atlas-v5-ink-5);
+  /* Punteo canónico (Bloque 3 · Registro v2): previsto = discontinuo oro ·
+     confirmado = navy. El verde conciliado llegará cuando esta vista cruce
+     con el source del movimiento (P5). */
+  border: 1.6px dashed var(--atlas-v5-gold-soft);
   display: inline-flex;
   align-items: center;
   justify-content: center;
