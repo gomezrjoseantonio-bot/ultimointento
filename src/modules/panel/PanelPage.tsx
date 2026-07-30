@@ -43,6 +43,7 @@ import {
   calcularEstimacionEnCurso,
   type EstimacionEjercicioEnCurso,
 } from '../../services/estimacionFiscalEnCursoService';
+import AutoFitHeight from './components/AutoFitHeight';
 import FotoActualWidget from './components/FotoActualWidget';
 import HeroPatrimonio from './components/HeroPatrimonio';
 import ComoVaElMes from './components/ComoVaElMes';
@@ -448,6 +449,9 @@ const PanelPage: React.FC = () => {
 
   return (
     <div className={styles.page}>
+      {/* El Panel NO hace scroll (requisito duro) · AutoFitHeight escala el
+          contenido si no cabe en la altura disponible. */}
+      <AutoFitHeight>
       {/* 1 · Cabecera blanca · saludo + fecha (sin subtítulos de estado) */}
       <PageHead title={`${saludo(today)}, ${nombreUsuario}`} sub={fechaLabel} />
 
@@ -498,6 +502,7 @@ const PanelPage: React.FC = () => {
           </div>
         </>
       )}
+      </AutoFitHeight>
     </div>
   );
 };

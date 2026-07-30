@@ -1,14 +1,19 @@
 /* Panel · versión C · página. Las secciones viven en sus componentes.
    Cero hex · solo tokens --atlas-v5-*. */
 
+/* Sin topbar (el buscador se quitó) el Panel ocupa toda la altura del main y
+   NUNCA hace scroll: height 100% + overflow hidden · AutoFitHeight escala el
+   contenido si hiciera falta. Padding vertical compacto para ganar altura. */
 .page {
   font-family: var(--atlas-v5-font-ui);
   background: var(--atlas-v5-bg);
   color: var(--atlas-v5-ink-2);
-  padding: 22px 32px 48px;
+  padding: 18px 32px 20px;
   max-width: var(--atlas-v5-main-max-width);
   margin: 0 auto;
   width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .loading {
