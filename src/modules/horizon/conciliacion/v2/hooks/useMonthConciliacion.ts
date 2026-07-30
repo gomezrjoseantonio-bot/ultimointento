@@ -22,7 +22,7 @@ import {
 import { dayOfMonth, extractDate, weekdayLabel } from '../utils/conciliacionFormatters';
 
 export type AmountType = 'income' | 'expense' | 'financing';
-export type RowState = 'predicted' | 'confirmed';
+export type RowState = 'predicted' | 'confirmed' | 'conciliado';
 
 export interface DocSlotState {
   documentId?: number;
@@ -111,7 +111,7 @@ export interface Filters {
   month0: number;          // 0-11
   accountId: number | 'all';
   ambito: 'all' | 'PERSONAL' | 'INMUEBLE';
-  stateFilter: 'all' | 'pending' | 'confirmed';
+  stateFilter: 'all' | 'pending' | 'confirmed' | 'conciliado';
   search: string;
 }
 
@@ -196,6 +196,7 @@ function eventToSingleRow(
     docsById: Map<number, Document>;
     contractsById: Map<number, any>;
     prestamosById: Map<string, any>;
+    movSourceById: Map<number, string>;
   },
 ): SingleRow {
   const {
@@ -204,6 +205,7 @@ function eventToSingleRow(
     docsById,
     contractsById,
     prestamosById,
+    movSourceById,
   } = opts;
 
   const account = event.accountId != null ? accountsById.get(event.accountId) : undefined;
@@ -217,7 +219,15 @@ function eventToSingleRow(
     ? (event.actualDate ?? event.predictedDate)
     : event.predictedDate;
 
-  const rowState: RowState = event.status === 'executed' ? 'confirmed' : 'predicted';
+  // P5 punteo canónico · executed + movimiento de extracto = conciliado (verde ·
+  // la palabra del banco) · executed sin extracto = confirmado (tu palabra).
+  const execMovId = event.executedMovementId ?? event.movementId;
+  const rowState: RowState =
+    event.status !== 'executed'
+      ? 'predicted'
+      : execMovId != null && movSourceById.get(Number(execMovId)) === 'import'
+        ? 'conciliado'
+        : 'confirmed';
 
   const defaults = getDocDefaultsForCategory(event.categoryLabel);
 
@@ -316,8 +326,8 @@ function groupRentsByPropertyAndDay(rows: SingleRow[]): RowItem[] {
   for (const [, children] of buckets) {
     if (children.length >= 2) {
       const first = children[0];
-      const allConfirmed = children.every((c) => c.state === 'confirmed');
-      const anyConfirmed = children.some((c) => c.state === 'confirmed');
+      const allConfirmed = children.every((c) => c.state !== 'predicted');
+      const anyConfirmed = children.some((c) => c.state !== 'predicted');
       const checkState: 'all' | 'some' | 'none' =
         allConfirmed ? 'all' : anyConfirmed ? 'some' : 'none';
       const uniqAccounts = new Set(children.map((c) => c.accountLabel));
@@ -403,7 +413,7 @@ function computeKpis(rows: SingleRow[]): MonthKpis {
     // los KPIs: son movimientos de caja internos, no generan flujo neto.
     if (r.isTransfer) continue;
 
-    const confirmed = r.state === 'confirmed';
+    const confirmed = r.state !== 'predicted'; // real = confirmado ∨ conciliado
 
     // Totales previstos = TODOS los eventos del mes, con o sin punteo (la
     // previsión sigue siendo válida aunque ya esté punteada).
@@ -433,6 +443,7 @@ function applyFilters(rows: SingleRow[], filters: Filters): SingleRow[] {
     if (filters.ambito !== 'all' && row.ambito !== filters.ambito) return false;
     if (filters.stateFilter === 'pending' && row.state !== 'predicted') return false;
     if (filters.stateFilter === 'confirmed' && row.state !== 'confirmed') return false;
+    if (filters.stateFilter === 'conciliado' && row.state !== 'conciliado') return false;
     if (needle) {
       // Búsqueda case-insensitive · sin acentos · sobre concepto, contraparte,
       // categoría, alias inmueble, NIF proveedor y nº factura. Adicionalmente,
@@ -472,7 +483,7 @@ export function useMonthConciliacion(filters: Filters): UseMonthConciliacionResu
       setLoading(true);
       const db = await initDB();
 
-      const [eventsRaw, accountsAll, propertiesAll, documentsAll, contractsAll, prestamosAll] =
+      const [eventsRaw, accountsAll, propertiesAll, documentsAll, contractsAll, prestamosAll, movementsAll] =
         await Promise.all([
           db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
           db.getAll('accounts') as Promise<Account[]>,
@@ -481,6 +492,9 @@ export function useMonthConciliacion(filters: Filters): UseMonthConciliacionResu
           // Contracts / prestamos: coerción suave — algunos entornos pueden no tenerlos.
           (db as any).getAll('contracts').catch(() => []),
           (db as any).getAll('prestamos').catch(() => []),
+          // P5 punteo · source del movimiento para distinguir confirmado (manual)
+          // de conciliado (extracto bancario).
+          (db as any).getAll('movements').catch(() => []),
         ]);
 
       // PR5-HOTFIX v3 · migración silenciosa counterparty → providerName al leer.
@@ -496,6 +510,12 @@ export function useMonthConciliacion(filters: Filters): UseMonthConciliacionResu
 
       const docsById = new Map<number, Document>();
       for (const d of documentsAll) if (d.id != null) docsById.set(d.id, d);
+
+      // P5 · id de movimiento → source ('import' = extracto → conciliado).
+      const movSourceById = new Map<number, string>();
+      for (const m of movementsAll as Array<{ id?: number; source?: string }>) {
+        if (m.id != null && m.source) movSourceById.set(m.id, m.source);
+      }
 
       const contractsById = new Map<number, any>();
       for (const c of contractsAll as any[]) if (c?.id != null) contractsById.set(c.id, c);
@@ -521,6 +541,7 @@ export function useMonthConciliacion(filters: Filters): UseMonthConciliacionResu
           docsById,
           contractsById,
           prestamosById,
+          movSourceById,
         }),
       );
 

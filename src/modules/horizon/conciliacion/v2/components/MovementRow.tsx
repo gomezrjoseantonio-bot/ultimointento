@@ -51,7 +51,7 @@ const MovementRow: React.FC<MovementRowProps> = ({
   return (
     <div className={rowClasses.join(' ')} onClick={() => onOpenModal(row)}>
       <CheckCircle
-        state={row.state === 'confirmed' ? 'checked' : 'empty'}
+        state={row.state === 'conciliado' ? 'conciliado' : row.state === 'confirmed' ? 'checked' : 'empty'}
         onClick={handleCheck}
       />
       <span />
