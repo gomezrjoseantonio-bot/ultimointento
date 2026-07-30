@@ -319,10 +319,11 @@
   color: var(--atlas-v5-on-navy-1);
 }
 .cv2-check:hover { border-color: var(--atlas-v5-brand); }
-.cv2-check--checked { background: var(--atlas-v5-brand); border-color: var(--atlas-v5-brand); }
+.cv2-check--checked { background: var(--atlas-v5-brand); border-color: var(--atlas-v5-brand); border-style: solid; }
 .cv2-check--indeterminate {
   background: var(--atlas-v5-brand);
   border-color: var(--atlas-v5-brand);
+  border-style: solid;
   position: relative;
 }
 .cv2-check--indeterminate::after {

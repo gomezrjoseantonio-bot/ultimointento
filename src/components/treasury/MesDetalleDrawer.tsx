@@ -20,7 +20,7 @@
 // ============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, X, Check, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Check } from 'lucide-react';
 import { intlOpts } from '../../utils/intlNumber';
 
 const MESES = [
@@ -380,6 +380,7 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 24px' }}>
           {diaSeleccionado == null ? (
             <NivelMes
+              onConciliarSeleccion={onConciliarSeleccion}
               year={year}
               monthIndex0={monthIndex0}
               eventosMes={eventosMes}
@@ -430,6 +431,7 @@ interface NivelMesProps {
   accounts: MesDrawerAccount[];
   onSelectDia: (dia: number) => void;
   onEventClick?: (eventId: number | string) => void;
+  onConciliarSeleccion?: (eventIds: number[]) => Promise<{ ok: number; failed: number }>;
 }
 
 const NivelMes: React.FC<NivelMesProps> = ({
@@ -446,7 +448,11 @@ const NivelMes: React.FC<NivelMesProps> = ({
   accounts,
   onSelectDia,
   onEventClick,
+  onConciliarSeleccion,
 }) => {
+  const onPuntear = onConciliarSeleccion
+    ? (id: number) => { void onConciliarSeleccion([id]); }
+    : undefined;
   const accountAlias = useMemo(() => {
     const map = new Map<number, string>();
     for (const a of accounts) {
@@ -508,7 +514,7 @@ const NivelMes: React.FC<NivelMesProps> = ({
           open={openIngresos}
           onToggle={() => setOpenIngresos((v) => !v)}
           title="Ingresos previstos"
-          counter={`${ingresos.length} · ${ingresosCounters.conf} conf · ${ingresosCounters.pend} pend`}
+          counter={`${ingresos.length} · ${ingresosCounters.conf} confirmados · ${ingresosCounters.pend} previstos`}
           amount={`+${formatEur(totalEntradas)} €`}
           tone="pos"
         >
@@ -518,6 +524,7 @@ const NivelMes: React.FC<NivelMesProps> = ({
               evento={e}
               accountAlias={accountAlias}
               onClick={onEventClick}
+              onPuntear={onPuntear}
             />
           ))}
         </Collapsible>
@@ -529,7 +536,7 @@ const NivelMes: React.FC<NivelMesProps> = ({
           open={openGastos}
           onToggle={() => setOpenGastos((v) => !v)}
           title="Gastos previstos"
-          counter={`${gastos.length} · ${gastosCounters.conf} conf · ${gastosCounters.pend} pend`}
+          counter={`${gastos.length} · ${gastosCounters.conf} confirmados · ${gastosCounters.pend} previstos`}
           amount={`−${formatEur(totalSalidas)} €`}
           tone="neg"
         >
@@ -539,6 +546,7 @@ const NivelMes: React.FC<NivelMesProps> = ({
               evento={e}
               accountAlias={accountAlias}
               onClick={onEventClick}
+              onPuntear={onPuntear}
             />
           ))}
         </Collapsible>
@@ -847,6 +855,11 @@ const NivelDia: React.FC<NivelDiaProps> = ({
               confirmados={confirmados}
               pendientesCount={pendientes.length}
               onEventClick={onEventClick}
+              onPuntearEvento={
+                onConciliarSeleccion
+                  ? (id) => { void onConciliarSeleccion([id]); }
+                  : undefined
+              }
               onConciliarPendientes={
                 onConciliarSeleccion && pendientes.length > 0
                   ? async () => {
@@ -916,6 +929,8 @@ const BankDayCard: React.FC<{
   pendientesCount: number;
   onEventClick?: (eventId: number | string) => void;
   onConciliarPendientes?: () => Promise<void> | void;
+  /** Punteo canónico por fila (Bloque 3 · P4). */
+  onPuntearEvento?: (eventId: number) => void;
   isConciliando: boolean;
   onIrAConciliacion?: () => void;
 }> = ({
@@ -929,14 +944,15 @@ const BankDayCard: React.FC<{
   pendientesCount,
   onEventClick,
   onConciliarPendientes,
+  onPuntearEvento,
   isConciliando,
   onIrAConciliacion,
 }) => {
   const movsLabel =
     pendientesCount > 0 && confirmados > 0
-      ? `${confirmados} conf · ${pendientesCount} pend`
+      ? `${confirmados} confirmados · ${pendientesCount} previstos`
       : pendientesCount > 0
-        ? `${pendientesCount} pendiente${pendientesCount === 1 ? '' : 's'}`
+        ? `${pendientesCount} previsto${pendientesCount === 1 ? '' : 's'}`
         : `${confirmados} confirmado${confirmados === 1 ? '' : 's'}`;
   return (
     <div
@@ -1079,8 +1095,18 @@ const BankDayCard: React.FC<{
           };
           const inner = (
             <>
-              <span
-                aria-hidden="true"
+              {/* Check de punteo canónico (Registro v2 · P4) */}
+              <button
+                type="button"
+                aria-label={isConfirmed ? 'Confirmado' : `Puntear ${e.description ?? 'previsión'}`}
+                title={isConfirmed ? 'Confirmado' : 'Puntear'}
+                disabled={isConfirmed || onPuntearEvento == null || typeof e.id !== 'number'}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  if (!isConfirmed && onPuntearEvento && typeof e.id === 'number') {
+                    onPuntearEvento(e.id);
+                  }
+                }}
                 style={{
                   width: 18,
                   height: 18,
@@ -1088,27 +1114,24 @@ const BankDayCard: React.FC<{
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: isConfirmed
-                    ? 'var(--atlas-v5-brand)'
-                    : 'var(--atlas-v5-gold-wash)',
-                  color: isConfirmed
-                    ? 'var(--atlas-v5-white)'
-                    : 'var(--atlas-v5-gold-ink)',
+                  padding: 0,
+                  cursor: isConfirmed || onPuntearEvento == null ? 'default' : 'pointer',
+                  border: isConfirmed
+                    ? '1.6px solid var(--atlas-v5-brand)'
+                    : '1.6px dashed var(--atlas-v5-gold-soft)',
+                  background: isConfirmed ? 'var(--atlas-v5-brand)' : 'transparent',
+                  color: 'var(--atlas-v5-white)',
                   flexShrink: 0,
                 }}
               >
-                {isConfirmed ? (
-                  <Check size={11} strokeWidth={3} />
-                ) : (
-                  <Clock size={11} strokeWidth={2.4} />
-                )}
-              </span>
+                {isConfirmed && <Check size={11} strokeWidth={3} />}
+              </button>
               <div style={{ minWidth: 0 }}>
                 <div
                   style={{
                     fontSize: 12.5,
-                    fontWeight: 600,
-                    color: 'var(--atlas-v5-ink)',
+                    fontWeight: isConfirmed ? 600 : 400,
+                    color: isConfirmed ? 'var(--atlas-v5-ink)' : 'var(--atlas-v5-ink-3)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -1130,14 +1153,21 @@ const BankDayCard: React.FC<{
             </>
           );
           return clickable ? (
-            <button
+            <div
               key={`bev-${e.id ?? idx}`}
-              type="button"
-              style={baseStyle}
+              role="button"
+              tabIndex={0}
+              style={{ ...baseStyle, cursor: 'pointer' }}
               onClick={() => onEventClick!(e.id!)}
+              onKeyDown={(ev) => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                  ev.preventDefault();
+                  onEventClick!(e.id!);
+                }
+              }}
             >
               {inner}
-            </button>
+            </div>
           ) : (
             <div key={`bev-${e.id ?? idx}`} style={baseStyle}>
               {inner}
@@ -1298,7 +1328,9 @@ const EventoRow: React.FC<{
   evento: MesDrawerEvent;
   accountAlias: Map<number, string>;
   onClick?: (eventId: number | string) => void;
-}> = ({ evento, accountAlias, onClick }) => {
+  /** Punteo canónico (Bloque 3 · P4) · clic en el círculo confirma la previsión. */
+  onPuntear?: (eventId: number) => void;
+}> = ({ evento, accountAlias, onClick, onPuntear }) => {
   const isPos = evento.type === 'income';
   const cuenta = evento.accountId != null ? accountAlias.get(evento.accountId) : undefined;
   const isConfirmed =
@@ -1307,9 +1339,17 @@ const EventoRow: React.FC<{
 
   const content = (
     <>
-      {/* Mark · navy+Check si confirmed · gold+Clock si pending (mockup v8) */}
-      <span
-        aria-hidden="true"
+      {/* Check de punteo canónico (Registro v2) · previsto = discontinuo oro
+          clicable (puntea ahí mismo) · confirmado = navy relleno */}
+      <button
+        type="button"
+        aria-label={isConfirmed ? `${evento.description ?? 'Evento'} · confirmado` : `Puntear ${evento.description ?? 'previsión'}`}
+        title={isConfirmed ? 'Confirmado' : 'Puntear'}
+        disabled={isConfirmed || onPuntear == null || typeof evento.id !== 'number'}
+        onClick={(ev) => {
+          ev.stopPropagation();
+          if (!isConfirmed && onPuntear && typeof evento.id === 'number') onPuntear(evento.id);
+        }}
         style={{
           width: 18,
           height: 18,
@@ -1317,27 +1357,24 @@ const EventoRow: React.FC<{
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: isConfirmed
-            ? 'var(--atlas-v5-brand)'
-            : 'var(--atlas-v5-gold-wash)',
-          color: isConfirmed
-            ? 'var(--atlas-v5-white)'
-            : 'var(--atlas-v5-gold-ink)',
+          padding: 0,
+          cursor: isConfirmed || onPuntear == null ? 'default' : 'pointer',
+          border: isConfirmed
+            ? '1.6px solid var(--atlas-v5-brand)'
+            : '1.6px dashed var(--atlas-v5-gold-soft)',
+          background: isConfirmed ? 'var(--atlas-v5-brand)' : 'transparent',
+          color: 'var(--atlas-v5-white)',
           flexShrink: 0,
         }}
       >
-        {isConfirmed ? (
-          <Check size={11} strokeWidth={3} />
-        ) : (
-          <Clock size={11} strokeWidth={2.4} />
-        )}
-      </span>
+        {isConfirmed && <Check size={11} strokeWidth={3} />}
+      </button>
       <div style={{ minWidth: 0 }}>
         <div
           style={{
             fontSize: 12.5,
-            fontWeight: 600,
-            color: 'var(--atlas-v5-ink)',
+            fontWeight: isConfirmed ? 600 : 400,
+            color: isConfirmed ? 'var(--atlas-v5-ink)' : 'var(--atlas-v5-ink-3)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -1386,14 +1423,23 @@ const EventoRow: React.FC<{
   };
 
   if (clickable) {
+    // div role=button (no <button>): el círculo de punteo interior ya es un
+    // <button> y anidarlos es HTML inválido (review #1501).
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onClick!(evento.id!)}
+        onKeyDown={(ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            onClick!(evento.id!);
+          }
+        }}
         style={{ ...baseStyle, cursor: 'pointer' }}
       >
         {content}
-      </button>
+      </div>
     );
   }
   return <div style={baseStyle}>{content}</div>;
