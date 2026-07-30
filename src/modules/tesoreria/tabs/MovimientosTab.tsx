@@ -1,175 +1,86 @@
+// ============================================================================
+// MovimientosTab · pantalla D del punteo unificado (Bloque 3 · P2)
+// ============================================================================
+//
+// La SUPERFICIE MADRE del punteo (mockup Registro v2 validado): previsiones y
+// movimientos reales en una sola lista canónica (PunteoList) con los estados
+// Previsto · Confirmado · Conciliado. Las demás vistas (cuenta · conciliación ·
+// drawer del día) son esta misma lista con contexto fijado (fases P3/P4).
+//
+// Contexto por URL (se conserva el patrón previo):
+//   ?status=previstos|confirmados|conciliados|discrepancias   (legacy
+//     'pendientes' → previstos)
+//   ?cuenta=<accountId> · ?day=YYYY-MM-DD (desde el calendario)
+//
+// Retirado en P2 (documentado en el PR):
+//   · pill «PREVISTO» + chips propios → chips canónicos de PunteoList
+//   · columna de selección + barra bulk («conciliar» era un toast sin efecto)
+//   · MovimientoDrawer en este tab → el punteo con cambios lo cubre el editor
+//     inline · la edición completa de una previsión vive en su origen
+// ============================================================================
+
 import React, { useMemo, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import {
-  TrendingUp,
-  CreditCard,
-  Home,
-  Zap,
-  Briefcase,
-  ArrowDownLeft,
-  Building2,
-} from 'lucide-react';
-import {
-  MoneyValue,
-  Pill,
-  Icons,
-  showToastV5,
-} from '../../../design-system/v5';
+import { Icons, showToastV5 } from '../../../design-system/v5';
 import type { TesoreriaContext } from '../TesoreriaPage';
 import type { Movement, TreasuryEvent } from '../../../services/db';
 import {
   confirmTreasuryEvent,
-  updateTreasuryEventFields,
+  deleteTreasuryEventCompletely,
 } from '../../../services/treasuryConfirmationService';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
-import MovimientoDrawer, {
-  type MovimientoDrawerData,
-  type MovimientoDrawerPatch,
-} from '../../../components/treasury/MovimientoDrawer';
 import AddMovementModal from '../../horizon/conciliacion/v2/components/AddMovementModal';
+import PunteoList, {
+  type CambiosPunteo,
+} from '../../shared/components/Punteo/PunteoList';
+import {
+  eventoAItem,
+  movimientoAItem,
+} from '../../../services/punteo/punteoAdapter';
+import type { ChipEstado, ItemPunteo } from '../../../services/punteo/punteoModel';
 import {
   matchesAmountQuery,
   normalizeSearchText,
 } from '../../../utils/tesoreriaSearch';
 import styles from './MovimientosTab.module.css';
 
-type StatusFilter = 'todos' | 'pendientes' | 'conciliados';
+const MAX_FILAS = 250;
 
-const isReconciled = (m: Movement): boolean =>
-  m.unifiedStatus === 'conciliado' ||
-  m.status === 'conciliado';
+const toYearMonth = (iso: string | undefined): string => (iso ? iso.slice(0, 7) : '');
 
-const matchesSearch = (m: Movement, search: string): boolean => {
+const CHIPS_VALIDOS: ChipEstado[] = ['todos', 'previstos', 'confirmados', 'conciliados', 'discrepancias'];
+
+const matchesSearchItem = (it: ItemPunteo, search: string): boolean => {
   if (!search) return true;
-  const needle = normalizeSearchText(search);
-  if (!needle) return true;
-  const haystack = [
-    m.description,
-    m.counterparty,
-    m.providerName,
-    m.providerNif,
-    m.invoiceNumber,
-  ]
-    .map(normalizeSearchText)
-    .join(' ');
-  if (haystack.includes(needle)) return true;
-  return matchesAmountQuery(m.amount, search);
+  const q = normalizeSearchText(search);
+  const hay = normalizeSearchText(
+    `${it.concepto} ${it.origen} ${it.activo?.alias ?? ''}`,
+  );
+  return hay.includes(q) || matchesAmountQuery(it.importe, search);
 };
-
-const matchesSearchEvent = (e: TreasuryEvent, search: string): boolean => {
-  if (!search) return true;
-  const needle = normalizeSearchText(search);
-  if (!needle) return true;
-  const haystack = [
-    e.description,
-    e.counterparty,
-    e.providerName,
-    e.providerNif,
-    e.invoiceNumber,
-  ]
-    .map(normalizeSearchText)
-    .join(' ');
-  if (haystack.includes(needle)) return true;
-  const eventAmount = e.actualAmount ?? e.amount;
-  return matchesAmountQuery(eventAmount, search);
-};
-
-const matchesAccount = (accountId: number | undefined, filter: number | null): boolean =>
-  filter == null || accountId === filter;
-
-/** Returns signed amount for a treasury event (positive = income, negative = expense/financing). */
-const eventSignedAmount = (e: TreasuryEvent): number => {
-  const mag = Math.abs(e.actualAmount ?? e.amount);
-  return e.type === 'income' ? mag : -mag;
-};
-
-/** Returns the "YYYY-MM" key for a date string (ISO or YYYY-MM-DD). */
-const toYearMonth = (iso: string | undefined): string => {
-  if (!iso) return '';
-  return iso.slice(0, 7);
-};
-
-/** Returns the date label for the group header row (e.g. "12 may. 2025"). */
-const toDateKey = (iso: string | undefined): string => {
-  if (!iso) return '';
-  return iso.slice(0, 10);
-};
-
-const MONTH_NAMES_ES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-
-/** Returns an expense icon based on the category label string. */
-const getExpenseIcon = (categoryLabel: string | undefined): React.ReactElement => {
-  const cat = (categoryLabel ?? '').toLowerCase();
-  if (cat.includes('vivienda') || cat.includes('alquiler'))
-    return <Home size={14} color="var(--atlas-v5-neg)" />;
-  if (cat.includes('suministro') || cat.includes('gas') || cat.includes('luz'))
-    return <Zap size={14} color="var(--atlas-v5-neg)" />;
-  if (cat.includes('gestión') || cat.includes('gestion') || cat.includes('honorario'))
-    return <Briefcase size={14} color="var(--atlas-v5-neg)" />;
-  if (cat.includes('cuota') || cat.includes('hipoteca') || cat.includes('financiación') || cat.includes('financiacion'))
-    return <CreditCard size={14} color="var(--atlas-v5-neg)" />;
-  return <ArrowDownLeft size={14} color="var(--atlas-v5-neg)" />;
-};
-
-/** Returns an icon element for a treasury event based on its type and categoryLabel. */
-const getEventIcon = (
-  type: 'income' | 'expense' | 'financing',
-  categoryLabel?: string,
-): React.ReactElement => {
-  if (type === 'income') return <TrendingUp size={14} color="var(--atlas-v5-pos)" />;
-  if (type === 'financing') return <CreditCard size={14} color="var(--atlas-v5-neg)" />;
-  return getExpenseIcon(categoryLabel);
-};
-
-/** Returns an icon element for a movement based on its amount sign and categoria. */
-const getMovementIcon = (amount: number, categoria?: string): React.ReactElement => {
-  if (amount >= 0) return <TrendingUp size={14} color="var(--atlas-v5-pos)" />;
-  return getExpenseIcon(categoria);
-};
-
-const formatDateGroupLabel = (dateKey: string): string => {
-  if (!dateKey) return '—';
-  const d = new Date(`${dateKey}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return dateKey;
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mmm = d.toLocaleDateString('es-ES', { month: 'short' });
-  const yyyy = d.getFullYear();
-  return `${dd} ${mmm} ${yyyy}`;
-};
-
-// ── Unified row types ────────────────────────────────────────────────────────
-
-type MovRow = { kind: 'movement'; data: Movement & { id: number }; sortKey: number };
-type EvtRow = { kind: 'treasury'; data: TreasuryEvent & { id: number }; sortKey: number };
-type UnifiedRow = MovRow | EvtRow;
-
-// ── Date group header row ────────────────────────────────────────────────────
-type DateHeaderRow = { kind: 'header'; dateKey: string; label: string };
-type TableRow = DateHeaderRow | UnifiedRow;
 
 const MovimientosTab: React.FC = () => {
-  const { accounts, movements, treasuryEvents, properties, reload } = useOutletContext<TesoreriaContext>();
+  const { accounts, movements, treasuryEvents, properties, reload } =
+    useOutletContext<TesoreriaContext>();
   const [search, setSearch] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
-  // Status filter derivado de `?status=...` (sin estado local) para que UI y
-  // URL queden sincronizados ante navegación back/forward o cambios externos
-  // del query param.
-  const statusFilter: StatusFilter = (() => {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  // ── Contexto por URL ───────────────────────────────────────────────────────
+
+  const chip: ChipEstado = (() => {
     const raw = searchParams.get('status');
-    if (raw === 'pendientes' || raw === 'conciliados' || raw === 'todos') return raw;
-    return 'todos';
+    if (raw === 'pendientes') return 'previstos'; // compat con enlaces previos
+    return CHIPS_VALIDOS.includes(raw as ChipEstado) ? (raw as ChipEstado) : 'todos';
   })();
-  const setStatusFilter = (next: StatusFilter) => {
+  const setChip = (next: ChipEstado) => {
     const params = new URLSearchParams(searchParams);
     if (next === 'todos') params.delete('status');
     else params.set('status', next);
     setSearchParams(params, { replace: true });
   };
-  // `?day=YYYY-MM-DD` filtra por día exacto. Se cablea desde el drawer día
-  // del calendario en Vista General (sub-tarea 3 calendario fixes).
+
   const dayFilter: string | null = (() => {
     const raw = searchParams.get('day');
     if (!raw) return null;
@@ -180,25 +91,13 @@ const MovimientosTab: React.FC = () => {
     params.delete('day');
     setSearchParams(params, { replace: true });
   };
-  const [confirmingId, setConfirmingId] = useState<number | null>(null);
-  // Default scope temporal · mes actual. Sin él, la pantalla cargaba todos los
-  // movimientos históricos (~2000 en 2 años) y agobiaba al usuario. El selector
-  // de mes ya existe en la UI, así que el usuario puede cambiar a "Todos los
-  // meses" o navegar a meses anteriores cuando lo necesite.
-  const [monthFilter, setMonthFilter] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  }); // 'YYYY-MM' or ''
-  const [drawerEventId, setDrawerEventId] = useState<number | null>(null);
-  // PR-C1 · alta de gasto/ingreso esporádico desde Tesorería V5.
-  const [showAddModal, setShowAddModal] = useState(false);
+
   const accountFilter: number | null = (() => {
     const raw = searchParams.get('cuenta');
     if (!raw) return null;
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : null;
   })();
-
   const setAccountFilter = (next: number | null) => {
     const params = new URLSearchParams(searchParams);
     if (next == null) params.delete('cuenta');
@@ -206,198 +105,109 @@ const MovimientosTab: React.FC = () => {
     setSearchParams(params, { replace: true });
   };
 
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  // Scope temporal por defecto · mes actual (sin él, cargaba ~2000 filas).
+  const [monthFilter, setMonthFilter] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
-  // ── Build unified list ─────────────────────────────────────────────────────
+  // ── Datos → items canónicos ────────────────────────────────────────────────
 
-  /** Pending treasury events: not yet executed, no linked movement. */
-  const pendingEvents = useMemo(
-    () =>
-      (treasuryEvents as TreasuryEvent[]).filter(
+  const aliasInmueble = useMemo(() => {
+    const m = new Map<string, string>();
+    properties.forEach((p) => {
+      if (p.id != null) m.set(String(p.id), p.alias);
+    });
+    return (id: number | string) => m.get(String(id));
+  }, [properties]);
+
+  const itemsTodos = useMemo(() => {
+    const evItems = (treasuryEvents as TreasuryEvent[])
+      .filter(
         (e): e is TreasuryEvent & { id: number } =>
           e.id != null && e.status !== 'executed' && !e.executedMovementId,
-      ),
-    [treasuryEvents],
-  );
-
-  const allRows = useMemo((): UnifiedRow[] => {
-    const movRows: MovRow[] = (movements as Movement[])
+      )
+      .map((e) => eventoAItem(e, aliasInmueble));
+    const movItems = (movements as Movement[])
       .filter((m): m is Movement & { id: number } => m.id != null)
-      .map((m) => ({
-        kind: 'movement',
-        data: m,
-        sortKey: m.date ? new Date(m.date).getTime() : 0,
-      }));
+      .map((m) => movimientoAItem(m, aliasInmueble));
+    return [...evItems, ...movItems];
+  }, [treasuryEvents, movements, aliasInmueble]);
 
-    const evtRows: EvtRow[] = pendingEvents.map((e) => ({
-      kind: 'treasury',
-      data: e,
-      sortKey: e.predictedDate ? new Date(e.predictedDate).getTime() : 0,
-    }));
+  const itemsFiltrados = useMemo(() => {
+    let out = itemsTodos;
+    if (monthFilter) out = out.filter((i) => toYearMonth(i.fecha) === monthFilter);
+    if (dayFilter) out = out.filter((i) => i.fecha === dayFilter);
+    if (accountFilter != null) out = out.filter((i) => i.cuentaId === accountFilter);
+    if (search) out = out.filter((i) => matchesSearchItem(i, search));
+    return out;
+  }, [itemsTodos, monthFilter, dayFilter, accountFilter, search]);
 
-    return [...movRows, ...evtRows].sort((a, b) => b.sortKey - a.sortKey);
-  }, [movements, pendingEvents]);
+  const items = useMemo(() => {
+    if (itemsFiltrados.length <= MAX_FILAS) return itemsFiltrados;
+    return itemsFiltrados
+      .slice()
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+      .slice(0, MAX_FILAS);
+  }, [itemsFiltrados]);
 
-  const filtered = useMemo((): UnifiedRow[] => {
-    return allRows
-      .filter((row) => {
-        if (statusFilter === 'conciliados') return row.kind === 'movement' && isReconciled(row.data);
-        if (statusFilter === 'pendientes') {
-          if (row.kind === 'treasury') return true;
-          return !isReconciled(row.data);
-        }
-        return true; // 'todos'
-      })
-      .filter((row) => matchesAccount(row.data.accountId, accountFilter))
-      .filter((row) => {
-        if (!monthFilter) return true;
-        const dateStr =
-          row.kind === 'movement'
-            ? (row.data as Movement).date
-            : (row.data as TreasuryEvent).predictedDate;
-        return toYearMonth(dateStr) === monthFilter;
-      })
-      .filter((row) => {
-        if (!dayFilter) return true;
-        const dateStr =
-          row.kind === 'movement'
-            ? (row.data as Movement).date
-            : (row.data as TreasuryEvent).predictedDate;
-        return toDateKey(dateStr) === dayFilter;
-      })
-      .filter((row) => {
-        if (row.kind === 'movement') return matchesSearch(row.data, search);
-        return matchesSearchEvent(row.data, search);
-      });
-  }, [allRows, statusFilter, accountFilter, monthFilter, dayFilter, search]);
-
-  /** Rows with date-group headers injected (for treasury events only). */
-  const tableRows = useMemo((): TableRow[] => {
-    const result: TableRow[] = [];
-    let lastDateKey = '';
-    for (const row of filtered) {
-      const dateStr =
-        row.kind === 'treasury'
-          ? (row.data as TreasuryEvent).predictedDate
-          : (row.data as Movement).date;
-      const dk = toDateKey(dateStr);
-      if (dk && dk !== lastDateKey) {
-        result.push({ kind: 'header', dateKey: dk, label: formatDateGroupLabel(dk) });
-        lastDateKey = dk;
-      }
-      result.push(row);
-    }
-    return result;
-  }, [filtered]);
-
-  const totalCount = allRows.length;
-  const pendingCount =
-    movements.filter((m) => !isReconciled(m as Movement)).length + pendingEvents.length;
-
-  /** Available months derived from allRows, for the month filter selector. */
   const availableMonths = useMemo(() => {
     const monthSet = new Set<string>();
-    allRows.forEach((row) => {
-      const dateStr =
-        row.kind === 'movement'
-          ? (row.data as Movement).date
-          : (row.data as TreasuryEvent).predictedDate;
-      const ym = toYearMonth(dateStr);
+    itemsTodos.forEach((i) => {
+      const ym = toYearMonth(i.fecha);
       if (ym) monthSet.add(ym);
     });
     return Array.from(monthSet).sort().reverse();
-  }, [allRows]);
+  }, [itemsTodos]);
 
-  // ── Account helpers ────────────────────────────────────────────────────────
+  const cuentas = useMemo(
+    () =>
+      accounts
+        .filter((a) => a.id != null)
+        .map((a) => ({
+          id: a.id as number,
+          label: a.alias ?? a.banco?.name ?? a.bank ?? `#${a.id}`,
+        })),
+    [accounts],
+  );
 
-  const accountById = useMemo(() => {
-    const map = new Map<number, string>();
-    accounts.forEach((a) => {
-      if (a.id != null) {
-        map.set(a.id, a.alias ?? a.banco?.name ?? a.bank ?? `#${a.id}`);
-      }
-    });
-    return map;
-  }, [accounts]);
+  // ── Acciones de punteo ─────────────────────────────────────────────────────
 
-  const accountColorById = useMemo(() => {
-    const map = new Map<number, string>();
-    accounts.forEach((a) => {
-      if (a.id == null) return;
-      const brand = a.banco?.brand?.color;
-      map.set(a.id, brand && brand.startsWith('#') ? brand : 'var(--atlas-v5-brand)');
-    });
-    return map;
-  }, [accounts]);
-
-  // ── Drawer data for editing a treasury event ───────────────────────────────
-
-  const drawerData = useMemo((): MovimientoDrawerData | null => {
-    if (drawerEventId == null) return null;
-    const ev = (treasuryEvents as TreasuryEvent[]).find((e) => e.id === drawerEventId);
-    if (!ev) return null;
-    const acc = accounts.find((a) => a.id === ev.accountId);
-    const accountAlias = acc?.alias ?? acc?.banco?.name ?? acc?.name;
-    return {
-      id: ev.id!,
-      description: ev.description,
-      predictedDate: ev.predictedDate,
-      type: ev.type,
-      amount: ev.amount,
-      status: ev.status,
-      accountAlias,
-      inmuebleAlias: ev.inmuebleAlias,
-      contratoAlias: (ev as any).contratoAlias,
-      categoryLabel: ev.categoryLabel,
-    };
-  }, [drawerEventId, treasuryEvents, accounts]);
-
-  // ── Actions ────────────────────────────────────────────────────────────────
-
-  const toggleOne = (id: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const clearSelection = () => setSelected(new Set());
-
-  const bulkConfirm = () => {
-    showToastV5(`${selected.size} movimientos marcados como conciliados`, 'success');
-    clearSelection();
-  };
-
-  const handleConfirmEvent = async (e: React.MouseEvent, eventId: number) => {
-    e.stopPropagation();
-    setConfirmingId(eventId);
+  const onConfirmar = async (item: ItemPunteo, cambios?: CambiosPunteo) => {
+    if (item.kind !== 'evento' || busy) return;
+    if (item.cuentaId == null && cambios?.cuentaId == null) {
+      showToastV5('Asigna una cuenta para poder puntear esta previsión', 'warn');
+      return;
+    }
+    setBusy(true);
     try {
-      await confirmTreasuryEvent(eventId);
-      showToastV5('Evento confirmado y movimiento creado', 'success');
+      await confirmTreasuryEvent(item.refId, {
+        amount: cambios?.importe,
+        date: cambios?.fecha,
+        accountId: cambios?.cuentaId,
+      });
+      showToastV5('Punteado · movimiento real creado', 'success');
       invalidateCachedStores(['treasuryEvents', 'movements']);
       reload();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'No se pudo confirmar el evento';
-      showToastV5(msg, 'error');
+      showToastV5(err instanceof Error ? err.message : 'No se pudo puntear', 'error');
     } finally {
-      setConfirmingId(null);
+      setBusy(false);
     }
   };
 
-  const handleSaveEvent = async (id: number | string, patch: MovimientoDrawerPatch) => {
-    const dbId = typeof id === 'number' ? id : Number(id);
-    if (!Number.isFinite(dbId)) return;
+  const onNoPaso = async (item: ItemPunteo) => {
+    if (item.kind !== 'evento' || busy) return;
+    setBusy(true);
     try {
-      await updateTreasuryEventFields(dbId, patch);
+      await deleteTreasuryEventCompletely(item.refId);
+      showToastV5('Previsión descartada · este mes no pasa', 'success');
       invalidateCachedStores(['treasuryEvents']);
       reload();
-      setDrawerEventId(null);
-      showToastV5('Cambios guardados', 'success');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'No se pudo guardar';
-      showToastV5(msg, 'error');
+      showToastV5(err instanceof Error ? err.message : 'No se pudo descartar', 'error');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -408,63 +218,35 @@ const MovimientosTab: React.FC = () => {
       <div className={styles.filtersBar}>
         <button
           type="button"
-          className={`${styles.filtChip} ${statusFilter === 'todos' ? styles.active : ''}`}
-          onClick={() => setStatusFilter('todos')}
-        >
-          Todos · {totalCount}
-        </button>
-        <button
-          type="button"
-          className={`${styles.filtChip} ${statusFilter === 'pendientes' ? styles.active : ''}`}
-          onClick={() => setStatusFilter('pendientes')}
-        >
-          Pendientes · {pendingCount}
-        </button>
-        <button
-          type="button"
-          className={`${styles.filtChip} ${statusFilter === 'conciliados' ? styles.active : ''}`}
-          onClick={() => setStatusFilter('conciliados')}
-        >
-          Conciliados
-        </button>
-        <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--atlas-v5-line)', margin: '0 4px' }} />
-        <button
-          type="button"
           className={`${styles.filtChip} ${accountFilter == null ? styles.active : ''}`}
           onClick={() => setAccountFilter(null)}
         >
           Todas las cuentas
         </button>
-        {accounts.slice(0, 6).map((a) => (
+        {accounts.filter((a) => a.id != null).map((a) => (
           <button
             key={a.id}
             type="button"
             className={`${styles.filtChip} ${accountFilter === a.id ? styles.active : ''}`}
-            onClick={() => setAccountFilter(a.id ?? null)}
+            onClick={() => setAccountFilter(a.id as number)}
           >
             {a.alias ?? a.banco?.name ?? a.bank ?? `#${a.id}`}
           </button>
         ))}
-        {availableMonths.length > 0 && (
-          <>
-            <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--atlas-v5-line)', margin: '0 4px' }} />
-            <select
-              className={styles.monthSelect}
-              value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
-              aria-label="Filtrar por mes"
-            >
-              <option value="">Todos los meses</option>
-              {availableMonths.map((ym) => {
-                const [year, month] = ym.split('-');
-                const label = `${MONTH_NAMES_ES[Number(month) - 1]} ${year}`;
-                return (
-                  <option key={ym} value={ym}>{label}</option>
-                );
-              })}
-            </select>
-          </>
-        )}
+        <span style={{ flex: 1 }} />
+        <select
+          className={styles.monthSelect}
+          value={monthFilter}
+          onChange={(e) => setMonthFilter(e.target.value)}
+          aria-label="Filtrar por mes"
+        >
+          <option value="">Todos los meses</option>
+          {availableMonths.map((ym) => (
+            <option key={ym} value={ym}>
+              {new Date(`${ym}-01T12:00:00`).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+            </option>
+          ))}
+        </select>
         {dayFilter && (
           <button
             type="button"
@@ -473,265 +255,53 @@ const MovimientosTab: React.FC = () => {
             aria-label={`Quitar filtro día ${dayFilter}`}
             title="Quitar filtro día"
           >
-            Día: {dayFilter.slice(8, 10)}/{dayFilter.slice(5, 7)}/{dayFilter.slice(0, 4)} ✕
+            {dayFilter} <Icons.Close size={11} strokeWidth={2.5} />
           </button>
         )}
         <span className={styles.filtSearch}>
-          <Icons.Search size={14} strokeWidth={1.8} />
+          <Icons.Search size={13} strokeWidth={2} />
           <input
-            type="search"
-            placeholder="Buscar por concepto · contraparte · importe…"
+            type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por concepto · activo · importe…"
             aria-label="Buscar movimientos"
           />
         </span>
-        {/* PR-C1 · alta manual de gasto/ingreso esporádico desde Tesorería V5.
-            Reusa el mismo `AddMovementModal` que /conciliacion (cero
-            duplicación de código). */}
         <button
           type="button"
           className={`${styles.filtChip} ${styles.filtChipPrimary ?? ''}`}
           onClick={() => setShowAddModal(true)}
-          style={{ marginLeft: 'auto' }}
           aria-label="Añadir movimiento manual"
         >
-          <Icons.Plus size={14} strokeWidth={1.8} />
-          Nuevo movimiento
+          + Añadir
         </button>
       </div>
 
-      {selected.size > 0 && (
-        <div className={styles.bulkBar} role="status" aria-live="polite">
-          <div className={styles.bulkCount}>
-            <span className={styles.num}>{selected.size}</span>
-            seleccionados
-          </div>
-          <div className={styles.bulkActions}>
-            <button type="button" onClick={clearSelection}>
-              Limpiar
-            </button>
-            <button type="button" className={styles.primary} onClick={bulkConfirm}>
-              Marcar como conciliados
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className={styles.tableWrap}>
-        {filtered.length === 0 ? (
-          <div className={styles.empty}>
-            No hay movimientos que coincidan con los filtros aplicados.
-          </div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.checkCell} aria-label="Seleccionar"></th>
-                <th>Concepto</th>
-                <th>Cuenta</th>
-                <th className="r">Importe</th>
-                <th className="c">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableRows.slice(0, 250).map((row) => {
-                // ── Date group header ─────────────────────────────────────
-                if (row.kind === 'header') {
-                  return (
-                    <tr key={`h:${row.dateKey}`} className={styles.dateGroupRow}>
-                      <td colSpan={5} className={styles.dateGroupCell}>
-                        {row.label}
-                      </td>
-                    </tr>
-                  );
-                }
-
-                if (row.kind === 'movement') {
-                  const m = row.data;
-                  const id = m.id;
-                  const isSelected = selected.has(id);
-                  const reconciled = isReconciled(m);
-                  const accountName = accountById.get(m.accountId) ?? `#${m.accountId}`;
-                  const dotColor = accountColorById.get(m.accountId) ?? 'var(--atlas-v5-brand)';
-                  const reconciliationStatus: 'conciliado' | 'sin_conciliar' =
-                    reconciled ? 'conciliado' : 'sin_conciliar';
-                  const inmuebleAlias = m.inmuebleAlias;
-                  return (
-                    <tr
-                      key={`m:${id}`}
-                      className={isSelected ? styles.selected : undefined}
-                      onClick={() =>
-                        showToastV5(
-                          `Detalle · ${m.description ?? 'Movimiento'} · ${m.amount.toFixed(2)} €`,
-                        )
-                      }
-                    >
-                      <td className={styles.checkCell} onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          className={`${styles.chk} ${reconciled ? styles.done : isSelected ? styles.pending : ''}`}
-                          aria-label={reconciled ? 'Movimiento conciliado' : 'Seleccionar movimiento'}
-                          aria-pressed={isSelected || reconciled}
-                          onClick={() => !reconciled && toggleOne(id)}
-                        >
-                          {reconciled && <Icons.Check size={14} strokeWidth={2.5} />}
-                        </button>
-                      </td>
-                      <td>
-                        <div className={styles.conceptCell}>
-                          <span className={styles.conceptIcon}>
-                            {getMovementIcon(m.amount, m.categoria)}
-                          </span>
-                          <div>
-                            <div className={styles.tStrong}>
-                              {m.description || m.counterparty || m.providerName || 'Sin concepto'}
-                            </div>
-                            {(m.counterparty || m.providerName) && (
-                              <div className={styles.tMuted} style={{ fontSize: 11, marginTop: 2 }}>
-                                {m.counterparty ?? m.providerName}
-                              </div>
-                            )}
-                            {inmuebleAlias ? (
-                              <div className={styles.tInmueble}>
-                                <Building2 size={11} />
-                                {inmuebleAlias}
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={styles.chipAcc}>
-                          <span className={styles.chipDot} style={{ background: dotColor }} />
-                          {accountName}
-                        </span>
-                      </td>
-                      <td className={`r ${styles.amountCell} ${m.amount >= 0 ? styles.posCol : styles.negCol}`}>
-                        <MoneyValue value={m.amount} decimals={2} showSign tone="auto" />
-                      </td>
-                      <td className="c">
-                        <Pill
-                          variant={reconciliationStatus === 'conciliado' ? 'pos' : 'gold'}
-                          asTag
-                        >
-                          {reconciliationStatus === 'conciliado' ? 'Conciliado' : 'Pendiente'}
-                        </Pill>
-                      </td>
-                    </tr>
-                  );
-                }
-
-                // ── Treasury event row ──────────────────────────────────────
-                const e = row.data;
-                const signedAmt = eventSignedAmount(e);
-                const accountName = e.accountId != null
-                  ? (accountById.get(e.accountId) ?? `#${e.accountId}`)
-                  : '—';
-                const dotColor = e.accountId != null
-                  ? (accountColorById.get(e.accountId) ?? 'var(--atlas-v5-brand)')
-                  : 'var(--atlas-v5-ink-5)';
-                const isConfirming = confirmingId === e.id;
-                const evInmuebleAlias = e.inmuebleAlias;
-                return (
-                  <tr
-                    key={`t:${e.id}`}
-                    className={styles.previstoRow}
-                    onClick={() => setDrawerEventId(e.id)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td className={styles.checkCell} onClick={(ev) => ev.stopPropagation()}>
-                      <button
-                        type="button"
-                        className={`${styles.chk} ${styles.previstoChk}`}
-                        aria-label={isConfirming ? 'Confirmando…' : e.accountId == null ? 'Sin cuenta asignada — edita el evento para asignar una cuenta' : 'Confirmar evento previsto'}
-                        title={e.accountId == null ? 'Asigna una cuenta al evento para poder confirmarlo' : 'Confirmar y crear movimiento bancario'}
-                        disabled={isConfirming || e.accountId == null}
-                        onClick={(ev) => handleConfirmEvent(ev, e.id)}
-                      >
-                        {isConfirming
-                          ? <Icons.Refresh size={12} strokeWidth={2} className={styles.spinning} />
-                          : <Icons.Check size={12} strokeWidth={2} />
-                        }
-                      </button>
-                    </td>
-                    <td>
-                      <div className={styles.conceptCell}>
-                        <span className={styles.conceptIcon}>
-                          {getEventIcon(e.type, e.categoryLabel)}
-                        </span>
-                        <div>
-                          <div className={styles.tStrong}>{e.description || 'Sin concepto'}</div>
-                          {(e.counterparty || e.providerName) && (
-                            <div className={styles.tMuted} style={{ fontSize: 11, marginTop: 2 }}>
-                              {e.counterparty ?? e.providerName}
-                            </div>
-                          )}
-                          {evInmuebleAlias ? (
-                            <div className={styles.tInmueble}>
-                              <Building2 size={11} />
-                              {evInmuebleAlias}
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={styles.chipAcc}>
-                        <span className={styles.chipDot} style={{ background: dotColor }} />
-                        {accountName}
-                      </span>
-                    </td>
-                    <td className={`r ${styles.amountCell} ${signedAmt >= 0 ? styles.posCol : styles.negCol}`}>
-                      <MoneyValue value={signedAmt} decimals={2} showSign tone="auto" />
-                    </td>
-                    <td className="c">
-                      <span className={styles.pillPrevisto}>PREVISTO</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+      <div className={styles.tableWrap} style={{ padding: '10px 14px' }}>
+        <PunteoList
+          items={items}
+          chip={chip}
+          onChipChange={setChip}
+          cuentas={cuentas}
+          ocultarCuenta={accountFilter != null}
+          onConfirmar={onConfirmar}
+          onNoPaso={onNoPaso}
+        />
       </div>
-      {filtered.length > 250 && (
-        <div style={{
-          padding: '12px 16px',
-          fontSize: 12,
-          color: 'var(--atlas-v5-ink-4)',
-          fontFamily: 'var(--atlas-v5-font-ui)',
-        }}>
-          Mostrando los 250 movimientos más recientes de {filtered.length} totales.
-          Usa los filtros para acotar.
+
+      {itemsFiltrados.length > MAX_FILAS && (
+        <div
+          style={{
+            padding: '12px 16px',
+            fontSize: 12,
+            color: 'var(--atlas-v5-ink-4)',
+            fontFamily: 'var(--atlas-v5-font-ui)',
+          }}
+        >
+          Mostrando los {MAX_FILAS} más recientes de {itemsFiltrados.length} totales. Usa los filtros para acotar.
         </div>
       )}
-
-      {/* ── Editing drawer ──────────────────────────────────────────────────── */}
-      <MovimientoDrawer
-        open={drawerEventId !== null}
-        data={drawerData}
-        onClose={() => setDrawerEventId(null)}
-        accounts={accounts}
-        onSave={handleSaveEvent}
-        onConfirmar={async (id) => {
-          const dbId = typeof id === 'number' ? id : Number(id);
-          if (!Number.isFinite(dbId)) return;
-          setConfirmingId(dbId);
-          try {
-            await confirmTreasuryEvent(dbId);
-            invalidateCachedStores(['treasuryEvents', 'movements']);
-            reload();
-            setDrawerEventId(null);
-            showToastV5('Evento confirmado y movimiento creado', 'success');
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : 'No se pudo confirmar';
-            showToastV5(msg, 'error');
-          } finally {
-            setConfirmingId(null);
-          }
-        }}
-      />
 
       {/* PR-C1 · modal compartido con /conciliacion V2 para alta de
           movimientos esporádicos desde Tesorería V5. */}

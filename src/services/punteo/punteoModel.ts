@@ -1,0 +1,241 @@
+// ============================================================================
+// Punteo unificado · modelo canónico (Bloque 3 · P1)
+// ============================================================================
+//
+// Un solo vocabulario de estados para las 4 vistas de punteo (mockup validado
+// por Jose · Registro v2). Derivación PURA desde los datos existentes — sin
+// campos nuevos en el esquema:
+//
+//   · PREVISTO   = TreasuryEvent status 'predicted' (proyección sin puntear)
+//   · CONFIRMADO = realidad SIN evidencia de extracto: evento 'confirmed'
+//     (legacy) o Movement cuya fuente no es un import bancario (punteo manual
+//     vía confirmTreasuryEvent · alta manual). "Tu palabra".
+//   · CONCILIADO = realidad CON evidencia de extracto: Movement con
+//     source 'import'. "La palabra del banco".
+//
+//   real = confirmado ∨ conciliado — TODOS los consumidores (saldo, fiscal,
+//   financiación) usan `esReal`; la distinción confirmado/conciliado es solo
+//   de evidencia y únicamente la pinta la UI de punteo.
+//
+// Reglas visuales validadas: orden del día = ingresos → gastos, dentro de
+// cada grupo por |importe| descendente (estable). Chips a 0 se ocultan salvo
+// Todos y Previstos. Discrepancias con auto-entendido bajo umbral (calderilla).
+// ============================================================================
+
+import type { TreasuryEvent, Movement } from '../db';
+
+// ─── Estados ────────────────────────────────────────────────────────────────
+
+export type EstadoPunteo = 'previsto' | 'confirmado' | 'conciliado';
+
+export const esReal = (estado: EstadoPunteo): boolean => estado !== 'previsto';
+
+/** Estado de una previsión (evento no ejecutado). */
+export function estadoDeEvento(e: Pick<TreasuryEvent, 'status'>): EstadoPunteo {
+  return e.status === 'confirmed' ? 'confirmado' : 'previsto';
+}
+
+/**
+ * Estado de un movimiento real. Conciliado ⟺ evidencia de extracto bancario
+ * (source 'import'); cualquier otra realidad (punteo manual · alta a mano ·
+ * inbox de documentos) es Confirmado — "tu palabra", sin extracto detrás.
+ */
+export function estadoDeMovimiento(m: Pick<Movement, 'source'>): EstadoPunteo {
+  return m.source === 'import' ? 'conciliado' : 'confirmado';
+}
+
+// ─── Ítem unificado de la lista de punteo ───────────────────────────────────
+
+export interface ItemPunteo {
+  /** Clave estable de la lista: 'evt-<id>' | 'mov-<id>'. */
+  key: string;
+  kind: 'evento' | 'movimiento';
+  /** id del registro subyacente (TreasuryEvent.id o Movement.id). */
+  refId: number;
+  estado: EstadoPunteo;
+  /** ISO yyyy-mm-dd del cargo (predictedDate o date). */
+  fecha: string;
+  concepto: string;
+  /** Contexto del activo · null = Personal. */
+  activo: { inmuebleId: number | string; alias: string } | null;
+  /** Etiqueta de origen (Financiación · Ingreso · Suministro · Recurrente…). */
+  origen: string;
+  cuentaId: number | null;
+  /** Importe con signo (+ ingreso · − gasto). */
+  importe: number;
+  /** Importe previsto original si el real difiere (para mostrar en gris). */
+  importePrevisto?: number;
+  /** Discrepancia banco-vs-confirmado pendiente de revisar. */
+  discrepancia?: DiscrepanciaPunteo;
+  /** Agrupación madre/hijas (alquiler por habitaciones · fraccionados). */
+  grupoId?: string;
+}
+
+export interface DiscrepanciaPunteo {
+  importeConfirmado: number;
+  importeBanco: number;
+  delta: number;
+  revisada: boolean;
+}
+
+// ─── Discrepancias ──────────────────────────────────────────────────────────
+
+/** Bajo este |Δ| la discrepancia nace ya revisada (calderilla · Euribor). */
+export const UMBRAL_AUTO_ENTENDIDO = 0.5;
+
+export function calcularDiscrepancia(
+  importeConfirmado: number,
+  importeBanco: number,
+  umbralAutoEntendido: number = UMBRAL_AUTO_ENTENDIDO,
+): DiscrepanciaPunteo | null {
+  const delta = Math.round((importeBanco - importeConfirmado) * 100) / 100;
+  if (delta === 0) return null;
+  return {
+    importeConfirmado,
+    importeBanco,
+    delta,
+    revisada: Math.abs(delta) < umbralAutoEntendido,
+  };
+}
+
+// ─── Orden y agrupación ─────────────────────────────────────────────────────
+
+/**
+ * Orden canónico DENTRO de un día: ingresos primero, luego gastos; dentro de
+ * cada grupo por |importe| descendente. Desempate por key → estable (nada
+ * salta al puntear).
+ */
+export function compararEnDia(a: ItemPunteo, b: ItemPunteo): number {
+  const aIngreso = a.importe > 0 ? 0 : 1;
+  const bIngreso = b.importe > 0 ? 0 : 1;
+  if (aIngreso !== bIngreso) return aIngreso - bIngreso;
+  const abs = Math.abs(b.importe) - Math.abs(a.importe);
+  if (abs !== 0) return abs;
+  return a.key.localeCompare(b.key);
+}
+
+export interface DiaPunteo {
+  fecha: string;
+  items: ItemPunteo[];
+  totalIngresos: number;
+  totalGastos: number;
+}
+
+/** Agrupa por día (días descendentes · el más reciente arriba) y ordena dentro. */
+export function agruparPorDia(items: ItemPunteo[]): DiaPunteo[] {
+  const porFecha = new Map<string, ItemPunteo[]>();
+  for (const it of items) {
+    const f = it.fecha.slice(0, 10);
+    const arr = porFecha.get(f);
+    if (arr) arr.push(it);
+    else porFecha.set(f, [it]);
+  }
+  return Array.from(porFecha.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([fecha, arr]) => ({
+      fecha,
+      items: arr.slice().sort(compararEnDia),
+      totalIngresos: round2(arr.filter((i) => i.importe > 0).reduce((s, i) => s + i.importe, 0)),
+      totalGastos: round2(arr.filter((i) => i.importe < 0).reduce((s, i) => s + i.importe, 0)),
+    }));
+}
+
+// ─── Chips de estado (con regla de ocultar-a-cero) ──────────────────────────
+
+export interface ConteoEstados {
+  todos: number;
+  previstos: number;
+  confirmados: number;
+  conciliados: number;
+  discrepancias: number;
+}
+
+export function contarEstados(items: ItemPunteo[]): ConteoEstados {
+  let previstos = 0;
+  let confirmados = 0;
+  let conciliados = 0;
+  let discrepancias = 0;
+  for (const it of items) {
+    if (it.estado === 'previsto') previstos++;
+    else if (it.estado === 'confirmado') confirmados++;
+    else conciliados++;
+    if (it.discrepancia && !it.discrepancia.revisada) discrepancias++;
+  }
+  return { todos: items.length, previstos, confirmados, conciliados, discrepancias };
+}
+
+export type ChipEstado = 'todos' | 'previstos' | 'confirmados' | 'conciliados' | 'discrepancias';
+
+/**
+ * Chips visibles: los que están a 0 se ocultan, SALVO Todos y Previstos
+ * (siempre presentes · son la vista base y la cola de trabajo).
+ */
+export function chipsVisibles(c: ConteoEstados): ChipEstado[] {
+  const out: ChipEstado[] = ['todos', 'previstos'];
+  if (c.confirmados > 0) out.push('confirmados');
+  if (c.conciliados > 0) out.push('conciliados');
+  if (c.discrepancias > 0) out.push('discrepancias');
+  return out;
+}
+
+export function filtrarPorChip(items: ItemPunteo[], chip: ChipEstado): ItemPunteo[] {
+  switch (chip) {
+    case 'todos':
+      return items;
+    case 'previstos':
+      return items.filter((i) => i.estado === 'previsto');
+    case 'confirmados':
+      return items.filter((i) => i.estado === 'confirmado');
+    case 'conciliados':
+      return items.filter((i) => i.estado === 'conciliado');
+    case 'discrepancias':
+      return items.filter((i) => i.discrepancia && !i.discrepancia.revisada);
+  }
+}
+
+// ─── Madre/hijas (alquiler por habitaciones · recibos fraccionados) ─────────
+
+export interface GrupoPunteo {
+  grupoId: string;
+  hijas: ItemPunteo[];
+  cobradas: number;
+  total: number;
+  /** Importe ya real (suma de hijas reales). */
+  importeReal: number;
+  /** Importe previsto total del grupo. */
+  importePrevistoTotal: number;
+  completo: boolean;
+}
+
+/**
+ * Agrupa los items que comparten `grupoId` dentro del mismo día. Devuelve la
+ * lista con las hijas de cada grupo contiguas y el índice de grupos. Un grupo
+ * de 1 no forma madre.
+ */
+export function agruparHijas(items: ItemPunteo[]): Map<string, GrupoPunteo> {
+  const grupos = new Map<string, GrupoPunteo>();
+  for (const it of items) {
+    if (!it.grupoId) continue;
+    let g = grupos.get(it.grupoId);
+    if (!g) {
+      g = { grupoId: it.grupoId, hijas: [], cobradas: 0, total: 0, importeReal: 0, importePrevistoTotal: 0, completo: false };
+      grupos.set(it.grupoId, g);
+    }
+    g.hijas.push(it);
+    g.total++;
+    g.importePrevistoTotal = round2(g.importePrevistoTotal + (it.importePrevisto ?? it.importe));
+    if (esReal(it.estado)) {
+      g.cobradas++;
+      g.importeReal = round2(g.importeReal + it.importe);
+    }
+  }
+  for (const g of grupos.values()) {
+    g.completo = g.cobradas === g.total;
+    if (g.total < 2) grupos.delete(g.grupoId);
+  }
+  return grupos;
+}
+
+// ─── Utilidades ─────────────────────────────────────────────────────────────
+
+export const round2 = (n: number): number => Math.round(n * 100) / 100;
