@@ -1,9 +1,73 @@
 /**
  * Batch Hash Utilities for FIX-EXTRACTOS
- * 
+ *
  * Generates SHA-256 hashes for bank statement file content to ensure idempotency
  * and prevent duplicate imports as per requirements.
+ *
+ * V6 · D1 · aquí viven DOS identidades distintas, que no hay que confundir:
+ *   · `hashLote`  · identidad del FICHERO   · ¿ya importé este extracto?
+ *   · `hashLinea` · identidad de una LÍNEA  · ¿ya vi (e ignoré) esta línea?
+ *
+ * Ninguna de las dos es criterio de EMPAREJAMIENTO. Emparejar ("¿esta línea se
+ * corresponde con este previsto?") es difuso —importe, fecha, referencia— y
+ * vive en `movementMatchingService`. Estas dos son identidad, deterministas.
+ * **No las unifiques con el emparejamiento "por coherencia"**: cambiar el
+ * normalizador del matching cambia qué casa y qué no en producción.
  */
+
+import { normalizeDescription } from './duplicateDetection';
+
+/**
+ * Versión del algoritmo de `hashLinea`.
+ *
+ * Va como prefijo del valor almacenado (`v1:…`). Si algún día cambia el
+ * normalizador, los hashes guardados dejarían de casar y las líneas ignoradas
+ * reaparecerían **en silencio**. Con el prefijo, ese caso es detectable
+ * (`hashLinea` con versión distinta a la actual) y tratable, en vez de un fallo
+ * mudo. Al cambiar el algoritmo: subir esta constante, nunca reescribirla.
+ */
+export const LINE_HASH_VERSION = 'v1';
+
+/** Línea de extracto, en lo que la identifica. */
+export interface StatementLineIdentity {
+  /** Fecha del apunte · ISO `YYYY-MM-DD` o cualquier cosa parseable por Date. */
+  date: string | Date;
+  amount: number;
+  description?: string;
+}
+
+/**
+ * Identidad determinista de una línea de extracto: `v1:{fecha|céntimos|concepto}`.
+ *
+ * Se usa para recordar qué líneas ignoró el usuario, de forma que al reimportar
+ * el mismo extracto no vuelvan a aparecer como "a resolver".
+ *
+ * Reutiliza `normalizeDescription` de `duplicateDetection` —no una copia— porque
+ * la identidad de línea es un problema de deduplicación. El importe va en
+ * céntimos enteros para no arrastrar el error de coma flotante de los decimales.
+ */
+export function generateLineHash(line: StatementLineIdentity): string {
+  const iso = toIsoDate(line.date);
+  const cents = Math.round(Number(line.amount) * 100);
+  const concepto = normalizeDescription(line.description ?? '');
+  return `${LINE_HASH_VERSION}:${iso}|${cents}|${concepto}`;
+}
+
+/** ¿El hash lo generó la versión vigente del algoritmo? */
+export function isCurrentLineHashVersion(hashLinea: string): boolean {
+  return hashLinea.startsWith(`${LINE_HASH_VERSION}:`);
+}
+
+function toIsoDate(value: string | Date): string {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? '' : value.toISOString().slice(0, 10);
+  }
+  const raw = String(value ?? '').trim();
+  // Ya viene en ISO · no se reinterpreta (evita corrimientos de zona horaria).
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw : parsed.toISOString().slice(0, 10);
+}
 
 /**
  * Generate SHA-256 hash from file content for batch idempotency

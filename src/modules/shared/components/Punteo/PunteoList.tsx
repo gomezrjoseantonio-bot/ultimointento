@@ -20,7 +20,6 @@ import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../../design-system/v5';
 import styles from './Punteo.module.css';
 import {
-  agruparPorDia,
   agruparHijas,
   contarEstados,
   chipsVisibles,
@@ -30,6 +29,18 @@ import {
   type ItemPunteo,
   type GrupoPunteo,
 } from '../../../../services/punteo/punteoModel';
+import {
+  agruparPorEje,
+  filtrarPorBusqueda,
+  EJE_LABEL,
+  type EjeAgrupacion,
+  type GrupoLista,
+} from './punteoAgrupacion';
+
+/** Anatomía de fila · `tesoreria` añade editar y descartar al hover (V6 · D2 bis). */
+export type RowVariant = 'default' | 'tesoreria';
+
+const EJES: EjeAgrupacion[] = ['fecha', 'inmueble', 'que-es'];
 
 // ─── Formato ────────────────────────────────────────────────────────────────
 
@@ -74,6 +85,36 @@ export interface PunteoListProps {
   onNoPaso: (item: ItemPunteo) => void | Promise<void>;
   /** Marcar una discrepancia como revisada («Entendido»). */
   onRevisarDiscrepancia?: (item: ItemPunteo) => void | Promise<void>;
+
+  // ─── Tesorería V6 · D2 bis ────────────────────────────────────────────────
+  // Las cinco fricciones aprobadas entran como props OPCIONALES cuyo valor por
+  // defecto es el comportamiento de siempre, para que las otras tres vistas que
+  // cuelgan de PunteoList no cambien ni un píxel. `punteoModel.ts` no se toca:
+  // nada de esto es modelo, es presentación.
+
+  /** 1 · Eje de agrupación. Default `fecha` = lo de siempre. */
+  eje?: EjeAgrupacion;
+  /** Si se pasa, se pinta el selector de eje. Sin él, el eje es fijo. */
+  onEjeChange?: (eje: EjeAgrupacion) => void;
+
+  /** 2 · Ocultar los chips de estado para que el contenedor ponga sus pestañas. */
+  mostrarChips?: boolean;
+
+  /** 3 · Buscador. Solo se pinta si viene `onBusquedaChange`. */
+  busqueda?: string;
+  onBusquedaChange?: (q: string) => void;
+
+  /** 4 · Grupos en tarjetas plegadas con recuento y subtotal en cabecera. */
+  gruposPlegables?: boolean;
+
+  /**
+   * 5 · Anatomía de fila. `tesoreria` saca el descartar del editor a la fila
+   * (círculo · concepto · estado · importe · editar · descartar al hover). Variante
+   * explícita: el render por defecto no cambia.
+   */
+  rowVariant?: RowVariant;
+  /** Lápiz de la fila · solo en `rowVariant: 'tesoreria'`. */
+  onEditar?: (item: ItemPunteo) => void;
 }
 
 // ─── Sub-componentes ────────────────────────────────────────────────────────
@@ -235,9 +276,20 @@ const PunteoList: React.FC<PunteoListProps> = ({
   onConfirmar,
   onNoPaso,
   onRevisarDiscrepancia,
+  eje = 'fecha',
+  onEjeChange,
+  mostrarChips = true,
+  busqueda = '',
+  onBusquedaChange,
+  gruposPlegables = false,
+  rowVariant = 'default',
+  onEditar,
 }) => {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [gruposAbiertos, setGruposAbiertos] = useState<Record<string, boolean>>({});
+  // §4.4 · "grupos en tarjetas PLEGADAS … se abren al buscar": nacen cerrados,
+  // así que el estado guarda los que el usuario ha abierto, no los cerrados.
+  const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
 
   const conteo = useMemo(() => contarEstados(items), [items]);
   const chips = useMemo(() => {
@@ -247,7 +299,13 @@ const PunteoList: React.FC<PunteoListProps> = ({
     return vis.includes(chip) ? vis : [...vis, chip];
   }, [conteo, chip]);
 
-  const dias = useMemo(() => agruparPorDia(filtrarPorChip(items, chip)), [items, chip]);
+  // Chip → buscador → eje. El buscador filtra sobre lo ya acotado por el chip,
+  // que es lo que espera §4.4 ("los grupos se abren al buscar").
+  const grupos = useMemo(
+    () => agruparPorEje(filtrarPorBusqueda(filtrarPorChip(items, chip), busqueda), eje),
+    [items, chip, busqueda, eje]
+  );
+  const buscando = busqueda.trim().length > 0;
   const cuentaLabel = useMemo(() => {
     const m = new Map(cuentas.map((c) => [c.id, c.label]));
     return (id: number | null) => (id != null ? m.get(id) ?? `Cuenta ${id}` : '—');
@@ -306,6 +364,39 @@ const PunteoList: React.FC<PunteoListProps> = ({
         {!esDrawer && !ocultarCuenta && <span className={styles.cuenta}>{cuentaLabel(it.cuentaId)}</span>}
         {renderImporte(it)}
         <PunteoCheck estado={it.estado} concepto={it.concepto} onPuntear={() => onConfirmar(it)} />
+        {rowVariant === 'tesoreria' && (
+          // §4.4 · editar y descartar en la fila, al hover. El descartar sale del editor
+          // inline y solo existe en esta variante; en las otras vistas la fila no
+          // cambia. `stopPropagation` obligatorio: la fila entera abre el editor.
+          <span className={styles.rowActions}>
+            {onEditar && (
+              <button
+                type="button"
+                className={styles.rowAction}
+                aria-label={`Editar ${it.concepto}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditar(it);
+                }}
+              >
+                <Icons.Edit size={13} strokeWidth={1.8} />
+              </button>
+            )}
+            {it.estado === 'previsto' && (
+              <button
+                type="button"
+                className={styles.rowAction}
+                aria-label={`Descartar ${it.concepto}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNoPaso(it);
+                }}
+              >
+                <Icons.Close size={13} strokeWidth={2} />
+              </button>
+            )}
+          </span>
+        )}
       </div>
       {editingKey === it.key && (
         <PunteoEditor
@@ -377,8 +468,97 @@ const PunteoList: React.FC<PunteoListProps> = ({
     );
   };
 
+  const renderGrupo = (g: GrupoLista) => {
+    const hijas = agruparHijas(g.items);
+    const enGrupo = new Set<string>();
+    for (const x of hijas.values()) for (const h of x.hijas) enGrupo.add(h.key);
+    const pintados = new Set<string>();
+    // Buscando, los grupos se abren (§4.4). Fuera de eso: plegables → cerrado
+    // salvo que el usuario lo abra; no plegables → siempre abierto.
+    const abierto = !gruposPlegables || buscando || Boolean(abiertos[g.clave]);
+
+    const cuerpo = g.items.map((it) => {
+      if (it.grupoId && enGrupo.has(it.key)) {
+        const gg = hijas.get(it.grupoId)!;
+        if (pintados.has(gg.grupoId)) return null;
+        pintados.add(gg.grupoId);
+        return renderMadre(gg);
+      }
+      return renderFila(it);
+    });
+
+    const cabecera = (
+      <div className={styles.dayRule}>
+        <span className={styles.dayName}>{eje === 'fecha' ? fmtDia(g.clave) : g.titulo}</span>
+        <span className={styles.daySums}>
+          {gruposPlegables && <span className={styles.grupoCount}>{g.items.length}</span>}
+          {gruposPlegables ? (
+            <span className={g.subtotal < 0 ? styles.daySumNeg : styles.daySumPos}>
+              {fmtImporte(g.subtotal)}
+            </span>
+          ) : (
+            <>
+              {g.totalIngresos > 0 && <span className={styles.daySumPos}>{fmtImporte(g.totalIngresos)}</span>}
+              {g.totalGastos < 0 && <span className={styles.daySumNeg}>{fmtImporte(g.totalGastos)}</span>}
+            </>
+          )}
+        </span>
+      </div>
+    );
+
+    return (
+      <React.Fragment key={g.clave}>
+        {gruposPlegables ? (
+          <button
+            type="button"
+            className={styles.grupoToggle}
+            aria-expanded={abierto}
+            onClick={() => setAbiertos((s) => ({ ...s, [g.clave]: !s[g.clave] }))}
+          >
+            {cabecera}
+          </button>
+        ) : (
+          cabecera
+        )}
+        {abierto && cuerpo}
+      </React.Fragment>
+    );
+  };
+
   return (
     <div>
+      {(onEjeChange || onBusquedaChange) && (
+        <div className={styles.controles}>
+          {onEjeChange && (
+            <div className={styles.ejes} role="tablist" aria-label="Agrupar por">
+              {EJES.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  role="tab"
+                  aria-selected={eje === e}
+                  className={`${styles.ejeBtn} ${eje === e ? styles.ejeOn : ''}`}
+                  onClick={() => onEjeChange(e)}
+                >
+                  {EJE_LABEL[e]}
+                </button>
+              ))}
+            </div>
+          )}
+          {onBusquedaChange && (
+            <input
+              type="search"
+              className={styles.buscador}
+              value={busqueda}
+              placeholder="Buscar"
+              aria-label="Buscar por concepto, inmueble, familia o importe"
+              onChange={(ev) => onBusquedaChange(ev.target.value)}
+            />
+          )}
+        </div>
+      )}
+
+      {mostrarChips && (
       <div className={styles.chips} role="tablist" aria-label="Filtrar por estado de punteo">
         {chips.map((c) => {
           const n =
@@ -405,6 +585,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
           );
         })}
       </div>
+      )}
 
       {!esDrawer && (
         <div className={`${styles.cols} ${ocultarCuenta ? styles.colsSinCuenta : ''}`} style={{ marginTop: 10 }}>
@@ -416,34 +597,9 @@ const PunteoList: React.FC<PunteoListProps> = ({
         </div>
       )}
 
-      {dias.length === 0 && <div className={styles.empty}>Nada que puntear con este filtro</div>}
+      {grupos.length === 0 && <div className={styles.empty}>Nada que puntear con este filtro</div>}
 
-      {dias.map((dia) => {
-        const grupos = agruparHijas(dia.items);
-        const enGrupo = new Set<string>();
-        for (const g of grupos.values()) for (const h of g.hijas) enGrupo.add(h.key);
-        const gruposPintados = new Set<string>();
-        return (
-          <React.Fragment key={dia.fecha}>
-            <div className={styles.dayRule}>
-              <span className={styles.dayName}>{fmtDia(dia.fecha)}</span>
-              <span className={styles.daySums}>
-                {dia.totalIngresos > 0 && <span className={styles.daySumPos}>{fmtImporte(dia.totalIngresos)}</span>}
-                {dia.totalGastos < 0 && <span className={styles.daySumNeg}>{fmtImporte(dia.totalGastos)}</span>}
-              </span>
-            </div>
-            {dia.items.map((it) => {
-              if (it.grupoId && enGrupo.has(it.key)) {
-                const g = grupos.get(it.grupoId)!;
-                if (gruposPintados.has(g.grupoId)) return null;
-                gruposPintados.add(g.grupoId);
-                return renderMadre(g);
-              }
-              return renderFila(it);
-            })}
-          </React.Fragment>
-        );
-      })}
+      {grupos.map(renderGrupo)}
     </div>
   );
 };
