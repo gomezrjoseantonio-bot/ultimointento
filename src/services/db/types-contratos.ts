@@ -487,6 +487,17 @@ export interface Account {
 
   // S-WIZARD-CUENTA-V3 · campos opcionales sin tocar DB_VERSION (sigue v70).
   // Cuentas bancarias (Corriente / Ahorro)
+  /**
+   * Tesorería V6 · §4.8 · color del punto elegido por el usuario.
+   *
+   * Token CSS (`var(--atlas-v5-bank-…)`) o el literal `'sin-color'`. Manda
+   * sobre el color de marca deducido del banco: dos cuentas del mismo banco se
+   * distinguen a ojo, que es justo para lo que sirve el punto.
+   *
+   * §5 excluye este color de "cero hex hardcoded" igual que los de marca: lo
+   * elige el usuario, no es semántica del producto.
+   */
+  colorPunto?: string;
   bic?: string;                          // BIC / SWIFT · 8 u 11 chars
   taeAnual?: number;                     // alias plano · espejo de remuneracion.tinAnual
   frecuenciaLiquidacion?: 'mensual' | 'trimestral' | 'semestral' | 'anual';

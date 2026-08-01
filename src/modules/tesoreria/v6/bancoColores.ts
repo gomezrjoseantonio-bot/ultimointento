@@ -43,18 +43,57 @@ const POR_NOMBRE: Record<string, string> = {
 /** Neutro cuando no se reconoce el banco o el usuario eligió "Sin color". */
 export const SIN_COLOR = 'var(--atlas-v5-ink-5)';
 
+/** Valor que se persiste cuando el usuario elige expresamente no tener color. */
+export const CLAVE_SIN_COLOR = 'sin-color';
+
+/**
+ * Paleta del selector de §4.8.
+ *
+ * Son los mismos tokens de marca que usa el punto por defecto, ofrecidos como
+ * rejilla para que el usuario pueda distinguir a ojo dos cuentas del mismo
+ * banco — que es el caso que el color automático no resuelve.
+ */
+export const PALETA_PUNTO: Array<{ token: string; nombre: string }> = [
+  { token: 'var(--atlas-v5-bank-santander)', nombre: 'Rojo' },
+  { token: 'var(--atlas-v5-bank-ing)', nombre: 'Naranja' },
+  { token: 'var(--atlas-v5-bank-bankinter)', nombre: 'Ámbar' },
+  { token: 'var(--atlas-v5-bank-cajamar)', nombre: 'Lima' },
+  { token: 'var(--atlas-v5-bank-unicaja)', nombre: 'Verde' },
+  { token: 'var(--atlas-v5-bank-abanca)', nombre: 'Turquesa' },
+  { token: 'var(--atlas-v5-bank-kutxabank)', nombre: 'Azul claro' },
+  { token: 'var(--atlas-v5-bank-revolut)', nombre: 'Azul' },
+  { token: 'var(--atlas-v5-bank-sabadell)', nombre: 'Azul medio' },
+  { token: 'var(--atlas-v5-bank-bbva)', nombre: 'Azul marino' },
+  { token: 'var(--atlas-v5-bank-caixabank)', nombre: 'Índigo' },
+  { token: 'var(--atlas-v5-bank-openbank)', nombre: 'Carmesí' },
+];
+
 /**
  * Color del punto, por orden de prioridad:
- *   1. el que eligió el usuario (§4.8 · guardado en keyval, aún sin UI)
+ *   1. el que eligió el usuario (§4.8 · `Account.colorPunto`)
  *   2. el de marca que ya venga en `banco.brand.color`
  *   3. el deducido del código de entidad del IBAN
  *   4. el deducido del nombre del banco
  *   5. neutro
  */
 export function colorDeBanco(cuenta: Account, colorUsuario?: string | null): string {
-  if (colorUsuario === 'sin-color') return SIN_COLOR;
-  if (colorUsuario) return colorUsuario;
+  // El del usuario manda · lo elige en §4.8 y se guarda en `Account.colorPunto`.
+  // El parámetro sigue existiendo para quien ya lo tenga a mano y se ahorre la
+  // lectura, pero por defecto se toma de la propia cuenta.
+  const elegido = colorUsuario ?? cuenta.colorPunto;
+  if (elegido === CLAVE_SIN_COLOR) return SIN_COLOR;
+  if (elegido) return elegido;
+  return colorAutomatico(cuenta);
+}
 
+/**
+ * El color que ATLAS deduce del banco, IGNORANDO lo que haya elegido el
+ * usuario. Separado a propósito: `colorDeBanco` responde "qué pinto", y esto
+ * responde "qué propondría si no hubieras elegido nada" — que es lo que el
+ * selector de §4.8 necesita para marcar la opción por defecto. Mezclarlos hacía
+ * que la ficha propusiera como sugerencia la elección previa del propio usuario.
+ */
+export function colorAutomatico(cuenta: Account): string {
   const marca = cuenta.banco?.brand?.color;
   if (marca) return marca;
 
@@ -64,11 +103,20 @@ export function colorDeBanco(cuenta: Account, colorUsuario?: string | null): str
   const nombre = (cuenta.banco?.name ?? cuenta.bank ?? '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z]/g, '');
   for (const [clave, color] of Object.entries(POR_NOMBRE)) {
     if (nombre.includes(clave)) return color;
   }
 
   return SIN_COLOR;
+}
+
+/**
+ * Color que el selector propone por defecto · `null` si no hay banco
+ * reconocible, porque ahí no hay sugerencia honesta que marcar.
+ */
+export function colorSugerido(cuenta: Account): string | null {
+  const auto = colorAutomatico(cuenta);
+  return auto === SIN_COLOR ? null : auto;
 }
