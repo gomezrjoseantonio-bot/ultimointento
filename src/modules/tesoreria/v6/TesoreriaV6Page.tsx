@@ -29,6 +29,7 @@ import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga, diaYM
 import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
 import DrawerExtracto from './DrawerExtracto';
+import DrawerCalendario from './DrawerCalendario';
 import CuentaWizard from '../../../components/cuenta/CuentaWizard';
 import {
   confirmTreasuryEvent,
@@ -97,6 +98,11 @@ const TesoreriaV6Page: React.FC = () => {
    * saldo inicial a fecha de, y ahora también color de punto y baja.
    */
   const [fichaCuenta, setFichaCuenta] = useState<{ cuenta: Account | null } | null>(null);
+  /**
+   * §4.9 · calendario diario. Guarda su propio mes porque navega con ‹ › sin
+   * cerrarse, y eso no debe mover el mes de la pantalla de detrás.
+   */
+  const [calendario, setCalendario] = useState<{ year: number; month0: number } | null>(null);
 
   const hoy = hoyISO();
   const ahora = useMemo(() => new Date(`${hoy}T12:00:00`), [hoy]);
@@ -263,6 +269,35 @@ const TesoreriaV6Page: React.FC = () => {
         await trasEscribir();
       } catch (err) {
         console.error('[TesoreriaV6] no se pudo descartar', err);
+      }
+    },
+    [trasEscribir]
+  );
+
+  /**
+   * §4.9 · confirmar de golpe todo lo que queda pendiente de un día.
+   *
+   * En serie y no en paralelo: cada confirmación materializa un movimiento y
+   * recalcula saldo, y lanzarlas a la vez sobre la misma cuenta se pisa. Un día
+   * tiene pocos apuntes, así que la espera no se nota.
+   */
+  const confirmarDia = useCallback(
+    async (items: ItemPunteo[]) => {
+      let fallos = 0;
+      for (const item of items) {
+        if (item.kind !== 'evento') continue;
+        try {
+          await confirmTreasuryEvent(item.refId, {});
+        } catch (err) {
+          fallos++;
+          console.error('[TesoreriaV6] no se pudo confirmar el previsto del día', err);
+        }
+      }
+      // Se recarga aunque alguno falle: los que sí pasaron ya movieron saldo, y
+      // dejar la pantalla desfasada sería peor que enseñar el resultado parcial.
+      await trasEscribir();
+      if (fallos > 0) {
+        console.warn(`[TesoreriaV6] ${fallos} de ${items.length} previstos no se pudieron confirmar`);
       }
     },
     [trasEscribir]
@@ -473,7 +508,11 @@ const TesoreriaV6Page: React.FC = () => {
           </div>
           <div className={styles.mesgrid}>
             {meses.map((m) => (
-              <TarjetaMes key={`${m.year}-${m.month0}`} mes={m} />
+              <TarjetaMes
+                key={`${m.year}-${m.month0}`}
+                mes={m}
+                onAbrir={() => setCalendario({ year: m.year, month0: m.month0 })}
+              />
             ))}
           </div>
         </section>
@@ -507,6 +546,26 @@ const TesoreriaV6Page: React.FC = () => {
         inmuebles={inmuebles}
         onSubirExtracto={(c) => setExtracto({ cuenta: c })}
       />
+
+      {/* §4.9 · calendario diario · navega entre meses sin cerrarse */}
+      {calendario && (
+        <DrawerCalendario
+          abierto
+          year={calendario.year}
+          month0={calendario.month0}
+          onMes={(y, m) => setCalendario({ year: y, month0: m })}
+          eventos={estado.eventos}
+          movimientos={estado.movimientos}
+          cuentas={cuentasVivas}
+          saldoPorCuenta={saldoPorCuenta}
+          saldoTotalHoy={kpis.saldo}
+          hoy={hoy}
+          onCerrar={() => setCalendario(null)}
+          onConfirmar={confirmarItem}
+          onDescartar={descartarItem}
+          onConfirmarDia={confirmarDia}
+        />
+      )}
 
       {/* §4.8 · ficha de cuenta · alta, edición y baja */}
       <CuentaWizard
@@ -627,12 +686,18 @@ const EstadoTarjeta: React.FC<{ estado: EstadoCuenta }> = ({ estado }) => {
   return <span className={styles.state}>al día</span>;
 };
 
-const TarjetaMes: React.FC<{ mes: MesProyectado }> = ({ mes }) => {
+const TarjetaMes: React.FC<{ mes: MesProyectado; onAbrir: () => void }> = ({ mes, onAbrir }) => {
   const nombre = nombreMes(mes.month0);
+  const titulo = nombre.charAt(0).toUpperCase() + nombre.slice(1);
   return (
-    <div className={`${styles.mes} ${mes.enCurso ? styles.mesNow : ''}`}>
+    <button
+      type="button"
+      className={`${styles.mes} ${mes.enCurso ? styles.mesNow : ''}`}
+      onClick={onAbrir}
+      aria-label={`Ver los días de ${titulo}`}
+    >
       <div className={styles.mesTop}>
-        <span className={styles.mesNm}>{nombre.charAt(0).toUpperCase() + nombre.slice(1)}</span>
+        <span className={styles.mesNm}>{titulo}</span>
         {mes.enCurso && <span className={styles.mesChip}>en curso</span>}
       </div>
       {/* Vocabulario único: "Cierre" en todo el módulo (§4.3). */}
@@ -648,7 +713,7 @@ const TarjetaMes: React.FC<{ mes: MesProyectado }> = ({ mes }) => {
           <span className={styles.fv}>{importeSaldo(Math.abs(mes.sale))}</span>
         </span>
       </div>
-    </div>
+    </button>
   );
 };
 
