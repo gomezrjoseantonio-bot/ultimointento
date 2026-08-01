@@ -78,8 +78,13 @@ export interface PunteoListProps {
   items: ItemPunteo[];
   chip: ChipEstado;
   onChipChange: (chip: ChipEstado) => void;
-  /** Cuentas para el chip de cuenta y el selector del editor. */
-  cuentas: Array<{ id: number; label: string }>;
+  /**
+   * Cuentas para el chip de cuenta y el selector del editor.
+   *
+   * `color` es opcional y solo lo usa §9: en el día conviven cargos de varias
+   * cuentas y hay que ver de cuál sale cada uno sin leer el nombre.
+   */
+  cuentas: Array<{ id: number; label: string; color?: string }>;
   /** Ocultar columna de cuenta (vista de cuenta única). */
   ocultarCuenta?: boolean;
   /** Variante compacta para el drawer del día. */
@@ -306,6 +311,12 @@ const PunteoList: React.FC<PunteoListProps> = ({
     return (id: number | null) => (id != null ? m.get(id) ?? `Cuenta ${id}` : '—');
   }, [cuentas]);
 
+  /** §9 · color del banco de esa cuenta, si lo trae quien nos llama. */
+  const colorCuenta = useMemo(() => {
+    const m = new Map(cuentas.map((c) => [c.id, c.color]));
+    return (id: number | null) => (id != null ? m.get(id) : undefined);
+  }, [cuentas]);
+
   const esDrawer = variant === 'drawer';
   // Las tarjetas por día son de la bandeja de trabajo (§6.3). En el drawer del
   // día no tienen sentido: allí solo hay un día.
@@ -354,6 +365,15 @@ const PunteoList: React.FC<PunteoListProps> = ({
         <PunteoCheck estado={it.estado} concepto={it.concepto} onPuntear={() => onConfirmar(it)} />
         <div className={styles.c1}>
           <div className={styles.conceptoLinea}>
+            {/* §9 · el punto del banco · en el día conviven varias cuentas y
+                hay que ver de cuál sale cada cargo de un vistazo. */}
+            {colorCuenta(it.cuentaId) && (
+              <span
+                className={styles.puntoBanco}
+                style={{ background: colorCuenta(it.cuentaId) }}
+                aria-hidden="true"
+              />
+            )}
             <span className={styles.concepto}>{it.concepto}</span>
             {conChipEstado && <EstadoChip estado={it.estado} />}
           </div>
@@ -519,6 +539,13 @@ const PunteoList: React.FC<PunteoListProps> = ({
     // §6.3 · cada día es una TARJETA, no una cabecera suelta sobre una lista
     // plana. Con todo corrido no se ve dónde acaba un día y empieza el
     // siguiente, y el subtotal de la cabecera parece de la lista entera.
+    // §9 · en el drawer del día la cabecera del grupo REPITE el día que ya
+    // encabeza el panel: salía "sábado · 1 ago 2026" y debajo "SÁBADO, 1 DE
+    // AGOSTO". Con un solo grupo no hay nada que separar, así que sobra.
+    if (esDrawer && grupos.length === 1) {
+      return <React.Fragment key={g.clave}>{cuerpo}</React.Fragment>;
+    }
+
     return (
       <div className={enTarjetas ? styles.diaCard : undefined} key={g.clave}>
         {gruposPlegables ? (

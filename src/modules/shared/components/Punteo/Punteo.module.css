@@ -144,6 +144,13 @@
   min-width: 0;
 }
 .conceptoLinea .concepto { min-width: 0; }
+/* §9 · punto de banco · identidad cromática, la única del módulo (§2.1). */
+.puntoBanco {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
 
 .chipEstado {
   flex: 0 0 auto;

@@ -42,7 +42,7 @@ import { descartarPrevisto } from '../../../services/treasuryDiscardService';
 import { altaMovimiento } from '../../../services/altaMovimientoService';
 import { batchesEnBorrador, sinBorradores } from '../../../services/statementSessionService';
 import { registrarDiagnosticoEnConsola } from '../../../services/duplicadosPrevisionService';
-import type { GuardadoFicha } from './FichaMovimiento';
+import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
 import styles from './TesoreriaV6Page.module.css';
@@ -115,6 +115,8 @@ const TesoreriaV6Page: React.FC = () => {
    * saldo inicial a fecha de, y ahora también color de punto y baja.
    */
   const [fichaCuenta, setFichaCuenta] = useState<{ cuenta: Account | null } | null>(null);
+  /** §9 · alta desde el drawer del día · guarda la fecha para prefijarla. */
+  const [altaDelDia, setAltaDelDia] = useState<string | null>(null);
   /**
    * §4.9 · calendario diario. Guarda su propio mes porque navega con ‹ › sin
    * cerrarse, y eso no debe mover el mes de la pantalla de detrás.
@@ -691,8 +693,38 @@ const TesoreriaV6Page: React.FC = () => {
           onConfirmar={confirmarItem}
           onDescartar={descartarItem}
           onConfirmarDia={confirmarDia}
+          // §9 · anotar desde el día · la fecha ya está en pantalla, así que la
+          // ficha abre con ella puesta en vez de hacer que se teclee otra vez.
+          onAnotar={(fecha) => {
+            setCalendario(null);
+            setAltaDelDia(fecha);
+          }}
         />
       )}
+
+      {/* §9 · alta de movimiento nacida en el drawer del día, con la fecha ya
+          puesta: estaba en pantalla, no tiene sentido volver a pedirla. */}
+      <FichaMovimiento
+        abierta={altaDelDia != null}
+        inicial={
+          altaDelDia
+            ? {
+                tipo: 'gasto',
+                concepto: '',
+                importe: 0,
+                fecha: altaDelDia,
+                cuentaId: cuentasVivas[0]?.id ?? null,
+              }
+            : undefined
+        }
+        cuentas={cuentasVivas}
+        inmuebles={estado.inmuebles}
+        onCerrar={() => setAltaDelDia(null)}
+        onGuardar={async (v) => {
+          await guardarFicha(null, v);
+          setAltaDelDia(null);
+        }}
+      />
 
       {/* §4.8 · ficha de cuenta · alta, edición y baja */}
       <CuentaWizard
