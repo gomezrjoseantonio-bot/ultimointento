@@ -29,6 +29,7 @@ import {
 } from '../../../services/bankStatementOrchestrator';
 import { getIgnoredLineHashes, ignoreLine, recoverLine } from '../../../services/statementIgnoredLinesService';
 import { consolidarSesion, archivarExtracto } from '../../../services/statementSessionService';
+import { mejoraDesdeMovimiento } from '../../../services/altaMovimientoService';
 import {
   construirLineas,
   veredictoEfectivo,
@@ -276,10 +277,31 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
    */
   const crearDesdeFicha = useCallback(
     async (linea: LineaExtracto, v: GuardadoFicha) => {
+      // Una derrama que resultó ser MEJORA no se clasifica como gasto: el
+      // apunte bancario se queda (el dinero salió) pero la deducción va por
+      // amortización, así que la inversión se registra en `mejorasInmueble`.
       if (v.esMejora) {
-        // Mismo límite que en §4.5: sin escritor de `mejorasInmueble`, guardarla
-        // como gasto sería justo lo contrario de lo que el usuario respondió.
-        console.warn('[DrawerExtracto] la derrama-mejora necesita alta en mejorasInmueble · aún sin escritor');
+        if (v.inmuebleId == null) {
+          setError('Una mejora se suma al valor de un inmueble: elige a cuál.');
+          return;
+        }
+        try {
+          await mejoraDesdeMovimiento({
+            movementId: linea.movementId,
+            inmuebleId: v.inmuebleId,
+            concepto: v.concepto,
+            importe: v.importe,
+            fecha: v.fecha,
+          });
+          conDecisiones((d) => {
+            d.creados.add(linea.movementId);
+            d.ignorados.delete(linea.movementId);
+          });
+          setCreando(null);
+        } catch (err) {
+          console.error('[DrawerExtracto] no se pudo registrar la mejora', err);
+          setError('No se pudo registrar la mejora.');
+        }
         return;
       }
       try {
