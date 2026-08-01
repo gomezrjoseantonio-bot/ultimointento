@@ -233,6 +233,38 @@
   --atlas-v5-chart-grid: rgba(200, 208, 220, 0.4);  /* grid horizontal */
   --atlas-v5-chart-axis: #6C757D;         /* labels eje X/Y */
   --atlas-v5-chart-border: #C8D0DC;       /* borde tooltip */
+
+  /* ============================================================
+     Tesorería V6 · tinta sobre navy (§4.1 hero · §4.4 cabecera)
+     ============================================================ */
+  --atlas-v5-on-brand: #FFFFFF;                      /* tinta principal sobre navy */
+  --atlas-v5-on-brand-soft: rgba(255, 255, 255, 0.55); /* labels y subtítulos */
+  --atlas-v5-on-brand-line: rgba(255, 255, 255, 0.1);  /* separador entre KPIs */
+  --atlas-v5-on-brand-fill: rgba(255, 255, 255, 0.08); /* botón fantasma sobre navy */
+  --atlas-v5-on-brand-fill-hover: rgba(255, 255, 255, 0.14);
+  --atlas-v5-on-brand-border: rgba(255, 255, 255, 0.16);
+  --atlas-v5-shadow-lift: 0 10px 24px rgba(20, 27, 46, 0.07);  /* card al hover */
+  --atlas-v5-shadow-pager: 0 3px 10px rgba(20, 27, 46, 0.1);   /* flecha del carrusel */
+
+  /* ============================================================
+     Colores de MARCA de banco · §5 los excluye expresamente de
+     "cero hex hardcoded": son identidad de un tercero, no
+     semántica del producto. Viven aquí, en la paleta canónica, y
+     no sueltos en un módulo. El consumidor es
+     `modules/tesoreria/v6/bancoColores.ts`.
+     ============================================================ */
+  --atlas-v5-bank-santander: #EC0000;
+  --atlas-v5-bank-sabadell: #024EA5;
+  --atlas-v5-bank-bbva: #004481;
+  --atlas-v5-bank-caixabank: #0F4C81;
+  --atlas-v5-bank-abanca: #00A0DF;
+  --atlas-v5-bank-unicaja: #009639;
+  --atlas-v5-bank-cajamar: #78B833;
+  --atlas-v5-bank-kutxabank: #0072CE;
+  --atlas-v5-bank-ing: #FF6200;
+  --atlas-v5-bank-revolut: #0666EB;
+  --atlas-v5-bank-openbank: #FF0000;
+  --atlas-v5-bank-bankinter: #FF6600;
 }
 
 /* ============================================================

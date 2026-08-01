@@ -1,0 +1,456 @@
+// ============================================================================
+// Tesorería V6 · pantalla única (§4.1 · 4.2 · 4.3 · 4.10)
+// ============================================================================
+//
+// Mockup: `docs/mockups/atlas-tesoreria-v6-escritorio.html`.
+//
+// La pregunta que responde esta pantalla, y que la diferencia del Panel:
+//   ¿tengo para pagar lo que viene, cuenta a cuenta, mes a mes?
+//
+// Los números NO se calculan aquí: salen de `tesoreriaV6Metrics`, derivación
+// pura. Así el "saldo vivo" de §4.6 es recargar el estado y recalcular, sin
+// obligar a refrescar la pantalla.
+// ============================================================================
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Icons } from '../../../design-system/v5';
+import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../services/db';
+import { calculateAccountBalanceAtDate } from '../../../services/accountBalanceService';
+import {
+  calcularKpisHero,
+  calcularRealidad,
+  estadoDeCuenta,
+  proyectarMeses,
+  type EstadoCuenta,
+  type MesProyectado,
+} from '../../../services/tesoreriaV6Metrics';
+import { colorDeBanco } from './bancoColores';
+import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga, diaYMes } from './formatoV6';
+import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
+import styles from './TesoreriaV6Page.module.css';
+
+const hoyISO = (): string => new Date().toISOString().slice(0, 10);
+
+/** Tarjetas visibles según ancho · 5 ≥1240px · 4 ≥1000px · 3 por debajo (§4.2). */
+function tarjetasVisibles(ancho: number): number {
+  if (ancho >= 1240) return 5;
+  if (ancho >= 1000) return 4;
+  return 3;
+}
+
+interface Estado {
+  cuentas: Account[];
+  eventos: TreasuryEvent[];
+  movimientos: Movement[];
+}
+
+const TesoreriaV6Page: React.FC = () => {
+  const [estado, setEstado] = useState<Estado>({ cuentas: [], eventos: [], movimientos: [] });
+  const [cargando, setCargando] = useState(true);
+  const [pagina, setPagina] = useState(0);
+  const [porPagina, setPorPagina] = useState(() =>
+    tarjetasVisibles(typeof window === 'undefined' ? 1280 : window.innerWidth)
+  );
+  const [orden, setOrden] = useState<number[]>([]);
+  const [arrastrando, setArrastrando] = useState<number | null>(null);
+  const [encima, setEncima] = useState<number | null>(null);
+
+  const hoy = hoyISO();
+  const ahora = useMemo(() => new Date(`${hoy}T12:00:00`), [hoy]);
+  const year = ahora.getFullYear();
+  const month0 = ahora.getMonth();
+
+  // ── Carga · una sola lectura, todo lo demás se deriva ────────────────────
+  const recargar = useCallback(async () => {
+    const db = await initDB();
+    const [cuentas, eventos, movimientos, ordenGuardado] = await Promise.all([
+      db.getAll('accounts') as Promise<Account[]>,
+      db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+      db.getAll('movements') as Promise<Movement[]>,
+      leerOrdenCuentas(),
+    ]);
+    setEstado({ cuentas: cuentas ?? [], eventos: eventos ?? [], movimientos: movimientos ?? [] });
+    setOrden(ordenGuardado);
+    setCargando(false);
+  }, []);
+
+  useEffect(() => {
+    void recargar();
+  }, [recargar]);
+
+  useEffect(() => {
+    const onResize = () => setPorPagina(tarjetasVisibles(window.innerWidth));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // ── Derivados ────────────────────────────────────────────────────────────
+
+  const cuentasVivas = useMemo(
+    () => aplicarOrden(estado.cuentas.filter((c) => c.status !== 'DELETED'), orden),
+    [estado.cuentas, orden]
+  );
+
+  const saldoPorCuenta = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const c of cuentasVivas) {
+      if (c.id == null) continue;
+      m.set(
+        c.id,
+        calculateAccountBalanceAtDate({
+          account: c,
+          cutoffDate: hoy,
+          treasuryEvents: estado.eventos,
+          movements: estado.movimientos,
+        })
+      );
+    }
+    return m;
+  }, [cuentasVivas, estado.eventos, estado.movimientos, hoy]);
+
+  const kpis = useMemo(
+    () => calcularKpisHero({ cuentas: cuentasVivas, saldoPorCuenta, eventos: estado.eventos, year, month0 }),
+    [cuentasVivas, saldoPorCuenta, estado.eventos, year, month0]
+  );
+
+  const meses = useMemo(
+    () => proyectarMeses({ saldoHoy: kpis.saldo, eventos: estado.eventos, year, month0, hoy }),
+    [kpis.saldo, estado.eventos, year, month0, hoy]
+  );
+
+  const realidad = useMemo(
+    () => calcularRealidad({ eventos: estado.eventos, movimientos: estado.movimientos, year, month0 }),
+    [estado.eventos, estado.movimientos, year, month0]
+  );
+
+  const totalPaginas = Math.max(1, Math.ceil((cuentasVivas.length + 1) / porPagina));
+  const pageSafe = Math.min(pagina, totalPaginas - 1);
+
+  // ── Reordenar cuentas · se persiste el orden del usuario (§4.2) ──────────
+
+  const soltarSobre = async (destinoId: number) => {
+    if (arrastrando == null || arrastrando === destinoId) return;
+    const ids = cuentasVivas.map((c) => c.id!).filter((x) => x != null);
+    const from = ids.indexOf(arrastrando);
+    const to = ids.indexOf(destinoId);
+    if (from < 0 || to < 0) return;
+    const nuevo = [...ids];
+    nuevo.splice(to, 0, ...nuevo.splice(from, 1));
+    setOrden(nuevo);
+    setArrastrando(null);
+    setEncima(null);
+    await guardarOrdenCuentas(nuevo);
+  };
+
+  if (cargando) return null;
+
+  const mesActual = nombreMes(month0);
+
+  return (
+    <div>
+      {/* ── §4.1 · Hero ─────────────────────────────────────────────────── */}
+      <div className={styles.hero}>
+        <div className={styles.heroLab}>
+          <div className={styles.heroTitle}>
+            <span className={styles.heroDot} /> Mi tesorería
+          </div>
+          <div className={styles.heroDate}>{fechaLarga(hoy)}</div>
+        </div>
+
+        <Kpi
+          lab="Saldo"
+          val={importeSaldo(kpis.saldo)}
+          sub={`${kpis.numCuentas} ${kpis.numCuentas === 1 ? 'cuenta' : 'cuentas'} · hoy`}
+        />
+        <Kpi
+          lab="Pendiente entrar"
+          val={importeConSigno(kpis.pendienteEntrar)}
+          sub={`${kpis.movimientosEntrar} ${kpis.movimientosEntrar === 1 ? 'movimiento' : 'movimientos'} · ${mesActual}`}
+        />
+        <Kpi
+          lab="Pendiente salir"
+          val={importeConSigno(kpis.pendienteSalir)}
+          sub={`${kpis.movimientosSalir} ${kpis.movimientosSalir === 1 ? 'movimiento' : 'movimientos'} · ${mesActual}`}
+        />
+        <Kpi
+          lab={`Cierre · ${mesActual}`}
+          val={importeSaldo(kpis.cierre)}
+          sub={`proyectado a día ${kpis.ultimoDia}`}
+          gold
+        />
+
+        <div className={styles.heroAct}>
+          <button type="button" className={`${styles.btn} ${styles.btnGold}`} disabled title="Llega con el drawer de extracto (§4.7)">
+            <Icons.Upload size={15} strokeWidth={1.8} /> Subir extracto
+          </button>
+        </div>
+      </div>
+
+      {/* ── §4.2 · Carrusel de cuentas ──────────────────────────────────── */}
+      <section className={styles.sec}>
+        <div className={styles.secHd}>
+          <div>
+            <div className={styles.secK}>Saldo actual en mis cuentas</div>
+            <div className={styles.secT}>entra en una cuenta para ver el detalle de movimientos</div>
+          </div>
+          <button type="button" className={styles.secAdd} disabled title="Llega con la ficha de cuenta (§4.8)">
+            <Icons.Plus size={14} strokeWidth={2} /> Añadir cuenta
+          </button>
+          {cuentasVivas.length > porPagina && (
+            <span className={styles.rngRight}>
+              {pageSafe * porPagina + 1}–{Math.min((pageSafe + 1) * porPagina, cuentasVivas.length)} de{' '}
+              {cuentasVivas.length}
+            </span>
+          )}
+        </div>
+
+        <div className={styles.carr}>
+          {/* La flecha deshabilitada es INVISIBLE, no un hueco gris (§4.2). */}
+          <button
+            type="button"
+            aria-label="Cuentas anteriores"
+            className={`${styles.pager} ${styles.pagerPrev} ${pageSafe === 0 ? styles.pagerOff : ''}`}
+            onClick={() => setPagina((p) => Math.max(0, p - 1))}
+          >
+            <Icons.ChevronLeft size={18} strokeWidth={2.2} />
+          </button>
+
+          <div className={styles.viewport}>
+            <div
+              className={styles.track}
+              style={
+                {
+                  '--pp': porPagina,
+                  transform: `translateX(calc(-${pageSafe} * (100% + 12px)))`,
+                } as React.CSSProperties
+              }
+            >
+              {cuentasVivas.map((c) => (
+                <TarjetaCuenta
+                  key={c.id}
+                  cuenta={c}
+                  saldo={saldoPorCuenta.get(c.id!) ?? 0}
+                  estado={estadoDeCuenta({
+                    saldoHoy: saldoPorCuenta.get(c.id!) ?? 0,
+                    eventos: estado.eventos.filter((e) => e.accountId === c.id),
+                    year,
+                    month0,
+                    hoy,
+                  })}
+                  arrastrando={arrastrando === c.id}
+                  encima={encima === c.id}
+                  onDragStart={() => setArrastrando(c.id!)}
+                  onDragEnter={() => setEncima(c.id!)}
+                  onDragEnd={() => {
+                    setArrastrando(null);
+                    setEncima(null);
+                  }}
+                  onDrop={() => void soltarSobre(c.id!)}
+                />
+              ))}
+              <button type="button" className={styles.accAdd} disabled title="Llega con la ficha de cuenta (§4.8)">
+                <Icons.Plus size={16} strokeWidth={2} /> Añadir cuenta
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            aria-label="Cuentas siguientes"
+            className={`${styles.pager} ${styles.pagerNext} ${pageSafe >= totalPaginas - 1 ? styles.pagerOff : ''}`}
+            onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
+          >
+            <Icons.ChevronRight size={18} strokeWidth={2.2} />
+          </button>
+        </div>
+      </section>
+
+      <div className={styles.cols}>
+        {/* ── §4.3 · Rejilla de 6 meses ─────────────────────────────────── */}
+        <section className={styles.sec}>
+          <div className={styles.secHd}>
+            <div>
+              <div className={styles.secK}>
+                Movimientos bancarios · próximos 6 meses
+                <span className={styles.rng}>{rangoMeses(meses[0], meses[meses.length - 1])}</span>
+              </div>
+              <div className={styles.secT}>toca un mes para ver los días</div>
+            </div>
+          </div>
+          <div className={styles.mesgrid}>
+            {meses.map((m) => (
+              <TarjetaMes key={`${m.year}-${m.month0}`} mes={m} />
+            ))}
+          </div>
+        </section>
+
+        {/* ── §4.10 · Cómo va {mes} ─────────────────────────────────────── */}
+        <section className={styles.sec}>
+          <div className={styles.secHd}>
+            <div>
+              <div className={styles.secK}>Cómo va {mesActual}</div>
+              <div className={styles.secT}>cuánto llevas de lo previsto para {mesActual}</div>
+            </div>
+          </div>
+          <BloqueRealidad realidad={realidad} />
+        </section>
+      </div>
+    </div>
+  );
+};
+
+// ─── Sub-componentes ────────────────────────────────────────────────────────
+
+const Kpi: React.FC<{ lab: string; val: string; sub: string; gold?: boolean }> = ({ lab, val, sub, gold }) => (
+  <div className={styles.hk}>
+    <div className={styles.hkLab}>{lab}</div>
+    <div className={`${styles.hkVal} ${gold ? styles.hkValGold : ''}`}>{val}</div>
+    <div className={styles.hkSub}>{sub}</div>
+  </div>
+);
+
+const TarjetaCuenta: React.FC<{
+  cuenta: Account;
+  saldo: number;
+  estado: EstadoCuenta;
+  arrastrando: boolean;
+  encima: boolean;
+  onDragStart: () => void;
+  onDragEnter: () => void;
+  onDragEnd: () => void;
+  onDrop: () => void;
+}> = ({ cuenta, saldo, estado, arrastrando, encima, onDragStart, onDragEnter, onDragEnd, onDrop }) => {
+  const nombre = cuenta.alias || cuenta.name || cuenta.banco?.name || 'Cuenta';
+  const mask = (cuenta.ultimosCuatro || cuenta.iban?.slice(-4)) ?? '';
+
+  return (
+    <div
+      className={`${styles.acc} ${estado.tipo === 'se-queda-corta' ? styles.accCorta : ''} ${
+        arrastrando ? styles.accDragging : ''
+      } ${encima ? styles.accOver : ''}`}
+      draggable
+      onDragStart={onDragStart}
+      onDragEnter={onDragEnter}
+      onDragOver={(e) => e.preventDefault()}
+      onDragEnd={onDragEnd}
+      onDrop={onDrop}
+    >
+      <div className={styles.accTop}>
+        <span className={styles.bankDot} style={{ background: colorDeBanco(cuenta) }} />
+        <div className={styles.accId}>
+          <div className={styles.accNm}>{nombre}</div>
+          {mask && <div className={styles.accMask}>···· {mask}</div>}
+        </div>
+        {/* stopPropagation obligatorio: la tarjeta entera es clicable (§4.2). */}
+        <button
+          type="button"
+          className={styles.accEd}
+          aria-label={`Editar ${nombre}`}
+          title="Llega con la ficha de cuenta (§4.8)"
+          disabled
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Icons.Edit size={14} strokeWidth={1.8} />
+        </button>
+      </div>
+
+      <div className={styles.accBal}>{importeSaldo(saldo)}</div>
+
+      <div className={styles.accFoot}>
+        <EstadoTarjeta estado={estado} />
+      </div>
+    </div>
+  );
+};
+
+/** Un solo estado por tarjeta · el color solo aparece si hay que actuar (§4.2). */
+const EstadoTarjeta: React.FC<{ estado: EstadoCuenta }> = ({ estado }) => {
+  if (estado.tipo === 'se-queda-corta') {
+    return (
+      <span className={`${styles.state} ${styles.stateAlerta}`}>
+        <span className={styles.stateDot} />
+        se queda en <span className={styles.stateVal}>{importeSaldo(estado.minimo)}</span> el {diaYMes(estado.dia)}
+      </span>
+    );
+  }
+  if (estado.tipo === 'por-confirmar') {
+    // Texto gris, sin chip de fondo (§4.2).
+    return <span className={styles.state}>{estado.n} por confirmar</span>;
+  }
+  return <span className={styles.state}>al día</span>;
+};
+
+const TarjetaMes: React.FC<{ mes: MesProyectado }> = ({ mes }) => {
+  const nombre = nombreMes(mes.month0);
+  return (
+    <div className={`${styles.mes} ${mes.enCurso ? styles.mesNow : ''}`}>
+      <div className={styles.mesTop}>
+        <span className={styles.mesNm}>{nombre.charAt(0).toUpperCase() + nombre.slice(1)}</span>
+        {mes.enCurso && <span className={styles.mesChip}>en curso</span>}
+      </div>
+      {/* Vocabulario único: "Cierre" en todo el módulo (§4.3). */}
+      <div className={styles.mesLab}>Cierre</div>
+      <div className={styles.mesBal}>{importeSaldo(mes.cierre)}</div>
+      <div className={styles.mesFlow}>
+        <span className={styles.ff} title={mes.enCurso ? 'queda entrar' : 'entra'}>
+          <Icons.ArrowUp size={14} strokeWidth={1.8} />
+          <span className={styles.fv}>{importeSaldo(mes.entra)}</span>
+        </span>
+        <span className={styles.ff} title={mes.enCurso ? 'queda salir' : 'sale'}>
+          <Icons.ArrowDown size={14} strokeWidth={1.8} />
+          <span className={styles.fv}>{importeSaldo(Math.abs(mes.sale))}</span>
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }> = ({ realidad }) => {
+  const mejor = realidad.desviacion >= 0;
+  return (
+    <div className={styles.rvcard}>
+      {realidad.lineas.map((l) => {
+        const neto = l.clave === 'Neto';
+        // Barra escalada contra SU PROPIO previsto, no contra el máximo global.
+        const ancho = Math.min(100, Math.max(2, Math.abs(l.porcentaje)));
+        return (
+          <div key={l.clave} className={styles.rvline}>
+            <div className={styles.rvlab}>{l.clave}</div>
+            <div className={styles.rvbar}>
+              <div
+                className={`${styles.rvfill} ${neto ? styles.rvfillNet : styles.rvfillIn}`}
+                style={{ width: `${ancho}%` }}
+              />
+            </div>
+            <span className={`${styles.rvpct} ${neto ? styles.rvpctNet : ''}`}>{l.porcentaje}%</span>
+            <div className={styles.rvnum}>
+              {importeSaldo(l.real)}
+              <small>de {importeSaldo(l.previsto)} previsto</small>
+            </div>
+          </div>
+        );
+      })}
+
+      <div className={styles.rvsep} />
+
+      {/* El cierre del bloque es la DESVIACIÓN, no el cierre: ese ya está en
+          el hero y repetirlo no aporta (§4.10). */}
+      <div className={styles.rvend}>
+        <div className={styles.rvendIc}>
+          {mejor ? <Icons.ArrowUp size={18} strokeWidth={2.2} /> : <Icons.ArrowDown size={18} strokeWidth={2.2} />}
+        </div>
+        <div>
+          <div className={styles.rvendTt}>
+            Acabarás <b>{importeConSigno(realidad.desviacion)}</b> {mejor ? 'mejor' : 'peor'} de lo previsto
+          </div>
+          <div className={styles.rvendSs}>
+            de lo ya confirmado, habías previsto pagar <b>{importeSaldo(realidad.previstoDeLoConfirmado)}</b> y has
+            pagado <b>{importeSaldo(realidad.pagadoReal)}</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TesoreriaV6Page;
