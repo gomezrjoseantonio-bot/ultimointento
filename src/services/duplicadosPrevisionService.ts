@@ -174,6 +174,69 @@ export function analizarDuplicados(eventos: TreasuryEvent[]): InformeDuplicados 
   };
 }
 
+/**
+ * Borra las copias sobrantes · FASE 1 del plan.
+ *
+ * Dos reglas, y no son ceremonia:
+ *
+ * 1. Solo se borran previsiones en `predicted`. Una confirmada o conciliada
+ *    puede ser un cargo REAL repetido —el banco cobró dos veces de verdad— y
+ *    borrarla sería inventar que no pasó.
+ * 2. De cada grupo queda siempre una. Si alguna copia ya está confirmada, esa
+ *    es la que se queda y se van todas las previstas; si no hay ninguna firme,
+ *    se conserva la más antigua.
+ *
+ * Es idempotente: pasarlo dos veces no borra de más, porque la segunda vez ya
+ * no hay grupos con copias.
+ */
+export async function limpiarDuplicados(): Promise<{
+  borradas: number;
+  correccionCierre: number;
+  ids: number[];
+}> {
+  const db = await initDB();
+  const eventos = ((await db.getAll('treasuryEvents')) ?? []) as TreasuryEvent[];
+
+  const porClave = new Map<string, TreasuryEvent[]>();
+  for (const e of eventos) {
+    if (e.id == null) continue;
+    const clave = claveDuplicado(e);
+    if (!clave) continue;
+    const arr = porClave.get(clave);
+    if (arr) arr.push(e);
+    else porClave.set(clave, [e]);
+  }
+
+  const aBorrar: TreasuryEvent[] = [];
+  for (const copias of porClave.values()) {
+    if (copias.length < 2) continue;
+    const firmes = copias.filter((e) => estadoDe(e) !== 'predicted');
+    const previstas = copias
+      .filter((e) => estadoDe(e) === 'predicted')
+      .sort((a, b) => (a.id as number) - (b.id as number));
+    const conservar = firmes.length > 0 ? null : previstas[0];
+    for (const e of previstas) if (e !== conservar) aBorrar.push(e);
+  }
+
+  if (aBorrar.length > 0) {
+    const tx = db.transaction('treasuryEvents', 'readwrite');
+    await Promise.all(aBorrar.map((e) => tx.store.delete(e.id as number)));
+    await tx.done;
+  }
+
+  // Lo que sobraba desviaba el cierre; al quitarlo, se corrige al revés.
+  const desviacion = aBorrar.reduce(
+    (s, e) => s + Math.abs(e.amount) * (e.type === 'income' ? 1 : -1),
+    0
+  );
+
+  return {
+    borradas: aBorrar.length,
+    correccionCierre: Math.round(-desviacion * 100) / 100,
+    ids: aBorrar.map((e) => e.id as number),
+  };
+}
+
 /** Lee la base y analiza · no escribe nada. */
 export async function diagnosticarDuplicados(): Promise<InformeDuplicados> {
   const db = await initDB();
@@ -207,6 +270,18 @@ export function registrarDiagnosticoEnConsola(): void {
       return informe;
     },
     duplicadosRaw: diagnosticarDuplicados,
+    limpiar: async () => {
+      const r = await limpiarDuplicados();
+      if (r.borradas === 0) {
+        console.log('No hay duplicados que borrar.');
+        return r;
+      }
+      console.log(
+        `Borradas ${r.borradas} previsiones duplicadas · el cierre se corrige en ` +
+          `${r.correccionCierre.toFixed(2)} €.\nRecarga la página para ver las cifras.`
+      );
+      return r;
+    },
   };
 }
 
