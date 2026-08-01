@@ -29,6 +29,7 @@ import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga, diaYM
 import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
 import DrawerExtracto from './DrawerExtracto';
+import CuentaWizard from '../../../components/cuenta/CuentaWizard';
 import {
   confirmTreasuryEvent,
   updateTreasuryEventFields,
@@ -90,6 +91,12 @@ const TesoreriaV6Page: React.FC = () => {
    * estados distintos.
    */
   const [extracto, setExtracto] = useState<{ cuenta: Account | null } | null>(null);
+  /**
+   * §4.8 · ficha de cuenta. `cuenta: null` = alta. Se reutiliza `CuentaWizard`
+   * (adenda §3) en vez de escribir una segunda ficha: ya cubre tipo, tarjeta y
+   * saldo inicial a fecha de, y ahora también color de punto y baja.
+   */
+  const [fichaCuenta, setFichaCuenta] = useState<{ cuenta: Account | null } | null>(null);
 
   const hoy = hoyISO();
   const ahora = useMemo(() => new Date(`${hoy}T12:00:00`), [hoy]);
@@ -370,7 +377,11 @@ const TesoreriaV6Page: React.FC = () => {
             <div className={styles.secK}>Saldo actual en mis cuentas</div>
             <div className={styles.secT}>entra en una cuenta para ver el detalle de movimientos</div>
           </div>
-          <button {...pendiente('la ficha de cuenta (§4.8)')} className={styles.secAdd}>
+          <button
+            type="button"
+            className={styles.secAdd}
+            onClick={() => setFichaCuenta({ cuenta: null })}
+          >
             <Icons.Plus size={14} strokeWidth={2} /> Añadir cuenta
           </button>
           {cuentasVivas.length > porPagina && (
@@ -424,9 +435,14 @@ const TesoreriaV6Page: React.FC = () => {
                   }}
                   onDrop={() => void soltarSobre(c.id!)}
                   onAbrir={() => setCuentaAbierta(c.id!)}
+                  onEditar={() => setFichaCuenta({ cuenta: c })}
                 />
               ))}
-              <button {...pendiente('la ficha de cuenta (§4.8)')} className={styles.accAdd}>
+              <button
+                type="button"
+                className={styles.accAdd}
+                onClick={() => setFichaCuenta({ cuenta: null })}
+              >
                 <Icons.Plus size={16} strokeWidth={2} /> Añadir cuenta
               </button>
             </div>
@@ -492,6 +508,17 @@ const TesoreriaV6Page: React.FC = () => {
         onSubirExtracto={(c) => setExtracto({ cuenta: c })}
       />
 
+      {/* §4.8 · ficha de cuenta · alta, edición y baja */}
+      <CuentaWizard
+        open={fichaCuenta != null}
+        editingAccount={fichaCuenta?.cuenta ?? null}
+        onClose={() => setFichaCuenta(null)}
+        onSuccess={() => {
+          setFichaCuenta(null);
+          void trasEscribir();
+        }}
+      />
+
       {/* §4.7 · drawer de extracto · dos puertas, un solo flujo */}
       {extracto && (
         <DrawerExtracto
@@ -528,7 +555,8 @@ const TarjetaCuenta: React.FC<{
   onDragEnd: () => void;
   onDrop: () => void;
   onAbrir: () => void;
-}> = ({ cuenta, saldo, estado, arrastrando, encima, onDragStart, onDragEnter, onDragEnd, onDrop, onAbrir }) => {
+  onEditar: () => void;
+}> = ({ cuenta, saldo, estado, arrastrando, encima, onDragStart, onDragEnter, onDragEnd, onDrop, onAbrir, onEditar }) => {
   const nombre = cuenta.alias || cuenta.name || cuenta.banco?.name || 'Cuenta';
   const mask = (cuenta.ultimosCuatro || cuenta.iban?.slice(-4)) ?? '';
 
@@ -561,10 +589,13 @@ const TarjetaCuenta: React.FC<{
         </div>
         {/* stopPropagation obligatorio: la tarjeta entera es clicable (§4.2). */}
         <button
-          {...pendiente('la ficha de cuenta (§4.8)')}
+          type="button"
           className={styles.accEd}
           aria-label={`Editar ${nombre}`}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditar();
+          }}
         >
           <Icons.Edit size={14} strokeWidth={1.8} />
         </button>

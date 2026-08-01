@@ -47,6 +47,19 @@ import {
   type CuentaTipo,
   type FrecuenciaLiquidacion,
 } from '../../services/cuentaCalculatorService';
+import {
+  PALETA_PUNTO,
+  CLAVE_SIN_COLOR,
+  colorSugerido,
+} from '../../modules/tesoreria/v6/bancoColores';
+import {
+  motivoParaNoDarDeBaja,
+  darDeBajaCuenta,
+  deshacerBajaCuenta,
+  mensajeDeBloqueo,
+  CuentaConPendientesError,
+  type MotivoBloqueo,
+} from '../../services/bajaCuentaService';
 import styles from './CuentaWizard.module.css';
 
 // ============================================================================
@@ -61,6 +74,8 @@ interface FormState {
   banco: string;
   bancoOtro: string;
   esPrincipal: boolean;
+  /** '' = usar el del banco · token de la paleta · 'sin-color'. */
+  colorPunto: string;
   // B3 corriente / ahorro
   iban: string;
   bic: string;
@@ -220,6 +235,7 @@ const buildInitialForm = (editing: Account | null | undefined): FormState => {
       banco: isCatalogBank ? bancoDetectado : (bancoDetectado ? 'Otro · escribir' : ''),
       bancoOtro: isCatalogBank ? '' : (bancoDetectado || ''),
       esPrincipal: !!editing.isDefault,
+      colorPunto: editing.colorPunto ?? '',
       iban: tipo === 'TARJETA_CREDITO' ? '' : formatIban(editing.iban || ''),
       bic: editing.bic ?? '',
       ultimosCuatro: editing.ultimosCuatro ?? '',
@@ -245,6 +261,7 @@ const buildInitialForm = (editing: Account | null | undefined): FormState => {
     banco: '',
     bancoOtro: '',
     esPrincipal: false,
+    colorPunto: '',
     iban: '',
     bic: '',
     ultimosCuatro: '',
@@ -334,6 +351,8 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [nominaBadge, setNominaBadge] = useState<{ empresa: string; mensual: number } | null>(null);
   const [movimientosCount, setMovimientosCount] = useState<number | null>(null);
+  /** `undefined` = aún comprobando · `null` = se puede dar de baja · objeto = bloqueada. */
+  const [bloqueoBaja, setBloqueoBaja] = useState<MotivoBloqueo | null | undefined>(undefined);
   const dialogRef = useFocusTrap(open);
   const isEditing = !!editingAccount;
 
@@ -360,6 +379,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     if (!open || !editingAccount?.id) {
       setNominaBadge(null);
       setMovimientosCount(null);
+      setBloqueoBaja(undefined);
       return;
     }
     let alive = true;
@@ -385,6 +405,17 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
         if (alive) setMovimientosCount(count);
       } catch (err) {
         console.warn('[CuentaWizard] no se pudo contar movimientos', err);
+      }
+      try {
+        // `editingAccount.id` ya está comprobado arriba, pero el narrowing se
+        // pierde dentro del async: se fija en una constante.
+        const idCuenta = editingAccount.id as number;
+        const motivo = await motivoParaNoDarDeBaja(idCuenta);
+        if (alive) setBloqueoBaja(motivo);
+      } catch (err) {
+        // Si no se sabe, NO se ofrece la baja: el botón sigue deshabilitado.
+        // Más vale no poder darla que darla con previsiones colgando.
+        console.warn('[CuentaWizard] no se pudo comprobar si la cuenta admite baja', err);
       }
     })();
     return () => { alive = false; };
@@ -437,6 +468,71 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     ? form.bancoOtro.trim()
     : form.banco;
 
+  /**
+   * §4.8 · el emisor de una tarjeta se HEREDA de la cuenta donde se liquida.
+   *
+   * Preguntarlo aparte permitía guardar una tarjeta "Santander" que se carga en
+   * una cuenta de BBVA, y entonces el punto de color y el emparejamiento de
+   * extractos dicen cosas distintas sobre la misma tarjeta.
+   */
+  /**
+   * El color que ATLAS propondría por sí solo · `null` si no reconoce el banco,
+   * y entonces la rejilla no marca ningún "por defecto" que no existe.
+   */
+  const colorPorDefecto = useMemo(
+    () => colorSugerido({ ...(editingAccount ?? ({} as Account)), banco: { name: bancoFinal } }),
+    [editingAccount, bancoFinal]
+  );
+
+  /**
+   * §4.8 · dar de baja, con Deshacer.
+   *
+   * La baja es SUAVE: `deactivate` deja la cuenta y su histórico en su sitio.
+   * Por eso Deshacer puede ser inmediato y completo, sin resucitar nada.
+   */
+  const handleBaja = async () => {
+    if (!editingAccount?.id || bloqueoBaja) return;
+    setSaving(true);
+    try {
+      const id = editingAccount.id;
+      await darDeBajaCuenta(id);
+      toast.success(
+        (t) => (
+          <span>
+            Cuenta dada de baja ·{' '}
+            <button
+              type="button"
+              className={styles.deshacer}
+              onClick={() => {
+                toast.dismiss(t.id);
+                void deshacerBajaCuenta(id).then(() => onSuccess?.());
+              }}
+            >
+              Deshacer
+            </button>
+          </span>
+        ),
+        { duration: 8000 }
+      );
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      // El servicio vuelve a comprobar los pendientes: entre abrir la ficha y
+      // pulsar el botón puede haber cambiado, y el bloqueo tiene que ser real.
+      toast.error(err instanceof Error ? err.message : 'No se pudo dar de baja la cuenta');
+      if (err instanceof CuentaConPendientesError) setBloqueoBaja(err.motivo);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const bancoEmisorHeredado = useMemo(() => {
+    const idCargo = parseInt(form.cuentaCargoId, 10);
+    if (!Number.isFinite(idCargo)) return '';
+    const cargo = accounts.find((a) => a.id === idCargo);
+    return cargo?.banco?.name ?? cargo?.bank ?? '';
+  }, [form.cuentaCargoId, accounts]);
+
   // ── Validación
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
@@ -460,7 +556,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       if (!form.ultimosCuatro || !/^\d{4}$/.test(form.ultimosCuatro)) {
         errs.ultimosCuatro = '4 dígitos';
       }
-      if (!form.bancoEmisor.trim()) errs.bancoEmisor = 'Selecciona banco emisor';
       if (!form.cuentaCargoId) errs.cuentaCargoId = 'Selecciona cuenta de cargo';
       const cierre = parseInt(form.diaCierre, 10);
       if (!Number.isFinite(cierre) || cierre < 1 || cierre > 31) {
@@ -516,7 +611,8 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
         ...(bancoOverride && { banco: bancoOverride }),
         bic: !isCard ? (form.bic || undefined) : undefined,
         ultimosCuatro: isCard ? form.ultimosCuatro : undefined,
-        bancoEmisor: isCard ? form.bancoEmisor : undefined,
+        // Heredado, no tecleado (§4.8).
+        bancoEmisor: isCard ? bancoEmisorHeredado || undefined : undefined,
         diaCierre: isCard ? parseInt31(form.diaCierre) : undefined,
         diaPago: isCard ? parseInt31(form.diaPago) : undefined,
         limiteCredito: isCard ? parseNum(form.limiteCredito) : undefined,
@@ -524,6 +620,8 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
         taeAnual: !isCard && form.esRemunerada ? parseNum(form.taeAnual) : undefined,
         frecuenciaLiquidacion: !isCard && form.esRemunerada ? form.frecuenciaLiquidacion : undefined,
         cuentaDestinoIntereses: cuentaDestinoNum,
+        // '' = sin elección propia · el punto se deduce del banco (§4.8).
+        colorPunto: form.colorPunto || undefined,
       };
 
       const remuneracionPayload = !isCard && form.esRemunerada
@@ -803,6 +901,51 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                     </Field>
                   </div>
                 )}
+
+                {/* §4.8 · color del punto · rejilla + Sin color, con el del
+                    banco como opción por defecto. Es la única identidad
+                    cromática de la tarjeta de cuenta, y sirve sobre todo para
+                    distinguir a ojo dos cuentas del mismo banco. */}
+                <div style={{ marginTop: 12 }}>
+                  <Field label="Color del punto">
+                    <div className={styles.paleta} role="radiogroup" aria-label="Color del punto">
+                      {colorPorDefecto && (
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={form.colorPunto === ''}
+                          aria-label="Color del banco"
+                          title="Color del banco"
+                          className={`${styles.muestra} ${form.colorPunto === '' ? styles.muestraOn : ''}`}
+                          style={{ background: colorPorDefecto }}
+                          onClick={() => set('colorPunto', '')}
+                        />
+                      )}
+                      {PALETA_PUNTO.map((c) => (
+                        <button
+                          key={c.token}
+                          type="button"
+                          role="radio"
+                          aria-checked={form.colorPunto === c.token}
+                          aria-label={c.nombre}
+                          title={c.nombre}
+                          className={`${styles.muestra} ${form.colorPunto === c.token ? styles.muestraOn : ''}`}
+                          style={{ background: c.token }}
+                          onClick={() => set('colorPunto', c.token)}
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={form.colorPunto === CLAVE_SIN_COLOR}
+                        aria-label="Sin color"
+                        title="Sin color"
+                        className={`${styles.muestra} ${styles.muestraSin} ${form.colorPunto === CLAVE_SIN_COLOR ? styles.muestraOn : ''}`}
+                        onClick={() => set('colorPunto', CLAVE_SIN_COLOR)}
+                      />
+                    </div>
+                  </Field>
+                </div>
               </Block>
 
               {/* B3 · DATOS BANCARIOS · varía según tipo */}
@@ -844,17 +987,13 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                           placeholder="4321"
                         />
                       </Field>
-                      <Field label="Banco emisor" required error={errors.bancoEmisor}>
-                        <select
-                          className={`${styles.select} ${errors.bancoEmisor ? styles.inputError : ''}`}
-                          value={form.bancoEmisor}
-                          onChange={(e) => set('bancoEmisor', e.target.value)}
-                        >
-                          <option value="">Selecciona…</option>
-                          {BANCOS_CATALOGO.filter((b) => b !== 'Otro · escribir').map((b) => (
-                            <option key={b} value={b}>{b}</option>
-                          ))}
-                        </select>
+                      {/* §4.8 · la tarjeta NO tiene selector de banco: lo hereda
+                          de la cuenta donde se liquida. Preguntarlo aparte deja
+                          elegir un emisor que contradice la cuenta de cargo. */}
+                      <Field label="Banco emisor">
+                        <div className={styles.heredado} aria-live="polite">
+                          {bancoEmisorHeredado || 'Se toma de la cuenta de cargo'}
+                        </div>
                       </Field>
                     </div>
                     <div className={`${styles.fieldsRow} ${styles.rowTarjetaB}`} style={{ marginTop: 10 }}>
@@ -1093,13 +1232,28 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
 
           {/* ─── FOOTER ─── */}
           <div className={styles.footer}>
-            <div className={styles.footerMeta}>
+            <div className={styles.footerMeta} id={bloqueoBaja ? 'baja-bloqueada' : undefined}>
               <IconAlert />
-              {isEditing
-                ? 'Cambios sin guardar · al guardar se actualizan Tesorería y selectores'
-                : 'Cambios sin guardar · al guardar la cuenta aparece en Tesorería y selectores'}
+              {bloqueoBaja
+                ? mensajeDeBloqueo(bloqueoBaja)
+                : isEditing
+                  ? 'Cambios sin guardar · al guardar se actualizan Tesorería y selectores'
+                  : 'Cambios sin guardar · al guardar la cuenta aparece en Tesorería y selectores'}
             </div>
             <div className={styles.footerActions}>
+              {/* §4.8 · baja · a la izquierda, separada de las acciones
+                  normales. Bloqueada si quedan pendientes, y lo dice. */}
+              {isEditing && (
+                <button
+                  type="button"
+                  className={styles.btnBaja}
+                  onClick={handleBaja}
+                  disabled={saving || bloqueoBaja === undefined}
+                  aria-describedby={bloqueoBaja ? 'baja-bloqueada' : undefined}
+                >
+                  Dar de baja
+                </button>
+              )}
               <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={onClose} disabled={saving}>
                 Cancelar
               </button>
