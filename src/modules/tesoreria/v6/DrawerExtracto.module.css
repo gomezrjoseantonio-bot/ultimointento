@@ -1,0 +1,275 @@
+/* ===========================================================================
+   Tesorería V6 · §4.7 · drawer de extracto
+
+   El chasis (fondo, panel, cabecera navy, KPIs) viene de DrawerV6.module.css.
+   Aquí vive solo lo propio del extracto: dropzone, líneas y pie de guardado.
+   =========================================================================== */
+
+.zonaWrap {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Paso 1 · dropzone ───────────────────────────────────────────────────── */
+
+.zona {
+  width: 100%;
+  border: 1.5px dashed var(--atlas-v5-line);
+  border-radius: 12px;
+  background: var(--atlas-v5-card);
+  padding: 34px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.zona:hover:not(:disabled) { border-color: var(--atlas-v5-ink-5); }
+.zonaOn {
+  border-color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand-wash);
+}
+.zona:disabled { cursor: default; }
+.zonaIc { color: var(--atlas-v5-ink-4); }
+.zonaT {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  text-align: center;
+}
+.zonaS {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.inputFile { display: none; }
+
+/* Aviso de cuenta sin detectar y de extracto ya importado. Mismo tratamiento:
+   los dos paran el flujo y piden una decisión, no son errores. */
+.avisoCuenta {
+  border: 1px solid var(--atlas-v5-gold-soft);
+  background: var(--atlas-v5-gold-wash-2);
+  border-radius: 10px;
+  padding: 12px 13px;
+}
+.avisoT {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  margin-bottom: 3px;
+}
+.avisoS {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  line-height: 1.45;
+  margin-bottom: 9px;
+}
+.avisoAcciones {
+  display: flex;
+  gap: 8px;
+}
+.selectCuenta {
+  width: 100%;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink);
+  font-family: inherit;
+}
+.selectCuenta:focus {
+  outline: none;
+  border-color: var(--atlas-v5-brand);
+}
+
+.error {
+  font-size: 11.5px;
+  color: var(--atlas-v5-neg);
+  line-height: 1.45;
+}
+.warning {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-card-alt);
+  border-radius: 8px;
+  padding: 8px 10px;
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+/* ── Paso 2 · las líneas del extracto ────────────────────────────────────── */
+
+.lista {
+  padding: 14px 20px 20px;
+}
+
+.linea {
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: 10px;
+  background: var(--atlas-v5-card);
+  padding: 11px 12px;
+  margin-bottom: 8px;
+}
+.lineaTop {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+/* Texto literal del banco · puede venir largo y feo, y así se enseña (§4.7). */
+.lineaTexto {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink);
+  font-weight: 500;
+  word-break: break-word;
+}
+.lineaImporte {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  flex-shrink: 0;
+}
+.lineaFecha {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+}
+
+.veredicto {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+.btnLinea {
+  padding: 6px 10px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 7px;
+  background: var(--atlas-v5-card);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-3);
+  cursor: pointer;
+  font-family: inherit;
+}
+.btnLinea:hover { border-color: var(--atlas-v5-ink-5); }
+
+.selectPrevisto {
+  width: 100%;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-brand);
+  border-radius: 7px;
+  padding: 7px 9px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink);
+  font-family: inherit;
+}
+.selectPrevisto:focus { outline: none; }
+
+/* ── Ignoradas · agrupadas y plegadas (D1) ───────────────────────────────── */
+
+.grupoIgn {
+  margin-top: 12px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+  padding-top: 10px;
+}
+.grupoIgnHd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-4);
+  cursor: pointer;
+  font-family: inherit;
+}
+.grupoIgnHd:hover { color: var(--atlas-v5-ink-3); }
+
+.lineaIgn {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0 7px 20px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+.lineaTextoIgn {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  word-break: break-word;
+}
+.lineaImporteIgn {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  flex-shrink: 0;
+}
+.recuperar {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--atlas-v5-brand);
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.recuperar:hover { text-decoration: underline; }
+
+/* ── Pie · un solo Guardar ───────────────────────────────────────────────── */
+
+.pie {
+  border-top: 1px solid var(--atlas-v5-line-2);
+  background: var(--atlas-v5-card);
+  padding: 13px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.pieNota {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+}
+.btnGuardar {
+  padding: 9px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold);
+  color: var(--atlas-v5-on-gold);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.btnGuardar:hover:not(:disabled) {
+  background: var(--atlas-v5-gold-2);
+  border-color: var(--atlas-v5-gold-2);
+}
+.btnGuardar:disabled { opacity: 0.5; cursor: not-allowed; }

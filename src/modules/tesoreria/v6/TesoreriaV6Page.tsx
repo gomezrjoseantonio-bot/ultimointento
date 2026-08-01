@@ -28,11 +28,13 @@ import { colorDeBanco } from './bancoColores';
 import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga, diaYMes } from './formatoV6';
 import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
+import DrawerExtracto from './DrawerExtracto';
 import {
   confirmTreasuryEvent,
   updateTreasuryEventFields,
 } from '../../../services/treasuryConfirmationService';
 import { descartarPrevisto } from '../../../services/treasuryDiscardService';
+import { batchesEnBorrador, sinBorradores } from '../../../services/statementSessionService';
 import type { GuardadoFicha } from './FichaMovimiento';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
@@ -81,6 +83,13 @@ const TesoreriaV6Page: React.FC = () => {
   const [arrastrando, setArrastrando] = useState<number | null>(null);
   const [encima, setEncima] = useState<number | null>(null);
   const [cuentaAbierta, setCuentaAbierta] = useState<number | null>(null);
+  /**
+   * §4.7 · las dos puertas del extracto. `cuenta: null` es la puerta global del
+   * hero (se detecta por IBAN); con cuenta, ya viene fijada desde el drawer.
+   * Un objeto y no un booleano porque "cerrado" y "abierto sin cuenta" son
+   * estados distintos.
+   */
+  const [extracto, setExtracto] = useState<{ cuenta: Account | null } | null>(null);
 
   const hoy = hoyISO();
   const ahora = useMemo(() => new Date(`${hoy}T12:00:00`), [hoy]);
@@ -90,17 +99,22 @@ const TesoreriaV6Page: React.FC = () => {
   // ── Carga · una sola lectura, todo lo demás se deriva ────────────────────
   const recargar = useCallback(async () => {
     const db = await initDB();
-    const [cuentas, eventos, movimientos, properties, ordenGuardado] = await Promise.all([
-      db.getAll('accounts') as Promise<Account[]>,
-      db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
-      db.getAll('movements') as Promise<Movement[]>,
-      db.getAll('properties') as Promise<Array<{ id?: number; alias?: string; address?: string }>>,
-      leerOrdenCuentas(),
-    ]);
+    const [cuentas, eventos, movimientos, properties, ordenGuardado, borradores] =
+      await Promise.all([
+        db.getAll('accounts') as Promise<Account[]>,
+        db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+        db.getAll('movements') as Promise<Movement[]>,
+        db.getAll('properties') as Promise<Array<{ id?: number; alias?: string; address?: string }>>,
+        leerOrdenCuentas(),
+        batchesEnBorrador(),
+      ]);
     setEstado({
       cuentas: cuentas ?? [],
       eventos: eventos ?? [],
-      movimientos: movimientos ?? [],
+      // §4.7 · un extracto abierto y sin guardar NO mueve saldos ni asoma por
+      // la lista de la cuenta. Se filtra aquí, en el único punto de carga de la
+      // V6, y no en cada consumidor: así no hay forma de olvidarlo en uno.
+      movimientos: sinBorradores(movimientos ?? [], borradores),
       inmuebles: (properties ?? [])
         .filter((p): p is { id: number; alias?: string; address?: string } => p.id != null)
         .map((p) => ({ id: p.id, alias: p.alias || p.address || `Inmueble ${p.id}` })),
@@ -339,7 +353,11 @@ const TesoreriaV6Page: React.FC = () => {
         />
 
         <div className={styles.heroAct}>
-          <button {...pendiente('el drawer de extracto (§4.7)')} className={`${styles.btn} ${styles.btnGold}`}>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnGold}`}
+            onClick={() => setExtracto({ cuenta: null })}
+          >
             <Icons.Upload size={15} strokeWidth={1.8} /> Subir extracto
           </button>
         </div>
@@ -471,7 +489,20 @@ const TesoreriaV6Page: React.FC = () => {
         onEliminar={descartarItem}
         cuentas={cuentasVivas}
         inmuebles={inmuebles}
+        onSubirExtracto={(c) => setExtracto({ cuenta: c })}
       />
+
+      {/* §4.7 · drawer de extracto · dos puertas, un solo flujo */}
+      {extracto && (
+        <DrawerExtracto
+          abierto
+          cuenta={extracto.cuenta}
+          cuentas={cuentasVivas}
+          inmuebles={inmuebles}
+          onCerrar={() => setExtracto(null)}
+          onGuardado={trasEscribir}
+        />
+      )}
     </div>
   );
 };

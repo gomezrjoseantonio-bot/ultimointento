@@ -7,7 +7,7 @@
 
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import TesoreriaV6Page from '../TesoreriaV6Page';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../../services/db';
 
@@ -187,18 +187,22 @@ describe('§4.10 · cómo va el mes', () => {
   });
 });
 
-describe('acciones que dependen de drawers aún no construidos', () => {
-  it('usan aria-disabled, no disabled, para que su title se vea', async () => {
-    // Un `disabled` de verdad no dispara eventos de ratón en la mayoría de
-    // navegadores, así que el tooltip que explica POR QUÉ no se puede pulsar
-    // no llegaría a verse nunca.
+describe('§4.7 · la puerta global del extracto', () => {
+  it('el botón del hero abre el drawer, sin cuenta fijada', async () => {
     montarDb({ accounts: [cuenta(1)] });
     render(<TesoreriaV6Page />);
 
     const subir = await screen.findByRole('button', { name: /Subir extracto/ });
-    expect(subir).toHaveAttribute('aria-disabled', 'true');
     expect(subir).not.toBeDisabled();
-    expect(subir).toHaveAttribute('title', expect.stringContaining('§4.7'));
+    fireEvent.click(subir);
+
+    const drawer = await screen.findByRole('dialog', { name: 'Subir extracto' });
+    expect(drawer).toBeInTheDocument();
+    // Entrando por el hero la cuenta aún no se sabe · la dice el IBAN (§4.7).
+    expect(screen.getByText('La cuenta se detecta por el IBAN del fichero')).toBeInTheDocument();
+    expect(
+      screen.getByText('Arrastra aquí el extracto o haz clic para elegir')
+    ).toBeInTheDocument();
   });
 });
 

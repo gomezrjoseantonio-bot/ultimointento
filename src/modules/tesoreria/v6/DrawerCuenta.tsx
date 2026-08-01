@@ -47,6 +47,8 @@ export interface DrawerCuentaProps {
   /** Cuentas e inmuebles para los selectores de la ficha. */
   cuentas?: Account[];
   inmuebles?: Array<{ id: number; alias: string }>;
+  /** Puerta del extracto con la cuenta ya fijada (§4.7). */
+  onSubirExtracto?: (cuenta: Account) => void;
 }
 
 type Pestana = 'pendientes' | 'todo';
@@ -66,6 +68,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   onEliminar,
   cuentas = [],
   inmuebles = [],
+  onSubirExtracto,
 }) => {
   const [pestana, setPestana] = useState<Pestana>('pendientes');
   // `null` = cerrada · `{item: null}` = alta ("Anotar") · con item = edición.
@@ -186,9 +189,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
               <button
                 type="button"
                 className={`${styles.btnCmp} ${styles.btnCmpGold}`}
-                aria-disabled
-                title="Llega con el drawer de extracto (§4.7)"
-                onClick={(e) => e.preventDefault()}
+                onClick={() => onSubirExtracto?.(cuenta)}
               >
                 <Icons.Upload size={13} strokeWidth={1.8} /> Subir extracto
               </button>

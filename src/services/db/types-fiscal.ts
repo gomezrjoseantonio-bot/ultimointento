@@ -136,6 +136,22 @@ export interface ImportBatch {
     hashLinea: string;
     ignoradaAt: string;
   }>;
+  /**
+   * V6 · §4.7 · cuándo se pulsó el único botón `Guardar` del drawer.
+   *
+   * Hace falta porque `processFile` INSERTA los movimientos al procesar el
+   * fichero, mucho antes de que el usuario decida nada. Sin esta marca, §4.7
+   * ("lo no resuelto no se mezcla con la lista de la cuenta: espera en el
+   * extracto") sería mentira: en cuanto se suelta el fichero, todas las líneas
+   * —incluidas las que están a resolver— aparecerían en el drawer de cuenta ya
+   * como conciliadas, porque nacen con `source: 'import'`.
+   *
+   * Mientras esté sin marcar, la sesión es un BORRADOR y la V6 no cuenta sus
+   * movimientos en ningún saldo ni lista. Salir con el aspa borra el batch
+   * entero (`cancelImportBatch`), así que un borrador nunca sobrevive a la
+   * sesión salvo por cierre abrupto — y ahí sigue sin contar, que es lo seguro.
+   */
+  consolidadoAt?: string;
   usuario?: string; // User who performed the import
   
   // Legacy fields
