@@ -28,8 +28,12 @@ import { colorDeBanco } from './bancoColores';
 import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga, diaYMes } from './formatoV6';
 import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
-import { confirmTreasuryEvent } from '../../../services/treasuryConfirmationService';
+import {
+  confirmTreasuryEvent,
+  updateTreasuryEventFields,
+} from '../../../services/treasuryConfirmationService';
 import { descartarPrevisto } from '../../../services/treasuryDiscardService';
+import type { GuardadoFicha } from './FichaMovimiento';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
 import styles from './TesoreriaV6Page.module.css';
@@ -63,10 +67,11 @@ interface Estado {
   cuentas: Account[];
   eventos: TreasuryEvent[];
   movimientos: Movement[];
+  inmuebles: Array<{ id: number; alias: string }>;
 }
 
 const TesoreriaV6Page: React.FC = () => {
-  const [estado, setEstado] = useState<Estado>({ cuentas: [], eventos: [], movimientos: [] });
+  const [estado, setEstado] = useState<Estado>({ cuentas: [], eventos: [], movimientos: [], inmuebles: [] });
   const [cargando, setCargando] = useState(true);
   const [pagina, setPagina] = useState(0);
   const [porPagina, setPorPagina] = useState(() =>
@@ -85,13 +90,21 @@ const TesoreriaV6Page: React.FC = () => {
   // ── Carga · una sola lectura, todo lo demás se deriva ────────────────────
   const recargar = useCallback(async () => {
     const db = await initDB();
-    const [cuentas, eventos, movimientos, ordenGuardado] = await Promise.all([
+    const [cuentas, eventos, movimientos, properties, ordenGuardado] = await Promise.all([
       db.getAll('accounts') as Promise<Account[]>,
       db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
       db.getAll('movements') as Promise<Movement[]>,
+      db.getAll('properties') as Promise<Array<{ id?: number; alias?: string; address?: string }>>,
       leerOrdenCuentas(),
     ]);
-    setEstado({ cuentas: cuentas ?? [], eventos: eventos ?? [], movimientos: movimientos ?? [] });
+    setEstado({
+      cuentas: cuentas ?? [],
+      eventos: eventos ?? [],
+      movimientos: movimientos ?? [],
+      inmuebles: (properties ?? [])
+        .filter((p): p is { id: number; alias?: string; address?: string } => p.id != null)
+        .map((p) => ({ id: p.id, alias: p.alias || p.address || `Inmueble ${p.id}` })),
+    });
     setOrden(ordenGuardado);
     setCargando(false);
   }, []);
@@ -234,8 +247,62 @@ const TesoreriaV6Page: React.FC = () => {
     [trasEscribir]
   );
 
+  /**
+   * §4.5 · guardar desde la ficha.
+   *
+   * En EDICIÓN de un previsto: primero se corrige la clasificación y luego se
+   * confirma con el importe real, que es lo que dice §4.5 ("Guardar en edición
+   * → movement confirmado con el importe real").
+   *
+   * El alta ("Anotar") y el alta en `mejorasInmueble` de una derrama-mejora
+   * necesitan escritura que aún no existe; se avisa en vez de fingir que se
+   * guardó.
+   */
+  const guardarFicha = useCallback(
+    async (item: ItemPunteo | null, v: GuardadoFicha) => {
+      try {
+        if (item == null || item.kind !== 'evento') {
+          console.warn('[TesoreriaV6] el alta de movimiento llega con §4.7 · aún sin escritor');
+          return;
+        }
+        // Una derrama que el usuario marca como MEJORA no es un gasto: se
+        // capitaliza y amortiza en `mejorasInmueble`, y ese escritor todavía no
+        // existe. Confirmarla igualmente materializaría un movement de gasto —
+        // justo lo contrario de lo que acaba de responder. Mejor no guardar y
+        // decirlo que guardar mal.
+        if (v.esMejora) {
+          console.warn('[TesoreriaV6] la derrama-mejora necesita alta en mejorasInmueble · aún sin escritor');
+          return;
+        }
+        // La descripción va en el override de confirmar, que sí la acepta;
+        // `TreasuryEventPatch` es solo para la clasificación.
+        //
+        // `undefined` se omite (no tocar) y `null` viaja (limpiar): por eso la
+        // comprobación es contra `undefined` y no contra falsy — si no, elegir
+        // "Sin inmueble" o reclasificar a un concepto sin variante no borraría
+        // nada y quedarían restos de la clasificación anterior.
+        await updateTreasuryEventFields(item.refId, {
+          ...(v.categoryKey !== undefined ? { categoryKey: v.categoryKey } : {}),
+          ...(v.subtypeKey !== undefined ? { subtypeKey: v.subtypeKey } : {}),
+          ...(v.inmuebleId !== undefined ? { inmuebleId: v.inmuebleId } : {}),
+        });
+        await confirmTreasuryEvent(item.refId, {
+          amount: Math.abs(v.importe),
+          date: v.fecha,
+          ...(v.cuentaId != null ? { accountId: v.cuentaId } : {}),
+          description: v.concepto,
+        });
+        await trasEscribir();
+      } catch (err) {
+        console.error('[TesoreriaV6] no se pudo guardar el movimiento', err);
+      }
+    },
+    [trasEscribir]
+  );
+
   if (cargando) return null;
 
+  const inmuebles = estado.inmuebles;
   const mesActual = nombreMes(month0);
 
   return (
@@ -400,6 +467,10 @@ const TesoreriaV6Page: React.FC = () => {
         onCerrar={() => setCuentaAbierta(null)}
         onConfirmar={confirmarItem}
         onDescartar={descartarItem}
+        onGuardarFicha={guardarFicha}
+        onEliminar={descartarItem}
+        cuentas={cuentasVivas}
+        inmuebles={inmuebles}
       />
     </div>
   );

@@ -12,6 +12,7 @@ import {
   traducirPersonal,
   pendientesDeDecision,
   requierenPregunta,
+  presentacionDe,
 } from '../catalogoPresentacionPersistencia';
 import { TIPOS_GASTO_INMUEBLE_V2 } from '../../modules/inmuebles/wizards/utils/tiposDeGastoInmueble';
 import { TIPOS_GASTO_PERSONAL } from '../../modules/personal/wizards/utils/tiposDeGastoPersonal';
@@ -111,6 +112,50 @@ describe('catálogo · traducción presentación → persistencia', () => {
     expect(traducirInmueble('no', 'existe')).toBeUndefined();
     expect(traducirPersonal('dia_a_dia')?.categoryKey).toBe('gasto_personal_dia_dia');
     expect(traducirPersonal('no_existe')).toBeUndefined();
+  });
+
+  // El camino de vuelta lo usa la ficha de §4.5 para abrir con la clasificación
+  // que YA tiene el registro. Lo peligroso aquí no es fallar: es acertar a
+  // medias y devolver una familia plausible que el usuario nunca eligió.
+  describe('camino inverso · persistencia → presentación', () => {
+    it('vuelve a familia y concepto cuando la key es unívoca', () => {
+      expect(presentacionDe('ibi_inmueble')).toEqual({ tipoId: 'tributos', subtipoId: 'ibi' });
+      expect(presentacionDe('suministro_inmueble', 'luz')).toEqual({
+        tipoId: 'suministros',
+        subtipoId: 'luz',
+      });
+    });
+
+    it('ida y vuelta son consistentes en toda entrada que no comparta key', () => {
+      const porKey = new Map<string, number>();
+      for (const t of Object.values(TRADUCCION_INMUEBLE)) {
+        if (!t.categoryKey) continue;
+        const k = `${t.categoryKey}|${t.subtypeKey ?? ''}`;
+        porKey.set(k, (porKey.get(k) ?? 0) + 1);
+      }
+
+      for (const [clave, t] of Object.entries(TRADUCCION_INMUEBLE)) {
+        if (!t.categoryKey) continue;
+        const unica = porKey.get(`${t.categoryKey}|${t.subtypeKey ?? ''}`) === 1;
+        const vuelta = presentacionDe(t.categoryKey, t.subtypeKey);
+        if (unica) {
+          expect({ clave, vuelta: `${vuelta?.tipoId}:${vuelta?.subtipoId}` }).toEqual({
+            clave,
+            vuelta: clave,
+          });
+        } else {
+          // Varias familias comparten key · no hay vuelta honesta posible.
+          expect({ clave, vuelta }).toEqual({ clave, vuelta: undefined });
+        }
+      }
+    });
+
+    it('devuelve undefined antes que adivinar', () => {
+      expect(presentacionDe(undefined)).toBeUndefined();
+      expect(presentacionDe('key_que_no_existe')).toBeUndefined();
+      // La key existe, pero el subtipo no casa: no es la misma clasificación.
+      expect(presentacionDe('suministro_inmueble', 'subtipo_inventado')).toBeUndefined();
+    });
   });
 
   it('expone la lista PENDIENTE-JOSE con su motivo', () => {

@@ -70,6 +70,51 @@ describe('descartar un previsto', () => {
   });
 });
 
+describe('§4.5 · el parche de clasificación (ampliación aditiva)', () => {
+  it('guarda categoryKey, subtypeKey e inmueble sin tocar lo demás', async () => {
+    const { updateTreasuryEventFields } = await import('../treasuryConfirmationService');
+    await updateTreasuryEventFields(1, {
+      categoryKey: 'suministro_inmueble',
+      subtypeKey: 'luz',
+      inmuebleId: 7,
+    });
+
+    expect(eventos[0]).toMatchObject({
+      categoryKey: 'suministro_inmueble',
+      subtypeKey: 'luz',
+      inmuebleId: 7,
+      // lo que no viene en el parche se queda como estaba
+      amount: 100,
+      predictedDate: '2026-07-10',
+    });
+  });
+
+  it('inmuebleId null lo desvincula, y undefined no lo toca', async () => {
+    const { updateTreasuryEventFields } = await import('../treasuryConfirmationService');
+    await updateTreasuryEventFields(1, { inmuebleId: 7 });
+    await updateTreasuryEventFields(1, { categoryKey: 'otros_inmueble' });
+    expect(eventos[0].inmuebleId).toBe(7); // undefined = no tocar
+
+    await updateTreasuryEventFields(1, { inmuebleId: null });
+    expect(eventos[0].inmuebleId).toBeUndefined();
+  });
+
+  it('categoryKey null limpia la clasificación · no deja restos fiscales', async () => {
+    const { updateTreasuryEventFields } = await import('../treasuryConfirmationService');
+    await updateTreasuryEventFields(1, {
+      categoryKey: 'comunidad_inmueble',
+      subtypeKey: 'luz',
+    });
+    expect(eventos[0].categoryKey).toBe('comunidad_inmueble');
+
+    // El caso real: una derrama que resulta ser MEJORA no puede quedarse con la
+    // key de gasto anterior · se amortiza, no se deduce.
+    await updateTreasuryEventFields(1, { categoryKey: null, subtypeKey: null });
+    expect(eventos[0].categoryKey).toBeUndefined();
+    expect(eventos[0].subtypeKey).toBeUndefined();
+  });
+});
+
 describe('recuperar un descartado', () => {
   it('lo devuelve a Pendientes sin dejar rastro de la marca', async () => {
     await descartarPrevisto(1, 'error mío');

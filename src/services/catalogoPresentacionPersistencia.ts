@@ -44,6 +44,12 @@ export interface TraduccionCategoria {
   estado: 'ok' | 'pregunta' | 'pendiente';
   /** Por qué está pendiente, o qué matiz tiene la traducción. */
   nota?: string;
+  /**
+   * Salidas posibles de un `pregunta`. La tabla no puede elegir sola, pero sí
+   * sabe a dónde va CADA respuesta — si no, responder no serviría de nada y la
+   * ficha tendría que adivinar la key por su cuenta.
+   */
+  opciones?: Record<string, { categoryKey: string | null; esMejora?: boolean; label: string }>;
 }
 
 // ─── Inmueble ───────────────────────────────────────────────────────────────
@@ -76,6 +82,12 @@ export const TRADUCCION_INMUEBLE: Record<ClavePresentacion, TraduccionCategoria>
       'en `mejorasInmueble`. Es la única pregunta fiscal de la ficha, y está ' +
       'justificada porque ATLAS no puede saberlo y equivocarse cuesta caro en ' +
       'las dos direcciones.',
+    opciones: {
+      conservacion: { categoryKey: 'comunidad_inmueble', label: 'Conservación' },
+      // Una mejora NO es gasto: se capitaliza y amortiza, así que no lleva key
+      // de gasto sino alta en `mejorasInmueble`.
+      mejora: { categoryKey: null, esMejora: true, label: 'Mejora' },
+    },
   },
   'comunidad:otros': { categoryKey: 'comunidad_inmueble', estado: 'ok' },
 
@@ -193,6 +205,32 @@ export function traducirInmueble(
 /** Traducción de una familia de gasto personal. */
 export function traducirPersonal(tipoId: string): TraduccionCategoria | undefined {
   return TRADUCCION_PERSONAL[tipoId];
+}
+
+/**
+ * Camino INVERSO: de lo persistido (`categoryKey` + `subtypeKey`) a lo que ve
+ * el usuario (familia + concepto). Lo necesita la ficha de §4.5 para nacer
+ * rellena con la clasificación que ya tiene el registro.
+ *
+ * Devuelve `undefined` cuando la vuelta NO es unívoca — o la key no está en la
+ * tabla, o varias familias distintas caen en la misma key. Adivinar una de
+ * ellas sería peor que no rellenar: la ficha mostraría una clasificación que el
+ * usuario no eligió y la guardaría como si sí. Quien llame debe tratar el
+ * `undefined` como "no lo sé", no como "no tiene".
+ */
+export function presentacionDe(
+  categoryKey: string | undefined,
+  subtypeKey?: string
+): { tipoId: string; subtipoId: string } | undefined {
+  if (!categoryKey) return undefined;
+
+  const candidatos = Object.entries(TRADUCCION_INMUEBLE).filter(
+    ([, t]) => t.categoryKey === categoryKey && (t.subtypeKey ?? undefined) === (subtypeKey ?? undefined)
+  );
+  if (candidatos.length !== 1) return undefined;
+
+  const [tipoId, subtipoId] = candidatos[0][0].split(':');
+  return { tipoId, subtipoId };
 }
 
 /**
