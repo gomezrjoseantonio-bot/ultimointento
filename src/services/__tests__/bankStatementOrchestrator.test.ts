@@ -13,6 +13,7 @@ import {
   processFile,
   confirmDecisions,
   BankProfileNotDetectedError,
+  StatementAlreadyImportedError,
 } from '../bankStatementOrchestrator';
 import { initDB, Movement, TreasuryEvent } from '../db';
 import { bankProfileMatcher } from '../../features/inbox/importers/bankProfileMatcher';
@@ -127,6 +128,29 @@ function makeParsed(count: number) {
   return parsed;
 }
 
+// jsdom no implementa `File.text()` ni `crypto.subtle`, así que sin esto
+// `generateBatchHash` degrada a "sin hash" (''), que es el comportamiento
+// seguro en producción pero deja sin cubrir la idempotencia por fichero de
+// V6 · D1 bis.
+//
+// El polyfill lee los BYTES REALES vía FileReader (que jsdom sí implementa),
+// no el nombre: así el hash que se ejercita es el de verdad y dos ficheros
+// distintos con el mismo nombre siguen dando hashes distintos, como en
+// producción.
+beforeAll(() => {
+  if (typeof File.prototype.text !== 'function') {
+    // eslint-disable-next-line no-extend-native
+    (File.prototype as unknown as { text: () => Promise<string> }).text = function (this: File) {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ''));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(this);
+      });
+    };
+  }
+});
+
 beforeEach(() => {
   nextMovementId = 1;
   stores = buildStores();
@@ -194,22 +218,42 @@ describe('bankStatementOrchestrator', () => {
     expect(stores.importBatches).toHaveLength(1);
   });
 
-  it('2. processFile twice · 14 inserted then 0 inserted · 14 duplicates omitted', async () => {
+  // V6 · D1 bis · el mismo fichero ya no se reprocesa en silencio: `hashLote`
+  // lo corta ANTES de parsear. La dedup por línea sigue existiendo y es la
+  // segunda red, para cuando el usuario fuerza la reimportación.
+  it('2. processFile con el mismo fichero · se planta antes de insertar nada', async () => {
     const file = new File(['mock'], 'sabadell-extracto.xlsx');
 
     const first = await processFile(file, { accountId: 42 });
     expect(first.movementsInserted).toBe(14);
     expect(first.duplicatesSkipped).toBe(0);
+    expect(stores.importBatches).toHaveLength(1);
+    expect(stores.importBatches[0].hashLote).not.toBe('');
+
+    await expect(processFile(file, { accountId: 42 })).rejects.toBeInstanceOf(
+      StatementAlreadyImportedError
+    );
+
+    // No ha tocado nada: ni movimientos nuevos ni una fila de batch huérfana.
+    expect(stores.movements).toHaveLength(14);
+    expect(stores.importBatches).toHaveLength(1);
+  });
+
+  it('2 bis. processFile con allowReimport · 0 insertados · 14 duplicados por hash de línea', async () => {
+    const file = new File(['mock'], 'sabadell-extracto.xlsx');
+
+    await processFile(file, { accountId: 42 });
 
     // Reset matching/suggestion mocks so the second pass returns the new ID range
     // (none, since dedup will skip everything).
     (matchBatch as jest.Mock).mockResolvedValueOnce({ matches: [], multiMatches: [], sinMatch: [] });
     (suggestForUnmatched as jest.Mock).mockResolvedValueOnce(new Map());
 
-    const second = await processFile(file, { accountId: 42 });
+    const second = await processFile(file, { accountId: 42, allowReimport: true });
     expect(second.movementsInserted).toBe(0);
     expect(second.duplicatesSkipped).toBe(14);
     expect(stores.movements).toHaveLength(14); // no growth
+    expect(second.warnings.join(' ')).toMatch(/reimportado/i);
   });
 
   it('3. confirmDecisions · matches + suggestions + ignored ⇒ DB state coherente', async () => {

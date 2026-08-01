@@ -121,6 +121,21 @@ export interface ImportBatch {
   };
   timestampImport: string; // ISO timestamp of import
   hashLote: string; // SHA-256 hash of file content for idempotency
+  /**
+   * V84 (Tesorería V6 · D1) · líneas del extracto que el usuario ignoró.
+   *
+   * El ignorado pertenece a la SESIÓN DE IMPORTACIÓN, no al movimiento: por D4
+   * una línea sin resolver no se materializa, así que no hay `Movement` contra
+   * el que deduplicar y el registro tiene que vivir donde vive el fichero.
+   *
+   * Al reimportar, una línea cuyo `hashLinea` figure aquí no vuelve a aparecer
+   * como "a resolver": se muestra plegada en "N ignoradas", con recuperar por
+   * línea (recuperar borra la entrada y la devuelve a "a resolver").
+   */
+  lineasIgnoradas?: Array<{
+    hashLinea: string;
+    ignoradaAt: string;
+  }>;
   usuario?: string; // User who performed the import
   
   // Legacy fields
