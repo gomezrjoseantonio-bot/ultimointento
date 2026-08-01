@@ -61,7 +61,7 @@ describe('el mini-hero', () => {
 
   it('la cabecera cuenta lo que queda, y dice "al día" cuando no queda nada', () => {
     const { unmount } = render(<TesoreriaMovil {...base} eventos={[ev(), ev({ id: 2 })]} />);
-    expect(screen.getByText('2 pendientes · agosto')).toBeInTheDocument();
+    expect(screen.getByText('2 por confirmar · agosto')).toBeInTheDocument();
     unmount();
 
     render(<TesoreriaMovil {...base} eventos={[]} />);
@@ -119,9 +119,9 @@ describe('nada pendiente · la recompensa', () => {
   it('lo dice y remata con el cierre proyectado', () => {
     render(<TesoreriaMovil {...base} eventos={[]} />);
 
-    expect(screen.getByText('Nada pendiente')).toBeInTheDocument();
+    expect(screen.getByText('Nada por confirmar')).toBeInTheDocument();
     expect(screen.getByText('Tus 2 cuentas están al día.')).toBeInTheDocument();
-    expect(screen.getByText(/Cierre proyectado · agosto/)).toBeInTheDocument();
+    expect(screen.getByText(/Cierre · agosto/)).toBeInTheDocument();
   });
 
   it('singulariza con una sola cuenta', () => {

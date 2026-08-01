@@ -92,8 +92,8 @@ describe('§4.1 · hero', () => {
 
     await waitFor(() => expect(screen.getByText('Saldo')).toBeInTheDocument());
     expect(screen.getByText('2 cuentas · hoy')).toBeInTheDocument();
-    expect(screen.getByText('Pendiente entrar')).toBeInTheDocument();
-    expect(screen.getByText('Pendiente salir')).toBeInTheDocument();
+    expect(screen.getByText('Queda entrar')).toBeInTheDocument();
+    expect(screen.getByText('Queda salir')).toBeInTheDocument();
     expect(screen.getByText(`proyectado a día ${ultimoDia}`)).toBeInTheDocument();
   });
 

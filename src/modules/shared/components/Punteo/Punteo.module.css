@@ -83,8 +83,11 @@
   font-variant-numeric: tabular-nums;
   color: var(--atlas-v5-ink-4);
 }
-.daySumPos { color: var(--atlas-v5-pos); }
-.daySumNeg { color: var(--atlas-v5-neg); margin-left: 8px; }
+/* §2.1 · los importes van SIEMPRE en `--ink`: el signo ya dice la dirección.
+   Pintar de verde y rojo gasta el color en algo que el propio número ya dice, y
+   deja sin fuerza al ámbar, que es el único que debe pedir atención. */
+.daySumPos { color: var(--atlas-v5-ink); }
+.daySumNeg { color: var(--atlas-v5-ink); margin-left: 8px; }
 
 /* ── Fila ── */
 .row {
@@ -167,8 +170,8 @@
   white-space: nowrap;
   text-align: right;
 }
-.importePos { color: var(--atlas-v5-pos); }
-.importeNeg { color: var(--atlas-v5-neg); }
+.importePos { color: var(--atlas-v5-ink); }
+.importeNeg { color: var(--atlas-v5-ink); }
 .importePrevio {
   display: block;
   font-size: 9.5px;
@@ -201,7 +204,11 @@
   padding: 0;
 }
 .tick:focus-visible { outline: 2px solid var(--atlas-v5-gold); outline-offset: 2px; }
-.tickPrevisto { border-style: dashed; border-color: var(--atlas-v5-gold-soft); }
+/* §2.1 · el círculo de `previsto` es GRIS y vacío. Iba en ámbar punteado, y el
+   ámbar está reservado para un único significado: una cuenta que se queda
+   corta. Si además marca "esto aún no ha pasado" —que es el estado de casi
+   todo— deja de avisar de nada. El estado lo dice el chip, no el círculo. */
+.tickPrevisto { border-style: solid; border-color: var(--atlas-v5-ink-5); }
 .tickConfirmado { background: var(--atlas-v5-brand); border-color: var(--atlas-v5-brand); }
 .tickConciliado { background: var(--atlas-v5-pos); border-color: var(--atlas-v5-pos); cursor: default; }
 

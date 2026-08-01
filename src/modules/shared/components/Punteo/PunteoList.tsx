@@ -18,6 +18,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../../design-system/v5';
+import { importeConSigno } from '../../../tesoreria/v6/formatoV6';
 import styles from './Punteo.module.css';
 import {
   agruparHijas,
@@ -44,8 +45,18 @@ const EJES: EjeAgrupacion[] = ['fecha', 'inmueble', 'que-es'];
 
 // ─── Formato ────────────────────────────────────────────────────────────────
 
-const fmtImporte = (n: number): string =>
-  `${n > 0 ? '+' : ''}${n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/**
+ * §2.2 · un solo formateador en toda la pantalla.
+ *
+ * Aquí vivía uno propio que salía sin miles y sin €: junto a un `+1.350,00 €`
+ * del hero, el mismo tipo de dato se leía como `+2682,50`. Ahora usa el
+ * canónico de V6, que es el que fija §5: miles con punto, decimales solo si los
+ * hay, € siempre y el menos tipográfico (−, U+2212).
+ *
+ * `PunteoList` solo lo usa Tesorería V6, así que importar su formato no
+ * acopla nada que no estuviera ya junto.
+ */
+const fmtImporte = (n: number): string => importeConSigno(n);
 
 const fmtDia = (iso: string): string => {
   const d = new Date(`${iso}T12:00:00`);

@@ -59,7 +59,7 @@ const TesoreriaMovil: React.FC<TesoreriaMovilProps> = ({
       <header className={styles.cab}>
         <h1 className={styles.cabT}>Tesorería</h1>
         <span className={styles.cabS}>
-          {pendientes > 0 ? `${pendientes} pendientes · ${mes}` : `al día · ${mes}`}
+          {pendientes > 0 ? `${pendientes} por confirmar · ${mes}` : `al día · ${mes}`}
         </span>
       </header>
 
@@ -82,14 +82,14 @@ const TesoreriaMovil: React.FC<TesoreriaMovilProps> = ({
             <div className={styles.alDiaIc}>
               <Icons.Success size={30} strokeWidth={1.6} />
             </div>
-            <div className={styles.alDiaT}>Nada pendiente</div>
+            <div className={styles.alDiaT}>Nada por confirmar</div>
             <div className={styles.alDiaS}>
               {cuentasVivas === 1
                 ? 'Tu cuenta está al día.'
                 : `Tus ${cuentasVivas} cuentas están al día.`}
             </div>
             <div className={styles.alDiaFin}>
-              <div className={styles.alDiaFinL}>Cierre proyectado · {mes}</div>
+              <div className={styles.alDiaFinL}>Cierre · {mes}</div>
               <div className={styles.alDiaFinV}>{importeSaldo(cierre)}</div>
             </div>
           </div>

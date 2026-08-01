@@ -172,7 +172,9 @@ describe('4 · grupos plegables', () => {
     render(<PunteoList {...base} gruposPlegables eje="inmueble" />);
     const cab = screen.getByRole('button', { name: /Tenderina 64/ });
     expect(within(cab).getByText('1')).toBeInTheDocument();
-    expect(within(cab).getByText('+650,00')).toBeInTheDocument();
+    // §2.2 · el subtotal usa el formateador único: con € y sin decimales que no
+    // aportan. Antes salía "+650,00", distinto del "+650 €" del resto.
+    expect(within(cab).getByText('+650 €')).toBeInTheDocument();
   });
 });
 

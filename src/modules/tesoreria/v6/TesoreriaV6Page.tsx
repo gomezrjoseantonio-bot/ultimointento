@@ -502,12 +502,12 @@ const TesoreriaV6Page: React.FC = () => {
           sub={`${kpis.numCuentas} ${kpis.numCuentas === 1 ? 'cuenta' : 'cuentas'} · hoy`}
         />
         <Kpi
-          lab="Pendiente entrar"
+          lab="Queda entrar"
           val={importeConSigno(kpis.pendienteEntrar)}
           sub={`${kpis.movimientosEntrar} ${kpis.movimientosEntrar === 1 ? 'movimiento' : 'movimientos'} · ${mesActual}`}
         />
         <Kpi
-          lab="Pendiente salir"
+          lab="Queda salir"
           val={importeConSigno(kpis.pendienteSalir)}
           sub={`${kpis.movimientosSalir} ${kpis.movimientosSalir === 1 ? 'movimiento' : 'movimientos'} · ${mesActual}`}
         />
