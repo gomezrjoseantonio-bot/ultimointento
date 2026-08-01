@@ -339,6 +339,8 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
+/* Es un <button> desde §4.9 (abre el calendario del mes), así que hereda la
+   tipografía y ocupa la celda entera de la rejilla. */
 .mes {
   background: var(--atlas-v5-card);
   border: 1px solid var(--atlas-v5-line);
@@ -347,6 +349,9 @@
   padding: 15px 16px;
   cursor: pointer;
   text-align: left;
+  width: 100%;
+  font-family: inherit;
+  display: block;
   transition: transform 0.14s, box-shadow 0.14s, border-color 0.14s;
 }
 .mes:hover {

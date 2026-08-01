@@ -7,7 +7,7 @@
 
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import TesoreriaV6Page from '../TesoreriaV6Page';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../../services/db';
 
@@ -203,6 +203,42 @@ describe('§4.7 · la puerta global del extracto', () => {
     expect(
       screen.getByText('Arrastra aquí el extracto o haz clic para elegir')
     ).toBeInTheDocument();
+  });
+});
+
+describe('§4.9 · la puerta del calendario', () => {
+  it('tocar un mes abre los días de ESE mes, sin cerrar la pantalla', async () => {
+    montarDb({ accounts: [cuenta(1)] });
+    render(<TesoreriaV6Page />);
+
+    // Hay 6 tarjetas · se abre la del mes en curso, que es la primera.
+    const meses = await screen.findAllByRole('button', { name: /Ver los días de/ });
+    fireEvent.click(meses[0]);
+
+    expect(await screen.findByRole('dialog', { name: 'Calendario' })).toBeInTheDocument();
+    // Navegación ‹ › · el drawer cambia de mes sin cerrarse (§4.9).
+    expect(screen.getByLabelText('Mes anterior')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mes siguiente')).toBeInTheDocument();
+  });
+
+  it('el resumen del mes habla de Cierre · vocabulario único del módulo', async () => {
+    montarDb({ accounts: [cuenta(1)] });
+    render(<TesoreriaV6Page />);
+    fireEvent.click((await screen.findAllByRole('button', { name: /Ver los días de/ }))[0]);
+
+    const drawer = await screen.findByRole('dialog', { name: 'Calendario' });
+    expect(within(drawer).getByText('Queda entrar')).toBeInTheDocument();
+    expect(within(drawer).getByText('Queda salir')).toBeInTheDocument();
+    expect(within(drawer).getByText('Cierre')).toBeInTheDocument();
+  });
+
+  it('en el día NO se concilia · conciliar es por cuenta y por fichero (§4.9)', async () => {
+    montarDb({ accounts: [cuenta(1)] });
+    render(<TesoreriaV6Page />);
+    fireEvent.click((await screen.findAllByRole('button', { name: /Ver los días de/ }))[0]);
+
+    const drawer = await screen.findByRole('dialog', { name: 'Calendario' });
+    expect(within(drawer).queryByText(/concilia/i)).not.toBeInTheDocument();
   });
 });
 
