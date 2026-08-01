@@ -428,6 +428,25 @@ const TesoreriaV6Page: React.FC = () => {
           onConfirmar={confirmarPrevisto}
           onSubirExtracto={() => setExtracto({ cuenta: null })}
         />
+        {/* El deep-link `/tesoreria/cuenta/:id` tiene que funcionar también
+            aquí: el drawer ya ocupa casi toda la pantalla y se maneja igual de
+            bien con el pulgar, así que se comparte tal cual. */}
+        <DrawerCuenta
+          cuenta={cuentasVivas.find((c) => c.id === cuentaAbierta) ?? null}
+          saldoHoy={cuentaAbierta != null ? saldoPorCuenta.get(cuentaAbierta) ?? 0 : 0}
+          eventos={cuentaAbierta != null ? porCuenta.eventos.get(cuentaAbierta) ?? [] : []}
+          movimientos={cuentaAbierta != null ? porCuenta.movimientos.get(cuentaAbierta) ?? [] : []}
+          year={year}
+          month0={month0}
+          onCerrar={cerrarCuenta}
+          onConfirmar={confirmarItem}
+          onDescartar={descartarItem}
+          onGuardarFicha={guardarFicha}
+          onEliminar={descartarItem}
+          cuentas={cuentasVivas}
+          inmuebles={inmuebles}
+          onSubirExtracto={(c) => setExtracto({ cuenta: c })}
+        />
         {extracto && (
           <DrawerExtracto
             abierto

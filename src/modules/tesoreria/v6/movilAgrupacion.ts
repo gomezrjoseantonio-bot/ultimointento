@@ -87,7 +87,13 @@ export function agruparPendientesPorCuenta(params: {
   // Las cuentas que se quedan cortas van primero: son las únicas donde
   // confirmar o no cambia lo que el usuario tiene que hacer hoy. El resto
   // conserva el orden que el propio usuario dio a sus tarjetas (§4.2).
-  return grupos.sort((a, b) => Number(b.seQuedaCorta) - Number(a.seQuedaCorta));
+  //
+  // Partición explícita y no `sort`: aunque desde ES2019 el orden es estable,
+  // "conserva el orden del usuario" es un requisito, no un efecto secundario
+  // afortunado del motor. Así se lee lo que hace y no depende de nada.
+  const cortas = grupos.filter((g) => g.seQuedaCorta);
+  const holgadas = grupos.filter((g) => !g.seQuedaCorta);
+  return [...cortas, ...holgadas];
 }
 
 /** Cuántos pendientes hay en total · el contador de la cabecera. */

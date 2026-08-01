@@ -84,6 +84,45 @@ describe('el orden lo manda el pulgar', () => {
     expect(grupos[1].seQuedaCorta).toBe(false);
   });
 
+  it('entre las que aguantan, se respeta el orden que dio el usuario', () => {
+    // El orden de `cuentas` es el que el usuario fijó arrastrando sus tarjetas
+    // (§4.2). Ninguna se queda corta, así que ninguna debe adelantar a otra.
+    const cinco = [1, 2, 3, 4, 5].map((i) => cuenta(i, `Cuenta ${i}`));
+    const grupos = agruparPendientesPorCuenta({
+      cuentas: cinco,
+      eventos: cinco.map((c, i) => ev({ id: i + 1, accountId: c.id!, amount: 10 })),
+      saldoPorCuenta: new Map(cinco.map((c) => [c.id!, 1000])),
+    });
+
+    expect(grupos.map((g) => g.cuenta.alias)).toEqual([
+      'Cuenta 1',
+      'Cuenta 2',
+      'Cuenta 3',
+      'Cuenta 4',
+      'Cuenta 5',
+    ]);
+  });
+
+  it('y entre las cortas también · solo suben en bloque, sin barajarse', () => {
+    const cinco = [1, 2, 3, 4, 5].map((i) => cuenta(i, `Cuenta ${i}`));
+    const grupos = agruparPendientesPorCuenta({
+      cuentas: cinco,
+      // Se quedan cortas la 2 y la 4.
+      eventos: cinco.map((c, i) =>
+        ev({ id: i + 1, accountId: c.id!, amount: c.id! % 2 === 0 ? 5000 : 10 })
+      ),
+      saldoPorCuenta: new Map(cinco.map((c) => [c.id!, 1000])),
+    });
+
+    expect(grupos.map((g) => g.cuenta.alias)).toEqual([
+      'Cuenta 2',
+      'Cuenta 4',
+      'Cuenta 1',
+      'Cuenta 3',
+      'Cuenta 5',
+    ]);
+  });
+
   it('dentro de una cuenta, por fecha · así se leen los recibos', () => {
     const grupos = agruparPendientesPorCuenta({
       cuentas,
