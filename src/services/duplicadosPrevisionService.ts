@@ -81,8 +81,20 @@ function periodoDe(e: TreasuryEvent): string {
 export function claveDuplicado(e: TreasuryEvent): string | null {
   const periodo = periodoDe(e);
   if (!periodo) return null;
-  const origen = e.sourceType ?? '';
-  const id = e.sourceId != null ? String(e.sourceId) : '';
+
+  // Las previsiones de préstamo NO usan `sourceId`: se identifican por
+  // `prestamoId` (+ `numeroCuota` cuando lo llevan). Sin este respaldo el
+  // informe se saltaba los préstamos enteros — y son precisamente uno de los
+  // orígenes que regenera el motor, así que el conteo saldría corto justo
+  // donde importa.
+  const origen = e.sourceType ?? (e.prestamoId != null ? 'prestamo' : '');
+  const id =
+    e.sourceId != null
+      ? String(e.sourceId)
+      : e.prestamoId != null
+        ? `prestamo-${e.prestamoId}${e.numeroCuota != null ? `-c${e.numeroCuota}` : ''}`
+        : '';
+
   // Sin origen no se puede afirmar que sea la misma previsión regenerada: un
   // alta a mano repetida es decisión del usuario, no un fallo del motor.
   if (!origen || !id) return null;
@@ -113,8 +125,15 @@ export function analizarDuplicados(eventos: TreasuryEvent[]): InformeDuplicados 
 
     grupos.push({
       clave,
-      sourceType: primera.sourceType ?? '',
-      sourceId: String(primera.sourceId ?? ''),
+      sourceType: primera.sourceType ?? (primera.prestamoId != null ? 'prestamo' : ''),
+      // El id que se enseña es el mismo que identifica la clave, para que el
+      // informe y el grupo hablen de lo mismo también en los préstamos.
+      sourceId:
+        primera.sourceId != null
+          ? String(primera.sourceId)
+          : primera.prestamoId != null
+            ? `prestamo-${primera.prestamoId}`
+            : '',
       periodo: periodoDe(primera),
       cuentaId: primera.accountId ?? null,
       importe,
@@ -175,7 +194,12 @@ export async function diagnosticarDuplicados(): Promise<InformeDuplicados> {
  */
 export function registrarDiagnosticoEnConsola(): void {
   if (typeof window === 'undefined') return;
-  (window as unknown as Record<string, unknown>).atlasDiagnostico = {
+  const w = window as unknown as Record<string, unknown>;
+  // Se FUSIONA en vez de sobrescribir: si otra herramienta ya colgó algo de
+  // esta misma clave, reemplazar el objeto entero se la llevaría por delante.
+  const previo = (w.atlasDiagnostico as Record<string, unknown>) ?? {};
+  w.atlasDiagnostico = {
+    ...previo,
     duplicados: async () => {
       const informe = await diagnosticarDuplicados();
       // eslint-disable-next-line no-console

@@ -612,13 +612,14 @@ async function regenerateOpexForecast(
 
     const key = `opex_rule:${rule.id}:${monthKey}`;
     if (existingIndex.has(key)) continue;
-    // Se apunta ANTES de emitir · el índice se construye una sola vez al
-    // principio, así que sin esto dos orígenes que produjeran la misma clave
-    // en la misma pasada la verían libre los dos y emitirían por duplicado.
-    existingIndex.add(key);
 
     const amount = opexRuleAmount(rule, month);
     if (!amount || amount <= 0) continue;
+
+    // Se apunta cuando ya se sabe que SÍ se emite. Hacerlo antes del control
+    // del importe dejaba la clave ocupada por una previsión que nunca llegó a
+    // existir, y eso escondía emisiones legítimas del resto de la pasada.
+    existingIndex.add(key);
 
     const day = Math.min(Math.max(rule.diaCobro ?? 1, 1), lastDay);
     const predictedDate = `${monthKey}-${String(day).padStart(2, '0')}`;
@@ -672,7 +673,10 @@ async function regenerateLoansForecast(
       const keyByCuota = `prestamo:${prestamo.id}:${periodo.periodo}`;
       const keyByMonth = `prestamo:${prestamo.id}:${monthKey}`;
       if (existingIndex.has(keyByCuota) || existingIndex.has(keyByMonth)) continue;
+      // Se apuntan LAS DOS: se comprueban las dos, así que registrar solo una
+      // deja la otra libre y no bloquea a quien empareje por mes.
       existingIndex.add(keyByCuota);
+      existingIndex.add(keyByMonth);
 
       // Resolver inmueble desde destinos (si aplica).
       const inmuebleDestino = prestamo.destinos?.find((d) => d.inmuebleId)?.inmuebleId

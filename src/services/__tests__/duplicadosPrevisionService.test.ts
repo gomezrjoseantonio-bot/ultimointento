@@ -61,6 +61,41 @@ describe('qué cuenta como duplicado', () => {
   });
 });
 
+// Los préstamos NO llevan `sourceId`: se identifican por `prestamoId` y
+// `numeroCuota`. Sin respaldo, el informe se los saltaba enteros — y son uno de
+// los orígenes que el motor regenera, así que el conteo salía corto justo donde
+// más importa.
+describe('las previsiones de préstamo también se cuentan', () => {
+  const cuota = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
+    ({
+      ...ev({ sourceType: undefined, sourceId: undefined, ...over }),
+      prestamoId: 3,
+      numeroCuota: 14,
+      type: 'financing',
+    }) as TreasuryEvent;
+
+  it('dos cuotas idénticas del mismo préstamo son un duplicado', () => {
+    const inf = analizarDuplicados([cuota({ id: 1 }), cuota({ id: 2 })]);
+
+    expect(inf.grupos).toHaveLength(1);
+    expect(inf.grupos[0].sourceType).toBe('prestamo');
+    expect(inf.grupos[0].sourceId).toBe('prestamo-3');
+  });
+
+  it('cuotas DISTINTAS del mismo préstamo no lo son', () => {
+    const inf = analizarDuplicados([
+      cuota({ id: 1 }),
+      { ...cuota({ id: 2 }), numeroCuota: 15 } as TreasuryEvent,
+    ]);
+    expect(inf.grupos).toHaveLength(0);
+  });
+
+  it('salen en el informe por origen · es lo que apunta al generador', () => {
+    const texto = resumirInforme(analizarDuplicados([cuota({ id: 1 }), cuota({ id: 2 })]));
+    expect(texto).toContain('prestamo: 1');
+  });
+});
+
 describe('cuánto distorsionan', () => {
   it('tres copias de un gasto de 100 sobran 200, en negativo', () => {
     const inf = analizarDuplicados([ev({ id: 1 }), ev({ id: 2 }), ev({ id: 3 })]);
