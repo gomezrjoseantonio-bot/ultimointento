@@ -67,6 +67,8 @@ import {
   ExternalLink,
   ArrowRight,
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
   MoreHorizontal,
   Filter,
   Calendar,
@@ -176,6 +178,8 @@ export const Icons = {
   ExternalLink,
   ArrowRight,
   ArrowLeft,
+  ArrowUp,          // Tesorería V6 · entra / sale del mes
+  ArrowDown,
   More: MoreHorizontal,
   Filter,
   Calendar,
