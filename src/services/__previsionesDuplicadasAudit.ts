@@ -96,13 +96,6 @@ function esAutomatica(ev: TreasuryEvent): boolean {
   return ev.sourceId != null && ev.sourceType !== 'manual';
 }
 
-function periodoDe(ev: TreasuryEvent): string {
-  const iso = typeof ev.predictedDate === 'string' ? ev.predictedDate : '';
-  const año = ev.año ?? Number(iso.slice(0, 4));
-  const mes = ev.mes ?? Number(iso.slice(5, 7));
-  return `${año}-${String(mes).padStart(2, '0')}`;
-}
-
 function céntimos(n: number): number {
   return Math.round((n ?? 0) * 100);
 }

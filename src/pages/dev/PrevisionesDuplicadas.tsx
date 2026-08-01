@@ -8,6 +8,8 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { showToastV5 } from '../../design-system/v5';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
 import {
   contarPrevisionesDuplicadas,
   limpiarPrevisionesDuplicadas,
@@ -23,6 +25,8 @@ const PrevisionesDuplicadas: React.FC = () => {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ultimaLimpieza, setUltimaLimpieza] = useState<string | null>(null);
+  // Ensayo en seco pendiente de confirmar · informar ANTES de tocar nada.
+  const [enSeco, setEnSeco] = useState<{ retiradas: number; revisionManual: number } | null>(null);
 
   const contar = useCallback(async () => {
     setCargando(true);
@@ -40,30 +44,37 @@ const PrevisionesDuplicadas: React.FC = () => {
     void contar();
   }, [contar]);
 
-  const limpiar = useCallback(async () => {
-    const seco = await limpiarPrevisionesDuplicadas();
-    const ok = window.confirm(
-      `Se van a retirar ${seco.retiradas} previsiones duplicadas (solo predicted vivas).\n` +
-        `${seco.pendientesRevisionManual} duplicadas confirmadas/conciliadas quedan intactas para revisión manual.\n\n` +
-        '¿Continuar?',
-    );
-    if (!ok) return;
+  /** Paso 1 · ensayo en seco: dice qué se retiraría, sin tocar nada. */
+  const proponerLimpieza = useCallback(async () => {
+    try {
+      const seco = await limpiarPrevisionesDuplicadas();
+      setEnSeco({ retiradas: seco.retiradas, revisionManual: seco.pendientesRevisionManual });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, []);
+
+  /** Paso 2 · retirada real · solo `predicted` vivas sobrantes. */
+  const ejecutarLimpieza = useCallback(async () => {
     setCargando(true);
     try {
       const res = await limpiarPrevisionesDuplicadas({ confirmar: true });
       setUltimaLimpieza(`Retiradas ${res.retiradas} previsiones · IDs: ${res.ids.join(', ') || '—'}`);
+      showToastV5(`Retiradas ${res.retiradas} previsiones duplicadas`, 'success');
+      setEnSeco(null);
       await contar();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      showToastV5('No se pudo limpiar · nada se ha borrado', 'error');
     } finally {
       setCargando(false);
     }
   }, [contar]);
 
   return (
-    <div style={{ padding: 24, fontFamily: 'system-ui, sans-serif', maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: 24, fontFamily: 'var(--atlas-v5-font-ui)', maxWidth: 1100, margin: '0 auto' }}>
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Previsiones duplicadas</h1>
-      <p style={{ color: '#555', fontSize: 14, marginTop: 0 }}>
+      <p style={{ color: 'var(--atlas-v5-ink-3)', fontSize: 14, marginTop: 0 }}>
         Agrupa por clave de origen (<code>origen · id · año-mes · cuenta</code>). Solo puede haber una
         previsión viva por clave. Contar no toca nada.
       </p>
@@ -74,9 +85,9 @@ const PrevisionesDuplicadas: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => void limpiar()}
+          onClick={() => void proponerLimpieza()}
           disabled={cargando || !reporte || reporte.sobrantesLimpiables === 0}
-          style={{ ...btn, borderColor: '#b45309', color: '#b45309' }}
+          style={{ ...btn, borderColor: 'var(--atlas-v5-gold)', color: 'var(--atlas-v5-gold-ink)' }}
         >
           Limpiar sobrantes (solo predicted)
         </button>
@@ -91,8 +102,8 @@ const PrevisionesDuplicadas: React.FC = () => {
         )}
       </div>
 
-      {error && <div style={{ color: '#b91c1c', marginBottom: 12 }}>Error: {error}</div>}
-      {ultimaLimpieza && <div style={{ color: '#065f46', marginBottom: 12 }}>{ultimaLimpieza}</div>}
+      {error && <div style={{ color: 'var(--atlas-v5-neg)', marginBottom: 12 }}>Error: {error}</div>}
+      {ultimaLimpieza && <div style={{ color: 'var(--atlas-v5-pos-dark)', marginBottom: 12 }}>{ultimaLimpieza}</div>}
 
       {reporte && (
         <>
@@ -105,7 +116,7 @@ const PrevisionesDuplicadas: React.FC = () => {
           </div>
 
           {reporte.grupos.length === 0 ? (
-            <p style={{ marginTop: 24, color: '#065f46' }}>
+            <p style={{ marginTop: 24, color: 'var(--atlas-v5-pos-dark)' }}>
               Sin duplicados. Ejecutar de nuevo tras editar gastos recurrentes debe seguir dando 0.
             </p>
           ) : (
@@ -145,7 +156,7 @@ const PrevisionesDuplicadas: React.FC = () => {
                     <tr key={g.clave}>
                       <Td>
                         <code style={{ fontSize: 12 }}>{g.clave}</code>
-                        <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+                        <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginTop: 4 }}>
                           {g.eventos
                             .map(
                               (e) =>
@@ -166,6 +177,24 @@ const PrevisionesDuplicadas: React.FC = () => {
           )}
         </>
       )}
+
+      {enSeco && (
+        <ConfirmationModal
+          isOpen={true}
+          title="Retirar previsiones duplicadas"
+          message={
+            `Se retirarían ${enSeco.retiradas} previsiones duplicadas · solo las «predicted» vivas. ` +
+            `${enSeco.revisionManual} duplicadas confirmadas, conciliadas o descartadas quedan INTACTAS: ` +
+            'pueden corresponder a un cargo real repetido y se revisan una a una.'
+          }
+          confirmText="Retirar"
+          cancelText="Cancelar"
+          onConfirm={() => void ejecutarLimpieza()}
+          onClose={() => setEnSeco(null)}
+          isLoading={cargando}
+          variant="danger"
+        />
+      )}
     </div>
   );
 };
@@ -173,8 +202,8 @@ const PrevisionesDuplicadas: React.FC = () => {
 const btn: React.CSSProperties = {
   padding: '8px 14px',
   borderRadius: 8,
-  border: '1px solid #d1d5db',
-  background: '#fff',
+  border: '1px solid var(--atlas-v5-line)',
+  background: 'var(--atlas-v5-card)',
   fontSize: 13,
   fontWeight: 600,
   cursor: 'pointer',
@@ -183,19 +212,19 @@ const h2: React.CSSProperties = { fontSize: 16, fontWeight: 700, marginTop: 28, 
 const tabla: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 13 };
 
 const Th: React.FC<{ children: React.ReactNode; align?: 'left' | 'right' }> = ({ children, align }) => (
-  <th style={{ textAlign: align ?? 'left', padding: '8px 10px', borderBottom: '2px solid #e5e7eb' }}>
+  <th style={{ textAlign: align ?? 'left', padding: '8px 10px', borderBottom: '2px solid var(--atlas-v5-line-2)' }}>
     {children}
   </th>
 );
 const Td: React.FC<{ children: React.ReactNode; align?: 'left' | 'right' }> = ({ children, align }) => (
-  <td style={{ textAlign: align ?? 'left', padding: '8px 10px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+  <td style={{ textAlign: align ?? 'left', padding: '8px 10px', borderBottom: '1px solid var(--atlas-v5-line-3)', verticalAlign: 'top' }}>
     {children}
   </td>
 );
 
 const Kpi: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
-    <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6b7280' }}>
+  <div style={{ border: '1px solid var(--atlas-v5-line-2)', borderRadius: 10, padding: 12 }}>
+    <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--atlas-v5-ink-4)' }}>
       {label}
     </div>
     <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{value}</div>
