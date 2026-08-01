@@ -39,6 +39,7 @@ import {
   updateTreasuryEventFields,
 } from '../../../services/treasuryConfirmationService';
 import { descartarPrevisto } from '../../../services/treasuryDiscardService';
+import { altaMovimiento } from '../../../services/altaMovimientoService';
 import { batchesEnBorrador, sinBorradores } from '../../../services/statementSessionService';
 import type { GuardadoFicha } from './FichaMovimiento';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
@@ -335,24 +336,37 @@ const TesoreriaV6Page: React.FC = () => {
    * confirma con el importe real, que es lo que dice §4.5 ("Guardar en edición
    * → movement confirmado con el importe real").
    *
-   * El alta ("Anotar") y el alta en `mejorasInmueble` de una derrama-mejora
-   * necesitan escritura que aún no existe; se avisa en vez de fingir que se
-   * guardó.
+   * En ALTA ("Anotar") y en una derrama-mejora se escribe por `altaMovimiento`,
+   * que decide el destino: `movements` para lo normal, `mejorasInmueble` para
+   * la mejora — que se amortiza y por eso no es un gasto de este año.
    */
   const guardarFicha = useCallback(
     async (item: ItemPunteo | null, v: GuardadoFicha) => {
       try {
-        if (item == null || item.kind !== 'evento') {
-          console.warn('[TesoreriaV6] el alta de movimiento llega con §4.7 · aún sin escritor');
-          return;
-        }
-        // Una derrama que el usuario marca como MEJORA no es un gasto: se
-        // capitaliza y amortiza en `mejorasInmueble`, y ese escritor todavía no
-        // existe. Confirmarla igualmente materializaría un movement de gasto —
-        // justo lo contrario de lo que acaba de responder. Mejor no guardar y
-        // decirlo que guardar mal.
-        if (v.esMejora) {
-          console.warn('[TesoreriaV6] la derrama-mejora necesita alta en mejorasInmueble · aún sin escritor');
+        // Alta a mano, o una derrama que resultó ser MEJORA. Lo segundo no se
+        // puede confirmar como previsto: confirmar materializa un movement de
+        // gasto, y una mejora se amortiza. Las dos van al mismo escritor, que
+        // ya sabe a qué store corresponde cada una.
+        if (item == null || item.kind !== 'evento' || v.esMejora) {
+          // La previsión que dio origen a la mejora deja de estar pendiente: si
+          // se quedara, seguiría proyectando un gasto que ya se registró como
+          // inversión, y el cierre saldría dos veces peor de lo que es.
+          if (item?.kind === 'evento' && v.esMejora) {
+            await descartarPrevisto(item.refId, 'registrada como mejora del inmueble');
+          }
+          await altaMovimiento({
+            tipo: v.tipo,
+            concepto: v.concepto,
+            importe: v.importe,
+            fecha: v.fecha,
+            cuentaId: v.cuentaId,
+            inmuebleId: v.inmuebleId ?? null,
+            categoryKey: v.categoryKey ?? null,
+            subtypeKey: v.subtypeKey ?? null,
+            esMejora: v.esMejora,
+            cuentaDestinoId: v.cuentaDestinoId,
+          });
+          await trasEscribir();
           return;
         }
         // La descripción va en el override de confirmar, que sí la acepta;
