@@ -15,13 +15,17 @@
 >
 > | La tarea dice | En el repo |
 > |---|---|
-> | `atlas-tesoreria.html` | `docs/mockups/atlas-tesoreria-v5-escritorio.html` |
-> | `atlas-tesoreria-movil.html` | `docs/mockups/atlas-tesoreria-v5-movil.html` |
+> | `atlas-tesoreria.html` | `docs/mockups/atlas-tesoreria-v6-escritorio.html` |
+> | `atlas-tesoreria-movil.html` | `docs/mockups/atlas-tesoreria-v6-movil.html` |
 > | `GUIA-DISENO-V5-atlas.md` | `docs/audit-inputs/GUIA-DISENO-V5-atlas.md` |
 > | `ATLAS-mapa-stores-VIGENTE.md` | raíz **y** `docs/audit-inputs/` · copias idénticas, ambas en DB_VERSION 53 (obsoletas · la real es 83) |
 >
-> Los mockups se renombraron con sufijo `-v5-` al entrar al repo para no chocar con el
-> `atlas-tesoreria-v8` que ya estaba. Contenido sin tocar.
+> Los mockups se renombraron con sufijo `-v6-` (adenda 01 · D0: la tarea pasa a llamarse
+> **Tesorería V6**) para no chocar con el `atlas-tesoreria-v8` que ya estaba. Contenido de Jose,
+> sin tocar.
+>
+> **Esta tarea está enmendada por `docs/ADENDA-01-TESORERIA-respuestas-fase0.md`**, que sustituye
+> §3 completo y matiza §2, §4.5 y §4.7. Ante discrepancia, manda la adenda.
 
 ---
 

@@ -1,3 +1,10 @@
+// CAPA DE PRESENTACIÓN · fuente única del árbol familia → concepto que ELIGE el
+// usuario (alta de gasto del inmueble · ficha de movimiento de Tesorería V6).
+// NO decide el tratamiento fiscal: la casilla AEAT y el store de destino los
+// fija `services/categoryCatalog.ts` (capa de persistencia, vía `categoryKey`).
+// La traducción entre ambas vive en
+// `services/catalogoPresentacionPersistencia.ts` (Tesorería V6 · D3).
+
 import { Landmark, Users, Zap, Shield, Briefcase, Wrench, CirclePlus } from 'lucide-react';
 import type { TipoGasto, SubtipoGasto } from '../../../shared/components/TipoGastoSelector';
 import type {

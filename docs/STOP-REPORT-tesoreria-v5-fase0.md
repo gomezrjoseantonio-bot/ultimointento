@@ -5,6 +5,11 @@
 **Mockups:** `docs/mockups/atlas-tesoreria-v5-escritorio.html` · `docs/mockups/atlas-tesoreria-v5-movil.html`
 **Estado:** ⛔ **PARADO** · no se ha escrito una línea de código de implementación, según §0.
 
+> **Documento histórico · resuelto.** Las cinco decisiones que pedía están respondidas en
+> `docs/ADENDA-01-TESORERIA-respuestas-fase0.md`, y la tarea pasó a llamarse **Tesorería V6**.
+> Los mockups que cita se renombraron después a `atlas-tesoreria-v6-*.html`; el cuerpo de este
+> informe se deja tal cual se escribió, con los nombres de entonces.
+
 La tarea ordena parar y reportar si algo contradice lo escrito. **Contradice en varios puntos
 sustanciales.** Abajo, primero las respuestas A–E que pide la tabla, después las contradicciones
 y las decisiones que necesito de Jose.
