@@ -1,3 +1,8 @@
+// CAPA DE PRESENTACIÓN (gasto personal) · gemelo de `tiposDeGastoInmueble.ts`.
+// Fuente única del árbol familia → concepto que elige el usuario; el
+// `categoryKey` que se persiste lo fija `services/categoryCatalog.ts` y la
+// traducción vive en `services/catalogoPresentacionPersistencia.ts`.
+
 import { Home, Zap, ShoppingCart, Tv, Shield, CirclePlus } from 'lucide-react';
 import type { TipoGasto, SubtipoGasto } from '../../../shared/components/TipoGastoSelector';
 import type {

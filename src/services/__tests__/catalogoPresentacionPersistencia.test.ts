@@ -1,0 +1,90 @@
+// Candado de la tabla de traducción presentación → persistencia (V6 · D3).
+//
+// El riesgo que cubre: `categoryKey` alimenta la casilla AEAT y el store de
+// destino, así que una traducción rota o inventada contamina la declaración en
+// silencio. Estos tests fallan si alguien añade un concepto al catálogo de
+// presentación sin traducirlo, o si traduce a una key que no existe.
+
+import {
+  TRADUCCION_INMUEBLE,
+  TRADUCCION_PERSONAL,
+  traducirInmueble,
+  traducirPersonal,
+  pendientesDeDecision,
+} from '../catalogoPresentacionPersistencia';
+import { TIPOS_GASTO_INMUEBLE_V2 } from '../../modules/inmuebles/wizards/utils/tiposDeGastoInmueble';
+import { TIPOS_GASTO_PERSONAL } from '../../modules/personal/wizards/utils/tiposDeGastoPersonal';
+import { getAllCategories, SUMINISTRO_SUBTYPES } from '../categoryCatalog';
+
+const clavesPresentacionInmueble = TIPOS_GASTO_INMUEBLE_V2.flatMap((tipo) =>
+  tipo.subtipos.map((sub) => `${tipo.id}:${sub.id}`)
+);
+
+describe('catálogo · traducción presentación → persistencia', () => {
+  it('traduce todos los conceptos de inmueble, sin sobrantes', () => {
+    const mapeados = Object.keys(TRADUCCION_INMUEBLE).sort();
+    expect(mapeados).toEqual([...clavesPresentacionInmueble].sort());
+  });
+
+  it('traduce todas las familias de gasto personal, sin sobrantes', () => {
+    const familias = TIPOS_GASTO_PERSONAL.map((t) => t.id).sort();
+    expect(Object.keys(TRADUCCION_PERSONAL).sort()).toEqual(familias);
+  });
+
+  it('no inventa ninguna categoryKey: todas existen en categoryCatalog', () => {
+    const keysReales = new Set(getAllCategories().map((c) => c.key));
+    const usadas = [...Object.values(TRADUCCION_INMUEBLE), ...Object.values(TRADUCCION_PERSONAL)]
+      .map((t) => t.categoryKey)
+      .filter((k): k is string => k !== null);
+
+    expect(usadas.length).toBeGreaterThan(0);
+    expect(usadas.filter((k) => !keysReales.has(k))).toEqual([]);
+  });
+
+  it('no inventa ningún subtypeKey: todos existen en SUMINISTRO_SUBTYPES', () => {
+    const subsReales = new Set(SUMINISTRO_SUBTYPES.map((s) => s.key));
+    const usados = Object.values(TRADUCCION_INMUEBLE)
+      .map((t) => t.subtypeKey)
+      .filter((k): k is string => Boolean(k));
+
+    expect(usados.filter((k) => !subsReales.has(k))).toEqual([]);
+  });
+
+  it('una entrada pendiente nunca lleva categoryKey, y una resuelta siempre lo lleva', () => {
+    for (const [clave, t] of Object.entries({ ...TRADUCCION_INMUEBLE, ...TRADUCCION_PERSONAL })) {
+      if (t.estado === 'pendiente') {
+        expect({ clave, key: t.categoryKey }).toEqual({ clave, key: null });
+        expect(t.nota ?? '').not.toEqual('');
+      } else {
+        expect({ clave, nulo: t.categoryKey === null }).toEqual({ clave, nulo: false });
+      }
+    }
+  });
+
+  it('solo el sub-tipo de suministro admite subtypeKey', () => {
+    for (const [clave, t] of Object.entries(TRADUCCION_INMUEBLE)) {
+      if (t.subtypeKey) {
+        expect({ clave, key: t.categoryKey }).toEqual({ clave, key: 'suministro_inmueble' });
+      }
+    }
+  });
+
+  it('las funciones de consulta resuelven y devuelven undefined fuera del catálogo', () => {
+    expect(traducirInmueble('tributos', 'ibi')?.categoryKey).toBe('ibi_inmueble');
+    expect(traducirInmueble('suministros', 'luz')?.subtypeKey).toBe('luz');
+    expect(traducirInmueble('no', 'existe')).toBeUndefined();
+    expect(traducirPersonal('dia_a_dia')?.categoryKey).toBe('gasto_personal_dia_dia');
+    expect(traducirPersonal('no_existe')).toBeUndefined();
+  });
+
+  it('expone la lista PENDIENTE-JOSE con su motivo', () => {
+    const pendientes = pendientesDeDecision();
+    const marcadas = [
+      ...Object.values(TRADUCCION_INMUEBLE),
+      ...Object.values(TRADUCCION_PERSONAL),
+    ].filter((t) => t.estado === 'pendiente');
+
+    expect(pendientes).toHaveLength(marcadas.length);
+    expect(pendientes.every((p) => p.nota.length > 0)).toBe(true);
+  });
+});

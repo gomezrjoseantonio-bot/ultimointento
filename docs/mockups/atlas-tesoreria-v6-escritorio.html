@@ -86,10 +86,6 @@ button{font:inherit;background:none;border:none;cursor:pointer;color:inherit}
 .pager svg{width:18px;height:18px}
 .pager.disabled{opacity:0;pointer-events:none}
 .track{--pp:5;display:flex;gap:12px;transition:transform .32s cubic-bezier(.4,0,.2,1)}
-.pager{flex:0 0 48px;border:1px solid var(--line);border-radius:13px;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--ink-4);cursor:pointer;transition:all .14s}
-.pager:hover{border-color:var(--gold);color:var(--gold-ink);background:var(--gold-wash)}
-.pager svg{width:22px;height:22px}
-.pager.disabled{opacity:0;pointer-events:none}
 
 .acc{flex:0 0 calc((100% - (var(--pp) - 1)*12px)/var(--pp));background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px 14px 13px;position:relative;cursor:grab;transition:transform .14s,box-shadow .14s,border-color .14s;border-top:2px solid transparent}
 .acc:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(20,27,46,.07);border-top-color:var(--gold-soft)}
@@ -158,7 +154,7 @@ button{font:inherit;background:none;border:none;cursor:pointer;color:inherit}
 .rvend .ic{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--gold-wash);color:var(--gold-ink)}
 .rvend .ic svg{width:19px;height:19px}
 .rvend .tt{font-size:14.5px;font-weight:700;color:var(--ink)}
-.rvend .tt b{color:var(--gold-ink)}
+.rvend .tt b{color:var(--gold)}
 .rvend .ss{font-size:11.5px;color:var(--ink-3);margin-top:3px;line-height:1.45}
 .rvend .ss b.m{font-family:'JetBrains Mono',monospace;color:var(--ink-2);font-weight:700}
 .rvend .big{margin-left:auto;text-align:right;white-space:nowrap}
@@ -219,7 +215,7 @@ button{font:inherit;background:none;border:none;cursor:pointer;color:inherit}
 .res-row .rv{white-space:nowrap}
 .res-row .rl{font-size:12.5px;color:var(--ink-3);font-weight:500}
 .res-row .rv{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px}
-.res-row .rv.pos,.res-row .rv.neg{color:var(--ink)} .res-row .rv.gold{color:var(--gold-ink)}
+.res-row .rv.pos,.res-row .rv.neg{color:var(--ink)} .res-row .rv.gold{color:var(--gold)}
 .res-row.big .rl{color:var(--ink);font-weight:600}
 .res-row.big .rv{font-size:21px;letter-spacing:-.02em}
 .res-sep{height:1px;background:var(--line-2);margin:8px 0}
@@ -376,7 +372,7 @@ button{font:inherit;background:none;border:none;cursor:pointer;color:inherit}
 .drw-sum .sl{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);display:inline-flex;align-items:center;gap:5px}
 .drw-sum .sl svg{width:12px;height:12px}
 .drw-sum .sv{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--ink)}
-.drw-sum .sv.gold{color:var(--gold-ink)}
+.drw-sum .sv.gold{color:var(--gold)}
 .drw-bd{flex:1;overflow-y:auto;padding:18px 20px}
 .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
 .cal-dow span{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4);text-align:center}

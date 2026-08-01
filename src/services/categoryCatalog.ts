@@ -1,5 +1,12 @@
 // PR5-HOTFIX v2 · Catálogo canónico de categorías de movimientos
 //
+// CAPA DE PERSISTENCIA · fuente única de lo que se GUARDA y de su tratamiento
+// fiscal (`categoryKey` · casilla AEAT · store de destino). NO es la capa que
+// elige el usuario: esa es `TIPOS_GASTO_INMUEBLE_V2`
+// (`modules/inmuebles/wizards/utils/tiposDeGastoInmueble.ts`) y su gemelo
+// personal, con su árbol familia → concepto. La traducción entre ambas vive en
+// `services/catalogoPresentacionPersistencia.ts` (Tesorería V6 · D3).
+//
 // Fuente única de verdad para la taxonomía de categorías usada en:
 //   - Modal "+ Añadir movimiento" (Conciliación)
 //   - Modal "Nueva regla OPEX" (Inmuebles)
