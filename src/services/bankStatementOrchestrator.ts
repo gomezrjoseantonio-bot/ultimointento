@@ -86,12 +86,26 @@ export class StatementAlreadyImportedError extends Error {
   }
 }
 
-/** Batch previo con el mismo hash, o `null`. Ignora los batches sin hash (pre-V6). */
+/**
+ * Batch previo MÁS RECIENTE con el mismo hash, o `null`.
+ *
+ * El más reciente y no el primero: tras un `allowReimport` hay varias filas con
+ * el mismo `hashLote`, y avisar con la fecha del import más antiguo confundiría
+ * ("ya se importó el 3 de marzo" cuando en realidad se reimportó ayer).
+ *
+ * Ignora los batches sin hash (pre-V6, todos con `hashLote: ''`), que por eso
+ * nunca pueden dar un falso positivo.
+ */
 async function findBatchByHash(hashLote: string): Promise<ImportBatch | null> {
   if (!hashLote) return null;
   const db = await initDB();
   const batches = ((await db.getAll('importBatches')) ?? []) as ImportBatch[];
-  return batches.find((b) => b.hashLote === hashLote) ?? null;
+  let ultimo: ImportBatch | null = null;
+  for (const b of batches) {
+    if (b.hashLote !== hashLote) continue;
+    if (!ultimo || b.timestampImport > ultimo.timestampImport) ultimo = b;
+  }
+  return ultimo;
 }
 
 export class BankProfileNotDetectedError extends Error {

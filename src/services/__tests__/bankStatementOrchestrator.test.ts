@@ -131,15 +131,22 @@ function makeParsed(count: number) {
 // jsdom no implementa `File.text()` ni `crypto.subtle`, así que sin esto
 // `generateBatchHash` degrada a "sin hash" (''), que es el comportamiento
 // seguro en producción pero deja sin cubrir la idempotencia por fichero de
-// V6 · D1 bis. El polyfill devuelve el contenido real del File, de modo que el
-// hash que se ejercita es el de verdad (fallback no-crypto), no un mock.
+// V6 · D1 bis.
+//
+// El polyfill lee los BYTES REALES vía FileReader (que jsdom sí implementa),
+// no el nombre: así el hash que se ejercita es el de verdad y dos ficheros
+// distintos con el mismo nombre siguen dando hashes distintos, como en
+// producción.
 beforeAll(() => {
   if (typeof File.prototype.text !== 'function') {
     // eslint-disable-next-line no-extend-native
-    (File.prototype as unknown as { text: () => Promise<string> }).text = function (
-      this: File & { __parts?: string }
-    ) {
-      return Promise.resolve(String(this.name));
+    (File.prototype as unknown as { text: () => Promise<string> }).text = function (this: File) {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ''));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(this);
+      });
     };
   }
 });
