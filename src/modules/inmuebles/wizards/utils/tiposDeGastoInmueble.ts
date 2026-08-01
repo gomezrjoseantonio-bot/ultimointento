@@ -5,7 +5,7 @@
 // La traducción entre ambas vive en
 // `services/catalogoPresentacionPersistencia.ts` (Tesorería V6 · D3).
 
-import { Landmark, Users, Zap, Shield, Briefcase, Wrench, CirclePlus } from 'lucide-react';
+import { Landmark, Users, Zap, Shield, Briefcase, Wrench, Sparkles, Armchair, CirclePlus } from 'lucide-react';
 import type { TipoGasto, SubtipoGasto } from '../../../shared/components/TipoGastoSelector';
 import type {
   CategoriaGastoCompromiso,
@@ -70,7 +70,6 @@ export const TIPOS_GASTO_INMUEBLE_V2: TipoGastoInmueble[] = [
       { id: 'impago', label: 'Impago', tipoCompromiso: 'seguro', categoria: 'inmueble.seguros' },
       // Vida: sólo tiene sentido en el inmueble si está vinculado a la hipoteca.
       // Se resuelve al alta (ver SeguroVidaModal · decisión Jose §4).
-      { id: 'vida', label: 'Vida', tipoCompromiso: 'seguro', categoria: 'inmueble.seguros' },
       { id: 'otros', label: 'Otros', tipoCompromiso: 'seguro', categoria: 'inmueble.seguros' },
     ],
   },
@@ -90,16 +89,45 @@ export const TIPOS_GASTO_INMUEBLE_V2: TipoGastoInmueble[] = [
   {
     id: 'reparacion',
     label: 'Reparación y conservación',
-    description: 'Caldera · integral · limpieza',
+    description: 'Caldera · mantenimiento integral',
     icon: Wrench,
     subtipos: [
       { id: 'mantenimiento_caldera', label: 'Mantenimiento de la caldera', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
       { id: 'mantenimiento_integral', label: 'Mantenimiento integral', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
+      { id: 'otros', label: 'Otros', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
+    ],
+  },
+  {
+    // V6 · D3 · familia nueva. "Reparación y conservación" mezclaba dos cosas
+    // fiscalmente distintas: reparar el inmueble (0106) y los servicios
+    // recurrentes de explotarlo (0108). Separarlas resolvió cinco de las trece
+    // traducciones pendientes de una vez.
+    id: 'servicios',
+    label: 'Servicios y explotación',
+    description: 'Limpieza · lavandería · consumibles',
+    icon: Sparkles,
+    subtipos: [
       { id: 'limpieza', label: 'Limpieza', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
       { id: 'limpieza_zonas_comunes', label: 'Limpieza de zonas comunes', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
       { id: 'limpieza_por_estancia', label: 'Limpieza por estancia', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
-      { id: 'ropa_cama_lavanderia', label: 'Ropa de cama y lavandería', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
+      // Desdoblado de `ropa_cama_lavanderia`: el SERVICIO recurrente se queda
+      // aquí (0108) y el BIEN duradero se va a Mobiliario (0117, amortizable).
+      { id: 'lavanderia', label: 'Lavandería', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
       { id: 'consumibles_bienvenida', label: 'Consumibles de bienvenida', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
+      { id: 'otros', label: 'Otros', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
+    ],
+  },
+  {
+    // V6 · D3 · el mobiliario y los enseres son bien duradero: NO son gasto del
+    // ejercicio, se amortizan (0117). Por eso van en familia propia y no
+    // colgando de Servicios.
+    id: 'mobiliario',
+    label: 'Mobiliario y enseres',
+    description: 'Ropa de cama · menaje · muebles',
+    icon: Armchair,
+    subtipos: [
+      { id: 'ropa_enseres', label: 'Ropa de cama y enseres', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
+      { id: 'muebles', label: 'Muebles', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
       { id: 'otros', label: 'Otros', tipoCompromiso: 'otros', categoria: 'inmueble.opex' },
     ],
   },
