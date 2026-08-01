@@ -95,7 +95,8 @@ exactamente este caso. **Decisión pendiente de Jose.**
 (`src/modules/personal/wizards/utils/tiposDeGastoPersonal.ts`), usado en
 `modules/personal/pages/GastosPage.tsx:27`.
 
-**El mockup lo copia casi literalmente.** `CATG` (línea 733 de `atlas-tesoreria.html`) coincide
+**El mockup lo copia casi literalmente.** `CATG` (línea 733 de
+`docs/mockups/atlas-tesoreria-v5-escritorio.html`) coincide
 concepto a concepto con `TIPOS_GASTO_INMUEBLE_V2` — p. ej. `'Tributos': ['IBI', 'Basuras y
 alcantarillado', 'Licencia turística', 'Otros']` es exactamente el grupo `tributos` del fichero.
 Confirmado: **ése es el catálogo único que hay que reutilizar**, no uno nuevo.
@@ -164,8 +165,10 @@ real no es el que está escrito.
 
 **1 · Ya existe una "Tesorería v5" y no es ésta.**
 `App.tsx:896` rotula la pantalla actual como *"T20 Fase 2 · Tesorería v5 (sustituye Tesoreria.tsx
-legacy) · Mockup atlas-tesoreria-v8.html"*. La tarea nueva también se llama V5 y apunta a un mockup
-distinto (`atlas-tesoreria.html`). Dos cosas distintas con el mismo nombre. Propongo llamar a ésta
+legacy) · Mockup atlas-tesoreria-v8.html"* (en el repo: `docs/audit-inputs/atlas-tesoreria-v8.html`
+y `docs/mockups/atlas-tesoreria-v8-completo.html`). La tarea nueva también se llama V5 y apunta a un
+mockup distinto (`docs/mockups/atlas-tesoreria-v5-escritorio.html`). Dos cosas distintas con el
+mismo nombre. Propongo llamar a ésta
 **Tesorería V6** en código y comentarios, o renombrar la anterior, pero no dejar dos "v5".
 
 **2 · La tarea manda rehacer trabajo que se mergeó hace cinco commits.**
@@ -208,9 +211,34 @@ entradas, mecánico pero hay que revisarlo uno a uno y algunos no tienen destino
 unifican de verdad los dos catálogos** en una tarea aparte antes de ésta? Lo segundo es lo correcto
 a medio plazo y lo primero es lo que permite entregar esta tarea. No lo decido yo.
 
-**6 · Rama.** La tarea pide `feat/tesoreria-v5`. Mi mandato de sesión me fija
-`claude/new-session-hq2846`. He usado la del mandato. Si Jose quiere el nombre de la tarea, se
-renombra al abrir el PR.
+**6 · Defectos en el propio mockup, que es la fuente de verdad.**
+Tres cosas del mockup se contradicen con §5 de la tarea y con el checklist §17 de la guía. **No las
+he tocado** — el mockup es la fuente de verdad y arreglarlo por mi cuenta sería justo la "solución
+intermedia" que prohíbe §7. Las reporto para que Jose decida qué manda:
+
+- **`.pager` está definido dos veces** (`atlas-tesoreria-v5-escritorio.html:82-87` y `:89-92`).
+  El primer bloque es el que describe §4.2 — `position:absolute`, `border-radius:50%`, flechas
+  circulares superpuestas sobre los bordes. El segundo, misma especificidad y posterior, **gana**:
+  `flex:0 0 48px` (vuelve al flujo, ya no superpuesta) y `border-radius:13px` (deja de ser
+  circular). Tal como está, el mockup renderiza lo contrario de lo que pide su propia
+  especificación. Parece CSS muerto de una iteración anterior. **Asumo que manda §4.2** (bloque 1)
+  salvo que Jose diga lo contrario, pero conviene borrar el bloque 2 del mockup.
+- **`--gold-ink` sobre cifras**, que §5 prohíbe explícitamente ("se lee marrón · usar `--gold`"),
+  en cuatro sitios: `escritorio:222` (`.res-row .rv.gold` · el Neto de "Cómo va {mes}"),
+  `escritorio:379` (`.drw-sum .sv.gold` · el Cierre del drawer de calendario), `escritorio:161`
+  (`.rvend .tt b` · la cifra destacada de la desviación) y `movil:73` (`.okfin .v` · el cierre
+  proyectado). **Al implementar usaré `--gold`**, porque §5 es regla vinculante y el checklist §17
+  lo verifica; lo dejo escrito por si el mockup tenía razón y la regla es la que sobra.
+  El resto de usos de `--gold-ink` en los mockups (hovers, avatares, fondos de icono, número del
+  día de hoy) son legítimos: no son cifras.
+
+**7 · Rama.** La tarea pide `feat/tesoreria-v5`; este PR va en `claude/new-session-hq2846`. Si Jose
+quiere el nombre de la tarea, se renombra.
+
+**8 · `ATLAS-mapa-stores-VIGENTE.md` está duplicado** — copias byte a byte en la raíz y en
+`docs/audit-inputs/`, ambas documentando DB_VERSION 53. Un documento llamado "VIGENTE" por
+duplicado y ocho versiones por detrás invita al error que la fase 0 venía a evitar. Sugiero dejar
+una sola copia y marcarla como histórica, en tarea aparte.
 
 ---
 
@@ -243,3 +271,7 @@ del punto A.
 5. **3** · ¿Se acepta que "a resolver" sea estado de la sesión de import y no del movimiento?
 
 Con esas cinco respuestas, §3 se reescribe con los nombres reales y se implementa.
+
+No bloquean, pero conviene confirmarlas (punto 6): que en `.pager` manda el bloque circular de
+§4.2 y no el segundo que lo pisa, y que en las cuatro cifras en `--gold-ink` manda §5 (`--gold`).
+Si no hay respuesta, tiro por esas dos asunciones.

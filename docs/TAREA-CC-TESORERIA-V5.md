@@ -10,6 +10,19 @@
 
 **Guía vinculante:** `GUIA-DISENO-V5-atlas.md` (Oxford Gold V5) · el checklist de la sección 17 es condición de entrega.
 
+> **Nota de archivo (añadida al commitear · el texto de la tarea NO se ha modificado).**
+> Los ficheros que la tarea cita por nombre suelto viven aquí:
+>
+> | La tarea dice | En el repo |
+> |---|---|
+> | `atlas-tesoreria.html` | `docs/mockups/atlas-tesoreria-v5-escritorio.html` |
+> | `atlas-tesoreria-movil.html` | `docs/mockups/atlas-tesoreria-v5-movil.html` |
+> | `GUIA-DISENO-V5-atlas.md` | `docs/audit-inputs/GUIA-DISENO-V5-atlas.md` |
+> | `ATLAS-mapa-stores-VIGENTE.md` | raíz **y** `docs/audit-inputs/` · copias idénticas, ambas en DB_VERSION 53 (obsoletas · la real es 83) |
+>
+> Los mockups se renombraron con sufijo `-v5-` al entrar al repo para no chocar con el
+> `atlas-tesoreria-v8` que ya estaba. Contenido sin tocar.
+
 ---
 
 ## 0 · FASE DE VERIFICACIÓN · OBLIGATORIA · STOP-AND-REPORT
