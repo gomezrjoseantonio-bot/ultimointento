@@ -58,6 +58,20 @@ export function sinBorradores<T extends Pick<Movement, 'importBatch'>>(
 }
 
 /**
+ * Una línea que se quedó sin resolver al guardar.
+ *
+ * `movementId` es el registro que `processFile` insertó y que hay que borrar
+ * para cumplir D4; el resto es lo que permite volver a enseñarla sin el fichero.
+ */
+export interface LineaPendiente {
+  movementId?: number;
+  hashLinea: string;
+  fecha: string;
+  importe: number;
+  concepto: string;
+}
+
+/**
  * Marca la sesión como guardada · a partir de aquí sus movimientos cuentan.
  *
  * Se llama DESPUÉS de `confirmDecisions`, no antes: si la consolidación falla a
@@ -67,15 +81,45 @@ export function sinBorradores<T extends Pick<Movement, 'importBatch'>>(
  * Idempotente: consolidar dos veces conserva la marca original, porque la fecha
  * que importa es la de la primera vez que el usuario dijo que sí.
  */
-export async function consolidarSesion(importBatchId: string): Promise<void> {
+export async function consolidarSesion(
+  importBatchId: string,
+  pendientes: LineaPendiente[] = []
+): Promise<void> {
   const db = await initDB();
   const batch = (await db.get('importBatches', importBatchId)) as ImportBatch | undefined;
   if (!batch) throw new Error(`Sesión de importación ${importBatchId} no encontrada`);
   if (batch.consolidadoAt) return;
 
+  // D4 · lo que quedó sin resolver NO SE MATERIALIZA. `processFile` ya había
+  // insertado un `Movement` por línea, así que "no materializarse" obliga a
+  // borrarlos: en cuanto el batch deje de ser borrador, cualquiera que siguiera
+  // en el store aparecería en la lista de la cuenta como conciliado y movería
+  // el saldo, que es justo lo que §4.7 prohíbe.
+  //
+  // La línea no se pierde: su identidad queda en el batch, que es lo que
+  // significa "sigue pendiente en la sesión de importación".
+  for (const p of pendientes) {
+    if (p.movementId == null) continue;
+    try {
+      await db.delete('movements', p.movementId);
+    } catch (err) {
+      console.warn('[statementSession] no se pudo desmaterializar la línea pendiente', err);
+    }
+  }
+
   await db.put('importBatches', {
     ...batch,
     consolidadoAt: new Date().toISOString(),
+    ...(pendientes.length > 0
+      ? {
+          lineasPendientes: pendientes.map(({ hashLinea, fecha, importe, concepto }) => ({
+            hashLinea,
+            fecha,
+            importe,
+            concepto,
+          })),
+        }
+      : {}),
   });
 }
 

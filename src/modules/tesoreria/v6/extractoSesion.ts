@@ -238,6 +238,29 @@ export function lineasAIgnorar(
 }
 
 /**
+ * Líneas que siguen "a resolver" al pulsar Guardar.
+ *
+ * Por D4 NO se materializan: al consolidar hay que borrar sus `Movement` y
+ * dejar su identidad en el batch. Si se quedaran en el store, en cuanto la
+ * sesión dejase de ser borrador aparecerían en la lista de la cuenta como
+ * conciliadas y moverían el saldo.
+ */
+export function lineasPendientes(
+  lineas: LineaExtracto[],
+  decisiones: DecisionesSesion
+): Array<{ movementId: number; hashLinea: string; fecha: string; importe: number; concepto: string }> {
+  return lineas
+    .filter((l) => veredictoEfectivo(l, decisiones) === 'resolver')
+    .map((l) => ({
+      movementId: l.movementId,
+      hashLinea: l.hashLinea,
+      fecha: l.fecha,
+      importe: l.importe,
+      concepto: l.textoBanco,
+    }));
+}
+
+/**
  * Líneas ignoradas en importaciones anteriores que el usuario ha recuperado ·
  * hay que borrar su hash del batch donde se guardó, o volverían a esconderse.
  */

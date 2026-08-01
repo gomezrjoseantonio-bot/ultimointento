@@ -152,6 +152,23 @@ export interface ImportBatch {
    * sesión salvo por cierre abrupto — y ahí sigue sin contar, que es lo seguro.
    */
   consolidadoAt?: string;
+  /**
+   * V6 · §4.7 · D4 · las líneas que se quedaron sin resolver al guardar.
+   *
+   * D4 dice que "lo que quedó sin resolver NO SE MATERIALIZA: sigue pendiente
+   * en la sesión de importación". Materializarse es existir como `Movement`, así
+   * que al consolidar esas líneas se BORRAN del store y su identidad se guarda
+   * aquí — el extracto es quien las custodia, que es lo que significa "espera en
+   * el extracto".
+   *
+   * Se guarda lo suficiente para volver a mostrarlas sin releer el fichero.
+   */
+  lineasPendientes?: Array<{
+    hashLinea: string;
+    fecha: string;
+    importe: number;
+    concepto: string;
+  }>;
   usuario?: string; // User who performed the import
   
   // Legacy fields

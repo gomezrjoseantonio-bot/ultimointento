@@ -14,6 +14,7 @@ import {
   resumir,
   payloadDeConfirmacion,
   lineasAIgnorar,
+  lineasPendientes,
   hashesARecuperar,
   decisionesVacias,
   type LineaExtracto,
@@ -207,6 +208,23 @@ describe('lo que viaja al pulsar Guardar', () => {
 
     expect(payload.approvedMatches).toEqual([{ movementId: 10, treasuryEventId: 5 }]);
     expect(payload.ignoredMovementIds).toEqual([12]);
+  });
+
+  it('las que quedan a resolver salen listadas para DESMATERIALIZARLAS (D4)', () => {
+    // No basta con excluirlas del payload: `processFile` ya las insertó como
+    // Movement. Si se quedaran, al consolidar el batch dejarían de estar
+    // filtradas y aparecerían en la lista de la cuenta como conciliadas.
+    const pendientes = lineasPendientes(tres(), decisionesVacias());
+
+    expect(pendientes.map((p) => p.movementId)).toEqual([11, 12]);
+    expect(pendientes[0]).toMatchObject({ concepto: 'B', importe: -20 });
+  });
+
+  it('lo ignorado y lo que cuadra NO son pendientes', () => {
+    const d = decisionesVacias();
+    d.ignorados.add(12);
+    d.asignados.set(11, 5);
+    expect(lineasPendientes(tres(), d)).toEqual([]);
   });
 
   it('no manda sugerencias · §4.7 no ofrece aceptarlas', () => {

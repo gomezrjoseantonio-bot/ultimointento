@@ -35,6 +35,7 @@ import {
   resumir,
   payloadDeConfirmacion,
   lineasAIgnorar,
+  lineasPendientes,
   hashesARecuperar,
   decisionesVacias,
   type LineaExtracto,
@@ -204,7 +205,12 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
       // Lo último: hasta aquí la sesión era un borrador invisible. Si algo de
       // lo anterior falla, mejor que siga siéndolo.
-      await consolidarSesion(resultado.importBatchId);
+      //
+      // Las líneas sin resolver viajan aquí para que `consolidarSesion` las
+      // DESMATERIALICE (D4): borra sus movimientos y guarda su identidad en el
+      // batch. Si se quedasen en el store, al dejar de ser borrador aparecerían
+      // en la lista de la cuenta como conciliadas y moverían el saldo.
+      await consolidarSesion(resultado.importBatchId, lineasPendientes(lineas, decisiones));
       await onGuardado();
       reiniciar();
       onCerrar();
@@ -391,6 +397,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                   <select
                     className={styles.selectCuenta}
                     aria-label="Cuenta de destino"
+                    // Cambiar de cuenta a mitad de una importación lanzaría un
+                    // segundo `processFile` y dejaría el batch anterior huérfano.
+                    disabled={paso === 'procesando'}
                     value={cuentaElegida?.id ?? ''}
                     onChange={(e) => {
                       const elegida = cuentas.find((c) => c.id === Number(e.target.value)) ?? null;
@@ -445,6 +454,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 onDrop={(e) => {
                   e.preventDefault();
                   setArrastrando(false);
+                  if (paso === 'procesando') return;
                   const f = e.dataTransfer.files?.[0];
                   if (f) void recibirFichero(f);
                 }}

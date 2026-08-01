@@ -30,8 +30,13 @@ const batch = (id: string, over: Partial<ImportBatch> = {}): ImportBatch =>
     ...over,
   }) as ImportBatch;
 
+let borrados: number[];
+let fallarBorrado: boolean;
+
 beforeEach(() => {
   batches = [batch('borrador'), batch('guardado', { consolidadoAt: '2026-03-10T10:00:00.000Z' })];
+  borrados = [];
+  fallarBorrado = false;
   (initDB as jest.Mock).mockResolvedValue({
     getAll: async () => batches,
     get: async (_s: string, id: string) => batches.find((b) => b.id === id),
@@ -39,6 +44,10 @@ beforeEach(() => {
       const i = batches.findIndex((b) => b.id === value.id);
       if (i >= 0) batches[i] = value;
       return value.id;
+    },
+    delete: async (_s: string, id: number) => {
+      if (fallarBorrado) throw new Error('IndexedDB caída');
+      borrados.push(id);
     },
   });
 });
@@ -92,5 +101,52 @@ describe('consolidar', () => {
 
   it('falla claro si la sesión no existe', async () => {
     await expect(consolidarSesion('fantasma')).rejects.toThrow('no encontrada');
+  });
+});
+
+// D4 · "lo que quedó sin resolver NO SE MATERIALIZA". Materializarse es existir
+// como Movement, y `processFile` ya había insertado uno por línea. Si al dejar
+// de ser borrador siguieran en el store, aparecerían en la lista de la cuenta
+// como conciliadas y moverían el saldo — justo lo que §4.7 prohíbe.
+describe('las líneas sin resolver no se materializan', () => {
+  const pendiente = {
+    movementId: 77,
+    hashLinea: 'v1:abc',
+    fecha: '2026-03-10',
+    importe: -30,
+    concepto: 'CARGO SIN IDENTIFICAR',
+  };
+
+  it('borra sus movimientos al consolidar', async () => {
+    await consolidarSesion('borrador', [pendiente]);
+    expect(borrados).toEqual([77]);
+  });
+
+  it('pero guarda su identidad en el extracto · ahí es donde esperan', async () => {
+    await consolidarSesion('borrador', [pendiente]);
+
+    expect(batches.find((b) => b.id === 'borrador')?.lineasPendientes).toEqual([
+      {
+        hashLinea: 'v1:abc',
+        fecha: '2026-03-10',
+        importe: -30,
+        concepto: 'CARGO SIN IDENTIFICAR',
+      },
+    ]);
+  });
+
+  it('sin pendientes no deja el campo vacío colgando', async () => {
+    await consolidarSesion('borrador');
+    expect(batches.find((b) => b.id === 'borrador')).not.toHaveProperty('lineasPendientes');
+    expect(borrados).toEqual([]);
+  });
+
+  it('un borrado que falla no tumba la consolidación', async () => {
+    fallarBorrado = true;
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(consolidarSesion('borrador', [pendiente])).resolves.toBeUndefined();
+
+    expect(await estaConsolidada('borrador')).toBe(true);
+    warn.mockRestore();
   });
 });
