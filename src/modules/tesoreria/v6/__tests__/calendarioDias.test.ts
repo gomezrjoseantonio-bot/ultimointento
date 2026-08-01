@@ -149,14 +149,41 @@ describe('el punto ámbar · días que dejan una cuenta corta', () => {
     expect(dias.find((d) => d.numero === 18)!.dejaCuentaCorta).toBe(true);
   });
 
-  it('y sigue avisando los días siguientes mientras siga en rojo', () => {
+  it('NO avisa los días siguientes solo porque la cuenta siga en rojo', () => {
+    // El punto marca el día que DEJA la cuenta corta. Encenderlo también en los
+    // días posteriores llenaba de ámbar el resto del mes, y entonces deja de
+    // significar "mira aquí".
     const dias = construirDias({
       ...base,
       eventos: [ev({ amount: 1500, predictedDate: '2026-03-12' })],
       movimientos: [],
     });
     expect(dias.find((d) => d.numero === 12)!.dejaCuentaCorta).toBe(true);
-    expect(dias.find((d) => d.numero === 25)!.dejaCuentaCorta).toBe(true);
+    expect(dias.find((d) => d.numero === 25)!.dejaCuentaCorta).toBe(false);
+  });
+
+  it('un día SIN movimientos nunca lleva punto, esté como esté la cuenta', () => {
+    const dias = construirDias({
+      ...base,
+      eventos: [ev({ amount: 1500, predictedDate: '2026-03-12' })],
+      movimientos: [],
+    });
+    const vacio = dias.find((d) => d.numero === 13)!;
+    expect(vacio.apuntes).toBe(0);
+    expect(vacio.dejaCuentaCorta).toBe(false);
+  });
+
+  it('pero un cargo NUEVO sobre una cuenta ya en rojo sí vuelve a avisar', () => {
+    const dias = construirDias({
+      ...base,
+      eventos: [
+        ev({ id: 1, amount: 1500, predictedDate: '2026-03-12' }),
+        ev({ id: 2, amount: 200, predictedDate: '2026-03-20' }),
+      ],
+      movimientos: [],
+    });
+    expect(dias.find((d) => d.numero === 12)!.dejaCuentaCorta).toBe(true);
+    expect(dias.find((d) => d.numero === 20)!.dejaCuentaCorta).toBe(true);
   });
 
   it('un negativo en un día YA PASADO no avisa · es historia, no acción', () => {
@@ -178,15 +205,17 @@ describe('el punto ámbar · días que dejan una cuenta corta', () => {
     expect(dias.find((d) => d.numero === 20)!.dejaCuentaCorta).toBe(false);
   });
 
-  it('un previsto con fecha ya pasada SÍ cuenta · sigue sin confirmarse', () => {
+  it('un previsto VENCIDO y sin confirmar avisa en su día · el cargo no ha llegado', () => {
+    // Su fecha pasó, pero sigue sin ocurrir: el dinero no ha salido y cuando
+    // salga hundirá la cuenta. Es exactamente lo que hay que ver.
     const dias = construirDias({
       ...base,
       eventos: [ev({ amount: 1500, predictedDate: '2026-03-05' })],
       movimientos: [],
     });
-    // El día ya pasó, así que no se avisa ahí, pero el arrastre lo lleva a hoy.
-    expect(dias.find((d) => d.numero === 5)!.dejaCuentaCorta).toBe(false);
-    expect(dias.find((d) => d.numero === 10)!.dejaCuentaCorta).toBe(true);
+    expect(dias.find((d) => d.numero === 5)!.dejaCuentaCorta).toBe(true);
+    // Y no se propaga al resto del mes.
+    expect(dias.find((d) => d.numero === 10)!.dejaCuentaCorta).toBe(false);
   });
 });
 

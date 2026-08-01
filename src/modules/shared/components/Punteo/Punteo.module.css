@@ -386,16 +386,29 @@
   margin-right: 10px;
 }
 
-/* Editar y descartar en la fila · aparecen al pasar por encima (§4.4). */
+/* Editar y descartar en la fila.
+   
+   En escritorio aparecen al pasar por encima. En TÁCTIL no hay hover, así que
+   ocultarlas por defecto dejaba editar y descartar inalcanzables desde el
+   móvil: no había forma de corregir un importe ni de descartar un previsto.
+   Por eso el `opacity: 0` vive dentro de `hover: hover`, que solo se cumple en
+   dispositivos con puntero real. */
 .rowActions {
   display: flex;
   align-items: center;
   gap: 2px;
-  opacity: 0;
   transition: opacity 0.12s;
 }
-.row:hover .rowActions,
-.row:focus-within .rowActions { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .rowActions { opacity: 0; }
+  .row:hover .rowActions,
+  .row:focus-within .rowActions { opacity: 1; }
+}
+/* Táctil · siempre visibles y con objetivo de toque suficiente. */
+@media (hover: none), (pointer: coarse) {
+  .rowActions { opacity: 1; gap: 6px; }
+  .rowAction { min-width: 34px; min-height: 34px; }
+}
 .rowAction {
   display: flex;
   align-items: center;

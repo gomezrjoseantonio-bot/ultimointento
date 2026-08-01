@@ -145,52 +145,11 @@ Todos los días de la rejilla llevan punto ámbar, incluso los que no tienen nad
 → El punto **solo aparece en días que dejan una cuenta corta**. Si el día no tiene movimientos, la
 celda va limpia; si los tiene y todo cuadra, tampoco lleva punto.
 
-### 2.5 · La fila tiene que permitir puntear · **prueba de aceptación**
-
-**Prueba:** con la fila delante y el móvil del banco en la otra mano, ¿puedo identificar ese
-movimiento sin ambigüedad? Si no, la fila está mal.
-
-**Hoy no se pasa.** Caso real: dos filas "Seguro hogar", una de "Inmueble 2" y otra de "Inmueble 3",
-por **−40,29 €** y **−40,23 €**. Seis céntimos de diferencia y ningún dato para saber cuál es cuál:
-"Inmueble 2" es un identificador interno que no existe en la vida del usuario, y el emisor
-(Mapfre, Allianz…) —que es lo que pone el extracto— no aparece.
-
-**Anatomía correcta de la fila:**
-
-| Posición | Qué | Ejemplo |
-|---|---|---|
-| Título | **Emisor tal como lo escribe el banco** | `Mapfre` |
-| Subtítulo | **Nombre real del inmueble** + qué es | `Tenderina 64 · 4D · seguro hogar` |
-| Fecha | La **prevista** (la real no existe hasta que se puntea) | `prev. 1 ago` |
-| Importe | El previsto | `−40,29 €` |
-
-**Fuera de la fila:**
-- El chip **"Recurrente"**: aparece ocho veces seguidas ocupando el centro y no ayuda a decidir si
-  ese cargo pasó.
-- La etiqueta **"Personal"** repetida.
-- **"Inmueble 2" / "Inmueble 3"**: se sustituyen por el nombre real del inmueble. Un identificador
-  interno no se enseña nunca.
-- Conceptos truncados ("Cuota Hipoteca – Hipoteca Un…").
-
-### 2.6 · Ajustar fecha e importe al puntear · **hoy es inalcanzable en móvil**
-
-Confirmar es un toque **cuando todo cuadra**. Pero si el seguro se cargó el 31/7 y no el 1/8, o vino
-por otro importe, hay que poder decirlo — y hoy eso vive tras un **lápiz que solo aparece al pasar el
-ratón**. En el móvil **no hay hover**: desde el teléfono no se puede ni editar ni descartar.
-
-**Regla:**
-- **Escritorio:** lápiz y ✕ al hover, como está previsto.
-- **Móvil:** ambas acciones **siempre accesibles** — o visibles en la fila, o por deslizamiento. Nunca
-  dependientes del hover.
-- La ficha se abre con **fecha e importe prefijados con el previsto**; el usuario solo cambia lo que
-  difiera. Al guardar, queda confirmado con los datos reales.
-- Tras puntear, la fila pasa a mostrar la **fecha real**.
-
-### 2.7 · Chip de estado
+### 2.5 · Chip de estado
 Restaurar donde corresponde (ver tabla de la aclaración previa). Con el chip puesto, el círculo
 vuelve a gris y el ámbar queda libre.
 
-### 2.8 · Otras ausencias
+### 2.6 · Otras ausencias
 - **"Anotar movimiento" en el drawer de día** (hoy solo "Confirmar el día").
 - **Buscador a la izquierda, chips de eje a la derecha** (están invertidos).
 - **"Hoy" con filo dorado** en el calendario.
@@ -257,22 +216,6 @@ visible.
 
 ---
 
-## FUERA DE ALCANCE · anotado para tarea futura
-
-**Consulta del histórico de movimientos.** Al cerrar la ventana temporal (§2.2), el pasado deja de
-ser accesible desde Tesorería, y es lo correcto: Tesorería es la caja de hoy y de lo que viene.
-
-Pero el dato sigue existiendo y en algún momento habrá que poder consultarlo — "¿qué pasé en marzo
-de 2024 en esta cuenta?", "¿cuánto llevo gastado en comunidad desde que compré el piso?".
-
-**No se hace en esta tarea.** Queda anotado con estos criterios de partida, a decidir cuando toque:
-- Su sitio natural es **Archivo** (extractos y documentos ya conciliados) o **Fiscal** (por
-  ejercicio), no Tesorería.
-- Es una vista de **consulta**, no de trabajo: sin confirmar, sin descartar, sin conciliar. Lo
-  cerrado, cerrado está.
-- Debe poder filtrarse por cuenta, inmueble y familia/concepto, y dar totales por periodo — que es
-  para lo que se consulta el pasado.
-
 ## CRITERIOS DE ACEPTACIÓN
 
 - [ ] Editar un recurrente N veces deja las mismas previsiones que editarlo una
@@ -284,9 +227,6 @@ de 2024 en esta cuenta?", "¿cuánto llevo gastado en comunidad desde que compr�
 - [ ] No se puede navegar a meses anteriores al pendiente más antiguo; nunca a ejercicios cerrados
 - [ ] Ningún mes sin datos muestra un cierre inventado
 - [ ] El punto ámbar del calendario solo aparece en días que dejan una cuenta corta
-- [ ] Prueba de la fila: dos seguros de 40,29 € y 40,23 € quedan distinguibles sin abrir nada
-- [ ] Ningún identificador interno visible ("Inmueble 2"): siempre el nombre real
-- [ ] Editar y descartar son accesibles en móvil sin hover
 - [ ] Cero importes en verde o rojo; ámbar solo en avisos reales
 - [ ] Sin desbordamiento horizontal a 1440×900 con sidebar abierta
 - [ ] Un único formateador de importes en toda la pantalla
