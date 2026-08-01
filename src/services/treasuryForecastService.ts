@@ -143,6 +143,12 @@ export const createTreasuryEventFromGasto = async (gastoId: number): Promise<voi
   const gasto = await db.get('gastosInmueble', gastoId) as any;
   if (!gasto || gasto.importe <= 0) return;
 
+  // FASE 0 · idempotente. Antes hacía `add` a ciegas, así que llamarlo dos
+  // veces para el mismo gasto creaba dos previsiones idénticas y falseaba el
+  // cierre. Crear una previsión que ya existe no es crear nada.
+  const yaExisten = await db.getAllFromIndex('treasuryEvents', 'sourceId', gastoId);
+  if (yaExisten.some((e: any) => e.sourceType === 'gasto' && !e.descartado)) return;
+
   const event: TreasuryEvent = {
     type: 'expense',
     amount: gasto.importe || gasto.total || 0,
@@ -174,13 +180,17 @@ export const updateTreasuryEventFromGasto = async (gastoId: number): Promise<voi
     return;
   }
 
-  const event = gastoEvents[0];
-  event.amount = gasto.total;
-  event.predictedDate = gasto.fecha_pago_prevista;
-  event.description = `Gasto: ${gasto.contraparte_nombre}`;
-  event.updatedAt = new Date().toISOString();
-
-  await db.put('treasuryEvents', event);
+  // Se actualizan TODAS las que haya, no solo la primera: si el dato ya está
+  // duplicado, dejar las demás con el importe viejo suma un segundo problema
+  // encima del primero. La limpieza de los duplicados es aparte (FASE 0).
+  const ahora = new Date().toISOString();
+  for (const event of gastoEvents) {
+    event.amount = gasto.total;
+    event.predictedDate = gasto.fecha_pago_prevista;
+    event.description = `Gasto: ${gasto.contraparte_nombre}`;
+    event.updatedAt = ahora;
+    await db.put('treasuryEvents', event);
+  }
 };
 
 /**
@@ -495,6 +505,10 @@ async function regenerateRentalsForecast(
     const contractId = contract.id!;
     const key = `contract:${contractId}:${monthKey}`;
     if (existingIndex.has(key)) continue;
+    // Se apunta ANTES de emitir · el índice se construye una sola vez al
+    // principio, así que sin esto dos orígenes que produjeran la misma clave
+    // en la misma pasada la verían libre los dos y emitirían por duplicado.
+    existingIndex.add(key);
 
     // Día de cobro: diaPago del contrato (1-28). Día clamped al mes.
     const lastDay = new Date(year, month + 1, 0).getDate();
@@ -598,6 +612,10 @@ async function regenerateOpexForecast(
 
     const key = `opex_rule:${rule.id}:${monthKey}`;
     if (existingIndex.has(key)) continue;
+    // Se apunta ANTES de emitir · el índice se construye una sola vez al
+    // principio, así que sin esto dos orígenes que produjeran la misma clave
+    // en la misma pasada la verían libre los dos y emitirían por duplicado.
+    existingIndex.add(key);
 
     const amount = opexRuleAmount(rule, month);
     if (!amount || amount <= 0) continue;
@@ -654,6 +672,7 @@ async function regenerateLoansForecast(
       const keyByCuota = `prestamo:${prestamo.id}:${periodo.periodo}`;
       const keyByMonth = `prestamo:${prestamo.id}:${monthKey}`;
       if (existingIndex.has(keyByCuota) || existingIndex.has(keyByMonth)) continue;
+      existingIndex.add(keyByCuota);
 
       // Resolver inmueble desde destinos (si aplica).
       const inmuebleDestino = prestamo.destinos?.find((d) => d.inmuebleId)?.inmuebleId
@@ -703,11 +722,15 @@ export async function regenerateMonthForecast(
   });
   const existingIndex = buildExistingIndex(monthEvents, year, month);
 
-  const [rentalsCreated, opexCreated, loansCreated] = await Promise.all([
-    regenerateRentalsForecast({ year, month }, existingIndex),
-    regenerateOpexForecast({ year, month }, existingIndex),
-    regenerateLoansForecast({ year, month }, existingIndex),
-  ]);
+  // FASE 0 · EN SERIE, no en paralelo.
+  //
+  // Las tres comparten `existingIndex`. Con `Promise.all` cada una lo leía en
+  // un estado que la anterior aún no había actualizado, así que dos podían
+  // emitir la misma previsión creyéndola libre. Regenerar tiene que ser
+  // idempotente: una vez o cinco, el mismo resultado.
+  const rentalsCreated = await regenerateRentalsForecast({ year, month }, existingIndex);
+  const opexCreated = await regenerateOpexForecast({ year, month }, existingIndex);
+  const loansCreated = await regenerateLoansForecast({ year, month }, existingIndex);
 
   return { rentalsCreated, opexCreated, loansCreated };
 }
