@@ -29,8 +29,18 @@ export function generateMovementHash(movement: ParsedMovement): string {
 
 /**
  * Normalize description for consistent duplicate detection
+ *
+ * V6 · D1 · EXPORTADA para que `hashLinea` (identidad de una línea de extracto)
+ * la reutilice en vez de copiarla. **El comportamiento no cambia**: se exporta
+ * tal cual estaba.
+ *
+ * Pertenece a la familia de la DEDUPLICACIÓN (¿esta línea es la misma que ya
+ * vi?), determinista, no a la del EMPAREJAMIENTO (¿esta línea se corresponde
+ * con este previsto?), que es difuso y vive en `movementMatchingService`. Son
+ * dos problemas distintos y **no deben unificarse "por coherencia"**: tocar el
+ * normalizador del emparejamiento cambia qué casa y qué no en producción.
  */
-function normalizeDescription(description: string): string {
+export function normalizeDescription(description: string): string {
   if (!description) return '';
   
   return description
