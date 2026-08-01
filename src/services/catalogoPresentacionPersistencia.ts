@@ -44,6 +44,12 @@ export interface TraduccionCategoria {
   estado: 'ok' | 'pregunta' | 'pendiente';
   /** Por qué está pendiente, o qué matiz tiene la traducción. */
   nota?: string;
+  /**
+   * Salidas posibles de un `pregunta`. La tabla no puede elegir sola, pero sí
+   * sabe a dónde va CADA respuesta — si no, responder no serviría de nada y la
+   * ficha tendría que adivinar la key por su cuenta.
+   */
+  opciones?: Record<string, { categoryKey: string | null; esMejora?: boolean; label: string }>;
 }
 
 // ─── Inmueble ───────────────────────────────────────────────────────────────
@@ -76,6 +82,12 @@ export const TRADUCCION_INMUEBLE: Record<ClavePresentacion, TraduccionCategoria>
       'en `mejorasInmueble`. Es la única pregunta fiscal de la ficha, y está ' +
       'justificada porque ATLAS no puede saberlo y equivocarse cuesta caro en ' +
       'las dos direcciones.',
+    opciones: {
+      conservacion: { categoryKey: 'comunidad_inmueble', label: 'Conservación' },
+      // Una mejora NO es gasto: se capitaliza y amortiza, así que no lleva key
+      // de gasto sino alta en `mejorasInmueble`.
+      mejora: { categoryKey: null, esMejora: true, label: 'Mejora' },
+    },
   },
   'comunidad:otros': { categoryKey: 'comunidad_inmueble', estado: 'ok' },
 

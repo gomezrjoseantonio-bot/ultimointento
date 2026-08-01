@@ -1287,10 +1287,18 @@ export interface TreasuryEventPatch {
   amount?: number;
   predictedDate?: string;
   accountId?: number | null;
+  // Tesorería V6 · §4.5 · clasificación editable desde la ficha de movimiento.
+  // Ampliación ADITIVA: todos opcionales, así que ningún llamador previo cambia
+  // de comportamiento. `categoryKey` es lo que alimenta el tratamiento fiscal,
+  // y hasta ahora no había forma de corregirlo sin reescribir el evento a mano.
+  categoryKey?: string;
+  subtypeKey?: string;
+  inmuebleId?: number | null;
 }
 
 /**
- * Aplica un parche de campos editables (importe, fecha prevista, cuenta) sobre
+ * Aplica un parche de campos editables (importe, fecha prevista, cuenta y —desde
+ * Tesorería V6 §4.5— la clasificación: categoryKey, subtypeKey e inmueble) sobre
  * un treasuryEvent que aún NO ha sido ejecutado (status !== 'executed').
  * Lanza un Error si el evento no existe o ya está ejecutado.
  */
@@ -1317,6 +1325,13 @@ export async function updateTreasuryEventFields(
       ? patch.accountId === null
         ? { accountId: undefined }
         : { accountId: patch.accountId }
+      : {}),
+    ...(patch.categoryKey !== undefined ? { categoryKey: patch.categoryKey } : {}),
+    ...(patch.subtypeKey !== undefined ? { subtypeKey: patch.subtypeKey } : {}),
+    ...(patch.inmuebleId !== undefined
+      ? patch.inmuebleId === null
+        ? { inmuebleId: undefined }
+        : { inmuebleId: patch.inmuebleId }
       : {}),
     updatedAt: new Date().toISOString(),
   } as TreasuryEvent & { updatedAt: string };
