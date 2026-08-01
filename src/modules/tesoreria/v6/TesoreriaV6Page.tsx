@@ -89,7 +89,14 @@ const TesoreriaV6Page: React.FC = () => {
     return Number.isFinite(id) && id > 0 ? id : null;
   }, [accountIdParam]);
   const abrirCuenta = useCallback((id: number) => navigate(`/tesoreria/cuenta/${id}`), [navigate]);
-  const cerrarCuenta = useCallback(() => navigate('/tesoreria'), [navigate]);
+  /**
+   * Cerrar REEMPLAZA la entrada del historial en vez de apilar otra.
+   *
+   * Con `push`, cerrar el drawer dejaba `/tesoreria/cuenta/N` detrás y el botón
+   * atrás del navegador volvía a abrir la cuenta — lo contrario de lo que
+   * espera cualquiera al pulsar atrás después de cerrar algo.
+   */
+  const cerrarCuenta = useCallback(() => navigate('/tesoreria', { replace: true }), [navigate]);
   /**
    * §4.7 · las dos puertas del extracto. `cuenta: null` es la puerta global del
    * hero (se detecta por IBAN); con cuenta, ya viene fijada desde el drawer.
@@ -375,6 +382,20 @@ const TesoreriaV6Page: React.FC = () => {
     setExtracto({ cuenta: null });
   }, [cargando, extractoAplicado, searchParams]);
 
+  /**
+   * Cerrar el drawer de extracto limpia también el query que lo abrió.
+   *
+   * Si no, la URL seguiría diciendo `?extracto=1` con el drawer cerrado:
+   * refrescar o compartir ese enlace enseñaría algo distinto de lo que se está
+   * viendo. `replace` para no ensuciar el historial con la limpieza.
+   */
+  const cerrarExtracto = useCallback(() => {
+    setExtracto(null);
+    if (searchParams.get('extracto') != null) {
+      navigate({ pathname: '/tesoreria', search: '' }, { replace: true });
+    }
+  }, [navigate, searchParams]);
+
   if (cargando) return null;
 
   const inmuebles = estado.inmuebles;
@@ -604,7 +625,7 @@ const TesoreriaV6Page: React.FC = () => {
           cuenta={extracto.cuenta}
           cuentas={cuentasVivas}
           inmuebles={inmuebles}
-          onCerrar={() => setExtracto(null)}
+          onCerrar={cerrarExtracto}
           onGuardado={trasEscribir}
         />
       )}

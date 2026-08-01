@@ -286,6 +286,38 @@ describe('las puertas por URL', () => {
     expect(await screen.findByRole('dialog', { name: 'Subir extracto' })).toBeInTheDocument();
   });
 
+  it('cerrar la cuenta no deja la ruta detrás · atrás no la reabre', async () => {
+    montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
+    montar('/tesoreria/cuenta/1');
+
+    const drawer = await screen.findByRole('dialog', { name: /Cuenta Sabadell/ });
+    fireEvent.click(within(drawer).getByLabelText('Cerrar'));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /Cuenta Sabadell/ })).not.toBeInTheDocument()
+    );
+
+    // Con `push`, esto habría vuelto a /tesoreria/cuenta/1 y reabierto el
+    // drawer, que es justo lo contrario de lo que espera quien pulsa atrás.
+    window.history.back();
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /Cuenta Sabadell/ })).not.toBeInTheDocument()
+    );
+  });
+
+  it('cerrar el extracto limpia el query que lo abrió', async () => {
+    montarDb({ accounts: [cuenta(1)] });
+    montar('/tesoreria?extracto=1');
+
+    const drawer = await screen.findByRole('dialog', { name: 'Subir extracto' });
+    fireEvent.click(within(drawer).getByLabelText('Cerrar sin guardar'));
+
+    // Si el query se quedara, refrescar enseñaría un drawer que el usuario
+    // acaba de cerrar.
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Subir extracto' })).not.toBeInTheDocument()
+    );
+  });
+
   it('sin parámetros no abre nada', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
