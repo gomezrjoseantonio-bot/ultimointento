@@ -27,6 +27,11 @@ import {
 import { colorDeBanco } from './bancoColores';
 import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga, diaYMes } from './formatoV6';
 import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
+import DrawerCuenta from './DrawerCuenta';
+import { confirmTreasuryEvent } from '../../../services/treasuryConfirmationService';
+import { descartarPrevisto } from '../../../services/treasuryDiscardService';
+import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
+import type { ItemPunteo } from '../../../services/punteo/punteoModel';
 import styles from './TesoreriaV6Page.module.css';
 
 const hoyISO = (): string => new Date().toISOString().slice(0, 10);
@@ -70,6 +75,7 @@ const TesoreriaV6Page: React.FC = () => {
   const [orden, setOrden] = useState<number[]>([]);
   const [arrastrando, setArrastrando] = useState<number | null>(null);
   const [encima, setEncima] = useState<number | null>(null);
+  const [cuentaAbierta, setCuentaAbierta] = useState<number | null>(null);
 
   const hoy = hoyISO();
   const ahora = useMemo(() => new Date(`${hoy}T12:00:00`), [hoy]);
@@ -193,6 +199,41 @@ const TesoreriaV6Page: React.FC = () => {
     }
   };
 
+  // ── §4.6 · saldo vivo ────────────────────────────────────────────────────
+  // Confirmar y descartar recargan el estado, y de ahí se recalculan KPIs,
+  // tarjeta, drawer y bloque de realidad. Nada exige refrescar la pantalla.
+
+  const trasEscribir = useCallback(async () => {
+    invalidateCachedStores(['treasuryEvents', 'movements', 'accounts']);
+    await recargar();
+  }, [recargar]);
+
+  const confirmarItem = useCallback(
+    async (item: ItemPunteo) => {
+      if (item.kind !== 'evento') return;
+      try {
+        await confirmTreasuryEvent(item.refId);
+        await trasEscribir();
+      } catch (err) {
+        console.error('[TesoreriaV6] no se pudo confirmar', err);
+      }
+    },
+    [trasEscribir]
+  );
+
+  const descartarItem = useCallback(
+    async (item: ItemPunteo) => {
+      if (item.kind !== 'evento') return;
+      try {
+        await descartarPrevisto(item.refId);
+        await trasEscribir();
+      } catch (err) {
+        console.error('[TesoreriaV6] no se pudo descartar', err);
+      }
+    },
+    [trasEscribir]
+  );
+
   if (cargando) return null;
 
   const mesActual = nombreMes(month0);
@@ -297,6 +338,7 @@ const TesoreriaV6Page: React.FC = () => {
                     setEncima(null);
                   }}
                   onDrop={() => void soltarSobre(c.id!)}
+                  onAbrir={() => setCuentaAbierta(c.id!)}
                 />
               ))}
               <button {...pendiente('la ficha de cuenta (§4.8)')} className={styles.accAdd}>
@@ -346,6 +388,19 @@ const TesoreriaV6Page: React.FC = () => {
           <BloqueRealidad realidad={realidad} />
         </section>
       </div>
+
+      {/* §4.4 · drawer de cuenta · la bandeja de trabajo */}
+      <DrawerCuenta
+        cuenta={cuentasVivas.find((c) => c.id === cuentaAbierta) ?? null}
+        saldoHoy={cuentaAbierta != null ? saldoPorCuenta.get(cuentaAbierta) ?? 0 : 0}
+        eventos={cuentaAbierta != null ? porCuenta.eventos.get(cuentaAbierta) ?? [] : []}
+        movimientos={cuentaAbierta != null ? porCuenta.movimientos.get(cuentaAbierta) ?? [] : []}
+        year={year}
+        month0={month0}
+        onCerrar={() => setCuentaAbierta(null)}
+        onConfirmar={confirmarItem}
+        onDescartar={descartarItem}
+      />
     </div>
   );
 };
@@ -370,7 +425,8 @@ const TarjetaCuenta: React.FC<{
   onDragEnter: () => void;
   onDragEnd: () => void;
   onDrop: () => void;
-}> = ({ cuenta, saldo, estado, arrastrando, encima, onDragStart, onDragEnter, onDragEnd, onDrop }) => {
+  onAbrir: () => void;
+}> = ({ cuenta, saldo, estado, arrastrando, encima, onDragStart, onDragEnter, onDragEnd, onDrop, onAbrir }) => {
   const nombre = cuenta.alias || cuenta.name || cuenta.banco?.name || 'Cuenta';
   const mask = (cuenta.ultimosCuatro || cuenta.iban?.slice(-4)) ?? '';
 
@@ -379,6 +435,15 @@ const TarjetaCuenta: React.FC<{
       className={`${styles.acc} ${estado.tipo === 'se-queda-corta' ? styles.accCorta : ''} ${
         arrastrando ? styles.accDragging : ''
       } ${encima ? styles.accOver : ''}`}
+      role="button"
+      tabIndex={0}
+      onClick={onAbrir}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onAbrir();
+        }
+      }}
       draggable
       onDragStart={onDragStart}
       onDragEnter={onDragEnter}
