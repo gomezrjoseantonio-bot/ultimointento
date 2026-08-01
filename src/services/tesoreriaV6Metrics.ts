@@ -229,8 +229,19 @@ export interface LineaRealidad {
   clave: 'Ingresos' | 'Gastos' | 'Neto';
   real: number;
   previsto: number;
-  /** Porcentaje de lo real sobre SU PROPIO previsto. */
-  porcentaje: number;
+  /**
+   * Porcentaje de lo real sobre SU PROPIO previsto · `null` cuando no tiene
+   * sentido.
+   *
+   * A3 · con magnitudes que pueden ser NEGATIVAS el porcentaje engaña: un neto
+   * real de −1.048 € sobre un previsto de −821 € da 128 %, y una barra al 128 %
+   * se lee como "voy sobrado" cuando significa justo lo contrario — se ha
+   * gastado más de lo previsto. Ingresos y Gastos son magnitudes positivas y sí
+   * admiten avance; el Neto no, y por eso no lleva barra.
+   */
+  porcentaje: number | null;
+  /** true si lo real es PEOR que lo previsto · la nota va en `--warn`. */
+  peorQuePrevisto: boolean;
 }
 
 export interface Realidad {
@@ -263,8 +274,9 @@ export function calcularRealidad(params: {
 
   let previstoIngresos = 0;
   let previstoGastos = 0;
-  // Previsión SOLO de lo que ya se ha materializado, para comparar iguales.
+  // Previsión y coste real SOLO de lo ya materializado · comparar iguales.
   let previstoDeLoConfirmado = 0;
+  let pagadoDeLoConfirmado = 0;
 
   for (const e of eventos) {
     if (e.descartado) continue;
@@ -273,7 +285,23 @@ export function calcularRealidad(params: {
     if (imp > 0) previstoIngresos += imp;
     else previstoGastos += Math.abs(imp);
 
-    if (e.status === 'executed' && imp < 0) previstoDeLoConfirmado += Math.abs(imp);
+    // A2 · la desviación se calcula MOVIMIENTO A MOVIMIENTO, no con agregados.
+    //
+    // Antes esto se comparaba contra la suma de TODOS los gastos reales del
+    // mes, incluidos los que no responden a ninguna previsión — así que no
+    // comparaba iguales, y con datos donde cada previsto se materializa por su
+    // importe exacto daba 0 € siempre.
+    //
+    // El dato bueno está persistido: `amount` conserva el previsto ORIGINAL y
+    // `actualAmount` guarda lo que de verdad costó (`confirmTreasuryEvent` no
+    // pisa `amount`). Si un recibo se presupuestó en 120 € y vino de 96 €, la
+    // desviación de esa línea es +24 €.
+    if (e.status === 'executed' && imp < 0) {
+      const previstoOriginal = Math.abs(e.amount);
+      const costeReal = e.actualAmount != null ? Math.abs(e.actualAmount) : previstoOriginal;
+      previstoDeLoConfirmado += previstoOriginal;
+      pagadoDeLoConfirmado += costeReal;
+    }
   }
 
   let realIngresos = 0;
@@ -285,6 +313,7 @@ export function calcularRealidad(params: {
     else realGastos += Math.abs(m.amount);
   }
 
+  // Solo para magnitudes que no pueden ser negativas (ingresos y gastos).
   const pct = (real: number, prev: number): number =>
     prev === 0 ? 0 : Math.round((real / prev) * 100);
 
@@ -293,13 +322,35 @@ export function calcularRealidad(params: {
 
   return {
     lineas: [
-      { clave: 'Ingresos', real: redondear(realIngresos), previsto: redondear(previstoIngresos), porcentaje: pct(realIngresos, previstoIngresos) },
-      { clave: 'Gastos', real: redondear(realGastos), previsto: redondear(previstoGastos), porcentaje: pct(realGastos, previstoGastos) },
-      { clave: 'Neto', real: redondear(netoReal), previsto: redondear(netoPrev), porcentaje: pct(netoReal, netoPrev) },
+      {
+        clave: 'Ingresos',
+        real: redondear(realIngresos),
+        previsto: redondear(previstoIngresos),
+        porcentaje: pct(realIngresos, previstoIngresos),
+        // Ingresar MENOS de lo previsto es peor.
+        peorQuePrevisto: realIngresos < previstoIngresos,
+      },
+      {
+        clave: 'Gastos',
+        real: redondear(realGastos),
+        previsto: redondear(previstoGastos),
+        porcentaje: pct(realGastos, previstoGastos),
+        // Gastar MÁS de lo previsto es peor.
+        peorQuePrevisto: realGastos > previstoGastos,
+      },
+      {
+        clave: 'Neto',
+        real: redondear(netoReal),
+        previsto: redondear(netoPrev),
+        // Sin barra · ver la nota de `porcentaje`.
+        porcentaje: null,
+        peorQuePrevisto: netoReal < netoPrev,
+      },
     ],
-    desviacion: redondear(previstoDeLoConfirmado - realGastos),
+    desviacion: redondear(previstoDeLoConfirmado - pagadoDeLoConfirmado),
     previstoDeLoConfirmado: redondear(previstoDeLoConfirmado),
-    pagadoReal: redondear(realGastos),
+    // Lo que costaron ESOS mismos conceptos · no todo el gasto del mes.
+    pagadoReal: redondear(pagadoDeLoConfirmado),
   };
 }
 

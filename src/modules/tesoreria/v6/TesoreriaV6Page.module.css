@@ -548,3 +548,27 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* A3 · el Neto no lleva barra de progreso · enseña la diferencia con su signo.
+   Ocupa el mismo hueco que barra + porcentaje para que las tres líneas queden
+   alineadas. */
+.rvdelta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.rvdelta span {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+}
+.rvdelta small {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+}
+/* Única nota de color de la línea, y solo cuando de verdad va peor (§5). */
+.rvdeltaWarn { color: var(--atlas-v5-warn) !important; }

@@ -244,15 +244,17 @@ describe('§4.10 · cómo va el mes', () => {
 
     expect(r.lineas[0]).toMatchObject({ clave: 'Ingresos', real: 500, previsto: 1000, porcentaje: 50 });
     expect(r.lineas[1]).toMatchObject({ clave: 'Gastos', real: 100, previsto: 200, porcentaje: 50 });
-    expect(r.lineas[2]).toMatchObject({ clave: 'Neto', real: 400, previsto: 800, porcentaje: 50 });
+    // A3 · el Neto ya no lleva porcentaje: puede ser negativo y la barra
+    // mentiría. Sigue trayendo real y previsto, que es lo que se pinta.
+    expect(r.lineas[2]).toMatchObject({ clave: 'Neto', real: 400, previsto: 800, porcentaje: null });
   });
 
-  it('la desviación compara iguales: lo previsto DE LO YA CONFIRMADO contra lo pagado', () => {
+  it('la desviación NO cuenta lo que aún no ha pasado', () => {
     const r = calcularRealidad({
       eventos: [
-        // Ejecutado: su previsión entra en la comparación.
-        ev({ type: 'expense', amount: 1838.42, predictedDate: '2026-07-05', status: 'executed' }),
-        // Aún no ha pasado: NO entra, o la desviación saldría falsa.
+        // Ejecutado con coste real distinto del previsto · sí desvía.
+        ev({ type: 'expense', amount: 1838.42, actualAmount: 1473.42, predictedDate: '2026-07-05', status: 'executed' }),
+        // Aún no ha ocurrido: no entra, o la desviación saldría falsa.
         ev({ type: 'expense', amount: 5000, predictedDate: '2026-07-28' }),
       ],
       movimientos: [mov({ amount: -1473.42 })],
@@ -275,7 +277,7 @@ describe('§4.10 · cómo va el mes', () => {
     expect(r.lineas[0].real).toBe(50);
   });
 
-  it('sin previsto, el porcentaje es 0 y no NaN ni Infinity', () => {
+  it('sin previsto, el porcentaje es 0 y no NaN ni Infinity (Neto aparte)', () => {
     const r = calcularRealidad({
       eventos: [],
       movimientos: [mov({ amount: 50 })],
@@ -283,7 +285,10 @@ describe('§4.10 · cómo va el mes', () => {
       month0: 6,
     });
     expect(r.lineas[0].porcentaje).toBe(0);
-    expect(Number.isFinite(r.lineas[2].porcentaje)).toBe(true);
+    // El Neto no lleva porcentaje (A3), así que aquí lo que se comprueba es que
+    // dividir entre cero no se cuela en las dos líneas que SÍ lo llevan.
+    expect(r.lineas[1].porcentaje).toBe(0);
+    expect(r.lineas[2].porcentaje).toBeNull();
   });
 
   it('el descartado no cuenta como previsto', () => {

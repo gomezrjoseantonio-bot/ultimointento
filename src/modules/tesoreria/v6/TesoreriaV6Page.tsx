@@ -452,6 +452,7 @@ const TesoreriaV6Page: React.FC = () => {
           movimientos={cuentaAbierta != null ? porCuenta.movimientos.get(cuentaAbierta) ?? [] : []}
           year={year}
           month0={month0}
+          hoy={hoy}
           onCerrar={cerrarCuenta}
           onConfirmar={confirmarItem}
           onDescartar={descartarItem}
@@ -651,6 +652,7 @@ const TesoreriaV6Page: React.FC = () => {
         movimientos={cuentaAbierta != null ? porCuenta.movimientos.get(cuentaAbierta) ?? [] : []}
         year={year}
         month0={month0}
+        hoy={hoy}
         onCerrar={cerrarCuenta}
         onConfirmar={confirmarItem}
         onDescartar={descartarItem}
@@ -837,18 +839,34 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
     <div className={styles.rvcard}>
       {realidad.lineas.map((l) => {
         const neto = l.clave === 'Neto';
+        // A3 · el Neto NO lleva barra: puede ser negativo, y "más lleno" se
+        // leería como "mejor" cuando significa que se ha gastado de más. En su
+        // lugar enseña real, previsto y la diferencia con signo.
+        const diferencia = Math.round((l.real - l.previsto) * 100) / 100;
         // Barra escalada contra SU PROPIO previsto, no contra el máximo global.
-        const ancho = Math.min(100, Math.max(2, Math.abs(l.porcentaje)));
+        const ancho =
+          l.porcentaje == null ? 0 : Math.min(100, Math.max(2, Math.abs(l.porcentaje)));
         return (
           <div key={l.clave} className={styles.rvline}>
             <div className={styles.rvlab}>{l.clave}</div>
-            <div className={styles.rvbar}>
-              <div
-                className={`${styles.rvfill} ${neto ? styles.rvfillNet : styles.rvfillIn}`}
-                style={{ width: `${ancho}%` }}
-              />
-            </div>
-            <span className={`${styles.rvpct} ${neto ? styles.rvpctNet : ''}`}>{l.porcentaje}%</span>
+            {neto ? (
+              <div className={styles.rvdelta}>
+                <span className={l.peorQuePrevisto ? styles.rvdeltaWarn : ''}>
+                  {importeConSigno(diferencia)}
+                </span>
+                <small>{l.peorQuePrevisto ? 'peor de lo previsto' : 'mejor de lo previsto'}</small>
+              </div>
+            ) : (
+              <>
+                <div className={styles.rvbar}>
+                  <div
+                    className={`${styles.rvfill} ${styles.rvfillIn}`}
+                    style={{ width: `${ancho}%` }}
+                  />
+                </div>
+                <span className={styles.rvpct}>{l.porcentaje}%</span>
+              </>
+            )}
             <div className={styles.rvnum}>
               {importeSaldo(l.real)}
               <small>de {importeSaldo(l.previsto)} previsto</small>
