@@ -269,6 +269,9 @@ const PunteoList: React.FC<PunteoListProps> = ({
   }, [cuentas]);
 
   const esDrawer = variant === 'drawer';
+  // Las tarjetas por día son de la bandeja de trabajo (§6.3). En el drawer del
+  // día no tienen sentido: allí solo hay un día.
+  const enTarjetas = !esDrawer && eje === 'fecha' && rowVariant === 'tesoreria';
   const rowCls = (it: ItemPunteo, extra = '') =>
     [
       styles.row,
@@ -392,12 +395,21 @@ const PunteoList: React.FC<PunteoListProps> = ({
             if (e.key === 'Enter') setGruposAbiertos((s) => ({ ...s, [g.grupoId]: !abierto }));
           }}
         >
+          {/* §6.3 · la madre es EL PISO, no el primer inquilino.
+              Al agrupar por inmueble, poner aquí el concepto de la primera hija
+              dejaba el grupo con nombre de una de sus partes: se leía como si
+              las demás rentas colgasen de la de Alisse. El piso es lo que las
+              junta, así que es lo que va en la cabecera; los inquilinos, cada
+              uno en su fila. */}
           <div className={styles.c1}>
             <div className={styles.concepto}>
               <span className={styles.caret}>{abierto ? '▾' : '▸'}</span>
-              {primera.concepto.replace(/ — .*$/, '')} — {g.total} pagos
+              {primera.activo?.alias ?? primera.concepto.replace(/ — .*$/, '')}
             </div>
-            <Contexto item={primera} />
+            <div className={styles.contexto}>
+              {g.total} {g.total === 1 ? 'renta' : 'rentas'}
+              {primera.detalle ? ` · ${primera.detalle}` : ''}
+            </div>
           </div>
           {!esDrawer && (
             <span className={`${styles.prog} ${g.completo ? styles.progDone : ''}`}>
@@ -456,8 +468,11 @@ const PunteoList: React.FC<PunteoListProps> = ({
       </div>
     );
 
+    // §6.3 · cada día es una TARJETA, no una cabecera suelta sobre una lista
+    // plana. Con todo corrido no se ve dónde acaba un día y empieza el
+    // siguiente, y el subtotal de la cabecera parece de la lista entera.
     return (
-      <React.Fragment key={g.clave}>
+      <div className={enTarjetas ? styles.diaCard : undefined} key={g.clave}>
         {gruposPlegables ? (
           <button
             type="button"
@@ -471,7 +486,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
           cabecera
         )}
         {abierto && cuerpo}
-      </React.Fragment>
+      </div>
     );
   };
 

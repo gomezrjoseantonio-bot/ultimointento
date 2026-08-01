@@ -6,6 +6,7 @@
 // nada. Antes ponía "Seguro hogar / Inmueble 2" en las dos.
 
 import { eventoAItem } from '../punteoAdapter';
+import { agruparHijas } from '../punteoModel';
 import type { TreasuryEvent } from '../../db';
 
 const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent & { id: number } =>
@@ -77,5 +78,45 @@ describe('los dos seguros de 40,29 € y 40,23 €', () => {
     expect(b.activo?.alias).toBe('Los Robles 12 · 2B');
     expect(a.activo?.alias).not.toBe(b.activo?.alias);
     expect(a.importe).not.toBe(b.importe);
+  });
+});
+
+
+// §6.3 · las habitaciones cuelgan de su piso.
+describe('el anidado piso → habitación', () => {
+  const renta = (over: Partial<TreasuryEvent> = {}) =>
+    eventoAItem(
+      ev({ sourceType: 'contrato', type: 'income', description: 'Renta', ...over }) as
+        TreasuryEvent & { id: number }
+    );
+
+  it('varias rentas del MISMO piso comparten grupo · aunque sean contratos distintos', () => {
+    // Cada habitación tiene su propio contrato: agrupar por contrato dejaba
+    // cada renta sola y no se formaba madre.
+    const a = renta({ id: 1, inmuebleId: 5, contratoId: 11 });
+    const b = renta({ id: 2, inmuebleId: 5, contratoId: 12 });
+    const c = renta({ id: 3, inmuebleId: 5, contratoId: 13 });
+
+    expect(a.grupoId).toBe('inmueble-5');
+    expect(new Set([a.grupoId, b.grupoId, c.grupoId]).size).toBe(1);
+  });
+
+  it('rentas de pisos DISTINTOS no se mezclan', () => {
+    expect(renta({ id: 1, inmuebleId: 5 }).grupoId).not.toBe(
+      renta({ id: 2, inmuebleId: 6 }).grupoId
+    );
+  });
+
+  it('un piso completo no forma grupo · agruparHijas descarta los de una sola', () => {
+    // Sigue teniendo grupoId, pero al ser hija única `agruparHijas` lo tira, así
+    // que no hace falta preguntar si el piso se alquila por habitaciones.
+    const sola = renta({ id: 1, inmuebleId: 7 });
+    expect(agruparHijas([sola]).size).toBe(0);
+    expect(agruparHijas([sola, renta({ id: 2, inmuebleId: 7 })]).size).toBe(1);
+  });
+
+  it('lo que no es renta no se agrupa', () => {
+    expect(eventoAItem(ev({ sourceType: 'gasto_recurrente', inmuebleId: 5 })).grupoId)
+      .toBeUndefined();
   });
 });

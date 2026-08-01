@@ -19,7 +19,9 @@
   align-items: stretch;
   flex-wrap: wrap;
   row-gap: 12px;
-  margin-bottom: 34px;
+  /* §4.5 · el aire va hacia ARRIBA. Estaba todo apretado contra el hero y
+     sobraba un tercio de pantalla abajo, que es donde no hay nada que mirar. */
+  margin-bottom: 26px;
 }
 .heroLab {
   display: flex;
@@ -95,10 +97,12 @@
 /* ── Cabecera de sección ─────────────────────────────────────────────────── */
 
 .sec {
-  margin-bottom: 32px;
-  padding-bottom: 28px;
+  margin-bottom: 26px;
+  padding-bottom: 22px;
   border-bottom: 1px solid var(--atlas-v5-line);
 }
+/* La última sección no necesita raya ni hueco: debajo no hay nada. */
+.sec:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
 .secHd {
   display: flex;
   align-items: flex-end;
@@ -445,12 +449,20 @@
   border-radius: 13px;
   padding: 16px 18px;
 }
+/* §4.4 · los importes salían cortados por la derecha. La barra es lo único
+   que puede encogerse —es una proporción, no un dato— así que se lleva el
+   `minmax(0,…)` y la cifra se queda con el ancho que necesite. */
 .rvline {
   display: grid;
-  grid-template-columns: 62px minmax(0, 1fr) 40px auto;
+  grid-template-columns: 62px minmax(0, 1fr) 40px max-content;
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
+}
+/* Bajo 1180px las dos columnas ya se apilan (.cols), pero el bloque sigue
+   estrecho: ahí la barra estorba más de lo que aporta y cede todo el ancho. */
+@media (max-width: 1320px) {
+  .rvline { grid-template-columns: 58px minmax(0, 1fr) 36px max-content; gap: 8px; }
 }
 .rvlab {
   font-size: 11.5px;

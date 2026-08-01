@@ -65,6 +65,23 @@
 .colTick { text-align: center; }
 
 /* ── Separador de día ── */
+/* §6.3 · el día, en tarjeta. Delimita dónde empieza y acaba, y deja claro que
+   el subtotal de la cabecera es DE ESE DÍA y no de toda la lista. */
+.diaCard {
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  background: var(--atlas-v5-card);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.diaCard .dayRule {
+  padding: 8px 12px;
+  background: var(--atlas-v5-bg-soft, var(--atlas-v5-gold-wash-2));
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+}
+/* Dentro de la tarjeta la última fila no necesita raya: la cierra el borde. */
+.diaCard .row:last-child { border-bottom: none; }
+
 .dayRule {
   display: flex;
   justify-content: space-between;

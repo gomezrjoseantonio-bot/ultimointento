@@ -82,11 +82,23 @@ export function eventoAItem(
     origen: origenDeEvento(e),
     cuentaId: e.accountId ?? null,
     importe,
-    // Alquiler por habitaciones · varias rentas del mismo contrato el mismo
-    // día forman grupo madre/hijas (agruparHijas exige >1 para formar madre).
+    // §6.3 · las habitaciones cuelgan de SU PISO.
+    //
+    // Agrupaba por contrato, y en alquiler por habitaciones cada habitación
+    // tiene el suyo: cada grupo se quedaba con una sola fila, `agruparHijas`
+    // exige más de una para formar madre, y las rentas salían planas, una
+    // detrás de otra, sin que se viera de qué piso era cada una.
+    //
+    // El piso es lo que las junta. Y no hace falta preguntar si el inmueble se
+    // alquila por habitaciones: si solo hay una renta —piso completo— el grupo
+    // se queda con una hija y `agruparHijas` lo descarta solo.
     grupoId:
-      e.sourceType === 'contrato' && e.contratoId != null
-        ? `contrato-${e.contratoId}`
+      e.sourceType === 'contrato' || e.sourceType === 'contract'
+        ? e.inmuebleId != null
+          ? `inmueble-${e.inmuebleId}`
+          : e.contratoId != null
+            ? `contrato-${e.contratoId}`
+            : undefined
         : undefined,
     categoryKey: e.categoryKey,
     subtypeKey: e.subtypeKey,
