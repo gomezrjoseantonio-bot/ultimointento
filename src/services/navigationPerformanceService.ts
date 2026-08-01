@@ -75,7 +75,7 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     return;
   }
   if (href.startsWith('/tesoreria')) {
-    await import('../modules/tesoreria/TesoreriaPage');
+    await import('../modules/tesoreria/v6/TesoreriaV6Page');
     return;
   }
   if (href === '/fiscal' || href.startsWith('/fiscal/')) {

@@ -122,24 +122,17 @@ const FinanciacionDetalle = lazyWithPreload(() => import('./modules/financiacion
 const FinanciacionWizardCreate = lazyWithPreload(() => import('./modules/financiacion/pages/WizardCreatePage'));
 const FinanciacionWizardEdit = lazyWithPreload(() => import('./modules/financiacion/pages/WizardEditPage'));
 // T20 Fase 2 · Tesorería v5 module (sustituye Tesoreria.tsx + TesoreriaSupervisionPage.tsx)
-const TesoreriaPage = lazyWithPreload(() => import('./modules/tesoreria/TesoreriaPage'));
-const TesoreriaVistaGeneral = lazyWithPreload(() => import('./modules/tesoreria/tabs/VistaGeneralTab'));
-const TesoreriaMovimientos = lazyWithPreload(() => import('./modules/tesoreria/tabs/MovimientosTab'));
-// T17 BankStatementUploadPage · /tesoreria/importar · INTACTO.
-const BankStatementUploadPage = lazyWithPreload(() => import('./modules/horizon/tesoreria/import/BankStatementUploadPage'));
+// Tesorería V6 · pantalla ÚNICA (§4). Absorbe la vista general, los
+// movimientos, la vista de cuenta, la importación de extractos y la
+// conciliación: todo eso vive ahora en drawers sobre esta misma pantalla.
+const TesoreriaV6Page = lazyWithPreload(() => import('./modules/tesoreria/v6/TesoreriaV6Page'));
 // T20 Fase 2 · ImportarCuentas re-ubicado per decisión D3 de Jose.
 const ImportarCuentasPage = lazyWithPreload(() => import('./modules/tesoreria/import/ImportarCuentas'));
-
-// S-TESORERIA-FASE-B-VISTA-CUENTA · página dedicada de cuenta. Sustituye el
-// redirect legacy `/tesoreria/cuenta/:id → /tesoreria/movimientos?cuenta=:id`
-// por una vista cuenta-céntrica completa (banner navy + filtros + tabla).
-const VistaCuentaPage = lazyWithPreload(() => import('./modules/tesoreria/pages/VistaCuentaPage'));
 
 const RedirectFiscalDeclaracion: React.FC = () => {
   const { anio } = useParams();
   return <Navigate to={`/fiscal/ejercicio/${anio ?? ''}`} replace />;
 };
-const ConciliacionPage = lazyWithPreload(() => import('./modules/horizon/conciliacion/ConciliacionPage'));
 // T20 Fase 3f-A · Fiscal v5 module · Outlet + sub-páginas.
 //   Mockup · docs/audit-inputs/atlas-fiscal.html
 //   Tabs: Calendario (Dashboard) · Ejercicios · Deudas · Configuración.
@@ -893,36 +886,25 @@ function App() {
               </React.Suspense>
             } />
             
-            {/* T20 Fase 2 · Tesorería v5 (sustituye Tesoreria.tsx legacy)
-                Mockup atlas-tesoreria-v8.html · 2 tabs (Vista general + Conciliación bancaria)
-                + ruta /tesoreria/importar (T17 BankStatementUploadPage intacta)
-                + ruta /tesoreria/importar-cuentas (re-ubicado de account/migracion). */}
+            {/* Tesorería V6 · UNA pantalla (§4). Las rutas que existían para
+                cada trozo siguen vivas para no romper enlaces guardados, pero
+                todas sirven la misma pantalla abriendo el drawer que toca. */}
             <Route path="tesoreria" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <TesoreriaPage />
+                <TesoreriaV6Page />
               </React.Suspense>
-            }>
-              <Route index element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <TesoreriaVistaGeneral />
-                </React.Suspense>
-              } />
-              <Route path="movimientos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <TesoreriaMovimientos />
-                </React.Suspense>
-              } />
-            </Route>
+            } />
+            {/* La lista de movimientos ya no es una pestaña: vive en el drawer
+                de cada cuenta (§4.4). */}
+            <Route path="tesoreria/movimientos" element={<Navigate to="/tesoreria" replace />} />
+            {/* Enlace directo a una cuenta · abre su drawer sobre la pantalla. */}
             <Route path="tesoreria/cuenta/:accountId" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <VistaCuentaPage />
+                <TesoreriaV6Page />
               </React.Suspense>
             } />
-            <Route path="tesoreria/importar" element={
-              <React.Suspense fallback={<LoadingSpinner />}>
-                <BankStatementUploadPage />
-              </React.Suspense>
-            } />
+            {/* Subir extracto · el drawer de §4.7 en su puerta global. */}
+            <Route path="tesoreria/importar" element={<Navigate to="/tesoreria?extracto=1" replace />} />
             <Route path="tesoreria/importar-cuentas" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <ImportarCuentasPage
@@ -932,17 +914,13 @@ function App() {
               </React.Suspense>
             } />
 
-            {/* §3.5 spec · opción (b) · ConciliacionPageV2 mantenida intacta.
-                Tesorería v5 tab "Movimientos" hace punteo simple por checkbox;
-                ConciliacionPageV2 tiene timeline + drag&drop documentos
-                · son flujos distintos · sub-tarea futura decide consolidar. */}
-            <Route path="conciliacion">
-              <Route index element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <ConciliacionPage />
-                </React.Suspense>
-              } />
-            </Route>
+            {/* V6 · D6 · /conciliacion SE RETIRA. La Tesorería absorbe su
+                función: conciliar es subir extracto por cuenta (§4.7) y
+                confirmar es la pestaña Pendientes del drawer de cuenta (§4.4).
+                Mantener dos pantallas que hacen lo mismo con distinto lenguaje
+                era la deuda que esta tarea viene a cerrar. La ruta sobrevive
+                como redirección para no romper enlaces guardados. */}
+            <Route path="conciliacion" element={<Navigate to="/tesoreria?extracto=1" replace />} />
             
             {/* T20 Fase 3f-A · Fiscal v5 (sustituye horizon/fiscalidad/FiscalLayout)
                 Mockup · atlas-fiscal.html · 4 tabs (Calendario · Ejercicios · Deudas ·

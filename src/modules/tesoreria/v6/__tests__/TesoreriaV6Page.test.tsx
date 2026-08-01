@@ -8,6 +8,7 @@
 import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import TesoreriaV6Page from '../TesoreriaV6Page';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../../services/db';
 
@@ -44,6 +45,22 @@ const evento = (over: Partial<TreasuryEvent> = {}): TreasuryEvent => ({
   ...over,
 });
 
+/**
+ * La pantalla lee la URL: qué cuenta está abierta lo dice
+ * `/tesoreria/cuenta/:accountId`, y `?extracto=1` abre el de extracto. Así que
+ * hay que montarla dentro de un router con esas dos rutas.
+ */
+function montar(ruta = '/tesoreria') {
+  return render(
+    <MemoryRouter initialEntries={[ruta]}>
+      <Routes>
+        <Route path="/tesoreria" element={<TesoreriaV6Page />} />
+        <Route path="/tesoreria/cuenta/:accountId" element={<TesoreriaV6Page />} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
 function montarDb(datos: {
   accounts?: Account[];
   treasuryEvents?: TreasuryEvent[];
@@ -71,7 +88,7 @@ describe('§4.1 · hero', () => {
         evento({ type: 'income', amount: 650, predictedDate: enEsteMes(Math.min(20, ultimoDia)) }),
       ],
     });
-    render(<TesoreriaV6Page />);
+    montar();
 
     await waitFor(() => expect(screen.getByText('Saldo')).toBeInTheDocument());
     expect(screen.getByText('2 cuentas · hoy')).toBeInTheDocument();
@@ -82,7 +99,7 @@ describe('§4.1 · hero', () => {
 
   it('singulariza "1 cuenta", que si no queda "1 cuentas"', async () => {
     montarDb({ accounts: [cuenta(1)] });
-    render(<TesoreriaV6Page />);
+    montar();
     await waitFor(() => expect(screen.getByText('1 cuenta · hoy')).toBeInTheDocument());
   });
 });
@@ -90,7 +107,7 @@ describe('§4.1 · hero', () => {
 describe('§4.2 · tarjetas de cuenta', () => {
   it('muestra saldo y "al día" cuando no queda nada pendiente', async () => {
     montarDb({ accounts: [cuenta(1, { alias: 'Sabadell principal' })] });
-    render(<TesoreriaV6Page />);
+    montar();
 
     await waitFor(() => expect(screen.getByText('Sabadell principal')).toBeInTheDocument());
     expect(screen.getByText('al día')).toBeInTheDocument();
@@ -103,7 +120,7 @@ describe('§4.2 · tarjetas de cuenta', () => {
         evento({ type: 'expense', amount: 500, accountId: 1, predictedDate: enEsteMes(Math.min(28, ultimoDia)) }),
       ],
     });
-    render(<TesoreriaV6Page />);
+    montar();
 
     await waitFor(() => expect(screen.getByText(/se queda en/)).toBeInTheDocument());
     // Un solo estado por tarjeta: si avisa de que se queda corta, no dice
@@ -120,7 +137,7 @@ describe('§4.2 · tarjetas de cuenta', () => {
         evento({ accountId: 1, predictedDate: enEsteMes(Math.min(28, ultimoDia)) }),
       ],
     });
-    render(<TesoreriaV6Page />);
+    montar();
     await waitFor(() => expect(screen.getByText(/por confirmar/)).toBeInTheDocument());
   });
 });
@@ -128,7 +145,7 @@ describe('§4.2 · tarjetas de cuenta', () => {
 describe('§4.3 · rejilla de meses', () => {
   it('pinta 6 meses, marca el actual y usa el vocabulario "Cierre"', async () => {
     montarDb({ accounts: [cuenta(1)] });
-    render(<TesoreriaV6Page />);
+    montar();
 
     await waitFor(() => expect(screen.getByText('en curso')).toBeInTheDocument());
     // Vocabulario único en todo el módulo: nunca "saldo a fin de mes" (§4.3).
@@ -164,7 +181,7 @@ describe('§4.10 · cómo va el mes', () => {
         },
       ],
     });
-    render(<TesoreriaV6Page />);
+    montar();
 
     const veredicto = await screen.findByText(/Acabarás/);
     expect(veredicto).toHaveTextContent('+365 €');
@@ -179,7 +196,7 @@ describe('§4.10 · cómo va el mes', () => {
       treasuryEvents: [evento({ type: 'income', amount: 1000, predictedDate: enEsteMes(5) })],
       movements: [],
     });
-    render(<TesoreriaV6Page />);
+    montar();
 
     await waitFor(() => expect(screen.getByText('Ingresos')).toBeInTheDocument());
     expect(screen.getByText('Gastos')).toBeInTheDocument();
@@ -190,7 +207,7 @@ describe('§4.10 · cómo va el mes', () => {
 describe('§4.7 · la puerta global del extracto', () => {
   it('el botón del hero abre el drawer, sin cuenta fijada', async () => {
     montarDb({ accounts: [cuenta(1)] });
-    render(<TesoreriaV6Page />);
+    montar();
 
     const subir = await screen.findByRole('button', { name: /Subir extracto/ });
     expect(subir).not.toBeDisabled();
@@ -209,7 +226,7 @@ describe('§4.7 · la puerta global del extracto', () => {
 describe('§4.9 · la puerta del calendario', () => {
   it('tocar un mes abre los días de ESE mes, sin cerrar la pantalla', async () => {
     montarDb({ accounts: [cuenta(1)] });
-    render(<TesoreriaV6Page />);
+    montar();
 
     // Hay 6 tarjetas · se abre la del mes en curso, que es la primera.
     const meses = await screen.findAllByRole('button', { name: /Ver los días de/ });
@@ -223,7 +240,7 @@ describe('§4.9 · la puerta del calendario', () => {
 
   it('el resumen del mes habla de Cierre · vocabulario único del módulo', async () => {
     montarDb({ accounts: [cuenta(1)] });
-    render(<TesoreriaV6Page />);
+    montar();
     fireEvent.click((await screen.findAllByRole('button', { name: /Ver los días de/ }))[0]);
 
     const drawer = await screen.findByRole('dialog', { name: 'Calendario' });
@@ -234,7 +251,7 @@ describe('§4.9 · la puerta del calendario', () => {
 
   it('en el día NO se concilia · conciliar es por cuenta y por fichero (§4.9)', async () => {
     montarDb({ accounts: [cuenta(1)] });
-    render(<TesoreriaV6Page />);
+    montar();
     fireEvent.click((await screen.findAllByRole('button', { name: /Ver los días de/ }))[0]);
 
     const drawer = await screen.findByRole('dialog', { name: 'Calendario' });
@@ -242,10 +259,78 @@ describe('§4.9 · la puerta del calendario', () => {
   });
 });
 
+// La V6 absorbe las rutas de las pantallas que sustituye. Que sigan llevando a
+// algo útil es lo que evita romper enlaces guardados por el usuario.
+describe('las puertas por URL', () => {
+  it('/tesoreria/cuenta/:id abre el drawer de esa cuenta', async () => {
+    montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' }), cuenta(2, { alias: 'Santander' })] });
+    montar('/tesoreria/cuenta/2');
+
+    const drawer = await screen.findByRole('dialog', { name: /Cuenta Santander/ });
+    expect(drawer).toBeInTheDocument();
+  });
+
+  it('abrir una cuenta cambia la URL · el enlace es real, no decorativo', async () => {
+    montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
+    montar();
+
+    // La tarjeta entera es clicable (§4.2).
+    fireEvent.click(await screen.findByText('Sabadell'));
+    expect(await screen.findByRole('dialog', { name: /Cuenta Sabadell/ })).toBeInTheDocument();
+  });
+
+  it('?extracto=1 abre el drawer de extracto · lo usan el Panel y las rutas viejas', async () => {
+    montarDb({ accounts: [cuenta(1)] });
+    montar('/tesoreria?extracto=1');
+
+    expect(await screen.findByRole('dialog', { name: 'Subir extracto' })).toBeInTheDocument();
+  });
+
+  it('cerrar la cuenta no deja la ruta detrás · atrás no la reabre', async () => {
+    montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
+    montar('/tesoreria/cuenta/1');
+
+    const drawer = await screen.findByRole('dialog', { name: /Cuenta Sabadell/ });
+    fireEvent.click(within(drawer).getByLabelText('Cerrar'));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /Cuenta Sabadell/ })).not.toBeInTheDocument()
+    );
+
+    // Con `push`, esto habría vuelto a /tesoreria/cuenta/1 y reabierto el
+    // drawer, que es justo lo contrario de lo que espera quien pulsa atrás.
+    window.history.back();
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /Cuenta Sabadell/ })).not.toBeInTheDocument()
+    );
+  });
+
+  it('cerrar el extracto limpia el query que lo abrió', async () => {
+    montarDb({ accounts: [cuenta(1)] });
+    montar('/tesoreria?extracto=1');
+
+    const drawer = await screen.findByRole('dialog', { name: 'Subir extracto' });
+    fireEvent.click(within(drawer).getByLabelText('Cerrar sin guardar'));
+
+    // Si el query se quedara, refrescar enseñaría un drawer que el usuario
+    // acaba de cerrar.
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Subir extracto' })).not.toBeInTheDocument()
+    );
+  });
+
+  it('sin parámetros no abre nada', async () => {
+    montarDb({ accounts: [cuenta(1)] });
+    montar();
+
+    await waitFor(() => expect(screen.getByText('1 cuenta · hoy')).toBeInTheDocument());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
 describe('estado vacío', () => {
   it('no revienta sin cuentas ni movimientos', async () => {
     montarDb({});
-    render(<TesoreriaV6Page />);
+    montar();
     await waitFor(() => expect(screen.getByText('0 cuentas · hoy')).toBeInTheDocument());
   });
 });
@@ -256,7 +341,7 @@ describe('§4.2 · orden guardado de las tarjetas', () => {
       accounts: [cuenta(1, { alias: 'Primera' }), cuenta(2, { alias: 'Segunda' })],
       keyval: { 'tesoreria.v6.ordenCuentas': [2, 1] },
     });
-    const { container } = render(<TesoreriaV6Page />);
+    const { container } = montar();
 
     await waitFor(() => expect(screen.getByText('Segunda')).toBeInTheDocument());
     const nombres = Array.from(container.querySelectorAll('.accNm')).map((n) => n.textContent);

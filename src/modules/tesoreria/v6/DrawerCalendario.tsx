@@ -206,7 +206,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                     .filter(Boolean)
                     .join(' ')}
                   onClick={() => setDiaElegido(elegido ? null : d.fecha)}
-                  aria-pressed={elegido}
+                  aria-selected={elegido}
                   aria-label={
                     `${d.numero} de ${nombreMes(month0)}` +
                     (d.apuntes === 0 ? ' · sin movimientos' : ` · neto ${importeConSigno(d.neto)}`) +

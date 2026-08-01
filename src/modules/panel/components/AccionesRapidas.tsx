@@ -36,12 +36,14 @@ const AccionesRapidas: React.FC<AccionesRapidasProps> = ({ onNavigate }) => (
           <span className={styles.s}>sin justificante todavía</span>
         </span>
       </button>
-      <button className={styles.btn} onClick={() => onNavigate('/conciliacion')}>
+      {/* V6 · adenda 02 · lleva a Tesorería abriendo el drawer de extracto:
+          conciliar ES subir el extracto de la cuenta (§4.7). */}
+      <button className={styles.btn} onClick={() => onNavigate('/tesoreria?extracto=1')}>
         <span className={styles.ic}>
-          <Icons.Refresh size={18} strokeWidth={1.8} />
+          <Icons.Upload size={18} strokeWidth={1.8} />
         </span>
         <span>
-          <span className={styles.t}>Conciliar banco</span>
+          <span className={styles.t}>Subir extracto</span>
           <span className={styles.s}>cuadra tus movimientos</span>
         </span>
       </button>
