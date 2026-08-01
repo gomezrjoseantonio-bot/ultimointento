@@ -22,16 +22,17 @@
 //
 // Grupos canónicos:
 //   2 ingresos (Alquiler · Otros ingresos)
-//   10 gastos de inmueble (Reparación · Mejora · Mobiliario · Comunidad ·
-//      Seguro · Suministro · IBI · Basuras · Servicio · Otros)
+//   11 gastos de inmueble (Reparación · Mejora · Mobiliario · Comunidad ·
+//      Seguro · Suministro · IBI · Basuras · Tributo · Servicio · Otros)
 //   1 gasto personal
-//   4 sub-tipos de suministro (luz / agua / gas / internet)
+//   5 sub-tipos de suministro (luz / agua / gas / internet / telefonía)
 //
 // Financiación y Traspaso NO usan catálogo de categorías (selector de préstamo
 // y cuenta destino respectivamente).
 
 import {
   Home,
+  Landmark,
   Wrench,
   Hammer,
   Armchair,
@@ -47,6 +48,7 @@ import {
   Droplet,
   Flame,
   Wifi,
+  Phone,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -214,6 +216,20 @@ export const GASTO_INMUEBLE_CATEGORIES: CategoryDef[] = [
     hasSubtype: false,
   },
   {
+    // V6 · D3 · tributos locales que no son IBI ni basuras (licencia turística,
+    // tasas varias). Comparten casilla 0115 con ellos: son tributo, no "otros".
+    key: 'tributo_inmueble',
+    label: 'Tributo',
+    icon: Landmark,
+    tipo: 'gasto',
+    ambito: 'inmueble',
+    casillaAEAT: '0115',
+    storeName: 'gastosInmueble',
+    availableInOpex: true,
+    requiereInmueble: true,
+    hasSubtype: false,
+  },
+  {
     key: 'basuras_inmueble',
     label: 'Basuras',
     icon: Trash2,
@@ -350,6 +366,9 @@ export const SUMINISTRO_SUBTYPES: SubtypeDef[] = [
   { key: 'agua', label: 'Agua', icon: Droplet },
   { key: 'gas', label: 'Gas', icon: Flame },
   { key: 'internet', label: 'Internet', icon: Wifi },
+  // V6 · D3 · telefonía NO se colapsa en internet: se contratan y facturan por
+  // separado, y colapsarlas perdería el detalle en el histórico.
+  { key: 'telefonia', label: 'Telefonía', icon: Phone },
 ];
 
 // ══════════════════════════════════════════════════════════

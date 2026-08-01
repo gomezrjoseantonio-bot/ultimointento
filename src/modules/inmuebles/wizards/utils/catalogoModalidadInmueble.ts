@@ -46,10 +46,14 @@ const INTERNET = c('suministros', 'internet');
 const TELEFONIA = c('suministros', 'telefonia');
 const ALARMA = c('suministros', 'alarma');
 const CALDERA = c('reparacion', 'mantenimiento_caldera');
-const LIMPIEZA_ZONAS = c('reparacion', 'limpieza_zonas_comunes');
-const LIMPIEZA_ESTANCIA = c('reparacion', 'limpieza_por_estancia');
-const ROPA_CAMA = c('reparacion', 'ropa_cama_lavanderia');
-const CONSUMIBLES = c('reparacion', 'consumibles_bienvenida');
+const LIMPIEZA_ZONAS = c('servicios', 'limpieza_zonas_comunes');
+const LIMPIEZA_ESTANCIA = c('servicios', 'limpieza_por_estancia');
+// V6 · D3 · `ropa_cama_lavanderia` se desdobló: el servicio recurrente es
+// Lavandería (Servicios y explotación) y el bien duradero es Ropa de cama y
+// enseres (Mobiliario, amortizable). La sugerencia apunta al servicio, que es
+// lo recurrente y lo que tiene sentido proponer de alta.
+const ROPA_CAMA = c('servicios', 'lavanderia');
+const CONSUMIBLES = c('servicios', 'consumibles_bienvenida');
 const OTRO = c('otros', 'personalizado');
 
 const SUMINISTROS = [LUZ, AGUA, GAS, INTERNET];

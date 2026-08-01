@@ -11,6 +11,7 @@ import {
   traducirInmueble,
   traducirPersonal,
   pendientesDeDecision,
+  requierenPregunta,
 } from '../catalogoPresentacionPersistencia';
 import { TIPOS_GASTO_INMUEBLE_V2 } from '../../modules/inmuebles/wizards/utils/tiposDeGastoInmueble';
 import { TIPOS_GASTO_PERSONAL } from '../../modules/personal/wizards/utils/tiposDeGastoPersonal';
@@ -50,15 +51,50 @@ describe('catálogo · traducción presentación → persistencia', () => {
     expect(usados.filter((k) => !subsReales.has(k))).toEqual([]);
   });
 
-  it('una entrada pendiente nunca lleva categoryKey, y una resuelta siempre lo lleva', () => {
+  it('sin categoryKey solo si está pendiente o es de pregunta, y siempre con motivo', () => {
     for (const [clave, t] of Object.entries({ ...TRADUCCION_INMUEBLE, ...TRADUCCION_PERSONAL })) {
-      if (t.estado === 'pendiente') {
+      if (t.estado === 'ok') {
+        expect({ clave, nulo: t.categoryKey === null }).toEqual({ clave, nulo: false });
+      } else {
+        // `pendiente` (falta decidir) y `pregunta` (depende del hecho) no
+        // persisten key. Sin motivo escrito, nadie sabrá por qué.
         expect({ clave, key: t.categoryKey }).toEqual({ clave, key: null });
         expect(t.nota ?? '').not.toEqual('');
-      } else {
-        expect({ clave, nulo: t.categoryKey === null }).toEqual({ clave, nulo: false });
       }
     }
+  });
+
+  it('D3 · no queda ninguna traducción pendiente de decidir', () => {
+    expect(pendientesDeDecision()).toEqual([]);
+  });
+
+  it('la derrama se pregunta, no se traduce: depende de la obra, no del concepto', () => {
+    // Conservación → deducible en el ejercicio · Mejora → capitalizable, amortiza.
+    // Ninguna key fija acierta siempre, así que la ficha tiene que preguntarlo.
+    expect(requierenPregunta()).toEqual(['comunidad:derrama']);
+    expect(traducirInmueble('comunidad', 'derrama')?.categoryKey).toBeNull();
+  });
+
+  it('telefonía tiene sub-tipo propio y no se colapsa en internet', () => {
+    const tel = traducirInmueble('suministros', 'telefonia');
+    expect(tel?.subtypeKey).toBe('telefonia');
+    expect(tel?.subtypeKey).not.toBe('internet');
+  });
+
+  it('la alarma es servicio (0108), no suministro (0113)', () => {
+    expect(traducirInmueble('suministros', 'alarma')?.categoryKey).toBe('servicio_inmueble');
+  });
+
+  it('el desdoble de ropa/lavandería manda cada mitad a su sitio', () => {
+    // El servicio recurrente se deduce; el bien duradero se amortiza.
+    expect(traducirInmueble('servicios', 'lavanderia')?.categoryKey).toBe('servicio_inmueble');
+    expect(traducirInmueble('mobiliario', 'ropa_enseres')?.categoryKey).toBe('mobiliario_inmueble');
+  });
+
+  it('el seguro de vida ya no cuelga del inmueble', () => {
+    // Va ligado a la hipoteca, no al arrendamiento: deducirlo como gasto del
+    // alquiler es de los que levantan una paralela.
+    expect(traducirInmueble('seguros', 'vida')).toBeUndefined();
   });
 
   it('solo el sub-tipo de suministro admite subtypeKey', () => {

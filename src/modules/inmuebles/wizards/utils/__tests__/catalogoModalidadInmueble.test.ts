@@ -56,7 +56,7 @@ describe('§3.3 · habitaciones · precarga 13', () => {
     for (const s of ['luz', 'agua', 'gas', 'internet']) {
       expect(has(cat.precargados, 'suministros', s)).toBe(true);
     }
-    expect(has(cat.precargados, 'reparacion', 'limpieza_zonas_comunes')).toBe(true);
+    expect(has(cat.precargados, 'servicios', 'limpieza_zonas_comunes')).toBe(true);
   });
 });
 
@@ -66,10 +66,10 @@ describe('§3.3 · temporada/turístico · precarga 16', () => {
     expect(cat.precargados).toHaveLength(16);
   });
   it('incluye los 5 propios de turístico', () => {
-    expect(has(cat.precargados, 'reparacion', 'limpieza_por_estancia')).toBe(true);
-    expect(has(cat.precargados, 'reparacion', 'ropa_cama_lavanderia')).toBe(true);
+    expect(has(cat.precargados, 'servicios', 'limpieza_por_estancia')).toBe(true);
+    expect(has(cat.precargados, 'servicios', 'lavanderia')).toBe(true);
     expect(has(cat.precargados, 'gestion', 'comision_plataformas')).toBe(true);
-    expect(has(cat.precargados, 'reparacion', 'consumibles_bienvenida')).toBe(true);
+    expect(has(cat.precargados, 'servicios', 'consumibles_bienvenida')).toBe(true);
     expect(has(cat.precargados, 'tributos', 'licencia_turistica')).toBe(true);
   });
   it('mantiene gestión del alquiler (turístico gestionado por empresa es normal)', () => {
@@ -77,7 +77,7 @@ describe('§3.3 · temporada/turístico · precarga 16', () => {
   });
   it('excluye impago y limpieza de zonas comunes (2 de larga duración)', () => {
     expect(has(cat.precargados, 'seguros', 'impago')).toBe(false);
-    expect(has(cat.precargados, 'reparacion', 'limpieza_zonas_comunes')).toBe(false);
+    expect(has(cat.precargados, 'servicios', 'limpieza_zonas_comunes')).toBe(false);
   });
 });
 

@@ -34,11 +34,14 @@ export interface TraduccionCategoria {
   /** Sub-tipo para categorías con variantes (hoy solo `suministro_inmueble`). */
   subtypeKey?: string;
   /**
-   * `ok`       · traducción directa, sin ambigüedad fiscal.
-   * `pendiente`· necesita decisión de Jose · ver `nota`. NO se persiste hasta
-   *              resolverse: la ficha de §4.5 debe impedir guardar y avisar.
+   * `ok`        · traducción directa, sin ambigüedad fiscal.
+   * `pregunta`  · NO tiene traducción fija **por naturaleza**, no por falta de
+   *               decisión: el tratamiento depende del hecho concreto y solo lo
+   *               sabe el usuario. La ficha de §4.5 tiene que preguntárselo al
+   *               confirmar. Hoy solo la derrama (conservación vs. mejora).
+   * `pendiente` · falta decidirlo · ver `nota`. NO se persiste hasta resolverse.
    */
-  estado: 'ok' | 'pendiente';
+  estado: 'ok' | 'pregunta' | 'pendiente';
   /** Por qué está pendiente, o qué matiz tiene la traducción. */
   nota?: string;
 }
@@ -46,134 +49,108 @@ export interface TraduccionCategoria {
 // ─── Inmueble ───────────────────────────────────────────────────────────────
 
 export const TRADUCCION_INMUEBLE: Record<ClavePresentacion, TraduccionCategoria> = {
-  // Tributos
+  // Tributos · todos a 0115 (tributos y recargos no estatales).
   'tributos:ibi': { categoryKey: 'ibi_inmueble', estado: 'ok' },
   'tributos:tasa_basuras': { categoryKey: 'basuras_inmueble', estado: 'ok' },
   'tributos:licencia_turistica': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota:
-      'No hay key para licencia turística. `otros_inmueble` no lleva casilla AEAT; ' +
-      '`ibi_inmueble`/`basuras_inmueble` van a 0115 (tributos y recargos). Si la licencia ' +
-      'es tributo local deducible, 0115 sería lo correcto — pero eso lo decide Jose.',
+    categoryKey: 'tributo_inmueble',
+    estado: 'ok',
+    nota: 'D3 · tasa municipal no estatal · mismo trato que IBI y basuras (0115).',
   },
   'tributos:otros': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota:
-      'Está bajo la familia Tributos, así que fiscalmente apunta a 0115, pero su `categoria` ' +
-      'de presentación es `inmueble.otros` (sin casilla). Elegir entre `otros_inmueble` (sin ' +
-      'casilla) y una key de tributo con 0115.',
+    categoryKey: 'tributo_inmueble',
+    estado: 'ok',
+    nota: 'D3 · si cuelga de Tributos, tributa como tributo (0115).',
   },
 
   // Comunidad
   'comunidad:cuota_ordinaria': { categoryKey: 'comunidad_inmueble', estado: 'ok' },
   'comunidad:derrama': {
     categoryKey: null,
-    estado: 'pendiente',
+    estado: 'pregunta',
     nota:
-      'Una derrama puede ser gasto deducible (conservación · 0109/0106) o MEJORA capitalizable ' +
-      '(`mejora_inmueble`, que amortiza en vez de deducir) según su naturaleza. Es la decisión ' +
-      'con más impacto fiscal de esta tabla. Puede que necesite preguntarse por movimiento en ' +
-      'vez de fijarse aquí.',
+      'D3 · NO se traduce a una key fija, y no es un olvido: una derrama es ' +
+      'conservación (deducible en el ejercicio) o MEJORA (capitalizable, se ' +
+      'amortiza) según la obra, no según el concepto. Lo decide el usuario al ' +
+      'confirmar el movimiento: conservación → gasto deducible · mejora → alta ' +
+      'en `mejorasInmueble`. Es la única pregunta fiscal de la ficha, y está ' +
+      'justificada porque ATLAS no puede saberlo y equivocarse cuesta caro en ' +
+      'las dos direcciones.',
   },
   'comunidad:otros': { categoryKey: 'comunidad_inmueble', estado: 'ok' },
 
-  // Suministros
+  // Suministros · 0113
   'suministros:luz': { categoryKey: 'suministro_inmueble', subtypeKey: 'luz', estado: 'ok' },
   'suministros:gas': { categoryKey: 'suministro_inmueble', subtypeKey: 'gas', estado: 'ok' },
   'suministros:agua': { categoryKey: 'suministro_inmueble', subtypeKey: 'agua', estado: 'ok' },
-  'suministros:internet': {
-    categoryKey: 'suministro_inmueble',
-    subtypeKey: 'internet',
-    estado: 'ok',
-  },
+  'suministros:internet': { categoryKey: 'suministro_inmueble', subtypeKey: 'internet', estado: 'ok' },
   'suministros:telefonia': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota:
-      '`SUMINISTRO_SUBTYPES` solo tiene luz/agua/gas/internet. O se añade el sub-tipo ' +
-      '`telefonia` al catálogo de persistencia, o se colapsa en `internet`. Colapsar pierde ' +
-      'el detalle en el histórico.',
+    categoryKey: 'suministro_inmueble',
+    subtypeKey: 'telefonia',
+    estado: 'ok',
+    nota: 'D3 · sub-tipo propio · NO se colapsa en internet: se contratan y facturan aparte.',
   },
   'suministros:alarma': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota:
-      'Mismo hueco de sub-tipo que telefonía, y además dudoso que sea suministro: una alarma ' +
-      'es más un servicio contratado (`servicio_inmueble`, 0108) que un suministro (0113). ' +
-      'Casillas distintas.',
+    categoryKey: 'servicio_inmueble',
+    estado: 'ok',
+    nota: 'D3 · vigilancia contratada · es servicio (0108), no suministro (0113).',
   },
   'suministros:otros': {
     categoryKey: 'suministro_inmueble',
     estado: 'ok',
-    nota: 'Sin sub-tipo · queda como suministro genérico (0113).',
+    nota: 'Sin sub-tipo · suministro genérico (0113).',
   },
 
-  // Seguros
+  // Seguros · 0114 · el de vida salió del catálogo de inmueble (D3): va ligado
+  // a la hipoteca, no al arrendamiento, y deducirlo aquí levanta una paralela.
   'seguros:hogar': { categoryKey: 'seguro_inmueble', estado: 'ok' },
   'seguros:impago': { categoryKey: 'seguro_inmueble', estado: 'ok' },
-  'seguros:vida': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota:
-      'El seguro de vida suele ir vinculado a la hipoteca, no al arrendamiento. Meterlo en ' +
-      '`seguro_inmueble` (0114) lo declara como gasto del alquiler, que puede no proceder. ' +
-      'Quizá pertenezca a financiación y no a esta familia.',
-  },
   'seguros:otros': { categoryKey: 'seguro_inmueble', estado: 'ok' },
 
-  // Gestión
-  'gestion:honorarios_agencia': {
-    categoryKey: 'servicio_inmueble',
-    estado: 'ok',
-    nota: 'Servicios de profesionales (0108) · coincide con `inmueble.gestionAlquiler`.',
-  },
+  // Gestión · servicios de profesionales (0108)
+  'gestion:honorarios_agencia': { categoryKey: 'servicio_inmueble', estado: 'ok' },
   'gestion:gestoria': { categoryKey: 'servicio_inmueble', estado: 'ok' },
   'gestion:asesoria': { categoryKey: 'servicio_inmueble', estado: 'ok' },
   'gestion:comision_plataformas': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota:
-      'Comisión de Booking/Airbnb. ¿Servicio profesional (0108) o gasto de comercialización ' +
-      'por otra casilla? En alquiler turístico el tratamiento puede diferir del residencial.',
+    categoryKey: 'servicio_inmueble',
+    estado: 'ok',
+    nota: 'D3 · comercialización (Booking/Airbnb) · servicio de terceros (0108).',
   },
   'gestion:otros': { categoryKey: 'servicio_inmueble', estado: 'ok' },
 
-  // Reparación y conservación
+  // Reparación y conservación · 0106 · ya solo lo que repara de verdad
   'reparacion:mantenimiento_caldera': { categoryKey: 'reparacion_inmueble', estado: 'ok' },
   'reparacion:mantenimiento_integral': { categoryKey: 'reparacion_inmueble', estado: 'ok' },
-  'reparacion:limpieza': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota:
-      'La limpieza es un servicio (0108), no una reparación (0106), pero su `categoria` de ' +
-      'presentación es `inmueble.opex` y vive bajo la familia Reparación. Afecta a las 4 ' +
-      'entradas de limpieza/lavandería de esta familia.',
-  },
-  'reparacion:limpieza_zonas_comunes': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota: 'Igual que `limpieza`. Además podría ser gasto de comunidad (0109) si lo factura la comunidad.',
-  },
-  'reparacion:limpieza_por_estancia': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota: 'Igual que `limpieza`. Propio de alquiler turístico.',
-  },
-  'reparacion:ropa_cama_lavanderia': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota:
-      'Servicio (0108) o consumible. Si se considera mobiliario/enseres podría ir a ' +
-      '`mobiliario_inmueble` (0117, amortizable), que es tratamiento distinto.',
-  },
-  'reparacion:consumibles_bienvenida': {
-    categoryKey: null,
-    estado: 'pendiente',
-    nota: 'Consumible de alquiler turístico. Candidatos: `servicio_inmueble` (0108) u `otros_inmueble`.',
-  },
   'reparacion:otros': { categoryKey: 'reparacion_inmueble', estado: 'ok' },
+
+  // Servicios y explotación · 0108 · familia nueva de D3. Separarla de
+  // Reparación resolvió cinco pendientes de golpe.
+  'servicios:limpieza': { categoryKey: 'servicio_inmueble', estado: 'ok' },
+  'servicios:limpieza_zonas_comunes': {
+    categoryKey: 'servicio_inmueble',
+    estado: 'ok',
+    nota:
+      'D3 · 0108 salvo que la facture la comunidad, y entonces es cuota de ' +
+      'comunidad (0109). Se distingue por quién emite la factura, no por el ' +
+      'concepto, así que la tabla no puede decidirlo sola.',
+  },
+  'servicios:limpieza_por_estancia': { categoryKey: 'servicio_inmueble', estado: 'ok' },
+  'servicios:lavanderia': {
+    categoryKey: 'servicio_inmueble',
+    estado: 'ok',
+    nota: 'D3 · mitad servicio del antiguo `ropa_cama_lavanderia`.',
+  },
+  'servicios:consumibles_bienvenida': { categoryKey: 'servicio_inmueble', estado: 'ok' },
+  'servicios:otros': { categoryKey: 'servicio_inmueble', estado: 'ok' },
+
+  // Mobiliario y enseres · 0117 · AMORTIZABLE, no gasto del ejercicio
+  'mobiliario:ropa_enseres': {
+    categoryKey: 'mobiliario_inmueble',
+    estado: 'ok',
+    nota: 'D3 · mitad bien duradero del antiguo `ropa_cama_lavanderia` · amortiza (0117).',
+  },
+  'mobiliario:muebles': { categoryKey: 'mobiliario_inmueble', estado: 'ok' },
+  'mobiliario:otros': { categoryKey: 'mobiliario_inmueble', estado: 'ok' },
 
   // Otros
   'otros:personalizado': {
@@ -192,13 +169,12 @@ export const TRADUCCION_PERSONAL: Record<string, TraduccionCategoria> = {
   seguros_cuotas: { categoryKey: 'gasto_personal_seguros_cuotas', estado: 'ok' },
   otros: { categoryKey: 'gasto_personal_otros', estado: 'ok' },
   suministros: {
-    categoryKey: null,
-    estado: 'pendiente',
+    categoryKey: 'gasto_personal_vivienda',
+    estado: 'ok',
     nota:
-      'No hay `gasto_personal_suministros`. El label de `gasto_personal_vivienda` ya dice ' +
-      '"Vivienda · alquiler · suministros · IBI · seguros", así que colapsarlo ahí parece la ' +
-      'intención — pero el catálogo de presentación los separa en dos familias. Confirmar que ' +
-      'el colapso es querido y no una key que falta.',
+      'D3 · colapsa en vivienda a propósito: en personal no hay casilla que ganar ' +
+      'con la granularidad, y el label de esa key ya dice "…alquiler · suministros · ' +
+      'IBI · seguros". Presentación los sigue mostrando separados.',
   },
 };
 
@@ -221,6 +197,9 @@ export function traducirPersonal(tipoId: string): TraduccionCategoria | undefine
  * Entradas sin destino fiscal decidido. La UI de alta/edición debe impedir
  * guardar con una de estas y decir por qué, en vez de persistir un
  * `categoryKey` inventado.
+ *
+ * Tras D3 está VACÍA: las trece se resolvieron. Se mantiene porque el candado
+ * del test la usa para exigir que toda entrada nueva se traduzca o se declare.
  */
 export function pendientesDeDecision(): Array<{ clave: string; nota: string }> {
   const out: Array<{ clave: string; nota: string }> = [];
@@ -231,4 +210,14 @@ export function pendientesDeDecision(): Array<{ clave: string; nota: string }> {
     if (t.estado === 'pendiente') out.push({ clave: `personal:${clave}`, nota: t.nota ?? '' });
   }
   return out;
+}
+
+/**
+ * Conceptos que la ficha debe PREGUNTAR al confirmar, porque su tratamiento
+ * depende del hecho y no del concepto. Hoy solo la derrama.
+ */
+export function requierenPregunta(): string[] {
+  return Object.entries(TRADUCCION_INMUEBLE)
+    .filter(([, t]) => t.estado === 'pregunta')
+    .map(([clave]) => clave);
 }
