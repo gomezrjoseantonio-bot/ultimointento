@@ -245,6 +245,7 @@
   --atlas-v5-on-brand-border: rgba(255, 255, 255, 0.16);
   --atlas-v5-shadow-lift: 0 10px 24px rgba(20, 27, 46, 0.07);  /* card al hover */
   --atlas-v5-shadow-pager: 0 3px 10px rgba(20, 27, 46, 0.1);   /* flecha del carrusel */
+  --atlas-v5-shadow-drawer: -8px 0 30px rgba(12, 18, 48, 0.14); /* panel lateral */
 
   /* ============================================================
      Colores de MARCA de banco · §5 los excluye expresamente de
