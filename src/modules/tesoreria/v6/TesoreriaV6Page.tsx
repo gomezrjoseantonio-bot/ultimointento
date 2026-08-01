@@ -31,6 +31,22 @@ import styles from './TesoreriaV6Page.module.css';
 
 const hoyISO = (): string => new Date().toISOString().slice(0, 10);
 
+/**
+ * Props de un botón cuya acción llega con un drawer que aún no existe.
+ *
+ * `aria-disabled` y NO `disabled`: un botón deshabilitado de verdad no dispara
+ * eventos de ratón en la mayoría de navegadores, así que su `title` no se ve —
+ * y aquí el `title` es justo lo que explica por qué no se puede pulsar. Con
+ * `aria-disabled` el lector de pantalla lo anuncia igual, el tooltip sale, y el
+ * `onClick` corta la acción.
+ */
+const pendiente = (que: string) => ({
+  type: 'button' as const,
+  'aria-disabled': true,
+  title: `Llega con ${que}`,
+  onClick: (e: React.MouseEvent) => e.preventDefault(),
+});
+
 /** Tarjetas visibles según ancho · 5 ≥1240px · 4 ≥1000px · 3 por debajo (§4.2). */
 function tarjetasVisibles(ancho: number): number {
   if (ancho >= 1240) return 5;
@@ -91,6 +107,27 @@ const TesoreriaV6Page: React.FC = () => {
     [estado.cuentas, orden]
   );
 
+  // Una sola pasada para repartir eventos y movimientos por cuenta. Sin esto,
+  // pasar los arrays completos a cada cuenta escala como
+  // O(cuentas × (eventos + movimientos)) —`calculateAccountBalanceAtDate` los
+  // vuelve a filtrar por dentro— y con historiales grandes se nota.
+  const porCuenta = useMemo(() => {
+    const eventos = new Map<number, TreasuryEvent[]>();
+    const movimientos = new Map<number, Movement[]>();
+    for (const e of estado.eventos) {
+      if (e.accountId == null) continue;
+      const arr = eventos.get(e.accountId);
+      if (arr) arr.push(e);
+      else eventos.set(e.accountId, [e]);
+    }
+    for (const m of estado.movimientos) {
+      const arr = movimientos.get(m.accountId);
+      if (arr) arr.push(m);
+      else movimientos.set(m.accountId, [m]);
+    }
+    return { eventos, movimientos };
+  }, [estado.eventos, estado.movimientos]);
+
   const saldoPorCuenta = useMemo(() => {
     const m = new Map<number, number>();
     for (const c of cuentasVivas) {
@@ -100,13 +137,13 @@ const TesoreriaV6Page: React.FC = () => {
         calculateAccountBalanceAtDate({
           account: c,
           cutoffDate: hoy,
-          treasuryEvents: estado.eventos,
-          movements: estado.movimientos,
+          treasuryEvents: porCuenta.eventos.get(c.id) ?? [],
+          movements: porCuenta.movimientos.get(c.id) ?? [],
         })
       );
     }
     return m;
-  }, [cuentasVivas, estado.eventos, estado.movimientos, hoy]);
+  }, [cuentasVivas, porCuenta, hoy]);
 
   const kpis = useMemo(
     () => calcularKpisHero({ cuentas: cuentasVivas, saldoPorCuenta, eventos: estado.eventos, year, month0 }),
@@ -126,6 +163,14 @@ const TesoreriaV6Page: React.FC = () => {
   const totalPaginas = Math.max(1, Math.ceil((cuentasVivas.length + 1) / porPagina));
   const pageSafe = Math.min(pagina, totalPaginas - 1);
 
+  // Si al redimensionar (cambia `porPagina`) o al borrar cuentas la página
+  // actual se queda fuera de rango, hay que corregir el ESTADO y no solo el
+  // render: si no, "anterior" decrementa un número invisible y hacen falta
+  // varios clics para que se mueva algo.
+  useEffect(() => {
+    setPagina((p) => (p > totalPaginas - 1 ? Math.max(0, totalPaginas - 1) : p));
+  }, [totalPaginas]);
+
   // ── Reordenar cuentas · se persiste el orden del usuario (§4.2) ──────────
 
   const soltarSobre = async (destinoId: number) => {
@@ -139,7 +184,13 @@ const TesoreriaV6Page: React.FC = () => {
     setOrden(nuevo);
     setArrastrando(null);
     setEncima(null);
-    await guardarOrdenCuentas(nuevo);
+    try {
+      await guardarOrdenCuentas(nuevo);
+    } catch (err) {
+      // El orden ya se ha aplicado en pantalla; que no se haya podido guardar
+      // es una preferencia perdida, no un motivo para romper la interacción.
+      console.warn('[TesoreriaV6] no se pudo guardar el orden de las cuentas', err);
+    }
   };
 
   if (cargando) return null;
@@ -180,7 +231,7 @@ const TesoreriaV6Page: React.FC = () => {
         />
 
         <div className={styles.heroAct}>
-          <button type="button" className={`${styles.btn} ${styles.btnGold}`} disabled title="Llega con el drawer de extracto (§4.7)">
+          <button {...pendiente('el drawer de extracto (§4.7)')} className={`${styles.btn} ${styles.btnGold}`}>
             <Icons.Upload size={15} strokeWidth={1.8} /> Subir extracto
           </button>
         </div>
@@ -193,7 +244,7 @@ const TesoreriaV6Page: React.FC = () => {
             <div className={styles.secK}>Saldo actual en mis cuentas</div>
             <div className={styles.secT}>entra en una cuenta para ver el detalle de movimientos</div>
           </div>
-          <button type="button" className={styles.secAdd} disabled title="Llega con la ficha de cuenta (§4.8)">
+          <button {...pendiente('la ficha de cuenta (§4.8)')} className={styles.secAdd}>
             <Icons.Plus size={14} strokeWidth={2} /> Añadir cuenta
           </button>
           {cuentasVivas.length > porPagina && (
@@ -232,7 +283,7 @@ const TesoreriaV6Page: React.FC = () => {
                   saldo={saldoPorCuenta.get(c.id!) ?? 0}
                   estado={estadoDeCuenta({
                     saldoHoy: saldoPorCuenta.get(c.id!) ?? 0,
-                    eventos: estado.eventos.filter((e) => e.accountId === c.id),
+                    eventos: porCuenta.eventos.get(c.id!) ?? [],
                     year,
                     month0,
                     hoy,
@@ -248,7 +299,7 @@ const TesoreriaV6Page: React.FC = () => {
                   onDrop={() => void soltarSobre(c.id!)}
                 />
               ))}
-              <button type="button" className={styles.accAdd} disabled title="Llega con la ficha de cuenta (§4.8)">
+              <button {...pendiente('la ficha de cuenta (§4.8)')} className={styles.accAdd}>
                 <Icons.Plus size={16} strokeWidth={2} /> Añadir cuenta
               </button>
             </div>
@@ -343,11 +394,9 @@ const TarjetaCuenta: React.FC<{
         </div>
         {/* stopPropagation obligatorio: la tarjeta entera es clicable (§4.2). */}
         <button
-          type="button"
+          {...pendiente('la ficha de cuenta (§4.8)')}
           className={styles.accEd}
           aria-label={`Editar ${nombre}`}
-          title="Llega con la ficha de cuenta (§4.8)"
-          disabled
           onClick={(e) => e.stopPropagation()}
         >
           <Icons.Edit size={14} strokeWidth={1.8} />

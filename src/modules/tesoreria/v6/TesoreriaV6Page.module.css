@@ -532,11 +532,14 @@
   color: var(--atlas-v5-on-gold);
   border-color: var(--atlas-v5-gold);
 }
-.btnGold:hover:not(:disabled) {
+.btnGold:hover:not([aria-disabled='true']) {
   background: var(--atlas-v5-gold-2);
   border-color: var(--atlas-v5-gold-2);
 }
-.btn:disabled {
+/* `aria-disabled` y no `:disabled`: un botón deshabilitado de verdad no muestra
+   su `title` al hover en la mayoría de navegadores, y aquí el title es lo que
+   explica de qué sección depende la acción. */
+[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
 }

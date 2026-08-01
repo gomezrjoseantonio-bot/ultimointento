@@ -187,6 +187,21 @@ describe('§4.10 · cómo va el mes', () => {
   });
 });
 
+describe('acciones que dependen de drawers aún no construidos', () => {
+  it('usan aria-disabled, no disabled, para que su title se vea', async () => {
+    // Un `disabled` de verdad no dispara eventos de ratón en la mayoría de
+    // navegadores, así que el tooltip que explica POR QUÉ no se puede pulsar
+    // no llegaría a verse nunca.
+    montarDb({ accounts: [cuenta(1)] });
+    render(<TesoreriaV6Page />);
+
+    const subir = await screen.findByRole('button', { name: /Subir extracto/ });
+    expect(subir).toHaveAttribute('aria-disabled', 'true');
+    expect(subir).not.toBeDisabled();
+    expect(subir).toHaveAttribute('title', expect.stringContaining('§4.7'));
+  });
+});
+
 describe('estado vacío', () => {
   it('no revienta sin cuentas ni movimientos', async () => {
     montarDb({});
