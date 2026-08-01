@@ -31,6 +31,8 @@ import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuen
 import DrawerCuenta from './DrawerCuenta';
 import DrawerExtracto from './DrawerExtracto';
 import DrawerCalendario from './DrawerCalendario';
+import TesoreriaMovil from './TesoreriaMovil';
+import { useEsMovil } from './useEsMovil';
 import CuentaWizard from '../../../components/cuenta/CuentaWizard';
 import {
   confirmTreasuryEvent,
@@ -68,6 +70,7 @@ const TesoreriaV6Page: React.FC = () => {
   const { accountId: accountIdParam } = useParams<{ accountId?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const esMovil = useEsMovil();
   const [estado, setEstado] = useState<Estado>({ cuentas: [], eventos: [], movimientos: [], inmuebles: [] });
   const [cargando, setCargando] = useState(true);
   const [pagina, setPagina] = useState(0);
@@ -262,17 +265,25 @@ const TesoreriaV6Page: React.FC = () => {
     await recargar();
   }, [recargar]);
 
-  const confirmarItem = useCallback(
-    async (item: ItemPunteo) => {
-      if (item.kind !== 'evento') return;
+  /** Confirmar un previsto por id · lo usan la lista de punteo y el móvil. */
+  const confirmarPrevisto = useCallback(
+    async (eventoId: number) => {
       try {
-        await confirmTreasuryEvent(item.refId);
+        await confirmTreasuryEvent(eventoId);
         await trasEscribir();
       } catch (err) {
         console.error('[TesoreriaV6] no se pudo confirmar', err);
       }
     },
     [trasEscribir]
+  );
+
+  const confirmarItem = useCallback(
+    async (item: ItemPunteo) => {
+      if (item.kind !== 'evento') return;
+      await confirmarPrevisto(item.refId);
+    },
+    [confirmarPrevisto]
   );
 
   const descartarItem = useCallback(
@@ -400,6 +411,36 @@ const TesoreriaV6Page: React.FC = () => {
 
   const inmuebles = estado.inmuebles;
   const mesActual = nombreMes(month0);
+
+  // §4.11 · en móvil se sirve OTRA pantalla, no esta encogida. Los drawers de
+  // extracto y cuenta se comparten: son útiles en las dos y ya son a pantalla
+  // casi completa.
+  if (esMovil) {
+    return (
+      <>
+        <TesoreriaMovil
+          cuentas={cuentasVivas}
+          eventos={estado.eventos}
+          saldoPorCuenta={saldoPorCuenta}
+          saldoHoy={kpis.saldo}
+          cierre={kpis.cierre}
+          month0={month0}
+          onConfirmar={confirmarPrevisto}
+          onSubirExtracto={() => setExtracto({ cuenta: null })}
+        />
+        {extracto && (
+          <DrawerExtracto
+            abierto
+            cuenta={extracto.cuenta}
+            cuentas={cuentasVivas}
+            inmuebles={inmuebles}
+            onCerrar={cerrarExtracto}
+            onGuardado={trasEscribir}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <div>
