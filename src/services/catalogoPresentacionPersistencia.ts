@@ -130,9 +130,11 @@ export const TRADUCCION_INMUEBLE: Record<ClavePresentacion, TraduccionCategoria>
     categoryKey: 'servicio_inmueble',
     estado: 'ok',
     nota:
-      'D3 · 0108 salvo que la facture la comunidad, y entonces es cuota de ' +
-      'comunidad (0109). Se distingue por quién emite la factura, no por el ' +
-      'concepto, así que la tabla no puede decidirlo sola.',
+      'D3 · servicio de limpieza contratado POR EL PROPIETARIO (0108). Si la ' +
+      'limpieza la factura la comunidad, no es este concepto: va en ' +
+      '`comunidad:cuota_ordinaria` (0109). Los distingue quién emite la ' +
+      'factura, y eso el usuario ya lo resuelve al elegir concepto — no hace ' +
+      'falta preguntárselo después.',
   },
   'servicios:limpieza_por_estancia': { categoryKey: 'servicio_inmueble', estado: 'ok' },
   'servicios:lavanderia': {

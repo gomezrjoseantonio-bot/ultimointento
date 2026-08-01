@@ -38,6 +38,17 @@ describe('blockForInmueble · §3.1', () => {
     expect(blockForInmueble(c({ tipoFamilia: 'reparacion', subtipo: 'limpieza_por_estancia' })).id).toBe('modalidad');
     expect(blockForInmueble(c({ tipoFamilia: 'tributos', subtipo: 'licencia_turistica' })).id).toBe('modalidad');
   });
+  it('el desdoble de ropa/lavandería sigue cayendo en modalidad · V6 · D3', () => {
+    // `ropa_cama_lavanderia` se partió en `lavanderia` (servicio) y
+    // `ropa_enseres` (bien duradero). El subtipo SÍ se persiste, así que sin
+    // añadir los dos nuevos aquí los gastos nuevos se habrían agrupado en el
+    // bloque equivocado, en silencio.
+    expect(blockForInmueble(c({ tipoFamilia: 'servicios', subtipo: 'lavanderia' })).id).toBe('modalidad');
+    expect(blockForInmueble(c({ tipoFamilia: 'mobiliario', subtipo: 'ropa_enseres' })).id).toBe('modalidad');
+    // Y el id antiguo se conserva: los compromisos ya guardados lo usan.
+    expect(blockForInmueble(c({ tipoFamilia: 'reparacion', subtipo: 'ropa_cama_lavanderia' })).id).toBe('modalidad');
+  });
+
   it('limpieza de zonas comunes NO es de modalidad (es de larga duración)', () => {
     expect(blockForInmueble(c({ tipoFamilia: 'reparacion', subtipo: 'limpieza_zonas_comunes' })).id).toBe('otros');
   });

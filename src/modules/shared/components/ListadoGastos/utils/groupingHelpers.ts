@@ -46,7 +46,13 @@ export function groupByCatalog(
 // no por familia de catálogo.
 const SUBTIPOS_MODALIDAD = new Set([
   'limpieza_por_estancia',
+  // V6 · D3 · `ropa_cama_lavanderia` se desdobló en el servicio recurrente
+  // (`lavanderia`) y el bien duradero (`ropa_enseres`). Los dos nuevos entran
+  // aquí, y el antiguo se CONSERVA porque el subtipo sí se persiste y los
+  // compromisos ya guardados seguirían usándolo.
   'ropa_cama_lavanderia',
+  'lavanderia',
+  'ropa_enseres',
   'comision_plataformas',
   'consumibles_bienvenida',
   'licencia_turistica',
