@@ -434,23 +434,45 @@
    §4.8 · color del punto y banco heredado de la tarjeta
    =========================================================================== */
 
+/* §10 · rejilla de color · una columna por tono, una fila por luminosidad.
+   Se recorre con la vista, como la de una hoja de cálculo. */
 .paleta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
+  flex-direction: column;
+  gap: 3px;
+}
+.paletaFila {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+/* Separa lo que no es un color elegido (banco · sin color) de los grises. */
+.paletaSep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--atlas-v5-line);
+  margin: 0 4px;
 }
 
 /* El color va inline: lo elige el usuario y §5 lo excluye de "cero hex"
    igual que los colores de marca. Aquí solo vive la forma. */
+/* Muestras CUADRADAS y pegadas, como en una hoja de cálculo: en una rejilla,
+   los círculos separados obligan a leerla casilla a casilla; los cuadrados
+   forman bandas de tono que se recorren de un vistazo. El punto de la cuenta
+   sigue siendo redondo — esto es el selector, no la cuenta. */
 .muestra {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
   border: 2px solid transparent;
   box-shadow: 0 0 0 1px var(--atlas-v5-line);
   cursor: pointer;
   padding: 0;
+  flex: 0 0 auto;
 }
+/* El color del banco es el sugerido: se le da doble ancho para que se lea como
+   "esta es la opción por defecto" sin necesidad de rótulo. */
+.muestraAncha { width: 43px; }
 .muestra:hover { box-shadow: 0 0 0 1px var(--atlas-v5-ink-5); }
 .muestraOn {
   border-color: var(--atlas-v5-card);

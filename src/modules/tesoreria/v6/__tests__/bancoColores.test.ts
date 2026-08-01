@@ -11,7 +11,7 @@ import {
   colorSugerido,
   SIN_COLOR,
   CLAVE_SIN_COLOR,
-  PALETA_PUNTO,
+  REJILLA_PUNTO, GRISES_PUNTO,
 } from '../bancoColores';
 import type { Account } from '../../../../services/db';
 
@@ -76,22 +76,48 @@ describe('lo que propone el selector', () => {
   });
 });
 
-describe('la paleta', () => {
-  it('solo ofrece tokens · ningún hex suelto (§5)', () => {
-    for (const c of PALETA_PUNTO) {
-      // §10 · la paleta ya no sale de marcas de banco: entre ellas había dos
-      // rojos y cinco azules que a 8px no se distinguen, y el punto existe
-      // justo para separar dos cuentas del mismo banco.
-      expect(c.token).toMatch(/^var\(--atlas-v5-punto-[a-z]+\)$/);
+describe('la rejilla de color (§10)', () => {
+  it('ningún hex suelto · el valor es CSS calculado, no un color escrito a mano', () => {
+    for (const c of [...REJILLA_PUNTO.flat(), ...GRISES_PUNTO]) {
+      expect(c.token).not.toMatch(/#[0-9a-f]{3,8}/i);
+      expect(c.token).toMatch(/^hsl\(/);
     }
   });
 
-  it('no repite colores · dos muestras iguales no sirven para distinguir', () => {
-    const tokens = PALETA_PUNTO.map((c) => c.token);
-    expect(new Set(tokens).size).toBe(tokens.length);
+  it('es una rejilla de verdad · todas las filas con las mismas columnas', () => {
+    const ancho = REJILLA_PUNTO[0].length;
+    expect(ancho).toBeGreaterThan(6);
+    for (const fila of REJILLA_PUNTO) expect(fila).toHaveLength(ancho);
   });
 
-  it('cada muestra tiene nombre · el color solo no es accesible', () => {
-    expect(PALETA_PUNTO.every((c) => c.nombre.trim().length > 0)).toBe(true);
+  it('cada COLUMNA comparte tono · es lo que deja recorrerla con la vista', () => {
+    const tono = (t: string) => t.match(/^hsl\((\d+)/)![1];
+    for (let col = 0; col < REJILLA_PUNTO[0].length; col++) {
+      const tonos = new Set(REJILLA_PUNTO.map((f) => tono(f[col].token)));
+      expect(tonos.size).toBe(1);
+    }
+  });
+
+  it('cada FILA va de más clara a más oscura', () => {
+    const luz = (t: string) => Number(t.match(/(\d+)%\)$/)![1]);
+    const porFila = REJILLA_PUNTO.map((f) => luz(f[0].token));
+    for (let i = 1; i < porFila.length; i++) {
+      expect(porFila[i]).toBeLessThan(porFila[i - 1]);
+    }
+  });
+
+  it('no repite ningún color · dos muestras iguales no sirven para elegir', () => {
+    const todos = [...REJILLA_PUNTO.flat(), ...GRISES_PUNTO].map((c) => c.token);
+    expect(new Set(todos).size).toBe(todos.length);
+  });
+
+  it('toda muestra tiene nombre · el selector se usa también sin ver', () => {
+    for (const c of [...REJILLA_PUNTO.flat(), ...GRISES_PUNTO]) {
+      expect(c.nombre.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('los grises no tienen tono · por eso van aparte de la rejilla', () => {
+    for (const c of GRISES_PUNTO) expect(c.token).toMatch(/^hsl\(0 0%/);
   });
 });

@@ -44,7 +44,8 @@ import {
   type FrecuenciaLiquidacion,
 } from '../../services/cuentaCalculatorService';
 import {
-  PALETA_PUNTO,
+  REJILLA_PUNTO,
+  GRISES_PUNTO,
   CLAVE_SIN_COLOR,
   colorSugerido,
 } from '../../modules/tesoreria/v6/bancoColores';
@@ -821,40 +822,65 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                 <div style={{ marginTop: 12 }}>
                   <Field label="Color del punto">
                     <div className={styles.paleta} role="radiogroup" aria-label="Color del punto">
-                      {colorPorDefecto && (
+                      {/* Fila de arriba · lo que no es un color elegido a mano:
+                          el del banco (por defecto) y ningún color. */}
+                      <div className={styles.paletaFila}>
+                        {colorPorDefecto && (
+                          <button
+                            type="button"
+                            role="radio"
+                            aria-checked={form.colorPunto === ''}
+                            aria-label="Color del banco"
+                            title="Color del banco"
+                            className={`${styles.muestra} ${styles.muestraAncha} ${form.colorPunto === '' ? styles.muestraOn : ''}`}
+                            style={{ background: colorPorDefecto }}
+                            onClick={() => set('colorPunto', '')}
+                          />
+                        )}
                         <button
                           type="button"
                           role="radio"
-                          aria-checked={form.colorPunto === ''}
-                          aria-label="Color del banco"
-                          title="Color del banco"
-                          className={`${styles.muestra} ${form.colorPunto === '' ? styles.muestraOn : ''}`}
-                          style={{ background: colorPorDefecto }}
-                          onClick={() => set('colorPunto', '')}
+                          aria-checked={form.colorPunto === CLAVE_SIN_COLOR}
+                          aria-label="Sin color"
+                          title="Sin color"
+                          className={`${styles.muestra} ${styles.muestraSin} ${form.colorPunto === CLAVE_SIN_COLOR ? styles.muestraOn : ''}`}
+                          onClick={() => set('colorPunto', CLAVE_SIN_COLOR)}
                         />
-                      )}
-                      {PALETA_PUNTO.map((c) => (
-                        <button
-                          key={c.token}
-                          type="button"
-                          role="radio"
-                          aria-checked={form.colorPunto === c.token}
-                          aria-label={c.nombre}
-                          title={c.nombre}
-                          className={`${styles.muestra} ${form.colorPunto === c.token ? styles.muestraOn : ''}`}
-                          style={{ background: c.token }}
-                          onClick={() => set('colorPunto', c.token)}
-                        />
+                        <span className={styles.paletaSep} aria-hidden="true" />
+                        {GRISES_PUNTO.map((c) => (
+                          <button
+                            key={c.token}
+                            type="button"
+                            role="radio"
+                            aria-checked={form.colorPunto === c.token}
+                            aria-label={c.nombre}
+                            title={c.nombre}
+                            className={`${styles.muestra} ${form.colorPunto === c.token ? styles.muestraOn : ''}`}
+                            style={{ background: c.token }}
+                            onClick={() => set('colorPunto', c.token)}
+                          />
+                        ))}
+                      </div>
+
+                      {/* La rejilla · una columna por tono, una fila por
+                          luminosidad. Se recorre con la vista, no leyendo. */}
+                      {REJILLA_PUNTO.map((fila, i) => (
+                        <div className={styles.paletaFila} key={i}>
+                          {fila.map((c) => (
+                            <button
+                              key={c.token}
+                              type="button"
+                              role="radio"
+                              aria-checked={form.colorPunto === c.token}
+                              aria-label={c.nombre}
+                              title={c.nombre}
+                              className={`${styles.muestra} ${form.colorPunto === c.token ? styles.muestraOn : ''}`}
+                              style={{ background: c.token }}
+                              onClick={() => set('colorPunto', c.token)}
+                            />
+                          ))}
+                        </div>
                       ))}
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={form.colorPunto === CLAVE_SIN_COLOR}
-                        aria-label="Sin color"
-                        title="Sin color"
-                        className={`${styles.muestra} ${styles.muestraSin} ${form.colorPunto === CLAVE_SIN_COLOR ? styles.muestraOn : ''}`}
-                        onClick={() => set('colorPunto', CLAVE_SIN_COLOR)}
-                      />
                     </div>
                   </Field>
                 </div>

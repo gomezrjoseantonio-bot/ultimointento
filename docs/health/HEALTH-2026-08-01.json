@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-01",
-  "generatedAt": "2026-08-01T22:25:48.482Z",
+  "generatedAt": "2026-08-01T22:36:45.285Z",
   "git": {
     "branch": "claude/new-session-hq2846",
-    "head": "d2f63e8"
+    "head": "3ddc299"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -63,7 +63,7 @@
     {
       "indicador": "hex_hardcoded",
       "antes": 974,
-      "despues": 241,
+      "despues": 243,
       "motivo": "ve #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -190,7 +190,7 @@
       "calibracion": null
     },
     "hex_hardcoded": {
-      "value": 241,
+      "value": 243,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
