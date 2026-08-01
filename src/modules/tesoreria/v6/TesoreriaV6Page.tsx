@@ -863,7 +863,16 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
                 <span className={l.peorQuePrevisto ? styles.rvdeltaWarn : ''}>
                   {importeConSigno(diferencia)}
                 </span>
-                <small>{l.peorQuePrevisto ? 'peor de lo previsto' : 'mejor de lo previsto'}</small>
+                {/* Cuando real y previsto coinciden no es ni mejor ni peor:
+                    decir "mejor" sobre una diferencia de 0 € se lee como que se
+                    ha ganado algo que no existe. */}
+                <small>
+                  {diferencia === 0
+                    ? 'igual que lo previsto'
+                    : l.peorQuePrevisto
+                      ? 'peor de lo previsto'
+                      : 'mejor de lo previsto'}
+                </small>
               </div>
             ) : (
               <>

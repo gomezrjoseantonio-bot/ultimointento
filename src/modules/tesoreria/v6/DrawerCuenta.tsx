@@ -115,7 +115,13 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
       eventos
         .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
         .filter((e) => esPendiente(e))
-        .filter((e) => (e.predictedDate ?? '').slice(0, 10) <= hoy)
+        // Con fecha vacía la comparación `'' <= hoy` es CIERTA, así que un
+        // evento sin `predictedDate` se colaba en Pendientes — y los KPIs sí lo
+        // excluyen, con lo que la bandeja y las cifras contaban cosas distintas.
+        .filter((e) => {
+          const f = (e.predictedDate ?? '').slice(0, 10);
+          return f !== '' && f <= hoy;
+        })
         .map((e) => eventoAItem(e, aliasInmueble))
         .sort((a, b) => b.fecha.localeCompare(a.fecha)),
     [eventos, aliasInmueble, hoy]
