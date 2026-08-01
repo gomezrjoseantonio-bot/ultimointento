@@ -63,12 +63,6 @@ const CHIP_LABEL: Record<ChipEstado, string> = {
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
-export interface CambiosPunteo {
-  fecha?: string;
-  importe?: number;
-  cuentaId?: number;
-}
-
 export interface PunteoListProps {
   items: ItemPunteo[];
   chip: ChipEstado;
@@ -79,8 +73,8 @@ export interface PunteoListProps {
   ocultarCuenta?: boolean;
   /** Variante compacta para el drawer del día. */
   variant?: 'full' | 'drawer';
-  /** Puntear · sin cambios (clic en el círculo) o con cambios (editor). */
-  onConfirmar: (item: ItemPunteo, cambios?: CambiosPunteo) => void | Promise<void>;
+  /** Puntear · un toque en el círculo, con el importe previsto (A4). */
+  onConfirmar: (item: ItemPunteo) => void | Promise<void>;
   /** «No pasó este mes» · descarta esta ocurrencia prevista. */
   onNoPaso: (item: ItemPunteo) => void | Promise<void>;
   /** Marcar una discrepancia como revisada («Entendido»). */
@@ -186,84 +180,6 @@ const Contexto: React.FC<{ item: ItemPunteo; extra?: string }> = ({ item, extra 
   </div>
 );
 
-// ─── Editor inline ──────────────────────────────────────────────────────────
-
-const PunteoEditor: React.FC<{
-  item: ItemPunteo;
-  cuentas: PunteoListProps['cuentas'];
-  onConfirmar: (cambios: CambiosPunteo) => void;
-  onNoPaso: () => void;
-  onCancelar: () => void;
-}> = ({ item, cuentas, onConfirmar, onNoPaso, onCancelar }) => {
-  const [fecha, setFecha] = useState(item.fecha);
-  const [importe, setImporte] = useState(String(Math.abs(item.importe)));
-  const [cuentaId, setCuentaId] = useState<number | ''>(item.cuentaId ?? '');
-
-  const confirmar = () => {
-    const imp = parseFloat(importe.replace(',', '.'));
-    const cambios: CambiosPunteo = {};
-    if (fecha && fecha !== item.fecha) cambios.fecha = fecha;
-    if (Number.isFinite(imp) && imp > 0 && imp !== Math.abs(item.importe)) cambios.importe = imp;
-    if (cuentaId !== '' && cuentaId !== item.cuentaId) cambios.cuentaId = cuentaId as number;
-    onConfirmar(cambios);
-  };
-
-  return (
-    <div className={styles.editor}>
-      <div className={styles.editorTitle}>Confirmar «{item.concepto}»</div>
-      <div className={styles.editorFields}>
-        <div className={styles.editorField}>
-          <label htmlFor={`pe-fecha-${item.key}`}>Fecha real</label>
-          <input
-            id={`pe-fecha-${item.key}`}
-            type="date"
-            className={styles.editorInput}
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-          />
-          <div className={styles.editorWas}>previsto {item.fecha.slice(8, 10)}/{item.fecha.slice(5, 7)}</div>
-        </div>
-        <div className={styles.editorField}>
-          <label htmlFor={`pe-importe-${item.key}`}>Importe real (€)</label>
-          <input
-            id={`pe-importe-${item.key}`}
-            type="text"
-            inputMode="decimal"
-            className={styles.editorInput}
-            value={importe}
-            onChange={(e) => setImporte(e.target.value)}
-          />
-          <div className={styles.editorWas}>previsto {fmtImporte(item.importe)} €</div>
-        </div>
-        <div className={styles.editorField}>
-          <label htmlFor={`pe-cuenta-${item.key}`}>Cuenta real</label>
-          <select
-            id={`pe-cuenta-${item.key}`}
-            className={styles.editorInput}
-            value={cuentaId}
-            onChange={(e) => setCuentaId(e.target.value === '' ? '' : Number(e.target.value))}
-          >
-            <option value="">—</option>
-            {cuentas.map((c) => (
-              <option key={c.id} value={c.id}>{c.label}</option>
-            ))}
-          </select>
-        </div>
-        <span className={styles.editorSpacer} />
-        <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={confirmar}>
-          Confirmar
-        </button>
-        <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={onNoPaso}>
-          No pasó este mes
-        </button>
-        <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={onCancelar}>
-          Cancelar
-        </button>
-      </div>
-    </div>
-  );
-};
-
 // ─── Componente principal ───────────────────────────────────────────────────
 
 const PunteoList: React.FC<PunteoListProps> = ({
@@ -285,7 +201,6 @@ const PunteoList: React.FC<PunteoListProps> = ({
   rowVariant = 'default',
   onEditar,
 }) => {
-  const [editingKey, setEditingKey] = useState<string | null>(null);
   const [gruposAbiertos, setGruposAbiertos] = useState<Record<string, boolean>>({});
   // §4.4 · "grupos en tarjetas PLEGADAS … se abren al buscar": nacen cerrados,
   // así que el estado guarda los que el usuario ha abierto, no los cerrados.
@@ -322,12 +237,6 @@ const PunteoList: React.FC<PunteoListProps> = ({
       .filter(Boolean)
       .join(' ');
 
-  const abrirEditor = (it: ItemPunteo) => {
-    if (it.kind === 'evento' && it.estado === 'previsto') {
-      setEditingKey((k) => (k === it.key ? null : it.key));
-    }
-  };
-
   const renderImporte = (it: ItemPunteo) => (
     <span className={`${styles.importe} ${it.importe > 0 ? styles.importePos : styles.importeNeg}`}>
       {fmtImporte(it.importe)}
@@ -342,15 +251,13 @@ const PunteoList: React.FC<PunteoListProps> = ({
 
   const renderFila = (it: ItemPunteo, hija = false) => (
     <React.Fragment key={it.key}>
-      <div
-        className={rowCls(it, [hija ? styles.rowHija : '', it.kind === 'evento' && it.estado === 'previsto' ? styles.rowEditable : ''].filter(Boolean).join(' '))}
-        onClick={() => abrirEditor(it)}
-        role={it.kind === 'evento' && it.estado === 'previsto' ? 'button' : undefined}
-        tabIndex={it.kind === 'evento' && it.estado === 'previsto' ? 0 : undefined}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') abrirEditor(it);
-        }}
-      >
+      {/* A4 · la fila ya NO abre un editor. Un toque en el círculo confirma y
+          punto; si el importe real difiere, para eso está el lápiz, que abre la
+          ficha de §4.5. Cinco decisiones para decir "sí, esto pasó" era
+          fricción en la acción más repetida de la pantalla. */}
+      <div className={rowCls(it, hija ? styles.rowHija : '')}>
+        {/* La acción principal, a la IZQUIERDA · es lo primero que se busca. */}
+        <PunteoCheck estado={it.estado} concepto={it.concepto} onPuntear={() => onConfirmar(it)} />
         <div className={styles.c1}>
           <div className={styles.concepto}>{it.concepto}</div>
           {!esDrawer ? <Contexto item={it} /> : <Contexto item={it} extra={cuentaLabel(it.cuentaId)} />}
@@ -363,7 +270,6 @@ const PunteoList: React.FC<PunteoListProps> = ({
         )}
         {!esDrawer && !ocultarCuenta && <span className={styles.cuenta}>{cuentaLabel(it.cuentaId)}</span>}
         {renderImporte(it)}
-        <PunteoCheck estado={it.estado} concepto={it.concepto} onPuntear={() => onConfirmar(it)} />
         {rowVariant === 'tesoreria' && (
           // §4.4 · editar y descartar en la fila, al hover. El descartar sale del editor
           // inline y solo existe en esta variante; en las otras vistas la fila no
@@ -398,21 +304,6 @@ const PunteoList: React.FC<PunteoListProps> = ({
           </span>
         )}
       </div>
-      {editingKey === it.key && (
-        <PunteoEditor
-          item={it}
-          cuentas={cuentas}
-          onConfirmar={(cambios) => {
-            setEditingKey(null);
-            onConfirmar(it, cambios);
-          }}
-          onNoPaso={() => {
-            setEditingKey(null);
-            onNoPaso(it);
-          }}
-          onCancelar={() => setEditingKey(null)}
-        />
-      )}
       {it.discrepancia && !it.discrepancia.revisada && onRevisarDiscrepancia && (
         <div className={styles.discNote}>
           <span>

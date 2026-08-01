@@ -59,6 +59,9 @@ const base = {
   saldoHoy: 1000,
   year: 2026,
   month0: 6,
+  // A1 · Pendientes solo lista lo que YA debería haber pasado, así que los
+  // tests necesitan una fecha de "hoy" posterior a los previstos que montan.
+  hoy: '2026-07-31',
   onCerrar: jest.fn(),
   onConfirmar: jest.fn(),
   onDescartar: jest.fn(),
@@ -96,6 +99,57 @@ describe('cabecera', () => {
     );
     // Saldo final sigue siendo el saldo de hoy.
     expect(screen.getAllByText('1.000 €').length).toBeGreaterThan(0);
+  });
+});
+
+// A1 · el defecto más grave del parte: la bandeja listaba 252 "pendientes",
+// entre ellos recibos de diciembre estando a 1 de agosto. Eso no son
+// pendientes, son previsiones futuras. Pendiente = lo que YA debería haber
+// pasado y sigue sin confirmar; es una bandeja que se vacía.
+describe('A1 · Pendientes no mezcla futuro', () => {
+  it('lo que aún no ha llegado NO es trabajo de hoy', () => {
+    render(
+      <DrawerCuenta
+        {...base}
+        hoy="2026-07-15"
+        eventos={[
+          ev({ id: 1, predictedDate: '2026-07-10', description: 'Ya venció' }),
+          ev({ id: 2, predictedDate: '2026-12-20', description: 'Diciembre' }),
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Ya venció')).toBeInTheDocument();
+    expect(screen.queryByText('Diciembre')).not.toBeInTheDocument();
+    // Y el contador cuenta eso y solo eso · un 252 abruma en vez de tranquilizar.
+    expect(screen.getByRole('button', { name: /Pendientes · 1/ })).toBeInTheDocument();
+  });
+
+  it('lo de HOY sí entra · vence hoy y sigue sin confirmar', () => {
+    render(
+      <DrawerCuenta
+        {...base}
+        hoy="2026-07-15"
+        eventos={[ev({ id: 1, predictedDate: '2026-07-15', description: 'Vence hoy' })]}
+      />
+    );
+    expect(screen.getByText('Vence hoy')).toBeInTheDocument();
+  });
+
+  it('lo más reciente arriba · es por donde se empieza a vaciar', () => {
+    render(
+      <DrawerCuenta
+        {...base}
+        hoy="2026-07-31"
+        eventos={[
+          ev({ id: 1, predictedDate: '2026-07-05', description: 'Antiguo' }),
+          ev({ id: 2, predictedDate: '2026-07-28', description: 'Reciente' }),
+        ]}
+      />
+    );
+
+    const conceptos = screen.getAllByText(/Antiguo|Reciente/).map((n) => n.textContent);
+    expect(conceptos).toEqual(['Reciente', 'Antiguo']);
   });
 });
 

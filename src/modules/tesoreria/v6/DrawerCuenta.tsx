@@ -34,6 +34,8 @@ export interface DrawerCuentaProps {
   movimientos: Movement[];
   year: number;
   month0: number;
+  /** ISO yyyy-mm-dd · corta la bandeja de Pendientes (A1). */
+  hoy: string;
   aliasInmueble?: (id: number | string) => string | undefined;
   onCerrar: () => void;
   /** Puntear un previsto · materializa el movimiento y mueve el saldo (§4.6). */
@@ -60,6 +62,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   movimientos,
   year,
   month0,
+  hoy,
   aliasInmueble,
   onCerrar,
   onConfirmar,
@@ -96,14 +99,26 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
 
   // ── Ítems de las dos pestañas ────────────────────────────────────────────
 
-  /** Pendientes: solo lo que aún no ha ocurrido. Un descartado no aparece. */
+  /**
+   * Pendientes · A1 · lo que YA DEBERÍA HABER PASADO y sigue sin confirmar.
+   *
+   * Es una bandeja que se vacía, no un inventario de todo lo que está por
+   * venir. Un recibo de diciembre estando a 1 de agosto no es trabajo de hoy:
+   * vive en el calendario y en el cierre del mes. Colarlo aquí hinchaba el
+   * contador a cientos y conseguía lo contrario de lo que la pantalla busca —
+   * abrumaba en vez de tranquilizar.
+   *
+   * Orden descendente: lo más reciente arriba, que es por donde se empieza.
+   */
   const itemsPendientes = useMemo<ItemPunteo[]>(
     () =>
       eventos
         .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
         .filter((e) => esPendiente(e))
-        .map((e) => eventoAItem(e, aliasInmueble)),
-    [eventos, aliasInmueble]
+        .filter((e) => (e.predictedDate ?? '').slice(0, 10) <= hoy)
+        .map((e) => eventoAItem(e, aliasInmueble))
+        .sort((a, b) => b.fecha.localeCompare(a.fecha)),
+    [eventos, aliasInmueble, hoy]
   );
 
   /** Todo {mes}: previsión y realidad del mes, que es una vista de consulta. */

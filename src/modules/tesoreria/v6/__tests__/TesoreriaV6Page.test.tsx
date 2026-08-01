@@ -159,7 +159,16 @@ describe('§4.10 · cómo va el mes', () => {
     montarDb({
       accounts: [cuenta(1)],
       treasuryEvents: [
-        evento({ type: 'expense', amount: 1838.42, predictedDate: enEsteMes(5), status: 'executed' }),
+        // A2 · la desviación compara el PREVISTO ORIGINAL (`amount`) con lo que
+        // de verdad costó (`actualAmount`), movimiento a movimiento. Antes se
+        // comparaba contra el total de gastos del mes y salía 0 € siempre.
+        evento({
+          type: 'expense',
+          amount: 1838.42,
+          actualAmount: 1473.42,
+          predictedDate: enEsteMes(5),
+          status: 'executed',
+        }),
       ],
       movements: [
         {
