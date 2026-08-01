@@ -151,7 +151,13 @@ const TesoreriaV6Page: React.FC = () => {
       movimientos: sinBorradores(movimientos ?? [], borradores),
       inmuebles: (properties ?? [])
         .filter((p): p is { id: number; alias?: string; address?: string } => p.id != null)
-        .map((p) => ({ id: p.id, alias: p.alias || p.address || `Inmueble ${p.id}` })),
+        // §2.2 · ningún identificador interno visible. El respaldo era
+        // `Inmueble ${id}`, y eso reintroducía por detrás justo lo que el
+        // adaptador ya no pinta: un número de fila de base de datos. Si un
+        // inmueble no tiene ni alias ni dirección, se queda sin nombre y quien
+        // lo pinte decide qué hacer — que es siempre mejor que enseñar un id.
+        .map((p) => ({ id: p.id, alias: p.alias || p.address || '' }))
+        .filter((p) => p.alias !== ''),
     });
     setOrden(ordenGuardado);
     setCargando(false);
