@@ -27,6 +27,7 @@ import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { esPendiente } from '../../../services/tesoreriaV6Metrics';
 import { construirDias, resumirMes, huecosIniciales } from './calendarioDias';
 import { colorDeBanco } from './bancoColores';
+import { mesMinimo, puedeRetroceder } from './limiteMeses';
 import { importeConSigno, importeSaldo, nombreMes, fechaLarga } from './formatoV6';
 import chasis from './DrawerV6.module.css';
 import styles from './DrawerCalendario.module.css';
@@ -122,6 +123,34 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
     [itemsDelDia]
   );
 
+  /**
+   * §2.3 · desde cuándo hay saldo del que partir.
+   *
+   * No es un campo de la cuenta: el saldo inicial es un movimiento marcado, así
+   * que la fecha sale del más antiguo de ellos. Por debajo de ahí un cierre
+   * pintado sería inventado, y el mes ni se muestra ni se navega.
+   */
+  const saldoInicialDesde = useMemo(() => {
+    let min: string | undefined;
+    for (const m of movimientos) {
+      if (!m.isOpeningBalance) continue;
+      const f = (m.date ?? '').slice(0, 10);
+      if (f && (!min || f < min)) min = f;
+    }
+    return min;
+  }, [movimientos]);
+
+  // §2.3 · hasta dónde se puede retroceder · el tope es el trabajo que queda
+  // atrás, no una fecha arbitraria.
+  const hayAtras = useMemo(
+    () =>
+      puedeRetroceder(
+        { year, month0 },
+        mesMinimo({ eventos, hoy, saldoDesde: saldoInicialDesde })
+      ),
+    [year, month0, eventos, hoy, saldoInicialDesde]
+  );
+
   const irAMes = (delta: number) => {
     const d = new Date(year, month0 + delta, 1);
     setDiaElegido(null);
@@ -152,10 +181,14 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
         <div className={chasis.hd}>
           <div className={chasis.hdTop}>
             <div className={styles.nav}>
+              {/* §2.3 · al llegar al tope la flecha se DESACTIVA, no lleva a
+                  meses vacíos. Tesorería mira hacia delante: atrás solo se va
+                  si queda trabajo, y por debajo del saldo inicial ni eso. */}
               <button
                 type="button"
-                className={styles.navBtn}
-                onClick={() => irAMes(-1)}
+                className={`${styles.navBtn} ${!hayAtras ? styles.navBtnOff : ''}`}
+                onClick={() => hayAtras && irAMes(-1)}
+                disabled={!hayAtras}
                 aria-label="Mes anterior"
               >
                 <Icons.ChevronLeft size={16} strokeWidth={2} />

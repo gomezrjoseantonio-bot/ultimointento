@@ -189,3 +189,10 @@
   border-color: var(--atlas-v5-gold);
   color: var(--atlas-v5-ink);
 }
+
+/* §2.3 · la flecha del tope es INVISIBLE, no un hueco muerto: un botón apagado
+   que sigue ahí invita a pulsarlo y no responde. */
+.navBtnOff {
+  opacity: 0;
+  pointer-events: none;
+}
