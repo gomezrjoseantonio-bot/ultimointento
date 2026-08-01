@@ -255,6 +255,69 @@
      no sueltos en un módulo. El consumidor es
      `modules/tesoreria/v6/bancoColores.ts`.
      ============================================================ */
+  /* §10 · paleta del PUNTO DE CUENTA · rejilla completa.
+     Una columna por tono, una fila por luminosidad. Vive aquí, con el resto
+     de la paleta, y no en el módulo que la pinta: es color de producto, y
+     este fichero es donde el marcador de salud espera encontrarlo. */
+  --atlas-v5-punto-rojo-1: hsl(0 70% 82%);
+  --atlas-v5-punto-naranja-1: hsl(25 70% 82%);
+  --atlas-v5-punto-ambar-1: hsl(45 70% 82%);
+  --atlas-v5-punto-lima-1: hsl(75 70% 82%);
+  --atlas-v5-punto-verde-1: hsl(150 70% 82%);
+  --atlas-v5-punto-turquesa-1: hsl(175 70% 82%);
+  --atlas-v5-punto-celeste-1: hsl(200 70% 82%);
+  --atlas-v5-punto-azul-1: hsl(225 70% 82%);
+  --atlas-v5-punto-violeta-1: hsl(265 70% 82%);
+  --atlas-v5-punto-rosa-1: hsl(320 70% 82%);
+  --atlas-v5-punto-rojo-2: hsl(0 72% 68%);
+  --atlas-v5-punto-naranja-2: hsl(25 72% 68%);
+  --atlas-v5-punto-ambar-2: hsl(45 72% 68%);
+  --atlas-v5-punto-lima-2: hsl(75 72% 68%);
+  --atlas-v5-punto-verde-2: hsl(150 72% 68%);
+  --atlas-v5-punto-turquesa-2: hsl(175 72% 68%);
+  --atlas-v5-punto-celeste-2: hsl(200 72% 68%);
+  --atlas-v5-punto-azul-2: hsl(225 72% 68%);
+  --atlas-v5-punto-violeta-2: hsl(265 72% 68%);
+  --atlas-v5-punto-rosa-2: hsl(320 72% 68%);
+  --atlas-v5-punto-rojo-3: hsl(0 74% 52%);
+  --atlas-v5-punto-naranja-3: hsl(25 74% 52%);
+  --atlas-v5-punto-ambar-3: hsl(45 74% 52%);
+  --atlas-v5-punto-lima-3: hsl(75 74% 52%);
+  --atlas-v5-punto-verde-3: hsl(150 74% 52%);
+  --atlas-v5-punto-turquesa-3: hsl(175 74% 52%);
+  --atlas-v5-punto-celeste-3: hsl(200 74% 52%);
+  --atlas-v5-punto-azul-3: hsl(225 74% 52%);
+  --atlas-v5-punto-violeta-3: hsl(265 74% 52%);
+  --atlas-v5-punto-rosa-3: hsl(320 74% 52%);
+  --atlas-v5-punto-rojo-4: hsl(0 76% 40%);
+  --atlas-v5-punto-naranja-4: hsl(25 76% 40%);
+  --atlas-v5-punto-ambar-4: hsl(45 76% 40%);
+  --atlas-v5-punto-lima-4: hsl(75 76% 40%);
+  --atlas-v5-punto-verde-4: hsl(150 76% 40%);
+  --atlas-v5-punto-turquesa-4: hsl(175 76% 40%);
+  --atlas-v5-punto-celeste-4: hsl(200 76% 40%);
+  --atlas-v5-punto-azul-4: hsl(225 76% 40%);
+  --atlas-v5-punto-violeta-4: hsl(265 76% 40%);
+  --atlas-v5-punto-rosa-4: hsl(320 76% 40%);
+  --atlas-v5-punto-rojo-5: hsl(0 72% 28%);
+  --atlas-v5-punto-naranja-5: hsl(25 72% 28%);
+  --atlas-v5-punto-ambar-5: hsl(45 72% 28%);
+  --atlas-v5-punto-lima-5: hsl(75 72% 28%);
+  --atlas-v5-punto-verde-5: hsl(150 72% 28%);
+  --atlas-v5-punto-turquesa-5: hsl(175 72% 28%);
+  --atlas-v5-punto-celeste-5: hsl(200 72% 28%);
+  --atlas-v5-punto-azul-5: hsl(225 72% 28%);
+  --atlas-v5-punto-violeta-5: hsl(265 72% 28%);
+  --atlas-v5-punto-rosa-5: hsl(320 72% 28%);
+
+  /* Grises · van aparte: el gris no tiene tono y no cabe en una columna. */
+  --atlas-v5-punto-gris-1: hsl(0 0% 0%);
+  --atlas-v5-punto-gris-2: hsl(0 0% 25%);
+  --atlas-v5-punto-gris-3: hsl(0 0% 45%);
+  --atlas-v5-punto-gris-4: hsl(0 0% 62%);
+  --atlas-v5-punto-gris-5: hsl(0 0% 78%);
+  --atlas-v5-punto-gris-6: hsl(0 0% 92%);
+
   --atlas-v5-bank-santander: #EC0000;
   --atlas-v5-bank-sabadell: #024EA5;
   --atlas-v5-bank-bbva: #004481;

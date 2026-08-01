@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-01",
-  "generatedAt": "2026-08-01T22:36:45.285Z",
+  "generatedAt": "2026-08-01T22:48:28.290Z",
   "git": {
     "branch": "claude/new-session-hq2846",
-    "head": "3ddc299"
+    "head": "058b496"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -34,7 +34,7 @@
       "indicador": "emojis_ui",
       "fecha": "2026-07-20",
       "anterior": 64,
-      "nueva": 64,
+      "nueva": 63,
       "motivo": "Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose."
     },
     {
@@ -63,7 +63,7 @@
     {
       "indicador": "hex_hardcoded",
       "antes": 974,
-      "despues": 243,
+      "despues": 241,
       "motivo": "ve #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -84,7 +84,7 @@
     {
       "indicador": "emojis_ui",
       "antes": 64,
-      "despues": 64,
+      "despues": 63,
       "motivo": "Frente A · ve cadenas .ts con señal de entrega a UI (toast/message:/…) · antes solo .tsx",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -190,7 +190,7 @@
       "calibracion": null
     },
     "hex_hardcoded": {
-      "value": 243,
+      "value": 241,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -200,7 +200,7 @@
       "calibracion": null
     },
     "emojis_ui": {
-      "value": 64,
+      "value": 63,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -210,7 +210,7 @@
       "calibracion": {
         "fecha": "2026-07-20",
         "anterior": 64,
-        "nueva": 64,
+        "nueva": 63,
         "motivo": "Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose."
       }
     },
@@ -318,12 +318,12 @@
       "calibracion": null
     },
     "tests_rojos": {
-      "value": null,
+      "value": 40,
       "direction": "down",
       "objetivo": 0,
-      "measurable": false,
+      "measurable": true,
       "approx": false,
-      "note": "NO MEDIBLE · usa `npm run health:ci` (--with-tests) para ejecutar la suite",
+      "note": "medido vía react-scripts test (CI)",
       "detail": null,
       "calibracion": null
     },

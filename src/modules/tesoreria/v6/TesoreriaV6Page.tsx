@@ -153,11 +153,14 @@ const TesoreriaV6Page: React.FC = () => {
         .filter((p): p is { id: number; alias?: string; address?: string } => p.id != null)
         // §2.2 · ningún identificador interno visible. El respaldo era
         // `Inmueble ${id}`, y eso reintroducía por detrás justo lo que el
-        // adaptador ya no pinta: un número de fila de base de datos. Si un
-        // inmueble no tiene ni alias ni dirección, se queda sin nombre y quien
-        // lo pinte decide qué hacer — que es siempre mejor que enseñar un id.
-        .map((p) => ({ id: p.id, alias: p.alias || p.address || '' }))
-        .filter((p) => p.alias !== ''),
+        // adaptador ya no pinta: un número de fila de base de datos.
+        //
+        // Pero tampoco se filtran: un inmueble sin nombre existe igual, y
+        // quitarlo de aquí lo sacaba del selector de la ficha — el usuario ya
+        // no podía asignarle un movimiento, que es peor que un rótulo feo.
+        // "Sin nombre" dice la verdad y se puede elegir; el mismo rótulo que
+        // usa `punteoAgrupacion` al agrupar.
+        .map((p) => ({ id: p.id, alias: p.alias || p.address || 'Sin nombre' })),
     });
     setOrden(ordenGuardado);
     setCargando(false);

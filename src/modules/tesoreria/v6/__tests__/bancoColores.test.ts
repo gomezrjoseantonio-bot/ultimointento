@@ -14,6 +14,8 @@ import {
   REJILLA_PUNTO, GRISES_PUNTO,
 } from '../bancoColores';
 import type { Account } from '../../../../services/db';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const cuenta = (over: Partial<Account> = {}): Account =>
   ({
@@ -77,10 +79,28 @@ describe('lo que propone el selector', () => {
 });
 
 describe('la rejilla de color (§10)', () => {
-  it('ningún hex suelto · el valor es CSS calculado, no un color escrito a mano', () => {
-    for (const c of [...REJILLA_PUNTO.flat(), ...GRISES_PUNTO]) {
-      expect(c.token).not.toMatch(/#[0-9a-f]{3,8}/i);
-      expect(c.token).toMatch(/^hsl\(/);
+  // La geometría se comprueba contra los tokens REALES, no contra el nombre de
+  // la variable: que se llame "rojo-3" no garantiza que sea rojo. Se lee el
+  // fichero de tokens y se mira el valor.
+  const tokensCss = readFileSync(
+    join(__dirname, '../../../../design-system/v5/tokens.css'),
+    'utf8'
+  );
+
+  /** `var(--x)` → el `hsl(...)` que tiene declarado en tokens.css. */
+  const valorDe = (token: string): string => {
+    const nombre = token.match(/^var\((--[a-z0-9-]+)\)$/)![1];
+    const m = tokensCss.match(new RegExp(`\\${nombre}:\\s*([^;]+);`));
+    if (!m) throw new Error(`${nombre} no está declarado en tokens.css`);
+    return m[1].trim();
+  };
+
+  const todas = [...REJILLA_PUNTO.flat(), ...GRISES_PUNTO];
+
+  it('toda muestra apunta a un token declarado · nada de color suelto', () => {
+    for (const c of todas) {
+      expect(c.token).toMatch(/^var\(--atlas-v5-punto-[a-z0-9-]+\)$/);
+      expect(valorDe(c.token)).toMatch(/^hsl\(/);
     }
   });
 
@@ -91,7 +111,7 @@ describe('la rejilla de color (§10)', () => {
   });
 
   it('cada COLUMNA comparte tono · es lo que deja recorrerla con la vista', () => {
-    const tono = (t: string) => t.match(/^hsl\((\d+)/)![1];
+    const tono = (t: string) => valorDe(t).match(/^hsl\((\d+)/)![1];
     for (let col = 0; col < REJILLA_PUNTO[0].length; col++) {
       const tonos = new Set(REJILLA_PUNTO.map((f) => tono(f[col].token)));
       expect(tonos.size).toBe(1);
@@ -99,7 +119,7 @@ describe('la rejilla de color (§10)', () => {
   });
 
   it('cada FILA va de más clara a más oscura', () => {
-    const luz = (t: string) => Number(t.match(/(\d+)%\)$/)![1]);
+    const luz = (t: string) => Number(valorDe(t).match(/(\d+)%\)$/)![1]);
     const porFila = REJILLA_PUNTO.map((f) => luz(f[0].token));
     for (let i = 1; i < porFila.length; i++) {
       expect(porFila[i]).toBeLessThan(porFila[i - 1]);
@@ -107,17 +127,15 @@ describe('la rejilla de color (§10)', () => {
   });
 
   it('no repite ningún color · dos muestras iguales no sirven para elegir', () => {
-    const todos = [...REJILLA_PUNTO.flat(), ...GRISES_PUNTO].map((c) => c.token);
-    expect(new Set(todos).size).toBe(todos.length);
+    const valores = todas.map((c) => valorDe(c.token));
+    expect(new Set(valores).size).toBe(valores.length);
   });
 
   it('toda muestra tiene nombre · el selector se usa también sin ver', () => {
-    for (const c of [...REJILLA_PUNTO.flat(), ...GRISES_PUNTO]) {
-      expect(c.nombre.trim().length).toBeGreaterThan(0);
-    }
+    for (const c of todas) expect(c.nombre.trim().length).toBeGreaterThan(0);
   });
 
   it('los grises no tienen tono · por eso van aparte de la rejilla', () => {
-    for (const c of GRISES_PUNTO) expect(c.token).toMatch(/^hsl\(0 0%/);
+    for (const c of GRISES_PUNTO) expect(valorDe(c.token)).toMatch(/^hsl\(0 0%/);
   });
 });

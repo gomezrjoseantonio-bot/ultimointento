@@ -186,8 +186,10 @@ export function analizarDuplicados(eventos: TreasuryEvent[]): InformeDuplicados 
  *    es la que se queda y se van todas las previstas; si no hay ninguna firme,
  *    se conserva la más antigua.
  *
- * Es idempotente: pasarlo dos veces no borra de más, porque la segunda vez ya
- * no hay grupos con copias.
+ * Es idempotente: la segunda pasada no borra nada porque no queda ninguna
+ * `predicted` sobrante que quitar. Los grupos SIGUEN existiendo —una confirmada
+ * y una conciliada del mismo cargo siguen siendo dos copias— pero ninguna de
+ * ellas es candidata, así que la lista de borrado sale vacía.
  */
 export async function limpiarDuplicados(): Promise<{
   borradas: number;
@@ -249,11 +251,16 @@ export async function diagnosticarDuplicados(): Promise<InformeDuplicados> {
  *
  * Las páginas `/dev/*` están apagadas en producción
  * (`REACT_APP_ENABLE_DEV_PAGES`), y los datos que hay que contar están
- * justamente en el navegador de producción. Esto es de SOLO LECTURA —no borra
- * ni escribe nada— así que puede estar siempre disponible sin riesgo.
+ * justamente en el navegador de producción.
  *
- *     await atlasDiagnostico.duplicados()   → informe legible por consola
- *     await atlasDiagnostico.duplicadosRaw() → el objeto, para inspeccionarlo
+ *     await atlasDiagnostico.duplicados()    → informe legible · SOLO LEE
+ *     await atlasDiagnostico.duplicadosRaw() → el objeto · SOLO LEE
+ *     await atlasDiagnostico.limpiar()       → ⚠ BORRA en IndexedDB
+ *
+ * `limpiar()` NO es de solo lectura: elimina previsiones. Es acotado —solo
+ * `predicted` sobrantes, nunca lo confirmado ni lo conciliado, y siempre deja
+ * una copia de cada grupo— pero borra, y borrar no se deshace. Por eso avisa
+ * antes de tocar nada y cuenta exactamente qué se llevó.
  */
 export function registrarDiagnosticoEnConsola(): void {
   if (typeof window === 'undefined') return;
@@ -271,6 +278,13 @@ export function registrarDiagnosticoEnConsola(): void {
     },
     duplicadosRaw: diagnosticarDuplicados,
     limpiar: async () => {
+      // Se avisa ANTES de tocar nada: `duplicados()` solo lee, y quien llegue a
+      // `limpiar()` desde ahí puede no haber reparado en que esta sí borra.
+      console.warn(
+        'atlasDiagnostico.limpiar() BORRA previsiones duplicadas de IndexedDB.\n' +
+          'Solo las previstas sobrantes · nunca lo confirmado ni lo conciliado · ' +
+          'siempre deja una copia de cada grupo. No se deshace.'
+      );
       const r = await limpiarDuplicados();
       if (r.borradas === 0) {
         console.log('No hay duplicados que borrar.');

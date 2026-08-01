@@ -61,23 +61,20 @@ export const CLAVE_SIN_COLOR = 'sin-color';
  * elección a los bancos que ATLAS conoce. El punto es del USUARIO —sirve para
  * que reconozca sus cuentas de un vistazo— así que la elección es suya.
  *
- * La rejilla se genera en HSL en vez de escribir cincuenta hex a mano: así los
- * matices quedan repartidos de verdad por el círculo cromático, cada columna
- * comparte tono y cada fila luminosidad, y no hay una lista que mantener a mano
- * cada vez que se quiera afinar un tono.
+ * Los colores viven en `tokens.css`, con el resto de la paleta; aquí solo se
+ * arma la rejilla que los ordena. Se generó allí en HSL para que cada columna
+ * comparta tono y cada fila luminosidad por construcción y no por haberlo
+ * escrito bien cincuenta y seis veces.
  */
 
-/** Tonos de las columnas · repartidos por el círculo, arrancando en rojo. */
-const TONOS = [0, 25, 45, 75, 150, 175, 200, 225, 265, 320];
+/** Columnas · un tono cada una, repartidos por el círculo desde el rojo. */
+const TONOS = [
+  'rojo', 'naranja', 'ambar', 'lima', 'verde',
+  'turquesa', 'celeste', 'azul', 'violeta', 'rosa',
+] as const;
 
-/** Luminosidad de cada fila · de claro a oscuro. */
-const NIVELES = [
-  { l: 82, s: 70 },
-  { l: 68, s: 72 },
-  { l: 52, s: 74 },
-  { l: 40, s: 76 },
-  { l: 28, s: 72 },
-];
+/** Filas · de más clara a más oscura. */
+const NIVELES = ['muy claro', 'claro', 'medio', 'oscuro', 'muy oscuro'];
 
 export interface MuestraColor {
   /** Valor CSS que se guarda en `Account.colorPunto`. */
@@ -86,39 +83,26 @@ export interface MuestraColor {
   nombre: string;
 }
 
-const NOMBRE_TONO: Record<number, string> = {
-  0: 'Rojo',
-  25: 'Naranja',
-  45: 'Ámbar',
-  75: 'Lima',
-  150: 'Verde',
-  175: 'Turquesa',
-  200: 'Celeste',
-  225: 'Azul',
-  265: 'Violeta',
-  320: 'Rosa',
-};
-
-const NOMBRE_NIVEL = ['muy claro', 'claro', 'medio', 'oscuro', 'muy oscuro'];
+const capitalizar = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** La rejilla · filas de luminosidad × columnas de tono. */
-export const REJILLA_PUNTO: MuestraColor[][] = NIVELES.map((n, fila) =>
-  TONOS.map((h) => ({
-    token: `hsl(${h} ${n.s}% ${n.l}%)`,
-    nombre: `${NOMBRE_TONO[h]} ${NOMBRE_NIVEL[fila]}`,
+export const REJILLA_PUNTO: MuestraColor[][] = NIVELES.map((nivel, fila) =>
+  TONOS.map((tono) => ({
+    token: `var(--atlas-v5-punto-${tono}-${fila + 1})`,
+    nombre: `${capitalizar(tono)} ${nivel}`,
   }))
 );
 
 /**
- * Fila de grises · aparte de la rejilla de color.
+ * Fila de grises · aparte de la rejilla.
  *
  * Un punto gris es una elección legítima —"esta cuenta no quiero que cante"— y
- * en una rejilla de matices no cabe: el gris no tiene tono.
+ * en una rejilla de matices no cabe: el gris no tiene tono, así que no le
+ * corresponde ninguna columna.
  */
-export const GRISES_PUNTO: MuestraColor[] = [0, 25, 45, 62, 78, 92].map((l) => ({
-  token: `hsl(0 0% ${l}%)`,
-  nombre: l === 0 ? 'Negro' : l >= 92 ? 'Blanco' : `Gris ${l}%`,
-}));
+export const GRISES_PUNTO: MuestraColor[] = [
+  'Negro', 'Gris muy oscuro', 'Gris oscuro', 'Gris medio', 'Gris claro', 'Blanco',
+].map((nombre, i) => ({ token: `var(--atlas-v5-punto-gris-${i + 1})`, nombre }));
 
 
 /**

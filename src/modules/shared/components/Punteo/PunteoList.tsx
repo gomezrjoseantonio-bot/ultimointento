@@ -327,7 +327,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
       // §6.3 · la rejilla tiene que declarar TANTAS columnas como elementos
       // pinta la fila. Con `sinOrigen` y `ocultarCuenta` se quedaba con menos
       // elementos que columnas, y las acciones —que van al final— caían a una
-      // línea nueva: por eso el lápiz y la ✕ aparecían DEBAJO y la fila medía
+      // línea nueva: por eso editar y descartar aparecían DEBAJO y la fila medía
       // el doble de lo necesario.
       esDrawer
         ? styles.rowCompact
@@ -430,9 +430,10 @@ const PunteoList: React.FC<PunteoListProps> = ({
       {it.discrepancia && !it.discrepancia.revisada && onRevisarDiscrepancia && (
         <div className={styles.discNote}>
           <span>
-            Confirmaste <b>{fmtImporte(it.discrepancia.importeConfirmado)} €</b> · el banco liquidó{' '}
-            <b>{fmtImporte(it.discrepancia.importeBanco)} €</b> · diferencia{' '}
-            <b>{fmtImporte(it.discrepancia.delta)} €</b>
+            {/* El € lo pone el formateador · escribirlo aquí daba "40,29 € €". */}
+            Confirmaste <b>{fmtImporte(it.discrepancia.importeConfirmado)}</b> · el banco liquidó{' '}
+            <b>{fmtImporte(it.discrepancia.importeBanco)}</b> · diferencia{' '}
+            <b>{fmtImporte(it.discrepancia.delta)}</b>
           </span>
           <button type="button" className={styles.discOk} onClick={() => onRevisarDiscrepancia(it)}>
             Entendido <Icons.Close size={10} strokeWidth={2.5} />
