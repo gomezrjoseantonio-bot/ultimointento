@@ -79,7 +79,10 @@ describe('lo que propone el selector', () => {
 describe('la paleta', () => {
   it('solo ofrece tokens · ningún hex suelto (§5)', () => {
     for (const c of PALETA_PUNTO) {
-      expect(c.token).toMatch(/^var\(--atlas-v5-bank-[a-z]+\)$/);
+      // §10 · la paleta ya no sale de marcas de banco: entre ellas había dos
+      // rojos y cinco azules que a 8px no se distinguen, y el punto existe
+      // justo para separar dos cuentas del mismo banco.
+      expect(c.token).toMatch(/^var\(--atlas-v5-punto-[a-z]+\)$/);
     }
   });
 

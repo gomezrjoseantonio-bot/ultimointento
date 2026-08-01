@@ -34,12 +34,16 @@ describe('CuentaWizard · saldo inicial · fechas (P3)', () => {
     expect(fecha.value).toBe(todayISO());
   });
 
-  it('la vista previa muestra el mismo día que el campo · sin off-by-one', () => {
+  it('el campo conserva el día que se escribe · sin off-by-one', () => {
+    // Este test nació contra la vista previa, que enseñaba un día menos al
+    // formatear en horario local. La vista previa se eliminó en §10 —enseñaba
+    // una cuenta que no era la real y no reaccionaba—, pero el off-by-one
+    // sigue siendo un riesgo vivo en cuanto alguien vuelva a formatear esta
+    // fecha, así que el test se queda apuntando al dato en vez de al pintado.
     render(<CuentaWizard open onClose={() => {}} />);
     const fecha = document.querySelector('input[type="date"]') as HTMLInputElement;
     fireEvent.change(fecha, { target: { value: '2026-06-08' } });
 
-    expect(screen.getByText(/8 jun 2026/)).toBeInTheDocument();
-    expect(screen.queryByText(/7 jun 2026/)).not.toBeInTheDocument();
+    expect(fecha.value).toBe('2026-06-08');
   });
 });

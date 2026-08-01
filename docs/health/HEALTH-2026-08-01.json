@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-01",
-  "generatedAt": "2026-08-01T22:04:47.832Z",
+  "generatedAt": "2026-08-01T22:18:41.117Z",
   "git": {
     "branch": "claude/new-session-hq2846",
-    "head": "63d46f8"
+    "head": "47a1a27"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -270,8 +270,8 @@
         "1461 · src/services/declaracionOnboardingService.ts",
         "1421 · scripts/health.mjs",
         "1388 · src/services/propertySaleService.ts",
-        "1273 · src/components/cuenta/CuentaWizard.tsx",
-        "1259 · src/pages/GestionPersonal/wizards/NominaPage.tsx"
+        "1259 · src/pages/GestionPersonal/wizards/NominaPage.tsx",
+        "1246 · src/services/ocr/normalize-docai.ts"
       ],
       "calibracion": null
     },

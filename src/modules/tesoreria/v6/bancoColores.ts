@@ -53,19 +53,26 @@ export const CLAVE_SIN_COLOR = 'sin-color';
  * rejilla para que el usuario pueda distinguir a ojo dos cuentas del mismo
  * banco — que es el caso que el color automático no resuelve.
  */
+/**
+ * §10 · la paleta que se ofrece al elegir el punto de una cuenta.
+ *
+ * Eran doce colores tomados de marcas de banco, y entre ellos había dos rojos
+ * (Santander, Openbank) y cinco azules (claro, medio, marino, índigo, Revolut)
+ * que a 8 píxeles no se distinguen. Eso rompía justo aquello para lo que sirve
+ * el punto: separar de un vistazo dos cuentas del MISMO banco.
+ *
+ * Ocho tonos repartidos por el círculo cromático. Menos opciones, pero todas
+ * sirven — y ocho caben en una fila sin que la rejilla se parta.
+ */
 export const PALETA_PUNTO: Array<{ token: string; nombre: string }> = [
-  { token: 'var(--atlas-v5-bank-santander)', nombre: 'Rojo' },
-  { token: 'var(--atlas-v5-bank-ing)', nombre: 'Naranja' },
-  { token: 'var(--atlas-v5-bank-bankinter)', nombre: 'Ámbar' },
-  { token: 'var(--atlas-v5-bank-cajamar)', nombre: 'Lima' },
-  { token: 'var(--atlas-v5-bank-unicaja)', nombre: 'Verde' },
-  { token: 'var(--atlas-v5-bank-abanca)', nombre: 'Turquesa' },
-  { token: 'var(--atlas-v5-bank-kutxabank)', nombre: 'Azul claro' },
-  { token: 'var(--atlas-v5-bank-revolut)', nombre: 'Azul' },
-  { token: 'var(--atlas-v5-bank-sabadell)', nombre: 'Azul medio' },
-  { token: 'var(--atlas-v5-bank-bbva)', nombre: 'Azul marino' },
-  { token: 'var(--atlas-v5-bank-caixabank)', nombre: 'Índigo' },
-  { token: 'var(--atlas-v5-bank-openbank)', nombre: 'Carmesí' },
+  { token: 'var(--atlas-v5-punto-rojo)', nombre: 'Rojo' },
+  { token: 'var(--atlas-v5-punto-naranja)', nombre: 'Naranja' },
+  { token: 'var(--atlas-v5-punto-ambar)', nombre: 'Ámbar' },
+  { token: 'var(--atlas-v5-punto-verde)', nombre: 'Verde' },
+  { token: 'var(--atlas-v5-punto-turquesa)', nombre: 'Turquesa' },
+  { token: 'var(--atlas-v5-punto-azul)', nombre: 'Azul' },
+  { token: 'var(--atlas-v5-punto-violeta)', nombre: 'Violeta' },
+  { token: 'var(--atlas-v5-punto-rosa)', nombre: 'Rosa' },
 ];
 
 /**

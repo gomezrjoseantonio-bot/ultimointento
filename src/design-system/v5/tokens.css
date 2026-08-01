@@ -255,6 +255,21 @@
      no sueltos en un módulo. El consumidor es
      `modules/tesoreria/v6/bancoColores.ts`.
      ============================================================ */
+  /* §10 · paleta del PUNTO DE CUENTA.
+     Distinta de los colores de banco de abajo: aquellos son marcas, y elegir
+     entre ellos daba dos rojos y cinco azules casi idénticos — inútil justo
+     para lo que sirve el punto, que es distinguir a ojo dos cuentas del mismo
+     banco. Estos ocho están repartidos por el círculo cromático para que dos
+     cualesquiera se diferencien de un vistazo, también en una tira pequeña. */
+  --atlas-v5-punto-rojo: #D92D20;
+  --atlas-v5-punto-naranja: #EF6820;
+  --atlas-v5-punto-ambar: #DC9A06;
+  --atlas-v5-punto-verde: #099250;
+  --atlas-v5-punto-turquesa: #0E9AA7;
+  --atlas-v5-punto-azul: #1570EF;
+  --atlas-v5-punto-violeta: #7A5AF8;
+  --atlas-v5-punto-rosa: #DD2590;
+
   --atlas-v5-bank-santander: #EC0000;
   --atlas-v5-bank-sabadell: #024EA5;
   --atlas-v5-bank-bbva: #004481;

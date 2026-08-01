@@ -24,14 +24,10 @@ import {
   X as IconX,
   Check as IconCheck,
   AlertCircle as IconAlert,
-  Star as IconStar,
-  Briefcase as IconBriefcase,
-  TrendingUp as IconTrending,
-  List as IconList,
 } from 'lucide-react';
 
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { Account, initDB } from '../../services/db';
+import { Account } from '../../services/db';
 import {
   cuentasService,
   type CreateAccountData,
@@ -126,10 +122,6 @@ const FRECUENCIAS: Array<{ value: FrecuenciaLiquidacion; label: string }> = [
   { value: 'anual', label: 'Anual' },
 ];
 
-const MESES_CORTOS = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-];
 
 const todayISO = (): string => new Date().toISOString().split('T')[0];
 
@@ -163,37 +155,12 @@ const parseInt31 = (raw: string): number => {
   return Math.max(1, Math.min(31, n));
 };
 
-// FIX P3 (off-by-one) · un string date-only "YYYY-MM-DD" se construye con
-// componentes LOCALES. `new Date("YYYY-MM-DD")` se parsea como medianoche UTC y
-// al formatear en TZ local cae al día anterior (campo "08/06/2026" vs preview
-// "7 jun 2026"). Misma corrección de TZ que el fix de PUNTO 3 (`toLocalDate` en
-// NuevoContratoWizard). Local al wizard.
-const toLocalDate = (iso: string): Date | null => {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : d;
-};
-
-const fmtFechaCorta = (iso: string): string => {
-  if (!iso) return '';
-  const d = toLocalDate(iso);
-  if (!d) return iso;
-  return `${d.getDate()} ${MESES_CORTOS[d.getMonth()]} ${d.getFullYear()}`;
-};
 
 const last4Iban = (iban: string): string => {
   const clean = (iban || '').replace(/\s/g, '');
   return clean.slice(-4) || '????';
 };
 
-const avatarLetters = (alias: string, banco: string): string => {
-  const src = (alias || banco || 'CC').trim();
-  if (!src) return 'CC';
-  const parts = src.split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return src.slice(0, 2).toUpperCase();
-};
 
 const inferBankFromAccount = (acc: Account): string => {
   const name = acc.banco?.name || acc.bank || '';
@@ -350,7 +317,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [nominaBadge, setNominaBadge] = useState<{ empresa: string; mensual: number } | null>(null);
-  const [movimientosCount, setMovimientosCount] = useState<number | null>(null);
   /** `undefined` = aún comprobando · `null` = se puede dar de baja · objeto = bloqueada. */
   const [bloqueoBaja, setBloqueoBaja] = useState<MotivoBloqueo | null | undefined>(undefined);
   const dialogRef = useFocusTrap(open);
@@ -374,11 +340,10 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     return () => { alive = false; };
   }, [open]);
 
-  // Cargar nómina vinculada (badge "Recibe nómina X") y movimientos vinculados
+  // Cargar nómina vinculada · alimenta el subtítulo de la cabecera
   useEffect(() => {
     if (!open || !editingAccount?.id) {
       setNominaBadge(null);
-      setMovimientosCount(null);
       setBloqueoBaja(undefined);
       return;
     }
@@ -397,15 +362,10 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       } catch (err) {
         console.warn('[CuentaWizard] no se pudo cargar nómina vinculada', err);
       }
-      try {
-        const db = await initDB();
-        // Usa el índice 'accountId' del store 'movements' (db.ts:2602) ·
-        // mucho más barato que getAll + filter en memoria · review #4.
-        const count = await db.countFromIndex('movements', 'accountId', editingAccount.id);
-        if (alive) setMovimientosCount(count);
-      } catch (err) {
-        console.warn('[CuentaWizard] no se pudo contar movimientos', err);
-      }
+      // §10 · ya no se cuentan los movimientos vinculados: el único sitio que
+      // los enseñaba era la vista previa —y en un alta siempre decía 0, porque
+      // la cuenta aún no existe—. El bloqueo de baja, que sí importa, se
+      // resuelve más abajo por su cuenta.
       try {
         // `editingAccount.id` ya está comprobado arriba, pero el narrowing se
         // pierde dentro del async: se fija en una constante.
@@ -700,9 +660,10 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
 
   const headerSub = (() => {
     if (!isEditing || !editingAccount) {
-      return form.tipo === 'TARJETA_CREDITO'
-        ? 'Tarjeta crédito · sin movimientos · pendiente guardar'
-        : 'Cuenta nueva · pendiente guardar';
+      // §10 · el subtítulo repetía el título ("Nueva cuenta" arriba, "Cuenta
+      // nueva · pendiente guardar" debajo) y avisaba de algo evidente: nada
+      // está guardado hasta que se pulsa Guardar. Solo se dice el tipo.
+      return form.tipo === 'TARJETA_CREDITO' ? 'Tarjeta de crédito' : 'Cuenta bancaria';
     }
     const tipoTxt = editingAccount.tipo === 'AHORRO' ? 'Ahorro'
       : editingAccount.tipo === 'TARJETA_CREDITO' ? 'Tarjeta crédito'
@@ -720,65 +681,8 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
   // Cuentas elegibles destino intereses (todas las activas)
   const cuentasParaDestino = accounts.filter((a) => a.id !== editingAccount?.id);
 
-  // ── Preview · KPI principal
-  const previewKpi = (() => {
-    if (form.tipo === 'TARJETA_CREDITO') {
-      const limite = parseNum(form.limiteCredito);
-      const deuda = parseNum(form.deudaActual);
-      return {
-        label: 'Crédito disponible',
-        value: fmtEur(limite - deuda),
-        sub: form.diaPago
-          ? `Deuda actual ${fmtEur(deuda)} de ${fmtEur(limite)} · paga el ${parseInt31(form.diaPago)} de cada mes`
-          : `Deuda actual ${fmtEur(deuda)} de ${fmtEur(limite)}`,
-      };
-    }
-    return {
-      label: 'Saldo inicial',
-      value: fmtEur(parseNum(form.saldoInicial)),
-      sub: `a fecha ${fmtFechaCorta(form.fechaSaldo)} · cuenta ${form.tipo === 'AHORRO' ? 'ahorro' : 'corriente'}`,
-    };
-  })();
 
-  // ── Preview · listado
-  const previewListado = (() => {
-    const banco = bancoFinal || (editingAccount?.banco?.name ?? 'Banco');
-    const aliasTxt = form.alias || '(sin alias)';
-    const tipoTxt = form.tipo === 'AHORRO' ? 'Ahorro'
-      : form.tipo === 'TARJETA_CREDITO' ? 'Tarjeta crédito'
-      : 'Corriente';
-    const last4 = form.tipo === 'TARJETA_CREDITO'
-      ? (form.ultimosCuatro || '????')
-      : last4Iban(form.iban);
-    const saldo = form.tipo === 'TARJETA_CREDITO'
-      ? (parseNum(form.limiteCredito) - parseNum(form.deudaActual))
-      : parseNum(form.saldoInicial);
-    return {
-      avatar: avatarLetters(form.alias, banco),
-      name: aliasTxt,
-      meta: `${tipoTxt} · ···· ${last4}`,
-      saldo: fmtEur(saldo),
-    };
-  })();
 
-  // ── Preview · KPI mini movimientos
-  const movimientosKpi = (() => {
-    if (!isEditing) {
-      return {
-        value: '0',
-        sub: 'Cuenta nueva · sin movimientos aún · al guardar quedará lista para conciliar extractos',
-      };
-    }
-    if (movimientosCount === null) {
-      return { value: '—', sub: 'Cargando…' };
-    }
-    return {
-      value: movimientosCount.toLocaleString('es-ES'),
-      sub: movimientosCount === 0
-        ? 'Sin movimientos · pendiente importar extractos'
-        : `Movimientos vinculados a esta cuenta`,
-    };
-  })();
 
   return (
     <div
@@ -856,12 +760,20 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
               {/* B2 · IDENTIFICACIÓN */}
               <Block title="Identificación">
                 <div className={`${styles.fieldsRow} ${styles.rowIdentif}`}>
-                  <Field label="Alias" required error={errors.alias}>
+                  {/* §10 · "Nombre", no "Alias": es como se va a llamar la
+                      cuenta en toda la app, no un apodo secundario. */}
+                  <Field label="Nombre" required error={errors.alias}>
                     <input
                       className={`${styles.input} ${errors.alias ? styles.inputError : ''}`}
                       value={form.alias}
                       onChange={(e) => set('alias', e.target.value)}
-                      placeholder={form.tipo === 'TARJETA_CREDITO' ? 'Tarjeta Visa Oro' : 'Cuenta principal'}
+                      /* §10 · el marcador decía "Cuenta principal" justo al
+                         lado de un interruptor llamado "Cuenta principal": se
+                         leía como si el campo sirviera para eso. Un ejemplo
+                         real enseña qué se espera sin competir con nada. */
+                      placeholder={
+                        form.tipo === 'TARJETA_CREDITO' ? 'Ej. Visa Oro' : 'Ej. Santander Alquileres'
+                      }
                       maxLength={40}
                     />
                   </Field>
@@ -1171,63 +1083,16 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
               )}
             </div>
 
-            {/* ── COLUMNA PREVIEW ── */}
-            <div className={styles.colPreview}>
-              <div className={styles.previewTitle}>
-                <IconTrending size={12} />
-                Vista previa · cómo aparece la cuenta
-              </div>
+            {/* §10 · la columna de vista previa se ELIMINA.
+                Ocupaba media pantalla para enseñar una cuenta que no era la
+                que luego aparece en Tesorería: pintaba un cuadrado con las
+                iniciales del banco ("BA") en vez del punto de color, y no
+                reaccionaba —con 30.000 € escritos en el campo seguía diciendo
+                0,00 €—. Una vista previa que miente es peor que ninguna: hace
+                dudar de lo que sí está bien.
 
-              {/* KPI principal · saldo / crédito */}
-              <div className={styles.previewKpiMain}>
-                <div className={styles.previewKpiMainLabel}>{previewKpi.label}</div>
-                <div className={styles.previewKpiMainValue}>{previewKpi.value}</div>
-                <div className={styles.previewKpiMainSub}>{previewKpi.sub}</div>
-              </div>
-
-              {/* En el listado de Tesorería */}
-              <div className={styles.previewTitle}>
-                <IconList size={12} />
-                En el listado de Tesorería
-              </div>
-              <div className={styles.previewAccountCard}>
-                <div className={styles.paAvatar}>{previewListado.avatar}</div>
-                <div className={styles.paInfo}>
-                  <div className={styles.paName}>{previewListado.name}</div>
-                  <div className={styles.paMeta}>{previewListado.meta}</div>
-                </div>
-                <div className={styles.paSaldo}>{previewListado.saldo}</div>
-              </div>
-
-              {/* Badges · roles especiales */}
-              {(form.esPrincipal || nominaBadge) && (
-                <div className={styles.previewBadges}>
-                  {form.esPrincipal && (
-                    <div className={styles.badgeRow}>
-                      <IconStar />
-                      <span>
-                        <b>Cuenta principal</b> · domiciliaciones por defecto · destino selectores nuevos
-                      </span>
-                    </div>
-                  )}
-                  {nominaBadge && (
-                    <div className={`${styles.badgeRow} ${styles.badgeRowTeal}`}>
-                      <IconBriefcase />
-                      <span>
-                        Recibe la <b>nómina {nominaBadge.empresa}</b> · {fmtEur(nominaBadge.mensual)} / mes
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* KPI mini · movimientos vinculados */}
-              <div className={styles.previewKpiMini}>
-                <div className={styles.previewKpiMiniLabel}>Movimientos vinculados</div>
-                <div className={styles.previewKpiMiniValue}>{movimientosKpi.value}</div>
-                <div className={styles.previewKpiMiniSub}>{movimientosKpi.sub}</div>
-              </div>
-            </div>
+                El formulario se queda con el ancho entero, que es lo que pedía
+                §10 ("formulario plano"). */}
           </div>
 
           {/* ─── FOOTER ─── */}

@@ -90,12 +90,15 @@
 /* ─── BODY ─── */
 .body {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  /* §10 · una sola columna: la vista previa se eliminó porque enseñaba una
+     cuenta que no era la que luego aparece en Tesorería. El formulario se
+     queda con el ancho entero. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 0;
   overflow: hidden;
   min-height: 0;
 }
-.colForm { padding: 20px 24px; overflow-y: auto; border-right: 1px solid var(--atlas-v5-line); }
+.colForm { padding: 20px 24px; overflow-y: auto; }
 .colPreview { padding: 20px 24px; overflow-y: auto; background: var(--atlas-v5-line-3); }
 .colForm::-webkit-scrollbar, .colPreview::-webkit-scrollbar { width: 6px; }
 .colForm::-webkit-scrollbar-thumb, .colPreview::-webkit-scrollbar-thumb {
