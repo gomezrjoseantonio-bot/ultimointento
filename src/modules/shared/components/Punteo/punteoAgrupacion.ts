@@ -38,13 +38,22 @@ export interface GrupoLista {
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
+/**
+ * Monta el grupo con los items **ya ordenados por quien llama**.
+ *
+ * No reordena: cada eje tiene su criterio. Agrupando por fecha, todo el grupo
+ * es del mismo día y manda `compararEnDia`. Agrupando por inmueble o por qué
+ * es, el grupo mezcla días y manda la fecha descendente (§4.4: "dentro de cada
+ * grupo, orden por fecha descendente siempre"). Reordenar aquí con
+ * `compararEnDia` —que no mira la fecha— se cargaba ese orden.
+ */
 function construirGrupo(clave: string, titulo: string, items: ItemPunteo[]): GrupoLista {
   const totalIngresos = round2(items.filter((i) => i.importe > 0).reduce((s, i) => s + i.importe, 0));
   const totalGastos = round2(items.filter((i) => i.importe < 0).reduce((s, i) => s + i.importe, 0));
   return {
     clave,
     titulo,
-    items: items.slice().sort(compararEnDia),
+    items,
     totalIngresos,
     totalGastos,
     subtotal: round2(totalIngresos + totalGastos),
@@ -70,7 +79,8 @@ export function agruparPorEje(items: ItemPunteo[], eje: EjeAgrupacion): GrupoLis
     }
     return Array.from(porFecha.entries())
       .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([fecha, arr]) => construirGrupo(fecha, fecha, arr));
+      // Todo el grupo es del mismo día → manda el orden canónico del día.
+      .map(([fecha, arr]) => construirGrupo(fecha, fecha, arr.slice().sort(compararEnDia)));
   }
 
   const clave = (it: ItemPunteo): { clave: string; titulo: string } =>
@@ -94,8 +104,8 @@ export function agruparPorEje(items: ItemPunteo[], eje: EjeAgrupacion): GrupoLis
       construirGrupo(
         k,
         titulo,
-        // Fecha descendente dentro del grupo; `compararEnDia` desempata dentro
-        // del mismo día, así que se ordena por fecha y luego se estabiliza.
+        // El grupo mezcla días → fecha descendente primero (§4.4), y
+        // `compararEnDia` solo desempata DENTRO del mismo día.
         arr.slice().sort((a, b) => b.fecha.localeCompare(a.fecha) || compararEnDia(a, b))
       )
     );

@@ -43,18 +43,33 @@ beforeEach(() => {
   stores = {
     importBatches: [batch('batch-1', 42), batch('batch-2', 42), batch('batch-otra', 99)],
   };
-  (initDB as jest.Mock).mockResolvedValue({
+  (initDB as jest.Mock).mockResolvedValue(fakeDb({ conIndice: true }));
+});
+
+/**
+ * `conIndice: false` reproduce un handle sin `getAllFromIndex` (mocks
+ * parciales, backups), para cubrir también la rama de respaldo.
+ */
+function fakeDb({ conIndice }: { conIndice: boolean }) {
+  const base = {
     getAll: async (name: keyof FakeStores) => stores[name],
-    get: async (name: keyof FakeStores, id: string) =>
-      stores[name].find((b) => b.id === id),
+    get: async (name: keyof FakeStores, id: string) => stores[name].find((b) => b.id === id),
     put: async (name: keyof FakeStores, value: { id: string }) => {
       const i = stores[name].findIndex((b) => b.id === value.id);
       if (i >= 0) stores[name][i] = value as never;
       else stores[name].push(value as never);
       return value.id;
     },
-  });
-});
+  };
+  if (!conIndice) return base;
+  return {
+    ...base,
+    getAllFromIndex: async (name: keyof FakeStores, index: string, key: number) => {
+      if (index !== 'accountId') throw new Error(`índice no soportado: ${index}`);
+      return stores[name].filter((b) => b.accountId === key);
+    },
+  };
+}
 
 const LUZ = { date: '2026-03-05', amount: -74.09, description: 'Recibo LUZ 03/2026 - Iberdrola' };
 const AGUA = { date: '2026-03-07', amount: -21.4, description: 'AGUA · Aqualia' };
@@ -139,6 +154,26 @@ describe('ignorar y recuperar', () => {
 
   it('falla claro si el batch no existe, en vez de perder el ignorado en silencio', async () => {
     await expect(ignoreLine('no-existe', LUZ)).rejects.toThrow(/no encontrado/i);
+  });
+});
+
+describe('acceso a los batches de la cuenta', () => {
+  it('usa el índice accountId cuando está disponible', async () => {
+    const db = fakeDb({ conIndice: true });
+    const spy = jest.spyOn(db as never, 'getAllFromIndex');
+    (initDB as jest.Mock).mockResolvedValue(db);
+
+    await getIgnoredLineHashes(42);
+    expect(spy).toHaveBeenCalledWith('importBatches', 'accountId', 42);
+  });
+
+  it('cae a getAll + filtro si el handle no expone getAllFromIndex', async () => {
+    (initDB as jest.Mock).mockResolvedValue(fakeDb({ conIndice: false }));
+
+    await ignoreLine('batch-1', LUZ);
+    // Mismo resultado por la rama de respaldo, y sigue sin mezclar cuentas.
+    expect(await getIgnoredLineHashes(42)).toContain(generateLineHash(LUZ));
+    expect((await getIgnoredLineHashes(99)).size).toBe(0);
   });
 });
 

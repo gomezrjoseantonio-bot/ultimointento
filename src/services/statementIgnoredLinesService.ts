@@ -28,8 +28,19 @@ export interface LineaIgnorada {
   ignoradaAt: string;
 }
 
+/**
+ * Batches de una cuenta, por el índice `importBatches.accountId` (db.ts:104).
+ *
+ * El índice ya existe, así que usarlo no cuesta esquema. El `getAll` + filtro
+ * queda de respaldo para entornos donde el handle de DB no expone
+ * `getAllFromIndex` (mocks de test, backups parciales), en vez de reventar.
+ */
 async function batchesDeCuenta(accountId: number): Promise<ImportBatch[]> {
   const db = await initDB();
+  const porIndice = (db as { getAllFromIndex?: unknown }).getAllFromIndex;
+  if (typeof porIndice === 'function') {
+    return ((await db.getAllFromIndex('importBatches', 'accountId', accountId)) ?? []) as ImportBatch[];
+  }
   const todos = ((await db.getAll('importBatches')) ?? []) as ImportBatch[];
   return todos.filter((b) => b.accountId === accountId);
 }

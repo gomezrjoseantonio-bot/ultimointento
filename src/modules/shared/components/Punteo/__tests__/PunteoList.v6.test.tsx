@@ -5,7 +5,7 @@
 // vistas que cuelgan de PunteoList no cambien ni un píxel".
 //
 // La mitad de estos tests existe justamente para eso: fijar el render POR
-// DEFECTO. Si alguien convierte una friccción en el comportamiento base, aquí
+// DEFECTO. Si alguien convierte una fricción en el comportamiento base, aquí
 // se entera.
 
 import React from 'react';
@@ -92,6 +92,23 @@ describe('1 · eje de agrupación', () => {
   it('agrupa por "qué es" usando el origen', () => {
     const { container } = render(<PunteoList {...base} eje="que-es" onEjeChange={jest.fn()} />);
     expect(titulos(container).sort()).toEqual(['Contrato', 'Gasto', 'Suministro']);
+  });
+
+  it('dentro de un grupo NO-fecha, ordena por fecha descendente (§4.4)', () => {
+    // El grupo tiene que mezclar días para que se vea: con un item por grupo,
+    // un reordenado que ignore la fecha pasa desapercibido.
+    const mismoInmueble = { inmuebleId: 7, alias: 'Tenderina 64' };
+    const items: ItemPunteo[] = [
+      item({ key: 'a', refId: 1, concepto: 'Antigua', fecha: '2026-03-01', importe: -10, activo: mismoInmueble }),
+      item({ key: 'b', refId: 2, concepto: 'Reciente', fecha: '2026-03-20', importe: -500, activo: mismoInmueble }),
+      item({ key: 'c', refId: 3, concepto: 'Media', fecha: '2026-03-10', importe: 900, activo: mismoInmueble }),
+    ];
+    const { container } = render(<PunteoList {...base} items={items} eje="inmueble" />);
+
+    const conceptos = Array.from(container.querySelectorAll('.concepto')).map((n) => n.textContent);
+    // Por fecha desc. Si se ordenara solo con `compararEnDia`, el ingreso de
+    // 900 (Media) subiría al primer puesto y esto fallaría.
+    expect(conceptos).toEqual(['Reciente', 'Media', 'Antigua']);
   });
 
   it('por fecha, descendente · el día más reciente arriba', () => {
