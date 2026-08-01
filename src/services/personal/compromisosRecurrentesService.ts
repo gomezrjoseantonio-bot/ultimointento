@@ -353,21 +353,17 @@ export async function reactivarCompromiso(
 
   // Retomar la proyección desde el nuevo cobro. El hueco (entre la baja y el
   // nuevo cobro) queda vacío: los ejecutados pasados se conservan y no se
-  // generan previsiones retroactivas.
-  await borrarEventosFuturosCompromiso(id);
+  // generan previsiones retroactivas. Va por la MISMA puerta que el resto
+  // (regenerarEventosCompromiso) para heredar la idempotencia · antes tenía su
+  // propio bucle de `add` sin guardas, y ese era uno de los dos caminos que
+  // podían emitir la misma previsión dos veces.
   const desde = new Date(fechaNuevoCobro);
   const hoy = new Date();
-  const eventos = generarEventosDesdeCompromiso(
+  await regenerarEventosCompromiso(
     actualizado,
     undefined,
     desde.getTime() > hoy.getTime() ? desde : undefined,
   );
-  if (eventos.length > 0) {
-    const tx = db.transaction(STORE_TREASURY, 'readwrite');
-    const store = tx.objectStore(STORE_TREASURY);
-    for (const ev of eventos) await store.add(ev as TreasuryEvent);
-    await tx.done;
-  }
   return actualizado;
 }
 
@@ -592,11 +588,64 @@ function paymentMethodFromCompromiso(
 }
 
 // ─── Sincronización con `treasuryEvents` ───────────────────────────────────
+//
+// P0 · IDEMPOTENCIA DE LA PREVISIÓN (innegociable)
+//
+// Regenerar una previsión tiene que dejar el MISMO resultado se ejecute una vez
+// o cinco. Para eso toda previsión automática lleva CLAVE DE ORIGEN — qué la
+// creó (`sourceType` + `sourceId`), para qué periodo (`año-mes`) y para qué
+// cuenta (`accountId`) — y la regeneración:
+//
+//   1. retira primero las previsiones VIVAS de esa clave,
+//   2. emite después las nuevas,
+//   3. NO emite en un periodo cuya clave ya está ocupada por algo intocable
+//      (confirmado · conciliado · descartado). Antes sí lo hacía: por eso una
+//      edición dejaba un `predicted` gemelo encima de cada previsión ya
+//      confirmada, e inflaba pendientes y cierres.
+
+/** Familias de `sourceType` que genera este servicio · `opex_rule` es el legacy
+ *  del mismo origen (el store `opexRules` se migró a `compromisosRecurrentes`),
+ *  así que cuenta como la MISMA previsión: si no, cada camino emitiría la suya. */
+function esPrevisionDeCompromiso(ev: Pick<TreasuryEvent, 'sourceType'>): boolean {
+  return ev.sourceType === 'gasto_recurrente' || ev.sourceType === 'opex_rule';
+}
 
 /**
- * Borra los eventos previstos (status='predicted') del compromiso indicado.
- * Los eventos confirmados/ejecutados se respetan (representan realidad
- * bancaria).
+ * Clave de origen de una previsión automática · `origen|id|año-mes|cuenta`.
+ *
+ * Es la unidad de idempotencia: como mucho puede haber UNA previsión viva por
+ * clave. `año`/`mes` caen a `predictedDate` cuando el evento es antiguo y no
+ * los trae.
+ */
+export function claveOrigenPrevision(
+  ev: Pick<TreasuryEvent, 'sourceType' | 'sourceId' | 'año' | 'mes' | 'predictedDate' | 'accountId'>,
+): string {
+  const iso = typeof ev.predictedDate === 'string' ? ev.predictedDate : '';
+  const año = ev.año ?? Number(iso.slice(0, 4));
+  const mes = ev.mes ?? Number(iso.slice(5, 7));
+  const origen = esPrevisionDeCompromiso(ev) ? 'gasto_recurrente' : ev.sourceType;
+  const periodo = `${año}-${String(mes).padStart(2, '0')}`;
+  return `${origen}|${ev.sourceId ?? ''}|${periodo}|${ev.accountId ?? ''}`;
+}
+
+/**
+ * ¿Es una previsión INTOCABLE? Confirmada, conciliada o descartada dejó de ser
+ * una previsión viva: ni se borra al regenerar, ni se vuelve a emitir su
+ * periodo. Misma garantía que la cascada (adenda 02 · D6b) y que el descarte
+ * (V84: «no vuelve a proponerse»).
+ */
+export function esPrevisionIntocable(ev: TreasuryEvent): boolean {
+  return (
+    ev.status !== 'predicted' ||
+    ev.executedMovementId != null ||
+    ev.descartado === true
+  );
+}
+
+/**
+ * Borra las previsiones VIVAS (status='predicted', sin conciliar y sin
+ * descartar) del compromiso indicado. Las confirmadas/ejecutadas (realidad
+ * bancaria) y las descartadas (decisión del usuario) se respetan.
  */
 export async function borrarEventosFuturosCompromiso(compromisoId: number): Promise<void> {
   const db = await initDB();
@@ -606,10 +655,7 @@ export async function borrarEventosFuturosCompromiso(compromisoId: number): Prom
   let cursor = await idx.openCursor(IDBKeyRange.only(compromisoId));
   while (cursor) {
     const ev = cursor.value as TreasuryEvent;
-    if (
-      (ev.sourceType === 'gasto_recurrente' || ev.sourceType === 'opex_rule') &&
-      ev.status === 'predicted'
-    ) {
+    if (esPrevisionDeCompromiso(ev) && !esPrevisionIntocable(ev)) {
       await cursor.delete();
     }
     cursor = await cursor.continue();
@@ -618,28 +664,57 @@ export async function borrarEventosFuturosCompromiso(compromisoId: number): Prom
 }
 
 /**
- * Regenera los eventos previstos (status='predicted') del compromiso. Los
- * confirmados/ejecutados se respetan.
+ * Persiste un lote de previsiones del compromiso saltándose las claves de
+ * origen ya ocupadas. Se llama SIEMPRE después de
+ * `borrarEventosFuturosCompromiso`: lo que ha sobrevivido al borrado es, por
+ * definición, intocable, así que su periodo no se vuelve a emitir. Dedupe
+ * también dentro del propio lote.
+ */
+async function persistirPrevisionesCompromiso(
+  compromisoId: number,
+  eventos: Array<Omit<TreasuryEvent, 'id'>>,
+): Promise<number> {
+  if (eventos.length === 0) return 0;
+  const db = await initDB();
+  const tx = db.transaction(STORE_TREASURY, 'readwrite');
+  const store = tx.objectStore(STORE_TREASURY);
+
+  const supervivientes = (await store.index('sourceId').getAll(compromisoId)) as TreasuryEvent[];
+  const ocupadas = new Set(
+    supervivientes.filter(esPrevisionDeCompromiso).map(claveOrigenPrevision),
+  );
+
+  let creados = 0;
+  for (const ev of eventos) {
+    const clave = claveOrigenPrevision(ev);
+    if (ocupadas.has(clave)) continue;
+    ocupadas.add(clave);
+    await store.add(ev as TreasuryEvent);
+    creados += 1;
+  }
+  await tx.done;
+  return creados;
+}
+
+/**
+ * Regenera las previsiones del compromiso. Idempotente: ejecutarlo una vez o
+ * cinco deja exactamente el mismo resultado. Confirmadas, conciliadas y
+ * descartadas se respetan y su periodo NO se reemite.
+ *
+ * `desdeOverride` permite retomar la proyección desde una fecha concreta
+ * (reactivación · §2.4); sin él se proyecta desde HOY.
  */
 export async function regenerarEventosCompromiso(
   compromiso: CompromisoRecurrente,
   hasta?: Date,
+  desdeOverride?: Date,
 ): Promise<number> {
   if (!compromiso.id) {
     throw new Error('regenerarEventosCompromiso requiere compromiso.id');
   }
   await borrarEventosFuturosCompromiso(compromiso.id);
-  const eventos = generarEventosDesdeCompromiso(compromiso, hasta);
-  if (eventos.length === 0) return 0;
-
-  const db = await initDB();
-  const tx = db.transaction(STORE_TREASURY, 'readwrite');
-  const store = tx.objectStore(STORE_TREASURY);
-  for (const ev of eventos) {
-    await store.add(ev as TreasuryEvent);
-  }
-  await tx.done;
-  return eventos.length;
+  const eventos = generarEventosDesdeCompromiso(compromiso, hasta, desdeOverride);
+  return persistirPrevisionesCompromiso(compromiso.id, eventos);
 }
 
 /**

@@ -135,6 +135,9 @@ export async function regenerateForecastsForward(
   //    · NO limpia los huérfanos. Esta limpieza inicial garantiza que la
   //    regeneración produce el conjunto correcto sin dejar fantasmas.
   //    Confirmed/executed se respetan (filtro por status === 'predicted').
+  //    Los DESCARTADOS también: descartar no es borrar · el motor tiene que
+  //    saber que eso no va a pasar para no volver a proponerlo (V84 · D1). Si
+  //    se barren aquí, la regeneración los resucita como pendientes.
   try {
     const db = await initDB();
     const desdeIso = result.desde;
@@ -145,6 +148,7 @@ export async function regenerateForecastsForward(
       const ev = cursor.value as TreasuryEvent;
       if (
         ev.status === 'predicted' &&
+        ev.descartado !== true &&
         (ev as { executedMovementId?: number | string | null }).executedMovementId == null &&
         typeof ev.predictedDate === 'string' &&
         ev.predictedDate >= desdeIso

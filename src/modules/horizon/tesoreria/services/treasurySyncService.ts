@@ -204,8 +204,10 @@ export async function generateMonthlyForecasts(
         e => e.sourceType === sourceType && e.predictedDate.startsWith(monthPrefix),
       );
       if (currentMonthEvent) {
-        if (isReconciled(currentMonthEvent)) {
+        if (isReconciled(currentMonthEvent) || currentMonthEvent.descartado === true) {
           // NO revertir un evento conciliado a `predicted` · se respeta la realidad.
+          // Un DESCARTADO tampoco se reescribe: el usuario ya dijo que no ocurre
+          // y no se le vuelve a proponer (V84 · D1).
           skipped++;
           return;
         }

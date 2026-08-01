@@ -260,6 +260,13 @@ const CompromisoDetection = lazyWithPreload(() =>
     : Promise.resolve({ default: () => null })
 );
 
+// P0 · recuento de previsiones duplicadas · DEV only
+const PrevisionesDuplicadas = lazyWithPreload(() =>
+  isDevPagesEnabled
+    ? import('./pages/dev/PrevisionesDuplicadas')
+    : Promise.resolve({ default: () => null })
+);
+
 
 // Design Bible page - ATLAS Design System reference
 const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'));
@@ -666,6 +673,18 @@ function App() {
                 element={
                   <React.Suspense fallback={<LoadingSpinner />}>
                     <CompromisoDetection />
+                  </React.Suspense>
+                }
+              />
+            )}
+
+            {/* P0 · previsiones duplicadas · DEV only · sin layout ni auth */}
+            {isDevPagesEnabled && (
+              <Route
+                path="/dev/previsiones-duplicadas"
+                element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <PrevisionesDuplicadas />
                   </React.Suspense>
                 }
               />
