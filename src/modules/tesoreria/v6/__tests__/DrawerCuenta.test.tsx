@@ -237,7 +237,9 @@ describe('pestaña Movimientos', () => {
     // Plegado: la fila no está, pero su cabecera sí.
     expect(screen.queryByText('Recibo luz')).not.toBeInTheDocument();
     const cab = screen.getAllByRole('button', { expanded: false })[0];
-    expect(within(cab).getByText('1')).toBeInTheDocument();
+    // §6.4 · el recuento dice de qué es: pegado al importe se leía como parte
+    // de la cifra ("· 1 · −98,44").
+    expect(within(cab).getByText('1 movimiento')).toBeInTheDocument();
   });
 
   it('esconde Anotar y Subir extracto: son de la bandeja, no de la consulta', () => {

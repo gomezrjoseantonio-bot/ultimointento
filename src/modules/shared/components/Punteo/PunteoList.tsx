@@ -104,6 +104,13 @@ export interface PunteoListProps {
    */
   sinOrigen?: boolean;
 
+  /**
+   * §6.4 · pintar el chip de estado. Va en "Movimientos" y en el día, donde
+   * conviven previsto, confirmado y conciliado. En "Por confirmar" no, porque
+   * allí todo es previsto. Default `false` = lo de siempre.
+   */
+  conChipEstado?: boolean;
+
   /** 1 · Eje de agrupación. Default `fecha` = lo de siempre. */
   eje?: EjeAgrupacion;
   /** Si se pasa, se pinta el selector de eje. Sin él, el eje es fijo. */
@@ -131,6 +138,26 @@ export interface PunteoListProps {
 
 // ─── Sub-componentes ────────────────────────────────────────────────────────
 
+/**
+ * §6.4 · el estado se dice con el CHIP, no con el color del círculo.
+ *
+ * En "Movimientos" y en el día conviven los tres estados, y hasta ahora la
+ * única pista era el color del círculo — que además iba en ámbar, gastando en
+ * "esto aún no ha pasado" el color reservado a los avisos.
+ *
+ * En "Por confirmar" NO se pinta: allí todo es `previsto`, y repetir la misma
+ * palabra 250 veces es ruido.
+ */
+const EstadoChip: React.FC<{ estado: ItemPunteo['estado'] }> = ({ estado }) => {
+  const cls =
+    estado === 'previsto'
+      ? styles.chEPrevisto
+      : estado === 'confirmado'
+        ? styles.chEConfirmado
+        : styles.chEConciliado;
+  return <span className={`${styles.chipEstado} ${cls}`}>{estado}</span>;
+};
+
 const PunteoCheck: React.FC<{
   estado: ItemPunteo['estado'];
   onPuntear?: () => void;
@@ -148,13 +175,23 @@ const PunteoCheck: React.FC<{
       : estado === 'confirmado'
         ? `${concepto} · confirmado`
         : `${concepto} · conciliado con el banco`;
+  // §6.4 · lo conciliado lo afirma el BANCO, no el usuario: ahí no hay nada que
+  // pulsar. Un botón deshabilitado sigue pareciendo un botón —invita a
+  // intentarlo y no responde—, así que se pinta como lo que es: una marca.
+  if (estado === 'conciliado') {
+    return (
+      <span className={`${styles.tick} ${cls} ${styles.tickInforme}`} title={label} aria-label={label}>
+        <Icons.Check size={11} strokeWidth={3} />
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"
       className={`${styles.tick} ${cls}`}
       aria-label={label}
       title={label}
-      disabled={estado === 'conciliado'}
       onClick={(e) => {
         e.stopPropagation();
         if (estado === 'previsto') onPuntear?.();
@@ -230,6 +267,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
   cuentas,
   ocultarCuenta = false,
   sinOrigen = false,
+  conChipEstado = false,
   variant = 'full',
   onConfirmar,
   onNoPaso,
@@ -315,7 +353,10 @@ const PunteoList: React.FC<PunteoListProps> = ({
         {/* La acción principal, a la IZQUIERDA · es lo primero que se busca. */}
         <PunteoCheck estado={it.estado} concepto={it.concepto} onPuntear={() => onConfirmar(it)} />
         <div className={styles.c1}>
-          <div className={styles.concepto}>{it.concepto}</div>
+          <div className={styles.conceptoLinea}>
+            <span className={styles.concepto}>{it.concepto}</span>
+            {conChipEstado && <EstadoChip estado={it.estado} />}
+          </div>
           {!esDrawer ? <Contexto item={it} /> : <Contexto item={it} extra={cuentaLabel(it.cuentaId)} />}
         </div>
         {/* §6.3 · el chip de origen desaparece de "Por confirmar".
@@ -453,7 +494,14 @@ const PunteoList: React.FC<PunteoListProps> = ({
       <div className={styles.dayRule}>
         <span className={styles.dayName}>{eje === 'fecha' ? fmtDia(g.clave) : g.titulo}</span>
         <span className={styles.daySums}>
-          {gruposPlegables && <span className={styles.grupoCount}>{g.items.length}</span>}
+          {/* §6.4 · el recuento va PEGADO al importe y se leía como parte de la
+              cifra: "INMUEBLE 1 · 1 · −98,44" parece un importe raro, no "un
+              movimiento que suma −98,44". Separado y en su sitio. */}
+          {gruposPlegables && (
+            <span className={styles.grupoCount}>
+              {g.items.length} {g.items.length === 1 ? 'movimiento' : 'movimientos'}
+            </span>
+          )}
           {gruposPlegables ? (
             <span className={g.subtotal < 0 ? styles.daySumNeg : styles.daySumPos}>
               {fmtImporte(g.subtotal)}
@@ -492,8 +540,21 @@ const PunteoList: React.FC<PunteoListProps> = ({
 
   return (
     <div>
+      {/* §6.4 · buscar es lo primero que se hace al entrar aquí, así que va a
+          la IZQUIERDA. Agrupar es afinar lo que ya se está mirando: a la
+          derecha. Estaba al revés. */}
       {(onEjeChange || onBusquedaChange) && (
         <div className={styles.controles}>
+          {onBusquedaChange && (
+            <input
+              type="search"
+              className={styles.buscador}
+              value={busqueda}
+              placeholder="Buscar"
+              aria-label="Buscar por concepto, inmueble, familia o importe"
+              onChange={(ev) => onBusquedaChange(ev.target.value)}
+            />
+          )}
           {onEjeChange && (
             <div className={styles.ejes} role="tablist" aria-label="Agrupar por">
               {EJES.map((e) => (
@@ -509,16 +570,6 @@ const PunteoList: React.FC<PunteoListProps> = ({
                 </button>
               ))}
             </div>
-          )}
-          {onBusquedaChange && (
-            <input
-              type="search"
-              className={styles.buscador}
-              value={busqueda}
-              placeholder="Buscar"
-              aria-label="Buscar por concepto, inmueble, familia o importe"
-              onChange={(ev) => onBusquedaChange(ev.target.value)}
-            />
           )}
         </div>
       )}

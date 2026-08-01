@@ -171,7 +171,9 @@ describe('4 · grupos plegables', () => {
   it('lleva recuento y subtotal en la cabecera', () => {
     render(<PunteoList {...base} gruposPlegables eje="inmueble" />);
     const cab = screen.getByRole('button', { name: /Tenderina 64/ });
-    expect(within(cab).getByText('1')).toBeInTheDocument();
+    // §6.4 · el recuento dice de qué es: pegado al importe se leía como parte
+    // de la cifra ("· 1 · −98,44").
+    expect(within(cab).getByText('1 movimiento')).toBeInTheDocument();
     // §2.2 · el subtotal usa el formateador único: con € y sin decimales que no
     // aportan. Antes salía "+650,00", distinto del "+650 €" del resto.
     expect(within(cab).getByText('+650 €')).toBeInTheDocument();
@@ -203,5 +205,64 @@ describe('5 · anatomía de fila de Tesorería', () => {
     fireEvent.click(screen.getByLabelText('Descartar Recibo luz'));
     expect(onNoPaso).toHaveBeenCalledTimes(1);
     expect(screen.queryByText(/No pasó este mes/i)).not.toBeInTheDocument();
+  });
+});
+
+
+// §6.4 · el estado se dice con el chip, no con el color del círculo.
+describe('el chip de estado', () => {
+  const base = {
+    chip: 'todos' as const,
+    onChipChange: () => undefined,
+    cuentas: [],
+    onConfirmar: () => undefined,
+    onNoPaso: () => undefined,
+  };
+
+  const item = (over: Partial<ItemPunteo> = {}): ItemPunteo => ({
+    key: 'evt-1',
+    kind: 'evento',
+    refId: 1,
+    estado: 'previsto',
+    fecha: '2026-08-10',
+    concepto: 'Mapfre',
+    activo: null,
+    origen: 'Recurrente',
+    cuentaId: 1,
+    importe: -40.29,
+    ...over,
+  });
+
+  it('NO se pinta por defecto · "Por confirmar" es todo previsto y repetirlo es ruido', () => {
+    render(<PunteoList {...base} items={[item()]} />);
+    expect(screen.queryByText('previsto')).not.toBeInTheDocument();
+  });
+
+  it('se pinta cuando se pide · en Movimientos conviven los tres', () => {
+    render(
+      <PunteoList
+        {...base}
+        conChipEstado
+        items={[
+          item({ key: 'a', refId: 1, estado: 'previsto' }),
+          item({ key: 'b', refId: 2, estado: 'confirmado' }),
+          item({ key: 'c', refId: 3, estado: 'conciliado' }),
+        ]}
+      />
+    );
+    expect(screen.getByText('previsto')).toBeInTheDocument();
+    expect(screen.getByText('confirmado')).toBeInTheDocument();
+    expect(screen.getByText('conciliado')).toBeInTheDocument();
+  });
+
+  it('lo conciliado NO es pulsable · lo afirma el banco, no el usuario', () => {
+    render(<PunteoList {...base} conChipEstado items={[item({ estado: 'conciliado' })]} />);
+    // Un botón deshabilitado sigue pareciendo un botón; esto es una marca.
+    expect(screen.queryByRole('button', { name: /conciliado con el banco/ })).not.toBeInTheDocument();
+  });
+
+  it('lo previsto SÍ es pulsable · es la acción principal de la fila', () => {
+    render(<PunteoList {...base} conChipEstado items={[item({ estado: 'previsto' })]} />);
+    expect(screen.getByRole('button', { name: /Puntear Mapfre/ })).toBeInTheDocument();
   });
 });

@@ -250,6 +250,8 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   mostrarChips={false}
                   cuentas={cuentasParaLista}
                   variant="drawer"
+                  // §6.4 · en el día conviven los tres estados.
+                  conChipEstado
                   rowVariant="tesoreria"
                   onEditar={onEditar}
                   onConfirmar={onConfirmar}

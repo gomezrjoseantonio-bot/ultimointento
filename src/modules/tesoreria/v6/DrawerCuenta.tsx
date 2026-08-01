@@ -245,6 +245,9 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
           ) : (
             <PunteoList
               items={itemsTodo}
+              // §6.4 · aquí conviven previsto, confirmado y conciliado: el chip
+              // es lo único que los distingue.
+              conChipEstado
               chip="todos"
               onChipChange={() => undefined}
               mostrarChips={false}
