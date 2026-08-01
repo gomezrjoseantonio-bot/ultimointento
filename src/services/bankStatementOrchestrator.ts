@@ -34,6 +34,16 @@ export interface OrchestratorOptions {
   periodStart?: string;          // YYYY-MM-DD inclusive
   periodEnd?: string;             // YYYY-MM-DD inclusive
   matchOptions?: MatchOptions;
+  /**
+   * V6 · D1 bis · seguir adelante con un extracto ya importado.
+   *
+   * Por defecto `processFile` se planta si el `hashLote` del fichero ya consta
+   * (`StatementAlreadyImportedError`), porque subir dos veces el mismo extracto
+   * duplica movimientos y falsea todos los saldos. La UI muestra el aviso con
+   * la fecha del import anterior y solo reintenta con este flag si el usuario
+   * lo confirma explícitamente.
+   */
+  allowReimport?: boolean;
 }
 
 export interface OrchestratorResult {
@@ -55,6 +65,35 @@ export interface ConfirmationPayload {
 
 const PROFILE_CONFIDENCE_THRESHOLD = 60;
 
+/**
+ * V6 · D1 bis · el fichero ya se importó (mismo `hashLote`).
+ *
+ * Se lanza ANTES de parsear e insertar nada, para que la UI pueda avisar con la
+ * fecha del import previo y dejar decidir. Reintentar con
+ * `allowReimport: true` es la única forma de continuar.
+ */
+export class StatementAlreadyImportedError extends Error {
+  constructor(
+    readonly hashLote: string,
+    readonly importadoEl: string,
+    readonly filenamePrevio: string
+  ) {
+    super(
+      `Este extracto ya se importó el ${importadoEl.slice(0, 10)} (${filenamePrevio}). ` +
+        'Volver a importarlo duplicaría los movimientos.'
+    );
+    this.name = 'StatementAlreadyImportedError';
+  }
+}
+
+/** Batch previo con el mismo hash, o `null`. Ignora los batches sin hash (pre-V6). */
+async function findBatchByHash(hashLote: string): Promise<ImportBatch | null> {
+  if (!hashLote) return null;
+  const db = await initDB();
+  const batches = ((await db.getAll('importBatches')) ?? []) as ImportBatch[];
+  return batches.find((b) => b.hashLote === hashLote) ?? null;
+}
+
 export class BankProfileNotDetectedError extends Error {
   constructor() {
     super('No se pudo detectar el banco automáticamente. Elige el banco manualmente y vuelve a intentarlo.');
@@ -67,6 +106,22 @@ export async function processFile(
   options: OrchestratorOptions
 ): Promise<OrchestratorResult> {
   const warnings: string[] = [];
+
+  // V6 · D1 bis · idempotencia por fichero, ANTES de parsear o insertar nada.
+  // Reutiliza `generateBatchHash` (import diferido · usa crypto.subtle), que ya
+  // existía y usaba el otro camino de importación: una sola implementación.
+  const { generateBatchHash } = await import('../utils/batchHashUtils');
+  const hashLote = await generateBatchHash(file);
+  const previo = await findBatchByHash(hashLote);
+  if (previo && !options.allowReimport) {
+    throw new StatementAlreadyImportedError(hashLote, previo.timestampImport, previo.filename);
+  }
+  if (previo) {
+    warnings.push(
+      `Extracto reimportado a petición del usuario · ya se había importado el ` +
+        `${previo.timestampImport.slice(0, 10)}. Las líneas repetidas se descartan por hash de movimiento.`
+    );
+  }
 
   const format = resolveFormat(options.formatHint, file);
 
@@ -106,7 +161,14 @@ export async function processFile(
   const filteredMovements = filterByPeriod(parsed.movements, options.periodStart, options.periodEnd);
   const movementsParsed = filteredMovements.length;
 
-  const importBatchId = await persistImportBatch(file, options, movementsParsed, format, bankProfileUsed);
+  const importBatchId = await persistImportBatch(
+    file,
+    options,
+    movementsParsed,
+    format,
+    bankProfileUsed,
+    hashLote
+  );
   const insertResult = await insertMovements(filteredMovements, options.accountId, importBatchId);
 
   const matchResult = await matchBatch(insertResult.insertedIds, options.matchOptions);
@@ -301,7 +363,8 @@ async function persistImportBatch(
   options: OrchestratorOptions,
   parsedRows: number,
   format: BankFormat,
-  bankProfile?: string
+  bankProfile?: string,
+  hashLote = ''
 ): Promise<string> {
   const db = await initDB();
   const id = `import_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -318,7 +381,7 @@ async function persistImportBatch(
     formatoDetectado: normaliseFormatoForStore(format),
     rangoFechas: { min: options.periodStart ?? '', max: options.periodEnd ?? '' },
     timestampImport: new Date().toISOString(),
-    hashLote: '', // hashing of raw bytes is out of scope for T17; T18 will tighten this
+    hashLote, // V6 · D1 bis: SHA-256 del contenido · idempotencia por fichero
     createdAt: new Date().toISOString(),
   };
   await db.put('importBatches', batch);

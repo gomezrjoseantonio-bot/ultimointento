@@ -215,6 +215,20 @@ export interface TreasuryEvent {
   iban?: string;
   // Status
   status: 'predicted' | 'confirmed' | 'executed';
+  /**
+   * V84 (Tesorería V6 · D1) · el previsto se da por NO ocurrido.
+   *
+   * Descartar no es borrar: el motor de previsiones necesita saber que esto no
+   * va a pasar (para no volver a proponerlo) y el usuario tiene que poder
+   * deshacerlo. El borrado real sigue siendo `deleteTreasuryEventCompletely()`.
+   *
+   * Un evento con `descartado: true` no se muestra en Pendientes, no entra en
+   * los KPIs de pendiente entrar/salir, no afecta al Cierre y no se regenera.
+   * **No toca ningún saldo** — nunca ocurrió.
+   */
+  descartado?: boolean;
+  descartadoAt?: string;
+  motivoDescarte?: string;
   actualDate?: string;
   actualAmount?: number;
   movementId?: number; // Link to actual bank movement
