@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-01",
-  "generatedAt": "2026-08-01T21:03:57.692Z",
+  "generatedAt": "2026-08-01T21:20:55.604Z",
   "git": {
     "branch": "claude/new-session-hq2846",
-    "head": "688335c"
+    "head": "d7262b0"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -34,7 +34,7 @@
       "indicador": "emojis_ui",
       "fecha": "2026-07-20",
       "anterior": 64,
-      "nueva": 63,
+      "nueva": 64,
       "motivo": "Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose."
     },
     {
@@ -84,7 +84,7 @@
     {
       "indicador": "emojis_ui",
       "antes": 64,
-      "despues": 63,
+      "despues": 64,
       "motivo": "Frente A · ve cadenas .ts con señal de entrega a UI (toast/message:/…) · antes solo .tsx",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -200,7 +200,7 @@
       "calibracion": null
     },
     "emojis_ui": {
-      "value": 63,
+      "value": 64,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -210,7 +210,7 @@
       "calibracion": {
         "fecha": "2026-07-20",
         "anterior": 64,
-        "nueva": 63,
+        "nueva": 64,
         "motivo": "Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose."
       }
     },

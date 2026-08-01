@@ -102,6 +102,15 @@
 .rowSinCuenta {
   grid-template-columns: minmax(0, 1fr) 130px 130px 44px;
 }
+/* §6.3 · "Por confirmar": círculo · concepto · importe · acciones.
+   Cuatro elementos, cuatro columnas. El círculo y las acciones se ajustan a su
+   contenido; el concepto se queda con todo el ancho sobrante, que es lo que
+   permite leer "Tenderina 64 · 4D" sin cortar. */
+.rowMinima {
+  grid-template-columns: 22px minmax(0, 1fr) 120px auto;
+  gap: 10px;
+  padding: 5px 8px;
+}
 .row:hover { background: var(--atlas-v5-gold-wash-2); }
 .rowEditable { cursor: pointer; }
 .rowCompact {
@@ -132,6 +141,8 @@
   gap: 4px;
 }
 .contexto b { color: var(--atlas-v5-ink-3); font-weight: 600; }
+.ctxInmueble { display: inline-flex; align-items: center; gap: 3px; }
+.ctxSep { color: var(--atlas-v5-ink-5); }
 
 .origen {
   display: inline-flex;

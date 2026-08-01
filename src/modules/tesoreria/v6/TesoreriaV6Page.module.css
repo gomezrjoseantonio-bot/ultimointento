@@ -156,8 +156,13 @@
   gap: 12px;
   transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
-/* Flechas SUPERPUESTAS sobre los bordes (§4.2): nunca en el flujo, o la tira
-   deja de alinearse con el hero. La deshabilitada es invisible, no un hueco. */
+/* Flechas SUPERPUESTAS sobre la tira (§4.2): nunca en el flujo, o la tira deja
+   de alinearse con el hero. La deshabilitada es invisible, no un hueco.
+
+   Iban a `left/right: -17px`, o sea FUERA del contenedor por los dos lados, y
+   eso es lo que empujaba el ancho de la página: se cortaban los títulos de
+   sección por la izquierda y "Añadir cuenta" y el rango por la derecha, con la
+   flecha además invisible. Superpuesta significa DENTRO del área visible. */
 .pager {
   position: absolute;
   top: 50%;
@@ -176,8 +181,8 @@
   box-shadow: var(--atlas-v5-shadow-pager);
   transition: all 0.14s;
 }
-.pagerPrev { left: -17px; }
-.pagerNext { right: -17px; }
+.pagerPrev { left: 4px; }
+.pagerNext { right: 4px; }
 .pager:hover {
   border-color: var(--atlas-v5-gold);
   background: var(--atlas-v5-gold-wash);
@@ -324,7 +329,11 @@
   grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
   gap: 24px;
   align-items: start;
+  /* Sin esto una columna con contenido ancho (importes largos, conceptos sin
+     partir) empuja el grid más allá del viewport en vez de encogerse. */
+  min-width: 0;
 }
+.cols > * { min-width: 0; }
 .cols .sec {
   border-bottom: none;
   padding-bottom: 0;
@@ -411,6 +420,14 @@
   align-items: center;
   gap: 6px;
   color: var(--atlas-v5-ink-5);
+}
+/* §4.3 · en el mes en curso lo que se enseña no es lo que entra, sino lo que
+   QUEDA por entrar. Iba en un `title`, invisible en táctil. */
+.mesQueda {
+  margin-top: 5px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--atlas-v5-ink-4);
 }
 .fv {
   font-family: var(--atlas-v5-font-mono-num);

@@ -233,6 +233,9 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
                 mostrarChips={false}
                 cuentas={[]}
                 ocultarCuenta
+                // §6.3 · en "Por confirmar" todo viene del mismo sitio: el chip
+                // de origen repetido no distingue nada y tapa lo que sí.
+                sinOrigen
                 rowVariant="tesoreria"
                 onConfirmar={onConfirmar}
                 onNoPaso={onDescartar}

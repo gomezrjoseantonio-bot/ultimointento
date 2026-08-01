@@ -534,6 +534,9 @@ export function generarEventosDesdeCompromiso(
       description: compromiso.alias,
       sourceType: 'gasto_recurrente',
       sourceId: compromiso.id,
+      // §6.3 · quien cobra viaja con la previsión: es lo que se leerá en el
+      // extracto y lo que permite distinguir dos recibos casi idénticos.
+      proveedor: compromiso.proveedor?.nombre || undefined,
       año: fecha.getFullYear(),
       mes: fecha.getMonth() + 1,
       certeza: 'estimado',

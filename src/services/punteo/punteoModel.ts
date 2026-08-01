@@ -56,8 +56,20 @@ export interface ItemPunteo {
   /** ISO yyyy-mm-dd del cargo (predictedDate o date). */
   fecha: string;
   concepto: string;
-  /** Contexto del activo · null = Personal. */
-  activo: { inmuebleId: number | string; alias: string } | null;
+  /**
+   * §6.3 · la traducción de ATLAS ("seguro hogar", "comunidad"), que va DEBAJO
+   * de quién cobra. `undefined` cuando no aporta nada sobre el título: mejor
+   * una línea menos que repetir lo mismo dos veces.
+   */
+  detalle?: string;
+  /**
+   * Contexto del activo · null = Personal.
+   *
+   * `alias` es OPCIONAL a propósito: si el nombre real del inmueble no se puede
+   * resolver, no se inventa un "Inmueble 3" —un id interno no le dice nada al
+   * lector— y la fila simplemente no pinta subtítulo (§2.2).
+   */
+  activo: { inmuebleId: number | string; alias?: string } | null;
   /** Etiqueta de origen (Financiación · Ingreso · Suministro · Recurrente…). */
   origen: string;
   cuentaId: number | null;

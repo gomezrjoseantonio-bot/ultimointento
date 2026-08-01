@@ -97,6 +97,13 @@ export interface PunteoListProps {
   // cuelgan de PunteoList no cambien ni un píxel. `punteoModel.ts` no se toca:
   // nada de esto es modelo, es presentación.
 
+  /**
+   * §6.3 · esconder el chip de origen. Se usa en "Por confirmar", donde todo
+   * viene del mismo sitio y repetirlo en cada fila solo tapa lo que distingue
+   * una de otra. Default `false` = lo de siempre.
+   */
+  sinOrigen?: boolean;
+
   /** 1 · Eje de agrupación. Default `fecha` = lo de siempre. */
   eje?: EjeAgrupacion;
   /** Si se pasa, se pinta el selector de eje. Sin él, el eje es fijo. */
@@ -177,19 +184,42 @@ const IconoOrigen: React.FC<{ origen: string }> = ({ origen }) => {
   }
 };
 
-const Contexto: React.FC<{ item: ItemPunteo; extra?: string }> = ({ item, extra }) => (
-  <div className={styles.contexto}>
-    {item.activo ? (
-      <>
+/**
+ * La línea de debajo del título · §6.3.
+ *
+ * Orden: qué entiende ATLAS del cargo, y de qué inmueble es. Con el título
+ * diciendo QUIÉN cobra, esta línea es la que separa dos recibos gemelos: dos
+ * "Mapfre" de 40,29 € y 40,23 € se distinguen porque una dice "seguro hogar ·
+ * Tenderina 64" y la otra "seguro hogar · Los Robles 12".
+ *
+ * Lo que no aporta, no se pinta: sin inmueble y sin detalle no hay subtítulo,
+ * en vez de una línea que solo dice "Personal" en todas las filas.
+ */
+const Contexto: React.FC<{ item: ItemPunteo; extra?: string }> = ({ item, extra }) => {
+  const trozos: React.ReactNode[] = [];
+  if (item.detalle) trozos.push(<span key="d">{item.detalle}</span>);
+  if (item.activo?.alias) {
+    trozos.push(
+      <span key="a" className={styles.ctxInmueble}>
         <Icons.Inmuebles size={10} strokeWidth={1.8} />
         <b>{item.activo.alias}</b>
-      </>
-    ) : (
-      'Personal'
-    )}
-    {extra ? <span> · {extra}</span> : null}
-  </div>
-);
+      </span>
+    );
+  }
+  if (extra) trozos.push(<span key="e">{extra}</span>);
+  if (trozos.length === 0) return null;
+
+  return (
+    <div className={styles.contexto}>
+      {trozos.map((t, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <span className={styles.ctxSep}> · </span>}
+          {t}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
 
 // ─── Componente principal ───────────────────────────────────────────────────
 
@@ -199,6 +229,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
   onChipChange,
   cuentas,
   ocultarCuenta = false,
+  sinOrigen = false,
   variant = 'full',
   onConfirmar,
   onNoPaso,
@@ -241,7 +272,18 @@ const PunteoList: React.FC<PunteoListProps> = ({
   const rowCls = (it: ItemPunteo, extra = '') =>
     [
       styles.row,
-      esDrawer ? styles.rowCompact : ocultarCuenta ? styles.rowSinCuenta : '',
+      // §6.3 · la rejilla tiene que declarar TANTAS columnas como elementos
+      // pinta la fila. Con `sinOrigen` y `ocultarCuenta` se quedaba con menos
+      // elementos que columnas, y las acciones —que van al final— caían a una
+      // línea nueva: por eso el lápiz y la ✕ aparecían DEBAJO y la fila medía
+      // el doble de lo necesario.
+      esDrawer
+        ? styles.rowCompact
+        : sinOrigen && ocultarCuenta
+          ? styles.rowMinima
+          : ocultarCuenta
+            ? styles.rowSinCuenta
+            : '',
       it.estado === 'previsto' ? styles.rowPrevisto : styles.rowReal,
       extra,
     ]
@@ -273,7 +315,13 @@ const PunteoList: React.FC<PunteoListProps> = ({
           <div className={styles.concepto}>{it.concepto}</div>
           {!esDrawer ? <Contexto item={it} /> : <Contexto item={it} extra={cuentaLabel(it.cuentaId)} />}
         </div>
-        {!esDrawer && (
+        {/* §6.3 · el chip de origen desaparece de "Por confirmar".
+            Ahí todo viene del mismo sitio, así que salía "Recurrente" ocho
+            veces seguidas ocupando el centro de la fila: repetir en cada línea
+            un dato que no varía no informa, solo tapa lo que sí distingue una
+            fila de otra. En "Movimientos", donde conviven orígenes distintos,
+            sigue estando. */}
+        {!esDrawer && !sinOrigen && (
           <span className={styles.origen}>
             <IconoOrigen origen={it.origen} />
             {it.origen}

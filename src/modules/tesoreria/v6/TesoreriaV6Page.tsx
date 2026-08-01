@@ -627,7 +627,9 @@ const TesoreriaV6Page: React.FC = () => {
                 Movimientos bancarios · próximos 6 meses
                 <span className={styles.rng}>{rangoMeses(meses[0], meses[meses.length - 1])}</span>
               </div>
-              <div className={styles.secT}>toca un mes para ver los días</div>
+              <div className={styles.secT}>
+                concilia lo previsto contra lo real · toca un mes para ver los días
+              </div>
             </div>
           </div>
           <div className={styles.mesgrid}>
@@ -828,16 +830,24 @@ const TarjetaMes: React.FC<{ mes: MesProyectado; onAbrir: () => void }> = ({ mes
       {/* Vocabulario único: "Cierre" en todo el módulo (§4.3). */}
       <div className={styles.mesLab}>Cierre</div>
       <div className={styles.mesBal}>{importeSaldo(mes.cierre)}</div>
+      {/* §4.3 · el pie lleva SIGNO como el resto de la pantalla (§2.2): la
+          flecha dice la dirección de un vistazo, pero el importe se escribe
+          igual aquí que en el hero o en el drawer.
+
+          Y en el mes en curso la etiqueta es texto VISIBLE, no un `title`: los
+          táctiles no enseñan tooltips, y no es lo mismo lo que entra en el mes
+          que lo que QUEDA por entrar. */}
       <div className={styles.mesFlow}>
-        <span className={styles.ff} title={mes.enCurso ? 'queda entrar' : 'entra'}>
+        <span className={styles.ff}>
           <Icons.ArrowUp size={14} strokeWidth={1.8} />
-          <span className={styles.fv}>{importeSaldo(mes.entra)}</span>
+          <span className={styles.fv}>{importeConSigno(mes.entra)}</span>
         </span>
-        <span className={styles.ff} title={mes.enCurso ? 'queda salir' : 'sale'}>
+        <span className={styles.ff}>
           <Icons.ArrowDown size={14} strokeWidth={1.8} />
-          <span className={styles.fv}>{importeSaldo(Math.abs(mes.sale))}</span>
+          <span className={styles.fv}>{importeConSigno(-Math.abs(mes.sale))}</span>
         </span>
       </div>
+      {mes.enCurso && <div className={styles.mesQueda}>queda entrar · queda salir</div>}
     </button>
   );
 };

@@ -56,20 +56,28 @@ export function eventoAItem(
 ): ItemPunteo {
   const mag = Math.abs(e.actualAmount ?? e.amount);
   const importe = e.type === 'income' ? mag : -mag;
+  // §2.2 · ningún identificador interno visible. Aquí se caía en
+  // `Inmueble ${id}` cuando el alias no se resolvía, y eso pintaba "Inmueble 2"
+  // en la fila: un número de fila de base de datos que al lector no le dice
+  // NADA —y menos aún cuál de sus dos seguros es—. Si el nombre real no está,
+  // se deja sin alias y la fila no pinta subtítulo: mejor nada que ruido.
+  const aliasReal = e.inmuebleAlias ?? aliasInmueble?.(e.inmuebleId ?? -1);
   const activo =
-    e.inmuebleId != null
-      ? {
-          inmuebleId: e.inmuebleId,
-          alias: e.inmuebleAlias ?? aliasInmueble?.(e.inmuebleId) ?? `Inmueble ${e.inmuebleId}`,
-        }
-      : null;
+    e.inmuebleId != null ? { inmuebleId: e.inmuebleId, alias: aliasReal } : null;
   return {
     key: `evt-${e.id}`,
     kind: 'evento',
     refId: e.id,
     estado: estadoDeEvento(e),
     fecha: (e.predictedDate ?? '').slice(0, 10),
-    concepto: e.description,
+    // §6.3 · manda QUIEN COBRA, que es lo que aparecerá en el extracto y con lo
+    // que el lector compara teniendo el móvil del banco delante. La categoría
+    // de ATLAS ("Seguro hogar") baja al subtítulo: es la traducción, no el
+    // hecho. Si no hay proveedor —previstos antiguos, préstamos, nóminas— la
+    // descripción sigue mandando, que es lo de siempre.
+    concepto: e.proveedor || e.description,
+    // Lo que ATLAS entiende de ese cargo · solo si añade algo al título.
+    detalle: e.proveedor && e.description !== e.proveedor ? e.description : undefined,
     activo,
     origen: origenDeEvento(e),
     cuentaId: e.accountId ?? null,
@@ -95,7 +103,7 @@ export function movimientoAItem(
     m.inmuebleId != null && m.inmuebleId !== ''
       ? {
           inmuebleId: m.inmuebleId,
-          alias: aliasInmueble?.(m.inmuebleId) ?? `Inmueble ${m.inmuebleId}`,
+          alias: aliasInmueble?.(m.inmuebleId),
         }
       : null;
   return {
