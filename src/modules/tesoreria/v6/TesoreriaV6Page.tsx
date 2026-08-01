@@ -13,6 +13,7 @@
 // ============================================================================
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../services/db';
 import { calculateAccountBalanceAtDate } from '../../../services/accountBalanceService';
@@ -44,22 +45,6 @@ import styles from './TesoreriaV6Page.module.css';
 
 const hoyISO = (): string => new Date().toISOString().slice(0, 10);
 
-/**
- * Props de un botón cuya acción llega con un drawer que aún no existe.
- *
- * `aria-disabled` y NO `disabled`: un botón deshabilitado de verdad no dispara
- * eventos de ratón en la mayoría de navegadores, así que su `title` no se ve —
- * y aquí el `title` es justo lo que explica por qué no se puede pulsar. Con
- * `aria-disabled` el lector de pantalla lo anuncia igual, el tooltip sale, y el
- * `onClick` corta la acción.
- */
-const pendiente = (que: string) => ({
-  type: 'button' as const,
-  'aria-disabled': true,
-  title: `Llega con ${que}`,
-  onClick: (e: React.MouseEvent) => e.preventDefault(),
-});
-
 /** Tarjetas visibles según ancho · 5 ≥1240px · 4 ≥1000px · 3 por debajo (§4.2). */
 function tarjetasVisibles(ancho: number): number {
   if (ancho >= 1240) return 5;
@@ -75,6 +60,14 @@ interface Estado {
 }
 
 const TesoreriaV6Page: React.FC = () => {
+  // Puntos de entrada heredados de las rutas que la V6 absorbe:
+  //   · /tesoreria/cuenta/:accountId  → abre el drawer de esa cuenta (§4.4)
+  //   · /tesoreria?extracto=1         → abre el drawer de extracto (§4.7)
+  // Los enlaces antiguos y el atajo del Panel siguen llevando a algo útil en
+  // vez de a un 404 o a una pantalla que ya no existe.
+  const { accountId: accountIdParam } = useParams<{ accountId?: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [estado, setEstado] = useState<Estado>({ cuentas: [], eventos: [], movimientos: [], inmuebles: [] });
   const [cargando, setCargando] = useState(true);
   const [pagina, setPagina] = useState(0);
@@ -84,7 +77,19 @@ const TesoreriaV6Page: React.FC = () => {
   const [orden, setOrden] = useState<number[]>([]);
   const [arrastrando, setArrastrando] = useState<number | null>(null);
   const [encima, setEncima] = useState<number | null>(null);
-  const [cuentaAbierta, setCuentaAbierta] = useState<number | null>(null);
+  /**
+   * Qué cuenta está abierta lo dice la URL, no un estado local.
+   *
+   * Así `/tesoreria/cuenta/5` es un enlace de verdad —se puede guardar y
+   * compartir, y el botón atrás del navegador cierra el drawer— en vez de una
+   * ruta que solo existe por compatibilidad y a la que nadie llega.
+   */
+  const cuentaAbierta = useMemo(() => {
+    const id = Number(accountIdParam);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }, [accountIdParam]);
+  const abrirCuenta = useCallback((id: number) => navigate(`/tesoreria/cuenta/${id}`), [navigate]);
+  const cerrarCuenta = useCallback(() => navigate('/tesoreria'), [navigate]);
   /**
    * §4.7 · las dos puertas del extracto. `cuenta: null` es la puerta global del
    * hero (se detecta por IBAN); con cuenta, ya viene fijada desde el drawer.
@@ -103,6 +108,8 @@ const TesoreriaV6Page: React.FC = () => {
    * cerrarse, y eso no debe mover el mes de la pantalla de detrás.
    */
   const [calendario, setCalendario] = useState<{ year: number; month0: number } | null>(null);
+  /** El extracto sí es estado local · no tiene ruta propia, solo un query. */
+  const [extractoAplicado, setExtractoAplicado] = useState(false);
 
   const hoy = hoyISO();
   const ahora = useMemo(() => new Date(`${hoy}T12:00:00`), [hoy]);
@@ -356,6 +363,18 @@ const TesoreriaV6Page: React.FC = () => {
     [trasEscribir]
   );
 
+  /**
+   * `?extracto=1` abre el drawer de §4.7 · lo usan el atajo del Panel y las
+   * rutas viejas de importación. Se aplica UNA vez: si no, cerrar el drawer lo
+   * reabriría en el siguiente render porque el query sigue en la URL.
+   */
+  useEffect(() => {
+    if (cargando || extractoAplicado) return;
+    if (searchParams.get('extracto') == null) return;
+    setExtractoAplicado(true);
+    setExtracto({ cuenta: null });
+  }, [cargando, extractoAplicado, searchParams]);
+
   if (cargando) return null;
 
   const inmuebles = estado.inmuebles;
@@ -469,7 +488,7 @@ const TesoreriaV6Page: React.FC = () => {
                     setEncima(null);
                   }}
                   onDrop={() => void soltarSobre(c.id!)}
-                  onAbrir={() => setCuentaAbierta(c.id!)}
+                  onAbrir={() => abrirCuenta(c.id!)}
                   onEditar={() => setFichaCuenta({ cuenta: c })}
                 />
               ))}
@@ -537,7 +556,7 @@ const TesoreriaV6Page: React.FC = () => {
         movimientos={cuentaAbierta != null ? porCuenta.movimientos.get(cuentaAbierta) ?? [] : []}
         year={year}
         month0={month0}
-        onCerrar={() => setCuentaAbierta(null)}
+        onCerrar={cerrarCuenta}
         onConfirmar={confirmarItem}
         onDescartar={descartarItem}
         onGuardarFicha={guardarFicha}
