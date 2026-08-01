@@ -265,12 +265,26 @@ const TesoreriaV6Page: React.FC = () => {
           console.warn('[TesoreriaV6] el alta de movimiento llega con §4.7 · aún sin escritor');
           return;
         }
+        // Una derrama que el usuario marca como MEJORA no es un gasto: se
+        // capitaliza y amortiza en `mejorasInmueble`, y ese escritor todavía no
+        // existe. Confirmarla igualmente materializaría un movement de gasto —
+        // justo lo contrario de lo que acaba de responder. Mejor no guardar y
+        // decirlo que guardar mal.
+        if (v.esMejora) {
+          console.warn('[TesoreriaV6] la derrama-mejora necesita alta en mejorasInmueble · aún sin escritor');
+          return;
+        }
         // La descripción va en el override de confirmar, que sí la acepta;
         // `TreasuryEventPatch` es solo para la clasificación.
+        //
+        // `undefined` se omite (no tocar) y `null` viaja (limpiar): por eso la
+        // comprobación es contra `undefined` y no contra falsy — si no, elegir
+        // "Sin inmueble" o reclasificar a un concepto sin variante no borraría
+        // nada y quedarían restos de la clasificación anterior.
         await updateTreasuryEventFields(item.refId, {
-          ...(v.categoryKey ? { categoryKey: v.categoryKey } : {}),
-          ...(v.subtypeKey ? { subtypeKey: v.subtypeKey } : {}),
-          ...(v.inmuebleId != null ? { inmuebleId: v.inmuebleId } : {}),
+          ...(v.categoryKey !== undefined ? { categoryKey: v.categoryKey } : {}),
+          ...(v.subtypeKey !== undefined ? { subtypeKey: v.subtypeKey } : {}),
+          ...(v.inmuebleId !== undefined ? { inmuebleId: v.inmuebleId } : {}),
         });
         await confirmTreasuryEvent(item.refId, {
           amount: Math.abs(v.importe),

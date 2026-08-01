@@ -80,6 +80,8 @@ export function eventoAItem(
       e.sourceType === 'contrato' && e.contratoId != null
         ? `contrato-${e.contratoId}`
         : undefined,
+    categoryKey: e.categoryKey,
+    subtypeKey: e.subtypeKey,
   };
 }
 
@@ -107,5 +109,7 @@ export function movimientoAItem(
     origen: m.type === 'Ingreso' ? 'Ingreso' : m.type === 'Transferencia' ? 'Transferencia' : 'Gasto',
     cuentaId: m.accountId ?? null,
     importe: m.amount,
+    categoryKey: m.categoryKey,
+    subtypeKey: m.subtypeKey,
   };
 }

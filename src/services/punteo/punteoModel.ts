@@ -69,6 +69,13 @@ export interface ItemPunteo {
   discrepancia?: DiscrepanciaPunteo;
   /** Agrupación madre/hijas (alquiler por habitaciones · fraccionados). */
   grupoId?: string;
+  /**
+   * Clasificación tal y como está persistida. La lista no la pinta; viaja para
+   * que la ficha de §4.5 pueda abrir con la clasificación REAL del registro en
+   * vez de con la primera del catálogo. `undefined` = sin clasificar.
+   */
+  categoryKey?: string;
+  subtypeKey?: string;
 }
 
 export interface DiscrepanciaPunteo {

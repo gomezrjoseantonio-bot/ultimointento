@@ -223,6 +223,76 @@ describe('alta y edición', () => {
   });
 });
 
+// Si la ficha no sabe cómo está clasificado el registro, NO puede inventarlo:
+// nacería con la primera familia del catálogo y guardar reclasificaría a
+// espaldas del usuario, que no tocó nada.
+describe('no reclasifica a espaldas del usuario', () => {
+  it('al editar sin clasificación conocida abre Sin clasificar', () => {
+    render(<FichaMovimiento {...base} inicial={{ tipo: 'gasto', concepto: 'Cargo raro' }} />);
+
+    expect(screen.getByLabelText('Familia')).toHaveValue('');
+    expect(screen.getByText('Sin clasificar')).toBeInTheDocument();
+    // Sin familia elegida, el concepto no tiene nada que ofrecer.
+    expect(screen.getByLabelText('Concepto del gasto')).toBeDisabled();
+  });
+
+  it('y guarda sin tocar la clasificación · categoryKey undefined, no null', () => {
+    const onGuardar = jest.fn();
+    render(
+      <FichaMovimiento {...base} inicial={{ tipo: 'gasto', concepto: 'x' }} onGuardar={onGuardar} />
+    );
+    fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '10' } });
+    guardar();
+
+    const v = onGuardar.mock.calls[0][0];
+    expect(v.categoryKey).toBeUndefined();
+    expect(v.subtypeKey).toBeUndefined();
+  });
+
+  it('en cambio en ALTA sí parte de una familia · ahí no hay nada que preservar', () => {
+    render(<FichaMovimiento {...base} />);
+    expect(screen.getByLabelText('Familia')).not.toHaveValue('');
+  });
+
+  it('si el usuario elige familia, esa sí se guarda', () => {
+    const onGuardar = jest.fn();
+    render(
+      <FichaMovimiento {...base} inicial={{ tipo: 'gasto', concepto: 'x' }} onGuardar={onGuardar} />
+    );
+    fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'tributos' } });
+    fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '10' } });
+    guardar();
+
+    expect(onGuardar).toHaveBeenCalledWith(
+      expect.objectContaining({ categoryKey: 'ibi_inmueble' })
+    );
+  });
+
+  it('reclasificar a un concepto sin variante manda subtypeKey null · borra el viejo', () => {
+    const onGuardar = jest.fn();
+    render(<FichaMovimiento {...base} onGuardar={onGuardar} />);
+    fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'tributos' } });
+    fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '10' } });
+    guardar();
+
+    // `null` y no `undefined`: undefined sería "no toques" y dejaría pegado el
+    // subtipo de la clasificación anterior.
+    expect(onGuardar.mock.calls[0][0].subtypeKey).toBeNull();
+  });
+
+  it('un guardado que falla no deja la promesa suelta', async () => {
+    const onGuardar = jest.fn().mockRejectedValue(new Error('IndexedDB caída'));
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    render(<FichaMovimiento {...base} onGuardar={onGuardar} />);
+    fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '10' } });
+    guardar();
+
+    await Promise.resolve();
+    expect(error).toHaveBeenCalledWith('[FichaMovimiento] el guardado falló', expect.any(Error));
+    error.mockRestore();
+  });
+});
+
 describe('importe', () => {
   it('el signo lo marca el tipo, no lo que teclee el usuario', () => {
     const onGuardar = jest.fn();

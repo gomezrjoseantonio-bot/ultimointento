@@ -19,6 +19,7 @@ import PunteoList from '../../shared/components/Punteo/PunteoList';
 import type { EjeAgrupacion } from '../../shared/components/Punteo/punteoAgrupacion';
 import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
+import { presentacionDe } from '../../../services/catalogoPresentacionPersistencia';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { esPendiente, importeConSigno as signo, rangoDelMes } from '../../../services/tesoreriaV6Metrics';
 import { colorDeBanco } from './bancoColores';
@@ -263,8 +264,18 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   );
 };
 
-/** Rellena la ficha con lo que ya sabe ATLAS · el usuario solo corrige (§4.5). */
+/**
+ * Rellena la ficha con lo que ya sabe ATLAS · el usuario solo corrige (§4.5).
+ *
+ * La clasificación se recupera haciendo el camino inverso de la tabla de
+ * traducción: el registro guarda `categoryKey`, pero la ficha enseña familia y
+ * concepto. Si la vuelta no es unívoca, `presentacionDe` devuelve `undefined` y
+ * la ficha abre SIN CLASIFICAR — que es la verdad — en vez de con la primera
+ * familia del catálogo, que al guardar habría reclasificado a espaldas del
+ * usuario.
+ */
 function valoresDesdeItem(item: ItemPunteo, cuentaId: number | null): Partial<ValoresFicha> {
+  const presentacion = presentacionDe(item.categoryKey, item.subtypeKey);
   return {
     tipo: item.importe >= 0 ? 'ingreso' : 'gasto',
     concepto: item.concepto,
@@ -272,6 +283,7 @@ function valoresDesdeItem(item: ItemPunteo, cuentaId: number | null): Partial<Va
     fecha: item.fecha,
     cuentaId: item.cuentaId ?? cuentaId,
     inmuebleId: typeof item.activo?.inmuebleId === 'number' ? item.activo.inmuebleId : null,
+    ...(presentacion ? { familia: presentacion.tipoId, subtipo: presentacion.subtipoId } : {}),
   };
 }
 

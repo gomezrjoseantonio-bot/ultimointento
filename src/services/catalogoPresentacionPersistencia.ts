@@ -208,6 +208,32 @@ export function traducirPersonal(tipoId: string): TraduccionCategoria | undefine
 }
 
 /**
+ * Camino INVERSO: de lo persistido (`categoryKey` + `subtypeKey`) a lo que ve
+ * el usuario (familia + concepto). Lo necesita la ficha de §4.5 para nacer
+ * rellena con la clasificación que ya tiene el registro.
+ *
+ * Devuelve `undefined` cuando la vuelta NO es unívoca — o la key no está en la
+ * tabla, o varias familias distintas caen en la misma key. Adivinar una de
+ * ellas sería peor que no rellenar: la ficha mostraría una clasificación que el
+ * usuario no eligió y la guardaría como si sí. Quien llame debe tratar el
+ * `undefined` como "no lo sé", no como "no tiene".
+ */
+export function presentacionDe(
+  categoryKey: string | undefined,
+  subtypeKey?: string
+): { tipoId: string; subtipoId: string } | undefined {
+  if (!categoryKey) return undefined;
+
+  const candidatos = Object.entries(TRADUCCION_INMUEBLE).filter(
+    ([, t]) => t.categoryKey === categoryKey && (t.subtypeKey ?? undefined) === (subtypeKey ?? undefined)
+  );
+  if (candidatos.length !== 1) return undefined;
+
+  const [tipoId, subtipoId] = candidatos[0][0].split(':');
+  return { tipoId, subtipoId };
+}
+
+/**
  * Entradas sin destino fiscal decidido. La UI de alta/edición debe impedir
  * guardar con una de estas y decir por qué, en vez de persistir un
  * `categoryKey` inventado.

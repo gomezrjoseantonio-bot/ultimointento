@@ -1291,8 +1291,13 @@ export interface TreasuryEventPatch {
   // Ampliación ADITIVA: todos opcionales, así que ningún llamador previo cambia
   // de comportamiento. `categoryKey` es lo que alimenta el tratamiento fiscal,
   // y hasta ahora no había forma de corregirlo sin reescribir el evento a mano.
-  categoryKey?: string;
-  subtypeKey?: string;
+  // `null` = limpiar el campo, igual que en `accountId`/`inmuebleId`. Hace
+  // falta de verdad: una derrama que resulta ser mejora NO puede quedarse con
+  // la key de gasto anterior, y reclasificar a un concepto sin variante tiene
+  // que poder borrar el `subtypeKey` viejo. Sin esto, reclasificar dejaría
+  // restos de la clasificación fiscal previa.
+  categoryKey?: string | null;
+  subtypeKey?: string | null;
   inmuebleId?: number | null;
 }
 
@@ -1326,8 +1331,16 @@ export async function updateTreasuryEventFields(
         ? { accountId: undefined }
         : { accountId: patch.accountId }
       : {}),
-    ...(patch.categoryKey !== undefined ? { categoryKey: patch.categoryKey } : {}),
-    ...(patch.subtypeKey !== undefined ? { subtypeKey: patch.subtypeKey } : {}),
+    ...(patch.categoryKey !== undefined
+      ? patch.categoryKey === null
+        ? { categoryKey: undefined }
+        : { categoryKey: patch.categoryKey }
+      : {}),
+    ...(patch.subtypeKey !== undefined
+      ? patch.subtypeKey === null
+        ? { subtypeKey: undefined }
+        : { subtypeKey: patch.subtypeKey }
+      : {}),
     ...(patch.inmuebleId !== undefined
       ? patch.inmuebleId === null
         ? { inmuebleId: undefined }

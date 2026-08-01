@@ -98,6 +98,21 @@ describe('§4.5 · el parche de clasificación (ampliación aditiva)', () => {
     await updateTreasuryEventFields(1, { inmuebleId: null });
     expect(eventos[0].inmuebleId).toBeUndefined();
   });
+
+  it('categoryKey null limpia la clasificación · no deja restos fiscales', async () => {
+    const { updateTreasuryEventFields } = await import('../treasuryConfirmationService');
+    await updateTreasuryEventFields(1, {
+      categoryKey: 'comunidad_inmueble',
+      subtypeKey: 'luz',
+    });
+    expect(eventos[0].categoryKey).toBe('comunidad_inmueble');
+
+    // El caso real: una derrama que resulta ser MEJORA no puede quedarse con la
+    // key de gasto anterior · se amortiza, no se deduce.
+    await updateTreasuryEventFields(1, { categoryKey: null, subtypeKey: null });
+    expect(eventos[0].categoryKey).toBeUndefined();
+    expect(eventos[0].subtypeKey).toBeUndefined();
+  });
 });
 
 describe('recuperar un descartado', () => {

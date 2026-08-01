@@ -52,9 +52,18 @@ export interface ValoresFicha {
 
 /** Lo que sale al guardar: los valores + lo que hay que persistir. */
 export interface GuardadoFicha extends ValoresFicha {
-  /** Traducido desde familia/concepto. `null` si la derrama va a mejora. */
-  categoryKey: string | null;
-  subtypeKey?: string;
+  /**
+   * Traducido desde familia/concepto.
+   *   · `string`    → clasificar así.
+   *   · `null`      → limpiar la clasificación (transferencia · derrama-mejora,
+   *                   que no lleva key de gasto porque se amortiza).
+   *   · `undefined` → NO tocar lo que ya hubiera. Pasa cuando la ficha abrió
+   *                   sin conocer la clasificación del registro y el usuario no
+   *                   la eligió: sobrescribirla con la primera del catálogo
+   *                   sería reclasificar a su espalda.
+   */
+  categoryKey?: string | null;
+  subtypeKey?: string | null;
   /** true si el movimiento debe darse de alta en `mejorasInmueble`. */
   esMejora: boolean;
 }
@@ -77,6 +86,13 @@ const hoyISO = () => new Date().toISOString().slice(0, 10);
 
 /** Familias que ofrece el selector · Financiación y Traspaso NO son categoría (D3). */
 const FAMILIAS = TIPOS_GASTO_INMUEBLE_V2;
+
+/**
+ * Valor del selector cuando ATLAS no sabe cómo está clasificado el registro.
+ * No es una familia: es la ausencia de elección, y guardar con ella deja la
+ * clasificación existente intacta.
+ */
+const SIN_CLASIFICAR = '';
 
 const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   abierta,
@@ -111,14 +127,18 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
     setImporte(inicial?.importe != null ? String(Math.abs(inicial.importe)).replace('.', ',') : '');
     setFecha(inicial?.fecha ?? hoyISO());
     setCuentaId(inicial?.cuentaId ?? cuentas[0]?.id ?? null);
-    const fam = inicial?.familia ?? FAMILIAS[0]?.id ?? '';
+    // En ALTA se parte de la primera familia, que es una elección del usuario
+    // desde el primer momento. Al EDITAR, si no se conoce la clasificación del
+    // registro, se abre SIN CLASIFICAR en vez de fingir una: así guardar no
+    // reclasifica nada que el usuario no haya tocado.
+    const fam = inicial?.familia ?? (esEdicion ? SIN_CLASIFICAR : FAMILIAS[0]?.id ?? '');
     setFamilia(fam);
     setSubtipo(inicial?.subtipo ?? subtiposDe(fam)[0]?.id ?? '');
     setInmuebleId(inicial?.inmuebleId ?? null);
     setCuentaDestinoId(inicial?.cuentaDestinoId ?? null);
     setDerrama(inicial?.naturalezaDerrama ?? null);
     setTocado(false);
-  }, [abierta, inicial, cuentas]);
+  }, [abierta, inicial, cuentas, esEdicion]);
 
   const subtipos = useMemo(() => subtiposDe(familia), [familia]);
   const esTransferencia = tipo === 'transferencia';
@@ -144,7 +164,14 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
     const opcion = necesitaPregunta && derrama ? traduccion?.opciones?.[derrama] : undefined;
     const esMejora = Boolean(opcion?.esMejora);
 
-    void onGuardar({
+    // `undefined` = "no toques la clasificación". Solo cuando se edita algo que
+    // abrió sin clasificar y el usuario tampoco eligió familia.
+    const sinElegir = clasificable && familia === SIN_CLASIFICAR;
+    const keyElegida = necesitaPregunta
+      ? opcion?.categoryKey ?? null
+      : traduccion?.categoryKey ?? null;
+
+    const resultado = onGuardar({
       tipo,
       concepto,
       // El signo lo marca el tipo, no lo que teclee el usuario.
@@ -155,10 +182,20 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
       inmuebleId: clasificable ? inmuebleId : null,
       ...(esTransferencia ? { cuentaDestinoId } : {}),
       ...(necesitaPregunta && derrama ? { naturalezaDerrama: derrama } : {}),
-      categoryKey: necesitaPregunta ? opcion?.categoryKey ?? null : traduccion?.categoryKey ?? null,
-      subtypeKey: traduccion?.subtypeKey,
+      categoryKey: sinElegir ? undefined : keyElegida,
+      // `null` (no `undefined`) para que reclasificar a un concepto sin
+      // variante borre el subtipo viejo en vez de dejarlo pegado.
+      subtypeKey: sinElegir ? undefined : traduccion?.subtypeKey ?? null,
       esMejora,
     });
+
+    // El guardado real es asíncrono y puede fallar. La ficha no puede dejar la
+    // promesa suelta: un rechazo aquí sería un unhandled rejection.
+    if (resultado && typeof (resultado as Promise<void>).catch === 'function') {
+      (resultado as Promise<void>).catch((err) => {
+        console.error('[FichaMovimiento] el guardado falló', err);
+      });
+    }
   };
 
   if (!abierta) return null;
@@ -274,6 +311,11 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                     setDerrama(null);
                   }}
                 >
+                  {/* Solo mientras siga sin clasificar · en cuanto el usuario
+                      elige algo, no hay vuelta a "no sé". */}
+                  {familia === SIN_CLASIFICAR && (
+                    <option value={SIN_CLASIFICAR}>Sin clasificar</option>
+                  )}
                   {FAMILIAS.map((f) => (
                     <option key={f.id} value={f.id}>{f.label}</option>
                   ))}
@@ -291,7 +333,11 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                     setSubtipo(e.target.value);
                     setDerrama(null);
                   }}
+                  disabled={familia === SIN_CLASIFICAR}
                 >
+                  {familia === SIN_CLASIFICAR && (
+                    <option value="">Elige antes la familia</option>
+                  )}
                   {subtipos.map((s) => (
                     <option key={s.id} value={s.id}>{s.label}</option>
                   ))}
