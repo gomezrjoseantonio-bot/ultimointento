@@ -318,6 +318,21 @@ describe('las puertas por URL', () => {
     );
   });
 
+  it('el enlace a una cuenta funciona TAMBIÉN en móvil', async () => {
+    // §4.11 monta otra pantalla, pero el drawer de cuenta se comparte: si no,
+    // abrir `/tesoreria/cuenta/1` desde el teléfono no enseñaría nada.
+    const anchoOriginal = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    try {
+      montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
+      montar('/tesoreria/cuenta/1');
+
+      expect(await screen.findByRole('dialog', { name: /Cuenta Sabadell/ })).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { value: anchoOriginal, configurable: true });
+    }
+  });
+
   it('sin parámetros no abre nada', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();

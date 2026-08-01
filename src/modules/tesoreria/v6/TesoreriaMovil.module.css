@@ -1,0 +1,269 @@
+/* ===========================================================================
+   Tesorería V6 · §4.11 · móvil
+
+   Mockup: docs/mockups/atlas-tesoreria-v6-movil.html.
+
+   Todo se dimensiona pensando en el pulgar: las filas de confirmar tienen
+   objetivo de 44px de alto mínimo, que es el mínimo cómodo de toque.
+   =========================================================================== */
+
+.movil {
+  padding-bottom: 24px;
+}
+
+/* ── Cabecera ────────────────────────────────────────────────────────────── */
+
+.cab {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0 14px;
+}
+.cabT {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.cabS {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+}
+
+/* ── Mini-hero navy ──────────────────────────────────────────────────────── */
+
+.hero {
+  background: var(--atlas-v5-brand);
+  border-top: 3px solid var(--atlas-v5-gold);
+  border-radius: 13px;
+  padding: 14px 16px 15px;
+}
+.heroL {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-on-brand-soft);
+}
+.heroRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 5px;
+}
+.heroBig {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 27px;
+  font-weight: 700;
+  color: var(--atlas-v5-on-brand);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.heroFin {
+  text-align: right;
+  flex-shrink: 0;
+}
+.heroFinL {
+  display: block;
+  font-size: 9.5px;
+  color: var(--atlas-v5-on-brand-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+/* El cierre en oro · única cifra que no va en tinta (§5). */
+.heroFinV {
+  display: block;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--atlas-v5-gold);
+  margin-top: 1px;
+}
+
+.cuerpo {
+  padding-top: 16px;
+}
+
+/* ── Separador de cuenta ─────────────────────────────────────────────────── */
+
+.grupo { margin-bottom: 16px; }
+
+.sep {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 2px 7px;
+}
+.sepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sepNom {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink-2);
+}
+.sepMask {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+}
+
+/* ── Filas de pendiente ──────────────────────────────────────────────────── */
+
+.tarjeta {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  /* 44px de objetivo de toque · por debajo se falla con el pulgar. */
+  min-height: 52px;
+  padding: 9px 13px;
+  background: var(--atlas-v5-card);
+  border: none;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.fila:last-child { border-bottom: none; }
+.fila:active { background: var(--atlas-v5-card-alt); }
+
+.check {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--atlas-v5-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-5);
+  flex-shrink: 0;
+}
+.fila:active .check {
+  border-color: var(--atlas-v5-brand);
+  color: var(--atlas-v5-brand);
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.concepto {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.detalle {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.importe {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  flex-shrink: 0;
+}
+
+/* Ámbar · el color es el aviso, y por eso el texto no lo repite (§5). */
+.aviso {
+  margin-top: 6px;
+  padding: 0 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--atlas-v5-warn);
+}
+
+/* ── Nada pendiente · la recompensa ──────────────────────────────────────── */
+
+.alDia {
+  text-align: center;
+  padding: 26px 20px 22px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: 13px;
+}
+.alDiaIc {
+  color: var(--atlas-v5-gold);
+  margin-bottom: 10px;
+}
+.alDiaT {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.01em;
+}
+.alDiaS {
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.alDiaFin {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+}
+.alDiaFinL {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+}
+.alDiaFinV {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--atlas-v5-gold);
+  margin-top: 3px;
+}
+
+/* ── Subir extracto · ancho completo (§4.11) ─────────────────────────────── */
+
+.cta {
+  margin-top: 18px;
+}
+.ctaBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  border-radius: 11px;
+  border: 1px solid var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold);
+  color: var(--atlas-v5-on-gold);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ctaBtn:active { background: var(--atlas-v5-gold-2); }
