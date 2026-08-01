@@ -12,7 +12,6 @@ import {
   actualizarCompromiso,
   importeCompromisoEnMes,
 } from '../../../../../services/personal/compromisosRecurrentesService';
-import { regenerateForecastsForward } from '../../../../../services/treasuryBootstrapService';
 import { showToastV5 } from '../../../../../design-system/v5';
 import { formatEur } from '../utils/amountFormatter';
 import { formatPattern } from '../utils/patternFormatter';
@@ -113,10 +112,27 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
     return any && s > 0 ? s : null;
   }, [c]);
 
+  /**
+   * FASE 0 · guardar un cambio NO puede lanzar dos generadores.
+   *
+   * Aquí se llamaba a `actualizarCompromiso` y justo después a
+   * `regenerateForecastsForward({force:true})`. El primero ya borra todas las
+   * previsiones `predicted` de ESE compromiso y las vuelve a emitir; el segundo
+   * es un barrido GLOBAL que borra las `predicted` desde el mes en curso y
+   * regenera todo el catálogo.
+   *
+   * Los dos rangos no coinciden —uno va por compromiso y sin límite de fecha,
+   * el otro va por fecha y sobre todo— así que encadenarlos no es regenerar dos
+   * veces lo mismo: es dejar el resultado a merced del orden y de qué tramo
+   * cubre cada uno. De ahí que cambiar un importe acabara creando un registro
+   * nuevo en vez de modificar el que ya estaba.
+   *
+   * El plan lo dice: si dos caminos generan la misma previsión, uno sobra.
+   * Sobra el barrido global: no es trabajo de editar una fila.
+   */
   const persistir = async (patch: Partial<Omit<CompromisoRecurrente, 'id' | 'createdAt'>>) => {
     try {
       await actualizarCompromiso(c.id, patch);
-      await regenerateForecastsForward({ force: true }).catch(() => {});
       onInlineSaved();
     } catch (err) {
       showToastV5(`No se pudo guardar: ${err instanceof Error ? err.message : String(err)}`, 'error');

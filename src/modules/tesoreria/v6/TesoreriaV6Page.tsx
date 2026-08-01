@@ -41,6 +41,7 @@ import {
 import { descartarPrevisto } from '../../../services/treasuryDiscardService';
 import { altaMovimiento } from '../../../services/altaMovimientoService';
 import { batchesEnBorrador, sinBorradores } from '../../../services/statementSessionService';
+import { registrarDiagnosticoEnConsola } from '../../../services/duplicadosPrevisionService';
 import type { GuardadoFicha } from './FichaMovimiento';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
@@ -157,6 +158,14 @@ const TesoreriaV6Page: React.FC = () => {
   useEffect(() => {
     void recargar();
   }, [recargar]);
+
+  // FASE 0 · deja `atlasDiagnostico.duplicados()` en la consola. Solo lectura:
+  // cuenta previsiones repetidas y dice cuánto distorsionan el cierre. Hace
+  // falta porque los datos viven en el navegador y las páginas /dev están
+  // apagadas en producción.
+  useEffect(() => {
+    registrarDiagnosticoEnConsola();
+  }, []);
 
   useEffect(() => {
     const onResize = () => setPorPagina(tarjetasVisibles(window.innerWidth));

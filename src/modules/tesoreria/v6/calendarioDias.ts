@@ -121,10 +121,25 @@ export function construirDias(params: {
     let saldo = saldoPorCuenta.get(c.id) ?? 0;
     for (let d = 1; d <= total; d++) {
       const fecha = iso(year, month0, d);
-      saldo += porFecha.get(fecha) ?? 0;
-      // Solo cuenta hacia delante: un negativo en un día ya pasado es historia,
-      // no un aviso accionable.
-      if (saldo < 0 && fecha >= hoy) diasCortos.add(fecha);
+      const flujoDelDia = porFecha.get(fecha) ?? 0;
+      saldo += flujoDelDia;
+
+      // El punto marca el día que DEJA la cuenta corta, no todos los días que
+      // sigue estándolo.
+      //
+      // Antes bastaba con `saldo < 0`, y eso encendía el aviso en el resto entero
+      // del mes en cuanto una cuenta cruzaba a negativo — con lo que el ámbar
+      // aparecía en casi todos los días y dejaba de significar "mira aquí".
+      //
+      // Ahora hacen falta las dos cosas: que el día tenga movimiento propio en
+      // esa cuenta (un día sin nada nunca avisa) y que la cuenta cierre ese día
+      // en negativo. Así el punto señala el día en que hay que hacer algo.
+      //
+      // No se filtra por `fecha >= hoy`: `flujoFuturo` ya contiene SOLO lo que
+      // está por ocurrir. Un previsto vencido y sin confirmar sigue por venir
+      // aunque su fecha pasara —el cargo no ha llegado— y si hunde la cuenta
+      // hay que verlo. Lo ya ocurrido no entra aquí porque vive en el saldo.
+      if (flujoDelDia !== 0 && saldo < 0) diasCortos.add(fecha);
     }
   }
 

@@ -7,7 +7,6 @@
 
 import React, { useMemo, useState } from 'react';
 import { actualizarCompromiso } from '../../../../../services/personal/compromisosRecurrentesService';
-import { regenerateForecastsForward } from '../../../../../services/treasuryBootstrapService';
 import { showToastV5 } from '../../../../../design-system/v5';
 import type {
   CompromisoRecurrente,
@@ -190,8 +189,11 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
         ...(esAlquilerPersonal ? { esViviendaHabitual: esVH } : {}),
       };
 
+      // FASE 0 · `actualizarCompromiso` ya borra y reemite las previsiones de
+      // este compromiso. Encadenar aquí el barrido global de
+      // `regenerateForecastsForward` mezclaba dos rangos distintos y era lo que
+      // convertía "editar el importe" en "crear un registro nuevo".
       const updated = await actualizarCompromiso(c.id, payload);
-      await regenerateForecastsForward({ force: true }).catch(() => {});
       showToastV5(`«${updated.alias}» guardado`, 'success');
       onSaved(updated);
     } catch (err) {
