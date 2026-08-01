@@ -211,8 +211,13 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
       >
         <div className={styles.hd}>
           <div>
-            <div className={styles.kicker}>{esEdicion ? 'Editar' : 'Anotar'}</div>
-            <h3 className={styles.title}>Movimiento</h3>
+            {/* §7 · el título dice de QUÉ movimiento se trata. "Movimiento" a
+                secas no identifica nada: abriendo desde una lista de doscientos
+                no hay forma de saber si es el que se quería tocar. */}
+            <div className={styles.kicker}>
+              {esEdicion ? 'Editar previsión' : 'Anotar movimiento'}
+            </div>
+            <h3 className={styles.title}>{concepto?.trim() || 'Movimiento'}</h3>
           </div>
           <button type="button" className={styles.close} onClick={onCerrar} aria-label="Cerrar">
             <Icons.Close size={17} strokeWidth={2} />
@@ -237,15 +242,15 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
             </div>
           )}
 
-          {/* §4.5 etiqueta "Concepto" tanto el texto libre como el del catálogo.
-              Se respeta la etiqueta visible y se amplía solo el nombre
-              accesible, para que un lector de pantalla no anuncie dos campos
-              idénticos seguidos. */}
+          {/* §7 · el texto libre es DESCRIPCIÓN.
+              Se llamaba "Concepto" igual que el campo del catálogo que hay más
+              abajo: dos campos con el mismo nombre en el mismo formulario, y
+              ninguna forma de saber cuál pide qué. El de arriba lo escribe el
+              usuario; el de abajo se elige de una lista. */}
           <div className={styles.fld}>
-            <label className={styles.lab} htmlFor="fm-concepto">Concepto</label>
+            <label className={styles.lab} htmlFor="fm-concepto">Descripción</label>
             <input
               id="fm-concepto"
-              aria-label="Concepto del movimiento"
               className={styles.input}
               value={concepto}
               onChange={(e) => setConcepto(e.target.value)}

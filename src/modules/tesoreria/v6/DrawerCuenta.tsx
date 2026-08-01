@@ -305,7 +305,11 @@ function valoresDesdeItem(item: ItemPunteo, cuentaId: number | null): Partial<Va
   const presentacion = presentacionDe(item.categoryKey, item.subtypeKey);
   return {
     tipo: item.importe >= 0 ? 'ingreso' : 'gasto',
-    concepto: item.concepto,
+    // La ficha edita la DESCRIPCIÓN del movimiento, no el rótulo de la fila.
+    // Desde §6.3 el título de la fila es quién cobra ("Mapfre") y la
+    // descripción baja a `detalle`; abrir la ficha con "Mapfre" en el campo de
+    // texto sobrescribiría "Seguro hogar" en cuanto se guardara.
+    concepto: item.detalle ?? item.concepto,
     importe: item.importe,
     fecha: item.fecha,
     cuentaId: item.cuentaId ?? cuentaId,

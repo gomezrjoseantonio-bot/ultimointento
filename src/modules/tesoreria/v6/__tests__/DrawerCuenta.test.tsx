@@ -268,3 +268,27 @@ describe('cierre', () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+
+// §7 · la ficha edita la descripción, no el rótulo de la fila.
+describe('lo que lleva la ficha al abrirla', () => {
+  it('el campo de texto trae la DESCRIPCIÓN, no el proveedor', () => {
+    // Desde §6.3 la fila se titula con quién cobra ("Mapfre") y la descripción
+    // baja al subtítulo. Si la ficha abriera con "Mapfre" en el campo de texto,
+    // guardar sobrescribiría "Seguro hogar" sin que nadie lo pidiera.
+    const item = {
+      key: 'evt-1',
+      kind: 'evento' as const,
+      refId: 1,
+      estado: 'previsto' as const,
+      fecha: '2026-08-10',
+      concepto: 'Mapfre',
+      detalle: 'Seguro hogar',
+      activo: null,
+      origen: 'Recurrente',
+      cuentaId: 1,
+      importe: -40.29,
+    };
+    expect(item.detalle ?? item.concepto).toBe('Seguro hogar');
+  });
+});

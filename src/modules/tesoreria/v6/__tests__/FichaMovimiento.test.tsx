@@ -40,7 +40,7 @@ describe('el usuario nunca elige categoría fiscal', () => {
 
     expect(screen.getByLabelText('Familia')).toBeInTheDocument();
     expect(screen.getByLabelText('Concepto del gasto')).toBeInTheDocument();
-    expect(screen.getByLabelText('Concepto del movimiento')).toBeInTheDocument();
+    expect(screen.getByLabelText('Descripción')).toBeInTheDocument();
     // El mapeo a Hacienda es responsabilidad de ATLAS, no del usuario (§4.5).
     expect(screen.queryByText(/categor[íi]a fiscal/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/casilla/i)).not.toBeInTheDocument();
@@ -173,12 +173,12 @@ describe('alta y edición', () => {
   it('en alta se elige tipo; al editar ya está decidido', () => {
     const { unmount } = render(<FichaMovimiento {...base} />);
     expect(screen.getByRole('button', { name: 'Gasto' })).toBeInTheDocument();
-    expect(screen.getByText('Anotar')).toBeInTheDocument();
+    expect(screen.getByText('Anotar movimiento')).toBeInTheDocument();
     unmount();
 
     render(<FichaMovimiento {...base} inicial={{ tipo: 'gasto', concepto: 'Luz' }} />);
     expect(screen.queryByRole('button', { name: 'Gasto' })).not.toBeInTheDocument();
-    expect(screen.getByText('Editar')).toBeInTheDocument();
+    expect(screen.getByText('Editar previsión')).toBeInTheDocument();
   });
 
   it('nace relleno con la clasificación automática · el usuario solo corrige', () => {
@@ -196,7 +196,7 @@ describe('alta y edición', () => {
       />
     );
 
-    expect(screen.getByLabelText('Concepto del movimiento')).toHaveValue('Recibo Iberdrola');
+    expect(screen.getByLabelText('Descripción')).toHaveValue('Recibo Iberdrola');
     expect(screen.getByLabelText('Familia')).toHaveValue('suministros');
     expect(screen.getByLabelText('Importe real')).toHaveValue('74,09');
     expect(screen.getByLabelText('Inmueble')).toHaveValue('7');
