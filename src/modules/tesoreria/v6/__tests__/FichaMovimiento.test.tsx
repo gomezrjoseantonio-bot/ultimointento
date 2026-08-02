@@ -387,3 +387,65 @@ describe('el papel que respalda el movimiento', () => {
     expect(document.querySelector('input[type="file"]')).toBeNull();
   });
 });
+
+
+// Sacar del cajero no es un gasto: el dinero no se va, cambia de sitio. Sin
+// esto, sacar 200 € hundía el patrimonio 200 € el mismo día.
+describe('el atajo del cajero', () => {
+  const efectivo: Account = {
+    id: 9,
+    alias: 'Efectivo',
+    tipo: 'EFECTIVO',
+    status: 'ACTIVE',
+    activa: true,
+    createdAt: '',
+    updatedAt: '',
+  } as Account;
+
+  it('deja la retirada montada · transferencia interna a Efectivo', () => {
+    const onGuardar = jest.fn();
+    render(
+      <FichaMovimiento
+        {...base}
+        cuentas={[...base.cuentas, efectivo]}
+        onGuardar={onGuardar}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cajero' }));
+    fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '200' } });
+    guardar();
+
+    expect(onGuardar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tipo: 'transferencia',
+        cuentaDestinoId: 9,
+        concepto: 'Retirada de cajero',
+      })
+    );
+  });
+
+  // Un botón que no puede hacer nada es peor que no ofrecerlo: se dice por qué.
+  it('sin cuenta de efectivo, el botón no engaña', () => {
+    render(<FichaMovimiento {...base} />);
+    const cajero = screen.getByRole('button', { name: 'Cajero' });
+    expect(cajero).toBeDisabled();
+    expect(cajero).toHaveAttribute('title', expect.stringContaining('cuenta de Efectivo'));
+  });
+
+  // Salir del atajo no puede dejar el destino puesto: una transferencia normal
+  // nacería apuntando a la cuenta de efectivo sin que nadie lo pidiera.
+  it('cambiar de tipo suelta el destino que puso el atajo', () => {
+    const onGuardar = jest.fn();
+    render(
+      <FichaMovimiento {...base} cuentas={[...base.cuentas, efectivo]} onGuardar={onGuardar} />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cajero' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Transferencia' }));
+    fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '50' } });
+    guardar();
+
+    expect(onGuardar).toHaveBeenCalledWith(expect.objectContaining({ cuentaDestinoId: null }));
+  });
+});

@@ -174,6 +174,7 @@ const tipoFromAccount = (acc: Account): CuentaTipo => {
   // Mapeo tipos legacy ('OTRA' no se ofrece en v3 → defaulteamos a CORRIENTE).
   if (acc.tipo === 'AHORRO') return 'AHORRO';
   if (acc.tipo === 'TARJETA_CREDITO') return 'TARJETA_CREDITO';
+  if (acc.tipo === 'EFECTIVO') return 'EFECTIVO';
   return 'CORRIENTE';
 };
 
@@ -323,6 +324,12 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
   const [bloqueoBaja, setBloqueoBaja] = useState<MotivoBloqueo | null | undefined>(undefined);
   const dialogRef = useFocusTrap(open);
   const isEditing = !!editingAccount;
+  /**
+   * El EFECTIVO no es una cuenta de banco · no tiene banco, ni IBAN, ni se
+   * remunera. Se esconden esos bloques en vez de enseñarlos vacíos: un campo
+   * que nunca se rellena es una pregunta sin respuesta posible.
+   */
+  const esEfectivo = form.tipo === 'EFECTIVO';
 
   // Reset form al abrir / cambiar editingAccount
   useEffect(() => {
@@ -406,8 +413,9 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     setForm((prev) => ({
       ...prev,
       tipo,
-      // Tarjeta nunca remunerada
-      esRemunerada: tipo === 'TARJETA_CREDITO' ? false : prev.esRemunerada,
+      // Ni la tarjeta ni el efectivo se remuneran: una debe dinero y el otro
+      // está en un bolsillo.
+      esRemunerada: tipo === 'TARJETA_CREDITO' || tipo === 'EFECTIVO' ? false : prev.esRemunerada,
     }));
     setErrors({});
   };
@@ -513,6 +521,12 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       errs.bancoOtro = 'Indica el nombre del banco';
     }
 
+    // El efectivo no tiene IBAN que validar · solo hay que saber cuánto hay y
+    // desde cuándo, igual que en cualquier otra cuenta.
+    if (form.tipo === 'EFECTIVO') {
+      if (!form.fechaSaldo) errs.fechaSaldo = 'Fecha obligatoria';
+    }
+
     if (form.tipo === 'CORRIENTE' || form.tipo === 'AHORRO') {
       // IBAN NO obligatorio (spec §4 regla 3) · sólo se valida si hay valor
       if (form.iban.trim()) {
@@ -549,6 +563,8 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     setSaving(true);
     try {
       const isCard = form.tipo === 'TARJETA_CREDITO';
+      // El efectivo no tiene IBAN, igual que la tarjeta: no se inventa uno.
+      const isEfectivo = form.tipo === 'EFECTIVO';
 
       // chargeAccountId puede provenir como '' (= NaN tras parseInt) si
       // alguien bypassea la validación · forzamos número finito o undefined.
@@ -626,7 +642,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       } else {
         const createData: CreateAccountData = {
           alias: form.alias.trim() || undefined,
-          iban: isCard ? undefined : (form.iban || undefined),
+          iban: isCard || isEfectivo ? undefined : (form.iban || undefined),
           tipo: form.tipo,
           cardConfig: isCard
             ? { settlementDay: parseInt31(form.diaPago), chargeAccountId: cuentaCargoIdNum! }
@@ -673,13 +689,20 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       // §10 · el subtítulo repetía el título ("Nueva cuenta" arriba, "Cuenta
       // nueva · pendiente guardar" debajo) y avisaba de algo evidente: nada
       // está guardado hasta que se pulsa Guardar. Solo se dice el tipo.
-      return form.tipo === 'TARJETA_CREDITO' ? 'Tarjeta de crédito' : 'Cuenta bancaria';
+      return form.tipo === 'TARJETA_CREDITO'
+        ? 'Tarjeta de crédito'
+        : form.tipo === 'EFECTIVO'
+          ? 'Efectivo'
+          : 'Cuenta bancaria';
     }
     const tipoTxt = editingAccount.tipo === 'AHORRO' ? 'Ahorro'
       : editingAccount.tipo === 'TARJETA_CREDITO' ? 'Tarjeta crédito'
+      : editingAccount.tipo === 'EFECTIVO' ? 'Efectivo'
       : 'Corriente';
-    const ibanLast = last4Iban(editingAccount.iban);
     const tail = nominaBadge ? ` · vinculada a nómina ${nominaBadge.empresa}` : '';
+    // Sin IBAN no se escribe "IBAN ···· " con el hueco vacío detrás: se calla.
+    if (editingAccount.tipo === 'EFECTIVO') return `${tipoTxt}${tail}`;
+    const ibanLast = last4Iban(editingAccount.iban);
     return `${tipoTxt} · IBAN ···· ${ibanLast}${tail}`;
   })();
 
@@ -765,6 +788,17 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                   >
                     <span className={styles.typeCardLabel}>Tarjeta crédito</span>
                   </button>
+                  {/* El dinero del bolsillo es una cuenta más · sin ella, sacar
+                      200 € del cajero se apunta como un gasto y el patrimonio
+                      baja 200 € el día que el dinero solo ha cambiado de sitio. */}
+                  <button
+                    type="button"
+                    className={`${styles.typeCard} ${form.tipo === 'EFECTIVO' ? styles.selected : ''}`}
+                    onClick={() => handleTipoChange('EFECTIVO')}
+                    aria-pressed={form.tipo === 'EFECTIVO'}
+                  >
+                    <span className={styles.typeCardLabel}>Efectivo</span>
+                  </button>
                 </div>
               </Block>
 
@@ -788,6 +822,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                       maxLength={40}
                     />
                   </Field>
+                  {!esEfectivo && (
                   <Field label="Banco / proveedor">
                     <select
                       className={styles.select}
@@ -800,6 +835,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                       ))}
                     </select>
                   </Field>
+                  )}
                   <div className={`${styles.field} ${styles.principalToggle}`}>
                     <span className={styles.principalToggleLabel}>Cuenta principal</span>
                     <button
@@ -919,7 +955,8 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                 </div>
               </Block>
 
-              {/* B3 · DATOS BANCARIOS · varía según tipo */}
+              {/* B3 · DATOS BANCARIOS · varía según tipo · el efectivo no tiene */}
+              {!esEfectivo && (
               <Block title="Datos bancarios">
                 {form.tipo !== 'TARJETA_CREDITO' ? (
                   <div className={`${styles.fieldsRow} ${styles.rowBancarios}`}>
@@ -1006,6 +1043,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                   </>
                 )}
               </Block>
+              )}
 
               {/* B4 · SALDO INICIAL · varía según tipo */}
               <Block title="Saldo inicial">
@@ -1084,8 +1122,8 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                 )}
               </Block>
 
-              {/* B5 · CUENTA REMUNERADA · oculto si tarjeta */}
-              {form.tipo !== 'TARJETA_CREDITO' && (
+              {/* B5 · CUENTA REMUNERADA · ni la tarjeta ni el efectivo */}
+              {form.tipo !== 'TARJETA_CREDITO' && !esEfectivo && (
                 <Block
                   title="Cuenta remunerada"
                   toggle={{

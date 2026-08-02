@@ -9,7 +9,15 @@
  *   · Intereses por período (mensual/trimestral/semestral/anual).
  */
 
-export type CuentaTipo = 'CORRIENTE' | 'AHORRO' | 'TARJETA_CREDITO';
+/**
+ * `EFECTIVO` es una cuenta más · el dinero del bolsillo.
+ *
+ * Existe para que una retirada de cajero sea lo que es —una transferencia
+ * interna: el dinero no se va, cambia de sitio— en vez de un gasto que hunde
+ * el patrimonio el día que sacas 200 €. No tiene IBAN ni banco, y para el
+ * cálculo se comporta como una corriente sin remunerar.
+ */
+export type CuentaTipo = 'CORRIENTE' | 'AHORRO' | 'TARJETA_CREDITO' | 'EFECTIVO';
 export type FrecuenciaLiquidacion = 'mensual' | 'trimestral' | 'semestral' | 'anual';
 
 export interface CuentaCalcInput {

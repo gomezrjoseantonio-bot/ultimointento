@@ -432,7 +432,16 @@ export interface Account {
     brand?: { logoUrl?: string; color?: string; } // logo/color corporativo si disponible
   };
   logoUser?: string;                      // ATLAS: logo subido por usuario (prioridad 1)
-  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO'; // default: CORRIENTE
+  /**
+   * default: CORRIENTE.
+   *
+   * `EFECTIVO` es el dinero del bolsillo · una cuenta más, sin IBAN ni banco,
+   * igual que la tarjeta de crédito tampoco los tiene. Está para que una
+   * retirada de cajero sea lo que de verdad es —una transferencia interna: el
+   * dinero no se va, cambia de sitio— en vez de un gasto que hunde el
+   * patrimonio el día que sacas 200 € del cajero.
+   */
+  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO' | 'EFECTIVO';
   cardConfig?: {
     settlementDay: number; // Día del cargo del recibo (1-31)
     chargeAccountId: number; // Cuenta bancaria donde se domicilia el recibo
