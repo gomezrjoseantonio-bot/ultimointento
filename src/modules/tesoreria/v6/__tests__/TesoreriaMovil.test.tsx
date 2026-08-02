@@ -150,7 +150,7 @@ describe('lo que el móvil NO trae', () => {
   it('sin carrusel de cuentas ni proyección a seis meses · aquí se despacha', () => {
     render(<TesoreriaMovil {...base} eventos={[ev()]} />);
 
-    expect(screen.queryByText(/próximos 6 meses/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Movimientos bancarios previstos/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Cómo va/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Saldo actual en mis cuentas/i)).not.toBeInTheDocument();
   });

@@ -24,10 +24,21 @@ import { normalizeSearchText, matchesAmountQuery } from '../../../../utils/tesor
 /** Eje de agrupación de la lista. `fecha` es el de siempre. */
 export type EjeAgrupacion = 'fecha' | 'inmueble' | 'que-es' | 'cuenta';
 
+/**
+ * Los rótulos de los ejes · las CLAVES no cambian (son internas y están en
+ * media aplicación), solo lo que lee el usuario.
+ *
+ * · `inmueble` se rotula **Ámbito**: el grupo "Personal" siempre ha estado ahí
+ *   —los cargos que no son de ningún piso— y llamar "Inmueble" a una lista que
+ *   incluye Personal prometía una cosa y daba otra.
+ * · `que-es` se rotula **Tipo**: agrupa por Contrato · Financiación · Ingreso ·
+ *   Recurrente, que son tipos de cargo. "Qué es" era una pregunta donde las
+ *   otras dos pestañas son sustantivos.
+ */
 export const EJE_LABEL: Record<EjeAgrupacion, string> = {
   fecha: 'Fecha',
-  inmueble: 'Inmueble',
-  'que-es': 'Qué es',
+  inmueble: 'Ámbito',
+  'que-es': 'Tipo',
   cuenta: 'Cuenta',
 };
 
@@ -85,26 +96,20 @@ function construirGrupo(
 }
 
 /**
- * Las dos piezas del título de una madre · "Alquiler" y el piso.
- *
- * Van sueltas porque la lista pinta el piso en negrita y el resto no: en las
- * demás filas el inmueble es lo único que va marcado, y la madre no tiene por
- * qué ser la excepción.
+ * El título de una madre · "Alquiler · el piso".
  *
  * Sin inmueble resuelto no hay piso que decir, y el respaldo es el concepto de
  * la primera hija sin su contraparte — nunca el nombre entero de un inquilino,
  * que titularía el grupo con una de sus partes.
  */
-export function piezasDeMadre(primera: ItemPunteo): { prefijo: string; alias?: string } {
-  if (!primera.activo) return { prefijo: primera.concepto.replace(/ — .*$/, '') };
-  return { prefijo: 'Alquiler', alias: primera.activo.alias };
+export function tituloDeMadre(primera: ItemPunteo): string {
+  if (!primera.activo) return primera.concepto.replace(/ — .*$/, '');
+  return primera.activo.alias ? `Alquiler · ${primera.activo.alias}` : 'Alquiler';
 }
 
 /** El título tal y como sale en pantalla · el de la madre si la fila la encabeza. */
 function tituloVisible(it: ItemPunteo, esMadre: boolean): string {
-  if (!esMadre) return it.concepto;
-  const { prefijo, alias } = piezasDeMadre(it);
-  return alias ? `${prefijo} · ${alias}` : prefijo;
+  return esMadre ? tituloDeMadre(it) : it.concepto;
 }
 
 /**

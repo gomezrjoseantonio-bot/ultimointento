@@ -33,7 +33,7 @@ import {
 import {
   agruparPorEje,
   filtrarPorBusqueda,
-  piezasDeMadre,
+  tituloDeMadre,
   EJE_LABEL,
   type EjeAgrupacion,
   type GrupoLista,
@@ -144,6 +144,20 @@ export interface PunteoListProps {
   rowVariant?: RowVariant;
   /** Lápiz de la fila · solo en `rowVariant: 'tesoreria'`. */
   onEditar?: (item: ItemPunteo) => void;
+
+  /**
+   * 6 · SOLO LECTURA · la lista se mira, no se toca.
+   *
+   * Es lo que separa las dos pestañas de la cuenta: "Por confirmar" es la
+   * bandeja de trabajo y "Movimientos" es la consulta del mes. Confirmar desde
+   * la consulta obliga a decidir sobre un cargo suelto en medio del mes
+   * entero, que es justo lo que la bandeja evita — ahí llegan los que tocan,
+   * ordenados y sin nada alrededor.
+   *
+   * El círculo se pinta como MARCA, no como botón: uno deshabilitado sigue
+   * pareciendo pulsable, invita a intentarlo y no responde.
+   */
+  soloLectura?: boolean;
 }
 
 // ─── Sub-componentes ────────────────────────────────────────────────────────
@@ -172,7 +186,8 @@ const PunteoCheck: React.FC<{
   estado: ItemPunteo['estado'];
   onPuntear?: () => void;
   concepto: string;
-}> = ({ estado, onPuntear, concepto }) => {
+  soloLectura?: boolean;
+}> = ({ estado, onPuntear, concepto, soloLectura }) => {
   const cls =
     estado === 'previsto'
       ? styles.tickPrevisto
@@ -181,17 +196,24 @@ const PunteoCheck: React.FC<{
         : styles.tickConciliado;
   const label =
     estado === 'previsto'
-      ? `Puntear ${concepto}`
+      ? // Sin acción detrás no se anuncia una: "Puntear" en una lista que no
+        // puntea es prometerle al lector de pantalla algo que no existe.
+        soloLectura
+        ? `${concepto} · previsto`
+        : `Puntear ${concepto}`
       : estado === 'confirmado'
         ? `${concepto} · confirmado`
         : `${concepto} · conciliado con el banco`;
   // §6.4 · lo conciliado lo afirma el BANCO, no el usuario: ahí no hay nada que
   // pulsar. Un botón deshabilitado sigue pareciendo un botón —invita a
   // intentarlo y no responde—, así que se pinta como lo que es: una marca.
-  if (estado === 'conciliado') {
+  //
+  // En una lista de solo lectura vale lo mismo para los tres estados: se mira,
+  // no se toca.
+  if (estado === 'conciliado' || soloLectura) {
     return (
       <span className={`${styles.tick} ${cls} ${styles.tickInforme}`} title={label} aria-label={label}>
-        <Icons.Check size={11} strokeWidth={3} />
+        {esReal(estado) ? <Icons.Check size={11} strokeWidth={3} /> : null}
       </span>
     );
   }
@@ -256,7 +278,7 @@ const Contexto: React.FC<{ item: ItemPunteo; extra?: string; sinActivo?: boolean
     trozos.push(
       <span key="a" className={styles.ctxInmueble}>
         <Icons.Inmuebles size={10} strokeWidth={1.8} />
-        <b>{item.activo.alias}</b>
+        {item.activo.alias}
       </span>
     );
   }
@@ -306,6 +328,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
   gruposPlegables = false,
   rowVariant = 'default',
   onEditar,
+  soloLectura = false,
 }) => {
   const [gruposAbiertos, setGruposAbiertos] = useState<Record<string, boolean>>({});
   // §4.4 · "grupos en tarjetas PLEGADAS … se abren al buscar": nacen cerrados,
@@ -385,7 +408,12 @@ const PunteoList: React.FC<PunteoListProps> = ({
           fricción en la acción más repetida de la pantalla. */}
       <div className={rowCls(it, hija ? styles.rowHija : '')}>
         {/* La acción principal, a la IZQUIERDA · es lo primero que se busca. */}
-        <PunteoCheck estado={it.estado} concepto={it.concepto} onPuntear={() => onConfirmar(it)} />
+        <PunteoCheck
+          estado={it.estado}
+          concepto={it.concepto}
+          soloLectura={soloLectura}
+          onPuntear={() => onConfirmar(it)}
+        />
         <div className={styles.c1}>
           <div className={styles.conceptoLinea}>
             {/* §9 · el punto del banco · en el día conviven varias cuentas y
@@ -433,7 +461,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
         )}
         {!esDrawer && !ocultarCuenta && <span className={styles.cuenta}>{cuentaLabel(it.cuentaId)}</span>}
         {renderImporte(it)}
-        {rowVariant === 'tesoreria' && (
+        {rowVariant === 'tesoreria' && !soloLectura && (
           // §4.4 · editar y descartar en la fila, al hover. El descartar sale del editor
           // inline y solo existe en esta variante; en las otras vistas la fila no
           // cambia. `stopPropagation` obligatorio: la fila entera abre el editor.
@@ -536,22 +564,11 @@ const PunteoList: React.FC<PunteoListProps> = ({
                 grupo volvía a titularse con una de sus partes, que es
                 exactamente lo que §6.3 vino a arreglar. Decir menos es
                 preferible a decir algo que engaña. */}
-            {/* En negrita el PISO, no la línea entera. Que la madre es la madre
-                ya lo dice la banda dorada; escribirlo además en negrita es
-                decirlo dos veces. Y en las demás filas lo marcado es justo el
-                inmueble, así que marcarlo también aquí es el mismo idioma. */}
-            <div className={styles.concepto}>
-              {(() => {
-                const { prefijo, alias } = piezasDeMadre(primera);
-                return alias ? (
-                  <>
-                    {prefijo} · <b>{alias}</b>
-                  </>
-                ) : (
-                  prefijo
-                );
-              })()}
-            </div>
+            {/* Sin negrita · ni la línea ni el piso. Que la madre es la madre
+                ya lo dice la banda dorada, y el inmueble no va marcado en
+                ninguna otra fila: la negrita solo servía para que unos nombres
+                pesaran más que otros en una lista donde todos valen igual. */}
+            <div className={styles.concepto}>{tituloDeMadre(primera)}</div>
             <div className={styles.contexto}>
               {g.total} {g.total === 1 ? 'renta' : 'rentas'}
             </div>
