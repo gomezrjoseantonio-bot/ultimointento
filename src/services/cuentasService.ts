@@ -101,10 +101,14 @@ const applyExtendedFields = (account: Account, data: AccountExtendedFields): voi
 };
 
 /**
- * Solo para los tests · el candado tiene que poder mirar ESTE eslabón, que es
- * donde se perdió el color, sin montar media aplicación para llegar a él.
+ * Lo interno que miran los tests · el candado tiene que poder llegar a ESTE
+ * eslabón, que es donde se perdió el color, sin montar media aplicación.
+ *
+ * Bajo `__private__` y no como export suelto: es el patrón del repo
+ * (`aeatParserService`, `reconciliacionService`) y deja claro de un vistazo que
+ * no forma parte de la API del servicio.
  */
-export const applyExtendedFieldsParaTest = applyExtendedFields;
+export const __private__ = { applyExtendedFields };
 
 class CuentasService {
   private accounts: Account[] = [];

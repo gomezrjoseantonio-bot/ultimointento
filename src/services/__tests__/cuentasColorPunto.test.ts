@@ -8,7 +8,7 @@
 //
 // Este candado mira el ESLABÓN que faltaba, no la pantalla: es donde se rompió.
 
-import { applyExtendedFieldsParaTest } from '../cuentasService';
+import { __private__ } from '../cuentasService';
 import type { Account } from '../db';
 
 const cuenta = (over: Partial<Account> = {}): Account =>
@@ -17,7 +17,7 @@ const cuenta = (over: Partial<Account> = {}): Account =>
 describe('el color del punto llega hasta la cuenta', () => {
   it('se copia al elegirlo', () => {
     const c = cuenta();
-    applyExtendedFieldsParaTest(c, { colorPunto: '#B54A4A' });
+    __private__.applyExtendedFields(c, { colorPunto: '#B54A4A' });
     expect(c.colorPunto).toBe('#B54A4A');
   });
 
@@ -26,13 +26,13 @@ describe('el color del punto llega hasta la cuenta', () => {
   // una vez elegido un color no había forma de deshacerlo.
   it('la cadena vacía BORRA la elección · no la ignora', () => {
     const c = cuenta({ colorPunto: '#B54A4A' });
-    applyExtendedFieldsParaTest(c, { colorPunto: '' });
+    __private__.applyExtendedFields(c, { colorPunto: '' });
     expect(c.colorPunto).toBeUndefined();
   });
 
   it('sin el campo, el color que hubiera se queda como estaba', () => {
     const c = cuenta({ colorPunto: '#B54A4A' });
-    applyExtendedFieldsParaTest(c, { bic: 'BSCHESMM' });
+    __private__.applyExtendedFields(c, { bic: 'BSCHESMM' });
     expect(c.colorPunto).toBe('#B54A4A');
   });
 });
