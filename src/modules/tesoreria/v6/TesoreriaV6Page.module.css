@@ -19,11 +19,16 @@
    El padding va aquí y no en el layout: cambiarlo allí afectaría a Inversiones
    y Contratos, que sí quieren ir a sangre. */
 .pag {
-  padding: 22px 28px 40px;
+  /* Valores del mockup, no estimados: `.main{padding:18px 26px 20px;
+     max-width:1560px}`. El tope de ancho importa tanto como el padding — sin él
+     la tira de cuentas y la columna de realidad se estiran en pantallas anchas
+     y el bloque deja de leerse como una unidad. */
+  padding: 18px 26px 20px;
+  max-width: 1560px;
   min-width: 0;
 }
 @media (max-width: 1180px) {
-  .pag { padding: 16px 18px 32px; }
+  .pag { padding: 14px 16px 20px; }
 }
 
 /* ── §4.1 · Hero ─────────────────────────────────────────────────────────── */
@@ -37,9 +42,11 @@
   align-items: stretch;
   flex-wrap: wrap;
   row-gap: 12px;
-  /* §4.5 · el aire va hacia ARRIBA. Estaba todo apretado contra el hero y
-     sobraba un tercio de pantalla abajo, que es donde no hay nada que mirar. */
-  margin-bottom: 26px;
+  /* §4.5 · el aire va hacia ARRIBA.
+     Lo interpreté al revés y REDUJE los márgenes: así el contenido ocupa menos
+     y sobra todavía más abajo, que es justo lo contrario de repartirlo. El
+     mockup dice 34px, y con eso el bloque llega hasta abajo. */
+  margin-bottom: 34px;
 }
 .heroLab {
   display: flex;
@@ -115,8 +122,8 @@
 /* ── Cabecera de sección ─────────────────────────────────────────────────── */
 
 .sec {
-  margin-bottom: 26px;
-  padding-bottom: 22px;
+  margin-bottom: 32px;
+  padding-bottom: 28px;
   border-bottom: 1px solid var(--atlas-v5-line);
 }
 /* La última sección no necesita raya ni hueco: debajo no hay nada. */
@@ -171,25 +178,24 @@
 
 /* ── §4.2 · Carrusel de cuentas ──────────────────────────────────────────── */
 
-.carr {
-  position: relative;
-  padding: 0 46px;
-}
+.carr { position: relative; }
 .viewport { overflow: hidden; }
 .track {
   display: flex;
   gap: 12px;
   transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
-/* §4.2 · las flechas tienen su CARRIL, no se superponen a nada.
+/* §4.2 · las flechas van FUERA del carrusel, en el margen de la página.
    
-   Estaban a `left/right: -17px` —fuera del contenedor por los dos lados— y eso
-   empujaba el ancho de la página. Al meterlas dentro con `+4px` dejaron de
-   desbordar, pero pasaron a taparle el saldo a la primera tarjeta: cambiar un
-   problema por otro.
+   Es lo que hace el mockup (`left:-17px`), y ahí no desborda porque `.main`
+   tiene 26px de padding lateral: los 17px que sobresale la flecha caben en ese
+   margen.
    
-   Lo que hace el mockup es reservarles sitio: el carrusel se aparta 46px por
-   cada lado y las flechas viven en ese hueco. Ni desbordan ni tapan. */
+   En producción no había padding —Tesorería iba a sangre— así que la misma
+   regla se salía de la pantalla. Lo arreglé metiéndolas dentro con `+4px`, y
+   entonces taparon el saldo de la primera tarjeta; luego les di un carril
+   propio de 46px, que encogía la tira. Con el padding ya puesto, el valor del
+   mockup funciona tal cual: ni desbordan ni tapan ni quitan sitio. */
 .pager {
   position: absolute;
   top: 50%;
@@ -208,8 +214,8 @@
   box-shadow: var(--atlas-v5-shadow-pager);
   transition: all 0.14s;
 }
-.pagerPrev { left: 0; }
-.pagerNext { right: 0; }
+.pagerPrev { left: -17px; }
+.pagerNext { right: -17px; }
 .pager:hover {
   border-color: var(--atlas-v5-gold);
   background: var(--atlas-v5-gold-wash);
@@ -473,45 +479,81 @@
   background: var(--atlas-v5-card);
   border: 1px solid var(--atlas-v5-line);
   border-radius: 13px;
-  padding: 16px 18px;
+  padding: 18px;
 }
 /* §4.4 · los importes salían cortados por la derecha. La barra es lo único
    que puede encogerse —es una proporción, no un dato— así que se lleva el
    `minmax(0,…)` y la cifra se queda con el ancho que necesite. */
 .rvline {
   display: grid;
-  grid-template-columns: 62px minmax(0, 1fr) 40px max-content;
+  /* Valores del mockup: etiqueta 100px · barra 1fr · % 46px · importe 108px.
+     Los míos (62/40/max-content) apretaban la etiqueta y dejaban el importe
+     midiendo distinto en cada fila. */
+  grid-template-columns: 100px minmax(0, 1fr) 46px 108px;
   align-items: center;
   gap: 10px;
-  margin-bottom: 14px;
+  padding: 10px 0;
 }
 /* El Neto va separado de las dos líneas que lo componen (§4.10). */
 .rvline:last-of-type {
   border-top: 1px solid var(--atlas-v5-line-3);
-  padding-top: 14px;
-  margin-bottom: 0;
+  padding-top: 16px;
+  margin-top: 4px;
 }
 /* Bajo 1180px las dos columnas ya se apilan (.cols), pero el bloque sigue
    estrecho: ahí la barra estorba más de lo que aporta y cede todo el ancho. */
 @media (max-width: 1320px) {
-  .rvline { grid-template-columns: 58px minmax(0, 1fr) 36px max-content; gap: 8px; }
+  .rvline { grid-template-columns: 84px minmax(0, 1fr) 40px 100px; gap: 8px; }
 }
 .rvlab {
   font-size: 11.5px;
   font-weight: 600;
   color: var(--atlas-v5-ink-3);
 }
-/* §4.10 · la barra tiene CUERPO y marco.
-   A 7px sin borde parecía una raya de separación más que un indicador: el
-   relleno y el hueco se distinguían poco y la línea entera se leía plana. */
+/* §4.10 · la barra tiene CUERPO y marco · 22px, como el mockup.
+   A 7px sin borde parecía una raya de separación más que un indicador. */
+/* §4.10 · la barra lleva DENTRO el importe recorrido.
+   La cifra y su proporción se leen de una sola mirada, en vez de saltar de la
+   barra a una columna. Necesita alto para que el texto quepa. */
 .rvbar {
-  height: 15px;
-  border-radius: 5px;
-  background: var(--atlas-v5-line-3);
-  border: 1px solid var(--atlas-v5-line);
-  overflow: hidden;
+  position: relative;
+  height: 30px;
+  border-radius: 6px;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line-2);
 }
-.rvfill { height: 100%; border-radius: 4px 0 0 4px; }
+.rvfill {
+  height: 100%;
+  border-radius: 5px 0 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  min-width: 0;
+}
+/* El importe dentro del relleno · sobre navy u oro, en blanco. */
+.rvenBarra {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-white);
+  white-space: nowrap;
+}
+/* Cuando el relleno es demasiado estrecho para el texto, el importe sale a su
+   derecha. Ensanchar el relleno para que quepa falsearía la proporción, que es
+   justo lo que la barra viene a decir. */
+.rvFueraBarra {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
 .rvfillIn,
 .rvfillOut { background: var(--atlas-v5-brand); }
 .rvfillNet { background: var(--atlas-v5-gold); }
@@ -526,22 +568,21 @@
   text-align: right;
 }
 .rvpctNet { color: var(--atlas-v5-gold); }
+/* A la derecha, lo PREVISTO · el real ya está dentro de la barra. */
 .rvnum {
+  text-align: right;
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
   font-size: 12.5px;
   font-weight: 700;
   color: var(--atlas-v5-ink);
-  text-align: right;
-  white-space: nowrap;
+  line-height: 1.35;
 }
 .rvnum small {
   display: block;
-  font-family: var(--atlas-v5-font-sans);
   font-size: 10.5px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--atlas-v5-ink-4);
-  margin-top: 2px;
 }
 .rvsep {
   height: 1px;
