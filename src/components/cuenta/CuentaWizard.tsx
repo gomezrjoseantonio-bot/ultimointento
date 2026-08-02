@@ -18,7 +18,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  Landmark as IconBank,
   X as IconX,
   Check as IconCheck,
   AlertCircle as IconAlert,
@@ -710,13 +709,12 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       >
         {/* ─── HEADER ─── */}
         <div className={styles.header}>
+          {/* §10 · sin icono: un banco dibujado no dice nada que no diga
+              "Cuenta bancaria" justo debajo, y ocupaba el sitio de honor. */}
           <div className={styles.headerInfo}>
-            <div className={styles.headerIcon}>
-              <IconBank size={19} />
-            </div>
             <div className={styles.headerText}>
-              <div className={styles.headerTitle}>{headerTitle}</div>
-              <div className={styles.headerSub}>{headerSub}</div>
+              <div className={styles.headerKicker}>{headerTitle}</div>
+              <div className={styles.headerTitle}>{headerSub}</div>
             </div>
           </div>
           <button

@@ -28,7 +28,7 @@ import { esPendiente } from '../../../services/tesoreriaV6Metrics';
 import { construirDias, resumirMes, huecosIniciales, saldoAlEmpezarElDia } from './calendarioDias';
 import { colorDeBanco } from './bancoColores';
 import { mesMinimo, puedeRetroceder } from './limiteMeses';
-import { importeConSigno, importeSaldo, nombreMes, fechaLarga } from './formatoV6';
+import { importeConSigno, importeSaldo, nombreMes, diaSemanaYNumero } from './formatoV6';
 import chasis from './DrawerV6.module.css';
 import styles from './DrawerCalendario.module.css';
 
@@ -315,8 +315,17 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
           {/* ── El día elegido ──────────────────────────────────────────── */}
           {diaElegido && (
             <div className={styles.detalle}>
+              {/* §9 · "Jueves 30 · 2 movimientos".
+                  El mes y el año ya están en la cabecera del drawer y en la
+                  rejilla que hay justo encima: repetir "31 ago 2026" aquí es
+                  decir por tercera vez dónde estamos. Lo que no se sabía es
+                  cuántos apuntes tiene el día. */}
               <div className={styles.detalleHd}>
-                <div className={styles.detalleT}>{fechaLarga(diaElegido)}</div>
+                <div className={styles.detalleT}>{diaSemanaYNumero(diaElegido)}</div>
+                <span className={styles.detalleN}>
+                  {itemsDelDia.length}{' '}
+                  {itemsDelDia.length === 1 ? 'movimiento' : 'movimientos'}
+                </span>
               </div>
 
               {itemsDelDia.length === 0 ? (

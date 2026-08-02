@@ -881,17 +881,26 @@ const TarjetaMes: React.FC<{ mes: MesProyectado; onAbrir: () => void }> = ({ mes
           Y en el mes en curso la etiqueta es texto VISIBLE, no un `title`: los
           táctiles no enseñan tooltips, y no es lo mismo lo que entra en el mes
           que lo que QUEDA por entrar. */}
+      {/* §4.3 · en el mes en curso, cada columna lleva SU etiqueta encima.
+          Iban las dos juntas en una línea debajo ("queda entrar · queda salir"),
+          y así no se sabía cuál era cuál: la etiqueta tiene que estar sobre su
+          cifra, no al lado de la otra. */}
       <div className={styles.mesFlow}>
         <span className={styles.ff}>
-          <Icons.ArrowUp size={14} strokeWidth={1.8} />
-          <span className={styles.fv}>{importeConSigno(mes.entra)}</span>
+          {mes.enCurso && <span className={styles.ffLab}>queda entrar</span>}
+          <span className={styles.ffVal}>
+            <Icons.ArrowUp size={14} strokeWidth={1.8} />
+            <span className={styles.fv}>{importeConSigno(mes.entra)}</span>
+          </span>
         </span>
         <span className={styles.ff}>
-          <Icons.ArrowDown size={14} strokeWidth={1.8} />
-          <span className={styles.fv}>{importeConSigno(-Math.abs(mes.sale))}</span>
+          {mes.enCurso && <span className={styles.ffLab}>queda salir</span>}
+          <span className={styles.ffVal}>
+            <Icons.ArrowDown size={14} strokeWidth={1.8} />
+            <span className={styles.fv}>{importeConSigno(-Math.abs(mes.sale))}</span>
+          </span>
         </span>
       </div>
-      {mes.enCurso && <div className={styles.mesQueda}>queda entrar · queda salir</div>}
     </button>
   );
 };
@@ -908,7 +917,10 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
         // como mejor cuando significa haber gastado de más. Pero con un neto
         // positivo la barra dice justo lo que tiene que decir —cuánto llevas de
         // lo previsto— y el mockup la mantiene.
-        const neto = l.clave === 'Neto' && (l.real < 0 || l.previsto < 0);
+        // §3.4 · la fila pierde la barra cuando NO hay porcentaje que pintar:
+        // eso pasa con el Neto en negativo, que es justo el caso en que un
+        // avance engaña. Con porcentaje, barra.
+        const neto = l.clave === 'Neto' && l.porcentaje == null;
         // A3 · el Neto NO lleva barra: puede ser negativo, y "más lleno" se
         // leería como "mejor" cuando significa que se ha gastado de más. En su
         // lugar enseña real, previsto y la diferencia con signo.
@@ -943,7 +955,11 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
                     style={{ width: `${ancho}%` }}
                   />
                 </div>
-                <span className={styles.rvpct}>{l.porcentaje}%</span>
+                {/* Sin porcentaje no se pinta un "%" suelto: un signo sin
+                    número delante no dice nada y parece un dato que falta. */}
+                <span className={styles.rvpct}>
+                  {l.porcentaje != null ? `${l.porcentaje}%` : ''}
+                </span>
               </>
             )}
             <div className={styles.rvnum}>

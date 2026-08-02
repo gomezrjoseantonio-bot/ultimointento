@@ -244,9 +244,22 @@ describe('§4.10 · cómo va el mes', () => {
 
     expect(r.lineas[0]).toMatchObject({ clave: 'Ingresos', real: 500, previsto: 1000, porcentaje: 50 });
     expect(r.lineas[1]).toMatchObject({ clave: 'Gastos', real: 100, previsto: 200, porcentaje: 50 });
-    // A3 · el Neto ya no lleva porcentaje: puede ser negativo y la barra
-    // mentiría. Sigue trayendo real y previsto, que es lo que se pinta.
-    expect(r.lineas[2]).toMatchObject({ clave: 'Neto', real: 400, previsto: 800, porcentaje: null });
+    // §3.4 · con ambos en positivo el Neto SÍ lleva porcentaje: 400 de 800.
+    expect(r.lineas[2]).toMatchObject({ clave: 'Neto', real: 400, previsto: 800, porcentaje: 50 });
+  });
+
+  it('el Neto NEGATIVO se queda sin porcentaje · ahí el avance engaña', () => {
+    // −1.048 sobre −821 daría "128 % lleno", que se lee como mejor cuando
+    // significa haber gastado de más.
+    const r = calcularRealidad({
+      eventos: [ev({ type: 'expense', amount: 821, predictedDate: '2026-07-06' })],
+      movimientos: [mov({ amount: -1048 })],
+      year: 2026,
+      month0: 6,
+    });
+    const neto = r.lineas.find((l) => l.clave === 'Neto')!;
+    expect(neto.real).toBeLessThan(0);
+    expect(neto.porcentaje).toBeNull();
   });
 
   it('la desviación NO cuenta lo que aún no ha pasado', () => {

@@ -80,5 +80,21 @@ export function fechaLarga(iso: string): string {
 /** "el 22 de julio" para el aviso de cuenta corta. */
 export function diaYMes(iso: string): string {
   const d = new Date(`${iso}T12:00:00`);
-  return `${d.getDate()} de ${nombreMes(d.getMonth())}`;
+  // "5 ago", no "5 de agosto": va dentro del pie de la tarjeta de cuenta, junto
+  // a un importe que con decimales ya es largo. Escrito entero, la frase se
+  // partía en tres líneas y descuadraba la tarjeta contra las de al lado.
+  return `${d.getDate()} ${nombreMes(d.getMonth()).slice(0, 3)}`;
+}
+
+
+/**
+ * "Jueves 30" · §9.
+ *
+ * Para la cabecera del día dentro del drawer del mes, donde el mes y el año ya
+ * están dichos dos veces más arriba.
+ */
+export function diaSemanaYNumero(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  return `${dias[new Date(y, m - 1, d).getDay()]} ${d}`;
 }

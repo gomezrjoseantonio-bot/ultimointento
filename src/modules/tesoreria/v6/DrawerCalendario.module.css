@@ -196,3 +196,10 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* §9 · cuántos apuntes tiene el día · junto a su nombre, no debajo. */
+.detalleN {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-left: 8px;
+}
