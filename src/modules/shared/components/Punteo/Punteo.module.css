@@ -109,15 +109,17 @@
 /* ── Fila ── */
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 130px 160px 130px 44px;
-  gap: 8px;
+  /* El concepto se lleva el ancho sobrante; origen y cuenta ocupan lo que
+     necesitan y no un carril fijo que estrangule al de al lado. */
+  grid-template-columns: minmax(0, 1fr) max-content max-content 120px auto;
+  gap: 10px;
   align-items: center;
   padding: 7px 8px;
   border-bottom: 1px solid var(--atlas-v5-line);
   cursor: default;
 }
 .rowSinCuenta {
-  grid-template-columns: minmax(0, 1fr) 130px 130px 44px;
+  grid-template-columns: minmax(0, 1fr) max-content 120px auto;
 }
 /* §6.3 · "Por confirmar": círculo · concepto · importe · acciones.
    Cuatro elementos, cuatro columnas. El círculo y las acciones se ajustan a su
@@ -187,12 +189,15 @@
   justify-content: center;
 }
 
+/* §2.2 · sin texto truncado.
+   "Cuota Prés…" y "Nómina …" no identifican nada: con dos préstamos en la misma
+   cuenta, la fila deja de decir cuál es cuál, que es justo lo que tiene que
+   hacer. Antes de cortar, se parte en dos líneas. */
 .concepto {
   font-size: 12.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--atlas-v5-ink-2);
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 /* Tinta: previsto en gris (proyección) · real en tinta plena */
 .rowPrevisto .concepto { color: var(--atlas-v5-ink-3); font-weight: 400; }

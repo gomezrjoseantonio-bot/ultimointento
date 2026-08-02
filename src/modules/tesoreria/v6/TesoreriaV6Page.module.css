@@ -153,20 +153,25 @@
 
 /* ── §4.2 · Carrusel de cuentas ──────────────────────────────────────────── */
 
-.carr { position: relative; }
+.carr {
+  position: relative;
+  padding: 0 46px;
+}
 .viewport { overflow: hidden; }
 .track {
   display: flex;
   gap: 12px;
   transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
-/* Flechas SUPERPUESTAS sobre la tira (§4.2): nunca en el flujo, o la tira deja
-   de alinearse con el hero. La deshabilitada es invisible, no un hueco.
-
-   Iban a `left/right: -17px`, o sea FUERA del contenedor por los dos lados, y
-   eso es lo que empujaba el ancho de la página: se cortaban los títulos de
-   sección por la izquierda y "Añadir cuenta" y el rango por la derecha, con la
-   flecha además invisible. Superpuesta significa DENTRO del área visible. */
+/* §4.2 · las flechas tienen su CARRIL, no se superponen a nada.
+   
+   Estaban a `left/right: -17px` —fuera del contenedor por los dos lados— y eso
+   empujaba el ancho de la página. Al meterlas dentro con `+4px` dejaron de
+   desbordar, pero pasaron a taparle el saldo a la primera tarjeta: cambiar un
+   problema por otro.
+   
+   Lo que hace el mockup es reservarles sitio: el carrusel se aparta 46px por
+   cada lado y las flechas viven en ese hueco. Ni desbordan ni tapan. */
 .pager {
   position: absolute;
   top: 50%;
@@ -185,8 +190,8 @@
   box-shadow: var(--atlas-v5-shadow-pager);
   transition: all 0.14s;
 }
-.pagerPrev { left: 4px; }
-.pagerNext { right: 4px; }
+.pagerPrev { left: 0; }
+.pagerNext { right: 0; }
 .pager:hover {
   border-color: var(--atlas-v5-gold);
   background: var(--atlas-v5-gold-wash);
@@ -305,25 +310,6 @@
 .stateVal {
   font-family: var(--atlas-v5-font-mono-num);
   font-weight: 700;
-}
-.accAdd {
-  flex: 0 0 calc((100% - (var(--pp) - 1) * 12px) / var(--pp));
-  border: 1px dashed var(--atlas-v5-line);
-  border-radius: 13px;
-  background: none;
-  color: var(--atlas-v5-ink-4);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 118px;
-}
-.accAdd:hover {
-  border-color: var(--atlas-v5-gold);
-  color: var(--atlas-v5-ink-2);
 }
 
 /* ── §4.3 y §4.10 · dos columnas ─────────────────────────────────────────── */

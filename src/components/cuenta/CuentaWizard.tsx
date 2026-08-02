@@ -18,8 +18,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  CreditCard as IconCard,
-  PiggyBank as IconPiggy,
   Landmark as IconBank,
   X as IconX,
   Check as IconCheck,
@@ -725,7 +723,12 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
             {/* ── COLUMNA FORM ── */}
             <div className={styles.colForm}>
 
-              {/* B1 · TIPO */}
+              {/* §10 · el tipo, como BOTONES DE TEXTO.
+                  Eran tres tarjetas grandes con icono —una hucha, un banco, una
+                  tarjeta— ocupando el ancho entero para una elección de tres
+                  opciones que se leen en una palabra. El icono no añade nada
+                  que el texto no diga, y hacía que lo primero de la ficha
+                  pesara más que el nombre de la cuenta. */}
               <Block title="Tipo de cuenta">
                 <div className={styles.typeSelector}>
                   <button
@@ -734,7 +737,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                     onClick={() => handleTipoChange('CORRIENTE')}
                     aria-pressed={form.tipo === 'CORRIENTE'}
                   >
-                    <IconBank size={22} />
                     <span className={styles.typeCardLabel}>Corriente</span>
                   </button>
                   <button
@@ -743,7 +745,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                     onClick={() => handleTipoChange('AHORRO')}
                     aria-pressed={form.tipo === 'AHORRO'}
                   >
-                    <IconPiggy size={22} />
                     <span className={styles.typeCardLabel}>Ahorro</span>
                   </button>
                   <button
@@ -752,7 +753,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                     onClick={() => handleTipoChange('TARJETA_CREDITO')}
                     aria-pressed={form.tipo === 'TARJETA_CREDITO'}
                   >
-                    <IconCard size={22} />
                     <span className={styles.typeCardLabel}>Tarjeta crédito</span>
                   </button>
                 </div>

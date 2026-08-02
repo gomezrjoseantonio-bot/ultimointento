@@ -631,15 +631,10 @@ const PunteoList: React.FC<PunteoListProps> = ({
       </div>
       )}
 
-      {!esDrawer && (
-        <div className={`${styles.cols} ${ocultarCuenta ? styles.colsSinCuenta : ''}`} style={{ marginTop: 10 }}>
-          <span>Concepto</span>
-          <span>Origen</span>
-          {!ocultarCuenta && <span>Cuenta</span>}
-          <span className={styles.colImporte}>Importe</span>
-          <span className={styles.colTick}><Icons.Check size={10} strokeWidth={2.5} /></span>
-        </div>
-      )}
+      {/* §6.4 · sin cabeceras de columna.
+          Rotulaban lo que ya se lee solo —un importe se reconoce por ser un
+          importe— y encima el tick de la última prometía una columna ordenable
+          que no existe. El mockup no las tiene. */}
 
       {grupos.length === 0 && <div className={styles.empty}>Nada que puntear con este filtro</div>}
 

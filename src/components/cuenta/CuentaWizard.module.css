@@ -159,24 +159,24 @@
 .toggleOn::after { transform: translateX(15px); }
 
 /* ─── SELECTOR DE TIPO (3 cards) ─── */
+/* §10 · tres botones de texto, no tres tarjetas: se ajustan a lo que miden
+   sus palabras en vez de repartirse el ancho entero. */
 .typeSelector {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .typeCard {
-  background: var(--atlas-v5-card);
-  border: 1.5px solid var(--atlas-v5-line);
-  border-radius: 6px;
-  padding: 14px 8px 12px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  padding: 9px 14px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 9px;
+  background: var(--atlas-v5-card);
   cursor: pointer;
-  transition: all 0.1s;
   font-family: inherit;
-  text-align: center;
+  transition: all 0.14s;
 }
 .typeCard:hover { background: var(--atlas-v5-line-3); }
 .typeCard.selected {

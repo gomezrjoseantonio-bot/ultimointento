@@ -244,7 +244,10 @@ const TesoreriaV6Page: React.FC = () => {
     [estado.eventos, estado.movimientos, year, month0]
   );
 
-  const totalPaginas = Math.max(1, Math.ceil((cuentasVivas.length + 1) / porPagina));
+  // Sin el `+1` de la tarjeta fantasma de "Añadir cuenta": ya no está en la
+  // tira, así que la paginación cuenta solo cuentas de verdad y el rótulo
+  // "1–5 de N" dice la verdad.
+  const totalPaginas = Math.max(1, Math.ceil(cuentasVivas.length / porPagina));
   const pageSafe = Math.min(pagina, totalPaginas - 1);
 
   // Si al redimensionar (cambia `porPagina`) o al borrar cuentas la página
@@ -610,13 +613,11 @@ const TesoreriaV6Page: React.FC = () => {
                   onEditar={() => setFichaCuenta({ cuenta: c })}
                 />
               ))}
-              <button
-                type="button"
-                className={styles.accAdd}
-                onClick={() => setFichaCuenta({ cuenta: null })}
-              >
-                <Icons.Plus size={16} strokeWidth={2} /> Añadir cuenta
-              </button>
+              {/* §4.2 · "Añadir cuenta" NO va dentro del carrusel.
+                  Ya está arriba, junto al rótulo de la sección, y repetirlo
+                  aquí lo mete en la paginación: una tarjeta fantasma que hace
+                  que la tira diga "1–5 de 9" contando algo que no es una
+                  cuenta, y que empuja las de verdad a la página siguiente. */}
             </div>
           </div>
 
