@@ -102,4 +102,25 @@ describe('agrupar por cuenta', () => {
     expect(grupos.map((g) => g.titulo)).toEqual(['Abanca', 'Sin nombre']);
     expect(grupos.map((g) => g.titulo).join(' ')).not.toMatch(/\d/);
   });
+
+  // "Sin nombre" no puede colarse entre las cuentas reales solo porque su S
+  // caiga antes que la U de Unicaja: primero lo que el usuario busca.
+  it('la dada de baja va DETRÁS de las reales, no en su sitio alfabético', () => {
+    const grupos = agruparPorEje(
+      [
+        item({ key: 'a', cuentaId: 1 }),
+        item({ key: 'b', refId: 2, cuentaId: 99 }),
+        item({ key: 'c', refId: 3, cuentaId: 3 }),
+        item({ key: 'd', refId: 4, cuentaId: null }),
+      ],
+      'cuenta',
+      CUENTAS
+    );
+    expect(grupos.map((g) => g.titulo)).toEqual([
+      'Abanca',
+      'Unicaja',
+      'Sin nombre',
+      'Sin cuenta',
+    ]);
+  });
 });

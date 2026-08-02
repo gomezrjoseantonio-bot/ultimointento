@@ -136,11 +136,12 @@ export function agruparPorEje(
         // de qué cuenta sale el cargo. Mismo criterio que los inmuebles unas
         // líneas más abajo: antes "Sin nombre" que un id.
         titulo: dato?.label ?? (it.cuentaId != null ? 'Sin nombre' : 'Sin cuenta'),
-        // Las que no están en la lista van detrás de las que sí, y "Sin cuenta"
-        // la última de todas.
-        // Solo separa el cajón "Sin cuenta" del resto · entre cuentas de verdad
-        // desempata el nombre.
-        orden: it.cuentaId == null ? 1 : 0,
+        // Tres escalones, y dentro de cada uno manda el nombre:
+        //   0 · las cuentas que existen · lo que el usuario busca
+        //   1 · las dadas de baja o borradas · "Sin nombre" no debe colarse
+        //       entre las reales solo porque la S caiga antes que la U
+        //   2 · "Sin cuenta" · un cajón, no una cuenta
+        orden: it.cuentaId == null ? 2 : dato ? 0 : 1,
         cuentaId: it.cuentaId ?? undefined,
         items: [it],
       });
