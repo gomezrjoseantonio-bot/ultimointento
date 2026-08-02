@@ -158,6 +158,49 @@ export function construirDias(params: {
   return dias;
 }
 
+/**
+ * Saldo de cada cuenta AL EMPEZAR un día concreto (§9).
+ *
+ * Se arrastra desde el saldo de HOY sumando solo lo que está por venir, que es
+ * exactamente lo que hace el punto ámbar: el saldo de hoy ya incorpora todo lo
+ * pasado, así que volver a sumarlo lo contaría dos veces.
+ *
+ * Por eso solo tiene sentido de hoy en adelante. Para un día ya pasado devuelve
+ * `null`: el saldo que hubo ese día no se puede reconstruir desde aquí sin
+ * deshacer movimientos, y una cifra inventada en un aviso es peor que no dar
+ * aviso ninguno.
+ */
+export function saldoAlEmpezarElDia(params: {
+  fecha: string;
+  eventos: TreasuryEvent[];
+  movimientos: Movement[];
+  saldoPorCuenta: Map<number, number>;
+  hoy: string;
+}): Map<number, number> | null {
+  const { fecha, eventos, movimientos, saldoPorCuenta, hoy } = params;
+  if (fecha < hoy) return null;
+
+  const saldos = new Map(saldoPorCuenta);
+  const suma = (cuentaId: number | null | undefined, importe: number) => {
+    if (cuentaId == null) return;
+    saldos.set(cuentaId, (saldos.get(cuentaId) ?? 0) + importe);
+  };
+
+  // Solo lo ANTERIOR al día pedido: lo de ese día es justo lo que se va a ir
+  // marcando encima, y contarlo aquí lo duplicaría.
+  for (const m of movimientos) {
+    if (m.isOpeningBalance) continue;
+    const f = (m.date ?? '').slice(0, 10);
+    if (f > hoy && f < fecha) suma(m.accountId, m.amount);
+  }
+  for (const e of eventos) {
+    if (!esPendiente(e)) continue;
+    const f = (e.predictedDate ?? '').slice(0, 10);
+    if (f < fecha) suma(e.accountId, importeConSigno(e));
+  }
+  return saldos;
+}
+
 /** Resumen de la cabecera del drawer (§4.9). */
 export function resumirMes(params: {
   year: number;

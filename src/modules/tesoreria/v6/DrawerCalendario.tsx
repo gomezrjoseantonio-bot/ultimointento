@@ -22,10 +22,10 @@ import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import PunteoList from '../../shared/components/Punteo/PunteoList';
 import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
-import type { ItemPunteo } from '../../../services/punteo/punteoModel';
+import { compararEnDia, type ItemPunteo } from '../../../services/punteo/punteoModel';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { esPendiente } from '../../../services/tesoreriaV6Metrics';
-import { construirDias, resumirMes, huecosIniciales } from './calendarioDias';
+import { construirDias, resumirMes, huecosIniciales, saldoAlEmpezarElDia } from './calendarioDias';
 import { colorDeBanco } from './bancoColores';
 import { mesMinimo, puedeRetroceder } from './limiteMeses';
 import { importeConSigno, importeSaldo, nombreMes, fechaLarga } from './formatoV6';
@@ -114,8 +114,38 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
       .filter((m) => !m.isOpeningBalance)
       .filter((m) => (m.date ?? '').slice(0, 10) === diaElegido)
       .map((m) => movimientoAItem(m, aliasInmueble));
-    return [...evs, ...movs];
-  }, [diaElegido, eventos, movimientos, aliasInmueble]);
+
+    const todos = [...evs, ...movs];
+
+    // §9 · marcar QUÉ cargo deja la cuenta corta.
+    //
+    // El saldo de partida NO es el de hoy: es el que tiene la cuenta al empezar
+    // ESTE día. Usar el de hoy daba una cifra falsa en cuanto el día no era hoy
+    // —en el futuro le faltaba todo lo que pasa por medio— y un aviso que
+    // miente es peor que ninguno. Para días ya pasados no se marca nada: ese
+    // saldo no se puede reconstruir hacia atrás sin deshacer movimientos.
+    const saldos = saldoAlEmpezarElDia({
+      fecha: diaElegido,
+      eventos,
+      movimientos,
+      saldoPorCuenta,
+      hoy,
+    });
+    if (!saldos) return todos;
+
+    // Se recorre en el MISMO orden en que se van a pintar (`compararEnDia`), o
+    // el aviso acabaría en una fila distinta de la que lo provoca.
+    for (const it of [...todos].sort(compararEnDia)) {
+      if (it.cuentaId == null) continue;
+      const antes = saldos.get(it.cuentaId) ?? 0;
+      const despues = antes + it.importe;
+      saldos.set(it.cuentaId, despues);
+      if (antes >= 0 && despues < 0) {
+        it.avisoSaldo = `deja el saldo en ${importeSaldo(despues)}`;
+      }
+    }
+    return todos;
+  }, [diaElegido, eventos, movimientos, aliasInmueble, saldoPorCuenta, hoy]);
 
   /** Solo lo que sigue previsto · confirmar el día no toca lo ya confirmado. */
   const pendientesDelDia = useMemo(
@@ -217,11 +247,16 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
 
           <div className={chasis.kpis}>
             <div className={chasis.ak}>
-              <div className={chasis.akl}>Queda entrar</div>
+              <div className={chasis.akl}>
+                {/* §8 · la flecha dice la dirección antes de leer la cifra. */}
+                <Icons.ArrowUp size={11} strokeWidth={2} /> Queda entrar
+              </div>
               <div className={chasis.akv}>{importeConSigno(resumen.quedaEntrar)}</div>
             </div>
             <div className={chasis.ak}>
-              <div className={chasis.akl}>Queda salir</div>
+              <div className={chasis.akl}>
+                <Icons.ArrowDown size={11} strokeWidth={2} /> Queda salir
+              </div>
               <div className={chasis.akv}>{importeConSigno(resumen.quedaSalir)}</div>
             </div>
             <div className={chasis.ak}>
@@ -282,26 +317,6 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
             <div className={styles.detalle}>
               <div className={styles.detalleHd}>
                 <div className={styles.detalleT}>{fechaLarga(diaElegido)}</div>
-                <div className={styles.detalleAcciones}>
-                  {pendientesDelDia.length > 0 && (
-                    <button
-                      type="button"
-                      className={styles.btnDia}
-                      onClick={() => void onConfirmarDia(pendientesDelDia)}
-                    >
-                      <Icons.Check size={13} strokeWidth={2} /> Confirmar el día
-                    </button>
-                  )}
-                  {onAnotar && (
-                    <button
-                      type="button"
-                      className={styles.btnDiaSec}
-                      onClick={() => onAnotar(diaElegido)}
-                    >
-                      <Icons.Plus size={13} strokeWidth={2} /> Anotar movimiento
-                    </button>
-                  )}
-                </div>
               </div>
 
               {itemsDelDia.length === 0 ? (
@@ -322,6 +337,30 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   onNoPaso={onDescartar}
                 />
               )}
+
+              {/* §9 · las acciones van DEBAJO de la lista, no encima.
+                  Se decide qué hacer después de mirar lo que hay: puestas
+                  arriba piden confirmar el día antes de haberlo leído. */}
+              <div className={styles.detalleAcciones}>
+                {pendientesDelDia.length > 0 && (
+                  <button
+                    type="button"
+                    className={styles.btnDia}
+                    onClick={() => void onConfirmarDia(pendientesDelDia)}
+                  >
+                    <Icons.Check size={13} strokeWidth={2} /> Confirmar el día
+                  </button>
+                )}
+                {onAnotar && (
+                  <button
+                    type="button"
+                    className={styles.btnDiaSec}
+                    onClick={() => onAnotar(diaElegido)}
+                  >
+                    <Icons.Plus size={13} strokeWidth={2} /> Anotar movimiento
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

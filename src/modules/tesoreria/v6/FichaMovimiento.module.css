@@ -250,6 +250,13 @@
   color: var(--atlas-v5-ink-3);
   text-decoration: none;
   cursor: pointer;
+  /* Es un <button> porque no navega solo, pero tiene que LEERSE como enlace:
+     sin reset, un navegador sin estilos globales le pinta marco y fondo de
+     botón nativo justo donde queríamos algo discreto. */
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
 }
 .docLink:hover {
   color: var(--atlas-v5-brand);

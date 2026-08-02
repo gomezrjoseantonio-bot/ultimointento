@@ -244,7 +244,10 @@ const TesoreriaV6Page: React.FC = () => {
     [estado.eventos, estado.movimientos, year, month0]
   );
 
-  const totalPaginas = Math.max(1, Math.ceil((cuentasVivas.length + 1) / porPagina));
+  // Sin el `+1` de la tarjeta fantasma de "Añadir cuenta": ya no está en la
+  // tira, así que la paginación cuenta solo cuentas de verdad y el rótulo
+  // "1–5 de N" dice la verdad.
+  const totalPaginas = Math.max(1, Math.ceil(cuentasVivas.length / porPagina));
   const pageSafe = Math.min(pagina, totalPaginas - 1);
 
   // Si al redimensionar (cambia `porPagina`) o al borrar cuentas la página
@@ -499,7 +502,7 @@ const TesoreriaV6Page: React.FC = () => {
   }
 
   return (
-    <div>
+    <div className={styles.pag}>
       {/* ── §4.1 · Hero ─────────────────────────────────────────────────── */}
       <div className={styles.hero}>
         <div className={styles.heroLab}>
@@ -610,13 +613,11 @@ const TesoreriaV6Page: React.FC = () => {
                   onEditar={() => setFichaCuenta({ cuenta: c })}
                 />
               ))}
-              <button
-                type="button"
-                className={styles.accAdd}
-                onClick={() => setFichaCuenta({ cuenta: null })}
-              >
-                <Icons.Plus size={16} strokeWidth={2} /> Añadir cuenta
-              </button>
+              {/* §4.2 · "Añadir cuenta" NO va dentro del carrusel.
+                  Ya está arriba, junto al rótulo de la sección, y repetirlo
+                  aquí lo mete en la paginación: una tarjeta fantasma que hace
+                  que la tira diga "1–5 de 9" contando algo que no es una
+                  cuenta, y que empuja las de verdad a la página siguiente. */}
             </div>
           </div>
 
@@ -900,7 +901,14 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
   return (
     <div className={styles.rvcard}>
       {realidad.lineas.map((l) => {
-        const neto = l.clave === 'Neto';
+        // §3.4 · el Neto pierde la barra SOLO cuando es negativo.
+        //
+        // Me pasé de largo y la quité siempre. Lo que no funciona con
+        // magnitudes negativas es el porcentaje de avance: "128 % lleno" se lee
+        // como mejor cuando significa haber gastado de más. Pero con un neto
+        // positivo la barra dice justo lo que tiene que decir —cuánto llevas de
+        // lo previsto— y el mockup la mantiene.
+        const neto = l.clave === 'Neto' && (l.real < 0 || l.previsto < 0);
         // A3 · el Neto NO lleva barra: puede ser negativo, y "más lleno" se
         // leería como "mejor" cuando significa que se ha gastado de más. En su
         // lugar enseña real, previsto y la diferencia con signo.
@@ -956,7 +964,16 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
         </div>
         <div>
           <div className={styles.rvendTt}>
-            Acabarás <b>{importeConSigno(realidad.desviacion)}</b> {mejor ? 'mejor' : 'peor'} de lo previsto
+            {/* Con 0 no es ni mejor ni peor · el mismo caso que la línea del
+                Neto, que también decía "mejor" sobre una diferencia nula. */}
+            {realidad.desviacion === 0 ? (
+              <>Acabarás <b>igual que lo previsto</b></>
+            ) : (
+              <>
+                Acabarás <b>{importeConSigno(realidad.desviacion)}</b>{' '}
+                {mejor ? 'mejor' : 'peor'} de lo previsto
+              </>
+            )}
           </div>
           <div className={styles.rvendSs}>
             de lo ya confirmado, habías previsto pagar <b>{importeSaldo(realidad.previstoDeLoConfirmado)}</b> y has

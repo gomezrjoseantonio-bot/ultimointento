@@ -249,6 +249,15 @@ const Contexto: React.FC<{ item: ItemPunteo; extra?: string }> = ({ item, extra 
     );
   }
   if (extra) trozos.push(<span key="e">{extra}</span>);
+  // §9 · el aviso va el ÚLTIMO y en ámbar: es lo único de la línea que pide
+  // actuar, y el ámbar está reservado justo para eso (§2.1).
+  if (item.avisoSaldo) {
+    trozos.push(
+      <span key="w" className={styles.ctxAviso}>
+        {item.avisoSaldo}
+      </span>
+    );
+  }
   if (trozos.length === 0) return null;
 
   return (
@@ -631,15 +640,10 @@ const PunteoList: React.FC<PunteoListProps> = ({
       </div>
       )}
 
-      {!esDrawer && (
-        <div className={`${styles.cols} ${ocultarCuenta ? styles.colsSinCuenta : ''}`} style={{ marginTop: 10 }}>
-          <span>Concepto</span>
-          <span>Origen</span>
-          {!ocultarCuenta && <span>Cuenta</span>}
-          <span className={styles.colImporte}>Importe</span>
-          <span className={styles.colTick}><Icons.Check size={10} strokeWidth={2.5} /></span>
-        </div>
-      )}
+      {/* §6.4 · sin cabeceras de columna.
+          Rotulaban lo que ya se lee solo —un importe se reconoce por ser un
+          importe— y encima el tick de la última prometía una columna ordenable
+          que no existe. El mockup no las tiene. */}
 
       {grupos.length === 0 && <div className={styles.empty}>Nada que puntear con este filtro</div>}
 

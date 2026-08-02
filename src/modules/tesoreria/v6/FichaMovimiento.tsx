@@ -298,9 +298,13 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                   onClick={() => onAbrirDocumento(documentIds[0])}
                 >
                   <Icons.Contratos size={11} strokeWidth={1.8} />
+                  {/* Se abre el primero, así que el texto no promete los N:
+                      decir "ver los 3" y llevar a uno es una promesa rota. Se
+                      dice cuántos hay, que es información útil, sin ofrecer
+                      algo que este enlace no hace. */}
                   {documentIds.length === 1
                     ? 'Ver el documento'
-                    : `Ver los ${documentIds.length} documentos`}
+                    : `Ver el documento (hay ${documentIds.length})`}
                 </button>
               )}
             </div>

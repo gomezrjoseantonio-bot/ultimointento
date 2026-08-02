@@ -84,6 +84,14 @@ export interface ItemPunteo {
    * ningún papel. Viaja hasta la ficha para poder enlazarlos desde ahí.
    */
   documentIds?: number[];
+  /**
+   * §9 · "deja el saldo en −2 €".
+   *
+   * Va en la fila y no en un aviso aparte porque la pregunta que responde es
+   * sobre ESE cargo: cuál de los del día es el que hunde la cuenta. Un banner
+   * arriba diría que algo pasa, pero no cuál.
+   */
+  avisoSaldo?: string;
   /** Discrepancia banco-vs-confirmado pendiente de revisar. */
   discrepancia?: DiscrepanciaPunteo;
   /** Agrupación madre/hijas (alquiler por habitaciones · fraccionados). */

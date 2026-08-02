@@ -9,6 +9,7 @@ import {
   resumirMes,
   huecosIniciales,
   diasDelMes,
+  saldoAlEmpezarElDia,
 } from '../calendarioDias';
 import type { Account, Movement, TreasuryEvent } from '../../../../services/db';
 
@@ -242,5 +243,68 @@ describe('el resumen del mes', () => {
       saldoTotalHoy: 2000,
     });
     expect(resumen).toEqual({ quedaEntrar: 0, quedaSalir: 0, cierre: 2000 });
+  });
+});
+
+
+// §9 · el saldo con el que empieza un día · lo usa el aviso "deja el saldo en…".
+describe('el saldo al empezar un día', () => {
+  const cuentas = new Map([[1, 1000]]);
+
+  it('para HOY es el saldo de hoy · no hay nada por medio', () => {
+    const s = saldoAlEmpezarElDia({
+      fecha: HOY,
+      eventos: [],
+      movimientos: [],
+      saldoPorCuenta: cuentas,
+      hoy: HOY,
+    });
+    expect(s!.get(1)).toBe(1000);
+  });
+
+  it('para un día FUTURO incorpora lo que pasa por medio', () => {
+    // Sin esto el aviso daba la cifra de hoy en un día que está a tres semanas.
+    const s = saldoAlEmpezarElDia({
+      fecha: '2026-03-20',
+      eventos: [ev({ amount: 300, predictedDate: '2026-03-15' })],
+      movimientos: [],
+      saldoPorCuenta: cuentas,
+      hoy: HOY,
+    });
+    expect(s!.get(1)).toBe(700);
+  });
+
+  it('NO cuenta lo del propio día · eso es lo que se va a marcar encima', () => {
+    const s = saldoAlEmpezarElDia({
+      fecha: '2026-03-20',
+      eventos: [ev({ amount: 300, predictedDate: '2026-03-20' })],
+      movimientos: [],
+      saldoPorCuenta: cuentas,
+      hoy: HOY,
+    });
+    expect(s!.get(1)).toBe(1000);
+  });
+
+  it('un día PASADO no se reconstruye · antes de inventar, no se avisa', () => {
+    expect(
+      saldoAlEmpezarElDia({
+        fecha: '2026-03-01',
+        eventos: [],
+        movimientos: [],
+        saldoPorCuenta: cuentas,
+        hoy: HOY,
+      })
+    ).toBeNull();
+  });
+
+  it('un movimiento ya ocurrido no se suma dos veces · ya está en el saldo', () => {
+    const s = saldoAlEmpezarElDia({
+      fecha: '2026-03-20',
+      eventos: [],
+      movimientos: [mov({ date: '2026-03-05', amount: -400 })],
+      saldoPorCuenta: cuentas,
+      hoy: HOY,
+    });
+    expect(s!.get(1)).toBe(1000);
   });
 });
