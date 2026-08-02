@@ -470,11 +470,16 @@ export async function generateMonthlyForecasts(
         // entero. Bajo la madre del piso, "Hab 2" es lo que distingue una fila
         // de otra; sin él, cuatro rentas del mismo piso se diferencian solo por
         // el nombre del inquilino, que es el dato que menos dice de la unidad.
-        // Manda el `habitacionId`: tenerlo ES ser de una habitación. Exigir
+        // El id TAL CUAL ("hab-2"), sin prefijo: quien lo pinta lo formatea
+        // (`etiquetaHabitacion`). Guardando ya "Hab hab-2" el campo solo era
+        // legible pasándolo otra vez por el formateador, y cualquier consumidor
+        // que lo leyera crudo —un export, un informe— se llevaba el prefijo
+        // duplicado.
+        //
+        // Manda tener `habitacionId`: eso ES ser de una habitación. Exigir
         // además `unidadTipo === 'habitacion'` dejaba sin unidad a cualquier
-        // contrato antiguo o importado al que no se le fijara ese campo,
-        // aunque su habitación estuviera perfectamente identificada.
-        unidadInmueble: contract.habitacionId ? `Hab ${contract.habitacionId}` : undefined,
+        // contrato antiguo o importado al que no se le fijara ese campo.
+        unidadInmueble: contract.habitacionId || undefined,
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,

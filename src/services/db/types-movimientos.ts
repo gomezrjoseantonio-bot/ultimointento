@@ -209,12 +209,18 @@ export interface TreasuryEvent {
   /** Denormalized alias del inmueble vinculado (para display sin join). */
   inmuebleAlias?: string;
   /**
-   * Qué UNIDAD del inmueble, ya en texto · "Hab 2" en alquiler por
-   * habitaciones, ausente en piso completo.
+   * Qué UNIDAD del inmueble · el `habitacionId` del contrato TAL CUAL
+   * ("hab-2"), ausente en piso completo.
    *
    * Denormalizado como `inmuebleAlias` y por lo mismo: la fila del día tiene
    * que decir de qué habitación cobra sin ir a buscar el contrato, y quien la
    * pinta (`punteoAdapter`) solo ve el evento.
+   *
+   * SIN formatear · el "Hab 2" que se lee en pantalla lo compone
+   * `punteoAdapter.etiquetaHabitacion`. Guardar aquí el texto ya montado dejaba
+   * el campo legible solo pasándolo otra vez por el formateador, y cualquier
+   * consumidor que lo leyera crudo —un export, un informe— se llevaba el
+   * prefijo duplicado.
    */
   unidadInmueble?: string;
   contratoId?: number;

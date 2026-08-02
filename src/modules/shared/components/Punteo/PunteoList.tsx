@@ -474,17 +474,31 @@ const PunteoList: React.FC<PunteoListProps> = ({
   );
 
   const renderMadre = (g: GrupoPunteo) => {
-    const abierto = gruposAbiertos[g.grupoId] ?? !g.completo;
+    // CERRADAS de entrada · se abren solo al pulsar la madre.
+    //
+    // Nacían abiertas salvo grupo completo, y con eso el piso no plegaba nada:
+    // seguían viéndose las cuatro habitaciones sueltas, que es justo lo que
+    // agrupar viene a evitar. Un grupo cerrado dice "esto es un piso con cuatro
+    // rentas" en una línea, y quien quiera el detalle lo abre.
+    const abierto = gruposAbiertos[g.grupoId] ?? false;
     const primera = g.hijas[0];
     return (
       <React.Fragment key={`grupo-${g.grupoId}`}>
         <div
-          className={rowCls(primera, styles.rowEditable)}
+          className={rowCls(primera, `${styles.rowEditable} ${styles.rowMadre}`)}
           role="button"
           tabIndex={0}
+          aria-expanded={abierto}
           onClick={() => setGruposAbiertos((s) => ({ ...s, [g.grupoId]: !abierto }))}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') setGruposAbiertos((s) => ({ ...s, [g.grupoId]: !abierto }));
+            // Enter Y espacio · con `role="button"` el navegador no da el
+            // comportamiento nativo, así que hay que dar los dos o el teclado
+            // se queda a medias. El espacio necesita `preventDefault` o además
+            // de abrir el grupo desplaza la página.
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setGruposAbiertos((s) => ({ ...s, [g.grupoId]: !abierto }));
+            }
           }}
         >
           {/* La madre ocupa las MISMAS columnas que sus hijas.
@@ -493,7 +507,9 @@ const PunteoList: React.FC<PunteoListProps> = ({
               del piso caía en la columna de 22px del punteo y salía partido
               letra a letra ("T e…"), y el importe donde va el concepto.
               Aquí va el caret, que además es lo que se pulsa para plegar. */}
-          <span className={styles.caret} aria-hidden="true">{abierto ? '▾' : '▸'}</span>
+          <span className={styles.caret} aria-hidden="true">
+            <Icons.ChevronRight size={14} strokeWidth={2.4} />
+          </span>
           {/* §6.3 · la madre es EL PISO, no el primer inquilino.
               Al agrupar por inmueble, poner aquí el concepto de la primera hija
               dejaba el grupo con nombre de una de sus partes: se leía como si

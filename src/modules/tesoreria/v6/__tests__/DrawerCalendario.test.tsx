@@ -207,18 +207,26 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
         {...base}
         aliasInmueble={(id) => (String(id) === '2' ? 'Tenderina 64 4D' : undefined)}
         eventos={[
-          renta(1, 'MIGUEL LORENZO CABANELAS', 395, 'Hab 1'),
-          renta(2, 'EMILIO CARRERA RIOS', 395, 'Hab 2'),
+          renta(1, 'MIGUEL LORENZO CABANELAS', 395, 'hab-1'),
+          renta(2, 'EMILIO CARRERA RIOS', 395, 'hab-2'),
         ]}
       />
     );
     abrirDia20();
 
     // La madre dice QUÉ es y DE DÓNDE, una sola vez.
-    expect(screen.getAllByText('Alquiler · Tenderina 64 4D')).toHaveLength(1);
+    const madre = screen.getByRole('button', { name: /Alquiler . Tenderina 64 4D/ });
+    expect(madre).toBeInTheDocument();
     expect(screen.getByText(/2 rentas/)).toBeInTheDocument();
-    // Y cada hija se queda con lo suyo: el inquilino, sin el "Renta – " que ya
-    // encabeza el grupo, y su habitación.
+
+    // CERRADA de entrada · el piso se resume en una línea.
+    expect(madre).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('MIGUEL LORENZO CABANELAS')).not.toBeInTheDocument();
+
+    // Se abre al pulsarla, y ahí cada hija se queda con lo suyo: el inquilino
+    // —sin el "Renta – " que ya encabeza el grupo— y su habitación, con el
+    // `hab-1` del contrato convertido en "Hab 1" y no en "Hab hab-1".
+    fireEvent.click(madre);
     expect(screen.getByText('MIGUEL LORENZO CABANELAS')).toBeInTheDocument();
     expect(screen.getByText('EMILIO CARRERA RIOS')).toBeInTheDocument();
     expect(screen.getByText('Hab 1')).toBeInTheDocument();
@@ -248,9 +256,10 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
     );
     abrirDia20();
 
-    expect(screen.getByText('Alquiler')).toBeInTheDocument();
-    // Los inquilinos siguen en SUS filas, no encabezando el grupo.
-    expect(screen.getAllByText('MIGUEL LORENZO CABANELAS')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /Alquiler/ })).toBeInTheDocument();
+    // El inquilino NO encabeza el grupo · con la madre cerrada ni siquiera se
+    // ve, que para eso se pulsa.
+    expect(screen.queryByText('MIGUEL LORENZO CABANELAS')).not.toBeInTheDocument();
   });
 
   it('un piso completo · una sola renta NO monta grupo', () => {
@@ -271,10 +280,10 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
       />
     );
     abrirDia20();
-    // Sin habitación, la fila es solo el inquilino · el piso lo dice su marca,
-    // que aquí no tiene madre que lo encabece.
+    // Sin habitación no hay madre que lo encabece, así que lo dice la propia
+    // fila: qué es y de qué piso arriba, el inquilino debajo.
+    expect(screen.getByText('Alquiler · Tenderina 64 4D')).toBeInTheDocument();
     expect(screen.getByText('ALISSER REAL ESTATE')).toBeInTheDocument();
-    expect(screen.getByText('Tenderina 64 4D')).toBeInTheDocument();
     expect(screen.queryByText(/1 renta$/)).not.toBeInTheDocument();
   });
 
