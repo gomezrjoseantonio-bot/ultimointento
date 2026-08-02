@@ -237,3 +237,21 @@
   border-color: var(--atlas-v5-gold-2);
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* §7 · enlace al documento del Archivo · discreto, bajo el importe.
+   No es una dropzone: aquí se corrige un importe o una fecha, y una zona de
+   subida en medio invita a arrastrar ficheros donde menos toca. */
+.docLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  text-decoration: none;
+  cursor: pointer;
+}
+.docLink:hover {
+  color: var(--atlas-v5-brand);
+  text-decoration: underline;
+}

@@ -128,6 +128,8 @@ export function movimientoAItem(
     activo,
     origen: m.type === 'Ingreso' ? 'Ingreso' : m.type === 'Transferencia' ? 'Transferencia' : 'Gasto',
     cuentaId: m.accountId ?? null,
+    // §7 · el papel que respalda el cargo · solo lo real lo tiene.
+    documentIds: m.documentIds?.length ? m.documentIds : undefined,
     importe: m.amount,
     categoryKey: m.categoryKey,
     subtypeKey: m.subtypeKey,

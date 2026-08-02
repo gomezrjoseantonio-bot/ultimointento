@@ -80,6 +80,23 @@ export interface FichaMovimientoProps {
   onGuardar: (v: GuardadoFicha) => void | Promise<void>;
   /** Solo en edición · el pie muestra Eliminar a la izquierda. */
   onEliminar?: () => void | Promise<void>;
+  /**
+   * §7 · documentos del Archivo que respaldan este movimiento.
+   *
+   * Enlace discreto, no dropzone: aquí se corrige un importe o una fecha, y
+   * poner una zona de subida en medio invita a arrastrar ficheros en la
+   * pantalla donde menos toca. Si no hay papel, no se pinta nada.
+   */
+  documentIds?: number[];
+  /**
+   * Qué hacer al pulsar ese enlace.
+   *
+   * Va como callback y no con `useNavigate` aquí dentro a propósito: la ficha
+   * es un formulario, no tiene por qué saber que existe un enrutador. Atarla a
+   * él la vuelve irrenderizable fuera de un `<Router>` —empezando por sus
+   * propios tests— a cambio de nada.
+   */
+  onAbrirDocumento?: (documentId: number) => void;
 }
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
@@ -103,6 +120,8 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   onCerrar,
   onGuardar,
   onEliminar,
+  documentIds,
+  onAbrirDocumento,
 }) => {
   const esEdicion = inicial != null;
 
@@ -272,6 +291,18 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                 <div className={styles.hint}>previsto {importeSaldo(importePrevisto)}</div>
               )}
               {errorImporte && <div className={styles.error}>Escribe un importe mayor que cero</div>}
+              {documentIds && documentIds.length > 0 && onAbrirDocumento && (
+                <button
+                  type="button"
+                  className={styles.docLink}
+                  onClick={() => onAbrirDocumento(documentIds[0])}
+                >
+                  <Icons.Contratos size={11} strokeWidth={1.8} />
+                  {documentIds.length === 1
+                    ? 'Ver el documento'
+                    : `Ver los ${documentIds.length} documentos`}
+                </button>
+              )}
             </div>
             <div className={styles.fld}>
               <label className={styles.lab} htmlFor="fm-fecha">Fecha</label>
