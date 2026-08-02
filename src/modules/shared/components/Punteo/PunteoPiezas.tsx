@@ -63,18 +63,14 @@ export const PunteoCheck: React.FC<{
         ? onDespuntear
         : undefined;
 
-  const label =
-    estado === 'conciliado'
-      ? `${concepto} · conciliado con el banco`
-      : estado === 'confirmado'
-        ? accion
-          ? `Despuntear ${concepto}`
-          : `${concepto} · confirmado`
-        : // Sin acción detrás no se anuncia una: "Puntear" en una lista que no
-          // puntea es prometerle al lector de pantalla algo que no existe.
-          accion
-          ? `Puntear ${concepto}`
-          : `${concepto} · por confirmar`;
+  // Sin acción detrás NO se anuncia una: "Puntear" en una lista que no puntea
+  // es prometerle al lector de pantalla algo que no existe. Y el estado se dice
+  // con el mismo rótulo que ve todo el mundo (`ESTADO_LABEL`): escribirlo
+  // aparte deja el lector de pantalla oyendo una palabra distinta de la que
+  // pone en la leyenda en cuanto una de las dos cambie.
+  const label = accion
+    ? `${estado === 'confirmado' ? 'Despuntear' : 'Puntear'} ${concepto}`
+    : `${concepto} · ${ESTADO_LABEL[estado]}${estado === 'conciliado' ? ' con el banco' : ''}`;
 
   const marca = esReal(estado) ? <Icons.Check size={11} strokeWidth={3} /> : null;
 

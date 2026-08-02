@@ -282,7 +282,7 @@ describe('pestaña Confirmados', () => {
 
     expect(screen.getByText('Alta a mano')).toBeInTheDocument();
     expect(screen.queryByLabelText('Despuntear Alta a mano')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Alta a mano · confirmado').tagName).toBe('SPAN');
+    expect(screen.getByLabelText('Alta a mano · Confirmado').tagName).toBe('SPAN');
   });
 
   // Lo conciliado lo afirma el BANCO · no se deshace desde aquí, así que ni
