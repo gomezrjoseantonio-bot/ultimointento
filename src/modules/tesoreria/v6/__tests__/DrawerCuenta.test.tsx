@@ -174,7 +174,33 @@ describe('pestaña Pendientes', () => {
 
   it('un ejecutado tampoco: su realidad ya vive en el movimiento', () => {
     render(<DrawerCuenta {...base} eventos={[ev({ id: 1, status: 'executed' })]} />);
-    expect(screen.getByRole('button', { name: /Por confirmar · 0/ })).toBeInTheDocument();
+    // Con la bandeja vacía la pestaña NO lleva recuento: "Por confirmar · 0"
+    // anuncia una cifra para decir que no hay cifra, y el panel de debajo ya lo
+    // dice con todas las letras.
+    expect(screen.getByRole('button', { name: /^Por confirmar$/ })).toBeInTheDocument();
+  });
+
+  // La cuota de una hipoteca tiene que decir de qué piso es. Falló por los dos
+  // extremos a la vez: el generador no copiaba `inmuebleId` al evento y nadie
+  // pasaba `aliasInmueble` al drawer. Con las dos mitades puestas, la fila lo
+  // dice.
+  it('la cuota de una hipoteca dice de qué piso es', () => {
+    render(
+      <DrawerCuenta
+        {...base}
+        aliasInmueble={(id) => (String(id) === '7' ? 'Tenderina 64' : undefined)}
+        eventos={[
+          ev({
+            id: 1,
+            inmuebleId: 7,
+            sourceType: 'hipoteca',
+            description: 'Cuota Hipoteca – Hipoteca Unicaja T64 4D+4I',
+          }),
+        ]}
+      />
+    );
+    expect(screen.getByText('Hipoteca Unicaja T64 4D+4I')).toBeInTheDocument();
+    expect(screen.getByText('Tenderina 64')).toBeInTheDocument();
   });
 
   it('usa la anatomía de fila de Tesorería: editar y descartar en la fila', () => {
@@ -198,7 +224,9 @@ describe('pestaña Pendientes', () => {
   it('sin nada pendiente, el vacío es una buena noticia y no un error', () => {
     render(<DrawerCuenta {...base} eventos={[]} />);
     expect(screen.getByText('Nada por confirmar')).toBeInTheDocument();
-    expect(screen.getByText('el mes está al día en esta cuenta')).toBeInTheDocument();
+    // El texto del mockup · la bandeja no es del mes (lista vencidos de
+    // cualquier fecha), así que nombrarlo era además inexacto.
+    expect(screen.getByText('esta cuenta está al día')).toBeInTheDocument();
   });
 
   it('no pinta los chips de estado: mandan las pestañas (§4.4)', () => {

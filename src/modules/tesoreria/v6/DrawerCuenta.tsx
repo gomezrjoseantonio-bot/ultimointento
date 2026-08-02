@@ -192,7 +192,11 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
             aria-pressed={pestana === 'pendientes'}
             onClick={() => setPestana('pendientes')}
           >
-            Por confirmar · {itemsPendientes.length}
+            {/* Sin nada pendiente no se pinta el recuento: "Por confirmar · 0"
+                anuncia una cifra para decir que no hay cifra, y el panel de
+                debajo ya lo dice con todas las letras. El mockup tampoco lo
+                lleva. */}
+            Por confirmar{itemsPendientes.length > 0 ? ` · ${itemsPendientes.length}` : ''}
           </button>
           <button
             type="button"
@@ -226,7 +230,10 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
               <div className={styles.vacio}>
                 <Icons.Success size={34} strokeWidth={1.6} className={styles.vacioIc} />
                 <div className={styles.vacioT}>Nada por confirmar</div>
-                <div className={styles.vacioS}>el mes está al día en esta cuenta</div>
+                {/* El texto del mockup · la bandeja no es del mes (lista
+                    vencidos de cualquier fecha), así que nombrarlo era además
+                    inexacto. */}
+                <div className={styles.vacioS}>esta cuenta está al día</div>
               </div>
             ) : (
               <PunteoList

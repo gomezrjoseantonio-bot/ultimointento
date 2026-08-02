@@ -585,6 +585,22 @@ export async function generateMonthlyForecasts(
         : undefined;
       const accountId = resolveAccountId(rawAccountId);
 
+      // De qué piso es la cuota.
+      //
+      // El evento nunca lo llevaba, así que la fila de una hipoteca no podía
+      // decir de qué inmueble era por más que se le pasara el resolvedor de
+      // alias: no había id que resolver. El dato está en el préstamo —de hecho
+      // es el que decide arriba si esto es hipoteca o préstamo personal—, solo
+      // había que copiarlo.
+      //
+      // `'standalone'` es el centinela heredado para "sin inmueble", y un
+      // `Number('standalone')` sería NaN: se filtra antes de convertir.
+      const inmuebleDeLaCuota =
+        isHipoteca && prestamo.inmuebleId && prestamo.inmuebleId !== 'standalone'
+          ? Number(prestamo.inmuebleId)
+          : undefined;
+      const inmuebleId = Number.isFinite(inmuebleDeLaCuota) ? inmuebleDeLaCuota : undefined;
+
       if (existingByDescription) {
         await db.put('treasuryEvents', {
           ...existingByDescription,
@@ -594,6 +610,7 @@ export async function generateMonthlyForecasts(
           description,
           sourceType,
           accountId,
+          inmuebleId,
           prestamoId: prestamo.id,
           numeroCuota: currentPeriodo?.periodo,
           updatedAt: now,
@@ -608,6 +625,7 @@ export async function generateMonthlyForecasts(
           sourceType,
           sourceId: undefined, // string UUID – incompatible with numeric sourceId field
           accountId,
+          inmuebleId,
           status: 'predicted' as const,
           prestamoId: prestamo.id,
           numeroCuota: currentPeriodo?.periodo,
