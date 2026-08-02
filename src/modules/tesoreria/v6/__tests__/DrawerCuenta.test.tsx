@@ -242,24 +242,47 @@ describe('pestaña Confirmados', () => {
   const abrirConfirmados = () =>
     fireEvent.click(screen.getByRole('button', { name: /^Confirmados$/ }));
 
-  /** Punteado a mano · "tu palabra", sin extracto detrás (§6.4). */
+  /** Confirmado por el usuario · "tu palabra", sin extracto detrás (§6.4). */
   const aMano = (over: Partial<Movement> & { id: number }) =>
     mov({ source: 'manual', unifiedStatus: 'no_conciliado', ...over });
+
+  /** Y además NACIDO de una previsión · la huella que deja `confirmTreasuryEvent`. */
+  const punteado = (over: Partial<Movement> & { id: number }) =>
+    aMano({ reference: 'treasury_event:1', ...over });
 
   it('lista lo que confirmaste tú, y el círculo lo despuntea', () => {
     const onDespuntear = jest.fn();
     render(
       <DrawerCuenta
         {...base}
-        movimientos={[aMano({ id: 9, description: 'Compra a mano' })]}
+        movimientos={[punteado({ id: 9, description: 'Compra punteada' })]}
         onDespuntear={onDespuntear}
       />
     );
     abrirConfirmados();
 
-    expect(screen.getByText('Compra a mano')).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText('Despuntear Compra a mano'));
+    expect(screen.getByText('Compra punteada')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Despuntear Compra punteada'));
     expect(onDespuntear).toHaveBeenCalledTimes(1);
+  });
+
+  // Despuntear BORRA el movimiento y devuelve su previsión a "Por confirmar".
+  // Sin previsión detrás —un alta a mano, algo llegado del inbox— no hay adónde
+  // volver: el círculo lo borraría y ya está. Así que ahí no es un interruptor.
+  it('lo que no nació de una previsión se ve, pero no se despuntea', () => {
+    const onDespuntear = jest.fn();
+    render(
+      <DrawerCuenta
+        {...base}
+        movimientos={[aMano({ id: 9, description: 'Alta a mano' })]}
+        onDespuntear={onDespuntear}
+      />
+    );
+    abrirConfirmados();
+
+    expect(screen.getByText('Alta a mano')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Despuntear Alta a mano')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Alta a mano · confirmado').tagName).toBe('SPAN');
   });
 
   // Lo conciliado lo afirma el BANCO · no se deshace desde aquí, así que ni
@@ -276,12 +299,19 @@ describe('pestaña Confirmados', () => {
   // la bandeja sin hacer nada, entre otros que sí responden.
   it('un evento ya confirmado sale de la bandeja y viene aquí', () => {
     render(
-      <DrawerCuenta {...base} eventos={[ev({ id: 1, status: 'confirmed', description: 'Venta piso' })]} />
+      <DrawerCuenta
+        {...base}
+        onDespuntear={jest.fn()}
+        eventos={[ev({ id: 1, status: 'confirmed', description: 'Venta piso' })]}
+      />
     );
     expect(screen.queryByText('Venta piso')).not.toBeInTheDocument();
 
     abrirConfirmados();
     expect(screen.getByText('Venta piso')).toBeInTheDocument();
+    // Y tampoco se despuntea: no se punteó nunca · está decidido y espera al
+    // banco. Un botón que parece accionable y no responde es peor que una marca.
+    expect(screen.queryByLabelText('Despuntear Venta piso')).not.toBeInTheDocument();
   });
 });
 

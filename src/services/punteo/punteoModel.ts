@@ -94,6 +94,15 @@ export interface ItemPunteo {
   avisoSaldo?: string;
   /** Discrepancia banco-vs-confirmado pendiente de revisar. */
   discrepancia?: DiscrepanciaPunteo;
+  /**
+   * De qué previsión NACIÓ este movimiento · solo si nació de una.
+   *
+   * Es lo que separa un movimiento punteado de uno dado de alta a mano o
+   * llegado del inbox: solo el primero se puede despuntear, porque solo ahí hay
+   * una previsión a la que volver. Deshacer los otros no los devolvería a
+   * ninguna parte — los borraría.
+   */
+  previsionId?: number;
   /** Agrupación madre/hijas (alquiler por habitaciones · fraccionados). */
   grupoId?: string;
   /**

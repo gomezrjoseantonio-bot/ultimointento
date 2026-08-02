@@ -226,6 +226,20 @@ export function eventoAItem(
 
 // ─── Movimientos (realidad) ─────────────────────────────────────────────────
 
+/**
+ * De qué previsión nació este movimiento · `undefined` si no nació de ninguna.
+ *
+ * `confirmTreasuryEvent` deja la huella en `reference` (`treasury_event:{id}`) y
+ * es la MISMA por la que `revertTreasuryConfirmation` encuentra el evento al
+ * deshacer. Sin ella, deshacer no devuelve nada a "Por confirmar": borra el
+ * movimiento y ya está. Por eso la huella se lee aquí y viaja hasta la fila —
+ * es lo que decide si el círculo se pinta como interruptor o como marca.
+ */
+export function previsionDeMovimiento(m: Pick<Movement, 'reference'>): number | undefined {
+  const ref = String(m.reference ?? '').match(/^treasury_event:(\d+)$/);
+  return ref ? Number(ref[1]) : undefined;
+}
+
 export function movimientoAItem(
   m: Movement & { id: number },
   aliasInmueble?: (id: number | string) => string | undefined,
@@ -249,6 +263,7 @@ export function movimientoAItem(
     cuentaId: m.accountId ?? null,
     // §7 · el papel que respalda el cargo · solo lo real lo tiene.
     documentIds: m.documentIds?.length ? m.documentIds : undefined,
+    previsionId: previsionDeMovimiento(m),
     importe: m.amount,
     categoryKey: m.categoryKey,
     subtypeKey: m.subtypeKey,

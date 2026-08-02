@@ -289,13 +289,22 @@ const PunteoList: React.FC<PunteoListProps> = ({
           ficha de §4.5. Cinco decisiones para decir "sí, esto pasó" era
           fricción en la acción más repetida de la pantalla. */}
       <div className={rowCls(it, hija ? styles.rowHija : '')}>
-        {/* La acción principal, a la IZQUIERDA · es lo primero que se busca. */}
+        {/* La acción principal, a la IZQUIERDA · es lo primero que se busca.
+
+            Despuntear SOLO lo que nació de una previsión · es lo único que
+            tiene adónde volver. Un movimiento dado de alta a mano o llegado del
+            inbox no se despuntea: deshacerlo no lo devolvería a "Por
+            confirmar", lo borraría. Y un evento `confirmed` —una venta, una
+            liquidación— no se punteó nunca. En los dos casos el círculo se
+            pinta como marca, que es lo que es. */}
         <PunteoCheck
           estado={it.estado}
           concepto={it.concepto}
           soloLectura={soloLectura}
           onPuntear={() => onConfirmar(it)}
-          onDespuntear={onDespuntear ? () => onDespuntear(it) : undefined}
+          onDespuntear={
+            onDespuntear && it.previsionId != null ? () => onDespuntear(it) : undefined
+          }
         />
         <div className={styles.c1}>
           <div className={styles.conceptoLinea}>
