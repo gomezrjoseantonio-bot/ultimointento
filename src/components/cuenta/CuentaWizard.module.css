@@ -27,7 +27,10 @@
 
 .modal {
   width: 100%;
-  max-width: 1200px;
+  /* §10 · un formulario de seis campos no necesita 1200px.
+     Ese ancho era el de las dos columnas; sin la vista previa sobra la mitad y
+     los campos quedaban tan largos que un "0000" ocupaba media pantalla. */
+  max-width: 560px;
   max-height: calc(100vh - 48px);
   background: var(--atlas-v5-bg);
   border-radius: 14px;
@@ -38,10 +41,14 @@
 }
 
 /* ─── HEADER navy ─── */
+/* §10 · cabecera PLANA. La banda navy con icono pesaba más que el propio
+   formulario y competía con el hero que hay detrás. Aquí solo hace falta saber
+   qué se está haciendo. */
 .header {
-  background: var(--atlas-v5-brand-ink);
-  color: var(--atlas-v5-card-alt);
-  padding: 16px 28px;
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  padding: 16px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -57,35 +64,34 @@
 }
 .headerIcon svg { width: 19px; height: 19px; }
 .headerText { min-width: 0; }
-.headerTitle {
-  font-size: 16px;
+/* §10 · kicker pequeño arriba, el QUÉ en grande debajo · como el mockup. */
+.headerKicker {
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
   font-weight: 700;
-  letter-spacing: -0.2px;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.headerSub {
-  font-size: 11px;
-  color: var(--atlas-v5-navy-text-2);
-  margin-top: 2px;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.headerTitle {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
 }
+
+/* Con la cabecera ya en claro, los colores de antes —pensados para el navy—
+   dejaban el aspa prácticamente invisible sobre blanco. */
 .headerClose {
   width: 32px; height: 32px;
   border-radius: 6px;
   display: grid; place-items: center;
-  color: var(--atlas-v5-navy-text-2);
-  border: 1px solid var(--atlas-v5-border-translucent);
+  color: var(--atlas-v5-ink-3);
+  border: none;
   background: none;
   cursor: pointer;
   flex-shrink: 0;
 }
-.headerClose:hover { background: var(--atlas-v5-hover-navy); color: var(--atlas-v5-card-alt); }
+.headerClose:hover { background: var(--atlas-v5-line-3); color: var(--atlas-v5-ink); }
 
 /* ─── BODY ─── */
 .body {
@@ -107,19 +113,25 @@
 }
 
 /* ─── BLOQUES ─── */
+/* §10 · "formulario plano, etiqueta + campo".
+   Cada bloque era una tarjeta con marco y cabecera en mayúsculas, así que seis
+   campos parecían seis secciones. Ahora el rótulo es una línea discreta y el
+   marco desaparece: lo que separa es el aire, no una caja. */
 .block {
-  background: var(--atlas-v5-card);
-  border: 1px solid var(--atlas-v5-line);
-  border-radius: 10px;
-  margin-bottom: 12px;
-  overflow: hidden;
+  background: none;
+  border: none;
+  border-radius: 0;
+  margin-bottom: 18px;
+  overflow: visible;
 }
 .blockHd {
-  padding: 11px 14px;
+  padding: 0 0 7px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+  margin-bottom: 12px;
 }
 .blockHdTitle {
   font-size: 11px;

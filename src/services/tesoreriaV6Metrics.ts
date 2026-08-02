@@ -342,8 +342,15 @@ export function calcularRealidad(params: {
         clave: 'Neto',
         real: redondear(netoReal),
         previsto: redondear(netoPrev),
-        // Sin barra · ver la nota de `porcentaje`.
-        porcentaje: null,
+        // §3.4 · el Neto SÍ tiene porcentaje cuando ambos son positivos.
+        //
+        // Estaba fijado a `null` porque el neto puede ser negativo, y ahí un
+        // "128 %" se lee como mejor cuando significa haber gastado de más. Pero
+        // eso solo pasa con magnitudes negativas: con las dos en positivo el
+        // porcentaje dice exactamente lo que tiene que decir —cuánto llevas de
+        // lo previsto— y es lo que hace el mockup. Fuera de ese caso, `null`, y
+        // la fila enseña la diferencia con su signo.
+        porcentaje: netoReal >= 0 && netoPrev > 0 ? pct(netoReal, netoPrev) : null,
         peorQuePrevisto: netoReal < netoPrev,
       },
     ],

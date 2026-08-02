@@ -58,8 +58,11 @@ describe('fechas y meses', () => {
     expect(rangoMeses({ year: 2026, month0: 10 }, { year: 2027, month0: 3 })).toBe('nov 2026 – abr 2027');
   });
 
-  it('el día del aviso se lee como una frase', () => {
-    expect(diaYMes('2026-07-22')).toBe('22 de julio');
+  it('el día del aviso va CORTO · comparte línea con un importe', () => {
+    // "22 de julio" entero hacía que "se queda en −36,97 € el 22 de julio" se
+    // partiera en tres líneas dentro de la tarjeta de cuenta.
+    expect(diaYMes('2026-07-22')).toBe('22 jul');
+    expect(diaYMes('2026-09-05')).toBe('5 sep');
   });
 });
 
