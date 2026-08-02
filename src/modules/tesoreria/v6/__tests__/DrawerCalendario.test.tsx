@@ -322,13 +322,27 @@ describe('el lápiz de la fila', () => {
   // drawer declaraba `onEditar` y NADIE se lo pasaba: el mismo hueco que tenía
   // `aliasInmueble`. Sin él no había forma de corregir un previsto desde el día.
   it('existe y abre la ficha del movimiento', () => {
-    render(<DrawerCalendario {...base} eventos={[ev({ id: 1, description: 'Recibo luz' })]} />);
+    render(
+      <DrawerCalendario
+        {...base}
+        onGuardarFicha={jest.fn()}
+        eventos={[ev({ id: 1, description: 'Recibo luz' })]}
+      />
+    );
     abrirDia20();
 
     const lapiz = screen.getByLabelText('Editar Recibo luz');
     expect(lapiz).toBeInTheDocument();
     fireEvent.click(lapiz);
     expect(screen.getByRole('dialog', { name: /movimiento/i })).toBeInTheDocument();
+  });
+
+  // Sin dónde guardar, la ficha se abriría, se rellenaría y al pulsar Guardar
+  // se cerraría sin haber guardado: el usuario se queda creyendo que lo hizo.
+  it('no se ofrece si no hay dónde guardar', () => {
+    render(<DrawerCalendario {...base} eventos={[ev({ id: 1, description: 'Recibo luz' })]} />);
+    abrirDia20();
+    expect(screen.queryByLabelText('Editar Recibo luz')).not.toBeInTheDocument();
   });
 });
 

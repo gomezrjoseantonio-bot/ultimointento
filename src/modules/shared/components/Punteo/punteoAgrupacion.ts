@@ -7,9 +7,15 @@
 // agrupa por fecha, por inmueble o por "qué es", y filtrar por un buscador, es
 // decisión de pantalla, no de dominio.
 //
-// El orden DENTRO de cada grupo sigue siendo el canónico del modelo
-// (`compararEnDia`: ingresos antes que gastos, luego por |importe|), para que
-// cambiar de eje no cambie el orden interno.
+// El orden DENTRO de cada grupo lo fija el eje, porque lo fija la pregunta que
+// contesta cada uno:
+//   · fecha           · el canónico del modelo (`compararEnDia`: ingresos antes
+//                       que gastos, luego por |importe|)
+//   · inmueble·qué es · fecha descendente (§4.4) y `compararEnDia` de desempate
+//   · cuenta          · ALFABÉTICO por el título que se ve. Es el eje del día,
+//                       donde la fecha no desempata nada —todo es del mismo
+//                       día— y lo que se hace es buscar un cargo concreto entre
+//                       veinte.
 // ============================================================================
 
 import { agruparHijas, compararEnDia, type ItemPunteo } from '../../../../services/punteo/punteoModel';
@@ -169,10 +175,13 @@ export function agruparPorEje(
    * excepción es "Sin cuenta", que va al final por ser un cajón y no una cuenta.
    */
   if (eje === 'cuenta') {
-    const info = new Map(cuentas.map((c, i) => [c.id, { label: c.label, orden: i }]));
+    // Solo el nombre · el orden en que llega la lista de cuentas NO manda aquí,
+    // manda el alfabético, así que guardar su posición sobraba y sugería un
+    // criterio que no se aplica.
+    const nombres = new Map(cuentas.map((c) => [c.id, c.label]));
     const porClave = new Map<string, { titulo: string; orden: number; cuentaId?: number; items: ItemPunteo[] }>();
     for (const it of items) {
-      const dato = it.cuentaId != null ? info.get(it.cuentaId) : undefined;
+      const existe = it.cuentaId != null && nombres.has(it.cuentaId);
       const k = it.cuentaId != null ? `cuenta-${it.cuentaId}` : SIN_CUENTA;
       const g = porClave.get(k);
       if (g) {
@@ -185,13 +194,17 @@ export function agruparPorEje(
         // borrada—, y un número de fila de base de datos no le dice al lector
         // de qué cuenta sale el cargo. Mismo criterio que los inmuebles unas
         // líneas más abajo: antes "Sin nombre" que un id.
-        titulo: dato?.label ?? (it.cuentaId != null ? 'Sin nombre' : 'Sin cuenta'),
+        titulo: existe
+          ? nombres.get(it.cuentaId as number)!
+          : it.cuentaId != null
+            ? 'Sin nombre'
+            : 'Sin cuenta',
         // Tres escalones, y dentro de cada uno manda el nombre:
         //   0 · las cuentas que existen · lo que el usuario busca
         //   1 · las dadas de baja o borradas · "Sin nombre" no debe colarse
         //       entre las reales solo porque la S caiga antes que la U
         //   2 · "Sin cuenta" · un cajón, no una cuenta
-        orden: it.cuentaId == null ? 2 : dato ? 0 : 1,
+        orden: it.cuentaId == null ? 2 : existe ? 0 : 1,
         cuentaId: it.cuentaId ?? undefined,
         items: [it],
       });

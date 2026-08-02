@@ -369,11 +369,12 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
           {/* ── El día elegido ──────────────────────────────────────────── */}
           {diaElegido && (
             <div className={styles.detalle}>
-              {/* §9 · "Jueves 30 · 2 movimientos".
+              {/* §9 · el nombre del día a un lado y sus acciones al otro.
                   El mes y el año ya están en la cabecera del drawer y en la
                   rejilla que hay justo encima: repetir "31 ago 2026" aquí es
-                  decir por tercera vez dónde estamos. Lo que no se sabía es
-                  cuántos apuntes tiene el día. */}
+                  decir por tercera vez dónde estamos, así que basta "Jueves
+                  30". El resto de la línea es para lo que se hace CON ese día,
+                  que es lo que justifica que esta cabecera exista. */}
               <div className={styles.detalleHd}>
                 <div className={styles.detalleT}>{diaSemanaYNumero(diaElegido)}</div>
                 {/* §9 · las acciones del día, EN SU CABECERA · junto al día al
@@ -430,7 +431,11 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   // llevando su chip.
                   conChipEstado="solo-si-difiere"
                   rowVariant="tesoreria"
-                  onEditar={(item) => setFicha({ item })}
+                  // El lápiz solo si hay dónde guardar. Sin `onGuardarFicha` la
+                  // ficha se abre, se rellena, se pulsa Guardar y se cierra sin
+                  // haber guardado nada: peor que no ofrecer el botón, porque
+                  // el usuario se queda creyendo que lo ha hecho.
+                  onEditar={onGuardarFicha ? (item) => setFicha({ item }) : undefined}
                   onConfirmar={onConfirmar}
                   onNoPaso={onDescartar}
                 />
