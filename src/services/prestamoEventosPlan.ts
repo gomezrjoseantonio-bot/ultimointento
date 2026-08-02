@@ -40,9 +40,13 @@ function claveDeEvento(e: TreasuryEvent): string {
 /**
  * ¿Hay que rehacer las previsiones de este préstamo?
  *
- * Solo si cambia algo que mueve el cuadro. El nombre, la cuenta o una nota no
- * lo mueven: el calendario de pagos sigue siendo el mismo, y rehacerlo destruye
- * el trabajo de punteo que ya se hubiera hecho encima.
+ * Solo si cambia algo que mueve el cuadro o el destino del cargo: el nombre o
+ * una nota no lo mueven, y rehacer las previsiones por eso destruye el punteo
+ * que ya se hubiera hecho encima.
+ *
+ * La cuenta SÍ está en la lista aunque no cambie el calendario: si las cuotas
+ * pasan a cobrarse de otra cuenta, las previsiones emitidas apuntan a la
+ * equivocada y el aviso de saldo corto saldría sobre la cuenta que no es.
  */
 export function cambiaElCuadro(
   antes: Record<string, unknown> | null,
@@ -75,9 +79,14 @@ export function cambiaElCuadro(
  *
  * Dos reglas:
  *
- * 1. Lo CONFIRMADO y lo CONCILIADO no se toca. Antes solo se respetaba
- *    `executed`, así que una cuota confirmada a mano se borraba y volvía como
- *    prevista: el usuario tenía que puntearla otra vez.
+ * 1. Lo CONFIRMADO, lo CONCILIADO y lo DESCARTADO no se toca. Antes solo se
+ *    respetaba `executed`, así que una cuota confirmada a mano se borraba y
+ *    volvía como prevista.
+ *
+ *    Lo descartado cuenta igual, y por el mismo motivo: descartar es decir
+ *    "esto no va a ocurrir". Resucitarlo en la siguiente regeneración obliga a
+ *    descartarlo otra vez, y convierte una decisión del usuario en algo que hay
+ *    que repetir cada vez que se toca el préstamo.
  *
  * 2. Una cuota ya VENCIDA no se emite. Ni prevista ni confirmada.
  *
@@ -101,7 +110,7 @@ export function planificarEventos(params: {
   const firmes = new Set<string>();
   const borrar: number[] = [];
   for (const e of existentes) {
-    if (e.status === 'executed' || e.status === 'confirmed') {
+    if (e.status === 'executed' || e.status === 'confirmed' || e.descartado) {
       firmes.add(claveDeEvento(e));
       continue;
     }

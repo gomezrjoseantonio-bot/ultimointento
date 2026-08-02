@@ -175,8 +175,13 @@ export interface MesProyectado {
 
 /**
  * Proyección encadenada: el cierre de un mes es el saldo de partida del
- * siguiente. En el mes en curso, "entra"/"sale" son lo que QUEDA (solo cuenta
- * desde hoy); en los futuros, el mes entero.
+ * siguiente.
+ *
+ * Todos los meses cuentan ENTEROS, incluido el en curso. Este último recortaba
+ * por `hoy`, y eso dejaba fuera los previstos vencidos sin confirmar: una renta
+ * del día 1 que todavía no ha entrado sigue siendo dinero que falta por entrar.
+ * El hero los cuenta, así que recortar aquí hacía que la misma cifra saliera
+ * distinta en dos sitios de la misma pantalla.
  */
 export function proyectarMeses(params: {
   saldoHoy: number;

@@ -99,6 +99,19 @@ describe('qué se borra y qué se emite', () => {
     expect(plan.emitir).toHaveLength(0);
   });
 
+  it('lo DESCARTADO no se resucita · descartar es decir "esto no va a ocurrir"', () => {
+    // Sin esto, cada vez que se tocara el préstamo habría que volver a
+    // descartarlo: una decisión del usuario convertida en tarea recurrente.
+    const plan = planificarEventos({
+      descriptores: [desc(1, '2026-09-01')],
+      existentes: [evento({ id: 7, numeroCuota: 1, status: 'predicted', descartado: true })],
+      hoy: HOY,
+    });
+
+    expect(plan.borrar).toEqual([]);
+    expect(plan.emitir).toHaveLength(0);
+  });
+
   it('lo previsto sí se reemplaza · es lo único que el cuadro puede mover', () => {
     const plan = planificarEventos({
       descriptores: [desc(1, '2026-09-01')],
