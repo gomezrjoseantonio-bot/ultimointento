@@ -267,9 +267,10 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                   className={`${styles.tipoBtn} ${tipo === t && !esCajero ? styles.tipoOn : ''}`}
                   onClick={() => {
                     setTipo(t);
-                    // Salir de "Cajero" deja el destino como estaba antes de
-                    // pulsarlo: si no, una transferencia normal nacía apuntando
-                    // a la cuenta de efectivo sin que nadie lo hubiera pedido.
+                    // Salir de "Cajero" SUELTA el destino que puso el atajo: si
+                    // no, una transferencia normal nacía apuntando a la cuenta
+                    // de efectivo sin que nadie lo hubiera pedido. Se queda en
+                    // "externa", que es de donde partía la ficha.
                     if (esCajero) setCuentaDestinoId(null);
                   }}
                 >

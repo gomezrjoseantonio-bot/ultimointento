@@ -58,6 +58,39 @@ describe('la cuenta de Efectivo', () => {
     expect(screen.queryByText('Cuenta remunerada')).not.toBeInTheDocument();
   });
 
+  // Esconder los campos no basta: el valor seguía en el formulario. Con "Otro ·
+  // escribir" elegido antes de cambiar de tipo, el guardado se bloqueaba
+  // pidiendo un campo que ya no estaba en pantalla — sin forma de arreglarlo.
+  it('cambiar a efectivo BORRA lo bancario que se hubiera tecleado', async () => {
+    (cuentasService.create as jest.Mock).mockResolvedValue({ id: 9 });
+    render(<CuentaWizard open onClose={() => {}} />);
+
+    // El select del banco no tiene `for`, así que se busca por su opción.
+    const selectBanco = screen
+      .getByRole('option', { name: 'Otro · escribir' })
+      .closest('select') as HTMLSelectElement;
+    fireEvent.change(selectBanco, { target: { value: 'Otro · escribir' } });
+    expect(screen.getByText('Nombre del banco')).toBeInTheDocument();
+
+    elegirEfectivo();
+    expect(screen.queryByText('Nombre del banco')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('Ej. Santander Alquileres'), {
+      target: { value: 'Cartera' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar/ }));
+
+    // Se guarda · no se queda bloqueado por un campo invisible.
+    await screen.findByRole('button', { name: /Guardar/ });
+    expect(cuentasService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ tipo: 'EFECTIVO', iban: undefined })
+    );
+    // Y no arrastra metadatos de banco a una cuenta que no tiene ninguno.
+    expect(cuentasService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ bic: undefined })
+    );
+  });
+
   it('se guarda SIN iban · no se inventa uno para rellenar el hueco', async () => {
     (cuentasService.create as jest.Mock).mockResolvedValue({ id: 9 });
     render(<CuentaWizard open onClose={() => {}} />);

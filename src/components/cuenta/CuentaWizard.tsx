@@ -416,6 +416,12 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       // Ni la tarjeta ni el efectivo se remuneran: una debe dinero y el otro
       // está en un bolsillo.
       esRemunerada: tipo === 'TARJETA_CREDITO' || tipo === 'EFECTIVO' ? false : prev.esRemunerada,
+      // Pasar a EFECTIVO BORRA lo bancario que se hubiera tecleado antes.
+      // Esconder los campos no basta: el valor seguía en el formulario, así que
+      // se guardaba un banco y un IBAN en una cuenta que no tiene ninguno de
+      // los dos, y si el banco era "Otro · escribir" el guardado se bloqueaba
+      // pidiendo un campo que ya no está en pantalla.
+      ...(tipo === 'EFECTIVO' ? { banco: '', bancoOtro: '', iban: '', bic: '' } : {}),
     }));
     setErrors({});
   };
@@ -517,7 +523,10 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     if (!form.alias.trim()) errs.alias = 'El alias es obligatorio';
     else if (form.alias.trim().length > 40) errs.alias = 'Máx. 40 caracteres';
 
-    if (form.banco === 'Otro · escribir' && !form.bancoOtro.trim()) {
+    // `esEfectivo` de guarda: el cambio de tipo ya limpia estos campos, pero un
+    // error sobre algo que no está en pantalla deja al usuario sin forma de
+    // arreglarlo, y eso no puede depender de que la limpieza no falle nunca.
+    if (!esEfectivo && form.banco === 'Otro · escribir' && !form.bancoOtro.trim()) {
       errs.bancoOtro = 'Indica el nombre del banco';
     }
 
@@ -708,8 +717,11 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
 
   // ── Cuentas elegibles cuenta de cargo (no-tarjeta · activas · distintas
   //    de la cuenta que se está editando)
+  // El recibo de una tarjeta se domicilia en una cuenta BANCARIA: ni en otra
+  // tarjeta ni en el bolsillo. `chargeAccountId` está documentado como cuenta
+  // bancaria, y el efectivo explícitamente no lo es.
   const cuentasParaCargo = accounts.filter((a) =>
-    a.tipo !== 'TARJETA_CREDITO' && a.id !== editingAccount?.id
+    a.tipo !== 'TARJETA_CREDITO' && a.tipo !== 'EFECTIVO' && a.id !== editingAccount?.id
   );
   // Cuentas elegibles destino intereses (todas las activas)
   const cuentasParaDestino = accounts.filter((a) => a.id !== editingAccount?.id);
@@ -848,7 +860,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                     />
                   </div>
                 </div>
-                {form.banco === 'Otro · escribir' && (
+                {!esEfectivo && form.banco === 'Otro · escribir' && (
                   <div style={{ marginTop: 10 }}>
                     <Field label="Nombre del banco" required error={errors.bancoOtro}>
                       <input
