@@ -6,6 +6,7 @@ import type { AtlasHorizonDB } from '../db';
 import type { BoteAnualSinIdentificar,Contract,Property,TreasuryEvent } from './types';
 import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfillDocumentoFirmado } from '../alquileresV3FixService';
 import { migrarBaseAmortizableEjercicio } from '../baseAmortizableEjercicioService';
+import { inmuebleDelPrestamo, type PrestamoConDestinos } from '../inmuebleDelPrestamo';
 
 /** Sólo estos orígenes tienen un gasto recurrente detrás del que copiar. */
 const ORIGENES_CON_PROVEEDOR = new Set(['gasto_recurrente', 'opex_rule', 'personal_expense']);
@@ -477,20 +478,23 @@ export function runPostOpenMigrations(
     // Rellena, no corrige: si el evento ya trae inmueble se deja como está.
     .then(async (db) => {
       try {
-        const FLAG = 'migration_inmueble_en_cuotas_hipoteca_v1';
+        // `_v2` · la v1 leía el campo raíz `Prestamo.inmuebleId`, que está
+        // `@deprecated` y viene vacío en los préstamos de la ficha actual: se
+        // ejecutó, marcó bandera y no rellenó nada. Con el mismo nombre no
+        // volvería a correr nunca, así que la bandera sube de versión.
+        const FLAG = 'migration_inmueble_en_cuotas_hipoteca_v2';
         if ((await db.get('keyval', FLAG)) === 'completed') return db;
 
-        const prestamos = (await db.getAll('prestamos')) as Array<{
-          id?: string;
-          inmuebleId?: string | number;
-        }>;
-        // `'standalone'` es el centinela heredado de "sin inmueble"; un
-        // `Number('standalone')` sería NaN y dejaría el evento peor que antes.
+        const prestamos = (await db.getAll('prestamos')) as Array<
+          PrestamoConDestinos & { id?: string }
+        >;
+        // El piso sale de `destinos[]`: el campo raíz está `@deprecated` y en
+        // los préstamos creados con la ficha actual viene vacío.
         const inmueblePorPrestamo = new Map<string, number>();
         for (const p of prestamos) {
-          if (!p.id || p.inmuebleId == null || p.inmuebleId === 'standalone') continue;
-          const n = Number(p.inmuebleId);
-          if (Number.isFinite(n)) inmueblePorPrestamo.set(String(p.id), n);
+          if (!p.id) continue;
+          const inmueble = inmuebleDelPrestamo(p);
+          if (inmueble != null) inmueblePorPrestamo.set(String(p.id), inmueble);
         }
         if (inmueblePorPrestamo.size === 0) {
           await db.put('keyval', 'completed', FLAG);

@@ -36,6 +36,7 @@ import {
   getPropertyLiteral,
 } from './treasurySyncHelpers';
 import type { ReglaDia } from '../../../../types/personal';
+import { inmuebleDelPrestamo } from '../../../../services/inmuebleDelPrestamo';
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -589,17 +590,18 @@ export async function generateMonthlyForecasts(
       //
       // El evento nunca lo llevaba, así que la fila de una hipoteca no podía
       // decir de qué inmueble era por más que se le pasara el resolvedor de
-      // alias: no había id que resolver. El dato está en el préstamo —de hecho
-      // es el que decide arriba si esto es hipoteca o préstamo personal—, solo
-      // había que copiarlo.
+      // alias: no había id que resolver.
       //
-      // `'standalone'` es el centinela heredado para "sin inmueble", y un
-      // `Number('standalone')` sería NaN: se filtra antes de convertir.
-      const inmuebleDeLaCuota =
-        isHipoteca && prestamo.inmuebleId && prestamo.inmuebleId !== 'standalone'
-          ? Number(prestamo.inmuebleId)
-          : undefined;
-      const inmuebleId = Number.isFinite(inmuebleDeLaCuota) ? inmuebleDeLaCuota : undefined;
+      // El dato sale de `destinos[]`, no del campo raíz: ese está
+      // `@deprecated` y en los préstamos creados con la ficha actual viene
+      // vacío. Mirando solo el campo raíz, una hipoteca con su piso
+      // perfectamente puesto en "Destino del capital" seguía sin decir de cuál
+      // era.
+      //
+      // No se condiciona a `isHipoteca`: un préstamo personal puede financiar
+      // una reforma y tener destino con inmueble, y esa cuota también quiere
+      // decir de qué piso es.
+      const inmuebleId = inmuebleDelPrestamo(prestamo);
 
       if (existingByDescription) {
         await db.put('treasuryEvents', {
