@@ -563,10 +563,9 @@ export function runPostOpenMigrations(
           if (c.id == null || inmueble == null) continue;
           datosPorContrato.set(c.id, {
             inmueble,
-            // Tener `habitacionId` ES ser de una habitación · exigir además
-            // `unidadTipo` dejaba fuera los contratos antiguos o importados a
-            // los que no se les fijó ese campo.
-            unidad: c.habitacionId ? `Hab ${c.habitacionId}` : undefined,
+            // El id TAL CUAL · el prefijo "Hab " lo pone quien pinta
+            // (`etiquetaHabitacion`), no el almacén.
+            unidad: c.habitacionId || undefined,
           });
         }
         if (datosPorContrato.size === 0) {

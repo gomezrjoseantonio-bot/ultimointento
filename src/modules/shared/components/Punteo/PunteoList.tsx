@@ -491,7 +491,14 @@ const PunteoList: React.FC<PunteoListProps> = ({
           aria-expanded={abierto}
           onClick={() => setGruposAbiertos((s) => ({ ...s, [g.grupoId]: !abierto }))}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') setGruposAbiertos((s) => ({ ...s, [g.grupoId]: !abierto }));
+            // Enter Y espacio · con `role="button"` el navegador no da el
+            // comportamiento nativo, así que hay que dar los dos o el teclado
+            // se queda a medias. El espacio necesita `preventDefault` o además
+            // de abrir el grupo desplaza la página.
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setGruposAbiertos((s) => ({ ...s, [g.grupoId]: !abierto }));
+            }
           }}
         >
           {/* La madre ocupa las MISMAS columnas que sus hijas.
