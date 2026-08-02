@@ -166,9 +166,12 @@ describe('§4.2 · estado de la tarjeta', () => {
     // Derivada de `hoy`, no escrita a mano: con una fecha fija, cambiar `hoy`
     // dejaría el test en verde probando otra cosa — que es exactamente el
     // fallo que este par de casos viene a cerrar.
+    //
+    // En UTC explícito · sin la `Z`, el cálculo depende de la zona horaria de
+    // quien ejecute, y en este repo hay tests que fuerzan `process.env.TZ`.
     const manana = (() => {
-      const d = new Date(`${comun.hoy}T12:00:00`);
-      d.setDate(d.getDate() + 1);
+      const d = new Date(`${comun.hoy}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + 1);
       return d.toISOString().slice(0, 10);
     })();
 

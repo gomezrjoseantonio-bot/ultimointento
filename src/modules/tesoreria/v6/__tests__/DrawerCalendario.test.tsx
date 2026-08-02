@@ -185,6 +185,67 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
     expect(screen.getByText('Nómina')).toBeInTheDocument();
   });
 
+  // §6.3 · las habitaciones cuelgan de SU PISO.
+  //
+  // `punteoAdapter` arma el grupo madre con `inmueble-${inmuebleId}`, pero el
+  // generador no copiaba el id al evento del contrato: cada habitación salía
+  // suelta, una detrás de otra, sin que se viera que son el mismo piso.
+  it('las rentas de un piso por habitaciones cuelgan del piso', () => {
+    const renta = (id: number, quien: string, importe: number) =>
+      ev({
+        id,
+        type: 'income',
+        amount: importe,
+        sourceType: 'contrato',
+        inmuebleId: 2,
+        description: `Renta – ${quien}`,
+      });
+
+    render(
+      <DrawerCalendario
+        {...base}
+        aliasInmueble={(id) => (String(id) === '2' ? 'Tenderina 64 4D' : undefined)}
+        eventos={[
+          renta(1, 'MIGUEL LORENZO CABANELAS', 395),
+          renta(2, 'EMILIO CARRERA RIOS', 395),
+        ]}
+      />
+    );
+    abrirDia20();
+
+    // La madre es EL PISO, no el primer inquilino · y se dice UNA vez: bajo
+    // ella, cada habitación no vuelve a repetir de qué piso es.
+    expect(screen.getAllByText('Tenderina 64 4D')).toHaveLength(1);
+    expect(screen.getByText(/2 rentas/)).toBeInTheDocument();
+    // Y las hijas siguen ahí, cada una con su nombre.
+    expect(screen.getByText('Renta – MIGUEL LORENZO CABANELAS')).toBeInTheDocument();
+    expect(screen.getByText('Renta – EMILIO CARRERA RIOS')).toBeInTheDocument();
+  });
+
+  it('un piso completo · una sola renta NO monta grupo', () => {
+    render(
+      <DrawerCalendario
+        {...base}
+        aliasInmueble={() => 'Tenderina 64 4D'}
+        eventos={[
+          ev({
+            id: 1,
+            type: 'income',
+            amount: 1350,
+            sourceType: 'contrato',
+            inmuebleId: 2,
+            description: 'Renta – ALISSER REAL ESTATE',
+          }),
+        ]}
+      />
+    );
+    abrirDia20();
+    expect(screen.getByText('Renta – ALISSER REAL ESTATE')).toBeInTheDocument();
+    // Sin madre, el piso sí se dice en la propia fila.
+    expect(screen.getByText('Tenderina 64 4D')).toBeInTheDocument();
+    expect(screen.queryByText(/1 renta$/)).not.toBeInTheDocument();
+  });
+
   // El puente que faltaba: los dos drawers declaraban `aliasInmueble` y nadie
   // se la pasaba, así que ninguna fila de la V6 decía de qué piso era.
   it('resuelve el inmueble del cargo', () => {

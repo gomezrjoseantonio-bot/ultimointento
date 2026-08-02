@@ -48,4 +48,24 @@ describe('inmuebleDelPrestamo', () => {
     expect(inmuebleDelPrestamo({ destinos: [] })).toBeUndefined();
     expect(inmuebleDelPrestamo({ inmuebleId: '' })).toBeUndefined();
   });
+
+  // `properties` es autoIncrement: sus ids empiezan en 1. Y hay flujos
+  // (`ejercicioResolverService`, `declaracionDistributorService`) que escriben
+  // `inmuebleId: 0` como marcador de "aún sin vincular". Colándose ese 0, las
+  // rentas se agruparían bajo una madre que no existe.
+  it('el 0 no es un id · es el marcador de "sin vincular"', () => {
+    expect(inmuebleDelPrestamo({ inmuebleId: 0 })).toBeUndefined();
+    expect(inmuebleDelPrestamo({ destinos: [{ inmuebleId: 0 }] })).toBeUndefined();
+  });
+
+  it('tampoco un negativo ni un decimal', () => {
+    expect(inmuebleDelPrestamo({ inmuebleId: -3 })).toBeUndefined();
+    expect(inmuebleDelPrestamo({ inmuebleId: 2.5 })).toBeUndefined();
+  });
+
+  it('un 0 en el primer destino no tapa un inmueble de verdad en el segundo', () => {
+    expect(
+      inmuebleDelPrestamo({ destinos: [{ inmuebleId: 0 }, { inmuebleId: '32' }] })
+    ).toBe(32);
+  });
 });

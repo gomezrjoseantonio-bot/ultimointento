@@ -36,7 +36,7 @@ import {
   getPropertyLiteral,
 } from './treasurySyncHelpers';
 import type { ReglaDia } from '../../../../types/personal';
-import { inmuebleDelPrestamo } from '../../../../services/inmuebleDelPrestamo';
+import { inmuebleDelPrestamo, idDeInmueble } from '../../../../services/inmuebleDelPrestamo';
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -455,6 +455,17 @@ export async function generateMonthlyForecasts(
         sourceType: 'contrato' as const,
         sourceId: contract.id,
         accountId: resolveAccountId(contract.cuentaCobroId),
+        // De qué piso es la renta · el mismo hueco que tenían las cuotas de
+        // préstamo. Sin esto la fila no dice de qué inmueble cobra, y sobre
+        // todo las rentas de un piso por habitaciones no pueden colgar de él:
+        // `punteoAdapter` arma el grupo con `inmueble-${inmuebleId}`, así que
+        // sin el id cada habitación salía suelta, una detrás de otra, sin que
+        // se viera que son el mismo piso.
+        // Por `idDeInmueble` y no a pelo: hay flujos que escriben `inmuebleId: 0`
+        // como marcador de "aún sin vincular", y `properties` es autoIncrement
+        // —sus ids empiezan en 1—. Un 0 colado agruparía rentas bajo una madre
+        // que no existe.
+        inmuebleId: idDeInmueble(contract.inmuebleId),
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,

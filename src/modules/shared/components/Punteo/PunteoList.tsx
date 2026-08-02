@@ -237,10 +237,17 @@ const IconoOrigen: React.FC<{ origen: string }> = ({ origen }) => {
  * Lo que no aporta, no se pinta: sin inmueble y sin detalle no hay subtítulo,
  * en vez de una línea que solo dice "Personal" en todas las filas.
  */
-const Contexto: React.FC<{ item: ItemPunteo; extra?: string }> = ({ item, extra }) => {
+const Contexto: React.FC<{ item: ItemPunteo; extra?: string; sinActivo?: boolean }> = ({
+  item,
+  extra,
+  sinActivo,
+}) => {
   const trozos: React.ReactNode[] = [];
   if (item.detalle) trozos.push(<span key="d">{item.detalle}</span>);
-  if (item.activo?.alias) {
+  // §6.3 · en una hija el piso NO se repite: lo encabeza la madre justo encima,
+  // y decirlo otra vez en cada habitación es escribirlo cuatro veces para el
+  // mismo piso.
+  if (!sinActivo && item.activo?.alias) {
     trozos.push(
       <span key="a" className={styles.ctxInmueble}>
         <Icons.Inmuebles size={10} strokeWidth={1.8} />
@@ -397,9 +404,9 @@ const PunteoList: React.FC<PunteoListProps> = ({
             )}
           </div>
           {esDrawer && !porCuenta ? (
-            <Contexto item={it} extra={cuentaLabel(it.cuentaId)} />
+            <Contexto item={it} extra={cuentaLabel(it.cuentaId)} sinActivo={hija} />
           ) : (
-            <Contexto item={it} />
+            <Contexto item={it} sinActivo={hija} />
           )}
         </div>
         {/* §6.3 · el chip de origen desaparece de "Por confirmar".
