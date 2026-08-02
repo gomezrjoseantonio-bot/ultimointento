@@ -22,10 +22,10 @@ import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import PunteoList from '../../shared/components/Punteo/PunteoList';
 import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
-import type { ItemPunteo } from '../../../services/punteo/punteoModel';
+import { compararEnDia, type ItemPunteo } from '../../../services/punteo/punteoModel';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { esPendiente } from '../../../services/tesoreriaV6Metrics';
-import { construirDias, resumirMes, huecosIniciales } from './calendarioDias';
+import { construirDias, resumirMes, huecosIniciales, saldoAlEmpezarElDia } from './calendarioDias';
 import { colorDeBanco } from './bancoColores';
 import { mesMinimo, puedeRetroceder } from './limiteMeses';
 import { importeConSigno, importeSaldo, nombreMes, fechaLarga } from './formatoV6';
@@ -115,15 +115,27 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
       .filter((m) => (m.date ?? '').slice(0, 10) === diaElegido)
       .map((m) => movimientoAItem(m, aliasInmueble));
 
+    const todos = [...evs, ...movs];
+
     // §9 · marcar QUÉ cargo deja la cuenta corta.
     //
-    // El saldo se arrastra por cuenta hasta este día en el orden en que se
-    // pagan; el primero que la cruza a negativo es el que lleva el aviso. No se
-    // marcan todos los del día: el que la hunde es uno, y señalar los cinco
-    // sería tan poco útil como no señalar ninguno.
-    const saldos = new Map(saldoPorCuenta);
-    const todos = [...evs, ...movs];
-    for (const it of todos) {
+    // El saldo de partida NO es el de hoy: es el que tiene la cuenta al empezar
+    // ESTE día. Usar el de hoy daba una cifra falsa en cuanto el día no era hoy
+    // —en el futuro le faltaba todo lo que pasa por medio— y un aviso que
+    // miente es peor que ninguno. Para días ya pasados no se marca nada: ese
+    // saldo no se puede reconstruir hacia atrás sin deshacer movimientos.
+    const saldos = saldoAlEmpezarElDia({
+      fecha: diaElegido,
+      eventos,
+      movimientos,
+      saldoPorCuenta,
+      hoy,
+    });
+    if (!saldos) return todos;
+
+    // Se recorre en el MISMO orden en que se van a pintar (`compararEnDia`), o
+    // el aviso acabaría en una fila distinta de la que lo provoca.
+    for (const it of [...todos].sort(compararEnDia)) {
       if (it.cuentaId == null) continue;
       const antes = saldos.get(it.cuentaId) ?? 0;
       const despues = antes + it.importe;
@@ -133,7 +145,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
       }
     }
     return todos;
-  }, [diaElegido, eventos, movimientos, aliasInmueble, saldoPorCuenta]);
+  }, [diaElegido, eventos, movimientos, aliasInmueble, saldoPorCuenta, hoy]);
 
   /** Solo lo que sigue previsto · confirmar el día no toca lo ya confirmado. */
   const pendientesDelDia = useMemo(

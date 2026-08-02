@@ -379,7 +379,7 @@ describe('el papel que respalda el movimiento', () => {
 
   it('con varios lo dice · el usuario sabe que hay más de uno antes de ir', () => {
     conDocs([12, 13, 14]);
-    expect(screen.getByText('Ver los 3 documentos')).toBeInTheDocument();
+    expect(screen.getByText('Ver el documento (hay 3)')).toBeInTheDocument();
   });
 
   it('es un enlace, NO una zona de subida · aquí se corrigen importes', () => {
