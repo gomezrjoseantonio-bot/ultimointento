@@ -507,6 +507,14 @@ export interface Account {
    * elige el usuario, no es semántica del producto.
    */
   colorPunto?: string;
+  /**
+   * §Bizum · esta es LA cuenta del Bizum.
+   *
+   * Solo una puede tenerlo: el Bizum va atado a un teléfono y un teléfono a una
+   * cuenta. Activarlo en otra lo quita de la anterior — no es una regla de
+   * ATLAS, es cómo funciona el servicio.
+   */
+  bizum?: boolean;
   bic?: string;                          // BIC / SWIFT · 8 u 11 chars
   taeAnual?: number;                     // alias plano · espejo de remuneracion.tinAnual
   frecuenciaLiquidacion?: 'mensual' | 'trimestral' | 'semestral' | 'anual';

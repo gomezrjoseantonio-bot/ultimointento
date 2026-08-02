@@ -28,6 +28,15 @@ export type UnifiedMovementStatus =
 // ATLAS HORIZON: Movement source types
 export type MovementSource = 'import' | 'manual' | 'inbox';
 
+/**
+ * Cómo se pagó o se cobró · NO qué se pagó.
+ *
+ * "Bizum" entra aquí y no como un tipo de movimiento aparte: es una forma de
+ * pago, igual que una domiciliación o un TPV. Lo que se cobró sigue siendo una
+ * renta, una cuota o lo que sea.
+ */
+export type MetodoDePago = 'Domiciliado' | 'Transferencia' | 'TPV' | 'Efectivo' | 'Bizum';
+
 export interface Movement {
   id?: number;
   accountId: number;
@@ -41,6 +50,8 @@ export interface Movement {
   providerName?: string;
   providerNif?: string;
   invoiceNumber?: string;
+  /** Cómo se cobró o se pagó · lo rellena el importador cuando lo reconoce. */
+  paymentMethod?: MetodoDePago;
   reference?: string;
   status: MovementStatus;
 
@@ -235,7 +246,7 @@ export interface TreasuryEvent {
   contratoId?: number;
   // Account information
   accountId?: number;
-  paymentMethod?: 'Domiciliado' | 'Transferencia' | 'TPV' | 'Efectivo';
+  paymentMethod?: MetodoDePago;
   iban?: string;
   // Status
   status: 'predicted' | 'confirmed' | 'executed';

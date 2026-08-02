@@ -46,6 +46,8 @@ export interface AccountExtendedFields {
    * banco una vez elegido uno.
    */
   colorPunto?: string;
+  /** §Bizum · solo una cuenta puede tenerlo (ver `aplicarExclusividadBizum`). */
+  bizum?: boolean;
 }
 
 export interface CreateAccountData extends AccountExtendedFields {
@@ -98,6 +100,7 @@ const applyExtendedFields = (account: Account, data: AccountExtendedFields): voi
   // '' → `undefined`: volver a "el color del banco" es BORRAR la elección
   // propia, no guardar una cadena vacía que luego nadie sabe interpretar.
   if (data.colorPunto !== undefined) account.colorPunto = data.colorPunto || undefined;
+  if (data.bizum !== undefined) account.bizum = data.bizum || undefined;
 };
 
 /**
@@ -206,6 +209,7 @@ class CuentasService {
         // actualizada" —cierto— y el punto seguía del color de siempre porque
         // la pantalla lee de otro sitio.
         colorPunto: account.colorPunto,
+        bizum: account.bizum,
         createdAt: account.createdAt,
         updatedAt: account.updatedAt
       };
@@ -314,7 +318,41 @@ class CuentasService {
   /**
    * Create new account with validations
    */
+  /**
+   * El Bizum vive en UNA cuenta · activarlo aquí lo quita de las demás.
+   *
+   * No es una regla de ATLAS: el Bizum va atado a un teléfono y un teléfono a
+   * una cuenta. Permitir dos sería dejar que el usuario describa algo que no
+   * puede pasar, y luego una línea de Bizum no sabría de cuál es.
+   *
+   * Mismo trato que la cuenta principal, unas líneas más abajo.
+   */
+  private aplicarExclusividadBizum(cuenta: Account): Account[] {
+    if (!cuenta.bizum) return [];
+    const ahora = new Date().toISOString();
+    const tocadas: Account[] = [];
+    for (const otra of this.accounts) {
+      if (otra.id !== cuenta.id && otra.bizum) {
+        otra.bizum = undefined;
+        // Su `updatedAt` también: la cuenta ha cambiado, y guardarla con la
+        // marca de tiempo vieja deja un registro que dice que no se tocó.
+        otra.updatedAt = ahora;
+        tocadas.push(otra);
+      }
+    }
+    return tocadas;
+  }
+
   public async create(data: CreateAccountData): Promise<Account> {
+    // La caché tiene que estar cargada ANTES de tocar `this.accounts`.
+    //
+    // `update` lo hace de rebote —`findIndexById` espera—, pero crear no
+    // esperaba a nadie: con la lista aún vacía, la exclusividad del Bizum no
+    // encontraba a quién quitárselo y se saltaba en silencio, dejando dos
+    // cuentas con Bizum. Lo mismo vale para el control de IBAN duplicado, que
+    // también lee de aquí.
+    await this.ready;
+
     // Validate alias if provided (now optional)
     if (data.alias !== undefined) {
       const alias = data.alias.trim();
@@ -405,9 +443,14 @@ class CuentasService {
 
     // S-WIZARD-CUENTA-V3 · campos extendidos opcionales
     applyExtendedFields(newAccount, data);
+    // Las que pierden el Bizum se persisten TAMBIÉN · quedarse solo en memoria
+    // dejaría dos cuentas con Bizum en IndexedDB, que es donde mira todo lo
+    // demás.
+    const sinBizum = this.aplicarExclusividadBizum(newAccount);
 
     // Sync to IndexedDB first (authoritative store) before writing to localStorage
     const dbAccountId = await this.syncAccountToIndexedDB(newAccount);
+    for (const otra of sinBizum) await this.syncAccountToIndexedDB(otra);
 
     if (dbAccountId == null) {
       throw new Error('Error guardando la cuenta en la base de datos. Por favor, recarga la página e inténtalo de nuevo.');
@@ -531,12 +574,14 @@ class CuentasService {
 
     // S-WIZARD-CUENTA-V3 · campos extendidos opcionales
     applyExtendedFields(account, data);
+    const sinBizum = this.aplicarExclusividadBizum(account);
 
     account.updatedAt = new Date().toISOString();
     this.saveAccounts();
 
     // Sync to IndexedDB (treasury storage)
     await this.syncAccountToIndexedDB(account);
+    for (const otra of sinBizum) await this.syncAccountToIndexedDB(otra);
 
     // Telemetry (dev-only, no PII)
     if (process.env.NODE_ENV === 'development') {

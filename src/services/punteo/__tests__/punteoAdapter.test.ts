@@ -299,3 +299,45 @@ describe('un traspaso dice si es interno o externo', () => {
     expect(JSON.stringify(it)).not.toContain('Cuenta 99');
   });
 });
+
+
+// §Bizum · el texto del banco es "BIZUM DE ADNAN PARWEZ" de un tirón. Con él de
+// título, la fila grita la forma de pago y esconde a la persona — que es lo
+// único que permite reconocer de quién es ese cobro.
+describe('un Bizum dice QUIÉN, no cómo', () => {
+  const bizum = (over: Partial<Movement> & { id: number }) =>
+    movimientoAItem(
+      {
+        accountId: 1,
+        date: '2026-08-01',
+        amount: 395,
+        description: 'BIZUM DE ADNAN PARWEZ',
+        paymentMethod: 'Bizum',
+        counterparty: 'ADNAN PARWEZ',
+        status: 'pendiente',
+        unifiedStatus: 'no_planificado',
+        source: 'import',
+        category: { tipo: 'Ingresos' },
+        type: 'Ingreso',
+        origin: 'CSV',
+        movementState: 'Confirmado',
+        ambito: 'PERSONAL',
+        statusConciliacion: 'sin_match',
+        createdAt: '',
+        updatedAt: '',
+        ...over,
+      } as Movement & { id: number }
+    );
+
+  it('la persona arriba y la forma de pago debajo', () => {
+    const it = bizum({ id: 1 });
+    expect(it.concepto).toBe('ADNAN PARWEZ');
+    expect(it.detalle).toBe('Bizum');
+  });
+
+  // Sin nombre leído no se inventa: el texto del banco algo dice.
+  it('sin contraparte se queda el texto del banco', () => {
+    const it = bizum({ id: 2, counterparty: undefined, description: 'BIZUM 00218832' });
+    expect(it.concepto).toBe('BIZUM 00218832');
+  });
+});

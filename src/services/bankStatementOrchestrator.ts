@@ -19,6 +19,7 @@
 // cancelImportBatch lets the user undo a whole import in one click (e.g. wrong
 // file picked) — removes the inserted movements and the batch row.
 import { initDB, ImportBatch, Movement, MovementLearningRule, TreasuryEvent } from './db';
+import { contraparteDeBizum, pareceBizum } from './bizum';
 import { BankParserService } from '../features/inbox/importers/bankParser';
 import { bankProfileMatcher, BankFormat } from '../features/inbox/importers/bankProfileMatcher';
 import { bankProfilesService } from './bankProfilesService';
@@ -461,7 +462,15 @@ async function insertMovements(
       valueDate: isoDate(row.valueDate) ?? date,
       amount,
       description,
-      counterparty: row.counterparty,
+      // §Bizum · quién está al otro lado.
+      //
+      // El banco lo trae en el texto ("BIZUM DE ADNAN PARWEZ") y sin leerlo la
+      // línea cae en el saco de "transferencia recibida" sin dueño — que es
+      // justo el dato que la convierte en la renta de una habitación. Solo se
+      // rellena si el fichero no traía contraparte: lo que venga en su columna
+      // manda sobre lo que se deduzca del texto.
+      counterparty: row.counterparty ?? contraparteDeBizum(description),
+      ...(pareceBizum(description) ? { paymentMethod: 'Bizum' as const } : {}),
       reference: row.reference,
       balance: row.balance,
       currency: row.currency,
