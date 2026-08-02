@@ -21,7 +21,7 @@
 import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import PunteoList from '../../shared/components/Punteo/PunteoList';
-import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
+import { eventoAItem } from '../../../services/punteo/punteoAdapter';
 import { compararEnDia, type ItemPunteo } from '../../../services/punteo/punteoModel';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { esPendiente } from '../../../services/tesoreriaV6Metrics';
@@ -101,21 +101,23 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
 
   const huecos = useMemo(() => huecosIniciales(year, month0), [year, month0]);
 
-  /** Los apuntes del día elegido, en el mismo formato que §4.4. */
+  /**
+   * Los apuntes del día elegido · SOLO lo que queda por confirmar.
+   *
+   * El calendario es la cola de trabajo: contesta "¿qué me falta por confirmar
+   * y cuándo?". Lo ya confirmado o conciliado no se responde aquí — vive en la
+   * cuenta (§4.4), que es donde se mira el histórico. Enseñándolo también aquí,
+   * cada día arrastraba para siempre todo lo que ya estaba hecho y el día no se
+   * vaciaba nunca al terminarlo: confirmabas los tres pendientes y el día
+   * seguía igual de lleno, sin señal de haber avanzado.
+   */
   const itemsDelDia = useMemo<ItemPunteo[]>(() => {
     if (!diaElegido) return [];
-    const evs = eventos
+    const todos = eventos
       .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
       .filter((e) => esPendiente(e))
       .filter((e) => (e.predictedDate ?? '').slice(0, 10) === diaElegido)
       .map((e) => eventoAItem(e, aliasInmueble));
-    const movs = movimientos
-      .filter((m): m is Movement & { id: number } => m.id != null)
-      .filter((m) => !m.isOpeningBalance)
-      .filter((m) => (m.date ?? '').slice(0, 10) === diaElegido)
-      .map((m) => movimientoAItem(m, aliasInmueble));
-
-    const todos = [...evs, ...movs];
 
     // §9 · marcar QUÉ cargo deja la cuenta corta.
     //
@@ -147,9 +149,16 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
     return todos;
   }, [diaElegido, eventos, movimientos, aliasInmueble, saldoPorCuenta, hoy]);
 
-  /** Solo lo que sigue previsto · confirmar el día no toca lo ya confirmado. */
+  /**
+   * Los que confirma el botón "Confirmar el día".
+   *
+   * Sigue filtrando por `kind` aunque ahora la lista ya venga solo de eventos:
+   * el botón dispara una acción irreversible sobre cuanto le pasen, y
+   * apoyarse en que quien construye la lista de arriba no cambie es
+   * exactamente el descuido que resucitó 57 cuotas al renombrar un préstamo.
+   */
   const pendientesDelDia = useMemo(
-    () => itemsDelDia.filter((i) => i.kind === 'evento'),
+    () => itemsDelDia.filter((i) => i.kind === 'evento' && i.estado === 'previsto'),
     [itemsDelDia]
   );
 
@@ -297,13 +306,15 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   aria-selected={elegido}
                   aria-label={
                     `${d.numero} de ${nombreMes(month0)}` +
-                    (d.apuntes === 0 ? ' · sin movimientos' : ` · neto ${importeConSigno(d.neto)}`) +
+                    (d.apuntes === 0
+                      ? ' · nada por confirmar'
+                      : ` · ${d.apuntes} por confirmar · neto ${importeConSigno(d.neto)}`) +
                     (d.dejaCuentaCorta ? ' · deja una cuenta en negativo' : '')
                   }
                 >
                   <span className={styles.diaNum}>{d.numero}</span>
                   {d.apuntes > 0 && (
-                    <span className={styles.diaNeto}>{importeConSigno(d.neto)}</span>
+                    <span className={styles.diaNeto}>{importeConSigno(d.neto, false)}</span>
                   )}
                   {/* Ámbar · única nota de color de la rejilla (§5). */}
                   {d.dejaCuentaCorta && <span className={styles.avisoDot} aria-hidden="true" />}
@@ -322,14 +333,14 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   cuántos apuntes tiene el día. */}
               <div className={styles.detalleHd}>
                 <div className={styles.detalleT}>{diaSemanaYNumero(diaElegido)}</div>
-                <span className={styles.detalleN}>
-                  {itemsDelDia.length}{' '}
-                  {itemsDelDia.length === 1 ? 'movimiento' : 'movimientos'}
-                </span>
+                {/* "N movimientos" ya no describe lo que hay: la lista es la
+                    cola de pendientes, y es el mismo rótulo que usa la tarjeta
+                    de cuenta en §4.2. */}
+                <span className={styles.detalleN}>{itemsDelDia.length} por confirmar</span>
               </div>
 
               {itemsDelDia.length === 0 ? (
-                <div className={styles.vacio}>Sin movimientos este día</div>
+                <div className={styles.vacio}>Nada por confirmar este día</div>
               ) : (
                 <PunteoList
                   items={itemsDelDia}
@@ -338,8 +349,14 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   mostrarChips={false}
                   cuentas={cuentasParaLista}
                   variant="drawer"
-                  // §6.4 · en el día conviven los tres estados.
-                  conChipEstado
+                  // §4.9 · agrupado POR CUENTA, como al entrar por la cuenta:
+                  // bajo el nombre de cada una, lo suyo. En un día con seis
+                  // cargos de cuatro cuentas, la lista plana obligaba a leer de
+                  // cuál salía cada uno para hacerse la pregunta que importa,
+                  // que es qué le pasa a esta cuenta hoy.
+                  eje="cuenta"
+                  // Aquí ya solo hay previstos, así que el chip de estado
+                  // repetiría "previsto" en todas las filas (§6.3).
                   rowVariant="tesoreria"
                   onEditar={onEditar}
                   onConfirmar={onConfirmar}

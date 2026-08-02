@@ -20,9 +20,9 @@ export interface DiaCalendario {
   fecha: string;
   /** Día del mes (1-31). */
   numero: number;
-  /** Neto REAL del día: confirmado + conciliado + lo previsto que queda. */
+  /** Lo que queda POR CONFIRMAR ese día · lo ya hecho no se pinta (§4.9). */
   neto: number;
-  /** Cuántos apuntes hay · 0 = celda vacía, sin cifra. */
+  /** Cuántos quedan por confirmar · 0 = celda vacía, sin cifra. */
   apuntes: number;
   /** Alguna cuenta se queda en negativo al cerrar este día (§4.9 · ámbar). */
   dejaCuentaCorta: boolean;
@@ -74,19 +74,26 @@ export function construirDias(params: {
   const { desde, hasta } = rangoDelMes(year, month0);
   const total = diasDelMes(year, month0);
 
-  // Neto y conteo por día · realidad (movimientos) + lo previsto que sigue vivo.
+  // Lo que la CELDA cuenta: solo lo que queda por confirmar (§4.9).
+  //
+  // El calendario es la cola de trabajo, no el histórico: lo ya confirmado o
+  // conciliado se mira en la cuenta. Contándolo también aquí, la celda decía
+  // una cifra y la lista del día enseñaba otra cosa, y sobre todo un día nunca
+  // se vaciaba al terminarlo — confirmabas lo pendiente y la celda seguía con
+  // el mismo número.
+  //
+  // De paso, esto es lo mismo que ya suman los KPIs de la cabecera del drawer
+  // (`resumirMes`), que solo miran pendientes: antes la rejilla y su propia
+  // cabecera contaban cosas distintas.
   const netoPorDia = new Map<string, number>();
   const apuntesPorDia = new Map<string, number>();
   const pendientesPorDia = new Set<string>();
-  // Flujo por (cuenta, día) · solo de lo que ESTÁ POR VENIR, porque el saldo de
-  // hoy ya incorpora todo lo pasado.
+  // Flujo por (cuenta, día) para el punto ámbar · solo de lo que ESTÁ POR
+  // VENIR, porque el saldo de hoy ya incorpora todo lo pasado.
   const flujoFuturo = new Map<number, Map<string, number>>();
 
-  const anota = (fecha: string, importe: number, cuentaId: number | null, futuro: boolean) => {
-    if (fecha < desde || fecha > hasta) return;
-    netoPorDia.set(fecha, (netoPorDia.get(fecha) ?? 0) + importe);
-    apuntesPorDia.set(fecha, (apuntesPorDia.get(fecha) ?? 0) + 1);
-    if (!futuro || cuentaId == null) return;
+  const anotaFlujo = (fecha: string, importe: number, cuentaId: number | null) => {
+    if (cuentaId == null) return;
     let porFecha = flujoFuturo.get(cuentaId);
     if (!porFecha) {
       porFecha = new Map();
@@ -95,21 +102,31 @@ export function construirDias(params: {
     porFecha.set(fecha, (porFecha.get(fecha) ?? 0) + importe);
   };
 
+  // El ÁMBAR sí mira los movimientos con fecha futura.
+  //
+  // No es una excepción a lo de arriba: el punto no dice "queda esto por
+  // confirmar", dice "esta cuenta se queda en negativo". Eso es una pregunta
+  // sobre el SALDO, y un recibo futuro ya cargado por el banco hunde la cuenta
+  // igual aunque no haya nada que confirmar. Callarlo por coherencia de
+  // formato sería esconder justo el aviso que hay que dar.
   for (const m of movimientos) {
     if (m.isOpeningBalance) continue;
     const fecha = (m.date ?? '').slice(0, 10);
-    // Un movimiento ya ocurrido está dentro del saldo de hoy; uno con fecha
-    // futura (domiciliación ya cargada, apunte adelantado) todavía no.
-    anota(fecha, m.amount, m.accountId ?? null, fecha > hoy);
+    if (fecha < desde || fecha > hasta || fecha <= hoy) continue;
+    anotaFlujo(fecha, m.amount, m.accountId ?? null);
   }
 
   for (const e of eventos) {
     if (!esPendiente(e)) continue;
     const fecha = (e.predictedDate ?? '').slice(0, 10);
+    if (fecha < desde || fecha > hasta) continue;
+    const imp = importeConSigno(e);
+    netoPorDia.set(fecha, (netoPorDia.get(fecha) ?? 0) + imp);
+    apuntesPorDia.set(fecha, (apuntesPorDia.get(fecha) ?? 0) + 1);
+    pendientesPorDia.add(fecha);
     // Un previsto NUNCA está en el saldo de hoy, ni siquiera si su fecha ya
     // pasó: sigue sin confirmarse, así que sigue por venir.
-    anota(fecha, importeConSigno(e), e.accountId ?? null, true);
-    if (fecha >= desde && fecha <= hasta) pendientesPorDia.add(fecha);
+    anotaFlujo(fecha, imp, e.accountId ?? null);
   }
 
   // Arrastre por cuenta para el punto ámbar.

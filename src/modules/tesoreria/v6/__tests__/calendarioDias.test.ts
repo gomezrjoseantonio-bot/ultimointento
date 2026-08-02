@@ -72,15 +72,31 @@ describe('la rejilla', () => {
     expect(dias[0].neto).toBe(0);
   });
 
-  it('el neto del día suma realidad y previsión', () => {
+  // §4.9 · la celda cuenta SOLO lo que queda por confirmar.
+  //
+  // El calendario es la cola de trabajo, no el histórico. Antes sumaba también
+  // los movimientos ya reales, y eso hacía que un día no se vaciara nunca al
+  // terminarlo: confirmabas lo pendiente y la celda seguía marcando lo mismo.
+  it('la celda cuenta lo pendiente · un movimiento ya real no entra', () => {
     const dias = construirDias({
       ...base,
       eventos: [ev({ predictedDate: '2026-03-15', amount: 100 })],
       movimientos: [mov({ date: '2026-03-15', amount: -30 })],
     });
     const dia15 = dias.find((d) => d.numero === 15)!;
-    expect(dia15.neto).toBe(-130);
-    expect(dia15.apuntes).toBe(2);
+    expect(dia15.neto).toBe(-100);
+    expect(dia15.apuntes).toBe(1);
+  });
+
+  it('un día en el que ya está todo confirmado queda vacío', () => {
+    const dias = construirDias({
+      ...base,
+      eventos: [],
+      movimientos: [mov({ date: '2026-03-15', amount: -30 })],
+    });
+    const dia15 = dias.find((d) => d.numero === 15)!;
+    expect(dia15.apuntes).toBe(0);
+    expect(dia15.neto).toBe(0);
   });
 
   it('lo de otro mes no se cuela', () => {

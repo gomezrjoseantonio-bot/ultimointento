@@ -35,61 +35,80 @@
 .rejilla {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  /* Valores del mockup, leídos del mockup: `.cal-grid{gap:6px}`. */
+  gap: 6px;
   padding: 16px 20px 4px;
 }
 
 .cabDia {
   text-align: center;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
+  /* `.cal-dow span{text-transform:uppercase}` · en versalitas el rótulo se lee
+     como rótulo y no compite con los números de debajo. */
+  text-transform: uppercase;
   color: var(--atlas-v5-ink-4);
   padding-bottom: 6px;
 }
 
-.hueco { min-height: 46px; }
+.hueco { min-height: 52px; }
 
-/* §8 · celdas cuadradas. Eran anchas y bajas, con la mitad inferior vacía:
-   el número arriba y el neto debajo necesitan alto, no ancho. */
+/* §4.9 · la celda del mockup: `min-height:52px; padding:5px 7px`, el número
+   arriba a la IZQUIERDA y la cifra abajo con `margin-top:auto`.
+
+   Yo las había hecho cuadradas y con todo centrado. El cuadrado venía de
+   arreglar celdas "anchas y bajas con la mitad inferior vacía", pero el hueco
+   no lo causaba el alto: lo causaba centrar dos líneas cortas en medio de la
+   caja. Con el número anclado arriba y la cifra abajo, la celda del mockup no
+   tiene ese vacío — y siete columnas de números alineados por su izquierda se
+   recorren de un barrido, que centrados no. */
 .dia {
   position: relative;
-  min-height: 62px;
-  aspect-ratio: 1 / 1;
+  min-height: 52px;
   border: 1px solid var(--atlas-v5-line-2);
   border-radius: 8px;
   background: var(--atlas-v5-card);
-  padding: 5px 4px 4px;
+  padding: 5px 7px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1px;
+  align-items: flex-start;
   cursor: pointer;
   font-family: inherit;
+  text-align: left;
 }
 .dia:hover { border-color: var(--atlas-v5-ink-5); }
 
 .diaNum {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--atlas-v5-ink-2);
   line-height: 1.1;
 }
-/* El neto va en --ink como todos los números: el color solo marca acción (§5). */
+/* El neto va en --ink como todos los números: el color solo marca acción (§5).
+   Sin el € · en una rejilla de 31 celdas de una moneda sola, el símbolo se
+   repite 31 veces para no decir nada y se come el ancho que necesita la cifra,
+   que antes salía cortada con puntos suspensivos. */
 .diaNeto {
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
-  font-size: 9.5px;
-  color: var(--atlas-v5-ink);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-3);
   line-height: 1.1;
+  margin-top: auto;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
 
-/* Un día sin apuntes no compite por la atención. */
-.diaVacio { background: var(--atlas-v5-card-alt); }
+/* Un día sin nada pendiente no compite por la atención · solo la tinta del
+   número. El relleno gris lo quité: dejando en el calendario únicamente lo
+   pendiente, la mayoría de días quedan vacíos y el mes entero se veía a
+   parches. */
 .diaVacio .diaNum { color: var(--atlas-v5-ink-4); }
 
 /* Hoy · filo oro (§4.9). */
