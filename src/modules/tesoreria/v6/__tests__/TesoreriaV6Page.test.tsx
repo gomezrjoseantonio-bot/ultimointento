@@ -9,7 +9,7 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import TesoreriaV6Page from '../TesoreriaV6Page';
+import TesoreriaV6Page, { importeCabeEnLaBarra } from '../TesoreriaV6Page';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../../services/db';
 
 jest.mock('../../../../services/db', () => ({ initDB: jest.fn() }));
@@ -412,12 +412,13 @@ describe('la barra de "Cómo va {mes}"', () => {
     // El umbral es 40 y no 22: con 22 el texto entraba pero se salía del
     // relleno por la derecha, que es el aspecto que se quería evitar. Un
     // importe con miles y dos decimales pide más de un tercio de la barra.
-    const UMBRAL = 40;
-    const dentro = (pct: number) => pct >= UMBRAL;
-
-    expect(dentro(82)).toBe(true);
-    expect(dentro(40)).toBe(true);
-    expect(dentro(22)).toBe(false);
-    expect(dentro(7)).toBe(false);
+    //
+    // Se comprueba LA función que usa el render, no una copia del número
+    // escrita aquí: una copia seguiría en verde aunque el componente cambiara
+    // de umbral, que es justo lo que un candado no puede permitirse.
+    expect(importeCabeEnLaBarra(82)).toBe(true);
+    expect(importeCabeEnLaBarra(40)).toBe(true);
+    expect(importeCabeEnLaBarra(22)).toBe(false);
+    expect(importeCabeEnLaBarra(7)).toBe(false);
   });
 });

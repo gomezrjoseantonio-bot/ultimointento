@@ -580,7 +580,15 @@
   font-weight: 700;
   color: var(--atlas-v5-ink);
   line-height: 1.35;
+  /* La columna mide 108px (100 en pantalla estrecha) y un importe con miles
+     y dos decimales la roza. Sin esto parte en dos líneas y desalinea la fila
+     respecto de las de arriba. */
+  white-space: nowrap;
 }
+/* La fila del Neto sin barra tiene una columna menos (no hay %), así que su
+   importe caería en la del porcentaje —46px— y se rompería ahí. Va a la
+   derecha del todo, ocupando las dos últimas columnas. */
+.rvnumNeto { grid-column: 3 / -1; }
 .rvnum small {
   display: block;
   font-size: 10.5px;

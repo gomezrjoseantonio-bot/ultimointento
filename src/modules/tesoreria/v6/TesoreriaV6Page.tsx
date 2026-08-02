@@ -905,6 +905,20 @@ const TarjetaMes: React.FC<{ mes: MesProyectado; onAbrir: () => void }> = ({ mes
   );
 };
 
+/* §4.10 · ¿cabe el importe DENTRO del relleno de la barra?
+ *
+ * Si el relleno no da para el texto, el importe sale FUERA, a su derecha.
+ * Ensanchar el relleno para que quepa sería falsear la proporción, que es justo
+ * lo que la barra viene a decir.
+ *
+ * El umbral es 40 % y no 22 %: con 22 el texto entraba pero se salía del
+ * relleno por la derecha, que es exactamente el aspecto que se quería evitar.
+ * Un importe con miles y dos decimales necesita más de un tercio de la barra.
+ *
+ * Se exporta para que el candado apriete sobre ESTA función y no sobre una
+ * copia del número escrita en el test. */
+export const importeCabeEnLaBarra = (anchoPct: number): boolean => anchoPct >= 40;
+
 const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }> = ({ realidad }) => {
   const mejor = realidad.desviacion >= 0;
   return (
@@ -953,23 +967,17 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
                     recorrido: la cifra y su proporción se leen de una sola
                     mirada en vez de saltar de la barra a una columna.
 
-                    Si el relleno no da para el texto, el importe sale FUERA, a
-                    su derecha. Ensanchar el relleno para que quepa sería
-                    falsear la proporción, que es justo lo que la barra viene a
-                    decir.
-
-                    El umbral es 40 % y no 22 %: con 22 el texto entraba pero
-                    se salía del relleno por la derecha, que es exactamente el
-                    aspecto que se quería evitar. Un importe con miles y dos
-                    decimales necesita más de un tercio de la barra. */}
+                    Cuándo cabe dentro lo decide `importeCabeEnLaBarra`. */}
                 <div className={styles.rvbar}>
                   <div
                     className={`${styles.rvfill} ${l.clave === 'Neto' ? styles.rvfillNet : styles.rvfillIn}`}
                     style={{ width: `${ancho}%` }}
                   >
-                    {ancho >= 40 && <span className={styles.rvenBarra}>{importeSaldo(l.real)}</span>}
+                    {importeCabeEnLaBarra(ancho) && (
+                      <span className={styles.rvenBarra}>{importeSaldo(l.real)}</span>
+                    )}
                   </div>
-                  {ancho < 40 && (
+                  {!importeCabeEnLaBarra(ancho) && (
                     <span className={styles.rvFueraBarra} style={{ left: `calc(${ancho}% + 8px)` }}>
                       {importeSaldo(l.real)}
                     </span>
@@ -989,10 +997,13 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
                 </div>
               </>
             )}
+            {/* Sin barra no hay dónde meter el REAL, así que vuelve aquí: la
+                fila del Neto negativo enseñaba la diferencia y lo previsto,
+                pero se había quedado sin la cifra de lo que llevas. */}
             {neto && (
-              <div className={styles.rvnum}>
-                {importeSaldo(l.previsto)}
-                <small>previsto</small>
+              <div className={`${styles.rvnum} ${styles.rvnumNeto}`}>
+                {importeSaldo(l.real)}
+                <small>de {importeSaldo(l.previsto)} previsto</small>
               </div>
             )}
           </div>
