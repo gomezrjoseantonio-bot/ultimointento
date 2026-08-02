@@ -56,6 +56,20 @@ function palabrasDe(nombre: string): Set<string> {
   return new Set(palabras);
 }
 
+/**
+ * El nombre reducido a una clave estable · para GUARDARLO y buscarlo luego.
+ *
+ * "ADNAN PARWEZ", "Adnan Parwez" y "PARWEZ, ADNAN" dan la misma clave: las
+ * mismas palabras, ordenadas, sin tildes ni mayúsculas. Así un alias aprendido
+ * sirve aunque el banco cambie el orden o el formato de un mes a otro.
+ *
+ * Cadena vacía si no queda nada que comparar — quien llame debe tratarla como
+ * "no hay nombre", nunca como una clave más.
+ */
+export function claveDeNombre(nombre: string): string {
+  return Array.from(palabrasDe(nombre)).sort().join(' ');
+}
+
 export type NivelCoincidencia = 'ninguna' | 'parcial' | 'fuerte';
 
 /**

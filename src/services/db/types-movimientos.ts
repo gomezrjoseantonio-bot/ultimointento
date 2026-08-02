@@ -355,6 +355,24 @@ export interface MovementLearningRule {
   updatedAt: string;
   appliedCount: number; // How many times this rule has been applied
   lastAppliedAt?: string;
+  /**
+   * V85 · alias aprendido de contraparte.
+   *
+   * El banco manda "BIZUM DE ADNAN PARWEZ" y el contrato dice "Adnan Parwez
+   * Khan". Cuando el usuario confirma esa línea contra la previsión de renta
+   * está enseñando que son la misma persona — y eso, hasta ahora, se perdía:
+   * la regla guardaba la CATEGORÍA del movimiento, no de QUIÉN era.
+   *
+   * Los dos nombres se guardan TAL CUAL, sin normalizar: se enseñan en la
+   * pantalla de reglas para que el usuario vea qué ha aprendido ATLAS y pueda
+   * borrarlo. Normalizar sirve para comparar, y eso se hace al leerlos.
+   *
+   * Sólo se escribe cuando el parecido no se deducía solo: si los nombres ya
+   * cuadraban, no hay nada que aprender.
+   */
+  aliasContraparte?: string;
+  /** La otra mitad del alias · el nombre al que resultó pertenecer. */
+  contraparteCanonica?: string;
   // T16-cleanup · B-TAREA8-MINIS sub-tarea 1: campo `history?: HistoryEntry[]`
   // eliminado del tipo. Sin escritor productivo (solo migración V64 histórica
   // que usa `Record<string, unknown>`) y sin reader. Los registros antiguos

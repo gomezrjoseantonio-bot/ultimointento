@@ -61,7 +61,7 @@ const AutomatizacionesReglas: React.FC = () => {
   return (
     <PageLayout
       title="Automatizaciones · reglas de aprendizaje"
-      subtitle="Reglas implícitas creadas al clasificar movimientos manualmente · se aplican a importaciones futuras"
+      subtitle="Reglas implícitas creadas al clasificar movimientos manualmente · se aplican a importaciones futuras. «Quién es» guarda a quién resultó pertenecer un nombre del banco que no se parecía al del contrato"
     >
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {loading ? (
@@ -83,6 +83,7 @@ const AutomatizacionesReglas: React.FC = () => {
                   <th className="py-2 pr-3 text-xs uppercase tracking-wider">Tipo</th>
                   <th className="py-2 pr-3 text-xs uppercase tracking-wider">Categoría</th>
                   <th className="py-2 pr-3 text-xs uppercase tracking-wider">Ámbito</th>
+                  <th className="py-2 pr-3 text-xs uppercase tracking-wider">Quién es</th>
                   <th className="py-2 pr-3 text-xs uppercase tracking-wider text-right">Veces aplicada</th>
                   <th className="py-2 pr-3 text-xs uppercase tracking-wider">Última</th>
                   <th className="py-2 pr-3 text-xs uppercase tracking-wider"></th>
@@ -100,6 +101,18 @@ const AutomatizacionesReglas: React.FC = () => {
                     </td>
                     <td className="py-2 pr-3 text-gray-700">{r.categoria}</td>
                     <td className="py-2 pr-3 text-gray-600">{r.ambito}</td>
+                    {/* El alias aprendido · quién resultó ser el nombre que manda
+                        el banco. Se enseña para que no sea magia invisible: si
+                        está mal, la papelera de la fila lo borra con la regla. */}
+                    <td className="py-2 pr-3 text-gray-700">
+                      {r.aliasContraparte && r.contraparteCanonica ? (
+                        <span title={`«${r.aliasContraparte}» es ${r.contraparteCanonica}`}>
+                          {r.contraparteCanonica}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td className="py-2 pr-3 text-right tabular-nums font-medium">{r.appliedCount}</td>
                     <td className="py-2 pr-3 text-gray-500 text-xs">{formatDate(r.lastAppliedAt)}</td>
                     <td className="py-2 pr-3">
