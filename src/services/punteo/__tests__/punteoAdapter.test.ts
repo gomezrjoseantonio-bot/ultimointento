@@ -120,3 +120,51 @@ describe('el anidado piso → habitación', () => {
       .toBeUndefined();
   });
 });
+
+// Una renta de habitación se lee distinto según dónde caiga, y por eso el ítem
+// lleva las dos formas: cuál se pinta depende de cuántas rentas del piso haya
+// en la lista, y eso no se sabe hasta pintar.
+describe('la renta de una habitación, suelta y bajo su piso', () => {
+  const renta = eventoAItem(
+    ev({
+      id: 1,
+      sourceType: 'contrato',
+      type: 'income',
+      inmuebleId: 4,
+      inmuebleAlias: 'Tenderina 64 4IZ',
+      unidadInmueble: 'hab-2',
+      description: 'Renta – ADNAN PARWEZ',
+    }) as TreasuryEvent & { id: number }
+  );
+
+  // Con el inquilino de titular, la fila no decía ni que aquello fuera un
+  // alquiler; y sin el piso, no se sabe de cuál de ellos entra el dinero.
+  it('suelta lo dice TODO · qué es, de qué piso, quién paga y qué habitación', () => {
+    expect(renta.concepto).toBe('Alquiler · Tenderina 64 4IZ');
+    expect(renta.detalle).toBe('ADNAN PARWEZ · Hab 2');
+  });
+
+  // Bajo la madre el piso ya lo encabeza el grupo · repetirlo en cada
+  // habitación es escribirlo cuatro veces.
+  it('bajo su piso se queda con lo que la distingue de sus hermanas', () => {
+    expect(renta.bajoMadre).toEqual({ concepto: 'ADNAN PARWEZ', detalle: 'Hab 2' });
+  });
+
+  // Piso completo · no hay habitación que decir, así que tampoco hay una
+  // segunda forma de leer la fila.
+  it('un piso completo no necesita las dos formas', () => {
+    const completa = eventoAItem(
+      ev({
+        id: 2,
+        sourceType: 'contrato',
+        type: 'income',
+        inmuebleId: 5,
+        inmuebleAlias: 'Carles Buigas 15',
+        description: 'Renta – CONCEPCION RAMIREZ',
+      }) as TreasuryEvent & { id: number }
+    );
+    expect(completa.concepto).toBe('Alquiler · Carles Buigas 15');
+    expect(completa.detalle).toBe('CONCEPCION RAMIREZ');
+    expect(completa.bajoMadre).toBeUndefined();
+  });
+});

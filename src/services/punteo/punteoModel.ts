@@ -94,8 +94,31 @@ export interface ItemPunteo {
   avisoSaldo?: string;
   /** Discrepancia banco-vs-confirmado pendiente de revisar. */
   discrepancia?: DiscrepanciaPunteo;
+  /**
+   * De qué previsión NACIÓ este movimiento · solo si nació de una.
+   *
+   * Es lo que separa un movimiento punteado de uno dado de alta a mano o
+   * llegado del inbox: solo el primero se puede despuntear, porque solo ahí hay
+   * una previsión a la que volver. Deshacer los otros no los devolvería a
+   * ninguna parte — los borraría.
+   */
+  previsionId?: number;
   /** Agrupación madre/hijas (alquiler por habitaciones · fraccionados). */
   grupoId?: string;
+  /**
+   * Cómo se lee esta fila CUANDO CUELGA DE SU MADRE.
+   *
+   * Una renta de habitación dice dos cosas distintas según dónde esté. Suelta,
+   * tiene que decirlo todo —"Alquiler · el piso" arriba y el inquilino con su
+   * habitación debajo—, porque nada más lo dice. Bajo la madre, el piso ya lo
+   * encabeza el grupo y repetirlo en cada hija es escribirlo cuatro veces: ahí
+   * la fila se queda con lo que la distingue de sus hermanas.
+   *
+   * Van los dos juegos en el ítem porque la misma renta puede acabar en
+   * cualquiera de las dos situaciones —depende de cuántas caigan ese día— y no
+   * se sabe hasta pintar.
+   */
+  bajoMadre?: { concepto: string; detalle?: string };
   /**
    * Clasificación tal y como está persistida. La lista no la pinta; viaja para
    * que la ficha de §4.5 pueda abrir con la clasificación REAL del registro en

@@ -141,15 +141,18 @@
   text-transform: uppercase;
   color: var(--atlas-v5-ink-2);
 }
-/* El rango va JUNTO al título, no suelto a la derecha (§4.3). */
+/* El rango va JUNTO al título, no suelto a la derecha (§4.3), y CON SU MISMA
+   LETRA: mayúsculas, versalita y peso. Iba en minúscula y en gris claro, con
+   lo que "ago 2026 – ene 2027" se leía como una nota al pie de otra cosa —y no
+   lo es: es la mitad del título, la que dice hasta dónde llega esto. */
 .secK .rng {
   margin-left: 8px;
   font-family: var(--atlas-v5-font-mono-num);
   font-size: 10.5px;
-  font-weight: 600;
-  color: var(--atlas-v5-ink-4);
-  letter-spacing: 0;
-  text-transform: none;
+  font-weight: 700;
+  color: var(--atlas-v5-ink-3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 .secT {
   font-size: 12.5px;

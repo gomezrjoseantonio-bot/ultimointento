@@ -37,6 +37,7 @@ import { useEsMovil } from './useEsMovil';
 import CuentaWizard from '../../../components/cuenta/CuentaWizard';
 import {
   confirmTreasuryEvent,
+  revertTreasuryConfirmation,
   updateTreasuryEventFields,
 } from '../../../services/treasuryConfirmationService';
 import { descartarPrevisto } from '../../../services/treasuryDiscardService';
@@ -314,6 +315,37 @@ const TesoreriaV6Page: React.FC = () => {
     [confirmarPrevisto]
   );
 
+  /**
+   * Despuntear · deshacer un punteo. El movimiento se borra y su previsión
+   * vuelve a `predicted`, así que el cargo reaparece en "Por confirmar".
+   *
+   * Solo sobre movimientos NACIDOS DE UNA PREVISIÓN, que es lo único que tiene
+   * adónde volver. `revertTreasuryConfirmation` borra el movimiento siempre y
+   * solo devuelve el evento a `predicted` si lo encuentra por la huella
+   * `treasury_event:{id}` de su `reference`: sobre un alta a mano o algo
+   * llegado del inbox, deshacer sería borrar el dato y no devolverlo a
+   * ninguna parte.
+   *
+   * Un evento `confirmed` —la venta de un piso, la liquidación de un préstamo—
+   * tampoco: no se punteó nunca, está decidido y espera al banco.
+   */
+  const despuntearItem = useCallback(
+    async (item: ItemPunteo) => {
+      // La misma condición que decide si el círculo es interruptor o marca.
+      // Repetida aquí a propósito: esto BORRA un movimiento, y apoyarse en que
+      // la lista no lo ofrezca es fiar el dato del usuario a un `if` de otro
+      // fichero.
+      if (item.kind !== 'movimiento' || item.previsionId == null) return;
+      try {
+        await revertTreasuryConfirmation(item.refId);
+        await trasEscribir();
+      } catch (err) {
+        console.error('[TesoreriaV6] no se pudo despuntear', err);
+      }
+    },
+    [trasEscribir]
+  );
+
   const descartarItem = useCallback(
     async (item: ItemPunteo) => {
       if (item.kind !== 'evento') return;
@@ -494,6 +526,7 @@ const TesoreriaV6Page: React.FC = () => {
           onCerrar={cerrarCuenta}
           onConfirmar={confirmarItem}
           onDescartar={descartarItem}
+          onDespuntear={despuntearItem}
           onGuardarFicha={guardarFicha}
         // §7 · el Archivo sabe abrir un documento concreto por `?doc=`.
         onAbrirDocumento={(id) => navigate(`/archivo?doc=${id}`)}
@@ -700,6 +733,7 @@ const TesoreriaV6Page: React.FC = () => {
         onCerrar={cerrarCuenta}
         onConfirmar={confirmarItem}
         onDescartar={descartarItem}
+        onDespuntear={despuntearItem}
         onGuardarFicha={guardarFicha}
         onEliminar={descartarItem}
         cuentas={cuentasVivas}

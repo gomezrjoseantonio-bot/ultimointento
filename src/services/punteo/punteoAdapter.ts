@@ -110,30 +110,38 @@ export function piezasDeFila(
 ): {
   concepto: string;
   detalle?: string;
+  bajoMadre?: { concepto: string; detalle?: string };
 } {
   /**
-   * Un ARRENDAMIENTO · siempre se dice que es un alquiler y de qué piso.
+   * Un ARRENDAMIENTO · SIEMPRE se dice que es un alquiler y de qué piso.
    *
-   * Con habitación (piso por habitaciones) la fila cuelga de una madre que ya
-   * dice "Alquiler · el piso", así que la hija se queda con lo que la distingue
-   * de sus hermanas: el inquilino y su habitación. Repetir ahí el piso sería
-   * escribirlo cuatro veces.
+   * Da igual que sea piso completo o habitación: arriba "Alquiler · el piso" y
+   * debajo quién paga. Con el nombre del inquilino de titular la fila no decía
+   * ni que aquello fuera un alquiler, y sin el piso no se sabe de cuál de ellos
+   * entra el dinero — que es justo lo que se mira. La habitación acompaña al
+   * inquilino en el subtítulo: es lo que distingue esa renta de las otras del
+   * mismo piso.
    *
-   * Sin habitación —piso completo— no hay madre que lo encabece, así que lo
-   * dice la propia fila: "Alquiler · el piso" arriba y el inquilino debajo. Lo
-   * que manda es lo que se cobra, no de quién; el nombre del inquilino sin más
-   * no decía siquiera que aquello fuera un alquiler.
+   * `bajoMadre` es esta MISMA fila cuando cuelga de su piso. Ahí lo encabeza la
+   * madre, y repetir el piso en cada habitación es escribirlo cuatro veces, así
+   * que la hija se queda con lo suyo. Cuál de las dos formas se pinta no se
+   * puede saber aquí —depende de cuántas rentas del piso caigan en la lista—,
+   * así que viajan las dos.
    */
   if (e.sourceType === 'contrato' || e.sourceType === 'contract') {
     const desc = e.description ?? '';
     const corte = desc.lastIndexOf(SEPARADOR);
     const inquilino = (corte > 0 ? desc.slice(corte + SEPARADOR.length).trim() : desc) || desc;
     const habitacion = etiquetaHabitacion(e.unidadInmueble);
-    if (habitacion) return { concepto: inquilino, detalle: habitacion };
-    return {
-      concepto: alias ? `Alquiler \u00b7 ${alias}` : 'Alquiler',
-      detalle: inquilino,
-    };
+    const titulo = alias ? `Alquiler \u00b7 ${alias}` : 'Alquiler';
+    if (habitacion) {
+      return {
+        concepto: titulo,
+        detalle: `${inquilino} \u00b7 ${habitacion}`,
+        bajoMadre: { concepto: inquilino, detalle: habitacion },
+      };
+    }
+    return { concepto: titulo, detalle: inquilino };
   }
 
   // §6.3 · manda QUIEN COBRA, que es lo que aparecerá en el extracto y con lo
@@ -178,7 +186,7 @@ export function eventoAItem(
   const aliasReal = e.inmuebleAlias ?? aliasInmueble?.(e.inmuebleId ?? -1);
   const activo =
     e.inmuebleId != null ? { inmuebleId: e.inmuebleId, alias: aliasReal } : null;
-  const { concepto, detalle } = piezasDeFila(e, aliasReal);
+  const { concepto, detalle, bajoMadre } = piezasDeFila(e, aliasReal);
   return {
     key: `evt-${e.id}`,
     kind: 'evento',
@@ -188,6 +196,7 @@ export function eventoAItem(
     // Arriba quien cobra · abajo lo que es (`piezasDeFila`).
     concepto,
     detalle,
+    bajoMadre,
     activo,
     origen: origenDeEvento(e),
     cuentaId: e.accountId ?? null,
@@ -217,6 +226,20 @@ export function eventoAItem(
 
 // ─── Movimientos (realidad) ─────────────────────────────────────────────────
 
+/**
+ * De qué previsión nació este movimiento · `undefined` si no nació de ninguna.
+ *
+ * `confirmTreasuryEvent` deja la huella en `reference` (`treasury_event:{id}`) y
+ * es la MISMA por la que `revertTreasuryConfirmation` encuentra el evento al
+ * deshacer. Sin ella, deshacer no devuelve nada a "Por confirmar": borra el
+ * movimiento y ya está. Por eso la huella se lee aquí y viaja hasta la fila —
+ * es lo que decide si el círculo se pinta como interruptor o como marca.
+ */
+export function previsionDeMovimiento(m: Pick<Movement, 'reference'>): number | undefined {
+  const ref = String(m.reference ?? '').match(/^treasury_event:(\d+)$/);
+  return ref ? Number(ref[1]) : undefined;
+}
+
 export function movimientoAItem(
   m: Movement & { id: number },
   aliasInmueble?: (id: number | string) => string | undefined,
@@ -240,6 +263,7 @@ export function movimientoAItem(
     cuentaId: m.accountId ?? null,
     // §7 · el papel que respalda el cargo · solo lo real lo tiene.
     documentIds: m.documentIds?.length ? m.documentIds : undefined,
+    previsionId: previsionDeMovimiento(m),
     importe: m.amount,
     categoryKey: m.categoryKey,
     subtypeKey: m.subtypeKey,

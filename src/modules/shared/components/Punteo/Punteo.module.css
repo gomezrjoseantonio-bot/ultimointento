@@ -524,6 +524,16 @@
   border-color: var(--atlas-v5-gold);
 }
 
+/* El caret de la cabecera de grupo · dice que eso se abre.
+   Va dentro de `.dayName`, que ya es inline-flex con su hueco. */
+.caretGrupo {
+  display: inline-flex;
+  align-items: center;
+  color: var(--atlas-v5-ink-4);
+  transition: transform 0.15s;
+}
+.caretGrupoOn { transform: rotate(90deg); }
+
 /* Cabecera de grupo pulsable · hereda el aspecto de .dayRule, sin aspecto de botón. */
 .grupoToggle {
   display: block;
