@@ -24,10 +24,21 @@ import { normalizeSearchText, matchesAmountQuery } from '../../../../utils/tesor
 /** Eje de agrupación de la lista. `fecha` es el de siempre. */
 export type EjeAgrupacion = 'fecha' | 'inmueble' | 'que-es' | 'cuenta';
 
+/**
+ * Los rótulos de los ejes · las CLAVES no cambian (son internas y están en
+ * media aplicación), solo lo que lee el usuario.
+ *
+ * · `inmueble` se rotula **Ámbito**: el grupo "Personal" siempre ha estado ahí
+ *   —los cargos que no son de ningún piso— y llamar "Inmueble" a una lista que
+ *   incluye Personal prometía una cosa y daba otra.
+ * · `que-es` se rotula **Tipo**: agrupa por Contrato · Financiación · Ingreso ·
+ *   Recurrente, que son tipos de cargo. "Qué es" era una pregunta donde las
+ *   otras dos pestañas son sustantivos.
+ */
 export const EJE_LABEL: Record<EjeAgrupacion, string> = {
   fecha: 'Fecha',
-  inmueble: 'Inmueble',
-  'que-es': 'Qué es',
+  inmueble: 'Ámbito',
+  'que-es': 'Tipo',
   cuenta: 'Cuenta',
 };
 

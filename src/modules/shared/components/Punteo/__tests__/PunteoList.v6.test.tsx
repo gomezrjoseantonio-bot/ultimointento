@@ -122,7 +122,7 @@ describe('1 · eje de agrupación', () => {
   it('avisa del cambio de eje', () => {
     const onEjeChange = jest.fn();
     render(<PunteoList {...base} onEjeChange={onEjeChange} />);
-    fireEvent.click(screen.getByRole('tab', { name: 'Inmueble' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Ámbito' }));
     expect(onEjeChange).toHaveBeenCalledWith('inmueble');
   });
 });

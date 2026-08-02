@@ -8,9 +8,17 @@
 // vez de reescribir una lista nueva: el modelo `previsto/confirmado/conciliado`
 // de `punteoModel` es el mismo en las cuatro vistas y no se toca.
 //
-//   Pendientes → rowVariant `tesoreria` (editar y descartar en la fila),
-//                agrupado por día, sin chips (mandan las pestañas).
-//   Movimientos → buscador, ejes de agrupación y grupos plegables con subtotal.
+// Las dos pestañas se reparten el trabajo, y por eso NO hacen lo mismo:
+//
+//   Por confirmar → la BANDEJA. Se puntea, se edita y se descarta en la fila
+//                   (rowVariant `tesoreria`), agrupado por día y sin chip de
+//                   estado: allí todo es previsto y decirlo en cada fila es
+//                   repetir el nombre de la pestaña.
+//   Movimientos   → la CONSULTA del mes. Buscador, ejes de agrupación y grupos
+//                   plegables con subtotal, y SOLO LECTURA: aquí conviven los
+//                   tres estados —el chip vive solo aquí, porque solo aquí
+//                   distingue algo— pero decidir sobre un cargo suelto en medio
+//                   del mes entero es justo lo que la bandeja evita.
 // ============================================================================
 
 import React, { useMemo, useState } from 'react';
@@ -255,9 +263,16 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
           ) : (
             <PunteoList
               items={itemsTodo}
-              // §6.4 · aquí conviven previsto, confirmado y conciliado: el chip
-              // es lo único que los distingue.
+              // §6.4 · aquí conviven previsto, confirmado y conciliado, y este
+              // es el ÚNICO sitio donde el chip dice algo: en "Por confirmar"
+              // todo es previsto por definición, así que escribirlo en cada
+              // fila es repetir el nombre de la pestaña 250 veces.
               conChipEstado
+              // Se MIRA, no se toca · confirmar y editar viven en la bandeja.
+              // Decidir sobre un cargo suelto en medio del mes entero es lo que
+              // "Por confirmar" viene a evitar: allí llegan los que tocan,
+              // ordenados y sin nada alrededor.
+              soloLectura
               chip="todos"
               onChipChange={() => undefined}
               mostrarChips={false}
@@ -270,7 +285,6 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
               gruposPlegables
               onConfirmar={onConfirmar}
               onNoPaso={onDescartar}
-              onEditar={(item) => setFicha({ item })}
             />
           )}
         </div>

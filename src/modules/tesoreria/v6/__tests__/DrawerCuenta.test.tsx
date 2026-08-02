@@ -255,7 +255,7 @@ describe('pestaña Movimientos', () => {
 
     expect(screen.getByRole('searchbox')).toBeInTheDocument();
     expect(screen.getByRole('tablist', { name: /agrupar por/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Inmueble' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Ámbito' })).toBeInTheDocument();
   });
 
   it('los grupos nacen plegados con recuento y subtotal', () => {
@@ -268,6 +268,34 @@ describe('pestaña Movimientos', () => {
     // §6.4 · el recuento dice de qué es: pegado al importe se leía como parte
     // de la cifra ("· 1 · −98,44").
     expect(within(cab).getByText('1 movimiento')).toBeInTheDocument();
+  });
+
+  // La consulta se MIRA. Confirmar desde aquí obliga a decidir sobre un cargo
+  // suelto en medio del mes entero, que es justo lo que la bandeja evita: allí
+  // llegan los que tocan, ordenados y sin nada alrededor.
+  it('no se puntea ni se edita · eso vive en la bandeja', () => {
+    const onConfirmar = jest.fn();
+    render(<DrawerCuenta {...base} onConfirmar={onConfirmar} eventos={[ev({ id: 1 })]} />);
+    abrirTodo();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'a' } });
+
+    // Ni círculo que pulsar —un botón deshabilitado invita a intentarlo—…
+    expect(screen.queryByRole('button', { name: /^Puntear/ })).not.toBeInTheDocument();
+    expect(onConfirmar).not.toHaveBeenCalled();
+    // …ni lápiz ni descartar en la fila.
+    expect(screen.queryByRole('button', { name: /^Editar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Descartar/ })).not.toBeInTheDocument();
+  });
+
+  // El chip solo dice algo donde conviven los tres estados. En la bandeja todo
+  // es previsto, así que escribirlo en cada fila repite el nombre de la pestaña.
+  it('el chip de estado vive AQUÍ y solo aquí', () => {
+    render(<DrawerCuenta {...base} eventos={[ev({ id: 1 })]} />);
+    expect(screen.queryByText('previsto')).not.toBeInTheDocument();
+
+    abrirTodo();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'a' } });
+    expect(screen.getByText('previsto')).toBeInTheDocument();
   });
 
   it('esconde Anotar y Subir extracto: son de la bandeja, no de la consulta', () => {
