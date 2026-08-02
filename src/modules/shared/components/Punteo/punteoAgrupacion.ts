@@ -113,9 +113,10 @@ export function agruparPorEje(
    * hay que ir leyendo de cuál sale cada uno; bajo el nombre de su cuenta, cada
    * bloque se lee entero de una vez, igual que al entrar por la cuenta.
    *
-   * El orden de los grupos es el que trae `cuentas` —el del usuario, que él
-   * mismo ordena en §4.2—, no el alfabético: si arriba las tiene en un orden,
-   * verlas aquí en otro obliga a buscar la misma cuenta dos veces.
+   * ALFABÉTICO, tanto los grupos como las filas de dentro. En un día con seis
+   * cuentas y veinte cargos, un orden por importe o por tipo obliga a barrer la
+   * lista entera para encontrar uno concreto; por nombre se va directo. La
+   * excepción es "Sin cuenta", que va al final por ser un cajón y no una cuenta.
    */
   if (eje === 'cuenta') {
     const info = new Map(cuentas.map((c, i) => [c.id, { label: c.label, orden: i }]));
@@ -135,9 +136,12 @@ export function agruparPorEje(
         // de qué cuenta sale el cargo. Mismo criterio que los inmuebles unas
         // líneas más abajo: antes "Sin nombre" que un id.
         titulo: dato?.label ?? (it.cuentaId != null ? 'Sin nombre' : 'Sin cuenta'),
-        // Las que no están en la lista van detrás de las que sí, y "Sin cuenta"
-        // la última de todas.
-        orden: it.cuentaId == null ? Number.MAX_SAFE_INTEGER : dato?.orden ?? cuentas.length,
+        // Tres escalones, y dentro de cada uno manda el nombre:
+        //   0 · las cuentas que existen · lo que el usuario busca
+        //   1 · las dadas de baja o borradas · "Sin nombre" no debe colarse
+        //       entre las reales solo porque la S caiga antes que la U
+        //   2 · "Sin cuenta" · un cajón, no una cuenta
+        orden: it.cuentaId == null ? 2 : dato ? 0 : 1,
         cuentaId: it.cuentaId ?? undefined,
         items: [it],
       });
@@ -148,7 +152,9 @@ export function agruparPorEje(
         construirGrupo(
           k,
           g.titulo,
-          g.items.slice().sort((a, b) => b.fecha.localeCompare(a.fecha) || compararEnDia(a, b)),
+          // Dentro de la cuenta, por concepto · el día es uno solo, así que la
+          // fecha no desempata nada y ordenar por importe no ayuda a encontrar.
+          g.items.slice().sort((a, b) => a.concepto.localeCompare(b.concepto, 'es')),
           g.cuentaId
         )
       );

@@ -21,8 +21,7 @@ const item = (over: Partial<ItemPunteo> = {}): ItemPunteo => ({
   ...over,
 });
 
-// El orden que trae la lista NO es el alfabético a propósito: es el del
-// usuario, el que él mismo fija en §4.2.
+// La lista llega en el orden del usuario · el agrupado la reordena por nombre.
 const CUENTAS = [
   { id: 3, label: 'Unicaja' },
   { id: 1, label: 'Abanca' },
@@ -40,20 +39,34 @@ describe('agrupar por cuenta', () => {
       CUENTAS
     );
 
-    expect(grupos.map((g) => g.titulo)).toEqual(['Unicaja', 'Abanca']);
-    expect(grupos[0].items.map((i) => i.key)).toEqual(['b']);
-    expect(grupos[1].items.map((i) => i.key)).toEqual(['a', 'c']);
-    expect(grupos[1].subtotal).toBe(-140);
+    expect(grupos.map((g) => g.titulo)).toEqual(['Abanca', 'Unicaja']);
+    expect(grupos[0].items.map((i) => i.key)).toEqual(['a', 'c']);
+    expect(grupos[1].items.map((i) => i.key)).toEqual(['b']);
+    expect(grupos[0].subtotal).toBe(-140);
   });
 
-  it('respeta el orden del usuario, no el alfabético', () => {
-    // Alfabéticamente Abanca iría primero; el usuario tiene Unicaja arriba.
+  // En un día con seis cuentas y veinte cargos, por nombre se va directo a la
+  // que se busca; por importe o por tipo hay que barrer la lista entera.
+  it('ordena las cuentas por NOMBRE, llegue como llegue la lista', () => {
     const grupos = agruparPorEje(
-      [item({ key: 'a', cuentaId: 1 }), item({ key: 'b', refId: 2, cuentaId: 3 })],
+      [item({ key: 'a', cuentaId: 3 }), item({ key: 'b', refId: 2, cuentaId: 1 })],
       'cuenta',
       CUENTAS
     );
-    expect(grupos.map((g) => g.titulo)).toEqual(['Unicaja', 'Abanca']);
+    expect(grupos.map((g) => g.titulo)).toEqual(['Abanca', 'Unicaja']);
+  });
+
+  it('y dentro de cada cuenta, por concepto', () => {
+    const grupos = agruparPorEje(
+      [
+        item({ key: 'z', cuentaId: 1, concepto: 'Zurich', importe: -900 }),
+        item({ key: 'a', refId: 2, cuentaId: 1, concepto: 'Agua', importe: -10 }),
+        item({ key: 'm', refId: 3, cuentaId: 1, concepto: 'Mapfre', importe: -500 }),
+      ],
+      'cuenta',
+      CUENTAS
+    );
+    expect(grupos[0].items.map((i) => i.concepto)).toEqual(['Agua', 'Mapfre', 'Zurich']);
   });
 
   it('lleva el id de la cuenta para que la cabecera pinte su punto de banco', () => {
@@ -71,6 +84,8 @@ describe('agrupar por cuenta', () => {
       'cuenta',
       CUENTAS
     );
+    // "Sin cuenta" es un cajón, no una cuenta: va al final aunque alfabéticamente
+    // le tocara antes.
     expect(grupos.map((g) => g.titulo)).toEqual(['Abanca', 'Sin cuenta']);
     expect(grupos[1].items.map((i) => i.key)).toEqual(['sin-1', 'sin-2']);
   });
@@ -86,5 +101,26 @@ describe('agrupar por cuenta', () => {
     );
     expect(grupos.map((g) => g.titulo)).toEqual(['Abanca', 'Sin nombre']);
     expect(grupos.map((g) => g.titulo).join(' ')).not.toMatch(/\d/);
+  });
+
+  // "Sin nombre" no puede colarse entre las cuentas reales solo porque su S
+  // caiga antes que la U de Unicaja: primero lo que el usuario busca.
+  it('la dada de baja va DETRÁS de las reales, no en su sitio alfabético', () => {
+    const grupos = agruparPorEje(
+      [
+        item({ key: 'a', cuentaId: 1 }),
+        item({ key: 'b', refId: 2, cuentaId: 99 }),
+        item({ key: 'c', refId: 3, cuentaId: 3 }),
+        item({ key: 'd', refId: 4, cuentaId: null }),
+      ],
+      'cuenta',
+      CUENTAS
+    );
+    expect(grupos.map((g) => g.titulo)).toEqual([
+      'Abanca',
+      'Unicaja',
+      'Sin nombre',
+      'Sin cuenta',
+    ]);
   });
 });

@@ -718,6 +718,9 @@ const TesoreriaV6Page: React.FC = () => {
           saldoTotalHoy={kpis.saldo}
           hoy={hoy}
           aliasInmueble={aliasInmueble}
+          inmuebles={inmuebles}
+          onGuardarFicha={guardarFicha}
+          onEliminar={descartarItem}
           onCerrar={() => setCalendario(null)}
           onConfirmar={confirmarItem}
           onDescartar={descartarItem}

@@ -19,12 +19,12 @@ import PunteoList from '../../shared/components/Punteo/PunteoList';
 import type { EjeAgrupacion } from '../../shared/components/Punteo/punteoAgrupacion';
 import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
-import { presentacionDe } from '../../../services/catalogoPresentacionPersistencia';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { esPendiente, importeConSigno as signo, rangoDelMes } from '../../../services/tesoreriaV6Metrics';
 import { colorDeBanco } from './bancoColores';
 import { importeConSigno, importeSaldo } from './formatoV6';
-import FichaMovimiento, { type GuardadoFicha, type ValoresFicha } from './FichaMovimiento';
+import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
+import { valoresDesdeItem } from './fichaDesdeItem';
 import styles from './DrawerV6.module.css';
 
 export interface DrawerCuentaProps {
@@ -303,33 +303,6 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
     </>
   );
 };
-
-/**
- * Rellena la ficha con lo que ya sabe ATLAS · el usuario solo corrige (§4.5).
- *
- * La clasificación se recupera haciendo el camino inverso de la tabla de
- * traducción: el registro guarda `categoryKey`, pero la ficha enseña familia y
- * concepto. Si la vuelta no es unívoca, `presentacionDe` devuelve `undefined` y
- * la ficha abre SIN CLASIFICAR — que es la verdad — en vez de con la primera
- * familia del catálogo, que al guardar habría reclasificado a espaldas del
- * usuario.
- */
-function valoresDesdeItem(item: ItemPunteo, cuentaId: number | null): Partial<ValoresFicha> {
-  const presentacion = presentacionDe(item.categoryKey, item.subtypeKey);
-  return {
-    tipo: item.importe >= 0 ? 'ingreso' : 'gasto',
-    // La ficha edita la DESCRIPCIÓN del movimiento, no el rótulo de la fila.
-    // Desde §6.3 el título de la fila es quién cobra ("Mapfre") y la
-    // descripción baja a `detalle`; abrir la ficha con "Mapfre" en el campo de
-    // texto sobrescribiría "Seguro hogar" en cuanto se guardara.
-    concepto: item.detalle ?? item.concepto,
-    importe: item.importe,
-    fecha: item.fecha,
-    cuentaId: item.cuentaId ?? cuentaId,
-    inmuebleId: typeof item.activo?.inmuebleId === 'number' ? item.activo.inmuebleId : null,
-    ...(presentacion ? { familia: presentacion.tipoId, subtipo: presentacion.subtipoId } : {}),
-  };
-}
 
 const Ak: React.FC<{ lab: string; val: string; gold?: boolean }> = ({ lab, val, gold }) => (
   <div className={styles.ak}>
