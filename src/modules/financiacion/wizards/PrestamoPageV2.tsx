@@ -46,6 +46,7 @@ import LoanSettlementModal from '../../horizon/financiacion/components/LoanSettl
 import type { Inmueble } from '../../../types/inmueble';
 import type { LucideIcon } from 'lucide-react';
 import { prestamosService } from '../../../services/prestamosService';
+import { planificarEventos, cambiaElCuadro } from '../../../services/prestamoEventosPlan';
 import {
   detectarCarenciaTecnica,
   generarCuadroAmortizacion,
@@ -845,10 +846,20 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         }
       }
 
-      // Treasury events · regenerar desde cero (sub-tarea 6). Si el préstamo
-      // es pre-v2 (no admitimos detección retroactiva) excluimos la línea
-      // de carencia técnica del flujo de eventos.
-      await regenerarTreasuryEvents(saved, { incluirCarencia: !esPreV2 });
+      // Treasury events · solo si el cuadro se ha movido.
+      //
+      // Antes se rehacían SIEMPRE, así que cambiar el nombre de un préstamo
+      // firmado hace años volvía a emitir todas sus cuotas. El nombre, una nota
+      // o el inmueble asociado no mueven el calendario de pagos: rehacerlo solo
+      // destruye el punteo hecho encima.
+      const hayQueRehacer =
+        !prestamoId || cambiaElCuadro(
+          existingPrestamo as unknown as Record<string, unknown> | null,
+          saved as unknown as Record<string, unknown>,
+        );
+      if (hayQueRehacer) {
+        await regenerarTreasuryEvents(saved, { incluirCarencia: !esPreV2 });
+      }
 
       toast.success(prestamoId ? 'Préstamo actualizado' : 'Préstamo creado');
       onSuccess();
@@ -908,19 +919,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     const accountIdNum = parseInt(prestamo.cuentaCargoId, 10);
     const accountId = Number.isFinite(accountIdNum) ? accountIdNum : undefined;
 
-    // 1. borrar eventos previstos existentes con prestamoId · respetar executed
+    // 1. generar descriptores · TIN derivado del prestamo (no del memo del
+    //    form) · variable/mixto coherentes.
     const todos = await db.getAll('treasuryEvents');
-    const aBorrar = (todos as TreasuryEvent[]).filter(
-      (e) => e.prestamoId === prestamo.id && e.status !== 'executed',
-    );
-    for (const ev of aBorrar) {
-      if (ev.id !== undefined) {
-        await db.delete('treasuryEvents', ev.id);
-      }
-    }
-
-    // 2. generar descriptores y persistir · TIN derivado del prestamo
-    //    (no del memo del form) · variable/mixto coherentes.
     const descriptors = generarTreasuryEventDescriptors({
       id: prestamo.id,
       alias: prestamo.nombre,
@@ -936,9 +937,25 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       ? descriptors
       : descriptors.filter((d) => !d.esCarenciaTecnica);
 
+    // 2. decidir qué se borra y qué se emite.
+    //
+    // Antes se borraba todo lo que no estuviera `executed` y se reemitía el
+    // cuadro entero en `predicted`. Con un préstamo de hace cinco años eso
+    // resucitaba sesenta cuotas ya pagadas dentro de "por confirmar", y de paso
+    // se llevaba por delante las que el usuario había confirmado a mano.
+    const plan = planificarEventos({
+      descriptores: descriptorsAPersistir,
+      existentes: (todos as TreasuryEvent[]).filter((e) => e.prestamoId === prestamo.id),
+      hoy: new Date().toISOString().slice(0, 10),
+    });
+
+    for (const id of plan.borrar) {
+      await db.delete('treasuryEvents', id);
+    }
+
     const now = new Date().toISOString();
     const isHipoteca = prestamo.ambito === 'INMUEBLE';
-    for (const d of descriptorsAPersistir) {
+    for (const { d, status } of plan.emitir) {
       const event: Omit<TreasuryEvent, 'id'> = {
         type: d.tipo === 'ingreso' ? 'income' : 'financing',
         amount: d.importe,
@@ -948,7 +965,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         accountId: d.cuentaId,
         prestamoId: d.prestamoId,
         numeroCuota: d.numeroCuota,
-        status: 'predicted',
+        status,
         ambito: prestamo.ambito,
         // Marker explícito para que la UI de tesorería pueda surfacear la
         // línea de carencia técnica · NO depender del texto del concepto.

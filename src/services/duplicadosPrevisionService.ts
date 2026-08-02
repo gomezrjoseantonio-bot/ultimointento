@@ -17,6 +17,7 @@
 // ============================================================================
 
 import { initDB } from './db';
+import { cuotasVencidasSinConfirmar } from './prestamoEventosPlan';
 import type { TreasuryEvent } from './db';
 
 /** Un grupo de previsiones que son la misma cosa repetida. */
@@ -277,6 +278,41 @@ export function registrarDiagnosticoEnConsola(): void {
       return informe;
     },
     duplicadosRaw: diagnosticarDuplicados,
+
+    /**
+     * Cuotas de préstamo vencidas que quedaron en "por confirmar".
+     *
+     * Las metió ahí el guardado de un préstamo antes del arreglo: cambiarle el
+     * nombre reemitía el cuadro entero como previsto. Esto las devuelve a
+     * confirmadas, que es lo que son — el banco las cobró en su día.
+     */
+    cuotasVencidas: async () => {
+      const db = await initDB();
+      const eventos = ((await db.getAll('treasuryEvents')) ?? []) as TreasuryEvent[];
+      const hoy = new Date().toISOString().slice(0, 10);
+      const ids = cuotasVencidasSinConfirmar(eventos, hoy);
+
+      if (ids.length === 0) {
+        console.log('No hay cuotas de préstamo vencidas sin confirmar.');
+        return { corregidas: 0 };
+      }
+
+      console.warn(
+        `Se van a marcar como CONFIRMADAS ${ids.length} cuotas de préstamo ya ` +
+          'vencidas. Son cargos que el banco hizo en su día · no se toca nada futuro.'
+      );
+
+      const tx = db.transaction('treasuryEvents', 'readwrite');
+      const ahora = new Date().toISOString();
+      for (const id of ids) {
+        const ev = (await tx.store.get(id)) as TreasuryEvent | undefined;
+        if (ev) await tx.store.put({ ...ev, status: 'confirmed', updatedAt: ahora });
+      }
+      await tx.done;
+
+      console.log(`${ids.length} cuotas devueltas a confirmadas. Recarga la página.`);
+      return { corregidas: ids.length };
+    },
     limpiar: async () => {
       // Se avisa ANTES de tocar nada: `duplicados()` solo lee, y quien llegue a
       // `limpiar()` desde ahí puede no haber reparado en que esta sí borra.
