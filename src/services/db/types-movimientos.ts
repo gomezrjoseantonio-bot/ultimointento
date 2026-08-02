@@ -126,6 +126,15 @@ export interface Movement {
   transferMetadata?: {
     targetAccountId: number;
     pairEventId?: number;
+    /**
+     * La OTRA pata, cuando el traspaso se hizo sobre movimientos y no sobre
+     * previsiones (una retirada de cajero que llegó en el extracto).
+     *
+     * Es lo que hace la conversión repetible: sin esta huella, reintentar el
+     * guardado tras un fallo posterior crearía una segunda pata de entrada y el
+     * saldo de la cuenta destino subiría dos veces.
+     */
+    pairMovementId?: number;
     esAmortizacionParcial?: boolean;
   };
 

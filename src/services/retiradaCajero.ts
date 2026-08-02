@@ -20,8 +20,13 @@
  * variantes de "disposición".
  *
  * Van sin acentos ni signos a propósito: el texto se normaliza antes de mirar,
- * porque los extractos llegan en mayúsculas, sin tildes y con la puntuación que
- * a cada banco le parece.
+ * porque los extractos llegan en mayúsculas y con tildes o sin ellas según el
+ * banco.
+ *
+ * La puntuación SEPARA palabras, no se ignora: "REINTEGRO." se reconoce y un
+ * hipotético "RE-INTEGRO" no. Es lo correcto — partir palabras a la caza haría
+ * que cualquier texto con "integro" dentro pasara por una retirada— y ningún
+ * banco escribe así.
  */
 const HUELLAS = [
   /\breintegro\b/,

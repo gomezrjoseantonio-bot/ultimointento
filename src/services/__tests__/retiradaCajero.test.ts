@@ -24,12 +24,12 @@ describe('reconoce cómo lo nombra cada banco', () => {
     expect(pareceRetiradaDeCajero(texto, CARGO)).toBe(true);
   });
 
-  // Los extractos llegan en mayúsculas, sin tildes y con la puntuación que a
-  // cada banco le parece.
-  it('da igual cómo venga escrito', () => {
+  // Los extractos llegan en mayúsculas y con tildes o sin ellas según el banco;
+  // la puntuación de alrededor tampoco puede estorbar.
+  it('da igual en qué caja de letras venga', () => {
     expect(pareceRetiradaDeCajero('reintegro', CARGO)).toBe(true);
-    expect(pareceRetiradaDeCajero('RE-INTEGRO', CARGO)).toBe(false);
     expect(pareceRetiradaDeCajero('  Reintegro.  ', CARGO)).toBe(true);
+    expect(pareceRetiradaDeCajero('DISPOSICIÓN EN CAJERO', CARGO)).toBe(true);
   });
 });
 

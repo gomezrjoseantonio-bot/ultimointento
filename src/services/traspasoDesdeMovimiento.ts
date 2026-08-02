@@ -27,6 +27,13 @@ export class MovimientoNoEncontradoError extends Error {
   }
 }
 
+export class NoEsUnCargoError extends Error {
+  constructor() {
+    super('Solo un cargo puede ser la salida de un traspaso.');
+    this.name = 'NoEsUnCargoError';
+  }
+}
+
 export class TraspasoALaMismaCuentaError extends Error {
   constructor() {
     super('Un traspaso va de una cuenta a OTRA.');
@@ -57,23 +64,21 @@ export async function convertirEnTraspaso(
   const movimiento = (await db.get('movements', movementId)) as Movement | undefined;
   if (!movimiento) throw new MovimientoNoEncontradoError();
   if (movimiento.accountId === cuentaDestinoId) throw new TraspasoALaMismaCuentaError();
+  // La salida de un traspaso es un CARGO. Sobre un ingreso, esto escribiría una
+  // entrada de signo imposible en la cuenta destino.
+  if (movimiento.amount >= 0) throw new NoEsUnCargoError();
+
+  // Ya convertido · se devuelve el par que hay y no se escribe nada.
+  //
+  // El guardado del extracto hace varias cosas seguidas y puede fallar en
+  // cualquiera; si el usuario reintenta, esta conversión se vuelve a ejecutar.
+  // Sin esta guarda nacería una SEGUNDA pata de entrada y el saldo del efectivo
+  // subiría dos veces por la misma retirada.
+  const yaConvertido = movimiento.transferMetadata?.pairMovementId;
+  if (yaConvertido != null) return { movementId, movementIdDestino: yaConvertido };
 
   const ahora = new Date().toISOString();
   const magnitud = Math.abs(movimiento.amount);
-
-  // 1 · el que ya existe pasa a ser la SALIDA. No se toca su importe ni su
-  //     fecha: eso es lo que dice el banco y tiene que seguir cuadrando.
-  await (db as any).put('movements', {
-    ...movimiento,
-    type: 'Transferencia',
-    categoryKey: TRANSFER_KEYS.SALIDA,
-    categoryLabel: 'Traspaso · salida',
-    // Un traspaso no es gasto ni ingreso · quien suma los KPIs mira esta key
-    // (`isTransferKey`) para dejarlo fuera, y la categoría vieja lo colaba.
-    category: { tipo: 'Traspaso' },
-    transferMetadata: { targetAccountId: cuentaDestinoId },
-    updatedAt: ahora,
-  });
 
   // 2 · la ENTRADA en la cuenta destino · el mismo dinero, del otro lado.
   const entrada: Omit<Movement, 'id'> = {
@@ -86,7 +91,14 @@ export async function convertirEnTraspaso(
     // que ese dinero fue a parar aquí.
     source: 'manual',
     origin: 'Manual',
+    // Los estados se fijan ENTEROS, no se heredan del cargo: el original puede
+    // venir conciliado por el extracto y esta pata no lo está —nadie la ha
+    // visto en ningún banco—, así que copiarlos afirmaría lo contrario de lo
+    // que dice `source: 'manual'`. Los mismos que un alta a mano.
     unifiedStatus: 'no_planificado',
+    movementState: 'Confirmado',
+    state: 'pending',
+    status: 'pendiente',
     statusConciliacion: 'sin_match',
     categoryKey: TRANSFER_KEYS.ENTRADA,
     categoryLabel: 'Traspaso · entrada',
@@ -103,5 +115,25 @@ export async function convertirEnTraspaso(
   delete (entrada as Record<string, unknown>).id;
 
   const movementIdDestino = Number(await db.add('movements', entrada as Movement));
+
+  // 2 · el que ya existía pasa a ser la SALIDA, emparejado con su espejo. No se
+  //     tocan su importe ni su fecha: eso es lo que dice el banco y tiene que
+  //     seguir cuadrando.
+  //
+  //     Va DESPUÉS de crear la entrada para poder guardar su id: si se
+  //     escribiera antes, un fallo en el `add` dejaría el cargo marcado como
+  //     traspaso sin pata al otro lado.
+  await (db as any).put('movements', {
+    ...movimiento,
+    type: 'Transferencia',
+    categoryKey: TRANSFER_KEYS.SALIDA,
+    categoryLabel: 'Traspaso · salida',
+    // Un traspaso no es gasto ni ingreso · quien suma los KPIs mira esta key
+    // (`isTransferKey`) para dejarlo fuera, y la categoría vieja lo colaba.
+    category: { tipo: 'Traspaso' },
+    transferMetadata: { targetAccountId: cuentaDestinoId, pairMovementId: movementIdDestino },
+    updatedAt: ahora,
+  });
+
   return { movementId, movementIdDestino };
 }

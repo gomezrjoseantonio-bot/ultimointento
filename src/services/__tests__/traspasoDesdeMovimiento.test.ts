@@ -6,7 +6,11 @@
 // contrario: quedarse con ese movimiento como pata de SALIDA y escribir solo la
 // de ENTRADA.
 
-import { convertirEnTraspaso, TraspasoALaMismaCuentaError } from '../traspasoDesdeMovimiento';
+import {
+  convertirEnTraspaso,
+  NoEsUnCargoError,
+  TraspasoALaMismaCuentaError,
+} from '../traspasoDesdeMovimiento';
 import { initDB } from '../db';
 
 jest.mock('../db', () => ({ initDB: jest.fn() }));
@@ -71,7 +75,9 @@ describe('el cargo del extracto pasa a ser la salida', () => {
     await convertirEnTraspaso(5, 9);
     expect(movimientos[5].categoryKey).toBe('traspaso_salida');
     expect(movimientos[5].type).toBe('Transferencia');
-    expect(movimientos[5].transferMetadata).toEqual({ targetAccountId: 9 });
+    // Emparejado con su espejo · esa huella es lo que hace la conversión
+    // repetible sin duplicar nada.
+    expect(movimientos[5].transferMetadata).toEqual({ targetAccountId: 9, pairMovementId: 6 });
   });
 });
 
@@ -105,4 +111,40 @@ describe('la pata de entrada', () => {
 it('a la misma cuenta no es un traspaso', async () => {
   await expect(convertirEnTraspaso(5, 1)).rejects.toBeInstanceOf(TraspasoALaMismaCuentaError);
   expect(Object.keys(movimientos)).toHaveLength(1);
+});
+
+
+// El guardado del extracto hace varias cosas seguidas y puede fallar en
+// cualquiera. Si el usuario reintenta, esto se vuelve a ejecutar: sin guarda,
+// nacería una segunda pata de entrada y el efectivo subiría dos veces por la
+// misma retirada.
+describe('repetir la conversión no duplica nada', () => {
+  it('la segunda vez devuelve el par que ya existe', async () => {
+    const primera = await convertirEnTraspaso(5, 9);
+    const segunda = await convertirEnTraspaso(5, 9);
+
+    expect(segunda).toEqual(primera);
+    expect(Object.keys(movimientos)).toHaveLength(2);
+  });
+});
+
+// La salida de un traspaso es un CARGO · sobre un ingreso esto escribiría una
+// entrada de signo imposible en la cuenta destino.
+it('un ingreso no puede ser la salida de un traspaso', async () => {
+  movimientos[7] = { ...CARGO, id: 7, amount: 300 };
+  await expect(convertirEnTraspaso(7, 9)).rejects.toBeInstanceOf(NoEsUnCargoError);
+  expect(Object.keys(movimientos)).toHaveLength(2);
+});
+
+// El cargo puede venir conciliado por el extracto y su espejo no lo está —nadie
+// lo ha visto en ningún banco—, así que heredar sus estados afirmaría lo
+// contrario de lo que dice `source: 'manual'`.
+it('la entrada no hereda los estados del cargo', async () => {
+  movimientos[5].movementState = 'Conciliado';
+  movimientos[5].status = 'conciliado';
+  const { movementIdDestino } = await convertirEnTraspaso(5, 9);
+
+  expect(movimientos[movementIdDestino].movementState).toBe('Confirmado');
+  expect(movimientos[movementIdDestino].status).toBe('pendiente');
+  expect(movimientos[movementIdDestino].unifiedStatus).toBe('no_planificado');
 });
