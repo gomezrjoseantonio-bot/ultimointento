@@ -36,11 +36,7 @@ import {
   getPropertyLiteral,
 } from './treasurySyncHelpers';
 import type { ReglaDia } from '../../../../types/personal';
-<<<<<<< HEAD
 import { inmuebleDelPrestamo, idDeInmueble } from '../../../../services/inmuebleDelPrestamo';
-=======
-import { inmuebleDelPrestamo } from '../../../../services/inmuebleDelPrestamo';
->>>>>>> origin/main
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
