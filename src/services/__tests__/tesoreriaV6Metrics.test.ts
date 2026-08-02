@@ -163,9 +163,18 @@ describe('§4.2 · estado de la tarjeta', () => {
   });
 
   it('la frontera del otro lado · el de mañana NO cuenta', () => {
+    // Derivada de `hoy`, no escrita a mano: con una fecha fija, cambiar `hoy`
+    // dejaría el test en verde probando otra cosa — que es exactamente el
+    // fallo que este par de casos viene a cerrar.
+    const manana = (() => {
+      const d = new Date(`${comun.hoy}T12:00:00`);
+      d.setDate(d.getDate() + 1);
+      return d.toISOString().slice(0, 10);
+    })();
+
     const e = estadoDeCuenta({
       saldoHoy: 1000,
-      eventos: [ev({ amount: 10, predictedDate: '2026-07-16' })],
+      eventos: [ev({ amount: 10, predictedDate: manana })],
       ...comun,
     });
     expect(e).toEqual({ tipo: 'al-dia' });

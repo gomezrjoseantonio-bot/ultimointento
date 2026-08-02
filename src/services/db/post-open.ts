@@ -466,14 +466,19 @@ export function runPostOpenMigrations(
       return db;
     })
 
-    // ── §4.9 · de qué piso es cada cuota de hipoteca ────────────────────────
+    // ── §4.9 · de qué piso es cada cuota de préstamo ────────────────────────
     //
     // El generador nunca copiaba `inmuebleId` al evento, así que la fila de una
     // cuota no podía decir de qué inmueble era por más que se le pasara el
     // resolvedor de alias: no había id que resolver. Ya lo copia, pero solo
     // para los eventos que escriba a partir de ahora — y esa escritura únicamente
     // ocurre al guardar el préstamo. Sin esto, el arreglo no se vería hasta
-    // volver a tocar cada hipoteca a mano.
+    // volver a tocar cada préstamo a mano.
+    //
+    // De PRÉSTAMO y no solo de hipoteca: rellena cualquier evento con
+    // `prestamoId` cuyo préstamo tenga destino con inmueble, porque uno
+    // personal puede financiar una reforma y esa cuota también quiere decir de
+    // qué piso es.
     //
     // Rellena, no corrige: si el evento ya trae inmueble se deja como está.
     .then(async (db) => {
@@ -518,11 +523,11 @@ export function runPostOpenMigrations(
         await tx.done;
 
         if (rellenados > 0) {
-          console.log(`[DB §4.9] inmueble rellenado en ${rellenados} cuota(s) de hipoteca`);
+          console.log(`[DB §4.9] inmueble rellenado en ${rellenados} cuota(s) de préstamo`);
         }
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
-        console.warn('[DB §4.9 backfill inmueble en cuotas] falló:', err);
+        console.warn('[DB §4.9 backfill inmueble en cuotas de préstamo] falló:', err);
       }
       return db;
     });
