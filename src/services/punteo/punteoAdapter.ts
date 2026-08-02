@@ -66,8 +66,9 @@ export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'type' | 'c
  * La lista es por `sourceType` y no un `split` a todo: los gastos recurrentes
  * también se generan con ese guion, pero ahí la segunda mitad es el INMUEBLE
  * —que tiene su propia marca en la fila— y subirlo al título lo diría dos
- * veces. Los contratos quedan fuera a propósito: su fila ya está aprobada y
- * agrupada por piso en §4.4.
+ * veces. Los contratos tampoco están aquí, pero por lo contrario: tienen su
+ * propia rama unas líneas más abajo, porque además del inquilino les toca la
+ * habitación.
  */
 const CONTRAPARTE_TRAS_EL_GUION = new Set([
   'prestamo',
@@ -91,10 +92,27 @@ const CONTRAPARTE_TRAS_EL_GUION = new Set([
 const SEPARADOR = ' – ';
 
 /** Parte `<qué es> – <quién>` en las dos piezas de la fila. */
-export function piezasDeFila(e: Pick<TreasuryEvent, 'proveedor' | 'description' | 'sourceType'>): {
+export function piezasDeFila(
+  e: Pick<TreasuryEvent, 'proveedor' | 'description' | 'sourceType' | 'unidadInmueble'>
+): {
   concepto: string;
   detalle?: string;
 } {
+  /**
+   * Una RENTA · arriba el inquilino, abajo su habitación.
+   *
+   * El "Renta – " de delante sobra: bajo la madre del piso —que ya dice
+   * "Alquiler · Tenderina 64 4D"— repetirlo en cada hija es escribir cuatro
+   * veces lo que encabeza el grupo. Lo que distingue una fila de otra es quién
+   * paga y qué unidad ocupa.
+   */
+  if (e.sourceType === 'contrato' || e.sourceType === 'contract') {
+    const desc = e.description ?? '';
+    const corte = desc.lastIndexOf(SEPARADOR);
+    const inquilino = corte > 0 ? desc.slice(corte + SEPARADOR.length).trim() : desc;
+    return { concepto: inquilino || desc, detalle: e.unidadInmueble };
+  }
+
   // §6.3 · manda QUIEN COBRA, que es lo que aparecerá en el extracto y con lo
   // que el lector compara teniendo el móvil del banco delante. La categoría de
   // ATLAS ("Seguro hogar") baja al subtítulo: es la traducción, no el hecho.
