@@ -311,9 +311,11 @@ const PunteoList: React.FC<PunteoListProps> = ({
   // Chip → buscador → eje. El buscador filtra sobre lo ya acotado por el chip,
   // que es lo que espera §4.4 ("los grupos se abren al buscar").
   const grupos = useMemo(
-    () => agruparPorEje(filtrarPorBusqueda(filtrarPorChip(items, chip), busqueda), eje),
-    [items, chip, busqueda, eje]
+    () => agruparPorEje(filtrarPorBusqueda(filtrarPorChip(items, chip), busqueda), eje, cuentas),
+    [items, chip, busqueda, eje, cuentas]
   );
+  /** Agrupando por cuenta, la cuenta está en la cabecera: en la fila sobra. */
+  const porCuenta = eje === 'cuenta';
   const buscando = busqueda.trim().length > 0;
   const cuentaLabel = useMemo(() => {
     const m = new Map(cuentas.map((c) => [c.id, c.label]));
@@ -376,7 +378,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
           <div className={styles.conceptoLinea}>
             {/* §9 · el punto del banco · en el día conviven varias cuentas y
                 hay que ver de cuál sale cada cargo de un vistazo. */}
-            {colorCuenta(it.cuentaId) && (
+            {!porCuenta && colorCuenta(it.cuentaId) && (
               <span
                 className={styles.puntoBanco}
                 style={{ background: colorCuenta(it.cuentaId) }}
@@ -386,7 +388,11 @@ const PunteoList: React.FC<PunteoListProps> = ({
             <span className={styles.concepto}>{it.concepto}</span>
             {conChipEstado && <EstadoChip estado={it.estado} />}
           </div>
-          {!esDrawer ? <Contexto item={it} /> : <Contexto item={it} extra={cuentaLabel(it.cuentaId)} />}
+          {esDrawer && !porCuenta ? (
+            <Contexto item={it} extra={cuentaLabel(it.cuentaId)} />
+          ) : (
+            <Contexto item={it} />
+          )}
         </div>
         {/* §6.3 · el chip de origen desaparece de "Por confirmar".
             Ahí todo viene del mismo sitio, así que salía "Recurrente" ocho
@@ -522,7 +528,19 @@ const PunteoList: React.FC<PunteoListProps> = ({
 
     const cabecera = (
       <div className={styles.dayRule}>
-        <span className={styles.dayName}>{eje === 'fecha' ? fmtDia(g.clave) : g.titulo}</span>
+        <span className={styles.dayName}>
+          {/* §4.9 · el punto de banco sube de la fila a la cabecera: con el
+              grupo entero bajo el nombre de su cuenta, repetirlo en cada línea
+              es decir siete veces lo mismo. */}
+          {porCuenta && g.cuentaId != null && colorCuenta(g.cuentaId) && (
+            <span
+              className={styles.puntoBanco}
+              style={{ background: colorCuenta(g.cuentaId) }}
+              aria-hidden="true"
+            />
+          )}
+          {eje === 'fecha' ? fmtDia(g.clave) : g.titulo}
+        </span>
         <span className={styles.daySums}>
           {/* §6.4 · el recuento va PEGADO al importe y se leía como parte de la
               cifra: "INMUEBLE 1 · 1 · −98,44" parece un importe raro, no "un
@@ -552,7 +570,11 @@ const PunteoList: React.FC<PunteoListProps> = ({
     // §9 · en el drawer del día la cabecera del grupo REPITE el día que ya
     // encabeza el panel: salía "sábado · 1 ago 2026" y debajo "SÁBADO, 1 DE
     // AGOSTO". Con un solo grupo no hay nada que separar, así que sobra.
-    if (esDrawer && grupos.length === 1) {
+    //
+    // Agrupando por cuenta NO se calla aunque el grupo sea único: ahí la
+    // cabecera no repite el día, dice de qué cuenta sale todo lo de abajo, que
+    // es justo el dato que la lista plana no daba.
+    if (esDrawer && eje === 'fecha' && grupos.length === 1) {
       return <React.Fragment key={g.clave}>{cuerpo}</React.Fragment>;
     }
 

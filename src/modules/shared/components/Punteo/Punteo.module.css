@@ -89,6 +89,12 @@
   padding: 12px 8px 5px;
 }
 .dayName {
+  /* Flex por el punto de banco que lleva delante agrupando por cuenta: es un
+     `<span>`, y suelto en un contenedor no-flex se queda en `display:inline`,
+     donde `width`/`height` no hacen nada y el punto sale de tamaño cero. */
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 10.5px;
   letter-spacing: 0.09em;
   text-transform: uppercase;

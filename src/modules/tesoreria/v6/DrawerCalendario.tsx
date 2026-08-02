@@ -101,7 +101,23 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
 
   const huecos = useMemo(() => huecosIniciales(year, month0), [year, month0]);
 
-  /** Los apuntes del día elegido, en el mismo formato que §4.4. */
+  /**
+   * Los apuntes del día elegido · lo que TODAVÍA NO ha movido dinero.
+   *
+   * El calendario mira hacia delante: contesta "¿qué me queda por pasar y
+   * cuándo?". Lo ya ocurrido vive en la cuenta (§4.4), que es donde se mira el
+   * histórico. Enseñándolo también aquí, cada día arrastraba para siempre todo
+   * lo que ya estaba hecho y no se vaciaba nunca al terminarlo: confirmabas los
+   * tres pendientes y el día seguía igual de lleno, sin señal de haber
+   * avanzado.
+   *
+   * El criterio es el del SALDO, el mismo que usa la rejilla: entra lo que el
+   * saldo de hoy no incorpora todavía. Eso incluye los movimientos con fecha
+   * POSTERIOR a hoy —un recibo ya cargado por el banco con fecha adelantada—,
+   * que no piden confirmar nada pero sí mueven dinero ese día: si son ellos los
+   * que dejan la cuenta corta, tiene que haber una fila que lo explique debajo
+   * del punto ámbar.
+   */
   const itemsDelDia = useMemo<ItemPunteo[]>(() => {
     if (!diaElegido) return [];
     const evs = eventos
@@ -109,11 +125,14 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
       .filter((e) => esPendiente(e))
       .filter((e) => (e.predictedDate ?? '').slice(0, 10) === diaElegido)
       .map((e) => eventoAItem(e, aliasInmueble));
-    const movs = movimientos
-      .filter((m): m is Movement & { id: number } => m.id != null)
-      .filter((m) => !m.isOpeningBalance)
-      .filter((m) => (m.date ?? '').slice(0, 10) === diaElegido)
-      .map((m) => movimientoAItem(m, aliasInmueble));
+    const movs =
+      diaElegido > hoy
+        ? movimientos
+            .filter((m): m is Movement & { id: number } => m.id != null)
+            .filter((m) => !m.isOpeningBalance)
+            .filter((m) => (m.date ?? '').slice(0, 10) === diaElegido)
+            .map((m) => movimientoAItem(m, aliasInmueble))
+        : [];
 
     const todos = [...evs, ...movs];
 
@@ -147,9 +166,23 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
     return todos;
   }, [diaElegido, eventos, movimientos, aliasInmueble, saldoPorCuenta, hoy]);
 
-  /** Solo lo que sigue previsto · confirmar el día no toca lo ya confirmado. */
+  /**
+   * Los que confirma el botón "Confirmar el día".
+   *
+   * Solo los `previsto`, y por partida doble.
+   *
+   * No todo lo que se pinta en el día pide una acción: un evento `confirmed`
+   * —una venta, la liquidación de un préstamo— ya está decidido y solo espera
+   * al banco, y un movimiento con fecha adelantada ya ha ocurrido. Confirmar
+   * "el día" no puede significar tocarlos.
+   *
+   * Filtra además por `kind` porque el botón dispara una acción irreversible
+   * sobre cuanto le pasen, y apoyarse en que quien construye la lista de arriba
+   * no cambie es el mismo descuido que resucitó 57 cuotas al renombrar un
+   * préstamo.
+   */
   const pendientesDelDia = useMemo(
-    () => itemsDelDia.filter((i) => i.kind === 'evento'),
+    () => itemsDelDia.filter((i) => i.kind === 'evento' && i.estado === 'previsto'),
     [itemsDelDia]
   );
 
@@ -297,13 +330,16 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   aria-selected={elegido}
                   aria-label={
                     `${d.numero} de ${nombreMes(month0)}` +
-                    (d.apuntes === 0 ? ' · sin movimientos' : ` · neto ${importeConSigno(d.neto)}`) +
+                    (d.apuntes === 0
+                      ? ' · nada pendiente'
+                      : ` · ${d.apuntes} pendiente${d.apuntes === 1 ? '' : 's'}` +
+                        ` · neto ${importeConSigno(d.neto)}`) +
                     (d.dejaCuentaCorta ? ' · deja una cuenta en negativo' : '')
                   }
                 >
                   <span className={styles.diaNum}>{d.numero}</span>
                   {d.apuntes > 0 && (
-                    <span className={styles.diaNeto}>{importeConSigno(d.neto)}</span>
+                    <span className={styles.diaNeto}>{importeConSigno(d.neto, false)}</span>
                   )}
                   {/* Ámbar · única nota de color de la rejilla (§5). */}
                   {d.dejaCuentaCorta && <span className={styles.avisoDot} aria-hidden="true" />}
@@ -322,14 +358,18 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   cuántos apuntes tiene el día. */}
               <div className={styles.detalleHd}>
                 <div className={styles.detalleT}>{diaSemanaYNumero(diaElegido)}</div>
+                {/* "Pendiente" y no "por confirmar": no todo lo que hay aquí
+                    pide una acción —un `confirmed` ya está decidido y espera al
+                    banco—, y prometer una tarea que el botón luego no hace es
+                    peor que no decir nada. Cuál pide qué lo dice el chip de
+                    estado de su fila. */}
                 <span className={styles.detalleN}>
-                  {itemsDelDia.length}{' '}
-                  {itemsDelDia.length === 1 ? 'movimiento' : 'movimientos'}
+                  {itemsDelDia.length} {itemsDelDia.length === 1 ? 'pendiente' : 'pendientes'}
                 </span>
               </div>
 
               {itemsDelDia.length === 0 ? (
-                <div className={styles.vacio}>Sin movimientos este día</div>
+                <div className={styles.vacio}>Nada pendiente este día</div>
               ) : (
                 <PunteoList
                   items={itemsDelDia}
@@ -338,7 +378,16 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   mostrarChips={false}
                   cuentas={cuentasParaLista}
                   variant="drawer"
-                  // §6.4 · en el día conviven los tres estados.
+                  // §4.9 · agrupado POR CUENTA, como al entrar por la cuenta:
+                  // bajo el nombre de cada una, lo suyo. En un día con seis
+                  // cargos de cuatro cuentas, la lista plana obligaba a leer de
+                  // cuál salía cada uno para hacerse la pregunta que importa,
+                  // que es qué le pasa a esta cuenta hoy.
+                  eje="cuenta"
+                  // §6.4 · el chip de estado se queda: aquí conviven el
+                  // previsto que hay que confirmar, el confirmado que solo
+                  // espera al banco y el movimiento adelantado que ya ocurrió.
+                  // Sin él, los tres se leen como la misma tarea pendiente.
                   conChipEstado
                   rowVariant="tesoreria"
                   onEditar={onEditar}

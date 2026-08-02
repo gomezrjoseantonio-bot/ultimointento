@@ -20,9 +20,9 @@ export interface DiaCalendario {
   fecha: string;
   /** Día del mes (1-31). */
   numero: number;
-  /** Neto REAL del día: confirmado + conciliado + lo previsto que queda. */
+  /** Lo que ese día TODAVÍA NO ha movido dinero · lo ya pasado no se pinta. */
   neto: number;
-  /** Cuántos apuntes hay · 0 = celda vacía, sin cifra. */
+  /** Cuántos apuntes pendientes hay · 0 = celda vacía, sin cifra. */
   apuntes: number;
   /** Alguna cuenta se queda en negativo al cerrar este día (§4.9 · ámbar). */
   dejaCuentaCorta: boolean;
@@ -74,19 +74,32 @@ export function construirDias(params: {
   const { desde, hasta } = rangoDelMes(year, month0);
   const total = diasDelMes(year, month0);
 
-  // Neto y conteo por día · realidad (movimientos) + lo previsto que sigue vivo.
+  // Lo que la CELDA cuenta: lo que TODAVÍA NO ha movido dinero (§4.9).
+  //
+  // El calendario mira hacia delante. Un movimiento ya ocurrido está dentro del
+  // saldo de hoy y su sitio es la cuenta (§4.4), que es donde se mira el
+  // histórico; contándolo también aquí, un día no se vaciaba nunca al
+  // terminarlo —confirmabas lo pendiente y la celda seguía con el mismo
+  // número— y la rejilla sumaba una cosa distinta de la que suman sus propios
+  // KPIs de cabecera.
+  //
+  // El criterio es UNO y es el del saldo: entra lo que el saldo de hoy no
+  // incorpora todavía. Eso son los previstos vivos (`esPendiente`) y los
+  // movimientos con fecha POSTERIOR a hoy —un recibo ya cargado por el banco
+  // con fecha adelantada—, y es exactamente el mismo conjunto que pinta la
+  // lista del día, para que la celda y la lista nunca digan cosas distintas.
   const netoPorDia = new Map<string, number>();
   const apuntesPorDia = new Map<string, number>();
   const pendientesPorDia = new Set<string>();
-  // Flujo por (cuenta, día) · solo de lo que ESTÁ POR VENIR, porque el saldo de
-  // hoy ya incorpora todo lo pasado.
+  // Flujo por (cuenta, día) para el punto ámbar · el mismo conjunto, partido
+  // por cuenta.
   const flujoFuturo = new Map<number, Map<string, number>>();
 
-  const anota = (fecha: string, importe: number, cuentaId: number | null, futuro: boolean) => {
+  const anota = (fecha: string, importe: number, cuentaId: number | null) => {
     if (fecha < desde || fecha > hasta) return;
     netoPorDia.set(fecha, (netoPorDia.get(fecha) ?? 0) + importe);
     apuntesPorDia.set(fecha, (apuntesPorDia.get(fecha) ?? 0) + 1);
-    if (!futuro || cuentaId == null) return;
+    if (cuentaId == null) return;
     let porFecha = flujoFuturo.get(cuentaId);
     if (!porFecha) {
       porFecha = new Map();
@@ -98,18 +111,22 @@ export function construirDias(params: {
   for (const m of movimientos) {
     if (m.isOpeningBalance) continue;
     const fecha = (m.date ?? '').slice(0, 10);
-    // Un movimiento ya ocurrido está dentro del saldo de hoy; uno con fecha
-    // futura (domiciliación ya cargada, apunte adelantado) todavía no.
-    anota(fecha, m.amount, m.accountId ?? null, fecha > hoy);
+    // Solo los de fecha futura: los de hoy y los de antes ya están en el saldo.
+    if (fecha <= hoy) continue;
+    anota(fecha, m.amount, m.accountId ?? null);
   }
 
   for (const e of eventos) {
     if (!esPendiente(e)) continue;
     const fecha = (e.predictedDate ?? '').slice(0, 10);
     // Un previsto NUNCA está en el saldo de hoy, ni siquiera si su fecha ya
-    // pasó: sigue sin confirmarse, así que sigue por venir.
-    anota(fecha, importeConSigno(e), e.accountId ?? null, true);
-    if (fecha >= desde && fecha <= hasta) pendientesPorDia.add(fecha);
+    // pasó: sigue sin ocurrir, así que sigue por venir.
+    anota(fecha, importeConSigno(e), e.accountId ?? null);
+    // Los que además piden ACCIÓN son solo los `predicted`: un `confirmed` ya
+    // está decidido (venta, liquidación de préstamo) y solo espera al banco.
+    if (fecha >= desde && fecha <= hasta && e.status === 'predicted') {
+      pendientesPorDia.add(fecha);
+    }
   }
 
   // Arrastre por cuenta para el punto ámbar.
