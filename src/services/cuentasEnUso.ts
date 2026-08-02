@@ -22,8 +22,23 @@
 
 import type { Account } from './db';
 
+/**
+ * Lo mínimo que hace falta para decidir, con `status` OPCIONAL.
+ *
+ * `Account` lo declara obligatorio, pero los registros que vienen de
+ * IndexedDB no siempre lo traen —hay cuentas anteriores al sistema de
+ * estados— y de hecho `treasuryApiService` ya se defiende de ese caso. Si el
+ * tipo lo exigiera, la rama de los campos heredados sería inalcanzable sobre
+ * el papel mientras sigue ocurriendo de verdad.
+ */
+export type CuentaFiltrable = {
+  status?: Account['status'];
+  activa?: boolean;
+  deleted_at?: string | null;
+};
+
 /** ¿Está esta cuenta fuera de juego —de baja o borrada—? */
-export function estaDeBaja(cuenta: Account): boolean {
+export function estaDeBaja(cuenta: CuentaFiltrable): boolean {
   if (cuenta.status === 'DELETED' || cuenta.status === 'INACTIVE') return true;
   if (cuenta.deleted_at) return true;
   // Campos heredados · `deactivate` los mantiene en sintonía con `status`, pero
@@ -32,7 +47,12 @@ export function estaDeBaja(cuenta: Account): boolean {
   return false;
 }
 
-/** Las que siguen en uso · las únicas que se pintan y suman. */
-export function cuentasEnUso(cuentas: Account[]): Account[] {
+/**
+ * Las que siguen en uso · las únicas que se pintan y suman.
+ *
+ * Genérica para que quien entre con `Account[]` salga con `Account[]`: filtrar
+ * no debería obligar a volver a afirmar el tipo en cada llamada.
+ */
+export function cuentasEnUso<T extends CuentaFiltrable>(cuentas: T[]): T[] {
   return cuentas.filter((c) => !estaDeBaja(c));
 }

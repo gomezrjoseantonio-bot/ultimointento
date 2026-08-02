@@ -35,9 +35,16 @@ describe('estaDeBaja', () => {
     expect(estaDeBaja(cuenta({ deleted_at: '2026-08-01' }))).toBe(true);
   });
 
-  // Cuentas antiguas que solo tienen el campo heredado, sin `status`.
+  // Cuentas anteriores al sistema de estados: solo traen el campo heredado.
+  // El tipo de entrada admite `status` ausente justamente para esto — si lo
+  // exigiera, esta rama sería inalcanzable sobre el papel mientras sigue
+  // ocurriendo en los datos.
   it('la que solo trae `activa: false`, también', () => {
-    expect(estaDeBaja({ ...cuenta(), status: undefined, activa: false })).toBe(true);
+    expect(estaDeBaja({ activa: false })).toBe(true);
+  });
+
+  it('la que no trae nada se considera en uso · no se inventa una baja', () => {
+    expect(estaDeBaja({})).toBe(false);
   });
 });
 
