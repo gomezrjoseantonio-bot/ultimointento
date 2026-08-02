@@ -45,6 +45,7 @@ import {
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { colorDeBanco } from './bancoColores';
+import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { importeConSigno, fechaLarga } from './formatoV6';
 import chasis from './DrawerV6.module.css';
 import styles from './DrawerExtracto.module.css';
@@ -431,8 +432,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                     }}
                   >
                     <option value="">Elige una cuenta…</option>
-                    {cuentas
-                      .filter((c) => c.status !== 'DELETED')
+                    {cuentasEnUso(cuentas)
                       .map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.alias} · ****{c.ultimosCuatro}

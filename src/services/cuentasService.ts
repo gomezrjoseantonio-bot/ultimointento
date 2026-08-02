@@ -174,6 +174,12 @@ class CuentasService {
         deudaActual: account.deudaActual,
         diaCierre: account.diaCierre,
         diaPago: account.diaPago,
+        // §4.8 · el color del punto lo elige el USUARIO y lo lee Tesorería de
+        // IndexedDB (`db.getAll('accounts')`). Faltaba en esta lista, así que
+        // el wizard lo guardaba en localStorage, el aviso decía "Cuenta
+        // actualizada" —cierto— y el punto seguía del color de siempre porque
+        // la pantalla lee de otro sitio.
+        colorPunto: account.colorPunto,
         createdAt: account.createdAt,
         updatedAt: account.updatedAt
       };
