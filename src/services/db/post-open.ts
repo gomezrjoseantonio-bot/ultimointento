@@ -463,6 +463,64 @@ export function runPostOpenMigrations(
         console.warn('[DB §6.3 backfill proveedor] falló:', err);
       }
       return db;
+    })
+
+    // ── §4.9 · de qué piso es cada cuota de hipoteca ────────────────────────
+    //
+    // El generador nunca copiaba `inmuebleId` al evento, así que la fila de una
+    // cuota no podía decir de qué inmueble era por más que se le pasara el
+    // resolvedor de alias: no había id que resolver. Ya lo copia, pero solo
+    // para los eventos que escriba a partir de ahora — y esa escritura únicamente
+    // ocurre al guardar el préstamo. Sin esto, el arreglo no se vería hasta
+    // volver a tocar cada hipoteca a mano.
+    //
+    // Rellena, no corrige: si el evento ya trae inmueble se deja como está.
+    .then(async (db) => {
+      try {
+        const FLAG = 'migration_inmueble_en_cuotas_hipoteca_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+
+        const prestamos = (await db.getAll('prestamos')) as Array<{
+          id?: string;
+          inmuebleId?: string | number;
+        }>;
+        // `'standalone'` es el centinela heredado de "sin inmueble"; un
+        // `Number('standalone')` sería NaN y dejaría el evento peor que antes.
+        const inmueblePorPrestamo = new Map<string, number>();
+        for (const p of prestamos) {
+          if (!p.id || p.inmuebleId == null || p.inmuebleId === 'standalone') continue;
+          const n = Number(p.inmuebleId);
+          if (Number.isFinite(n)) inmueblePorPrestamo.set(String(p.id), n);
+        }
+        if (inmueblePorPrestamo.size === 0) {
+          await db.put('keyval', 'completed', FLAG);
+          return db;
+        }
+
+        const tx = db.transaction(['treasuryEvents'], 'readwrite');
+        const store = tx.objectStore('treasuryEvents');
+        let cursor = await store.openCursor();
+        let rellenados = 0;
+
+        while (cursor) {
+          const e = cursor.value;
+          const inmueble = e.prestamoId ? inmueblePorPrestamo.get(String(e.prestamoId)) : undefined;
+          if (inmueble != null && e.inmuebleId == null) {
+            await cursor.update({ ...e, inmuebleId: inmueble });
+            rellenados++;
+          }
+          cursor = await cursor.continue();
+        }
+        await tx.done;
+
+        if (rellenados > 0) {
+          console.log(`[DB §4.9] inmueble rellenado en ${rellenados} cuota(s) de hipoteca`);
+        }
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB §4.9 backfill inmueble en cuotas] falló:', err);
+      }
+      return db;
     });
   return dbPromise;
 }
