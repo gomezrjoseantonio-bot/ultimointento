@@ -126,8 +126,12 @@ describe('solo lo que todavía no ha movido dinero', () => {
 
   it('un evento ya confirmado se pinta, pero no se lee como tarea', () => {
     // `confirmed` es una venta o una liquidación: está decidido y solo espera
-    // al banco. Mueve dinero, así que tiene que verse; pero el chip de estado
-    // lo separa del previsto, que es el que sí hay que confirmar.
+    // al banco. Mueve dinero, así que tiene que verse; y el chip lo separa del
+    // previsto, que es el que sí hay que confirmar.
+    //
+    // El previsto NO lleva chip: en una pantalla que existe para enseñar
+    // previsiones, escribir "previsto" en cada fila no dice nada nuevo. Solo
+    // se marca el que se sale de la norma.
     render(
       <DrawerCalendario
         {...base}
@@ -140,7 +144,59 @@ describe('solo lo que todavía no ha movido dinero', () => {
     abrirDia20();
     expect(screen.getByText('Venta piso')).toBeInTheDocument();
     expect(screen.getByText('confirmado')).toBeInTheDocument();
-    expect(screen.getByText('previsto')).toBeInTheDocument();
+    expect(screen.queryByText('previsto')).not.toBeInTheDocument();
+  });
+});
+
+describe('la fila dice de quién es el cargo y de qué piso', () => {
+  // Un recibo trae `proveedor` y la fila sale sola. Un préstamo o una nómina no
+  // lo traen, y su fila se quedaba con las dos mitades pegadas en el título y
+  // el subtítulo vacío — la misma información que el recibo de al lado, con
+  // otra estructura.
+  it('la cuota de un préstamo pone el préstamo arriba y "Cuota" debajo', () => {
+    render(
+      <DrawerCalendario
+        {...base}
+        eventos={[
+          ev({
+            id: 1,
+            sourceType: 'prestamo',
+            description: 'Cuota Hipoteca – Hipoteca Unicaja T64 4D+4I',
+          }),
+        ]}
+      />
+    );
+    abrirDia20();
+    expect(screen.getByText('Hipoteca Unicaja T64 4D+4I')).toBeInTheDocument();
+    expect(screen.getByText('Cuota Hipoteca')).toBeInTheDocument();
+  });
+
+  it('la nómina, igual · la empresa arriba', () => {
+    render(
+      <DrawerCalendario
+        {...base}
+        eventos={[
+          ev({ id: 1, sourceType: 'nomina', type: 'income', description: 'Nómina – ORANGE ESPAGNE SA' }),
+        ]}
+      />
+    );
+    abrirDia20();
+    expect(screen.getByText('ORANGE ESPAGNE SA')).toBeInTheDocument();
+    expect(screen.getByText('Nómina')).toBeInTheDocument();
+  });
+
+  // El puente que faltaba: los dos drawers declaraban `aliasInmueble` y nadie
+  // se la pasaba, así que ninguna fila de la V6 decía de qué piso era.
+  it('resuelve el inmueble del cargo', () => {
+    render(
+      <DrawerCalendario
+        {...base}
+        aliasInmueble={(id) => (String(id) === '7' ? 'Tenderina 64' : undefined)}
+        eventos={[ev({ id: 1, inmuebleId: 7, sourceType: 'prestamo', description: 'Cuota – Hipoteca T64' })]}
+      />
+    );
+    abrirDia20();
+    expect(screen.getByText('Tenderina 64')).toBeInTheDocument();
   });
 });
 

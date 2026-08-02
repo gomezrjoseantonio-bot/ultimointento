@@ -114,7 +114,7 @@ export interface PunteoListProps {
    * conviven previsto, confirmado y conciliado. En "Por confirmar" no, porque
    * allí todo es previsto. Default `false` = lo de siempre.
    */
-  conChipEstado?: boolean;
+  conChipEstado?: boolean | 'solo-si-difiere';
 
   /** 1 · Eje de agrupación. Default `fecha` = lo de siempre. */
   eje?: EjeAgrupacion;
@@ -386,7 +386,15 @@ const PunteoList: React.FC<PunteoListProps> = ({
               />
             )}
             <span className={styles.concepto}>{it.concepto}</span>
-            {conChipEstado && <EstadoChip estado={it.estado} />}
+            {/* `solo-si-difiere` · el chip solo cuando NO es previsto.
+                En una pantalla que existe justamente para enseñar previsiones,
+                escribir "previsto" en cada fila no dice nada nuevo: solo
+                distingue el que se sale de la norma —lo ya confirmado, lo ya
+                real—, que es cuando la palabra informa. */}
+            {(conChipEstado === true ||
+              (conChipEstado === 'solo-si-difiere' && it.estado !== 'previsto')) && (
+              <EstadoChip estado={it.estado} />
+            )}
           </div>
           {esDrawer && !porCuenta ? (
             <Contexto item={it} extra={cuentaLabel(it.cuentaId)} />

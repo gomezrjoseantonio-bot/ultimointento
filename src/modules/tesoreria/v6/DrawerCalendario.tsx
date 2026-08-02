@@ -384,11 +384,13 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   // cuál salía cada uno para hacerse la pregunta que importa,
                   // que es qué le pasa a esta cuenta hoy.
                   eje="cuenta"
-                  // §6.4 · el chip de estado se queda: aquí conviven el
-                  // previsto que hay que confirmar, el confirmado que solo
-                  // espera al banco y el movimiento adelantado que ya ocurrió.
-                  // Sin él, los tres se leen como la misma tarea pendiente.
-                  conChipEstado
+                  // El chip, SOLO cuando no es previsto. El calendario enseña
+                  // lo que está por pasar: escribir "previsto" en cada fila es
+                  // repetir lo que ya dice la pantalla entera. Lo que sí hay
+                  // que distinguir es el confirmado que solo espera al banco y
+                  // el movimiento adelantado que ya ocurrió, y esos siguen
+                  // llevando su chip.
+                  conChipEstado="solo-si-difiere"
                   rowVariant="tesoreria"
                   onEditar={onEditar}
                   onConfirmar={onConfirmar}
