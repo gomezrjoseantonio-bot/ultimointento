@@ -156,8 +156,8 @@ describe('solo lo que todavía no ha movido dinero', () => {
     );
     abrirDia20();
     expect(screen.getByText('Venta piso')).toBeInTheDocument();
-    expect(screen.getByText('confirmado')).toBeInTheDocument();
-    expect(screen.queryByText('previsto')).not.toBeInTheDocument();
+    expect(screen.getByText('Confirmado')).toBeInTheDocument();
+    expect(screen.queryByText('Por confirmar')).not.toBeInTheDocument();
   });
 });
 

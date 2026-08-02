@@ -74,9 +74,14 @@
   margin-bottom: 10px;
   overflow: hidden;
 }
+/* La cabecera va en BLANCO, como el resto de la tarjeta.
+   Iba en crema, y con ocho grupos la pantalla se llenaba de bandas de color
+   para separar lo que ya separan el borde de la tarjeta y la raya de debajo.
+   El color en ATLAS está reservado a lo que pide atención (§2.1), y una
+   cabecera de grupo no pide nada. */
 .diaCard .dayRule {
   padding: 8px 12px;
-  background: var(--atlas-v5-bg-soft, var(--atlas-v5-gold-wash-2));
+  background: var(--atlas-v5-card);
   border-bottom: 1px solid var(--atlas-v5-line-3);
 }
 /* Dentro de la tarjeta la última fila no necesita raya: la cierra el borde. */
@@ -330,6 +335,32 @@
 .tickConfirmado { background: var(--atlas-v5-brand); border-color: var(--atlas-v5-brand); }
 .tickConciliado { background: var(--atlas-v5-pos); border-color: var(--atlas-v5-pos); cursor: default; }
 
+/* ── Leyenda de estados ──────────────────────────────────────────────────────
+   Una vez para toda la lista, en lugar de escribir el estado en cada fila. */
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 0 4px 10px;
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+}
+.leyendaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* El mismo círculo, más pequeño: si la leyenda pintara otra cosa no explicaría
+   la lista, explicaría la leyenda. */
+.tickMini {
+  width: 13px;
+  height: 13px;
+  border-width: 1.4px;
+  cursor: default;
+  flex: 0 0 auto;
+}
+
 /* ── Madre / hijas ── */
 .prog {
   font: 600 10px var(--atlas-v5-font-mono-num);
@@ -362,11 +393,15 @@
    cuatro filas iguales debajo no se leía que hubiera un grupo. Lleva filo
    dorado a la izquierda —el oro es la nota de "esto es el resumen"— y su título
    en la tinta fuerte. */
+/* En BLANCO también · lo que marca la madre es el filo dorado de la izquierda
+   y su caret, no un fondo de color. Con dos o tres pisos en la lista, el relleno
+   ámbar competía con el único ámbar que sí significa algo: la cuenta que se
+   queda corta. */
 .rowMadre {
-  background: var(--atlas-v5-gold-wash-2);
+  background: var(--atlas-v5-card);
   box-shadow: inset 3px 0 0 var(--atlas-v5-gold);
 }
-.rowMadre:hover { background: var(--atlas-v5-gold-wash); }
+.rowMadre:hover { background: var(--atlas-v5-gold-wash-2); }
 /* El título NO va en negrita: que esto es una madre ya lo dice la banda dorada,
    y repetirlo con el grosor de la letra es decirlo dos veces. Se queda en la
    tinta fuerte, que es suficiente para encabezar. */
@@ -545,13 +580,8 @@
   cursor: pointer;
   font: inherit;
 }
-.grupoCount {
-  font-size: 10px;
-  color: var(--atlas-v5-ink-4);
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  margin-right: 10px;
-}
+/* El recuento de la cabecera de grupo se retiró: abierto son filas que se ven,
+   y cerrado lo que se busca es el subtotal, no cuántas líneas lo componen. */
 
 /* Editar y descartar en la fila.
    

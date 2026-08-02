@@ -147,7 +147,8 @@
    lo es: es la mitad del título, la que dice hasta dónde llega esto. */
 .secK .rng {
   margin-left: 8px;
-  font-family: var(--atlas-v5-font-mono-num);
+  /* La MISMA letra del título · en mono se leía como un dato pegado a un
+     rótulo, y no lo es: es la segunda mitad de la frase. */
   font-size: 10.5px;
   font-weight: 700;
   color: var(--atlas-v5-ink-3);

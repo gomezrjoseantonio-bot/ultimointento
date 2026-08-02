@@ -25,13 +25,20 @@ export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'type' | 'c
       return 'Ingreso';
     case 'contrato':
     case 'contract':
-      return 'Contrato';
+      // "Alquiler" y no "Contrato": el contrato es el papel, el alquiler es lo
+      // que entra en la cuenta. Y es la palabra que ya usa la propia fila
+      // ("Alquiler · el piso"), así que la cabecera del grupo no estrena
+      // vocabulario para decir lo mismo.
+      return 'Alquiler';
     case 'gasto_recurrente':
     case 'personal_expense':
     case 'opex_rule':
+      // "Recibo" y no "Recurrente": lo que llega al banco es un recibo
+      // domiciliado. "Recurrente" describe cómo lo genera ATLAS por dentro, y
+      // eso no es asunto de quien lee la lista.
       return e.categoryKey?.startsWith('suministros') || e.categoryKey === 'vivienda.suministros'
         ? 'Suministro'
-        : 'Recurrente';
+        : 'Recibo';
     case 'autonomo':
     case 'autonomo_ingreso':
     case 'autonomo_gasto':
@@ -240,24 +247,66 @@ export function previsionDeMovimiento(m: Pick<Movement, 'reference'>): number | 
   return ref ? Number(ref[1]) : undefined;
 }
 
+/**
+ * ¿Este movimiento es una renta?
+ *
+ * Al confirmar, el movimiento se queda con la descripción del evento pero NO
+ * con su `sourceType`, así que hay que reconocerlo por lo que sí conserva. Los
+ * dos generadores de rentas dejan huella distinta —uno pone `categoryKey`
+ * 'alquiler', el otro solo la descripción "Renta – inquilino"—, y se miran las
+ * tres para no depender de cuál lo creó.
+ */
+function pareceRenta(m: Pick<Movement, 'categoryKey' | 'category' | 'description'>): boolean {
+  if (m.categoryKey === 'alquiler') return true;
+  if (m.category?.tipo === 'Alquiler') return true;
+  return /^renta\b/i.test((m.description ?? '').trim());
+}
+
+/**
+ * Las piezas de la fila de un MOVIMIENTO · las mismas reglas que las de una
+ * previsión, porque es el mismo cargo un día después.
+ *
+ * Sin esto, un alquiler punteado volvía a salir como "Renta – ALISSER REAL
+ * ESTATE" de un tirón mientras el previsto de al lado decía "Alquiler · el
+ * piso" con el inquilino debajo: el mismo dato con dos formas según si ya
+ * había pasado o no.
+ *
+ * La descripción generada por ATLAS es `<qué es> – <quién>` para todo lo que no
+ * trae proveedor, así que se reutiliza `piezasDeFila` prestándole el
+ * `sourceType` que corresponde: el de contrato para las rentas y uno cualquiera
+ * de los que parten por el guion para el resto.
+ */
+function piezasDeMovimiento(
+  m: Pick<Movement, 'categoryKey' | 'category' | 'description' | 'providerName'>,
+  alias?: string
+): { concepto: string; detalle?: string } {
+  const { concepto, detalle } = piezasDeFila(
+    {
+      sourceType: pareceRenta(m) ? 'contrato' : 'prestamo',
+      description: m.description,
+      proveedor: m.providerName,
+    },
+    alias
+  );
+  return { concepto, detalle };
+}
+
 export function movimientoAItem(
   m: Movement & { id: number },
   aliasInmueble?: (id: number | string) => string | undefined,
 ): ItemPunteo {
+  const alias = m.inmuebleId != null && m.inmuebleId !== '' ? aliasInmueble?.(m.inmuebleId) : undefined;
   const activo =
-    m.inmuebleId != null && m.inmuebleId !== ''
-      ? {
-          inmuebleId: m.inmuebleId,
-          alias: aliasInmueble?.(m.inmuebleId),
-        }
-      : null;
+    m.inmuebleId != null && m.inmuebleId !== '' ? { inmuebleId: m.inmuebleId, alias } : null;
+  const { concepto, detalle } = piezasDeMovimiento(m, alias);
   return {
     key: `mov-${m.id}`,
     kind: 'movimiento',
     refId: m.id,
     estado: estadoDeMovimiento(m),
     fecha: (m.date ?? '').slice(0, 10),
-    concepto: m.description,
+    concepto,
+    detalle,
     activo,
     origen: m.type === 'Ingreso' ? 'Ingreso' : m.type === 'Transferencia' ? 'Transferencia' : 'Gasto',
     cuentaId: m.accountId ?? null,

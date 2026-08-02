@@ -168,12 +168,12 @@ describe('4 · grupos plegables', () => {
     expect(screen.getByText('Renta Tenderina')).toBeInTheDocument();
   });
 
-  it('lleva recuento y subtotal en la cabecera', () => {
+  it('lleva el subtotal en la cabecera', () => {
     render(<PunteoList {...base} gruposPlegables eje="inmueble" />);
     const cab = screen.getByRole('button', { name: /Tenderina 64/ });
-    // §6.4 · el recuento dice de qué es: pegado al importe se leía como parte
-    // de la cifra ("· 1 · −98,44").
-    expect(within(cab).getByText('1 movimiento')).toBeInTheDocument();
+    // SIN recuento · abierto son filas que se ven, y cerrado lo que se busca es
+    // el subtotal, no cuántas líneas lo componen.
+    expect(within(cab).queryByText(/movimientos?$/)).not.toBeInTheDocument();
     // §2.2 · el subtotal usa el formateador único: con € y sin decimales que no
     // aportan. Antes salía "+650,00", distinto del "+650 €" del resto.
     expect(within(cab).getByText('+650 €')).toBeInTheDocument();
@@ -238,7 +238,7 @@ describe('el chip de estado', () => {
     expect(screen.queryByText('previsto')).not.toBeInTheDocument();
   });
 
-  it('se pinta cuando se pide · en Movimientos conviven los tres', () => {
+  it('se pinta cuando se pide · con el nombre que usa la pantalla', () => {
     render(
       <PunteoList
         {...base}
@@ -250,9 +250,9 @@ describe('el chip de estado', () => {
         ]}
       />
     );
-    expect(screen.getByText('previsto')).toBeInTheDocument();
-    expect(screen.getByText('confirmado')).toBeInTheDocument();
-    expect(screen.getByText('conciliado')).toBeInTheDocument();
+    expect(screen.getByText('Por confirmar')).toBeInTheDocument();
+    expect(screen.getByText('Confirmado')).toBeInTheDocument();
+    expect(screen.getByText('Conciliado')).toBeInTheDocument();
   });
 
   it('lo conciliado NO es pulsable · lo afirma el banco, no el usuario', () => {

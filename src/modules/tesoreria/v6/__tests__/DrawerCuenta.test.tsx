@@ -282,7 +282,7 @@ describe('pestaña Confirmados', () => {
 
     expect(screen.getByText('Alta a mano')).toBeInTheDocument();
     expect(screen.queryByLabelText('Despuntear Alta a mano')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Alta a mano · confirmado').tagName).toBe('SPAN');
+    expect(screen.getByLabelText('Alta a mano · Confirmado').tagName).toBe('SPAN');
   });
 
   // Lo conciliado lo afirma el BANCO · no se deshace desde aquí, así que ni
@@ -338,16 +338,17 @@ describe('pestaña Movimientos', () => {
     expect(screen.getByRole('tab', { name: 'Ámbito' })).toBeInTheDocument();
   });
 
-  it('los grupos nacen plegados con recuento y subtotal', () => {
+  it('los grupos nacen plegados, con su subtotal', () => {
     render(<DrawerCuenta {...base} eventos={[ev({ id: 1 })]} />);
     abrirTodo();
 
     // Plegado: la fila no está, pero su cabecera sí.
     expect(screen.queryByText('Recibo luz')).not.toBeInTheDocument();
+    // Sin recuento: abierto son filas que se ven, y cerrado lo que se busca es
+    // el subtotal, no cuántas líneas lo componen.
     const cab = screen.getAllByRole('button', { expanded: false })[0];
-    // §6.4 · el recuento dice de qué es: pegado al importe se leía como parte
-    // de la cifra ("· 1 · −98,44").
-    expect(within(cab).getByText('1 movimiento')).toBeInTheDocument();
+    expect(within(cab).queryByText(/movimientos?$/)).not.toBeInTheDocument();
+    expect(within(cab).getByText('−100 €')).toBeInTheDocument();
   });
 
   // La consulta se MIRA. Confirmar desde aquí obliga a decidir sobre un cargo
@@ -367,15 +368,16 @@ describe('pestaña Movimientos', () => {
     expect(screen.queryByRole('button', { name: /^Descartar/ })).not.toBeInTheDocument();
   });
 
-  // El chip solo dice algo donde conviven los tres estados. En la bandeja todo
-  // es previsto, así que escribirlo en cada fila repite el nombre de la pestaña.
-  it('el chip de estado vive AQUÍ y solo aquí', () => {
+  // El estado ya no se escribe fila a fila: lo explica la LEYENDA una vez para
+  // toda la lista, y el color del círculo lo repite sin gastar una palabra.
+  it('la leyenda vive AQUÍ y solo aquí', () => {
     render(<DrawerCuenta {...base} eventos={[ev({ id: 1 })]} />);
-    expect(screen.queryByText('previsto')).not.toBeInTheDocument();
+    expect(screen.queryByText('Conciliado')).not.toBeInTheDocument();
 
     abrirTodo();
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'a' } });
-    expect(screen.getByText('previsto')).toBeInTheDocument();
+    expect(screen.getByText('Por confirmar', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.getByText('Confirmado')).toBeInTheDocument();
+    expect(screen.getByText('Conciliado')).toBeInTheDocument();
   });
 
   // El origen ya lo dice el agrupamiento —por Tipo es literalmente la cabecera

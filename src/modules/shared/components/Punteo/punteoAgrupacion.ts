@@ -32,7 +32,7 @@ export type EjeAgrupacion = 'fecha' | 'inmueble' | 'que-es' | 'cuenta';
  *   —los cargos que no son de ningún piso— y llamar "Inmueble" a una lista que
  *   incluye Personal prometía una cosa y daba otra.
  * · `que-es` se rotula **Tipo**: agrupa por Contrato · Financiación · Ingreso ·
- *   Recurrente, que son tipos de cargo. "Qué es" era una pregunta donde las
+ *   Recibo, que son tipos de cargo. "Qué es" era una pregunta donde las
  *   otras dos pestañas son sustantivos.
  */
 export const EJE_LABEL: Record<EjeAgrupacion, string> = {

@@ -5,9 +5,9 @@
 // el móvil del banco en la mano hay que poder decir cuál es cuál sin abrir
 // nada. Antes ponía "Seguro hogar / Inmueble 2" en las dos.
 
-import { eventoAItem } from '../punteoAdapter';
+import { eventoAItem, movimientoAItem, origenDeEvento } from '../punteoAdapter';
 import { agruparHijas } from '../punteoModel';
-import type { TreasuryEvent } from '../../db';
+import type { Movement, TreasuryEvent } from '../../db';
 
 const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent & { id: number } =>
   ({
@@ -166,5 +166,79 @@ describe('la renta de una habitación, suelta y bajo su piso', () => {
     expect(completa.concepto).toBe('Alquiler · Carles Buigas 15');
     expect(completa.detalle).toBe('CONCEPCION RAMIREZ');
     expect(completa.bajoMadre).toBeUndefined();
+  });
+});
+
+
+// Al confirmar, el movimiento se queda con la descripción del evento pero NO
+// con su `sourceType`, así que salía "Renta – ALISSER REAL ESTATE" de un tirón
+// mientras el previsto de al lado decía "Alquiler · el piso": el mismo cargo
+// con dos formas según si ya había pasado o no.
+describe('el movimiento se lee igual que la previsión de la que nació', () => {
+  const mov = (over: Partial<Movement> & { id: number }): Movement & { id: number } =>
+    ({
+      accountId: 1,
+      date: '2026-08-01',
+      amount: 1350,
+      description: 'Compra',
+      status: 'pendiente',
+      unifiedStatus: 'conciliado',
+      source: 'manual',
+      category: { tipo: 'Ingresos' },
+      type: 'Ingreso',
+      origin: 'Manual',
+      movementState: 'Confirmado',
+      ambito: 'INMUEBLE',
+      statusConciliacion: 'sin_match',
+      createdAt: '',
+      updatedAt: '',
+      ...over,
+    }) as Movement & { id: number };
+
+  it('un alquiler cobrado dice qué es y de qué piso', () => {
+    const it = movimientoAItem(
+      mov({ id: 1, description: 'Renta – ALISSER REAL ESTATE', inmuebleId: '5' }),
+      () => 'Tenderina 64 4DR'
+    );
+    expect(it.concepto).toBe('Alquiler · Tenderina 64 4DR');
+    expect(it.detalle).toBe('ALISSER REAL ESTATE');
+  });
+
+  // La misma regla del guion que en las previsiones: la contraparte al título y
+  // lo que es, debajo.
+  it('una cuota parte por el guion, igual que su previsión', () => {
+    const it = movimientoAItem(mov({ id: 2, description: 'Cuota Hipoteca – Hipoteca Unicaja T64' }));
+    expect(it.concepto).toBe('Hipoteca Unicaja T64');
+    expect(it.detalle).toBe('Cuota Hipoteca');
+  });
+
+  it('lo que no sigue el patrón se queda como está', () => {
+    const it = movimientoAItem(mov({ id: 3, description: 'Compra supermercado' }));
+    expect(it.concepto).toBe('Compra supermercado');
+  });
+
+  // El movimiento no guarda `previsionId` en ningún campo propio: es la huella
+  // `treasury_event:{id}` del `reference`, que es la misma por la que se
+  // deshace el punteo.
+  it('reconoce de qué previsión nació · y cuándo no nació de ninguna', () => {
+    expect(movimientoAItem(mov({ id: 4, reference: 'treasury_event:77' })).previsionId).toBe(77);
+    expect(movimientoAItem(mov({ id: 5 })).previsionId).toBeUndefined();
+    expect(movimientoAItem(mov({ id: 6, reference: 'otra-cosa' })).previsionId).toBeUndefined();
+  });
+});
+
+// El eje "Tipo" pinta estas etiquetas como cabecera de grupo, así que son
+// vocabulario de pantalla: tienen que ser palabras que el producto use.
+describe('las etiquetas de tipo hablan el idioma de la aplicación', () => {
+  it('un contrato es un ALQUILER · es lo que dice su propia fila', () => {
+    expect(origenDeEvento({ sourceType: 'contrato', type: 'income' })).toBe('Alquiler');
+  });
+
+  it('un gasto recurrente es un RECIBO · "recurrente" es cómo lo genera ATLAS', () => {
+    expect(origenDeEvento({ sourceType: 'gasto_recurrente', type: 'expense' })).toBe('Recibo');
+    // Salvo que sea de suministros, que tiene nombre propio.
+    expect(
+      origenDeEvento({ sourceType: 'gasto_recurrente', type: 'expense', categoryKey: 'suministros.luz' })
+    ).toBe('Suministro');
   });
 });

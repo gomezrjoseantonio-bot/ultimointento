@@ -16,17 +16,16 @@
 import React from 'react';
 import { Icons } from '../../../../design-system/v5';
 import styles from './Punteo.module.css';
-import { esReal, type ItemPunteo } from '../../../../services/punteo/punteoModel';
+import { esReal, ESTADO_LABEL, type ItemPunteo } from '../../../../services/punteo/punteoModel';
 
 /**
- * §6.4 · el estado se dice con el CHIP, no con el color del círculo.
+ * El estado, dicho fila a fila.
  *
- * En "Movimientos" y en el día conviven los tres estados, y hasta ahora la
- * única pista era el color del círculo — que además iba en ámbar, gastando en
- * "esto aún no ha pasado" el color reservado a los avisos.
- *
- * En "Por confirmar" NO se pinta: allí todo es `previsto`, y repetir la misma
- * palabra 250 veces es ruido.
+ * Casi nunca hace falta: en "Movimientos" lo dice la LEYENDA una vez para toda
+ * la lista y el color del círculo lo repite en cada fila sin gastar una
+ * palabra; en las otras pestañas todo tiene el mismo estado y escribirlo 250
+ * veces es repetir el nombre de la pestaña. Queda para el caso raro —el día,
+ * donde solo se marca lo que se sale de la norma—.
  */
 export const EstadoChip: React.FC<{ estado: ItemPunteo['estado'] }> = ({ estado }) => {
   const cls =
@@ -35,7 +34,7 @@ export const EstadoChip: React.FC<{ estado: ItemPunteo['estado'] }> = ({ estado 
       : estado === 'confirmado'
         ? styles.chEConfirmado
         : styles.chEConciliado;
-  return <span className={`${styles.chipEstado} ${cls}`}>{estado}</span>;
+  return <span className={`${styles.chipEstado} ${cls}`}>{ESTADO_LABEL[estado]}</span>;
 };
 
 export const PunteoCheck: React.FC<{
@@ -64,18 +63,14 @@ export const PunteoCheck: React.FC<{
         ? onDespuntear
         : undefined;
 
-  const label =
-    estado === 'conciliado'
-      ? `${concepto} · conciliado con el banco`
-      : estado === 'confirmado'
-        ? accion
-          ? `Despuntear ${concepto}`
-          : `${concepto} · confirmado`
-        : // Sin acción detrás no se anuncia una: "Puntear" en una lista que no
-          // puntea es prometerle al lector de pantalla algo que no existe.
-          accion
-          ? `Puntear ${concepto}`
-          : `${concepto} · previsto`;
+  // Sin acción detrás NO se anuncia una: "Puntear" en una lista que no puntea
+  // es prometerle al lector de pantalla algo que no existe. Y el estado se dice
+  // con el mismo rótulo que ve todo el mundo (`ESTADO_LABEL`): escribirlo
+  // aparte deja el lector de pantalla oyendo una palabra distinta de la que
+  // pone en la leyenda en cuanto una de las dos cambie.
+  const label = accion
+    ? `${estado === 'confirmado' ? 'Despuntear' : 'Puntear'} ${concepto}`
+    : `${concepto} · ${ESTADO_LABEL[estado]}${estado === 'conciliado' ? ' con el banco' : ''}`;
 
   const marca = esReal(estado) ? <Icons.Check size={11} strokeWidth={3} /> : null;
 
@@ -116,9 +111,9 @@ export const IconoOrigen: React.FC<{ origen: string }> = ({ origen }) => {
       return <Icons.Ingreso size={size} strokeWidth={sw} />;
     case 'Suministro':
       return <Icons.Suministro size={size} strokeWidth={sw} />;
-    case 'Recurrente':
+    case 'Recibo':
       return <Icons.Refresh size={size} strokeWidth={sw} />;
-    case 'Contrato':
+    case 'Alquiler':
       return <Icons.Contratos size={size} strokeWidth={sw} />;
     default:
       return null;
@@ -177,3 +172,34 @@ export const Contexto: React.FC<{ item: ItemPunteo; extra?: string; sinActivo?: 
     </div>
   );
 };
+
+/**
+ * La LEYENDA de los tres estados.
+ *
+ * El color del círculo ya distingue los tres, pero un color no dice su nombre:
+ * hasta ahora cada fila llevaba escrito el suyo, que es escribir "por
+ * confirmar" cuarenta veces para explicar una vez qué significa un círculo
+ * hueco. La leyenda lo explica una sola vez para toda la lista y las filas se
+ * quedan con lo suyo, que es el cargo.
+ */
+export const LeyendaEstados: React.FC = () => (
+  <div className={styles.leyenda}>
+    {(['previsto', 'confirmado', 'conciliado'] as const).map((e) => (
+      <span key={e} className={styles.leyendaItem}>
+        <span
+          className={`${styles.tick} ${styles.tickMini} ${
+            e === 'previsto'
+              ? styles.tickPrevisto
+              : e === 'confirmado'
+                ? styles.tickConfirmado
+                : styles.tickConciliado
+          }`}
+          aria-hidden="true"
+        >
+          {esReal(e) ? <Icons.Check size={8} strokeWidth={3} /> : null}
+        </span>
+        {ESTADO_LABEL[e]}
+      </span>
+    ))}
+  </div>
+);
