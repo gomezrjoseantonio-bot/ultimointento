@@ -369,21 +369,42 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
           {/* ── El día elegido ──────────────────────────────────────────── */}
           {diaElegido && (
             <div className={styles.detalle}>
-              {/* §9 · "Jueves 30 · 2 movimientos".
+              {/* §9 · el nombre del día a un lado y sus acciones al otro.
                   El mes y el año ya están en la cabecera del drawer y en la
                   rejilla que hay justo encima: repetir "31 ago 2026" aquí es
-                  decir por tercera vez dónde estamos. Lo que no se sabía es
-                  cuántos apuntes tiene el día. */}
+                  decir por tercera vez dónde estamos, así que basta "Jueves
+                  30". El resto de la línea es para lo que se hace CON ese día,
+                  que es lo que justifica que esta cabecera exista. */}
               <div className={styles.detalleHd}>
                 <div className={styles.detalleT}>{diaSemanaYNumero(diaElegido)}</div>
-                {/* "Pendiente" y no "por confirmar": no todo lo que hay aquí
-                    pide una acción —un `confirmed` ya está decidido y espera al
-                    banco—, y prometer una tarea que el botón luego no hace es
-                    peor que no decir nada. Cuál pide qué lo dice el chip de
-                    estado de su fila. */}
-                <span className={styles.detalleN}>
-                  {itemsDelDia.length} {itemsDelDia.length === 1 ? 'pendiente' : 'pendientes'}
-                </span>
+                {/* §9 · las acciones del día, EN SU CABECERA · junto al día al
+                    que pertenecen.
+                    Iban al final, debajo de la lista, y ahí quedaban colgando
+                    en un blanco que no era de nadie: con el día en una línea y
+                    los botones en otra, no se leía que "confirmar el día" fuera
+                    ese día. El recuento que ocupaba este sitio se va: cuántas
+                    filas hay se cuenta mirándolas, y cada cabecera de cuenta ya
+                    trae su subtotal. */}
+                <div className={styles.detalleAcciones}>
+                  {pendientesDelDia.length > 0 && (
+                    <button
+                      type="button"
+                      className={styles.btnDia}
+                      onClick={() => void onConfirmarDia(pendientesDelDia)}
+                    >
+                      <Icons.Check size={13} strokeWidth={2} /> Confirmar el día
+                    </button>
+                  )}
+                  {onAnotar && (
+                    <button
+                      type="button"
+                      className={styles.btnDiaSec}
+                      onClick={() => onAnotar(diaElegido)}
+                    >
+                      <Icons.Plus size={13} strokeWidth={2} /> Anotar movimiento
+                    </button>
+                  )}
+                </div>
               </div>
 
               {itemsDelDia.length === 0 ? (
@@ -410,35 +431,15 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   // llevando su chip.
                   conChipEstado="solo-si-difiere"
                   rowVariant="tesoreria"
-                  onEditar={(item) => setFicha({ item })}
+                  // El lápiz solo si hay dónde guardar. Sin `onGuardarFicha` la
+                  // ficha se abre, se rellena, se pulsa Guardar y se cierra sin
+                  // haber guardado nada: peor que no ofrecer el botón, porque
+                  // el usuario se queda creyendo que lo ha hecho.
+                  onEditar={onGuardarFicha ? (item) => setFicha({ item }) : undefined}
                   onConfirmar={onConfirmar}
                   onNoPaso={onDescartar}
                 />
               )}
-
-              {/* §9 · las acciones van DEBAJO de la lista, no encima.
-                  Se decide qué hacer después de mirar lo que hay: puestas
-                  arriba piden confirmar el día antes de haberlo leído. */}
-              <div className={styles.detalleAcciones}>
-                {pendientesDelDia.length > 0 && (
-                  <button
-                    type="button"
-                    className={styles.btnDia}
-                    onClick={() => void onConfirmarDia(pendientesDelDia)}
-                  >
-                    <Icons.Check size={13} strokeWidth={2} /> Confirmar el día
-                  </button>
-                )}
-                {onAnotar && (
-                  <button
-                    type="button"
-                    className={styles.btnDiaSec}
-                    onClick={() => onAnotar(diaElegido)}
-                  >
-                    <Icons.Plus size={13} strokeWidth={2} /> Anotar movimiento
-                  </button>
-                )}
-              </div>
             </div>
           )}
         </div>

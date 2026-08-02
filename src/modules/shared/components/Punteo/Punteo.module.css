@@ -360,10 +360,12 @@
   box-shadow: inset 3px 0 0 var(--atlas-v5-gold);
 }
 .rowMadre:hover { background: var(--atlas-v5-gold-wash); }
-.rowMadre .concepto {
-  font-weight: 700;
-  color: var(--atlas-v5-ink);
-}
+/* La línea entera NO va en negrita: que esto es una madre ya lo dice la banda
+   dorada, y repetirlo con el grosor de la letra es decirlo dos veces. Lo que
+   se marca es el PISO —el mismo trato que recibe el inmueble en las demás
+   filas—, y el resto del título se queda en la tinta fuerte y peso normal. */
+.rowMadre .concepto { color: var(--atlas-v5-ink); }
+.rowMadre .concepto b { font-weight: 600; }
 .rowHija { background: var(--atlas-v5-card-alt); }
 .rowHija .c1 { padding-left: 22px; position: relative; }
 .rowHija .c1::before {

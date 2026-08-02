@@ -7,12 +7,18 @@
 // agrupa por fecha, por inmueble o por "qué es", y filtrar por un buscador, es
 // decisión de pantalla, no de dominio.
 //
-// El orden DENTRO de cada grupo sigue siendo el canónico del modelo
-// (`compararEnDia`: ingresos antes que gastos, luego por |importe|), para que
-// cambiar de eje no cambie el orden interno.
+// El orden DENTRO de cada grupo lo fija el eje, porque lo fija la pregunta que
+// contesta cada uno:
+//   · fecha           · el canónico del modelo (`compararEnDia`: ingresos antes
+//                       que gastos, luego por |importe|)
+//   · inmueble·qué es · fecha descendente (§4.4) y `compararEnDia` de desempate
+//   · cuenta          · ALFABÉTICO por el título que se ve. Es el eje del día,
+//                       donde la fecha no desempata nada —todo es del mismo
+//                       día— y lo que se hace es buscar un cargo concreto entre
+//                       veinte.
 // ============================================================================
 
-import { compararEnDia, type ItemPunteo } from '../../../../services/punteo/punteoModel';
+import { agruparHijas, compararEnDia, type ItemPunteo } from '../../../../services/punteo/punteoModel';
 import { normalizeSearchText, matchesAmountQuery } from '../../../../utils/tesoreriaSearch';
 
 /** Eje de agrupación de la lista. `fecha` es el de siempre. */
@@ -79,6 +85,56 @@ function construirGrupo(
 }
 
 /**
+ * Las dos piezas del título de una madre · "Alquiler" y el piso.
+ *
+ * Van sueltas porque la lista pinta el piso en negrita y el resto no: en las
+ * demás filas el inmueble es lo único que va marcado, y la madre no tiene por
+ * qué ser la excepción.
+ *
+ * Sin inmueble resuelto no hay piso que decir, y el respaldo es el concepto de
+ * la primera hija sin su contraparte — nunca el nombre entero de un inquilino,
+ * que titularía el grupo con una de sus partes.
+ */
+export function piezasDeMadre(primera: ItemPunteo): { prefijo: string; alias?: string } {
+  if (!primera.activo) return { prefijo: primera.concepto.replace(/ — .*$/, '') };
+  return { prefijo: 'Alquiler', alias: primera.activo.alias };
+}
+
+/** El título tal y como sale en pantalla · el de la madre si la fila la encabeza. */
+function tituloVisible(it: ItemPunteo, esMadre: boolean): string {
+  if (!esMadre) return it.concepto;
+  const { prefijo, alias } = piezasDeMadre(it);
+  return alias ? `${prefijo} · ${alias}` : prefijo;
+}
+
+/**
+ * Alfabético POR LO QUE SE LEE, no por el campo `concepto`.
+ *
+ * En un piso por habitaciones el concepto de cada renta es el nombre del
+ * INQUILINO, y la cabecera del grupo cae donde caiga su primera hija: el piso
+ * "Tenderina 64 4IZ" aterrizaba en la A de ADNAN y "Tenderina 64 4DR" en la E
+ * de EMILIO, con otras filas en medio. Ordenado así, la lista se ve
+ * desordenada aunque el criterio sea impecable — porque ordena por un dato que
+ * no está en pantalla.
+ *
+ * Quién es madre lo decide `agruparHijas`, el mismo que luego las pinta: un
+ * grupo de una sola renta no se agrupa y se ordena por su propio concepto.
+ */
+function ordenarComoSeLee(items: ItemPunteo[]): ItemPunteo[] {
+  const madres = agruparHijas(items);
+  const titulo = new Map(
+    items.map((it) => [it.key, tituloVisible(it, Boolean(it.grupoId && madres.has(it.grupoId)))])
+  );
+  return items.slice().sort(
+    (a, b) =>
+      (titulo.get(a.key) ?? '').localeCompare(titulo.get(b.key) ?? '', 'es') ||
+      // Las hijas de un piso empatan en el título de su madre · dentro del
+      // grupo desempata el inquilino, que es lo que enseña cada una.
+      a.concepto.localeCompare(b.concepto, 'es')
+  );
+}
+
+/**
  * Agrupa por el eje pedido.
  *
  * Fecha · descendente, el día más reciente arriba (igual que `agruparPorDia`).
@@ -119,10 +175,13 @@ export function agruparPorEje(
    * excepción es "Sin cuenta", que va al final por ser un cajón y no una cuenta.
    */
   if (eje === 'cuenta') {
-    const info = new Map(cuentas.map((c, i) => [c.id, { label: c.label, orden: i }]));
+    // Solo el nombre · el orden en que llega la lista de cuentas NO manda aquí,
+    // manda el alfabético, así que guardar su posición sobraba y sugería un
+    // criterio que no se aplica.
+    const nombres = new Map(cuentas.map((c) => [c.id, c.label]));
     const porClave = new Map<string, { titulo: string; orden: number; cuentaId?: number; items: ItemPunteo[] }>();
     for (const it of items) {
-      const dato = it.cuentaId != null ? info.get(it.cuentaId) : undefined;
+      const existe = it.cuentaId != null && nombres.has(it.cuentaId);
       const k = it.cuentaId != null ? `cuenta-${it.cuentaId}` : SIN_CUENTA;
       const g = porClave.get(k);
       if (g) {
@@ -135,13 +194,17 @@ export function agruparPorEje(
         // borrada—, y un número de fila de base de datos no le dice al lector
         // de qué cuenta sale el cargo. Mismo criterio que los inmuebles unas
         // líneas más abajo: antes "Sin nombre" que un id.
-        titulo: dato?.label ?? (it.cuentaId != null ? 'Sin nombre' : 'Sin cuenta'),
+        titulo: existe
+          ? nombres.get(it.cuentaId as number)!
+          : it.cuentaId != null
+            ? 'Sin nombre'
+            : 'Sin cuenta',
         // Tres escalones, y dentro de cada uno manda el nombre:
         //   0 · las cuentas que existen · lo que el usuario busca
         //   1 · las dadas de baja o borradas · "Sin nombre" no debe colarse
         //       entre las reales solo porque la S caiga antes que la U
         //   2 · "Sin cuenta" · un cajón, no una cuenta
-        orden: it.cuentaId == null ? 2 : dato ? 0 : 1,
+        orden: it.cuentaId == null ? 2 : existe ? 0 : 1,
         cuentaId: it.cuentaId ?? undefined,
         items: [it],
       });
@@ -152,9 +215,9 @@ export function agruparPorEje(
         construirGrupo(
           k,
           g.titulo,
-          // Dentro de la cuenta, por concepto · el día es uno solo, así que la
+          // Dentro de la cuenta, por título · el día es uno solo, así que la
           // fecha no desempata nada y ordenar por importe no ayuda a encontrar.
-          g.items.slice().sort((a, b) => a.concepto.localeCompare(b.concepto, 'es')),
+          ordenarComoSeLee(g.items),
           g.cuentaId
         )
       );

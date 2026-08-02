@@ -13,7 +13,7 @@
 
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import DrawerCalendario from '../DrawerCalendario';
 import type { Account, Movement, TreasuryEvent } from '../../../../services/db';
 
@@ -101,7 +101,20 @@ describe('solo lo que todavía no ha movido dinero', () => {
 
     expect(screen.getByText('Recibo luz')).toBeInTheDocument();
     expect(screen.queryByText('Compra ya conciliada')).not.toBeInTheDocument();
-    expect(screen.getByText('1 pendiente')).toBeInTheDocument();
+    // Y queda UNA fila · el recuento ya no se escribe (su sitio en la cabecera
+    // es el de las acciones), así que lo que se comprueba es la lista.
+    expect(screen.getAllByRole('button', { name: /^Puntear/ })).toHaveLength(1);
+  });
+
+  // Las acciones colgaban al final del panel, en un blanco que no era de
+  // nadie: con el día en una línea y los botones tres más abajo, no se leía
+  // que "confirmar el día" fuera ESE día. Van con su nombre.
+  it('las acciones del día viajan con el día, en su cabecera', () => {
+    render(<DrawerCalendario {...base} eventos={[ev({ id: 1 })]} onAnotar={jest.fn()} />);
+    abrirDia20();
+    const cabecera = screen.getByText(/^Lunes 20/).parentElement as HTMLElement;
+    expect(within(cabecera).getByRole('button', { name: /Confirmar el día/ })).toBeInTheDocument();
+    expect(within(cabecera).getByRole('button', { name: /Anotar movimiento/ })).toBeInTheDocument();
   });
 
   it('un día que ya ocurrió entero queda vacío, y lo dice', () => {
@@ -309,13 +322,27 @@ describe('el lápiz de la fila', () => {
   // drawer declaraba `onEditar` y NADIE se lo pasaba: el mismo hueco que tenía
   // `aliasInmueble`. Sin él no había forma de corregir un previsto desde el día.
   it('existe y abre la ficha del movimiento', () => {
-    render(<DrawerCalendario {...base} eventos={[ev({ id: 1, description: 'Recibo luz' })]} />);
+    render(
+      <DrawerCalendario
+        {...base}
+        onGuardarFicha={jest.fn()}
+        eventos={[ev({ id: 1, description: 'Recibo luz' })]}
+      />
+    );
     abrirDia20();
 
     const lapiz = screen.getByLabelText('Editar Recibo luz');
     expect(lapiz).toBeInTheDocument();
     fireEvent.click(lapiz);
     expect(screen.getByRole('dialog', { name: /movimiento/i })).toBeInTheDocument();
+  });
+
+  // Sin dónde guardar, la ficha se abriría, se rellenaría y al pulsar Guardar
+  // se cerraría sin haber guardado: el usuario se queda creyendo que lo hizo.
+  it('no se ofrece si no hay dónde guardar', () => {
+    render(<DrawerCalendario {...base} eventos={[ev({ id: 1, description: 'Recibo luz' })]} />);
+    abrirDia20();
+    expect(screen.queryByLabelText('Editar Recibo luz')).not.toBeInTheDocument();
   });
 });
 
