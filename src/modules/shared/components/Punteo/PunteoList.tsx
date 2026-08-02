@@ -33,7 +33,7 @@ import {
 import {
   agruparPorEje,
   filtrarPorBusqueda,
-  piezasDeMadre,
+  tituloDeMadre,
   EJE_LABEL,
   type EjeAgrupacion,
   type GrupoLista,
@@ -256,7 +256,7 @@ const Contexto: React.FC<{ item: ItemPunteo; extra?: string; sinActivo?: boolean
     trozos.push(
       <span key="a" className={styles.ctxInmueble}>
         <Icons.Inmuebles size={10} strokeWidth={1.8} />
-        <b>{item.activo.alias}</b>
+        {item.activo.alias}
       </span>
     );
   }
@@ -536,22 +536,11 @@ const PunteoList: React.FC<PunteoListProps> = ({
                 grupo volvía a titularse con una de sus partes, que es
                 exactamente lo que §6.3 vino a arreglar. Decir menos es
                 preferible a decir algo que engaña. */}
-            {/* En negrita el PISO, no la línea entera. Que la madre es la madre
-                ya lo dice la banda dorada; escribirlo además en negrita es
-                decirlo dos veces. Y en las demás filas lo marcado es justo el
-                inmueble, así que marcarlo también aquí es el mismo idioma. */}
-            <div className={styles.concepto}>
-              {(() => {
-                const { prefijo, alias } = piezasDeMadre(primera);
-                return alias ? (
-                  <>
-                    {prefijo} · <b>{alias}</b>
-                  </>
-                ) : (
-                  prefijo
-                );
-              })()}
-            </div>
+            {/* Sin negrita · ni la línea ni el piso. Que la madre es la madre
+                ya lo dice la banda dorada, y el inmueble no va marcado en
+                ninguna otra fila: la negrita solo servía para que unos nombres
+                pesaran más que otros en una lista donde todos valen igual. */}
+            <div className={styles.concepto}>{tituloDeMadre(primera)}</div>
             <div className={styles.contexto}>
               {g.total} {g.total === 1 ? 'renta' : 'rentas'}
             </div>

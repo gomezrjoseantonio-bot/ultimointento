@@ -238,8 +238,15 @@
   align-items: center;
   gap: 4px;
 }
-.contexto b { color: var(--atlas-v5-ink-3); font-weight: 600; }
-.ctxInmueble { display: inline-flex; align-items: center; gap: 3px; }
+/* El inmueble NO va en negrita. Iba, y en una lista donde media pantalla son
+   pisos eso no destacaba nada: solo hacía que unos nombres pesaran más que
+   otros sin que la diferencia significara algo. Su icono ya lo identifica. */
+.ctxInmueble {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--atlas-v5-ink-3);
+}
 .ctxSep { color: var(--atlas-v5-ink-5); }
 /* §9 · el aviso de saldo corto · lo único de la línea que pide actuar. */
 .ctxAviso { color: var(--atlas-v5-warn); font-weight: 600; }
@@ -360,12 +367,10 @@
   box-shadow: inset 3px 0 0 var(--atlas-v5-gold);
 }
 .rowMadre:hover { background: var(--atlas-v5-gold-wash); }
-/* La línea entera NO va en negrita: que esto es una madre ya lo dice la banda
-   dorada, y repetirlo con el grosor de la letra es decirlo dos veces. Lo que
-   se marca es el PISO —el mismo trato que recibe el inmueble en las demás
-   filas—, y el resto del título se queda en la tinta fuerte y peso normal. */
+/* El título NO va en negrita: que esto es una madre ya lo dice la banda dorada,
+   y repetirlo con el grosor de la letra es decirlo dos veces. Se queda en la
+   tinta fuerte, que es suficiente para encabezar. */
 .rowMadre .concepto { color: var(--atlas-v5-ink); }
-.rowMadre .concepto b { font-weight: 600; }
 .rowHija { background: var(--atlas-v5-card-alt); }
 .rowHija .c1 { padding-left: 22px; position: relative; }
 .rowHija .c1::before {

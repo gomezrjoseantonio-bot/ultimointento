@@ -653,7 +653,11 @@ const TesoreriaV6Page: React.FC = () => {
           <div className={styles.secHd}>
             <div>
               <div className={styles.secK}>
-                Movimientos bancarios · próximos 6 meses
+                {/* "Previstos" y no "próximos 6 meses": el cuántos ya lo dicen
+                    las seis tarjetas de debajo, y el desde-hasta lo dice el
+                    rango que va al lado. Lo que no se sabía es que esto son
+                    previsiones y no lo que ya ha pasado. */}
+                Movimientos bancarios previstos
                 <span className={styles.rng}>{rangoMeses(meses[0], meses[meses.length - 1])}</span>
               </div>
               <div className={styles.secT}>

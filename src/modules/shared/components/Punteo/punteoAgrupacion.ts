@@ -85,26 +85,20 @@ function construirGrupo(
 }
 
 /**
- * Las dos piezas del título de una madre · "Alquiler" y el piso.
- *
- * Van sueltas porque la lista pinta el piso en negrita y el resto no: en las
- * demás filas el inmueble es lo único que va marcado, y la madre no tiene por
- * qué ser la excepción.
+ * El título de una madre · "Alquiler · el piso".
  *
  * Sin inmueble resuelto no hay piso que decir, y el respaldo es el concepto de
  * la primera hija sin su contraparte — nunca el nombre entero de un inquilino,
  * que titularía el grupo con una de sus partes.
  */
-export function piezasDeMadre(primera: ItemPunteo): { prefijo: string; alias?: string } {
-  if (!primera.activo) return { prefijo: primera.concepto.replace(/ — .*$/, '') };
-  return { prefijo: 'Alquiler', alias: primera.activo.alias };
+export function tituloDeMadre(primera: ItemPunteo): string {
+  if (!primera.activo) return primera.concepto.replace(/ — .*$/, '');
+  return primera.activo.alias ? `Alquiler · ${primera.activo.alias}` : 'Alquiler';
 }
 
 /** El título tal y como sale en pantalla · el de la madre si la fila la encabeza. */
 function tituloVisible(it: ItemPunteo, esMadre: boolean): string {
-  if (!esMadre) return it.concepto;
-  const { prefijo, alias } = piezasDeMadre(it);
-  return alias ? `${prefijo} · ${alias}` : prefijo;
+  return esMadre ? tituloDeMadre(it) : it.concepto;
 }
 
 /**
