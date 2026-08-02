@@ -33,6 +33,7 @@ import {
 import {
   agruparPorEje,
   filtrarPorBusqueda,
+  piezasDeMadre,
   EJE_LABEL,
   type EjeAgrupacion,
   type GrupoLista,
@@ -535,10 +536,21 @@ const PunteoList: React.FC<PunteoListProps> = ({
                 grupo volvía a titularse con una de sus partes, que es
                 exactamente lo que §6.3 vino a arreglar. Decir menos es
                 preferible a decir algo que engaña. */}
+            {/* En negrita el PISO, no la línea entera. Que la madre es la madre
+                ya lo dice la banda dorada; escribirlo además en negrita es
+                decirlo dos veces. Y en las demás filas lo marcado es justo el
+                inmueble, así que marcarlo también aquí es el mismo idioma. */}
             <div className={styles.concepto}>
-              {primera.activo
-                ? `Alquiler${primera.activo.alias ? ` · ${primera.activo.alias}` : ''}`
-                : primera.concepto.replace(/ — .*$/, '')}
+              {(() => {
+                const { prefijo, alias } = piezasDeMadre(primera);
+                return alias ? (
+                  <>
+                    {prefijo} · <b>{alias}</b>
+                  </>
+                ) : (
+                  prefijo
+                );
+              })()}
             </div>
             <div className={styles.contexto}>
               {g.total} {g.total === 1 ? 'renta' : 'rentas'}

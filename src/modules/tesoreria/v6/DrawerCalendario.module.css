@@ -183,12 +183,13 @@
   color: var(--atlas-v5-ink-4);
 }
 
-/* §9 · las dos acciones del día, juntas. Confirmar es la principal; anotar es
-   la que faltaba y la que permite meter lo que pasó y nadie apuntó. */
+/* §9 · las dos acciones del día, juntas y en la cabecera del día. Confirmar es
+   la principal; anotar es la que permite meter lo que pasó y nadie apuntó. */
 .detalleAcciones {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 .btnDiaSec {
   display: inline-flex;
@@ -216,9 +217,6 @@
   pointer-events: none;
 }
 
-/* §9 · cuántos apuntes tiene el día · junto a su nombre, no debajo. */
-.detalleN {
-  font-size: 11.5px;
-  color: var(--atlas-v5-ink-4);
-  margin-left: 8px;
-}
+/* El recuento de apuntes del día vivía aquí, a la derecha de su nombre. Ahora
+   ese sitio es el de las acciones: cuántas filas hay se ve contándolas —son
+   pocas y están debajo— y el subtotal de cada cuenta ya lo dice su cabecera. */

@@ -12,7 +12,7 @@
 // cambiar de eje no cambie el orden interno.
 // ============================================================================
 
-import { compararEnDia, type ItemPunteo } from '../../../../services/punteo/punteoModel';
+import { agruparHijas, compararEnDia, type ItemPunteo } from '../../../../services/punteo/punteoModel';
 import { normalizeSearchText, matchesAmountQuery } from '../../../../utils/tesoreriaSearch';
 
 /** Eje de agrupación de la lista. `fecha` es el de siempre. */
@@ -76,6 +76,56 @@ function construirGrupo(
     totalGastos,
     subtotal: round2(totalIngresos + totalGastos),
   };
+}
+
+/**
+ * Las dos piezas del título de una madre · "Alquiler" y el piso.
+ *
+ * Van sueltas porque la lista pinta el piso en negrita y el resto no: en las
+ * demás filas el inmueble es lo único que va marcado, y la madre no tiene por
+ * qué ser la excepción.
+ *
+ * Sin inmueble resuelto no hay piso que decir, y el respaldo es el concepto de
+ * la primera hija sin su contraparte — nunca el nombre entero de un inquilino,
+ * que titularía el grupo con una de sus partes.
+ */
+export function piezasDeMadre(primera: ItemPunteo): { prefijo: string; alias?: string } {
+  if (!primera.activo) return { prefijo: primera.concepto.replace(/ — .*$/, '') };
+  return { prefijo: 'Alquiler', alias: primera.activo.alias };
+}
+
+/** El título tal y como sale en pantalla · el de la madre si la fila la encabeza. */
+function tituloVisible(it: ItemPunteo, esMadre: boolean): string {
+  if (!esMadre) return it.concepto;
+  const { prefijo, alias } = piezasDeMadre(it);
+  return alias ? `${prefijo} · ${alias}` : prefijo;
+}
+
+/**
+ * Alfabético POR LO QUE SE LEE, no por el campo `concepto`.
+ *
+ * En un piso por habitaciones el concepto de cada renta es el nombre del
+ * INQUILINO, y la cabecera del grupo cae donde caiga su primera hija: el piso
+ * "Tenderina 64 4IZ" aterrizaba en la A de ADNAN y "Tenderina 64 4DR" en la E
+ * de EMILIO, con otras filas en medio. Ordenado así, la lista se ve
+ * desordenada aunque el criterio sea impecable — porque ordena por un dato que
+ * no está en pantalla.
+ *
+ * Quién es madre lo decide `agruparHijas`, el mismo que luego las pinta: un
+ * grupo de una sola renta no se agrupa y se ordena por su propio concepto.
+ */
+function ordenarComoSeLee(items: ItemPunteo[]): ItemPunteo[] {
+  const madres = agruparHijas(items);
+  const titulo = new Map(
+    items.map((it) => [it.key, tituloVisible(it, Boolean(it.grupoId && madres.has(it.grupoId)))])
+  );
+  return items.slice().sort(
+    (a, b) =>
+      (titulo.get(a.key) ?? '').localeCompare(titulo.get(b.key) ?? '', 'es') ||
+      // Las hijas de un piso empatan en el título de su madre · dentro del
+      // grupo desempata el inquilino, que es lo que enseña cada una.
+      a.concepto.localeCompare(b.concepto, 'es')
+  );
 }
 
 /**
@@ -152,9 +202,9 @@ export function agruparPorEje(
         construirGrupo(
           k,
           g.titulo,
-          // Dentro de la cuenta, por concepto · el día es uno solo, así que la
+          // Dentro de la cuenta, por título · el día es uno solo, así que la
           // fecha no desempata nada y ordenar por importe no ayuda a encontrar.
-          g.items.slice().sort((a, b) => a.concepto.localeCompare(b.concepto, 'es')),
+          ordenarComoSeLee(g.items),
           g.cuentaId
         )
       );

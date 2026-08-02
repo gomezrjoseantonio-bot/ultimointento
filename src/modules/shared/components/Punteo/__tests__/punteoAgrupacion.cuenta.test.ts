@@ -69,6 +69,75 @@ describe('agrupar por cuenta', () => {
     expect(grupos[0].items.map((i) => i.concepto)).toEqual(['Agua', 'Mapfre', 'Zurich']);
   });
 
+  // Un piso por habitaciones se pinta con UNA fila —"Alquiler · el piso"— y las
+  // rentas dentro. El concepto de cada renta es el nombre del INQUILINO, así
+  // que ordenando por concepto la cabecera del piso caía donde cayera su
+  // primera hija: "Tenderina 64 4IZ" en la A de ADNAN, con otras filas en
+  // medio. Se ordena por lo que se lee, no por el campo.
+  it('un piso agrupado se ordena por SU título, no por el inquilino de la primera hija', () => {
+    const piso = (
+      key: string,
+      inquilino: string,
+      grupoId: string,
+      alias: string,
+      inmuebleId: number
+    ) =>
+      item({
+        key,
+        refId: Number(key.slice(1)),
+        concepto: inquilino,
+        grupoId,
+        activo: { inmuebleId, alias },
+        importe: 395,
+      });
+
+    const grupos = agruparPorEje(
+      [
+        piso('x1', 'ADNAN PARWEZ', 'g-4iz', 'Tenderina 64 4IZ', 4),
+        piso('x2', 'SARA GIL', 'g-4iz', 'Tenderina 64 4IZ', 4),
+        piso('x3', 'EMILIO CARRERA RIOS', 'g-4dr', 'Tenderina 64 4DR', 5),
+        piso('x4', 'MIGUEL LORENZO', 'g-4dr', 'Tenderina 64 4DR', 5),
+        item({ key: 'l', refId: 90, concepto: 'Lotería', importe: -40 }),
+        item({ key: 'c', refId: 91, concepto: 'Alquiler · Carles Buigas 15', importe: 330 }),
+      ],
+      'cuenta',
+      CUENTAS
+    );
+
+    expect(grupos[0].items.map((i) => i.key)).toEqual([
+      'c', // Alquiler · Carles Buigas 15
+      'x3', // Alquiler · Tenderina 64 4DR → EMILIO
+      'x4', //                            → MIGUEL · dentro del piso, por inquilino
+      'x1', // Alquiler · Tenderina 64 4IZ → ADNAN
+      'x2', //                            → SARA
+      'l', // Lotería
+    ]);
+  });
+
+  // Una renta suelta no monta grupo, así que no hay cabecera "Alquiler · piso"
+  // que la titule: se ordena por lo que enseña, su propio concepto.
+  it('una sola renta con grupo no se ordena como si fuera un piso agrupado', () => {
+    const grupos = agruparPorEje(
+      [
+        // "Comunidad" cae ENTRE los dos criterios · con él se ve cuál manda:
+        // por título de madre ("Alquiler · …") la renta iría primera; por su
+        // concepto ("EMILIO …") va detrás.
+        item({ key: 'com', refId: 1, concepto: 'Comunidad', importe: -90 }),
+        item({
+          key: 'sola',
+          refId: 2,
+          concepto: 'EMILIO CARRERA RIOS',
+          grupoId: 'g-4dr',
+          activo: { inmuebleId: 5, alias: 'Tenderina 64 4DR' },
+          importe: 395,
+        }),
+      ],
+      'cuenta',
+      CUENTAS
+    );
+    expect(grupos[0].items.map((i) => i.key)).toEqual(['com', 'sola']);
+  });
+
   it('lleva el id de la cuenta para que la cabecera pinte su punto de banco', () => {
     const [g] = agruparPorEje([item({ cuentaId: 3 })], 'cuenta', CUENTAS);
     expect(g.cuentaId).toBe(3);
