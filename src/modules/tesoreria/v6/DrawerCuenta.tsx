@@ -347,11 +347,11 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
           ) : (
             <PunteoList
               items={itemsTodo}
-              // §6.4 · aquí conviven previsto, confirmado y conciliado, y este
-              // es el ÚNICO sitio donde el chip dice algo: en "Por confirmar"
-              // todo es previsto por definición, así que escribirlo en cada
-              // fila es repetir el nombre de la pestaña 250 veces.
-              conChipEstado
+              // §6.4 · aquí conviven los tres estados, y quien los explica es
+              // la LEYENDA: una vez para toda la lista. Escribir el estado en
+              // cada fila era gastar cuarenta líneas en decir qué significa un
+              // círculo hueco, y el color del círculo ya los distingue.
+              conLeyenda
               // Se MIRA, no se toca · confirmar y editar viven en la bandeja.
               // Decidir sobre un cargo suelto en medio del mes entero es lo que
               // "Por confirmar" viene a evitar: allí llegan los que tocan,

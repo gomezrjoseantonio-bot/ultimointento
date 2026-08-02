@@ -39,7 +39,7 @@ import {
 } from './punteoAgrupacion';
 // Las piezas de la fila viven aparte · no saben nada de ejes, grupos ni
 // búsqueda, así que aquí queda lo que sí es de la lista.
-import { Contexto, EstadoChip, IconoOrigen, PunteoCheck } from './PunteoPiezas';
+import { Contexto, EstadoChip, IconoOrigen, LeyendaEstados, PunteoCheck } from './PunteoPiezas';
 
 /** Anatomía de fila · `tesoreria` añade editar y descartar al hover (V6 · D2 bis). */
 export type RowVariant = 'default' | 'tesoreria';
@@ -168,6 +168,15 @@ export interface PunteoListProps {
    * pareciendo pulsable, invita a intentarlo y no responde.
    */
   soloLectura?: boolean;
+
+  /**
+   * 7 · LEYENDA de los tres estados, una vez para toda la lista.
+   *
+   * Donde conviven los tres, el color del círculo los distingue pero no dice su
+   * nombre. Escribirlo en cada fila —"por confirmar" cuarenta veces— es gastar
+   * cuarenta líneas en explicar una vez qué significa un círculo hueco.
+   */
+  conLeyenda?: boolean;
 }
 
 
@@ -195,6 +204,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
   rowVariant = 'default',
   onEditar,
   soloLectura = false,
+  conLeyenda = false,
 }) => {
   const [gruposAbiertos, setGruposAbiertos] = useState<Record<string, boolean>>({});
   // §4.4 · "grupos en tarjetas PLEGADAS … se abren al buscar": nacen cerrados,
@@ -547,15 +557,10 @@ const PunteoList: React.FC<PunteoListProps> = ({
           )}
           {eje === 'fecha' ? fmtDia(g.clave) : g.titulo}
         </span>
+        {/* SIN recuento. Decía "4 movimientos" al lado del subtotal, y con el
+            grupo abierto son cuatro filas que se ven; cerrado, lo que se busca
+            es el subtotal, no cuántas líneas lo componen. */}
         <span className={styles.daySums}>
-          {/* §6.4 · el recuento va PEGADO al importe y se leía como parte de la
-              cifra: "INMUEBLE 1 · 1 · −98,44" parece un importe raro, no "un
-              movimiento que suma −98,44". Separado y en su sitio. */}
-          {gruposPlegables && (
-            <span className={styles.grupoCount}>
-              {g.items.length} {g.items.length === 1 ? 'movimiento' : 'movimientos'}
-            </span>
-          )}
           {gruposPlegables ? (
             <span className={g.subtotal < 0 ? styles.daySumNeg : styles.daySumPos}>
               {fmtImporte(g.subtotal)}
@@ -638,6 +643,8 @@ const PunteoList: React.FC<PunteoListProps> = ({
           )}
         </div>
       )}
+
+      {conLeyenda && <LeyendaEstados />}
 
       {mostrarChips && (
       <div className={styles.chips} role="tablist" aria-label="Filtrar por estado de punteo">

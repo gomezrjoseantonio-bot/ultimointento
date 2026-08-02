@@ -30,6 +30,23 @@ export type EstadoPunteo = 'previsto' | 'confirmado' | 'conciliado';
 
 export const esReal = (estado: EstadoPunteo): boolean => estado !== 'previsto';
 
+/**
+ * Cómo se llama cada estado EN PANTALLA · una sola vez, para las cuatro vistas.
+ *
+ * `previsto` se lee "Por confirmar" y no "previsto": es el nombre de la tarea
+ * que tiene el usuario delante, el mismo de la pestaña donde vive, y no
+ * describe el estado interno sino lo que falta por hacer con él.
+ *
+ * La clave interna no se toca: son tres estados derivados que están en medio
+ * módulo, y renombrarlos por una cuestión de rótulo sería mover el modelo para
+ * arreglar una etiqueta.
+ */
+export const ESTADO_LABEL: Record<EstadoPunteo, string> = {
+  previsto: 'Por confirmar',
+  confirmado: 'Confirmado',
+  conciliado: 'Conciliado',
+};
+
 /** Estado de una previsión (evento no ejecutado). */
 export function estadoDeEvento(e: Pick<TreasuryEvent, 'status'>): EstadoPunteo {
   return e.status === 'confirmed' ? 'confirmado' : 'previsto';
@@ -70,7 +87,7 @@ export interface ItemPunteo {
    * lector— y la fila simplemente no pinta subtítulo (§2.2).
    */
   activo: { inmuebleId: number | string; alias?: string } | null;
-  /** Etiqueta de origen (Financiación · Ingreso · Suministro · Recurrente…). */
+  /** Etiqueta de origen (Financiación · Ingreso · Suministro · Recibo…). */
   origen: string;
   cuentaId: number | null;
   /** Importe con signo (+ ingreso · − gasto). */
