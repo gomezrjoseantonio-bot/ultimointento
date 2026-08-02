@@ -202,11 +202,15 @@ describe('§4.3 · rejilla de 6 meses', () => {
     expect(meses[2]).toMatchObject({ month0: 8, cierre: 1300 });
   });
 
-  it('en el mes en curso solo cuenta lo que QUEDA por pasar', () => {
+  it('el mes en curso cuenta el mes ENTERO · un vencido sin confirmar sigue faltando', () => {
+    // Recortaba por `hoy`, y eso dejaba fuera los previstos vencidos: una renta
+    // del día 2 que todavía no ha entrado sigue siendo dinero que falta por
+    // entrar. El hero sí los contaba, así que la misma cifra salía distinta en
+    // dos sitios de la misma pantalla.
     const meses = proyectarMeses({
       saldoHoy: 1000,
       eventos: [
-        ev({ type: 'income', amount: 300, predictedDate: '2026-07-02' }), // ya pasó
+        ev({ type: 'income', amount: 300, predictedDate: '2026-07-02' }),
         ev({ type: 'income', amount: 500, predictedDate: '2026-07-20' }),
       ],
       year: 2026,
@@ -214,7 +218,33 @@ describe('§4.3 · rejilla de 6 meses', () => {
       hoy: '2026-07-15',
       meses: 1,
     });
-    expect(meses[0].entra).toBe(500);
+    expect(meses[0].entra).toBe(800);
+  });
+
+  it('la tarjeta del mes en curso cuadra con el hero · era la queja de Jose', () => {
+    const eventos = [
+      ev({ type: 'income', amount: 395, predictedDate: '2026-07-01' }),
+      ev({ type: 'income', amount: 330, predictedDate: '2026-07-01' }),
+      ev({ type: 'expense', amount: 200, predictedDate: '2026-07-25' }),
+    ];
+    const kpis = calcularKpisHero({
+      cuentas: [{ id: 1, status: 'ACTIVE' } as never],
+      saldoPorCuenta: new Map([[1, 1000]]),
+      eventos,
+      year: 2026,
+      month0: 6,
+    });
+    const meses = proyectarMeses({
+      saldoHoy: 1000,
+      eventos,
+      year: 2026,
+      month0: 6,
+      hoy: '2026-07-15',
+      meses: 1,
+    });
+
+    expect(meses[0].entra).toBe(kpis.pendienteEntrar);
+    expect(meses[0].cierre).toBe(kpis.cierre);
   });
 
   it('cruza el fin de año sin perderse', () => {
