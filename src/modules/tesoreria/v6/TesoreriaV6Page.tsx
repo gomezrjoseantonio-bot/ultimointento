@@ -502,7 +502,7 @@ const TesoreriaV6Page: React.FC = () => {
   }
 
   return (
-    <div>
+    <div className={styles.pag}>
       {/* ── §4.1 · Hero ─────────────────────────────────────────────────── */}
       <div className={styles.hero}>
         <div className={styles.heroLab}>
@@ -901,7 +901,14 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
   return (
     <div className={styles.rvcard}>
       {realidad.lineas.map((l) => {
-        const neto = l.clave === 'Neto';
+        // §3.4 · el Neto pierde la barra SOLO cuando es negativo.
+        //
+        // Me pasé de largo y la quité siempre. Lo que no funciona con
+        // magnitudes negativas es el porcentaje de avance: "128 % lleno" se lee
+        // como mejor cuando significa haber gastado de más. Pero con un neto
+        // positivo la barra dice justo lo que tiene que decir —cuánto llevas de
+        // lo previsto— y el mockup la mantiene.
+        const neto = l.clave === 'Neto' && (l.real < 0 || l.previsto < 0);
         // A3 · el Neto NO lleva barra: puede ser negativo, y "más lleno" se
         // leería como "mejor" cuando significa que se ha gastado de más. En su
         // lugar enseña real, previsto y la diferencia con signo.
@@ -957,7 +964,16 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
         </div>
         <div>
           <div className={styles.rvendTt}>
-            Acabarás <b>{importeConSigno(realidad.desviacion)}</b> {mejor ? 'mejor' : 'peor'} de lo previsto
+            {/* Con 0 no es ni mejor ni peor · el mismo caso que la línea del
+                Neto, que también decía "mejor" sobre una diferencia nula. */}
+            {realidad.desviacion === 0 ? (
+              <>Acabarás <b>igual que lo previsto</b></>
+            ) : (
+              <>
+                Acabarás <b>{importeConSigno(realidad.desviacion)}</b>{' '}
+                {mejor ? 'mejor' : 'peor'} de lo previsto
+              </>
+            )}
           </div>
           <div className={styles.rvendSs}>
             de lo ya confirmado, habías previsto pagar <b>{importeSaldo(realidad.previstoDeLoConfirmado)}</b> y has

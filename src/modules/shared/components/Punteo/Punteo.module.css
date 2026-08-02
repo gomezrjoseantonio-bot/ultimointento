@@ -216,6 +216,8 @@
 .contexto b { color: var(--atlas-v5-ink-3); font-weight: 600; }
 .ctxInmueble { display: inline-flex; align-items: center; gap: 3px; }
 .ctxSep { color: var(--atlas-v5-ink-5); }
+/* §9 · el aviso de saldo corto · lo único de la línea que pide actuar. */
+.ctxAviso { color: var(--atlas-v5-warn); font-weight: 600; }
 
 .origen {
   display: inline-flex;

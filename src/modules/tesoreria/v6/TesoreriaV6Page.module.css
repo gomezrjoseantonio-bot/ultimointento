@@ -8,6 +8,24 @@
    La única identidad cromática libre es el punto de banco.
    =========================================================================== */
 
+/* §4.2 · la página necesita SUS MÁRGENES.
+   
+   Tesorería va por la rama "full bleed" del layout, que sirve el contenido sin
+   contenedor y sin padding: pensado para pantallas que van de borde a borde.
+   Aquí eso dejaba el hero pegado a la barra lateral y cortaba por la derecha
+   la quinta tarjeta y la columna de "Cómo va {mes}" — el contenido no cabía y,
+   en vez de encoger, se salía.
+   
+   El padding va aquí y no en el layout: cambiarlo allí afectaría a Inversiones
+   y Contratos, que sí quieren ir a sangre. */
+.pag {
+  padding: 22px 28px 40px;
+  min-width: 0;
+}
+@media (max-width: 1180px) {
+  .pag { padding: 16px 18px 32px; }
+}
+
 /* ── §4.1 · Hero ─────────────────────────────────────────────────────────── */
 
 .hero {

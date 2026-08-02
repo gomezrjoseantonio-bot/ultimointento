@@ -249,6 +249,15 @@ const Contexto: React.FC<{ item: ItemPunteo; extra?: string }> = ({ item, extra 
     );
   }
   if (extra) trozos.push(<span key="e">{extra}</span>);
+  // §9 · el aviso va el ÚLTIMO y en ámbar: es lo único de la línea que pide
+  // actuar, y el ámbar está reservado justo para eso (§2.1).
+  if (item.avisoSaldo) {
+    trozos.push(
+      <span key="w" className={styles.ctxAviso}>
+        {item.avisoSaldo}
+      </span>
+    );
+  }
   if (trozos.length === 0) return null;
 
   return (

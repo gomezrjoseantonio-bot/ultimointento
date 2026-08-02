@@ -106,6 +106,9 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--atlas-v5-on-brand-soft);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .akv {
   font-family: var(--atlas-v5-font-mono-num);

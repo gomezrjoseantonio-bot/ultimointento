@@ -22,6 +22,7 @@ import {
   X as IconX,
   Check as IconCheck,
   AlertCircle as IconAlert,
+  ChevronDown as IconChevron,
 } from 'lucide-react';
 
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -317,6 +318,9 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [nominaBadge, setNominaBadge] = useState<{ empresa: string; mensual: number } | null>(null);
   /** `undefined` = aún comprobando · `null` = se puede dar de baja · objeto = bloqueada. */
+  /** §10 · la rejilla de color vive plegada tras un desplegable. */
+  const [paletaAbierta, setPaletaAbierta] = useState(false);
+
   const [bloqueoBaja, setBloqueoBaja] = useState<MotivoBloqueo | null | undefined>(undefined);
   const dialogRef = useFocusTrap(open);
   const isEditing = !!editingAccount;
@@ -442,6 +446,14 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     () => colorSugerido({ ...(editingAccount ?? ({} as Account)), banco: { name: bancoFinal } }),
     [editingAccount, bancoFinal]
   );
+
+  /** Qué dice el desplegable cerrado · el color elegido, con su nombre. */
+  const nombreColorElegido = useMemo(() => {
+    if (form.colorPunto === CLAVE_SIN_COLOR) return 'Sin color';
+    if (!form.colorPunto) return 'Del banco';
+    const todas = [...REJILLA_PUNTO.flat(), ...GRISES_PUNTO];
+    return todas.find((c) => c.token === form.colorPunto)?.nombre ?? 'Personalizado';
+  }, [form.colorPunto]);
 
   /**
    * §4.8 · dar de baja, con Deshacer.
@@ -819,54 +831,60 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                     banco como opción por defecto. Es la única identidad
                     cromática de la tarjeta de cuenta, y sirve sobre todo para
                     distinguir a ojo dos cuentas del mismo banco. */}
+                {/* §10 · un DESPLEGABLE que abre la rejilla.
+                    La rejilla entera siempre desplegada ocupaba más que el
+                    resto del bloque junto, para una decisión que casi siempre
+                    se resuelve con "la del banco". Cerrado enseña el color
+                    elegido y su nombre; abierto, la rejilla completa. */}
                 <div style={{ marginTop: 12 }}>
                   <Field label="Color del punto">
-                    <div className={styles.paleta} role="radiogroup" aria-label="Color del punto">
-                      {/* Fila de arriba · lo que no es un color elegido a mano:
-                          el del banco (por defecto) y ningún color. */}
-                      <div className={styles.paletaFila}>
-                        {colorPorDefecto && (
-                          <button
-                            type="button"
-                            role="radio"
-                            aria-checked={form.colorPunto === ''}
-                            aria-label="Color del banco"
-                            title="Color del banco"
-                            className={`${styles.muestra} ${styles.muestraAncha} ${form.colorPunto === '' ? styles.muestraOn : ''}`}
-                            style={{ background: colorPorDefecto }}
-                            onClick={() => set('colorPunto', '')}
-                          />
-                        )}
-                        <button
-                          type="button"
-                          role="radio"
-                          aria-checked={form.colorPunto === CLAVE_SIN_COLOR}
-                          aria-label="Sin color"
-                          title="Sin color"
-                          className={`${styles.muestra} ${styles.muestraSin} ${form.colorPunto === CLAVE_SIN_COLOR ? styles.muestraOn : ''}`}
-                          onClick={() => set('colorPunto', CLAVE_SIN_COLOR)}
-                        />
-                        <span className={styles.paletaSep} aria-hidden="true" />
-                        {GRISES_PUNTO.map((c) => (
-                          <button
-                            key={c.token}
-                            type="button"
-                            role="radio"
-                            aria-checked={form.colorPunto === c.token}
-                            aria-label={c.nombre}
-                            title={c.nombre}
-                            className={`${styles.muestra} ${form.colorPunto === c.token ? styles.muestraOn : ''}`}
-                            style={{ background: c.token }}
-                            onClick={() => set('colorPunto', c.token)}
-                          />
-                        ))}
-                      </div>
+                    <button
+                      type="button"
+                      className={styles.colorTrigger}
+                      aria-expanded={paletaAbierta}
+                      onClick={() => setPaletaAbierta((v) => !v)}
+                    >
+                      <span
+                        className={`${styles.muestra} ${styles.muestraTrigger} ${
+                          form.colorPunto === CLAVE_SIN_COLOR ? styles.muestraSin : ''
+                        }`}
+                        style={
+                          form.colorPunto === CLAVE_SIN_COLOR
+                            ? undefined
+                            : { background: form.colorPunto || colorPorDefecto || undefined }
+                        }
+                        aria-hidden="true"
+                      />
+                      <span className={styles.colorTriggerTxt}>{nombreColorElegido}</span>
+                      <IconChevron size={14} className={paletaAbierta ? styles.chevOn : ''} />
+                    </button>
 
-                      {/* La rejilla · una columna por tono, una fila por
-                          luminosidad. Se recorre con la vista, no leyendo. */}
-                      {REJILLA_PUNTO.map((fila, i) => (
-                        <div className={styles.paletaFila} key={i}>
-                          {fila.map((c) => (
+                    {paletaAbierta && (
+                      <div className={styles.paleta} role="radiogroup" aria-label="Color del punto">
+                        <div className={styles.paletaFila}>
+                          {colorPorDefecto && (
+                            <button
+                              type="button"
+                              role="radio"
+                              aria-checked={form.colorPunto === ''}
+                              aria-label="Color del banco"
+                              title="Color del banco"
+                              className={`${styles.muestra} ${styles.muestraAncha} ${form.colorPunto === '' ? styles.muestraOn : ''}`}
+                              style={{ background: colorPorDefecto }}
+                              onClick={() => set('colorPunto', '')}
+                            />
+                          )}
+                          <button
+                            type="button"
+                            role="radio"
+                            aria-checked={form.colorPunto === CLAVE_SIN_COLOR}
+                            aria-label="Sin color"
+                            title="Sin color"
+                            className={`${styles.muestra} ${styles.muestraSin} ${form.colorPunto === CLAVE_SIN_COLOR ? styles.muestraOn : ''}`}
+                            onClick={() => set('colorPunto', CLAVE_SIN_COLOR)}
+                          />
+                          <span className={styles.paletaSep} aria-hidden="true" />
+                          {GRISES_PUNTO.map((c) => (
                             <button
                               key={c.token}
                               type="button"
@@ -880,8 +898,25 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                             />
                           ))}
                         </div>
-                      ))}
-                    </div>
+                        {REJILLA_PUNTO.map((fila, i) => (
+                          <div className={styles.paletaFila} key={i}>
+                            {fila.map((c) => (
+                              <button
+                                key={c.token}
+                                type="button"
+                                role="radio"
+                                aria-checked={form.colorPunto === c.token}
+                                aria-label={c.nombre}
+                                title={c.nombre}
+                                className={`${styles.muestra} ${form.colorPunto === c.token ? styles.muestraOn : ''}`}
+                                style={{ background: c.token }}
+                                onClick={() => set('colorPunto', c.token)}
+                              />
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </Field>
                 </div>
               </Block>
