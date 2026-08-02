@@ -56,7 +56,8 @@ describe('el mini-hero', () => {
     render(<TesoreriaMovil {...base} eventos={[]} />);
 
     expect(screen.getByText('Saldo hoy')).toBeInTheDocument();
-    expect(screen.getByText('Fin de mes')).toBeInTheDocument();
+    // §1-BIS · "Fin de mes" es de las prohibidas: la palabra es "Cierre".
+    expect(screen.getByText('Cierre')).toBeInTheDocument();
   });
 
   it('la cabecera cuenta lo que queda, y dice "al día" cuando no queda nada', () => {

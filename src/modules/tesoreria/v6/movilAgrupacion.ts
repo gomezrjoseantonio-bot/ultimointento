@@ -49,13 +49,20 @@ export function agruparPendientesPorCuenta(params: {
   const porCuenta = new Map<number, PendienteMovil[]>();
   for (const e of eventos) {
     if (!esPendiente(e) || e.id == null || e.accountId == null) continue;
-    const detalle =
+    // §6.3 · también aquí manda QUIEN COBRA: en el móvil se puntea con el
+    // extracto del banco abierto al lado, así que la fila tiene que decir lo
+    // mismo que ese extracto. La categoría de ATLAS y el inmueble bajan al
+    // subtítulo, igual que en el escritorio.
+    const inmueble =
       e.inmuebleAlias ??
       (e.inmuebleId != null ? aliasInmueble?.(e.inmuebleId) : undefined) ??
       '';
+    const categoria = e.proveedor && e.description !== e.proveedor ? e.description : '';
+    const detalle = [categoria, inmueble].filter(Boolean).join(' · ');
+
     const item: PendienteMovil = {
       eventoId: e.id,
-      concepto: e.description,
+      concepto: e.proveedor || e.description,
       detalle,
       importe: importeConSigno(e),
       fecha: (e.predictedDate ?? '').slice(0, 10),
