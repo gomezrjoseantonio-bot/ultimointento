@@ -16,6 +16,7 @@ import {
   lineasAIgnorar,
   lineasPendientes,
   hashesARecuperar,
+  movimientosAEfectivo,
   decisionesVacias,
   type LineaExtracto,
 } from '../extractoSesion';
@@ -238,5 +239,55 @@ describe('lo que viaja al pulsar Guardar', () => {
     // Devuelve LÍNEAS y no hashes: `ignoreLine` recibe la identidad y calcula
     // el hash por dentro, para que solo exista una implementación del hash.
     expect(lineasAIgnorar(ls, d).map((l) => l.movementId)).toEqual([12]);
+  });
+});
+
+
+// Sacar del cajero llega en el extracto como un cargo más. Apuntarlo como gasto
+// hunde el patrimonio el día que el dinero solo ha cambiado de sitio, así que
+// §4.7 lo PROPONE y, si el usuario acepta, esa línea se convierte en traspaso.
+describe('la retirada de efectivo', () => {
+  const lineas = (): LineaExtracto[] =>
+    construirLineas(
+      [mov(10, 'REINTEGRO CAJERO', -200), mov(11, 'RECIBO LUZ', -74)],
+      sinMatches,
+      [],
+      new Set()
+    );
+
+  // Queda RESUELTA, no pendiente: su movimiento tiene que sobrevivir a
+  // `consolidarSesion`, al revés que lo que se deja sin resolver.
+  it('queda resuelta · su movimiento no se desmaterializa', () => {
+    const d = decisionesVacias();
+    d.aEfectivo.add(10);
+
+    expect(veredictoEfectivo(lineas()[0], d)).toBe('cuadra');
+    expect(lineasPendientes(lineas(), d).map((l) => l.movementId)).toEqual([11]);
+    expect(movimientosAEfectivo(lineas(), d)).toEqual([10]);
+  });
+
+  // Confirmarle además un previsto daría por pagado con el mismo dinero dos
+  // cosas distintas.
+  it('marcada como efectivo NO se empareja con ningún previsto', () => {
+    const conMatch = () =>
+      construirLineas(
+        [mov(10, 'REINTEGRO CAJERO', -200)],
+        { ...sinMatches, matches: [{ movementId: 10, treasuryEventId: 5, score: 90, reasons: [] }] },
+        [evt(5, 'Un previsto de 200', -200)],
+        new Set()
+      );
+    const d = decisionesVacias();
+    d.aEfectivo.add(10);
+
+    expect(payloadDeConfirmacion(conMatch(), d).approvedMatches).toEqual([]);
+  });
+
+  it('ignorar sigue ganando · es la última palabra del usuario', () => {
+    const d = decisionesVacias();
+    d.aEfectivo.add(10);
+    d.ignorados.add(10);
+
+    expect(veredictoEfectivo(lineas()[0], d)).toBe('ignorada');
+    expect(movimientosAEfectivo(lineas(), d)).toEqual([]);
   });
 });
