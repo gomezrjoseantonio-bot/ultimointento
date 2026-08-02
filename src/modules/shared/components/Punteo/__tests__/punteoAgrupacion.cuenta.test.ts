@@ -75,12 +75,16 @@ describe('agrupar por cuenta', () => {
     expect(grupos[1].items.map((i) => i.key)).toEqual(['sin-1', 'sin-2']);
   });
 
-  it('una cuenta que ya no está en la lista se pinta detrás, sin romper nada', () => {
+  // §2.2 · ningún identificador interno visible. Una cuenta dada de baja se
+  // pinta detrás y sin nombre, nunca como "Cuenta 99": un número de fila de
+  // base de datos no le dice al lector de qué cuenta sale el cargo.
+  it('una cuenta que ya no está en la lista se pinta detrás y sin id', () => {
     const grupos = agruparPorEje(
       [item({ key: 'a', cuentaId: 1 }), item({ key: 'b', refId: 2, cuentaId: 99 })],
       'cuenta',
       CUENTAS
     );
-    expect(grupos.map((g) => g.titulo)).toEqual(['Abanca', 'Cuenta 99']);
+    expect(grupos.map((g) => g.titulo)).toEqual(['Abanca', 'Sin nombre']);
+    expect(grupos.map((g) => g.titulo).join(' ')).not.toMatch(/\d/);
   });
 });

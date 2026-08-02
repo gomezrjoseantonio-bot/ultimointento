@@ -77,6 +77,9 @@ const CONTRAPARTE_TRAS_EL_GUION = new Set([
   'autonomo',
   'autonomo_ingreso',
   'autonomo_gasto',
+  // Los legacy se generan igual que los nuevos y hay datos vivos con este
+  // tipo: dejarlos fuera partía la lista de autónomo en dos formatos.
+  'autonomo_gasto_legacy',
   'autonomo_cuota',
   'inversion_compra',
   'inversion_aportacion',

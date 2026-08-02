@@ -129,8 +129,12 @@ export function agruparPorEje(
         continue;
       }
       porClave.set(k, {
-        // Sin cuenta asignada se dice, no se inventa un nombre (§2.2).
-        titulo: dato?.label ?? (it.cuentaId != null ? `Cuenta ${it.cuentaId}` : 'Sin cuenta'),
+        // §2.2 · ningún identificador interno visible. Aquí caía en
+        // `Cuenta ${id}` cuando la cuenta ya no está en la lista —dada de baja,
+        // borrada—, y un número de fila de base de datos no le dice al lector
+        // de qué cuenta sale el cargo. Mismo criterio que los inmuebles unas
+        // líneas más abajo: antes "Sin nombre" que un id.
+        titulo: dato?.label ?? (it.cuentaId != null ? 'Sin nombre' : 'Sin cuenta'),
         // Las que no están en la lista van detrás de las que sí, y "Sin cuenta"
         // la última de todas.
         orden: it.cuentaId == null ? Number.MAX_SAFE_INTEGER : dato?.orden ?? cuentas.length,
