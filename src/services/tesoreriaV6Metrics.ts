@@ -183,10 +183,15 @@ export function proyectarMeses(params: {
   eventos: TreasuryEvent[];
   year: number;
   month0: number;
-  hoy: string;
+  /**
+   * Ya no se usa para recortar el mes en curso —ese cuenta entero, como el
+   * hero— pero se mantiene en la firma: quien llama sigue pasándolo y quitarlo
+   * obligaría a tocar todos los sitios sin ganar nada.
+   */
+  hoy?: string;
   meses?: number;
 }): MesProyectado[] {
-  const { saldoHoy, eventos, year, month0, hoy, meses = 6 } = params;
+  const { saldoHoy, eventos, year, month0, meses = 6 } = params;
   const out: MesProyectado[] = [];
   let saldo = saldoHoy;
 
@@ -196,14 +201,25 @@ export function proyectarMeses(params: {
     const m = d.getMonth();
     const { desde, hasta } = rangoDelMes(y, m);
     const enCurso = i === 0;
-    // En el mes en curso solo queda por pasar lo de hoy en adelante.
-    const inicio = enCurso && hoy > desde ? hoy : desde;
+
+    // El mes en curso cuenta DESDE EL DÍA 1, no desde hoy.
+    //
+    // Recortaba por `hoy`, y eso dejaba fuera los previstos VENCIDOS sin
+    // confirmar: una renta del día 1 que todavía no ha entrado sigue siendo
+    // dinero que falta por entrar. El hero sí los cuenta, así que la misma
+    // cifra salía distinta en dos sitios de la misma pantalla —725 € de
+    // diferencia con dos rentas vencidas— y el cierre de la tarjeta quedaba
+    // por debajo del cierre del hero.
+    //
+    // Es la misma regla que ya sigue el calendario: un previsto no está en el
+    // saldo de hoy ni aunque su fecha haya pasado, porque sigue sin confirmarse
+    // y por tanto sigue por venir.
 
     let entra = 0;
     let sale = 0;
     for (const e of eventos) {
       if (!esPendiente(e)) continue;
-      if (!enRango(soloFecha(e.predictedDate), inicio, hasta)) continue;
+      if (!enRango(soloFecha(e.predictedDate), desde, hasta)) continue;
       const imp = importeConSigno(e);
       if (imp > 0) entra += imp;
       else sale += imp;

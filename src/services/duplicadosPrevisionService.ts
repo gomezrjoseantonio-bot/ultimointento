@@ -17,7 +17,7 @@
 // ============================================================================
 
 import { initDB } from './db';
-import { cuotasVencidasSinConfirmar } from './prestamoEventosPlan';
+import { eventosPasadosDePrestamo } from './prestamoEventosPlan';
 import type { TreasuryEvent } from './db';
 
 /** Un grupo de previsiones que son la misma cosa repetida. */
@@ -280,38 +280,40 @@ export function registrarDiagnosticoEnConsola(): void {
     duplicadosRaw: diagnosticarDuplicados,
 
     /**
-     * Cuotas de préstamo vencidas que quedaron en "por confirmar".
+     * Limpia los eventos de préstamo con fecha PASADA que sobran.
      *
-     * Las metió ahí el guardado de un préstamo antes del arreglo: cambiarle el
-     * nombre reemitía el cuadro entero como previsto. Esto las devuelve a
-     * confirmadas, que es lo que son — el banco las cobró en su día.
+     * El guardado de un préstamo reemitía su cuadro entero cada vez, así que
+     * las cuotas y las disposiciones de años anteriores acabaron en la base.
+     * Sobran estén como estén: en `predicted` ensucian "por confirmar", y en
+     * `confirmed` inflan el saldo —la disposición de un préstamo de 78.500 €
+     * contada otra vez sobre un saldo que ya la incluía—.
+     *
+     * Lo `executed` no se toca: está casado con un movimiento real del banco.
      */
-    cuotasVencidas: async () => {
+    limpiarPrestamosPasados: async () => {
       const db = await initDB();
       const eventos = ((await db.getAll('treasuryEvents')) ?? []) as TreasuryEvent[];
       const hoy = new Date().toISOString().slice(0, 10);
-      const ids = cuotasVencidasSinConfirmar(eventos, hoy);
+      const ids = eventosPasadosDePrestamo(eventos, hoy);
 
       if (ids.length === 0) {
-        console.log('No hay cuotas de préstamo vencidas sin confirmar.');
-        return { corregidas: 0 };
+        console.log('No hay eventos de préstamo pasados que limpiar.');
+        return { borrados: 0 };
       }
 
       console.warn(
-        `Se van a marcar como CONFIRMADAS ${ids.length} cuotas de préstamo ya ` +
-          'vencidas. Son cargos que el banco hizo en su día · no se toca nada futuro.'
+        `Se van a BORRAR ${ids.length} eventos de préstamo con fecha pasada.\n` +
+          'Son cuotas y disposiciones que el guardado reemitió de más · lo que de ' +
+          'verdad ocurrió ya está en el saldo de la cuenta. No se toca nada futuro ' +
+          'ni nada conciliado con el banco.'
       );
 
       const tx = db.transaction('treasuryEvents', 'readwrite');
-      const ahora = new Date().toISOString();
-      for (const id of ids) {
-        const ev = (await tx.store.get(id)) as TreasuryEvent | undefined;
-        if (ev) await tx.store.put({ ...ev, status: 'confirmed', updatedAt: ahora });
-      }
+      for (const id of ids) await tx.store.delete(id);
       await tx.done;
 
-      console.log(`${ids.length} cuotas devueltas a confirmadas. Recarga la página.`);
-      return { corregidas: ids.length };
+      console.log(`${ids.length} eventos borrados. Recarga la página.`);
+      return { borrados: ids.length };
     },
     limpiar: async () => {
       // Se avisa ANTES de tocar nada: `duplicados()` solo lee, y quien llegue a

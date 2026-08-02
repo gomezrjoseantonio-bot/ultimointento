@@ -7,7 +7,7 @@
 import {
   planificarEventos,
   cambiaElCuadro,
-  cuotasVencidasSinConfirmar,
+  eventosPasadosDePrestamo,
 } from '../prestamoEventosPlan';
 import type { TreasuryEventDescriptor } from '../prestamoCalculatorService';
 import type { TreasuryEvent } from '../db';
@@ -61,16 +61,19 @@ describe('cuándo se rehace el cuadro', () => {
 });
 
 describe('qué se borra y qué se emite', () => {
-  it('una cuota YA VENCIDA nace confirmada · el banco ya la cobró', () => {
+  it('una cuota YA VENCIDA no se emite · ni prevista ni confirmada', () => {
+    // Emitirla `confirmed` fue peor que dejarla `predicted`: al confirmarse
+    // entra en el saldo, y el saldo de la cuenta ya refleja lo que el banco
+    // hizo. Con la disposición del préstamo eso sumaba el capital otra vez.
     const plan = planificarEventos({
       descriptores: [desc(1, '2022-01-01'), desc(2, '2026-12-01')],
       existentes: [],
       hoy: HOY,
     });
 
-    expect(plan.emitir).toHaveLength(2);
-    expect(plan.emitir[0].status).toBe('confirmed');
-    expect(plan.emitir[1].status).toBe('predicted');
+    expect(plan.emitir).toHaveLength(1);
+    expect(plan.emitir[0].d.fecha).toBe('2026-12-01');
+    expect(plan.emitir[0].status).toBe('predicted');
   });
 
   it('lo CONFIRMADO a mano no se borra ni se reemite', () => {
@@ -127,7 +130,7 @@ describe('qué se borra y qué se emite', () => {
     expect(plan.emitir).toHaveLength(0);
   });
 
-  it('el caso de Jose · 57 cuotas pasadas no van a "por confirmar"', () => {
+  it('el caso de Jose · 57 cuotas pasadas no se emiten en absoluto', () => {
     const cuotas = Array.from({ length: 57 }, (_, i) => {
       const mes = String((i % 12) + 1).padStart(2, '0');
       const anio = 2021 + Math.floor(i / 12);
@@ -135,54 +138,48 @@ describe('qué se borra y qué se emite', () => {
     });
 
     const plan = planificarEventos({ descriptores: cuotas, existentes: [], hoy: HOY });
-    const previstas = plan.emitir.filter((e) => e.status === 'predicted');
-
-    expect(plan.emitir).toHaveLength(57);
-    expect(previstas).toHaveLength(0);
+    expect(plan.emitir).toHaveLength(0);
   });
 });
 
 
-// Reparar lo que ya se emitió mal.
-describe('cuotas vencidas que quedaron por confirmar', () => {
+// Limpiar lo que el guardado emitió de más.
+describe('eventos de préstamo con fecha pasada', () => {
   const HOY2 = '2026-08-02';
 
-  it('coge las de préstamo, vencidas y sin confirmar', () => {
-    const ids = cuotasVencidasSinConfirmar(
+  it('se borran estén previstos o confirmados · sobran las dos veces', () => {
+    const ids = eventosPasadosDePrestamo(
       [
         { id: 1, prestamoId: 'p1', predictedDate: '2022-03-01', status: 'predicted' },
-        { id: 2, prestamoId: 'p1', predictedDate: '2024-05-01', status: 'predicted' },
+        { id: 2, prestamoId: 'p1', predictedDate: '2024-05-01', status: 'confirmed' },
       ],
       HOY2
     );
     expect(ids).toEqual([1, 2]);
   });
 
-  it('NO toca lo futuro · esas sí están por confirmar de verdad', () => {
+  it('lo CONCILIADO no se toca · está casado con un movimiento del banco', () => {
     expect(
-      cuotasVencidasSinConfirmar(
+      eventosPasadosDePrestamo(
+        [{ id: 1, prestamoId: 'p1', predictedDate: '2022-03-01', status: 'executed' }],
+        HOY2
+      )
+    ).toEqual([]);
+  });
+
+  it('NO toca lo futuro · eso sí es una previsión de verdad', () => {
+    expect(
+      eventosPasadosDePrestamo(
         [{ id: 1, prestamoId: 'p1', predictedDate: '2026-12-01', status: 'predicted' }],
         HOY2
       )
     ).toEqual([]);
   });
 
-  it('NO toca lo que no es de un préstamo · un recibo vencido sí es trabajo', () => {
+  it('NO toca lo que no viene de un préstamo · un recibo vencido es trabajo real', () => {
     expect(
-      cuotasVencidasSinConfirmar(
+      eventosPasadosDePrestamo(
         [{ id: 1, predictedDate: '2022-03-01', status: 'predicted' }],
-        HOY2
-      )
-    ).toEqual([]);
-  });
-
-  it('NO toca lo ya confirmado ni lo descartado', () => {
-    expect(
-      cuotasVencidasSinConfirmar(
-        [
-          { id: 1, prestamoId: 'p1', predictedDate: '2022-03-01', status: 'confirmed' },
-          { id: 2, prestamoId: 'p1', predictedDate: '2022-04-01', status: 'predicted', descartado: true },
-        ],
         HOY2
       )
     ).toEqual([]);

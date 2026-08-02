@@ -79,10 +79,17 @@ export function cambiaElCuadro(
  *    `executed`, así que una cuota confirmada a mano se borraba y volvía como
  *    prevista: el usuario tenía que puntearla otra vez.
  *
- * 2. Una cuota ya VENCIDA nace `confirmed`, no `predicted`. El banco la cobró
- *    —`prestamosService` la da por pagada desde hace tiempo— así que meterla en
- *    "por confirmar" es pedir que se afirme algo que ya consta. Solo lo que
- *    está por venir nace previsto.
+ * 2. Una cuota ya VENCIDA no se emite. Ni prevista ni confirmada.
+ *
+ *    Primero probé a emitirla `confirmed`, razonando que el banco ya la había
+ *    cobrado. Fue peor: al confirmarlas entran en el saldo, y el saldo de la
+ *    cuenta YA refleja lo que el banco hizo. Con la disposición del préstamo
+ *    —que también es un evento pasado— eso sumó el capital entero otra vez y
+ *    los saldos se dispararon.
+ *
+ *    Lo correcto es no emitirla: una previsión es una PROYECCIÓN, y una cuota
+ *    de hace cinco años no proyecta nada, es historia. La historia vive en el
+ *    saldo, no en la bandeja.
  */
 export function planificarEventos(params: {
   descriptores: TreasuryEventDescriptor[];
@@ -103,10 +110,9 @@ export function planificarEventos(params: {
 
   const emitir = descriptores
     .filter((d) => !firmes.has(claveDe(d)))
-    .map((d) => ({
-      d,
-      status: (d.fecha.slice(0, 10) <= hoy ? 'confirmed' : 'predicted') as EstadoNuevo,
-    }));
+    // Solo lo que está POR VENIR. Lo vencido ya ocurrió y ya está en el saldo.
+    .filter((d) => d.fecha.slice(0, 10) >= hoy)
+    .map((d) => ({ d, status: 'predicted' as EstadoNuevo }));
 
   return { borrar, emitir };
 }
@@ -115,30 +121,34 @@ export function planificarEventos(params: {
 // ─── Reparar lo que ya se emitió mal ────────────────────────────────────────
 
 /**
- * Cuotas de préstamo VENCIDAS que quedaron como "por confirmar".
+ * Eventos de préstamo con fecha PASADA que el guardado emitió de más.
  *
- * Las emitió el guardado de un préstamo antes de que esto se arreglara: al
- * cambiarle el nombre reemitía el cuadro entero en `predicted`, así que las
- * cuotas de años anteriores aparecen en la bandeja pidiendo que se confirme
- * algo que el banco cobró hace tiempo.
+ * El guardado de un préstamo reemitía su cuadro entero cada vez, así que las
+ * cuotas y la disposición de años anteriores acabaron en la base. Sobran las
+ * dos veces:
  *
- * Se identifica por lo que son: previsión de préstamo, con fecha pasada y sin
- * confirmar. No se toca nada más.
+ *  · Si quedaron `predicted`, ensucian "por confirmar" pidiendo que se afirme
+ *    algo que el banco hizo hace años.
+ *  · Si quedaron `confirmed`, es peor: entran en el saldo, y el saldo de la
+ *    cuenta ya refleja lo que el banco hizo. La disposición de un préstamo de
+ *    78.500 € sumada otra vez dispara la cifra.
+ *
+ * Se BORRAN. Lo `executed` no se toca: eso está casado con un movimiento real
+ * del banco y sí representa algo que ocurrió una sola vez.
  */
-export function cuotasVencidasSinConfirmar(
+export function eventosPasadosDePrestamo(
   eventos: Array<{
     id?: number;
     prestamoId?: string;
     predictedDate?: string;
     status?: string;
-    descartado?: boolean;
   }>,
   hoy: string,
 ): number[] {
   return eventos
     .filter((e) => {
       if (e.id == null || !e.prestamoId) return false;
-      if (e.status !== 'predicted' || e.descartado) return false;
+      if (e.status === 'executed') return false;
       const f = (e.predictedDate ?? '').slice(0, 10);
       return f !== '' && f < hoy;
     })
