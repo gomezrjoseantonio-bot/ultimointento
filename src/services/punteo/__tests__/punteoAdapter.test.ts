@@ -242,3 +242,60 @@ describe('las etiquetas de tipo hablan el idioma de la aplicación', () => {
     ).toBe('Suministro');
   });
 });
+
+
+// Interna y externa se leen igual de lejos —"Traspaso a ahorro, −2.000 €"— y no
+// significan lo mismo: en la interna el dinero no se va, cambia de cuenta. Si la
+// fila no lo dice, la interna parece dinero perdido.
+describe('un traspaso dice si es interno o externo', () => {
+  const cuentas = (id: number) => (id === 3 ? 'Unicaja ahorro' : id === 1 ? 'Santander' : undefined);
+
+  const traspaso = (over: Partial<TreasuryEvent>) =>
+    eventoAItem(
+      ev({
+        id: 1,
+        type: 'expense',
+        description: 'A la de ahorro · salida',
+        categoryKey: 'traspaso_salida',
+        transferMetadata: { targetAccountId: 3 },
+        ...over,
+      }) as TreasuryEvent & { id: number },
+      undefined,
+      cuentas
+    );
+
+  it('la salida dice A QUÉ cuenta va', () => {
+    const it = traspaso({});
+    expect(it.concepto).toBe('A la de ahorro');
+    expect(it.detalle).toBe('Transferencia interna · a Unicaja ahorro');
+  });
+
+  // En la pata de entrada `targetAccountId` guarda la cuenta de ORIGEN: en las
+  // dos es "la otra".
+  it('la entrada dice DESDE cuál viene', () => {
+    const it = traspaso({
+      type: 'income',
+      description: 'A la de ahorro · entrada',
+      categoryKey: 'traspaso_entrada',
+      transferMetadata: { targetAccountId: 1 },
+    });
+    expect(it.detalle).toBe('Transferencia interna · desde Santander');
+  });
+
+  // §2.2 · sin nombre de cuenta NO se inventa un "Cuenta 3": se dice la
+  // dirección, que es lo que sí se sabe.
+  it('sin nombre de cuenta se queda en la dirección', () => {
+    const it = eventoAItem(
+      ev({
+        id: 2,
+        description: 'Traspaso · salida',
+        categoryKey: 'traspaso_salida',
+        transferMetadata: { targetAccountId: 99 },
+      }) as TreasuryEvent & { id: number },
+      undefined,
+      cuentas
+    );
+    expect(it.detalle).toBe('Transferencia interna · salida');
+    expect(JSON.stringify(it)).not.toContain('Cuenta 99');
+  });
+});

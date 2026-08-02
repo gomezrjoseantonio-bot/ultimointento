@@ -119,6 +119,16 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
 
   const huecos = useMemo(() => huecosIniciales(year, month0), [year, month0]);
 
+  /** El nombre de la otra cuenta · lo pide un traspaso para decir a dónde va. */
+  const aliasCuenta = useMemo(() => {
+    const m = new Map(
+      cuentas
+        .filter((c): c is Account & { id: number } => c.id != null)
+        .map((c) => [c.id, c.alias || c.banco?.name || undefined] as const)
+    );
+    return (id: number) => m.get(id);
+  }, [cuentas]);
+
   /**
    * Los apuntes del día elegido · lo que TODAVÍA NO ha movido dinero.
    *
@@ -142,14 +152,14 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
       .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
       .filter((e) => esPendiente(e))
       .filter((e) => (e.predictedDate ?? '').slice(0, 10) === diaElegido)
-      .map((e) => eventoAItem(e, aliasInmueble));
+      .map((e) => eventoAItem(e, aliasInmueble, aliasCuenta));
     const movs =
       diaElegido > hoy
         ? movimientos
             .filter((m): m is Movement & { id: number } => m.id != null)
             .filter((m) => !m.isOpeningBalance)
             .filter((m) => (m.date ?? '').slice(0, 10) === diaElegido)
-            .map((m) => movimientoAItem(m, aliasInmueble))
+            .map((m) => movimientoAItem(m, aliasInmueble, aliasCuenta))
         : [];
 
     const todos = [...evs, ...movs];
@@ -182,7 +192,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
       }
     }
     return todos;
-  }, [diaElegido, eventos, movimientos, aliasInmueble, saldoPorCuenta, hoy]);
+  }, [diaElegido, eventos, movimientos, aliasInmueble, aliasCuenta, saldoPorCuenta, hoy]);
 
   /**
    * Los que confirma el botón "Confirmar el día".
