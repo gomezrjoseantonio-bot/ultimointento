@@ -48,6 +48,76 @@ export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'type' | 'c
   }
 }
 
+// ─── Quién cobra, cuando no viene en su campo ───────────────────────────────
+
+/**
+ * Los orígenes cuya descripción se genera como `<qué es> – <quién>`.
+ *
+ * Un recibo trae `proveedor` y la fila sale sola: arriba quien cobra, abajo lo
+ * que es. Un préstamo o una nómina no lo traen —nadie se lo pone—, así que su
+ * fila se quedaba con las dos mitades pegadas en el título y el subtítulo
+ * vacío: "Cuota Hipoteca – Hipoteca Unicaja T64 4D+4I" de un tirón, mientras el
+ * recibo de al lado decía "Canal Isabel ii" con "Agua" debajo. La misma
+ * información, dos estructuras distintas.
+ *
+ * La contraparte ya está en la descripción, en la segunda mitad
+ * (`treasurySyncService`): se sube al título y la primera baja al subtítulo.
+ *
+ * La lista es por `sourceType` y no un `split` a todo: los gastos recurrentes
+ * también se generan con ese guion, pero ahí la segunda mitad es el INMUEBLE
+ * —que tiene su propia marca en la fila— y subirlo al título lo diría dos
+ * veces. Los contratos quedan fuera a propósito: su fila ya está aprobada y
+ * agrupada por piso en §4.4.
+ */
+const CONTRAPARTE_TRAS_EL_GUION = new Set([
+  'prestamo',
+  'hipoteca',
+  'nomina',
+  'otros_ingresos',
+  'autonomo',
+  'autonomo_ingreso',
+  'autonomo_gasto',
+  'autonomo_cuota',
+  'inversion_compra',
+  'inversion_aportacion',
+  'inversion_rendimiento',
+  'inversion_dividendo',
+  'inversion_liquidacion',
+]);
+
+const SEPARADOR = ' – ';
+
+/** Parte `<qué es> – <quién>` en las dos piezas de la fila. */
+export function piezasDeFila(e: Pick<TreasuryEvent, 'proveedor' | 'description' | 'sourceType'>): {
+  concepto: string;
+  detalle?: string;
+} {
+  // §6.3 · manda QUIEN COBRA, que es lo que aparecerá en el extracto y con lo
+  // que el lector compara teniendo el móvil del banco delante. La categoría de
+  // ATLAS ("Seguro hogar") baja al subtítulo: es la traducción, no el hecho.
+  if (e.proveedor) {
+    return {
+      concepto: e.proveedor,
+      detalle: e.description !== e.proveedor ? e.description : undefined,
+    };
+  }
+
+  const desc = e.description ?? '';
+  if (e.sourceType && CONTRAPARTE_TRAS_EL_GUION.has(e.sourceType)) {
+    // El ÚLTIMO guion, no el primero: un nombre de préstamo puede llevar uno
+    // dentro y partir por el primero dejaría la mitad del nombre en el
+    // subtítulo.
+    const corte = desc.lastIndexOf(SEPARADOR);
+    if (corte > 0) {
+      const quien = desc.slice(corte + SEPARADOR.length).trim();
+      const queEs = desc.slice(0, corte).trim();
+      if (quien && queEs) return { concepto: quien, detalle: queEs };
+    }
+  }
+
+  return { concepto: desc };
+}
+
 // ─── Eventos (previsiones) ──────────────────────────────────────────────────
 
 export function eventoAItem(
@@ -64,20 +134,16 @@ export function eventoAItem(
   const aliasReal = e.inmuebleAlias ?? aliasInmueble?.(e.inmuebleId ?? -1);
   const activo =
     e.inmuebleId != null ? { inmuebleId: e.inmuebleId, alias: aliasReal } : null;
+  const { concepto, detalle } = piezasDeFila(e);
   return {
     key: `evt-${e.id}`,
     kind: 'evento',
     refId: e.id,
     estado: estadoDeEvento(e),
     fecha: (e.predictedDate ?? '').slice(0, 10),
-    // §6.3 · manda QUIEN COBRA, que es lo que aparecerá en el extracto y con lo
-    // que el lector compara teniendo el móvil del banco delante. La categoría
-    // de ATLAS ("Seguro hogar") baja al subtítulo: es la traducción, no el
-    // hecho. Si no hay proveedor —previstos antiguos, préstamos, nóminas— la
-    // descripción sigue mandando, que es lo de siempre.
-    concepto: e.proveedor || e.description,
-    // Lo que ATLAS entiende de ese cargo · solo si añade algo al título.
-    detalle: e.proveedor && e.description !== e.proveedor ? e.description : undefined,
+    // Arriba quien cobra · abajo lo que es (`piezasDeFila`).
+    concepto,
+    detalle,
     activo,
     origen: origenDeEvento(e),
     cuentaId: e.accountId ?? null,

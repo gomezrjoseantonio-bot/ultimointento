@@ -449,6 +449,17 @@ const TesoreriaV6Page: React.FC = () => {
   const inmuebles = estado.inmuebles;
   const mesActual = nombreMes(month0);
 
+  /**
+   * De qué inmueble es cada cargo.
+   *
+   * Los dos drawers declaraban `aliasInmueble` y NADIE se la pasaba nunca, así
+   * que `eventoAItem` no podía resolver el nombre y la fila se quedaba sin
+   * inmueble en toda la V6: la cuota de una hipoteca no decía de qué piso era.
+   * El dato estaba —`inmuebleId` viaja en el evento—, faltaba el puente.
+   */
+  const aliasInmueble = (id: number | string): string | undefined =>
+    inmuebles.find((i) => String(i.id) === String(id))?.alias;
+
   // §4.11 · en móvil se sirve OTRA pantalla, no esta encogida. Los drawers de
   // extracto y cuenta se comparten: son útiles en las dos y ya son a pantalla
   // casi completa.
@@ -685,6 +696,7 @@ const TesoreriaV6Page: React.FC = () => {
         onEliminar={descartarItem}
         cuentas={cuentasVivas}
         inmuebles={inmuebles}
+        aliasInmueble={aliasInmueble}
         onSubirExtracto={(c) => setExtracto({ cuenta: c })}
       />
 
@@ -701,6 +713,7 @@ const TesoreriaV6Page: React.FC = () => {
           saldoPorCuenta={saldoPorCuenta}
           saldoTotalHoy={kpis.saldo}
           hoy={hoy}
+          aliasInmueble={aliasInmueble}
           onCerrar={() => setCalendario(null)}
           onConfirmar={confirmarItem}
           onDescartar={descartarItem}
