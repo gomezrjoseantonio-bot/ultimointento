@@ -151,12 +151,24 @@ describe('§4.2 · estado de la tarjeta', () => {
       saldoHoy: 1000,
       eventos: [
         ev({ amount: 10, predictedDate: '2026-07-01' }), // venció
-        ev({ amount: 10, predictedDate: '2026-07-10' }), // venció (hoy)
+        // La FRONTERA · el de hoy cuenta, porque la bandeja usa `f <= hoy`.
+        // Estaba fechado el 10 con `hoy` el 15, así que decía "hoy" en el
+        // comentario y probaba otra cosa: el caso límite quedaba sin cubrir.
+        ev({ amount: 10, predictedDate: comun.hoy }),
         ev({ amount: 10, predictedDate: '2026-07-25' }), // aún no toca
       ],
       ...comun,
     });
     expect(e).toEqual({ tipo: 'por-confirmar', n: 2 });
+  });
+
+  it('la frontera del otro lado · el de mañana NO cuenta', () => {
+    const e = estadoDeCuenta({
+      saldoHoy: 1000,
+      eventos: [ev({ amount: 10, predictedDate: '2026-07-16' })],
+      ...comun,
+    });
+    expect(e).toEqual({ tipo: 'al-dia' });
   });
 
   it('lo que aún no ha llegado no es una tarea · eso lo dice el hero', () => {
