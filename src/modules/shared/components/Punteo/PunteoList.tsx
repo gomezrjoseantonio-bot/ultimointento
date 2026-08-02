@@ -504,9 +504,15 @@ const PunteoList: React.FC<PunteoListProps> = ({
             {/* "Alquiler · el piso" · la madre dice QUÉ es y DE DÓNDE, y así
                 sus hijas no tienen que repetir ninguna de las dos cosas: cada
                 una se queda con lo suyo, el inquilino y su habitación. */}
+            {/* Sin alias resuelto, "Alquiler" A SECAS · nunca el inquilino.
+                El respaldo era el concepto de la primera hija, y al quitarle a
+                las hijas el "Renta – " eso pasó a ser un nombre de persona: el
+                grupo volvía a titularse con una de sus partes, que es
+                exactamente lo que §6.3 vino a arreglar. Decir menos es
+                preferible a decir algo que engaña. */}
             <div className={styles.concepto}>
-              {primera.activo?.alias
-                ? `Alquiler · ${primera.activo.alias}`
+              {primera.activo
+                ? `Alquiler${primera.activo.alias ? ` · ${primera.activo.alias}` : ''}`
                 : primera.concepto.replace(/ — .*$/, '')}
             </div>
             <div className={styles.contexto}>

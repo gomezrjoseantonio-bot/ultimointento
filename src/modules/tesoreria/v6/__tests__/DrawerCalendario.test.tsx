@@ -225,6 +225,34 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
     expect(screen.getByText('Hab 2')).toBeInTheDocument();
   });
 
+  // Si el alias no se resuelve, la madre dice "Alquiler" a secas. Nunca el
+  // nombre de un inquilino: el grupo volvería a titularse con una de sus
+  // partes, que es justo lo que la madre viene a evitar.
+  it('sin alias del piso, la madre NO se titula con un inquilino', () => {
+    const renta = (id: number, quien: string) =>
+      ev({
+        id,
+        type: 'income',
+        amount: 395,
+        sourceType: 'contrato',
+        inmuebleId: 2,
+        description: `Renta – ${quien}`,
+      });
+
+    render(
+      <DrawerCalendario
+        {...base}
+        aliasInmueble={() => undefined}
+        eventos={[renta(1, 'MIGUEL LORENZO CABANELAS'), renta(2, 'EMILIO CARRERA RIOS')]}
+      />
+    );
+    abrirDia20();
+
+    expect(screen.getByText('Alquiler')).toBeInTheDocument();
+    // Los inquilinos siguen en SUS filas, no encabezando el grupo.
+    expect(screen.getAllByText('MIGUEL LORENZO CABANELAS')).toHaveLength(1);
+  });
+
   it('un piso completo · una sola renta NO monta grupo', () => {
     render(
       <DrawerCalendario
