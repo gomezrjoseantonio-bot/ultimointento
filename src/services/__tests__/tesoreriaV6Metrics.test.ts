@@ -138,17 +138,52 @@ describe('§4.2 · estado de la tarjeta', () => {
     expect(estadoDeCuenta({ saldoHoy: 1000, eventos: [], ...comun })).toEqual({ tipo: 'al-dia' });
   });
 
-  it('cuenta los pendientes que quedan de hoy en adelante', () => {
+  /**
+   * "N por confirmar" es el MISMO N que la bandeja de §4.4: lo que ya venció y
+   * sigue sin confirmar.
+   *
+   * Contaba lo contrario —lo que quedaba por venir— mientras la bandeja listaba
+   * lo vencido. Dos conjuntos casi disjuntos: la tarjeta decía 9, se pulsaba, y
+   * la pestaña de dentro decía 3.
+   */
+  it('cuenta lo VENCIDO sin confirmar, que es lo que hay que hacer', () => {
     const e = estadoDeCuenta({
       saldoHoy: 1000,
       eventos: [
-        ev({ amount: 10, predictedDate: '2026-07-20' }),
-        ev({ amount: 10, predictedDate: '2026-07-25' }),
-        ev({ amount: 10, predictedDate: '2026-07-01' }), // ya pasó
+        ev({ amount: 10, predictedDate: '2026-07-01' }), // venció
+        ev({ amount: 10, predictedDate: '2026-07-10' }), // venció (hoy)
+        ev({ amount: 10, predictedDate: '2026-07-25' }), // aún no toca
       ],
       ...comun,
     });
     expect(e).toEqual({ tipo: 'por-confirmar', n: 2 });
+  });
+
+  it('lo que aún no ha llegado no es una tarea · eso lo dice el hero', () => {
+    const e = estadoDeCuenta({
+      saldoHoy: 1000,
+      eventos: [ev({ amount: 10, predictedDate: '2026-07-25' })],
+      ...comun,
+    });
+    expect(e).toEqual({ tipo: 'al-dia' });
+  });
+
+  it('un vencido de un mes anterior sigue siendo trabajo de hoy', () => {
+    const e = estadoDeCuenta({
+      saldoHoy: 1000,
+      eventos: [ev({ amount: 10, predictedDate: '2026-05-14' })],
+      ...comun,
+    });
+    expect(e).toEqual({ tipo: 'por-confirmar', n: 1 });
+  });
+
+  it('un evento sin fecha no se cuela · la bandeja tampoco lo lista', () => {
+    const e = estadoDeCuenta({
+      saldoHoy: 1000,
+      eventos: [ev({ amount: 10, predictedDate: '' })],
+      ...comun,
+    });
+    expect(e).toEqual({ tipo: 'al-dia' });
   });
 
   it('avisa de que se queda corta, con el día y el mínimo', () => {

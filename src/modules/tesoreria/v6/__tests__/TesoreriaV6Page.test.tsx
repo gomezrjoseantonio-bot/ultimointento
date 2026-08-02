@@ -129,16 +129,33 @@ describe('§4.2 · tarjetas de cuenta', () => {
     expect(screen.queryByText('al día')).not.toBeInTheDocument();
   });
 
-  it('cuenta los pendientes cuando el saldo aguanta', async () => {
+  // "N por confirmar" es lo VENCIDO sin confirmar · el mismo N que la bandeja
+  // de §4.4. Pulsar una tarjeta que dice 9 y aterrizar en una pestaña que dice
+  // 3 es la tarjeta mintiendo sobre lo que hay dentro.
+  it('cuenta lo vencido sin confirmar cuando el saldo aguanta', async () => {
     montarDb({
       accounts: [cuenta(1, { openingBalance: 10000 })],
-      treasuryEvents: [
-        evento({ accountId: 1, predictedDate: enEsteMes(Math.min(27, ultimoDia)) }),
-        evento({ accountId: 1, predictedDate: enEsteMes(Math.min(28, ultimoDia)) }),
-      ],
+      treasuryEvents: [evento({ accountId: 1, predictedDate: enEsteMes(1) })],
     });
     montar();
     await waitFor(() => expect(screen.getByText(/por confirmar/)).toBeInTheDocument());
+  });
+
+  it('una cuenta dada de baja desaparece de la tira', async () => {
+    // La baja es SUAVE (`status: 'INACTIVE'`) para que Deshacer sea inmediato.
+    // Aquí se filtraba solo por `DELETED`, así que la cuenta seguía saliendo
+    // aunque la baja se hubiera guardado de verdad.
+    montarDb({
+      accounts: [
+        cuenta(1, { alias: 'La que sigue' }),
+        cuenta(2, { alias: 'La dada de baja', status: 'INACTIVE', activa: false }),
+      ],
+    });
+    montar();
+
+    await waitFor(() => expect(screen.getByText('La que sigue')).toBeInTheDocument());
+    expect(screen.queryByText('La dada de baja')).not.toBeInTheDocument();
+    expect(screen.getByText('1 cuenta · hoy')).toBeInTheDocument();
   });
 });
 

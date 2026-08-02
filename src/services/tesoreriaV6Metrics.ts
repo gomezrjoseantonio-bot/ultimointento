@@ -141,7 +141,8 @@ export function estadoDeCuenta(params: {
   const { saldoHoy, eventos, year, month0, hoy } = params;
   const { hasta } = rangoDelMes(year, month0);
 
-  const pendientes = eventos
+  // Lo que QUEDA POR VENIR este mes · es lo que puede dejar la cuenta corta.
+  const porVenir = eventos
     .filter((e) => esPendiente(e))
     .filter((e) => {
       const f = soloFecha(e.predictedDate);
@@ -151,14 +152,38 @@ export function estadoDeCuenta(params: {
 
   // Recorrido día a día: el primer punto en negativo es el que se avisa.
   let acumulado = saldoHoy;
-  for (const e of pendientes) {
+  for (const e of porVenir) {
     acumulado += importeConSigno(e);
     if (acumulado < 0) {
       return { tipo: 'se-queda-corta', minimo: redondear(acumulado), dia: soloFecha(e.predictedDate) };
     }
   }
 
-  return pendientes.length > 0 ? { tipo: 'por-confirmar', n: pendientes.length } : { tipo: 'al-dia' };
+  /**
+   * "N por confirmar" tiene que ser el MISMO N que la bandeja de §4.4.
+   *
+   * Contaba `f >= hoy` —lo que queda por venir— mientras la bandeja lista
+   * `f <= hoy` —lo que ya venció y sigue sin confirmar—. Son dos conjuntos casi
+   * disjuntos: solo se tocan en el día de hoy. La tarjeta decía 9, se pulsaba, y
+   * la pestaña de dentro decía 3.
+   *
+   * Manda la bandeja: "por confirmar" es una TAREA, y lo que aún no ha llegado
+   * no es una tarea. Lo que viene ya se cuenta en el hero ("queda entrar/salir")
+   * y en la rejilla de meses, y si además hunde la cuenta se dice arriba con
+   * "se queda corta", que es el aviso que sí mira hacia delante.
+   *
+   * Sin tope de mes, igual que la bandeja: un recibo de hace dos meses que nadie
+   * confirmó sigue siendo trabajo pendiente hoy.
+   */
+  const porConfirmar = eventos.filter((e) => {
+    if (!esPendiente(e)) return false;
+    const f = soloFecha(e.predictedDate);
+    // Con fecha vacía la comparación `'' <= hoy` es CIERTA: sin esta guarda un
+    // evento sin fecha se colaría en la cuenta y no en la bandeja.
+    return f !== '' && f <= hoy;
+  }).length;
+
+  return porConfirmar > 0 ? { tipo: 'por-confirmar', n: porConfirmar } : { tipo: 'al-dia' };
 }
 
 // ─── §4.3 · Rejilla de 6 meses ──────────────────────────────────────────────

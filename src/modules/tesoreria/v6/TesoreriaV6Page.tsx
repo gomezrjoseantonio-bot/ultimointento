@@ -26,6 +26,7 @@ import {
   type MesProyectado,
 } from '../../../services/tesoreriaV6Metrics';
 import { colorDeBanco } from './bancoColores';
+import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga, diaYMes } from './formatoV6';
 import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
@@ -186,8 +187,11 @@ const TesoreriaV6Page: React.FC = () => {
 
   // ── Derivados ────────────────────────────────────────────────────────────
 
+  // §4.8 · una cuenta dada de baja deja de salir. Aquí se comprobaba solo
+  // `status !== 'DELETED'`, y la baja marca `INACTIVE`: se guardaba de verdad,
+  // el aviso decía la verdad, y la tarjeta seguía en la tira como si nada.
   const cuentasVivas = useMemo(
-    () => aplicarOrden(estado.cuentas.filter((c) => c.status !== 'DELETED'), orden),
+    () => aplicarOrden(cuentasEnUso(estado.cuentas), orden),
     [estado.cuentas, orden]
   );
 

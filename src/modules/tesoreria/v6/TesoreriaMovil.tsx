@@ -18,6 +18,7 @@ import React, { useMemo } from 'react';
 import { Icons } from '../../../design-system/v5';
 import type { Account, TreasuryEvent } from '../../../services/db';
 import { colorDeBanco } from './bancoColores';
+import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { importeConSigno, importeSaldo, nombreMes } from './formatoV6';
 import { agruparPendientesPorCuenta, contarPendientes } from './movilAgrupacion';
 import styles from './TesoreriaMovil.module.css';
@@ -52,7 +53,7 @@ const TesoreriaMovil: React.FC<TesoreriaMovilProps> = ({
   );
   const pendientes = contarPendientes(grupos);
   const mes = nombreMes(month0);
-  const cuentasVivas = cuentas.filter((c) => c.status !== 'DELETED').length;
+  const cuentasVivas = cuentasEnUso(cuentas).length;
 
   return (
     <div className={styles.movil}>
