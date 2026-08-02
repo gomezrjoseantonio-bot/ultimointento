@@ -71,6 +71,7 @@ interface FormState {
   esPrincipal: boolean;
   /** '' = usar el del banco · token de la paleta · 'sin-color'. */
   colorPunto: string;
+  bizum: boolean;
   // B3 corriente / ahorro
   iban: string;
   bic: string;
@@ -203,6 +204,7 @@ const buildInitialForm = (editing: Account | null | undefined): FormState => {
       bancoOtro: isCatalogBank ? '' : (bancoDetectado || ''),
       esPrincipal: !!editing.isDefault,
       colorPunto: editing.colorPunto ?? '',
+      bizum: Boolean(editing.bizum),
       iban: tipo === 'TARJETA_CREDITO' ? '' : formatIban(editing.iban || ''),
       bic: editing.bic ?? '',
       ultimosCuatro: editing.ultimosCuatro ?? '',
@@ -229,6 +231,7 @@ const buildInitialForm = (editing: Account | null | undefined): FormState => {
     bancoOtro: '',
     esPrincipal: false,
     colorPunto: '',
+    bizum: false,
     iban: '',
     bic: '',
     ultimosCuatro: '',
@@ -620,6 +623,9 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
         // "no toques este campo", así que una vez elegido un color no había
         // manera de volver al del banco: el servicio ignoraba la vuelta atrás.
         colorPunto: form.colorPunto,
+        // El Bizum vive en UNA cuenta · el servicio lo quita de las demás.
+        // Una tarjeta o el efectivo no lo tienen: no son cuentas de banco.
+        bizum: isCard || isEfectivo ? false : form.bizum,
       };
 
       const remuneracionPayload = !isCard && form.esRemunerada
@@ -850,6 +856,22 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                       ))}
                     </select>
                   </Field>
+                  )}
+                  {!esEfectivo && form.tipo !== 'TARJETA_CREDITO' && (
+                    <div className={`${styles.field} ${styles.principalToggle}`}>
+                      {/* Un rol de la cuenta, como ser la principal · el Bizum
+                          va atado a un teléfono y un teléfono a una cuenta, así
+                          que activarlo aquí lo quita de la que lo tuviera. */}
+                      <span className={styles.principalToggleLabel}>Bizum</span>
+                      <button
+                        type="button"
+                        className={`${styles.toggle} ${form.bizum ? styles.toggleOn : ''}`}
+                        onClick={() => set('bizum', !form.bizum)}
+                        role="switch"
+                        aria-checked={form.bizum}
+                        aria-label={form.bizum ? 'Quitar el Bizum de esta cuenta' : 'El Bizum está en esta cuenta'}
+                      />
+                    </div>
                   )}
                   <div className={`${styles.field} ${styles.principalToggle}`}>
                     <span className={styles.principalToggleLabel}>Cuenta principal</span>

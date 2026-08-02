@@ -323,13 +323,32 @@ function pareceRenta(m: Pick<Movement, 'categoryKey' | 'category' | 'description
 function piezasDeMovimiento(
   m: Pick<
     Movement,
-    'categoryKey' | 'category' | 'description' | 'providerName' | 'type' | 'transferMetadata'
+    | 'categoryKey'
+    | 'category'
+    | 'description'
+    | 'providerName'
+    | 'type'
+    | 'transferMetadata'
+    | 'paymentMethod'
+    | 'counterparty'
   >,
   alias?: string,
   aliasCuenta?: AliasCuenta
 ): { concepto: string; detalle?: string } {
   const traspaso = piezasDeTransferencia(m, aliasCuenta);
   if (traspaso) return traspaso;
+
+  // §Bizum · arriba QUIÉN, abajo qué es · la misma regla que un recibo.
+  //
+  // El texto del banco es "BIZUM DE ADNAN PARWEZ" de un tirón: con él de título
+  // la fila grita la forma de pago y esconde a la persona, que es lo único que
+  // permite reconocer el cobro. Sin nombre leído se deja el texto tal cual, que
+  // algo dice.
+  if (m.paymentMethod === 'Bizum') {
+    return m.counterparty
+      ? { concepto: m.counterparty, detalle: 'Bizum' }
+      : { concepto: m.description ?? 'Bizum', detalle: undefined };
+  }
   // Externa · el dinero SÍ se va, y decirlo evita que se confunda con la
   // interna, que se lee igual de lejos y no significa lo mismo.
   if (m.type === 'Transferencia') {
