@@ -72,14 +72,17 @@ describe('la rejilla', () => {
     expect(dias[0].neto).toBe(0);
   });
 
-  // §4.9 · la celda cuenta SOLO lo que queda por confirmar.
+  // §4.9 · la celda cuenta lo que TODAVÍA NO ha movido dinero.
   //
-  // El calendario es la cola de trabajo, no el histórico. Antes sumaba también
-  // los movimientos ya reales, y eso hacía que un día no se vaciara nunca al
-  // terminarlo: confirmabas lo pendiente y la celda seguía marcando lo mismo.
-  it('la celda cuenta lo pendiente · un movimiento ya real no entra', () => {
+  // El criterio es el del saldo: entra lo que el saldo de hoy no incorpora aún.
+  // Antes sumaba también los movimientos ya pasados, y eso hacía que un día no
+  // se vaciara nunca al terminarlo: confirmabas lo pendiente y la celda seguía
+  // marcando lo mismo.
+  it('la celda no cuenta un movimiento ya pasado · ese ya está en el saldo', () => {
     const dias = construirDias({
       ...base,
+      // Con hoy a fin de mes, el día 15 ya ocurrió.
+      hoy: '2026-03-31',
       eventos: [ev({ predictedDate: '2026-03-15', amount: 100 })],
       movimientos: [mov({ date: '2026-03-15', amount: -30 })],
     });
@@ -88,15 +91,45 @@ describe('la rejilla', () => {
     expect(dia15.apuntes).toBe(1);
   });
 
-  it('un día en el que ya está todo confirmado queda vacío', () => {
+  it('un día que ya ocurrió entero queda vacío', () => {
     const dias = construirDias({
       ...base,
+      hoy: '2026-03-31',
       eventos: [],
       movimientos: [mov({ date: '2026-03-15', amount: -30 })],
     });
     const dia15 = dias.find((d) => d.numero === 15)!;
     expect(dia15.apuntes).toBe(0);
     expect(dia15.neto).toBe(0);
+  });
+
+  // Un recibo ya cargado por el banco con fecha adelantada no pide confirmar
+  // nada, pero mueve dinero ese día y el saldo de hoy no lo tiene: si se cae de
+  // la celda, el punto ámbar puede encenderse sin nada que lo explique.
+  it('un movimiento con fecha POSTERIOR a hoy sí cuenta', () => {
+    const dias = construirDias({
+      ...base,
+      hoy: '2026-03-10',
+      eventos: [],
+      movimientos: [mov({ date: '2026-03-15', amount: -30 })],
+    });
+    const dia15 = dias.find((d) => d.numero === 15)!;
+    expect(dia15.apuntes).toBe(1);
+    expect(dia15.neto).toBe(-30);
+  });
+
+  // `esPendiente` incluye `confirmed`, que en el modelo de punteo ya es REAL
+  // (una venta, la liquidación de un préstamo): mueve dinero, así que cuenta en
+  // la celda, pero no es una tarea y no enciende `tienePendientes`.
+  it('un evento confirmado cuenta en la celda pero no es tarea', () => {
+    const dias = construirDias({
+      ...base,
+      eventos: [ev({ predictedDate: '2026-03-15', amount: 100, status: 'confirmed' })],
+      movimientos: [],
+    });
+    const dia15 = dias.find((d) => d.numero === 15)!;
+    expect(dia15.apuntes).toBe(1);
+    expect(dia15.tienePendientes).toBe(false);
   });
 
   it('lo de otro mes no se cuela', () => {

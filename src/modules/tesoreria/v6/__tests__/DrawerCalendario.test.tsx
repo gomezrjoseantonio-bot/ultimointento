@@ -1,9 +1,13 @@
 // Calendario diario (§4.9) · el día elegido.
 //
 // Lo que fija:
-//   · el calendario es la COLA DE TRABAJO · solo lo que queda por confirmar.
-//     Lo ya real vive en la cuenta (§4.4), que es donde se mira el histórico;
-//     enseñándolo también aquí, un día no se vaciaba nunca al terminarlo.
+//   · el calendario mira HACIA DELANTE · solo lo que el saldo de hoy no
+//     incorpora todavía. Lo ya pasado vive en la cuenta (§4.4), que es donde se
+//     mira el histórico; enseñándolo también aquí, un día no se vaciaba nunca
+//     al terminarlo.
+//   · pero un movimiento con fecha adelantada SÍ entra: no pide confirmar nada
+//     y sin embargo mueve dinero ese día, y si es él quien deja la cuenta corta
+//     tiene que haber una fila que lo explique.
 //   · el día va agrupado POR CUENTA, como al entrar por la cuenta: bajo el
 //     nombre de cada una, lo suyo.
 
@@ -80,11 +84,15 @@ function abrirDia20() {
   fireEvent.click(screen.getByRole('gridcell', { name: /^20 de julio/ }));
 }
 
-describe('solo lo que queda por confirmar', () => {
-  it('un movimiento ya real NO sale en el día · su sitio es la cuenta', () => {
+describe('solo lo que todavía no ha movido dinero', () => {
+  // `hoy` es el 1 de julio, así que un movimiento del día 20 está ADELANTADO:
+  // para que quede "ya pasado" hay que ponerle fecha anterior a hoy.
+  const yaPasado = { ...base, hoy: '2026-07-31' };
+
+  it('un movimiento ya pasado NO sale en el día · su sitio es la cuenta', () => {
     render(
       <DrawerCalendario
-        {...base}
+        {...yaPasado}
         eventos={[ev({ id: 1, description: 'Recibo luz' })]}
         movimientos={[mov({ id: 90, description: 'Compra ya conciliada' })]}
       />
@@ -93,19 +101,46 @@ describe('solo lo que queda por confirmar', () => {
 
     expect(screen.getByText('Recibo luz')).toBeInTheDocument();
     expect(screen.queryByText('Compra ya conciliada')).not.toBeInTheDocument();
-    expect(screen.getByText('1 por confirmar')).toBeInTheDocument();
+    expect(screen.getByText('1 pendiente')).toBeInTheDocument();
   });
 
-  it('un día con todo hecho queda vacío, y lo dice', () => {
-    render(<DrawerCalendario {...base} movimientos={[mov({ id: 90 })]} />);
+  it('un día que ya ocurrió entero queda vacío, y lo dice', () => {
+    render(<DrawerCalendario {...yaPasado} movimientos={[mov({ id: 90 })]} />);
     abrirDia20();
-    expect(screen.getByText('Nada por confirmar este día')).toBeInTheDocument();
+    expect(screen.getByText('Nada pendiente este día')).toBeInTheDocument();
   });
 
-  it('la celda tampoco cuenta lo ya real', () => {
-    render(<DrawerCalendario {...base} movimientos={[mov({ id: 90 })]} />);
-    // Sin nada pendiente, la celda no enseña cifra ninguna.
-    expect(screen.getByRole('gridcell', { name: /^20 de julio · nada por confirmar/ })).toBeInTheDocument();
+  it('la celda tampoco cuenta lo ya pasado', () => {
+    render(<DrawerCalendario {...yaPasado} movimientos={[mov({ id: 90 })]} />);
+    expect(
+      screen.getByRole('gridcell', { name: /^20 de julio · nada pendiente/ })
+    ).toBeInTheDocument();
+  });
+
+  it('un movimiento ADELANTADO sí sale · es quien puede dejar la cuenta corta', () => {
+    // Con hoy = 1 de julio, el del día 20 aún no está en el saldo.
+    render(<DrawerCalendario {...base} movimientos={[mov({ id: 90, description: 'Recibo adelantado' })]} />);
+    abrirDia20();
+    expect(screen.getByText('Recibo adelantado')).toBeInTheDocument();
+  });
+
+  it('un evento ya confirmado se pinta, pero no se lee como tarea', () => {
+    // `confirmed` es una venta o una liquidación: está decidido y solo espera
+    // al banco. Mueve dinero, así que tiene que verse; pero el chip de estado
+    // lo separa del previsto, que es el que sí hay que confirmar.
+    render(
+      <DrawerCalendario
+        {...base}
+        eventos={[
+          ev({ id: 1, description: 'Recibo luz' }),
+          ev({ id: 2, description: 'Venta piso', status: 'confirmed', type: 'income', amount: 200000 }),
+        ]}
+      />
+    );
+    abrirDia20();
+    expect(screen.getByText('Venta piso')).toBeInTheDocument();
+    expect(screen.getByText('confirmado')).toBeInTheDocument();
+    expect(screen.getByText('previsto')).toBeInTheDocument();
   });
 });
 
