@@ -333,4 +333,111 @@ describe('movementMatchingService.matchBatch', () => {
     expect(result.multiMatches).toEqual([]);
     expect(result.sinMatch).toEqual([1]);
   });
+
+  // ==========================================================================
+  // Bizum · el nombre del banco no es el nombre del contrato
+  // ==========================================================================
+  //
+  // El inquilino paga la renta por Bizum unos días después de la previsión. Sin
+  // leer el nombre, esa línea se queda en 55 puntos —fecha próxima 10 + importe
+  // 30 + cuenta 15— y ni siquiera se PROPONE. Con el nombre, llega a 80.
+
+  const bizumDeAdnan = (): FakeStores => ({
+    movements: [
+      movement({
+        id: 1,
+        accountId: 42,
+        date: '2026-04-03',
+        amount: 380,
+        description: 'BIZUM DE ADNAN PARWEZ CONCEPTO: ALQUILER ABRIL',
+        paymentMethod: 'Bizum',
+      }),
+    ],
+    treasuryEvents: [
+      event({
+        id: 100,
+        accountId: 42,
+        type: 'income',
+        amount: 380,
+        predictedDate: '2026-04-01',
+        description: 'Renta 2026-04 · Adnan Parwez Khan',
+        counterparty: 'Adnan Parwez Khan',
+      }),
+    ],
+  });
+
+  it('7. Bizum cuyo nombre no cuadra exacto ⇒ se propone la renta del inquilino', async () => {
+    (initDB as jest.Mock).mockResolvedValue(buildDb(bizumDeAdnan()));
+
+    const result = await matchBatch([1]);
+
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].treasuryEventId).toBe(100);
+    expect(result.matches[0].reasons).toContain('bizum_contraparte');
+    expect(result.sinMatch).toEqual([]);
+  });
+
+  it('7b. El mismo Bizum sin el nombre del inquilino se queda sin propuesta', async () => {
+    const stores = bizumDeAdnan();
+    stores.movements[0].description = 'BIZUM RECIBIDO 00218832';
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+
+    expect(result.matches).toEqual([]);
+    expect(result.sinMatch).toEqual([1]);
+  });
+
+  it('8. Bizum de otra persona ⇒ no se cuelga de esa renta', async () => {
+    const stores = bizumDeAdnan();
+    stores.movements[0].description = 'BIZUM DE LAURA SANCHEZ';
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+
+    expect(result.matches).toEqual([]);
+    expect(result.sinMatch).toEqual([1]);
+  });
+
+  // Sólo el nombre de pila señala a varias personas: salen las dos y decide el
+  // usuario, que es exactamente lo que hace "a resolver".
+  it('9. Bizum que sólo trae el nombre de pila ⇒ candidatas, no conclusión', async () => {
+    const stores: FakeStores = {
+      movements: [
+        movement({
+          id: 1,
+          accountId: 42,
+          date: '2026-04-02',
+          amount: 380,
+          description: 'BIZUM DE MARIA',
+          paymentMethod: 'Bizum',
+        }),
+      ],
+      treasuryEvents: [
+        event({
+          id: 100,
+          accountId: 42,
+          amount: 380,
+          predictedDate: '2026-04-01',
+          counterparty: 'Maria Lopez',
+        }),
+        event({
+          id: 101,
+          accountId: 42,
+          amount: 380,
+          predictedDate: '2026-04-01',
+          counterparty: 'Maria Ferrer',
+        }),
+      ],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+
+    expect(result.matches).toEqual([]);
+    expect(result.multiMatches).toHaveLength(1);
+    expect(result.multiMatches[0].candidates.map((c) => c.treasuryEventId).sort()).toEqual([
+      100, 101,
+    ]);
+  });
 });

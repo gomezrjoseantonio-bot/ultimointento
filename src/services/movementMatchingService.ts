@@ -9,6 +9,8 @@
 // (see src/services/db.ts TreasuryEvent type + treasuryConfirmationService),
 // even though spec §1.3 refers to it as 'pending'. We use the canonical value.
 import { initDB, Movement, TreasuryEvent } from './db';
+import { pareceBizum, contraparteDeBizum } from './bizum';
+import { nivelDeCoincidencia } from './coincidenciaNombre';
 
 export type MatchScore = {
   movementId: number;
@@ -172,9 +174,47 @@ function scorePair(
   if (provider.length >= 3 && description.includes(provider)) {
     score += 25;
     reasons.push('descripcion_proveedor');
+  } else {
+    score += puntosDeBizum(movement, event, reasons);
   }
 
   return { score, reasons };
+}
+
+/**
+ * Un Bizum casi nunca trae el nombre completo del contrato: el banco manda
+ * "BIZUM DE ADNAN PARWEZ" y en la ficha pone "Adnan Parwez Khan". El
+ * `includes` de arriba no lo ve, así que la línea se quedaba por debajo del
+ * umbral y ni siquiera se PROPONÍA como candidata a la renta del inquilino.
+ *
+ * Aquí se compara por palabras. Y se puntúa distinto según lo que se sepa:
+ * compartir nombre y apellido señala a una persona; compartir sólo el nombre de
+ * pila señala a varias, y entonces salen las dos como candidatas y decide el
+ * usuario. Nada de esto concilia por su cuenta.
+ *
+ * Se limita a los Bizum a propósito: para el resto de líneas manda la regla de
+ * proveedor de siempre, que aquí no se toca.
+ */
+function puntosDeBizum(movement: Movement, event: TreasuryEvent, reasons: string[]): number {
+  const textoBanco = `${movement.counterparty ?? ''} ${movement.description ?? ''}`.trim();
+  const esBizum = movement.paymentMethod === 'Bizum' || pareceBizum(textoBanco);
+  if (!esBizum) return 0;
+
+  const quienCobra = event.counterparty ?? event.providerName ?? '';
+  // El nombre limpio si el texto lo dice; si no, el texto entero — de ahí ya se
+  // quedan sólo las palabras que valen para comparar.
+  const quienPaga = contraparteDeBizum(textoBanco) ?? textoBanco;
+
+  const nivel = nivelDeCoincidencia(quienPaga, quienCobra);
+  if (nivel === 'fuerte') {
+    reasons.push('bizum_contraparte');
+    return 25;
+  }
+  if (nivel === 'parcial') {
+    reasons.push('bizum_contraparte_parcial');
+    return 10;
+  }
+  return 0;
 }
 
 function signMatchesType(movementAmount: number, type: TreasuryEvent['type']): boolean {
