@@ -6,6 +6,7 @@ import type { AtlasHorizonDB } from '../db';
 import type { BoteAnualSinIdentificar,Contract,Property,TreasuryEvent } from './types';
 import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfillDocumentoFirmado } from '../alquileresV3FixService';
 import { migrarBaseAmortizableEjercicio } from '../baseAmortizableEjercicioService';
+import { inmuebleDelPrestamo, type PrestamoConDestinos } from '../inmuebleDelPrestamo';
 
 /** Sólo estos orígenes tienen un gasto recurrente detrás del que copiar. */
 const ORIGENES_CON_PROVEEDOR = new Set(['gasto_recurrente', 'opex_rule', 'personal_expense']);
@@ -465,32 +466,40 @@ export function runPostOpenMigrations(
       return db;
     })
 
-    // ── §4.9 · de qué piso es cada cuota de hipoteca ────────────────────────
+    // ── §4.9 · de qué piso es cada cuota de préstamo ────────────────────────
     //
     // El generador nunca copiaba `inmuebleId` al evento, así que la fila de una
     // cuota no podía decir de qué inmueble era por más que se le pasara el
     // resolvedor de alias: no había id que resolver. Ya lo copia, pero solo
     // para los eventos que escriba a partir de ahora — y esa escritura únicamente
     // ocurre al guardar el préstamo. Sin esto, el arreglo no se vería hasta
-    // volver a tocar cada hipoteca a mano.
+    // volver a tocar cada préstamo a mano.
+    //
+    // De PRÉSTAMO y no solo de hipoteca: rellena cualquier evento con
+    // `prestamoId` cuyo préstamo tenga destino con inmueble, porque uno
+    // personal puede financiar una reforma y esa cuota también quiere decir de
+    // qué piso es.
     //
     // Rellena, no corrige: si el evento ya trae inmueble se deja como está.
     .then(async (db) => {
       try {
-        const FLAG = 'migration_inmueble_en_cuotas_hipoteca_v1';
+        // `_v2` · la v1 leía el campo raíz `Prestamo.inmuebleId`, que está
+        // `@deprecated` y viene vacío en los préstamos de la ficha actual: se
+        // ejecutó, marcó bandera y no rellenó nada. Con el mismo nombre no
+        // volvería a correr nunca, así que la bandera sube de versión.
+        const FLAG = 'migration_inmueble_en_cuotas_hipoteca_v2';
         if ((await db.get('keyval', FLAG)) === 'completed') return db;
 
-        const prestamos = (await db.getAll('prestamos')) as Array<{
-          id?: string;
-          inmuebleId?: string | number;
-        }>;
-        // `'standalone'` es el centinela heredado de "sin inmueble"; un
-        // `Number('standalone')` sería NaN y dejaría el evento peor que antes.
+        const prestamos = (await db.getAll('prestamos')) as Array<
+          PrestamoConDestinos & { id?: string }
+        >;
+        // El piso sale de `destinos[]`: el campo raíz está `@deprecated` y en
+        // los préstamos creados con la ficha actual viene vacío.
         const inmueblePorPrestamo = new Map<string, number>();
         for (const p of prestamos) {
-          if (!p.id || p.inmuebleId == null || p.inmuebleId === 'standalone') continue;
-          const n = Number(p.inmuebleId);
-          if (Number.isFinite(n)) inmueblePorPrestamo.set(String(p.id), n);
+          if (!p.id) continue;
+          const inmueble = inmuebleDelPrestamo(p);
+          if (inmueble != null) inmueblePorPrestamo.set(String(p.id), inmueble);
         }
         if (inmueblePorPrestamo.size === 0) {
           await db.put('keyval', 'completed', FLAG);
@@ -514,11 +523,11 @@ export function runPostOpenMigrations(
         await tx.done;
 
         if (rellenados > 0) {
-          console.log(`[DB §4.9] inmueble rellenado en ${rellenados} cuota(s) de hipoteca`);
+          console.log(`[DB §4.9] inmueble rellenado en ${rellenados} cuota(s) de préstamo`);
         }
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
-        console.warn('[DB §4.9 backfill inmueble en cuotas] falló:', err);
+        console.warn('[DB §4.9 backfill inmueble en cuotas de préstamo] falló:', err);
       }
       return db;
     });
