@@ -13,7 +13,11 @@
 // da a cada uno — aquí no se concilia nada, sólo se mide el parecido.
 // ============================================================================
 
-/** Partículas que no distinguen a nadie · "de la Torre" y "Torre" son la misma. */
+/**
+ * Partículas que no distinguen a nadie · "de la Torre" y "Torre" dejan la misma
+ * palabra al comparar. Que dos nombres compartan una palabra no dice que sean
+ * la misma persona: eso lo decide `nivelDeCoincidencia` más abajo.
+ */
 const PARTICULAS = new Set([
   'de',
   'del',
