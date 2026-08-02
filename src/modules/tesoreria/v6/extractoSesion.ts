@@ -59,6 +59,14 @@ export interface DecisionesSesion {
    * al batch, `recuperados` los borra.
    */
   recuperados: Set<number>;
+  /**
+   * movementIds que el usuario ha marcado como RETIRADA DE EFECTIVO.
+   *
+   * No es un ignorado ni un movimiento suelto: al guardar, ese cargo se
+   * convierte en la pata de salida de un traspaso a la cuenta de Efectivo y
+   * nace su pata espejo. El dinero no se ha gastado, ha cambiado de sitio.
+   */
+  aEfectivo: Set<number>;
 }
 
 export function decisionesVacias(): DecisionesSesion {
@@ -67,6 +75,7 @@ export function decisionesVacias(): DecisionesSesion {
     ignorados: new Set(),
     creados: new Set(),
     recuperados: new Set(),
+    aEfectivo: new Set(),
   };
 }
 
@@ -165,6 +174,10 @@ export function veredictoEfectivo(
   if (decisiones.ignorados.has(linea.movementId)) return 'ignorada';
   if (decisiones.asignados.has(linea.movementId)) return 'cuadra';
   if (decisiones.creados.has(linea.movementId)) return 'cuadra';
+  // Resuelta: el cargo se queda, convertido en traspaso a la cuenta de
+  // efectivo. Por eso NO cuenta como pendiente y su movimiento sobrevive a
+  // `consolidarSesion`, que es lo contrario de lo que pasa con lo sin resolver.
+  if (decisiones.aEfectivo.has(linea.movementId)) return 'cuadra';
 
   // Recuperar una ignorada de una importación anterior la devuelve al flujo,
   // no la da por buena: vuelve a "a resolver" salvo que además cuadre sola.
@@ -209,6 +222,11 @@ export function payloadDeConfirmacion(
       continue;
     }
     if (v !== 'cuadra') continue;
+
+    // Marcada como efectivo, NO se empareja con ningún previsto aunque hubiera
+    // cuadrado sola: el usuario ha dicho qué es esa línea, y confirmarle además
+    // un previsto lo daría por pagado con el mismo dinero dos veces.
+    if (decisiones.aEfectivo.has(l.movementId)) continue;
 
     // Una asignación a mano gana al emparejamiento automático: es el usuario
     // corrigiendo, que es justo lo que la pantalla le ofrece hacer.
@@ -272,4 +290,21 @@ export function hashesARecuperar(
     .filter((l) => l.veredicto === 'ignorada' && decisiones.recuperados.has(l.movementId))
     .filter((l) => !decisiones.ignorados.has(l.movementId))
     .map((l) => l.hashLinea);
+}
+
+/**
+ * Líneas que el usuario ha marcado como retirada de efectivo.
+ *
+ * Se convierten al guardar —el cargo pasa a ser la pata de salida y nace la de
+ * entrada en la cuenta de Efectivo—, así que se devuelven los movementIds: el
+ * movimiento ya existe y lo que hace falta es transformarlo, no crearlo.
+ */
+export function movimientosAEfectivo(
+  lineas: LineaExtracto[],
+  decisiones: DecisionesSesion
+): number[] {
+  return lineas
+    .filter((l) => decisiones.aEfectivo.has(l.movementId))
+    .filter((l) => !decisiones.ignorados.has(l.movementId))
+    .map((l) => l.movementId);
 }

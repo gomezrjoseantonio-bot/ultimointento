@@ -36,6 +36,7 @@ import {
   resumir,
   payloadDeConfirmacion,
   lineasAIgnorar,
+  movimientosAEfectivo,
   lineasPendientes,
   hashesARecuperar,
   decisionesVacias,
@@ -46,6 +47,8 @@ import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
+import { pareceRetiradaDeCajero } from '../../../services/retiradaCajero';
+import { convertirEnTraspaso } from '../../../services/traspasoDesdeMovimiento';
 import { importeConSigno, fechaLarga } from './formatoV6';
 import chasis from './DrawerV6.module.css';
 import styles from './DrawerExtracto.module.css';
@@ -175,6 +178,18 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     [cuenta, cuentas, procesar]
   );
 
+  /**
+   * La cuenta de Efectivo · sin ella no se puede ofrecer nada.
+   *
+   * Sacar del cajero es un traspaso, y un traspaso necesita una cuenta al otro
+   * lado. Si el usuario no la tiene creada, el botón no aparece: prometer una
+   * acción que no se puede completar es peor que no ofrecerla.
+   */
+  const cuentaEfectivo = useMemo(
+    () => cuentasEnUso(cuentas).find((c) => c.tipo === 'EFECTIVO'),
+    [cuentas]
+  );
+
   // ── Guardar · el único botón que consolida ────────────────────────────────
   const guardar = useCallback(async () => {
     if (!resultado || !cuentaActiva?.id) return;
@@ -193,6 +208,16 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       }
       for (const hash of hashesARecuperar(lineas, decisiones)) {
         await recoverLine(cuentaActiva.id, hash);
+      }
+
+      // Las retiradas de efectivo · el movimiento del cargo YA existe, así que
+      // se transforma en la pata de salida y nace su espejo en la cuenta de
+      // efectivo. Crear el traspaso desde cero duplicaría el apunte y el saldo
+      // dejaría de cuadrar con el banco.
+      if (cuentaEfectivo?.id != null) {
+        for (const movementId of movimientosAEfectivo(lineas, decisiones)) {
+          await convertirEnTraspaso(movementId, cuentaEfectivo.id);
+        }
       }
 
       // §4.7 · el fichero se archiva vinculado a cuenta y periodo. Va antes de
@@ -220,7 +245,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       setError(err instanceof Error ? err.message : 'No se pudo guardar el extracto.');
       setPaso('resolver');
     }
-  }, [resultado, cuentaActiva, lineas, decisiones, onGuardado, reiniciar, onCerrar]);
+  }, [resultado, cuentaActiva, cuentaEfectivo, lineas, decisiones, onGuardado, reiniciar, onCerrar]);
 
   // ── Salir sin guardar ─────────────────────────────────────────────────────
   const salirSinGuardar = useCallback(async () => {
@@ -245,6 +270,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         ignorados: new Set(prev.ignorados),
         creados: new Set(prev.creados),
         recuperados: new Set(prev.recuperados),
+        aEfectivo: new Set(prev.aEfectivo),
       };
       mut(d);
       return d;
@@ -266,7 +292,23 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     conDecisiones((d) => {
       d.asignados.set(movementId, eventoId);
       d.ignorados.delete(movementId);
+      d.aEfectivo.delete(movementId);
     });
+
+  /**
+   * "Es efectivo" · el cargo se convierte en un traspaso a la cuenta de
+   * Efectivo al guardar. Sacar del cajero no es un gasto: el dinero no se va,
+   * cambia de sitio.
+   */
+  const marcarEfectivo = (movementId: number) =>
+    conDecisiones((d) => {
+      d.aEfectivo.add(movementId);
+      d.ignorados.delete(movementId);
+      d.asignados.delete(movementId);
+    });
+
+  const desmarcarEfectivo = (movementId: number) =>
+    conDecisiones((d) => d.aEfectivo.delete(movementId));
 
   /**
    * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto, así
@@ -532,7 +574,22 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                     </div>
                     <div className={styles.lineaFecha}>{fechaLarga(l.fecha)}</div>
 
-                    {v === 'cuadra' ? (
+                    {decisiones.aEfectivo.has(l.movementId) ? (
+                      <div className={styles.veredicto}>
+                        <Icons.Check size={13} aria-hidden="true" />
+                        <span>
+                          pasa a {cuentaEfectivo?.alias || 'Efectivo'} · el dinero no se gasta,
+                          cambia de sitio
+                        </span>
+                        <button
+                          type="button"
+                          className={styles.btnLinea}
+                          onClick={() => desmarcarEfectivo(l.movementId)}
+                        >
+                          Deshacer
+                        </button>
+                      </div>
+                    ) : v === 'cuadra' ? (
                       <div className={styles.veredicto}>
                         <Icons.Check size={13} aria-hidden="true" />
                         <span>
@@ -586,6 +643,22 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                             >
                               Crear movimiento
                             </button>
+                            {/* Solo donde encaja · una retirada de cajero llega
+                                como un cargo más, y apuntarla como gasto hunde
+                                el patrimonio el día que el dinero solo ha
+                                cambiado de sitio. Se PROPONE, no se adivina:
+                                un reintegro también puede ser dinero que sacas
+                                para llevártelo a otro sitio. */}
+                            {cuentaEfectivo?.id != null &&
+                              pareceRetiradaDeCajero(l.textoBanco, l.importe) && (
+                                <button
+                                  type="button"
+                                  className={styles.btnLinea}
+                                  onClick={() => marcarEfectivo(l.movementId)}
+                                >
+                                  Es efectivo
+                                </button>
+                              )}
                             <button
                               type="button"
                               className={styles.btnLinea}
