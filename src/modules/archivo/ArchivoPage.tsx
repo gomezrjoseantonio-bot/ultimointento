@@ -6,7 +6,7 @@
 // Lee del store `documents` · NO toca services internos.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Archive } from 'lucide-react';
 import { PageHead, Icons, MoneyValue, showToastV5 } from '../../design-system/v5';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -78,6 +78,17 @@ const ArchivoPage: React.FC = () => {
   const navigate = useNavigate();
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  /**
+   * §7 · el Archivo sabe recibir un documento concreto (`/archivo?doc=12`).
+   *
+   * Sin esto, el enlace desde la ficha de un movimiento solo podía dejar al
+   * usuario en la lista entera, buscando a mano la factura que acababa de
+   * pedir: un enlace que no lleva a lo que promete no ahorra el viaje.
+   * Se resuelve por el buscador, que ya filtra, en vez de inventar un modo de
+   * vista nuevo.
+   */
+  const [params] = useSearchParams();
+  const docPedido = params.get('doc');
   const [search, setSearch] = useState('');
   const [tipoFilter, setTipoFilter] = useState<TipoFiltro>('all');
   const [entityFilter, setEntityFilter] = useState<EntityType>('all');
@@ -101,6 +112,14 @@ const ArchivoPage: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  // Al llegar con `?doc=`, se filtra por su nombre: es lo que el usuario
+  // reconoce, y deja la lista en un estado del que puede seguir navegando.
+  useEffect(() => {
+    if (!docPedido || docs.length === 0) return;
+    const doc = docs.find((d) => String(d.id) === docPedido);
+    if (doc) setSearch(doc.filename);
+  }, [docPedido, docs]);
 
   const totalSize = docs.reduce((s, d) => s + (d.size ?? 0), 0);
   const sinClasificar = docs.filter(isSinClasificar);

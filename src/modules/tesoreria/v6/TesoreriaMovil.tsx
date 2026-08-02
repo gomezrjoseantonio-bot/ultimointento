@@ -69,7 +69,7 @@ const TesoreriaMovil: React.FC<TesoreriaMovilProps> = ({
         <div className={styles.heroRow}>
           <span className={styles.heroBig}>{importeSaldo(saldoHoy)}</span>
           <span className={styles.heroFin}>
-            <span className={styles.heroFinL}>Fin de mes</span>
+            <span className={styles.heroFinL}>Cierre</span>
             <span className={styles.heroFinV}>{importeSaldo(cierre)}</span>
           </span>
         </div>

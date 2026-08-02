@@ -477,6 +477,8 @@ const TesoreriaV6Page: React.FC = () => {
           onConfirmar={confirmarItem}
           onDescartar={descartarItem}
           onGuardarFicha={guardarFicha}
+        // §7 · el Archivo sabe abrir un documento concreto por `?doc=`.
+        onAbrirDocumento={(id) => navigate(`/archivo?doc=${id}`)}
           onEliminar={descartarItem}
           cuentas={cuentasVivas}
           inmuebles={inmuebles}

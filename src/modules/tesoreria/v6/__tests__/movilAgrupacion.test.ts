@@ -189,3 +189,51 @@ describe('lo que se lee en cada fila', () => {
     expect(contarPendientes(grupos)).toBe(3);
   });
 });
+
+
+// §6.3 · el móvil dice lo mismo que el escritorio.
+describe('quién cobra, también en el móvil', () => {
+  it('el título es el proveedor · se puntea con el extracto del banco al lado', () => {
+    const g = agruparPendientesPorCuenta({
+      cuentas: [{ id: 1, status: 'ACTIVE' } as never],
+      eventos: [
+        {
+          id: 1,
+          accountId: 1,
+          type: 'expense',
+          amount: 40.29,
+          predictedDate: '2026-08-10',
+          description: 'Seguro hogar',
+          proveedor: 'Mapfre',
+          inmuebleAlias: 'Tenderina 64',
+          status: 'predicted',
+        } as never,
+      ],
+      saldoPorCuenta: new Map([[1, 1000]]),
+    });
+
+    expect(g[0].pendientes[0].concepto).toBe('Mapfre');
+    expect(g[0].pendientes[0].detalle).toBe('Seguro hogar · Tenderina 64');
+  });
+
+  it('sin proveedor manda la descripción · como siempre', () => {
+    const g = agruparPendientesPorCuenta({
+      cuentas: [{ id: 1, status: 'ACTIVE' } as never],
+      eventos: [
+        {
+          id: 1,
+          accountId: 1,
+          type: 'expense',
+          amount: 40,
+          predictedDate: '2026-08-10',
+          description: 'Seguro hogar',
+          status: 'predicted',
+        } as never,
+      ],
+      saldoPorCuenta: new Map([[1, 1000]]),
+    });
+
+    expect(g[0].pendientes[0].concepto).toBe('Seguro hogar');
+    expect(g[0].pendientes[0].detalle).toBe('');
+  });
+});

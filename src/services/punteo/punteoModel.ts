@@ -77,6 +77,13 @@ export interface ItemPunteo {
   importe: number;
   /** Importe previsto original si el real difiere (para mostrar en gris). */
   importePrevisto?: number;
+  /**
+   * §7 · documentos del Archivo vinculados a este movimiento (factura, recibo).
+   *
+   * Solo los movimientos reales los tienen: una previsión aún no ha generado
+   * ningún papel. Viaja hasta la ficha para poder enlazarlos desde ahí.
+   */
+  documentIds?: number[];
   /** Discrepancia banco-vs-confirmado pendiente de revisar. */
   discrepancia?: DiscrepanciaPunteo;
   /** Agrupación madre/hijas (alquiler por habitaciones · fraccionados). */

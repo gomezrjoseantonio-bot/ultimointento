@@ -344,3 +344,46 @@ describe('cierre', () => {
     expect(onCerrar).toHaveBeenCalledTimes(3);
   });
 });
+
+
+// §7 · el enlace al documento del Archivo.
+describe('el papel que respalda el movimiento', () => {
+  const abrir = jest.fn();
+
+  beforeEach(() => abrir.mockClear());
+
+  const conDocs = (documentIds?: number[]) =>
+    render(
+      <FichaMovimiento
+        abierta
+        inicial={{ tipo: 'gasto', concepto: 'Seguro', importe: -40, fecha: '2026-08-10', cuentaId: 1 }}
+        cuentas={[{ id: 1, alias: 'Santander' } as never]}
+        inmuebles={[]}
+        onCerrar={() => {}}
+        onGuardar={() => {}}
+        documentIds={documentIds}
+        onAbrirDocumento={abrir}
+      />
+    );
+
+  it('sin documentos NO se pinta nada · no hay papel que ver', () => {
+    conDocs(undefined);
+    expect(screen.queryByText(/Ver el documento/)).not.toBeInTheDocument();
+  });
+
+  it('con uno, enlaza a ese', () => {
+    conDocs([12]);
+    fireEvent.click(screen.getByText('Ver el documento'));
+    expect(abrir).toHaveBeenCalledWith(12);
+  });
+
+  it('con varios lo dice · el usuario sabe que hay más de uno antes de ir', () => {
+    conDocs([12, 13, 14]);
+    expect(screen.getByText('Ver los 3 documentos')).toBeInTheDocument();
+  });
+
+  it('es un enlace, NO una zona de subida · aquí se corrigen importes', () => {
+    conDocs([12]);
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+  });
+});

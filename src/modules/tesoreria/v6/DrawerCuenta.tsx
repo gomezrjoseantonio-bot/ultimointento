@@ -37,6 +37,8 @@ export interface DrawerCuentaProps {
   /** ISO yyyy-mm-dd · corta la bandeja de Pendientes (A1). */
   hoy: string;
   aliasInmueble?: (id: number | string) => string | undefined;
+  /** §7 · abrir en el Archivo el documento que respalda un movimiento. */
+  onAbrirDocumento?: (documentId: number) => void;
   onCerrar: () => void;
   /** Puntear un previsto · materializa el movimiento y mueve el saldo (§4.6). */
   onConfirmar: (item: ItemPunteo) => void | Promise<void>;
@@ -64,6 +66,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   month0,
   hoy,
   aliasInmueble,
+  onAbrirDocumento,
   onCerrar,
   onConfirmar,
   onDescartar,
@@ -271,6 +274,9 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
         abierta={ficha != null}
         inicial={ficha?.item ? valoresDesdeItem(ficha.item, cuenta.id ?? null) : undefined}
         importePrevisto={ficha?.item?.importePrevisto ?? ficha?.item?.importe}
+        // §7 · el papel que respalda el cargo · solo lo tienen los reales.
+        documentIds={ficha?.item?.documentIds}
+        onAbrirDocumento={onAbrirDocumento}
         cuentas={cuentas.length > 0 ? cuentas : [cuenta]}
         inmuebles={inmuebles}
         onCerrar={() => setFicha(null)}
