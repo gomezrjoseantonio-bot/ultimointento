@@ -949,23 +949,44 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
               </div>
             ) : (
               <>
+                {/* El importe REAL va dentro de la barra, sobre lo que lleva
+                    recorrido: la cifra y su proporción se leen de una sola
+                    mirada en vez de saltar de la barra a una columna.
+
+                    Si el relleno es tan estrecho que no cabe —un 7 % lo es— el
+                    importe sale FUERA, a su derecha. Ensanchar el relleno para
+                    que quepa el texto sería falsear la proporción, que es
+                    justo lo que la barra viene a decir. */}
                 <div className={styles.rvbar}>
                   <div
-                    className={`${styles.rvfill} ${styles.rvfillIn}`}
+                    className={`${styles.rvfill} ${l.clave === 'Neto' ? styles.rvfillNet : styles.rvfillIn}`}
                     style={{ width: `${ancho}%` }}
-                  />
+                  >
+                    {ancho >= 22 && <span className={styles.rvenBarra}>{importeSaldo(l.real)}</span>}
+                  </div>
+                  {ancho < 22 && (
+                    <span className={styles.rvFueraBarra} style={{ left: `calc(${ancho}% + 8px)` }}>
+                      {importeSaldo(l.real)}
+                    </span>
+                  )}
                 </div>
                 {/* Sin porcentaje no se pinta un "%" suelto: un signo sin
                     número delante no dice nada y parece un dato que falta. */}
                 <span className={styles.rvpct}>
                   {l.porcentaje != null ? `${l.porcentaje}%` : ''}
                 </span>
+                <div className={styles.rvnum}>
+                  {importeSaldo(l.previsto)}
+                  <small>previsto</small>
+                </div>
               </>
             )}
-            <div className={styles.rvnum}>
-              {importeSaldo(l.real)}
-              <small>de {importeSaldo(l.previsto)} previsto</small>
-            </div>
+            {neto && (
+              <div className={styles.rvnum}>
+                {importeSaldo(l.previsto)}
+                <small>previsto</small>
+              </div>
+            )}
           </div>
         );
       })}

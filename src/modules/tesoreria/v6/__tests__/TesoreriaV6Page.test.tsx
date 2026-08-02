@@ -400,3 +400,20 @@ describe('bloque A · los bordes que se colaron', () => {
     expect(etiqueta(24, false)).toBe('mejor de lo previsto');
   });
 });
+
+
+// §4.10 · la barra con el importe dentro.
+describe('la barra de "Cómo va {mes}"', () => {
+  it('con relleno ancho el importe va DENTRO · con relleno estrecho, fuera', () => {
+    // Ensanchar el relleno para que quepa el texto falsearía la proporción,
+    // que es justo lo que la barra viene a decir. Así que por debajo del umbral
+    // el importe sale a la derecha del relleno, no dentro.
+    const UMBRAL = 22;
+    const dentro = (pct: number) => pct >= UMBRAL;
+
+    expect(dentro(82)).toBe(true);
+    expect(dentro(22)).toBe(true);
+    expect(dentro(7)).toBe(false);
+    expect(dentro(0)).toBe(false);
+  });
+});

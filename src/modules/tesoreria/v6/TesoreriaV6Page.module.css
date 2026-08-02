@@ -512,15 +512,48 @@
 }
 /* §4.10 · la barra tiene CUERPO y marco · 22px, como el mockup.
    A 7px sin borde parecía una raya de separación más que un indicador. */
+/* §4.10 · la barra lleva DENTRO el importe recorrido.
+   La cifra y su proporción se leen de una sola mirada, en vez de saltar de la
+   barra a una columna. Necesita alto para que el texto quepa. */
 .rvbar {
   position: relative;
-  height: 22px;
+  height: 30px;
   border-radius: 6px;
   background: var(--atlas-v5-card-alt);
   border: 1px solid var(--atlas-v5-line-2);
-  overflow: hidden;
 }
-.rvfill { height: 100%; border-radius: 4px 0 0 4px; }
+.rvfill {
+  height: 100%;
+  border-radius: 5px 0 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  min-width: 0;
+}
+/* El importe dentro del relleno · sobre navy u oro, en blanco. */
+.rvenBarra {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-white);
+  white-space: nowrap;
+}
+/* Cuando el relleno es demasiado estrecho para el texto, el importe sale a su
+   derecha. Ensanchar el relleno para que quepa falsearía la proporción, que es
+   justo lo que la barra viene a decir. */
+.rvFueraBarra {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
 .rvfillIn,
 .rvfillOut { background: var(--atlas-v5-brand); }
 .rvfillNet { background: var(--atlas-v5-gold); }
@@ -535,22 +568,21 @@
   text-align: right;
 }
 .rvpctNet { color: var(--atlas-v5-gold); }
+/* A la derecha, lo PREVISTO · el real ya está dentro de la barra. */
 .rvnum {
+  text-align: right;
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
   font-size: 12.5px;
   font-weight: 700;
   color: var(--atlas-v5-ink);
-  text-align: right;
-  white-space: nowrap;
+  line-height: 1.35;
 }
 .rvnum small {
   display: block;
-  font-family: var(--atlas-v5-font-sans);
   font-size: 10.5px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--atlas-v5-ink-4);
-  margin-top: 2px;
 }
 .rvsep {
   height: 1px;
