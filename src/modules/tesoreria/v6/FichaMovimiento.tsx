@@ -161,6 +161,18 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
 
   const subtipos = useMemo(() => subtiposDe(familia), [familia]);
   const esTransferencia = tipo === 'transferencia';
+  /**
+   * Sacar del cajero es una TRANSFERENCIA INTERNA a la cuenta de Efectivo · el
+   * dinero no se gasta, cambia de sitio.
+   *
+   * El botón no estrena ningún concepto nuevo: rellena el formulario —tipo
+   * transferencia, destino la cuenta de efectivo y la descripción puesta— para
+   * que la retirada no haya que armarla a mano cada vez. Y si no hay cuenta de
+   * efectivo se dice, en vez de ofrecer un botón que no puede hacer nada.
+   */
+  const cuentaEfectivo = useMemo(() => cuentas.find((c) => c.tipo === 'EFECTIVO'), [cuentas]);
+  const esCajero =
+    esTransferencia && cuentaEfectivo?.id != null && cuentaDestinoId === cuentaEfectivo.id;
   const clasificable = !esTransferencia;
 
   const traduccion = clasificable ? traducirInmueble(familia, subtipo) : undefined;
@@ -251,13 +263,39 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                 <button
                   key={t}
                   type="button"
-                  aria-pressed={tipo === t}
-                  className={`${styles.tipoBtn} ${tipo === t ? styles.tipoOn : ''}`}
-                  onClick={() => setTipo(t)}
+                  aria-pressed={tipo === t && !esCajero}
+                  className={`${styles.tipoBtn} ${tipo === t && !esCajero ? styles.tipoOn : ''}`}
+                  onClick={() => {
+                    setTipo(t);
+                    // Salir de "Cajero" SUELTA el destino que puso el atajo: si
+                    // no, una transferencia normal nacía apuntando a la cuenta
+                    // de efectivo sin que nadie lo hubiera pedido. Se queda en
+                    // "externa", que es de donde partía la ficha.
+                    if (esCajero) setCuentaDestinoId(null);
+                  }}
                 >
                   {t === 'gasto' ? 'Gasto' : t === 'ingreso' ? 'Ingreso' : 'Transferencia'}
                 </button>
               ))}
+              <button
+                type="button"
+                aria-pressed={esCajero}
+                className={`${styles.tipoBtn} ${esCajero ? styles.tipoOn : ''}`}
+                disabled={cuentaEfectivo?.id == null}
+                title={
+                  cuentaEfectivo?.id == null
+                    ? 'Necesitas una cuenta de Efectivo · créala en Cuentas'
+                    : `Sacar dinero a ${cuentaEfectivo.alias || 'Efectivo'}`
+                }
+                onClick={() => {
+                  if (cuentaEfectivo?.id == null) return;
+                  setTipo('transferencia');
+                  setCuentaDestinoId(cuentaEfectivo.id);
+                  if (!concepto.trim()) setConcepto('Retirada de cajero');
+                }}
+              >
+                Cajero
+              </button>
             </div>
           )}
 

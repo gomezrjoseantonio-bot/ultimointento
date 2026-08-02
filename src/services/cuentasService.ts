@@ -38,7 +38,7 @@ export interface AccountExtendedFields {
 export interface CreateAccountData extends AccountExtendedFields {
   alias?: string;  // ATLAS: alias is now optional
   iban?: string;
-  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO';
+  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO' | 'EFECTIVO';
   cardConfig?: {
     settlementDay: number;
     chargeAccountId: number;
@@ -53,7 +53,7 @@ export interface CreateAccountData extends AccountExtendedFields {
 
 export interface UpdateAccountData extends AccountExtendedFields {
   alias?: string;  // ATLAS: alias is optional
-  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO';
+  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO' | 'EFECTIVO';
   cardConfig?: {
     settlementDay: number;
     chargeAccountId: number;
