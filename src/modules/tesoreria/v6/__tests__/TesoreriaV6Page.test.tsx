@@ -408,12 +408,16 @@ describe('la barra de "Cómo va {mes}"', () => {
     // Ensanchar el relleno para que quepa el texto falsearía la proporción,
     // que es justo lo que la barra viene a decir. Así que por debajo del umbral
     // el importe sale a la derecha del relleno, no dentro.
-    const UMBRAL = 22;
+    //
+    // El umbral es 40 y no 22: con 22 el texto entraba pero se salía del
+    // relleno por la derecha, que es el aspecto que se quería evitar. Un
+    // importe con miles y dos decimales pide más de un tercio de la barra.
+    const UMBRAL = 40;
     const dentro = (pct: number) => pct >= UMBRAL;
 
     expect(dentro(82)).toBe(true);
-    expect(dentro(22)).toBe(true);
+    expect(dentro(40)).toBe(true);
+    expect(dentro(22)).toBe(false);
     expect(dentro(7)).toBe(false);
-    expect(dentro(0)).toBe(false);
   });
 });

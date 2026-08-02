@@ -513,11 +513,11 @@
 /* §4.10 · la barra tiene CUERPO y marco · 22px, como el mockup.
    A 7px sin borde parecía una raya de separación más que un indicador. */
 /* §4.10 · la barra lleva DENTRO el importe recorrido.
-   La cifra y su proporción se leen de una sola mirada, en vez de saltar de la
-   barra a una columna. Necesita alto para que el texto quepa. */
+   22px, como el mockup: a 30 quedaban gruesas y pesaban más que las cifras que
+   acompañan. El texto de dentro se ajusta a ese alto, no al revés. */
 .rvbar {
   position: relative;
-  height: 30px;
+  height: 22px;
   border-radius: 6px;
   background: var(--atlas-v5-card-alt);
   border: 1px solid var(--atlas-v5-line-2);
@@ -528,14 +528,17 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding-right: 10px;
+  padding-right: 9px;
   min-width: 0;
+  /* Sin esto el texto se sale del relleno por la derecha en vez de quedarse
+     dentro, que es justo lo que la barra intenta evitar. */
+  overflow: hidden;
 }
 /* El importe dentro del relleno · sobre navy u oro, en blanco. */
 .rvenBarra {
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--atlas-v5-white);
   white-space: nowrap;
@@ -549,7 +552,7 @@
   transform: translateY(-50%);
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--atlas-v5-ink-2);
   white-space: nowrap;

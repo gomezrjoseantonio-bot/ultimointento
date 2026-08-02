@@ -953,18 +953,23 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
                     recorrido: la cifra y su proporción se leen de una sola
                     mirada en vez de saltar de la barra a una columna.
 
-                    Si el relleno es tan estrecho que no cabe —un 7 % lo es— el
-                    importe sale FUERA, a su derecha. Ensanchar el relleno para
-                    que quepa el texto sería falsear la proporción, que es
-                    justo lo que la barra viene a decir. */}
+                    Si el relleno no da para el texto, el importe sale FUERA, a
+                    su derecha. Ensanchar el relleno para que quepa sería
+                    falsear la proporción, que es justo lo que la barra viene a
+                    decir.
+
+                    El umbral es 40 % y no 22 %: con 22 el texto entraba pero
+                    se salía del relleno por la derecha, que es exactamente el
+                    aspecto que se quería evitar. Un importe con miles y dos
+                    decimales necesita más de un tercio de la barra. */}
                 <div className={styles.rvbar}>
                   <div
                     className={`${styles.rvfill} ${l.clave === 'Neto' ? styles.rvfillNet : styles.rvfillIn}`}
                     style={{ width: `${ancho}%` }}
                   >
-                    {ancho >= 22 && <span className={styles.rvenBarra}>{importeSaldo(l.real)}</span>}
+                    {ancho >= 40 && <span className={styles.rvenBarra}>{importeSaldo(l.real)}</span>}
                   </div>
-                  {ancho < 22 && (
+                  {ancho < 40 && (
                     <span className={styles.rvFueraBarra} style={{ left: `calc(${ancho}% + 8px)` }}>
                       {importeSaldo(l.real)}
                     </span>
@@ -972,7 +977,10 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
                 </div>
                 {/* Sin porcentaje no se pinta un "%" suelto: un signo sin
                     número delante no dice nada y parece un dato que falta. */}
-                <span className={styles.rvpct}>
+                {/* El % en el color de SU barra · el Neto va en oro, como su
+                    relleno: si la barra es dorada y el número azul, parecen
+                    dos datos distintos. */}
+                <span className={`${styles.rvpct} ${l.clave === 'Neto' ? styles.rvpctNet : ''}`}>
                   {l.porcentaje != null ? `${l.porcentaje}%` : ''}
                 </span>
                 <div className={styles.rvnum}>
