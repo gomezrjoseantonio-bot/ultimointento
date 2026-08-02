@@ -329,10 +329,14 @@ class CuentasService {
    */
   private aplicarExclusividadBizum(cuenta: Account): Account[] {
     if (!cuenta.bizum) return [];
+    const ahora = new Date().toISOString();
     const tocadas: Account[] = [];
     for (const otra of this.accounts) {
       if (otra.id !== cuenta.id && otra.bizum) {
         otra.bizum = undefined;
+        // Su `updatedAt` también: la cuenta ha cambiado, y guardarla con la
+        // marca de tiempo vieja deja un registro que dice que no se tocó.
+        otra.updatedAt = ahora;
         tocadas.push(otra);
       }
     }
@@ -340,6 +344,15 @@ class CuentasService {
   }
 
   public async create(data: CreateAccountData): Promise<Account> {
+    // La caché tiene que estar cargada ANTES de tocar `this.accounts`.
+    //
+    // `update` lo hace de rebote —`findIndexById` espera—, pero crear no
+    // esperaba a nadie: con la lista aún vacía, la exclusividad del Bizum no
+    // encontraba a quién quitárselo y se saltaba en silencio, dejando dos
+    // cuentas con Bizum. Lo mismo vale para el control de IBAN duplicado, que
+    // también lee de aquí.
+    await this.ready;
+
     // Validate alias if provided (now optional)
     if (data.alias !== undefined) {
       const alias = data.alias.trim();

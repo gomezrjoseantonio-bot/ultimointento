@@ -869,7 +869,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                         onClick={() => set('bizum', !form.bizum)}
                         role="switch"
                         aria-checked={form.bizum}
-                        aria-label={form.bizum ? 'Quitar el Bizum de esta cuenta' : 'El Bizum está en esta cuenta'}
+                        aria-label={form.bizum ? 'Desactivar Bizum' : 'Activar Bizum'}
                       />
                     </div>
                   )}
