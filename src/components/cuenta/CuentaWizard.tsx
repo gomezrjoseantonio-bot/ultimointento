@@ -615,8 +615,11 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
         taeAnual: !isCard && form.esRemunerada ? parseNum(form.taeAnual) : undefined,
         frecuenciaLiquidacion: !isCard && form.esRemunerada ? form.frecuenciaLiquidacion : undefined,
         cuentaDestinoIntereses: cuentaDestinoNum,
-        // '' = sin elección propia · el punto se deduce del banco (§4.8).
-        colorPunto: form.colorPunto || undefined,
+        // '' = sin elección propia · el punto se deduce del banco (§4.8), y
+        // viaja TAL CUAL. Con `|| undefined` la cadena vacía se convertía en
+        // "no toques este campo", así que una vez elegido un color no había
+        // manera de volver al del banco: el servicio ignoraba la vuelta atrás.
+        colorPunto: form.colorPunto,
       };
 
       const remuneracionPayload = !isCard && form.esRemunerada

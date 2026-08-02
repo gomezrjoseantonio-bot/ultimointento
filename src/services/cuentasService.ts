@@ -33,6 +33,19 @@ export interface AccountExtendedFields {
   deudaActual?: number;
   diaCierre?: number;
   diaPago?: number;
+  /**
+   * §4.8 · el color del punto de la cuenta.
+   *
+   * Faltaba en esta lista, que es la que copia los campos del wizard a la
+   * cuenta: el color viajaba desde la ficha, no lo recogía nadie y se perdía
+   * ahí en silencio. Cambiarlo decía "guardado" y no guardaba nada.
+   *
+   * `''` = sin elección propia, el punto se deduce del banco. Viaja como
+   * cadena vacía —y no como `undefined`— porque aquí `undefined` significa "no
+   * toques este campo": mandándolo así no había forma de volver al color del
+   * banco una vez elegido uno.
+   */
+  colorPunto?: string;
 }
 
 export interface CreateAccountData extends AccountExtendedFields {
@@ -82,7 +95,20 @@ const applyExtendedFields = (account: Account, data: AccountExtendedFields): voi
   if (data.deudaActual !== undefined) account.deudaActual = data.deudaActual;
   if (data.diaCierre !== undefined) account.diaCierre = data.diaCierre;
   if (data.diaPago !== undefined) account.diaPago = data.diaPago;
+  // '' → `undefined`: volver a "el color del banco" es BORRAR la elección
+  // propia, no guardar una cadena vacía que luego nadie sabe interpretar.
+  if (data.colorPunto !== undefined) account.colorPunto = data.colorPunto || undefined;
 };
+
+/**
+ * Lo interno que miran los tests · el candado tiene que poder llegar a ESTE
+ * eslabón, que es donde se perdió el color, sin montar media aplicación.
+ *
+ * Bajo `__private__` y no como export suelto: es el patrón del repo
+ * (`aeatParserService`, `reconciliacionService`) y deja claro de un vistazo que
+ * no forma parte de la API del servicio.
+ */
+export const __private__ = { applyExtendedFields };
 
 class CuentasService {
   private accounts: Account[] = [];
