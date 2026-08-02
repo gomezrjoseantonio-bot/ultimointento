@@ -13,10 +13,13 @@ import {
   mejoraDesdeMovimiento,
   SinCuentaError,
   MejoraSinInmuebleError,
+  TraspasoALaMismaCuentaError,
 } from '../altaMovimientoService';
 import { initDB } from '../db';
+import { createTransfer } from '../treasuryTransferService';
 
 jest.mock('../db', () => ({ initDB: jest.fn() }));
+jest.mock('../treasuryTransferService', () => ({ createTransfer: jest.fn() }));
 
 let movements: any[];
 let mejoras: any[];
@@ -32,6 +35,13 @@ const base = {
 beforeEach(() => {
   movements = [];
   mejoras = [];
+  (createTransfer as jest.Mock).mockReset();
+  (createTransfer as jest.Mock).mockResolvedValue({
+    originEventId: 10,
+    targetEventId: 11,
+    originMovementId: 20,
+    targetMovementId: 21,
+  });
   (initDB as jest.Mock).mockResolvedValue({
     add: async (store: string, value: any) => {
       const arr = store === 'movements' ? movements : mejoras;
@@ -217,5 +227,58 @@ describe('el alta normal', () => {
   it('la fecha se guarda como día, sin hora', async () => {
     await altaMovimiento({ ...base, fecha: '2026-08-01T14:32:00.000Z' });
     expect(movements[0].date).toBe('2026-08-01');
+  });
+});
+
+
+// Externa e interna NO son lo mismo, y por eso la ficha las separa: a un
+// tercero el dinero se va; entre cuentas propias cambia de sitio. `cuentaDestinoId`
+// llegaba hasta aquí y se caía —el servicio lo declaraba y no lo leía—, así que
+// la interna escribía la salida y nada en la cuenta destino: el dinero
+// desaparecía de una cuenta sin aparecer en la otra.
+describe('la transferencia interna escribe SUS DOS PATAS', () => {
+  const traspaso = {
+    tipo: 'transferencia' as const,
+    concepto: 'A la de ahorro',
+    importe: -2000,
+    fecha: '2026-08-02',
+    cuentaId: 1,
+  };
+
+  it('delega en createTransfer y devuelve las dos', async () => {
+    const r = await altaMovimiento({ ...traspaso, cuentaDestinoId: 3 });
+
+    expect(createTransfer).toHaveBeenCalledWith({
+      date: '2026-08-02',
+      // Magnitud positiva · el sentido lo dan las dos patas, no el signo.
+      amount: 2000,
+      originAccountId: 1,
+      targetAccountId: 3,
+      concept: 'A la de ahorro',
+      // Lo que se anota YA ha pasado: las dos patas nacen confirmadas.
+      confirm: true,
+    });
+    expect(r.movementId).toBe(20);
+    expect(r.movementIdDestino).toBe(21);
+    // Y NO se escribe además un movimiento suelto por su cuenta.
+    expect(movements).toHaveLength(0);
+  });
+
+  // A un tercero el dinero se va de verdad: un apunte y ya está.
+  it('la EXTERNA sigue siendo un solo movimiento', async () => {
+    const r = await altaMovimiento({ ...traspaso, cuentaDestinoId: null });
+
+    expect(createTransfer).not.toHaveBeenCalled();
+    expect(movements).toHaveLength(1);
+    expect(movements[0].type).toBe('Transferencia');
+    expect(r.movementIdDestino).toBeUndefined();
+  });
+
+  it('a la misma cuenta no es un traspaso · se rechaza antes de escribir nada', async () => {
+    await expect(altaMovimiento({ ...traspaso, cuentaDestinoId: 1 })).rejects.toBeInstanceOf(
+      TraspasoALaMismaCuentaError
+    );
+    expect(createTransfer).not.toHaveBeenCalled();
+    expect(movements).toHaveLength(0);
   });
 });

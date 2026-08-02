@@ -122,6 +122,16 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
     return { entrar, salir, final: saldoHoy + entrar + salir };
   }, [eventos, saldoHoy, desde, hasta]);
 
+  /** El nombre de la otra cuenta · lo pide un traspaso para decir a dónde va. */
+  const aliasCuenta = useMemo(() => {
+    const m = new Map(
+      cuentas
+        .filter((c): c is Account & { id: number } => c.id != null)
+        .map((c) => [c.id, c.alias || c.banco?.name || undefined] as const)
+    );
+    return (id: number) => m.get(id);
+  }, [cuentas]);
+
   // ── Ítems de las tres pestañas ───────────────────────────────────────────
 
   /**
@@ -152,9 +162,9 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
           const f = (e.predictedDate ?? '').slice(0, 10);
           return f !== '' && f <= hoy;
         })
-        .map((e) => eventoAItem(e, aliasInmueble))
+        .map((e) => eventoAItem(e, aliasInmueble, aliasCuenta))
         .sort((a, b) => b.fecha.localeCompare(a.fecha)),
-    [eventos, aliasInmueble, hoy]
+    [eventos, aliasInmueble, aliasCuenta, hoy]
   );
 
   /**
@@ -176,15 +186,15 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
       .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
       .filter((e) => !e.descartado && e.status === 'confirmed')
       .filter((e) => enMes((e.predictedDate ?? '').slice(0, 10)))
-      .map((e) => eventoAItem(e, aliasInmueble));
+      .map((e) => eventoAItem(e, aliasInmueble, aliasCuenta));
     const movs = movimientos
       .filter((m): m is Movement & { id: number } => m.id != null)
       .filter((m) => !m.isOpeningBalance)
       .filter((m) => enMes((m.date ?? '').slice(0, 10)))
-      .map((m) => movimientoAItem(m, aliasInmueble))
+      .map((m) => movimientoAItem(m, aliasInmueble, aliasCuenta))
       .filter((i) => i.estado === 'confirmado');
     return [...evs, ...movs].sort((a, b) => b.fecha.localeCompare(a.fecha));
-  }, [eventos, movimientos, desde, hasta, aliasInmueble]);
+  }, [eventos, movimientos, desde, hasta, aliasInmueble, aliasCuenta]);
 
   /** Movimientos: previsión y realidad del mes, que es una vista de consulta. */
   const itemsTodo = useMemo<ItemPunteo[]>(() => {
@@ -193,14 +203,14 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
       .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
       .filter((e) => !e.descartado && e.status !== 'executed')
       .filter((e) => enMes((e.predictedDate ?? '').slice(0, 10)))
-      .map((e) => eventoAItem(e, aliasInmueble));
+      .map((e) => eventoAItem(e, aliasInmueble, aliasCuenta));
     const movs = movimientos
       .filter((m): m is Movement & { id: number } => m.id != null)
       .filter((m) => !m.isOpeningBalance)
       .filter((m) => enMes((m.date ?? '').slice(0, 10)))
-      .map((m) => movimientoAItem(m, aliasInmueble));
+      .map((m) => movimientoAItem(m, aliasInmueble, aliasCuenta));
     return [...evs, ...movs];
-  }, [eventos, movimientos, desde, hasta, aliasInmueble]);
+  }, [eventos, movimientos, desde, hasta, aliasInmueble, aliasCuenta]);
 
   if (!cuenta) return null;
 

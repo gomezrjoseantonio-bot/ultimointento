@@ -7,6 +7,7 @@
 // ============================================================================
 
 import type { TreasuryEvent, Movement } from '../db';
+import { isTransferKey, TRANSFER_KEYS } from '../categoryCatalog';
 import {
   estadoDeEvento,
   estadoDeMovimiento,
@@ -111,6 +112,42 @@ export function etiquetaHabitacion(unidad?: string): string | undefined {
   return numero ? `Hab ${numero[1]}` : unidad;
 }
 
+
+/** Resuelve el nombre de una cuenta · para decir a dónde va un traspaso. */
+export type AliasCuenta = (id: number) => string | undefined;
+
+/**
+ * Una TRANSFERENCIA dice si es interna o externa · no son lo mismo.
+ *
+ * Externa, el dinero se va a un tercero y es un gasto como cualquier otro.
+ * Interna, el dinero NO se va: cambia de cuenta, y por eso se escribe en dos
+ * patas espejo y no cuenta ni como ingreso ni como gasto. Sin decirlo en la
+ * fila, las dos se leen igual —"Traspaso a ahorro, −2.000 €"— y la interna
+ * parece dinero perdido.
+ *
+ * La dirección la dice su `categoryKey` (`traspaso_salida`/`traspaso_entrada`)
+ * y la otra cuenta viaja en `transferMetadata.targetAccountId`, que en la pata
+ * de entrada guarda la de ORIGEN: en las dos es "la otra".
+ */
+function piezasDeTransferencia(
+  r: {
+    categoryKey?: string;
+    description?: string;
+    transferMetadata?: { targetAccountId: number };
+  },
+  aliasCuenta?: AliasCuenta
+): { concepto: string; detalle: string } | undefined {
+  if (!isTransferKey(r.categoryKey)) return undefined;
+  const sale = r.categoryKey === TRANSFER_KEYS.SALIDA;
+  const otra = r.transferMetadata?.targetAccountId;
+  const nombre = otra != null ? aliasCuenta?.(otra) : undefined;
+  // El "· salida"/"· entrada" que `createTransfer` pega a la descripción sobra
+  // en el título: la dirección la dice el subtítulo, y con nombre de cuenta.
+  const concepto = (r.description ?? '').replace(/ · (salida|entrada)$/, '');
+  const direccion = nombre ? (sale ? `a ${nombre}` : `desde ${nombre}`) : sale ? 'salida' : 'entrada';
+  return { concepto: concepto || 'Transferencia interna', detalle: `Transferencia interna · ${direccion}` };
+}
+
 export function piezasDeFila(
   e: Pick<TreasuryEvent, 'proveedor' | 'description' | 'sourceType' | 'unidadInmueble'>,
   alias?: string
@@ -182,6 +219,7 @@ export function piezasDeFila(
 export function eventoAItem(
   e: TreasuryEvent & { id: number },
   aliasInmueble?: (id: number | string) => string | undefined,
+  aliasCuenta?: AliasCuenta,
 ): ItemPunteo {
   const mag = Math.abs(e.actualAmount ?? e.amount);
   const importe = e.type === 'income' ? mag : -mag;
@@ -193,7 +231,13 @@ export function eventoAItem(
   const aliasReal = e.inmuebleAlias ?? aliasInmueble?.(e.inmuebleId ?? -1);
   const activo =
     e.inmuebleId != null ? { inmuebleId: e.inmuebleId, alias: aliasReal } : null;
-  const { concepto, detalle, bajoMadre } = piezasDeFila(e, aliasReal);
+  // Un traspaso se lee por su dirección, no por su descripción: va antes que
+  // el resto de reglas porque su texto ("Traspaso a ahorro · salida") no dice
+  // lo que hace falta saber.
+  const traspaso = piezasDeTransferencia(e, aliasCuenta);
+  const { concepto, detalle, bajoMadre } = traspaso
+    ? { ...traspaso, bajoMadre: undefined }
+    : piezasDeFila(e, aliasReal);
   return {
     key: `evt-${e.id}`,
     kind: 'evento',
@@ -277,9 +321,20 @@ function pareceRenta(m: Pick<Movement, 'categoryKey' | 'category' | 'description
  * de los que parten por el guion para el resto.
  */
 function piezasDeMovimiento(
-  m: Pick<Movement, 'categoryKey' | 'category' | 'description' | 'providerName'>,
-  alias?: string
+  m: Pick<
+    Movement,
+    'categoryKey' | 'category' | 'description' | 'providerName' | 'type' | 'transferMetadata'
+  >,
+  alias?: string,
+  aliasCuenta?: AliasCuenta
 ): { concepto: string; detalle?: string } {
+  const traspaso = piezasDeTransferencia(m, aliasCuenta);
+  if (traspaso) return traspaso;
+  // Externa · el dinero SÍ se va, y decirlo evita que se confunda con la
+  // interna, que se lee igual de lejos y no significa lo mismo.
+  if (m.type === 'Transferencia') {
+    return { concepto: m.description ?? '', detalle: 'Transferencia externa' };
+  }
   const { concepto, detalle } = piezasDeFila(
     {
       sourceType: pareceRenta(m) ? 'contrato' : 'prestamo',
@@ -294,11 +349,12 @@ function piezasDeMovimiento(
 export function movimientoAItem(
   m: Movement & { id: number },
   aliasInmueble?: (id: number | string) => string | undefined,
+  aliasCuenta?: AliasCuenta,
 ): ItemPunteo {
   const alias = m.inmuebleId != null && m.inmuebleId !== '' ? aliasInmueble?.(m.inmuebleId) : undefined;
   const activo =
     m.inmuebleId != null && m.inmuebleId !== '' ? { inmuebleId: m.inmuebleId, alias } : null;
-  const { concepto, detalle } = piezasDeMovimiento(m, alias);
+  const { concepto, detalle } = piezasDeMovimiento(m, alias, aliasCuenta);
   return {
     key: `mov-${m.id}`,
     kind: 'movimiento',

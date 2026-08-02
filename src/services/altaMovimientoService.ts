@@ -13,6 +13,10 @@
 //     extracto detrás. Eso lo decide `punteoModel.estadoDeMovimiento` y aquí no
 //     se toca.
 //
+//   · TRANSFERENCIA INTERNA → dos movimientos espejo, vía `createTransfer`. El
+//     dinero no se va: cambia de cuenta. La externa —a un tercero— sí es un
+//     solo apunte, y por eso la ficha las separa.
+//
 //   · DERRAMA que el usuario marca como MEJORA → NO es un gasto. Se capitaliza
 //     y se amortiza a lo largo de los años, así que va a `mejorasInmueble` y no
 //     lleva `categoryKey` de gasto. Guardarla como gasto deduciría este año algo
@@ -25,6 +29,7 @@
 
 import { initDB } from './db';
 import type { Movement } from './db';
+import { createTransfer } from './treasuryTransferService';
 import type { MejoraInmueble } from './db/types-inmuebles';
 
 export interface AltaMovimiento {
@@ -50,6 +55,13 @@ export class SinCuentaError extends Error {
   }
 }
 
+export class TraspasoALaMismaCuentaError extends Error {
+  constructor() {
+    super('Una transferencia interna va de una cuenta a OTRA: elige un destino distinto.');
+    this.name = 'TraspasoALaMismaCuentaError';
+  }
+}
+
 export class MejoraSinInmuebleError extends Error {
   constructor() {
     super('Una mejora se suma al valor de un inmueble: elige a cuál.');
@@ -59,6 +71,8 @@ export class MejoraSinInmuebleError extends Error {
 
 export interface ResultadoAlta {
   movementId?: number;
+  /** La otra pata · solo en una transferencia INTERNA. */
+  movementIdDestino?: number;
   mejoraId?: number;
 }
 
@@ -74,6 +88,36 @@ export async function altaMovimiento(v: AltaMovimiento): Promise<ResultadoAlta> 
   if (v.esMejora) {
     if (v.inmuebleId == null) throw new MejoraSinInmuebleError();
     return { mejoraId: await altaMejora(v, v.inmuebleId) };
+  }
+
+  /**
+   * Transferencia INTERNA · dos patas, no una.
+   *
+   * Externa e interna son cosas distintas y por eso la ficha las separa: a un
+   * tercero el dinero se va y solo hay un apunte; entre cuentas propias el
+   * dinero NO se va, cambia de sitio. Aquí llegaba `cuentaDestinoId` y se caía
+   * por el camino —el servicio lo declaraba y no lo leía—, así que la interna
+   * escribía la salida y nada en la cuenta destino: el dinero desaparecía de
+   * una cuenta sin aparecer en la otra y el patrimonio bajaba solo.
+   *
+   * `createTransfer` es el primitivo que ya hacía esto bien en el modal de
+   * conciliación: crea las dos patas espejo, las empareja por `pairEventId` y
+   * las marca con `traspaso_salida`/`traspaso_entrada` — que es lo que luego
+   * mira todo el mundo para NO contarlas como ingreso ni como gasto.
+   *
+   * `confirm: true` porque esto es "Anotar": lo que se apunta ya ha pasado.
+   */
+  if (v.tipo === 'transferencia' && v.cuentaDestinoId != null) {
+    if (v.cuentaDestinoId === v.cuentaId) throw new TraspasoALaMismaCuentaError();
+    const { originMovementId, targetMovementId } = await createTransfer({
+      date: v.fecha.slice(0, 10),
+      amount: Math.abs(v.importe),
+      originAccountId: v.cuentaId,
+      targetAccountId: v.cuentaDestinoId,
+      concept: v.concepto,
+      confirm: true,
+    });
+    return { movementId: originMovementId, movementIdDestino: targetMovementId };
   }
 
   return { movementId: await altaMovimientoNormal(v) };
