@@ -86,7 +86,12 @@ export function agruparPorEje(items: ItemPunteo[], eje: EjeAgrupacion): GrupoLis
   const clave = (it: ItemPunteo): { clave: string; titulo: string } =>
     eje === 'inmueble'
       ? it.activo
-        ? { clave: String(it.activo.inmuebleId), titulo: it.activo.alias }
+        ? {
+            clave: String(it.activo.inmuebleId),
+            // Sin nombre real, la cabecera dice "Sin nombre" antes que inventar
+            // un "Inmueble 3" que no significa nada para quien lee (§2.2).
+            titulo: it.activo.alias ?? 'Sin nombre',
+          }
         : { clave: '__personal__', titulo: 'Personal' }
       : { clave: it.origen, titulo: it.origen };
 

@@ -7,6 +7,38 @@ import type { BoteAnualSinIdentificar,Contract,Property,TreasuryEvent } from './
 import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfillDocumentoFirmado } from '../alquileresV3FixService';
 import { migrarBaseAmortizableEjercicio } from '../baseAmortizableEjercicioService';
 
+/** Sólo estos orígenes tienen un gasto recurrente detrás del que copiar. */
+const ORIGENES_CON_PROVEEDOR = new Set(['gasto_recurrente', 'opex_rule', 'personal_expense']);
+
+/** id de compromiso → nombre del proveedor · los vacíos no entran. */
+export function indexarProveedores(
+  compromisos: Array<{ id?: number; proveedor?: { nombre?: string } }>,
+): Map<number, string> {
+  const m = new Map<number, string>();
+  for (const c of compromisos) {
+    const nombre = c.proveedor?.nombre?.trim();
+    if (c.id != null && nombre) m.set(c.id, nombre);
+  }
+  return m;
+}
+
+/**
+ * Qué proveedor le toca a una previsión, o `null` si no hay que tocarla.
+ *
+ * Devuelve `null` —y por tanto no se escribe— cuando ya tiene proveedor (una
+ * corrección a mano manda sobre el dato del compromiso), cuando el origen no es
+ * un gasto recurrente, o cuando el compromiso no tiene proveedor que dar.
+ */
+export function proveedorParaEvento(
+  ev: { sourceType?: string; sourceId?: number | string; proveedor?: string },
+  nombrePorId: Map<number, string>,
+): string | null {
+  if (ev.proveedor) return null;
+  if (!ev.sourceType || !ORIGENES_CON_PROVEEDOR.has(ev.sourceType)) return null;
+  if (ev.sourceId == null) return null;
+  return nombrePorId.get(Number(ev.sourceId)) ?? null;
+}
+
 export function runPostOpenMigrations(
   dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>,
 ): Promise<IDBPDatabase<AtlasHorizonDB>> {
@@ -368,6 +400,67 @@ export function runPostOpenMigrations(
         );
       } catch (err) {
         console.warn('[DB V83 guard estado pausado] falló:', err);
+      }
+      return db;
+    });
+
+    // ── §6.3 · quién cobra, en las previsiones que ya existen ──────────────
+    //
+    // `TreasuryEvent.proveedor` es nuevo, así que las previsiones ya emitidas
+    // no lo llevan: seguirían enseñando la categoría de ATLAS ("Seguro hogar")
+    // en vez de quién cobra, y con dos recibos casi idénticos eso no permite
+    // saber cuál es cuál. El dato existe —el alta del gasto lo captura— solo
+    // que se quedaba en el compromiso.
+    //
+    // Rellena hacia atrás desde el compromiso de origen. Tres cautelas:
+    //
+    //  · Solo toca previsiones cuyo `sourceType` es de gasto recurrente: las de
+    //    préstamos, contratos y nóminas no tienen proveedor que copiar.
+    //  · NO pisa un `proveedor` ya escrito. Si alguien lo corrigió a mano, esa
+    //    corrección manda sobre el dato del compromiso.
+    //  · Solo escribe los registros que cambian, no los relee todos.
+    //
+    // Idempotente vía flag; y aunque el flag se perdiera, volver a pasarla no
+    // cambiaría nada porque solo rellena huecos.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_proveedor_en_previsiones_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+
+        const compromisos = (await db.getAll('compromisosRecurrentes')) as Array<{
+          id?: number;
+          proveedor?: { nombre?: string };
+        }>;
+        const nombrePorId = indexarProveedores(compromisos);
+
+        if (nombrePorId.size === 0) {
+          await db.put('keyval', 'completed', FLAG);
+          return db;
+        }
+
+        const tx = db.transaction(['treasuryEvents'], 'readwrite');
+        const store = tx.objectStore('treasuryEvents');
+        let cursor = await store.openCursor();
+        let rellenados = 0;
+
+        while (cursor) {
+          const nombre = proveedorParaEvento(cursor.value, nombrePorId);
+          if (nombre) {
+            await cursor.update({ ...cursor.value, proveedor: nombre });
+            rellenados++;
+          }
+          cursor = await cursor.continue();
+        }
+        await tx.done;
+
+        if (rellenados > 0) {
+          console.log(
+            `[DB §6.3] proveedor rellenado en ${rellenados} previsión(es) desde su gasto recurrente`,
+          );
+        }
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB §6.3 backfill proveedor] falló:', err);
       }
       return db;
     });

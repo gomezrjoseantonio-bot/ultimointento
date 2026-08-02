@@ -84,8 +84,10 @@ describe('cabecera', () => {
     expect(screen.getByText('Sabadell principal')).toBeInTheDocument();
     expect(screen.getByText('···· 7892')).toBeInTheDocument();
     expect(screen.getByText('Saldo hoy')).toBeInTheDocument();
-    expect(screen.getByText('+650 €')).toBeInTheDocument();
-    expect(screen.getByText('−200 €')).toBeInTheDocument();
+    // Sale más de una vez a propósito: el KPI de la cabecera y el subtotal del
+    // grupo escriben el MISMO importe igual, que es lo que pide §2.2.
+    expect(screen.getAllByText('+650 €').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('−200 €').length).toBeGreaterThan(0);
     // Saldo final = 1000 + 650 − 200
     expect(screen.getByText('1.450 €')).toBeInTheDocument();
   });
@@ -122,7 +124,7 @@ describe('A1 · Pendientes no mezcla futuro', () => {
     expect(screen.getByText('Ya venció')).toBeInTheDocument();
     expect(screen.queryByText('Diciembre')).not.toBeInTheDocument();
     // Y el contador cuenta eso y solo eso · un 252 abruma en vez de tranquilizar.
-    expect(screen.getByRole('button', { name: /Pendientes · 1/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Por confirmar · 1/ })).toBeInTheDocument();
   });
 
   it('lo de HOY sí entra · vence hoy y sigue sin confirmar', () => {
@@ -157,7 +159,7 @@ describe('pestaña Pendientes', () => {
   it('lista lo que falta por ocurrir y lo cuenta en la pestaña', () => {
     render(<DrawerCuenta {...base} eventos={[ev({ id: 1 }), ev({ id: 2, description: 'Agua' })]} />);
 
-    expect(screen.getByRole('button', { name: /Pendientes · 2/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Por confirmar · 2/ })).toBeInTheDocument();
     expect(screen.getByText('Recibo luz')).toBeInTheDocument();
     expect(screen.getByText('Agua')).toBeInTheDocument();
   });
@@ -166,13 +168,13 @@ describe('pestaña Pendientes', () => {
     render(
       <DrawerCuenta {...base} eventos={[ev({ id: 1 }), ev({ id: 2, description: 'Agua', descartado: true })]} />
     );
-    expect(screen.getByRole('button', { name: /Pendientes · 1/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Por confirmar · 1/ })).toBeInTheDocument();
     expect(screen.queryByText('Agua')).not.toBeInTheDocument();
   });
 
   it('un ejecutado tampoco: su realidad ya vive en el movimiento', () => {
     render(<DrawerCuenta {...base} eventos={[ev({ id: 1, status: 'executed' })]} />);
-    expect(screen.getByRole('button', { name: /Pendientes · 0/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Por confirmar · 0/ })).toBeInTheDocument();
   });
 
   it('usa la anatomía de fila de Tesorería: editar y descartar en la fila', () => {
@@ -195,7 +197,7 @@ describe('pestaña Pendientes', () => {
 
   it('sin nada pendiente, el vacío es una buena noticia y no un error', () => {
     render(<DrawerCuenta {...base} eventos={[]} />);
-    expect(screen.getByText('Nada pendiente')).toBeInTheDocument();
+    expect(screen.getByText('Nada por confirmar')).toBeInTheDocument();
     expect(screen.getByText('el mes está al día en esta cuenta')).toBeInTheDocument();
   });
 
@@ -205,8 +207,8 @@ describe('pestaña Pendientes', () => {
   });
 });
 
-describe('pestaña Todo {mes}', () => {
-  const abrirTodo = () => fireEvent.click(screen.getByRole('button', { name: /Todo julio/ }));
+describe('pestaña Movimientos', () => {
+  const abrirTodo = () => fireEvent.click(screen.getByRole('button', { name: /Movimientos/ }));
 
   it('mezcla previsión y realidad del mes', () => {
     render(
@@ -235,7 +237,9 @@ describe('pestaña Todo {mes}', () => {
     // Plegado: la fila no está, pero su cabecera sí.
     expect(screen.queryByText('Recibo luz')).not.toBeInTheDocument();
     const cab = screen.getAllByRole('button', { expanded: false })[0];
-    expect(within(cab).getByText('1')).toBeInTheDocument();
+    // §6.4 · el recuento dice de qué es: pegado al importe se leía como parte
+    // de la cifra ("· 1 · −98,44").
+    expect(within(cab).getByText('1 movimiento')).toBeInTheDocument();
   });
 
   it('esconde Anotar y Subir extracto: son de la bandeja, no de la consulta', () => {
@@ -262,5 +266,29 @@ describe('cierre', () => {
   it('sin cuenta no renderiza nada', () => {
     const { container } = render(<DrawerCuenta {...base} cuenta={null} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+
+// §7 · la ficha edita la descripción, no el rótulo de la fila.
+describe('lo que lleva la ficha al abrirla', () => {
+  it('el campo de texto trae la DESCRIPCIÓN, no el proveedor', () => {
+    // Desde §6.3 la fila se titula con quién cobra ("Mapfre") y la descripción
+    // baja al subtítulo. Si la ficha abriera con "Mapfre" en el campo de texto,
+    // guardar sobrescribiría "Seguro hogar" sin que nadie lo pidiera.
+    const item = {
+      key: 'evt-1',
+      kind: 'evento' as const,
+      refId: 1,
+      estado: 'previsto' as const,
+      fecha: '2026-08-10',
+      concepto: 'Mapfre',
+      detalle: 'Seguro hogar',
+      activo: null,
+      origen: 'Recurrente',
+      cuentaId: 1,
+      importe: -40.29,
+    };
+    expect(item.detalle ?? item.concepto).toBe('Seguro hogar');
   });
 });

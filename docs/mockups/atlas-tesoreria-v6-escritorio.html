@@ -189,6 +189,7 @@ button{font:inherit;background:none;border:none;cursor:pointer;color:inherit}
 .mes-flow .ff svg{width:14px;height:14px;color:var(--ink-5)}
 .mes-flow .fv{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12.5px}
 .mes-flow .fv{color:var(--ink-2)}
+.mes-flow .ffq{flex-basis:100%;font-size:10px;color:var(--ink-4);margin-top:5px}
 .mespager{display:none}
 .mespager .mp{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--ink-4);cursor:pointer}
 .mespager .mp:hover{border-color:var(--gold);color:var(--gold-ink);background:var(--gold-wash)}
@@ -452,8 +453,8 @@ button{font:inherit;background:none;border:none;cursor:pointer;color:inherit}
         <div class="dt">jueves · 30 jul 2026</div>
       </div>
       <div class="hk"><div class="hk-lab">Saldo</div><div class="hk-val" id="heroSaldo">54.439 €</div><div class="hk-sub">10 cuentas · hoy</div></div>
-      <div class="hk"><div class="hk-lab">Pendiente entrar</div><div class="hk-val">+2.075 €</div><div class="hk-sub">3 movimientos · julio</div></div>
-      <div class="hk"><div class="hk-lab">Pendiente salir</div><div class="hk-val">-1.579 €</div><div class="hk-sub">5 movimientos · julio</div></div>
+      <div class="hk"><div class="hk-lab">Queda entrar</div><div class="hk-val">+2.075 €</div><div class="hk-sub">3 movimientos · julio</div></div>
+      <div class="hk"><div class="hk-lab">Queda salir</div><div class="hk-val">-1.579 €</div><div class="hk-sub">5 movimientos · julio</div></div>
       <div class="hk"><div class="hk-lab">Cierre · julio</div><div class="hk-val gold">54.936 €</div><div class="hk-sub">proyectado a día 31</div></div>
       <div class="hero-act"><button class="btn btn-gold" onclick="openExtractG()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Subir extracto</button></div>
     </div>
@@ -905,8 +906,8 @@ function renderAcc(){
     const ent=pend.reduce((s,m)=>{const v=parseA(m.a);return v>0?s+v:s;},0);
     const sal=pend.reduce((s,m)=>{const v=parseA(m.a);return v<0?s+v:s;},0);
     const fin=c.balN+ent+sal;
-    kp+=`<div class="ak"><div class="akl">Pendiente entrar</div><div class="akv">${ent?'+'+fmtEu(ent)+' €':'0 €'}</div></div>
-    <div class="ak"><div class="akl">Pendiente salir</div><div class="akv">${sal?fmtEu(sal)+' €':'0 €'}</div></div>
+    kp+=`<div class="ak"><div class="akl">Queda entrar</div><div class="akv">${ent?'+'+fmtEu(ent)+' €':'0 €'}</div></div>
+    <div class="ak"><div class="akl">Queda salir</div><div class="akv">${sal?fmtEu(sal)+' €':'0 €'}</div></div>
     <div class="ak"><div class="akl">Saldo final</div><div class="akv gold">${fmtBal(fin)}</div></div>`;
   }
   document.getElementById('aK').innerHTML=kp;
@@ -914,12 +915,12 @@ function renderAcc(){
     <button class="btn btn-ghost cmp" onclick="openNew('acc')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Anotar</button>
     <button class="btn btn-gold cmp" onclick="openExtract()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Subir extracto</button>`:'';
   document.getElementById('aTabs').innerHTML=`
-    <button class="atab ${accTab==='pend'?'on':''}" onclick="setTab('pend')">Pendientes${pend.length?' · '+pend.length:''}</button>
-    <button class="atab ${accTab==='todo'?'on':''}" onclick="setTab('todo')">Todo julio</button>${acts}`;
+    <button class="atab ${accTab==='pend'?'on':''}" onclick="setTab('pend')">Por confirmar${pend.length?' · '+pend.length:''}</button>
+    <button class="atab ${accTab==='todo'?'on':''}" onclick="setTab('todo')">Movimientos</button>${acts}`;
   document.getElementById('aBody').innerHTML = accTab==='pend'?pendHtml(pend):histHtml();
 }
 function pendHtml(pend){
-  if(!pend.length)return `<div class="pend-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><div class="t">Nada pendiente</div><div class="s">el mes está al día en esta cuenta</div></div>`;
+  if(!pend.length)return `<div class="pend-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><div class="t">Nada por confirmar</div><div class="s">esta cuenta está al día</div></div>`;
   let cards='',lastD='',lastP='',rows='',dayTot=0;
   const closeCard=()=>{if(!lastD)return;
     cards+=`<div class="gcard open"><div class="gcard-h"><span>${lastD}</span><span class="gmeta">${fmtA(dayTot)} €</span></div><div class="gcard-b">${rows}</div></div>`;
@@ -1003,7 +1004,7 @@ function unconfirmHist(k){
   const r=histForM(i).splice(k,1)[0]; if(!r)return;
   (pendCta[i]=pendCta[i]||[]).unshift({d:r.dlab,c:r.c,a:r.a,neg:r.neg});
   applyDelta(i,-parseA(r.a));
-  renderAcc();toast('Devuelto a pendientes');
+  renderAcc();toast('Vuelve a previsto');
 }
 /* ===== Conciliar con extracto ===== */
 const exLines=[
@@ -1248,8 +1249,9 @@ function renderMeses(){
      <div class="mes-lab">Cierre</div>
      <div class="mes-bal">${x.cierre||x.bal}</div>
      <div class="mes-flow">
-       <span class="ff" title="${x.flab1||'entra'}">${upSm}<span class="fv">${x.ent}</span></span>
-       <span class="ff" title="${x.flab2||'sale'}">${dnSm}<span class="fv">${x.sal}</span></span>
+       <span class="ff">${upSm}<span class="fv">${x.ent}</span></span>
+       <span class="ff">${dnSm}<span class="fv">${x.sal}</span></span>
+       ${x.now?'<span class="ffq">queda por entrar y salir</span>':''}
      </div></div>`).join('');
   document.getElementById('mRng').textContent=['jul – dic 2026','ene – jun 2027'][mPage];
 }

@@ -80,11 +80,11 @@ body{background:var(--bg);color:var(--ink-2);font-family:'Inter',system-ui,sans-
   <div>
     <div class="phone"><div class="scr">
       <div class="st"><span>9:41</span><span>ATLAS</span></div>
-      <div class="ph-h"><h1>Tesorería</h1><span class="c" id="cnt">5 pendientes · julio</span></div>
+      <div class="ph-h"><h1>Tesorería</h1><span class="c" id="cnt">5 por confirmar · julio</span></div>
       <div class="hero">
         <div class="hl">Saldo hoy</div>
         <div class="row"><span class="big" id="saldo">54.439 €</span>
-          <span class="fin"><span class="fl">Fin de mes</span><br><span class="fv">54.936 €</span></span></div>
+          <span class="fin"><span class="fl">Cierre</span><br><span class="fv">54.936 €</span></span></div>
       </div>
       <div class="body">
         <div class="asep"><span class="bdot santander"></span> Santander Alquileres <span class="msk">····8676</span></div>
@@ -125,9 +125,9 @@ body{background:var(--bg);color:var(--ink-2);font-family:'Inter',system-ui,sans-
       <div class="body">
         <div class="okwrap">
           <div class="okc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
-          <div class="okt">Nada pendiente</div>
+          <div class="okt">Nada por confirmar</div>
           <div class="oks">Tus 10 cuentas están al día.<br>El circulante refleja la realidad.</div>
-          <div class="okfin"><div class="l">Cierre proyectado · julio</div><div class="v">54.936 €</div></div>
+          <div class="okfin"><div class="l">Cierre · julio</div><div class="v">54.936 €</div></div>
         </div>
         <div class="asep">Hoy <span class="msk">2 conciliados</span></div>
         <div class="card">
@@ -157,7 +157,7 @@ function tick(row,delta){
   saldo+=delta; pend--;
   const c=Math.round(saldo*100), d=c%100===0?0:2;
   document.getElementById('saldo').textContent=(c/100).toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d})+' €';
-  document.getElementById('cnt').textContent=pend>0?pend+' pendientes · julio':'al día · julio';
+  document.getElementById('cnt').textContent=pend>0?pend+' por confirmar · julio':'al día · julio';
 }
 </script>
 </body>

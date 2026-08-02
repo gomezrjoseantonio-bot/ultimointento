@@ -139,7 +139,11 @@ const MainLayout: React.FC = () => {
             PanelPage se auto-ajusta a la altura disponible. */}
         <main
           id="main-content"
-          className={`flex-1 overflow-x-hidden min-h-0 ${
+          /* `min-w-0` va con `flex-1`: sin él un hijo flex no puede encogerse
+             por debajo de su contenido, así que una tabla o una tira ancha
+             empuja el ancho y `overflow-x-hidden` se limita a TAPAR el
+             desbordamiento en vez de evitarlo (§4.2). */
+          className={`flex-1 overflow-x-hidden min-h-0 min-w-0 ${
             isPanelRoute
               ? 'overflow-y-hidden px-8'
               : isFullBleedRoute
@@ -151,7 +155,7 @@ const MainLayout: React.FC = () => {
           {isPanelRoute || isFullBleedRoute ? (
             <Outlet />
           ) : (
-            <div className="container mx-auto h-full max-w-7xl">
+            <div className="container mx-auto h-full max-w-7xl min-w-0">
               <Outlet />
             </div>
           )}

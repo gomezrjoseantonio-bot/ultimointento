@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-01",
-  "generatedAt": "2026-08-01T20:29:36.801Z",
+  "generatedAt": "2026-08-01T22:48:28.290Z",
   "git": {
     "branch": "claude/new-session-hq2846",
-    "head": "1dd35f3"
+    "head": "058b496"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -143,7 +143,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 751 · dead 0 · solo_tests 41 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 754 · dead 0 · solo_tests 41 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -265,13 +265,13 @@
         "1716 · src/services/irpfCalculationService.ts",
         "1704 · src/modules/inversiones/pages/FichaPlanPensiones.tsx",
         "1550 · src/services/aeatParserService.ts",
-        "1487 · src/App.tsx",
+        "1506 · src/App.tsx",
         "1463 · src/services/treasuryConfirmationService.ts",
         "1461 · src/services/declaracionOnboardingService.ts",
         "1421 · scripts/health.mjs",
         "1388 · src/services/propertySaleService.ts",
-        "1273 · src/components/cuenta/CuentaWizard.tsx",
-        "1259 · src/pages/GestionPersonal/wizards/NominaPage.tsx"
+        "1259 · src/pages/GestionPersonal/wizards/NominaPage.tsx",
+        "1246 · src/services/ocr/normalize-docai.ts"
       ],
       "calibracion": null
     },
@@ -283,7 +283,7 @@
       "approx": false,
       "note": null,
       "detail": [
-        "109 / 347 .tsx sin v5 (consumen v5: 238 · directo o vía .module.css con var(--atlas-v5-*))",
+        "109 / 348 .tsx sin v5 (consumen v5: 239 · directo o vía .module.css con var(--atlas-v5-*))",
         "src/App.tsx",
         "src/components/ImageDescriptionComponent.tsx",
         "src/components/InvoiceBreakdownModal.tsx",
@@ -318,12 +318,12 @@
       "calibracion": null
     },
     "tests_rojos": {
-      "value": null,
+      "value": 40,
       "direction": "down",
       "objetivo": 0,
-      "measurable": false,
+      "measurable": true,
       "approx": false,
-      "note": "NO MEDIBLE · usa `npm run health:ci` (--with-tests) para ejecutar la suite",
+      "note": "medido vía react-scripts test (CI)",
       "detail": null,
       "calibracion": null
     },

@@ -42,7 +42,7 @@ import { descartarPrevisto } from '../../../services/treasuryDiscardService';
 import { altaMovimiento } from '../../../services/altaMovimientoService';
 import { batchesEnBorrador, sinBorradores } from '../../../services/statementSessionService';
 import { registrarDiagnosticoEnConsola } from '../../../services/duplicadosPrevisionService';
-import type { GuardadoFicha } from './FichaMovimiento';
+import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
 import styles from './TesoreriaV6Page.module.css';
@@ -115,6 +115,8 @@ const TesoreriaV6Page: React.FC = () => {
    * saldo inicial a fecha de, y ahora también color de punto y baja.
    */
   const [fichaCuenta, setFichaCuenta] = useState<{ cuenta: Account | null } | null>(null);
+  /** §9 · alta desde el drawer del día · guarda la fecha para prefijarla. */
+  const [altaDelDia, setAltaDelDia] = useState<string | null>(null);
   /**
    * §4.9 · calendario diario. Guarda su propio mes porque navega con ‹ › sin
    * cerrarse, y eso no debe mover el mes de la pantalla de detrás.
@@ -149,7 +151,16 @@ const TesoreriaV6Page: React.FC = () => {
       movimientos: sinBorradores(movimientos ?? [], borradores),
       inmuebles: (properties ?? [])
         .filter((p): p is { id: number; alias?: string; address?: string } => p.id != null)
-        .map((p) => ({ id: p.id, alias: p.alias || p.address || `Inmueble ${p.id}` })),
+        // §2.2 · ningún identificador interno visible. El respaldo era
+        // `Inmueble ${id}`, y eso reintroducía por detrás justo lo que el
+        // adaptador ya no pinta: un número de fila de base de datos.
+        //
+        // Pero tampoco se filtran: un inmueble sin nombre existe igual, y
+        // quitarlo de aquí lo sacaba del selector de la ficha — el usuario ya
+        // no podía asignarle un movimiento, que es peor que un rótulo feo.
+        // "Sin nombre" dice la verdad y se puede elegir; el mismo rótulo que
+        // usa `punteoAgrupacion` al agrupar.
+        .map((p) => ({ id: p.id, alias: p.alias || p.address || 'Sin nombre' })),
     });
     setOrden(ordenGuardado);
     setCargando(false);
@@ -502,12 +513,12 @@ const TesoreriaV6Page: React.FC = () => {
           sub={`${kpis.numCuentas} ${kpis.numCuentas === 1 ? 'cuenta' : 'cuentas'} · hoy`}
         />
         <Kpi
-          lab="Pendiente entrar"
+          lab="Queda entrar"
           val={importeConSigno(kpis.pendienteEntrar)}
           sub={`${kpis.movimientosEntrar} ${kpis.movimientosEntrar === 1 ? 'movimiento' : 'movimientos'} · ${mesActual}`}
         />
         <Kpi
-          lab="Pendiente salir"
+          lab="Queda salir"
           val={importeConSigno(kpis.pendienteSalir)}
           sub={`${kpis.movimientosSalir} ${kpis.movimientosSalir === 1 ? 'movimiento' : 'movimientos'} · ${mesActual}`}
         />
@@ -627,7 +638,9 @@ const TesoreriaV6Page: React.FC = () => {
                 Movimientos bancarios · próximos 6 meses
                 <span className={styles.rng}>{rangoMeses(meses[0], meses[meses.length - 1])}</span>
               </div>
-              <div className={styles.secT}>toca un mes para ver los días</div>
+              <div className={styles.secT}>
+                concilia lo previsto contra lo real · toca un mes para ver los días
+              </div>
             </div>
           </div>
           <div className={styles.mesgrid}>
@@ -689,8 +702,38 @@ const TesoreriaV6Page: React.FC = () => {
           onConfirmar={confirmarItem}
           onDescartar={descartarItem}
           onConfirmarDia={confirmarDia}
+          // §9 · anotar desde el día · la fecha ya está en pantalla, así que la
+          // ficha abre con ella puesta en vez de hacer que se teclee otra vez.
+          onAnotar={(fecha) => {
+            setCalendario(null);
+            setAltaDelDia(fecha);
+          }}
         />
       )}
+
+      {/* §9 · alta de movimiento nacida en el drawer del día, con la fecha ya
+          puesta: estaba en pantalla, no tiene sentido volver a pedirla. */}
+      <FichaMovimiento
+        abierta={altaDelDia != null}
+        inicial={
+          altaDelDia
+            ? {
+                tipo: 'gasto',
+                concepto: '',
+                importe: 0,
+                fecha: altaDelDia,
+                cuentaId: cuentasVivas[0]?.id ?? null,
+              }
+            : undefined
+        }
+        cuentas={cuentasVivas}
+        inmuebles={estado.inmuebles}
+        onCerrar={() => setAltaDelDia(null)}
+        onGuardar={async (v) => {
+          await guardarFicha(null, v);
+          setAltaDelDia(null);
+        }}
+      />
 
       {/* §4.8 · ficha de cuenta · alta, edición y baja */}
       <CuentaWizard
@@ -828,16 +871,24 @@ const TarjetaMes: React.FC<{ mes: MesProyectado; onAbrir: () => void }> = ({ mes
       {/* Vocabulario único: "Cierre" en todo el módulo (§4.3). */}
       <div className={styles.mesLab}>Cierre</div>
       <div className={styles.mesBal}>{importeSaldo(mes.cierre)}</div>
+      {/* §4.3 · el pie lleva SIGNO como el resto de la pantalla (§2.2): la
+          flecha dice la dirección de un vistazo, pero el importe se escribe
+          igual aquí que en el hero o en el drawer.
+
+          Y en el mes en curso la etiqueta es texto VISIBLE, no un `title`: los
+          táctiles no enseñan tooltips, y no es lo mismo lo que entra en el mes
+          que lo que QUEDA por entrar. */}
       <div className={styles.mesFlow}>
-        <span className={styles.ff} title={mes.enCurso ? 'queda entrar' : 'entra'}>
+        <span className={styles.ff}>
           <Icons.ArrowUp size={14} strokeWidth={1.8} />
-          <span className={styles.fv}>{importeSaldo(mes.entra)}</span>
+          <span className={styles.fv}>{importeConSigno(mes.entra)}</span>
         </span>
-        <span className={styles.ff} title={mes.enCurso ? 'queda salir' : 'sale'}>
+        <span className={styles.ff}>
           <Icons.ArrowDown size={14} strokeWidth={1.8} />
-          <span className={styles.fv}>{importeSaldo(Math.abs(mes.sale))}</span>
+          <span className={styles.fv}>{importeConSigno(-Math.abs(mes.sale))}</span>
         </span>
       </div>
+      {mes.enCurso && <div className={styles.mesQueda}>queda entrar · queda salir</div>}
     </button>
   );
 };
@@ -863,7 +914,16 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
                 <span className={l.peorQuePrevisto ? styles.rvdeltaWarn : ''}>
                   {importeConSigno(diferencia)}
                 </span>
-                <small>{l.peorQuePrevisto ? 'peor de lo previsto' : 'mejor de lo previsto'}</small>
+                {/* Cuando real y previsto coinciden no es ni mejor ni peor:
+                    decir "mejor" sobre una diferencia de 0 € se lee como que se
+                    ha ganado algo que no existe. */}
+                <small>
+                  {diferencia === 0
+                    ? 'igual que lo previsto'
+                    : l.peorQuePrevisto
+                      ? 'peor de lo previsto'
+                      : 'mejor de lo previsto'}
+                </small>
               </div>
             ) : (
               <>

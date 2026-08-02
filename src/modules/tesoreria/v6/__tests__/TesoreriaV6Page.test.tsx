@@ -92,8 +92,8 @@ describe('§4.1 · hero', () => {
 
     await waitFor(() => expect(screen.getByText('Saldo')).toBeInTheDocument());
     expect(screen.getByText('2 cuentas · hoy')).toBeInTheDocument();
-    expect(screen.getByText('Pendiente entrar')).toBeInTheDocument();
-    expect(screen.getByText('Pendiente salir')).toBeInTheDocument();
+    expect(screen.getByText('Queda entrar')).toBeInTheDocument();
+    expect(screen.getByText('Queda salir')).toBeInTheDocument();
     expect(screen.getByText(`proyectado a día ${ultimoDia}`)).toBeInTheDocument();
   });
 
@@ -370,5 +370,33 @@ describe('§4.2 · orden guardado de las tarjetas', () => {
     await waitFor(() => expect(screen.getByText('Segunda')).toBeInTheDocument());
     const nombres = Array.from(container.querySelectorAll('.accNm')).map((n) => n.textContent);
     expect(nombres).toEqual(['Segunda', 'Primera']);
+  });
+});
+
+// Dos avisos de Copilot en el bloque A que llegaron después del merge.
+describe('bloque A · los bordes que se colaron', () => {
+  it('un previsto SIN fecha no entra en Pendientes', () => {
+    // `'' <= hoy` es CIERTA, así que sin excluir el vacío se colaba — y los
+    // KPIs sí lo excluyen, con lo que bandeja y cifras contaban distinto.
+    const hoy = '2026-08-01';
+    const evs = [
+      { id: 1, predictedDate: '2026-07-15', status: 'predicted' },
+      { id: 2, predictedDate: '', status: 'predicted' },
+      { id: 3, predictedDate: undefined, status: 'predicted' },
+    ];
+    const pendientes = evs.filter((e) => {
+      const f = (e.predictedDate ?? '').slice(0, 10);
+      return f !== '' && f <= hoy;
+    });
+    expect(pendientes.map((e) => e.id)).toEqual([1]);
+  });
+
+  it('si real y previsto coinciden, no es ni mejor ni peor', () => {
+    const etiqueta = (dif: number, peor: boolean) =>
+      dif === 0 ? 'igual que lo previsto' : peor ? 'peor de lo previsto' : 'mejor de lo previsto';
+
+    expect(etiqueta(0, false)).toBe('igual que lo previsto');
+    expect(etiqueta(-24, true)).toBe('peor de lo previsto');
+    expect(etiqueta(24, false)).toBe('mejor de lo previsto');
   });
 });

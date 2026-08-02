@@ -18,6 +18,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../../design-system/v5';
+import { importeConSigno } from '../../../tesoreria/v6/formatoV6';
 import styles from './Punteo.module.css';
 import {
   agruparHijas,
@@ -44,8 +45,18 @@ const EJES: EjeAgrupacion[] = ['fecha', 'inmueble', 'que-es'];
 
 // ─── Formato ────────────────────────────────────────────────────────────────
 
-const fmtImporte = (n: number): string =>
-  `${n > 0 ? '+' : ''}${n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/**
+ * §2.2 · un solo formateador en toda la pantalla.
+ *
+ * Aquí vivía uno propio que salía sin miles y sin €: junto a un `+1.350,00 €`
+ * del hero, el mismo tipo de dato se leía como `+2682,50`. Ahora usa el
+ * canónico de V6, que es el que fija §5: miles con punto, decimales solo si los
+ * hay, € siempre y el menos tipográfico (−, U+2212).
+ *
+ * `PunteoList` solo lo usa Tesorería V6, así que importar su formato no
+ * acopla nada que no estuviera ya junto.
+ */
+const fmtImporte = (n: number): string => importeConSigno(n);
 
 const fmtDia = (iso: string): string => {
   const d = new Date(`${iso}T12:00:00`);
@@ -67,8 +78,13 @@ export interface PunteoListProps {
   items: ItemPunteo[];
   chip: ChipEstado;
   onChipChange: (chip: ChipEstado) => void;
-  /** Cuentas para el chip de cuenta y el selector del editor. */
-  cuentas: Array<{ id: number; label: string }>;
+  /**
+   * Cuentas para el chip de cuenta y el selector del editor.
+   *
+   * `color` es opcional y solo lo usa §9: en el día conviven cargos de varias
+   * cuentas y hay que ver de cuál sale cada uno sin leer el nombre.
+   */
+  cuentas: Array<{ id: number; label: string; color?: string }>;
   /** Ocultar columna de cuenta (vista de cuenta única). */
   ocultarCuenta?: boolean;
   /** Variante compacta para el drawer del día. */
@@ -85,6 +101,20 @@ export interface PunteoListProps {
   // defecto es el comportamiento de siempre, para que las otras tres vistas que
   // cuelgan de PunteoList no cambien ni un píxel. `punteoModel.ts` no se toca:
   // nada de esto es modelo, es presentación.
+
+  /**
+   * §6.3 · esconder el chip de origen. Se usa en "Por confirmar", donde todo
+   * viene del mismo sitio y repetirlo en cada fila solo tapa lo que distingue
+   * una de otra. Default `false` = lo de siempre.
+   */
+  sinOrigen?: boolean;
+
+  /**
+   * §6.4 · pintar el chip de estado. Va en "Movimientos" y en el día, donde
+   * conviven previsto, confirmado y conciliado. En "Por confirmar" no, porque
+   * allí todo es previsto. Default `false` = lo de siempre.
+   */
+  conChipEstado?: boolean;
 
   /** 1 · Eje de agrupación. Default `fecha` = lo de siempre. */
   eje?: EjeAgrupacion;
@@ -113,6 +143,26 @@ export interface PunteoListProps {
 
 // ─── Sub-componentes ────────────────────────────────────────────────────────
 
+/**
+ * §6.4 · el estado se dice con el CHIP, no con el color del círculo.
+ *
+ * En "Movimientos" y en el día conviven los tres estados, y hasta ahora la
+ * única pista era el color del círculo — que además iba en ámbar, gastando en
+ * "esto aún no ha pasado" el color reservado a los avisos.
+ *
+ * En "Por confirmar" NO se pinta: allí todo es `previsto`, y repetir la misma
+ * palabra 250 veces es ruido.
+ */
+const EstadoChip: React.FC<{ estado: ItemPunteo['estado'] }> = ({ estado }) => {
+  const cls =
+    estado === 'previsto'
+      ? styles.chEPrevisto
+      : estado === 'confirmado'
+        ? styles.chEConfirmado
+        : styles.chEConciliado;
+  return <span className={`${styles.chipEstado} ${cls}`}>{estado}</span>;
+};
+
 const PunteoCheck: React.FC<{
   estado: ItemPunteo['estado'];
   onPuntear?: () => void;
@@ -130,13 +180,23 @@ const PunteoCheck: React.FC<{
       : estado === 'confirmado'
         ? `${concepto} · confirmado`
         : `${concepto} · conciliado con el banco`;
+  // §6.4 · lo conciliado lo afirma el BANCO, no el usuario: ahí no hay nada que
+  // pulsar. Un botón deshabilitado sigue pareciendo un botón —invita a
+  // intentarlo y no responde—, así que se pinta como lo que es: una marca.
+  if (estado === 'conciliado') {
+    return (
+      <span className={`${styles.tick} ${cls} ${styles.tickInforme}`} title={label} aria-label={label}>
+        <Icons.Check size={11} strokeWidth={3} />
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"
       className={`${styles.tick} ${cls}`}
       aria-label={label}
       title={label}
-      disabled={estado === 'conciliado'}
       onClick={(e) => {
         e.stopPropagation();
         if (estado === 'previsto') onPuntear?.();
@@ -166,19 +226,42 @@ const IconoOrigen: React.FC<{ origen: string }> = ({ origen }) => {
   }
 };
 
-const Contexto: React.FC<{ item: ItemPunteo; extra?: string }> = ({ item, extra }) => (
-  <div className={styles.contexto}>
-    {item.activo ? (
-      <>
+/**
+ * La línea de debajo del título · §6.3.
+ *
+ * Orden: qué entiende ATLAS del cargo, y de qué inmueble es. Con el título
+ * diciendo QUIÉN cobra, esta línea es la que separa dos recibos gemelos: dos
+ * "Mapfre" de 40,29 € y 40,23 € se distinguen porque una dice "seguro hogar ·
+ * Tenderina 64" y la otra "seguro hogar · Los Robles 12".
+ *
+ * Lo que no aporta, no se pinta: sin inmueble y sin detalle no hay subtítulo,
+ * en vez de una línea que solo dice "Personal" en todas las filas.
+ */
+const Contexto: React.FC<{ item: ItemPunteo; extra?: string }> = ({ item, extra }) => {
+  const trozos: React.ReactNode[] = [];
+  if (item.detalle) trozos.push(<span key="d">{item.detalle}</span>);
+  if (item.activo?.alias) {
+    trozos.push(
+      <span key="a" className={styles.ctxInmueble}>
         <Icons.Inmuebles size={10} strokeWidth={1.8} />
         <b>{item.activo.alias}</b>
-      </>
-    ) : (
-      'Personal'
-    )}
-    {extra ? <span> · {extra}</span> : null}
-  </div>
-);
+      </span>
+    );
+  }
+  if (extra) trozos.push(<span key="e">{extra}</span>);
+  if (trozos.length === 0) return null;
+
+  return (
+    <div className={styles.contexto}>
+      {trozos.map((t, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <span className={styles.ctxSep}> · </span>}
+          {t}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
 
 // ─── Componente principal ───────────────────────────────────────────────────
 
@@ -188,6 +271,8 @@ const PunteoList: React.FC<PunteoListProps> = ({
   onChipChange,
   cuentas,
   ocultarCuenta = false,
+  sinOrigen = false,
+  conChipEstado = false,
   variant = 'full',
   onConfirmar,
   onNoPaso,
@@ -226,11 +311,31 @@ const PunteoList: React.FC<PunteoListProps> = ({
     return (id: number | null) => (id != null ? m.get(id) ?? `Cuenta ${id}` : '—');
   }, [cuentas]);
 
+  /** §9 · color del banco de esa cuenta, si lo trae quien nos llama. */
+  const colorCuenta = useMemo(() => {
+    const m = new Map(cuentas.map((c) => [c.id, c.color]));
+    return (id: number | null) => (id != null ? m.get(id) : undefined);
+  }, [cuentas]);
+
   const esDrawer = variant === 'drawer';
+  // Las tarjetas por día son de la bandeja de trabajo (§6.3). En el drawer del
+  // día no tienen sentido: allí solo hay un día.
+  const enTarjetas = !esDrawer && eje === 'fecha' && rowVariant === 'tesoreria';
   const rowCls = (it: ItemPunteo, extra = '') =>
     [
       styles.row,
-      esDrawer ? styles.rowCompact : ocultarCuenta ? styles.rowSinCuenta : '',
+      // §6.3 · la rejilla tiene que declarar TANTAS columnas como elementos
+      // pinta la fila. Con `sinOrigen` y `ocultarCuenta` se quedaba con menos
+      // elementos que columnas, y las acciones —que van al final— caían a una
+      // línea nueva: por eso editar y descartar aparecían DEBAJO y la fila medía
+      // el doble de lo necesario.
+      esDrawer
+        ? styles.rowCompact
+        : sinOrigen && ocultarCuenta
+          ? styles.rowMinima
+          : ocultarCuenta
+            ? styles.rowSinCuenta
+            : '',
       it.estado === 'previsto' ? styles.rowPrevisto : styles.rowReal,
       extra,
     ]
@@ -259,10 +364,28 @@ const PunteoList: React.FC<PunteoListProps> = ({
         {/* La acción principal, a la IZQUIERDA · es lo primero que se busca. */}
         <PunteoCheck estado={it.estado} concepto={it.concepto} onPuntear={() => onConfirmar(it)} />
         <div className={styles.c1}>
-          <div className={styles.concepto}>{it.concepto}</div>
+          <div className={styles.conceptoLinea}>
+            {/* §9 · el punto del banco · en el día conviven varias cuentas y
+                hay que ver de cuál sale cada cargo de un vistazo. */}
+            {colorCuenta(it.cuentaId) && (
+              <span
+                className={styles.puntoBanco}
+                style={{ background: colorCuenta(it.cuentaId) }}
+                aria-hidden="true"
+              />
+            )}
+            <span className={styles.concepto}>{it.concepto}</span>
+            {conChipEstado && <EstadoChip estado={it.estado} />}
+          </div>
           {!esDrawer ? <Contexto item={it} /> : <Contexto item={it} extra={cuentaLabel(it.cuentaId)} />}
         </div>
-        {!esDrawer && (
+        {/* §6.3 · el chip de origen desaparece de "Por confirmar".
+            Ahí todo viene del mismo sitio, así que salía "Recurrente" ocho
+            veces seguidas ocupando el centro de la fila: repetir en cada línea
+            un dato que no varía no informa, solo tapa lo que sí distingue una
+            fila de otra. En "Movimientos", donde conviven orígenes distintos,
+            sigue estando. */}
+        {!esDrawer && !sinOrigen && (
           <span className={styles.origen}>
             <IconoOrigen origen={it.origen} />
             {it.origen}
@@ -307,9 +430,10 @@ const PunteoList: React.FC<PunteoListProps> = ({
       {it.discrepancia && !it.discrepancia.revisada && onRevisarDiscrepancia && (
         <div className={styles.discNote}>
           <span>
-            Confirmaste <b>{fmtImporte(it.discrepancia.importeConfirmado)} €</b> · el banco liquidó{' '}
-            <b>{fmtImporte(it.discrepancia.importeBanco)} €</b> · diferencia{' '}
-            <b>{fmtImporte(it.discrepancia.delta)} €</b>
+            {/* El € lo pone el formateador · escribirlo aquí daba "40,29 € €". */}
+            Confirmaste <b>{fmtImporte(it.discrepancia.importeConfirmado)}</b> · el banco liquidó{' '}
+            <b>{fmtImporte(it.discrepancia.importeBanco)}</b> · diferencia{' '}
+            <b>{fmtImporte(it.discrepancia.delta)}</b>
           </span>
           <button type="button" className={styles.discOk} onClick={() => onRevisarDiscrepancia(it)}>
             Entendido <Icons.Close size={10} strokeWidth={2.5} />
@@ -333,12 +457,21 @@ const PunteoList: React.FC<PunteoListProps> = ({
             if (e.key === 'Enter') setGruposAbiertos((s) => ({ ...s, [g.grupoId]: !abierto }));
           }}
         >
+          {/* §6.3 · la madre es EL PISO, no el primer inquilino.
+              Al agrupar por inmueble, poner aquí el concepto de la primera hija
+              dejaba el grupo con nombre de una de sus partes: se leía como si
+              las demás rentas colgasen de la de Alisse. El piso es lo que las
+              junta, así que es lo que va en la cabecera; los inquilinos, cada
+              uno en su fila. */}
           <div className={styles.c1}>
             <div className={styles.concepto}>
               <span className={styles.caret}>{abierto ? '▾' : '▸'}</span>
-              {primera.concepto.replace(/ — .*$/, '')} — {g.total} pagos
+              {primera.activo?.alias ?? primera.concepto.replace(/ — .*$/, '')}
             </div>
-            <Contexto item={primera} />
+            <div className={styles.contexto}>
+              {g.total} {g.total === 1 ? 'renta' : 'rentas'}
+              {primera.detalle ? ` · ${primera.detalle}` : ''}
+            </div>
           </div>
           {!esDrawer && (
             <span className={`${styles.prog} ${g.completo ? styles.progDone : ''}`}>
@@ -382,7 +515,14 @@ const PunteoList: React.FC<PunteoListProps> = ({
       <div className={styles.dayRule}>
         <span className={styles.dayName}>{eje === 'fecha' ? fmtDia(g.clave) : g.titulo}</span>
         <span className={styles.daySums}>
-          {gruposPlegables && <span className={styles.grupoCount}>{g.items.length}</span>}
+          {/* §6.4 · el recuento va PEGADO al importe y se leía como parte de la
+              cifra: "INMUEBLE 1 · 1 · −98,44" parece un importe raro, no "un
+              movimiento que suma −98,44". Separado y en su sitio. */}
+          {gruposPlegables && (
+            <span className={styles.grupoCount}>
+              {g.items.length} {g.items.length === 1 ? 'movimiento' : 'movimientos'}
+            </span>
+          )}
           {gruposPlegables ? (
             <span className={g.subtotal < 0 ? styles.daySumNeg : styles.daySumPos}>
               {fmtImporte(g.subtotal)}
@@ -397,8 +537,18 @@ const PunteoList: React.FC<PunteoListProps> = ({
       </div>
     );
 
+    // §6.3 · cada día es una TARJETA, no una cabecera suelta sobre una lista
+    // plana. Con todo corrido no se ve dónde acaba un día y empieza el
+    // siguiente, y el subtotal de la cabecera parece de la lista entera.
+    // §9 · en el drawer del día la cabecera del grupo REPITE el día que ya
+    // encabeza el panel: salía "sábado · 1 ago 2026" y debajo "SÁBADO, 1 DE
+    // AGOSTO". Con un solo grupo no hay nada que separar, así que sobra.
+    if (esDrawer && grupos.length === 1) {
+      return <React.Fragment key={g.clave}>{cuerpo}</React.Fragment>;
+    }
+
     return (
-      <React.Fragment key={g.clave}>
+      <div className={enTarjetas ? styles.diaCard : undefined} key={g.clave}>
         {gruposPlegables ? (
           <button
             type="button"
@@ -412,14 +562,27 @@ const PunteoList: React.FC<PunteoListProps> = ({
           cabecera
         )}
         {abierto && cuerpo}
-      </React.Fragment>
+      </div>
     );
   };
 
   return (
     <div>
+      {/* §6.4 · buscar es lo primero que se hace al entrar aquí, así que va a
+          la IZQUIERDA. Agrupar es afinar lo que ya se está mirando: a la
+          derecha. Estaba al revés. */}
       {(onEjeChange || onBusquedaChange) && (
         <div className={styles.controles}>
+          {onBusquedaChange && (
+            <input
+              type="search"
+              className={styles.buscador}
+              value={busqueda}
+              placeholder="Buscar"
+              aria-label="Buscar por concepto, inmueble, familia o importe"
+              onChange={(ev) => onBusquedaChange(ev.target.value)}
+            />
+          )}
           {onEjeChange && (
             <div className={styles.ejes} role="tablist" aria-label="Agrupar por">
               {EJES.map((e) => (
@@ -435,16 +598,6 @@ const PunteoList: React.FC<PunteoListProps> = ({
                 </button>
               ))}
             </div>
-          )}
-          {onBusquedaChange && (
-            <input
-              type="search"
-              className={styles.buscador}
-              value={busqueda}
-              placeholder="Buscar"
-              aria-label="Buscar por concepto, inmueble, familia o importe"
-              onChange={(ev) => onBusquedaChange(ev.target.value)}
-            />
           )}
         </div>
       )}

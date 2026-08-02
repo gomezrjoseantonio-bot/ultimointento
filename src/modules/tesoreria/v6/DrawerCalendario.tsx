@@ -26,11 +26,16 @@ import type { ItemPunteo } from '../../../services/punteo/punteoModel';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { esPendiente } from '../../../services/tesoreriaV6Metrics';
 import { construirDias, resumirMes, huecosIniciales } from './calendarioDias';
+import { colorDeBanco } from './bancoColores';
+import { mesMinimo, puedeRetroceder } from './limiteMeses';
 import { importeConSigno, importeSaldo, nombreMes, fechaLarga } from './formatoV6';
 import chasis from './DrawerV6.module.css';
 import styles from './DrawerCalendario.module.css';
 
-const DIAS_SEMANA = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+// §8 · las cabeceras van en formato largo. "L M X J V S D" obliga a
+// descifrarlas —la X de miércoles no es evidente— y no ahorra nada: el ancho
+// de la columna lo fija la celda, no el rótulo.
+const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 export interface DrawerCalendarioProps {
   abierto: boolean;
@@ -51,6 +56,15 @@ export interface DrawerCalendarioProps {
   onEditar?: (item: ItemPunteo) => void;
   /** Confirmar de golpe todo lo que queda pendiente ese día (§4.9). */
   onConfirmarDia: (items: ItemPunteo[]) => void | Promise<void>;
+  /**
+   * §9 · anotar un movimiento EN ESE DÍA.
+   *
+   * Faltaba, y es la mitad que da sentido al panel: mirando el día se ve tanto
+   * lo que estaba previsto como lo que pasó y nadie había apuntado. Sin esto
+   * había que cerrar, abrir la cuenta y poner la fecha a mano — con el día
+   * delante, eso es pedirle al usuario un dato que ya está en pantalla.
+   */
+  onAnotar?: (fecha: string) => void | Promise<void>;
 }
 
 const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
@@ -70,6 +84,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
   onDescartar,
   onEditar,
   onConfirmarDia,
+  onAnotar,
 }) => {
   const [diaElegido, setDiaElegido] = useState<string | null>(null);
 
@@ -108,6 +123,34 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
     [itemsDelDia]
   );
 
+  /**
+   * §2.3 · desde cuándo hay saldo del que partir.
+   *
+   * No es un campo de la cuenta: el saldo inicial es un movimiento marcado, así
+   * que la fecha sale del más antiguo de ellos. Por debajo de ahí un cierre
+   * pintado sería inventado, y el mes ni se muestra ni se navega.
+   */
+  const saldoInicialDesde = useMemo(() => {
+    let min: string | undefined;
+    for (const m of movimientos) {
+      if (!m.isOpeningBalance) continue;
+      const f = (m.date ?? '').slice(0, 10);
+      if (f && (!min || f < min)) min = f;
+    }
+    return min;
+  }, [movimientos]);
+
+  // §2.3 · hasta dónde se puede retroceder · el tope es el trabajo que queda
+  // atrás, no una fecha arbitraria.
+  const hayAtras = useMemo(
+    () =>
+      puedeRetroceder(
+        { year, month0 },
+        mesMinimo({ eventos, hoy, saldoDesde: saldoInicialDesde })
+      ),
+    [year, month0, eventos, hoy, saldoInicialDesde]
+  );
+
   const irAMes = (delta: number) => {
     const d = new Date(year, month0 + delta, 1);
     setDiaElegido(null);
@@ -118,7 +161,13 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
 
   const cuentasParaLista = cuentas
     .filter((c): c is Account & { id: number } => c.id != null)
-    .map((c) => ({ id: c.id, label: c.alias || c.banco?.name || `Cuenta ${c.id}` }));
+    .map((c) => ({
+      id: c.id,
+      label: c.alias || c.banco?.name || `Cuenta ${c.id}`,
+      // §9 · el punto del banco en la fila: en un día conviven cargos de varias
+      // cuentas y hay que ver de cuál sale cada uno sin leer el nombre.
+      color: colorDeBanco(c),
+    }));
 
   return (
     <>
@@ -132,10 +181,14 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
         <div className={chasis.hd}>
           <div className={chasis.hdTop}>
             <div className={styles.nav}>
+              {/* §2.3 · al llegar al tope la flecha se DESACTIVA, no lleva a
+                  meses vacíos. Tesorería mira hacia delante: atrás solo se va
+                  si queda trabajo, y por debajo del saldo inicial ni eso. */}
               <button
                 type="button"
-                className={styles.navBtn}
-                onClick={() => irAMes(-1)}
+                className={`${styles.navBtn} ${!hayAtras ? styles.navBtnOff : ''}`}
+                onClick={() => hayAtras && irAMes(-1)}
+                disabled={!hayAtras}
                 aria-label="Mes anterior"
               >
                 <Icons.ChevronLeft size={16} strokeWidth={2} />
@@ -229,15 +282,26 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
             <div className={styles.detalle}>
               <div className={styles.detalleHd}>
                 <div className={styles.detalleT}>{fechaLarga(diaElegido)}</div>
-                {pendientesDelDia.length > 0 && (
-                  <button
-                    type="button"
-                    className={styles.btnDia}
-                    onClick={() => void onConfirmarDia(pendientesDelDia)}
-                  >
-                    <Icons.Check size={13} strokeWidth={2} /> Confirmar el día
-                  </button>
-                )}
+                <div className={styles.detalleAcciones}>
+                  {pendientesDelDia.length > 0 && (
+                    <button
+                      type="button"
+                      className={styles.btnDia}
+                      onClick={() => void onConfirmarDia(pendientesDelDia)}
+                    >
+                      <Icons.Check size={13} strokeWidth={2} /> Confirmar el día
+                    </button>
+                  )}
+                  {onAnotar && (
+                    <button
+                      type="button"
+                      className={styles.btnDiaSec}
+                      onClick={() => onAnotar(diaElegido)}
+                    >
+                      <Icons.Plus size={13} strokeWidth={2} /> Anotar movimiento
+                    </button>
+                  )}
+                </div>
               </div>
 
               {itemsDelDia.length === 0 ? (
@@ -250,6 +314,8 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   mostrarChips={false}
                   cuentas={cuentasParaLista}
                   variant="drawer"
+                  // §6.4 · en el día conviven los tres estados.
+                  conChipEstado
                   rowVariant="tesoreria"
                   onEditar={onEditar}
                   onConfirmar={onConfirmar}

@@ -10,7 +10,7 @@
 //
 //   Pendientes → rowVariant `tesoreria` (editar y descartar en la fila),
 //                agrupado por día, sin chips (mandan las pestañas).
-//   Todo {mes} → buscador, ejes de agrupación y grupos plegables con subtotal.
+//   Movimientos → buscador, ejes de agrupación y grupos plegables con subtotal.
 // ============================================================================
 
 import React, { useMemo, useState } from 'react';
@@ -23,7 +23,7 @@ import { presentacionDe } from '../../../services/catalogoPresentacionPersistenc
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { esPendiente, importeConSigno as signo, rangoDelMes } from '../../../services/tesoreriaV6Metrics';
 import { colorDeBanco } from './bancoColores';
-import { importeConSigno, importeSaldo, nombreMes } from './formatoV6';
+import { importeConSigno, importeSaldo } from './formatoV6';
 import FichaMovimiento, { type GuardadoFicha, type ValoresFicha } from './FichaMovimiento';
 import styles from './DrawerV6.module.css';
 
@@ -100,7 +100,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   // ── Ítems de las dos pestañas ────────────────────────────────────────────
 
   /**
-   * Pendientes · A1 · lo que YA DEBERÍA HABER PASADO y sigue sin confirmar.
+   * Por confirmar · §3.1 · lo que YA DEBERÍA HABER PASADO y sigue sin confirmar.
    *
    * Es una bandeja que se vacía, no un inventario de todo lo que está por
    * venir. Un recibo de diciembre estando a 1 de agosto no es trabajo de hoy:
@@ -115,13 +115,19 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
       eventos
         .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
         .filter((e) => esPendiente(e))
-        .filter((e) => (e.predictedDate ?? '').slice(0, 10) <= hoy)
+        // Con fecha vacía la comparación `'' <= hoy` es CIERTA, así que un
+        // evento sin `predictedDate` se colaba en Pendientes — y los KPIs sí lo
+        // excluyen, con lo que la bandeja y las cifras contaban cosas distintas.
+        .filter((e) => {
+          const f = (e.predictedDate ?? '').slice(0, 10);
+          return f !== '' && f <= hoy;
+        })
         .map((e) => eventoAItem(e, aliasInmueble))
         .sort((a, b) => b.fecha.localeCompare(a.fecha)),
     [eventos, aliasInmueble, hoy]
   );
 
-  /** Todo {mes}: previsión y realidad del mes, que es una vista de consulta. */
+  /** Movimientos: previsión y realidad del mes, que es una vista de consulta. */
   const itemsTodo = useMemo<ItemPunteo[]>(() => {
     const enMes = (f: string) => f >= desde && f <= hasta;
     const evs = eventos
@@ -141,7 +147,6 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
 
   const nombre = cuenta.alias || cuenta.name || cuenta.banco?.name || 'Cuenta';
   const mask = (cuenta.ultimosCuatro || cuenta.iban?.slice(-4)) ?? '';
-  const mes = nombreMes(month0);
 
   return (
     <>
@@ -170,8 +175,8 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
 
           <div className={styles.kpis}>
             <Ak lab="Saldo hoy" val={importeSaldo(saldoHoy)} />
-            <Ak lab="Pendiente entrar" val={importeConSigno(kpis.entrar)} />
-            <Ak lab="Pendiente salir" val={importeConSigno(kpis.salir)} />
+            <Ak lab="Queda entrar" val={importeConSigno(kpis.entrar)} />
+            <Ak lab="Queda salir" val={importeConSigno(kpis.salir)} />
             <Ak lab="Saldo final" val={importeSaldo(kpis.final)} gold />
           </div>
         </div>
@@ -184,7 +189,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
             aria-pressed={pestana === 'pendientes'}
             onClick={() => setPestana('pendientes')}
           >
-            Pendientes · {itemsPendientes.length}
+            Por confirmar · {itemsPendientes.length}
           </button>
           <button
             type="button"
@@ -192,7 +197,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
             aria-pressed={pestana === 'todo'}
             onClick={() => setPestana('todo')}
           >
-            Todo {mes}
+            Movimientos
           </button>
 
           {pestana === 'pendientes' && (
@@ -217,7 +222,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
             itemsPendientes.length === 0 ? (
               <div className={styles.vacio}>
                 <Icons.Success size={34} strokeWidth={1.6} className={styles.vacioIc} />
-                <div className={styles.vacioT}>Nada pendiente</div>
+                <div className={styles.vacioT}>Nada por confirmar</div>
                 <div className={styles.vacioS}>el mes está al día en esta cuenta</div>
               </div>
             ) : (
@@ -228,6 +233,9 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
                 mostrarChips={false}
                 cuentas={[]}
                 ocultarCuenta
+                // §6.3 · en "Por confirmar" todo viene del mismo sitio: el chip
+                // de origen repetido no distingue nada y tapa lo que sí.
+                sinOrigen
                 rowVariant="tesoreria"
                 onConfirmar={onConfirmar}
                 onNoPaso={onDescartar}
@@ -237,6 +245,9 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
           ) : (
             <PunteoList
               items={itemsTodo}
+              // §6.4 · aquí conviven previsto, confirmado y conciliado: el chip
+              // es lo único que los distingue.
+              conChipEstado
               chip="todos"
               onChipChange={() => undefined}
               mostrarChips={false}
@@ -294,7 +305,11 @@ function valoresDesdeItem(item: ItemPunteo, cuentaId: number | null): Partial<Va
   const presentacion = presentacionDe(item.categoryKey, item.subtypeKey);
   return {
     tipo: item.importe >= 0 ? 'ingreso' : 'gasto',
-    concepto: item.concepto,
+    // La ficha edita la DESCRIPCIÓN del movimiento, no el rótulo de la fila.
+    // Desde §6.3 el título de la fila es quién cobra ("Mapfre") y la
+    // descripción baja a `detalle`; abrir la ficha con "Mapfre" en el campo de
+    // texto sobrescribiría "Seguro hogar" en cuanto se guardara.
+    concepto: item.detalle ?? item.concepto,
     importe: item.importe,
     fecha: item.fecha,
     cuentaId: item.cuentaId ?? cuentaId,

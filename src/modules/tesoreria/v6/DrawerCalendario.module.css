@@ -50,9 +50,12 @@
 
 .hueco { min-height: 46px; }
 
+/* §8 · celdas cuadradas. Eran anchas y bajas, con la mitad inferior vacía:
+   el número arriba y el neto debajo necesitan alto, no ancho. */
 .dia {
   position: relative;
-  min-height: 46px;
+  min-height: 62px;
+  aspect-ratio: 1 / 1;
   border: 1px solid var(--atlas-v5-line-2);
   border-radius: 8px;
   background: var(--atlas-v5-card);
@@ -90,7 +93,12 @@
 .diaVacio .diaNum { color: var(--atlas-v5-ink-4); }
 
 /* Hoy · filo oro (§4.9). */
-.diaHoy { border-color: var(--atlas-v5-gold); }
+/* §8 · hoy, con filo dorado de verdad. Con 1px del mismo grosor que el resto
+   no se distinguía: es el ancla desde la que se lee todo el mes. */
+.diaHoy {
+  border-color: var(--atlas-v5-gold);
+  box-shadow: inset 0 0 0 1px var(--atlas-v5-gold);
+}
 
 .diaOn {
   border-color: var(--atlas-v5-brand);
@@ -154,4 +162,37 @@
   text-align: center;
   font-size: 12px;
   color: var(--atlas-v5-ink-4);
+}
+
+/* §9 · las dos acciones del día, juntas. Confirmar es la principal; anotar es
+   la que faltaba y la que permite meter lo que pasó y nadie apuntó. */
+.detalleAcciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btnDiaSec {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btnDiaSec:hover {
+  border-color: var(--atlas-v5-gold);
+  color: var(--atlas-v5-ink);
+}
+
+/* §2.3 · la flecha del tope es INVISIBLE, no un hueco muerto: un botón apagado
+   que sigue ahí invita a pulsarlo y no responde. */
+.navBtnOff {
+  opacity: 0;
+  pointer-events: none;
 }

@@ -240,6 +240,19 @@ export interface TreasuryEvent {
   numeroCuota?: number;
   // PR3: unified treasury architecture — ámbito + categoría
   ambito?: 'PERSONAL' | 'INMUEBLE';
+  /**
+   * Quién cobra · §6.3.
+   *
+   * Se captura al dar de alta el gasto ("Tecno Oviedo", "Mapfre") pero se
+   * quedaba en el compromiso y no llegaba a la previsión, así que la fila solo
+   * podía enseñar la categoría ATLAS ("Seguro hogar") — y con dos seguros de
+   * 40,29 € y 40,23 € eso no permite saber cuál es cuál.
+   *
+   * Es el nombre que aparecerá en el extracto, así que es el que manda en la
+   * fila. Opcional: los previstos antiguos no lo llevan.
+   */
+  proveedor?: string;
+
   categoryLabel?: string;         // e.g. "Reparación inmueble" | "Mejora inmueble" | "Mobiliario inmueble" | "Gasto recurrente" | etc.
   // PR5-HOTFIX v2: identificador canónico del catálogo de categorías
   // (src/services/categoryCatalog.ts). Reemplaza el uso ambiguo de

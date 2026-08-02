@@ -53,20 +53,57 @@ export const CLAVE_SIN_COLOR = 'sin-color';
  * rejilla para que el usuario pueda distinguir a ojo dos cuentas del mismo
  * banco — que es el caso que el color automático no resuelve.
  */
-export const PALETA_PUNTO: Array<{ token: string; nombre: string }> = [
-  { token: 'var(--atlas-v5-bank-santander)', nombre: 'Rojo' },
-  { token: 'var(--atlas-v5-bank-ing)', nombre: 'Naranja' },
-  { token: 'var(--atlas-v5-bank-bankinter)', nombre: 'Ámbar' },
-  { token: 'var(--atlas-v5-bank-cajamar)', nombre: 'Lima' },
-  { token: 'var(--atlas-v5-bank-unicaja)', nombre: 'Verde' },
-  { token: 'var(--atlas-v5-bank-abanca)', nombre: 'Turquesa' },
-  { token: 'var(--atlas-v5-bank-kutxabank)', nombre: 'Azul claro' },
-  { token: 'var(--atlas-v5-bank-revolut)', nombre: 'Azul' },
-  { token: 'var(--atlas-v5-bank-sabadell)', nombre: 'Azul medio' },
-  { token: 'var(--atlas-v5-bank-bbva)', nombre: 'Azul marino' },
-  { token: 'var(--atlas-v5-bank-caixabank)', nombre: 'Índigo' },
-  { token: 'var(--atlas-v5-bank-openbank)', nombre: 'Carmesí' },
-];
+/**
+ * §10 · la paleta del punto de cuenta · rejilla completa, como la de Excel.
+ *
+ * Antes era una lista corta de colores de marca de banco: entre ellos había dos
+ * rojos y cinco azules que a 8 píxeles no se distinguen, y encima limitaba la
+ * elección a los bancos que ATLAS conoce. El punto es del USUARIO —sirve para
+ * que reconozca sus cuentas de un vistazo— así que la elección es suya.
+ *
+ * Los colores viven en `tokens.css`, con el resto de la paleta; aquí solo se
+ * arma la rejilla que los ordena. Se generó allí en HSL para que cada columna
+ * comparta tono y cada fila luminosidad por construcción y no por haberlo
+ * escrito bien cincuenta y seis veces.
+ */
+
+/** Columnas · un tono cada una, repartidos por el círculo desde el rojo. */
+const TONOS = [
+  'rojo', 'naranja', 'ambar', 'lima', 'verde',
+  'turquesa', 'celeste', 'azul', 'violeta', 'rosa',
+] as const;
+
+/** Filas · de más clara a más oscura. */
+const NIVELES = ['muy claro', 'claro', 'medio', 'oscuro', 'muy oscuro'];
+
+export interface MuestraColor {
+  /** Valor CSS que se guarda en `Account.colorPunto`. */
+  token: string;
+  /** Nombre legible · lo lee el lector de pantalla. */
+  nombre: string;
+}
+
+const capitalizar = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** La rejilla · filas de luminosidad × columnas de tono. */
+export const REJILLA_PUNTO: MuestraColor[][] = NIVELES.map((nivel, fila) =>
+  TONOS.map((tono) => ({
+    token: `var(--atlas-v5-punto-${tono}-${fila + 1})`,
+    nombre: `${capitalizar(tono)} ${nivel}`,
+  }))
+);
+
+/**
+ * Fila de grises · aparte de la rejilla.
+ *
+ * Un punto gris es una elección legítima —"esta cuenta no quiero que cante"— y
+ * en una rejilla de matices no cabe: el gris no tiene tono, así que no le
+ * corresponde ninguna columna.
+ */
+export const GRISES_PUNTO: MuestraColor[] = [
+  'Negro', 'Gris muy oscuro', 'Gris oscuro', 'Gris medio', 'Gris claro', 'Blanco',
+].map((nombre, i) => ({ token: `var(--atlas-v5-punto-gris-${i + 1})`, nombre }));
+
 
 /**
  * Color del punto, por orden de prioridad:

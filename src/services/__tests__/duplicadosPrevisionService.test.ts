@@ -4,8 +4,32 @@
 // reportar antes de tocar nada, y para eso hace falta que las cifras sean
 // exactas — un informe que exagera lleva a borrar de más.
 
-import { analizarDuplicados, claveDuplicado, resumirInforme } from '../duplicadosPrevisionService';
+import {
+  analizarDuplicados,
+  claveDuplicado,
+  resumirInforme,
+  limpiarDuplicados,
+} from '../duplicadosPrevisionService';
 import type { TreasuryEvent } from '../db';
+
+// La base la sirve un doble en memoria · `mockStore` se rellena en cada test.
+const mockStore = new Map<number, TreasuryEvent>();
+const mockBorrados: number[] = [];
+
+jest.mock('../db', () => ({
+  initDB: async () => ({
+    getAll: async () => [...mockStore.values()],
+    transaction: () => ({
+      store: {
+        delete: async (id: number) => {
+          mockBorrados.push(id);
+          mockStore.delete(id);
+        },
+      },
+      done: Promise.resolve(),
+    }),
+  }),
+}));
 
 const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
@@ -192,5 +216,59 @@ describe('el informe que se copia y se pega', () => {
     const texto = resumirInforme(analizarDuplicados([ev({ id: 1 })]));
     expect(texto).toContain('Grupos duplicados: 0');
     expect(texto).toContain('Copias de más: 0');
+  });
+});
+
+
+// FASE 1 · el borrado. Lo que se prueba aquí es que NO se pase de listo.
+describe('limpiar duplicados', () => {
+  beforeEach(() => {
+    mockStore.clear();
+    mockBorrados.length = 0;
+  });
+
+  const conBase = (evs: TreasuryEvent[]) =>
+    evs.forEach((e) => mockStore.set(e.id as number, e));
+
+  it('deja UNA copia y borra el resto', async () => {
+    conBase([ev({ id: 1 }), ev({ id: 2 }), ev({ id: 3 })]);
+    const r = await limpiarDuplicados();
+
+    expect(r.borradas).toBe(2);
+    expect(mockBorrados.sort()).toEqual([2, 3]);
+    expect(mockStore.has(1)).toBe(true);
+  });
+
+  it('NUNCA borra una confirmada · puede ser un cargo real repetido', async () => {
+    conBase([ev({ id: 1, status: 'executed' }), ev({ id: 2, status: 'executed' })]);
+    const r = await limpiarDuplicados();
+
+    expect(r.borradas).toBe(0);
+    expect(mockStore.size).toBe(2);
+  });
+
+  it('si una está confirmada, esa se queda y se van todas las previstas', async () => {
+    conBase([ev({ id: 1, status: 'executed' }), ev({ id: 2 }), ev({ id: 3 })]);
+    const r = await limpiarDuplicados();
+
+    expect(r.borradas).toBe(2);
+    expect(mockStore.has(1)).toBe(true);
+  });
+
+  it('no toca lo que no está duplicado', async () => {
+    conBase([ev({ id: 1 }), ev({ id: 2, predictedDate: '2026-09-10' })]);
+    expect((await limpiarDuplicados()).borradas).toBe(0);
+  });
+
+  it('es idempotente · pasarlo dos veces no borra de más', async () => {
+    conBase([ev({ id: 1 }), ev({ id: 2 })]);
+    await limpiarDuplicados();
+    expect((await limpiarDuplicados()).borradas).toBe(0);
+  });
+
+  it('devuelve cuánto se corrige el cierre · un gasto de más lo subía', async () => {
+    conBase([ev({ id: 1, amount: 100 }), ev({ id: 2, amount: 100 })]);
+    // Sobraba un gasto de 100 (−100 al cierre); quitarlo lo corrige en +100.
+    expect((await limpiarDuplicados()).correccionCierre).toBe(100);
   });
 });

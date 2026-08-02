@@ -65,6 +65,23 @@
 .colTick { text-align: center; }
 
 /* ── Separador de día ── */
+/* §6.3 · el día, en tarjeta. Delimita dónde empieza y acaba, y deja claro que
+   el subtotal de la cabecera es DE ESE DÍA y no de toda la lista. */
+.diaCard {
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  background: var(--atlas-v5-card);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.diaCard .dayRule {
+  padding: 8px 12px;
+  background: var(--atlas-v5-bg-soft, var(--atlas-v5-gold-wash-2));
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+}
+/* Dentro de la tarjeta la última fila no necesita raya: la cierra el borde. */
+.diaCard .row:last-child { border-bottom: none; }
+
 .dayRule {
   display: flex;
   justify-content: space-between;
@@ -83,8 +100,11 @@
   font-variant-numeric: tabular-nums;
   color: var(--atlas-v5-ink-4);
 }
-.daySumPos { color: var(--atlas-v5-pos); }
-.daySumNeg { color: var(--atlas-v5-neg); margin-left: 8px; }
+/* §2.1 · los importes van SIEMPRE en `--ink`: el signo ya dice la dirección.
+   Pintar de verde y rojo gasta el color en algo que el propio número ya dice, y
+   deja sin fuerza al ámbar, que es el único que debe pedir atención. */
+.daySumPos { color: var(--atlas-v5-ink); }
+.daySumNeg { color: var(--atlas-v5-ink); margin-left: 8px; }
 
 /* ── Fila ── */
 .row {
@@ -99,6 +119,15 @@
 .rowSinCuenta {
   grid-template-columns: minmax(0, 1fr) 130px 130px 44px;
 }
+/* §6.3 · "Por confirmar": círculo · concepto · importe · acciones.
+   Cuatro elementos, cuatro columnas. El círculo y las acciones se ajustan a su
+   contenido; el concepto se queda con todo el ancho sobrante, que es lo que
+   permite leer "Tenderina 64 · 4D" sin cortar. */
+.rowMinima {
+  grid-template-columns: 22px minmax(0, 1fr) 120px auto;
+  gap: 10px;
+  padding: 5px 8px;
+}
 .row:hover { background: var(--atlas-v5-gold-wash-2); }
 .rowEditable { cursor: pointer; }
 .rowCompact {
@@ -107,6 +136,57 @@
 }
 
 .c1 { min-width: 0; }
+/* §6.4 · el concepto y su chip de estado, en la misma línea. */
+.conceptoLinea {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.conceptoLinea .concepto { min-width: 0; }
+/* §9 · punto de banco · identidad cromática, la única del módulo (§2.1). */
+.puntoBanco {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.chipEstado {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1.5px 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+/* Previsto: gris. Aún no ha pasado, y eso no es ni bueno ni malo. */
+.chEPrevisto {
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-line-3);
+}
+/* Confirmado: lo afirma el usuario. */
+.chEConfirmado {
+  color: var(--atlas-v5-ink-2);
+  background: var(--atlas-v5-card);
+  border-color: var(--atlas-v5-line);
+}
+/* Conciliado: lo afirma el banco · es el único que cierra el ciclo. */
+.chEConciliado {
+  color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand-wash, var(--atlas-v5-gold-wash-2));
+  border-color: var(--atlas-v5-brand);
+}
+
+/* §6.4 · lo conciliado es una MARCA, no un botón: no hay nada que pulsar. */
+.tickInforme {
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .concepto {
   font-size: 12.5px;
   white-space: nowrap;
@@ -129,6 +209,8 @@
   gap: 4px;
 }
 .contexto b { color: var(--atlas-v5-ink-3); font-weight: 600; }
+.ctxInmueble { display: inline-flex; align-items: center; gap: 3px; }
+.ctxSep { color: var(--atlas-v5-ink-5); }
 
 .origen {
   display: inline-flex;
@@ -167,8 +249,8 @@
   white-space: nowrap;
   text-align: right;
 }
-.importePos { color: var(--atlas-v5-pos); }
-.importeNeg { color: var(--atlas-v5-neg); }
+.importePos { color: var(--atlas-v5-ink); }
+.importeNeg { color: var(--atlas-v5-ink); }
 .importePrevio {
   display: block;
   font-size: 9.5px;
@@ -201,7 +283,11 @@
   padding: 0;
 }
 .tick:focus-visible { outline: 2px solid var(--atlas-v5-gold); outline-offset: 2px; }
-.tickPrevisto { border-style: dashed; border-color: var(--atlas-v5-gold-soft); }
+/* §2.1 · el círculo de `previsto` es GRIS y vacío. Iba en ámbar punteado, y el
+   ámbar está reservado para un único significado: una cuenta que se queda
+   corta. Si además marca "esto aún no ha pasado" —que es el estado de casi
+   todo— deja de avisar de nada. El estado lo dice el chip, no el círculo. */
+.tickPrevisto { border-style: solid; border-color: var(--atlas-v5-ink-5); }
 .tickConfirmado { background: var(--atlas-v5-brand); border-color: var(--atlas-v5-brand); }
 .tickConciliado { background: var(--atlas-v5-pos); border-color: var(--atlas-v5-pos); cursor: default; }
 
@@ -339,20 +425,29 @@
   display: flex;
   gap: 4px;
 }
+/* §6.4 · los ejes son CHIPS, no texto plano en un recuadro gris. El activo va
+   en navy pleno: es el que manda sobre lo que se está viendo, y un fondo gris
+   claro no lo distingue de los otros dos de un vistazo. */
 .ejeBtn {
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--atlas-v5-ink-4);
-  background: none;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 6px;
+  color: var(--atlas-v5-ink-3);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  padding: 4px 11px;
+  border-radius: 999px;
   cursor: pointer;
+  transition: all 0.14s;
 }
-.ejeBtn:hover { color: var(--atlas-v5-ink-2); }
-.ejeOn {
+.ejeBtn:hover {
   color: var(--atlas-v5-ink);
-  background: var(--atlas-v5-line-3);
+  border-color: var(--atlas-v5-ink-5);
+}
+.ejeOn,
+.ejeOn:hover {
+  color: var(--atlas-v5-white);
+  background: var(--atlas-v5-brand);
+  border-color: var(--atlas-v5-brand);
 }
 /* §4.4 · buscador pequeño y discreto (~150px), no un campo de formulario. */
 .buscador {
@@ -382,7 +477,10 @@
   font: inherit;
 }
 .grupoCount {
+  font-size: 10px;
   color: var(--atlas-v5-ink-4);
+  font-weight: 400;
+  letter-spacing: 0.01em;
   margin-right: 10px;
 }
 
