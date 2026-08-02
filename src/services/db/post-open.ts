@@ -6,7 +6,7 @@ import type { AtlasHorizonDB } from '../db';
 import type { BoteAnualSinIdentificar,Contract,Property,TreasuryEvent } from './types';
 import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfillDocumentoFirmado } from '../alquileresV3FixService';
 import { migrarBaseAmortizableEjercicio } from '../baseAmortizableEjercicioService';
-import { inmuebleDelPrestamo, type PrestamoConDestinos } from '../inmuebleDelPrestamo';
+import { inmuebleDelPrestamo, idDeInmueble, type PrestamoConDestinos } from '../inmuebleDelPrestamo';
 
 /** Sólo estos orígenes tienen un gasto recurrente detrás del que copiar. */
 const ORIGENES_CON_PROVEEDOR = new Set(['gasto_recurrente', 'opex_rule', 'personal_expense']);
@@ -553,8 +553,11 @@ export function runPostOpenMigrations(
         }>;
         const inmueblePorContrato = new Map<number, number>();
         for (const c of contratos) {
-          if (c.id == null || c.inmuebleId == null) continue;
-          inmueblePorContrato.set(c.id, c.inmuebleId);
+          // `idDeInmueble` filtra el 0 que algunos flujos usan como "aún sin
+          // vincular": agruparía rentas bajo una madre que no existe.
+          const inmueble = idDeInmueble(c.inmuebleId);
+          if (c.id == null || inmueble == null) continue;
+          inmueblePorContrato.set(c.id, inmueble);
         }
         if (inmueblePorContrato.size === 0) {
           await db.put('keyval', 'completed', FLAG);
@@ -585,11 +588,11 @@ export function runPostOpenMigrations(
         await tx.done;
 
         if (rellenados > 0) {
-          console.log(`[DB §6.3] inmueble rellenado en ${rellenados} renta(s)`);
+          console.log(`[DB §6.3 rentas] inmueble rellenado en ${rellenados} renta(s)`);
         }
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
-        console.warn('[DB §6.3 backfill inmueble en rentas] falló:', err);
+        console.warn('[DB §6.3 rentas · backfill inmueble] falló:', err);
       }
       return db;
     });

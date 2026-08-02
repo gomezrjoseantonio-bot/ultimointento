@@ -15,6 +15,10 @@
 //
 // `'standalone'` es el centinela heredado de "sin inmueble", y un
 // `Number('standalone')` sería NaN: se descarta antes de convertir.
+//
+// `idDeInmueble` se exporta porque el mismo criterio hace falta allí donde se
+// copia el inmueble de un CONTRATO. Escribirlo dos veces es exactamente cómo
+// nació este fallo.
 // ============================================================================
 
 /** Lo mínimo que hace falta mirar · sirve igual al préstamo de cualquier módulo. */
@@ -25,10 +29,20 @@ export interface PrestamoConDestinos {
 
 const CENTINELA_SIN_INMUEBLE = 'standalone';
 
-function aId(valor: string | number | null | undefined): number | undefined {
+/**
+ * A id de inmueble, o `undefined` si no lo es.
+ *
+ * Entero POSITIVO, no cualquier número finito: `properties` es un store
+ * `autoIncrement`, así que sus ids empiezan en 1 — y hay flujos que escriben
+ * `inmuebleId: 0` como marcador de "aún sin vincular"
+ * (`ejercicioResolverService`, `declaracionDistributorService`). Colándose ese
+ * 0, el evento acabaría apuntando a un inmueble que no existe y las rentas se
+ * agruparían bajo una madre fantasma.
+ */
+export function idDeInmueble(valor: string | number | null | undefined): number | undefined {
   if (valor == null || valor === '' || valor === CENTINELA_SIN_INMUEBLE) return undefined;
   const n = Number(valor);
-  return Number.isFinite(n) ? n : undefined;
+  return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
 /**
@@ -39,8 +53,8 @@ function aId(valor: string | number | null | undefined): number | undefined {
  */
 export function inmuebleDelPrestamo(prestamo: PrestamoConDestinos): number | undefined {
   for (const d of prestamo.destinos ?? []) {
-    const id = aId(d?.inmuebleId);
+    const id = idDeInmueble(d?.inmuebleId);
     if (id != null) return id;
   }
-  return aId(prestamo.inmuebleId);
+  return idDeInmueble(prestamo.inmuebleId);
 }
