@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-02",
-  "generatedAt": "2026-08-02T13:38:58.361Z",
+  "generatedAt": "2026-08-02T13:42:29.856Z",
   "git": {
     "branch": "claude/new-session-hq2846",
-    "head": "bc6e1cf"
+    "head": "99f0c91"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -318,12 +318,12 @@
       "calibracion": null
     },
     "tests_rojos": {
-      "value": null,
+      "value": 40,
       "direction": "down",
       "objetivo": 0,
-      "measurable": false,
+      "measurable": true,
       "approx": false,
-      "note": "NO MEDIBLE · usa `npm run health:ci` (--with-tests) para ejecutar la suite",
+      "note": "medido vía react-scripts test (CI)",
       "detail": null,
       "calibracion": null
     },
