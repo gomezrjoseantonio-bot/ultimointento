@@ -178,10 +178,14 @@ function aliasAprendible(
  * Los alias aprendidos, listos para preguntar: clave del banco → claves a las
  * que el usuario los ha confirmado alguna vez.
  *
- * Es un `Set` y no un valor porque un mismo texto puede haber acabado en
- * personas distintas —pasa cuando dos inquilinos comparten apellido— y en ese
- * caso lo honesto es que el alias confirme a las dos y decida el usuario, no
- * que la última confirmación pise a la anterior.
+ * Es un `Set` y no un valor porque el mapa se construye sobre TODAS las reglas,
+ * y reglas distintas —descripciones de banco distintas, `learnKey` distintos—
+ * pueden traer el mismo nombre apuntando a personas distintas. Ahí lo honesto
+ * es que salgan las dos como candidatas y decida el usuario.
+ *
+ * Dentro de UNA regla el alias es 1→1 a propósito: el mismo texto del banco
+ * confirmado después contra otra persona no son dos verdades a la vez, es una
+ * corrección, y pisa a la anterior.
  */
 export async function cargarAliasContraparte(): Promise<Map<string, Set<string>>> {
   const mapa = new Map<string, Set<string>>();
@@ -197,9 +201,12 @@ export async function cargarAliasContraparte(): Promise<Map<string, Set<string>>
   for (const regla of reglas) {
     if (!regla.aliasContraparte || !regla.contraparteCanonica) continue;
     const clave = claveDeNombre(regla.aliasContraparte);
-    if (!clave) continue;
+    const canonica = claveDeNombre(regla.contraparteCanonica);
+    // Una clave vacía no es un nombre: metida en el Set haría match con
+    // cualquier previsión que tampoco tenga contraparte.
+    if (!clave || !canonica) continue;
     const canonicas = mapa.get(clave) ?? new Set<string>();
-    canonicas.add(claveDeNombre(regla.contraparteCanonica));
+    canonicas.add(canonica);
     mapa.set(clave, canonicas);
   }
   return mapa;

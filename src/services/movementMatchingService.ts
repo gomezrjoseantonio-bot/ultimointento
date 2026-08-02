@@ -206,10 +206,12 @@ function puntosDeContraparte(
   reasons: string[]
 ): number {
   const nombreBanco = nombreDeContraparte(movement);
-  const quienCobra = event.counterparty ?? event.providerName ?? '';
-  if (nombreBanco) {
+  const quienCobra = claveDeNombre(event.counterparty ?? event.providerName ?? '');
+  // Sin nombre a los dos lados no hay nada que preguntar · una clave vacía
+  // preguntada contra el Set casaría con cualquier previsión anónima.
+  if (nombreBanco && quienCobra) {
     const aprendidas = alias.get(claveDeNombre(nombreBanco));
-    if (aprendidas?.has(claveDeNombre(quienCobra))) {
+    if (aprendidas?.has(quienCobra)) {
       reasons.push('alias_aprendido');
       return 25;
     }

@@ -41,6 +41,7 @@ describe('alias de contraparte', () => {
     const db = await initDB();
     const tx = db.transaction('movementLearningRules', 'readwrite');
     await tx.objectStore('movementLearningRules').clear();
+    await tx.done;
   });
 
   it('aprende el nombre que no se podía deducir', async () => {
@@ -85,9 +86,10 @@ describe('alias de contraparte', () => {
     );
   });
 
-  // Dos inquilinos distintos bajo el mismo texto del banco: lo honesto es que
-  // salgan los dos y decida el usuario, no que el último pise al primero.
-  it('un mismo texto puede haber acabado en dos personas', async () => {
+  // El mismo nombre llegando por dos descripciones distintas del banco: son
+  // dos reglas, y pueden apuntar a personas distintas. Salen las dos como
+  // candidatas y decide el usuario.
+  it('dos reglas con el mismo nombre pueden apuntar a personas distintas', async () => {
     await aprender(movimiento(), 'Adnan Parwez Khan', 'k1');
     await aprender(movimiento({ id: 2 }), 'Maria Parwez Lopez', 'k2');
 
@@ -99,5 +101,38 @@ describe('alias de contraparte', () => {
         ],
       ])
     );
+  });
+
+  // Dentro de UNA regla no son dos verdades a la vez: el mismo texto del banco
+  // confirmado después contra otra persona es una corrección.
+  it('reconfirmar el mismo texto contra otra persona corrige, no acumula', async () => {
+    await aprender(movimiento(), 'Adnan Parwez Khan', 'k1');
+    await aprender(movimiento(), 'Maria Parwez Lopez', 'k1');
+
+    expect((await cargarAliasContraparte()).get(claveDeNombre('MPARWEZ'))).toEqual(
+      new Set([claveDeNombre('Maria Parwez Lopez')])
+    );
+  });
+
+  // Una regla con un nombre que no deja nada que comparar no puede colarse en
+  // el mapa: preguntada contra una previsión sin contraparte, casaría todo.
+  it('un nombre ilegible no entra en el mapa', async () => {
+    const db = await initDB();
+    await db.add('movementLearningRules', {
+      learnKey: 'k9',
+      counterpartyPattern: '',
+      descriptionPattern: '',
+      amountSign: 'positive',
+      categoria: 'Alquiler',
+      ambito: 'INMUEBLE',
+      source: 'IMPLICIT',
+      createdAt: '2026-03-03',
+      updatedAt: '2026-03-03',
+      appliedCount: 1,
+      aliasContraparte: 'MPARWEZ',
+      contraparteCanonica: '4433',
+    } as never);
+
+    expect((await cargarAliasContraparte()).size).toBe(0);
   });
 });
