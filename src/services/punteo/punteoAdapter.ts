@@ -91,26 +91,49 @@ const CONTRAPARTE_TRAS_EL_GUION = new Set([
 
 const SEPARADOR = ' – ';
 
-/** Parte `<qué es> – <quién>` en las dos piezas de la fila. */
+/**
+ * "Hab 2" a partir de lo que traiga el contrato.
+ *
+ * El `habitacionId` real es `"hab-2"`, así que anteponerle "Hab " daba
+ * "Hab hab-2". Si dentro hay un número, ese es el nombre de la habitación; si
+ * no lo hay, se respeta el texto tal cual, que algo dirá.
+ */
+export function etiquetaHabitacion(unidad?: string): string | undefined {
+  if (!unidad) return undefined;
+  const numero = unidad.match(/(\d+)/);
+  return numero ? `Hab ${numero[1]}` : unidad;
+}
+
 export function piezasDeFila(
-  e: Pick<TreasuryEvent, 'proveedor' | 'description' | 'sourceType' | 'unidadInmueble'>
+  e: Pick<TreasuryEvent, 'proveedor' | 'description' | 'sourceType' | 'unidadInmueble'>,
+  alias?: string
 ): {
   concepto: string;
   detalle?: string;
 } {
   /**
-   * Una RENTA · arriba el inquilino, abajo su habitación.
+   * Un ARRENDAMIENTO · siempre se dice que es un alquiler y de qué piso.
    *
-   * El "Renta – " de delante sobra: bajo la madre del piso —que ya dice
-   * "Alquiler · Tenderina 64 4D"— repetirlo en cada hija es escribir cuatro
-   * veces lo que encabeza el grupo. Lo que distingue una fila de otra es quién
-   * paga y qué unidad ocupa.
+   * Con habitación (piso por habitaciones) la fila cuelga de una madre que ya
+   * dice "Alquiler · el piso", así que la hija se queda con lo que la distingue
+   * de sus hermanas: el inquilino y su habitación. Repetir ahí el piso sería
+   * escribirlo cuatro veces.
+   *
+   * Sin habitación —piso completo— no hay madre que lo encabece, así que lo
+   * dice la propia fila: "Alquiler · el piso" arriba y el inquilino debajo. Lo
+   * que manda es lo que se cobra, no de quién; el nombre del inquilino sin más
+   * no decía siquiera que aquello fuera un alquiler.
    */
   if (e.sourceType === 'contrato' || e.sourceType === 'contract') {
     const desc = e.description ?? '';
     const corte = desc.lastIndexOf(SEPARADOR);
-    const inquilino = corte > 0 ? desc.slice(corte + SEPARADOR.length).trim() : desc;
-    return { concepto: inquilino || desc, detalle: e.unidadInmueble };
+    const inquilino = (corte > 0 ? desc.slice(corte + SEPARADOR.length).trim() : desc) || desc;
+    const habitacion = etiquetaHabitacion(e.unidadInmueble);
+    if (habitacion) return { concepto: inquilino, detalle: habitacion };
+    return {
+      concepto: alias ? `Alquiler \u00b7 ${alias}` : 'Alquiler',
+      detalle: inquilino,
+    };
   }
 
   // §6.3 · manda QUIEN COBRA, que es lo que aparecerá en el extracto y con lo
@@ -155,7 +178,7 @@ export function eventoAItem(
   const aliasReal = e.inmuebleAlias ?? aliasInmueble?.(e.inmuebleId ?? -1);
   const activo =
     e.inmuebleId != null ? { inmuebleId: e.inmuebleId, alias: aliasReal } : null;
-  const { concepto, detalle } = piezasDeFila(e);
+  const { concepto, detalle } = piezasDeFila(e, aliasReal);
   return {
     key: `evt-${e.id}`,
     kind: 'evento',

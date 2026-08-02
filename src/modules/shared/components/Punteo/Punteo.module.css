@@ -339,10 +339,30 @@
   background: var(--atlas-v5-pos-wash);
   border-color: var(--atlas-v5-pos-border);
 }
+/* El caret gira al abrir · es la única pieza que se mueve, así que basta para
+   decir si el grupo está plegado sin escribirlo. */
 .caret {
-  color: var(--atlas-v5-gold);
-  font-size: 10px;
-  margin-right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-3);
+  transition: transform 0.15s;
+}
+.rowMadre[aria-expanded='true'] .caret { transform: rotate(90deg); }
+
+/* La MADRE se distingue de sus hijas y de las filas sueltas.
+   Antes solo la separaba un caret de 10px, que a esa escala es un punto: con
+   cuatro filas iguales debajo no se leía que hubiera un grupo. Lleva filo
+   dorado a la izquierda —el oro es la nota de "esto es el resumen"— y su título
+   en la tinta fuerte. */
+.rowMadre {
+  background: var(--atlas-v5-gold-wash-2);
+  box-shadow: inset 3px 0 0 var(--atlas-v5-gold);
+}
+.rowMadre:hover { background: var(--atlas-v5-gold-wash); }
+.rowMadre .concepto {
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
 }
 .rowHija { background: var(--atlas-v5-card-alt); }
 .rowHija .c1 { padding-left: 22px; position: relative; }
