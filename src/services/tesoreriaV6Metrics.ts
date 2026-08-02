@@ -176,7 +176,12 @@ export function estadoDeCuenta(params: {
    * confirmó sigue siendo trabajo pendiente hoy.
    */
   const porConfirmar = eventos.filter((e) => {
-    if (!esPendiente(e)) return false;
+    // Y con el MISMO criterio: solo lo previsto. `esPendiente` incluye además
+    // los `confirmed` —la venta de un piso, la liquidación de un préstamo—, que
+    // están decididos y esperan al banco, no al usuario: la bandeja los mandó a
+    // Confirmados y contarlos aquí volvería a desalinear la tarjeta y la
+    // pestaña, que es el defecto que este contador vino a arreglar.
+    if (!esPendiente(e) || e.status !== 'predicted') return false;
     const f = soloFecha(e.predictedDate);
     // Con fecha vacía la comparación `'' <= hoy` es CIERTA: sin esta guarda un
     // evento sin fecha se colaría en la cuenta y no en la bandeja.

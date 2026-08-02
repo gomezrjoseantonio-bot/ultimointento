@@ -97,6 +97,20 @@ export interface ItemPunteo {
   /** Agrupación madre/hijas (alquiler por habitaciones · fraccionados). */
   grupoId?: string;
   /**
+   * Cómo se lee esta fila CUANDO CUELGA DE SU MADRE.
+   *
+   * Una renta de habitación dice dos cosas distintas según dónde esté. Suelta,
+   * tiene que decirlo todo —"Alquiler · el piso" arriba y el inquilino con su
+   * habitación debajo—, porque nada más lo dice. Bajo la madre, el piso ya lo
+   * encabeza el grupo y repetirlo en cada hija es escribirlo cuatro veces: ahí
+   * la fila se queda con lo que la distingue de sus hermanas.
+   *
+   * Van los dos juegos en el ítem porque la misma renta puede acabar en
+   * cualquiera de las dos situaciones —depende de cuántas caigan ese día— y no
+   * se sabe hasta pintar.
+   */
+  bajoMadre?: { concepto: string; detalle?: string };
+  /**
    * Clasificación tal y como está persistida. La lista no la pinta; viaja para
    * que la ficha de §4.5 pueda abrir con la clasificación REAL del registro en
    * vez de con la primera del catálogo. `undefined` = sin clasificar.

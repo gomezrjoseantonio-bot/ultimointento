@@ -123,8 +123,9 @@ describe('A1 · Pendientes no mezcla futuro', () => {
 
     expect(screen.getByText('Ya venció')).toBeInTheDocument();
     expect(screen.queryByText('Diciembre')).not.toBeInTheDocument();
-    // Y el contador cuenta eso y solo eso · un 252 abruma en vez de tranquilizar.
-    expect(screen.getByRole('button', { name: /Por confirmar · 1/ })).toBeInTheDocument();
+    // Y la bandeja se queda con eso y solo eso · un 252 abruma en vez de
+    // tranquilizar. Se cuenta la lista: la pestaña ya no lleva recuento.
+    expect(screen.getAllByRole('button', { name: /^Puntear/ })).toHaveLength(1);
   });
 
   it('lo de HOY sí entra · vence hoy y sigue sin confirmar', () => {
@@ -156,27 +157,26 @@ describe('A1 · Pendientes no mezcla futuro', () => {
 });
 
 describe('pestaña Pendientes', () => {
-  it('lista lo que falta por ocurrir y lo cuenta en la pestaña', () => {
+  it('lista lo que falta por ocurrir', () => {
     render(<DrawerCuenta {...base} eventos={[ev({ id: 1 }), ev({ id: 2, description: 'Agua' })]} />);
 
-    expect(screen.getByRole('button', { name: /Por confirmar · 2/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Puntear/ })).toHaveLength(2);
     expect(screen.getByText('Recibo luz')).toBeInTheDocument();
     expect(screen.getByText('Agua')).toBeInTheDocument();
   });
 
-  it('un descartado no aparece ni cuenta', () => {
+  it('un descartado no aparece', () => {
     render(
       <DrawerCuenta {...base} eventos={[ev({ id: 1 }), ev({ id: 2, description: 'Agua', descartado: true })]} />
     );
-    expect(screen.getByRole('button', { name: /Por confirmar · 1/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Puntear/ })).toHaveLength(1);
     expect(screen.queryByText('Agua')).not.toBeInTheDocument();
   });
 
   it('un ejecutado tampoco: su realidad ya vive en el movimiento', () => {
     render(<DrawerCuenta {...base} eventos={[ev({ id: 1, status: 'executed' })]} />);
-    // Con la bandeja vacía la pestaña NO lleva recuento: "Por confirmar · 0"
-    // anuncia una cifra para decir que no hay cifra, y el panel de debajo ya lo
-    // dice con todas las letras.
+    // La pestaña no lleva recuento · la cifra ya está en la tarjeta de la
+    // cuenta, y aquí competía con su nombre sin decir nada nuevo.
     expect(screen.getByRole('button', { name: /^Por confirmar$/ })).toBeInTheDocument();
   });
 
@@ -232,6 +232,56 @@ describe('pestaña Pendientes', () => {
   it('no pinta los chips de estado: mandan las pestañas (§4.4)', () => {
     render(<DrawerCuenta {...base} eventos={[ev({ id: 1 })]} />);
     expect(screen.queryByRole('tablist', { name: /estado de punteo/i })).not.toBeInTheDocument();
+  });
+});
+
+// Puntear es la acción más repetida de la pantalla, así que equivocarse es
+// cuestión de tiempo. Sin esta pestaña, el único arreglo era borrar el
+// movimiento y volver a generarlo.
+describe('pestaña Confirmados', () => {
+  const abrirConfirmados = () =>
+    fireEvent.click(screen.getByRole('button', { name: /^Confirmados$/ }));
+
+  /** Punteado a mano · "tu palabra", sin extracto detrás (§6.4). */
+  const aMano = (over: Partial<Movement> & { id: number }) =>
+    mov({ source: 'manual', unifiedStatus: 'no_conciliado', ...over });
+
+  it('lista lo que confirmaste tú, y el círculo lo despuntea', () => {
+    const onDespuntear = jest.fn();
+    render(
+      <DrawerCuenta
+        {...base}
+        movimientos={[aMano({ id: 9, description: 'Compra a mano' })]}
+        onDespuntear={onDespuntear}
+      />
+    );
+    abrirConfirmados();
+
+    expect(screen.getByText('Compra a mano')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Despuntear Compra a mano'));
+    expect(onDespuntear).toHaveBeenCalledTimes(1);
+  });
+
+  // Lo conciliado lo afirma el BANCO · no se deshace desde aquí, así que ni
+  // aparece en la bandeja de deshacer.
+  it('lo conciliado por el banco no vive aquí', () => {
+    render(<DrawerCuenta {...base} movimientos={[mov({ id: 9, description: 'Del extracto' })]} />);
+    abrirConfirmados();
+    expect(screen.queryByText('Del extracto')).not.toBeInTheDocument();
+    expect(screen.getByText('Nada confirmado este mes')).toBeInTheDocument();
+  });
+
+  // `esPendiente` incluye los eventos `confirmed` —la venta de un piso, la
+  // liquidación de un préstamo—, y esos no se puntean: su círculo se quedaba en
+  // la bandeja sin hacer nada, entre otros que sí responden.
+  it('un evento ya confirmado sale de la bandeja y viene aquí', () => {
+    render(
+      <DrawerCuenta {...base} eventos={[ev({ id: 1, status: 'confirmed', description: 'Venta piso' })]} />
+    );
+    expect(screen.queryByText('Venta piso')).not.toBeInTheDocument();
+
+    abrirConfirmados();
+    expect(screen.getByText('Venta piso')).toBeInTheDocument();
   });
 });
 
@@ -296,6 +346,34 @@ describe('pestaña Movimientos', () => {
     abrirTodo();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'a' } });
     expect(screen.getByText('previsto')).toBeInTheDocument();
+  });
+
+  // El origen ya lo dice el agrupamiento —por Tipo es literalmente la cabecera
+  // del grupo—, así que repetirlo en cada fila no distingue nada y tapa lo que
+  // sí: quién cobra y cuánto.
+  it('sin chip de origen · lo dice el agrupamiento', () => {
+    render(
+      <DrawerCuenta
+        {...base}
+        eventos={[ev({ id: 1, sourceType: 'prestamo', description: 'Cuota – Hipoteca' })]}
+      />
+    );
+    abrirTodo();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'a' } });
+    expect(screen.getByText('Hipoteca')).toBeInTheDocument();
+    expect(screen.queryByText('Financiación')).not.toBeInTheDocument();
+  });
+
+  // Agrupando por Ámbito o por Tipo salían cabeceras sueltas sobre una lista
+  // corrida, mientras el mismo panel por Fecha las pintaba en tarjeta: el mismo
+  // dato con dos formas según el eje.
+  it('cada grupo es una tarjeta, agrupe por lo que agrupe', () => {
+    const { container } = render(<DrawerCuenta {...base} eventos={[ev({ id: 1 })]} />);
+    abrirTodo();
+    expect(container.querySelectorAll('.diaCard').length).toBe(1);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Ámbito' }));
+    expect(container.querySelectorAll('.diaCard').length).toBe(1);
   });
 
   it('esconde Anotar y Subir extracto: son de la bandeja, no de la consulta', () => {

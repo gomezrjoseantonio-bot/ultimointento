@@ -25,7 +25,6 @@ import {
   contarEstados,
   chipsVisibles,
   filtrarPorChip,
-  esReal,
   type ChipEstado,
   type ItemPunteo,
   type GrupoPunteo,
@@ -38,6 +37,9 @@ import {
   type EjeAgrupacion,
   type GrupoLista,
 } from './punteoAgrupacion';
+// Las piezas de la fila viven aparte · no saben nada de ejes, grupos ni
+// búsqueda, así que aquí queda lo que sí es de la lista.
+import { Contexto, EstadoChip, IconoOrigen, PunteoCheck } from './PunteoPiezas';
 
 /** Anatomía de fila · `tesoreria` añade editar y descartar al hover (V6 · D2 bis). */
 export type RowVariant = 'default' | 'tesoreria';
@@ -98,6 +100,14 @@ export interface PunteoListProps {
   onConfirmar: (item: ItemPunteo) => void | Promise<void>;
   /** «No pasó este mes» · descarta esta ocurrencia prevista. */
   onNoPaso: (item: ItemPunteo) => void | Promise<void>;
+  /**
+   * Despuntear · deshace un punteo y devuelve el cargo a "Por confirmar".
+   *
+   * Solo donde se pasa: sin él, un confirmado se pinta como marca y no como
+   * botón. El círculo es el mismo interruptor que lo punteó, que es donde se
+   * busca deshacerlo.
+   */
+  onDespuntear?: (item: ItemPunteo) => void | Promise<void>;
   /** Marcar una discrepancia como revisada («Entendido»). */
   onRevisarDiscrepancia?: (item: ItemPunteo) => void | Promise<void>;
 
@@ -160,151 +170,6 @@ export interface PunteoListProps {
   soloLectura?: boolean;
 }
 
-// ─── Sub-componentes ────────────────────────────────────────────────────────
-
-/**
- * §6.4 · el estado se dice con el CHIP, no con el color del círculo.
- *
- * En "Movimientos" y en el día conviven los tres estados, y hasta ahora la
- * única pista era el color del círculo — que además iba en ámbar, gastando en
- * "esto aún no ha pasado" el color reservado a los avisos.
- *
- * En "Por confirmar" NO se pinta: allí todo es `previsto`, y repetir la misma
- * palabra 250 veces es ruido.
- */
-const EstadoChip: React.FC<{ estado: ItemPunteo['estado'] }> = ({ estado }) => {
-  const cls =
-    estado === 'previsto'
-      ? styles.chEPrevisto
-      : estado === 'confirmado'
-        ? styles.chEConfirmado
-        : styles.chEConciliado;
-  return <span className={`${styles.chipEstado} ${cls}`}>{estado}</span>;
-};
-
-const PunteoCheck: React.FC<{
-  estado: ItemPunteo['estado'];
-  onPuntear?: () => void;
-  concepto: string;
-  soloLectura?: boolean;
-}> = ({ estado, onPuntear, concepto, soloLectura }) => {
-  const cls =
-    estado === 'previsto'
-      ? styles.tickPrevisto
-      : estado === 'confirmado'
-        ? styles.tickConfirmado
-        : styles.tickConciliado;
-  const label =
-    estado === 'previsto'
-      ? // Sin acción detrás no se anuncia una: "Puntear" en una lista que no
-        // puntea es prometerle al lector de pantalla algo que no existe.
-        soloLectura
-        ? `${concepto} · previsto`
-        : `Puntear ${concepto}`
-      : estado === 'confirmado'
-        ? `${concepto} · confirmado`
-        : `${concepto} · conciliado con el banco`;
-  // §6.4 · lo conciliado lo afirma el BANCO, no el usuario: ahí no hay nada que
-  // pulsar. Un botón deshabilitado sigue pareciendo un botón —invita a
-  // intentarlo y no responde—, así que se pinta como lo que es: una marca.
-  //
-  // En una lista de solo lectura vale lo mismo para los tres estados: se mira,
-  // no se toca.
-  if (estado === 'conciliado' || soloLectura) {
-    return (
-      <span className={`${styles.tick} ${cls} ${styles.tickInforme}`} title={label} aria-label={label}>
-        {esReal(estado) ? <Icons.Check size={11} strokeWidth={3} /> : null}
-      </span>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      className={`${styles.tick} ${cls}`}
-      aria-label={label}
-      title={label}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (estado === 'previsto') onPuntear?.();
-      }}
-    >
-      {esReal(estado) ? <Icons.Check size={11} strokeWidth={3} /> : null}
-    </button>
-  );
-};
-
-const IconoOrigen: React.FC<{ origen: string }> = ({ origen }) => {
-  const size = 10;
-  const sw = 1.8;
-  switch (origen) {
-    case 'Financiación':
-      return <Icons.Financiacion size={size} strokeWidth={sw} />;
-    case 'Ingreso':
-      return <Icons.Ingreso size={size} strokeWidth={sw} />;
-    case 'Suministro':
-      return <Icons.Suministro size={size} strokeWidth={sw} />;
-    case 'Recurrente':
-      return <Icons.Refresh size={size} strokeWidth={sw} />;
-    case 'Contrato':
-      return <Icons.Contratos size={size} strokeWidth={sw} />;
-    default:
-      return null;
-  }
-};
-
-/**
- * La línea de debajo del título · §6.3.
- *
- * Orden: qué entiende ATLAS del cargo, y de qué inmueble es. Con el título
- * diciendo QUIÉN cobra, esta línea es la que separa dos recibos gemelos: dos
- * "Mapfre" de 40,29 € y 40,23 € se distinguen porque una dice "seguro hogar ·
- * Tenderina 64" y la otra "seguro hogar · Los Robles 12".
- *
- * Lo que no aporta, no se pinta: sin inmueble y sin detalle no hay subtítulo,
- * en vez de una línea que solo dice "Personal" en todas las filas.
- */
-const Contexto: React.FC<{ item: ItemPunteo; extra?: string; sinActivo?: boolean }> = ({
-  item,
-  extra,
-  sinActivo,
-}) => {
-  const trozos: React.ReactNode[] = [];
-  if (item.detalle) trozos.push(<span key="d">{item.detalle}</span>);
-  // §6.3 · en una hija el piso NO se repite: lo encabeza la madre justo encima,
-  // y decirlo otra vez en cada habitación es escribirlo cuatro veces para el
-  // mismo piso.
-  if (!sinActivo && item.activo?.alias) {
-    trozos.push(
-      <span key="a" className={styles.ctxInmueble}>
-        <Icons.Inmuebles size={10} strokeWidth={1.8} />
-        {item.activo.alias}
-      </span>
-    );
-  }
-  if (extra) trozos.push(<span key="e">{extra}</span>);
-  // §9 · el aviso va el ÚLTIMO y en ámbar: es lo único de la línea que pide
-  // actuar, y el ámbar está reservado justo para eso (§2.1).
-  if (item.avisoSaldo) {
-    trozos.push(
-      <span key="w" className={styles.ctxAviso}>
-        {item.avisoSaldo}
-      </span>
-    );
-  }
-  if (trozos.length === 0) return null;
-
-  return (
-    <div className={styles.contexto}>
-      {trozos.map((t, i) => (
-        <React.Fragment key={i}>
-          {i > 0 && <span className={styles.ctxSep}> · </span>}
-          {t}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-};
 
 // ─── Componente principal ───────────────────────────────────────────────────
 
@@ -319,6 +184,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
   variant = 'full',
   onConfirmar,
   onNoPaso,
+  onDespuntear,
   onRevisarDiscrepancia,
   eje = 'fecha',
   onEjeChange,
@@ -364,9 +230,16 @@ const PunteoList: React.FC<PunteoListProps> = ({
   }, [cuentas]);
 
   const esDrawer = variant === 'drawer';
-  // Las tarjetas por día son de la bandeja de trabajo (§6.3). En el drawer del
-  // día no tienen sentido: allí solo hay un día.
-  const enTarjetas = !esDrawer && eje === 'fecha' && rowVariant === 'tesoreria';
+  // Cada grupo, una TARJETA · en la bandeja (por día) y en cualquier lista
+  // plegable, agrupe por lo que agrupe.
+  //
+  // Agrupando por Ámbito o por Tipo salían cabeceras sueltas sobre una lista
+  // corrida, mientras el mismo panel por Fecha las pintaba en tarjeta: el mismo
+  // dato con dos formas según el eje. Y sin tarjeta no se ve dónde acaba un
+  // grupo y empieza el siguiente, así que su subtotal parece de la lista
+  // entera. En el drawer del día no aplica: allí solo hay un día.
+  const enTarjetas =
+    !esDrawer && (gruposPlegables || (eje === 'fecha' && rowVariant === 'tesoreria'));
   const rowCls = (it: ItemPunteo, extra = '') =>
     [
       styles.row,
@@ -400,7 +273,16 @@ const PunteoList: React.FC<PunteoListProps> = ({
     </span>
   );
 
-  const renderFila = (it: ItemPunteo, hija = false) => (
+  const renderFila = (itemOriginal: ItemPunteo, hija = false) => {
+    // Una renta de habitación se lee distinto según dónde esté: suelta lo dice
+    // todo ("Alquiler · el piso" y debajo el inquilino con su habitación) y
+    // bajo su madre se queda con lo que la distingue de sus hermanas, porque el
+    // piso ya lo encabeza el grupo. El ítem trae las dos formas (`bajoMadre`).
+    const it =
+      hija && itemOriginal.bajoMadre
+        ? { ...itemOriginal, ...itemOriginal.bajoMadre }
+        : itemOriginal;
+    return (
     <React.Fragment key={it.key}>
       {/* A4 · la fila ya NO abre un editor. Un toque en el círculo confirma y
           punto; si el importe real difiere, para eso está el lápiz, que abre la
@@ -413,6 +295,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
           concepto={it.concepto}
           soloLectura={soloLectura}
           onPuntear={() => onConfirmar(it)}
+          onDespuntear={onDespuntear ? () => onDespuntear(it) : undefined}
         />
         <div className={styles.c1}>
           <div className={styles.conceptoLinea}>
@@ -509,7 +392,8 @@ const PunteoList: React.FC<PunteoListProps> = ({
         </div>
       )}
     </React.Fragment>
-  );
+    );
+  };
 
   const renderMadre = (g: GrupoPunteo) => {
     // CERRADAS de entrada · se abren solo al pulsar la madre.
@@ -629,6 +513,19 @@ const PunteoList: React.FC<PunteoListProps> = ({
     const cabecera = (
       <div className={styles.dayRule}>
         <span className={styles.dayName}>
+          {/* El caret dice que el grupo se abre, y hacia dónde está.
+              Plegado sin él, la cabecera parece una fila de resumen y nadie la
+              pulsa: el grupo entero se queda escondido detrás de algo que no
+              se anuncia. Gira al abrir, que es lo único que hace falta para
+              saber en qué estado está. */}
+          {gruposPlegables && (
+            <span
+              className={`${styles.caretGrupo} ${abierto ? styles.caretGrupoOn : ''}`}
+              aria-hidden="true"
+            >
+              <Icons.ChevronRight size={13} strokeWidth={2.4} />
+            </span>
+          )}
           {/* §4.9 · el punto de banco sube de la fila a la cabecera: con el
               grupo entero bajo el nombre de su cuenta, repetirlo en cada línea
               es decir siete veces lo mismo. */}

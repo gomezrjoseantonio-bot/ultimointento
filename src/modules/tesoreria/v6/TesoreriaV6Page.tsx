@@ -37,6 +37,7 @@ import { useEsMovil } from './useEsMovil';
 import CuentaWizard from '../../../components/cuenta/CuentaWizard';
 import {
   confirmTreasuryEvent,
+  revertTreasuryConfirmation,
   updateTreasuryEventFields,
 } from '../../../services/treasuryConfirmationService';
 import { descartarPrevisto } from '../../../services/treasuryDiscardService';
@@ -314,6 +315,29 @@ const TesoreriaV6Page: React.FC = () => {
     [confirmarPrevisto]
   );
 
+  /**
+   * Despuntear · deshacer un punteo. El movimiento se borra y su previsión
+   * vuelve a `predicted`, así que el cargo reaparece en "Por confirmar".
+   *
+   * Solo sobre MOVIMIENTOS: lo que se deshace es el movimiento que creó el
+   * punteo (`revertTreasuryConfirmation` lo localiza por su `reference`). Un
+   * evento `confirmed` —la venta de un piso, la liquidación de un préstamo— no
+   * se punteó nunca: está decidido y espera al banco, y ahí no hay nada que
+   * deshacer desde tesorería.
+   */
+  const despuntearItem = useCallback(
+    async (item: ItemPunteo) => {
+      if (item.kind !== 'movimiento') return;
+      try {
+        await revertTreasuryConfirmation(item.refId);
+        await trasEscribir();
+      } catch (err) {
+        console.error('[TesoreriaV6] no se pudo despuntear', err);
+      }
+    },
+    [trasEscribir]
+  );
+
   const descartarItem = useCallback(
     async (item: ItemPunteo) => {
       if (item.kind !== 'evento') return;
@@ -494,6 +518,7 @@ const TesoreriaV6Page: React.FC = () => {
           onCerrar={cerrarCuenta}
           onConfirmar={confirmarItem}
           onDescartar={descartarItem}
+          onDespuntear={despuntearItem}
           onGuardarFicha={guardarFicha}
         // §7 · el Archivo sabe abrir un documento concreto por `?doc=`.
         onAbrirDocumento={(id) => navigate(`/archivo?doc=${id}`)}
@@ -700,6 +725,7 @@ const TesoreriaV6Page: React.FC = () => {
         onCerrar={cerrarCuenta}
         onConfirmar={confirmarItem}
         onDescartar={descartarItem}
+        onDespuntear={despuntearItem}
         onGuardarFicha={guardarFicha}
         onEliminar={descartarItem}
         cuentas={cuentasVivas}

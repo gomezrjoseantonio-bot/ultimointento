@@ -8,12 +8,16 @@
 // vez de reescribir una lista nueva: el modelo `previsto/confirmado/conciliado`
 // de `punteoModel` es el mismo en las cuatro vistas y no se toca.
 //
-// Las dos pestañas se reparten el trabajo, y por eso NO hacen lo mismo:
+// Las tres pestañas se reparten el trabajo, y por eso NO hacen lo mismo:
 //
 //   Por confirmar → la BANDEJA. Se puntea, se edita y se descarta en la fila
 //                   (rowVariant `tesoreria`), agrupado por día y sin chip de
 //                   estado: allí todo es previsto y decirlo en cada fila es
 //                   repetir el nombre de la pestaña.
+//   Confirmados   → lo que dijiste que pasó, y la puerta para DESPUNTEARLO.
+//                   Puntear es la acción más repetida de la pantalla, así que
+//                   equivocarse es cuestión de tiempo; sin esta pestaña el
+//                   único arreglo era borrar el movimiento y regenerarlo.
 //   Movimientos   → la CONSULTA del mes. Buscador, ejes de agrupación y grupos
 //                   plegables con subtotal, y SOLO LECTURA: aquí conviven los
 //                   tres estados —el chip vive solo aquí, porque solo aquí
@@ -52,6 +56,15 @@ export interface DrawerCuentaProps {
   onConfirmar: (item: ItemPunteo) => void | Promise<void>;
   /** Descartar · el previsto no ocurrirá. No toca el saldo (§2 regla 5). */
   onDescartar: (item: ItemPunteo) => void | Promise<void>;
+  /**
+   * Despuntear · deshace el punteo y el cargo vuelve a "Por confirmar".
+   *
+   * Puntear es la acción más repetida de la pantalla, así que equivocarse es
+   * cuestión de tiempo; sin esto, el único arreglo era borrar el movimiento y
+   * volver a generarlo. Solo lo de la pestaña Confirmados: lo conciliado lo
+   * afirma el banco y no se deshace desde aquí.
+   */
+  onDespuntear?: (item: ItemPunteo) => void | Promise<void>;
   /** Guardar desde la ficha de movimiento (§4.5). */
   onGuardarFicha?: (item: ItemPunteo | null, valores: GuardadoFicha) => void | Promise<void>;
   /** Eliminar la previsión desde la ficha. */
@@ -63,7 +76,7 @@ export interface DrawerCuentaProps {
   onSubirExtracto?: (cuenta: Account) => void;
 }
 
-type Pestana = 'pendientes' | 'todo';
+type Pestana = 'pendientes' | 'confirmados' | 'todo';
 
 const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   cuenta,
@@ -78,6 +91,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   onCerrar,
   onConfirmar,
   onDescartar,
+  onDespuntear,
   onGuardarFicha,
   onEliminar,
   cuentas = [],
@@ -108,7 +122,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
     return { entrar, salir, final: saldoHoy + entrar + salir };
   }, [eventos, saldoHoy, desde, hasta]);
 
-  // ── Ítems de las dos pestañas ────────────────────────────────────────────
+  // ── Ítems de las tres pestañas ───────────────────────────────────────────
 
   /**
    * Por confirmar · §3.1 · lo que YA DEBERÍA HABER PASADO y sigue sin confirmar.
@@ -119,13 +133,18 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
    * contador a cientos y conseguía lo contrario de lo que la pantalla busca —
    * abrumaba en vez de tranquilizar.
    *
+   * Solo lo PREVISTO. `esPendiente` incluye además los eventos `confirmed` —la
+   * venta de un piso, la liquidación de un préstamo: decididos y esperando al
+   * banco—, y esos no se puntean: su círculo se quedaba ahí sin hacer nada, en
+   * una bandeja donde todo lo demás sí responde. Su sitio es Confirmados.
+   *
    * Orden descendente: lo más reciente arriba, que es por donde se empieza.
    */
   const itemsPendientes = useMemo<ItemPunteo[]>(
     () =>
       eventos
         .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
-        .filter((e) => esPendiente(e))
+        .filter((e) => esPendiente(e) && e.status === 'predicted')
         // Con fecha vacía la comparación `'' <= hoy` es CIERTA, así que un
         // evento sin `predictedDate` se colaba en Pendientes — y los KPIs sí lo
         // excluyen, con lo que la bandeja y las cifras contaban cosas distintas.
@@ -137,6 +156,35 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
         .sort((a, b) => b.fecha.localeCompare(a.fecha)),
     [eventos, aliasInmueble, hoy]
   );
+
+  /**
+   * Confirmados · lo que dijiste que pasó, del mes.
+   *
+   * "Tu palabra", sin extracto detrás (§6.4). Lo conciliado NO entra: eso lo
+   * afirma el banco y no se deshace desde aquí — vive en Movimientos con los
+   * demás.
+   *
+   * Está para poder DESPUNTEAR. Puntear es la acción más repetida de la
+   * pantalla, así que equivocarse es cuestión de tiempo, y hasta ahora el único
+   * arreglo era borrar el movimiento y volver a generarlo. Del mes, como
+   * Movimientos: sin acotar crecería para siempre y dejaría de ser una lista
+   * que se repasa.
+   */
+  const itemsConfirmados = useMemo<ItemPunteo[]>(() => {
+    const enMes = (f: string) => f >= desde && f <= hasta;
+    const evs = eventos
+      .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
+      .filter((e) => !e.descartado && e.status === 'confirmed')
+      .filter((e) => enMes((e.predictedDate ?? '').slice(0, 10)))
+      .map((e) => eventoAItem(e, aliasInmueble));
+    const movs = movimientos
+      .filter((m): m is Movement & { id: number } => m.id != null)
+      .filter((m) => !m.isOpeningBalance)
+      .filter((m) => enMes((m.date ?? '').slice(0, 10)))
+      .map((m) => movimientoAItem(m, aliasInmueble))
+      .filter((i) => i.estado === 'confirmado');
+    return [...evs, ...movs].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  }, [eventos, movimientos, desde, hasta, aliasInmueble]);
 
   /** Movimientos: previsión y realidad del mes, que es una vista de consulta. */
   const itemsTodo = useMemo<ItemPunteo[]>(() => {
@@ -200,11 +248,18 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
             aria-pressed={pestana === 'pendientes'}
             onClick={() => setPestana('pendientes')}
           >
-            {/* Sin nada pendiente no se pinta el recuento: "Por confirmar · 0"
-                anuncia una cifra para decir que no hay cifra, y el panel de
-                debajo ya lo dice con todas las letras. El mockup tampoco lo
-                lleva. */}
-            Por confirmar{itemsPendientes.length > 0 ? ` · ${itemsPendientes.length}` : ''}
+            {/* Sin recuento · la cifra ya está en la tarjeta de la cuenta y en
+                el hero, y aquí compite con el nombre de la pestaña sin decir
+                nada que no se vea contando la lista de debajo. */}
+            Por confirmar
+          </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${pestana === 'confirmados' ? styles.tabOn : ''}`}
+            aria-pressed={pestana === 'confirmados'}
+            onClick={() => setPestana('confirmados')}
+          >
+            Confirmados
           </button>
           <button
             type="button"
@@ -260,6 +315,35 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
                 onEditar={(item) => setFicha({ item })}
               />
             )
+          ) : pestana === 'confirmados' ? (
+            itemsConfirmados.length === 0 ? (
+              <div className={styles.vacio}>
+                {/* El vacío EXPLICA para qué es la pestaña · sin nada dentro,
+                    un título a secas no dice si esto está vacío porque va bien
+                    o porque falta hacer algo. Y no lleva el check verde de "al
+                    día": no haber confirmado nada no es una buena noticia. */}
+                <Icons.Refresh size={34} strokeWidth={1.6} className={styles.vacioIc} />
+                <div className={styles.vacioT}>Nada confirmado este mes</div>
+                <div className={styles.vacioS}>aquí aparece lo que vayas punteando, por si hay que deshacerlo</div>
+              </div>
+            ) : (
+              <PunteoList
+                items={itemsConfirmados}
+                chip="todos"
+                onChipChange={() => undefined}
+                mostrarChips={false}
+                cuentas={[]}
+                ocultarCuenta
+                // Aquí todo está confirmado · el chip repetiría la pestaña, y
+                // el origen ya se lee en el propio concepto de cada fila.
+                sinOrigen
+                onConfirmar={onConfirmar}
+                onNoPaso={onDescartar}
+                // El círculo es el mismo interruptor que lo punteó · es donde
+                // se busca deshacerlo.
+                onDespuntear={onDespuntear}
+              />
+            )
           ) : (
             <PunteoList
               items={itemsTodo}
@@ -273,6 +357,10 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
               // "Por confirmar" viene a evitar: allí llegan los que tocan,
               // ordenados y sin nada alrededor.
               soloLectura
+              // El chip de ORIGEN sobra: lo dice el agrupamiento —por Tipo es
+              // literalmente la cabecera del grupo— y en las demás vistas
+              // repetía en cada fila una etiqueta que no distingue nada.
+              sinOrigen
               chip="todos"
               onChipChange={() => undefined}
               mostrarChips={false}
