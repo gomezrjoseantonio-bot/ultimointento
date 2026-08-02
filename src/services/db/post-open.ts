@@ -544,22 +544,32 @@ export function runPostOpenMigrations(
     // Rellena, no corrige.
     .then(async (db) => {
       try {
-        const FLAG = 'migration_inmueble_en_rentas_v1';
+        // `_v2` · además del inmueble, la UNIDAD: bajo la madre del piso, "Hab 2"
+        // es lo que distingue una fila de otra.
+        const FLAG = 'migration_inmueble_en_rentas_v2';
         if ((await db.get('keyval', FLAG)) === 'completed') return db;
 
         const contratos = (await db.getAll('contracts')) as Array<{
           id?: number;
           inmuebleId?: number;
+          unidadTipo?: string;
+          habitacionId?: string;
         }>;
-        const inmueblePorContrato = new Map<number, number>();
+        const datosPorContrato = new Map<number, { inmueble: number; unidad?: string }>();
         for (const c of contratos) {
           // `idDeInmueble` filtra el 0 que algunos flujos usan como "aún sin
           // vincular": agruparía rentas bajo una madre que no existe.
           const inmueble = idDeInmueble(c.inmuebleId);
           if (c.id == null || inmueble == null) continue;
-          inmueblePorContrato.set(c.id, inmueble);
+          datosPorContrato.set(c.id, {
+            inmueble,
+            // Tener `habitacionId` ES ser de una habitación · exigir además
+            // `unidadTipo` dejaba fuera los contratos antiguos o importados a
+            // los que no se les fijó ese campo.
+            unidad: c.habitacionId ? `Hab ${c.habitacionId}` : undefined,
+          });
         }
-        if (inmueblePorContrato.size === 0) {
+        if (datosPorContrato.size === 0) {
           await db.put('keyval', 'completed', FLAG);
           return db;
         }
@@ -575,24 +585,31 @@ export function runPostOpenMigrations(
           // `contratoId` solo lo traen algunos, así que se miran los dos.
           const esRenta = e.sourceType === 'contrato' || e.sourceType === 'contract';
           const idContrato = e.contratoId ?? (esRenta ? Number(e.sourceId) : undefined);
-          const inmueble =
+          const datos =
             idContrato != null && Number.isFinite(idContrato)
-              ? inmueblePorContrato.get(Number(idContrato))
+              ? datosPorContrato.get(Number(idContrato))
               : undefined;
-          if (esRenta && inmueble != null && e.inmuebleId == null) {
-            await cursor.update({ ...e, inmuebleId: inmueble });
-            rellenados++;
+          if (esRenta && datos) {
+            // Rellena, no corrige · cada campo por separado, que uno ya puesto
+            // no tiene por qué implicar el otro.
+            const parche: Partial<TreasuryEvent> = {};
+            if (e.inmuebleId == null) parche.inmuebleId = datos.inmueble;
+            if (e.unidadInmueble == null && datos.unidad) parche.unidadInmueble = datos.unidad;
+            if (Object.keys(parche).length > 0) {
+              await cursor.update({ ...e, ...parche });
+              rellenados++;
+            }
           }
           cursor = await cursor.continue();
         }
         await tx.done;
 
         if (rellenados > 0) {
-          console.log(`[DB §6.3 rentas] inmueble rellenado en ${rellenados} renta(s)`);
+          console.log(`[DB §6.3 rentas] inmueble/habitación rellenados en ${rellenados} renta(s)`);
         }
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
-        console.warn('[DB §6.3 rentas · backfill inmueble] falló:', err);
+        console.warn('[DB §6.3 rentas · backfill inmueble/habitación] falló:', err);
       }
       return db;
     });

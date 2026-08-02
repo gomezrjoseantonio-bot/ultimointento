@@ -208,6 +208,15 @@ export interface TreasuryEvent {
   inmuebleId?: number;
   /** Denormalized alias del inmueble vinculado (para display sin join). */
   inmuebleAlias?: string;
+  /**
+   * Qué UNIDAD del inmueble, ya en texto · "Hab 2" en alquiler por
+   * habitaciones, ausente en piso completo.
+   *
+   * Denormalizado como `inmuebleAlias` y por lo mismo: la fila del día tiene
+   * que decir de qué habitación cobra sin ir a buscar el contrato, y quien la
+   * pinta (`punteoAdapter`) solo ve el evento.
+   */
+  unidadInmueble?: string;
   contratoId?: number;
   // Account information
   accountId?: number;

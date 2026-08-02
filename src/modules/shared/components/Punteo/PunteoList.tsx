@@ -487,6 +487,13 @@ const PunteoList: React.FC<PunteoListProps> = ({
             if (e.key === 'Enter') setGruposAbiertos((s) => ({ ...s, [g.grupoId]: !abierto }));
           }}
         >
+          {/* La madre ocupa las MISMAS columnas que sus hijas.
+              Sin esta primera celda no pintaba nada donde las hijas llevan su
+              círculo, así que la rejilla la corría un carril entero: el nombre
+              del piso caía en la columna de 22px del punteo y salía partido
+              letra a letra ("T e…"), y el importe donde va el concepto.
+              Aquí va el caret, que además es lo que se pulsa para plegar. */}
+          <span className={styles.caret} aria-hidden="true">{abierto ? '▾' : '▸'}</span>
           {/* §6.3 · la madre es EL PISO, no el primer inquilino.
               Al agrupar por inmueble, poner aquí el concepto de la primera hija
               dejaba el grupo con nombre de una de sus partes: se leía como si
@@ -494,13 +501,22 @@ const PunteoList: React.FC<PunteoListProps> = ({
               junta, así que es lo que va en la cabecera; los inquilinos, cada
               uno en su fila. */}
           <div className={styles.c1}>
+            {/* "Alquiler · el piso" · la madre dice QUÉ es y DE DÓNDE, y así
+                sus hijas no tienen que repetir ninguna de las dos cosas: cada
+                una se queda con lo suyo, el inquilino y su habitación. */}
+            {/* Sin alias resuelto, "Alquiler" A SECAS · nunca el inquilino.
+                El respaldo era el concepto de la primera hija, y al quitarle a
+                las hijas el "Renta – " eso pasó a ser un nombre de persona: el
+                grupo volvía a titularse con una de sus partes, que es
+                exactamente lo que §6.3 vino a arreglar. Decir menos es
+                preferible a decir algo que engaña. */}
             <div className={styles.concepto}>
-              <span className={styles.caret}>{abierto ? '▾' : '▸'}</span>
-              {primera.activo?.alias ?? primera.concepto.replace(/ — .*$/, '')}
+              {primera.activo
+                ? `Alquiler${primera.activo.alias ? ` · ${primera.activo.alias}` : ''}`
+                : primera.concepto.replace(/ — .*$/, '')}
             </div>
             <div className={styles.contexto}>
               {g.total} {g.total === 1 ? 'renta' : 'rentas'}
-              {primera.detalle ? ` · ${primera.detalle}` : ''}
             </div>
           </div>
           {!esDrawer && (
@@ -509,10 +525,25 @@ const PunteoList: React.FC<PunteoListProps> = ({
             </span>
           )}
           {!esDrawer && !ocultarCuenta && <span className={styles.cuenta}>{cuentaLabel(primera.cuentaId)}</span>}
+          {/* En el DÍA manda lo previsto.
+              Ahí no ha cobrado nada todavía —es una cola de pendientes— así que
+              `importeReal` es 0, y un "0 €" de titular con "de +395,10 €
+              previstos" debajo se lee como que el piso no ha entrado nada,
+              cuando lo que pasa es que aún no toca. En "Movimientos", donde sí
+              conviven cobradas y pendientes, el par real/previsto es el dato y
+              se queda. */}
           <span className={`${styles.importe} ${styles.importePos}`}>
-            {fmtImporte(g.importeReal)}
-            {!g.completo && (
-              <span className={styles.importePrevio}>de {fmtImporte(g.importePrevistoTotal)} previstos</span>
+            {esDrawer ? (
+              fmtImporte(g.importePrevistoTotal)
+            ) : (
+              <>
+                {fmtImporte(g.importeReal)}
+                {!g.completo && (
+                  <span className={styles.importePrevio}>
+                    de {fmtImporte(g.importePrevistoTotal)} previstos
+                  </span>
+                )}
+              </>
             )}
           </span>
           <span />

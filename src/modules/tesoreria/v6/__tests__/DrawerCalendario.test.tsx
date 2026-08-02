@@ -191,13 +191,14 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
   // generador no copiaba el id al evento del contrato: cada habitación salía
   // suelta, una detrás de otra, sin que se viera que son el mismo piso.
   it('las rentas de un piso por habitaciones cuelgan del piso', () => {
-    const renta = (id: number, quien: string, importe: number) =>
+    const renta = (id: number, quien: string, importe: number, hab: string) =>
       ev({
         id,
         type: 'income',
         amount: importe,
         sourceType: 'contrato',
         inmuebleId: 2,
+        unidadInmueble: hab,
         description: `Renta – ${quien}`,
       });
 
@@ -206,20 +207,50 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
         {...base}
         aliasInmueble={(id) => (String(id) === '2' ? 'Tenderina 64 4D' : undefined)}
         eventos={[
-          renta(1, 'MIGUEL LORENZO CABANELAS', 395),
-          renta(2, 'EMILIO CARRERA RIOS', 395),
+          renta(1, 'MIGUEL LORENZO CABANELAS', 395, 'Hab 1'),
+          renta(2, 'EMILIO CARRERA RIOS', 395, 'Hab 2'),
         ]}
       />
     );
     abrirDia20();
 
-    // La madre es EL PISO, no el primer inquilino · y se dice UNA vez: bajo
-    // ella, cada habitación no vuelve a repetir de qué piso es.
-    expect(screen.getAllByText('Tenderina 64 4D')).toHaveLength(1);
+    // La madre dice QUÉ es y DE DÓNDE, una sola vez.
+    expect(screen.getAllByText('Alquiler · Tenderina 64 4D')).toHaveLength(1);
     expect(screen.getByText(/2 rentas/)).toBeInTheDocument();
-    // Y las hijas siguen ahí, cada una con su nombre.
-    expect(screen.getByText('Renta – MIGUEL LORENZO CABANELAS')).toBeInTheDocument();
-    expect(screen.getByText('Renta – EMILIO CARRERA RIOS')).toBeInTheDocument();
+    // Y cada hija se queda con lo suyo: el inquilino, sin el "Renta – " que ya
+    // encabeza el grupo, y su habitación.
+    expect(screen.getByText('MIGUEL LORENZO CABANELAS')).toBeInTheDocument();
+    expect(screen.getByText('EMILIO CARRERA RIOS')).toBeInTheDocument();
+    expect(screen.getByText('Hab 1')).toBeInTheDocument();
+    expect(screen.getByText('Hab 2')).toBeInTheDocument();
+  });
+
+  // Si el alias no se resuelve, la madre dice "Alquiler" a secas. Nunca el
+  // nombre de un inquilino: el grupo volvería a titularse con una de sus
+  // partes, que es justo lo que la madre viene a evitar.
+  it('sin alias del piso, la madre NO se titula con un inquilino', () => {
+    const renta = (id: number, quien: string) =>
+      ev({
+        id,
+        type: 'income',
+        amount: 395,
+        sourceType: 'contrato',
+        inmuebleId: 2,
+        description: `Renta – ${quien}`,
+      });
+
+    render(
+      <DrawerCalendario
+        {...base}
+        aliasInmueble={() => undefined}
+        eventos={[renta(1, 'MIGUEL LORENZO CABANELAS'), renta(2, 'EMILIO CARRERA RIOS')]}
+      />
+    );
+    abrirDia20();
+
+    expect(screen.getByText('Alquiler')).toBeInTheDocument();
+    // Los inquilinos siguen en SUS filas, no encabezando el grupo.
+    expect(screen.getAllByText('MIGUEL LORENZO CABANELAS')).toHaveLength(1);
   });
 
   it('un piso completo · una sola renta NO monta grupo', () => {
@@ -240,8 +271,9 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
       />
     );
     abrirDia20();
-    expect(screen.getByText('Renta – ALISSER REAL ESTATE')).toBeInTheDocument();
-    // Sin madre, el piso sí se dice en la propia fila.
+    // Sin habitación, la fila es solo el inquilino · el piso lo dice su marca,
+    // que aquí no tiene madre que lo encabece.
+    expect(screen.getByText('ALISSER REAL ESTATE')).toBeInTheDocument();
     expect(screen.getByText('Tenderina 64 4D')).toBeInTheDocument();
     expect(screen.queryByText(/1 renta$/)).not.toBeInTheDocument();
   });

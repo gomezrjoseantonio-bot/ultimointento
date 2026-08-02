@@ -466,6 +466,15 @@ export async function generateMonthlyForecasts(
         // —sus ids empiezan en 1—. Un 0 colado agruparía rentas bajo una madre
         // que no existe.
         inmuebleId: idDeInmueble(contract.inmuebleId),
+        // Qué habitación · solo cuando el contrato es de una, no del piso
+        // entero. Bajo la madre del piso, "Hab 2" es lo que distingue una fila
+        // de otra; sin él, cuatro rentas del mismo piso se diferencian solo por
+        // el nombre del inquilino, que es el dato que menos dice de la unidad.
+        // Manda el `habitacionId`: tenerlo ES ser de una habitación. Exigir
+        // además `unidadTipo === 'habitacion'` dejaba sin unidad a cualquier
+        // contrato antiguo o importado al que no se le fijara ese campo,
+        // aunque su habitación estuviera perfectamente identificada.
+        unidadInmueble: contract.habitacionId ? `Hab ${contract.habitacionId}` : undefined,
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,
