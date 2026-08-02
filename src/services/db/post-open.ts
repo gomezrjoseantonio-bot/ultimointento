@@ -530,6 +530,68 @@ export function runPostOpenMigrations(
         console.warn('[DB §4.9 backfill inmueble en cuotas de préstamo] falló:', err);
       }
       return db;
+    })
+
+    // ── §6.3 · de qué piso es cada renta ────────────────────────────────────
+    //
+    // El mismo hueco que tenían las cuotas de préstamo: el generador no copiaba
+    // `inmuebleId` al evento del contrato. Además de dejar la fila sin decir de
+    // qué piso cobra, impide lo que de verdad importa en un piso por
+    // habitaciones: `punteoAdapter` arma el grupo madre con
+    // `inmueble-${inmuebleId}`, así que sin el id cada habitación salía suelta,
+    // una detrás de otra, sin que se viera que son el mismo piso.
+    //
+    // Rellena, no corrige.
+    .then(async (db) => {
+      try {
+        const FLAG = 'migration_inmueble_en_rentas_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+
+        const contratos = (await db.getAll('contracts')) as Array<{
+          id?: number;
+          inmuebleId?: number;
+        }>;
+        const inmueblePorContrato = new Map<number, number>();
+        for (const c of contratos) {
+          if (c.id == null || c.inmuebleId == null) continue;
+          inmueblePorContrato.set(c.id, c.inmuebleId);
+        }
+        if (inmueblePorContrato.size === 0) {
+          await db.put('keyval', 'completed', FLAG);
+          return db;
+        }
+
+        const tx = db.transaction(['treasuryEvents'], 'readwrite');
+        const store = tx.objectStore('treasuryEvents');
+        let cursor = await store.openCursor();
+        let rellenados = 0;
+
+        while (cursor) {
+          const e = cursor.value as TreasuryEvent & { contratoId?: number };
+          // El contrato viaja en `sourceId` (así lo escribe el generador);
+          // `contratoId` solo lo traen algunos, así que se miran los dos.
+          const esRenta = e.sourceType === 'contrato' || e.sourceType === 'contract';
+          const idContrato = e.contratoId ?? (esRenta ? Number(e.sourceId) : undefined);
+          const inmueble =
+            idContrato != null && Number.isFinite(idContrato)
+              ? inmueblePorContrato.get(Number(idContrato))
+              : undefined;
+          if (esRenta && inmueble != null && e.inmuebleId == null) {
+            await cursor.update({ ...e, inmuebleId: inmueble });
+            rellenados++;
+          }
+          cursor = await cursor.continue();
+        }
+        await tx.done;
+
+        if (rellenados > 0) {
+          console.log(`[DB §6.3] inmueble rellenado en ${rellenados} renta(s)`);
+        }
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB §6.3 backfill inmueble en rentas] falló:', err);
+      }
+      return db;
     });
   return dbPromise;
 }

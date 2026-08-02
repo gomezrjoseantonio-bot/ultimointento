@@ -455,6 +455,13 @@ export async function generateMonthlyForecasts(
         sourceType: 'contrato' as const,
         sourceId: contract.id,
         accountId: resolveAccountId(contract.cuentaCobroId),
+        // De qué piso es la renta · el mismo hueco que tenían las cuotas de
+        // préstamo. Sin esto la fila no dice de qué inmueble cobra, y sobre
+        // todo las rentas de un piso por habitaciones no pueden colgar de él:
+        // `punteoAdapter` arma el grupo con `inmueble-${inmuebleId}`, así que
+        // sin el id cada habitación salía suelta, una detrás de otra, sin que
+        // se viera que son el mismo piso.
+        inmuebleId: contract.inmuebleId,
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,
