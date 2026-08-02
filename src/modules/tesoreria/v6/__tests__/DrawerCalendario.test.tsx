@@ -284,6 +284,8 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
     // fila: qué es y de qué piso arriba, el inquilino debajo.
     expect(screen.getByText('Alquiler · Tenderina 64 4D')).toBeInTheDocument();
     expect(screen.getByText('ALISSER REAL ESTATE')).toBeInTheDocument();
+    // Y el piso UNA vez: llevándolo el título, la marca de debajo lo repetía.
+    expect(screen.getAllByText(/Tenderina 64 4D/)).toHaveLength(1);
     expect(screen.queryByText(/1 renta$/)).not.toBeInTheDocument();
   });
 
@@ -299,6 +301,21 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
     );
     abrirDia20();
     expect(screen.getByText('Tenderina 64')).toBeInTheDocument();
+  });
+});
+
+describe('el lápiz de la fila', () => {
+  // El lápiz lo pinta `rowVariant: 'tesoreria'` desde el principio, pero el
+  // drawer declaraba `onEditar` y NADIE se lo pasaba: el mismo hueco que tenía
+  // `aliasInmueble`. Sin él no había forma de corregir un previsto desde el día.
+  it('existe y abre la ficha del movimiento', () => {
+    render(<DrawerCalendario {...base} eventos={[ev({ id: 1, description: 'Recibo luz' })]} />);
+    abrirDia20();
+
+    const lapiz = screen.getByLabelText('Editar Recibo luz');
+    expect(lapiz).toBeInTheDocument();
+    fireEvent.click(lapiz);
+    expect(screen.getByRole('dialog', { name: /movimiento/i })).toBeInTheDocument();
   });
 });
 

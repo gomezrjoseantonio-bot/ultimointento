@@ -58,6 +58,10 @@ const EJES: EjeAgrupacion[] = ['fecha', 'inmueble', 'que-es'];
  */
 const fmtImporte = (n: number): string => importeConSigno(n);
 
+/** ¿El título ya nombra el inmueble? Entonces la marca de debajo sobra. */
+const activoEnTitulo = (it: ItemPunteo): boolean =>
+  Boolean(it.activo?.alias && it.concepto.includes(it.activo.alias));
+
 const fmtDia = (iso: string): string => {
   const d = new Date(`${iso}T12:00:00`);
   const txt = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -403,10 +407,15 @@ const PunteoList: React.FC<PunteoListProps> = ({
               <EstadoChip estado={it.estado} />
             )}
           </div>
+          {/* El piso NO se dice dos veces.
+              En una hija lo encabeza la madre. Y en un arrendamiento de piso
+              completo lo lleva ya el propio título ("Alquiler · Fuertes Acevedo
+              32"), así que repetirlo en la marca de debajo dejaba el mismo
+              nombre dos veces en la misma fila. */}
           {esDrawer && !porCuenta ? (
-            <Contexto item={it} extra={cuentaLabel(it.cuentaId)} sinActivo={hija} />
+            <Contexto item={it} extra={cuentaLabel(it.cuentaId)} sinActivo={hija || activoEnTitulo(it)} />
           ) : (
-            <Contexto item={it} sinActivo={hija} />
+            <Contexto item={it} sinActivo={hija || activoEnTitulo(it)} />
           )}
         </div>
         {/* §6.3 · el chip de origen desaparece de "Por confirmar".

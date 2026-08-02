@@ -29,6 +29,8 @@ import { construirDias, resumirMes, huecosIniciales, saldoAlEmpezarElDia } from 
 import { colorDeBanco } from './bancoColores';
 import { mesMinimo, puedeRetroceder } from './limiteMeses';
 import { importeConSigno, importeSaldo, nombreMes, diaSemanaYNumero } from './formatoV6';
+import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
+import { valoresDesdeItem } from './fichaDesdeItem';
 import chasis from './DrawerV6.module.css';
 import styles from './DrawerCalendario.module.css';
 
@@ -53,7 +55,19 @@ export interface DrawerCalendarioProps {
   onCerrar: () => void;
   onConfirmar: (item: ItemPunteo) => void | Promise<void>;
   onDescartar: (item: ItemPunteo) => void | Promise<void>;
-  onEditar?: (item: ItemPunteo) => void;
+  /**
+   * §4.5 · guardar desde la ficha que abre el lápiz.
+   *
+   * El lápiz existía en la fila desde el principio —`rowVariant: 'tesoreria'`
+   * lo pinta— pero el drawer declaraba `onEditar` y NADIE se lo pasaba, así que
+   * no había botón: el mismo hueco que tenía `aliasInmueble`. Ahora la ficha
+   * vive aquí, igual que en §4.4, y el guardado sube a la pantalla.
+   */
+  onGuardarFicha?: (item: ItemPunteo | null, valores: GuardadoFicha) => void | Promise<void>;
+  /** Eliminar la previsión desde la ficha. */
+  onEliminar?: (item: ItemPunteo) => void | Promise<void>;
+  /** Inmuebles para el selector de la ficha. */
+  inmuebles?: Array<{ id: number; alias: string }>;
   /** Confirmar de golpe todo lo que queda pendiente ese día (§4.9). */
   onConfirmarDia: (items: ItemPunteo[]) => void | Promise<void>;
   /**
@@ -82,11 +96,15 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
   onCerrar,
   onConfirmar,
   onDescartar,
-  onEditar,
+  onGuardarFicha,
+  onEliminar,
+  inmuebles = [],
   onConfirmarDia,
   onAnotar,
 }) => {
   const [diaElegido, setDiaElegido] = useState<string | null>(null);
+  /** `null` = cerrada · con item = edición desde el lápiz de la fila. */
+  const [ficha, setFicha] = useState<{ item: ItemPunteo } | null>(null);
 
   const dias = useMemo(
     () =>
@@ -392,7 +410,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   // llevando su chip.
                   conChipEstado="solo-si-difiere"
                   rowVariant="tesoreria"
-                  onEditar={onEditar}
+                  onEditar={(item) => setFicha({ item })}
                   onConfirmar={onConfirmar}
                   onNoPaso={onDescartar}
                 />
@@ -425,6 +443,29 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
           )}
         </div>
       </aside>
+
+      {/* §4.5 · ficha de movimiento · la abre el lápiz de la fila */}
+      <FichaMovimiento
+        abierta={ficha != null}
+        inicial={ficha ? valoresDesdeItem(ficha.item, ficha.item.cuentaId ?? null) : undefined}
+        importePrevisto={ficha?.item.importePrevisto ?? ficha?.item.importe}
+        documentIds={ficha?.item.documentIds}
+        cuentas={cuentas}
+        inmuebles={inmuebles}
+        onCerrar={() => setFicha(null)}
+        onGuardar={async (v) => {
+          await onGuardarFicha?.(ficha?.item ?? null, v);
+          setFicha(null);
+        }}
+        onEliminar={
+          ficha && onEliminar
+            ? async () => {
+                await onEliminar(ficha.item);
+                setFicha(null);
+              }
+            : undefined
+        }
+      />
     </>
   );
 };
