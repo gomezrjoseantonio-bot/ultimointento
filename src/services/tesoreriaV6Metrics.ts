@@ -17,6 +17,16 @@
 // ============================================================================
 
 import type { Account, Movement, TreasuryEvent } from './db';
+import { isTransferKey } from './categoryCatalog';
+
+/**
+ * Un traspaso interno NO es gasto ni ingreso · el dinero no entra ni sale del
+ * patrimonio, cambia de cuenta. Contando sus patas, sacar 20 € al cajero
+ * aparecía a la vez como 20 € gastados y 20 € ingresados.
+ */
+function esTraspasoInterno(m: Pick<Movement, 'categoryKey'>): boolean {
+  return isTransferKey(m.categoryKey);
+}
 
 export interface RangoMes {
   /** Primer día del mes · ISO `YYYY-MM-DD`. */
@@ -329,6 +339,17 @@ export function calcularRealidad(params: {
   let previstoDeLoConfirmado = 0;
   let pagadoDeLoConfirmado = 0;
 
+  // Los movimientos que YA responden a una previsión · para no contarlos dos
+  // veces al sumar abajo lo que salió sin estar previsto.
+  const yaContados = new Set<number>();
+  // Red de seguridad para datos viejos: previsiones ejecutadas que no guardaron
+  // a qué movimiento dieron lugar. Se casan por fecha e importe, igual que hace
+  // `calculateAccountBalanceAtDate` con el mismo problema. Contar de más aquí
+  // sería peor que no contar: diría que te has gastado el doble.
+  const sinVinculo = new Map<string, number>();
+  const claveImplicita = (fecha: string, importe: number): string =>
+    `${soloFecha(fecha)}|${Math.abs(importe).toFixed(2)}`;
+
   for (const e of eventos) {
     if (e.descartado) continue;
     if (!enRango(soloFecha(e.predictedDate), desde, hasta)) continue;
@@ -352,7 +373,37 @@ export function calcularRealidad(params: {
       const costeReal = e.actualAmount != null ? Math.abs(e.actualAmount) : previstoOriginal;
       previstoDeLoConfirmado += previstoOriginal;
       pagadoDeLoConfirmado += costeReal;
+      const materializado = e.executedMovementId ?? e.movementId;
+      if (materializado != null) {
+        yaContados.add(Number(materializado));
+      } else {
+        const clave = claveImplicita(e.predictedDate, costeReal);
+        sinVinculo.set(clave, (sinVinculo.get(clave) ?? 0) + 1);
+      }
     }
+  }
+
+  // Lo que salió SIN estar previsto también es desviación · y de la peor.
+  //
+  // La frase comparaba solo previsiones cumplidas contra su propio coste, así
+  // que un pago que nunca se previó —anotado a mano, o un cargo del banco que
+  // no casó con nada— no aparecía por ningún lado: la pantalla decía "acabarás
+  // igual que lo previsto" con 86 € fuera de plan ya salidos de la cuenta.
+  //
+  // Previsto 0 y pagado su importe: eso es exactamente lo que fue.
+  for (const m of movimientos) {
+    if (!enRango(soloFecha(m.date), desde, hasta)) continue;
+    if (m.isOpeningBalance) continue;
+    if (m.amount >= 0) continue;
+    if (esTraspasoInterno(m)) continue;
+    if (m.id != null && yaContados.has(m.id)) continue;
+    const clave = claveImplicita(m.date, m.amount);
+    const pendientes = sinVinculo.get(clave) ?? 0;
+    if (pendientes > 0) {
+      sinVinculo.set(clave, pendientes - 1);
+      continue;
+    }
+    pagadoDeLoConfirmado += Math.abs(m.amount);
   }
 
   let realIngresos = 0;
@@ -360,6 +411,7 @@ export function calcularRealidad(params: {
   for (const m of movimientos) {
     if (!enRango(soloFecha(m.date), desde, hasta)) continue;
     if (m.isOpeningBalance) continue;
+    if (esTraspasoInterno(m)) continue;
     if (m.amount > 0) realIngresos += m.amount;
     else realGastos += Math.abs(m.amount);
   }

@@ -401,7 +401,15 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
       {/* §4.5 · ficha de movimiento · editar con el lápiz o anotar */}
       <FichaMovimiento
         abierta={ficha != null}
-        inicial={ficha?.item ? valoresDesdeItem(ficha.item, cuenta.id ?? null) : undefined}
+        inicial={
+          ficha?.item
+            ? valoresDesdeItem(ficha.item, cuenta.id ?? null)
+            : // Anotar desde DENTRO de una cuenta ya dice en qué cuenta ocurre.
+              // Sin esto la ficha abría con la primera de la lista, así que
+              // entrando por Sabadell el gasto se anotaba en Santander salvo
+              // que el usuario se diera cuenta y lo cambiara.
+              { cuentaId: cuenta.id ?? null }
+        }
         importePrevisto={ficha?.item?.importePrevisto ?? ficha?.item?.importe}
         // §7 · el papel que respalda el cargo · solo lo tienen los reales.
         documentIds={ficha?.item?.documentIds}

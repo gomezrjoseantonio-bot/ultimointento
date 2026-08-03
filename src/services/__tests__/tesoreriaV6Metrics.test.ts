@@ -355,11 +355,14 @@ describe('§4.10 · cómo va el mes', () => {
     const r = calcularRealidad({
       eventos: [
         // Ejecutado con coste real distinto del previsto · sí desvía.
-        ev({ type: 'expense', amount: 1838.42, actualAmount: 1473.42, predictedDate: '2026-07-05', status: 'executed' }),
+        // `executedMovementId` es lo que escribe `confirmTreasuryEvent`: sin él
+        // el mismo pago se contaría dos veces, una por la previsión que cumplió
+        // y otra como gasto no planificado.
+        ev({ type: 'expense', amount: 1838.42, actualAmount: 1473.42, predictedDate: '2026-07-05', status: 'executed', executedMovementId: 7 }),
         // Aún no ha ocurrido: no entra, o la desviación saldría falsa.
         ev({ type: 'expense', amount: 5000, predictedDate: '2026-07-28' }),
       ],
-      movimientos: [mov({ amount: -1473.42 })],
+      movimientos: [mov({ id: 7, amount: -1473.42 })],
       year: 2026,
       month0: 6,
     });
@@ -367,6 +370,63 @@ describe('§4.10 · cómo va el mes', () => {
     expect(r.previstoDeLoConfirmado).toBe(1838.42);
     expect(r.pagadoReal).toBe(1473.42);
     expect(r.desviacion).toBe(365);
+  });
+
+  // Lo que sale SIN estar previsto es desviación, y de la peor: la pantalla
+  // decía "acabarás igual que lo previsto" con 86 € fuera de plan ya salidos.
+  it('un pago que nadie previó cuenta entero como desviación', () => {
+    const r = calcularRealidad({
+      eventos: [
+        ev({ type: 'expense', amount: 100, actualAmount: 100, predictedDate: '2026-07-05', status: 'executed', executedMovementId: 1 }),
+      ],
+      movimientos: [
+        mov({ id: 1, amount: -100, date: '2026-07-05' }),
+        // Anotado a mano · no responde a ninguna previsión.
+        mov({ id: 2, amount: -86, date: '2026-07-06', source: 'manual' }),
+      ],
+      year: 2026,
+      month0: 6,
+    });
+
+    expect(r.previstoDeLoConfirmado).toBe(100);
+    expect(r.pagadoReal).toBe(186);
+    expect(r.desviacion).toBe(-86);
+  });
+
+  // Un traspaso interno no es gasto ni ingreso: el dinero cambia de cuenta.
+  // Contando sus patas, sacar 20 € al cajero salía a la vez como 20 € gastados
+  // y 20 € ingresados.
+  it('un traspaso interno no ensucia ni gastos ni ingresos', () => {
+    const r = calcularRealidad({
+      eventos: [],
+      movimientos: [
+        mov({ id: 1, amount: -20, categoryKey: 'traspaso_salida' }),
+        mov({ id: 2, amount: 20, categoryKey: 'traspaso_entrada' }),
+      ],
+      year: 2026,
+      month0: 6,
+    });
+
+    expect(r.lineas[0]).toMatchObject({ clave: 'Ingresos', real: 0 });
+    expect(r.lineas[1]).toMatchObject({ clave: 'Gastos', real: 0 });
+    expect(r.desviacion).toBe(0);
+  });
+
+  // Datos viejos: previsiones ejecutadas que no guardaron a qué movimiento
+  // dieron lugar. Se casan por fecha e importe · contar de más aquí diría que
+  // te has gastado el doble.
+  it('una previsión vieja sin vínculo no duplica su pago', () => {
+    const r = calcularRealidad({
+      eventos: [
+        ev({ type: 'expense', amount: 120, actualAmount: 96, predictedDate: '2026-07-05', status: 'executed' }),
+      ],
+      movimientos: [mov({ id: 9, amount: -96, date: '2026-07-05' })],
+      year: 2026,
+      month0: 6,
+    });
+
+    expect(r.pagadoReal).toBe(96);
+    expect(r.desviacion).toBe(24);
   });
 
   it('ignora el movimiento de saldo inicial', () => {
