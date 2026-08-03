@@ -320,10 +320,15 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  /** §1 · ¿hay ya una cuenta de efectivo que NO sea la que se está editando? */
-  const hayOtroEfectivo = accounts.some(
-    (a) => a.tipo === 'EFECTIVO' && a.id !== editingAccount?.id && !a.deleted_at,
-  );
+  /**
+   * §1 · ¿hay ya una cuenta de efectivo que NO sea la que se está editando?
+   *
+   * Lo responde el SERVICIO, no un filtro propio sobre `accounts`: esa lista
+   * esconde las cuentas dadas de baja y la regla sí las cuenta. Derivándolo
+   * aquí, con un colchón en pausa la ficha ofrecía el tipo y el guardado lo
+   * rechazaba — dos criterios para la misma pregunta.
+   */
+  const [hayOtroEfectivo, setHayOtroEfectivo] = useState(false);
   const [nominaBadge, setNominaBadge] = useState<{ empresa: string; mensual: number } | null>(null);
   /** `undefined` = aún comprobando · `null` = se puede dar de baja · objeto = bloqueada. */
   /** §10 · la rejilla de color vive plegada tras un desplegable. */
@@ -354,8 +359,11 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     void cuentasService.list().then((list) => {
       if (alive) setAccounts(list);
     });
+    void cuentasService.efectivoExistente(editingAccount?.id).then((otro) => {
+      if (alive) setHayOtroEfectivo(otro != null);
+    });
     return () => { alive = false; };
-  }, [open]);
+  }, [open, editingAccount?.id]);
 
   // Cargar nómina vinculada · alimenta el subtítulo de la cabecera
   useEffect(() => {

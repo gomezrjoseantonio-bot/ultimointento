@@ -71,7 +71,11 @@ const EN_PANTALLA: Record<MetodoPagoCompromiso, string> = {
 
 /** El nombre que ve el usuario · acepta cualquiera de los dos vocabularios. */
 export function nombreDelMetodo(metodo: MetodoPagoCompromiso | MetodoDePago): string {
-  const clave = metodo in EN_PANTALLA
+  // `hasOwnProperty` y no `in`: `in` también encuentra lo que hereda del
+  // prototipo, así que un dato corrupto que valiera «toString» se daría por
+  // bueno y devolvería una función donde se espera un rótulo.
+  const esDeCompromiso = Object.prototype.hasOwnProperty.call(EN_PANTALLA, metodo);
+  const clave = esDeCompromiso
     ? (metodo as MetodoPagoCompromiso)
     : metodoDeCompromiso(metodo as MetodoDePago);
   return EN_PANTALLA[clave];

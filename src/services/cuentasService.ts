@@ -318,6 +318,26 @@ class CuentasService {
   /**
    * List all active accounts
    */
+  /**
+   * ¿Ya hay una cuenta de efectivo? · §1 · la respuesta que da el servicio.
+   *
+   * Existe para que la pantalla pueda preguntar lo MISMO que se valida al
+   * guardar. Derivarlo de `list()` no vale: `list()` esconde las cuentas dadas
+   * de baja y esta regla sí las cuenta —una cuenta en pausa sigue siendo tu
+   * colchón, y su baja se puede deshacer—, así que la ficha ofrecería el tipo
+   * y el guardado lo rechazaría. Dos criterios para la misma pregunta.
+   */
+  public async efectivoExistente(exceptoId?: number): Promise<Account | undefined> {
+    await this.ready;
+    try {
+      const db = await initDB();
+      this.accounts = (await db.getAll('accounts')) as Account[];
+    } catch {
+      // Sin base, se responde con lo que haya en caché.
+    }
+    return efectivoQueYaExiste(this.accounts, exceptoId);
+  }
+
   public async list(): Promise<Account[]> {
     try {
       const db = await initDB();

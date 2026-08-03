@@ -14,11 +14,18 @@ import CuentaWizard from '../CuentaWizard';
 import { cuentasService } from '../../../services/cuentasService';
 
 jest.mock('../../../services/cuentasService', () => ({
-  cuentasService: { list: jest.fn(), create: jest.fn(), update: jest.fn() },
+  cuentasService: {
+    list: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    // §1 · la ficha pregunta al servicio si ya hay un colchón · aquí no hay.
+    efectivoExistente: jest.fn(),
+  },
 }));
 
 beforeEach(() => {
   (cuentasService.list as jest.Mock).mockResolvedValue([]);
+  (cuentasService.efectivoExistente as jest.Mock).mockResolvedValue(undefined);
 });
 
 const elegirEfectivo = () => fireEvent.click(screen.getByRole('button', { name: 'Efectivo' }));

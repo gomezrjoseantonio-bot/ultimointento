@@ -49,6 +49,15 @@ describe('las que no cuentan', () => {
     expect(efectivoQueYaExiste([efectivo(2, marca as Partial<Account>)])).toBeUndefined();
   });
 
+  // Una cuenta en PAUSA sigue siendo tu colchón: su baja se puede deshacer, y
+  // el dinero sigue ahí. Si esto no la contara, la ficha ofrecería el tipo y el
+  // guardado lo rechazaría — dos criterios para la misma pregunta.
+  it('una dada de baja SÍ sigue ocupando el sitio', () => {
+    const enPausa = efectivo(2, { status: 'INACTIVE', activa: false });
+
+    expect(efectivoQueYaExiste([enPausa])?.id).toBe(2);
+  });
+
   // Guardar la cuenta de efectivo otra vez no puede chocar consigo misma.
   it('la que se está editando no se bloquea a sí misma', () => {
     expect(efectivoQueYaExiste([efectivo(2)], 2)).toBeUndefined();
