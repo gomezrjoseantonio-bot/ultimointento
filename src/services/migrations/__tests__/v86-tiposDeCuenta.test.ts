@@ -15,8 +15,8 @@ const cuenta = (over: Record<string, unknown>) => ({
   openingBalance: 1234.56,
   openingBalanceDate: '2026-01-01',
   activa: true,
-  createdAt: '',
-  updatedAt: '',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
   ...over,
 });
 
@@ -53,6 +53,17 @@ describe('los tipos retirados pasan a CORRIENTE', () => {
     expect(c?.openingBalance).toBe(1234.56);
     expect(c?.openingBalanceDate).toBe('2026-01-01');
     expect(c?.activa).toBe(true);
+  });
+
+  // Ni la fecha de modificación: el usuario no ha editado nada. Sellarla dejaría
+  // todas sus cuentas como "recién tocadas" por un cambio que hizo el sistema.
+  it('tampoco se toca la fecha de última modificación', async () => {
+    const id = await guardar(cuenta({ tipo: 'AHORRO' }));
+    const db = await initDB();
+
+    await migrarTiposDeCuenta(db as never);
+
+    expect((await leer(id))?.updatedAt).toBe('2026-01-01T00:00:00.000Z');
   });
 });
 
