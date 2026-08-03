@@ -140,6 +140,38 @@ atribuir el gasto al banco equivocado:
 - La emisora **no tiene por qué ser un banco tuyo**, y no debe forzarse a
   elegirla entre tus cuentas.
 
+### 3.4 ter · Dos maneras de nacer, y no son intercambiables
+
+**Una cuenta bancaria tiene normalmente DOS tarjetas** —una de débito y otra de
+crédito— y puede tener más. Nada del modelo puede asumir «la tarjeta» de una
+cuenta.
+
+Pero la diferencia importante no es cuántas, sino **de quién es la tarjeta**:
+
+| | Tarjeta **del banco** | Tarjeta **de fuera** |
+|---|---|---|
+| Ejemplos | La de débito y la de crédito de tu Santander | Carrefour · Cetelem · Bankintercard |
+| Cómo nace | **Con la cuenta** · al dar de alta el banco | **Por su cuenta** · no cuelga del alta de ningún banco |
+| Su cuenta | Es la del banco que la emite · intrínseca | Es **dónde la tienes domiciliada hoy** |
+| ¿Se puede cambiar de cuenta? | No tiene sentido | **Sí, y pasa a menudo** |
+
+> Las de fuera del banco no deberían nacer de la misma forma, ya que son muy
+> susceptibles a que cambiemos la domiciliación del pago. Por lo que no puede
+> estar anclada de manera sostenida en una cuenta bancaria.
+>
+> — Jose, 3 de agosto de 2026
+
+Consecuencias para el modelo:
+
+- Una tarjeta de fuera **no se crea desde el alta de una cuenta**: se crea sola,
+  y elegir dónde se domicilia es un dato suyo, no su origen.
+- **Cambiar la domiciliación tiene que ser una operación normal**, no rehacer la
+  tarjeta. Si rehacerla fuese la única vía, se perdería su historial de gasto —
+  que es justo lo que prueba las bonificaciones (§6 ter).
+- **Cambiar la domiciliación NO reescribe el pasado.** Los cargos que ya se
+  cobraron en la cuenta anterior se quedan donde se cobraron: son realidad, como
+  todo lo demás que ya pasó.
+
 ### 3.4 bis · El ciclo · CORTE y CARGO son dos fechas distintas
 
 Lo que hoy se guarda es un único `settlementDay`, y no llega. Una tarjeta tiene
@@ -363,6 +395,10 @@ Escrito para no perderlo, con la fecha en que se detectó:
   hay `cardConfig`, que asume liquidación diferida. §3.1, §3.2.
 - **2026-08-03** · No existe la **entidad emisora** separada de la cuenta de
   liquidación. §3.4.
+- **2026-08-03** · Una cuenta no puede tener **varias** tarjetas: `cardConfig`
+  es un único objeto. Lo normal son dos. §3.4 ter.
+- **2026-08-03** · No se distingue la tarjeta **del banco** de la de **fuera**,
+  ni se puede cambiar la domiciliación sin rehacerla. §3.4 ter.
 - **2026-08-03** · No hay acumulador de periodo para el crédito aplazado: las
   compras no se juntan en un cargo previsto. §6 bis.
 - **2026-08-03** · El **cashback** no se modela. §3.5.
