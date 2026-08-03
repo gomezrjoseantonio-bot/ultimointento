@@ -47,16 +47,38 @@ export function necesitaCiclo(t: Pick<Tarjeta, 'modalidad'>): boolean {
   return t.modalidad === 'credito';
 }
 
+// ─── Fechas · en UTC de extremo a extremo ───────────────────────────────────
+//
+// Mezclar hora local con `toISOString()` corre el día: en España (UTC+1/+2) la
+// medianoche local es el día ANTERIOR en UTC, así que cada fecha calculada
+// saldría un día antes. Y no lo cazaría ningún test, porque CI corre en UTC —
+// el fallo aparecería solo en el navegador del usuario, que es el peor sitio.
+
 /** El último día del mes · "día 31" no puede saltarse febrero (§3.4). */
 function ultimoDiaDelMes(anio: number, mes0: number): number {
-  return new Date(anio, mes0 + 1, 0).getDate();
+  return new Date(Date.UTC(anio, mes0 + 1, 0)).getUTCDate();
 }
+
+/** ISO `YYYY-MM-DD` → fecha UTC, sin que la zona del navegador la mueva. */
+function desdeIso(fecha: string): Date {
+  return new Date(`${fecha}T00:00:00Z`);
+}
+
+const aIso = (d: Date): string => d.toISOString().slice(0, 10);
+
+/** 1 lunes … 7 domingo · `getUTCDay()` da 0 para domingo. */
+const diaDeLaSemana = (d: Date): number => d.getUTCDay() || 7;
 
 /**
  * A qué día del mes cae un "día N" · 31 significa el último, no el 31 literal.
  */
 export function diaDelMes(anio: number, mes0: number, dia: number): number {
   return Math.min(Math.max(1, dia), ultimoDiaDelMes(anio, mes0));
+}
+
+/** Fecha UTC a partir de año, mes y "día N" con la regla del último día. */
+function conDiaDelMes(anio: number, mes0: number, dia: number): Date {
+  return new Date(Date.UTC(anio, mes0, diaDelMes(anio, mes0, dia)));
 }
 
 /**
@@ -69,27 +91,21 @@ export function diaDelMes(anio: number, mes0: number, dia: number): number {
  * `fecha` en ISO `YYYY-MM-DD`; devuelve ISO.
  */
 export function corteQueLeToca(ciclo: CicloTarjeta, fecha: string): string {
-  const d = new Date(`${fecha}T00:00:00`);
+  const d = desdeIso(fecha);
   if (ciclo.periodicidad === 'semanal') {
-    // 1 lunes … 7 domingo · `getDay()` da 0 para domingo.
-    const diaSemana = d.getDay() === 0 ? 7 : d.getDay();
-    const corte = ((ciclo.corte - diaSemana) + 7) % 7;
-    d.setDate(d.getDate() + corte);
-    return d.toISOString().slice(0, 10);
+    const avance = ((ciclo.corte - diaDeLaSemana(d)) + 7) % 7;
+    d.setUTCDate(d.getUTCDate() + avance);
+    return aIso(d);
   }
 
-  const corteEsteMes = diaDelMes(d.getFullYear(), d.getMonth(), ciclo.corte);
-  if (d.getDate() <= corteEsteMes) {
-    return new Date(d.getFullYear(), d.getMonth(), corteEsteMes)
-      .toISOString()
-      .slice(0, 10);
+  const anio = d.getUTCFullYear();
+  const mes0 = d.getUTCMonth();
+  if (d.getUTCDate() <= diaDelMes(anio, mes0, ciclo.corte)) {
+    return aIso(conDiaDelMes(anio, mes0, ciclo.corte));
   }
   // Pasado el corte, la compra es del periodo siguiente.
-  const siguiente = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-  const corteSiguiente = diaDelMes(siguiente.getFullYear(), siguiente.getMonth(), ciclo.corte);
-  return new Date(siguiente.getFullYear(), siguiente.getMonth(), corteSiguiente)
-    .toISOString()
-    .slice(0, 10);
+  const siguiente = new Date(Date.UTC(anio, mes0 + 1, 1));
+  return aIso(conDiaDelMes(siguiente.getUTCFullYear(), siguiente.getUTCMonth(), ciclo.corte));
 }
 
 /**
@@ -100,15 +116,15 @@ export function corteQueLeToca(ciclo: CicloTarjeta, fecha: string): string {
  * dinero sale de la cuenta, no cuando se cierra la cuenta de la tarjeta.
  */
 export function cuandoSeCobra(ciclo: CicloTarjeta, fechaCorte: string): string {
-  const d = new Date(`${fechaCorte}T00:00:00`);
+  const d = desdeIso(fechaCorte);
   if (ciclo.periodicidad === 'semanal') {
-    const diaSemana = d.getDay() === 0 ? 7 : d.getDay();
-    const avance = ((ciclo.diaCargo - diaSemana) + 7) % 7;
-    d.setDate(d.getDate() + avance + 7 * ciclo.periodosHastaElCargo);
-    return d.toISOString().slice(0, 10);
+    const avance = ((ciclo.diaCargo - diaDeLaSemana(d)) + 7) % 7;
+    d.setUTCDate(d.getUTCDate() + avance + 7 * ciclo.periodosHastaElCargo);
+    return aIso(d);
   }
 
-  const destino = new Date(d.getFullYear(), d.getMonth() + ciclo.periodosHastaElCargo, 1);
-  const dia = diaDelMes(destino.getFullYear(), destino.getMonth(), ciclo.diaCargo);
-  return new Date(destino.getFullYear(), destino.getMonth(), dia).toISOString().slice(0, 10);
+  const destino = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + ciclo.periodosHastaElCargo, 1)
+  );
+  return aIso(conDiaDelMes(destino.getUTCFullYear(), destino.getUTCMonth(), ciclo.diaCargo));
 }
