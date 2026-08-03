@@ -284,10 +284,17 @@ previsiones. Con el ciclo de §3.4 bis, lo que hay que construir es:
 - Emitir **un cargo previsto por periodo** en el día de cargo — que con corte
   semanal son varios al mes.
 
-Y una decisión que sigue siendo de Jose: qué se enseña en tesorería mientras el
-periodo está **abierto**. ¿El cargo previsto va creciendo con cada compra, o
-aparece entero el día del corte? Lo primero refleja mejor lo que va a pasar; lo
-segundo no mueve una cifra ya leída.
+**Decisión · 3 de agosto de 2026 (Jose):** mientras el periodo está **abierto**,
+el cargo previsto **va creciendo**.
+
+> El período abierto están todas las previsiones, pero si mañana gasto algo de
+> la tarjeta tendré que hacer una anotación manual e irá creciendo.
+>
+> — Jose
+
+Es decir: el cargo del periodo en curso es una previsión **viva**, que se
+recalcula cada vez que se anota o se importa una compra de esa tarjeta. No es
+una cifra fija que aparece el día del corte.
 
 ---
 
