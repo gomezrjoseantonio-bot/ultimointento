@@ -19,26 +19,34 @@ resuelva quien la sufre no es una decisión de producto pendiente, es un fallo.
 una fecha.** Nada más. Todas se leen igual, todas tienen movimientos y todas
 suman al patrimonio.
 
-`Account.tipo` distingue cinco:
+**Hay DOS clases de cuenta, y una tarjeta no es ninguna de las dos.**
 
-| Tipo | Qué es | Tiene IBAN | Tiene saldo propio |
-|---|---|---|---|
-| `CORRIENTE` | Cuenta bancaria de diario | Sí | Sí |
-| `AHORRO` | Cuenta bancaria de ahorro | Sí | Sí |
-| `OTRA` | Cuenta bancaria que no encaja arriba | Sí | Sí |
-| `EFECTIVO` | El dinero físico · el colchón, la cartera | **No** | Sí |
-| `TARJETA_CREDITO` | Una tarjeta de crédito | **No** | **No** · ver §3 |
+| Tipo | Qué es | Tiene IBAN |
+|---|---|---|
+| `CORRIENTE` | Cuenta bancaria | Sí |
+| `EFECTIVO` | El dinero físico · el colchón, la cartera | **No** |
 
-Consecuencias que el código debe respetar:
+**El efectivo es una cuenta como cualquier otra.** Tiene saldo, tiene
+movimientos, suma al patrimonio y se lee igual que un banco. Si fuera un caso
+raro con reglas propias no tendría sentido: lo que lo distingue es que nadie
+emite un extracto del colchón, no que el dinero valga menos.
 
-- **`EFECTIVO` no tiene IBAN ni banco.** No se le importa un extracto, porque
-  nadie emite un extracto del colchón. Su saldo sube y baja solo por lo que se
-  anota o por traspasos.
-- **Solo debe haber una cuenta de efectivo por usuario.** Dos colchones no se
-  distinguen: el dinero físico es uno. *(Definido aquí, todavía no garantizado
-  por el código · §8.)*
-- **`TARJETA_CREDITO` no es un sitio donde hay dinero**, es una forma de
-  aplazar el pago. Ver §3.
+Su única singularidad real: **no tiene IBAN ni banco**, así que no se le
+importa un extracto y su saldo se mueve solo por lo que se anota o por
+traspasos (§4).
+
+**Decisión · 3 de agosto de 2026 (Jose):** `AHORRO` y `OTRA` se retiran.
+Complican sin distinguir nada — una cuenta de ahorro se comporta exactamente
+como una corriente, y "otra" no dice nada. *(Decidido aquí, el tipo todavía las
+admite · §8.)*
+
+**`TARJETA_CREDITO` deja de ser un tipo de cuenta.** Una tarjeta no es un sitio
+donde hay dinero: es una forma de gastar el de una cuenta. Ver §3. *(Decidido
+aquí, hoy sigue siendo un tipo · §8.)*
+
+**Solo debe haber una cuenta de efectivo por usuario.** Dos colchones no se
+distinguen: el dinero físico es uno. *(Definido aquí, todavía no garantizado
+por el código · §8.)*
 
 ---
 
@@ -73,18 +81,70 @@ solo sitio, no a mano en cada pantalla.
 
 ---
 
-## 3 · Tarjeta
+## 3 · Tarjetas
 
-**Una tarjeta de crédito no tiene saldo: tiene una cuenta donde se liquida.**
-Lo que compras con ella no sale de la tarjeta, sale de la cuenta bancaria que
-paga su recibo, el día que lo paga (`cardConfig.settlementDay` y
-`cardConfig.chargeAccountId`).
+**Una tarjeta no tiene saldo: tiene una cuenta donde se liquida.** No es un
+sitio donde hay dinero, es una forma de gastar el de una cuenta. Una cuenta
+bancaria puede tener **una o varias** tarjetas asociadas.
 
-Consecuencias:
+Lo que decide cuándo se mueve el saldo es la **modalidad**, no la tarjeta:
 
-- La cuenta de liquidación es **una cuenta bancaria**, nunca la de efectivo ni
-  otra tarjeta.
-- Pagar con tarjeta **no** mueve el saldo el día de la compra.
+### 3.1 · Débito · el dinero sale YA
+
+Compras y se descuenta **en el momento**, igual que una transferencia. Sacar
+dinero del cajero con ella descuenta también al instante.
+
+- No genera previsión propia: el cargo es el movimiento, y ocurre el mismo día.
+- **Una retirada de cajero con tarjeta de débito es un traspaso interno a la
+  cuenta de efectivo** (§4), no un gasto. Da igual que se haya hecho con
+  plástico: el dinero sigue siendo tuyo, ha cambiado de sitio.
+
+### 3.2 · Crédito aplazado · el dinero sale un día concreto
+
+Compras durante el periodo y **todo se cobra junto** el día de liquidación —fin
+de mes, a X días, a X semanas—. **No genera intereses.**
+
+- Las compras del periodo **no mueven el saldo el día de la compra**.
+- Lo que mueve el saldo es **un solo cargo** en la cuenta de liquidación, el día
+  de liquidación, por la suma del periodo. Eso es lo que hay que **prever**
+  (§3.4).
+
+### 3.3 · Crédito fraccionado · FUERA DE ESTA VERSIÓN
+
+Pagar a plazos con intereses. **Decisión · 3 de agosto de 2026 (Jose):** no se
+modela todavía. No se ofrece, y si aparece en un extracto se trata como un
+cargo cualquiera hasta que se diseñe.
+
+### 3.4 · Quién emite y quién paga son cosas distintas
+
+Aquí está la trampa que hace falta escribir:
+
+> Hay tarjetas de fuera del banco donde tienes la cuenta —Carrefour, Bankinter
+> Card, Cetelem—. La diferencia es que **la entidad emisora no es donde se
+> domicilia el pago**. Las formas de pago son las mismas: aplazado o
+> fraccionado. Las de Carrefour y las del Sabadell generan cashback, por eso
+> las uso.
+>
+> — Jose, 3 de agosto de 2026
+
+Por tanto una tarjeta tiene **dos** referencias a entidad, y confundirlas es
+atribuir el gasto al banco equivocado:
+
+| Dato | Qué es | Puede no existir en ATLAS |
+|---|---|---|
+| **Emisora** | Quién da la tarjeta · Carrefour, Cetelem, Bankinter Card | **Sí** · puede no ser una cuenta tuya |
+| **Cuenta de liquidación** | De qué cuenta TUYA sale el recibo | No · es siempre una `CORRIENTE` |
+
+- La cuenta de liquidación es **siempre una cuenta bancaria propia**, nunca la
+  de efectivo ni otra tarjeta.
+- La emisora **no tiene por qué ser un banco tuyo**, y no debe forzarse a
+  elegirla entre tus cuentas.
+
+### 3.5 · Cashback
+
+Algunas tarjetas devuelven un porcentaje. **Es un ingreso**, no un gasto
+negativo: entra en la cuenta y suma. *(Reconocido aquí; sin modelar todavía ·
+§8.)*
 
 ---
 
@@ -153,6 +213,46 @@ entrada. Quien lo lea sin saber esto invierte el traspaso.
 
 ---
 
+## 6 bis · Previsiones · quién genera cargo y cuándo
+
+Todo lo anterior existe para responder una sola pregunta: **qué dinero va a
+salir de qué cuenta y qué día.** Aquí está la traducción, que es donde se
+rompía.
+
+| Origen | Cuenta que se mueve | Cuándo | Cuántos apuntes |
+|---|---|---|---|
+| Recurrente domiciliado / transferencia | La de cargo | El día del cargo | 1 |
+| Recurrente en **efectivo** | La cuenta `EFECTIVO` (§4) | El día del cargo | 1 |
+| Recurrente por **Bizum** | La que tiene el Bizum (§5) | El día del cargo | 1 |
+| Compra con **débito** | La cuenta de la tarjeta | **El mismo día** | 1 |
+| Compra con **crédito aplazado** | La cuenta de liquidación | **El día de liquidación**, sumada con las demás del periodo | 1 por periodo, no 1 por compra |
+| **Retirada de cajero** | Banco → `EFECTIVO` | El día | **2**, espejo (§6) |
+| **Traspaso interno** | Origen → destino | El día | **2**, espejo (§6) |
+
+Tres reglas que se incumplían y por eso están escritas:
+
+1. **La cuenta de la previsión la decide el método, no un desplegable libre.**
+   Un recurrente en efectivo que proyecta sobre una cuenta bancaria hace que el
+   banco parezca más pobre y el colchón no baje nunca.
+2. **Una previsión del mes en curso cuyo día ya pasó SIGUE siendo una
+   previsión.** No se puede dar por confirmada por haber llegado tarde: si el
+   cargo real existe, tiene que tener con qué casarse.
+3. **Un traspaso interno no es gasto ni ingreso**, aunque tenga dos apuntes con
+   signo. Contarlo hincha las dos columnas a la vez.
+
+### Lo que aún no está diseñado
+
+**Crédito aplazado.** Hoy no existe el acumulador que junta las compras de un
+periodo en un solo cargo previsto. Es el trabajo que queda, y toca el motor de
+previsiones. Antes de escribirlo hay que decidir:
+
+- Qué pasa con una compra hecha **después** del corte del periodo (va al
+  siguiente).
+- Qué se enseña en tesorería mientras el periodo está abierto: ¿el cargo
+  previsto va creciendo, o aparece entero el día del corte?
+
+---
+
 ## 7 · Combinaciones imposibles
 
 Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
@@ -162,7 +262,9 @@ Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
 | Método `efectivo` + cuenta bancaria | El efectivo no sale del banco (§4) |
 | Método `bizum` + cuenta sin Bizum | Solo una cuenta lo tiene (§5) |
 | Método `domiciliacion`/`transferencia` + cuenta `EFECTIVO` | El colchón no tiene IBAN (§1) |
-| Tarjeta liquidando en `EFECTIVO` o en otra tarjeta | La liquidación es bancaria (§3) |
+| Tarjeta liquidando en `EFECTIVO` o en otra tarjeta | La liquidación es bancaria (§3.4) |
+| Compra con crédito aplazado moviendo el saldo el día de la compra | Se cobra el día de liquidación (§3.2) |
+| Elegir la entidad emisora entre TUS cuentas | La emisora puede no ser un banco tuyo (§3.4) |
 | Traspaso interno a la misma cuenta | No es un traspaso (§6) |
 | Retirada de cajero registrada como gasto | Es un traspaso (§4) |
 | Dos cuentas `EFECTIVO` | El dinero físico es uno (§1) |
@@ -180,3 +282,14 @@ Escrito para no perderlo, con la fecha en que se detectó:
 - **2026-08-03** · Los dos vocabularios de método de pago (§2) no se traducen
   en un único sitio.
 - **2026-08-03** · Nada impide crear dos cuentas `EFECTIVO`. §1.
+- **2026-08-03** · `Account.tipo` todavía admite `AHORRO` y `OTRA`, retiradas
+  por decisión. Retirarlas pide migrar las que existan a `CORRIENTE`. §1.
+- **2026-08-03** · `TARJETA_CREDITO` sigue siendo un tipo de cuenta en vez de
+  una tarjeta asociada a una. §1, §3.
+- **2026-08-03** · No se distingue **débito** de **crédito aplazado**: hoy solo
+  hay `cardConfig`, que asume liquidación diferida. §3.1, §3.2.
+- **2026-08-03** · No existe la **entidad emisora** separada de la cuenta de
+  liquidación. §3.4.
+- **2026-08-03** · No hay acumulador de periodo para el crédito aplazado: las
+  compras no se juntan en un cargo previsto. §6 bis.
+- **2026-08-03** · El **cashback** no se modela. §3.5.
