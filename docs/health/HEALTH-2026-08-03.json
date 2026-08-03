@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-03",
-  "generatedAt": "2026-08-03T22:14:19.011Z",
+  "generatedAt": "2026-08-03T23:31:45.390Z",
   "git": {
     "branch": "claude/new-session-hq2846",
-    "head": "68149a0"
+    "head": "243841a"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -143,7 +143,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 780 · dead 0 · solo_tests 41 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 784 · dead 0 · solo_tests 41 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -257,10 +257,10 @@
       "approx": false,
       "note": null,
       "detail": [
+        "1978 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
         "1963 · src/services/declaracionDistributorService.ts",
         "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
         "1886 · src/services/dashboardService.ts",
-        "1806 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
         "1765 · src/pages/inmuebles/InmueblePage.tsx",
         "1716 · src/services/irpfCalculationService.ts",
         "1704 · src/modules/inversiones/pages/FichaPlanPensiones.tsx",
@@ -283,7 +283,7 @@
       "approx": false,
       "note": null,
       "detail": [
-        "109 / 350 .tsx sin v5 (consumen v5: 241 · directo o vía .module.css con var(--atlas-v5-*))",
+        "109 / 351 .tsx sin v5 (consumen v5: 242 · directo o vía .module.css con var(--atlas-v5-*))",
         "src/App.tsx",
         "src/components/ImageDescriptionComponent.tsx",
         "src/components/InvoiceBreakdownModal.tsx",

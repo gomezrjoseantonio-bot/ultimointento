@@ -1,0 +1,74 @@
+// Cómo se lee una bonificación verificada · VOCABULARIO §6 ter.
+//
+// Lo que vigila esto es que las tres respuestas se lean distintas. «No se puede
+// comprobar» y «te faltan 1.000 €» piden cosas distintas de quien lo lee, y
+// confundirlas manda a gastar para arreglar lo que no se arregla gastando.
+
+import { textoDeCumplimiento } from '../textoBonificacion';
+import type { Cumplimiento } from '../../../services/bonificaciones/cumplimiento';
+
+const c = (over: Partial<Cumplimiento> = {}): Cumplimiento => ({
+  bonificacionId: 'b1',
+  nombre: 'Uso tarjeta',
+  veredicto: 'cumple',
+  ventana: { desde: '2026-02-04', hasta: '2026-08-03' },
+  medido: 3200,
+  exigido: 3000,
+  sinCobrar: 0,
+  ...over,
+});
+
+describe('lo que dicen los movimientos', () => {
+  it('cumplida enseña lo medido contra lo exigido', () => {
+    expect(textoDeCumplimiento(c())).toBe('Cumplida · 3.200 € de 3.000 € desde el 4 feb');
+  });
+
+  // Lo primero que se quiere saber al no llegar es cuánto falta.
+  it('sin llegar dice cuánto falta, no solo que falta', () => {
+    expect(textoDeCumplimiento(c({ veredicto: 'no_cumple', medido: 2000 }))).toBe(
+      'Te faltan 1.000 € · llevas 2.000 € de 3.000 € desde el 4 feb'
+    );
+  });
+
+  // §3.5 · lo que el banco no ha cobrado no demuestra nada, pero el gasto ya
+  // está hecho. Sumarlo mentiría; callarlo haría creer que falta por gastar lo
+  // que ya se gastó.
+  it('lo que aún no se ha cobrado va aparte y con esas palabras', () => {
+    const t = textoDeCumplimiento(c({ veredicto: 'no_cumple', medido: 2000, sinCobrar: 800 }));
+
+    expect(t).toContain('Te faltan 1.000 €');
+    expect(t).toContain('800 € más gastados que el banco todavía no ha cobrado');
+  });
+
+  // Pasar la fecha por `Date` y volver a formatearla corre el día hacia atrás
+  // en España, y CI corre en UTC, así que el fallo solo se vería en producción.
+  it('el día no se corre al anterior', () => {
+    expect(textoDeCumplimiento(c({ ventana: { desde: '2026-01-01', hasta: '2026-08-03' } })))
+      .toContain('desde el 1 ene');
+  });
+});
+
+describe('lo que no se ha podido mirar', () => {
+  it('se dice que no se puede comprobar, y por qué', () => {
+    expect(
+      textoDeCumplimiento(
+        c({ veredicto: 'no_verificable', motivo: 'no dice con qué tarjeta se cumple', medido: undefined })
+      )
+    ).toBe('No se puede comprobar · no dice con qué tarjeta se cumple');
+  });
+
+  // §3.6 · una tarjeta de fuera nunca bonifica. Es un "no" firme, no una duda,
+  // y no lleva cifras porque no hay ninguna que perseguir.
+  it('un no que no se arregla gastando no enseña cifras', () => {
+    expect(
+      textoDeCumplimiento(
+        c({
+          veredicto: 'no_cumple',
+          motivo: '«Carrefour» es de fuera, y las de fuera nunca bonifican',
+          medido: undefined,
+          exigido: undefined,
+        })
+      )
+    ).toBe('No cuenta · «Carrefour» es de fuera, y las de fuera nunca bonifican');
+  });
+});

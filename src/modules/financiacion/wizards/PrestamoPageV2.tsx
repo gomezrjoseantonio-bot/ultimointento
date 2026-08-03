@@ -59,8 +59,11 @@ import {
   type TipoInteresV2,
   type TipoPrestamoV2,
 } from '../../../services/prestamoCalculatorService';
-import type { Bonificacion, DestinoCapital, Garantia, PeriodoPago, PlanPagos, Prestamo } from '../../../types/prestamos';
+import type { Bonificacion, DestinoCapital, Garantia, PeriodoPago, PlanPagos, Prestamo, ReglaBonificacion } from '../../../types/prestamos';
 import type { PrestamoFinanciacion } from '../../../types/financiacion';
+import type { Tarjeta } from '../../../types/tarjetas';
+import { listarTarjetas } from '../../../services/tarjetasService';
+import { bonificaHipoteca } from '../../../services/tarjetasReglas';
 import styles from './PrestamoPageV2.module.css';
 
 // ─── Tipos auxiliares ───────────────────────────────────────────────────────
@@ -78,6 +81,26 @@ interface BonificacionRow {
   nombre: string;
   ppDescuento: number;            // p.p. (0.30 = -0,30 pp)
   activa: boolean;
+  /**
+   * Qué hay que demostrar · sin esto la bonificación no se puede mirar contra
+   * los movimientos, y una bonificación no se cumple por declararla (§6 ter).
+   */
+  regla: ReglaBonificacion;
+  /** En cuántos meses se mide · la ventana de §6 ter. */
+  lookbackMeses: number;
+  /** Con qué tarjeta se cumple · la concreta, no la cuenta (§3.6). */
+  tarjetaExigidaId?: number;
+  /** Lo tecleado en el gasto mínimo · en crudo, como el resto de importes. */
+  importeMinimoRaw?: string;
+  /**
+   * El estado que ya tenía · se conserva en la edición.
+   *
+   * Al guardar se ponía `SELECCIONADO` a todas. Hoy no se nota porque nadie
+   * escribe otro estado (§8), pero el veredicto de §6 ter va a moverlo: en
+   * cuanto lo haga, editar el plazo del préstamo degradaría una bonificación
+   * ya cumplida.
+   */
+  estadoPrevio?: Bonificacion['estado'];
 }
 
 interface FormState {
@@ -195,13 +218,59 @@ const DESTINOS_OPCIONES: Array<{ value: TipoDestinoV2; label: string }> = [
   { value: 'otro',                 label: 'Otro' },
 ];
 
-// Catálogo bonificaciones predefinidas
-const BONIF_CATALOGO: Array<{ nombre: string; sub: string; pp: number }> = [
-  { nombre: 'Nómina',       sub: '≥ 1.200 €/mes domiciliada',   pp: 0.30 },
-  { nombre: 'Seguro hogar', sub: 'Contratado con el banco',     pp: 0.20 },
-  { nombre: 'Seguro vida',  sub: 'Contratado con el banco',     pp: 0.20 },
-  { nombre: 'Uso tarjeta',  sub: '≥ 6 operaciones/mes',         pp: 0.10 },
+// Catálogo bonificaciones predefinidas · cada una con LO QUE HAY QUE DEMOSTRAR.
+// Antes todas se guardaban como `OTRA`, así que ninguna se podía mirar contra
+// los movimientos por muy concreta que fuese la condición del banco (§6 ter).
+const BONIF_CATALOGO: Array<{ nombre: string; pp: number; regla: ReglaBonificacion }> = [
+  { nombre: 'Nómina',       pp: 0.30, regla: { tipo: 'NOMINA', minimoMensual: 1200 } },
+  { nombre: 'Seguro hogar', pp: 0.20, regla: { tipo: 'SEGURO_HOGAR', activo: true } },
+  { nombre: 'Seguro vida',  pp: 0.20, regla: { tipo: 'SEGURO_VIDA', activo: true } },
+  // Sin importe todavía: el banco pone la cifra y se pregunta abajo. Cero
+  // significa «no dicho», y la verificación lo dirá así en vez de darla por
+  // incumplida.
+  { nombre: 'Uso tarjeta',  pp: 0.10, regla: { tipo: 'TARJETA', importeMinimo: 0 } },
 ];
+
+/**
+ * Lo que hay que demostrar, en una línea.
+ *
+ * Sale de la regla y no de un texto suelto: así la tarjeta de la que el usuario
+ * ya dijo el importe lo enseña, en vez de repetir la frase genérica del
+ * catálogo. Antes esta línea mostraba otra vez los puntos porcentuales, que ya
+ * estaban justo debajo.
+ */
+function condicionDeRegla(r: ReglaBonificacion): string {
+  if (r.tipo === 'NOMINA') return `≥ ${fmtNumeroEs(r.minimoMensual, 0)} €/mes domiciliada`;
+  if (r.tipo === 'OTRA') return r.descripcion;
+  if (r.tipo !== 'TARJETA') return 'Contratado con el banco';
+  return r.importeMinimo && r.importeMinimo > 0
+    ? `≥ ${fmtNumeroEs(r.importeMinimo, 0)} € con su tarjeta`
+    : 'Gasto mínimo con su tarjeta';
+}
+
+/** La ventana por defecto · medio año, como el `lookbackMeses` que ya se guardaba. */
+const LOOKBACK_POR_DEFECTO = 6;
+
+/** De qué tipo es una bonificación según lo que hay que demostrar. */
+const TIPO_DE_REGLA: Record<ReglaBonificacion['tipo'], Bonificacion['tipo']> = {
+  NOMINA: 'NOMINA',
+  PLAN_PENSIONES: 'PENSIONES',
+  SEGURO_HOGAR: 'SEGURO_HOGAR',
+  SEGURO_VIDA: 'SEGURO_VIDA',
+  TARJETA: 'TARJETA',
+  ALARMA: 'ALARMA',
+  OTRA: 'OTROS',
+};
+
+const filasDelCatalogo = (): BonificacionRow[] =>
+  BONIF_CATALOGO.map((b) => ({
+    id: uid(),
+    nombre: b.nombre,
+    ppDescuento: b.pp,
+    activa: false,
+    regla: b.regla,
+    lookbackMeses: LOOKBACK_POR_DEFECTO,
+  }));
 
 // ─── Mapeos prestamo legacy ↔ v2 ────────────────────────────────────────────
 function mapCarenciaLegacyToV2(c: Prestamo['carencia']): TipoCarenciaInicialV2 {
@@ -365,12 +434,7 @@ function emptyFormState(): FormState {
     comModifCondicionesRaw: '0',
     gastoReclamacionImpagoRaw: '0',
     bonificacionesActivas: false,
-    bonificaciones: BONIF_CATALOGO.map((b) => ({
-      id: uid(),
-      nombre: b.nombre,
-      ppDescuento: b.pp,
-      activa: false,
-    })),
+    bonificaciones: filasDelCatalogo(),
     carenciaInicialTipo: 'ninguna',
     carenciaInicialMesesRaw: '0',
     destinos: [
@@ -400,6 +464,14 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   const [form, setForm] = useState<FormState>(emptyFormState);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [inmuebles, setInmuebles] = useState<Inmueble[]>([]);
+  /**
+   * Solo las que pueden bonificar · §3.6.
+   *
+   * Ofrecer la Carrefour aquí sería ofrecer una respuesta falsa: las de fuera
+   * nunca bonifican, y elegirla haría creer que se cumple un requisito que no
+   * se cumple.
+   */
+  const [tarjetasQueBonifican, setTarjetasQueBonifican] = useState<Tarjeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCuadroCompleto, setShowCuadroCompleto] = useState(false);
@@ -420,9 +492,10 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     (async () => {
       try {
         const db = await initDB();
-        const [accs, props] = await Promise.all([
+        const [accs, props, tarjetas] = await Promise.all([
           db.getAll('accounts'),
           inmuebleService.getAll(),
+          listarTarjetas(),
         ]);
         if (cancelled) return;
         const activeAccs = (accs as Account[]).filter(
@@ -430,6 +503,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         );
         setAccounts(activeAccs);
         setInmuebles(props as Inmueble[]);
+        setTarjetasQueBonifican(tarjetas.filter(bonificaHipoteca));
 
         if (prestamoId) {
           const prestamo = await prestamosService.getPrestamoById(prestamoId);
@@ -480,14 +554,26 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
     const garantiaPrimera = p.garantias?.[0];
 
+    // Se traen TODOS los campos, no solo nombre y puntos: lo que no se leía
+    // aquí se perdía al guardar, y con ello se iba la única forma de mirar la
+    // bonificación contra los movimientos (§6 ter).
     const bonificaciones: BonificacionRow[] = (p.bonificaciones && p.bonificaciones.length > 0)
-      ? p.bonificaciones.map((b) => ({
-          id: b.id,
-          nombre: b.nombre,
-          ppDescuento: b.reduccionPuntosPorcentuales,
-          activa: b.estado !== 'INACTIVO',
-        }))
-      : BONIF_CATALOGO.map((b) => ({ id: uid(), nombre: b.nombre, ppDescuento: b.pp, activa: false }));
+      ? p.bonificaciones.map((b) => {
+          const regla: ReglaBonificacion = b.regla ?? { tipo: 'OTRA', descripcion: b.nombre };
+          const importe = regla.tipo === 'TARJETA' ? regla.importeMinimo : undefined;
+          return {
+            id: b.id,
+            nombre: b.nombre,
+            ppDescuento: b.reduccionPuntosPorcentuales,
+            activa: b.estado !== 'INACTIVO',
+            regla,
+            lookbackMeses: b.lookbackMeses ?? LOOKBACK_POR_DEFECTO,
+            tarjetaExigidaId: b.tarjetaExigidaId,
+            importeMinimoRaw: importe ? fmtNumeroEs(importe, 0) : '',
+            estadoPrevio: b.estado,
+          };
+        })
+      : filasDelCatalogo();
 
     setForm({
       tipoPrestamo: (p.tipoPrestamoV2 as TipoPrestamoV2) || (p.inmuebleId ? 'hipotecario' : 'personal'),
@@ -680,8 +766,23 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   const addBonificacionCustom = () => {
     update('bonificaciones', [
       ...form.bonificaciones,
-      { id: uid(), nombre: 'Personalizada', ppDescuento: 0.10, activa: true },
+      {
+        id: uid(),
+        nombre: 'Personalizada',
+        ppDescuento: 0.1,
+        activa: true,
+        regla: { tipo: 'OTRA', descripcion: 'Personalizada' },
+        lookbackMeses: LOOKBACK_POR_DEFECTO,
+      },
     ]);
+  };
+
+  /** Cambia una fila sin tocar las demás · las bonificaciones son una lista. */
+  const editarBonificacion = (id: string, cambio: Partial<BonificacionRow>) => {
+    update(
+      'bonificaciones',
+      form.bonificaciones.map((b) => (b.id === id ? { ...b, ...cambio } : b)),
+    );
   };
   // ─── Validación + submit ──────────────────────────────────────────────────
   const validar = (): string | null => {
@@ -739,14 +840,17 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       const bonificaciones: Bonificacion[] = form.bonificacionesActivas
         ? form.bonificaciones.filter((b) => b.activa).map((b) => ({
             id: b.id,
-            tipo: 'OTROS',
+            tipo: TIPO_DE_REGLA[b.regla.tipo],
             nombre: b.nombre,
             reduccionPuntosPorcentuales: b.ppDescuento,
             impacto: { puntos: -b.ppDescuento },
             aplicaEn: 'FIJO',
-            lookbackMeses: 6,
-            regla: { tipo: 'OTRA', descripcion: b.nombre },
-            estado: 'SELECCIONADO',
+            lookbackMeses: b.lookbackMeses,
+            regla: b.regla,
+            tarjetaExigidaId: b.tarjetaExigidaId,
+            // Solo lo que nace empieza en `SELECCIONADO`; lo demás conserva el
+            // suyo. Ver `estadoPrevio`.
+            estado: b.estadoPrevio && b.estadoPrevio !== 'INACTIVO' ? b.estadoPrevio : 'SELECCIONADO',
             seleccionado: true,
           }))
         : [];
@@ -1434,11 +1538,79 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                           onClick={() => toggleBonificacion(b.id)}
                         >
                           <div className={styles.bonifCardTitle}>{b.nombre}</div>
-                          <div className={styles.bonifCardSub}>−{fmtNumeroEs(b.ppDescuento, 2)} p.p.</div>
+                          <div className={styles.bonifCardSub}>{condicionDeRegla(b.regla)}</div>
                           <div className={styles.bonifCardPp}>−{fmtNumeroEs(b.ppDescuento, 2)} p.p.</div>
                         </button>
                       ))}
                     </div>
+
+                    {/*
+                      Qué hay que demostrar, para poder demostrarlo · §6 ter.
+
+                      Una bonificación de tarjeta sin decir CUÁL y CUÁNTO no se
+                      puede mirar contra los movimientos, y entonces solo queda
+                      creerse que se cumple. Solo se ofrecen las del banco: las
+                      de fuera nunca bonifican (§3.6).
+                    */}
+                    {form.bonificaciones.map((b) => {
+                      const reglaTarjeta = b.regla.tipo === 'TARJETA' ? b.regla : null;
+                      if (!b.activa || !reglaTarjeta) return null;
+                      return (
+                        <div key={b.id} className={`${styles.fieldsRow} ${styles.rowTinFijo}`}>
+                          <div className={styles.field}>
+                            <label className={styles.fieldLabel}>
+                              {b.nombre} · con qué tarjeta{' '}
+                              <span className="hint">solo las del banco bonifican</span>
+                            </label>
+                            <select
+                              className={styles.select}
+                              value={b.tarjetaExigidaId ?? ''}
+                              onChange={(e) =>
+                                editarBonificacion(b.id, {
+                                  tarjetaExigidaId: e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined,
+                                })
+                              }
+                            >
+                              <option value="">
+                                {tarjetasQueBonifican.length
+                                  ? 'Sin elegir'
+                                  : 'No hay ninguna tarjeta del banco dada de alta'}
+                              </option>
+                              {tarjetasQueBonifican.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  {t.alias}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className={styles.field}>
+                            <label className={styles.fieldLabel}>
+                              Gasto mínimo{' '}
+                              <span className="hint">en {b.lookbackMeses} meses</span>
+                            </label>
+                            <div className={styles.inputSuffix}>
+                              <input
+                                className={`${styles.input} ${styles.inputMono}`}
+                                value={b.importeMinimoRaw ?? ''}
+                                onChange={(e) =>
+                                  editarBonificacion(b.id, {
+                                    importeMinimoRaw: e.target.value,
+                                    regla: {
+                                      ...reglaTarjeta,
+                                      importeMinimo: parseNum(e.target.value),
+                                    },
+                                  })
+                                }
+                              />
+                              <span className={styles.suffix}>€</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
                     <button className={styles.btnAdd} onClick={addBonificacionCustom} type="button">
                       <Plus size={13} /> Añadir bonificación personalizada
                     </button>

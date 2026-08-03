@@ -4,6 +4,7 @@ import { CardV5, Icons, MoneyValue, showToastV5 } from '../../../design-system/v
 import { prestamosService } from '../../../services/prestamosService';
 import LoanSettlementModal from '../../horizon/financiacion/components/LoanSettlementModal';
 import type { FinanciacionOutletContext } from '../FinanciacionContext';
+import BonificacionesVerificadas from '../BonificacionesVerificadas';
 import {
   formatPct,
   getBankPalette,
@@ -255,6 +256,8 @@ const DetallePage: React.FC = () => {
 
       {tab === 'resumen' && (
         <>
+          <BonificacionesVerificadas bonificaciones={prestamo.bonificaciones} />
+
           <div className={styles.nota}>
             <div className={styles.notaIcon}>i</div>
             <div>
