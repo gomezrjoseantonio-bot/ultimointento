@@ -19,9 +19,31 @@ describe('treasurySyncService – treasury detail regressions', () => {
     expect(serviceSource).not.toContain("sourceType: 'autonomo' as const");
   });
 
+  // VOCABULARIO §3.4 · el recibo de tarjeta cambió de sitio: ya no se acumula
+  // por mes natural contra una cuenta de tipo tarjeta, sino por PERIODO contra
+  // la cuenta donde la tarjeta está domiciliada. Lo que se sigue vigilando es
+  // lo mismo: que el cargo caiga en la cuenta bancaria, resuelta y con
+  // respaldo numérico.
   it('resolves credit-card receipt bank account through resolveAccountId with numeric fallback', () => {
-    expect(serviceSource).toContain('const resolvedAccountId = resolveAccountId(chargeAccountId) ?? account.id');
-    expect(serviceSource).toContain('accountId: resolvedAccountId');
+    expect(serviceSource).toContain(
+      'resolveAccountId(recibo.cuentaLiquidacionId) ?? recibo.cuentaLiquidacionId'
+    );
+    expect(serviceSource).toContain("sourceType: 'tarjeta_recibo' as const");
+  });
+
+  // Un periodo no cabe en un mes natural: un corte el 24 recoge lo gastado
+  // desde el 25 del mes anterior. El bootstrap sincroniza mes a mes, así que si
+  // el recibo se calculara solo con las compras del mes en curso, la segunda
+  // pasada pisaría el importe de la primera y se perdería media factura.
+  it('computes a card receipt from the two months that feed its period', () => {
+    expect(serviceSource).toContain('const mesAnterior = month === 1 ? 12 : month - 1');
+    expect(serviceSource).toContain('soloParaElRecibo: true');
+    // Cada corte tiene UN mes dueño · sin esto, dos meses emitirían el mismo.
+    expect(serviceSource).toContain(
+      'recibos.filter((r) => r.fechaCorte.startsWith(monthPrefix))'
+    );
+    // Recalcular no es volver a nacer.
+    expect(serviceSource).toContain('createdAt: yaEsta.createdAt ?? event.createdAt');
   });
 
   it('applies reglaPagoDia business-day logic for cuota de autónomos dates', () => {

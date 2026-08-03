@@ -765,6 +765,19 @@ export interface PatronGastoPersonal {
   asymmetricPayments?: AsymmetricPaymentPersonal[];
   estacionalidad?: PersonalExpenseEstacionalidad;
   accountId?: number;                 // cuentaCargoId — expected account
+  /**
+   * Con qué TARJETA se paga (VOCABULARIO §3.4).
+   *
+   * Campo opcional sin índice: no mueve `DB_VERSION`, igual que los campos
+   * opcionales de `Account` documentados en `types-contratos.ts`.
+   *
+   * Si está, el gasto no sale de la cuenta el día que se hace: se acumula hasta
+   * el corte de la tarjeta y sale entero el día de cargo, en la cuenta donde
+   * esté domiciliada. Lo que se prevé entonces es el RECIBO, no el gasto.
+   *
+   * Ausente = sale de `accountId` en `diaPago`, como siempre.
+   */
+  tarjetaId?: number;
   origen: 'perfil' | 'manual';       // suggested by profile or created by user
   activo: boolean;
   createdAt: string;

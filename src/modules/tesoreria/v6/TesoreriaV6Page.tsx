@@ -35,6 +35,10 @@ import DrawerCalendario from './DrawerCalendario';
 import TesoreriaMovil from './TesoreriaMovil';
 import { useEsMovil } from './useEsMovil';
 import CuentaWizard from '../../../components/cuenta/CuentaWizard';
+import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
+import { listarTarjetas } from '../../../services/tarjetasService';
+import type { Tarjeta } from '../../../types/tarjetas';
+import { describirTarjeta } from './textoTarjeta';
 import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
@@ -143,6 +147,13 @@ const TesoreriaV6Page: React.FC = () => {
    * saldo inicial a fecha de, y ahora también color de punto y baja.
    */
   const [fichaCuenta, setFichaCuenta] = useState<{ cuenta: Account | null } | null>(null);
+  /**
+   * VOCABULARIO §3 · las tarjetas viven aparte de las cuentas porque no son
+   * cuentas: no tienen saldo, tienen un ciclo. Estado propio y carga propia —
+   * no entran en `recargar()`, que reconstruye saldos y previsiones.
+   */
+  const [tarjetas, setTarjetas] = useState<Tarjeta[]>([]);
+  const [fichaTarjeta, setFichaTarjeta] = useState<{ tarjeta: Tarjeta | null } | null>(null);
   /** §9 · alta desde el drawer del día · guarda la fecha para prefijarla. */
   const [altaDelDia, setAltaDelDia] = useState<string | null>(null);
   /**
@@ -197,6 +208,14 @@ const TesoreriaV6Page: React.FC = () => {
   useEffect(() => {
     void recargar();
   }, [recargar]);
+
+  const recargarTarjetas = useCallback(async () => {
+    setTarjetas(await listarTarjetas());
+  }, []);
+
+  useEffect(() => {
+    void recargarTarjetas();
+  }, [recargarTarjetas]);
 
   // FASE 0 · deja `atlasDiagnostico.duplicados()` en la consola. Solo lectura:
   // cuenta previsiones repetidas y dice cuánto distorsionan el cierre. Hace
@@ -762,6 +781,48 @@ const TesoreriaV6Page: React.FC = () => {
         </div>
       </section>
 
+      {/* ── VOCABULARIO §3 · Tarjetas ────────────────────────────────────
+          Van debajo de las cuentas y NO dentro del carrusel: una tarjeta no
+          tiene saldo, tiene un ciclo. Meterla entre las cuentas es lo que
+          llevaba a creer que era una cuenta más. */}
+      <section className={styles.sec}>
+        <div className={styles.secHd}>
+          <div>
+            <div className={styles.secK}>Mis tarjetas</div>
+            <div className={styles.secT}>
+              lo que gastas con una de crédito sale entero el día de cargo, en su cuenta
+            </div>
+          </div>
+          <button
+            type="button"
+            className={styles.secAdd}
+            onClick={() => setFichaTarjeta({ tarjeta: null })}
+          >
+            <Icons.Plus size={14} strokeWidth={2} /> Añadir tarjeta
+          </button>
+        </div>
+
+        {tarjetas.length === 0 ? (
+          <div className={styles.tjVacio}>
+            Todavía no has dado de alta ninguna tarjeta.
+          </div>
+        ) : (
+          <div className={styles.tjLista}>
+            {tarjetas.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={styles.tjItem}
+                onClick={() => setFichaTarjeta({ tarjeta: t })}
+              >
+                <span className={styles.tjAlias}>{t.alias}</span>
+                <span className={styles.tjSub}>{describirTarjeta(t, cuentasVivas)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
       <div className={styles.cols}>
         {/* ── §4.3 · Rejilla de 6 meses ─────────────────────────────────── */}
         <section className={styles.sec}>
@@ -886,6 +947,18 @@ const TesoreriaV6Page: React.FC = () => {
         onSuccess={() => {
           setFichaCuenta(null);
           void trasEscribir();
+        }}
+      />
+
+      {/* VOCABULARIO §3 · ficha de tarjeta · alta, edición y baja */}
+      <TarjetaWizard
+        open={fichaTarjeta != null}
+        tarjeta={fichaTarjeta?.tarjeta ?? null}
+        cuentas={cuentasVivas}
+        onClose={() => setFichaTarjeta(null)}
+        onSuccess={() => {
+          setFichaTarjeta(null);
+          void recargarTarjetas();
         }}
       />
 

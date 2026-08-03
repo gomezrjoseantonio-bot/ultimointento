@@ -311,15 +311,26 @@ Tres reglas que se incumplían y por eso están escritas:
 3. **Un traspaso interno no es gasto ni ingreso**, aunque tenga dos apuntes con
    signo. Contarlo hincha las dos columnas a la vez.
 
-### Lo que aún no está diseñado
+### El crédito aplazado · cómo se calcula
 
-**Crédito aplazado.** Hoy no existe el acumulador que junta las compras de un
-periodo en un solo cargo previsto. Es el trabajo que queda, y toca el motor de
-previsiones. Con el ciclo de §3.4, lo que hay que construir es:
+Ya está construido. Con el ciclo de §3.4, el motor hace dos cosas:
 
-- Colocar cada compra en **su** periodo según la fecha de corte.
-- Emitir **un cargo previsto por periodo** en el día de cargo — que con corte
-  semanal son varios al mes.
+- Coloca cada compra en **su** periodo según la fecha de corte
+  (`corteQueLeToca`) — no por mes natural, que era el fallo: una compra del 26
+  con corte el 24 se cobraba un mes antes de lo que toca.
+- Emite **un cargo previsto por periodo** en el día de cargo (`cuandoSeCobra`),
+  que con corte semanal son varios al mes.
+
+El cargo se apunta en la **cuenta de liquidación**, no en la tarjeta, y se
+identifica por **(tarjeta · fecha de corte)**. No lleva el mes en que se
+calcula: el cargo puede caer en otro mes que las compras —corte el 24 de enero,
+cargo el 5 de febrero— y si la identidad dependiera del mes en curso, cada
+pasada del motor crearía otro cargo para el mismo recibo.
+
+Un gasto dice con qué tarjeta se paga (`tarjetaId`). Si no lo dice, sale de su
+cuenta el día del cargo, como siempre. Si apunta a una tarjeta que ya no existe
+—o a una de débito, que cobra al momento—, **vuelve a su cuenta**: mejor una
+previsión donde estaba que un gasto que desaparece de la vista.
 
 **Decisión · 3 de agosto de 2026 (Jose):** mientras el periodo está **abierto**,
 el cargo previsto **va creciendo**.
@@ -377,7 +388,9 @@ Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
 
 ## 8 · Qué falta por cumplir
 
-Escrito para no perderlo, con la fecha en que se detectó:
+Escrito para no perderlo, con la fecha en que se detectó.
+
+### Pendiente
 
 - **2026-08-03** · El alta de gasto recurrente ofrece cuenta de cargo con
   método `efectivo`, y todas las cuentas con método `bizum`. §2, §4, §5.
@@ -386,24 +399,37 @@ Escrito para no perderlo, con la fecha en que se detectó:
 - **2026-08-03** · Los dos vocabularios de método de pago (§2) no se traducen
   en un único sitio.
 - **2026-08-03** · Nada impide crear dos cuentas `EFECTIVO`. §1.
-- **2026-08-03** · `TARJETA_CREDITO` sigue siendo un tipo de cuenta en vez de
-  una tarjeta asociada a una. §1, §3.
-- **2026-08-03** · No se distingue **débito** de **crédito aplazado**: hoy solo
-  hay `cardConfig`, que asume liquidación diferida. §3.3.
-- **2026-08-03** · No existe la **entidad emisora** separada de la cuenta de
-  liquidación. §3.2.
-- **2026-08-03** · Una cuenta no puede tener **varias** tarjetas: `cardConfig`
-  es un único objeto. Lo normal son dos. §3.1.
-- **2026-08-03** · No se distingue la tarjeta **del banco** de la de **fuera**,
-  ni se puede cambiar la domiciliación sin rehacerla. §3.2.
-- **2026-08-03** · No existe el **gasto agregado por tarjeta y periodo**, que
-  es lo que sostiene el cargo previsto, las bonificaciones y el rendimiento.
+- **2026-08-03** · El gasto recurrente **no deja elegir tarjeta** desde su
+  formulario: el campo `tarjetaId` existe y el motor lo respeta, pero hay que
+  poder decirlo desde la pantalla. §3.5, §6 bis.
+- **2026-08-03** · No hay lectura de **gasto real agregado por tarjeta y
+  periodo**. El cargo previsto ya se calcula así, pero lo gastado de verdad —lo
+  que prueba bonificaciones y mide rendimiento— no se consulta en ningún sitio.
   §3.5.
-- **2026-08-03** · No hay acumulador de periodo para el crédito aplazado: las
-  compras no se juntan en un cargo previsto. §6 bis.
-- **2026-08-03** · El **cashback** no se mide como rendimiento realizado por
-  tarjeta, ni se guarda el límite que acota ese rendimiento. §3.7.
-- **2026-08-03** · La tarjeta guarda un único `settlementDay`: no distingue
-  CORTE de CARGO, ni admite ciclo **semanal**. §3.4.
+- **2026-08-03** · El **cashback** se guarda como porcentaje pero no se mide
+  como rendimiento realizado. §3.7.
 - **2026-08-03** · Las **bonificaciones** de hipotecas y préstamos no se
   verifican contra los movimientos que las prueban. §6 ter.
+- **2026-08-03** · `TARJETA_CREDITO` sigue existiendo como tipo de cuenta para
+  las cuentas **históricas**. Ya no se crean —una tarjeta nueva nace como
+  tarjeta— pero las que había siguen ahí, porque sus movimientos son compras
+  de verdad y borrarlas sería perder dinero de la vista. Qué hacer con ese
+  histórico es una decisión de Jose, no del código. §1, §3.
+
+### Resuelto
+
+- **2026-08-03** · La tarjeta es una entidad propia (store `tarjetas`, V87) con
+  su ficha de alta y edición, y ya no se da de alta como si fuese una cuenta.
+  §3.1.
+- **2026-08-03** · Una cuenta puede tener **varias** tarjetas. Lo normal son
+  dos. §3.1.
+- **2026-08-03** · Se distingue **débito** de **crédito** (`modalidad`), y la
+  **entidad emisora** es un dato aparte de la cuenta de liquidación. §3.2, §3.3.
+- **2026-08-03** · Se distingue la tarjeta **del banco** de la de **fuera**, y
+  re-domiciliar una externa es una edición normal que **conserva su historial**.
+  §3.2.
+- **2026-08-03** · El ciclo distingue **CORTE** de **CARGO** y admite
+  periodicidad **semanal**. §3.4.
+- **2026-08-03** · El acumulador de periodo existe: un cargo previsto por
+  periodo, en la cuenta de liquidación y el día de cargo. §6 bis.
+- **2026-08-03** · Se guarda el **límite** que acota el rendimiento. §3.7.

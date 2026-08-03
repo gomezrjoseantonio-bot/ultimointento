@@ -37,6 +37,8 @@ import {
 } from './treasurySyncHelpers';
 import type { ReglaDia } from '../../../../types/personal';
 import { inmuebleDelPrestamo, idDeInmueble } from '../../../../services/inmuebleDelPrestamo';
+import { listarTarjetas } from '../../../../services/tarjetasService';
+import { claveDeRecibo, previsionDeTarjetas } from '../../../../services/previsionDeTarjetas';
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -227,6 +229,46 @@ export async function generateMonthlyForecasts(
     created++;
   }
 
+  /**
+   * Upsert de un RECIBO DE TARJETA · se identifica por su periodo, no por el mes.
+   *
+   * `insertEvent` busca el evento existente dentro del mes que se sincroniza, y
+   * eso no vale aquí: el cargo de un periodo puede caer en OTRO mes —corte el 24
+   * de enero, cargo el 5 de febrero—, así que la búsqueda por `monthPrefix` no
+   * lo encontraría y cada pasada añadiría otro recibo igual.
+   *
+   * La clave es (tarjeta · fecha de corte), que ya es única de por sí.
+   */
+  async function insertRecibo(event: TreasuryEvent): Promise<void> {
+    const sourceId = event.sourceId;
+    const existing = sourceId != null
+      ? await db.getAllFromIndex('treasuryEvents', 'sourceId', sourceId)
+      : [];
+    const yaEsta = existing.find(e => e.sourceType === 'tarjeta_recibo');
+
+    if (yaEsta) {
+      // Misma regla que arriba: lo conciliado y lo descartado no se reescriben.
+      if (isReconciled(yaEsta) || yaEsta.descartado === true) {
+        skipped++;
+        return;
+      }
+      await db.put('treasuryEvents', {
+        ...yaEsta,
+        ...event,
+        id: yaEsta.id,
+        // El recibo no nace de nuevo cada vez que se recalcula: nació la primera
+        // vez, y su `createdAt` es lo que dice desde cuándo está previsto.
+        createdAt: yaEsta.createdAt ?? event.createdAt,
+        updatedAt: now,
+      });
+      updated++;
+      return;
+    }
+
+    await db.add('treasuryEvents', { ...event, updatedAt: now });
+    created++;
+  }
+
   // ── ACCOUNT ID RESOLUTION ─────────────────────────────────────────────────
   // NominaWizard and ContractsNuevo use cuentasService (localStorage) which assigns
   // timestamp-based IDs (e.g., 1708726312345), while la vista de conciliación de tesorería
@@ -336,16 +378,24 @@ export async function generateMonthlyForecasts(
     const personalHousingAddress = personalData?.direccion?.trim() || '';
     const allPersonalExpenses = await patronGastosPersonalesService.getPatrones(personalDataId);
     const activePersonalExpenses = allPersonalExpenses.filter(e => e.activo);
-    const accounts = await db.getAll('accounts');
-    const accountsById = new Map(accounts.map((acc) => [acc.id, acc]));
-    const cardReceipts = new Map<string, {
-      accountId: number;
+    // VOCABULARIO §3.4 · lo que se paga con una tarjeta de crédito NO sale de la
+    // cuenta el día de la compra: se acumula hasta el corte y sale entero el día
+    // de cargo. Recogemos aquí esas compras y al final las convertimos en
+    // recibos, uno por periodo.
+    const tarjetas = await listarTarjetas();
+    const comprasConTarjeta: {
+      fecha: string;
+      importe: number;
+      tarjetaId?: number;
+      // Lo que hace falta para devolver la compra a su cuenta si la tarjeta ya
+      // no vale — sin esto, el gasto se quedaría sin identidad y cada pasada de
+      // la sincronización crearía otra previsión igual.
       sourceId: number;
-      amount: number;
       description: string;
-      predictedDate: string;
-      hasHousingExpense: boolean;
-    }>();
+      accountId?: number;
+      /** Viene del mes anterior · solo alimenta el recibo, no genera previsión. */
+      soloParaElRecibo?: boolean;
+    }[] = [];
 
     for (const expense of activePersonalExpenses) {
       if (!personalExpenseAppliesToMonth(expense, month)) continue;
@@ -364,30 +414,15 @@ export async function generateMonthlyForecasts(
           ? `${expense.concepto} – ${personalHousingAddress}`
           : expense.concepto;
 
-      const account = expense.accountId ? accountsById.get(expense.accountId) : undefined;
-      const isCreditCard = account?.tipo === 'TARJETA_CREDITO' && account.cardConfig;
-
-      if (isCreditCard && account?.id != null && account.cardConfig) {
-        const chargeAccountId = account.cardConfig.chargeAccountId;
-        const settlementDay = Math.min(31, Math.max(1, account.cardConfig.settlementDay || 1));
-        const resolvedAccountId = resolveAccountId(chargeAccountId) ?? account.id;
-        const receiptDate = buildDate(year, month, settlementDay);
-        const key = `${account.id}-${year}-${month}`;
-        const existing = cardReceipts.get(key);
-
-        if (existing) {
-          existing.amount += amount;
-          existing.hasHousingExpense = existing.hasHousingExpense || isHousingCategory;
-        } else {
-          cardReceipts.set(key, {
-            accountId: resolvedAccountId,
-            sourceId: account.id,
-            amount,
-            description: `Recibo tarjeta ${account.alias || `#${account.id}`}`,
-            predictedDate: receiptDate,
-            hasHousingExpense: isHousingCategory,
-          });
-        }
+      if (expense.tarjetaId != null) {
+        comprasConTarjeta.push({
+          fecha: buildDate(year, month, expense.diaPago ?? 1),
+          importe: amount,
+          tarjetaId: expense.tarjetaId,
+          sourceId: expense.id,
+          description: personalExpenseDescription,
+          accountId: expense.accountId,
+        });
         continue;
       }
 
@@ -405,19 +440,68 @@ export async function generateMonthlyForecasts(
       });
     }
 
-    for (const receipt of Array.from(cardReceipts.values())) {
-      const receiptDescription =
-        receipt.hasHousingExpense && personalHousingAddress
-          ? `${receipt.description} – ${personalHousingAddress}`
-          : receipt.description;
+    // Un periodo NO cabe en un mes natural: un corte el día 24 recoge lo
+    // gastado desde el 25 del mes ANTERIOR. Si el recibo se calculase solo con
+    // las compras de este mes, la parte de antes del corte se perdería —y como
+    // el bootstrap sincroniza mes a mes, la segunda pasada pisaría a la
+    // primera—. Así que se miran los dos meses y luego se emiten únicamente los
+    // periodos que CIERRAN en este: cada corte tiene un solo mes dueño, y su
+    // importe se recalcula entero cada vez.
+    const mesAnterior = month === 1 ? 12 : month - 1;
+    const anioAnterior = month === 1 ? year - 1 : year;
+    for (const expense of activePersonalExpenses) {
+      if (expense.id == null || expense.tarjetaId == null) continue;
+      if (!personalExpenseAppliesToMonth(expense, mesAnterior)) continue;
+      const importe = getPersonalExpenseAmountForMonth(expense, mesAnterior);
+      if (importe <= 0) continue;
+      comprasConTarjeta.push({
+        fecha: buildDate(anioAnterior, mesAnterior, expense.diaPago ?? 1),
+        importe,
+        tarjetaId: expense.tarjetaId,
+        sourceId: expense.id,
+        description: expense.concepto,
+        accountId: expense.accountId,
+        // Del mes anterior solo interesa lo que alimenta un corte de ESTE mes.
+        // Si su tarjeta ya no vale, su previsión suelta es cosa de la pasada de
+        // aquel mes, no de esta — emitirla aquí la duplicaría.
+        soloParaElRecibo: true,
+      });
+    }
+
+    const { recibos, sueltos } = previsionDeTarjetas(comprasConTarjeta, tarjetas);
+    const aliasDeTarjeta = new Map(tarjetas.map((t) => [t.id, t.alias]));
+    const cortesDeEsteMes = recibos.filter((r) => r.fechaCorte.startsWith(monthPrefix));
+
+    // Una compra cuya tarjeta ya no existe —o es de débito, que cobra al
+    // momento— vuelve a su cuenta. Mejor una previsión donde estaba que un gasto
+    // que desaparece de la vista.
+    for (const suelto of sueltos) {
+      if (suelto.soloParaElRecibo) continue;
       await insertEvent({
         type: 'expense' as const,
-        amount: receipt.amount,
-        predictedDate: receipt.predictedDate,
-        description: receiptDescription,
+        amount: suelto.importe,
+        predictedDate: suelto.fecha,
+        description: suelto.description,
         sourceType: 'personal_expense' as const,
-        sourceId: receipt.sourceId,
-        accountId: receipt.accountId,
+        sourceId: suelto.sourceId,
+        accountId: suelto.accountId,
+        status: 'predicted' as const,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    for (const recibo of cortesDeEsteMes) {
+      const alias = aliasDeTarjeta.get(recibo.tarjetaId) || `#${recibo.tarjetaId}`;
+      await insertRecibo({
+        type: 'expense' as const,
+        amount: recibo.importe,
+        predictedDate: recibo.fechaCargo,
+        description: `Recibo tarjeta ${alias}`,
+        sourceType: 'tarjeta_recibo' as const,
+        sourceId: claveDeRecibo(recibo),
+        // El dinero sale de donde la tarjeta está domiciliada, no de la tarjeta.
+        accountId: resolveAccountId(recibo.cuentaLiquidacionId) ?? recibo.cuentaLiquidacionId,
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,
