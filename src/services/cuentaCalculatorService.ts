@@ -22,13 +22,13 @@ export type FrecuenciaLiquidacion = 'mensual' | 'trimestral' | 'semestral' | 'an
 
 export interface CuentaCalcInput {
   tipo: CuentaTipo;
-  /** Sólo aplica a CORRIENTE/AHORRO. */
+  /** Sólo aplica a las cuentas bancarias · no al efectivo ni a una tarjeta. */
   saldoInicial?: number;
   /** Sólo aplica a TARJETA_CREDITO. */
   limiteCredito?: number;
   /** Sólo aplica a TARJETA_CREDITO. */
   deudaActual?: number;
-  /** Sólo aplica a CORRIENTE/AHORRO. */
+  /** Sólo aplica a las cuentas bancarias · no al efectivo ni a una tarjeta. */
   esRemunerada?: boolean;
   /** TAE anual en porcentaje (ej. 2.5 = 2.5%). */
   taeAnual?: number;
@@ -38,7 +38,7 @@ export interface CuentaCalcInput {
 
 export interface CuentaResumen {
   /**
-   * Para CORRIENTE/AHORRO: el saldo inicial introducido.
+   * Para una cuenta bancaria: el saldo inicial introducido.
    * Para TARJETA_CREDITO: el crédito disponible (límite − deuda).
    */
   saldoInicialOCreditoDisponible: number;
