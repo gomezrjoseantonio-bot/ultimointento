@@ -27,6 +27,8 @@ import {
   aplicarVariacion,
 } from './patronCalendario';
 import { toISODateLocal } from '../../utils/recurrenceDateUtils';
+import { listarTarjetas } from '../tarjetasService';
+import type { Tarjeta } from '../../types/tarjetas';
 
 const STORE_COMPROMISOS = 'compromisosRecurrentes';
 const STORE_TREASURY = 'treasuryEvents';
@@ -488,6 +490,15 @@ export function generarEventosDesdeCompromiso(
   // (reconstruir qué se preveía en un mes ya cerrado). Sin él, la capa viva sigue
   // proyectando desde HOY (comportamiento intacto). Ver `generarEventosHistoricos`.
   desdeOverride?: Date,
+  /**
+   * La tarjeta con la que se paga (§3.2) · quien manda sobre la cuenta.
+   *
+   * `compromiso.cuentaCargo` es una COPIA de su cuenta de liquidación, hecha el
+   * día que se guardó el gasto, y una copia se queda vieja: re-domiciliar la
+   * Carrefour de Santander a Bankinter no tocaba los gastos ya guardados, así
+   * que el cargo se seguía previendo donde ya no sale.
+   */
+  tarjeta?: Pick<Tarjeta, 'cuentaLiquidacionId'>,
 ): Array<Omit<TreasuryEvent, 'id'>> {
   const fechaInicio = new Date(compromiso.fechaInicio);
   const horizonteFin =
@@ -556,7 +567,8 @@ export function generarEventosDesdeCompromiso(
       mes: fecha.getMonth() + 1,
       certeza: 'estimado',
       generadoPor: 'treasurySyncService',
-      accountId: compromiso.cuentaCargo,
+      // Manda la tarjeta, no la copia · §3.2.
+      accountId: tarjeta?.cuentaLiquidacionId ?? compromiso.cuentaCargo,
       paymentMethod: paymentMethodFromCompromiso(compromiso.metodoPago),
       status: 'predicted',
       // V81 (TAREA CC · Bloque B.4): la bolsa 50/30/20 viaja al evento para poder
@@ -731,8 +743,28 @@ export async function regenerarEventosCompromiso(
     throw new Error('regenerarEventosCompromiso requiere compromiso.id');
   }
   await borrarEventosFuturosCompromiso(compromiso.id);
-  const eventos = generarEventosDesdeCompromiso(compromiso, hasta, desdeOverride);
+  const eventos = generarEventosDesdeCompromiso(
+    compromiso,
+    hasta,
+    desdeOverride,
+    await tarjetaDelCompromiso(compromiso),
+  );
   return persistirPrevisionesCompromiso(compromiso.id, eventos);
+}
+
+/**
+ * La tarjeta con la que se paga este compromiso · `undefined` si no va con una.
+ *
+ * Se lee AL PROYECTAR y no se confía en `compromiso.cuentaCargo`, que es una
+ * copia del día que se guardó: si la tarjeta se re-domicilia después, la copia
+ * apunta a una cuenta de la que ya no sale el dinero.
+ */
+async function tarjetaDelCompromiso(
+  compromiso: CompromisoRecurrente,
+): Promise<Tarjeta | undefined> {
+  if (compromiso.tarjetaId == null) return undefined;
+  const tarjetas = await listarTarjetas();
+  return tarjetas.find((t) => t.id === compromiso.tarjetaId);
 }
 
 /**

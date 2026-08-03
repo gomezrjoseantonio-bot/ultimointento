@@ -106,12 +106,20 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
   useEffect(() => {
     let vivo = true;
     void listarTarjetas().then((lista) => {
-      if (vivo) setTarjetas(lista);
+      if (!vivo) return;
+      setTarjetas(lista);
+      // Al ABRIR un gasto que ya paga con tarjeta, la cuenta se vuelve a leer
+      // de ella. `cuentaCargo` es una copia del día que se guardó, y si la
+      // tarjeta se re-domicilió después, la copia enseña —y volvería a
+      // guardar— una cuenta de la que ya no sale el dinero.
+      if (c.metodoPago !== 'tarjeta' || c.tarjetaId == null) return;
+      const suya = cuentaDeLaTarjeta(c.tarjetaId, lista);
+      if (suya != null) setCuentaCargo(suya);
     });
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [c.metodoPago, c.tarjetaId]);
   const [fechaInicio, setFechaInicio] = useState(c.fechaInicio ?? '');
   const [importe, setImporte] = useState(importeToFijo(c.importe));
   const [modoImporte, setModoImporte] = useState<ModoImporteUI>(() => modoImporteInicial(c.importe));
