@@ -140,6 +140,40 @@ atribuir el gasto al banco equivocado:
 - La emisora **no tiene por qué ser un banco tuyo**, y no debe forzarse a
   elegirla entre tus cuentas.
 
+### 3.4 bis · El ciclo · CORTE y CARGO son dos fechas distintas
+
+Lo que hoy se guarda es un único `settlementDay`, y no llega. Una tarjeta tiene
+**un periodo** (desde cuándo hasta cuándo se acumulan las compras) y **un día de
+cargo** (cuándo se cobra en el banco), y el segundo puede caer **fuera** del
+primero:
+
+> Normalmente van del 25 al 24 de cada mes y se emite el cargo en el banco el
+> 31. Otras van de 1 a 31 y se emite el cargo el 5. Y otras, por ejemplo
+> Unicaja, van con corte semanal y se paga el lunes de la semana siguiente,
+> aunque también puede ser mensual.
+>
+> — Jose, 3 de agosto de 2026
+
+De ahí salen tres datos, no uno:
+
+| Dato | Ejemplos |
+|---|---|
+| **Periodicidad** | Mensual · **semanal** |
+| **Corte** | Día 24 · día 31 (último del mes) · domingo |
+| **Día de cargo** | 31 del mismo mes · 5 del siguiente · lunes siguiente |
+
+Reglas que se derivan y que el código tendrá que respetar:
+
+- **Una compra pertenece al periodo por su fecha**, no por el mes natural. Una
+  compra del 26 de enero, con corte el 24, va al periodo que se cobra en
+  febrero.
+- **El día de cargo puede estar en otro mes que el corte** (corte 24 de enero →
+  cargo el 5 de febrero). La previsión se coloca en el día de CARGO, que es
+  cuando el dinero sale de la cuenta.
+- **Con corte semanal hay varios cargos al mes**, no uno. Un modelo que asuma
+  "un recibo mensual por tarjeta" no sirve para Unicaja.
+- **Día 31 significa "el último del mes"**, no se salta febrero.
+
 ### 3.5 · Cashback
 
 Algunas tarjetas devuelven un porcentaje. **Es un ingreso**, no un gasto
@@ -244,12 +278,44 @@ Tres reglas que se incumplían y por eso están escritas:
 
 **Crédito aplazado.** Hoy no existe el acumulador que junta las compras de un
 periodo en un solo cargo previsto. Es el trabajo que queda, y toca el motor de
-previsiones. Antes de escribirlo hay que decidir:
+previsiones. Con el ciclo de §3.4 bis, lo que hay que construir es:
 
-- Qué pasa con una compra hecha **después** del corte del periodo (va al
-  siguiente).
-- Qué se enseña en tesorería mientras el periodo está abierto: ¿el cargo
-  previsto va creciendo, o aparece entero el día del corte?
+- Colocar cada compra en **su** periodo según la fecha de corte.
+- Emitir **un cargo previsto por periodo** en el día de cargo — que con corte
+  semanal son varios al mes.
+
+Y una decisión que sigue siendo de Jose: qué se enseña en tesorería mientras el
+periodo está **abierto**. ¿El cargo previsto va creciendo con cada compra, o
+aparece entero el día del corte? Lo primero refleja mejor lo que va a pasar; lo
+segundo no mueve una cifra ya leída.
+
+---
+
+## 6 ter · Para qué sirve además el gasto con tarjeta
+
+No es solo tesorería. **Los importes y movimientos de tarjeta son la prueba de
+que se cumplen las bonificaciones de una hipoteca o un préstamo:**
+
+> Estos movimientos e importes también son importantes para controlar si se
+> cumplen los requerimientos de bonificaciones de las hipotecas o préstamos que
+> lo piden para bonificar.
+>
+> — Jose, 3 de agosto de 2026
+
+Consecuencias para el modelo:
+
+- El gasto con tarjeta tiene que ser **agregable por periodo y por tarjeta**, no
+  solo visible como un cargo mensual en la cuenta. Un requisito típico es
+  "gastar N € al año con la tarjeta del banco": con solo el recibo agregado no
+  se puede comprobar.
+- La **tarjeta concreta** importa, no solo la cuenta: la bonificación la pide el
+  banco de SU tarjeta. Otra razón para que la tarjeta sea una entidad propia
+  (§3) y no un tipo de cuenta.
+- Lo mismo vale para otros requisitos que se miden sobre movimientos —nómina
+  domiciliada, recibos domiciliados, seguros—: son **condiciones que se
+  verifican contra la tesorería**, y hoy nadie las mira.
+
+*(Reconocido aquí; sin modelar · §8.)*
 
 ---
 
@@ -293,3 +359,7 @@ Escrito para no perderlo, con la fecha en que se detectó:
 - **2026-08-03** · No hay acumulador de periodo para el crédito aplazado: las
   compras no se juntan en un cargo previsto. §6 bis.
 - **2026-08-03** · El **cashback** no se modela. §3.5.
+- **2026-08-03** · La tarjeta guarda un único `settlementDay`: no distingue
+  CORTE de CARGO, ni admite ciclo **semanal**. §3.4 bis.
+- **2026-08-03** · Las **bonificaciones** de hipotecas y préstamos no se
+  verifican contra los movimientos que las prueban. §6 ter.
