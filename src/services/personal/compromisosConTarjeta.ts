@@ -16,6 +16,7 @@
 import {
   listarCompromisos,
   regenerarEventosCompromiso,
+  regenerarRecibosDeTarjeta,
 } from './compromisosRecurrentesService';
 
 /**
@@ -34,5 +35,8 @@ export async function regenerarCompromisosDeTarjeta(tarjetaId: number): Promise<
     if (c.tarjetaId !== tarjetaId || c.id == null) continue;
     total += await regenerarEventosCompromiso(c);
   }
-  return total;
+  // Los que pagan con crédito no emiten previsión propia —su dinero sale en el
+  // recibo—, así que el bucle de arriba no los habría movido. El recibo se
+  // rehace entero una vez, que es lo que toca: cruza varios gastos.
+  return total + (await regenerarRecibosDeTarjeta());
 }

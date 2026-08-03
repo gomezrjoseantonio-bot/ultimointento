@@ -399,13 +399,12 @@ Escrito para no perderlo, con la fecha en que se detectó.
 - **2026-08-03** · Los dos vocabularios de método de pago (§2) no se traducen
   en un único sitio.
 - **2026-08-03** · Nada impide crear dos cuentas `EFECTIVO`. §1.
-- **2026-08-03** · Un recurrente pagado con tarjeta de crédito **no se agrupa
-  todavía en un recibo por corte**: se dice con qué tarjeta y sale de su cuenta
-  de liquidación, pero cada cargo va en su propia fecha. Agruparlo choca con la
-  clave de idempotencia de las previsiones de compromiso
-  (`origen|id|año-mes|cuenta`), que admite **una sola** previsión por
-  compromiso, mes y cuenta — y una tarjeta de corte **semanal** necesita varias.
-  Cambiar esa clave es lo que queda. §3.4, §6 bis.
+- **2026-08-03** · Los gastos personales (`PatronGastoPersonal`) que alimentan
+  `treasurySyncService` salen de un **stub**: el store se eliminó en V62 y
+  `getPatrones` devuelve siempre `[]`. Toda esa rama del motor —incluida su
+  parte de tarjetas— corre sobre una lista vacía. O se conecta a
+  `compromisosRecurrentes` o se retira; dejarla es un camino que parece vivo y
+  no lo está.
 - **2026-08-03** · No hay lectura de **gasto real agregado por tarjeta y
   periodo**. El cargo previsto ya se calcula así, pero lo gastado de verdad —lo
   que prueba bonificaciones y mide rendimiento— no se consulta en ningún sitio.
@@ -437,6 +436,18 @@ Escrito para no perderlo, con la fecha en que se detectó.
 - **2026-08-03** · El acumulador de periodo existe: un cargo previsto por
   periodo, en la cuenta de liquidación y el día de cargo. §6 bis.
 - **2026-08-03** · Se guarda el **límite** que acota el rendimiento. §3.7.
+- **2026-08-03** · Un gasto recurrente pagado con **crédito aplazado** ya no
+  emite su cargo el día de la compra: se acumula en un **recibo por (tarjeta ·
+  corte)**, en la cuenta de liquidación y el día de cargo. El recibo **cruza
+  varios gastos** — el banco no carga la compra, la gasolina y la farmacia por
+  separado. El débito sigue siendo un cargo en su fecha. §3.4, §6 bis.
+
+  **Corrección de un diagnóstico anterior.** Se había escrito que el obstáculo
+  era la clave `origen|id|año-mes|cuenta`, por no admitir varias previsiones de
+  un mismo gasto en un mes. Era falso: ningún patrón de compromiso se repite
+  dentro de un mes, así que esa clave nunca colisionaba. El obstáculo real era
+  otro y más de fondo — **un recibo no pertenece a un gasto, pertenece a la
+  tarjeta**, y por eso no podía identificarse con la clave de un compromiso.
 - **2026-08-03** · Un gasto recurrente dice **con qué tarjeta** se paga, y su
   cargo va a la **cuenta de liquidación** de esa tarjeta en vez de a la que
   estuviera elegida a mano. El medio «Tarjeta» no se ofrece si no hay ninguna

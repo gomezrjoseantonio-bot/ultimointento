@@ -28,6 +28,18 @@ import {
 } from './patronCalendario';
 import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 import { listarTarjetas } from '../tarjetasService';
+import {
+  claveOrigenPrevision,
+  esPrevisionDeCompromiso,
+  esPrevisionIntocable,
+} from './previsionesIdempotencia';
+import {
+  eventoDeRecibo,
+  persistirRecibos,
+  recibosPrevistos,
+  tarjetaDelCompromiso,
+  ventanaDeRecibos,
+} from './recibosDeTarjetaPrevistos';
 import type { Tarjeta } from '../../types/tarjetas';
 
 const STORE_COMPROMISOS = 'compromisosRecurrentes';
@@ -180,6 +192,10 @@ export async function eliminarCompromiso(id: number): Promise<void> {
   }
   await borrarEventosFuturosCompromiso(id);
   await db.delete(STORE_COMPROMISOS, id);
+  // Si pagaba con crédito aplazado, su parte estaba dentro del recibo de la
+  // tarjeta y no en previsiones suyas: sin rehacerlo, el recibo seguiría
+  // cobrando un gasto que ya no existe.
+  if (existente.tarjetaId != null) await regenerarRecibosDeTarjeta();
 }
 
 // ─── Estados: preparado · baja · reactivación (secciones 2.3 y 2.4) ─────────
@@ -249,6 +265,10 @@ export async function darDeBajaCompromiso(
   await db.put(STORE_COMPROMISOS, actualizado);
   // Las previsiones futuras (predicted) se retiran; los ejecutados se conservan
   await borrarEventosFuturosCompromiso(id);
+  // Lo que pagaba con crédito aplazado no tenía previsiones propias que retirar:
+  // su parte vivía dentro del recibo de la tarjeta. Hay que rehacerlo, o el
+  // recibo seguiría cobrando un gasto que ya no está.
+  if (existente.tarjetaId != null) await regenerarRecibosDeTarjeta();
   return actualizado;
 }
 
@@ -498,8 +518,14 @@ export function generarEventosDesdeCompromiso(
    * Carrefour de Santander a Bankinter no tocaba los gastos ya guardados, así
    * que el cargo se seguía previendo donde ya no sale.
    */
-  tarjeta?: Pick<Tarjeta, 'cuentaLiquidacionId'>,
+  tarjeta?: Tarjeta,
 ): Array<Omit<TreasuryEvent, 'id'>> {
+  // §3.4 · lo que se paga con crédito aplazado NO sale el día de la compra: se
+  // acumula y sale en el RECIBO de la tarjeta, que cruza varios gastos y por
+  // eso se emite aparte (`regenerarRecibosDeTarjeta`). Emitir aquí además sería
+  // cobrar dos veces lo mismo. El débito sí sigue siendo un cargo en su fecha.
+  if (tarjeta?.modalidad === 'credito' && tarjeta.ciclo) return [];
+
   const fechaInicio = new Date(compromiso.fechaInicio);
   const horizonteFin =
     hasta ||
@@ -619,58 +645,8 @@ function paymentMethodFromCompromiso(
 
 // ─── Sincronización con `treasuryEvents` ───────────────────────────────────
 //
-// P0 · IDEMPOTENCIA DE LA PREVISIÓN (innegociable)
-//
-// Regenerar una previsión tiene que dejar el MISMO resultado se ejecute una vez
-// o cinco. Para eso toda previsión automática lleva CLAVE DE ORIGEN — qué la
-// creó (`sourceType` + `sourceId`), para qué periodo (`año-mes`) y para qué
-// cuenta (`accountId`) — y la regeneración:
-//
-//   1. retira primero las previsiones VIVAS de esa clave,
-//   2. emite después las nuevas,
-//   3. NO emite en un periodo cuya clave ya está ocupada por algo intocable
-//      (confirmado · conciliado · descartado). Antes sí lo hacía: por eso una
-//      edición dejaba un `predicted` gemelo encima de cada previsión ya
-//      confirmada, e inflaba pendientes y cierres.
-
-/** Familias de `sourceType` que genera este servicio · `opex_rule` es el legacy
- *  del mismo origen (el store `opexRules` se migró a `compromisosRecurrentes`),
- *  así que cuenta como la MISMA previsión: si no, cada camino emitiría la suya. */
-function esPrevisionDeCompromiso(ev: Pick<TreasuryEvent, 'sourceType'>): boolean {
-  return ev.sourceType === 'gasto_recurrente' || ev.sourceType === 'opex_rule';
-}
-
-/**
- * Clave de origen de una previsión automática · `origen|id|año-mes|cuenta`.
- *
- * Es la unidad de idempotencia: como mucho puede haber UNA previsión viva por
- * clave. `año`/`mes` caen a `predictedDate` cuando el evento es antiguo y no
- * los trae.
- */
-export function claveOrigenPrevision(
-  ev: Pick<TreasuryEvent, 'sourceType' | 'sourceId' | 'año' | 'mes' | 'predictedDate' | 'accountId'>,
-): string {
-  const iso = typeof ev.predictedDate === 'string' ? ev.predictedDate : '';
-  const año = ev.año ?? Number(iso.slice(0, 4));
-  const mes = ev.mes ?? Number(iso.slice(5, 7));
-  const origen = esPrevisionDeCompromiso(ev) ? 'gasto_recurrente' : ev.sourceType;
-  const periodo = `${año}-${String(mes).padStart(2, '0')}`;
-  return `${origen}|${ev.sourceId ?? ''}|${periodo}|${ev.accountId ?? ''}`;
-}
-
-/**
- * ¿Es una previsión INTOCABLE? Confirmada, conciliada o descartada dejó de ser
- * una previsión viva: ni se borra al regenerar, ni se vuelve a emitir su
- * periodo. Misma garantía que la cascada (adenda 02 · D6b) y que el descarte
- * (V84: «no vuelve a proponerse»).
- */
-export function esPrevisionIntocable(ev: TreasuryEvent): boolean {
-  return (
-    ev.status !== 'predicted' ||
-    ev.executedMovementId != null ||
-    ev.descartado === true
-  );
-}
+// La idempotencia de la previsión —clave de origen, qué es intocable— vive en
+// `previsionesIdempotencia.ts`, que es donde se escribe la regla una sola vez.
 
 /**
  * Borra las previsiones VIVAS (status='predicted', sin conciliar y sin
@@ -743,29 +719,40 @@ export async function regenerarEventosCompromiso(
     throw new Error('regenerarEventosCompromiso requiere compromiso.id');
   }
   await borrarEventosFuturosCompromiso(compromiso.id);
-  const eventos = generarEventosDesdeCompromiso(
-    compromiso,
-    hasta,
-    desdeOverride,
-    await tarjetaDelCompromiso(compromiso),
-  );
-  return persistirPrevisionesCompromiso(compromiso.id, eventos);
+  const tarjeta = await tarjetaDelCompromiso(compromiso);
+  const eventos = generarEventosDesdeCompromiso(compromiso, hasta, desdeOverride, tarjeta);
+  const propios = await persistirPrevisionesCompromiso(compromiso.id, eventos);
+
+  // Si paga con crédito aplazado no ha emitido nada suyo: su dinero sale en el
+  // RECIBO de la tarjeta, que hay que rehacer entero porque cruza otros gastos.
+  // Sin esta llamada el gasto desaparecería de las previsiones sin avisar.
+  if (tarjeta?.modalidad === 'credito' && tarjeta.ciclo) {
+    return propios + (await regenerarRecibosDeTarjeta(hasta));
+  }
+  return propios;
 }
 
 /**
- * La tarjeta con la que se paga este compromiso · `undefined` si no va con una.
+ * Rehace los RECIBOS de tarjeta previstos · uno por (tarjeta · corte).
  *
- * Se lee AL PROYECTAR y no se confía en `compromiso.cuentaCargo`, que es una
- * copia del día que se guardó: si la tarjeta se re-domicilia después, la copia
- * apunta a una cuenta de la que ya no sale el dinero.
+ * Cruza todos los gastos que pagan con cada tarjeta, porque eso es un recibo:
+ * el banco no carga la compra, la gasolina y la farmacia por separado, carga
+ * una sola vez con la suma. Idempotente — se recalcula entero cada vez— y
+ * respeta lo intocable: un recibo ya confirmado o descartado no se reescribe.
  */
-async function tarjetaDelCompromiso(
-  compromiso: CompromisoRecurrente,
-): Promise<Tarjeta | undefined> {
-  if (compromiso.tarjetaId == null) return undefined;
-  const tarjetas = await listarTarjetas();
-  return tarjetas.find((t) => t.id === compromiso.tarjetaId);
+export async function regenerarRecibosDeTarjeta(hasta?: Date): Promise<number> {
+  const [compromisos, tarjetas] = await Promise.all([
+    listarCompromisos({ soloActivos: true }),
+    listarTarjetas(),
+  ]);
+
+  const { desde, hasta: tope } = ventanaDeRecibos(hasta, HORIZONTE_MESES_DEFECTO);
+  const recibos = recibosPrevistos(compromisos, tarjetas, desde, tope);
+  const ahora = new Date().toISOString();
+  return persistirRecibos(recibos.map((r) => eventoDeRecibo(r, tarjetas, ahora)));
 }
+
+
 
 /**
  * Regenera eventos para todos los compromisos activos. Útil tras cambios de
