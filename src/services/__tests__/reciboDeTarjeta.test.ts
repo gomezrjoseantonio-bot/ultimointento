@@ -82,6 +82,16 @@ describe('un recibo por periodo', () => {
     expect(r.map((x) => x.fechaCargo)).toEqual(['2026-01-12', '2026-01-19', '2026-01-26']);
   });
 
+  // La base guarda fechas de las dos formas · un timestamp no puede reventar
+  // el cálculo ni, peor, colar la compra en otro periodo.
+  it('un timestamp completo se trata como su día', () => {
+    const r = recibosDeTarjeta(credito(), [
+      { fecha: '2026-01-26T23:30:00.000Z', importe: 40 },
+    ]);
+
+    expect(r[0].fechaCorte).toBe('2026-02-24');
+  });
+
   it('los céntimos no se van en coma flotante', () => {
     const r = recibosDeTarjeta(credito(), [
       { fecha: '2026-01-02', importe: 0.1 },

@@ -19,6 +19,13 @@ export class CuentaDeLiquidacionInvalidaError extends Error {
   }
 }
 
+export class TarjetaNoEncontradaError extends Error {
+  constructor() {
+    super('Esa tarjeta ya no existe.');
+    this.name = 'TarjetaNoEncontradaError';
+  }
+}
+
 export class TarjetaSinCicloError extends Error {
   constructor() {
     super('Una tarjeta de crédito necesita saber cuándo corta y cuándo cobra.');
@@ -38,7 +45,12 @@ export type AltaTarjeta = Omit<Tarjeta, 'id' | 'createdAt' | 'updatedAt' | 'acti
  * entrar convierte el recibo en un cargo que nunca podrá pagarse.
  */
 function comprobar(v: AltaTarjeta, cuentas: Account[]): void {
-  const validas = cuentasQuePuedenLiquidar(cuentas);
+  // Las cuentas BORRADAS no cuentan: una tarjeta domiciliada en una cuenta que
+  // ya no existe deja un recibo que nadie puede pagar. Las inactivas sí valen —
+  // una cuenta en pausa sigue siendo una cuenta, y bloquear la edición de una
+  // tarjeta porque su banco esté aparcado sería un castigo sin motivo.
+  const vivas = cuentas.filter((c) => c.status !== 'DELETED' && !(c as { deleted_at?: string }).deleted_at);
+  const validas = cuentasQuePuedenLiquidar(vivas);
   if (!validas.some((c) => c.id === v.cuentaLiquidacionId)) {
     throw new CuentaDeLiquidacionInvalidaError();
   }
@@ -90,7 +102,9 @@ export async function actualizarTarjeta(
 ): Promise<void> {
   const db = await initDB();
   const actual = (await db.get('tarjetas', id)) as Tarjeta | undefined;
-  if (!actual) return;
+  // Callarse aquí escondería el error: quien edita una tarjeta borrada se
+  // quedaría creyendo que guardó, y no hay forma de distinguirlo de un éxito.
+  if (!actual) throw new TarjetaNoEncontradaError();
 
   const siguiente = { ...actual, ...cambios } as Tarjeta;
   comprobar(siguiente, ((await db.getAll('accounts')) ?? []) as Account[]);

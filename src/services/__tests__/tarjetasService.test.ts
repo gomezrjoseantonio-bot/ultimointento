@@ -14,6 +14,7 @@ import {
   CuentaDeLiquidacionInvalidaError,
   eliminarTarjeta,
   listarTarjetas,
+  TarjetaNoEncontradaError,
   tarjetasDeLaCuenta,
   TarjetaSinCicloError,
 } from '../tarjetasService';
@@ -67,6 +68,21 @@ describe('lo que no se puede guardar', () => {
   it('ni en una cuenta que no existe', async () => {
     await expect(
       crearTarjeta({ ...carrefour(), cuentaLiquidacionId: 9999 })
+    ).rejects.toThrow(CuentaDeLiquidacionInvalidaError);
+  });
+
+  // Una tarjeta domiciliada en una cuenta que ya no existe deja un recibo que
+  // nadie puede pagar.
+  it('ni en una cuenta borrada', async () => {
+    const db = await initDB();
+    const borrada = (await db.add('accounts', {
+      alias: 'Vieja',
+      tipo: 'CORRIENTE',
+      status: 'DELETED',
+    } as never)) as number;
+
+    await expect(
+      crearTarjeta({ ...carrefour(), cuentaLiquidacionId: borrada })
     ).rejects.toThrow(CuentaDeLiquidacionInvalidaError);
   });
 
@@ -134,6 +150,14 @@ describe('cambiar la domiciliación', () => {
 
 describe('borrar', () => {
   beforeEach(sembrar);
+
+  // Callarse escondería el error: quien edita una borrada se quedaría creyendo
+  // que guardó, sin forma de distinguirlo de un éxito.
+  it('editar una que ya no existe se queja', async () => {
+    await expect(actualizarTarjeta(9999, { alias: 'Otra' })).rejects.toThrow(
+      TarjetaNoEncontradaError
+    );
+  });
 
   it('desaparece', async () => {
     const id = await crearTarjeta(carrefour());

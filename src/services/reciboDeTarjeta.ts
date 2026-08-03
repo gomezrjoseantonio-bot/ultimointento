@@ -20,6 +20,11 @@ import { corteQueLeToca, cuandoSeCobra } from './tarjetasReglas';
 
 /** Una compra hecha con la tarjeta · lo mínimo para colocarla en su periodo. */
 export interface CompraDeTarjeta {
+  /**
+   * ISO `YYYY-MM-DD`. Se admite un timestamp completo —la base guarda de las
+   * dos formas— y se recorta: las reglas del ciclo trabajan con fechas
+   * civiles, no con instantes.
+   */
   fecha: string;
   /** Magnitud del gasto · el signo lo pone quien pinte el recibo. */
   importe: number;
@@ -57,7 +62,7 @@ export function recibosDeTarjeta(
   for (const compra of compras) {
     const magnitud = Math.abs(compra.importe);
     if (magnitud === 0) continue;
-    const corte = corteQueLeToca(tarjeta.ciclo, compra.fecha);
+    const corte = corteQueLeToca(tarjeta.ciclo, compra.fecha.slice(0, 10));
     const acumulado = porPeriodo.get(corte) ?? { importe: 0, compras: 0 };
     acumulado.importe += magnitud;
     acumulado.compras += 1;
