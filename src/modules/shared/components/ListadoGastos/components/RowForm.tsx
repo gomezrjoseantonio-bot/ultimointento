@@ -27,6 +27,7 @@ import {
   tarjetasQuePuedenPagar,
 } from '../../../../../services/cuentasPorMetodoPago';
 import { listarTarjetas } from '../../../../../services/tarjetasService';
+import { nombreDelMetodo } from '../../../../../services/metodoDePago';
 import type { Tarjeta } from '../../../../../types/tarjetas';
 import RejillaMeses from './RejillaMeses';
 import { patronToMeses, mesesToPatron, diaDePatron } from '../utils/rejillaMeses';
@@ -46,12 +47,15 @@ type SubeCadaAnio = 'no' | 'ipc' | 'contrato';
 // Opciones que ofrece la excepción de la derrama (§3 · conservación vs mejora).
 const DERRAMA_OPCIONES: FamiliaFiscal[] = ['reparaciones_conservacion', 'mejora'];
 
-const MEDIOS: Array<{ id: MetodoPagoCompromiso; label: string }> = [
-  { id: 'domiciliacion', label: 'Domiciliación' },
-  { id: 'transferencia', label: 'Transferencia' },
-  { id: 'tarjeta', label: 'Tarjeta' },
-  { id: 'efectivo', label: 'Efectivo' },
-  { id: 'bizum', label: 'Bizum' },
+// Los rótulos NO se escriben aquí · §2 · `nombreDelMetodo` es el único sitio
+// donde un método de pago tiene nombre, para que no haya dos formas de llamar
+// a lo mismo en dos pantallas.
+const MEDIOS: MetodoPagoCompromiso[] = [
+  'domiciliacion',
+  'transferencia',
+  'tarjeta',
+  'efectivo',
+  'bizum',
 ];
 
 /** Cómo se llama una cuenta en pantalla · §2.2 · nunca un id suelto. */
@@ -361,11 +365,11 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
             {MEDIOS.filter((m) =>
               // Sin ninguna tarjeta dada de alta, «Tarjeta» guardaría un gasto
               // que dice con tarjeta sin decir con cuál: no se puede proyectar.
-              m.id === 'tarjeta'
+              m === 'tarjeta'
                 ? sePuedePagarConTarjeta(tarjetas)
-                : cuentasQuePuedenPagar(m.id, accounts).length > 0
+                : cuentasQuePuedenPagar(m, accounts).length > 0
             ).map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
+              <option key={m} value={m}>{nombreDelMetodo(m)}</option>
             ))}
           </select>
         </Field>

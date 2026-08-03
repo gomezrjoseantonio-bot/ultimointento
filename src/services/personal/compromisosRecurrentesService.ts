@@ -27,6 +27,7 @@ import {
   aplicarVariacion,
 } from './patronCalendario';
 import { toISODateLocal } from '../../utils/recurrenceDateUtils';
+import { metodoDeMovimiento } from '../metodoDePago';
 import { listarTarjetas } from '../tarjetasService';
 import {
   claveOrigenPrevision,
@@ -607,7 +608,7 @@ export function generarEventosDesdeCompromiso(
       generadoPor: 'treasurySyncService',
       // Manda la tarjeta, no la copia · §3.2.
       accountId: tarjeta?.cuentaLiquidacionId ?? compromiso.cuentaCargo,
-      paymentMethod: paymentMethodFromCompromiso(compromiso.metodoPago),
+      paymentMethod: metodoDeMovimiento(compromiso.metodoPago),
       status: 'predicted',
       // V81 (TAREA CC · Bloque B.4): la bolsa 50/30/20 viaja al evento para poder
       // agrupar el gasto real por necesidades/deseos/ahorro.
@@ -642,17 +643,6 @@ export function generarEventosHistoricos(
   hasta: Date,
 ): Array<Omit<TreasuryEvent, 'id'>> {
   return generarEventosDesdeCompromiso(compromiso, hasta, desde);
-}
-
-function paymentMethodFromCompromiso(
-  m: CompromisoRecurrente['metodoPago'],
-): TreasuryEvent['paymentMethod'] {
-  switch (m) {
-    case 'domiciliacion': return 'Domiciliado';
-    case 'transferencia': return 'Transferencia';
-    case 'tarjeta':       return 'TPV';
-    case 'efectivo':      return 'Efectivo';
-  }
 }
 
 // ─── Sincronización con `treasuryEvents` ───────────────────────────────────

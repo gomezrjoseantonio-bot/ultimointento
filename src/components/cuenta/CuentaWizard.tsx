@@ -320,6 +320,10 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  /** §1 · ¿hay ya una cuenta de efectivo que NO sea la que se está editando? */
+  const hayOtroEfectivo = accounts.some(
+    (a) => a.tipo === 'EFECTIVO' && a.id !== editingAccount?.id && !a.deleted_at,
+  );
   const [nominaBadge, setNominaBadge] = useState<{ empresa: string; mensual: number } | null>(null);
   /** `undefined` = aún comprobando · `null` = se puede dar de baja · objeto = bloqueada. */
   /** §10 · la rejilla de color vive plegada tras un desplegable. */
@@ -815,7 +819,14 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                   )}
                   {/* El dinero del bolsillo es una cuenta más · sin ella, sacar
                       200 € del cajero se apunta como un gasto y el patrimonio
-                      baja 200 € el día que el dinero solo ha cambiado de sitio. */}
+                      baja 200 € el día que el dinero solo ha cambiado de sitio.
+
+                      VOCABULARIO §1 · pero SOLO UNA: el dinero físico es uno y
+                      dos colchones no se distinguen. Se oculta cuando ya hay
+                      una —salvo que sea justo la que se está editando—, porque
+                      ofrecerlo aquí solo llevaría al error que lanza el
+                      servicio al guardar. */}
+                  {(!hayOtroEfectivo || editingAccount?.tipo === 'EFECTIVO') && (
                   <button
                     type="button"
                     className={`${styles.typeCard} ${form.tipo === 'EFECTIVO' ? styles.selected : ''}`}
@@ -824,6 +835,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                   >
                     <span className={styles.typeCardLabel}>Efectivo</span>
                   </button>
+                  )}
                 </div>
               </Block>
 
