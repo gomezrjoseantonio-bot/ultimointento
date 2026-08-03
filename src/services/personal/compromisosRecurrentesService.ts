@@ -28,7 +28,7 @@ import {
 } from './patronCalendario';
 import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 import { metodoDeMovimiento } from '../metodoDePago';
-import { cuentaDelCargo } from '../cuentasPorMetodoPago';
+import { cuentaDelCargo, elMetodoDecideLaCuenta } from '../cuentasPorMetodoPago';
 import { listarTarjetas } from '../tarjetasService';
 import {
   claveOrigenPrevision,
@@ -732,8 +732,12 @@ export async function regenerarEventosCompromiso(
   }
   await borrarEventosFuturosCompromiso(compromiso.id);
   const tarjeta = await tarjetaDelCompromiso(compromiso);
-  const db = await initDB();
-  const cuentas = ((await db.getAll('accounts')) ?? []) as Account[];
+  // Las cuentas solo hacen falta cuando el medio decide la cuenta —efectivo y
+  // Bizum—. Para el resto, `cuentaDelCargo` respeta lo guardado y leerlas sería
+  // E/S por nada, multiplicada por cada gasto en el bootstrap.
+  const cuentas = elMetodoDecideLaCuenta(compromiso.metodoPago)
+    ? (((await (await initDB()).getAll('accounts')) ?? []) as Account[])
+    : [];
   const eventos = generarEventosDesdeCompromiso(
     compromiso,
     hasta,
