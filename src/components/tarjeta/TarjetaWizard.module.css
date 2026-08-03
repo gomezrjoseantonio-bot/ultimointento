@@ -1,0 +1,252 @@
+/* Ficha de tarjeta · VOCABULARIO §3.
+   Un panel de una sola columna: una tarjeta tiene pocos datos y todos caben a
+   la vista. La cuenta necesita dos columnas porque lleva saldo y previsión; la
+   tarjeta no tiene saldo — lo que tiene es un ciclo. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--atlas-v5-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--atlas-v5-bg);
+  border-radius: 12px;
+  border: 1px solid var(--atlas-v5-line);
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--atlas-v5-shadow-sheet);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.headerKicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+}
+
+.headerTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  margin-top: 2px;
+}
+
+.headerClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--atlas-v5-ink-3);
+  cursor: pointer;
+}
+
+.headerClose:hover {
+  background: var(--atlas-v5-line-3);
+  color: var(--atlas-v5-ink);
+}
+
+.body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.req {
+  color: var(--atlas-v5-neg);
+  font-weight: 700;
+}
+
+.input,
+.select {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-bg);
+  width: 100%;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--atlas-v5-brand-ink);
+}
+
+.inputError {
+  border-color: var(--atlas-v5-neg);
+}
+
+.errorText {
+  font-size: 11px;
+  color: var(--atlas-v5-neg);
+}
+
+.row {
+  display: grid;
+  gap: 10px;
+  align-items: end;
+}
+
+.row2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.row3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.choice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.choiceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 11px;
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: 8px;
+  background: var(--atlas-v5-bg);
+  cursor: pointer;
+  text-align: left;
+}
+
+.choiceCard:hover {
+  background: var(--atlas-v5-line-3);
+}
+
+.choiceCard.selected {
+  border-color: var(--atlas-v5-brand-ink);
+  background: var(--atlas-v5-line-3);
+}
+
+.choiceLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+}
+
+.choiceCard.selected .choiceLabel {
+  color: var(--atlas-v5-brand-ink);
+}
+
+.choiceHint {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  line-height: 1.35;
+}
+
+.note {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+  line-height: 1.5;
+  background: var(--atlas-v5-line-3);
+  border-radius: 7px;
+  padding: 9px 11px;
+}
+
+.note b {
+  color: var(--atlas-v5-ink);
+  font-weight: 600;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 20px;
+  border-top: 1px solid var(--atlas-v5-line);
+}
+
+.footerRight {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.btn {
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 7px;
+  border: 1px solid var(--atlas-v5-line-2);
+  background: var(--atlas-v5-bg);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--atlas-v5-line-3);
+}
+
+.btnPrimary {
+  background: var(--atlas-v5-brand-ink);
+  border-color: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-bg);
+}
+
+.btnPrimary:hover {
+  filter: brightness(1.08);
+  background: var(--atlas-v5-brand-ink);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btnDanger {
+  border-color: transparent;
+  background: transparent;
+  color: var(--atlas-v5-neg);
+}
+
+.btnDanger:hover {
+  background: var(--atlas-v5-line-3);
+}

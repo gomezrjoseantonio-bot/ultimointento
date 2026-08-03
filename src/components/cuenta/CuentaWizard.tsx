@@ -793,14 +793,26 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                   >
                     <span className={styles.typeCardLabel}>Corriente</span>
                   </button>
-                  <button
-                    type="button"
-                    className={`${styles.typeCard} ${form.tipo === 'TARJETA_CREDITO' ? styles.selected : ''}`}
-                    onClick={() => handleTipoChange('TARJETA_CREDITO')}
-                    aria-pressed={form.tipo === 'TARJETA_CREDITO'}
-                  >
-                    <span className={styles.typeCardLabel}>Tarjeta crédito</span>
-                  </button>
+                  {/* VOCABULARIO §3 · una tarjeta NO es una cuenta, así que ya
+                      no se da de alta aquí: tiene su propia ficha, con su
+                      modalidad y su ciclo. Darla de alta como cuenta era lo que
+                      impedía tener DOS en el mismo banco —lo normal, débito y
+                      crédito— y lo que dejaba una de fuera anclada a un banco
+                      del que en realidad puede mudarse.
+
+                      La opción sigue apareciendo al EDITAR una cuenta que ya
+                      nació así: sus movimientos son compras de verdad y
+                      esconderle el tipo la dejaría sin ficha que abrir. */}
+                  {editingAccount?.tipo === 'TARJETA_CREDITO' && (
+                    <button
+                      type="button"
+                      className={`${styles.typeCard} ${form.tipo === 'TARJETA_CREDITO' ? styles.selected : ''}`}
+                      onClick={() => handleTipoChange('TARJETA_CREDITO')}
+                      aria-pressed={form.tipo === 'TARJETA_CREDITO'}
+                    >
+                      <span className={styles.typeCardLabel}>Tarjeta crédito</span>
+                    </button>
+                  )}
                   {/* El dinero del bolsillo es una cuenta más · sin ella, sacar
                       200 € del cajero se apunta como un gasto y el patrimonio
                       baja 200 € el día que el dinero solo ha cambiado de sitio. */}

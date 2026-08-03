@@ -19,9 +19,16 @@ describe('treasurySyncService – treasury detail regressions', () => {
     expect(serviceSource).not.toContain("sourceType: 'autonomo' as const");
   });
 
+  // VOCABULARIO §3.4 · el recibo de tarjeta cambió de sitio: ya no se acumula
+  // por mes natural contra una cuenta de tipo tarjeta, sino por PERIODO contra
+  // la cuenta donde la tarjeta está domiciliada. Lo que se sigue vigilando es
+  // lo mismo: que el cargo caiga en la cuenta bancaria, resuelta y con
+  // respaldo numérico.
   it('resolves credit-card receipt bank account through resolveAccountId with numeric fallback', () => {
-    expect(serviceSource).toContain('const resolvedAccountId = resolveAccountId(chargeAccountId) ?? account.id');
-    expect(serviceSource).toContain('accountId: resolvedAccountId');
+    expect(serviceSource).toContain(
+      'resolveAccountId(recibo.cuentaLiquidacionId) ?? recibo.cuentaLiquidacionId'
+    );
+    expect(serviceSource).toContain("sourceType: 'tarjeta_recibo' as const");
   });
 
   it('applies reglaPagoDia business-day logic for cuota de autónomos dates', () => {
