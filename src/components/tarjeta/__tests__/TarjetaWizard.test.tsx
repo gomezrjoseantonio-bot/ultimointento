@@ -19,6 +19,12 @@ jest.mock('react-hot-toast', () => ({
 const mockCrear = jest.fn().mockResolvedValue(1);
 const mockActualizar = jest.fn().mockResolvedValue(undefined);
 
+const mockRegenerar = jest.fn().mockResolvedValue(0);
+
+jest.mock('../../../services/personal/compromisosConTarjeta', () => ({
+  regenerarCompromisosDeTarjeta: (...a: unknown[]) => mockRegenerar(...a),
+}));
+
 jest.mock('../../../services/tarjetasService', () => ({
   crearTarjeta: (...a: unknown[]) => mockCrear(...a),
   actualizarTarjeta: (...a: unknown[]) => mockActualizar(...a),
@@ -45,6 +51,7 @@ const pintar = (tarjeta: Tarjeta | null = null) =>
 beforeEach(() => {
   mockCrear.mockClear();
   mockActualizar.mockClear();
+  mockRegenerar.mockClear();
 });
 
 describe('de qué cuenta puede salir', () => {
@@ -152,5 +159,28 @@ describe('editar', () => {
     expect(mockActualizar.mock.calls[0][0]).toBe(5);
     expect(mockActualizar.mock.calls[0][1]).toMatchObject({ cuentaLiquidacionId: 2 });
     expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  // Sin esto, «se muda con ella» sería mentira: los gastos que la usan guardan
+  // su cuenta como copia y seguirían previstos en la anterior hasta que
+  // alguien los abriera uno a uno.
+  it('mudarla arrastra los cargos de los gastos que la usan', async () => {
+    pintar(existente);
+
+    fireEvent.change(screen.getByLabelText(/De qué cuenta sale/i), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(mockRegenerar).toHaveBeenCalledWith(5));
+  });
+
+  // Guardar sin tocar la cuenta no tiene por qué rehacer previsiones.
+  it('cambiar solo el nombre no rehace nada', async () => {
+    pintar(existente);
+
+    fireEvent.change(screen.getByLabelText(/^Nombre/i), { target: { value: 'Carrefour PASS' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(mockActualizar).toHaveBeenCalled());
+    expect(mockRegenerar).not.toHaveBeenCalled();
   });
 });

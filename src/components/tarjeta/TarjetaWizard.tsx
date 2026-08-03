@@ -32,6 +32,7 @@ import {
   type AltaTarjeta,
 } from '../../services/tarjetasService';
 import { cuentasQuePuedenLiquidar } from '../../services/tarjetasReglas';
+import { regenerarCompromisosDeTarjeta } from '../../services/personal/compromisosConTarjeta';
 import styles from './TarjetaWizard.module.css';
 
 interface Props {
@@ -183,7 +184,12 @@ const TarjetaWizard: React.FC<Props> = ({ open, tarjeta, cuentas, onClose, onSuc
       };
 
       if (tarjeta?.id != null) {
+        const seMuda = tarjeta.cuentaLiquidacionId !== datos.cuentaLiquidacionId;
         await actualizarTarjeta(tarjeta.id, datos);
+        // Re-domiciliarla mueve sus cargos CON ella (§3.2). Los gastos que la
+        // usan guardan su cuenta como copia, y sin esto seguirían previstos en
+        // la cuenta anterior hasta que alguien los abriera uno a uno.
+        if (seMuda) await regenerarCompromisosDeTarjeta(tarjeta.id);
         toast.success('Tarjeta actualizada');
       } else {
         await crearTarjeta(datos);

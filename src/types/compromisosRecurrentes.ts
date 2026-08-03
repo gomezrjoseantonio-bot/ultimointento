@@ -237,6 +237,18 @@ export interface CompromisoRecurrente {
   cuentaCargo: number; // accountId destino del cargo
   conceptoBancario: string; // texto que aparece en extracto · "IBERDROLA CLIENTES SA"
   metodoPago: MetodoPagoCompromiso;
+  /**
+   * Con qué TARJETA se paga · solo cuando `metodoPago === 'tarjeta'`
+   * (docs/VOCABULARIO-dinero.md §3).
+   *
+   * «Tarjeta» a secas no dice de dónde sale el dinero, y por eso el cargo
+   * acababa apuntando a la cuenta que estuviera elegida a mano — la Carrefour
+   * contra Santander cuando su recibo lo paga Bankinter. Con la tarjeta dicha,
+   * `cuentaCargo` deja de elegirse: es su cuenta de liquidación.
+   *
+   * Campo opcional sin índice · no mueve `DB_VERSION`.
+   */
+  tarjetaId?: number;
 
   // Categorización
   categoria: string; // normalizado a "familia.subfamilia" en T38; retrocompatible con CategoriaGastoCompromiso legacy

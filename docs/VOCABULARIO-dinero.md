@@ -399,9 +399,13 @@ Escrito para no perderlo, con la fecha en que se detectó.
 - **2026-08-03** · Los dos vocabularios de método de pago (§2) no se traducen
   en un único sitio.
 - **2026-08-03** · Nada impide crear dos cuentas `EFECTIVO`. §1.
-- **2026-08-03** · El gasto recurrente **no deja elegir tarjeta** desde su
-  formulario: el campo `tarjetaId` existe y el motor lo respeta, pero hay que
-  poder decirlo desde la pantalla. §3.5, §6 bis.
+- **2026-08-03** · Un recurrente pagado con tarjeta de crédito **no se agrupa
+  todavía en un recibo por corte**: se dice con qué tarjeta y sale de su cuenta
+  de liquidación, pero cada cargo va en su propia fecha. Agruparlo choca con la
+  clave de idempotencia de las previsiones de compromiso
+  (`origen|id|año-mes|cuenta`), que admite **una sola** previsión por
+  compromiso, mes y cuenta — y una tarjeta de corte **semanal** necesita varias.
+  Cambiar esa clave es lo que queda. §3.4, §6 bis.
 - **2026-08-03** · No hay lectura de **gasto real agregado por tarjeta y
   periodo**. El cargo previsto ya se calcula así, pero lo gastado de verdad —lo
   que prueba bonificaciones y mide rendimiento— no se consulta en ningún sitio.
@@ -433,3 +437,7 @@ Escrito para no perderlo, con la fecha en que se detectó.
 - **2026-08-03** · El acumulador de periodo existe: un cargo previsto por
   periodo, en la cuenta de liquidación y el día de cargo. §6 bis.
 - **2026-08-03** · Se guarda el **límite** que acota el rendimiento. §3.7.
+- **2026-08-03** · Un gasto recurrente dice **con qué tarjeta** se paga, y su
+  cargo va a la **cuenta de liquidación** de esa tarjeta en vez de a la que
+  estuviera elegida a mano. El medio «Tarjeta» no se ofrece si no hay ninguna
+  dada de alta, igual que «Efectivo» sin colchón. §2, §3.2.

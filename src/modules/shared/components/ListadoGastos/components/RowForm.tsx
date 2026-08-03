@@ -5,7 +5,7 @@
 // ENCIMA de cada campo (nada de leyendas flotando sobre el borde). Es la única
 // superficie de edición: guarda con actualizarCompromiso y regenera previsiones.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { actualizarCompromiso } from '../../../../../services/personal/compromisosRecurrentesService';
 import { showToastV5 } from '../../../../../design-system/v5';
 import type {
@@ -18,10 +18,16 @@ import type {
 } from '../../../../../types/compromisosRecurrentes';
 import type { Account } from '../../../../../services/db';
 import {
+  cuentaDeLaTarjeta,
   cuentaParaElMetodo,
   cuentasQuePuedenPagar,
   elMetodoDecideLaCuenta,
+  sePuedePagarConTarjeta,
+  tarjetaParaElPago,
+  tarjetasQuePuedenPagar,
 } from '../../../../../services/cuentasPorMetodoPago';
+import { listarTarjetas } from '../../../../../services/tarjetasService';
+import type { Tarjeta } from '../../../../../types/tarjetas';
 import RejillaMeses from './RejillaMeses';
 import { patronToMeses, mesesToPatron, diaDePatron } from '../utils/rejillaMeses';
 import { fiscalidadDeConcepto, FAMILIAS_FISCALES } from '../utils/fiscalidadConcepto';
@@ -91,6 +97,29 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
   const [familiaManual, setFamiliaManual] = useState<FamiliaFiscal | ''>(c.familiaFiscalManual ?? '');
   const [medio, setMedio] = useState<MetodoPagoCompromiso>(c.metodoPago);
   const [cuentaCargo, setCuentaCargo] = useState<number>(c.cuentaCargo);
+  // §3 · «Tarjeta» no dice de dónde sale el dinero, dice con QUÉ se paga. Sin
+  // esta lista el medio se ofrecía a secas y la cuenta se elegía a mano, así
+  // que un gasto de la Carrefour podía acabar apuntando a Santander.
+  const [tarjetas, setTarjetas] = useState<Tarjeta[]>([]);
+  const [tarjetaId, setTarjetaId] = useState<number | undefined>(c.tarjetaId);
+
+  useEffect(() => {
+    let vivo = true;
+    void listarTarjetas().then((lista) => {
+      if (!vivo) return;
+      setTarjetas(lista);
+      // Al ABRIR un gasto que ya paga con tarjeta, la cuenta se vuelve a leer
+      // de ella. `cuentaCargo` es una copia del día que se guardó, y si la
+      // tarjeta se re-domicilió después, la copia enseña —y volvería a
+      // guardar— una cuenta de la que ya no sale el dinero.
+      if (c.metodoPago !== 'tarjeta' || c.tarjetaId == null) return;
+      const suya = cuentaDeLaTarjeta(c.tarjetaId, lista);
+      if (suya != null) setCuentaCargo(suya);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [c.metodoPago, c.tarjetaId]);
   const [fechaInicio, setFechaInicio] = useState(c.fechaInicio ?? '');
   const [importe, setImporte] = useState(importeToFijo(c.importe));
   const [modoImporte, setModoImporte] = useState<ModoImporteUI>(() => modoImporteInicial(c.importe));
@@ -147,6 +176,13 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       showToastV5('El reparto no cuadra · ajusta las partes antes de guardar', 'warn');
       return;
     }
+    // §3 · «con tarjeta» sin decir con cuál no se puede proyectar: no se sabe
+    // de qué cuenta sale ni cuándo. Los gastos guardados antes de que existiera
+    // la ficha de tarjeta llegan así, y aquí es donde se completan.
+    if (medio === 'tarjeta' && tarjetaId == null) {
+      showToastV5('Elige con qué tarjeta se paga', 'warn');
+      return;
+    }
     setSaving(true);
     try {
       const impNum = parseFloat(importe);
@@ -185,6 +221,10 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
         familiaFiscalManual: familiaManual || undefined,
         metodoPago: medio,
         cuentaCargo,
+        // Solo tiene sentido con «Tarjeta» · en cualquier otro medio se limpia,
+        // porque un id que sobrevive a un cambio de método es un dato muerto
+        // que la proyección seguiría leyendo.
+        tarjetaId: medio === 'tarjeta' ? tarjetaId : undefined,
         fechaInicio: fechaInicio || c.fechaInicio,
         importe: importeEvento,
         patron,
@@ -299,6 +339,18 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
             onChange={(e) => {
               const nuevo = e.target.value as MetodoPagoCompromiso;
               setMedio(nuevo);
+              if (nuevo === 'tarjeta') {
+                // Con tarjeta la cuenta NO se recoloca por el método: la decide
+                // la tarjeta elegida, que es quien sabe dónde está domiciliada.
+                const cual = tarjetaParaElPago(tarjetas, tarjetaId);
+                setTarjetaId(cual);
+                const suya = cuentaDeLaTarjeta(cual, tarjetas);
+                if (suya != null) setCuentaCargo(suya);
+                return;
+              }
+              // Salir de «Tarjeta» deja de ser un pago con tarjeta · arrastrar
+              // el id sería un dato muerto que la proyección aún leería.
+              setTarjetaId(undefined);
               // La cuenta se recoloca con el medio · si no, cambiar a Efectivo
               // escondía el desplegable y dejaba pegada la cuenta bancaria
               // anterior, que es la peor forma de estar mal: invisible.
@@ -306,15 +358,49 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
               if (cuenta != null) setCuentaCargo(cuenta);
             }}
           >
-            {MEDIOS.filter((m) => cuentasQuePuedenPagar(m.id, accounts).length > 0).map((m) => (
+            {MEDIOS.filter((m) =>
+              // Sin ninguna tarjeta dada de alta, «Tarjeta» guardaría un gasto
+              // que dice con tarjeta sin decir con cuál: no se puede proyectar.
+              m.id === 'tarjeta'
+                ? sePuedePagarConTarjeta(tarjetas)
+                : cuentasQuePuedenPagar(m.id, accounts).length > 0
+            ).map((m) => (
               <option key={m.id} value={m.id}>{m.label}</option>
             ))}
           </select>
         </Field>
+        {medio === 'tarjeta' && (
+          <Field label="Con qué tarjeta">
+            <select
+              style={inp}
+              value={tarjetaId != null ? String(tarjetaId) : ''}
+              onChange={(e) => {
+                const id = parseInt(e.target.value, 10);
+                setTarjetaId(Number.isFinite(id) ? id : undefined);
+                // Re-domiciliar la tarjeta mueve el cargo con ella · §3.2.
+                const suya = cuentaDeLaTarjeta(id, tarjetas);
+                if (suya != null) setCuentaCargo(suya);
+              }}
+            >
+              {tarjetaId == null && <option value="">Elige una tarjeta</option>}
+              {tarjetasQuePuedenPagar(tarjetas).map((t) => (
+                <option key={t.id} value={String(t.id)}>{t.alias}</option>
+              ))}
+            </select>
+          </Field>
+        )}
         {/* Con Efectivo o Bizum la cuenta NO se elige: la decide el medio. Un
             desplegable de una sola opción invita a pensar que hay algo que
             decidir, y no lo hay. */}
-        {elMetodoDecideLaCuenta(medio) ? (
+        {medio === 'tarjeta' ? (
+          // El recibo lo paga la cuenta donde la tarjeta está domiciliada · no
+          // se elige aquí, se cambia en la ficha de la tarjeta (§3.2).
+          <Field label="Sale de" hint="La cuenta donde se domicilia la tarjeta">
+            <div style={{ fontSize: 13, color: 'var(--atlas-v5-ink-2)', padding: '7px 0' }}>
+              {nombreDeCuenta(accounts.find((a) => a.id === cuentaCargo))}
+            </div>
+          </Field>
+        ) : elMetodoDecideLaCuenta(medio) ? (
           <Field label="Sale de" hint={medio === 'efectivo' ? 'El efectivo sale del efectivo' : 'La cuenta que tiene el Bizum'}>
             <div style={{ fontSize: 13, color: 'var(--atlas-v5-ink-2)', padding: '7px 0' }}>
               {nombreDeCuenta(cuentasQuePuedenPagar(medio, accounts)[0])}
