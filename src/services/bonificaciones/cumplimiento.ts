@@ -81,10 +81,16 @@ const aIso = (d: Date): string => d.toISOString().slice(0, 10);
  *
  * Una ventana de cero meses no puede probar nada y leerla como vacía se
  * confundiría con «no cumples», así que el mínimo es un mes.
+ *
+ * El cinturón contra un `lookbackMeses` que no es número está aquí porque esto
+ * termina en `toISOString()`, y un `NaN` no devuelve una fecha rara: **lanza**,
+ * y se lleva por delante la pantalla que lo estaba pintando. Pero quien decide
+ * de verdad es `verificarBonificaciones`, que en ese caso ni llega a preguntar
+ * — inventar una ventana sería contestar por el usuario.
  */
 export function ventanaDeEvaluacion(hasta: string, lookbackMeses: number): Ventana {
   const fin = new Date(`${hasta}T00:00:00Z`);
-  const meses = Math.max(1, Math.round(lookbackMeses));
+  const meses = Number.isFinite(lookbackMeses) ? Math.max(1, Math.round(lookbackMeses)) : 1;
 
   const anio = fin.getUTCFullYear();
   const mes0 = fin.getUTCMonth() - meses;

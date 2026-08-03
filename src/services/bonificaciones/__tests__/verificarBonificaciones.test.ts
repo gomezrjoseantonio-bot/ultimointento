@@ -213,3 +213,45 @@ describe('cuáles se miran', () => {
     expect(verificarBonificaciones(undefined, con([], []), HOY)).toEqual([]);
   });
 });
+
+// Lo guardado no siempre tiene la forma que dice el tipo: hay préstamos
+// anteriores a que `regla` y `lookbackMeses` existieran. El asistente los
+// rellena al abrirlos, pero la ficha del préstamo lee de la base directamente,
+// así que aquí llegan crudos. Sin esto no dan un resultado raro: rompen la
+// pantalla entera.
+describe('bonificaciones viejas, guardadas a medias', () => {
+  const cruda = (falta: Partial<Bonificacion>) =>
+    unaSola({ ...bonif(), ...falta } as Bonificacion, con([tarjeta()], [periodo()]));
+
+  it('sin regla no revienta · dice que no sabe qué demostrar', () => {
+    const r = cruda({ regla: undefined as unknown as Bonificacion['regla'] });
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('qué hay que demostrar');
+  });
+
+  // Un `NaN` aquí no daba una fecha rara: `toISOString()` LANZA, y se lleva por
+  // delante la ficha del préstamo.
+  it('con una ventana que no es número no revienta', () => {
+    const r = cruda({ lookbackMeses: NaN });
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('cuántos meses');
+  });
+
+  // Y no se le inventa una ventana por defecto: medir seis meses lo que se
+  // pactó a doce diría «no cumples» de algo que sí se cumple.
+  it('sin ventana no se inventa una', () => {
+    expect(cruda({ lookbackMeses: undefined as unknown as number }).veredicto).toBe(
+      'no_verificable'
+    );
+    expect(cruda({ lookbackMeses: 0 }).veredicto).toBe('no_verificable');
+  });
+
+  // Leerían «No se puede comprobar · undefined», que no dice nada.
+  it('un tipo de regla que ya no existe se explica igual', () => {
+    const r = cruda({ regla: { tipo: 'RECIBOS' } as unknown as Bonificacion['regla'] });
+
+    expect(r).toMatchObject({ veredicto: 'no_verificable', motivo: 'no se reconoce qué mirar' });
+  });
+});

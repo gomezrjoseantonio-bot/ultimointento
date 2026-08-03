@@ -42,6 +42,14 @@ describe('la ventana en la que se mide', () => {
   it('cero meses se lee como uno, no como ninguno', () => {
     expect(ventanaDeEvaluacion('2026-08-03', 0)).toEqual(ventanaDeEvaluacion('2026-08-03', 1));
   });
+
+  // Un NaN no da una fecha rara: `toISOString()` LANZA, y se lleva por delante
+  // la pantalla que lo estaba pintando. Quien decide qué hacer con un dato así
+  // es `verificarBonificaciones`; esto es solo el cinturón.
+  it('un número que no lo es no hace saltar la pantalla', () => {
+    expect(() => ventanaDeEvaluacion('2026-08-03', NaN)).not.toThrow();
+    expect(() => ventanaDeEvaluacion('2026-08-03', undefined as unknown as number)).not.toThrow();
+  });
 });
 
 describe('alcanzar el umbral', () => {

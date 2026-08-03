@@ -117,12 +117,42 @@ function porTarjeta(
   };
 }
 
+/**
+ * Lo que hay guardado no siempre tiene la forma que dice el tipo.
+ *
+ * `regla` y `lookbackMeses` son obligatorios en `Bonificacion`, pero hay
+ * préstamos anteriores a que existieran —el asistente los rellena al abrirlos,
+ * y esto no pasa por el asistente: la ficha del préstamo lee de la base—. Sin
+ * esta comprobación, una bonificación vieja no da un resultado raro: rompe la
+ * pantalla entera al leer `.tipo` de un `undefined`.
+ *
+ * Y no se les pone un valor por defecto: una ventana inventada diría «no
+ * cumples» de algo medido en otro plazo. No saber en cuántos meses se mide es
+ * exactamente no poder comprobarlo.
+ */
+function loQueFaltaParaMirarla(b: Bonificacion): string | null {
+  if (b.regla?.tipo == null) return 'no dice qué hay que demostrar';
+  if (!Number.isFinite(b.lookbackMeses) || b.lookbackMeses <= 0) {
+    return 'no dice en cuántos meses se mide';
+  }
+  return null;
+}
+
 function verificarUna(
   b: Bonificacion,
   movimientos: MovimientosQuePrueban,
   hasta: string
 ): Cumplimiento {
-  if (b.regla.tipo !== 'TARJETA') return noVerificable(b, SIN_FUENTE[b.regla.tipo]);
+  const falta = loQueFaltaParaMirarla(b);
+  if (falta) return noVerificable(b, falta);
+
+  if (b.regla.tipo !== 'TARJETA') {
+    // `hasOwnProperty` y no `SIN_FUENTE[...]` a secas, por lo mismo de arriba:
+    // un tipo guardado que ya no está en la tabla daría un motivo `undefined`,
+    // y el usuario leería «No se puede comprobar · undefined».
+    const conocido = Object.prototype.hasOwnProperty.call(SIN_FUENTE, b.regla.tipo);
+    return noVerificable(b, conocido ? SIN_FUENTE[b.regla.tipo] : 'no se reconoce qué mirar');
+  }
   return porTarjeta(b, b.regla, ventanaDeEvaluacion(hasta, b.lookbackMeses), movimientos);
 }
 
