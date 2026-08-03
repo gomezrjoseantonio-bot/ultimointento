@@ -102,6 +102,16 @@ export interface ItemPunteo {
    */
   documentIds?: number[];
   /**
+   * Si esta fila se puede corregir o borrar desde el lápiz.
+   *
+   * Una previsión siempre; un movimiento solo si lo anotó el usuario. Lo
+   * importado del banco es realidad —tocarlo descuadra el saldo contra el que
+   * se concilia— y lo nacido de confirmar una previsión se deshace
+   * despunteando, no borrando. Sin esta marca el lápiz salía en TODAS las
+   * filas de la lista o en ninguna.
+   */
+  editable?: boolean;
+  /**
    * §9 · "deja el saldo en −2 €".
    *
    * Va en la fila y no en un aviso aparte porque la pregunta que responde es

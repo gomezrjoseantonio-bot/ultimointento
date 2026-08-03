@@ -368,7 +368,12 @@ const PunteoList: React.FC<PunteoListProps> = ({
           // inline y solo existe en esta variante; en las otras vistas la fila no
           // cambia. `stopPropagation` obligatorio: la fila entera abre el editor.
           <span className={styles.rowActions}>
-            {onEditar && (
+            {/* Solo donde el lápiz hace algo · un movimiento importado del
+                banco no se corrige (descuadraría el saldo contra el que se
+                concilia) y uno nacido de confirmar una previsión se deshace
+                despunteando. Ofrecerlo en todos era prometer una acción que
+                para la mayoría de las filas no existe. */}
+            {onEditar && it.editable && (
               <button
                 type="button"
                 className={styles.rowAction}
