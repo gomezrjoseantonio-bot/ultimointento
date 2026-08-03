@@ -17,6 +17,7 @@
 
 import type { Account } from './db';
 import type { MetodoPagoCompromiso } from '../types/compromisosRecurrentes';
+import type { Tarjeta } from '../types/tarjetas';
 
 /** Una cuenta de banco de verdad · tiene IBAN y se le puede domiciliar algo. */
 function esBancaria(c: Account): boolean {
@@ -78,4 +79,63 @@ export function cuentaParaElMetodo(
     return cuentaActual;
   }
   return posibles[0].id;
+}
+
+// ============================================================================
+// Pagar con tarjeta · §3
+// ============================================================================
+//
+// «Tarjeta» no es un método como los demás: no dice de qué cuenta sale, dice
+// con QUÉ tarjeta se paga — y es la tarjeta la que sabe dónde está domiciliada.
+// Hasta ahora el medio se guardaba a secas y la cuenta se elegía a mano, así
+// que un gasto de la Carrefour podía acabar apuntando a Santander cuando su
+// recibo lo paga Bankinter.
+
+/** Las que se pueden elegir para pagar · una tarjeta de baja no paga nada. */
+export function tarjetasQuePuedenPagar(tarjetas: Tarjeta[]): Tarjeta[] {
+  return tarjetas.filter((t) => t.id != null && t.activa !== false);
+}
+
+/**
+ * `true` cuando se puede pagar con tarjeta · hay al menos una dada de alta.
+ *
+ * Sin esto el medio se ofrecía siempre, y elegirlo dejaba un gasto que dice
+ * «con tarjeta» sin decir con cuál: un dato que no se puede proyectar.
+ */
+export function sePuedePagarConTarjeta(tarjetas: Tarjeta[]): boolean {
+  return tarjetasQuePuedenPagar(tarjetas).length > 0;
+}
+
+/**
+ * La tarjeta que toca, respetando la ya guardada si sigue valiendo.
+ *
+ * `undefined` si no hay ninguna: cambiar el medio a «Tarjeta» sin tarjetas no
+ * debería poder ocurrir —el medio no se ofrece—, y si ocurre es mejor que se
+ * vea vacío que que se quede pegada una tarjeta borrada.
+ */
+export function tarjetaParaElPago(
+  tarjetas: Tarjeta[],
+  tarjetaActual?: number | null
+): number | undefined {
+  const posibles = tarjetasQuePuedenPagar(tarjetas);
+  if (posibles.length === 0) return undefined;
+  if (tarjetaActual != null && posibles.some((t) => t.id === tarjetaActual)) {
+    return tarjetaActual;
+  }
+  return posibles[0].id;
+}
+
+/**
+ * De qué cuenta sale el dinero de esta tarjeta · su cuenta de liquidación.
+ *
+ * No se elige: la decide la tarjeta, igual que el efectivo decide el colchón.
+ * Si la tarjeta ya no existe se devuelve `undefined` en vez de la cuenta que
+ * hubiera antes — dejarla pegada sería la peor forma de estar mal, invisible.
+ */
+export function cuentaDeLaTarjeta(
+  tarjetaId: number | null | undefined,
+  tarjetas: Tarjeta[]
+): number | undefined {
+  if (tarjetaId == null) return undefined;
+  return tarjetas.find((t) => t.id === tarjetaId)?.cuentaLiquidacionId;
 }
