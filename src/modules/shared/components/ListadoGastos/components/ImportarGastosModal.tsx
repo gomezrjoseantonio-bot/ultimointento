@@ -5,6 +5,7 @@
 // importación salvo no tener cuentas.
 
 import React, { useMemo, useState } from 'react';
+import { cuentaParaElMetodo } from '../../../../../services/cuentasPorMetodoPago';
 import * as XLSX from 'xlsx';
 import { showToastV5 } from '../../../../../design-system/v5';
 import type { TipoGasto } from '../../TipoGastoSelector';
@@ -188,7 +189,10 @@ const ImportarGastosModal: React.FC<ImportarGastosModalProps> = ({
           cups: l.cups || undefined,
           patron: mesesToPatron(l.meses.length ? l.meses : [1], 1),
           importe: { modo: 'fijo', importe: l.importe && l.importe > 0 ? l.importe : 0 },
-          cuentaCargo: l.cuentaId || accounts[0]?.id || 0,
+          // El gasto importado nace domiciliado · no vale la primera cuenta
+          // que haya, tiene que poder domiciliar (§2). El colchón no tiene
+          // IBAN, y elegirlo dejaría un gasto que nadie puede pagar.
+          cuentaCargo: cuentaParaElMetodo('domiciliacion', accounts, l.cuentaId) ?? 0,
           conceptoBancario: '',
           metodoPago: 'domiciliacion',
           categoria: concepto?.categoria ?? 'otros',
