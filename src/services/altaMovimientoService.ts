@@ -300,6 +300,12 @@ async function movimientoEditable(movementId: number): Promise<Movement> {
 export async function editarMovimiento(movementId: number, v: AltaMovimiento): Promise<void> {
   const anterior = await movimientoEditable(movementId);
   if (v.cuentaId == null) throw new SinCuentaError();
+  // Una transferencia INTERNA son dos apuntes espejo, y aquí solo hay uno
+  // delante: crear la otra pata al editar dejaría un traspaso a medias, con el
+  // dinero saliendo de una cuenta y sin entrar en ninguna.
+  if (v.tipo === 'transferencia' && v.cuentaDestinoId != null) {
+    throw new MovimientoNoEditableError();
+  }
 
   const db = await initDB();
   const magnitud = Math.abs(v.importe);
@@ -313,7 +319,10 @@ export async function editarMovimiento(movementId: number, v: AltaMovimiento): P
     valueDate: fecha,
     amount: importe,
     description: v.concepto,
-    type: importe >= 0 ? 'Ingreso' : 'Gasto',
+    // El tipo lo manda lo que ELIGIÓ el usuario, no el signo. Derivarlo solo
+    // del importe convertía en gasto una transferencia externa —que sale en
+    // negativo como cualquier cargo— y ya no había forma de volver.
+    type: v.tipo === 'transferencia' ? 'Transferencia' : importe >= 0 ? 'Ingreso' : 'Gasto',
     category: { tipo: importe >= 0 ? 'Ingresos' : 'Gastos' },
     ambito: v.inmuebleId != null ? 'INMUEBLE' : 'PERSONAL',
     categoryKey: v.categoryKey ?? undefined,

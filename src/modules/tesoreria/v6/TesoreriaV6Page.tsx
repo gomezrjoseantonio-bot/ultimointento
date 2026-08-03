@@ -451,6 +451,11 @@ const TesoreriaV6Page: React.FC = () => {
             inmuebleId: v.inmuebleId ?? null,
             categoryKey: v.categoryKey ?? null,
             subtypeKey: v.subtypeKey ?? null,
+            // Viaja para que el servicio pueda NEGARSE: convertir esto en un
+            // traspaso interno pediría una segunda pata que aquí no se puede
+            // crear. Tragárselo en silencio dejaría el dinero saliendo de una
+            // cuenta y entrando en ninguna.
+            cuentaDestinoId: v.cuentaDestinoId,
           });
           await trasEscribir();
           return;
