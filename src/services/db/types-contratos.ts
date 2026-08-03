@@ -441,7 +441,7 @@ export interface Account {
    * dinero no se va, cambia de sitio— en vez de un gasto que hunde el
    * patrimonio el día que sacas 200 € del cajero.
    */
-  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO' | 'EFECTIVO';
+  tipo?: 'CORRIENTE' | 'TARJETA_CREDITO' | 'EFECTIVO';
   cardConfig?: {
     settlementDay: number; // Día del cargo del recibo (1-31)
     chargeAccountId: number; // Cuenta bancaria donde se domicilia el recibo

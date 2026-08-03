@@ -20,7 +20,7 @@ interface PreviewRow {
   alias: string;
   banco: string;
   // Optional: only set when the cell has an explicit value in the file
-  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA';
+  tipo?: 'CORRIENTE';
   saldo_inicial?: number;
   fecha_saldo_inicial?: string;
   titular_nombre: string;
@@ -68,12 +68,15 @@ const parseDate = (value: unknown): string | undefined => {
 };
 
 // Returns undefined when cell is empty; returns null when it's TARJETA (unsupported → skip row)
-const parseTipo = (value: unknown): 'CORRIENTE' | 'AHORRO' | 'OTRA' | undefined | null => {
+// VOCABULARIO §1 · `AHORRO` y `OTRA` se retiraron: una cuenta de ahorro se
+// comporta igual que una corriente. Un fichero viejo que los traiga se importa
+// como CORRIENTE en vez de rechazarse — el dato que importa es el saldo.
+const parseTipo = (value: unknown): 'CORRIENTE' | undefined | null => {
   if (value === undefined || value === null || String(value).trim() === '') return undefined;
   const v = String(value).trim().toUpperCase();
   if (v === 'TARJETA_CREDITO' || v === 'TARJETA') return null; // signal to skip
-  if (v === 'AHORRO') return 'AHORRO';
-  if (v === 'OTRA') return 'OTRA';
+  if (v === 'AHORRO') return 'CORRIENTE';
+  if (v === 'OTRA') return 'CORRIENTE';
   if (v === 'CORRIENTE') return 'CORRIENTE';
   return undefined; // unrecognised value → let service use its default
 };
@@ -109,7 +112,7 @@ const ImportarCuentas: React.FC<ImportarCuentasProps> = ({ onBack, onComplete })
         iban: 'ES80 2310 0001 1800 0001 2345',
         alias: 'Cuenta ahorro',
         banco: 'EVO Banco',
-        tipo: 'AHORRO',
+        tipo: 'CORRIENTE',
         saldo_inicial: 12000,
         fecha_saldo_inicial: '2024-01-01',
         titular_nombre: '',

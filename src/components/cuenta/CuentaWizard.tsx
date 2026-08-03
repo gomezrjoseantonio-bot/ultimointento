@@ -172,8 +172,9 @@ const inferBankFromAccount = (acc: Account): string => {
 };
 
 const tipoFromAccount = (acc: Account): CuentaTipo => {
-  // Mapeo tipos legacy ('OTRA' no se ofrece en v3 → defaulteamos a CORRIENTE).
-  if (acc.tipo === 'AHORRO') return 'AHORRO';
+  // `AHORRO` y `OTRA` se retiraron (VOCABULARIO §1) y la migración V86 los pasó
+  // a CORRIENTE. Aquí caen los registros que aún no hayan pasado por ella —una
+  // pestaña abierta desde antes—: se leen como corriente, que es lo que son.
   if (acc.tipo === 'TARJETA_CREDITO') return 'TARJETA_CREDITO';
   if (acc.tipo === 'EFECTIVO') return 'EFECTIVO';
   return 'CORRIENTE';
@@ -539,7 +540,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       if (!form.fechaSaldo) errs.fechaSaldo = 'Fecha obligatoria';
     }
 
-    if (form.tipo === 'CORRIENTE' || form.tipo === 'AHORRO') {
+    if (form.tipo === 'CORRIENTE') {
       // IBAN NO obligatorio (spec §4 regla 3) · sólo se valida si hay valor
       if (form.iban.trim()) {
         const v = validateIbanEs(form.iban);
@@ -713,8 +714,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
           ? 'Efectivo'
           : 'Cuenta bancaria';
     }
-    const tipoTxt = editingAccount.tipo === 'AHORRO' ? 'Ahorro'
-      : editingAccount.tipo === 'TARJETA_CREDITO' ? 'Tarjeta crédito'
+    const tipoTxt = editingAccount.tipo === 'TARJETA_CREDITO' ? 'Tarjeta crédito'
       : editingAccount.tipo === 'EFECTIVO' ? 'Efectivo'
       : 'Corriente';
     const tail = nominaBadge ? ` · vinculada a nómina ${nominaBadge.empresa}` : '';
@@ -792,14 +792,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                     aria-pressed={form.tipo === 'CORRIENTE'}
                   >
                     <span className={styles.typeCardLabel}>Corriente</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.typeCard} ${form.tipo === 'AHORRO' ? styles.selected : ''}`}
-                    onClick={() => handleTipoChange('AHORRO')}
-                    aria-pressed={form.tipo === 'AHORRO'}
-                  >
-                    <span className={styles.typeCardLabel}>Ahorro</span>
                   </button>
                   <button
                     type="button"

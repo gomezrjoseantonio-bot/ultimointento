@@ -37,8 +37,8 @@ traspasos (§4).
 
 **Decisión · 3 de agosto de 2026 (Jose):** `AHORRO` y `OTRA` se retiran.
 Complican sin distinguir nada — una cuenta de ahorro se comporta exactamente
-como una corriente, y "otra" no dice nada. *(Decidido aquí, el tipo todavía las
-admite · §8.)*
+como una corriente, y "otra" no dice nada. *(Hecho · V86: el tipo ya no las
+admite y las que existieran pasaron a `CORRIENTE` sin perder nada.)*
 
 **`TARJETA_CREDITO` deja de ser un tipo de cuenta.** Una tarjeta no es un sitio
 donde hay dinero: es una forma de gastar el de una cuenta. Ver §3. *(Decidido
@@ -83,69 +83,77 @@ solo sitio, no a mano en cada pantalla.
 
 ## 3 · Tarjetas
 
+Una tarjeta plantea **cuatro preguntas distintas** y mezclarlas es lo que
+enreda el diseño. Van separadas a propósito:
+
+| | Pregunta | Sección |
+|---|---|---|
+| **Qué es** | ¿Es una cuenta? ¿De quién cuelga? | §3.1 · §3.2 |
+| **Cuándo mueve el dinero** | ¿Ahora o el día de cargo? | §3.3 · §3.4 |
+| **Qué demuestra** | ¿Bonifica la hipoteca? | §3.6 |
+| **Qué rinde** | ¿Cuánto me devuelve? | §3.7 |
+
+Las tres últimas se apoyan en **un solo dato**, y por eso conviene verlo antes
+de nada: **cuánto se ha gastado con ESA tarjeta en ESE periodo** (§3.5). Quien
+tenga ese número tiene las tres respuestas; quien no lo tenga, ninguna.
+
+### 3.1 · Qué es · un método de pago, no una cuenta
+
 **Una tarjeta no tiene saldo: tiene una cuenta donde se liquida.** No es un
-sitio donde hay dinero, es una forma de gastar el de una cuenta. Una cuenta
-bancaria puede tener **una o varias** tarjetas asociadas.
+sitio donde hay dinero, es una forma de gastar el de una cuenta.
 
-Lo que decide cuándo se mueve el saldo es la **modalidad**, no la tarjeta:
+**Una cuenta tiene normalmente DOS tarjetas** —débito y crédito— y puede tener
+más. Nada del modelo puede asumir «la tarjeta» de una cuenta.
 
-### 3.1 · Débito · el dinero sale YA
+### 3.2 · De quién cuelga · del banco o de fuera
 
-Compras y se descuenta **en el momento**, igual que una transferencia. Sacar
-dinero del cajero con ella descuenta también al instante.
+| | Tarjeta **del banco** | Tarjeta **de fuera** |
+|---|---|---|
+| Ejemplos | La de débito y la de crédito de tu Santander | Carrefour · Cetelem · Bankintercard |
+| Cómo nace | **Con la cuenta** · al dar de alta el banco | **Por su cuenta** · no cuelga del alta de ningún banco |
+| Su cuenta | La del banco que la emite · **intrínseca** | Donde la tienes domiciliada **hoy** |
+| ¿Cambia de cuenta? | No tiene sentido | **Sí, y pasa a menudo** |
+| ¿Bonifica? | Puede (§3.6) | **Nunca** (§3.6) |
 
-- No genera previsión propia: el cargo es el movimiento, y ocurre el mismo día.
-- **Una retirada de cajero con tarjeta de débito es un traspaso interno a la
-  cuenta de efectivo** (§4), no un gasto. Da igual que se haya hecho con
-  plástico: el dinero sigue siendo tuyo, ha cambiado de sitio.
-
-### 3.2 · Crédito aplazado · el dinero sale un día concreto
-
-Compras durante el periodo y **todo se cobra junto** el día de liquidación —fin
-de mes, a X días, a X semanas—. **No genera intereses.**
-
-- Las compras del periodo **no mueven el saldo el día de la compra**.
-- Lo que mueve el saldo es **un solo cargo** en la cuenta de liquidación, el día
-  de liquidación, por la suma del periodo. Eso es lo que hay que **prever**
-  (§3.4).
-
-### 3.3 · Crédito fraccionado · FUERA DE ESTA VERSIÓN
-
-Pagar a plazos con intereses. **Decisión · 3 de agosto de 2026 (Jose):** no se
-modela todavía. No se ofrece, y si aparece en un extracto se trata como un
-cargo cualquiera hasta que se diseñe.
-
-### 3.4 · Quién emite y quién paga son cosas distintas
-
-Aquí está la trampa que hace falta escribir:
-
-> Hay tarjetas de fuera del banco donde tienes la cuenta —Carrefour, Bankinter
-> Card, Cetelem—. La diferencia es que **la entidad emisora no es donde se
-> domicilia el pago**. Las formas de pago son las mismas: aplazado o
-> fraccionado. Las de Carrefour y las del Sabadell generan cashback, por eso
-> las uso.
+> Las de fuera del banco no deberían nacer de la misma forma, ya que son muy
+> susceptibles a que cambiemos la domiciliación del pago. Por lo que no puede
+> estar anclada de manera sostenida en una cuenta bancaria.
 >
 > — Jose, 3 de agosto de 2026
 
-Por tanto una tarjeta tiene **dos** referencias a entidad, y confundirlas es
-atribuir el gasto al banco equivocado:
+Reglas que se derivan:
 
-| Dato | Qué es | Puede no existir en ATLAS |
-|---|---|---|
-| **Emisora** | Quién da la tarjeta · Carrefour, Cetelem, Bankinter Card | **Sí** · puede no ser una cuenta tuya |
-| **Cuenta de liquidación** | De qué cuenta TUYA sale el recibo | No · es siempre una `CORRIENTE` |
+- Una tarjeta de fuera **no se crea desde el alta de una cuenta**. Elegir dónde
+  se domicilia es un dato suyo, no su origen.
+- **Cambiar la domiciliación es una operación normal**, no rehacer la tarjeta.
+  Rehacerla perdería su historial de gasto, que es lo que sostiene §3.5.
+- **Cambiar la domiciliación NO reescribe el pasado.** Los cargos ya cobrados se
+  quedan en la cuenta donde se cobraron: ya ocurrieron.
+- La **emisora** (Carrefour, Cetelem) es una etiqueta y **puede no ser un banco
+  tuyo**: no se elige entre tus cuentas. La **cuenta de liquidación** sí es
+  siempre una cuenta propia, y nunca la de efectivo ni otra tarjeta.
 
-- La cuenta de liquidación es **siempre una cuenta bancaria propia**, nunca la
-  de efectivo ni otra tarjeta.
-- La emisora **no tiene por qué ser un banco tuyo**, y no debe forzarse a
-  elegirla entre tus cuentas.
+### 3.3 · Cuándo mueve el dinero · la modalidad
 
-### 3.4 bis · El ciclo · CORTE y CARGO son dos fechas distintas
+Lo que decide cuándo se mueve el saldo es la modalidad, no la tarjeta.
 
-Lo que hoy se guarda es un único `settlementDay`, y no llega. Una tarjeta tiene
-**un periodo** (desde cuándo hasta cuándo se acumulan las compras) y **un día de
-cargo** (cuándo se cobra en el banco), y el segundo puede caer **fuera** del
-primero:
+**Débito · el dinero sale YA.** Compras y se descuenta en el momento. No genera
+previsión propia: el cargo es el movimiento. Sacar del cajero con ella es un
+**traspaso interno a la cuenta de efectivo** (§4), no un gasto — da igual que
+sea con plástico, el dinero sigue siendo tuyo.
+
+**Crédito aplazado · el dinero sale un día concreto.** Las compras del periodo
+**no mueven el saldo el día de la compra**; todo se cobra junto el día de cargo,
+**sin intereses**. Lo que hay que prever es **un solo cargo** por periodo en la
+cuenta de liquidación.
+
+**Crédito fraccionado · FUERA DE ESTA VERSIÓN.** *(Decisión · Jose · 3 ago
+2026.)* No se ofrece; si aparece en un extracto se trata como un cargo
+cualquiera.
+
+### 3.4 · Cuándo exactamente · CORTE y CARGO son dos fechas
+
+Lo que hoy se guarda es un único `settlementDay` y no llega:
 
 > Normalmente van del 25 al 24 de cada mes y se emite el cargo en el banco el
 > 31. Otras van de 1 a 31 y se emite el cargo el 5. Y otras, por ejemplo
@@ -154,33 +162,62 @@ primero:
 >
 > — Jose, 3 de agosto de 2026
 
-De ahí salen tres datos, no uno:
+Son **tres** datos: **periodicidad** (mensual · semanal), **corte** (día 24 ·
+último del mes · domingo) y **día de cargo** (31 del mismo mes · 5 del siguiente
+· lunes siguiente).
 
-| Dato | Ejemplos |
-|---|---|
-| **Periodicidad** | Mensual · **semanal** |
-| **Corte** | Día 24 · día 31 (último del mes) · domingo |
-| **Día de cargo** | 31 del mismo mes · 5 del siguiente · lunes siguiente |
+- Una compra pertenece a su periodo **por su fecha**: una del 26, con corte el
+  24, se cobra en el periodo siguiente.
+- La previsión se coloca en el día de **CARGO**, que es cuando sale el dinero, y
+  puede caer en otro mes que el corte.
+- **Con corte semanal hay varios cargos al mes.** Un modelo de «un recibo
+  mensual por tarjeta» no sirve para Unicaja.
+- «Día 31» significa **el último del mes**; febrero no se salta.
 
-Reglas que se derivan y que el código tendrá que respetar:
+### 3.5 · El dato que lo sostiene todo · gasto por tarjeta y periodo
 
-- **Una compra pertenece al periodo por su fecha**, no por el mes natural. Una
-  compra del 26 de enero, con corte el 24, va al periodo que se cobra en
-  febrero.
-- **El día de cargo puede estar en otro mes que el corte** (corte 24 de enero →
-  cargo el 5 de febrero). La previsión se coloca en el día de CARGO, que es
-  cuando el dinero sale de la cuenta.
-- **Con corte semanal hay varios cargos al mes**, no uno. Un modelo que asuma
-  "un recibo mensual por tarjeta" no sirve para Unicaja.
-- **Día 31 significa "el último del mes"**, no se salta febrero.
+**Cuánto se ha gastado con esa tarjeta en ese periodo.** Es una sola cifra y de
+ella salen las tres respuestas que siguen. No es un extra: sin ella, ni se puede
+prever el cargo (§3.3), ni demostrar una bonificación (§3.6), ni saber lo que
+rinde (§3.7).
 
-### 3.5 · Cashback
+Del periodo **en curso** es una cifra **viva**:
 
-Algunas tarjetas devuelven un porcentaje. **Es un ingreso**, no un gasto
-negativo: entra en la cuenta y suma. *(Reconocido aquí; sin modelar todavía ·
-§8.)*
+> El período abierto están todas las previsiones, pero si mañana gasto algo de
+> la tarjeta tendré que hacer una anotación manual e irá creciendo.
+>
+> — Jose, 3 de agosto de 2026
 
----
+### 3.6 · Qué demuestra · las bonificaciones
+
+Los importes de tarjeta son la **prueba** de que se cumplen los requisitos que
+bonifican una hipoteca o un préstamo (§6 ter).
+
+- **Solo cuenta la tarjeta DEL BANCO que bonifica.** Las de fuera **nunca**
+  bonifican: son externas justamente por eso. Sumarlas diría que cumples un
+  requisito que no cumples, y eso se paga en el recibo.
+- Importa **la tarjeta concreta**, no la cuenta.
+
+### 3.7 · Qué rinde · el cashback
+
+Algunas tarjetas devuelven un porcentaje del gasto. **Es un ingreso**, y sobre
+todo es una **decisión**: por qué tarjeta canalizar el gasto.
+
+> La tarjeta Carrefour la uso mucho porque da un 1 % de cashback cada 3 meses.
+> Si gasto por esa tarjeta al máximo durante 12 meses son 564 € que puedo volver
+> a usar como forma de pago sin que salga dinero de mi caja otra vez.
+>
+> — Jose, 3 de agosto de 2026
+
+**Decisión · 3 de agosto de 2026:**
+
+- **Se mide lo REALIZADO, no se prevé.** La cifra que decide es «esta tarjeta me
+  devolvió X € sobre Y € canalizados»: eso compara tarjetas. Prever el cashback
+  del trimestre que viene no cambia ninguna decisión y cuesta bastante más.
+- **El límite de gasto se guarda**, no como alerta sino porque **acota el techo
+  de la estrategia**: 4.700 €/mes al 1 % es lo máximo que ese camino puede
+  rendir. Un número que responde «¿hasta dónde llega esto?» sí decide.
+- El cashback que llega se concilia como cualquier otro ingreso.
 
 ## 4 · Efectivo
 
@@ -278,23 +315,30 @@ Tres reglas que se incumplían y por eso están escritas:
 
 **Crédito aplazado.** Hoy no existe el acumulador que junta las compras de un
 periodo en un solo cargo previsto. Es el trabajo que queda, y toca el motor de
-previsiones. Con el ciclo de §3.4 bis, lo que hay que construir es:
+previsiones. Con el ciclo de §3.4, lo que hay que construir es:
 
 - Colocar cada compra en **su** periodo según la fecha de corte.
 - Emitir **un cargo previsto por periodo** en el día de cargo — que con corte
   semanal son varios al mes.
 
-Y una decisión que sigue siendo de Jose: qué se enseña en tesorería mientras el
-periodo está **abierto**. ¿El cargo previsto va creciendo con cada compra, o
-aparece entero el día del corte? Lo primero refleja mejor lo que va a pasar; lo
-segundo no mueve una cifra ya leída.
+**Decisión · 3 de agosto de 2026 (Jose):** mientras el periodo está **abierto**,
+el cargo previsto **va creciendo**.
+
+> El período abierto están todas las previsiones, pero si mañana gasto algo de
+> la tarjeta tendré que hacer una anotación manual e irá creciendo.
+>
+> — Jose
+
+Es decir: el cargo del periodo en curso es una previsión **viva**, que se
+recalcula cada vez que se anota o se importa una compra de esa tarjeta. No es
+una cifra fija que aparece el día del corte.
 
 ---
 
-## 6 ter · Para qué sirve además el gasto con tarjeta
+## 6 ter · Condiciones que se verifican contra la tesorería
 
-No es solo tesorería. **Los importes y movimientos de tarjeta son la prueba de
-que se cumplen las bonificaciones de una hipoteca o un préstamo:**
+Las bonificaciones de una hipoteca o un préstamo no se cumplen por declararlas:
+se cumplen porque **los movimientos lo demuestran**.
 
 > Estos movimientos e importes también son importantes para controlar si se
 > cumplen los requerimientos de bonificaciones de las hipotecas o préstamos que
@@ -302,22 +346,16 @@ que se cumplen las bonificaciones de una hipoteca o un préstamo:**
 >
 > — Jose, 3 de agosto de 2026
 
-Consecuencias para el modelo:
+El caso de la tarjeta está en §3.6, con su regla de que **solo cuenta la del
+banco que bonifica**. Pero no es el único: nómina domiciliada, recibos
+domiciliados, seguros contratados… **todos son condiciones que se verifican
+contra la tesorería**, y hoy nadie las mira.
 
-- El gasto con tarjeta tiene que ser **agregable por periodo y por tarjeta**, no
-  solo visible como un cargo mensual en la cuenta. Un requisito típico es
-  "gastar N € al año con la tarjeta del banco": con solo el recibo agregado no
-  se puede comprobar.
-- La **tarjeta concreta** importa, no solo la cuenta: la bonificación la pide el
-  banco de SU tarjeta. Otra razón para que la tarjeta sea una entidad propia
-  (§3) y no un tipo de cuenta.
-- Lo mismo vale para otros requisitos que se miden sobre movimientos —nómina
-  domiciliada, recibos domiciliados, seguros—: son **condiciones que se
-  verifican contra la tesorería**, y hoy nadie las mira.
+Lo que comparten, y por eso van juntas aquí: cada una necesita **agregar
+movimientos de un tipo, en una ventana de tiempo, y compararlos con un
+umbral**. Quien construya una debería dejar sitio para las demás.
 
 *(Reconocido aquí; sin modelar · §8.)*
-
----
 
 ## 7 · Combinaciones imposibles
 
@@ -328,9 +366,9 @@ Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
 | Método `efectivo` + cuenta bancaria | El efectivo no sale del banco (§4) |
 | Método `bizum` + cuenta sin Bizum | Solo una cuenta lo tiene (§5) |
 | Método `domiciliacion`/`transferencia` + cuenta `EFECTIVO` | El colchón no tiene IBAN (§1) |
-| Tarjeta liquidando en `EFECTIVO` o en otra tarjeta | La liquidación es bancaria (§3.4) |
-| Compra con crédito aplazado moviendo el saldo el día de la compra | Se cobra el día de liquidación (§3.2) |
-| Elegir la entidad emisora entre TUS cuentas | La emisora puede no ser un banco tuyo (§3.4) |
+| Tarjeta liquidando en `EFECTIVO` o en otra tarjeta | La liquidación es bancaria (§3.2) |
+| Compra con crédito aplazado moviendo el saldo el día de la compra | Se cobra el día de cargo (§3.3) |
+| Elegir la entidad emisora entre TUS cuentas | La emisora puede no ser un banco tuyo (§3.2) |
 | Traspaso interno a la misma cuenta | No es un traspaso (§6) |
 | Retirada de cajero registrada como gasto | Es un traspaso (§4) |
 | Dos cuentas `EFECTIVO` | El dinero físico es uno (§1) |
@@ -348,18 +386,24 @@ Escrito para no perderlo, con la fecha en que se detectó:
 - **2026-08-03** · Los dos vocabularios de método de pago (§2) no se traducen
   en un único sitio.
 - **2026-08-03** · Nada impide crear dos cuentas `EFECTIVO`. §1.
-- **2026-08-03** · `Account.tipo` todavía admite `AHORRO` y `OTRA`, retiradas
-  por decisión. Retirarlas pide migrar las que existan a `CORRIENTE`. §1.
 - **2026-08-03** · `TARJETA_CREDITO` sigue siendo un tipo de cuenta en vez de
   una tarjeta asociada a una. §1, §3.
 - **2026-08-03** · No se distingue **débito** de **crédito aplazado**: hoy solo
-  hay `cardConfig`, que asume liquidación diferida. §3.1, §3.2.
+  hay `cardConfig`, que asume liquidación diferida. §3.3.
 - **2026-08-03** · No existe la **entidad emisora** separada de la cuenta de
-  liquidación. §3.4.
+  liquidación. §3.2.
+- **2026-08-03** · Una cuenta no puede tener **varias** tarjetas: `cardConfig`
+  es un único objeto. Lo normal son dos. §3.1.
+- **2026-08-03** · No se distingue la tarjeta **del banco** de la de **fuera**,
+  ni se puede cambiar la domiciliación sin rehacerla. §3.2.
+- **2026-08-03** · No existe el **gasto agregado por tarjeta y periodo**, que
+  es lo que sostiene el cargo previsto, las bonificaciones y el rendimiento.
+  §3.5.
 - **2026-08-03** · No hay acumulador de periodo para el crédito aplazado: las
   compras no se juntan en un cargo previsto. §6 bis.
-- **2026-08-03** · El **cashback** no se modela. §3.5.
+- **2026-08-03** · El **cashback** no se mide como rendimiento realizado por
+  tarjeta, ni se guarda el límite que acota ese rendimiento. §3.7.
 - **2026-08-03** · La tarjeta guarda un único `settlementDay`: no distingue
-  CORTE de CARGO, ni admite ciclo **semanal**. §3.4 bis.
+  CORTE de CARGO, ni admite ciclo **semanal**. §3.4.
 - **2026-08-03** · Las **bonificaciones** de hipotecas y préstamos no se
   verifican contra los movimientos que las prueban. §6 ter.

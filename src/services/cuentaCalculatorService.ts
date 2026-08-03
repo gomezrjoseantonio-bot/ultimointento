@@ -17,7 +17,7 @@
  * el patrimonio el día que sacas 200 €. No tiene IBAN ni banco, y para el
  * cálculo se comporta como una corriente sin remunerar.
  */
-export type CuentaTipo = 'CORRIENTE' | 'AHORRO' | 'TARJETA_CREDITO' | 'EFECTIVO';
+export type CuentaTipo = 'CORRIENTE' | 'TARJETA_CREDITO' | 'EFECTIVO';
 export type FrecuenciaLiquidacion = 'mensual' | 'trimestral' | 'semestral' | 'anual';
 
 export interface CuentaCalcInput {

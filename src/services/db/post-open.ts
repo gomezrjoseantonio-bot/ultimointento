@@ -5,6 +5,7 @@ import type { IDBPDatabase } from 'idb';
 import type { AtlasHorizonDB } from '../db';
 import type { BoteAnualSinIdentificar,Contract,Property,TreasuryEvent } from './types';
 import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfillDocumentoFirmado } from '../alquileresV3FixService';
+import { migrarTiposDeCuenta } from '../migrations/v86-tiposDeCuenta';
 import { migrarBaseAmortizableEjercicio } from '../baseAmortizableEjercicioService';
 import { inmuebleDelPrestamo, idDeInmueble, type PrestamoConDestinos } from '../inmuebleDelPrestamo';
 
@@ -612,5 +613,34 @@ export function runPostOpenMigrations(
       }
       return db;
     });
+
+    // ── VOCABULARIO §1 · `AHORRO` y `OTRA` dejan de existir ──────────────────
+    //
+    // Decisión de Jose (3 ago 2026): complicaban sin distinguir nada. Una cuenta
+    // de ahorro se comporta exactamente igual que una corriente —tiene IBAN,
+    // tiene saldo, se le domicilia lo que sea— y "otra" no dice nada de nada.
+    //
+    // Las que existan pasan a `CORRIENTE`. No se pierde nada: el tipo no cambia
+    // ni el saldo, ni los movimientos, ni a qué se puede domiciliar. Sí cambia
+    // que dejan de ofrecerse al dar de alta.
+    //
+    // Idempotente vía flag · y aunque se repitiera, poner `CORRIENTE` sobre
+    // `CORRIENTE` no hace daño.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v86_tipos_cuenta_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+
+        const migradas = await migrarTiposDeCuenta(db as unknown as IDBPDatabase<any>);
+        if (migradas > 0) {
+          console.log(`[DB V86] ${migradas} cuenta(s) AHORRO/OTRA pasadas a CORRIENTE`);
+        }
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB V86 tipos de cuenta] falló:', err);
+      }
+      return db;
+    });
+
   return dbPromise;
 }
