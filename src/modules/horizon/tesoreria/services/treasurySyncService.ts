@@ -252,7 +252,15 @@ export async function generateMonthlyForecasts(
         skipped++;
         return;
       }
-      await db.put('treasuryEvents', { ...yaEsta, ...event, id: yaEsta.id, updatedAt: now });
+      await db.put('treasuryEvents', {
+        ...yaEsta,
+        ...event,
+        id: yaEsta.id,
+        // El recibo no nace de nuevo cada vez que se recalcula: nació la primera
+        // vez, y su `createdAt` es lo que dice desde cuándo está previsto.
+        createdAt: yaEsta.createdAt ?? event.createdAt,
+        updatedAt: now,
+      });
       updated++;
       return;
     }
@@ -385,6 +393,8 @@ export async function generateMonthlyForecasts(
       sourceId: number;
       description: string;
       accountId?: number;
+      /** Viene del mes anterior · solo alimenta el recibo, no genera previsión. */
+      soloParaElRecibo?: boolean;
     }[] = [];
 
     for (const expense of activePersonalExpenses) {
@@ -430,15 +440,43 @@ export async function generateMonthlyForecasts(
       });
     }
 
-    // Un apunte por PERIODO, no por mes: con corte semanal salen varios recibos
-    // en un mismo mes, y con corte a mitad de mes el cargo cae en el siguiente.
+    // Un periodo NO cabe en un mes natural: un corte el día 24 recoge lo
+    // gastado desde el 25 del mes ANTERIOR. Si el recibo se calculase solo con
+    // las compras de este mes, la parte de antes del corte se perdería —y como
+    // el bootstrap sincroniza mes a mes, la segunda pasada pisaría a la
+    // primera—. Así que se miran los dos meses y luego se emiten únicamente los
+    // periodos que CIERRAN en este: cada corte tiene un solo mes dueño, y su
+    // importe se recalcula entero cada vez.
+    const mesAnterior = month === 1 ? 12 : month - 1;
+    const anioAnterior = month === 1 ? year - 1 : year;
+    for (const expense of activePersonalExpenses) {
+      if (expense.id == null || expense.tarjetaId == null) continue;
+      if (!personalExpenseAppliesToMonth(expense, mesAnterior)) continue;
+      const importe = getPersonalExpenseAmountForMonth(expense, mesAnterior);
+      if (importe <= 0) continue;
+      comprasConTarjeta.push({
+        fecha: buildDate(anioAnterior, mesAnterior, expense.diaPago ?? 1),
+        importe,
+        tarjetaId: expense.tarjetaId,
+        sourceId: expense.id,
+        description: expense.concepto,
+        accountId: expense.accountId,
+        // Del mes anterior solo interesa lo que alimenta un corte de ESTE mes.
+        // Si su tarjeta ya no vale, su previsión suelta es cosa de la pasada de
+        // aquel mes, no de esta — emitirla aquí la duplicaría.
+        soloParaElRecibo: true,
+      });
+    }
+
     const { recibos, sueltos } = previsionDeTarjetas(comprasConTarjeta, tarjetas);
     const aliasDeTarjeta = new Map(tarjetas.map((t) => [t.id, t.alias]));
+    const cortesDeEsteMes = recibos.filter((r) => r.fechaCorte.startsWith(monthPrefix));
 
     // Una compra cuya tarjeta ya no existe —o es de débito, que cobra al
     // momento— vuelve a su cuenta. Mejor una previsión donde estaba que un gasto
     // que desaparece de la vista.
     for (const suelto of sueltos) {
+      if (suelto.soloParaElRecibo) continue;
       await insertEvent({
         type: 'expense' as const,
         amount: suelto.importe,
@@ -453,7 +491,7 @@ export async function generateMonthlyForecasts(
       });
     }
 
-    for (const recibo of recibos) {
+    for (const recibo of cortesDeEsteMes) {
       const alias = aliasDeTarjeta.get(recibo.tarjetaId) || `#${recibo.tarjetaId}`;
       await insertRecibo({
         type: 'expense' as const,
