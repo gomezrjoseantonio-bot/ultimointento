@@ -67,6 +67,33 @@ describe('cerrado o abierto', () => {
   });
 });
 
+describe('lo cobrado manda sobre lo previsto', () => {
+  // Al confirmar un cargo se rellenan `actualAmount`/`actualDate` y `amount` se
+  // queda como estaba. Contar el previsto sería presumir ante el banco una
+  // cifra que nunca se pagó.
+  it('un recibo cobrado por otro importe cuenta lo cobrado', () => {
+    const cobrado = recibo({
+      amount: -180,
+      actualAmount: 187.4,
+      executedMovementId: 55,
+    });
+
+    expect(gastoPorTarjeta([cobrado])[0].importe).toBe(187.4);
+  });
+
+  it('y el día que salió de verdad, no el previsto', () => {
+    const cobrado = recibo({ actualDate: '2026-02-07', executedMovementId: 55 });
+
+    expect(gastoPorTarjeta([cobrado])[0].fechaCargo).toBe('2026-02-07');
+  });
+
+  // Mientras no se cobra no hay cifra real · manda la previsión.
+  it('sin cobrar sigue mandando lo previsto', () => {
+    expect(gastoPorTarjeta([recibo()])[0].importe).toBe(180);
+    expect(gastoPorTarjeta([recibo()])[0].fechaCargo).toBe('2026-02-05');
+  });
+});
+
 describe('lo que no cuenta', () => {
   // El usuario dijo que ese cargo no ocurre: no es gasto ni previsto ni real.
   // Contarlo inflaría la bonificación y el cashback a la vez.

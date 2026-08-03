@@ -73,11 +73,17 @@ export function gastoPorTarjeta(eventos: TreasuryEvent[]): GastoDeUnPeriodo[] {
     const periodo = periodoDelRecibo(ev);
     if (!periodo) continue;
 
+    // Manda lo COBRADO sobre lo previsto. Al confirmar un cargo se rellenan
+    // `actualAmount` y `actualDate` y `amount` se queda como estaba: un recibo
+    // previsto de 180 € que el banco cobró por 187,40 € seguiría contando 180.
+    // Esta cifra se presume ante un banco para una bonificación y mide el
+    // cashback — tiene que ser la de verdad, no la que se esperaba.
     salida.push({
       ...periodo,
-      fechaCargo: ev.predictedDate,
-      // El importe se guarda en negativo —es un gasto—; aquí interesa cuánto.
-      importe: Math.abs(ev.amount),
+      fechaCargo: ev.actualDate ?? ev.predictedDate,
+      // El importe previsto se guarda en negativo —es un gasto—; el real ya
+      // viene como magnitud. En los dos casos interesa cuánto, no el signo.
+      importe: Math.abs(ev.actualAmount ?? ev.amount),
       estado: yaSeCobro(ev) ? 'cerrado' : 'abierto',
     });
   }
