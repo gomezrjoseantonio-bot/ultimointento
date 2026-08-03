@@ -185,6 +185,10 @@ describe('§4.10 · cómo va el mes', () => {
           actualAmount: 1473.42,
           predictedDate: enEsteMes(5),
           status: 'executed',
+          // Con cuenta · un ejecutado siempre la tiene. Sin ella no se puede
+          // casar con el movimiento que lo materializó, y ese pago contaría
+          // dos veces: una por su previsión y otra como gasto no planificado.
+          accountId: 1,
         }),
       ],
       movements: [

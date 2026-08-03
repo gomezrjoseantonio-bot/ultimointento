@@ -505,12 +505,27 @@ export function generarEventosDesdeCompromiso(
     if (fin.getTime() < horizonteFin.getTime()) fechaTope = fin;
   }
 
-  // Las fechas se proyectan desde HOY · no desde el inicio del compromiso
-  // (los eventos pasados ya están confirmados por extracto bancario). Con
-  // `desdeOverride` (Bloque B.3) se permite un origen pasado explícito.
+  // Las fechas se proyectan desde el PRIMER DÍA DEL MES EN CURSO · no desde
+  // hoy.
+  //
+  // Proyectar desde hoy daba por confirmado todo lo que cayera antes, apoyado
+  // en que "los eventos pasados ya están en el extracto". Eso no se sostiene
+  // para un gasto que acabas de dar de alta: un recibo con cargo el día 1
+  // creado el día 3 no generaba NADA en el mes en curso, y su cargo real se
+  // quedaba sin previsión con la que casar — el mes decía que ibas según lo
+  // previsto mientras el dinero ya había salido.
+  //
+  // El primer día del mes es el mismo borde que usa `treasuryBootstrapService`
+  // al purgar previsiones viejas, así que no se emite nada que él vaya a
+  // borrar. Y lo ya confirmado no se duplica: `persistirPrevisionesCompromiso`
+  // respeta el periodo de las previsiones intocables.
+  //
+  // Con `desdeOverride` (Bloque B.3) se permite un origen pasado explícito.
   const hoy = new Date();
+  const inicioDelMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
   const desdeProyeccion =
-    desdeOverride ?? (hoy.getTime() > fechaInicio.getTime() ? hoy : fechaInicio);
+    desdeOverride ??
+    (fechaInicio.getTime() > inicioDelMes.getTime() ? fechaInicio : inicioDelMes);
   const isoDesde = toISODateLocal(desdeProyeccion);
   const isoHasta = toISODateLocal(fechaTope);
 

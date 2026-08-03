@@ -17,6 +17,11 @@ import type {
   RepartoInmueble,
 } from '../../../../../types/compromisosRecurrentes';
 import type { Account } from '../../../../../services/db';
+import {
+  cuentaParaElMetodo,
+  cuentasQuePuedenPagar,
+  elMetodoDecideLaCuenta,
+} from '../../../../../services/cuentasPorMetodoPago';
 import RejillaMeses from './RejillaMeses';
 import { patronToMeses, mesesToPatron, diaDePatron } from '../utils/rejillaMeses';
 import { fiscalidadDeConcepto, FAMILIAS_FISCALES } from '../utils/fiscalidadConcepto';
@@ -42,6 +47,10 @@ const MEDIOS: Array<{ id: MetodoPagoCompromiso; label: string }> = [
   { id: 'efectivo', label: 'Efectivo' },
   { id: 'bizum', label: 'Bizum' },
 ];
+
+/** Cómo se llama una cuenta en pantalla · §2.2 · nunca un id suelto. */
+const nombreDeCuenta = (a?: Account): string =>
+  a ? (a.alias ?? a.name ?? a.banco?.name ?? 'Sin nombre') : 'Sin cuenta';
 
 type ModoImporteUI = 'fijo' | 'variable' | 'porTramos' | 'porcentajeRenta';
 
@@ -280,16 +289,49 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
           <Field label="Importe"><div style={{ fontSize: 12, color: 'var(--atlas-v5-ink-4)', padding: '7px 0' }}>por tramos ↓</div></Field>
         )}
         <Field label="Medio de pago">
-          <select style={inp} value={medio} onChange={(e) => setMedio(e.target.value as MetodoPagoCompromiso)}>
-            {MEDIOS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          {/* Solo los medios que HOY se pueden usar · docs/VOCABULARIO-dinero.md
+              §2. Sin cuenta de efectivo no se puede pagar en efectivo, y sin
+              ninguna cuenta con Bizum tampoco por Bizum: ofrecerlos guardaría
+              un gasto colgado de una cuenta que no puede pagarlo. */}
+          <select
+            style={inp}
+            value={medio}
+            onChange={(e) => {
+              const nuevo = e.target.value as MetodoPagoCompromiso;
+              setMedio(nuevo);
+              // La cuenta se recoloca con el medio · si no, cambiar a Efectivo
+              // escondía el desplegable y dejaba pegada la cuenta bancaria
+              // anterior, que es la peor forma de estar mal: invisible.
+              const cuenta = cuentaParaElMetodo(nuevo, accounts, cuentaCargo);
+              if (cuenta != null) setCuentaCargo(cuenta);
+            }}
+          >
+            {MEDIOS.filter((m) => cuentasQuePuedenPagar(m.id, accounts).length > 0).map((m) => (
+              <option key={m.id} value={m.id}>{m.label}</option>
+            ))}
           </select>
         </Field>
-        <Field label="Cuenta de cargo">
-          <select style={inp} value={cuentaCargo} onChange={(e) => setCuentaCargo(parseInt(e.target.value, 10))}>
-            {accounts.length === 0 && <option value={cuentaCargo}>Sin cuentas · añade una en Cuentas</option>}
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.alias ?? a.name ?? a.banco?.name ?? `Cuenta ${a.id}`}</option>)}
-          </select>
-        </Field>
+        {/* Con Efectivo o Bizum la cuenta NO se elige: la decide el medio. Un
+            desplegable de una sola opción invita a pensar que hay algo que
+            decidir, y no lo hay. */}
+        {elMetodoDecideLaCuenta(medio) ? (
+          <Field label="Sale de" hint={medio === 'efectivo' ? 'El efectivo sale del efectivo' : 'La cuenta que tiene el Bizum'}>
+            <div style={{ fontSize: 13, color: 'var(--atlas-v5-ink-2)', padding: '7px 0' }}>
+              {nombreDeCuenta(cuentasQuePuedenPagar(medio, accounts)[0])}
+            </div>
+          </Field>
+        ) : (
+          <Field label="Cuenta de cargo">
+            <select style={inp} value={cuentaCargo} onChange={(e) => setCuentaCargo(parseInt(e.target.value, 10))}>
+              {cuentasQuePuedenPagar(medio, accounts).length === 0 && (
+                <option value={cuentaCargo}>Sin cuentas · añade una en Cuentas</option>
+              )}
+              {cuentasQuePuedenPagar(medio, accounts).map((a) => (
+                <option key={a.id} value={a.id}>{nombreDeCuenta(a)}</option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="Sube cada año">
           <select style={inp} value={sube} onChange={(e) => setSube(e.target.value as SubeCadaAnio)}>
             <option value="no">No sube</option>

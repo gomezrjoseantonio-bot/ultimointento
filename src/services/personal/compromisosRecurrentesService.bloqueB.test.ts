@@ -70,9 +70,72 @@ describe('compromisosRecurrentesService · Bloque B.3 · proyección hacia atrá
     expect(eventos.every((e) => e.bolsaPresupuesto === 'deseos')).toBe(true);
   });
 
-  it('la capa viva (sin override) sigue proyectando SOLO desde hoy — no genera pasado', () => {
+  // La capa viva arranca en el mes en curso, no en `fechaInicio`: un
+  // compromiso de 2019 no reconstruye siete años de recibos cada vez que se
+  // regenera. Lo que sí entra del mes en curso —su cargo, aunque el día ya
+  // haya pasado— tiene su propio bloque más abajo.
+  it('la capa viva (sin override) no reconstruye el pasado', () => {
     // fechaInicio 2019 pero sin desdeOverride: nada de 2019/2020 debe aparecer.
     const eventos = generarEventosDesdeCompromiso(compromiso());
     expect(eventos.some((e) => e.año <= 2020)).toBe(false);
+  });
+});
+
+// ============================================================================
+// El cargo del MES EN CURSO que ya ha pasado
+// ============================================================================
+//
+// La proyección arrancaba en HOY, apoyada en que "los eventos pasados ya están
+// confirmados por extracto bancario". Eso no se sostiene para un gasto que
+// acabas de dar de alta: un recibo con cargo el día 1, creado el día 3, no
+// generaba NADA en el mes en curso. Su cargo real se quedaba sin previsión con
+// la que casar, y el mes decía que ibas según lo previsto mientras el dinero ya
+// había salido de la cuenta.
+
+describe('el cargo de este mes no se pierde por haber llegado tarde', () => {
+  const elDia = (dia: number): CompromisoRecurrente =>
+    ({
+      ...compromiso(),
+      patron: { tipo: 'mensualDiaFijo', dia },
+      fechaInicio: '2019-01-01',
+    }) as unknown as CompromisoRecurrente;
+
+  const primeroDeEsteMes = (): string => {
+    const hoy = new Date();
+    return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-01`;
+  };
+
+  it('un cargo del día 1 se genera aunque hoy sea después', () => {
+    const eventos = generarEventosDesdeCompromiso(elDia(1));
+    const fechas = eventos.map((e) => e.predictedDate.slice(0, 10));
+
+    expect(fechas).toContain(primeroDeEsteMes());
+  });
+
+  // El primer día del mes es el mismo borde que usa el bootstrap al purgar
+  // previsiones viejas: emitir antes sería emitir algo que él va a borrar.
+  it('no se emite nada anterior al mes en curso', () => {
+    const eventos = generarEventosDesdeCompromiso(elDia(1));
+    const anteriores = eventos.filter(
+      (e) => e.predictedDate.slice(0, 10) < primeroDeEsteMes()
+    );
+
+    expect(anteriores).toEqual([]);
+  });
+
+  // Un compromiso que todavía no ha empezado no adelanta su primer cargo al
+  // mes en curso sólo porque la ventana arranque ahí.
+  it('lo que empieza en el futuro sigue empezando en el futuro', () => {
+    const dentroDeUnAño = new Date();
+    dentroDeUnAño.setFullYear(dentroDeUnAño.getFullYear() + 1);
+    const inicio = dentroDeUnAño.toISOString().slice(0, 10);
+    const futuro = {
+      ...compromiso(),
+      fechaInicio: inicio,
+    } as unknown as CompromisoRecurrente;
+
+    const eventos = generarEventosDesdeCompromiso(futuro);
+
+    expect(eventos.every((e) => e.predictedDate.slice(0, 10) >= inicio)).toBe(true);
   });
 });
