@@ -441,6 +441,13 @@ export interface Account {
    * dinero no se va, cambia de sitio— en vez de un gasto que hunde el
    * patrimonio el día que sacas 200 € del cajero.
    */
+  /**
+   * V87 · `TARJETA_CREDITO` está EN RETIRADA (VOCABULARIO §3): una tarjeta no
+   * es un sitio donde hay dinero. Ya existe el store `tarjetas` y la migración
+   * las va creando, pero el tipo no puede desaparecer todavía porque el alta de
+   * tarjeta vive en el wizard de cuentas y aún no tiene sustituto. Quitarlo sin
+   * eso dejaría un hueco: no se podría dar de alta ninguna tarjeta.
+   */
   tipo?: 'CORRIENTE' | 'TARJETA_CREDITO' | 'EFECTIVO';
   cardConfig?: {
     settlementDay: number; // Día del cargo del recibo (1-31)
