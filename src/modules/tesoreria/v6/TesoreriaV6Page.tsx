@@ -39,6 +39,7 @@ import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
+import { gastoPorTarjeta } from '../../../services/gastoPorTarjeta';
 import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
@@ -212,6 +213,24 @@ const TesoreriaV6Page: React.FC = () => {
   const recargarTarjetas = useCallback(async () => {
     setTarjetas(await listarTarjetas());
   }, []);
+
+  /**
+   * §3.5 · lo gastado con cada tarjeta en su periodo ABIERTO.
+   *
+   * Para una de crédito, el gasto de un periodo ES su recibo: el banco carga
+   * exactamente eso. Mientras el periodo no cierra la cifra está viva y crece
+   * con cada compra, que es justo lo que hay que poder mirar.
+   */
+  const gastoAbierto = useMemo(() => {
+    const porTarjeta = new Map<number, number>();
+    for (const p of gastoPorTarjeta(estado.eventos)) {
+      if (p.estado !== 'abierto') continue;
+      // El periodo abierto más cercano · los recibos vienen del más reciente al
+      // más antiguo, así que el primero de cada tarjeta es el que toca.
+      if (!porTarjeta.has(p.tarjetaId)) porTarjeta.set(p.tarjetaId, p.importe);
+    }
+    return porTarjeta;
+  }, [estado.eventos]);
 
   useEffect(() => {
     void recargarTarjetas();
@@ -817,6 +836,13 @@ const TesoreriaV6Page: React.FC = () => {
               >
                 <span className={styles.tjAlias}>{t.alias}</span>
                 <span className={styles.tjSub}>{describirTarjeta(t, cuentasVivas)}</span>
+                {/* §3.5 · lo que llevas gastado con ella en el periodo que aún
+                    no ha cerrado · es una cifra VIVA, crece con cada compra. */}
+                {gastoAbierto.get(t.id!) != null && (
+                  <span className={styles.tjGasto}>
+                    Llevas {importeSaldo(gastoAbierto.get(t.id!)!)} este periodo
+                  </span>
+                )}
               </button>
             ))}
           </div>

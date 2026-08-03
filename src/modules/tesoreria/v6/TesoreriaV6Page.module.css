@@ -730,3 +730,13 @@
   color: var(--atlas-v5-ink-4);
   padding: 12px 0;
 }
+
+/* §3.5 · lo que llevas gastado con la tarjeta en el periodo abierto. Va en
+   mono como el resto de las cifras: es un dato, no una frase. */
+.tjGasto {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  margin-top: 2px;
+}

@@ -188,6 +188,15 @@ ella salen las tres respuestas que siguen. No es un extra: sin ella, ni se puede
 prever el cargo (§3.3), ni demostrar una bonificación (§3.6), ni saber lo que
 rinde (§3.7).
 
+Y ya existe, sin guardar nada nuevo: **para una tarjeta de crédito, el gasto de
+un periodo ES su recibo.** El banco carga exactamente eso, así que la cifra no
+hay que reconstruirla — está en el cargo.
+
+Cada periodo dice además **cómo de firme es**: `cerrado` cuando el cargo ya se
+cobró y cuadró contra el extracto, `abierto` mientras sigue siendo previsión.
+La distinción no es cosmética: una bonificación se demuestra con lo cobrado, no
+con lo que esperas gastar.
+
 Del periodo **en curso** es una cifra **viva**:
 
 > El período abierto están todas las previsiones, pero si mañana gasto algo de
@@ -405,10 +414,10 @@ Escrito para no perderlo, con la fecha en que se detectó.
   parte de tarjetas— corre sobre una lista vacía. O se conecta a
   `compromisosRecurrentes` o se retira; dejarla es un camino que parece vivo y
   no lo está.
-- **2026-08-03** · No hay lectura de **gasto real agregado por tarjeta y
-  periodo**. El cargo previsto ya se calcula así, pero lo gastado de verdad —lo
-  que prueba bonificaciones y mide rendimiento— no se consulta en ningún sitio.
-  §3.5.
+- **2026-08-03** · El gasto por tarjeta y periodo **solo cubre el crédito**. El
+  de una tarjeta de **débito** no tiene recibo —cobra al momento— y hoy nada
+  dice de qué tarjeta salió cada movimiento, así que ese gasto no se puede
+  atribuir. Hace falta decirlo en el movimiento. §3.5.
 - **2026-08-03** · El **cashback** se guarda como porcentaje pero no se mide
   como rendimiento realizado. §3.7.
 - **2026-08-03** · Las **bonificaciones** de hipotecas y préstamos no se
@@ -449,6 +458,12 @@ Escrito para no perderlo, con la fecha en que se detectó.
   pueda usar.** El alta y la importación nacen domiciliadas y eligen una cuenta
   que pueda domiciliar —no la primera de la lista, que podía ser el colchón—, y
   el desplegable de la fila filtra por el medio del gasto. §2.
+- **2026-08-03** · Existe el **gasto por (tarjeta · periodo)**, que es el dato
+  del que salen las otras tres respuestas. No hizo falta guardar nada nuevo:
+  para una tarjeta de crédito el gasto de un periodo **ES su recibo** — el banco
+  carga exactamente eso. Cada periodo dice si está **cerrado** (cobrado y
+  cuadrado contra el extracto, cifra real) o **abierto** (previsión viva, crece
+  con cada compra). Un recibo **descartado** no cuenta. §3.5.
 - **2026-08-03** · Un recurrente en **efectivo** se proyecta sobre la cuenta
   `EFECTIVO`, y uno por **Bizum** sobre la que lo tiene: la cuenta se vuelve a
   decidir AL PROYECTAR, con la misma regla del formulario, en vez de confiar en
