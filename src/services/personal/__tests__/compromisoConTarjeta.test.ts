@@ -57,6 +57,17 @@ describe('el crédito aplazado no emite cargo propio', () => {
     expect(generarEventosDesdeCompromiso(compromiso(), undefined, undefined, CREDITO)).toEqual([]);
   });
 
+  // El fallo que esto evita: si la supresión mirase solo la tarjeta y el recibo
+  // mirase además el medio, un gasto con `tarjetaId` pero medio distinto no lo
+  // emitiría NADIE — ni cargo propio ni parte del recibo. Desaparecido.
+  it('un tarjetaId huérfano no borra el gasto · manda el medio', () => {
+    const huerfano = compromiso({ metodoPago: 'domiciliacion', tarjetaId: 11 });
+
+    const eventos = generarEventosDesdeCompromiso(huerfano, undefined, undefined, CREDITO);
+
+    expect(eventos.length).toBeGreaterThan(0);
+  });
+
   // El débito cobra al momento · su gasto sigue siendo un cargo en su fecha.
   it('con tarjeta de débito sí genera su cargo', () => {
     const debito = { ...(CREDITO as object), modalidad: 'debito', ciclo: undefined } as never;

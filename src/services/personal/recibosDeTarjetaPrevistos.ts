@@ -126,11 +126,28 @@ export function eventoDeRecibo(
  * apunta a una cuenta de la que ya no sale el dinero.
  */
 export async function tarjetaDelCompromiso(
-  compromiso: Pick<CompromisoRecurrente, 'tarjetaId'>
+  compromiso: Pick<CompromisoRecurrente, 'metodoPago' | 'tarjetaId'>
 ): Promise<Tarjeta | undefined> {
-  if (compromiso.tarjetaId == null) return undefined;
+  // El medio manda: un `tarjetaId` que sobrevive a un cambio de método es un
+  // dato muerto. Mirarlo sin mirar el medio dejaría el gasto en tierra de nadie
+  // — ni cargo propio ni parte del recibo—, o sea, desaparecido de tesorería.
+  if (compromiso.metodoPago !== 'tarjeta' || compromiso.tarjetaId == null) return undefined;
   const tarjetas = await listarTarjetas();
   return tarjetas.find((t) => t.id === compromiso.tarjetaId);
+}
+
+/**
+ * ¿Este gasto, con ESTA tarjeta, se cobra en un recibo?
+ *
+ * Mismo criterio que `pagaConCreditoAplazado`, para quien ya tiene la tarjeta
+ * resuelta. Se escribe una vez: dos versiones del mismo criterio acaban
+ * discrepando, y aquí discrepar significa que un gasto no lo emite nadie.
+ */
+export function vaEnRecibo(
+  compromiso: Pick<CompromisoRecurrente, 'metodoPago' | 'tarjetaId'>,
+  tarjeta: Tarjeta | undefined
+): boolean {
+  return tarjeta != null && pagaConCreditoAplazado(compromiso, [tarjeta]);
 }
 
 /**

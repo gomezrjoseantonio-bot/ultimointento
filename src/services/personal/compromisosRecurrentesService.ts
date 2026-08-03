@@ -38,6 +38,7 @@ import {
   persistirRecibos,
   recibosPrevistos,
   tarjetaDelCompromiso,
+  vaEnRecibo,
   ventanaDeRecibos,
 } from './recibosDeTarjetaPrevistos';
 import type { Tarjeta } from '../../types/tarjetas';
@@ -194,8 +195,12 @@ export async function eliminarCompromiso(id: number): Promise<void> {
   await db.delete(STORE_COMPROMISOS, id);
   // Si pagaba con crédito aplazado, su parte estaba dentro del recibo de la
   // tarjeta y no en previsiones suyas: sin rehacerlo, el recibo seguiría
-  // cobrando un gasto que ya no existe.
-  if (existente.tarjetaId != null) await regenerarRecibosDeTarjeta();
+  // cobrando un gasto que ya no existe. Solo en ese caso — rehacer el recibo
+  // barre todos los eventos de tarjeta, y no hay por qué pagarlo al borrar una
+  // domiciliación o un gasto con tarjeta de débito.
+  if (vaEnRecibo(existente, await tarjetaDelCompromiso(existente))) {
+    await regenerarRecibosDeTarjeta();
+  }
 }
 
 // ─── Estados: preparado · baja · reactivación (secciones 2.3 y 2.4) ─────────
@@ -267,8 +272,11 @@ export async function darDeBajaCompromiso(
   await borrarEventosFuturosCompromiso(id);
   // Lo que pagaba con crédito aplazado no tenía previsiones propias que retirar:
   // su parte vivía dentro del recibo de la tarjeta. Hay que rehacerlo, o el
-  // recibo seguiría cobrando un gasto que ya no está.
-  if (existente.tarjetaId != null) await regenerarRecibosDeTarjeta();
+  // recibo seguiría cobrando un gasto que ya no está. Solo en ese caso: rehacer
+  // el recibo barre todos los eventos de tarjeta.
+  if (vaEnRecibo(existente, await tarjetaDelCompromiso(existente))) {
+    await regenerarRecibosDeTarjeta();
+  }
   return actualizado;
 }
 
@@ -524,7 +532,11 @@ export function generarEventosDesdeCompromiso(
   // acumula y sale en el RECIBO de la tarjeta, que cruza varios gastos y por
   // eso se emite aparte (`regenerarRecibosDeTarjeta`). Emitir aquí además sería
   // cobrar dos veces lo mismo. El débito sí sigue siendo un cargo en su fecha.
-  if (tarjeta?.modalidad === 'credito' && tarjeta.ciclo) return [];
+  //
+  // El criterio es el MISMO que decide qué entra en el recibo. Si aquí se
+  // suprimiera con una regla y allí se recogiera con otra, el gasto que cayera
+  // en medio no lo emitiría nadie: desaparecería de tesorería sin avisar.
+  if (vaEnRecibo(compromiso, tarjeta)) return [];
 
   const fechaInicio = new Date(compromiso.fechaInicio);
   const horizonteFin =
@@ -726,7 +738,7 @@ export async function regenerarEventosCompromiso(
   // Si paga con crédito aplazado no ha emitido nada suyo: su dinero sale en el
   // RECIBO de la tarjeta, que hay que rehacer entero porque cruza otros gastos.
   // Sin esta llamada el gasto desaparecería de las previsiones sin avisar.
-  if (tarjeta?.modalidad === 'credito' && tarjeta.ciclo) {
+  if (vaEnRecibo(compromiso, tarjeta)) {
     return propios + (await regenerarRecibosDeTarjeta(hasta));
   }
   return propios;
