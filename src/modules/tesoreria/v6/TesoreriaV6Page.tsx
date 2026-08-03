@@ -40,6 +40,8 @@ import { listarTarjetas } from '../../../services/tarjetasService';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
 import { gastoPorTarjeta } from '../../../services/gastoPorTarjeta';
+import { rendimientoDeTarjetas } from '../../../services/rendimientoDeTarjeta';
+import { textoDeRendimiento } from './textoTarjeta';
 import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
@@ -221,16 +223,29 @@ const TesoreriaV6Page: React.FC = () => {
    * exactamente eso. Mientras el periodo no cierra la cifra está viva y crece
    * con cada compra, que es justo lo que hay que poder mirar.
    */
+  const periodosDeTarjeta = useMemo(() => gastoPorTarjeta(estado.eventos), [estado.eventos]);
+
+  /**
+   * §3.7 · lo que ha rendido cada tarjeta con cashback.
+   *
+   * No es una curiosidad: es la cifra que decide POR QUÉ TARJETA canalizar el
+   * gasto. Solo cuenta lo cerrado — lo que aún puede crecer no ha rendido nada.
+   */
+  const rendimiento = useMemo(
+    () => new Map(rendimientoDeTarjetas(tarjetas, periodosDeTarjeta).map((r) => [r.tarjetaId, r])),
+    [tarjetas, periodosDeTarjeta]
+  );
+
   const gastoAbierto = useMemo(() => {
     const porTarjeta = new Map<number, number>();
-    for (const p of gastoPorTarjeta(estado.eventos)) {
+    for (const p of periodosDeTarjeta) {
       if (p.estado !== 'abierto') continue;
       // El periodo abierto más cercano · los recibos vienen del más reciente al
       // más antiguo, así que el primero de cada tarjeta es el que toca.
       if (!porTarjeta.has(p.tarjetaId)) porTarjeta.set(p.tarjetaId, p.importe);
     }
     return porTarjeta;
-  }, [estado.eventos]);
+  }, [periodosDeTarjeta]);
 
   useEffect(() => {
     void recargarTarjetas();
@@ -841,6 +856,14 @@ const TesoreriaV6Page: React.FC = () => {
                 {gastoAbierto.get(t.id!) != null && (
                   <span className={styles.tjGasto}>
                     Llevas {importeSaldo(gastoAbierto.get(t.id!)!)} este periodo
+                  </span>
+                )}
+                {/* §3.7 · el cashback es una DECISIÓN: por qué tarjeta
+                    canalizar el gasto. Por eso se enseña la comparación
+                    —devuelto sobre canalizado— y no un total suelto. */}
+                {rendimiento.get(t.id!) && (
+                  <span className={styles.tjRinde}>
+                    {textoDeRendimiento(rendimiento.get(t.id!)!)}
                   </span>
                 )}
               </button>

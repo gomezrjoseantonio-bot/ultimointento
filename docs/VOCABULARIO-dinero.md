@@ -418,8 +418,10 @@ Escrito para no perderlo, con la fecha en que se detectó.
   de una tarjeta de **débito** no tiene recibo —cobra al momento— y hoy nada
   dice de qué tarjeta salió cada movimiento, así que ese gasto no se puede
   atribuir. Hace falta decirlo en el movimiento. §3.5.
-- **2026-08-03** · El **cashback** se guarda como porcentaje pero no se mide
-  como rendimiento realizado. §3.7.
+- **2026-08-03** · El cashback **realmente ingresado** no se puede casar con la
+  tarjeta que lo generó: el abono llega como un ingreso más y nada dice de
+  quién viene. Lo que se mide hoy es lo que le CORRESPONDE al gasto ya cerrado
+  según su porcentaje, no el apunte visto en el banco. §3.7.
 - **2026-08-03** · Las **bonificaciones** de hipotecas y préstamos no se
   verifican contra los movimientos que las prueban. §6 ter.
 - **2026-08-03** · `TARJETA_CREDITO` sigue existiendo como tipo de cuenta para
@@ -458,6 +460,12 @@ Escrito para no perderlo, con la fecha en que se detectó.
   pueda usar.** El alta y la importación nacen domiciliadas y eligen una cuenta
   que pueda domiciliar —no la primera de la lista, que podía ser el colchón—, y
   el desplegable de la fila filtra por el medio del gasto. §2.
+- **2026-08-03** · El **cashback se mide como rendimiento**: «te ha devuelto X
+  sobre Y canalizados», solo con periodos **cerrados** —lo abierto aún puede
+  crecer o quedarse corto—, y con el **techo anual** que marca el límite. Los
+  4.700 €/mes al 1 % de la Carrefour salen como **564 €/año**, que es la cifra
+  que decide por qué tarjeta canalizar el gasto. Las tarjetas sin cashback no
+  aparecen: enseñar «0 €» invita a compararlas y no compiten. §3.7.
 - **2026-08-03** · Existe el **gasto por (tarjeta · periodo)**, que es el dato
   del que salen las otras tres respuestas. No hizo falta guardar nada nuevo:
   para una tarjeta de crédito el gasto de un periodo **ES su recibo** — el banco
