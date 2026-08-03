@@ -6,6 +6,7 @@ import type { AtlasHorizonDB } from '../db';
 import type { BoteAnualSinIdentificar,Contract,Property,TreasuryEvent } from './types';
 import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfillDocumentoFirmado } from '../alquileresV3FixService';
 import { migrarTiposDeCuenta } from '../migrations/v86-tiposDeCuenta';
+import { migrarTarjetas } from '../migrations/v87-tarjetas';
 import { migrarBaseAmortizableEjercicio } from '../baseAmortizableEjercicioService';
 import { inmuebleDelPrestamo, idDeInmueble, type PrestamoConDestinos } from '../inmuebleDelPrestamo';
 
@@ -638,6 +639,29 @@ export function runPostOpenMigrations(
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
         console.warn('[DB V86 tipos de cuenta] falló:', err);
+      }
+      return db;
+    });
+
+
+    // ── VOCABULARIO §3 · la tarjeta deja de ser una cuenta ───────────────────
+    //
+    // Por cada cuenta que hoy es una tarjeta nace una `Tarjeta`. La cuenta NO
+    // se toca: sus movimientos son compras de verdad y borrarlos sería perder
+    // dinero de la vista. Retirarle el tipo va con el alta de tarjeta, para que
+    // no haya un momento sin sitio donde crearlas.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v87_tarjetas_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+
+        const r = await migrarTarjetas(db as unknown as IDBPDatabase<any>);
+        if (r.tarjetasCreadas > 0) {
+          console.log(`[DB V87] ${r.tarjetasCreadas} tarjeta(s) creadas desde cuentas de tipo tarjeta`);
+        }
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB V87 tarjetas] falló:', err);
       }
       return db;
     });

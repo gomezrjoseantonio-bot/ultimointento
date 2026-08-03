@@ -150,6 +150,18 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
           baseStore.createIndex('origen', 'origen', { unique: false });
         }
 
+        // V87 · VOCABULARIO §3: `tarjetas` — la tarjeta deja de ser una cuenta.
+        // Una cuenta puede tener VARIAS (lo normal son dos, débito y crédito),
+        // así que no cabía en el `cardConfig` único de `accounts`. Índice por
+        // cuenta de liquidación para preguntar "qué tarjetas paga esta cuenta",
+        // que es la lectura de todos los días.
+        if (!db.objectStoreNames.contains('tarjetas')) {
+          const tarjetasStore = db.createObjectStore('tarjetas', { keyPath: 'id', autoIncrement: true });
+          tarjetasStore.createIndex('cuentaLiquidacionId', 'cuentaLiquidacionId', { unique: false });
+          tarjetasStore.createIndex('origen', 'origen', { unique: false });
+          tarjetasStore.createIndex('activa', 'activa', { unique: false });
+        }
+
         // V4.0: mueblesInmueble — mobiliario amortizable por inmueble
         if (!db.objectStoreNames.contains('mueblesInmueble')) {
           const mueblesStore = db.createObjectStore('mueblesInmueble', { keyPath: 'id', autoIncrement: true });
