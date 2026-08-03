@@ -44,9 +44,11 @@ admite y las que existieran pasaron a `CORRIENTE` sin perder nada.)*
 donde hay dinero: es una forma de gastar el de una cuenta. Ver §3. *(Decidido
 aquí, hoy sigue siendo un tipo · §8.)*
 
-**Solo debe haber una cuenta de efectivo por usuario.** Dos colchones no se
-distinguen: el dinero físico es uno. *(Definido aquí, todavía no garantizado
-por el código · §8.)*
+**Solo puede haber una cuenta de efectivo por usuario.** Dos colchones no se
+distinguen: el dinero físico es uno. Y hay un motivo más concreto: el método
+«efectivo» paga desde la primera que encuentra, así que la segunda quedaría
+muerta — recibiría traspasos de cajero y no pagaría nada, con el dinero
+atrapado dentro. *(Garantizado al crear y al cambiar el tipo.)*
 
 ---
 
@@ -75,9 +77,14 @@ Hoy conviven dos enumeraciones para lo mismo:
 - `MetodoDePago` (movimientos): `Domiciliado | Transferencia | TPV | Efectivo | Bizum`
 - `MetodoPagoCompromiso` (recurrentes): `domiciliacion | transferencia | tarjeta | efectivo | bizum`
 
-No coinciden ni en los valores (`TPV` / `tarjeta`) ni en la forma. **Deuda
-conocida**: cualquier código que traduzca entre las dos tiene que hacerlo en un
-solo sitio, no a mano en cada pantalla.
+No coinciden ni en los valores (`TPV` / `tarjeta`) ni en la forma. Mientras
+sigan siendo dos, **la traducción vive en `metodoDePago.ts` y en ningún otro
+sitio** — con tablas exhaustivas, no con un `switch`: añadir un método al tipo
+tiene que romper la compilación, no devolver `undefined` en silencio. Fue
+exactamente eso lo que dejó `bizum` sin traducir durante meses.
+
+De ahí sale también **el nombre que ve el usuario**, para que dos pantallas no
+llamen distinto a lo mismo.
 
 ---
 
@@ -396,9 +403,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
   método `efectivo`, y todas las cuentas con método `bizum`. §2, §4, §5.
 - **2026-08-03** · Un recurrente en efectivo se proyecta sobre su cuenta de
   cargo bancaria en vez de sobre la cuenta `EFECTIVO`. §4.
-- **2026-08-03** · Los dos vocabularios de método de pago (§2) no se traducen
-  en un único sitio.
-- **2026-08-03** · Nada impide crear dos cuentas `EFECTIVO`. §1.
 - **2026-08-03** · Los gastos personales (`PatronGastoPersonal`) que alimentan
   `treasurySyncService` salen de un **stub**: el store se eliminó en V62 y
   `getPatrones` devuelve siempre `[]`. Toda esa rama del motor —incluida su
@@ -436,6 +440,15 @@ Escrito para no perderlo, con la fecha en que se detectó.
 - **2026-08-03** · El acumulador de periodo existe: un cargo previsto por
   periodo, en la cuenta de liquidación y el día de cargo. §6 bis.
 - **2026-08-03** · Se guarda el **límite** que acota el rendimiento. §3.7.
+- **2026-08-03** · Los dos vocabularios de método de pago se traducen en **un
+  solo sitio** (`metodoDePago.ts`), con tablas exhaustivas: añadir un método al
+  tipo rompe la compilación en vez de devolver `undefined` en silencio. Era lo
+  que dejaba `bizum` sin traducir — un recurrente por Bizum llegaba a la
+  previsión **sin método de pago** y luego no había con qué reconocerlo en el
+  extracto. El nombre que ve el usuario también sale de ahí. §2.
+- **2026-08-03** · **Solo puede haber una cuenta de efectivo.** Se comprueba al
+  crear y al cambiar el tipo —la puerta de atrás—, y el wizard deja de ofrecer
+  el tipo cuando ya hay una. §1.
 - **2026-08-03** · Un gasto recurrente pagado con **crédito aplazado** ya no
   emite su cargo el día de la compra: se acumula en un **recibo por (tarjeta ·
   corte)**, en la cuenta de liquidación y el día de cargo. El recibo **cruza

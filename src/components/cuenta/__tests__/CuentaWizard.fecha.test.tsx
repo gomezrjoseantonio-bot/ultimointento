@@ -12,12 +12,13 @@ import { cuentasService } from '../../../services/cuentasService';
 
 // Evita tocar IndexedDB · el efecto de montaje sólo necesita la lista de cuentas.
 jest.mock('../../../services/cuentasService', () => ({
-  cuentasService: { list: jest.fn() },
+  cuentasService: { list: jest.fn(), efectivoExistente: jest.fn() },
 }));
 
 // CRA usa resetMocks:true · reestablecemos la implementación en cada test.
 beforeEach(() => {
   (cuentasService.list as jest.Mock).mockResolvedValue([]);
+  (cuentasService.efectivoExistente as jest.Mock).mockResolvedValue(undefined);
 });
 
 afterAll(() => {

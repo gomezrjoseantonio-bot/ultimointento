@@ -5,6 +5,7 @@
 // El detalle completo vive en la fila desplegada (RowForm), que abre el chevron.
 
 import React, { useMemo, useState } from 'react';
+import { nombreDelMetodo } from '../../../../../services/metodoDePago';
 import { ChevronRight, Trash2 } from 'lucide-react';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import type { Account } from '../../../../../services/db';
@@ -297,7 +298,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
       <div role="cell" onClick={(e) => e.stopPropagation()}>
         {esMedioSinCuenta ? (
           <span style={medioLabel}>
-            {c.metodoPago === 'tarjeta' ? 'Tarjeta' : c.metodoPago === 'efectivo' ? 'Efectivo' : 'Bizum'}
+            {nombreDelMetodo(c.metodoPago)}
           </span>
         ) : (
           <select

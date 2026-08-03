@@ -104,6 +104,33 @@ const applyExtendedFields = (account: Account, data: AccountExtendedFields): voi
 };
 
 /**
+ * La cuenta de efectivo que ya existe · `undefined` si no hay ninguna.
+ *
+ * VOCABULARIO §1 · SOLO PUEDE HABER UNA. El dinero físico es uno: dos colchones
+ * no se distinguen entre sí, y en cuanto existen hay que elegir de cuál sale
+ * cada pago en efectivo — una pregunta sin respuesta buena. Además el método
+ * «efectivo» ofrece la primera que encuentra (`cuentasQuePuedenPagar`), así que
+ * la segunda quedaría muerta: recibiría traspasos y no pagaría nada.
+ *
+ * `exceptoId` deja fuera a la cuenta que se está editando: guardarla otra vez
+ * no puede chocar consigo misma.
+ */
+function efectivoQueYaExiste(cuentas: Account[], exceptoId?: number): Account | undefined {
+  return cuentas.find(
+    (acc) =>
+      acc.tipo === 'EFECTIVO' &&
+      acc.id !== exceptoId &&
+      !acc.deleted_at &&
+      acc.status !== 'DELETED',
+  );
+}
+
+/** El aviso · dice cuál es la que ya hay, para que se pueda ir a ella. */
+function yaTienesEfectivo(cuenta: Account): string {
+  return `Ya tienes una cuenta de efectivo («${cuenta.alias || 'Efectivo'}»). El dinero físico es uno: usa esa.`;
+}
+
+/**
  * Lo interno que miran los tests · el candado tiene que poder llegar a ESTE
  * eslabón, que es donde se perdió el color, sin montar media aplicación.
  *
@@ -111,7 +138,7 @@ const applyExtendedFields = (account: Account, data: AccountExtendedFields): voi
  * (`aeatParserService`, `reconciliacionService`) y deja claro de un vistazo que
  * no forma parte de la API del servicio.
  */
-export const __private__ = { applyExtendedFields };
+export const __private__ = { applyExtendedFields, efectivoQueYaExiste };
 
 class CuentasService {
   private accounts: Account[] = [];
@@ -291,6 +318,26 @@ class CuentasService {
   /**
    * List all active accounts
    */
+  /**
+   * ¿Ya hay una cuenta de efectivo? · §1 · la respuesta que da el servicio.
+   *
+   * Existe para que la pantalla pueda preguntar lo MISMO que se valida al
+   * guardar. Derivarlo de `list()` no vale: `list()` esconde las cuentas dadas
+   * de baja y esta regla sí las cuenta —una cuenta en pausa sigue siendo tu
+   * colchón, y su baja se puede deshacer—, así que la ficha ofrecería el tipo
+   * y el guardado lo rechazaría. Dos criterios para la misma pregunta.
+   */
+  public async efectivoExistente(exceptoId?: number): Promise<Account | undefined> {
+    await this.ready;
+    try {
+      const db = await initDB();
+      this.accounts = (await db.getAll('accounts')) as Account[];
+    } catch {
+      // Sin base, se responde con lo que haya en caché.
+    }
+    return efectivoQueYaExiste(this.accounts, exceptoId);
+  }
+
   public async list(): Promise<Account[]> {
     try {
       const db = await initDB();
@@ -359,6 +406,12 @@ class CuentasService {
       if (alias.length > 40) {
         throw new Error('El alias no puede superar 40 caracteres');
       }
+    }
+
+    // §1 · solo puede haber UNA cuenta de efectivo.
+    if (data.tipo === 'EFECTIVO') {
+      const yaHay = efectivoQueYaExiste(this.accounts);
+      if (yaHay) throw new Error(yaTienesEfectivo(yaHay));
     }
 
     // Validate and normalize IBAN
@@ -521,6 +574,14 @@ class CuentasService {
     }
 
     const account = this.accounts[accountIndex];
+
+    // §1 · la MISMA regla que al crear. Sin esto la puerta se cerraba por
+    // delante y quedaba abierta por detrás: bastaba crear una corriente y
+    // cambiarle el tipo después.
+    if (data.tipo === 'EFECTIVO' && account.tipo !== 'EFECTIVO') {
+      const yaHay = efectivoQueYaExiste(this.accounts, account.id);
+      if (yaHay) throw new Error(yaTienesEfectivo(yaHay));
+    }
 
     // Validate alias if provided (now optional)
     if (data.alias !== undefined) {
