@@ -6,6 +6,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { nombreDelMetodo } from '../../../../../services/metodoDePago';
+import { cuentasQuePuedenPagar } from '../../../../../services/cuentasPorMetodoPago';
 import { ChevronRight, Trash2 } from 'lucide-react';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import type { Account } from '../../../../../services/db';
@@ -307,8 +308,13 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
             onChange={(e) => void cambiarCuenta(parseInt(e.target.value, 10))}
             style={cellSelect}
           >
-            {accounts.length === 0 && <option value={c.cuentaCargo}>{accountLabelOf(account)}</option>}
-            {accounts.map((a) => (
+            {/* §2 · solo las que pueden pagar con ESTE medio. Ofrecerlas todas
+                dejaba domiciliar contra el colchón, que no tiene IBAN — un
+                gasto apuntando a un sitio que no puede pagarlo. */}
+            {cuentasQuePuedenPagar(c.metodoPago, accounts).length === 0 && (
+              <option value={c.cuentaCargo}>{accountLabelOf(account)}</option>
+            )}
+            {cuentasQuePuedenPagar(c.metodoPago, accounts).map((a) => (
               <option key={a.id} value={a.id}>
                 {accountLabelOf(a)}
               </option>

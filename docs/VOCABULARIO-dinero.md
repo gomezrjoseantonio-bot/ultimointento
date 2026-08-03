@@ -399,8 +399,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
-- **2026-08-03** · El alta de gasto recurrente ofrece cuenta de cargo con
-  método `efectivo`, y todas las cuentas con método `bizum`. §2, §4, §5.
 - **2026-08-03** · Los gastos personales (`PatronGastoPersonal`) que alimentan
   `treasurySyncService` salen de un **stub**: el store se eliminó en V62 y
   `getPatrones` devuelve siempre `[]`. Toda esa rama del motor —incluida su
@@ -447,6 +445,10 @@ Escrito para no perderlo, con la fecha en que se detectó.
 - **2026-08-03** · **Solo puede haber una cuenta de efectivo.** Se comprueba al
   crear y al cambiar el tipo —la puerta de atrás—, y el wizard deja de ofrecer
   el tipo cuando ya hay una. §1.
+- **2026-08-03** · **Ninguna pantalla ofrece ya una cuenta que el medio no
+  pueda usar.** El alta y la importación nacen domiciliadas y eligen una cuenta
+  que pueda domiciliar —no la primera de la lista, que podía ser el colchón—, y
+  el desplegable de la fila filtra por el medio del gasto. §2.
 - **2026-08-03** · Un recurrente en **efectivo** se proyecta sobre la cuenta
   `EFECTIVO`, y uno por **Bizum** sobre la que lo tiene: la cuenta se vuelve a
   decidir AL PROYECTAR, con la misma regla del formulario, en vez de confiar en

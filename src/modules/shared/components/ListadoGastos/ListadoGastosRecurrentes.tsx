@@ -11,6 +11,7 @@ import { Plus, Save, Copy, Sparkles, Upload } from 'lucide-react';
 import { EmptyState, Icons, showToastV5 } from '../../../../design-system/v5';
 import ConfirmationModal from '../../../../components/common/ConfirmationModal';
 import { cuentasService } from '../../../../services/cuentasService';
+import { cuentaParaElMetodo } from '../../../../services/cuentasPorMetodoPago';
 import { initDB } from '../../../../services/db';
 import type { Account, TreasuryEvent } from '../../../../services/db';
 import type { CompromisoRecurrente, MotivoBaja, FamiliaFiscal } from '../../../../types/compromisosRecurrentes';
@@ -160,9 +161,13 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
       const personal = opts?.forzarPersonal || mode === 'personal';
       // `cuentaCargo` no puede ser 0 (la validación lo rechaza) · las cuentas se
       // cargan async. Si aún no hay ninguna, no se crea a ciegas.
-      const cuenta = accounts[0]?.id;
+      //
+      // Y no vale la PRIMERA que haya: el gasto nace domiciliado, y el colchón
+      // no tiene IBAN que domiciliar (§2). Si el efectivo era la primera de la
+      // lista, el gasto nacía apuntando a un sitio que no puede pagarlo.
+      const cuenta = cuentaParaElMetodo('domiciliacion', accounts);
       if (cuenta == null) {
-        throw new Error('Añade una cuenta en Cuentas antes de crear un gasto');
+        throw new Error('Añade una cuenta bancaria en Cuentas antes de crear un gasto');
       }
       const now = new Date();
       const skeleton = {
