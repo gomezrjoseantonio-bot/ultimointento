@@ -26,6 +26,22 @@ export function valoresDesdeItem(
   item: ItemPunteo,
   cuentaId: number | null
 ): Partial<ValoresFicha> {
+  // Un traspaso interno se abre SIEMPRE mirando desde el origen, se haya
+  // pulsado el lápiz en la pata que se haya pulsado: "de esta cuenta a esta
+  // otra" se lee igual desde las dos, y con la entrada de titular el usuario
+  // vería el traspaso del revés.
+  if (item.traspaso) {
+    return {
+      tipo: 'transferencia',
+      concepto: (item.detalle ?? item.concepto).replace(/ · (salida|entrada)$/, ''),
+      importe: -Math.abs(item.importe),
+      fecha: item.fecha,
+      cuentaId: item.traspaso.origenId,
+      cuentaDestinoId: item.traspaso.destinoId,
+      inmuebleId: null,
+    };
+  }
+
   const presentacion = presentacionDe(item.categoryKey, item.subtypeKey);
   return {
     tipo: item.importe >= 0 ? 'ingreso' : 'gasto',
