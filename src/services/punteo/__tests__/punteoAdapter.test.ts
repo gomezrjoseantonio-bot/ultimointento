@@ -401,6 +401,22 @@ describe('un gasto anotado a mano enseña su clasificación', () => {
     expect(it.concepto).toBe('Compra');
   });
 
+  // El catálogo dice "Otros ingresos" donde el evento dice "Ingreso". Con cada
+  // uno por su lado, la previsión y el movimiento que la cumple acaban en dos
+  // grupos distintos — el mismo fallo, por el otro lado.
+  it('un ingreso cae donde cae su previsión', () => {
+    const it = movimientoAItem(
+      gasto({
+        id: 6,
+        type: 'Ingreso',
+        amount: 400,
+        categoryKey: 'otros_ingresos',
+        subtypeKey: undefined,
+      })
+    );
+    expect(it.origen).toBe(origenDeEvento({ sourceType: 'otros_ingresos', type: 'income' }));
+  });
+
   // Quien cobra manda sobre la etiqueta: es lo que se lee en el extracto.
   it('con proveedor no lo pisa la clasificación', () => {
     const it = movimientoAItem(

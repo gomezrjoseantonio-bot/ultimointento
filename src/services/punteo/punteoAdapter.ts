@@ -78,9 +78,26 @@ export function origenDeMovimiento(
 ): string {
   if (m.type === 'Transferencia') return 'Transferencia';
   const categoria = getCategoryByKey(m.categoryKey);
-  if (categoria && !isTransferKey(m.categoryKey)) return categoria.label;
+  if (categoria && !isTransferKey(m.categoryKey)) {
+    return DICE_OTRA_COSA_EL_EVENTO[categoria.key] ?? categoria.label;
+  }
   return m.type === 'Ingreso' ? 'Ingreso' : 'Gasto';
 }
+
+/**
+ * Donde los dos vocabularios no coinciden, manda el del EVENTO.
+ *
+ * El catálogo llama "Otros ingresos" a lo que `origenDeEvento` llama
+ * "Ingreso", y con cada uno por su lado la previsión y el movimiento que la
+ * cumple acababan en dos grupos distintos — que es exactamente el fallo que
+ * este adaptador viene a arreglar, reapareciendo por el otro lado.
+ *
+ * Gana la palabra del evento porque es la que ya está en pantalla: la previsión
+ * se ve antes que el movimiento que la cumple.
+ */
+const DICE_OTRA_COSA_EL_EVENTO: Record<string, string> = {
+  otros_ingresos: 'Ingreso',
+};
 
 /**
  * Cómo se llama lo que el usuario clasificó · "Gas", "Suministro".
