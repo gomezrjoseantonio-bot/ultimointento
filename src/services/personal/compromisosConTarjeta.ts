@@ -16,7 +16,10 @@
 import {
   listarCompromisos,
   regenerarEventosCompromiso,
+  regenerarRecibosDeTarjeta,
 } from './compromisosRecurrentesService';
+import { listarTarjetas } from '../tarjetasService';
+import { pagaConCreditoAplazado } from './recibosDeTarjetaPrevistos';
 
 /**
  * Regenera las previsiones de todos los gastos que pagan con esta tarjeta.
@@ -28,11 +31,22 @@ import {
  * Devuelve cuántas previsiones se han vuelto a emitir.
  */
 export async function regenerarCompromisosDeTarjeta(tarjetaId: number): Promise<number> {
-  const compromisos = await listarCompromisos({ soloActivos: true });
+  const [compromisos, tarjetas] = await Promise.all([
+    listarCompromisos({ soloActivos: true }),
+    listarTarjetas(),
+  ]);
+  const suyos = compromisos.filter((c) => c.tarjetaId === tarjetaId && c.id != null);
+
   let total = 0;
-  for (const c of compromisos) {
-    if (c.tarjetaId !== tarjetaId || c.id == null) continue;
+  for (const c of suyos) {
+    // Los de crédito aplazado NO se regeneran uno a uno: no emiten previsión
+    // propia, y cada llamada rehace el recibo entero. Con cinco gastos en la
+    // misma tarjeta eso serían cinco barridos completos para el mismo
+    // resultado. Su parte se rehace UNA vez, abajo.
+    if (pagaConCreditoAplazado(c, tarjetas)) continue;
     total += await regenerarEventosCompromiso(c);
   }
-  return total;
+
+  // El recibo cruza varios gastos, así que se rehace entero y una sola vez.
+  return total + (await regenerarRecibosDeTarjeta());
 }

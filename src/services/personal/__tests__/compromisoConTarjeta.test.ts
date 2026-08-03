@@ -37,11 +37,55 @@ const compromiso = (over: Partial<CompromisoRecurrente> = {}): CompromisoRecurre
     ...over,
   }) as unknown as CompromisoRecurrente;
 
+// §3.4 · lo que se paga con crédito aplazado no sale el día de la compra: sale
+// en el RECIBO de la tarjeta, que cruza varios gastos y se emite aparte.
+// Emitirlo también aquí sería cobrar dos veces lo mismo.
+describe('el crédito aplazado no emite cargo propio', () => {
+  const CREDITO = {
+    id: 11,
+    alias: 'Carrefour',
+    origen: 'externa',
+    modalidad: 'credito',
+    cuentaLiquidacionId: BANKINTER,
+    ciclo: { periodicidad: 'mensual', corte: 24, diaCargo: 5, periodosHastaElCargo: 1 },
+    activa: true,
+    createdAt: '',
+    updatedAt: '',
+  } as never;
+
+  it('con tarjeta de crédito no genera nada · lo hace el recibo', () => {
+    expect(generarEventosDesdeCompromiso(compromiso(), undefined, undefined, CREDITO)).toEqual([]);
+  });
+
+  // El fallo que esto evita: si la supresión mirase solo la tarjeta y el recibo
+  // mirase además el medio, un gasto con `tarjetaId` pero medio distinto no lo
+  // emitiría NADIE — ni cargo propio ni parte del recibo. Desaparecido.
+  it('un tarjetaId huérfano no borra el gasto · manda el medio', () => {
+    const huerfano = compromiso({ metodoPago: 'domiciliacion', tarjetaId: 11 });
+
+    const eventos = generarEventosDesdeCompromiso(huerfano, undefined, undefined, CREDITO);
+
+    expect(eventos.length).toBeGreaterThan(0);
+  });
+
+  // El débito cobra al momento · su gasto sigue siendo un cargo en su fecha.
+  it('con tarjeta de débito sí genera su cargo', () => {
+    const debito = { ...(CREDITO as object), modalidad: 'debito', ciclo: undefined } as never;
+
+    const eventos = generarEventosDesdeCompromiso(compromiso(), undefined, undefined, debito);
+
+    expect(eventos.length).toBeGreaterThan(0);
+    expect(eventos.every((e) => e.accountId === BANKINTER)).toBe(true);
+  });
+});
+
 describe('de qué cuenta se prevé el cargo', () => {
   it('manda la tarjeta · no la copia guardada en el gasto', () => {
+    // Débito · el crédito no emite cargo propio, eso se comprueba arriba.
     const eventos = generarEventosDesdeCompromiso(compromiso(), undefined, undefined, {
+      modalidad: 'debito',
       cuentaLiquidacionId: BANKINTER,
-    });
+    } as never);
 
     expect(eventos.length).toBeGreaterThan(0);
     expect(eventos.every((e) => e.accountId === BANKINTER)).toBe(true);

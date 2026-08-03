@@ -26,7 +26,7 @@ import type { TreasuryEvent } from './db';
 import {
   claveOrigenPrevision,
   esPrevisionIntocable,
-} from './personal/compromisosRecurrentesService';
+} from './personal/previsionesIdempotencia';
 
 /** Qué se hace con cada evento de un grupo duplicado. */
 export type DestinoPrevision =

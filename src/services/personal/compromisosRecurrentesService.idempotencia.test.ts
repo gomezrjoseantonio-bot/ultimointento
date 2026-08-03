@@ -15,8 +15,8 @@ import {
   darDeBajaCompromiso,
   reactivarCompromiso,
   regenerarEventosCompromiso,
-  claveOrigenPrevision,
 } from './compromisosRecurrentesService';
+import { claveOrigenPrevision } from './previsionesIdempotencia';
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 
 const base = (over: Partial<CompromisoRecurrente> = {}): Omit<
