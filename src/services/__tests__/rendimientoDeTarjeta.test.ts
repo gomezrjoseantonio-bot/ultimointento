@@ -77,6 +77,18 @@ describe('el techo de la estrategia', () => {
     expect(rendimientoDeTarjetas([tarjeta()], [])[0].techoAnual).toBe(564);
   });
 
+  // El límite es el techo DEL PERIODO, y el periodo no siempre es un mes: la
+  // Unicaja corta cada semana. Multiplicar siempre por 12 dejaba su techo
+  // cuatro veces por debajo de lo que es.
+  it('con corte semanal son 52 periodos, no 12', () => {
+    const semanal = tarjeta({
+      limite: 100,
+      ciclo: { periodicidad: 'semanal', corte: 7, diaCargo: 1, periodosHastaElCargo: 0 },
+    });
+
+    expect(rendimientoDeTarjetas([semanal], [])[0].techoAnual).toBe(52);
+  });
+
   it('sin límite dicho no se inventa un techo', () => {
     expect(rendimientoDeTarjetas([tarjeta({ limite: undefined })], [])[0].techoAnual)
       .toBeUndefined();

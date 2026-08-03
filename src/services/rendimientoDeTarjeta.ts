@@ -22,8 +22,19 @@ import type { Tarjeta } from '../types/tarjetas';
 import { gastoDeLaTarjeta } from './gastoPorTarjeta';
 import type { GastoDeUnPeriodo } from './gastoPorTarjeta';
 
-/** Doce meses · el techo se enseña al año porque así se compara con otra cosa. */
-const MESES_DEL_ANIO = 12;
+/**
+ * Cuántos periodos de esta tarjeta caben en un año.
+ *
+ * `limite` es el techo de gasto **del periodo**, y el periodo no siempre es un
+ * mes: la Unicaja corta cada semana. Multiplicar siempre por 12 dejaba su techo
+ * cuatro veces por debajo de lo que es.
+ *
+ * Sin ciclo —una de débito con límite— se lee como mensual, que es como se
+ * dicen los límites de tarjeta («4.700 € mensuales»).
+ */
+function periodosEnUnAnio(t: Tarjeta): number {
+  return t.ciclo?.periodicidad === 'semanal' ? 52 : 12;
+}
 
 export interface RendimientoDeTarjeta {
   tarjetaId: number;
@@ -82,7 +93,7 @@ export function rendimientoDeTarjetas(
       rendimiento: centimos((canalizado * porcentaje) / 100),
       techoAnual:
         t.limite != null && t.limite > 0
-          ? centimos((t.limite * porcentaje * MESES_DEL_ANIO) / 100)
+          ? centimos((t.limite * porcentaje * periodosEnUnAnio(t)) / 100)
           : undefined,
     });
   }

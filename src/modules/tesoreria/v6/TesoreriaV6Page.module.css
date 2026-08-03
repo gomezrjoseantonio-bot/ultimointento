@@ -741,11 +741,12 @@
   margin-top: 2px;
 }
 
-/* §3.7 · lo que rinde la tarjeta · en oro porque es lo único de la ficha que
-   es un INGRESO, no un gasto. */
+/* §3.7 · lo que rinde la tarjeta · en ORO porque es lo único de la ficha que
+   es un INGRESO, no un gasto. `gold-ink` y no `gold`: es texto pequeño y el
+   oro principal no contrasta bastante sobre blanco. */
 .tjRinde {
   font-size: 11px;
   font-weight: 600;
-  color: var(--atlas-v5-brand);
+  color: var(--atlas-v5-gold-ink);
   margin-top: 1px;
 }
