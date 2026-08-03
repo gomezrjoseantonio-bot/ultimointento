@@ -347,6 +347,10 @@ Consecuencias para el modelo:
   solo visible como un cargo mensual en la cuenta. Un requisito típico es
   "gastar N € al año con la tarjeta del banco": con solo el recibo agregado no
   se puede comprobar.
+- **Solo cuenta el gasto con la tarjeta DEL BANCO que bonifica.** Las tarjetas
+  de fuera (§3.4 ter) no bonifican ninguna hipoteca: son externas justamente por
+  eso. Sumarlas al cómputo diría que cumples un requisito que no cumples, y eso
+  se paga en el recibo.
 - La **tarjeta concreta** importa, no solo la cuenta: la bonificación la pide el
   banco de SU tarjeta. Otra razón para que la tarjeta sea una entidad propia
   (§3) y no un tipo de cuenta.
