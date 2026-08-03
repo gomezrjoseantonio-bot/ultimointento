@@ -347,6 +347,9 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
                 // Aquí todo está confirmado · el chip repetiría la pestaña, y
                 // el origen ya se lee en el propio concepto de cada fila.
                 sinOrigen
+                // Sin esto el lápiz no sale: las acciones de fila viven detrás
+                // de esta variante, y pasar `onEditar` a secas no bastaba.
+                rowVariant="tesoreria"
                 onConfirmar={onConfirmar}
                 onNoPaso={onDescartar}
                 // El círculo es el mismo interruptor que lo punteó · es donde

@@ -383,9 +383,17 @@ describe('un gasto anotado a mano enseña su clasificación', () => {
   // Con concepto escrito, manda lo que puso el usuario y la familia baja al
   // subtítulo · el sitio de la traducción de ATLAS.
   it('con concepto, la clasificación baja al subtítulo', () => {
-    const it = movimientoAItem(gasto({ id: 2, description: 'Gas' }));
-    expect(it.concepto).toBe('Gas');
+    const it = movimientoAItem(gasto({ id: 2, description: 'Recibo agosto' }));
+    expect(it.concepto).toBe('Recibo agosto');
     expect(it.detalle).toBe('Gas');
+  });
+
+  // Escribir "Gas" y elegir la familia Gas es lo normal · la fila decía
+  // "Gas · Gas" y repetir la palabra no añade nada.
+  it('no repite la misma palabra dos veces', () => {
+    const it = movimientoAItem(gasto({ id: 7, description: 'Gas' }));
+    expect(it.concepto).toBe('Gas');
+    expect(it.detalle).toBeUndefined();
   });
 
   // El cajón es el mismo vocabulario que usa la previsión que lo cumple.

@@ -249,3 +249,92 @@ async function altaMejora(v: AltaMovimiento, inmuebleId: number): Promise<number
 
   return (await db.add('mejorasInmueble', mejora)) as number;
 }
+
+// ─── Corregir y borrar lo anotado a mano ────────────────────────────────────
+
+/**
+ * Qué movimientos se pueden tocar · SOLO los que escribió el usuario.
+ *
+ * Uno importado del extracto es realidad del banco: corregirlo o borrarlo
+ * descuadraría el saldo contra el que se concilia, y al reimportar volvería a
+ * aparecer. Uno nacido de confirmar una previsión tampoco: quien lo deshace es
+ * el despunteo, que además devuelve la previsión a pendiente.
+ *
+ * Queda lo anotado a mano, que es de donde salen las equivocaciones que nadie
+ * más puede arreglar.
+ */
+export function esMovimientoEditable(
+  m: Pick<Movement, 'source' | 'reference' | 'transferMetadata'>
+): boolean {
+  if (m.source !== 'manual') return false;
+  if (m.reference) return false;
+  // Una transferencia interna son DOS apuntes espejo. Tocar uno solo dejaría
+  // el otro colgado y el dinero duplicado o desaparecido, así que de momento
+  // no se ofrece: mejor sin lápiz que con un lápiz que descuadra.
+  if (m.transferMetadata) return false;
+  return true;
+}
+
+export class MovimientoNoEditableError extends Error {
+  constructor() {
+    super('Solo se puede corregir lo que anotaste a mano.');
+    this.name = 'MovimientoNoEditableError';
+  }
+}
+
+async function movimientoEditable(movementId: number): Promise<Movement> {
+  const db = await initDB();
+  const m = (await db.get('movements', movementId)) as Movement | undefined;
+  if (!m || !esMovimientoEditable(m)) throw new MovimientoNoEditableError();
+  return m;
+}
+
+/**
+ * Corrige un movimiento anotado a mano · en el sitio, sin crear otro.
+ *
+ * Se escriben los mismos campos que fija el alta y por el mismo criterio: el
+ * signo lo manda el tipo y el ámbito lo manda el inmueble. `categoryKey` y
+ * `subtypeKey` viajan aunque vengan vacíos —reclasificar a algo sin variante
+ * tiene que BORRAR la anterior, no dejarla pegada.
+ */
+export async function editarMovimiento(movementId: number, v: AltaMovimiento): Promise<void> {
+  const anterior = await movimientoEditable(movementId);
+  if (v.cuentaId == null) throw new SinCuentaError();
+  // Una transferencia INTERNA son dos apuntes espejo, y aquí solo hay uno
+  // delante: crear la otra pata al editar dejaría un traspaso a medias, con el
+  // dinero saliendo de una cuenta y sin entrar en ninguna.
+  if (v.tipo === 'transferencia' && v.cuentaDestinoId != null) {
+    throw new MovimientoNoEditableError();
+  }
+
+  const db = await initDB();
+  const magnitud = Math.abs(v.importe);
+  const importe = v.tipo === 'ingreso' ? magnitud : -magnitud;
+  const fecha = v.fecha.slice(0, 10);
+
+  await db.put('movements', {
+    ...anterior,
+    accountId: v.cuentaId,
+    date: fecha,
+    valueDate: fecha,
+    amount: importe,
+    description: v.concepto,
+    // El tipo lo manda lo que ELIGIÓ el usuario, no el signo. Derivarlo solo
+    // del importe convertía en gasto una transferencia externa —que sale en
+    // negativo como cualquier cargo— y ya no había forma de volver.
+    type: v.tipo === 'transferencia' ? 'Transferencia' : importe >= 0 ? 'Ingreso' : 'Gasto',
+    category: { tipo: importe >= 0 ? 'Ingresos' : 'Gastos' },
+    ambito: v.inmuebleId != null ? 'INMUEBLE' : 'PERSONAL',
+    categoryKey: v.categoryKey ?? undefined,
+    subtypeKey: v.subtypeKey ?? undefined,
+    inmuebleId: v.inmuebleId != null ? String(v.inmuebleId) : undefined,
+    updatedAt: new Date().toISOString(),
+  } as Movement);
+}
+
+/** Borra un movimiento anotado a mano · el resto no se toca. */
+export async function eliminarMovimiento(movementId: number): Promise<void> {
+  await movimientoEditable(movementId);
+  const db = await initDB();
+  await db.delete('movements', movementId);
+}

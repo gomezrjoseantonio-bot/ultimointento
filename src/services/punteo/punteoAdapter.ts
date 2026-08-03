@@ -13,6 +13,7 @@ import {
   isTransferKey,
   TRANSFER_KEYS,
 } from '../categoryCatalog';
+import { esMovimientoEditable } from '../altaMovimientoService';
 import {
   estadoDeEvento,
   estadoDeMovimiento,
@@ -299,6 +300,8 @@ export function eventoAItem(
   return {
     key: `evt-${e.id}`,
     kind: 'evento',
+    // Una previsión siempre se corrige: aún no ha pasado nada.
+    editable: true,
     refId: e.id,
     estado: estadoDeEvento(e),
     fecha: (e.predictedDate ?? '').slice(0, 10),
@@ -423,8 +426,12 @@ function piezasDeMovimiento(
   // que es el sitio de la traducción de ATLAS.
   const clasificacion = m.providerName ? undefined : etiquetaDeClasificacion(m);
   if (clasificacion) {
+    // Escribir "Gas" de concepto y elegir la familia Gas es lo normal, y
+    // entonces la fila decía "Gas · Gas". Repetir la misma palabra no añade
+    // nada: se deja una sola vez.
+    const repetido = m.description?.trim().toLowerCase() === clasificacion.toLowerCase();
     return m.description
-      ? { concepto: m.description, detalle: clasificacion }
+      ? { concepto: m.description, detalle: repetido ? undefined : clasificacion }
       : { concepto: clasificacion, detalle: undefined };
   }
 
@@ -458,6 +465,7 @@ export function movimientoAItem(
     detalle,
     activo,
     origen: origenDeMovimiento(m),
+    editable: esMovimientoEditable(m),
     cuentaId: m.accountId ?? null,
     // §7 · el papel que respalda el cargo · solo lo real lo tiene.
     documentIds: m.documentIds?.length ? m.documentIds : undefined,

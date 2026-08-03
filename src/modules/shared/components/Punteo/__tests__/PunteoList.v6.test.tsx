@@ -25,6 +25,8 @@ const item = (over: Partial<ItemPunteo> = {}): ItemPunteo => ({
   origen: 'Suministro',
   cuentaId: 1,
   importe: -74.09,
+  // Una previsión siempre se puede corregir · es lo que marca el adaptador.
+  editable: true,
   ...over,
 });
 

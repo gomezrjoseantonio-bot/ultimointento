@@ -41,7 +41,11 @@ import {
   updateTreasuryEventFields,
 } from '../../../services/treasuryConfirmationService';
 import { descartarPrevisto } from '../../../services/treasuryDiscardService';
-import { altaMovimiento } from '../../../services/altaMovimientoService';
+import {
+  altaMovimiento,
+  editarMovimiento,
+  eliminarMovimiento,
+} from '../../../services/altaMovimientoService';
 import { batchesEnBorrador, sinBorradores } from '../../../services/statementSessionService';
 import { registrarDiagnosticoEnConsola } from '../../../services/duplicadosPrevisionService';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
@@ -367,8 +371,15 @@ const TesoreriaV6Page: React.FC = () => {
 
   const descartarItem = useCallback(
     async (item: ItemPunteo) => {
-      if (item.kind !== 'evento') return;
       try {
+        // Una previsión se DESCARTA —sigue existiendo, marcada como que no va
+        // a ocurrir— y un movimiento anotado a mano se borra: no hay nada que
+        // conservar de un apunte que el usuario escribió por error.
+        if (item.kind === 'movimiento') {
+          await eliminarMovimiento(item.refId);
+          await trasEscribir();
+          return;
+        }
         await descartarPrevisto(item.refId);
         await trasEscribir();
       } catch (err) {
@@ -425,6 +436,30 @@ const TesoreriaV6Page: React.FC = () => {
         // puede confirmar como previsto: confirmar materializa un movement de
         // gasto, y una mejora se amortiza. Las dos van al mismo escritor, que
         // ya sabe a qué store corresponde cada una.
+        // Corregir lo YA anotado · en el sitio, no otra vez.
+        //
+        // Sin esta rama, editar un movimiento caía en el alta de más abajo y
+        // creaba un segundo apunte: el lápiz duplicaba el gasto en vez de
+        // arreglarlo, que es peor que no tener lápiz.
+        if (item?.kind === 'movimiento' && !v.esMejora) {
+          await editarMovimiento(item.refId, {
+            tipo: v.tipo,
+            concepto: v.concepto,
+            importe: v.importe,
+            fecha: v.fecha,
+            cuentaId: v.cuentaId,
+            inmuebleId: v.inmuebleId ?? null,
+            categoryKey: v.categoryKey ?? null,
+            subtypeKey: v.subtypeKey ?? null,
+            // Viaja para que el servicio pueda NEGARSE: convertir esto en un
+            // traspaso interno pediría una segunda pata que aquí no se puede
+            // crear. Tragárselo en silencio dejaría el dinero saliendo de una
+            // cuenta y entrando en ninguna.
+            cuentaDestinoId: v.cuentaDestinoId,
+          });
+          await trasEscribir();
+          return;
+        }
         if (item == null || item.kind !== 'evento' || v.esMejora) {
           // La previsión que dio origen a la mejora deja de estar pendiente: si
           // se quedara, seguiría proyectando un gasto que ya se registró como
