@@ -418,9 +418,11 @@ describe('§4.10 · cómo va el mes', () => {
   it('una previsión vieja sin vínculo no duplica su pago', () => {
     const r = calcularRealidad({
       eventos: [
-        ev({ type: 'expense', amount: 120, actualAmount: 96, predictedDate: '2026-07-05', status: 'executed' }),
+        // Con cuenta · un ejecutado SIEMPRE la tiene (`confirmTreasuryEvent`
+        // la exige). Lo que le falta a este es a qué movimiento dio lugar.
+        ev({ type: 'expense', amount: 120, actualAmount: 96, predictedDate: '2026-07-05', status: 'executed', accountId: 1 }),
       ],
-      movimientos: [mov({ id: 9, amount: -96, date: '2026-07-05' })],
+      movimientos: [mov({ id: 9, accountId: 1, amount: -96, date: '2026-07-05' })],
       year: 2026,
       month0: 6,
     });
