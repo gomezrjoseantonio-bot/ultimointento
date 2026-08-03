@@ -81,6 +81,38 @@ export function cuentaParaElMetodo(
   return posibles[0].id;
 }
 
+/**
+ * De qué cuenta sale REALMENTE el cargo de este gasto.
+ *
+ * `compromiso.cuentaCargo` es lo que se guardó el día que se creó, y para los
+ * métodos que NO dejan elegir eso es una copia que puede mentir: un gasto en
+ * efectivo apuntando a Santander hace que el banco parezca más pobre y que el
+ * colchón no baje nunca — el dinero sale de un sitio del que no salió.
+ *
+ * Así que la cuenta se vuelve a decidir al proyectar, con la misma regla que
+ * usa el formulario. Para domiciliación y transferencia se respeta lo guardado:
+ * ahí el usuario SÍ elige, y cambiárselo por su cuenta sería peor.
+ *
+ * Sin `cuentas` —quien no las tenga a mano— se devuelve lo guardado: mejor la
+ * copia que nada.
+ */
+export function cuentaDelCargo(
+  compromiso: { metodoPago: MetodoPagoCompromiso; cuentaCargo: number },
+  tarjeta: Pick<Tarjeta, 'cuentaLiquidacionId'> | undefined,
+  cuentas: Account[]
+): number {
+  // §3 · con tarjeta manda su cuenta de liquidación.
+  if (tarjeta) return tarjeta.cuentaLiquidacionId;
+  // §2 · efectivo y Bizum no dejan elegir: la cuenta la decide el método.
+  if (elMetodoDecideLaCuenta(compromiso.metodoPago)) {
+    return (
+      cuentaParaElMetodo(compromiso.metodoPago, cuentas, compromiso.cuentaCargo) ??
+      compromiso.cuentaCargo
+    );
+  }
+  return compromiso.cuentaCargo;
+}
+
 // ============================================================================
 // Pagar con tarjeta · §3
 // ============================================================================

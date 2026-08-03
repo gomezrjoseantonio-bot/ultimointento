@@ -8,6 +8,7 @@
 // Estas son las reglas del vocabulario, escritas una vez.
 
 import {
+  cuentaDelCargo,
   cuentaDeLaTarjeta,
   cuentaParaElMetodo,
   cuentasQuePuedenPagar,
@@ -141,5 +142,48 @@ describe('pagar con tarjeta', () => {
   it('una tarjeta que ya no existe no deja cuenta pegada', () => {
     expect(cuentaDeLaTarjeta(999, [visa])).toBeUndefined();
     expect(cuentaDeLaTarjeta(undefined, [visa])).toBeUndefined();
+  });
+});
+
+// ─── De qué cuenta sale de verdad · §2 ─────────────────────────────────────
+//
+// `cuentaCargo` es lo que se guardó el día que se creó el gasto, y para los
+// métodos que NO dejan elegir es una copia que puede mentir. Un recurrente en
+// efectivo apuntando a Santander hace que el banco parezca más pobre y que el
+// colchón no baje NUNCA: el dinero sale de un sitio del que no salió.
+
+describe('la cuenta que paga de verdad', () => {
+  const gasto = (metodoPago: 'domiciliacion' | 'efectivo' | 'bizum', cuentaCargo: number) =>
+    ({ metodoPago, cuentaCargo }) as const;
+
+  // El caso de Jose: un gasto en efectivo guardado antes de que existiera la
+  // regla, con una cuenta bancaria pegada.
+  it('en efectivo sale del colchón · aunque el gasto diga otra cosa', () => {
+    expect(cuentaDelCargo(gasto('efectivo', corriente.id!), undefined, TODAS)).toBe(efectivo.id);
+  });
+
+  it('por Bizum sale de la cuenta que lo tiene', () => {
+    expect(cuentaDelCargo(gasto('bizum', corriente.id!), undefined, TODAS)).toBe(conBizum.id);
+  });
+
+  // Aquí el usuario SÍ elige · cambiárselo por nuestra cuenta sería peor que
+  // el problema que arregla.
+  it('domiciliada se respeta lo que eligió el usuario', () => {
+    expect(cuentaDelCargo(gasto('domiciliacion', conBizum.id!), undefined, TODAS)).toBe(conBizum.id);
+  });
+
+  // §3 · con tarjeta manda su cuenta de liquidación, por encima de todo.
+  it('con tarjeta manda su cuenta de liquidación', () => {
+    expect(cuentaDelCargo(gasto('domiciliacion', 1), { cuentaLiquidacionId: 99 }, TODAS)).toBe(99);
+  });
+
+  // Sin cuentas a mano —un llamante que no las tiene— mejor la copia que nada.
+  it('sin cuentas se respeta lo guardado', () => {
+    expect(cuentaDelCargo(gasto('efectivo', 7), undefined, [])).toBe(7);
+  });
+
+  // Sin colchón dado de alta no hay a dónde llevarlo · no se inventa una cuenta.
+  it('sin colchón se queda donde estaba', () => {
+    expect(cuentaDelCargo(gasto('efectivo', 7), undefined, [corriente])).toBe(7);
   });
 });

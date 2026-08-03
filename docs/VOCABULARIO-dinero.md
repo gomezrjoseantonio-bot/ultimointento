@@ -401,8 +401,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 - **2026-08-03** · El alta de gasto recurrente ofrece cuenta de cargo con
   método `efectivo`, y todas las cuentas con método `bizum`. §2, §4, §5.
-- **2026-08-03** · Un recurrente en efectivo se proyecta sobre su cuenta de
-  cargo bancaria en vez de sobre la cuenta `EFECTIVO`. §4.
 - **2026-08-03** · Los gastos personales (`PatronGastoPersonal`) que alimentan
   `treasurySyncService` salen de un **stub**: el store se eliminó en V62 y
   `getPatrones` devuelve siempre `[]`. Toda esa rama del motor —incluida su
@@ -449,6 +447,13 @@ Escrito para no perderlo, con la fecha en que se detectó.
 - **2026-08-03** · **Solo puede haber una cuenta de efectivo.** Se comprueba al
   crear y al cambiar el tipo —la puerta de atrás—, y el wizard deja de ofrecer
   el tipo cuando ya hay una. §1.
+- **2026-08-03** · Un recurrente en **efectivo** se proyecta sobre la cuenta
+  `EFECTIVO`, y uno por **Bizum** sobre la que lo tiene: la cuenta se vuelve a
+  decidir AL PROYECTAR, con la misma regla del formulario, en vez de confiar en
+  la copia que se guardó. Los gastos creados antes de que existiera esa regla
+  llevan pegada una cuenta bancaria, y esa copia hacía que el banco pareciera
+  más pobre y que el colchón no bajara nunca. Con domiciliación y transferencia
+  se respeta lo guardado — ahí el usuario **sí** elige. §2, §4, §5.
 - **2026-08-03** · Un gasto recurrente pagado con **crédito aplazado** ya no
   emite su cargo el día de la compra: se acumula en un **recibo por (tarjeta ·
   corte)**, en la cuenta de liquidación y el día de cargo. El recibo **cruza
