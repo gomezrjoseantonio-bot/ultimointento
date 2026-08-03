@@ -9,7 +9,7 @@
 //   5. Events in non-'predicted' status are ignored as candidates
 //   6. fechaWindowDays boundary excludes events outside the window
 import { matchBatch } from '../movementMatchingService';
-import { initDB, Movement, TreasuryEvent } from '../db';
+import { initDB, Movement, MovementLearningRule, TreasuryEvent } from '../db';
 
 jest.mock('../db', () => ({
   initDB: jest.fn(),
@@ -18,6 +18,7 @@ jest.mock('../db', () => ({
 interface FakeStores {
   movements: Movement[];
   treasuryEvents: TreasuryEvent[];
+  movementLearningRules?: MovementLearningRule[];
 }
 
 function buildDb(stores: FakeStores) {
@@ -439,5 +440,89 @@ describe('movementMatchingService.matchBatch', () => {
     expect(result.multiMatches[0].candidates.map((c) => c.treasuryEventId).sort()).toEqual([
       100, 101,
     ]);
+  });
+
+  // ==========================================================================
+  // El alias aprendido · lo que el usuario enseñó una vez
+  // ==========================================================================
+  //
+  // "MPARWEZ" no se parece a "Adnan Parwez Khan" por ninguna heurística: no
+  // comparten ni una palabra. Pero si el usuario ya confirmó una vez que eran
+  // el mismo, eso es un dato y manda sobre cualquier conjetura.
+
+  const regla = (alias: string, canonica: string): MovementLearningRule =>
+    ({
+      id: 1,
+      learnKey: 'k1',
+      counterpartyPattern: '',
+      descriptionPattern: '',
+      amountSign: 'positive',
+      categoria: 'Alquiler',
+      ambito: 'INMUEBLE',
+      source: 'IMPLICIT',
+      createdAt: '2026-03-03',
+      updatedAt: '2026-03-03',
+      appliedCount: 1,
+      // Se guardan tal cual los escribió el banco y el contrato · normalizar es
+      // cosa de la lectura.
+      aliasContraparte: alias,
+      contraparteCanonica: canonica,
+    }) as MovementLearningRule;
+
+  const bizumDeMparwez = (): FakeStores => ({
+    movements: [
+      movement({
+        id: 1,
+        accountId: 42,
+        date: '2026-04-03',
+        amount: 380,
+        description: 'BIZUM DE MPARWEZ',
+        counterparty: 'MPARWEZ',
+        paymentMethod: 'Bizum',
+      }),
+    ],
+    treasuryEvents: [
+      event({
+        id: 100,
+        accountId: 42,
+        type: 'income',
+        amount: 380,
+        predictedDate: '2026-04-01',
+        counterparty: 'Adnan Parwez Khan',
+      }),
+    ],
+  });
+
+  it('10. Un nombre que no se parece a nada casa si ya se enseñó', async () => {
+    const stores = bizumDeMparwez();
+    stores.movementLearningRules = [regla('MPARWEZ', 'Adnan Parwez Khan')];
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].treasuryEventId).toBe(100);
+    expect(result.matches[0].reasons).toContain('alias_aprendido');
+  });
+
+  it('10b. El mismo movimiento sin nada aprendido se queda sin propuesta', async () => {
+    (initDB as jest.Mock).mockResolvedValue(buildDb(bizumDeMparwez()));
+
+    const result = await matchBatch([1]);
+
+    expect(result.matches).toEqual([]);
+    expect(result.sinMatch).toEqual([1]);
+  });
+
+  // Lo aprendido vale para ESA persona, no para cualquiera.
+  it('11. Un alias aprendido de otro no arrastra a este', async () => {
+    const stores = bizumDeMparwez();
+    stores.movementLearningRules = [regla('MPARWEZ', 'Laura Sanchez')];
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+
+    expect(result.matches).toEqual([]);
+    expect(result.sinMatch).toEqual([1]);
   });
 });

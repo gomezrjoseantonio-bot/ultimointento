@@ -1,4 +1,6 @@
 import { initDB, Movement, MovementLearningRule } from './db';
+import { contraparteDeBizum } from './bizum';
+import { claveDeNombre, nivelDeCoincidencia } from './coincidenciaNombre';
 
 /**
  * V1.1 Treasury · Movement Learning Service
@@ -131,6 +133,85 @@ function generateLearnKey(movement: Movement): string {
   return buildLearnKey(movement);
 }
 
+// ─── Alias de contraparte · quién es, no de qué categoría es ────────────────
+
+/**
+ * El nombre de la persona que hay detrás de una línea del banco.
+ *
+ * Manda la columna de contraparte del fichero si viene; si no, se intenta leer
+ * del texto (los Bizum lo traen dentro). `undefined` si no se puede saber — de
+ * un nombre inventado no se aprende nada bueno.
+ */
+export function nombreDeContraparte(movement: Movement): string | undefined {
+  const propia = movement.counterparty?.trim();
+  if (propia) return propia;
+  return contraparteDeBizum(movement.description ?? '');
+}
+
+/**
+ * Qué alias merece guardarse de esta confirmación · `undefined` si ninguno.
+ *
+ * Sólo se aprende lo que NO se deducía solo. Si el nombre del banco y el del
+ * contrato ya comparten nombre y apellido, `nivelDeCoincidencia` los une sin
+ * ayuda y guardar el alias sería ruido. Lo valioso es justo lo contrario:
+ * "MPARWEZ" contra "Adnan Parwez Khan", que sin que el usuario lo enseñe no
+ * hay forma de adivinar.
+ */
+function aliasAprendible(
+  movement: Movement,
+  contraparteConfirmada?: string
+): { banco: string; canonica: string } | undefined {
+  const nombreBanco = nombreDeContraparte(movement);
+  if (!nombreBanco || !contraparteConfirmada) return undefined;
+  if (nivelDeCoincidencia(nombreBanco, contraparteConfirmada) === 'fuerte') return undefined;
+
+  // Se comparan normalizados —"PARWEZ, ADNAN" y "Adnan Parwez" son lo mismo—
+  // pero se guardan como vienen: esto se enseña en la pantalla de reglas.
+  const claveBanco = claveDeNombre(nombreBanco);
+  const claveCanonica = claveDeNombre(contraparteConfirmada);
+  // Una clave vacía no es un nombre, y un alias hacia uno mismo no enseña nada.
+  if (!claveBanco || !claveCanonica || claveBanco === claveCanonica) return undefined;
+  return { banco: nombreBanco, canonica: contraparteConfirmada };
+}
+
+/**
+ * Los alias aprendidos, listos para preguntar: clave del banco → claves a las
+ * que el usuario los ha confirmado alguna vez.
+ *
+ * Es un `Set` y no un valor porque el mapa se construye sobre TODAS las reglas,
+ * y reglas distintas —descripciones de banco distintas, `learnKey` distintos—
+ * pueden traer el mismo nombre apuntando a personas distintas. Ahí lo honesto
+ * es que salgan las dos como candidatas y decida el usuario.
+ *
+ * Dentro de UNA regla el alias es 1→1 a propósito: el mismo texto del banco
+ * confirmado después contra otra persona no son dos verdades a la vez, es una
+ * corrección, y pisa a la anterior.
+ */
+export async function cargarAliasContraparte(): Promise<Map<string, Set<string>>> {
+  const mapa = new Map<string, Set<string>>();
+  let reglas: MovementLearningRule[] = [];
+  try {
+    const db = await initDB();
+    reglas = ((await db.getAll('movementLearningRules')) ?? []) as MovementLearningRule[];
+  } catch {
+    // El alias es una ayuda, no un requisito: sin reglas se empareja igual.
+    return mapa;
+  }
+
+  for (const regla of reglas) {
+    if (!regla.aliasContraparte || !regla.contraparteCanonica) continue;
+    const clave = claveDeNombre(regla.aliasContraparte);
+    const canonica = claveDeNombre(regla.contraparteCanonica);
+    // Una clave vacía no es un nombre: metida en el Set haría match con
+    // cualquier previsión que tampoco tenga contraparte.
+    if (!clave || !canonica) continue;
+    const canonicas = mapa.get(clave) ?? new Set<string>();
+    canonicas.add(canonica);
+    mapa.set(clave, canonicas);
+  }
+  return mapa;
+}
+
 /**
  * Create or update a learning rule by learn key.
  *
@@ -152,11 +233,19 @@ export async function createOrUpdateRule(params: {
   ambito: 'PERSONAL' | 'INMUEBLE';
   inmuebleId?: string;
   movement?: Movement;
+  /**
+   * A quién resultó pertenecer el movimiento · el nombre del contrato o del
+   * proveedor de la previsión contra la que el usuario lo confirmó. De aquí
+   * sale el alias, si es que hay algo que aprender.
+   */
+  contraparteConfirmada?: string;
 }): Promise<MovementLearningRule> {
   try {
     const db = await initDB();
-    const { learnKey, categoria, ambito, inmuebleId, movement } = params;
+    const { learnKey, categoria, ambito, inmuebleId, movement, contraparteConfirmada } = params;
     const now = new Date().toISOString();
+
+    const alias = movement ? aliasAprendible(movement, contraparteConfirmada) : undefined;
 
     const derivedCounterparty = movement
       ? normalizeText(movement.counterparty || '')
@@ -195,6 +284,12 @@ export async function createOrUpdateRule(params: {
       rule.appliedCount = (rule.appliedCount ?? 0) + 1;
       rule.lastAppliedAt = now;
       rule.updatedAt = now;
+      // El alias se refresca si esta vez SÍ hay algo que enseñar · una
+      // confirmación que no aporta nombre no borra lo aprendido antes.
+      if (alias) {
+        rule.aliasContraparte = alias.banco;
+        rule.contraparteCanonica = alias.canonica;
+      }
 
       await db.put('movementLearningRules', rule);
       console.log(`📚 Updated learning rule: ${learnKey}`);
@@ -214,6 +309,8 @@ export async function createOrUpdateRule(params: {
         updatedAt: now,
         appliedCount: 1, // B1 · creation already counts as the first application
         lastAppliedAt: now,
+        aliasContraparte: alias?.banco,
+        contraparteCanonica: alias?.canonica,
       };
 
       const ruleId = await db.add('movementLearningRules', newRule);

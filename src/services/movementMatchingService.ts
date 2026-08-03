@@ -10,7 +10,14 @@
 // even though spec §1.3 refers to it as 'pending'. We use the canonical value.
 import { initDB, Movement, TreasuryEvent } from './db';
 import { pareceBizum, contraparteDeBizum } from './bizum';
-import { nivelDeCoincidencia } from './coincidenciaNombre';
+import { claveDeNombre, nivelDeCoincidencia } from './coincidenciaNombre';
+import { cargarAliasContraparte, nombreDeContraparte } from './movementLearningService';
+
+/**
+ * Los alias que el usuario ya enseñó · clave del nombre que manda el banco →
+ * claves de las personas a las que lo ha confirmado.
+ */
+type AliasContraparte = Map<string, Set<string>>;
 
 export type MatchScore = {
   movementId: number;
@@ -67,7 +74,8 @@ export async function matchBatch(
   }
 
   const eventsByAccount = await loadCandidateEvents(db, movements);
-  const allCandidates = collectCandidates(movements, eventsByAccount, opts);
+  const alias = await cargarAliasContraparte();
+  const allCandidates = collectCandidates(movements, eventsByAccount, alias, opts);
   const winnersByEvent = resolveEventConflicts(allCandidates);
   return classify(movements, winnersByEvent, opts);
 }
@@ -104,6 +112,7 @@ async function loadCandidateEvents(
 function collectCandidates(
   movements: Movement[],
   eventsByAccount: Map<number, TreasuryEvent[]>,
+  alias: AliasContraparte,
   opts: Required<MatchOptions>
 ): ScoredCandidate[] {
   const candidates: ScoredCandidate[] = [];
@@ -112,7 +121,7 @@ function collectCandidates(
     for (const event of events) {
       const daysDiff = Math.abs(daysBetween(movement.date, event.predictedDate));
       if (!Number.isFinite(daysDiff) || daysDiff > opts.fechaWindowDays) continue;
-      const scored = scorePair(movement, event, daysDiff, opts);
+      const scored = scorePair(movement, event, daysDiff, alias, opts);
       if (scored.score <= 0) continue;
       candidates.push({
         movementId: movement.id!,
@@ -130,6 +139,7 @@ function scorePair(
   movement: Movement,
   event: TreasuryEvent,
   daysDiff: number,
+  alias: AliasContraparte,
   opts: Required<MatchOptions>
 ): { score: number; reasons: string[] } {
   const reasons: string[] = [];
@@ -175,10 +185,38 @@ function scorePair(
     score += 25;
     reasons.push('descripcion_proveedor');
   } else {
-    score += puntosDeBizum(movement, event, reasons);
+    score += puntosDeContraparte(movement, event, alias, reasons);
   }
 
   return { score, reasons };
+}
+
+/**
+ * Quién paga · primero lo que el usuario ya enseñó, después lo que se deduce.
+ *
+ * El alias va delante a propósito: una confirmación suya es un dato, y el
+ * parecido de dos nombres es una conjetura. Si alguna vez confirmó que este
+ * texto del banco era esta persona, eso manda sobre cualquier heurística —y
+ * cubre los casos que ninguna heurística alcanza, como "MPARWEZ".
+ */
+function puntosDeContraparte(
+  movement: Movement,
+  event: TreasuryEvent,
+  alias: AliasContraparte,
+  reasons: string[]
+): number {
+  const nombreBanco = nombreDeContraparte(movement);
+  const quienCobra = claveDeNombre(event.counterparty ?? event.providerName ?? '');
+  // Sin nombre a los dos lados no hay nada que preguntar · una clave vacía
+  // preguntada contra el Set casaría con cualquier previsión anónima.
+  if (nombreBanco && quienCobra) {
+    const aprendidas = alias.get(claveDeNombre(nombreBanco));
+    if (aprendidas?.has(quienCobra)) {
+      reasons.push('alias_aprendido');
+      return 25;
+    }
+  }
+  return puntosDeBizum(movement, event, reasons);
 }
 
 /**

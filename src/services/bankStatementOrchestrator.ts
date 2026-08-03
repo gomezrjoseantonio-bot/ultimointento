@@ -293,7 +293,16 @@ export async function confirmDecisions(
     movementIdsTouched.add(movementId);
 
     // Feed learning so subsequent imports auto-classify by learnKey.
-    await feedLearningRule(movement, deriveCategoryFromEvent(event));
+    //
+    // Aquí el usuario no sólo dice de qué categoría es: dice de QUIÉN es. Al
+    // confirmar esta línea contra esta previsión está enseñando que el nombre
+    // que manda el banco y el que hay en el contrato son la misma persona, y
+    // eso es lo que viaja en `contraparteConfirmada`.
+    await feedLearningRule(
+      movement,
+      deriveCategoryFromEvent(event),
+      event.counterparty ?? event.providerName
+    );
   }
 
   // Apply approved suggestions.
@@ -630,7 +639,11 @@ function deriveCategoryFromAction(action: SuggestionAction): DerivedCategory | n
   }
 }
 
-async function feedLearningRule(movement: Movement, derived: DerivedCategory | null): Promise<void> {
+async function feedLearningRule(
+  movement: Movement,
+  derived: DerivedCategory | null,
+  contraparteConfirmada?: string
+): Promise<void> {
   if (!derived) return;
   try {
     const learnKey = buildLearnKey(movement);
@@ -643,6 +656,7 @@ async function feedLearningRule(movement: Movement, derived: DerivedCategory | n
       ambito: derived.ambito,
       inmuebleId: derived.inmuebleId,
       movement,
+      contraparteConfirmada,
     });
   } catch (err) {
     // Learning is opportunistic — do not block confirmation if it fails.
