@@ -302,6 +302,7 @@ export function eventoAItem(
     kind: 'evento',
     // Una previsión siempre se corrige: aún no ha pasado nada.
     editable: true,
+    traspaso: traspasoDeLaFila(e, e.id),
     refId: e.id,
     estado: estadoDeEvento(e),
     fecha: (e.predictedDate ?? '').slice(0, 10),
@@ -347,6 +348,29 @@ export function eventoAItem(
  * movimiento y ya está. Por eso la huella se lee aquí y viaja hasta la fila —
  * es lo que decide si el círculo se pinta como interruptor o como marca.
  */
+/**
+ * El traspaso ENTERO al que pertenece esta pata · `undefined` si no lo es.
+ *
+ * `targetAccountId` guarda "la otra cuenta", que es el DESTINO en la salida y
+ * el ORIGEN en la entrada. Resolverlo aquí evita que cada pantalla vuelva a
+ * hacer el mismo razonamiento —y lo haga al revés desde la pata de entrada.
+ */
+function traspasoDeLaFila(
+  r: { categoryKey?: string; accountId?: number; transferMetadata?: { targetAccountId: number } },
+  eventId?: number
+): { eventId: number; origenId: number; destinoId: number } | undefined {
+  if (eventId == null || !isTransferKey(r.categoryKey)) return undefined;
+  const propia = r.accountId;
+  const otra = r.transferMetadata?.targetAccountId;
+  if (propia == null || otra == null) return undefined;
+  const sale = r.categoryKey === TRANSFER_KEYS.SALIDA;
+  return {
+    eventId,
+    origenId: sale ? propia : otra,
+    destinoId: sale ? otra : propia,
+  };
+}
+
 export function previsionDeMovimiento(m: Pick<Movement, 'reference'>): number | undefined {
   const ref = String(m.reference ?? '').match(/^treasury_event:(\d+)$/);
   return ref ? Number(ref[1]) : undefined;
@@ -455,6 +479,7 @@ export function movimientoAItem(
   const activo =
     m.inmuebleId != null && m.inmuebleId !== '' ? { inmuebleId: m.inmuebleId, alias } : null;
   const { concepto, detalle } = piezasDeMovimiento(m, alias, aliasCuenta);
+  const traspasoMov = traspasoDeLaFila(m, previsionDeMovimiento(m));
   return {
     key: `mov-${m.id}`,
     kind: 'movimiento',
@@ -465,7 +490,8 @@ export function movimientoAItem(
     detalle,
     activo,
     origen: origenDeMovimiento(m),
-    editable: esMovimientoEditable(m),
+    editable: esMovimientoEditable(m) || traspasoMov != null,
+    traspaso: traspasoMov,
     cuentaId: m.accountId ?? null,
     // §7 · el papel que respalda el cargo · solo lo real lo tiene.
     documentIds: m.documentIds?.length ? m.documentIds : undefined,

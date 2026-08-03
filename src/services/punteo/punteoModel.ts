@@ -112,6 +112,16 @@ export interface ItemPunteo {
    */
   editable?: boolean;
   /**
+   * Si esta fila es una pata de un traspaso interno, la operación ENTERA.
+   *
+   * Se resuelve aquí y no en la pantalla porque cuál es el origen depende de
+   * qué pata sea: `transferMetadata.targetAccountId` guarda "la otra cuenta",
+   * o sea el DESTINO en la salida y el ORIGEN en la entrada. Con ese cálculo
+   * repartido por la UI, corregir un traspaso desde la pata de entrada lo
+   * habría dado la vuelta.
+   */
+  traspaso?: { eventId: number; origenId: number; destinoId: number };
+  /**
    * §9 · "deja el saldo en −2 €".
    *
    * Va en la fila y no en un aviso aparte porque la pregunta que responde es

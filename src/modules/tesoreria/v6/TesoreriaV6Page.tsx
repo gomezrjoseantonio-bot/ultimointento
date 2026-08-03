@@ -42,6 +42,10 @@ import {
 } from '../../../services/treasuryConfirmationService';
 import { descartarPrevisto } from '../../../services/treasuryDiscardService';
 import {
+  editarTraspasoInterno,
+  eliminarTraspasoInterno,
+} from '../../../services/traspasoInterno';
+import {
   altaMovimiento,
   editarMovimiento,
   eliminarMovimiento,
@@ -372,6 +376,13 @@ const TesoreriaV6Page: React.FC = () => {
   const descartarItem = useCallback(
     async (item: ItemPunteo) => {
       try {
+        // Borrar una sola pata dejaría la otra colgada: un ingreso que no viene
+        // de ningún sitio, o un cargo que no llega a ninguna cuenta.
+        if (item.traspaso) {
+          await eliminarTraspasoInterno(item.traspaso.eventId);
+          await trasEscribir();
+          return;
+        }
         // Una previsión se DESCARTA —sigue existiendo, marcada como que no va
         // a ocurrir— y un movimiento anotado a mano se borra: no hay nada que
         // conservar de un apunte que el usuario escribió por error.
@@ -436,6 +447,23 @@ const TesoreriaV6Page: React.FC = () => {
         // puede confirmar como previsto: confirmar materializa un movement de
         // gasto, y una mejora se amortiza. Las dos van al mismo escritor, que
         // ya sabe a qué store corresponde cada una.
+        // Un traspaso interno se corrige ENTERO · las dos patas a la vez.
+        //
+        // Da igual desde cuál se abriera el lápiz: el adaptador ya resolvió
+        // quién es el origen. Por cualquiera de los caminos de abajo, la salida
+        // se habría quedado con el importe nuevo y la entrada con el viejo —
+        // dinero apareciendo de la nada.
+        if (item?.traspaso) {
+          await editarTraspasoInterno(item.traspaso.eventId, {
+            fecha: v.fecha,
+            importe: v.importe,
+            concepto: v.concepto,
+            cuentaOrigenId: v.cuentaId ?? item.traspaso.origenId,
+            cuentaDestinoId: v.cuentaDestinoId ?? item.traspaso.destinoId,
+          });
+          await trasEscribir();
+          return;
+        }
         // Corregir lo YA anotado · en el sitio, no otra vez.
         //
         // Sin esta rama, editar un movimiento caía en el alta de más abajo y
