@@ -32,19 +32,30 @@ export interface ResultadoV87 {
 /**
  * Da de alta una `Tarjeta` por cada cuenta que hoy es una tarjeta.
  *
- * Idempotente: la segunda pasada no encuentra ninguna cuenta con ese tipo, así
- * que no crea nada. Aun así se comprueba que no exista ya una tarjeta para esa
- * cuenta, por si una pasada anterior se quedó a medias.
+ * Corre una sola vez, protegida por su flag en `keyval`. Aun así deduplica por
+ * (alias · cuenta de liquidación) para el caso de una pasada anterior que se
+ * quedara a medias: no es una clave perfecta —el alias se puede editar— pero
+ * cubre lo que tiene que cubrir, que es no crear dos veces lo mismo seguido.
+ *
+ * Las cuentas BORRADAS se saltan: una tarjeta nacida de una cuenta que el
+ * usuario eliminó es un fantasma, y encima aparecería en el sitio donde se
+ * eligen las tarjetas.
  */
 export async function migrarTarjetas(db: IDBPDatabase<any>): Promise<ResultadoV87> {
   const resultado: ResultadoV87 = { tarjetasCreadas: 0 };
 
   const cuentas = ((await db.getAll('accounts')) ?? []) as Array<Record<string, any>>;
-  const eranTarjeta = cuentas.filter((c) => c?.tipo === 'TARJETA_CREDITO');
+  const eranTarjeta = cuentas.filter(
+    (c) =>
+      c?.tipo === 'TARJETA_CREDITO' &&
+      c.status !== 'DELETED' &&
+      !c.deleted_at
+  );
   if (eranTarjeta.length === 0) return resultado;
 
+  const clave = (alias: string, cuentaId: unknown) => `${alias}|${cuentaId}`;
   const yaExisten = ((await db.getAll('tarjetas')) ?? []) as Tarjeta[];
-  const conTarjeta = new Set(yaExisten.map((t) => t.alias));
+  const conTarjeta = new Set(yaExisten.map((t) => clave(t.alias, t.cuentaLiquidacionId)));
 
   const ahora = new Date().toISOString();
 
@@ -55,7 +66,7 @@ export async function migrarTarjetas(db: IDBPDatabase<any>): Promise<ResultadoV8
     // dónde sale el dinero. Se salta, y el usuario la dará de alta a mano.
     const cuentaLiquidacionId = cuenta.cardConfig?.chargeAccountId;
 
-    if (cuentaLiquidacionId != null && !conTarjeta.has(alias)) {
+    if (cuentaLiquidacionId != null && !conTarjeta.has(clave(alias, cuentaLiquidacionId))) {
       const diaCargo = Math.min(31, Math.max(1, cuenta.cardConfig?.settlementDay || 1));
       const tarjeta: Omit<Tarjeta, 'id'> = {
         alias,
@@ -76,7 +87,7 @@ export async function migrarTarjetas(db: IDBPDatabase<any>): Promise<ResultadoV8
         updatedAt: ahora,
       };
       await db.add('tarjetas', tarjeta as Tarjeta);
-      conTarjeta.add(alias);
+      conTarjeta.add(clave(alias, cuentaLiquidacionId));
       resultado.tarjetasCreadas++;
     }
   }

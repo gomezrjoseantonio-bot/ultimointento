@@ -81,6 +81,25 @@ describe('la cuenta que era tarjeta se convierte en una tarjeta', () => {
   });
 });
 
+// Una tarjeta nacida de una cuenta que el usuario borró es un fantasma: no
+// existe, y encima aparecería en el sitio donde se eligen las tarjetas.
+describe('las cuentas borradas no resucitan', () => {
+  beforeEach(limpiar);
+
+  it.each([
+    ['marcada como DELETED', { status: 'DELETED' }],
+    ['con fecha de borrado', { deleted_at: '2026-01-01T00:00:00.000Z' }],
+  ])('%s no genera tarjeta', async (_caso, marca) => {
+    await guardarCuenta(cuentaTarjeta(marca));
+    const db = await initDB();
+
+    const r = await migrarTarjetas(db as never);
+
+    expect(r.tarjetasCreadas).toBe(0);
+    expect(await tarjetas()).toEqual([]);
+  });
+});
+
 describe('lo que no es una tarjeta', () => {
   beforeEach(limpiar);
 
@@ -96,6 +115,18 @@ describe('lo que no es una tarjeta', () => {
 
 describe('repetirla no duplica', () => {
   beforeEach(limpiar);
+
+  // Dedup por (alias · cuenta de liquidación) · dos tarjetas distintas de la
+  // misma cuenta sí tienen que caber.
+  it('dos tarjetas de la misma cuenta no se pisan', async () => {
+    await guardarCuenta(cuentaTarjeta({ alias: 'Visa' }));
+    await guardarCuenta(cuentaTarjeta({ alias: 'Amex' }));
+    const db = await initDB();
+
+    await migrarTarjetas(db as never);
+
+    expect((await tarjetas()).map((t) => t.alias).sort()).toEqual(['Amex', 'Visa']);
+  });
 
   it('la segunda pasada no crea otra', async () => {
     await guardarCuenta(cuentaTarjeta());
