@@ -352,6 +352,13 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
                 // El círculo es el mismo interruptor que lo punteó · es donde
                 // se busca deshacerlo.
                 onDespuntear={onDespuntear}
+                // Un gasto anotado a mano no NACIÓ de ninguna previsión, así
+                // que despuntearlo no significa nada —no hay a dónde
+                // devolverlo— y aquí se quedaba sin ninguna salida: ni
+                // corregir el importe ni borrarlo si te equivocaste. El lápiz
+                // abre la MISMA ficha que en la bandeja, y ahí dentro están las
+                // dos salidas: guardar los cambios o eliminarlo.
+                onEditar={(item) => setFicha({ item })}
               />
             )
           ) : (
