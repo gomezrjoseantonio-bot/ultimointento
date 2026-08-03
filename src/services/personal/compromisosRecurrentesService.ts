@@ -13,7 +13,7 @@
 // ============================================================================
 
 import { initDB } from '../db';
-import type { TreasuryEvent } from '../db';
+import type { Account, TreasuryEvent } from '../db';
 import type {
   CompromisoRecurrente,
   PatronRecurrente,
@@ -28,6 +28,7 @@ import {
 } from './patronCalendario';
 import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 import { metodoDeMovimiento } from '../metodoDePago';
+import { cuentaDelCargo, elMetodoDecideLaCuenta } from '../cuentasPorMetodoPago';
 import { listarTarjetas } from '../tarjetasService';
 import {
   claveOrigenPrevision,
@@ -528,6 +529,15 @@ export function generarEventosDesdeCompromiso(
    * que el cargo se seguía previendo donde ya no sale.
    */
   tarjeta?: Tarjeta,
+  /**
+   * Las cuentas vivas · hacen falta para saber cuál paga de verdad.
+   *
+   * §2 · con efectivo y con Bizum la cuenta la decide el medio de pago, no lo
+   * que se guardó: un gasto en efectivo apuntando a Santander hace que el banco
+   * parezca más pobre y que el colchón no baje nunca. Sin la lista se respeta
+   * lo guardado, que es lo que se hacía antes.
+   */
+  cuentas: Account[] = [],
 ): Array<Omit<TreasuryEvent, 'id'>> {
   // §3.4 · lo que se paga con crédito aplazado NO sale el día de la compra: se
   // acumula y sale en el RECIBO de la tarjeta, que cruza varios gastos y por
@@ -606,8 +616,8 @@ export function generarEventosDesdeCompromiso(
       mes: fecha.getMonth() + 1,
       certeza: 'estimado',
       generadoPor: 'treasurySyncService',
-      // Manda la tarjeta, no la copia · §3.2.
-      accountId: tarjeta?.cuentaLiquidacionId ?? compromiso.cuentaCargo,
+      // La cuenta la decide el método · §2 y §3.2 · no una copia vieja.
+      accountId: cuentaDelCargo(compromiso, tarjeta, cuentas),
       paymentMethod: metodoDeMovimiento(compromiso.metodoPago),
       status: 'predicted',
       // V81 (TAREA CC · Bloque B.4): la bolsa 50/30/20 viaja al evento para poder
@@ -722,7 +732,19 @@ export async function regenerarEventosCompromiso(
   }
   await borrarEventosFuturosCompromiso(compromiso.id);
   const tarjeta = await tarjetaDelCompromiso(compromiso);
-  const eventos = generarEventosDesdeCompromiso(compromiso, hasta, desdeOverride, tarjeta);
+  // Las cuentas solo hacen falta cuando el medio decide la cuenta —efectivo y
+  // Bizum—. Para el resto, `cuentaDelCargo` respeta lo guardado y leerlas sería
+  // E/S por nada, multiplicada por cada gasto en el bootstrap.
+  const cuentas = elMetodoDecideLaCuenta(compromiso.metodoPago)
+    ? (((await (await initDB()).getAll('accounts')) ?? []) as Account[])
+    : [];
+  const eventos = generarEventosDesdeCompromiso(
+    compromiso,
+    hasta,
+    desdeOverride,
+    tarjeta,
+    cuentas,
+  );
   const propios = await persistirPrevisionesCompromiso(compromiso.id, eventos);
 
   // Si paga con crédito aplazado no ha emitido nada suyo: su dinero sale en el
