@@ -51,6 +51,24 @@ import styles from './TesoreriaV6Page.module.css';
 
 const hoyISO = (): string => new Date().toISOString().slice(0, 10);
 
+/**
+ * El corte para pedir el saldo · MAÑANA, no hoy.
+ *
+ * `calculateAccountBalanceAtDate` filtra por `< cutoffDate` ESTRICTAMENTE, así
+ * que pasarle hoy deja fuera todo lo de hoy. Y lo de hoy es justo lo que el
+ * usuario acaba de confirmar: el cargo salía de "por confirmar" —dejaba de
+ * contar como pendiente— y no entraba en el saldo, con lo que el saldo final
+ * SUBÍA al puntear un gasto. El dinero que se fue del banco esta mañana está
+ * fuera del banco esta tarde.
+ *
+ * Mismo apaño y mismo motivo que en `getCurrentSaldoCuenta`.
+ */
+function corteParaSaldo(hoy: string): string {
+  const d = new Date(`${hoy}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Tarjetas visibles según ancho · 5 ≥1240px · 4 ≥1000px · 3 por debajo (§4.2). */
 function tarjetasVisibles(ancho: number): number {
   if (ancho >= 1240) return 5;
@@ -219,13 +237,14 @@ const TesoreriaV6Page: React.FC = () => {
 
   const saldoPorCuenta = useMemo(() => {
     const m = new Map<number, number>();
+    const corte = corteParaSaldo(hoy);
     for (const c of cuentasVivas) {
       if (c.id == null) continue;
       m.set(
         c.id,
         calculateAccountBalanceAtDate({
           account: c,
-          cutoffDate: hoy,
+          cutoffDate: corte,
           treasuryEvents: porCuenta.eventos.get(c.id) ?? [],
           movements: porCuenta.movimientos.get(c.id) ?? [],
         })
@@ -1100,3 +1119,6 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
 };
 
 export default TesoreriaV6Page;
+
+/** Solo para el test del corte de saldo · patrón del repo. */
+export const __private__ = { corteParaSaldo };

@@ -7,7 +7,12 @@
 // ============================================================================
 
 import type { TreasuryEvent, Movement } from '../db';
-import { isTransferKey, TRANSFER_KEYS } from '../categoryCatalog';
+import {
+  getCategoryByKey,
+  getSubtypeByKey,
+  isTransferKey,
+  TRANSFER_KEYS,
+} from '../categoryCatalog';
 import {
   estadoDeEvento,
   estadoDeMovimiento,
@@ -54,6 +59,59 @@ export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'type' | 'c
     default:
       return e.type === 'income' ? 'Ingreso' : 'Gasto';
   }
+}
+
+/**
+ * Qué es un MOVIMIENTO · lo que el usuario eligió, no la dirección del dinero.
+ *
+ * Un gasto anotado a mano con familia "Suministro" caía en el grupo "Gasto"
+ * junto a todo lo demás, mientras su propia previsión estaba en "Suministro":
+ * la clasificación se guardaba en `categoryKey` y esta función nunca la
+ * miraba. Dos filas de la misma cosa en dos cajones distintos.
+ *
+ * Se usa el mismo vocabulario que `origenDeEvento` —el `label` del catálogo es
+ * literalmente "Suministro", "Comunidad", "Seguro"— para que la previsión y el
+ * movimiento que la cumple caigan en el mismo sitio.
+ */
+export function origenDeMovimiento(
+  m: Pick<Movement, 'categoryKey' | 'type'>
+): string {
+  if (m.type === 'Transferencia') return 'Transferencia';
+  const categoria = getCategoryByKey(m.categoryKey);
+  if (categoria && !isTransferKey(m.categoryKey)) {
+    return DICE_OTRA_COSA_EL_EVENTO[categoria.key] ?? categoria.label;
+  }
+  return m.type === 'Ingreso' ? 'Ingreso' : 'Gasto';
+}
+
+/**
+ * Donde los dos vocabularios no coinciden, manda el del EVENTO.
+ *
+ * El catálogo llama "Otros ingresos" a lo que `origenDeEvento` llama
+ * "Ingreso", y con cada uno por su lado la previsión y el movimiento que la
+ * cumple acababan en dos grupos distintos — que es exactamente el fallo que
+ * este adaptador viene a arreglar, reapareciendo por el otro lado.
+ *
+ * Gana la palabra del evento porque es la que ya está en pantalla: la previsión
+ * se ve antes que el movimiento que la cumple.
+ */
+const DICE_OTRA_COSA_EL_EVENTO: Record<string, string> = {
+  otros_ingresos: 'Ingreso',
+};
+
+/**
+ * Cómo se llama lo que el usuario clasificó · "Gas", "Suministro".
+ *
+ * El subtipo manda sobre la familia porque es lo concreto: entre "Suministro"
+ * y "Gas", lo que distingue esa fila de las otras tres del mismo piso es el
+ * gas. `undefined` si no eligió nada.
+ */
+function etiquetaDeClasificacion(
+  m: Pick<Movement, 'categoryKey' | 'subtypeKey'>
+): string | undefined {
+  return (
+    getSubtypeByKey(m.subtypeKey)?.label ?? getCategoryByKey(m.categoryKey)?.label ?? undefined
+  );
 }
 
 // ─── Quién cobra, cuando no viene en su campo ───────────────────────────────
@@ -324,6 +382,7 @@ function piezasDeMovimiento(
   m: Pick<
     Movement,
     | 'categoryKey'
+    | 'subtypeKey'
     | 'category'
     | 'description'
     | 'providerName'
@@ -354,6 +413,21 @@ function piezasDeMovimiento(
   if (m.type === 'Transferencia') {
     return { concepto: m.description ?? '', detalle: 'Transferencia externa' };
   }
+  // §6.3 · lo que el usuario clasificó SÍ se enseña.
+  //
+  // Un gasto anotado a mano sin proveedor —los hay: el recibo que pagas y ya—
+  // se quedaba con la fila en blanco si tampoco escribías concepto, porque
+  // `piezasDeFila` sólo mira descripción y proveedor. Y con concepto escrito,
+  // la familia elegida no aparecía por ningún lado. Aquí la clasificación es
+  // lo único que hay, así que titula; y si hay concepto, baja al subtítulo,
+  // que es el sitio de la traducción de ATLAS.
+  const clasificacion = m.providerName ? undefined : etiquetaDeClasificacion(m);
+  if (clasificacion) {
+    return m.description
+      ? { concepto: m.description, detalle: clasificacion }
+      : { concepto: clasificacion, detalle: undefined };
+  }
+
   const { concepto, detalle } = piezasDeFila(
     {
       sourceType: pareceRenta(m) ? 'contrato' : 'prestamo',
@@ -383,7 +457,7 @@ export function movimientoAItem(
     concepto,
     detalle,
     activo,
-    origen: m.type === 'Ingreso' ? 'Ingreso' : m.type === 'Transferencia' ? 'Transferencia' : 'Gasto',
+    origen: origenDeMovimiento(m),
     cuentaId: m.accountId ?? null,
     // §7 · el papel que respalda el cargo · solo lo real lo tiene.
     documentIds: m.documentIds?.length ? m.documentIds : undefined,

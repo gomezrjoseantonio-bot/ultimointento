@@ -341,3 +341,87 @@ describe('un Bizum dice QUIÉN, no cómo', () => {
     expect(it.concepto).toBe('BIZUM 00218832');
   });
 });
+
+// ============================================================================
+// Lo que el usuario clasificó a mano
+// ============================================================================
+//
+// Un gasto anotado con familia "Suministro · Gas" salía con la fila EN BLANCO
+// —el título sólo mira descripción y proveedor— y caía en el cajón "Gasto",
+// mientras su propia previsión estaba en "Suministro". La clasificación se
+// guardaba en `categoryKey`/`subtypeKey` y nadie la leía: ni el título ni el
+// grupo. Dos filas de la misma cosa en dos sitios distintos.
+
+describe('un gasto anotado a mano enseña su clasificación', () => {
+  const gasto = (over: Partial<Movement> & { id: number }): Movement & { id: number } =>
+    ({
+      accountId: 1,
+      date: '2026-08-03',
+      amount: -48,
+      status: 'pendiente',
+      unifiedStatus: 'no_planificado',
+      source: 'manual',
+      category: { tipo: 'Gastos' },
+      type: 'Gasto',
+      origin: 'Manual',
+      movementState: 'Confirmado',
+      ambito: 'INMUEBLE',
+      statusConciliacion: 'sin_match',
+      createdAt: '',
+      updatedAt: '',
+      categoryKey: 'suministro_inmueble',
+      subtypeKey: 'gas',
+      ...over,
+    }) as Movement & { id: number };
+
+  // Sin concepto escrito, la clasificación es lo ÚNICO que hay: titula ella.
+  it('sin concepto, titula lo elegido', () => {
+    const it = movimientoAItem(gasto({ id: 1, description: undefined }));
+    expect(it.concepto).toBe('Gas');
+  });
+
+  // Con concepto escrito, manda lo que puso el usuario y la familia baja al
+  // subtítulo · el sitio de la traducción de ATLAS.
+  it('con concepto, la clasificación baja al subtítulo', () => {
+    const it = movimientoAItem(gasto({ id: 2, description: 'Gas' }));
+    expect(it.concepto).toBe('Gas');
+    expect(it.detalle).toBe('Gas');
+  });
+
+  // El cajón es el mismo vocabulario que usa la previsión que lo cumple.
+  it('cae en el grupo de su familia, no en "Gasto"', () => {
+    expect(movimientoAItem(gasto({ id: 3 })).origen).toBe('Suministro');
+  });
+
+  it('sin clasificar sigue siendo un gasto a secas', () => {
+    const it = movimientoAItem(
+      gasto({ id: 4, categoryKey: undefined, subtypeKey: undefined, description: 'Compra' })
+    );
+    expect(it.origen).toBe('Gasto');
+    expect(it.concepto).toBe('Compra');
+  });
+
+  // El catálogo dice "Otros ingresos" donde el evento dice "Ingreso". Con cada
+  // uno por su lado, la previsión y el movimiento que la cumple acaban en dos
+  // grupos distintos — el mismo fallo, por el otro lado.
+  it('un ingreso cae donde cae su previsión', () => {
+    const it = movimientoAItem(
+      gasto({
+        id: 6,
+        type: 'Ingreso',
+        amount: 400,
+        categoryKey: 'otros_ingresos',
+        subtypeKey: undefined,
+      })
+    );
+    expect(it.origen).toBe(origenDeEvento({ sourceType: 'otros_ingresos', type: 'income' }));
+  });
+
+  // Quien cobra manda sobre la etiqueta: es lo que se lee en el extracto.
+  it('con proveedor no lo pisa la clasificación', () => {
+    const it = movimientoAItem(
+      gasto({ id: 5, providerName: 'Naturgy', description: undefined })
+    );
+    expect(it.concepto).toBe('Naturgy');
+  });
+});
