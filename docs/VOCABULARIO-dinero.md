@@ -37,8 +37,8 @@ traspasos (§4).
 
 **Decisión · 3 de agosto de 2026 (Jose):** `AHORRO` y `OTRA` se retiran.
 Complican sin distinguir nada — una cuenta de ahorro se comporta exactamente
-como una corriente, y "otra" no dice nada. *(Decidido aquí, el tipo todavía las
-admite · §8.)*
+como una corriente, y "otra" no dice nada. *(Hecho · V86: el tipo ya no las
+admite y las que existieran pasaron a `CORRIENTE` sin perder nada.)*
 
 **`TARJETA_CREDITO` deja de ser un tipo de cuenta.** Una tarjeta no es un sitio
 donde hay dinero: es una forma de gastar el de una cuenta. Ver §3. *(Decidido
@@ -386,8 +386,6 @@ Escrito para no perderlo, con la fecha en que se detectó:
 - **2026-08-03** · Los dos vocabularios de método de pago (§2) no se traducen
   en un único sitio.
 - **2026-08-03** · Nada impide crear dos cuentas `EFECTIVO`. §1.
-- **2026-08-03** · `Account.tipo` todavía admite `AHORRO` y `OTRA`, retiradas
-  por decisión. Retirarlas pide migrar las que existan a `CORRIENTE`. §1.
 - **2026-08-03** · `TARJETA_CREDITO` sigue siendo un tipo de cuenta en vez de
   una tarjeta asociada a una. §1, §3.
 - **2026-08-03** · No se distingue **débito** de **crédito aplazado**: hoy solo
