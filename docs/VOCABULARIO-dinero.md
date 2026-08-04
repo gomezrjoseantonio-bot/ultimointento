@@ -562,7 +562,7 @@ Escrito para no perderlo, con la fecha en que se detectó.
   que todavía no existe: habrá un momento en que se trabaje para cerrar el mes,
   y **lo que quede abierto entonces será que no se ha producido**, con las
   consecuencias en cascada que eso tenga —una bonificación entre ellas—.
-  Inventar aquí un «lleva 10 días de retraso» sería adelantar esa decisión con
+  Inventar aquí un «lleva diez días de retraso» sería adelantar esa decisión con
   un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
 - **2026-08-04** · El veredicto **no mueve el estado guardado** de la
   bonificación. Se enseña a qué cuota vas, pero `PERDIDA` la sigue teniendo que
