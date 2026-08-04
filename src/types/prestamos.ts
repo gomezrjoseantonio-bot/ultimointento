@@ -237,7 +237,15 @@ export interface Bonificacion {
   regla: ReglaBonificacion;       // declarative rule
   costeAnualEstimado?: number;    // e.g., insurance premium
   cuentaExigidaId?: string;       // if bank requires specific account
-  
+  /**
+   * Con qué tarjeta se cumple, cuando la regla es de tarjeta (§3.6).
+   *
+   * Importa **la tarjeta concreta**, no la cuenta: de una misma cuenta pueden
+   * colgar dos, y el banco bonifica por una. Sin esto no se puede demostrar
+   * nada — sumar todas diría que cumples un requisito que no cumples.
+   */
+  tarjetaExigidaId?: number;
+
   // Alta (día 1):
   seleccionado?: boolean;         // el usuario lo marca
   graciaMeses?: 0|6|12;          // opcional (selector)

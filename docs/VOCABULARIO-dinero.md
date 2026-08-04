@@ -212,7 +212,12 @@ bonifican una hipoteca o un préstamo (§6 ter).
 - **Solo cuenta la tarjeta DEL BANCO que bonifica.** Las de fuera **nunca**
   bonifican: son externas justamente por eso. Sumarlas diría que cumples un
   requisito que no cumples, y eso se paga en el recibo.
-- Importa **la tarjeta concreta**, no la cuenta.
+- Importa **la tarjeta concreta**, no la cuenta. De una misma cuenta cuelgan
+  dos y el banco bonifica por una, así que la bonificación dice **cuál**; y
+  donde se elige solo se ofrecen las del banco, porque ofrecer una de fuera
+  sería ofrecer una respuesta falsa (§7).
+- Elegir una de fuera **no** es «no se puede comprobar»: es que **no**. Y no se
+  arregla gastando más.
 
 ### 3.7 · Qué rinde · el cashback
 
@@ -376,13 +381,34 @@ se cumplen porque **los movimientos lo demuestran**.
 El caso de la tarjeta está en §3.6, con su regla de que **solo cuenta la del
 banco que bonifica**. Pero no es el único: nómina domiciliada, recibos
 domiciliados, seguros contratados… **todos son condiciones que se verifican
-contra la tesorería**, y hoy nadie las mira.
+contra la tesorería**.
 
 Lo que comparten, y por eso van juntas aquí: cada una necesita **agregar
 movimientos de un tipo, en una ventana de tiempo, y compararlos con un
-umbral**. Quien construya una debería dejar sitio para las demás.
+umbral**. Esa forma está escrita una vez y no sabe qué es una tarjeta; cada
+fuente aporta solo el agregado.
 
-*(Reconocido aquí; sin modelar · §8.)*
+**Decisión · 3 de agosto de 2026:**
+
+- **Tres respuestas, no dos.** `cumple`, `no_cumple` y **`no_verificable`**. La
+  tercera no es un «no» cobarde: es la diferencia entre «los movimientos dicen
+  que te quedas corto» y «nada en la tesorería puede probar esto». Enseñar la
+  segunda como la primera manda a gastar más para arreglar algo que no se
+  arregla gastando.
+- **Lo que todavía no se puede mirar se dice, no se da por bueno.** Una lista
+  donde solo aparecen las verificables se leería como que las demás están bien.
+- **La ventana acaba HOY**, no en el cierre de un periodo: la pregunta que se
+  responde es «¿la tengo ahora?».
+- **Una bonificación tiene que poder decirse de forma verificable.** Guardarlas
+  todas como «otra» dejaba la condición en una frase, y una frase no se puede
+  comparar con nada. Cada una lleva **qué** hay que demostrar, **en cuántos
+  meses** y —la de tarjeta— **con qué tarjeta**.
+
+De la de tarjeta se sabe el total del periodo, que es su recibo (§3.5); **no las
+compras una a una**. Una condición del tipo «6 operaciones al mes» no se puede
+contar hoy, y así se dice.
+
+*(Resuelta la de tarjeta · las demás esperan su fuente · §8.)*
 
 ## 7 · Combinaciones imposibles
 
@@ -394,6 +420,7 @@ Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
 | Método `bizum` + cuenta sin Bizum | Solo una cuenta lo tiene (§5) |
 | Método `domiciliacion`/`transferencia` + cuenta `EFECTIVO` | El colchón no tiene IBAN (§1) |
 | Tarjeta liquidando en `EFECTIVO` o en otra tarjeta | La liquidación es bancaria (§3.2) |
+| Bonificación de hipoteca apuntando a una tarjeta **externa** | Las de fuera nunca bonifican (§3.6) |
 | Compra con crédito aplazado moviendo el saldo el día de la compra | Se cobra el día de cargo (§3.3) |
 | Elegir la entidad emisora entre TUS cuentas | La emisora puede no ser un banco tuyo (§3.2) |
 | Traspaso interno a la misma cuenta | No es un traspaso (§6) |
@@ -422,8 +449,16 @@ Escrito para no perderlo, con la fecha en que se detectó.
   tarjeta que lo generó: el abono llega como un ingreso más y nada dice de
   quién viene. Lo que se mide hoy es lo que le CORRESPONDE al gasto ya cerrado
   según su porcentaje, no el apunte visto en el banco. §3.7.
-- **2026-08-03** · Las **bonificaciones** de hipotecas y préstamos no se
-  verifican contra los movimientos que las prueban. §6 ter.
+- **2026-08-03** · De las condiciones que se verifican contra la tesorería solo
+  hay fuente para **la de tarjeta**. La **nómina domiciliada** y los **recibos
+  domiciliados** son las dos que se pueden mirar y todavía no se miran: hace
+  falta reconocerlos entre los movimientos de la cuenta. Los **seguros** y la
+  **alarma** se prueban con su póliza o su contrato, no con un movimiento, así
+  que puede que no lleguen nunca. §6 ter.
+- **2026-08-03** · El TIN efectivo **ignora las bonificaciones dadas de alta en
+  el asistente**: las guarda como `SELECCIONADO` y solo cuentan las que están
+  en gracia o cumplidas. Cerrar el círculo es hacer que el veredicto de §6 ter
+  mueva ese estado — hoy el veredicto se enseña, pero no toca la cuota. §6 ter.
 - **2026-08-03** · `TARJETA_CREDITO` sigue existiendo como tipo de cuenta para
   las cuentas **históricas**. Ya no se crean —una tarjeta nueva nace como
   tarjeta— pero las que había siguen ahí, porque sus movimientos son compras
@@ -432,6 +467,20 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-03** · Las **bonificaciones** se miran contra los movimientos que
+  las prueban, con la forma común de §6 ter —agregar, en una ventana, contra un
+  umbral— y tres respuestas, la tercera «no se puede comprobar». La de tarjeta
+  ya tiene fuente: gasto **cerrado** de **esa** tarjeta, y solo si es del banco.
+  Se lee en el detalle del préstamo. §6 ter, §3.6.
+- **2026-08-03** · Una bonificación se puede **decir** de forma verificable: el
+  asistente guarda qué hay que demostrar y en cuántos meses, y para la de
+  tarjeta pregunta **cuál** —solo ofrece las del banco— y **cuánto**. Antes las
+  guardaba todas como «otra», así que ninguna se podía comparar con nada. §6 ter.
+- **2026-08-03** · Editar un préstamo ya no **aplana** sus bonificaciones: la
+  regla, la ventana y el estado sobreviven. Leía solo nombre y puntos, así que
+  cambiar el plazo borraba la condición. El estado se conserva por lo mismo,
+  aunque hoy nadie escriba otro: en cuanto el veredicto lo mueva, una edición
+  habría degradado una bonificación ya cumplida. §6 ter.
 - **2026-08-03** · La tarjeta es una entidad propia (store `tarjetas`, V87) con
   su ficha de alta y edición, y ya no se da de alta como si fuese una cuenta.
   §3.1.
