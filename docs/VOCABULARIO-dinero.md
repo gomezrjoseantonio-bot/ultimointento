@@ -468,6 +468,13 @@ Lo cierto en los dos casos es que **todavía no cuenta**.
 Esos meses **se dicen**. Callarlos deja un «4 de 4 meses» donde en realidad
 faltaban dos por mirar, que es una tranquilidad prestada.
 
+**Y quien resolverá la duda es el CIERRE DE MES, no un plazo.** *(Jose · 4 ago
+2026.)* Habrá un momento en que se trabaje para cerrar el mes, y lo que quede
+abierto entonces será que **no se ha producido**, con las consecuencias en
+cascada que eso tenga. Hasta que ese momento exista, aquí no se decide por
+adelantado: un «lleva diez días de retraso» pondría un umbral que nadie ha
+elegido, y encima casi siempre significaría que falta importar un extracto.
+
 ### 6 ter · bis · Lo que la bonificación hace con la cuota
 
 **Decisión · 4 de agosto de 2026:**
@@ -542,11 +549,21 @@ Escrito para no perderlo, con la fecha en que se detectó.
   **seguros** y la **alarma** se prueban con su póliza o su contrato, y el
   **plan de pensiones** con su aportación, que hoy no se sigue en tesorería.
   Puede que no lleguen nunca por esta vía. §6 ter.
-- **2026-08-04** · De la nómina y los recibos, un mes en el que **realmente no
-  entró nada** sigue siendo invisible: se cuentan los meses que se ven, no los
-  que debería haber. Lo que ya NO se confunde con eso es un mes que **todavía
-  no cuenta** —ese se dice—, así que lo que queda es más estrecho: un hueco de
-  verdad del que la tesorería no tenga ni previsión. §6 ter.
+- **2026-08-04** · Un mes **abierto** no dice si el cobro está por llegar o si
+  ya debería haber llegado. Los dos salen como «todavía no cuenta».
+
+  *(Esta entrada decía antes que un mes sin nómina era invisible. Era falso, y
+  lo corrigió Jose: la nómina se da de alta con su importe y su cuenta, la
+  tesorería prevé el cobro de CADA mes, y al puntearlo se rectifica el importe
+  si vino otro —`cobrosDeNomina` mide `actualAmount ?? amount`—. Así que el mes
+  vacío no es invisible: es su previsión, sin conciliar.)*
+
+  **Y no se arregla con un umbral de días.** Lo resuelve el **cierre de mes**,
+  que todavía no existe: habrá un momento en que se trabaje para cerrar el mes,
+  y **lo que quede abierto entonces será que no se ha producido**, con las
+  consecuencias en cascada que eso tenga —una bonificación entre ellas—.
+  Inventar aquí un «lleva diez días de retraso» sería adelantar esa decisión con
+  un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
 - **2026-08-04** · El veredicto **no mueve el estado guardado** de la
   bonificación. Se enseña a qué cuota vas, pero `PERDIDA` la sigue teniendo que
   poner alguien a mano cuando el banco te la retire de verdad. Automatizarlo
