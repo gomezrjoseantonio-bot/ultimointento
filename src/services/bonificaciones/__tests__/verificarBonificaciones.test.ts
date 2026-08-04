@@ -8,6 +8,7 @@
 import { verificarBonificaciones } from '../verificarBonificaciones';
 import type { MovimientosQuePrueban } from '../verificarBonificaciones';
 import type { GastoDeUnPeriodo } from '../../gastoPorTarjeta';
+import type { CobroDeUnMes } from '../cobrosDeNomina';
 import type { Bonificacion } from '../../../types/prestamos';
 import type { Tarjeta } from '../../../types/tarjetas';
 
@@ -49,9 +50,14 @@ const bonif = (over: Partial<Bonificacion> = {}): Bonificacion => ({
   ...over,
 });
 
-const con = (tarjetas: Tarjeta[], periodos: GastoDeUnPeriodo[]): MovimientosQuePrueban => ({
+const con = (
+  tarjetas: Tarjeta[],
+  periodos: GastoDeUnPeriodo[],
+  nomina: CobroDeUnMes[] = []
+): MovimientosQuePrueban => ({
   tarjetas,
   periodosDeTarjeta: periodos,
+  cobrosDeNomina: nomina,
 });
 
 const unaSola = (b: Bonificacion, m: MovimientosQuePrueban) =>
@@ -176,22 +182,135 @@ describe('lo que no puede demostrarse', () => {
     expect(r.veredicto).toBe('no_verificable');
   });
 
-  // §6 ter · «nómina domiciliada, recibos domiciliados, seguros contratados…
-  // todos son condiciones que se verifican contra la tesorería, y hoy nadie las
-  // mira». Que nadie las mire se dice; no se dan por buenas ni por perdidas.
+  // §6 ter · «seguros contratados… todos son condiciones que se verifican
+  // contra la tesorería». Las que aún no tienen fuente se dicen una a una; no
+  // se dan por buenas ni por perdidas.
   it('las condiciones sin fuente se nombran una a una', () => {
-    const nomina = unaSola(
-      bonif({ regla: { tipo: 'NOMINA', minimoMensual: 1200 } }),
-      con([tarjeta()], [])
-    );
     const seguro = unaSola(
       bonif({ regla: { tipo: 'SEGURO_HOGAR', activo: true } }),
       con([tarjeta()], [])
     );
+    const plan = unaSola(
+      bonif({ regla: { tipo: 'PLAN_PENSIONES', activo: true } }),
+      con([tarjeta()], [])
+    );
 
-    expect(nomina.veredicto).toBe('no_verificable');
-    expect(nomina.motivo).toContain('nómina');
+    expect(seguro.veredicto).toBe('no_verificable');
     expect(seguro.motivo).toContain('póliza');
+    expect(plan.motivo).toContain('plan');
+  });
+});
+
+// §6 ter · la segunda fuente. Lo que el banco mira es lo que le entra a él: la
+// nómina domiciliada en SU cuenta, por encima del mínimo, mes tras mes.
+describe('la condición de nómina', () => {
+  const mes = (m: string, importe: number, cuentaId = 3): CobroDeUnMes => ({
+    cuentaId,
+    mes: m,
+    importe,
+    estado: 'cerrado',
+  });
+
+  const deNomina = (over: Partial<Bonificacion> = {}): Bonificacion =>
+    bonif({
+      tipo: 'NOMINA',
+      nombre: 'Nómina',
+      regla: { tipo: 'NOMINA', minimoMensual: 1200 },
+      tarjetaExigidaId: undefined,
+      cuentaExigidaId: '3',
+      ...over,
+    });
+
+  const seisMeses = [
+    mes('2026-03', 1300),
+    mes('2026-04', 1300),
+    mes('2026-05', 1300),
+    mes('2026-06', 1300),
+    mes('2026-07', 1300),
+    mes('2026-08', 1300),
+  ];
+
+  it('cumple cuando todos los meses llegan', () => {
+    const r = unaSola(deNomina(), con([], [], seisMeses));
+
+    expect(r).toMatchObject({
+      veredicto: 'cumple',
+      exigido: 1200,
+      mensual: { conMovimiento: 6, queLlegan: 6 },
+    });
+  });
+
+  // «1.200 € al mes» no lo cumple un semestre con 7.800 € si un mes vino corto.
+  // Basta uno por debajo para perderla, así que decide el mes más flojo.
+  it('un solo mes corto la tumba, aunque el total sobre', () => {
+    const conUnoCorto = [...seisMeses.slice(1), mes('2026-03', 900)];
+    const r = unaSola(deNomina(), con([], [], conUnoCorto));
+
+    expect(r).toMatchObject({
+      veredicto: 'no_cumple',
+      medido: 900,
+      mensual: { conMovimiento: 6, queLlegan: 5 },
+    });
+  });
+
+  // Domiciliada en otro banco · eso SÍ es incumplir, y se sabe.
+  it('la nómina en otra cuenta no cumple, y se dice por qué', () => {
+    const r = unaSola(deNomina(), con([], [], [mes('2026-05', 2000, 9)]));
+
+    expect(r.veredicto).toBe('no_cumple');
+    expect(r.motivo).toContain('ninguna nómina en esa cuenta');
+  });
+
+  // Distinto de lo anterior: aquí ATLAS no sabe de ninguna nómina, y el
+  // silencio no es un «no».
+  it('sin ninguna nómina dada de alta no se puede comprobar', () => {
+    const r = unaSola(deNomina(), con([], [], []));
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('ninguna nómina dada de alta');
+  });
+
+  it('sin decir la cuenta no se puede mirar', () => {
+    const r = unaSola(deNomina({ cuentaExigidaId: undefined }), con([], [], seisMeses));
+
+    expect(r).toMatchObject({ veredicto: 'no_verificable' });
+    expect(r.motivo).toContain('en qué cuenta');
+  });
+
+  // El selector deja `''` al no elegir · `Number('')` es 0, un id que parece
+  // válido, y se habría mirado la cuenta cero.
+  it('una cuenta sin elegir no es la cuenta cero', () => {
+    const r = unaSola(deNomina({ cuentaExigidaId: '' }), con([], [], seisMeses));
+
+    expect(r.veredicto).toBe('no_verificable');
+  });
+
+  it('sin decir cuánto tampoco', () => {
+    const r = unaSola(
+      deNomina({ regla: { tipo: 'NOMINA', minimoMensual: 0 } }),
+      con([], [], seisMeses)
+    );
+
+    expect(r.motivo).toContain('cuánto tiene que entrar');
+  });
+
+  // §3.5 · se demuestra con lo cobrado. Lo que aún no ha entrado no prueba nada.
+  it('un mes todavía abierto no cuenta', () => {
+    const conAbierto: CobroDeUnMes[] = [
+      ...seisMeses,
+      { cuentaId: 3, mes: '2026-09', importe: 200, estado: 'abierto' },
+    ];
+
+    expect(unaSola(deNomina(), con([], [], conAbierto))).toMatchObject({
+      veredicto: 'cumple',
+      mensual: { conMovimiento: 6, queLlegan: 6 },
+    });
+  });
+
+  it('lo de fuera de la ventana no cuenta', () => {
+    const r = unaSola(deNomina(), con([], [], [mes('2024-05', 900), ...seisMeses]));
+
+    expect(r).toMatchObject({ veredicto: 'cumple', mensual: { conMovimiento: 6 } });
   });
 });
 

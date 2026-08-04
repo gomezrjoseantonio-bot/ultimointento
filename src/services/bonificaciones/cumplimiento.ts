@@ -55,6 +55,22 @@ export interface Cumplimiento {
    * prueba nada porque no consta cobrado.
    */
   sinCobrar?: number;
+  /**
+   * Cuando la condición se mide **mes a mes** y no sobre un total.
+   *
+   * La forma de §6 ter —agregar, en una ventana, contra un umbral— vale para la
+   * tarjeta, que se mide por el total del semestre. La nómina no: «1.200 € al
+   * mes» no lo cumple un semestre con 7.200 € si un mes vino vacío y otro
+   * doble. Cuando esto viene, `medido` es **el mes más flojo** y `exigido` el
+   * mínimo mensual — la cifra que decide sigue siendo una, pero hay que decir
+   * de cuántos meses sale.
+   */
+  mensual?: {
+    /** Meses de la ventana en los que entró algo. */
+    conMovimiento: number;
+    /** De esos, cuántos alcanzaron el umbral. */
+    queLlegan: number;
+  };
   /** Por qué · lo que no se puede medir se dice, no se disimula. */
   motivo?: string;
 }

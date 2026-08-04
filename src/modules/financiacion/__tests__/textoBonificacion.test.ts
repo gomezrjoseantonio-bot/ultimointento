@@ -96,3 +96,29 @@ describe('lo que está en juego', () => {
     ).toContain('3,00 %');
   });
 });
+
+// La nómina se mide MES A MES · «1.200 € al mes» no lo cumple un semestre con
+// 7.200 € si un mes vino vacío y otro doble.
+describe('lo que se mide mes a mes', () => {
+  const nomina = (over: Partial<Cumplimiento> = {}): Cumplimiento =>
+    c({ exigido: 1200, medido: 1300, mensual: { conMovimiento: 6, queLlegan: 6 }, ...over });
+
+  it('cumplida dice de cuántos meses sale', () => {
+    expect(textoDeCumplimiento(nomina())).toBe(
+      'Cumplida · 6 de 6 meses con 1.200 € o más desde el 4 feb'
+    );
+  });
+
+  // Lo que decide es el mes más flojo, no el total · por eso es lo que se
+  // enseña. «Te faltan X» sería mentira: no se arregla sumando al total.
+  it('sin cumplir enseña el mes más flojo', () => {
+    expect(
+      textoDeCumplimiento(nomina({ veredicto: 'no_cumple', medido: 900, mensual: { conMovimiento: 6, queLlegan: 5 } }))
+    ).toBe('5 de 6 meses · el más flojo se quedó en 900 € de 1.200 €');
+  });
+
+  it('un solo mes se dice en singular', () => {
+    expect(textoDeCumplimiento(nomina({ mensual: { conMovimiento: 1, queLlegan: 1 } })))
+      .toContain('1 de 1 mes con');
+  });
+});

@@ -408,6 +408,17 @@ De la de tarjeta se sabe el total del periodo, que es su recibo (§3.5); **no la
 compras una a una**. Una condición del tipo «6 operaciones al mes» no se puede
 contar hoy, y así se dice.
 
+**Decisión · 4 de agosto de 2026 · no todas se miden igual.**
+
+La tarjeta se mide por un **total** en la ventana. La nómina, **mes a mes**: un
+semestre con 7.200 € no cumple «1.200 € al mes» si un mes vino vacío y otro
+doble. Así que **basta un mes por debajo para perderla**, y lo que decide —y lo
+que se enseña— es **el mes más flojo**, no la suma.
+
+Lo que el banco mira de la nómina es **lo que le entra a él**: domiciliada en su
+cuenta. Domiciliarla en otro banco no es «no se puede comprobar», es que **no**.
+Distinto de que ATLAS no sepa de ninguna nómina, que sí es no poder comprobarlo.
+
 ### 6 ter · bis · Lo que la bonificación hace con la cuota
 
 **Decisión · 4 de agosto de 2026:**
@@ -482,12 +493,15 @@ Escrito para no perderlo, con la fecha en que se detectó.
   tarjeta que lo generó: el abono llega como un ingreso más y nada dice de
   quién viene. Lo que se mide hoy es lo que le CORRESPONDE al gasto ya cerrado
   según su porcentaje, no el apunte visto en el banco. §3.7.
-- **2026-08-03** · De las condiciones que se verifican contra la tesorería solo
-  hay fuente para **la de tarjeta**. La **nómina domiciliada** y los **recibos
-  domiciliados** son las dos que se pueden mirar y todavía no se miran: hace
-  falta reconocerlos entre los movimientos de la cuenta. Los **seguros** y la
-  **alarma** se prueban con su póliza o su contrato, no con un movimiento, así
-  que puede que no lleguen nunca. §6 ter.
+- **2026-08-04** · De las condiciones que se verifican contra la tesorería hay
+  fuente para la **tarjeta** y la **nómina**. Quedan los **recibos
+  domiciliados**, que se pueden mirar y todavía no se miran. Los **seguros** y
+  la **alarma** se prueban con su póliza o su contrato, no con un movimiento,
+  así que puede que no lleguen nunca. §6 ter.
+- **2026-08-04** · De la nómina, **un mes en el que no entró nada no se
+  distingue de un mes sin conciliar**: los dos son ausencia de cobro. Se cuentan
+  los meses que se ven, no los que debería haber — y un hueco de verdad, que es
+  justo lo que hace perder la bonificación, pasa desapercibido. §6 ter.
 - **2026-08-04** · El veredicto **no mueve el estado guardado** de la
   bonificación. Se enseña a qué cuota vas, pero `PERDIDA` la sigue teniendo que
   poner alguien a mano cuando el banco te la retire de verdad. Automatizarlo
@@ -501,6 +515,9 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-04** · La **nómina domiciliada** se mira contra los movimientos: lo
+  cobrado en **esa** cuenta, **mes a mes**, contra el mínimo. Es la segunda
+  fuente de §6 ter, y la primera que no se mide por un total. §6 ter.
 - **2026-08-04** · Una bonificación **rebaja de verdad el tipo**, y la rebaja
   está escrita **una sola vez**. Antes había cuatro versiones: la pantalla
   multiplicaba los puntos por cien y descartaba las recién contratadas —así que

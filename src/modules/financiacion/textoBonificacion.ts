@@ -46,6 +46,20 @@ export function textoDeCumplimiento(c: Cumplimiento): string {
   }
 
   const desde = c.ventana ? ` desde el ${dia(c.ventana.desde)}` : '';
+
+  // Medida MES A MES · la nómina. «1.200 € al mes» no lo cumple un semestre con
+  // 7.200 € si un mes vino vacío y otro doble, así que la cifra que se enseña
+  // es la del mes más flojo y hay que decir de cuántos meses sale.
+  if (c.mensual) {
+    const cuantos = `${c.mensual.queLlegan} de ${c.mensual.conMovimiento} ${
+      c.mensual.conMovimiento === 1 ? 'mes' : 'meses'
+    }`;
+    if (c.veredicto === 'cumple') {
+      return `Cumplida · ${cuantos} con ${euros(c.exigido)} o más${desde}`;
+    }
+    return `${cuantos} · el más flojo se quedó en ${euros(c.medido)} de ${euros(c.exigido)}`;
+  }
+
   const sinCobrar =
     c.sinCobrar && c.sinCobrar > 0
       ? ` · ${euros(c.sinCobrar)} más gastados que el banco todavía no ha cobrado`

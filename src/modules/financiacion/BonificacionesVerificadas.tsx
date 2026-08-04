@@ -15,6 +15,7 @@
 import React, { useEffect, useState } from 'react';
 import { initDB, type TreasuryEvent } from '../../services/db';
 import { gastoPorTarjeta } from '../../services/gastoPorTarjeta';
+import { cobrosDeNomina } from '../../services/bonificaciones/cobrosDeNomina';
 import { listarTarjetas } from '../../services/tarjetasService';
 import { verificarBonificaciones } from '../../services/bonificaciones/verificarBonificaciones';
 import type { MovimientosQuePrueban } from '../../services/bonificaciones/verificarBonificaciones';
@@ -47,7 +48,11 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo }) => {
         listarTarjetas(),
       ]);
       if (cancelado) return;
-      setMovimientos({ tarjetas, periodosDeTarjeta: gastoPorTarjeta(eventos) });
+      setMovimientos({
+        tarjetas,
+        periodosDeTarjeta: gastoPorTarjeta(eventos),
+        cobrosDeNomina: cobrosDeNomina(eventos),
+      });
     })();
     return () => {
       cancelado = true;

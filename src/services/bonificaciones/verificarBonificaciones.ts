@@ -3,11 +3,11 @@
 // ============================================================================
 //
 // La forma común está en `cumplimiento`. Aquí viven las FUENTES: quién sabe
-// agregar cada tipo de condición. Hoy solo una, la de tarjeta (§3.6) — y el
+// agregar cada tipo de condición. Hoy dos —la tarjeta (§3.6) y la nómina— y el
 // resto se dice con todas las letras en vez de darse por buenas.
 //
-// Añadir la nómina es quitar su fila de `SIN_FUENTE` y escribir su función.
-// Esa tabla es, literalmente, la lista de lo que falta.
+// Añadir una es quitar su fila de `SIN_FUENTE` y escribir su función. Esa tabla
+// es, literalmente, la lista de lo que falta.
 //
 // Puro: no lee la base ni el reloj. Quien llame pasa los movimientos y el día.
 // ============================================================================
@@ -16,6 +16,8 @@ import type { Bonificacion, ReglaBonificacion } from '../../types/prestamos';
 import type { Tarjeta } from '../../types/tarjetas';
 import type { GastoDeUnPeriodo } from '../gastoPorTarjeta';
 import { gastoDeLaTarjeta } from '../gastoPorTarjeta';
+import type { CobroDeUnMes } from './cobrosDeNomina';
+import { cobrosDeLaCuenta } from './cobrosDeNomina';
 import { bonificaHipoteca } from '../tarjetasReglas';
 import type { Cumplimiento, Ventana } from './cumplimiento';
 import { ventanaDeEvaluacion, veredictoDelImporte } from './cumplimiento';
@@ -25,6 +27,8 @@ export interface MovimientosQuePrueban {
   tarjetas: Tarjeta[];
   /** El gasto por tarjeta y periodo · lo que devuelve `gastoPorTarjeta`. */
   periodosDeTarjeta: GastoDeUnPeriodo[];
+  /** La nómina por cuenta y mes · lo que devuelve `cobrosDeNomina`. */
+  cobrosDeNomina: CobroDeUnMes[];
 }
 
 /**
@@ -35,8 +39,7 @@ export interface MovimientosQuePrueban {
  * `default` lo dejaría pasar en silencio, que es como se llega a «nadie las
  * mira» sin que nadie lo decidiera.
  */
-const SIN_FUENTE: Record<Exclude<ReglaBonificacion['tipo'], 'TARJETA'>, string> = {
-  NOMINA: 'hace falta reconocer la nómina entre los ingresos de la cuenta',
+const SIN_FUENTE: Record<Exclude<ReglaBonificacion['tipo'], 'TARJETA' | 'NOMINA'>, string> = {
   PLAN_PENSIONES: 'la aportación al plan todavía no se sigue en tesorería',
   SEGURO_HOGAR: 'un seguro se prueba con su póliza, no con un movimiento',
   SEGURO_VIDA: 'un seguro se prueba con su póliza, no con un movimiento',
@@ -138,6 +141,72 @@ function loQueFaltaParaMirarla(b: Bonificacion): string | null {
   return null;
 }
 
+/**
+ * La condición de nómina · §6 ter.
+ *
+ * Lo que el banco mira es **lo que le entra a él**: la nómina domiciliada en su
+ * cuenta, por encima del mínimo, **todos los meses**. Por eso el veredicto sale
+ * del mes más flojo y no del total: un semestre con 7.200 € no cumple «1.200 €
+ * al mes» si un mes vino vacío y otro doble.
+ *
+ * Y solo cuenta lo cobrado, como en la tarjeta (§3.5): lo que aún no ha entrado
+ * no demuestra nada.
+ */
+function porNomina(
+  b: Bonificacion,
+  regla: Extract<ReglaBonificacion, { tipo: 'NOMINA' }>,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban
+): Cumplimiento {
+  const base = { bonificacionId: b.id, nombre: b.nombre };
+
+  // `!b.cuentaExigidaId` y no `== null`: la cuenta se guarda como texto y el
+  // selector deja `''` al no elegir ninguna — y `Number('')` es 0, un id que
+  // parece válido. Se habría mirado la cuenta cero.
+  const cuentaId = Number(b.cuentaExigidaId);
+  if (!b.cuentaExigidaId || !Number.isFinite(cuentaId)) {
+    return noVerificable(b, 'no dice en qué cuenta hay que domiciliarla');
+  }
+  if (!Number.isFinite(regla.minimoMensual) || regla.minimoMensual <= 0) {
+    return noVerificable(b, 'no dice cuánto tiene que entrar al mes');
+  }
+
+  // Sin una sola nómina en toda la tesorería, el silencio no es un «no»: es que
+  // ATLAS no sabe de ninguna. Distinto de tenerla domiciliada en otro banco,
+  // que sí es incumplir y se ve más abajo.
+  if (movimientos.cobrosDeNomina.length === 0) {
+    return noVerificable(b, 'no hay ninguna nómina dada de alta');
+  }
+
+  const meses = cobrosDeLaCuenta(movimientos.cobrosDeNomina, cuentaId, {
+    ...ventana,
+    soloCerrados: true,
+  });
+
+  if (meses.length === 0) {
+    return {
+      ...base,
+      veredicto: 'no_cumple',
+      ventana,
+      exigido: regla.minimoMensual,
+      motivo: 'no ha entrado ninguna nómina en esa cuenta',
+    };
+  }
+
+  // El mes más flojo es el que decide: basta uno por debajo para perderla.
+  const peor = Math.min(...meses.map((m) => m.importe));
+  const queLlegan = meses.filter((m) => m.importe + 0.005 >= regla.minimoMensual).length;
+
+  return {
+    ...base,
+    veredicto: veredictoDelImporte(peor, regla.minimoMensual),
+    ventana,
+    medido: centimos(peor),
+    exigido: regla.minimoMensual,
+    mensual: { conMovimiento: meses.length, queLlegan },
+  };
+}
+
 function verificarUna(
   b: Bonificacion,
   movimientos: MovimientosQuePrueban,
@@ -146,14 +215,15 @@ function verificarUna(
   const falta = loQueFaltaParaMirarla(b);
   if (falta) return noVerificable(b, falta);
 
-  if (b.regla.tipo !== 'TARJETA') {
-    // `hasOwnProperty` y no `SIN_FUENTE[...]` a secas, por lo mismo de arriba:
-    // un tipo guardado que ya no está en la tabla daría un motivo `undefined`,
-    // y el usuario leería «No se puede comprobar · undefined».
-    const conocido = Object.prototype.hasOwnProperty.call(SIN_FUENTE, b.regla.tipo);
-    return noVerificable(b, conocido ? SIN_FUENTE[b.regla.tipo] : 'no se reconoce qué mirar');
-  }
-  return porTarjeta(b, b.regla, ventanaDeEvaluacion(hasta, b.lookbackMeses), movimientos);
+  const ventana = ventanaDeEvaluacion(hasta, b.lookbackMeses);
+  if (b.regla.tipo === 'TARJETA') return porTarjeta(b, b.regla, ventana, movimientos);
+  if (b.regla.tipo === 'NOMINA') return porNomina(b, b.regla, ventana, movimientos);
+
+  // `hasOwnProperty` y no `SIN_FUENTE[...]` a secas: un tipo guardado que ya no
+  // esté en la tabla daría un motivo `undefined`, y el usuario leería
+  // «No se puede comprobar · undefined».
+  const conocido = Object.prototype.hasOwnProperty.call(SIN_FUENTE, b.regla.tipo);
+  return noVerificable(b, conocido ? SIN_FUENTE[b.regla.tipo] : 'no se reconoce qué mirar');
 }
 
 /**

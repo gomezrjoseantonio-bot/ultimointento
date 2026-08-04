@@ -91,7 +91,9 @@ interface BonificacionRow {
   lookbackMeses: number;
   /** Con qué tarjeta se cumple · la concreta, no la cuenta (§3.6). */
   tarjetaExigidaId?: number;
-  /** Lo tecleado en el gasto mínimo · en crudo, como el resto de importes. */
+  /** En qué cuenta hay que domiciliarla · la del banco que bonifica (§6 ter). */
+  cuentaExigidaId?: string;
+  /** Lo tecleado en el importe mínimo · en crudo, como el resto de importes. */
   importeMinimoRaw?: string;
   /**
    * El estado que ya tenía · se conserva en la edición.
@@ -240,6 +242,19 @@ const BONIF_CATALOGO: Array<{ nombre: string; pp: number; regla: ReglaBonificaci
  * catálogo. Antes esta línea mostraba otra vez los puntos porcentuales, que ya
  * estaban justo debajo.
  */
+/**
+ * El importe que pide una regla, si pide alguno.
+ *
+ * Dos reglas lo tienen y significan cosas distintas: la tarjeta pide un total
+ * en la ventana y la nómina un mínimo **cada mes**. Comparten el campo de
+ * entrada, no el significado — por eso la etiqueta la pone quien la pinta.
+ */
+function importeDeLaRegla(r: ReglaBonificacion): number | undefined {
+  if (r.tipo === 'TARJETA') return r.importeMinimo;
+  if (r.tipo === 'NOMINA') return r.minimoMensual;
+  return undefined;
+}
+
 function condicionDeRegla(r: ReglaBonificacion): string {
   if (r.tipo === 'NOMINA') return `≥ ${fmtNumeroEs(r.minimoMensual, 0)} €/mes domiciliada`;
   if (r.tipo === 'OTRA') return r.descripcion;
@@ -271,6 +286,9 @@ const filasDelCatalogo = (): BonificacionRow[] =>
     activa: false,
     regla: b.regla,
     lookbackMeses: LOOKBACK_POR_DEFECTO,
+    // Sembrado desde la propia regla · dejarlo vacío enseñaría un hueco donde
+    // el catálogo ya propone una cifra, y esa cifra es la que se guardaría.
+    importeMinimoRaw: importeDeLaRegla(b.regla) ? fmtNumeroEs(importeDeLaRegla(b.regla)!, 0) : '',
   }));
 
 // ─── Mapeos prestamo legacy ↔ v2 ────────────────────────────────────────────
@@ -561,7 +579,6 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     const bonificaciones: BonificacionRow[] = (p.bonificaciones && p.bonificaciones.length > 0)
       ? p.bonificaciones.map((b) => {
           const regla: ReglaBonificacion = b.regla ?? { tipo: 'OTRA', descripcion: b.nombre };
-          const importe = regla.tipo === 'TARJETA' ? regla.importeMinimo : undefined;
           return {
             id: b.id,
             nombre: b.nombre,
@@ -570,7 +587,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
             regla,
             lookbackMeses: b.lookbackMeses ?? LOOKBACK_POR_DEFECTO,
             tarjetaExigidaId: b.tarjetaExigidaId,
-            importeMinimoRaw: importe ? fmtNumeroEs(importe, 0) : '',
+            cuentaExigidaId: b.cuentaExigidaId,
+            importeMinimoRaw: importeDeLaRegla(regla) ? fmtNumeroEs(importeDeLaRegla(regla)!, 0) : '',
             estadoPrevio: b.estado,
           };
         })
@@ -849,6 +867,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
             lookbackMeses: b.lookbackMeses,
             regla: b.regla,
             tarjetaExigidaId: b.tarjetaExigidaId,
+            cuentaExigidaId: b.cuentaExigidaId,
             // Solo lo que nace empieza en `SELECCIONADO`; lo demás conserva el
             // suyo. Ver `estadoPrevio`.
             estado: b.estadoPrevio && b.estadoPrevio !== 'INACTIVO' ? b.estadoPrevio : 'SELECCIONADO',
@@ -1547,62 +1566,98 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                     {/*
                       Qué hay que demostrar, para poder demostrarlo · §6 ter.
 
-                      Una bonificación de tarjeta sin decir CUÁL y CUÁNTO no se
-                      puede mirar contra los movimientos, y entonces solo queda
-                      creerse que se cumple. Solo se ofrecen las del banco: las
-                      de fuera nunca bonifican (§3.6).
+                      Una bonificación sin decir DÓNDE y CUÁNTO no se puede
+                      mirar contra los movimientos, y entonces solo queda
+                      creerse que se cumple.
+
+                      De la tarjeta solo se ofrecen las del banco: las de fuera
+                      nunca bonifican (§3.6). El importe comparte casilla en las
+                      dos condiciones pero NO significa lo mismo —un total en la
+                      ventana frente a un mínimo cada mes—, y por eso la
+                      etiqueta lo dice.
                     */}
                     {form.bonificaciones.map((b) => {
-                      const reglaTarjeta = b.regla.tipo === 'TARJETA' ? b.regla : null;
-                      if (!b.activa || !reglaTarjeta) return null;
+                      const tarjeta = b.regla.tipo === 'TARJETA' ? b.regla : null;
+                      const nomina = b.regla.tipo === 'NOMINA' ? b.regla : null;
+                      if (!b.activa || (!tarjeta && !nomina)) return null;
+
+                      const alCambiarImporte = (raw: string) =>
+                        editarBonificacion(b.id, {
+                          importeMinimoRaw: raw,
+                          regla: tarjeta
+                            ? { ...tarjeta, importeMinimo: parseNum(raw) }
+                            : { ...nomina!, minimoMensual: parseNum(raw) },
+                        });
+
                       return (
                         <div key={b.id} className={`${styles.fieldsRow} ${styles.rowTinFijo}`}>
                           <div className={styles.field}>
                             <label className={styles.fieldLabel}>
-                              {b.nombre} · con qué tarjeta{' '}
-                              <span className="hint">solo las del banco bonifican</span>
+                              {b.nombre} ·{' '}
+                              {tarjeta ? (
+                                <>
+                                  con qué tarjeta{' '}
+                                  <span className="hint">solo las del banco bonifican</span>
+                                </>
+                              ) : (
+                                <>
+                                  en qué cuenta{' '}
+                                  <span className="hint">la del banco que bonifica</span>
+                                </>
+                              )}
                             </label>
-                            <select
-                              className={styles.select}
-                              value={b.tarjetaExigidaId ?? ''}
-                              onChange={(e) =>
-                                editarBonificacion(b.id, {
-                                  tarjetaExigidaId: e.target.value
-                                    ? Number(e.target.value)
-                                    : undefined,
-                                })
-                              }
-                            >
-                              <option value="">
-                                {tarjetasQueBonifican.length
-                                  ? 'Sin elegir'
-                                  : 'No hay ninguna tarjeta del banco dada de alta'}
-                              </option>
-                              {tarjetasQueBonifican.map((t) => (
-                                <option key={t.id} value={t.id}>
-                                  {t.alias}
+                            {tarjeta ? (
+                              <select
+                                className={styles.select}
+                                value={b.tarjetaExigidaId ?? ''}
+                                onChange={(e) =>
+                                  editarBonificacion(b.id, {
+                                    tarjetaExigidaId: e.target.value
+                                      ? Number(e.target.value)
+                                      : undefined,
+                                  })
+                                }
+                              >
+                                <option value="">
+                                  {tarjetasQueBonifican.length
+                                    ? 'Sin elegir'
+                                    : 'No hay ninguna tarjeta del banco dada de alta'}
                                 </option>
-                              ))}
-                            </select>
+                                {tarjetasQueBonifican.map((t) => (
+                                  <option key={t.id} value={t.id}>
+                                    {t.alias}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <select
+                                className={styles.select}
+                                value={b.cuentaExigidaId ?? ''}
+                                onChange={(e) =>
+                                  editarBonificacion(b.id, {
+                                    cuentaExigidaId: e.target.value || undefined,
+                                  })
+                                }
+                              >
+                                <option value="">Sin elegir</option>
+                                {accounts.map((a) => (
+                                  <option key={a.id} value={String(a.id)}>{accountLabel(a)}</option>
+                                ))}
+                              </select>
+                            )}
                           </div>
                           <div className={styles.field}>
                             <label className={styles.fieldLabel}>
-                              Gasto mínimo{' '}
-                              <span className="hint">en {b.lookbackMeses} meses</span>
+                              {tarjeta ? 'Gasto mínimo' : 'Entrada mínima'}{' '}
+                              <span className="hint">
+                                {tarjeta ? `en ${b.lookbackMeses} meses` : 'cada mes'}
+                              </span>
                             </label>
                             <div className={styles.inputSuffix}>
                               <input
                                 className={`${styles.input} ${styles.inputMono}`}
                                 value={b.importeMinimoRaw ?? ''}
-                                onChange={(e) =>
-                                  editarBonificacion(b.id, {
-                                    importeMinimoRaw: e.target.value,
-                                    regla: {
-                                      ...reglaTarjeta,
-                                      importeMinimo: parseNum(e.target.value),
-                                    },
-                                  })
-                                }
+                                onChange={(e) => alCambiarImporte(e.target.value)}
                               />
                               <span className={styles.suffix}>€</span>
                             </div>
