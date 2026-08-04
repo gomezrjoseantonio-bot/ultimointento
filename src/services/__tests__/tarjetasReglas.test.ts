@@ -21,7 +21,6 @@ import type { Account } from '../db';
 
 const corriente = { id: 1, alias: 'Santander', tipo: 'CORRIENTE' } as Account;
 const efectivo = { id: 2, alias: 'Efectivo', tipo: 'EFECTIVO' } as Account;
-const tarjetaCuenta = { id: 3, alias: 'Visa', tipo: 'TARJETA_CREDITO' } as Account;
 
 // "del 25 al 24, se cobra el 31" · el cargo cae el mismo mes del corte.
 const del25al24: CicloTarjeta = {
@@ -49,7 +48,7 @@ const semanalUnicaja: CicloTarjeta = {
 
 describe('de qué cuenta puede colgar', () => {
   it('solo de una cuenta bancaria propia', () => {
-    expect(cuentasQuePuedenLiquidar([corriente, efectivo, tarjetaCuenta])).toEqual([corriente]);
+    expect(cuentasQuePuedenLiquidar([corriente, efectivo])).toEqual([corriente]);
   });
 });
 

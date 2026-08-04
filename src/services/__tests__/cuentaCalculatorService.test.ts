@@ -7,7 +7,7 @@ describe('calcularCuentaResumen · S-WIZARD-CUENTA-V3', () => {
       saldoInicial: 30000,
       esRemunerada: false,
     });
-    expect(r.saldoInicialOCreditoDisponible).toBe(30000);
+    expect(r.saldoInicial).toBe(30000);
     expect(r.interesesAnualesEstimados).toBe(0);
     expect(r.interesesPorPeriodo).toBe(0);
   });
@@ -20,7 +20,7 @@ describe('calcularCuentaResumen · S-WIZARD-CUENTA-V3', () => {
       taeAnual: 2.5,
       frecuenciaLiquidacion: 'mensual',
     });
-    expect(r.saldoInicialOCreditoDisponible).toBe(30000);
+    expect(r.saldoInicial).toBe(30000);
     // 30.000 × 2,5% = 750
     expect(r.interesesAnualesEstimados).toBe(750);
     // 750 / 12 = 62,5
@@ -39,31 +39,6 @@ describe('calcularCuentaResumen · S-WIZARD-CUENTA-V3', () => {
     expect(r.interesesAnualesEstimados).toBe(400);
     // 400 / 4 = 100
     expect(r.interesesPorPeriodo).toBe(100);
-  });
-
-  it('tarjeta crédito · crédito disponible = límite − deuda', () => {
-    const r = calcularCuentaResumen({
-      tipo: 'TARJETA_CREDITO',
-      limiteCredito: 5000,
-      deudaActual: 1200,
-    });
-    expect(r.saldoInicialOCreditoDisponible).toBe(3800);
-    expect(r.interesesAnualesEstimados).toBe(0);
-    expect(r.interesesPorPeriodo).toBe(0);
-  });
-
-  it('tarjeta crédito · ignora flag remunerada (no aplica)', () => {
-    const r = calcularCuentaResumen({
-      tipo: 'TARJETA_CREDITO',
-      limiteCredito: 3000,
-      deudaActual: 0,
-      esRemunerada: true,
-      taeAnual: 5,
-      frecuenciaLiquidacion: 'mensual',
-    });
-    expect(r.saldoInicialOCreditoDisponible).toBe(3000);
-    expect(r.interesesAnualesEstimados).toBe(0);
-    expect(r.interesesPorPeriodo).toBe(0);
   });
 
   it('cuenta corriente sin remunerar · intereses = 0 aunque haya TAE', () => {
@@ -86,7 +61,7 @@ describe('calcularCuentaResumen · S-WIZARD-CUENTA-V3', () => {
       taeAnual: NaN,
       frecuenciaLiquidacion: 'anual',
     });
-    expect(r.saldoInicialOCreditoDisponible).toBe(0);
+    expect(r.saldoInicial).toBe(0);
     expect(r.interesesAnualesEstimados).toBe(0);
   });
 
@@ -113,14 +88,5 @@ describe('calcularCuentaResumen · S-WIZARD-CUENTA-V3', () => {
     });
     expect(r.interesesAnualesEstimados).toBe(600);
     expect(r.interesesPorPeriodo).toBe(300);
-  });
-
-  it('tarjeta crédito con deuda > límite · disponible negativo', () => {
-    const r = calcularCuentaResumen({
-      tipo: 'TARJETA_CREDITO',
-      limiteCredito: 1000,
-      deudaActual: 1500,
-    });
-    expect(r.saldoInicialOCreditoDisponible).toBe(-500);
   });
 });

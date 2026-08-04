@@ -442,17 +442,14 @@ export interface Account {
    * patrimonio el día que sacas 200 € del cajero.
    */
   /**
-   * V87 · `TARJETA_CREDITO` está EN RETIRADA (VOCABULARIO §3): una tarjeta no
-   * es un sitio donde hay dinero. Ya existe el store `tarjetas` y la migración
-   * las va creando, pero el tipo no puede desaparecer todavía porque el alta de
-   * tarjeta vive en el wizard de cuentas y aún no tiene sustituto. Quitarlo sin
-   * eso dejaría un hueco: no se podría dar de alta ninguna tarjeta.
+   * V88 · `TARJETA_CREDITO` ya no existe (VOCABULARIO §3).
+   *
+   * Una tarjeta no es un sitio donde hay dinero: es una forma de gastar el de
+   * una cuenta, y vive en `Tarjeta` desde V87. Las cuentas que lo eran se
+   * borraron con sus movimientos por decisión de Jose — ese gasto ya estaba
+   * contado por el recibo que el banco cobra en la corriente.
    */
-  tipo?: 'CORRIENTE' | 'TARJETA_CREDITO' | 'EFECTIVO';
-  cardConfig?: {
-    settlementDay: number; // Día del cargo del recibo (1-31)
-    chargeAccountId: number; // Cuenta bancaria donde se domicilia el recibo
-  };
+  tipo?: 'CORRIENTE' | 'EFECTIVO';
   moneda?: 'EUR';                         // default: EUR (solo EUR por ahora)
   titular?: { nombre?: string; nif?: string; }; // opcional (no obligatorio en alta)
   
@@ -526,13 +523,10 @@ export interface Account {
   taeAnual?: number;                     // alias plano · espejo de remuneracion.tinAnual
   frecuenciaLiquidacion?: 'mensual' | 'trimestral' | 'semestral' | 'anual';
   cuentaDestinoIntereses?: number;       // FK a otra account
-  // Tarjetas crédito
-  ultimosCuatro?: string;                // últimos 4 dígitos visibles
-  bancoEmisor?: string;                  // banco emisor (puede diferir del de la cuenta de cargo)
-  limiteCredito?: number;                // límite de crédito €
-  deudaActual?: number;                  // deuda actual €
-  diaCierre?: number;                    // día del mes en que cierra el ciclo (1-31)
-  diaPago?: number;                      // día del mes en que se carga (1-31) · espejo de cardConfig.settlementDay
+  ultimosCuatro?: string;                // últimos 4 dígitos visibles · la máscara que se enseña
+  // V88 · aquí vivían el límite, la deuda, el emisor y los días de cierre y
+  // cargo. Eran de la tarjeta, no de la cuenta, y ahora están en `Tarjeta`
+  // (VOCABULARIO §3) — donde además caben dos por cuenta, que es lo normal.
 }
 
 // H8: Movement types - enhanced to match treasury_transactions requirements

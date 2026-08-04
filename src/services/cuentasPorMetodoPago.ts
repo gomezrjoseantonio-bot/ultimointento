@@ -19,9 +19,14 @@ import type { Account } from './db';
 import type { MetodoPagoCompromiso } from '../types/compromisosRecurrentes';
 import type { Tarjeta } from '../types/tarjetas';
 
-/** Una cuenta de banco de verdad · tiene IBAN y se le puede domiciliar algo. */
+/**
+ * Una cuenta de banco de verdad · tiene IBAN y se le puede domiciliar algo.
+ *
+ * Bastaba con dejar fuera el efectivo desde que las cuentas de tipo tarjeta no
+ * existen (V88): una tarjeta no es un sitio donde hay dinero, es una `Tarjeta`.
+ */
 function esBancaria(c: Account): boolean {
-  return c.tipo !== 'EFECTIVO' && c.tipo !== 'TARJETA_CREDITO';
+  return c.tipo !== 'EFECTIVO';
 }
 
 /**

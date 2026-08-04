@@ -47,7 +47,7 @@ const CuentaSelect: React.FC<CuentaSelectProps> = ({
       .list()
       .then((list) => {
         if (!cancelled) {
-          setCuentas(list.filter((c) => c.id != null && c.tipo !== 'TARJETA_CREDITO'));
+          setCuentas(list.filter((c) => c.id != null));
         }
       })
       .catch(() => {

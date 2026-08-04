@@ -13,11 +13,14 @@ import type { CicloTarjeta, Tarjeta } from '../types/tarjetas';
 /**
  * De qué cuentas puede colgar una tarjeta (§3.2).
  *
- * Siempre una cuenta bancaria propia. Nunca el efectivo —el colchón no
- * domicilia recibos— ni otra tarjeta, que ni siquiera es una cuenta.
+ * Siempre una cuenta bancaria propia. Nunca el efectivo: el colchón no
+ * domicilia recibos.
+ *
+ * Aquí también se descartaban las cuentas de tipo tarjeta. Ya no hace falta
+ * comprobarlo: desde V88 no existen, porque una tarjeta nunca fue una cuenta.
  */
 export function cuentasQuePuedenLiquidar(cuentas: Account[]): Account[] {
-  return cuentas.filter((c) => c.tipo !== 'EFECTIVO' && c.tipo !== 'TARJETA_CREDITO');
+  return cuentas.filter((c) => c.tipo !== 'EFECTIVO');
 }
 
 /**

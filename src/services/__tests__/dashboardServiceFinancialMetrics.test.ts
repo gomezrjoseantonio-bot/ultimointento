@@ -427,11 +427,13 @@ describe('dashboardService financial metrics', () => {
     expect(patrimonio.total).toBeCloseTo(155000, 2);
   });
 
-  it('incluye financiación y reasigna eventos de tarjeta al banco de cargo en tesorería panel', async () => {
+  // V88 · aquí también se comprobaba que el evento de una cuenta de tarjeta se
+  // reasignaba a su cuenta de cargo. Esas cuentas ya no existen (VOCABULARIO
+  // §3): lo que la tarjeta cobra llega como el recibo de la cuenta corriente.
+  it('incluye la financiación en lo que queda por pagar', async () => {
     const datasets: Record<string, any[]> = {
       accounts: [
-        { id: 1, isActive: true, alias: 'Banco Principal', balance: 1000 },
-        { id: 2, isActive: true, alias: 'Visa Atlas', tipo: 'TARJETA_CREDITO', cardConfig: { chargeAccountId: 1 }, balance: 0 }
+        { id: 1, isActive: true, alias: 'Banco Principal', balance: 1000 }
       ],
       movements: [],
       treasuryEvents: [
@@ -439,8 +441,7 @@ describe('dashboardService financial metrics', () => {
         { accountId: 1, type: 'income', status: 'predicted', amount: 500, predictedDate: '2026-03-20' },
         { accountId: 1, type: 'expense', status: 'predicted', amount: 100, predictedDate: '2026-03-21' },
         { accountId: 1, type: 'financing', status: 'predicted', amount: 300, predictedDate: '2026-03-22' },
-        { accountId: 1, type: 'expense', status: 'confirmed', amount: 400, predictedDate: '2026-03-24' },
-        { accountId: 2, type: 'expense', status: 'predicted', amount: 50, predictedDate: '2026-03-23' }
+        { accountId: 1, type: 'expense', status: 'confirmed', amount: 400, predictedDate: '2026-03-24' }
       ]
     };
 
@@ -455,10 +456,10 @@ describe('dashboardService financial metrics', () => {
     expect(panel.filas).toHaveLength(1);
     expect(panel.filas[0].hoy).toBe(1000);
     expect(panel.filas[0].porCobrar).toBe(500);
-    expect(panel.filas[0].porPagar).toBe(475);
-    expect(panel.filas[0].proyeccion).toBe(1025);
+    expect(panel.filas[0].porPagar).toBe(425);
+    expect(panel.filas[0].proyeccion).toBe(1075);
     expect(panel.totales.hoy).toBe(1000);
-    expect(panel.totales.porPagar).toBe(475);
+    expect(panel.totales.porPagar).toBe(425);
   });
 
   it('alinea tesorería dashboard con saldo hoy y fin de mes de la vista de tesorería', async () => {
