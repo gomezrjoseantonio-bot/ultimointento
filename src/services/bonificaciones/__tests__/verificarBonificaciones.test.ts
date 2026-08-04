@@ -447,3 +447,39 @@ describe('la condición de recibos domiciliados', () => {
     expect(r.motivo).toContain('cuántos recibos');
   });
 });
+
+// Los recibos se CUENTAN · «2,5 recibos» no existe. El asistente ya guarda
+// enteros; esto protege del dato guardado a mano, que si no acabaría dicho tal
+// cual en pantalla.
+describe('un umbral de recibos con decimales', () => {
+  const mes = (m: string, cuantos: number): RecibosDeUnMes => ({
+    cuentaId: 3,
+    mes: m,
+    cuantos,
+    estado: 'cerrado',
+  });
+
+  const conUmbral = (minimoRecibos: number, cuantos: number) =>
+    verificarBonificaciones(
+      [
+        bonif({
+          tipo: 'RECIBOS',
+          regla: { tipo: 'RECIBOS', minimoRecibos },
+          tarjetaExigidaId: undefined,
+          cuentaExigidaId: '3',
+        }),
+      ],
+      con([], [], [], [mes('2026-05', cuantos)]),
+      HOY
+    )[0];
+
+  // Al menos 2,5 recibos se cumple con TRES, no con dos · `ceil`, no `round`.
+  it('se redondea hacia arriba · es un mínimo', () => {
+    expect(conUmbral(2.5, 3)).toMatchObject({ veredicto: 'cumple', exigido: 3 });
+    expect(conUmbral(2.5, 2)).toMatchObject({ veredicto: 'no_cumple', exigido: 3 });
+  });
+
+  it('un entero no se mueve', () => {
+    expect(conUmbral(3, 3).exigido).toBe(3);
+  });
+});

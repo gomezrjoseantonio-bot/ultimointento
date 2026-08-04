@@ -244,6 +244,12 @@ function porRecibos(
     return noVerificable(b, 'no dice cuántos recibos hacen falta');
   }
 
+  // Un conteo · `Math.ceil` y no `round` porque el umbral es un MÍNIMO: «al
+  // menos 2,5 recibos» se cumple con tres, no con dos. El asistente ya guarda
+  // enteros, así que para un dato sano esto no cambia nada; protege del que se
+  // haya guardado a mano, que si no acabaría dicho «2,5 recibos» en pantalla.
+  const exigidos = Math.ceil(regla.minimoRecibos);
+
   const meses = recibosDeLaCuenta(movimientos.recibosDomiciliados, cuentaId, {
     ...ventana,
     soloCerrados: true,
@@ -259,12 +265,12 @@ function porRecibos(
       veredicto: 'no_cumple',
       ventana,
       medido: 0,
-      exigido: regla.minimoRecibos,
+      exigido: exigidos,
       motivo: 'no se ha cargado ningún recibo en esa cuenta',
     };
   }
 
-  const llega = (cuantos: number) => cuantos >= regla.minimoRecibos;
+  const llega = (cuantos: number) => cuantos >= exigidos;
   const peor = Math.min(...meses.map((m) => m.cuantos));
 
   return {
@@ -272,7 +278,7 @@ function porRecibos(
     veredicto: llega(peor) ? 'cumple' : 'no_cumple',
     ventana,
     medido: peor,
-    exigido: regla.minimoRecibos,
+    exigido: exigidos,
     mensual: {
       conMovimiento: meses.length,
       queLlegan: meses.filter((m) => llega(m.cuantos)).length,

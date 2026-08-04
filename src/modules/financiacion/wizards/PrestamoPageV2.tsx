@@ -272,6 +272,16 @@ function condicionDeRegla(r: ReglaBonificacion): string {
     : 'Gasto mínimo con su tarjeta';
 }
 
+/**
+ * Un conteo · entero y nunca negativo.
+ *
+ * Los recibos se cuentan, y la casilla comparte parser con los importes: sin
+ * esto se podría guardar «2,5 recibos», que no existe y acabaría dicho tal cual
+ * en la ficha y en la comprobación.
+ */
+const enteroNoNegativo = (n: number): number =>
+  Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+
 /** La ventana por defecto · medio año, como el `lookbackMeses` que ya se guardaba. */
 const LOOKBACK_POR_DEFECTO = 6;
 
@@ -1604,7 +1614,10 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                             ? { ...tarjeta, importeMinimo: parseNum(raw) }
                             : nomina
                               ? { ...nomina, minimoMensual: parseNum(raw) }
-                              : { ...recibos!, minimoRecibos: parseNum(raw) },
+                              // Los recibos se cuentan · «2,5 recibos» no
+                              // existe, y guardarlo dejaría esa frase en la
+                              // ficha y en la comprobación.
+                              : { ...recibos!, minimoRecibos: enteroNoNegativo(parseNum(raw)) },
                         });
 
                       return (
