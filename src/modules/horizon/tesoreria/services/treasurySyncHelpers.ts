@@ -65,21 +65,4 @@ export function getBusinessDayForRule(
   return buildDate(year, safeMonth, fallbackDay);
 }
 
-export function getAddressStreetLiteral(address: string): string {
-  const firstSegment = address.split(',')[0].replace(/\s+/g, ' ').trim();
 
-  if (!firstSegment) return '';
-
-  return firstSegment
-    .replace(/^avda\.?\s+/i, 'Avenida ')
-    .replace(/^av\.?\s+/i, 'Avenida ')
-    .replace(/^c\/?\s*/i, 'Calle ')
-    .trim();
-}
-
-export function getPropertyLiteral(property: { id?: number; alias?: string; address?: string }): string {
-  const alias = property.alias?.trim();
-  if (alias) return alias;
-
-  return `Inmueble #${property.id}`;
-}

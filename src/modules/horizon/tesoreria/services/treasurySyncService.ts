@@ -1,6 +1,6 @@
 // src/modules/horizon/tesoreria/services/treasurySyncService.ts
 // ATLAS HORIZON – Treasury Sync Service
-// Bridges the forecastEngine with the day-to-day treasury (la vista de conciliación de tesorería).
+// Bridges the projection rules with the day-to-day treasury (la vista de conciliación de tesorería).
 // Generates monthly forecast TreasuryEvents from projection rules so that the
 // "Previsiones" column is populated automatically.
 //
@@ -10,12 +10,7 @@
 
 import { initDB } from '../../../../services/db';
 import type { TreasuryEvent } from '../../../../services/db';
-// T14.4 · `personalDataService` se mantiene SOLO para la lectura de
-// `direccion` en la sección 1 (alquiler · housing pattern matching).
-// Resto de lecturas migradas al gateway `fiscalContextService`.
-import { personalDataService } from '../../../../services/personalDataService';
 import { getFiscalContextSafe } from '../../../../services/fiscalContextService';
-import { patronGastosPersonalesService } from '../../../../services/patronGastosPersonalesService';
 import { nominaService } from '../../../../services/nominaService';
 import { calcularNetoMesNomina } from '../../../../services/nominaCalculoService';
 import { getAllContracts } from '../../../../services/contractService';
@@ -25,20 +20,10 @@ import { inversionesService } from '../../../../services/inversionesService';
 import { cuentasService } from '../../../../services/cuentasService';
 import { otrosIngresosService } from '../../../../services/otrosIngresosService';
 import { rollForwardAccountBalancesToMonth } from '../../../../services/accountBalanceService';
-import {
-  calculateOpexBreakdownForMonth,
-  personalExpenseAppliesToMonth,
-  getPersonalExpenseAmountForMonth,
-} from '../../../horizon/proyeccion/mensual/services/forecastEngine';
+import { getBusinessDayForRule } from './treasurySyncHelpers';
 import { TRAMOS_AHORRO_2026 } from '../../../../types/inversiones-extended';
-import {
-  getBusinessDayForRule,
-  getPropertyLiteral,
-} from './treasurySyncHelpers';
 import type { ReglaDia } from '../../../../types/personal';
 import { inmuebleDelPrestamo, idDeInmueble } from '../../../../services/inmuebleDelPrestamo';
-import { listarTarjetas } from '../../../../services/tarjetasService';
-import { claveDeRecibo, previsionDeTarjetas } from '../../../../services/previsionDeTarjetas';
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -130,12 +115,9 @@ function isContractActiveInMonth(
 }
 
 /**
- * Generates TreasuryEvent forecast records for the given year/month using the
- * forecastEngine rules stored in IndexedDB.
+ * Generates TreasuryEvent forecast records for the given year/month.
  *
  * Sources covered:
- *  - OpexRules (property operating expenses) → type 'expense', sourceType 'opex_rule'
- *  - GastoRecurrente (personal recurring expenses) → type 'expense', sourceType 'gasto_recurrente'
  *  - Active rental contracts for the month → type 'income', sourceType 'contrato'
  *  - Active nóminas for the month → type 'income', sourceType 'nomina'
  *  - Hipotecas (mortgage quotas) → type 'financing', sourceType 'hipoteca'
@@ -144,6 +126,11 @@ function isContractActiveInMonth(
  *  - Autónomo expenses (gastosRecurrentesActividad + cuotaAutonomos) → type 'expense', sourceType 'autonomo'
  *  - Investment interest/dividends → type 'income', sourceType 'inversion'
  *  - Otros ingresos recurrentes → type 'income', sourceType 'otros_ingresos'
+ *
+ * Los gastos recurrentes NO están en esta lista y no es un olvido: los prevé
+ * `compromisosRecurrentesService` desde `compromisosRecurrentes`, y los de
+ * inmueble `treasuryForecastService`. Lo que había aquí eran dos ramas que
+ * desde V62 recorrían listas vacías (ver más abajo).
  *
  * Duplicate prevention: before inserting, we check whether an event with the
  * same sourceType + sourceId already has a predictedDate in the same year-month.
@@ -229,46 +216,6 @@ export async function generateMonthlyForecasts(
     created++;
   }
 
-  /**
-   * Upsert de un RECIBO DE TARJETA · se identifica por su periodo, no por el mes.
-   *
-   * `insertEvent` busca el evento existente dentro del mes que se sincroniza, y
-   * eso no vale aquí: el cargo de un periodo puede caer en OTRO mes —corte el 24
-   * de enero, cargo el 5 de febrero—, así que la búsqueda por `monthPrefix` no
-   * lo encontraría y cada pasada añadiría otro recibo igual.
-   *
-   * La clave es (tarjeta · fecha de corte), que ya es única de por sí.
-   */
-  async function insertRecibo(event: TreasuryEvent): Promise<void> {
-    const sourceId = event.sourceId;
-    const existing = sourceId != null
-      ? await db.getAllFromIndex('treasuryEvents', 'sourceId', sourceId)
-      : [];
-    const yaEsta = existing.find(e => e.sourceType === 'tarjeta_recibo');
-
-    if (yaEsta) {
-      // Misma regla que arriba: lo conciliado y lo descartado no se reescriben.
-      if (isReconciled(yaEsta) || yaEsta.descartado === true) {
-        skipped++;
-        return;
-      }
-      await db.put('treasuryEvents', {
-        ...yaEsta,
-        ...event,
-        id: yaEsta.id,
-        // El recibo no nace de nuevo cada vez que se recalcula: nació la primera
-        // vez, y su `createdAt` es lo que dice desde cuándo está previsto.
-        createdAt: yaEsta.createdAt ?? event.createdAt,
-        updatedAt: now,
-      });
-      updated++;
-      return;
-    }
-
-    await db.add('treasuryEvents', { ...event, updatedAt: now });
-    created++;
-  }
-
   // ── ACCOUNT ID RESOLUTION ─────────────────────────────────────────────────
   // NominaWizard and ContractsNuevo use cuentasService (localStorage) which assigns
   // timestamp-based IDs (e.g., 1708726312345), while la vista de conciliación de tesorería
@@ -311,205 +258,28 @@ export async function generateMonthlyForecasts(
     return directMatch?.id;
   }
 
-  // ── 1. OPEX RULES (property expenses) ─────────────────────────────────────
-  try {
-    // opexRules store eliminado en V62 — migrado a compromisosRecurrentes (TAREA 2)
-    const opexRules: any[] = [];
-    const propertyAliasMap = new Map<number, string>();
-
-    // Build alias map from inmuebles (best-effort)
-    try {
-      const inmuebles = await db.getAll('properties');
-      for (const inm of inmuebles) {
-        if (inm.id != null) {
-          propertyAliasMap.set(inm.id, getPropertyLiteral(inm));
-        }
-      }
-    } catch {
-      // alias map stays empty; forecastEngine falls back to "Inmueble #id"
-    }
-
-    const breakdown = calculateOpexBreakdownForMonth(opexRules, month, propertyAliasMap);
-    for (const item of breakdown) {
-      const rule = opexRules.find(
-        r => r.propertyId === item.propertyId && r.concepto === item.concepto,
-      );
-      if (!rule || rule.id == null) continue;
-
-      if (await isDuplicate('opex_rule', rule.id)) {
-        skipped++;
-        continue;
-      }
-
-      const day = rule.diaCobro ?? 1;
-      await insertEvent({
-        type: 'expense' as const,
-        amount: item.importe,
-        predictedDate: buildDate(year, month, day),
-        description: `${item.concepto} – ${item.propertyAlias}`,
-        sourceType: 'opex_rule' as const,
-        sourceId: rule.id,
-        accountId: rule.accountId,
-        status: 'predicted' as const,
-        // PR5-HOTFIX v3 · copia del proveedor estructurado de la regla. El
-        // counterparty legacy cae al NIF si la regla sólo tiene NIF para no
-        // perder la referencia en lectores antiguos.
-        providerName: rule.proveedorNombre,
-        providerNif: rule.proveedorNIF,
-        invoiceNumber: rule.invoiceNumber,
-        counterparty: rule.proveedorNombre ?? rule.proveedorNIF,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-  } catch (err) {
-    console.error('[TreasurySyncService] Error processing opex rules:', err);
-  }
-
-  // ── 2. PATRON GASTOS PERSONALES (spending patterns → forecast events) ─────
-  // All personal spending patterns come from patronGastosPersonales.
-  // T14.4 · EXCEPCIÓN documentada · esta lectura necesita `direccion` que NO
-  // se expone en `fiscalContextService` (no es campo fiscal · solo se usa
-  // para matching de patrones de gasto de vivienda). Mantenemos lectura
-  // directa a `personalDataService` para evitar dual-read.
-  try {
-    const personalData = await personalDataService.getPersonalData();
-    const personalDataId = personalData?.id ?? 1;
-    const personalHousingAddress = personalData?.direccion?.trim() || '';
-    const allPersonalExpenses = await patronGastosPersonalesService.getPatrones(personalDataId);
-    const activePersonalExpenses = allPersonalExpenses.filter(e => e.activo);
-    // VOCABULARIO §3.4 · lo que se paga con una tarjeta de crédito NO sale de la
-    // cuenta el día de la compra: se acumula hasta el corte y sale entero el día
-    // de cargo. Recogemos aquí esas compras y al final las convertimos en
-    // recibos, uno por periodo.
-    const tarjetas = await listarTarjetas();
-    const comprasConTarjeta: {
-      fecha: string;
-      importe: number;
-      tarjetaId?: number;
-      // Lo que hace falta para devolver la compra a su cuenta si la tarjeta ya
-      // no vale — sin esto, el gasto se quedaría sin identidad y cada pasada de
-      // la sincronización crearía otra previsión igual.
-      sourceId: number;
-      description: string;
-      accountId?: number;
-      /** Viene del mes anterior · solo alimenta el recibo, no genera previsión. */
-      soloParaElRecibo?: boolean;
-    }[] = [];
-
-    for (const expense of activePersonalExpenses) {
-      if (!personalExpenseAppliesToMonth(expense, month)) continue;
-      if (expense.id == null) continue;
-
-      if (await isDuplicate('personal_expense', expense.id)) {
-        skipped++;
-        continue;
-      }
-
-      const amount = getPersonalExpenseAmountForMonth(expense, month);
-      if (amount <= 0) continue;
-      const isHousingCategory = expense.categoria === 'vivienda';
-      const personalExpenseDescription =
-        isHousingCategory && personalHousingAddress
-          ? `${expense.concepto} – ${personalHousingAddress}`
-          : expense.concepto;
-
-      if (expense.tarjetaId != null) {
-        comprasConTarjeta.push({
-          fecha: buildDate(year, month, expense.diaPago ?? 1),
-          importe: amount,
-          tarjetaId: expense.tarjetaId,
-          sourceId: expense.id,
-          description: personalExpenseDescription,
-          accountId: expense.accountId,
-        });
-        continue;
-      }
-
-      await insertEvent({
-        type: 'expense' as const,
-        amount,
-        predictedDate: buildDate(year, month, expense.diaPago ?? 1),
-        description: personalExpenseDescription,
-        sourceType: 'personal_expense' as const,
-        sourceId: expense.id,
-        accountId: expense.accountId,
-        status: 'predicted' as const,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    // Un periodo NO cabe en un mes natural: un corte el día 24 recoge lo
-    // gastado desde el 25 del mes ANTERIOR. Si el recibo se calculase solo con
-    // las compras de este mes, la parte de antes del corte se perdería —y como
-    // el bootstrap sincroniza mes a mes, la segunda pasada pisaría a la
-    // primera—. Así que se miran los dos meses y luego se emiten únicamente los
-    // periodos que CIERRAN en este: cada corte tiene un solo mes dueño, y su
-    // importe se recalcula entero cada vez.
-    const mesAnterior = month === 1 ? 12 : month - 1;
-    const anioAnterior = month === 1 ? year - 1 : year;
-    for (const expense of activePersonalExpenses) {
-      if (expense.id == null || expense.tarjetaId == null) continue;
-      if (!personalExpenseAppliesToMonth(expense, mesAnterior)) continue;
-      const importe = getPersonalExpenseAmountForMonth(expense, mesAnterior);
-      if (importe <= 0) continue;
-      comprasConTarjeta.push({
-        fecha: buildDate(anioAnterior, mesAnterior, expense.diaPago ?? 1),
-        importe,
-        tarjetaId: expense.tarjetaId,
-        sourceId: expense.id,
-        description: expense.concepto,
-        accountId: expense.accountId,
-        // Del mes anterior solo interesa lo que alimenta un corte de ESTE mes.
-        // Si su tarjeta ya no vale, su previsión suelta es cosa de la pasada de
-        // aquel mes, no de esta — emitirla aquí la duplicaría.
-        soloParaElRecibo: true,
-      });
-    }
-
-    const { recibos, sueltos } = previsionDeTarjetas(comprasConTarjeta, tarjetas);
-    const aliasDeTarjeta = new Map(tarjetas.map((t) => [t.id, t.alias]));
-    const cortesDeEsteMes = recibos.filter((r) => r.fechaCorte.startsWith(monthPrefix));
-
-    // Una compra cuya tarjeta ya no existe —o es de débito, que cobra al
-    // momento— vuelve a su cuenta. Mejor una previsión donde estaba que un gasto
-    // que desaparece de la vista.
-    for (const suelto of sueltos) {
-      if (suelto.soloParaElRecibo) continue;
-      await insertEvent({
-        type: 'expense' as const,
-        amount: suelto.importe,
-        predictedDate: suelto.fecha,
-        description: suelto.description,
-        sourceType: 'personal_expense' as const,
-        sourceId: suelto.sourceId,
-        accountId: suelto.accountId,
-        status: 'predicted' as const,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    for (const recibo of cortesDeEsteMes) {
-      const alias = aliasDeTarjeta.get(recibo.tarjetaId) || `#${recibo.tarjetaId}`;
-      await insertRecibo({
-        type: 'expense' as const,
-        amount: recibo.importe,
-        predictedDate: recibo.fechaCargo,
-        description: `Recibo tarjeta ${alias}`,
-        sourceType: 'tarjeta_recibo' as const,
-        sourceId: claveDeRecibo(recibo),
-        // El dinero sale de donde la tarjeta está domiciliada, no de la tarjeta.
-        accountId: resolveAccountId(recibo.cuentaLiquidacionId) ?? recibo.cuentaLiquidacionId,
-        status: 'predicted' as const,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-  } catch (err) {
-    console.error('[TreasurySyncService] Error processing personal expenses:', err);
-  }
+  // ── 1 y 2 · RETIRADAS · los gastos recurrentes ya los prevé otro ──────────
+  //
+  // Aquí vivían los gastos de inmueble (`opexRules`) y los gastos personales
+  // (`patronGastosPersonales`). Los dos almacenes se eliminaron en V62 y lo que
+  // quedó fueron dos sombras: la primera empezaba con un `const opexRules = []`
+  // literal, y la segunda le pedía los patrones a un servicio que devolvía
+  // siempre una lista vacía. Ninguna de las dos podía recibir un dato nunca —la
+  // pantalla que los crea vive desde entonces en `compromisosRecurrentes`—, así
+  // que el bucle recorría el vacío y el fichero seguía anunciando que cubría
+  // esas dos fuentes.
+  //
+  // Quien las cubre de verdad:
+  //   · Los gastos personales, `compromisosRecurrentesService` vía
+  //     `regenerarEventosCompromiso` —incluida la conversión de compras con
+  //     tarjeta en el recibo de su periodo (§3.4), que comparte el mismo
+  //     `previsionDeTarjetas` que se usaba aquí—.
+  //   · Los de inmueble, `treasuryForecastService`, que sigue escribiendo
+  //     `opex_rule`.
+  //
+  // Los dos `sourceType` siguen vivos, así que esto no deja huérfano ningún
+  // evento guardado. Conectar estas ramas en vez de retirarlas habría sido lo
+  // peligroso: cada gasto habría quedado previsto dos veces.
 
   // ── 3. CONTRATOS ACTIVOS (rental income) ──────────────────────────────────
   try {

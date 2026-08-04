@@ -156,19 +156,10 @@ describe('treasurySyncService – treasury detail regressions', () => {
     expect(source).not.toContain("sourceType: 'autonomo' as const");
   });
 
-  // VOCABULARIO §3.4 · el recibo de tarjeta cambió de sitio: ya no se acumula
-  // por mes natural contra una cuenta de tipo tarjeta, sino por PERIODO contra
-  // la cuenta donde la tarjeta está domiciliada. Lo que se sigue vigilando es
-  // lo mismo: que el cargo caiga en la cuenta bancaria, resuelta y con
-  // respaldo numérico.
-  it('resolves credit-card receipt bank account through resolveAccountId with numeric fallback', () => {
-    expect(source).toContain(
-      'resolveAccountId(recibo.cuentaLiquidacionId) ?? recibo.cuentaLiquidacionId'
-    );
-    expect(source).toContain("sourceType: 'tarjeta_recibo' as const");
-  });
-
-  it('uses property literal helper prioritizing property alias for housing expenses', () => {
-    expect(source).toContain('getPropertyLiteral(inm)');
-  });
+  // Aquí se vigilaban dos cosas de las ramas de gasto recurrente —que el recibo
+  // de tarjeta cayera en la cuenta domiciliada y que el gasto de vivienda usara
+  // el literal del inmueble—. Las dos ramas se retiraron el 4 ago 2026: desde
+  // V62 recorrían listas vacías, y quien hace ese trabajo de verdad es
+  // `compromisosRecurrentesService`, con sus propios tests. Vigilar aquí un
+  // texto que ya no existe no protegía nada.
 });
