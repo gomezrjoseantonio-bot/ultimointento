@@ -451,6 +451,21 @@ dar de alta nada para que ATLAS vea un recibo domiciliado —sale de los gastos
 recurrentes, que es de donde sale toda la tesorería—. Cero recibos cargados en
 esa cuenta significa cero recibos domiciliados en ella.
 
+**Decisión · 4 de agosto de 2026 · un mes que aún no cuenta no es un mes sin nada.**
+
+Lo que se mide es lo cobrado, así que un mes que todavía no consta no demuestra
+nada. Pero **tampoco desmiente**: con nada cerrado, decir «no ha entrado ninguna
+nómina» sería acusar de incumplir a quien solo tiene el cobro por constar. Eso
+es `no_verificable`, no `no_cumple` — la misma tercera respuesta de siempre.
+
+Y **no se afirma por qué** no consta. Que un mes esté abierto puede significar
+que el cargo está por conciliar **o que sencillamente aún no ha pasado**, y
+desde aquí no se distingue: decir «sin conciliar» sería elegir una de las dos.
+Lo cierto en los dos casos es que **todavía no cuenta**.
+
+Esos meses **se dicen**. Callarlos deja un «4 de 4 meses» donde en realidad
+faltaban dos por mirar, que es una tranquilidad prestada.
+
 ### 6 ter · bis · Lo que la bonificación hace con la cuota
 
 **Decisión · 4 de agosto de 2026:**
@@ -531,10 +546,11 @@ Escrito para no perderlo, con la fecha en que se detectó.
   **seguros** y la **alarma** se prueban con su póliza o su contrato, y el
   **plan de pensiones** con su aportación, que hoy no se sigue en tesorería.
   Puede que no lleguen nunca por esta vía. §6 ter.
-- **2026-08-04** · De la nómina, **un mes en el que no entró nada no se
-  distingue de un mes sin conciliar**: los dos son ausencia de cobro. Se cuentan
-  los meses que se ven, no los que debería haber — y un hueco de verdad, que es
-  justo lo que hace perder la bonificación, pasa desapercibido. §6 ter.
+- **2026-08-04** · De la nómina y los recibos, un mes en el que **realmente no
+  entró nada** sigue siendo invisible: se cuentan los meses que se ven, no los
+  que debería haber. Lo que ya NO se confunde con eso es un mes que **todavía
+  no cuenta** —ese se dice—, así que lo que queda es más estrecho: un hueco de
+  verdad del que la tesorería no tenga ni previsión. §6 ter.
 - **2026-08-04** · El veredicto **no mueve el estado guardado** de la
   bonificación. Se enseña a qué cuota vas, pero `PERDIDA` la sigue teniendo que
   poner alguien a mano cuando el banco te la retire de verdad. Automatizarlo

@@ -78,6 +78,19 @@ export interface Cumplimiento {
     conMovimiento: number;
     /** De esos, cuántos alcanzaron el umbral. */
     queLlegan: number;
+    /**
+     * Meses de la ventana con movimiento que **todavía no consta cobrado**.
+     *
+     * El nombre sigue al estado que cuenta (`cerrado`) y no a una explicación,
+     * porque las explicaciones son dos y no se distinguen desde aquí: puede que
+     * el cargo no se haya conciliado, o puede que sencillamente **aún no haya
+     * pasado**. Llamarlo «sin conciliar» afirmaba la primera.
+     *
+     * Se dice aparte porque no son un incumplimiento: un mes que todavía no
+     * cuenta no es un mes sin nómina. Callarlos dejaba «4 de 4 meses» donde en
+     * realidad faltaban dos por mirar, que es una tranquilidad prestada.
+     */
+    sinCerrar?: number;
   };
   /** Por qué · lo que no se puede medir se dice, no se disimula. */
   motivo?: string;
