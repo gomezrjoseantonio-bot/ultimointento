@@ -528,12 +528,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
-- **2026-08-03** · Los gastos personales (`PatronGastoPersonal`) que alimentan
-  `treasurySyncService` salen de un **stub**: el store se eliminó en V62 y
-  `getPatrones` devuelve siempre `[]`. Toda esa rama del motor —incluida su
-  parte de tarjetas— corre sobre una lista vacía. O se conecta a
-  `compromisosRecurrentes` o se retira; dejarla es un camino que parece vivo y
-  no lo está.
 - **2026-08-04** · El cashback **realmente ingresado** sigue sin casarse con la
   tarjeta que lo generó. Un movimiento ya puede decir **con qué tarjeta**, pero
   eso no basta: un ingreso atribuido a una tarjeta puede ser el cashback o una
@@ -560,6 +554,18 @@ Escrito para no perderlo, con la fecha en que se detectó.
   §6 ter.
 
 ### Resuelto
+
+- **2026-08-04** · El **stub** de los gastos personales se ha retirado, y con él
+  las dos ramas muertas del sincronizador de tesorería: la de gastos de inmueble
+  —que empezaba con una lista vacía escrita a mano— y la de gastos personales
+  —que se los pedía a un servicio que fingía guardarlos—. Ninguna podía recibir
+  un dato desde V62, porque la pantalla que da de alta un gasto recurrente
+  escribe en `compromisosRecurrentes`.
+  **Lo importante es lo que NO había que hacer:** conectarlas habría previsto
+  cada gasto dos veces, porque quien los cubre de verdad ya existe
+  —`compromisosRecurrentesService` los personales, incluido el recibo de la
+  tarjeta con la que se paguen, y `treasuryForecastService` los de inmueble—.
+  No se pierde ninguna previsión: se quita lo que parecía hacer algo. §3.4.
 
 - **2026-08-04** · `TARJETA_CREDITO` **ya no existe** como tipo de cuenta, y las
   que lo eran se han **borrado con sus movimientos**. Decisión de Jose: ese

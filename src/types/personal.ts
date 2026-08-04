@@ -696,91 +696,17 @@ export interface ResumenPersonalMensual {
 }
 
 // ============================================================================
-// Personal Expenses (OPEX-style recurring expenses for personal finance)
+// Gasto personal recurrente · RETIRADO (4 ago 2026)
+//
+// Aquí vivían `PersonalExpense`, `PatronGastoPersonal` y sus categorías,
+// frecuencias y estacionalidades. Su almacén se eliminó en V62 y desde entonces
+// no había forma de crear ninguno: la pantalla que da de alta un gasto
+// recurrente escribe en `compromisosRecurrentes`, que es también quien lo prevé
+// en tesorería —incluido el recibo de la tarjeta con la que se pague (§3.4)—.
+//
+// Lo que quedaba era un servicio que fingía guardarlos, un motor que los sabía
+// repartir por meses y unos tipos sin un solo dato detrás. Ver
+// `types/compromisosRecurrentes.ts`.
 // ============================================================================
 
-export type PersonalExpenseCategory =
-  | 'vivienda'
-  | 'alimentacion'
-  | 'transporte'
-  | 'ocio'
-  | 'salud'
-  | 'seguros'
-  | 'educacion'
-  | 'otros';
-
-export type PersonalExpenseFrequency =
-  | 'semanal'
-  | 'mensual'
-  | 'bimestral'
-  | 'trimestral'
-  | 'semestral'
-  | 'anual'
-  | 'meses_especificos';
-
-export type PersonalExpenseEstacionalidad = 'plana' | 'invierno' | 'verano';
-
-
-export interface AsymmetricPaymentPersonal {
-  mes: number;
-  importe: number;
-}
-
-export interface PersonalExpense {
-  id?: number;
-  personalDataId: number;
-  concepto: string;
-  categoria: PersonalExpenseCategory;
-  importe: number;
-  frecuencia: PersonalExpenseFrequency;
-  diaPago?: number;
-  mesesCobro?: number[];
-  diaDeLaSemana?: number; // 0=Lunes … 6=Domingo, para frecuencia semanal
-  mesInicio?: number; // 1-12, mes de inicio para frecuencias periódicas
-  asymmetricPayments?: AsymmetricPaymentPersonal[];
-  estacionalidad?: PersonalExpenseEstacionalidad;
-  accountId?: number;
-  activo: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// ============================================================================
-// PatronGastoPersonal — Renamed from PersonalExpense
-// Defines the expected spending pattern. Source for forecastEngine.
-// Does NOT contain real/confirmed data — only the pattern.
-// ============================================================================
-
-export interface PatronGastoPersonal {
-  id?: number;
-  personalDataId: number;
-  concepto: string;
-  categoria: PersonalExpenseCategory;
-  importe: number;                    // importeEstimado — expected amount per occurrence
-  frecuencia: PersonalExpenseFrequency;
-  diaPago?: number;
-  mesesCobro?: number[];
-  diaDeLaSemana?: number;
-  mesInicio?: number;
-  asymmetricPayments?: AsymmetricPaymentPersonal[];
-  estacionalidad?: PersonalExpenseEstacionalidad;
-  accountId?: number;                 // cuentaCargoId — expected account
-  /**
-   * Con qué TARJETA se paga (VOCABULARIO §3.4).
-   *
-   * Campo opcional sin índice: no mueve `DB_VERSION`, igual que los campos
-   * opcionales de `Account` documentados en `types-contratos.ts`.
-   *
-   * Si está, el gasto no sale de la cuenta el día que se hace: se acumula hasta
-   * el corte de la tarjeta y sale entero el día de cargo, en la cuenta donde
-   * esté domiciliada. Lo que se prevé entonces es el RECIBO, no el gasto.
-   *
-   * Ausente = sale de `accountId` en `diaPago`, como siempre.
-   */
-  tarjetaId?: number;
-  origen: 'perfil' | 'manual';       // suggested by profile or created by user
-  activo: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
