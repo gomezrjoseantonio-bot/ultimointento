@@ -28,11 +28,6 @@ export interface AccountExtendedFields {
   frecuenciaLiquidacion?: 'mensual' | 'trimestral' | 'semestral' | 'anual';
   cuentaDestinoIntereses?: number;
   ultimosCuatro?: string;
-  bancoEmisor?: string;
-  limiteCredito?: number;
-  deudaActual?: number;
-  diaCierre?: number;
-  diaPago?: number;
   /**
    * §4.8 · el color del punto de la cuenta.
    *
@@ -53,11 +48,7 @@ export interface AccountExtendedFields {
 export interface CreateAccountData extends AccountExtendedFields {
   alias?: string;  // ATLAS: alias is now optional
   iban?: string;
-  tipo?: 'CORRIENTE' | 'TARJETA_CREDITO' | 'EFECTIVO';
-  cardConfig?: {
-    settlementDay: number;
-    chargeAccountId: number;
-  };
+  tipo?: 'CORRIENTE' | 'EFECTIVO';
   titular?: { nombre?: string; nif?: string; };
   logoUser?: string; // User uploaded logo
   openingBalance?: number;      // Saldo a fecha de referencia (default 0)
@@ -68,11 +59,7 @@ export interface CreateAccountData extends AccountExtendedFields {
 
 export interface UpdateAccountData extends AccountExtendedFields {
   alias?: string;  // ATLAS: alias is optional
-  tipo?: 'CORRIENTE' | 'TARJETA_CREDITO' | 'EFECTIVO';
-  cardConfig?: {
-    settlementDay: number;
-    chargeAccountId: number;
-  };
+  tipo?: 'CORRIENTE' | 'EFECTIVO';
   isDefault?: boolean;
   activa?: boolean;
   titular?: { nombre?: string; nif?: string; };
@@ -92,11 +79,6 @@ const applyExtendedFields = (account: Account, data: AccountExtendedFields): voi
   if (data.frecuenciaLiquidacion !== undefined) account.frecuenciaLiquidacion = data.frecuenciaLiquidacion;
   if (data.cuentaDestinoIntereses !== undefined) account.cuentaDestinoIntereses = data.cuentaDestinoIntereses;
   if (data.ultimosCuatro !== undefined) account.ultimosCuatro = data.ultimosCuatro || undefined;
-  if (data.bancoEmisor !== undefined) account.bancoEmisor = data.bancoEmisor || undefined;
-  if (data.limiteCredito !== undefined) account.limiteCredito = data.limiteCredito;
-  if (data.deudaActual !== undefined) account.deudaActual = data.deudaActual;
-  if (data.diaCierre !== undefined) account.diaCierre = data.diaCierre;
-  if (data.diaPago !== undefined) account.diaPago = data.diaPago;
   // '' → `undefined`: volver a "el color del banco" es BORRAR la elección
   // propia, no guardar una cadena vacía que luego nadie sabe interpretar.
   if (data.colorPunto !== undefined) account.colorPunto = data.colorPunto || undefined;
@@ -198,7 +180,6 @@ class CuentasService {
         logoUser: account.logoUser,
         logo_url: account.logoUser || account.banco?.brand?.logoUrl,
         tipo: account.tipo || 'CORRIENTE',
-        cardConfig: account.cardConfig,
         moneda: account.moneda || 'EUR',
         currency: 'EUR',
         titular: account.titular,
@@ -225,11 +206,6 @@ class CuentasService {
         frecuenciaLiquidacion: account.frecuenciaLiquidacion,
         cuentaDestinoIntereses: account.cuentaDestinoIntereses,
         ultimosCuatro: account.ultimosCuatro,
-        bancoEmisor: account.bancoEmisor,
-        limiteCredito: account.limiteCredito,
-        deudaActual: account.deudaActual,
-        diaCierre: account.diaCierre,
-        diaPago: account.diaPago,
         // §4.8 · el color del punto lo elige el USUARIO y lo lee Tesorería de
         // IndexedDB (`db.getAll('accounts')`). Faltaba en esta lista, así que
         // el wizard lo guardaba en localStorage, el aviso decía "Cuenta
@@ -415,30 +391,22 @@ class CuentasService {
     }
 
     // Validate and normalize IBAN
-    const isCreditCard = data.tipo === 'TARJETA_CREDITO';
-
-    if (isCreditCard && !data.cardConfig) {
-      throw new Error('Configura la domiciliación de la tarjeta (cuenta y día de cargo)');
-    }
-
-    if (isCreditCard && data.cardConfig) {
-      if (data.cardConfig.settlementDay < 1 || data.cardConfig.settlementDay > 31) {
-        throw new Error('El día de cargo de la tarjeta debe estar entre 1 y 31');
-      }
-    }
-
-    if (!isCreditCard && data.iban) {
+    if (data.iban) {
       const ibanValidation = validateIbanEs(data.iban);
       if (!ibanValidation.ok) {
         throw new Error(ibanValidation.message);
       }
     }
 
-    const normalizedIban = isCreditCard
-      ? `CARD-${Date.now()}`
-      : data.iban
-        ? normalizeIban(data.iban)
-        : `NONIAN-${Date.now()}`;
+    // V88 · aquí se fabricaba un `CARD-…` para las cuentas que eran tarjeta,
+    // porque una tarjeta no tiene IBAN. Ya no hay ninguna: una tarjeta es una
+    // `Tarjeta` (VOCABULARIO §3).
+    //
+    // El efectivo tampoco tiene IBAN, y por eso sigue el `NONIAN-…` —sí, sin la
+    // "B", y así se queda: es un valor GUARDADO, y renombrarlo dejaría las
+    // cuentas viejas con un prefijo y las nuevas con otro a cambio de nada. Lo
+    // único que hace falta de él es que sea único y no parezca un IBAN.
+    const normalizedIban = data.iban ? normalizeIban(data.iban) : `NONIAN-${Date.now()}`;
     
     // Check for duplicates - also verify against IndexedDB to avoid orphaned localStorage entries
     const existingInMemory = this.accounts.find(
@@ -465,11 +433,7 @@ class CuentasService {
     }
 
     // Detect bank information using new function · respeta override del wizard
-    const bankInfo = data.banco
-      ? data.banco
-      : (isCreditCard
-        ? { name: 'Tarjeta de crédito' }
-        : detectBankByIBAN(normalizedIban));
+    const bankInfo = data.banco ? data.banco : detectBankByIBAN(normalizedIban);
 
     // Create new account
     const newAccount: Account = {
@@ -479,7 +443,6 @@ class CuentasService {
       banco: bankInfo || undefined,
       logoUser: data.logoUser,
       tipo: data.tipo || 'CORRIENTE',
-      cardConfig: data.cardConfig,
       moneda: 'EUR',
       titular: data.titular,
       status: 'ACTIVE', // New required field
@@ -624,9 +587,6 @@ class CuentasService {
     }
     if (data.tipo !== undefined) {
       account.tipo = data.tipo;
-    }
-    if (data.cardConfig !== undefined) {
-      account.cardConfig = data.cardConfig;
     }
     if (data.esRemunerada !== undefined) {
       account.esRemunerada = data.esRemunerada;

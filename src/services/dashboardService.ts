@@ -137,13 +137,6 @@ const isDateWithinRange = (value: unknown, start: Date, end: Date): boolean => {
   return Boolean(date && date >= start && date <= end);
 };
 
-const isCardAccount = (acc: any): boolean => {
-  const explicitCardType = acc?.tipo === 'TARJETA_CREDITO' || acc?.type === 'card';
-  const normalizedName = String(acc?.alias || acc?.name || acc?.bank || acc?.banco?.name || '').toLowerCase();
-  const inferredFromName = normalizedName.includes('tarjeta') || normalizedName.includes('card');
-  return explicitCardType || inferredFromName;
-};
-
 const toNumericId = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim() !== '') {
@@ -172,29 +165,6 @@ const toDateOnlyString = (value: unknown): string | null => {
 const isTreasuryEventInMonth = (value: unknown, monthStart: string, monthEnd: string): boolean => {
   const dateOnly = toDateOnlyString(value);
   return Boolean(dateOnly && dateOnly >= monthStart && dateOnly <= monthEnd);
-};
-
-const resolveTreasuryEventDisplayAccountId = (
-  event: any,
-  cardSettlementByAccountId: Map<number, { chargeAccountId: number }>,
-): number | undefined => {
-  const eventAccountId = toNumericId(event?.accountId);
-  const sourceId = toNumericId(event?.sourceId);
-
-  const directCardConfig = eventAccountId != null
-    ? cardSettlementByAccountId.get(eventAccountId)
-    : undefined;
-
-  const sourceCardConfig =
-    eventAccountId == null
-      && event?.sourceType === 'personal_expense'
-      && sourceId != null
-      ? cardSettlementByAccountId.get(sourceId)
-      : undefined;
-
-  return directCardConfig?.chargeAccountId
-    ?? sourceCardConfig?.chargeAccountId
-    ?? eventAccountId;
 };
 
 // Default configurations
@@ -1444,18 +1414,16 @@ class DashboardService {
       const accounts = await getCachedStoreRecords<any>('accounts');
       const treasuryEvents = await getCachedStoreRecords<any>('treasuryEvents').catch(() => []);
 
-      const cardSettlementByAccountId = new Map<number, { chargeAccountId: number }>();
-      for (const account of accounts as any[]) {
-        if (account?.id == null || account?.cardConfig?.chargeAccountId == null) continue;
-        cardSettlementByAccountId.set(account.id, { chargeAccountId: account.cardConfig.chargeAccountId });
-      }
-
+      // V88 · aquí se redirigía el evento de una cuenta de tarjeta a su cuenta
+      // de cargo, y se dejaban fuera de los saldos las cuentas que parecían una
+      // tarjeta —por el tipo, o porque el alias llevara la palabra—. Ya no hay
+      // ninguna, y adivinar por el nombre era lo que §3 dice que no se haga: una
+      // cuenta corriente llamada "Tarjeta Visa" es una cuenta corriente.
       const activeAccounts = accounts.filter((acc: any) => (
         acc.isActive !== false
         && acc.activa !== false
         && acc.status !== 'DELETED'
         && !acc.deleted_at
-        && !isCardAccount(acc)
       ));
 
       const startOfMonthDateOnly = toDateOnlyString(startOfMonth.toISOString())!;
@@ -1467,8 +1435,7 @@ class DashboardService {
         const openingBalance = toNumber(account.balance);
 
         const eventosMesCuenta = (treasuryEvents as any[]).filter((event) => {
-          const displayAccountId = resolveTreasuryEventDisplayAccountId(event, cardSettlementByAccountId);
-          return displayAccountId === accountId
+          return toNumericId(event?.accountId) === accountId
             && isTreasuryEventInMonth(event.predictedDate, startOfMonthDateOnly, endOfMonthDateOnly);
         });
 

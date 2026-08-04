@@ -4,7 +4,7 @@
  * y para validación al guardar.
  *
  * Cubre:
- *   · Saldo inicial / crédito disponible (varía según tipo).
+ *   · Saldo inicial.
  *   · Intereses brutos anuales estimados (cuentas remuneradas).
  *   · Intereses por período (mensual/trimestral/semestral/anual).
  */
@@ -17,18 +17,21 @@
  * el patrimonio el día que sacas 200 €. No tiene IBAN ni banco, y para el
  * cálculo se comporta como una corriente sin remunerar.
  */
-export type CuentaTipo = 'CORRIENTE' | 'TARJETA_CREDITO' | 'EFECTIVO';
+/**
+ * `TARJETA_CREDITO` ya no está (V88 · VOCABULARIO §3).
+ *
+ * Una tarjeta no es un sitio donde hay dinero, así que no tenía saldo que
+ * calcular: lo que se enseñaba era el crédito disponible, que es otra cosa.
+ * Ahora vive en `Tarjeta`, con su límite y su ciclo.
+ */
+export type CuentaTipo = 'CORRIENTE' | 'EFECTIVO';
 export type FrecuenciaLiquidacion = 'mensual' | 'trimestral' | 'semestral' | 'anual';
 
 export interface CuentaCalcInput {
   tipo: CuentaTipo;
-  /** Sólo aplica a las cuentas bancarias · no al efectivo ni a una tarjeta. */
+  /** Sólo aplica a las cuentas bancarias · no al efectivo. */
   saldoInicial?: number;
-  /** Sólo aplica a TARJETA_CREDITO. */
-  limiteCredito?: number;
-  /** Sólo aplica a TARJETA_CREDITO. */
-  deudaActual?: number;
-  /** Sólo aplica a las cuentas bancarias · no al efectivo ni a una tarjeta. */
+  /** Sólo aplica a las cuentas bancarias · no al efectivo. */
   esRemunerada?: boolean;
   /** TAE anual en porcentaje (ej. 2.5 = 2.5%). */
   taeAnual?: number;
@@ -37,11 +40,8 @@ export interface CuentaCalcInput {
 }
 
 export interface CuentaResumen {
-  /**
-   * Para una cuenta bancaria: el saldo inicial introducido.
-   * Para TARJETA_CREDITO: el crédito disponible (límite − deuda).
-   */
-  saldoInicialOCreditoDisponible: number;
+  /** El saldo inicial introducido. */
+  saldoInicial: number;
   /** Intereses brutos anuales · solo si remunerada. */
   interesesAnualesEstimados: number;
   /** Intereses brutos por período según frecuencia · solo si remunerada. */
@@ -63,23 +63,12 @@ const safe = (n: number | undefined | null): number => {
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 export function calcularCuentaResumen(input: CuentaCalcInput): CuentaResumen {
-  const tipo = input.tipo;
-
-  let saldoInicialOCreditoDisponible = 0;
-  if (tipo === 'TARJETA_CREDITO') {
-    const limite = safe(input.limiteCredito);
-    const deuda = safe(input.deudaActual);
-    saldoInicialOCreditoDisponible = limite - deuda;
-  } else {
-    saldoInicialOCreditoDisponible = safe(input.saldoInicial);
-  }
+  const saldoInicial = safe(input.saldoInicial);
 
   let interesesAnualesEstimados = 0;
   let interesesPorPeriodo = 0;
 
-  // Las tarjetas crédito no aplican a remuneración (spec §2 sub-tarea 3 ·
-  // tabla visibilidad condicional).
-  if (tipo !== 'TARJETA_CREDITO' && input.esRemunerada) {
+  if (input.esRemunerada) {
     const baseSaldo = safe(input.saldoInicial);
     const tae = safe(input.taeAnual);
     interesesAnualesEstimados = (baseSaldo * tae) / 100;
@@ -88,7 +77,7 @@ export function calcularCuentaResumen(input: CuentaCalcInput): CuentaResumen {
   }
 
   return {
-    saldoInicialOCreditoDisponible: round2(saldoInicialOCreditoDisponible),
+    saldoInicial: round2(saldoInicial),
     interesesAnualesEstimados: round2(interesesAnualesEstimados),
     interesesPorPeriodo: round2(interesesPorPeriodo),
   };

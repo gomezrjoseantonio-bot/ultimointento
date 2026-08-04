@@ -7,6 +7,7 @@ import type { BoteAnualSinIdentificar,Contract,Property,TreasuryEvent } from './
 import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfillDocumentoFirmado } from '../alquileresV3FixService';
 import { migrarTiposDeCuenta } from '../migrations/v86-tiposDeCuenta';
 import { migrarTarjetas } from '../migrations/v87-tarjetas';
+import { borrarCuentasDeTarjeta } from '../migrations/v88-borrarCuentasDeTarjeta';
 import { migrarBaseAmortizableEjercicio } from '../baseAmortizableEjercicioService';
 import { inmuebleDelPrestamo, idDeInmueble, type PrestamoConDestinos } from '../inmuebleDelPrestamo';
 
@@ -662,6 +663,36 @@ export function runPostOpenMigrations(
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
         console.warn('[DB V87 tarjetas] falló:', err);
+      }
+      return db;
+    });
+
+    // ── VOCABULARIO §3 · y ahora la cuenta se va ────────────────────────────
+    //
+    // Decisión de Jose (4 ago 2026). Va DESPUÉS de V87 a propósito: primero
+    // nace la tarjeta de esa cuenta, después desaparece la cuenta. Al revés no
+    // quedaría de dónde sacarla.
+    //
+    // Deja recibo en `keyval` porque esto borra movimientos y borrar no se
+    // deshace: si algún día falta un saldo, tiene que poder leerse qué se fue.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v88_cuentas_tarjeta_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+
+        const r = await borrarCuentasDeTarjeta(db as unknown as IDBPDatabase<any>);
+        if (r.borradas.length > 0 || r.conservadas.length > 0) {
+          await db.put('keyval', { ...r, cuando: new Date().toISOString() }, 'v88_recibo_de_borrado');
+          console.log(
+            `[DB V88] ${r.borradas.length} cuenta(s) de tarjeta borradas · ${r.movimientosBorrados} movimiento(s)` +
+              (r.conservadas.length > 0 ? ` · ${r.conservadas.length} conservada(s) porque algo sigue cobrando de ellas` : '')
+          );
+        }
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        // El flag se marca al FINAL: si el borrado se corta a medias, esto no
+        // queda dado por hecho y vuelve a intentarse en la siguiente apertura.
+        console.warn('[DB V88 cuentas de tarjeta] falló:', err);
       }
       return db;
     });

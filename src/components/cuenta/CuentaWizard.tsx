@@ -72,22 +72,13 @@ interface FormState {
   /** '' = usar el del banco · token de la paleta · 'sin-color'. */
   colorPunto: string;
   bizum: boolean;
-  // B3 corriente / ahorro
+  // B3
   iban: string;
   bic: string;
-  // B3 tarjeta crédito
-  ultimosCuatro: string;
-  bancoEmisor: string;
-  cuentaCargoId: string;
-  diaCierre: string;
-  diaPago: string;
-  // B4 corriente / ahorro
+  // B4
   saldoInicial: string;
   fechaSaldo: string;
-  // B4 tarjeta crédito
-  limiteCredito: string;
-  deudaActual: string;
-  // B5 remunerada (sólo corriente / ahorro)
+  // B5 remunerada
   esRemunerada: boolean;
   taeAnual: string;
   frecuenciaLiquidacion: FrecuenciaLiquidacion;
@@ -149,13 +140,6 @@ const parseNum = (raw: string): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
-const parseInt31 = (raw: string): number => {
-  const n = parseInt(raw, 10);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(1, Math.min(31, n));
-};
-
-
 const last4Iban = (iban: string): string => {
   const clean = (iban || '').replace(/\s/g, '');
   return clean.slice(-4) || '????';
@@ -175,7 +159,8 @@ const tipoFromAccount = (acc: Account): CuentaTipo => {
   // `AHORRO` y `OTRA` se retiraron (VOCABULARIO §1) y la migración V86 los pasó
   // a CORRIENTE. Aquí caen los registros que aún no hayan pasado por ella —una
   // pestaña abierta desde antes—: se leen como corriente, que es lo que son.
-  if (acc.tipo === 'TARJETA_CREDITO') return 'TARJETA_CREDITO';
+  // `TARJETA_CREDITO` corrió la misma suerte en V88, pero esas cuentas no se
+  // convirtieron: se borraron (§3), así que aquí no puede llegar ninguna.
   if (acc.tipo === 'EFECTIVO') return 'EFECTIVO';
   return 'CORRIENTE';
 };
@@ -206,17 +191,10 @@ const buildInitialForm = (editing: Account | null | undefined): FormState => {
       esPrincipal: !!editing.isDefault,
       colorPunto: editing.colorPunto ?? '',
       bizum: Boolean(editing.bizum),
-      iban: tipo === 'TARJETA_CREDITO' ? '' : formatIban(editing.iban || ''),
+      iban: formatIban(editing.iban || ''),
       bic: editing.bic ?? '',
-      ultimosCuatro: editing.ultimosCuatro ?? '',
-      bancoEmisor: editing.bancoEmisor ?? '',
-      cuentaCargoId: editing.cardConfig?.chargeAccountId?.toString() ?? '',
-      diaCierre: editing.diaCierre?.toString() ?? '',
-      diaPago: (editing.diaPago ?? editing.cardConfig?.settlementDay)?.toString() ?? '',
-      saldoInicial: tipo === 'TARJETA_CREDITO' ? '' : (editing.openingBalance?.toString() ?? ''),
+      saldoInicial: editing.openingBalance?.toString() ?? '',
       fechaSaldo: fechaSaldoIso,
-      limiteCredito: editing.limiteCredito?.toString() ?? '',
-      deudaActual: editing.deudaActual?.toString() ?? '',
       esRemunerada: !!editing.esRemunerada,
       taeAnual: editing.remuneracion?.tinAnual?.toString() ?? (editing.taeAnual?.toString() ?? ''),
       frecuenciaLiquidacion:
@@ -235,15 +213,8 @@ const buildInitialForm = (editing: Account | null | undefined): FormState => {
     bizum: false,
     iban: '',
     bic: '',
-    ultimosCuatro: '',
-    bancoEmisor: '',
-    cuentaCargoId: '',
-    diaCierre: '',
-    diaPago: '',
     saldoInicial: '',
     fechaSaldo: todayISO(),
-    limiteCredito: '',
-    deudaActual: '',
     esRemunerada: false,
     taeAnual: '',
     frecuenciaLiquidacion: 'mensual',
@@ -429,9 +400,8 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     setForm((prev) => ({
       ...prev,
       tipo,
-      // Ni la tarjeta ni el efectivo se remuneran: una debe dinero y el otro
-      // está en un bolsillo.
-      esRemunerada: tipo === 'TARJETA_CREDITO' || tipo === 'EFECTIVO' ? false : prev.esRemunerada,
+      // El efectivo no se remunera: está en un bolsillo.
+      esRemunerada: tipo === 'EFECTIVO' ? false : prev.esRemunerada,
       // Pasar a EFECTIVO BORRA lo bancario que se hubiera tecleado antes.
       // Esconder los campos no basta: el valor seguía en el formulario, así que
       // se guardaba un banco y un IBAN en una cuenta que no tiene ninguno de
@@ -447,8 +417,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     return calcularCuentaResumen({
       tipo: form.tipo,
       saldoInicial: parseNum(form.saldoInicial),
-      limiteCredito: parseNum(form.limiteCredito),
-      deudaActual: parseNum(form.deudaActual),
       esRemunerada: form.esRemunerada,
       taeAnual: parseNum(form.taeAnual),
       frecuenciaLiquidacion: form.frecuenciaLiquidacion,
@@ -460,13 +428,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     ? form.bancoOtro.trim()
     : form.banco;
 
-  /**
-   * §4.8 · el emisor de una tarjeta se HEREDA de la cuenta donde se liquida.
-   *
-   * Preguntarlo aparte permitía guardar una tarjeta "Santander" que se carga en
-   * una cuenta de BBVA, y entonces el punto de color y el emparejamiento de
-   * extractos dicen cosas distintas sobre la misma tarjeta.
-   */
   /**
    * El color que ATLAS propondría por sí solo · `null` si no reconoce el banco,
    * y entonces la rejilla no marca ningún "por defecto" que no existe.
@@ -526,13 +487,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     }
   };
 
-  const bancoEmisorHeredado = useMemo(() => {
-    const idCargo = parseInt(form.cuentaCargoId, 10);
-    if (!Number.isFinite(idCargo)) return '';
-    const cargo = accounts.find((a) => a.id === idCargo);
-    return cargo?.banco?.name ?? cargo?.bank ?? '';
-  }, [form.cuentaCargoId, accounts]);
-
   // ── Validación
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
@@ -561,22 +515,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       if (!form.fechaSaldo) errs.fechaSaldo = 'Fecha obligatoria';
     }
 
-    if (form.tipo === 'TARJETA_CREDITO') {
-      if (!form.ultimosCuatro || !/^\d{4}$/.test(form.ultimosCuatro)) {
-        errs.ultimosCuatro = '4 dígitos';
-      }
-      if (!form.cuentaCargoId) errs.cuentaCargoId = 'Selecciona cuenta de cargo';
-      const cierre = parseInt(form.diaCierre, 10);
-      if (!Number.isFinite(cierre) || cierre < 1 || cierre > 31) {
-        errs.diaCierre = 'Día entre 1 y 31';
-      }
-      const pago = parseInt(form.diaPago, 10);
-      if (!Number.isFinite(pago) || pago < 1 || pago > 31) {
-        errs.diaPago = 'Día entre 1 y 31';
-      }
-      if (!form.fechaSaldo) errs.fechaSaldo = 'Fecha obligatoria';
-    }
-
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -587,30 +525,13 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     if (!validate()) return;
     setSaving(true);
     try {
-      const isCard = form.tipo === 'TARJETA_CREDITO';
-      // El efectivo no tiene IBAN, igual que la tarjeta: no se inventa uno.
+      // El efectivo no tiene IBAN: no se inventa uno.
       const isEfectivo = form.tipo === 'EFECTIVO';
 
-      // chargeAccountId puede provenir como '' (= NaN tras parseInt) si
-      // alguien bypassea la validación · forzamos número finito o undefined.
-      const cuentaCargoIdRaw = parseInt(form.cuentaCargoId, 10);
-      const cuentaCargoIdNum = Number.isFinite(cuentaCargoIdRaw) ? cuentaCargoIdRaw : undefined;
       const cuentaDestinoRaw = parseInt(form.cuentaDestinoIntereses, 10);
       const cuentaDestinoNum = Number.isFinite(cuentaDestinoRaw) ? cuentaDestinoRaw : undefined;
 
-      if (isCard && cuentaCargoIdNum === undefined) {
-        // No debería llegar aquí · validate() ya bloquea · defensivo.
-        toast.error('Cuenta de cargo inválida');
-        setSaving(false);
-        return;
-      }
-
-      // openingBalance · para tarjeta crédito guardamos crédito disponible
-      // (límite − deuda) en `openingBalance` para mantener compat con la
-      // columna `balance` cacheada y el flujo de movimiento de apertura.
-      const openingBalanceNum = isCard
-        ? (parseNum(form.limiteCredito) - parseNum(form.deudaActual))
-        : parseNum(form.saldoInicial);
+      const openingBalanceNum = parseNum(form.saldoInicial);
 
       // Banco · override del autodetect cuando el usuario elige catálogo o
       // escribe un nombre propio.
@@ -620,16 +541,9 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       // persiste en localStorage + IndexedDB vía syncAccountToIndexedDB).
       const extendedFields = {
         ...(bancoOverride && { banco: bancoOverride }),
-        bic: !isCard ? (form.bic || undefined) : undefined,
-        ultimosCuatro: isCard ? form.ultimosCuatro : undefined,
-        // Heredado, no tecleado (§4.8).
-        bancoEmisor: isCard ? bancoEmisorHeredado || undefined : undefined,
-        diaCierre: isCard ? parseInt31(form.diaCierre) : undefined,
-        diaPago: isCard ? parseInt31(form.diaPago) : undefined,
-        limiteCredito: isCard ? parseNum(form.limiteCredito) : undefined,
-        deudaActual: isCard ? parseNum(form.deudaActual) : undefined,
-        taeAnual: !isCard && form.esRemunerada ? parseNum(form.taeAnual) : undefined,
-        frecuenciaLiquidacion: !isCard && form.esRemunerada ? form.frecuenciaLiquidacion : undefined,
+        bic: form.bic || undefined,
+        taeAnual: form.esRemunerada ? parseNum(form.taeAnual) : undefined,
+        frecuenciaLiquidacion: form.esRemunerada ? form.frecuenciaLiquidacion : undefined,
         cuentaDestinoIntereses: cuentaDestinoNum,
         // '' = sin elección propia · el punto se deduce del banco (§4.8), y
         // viaja TAL CUAL. Con `|| undefined` la cadena vacía se convertía en
@@ -637,11 +551,11 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
         // manera de volver al del banco: el servicio ignoraba la vuelta atrás.
         colorPunto: form.colorPunto,
         // El Bizum vive en UNA cuenta · el servicio lo quita de las demás.
-        // Una tarjeta o el efectivo no lo tienen: no son cuentas de banco.
-        bizum: isCard || isEfectivo ? false : form.bizum,
+        // El efectivo no lo tiene: no es una cuenta de banco.
+        bizum: isEfectivo ? false : form.bizum,
       };
 
-      const remuneracionPayload = !isCard && form.esRemunerada
+      const remuneracionPayload = form.esRemunerada
         ? {
             tinAnual: parseNum(form.taeAnual),
             frecuenciaPagos: form.frecuenciaLiquidacion,
@@ -659,12 +573,9 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
         const updateData: UpdateAccountData = {
           alias: form.alias.trim() || undefined,
           tipo: form.tipo,
-          cardConfig: isCard
-            ? { settlementDay: parseInt31(form.diaPago), chargeAccountId: cuentaCargoIdNum! }
-            : undefined,
           openingBalance: openingBalanceNum,
           openingBalanceDate: form.fechaSaldo ? new Date(form.fechaSaldo).toISOString() : undefined,
-          esRemunerada: !isCard && form.esRemunerada,
+          esRemunerada: form.esRemunerada,
           remuneracion: remuneracionPayload,
           ...extendedFields,
         };
@@ -673,14 +584,11 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       } else {
         const createData: CreateAccountData = {
           alias: form.alias.trim() || undefined,
-          iban: isCard || isEfectivo ? undefined : (form.iban || undefined),
+          iban: isEfectivo ? undefined : (form.iban || undefined),
           tipo: form.tipo,
-          cardConfig: isCard
-            ? { settlementDay: parseInt31(form.diaPago), chargeAccountId: cuentaCargoIdNum! }
-            : undefined,
           openingBalance: openingBalanceNum,
           openingBalanceDate: form.fechaSaldo ? new Date(form.fechaSaldo).toISOString() : undefined,
-          esRemunerada: !isCard && form.esRemunerada,
+          esRemunerada: form.esRemunerada,
           remuneracion: remuneracionPayload,
           ...extendedFields,
         };
@@ -720,15 +628,9 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       // §10 · el subtítulo repetía el título ("Nueva cuenta" arriba, "Cuenta
       // nueva · pendiente guardar" debajo) y avisaba de algo evidente: nada
       // está guardado hasta que se pulsa Guardar. Solo se dice el tipo.
-      return form.tipo === 'TARJETA_CREDITO'
-        ? 'Tarjeta de crédito'
-        : form.tipo === 'EFECTIVO'
-          ? 'Efectivo'
-          : 'Cuenta bancaria';
+      return form.tipo === 'EFECTIVO' ? 'Efectivo' : 'Cuenta bancaria';
     }
-    const tipoTxt = editingAccount.tipo === 'TARJETA_CREDITO' ? 'Tarjeta crédito'
-      : editingAccount.tipo === 'EFECTIVO' ? 'Efectivo'
-      : 'Corriente';
+    const tipoTxt = editingAccount.tipo === 'EFECTIVO' ? 'Efectivo' : 'Corriente';
     const tail = nominaBadge ? ` · vinculada a nómina ${nominaBadge.empresa}` : '';
     // Sin IBAN no se escribe "IBAN ···· " con el hueco vacío detrás: se calla.
     if (editingAccount.tipo === 'EFECTIVO') return `${tipoTxt}${tail}`;
@@ -736,14 +638,6 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     return `${tipoTxt} · IBAN ···· ${ibanLast}${tail}`;
   })();
 
-  // ── Cuentas elegibles cuenta de cargo (no-tarjeta · activas · distintas
-  //    de la cuenta que se está editando)
-  // El recibo de una tarjeta se domicilia en una cuenta BANCARIA: ni en otra
-  // tarjeta ni en el bolsillo. `chargeAccountId` está documentado como cuenta
-  // bancaria, y el efectivo explícitamente no lo es.
-  const cuentasParaCargo = accounts.filter((a) =>
-    a.tipo !== 'TARJETA_CREDITO' && a.tipo !== 'EFECTIVO' && a.id !== editingAccount?.id
-  );
   // Cuentas elegibles destino intereses (todas las activas)
   const cuentasParaDestino = accounts.filter((a) => a.id !== editingAccount?.id);
 
@@ -805,26 +699,15 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                   >
                     <span className={styles.typeCardLabel}>Corriente</span>
                   </button>
-                  {/* VOCABULARIO §3 · una tarjeta NO es una cuenta, así que ya
-                      no se da de alta aquí: tiene su propia ficha, con su
-                      modalidad y su ciclo. Darla de alta como cuenta era lo que
-                      impedía tener DOS en el mismo banco —lo normal, débito y
-                      crédito— y lo que dejaba una de fuera anclada a un banco
-                      del que en realidad puede mudarse.
+                  {/* VOCABULARIO §3 · una tarjeta NO es una cuenta. Tiene su
+                      propia ficha, con su modalidad y su ciclo. Darla de alta
+                      aquí era lo que impedía tener DOS en el mismo banco —lo
+                      normal, débito y crédito— y lo que dejaba una de fuera
+                      anclada a un banco del que en realidad puede mudarse.
 
-                      La opción sigue apareciendo al EDITAR una cuenta que ya
-                      nació así: sus movimientos son compras de verdad y
-                      esconderle el tipo la dejaría sin ficha que abrir. */}
-                  {editingAccount?.tipo === 'TARJETA_CREDITO' && (
-                    <button
-                      type="button"
-                      className={`${styles.typeCard} ${form.tipo === 'TARJETA_CREDITO' ? styles.selected : ''}`}
-                      onClick={() => handleTipoChange('TARJETA_CREDITO')}
-                      aria-pressed={form.tipo === 'TARJETA_CREDITO'}
-                    >
-                      <span className={styles.typeCardLabel}>Tarjeta crédito</span>
-                    </button>
-                  )}
+                      V88 · tampoco queda ninguna que editar: las que había se
+                      borraron, porque su gasto ya lo contaba el recibo que el
+                      banco cobra en la cuenta corriente. */}
                   {/* El dinero del bolsillo es una cuenta más · sin ella, sacar
                       200 € del cajero se apunta como un gasto y el patrimonio
                       baja 200 € el día que el dinero solo ha cambiado de sitio.
@@ -861,9 +744,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                          lado de un interruptor llamado "Cuenta principal": se
                          leía como si el campo sirviera para eso. Un ejemplo
                          real enseña qué se espera sin competir con nada. */
-                      placeholder={
-                        form.tipo === 'TARJETA_CREDITO' ? 'Ej. Visa Oro' : 'Ej. Santander Alquileres'
-                      }
+                      placeholder="Ej. Santander Alquileres"
                       maxLength={40}
                     />
                   </Field>
@@ -881,7 +762,7 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                     </select>
                   </Field>
                   )}
-                  {!esEfectivo && form.tipo !== 'TARJETA_CREDITO' && (
+                  {!esEfectivo && (
                     <div className={`${styles.field} ${styles.principalToggle}`}>
                       {/* Un rol de la cuenta, como ser la principal · el Bizum
                           va atado a un teléfono y un teléfono a una cuenta, así
@@ -1016,175 +897,68 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                 </div>
               </Block>
 
-              {/* B3 · DATOS BANCARIOS · varía según tipo · el efectivo no tiene */}
+              {/* B3 · DATOS BANCARIOS · el efectivo no tiene */}
               {!esEfectivo && (
               <Block title="Datos bancarios">
-                {form.tipo !== 'TARJETA_CREDITO' ? (
-                  <div className={`${styles.fieldsRow} ${styles.rowBancarios}`}>
-                    <Field
-                      label="IBAN"
-                      hint={isEditing ? 'no editable' : 'opcional'}
-                      error={errors.iban}
-                    >
-                      <input
-                        className={`${styles.input} ${styles.inputMono} ${errors.iban ? styles.inputError : ''}`}
-                        value={form.iban}
-                        onChange={(e) => set('iban', e.target.value)}
-                        placeholder="ES61 0049 0052 6322 1041 2715"
-                        disabled={isEditing}
-                      />
-                    </Field>
-                    <Field label="BIC / SWIFT" hint="opcional">
-                      <input
-                        className={`${styles.input} ${styles.inputMono}`}
-                        value={form.bic}
-                        onChange={(e) => set('bic', e.target.value.toUpperCase())}
-                        placeholder="BSCHESMM"
-                      />
-                    </Field>
-                  </div>
-                ) : (
-                  <>
-                    <div className={`${styles.fieldsRow} ${styles.rowTarjetaA}`}>
-                      <Field label="Últimos 4 dígitos" required error={errors.ultimosCuatro}>
-                        <input
-                          className={`${styles.input} ${styles.inputMono} ${errors.ultimosCuatro ? styles.inputError : ''}`}
-                          value={form.ultimosCuatro}
-                          onChange={(e) => set('ultimosCuatro', e.target.value.replace(/\D/g, '').slice(0, 4))}
-                          inputMode="numeric"
-                          maxLength={4}
-                          placeholder="4321"
-                        />
-                      </Field>
-                      {/* §4.8 · la tarjeta NO tiene selector de banco: lo hereda
-                          de la cuenta donde se liquida. Preguntarlo aparte deja
-                          elegir un emisor que contradice la cuenta de cargo. */}
-                      <Field label="Banco emisor">
-                        <div className={styles.heredado} aria-live="polite">
-                          {bancoEmisorHeredado || 'Se toma de la cuenta de cargo'}
-                        </div>
-                      </Field>
-                    </div>
-                    <div className={`${styles.fieldsRow} ${styles.rowTarjetaB}`} style={{ marginTop: 10 }}>
-                      <Field label="Cuenta de cargo" required error={errors.cuentaCargoId}>
-                        <select
-                          className={`${styles.select} ${errors.cuentaCargoId ? styles.inputError : ''}`}
-                          value={form.cuentaCargoId}
-                          onChange={(e) => set('cuentaCargoId', e.target.value)}
-                        >
-                          <option value="">Selecciona cuenta…</option>
-                          {cuentasParaCargo.map((a) => (
-                            <option key={a.id} value={a.id}>{accountLabel(a)}</option>
-                          ))}
-                        </select>
-                      </Field>
-                      <Field label="Día cierre" required error={errors.diaCierre}>
-                        <input
-                          className={`${styles.input} ${styles.inputMono} ${errors.diaCierre ? styles.inputError : ''}`}
-                          type="number"
-                          min={1}
-                          max={31}
-                          value={form.diaCierre}
-                          onChange={(e) => set('diaCierre', e.target.value)}
-                          placeholder="25"
-                        />
-                      </Field>
-                      <Field label="Día pago" required error={errors.diaPago}>
-                        <input
-                          className={`${styles.input} ${styles.inputMono} ${errors.diaPago ? styles.inputError : ''}`}
-                          type="number"
-                          min={1}
-                          max={31}
-                          value={form.diaPago}
-                          onChange={(e) => set('diaPago', e.target.value)}
-                          placeholder="5"
-                        />
-                      </Field>
-                    </div>
-                  </>
-                )}
+                <div className={`${styles.fieldsRow} ${styles.rowBancarios}`}>
+                  <Field
+                    label="IBAN"
+                    hint={isEditing ? 'no editable' : 'opcional'}
+                    error={errors.iban}
+                  >
+                    <input
+                      className={`${styles.input} ${styles.inputMono} ${errors.iban ? styles.inputError : ''}`}
+                      value={form.iban}
+                      onChange={(e) => set('iban', e.target.value)}
+                      placeholder="ES61 0049 0052 6322 1041 2715"
+                      disabled={isEditing}
+                    />
+                  </Field>
+                  <Field label="BIC / SWIFT" hint="opcional">
+                    <input
+                      className={`${styles.input} ${styles.inputMono}`}
+                      value={form.bic}
+                      onChange={(e) => set('bic', e.target.value.toUpperCase())}
+                      placeholder="BSCHESMM"
+                    />
+                  </Field>
+                </div>
               </Block>
               )}
 
-              {/* B4 · SALDO INICIAL · varía según tipo */}
+              {/* B4 · SALDO INICIAL */}
               <Block title="Saldo inicial">
-                {form.tipo !== 'TARJETA_CREDITO' ? (
-                  <>
-                    <div className={`${styles.fieldsRow} ${styles.rowSaldo}`}>
-                      <Field label="Importe" required>
-                        <div className={styles.inputSuffix}>
-                          <input
-                            className={`${styles.input} ${styles.inputMono}`}
-                            type="number"
-                            step="0.01"
-                            value={form.saldoInicial}
-                            onChange={(e) => set('saldoInicial', e.target.value)}
-                            placeholder="30000,00"
-                          />
-                          <span className={styles.suffix}>€</span>
-                        </div>
-                      </Field>
-                      <Field label="A fecha" required error={errors.fechaSaldo}>
-                        <input
-                          className={`${styles.input} ${errors.fechaSaldo ? styles.inputError : ''}`}
-                          type="date"
-                          value={form.fechaSaldo}
-                          onChange={(e) => set('fechaSaldo', e.target.value)}
-                        />
-                      </Field>
+                  <div className={`${styles.fieldsRow} ${styles.rowSaldo}`}>
+                  <Field label="Importe" required>
+                    <div className={styles.inputSuffix}>
+                      <input
+                        className={`${styles.input} ${styles.inputMono}`}
+                        type="number"
+                        step="0.01"
+                        value={form.saldoInicial}
+                        onChange={(e) => set('saldoInicial', e.target.value)}
+                        placeholder="30000,00"
+                      />
+                      <span className={styles.suffix}>€</span>
                     </div>
-                    <div className={styles.hintNote}>
-                      El saldo inicial es el punto de partida desde el que ATLAS calcula el cashflow.
-                      Los movimientos posteriores se acumulan a este saldo.
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className={`${styles.fieldsRow} ${styles.rowSaldoTarjeta}`}>
-                      <Field label="Límite crédito">
-                        <div className={styles.inputSuffix}>
-                          <input
-                            className={`${styles.input} ${styles.inputMono}`}
-                            type="number"
-                            step="0.01"
-                            value={form.limiteCredito}
-                            onChange={(e) => set('limiteCredito', e.target.value)}
-                            placeholder="3000,00"
-                          />
-                          <span className={styles.suffix}>€</span>
-                        </div>
-                      </Field>
-                      <Field label="Deuda actual">
-                        <div className={styles.inputSuffix}>
-                          <input
-                            className={`${styles.input} ${styles.inputMono}`}
-                            type="number"
-                            step="0.01"
-                            value={form.deudaActual}
-                            onChange={(e) => set('deudaActual', e.target.value)}
-                            placeholder="0,00"
-                          />
-                          <span className={styles.suffix}>€</span>
-                        </div>
-                      </Field>
-                      <Field label="A fecha" required error={errors.fechaSaldo}>
-                        <input
-                          className={`${styles.input} ${errors.fechaSaldo ? styles.inputError : ''}`}
-                          type="date"
-                          value={form.fechaSaldo}
-                          onChange={(e) => set('fechaSaldo', e.target.value)}
-                        />
-                      </Field>
-                    </div>
-                    <div className={styles.hintNote}>
-                      La deuda actual es lo que debes ahora mismo · se descontará en la próxima fecha de pago de la cuenta de cargo.
-                    </div>
-                  </>
-                )}
+                  </Field>
+                  <Field label="A fecha" required error={errors.fechaSaldo}>
+                    <input
+                      className={`${styles.input} ${errors.fechaSaldo ? styles.inputError : ''}`}
+                      type="date"
+                      value={form.fechaSaldo}
+                      onChange={(e) => set('fechaSaldo', e.target.value)}
+                    />
+                  </Field>
+                  </div>
+                  <div className={styles.hintNote}>
+                  El saldo inicial es el punto de partida desde el que ATLAS calcula el cashflow.
+                  Los movimientos posteriores se acumulan a este saldo.
+                  </div>
               </Block>
 
-              {/* B5 · CUENTA REMUNERADA · ni la tarjeta ni el efectivo */}
-              {form.tipo !== 'TARJETA_CREDITO' && !esEfectivo && (
+              {/* B5 · CUENTA REMUNERADA · el efectivo no se remunera */}
+              {!esEfectivo && (
                 <Block
                   title="Cuenta remunerada"
                   toggle={{

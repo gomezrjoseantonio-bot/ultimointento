@@ -67,7 +67,7 @@ const parseDate = (value: unknown): string | undefined => {
   return raw;
 };
 
-// Returns undefined when cell is empty; returns null when it's TARJETA (unsupported → skip row)
+// Returns undefined when cell is empty; returns null when it's TARJETA (skip row)
 // VOCABULARIO §1 · `AHORRO` y `OTRA` se retiraron: una cuenta de ahorro se
 // comporta igual que una corriente. Un fichero viejo que los traiga se importa
 // como CORRIENTE en vez de rechazarse — el dato que importa es el saldo.
@@ -168,7 +168,8 @@ const ImportarCuentas: React.FC<ImportarCuentasProps> = ({ onBack, onComplete })
 
           const tipoResult = parseTipo(byKey.tipo);
           if (tipoResult === null) {
-            // TARJETA_CREDITO — not importable without cardConfig
+            // VOCABULARIO §3 · una tarjeta no es una cuenta: no se importa
+            // como tal. Tiene su propia ficha, con su modalidad y su ciclo.
             skippedTarjetas += 1;
             continue;
           }

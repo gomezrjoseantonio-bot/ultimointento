@@ -41,8 +41,10 @@ como una corriente, y "otra" no dice nada. *(Hecho · V86: el tipo ya no las
 admite y las que existieran pasaron a `CORRIENTE` sin perder nada.)*
 
 **`TARJETA_CREDITO` deja de ser un tipo de cuenta.** Una tarjeta no es un sitio
-donde hay dinero: es una forma de gastar el de una cuenta. Ver §3. *(Decidido
-aquí, hoy sigue siendo un tipo · §8.)*
+donde hay dinero: es una forma de gastar el de una cuenta. Ver §3. *(Hecho ·
+V88: el tipo ya no existe y las cuentas que lo eran se borraron con sus
+movimientos —decisión de Jose, 4 ago 2026—, porque ese gasto ya lo contaba el
+recibo que el banco cobra en la cuenta corriente.)*
 
 **Solo puede haber una cuenta de efectivo por usuario.** Dos colchones no se
 distinguen: el dinero físico es uno. Y hay un motivo más concreto: el método
@@ -556,13 +558,18 @@ Escrito para no perderlo, con la fecha en que se detectó.
   poner alguien a mano cuando el banco te la retire de verdad. Automatizarlo
   pide saber **cuándo revisa el banco**, que hoy no se pregunta en el alta.
   §6 ter.
-- **2026-08-03** · `TARJETA_CREDITO` sigue existiendo como tipo de cuenta para
-  las cuentas **históricas**. Ya no se crean —una tarjeta nueva nace como
-  tarjeta— pero las que había siguen ahí, porque sus movimientos son compras
-  de verdad y borrarlas sería perder dinero de la vista. Qué hacer con ese
-  histórico es una decisión de Jose, no del código. §1, §3.
 
 ### Resuelto
+
+- **2026-08-04** · `TARJETA_CREDITO` **ya no existe** como tipo de cuenta, y las
+  que lo eran se han **borrado con sus movimientos**. Decisión de Jose: ese
+  gasto ya estaba contado por el otro lado —lo que sale del patrimonio no es
+  cada compra con la tarjeta, es el recibo que el banco cobra en la corriente—,
+  así que tenerlo por los dos lados contaba el mismo dinero dos veces. No se
+  borra la cuenta de la que algo vivo siga cobrando, y lo que apuntara a un
+  movimiento borrado se suelta: un evento con el id de un apunte que ya no
+  existe se lee como «esto ya se cobró». Queda recibo de lo que se fue, porque
+  borrar no se deshace. §1, §3.
 
 - **2026-08-04** · Los **recibos domiciliados** se miran contra los movimientos:
   cuántos DISTINTOS se cargan en esa cuenta, mes a mes. Tercera y última fuente

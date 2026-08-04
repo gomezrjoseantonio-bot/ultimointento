@@ -68,6 +68,10 @@ describe('los tipos retirados pasan a CORRIENTE', () => {
 });
 
 describe('lo que no se toca', () => {
+  // `TARJETA_CREDITO` sigue en la lista aunque el tipo ya no exista, y no es
+  // arqueología: V86 corre ANTES que V88, que es quien borra esas cuentas. Si
+  // aquí se convirtieran en corrientes, V88 no las reconocería y se quedarían
+  // para siempre, con su gasto contado dos veces.
   it.each(['CORRIENTE', 'EFECTIVO', 'TARJETA_CREDITO'])('%s se queda igual', async (tipo) => {
     const id = await guardar(cuenta({ tipo }));
     const db = await initDB();

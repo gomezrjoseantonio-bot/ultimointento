@@ -23,9 +23,8 @@ import type { Tarjeta } from '../../types/tarjetas';
 const corriente = { id: 1, alias: 'Santander', tipo: 'CORRIENTE' } as Account;
 const conBizum = { id: 2, alias: 'Sabadell', tipo: 'CORRIENTE', bizum: true } as Account;
 const efectivo = { id: 3, alias: 'Efectivo', tipo: 'EFECTIVO' } as Account;
-const tarjeta = { id: 4, alias: 'Visa', tipo: 'TARJETA_CREDITO' } as Account;
 
-const TODAS = [corriente, conBizum, efectivo, tarjeta];
+const TODAS = [corriente, conBizum, efectivo];
 
 describe('el método restringe la cuenta', () => {
   it('el efectivo sale del efectivo · de ninguna otra', () => {
