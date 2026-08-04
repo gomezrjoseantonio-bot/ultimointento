@@ -475,6 +475,52 @@ cascada que eso tenga. Hasta que ese momento exista, aquí no se decide por
 adelantado: un «lleva diez días de retraso» pondría un umbral que nadie ha
 elegido, y encima casi siempre significaría que falta importar un extracto.
 
+### 6 ter · ter · Cuándo lo mira el banco
+
+Una bonificación **no se pierde el día que dejas de cumplirla: se pierde el día
+que el banco lo mira.** Hasta entonces sigues pagando la cuota rebajada aunque
+lleves tres meses sin gastar con la tarjeta — y al revés, empezar a cumplir hoy
+no baja el recibo de este mes.
+
+Por eso el veredicto no puede decir «pasarías al 2,70 %» a secas. Sin fecha es
+una hipótesis que nadie puede agendar; con fecha es una cita, y **da tiempo a
+corregir**, que es para lo que sirve saberlo.
+
+**Decisión · 4 de agosto de 2026 (Jose).** Dos datos, los dos de la escritura y
+los dos del PRÉSTAMO:
+
+| Dato | Qué es | Lo normal |
+|---|---|---|
+| `periodoRevisionBonificacionMeses` | Cada cuánto mira el banco | 6 o 12 meses |
+| `graciaMesesBonificaciones` | Periodo inicial en que se dan por cumplidas | Ninguno, 6 meses o el primer año |
+
+La gracia es **del préstamo, no de cada bonificación**: el banco concede un
+plazo común, y preguntarlo una vez por bonificación era una pregunta repetida
+cuya respuesta podía además contradecirse consigo misma.
+
+Reglas que se derivan:
+
+- **Se cuenta desde la firma.** Las revisiones caen cada N meses desde ahí, y
+  cada una sale de la anterior — no de multiplicar, porque una firma el 31
+  recortada una vez a febrero no debe volver al 31 en el mes siguiente.
+- **Una revisión dentro del periodo inicial no decide nada**, así que no se
+  anuncia: lo que se enseña es **la primera que puede mover la cuota**.
+  Anunciar una que no cambia nada es una alarma falsa.
+- **El periodo inicial se dice en pantalla**, cumplas o no. Durante ese plazo la
+  cuota rebajada NO demuestra que cumplas, y quien no lo sepa creerá que va
+  bien hasta la primera revisión que cuenta.
+- **Lo que no dice la escritura no se inventa.** Sin periodicidad no hay fecha y
+  se sigue diciendo «si la revisión fuera hoy». Suponer un año pondría una
+  fecha que se lee igual que una real, y esa manda a alguien a gastar antes de
+  un día que nadie le ha puesto.
+- **Se puede ir a mejor.** Empezar a cumplir una que no tenías baja la cuota en
+  la próxima revisión, y eso es tan accionable como perderla: se dice «X €
+  menos al mes», no se calla por ser buena noticia.
+
+Lo que queda por hacer con esto: **confirmar o rectificar** en la fecha —en los
+dos sentidos— y propagar el cambio al cuadro de amortización y a las previsiones
+de tesorería. §8.
+
 ### 6 ter · bis · Lo que la bonificación hace con la cuota
 
 **Decisión · 4 de agosto de 2026:**
@@ -564,13 +610,22 @@ Escrito para no perderlo, con la fecha en que se detectó.
   consecuencias en cascada que eso tenga —una bonificación entre ellas—.
   Inventar aquí un «lleva diez días de retraso» sería adelantar esa decisión con
   un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
-- **2026-08-04** · El veredicto **no mueve el estado guardado** de la
-  bonificación. Se enseña a qué cuota vas, pero `PERDIDA` la sigue teniendo que
-  poner alguien a mano cuando el banco te la retire de verdad. Automatizarlo
-  pide saber **cuándo revisa el banco**, que hoy no se pregunta en el alta.
-  §6 ter.
+- **2026-08-04** · Llegada la fecha de revisión, falta **confirmar o
+  rectificar**: el veredicto ya se enseña con su fecha, pero el estado guardado
+  lo sigue moviendo alguien a mano. Y tiene que poder ir en los **dos
+  sentidos** —empezar a cumplir una que no tenías cuenta igual que perderla—, y
+  al confirmarlo **corregir el cuadro de amortización y las previsiones de
+  tesorería**, que es donde se nota. *(Jose · 4 ago 2026.)* §6 ter · ter.
 
 ### Resuelto
+
+- **2026-08-04** · **Cuándo revisa el banco** ya se pregunta en el alta y la
+  edición del préstamo: cada cuánto mira y cuántos meses iniciales se dan por
+  cumplidas, los dos del préstamo y contados desde la firma. Con eso, «si la
+  revisión fuera hoy» pasa a ser «en la revisión del 10 de marzo», y el periodo
+  inicial se dice en vez de disimularse. Los campos existían en el modelo desde
+  antes —junto a un generador de alertas a T-45, T-21, T-7 y T-2 días— pero
+  nadie los rellenaba, así que nada de eso llegaba a ejecutarse. §6 ter · ter.
 
 - **2026-08-04** · El **stub** de los gastos personales se ha retirado, y con él
   las dos ramas muertas del sincronizador de tesorería: la de gastos de inmueble

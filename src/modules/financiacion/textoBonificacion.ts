@@ -98,10 +98,26 @@ export function textoDeCumplimiento(c: Cumplimiento): string {
 export interface LoQueEstaEnJuego {
   /** El TIN que se paga hoy · con las bonificaciones aplicadas. */
   tinHoy: number;
-  /** El que se pagaría si la revisión fuese hoy. */
+  /** El que se pagaría si el banco revisara con lo que hay hoy. */
   tinSiRevisaran: number;
-  /** Lo que subiría la cuota al mes. */
+  /** Lo que cambiaría la cuota al mes · positivo sube, negativo baja. */
   sobrecosteMensual: number;
+  /**
+   * Cuándo mira el banco · ISO. Ausente si la escritura no lo dice.
+   *
+   * Es la diferencia entre una hipótesis y una cita. «Si la revisión fuera hoy»
+   * no se puede agendar; «en la revisión del 10 de marzo» da tiempo a corregir,
+   * que es para lo que sirve saberlo.
+   */
+  fechaRevision?: string;
+  /**
+   * Si hoy están aplicadas por el periodo inicial del préstamo.
+   *
+   * Hay que decirlo: durante ese plazo la cuota rebajada no demuestra que
+   * cumplas, y quien no lo sepa creerá que va bien hasta la primera revisión
+   * que cuenta.
+   */
+  enGracia?: boolean;
 }
 
 /**
@@ -115,9 +131,30 @@ export interface LoQueEstaEnJuego {
  */
 export function textoDeLoQueEstaEnJuego(j: LoQueEstaEnJuego): string {
   const hoy = `Pagas al ${pct(j.tinHoy)}`;
-  if (j.sobrecosteMensual <= 0) return `${hoy} · con tus bonificaciones aplicadas`;
 
-  return `${hoy}. Si la revisión fuera hoy pasarías al ${pct(j.tinSiRevisaran)} · ${euros(
+  // Cuándo lo mira el banco · con fecha es una cita, sin ella una hipótesis.
+  const cuando = j.fechaRevision ? `En la revisión del ${dia(j.fechaRevision)}` : 'Si la revisión fuera hoy';
+
+  // El periodo inicial se dice SIEMPRE que esté activo, cumplas o no: es la
+  // explicación de por qué pagas rebajado, y sin ella una lista de «cumple» se
+  // lee como que ya te la has ganado.
+  const gracia = j.enGracia
+    ? ` · aplicadas por el periodo inicial${j.fechaRevision ? ', hasta esa fecha' : ''}`
+    : '';
+
+  if (j.sobrecosteMensual === 0) {
+    return `${hoy} · con tus bonificaciones aplicadas${gracia}`;
+  }
+
+  // Se puede ir a mejor · empezar a cumplir una que no tenías baja la cuota en
+  // la próxima revisión, y eso es exactamente igual de accionable que perderla.
+  if (j.sobrecosteMensual < 0) {
+    return `${hoy}. ${cuando} pasarías al ${pct(j.tinSiRevisaran)} · ${euros(
+      Math.abs(j.sobrecosteMensual)
+    )} menos al mes${gracia}`;
+  }
+
+  return `${hoy}. ${cuando} pasarías al ${pct(j.tinSiRevisaran)} · ${euros(
     j.sobrecosteMensual
-  )} más al mes`;
+  )} más al mes${gracia}`;
 }

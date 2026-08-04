@@ -21,6 +21,7 @@ import { listarTarjetas } from '../../services/tarjetasService';
 import { verificarBonificaciones } from '../../services/bonificaciones/verificarBonificaciones';
 import type { MovimientosQuePrueban } from '../../services/bonificaciones/verificarBonificaciones';
 import { tinSiRevisaranHoy } from '../../services/bonificaciones/tinEfectivo';
+import { proximaRevision } from '../../services/bonificaciones/revisionDelBanco';
 import type { Prestamo } from '../../types/prestamos';
 import { cuotaMensualConTin, effectiveTIN, tinBase } from './helpers';
 import { textoDeCumplimiento, textoDeLoQueEstaEnJuego } from './textoBonificacion';
@@ -81,11 +82,25 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo }) => {
     cumplimientos,
     prestamo
   );
+  // Cuándo lo mira el banco · `null` cuando la escritura no lo dice, y entonces
+  // se sigue diciendo «si la revisión fuera hoy». Inventar un año por defecto
+  // pondría una fecha que se lee igual que una real.
+  const revision = proximaRevision(
+    {
+      desdeLaFirma: prestamo.fechaFirma,
+      cadaMeses: prestamo.periodoRevisionBonificacionMeses as number,
+      graciaMeses: prestamo.graciaMesesBonificaciones,
+    },
+    hoy
+  );
+
   const enJuego = {
     tinHoy,
     tinSiRevisaran,
     sobrecosteMensual:
       cuotaMensualConTin(prestamo, tinSiRevisaran) - cuotaMensualConTin(prestamo, tinHoy),
+    fechaRevision: revision?.fecha,
+    enGracia: revision?.enGracia,
   };
 
   return (
@@ -112,9 +127,9 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo }) => {
       {/*
         A qué cuota vas · §6 ter.
 
-        Va debajo y con la condición delante —«si la revisión fuera hoy»—
-        porque lo que gastes este mes NO cambia el recibo de este mes: cambia
-        lo que decida el banco en la próxima revisión.
+        Va debajo y con la condición delante —la fecha de la revisión, o «si la
+        revisión fuera hoy» cuando no se sabe— porque lo que gastes este mes NO
+        cambia el recibo de este mes: cambia lo que decida el banco cuando mire.
       */}
       {movimientos && cumplimientos.length > 0 && (
         <div className={styles.enJuego}>{textoDeLoQueEstaEnJuego(enJuego)}</div>
