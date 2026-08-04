@@ -706,7 +706,7 @@ export interface ResumenPersonalMensual {
 //
 // Lo que quedaba era un servicio que fingía guardarlos, un motor que los sabía
 // repartir por meses y unos tipos sin un solo dato detrás. Ver
-// `types/compromisosRecurrentes.ts`.
+// `src/types/compromisosRecurrentes.ts`.
 // ============================================================================
 
 
