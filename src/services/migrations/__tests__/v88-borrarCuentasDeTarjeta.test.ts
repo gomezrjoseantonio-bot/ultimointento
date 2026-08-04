@@ -20,9 +20,16 @@ const cuentaTarjeta = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-const guardar = async (store: string, valor: Record<string, unknown>): Promise<number> => {
+/**
+ * Devuelve la clave TAL CUAL la da la base.
+ *
+ * No se tipa como `number` a propósito: `importBatches` lleva su id a mano y es
+ * una cadena, así que prometer un número aquí sería mentirle al siguiente test
+ * que se apoye en lo que devuelve.
+ */
+const guardar = async (store: string, valor: Record<string, unknown>): Promise<IDBValidKey> => {
   const db = await initDB();
-  return (await db.add(store as never, valor as never)) as number;
+  return db.add(store as never, valor as never);
 };
 
 const todos = async (store: string): Promise<Record<string, any>[]> => {
@@ -235,6 +242,48 @@ describe('nada se queda apuntando a un movimiento borrado', () => {
     expect(ev.executedMovementId).toBe(movId);
     expect(ev.status).toBe('executed');
     expect(r.eventosDesenlazados).toBe(0);
+  });
+});
+
+// Tragarse el error y seguir con una lista vacía hacía dos daños a la vez: la
+// cuenta se iba SIN sus movimientos —huérfanos apuntando a una cuenta que ya no
+// existe— y «nadie la usa» pasaba a significar «no he podido comprobarlo».
+describe('si algo no se deja leer, no se borra nada', () => {
+  const dbQueFallaAlLeer = (storeRoto: string) => {
+    const cuentas = [{ id: 1, alias: 'Visa', tipo: 'TARJETA_CREDITO' }];
+    const borrados: unknown[] = [];
+    return {
+      objectStoreNames: { contains: () => true },
+      getAll: async (store: string) => {
+        if (store === storeRoto) throw new Error('la transacción se ha ido');
+        return store === 'accounts' ? cuentas : [];
+      },
+      delete: async (store: string, key: unknown) => {
+        borrados.push([store, key]);
+      },
+      put: async () => undefined,
+      borrados,
+    };
+  };
+
+  it.each(['movements', 'importBatches', 'treasuryEvents', 'prestamos'])(
+    'un fallo leyendo %s corta la migración',
+    async (store) => {
+      const db = dbQueFallaAlLeer(store);
+
+      await expect(borrarCuentasDeTarjeta(db as never)).rejects.toThrow();
+      expect(db.borrados).toEqual([]);
+    }
+  );
+
+  // Un almacén que NO existe sí se tolera: un esquema viejo puede no tenerlo, y
+  // eso no dice nada malo de la cuenta que se va.
+  it('un almacén que no existe no la corta', async () => {
+    const db = dbQueFallaAlLeer('ninguno');
+    db.objectStoreNames.contains = ((s: string) => s !== 'prestamos') as never;
+
+    await expect(borrarCuentasDeTarjeta(db as never)).resolves.toBeDefined();
+    expect(db.borrados).toContainEqual(['accounts', 1]);
   });
 });
 

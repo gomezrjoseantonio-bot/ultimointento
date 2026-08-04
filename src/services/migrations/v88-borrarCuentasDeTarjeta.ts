@@ -58,19 +58,25 @@ const vacio = (): ResultadoV88 => ({
 });
 
 /**
- * Lee un almacén sin exigir que exista.
+ * Lee un almacén, tolerando que NO EXISTA y nada más.
  *
  * La lista de referencias que se comprueban abajo cruza módulos enteros
- * —préstamos, contratos—, y un almacén que falte no puede tumbar el borrado ni,
- * peor, hacerlo pasar de largo. Si no se puede leer, no se puede afirmar que
- * nadie la usa: eso lo resuelve `noSePudoLeer`.
+ * —préstamos, contratos—, y un almacén que falte en un esquema viejo no puede
+ * tumbar el borrado. Pero eso se pregunta antes, por `objectStoreNames`: un
+ * almacén que existe y aun así no se deja leer es otra cosa, y ahí el error
+ * sube.
+ *
+ * La diferencia no es de estilo. Devolver `[]` ante cualquier fallo hacía dos
+ * daños calladamente: la cuenta se borraría sin sus movimientos —huérfanos
+ * apuntando a una cuenta que ya no existe, justo lo que esto quiere evitar— y
+ * «nadie la usa» significaría en realidad «no he podido comprobarlo». Si algo
+ * va mal se corta la migración entera: el flag no se marca y vuelve a
+ * intentarse en la siguiente apertura, que es lo que hay que hacer cuando lo
+ * que está en juego es un borrado.
  */
 async function leer(db: IDBPDatabase<any>, store: string): Promise<Fila[]> {
-  try {
-    return ((await db.getAll(store as never)) ?? []) as Fila[];
-  } catch {
-    return [];
-  }
+  if (!db.objectStoreNames.contains(store)) return [];
+  return ((await db.getAll(store as never)) ?? []) as Fila[];
 }
 
 /** Ids de cuenta comparados con la mano abierta · los datos viejos traen strings. */

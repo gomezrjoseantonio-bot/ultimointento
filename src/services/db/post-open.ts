@@ -690,6 +690,8 @@ export function runPostOpenMigrations(
         }
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
+        // El flag se marca al FINAL: si el borrado se corta a medias, esto no
+        // queda dado por hecho y vuelve a intentarse en la siguiente apertura.
         console.warn('[DB V88 cuentas de tarjeta] falló:', err);
       }
       return db;

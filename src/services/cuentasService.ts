@@ -400,8 +400,12 @@ class CuentasService {
 
     // V88 · aquí se fabricaba un `CARD-…` para las cuentas que eran tarjeta,
     // porque una tarjeta no tiene IBAN. Ya no hay ninguna: una tarjeta es una
-    // `Tarjeta` (VOCABULARIO §3). El efectivo tampoco lo tiene, y por eso sigue
-    // el `NONIBAN-…`.
+    // `Tarjeta` (VOCABULARIO §3).
+    //
+    // El efectivo tampoco tiene IBAN, y por eso sigue el `NONIAN-…` —sí, sin la
+    // "B", y así se queda: es un valor GUARDADO, y renombrarlo dejaría las
+    // cuentas viejas con un prefijo y las nuevas con otro a cambio de nada. Lo
+    // único que hace falta de él es que sea único y no parezca un IBAN.
     const normalizedIban = data.iban ? normalizeIban(data.iban) : `NONIAN-${Date.now()}`;
     
     // Check for duplicates - also verify against IndexedDB to avoid orphaned localStorage entries

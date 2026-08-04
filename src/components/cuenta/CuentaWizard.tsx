@@ -140,13 +140,6 @@ const parseNum = (raw: string): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
-const parseInt31 = (raw: string): number => {
-  const n = parseInt(raw, 10);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(1, Math.min(31, n));
-};
-
-
 const last4Iban = (iban: string): string => {
   const clean = (iban || '').replace(/\s/g, '');
   return clean.slice(-4) || '????';
