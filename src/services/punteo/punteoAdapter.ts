@@ -495,6 +495,7 @@ export function movimientoAItem(
     cuentaId: m.accountId ?? null,
     // §7 · el papel que respalda el cargo · solo lo real lo tiene.
     documentIds: m.documentIds?.length ? m.documentIds : undefined,
+    tarjetaId: m.tarjetaId,
     previsionId: previsionDeMovimiento(m),
     importe: m.amount,
     categoryKey: m.categoryKey,

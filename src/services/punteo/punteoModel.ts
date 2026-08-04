@@ -102,6 +102,14 @@ export interface ItemPunteo {
    */
   documentIds?: number[];
   /**
+   * Con qué tarjeta se pagó · §3.5.
+   *
+   * Viaja hasta la ficha para que abra con ella puesta. Sin esto, corregir un
+   * importe habría BORRADO la atribución de tarjeta: la ficha guarda lo que
+   * tiene en pantalla, y lo que no le llega llega vacío.
+   */
+  tarjetaId?: number;
+  /**
    * Si esta fila se puede corregir o borrar desde el lápiz.
    *
    * Una previsión siempre; un movimiento solo si lo anotó el usuario. Lo

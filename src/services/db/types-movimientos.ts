@@ -120,6 +120,17 @@ export interface Movement {
   inmuebleId?: string; // Required if ambito='INMUEBLE'
   /** Denormalized alias del inmueble vinculado (para display sin join). */
   inmuebleAlias?: string;
+  /**
+   * Con qué tarjeta se pagó · VOCABULARIO §3.5.
+   *
+   * `paymentMethod` ya podía decir que fue con tarjeta, pero no **cuál**, y sin
+   * eso el gasto con tarjeta de DÉBITO no se puede atribuir a ninguna: el
+   * débito cobra al momento, así que no tiene recibo del que deducirlo como lo
+   * tiene el crédito.
+   *
+   * Lo dice el usuario en la ficha del movimiento; el extracto no lo trae.
+   */
+  tarjetaId?: number;
   statusConciliacion: 'sin_match' | 'match_automatico' | 'match_manual'; // Reconciliation status
   learnKey?: string; // Hash for learning rules (normalized counterparty + description pattern + amount sign)
   isOpeningBalance?: boolean; // Marks the system-generated opening balance movement

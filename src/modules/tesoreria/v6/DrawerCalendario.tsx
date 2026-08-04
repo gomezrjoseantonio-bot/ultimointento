@@ -68,6 +68,8 @@ export interface DrawerCalendarioProps {
   onEliminar?: (item: ItemPunteo) => void | Promise<void>;
   /** Inmuebles para el selector de la ficha. */
   inmuebles?: Array<{ id: number; alias: string }>;
+  /** Las tarjetas, para el selector de la ficha (§3.5). */
+  tarjetas?: Array<{ id: number; alias: string }>;
   /** Confirmar de golpe todo lo que queda pendiente ese día (§4.9). */
   onConfirmarDia: (items: ItemPunteo[]) => void | Promise<void>;
   /**
@@ -99,6 +101,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
   onGuardarFicha,
   onEliminar,
   inmuebles = [],
+  tarjetas = [],
   onConfirmarDia,
   onAnotar,
 }) => {
@@ -463,6 +466,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
         documentIds={ficha?.item.documentIds}
         cuentas={cuentas}
         inmuebles={inmuebles}
+        tarjetas={tarjetas}
         onCerrar={() => setFicha(null)}
         onGuardar={async (v) => {
           await onGuardarFicha?.(ficha?.item ?? null, v);

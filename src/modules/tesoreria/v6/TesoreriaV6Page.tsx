@@ -39,7 +39,7 @@ import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
-import { gastoPorTarjeta } from '../../../services/gastoPorTarjeta';
+import { gastoDeMovimientos, gastoPorTarjeta } from '../../../services/gastoPorTarjeta';
 import { rendimientoDeTarjetas } from '../../../services/rendimientoDeTarjeta';
 import { textoDeRendimiento } from './textoTarjeta';
 import {
@@ -223,7 +223,17 @@ const TesoreriaV6Page: React.FC = () => {
    * exactamente eso. Mientras el periodo no cierra la cifra está viva y crece
    * con cada compra, que es justo lo que hay que poder mirar.
    */
-  const periodosDeTarjeta = useMemo(() => gastoPorTarjeta(estado.eventos), [estado.eventos]);
+  const periodosDeTarjeta = useMemo(
+    () => [
+      ...gastoPorTarjeta(estado.eventos),
+      // El DÉBITO no tiene recibo del que deducir su gasto —cobra al momento—,
+      // así que sale de los movimientos que el usuario atribuyó a una tarjeta.
+      // Solo el débito: el de una de crédito ya viene por su recibo, y contarlo
+      // aquí también lo sumaría dos veces.
+      ...gastoDeMovimientos(estado.movimientos, tarjetas),
+    ],
+    [estado.eventos, estado.movimientos, tarjetas]
+  );
 
   /**
    * §3.7 · lo que ha rendido cada tarjeta con cashback.
@@ -231,6 +241,20 @@ const TesoreriaV6Page: React.FC = () => {
    * No es una curiosidad: es la cifra que decide POR QUÉ TARJETA canalizar el
    * gasto. Solo cuenta lo cerrado — lo que aún puede crecer no ha rendido nada.
    */
+  /**
+   * Las que se pueden elegir en la ficha de un movimiento (§3.5).
+   *
+   * Una tarjeta sin `id` no se ha guardado todavía y no se puede atribuir nada
+   * a ella.
+   */
+  const tarjetasElegibles = useMemo(
+    () =>
+      tarjetas
+        .filter((t): t is typeof t & { id: number } => t.id != null)
+        .map((t) => ({ id: t.id, alias: t.alias })),
+    [tarjetas]
+  );
+
   const rendimiento = useMemo(
     () => new Map(rendimientoDeTarjetas(tarjetas, periodosDeTarjeta).map((r) => [r.tarjetaId, r])),
     [tarjetas, periodosDeTarjeta]
@@ -668,6 +692,7 @@ const TesoreriaV6Page: React.FC = () => {
           onEliminar={descartarItem}
           cuentas={cuentasVivas}
           inmuebles={inmuebles}
+          tarjetas={tarjetasElegibles}
           onSubirExtracto={(c) => setExtracto({ cuenta: c })}
         />
         {extracto && (
@@ -676,6 +701,7 @@ const TesoreriaV6Page: React.FC = () => {
             cuenta={extracto.cuenta}
             cuentas={cuentasVivas}
             inmuebles={inmuebles}
+            tarjetas={tarjetasElegibles}
             onCerrar={cerrarExtracto}
             onGuardado={trasEscribir}
           />
@@ -930,6 +956,7 @@ const TesoreriaV6Page: React.FC = () => {
         onEliminar={descartarItem}
         cuentas={cuentasVivas}
         inmuebles={inmuebles}
+        tarjetas={tarjetasElegibles}
         aliasInmueble={aliasInmueble}
         onSubirExtracto={(c) => setExtracto({ cuenta: c })}
       />
@@ -949,6 +976,7 @@ const TesoreriaV6Page: React.FC = () => {
           hoy={hoy}
           aliasInmueble={aliasInmueble}
           inmuebles={inmuebles}
+          tarjetas={tarjetasElegibles}
           onGuardarFicha={guardarFicha}
           onEliminar={descartarItem}
           onCerrar={() => setCalendario(null)}
@@ -981,6 +1009,7 @@ const TesoreriaV6Page: React.FC = () => {
         }
         cuentas={cuentasVivas}
         inmuebles={estado.inmuebles}
+        tarjetas={tarjetasElegibles}
         onCerrar={() => setAltaDelDia(null)}
         onGuardar={async (v) => {
           await guardarFicha(null, v);
@@ -1018,6 +1047,7 @@ const TesoreriaV6Page: React.FC = () => {
           cuenta={extracto.cuenta}
           cuentas={cuentasVivas}
           inmuebles={inmuebles}
+          tarjetas={tarjetasElegibles}
           onCerrar={cerrarExtracto}
           onGuardado={trasEscribir}
         />

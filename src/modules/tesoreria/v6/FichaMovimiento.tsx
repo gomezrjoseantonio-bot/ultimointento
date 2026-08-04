@@ -45,6 +45,8 @@ export interface ValoresFicha {
   /** Concepto del catálogo de presentación (`subtipoId`). */
   subtipo?: string;
   inmuebleId?: number | null;
+  /** Con qué tarjeta se pagó · `null` = ninguna (§3.5). */
+  tarjetaId?: number | null;
   /** Solo en transferencia · `null` = externa, fuera de mis cuentas. */
   cuentaDestinoId?: number | null;
   naturalezaDerrama?: NaturalezaDerrama;
@@ -76,6 +78,13 @@ export interface FichaMovimientoProps {
   importePrevisto?: number;
   cuentas: Account[];
   inmuebles: Array<{ id: number; alias: string }>;
+  /**
+   * Las tarjetas entre las que elegir · vacío esconde el selector.
+   *
+   * Sin ninguna dada de alta, preguntar «¿con qué tarjeta?» es una casilla que
+   * solo puede quedarse vacía.
+   */
+  tarjetas?: Array<{ id: number; alias: string }>;
   onCerrar: () => void;
   onGuardar: (v: GuardadoFicha) => void | Promise<void>;
   /** Solo en edición · el pie muestra Eliminar a la izquierda. */
@@ -117,6 +126,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   importePrevisto,
   cuentas,
   inmuebles,
+  tarjetas = [],
   onCerrar,
   onGuardar,
   onEliminar,
@@ -133,6 +143,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   const [familia, setFamilia] = useState<string>(FAMILIAS[0]?.id ?? '');
   const [subtipo, setSubtipo] = useState<string>('');
   const [inmuebleId, setInmuebleId] = useState<number | null>(null);
+  const [tarjetaId, setTarjetaId] = useState<number | null>(null);
   const [cuentaDestinoId, setCuentaDestinoId] = useState<number | null>(null);
   const [derrama, setDerrama] = useState<NaturalezaDerrama | null>(null);
   const [tocado, setTocado] = useState(false);
@@ -154,6 +165,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
     setFamilia(fam);
     setSubtipo(inicial?.subtipo ?? subtiposDe(fam)[0]?.id ?? '');
     setInmuebleId(inicial?.inmuebleId ?? null);
+    setTarjetaId(inicial?.tarjetaId ?? null);
     setCuentaDestinoId(inicial?.cuentaDestinoId ?? null);
     setDerrama(inicial?.naturalezaDerrama ?? null);
     setTocado(false);
@@ -211,6 +223,9 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
       cuentaId,
       ...(clasificable ? { familia, subtipo } : {}),
       inmuebleId: clasificable ? inmuebleId : null,
+      // Una transferencia no se paga con tarjeta · dejarla puesta al cambiar de
+      // tipo atribuiría a la tarjeta un traspaso entre cuentas propias.
+      tarjetaId: clasificable ? tarjetaId : null,
       ...(esTransferencia ? { cuentaDestinoId } : {}),
       ...(necesitaPregunta && derrama ? { naturalezaDerrama: derrama } : {}),
       categoryKey: sinElegir ? undefined : keyElegida,
@@ -443,6 +458,31 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/*
+                §3.5 · con qué tarjeta se pagó.
+
+                El extracto no lo trae y `paymentMethod` como mucho dice que fue
+                con tarjeta, no CUÁL. Sin decirlo, el gasto de una tarjeta de
+                débito no se puede atribuir a ninguna — el débito cobra al
+                momento, así que no hay recibo del que deducirlo.
+              */}
+              {tarjetas.length > 0 && (
+                <div className={styles.fld}>
+                  <label className={styles.lab} htmlFor="fm-tarjeta">Tarjeta</label>
+                  <select
+                    id="fm-tarjeta"
+                    className={styles.select}
+                    value={tarjetaId ?? ''}
+                    onChange={(e) => setTarjetaId(e.target.value ? Number(e.target.value) : null)}
+                  >
+                    <option value="">Sin tarjeta</option>
+                    {tarjetas.map((t) => (
+                      <option key={t.id} value={t.id}>{t.alias}</option>
+                    ))}
+                  </select>
                 </div>
               )}
 

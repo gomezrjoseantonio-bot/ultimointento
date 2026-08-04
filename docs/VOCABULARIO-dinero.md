@@ -204,6 +204,22 @@ Del periodo **en curso** es una cifra **viva**:
 >
 > — Jose, 3 de agosto de 2026
 
+**Decisión · 4 de agosto de 2026 · el débito lo dice el movimiento.**
+
+Del **crédito**, el gasto de un periodo ES su recibo. Del **débito** no hay
+recibo del que deducirlo, así que sale de los movimientos que el usuario
+atribuye a una tarjeta: el extracto no la trae, y el método de pago como mucho
+dice que fue con tarjeta, no **cuál**.
+
+- **Solo el débito entra por ahí.** Un movimiento marcado con una tarjeta de
+  crédito es su recibo, y ese gasto ya viene por el recibo: contarlo dos veces
+  inflaría una cifra que se presume ante un banco.
+- **Cada movimiento es su propio periodo**, y no es un apaño: el débito cobra al
+  momento, así que su periodo dura un instante. Inventarle cortes mensuales
+  sería fabricar un ciclo que esa tarjeta no tiene (§3.3).
+- Y **ya ocurrió**: un movimiento del extracto no es una previsión que pueda
+  crecer, así que nace cerrado.
+
 ### 3.6 · Qué demuestra · las bonificaciones
 
 Los importes de tarjeta son la **prueba** de que se cumplen los requisitos que
@@ -501,14 +517,16 @@ Escrito para no perderlo, con la fecha en que se detectó.
   parte de tarjetas— corre sobre una lista vacía. O se conecta a
   `compromisosRecurrentes` o se retira; dejarla es un camino que parece vivo y
   no lo está.
-- **2026-08-03** · El gasto por tarjeta y periodo **solo cubre el crédito**. El
-  de una tarjeta de **débito** no tiene recibo —cobra al momento— y hoy nada
-  dice de qué tarjeta salió cada movimiento, así que ese gasto no se puede
-  atribuir. Hace falta decirlo en el movimiento. §3.5.
-- **2026-08-03** · El cashback **realmente ingresado** no se puede casar con la
-  tarjeta que lo generó: el abono llega como un ingreso más y nada dice de
-  quién viene. Lo que se mide hoy es lo que le CORRESPONDE al gasto ya cerrado
-  según su porcentaje, no el apunte visto en el banco. §3.7.
+- **2026-08-04** · El cashback **realmente ingresado** sigue sin casarse con la
+  tarjeta que lo generó. Un movimiento ya puede decir **con qué tarjeta**, pero
+  eso no basta: un ingreso atribuido a una tarjeta puede ser el cashback o una
+  **devolución de una compra**, y no hay forma de distinguirlos. Haría falta
+  poder decir que ESE ingreso es cashback — una categoría que hoy no existe.
+  Lo que se mide sigue siendo lo que le CORRESPONDE al gasto cerrado según su
+  porcentaje, no el apunte visto en el banco. §3.7.
+- **2026-08-04** · El gasto con débito se atribuye **si el usuario lo dice**. El
+  extracto no trae la tarjeta y `paymentMethod` como mucho dice que fue con
+  una, no cuál — así que lo que no se marque a mano no cuenta. §3.5.
 - **2026-08-04** · Lo que queda de §6 ter **no sale de los movimientos**: los
   **seguros** y la **alarma** se prueban con su póliza o su contrato, y el
   **plan de pensiones** con su aportación, que hoy no se sigue en tesorería.

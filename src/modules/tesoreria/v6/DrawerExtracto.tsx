@@ -62,6 +62,8 @@ export interface DrawerExtractoProps {
   cuentas: Account[];
   /** Para la ficha de §4.5 que abre "Crear movimiento". */
   inmuebles: Array<{ id: number; alias: string }>;
+  /** Las tarjetas, para el selector de la ficha (§3.5). */
+  tarjetas?: Array<{ id: number; alias: string }>;
   onCerrar: () => void;
   /** Tras guardar · la pantalla recarga saldos. */
   onGuardado: () => void | Promise<void>;
@@ -72,6 +74,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   cuenta,
   cuentas,
   inmuebles,
+  tarjetas = [],
   onCerrar,
   onGuardado,
 }) => {
@@ -748,6 +751,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         }
         cuentas={cuentaActiva ? [cuentaActiva] : cuentas}
         inmuebles={inmuebles}
+        tarjetas={tarjetas}
         onCerrar={() => setCreando(null)}
         onGuardar={(v) => (creando ? crearDesdeFicha(creando, v) : undefined)}
       />
