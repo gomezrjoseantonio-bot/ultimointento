@@ -18,8 +18,10 @@ import { gastoPorTarjeta } from '../../services/gastoPorTarjeta';
 import { listarTarjetas } from '../../services/tarjetasService';
 import { verificarBonificaciones } from '../../services/bonificaciones/verificarBonificaciones';
 import type { MovimientosQuePrueban } from '../../services/bonificaciones/verificarBonificaciones';
-import type { Bonificacion } from '../../types/prestamos';
-import { textoDeCumplimiento } from './textoBonificacion';
+import { puntosEnRiesgo } from '../../services/bonificaciones/tinEfectivo';
+import type { Prestamo } from '../../types/prestamos';
+import { cuotaMensualConTin, effectiveTIN } from './helpers';
+import { textoDeCumplimiento, textoDeLoQueEstaEnJuego } from './textoBonificacion';
 import styles from './BonificacionesVerificadas.module.css';
 
 const ETIQUETA = {
@@ -29,10 +31,11 @@ const ETIQUETA = {
 } as const;
 
 interface Props {
-  bonificaciones?: Bonificacion[];
+  prestamo: Prestamo;
 }
 
-const BonificacionesVerificadas: React.FC<Props> = ({ bonificaciones }) => {
+const BonificacionesVerificadas: React.FC<Props> = ({ prestamo }) => {
+  const bonificaciones = prestamo.bonificaciones;
   const [movimientos, setMovimientos] = useState<MovimientosQuePrueban | null>(null);
 
   useEffect(() => {
@@ -60,6 +63,17 @@ const BonificacionesVerificadas: React.FC<Props> = ({ bonificaciones }) => {
     ? verificarBonificaciones(bonificaciones, movimientos, hoy)
     : [];
 
+  // El tipo que se paga hoy y el que se pagaría si la revisión fuese hoy. La
+  // cuota sale de la misma fórmula en los dos casos, solo cambia el tipo.
+  const tinHoy = effectiveTIN(prestamo);
+  const tinSiRevisaran = tinHoy + puntosEnRiesgo(bonificaciones, cumplimientos);
+  const enJuego = {
+    tinHoy,
+    tinSiRevisaran,
+    sobrecosteMensual:
+      cuotaMensualConTin(prestamo, tinSiRevisaran) - cuotaMensualConTin(prestamo, tinHoy),
+  };
+
   return (
     <div className={styles.card}>
       <div className={styles.hd}>
@@ -79,6 +93,17 @@ const BonificacionesVerificadas: React.FC<Props> = ({ bonificaciones }) => {
 
       {movimientos && cumplimientos.length === 0 && (
         <div className={styles.vacio}>Ninguna bonificación contratada en este préstamo.</div>
+      )}
+
+      {/*
+        A qué cuota vas · §6 ter.
+
+        Va debajo y con la condición delante —«si la revisión fuera hoy»—
+        porque lo que gastes este mes NO cambia el recibo de este mes: cambia
+        lo que decida el banco en la próxima revisión.
+      */}
+      {movimientos && cumplimientos.length > 0 && (
+        <div className={styles.enJuego}>{textoDeLoQueEstaEnJuego(enJuego)}</div>
       )}
     </div>
   );

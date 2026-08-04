@@ -3,6 +3,7 @@
 import { Prestamo, PlanPagos, DestinoCapital, Garantia } from '../types/prestamos';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { initDB } from './db';
+import { reduccionPorBonificaciones } from './bonificaciones/tinEfectivo';
 
 // ── Helper: generate short unique id ──────────────────────────────────────
 
@@ -379,8 +380,19 @@ export class PrestamosService {
       'esquemaPrimerRecibo', 'prorratearPrimerPeriodo'
     ];
     
-    return criticalFields.some(field => 
+    if (criticalFields.some(field =>
       original[field as keyof Prestamo] !== updated[field as keyof Prestamo]
+    )) {
+      return true;
+    }
+
+    // Las bonificaciones cambian el tipo que se paga, así que cambian el cuadro
+    // (§6 ter). No van en `criticalFields` porque son un array: compararlas con
+    // `!==` daría siempre distinto y regeneraría en cada guardado. Lo que hay
+    // que mirar es cuánto rebajan.
+    return (
+      reduccionPorBonificaciones(original.bonificaciones, original) !==
+      reduccionPorBonificaciones(updated.bonificaciones, updated)
     );
   }
 
