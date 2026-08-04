@@ -165,3 +165,42 @@ describe('borrar lo anotado', () => {
     expect(await leer(id)).toBeDefined();
   });
 });
+
+// §3.5 · con qué tarjeta se pagó. La ficha guarda LO QUE TIENE EN PANTALLA, así
+// que la distinción entre «no me lo has dicho» y «quítalo» es lo único que
+// impide que corregir un importe borre la atribución de tarjeta en silencio.
+describe('la tarjeta al corregir', () => {
+  it('lo que no se dice, no se toca', async () => {
+    const id = await guardar(anotado({ tarjetaId: 11 }));
+
+    await editarMovimiento(id, { ...correccion, tarjetaId: undefined });
+
+    expect((await leer(id))?.tarjetaId).toBe(11);
+  });
+
+  // Quitarla tiene que poder hacerse · si no, una tarjeta puesta por error se
+  // quedaría pegada al movimiento para siempre.
+  it('un null explícito la quita', async () => {
+    const id = await guardar(anotado({ tarjetaId: 11 }));
+
+    await editarMovimiento(id, { ...correccion, tarjetaId: null });
+
+    expect((await leer(id))?.tarjetaId).toBeUndefined();
+  });
+
+  it('y se puede cambiar por otra', async () => {
+    const id = await guardar(anotado({ tarjetaId: 11 }));
+
+    await editarMovimiento(id, { ...correccion, tarjetaId: 12 });
+
+    expect((await leer(id))?.tarjetaId).toBe(12);
+  });
+
+  it('un movimiento sin tarjeta sigue sin ella', async () => {
+    const id = await guardar(anotado());
+
+    await editarMovimiento(id, { ...correccion, tarjetaId: undefined });
+
+    expect((await leer(id))?.tarjetaId).toBeUndefined();
+  });
+});
