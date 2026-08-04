@@ -484,10 +484,10 @@ describe('un umbral de recibos con decimales', () => {
   });
 });
 
-// Un mes SIN CONCILIAR no es un mes SIN NÓMINA. Confundirlos es la misma
-// tercera respuesta de §6 ter, y aquí sale caro: acusa de incumplir a quien
-// solo tiene el extracto por cuadrar.
-describe('lo previsto y todavía sin cuadrar', () => {
+// Un mes que TODAVÍA NO CUENTA no es un mes SIN NÓMINA. Confundirlos es la
+// misma tercera respuesta de §6 ter, y aquí sale caro: acusa de incumplir a
+// quien solo tiene el cobro por constar.
+describe('lo que todavía no consta cobrado', () => {
   const mesNomina = (m: string, importe: number, estado: 'cerrado' | 'abierto'): CobroDeUnMes => ({
     cuentaId: 3,
     mes: m,
@@ -505,20 +505,21 @@ describe('lo previsto y todavía sin cuadrar', () => {
     });
 
   // Antes esto decía «no cumple · no ha entrado ninguna nómina», que es falso:
-  // la nómina SÍ está domiciliada ahí, lo que falta es cuadrarla.
-  it('con todo por conciliar no se acusa de incumplir', () => {
+  // la nómina SÍ está domiciliada ahí. Y el motivo no afirma POR QUÉ no consta
+  // —conciliar o no haber pasado aún son dos cosas y desde aquí no se saben—.
+  it('con nada cerrado todavía no se acusa de incumplir', () => {
     const r = unaSola(
       deNomina(),
       con([], [], [mesNomina('2026-05', 1300, 'abierto'), mesNomina('2026-06', 1300, 'abierto')])
     );
 
     expect(r.veredicto).toBe('no_verificable');
-    expect(r.motivo).toContain('no se ha conciliado');
+    expect(r.motivo).toContain('no consta cobrada');
   });
 
   // Callarlos dejaba «2 de 2 meses» donde faltaban dos por mirar · una
   // tranquilidad prestada.
-  it('los meses pendientes se cuentan aparte', () => {
+  it('los meses que aún no cuentan van aparte', () => {
     const r = unaSola(
       deNomina(),
       con(
@@ -534,7 +535,7 @@ describe('lo previsto y todavía sin cuadrar', () => {
 
     expect(r).toMatchObject({
       veredicto: 'cumple',
-      mensual: { conMovimiento: 2, queLlegan: 2, sinConciliar: 1 },
+      mensual: { conMovimiento: 2, queLlegan: 2, sinCerrar: 1 },
     });
   });
 

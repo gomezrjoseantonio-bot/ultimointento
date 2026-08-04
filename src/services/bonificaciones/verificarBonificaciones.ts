@@ -188,15 +188,16 @@ function porNomina(
 
   const todos = cobrosDeLaCuenta(movimientos.cobrosDeNomina, cuentaId, ventana);
   const meses = todos.filter((m) => m.estado === 'cerrado');
-  const sinConciliar = todos.length - meses.length;
+  const sinCerrar = todos.length - meses.length;
 
   if (meses.length === 0) {
-    // Con cobros previstos y ninguno conciliado, decir «no ha entrado ninguna»
-    // sería una acusación falsa: la nómina SÍ está domiciliada ahí, lo que
-    // falta es cuadrarla contra el extracto. Un mes sin conciliar no es un mes
-    // sin nómina — la misma tercera respuesta de §6 ter.
+    // Con cobros en esa cuenta y ninguno cerrado, decir «no ha entrado
+    // ninguna» sería una acusación falsa: la nómina SÍ está domiciliada ahí.
+    // Y el motivo no dice «sin conciliar» porque no se sabe: puede que el
+    // cargo esté por cuadrar o que sencillamente aún no haya pasado. Lo único
+    // cierto es que no consta cobrada — la misma tercera respuesta de §6 ter.
     if (todos.length > 0) {
-      return noVerificable(b, 'todavía no se ha conciliado ninguna nómina de esa cuenta');
+      return noVerificable(b, 'todavía no consta cobrada ninguna nómina de esa cuenta');
     }
     return {
       ...base,
@@ -222,7 +223,7 @@ function porNomina(
     ventana,
     medido: centimos(peor),
     exigido: regla.minimoMensual,
-    mensual: { conMovimiento: meses.length, queLlegan, sinConciliar },
+    mensual: { conMovimiento: meses.length, queLlegan, sinCerrar },
   };
 }
 
@@ -258,13 +259,14 @@ function porRecibos(
 
   const todos = recibosDeLaCuenta(movimientos.recibosDomiciliados, cuentaId, ventana);
   const meses = todos.filter((m) => m.estado === 'cerrado');
-  const sinConciliar = todos.length - meses.length;
+  const sinCerrar = todos.length - meses.length;
 
   if (meses.length === 0) {
-    // Previstos pero sin cuadrar todavía · no es que no los tengas
-    // domiciliados, es que aún no se han conciliado.
+    // Hay cargos en esa cuenta y ninguno consta todavía · no es que no los
+    // tengas domiciliados. Igual que en la nómina, no se afirma por qué: puede
+    // estar por conciliar o puede no haber pasado aún.
     if (todos.length > 0) {
-      return noVerificable(b, 'todavía no se ha conciliado ningún recibo de esa cuenta');
+      return noVerificable(b, 'todavía no consta cargado ningún recibo de esa cuenta');
     }
     // Sin nada, ni previsto ni cobrado, el silencio SÍ es un «no»: a diferencia
     // de la nómina, no hace falta dar de alta nada para que ATLAS vea un recibo
@@ -292,7 +294,7 @@ function porRecibos(
     mensual: {
       conMovimiento: meses.length,
       queLlegan: meses.filter((m) => llega(m.cuantos)).length,
-      sinConciliar,
+      sinCerrar,
     },
   };
 }

@@ -152,32 +152,35 @@ describe('lo que se cuenta en recibos', () => {
   });
 });
 
-// Un mes previsto y sin cuadrar no es un incumplimiento, pero callarlo deja un
+// Un mes que todavía no cuenta no es un incumplimiento, pero callarlo deja un
 // «4 de 4» donde faltaban dos por mirar · una tranquilidad prestada.
-describe('los meses todavía sin conciliar', () => {
+//
+// Y se dice así, no «sin conciliar»: puede que el cargo esté por cuadrar o que
+// sencillamente aún no haya pasado, y desde aquí no se distingue.
+describe('los meses que todavía no cuentan', () => {
   const conPendientes = (over: Partial<Cumplimiento> = {}): Cumplimiento =>
     c({
       exigido: 1200,
       medido: 1300,
-      mensual: { conMovimiento: 4, queLlegan: 4, sinConciliar: 2 },
+      mensual: { conMovimiento: 4, queLlegan: 4, sinCerrar: 2 },
       ...over,
     });
 
   it('se dicen aparte, sin contarlos como fallo', () => {
     expect(textoDeCumplimiento(conPendientes())).toBe(
-      'Cumplida · 4 de 4 meses con 1.200 € o más desde el 4 feb · 2 meses sin conciliar todavía'
+      'Cumplida · 4 de 4 meses con 1.200 € o más desde el 4 feb · 2 meses más todavía no cuentan'
     );
   });
 
   it('uno solo se dice en singular', () => {
     expect(
-      textoDeCumplimiento(conPendientes({ mensual: { conMovimiento: 4, queLlegan: 4, sinConciliar: 1 } }))
-    ).toContain('1 mes sin conciliar todavía');
+      textoDeCumplimiento(conPendientes({ mensual: { conMovimiento: 4, queLlegan: 4, sinCerrar: 1 } }))
+    ).toContain('1 mes más todavía no cuenta');
   });
 
   it('sin pendientes no se dice nada', () => {
     expect(
-      textoDeCumplimiento(conPendientes({ mensual: { conMovimiento: 4, queLlegan: 4, sinConciliar: 0 } }))
-    ).not.toContain('sin conciliar');
+      textoDeCumplimiento(conPendientes({ mensual: { conMovimiento: 4, queLlegan: 4, sinCerrar: 0 } }))
+    ).not.toContain('todavía no cuenta');
   });
 });

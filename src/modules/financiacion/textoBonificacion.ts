@@ -60,12 +60,16 @@ export function textoDeCumplimiento(c: Cumplimiento): string {
     const cuantos = `${c.mensual.queLlegan} de ${c.mensual.conMovimiento} ${
       c.mensual.conMovimiento === 1 ? 'mes' : 'meses'
     }`;
-    // Los meses previstos y aún sin cuadrar no son un incumplimiento, pero
-    // callarlos deja un «4 de 4» donde faltaban dos por mirar.
-    const pendientes = c.mensual.sinConciliar
-      ? ` · ${c.mensual.sinConciliar} ${
-          c.mensual.sinConciliar === 1 ? 'mes' : 'meses'
-        } sin conciliar todavía`
+    // Los meses que todavía no cuentan no son un incumplimiento, pero callarlos
+    // deja un «4 de 4» donde faltaban dos por mirar.
+    //
+    // «Todavía no cuentan» y no «sin conciliar»: puede que el cargo esté por
+    // cuadrar o que sencillamente aún no haya pasado, y desde aquí no se
+    // distingue. Lo que sí es cierto en los dos casos es que no prueban nada.
+    const pendientes = c.mensual.sinCerrar
+      ? ` · ${c.mensual.sinCerrar} ${
+          c.mensual.sinCerrar === 1 ? 'mes' : 'meses'
+        } más todavía no cuentan`
       : '';
 
     if (c.veredicto === 'cumple') {
