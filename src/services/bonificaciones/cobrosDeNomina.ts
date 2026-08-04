@@ -19,6 +19,7 @@
 // ============================================================================
 
 import type { TreasuryEvent } from '../db';
+import { yaSeCobro } from '../gastoPorTarjeta';
 
 /** Lo cobrado por nómina en UNA cuenta y UN mes. */
 export interface CobroDeUnMes {
@@ -36,11 +37,6 @@ export interface CobroDeUnMes {
    * bonificación se demuestra con lo cobrado, no con lo que esperas cobrar.
    */
   estado: 'cerrado' | 'abierto';
-}
-
-/** Ya ocurrió · mismo criterio que en `gastoPorTarjeta`. */
-function yaSeCobro(ev: TreasuryEvent): boolean {
-  return ev.status === 'executed' || ev.movementId != null;
 }
 
 /**

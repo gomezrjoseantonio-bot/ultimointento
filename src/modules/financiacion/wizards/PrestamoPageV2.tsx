@@ -278,6 +278,12 @@ const TIPO_DE_REGLA: Record<ReglaBonificacion['tipo'], Bonificacion['tipo']> = {
   OTRA: 'OTROS',
 };
 
+/** El importe de la regla, ya en el crudo que espera la casilla. */
+const importeRaw = (r: ReglaBonificacion): string => {
+  const importe = importeDeLaRegla(r);
+  return importe ? fmtNumeroEs(importe, 0) : '';
+};
+
 const filasDelCatalogo = (): BonificacionRow[] =>
   BONIF_CATALOGO.map((b) => ({
     id: uid(),
@@ -288,7 +294,7 @@ const filasDelCatalogo = (): BonificacionRow[] =>
     lookbackMeses: LOOKBACK_POR_DEFECTO,
     // Sembrado desde la propia regla · dejarlo vacío enseñaría un hueco donde
     // el catálogo ya propone una cifra, y esa cifra es la que se guardaría.
-    importeMinimoRaw: importeDeLaRegla(b.regla) ? fmtNumeroEs(importeDeLaRegla(b.regla)!, 0) : '',
+    importeMinimoRaw: importeRaw(b.regla),
   }));
 
 // ─── Mapeos prestamo legacy ↔ v2 ────────────────────────────────────────────
@@ -588,7 +594,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
             lookbackMeses: b.lookbackMeses ?? LOOKBACK_POR_DEFECTO,
             tarjetaExigidaId: b.tarjetaExigidaId,
             cuentaExigidaId: b.cuentaExigidaId,
-            importeMinimoRaw: importeDeLaRegla(regla) ? fmtNumeroEs(importeDeLaRegla(regla)!, 0) : '',
+            importeMinimoRaw: importeRaw(regla),
             estadoPrevio: b.estado,
           };
         })

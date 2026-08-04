@@ -194,8 +194,13 @@ function porNomina(
   }
 
   // El mes más flojo es el que decide: basta uno por debajo para perderla.
+  //
+  // Contar y juzgar con la MISMA función · escrita a mano, la holgura de medio
+  // céntimo viviría en dos sitios y bastaría tocar uno para que la línea dijera
+  // «6 de 6 meses» junto a un «no cumple».
+  const llega = (importe: number) => veredictoDelImporte(importe, regla.minimoMensual) === 'cumple';
   const peor = Math.min(...meses.map((m) => m.importe));
-  const queLlegan = meses.filter((m) => m.importe + 0.005 >= regla.minimoMensual).length;
+  const queLlegan = meses.filter((m) => llega(m.importe)).length;
 
   return {
     ...base,

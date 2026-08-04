@@ -61,6 +61,14 @@ describe('cerrado o abierto', () => {
     expect(gastoPorTarjeta([recibo({ status: 'executed' })])[0].estado).toBe('cerrado');
   });
 
+  // Los DOS enlaces a movimiento valen. `executedMovementId` lo escribe la
+  // confirmación y `movementId` lo traen otros caminos; mirando solo uno,
+  // algo ya conciliado quedaba por abierto — y de ahí sale un «no cumples» de
+  // una bonificación que sí se cumple.
+  it('el otro enlace al movimiento también cierra', () => {
+    expect(gastoPorTarjeta([recibo({ movementId: 55 })])[0].estado).toBe('cerrado');
+  });
+
   // El periodo en curso crece con cada compra · su cifra está viva.
   it('todavía previsto · abierto', () => {
     expect(gastoPorTarjeta([recibo()])[0].estado).toBe('abierto');
