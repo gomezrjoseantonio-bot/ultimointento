@@ -88,7 +88,8 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo }) => {
   const revision = proximaRevision(
     {
       desdeLaFirma: prestamo.fechaFirma,
-      cadaMeses: prestamo.periodoRevisionBonificacionMeses as number,
+      proximaSegunElBanco: prestamo.proximaRevisionBonificaciones,
+      cadaMeses: prestamo.periodoRevisionBonificacionMeses,
       graciaMeses: prestamo.graciaMesesBonificaciones,
     },
     hoy

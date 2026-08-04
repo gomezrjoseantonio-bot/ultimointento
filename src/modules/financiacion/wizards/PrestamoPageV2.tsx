@@ -142,6 +142,8 @@ interface FormState {
   // Bloque 6 · bonificaciones
   bonificacionesActivas: boolean;
   bonificaciones: BonificacionRow[];
+  /** La próxima revisión tal como la da el banco · `YYYY-MM`. Manda. */
+  proximaRevision: string;
   /** Cada cuántos meses las revisa el banco · '' = la escritura no lo dice. */
   revisionCadaMeses: string;
   /** Meses iniciales en que se dan por cumplidas · '' o '0' = ninguno. */
@@ -483,6 +485,7 @@ function emptyFormState(): FormState {
     gastoReclamacionImpagoRaw: '0',
     bonificacionesActivas: false,
     bonificaciones: filasDelCatalogo(),
+    proximaRevision: '',
     revisionCadaMeses: '',
     graciaBonificacionesMeses: '',
     carenciaInicialTipo: 'ninguna',
@@ -653,6 +656,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       gastoReclamacionImpagoRaw: fmtNumeroEs(p.gastoReclamacionImpago ?? 0),
       bonificacionesActivas: bonificaciones.some((b) => b.activa),
       bonificaciones,
+      proximaRevision: p.proximaRevisionBonificaciones ?? '',
       revisionCadaMeses: p.periodoRevisionBonificacionMeses
         ? String(p.periodoRevisionBonificacionMeses)
         : '',
@@ -962,6 +966,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         comisionMantenimiento: parseNum(form.comMantenimientoRaw),
         comisionAmortizacionAnticipada: parseNum(form.comAmortAnticipadaRaw),
         bonificaciones,
+        proximaRevisionBonificaciones: form.proximaRevision || undefined,
         periodoRevisionBonificacionMeses: revisionCada || undefined,
         graciaMesesBonificaciones: graciaBonif || undefined,
         cuotasPagadas: 0,
@@ -1608,6 +1613,25 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                       y una fecha inventada se lee igual que una real.
                     */}
                     <div className={`${styles.fieldsRow} ${styles.rowRevision}`}>
+                      {/*
+                        Primero el dato BUENO · si tu banco te dice cuándo es la
+                        próxima, eso manda. La app del Santander la enseña tal
+                        cual («Próxima revisión 08/2027»), y puede no cuadrar
+                        con ninguna periodicidad regular: entre la última y la
+                        próxima de Jose hay dieciocho meses.
+
+                        Va en mes y año porque es lo que el banco da. Pedir un
+                        día sería pedir algo que nadie tiene.
+                      */}
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>Próxima revisión</label>
+                        <input
+                          className={styles.input}
+                          type="month"
+                          value={form.proximaRevision}
+                          onChange={(e) => update('proximaRevision', e.target.value)}
+                        />
+                      </div>
                       <div className={styles.field}>
                         <label className={styles.fieldLabel}>El banco las revisa</label>
                         <select
@@ -1636,9 +1660,11 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                       </div>
                       <div className={styles.field}>
                         <div className={styles.hintNote}>
-                          Se cuenta desde la firma. Durante el periodo inicial pagas la cuota
-                          rebajada aunque no cumplas, así que la ficha lo dice: si no, se lee
-                          como que ya está ganada.
+                          Si sabes la próxima revisión, mándala tal cual: es el dato bueno. La
+                          periodicidad solo sirve para deducirla cuando no la tienes, y se cuenta
+                          desde la firma. Durante el periodo inicial pagas la cuota rebajada
+                          aunque no cumplas, así que la ficha lo dice: si no, se lee como que ya
+                          está ganada.
                         </div>
                       </div>
                     </div>

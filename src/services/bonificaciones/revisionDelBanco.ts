@@ -21,12 +21,25 @@
 // Puro: no lee la base ni el reloj. Quien llame pasa la fecha de hoy.
 // ============================================================================
 
-/** Lo que la escritura dice sobre las revisiones. */
+/** Lo que se sabe sobre las revisiones. */
 export interface CalendarioDeRevision {
   /** La fecha desde la que se cuenta todo · la firma. ISO `YYYY-MM-DD`. */
   desdeLaFirma: string;
+  /**
+   * La próxima revisión TAL COMO LA DA EL BANCO · `YYYY-MM`.
+   *
+   * Manda sobre todo lo demás, y por eso existe: en el Santander la cuenta de
+   * Jose dice «última revisión 27/02/2026 · próxima revisión 08/2027», que son
+   * dieciocho meses. Deducirla de una periodicidad regular desde la firma
+   * habría dado otra fecha — y una fecha equivocada es peor que ninguna,
+   * porque se lee igual que la buena.
+   *
+   * Va en mes y año porque es lo que el banco enseña. Inventarle un día sería
+   * precisión que nadie ha dado.
+   */
+  proximaSegunElBanco?: string;
   /** Cada cuántos meses mira el banco · 6 y 12 son lo normal. */
-  cadaMeses: number;
+  cadaMeses?: number;
   /**
    * Meses iniciales en que las bonificaciones se dan por cumplidas.
    *
@@ -36,8 +49,21 @@ export interface CalendarioDeRevision {
 }
 
 export interface Revision {
-  /** El día en que el banco mira y la cuota puede cambiar · ISO. */
-  fecha: string;
+  /**
+   * Cuándo mira el banco · `YYYY-MM-DD` o `YYYY-MM` según lo que se sepa.
+   *
+   * **Puede faltar y aun así haber algo que decir**: quien no sabe cada cuánto
+   * revisan su hipoteca —lo más habitual— puede saber perfectamente que tiene
+   * el primer año regalado. Perder el aviso del periodo inicial por no tener
+   * fecha sería callar justo en el caso más probable.
+   */
+  fecha?: string;
+  /**
+   * Con qué precisión se conoce · el banco da el mes, la periodicidad da el día.
+   *
+   * Se dice para que el texto no prometa un día que nadie ha puesto.
+   */
+  precision?: 'dia' | 'mes';
   /**
    * Si HOY las bonificaciones están aplicadas por el periodo inicial.
    *
@@ -78,11 +104,20 @@ function sumarMeses(origen: string, meses: number): string {
   return aIso(new Date(Date.UTC(destino.getUTCFullYear(), destino.getUTCMonth(), dia)));
 }
 
-/** Un entero de meses utilizable, o `null` si lo que hay no lo es. */
+/** El `YYYY-MM` del banco, o `null` si lo que hay no lo es. */
+function mesDelBanco(v: unknown): string | null {
+  return typeof v === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v) ? v : null;
+}
+
+/**
+ * Un número de meses utilizable, o `null`.
+ *
+ * No se redondea: un `11,6` guardado por error se convertiría en un calendario
+ * de doce meses sin que nadie se entere, y de ahí saldría una fecha que se lee
+ * igual que la buena. Lo que no es un entero de meses no es un calendario.
+ */
 function mesesValidos(n: unknown): number | null {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return null;
-  const entero = Math.round(n);
-  return entero > 0 ? entero : null;
+  return typeof n === 'number' && Number.isInteger(n) && n > 0 ? n : null;
 }
 
 /**
@@ -98,12 +133,34 @@ function mesesValidos(n: unknown): number | null {
  * alguien a gastar antes de un día que nadie le ha puesto.
  */
 export function proximaRevision(cal: CalendarioDeRevision, hoy: string): Revision | null {
-  const cada = mesesValidos(cal.cadaMeses);
-  if (cada == null) return null;
-  if (typeof cal.desdeLaFirma !== 'string' || cal.desdeLaFirma.length < 10) return null;
+  const firmaValida = typeof cal.desdeLaFirma === 'string' && cal.desdeLaFirma.length >= 10;
 
-  const gracia = mesesValidos(cal.graciaMeses);
+  const gracia = firmaValida ? mesesValidos(cal.graciaMeses) : null;
   const finDeGracia = gracia != null ? sumarMeses(cal.desdeLaFirma, gracia) : undefined;
+  const enGracia = finDeGracia != null && hoy < finDeGracia;
+
+  // Lo que dice el banco manda · es el dato de verdad, no una deducción.
+  //
+  // Sigue valiendo mientras no acabe SU MES: dentro del mes de la revisión
+  // todavía es la próxima, porque nadie ha dicho qué día de agosto mira.
+  const delBanco = mesDelBanco(cal.proximaSegunElBanco);
+  if (delBanco && delBanco >= hoy.slice(0, 7)) {
+    return {
+      fecha: delBanco,
+      precision: 'mes',
+      enGracia,
+      ...(finDeGracia ? { finDeGracia } : {}),
+    };
+  }
+
+  // Sin periodicidad no hay fecha, pero el periodo inicial sigue siendo cierto
+  // y hay que decirlo · es además el caso más habitual: mucha gente no sabe
+  // cada cuánto revisan su hipoteca y sí que el primer año está regalado.
+  const sinFecha = (): Revision | null =>
+    finDeGracia ? { enGracia, finDeGracia } : null;
+
+  const cada = mesesValidos(cal.cadaMeses);
+  if (cada == null || !firmaValida) return sinFecha();
 
   // La primera revisión que cuenta es la primera posterior a HOY que además
   // caiga fuera del periodo inicial.
@@ -116,13 +173,20 @@ export function proximaRevision(cal: CalendarioDeRevision, hoy: string): Revisio
   //
   // El tope evita un bucle infinito si alguien guarda una firma absurdamente
   // antigua; 1.200 revisiones son cien años incluso revisando cada mes.
-  for (let i = 0; fecha <= suelo && i < 1200; i++) {
+  let vueltas = 0;
+  while (fecha <= suelo && vueltas < 1200) {
     fecha = sumarMeses(fecha, cada);
+    vueltas++;
   }
+
+  // Si el tope se agotó, lo que hay en la mano es una fecha del pasado. Darla
+  // por buena sería enseñar una cita que ya pasó — peor que no dar ninguna.
+  if (fecha <= suelo) return sinFecha();
 
   return {
     fecha,
-    enGracia: finDeGracia != null && hoy < finDeGracia,
+    precision: 'dia',
+    enGracia,
     ...(finDeGracia ? { finDeGracia } : {}),
   };
 }

@@ -486,13 +486,27 @@ Por eso el veredicto no puede decir «pasarías al 2,70 %» a secas. Sin fecha e
 una hipótesis que nadie puede agendar; con fecha es una cita, y **da tiempo a
 corregir**, que es para lo que sirve saberlo.
 
-**Decisión · 4 de agosto de 2026 (Jose).** Dos datos, los dos de la escritura y
-los dos del PRÉSTAMO:
+**Decisión · 4 de agosto de 2026 (Jose).** Tres datos, todos del PRÉSTAMO:
 
 | Dato | Qué es | Lo normal |
 |---|---|---|
-| `periodoRevisionBonificacionMeses` | Cada cuánto mira el banco | 6 o 12 meses |
+| `proximaRevisionBonificaciones` | La próxima revisión **tal como la da el banco** · `YYYY-MM` | Lo que ponga tu banco |
+| `periodoRevisionBonificacionMeses` | Cada cuánto mira, para deducirla cuando no la tienes | 6 o 12 meses |
 | `graciaMesesBonificaciones` | Periodo inicial en que se dan por cumplidas | Ninguno, 6 meses o el primer año |
+
+**El dato del banco manda sobre la deducción**, y no es un capricho. La app del
+Santander enseña «última revisión 27/02/2026 · próxima revisión 08/2027»: son
+**dieciocho meses**, que no salen de ninguna periodicidad regular contada desde
+la firma. Deducir ahí habría dado otra fecha, y **una fecha equivocada es peor
+que ninguna, porque se lee igual que la buena.**
+
+Y va en **mes y año**, que es como lo da el banco. Ponerle un día sería prometer
+una precisión que nadie ha dado; por eso el texto dice «en la revisión de agosto
+de 2027» y solo dice el día cuando la fecha viene de la periodicidad.
+
+> **De la misma pantalla del Santander sale la confirmación del par de cifras
+> de §6 ter · bis:** enseña «Bonificación actual 1,00 %» junto a «Simulación
+> próxima revisión 0,95 %». Son exactamente `tinHoy` y `tinSiRevisaran`.
 
 La gracia es **del préstamo, no de cada bonificación**: el banco concede un
 plazo común, y preguntarlo una vez por bonificación era una pregunta repetida
@@ -509,10 +523,13 @@ Reglas que se derivan:
 - **El periodo inicial se dice en pantalla**, cumplas o no. Durante ese plazo la
   cuota rebajada NO demuestra que cumplas, y quien no lo sepa creerá que va
   bien hasta la primera revisión que cuenta.
-- **Lo que no dice la escritura no se inventa.** Sin periodicidad no hay fecha y
-  se sigue diciendo «si la revisión fuera hoy». Suponer un año pondría una
-  fecha que se lee igual que una real, y esa manda a alguien a gastar antes de
-  un día que nadie le ha puesto.
+- **Lo que no dice la escritura no se inventa.** Sin periodicidad ni fecha del
+  banco no hay cita, y se sigue diciendo «si la revisión fuera hoy». Suponer un
+  año pondría una fecha que se lee igual que una real, y esa manda a alguien a
+  gastar antes de un día que nadie le ha puesto.
+- **El periodo inicial vale por sí solo.** Quien no sabe cada cuánto revisan su
+  hipoteca —lo más habitual— puede saber perfectamente que tiene el primer año
+  regalado. Callarlo por no tener fecha sería callar en el caso más probable.
 - **Se puede ir a mejor.** Empezar a cumplir una que no tenías baja la cuota en
   la próxima revisión, y eso es tan accionable como perderla: se dice «X €
   menos al mes», no se calla por ser buena noticia.

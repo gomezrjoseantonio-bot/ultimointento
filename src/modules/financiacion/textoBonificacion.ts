@@ -6,7 +6,7 @@
 // pierde — «no se puede comprobar» y «te falta» piden cosas distintas.
 
 import type { Cumplimiento } from '../../services/bonificaciones/cumplimiento';
-import { importeSaldo, mesCorto } from '../tesoreria/v6/formatoV6';
+import { importeSaldo, mesCorto, nombreMes } from '../tesoreria/v6/formatoV6';
 
 /** Los euros, con el formato único de la aplicación (§5). */
 const euros = (n: number): string => importeSaldo(n);
@@ -21,6 +21,19 @@ const euros = (n: number): string => importeSaldo(n);
 const dia = (iso: string): string => {
   const [, mes, d] = iso.split('-');
   return `${Number(d)} ${mesCorto(Number(mes) - 1)}`;
+};
+
+/**
+ * Cuándo revisa el banco, dicho con la precisión que se tiene.
+ *
+ * `2027-08` sale como «agosto de 2027» y no como «1 de agosto»: el banco da el
+ * mes —«Próxima revisión 08/2027»— y ponerle un día sería prometer una
+ * precisión que nadie ha dado. Con día (`2026-03-10`) se dice el día, que es
+ * cuando viene de una periodicidad contada desde la firma.
+ */
+const cuandoRevisa = (iso: string): string => {
+  const [anio, mes, d] = iso.split('-');
+  return d ? `del ${Number(d)} ${mesCorto(Number(mes) - 1)}` : `de ${nombreMes(Number(mes) - 1)} de ${anio}`;
 };
 
 /** Un tipo de interés · dos decimales, con la coma española. */
@@ -103,7 +116,10 @@ export interface LoQueEstaEnJuego {
   /** Lo que cambiaría la cuota al mes · positivo sube, negativo baja. */
   sobrecosteMensual: number;
   /**
-   * Cuándo mira el banco · ISO. Ausente si la escritura no lo dice.
+   * Cuándo mira el banco · `YYYY-MM-DD` o `YYYY-MM`. Ausente si no se sabe.
+   *
+   * El mes solo llega cuando lo dice el banco, que es como lo enseña —«Próxima
+   * revisión 08/2027»—. Se respeta tal cual: añadirle un día sería inventar.
    *
    * Es la diferencia entre una hipótesis y una cita. «Si la revisión fuera hoy»
    * no se puede agendar; «en la revisión del 10 de marzo» da tiempo a corregir,
@@ -133,7 +149,9 @@ export function textoDeLoQueEstaEnJuego(j: LoQueEstaEnJuego): string {
   const hoy = `Pagas al ${pct(j.tinHoy)}`;
 
   // Cuándo lo mira el banco · con fecha es una cita, sin ella una hipótesis.
-  const cuando = j.fechaRevision ? `En la revisión del ${dia(j.fechaRevision)}` : 'Si la revisión fuera hoy';
+  const cuando = j.fechaRevision
+    ? `En la revisión ${cuandoRevisa(j.fechaRevision)}`
+    : 'Si la revisión fuera hoy';
 
   // El periodo inicial se dice SIEMPRE que esté activo, cumplas o no: es la
   // explicación de por qué pagas rebajado, y sin ella una lista de «cumple» se

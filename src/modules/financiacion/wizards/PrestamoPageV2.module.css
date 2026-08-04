@@ -295,7 +295,7 @@
 .rowTinVariable { grid-template-columns: 0.8fr 0.6fr 0.8fr 0.8fr 0.8fr; }
 .rowTinMixto { grid-template-columns: 0.5fr 1fr 0.7fr 0.7fr 0.8fr; }
 .rowComisiones { grid-template-columns: repeat(5, 1fr); }
-.rowRevision { grid-template-columns: 1fr 1fr 2fr; }
+.rowRevision { grid-template-columns: 1fr 1fr 1fr 2fr; }
 
 .hintNote {
   font-size: 11px;

@@ -113,3 +113,75 @@ describe('lo que no se sabe no se inventa', () => {
     expect(r?.fecha).toBe('2027-01-15');
   });
 });
+
+// Lo que dice el banco MANDA · en el Santander de Jose la cuenta dice «última
+// revisión 27/02/2026 · próxima revisión 08/2027», que son dieciocho meses.
+// Deducirla de una periodicidad regular habría dado otra fecha, y una fecha
+// equivocada es peor que ninguna: se lee igual que la buena.
+describe('la fecha que da el banco', () => {
+  it('gana a la que saldría de la periodicidad', () => {
+    const r = proximaRevision(
+      cal({ desdeLaFirma: '2025-03-10', cadaMeses: 12, proximaSegunElBanco: '2027-08' }),
+      '2026-08-04'
+    );
+
+    expect(r?.fecha).toBe('2027-08');
+    expect(r?.precision).toBe('mes');
+  });
+
+  // Nadie ha dicho qué DÍA de agosto mira · hasta que acabe el mes sigue siendo
+  // la próxima, no una que ya pasó.
+  it('dentro de su mes sigue siendo la próxima', () => {
+    expect(
+      proximaRevision(cal({ proximaSegunElBanco: '2027-08' }), '2027-08-20')?.fecha
+    ).toBe('2027-08');
+  });
+
+  it('pasada de mes, cede a la periodicidad', () => {
+    const r = proximaRevision(
+      cal({ desdeLaFirma: '2025-03-10', cadaMeses: 12, proximaSegunElBanco: '2026-01' }),
+      '2026-09-01'
+    );
+
+    expect(r?.fecha).toBe('2027-03-10');
+    expect(r?.precision).toBe('dia');
+  });
+
+  it('sin periodicidad, la del banco basta', () => {
+    expect(
+      proximaRevision({ desdeLaFirma: '2025-03-10', proximaSegunElBanco: '2027-08' }, '2026-08-04')
+        ?.fecha
+    ).toBe('2027-08');
+  });
+
+  it.each(['2027-8', '08/2027', '2027-13', 'agosto', ''])('«%s» no es una fecha del banco', (v) => {
+    expect(
+      proximaRevision({ desdeLaFirma: '2025-03-10', proximaSegunElBanco: v }, '2026-08-04')
+    ).toBeNull();
+  });
+});
+
+// Quien no sabe cada cuánto revisan su hipoteca —lo más habitual— puede saber
+// perfectamente que tiene el primer año regalado. Callar el periodo inicial por
+// no tener fecha sería callar justo en el caso más probable.
+describe('el periodo inicial vale por sí solo', () => {
+  it('sin periodicidad se sigue diciendo que estamos en gracia', () => {
+    const r = proximaRevision({ desdeLaFirma: '2025-03-10', graciaMeses: 12 }, '2025-08-04');
+
+    expect(r?.enGracia).toBe(true);
+    expect(r?.finDeGracia).toBe('2026-03-10');
+    expect(r?.fecha).toBeUndefined();
+  });
+
+  it('sin periodicidad ni gracia no hay nada que decir', () => {
+    expect(proximaRevision({ desdeLaFirma: '2025-03-10' }, '2025-08-04')).toBeNull();
+  });
+});
+
+// Un 11,6 guardado por error se convertiría en un calendario de doce meses sin
+// que nadie se entere, y de ahí saldría una fecha que se lee igual que la buena.
+describe('los meses que no son meses', () => {
+  it.each([11.6, 0.5, -12.2])('%s no es un calendario', (cadaMeses) => {
+    expect(proximaRevision(cal({ cadaMeses }), '2025-08-04')).toBeNull();
+  });
+});

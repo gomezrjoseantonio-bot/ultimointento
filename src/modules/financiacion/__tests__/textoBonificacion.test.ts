@@ -123,6 +123,19 @@ describe('lo que está en juego', () => {
     expect(t).toContain('31,20 € menos al mes');
   });
 
+  // El banco da mes y año —«Próxima revisión 08/2027»—, no un día. Ponerle uno
+  // sería prometer una precisión que nadie ha dado.
+  it('con solo mes y año se dice el mes, no un día inventado', () => {
+    const t = textoDeLoQueEstaEnJuego({
+      tinHoy: 2.4,
+      tinSiRevisaran: 2.7,
+      sobrecosteMensual: 31.2,
+      fechaRevision: '2027-08',
+    });
+
+    expect(t).toContain('En la revisión de agosto de 2027');
+  });
+
   // Durante el periodo inicial la cuota rebajada NO demuestra que cumplas.
   // Callarlo deja creer que ya está ganada.
   it('el periodo inicial se dice aunque todo esté en orden', () => {
