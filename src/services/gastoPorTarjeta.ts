@@ -49,13 +49,22 @@ function periodoDelRecibo(ev: TreasuryEvent): { tarjetaId: number; fechaCorte: s
 }
 
 /**
- * Ya ocurrió: el cargo se cobró y quedó ligado a un movimiento del extracto.
+ * Ya ocurrió: se cobró y quedó ligado a un movimiento del extracto.
  *
  * Mismo criterio que el resto de la aplicación (`esPrevisionIntocable`), menos
  * el descarte: un recibo descartado no es gasto cerrado, es gasto que no fue.
+ *
+ * Los DOS enlaces a movimiento cuentan. `executedMovementId` es el que escribe
+ * la confirmación y `movementId` el que traen otros caminos; mirar solo uno
+ * dejaba por abierto algo ya conciliado, y de ahí sale un «no cumples» de una
+ * bonificación que sí se cumple. Ver `treasuryConfirmationService`, que también
+ * los lee juntos.
+ *
+ * Vive aquí y lo importa la nómina: decir «mismo criterio» en un comentario no
+ * lo hace verdad, compartir la función sí.
  */
-function yaSeCobro(ev: TreasuryEvent): boolean {
-  return ev.status === 'executed' || ev.executedMovementId != null;
+export function yaSeCobro(ev: TreasuryEvent): boolean {
+  return ev.status === 'executed' || ev.executedMovementId != null || ev.movementId != null;
 }
 
 /**
