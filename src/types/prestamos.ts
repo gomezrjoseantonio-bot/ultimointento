@@ -266,6 +266,17 @@ export type ReglaBonificacion =
   | { tipo: 'SEGURO_HOGAR'; activo: boolean }
   | { tipo: 'SEGURO_VIDA'; activo: boolean }
   | { tipo: 'TARJETA'; movimientosMesMin?: number; importeMinimo?: number }
+  /**
+   * Recibos domiciliados · «tener domiciliados al menos N recibos».
+   *
+   * `Bonificacion.tipo` ya contemplaba `RECIBOS`, pero la regla no: una
+   * bonificación de este tipo no tenía forma de decir **cuántos**, y sin eso no
+   * se puede comparar con nada (§6 ter).
+   *
+   * Se cuentan recibos DISTINTOS, no cargos: «tres recibos domiciliados» son
+   * tres servicios, no el de la luz tres meses seguidos.
+   */
+  | { tipo: 'RECIBOS'; minimoRecibos: number }
   | { tipo: 'ALARMA'; activo: boolean }
   | { tipo: 'OTRA'; descripcion: string };
 

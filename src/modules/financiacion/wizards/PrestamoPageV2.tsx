@@ -232,7 +232,23 @@ const BONIF_CATALOGO: Array<{ nombre: string; pp: number; regla: ReglaBonificaci
   // significa «no dicho», y la verificación lo dirá así en vez de darla por
   // incumplida.
   { nombre: 'Uso tarjeta',  pp: 0.10, regla: { tipo: 'TARJETA', importeMinimo: 0 } },
+  { nombre: 'Recibos',      pp: 0.10, regla: { tipo: 'RECIBOS', minimoRecibos: 3 } },
 ];
+
+/**
+ * La cifra que pide una regla, si pide alguna.
+ *
+ * Tres reglas la tienen y no significan lo mismo: la tarjeta pide un total en
+ * la ventana, la nómina un mínimo **cada mes** y los recibos **cuántos** hay
+ * domiciliados. Comparten la casilla, no el significado — por eso la etiqueta y
+ * el sufijo los pone quien la pinta.
+ */
+function importeDeLaRegla(r: ReglaBonificacion): number | undefined {
+  if (r.tipo === 'TARJETA') return r.importeMinimo;
+  if (r.tipo === 'NOMINA') return r.minimoMensual;
+  if (r.tipo === 'RECIBOS') return r.minimoRecibos;
+  return undefined;
+}
 
 /**
  * Lo que hay que demostrar, en una línea.
@@ -242,22 +258,14 @@ const BONIF_CATALOGO: Array<{ nombre: string; pp: number; regla: ReglaBonificaci
  * catálogo. Antes esta línea mostraba otra vez los puntos porcentuales, que ya
  * estaban justo debajo.
  */
-/**
- * El importe que pide una regla, si pide alguno.
- *
- * Dos reglas lo tienen y significan cosas distintas: la tarjeta pide un total
- * en la ventana y la nómina un mínimo **cada mes**. Comparten el campo de
- * entrada, no el significado — por eso la etiqueta la pone quien la pinta.
- */
-function importeDeLaRegla(r: ReglaBonificacion): number | undefined {
-  if (r.tipo === 'TARJETA') return r.importeMinimo;
-  if (r.tipo === 'NOMINA') return r.minimoMensual;
-  return undefined;
-}
-
 function condicionDeRegla(r: ReglaBonificacion): string {
   if (r.tipo === 'NOMINA') return `≥ ${fmtNumeroEs(r.minimoMensual, 0)} €/mes domiciliada`;
   if (r.tipo === 'OTRA') return r.descripcion;
+  if (r.tipo === 'RECIBOS') {
+    return r.minimoRecibos > 0
+      ? `≥ ${r.minimoRecibos} recibos domiciliados`
+      : 'Recibos domiciliados';
+  }
   if (r.tipo !== 'TARJETA') return 'Contratado con el banco';
   return r.importeMinimo && r.importeMinimo > 0
     ? `≥ ${fmtNumeroEs(r.importeMinimo, 0)} € con su tarjeta`
@@ -274,6 +282,7 @@ const TIPO_DE_REGLA: Record<ReglaBonificacion['tipo'], Bonificacion['tipo']> = {
   SEGURO_HOGAR: 'SEGURO_HOGAR',
   SEGURO_VIDA: 'SEGURO_VIDA',
   TARJETA: 'TARJETA',
+  RECIBOS: 'RECIBOS',
   ALARMA: 'ALARMA',
   OTRA: 'OTROS',
 };
@@ -1585,14 +1594,17 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                     {form.bonificaciones.map((b) => {
                       const tarjeta = b.regla.tipo === 'TARJETA' ? b.regla : null;
                       const nomina = b.regla.tipo === 'NOMINA' ? b.regla : null;
-                      if (!b.activa || (!tarjeta && !nomina)) return null;
+                      const recibos = b.regla.tipo === 'RECIBOS' ? b.regla : null;
+                      if (!b.activa || (!tarjeta && !nomina && !recibos)) return null;
 
                       const alCambiarImporte = (raw: string) =>
                         editarBonificacion(b.id, {
                           importeMinimoRaw: raw,
                           regla: tarjeta
                             ? { ...tarjeta, importeMinimo: parseNum(raw) }
-                            : { ...nomina!, minimoMensual: parseNum(raw) },
+                            : nomina
+                              ? { ...nomina, minimoMensual: parseNum(raw) }
+                              : { ...recibos!, minimoRecibos: parseNum(raw) },
                         });
 
                       return (
@@ -1654,18 +1666,22 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                           </div>
                           <div className={styles.field}>
                             <label className={styles.fieldLabel}>
-                              {tarjeta ? 'Gasto mínimo' : 'Entrada mínima'}{' '}
+                              {tarjeta ? 'Gasto mínimo' : recibos ? 'Cuántos recibos' : 'Entrada mínima'}{' '}
                               <span className="hint">
                                 {tarjeta ? `en ${b.lookbackMeses} meses` : 'cada mes'}
                               </span>
                             </label>
-                            <div className={styles.inputSuffix}>
+                            {/*
+                              Los recibos se CUENTAN · un sufijo «€» aquí diría
+                              que el banco pide tres euros de recibo.
+                            */}
+                            <div className={recibos ? undefined : styles.inputSuffix}>
                               <input
                                 className={`${styles.input} ${styles.inputMono}`}
                                 value={b.importeMinimoRaw ?? ''}
                                 onChange={(e) => alCambiarImporte(e.target.value)}
                               />
-                              <span className={styles.suffix}>€</span>
+                              {!recibos && <span className={styles.suffix}>€</span>}
                             </div>
                           </div>
                         </div>

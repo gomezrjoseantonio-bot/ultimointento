@@ -122,3 +122,32 @@ describe('lo que se mide mes a mes', () => {
       .toContain('1 de 1 mes con');
   });
 });
+
+// Los recibos se CUENTAN, no se suman en euros · «3 €» donde el banco pide
+// tres recibos no es un detalle de formato, es otra cosa.
+describe('lo que se cuenta en recibos', () => {
+  const recibos = (over: Partial<Cumplimiento> = {}): Cumplimiento =>
+    c({
+      unidad: 'recibos',
+      exigido: 3,
+      medido: 4,
+      mensual: { conMovimiento: 6, queLlegan: 6 },
+      ...over,
+    });
+
+  it('cumplida habla de recibos, no de euros', () => {
+    expect(textoDeCumplimiento(recibos())).toBe(
+      'Cumplida · 6 de 6 meses con 3 recibos o más desde el 4 feb'
+    );
+  });
+
+  it('sin cumplir enseña el mes con menos', () => {
+    expect(
+      textoDeCumplimiento(recibos({ veredicto: 'no_cumple', medido: 2, mensual: { conMovimiento: 6, queLlegan: 5 } }))
+    ).toBe('5 de 6 meses · el más flojo se quedó en 2 recibos de 3 recibos');
+  });
+
+  it('uno solo se dice en singular', () => {
+    expect(textoDeCumplimiento(recibos({ exigido: 1 }))).toContain('1 recibo o más');
+  });
+});
