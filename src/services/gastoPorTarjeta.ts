@@ -14,13 +14,15 @@
 //     justo lo que describe Jose: «si mañana gasto algo de la tarjeta tendré
 //     que hacer una anotación manual e irá creciendo».
 //
-// Lo que NO cubre: el gasto con tarjeta de DÉBITO. Ese no tiene recibo —cobra
-// al momento— y hoy nada dice de qué tarjeta salió cada movimiento. Ver §8.
+// El DÉBITO va por otro sitio (`gastoDeMovimientos`, al final): no tiene recibo
+// del que deducirlo, así que sale de los movimientos que el usuario ha
+// atribuido a una tarjeta.
 //
 // Puro: no lee la base. Quien llame le pasa los eventos.
 // ============================================================================
 
-import type { TreasuryEvent } from './db';
+import type { Movement, TreasuryEvent } from './db';
+import type { Tarjeta } from '../types/tarjetas';
 
 /** Lo gastado con UNA tarjeta en UN periodo. */
 export interface GastoDeUnPeriodo {
@@ -112,4 +114,47 @@ export function gastoDeLaTarjeta(
     .filter((p) => (opciones.hasta ? p.fechaCorte <= opciones.hasta : true))
     .filter((p) => (opciones.soloCerrados ? p.estado === 'cerrado' : true))
     .reduce((suma, p) => suma + p.importe, 0);
+}
+
+/**
+ * El gasto con tarjeta de DÉBITO · lo que dicen los movimientos (§3.5).
+ *
+ * El débito no tiene recibo del que deducir el gasto —cobra al momento—, así
+ * que sale de los movimientos que el usuario ha atribuido a una tarjeta.
+ *
+ * **Solo el débito.** Un movimiento marcado con una tarjeta de crédito es su
+ * RECIBO, y ese gasto ya viene por `gastoPorTarjeta`: contarlo aquí también lo
+ * sumaría dos veces, y esta cifra se presume ante un banco.
+ *
+ * Cada movimiento es su propio periodo, y eso no es un apaño: el débito cobra
+ * al momento, así que su periodo dura un instante. Inventarle cortes mensuales
+ * sería fabricar un ciclo que esa tarjeta no tiene (§3.3).
+ */
+export function gastoDeMovimientos(
+  movimientos: Movement[],
+  tarjetas: Array<Pick<Tarjeta, 'id' | 'modalidad'>>
+): GastoDeUnPeriodo[] {
+  const debito = new Set(
+    tarjetas.filter((t) => t.modalidad === 'debito' && t.id != null).map((t) => t.id as number)
+  );
+
+  const salida: GastoDeUnPeriodo[] = [];
+
+  for (const m of movimientos) {
+    if (m.tarjetaId == null || !debito.has(m.tarjetaId)) continue;
+    // Un ingreso no es gasto · una devolución en la tarjeta no suma consumo.
+    if (m.amount >= 0) continue;
+
+    const fecha = m.date.slice(0, 10);
+    salida.push({
+      tarjetaId: m.tarjetaId,
+      fechaCorte: fecha,
+      fechaCargo: fecha,
+      importe: Math.abs(m.amount),
+      // Un movimiento del extracto ya ocurrió · no hay nada que esperar.
+      estado: 'cerrado',
+    });
+  }
+
+  return salida.sort((a, b) => b.fechaCorte.localeCompare(a.fechaCorte));
 }

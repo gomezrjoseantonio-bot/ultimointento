@@ -46,6 +46,13 @@ export interface AltaMovimiento {
   esMejora?: boolean;
   /** Solo en transferencia · `null` = externa. */
   cuentaDestinoId?: number | null;
+  /**
+   * Con qué tarjeta se pagó · `null` limpia lo que hubiera (§3.5).
+   *
+   * Es lo único que permite atribuir el gasto de una tarjeta de DÉBITO: cobra
+   * al momento, así que no hay recibo del que deducirlo.
+   */
+  tarjetaId?: number | null;
 }
 
 export class SinCuentaError extends Error {
@@ -158,6 +165,7 @@ async function altaMovimientoNormal(v: AltaMovimiento): Promise<number> {
     ...(v.categoryKey ? { categoryKey: v.categoryKey } : {}),
     ...(v.subtypeKey ? { subtypeKey: v.subtypeKey } : {}),
     ...(v.inmuebleId != null ? { inmuebleId: String(v.inmuebleId) } : {}),
+    ...(v.tarjetaId != null ? { tarjetaId: v.tarjetaId } : {}),
     createdAt: ahora,
     updatedAt: ahora,
   } as Movement;
@@ -328,6 +336,10 @@ export async function editarMovimiento(movementId: number, v: AltaMovimiento): P
     categoryKey: v.categoryKey ?? undefined,
     subtypeKey: v.subtypeKey ?? undefined,
     inmuebleId: v.inmuebleId != null ? String(v.inmuebleId) : undefined,
+    // `undefined` NO borra: quien edite la ficha sin conocer la tarjeta —una
+    // pantalla vieja, un flujo que no la pregunta— dejaría el movimiento sin
+    // atribuir a su espalda. Solo un `null` explícito la quita.
+    tarjetaId: v.tarjetaId === null ? undefined : (v.tarjetaId ?? anterior.tarjetaId),
     updatedAt: new Date().toISOString(),
   } as Movement);
 }

@@ -4,8 +4,8 @@
 // bonificación de la hipoteca y el rendimiento del cashback. Si esta miente,
 // mienten las tres — y dos de ellas se presumen ante terceros.
 
-import { gastoDeLaTarjeta, gastoPorTarjeta } from '../gastoPorTarjeta';
-import type { TreasuryEvent } from '../db';
+import { gastoDeLaTarjeta, gastoDeMovimientos, gastoPorTarjeta } from '../gastoPorTarjeta';
+import type { Movement, TreasuryEvent } from '../db';
 
 const recibo = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
@@ -136,5 +136,70 @@ describe('sumar lo gastado', () => {
 
   it('una tarjeta sin gasto suma cero', () => {
     expect(gastoDeLaTarjeta(PERIODOS, 99)).toBe(0);
+  });
+});
+
+// §3.5 · el DÉBITO no tiene recibo del que deducir su gasto —cobra al momento—,
+// así que sale de los movimientos que el usuario atribuyó a una tarjeta.
+describe('el gasto con tarjeta de débito', () => {
+  const TARJETAS = [
+    { id: 11, modalidad: 'debito' as const },
+    { id: 12, modalidad: 'credito' as const },
+  ];
+
+  const mov = (over: Partial<Movement> = {}): Movement =>
+    ({
+      id: 1,
+      accountId: 3,
+      date: '2026-03-14',
+      amount: -42.5,
+      description: 'Mercadona',
+      tarjetaId: 11,
+      ...over,
+    }) as Movement;
+
+  it('cuenta lo pagado con esa tarjeta', () => {
+    expect(gastoDeMovimientos([mov()], TARJETAS)).toEqual([
+      { tarjetaId: 11, fechaCorte: '2026-03-14', fechaCargo: '2026-03-14', importe: 42.5, estado: 'cerrado' },
+    ]);
+  });
+
+  // Un movimiento marcado con una de CRÉDITO es su recibo, y ese gasto ya viene
+  // por `gastoPorTarjeta`. Contarlo aquí también lo sumaría dos veces, y esta
+  // cifra se presume ante un banco.
+  it('el crédito no entra por aquí · ya viene por su recibo', () => {
+    expect(gastoDeMovimientos([mov({ tarjetaId: 12 })], TARJETAS)).toEqual([]);
+  });
+
+  it('sin tarjeta atribuida no cuenta', () => {
+    expect(gastoDeMovimientos([mov({ tarjetaId: undefined })], TARJETAS)).toEqual([]);
+  });
+
+  it('una tarjeta que ya no está no cuenta', () => {
+    expect(gastoDeMovimientos([mov({ tarjetaId: 99 })], TARJETAS)).toEqual([]);
+  });
+
+  // Una devolución en la tarjeta no suma consumo.
+  it('un ingreso no es gasto', () => {
+    expect(gastoDeMovimientos([mov({ amount: 30 })], TARJETAS)).toEqual([]);
+  });
+
+  // El débito cobra al momento · su periodo dura un instante, y ese gasto ya
+  // ocurrió: no hay nada que esperar.
+  it('el movimiento del extracto ya ocurrió · cerrado', () => {
+    const [p] = gastoDeMovimientos([mov()], TARJETAS);
+
+    expect(p.estado).toBe('cerrado');
+    expect(p.fechaCorte).toBe(p.fechaCargo);
+  });
+
+  it('se suma con lo del crédito sin mezclarse', () => {
+    const periodos = gastoDeMovimientos(
+      [mov({ id: 1, amount: -40 }), mov({ id: 2, amount: -60, date: '2026-03-20' })],
+      TARJETAS
+    );
+
+    expect(gastoDeLaTarjeta(periodos, 11)).toBe(100);
+    expect(gastoDeLaTarjeta(periodos, 12)).toBe(0);
   });
 });

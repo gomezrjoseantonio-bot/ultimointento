@@ -54,6 +54,9 @@ export function valoresDesdeItem(
     fecha: item.fecha,
     cuentaId: item.cuentaId ?? cuentaId,
     inmuebleId: typeof item.activo?.inmuebleId === 'number' ? item.activo.inmuebleId : null,
+    // Sin esto, corregir un importe borraría la tarjeta: la ficha guarda lo que
+    // tiene en pantalla, y lo que no le llega llega vacío.
+    tarjetaId: item.tarjetaId ?? null,
     ...(presentacion ? { familia: presentacion.tipoId, subtipo: presentacion.subtipoId } : {}),
   };
 }

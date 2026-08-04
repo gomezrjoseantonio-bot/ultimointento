@@ -72,6 +72,8 @@ export interface DrawerCuentaProps {
   /** Cuentas e inmuebles para los selectores de la ficha. */
   cuentas?: Account[];
   inmuebles?: Array<{ id: number; alias: string }>;
+  /** Las tarjetas, para el selector de la ficha (§3.5). */
+  tarjetas?: Array<{ id: number; alias: string }>;
   /** Puerta del extracto con la cuenta ya fijada (§4.7). */
   onSubirExtracto?: (cuenta: Account) => void;
 }
@@ -96,6 +98,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   onEliminar,
   cuentas = [],
   inmuebles = [],
+  tarjetas = [],
   onSubirExtracto,
 }) => {
   const [pestana, setPestana] = useState<Pestana>('pendientes');
@@ -416,6 +419,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
         onAbrirDocumento={onAbrirDocumento}
         cuentas={cuentas.length > 0 ? cuentas : [cuenta]}
         inmuebles={inmuebles}
+        tarjetas={tarjetas}
         onCerrar={() => setFicha(null)}
         onGuardar={async (v) => {
           await onGuardarFicha?.(ficha?.item ?? null, v);
