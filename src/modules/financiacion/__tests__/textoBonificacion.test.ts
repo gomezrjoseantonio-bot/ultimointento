@@ -151,3 +151,33 @@ describe('lo que se cuenta en recibos', () => {
     expect(textoDeCumplimiento(recibos({ exigido: 1 }))).toContain('1 recibo o más');
   });
 });
+
+// Un mes previsto y sin cuadrar no es un incumplimiento, pero callarlo deja un
+// «4 de 4» donde faltaban dos por mirar · una tranquilidad prestada.
+describe('los meses todavía sin conciliar', () => {
+  const conPendientes = (over: Partial<Cumplimiento> = {}): Cumplimiento =>
+    c({
+      exigido: 1200,
+      medido: 1300,
+      mensual: { conMovimiento: 4, queLlegan: 4, sinConciliar: 2 },
+      ...over,
+    });
+
+  it('se dicen aparte, sin contarlos como fallo', () => {
+    expect(textoDeCumplimiento(conPendientes())).toBe(
+      'Cumplida · 4 de 4 meses con 1.200 € o más desde el 4 feb · 2 meses sin conciliar todavía'
+    );
+  });
+
+  it('uno solo se dice en singular', () => {
+    expect(
+      textoDeCumplimiento(conPendientes({ mensual: { conMovimiento: 4, queLlegan: 4, sinConciliar: 1 } }))
+    ).toContain('1 mes sin conciliar todavía');
+  });
+
+  it('sin pendientes no se dice nada', () => {
+    expect(
+      textoDeCumplimiento(conPendientes({ mensual: { conMovimiento: 4, queLlegan: 4, sinConciliar: 0 } }))
+    ).not.toContain('sin conciliar');
+  });
+});

@@ -483,3 +483,77 @@ describe('un umbral de recibos con decimales', () => {
     expect(conUmbral(3, 3).exigido).toBe(3);
   });
 });
+
+// Un mes SIN CONCILIAR no es un mes SIN NÓMINA. Confundirlos es la misma
+// tercera respuesta de §6 ter, y aquí sale caro: acusa de incumplir a quien
+// solo tiene el extracto por cuadrar.
+describe('lo previsto y todavía sin cuadrar', () => {
+  const mesNomina = (m: string, importe: number, estado: 'cerrado' | 'abierto'): CobroDeUnMes => ({
+    cuentaId: 3,
+    mes: m,
+    importe,
+    estado,
+  });
+
+  const deNomina = (over: Partial<Bonificacion> = {}): Bonificacion =>
+    bonif({
+      tipo: 'NOMINA',
+      regla: { tipo: 'NOMINA', minimoMensual: 1200 },
+      tarjetaExigidaId: undefined,
+      cuentaExigidaId: '3',
+      ...over,
+    });
+
+  // Antes esto decía «no cumple · no ha entrado ninguna nómina», que es falso:
+  // la nómina SÍ está domiciliada ahí, lo que falta es cuadrarla.
+  it('con todo por conciliar no se acusa de incumplir', () => {
+    const r = unaSola(
+      deNomina(),
+      con([], [], [mesNomina('2026-05', 1300, 'abierto'), mesNomina('2026-06', 1300, 'abierto')])
+    );
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('no se ha conciliado');
+  });
+
+  // Callarlos dejaba «2 de 2 meses» donde faltaban dos por mirar · una
+  // tranquilidad prestada.
+  it('los meses pendientes se cuentan aparte', () => {
+    const r = unaSola(
+      deNomina(),
+      con(
+        [],
+        [],
+        [
+          mesNomina('2026-05', 1300, 'cerrado'),
+          mesNomina('2026-06', 1300, 'cerrado'),
+          mesNomina('2026-07', 1300, 'abierto'),
+        ]
+      )
+    );
+
+    expect(r).toMatchObject({
+      veredicto: 'cumple',
+      mensual: { conMovimiento: 2, queLlegan: 2, sinConciliar: 1 },
+    });
+  });
+
+  // Sin nada, ni previsto ni cobrado, sigue siendo un «no».
+  it('sin nada en esa cuenta sigue siendo no cumple', () => {
+    const r = unaSola(deNomina(), con([], [], [mesNomina('2026-05', 1300, 'cerrado')].map((m) => ({ ...m, cuentaId: 9 }))));
+
+    expect(r.veredicto).toBe('no_cumple');
+  });
+
+  it('lo mismo vale para los recibos', () => {
+    const deRecibos = bonif({
+      tipo: 'RECIBOS',
+      regla: { tipo: 'RECIBOS', minimoRecibos: 3 },
+      tarjetaExigidaId: undefined,
+      cuentaExigidaId: '3',
+    });
+    const abierto: RecibosDeUnMes = { cuentaId: 3, mes: '2026-05', cuantos: 4, estado: 'abierto' };
+
+    expect(unaSola(deRecibos, con([], [], [], [abierto])).veredicto).toBe('no_verificable');
+  });
+});

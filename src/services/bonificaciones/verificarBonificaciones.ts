@@ -186,12 +186,18 @@ function porNomina(
     return noVerificable(b, 'no hay ninguna nómina dada de alta');
   }
 
-  const meses = cobrosDeLaCuenta(movimientos.cobrosDeNomina, cuentaId, {
-    ...ventana,
-    soloCerrados: true,
-  });
+  const todos = cobrosDeLaCuenta(movimientos.cobrosDeNomina, cuentaId, ventana);
+  const meses = todos.filter((m) => m.estado === 'cerrado');
+  const sinConciliar = todos.length - meses.length;
 
   if (meses.length === 0) {
+    // Con cobros previstos y ninguno conciliado, decir «no ha entrado ninguna»
+    // sería una acusación falsa: la nómina SÍ está domiciliada ahí, lo que
+    // falta es cuadrarla contra el extracto. Un mes sin conciliar no es un mes
+    // sin nómina — la misma tercera respuesta de §6 ter.
+    if (todos.length > 0) {
+      return noVerificable(b, 'todavía no se ha conciliado ninguna nómina de esa cuenta');
+    }
     return {
       ...base,
       veredicto: 'no_cumple',
@@ -216,7 +222,7 @@ function porNomina(
     ventana,
     medido: centimos(peor),
     exigido: regla.minimoMensual,
-    mensual: { conMovimiento: meses.length, queLlegan },
+    mensual: { conMovimiento: meses.length, queLlegan, sinConciliar },
   };
 }
 
@@ -250,16 +256,20 @@ function porRecibos(
   // haya guardado a mano, que si no acabaría dicho «2,5 recibos» en pantalla.
   const exigidos = Math.ceil(regla.minimoRecibos);
 
-  const meses = recibosDeLaCuenta(movimientos.recibosDomiciliados, cuentaId, {
-    ...ventana,
-    soloCerrados: true,
-  });
+  const todos = recibosDeLaCuenta(movimientos.recibosDomiciliados, cuentaId, ventana);
+  const meses = todos.filter((m) => m.estado === 'cerrado');
+  const sinConciliar = todos.length - meses.length;
 
-  // Aquí el silencio SÍ es un «no»: a diferencia de la nómina, no hace falta
-  // dar de alta nada para que ATLAS vea un recibo domiciliado — sale de los
-  // gastos recurrentes, que es de donde sale toda la tesorería. Cero recibos
-  // cargados en esa cuenta significa cero recibos domiciliados en ella.
   if (meses.length === 0) {
+    // Previstos pero sin cuadrar todavía · no es que no los tengas
+    // domiciliados, es que aún no se han conciliado.
+    if (todos.length > 0) {
+      return noVerificable(b, 'todavía no se ha conciliado ningún recibo de esa cuenta');
+    }
+    // Sin nada, ni previsto ni cobrado, el silencio SÍ es un «no»: a diferencia
+    // de la nómina, no hace falta dar de alta nada para que ATLAS vea un recibo
+    // domiciliado — sale de los gastos recurrentes, que es de donde sale toda
+    // la tesorería.
     return {
       ...base,
       veredicto: 'no_cumple',
@@ -282,6 +292,7 @@ function porRecibos(
     mensual: {
       conMovimiento: meses.length,
       queLlegan: meses.filter((m) => llega(m.cuantos)).length,
+      sinConciliar,
     },
   };
 }

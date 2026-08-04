@@ -78,6 +78,15 @@ export interface Cumplimiento {
     conMovimiento: number;
     /** De esos, cuántos alcanzaron el umbral. */
     queLlegan: number;
+    /**
+     * Meses de la ventana con movimiento pero **todavía sin cuadrar** contra el
+     * extracto.
+     *
+     * Se dice aparte porque no son un incumplimiento: un mes sin conciliar no
+     * es un mes sin nómina. Callarlos dejaba «4 de 4 meses» donde en realidad
+     * faltaban dos por mirar, que es una tranquilidad prestada.
+     */
+    sinConciliar?: number;
   };
   /** Por qué · lo que no se puede medir se dice, no se disimula. */
   motivo?: string;

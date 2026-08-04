@@ -60,10 +60,20 @@ export function textoDeCumplimiento(c: Cumplimiento): string {
     const cuantos = `${c.mensual.queLlegan} de ${c.mensual.conMovimiento} ${
       c.mensual.conMovimiento === 1 ? 'mes' : 'meses'
     }`;
+    // Los meses previstos y aún sin cuadrar no son un incumplimiento, pero
+    // callarlos deja un «4 de 4» donde faltaban dos por mirar.
+    const pendientes = c.mensual.sinConciliar
+      ? ` · ${c.mensual.sinConciliar} ${
+          c.mensual.sinConciliar === 1 ? 'mes' : 'meses'
+        } sin conciliar todavía`
+      : '';
+
     if (c.veredicto === 'cumple') {
-      return `Cumplida · ${cuantos} con ${cifra(c.exigido)} o más${desde}`;
+      return `Cumplida · ${cuantos} con ${cifra(c.exigido)} o más${desde}${pendientes}`;
     }
-    return `${cuantos} · el más flojo se quedó en ${cifra(c.medido)} de ${cifra(c.exigido)}`;
+    return `${cuantos} · el más flojo se quedó en ${cifra(c.medido)} de ${cifra(
+      c.exigido
+    )}${pendientes}`;
   }
 
   const sinCobrar =
