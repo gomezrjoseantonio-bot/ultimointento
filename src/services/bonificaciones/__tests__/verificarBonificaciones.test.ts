@@ -9,6 +9,7 @@ import { verificarBonificaciones } from '../verificarBonificaciones';
 import type { MovimientosQuePrueban } from '../verificarBonificaciones';
 import type { GastoDeUnPeriodo } from '../../gastoPorTarjeta';
 import type { CobroDeUnMes } from '../cobrosDeNomina';
+import type { RecibosDeUnMes } from '../recibosDomiciliados';
 import type { Bonificacion } from '../../../types/prestamos';
 import type { Tarjeta } from '../../../types/tarjetas';
 
@@ -53,11 +54,13 @@ const bonif = (over: Partial<Bonificacion> = {}): Bonificacion => ({
 const con = (
   tarjetas: Tarjeta[],
   periodos: GastoDeUnPeriodo[],
-  nomina: CobroDeUnMes[] = []
+  nomina: CobroDeUnMes[] = [],
+  recibos: RecibosDeUnMes[] = []
 ): MovimientosQuePrueban => ({
   tarjetas,
   periodosDeTarjeta: periodos,
   cobrosDeNomina: nomina,
+  recibosDomiciliados: recibos,
 });
 
 const unaSola = (b: Bonificacion, m: MovimientosQuePrueban) =>
@@ -369,8 +372,114 @@ describe('bonificaciones viejas, guardadas a medias', () => {
 
   // Leerían «No se puede comprobar · undefined», que no dice nada.
   it('un tipo de regla que ya no existe se explica igual', () => {
-    const r = cruda({ regla: { tipo: 'RECIBOS' } as unknown as Bonificacion['regla'] });
+    const r = cruda({ regla: { tipo: 'DOMICILIACION_ANTIGUA' } as unknown as Bonificacion['regla'] });
 
     expect(r).toMatchObject({ veredicto: 'no_verificable', motivo: 'no se reconoce qué mirar' });
+  });
+});
+
+// §6 ter · la tercera fuente, y la última que sale de los movimientos. Lo que
+// queda —seguros, alarma— se prueba con papel, no con un cargo.
+describe('la condición de recibos domiciliados', () => {
+  const mes = (m: string, cuantos: number, cuentaId = 3): RecibosDeUnMes => ({
+    cuentaId,
+    mes: m,
+    cuantos,
+    estado: 'cerrado',
+  });
+
+  const deRecibos = (over: Partial<Bonificacion> = {}): Bonificacion =>
+    bonif({
+      tipo: 'RECIBOS',
+      nombre: 'Recibos',
+      regla: { tipo: 'RECIBOS', minimoRecibos: 3 },
+      tarjetaExigidaId: undefined,
+      cuentaExigidaId: '3',
+      ...over,
+    });
+
+  const seisMeses = ['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'].map((m) =>
+    mes(m, 4)
+  );
+
+  it('cumple cuando todos los meses llegan al mínimo', () => {
+    expect(unaSola(deRecibos(), con([], [], [], seisMeses))).toMatchObject({
+      veredicto: 'cumple',
+      exigido: 3,
+      unidad: 'recibos',
+      mensual: { conMovimiento: 6, queLlegan: 6 },
+    });
+  });
+
+  // Basta un mes flojo para que la revisión la tumbe · decide el peor.
+  it('un mes con menos recibos la tumba', () => {
+    const conUnoCorto = [...seisMeses.slice(1), mes('2026-03', 2)];
+
+    expect(unaSola(deRecibos(), con([], [], [], conUnoCorto))).toMatchObject({
+      veredicto: 'no_cumple',
+      medido: 2,
+      mensual: { conMovimiento: 6, queLlegan: 5 },
+    });
+  });
+
+  // A diferencia de la nómina, aquí el silencio SÍ es un «no»: no hace falta
+  // dar de alta nada para que ATLAS vea un recibo domiciliado.
+  it('sin recibos en esa cuenta no cumple, no es una duda', () => {
+    const r = unaSola(deRecibos(), con([], [], [], [mes('2026-05', 5, 9)]));
+
+    expect(r).toMatchObject({ veredicto: 'no_cumple', medido: 0 });
+    expect(r.motivo).toContain('ningún recibo en esa cuenta');
+  });
+
+  it('sin decir la cuenta no se puede mirar', () => {
+    const r = unaSola(deRecibos({ cuentaExigidaId: '' }), con([], [], [], seisMeses));
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('en qué cuenta');
+  });
+
+  it('sin decir cuántos tampoco', () => {
+    const r = unaSola(
+      deRecibos({ regla: { tipo: 'RECIBOS', minimoRecibos: 0 } }),
+      con([], [], [], seisMeses)
+    );
+
+    expect(r.motivo).toContain('cuántos recibos');
+  });
+});
+
+// Los recibos se CUENTAN · «2,5 recibos» no existe. El asistente ya guarda
+// enteros; esto protege del dato guardado a mano, que si no acabaría dicho tal
+// cual en pantalla.
+describe('un umbral de recibos con decimales', () => {
+  const mes = (m: string, cuantos: number): RecibosDeUnMes => ({
+    cuentaId: 3,
+    mes: m,
+    cuantos,
+    estado: 'cerrado',
+  });
+
+  const conUmbral = (minimoRecibos: number, cuantos: number) =>
+    verificarBonificaciones(
+      [
+        bonif({
+          tipo: 'RECIBOS',
+          regla: { tipo: 'RECIBOS', minimoRecibos },
+          tarjetaExigidaId: undefined,
+          cuentaExigidaId: '3',
+        }),
+      ],
+      con([], [], [], [mes('2026-05', cuantos)]),
+      HOY
+    )[0];
+
+  // Al menos 2,5 recibos se cumple con TRES, no con dos · `ceil`, no `round`.
+  it('se redondea hacia arriba · es un mínimo', () => {
+    expect(conUmbral(2.5, 3)).toMatchObject({ veredicto: 'cumple', exigido: 3 });
+    expect(conUmbral(2.5, 2)).toMatchObject({ veredicto: 'no_cumple', exigido: 3 });
+  });
+
+  it('un entero no se mueve', () => {
+    expect(conUmbral(3, 3).exigido).toBe(3);
   });
 });

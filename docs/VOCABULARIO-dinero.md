@@ -419,6 +419,22 @@ Lo que el banco mira de la nómina es **lo que le entra a él**: domiciliada en 
 cuenta. Domiciliarla en otro banco no es «no se puede comprobar», es que **no**.
 Distinto de que ATLAS no sepa de ninguna nómina, que sí es no poder comprobarlo.
 
+**Decisión · 4 de agosto de 2026 · los recibos se cuentan, no se suman.**
+
+«Tener domiciliados al menos tres recibos» son **tres servicios distintos**, no
+el de la luz tres meses seguidos. Así que se cuentan **orígenes** —el recurrente
+que los emite— y no cargos. Y se miden mes a mes, como la nómina: el mes con
+menos recibos es el que decide.
+
+Por eso una condición dice también **en qué se mide**. Casi todas van en euros y
+ese es el supuesto por defecto; los recibos no. Enseñar «3 €» donde el banco
+pide tres recibos no es un detalle de formato, es otra cosa.
+
+Y aquí el silencio **sí** es un «no», al revés que en la nómina: no hace falta
+dar de alta nada para que ATLAS vea un recibo domiciliado —sale de los gastos
+recurrentes, que es de donde sale toda la tesorería—. Cero recibos cargados en
+esa cuenta significa cero recibos domiciliados en ella.
+
 ### 6 ter · bis · Lo que la bonificación hace con la cuota
 
 **Decisión · 4 de agosto de 2026:**
@@ -493,11 +509,10 @@ Escrito para no perderlo, con la fecha en que se detectó.
   tarjeta que lo generó: el abono llega como un ingreso más y nada dice de
   quién viene. Lo que se mide hoy es lo que le CORRESPONDE al gasto ya cerrado
   según su porcentaje, no el apunte visto en el banco. §3.7.
-- **2026-08-04** · De las condiciones que se verifican contra la tesorería hay
-  fuente para la **tarjeta** y la **nómina**. Quedan los **recibos
-  domiciliados**, que se pueden mirar y todavía no se miran. Los **seguros** y
-  la **alarma** se prueban con su póliza o su contrato, no con un movimiento,
-  así que puede que no lleguen nunca. §6 ter.
+- **2026-08-04** · Lo que queda de §6 ter **no sale de los movimientos**: los
+  **seguros** y la **alarma** se prueban con su póliza o su contrato, y el
+  **plan de pensiones** con su aportación, que hoy no se sigue en tesorería.
+  Puede que no lleguen nunca por esta vía. §6 ter.
 - **2026-08-04** · De la nómina, **un mes en el que no entró nada no se
   distingue de un mes sin conciliar**: los dos son ausencia de cobro. Se cuentan
   los meses que se ven, no los que debería haber — y un hueco de verdad, que es
@@ -515,6 +530,11 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-04** · Los **recibos domiciliados** se miran contra los movimientos:
+  cuántos DISTINTOS se cargan en esa cuenta, mes a mes. Tercera y última fuente
+  que sale de la tesorería — y la primera que no se mide en euros. `RECIBOS`
+  faltaba además como regla, así que una bonificación de ese tipo no tenía
+  forma de decir cuántos. §6 ter.
 - **2026-08-04** · La **nómina domiciliada** se mira contra los movimientos: lo
   cobrado en **esa** cuenta, **mes a mes**, contra el mínimo. Es la segunda
   fuente de §6 ter, y la primera que no se mide por un total. §6 ter.

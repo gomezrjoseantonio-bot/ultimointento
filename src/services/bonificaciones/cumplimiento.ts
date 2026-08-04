@@ -44,6 +44,14 @@ export interface Cumplimiento {
   /** Lo que hay que alcanzar para cumplir. */
   exigido?: number;
   /**
+   * En qué se miden `medido` y `exigido`.
+   *
+   * Casi todo se mide en euros y ese es el supuesto por defecto. Los recibos
+   * domiciliados no: ahí la condición es **cuántos**, y enseñar «3 €» donde el
+   * banco pide tres recibos no es un detalle de formato — es otra cosa.
+   */
+  unidad?: 'euros' | 'recibos';
+  /**
    * Lo que hay en la ventana pero el banco todavía no ha cobrado.
    *
    * Va aparte a propósito. Sumarlo a `medido` diría que está demostrado algo

@@ -3,8 +3,9 @@
 // ============================================================================
 //
 // La forma común está en `cumplimiento`. Aquí viven las FUENTES: quién sabe
-// agregar cada tipo de condición. Hoy dos —la tarjeta (§3.6) y la nómina— y el
-// resto se dice con todas las letras en vez de darse por buenas.
+// agregar cada tipo de condición. Hoy tres —la tarjeta (§3.6), la nómina y los
+// recibos domiciliados—; lo que queda se prueba con una póliza o un contrato, no
+// con un movimiento, y se dice con todas las letras en vez de darse por bueno.
 //
 // Añadir una es quitar su fila de `SIN_FUENTE` y escribir su función. Esa tabla
 // es, literalmente, la lista de lo que falta.
@@ -18,6 +19,8 @@ import type { GastoDeUnPeriodo } from '../gastoPorTarjeta';
 import { gastoDeLaTarjeta } from '../gastoPorTarjeta';
 import type { CobroDeUnMes } from './cobrosDeNomina';
 import { cobrosDeLaCuenta } from './cobrosDeNomina';
+import type { RecibosDeUnMes } from './recibosDomiciliados';
+import { recibosDeLaCuenta } from './recibosDomiciliados';
 import { bonificaHipoteca } from '../tarjetasReglas';
 import type { Cumplimiento, Ventana } from './cumplimiento';
 import { ventanaDeEvaluacion, veredictoDelImporte } from './cumplimiento';
@@ -29,6 +32,8 @@ export interface MovimientosQuePrueban {
   periodosDeTarjeta: GastoDeUnPeriodo[];
   /** La nómina por cuenta y mes · lo que devuelve `cobrosDeNomina`. */
   cobrosDeNomina: CobroDeUnMes[];
+  /** Los recibos por cuenta y mes · lo que devuelve `recibosDomiciliados`. */
+  recibosDomiciliados: RecibosDeUnMes[];
 }
 
 /**
@@ -39,7 +44,10 @@ export interface MovimientosQuePrueban {
  * `default` lo dejaría pasar en silencio, que es como se llega a «nadie las
  * mira» sin que nadie lo decidiera.
  */
-const SIN_FUENTE: Record<Exclude<ReglaBonificacion['tipo'], 'TARJETA' | 'NOMINA'>, string> = {
+const SIN_FUENTE: Record<
+  Exclude<ReglaBonificacion['tipo'], 'TARJETA' | 'NOMINA' | 'RECIBOS'>,
+  string
+> = {
   PLAN_PENSIONES: 'la aportación al plan todavía no se sigue en tesorería',
   SEGURO_HOGAR: 'un seguro se prueba con su póliza, no con un movimiento',
   SEGURO_VIDA: 'un seguro se prueba con su póliza, no con un movimiento',
@@ -212,6 +220,72 @@ function porNomina(
   };
 }
 
+/**
+ * La condición de recibos domiciliados · §6 ter.
+ *
+ * «Tener domiciliados al menos N recibos». Lo que cuenta es **cuántos
+ * distintos** —tres recibos son tres servicios, no el de la luz tres meses— y,
+ * como la nómina, se mide **mes a mes**: el mes con menos recibos es el que
+ * decide, porque basta uno flojo para que la revisión la tumbe.
+ */
+function porRecibos(
+  b: Bonificacion,
+  regla: Extract<ReglaBonificacion, { tipo: 'RECIBOS' }>,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban
+): Cumplimiento {
+  const base = { bonificacionId: b.id, nombre: b.nombre, unidad: 'recibos' as const };
+
+  const cuentaId = Number(b.cuentaExigidaId);
+  if (!b.cuentaExigidaId || !Number.isFinite(cuentaId)) {
+    return noVerificable(b, 'no dice en qué cuenta hay que domiciliarlos');
+  }
+  if (!Number.isFinite(regla.minimoRecibos) || regla.minimoRecibos <= 0) {
+    return noVerificable(b, 'no dice cuántos recibos hacen falta');
+  }
+
+  // Un conteo · `Math.ceil` y no `round` porque el umbral es un MÍNIMO: «al
+  // menos 2,5 recibos» se cumple con tres, no con dos. El asistente ya guarda
+  // enteros, así que para un dato sano esto no cambia nada; protege del que se
+  // haya guardado a mano, que si no acabaría dicho «2,5 recibos» en pantalla.
+  const exigidos = Math.ceil(regla.minimoRecibos);
+
+  const meses = recibosDeLaCuenta(movimientos.recibosDomiciliados, cuentaId, {
+    ...ventana,
+    soloCerrados: true,
+  });
+
+  // Aquí el silencio SÍ es un «no»: a diferencia de la nómina, no hace falta
+  // dar de alta nada para que ATLAS vea un recibo domiciliado — sale de los
+  // gastos recurrentes, que es de donde sale toda la tesorería. Cero recibos
+  // cargados en esa cuenta significa cero recibos domiciliados en ella.
+  if (meses.length === 0) {
+    return {
+      ...base,
+      veredicto: 'no_cumple',
+      ventana,
+      medido: 0,
+      exigido: exigidos,
+      motivo: 'no se ha cargado ningún recibo en esa cuenta',
+    };
+  }
+
+  const llega = (cuantos: number) => cuantos >= exigidos;
+  const peor = Math.min(...meses.map((m) => m.cuantos));
+
+  return {
+    ...base,
+    veredicto: llega(peor) ? 'cumple' : 'no_cumple',
+    ventana,
+    medido: peor,
+    exigido: exigidos,
+    mensual: {
+      conMovimiento: meses.length,
+      queLlegan: meses.filter((m) => llega(m.cuantos)).length,
+    },
+  };
+}
+
 function verificarUna(
   b: Bonificacion,
   movimientos: MovimientosQuePrueban,
@@ -223,6 +297,7 @@ function verificarUna(
   const ventana = ventanaDeEvaluacion(hasta, b.lookbackMeses);
   if (b.regla.tipo === 'TARJETA') return porTarjeta(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'NOMINA') return porNomina(b, b.regla, ventana, movimientos);
+  if (b.regla.tipo === 'RECIBOS') return porRecibos(b, b.regla, ventana, movimientos);
 
   // `hasOwnProperty` y no `SIN_FUENTE[...]` a secas: un tipo guardado que ya no
   // esté en la tabla daría un motivo `undefined`, y el usuario leería
