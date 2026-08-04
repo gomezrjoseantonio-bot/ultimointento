@@ -4,7 +4,7 @@
 // comprobar» y «te faltan 1.000 €» piden cosas distintas de quien lo lee, y
 // confundirlas manda a gastar para arreglar lo que no se arregla gastando.
 
-import { textoDeCumplimiento } from '../textoBonificacion';
+import { textoDeCumplimiento, textoDeLoQueEstaEnJuego } from '../textoBonificacion';
 import type { Cumplimiento } from '../../../services/bonificaciones/cumplimiento';
 
 const c = (over: Partial<Cumplimiento> = {}): Cumplimiento => ({
@@ -70,5 +70,29 @@ describe('lo que no se ha podido mirar', () => {
         })
       )
     ).toBe('No cuenta · «Carrefour» es de fuera, y las de fuera nunca bonifican');
+  });
+});
+
+// §6 ter · aquí el veredicto deja de ser informativo y dice a qué cuota vas.
+describe('lo que está en juego', () => {
+  it('con todo cumplido dice a qué tipo pagas', () => {
+    expect(
+      textoDeLoQueEstaEnJuego({ tinHoy: 2.4, tinSiRevisaran: 2.4, sobrecosteMensual: 0 })
+    ).toBe('Pagas al 2,40 % · con tus bonificaciones aplicadas');
+  });
+
+  // La condición va DELANTE: lo que gastes este mes no cambia el recibo de este
+  // mes, cambia lo que decida la próxima revisión. Enseñarlo como la cuota
+  // actual sería enseñar una cuota que nadie te cobra.
+  it('el riesgo se dice condicionado, no como cuota actual', () => {
+    expect(
+      textoDeLoQueEstaEnJuego({ tinHoy: 2.4, tinSiRevisaran: 2.7, sobrecosteMensual: 31.2 })
+    ).toBe('Pagas al 2,40 %. Si la revisión fuera hoy pasarías al 2,70 % · 31,20 € más al mes');
+  });
+
+  it('el tipo lleva coma decimal, no punto', () => {
+    expect(
+      textoDeLoQueEstaEnJuego({ tinHoy: 3, tinSiRevisaran: 3, sobrecosteMensual: 0 })
+    ).toContain('3,00 %');
   });
 });

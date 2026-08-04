@@ -75,3 +75,13 @@
   color: var(--atlas-v5-ink-4);
   padding-top: 8px;
 }
+
+.enJuego {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  line-height: 1.5;
+}

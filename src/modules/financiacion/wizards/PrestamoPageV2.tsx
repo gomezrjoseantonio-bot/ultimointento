@@ -64,6 +64,7 @@ import type { PrestamoFinanciacion } from '../../../types/financiacion';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import { bonificaHipoteca } from '../../../services/tarjetasReglas';
+import { tinConBonificaciones } from '../../../services/bonificaciones/tinEfectivo';
 import styles from './PrestamoPageV2.module.css';
 
 // ─── Tipos auxiliares ───────────────────────────────────────────────────────
@@ -997,10 +998,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         base = p.tipoNominalAnualMixtoFijo ?? 0;
         break;
     }
-    const bonifSum = (p.bonificaciones ?? [])
-      .filter((b) => b.estado !== 'INACTIVO')
-      .reduce((s, b) => s + (b.reduccionPuntosPorcentuales ?? 0), 0);
-    return Math.max(0, base - bonifSum);
+    // La rebaja, con la regla única de §6 ter. Aquí se sumaba a mano, sin tope
+    // y contando también la que el banco ya hubiera retirado.
+    return tinConBonificaciones(base, p.bonificaciones, p);
   };
 
   const regenerarTreasuryEvents = async (

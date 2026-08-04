@@ -1,7 +1,8 @@
 // Préstamos Calculation Service
 // Implements French amortization system with support for irregular payments
 
-import { Prestamo, PeriodoPago, PlanPagos, CalculoAmortizacion } from '../types/prestamos';
+import { Prestamo, PeriodoPago, PlanPagos, CalculoAmortizacion, Bonificacion } from '../types/prestamos';
+import { estaAplicada, tinConBonificaciones } from './bonificaciones/tinEfectivo';
 
 export class PrestamosCalculationService {
   
@@ -59,10 +60,13 @@ export class PrestamosCalculationService {
 
   /**
    * Check if a bonification should be applied (active states)
+   *
+   * Delega en `estaAplicada` · era la tercera versión de la misma pregunta y se
+   * dejaba fuera las que están a la espera o en riesgo, que el banco sigue
+   * aplicando (§6 ter).
    */
-  private isActiveBonification(bonif: any): boolean {
-    return bonif.estado === 'CUMPLIDA' || bonif.estado === 'SELECCIONADO' || 
-           bonif.estado === 'ACTIVO_POR_GRACIA' || bonif.seleccionado === true;
+  private isActiveBonification(bonif: Bonificacion): boolean {
+    return estaAplicada(bonif);
   }
 
   /**
@@ -78,14 +82,10 @@ export class PrestamosCalculationService {
       return baseRate;
     }
 
-    // Sum up all active bonifications (CUMPLIDA, SELECCIONADO, or ACTIVO_POR_GRACIA)
-    const totalBonifications = prestamo.bonificaciones
-      .filter(bonif => this.isActiveBonification(bonif))
-      .reduce((sum, bonif) => sum + bonif.reduccionPuntosPorcentuales, 0);
-
-    // Apply bonifications (rate cannot go below 0)
-    const bonifiedRate = Math.max(0, baseRate - totalBonifications);
-    return Math.round(bonifiedRate * 10000) / 10000;
+    // Una sola regla para toda la app · `bonificaciones/tinEfectivo` (§6 ter).
+    // Aquí se sumaba en crudo, sin tope y con su propia idea de qué estados
+    // cuentan; la pantalla hacía otra cosa y el cuadro no hacía nada.
+    return tinConBonificaciones(baseRate, prestamo.bonificaciones, prestamo);
   }
 
   /**
@@ -346,7 +346,10 @@ export class PrestamosCalculationService {
       );
     }
 
-    const baseRate = this.calculateBaseRate(prestamo);
+    // El cuadro va al tipo que SE PAGA, bonificaciones incluidas. Usaba el tipo
+    // base, así que para cualquier préstamo bonificado el cuadro decía una
+    // cuota y las previsiones de tesorería —que sí bonificaban— decían otra.
+    const baseRate = this.calculateBonifiedRate(prestamo);
 
     // Backward/forward compatibility: honor explicit irregular fields first,
     // but derive sensible defaults from esquemaPrimerRecibo when they are not present.
@@ -529,9 +532,10 @@ export class PrestamosCalculationService {
     // New principal after amortization
     const nuevoPrincipal = prestamo.principalVivo - importeAmortizar;
     
-    // Calculate applicable rate at amortization date
+    // Calculate applicable rate at amortization date · el que se paga, para que
+    // el ahorro simulado se compare contra el cuadro real y no contra otro.
     const fechaAmort = new Date(fechaAmortizacion);
-    const baseRate = this.calculateBaseRate(prestamo, fechaAmort);
+    const baseRate = this.calculateBonifiedRate(prestamo, fechaAmort);
     
     // Calculate remaining months from amortization date
     const fechaFin = new Date(prestamo.fechaFirma);

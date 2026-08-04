@@ -23,6 +23,9 @@ const dia = (iso: string): string => {
   return `${Number(d)} ${mesCorto(Number(mes) - 1)}`;
 };
 
+/** Un tipo de interés · dos decimales, con la coma española. */
+const pct = (n: number): string => `${n.toFixed(2).replace('.', ',')} %`;
+
 /**
  * Lo que dicen los movimientos de una bonificación, en una línea.
  *
@@ -55,4 +58,32 @@ export function textoDeCumplimiento(c: Cumplimiento): string {
   return `Te faltan ${euros(c.exigido - c.medido)} · llevas ${euros(c.medido)} de ${euros(
     c.exigido
   )}${desde}${sinCobrar}`;
+}
+
+/** Lo que está en juego, en el tipo y en la cuota. */
+export interface LoQueEstaEnJuego {
+  /** El TIN que se paga hoy · con las bonificaciones aplicadas. */
+  tinHoy: number;
+  /** El que se pagaría si la revisión fuese hoy. */
+  tinSiRevisaran: number;
+  /** Lo que subiría la cuota al mes. */
+  sobrecosteMensual: number;
+}
+
+/**
+ * A qué cuota vas · §6 ter.
+ *
+ * Es donde el veredicto deja de ser informativo. Y hay que decirlo con la
+ * condición delante —«si la revisión fuera hoy»—: lo que gastes este mes **no
+ * cambia el recibo de este mes**, cambia lo que el banco decida en la próxima
+ * revisión. Enseñarlo como la cuota actual sería enseñar una cuota que nadie
+ * te está cobrando.
+ */
+export function textoDeLoQueEstaEnJuego(j: LoQueEstaEnJuego): string {
+  const hoy = `Pagas al ${pct(j.tinHoy)}`;
+  if (j.sobrecosteMensual <= 0) return `${hoy} · con tus bonificaciones aplicadas`;
+
+  return `${hoy}. Si la revisión fuera hoy pasarías al ${pct(j.tinSiRevisaran)} · ${euros(
+    j.sobrecosteMensual
+  )} más al mes`;
 }

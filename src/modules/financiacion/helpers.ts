@@ -5,7 +5,8 @@
 // hagan cálculos. La lógica de negocio (cálculo de cuadros, fiscalidad,
 // migraciones) sigue en los services del repositorio (NO se duplica).
 
-import type { Prestamo, PlanPagos, PeriodoPago, Bonificacion } from '../../types/prestamos';
+import type { Prestamo, PlanPagos, PeriodoPago } from '../../types/prestamos';
+import { tinConBonificaciones } from '../../services/bonificaciones/tinEfectivo';
 import type { BankPalette, LoanKind, LoanRow } from './types';
 
 const BANK_KEYWORDS: Record<string, BankPalette> = {
@@ -57,56 +58,51 @@ export const inferLoanKind = (p: Prestamo): LoanKind => {
   return 'personal';
 };
 
-const reduccionEfectivaPP = (b: Bonificacion): number => {
-  // `reduccionPuntosPorcentuales` viene en fracción (0.003 = 0.30 pp).
-  // Convertimos a "puntos porcentuales" para restar al TIN base.
-  if (Number.isFinite(b.reduccionPuntosPorcentuales)) {
-    return Number(b.reduccionPuntosPorcentuales) * 100;
-  }
-  return Number(b.impacto?.puntos ?? 0);
+/** El TIN antes de bonificar · lo que decide el tipo del préstamo. */
+export const tinBase = (p: Prestamo): number => {
+  if (p.tipo === 'FIJO') return p.tipoNominalAnualFijo ?? 0;
+  if (p.tipo === 'VARIABLE') return (p.valorIndiceActual ?? 0) + (p.diferencial ?? 0);
+  if (p.tipo === 'MIXTO') return p.tipoNominalAnualMixtoFijo ?? 0;
+  return 0;
 };
-
-const ESTADOS_BONIF_ACTIVAS: Bonificacion['estado'][] = [
-  'ACTIVO_POR_GRACIA',
-  'ACTIVO_POR_CUMPLIMIENTO',
-  'CUMPLIDA',
-];
 
 /**
- * TIN efectivo aproximado · para FIJO · `tipoNominalAnualFijo`. Para VARIABLE/MIXTO
- * · suma índice + diferencial. Aplica bonificaciones activas (estado en gracia ·
- * cumplimiento · cumplida).
+ * TIN efectivo aproximado · el base menos lo que rebajan las bonificaciones.
+ *
+ * La rebaja la calcula `tinConBonificaciones` y no este fichero: era una de las
+ * cuatro copias de la misma regla, y la que estaba peor —multiplicaba los
+ * puntos por cien y descartaba las bonificaciones recién contratadas, así que
+ * la pantalla enseñaba el TIN sin bonificar mientras tesorería preveía la cuota
+ * ya bonificada (§6 ter).
  */
-export const effectiveTIN = (p: Prestamo): number => {
-  let base = 0;
-  if (p.tipo === 'FIJO') base = p.tipoNominalAnualFijo ?? 0;
-  else if (p.tipo === 'VARIABLE') base = (p.valorIndiceActual ?? 0) + (p.diferencial ?? 0);
-  else if (p.tipo === 'MIXTO') base = p.tipoNominalAnualMixtoFijo ?? 0;
-
-  const aplicadas = (p.bonificaciones ?? [])
-    .filter((b) => ESTADOS_BONIF_ACTIVAS.includes(b.estado))
-    .reduce((s, b) => s + reduccionEfectivaPP(b), 0);
-
-  const tope = p.maximoBonificacionPorcentaje ?? p.topeBonificacionesTotal;
-  const aplica = tope ? Math.min(aplicadas, tope * 100) : aplicadas;
-  return Math.max(0, base - aplica);
-};
+export const effectiveTIN = (p: Prestamo): number =>
+  tinConBonificaciones(tinBase(p), p.bonificaciones, p);
 
 const monthsBetween = (start: Date, end: Date): number => {
   return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
 };
 
 /**
- * Cuota mensual aproximada · sistema francés. Si el préstamo todavía está en
- * carencia, devuelve sólo la parte de intereses sobre principalVivo.
+ * Cuota mensual aproximada de este préstamo **a un TIN dado** · sistema francés.
+ *
+ * El tipo se pasa aparte para poder preguntar «¿y si fuese otro?» sin escribir
+ * la fórmula dos veces: es lo que hace falta para enseñar a qué cuota vas si
+ * pierdes una bonificación (§6 ter).
  */
-export const cuotaMensualAprox = (p: Prestamo): number => {
-  const i = effectiveTIN(p) / 100 / 12;
+export const cuotaMensualConTin = (p: Prestamo, tinAnual: number): number => {
+  const i = tinAnual / 100 / 12;
   const n = Math.max(1, p.plazoMesesTotal - p.cuotasPagadas);
   const C = p.principalVivo;
   if (i === 0) return C / n;
   return (C * i) / (1 - Math.pow(1 + i, -n));
 };
+
+/**
+ * Cuota mensual aproximada · la del TIN que se paga hoy, bonificaciones
+ * incluidas.
+ */
+export const cuotaMensualAprox = (p: Prestamo): number =>
+  cuotaMensualConTin(p, effectiveTIN(p));
 
 /**
  * Fecha de vencimiento aproximada · firma + plazoMesesTotal.

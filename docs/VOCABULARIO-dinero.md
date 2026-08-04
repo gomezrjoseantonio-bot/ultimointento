@@ -408,6 +408,39 @@ De la de tarjeta se sabe el total del periodo, que es su recibo (§3.5); **no la
 compras una a una**. Una condición del tipo «6 operaciones al mes» no se puede
 contar hoy, y así se dice.
 
+### 6 ter · bis · Lo que la bonificación hace con la cuota
+
+**Decisión · 4 de agosto de 2026:**
+
+- **«Aplicada» y «cumplida» son preguntas distintas.** Lo que decide el recibo
+  de este mes es si **el banco te la está aplicando**, no si la estás
+  cumpliendo. Una bonificación contratada se aplica desde la firma y sigue
+  aplicada **hasta que una revisión te la retire**. Lo que cumplas ahora decide
+  la revisión que viene.
+- Por eso solo dos estados no rebajan el tipo: **la que nunca contrataste** y
+  **la que el banco ya te quitó**. Estar «en riesgo» todavía es estar aplicada.
+- **Cuánto rebajan se escribe una vez.** Estaba en cuatro sitios y daban tres
+  respuestas: la pantalla multiplicaba los puntos por cien, el asistente los
+  restaba tal cual, el cuadro de amortización no restaba nada y las alertas
+  tenían su propia lista de estados. La consecuencia era visible: **la cuota
+  prevista en tesorería y la enseñada en financiación no coincidían**.
+- **Los puntos se guardan en puntos.** `0.30` es «−0,30 p.p.». Los dos topes
+  (`maximoBonificacionPorcentaje` en fracción, `topeBonificacionesTotal` ya en
+  puntos) se leen **cada uno en su unidad**.
+- **Manda el estado, y solo el estado.** Había una segunda llave —un
+  `seleccionado` aparte— que podía contradecirlo y aplicar una bonificación
+  marcada como inactiva. Dos llaves para la misma puerta son dos respuestas.
+- **A qué cuota vas se dice con la condición delante**: «si la revisión fuera
+  hoy». Enseñarlo como la cuota actual sería enseñar una que nadie te cobra.
+  Y lo que **no se puede comprobar no se da por perdido** — es la misma tercera
+  respuesta de arriba, y aquí se traduciría en un sobrecoste inventado.
+- **Ese tipo se recalcula entero, no se suman los puntos perdidos al de hoy.**
+  Con tope, el de hoy ya viene acotado: perder una bonificación puede no subir
+  el tipo nada porque las que quedan siguen llegando al tope.
+- Un estado que **no esté en la tabla** se lee como *no aplicada*. Las dos
+  direcciones se equivocan, pero darla por aplicada enseña una cuota **más baja
+  de la que se paga**, y sobre esa cifra se hacen cuentas.
+
 *(Resuelta la de tarjeta · las demás esperan su fuente · §8.)*
 
 ## 7 · Combinaciones imposibles
@@ -455,10 +488,11 @@ Escrito para no perderlo, con la fecha en que se detectó.
   falta reconocerlos entre los movimientos de la cuenta. Los **seguros** y la
   **alarma** se prueban con su póliza o su contrato, no con un movimiento, así
   que puede que no lleguen nunca. §6 ter.
-- **2026-08-03** · El TIN efectivo **ignora las bonificaciones dadas de alta en
-  el asistente**: las guarda como `SELECCIONADO` y solo cuentan las que están
-  en gracia o cumplidas. Cerrar el círculo es hacer que el veredicto de §6 ter
-  mueva ese estado — hoy el veredicto se enseña, pero no toca la cuota. §6 ter.
+- **2026-08-04** · El veredicto **no mueve el estado guardado** de la
+  bonificación. Se enseña a qué cuota vas, pero `PERDIDA` la sigue teniendo que
+  poner alguien a mano cuando el banco te la retire de verdad. Automatizarlo
+  pide saber **cuándo revisa el banco**, que hoy no se pregunta en el alta.
+  §6 ter.
 - **2026-08-03** · `TARJETA_CREDITO` sigue existiendo como tipo de cuenta para
   las cuentas **históricas**. Ya no se crean —una tarjeta nueva nace como
   tarjeta— pero las que había siguen ahí, porque sus movimientos son compras
@@ -467,6 +501,14 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-04** · Una bonificación **rebaja de verdad el tipo**, y la rebaja
+  está escrita **una sola vez**. Antes había cuatro versiones: la pantalla
+  multiplicaba los puntos por cien y descartaba las recién contratadas —así que
+  no rebajaba nunca—, el cuadro de amortización no rebajaba nada, y el asistente
+  sí. Resultado: **la cuota prevista en tesorería no coincidía con la enseñada
+  en financiación**. §6 ter · bis.
+- **2026-08-04** · El veredicto tiene consecuencia en euros: **a qué cuota vas**
+  si la revisión fuera hoy, y cuánto subiría al mes. §6 ter · bis.
 - **2026-08-03** · Las **bonificaciones** se miran contra los movimientos que
   las prueban, con la forma común de §6 ter —agregar, en una ventana, contra un
   umbral— y tres respuestas, la tercera «no se puede comprobar». La de tarjeta
