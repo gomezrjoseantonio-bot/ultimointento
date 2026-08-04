@@ -55,8 +55,17 @@ const APLICADA: Record<Bonificacion['estado'], boolean> = {
   EN_RIESGO: true,
 };
 
+/**
+ * Un estado que no está en la tabla —datos viejos, un `as` de más— se lee como
+ * **no aplicada**, no como aplicada.
+ *
+ * Las dos direcciones se equivocan, pero no cuestan lo mismo: darla por
+ * aplicada rebaja el tipo y enseña una cuota **más baja de la que se paga**, y
+ * sobre esa cifra se hacen cuentas. Al revés solo se enseña una cuota más alta
+ * de la real, que es el error que no arruina un mes.
+ */
 export function estaAplicada(b: Pick<Bonificacion, 'estado'>): boolean {
-  return APLICADA[b.estado] ?? true;
+  return APLICADA[b.estado] === true;
 }
 
 /** Los dos topes que puede traer un préstamo · cada uno en SU unidad. */
@@ -117,7 +126,8 @@ export function reduccionPorBonificaciones(
 
   const tope = topeEnPuntos(topes);
   const acotada = tope != null ? Math.min(suma, tope) : suma;
-  // A céntimo de punto · sumar decimales deja 0.6000000000000001.
+  // A diezmilésima de punto · sumar decimales deja 0.6000000000000001, y un
+  // tipo se cotiza con dos o tres, así que cuatro no pierden nada real.
   return Math.max(0, Math.round(acotada * 10000) / 10000);
 }
 
@@ -136,29 +146,32 @@ export function tinConBonificaciones(
 }
 
 /**
- * Los puntos que se perderían **si la revisión fuera hoy** · §6 ter.
+ * El TIN que se pagaría **si la revisión fuera hoy** · §6 ter.
  *
- * Aquí es donde el veredicto deja de ser informativo: son las bonificaciones
- * que hoy te aplican y que los movimientos dicen que NO estás cumpliendo. No
- * cambian el recibo de este mes —eso lo decide la revisión, no la tesorería—,
- * pero sí dicen a qué cuota vas.
+ * Aquí es donde el veredicto deja de ser informativo: se quitan las que hoy te
+ * aplican y los movimientos dicen que NO estás cumpliendo, y se vuelve a
+ * calcular. No cambia el recibo de este mes —eso lo decide la revisión, no la
+ * tesorería—, pero sí dice a qué cuota vas.
+ *
+ * Se recalcula entero, y no se suman «los puntos en riesgo» al TIN de hoy: con
+ * un tope, el TIN de hoy ya viene acotado, así que perder una bonificación
+ * puede no subirlo nada —las que quedan siguen llegando al tope—. Sumar habría
+ * enseñado un sobrecoste que no va a ocurrir.
  *
  * Lo que no se puede comprobar **no cuenta como perdido**: es la misma tercera
  * respuesta de §6 ter. Darlo por perdido pondría en pantalla un sobrecoste que
  * nadie sabe si existe, y a esa cifra se le hacen cuentas.
  */
-export function puntosEnRiesgo(
+export function tinSiRevisaranHoy(
+  tinBase: number,
   bonificaciones: Bonificacion[] | undefined,
-  cumplimientos: Cumplimiento[]
+  cumplimientos: Cumplimiento[],
+  topes: TopesDeBonificacion = {}
 ): number {
   const incumplidas = new Set(
     cumplimientos.filter((c) => c.veredicto === 'no_cumple').map((c) => c.bonificacionId)
   );
 
-  const suma = (bonificaciones ?? [])
-    .filter(estaAplicada)
-    .filter((b) => incumplidas.has(b.id))
-    .reduce((total, b) => total + puntosDe(b), 0);
-
-  return Math.max(0, Math.round(suma * 10000) / 10000);
+  const sobreviven = (bonificaciones ?? []).filter((b) => !incumplidas.has(b.id));
+  return tinConBonificaciones(tinBase, sobreviven, topes);
 }

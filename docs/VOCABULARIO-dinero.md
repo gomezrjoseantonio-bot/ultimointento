@@ -427,10 +427,19 @@ contar hoy, y así se dice.
 - **Los puntos se guardan en puntos.** `0.30` es «−0,30 p.p.». Los dos topes
   (`maximoBonificacionPorcentaje` en fracción, `topeBonificacionesTotal` ya en
   puntos) se leen **cada uno en su unidad**.
+- **Manda el estado, y solo el estado.** Había una segunda llave —un
+  `seleccionado` aparte— que podía contradecirlo y aplicar una bonificación
+  marcada como inactiva. Dos llaves para la misma puerta son dos respuestas.
 - **A qué cuota vas se dice con la condición delante**: «si la revisión fuera
   hoy». Enseñarlo como la cuota actual sería enseñar una que nadie te cobra.
   Y lo que **no se puede comprobar no se da por perdido** — es la misma tercera
   respuesta de arriba, y aquí se traduciría en un sobrecoste inventado.
+- **Ese tipo se recalcula entero, no se suman los puntos perdidos al de hoy.**
+  Con tope, el de hoy ya viene acotado: perder una bonificación puede no subir
+  el tipo nada porque las que quedan siguen llegando al tope.
+- Un estado que **no esté en la tabla** se lee como *no aplicada*. Las dos
+  direcciones se equivocan, pero darla por aplicada enseña una cuota **más baja
+  de la que se paga**, y sobre esa cifra se hacen cuentas.
 
 *(Resuelta la de tarjeta · las demás esperan su fuente · §8.)*
 

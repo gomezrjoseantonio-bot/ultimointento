@@ -7,9 +7,9 @@
 
 import {
   estaAplicada,
-  puntosEnRiesgo,
   reduccionPorBonificaciones,
   tinConBonificaciones,
+  tinSiRevisaranHoy,
 } from '../tinEfectivo';
 import type { Cumplimiento } from '../cumplimiento';
 import type { Bonificacion } from '../../../types/prestamos';
@@ -133,34 +133,59 @@ describe('el TIN que se paga', () => {
 });
 
 // Aquí el veredicto de §6 ter deja de ser informativo: dice a qué cuota vas.
-describe('lo que se perdería si revisaran hoy', () => {
+describe('el TIN si revisaran hoy', () => {
   const veredicto = (id: string, v: Cumplimiento['veredicto']): Cumplimiento => ({
     bonificacionId: id,
     nombre: id,
     veredicto: v,
   });
 
-  it('lo que no cumples y hoy te aplican', () => {
+  it('sube por lo que no cumples y hoy te aplican', () => {
     const bs = [bonif(), bonif({ id: 'b2', reduccionPuntosPorcentuales: 0.2 })];
+    // Hoy: 3 − 0,50 = 2,50. Perdiendo b1: 3 − 0,20 = 2,80.
+    expect(tinSiRevisaranHoy(3, bs, [veredicto('b1', 'no_cumple'), veredicto('b2', 'cumple')]))
+      .toBe(2.8);
+  });
 
-    expect(puntosEnRiesgo(bs, [veredicto('b1', 'no_cumple'), veredicto('b2', 'cumple')])).toBe(0.3);
+  // Recalcular entero, no sumar los puntos perdidos al TIN de hoy: con tope, el
+  // de hoy ya viene acotado y las que quedan pueden seguir llegando al tope.
+  // Sumando se habría enseñado una subida que no va a ocurrir.
+  it('con tope, perder una puede no subir el tipo nada', () => {
+    const tres = [bonif(), bonif({ id: 'b2' }), bonif({ id: 'b3' })]; // 0,90 p.p.
+    const topes = { topeBonificacionesTotal: -0.6 };
+
+    // Hoy paga 3 − 0,60 (capado). Perdiendo una quedan 0,60, que sigue capado.
+    expect(tinConBonificaciones(3, tres, topes)).toBe(2.4);
+    expect(tinSiRevisaranHoy(3, tres, [veredicto('b1', 'no_cumple')], topes)).toBe(2.4);
   });
 
   // La misma tercera respuesta de §6 ter · dar por perdido lo que nadie puede
   // comprobar pondría en pantalla un sobrecoste que quizá no existe.
   it('lo que no se puede comprobar NO se da por perdido', () => {
-    expect(puntosEnRiesgo([bonif()], [veredicto('b1', 'no_verificable')])).toBe(0);
+    expect(tinSiRevisaranHoy(3, [bonif()], [veredicto('b1', 'no_verificable')])).toBe(2.7);
   });
 
-  // Ya la perdiste · ese golpe está en la cuota, no por venir.
+  // Ya la perdiste · ese golpe está en la cuota de hoy, no por venir.
   it('lo que el banco ya quitó no se cuenta dos veces', () => {
     const perdida = bonif({ estado: 'PERDIDA' });
 
-    expect(puntosEnRiesgo([perdida], [veredicto('b1', 'no_cumple')])).toBe(0);
+    expect(tinSiRevisaranHoy(3, [perdida], [veredicto('b1', 'no_cumple')])).toBe(3);
   });
 
-  it('cumpliéndolo todo no hay nada en juego', () => {
-    expect(puntosEnRiesgo([bonif()], [veredicto('b1', 'cumple')])).toBe(0);
-    expect(puntosEnRiesgo([bonif()], [])).toBe(0);
+  it('cumpliéndolo todo se sigue pagando lo mismo', () => {
+    expect(tinSiRevisaranHoy(3, [bonif()], [veredicto('b1', 'cumple')])).toBe(2.7);
+    expect(tinSiRevisaranHoy(3, [bonif()], [])).toBe(2.7);
+  });
+});
+
+describe('un estado que no está en la tabla', () => {
+  // Las dos direcciones se equivocan, pero no cuestan lo mismo: darla por
+  // aplicada enseña una cuota MÁS BAJA de la que se paga, y sobre esa cifra se
+  // hacen cuentas.
+  it('se lee como no aplicada · el error barato', () => {
+    const raro = bonif({ estado: 'LO_QUE_SEA' as unknown as Bonificacion['estado'] });
+
+    expect(estaAplicada(raro)).toBe(false);
+    expect(tinConBonificaciones(3, [raro])).toBe(3);
   });
 });

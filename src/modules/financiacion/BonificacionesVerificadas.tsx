@@ -18,9 +18,9 @@ import { gastoPorTarjeta } from '../../services/gastoPorTarjeta';
 import { listarTarjetas } from '../../services/tarjetasService';
 import { verificarBonificaciones } from '../../services/bonificaciones/verificarBonificaciones';
 import type { MovimientosQuePrueban } from '../../services/bonificaciones/verificarBonificaciones';
-import { puntosEnRiesgo } from '../../services/bonificaciones/tinEfectivo';
+import { tinSiRevisaranHoy } from '../../services/bonificaciones/tinEfectivo';
 import type { Prestamo } from '../../types/prestamos';
-import { cuotaMensualConTin, effectiveTIN } from './helpers';
+import { cuotaMensualConTin, effectiveTIN, tinBase } from './helpers';
 import { textoDeCumplimiento, textoDeLoQueEstaEnJuego } from './textoBonificacion';
 import styles from './BonificacionesVerificadas.module.css';
 
@@ -64,9 +64,16 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo }) => {
     : [];
 
   // El tipo que se paga hoy y el que se pagaría si la revisión fuese hoy. La
-  // cuota sale de la misma fórmula en los dos casos, solo cambia el tipo.
+  // cuota sale de la misma fórmula en los dos casos, solo cambia el tipo — y el
+  // segundo se recalcula entero desde el base, no sumando puntos al primero:
+  // con un tope, perder una bonificación puede no subir el tipo nada.
   const tinHoy = effectiveTIN(prestamo);
-  const tinSiRevisaran = tinHoy + puntosEnRiesgo(bonificaciones, cumplimientos);
+  const tinSiRevisaran = tinSiRevisaranHoy(
+    tinBase(prestamo),
+    bonificaciones,
+    cumplimientos,
+    prestamo
+  );
   const enJuego = {
     tinHoy,
     tinSiRevisaran,
