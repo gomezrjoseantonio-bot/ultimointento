@@ -17,7 +17,8 @@
  */
 import type { Prestamo } from '../types/prestamos';
 import { generarCuadro } from './prestamos/cuadro';
-import { interesPorDias, type BaseDeCalculo } from './prestamos/baseDeCalculo';
+import { diasSegunBase, interesPorDias, type BaseDeCalculo } from './prestamos/baseDeCalculo';
+import { fechaDeLosDiasSueltos } from './prestamos/fechasDelArranque';
 
 export type TipoPrestamoV2 = 'hipotecario' | 'personal' | 'linea_credito' | 'otro';
 export type TipoInteresV2 = 'fijo' | 'variable' | 'mixto';
@@ -40,59 +41,40 @@ export interface CarenciaTecnicaInfo {
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
-// ── Date helpers ────────────────────────────────────────────────────────────
-// Operamos sobre strings ISO YYYY-MM-DD para evitar drift por zona horaria.
-
-function parseISODate(iso: string): { y: number; m: number; d: number } {
-  const [y, m, d] = iso.split('-').map((p) => parseInt(p, 10));
-  return { y, m, d };
-}
-
-function toISODate(y: number, m: number, d: number): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${y}-${pad(m)}-${pad(d)}`;
-}
-
-function diasEnMes(y: number, m: number): number {
-  return new Date(y, m, 0).getDate(); // m es 1-12 aquí
-}
-
-function clampDay(y: number, m: number, d: number): number {
-  return Math.min(d, diasEnMes(y, m));
-}
-
-function diasEntreISO(isoA: string, isoB: string): number {
-  // Diferencia de días calendario (UTC para evitar DST).
-  const a = parseISODate(isoA);
-  const b = parseISODate(isoB);
-  const ta = Date.UTC(a.y, a.m - 1, a.d);
-  const tb = Date.UTC(b.y, b.m - 1, b.d);
-  return Math.round((tb - ta) / 86_400_000);
-}
-
 // ── Funciones financieras ───────────────────────────────────────────────────
 
 /**
- * Detecta si hay carencia técnica (días entre la firma y la primera fecha de
- * cobro mensual) y devuelve los días y la fecha de liquidación.
+ * Los días sueltos entre la disposición y el primer cargo · §6 bis · bis.
  *
- * Si el día de firma coincide con el día de cobro → NO hay carencia técnica.
+ * El banco los liquida **en la primera fecha de cobro POSTERIOR a la
+ * disposición**, sea del mes que sea. Tres cuadros reales del Santander, los
+ * tres iguales:
+ *
+ *   · 12-05-2026, cobro el día 1  → 01-06-2026 · 20 días · 214,64 € de 78.500
+ *   · 03-07-2025, cobro fin de mes → 31-07-2025 · 28 días · 154,96 € de 50.000
+ *   · 16-10-2023, cobro fin de mes → 31-10-2023 · 15 días ·  29,05 € de 17.675
+ *
+ * Esto decía «el día de cobro del MES SIGUIENTE», y eso solo acierta cuando el
+ * día de cobro ya ha pasado al firmar. En los otros dos se saltaba un cargo
+ * entero: el de 16-10-2023 salía a **45 días y 87,16 €** en vez de 15 y 29,05, y
+ * encima con la fecha del primer recibo de verdad, o sea dos cargos el mismo
+ * día. *(Jose · 5 ago 2026 — «se dice que la primera cuota son 45 días».)*
+ *
+ * Si el día de cobro es el mismo de la disposición no hay días sueltos que
+ * cobrar. Se compara con el día YA RECORTADO: quien cobra «el 31» y dispone un
+ * 30 de noviembre no tiene carencia, porque en noviembre el 31 es el 30.
  */
 export function detectarCarenciaTecnica(
   fechaFirmaISO: string,
   diaCobro: number,
+  base: BaseDeCalculo = 'ACT/365',
 ): CarenciaTecnicaInfo {
-  const firma = parseISODate(fechaFirmaISO);
-  if (firma.d === diaCobro) {
-    return { existe: false, dias: 0, fechaLiquidacion: null };
-  }
-  // Fecha de liquidación = día de cobro del mes siguiente a la firma.
-  const total = firma.y * 12 + (firma.m - 1) + 1;
-  const ly = Math.floor(total / 12);
-  const lm = (total % 12) + 1;
-  const ld = clampDay(ly, lm, diaCobro);
-  const fechaLiq = toISODate(ly, lm, ld);
-  const dias = diasEntreISO(fechaFirmaISO, fechaLiq);
+  const fechaLiq = fechaDeLosDiasSueltos(fechaFirmaISO, diaCobro);
+  if (!fechaLiq) return { existe: false, dias: 0, fechaLiquidacion: null };
+
+  // Los días, contados COMO LOS CUENTA EL BANCO · con el mes comercial el 31 no
+  // existe, y el Sabadell cobra 26 donde el calendario dice 27.
+  const dias = diasSegunBase(fechaFirmaISO, fechaLiq, base);
   return { existe: dias > 0, dias, fechaLiquidacion: fechaLiq };
 }
 

@@ -67,7 +67,14 @@ import { diasEntre, esISO, partes, restarUnDia, sumarMeses } from './fechas';
 import { recalcularDesde } from './cuadroPorTramos';
 import { tramosDeTipo, type TramoDeTipo } from './tramosDeTipo';
 import { carenciaDe } from './carencia';
-import { baseDe, interesDelPeriodo, interesPorDias } from './baseDeCalculo';
+import {
+  baseDe,
+  baseDiasSueltosDe,
+  diasSegunBase,
+  interesDelPeriodo,
+  interesPorDias,
+} from './baseDeCalculo';
+import { fechaDeLaPrimeraCuota } from './fechasDelArranque';
 
 export { cuotaFrancesa } from './cuotaFrancesa';
 export type { TramoDeTipo } from './tramosDeTipo';
@@ -114,17 +121,22 @@ export interface Cuadro {
 
 // ─── El generador ───────────────────────────────────────────────────────────
 
-/** El día en que se cobra la primera cuota. */
+/** El día en que se cobra la primera cuota ENTERA. */
 function primerCargo(prestamo: Prestamo): string {
   if (esISO(prestamo.fechaPrimerCargo)) return prestamo.fechaPrimerCargo.slice(0, 10);
 
-  // Sin fecha dicha se deduce de la firma: el mes siguiente, o los que diga el
-  // diferimiento, en el día de cargo pactado.
-  const meses = prestamo.diferirPrimeraCuotaMeses && prestamo.diferirPrimeraCuotaMeses > 0
-    ? prestamo.diferirPrimeraCuotaMeses
-    : 1;
   const [, , diaFirma] = partes(prestamo.fechaFirma);
-  return sumarMeses(prestamo.fechaFirma, meses, prestamo.diaCargoMes || diaFirma);
+  const diaCargo = prestamo.diaCargoMes || diaFirma;
+
+  // Un diferimiento pactado manda · son meses de más que se piden aparte.
+  const diferir = prestamo.diferirPrimeraCuotaMeses;
+  if (diferir && diferir > 1) return sumarMeses(prestamo.fechaFirma, diferir, diaCargo);
+
+  // Si no, se deduce: la primera fecha de cobro que esté al menos un mes después
+  // de disponer. Es la regla que cumplen los seis cuadros medidos, y no hay que
+  // preguntarla — preguntarla es lo que llevaba ocho intentos fallando, porque
+  // «el primer cargo» son dos fechas y ATLAS aceptaba las dos.
+  return fechaDeLaPrimeraCuota(prestamo.fechaFirma, diaCargo);
 }
 
 /**
@@ -146,13 +158,6 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
   // de interés, y entonces el tramo fijo de un mixto va sin rebajar.
   const tramos = tramosDeTipo(prestamo).map((t) => ({ ...t, tin: tinDelTramo(prestamo, t) }));
 
-  // El cuadro nace al tipo del arranque y después se rehace tramo a tramo. Un
-  // tramo que empieza ANTES de la primera cuota no parte nada: es el tipo del
-  // arranque, y aplicarlo como corte reescribiría también la línea 0.
-  const delArranque = tramos.filter((t) => !t.desde || t.desde <= cargoInicial);
-  const porRehacer = tramos.filter((t) => t.desde && t.desde > cargoInicial);
-  const tinEfectivo = delArranque.length > 0 ? delArranque[delArranque.length - 1].tin : 0;
-
   // El día objetivo de la serie es el PACTADO, no el del primer cargo: si la
   // primera cita ya viene recortada —un cargo el 31 que cae en febrero— leerlo
   // de ahí dejaría todos los cargos siguientes clavados en el 28.
@@ -169,7 +174,12 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
   //
   // Solo si el préstamo la trae guardada. Deducirla aquí se la inventaría en
   // los préstamos antiguos, que nunca la tuvieron.
-  const ct = prestamo.carenciaTecnica;
+  // ING no cobra ese recibo: se salta esa fecha y mete los días dentro de la
+  // primera cuota. Entonces no hay línea 0 aunque el préstamo traiga la cuenta
+  // guardada — cobrarla sería cobrar dos veces los mismos días.
+  const losMeteEnLaCuota = prestamo.diasSueltosDelArranque === 'EN_LA_PRIMERA_CUOTA';
+
+  const ct = losMeteEnLaCuota ? undefined : prestamo.carenciaTecnica;
   let interesesCarenciaTecnica = 0;
   if (ct && ct.intereses > 0 && esISO(ct.fechaLiquidacion)) {
     interesesCarenciaTecnica = round2(ct.intereses);
@@ -199,19 +209,38 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
   // Cómo cuenta los días el banco · de esto depende que el desglose
   // interés/capital cuadre con el recibo, aunque la cuota ya coincida.
   const base = baseDe(prestamo);
+  // Y los días SUELTOS pueden ir en otra · Santander e ING los cuentan en días
+  // reales sobre 365 mientras liquidan los meses entre doce; el Sabadell los
+  // cuenta 30/360 como el resto (§6 bis · bis).
+  const baseSueltos = baseDiasSueltosDe(prestamo);
 
   // Con carencia técnica la primera cuota es una cuota ENTERA · los días
-  // sueltos ya se han cobrado en la línea 0, y prorratearla además los cobraría
-  // dos veces. No es hipotético: el wizard guardaba `esquemaPrimerRecibo:
+  // sueltos ya se han cobrado en la línea 0, y meterlos además dentro los
+  // cobraría dos veces. No es hipotético: el wizard guardaba `esquemaPrimerRecibo:
   // 'PRORRATA'` justamente cuando había carencia técnica, porque su cuadro
   // pisaba después al del motor legacy y ese campo daba igual. Ahora no da
   // igual, y esos préstamos ya están guardados así.
   const hayCarenciaTecnica = periodos.length > 0;
-  const prorratearPrimero = hayCarenciaTecnica
+  const primeraCuotaCargaLosSueltos = hayCarenciaTecnica
     ? false
-    : (prestamo.prorratearPrimerPeriodo ?? (prestamo.esquemaPrimerRecibo === 'PRORRATA'));
+    : losMeteEnLaCuota ||
+      (prestamo.prorratearPrimerPeriodo ?? (prestamo.esquemaPrimerRecibo === 'PRORRATA'));
 
   const plazo = prestamo.plazoMesesTotal;
+
+  // De dónde arranca el devengo de la primera cuota · si hubo carencia técnica,
+  // desde su liquidación: esos días ya se han cobrado aparte.
+  const arranqueDelDevengo = hayCarenciaTecnica ? periodos[0].fechaCargo : fechaFirma;
+
+  // El cuadro nace al tipo del arranque y después se rehace tramo a tramo.
+  //
+  // El reparto se hace por el DEVENGO de la primera cuota, no por su fecha de
+  // cargo: un recibo cobra el mes que ya ha pasado, así que un tramo que empieza
+  // entre el devengo y el cobro no rige ese recibo — rige el siguiente. Con el
+  // cargo como frontera, ese tramo se tragaba una cuota que no le tocaba.
+  const delArranque = tramos.filter((t) => !t.desde || t.desde <= arranqueDelDevengo);
+  const porRehacer = tramos.filter((t) => t.desde && t.desde > arranqueDelDevengo);
+  const tinEfectivo = delArranque.length > 0 ? delArranque[delArranque.length - 1].tin : 0;
 
   // La cuota sale del capital que quede vivo AL ACABAR la carencia, repartido
   // en los meses que amortizan. Con carencia de capital ese capital es el
@@ -222,26 +251,27 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     : 0;
 
   let cargo = cargoInicial;
-  // De dónde arranca el devengo de la primera cuota · si hubo carencia técnica,
-  // desde su liquidación: esos días ya se han cobrado aparte.
-  let devengoPrevio = periodos.length > 0 ? periodos[0].fechaCargo : fechaFirma;
+  let devengoPrevio = arranqueDelDevengo;
 
   for (let periodo = 1; periodo <= plazo; periodo++) {
     const enCarencia = periodo <= carencia.meses;
     const esSoloIntereses = enCarencia && carencia.tipo === 'CAPITAL';
     const enCarenciaTotal = enCarencia && carencia.tipo === 'TOTAL';
-    const esProrrateado = periodo === 1 && prorratearPrimero;
+    const esProrrateado = periodo === 1 && primeraCuotaCargaLosSueltos;
     const esUltimo = periodo === plazo;
 
     const devengoHasta = restarUnDia(cargo);
-    const dias = diasEntre(devengoPrevio, devengoHasta);
 
     // El interés del periodo · cómo se cuentan los días lo dice el préstamo
-    // (§6 bis · bis). El arranque irregular —la prorrata y el primer mes de
-    // carencia— se cuenta siempre por días: no es un mes.
+    // (§6 bis · bis). El arranque irregular —los días sueltos metidos en la
+    // primera cuota y el primer mes de carencia— se cuenta siempre por días: no
+    // es un mes, y con su propia base, que puede no ser la del resto.
     const porDias = esProrrateado || (periodo === 1 && enCarencia);
+    const dias = porDias
+      ? diasSegunBase(devengoPrevio, cargo, baseSueltos)
+      : diasEntre(devengoPrevio, devengoHasta);
     const interesCentimos = porDias
-      ? interesPorDias(vivoCentimos, tinEfectivo, dias, base)
+      ? interesPorDias(vivoCentimos, tinEfectivo, dias, baseSueltos)
       : interesDelPeriodo(vivoCentimos, tinEfectivo, dias, base);
 
     let amortizacionCentimos: number;
@@ -259,10 +289,23 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
       amortizacionCentimos = vivoCentimos;
       cuotaDelPeriodo = amortizacionCentimos + interesCentimos;
     } else {
-      cuotaDelPeriodo = esProrrateado
-        ? Math.round(cuotaCentimos * (dias / 30))
-        : cuotaCentimos;
-      amortizacionCentimos = cuotaDelPeriodo - interesCentimos;
+      if (esProrrateado) {
+        // La primera cuota se traga los días sueltos · y no se escala entera:
+        // amortiza **lo que amortizaría un mes normal** y encima paga el interés
+        // de todos los días. Es lo que hace ING, al céntimo en el capital:
+        // 411,42 € = 193,05 de amortización —la del primer mes— + 218,37 de los
+        // 38 días desde la disposición.
+        //
+        // Escalarla por `dias/30`, que es lo que se hacía, inflaba la
+        // amortización —247,56 € donde el banco pone 193,05— y desviaba el
+        // capital vivo de todo el cuadro a partir de ahí.
+        const interesDeUnMes = interesDelPeriodo(vivoCentimos, tinEfectivo, 30, base);
+        amortizacionCentimos = cuotaCentimos - interesDeUnMes;
+        cuotaDelPeriodo = amortizacionCentimos + interesCentimos;
+      } else {
+        cuotaDelPeriodo = cuotaCentimos;
+        amortizacionCentimos = cuotaCentimos - interesCentimos;
+      }
 
       // Con un tipo alto y un plazo corto el interés puede comerse la cuota. No
       // se amortiza en negativo: se paga interés y el capital se queda quieto.

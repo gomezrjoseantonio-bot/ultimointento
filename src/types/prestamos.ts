@@ -98,6 +98,26 @@ export interface Prestamo {
    * guardado, y presumir una cláusula que nadie ha leído es inventarse un dato.
    */
   baseCalculoIntereses?: BaseCalculoIntereses;
+  /**
+   * Cómo cuenta los DÍAS SUELTOS del arranque (§6 bis · bis) · puede no ser la
+   * misma base que el resto del cuadro, y en la práctica no lo es.
+   *
+   * Santander e ING los cuentan en días reales sobre 365 mientras liquidan las
+   * cuotas normales entre doce. El Sabadell los cuenta 30/360 como el resto:
+   * formalizado el 04-07 y cobrando fin de mes son **26** días (30 − 4), no los
+   * 27 reales.
+   *
+   * Ausente = días reales sobre 365 si la base es el mes comercial, y la propia
+   * base en los demás casos · es lo que ATLAS venía haciendo.
+   */
+  baseDiasSueltos?: BaseCalculoIntereses;
+  /**
+   * Qué hace el banco con los días entre la disposición y la primera cuota.
+   *
+   * Ausente = `CARGO_APARTE`, que es lo que ATLAS venía haciendo y lo que hacen
+   * cinco de los seis cuadros que hay medidos.
+   */
+  diasSueltosDelArranque?: DiasSueltosDelArranque;
 
   // FIJO
   tipoNominalAnualFijo?: number; // 3.2 for 3.2%
@@ -393,6 +413,25 @@ export interface ComisionPactada {
 
 /** Cómo se cuentan los días para liquidar intereses · §6 bis · bis. */
 export type BaseCalculoIntereses = '30/360' | 'ACT/360' | 'ACT/365';
+
+/**
+ * Qué hace el banco con los días entre la disposición y la primera cuota.
+ *
+ * Seis cuadros de amortización reales, cuatro bancos, y solo hay dos formas:
+ *
+ *   · `CARGO_APARTE` · un recibo propio de SOLO INTERESES en la primera fecha
+ *     de cobro posterior a la disposición, y la primera cuota entera un mes
+ *     después. Lo hacen el Santander (tres préstamos) y el Sabadell (dos).
+ *   · `EN_LA_PRIMERA_CUOTA` · no hay recibo en esa fecha: el banco se la salta
+ *     y mete esos días dentro de la primera cuota, que lleva la amortización
+ *     normal MÁS el interés de todos los días transcurridos. Lo hace ING —
+ *     97.500 € dispuestos el 22-02-2022, ningún cargo el 01-03, y el recibo del
+ *     01-04 son 411,42 € = 193,05 de capital + 218,37 de 38 días—.
+ *
+ * Disponer el mismo día en que se cobra no deja días sueltos, y entonces esto
+ * no decide nada.
+ */
+export type DiasSueltosDelArranque = 'CARGO_APARTE' | 'EN_LA_PRIMERA_CUOTA';
 
 export interface AfectacionInmueblePrestamo {
   inmuebleId: string;

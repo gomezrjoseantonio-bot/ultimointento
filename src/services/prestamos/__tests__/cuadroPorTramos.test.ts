@@ -72,13 +72,19 @@ describe('lo pagado no se toca', () => {
     expect(céntimos(antesNuevo)).toBe(céntimos(antesOriginal));
   });
 
-  // La cuota del día de la revisión es la PRIMERA ya revisada · el banco cobra
-  // ese día al tipo nuevo.
-  it('la del mismo día de la revisión entra en el tramo nuevo', () => {
+  // El corte lo decide el DEVENGO, no el cargo. El recibo que se gira el mismo
+  // día que entra el tipo nuevo paga el mes que ACABA de terminar, así que va
+  // todavía al tipo viejo; el primero revisado es el del mes siguiente.
+  //
+  // Esto decía justo lo contrario, y por eso la mixta de Unicaja cambiaba de
+  // cuota en la 36 en vez de en la 37 (Jose · 5 ago 2026).
+  it('la del mismo día de la revisión paga el mes anterior, al tipo viejo', () => {
     const original = plan();
     const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 9, base: '30/360' });
 
-    expect(nuevo.periodos[8].cuota).not.toBe(original.periodos[8].cuota);
+    // Devenga del 1 al 28 de septiembre · entero antes del cambio.
+    expect(nuevo.periodos[8]).toEqual(original.periodos[8]);
+    expect(nuevo.periodos[9].cuota).not.toBe(original.periodos[9].cuota);
   });
 });
 
@@ -89,19 +95,19 @@ describe('la cuota nueva sale del capital vivo', () => {
     const original = plan();
     const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 5.5, base: '30/360' });
 
-    const vivoAlCorte = original.periodos[7].principalFinal;
-    const esperada = prestamosCalculationService.calculateFrenchPayment(vivoAlCorte, 5.5, 16);
+    const vivoAlCorte = original.periodos[8].principalFinal;
+    const esperada = prestamosCalculationService.calculateFrenchPayment(vivoAlCorte, 5.5, 15);
 
-    expect(céntimos(nuevo.periodos[8].cuota)).toBe(céntimos(esperada));
+    expect(céntimos(nuevo.periodos[9].cuota)).toBe(céntimos(esperada));
   });
 
   it('subir el tipo sube la cuota, y bajarlo la baja', () => {
     const original = plan();
-    const cuotaVieja = original.periodos[8].cuota;
+    const cuotaVieja = original.periodos[9].cuota;
 
-    expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual: 6, base: '30/360' }).periodos[8].cuota)
+    expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual: 6, base: '30/360' }).periodos[9].cuota)
       .toBeGreaterThan(cuotaVieja);
-    expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual: 2, base: '30/360' }).periodos[8].cuota)
+    expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual: 2, base: '30/360' }).periodos[9].cuota)
       .toBeLessThan(cuotaVieja);
   });
 
@@ -126,20 +132,20 @@ describe('la cuota nueva sale del capital vivo', () => {
   it('lo rehecho deja de constar pagado', () => {
     const nuevo = recalcularDesde(plan(), { desde: '2025-05-28', tinAnual: 5.5, base: '30/360' });
 
-    expect(nuevo.periodos.slice(4).every((p) => p.pagado === false)).toBe(true);
-    expect(nuevo.periodos.slice(0, 4).every((p) => p.pagado === true)).toBe(true);
+    expect(nuevo.periodos.slice(5).every((p) => p.pagado === false)).toBe(true);
+    expect(nuevo.periodos.slice(0, 5).every((p) => p.pagado === true)).toBe(true);
   });
 
   // Su importe ya no es el que se pagó, así que el movimiento con el que se
   // cuadró tampoco lo prueba · un enlace al vacío se lee como «esto ya está».
   it('lo rehecho suelta el movimiento con el que estaba cuadrado', () => {
     const original = plan();
-    original.periodos[8].movimientoTesoreriaId = 'mov-42';
+    original.periodos[9].movimientoTesoreriaId = 'mov-42';
     original.periodos[3].movimientoTesoreriaId = 'mov-7';
 
     const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 5.5, base: '30/360' });
 
-    expect(nuevo.periodos[8].movimientoTesoreriaId).toBeUndefined();
+    expect(nuevo.periodos[9].movimientoTesoreriaId).toBeUndefined();
     // El de una cuota intacta se queda: esa sí se pagó por ese importe.
     expect(nuevo.periodos[3].movimientoTesoreriaId).toBe('mov-7');
   });

@@ -54,6 +54,54 @@ describe('la carencia técnica', () => {
   });
 });
 
+// Los tres cuadros de amortización que el Santander tiene emitidos, tal cual.
+//
+// El banco liquida los días sueltos en la PRIMERA FECHA DE COBRO POSTERIOR a la
+// disposición, sea del mes que sea. ATLAS saltaba siempre al mes siguiente, y
+// eso solo acierta cuando el día de cobro ya ha pasado al firmar: en los otros
+// dos se saltaba un cargo entero y ponía el suyo el mismo día que el primer
+// recibo de verdad.
+describe('los tres préstamos del Santander, tal como los cobra', () => {
+  const casos = [
+    // contrato, disposición, día de cobro, capital, TIN, liquidación, días, €
+    ['...5465', '2026-05-12', 1, 78500, 4.99, '2026-06-01', 20, 214.64],
+    ['...4926', '2025-07-03', 31, 50000, 4.04, '2025-07-31', 28, 154.96],
+    ['...3776', '2023-10-16', 31, 17675, 4.0, '2023-10-31', 15, 29.05],
+  ] as const;
+
+  it.each(casos)(
+    'el %s liquida el %s en la primera fecha de cobro que llega',
+    (_contrato, disposicion, diaCobro, capital, tin, liquidacion, dias, euros) => {
+      const c = detectarCarenciaTecnica(disposicion, diaCobro);
+
+      expect(c.fechaLiquidacion).toBe(liquidacion);
+      expect(c.dias).toBe(dias);
+      expect(calcularInteresesCarenciaTecnica(capital, tin / 100, c.dias, 'ACT/365'))
+        .toBeCloseTo(euros, 2);
+    }
+  );
+
+  // Dos de los tres cobran «el último día del mes», y ahí el recorte importa en
+  // los dos sentidos: para elegir el mes y para decidir si hay carencia.
+  it('quien cobra el 31 y dispone un 30 de noviembre no tiene días sueltos', () => {
+    expect(detectarCarenciaTecnica('2025-11-30', 31).existe).toBe(false);
+  });
+
+  it('disponiendo el 1 con cobro el 31 se liquida ese mismo mes', () => {
+    const c = detectarCarenciaTecnica('2025-11-01', 31);
+
+    expect(c.fechaLiquidacion).toBe('2025-11-30');
+    expect(c.dias).toBe(29);
+  });
+
+  // El único caso en que sí toca saltar de mes · el cobro de este ya pasó.
+  it('disponiendo después del día de cobro se liquida al mes siguiente', () => {
+    const c = detectarCarenciaTecnica('2026-05-12', 1);
+
+    expect(c.fechaLiquidacion).toBe('2026-06-01');
+  });
+});
+
 // Las previsiones salen del cuadro del motor ÚNICO. Antes esta función
 // generaba uno propio, con el TIN que le pasara el caller: era el tercer cuadro
 // de la casa, y de él salía lo que después se cuadraba contra el banco.

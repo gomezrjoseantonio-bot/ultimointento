@@ -48,9 +48,12 @@ import type { LucideIcon } from 'lucide-react';
 import { prestamosService } from '../../../services/prestamosService';
 import { planificarEventos, cambiaElCuadro } from '../../../services/prestamoEventosPlan';
 import { generarCuadro, type Cuadro } from '../../../services/prestamos/cuadro';
+import { baseDiasSueltosDe } from '../../../services/prestamos/baseDeCalculo';
 import {
-  calcularInteresesCarenciaTecnica,
-  detectarCarenciaTecnica,
+  diasSueltosDelArranqueDe,
+  fechaDeLaPrimeraCuota,
+} from '../../../services/prestamos/fechasDelArranque';
+import {
   generarTreasuryEventDescriptors,
   type TipoCarenciaInicialV2,
   type TipoDestinoV2,
@@ -125,8 +128,16 @@ interface FormState {
   plazoRaw: string;
   plazoPeriodo: 'MESES' | 'AÑOS';
   fechaFirma: string;
+  /**
+   * Deducida, no tecleada · la primera cuota entera. Se sigue guardando
+   * porque el motor la lee, pero ya nadie la escribe a mano.
+   */
   fechaPrimerCargo: string;
   diaCobroRaw: string;
+  /** Qué hace el banco con los días entre disponer y la primera cuota. */
+  diasSueltos: NonNullable<Prestamo['diasSueltosDelArranque']>;
+  /** Y cómo los cuenta · puede no ser la base del resto del cuadro. */
+  baseDiasSueltos: NonNullable<Prestamo['baseDiasSueltos']>;
   // Bloque 4 · tipo de interés
   tipoInteres: TipoInteresV2;
   tinFijoRaw: string;
@@ -390,6 +401,8 @@ function emptyFormState(): FormState {
     fechaFirma: isoToday,
     fechaPrimerCargo: '',
     diaCobroRaw: '1',
+    diasSueltos: 'CARGO_APARTE',
+    baseDiasSueltos: 'ACT/365',
     tipoInteres: 'fijo',
     tinFijoRaw: '',
     interesDemoraRaw: '',
@@ -565,6 +578,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       fechaFirma: p.fechaFirma,
       fechaPrimerCargo: p.fechaPrimerCargo,
       diaCobroRaw: String(p.diaCargoMes ?? 1),
+      diasSueltos: p.diasSueltosDelArranque ?? 'CARGO_APARTE',
+      baseDiasSueltos: baseDiasSueltosDe(p),
       tipoInteres: p.tipo.toLowerCase() as TipoInteresV2,
       tinFijoRaw: p.tipoNominalAnualFijo !== undefined ? fmtNumeroEs(p.tipoNominalAnualFijo) : '',
       interesDemoraRaw: p.interesDemoraPct !== undefined ? fmtNumeroEs(p.interesDemoraPct) : '',
@@ -723,10 +738,18 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     [tinBasePct, bonificacionesModelo, loadedPrestamo, bonificacionesDesde, form.tipoInteres],
   );
 
-  const carencia = useMemo(() => {
-    if (!form.fechaFirma) return null;
-    return detectarCarenciaTecnica(form.fechaFirma, diaCobro);
-  }, [form.fechaFirma, diaCobro]);
+  // «01/07/2026» · leído del ISO, sin pasar por `Date`, que corre el día.
+  const fmtFechaEs = (iso: string): string => {
+    const [y, m, d] = iso.split('-');
+    return d ? `${d}/${m}/${y}` : iso;
+  };
+
+  // Las dos fechas del arranque · deducidas de la disposición y del día de
+  // cobro, que es lo único que hay que preguntar (§6 bis · bis).
+  const primeraCuota = useMemo(
+    () => (form.fechaFirma ? fechaDeLaPrimeraCuota(form.fechaFirma, diaCobro) : ''),
+    [form.fechaFirma, diaCobro],
+  );
 
   // Un préstamo pre-v2 no estrena carencia técnica al editarlo · nació sin ella
   // y detectarla ahora le inyectaría un cargo que nunca tuvo.
@@ -782,27 +805,46 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     aplicarTope(topesLegales[0]);
   }, [prestamoId, topesLegales, aplicarTope]);
 
-  /** Los días sueltos entre la firma y el primer mes de cobro · cargo aparte. */
+  /**
+   * Los días sueltos entre disponer y la primera cuota · con SU base.
+   *
+   * La misma función que usan los tests de los seis cuadros reales. Antes esto
+   * eran dos llamadas —una para la fecha y los días, otra para los euros— y la
+   * segunda iba con la base del resto del cuadro, que no tiene por qué ser la
+   * de este tramo.
+   *
+   * Si el banco los mete dentro de la primera cuota no hay recibo que guardar.
+   */
   const carenciaTecnica = useMemo(() => {
     if (esPreV2) return loadedPrestamo?.carenciaTecnica ?? null;
-    if (!carencia?.existe || !carencia.fechaLiquidacion || capital <= 0) return null;
+    if (form.diasSueltos === 'EN_LA_PRIMERA_CUOTA') return null;
 
-    // Con la base del préstamo · este cargo y el resto del cuadro tienen que
-    // contar los días igual (§6 bis · bis).
-    const intereses = calcularInteresesCarenciaTecnica(
+    return diasSueltosDelArranqueDe({
+      fechaFirma: form.fechaFirma,
+      diaCargo: diaCobro,
       capital,
-      tinEfectivoPct / 100,
-      carencia.dias,
-      form.baseCalculo
-    );
-    if (intereses <= 0) return null;
+      tinAnual: tinEfectivoPct,
+      base: form.baseDiasSueltos,
+    });
+  }, [
+    esPreV2,
+    loadedPrestamo,
+    form.fechaFirma,
+    form.diasSueltos,
+    form.baseDiasSueltos,
+    diaCobro,
+    capital,
+    tinEfectivoPct,
+  ]);
 
-    return {
-      dias: carencia.dias,
-      fechaLiquidacion: carencia.fechaLiquidacion,
-      intereses: Math.round(intereses * 100) / 100,
-    };
-  }, [esPreV2, loadedPrestamo, carencia, capital, tinEfectivoPct, form.baseCalculo]);
+  /** Lo que se va a cobrar al principio, en una línea · para contrastarlo. */
+  const textoDelArranque = useMemo(() => {
+    if (!form.fechaFirma) return 'Pon la fecha de disposición y el día de cobro.';
+    const cuota = `1.ª cuota el ${fmtFechaEs(primeraCuota)}`;
+    if (!carenciaTecnica) return cuota;
+    return `${fmtFechaEs(carenciaTecnica.fechaLiquidacion)} · ${carenciaTecnica.dias} días de intereses` +
+      ` (${fmtNumeroEs(carenciaTecnica.intereses)} €) · ${cuota}`;
+  }, [form.fechaFirma, primeraCuota, carenciaTecnica]);
 
   // El cuadro de la vista previa sale del MISMO motor que el que se guarda
   // (`services/prestamos/cuadro`). Antes lo calculaba un motor propio y después
@@ -810,7 +852,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   // la venta de un inmueble, una edición desde otra pantalla— se quedaba con un
   // cuadro distinto.
   const cuadro: Cuadro | null = useMemo(() => {
-    if (capital <= 0 || numCuotas <= 0 || !form.fechaFirma || !form.fechaPrimerCargo) {
+    if (capital <= 0 || numCuotas <= 0 || !form.fechaFirma || !primeraCuota) {
       return null;
     }
 
@@ -821,7 +863,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       principalInicial: capital,
       plazoMesesTotal: numCuotas,
       fechaFirma: form.fechaFirma,
-      fechaPrimerCargo: form.fechaPrimerCargo,
+      fechaPrimerCargo: primeraCuota,
       diaCargoMes: diaCobro,
       tipo: form.tipoInteres.toUpperCase() as Prestamo['tipo'],
       tipoNominalAnualFijo: form.tipoInteres === 'fijo' ? tinFijoPct : undefined,
@@ -842,6 +884,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       // enseña. Antes se guardaba y no se veía en ningún sitio.
       ...carenciaInicial,
       baseCalculoIntereses: form.baseCalculo,
+      baseDiasSueltos: form.baseDiasSueltos,
+      diasSueltosDelArranque: form.diasSueltos,
       esquemaPrimerRecibo: 'NORMAL',
     } as Prestamo;
 
@@ -850,7 +894,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     capital,
     numCuotas,
     form.fechaFirma,
-    form.fechaPrimerCargo,
+    primeraCuota,
     form.tipoInteres,
     form.euriborRaw,
     form.diferencialRaw,
@@ -859,6 +903,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     form.comAperturaRaw,
     form.baseCalculo,
     carenciaInicial,
+    form.diasSueltos,
+    form.baseDiasSueltos,
     revisionesDeTipo,
     tinFijoPct,
     diaCobro,
@@ -984,7 +1030,6 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     if (capital <= 0) return 'Introduce el capital inicial.';
     if (numCuotas <= 0) return 'Introduce el plazo.';
     if (!form.fechaFirma) return 'Introduce la fecha de firma.';
-    if (!form.fechaPrimerCargo) return 'Introduce la fecha del primer cargo.';
     if (diaCobro < 1 || diaCobro > 31) return 'El día de cobro debe estar entre 1 y 31.';
     if (form.tipoInteres === 'fijo' && tinFijoPct <= 0) return 'Introduce el TIN fijo.';
     if (form.tipoInteres === 'variable' && parseNum(form.diferencialRaw) <= 0) return 'Introduce el diferencial.';
@@ -1050,7 +1095,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         nombre: form.alias.trim(),
         cuentaCargoId: form.cuentaCargoId,
         fechaFirma: form.fechaFirma,
-        fechaPrimerCargo: form.fechaPrimerCargo,
+        fechaPrimerCargo: primeraCuota,
         diaCargoMes: diaCobro,
         // La carencia técnica es un cargo APARTE (línea 0) · la primera cuota
         // es entera, y marcarla prorrateada cobraría esos días dos veces.
@@ -1072,6 +1117,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         tipoNominalAnualMixtoFijo: form.tipoInteres === 'mixto' ? parseNum(form.tinTramoFijoRaw) : undefined,
         ...carenciaInicial,
         baseCalculoIntereses: form.baseCalculo,
+        baseDiasSueltos: form.baseDiasSueltos,
+        diasSueltosDelArranque: form.diasSueltos,
         comisionApertura: parseNum(form.comAperturaRaw),
         comisionMantenimiento: parseNum(form.comMantenimientoRaw),
         comisionReembolsoParcial: form.comReembolsoParcial,
@@ -1421,21 +1468,71 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                       />
                     </div>
                     <div className={styles.field}>
-                      <label className={styles.fieldLabel}>Primer cargo</label>
-                      <input
-                        type="date"
-                        className={styles.input}
-                        value={form.fechaPrimerCargo}
-                        onChange={(e) => update('fechaPrimerCargo', e.target.value)}
-                      />
-                    </div>
-                    <div className={styles.field}>
                       <label className={styles.fieldLabel}>Día cobro</label>
                       <input
                         className={`${styles.input} ${styles.inputMono}`}
                         value={form.diaCobroRaw}
                         onChange={(e) => update('diaCobroRaw', e.target.value)}
                       />
+                    </div>
+                    {/*
+                      La fecha del primer cargo NO se pregunta · §6 bis · bis.
+
+                      «El primer cargo» son dos fechas distintas —el recibo de
+                      los días sueltos y la primera cuota entera— y esta casilla
+                      aceptaba las dos. Con una salía el cuadro del banco; con la
+                      otra, un devengo que termina antes de empezar, dos cargos
+                      el mismo día y el préstamo acabando un mes antes. Sin
+                      avisar de nada.
+
+                      Las dos salen de la disposición y del día de cobro, y así
+                      lo cumplen los seis cuadros medidos. Aquí se enseñan para
+                      que se puedan contrastar con el papel.
+                    */}
+                    <div className={styles.field}>
+                      <label className={styles.fieldLabel}>Primeros cargos</label>
+                      <div className={styles.hintNote}>{textoDelArranque}</div>
+                    </div>
+                  </div>
+
+                  {/*
+                    Lo único que ATLAS no puede deducir del calendario: qué hace
+                    TU banco con los días entre que dispones y la primera cuota.
+                    Cinco de los seis los cobran aparte; ING los mete dentro.
+                  */}
+                  <div className={`${styles.fieldsRow} ${styles.rowTinFijo}`}>
+                    <div className={styles.field}>
+                      <label className={styles.fieldLabel}>Los días sueltos del principio</label>
+                      <select
+                        className={styles.select}
+                        value={form.diasSueltos}
+                        onChange={(e) =>
+                          update('diasSueltos', e.target.value as FormState['diasSueltos'])
+                        }
+                      >
+                        <option value="CARGO_APARTE">Se cobran en un recibo aparte</option>
+                        <option value="EN_LA_PRIMERA_CUOTA">Van dentro de la primera cuota</option>
+                      </select>
+                    </div>
+                    <div className={styles.field}>
+                      <label className={styles.fieldLabel}>y se cuentan</label>
+                      <select
+                        className={styles.select}
+                        value={form.baseDiasSueltos}
+                        onChange={(e) =>
+                          update('baseDiasSueltos', e.target.value as FormState['baseDiasSueltos'])
+                        }
+                      >
+                        <option value="ACT/365">Días reales / 365</option>
+                        <option value="ACT/360">Días reales / 360</option>
+                        <option value="30/360">Como el resto (30/360)</option>
+                      </select>
+                    </div>
+                    <div className={styles.field}>
+                      <div className={styles.hintNote}>
+                        Míralo en tu primer recibo. Santander e ING cuentan días reales sobre 365;
+                        el Sabadell los cuenta 30/360, y ahí un mes vale 30 aunque tenga 31.
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2246,7 +2343,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                     {cuadro.resumen.interesesCarenciaTecnica > 0 && (
                       <div className={styles.previewDesgloseRow}>
                         <span className="label">
-                          + Liquidación carencia técnica ({carencia?.dias} días · {fmtFechaCorta(carencia?.fechaLiquidacion ?? '')})
+                          + Liquidación carencia técnica ({carenciaTecnica?.dias} días · {fmtFechaCorta(carenciaTecnica?.fechaLiquidacion ?? '')})
                         </span>
                         <span className="value">{fmtEur(cuadro.resumen.interesesCarenciaTecnica)}</span>
                       </div>

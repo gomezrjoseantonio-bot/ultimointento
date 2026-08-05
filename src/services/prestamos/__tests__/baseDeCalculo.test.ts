@@ -8,7 +8,14 @@
 // La clásica española es 365/360: cobra un 1,39 % más que sobre 365, y esa
 // diferencia es la que hacía imposible cuadrar.
 
-import { baseDe, interesDelPeriodo, interesPorDias, BASE_POR_DEFECTO } from '../baseDeCalculo';
+import {
+  baseDe,
+  baseDiasSueltosDe,
+  diasSegunBase,
+  interesDelPeriodo,
+  interesPorDias,
+  BASE_POR_DEFECTO,
+} from '../baseDeCalculo';
 import type { Prestamo } from '../../../types/prestamos';
 
 const prestamo = (base?: unknown): Prestamo =>
@@ -69,24 +76,71 @@ describe('el interés del periodo', () => {
   });
 });
 
-// La prorrata del primer periodo y los días entre la firma y el primer cobro no
-// son un mes: llamarlos mes cobraría de más o de menos según cuántos días
-// tengan.
+// El tramo del arranque no es un mes, así que aquí los días SÍ se miran —también
+// con el mes comercial, donde valen 30 por mes y se dividen entre 360—.
 describe('los tramos sueltos de días', () => {
-  it('con el mes comercial se cuentan igualmente por días, sobre 365', () => {
-    expect(interesPorDias(CAPITAL, TIN, 20, '30/360'))
-      .toBe(interesDelPeriodo(CAPITAL, TIN, 20, 'ACT/365'));
-  });
-
-  it('con una base de días, la suya', () => {
+  it('con una base de días reales, la suya', () => {
     expect(interesPorDias(CAPITAL, TIN, 20, 'ACT/360'))
       .toBe(interesDelPeriodo(CAPITAL, TIN, 20, 'ACT/360'));
   });
 
+  it('con el mes comercial se dividen entre 360, no se ignoran', () => {
+    expect(interesPorDias(CAPITAL, TIN, 20, '30/360'))
+      .toBe(interesDelPeriodo(CAPITAL, TIN, 20, 'ACT/360'));
+  });
+
   // La carta del Santander · 78.500 € al 4,99 % por 20 días son 214,64 €, y esa
-  // cuenta es sobre 365.
+  // cuenta es sobre 365. Que el Santander los cuente así lo dice ahora el
+  // PRÉSTAMO (`baseDiasSueltos`), no una conversión escondida aquí dentro: el
+  // Sabadell cuenta los suyos 30/360 y con la conversión no había forma de
+  // decirlo.
   it('los 214,64 € de la carta del Santander salen sobre 365', () => {
-    expect(interesPorDias(7_850_000, 4.99, 20, '30/360')).toBe(21_464);
+    expect(interesPorDias(7_850_000, 4.99, 20, 'ACT/365')).toBe(21_464);
+  });
+
+  // Y los 79,45 € del Sabadell salen sobre 360, con 26 días y no 27.
+  it('los 79,45 € del Sabadell salen sobre 360', () => {
+    expect(interesPorDias(2_450_000, 4.49, 26, '30/360')).toBe(7_945);
+  });
+});
+
+// Cuántos días tiene un tramo suelto lo dice la base · con el mes comercial el
+// 31 no existe, y el Sabadell cobra 26 donde el calendario dice 27.
+describe('los días de un tramo suelto', () => {
+  it.each([
+    ['ACT/365', 27],
+    ['ACT/360', 27],
+    ['30/360', 26],
+  ] as const)('del 04-07 al 31-07 con %s son %s', (base, dias) => {
+    expect(diasSegunBase('2025-07-04', '2025-07-31', base)).toBe(dias);
+  });
+
+  it('del 13-09 al 30-09 son 17 en las tres', () => {
+    expect(diasSegunBase('2025-09-13', '2025-09-30', '30/360')).toBe(17);
+    expect(diasSegunBase('2025-09-13', '2025-09-30', 'ACT/365')).toBe(17);
+  });
+
+  // Cruzando meses · 22-02 a 01-04 son 38 reales y 39 comerciales (8 + 30 + 1).
+  it('cruzando meses cada una cuenta lo suyo', () => {
+    expect(diasSegunBase('2022-02-22', '2022-04-01', 'ACT/365')).toBe(38);
+    expect(diasSegunBase('2022-02-22', '2022-04-01', '30/360')).toBe(39);
+  });
+});
+
+// Santander e ING cuentan los suyos en días reales sobre 365 mientras liquidan
+// los meses entre doce · el Sabadell los cuenta 30/360 como el resto.
+describe('qué base usa el banco para los días sueltos', () => {
+  it('sin decir nada, el mes comercial los cuenta sobre 365', () => {
+    expect(baseDiasSueltosDe({ baseCalculoIntereses: '30/360' })).toBe('ACT/365');
+  });
+
+  it('sin decir nada, una base de días usa la suya', () => {
+    expect(baseDiasSueltosDe({ baseCalculoIntereses: 'ACT/360' })).toBe('ACT/360');
+  });
+
+  it('dicha, manda la dicha', () => {
+    expect(baseDiasSueltosDe({ baseCalculoIntereses: '30/360', baseDiasSueltos: '30/360' }))
+      .toBe('30/360');
   });
 });
 

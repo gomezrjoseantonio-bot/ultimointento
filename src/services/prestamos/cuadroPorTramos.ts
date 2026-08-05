@@ -32,8 +32,15 @@ export interface RevisionDeTipo {
   /**
    * Desde cuándo rige el tipo nuevo · ISO `YYYY-MM-DD`.
    *
-   * Las cuotas con fecha de cargo ANTERIOR no se tocan. La de ese mismo día sí:
-   * es la primera que el banco cobra ya revisada.
+   * El corte se decide por el **devengo**, no por la fecha de cargo. Un recibo
+   * cobra el mes que acaba de terminar, así que el que se gira ESE MISMO DÍA
+   * corresponde al periodo anterior y va todavía al tipo viejo. El primero que
+   * se cobra revisado es el del mes siguiente.
+   *
+   * Esto decía justo lo contrario y por eso la mixta de Unicaja cambiaba de
+   * cuota en la 36 —la que se gira el 25-08-2026, que paga del 25-07 al 25-08,
+   * entero dentro de los 36 meses al 2,600 %— en vez de en la 37 (Jose · 5 ago
+   * 2026).
    */
   desde: string;
   /** El TIN anual nuevo · en porcentaje (3.63 = 3,63 %). */
@@ -65,12 +72,18 @@ export function recalcularDesde(plan: PlanPagos, revision: RevisionDeTipo): Plan
   if (!plan?.periodos?.length) return plan;
   if (typeof tinAnual !== 'number' || !Number.isFinite(tinAnual) || tinAnual < 0) return plan;
   // La fecha se valida con forma, no con longitud: el corte se decide comparando
-  // CADENAS (`fechaCargo >= desde`), y un «2025/09/28» ordena distinto que un
+  // CADENAS (`devengoDesde >= desde`), y un «2025/09/28» ordena distinto que un
   // «2025-09-28». Con diez caracteres cualquiera de los dos pasaría el filtro y
   // el tramo rehecho empezaría donde no toca.
   if (typeof desde !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(desde)) return plan;
 
-  const corte = plan.periodos.findIndex((p) => p.fechaCargo >= desde);
+  // El primer periodo que DEVENGA al tipo nuevo · no el primero que se cobra
+  // después de esa fecha. Un cuadro viejo sin devengo apuntado se sigue cortando
+  // por el cargo, que es lo único que tiene.
+  const empieza = (p: PeriodoPago): string =>
+    /^\d{4}-\d{2}-\d{2}$/.test(p.devengoDesde ?? '') ? p.devengoDesde : p.fechaCargo;
+
+  const corte = plan.periodos.findIndex((p) => empieza(p) >= desde);
   if (corte === -1) return plan;
 
   const intactos = plan.periodos.slice(0, corte);
