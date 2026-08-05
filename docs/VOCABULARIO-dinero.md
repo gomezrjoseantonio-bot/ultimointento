@@ -881,6 +881,42 @@ En un **mixto** la primera revisión trae las dos cosas a la vez: el índice
 estrena el tramo variable y las bonificaciones empiezan a rebajar (§6 ter ·
 quater). En la Unicaja de Jose las dos caen el 25 de agosto de 2026.
 
+### Y el aviso dice qué toca en cada caso
+
+El aviso era siempre la misma frase — «en la revisión de agosto pasarías al
+X %, Y € más al mes» — y esa frase **solo habla de bonificaciones**. Es la
+respuesta entera en un préstamo a tipo fijo y **media** en todos los demás:
+
+| | Qué trae su revisión | Qué decía ATLAS |
+|---|---|---|
+| **Fijo** | solo las bonificaciones | correcto |
+| **Variable** | el índice **y** las bonificaciones | solo la mitad, y la pequeña |
+| **Mixto, la primera** | el índice, el cambio de tramo **y** el estreno de las bonificaciones | ninguna de las tres |
+
+Así que ahora va una segunda línea, y va **aparte** porque no es lo mismo: la
+primera son euros que dependen de lo que haga el usuario, y esta es lo que va a
+pasar haga lo que haga.
+
+- **Variable** · «esa revisión mueve también el Euríbor, y eso pesa más que las
+  bonificaciones. Cuánto valdrá no se sabe hoy: la cifra de arriba solo cuenta
+  lo que decidas tú».
+- **Mixto, antes del cambio** · «el 25 de agosto de 2026 se acaba tu tramo fijo
+  al 2,60 %: pasas al Euríbor + 1,75 %, y es ahí donde tus bonificaciones
+  empiezan a rebajar».
+- **Fijo** · nada. Rellenar con una frase genérica enseñaría un aviso donde no
+  hay ninguno.
+
+Dos cosas que no se pueden confundir:
+
+- **La fecha del cambio de tramo no es la de la revisión.** La primera la fija
+  la escritura (`firma + tramoFijoMeses`) y la segunda la fija el banco. En la
+  Unicaja caen el mismo día, pero nada obliga a ello, y darlas por la misma
+  escondería la que no coincidiera.
+- **Un cambio de tramo que ya pasó no es un aviso, es historia**, y solo se
+  anuncia el estreno de lo que hoy **no** se aplica: en un mixto que ya bonifica
+  desde la firma, anunciarlo sería anunciar algo que ya se está pagando
+  rebajado.
+
 ### 6 ter · bis · Lo que la bonificación hace con la cuota
 
 **Decisión · 4 de agosto de 2026:**
@@ -1063,6 +1099,12 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-05** · **El aviso de revisión dice qué toca en cada caso.** Era
+  siempre la misma frase, y esa frase solo habla de bonificaciones: respuesta
+  entera en un fijo, media en un variable —donde el índice pesa mucho más— y
+  ninguna de las tres cosas en el mixto que está a punto de cambiar de tramo.
+  Ahora va una segunda línea con lo que va a pasar haga lo que haga el usuario,
+  y no se rellena cuando no hay nada que decir. §6 ter · ter.
 - **2026-08-05** · **La revisión recoge también el índice.** La carta del banco
   trae dos cosas —qué pasó con las bonificaciones y a cuánto salió el Euríbor— y
   ATLAS solo dejaba entrar la primera: la otra había que apuntarla aparte, en el

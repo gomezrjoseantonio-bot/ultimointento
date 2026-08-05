@@ -22,6 +22,7 @@ import { verificarBonificaciones } from '../../services/bonificaciones/verificar
 import type { MovimientosQuePrueban } from '../../services/bonificaciones/verificarBonificaciones';
 import { tinDelTramoSiRevisaranHoy } from '../../services/prestamos/tinDelTramo';
 import { tramoVigente } from '../../services/prestamos/tramosDeTipo';
+import { queTraeLaRevision } from '../../services/prestamos/queTraeLaRevision';
 import { proximaRevision, revisionPendiente } from '../../services/bonificaciones/revisionDelBanco';
 import { confirmarRevision } from '../../services/prestamos/confirmarRevision';
 import type { LoQueDecidioElBanco } from '../../services/prestamos/confirmarRevision';
@@ -30,7 +31,11 @@ import { esNumero, fmtNumeroEs, parseNum } from './wizards/numeros';
 import { nombreMes } from '../tesoreria/v6/formatoV6';
 import type { Prestamo } from '../../types/prestamos';
 import { cuotaMensualConTin, effectiveTIN } from './helpers';
-import { textoDeCumplimiento, textoDeLoQueEstaEnJuego } from './textoBonificacion';
+import {
+  textoDeCumplimiento,
+  textoDeLoQueEstaEnJuego,
+  textoDeLoQueTraeLaRevision,
+} from './textoBonificacion';
 import styles from './BonificacionesVerificadas.module.css';
 
 const ETIQUETA = {
@@ -127,6 +132,14 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
     },
     hoy,
     prestamo.ultimaRevisionBonificacionesConfirmada
+  );
+
+  // Qué trae la revisión además de las bonificaciones · el índice, y en un mixto
+  // el día en que se acaba el tramo fijo. La fecha de ese cambio la fija la
+  // escritura y no tiene por qué ser la de la revisión del banco, así que se
+  // pregunta aparte.
+  const textoTrae = textoDeLoQueTraeLaRevision(
+    queTraeLaRevision(prestamo, revision?.fecha, hoy)
   );
 
   const enJuego = {
@@ -313,6 +326,18 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
       */}
       {movimientos && cumplimientos.length > 0 && (
         <div className={styles.enJuego}>{textoDeLoQueEstaEnJuego(enJuego)}</div>
+      )}
+
+      {/*
+        Y qué MÁS trae esa revisión · §6 ter · ter.
+
+        La línea de arriba solo habla de bonificaciones, y eso es la respuesta
+        entera solo en un préstamo a tipo fijo. Va aparte porque no es lo mismo:
+        arriba están los euros que dependen de lo que haga el usuario, y aquí lo
+        que va a pasar haga lo que haga.
+      */}
+      {movimientos && cumplimientos.length > 0 && textoTrae && (
+        <div className={styles.trae}>{textoTrae}</div>
       )}
     </div>
   );
