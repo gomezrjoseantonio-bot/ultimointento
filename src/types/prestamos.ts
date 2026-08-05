@@ -95,6 +95,20 @@ export interface Prestamo {
   diferencial?: number;         // 0.012
   periodoRevisionMeses?: number; // 6 or 12
   fechaProximaRevision?: string;
+  /**
+   * Las revisiones del índice que YA ocurrieron · §6 bis · bis.
+   *
+   * Cada una dice desde qué día el banco aplicó qué valor del índice, tal como
+   * viene en su carta. Son HECHOS, y sin ellas el cuadro de una variable de
+   * hace años se genera entero al índice de hoy: una hipoteca firmada con el
+   * Euríbor al 0 % y revisada al 4 % diría que sus cuotas pasadas fueron las de
+   * ahora, y de ahí salen los intereses de cada ejercicio.
+   *
+   * Lo que viene DESPUÉS de la última apuntada no se proyecta a otro tipo: se
+   * sabe cuándo revisa el banco, no a cuánto, y un índice inventado se lee
+   * igual que uno real.
+   */
+  revisionesDeTipo?: RevisionDelIndice[];
 
   // MIXTO
   tramoFijoMeses?: number;
@@ -262,6 +276,20 @@ export interface Prestamo {
   // Audit
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Una revisión del índice que ya ocurrió · lo que dice la carta del banco.
+ *
+ * Se guarda el ÍNDICE, no el tipo final: el diferencial es del contrato y no
+ * cambia, así que guardar la suma obligaría a rehacerla si alguien corrige el
+ * diferencial, y las dos cifras acabarían contradiciéndose.
+ */
+export interface RevisionDelIndice {
+  /** Desde qué día rige · ISO `YYYY-MM-DD`. */
+  desde: string;
+  /** El valor del índice, en porcentaje (2,164 = 2,164 %). */
+  valorIndice: number;
 }
 
 export interface AfectacionInmueblePrestamo {

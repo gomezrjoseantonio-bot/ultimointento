@@ -24,7 +24,7 @@
 // ============================================================================
 
 import type { PlanPagos, PeriodoPago } from '../../types/prestamos';
-import { cuotaFrancesa } from './cuadro';
+import { cuotaFrancesa } from './cuotaFrancesa';
 
 export interface RevisionDeTipo {
   /**

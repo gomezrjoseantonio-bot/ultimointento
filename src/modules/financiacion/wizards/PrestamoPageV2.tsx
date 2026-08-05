@@ -65,6 +65,7 @@ import { listarTarjetas } from '../../../services/tarjetasService';
 import { bonificaHipoteca } from '../../../services/tarjetasReglas';
 import { tinConBonificaciones } from '../../../services/bonificaciones/tinEfectivo';
 import { effectiveTIN } from '../helpers';
+import { esNumero } from './numeros';
 import styles from './PrestamoPageV2.module.css';
 
 // ─── Tipos auxiliares ───────────────────────────────────────────────────────
@@ -130,6 +131,8 @@ interface FormState {
   diferencialRaw: string;
   referenciaInteres: 'euribor_12m' | 'euribor_6m' | 'euribor_3m';
   revisionPeriodo: 6 | 12;
+  /** Las revisiones del índice que ya ocurrieron · §6 bis · bis. */
+  revisionesIndice: Array<{ id: string; desde: string; valorRaw: string }>;
   // mixto
   tramoFijoMesesRaw: string;
   tinTramoFijoRaw: string;
@@ -401,6 +404,7 @@ function emptyFormState(): FormState {
     diferencialRaw: '',
     referenciaInteres: 'euribor_12m',
     revisionPeriodo: 12,
+    revisionesIndice: [],
     tramoFijoMesesRaw: '',
     tinTramoFijoRaw: '',
     comAperturaRaw: '0',
@@ -572,6 +576,11 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       diferencialRaw: p.diferencial !== undefined ? fmtNumeroEs(p.diferencial) : '',
       referenciaInteres: 'euribor_12m',
       revisionPeriodo: (p.periodoRevisionMeses as 6 | 12) || 12,
+      revisionesIndice: (p.revisionesDeTipo ?? []).map((r, i) => ({
+        id: `rev-${i}`,
+        desde: r.desde,
+        valorRaw: fmtNumeroEs(r.valorIndice),
+      })),
       tramoFijoMesesRaw: p.tramoFijoMeses ? String(p.tramoFijoMeses) : '',
       tinTramoFijoRaw: p.tipoNominalAnualMixtoFijo !== undefined ? fmtNumeroEs(p.tipoNominalAnualMixtoFijo) : '',
       comAperturaRaw: fmtNumeroEs(p.comisionApertura ?? 0),
@@ -651,6 +660,22 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     if (form.tipoInteres === 'mixto') return parseNum(form.tinTramoFijoRaw);
     return 0;
   }, [form.tipoInteres, tinFijoPct, form.euriborRaw, form.diferencialRaw, form.tinTramoFijoRaw]);
+
+  /**
+   * Las que están completas · una a medio escribir no dice nada todavía.
+   *
+   * Y lo que no sea un número NO cuenta: `parseNum` devuelve 0 ante cualquier
+   * cosa, así que un dedazo se guardaría como «el índice fue del 0 %» — una
+   * revisión inventada, que es exactamente lo que este cuadro no puede tener.
+   */
+  const revisionesDeTipo = useMemo(
+    () =>
+      form.revisionesIndice
+        .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.desde) && esNumero(r.valorRaw))
+        .map((r) => ({ desde: r.desde, valorIndice: parseNum(r.valorRaw) }))
+        .sort((a, b) => a.desde.localeCompare(b.desde)),
+    [form.revisionesIndice],
+  );
 
   // Las bonificaciones tal como las entiende el modelo · UN solo mapeo, usado
   // por la vista previa y por el guardado. Antes la pantalla sumaba los puntos
@@ -735,6 +760,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       diferencial: form.tipoInteres !== 'fijo' ? parseNum(form.diferencialRaw) : undefined,
       tipoNominalAnualMixtoFijo:
         form.tipoInteres === 'mixto' ? parseNum(form.tinTramoFijoRaw) : undefined,
+      tramoFijoMeses:
+        form.tipoInteres === 'mixto' ? parseInt(form.tramoFijoMesesRaw, 10) || undefined : undefined,
+      revisionesDeTipo: form.tipoInteres !== 'fijo' ? revisionesDeTipo : undefined,
       maximoBonificacionPorcentaje: loadedPrestamo?.maximoBonificacionPorcentaje,
       topeBonificacionesTotal: loadedPrestamo?.topeBonificacionesTotal,
       bonificaciones: bonificacionesModelo,
@@ -753,7 +781,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     form.euriborRaw,
     form.diferencialRaw,
     form.tinTramoFijoRaw,
+    form.tramoFijoMesesRaw,
     form.comAperturaRaw,
+    revisionesDeTipo,
     tinFijoPct,
     diaCobro,
     prestamoId,
@@ -795,6 +825,29 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   }, [form.destinos]);
 
   // ─── Acciones sobre destinos ──────────────────────────────────────────────
+  // ── Las revisiones del índice que ya ocurrieron · §6 bis · bis ────────────
+  //
+  // Sin esto, el cuadro de una variable de hace años se genera entero al índice
+  // de HOY: una hipoteca firmada con el Euríbor al 0 % y revisada al 4 % diría
+  // que sus cuotas pasadas fueron las de ahora, y de ahí salen los intereses de
+  // cada ejercicio.
+  const addRevision = () => {
+    update('revisionesIndice', [
+      ...form.revisionesIndice,
+      { id: uid(), desde: '', valorRaw: '' },
+    ]);
+  };
+  const removeRevision = (id: string) => {
+    update('revisionesIndice', form.revisionesIndice.filter((r) => r.id !== id));
+  };
+  const updateRevision = (id: string, patch: Partial<{ desde: string; valorRaw: string }>) => {
+    update(
+      'revisionesIndice',
+      form.revisionesIndice.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    );
+  };
+
+
   const addDestino = () => {
     update('destinos', [
       ...form.destinos,
@@ -934,6 +987,10 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         valorIndiceActual: form.tipoInteres !== 'fijo' ? parseNum(form.euriborRaw) : undefined,
         diferencial: form.tipoInteres !== 'fijo' ? parseNum(form.diferencialRaw) : undefined,
         periodoRevisionMeses: form.tipoInteres !== 'fijo' ? form.revisionPeriodo : undefined,
+        // Las revisiones que ya ocurrieron · sin ellas el cuadro de una
+        // variable de hace años se genera entero al índice de hoy.
+        revisionesDeTipo:
+          form.tipoInteres !== 'fijo' && revisionesDeTipo.length > 0 ? revisionesDeTipo : undefined,
         tramoFijoMeses: form.tipoInteres === 'mixto' ? parseInt(form.tramoFijoMesesRaw, 10) || undefined : undefined,
         tipoNominalAnualMixtoFijo: form.tipoInteres === 'mixto' ? parseNum(form.tinTramoFijoRaw) : undefined,
         carencia: mapCarenciaV2ToLegacy(form.carenciaInicialTipo),
@@ -1448,6 +1505,62 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                       </div>
                     </div>
                   )}
+
+                  {/* Las revisiones que YA ocurrieron · §6 bis · bis.
+                      Sin ellas el cuadro de una variable de hace años se genera
+                      entero al índice de hoy, y de ese cuadro salen los
+                      intereses de cada ejercicio. */}
+                  {form.tipoInteres !== 'fijo' && (
+                    <div className={styles.revisiones}>
+                      <div className={styles.revisionesHd}>
+                        Revisiones ya aplicadas
+                        <span className={styles.revisionesSub}>
+                          el valor del índice que puso el banco en cada carta
+                        </span>
+                      </div>
+
+                      {form.revisionesIndice.length > 0 && (
+                        <div className={styles.destinoList}>
+                          {form.revisionesIndice.map((r) => (
+                            <div key={r.id} className={styles.revisionRow}>
+                              <input
+                                type="date"
+                                className={styles.input}
+                                value={r.desde}
+                                onChange={(e) => updateRevision(r.id, { desde: e.target.value })}
+                              />
+                              <div className={styles.inputSuffix}>
+                                <input
+                                  className={`${styles.input} ${styles.inputMono}`}
+                                  value={r.valorRaw}
+                                  placeholder="2,164"
+                                  onChange={(e) => updateRevision(r.id, { valorRaw: e.target.value })}
+                                />
+                                <span className={styles.suffix}>%</span>
+                              </div>
+                              <button
+                                type="button"
+                                className={styles.del}
+                                onClick={() => removeRevision(r.id)}
+                              >
+                                <Trash2 />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <button className={styles.btnAdd} onClick={addRevision} type="button">
+                        <Plus size={13} /> Añadir una revisión
+                      </button>
+
+                      <div className={styles.revisionesNota}>
+                        Lo que no se apunte se calcula con el valor de arriba, que es el de
+                        <b> hoy</b>. Después de la última apuntada, el cuadro sigue con ese
+                        mismo tipo: se sabe cuándo revisa el banco, no a cuánto.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1896,6 +2009,20 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                     <div className={styles.previewKpiMainSub}>
                       {numCuotas} cuotas · sistema francés · fin {fmtFechaCorta(cuadro.resumen.fechaUltimaCuota)}
                     </div>
+                    {/* Con tramos no hay UNA cuota · la de arriba es la del
+                        arranque, y aquí se dice cuándo cambia y a cuánto. Lo
+                        estimado va marcado: nadie sabe el índice de dentro de
+                        tres años, y fingir que sí es peor que no decirlo. */}
+                    {cuadro.resumen.tramos.length > 1 && (
+                      <div className={styles.tramos}>
+                        {cuadro.resumen.tramos.slice(1).map((t) => (
+                          <div key={t.desde} className={styles.tramo}>
+                            desde {fmtFechaCorta(t.desde)} · {fmtPct(t.tin)}
+                            {t.estimado && <span className={styles.tramoEstimado}>estimado</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className={styles.previewKpiSecondary}>

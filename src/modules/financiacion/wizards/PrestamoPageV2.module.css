@@ -684,3 +684,75 @@
   .body { grid-template-columns: 1fr; }
   .colForm { border-right: none; border-bottom: 1px solid var(--atlas-v5-line); }
 }
+
+/* ─── Revisiones del índice ya aplicadas · §6 bis · bis ───────────────────── */
+
+.revisiones {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+}
+
+.revisionesHd {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  margin-bottom: 8px;
+}
+
+.revisionesSub {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--atlas-v5-ink-4);
+}
+
+.revisionRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 28px;
+  gap: 7px;
+  align-items: center;
+}
+
+.revisionRow .input {
+  padding: 7px 9px;
+  font-size: 12px;
+}
+
+/* Lo que no se sabe se dice · un índice inventado se lee igual que uno real. */
+.revisionesNota {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--atlas-v5-ink-4);
+}
+
+/* Los tramos de tipo · cuándo cambia la cuota y a cuánto (§6 bis · bis). */
+.tramos {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tramo {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Lo que es proyección se dice · un tipo inventado se lee igual que uno real. */
+.tramoEstimado {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--atlas-v5-ink-4);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 999px;
+  padding: 1px 6px;
+}

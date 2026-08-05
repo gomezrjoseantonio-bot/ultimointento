@@ -122,7 +122,10 @@ describe('no mira el reloj', () => {
     expect(generarCuadro(p).plan.periodos).toEqual(generarCuadro(p).plan.periodos);
   });
 
-  it('un mixto con el tramo fijo ya vencido sigue al tipo de su tramo fijo', () => {
+  // El tramo fijo de un mixto se acaba en la fecha que dice la escritura, no
+  // cuando el generador mire el reloj. Antes, un mixto firmado hace quince años
+  // se generaba entero al tipo variable de hoy.
+  it('un mixto arranca al tipo de su tramo fijo, tenga los años que tenga', () => {
     const p = prestamo({
       tipo: 'MIXTO',
       tipoNominalAnualFijo: undefined,
@@ -135,6 +138,97 @@ describe('no mira el reloj', () => {
     });
 
     expect(generarCuadro(p).resumen.tinEfectivo).toBe(2.5);
+  });
+});
+
+// Un préstamo mixto 3+27 decía que ibas a pagar el tipo fijo durante treinta
+// años. La fecha del cambio está en la escritura: no partir el cuadro por ella
+// es esconder un dato que sí se sabe.
+describe('el cuadro se parte por tramos', () => {
+  const mixto = prestamo({
+    tipo: 'MIXTO',
+    tipoNominalAnualFijo: undefined,
+    tipoNominalAnualMixtoFijo: 2,
+    tramoFijoMeses: 12,
+    valorIndiceActual: 3,
+    diferencial: 1,
+    plazoMesesTotal: 36,
+    fechaFirma: '2026-05-12',
+    fechaPrimerCargo: '2026-07-01',
+    carenciaTecnica: undefined,
+  });
+
+  const cuadro = () => generarCuadro(mixto).plan.periodos;
+
+  it('la cuota no se mueve dentro del tramo fijo', () => {
+    const p = cuadro();
+
+    expect(p[10].cuota).toBe(p[0].cuota);
+  });
+
+  it('y sube cuando el tramo fijo acaba', () => {
+    const p = cuadro();
+    const antes = p.find((x) => x.fechaCargo < '2027-05-12')!;
+    const despues = p.find((x) => x.fechaCargo >= '2027-05-12')!;
+
+    expect(despues.cuota).toBeGreaterThan(antes.cuota);
+  });
+
+  it('el capital de antes del cambio no se toca', () => {
+    const unSoloTipo = generarCuadro(
+      prestamo({ ...mixto, tipo: 'FIJO', tipoNominalAnualFijo: 2 } as Partial<Prestamo>)
+    ).plan.periodos;
+
+    expect(cuadro()[5].principalFinal).toBe(unSoloTipo[5].principalFinal);
+  });
+
+  it('y el cuadro sigue terminando en cero', () => {
+    const p = cuadro();
+
+    expect(p[p.length - 1].principalFinal).toBe(0);
+  });
+
+  // Con tramos ya no hay UNA cuota · se enseña la del arranque, que es la que
+  // se está pagando. La de hoy dependería de qué día es hoy.
+  it('la cuota que se enseña es la del arranque', () => {
+    expect(generarCuadro(mixto).resumen.cuotaMensual).toBe(cuadro()[0].cuota);
+  });
+
+  // Sin revisiones apuntadas, una variable sigue teniendo un solo tipo: no se
+  // inventa a cuánto revisará el banco.
+  it('una variable sin revisiones apuntadas no se parte', () => {
+    const p = generarCuadro(
+      prestamo({
+        tipo: 'VARIABLE',
+        tipoNominalAnualFijo: undefined,
+        valorIndiceActual: 3,
+        diferencial: 1,
+        periodoRevisionMeses: 12,
+      })
+    );
+
+    expect(p.resumen.tramos).toHaveLength(1);
+  });
+
+  it('con revisiones apuntadas, la cuota cambia en cada una', () => {
+    const { plan } = generarCuadro(
+      prestamo({
+        tipo: 'VARIABLE',
+        tipoNominalAnualFijo: undefined,
+        valorIndiceActual: 0,
+        diferencial: 1,
+        plazoMesesTotal: 36,
+        fechaFirma: '2026-05-12',
+        fechaPrimerCargo: '2026-07-01',
+        carenciaTecnica: undefined,
+        revisionesDeTipo: [{ desde: '2027-07-01', valorIndice: 4 }],
+      })
+    );
+
+    const antes = plan.periodos.find((p) => p.fechaCargo === '2027-06-01')!;
+    const despues = plan.periodos.find((p) => p.fechaCargo === '2027-07-01')!;
+
+    expect(despues.cuota).toBeGreaterThan(antes.cuota);
   });
 });
 

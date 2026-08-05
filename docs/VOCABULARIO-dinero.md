@@ -442,10 +442,54 @@ se generaban aparte, con su propio cuadro.
   banco es trabajo del usuario, no un dato calculado. Se conservaba solo cuando
   editabas desde el asistente; ahora, siempre.
 
-Lo que este motor **todavía no hace** está en §8, y no es poco: el tipo es uno
-para toda la vida del préstamo —el variable y el mixto no se parten en tramos—,
-la carencia inicial no se aplica y la base de cálculo de intereses no se
-pregunta.
+#### El tipo no es uno para toda la vida · los tramos
+
+El cuadro se generaba entero a un solo tipo. Una **mixta 3+27** al 2,0 % fijo y
+Euríbor+1 después decía que ibas a pagar el 2,0 % durante treinta años; una
+**variable** de 2021 se generaba entera al Euríbor de hoy, así que sus cuotas
+pasadas salían con el tipo de ahora — y de ahí salen los intereses de cada
+ejercicio.
+
+**Decisión · 5 de agosto de 2026: el cuadro se parte en tramos**
+(`tramosDeTipo`), con una regla por encima de todas:
+
+> **El Euríbor de mañana no se sabe, y no se inventa.**
+
+Es la misma regla que la fecha de revisión (§6 ter): un número inventado se lee
+igual que uno real, y sobre él se hacen cuentas.
+
+| | De dónde sale el tipo | ¿Estimación? |
+|---|---|---|
+| **Fijo** | El de la escritura | No |
+| **Mixto · tramo fijo** | El de la escritura | No |
+| **Mixto · tramo variable** | Índice de hoy + diferencial, desde la fecha que dice la escritura | **Sí** |
+| **Variable · antes de la 1.ª revisión apuntada** | Índice de hoy + diferencial | **Sí** |
+| **Variable · cada revisión apuntada** | El índice de la carta del banco + diferencial | No |
+| **Variable · después de la última apuntada** | Se sigue con ese mismo tipo | **Sí** |
+
+Tres cosas que se derivan y por eso están escritas:
+
+1. **Un mixto SÍ se parte, aunque el tipo de después sea una estimación.** La
+   fecha del cambio está en la escritura: no partirlo es esconder un dato que sí
+   se sabe. Decir «desde marzo de 2029, en torno al 3,1 %» se acerca mucho más
+   que decir «el 2,0 % hasta 2054».
+2. **Después de la última revisión conocida no se proyecta ninguna más.** Se
+   sabe *cuándo* revisa el banco, no *a cuánto*: partir el cuadro por una fecha
+   futura para volver a poner el mismo tipo no cambia nada y finge una precisión
+   que no hay.
+3. **Cada tramo se aplica con `recalcularDesde`**, que es lo que hace el banco:
+   lo pagado se queda como está y la cuota nueva sale del **capital vivo de ese
+   día**, al tipo nuevo, en los meses que falten. Regenerar desde el origen
+   reescribiría intereses ya devengados.
+
+Y **las revisiones ya aplicadas se apuntan** en el alta y la edición del
+préstamo: la fecha desde la que rigen y el valor del índice, tal como vienen en
+la carta. Se guarda el **índice**, no el tipo final, porque el diferencial es
+del contrato: guardar la suma obligaría a rehacerla si alguien corrige el
+diferencial, y las dos cifras acabarían contradiciéndose.
+
+Lo que este motor **todavía no hace** está en §8: la carencia inicial no se
+aplica y la base de cálculo de intereses no se pregunta.
 
 ---
 
@@ -695,13 +739,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
-- **2026-08-05** · **El tipo es UNO para toda la vida del préstamo.** El cuadro
-  se genera entero al mismo tipo: un **variable** sale a treinta años al índice
-  de hoy y un **mixto** al tipo de su tramo fijo, que nunca termina. Y
-  `fechaProximaRevision` está en el modelo sin que nadie lo lea. La pieza que
-  falta ya existe —`cuadroPorTramos` rehace el cuadro desde una fecha sin tocar
-  lo pagado, y es lo que usa la revisión de bonificaciones—: la revisión del
-  índice es el mismo movimiento. §6 bis · bis.
 - **2026-08-05** · **La base de cálculo de intereses no se pregunta.** Está
   clavada: mes comercial (`/12`) para la cuota normal y `/365` por días para el
   arranque irregular. Pero la base es una **cláusula de la escritura** y varía
@@ -780,6 +817,15 @@ Escrito para no perderlo, con la fecha en que se detectó.
   un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
 
 ### Resuelto
+
+- **2026-08-05** · **El cuadro se parte en tramos.** Un mixto cambia de tipo
+  cuando acaba su tramo fijo —la fecha está en la escritura— y un variable
+  cambia en cada revisión apuntada, que ahora se pueden registrar con el valor
+  del índice que puso el banco en su carta. Antes una mixta 3+27 decía que
+  pagarías el tipo fijo treinta años, y una variable de 2021 salía entera al
+  Euríbor de hoy. Lo que no se sabe sigue sin inventarse: después de la última
+  revisión conocida se sigue con ese tipo, marcado como estimación en pantalla.
+  §6 bis · bis.
 
 - **2026-08-05** · **Un solo motor para el cuadro.** Había dos, y el cuadro que
   acababas teniendo dependía de por qué puerta entrabas: el asistente calculaba
