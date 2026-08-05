@@ -86,6 +86,19 @@ export interface Prestamo {
   tipo: 'FIJO' | 'VARIABLE' | 'MIXTO';
   sistema: 'FRANCES';
 
+  /**
+   * Cómo cuenta los días el banco al liquidar intereses (§6 bis · bis).
+   *
+   * `interés = capital × TIN × días ÷ base`, y la base es una CLÁUSULA de la
+   * escritura: `ACT/360` —la clásica española, un 1,39 % más cara—, `ACT/365`
+   * o `30/360`, el mes comercial.
+   *
+   * Ausente = `30/360`, que es lo que ATLAS venía haciendo. No se presume la
+   * clásica aunque sea la más habitual: movería el cuadro de todo lo ya
+   * guardado, y presumir una cláusula que nadie ha leído es inventarse un dato.
+   */
+  baseCalculoIntereses?: BaseCalculoIntereses;
+
   // FIJO
   tipoNominalAnualFijo?: number; // 3.2 for 3.2%
 
@@ -305,6 +318,9 @@ export interface RevisionDelIndice {
   /** El valor del índice, en porcentaje (2,164 = 2,164 %). */
   valorIndice: number;
 }
+
+/** Cómo se cuentan los días para liquidar intereses · §6 bis · bis. */
+export type BaseCalculoIntereses = '30/360' | 'ACT/360' | 'ACT/365';
 
 export interface AfectacionInmueblePrestamo {
   inmuebleId: string;

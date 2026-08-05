@@ -25,6 +25,8 @@
 
 import type { PlanPagos, PeriodoPago } from '../../types/prestamos';
 import { cuotaFrancesa } from './cuotaFrancesa';
+import { interesDelPeriodo, type BaseDeCalculo } from './baseDeCalculo';
+import { diasEntre } from './fechas';
 
 export interface RevisionDeTipo {
   /**
@@ -36,6 +38,15 @@ export interface RevisionDeTipo {
   desde: string;
   /** El TIN anual nuevo · en porcentaje (3.63 = 3,63 %). */
   tinAnual: number;
+  /**
+   * Cómo cuenta los días el banco (§6 bis · bis) · la del préstamo.
+   *
+   * OBLIGATORIA a propósito. Con un valor por defecto, quien llamara sin
+   * pasarla recalcularía el tramo sobre el mes comercial mientras el resto del
+   * cuadro cuenta días reales — y en silencio, que es como se cuelan estas
+   * cosas. Así no compila hasta que alguien decida qué base es la del préstamo.
+   */
+  base: BaseDeCalculo;
 }
 
 const aCentimos = (euros: number): number => Math.round(euros * 100);
@@ -49,7 +60,7 @@ const aCentimos = (euros: number): number => Math.round(euros * 100);
  * enseña y la previsión de tesorería de todos los meses que quedan.
  */
 export function recalcularDesde(plan: PlanPagos, revision: RevisionDeTipo): PlanPagos {
-  const { desde, tinAnual } = revision;
+  const { desde, tinAnual, base } = revision;
 
   if (!plan?.periodos?.length) return plan;
   if (typeof tinAnual !== 'number' || !Number.isFinite(tinAnual) || tinAnual < 0) return plan;
@@ -81,11 +92,16 @@ export function recalcularDesde(plan: PlanPagos, revision: RevisionDeTipo): Plan
   const rehechos: PeriodoPago[] = porRehacer.map((p, i) => {
     const esUltimo = i === porRehacer.length - 1;
 
-    // Interés del mes sobre lo que queda vivo · misma cuenta que el generador.
-    // La prorrata y los meses de solo intereses no se replican aquí a
-    // propósito: son irregularidades del ARRANQUE del préstamo, y una revisión
-    // a mitad de vida no las tiene.
-    const interesCentimos = Math.round(((vivoCentimos / 100) * (tinAnual / 100)) / 12 * 100);
+    // Interés del mes sobre lo que queda vivo · misma cuenta que el generador,
+    // con la misma base. La prorrata y los meses de carencia no se replican
+    // aquí a propósito: son irregularidades del ARRANQUE del préstamo, y una
+    // revisión a mitad de vida no las tiene.
+    const interesCentimos = interesDelPeriodo(
+      vivoCentimos,
+      tinAnual,
+      diasEntre(p.devengoDesde, p.devengoHasta),
+      base
+    );
 
     let amortizacionCentimos: number;
     let cuotaDelPeriodo: number;

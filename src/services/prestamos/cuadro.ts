@@ -48,12 +48,15 @@
 //     pidió. Acabada la carencia, la cuota se recalcula sobre lo que se deba
 //     ESE día y en los meses que queden (§6 bis · ter).
 //
+//   - **La base de cálculo la dice el préstamo** (`baseDeCalculo`). El interés
+//     de cada periodo sale de contar días —`capital × TIN × días ÷ base`—, y la
+//     base es una cláusula de la escritura: 365/360, 365/365 o el mes comercial
+//     30/360. Ausente = 30/360, que es lo que ATLAS venía haciendo.
+//
 // Lo que este motor todavía NO hace, y hay que saberlo:
 //
-//   - **La base de cálculo de intereses no se pregunta.** Está clavada: mes
-//     comercial para la cuota normal y por días para el arranque irregular. La
-//     base es una cláusula de la escritura y varía (365/360, 365/365, 30/360).
-//   - **La TAE es la aproximación que traía el v2**, no la TIR de los flujos.
+//   - **La TAE es la aproximación que traía el v2**, no la TIR de los flujos, y
+//     no incluye los gastos de constitución.
 // ============================================================================
 
 import type { Prestamo, PeriodoPago, PlanPagos } from '../../types/prestamos';
@@ -63,6 +66,7 @@ import { diasEntre, esISO, partes, restarUnDia, sumarMeses } from './fechas';
 import { recalcularDesde } from './cuadroPorTramos';
 import { tramosDeTipo, type TramoDeTipo } from './tramosDeTipo';
 import { carenciaDe } from './carencia';
+import { baseDe, interesDelPeriodo, interesPorDias } from './baseDeCalculo';
 
 export { cuotaFrancesa } from './cuotaFrancesa';
 export type { TramoDeTipo } from './tramosDeTipo';
@@ -191,6 +195,10 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
   // capitalizan, así que al acabar se debe más de lo que se pidió (§6 bis·ter).
   const carencia = carenciaDe(prestamo);
 
+  // Cómo cuenta los días el banco · de esto depende que el desglose
+  // interés/capital cuadre con el recibo, aunque la cuota ya coincida.
+  const base = baseDe(prestamo);
+
   // Con carencia técnica la primera cuota es una cuota ENTERA · los días
   // sueltos ya se han cobrado en la línea 0, y prorratearla además los cobraría
   // dos veces. No es hipotético: el wizard guardaba `esquemaPrimerRecibo:
@@ -227,12 +235,13 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     const devengoHasta = restarUnDia(cargo);
     const dias = diasEntre(devengoPrevio, devengoHasta);
 
-    // El interés del periodo. Por días solo en el arranque irregular —la
-    // prorrata y el primer mes de carencia—; el resto, mes comercial.
+    // El interés del periodo · cómo se cuentan los días lo dice el préstamo
+    // (§6 bis · bis). El arranque irregular —la prorrata y el primer mes de
+    // carencia— se cuenta siempre por días: no es un mes.
     const porDias = esProrrateado || (periodo === 1 && enCarencia);
     const interesCentimos = porDias
-      ? Math.round((vivoCentimos / 100) * (tinEfectivo / 100) / 365 * dias * 100)
-      : Math.round((vivoCentimos / 100) * (tinEfectivo / 100) / 12 * 100);
+      ? interesPorDias(vivoCentimos, tinEfectivo, dias, base)
+      : interesDelPeriodo(vivoCentimos, tinEfectivo, dias, base);
 
     let amortizacionCentimos: number;
     let cuotaDelPeriodo: number;
@@ -310,7 +319,7 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
   };
 
   for (const tramo of porRehacer) {
-    plan = recalcularDesde(plan, { desde: tramo.desde, tinAnual: tramo.tin });
+    plan = recalcularDesde(plan, { desde: tramo.desde, tinAnual: tramo.tin, base });
   }
 
   // Las cifras se recuentan del cuadro FINAL · con tramos, los intereses que se

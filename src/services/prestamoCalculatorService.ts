@@ -17,6 +17,7 @@
  */
 import type { Prestamo } from '../types/prestamos';
 import { generarCuadro } from './prestamos/cuadro';
+import { interesPorDias, type BaseDeCalculo } from './prestamos/baseDeCalculo';
 
 export type TipoPrestamoV2 = 'hipotecario' | 'personal' | 'linea_credito' | 'otro';
 export type TipoInteresV2 = 'fijo' | 'variable' | 'mixto';
@@ -96,16 +97,24 @@ export function detectarCarenciaTecnica(
 }
 
 /**
- * Intereses devengados durante los días de carencia técnica · base 365.
- *   I = C · TIN · días / 365
+ * Intereses devengados durante los días de carencia técnica.
+ *
+ *   I = C · TIN · días ÷ base
+ *
+ * La base la dice la escritura (§6 bis · bis), y se pide SIN valor por defecto:
+ * con uno, este cargo se calcularía sobre 365 mientras el resto del cuadro
+ * cuenta días sobre 360, y nadie se enteraría. Con el mes comercial se cuenta
+ * sobre 365, que es lo que dice la carta del Santander —78.500 € al 4,99 % por
+ * 20 días son sus 214,64 €—.
  */
 export function calcularInteresesCarenciaTecnica(
   capital: number,
   tinAnual: number,
   dias: number,
+  base: BaseDeCalculo,
 ): number {
   if (capital <= 0 || tinAnual <= 0 || dias <= 0) return 0;
-  return capital * tinAnual * dias / 365;
+  return interesPorDias(Math.round(capital * 100), tinAnual * 100, dias, base) / 100;
 }
 
 // ── Generación de Treasury Events (v2) ──────────────────────────────────────

@@ -393,6 +393,7 @@ export class PrestamosService {
       'principalInicial', 'plazoMesesTotal', 'tipo',
       'tipoNominalAnualFijo', 'valorIndiceActual', 'diferencial', 
       'tramoFijoMeses', 'tipoNominalAnualMixtoFijo', 'carencia', 'carenciaMeses',
+      'baseCalculoIntereses',
       'diferirPrimeraCuotaMeses', 'diaCargoMes', 'fechaFirma', 'fechaPrimerCargo',
       'esquemaPrimerRecibo', 'prorratearPrimerPeriodo'
     ];

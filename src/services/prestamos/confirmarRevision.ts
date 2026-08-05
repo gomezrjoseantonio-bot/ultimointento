@@ -25,6 +25,7 @@ import { prestamosService } from '../prestamosService';
 import { tinConBonificaciones } from '../bonificaciones/tinEfectivo';
 import { tinBase } from '../../modules/financiacion/helpers';
 import { recalcularDesde } from './cuadroPorTramos';
+import { baseDe } from './baseDeCalculo';
 
 /** Qué decidió el banco con cada bonificación. */
 export type LoQueDecidioElBanco = Record<string, 'CUMPLIDA' | 'PERDIDA'>;
@@ -96,6 +97,9 @@ export async function confirmarRevision(
     const planNuevo = recalcularDesde(planAntes!, {
       desde: revision.aplicaDesde,
       tinAnual: tinDespues,
+      // La del préstamo · recalcular el tramo contando los días de otra manera
+      // que el resto del cuadro sería otra vez dos cuentas para lo mismo.
+      base: baseDe(prestamo),
     });
     await prestamosService.savePaymentPlan(prestamoId, planNuevo);
   }
