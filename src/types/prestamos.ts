@@ -114,12 +114,26 @@ export interface Prestamo {
   tramoFijoMeses?: number;
   tipoNominalAnualMixtoFijo?: number;
 
-  // Carencia
+  /**
+   * La carencia inicial · el periodo en que NO se amortiza capital (§6 bis·ter).
+   *
+   * `CAPITAL` paga solo los intereses del mes y el capital se queda quieto.
+   * `TOTAL` no paga nada y los intereses **se capitalizan**: al acabar se debe
+   * más de lo que se pidió.
+   *
+   * No confundir con `carenciaTecnica`, que **no es una carencia**: son los
+   * días sueltos entre la firma y el primer mes de cobro.
+   */
   carencia: 'NINGUNA' | 'CAPITAL' | 'TOTAL';
+  /** Cuántos meses dura · van DENTRO del plazo total, no se suman a él. */
   carenciaMeses?: number;
 
   // Initial irregularities
-  mesesSoloIntereses?: number;  // 0..N (includes possible first month)
+  //
+  // `mesesSoloIntereses` se retiró (§6 bis · ter): era la mitad que el motor
+  // aplicaba de una función cuya otra mitad —`carencia` / `carenciaMeses`— era
+  // la que se rellenaba. Nadie lo escribía nunca, así que decir doce meses de
+  // carencia daba un cuadro sin carencia.
   diferirPrimeraCuotaMeses?: number; // 0..N (e.g., 2 → first payment 2 months later)
   prorratearPrimerPeriodo?: boolean;  // true = interest by actual days until 1st payment
   cobroMesVencido?: boolean;    // true = accrual month t, collection in month t+1

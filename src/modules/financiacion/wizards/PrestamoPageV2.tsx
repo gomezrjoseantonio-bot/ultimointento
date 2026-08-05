@@ -768,6 +768,13 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       bonificaciones: bonificacionesModelo,
       comisionApertura: parseNum(form.comAperturaRaw),
       carenciaTecnica,
+      // La carencia inicial · el motor la aplica, así que la vista previa la
+      // enseña. Antes se guardaba y no se veía en ningún sitio.
+      carencia: mapCarenciaV2ToLegacy(form.carenciaInicialTipo),
+      carenciaMeses:
+        form.carenciaInicialTipo !== 'ninguna'
+          ? parseInt(form.carenciaInicialMesesRaw, 10) || 0
+          : undefined,
       esquemaPrimerRecibo: 'NORMAL',
     } as Prestamo;
 
@@ -783,6 +790,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     form.tinTramoFijoRaw,
     form.tramoFijoMesesRaw,
     form.comAperturaRaw,
+    form.carenciaInicialTipo,
+    form.carenciaInicialMesesRaw,
     revisionesDeTipo,
     tinFijoPct,
     diaCobro,
