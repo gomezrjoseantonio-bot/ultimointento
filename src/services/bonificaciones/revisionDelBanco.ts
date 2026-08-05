@@ -191,3 +191,69 @@ export function proximaRevision(cal: CalendarioDeRevision, hoy: string): Revisio
     ...(finDeGracia ? { finDeGracia } : {}),
   };
 }
+
+/** Una revisión que YA TOCÓ y que nadie ha dado por buena todavía. */
+export interface RevisionPendiente {
+  /** Cuándo tocó · `YYYY-MM-DD` o `YYYY-MM` según lo que se supiera. */
+  fecha: string;
+  precision: 'dia' | 'mes';
+  /**
+   * El día desde el que rige el tipo que salga · siempre `YYYY-MM-DD`.
+   *
+   * Con precisión de mes se toma el día 1: el banco aplica el tipo nuevo desde
+   * la revisión, así que la cuota de ese mes ya va al tipo nuevo. Ponerlo al
+   * final del mes dejaría un mes cobrado al tipo viejo que el banco sí revisó.
+   */
+  aplicaDesde: string;
+}
+
+/**
+ * La revisión que está esperando a que digas qué pasó.
+ *
+ * ATLAS no ve la carta del banco: puede decir qué dicen tus movimientos, pero no
+ * si te dejaron la bonificación. Por eso una revisión que ya pasó no cambia nada
+ * sola — queda **pendiente** hasta que la confirmas o la rectificas.
+ *
+ * `null` cuando no hay ninguna que reclamar: porque no se sabe cuándo revisa,
+ * porque la próxima aún no ha llegado, o porque la última ya se dio por buena.
+ */
+export function revisionPendiente(
+  cal: CalendarioDeRevision,
+  hoy: string,
+  ultimaConfirmada?: string
+): RevisionPendiente | null {
+  const yaConfirmada = (fecha: string): boolean =>
+    typeof ultimaConfirmada === 'string' && ultimaConfirmada.length >= 7 &&
+    // Se comparan por el trozo común · una confirmada «2027-03» tapa la
+    // revisión «2027-03-31», que es la misma.
+    fecha.slice(0, Math.min(fecha.length, ultimaConfirmada.length)) <=
+      ultimaConfirmada.slice(0, Math.min(fecha.length, ultimaConfirmada.length));
+
+  // La del banco · pendiente en cuanto acaba SU MES, no antes: dentro del mes
+  // todavía puede estar mirando.
+  const delBanco = mesDelBanco(cal.proximaSegunElBanco);
+  if (delBanco && delBanco < hoy.slice(0, 7) && !yaConfirmada(delBanco)) {
+    return { fecha: delBanco, precision: 'mes', aplicaDesde: `${delBanco}-01` };
+  }
+
+  const cada = mesesValidos(cal.cadaMeses);
+  const firmaValida = typeof cal.desdeLaFirma === 'string' && cal.desdeLaFirma.length >= 10;
+  if (cada == null || !firmaValida) return null;
+
+  // La ÚLTIMA de la serie que ya pasó · se avanza desde la firma y se guarda la
+  // anterior a hoy, que es la que reclama respuesta.
+  let fecha = sumarMeses(cal.desdeLaFirma, cada);
+  let ultima: string | null = null;
+  for (let i = 0; fecha < hoy && i < 1200; i++) {
+    ultima = fecha;
+    fecha = sumarMeses(fecha, cada);
+  }
+  if (ultima == null || yaConfirmada(ultima)) return null;
+
+  // Las que caen dentro del periodo inicial no decidieron nada · no hay nada
+  // que confirmar de una revisión que no podía cambiar la cuota.
+  const gracia = mesesValidos(cal.graciaMeses);
+  if (gracia != null && ultima <= sumarMeses(cal.desdeLaFirma, gracia)) return null;
+
+  return { fecha: ultima, precision: 'dia', aplicaDesde: ultima };
+}

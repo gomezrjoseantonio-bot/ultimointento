@@ -543,9 +543,33 @@ Reglas que se derivan:
   la próxima revisión, y eso es tan accionable como perderla: se dice «X €
   menos al mes», no se calla por ser buena noticia.
 
-Lo que queda por hacer con esto: **confirmar o rectificar** en la fecha —en los
-dos sentidos— y propagar el cambio al cuadro de amortización y a las previsiones
-de tesorería. §8.
+### Y cuando la fecha llega · confirmar o rectificar
+
+**ATLAS no ve la carta del banco.** Puede decir qué demuestran tus movimientos,
+pero no si te dejaron la bonificación: los bancos perdonan, aplican criterios
+propios y a veces dan una que no esperabas. Por eso una revisión que ya pasó
+**no cambia nada sola** — queda esperando a que digas qué pasó.
+
+**Y va en los dos sentidos** *(Jose · 4 ago 2026)*. Empezar a cumplir una que no
+tenías baja la cuota igual que perderla la sube, y las dos se confirman igual.
+
+Al confirmar se propaga hasta donde se nota:
+
+- Los estados pasan a ser lo que el banco decidió. Lo que **no** se diga de una
+  bonificación la deja como estaba: no decir nada no es decir que se perdió.
+- **El cuadro se recalcula DESDE la revisión, no desde el origen.** Las cuotas
+  ya pagadas se quedan como están y la nueva sale del capital que queda vivo ese
+  día — que es literalmente lo que hace el banco: «la cuota que abonará será de
+  252,62 € calculada sobre el capital pendiente de amortizar de 47.394,19 € a
+  fecha 31 de 03 de 2026». Recalcular desde el origen reescribiría intereses ya
+  cobrados y partiría de un capital que no es el tuyo.
+- **Las previsiones de tesorería salen del cuadro**, así que se corrigen solas.
+- Si el tipo no se mueve —perder una con el tope ya alcanzado por otras—, no se
+  toca el cuadro. No ha cambiado nada que rehacer.
+
+La revisión que espera se distingue de las ya atendidas por
+`ultimaRevisionBonificacionesConfirmada`. Una que caiga dentro del periodo
+inicial no reclama nada: no podía cambiar la cuota.
 
 ### 6 ter · bis · Lo que la bonificación hace con la cuota
 
@@ -659,14 +683,15 @@ Escrito para no perderlo, con la fecha en que se detectó.
   consecuencias en cascada que eso tenga —una bonificación entre ellas—.
   Inventar aquí un «lleva diez días de retraso» sería adelantar esa decisión con
   un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
-- **2026-08-04** · Llegada la fecha de revisión, falta **confirmar o
-  rectificar**: el veredicto ya se enseña con su fecha, pero el estado guardado
-  lo sigue moviendo alguien a mano. Y tiene que poder ir en los **dos
-  sentidos** —empezar a cumplir una que no tenías cuenta igual que perderla—, y
-  al confirmarlo **corregir el cuadro de amortización y las previsiones de
-  tesorería**, que es donde se nota. *(Jose · 4 ago 2026.)* §6 ter · ter.
 
 ### Resuelto
+
+- **2026-08-05** · **Confirmar o rectificar una revisión** ya existe, en los dos
+  sentidos, y propaga: estados, cuadro recalculado DESDE la revisión —sin tocar
+  lo pagado— y previsiones de tesorería, que salen del cuadro. Por el camino se
+  arregló algo que estaba mal desde antes: el cuadro se regeneraba entero al
+  tipo nuevo, así que cualquier cambio de bonificación reescribía los intereses
+  de las cuotas ya cobradas. §6 ter · ter.
 
 - **2026-08-04** · **Cuándo revisa el banco** ya se pregunta en el alta y la
   edición del préstamo: cada cuánto mira y cuántos meses iniciales se dan por

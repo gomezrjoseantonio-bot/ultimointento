@@ -4,7 +4,7 @@
 // igual que una real, y esta manda a alguien a gastar antes de un día que nadie
 // le ha puesto.
 
-import { proximaRevision } from '../revisionDelBanco';
+import { proximaRevision, revisionPendiente } from '../revisionDelBanco';
 
 const cal = (over: Partial<Parameters<typeof proximaRevision>[0]> = {}) => ({
   desdeLaFirma: '2025-03-10',
@@ -201,5 +201,74 @@ describe('el periodo inicial vale por sí solo', () => {
 describe('los meses que no son meses', () => {
   it.each([11.6, 0.5, -12.2])('%s no es un calendario', (cadaMeses) => {
     expect(proximaRevision(cal({ cadaMeses }), '2025-08-04')).toBeNull();
+  });
+});
+
+// ATLAS no ve la carta del banco · puede decir qué dicen tus movimientos, pero
+// no si te dejaron la bonificación. Una revisión que ya pasó no cambia nada
+// sola: queda esperando a que la confirmes o la rectifiques.
+describe('la revisión que espera respuesta', () => {
+  it('la del banco reclama en cuanto acaba su mes', () => {
+    const cal = { desdeLaFirma: '2021-06-15', proximaSegunElBanco: '2026-03' };
+
+    expect(revisionPendiente(cal, '2026-04-02')).toEqual({
+      fecha: '2026-03',
+      precision: 'mes',
+      aplicaDesde: '2026-03-01',
+    });
+  });
+
+  // Dentro de su mes todavía puede estar mirando.
+  it('dentro de su mes no reclama nada', () => {
+    expect(
+      revisionPendiente({ desdeLaFirma: '2021-06-15', proximaSegunElBanco: '2026-03' }, '2026-03-20')
+    ).toBeNull();
+  });
+
+  it('una vez dada por buena, deja de reclamar', () => {
+    const cal = { desdeLaFirma: '2021-06-15', proximaSegunElBanco: '2026-03' };
+
+    expect(revisionPendiente(cal, '2026-04-02', '2026-03')).toBeNull();
+  });
+
+  // El día desde el que rige · con precisión de mes se toma el día 1, para que
+  // la cuota de ese mes vaya ya al tipo nuevo.
+  it('sin fecha del banco, la última de la serie que ya pasó', () => {
+    const r = revisionPendiente({ desdeLaFirma: '2025-03-10', cadaMeses: 12 }, '2026-06-01');
+
+    expect(r?.fecha).toBe('2026-03-10');
+    expect(r?.aplicaDesde).toBe('2026-03-10');
+  });
+
+  it('con varias pasadas, reclama la última', () => {
+    const r = revisionPendiente({ desdeLaFirma: '2020-03-10', cadaMeses: 12 }, '2026-06-01');
+
+    expect(r?.fecha).toBe('2026-03-10');
+  });
+
+  it('confirmada la última, no queda ninguna', () => {
+    expect(
+      revisionPendiente({ desdeLaFirma: '2020-03-10', cadaMeses: 12 }, '2026-06-01', '2026-03-10')
+    ).toBeNull();
+  });
+
+  // No hay nada que confirmar de una revisión que no podía cambiar la cuota.
+  it('las del periodo inicial no reclaman', () => {
+    expect(
+      revisionPendiente(
+        { desdeLaFirma: '2025-03-10', cadaMeses: 6, graciaMeses: 24 },
+        '2026-06-01'
+      )
+    ).toBeNull();
+  });
+
+  it('sin saber cuándo revisa no hay nada pendiente', () => {
+    expect(revisionPendiente({ desdeLaFirma: '2025-03-10' }, '2026-06-01')).toBeNull();
+  });
+
+  it('si la próxima aún no ha llegado, tampoco', () => {
+    expect(
+      revisionPendiente({ desdeLaFirma: '2025-03-10', cadaMeses: 12 }, '2025-08-04')
+    ).toBeNull();
   });
 });
