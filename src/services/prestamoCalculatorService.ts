@@ -17,7 +17,8 @@
  */
 import type { Prestamo } from '../types/prestamos';
 import { generarCuadro } from './prestamos/cuadro';
-import { interesPorDias, type BaseDeCalculo } from './prestamos/baseDeCalculo';
+import { diasSegunBase, interesPorDias, type BaseDeCalculo } from './prestamos/baseDeCalculo';
+import { fechaDeLosDiasSueltos } from './prestamos/fechasDelArranque';
 
 export type TipoPrestamoV2 = 'hipotecario' | 'personal' | 'linea_credito' | 'otro';
 export type TipoInteresV2 = 'fijo' | 'variable' | 'mixto';
@@ -39,36 +40,6 @@ export interface CarenciaTecnicaInfo {
 }
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
-
-// ── Date helpers ────────────────────────────────────────────────────────────
-// Operamos sobre strings ISO YYYY-MM-DD para evitar drift por zona horaria.
-
-function parseISODate(iso: string): { y: number; m: number; d: number } {
-  const [y, m, d] = iso.split('-').map((p) => parseInt(p, 10));
-  return { y, m, d };
-}
-
-function toISODate(y: number, m: number, d: number): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${y}-${pad(m)}-${pad(d)}`;
-}
-
-function diasEnMes(y: number, m: number): number {
-  return new Date(y, m, 0).getDate(); // m es 1-12 aquí
-}
-
-function clampDay(y: number, m: number, d: number): number {
-  return Math.min(d, diasEnMes(y, m));
-}
-
-function diasEntreISO(isoA: string, isoB: string): number {
-  // Diferencia de días calendario (UTC para evitar DST).
-  const a = parseISODate(isoA);
-  const b = parseISODate(isoB);
-  const ta = Date.UTC(a.y, a.m - 1, a.d);
-  const tb = Date.UTC(b.y, b.m - 1, b.d);
-  return Math.round((tb - ta) / 86_400_000);
-}
 
 // ── Funciones financieras ───────────────────────────────────────────────────
 
@@ -96,29 +67,14 @@ function diasEntreISO(isoA: string, isoB: string): number {
 export function detectarCarenciaTecnica(
   fechaFirmaISO: string,
   diaCobro: number,
+  base: BaseDeCalculo = 'ACT/365',
 ): CarenciaTecnicaInfo {
-  const firma = parseISODate(fechaFirmaISO);
+  const fechaLiq = fechaDeLosDiasSueltos(fechaFirmaISO, diaCobro);
+  if (!fechaLiq) return { existe: false, dias: 0, fechaLiquidacion: null };
 
-  // El día de cobro de ESTE mes · el 31 en noviembre es el 30.
-  const esteMes = clampDay(firma.y, firma.m, diaCobro);
-  if (esteMes === firma.d) {
-    return { existe: false, dias: 0, fechaLiquidacion: null };
-  }
-
-  let ly = firma.y;
-  let lm = firma.m;
-  let ld = esteMes;
-
-  // Solo se salta al mes siguiente si en este el cobro YA HA PASADO.
-  if (esteMes < firma.d) {
-    const total = firma.y * 12 + (firma.m - 1) + 1;
-    ly = Math.floor(total / 12);
-    lm = (total % 12) + 1;
-    ld = clampDay(ly, lm, diaCobro);
-  }
-
-  const fechaLiq = toISODate(ly, lm, ld);
-  const dias = diasEntreISO(fechaFirmaISO, fechaLiq);
+  // Los días, contados COMO LOS CUENTA EL BANCO · con el mes comercial el 31 no
+  // existe, y el Sabadell cobra 26 donde el calendario dice 27.
+  const dias = diasSegunBase(fechaFirmaISO, fechaLiq, base);
   return { existe: dias > 0, dias, fechaLiquidacion: fechaLiq };
 }
 

@@ -1029,6 +1029,18 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-05** · **Cada banco redondea la cuota a su manera.** El Sabadell la
+  redondea **al alza**: la francesa exacta de 24.500 € al 4,49 % a 96 meses son
+  304,2539 € y cobra **304,26**. El Santander redondea al más cercano — 993,4300
+  → 993,43, donde el alza daría 993,44—. ATLAS redondea al más cercano, así que
+  falla un céntimo en ese préstamo. No se ha añadido una regla por banco porque
+  de seis cuadros solo uno distingue las dos, y una regla inventada sobre un
+  dato es lo que hay que evitar. §6 bis · bis.
+- **2026-08-05** · **El tramo suelto de ING no cuadra por 13 céntimos.** Cobra
+  218,37 € donde 97.500 € al 2,15 % por 38 días sobre 365 dan 218,24. El tipo
+  que explicaría su cifra es el 2,15128 %, y su propio cuadro liquida los meses
+  al 2,1500 %. La amortización y el capital vivo sí salen exactos, que es lo que
+  arrastra el resto. Falta el dato que lo explique. §6 bis · bis.
 - **2026-08-05** · **La TAE es una suma, no una TIR.** Se calcula sumando la
   capitalización del TIN, la comisión de apertura repartida por años y la
   carencia técnica. La TAE es por definición el tipo que iguala los flujos, y
@@ -1099,6 +1111,17 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-05** · **El arranque de un préstamo, contra seis cuadros reales.**
+  Cuatro bancos con el papel delante. La fecha del primer cargo **deja de
+  preguntarse**: «el primer cargo» eran dos fechas —el recibo de los días
+  sueltos y la primera cuota entera—, ATLAS aceptaba las dos y una daba un
+  cuadro imposible en silencio. Las dos salen de la disposición y del día de
+  cobro. Lo que sí se pregunta es lo que ATLAS no puede saber: **qué hace tu
+  banco con esos días** —los cobra aparte (Santander ×3, Sabadell ×2) o los mete
+  dentro de la primera cuota saltándose un recibo (ING)— y **cómo los cuenta**
+  —días reales sobre 365, o 30/360 como el Sabadell, donde el 31 vale 30—. Cinco
+  de los seis cuadran al céntimo; los dos restos son de redondeo del banco y
+  quedan anotados arriba. §6 bis · bis.
 - **2026-08-05** · **Los días sueltos del arranque se liquidan en la primera
   fecha de cobro que llega**, no en la del mes siguiente. Tres cuadros del
   Santander dicen lo mismo: 12-05-2026 con cobro el día 1 → 01-06 (20 días),
