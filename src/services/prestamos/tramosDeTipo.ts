@@ -43,6 +43,16 @@ export interface TramoDeTipo {
    * que es el de hoy y no tiene por qué ser el que aplicó al firmar.
    */
   estimado: boolean;
+  /**
+   * Si el tipo de este tramo lo pone el ÍNDICE.
+   *
+   * No es lo mismo que `estimado`: una revisión apuntada de una carta es un
+   * hecho (`estimado: false`) y sigue siendo un tramo variable. Lo que se
+   * responde aquí es de qué fase del préstamo estamos hablando, y de eso
+   * depende si las bonificaciones rebajan —hay escrituras que solo bonifican
+   * «en el segundo y sucesivos períodos de interés» (§6 ter).
+   */
+  variable: boolean;
 }
 
 const numero = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -69,7 +79,9 @@ export function tramosDeTipo(prestamo: Prestamo): TramoDeTipo[] {
   let desdeCuandoRevisan = firma;
 
   if (prestamo.tipo === 'FIJO') {
-    return [{ desde: firma, tinBase: numero(prestamo.tipoNominalAnualFijo), estimado: false }];
+    return [
+      { desde: firma, tinBase: numero(prestamo.tipoNominalAnualFijo), estimado: false, variable: false },
+    ];
   }
 
   if (prestamo.tipo === 'MIXTO') {
@@ -77,6 +89,7 @@ export function tramosDeTipo(prestamo: Prestamo): TramoDeTipo[] {
       desde: firma,
       tinBase: numero(prestamo.tipoNominalAnualMixtoFijo),
       estimado: false,
+      variable: false,
     });
 
     const meses = numero(prestamo.tramoFijoMeses);
@@ -84,14 +97,19 @@ export function tramosDeTipo(prestamo: Prestamo): TramoDeTipo[] {
     // meses dichos no hay fecha de cambio, así que no se inventa ninguna.
     if (firma && Number.isInteger(meses) && meses > 0 && meses < prestamo.plazoMesesTotal) {
       desdeCuandoRevisan = sumarMeses(firma, meses);
-      tramos.push({ desde: desdeCuandoRevisan, tinBase: variable(prestamo), estimado: true });
+      tramos.push({
+        desde: desdeCuandoRevisan,
+        tinBase: variable(prestamo),
+        estimado: true,
+        variable: true,
+      });
     }
   }
 
   if (prestamo.tipo === 'VARIABLE') {
     // «El índice actual» es el de hoy, no necesariamente el que aplicó al
     // firmar. Para un préstamo de hace años es una presunción, y se dice.
-    tramos.push({ desde: firma, tinBase: variable(prestamo), estimado: true });
+    tramos.push({ desde: firma, tinBase: variable(prestamo), estimado: true, variable: true });
   }
 
   // ── Las revisiones que ya ocurrieron · esto sí son hechos ─────────────────
@@ -108,15 +126,37 @@ export function tramosDeTipo(prestamo: Prestamo): TramoDeTipo[] {
     // es el dato bueno para ese día, y el que había era la presunción.
     const mismoDia = tramos[tramos.length - 1]?.desde === r.desde;
     if (mismoDia) {
-      tramos[tramos.length - 1] = { desde: r.desde, tinBase, estimado: false };
+      tramos[tramos.length - 1] = { desde: r.desde, tinBase, estimado: false, variable: true };
       continue;
     }
 
-    tramos.push({ desde: r.desde, tinBase, estimado: false });
+    tramos.push({ desde: r.desde, tinBase, estimado: false, variable: true });
   }
 
   // Después de la última revisión apuntada no se proyecta ninguna más. Sabemos
   // cuándo revisará el banco, pero no a cuánto: partir el cuadro por una fecha
   // para volver a poner el MISMO tipo no cambia nada y solo añade ruido.
   return tramos;
+}
+
+/**
+ * El tramo que rige un día dado · el último que ya había empezado.
+ *
+ * Esta es la pregunta que la pantalla venía respondiendo mal: el TIN de un
+ * mixto se leía siempre de `tipoNominalAnualMixtoFijo`, así que una hipoteca de
+ * 3+17 seguía anunciando su tipo de teaser en el año veinte. Y de ese número
+ * salían el TIN del listado, los intereses estimados del panel y la base sobre
+ * la que se calculaba qué pasa si pierdes una bonificación.
+ *
+ * `dia` se pasa de fuera a propósito: quien pregunta por hoy trae hoy, y el
+ * cuadro —que no mira el reloj— no lo usa.
+ */
+export function tramoVigente(prestamo: Prestamo, dia: string): TramoDeTipo {
+  const tramos = tramosDeTipo(prestamo);
+  // De atrás adelante · el primero que ya había arrancado es el que manda.
+  for (let i = tramos.length - 1; i >= 0; i--) {
+    if (!tramos[i].desde || tramos[i].desde <= dia) return tramos[i];
+  }
+  // Un día anterior a la firma —o una firma sin fecha— se paga al del arranque.
+  return tramos[0];
 }

@@ -63,7 +63,7 @@ import type { PrestamoFinanciacion } from '../../../types/financiacion';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import { bonificaHipoteca } from '../../../services/tarjetasReglas';
-import { tinConBonificaciones } from '../../../services/bonificaciones/tinEfectivo';
+import { tinDelTramo } from '../../../services/prestamos/tinDelTramo';
 import { effectiveTIN } from '../helpers';
 import { enteroNoNegativo, esNumero, fmtNumeroEs, parseNum } from './numeros';
 import { comisionPactadaDe, type ComisionPactada } from '../../../services/prestamos/comisiones';
@@ -158,6 +158,8 @@ interface FormState {
   proximaRevision: string;
   /** Cada cuántos meses las revisa el banco · '' = la escritura no lo dice. */
   revisionCadaMeses: string;
+  /** Desde cuándo REBAJAN · solo se pregunta en un mixto. */
+  bonificacionesDesde: 'FIRMA' | 'TRAMO_VARIABLE';
   /** Meses iniciales en que se dan por cumplidas · '' o '0' = ninguno. */
   graciaBonificacionesMeses: string;
   // Bloque 7 · carencia inicial
@@ -409,6 +411,7 @@ function emptyFormState(): FormState {
     bonificaciones: filasDelCatalogo(),
     proximaRevision: '',
     revisionCadaMeses: '',
+    bonificacionesDesde: 'FIRMA',
     graciaBonificacionesMeses: '',
     carenciaInicialTipo: 'ninguna',
     carenciaInicialMesesRaw: '0',
@@ -589,6 +592,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       revisionCadaMeses: p.periodoRevisionBonificacionMeses
         ? String(p.periodoRevisionBonificacionMeses)
         : '',
+      bonificacionesDesde: p.bonificacionesDesde ?? 'FIRMA',
       graciaBonificacionesMeses: p.graciaMesesBonificaciones
         ? String(p.graciaMesesBonificaciones)
         : '',
@@ -685,7 +689,6 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
             nombre: b.nombre,
             reduccionPuntosPorcentuales: b.ppDescuento,
             impacto: { puntos: -b.ppDescuento },
-            aplicaEn: 'FIJO',
             lookbackMeses: b.lookbackMeses,
             regla: b.regla,
             tarjetaExigidaId: b.tarjetaExigidaId,
@@ -699,11 +702,25 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     [form.bonificacionesActivas, form.bonificaciones],
   );
 
-  // El TIN que se paga · la regla de §6 ter, con su tope. Los topes salen del
-  // préstamo cargado porque hoy no hay pantalla que los escriba.
+  // Solo un mixto tiene dos fases · en un fijo o en un variable la pregunta no
+  // existe, y guardar la respuesta ahí sería guardar un dato que no dice nada
+  // —que es exactamente lo que hacía el `aplicaEn` que esto sustituye—.
+  const bonificacionesDesde: Prestamo['bonificacionesDesde'] =
+    form.tipoInteres === 'mixto' ? form.bonificacionesDesde : undefined;
+
+  // El TIN que se paga AL ARRANCAR · la regla de §6 ter, con su tope. Los topes
+  // salen del préstamo cargado porque hoy no hay pantalla que los escriba.
+  //
+  // Y en un mixto que solo bonifica desde su tramo variable, al arrancar no
+  // rebaja nada: la Unicaja de Jose paga su 2,600 % entero durante 36 meses.
   const tinEfectivoPct = useMemo(
-    () => tinConBonificaciones(tinBasePct, bonificacionesModelo, loadedPrestamo ?? {}),
-    [tinBasePct, bonificacionesModelo, loadedPrestamo],
+    () =>
+      tinDelTramo(
+        { ...(loadedPrestamo ?? {}), bonificacionesDesde } as Prestamo,
+        { tinBase: tinBasePct, variable: form.tipoInteres === 'variable' },
+        bonificacionesModelo,
+      ),
+    [tinBasePct, bonificacionesModelo, loadedPrestamo, bonificacionesDesde, form.tipoInteres],
   );
 
   const carencia = useMemo(() => {
@@ -818,6 +835,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       maximoBonificacionPorcentaje: loadedPrestamo?.maximoBonificacionPorcentaje,
       topeBonificacionesTotal: loadedPrestamo?.topeBonificacionesTotal,
       bonificaciones: bonificacionesModelo,
+      bonificacionesDesde,
       comisionApertura: parseNum(form.comAperturaRaw),
       carenciaTecnica,
       // La carencia inicial · el motor la aplica, así que la vista previa la
@@ -847,6 +865,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     prestamoId,
     loadedPrestamo,
     bonificacionesModelo,
+    bonificacionesDesde,
     carenciaTecnica,
   ]);
 
@@ -1065,6 +1084,10 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         bonificaciones,
         proximaRevisionBonificaciones: form.proximaRevision || undefined,
         periodoRevisionBonificacionMeses: revisionCada || undefined,
+        // `FIRMA` no se guarda · es lo que se lee cuando falta, y guardarlo
+        // solo añadiría una respuesta que no cambia nada.
+        bonificacionesDesde:
+          bonificacionesDesde === 'TRAMO_VARIABLE' ? 'TRAMO_VARIABLE' : undefined,
         graciaMesesBonificaciones: graciaBonif || undefined,
         cuotasPagadas: 0,
         origenCreacion: initialData ? 'FEIN' : 'MANUAL',
@@ -1834,6 +1857,45 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                         </div>
                       </div>
                     </div>
+
+                    {/*
+                      DESDE CUÁNDO rebajan · solo en un mixto, que es el único
+                      con dos fases.
+
+                      No es un detalle: son dos escrituras reales que dicen lo
+                      contrario. La Unicaja bonifica «en el segundo y en los
+                      sucesivos períodos de interés», o sea nunca durante sus 36
+                      meses fijos; la ING rebaja del 2,15 % al 1,35 % desde el
+                      primer recibo. Un punto entero de diferencia durante tres
+                      años, y ATLAS lo daba por rebajado siempre.
+                    */}
+                    {form.tipoInteres === 'mixto' && (
+                      <div className={`${styles.fieldsRow} ${styles.rowRevision}`}>
+                        <div className={styles.field}>
+                          <label className={styles.fieldLabel}>Empiezan a rebajar</label>
+                          <select
+                            className={styles.select}
+                            value={form.bonificacionesDesde}
+                            onChange={(e) =>
+                              update(
+                                'bonificacionesDesde',
+                                e.target.value as FormState['bonificacionesDesde'],
+                              )
+                            }
+                          >
+                            <option value="FIRMA">Desde la firma</option>
+                            <option value="TRAMO_VARIABLE">Al acabar el tramo fijo</option>
+                          </select>
+                        </div>
+                        <div className={styles.field}>
+                          <div className={styles.hintNote}>
+                            Búscalo en la cláusula de intereses. «En el segundo y en los sucesivos
+                            períodos de interés» quiere decir que durante el tramo fijo pagas el
+                            tipo entero, tengas contratado lo que tengas.
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div className={styles.bonifGrid}>
                       {form.bonificaciones.map((b) => (

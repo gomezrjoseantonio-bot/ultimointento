@@ -7,7 +7,7 @@
 // Lo que ya pasó sale de las cartas que el usuario haya apuntado. Lo que viene
 // se proyecta con el último tipo conocido, y va marcado como estimación.
 
-import { tramosDeTipo } from '../tramosDeTipo';
+import { tramosDeTipo, tramoVigente } from '../tramosDeTipo';
 import type { Prestamo } from '../../../types/prestamos';
 
 const prestamo = (over: Partial<Prestamo> = {}): Prestamo =>
@@ -44,7 +44,7 @@ const variable = (over: Partial<Prestamo> = {}): Prestamo =>
 describe('un préstamo fijo', () => {
   it('tiene un solo tramo, y no es una estimación', () => {
     expect(tramosDeTipo(prestamo())).toEqual([
-      { desde: '2021-06-15', tinBase: 2.1, estimado: false },
+      { desde: '2021-06-15', tinBase: 2.1, estimado: false, variable: false },
     ]);
   });
 });
@@ -55,8 +55,8 @@ describe('un préstamo fijo', () => {
 describe('un préstamo mixto', () => {
   it('se parte cuando acaba el tramo fijo', () => {
     expect(tramosDeTipo(mixto())).toEqual([
-      { desde: '2021-06-15', tinBase: 2, estimado: false },
-      { desde: '2024-06-15', tinBase: 3.1, estimado: true },
+      { desde: '2021-06-15', tinBase: 2, estimado: false, variable: false },
+      { desde: '2024-06-15', tinBase: 3.1, estimado: true, variable: true },
     ]);
   });
 
@@ -80,7 +80,7 @@ describe('un préstamo variable', () => {
   // es el que aplicó al firmar, y decir lo contrario sería inventárselo.
   it('sin revisiones apuntadas, su único tramo es una estimación', () => {
     expect(tramosDeTipo(variable())).toEqual([
-      { desde: '2021-06-15', tinBase: 3.1, estimado: true },
+      { desde: '2021-06-15', tinBase: 3.1, estimado: true, variable: true },
     ]);
   });
 
@@ -93,9 +93,9 @@ describe('un préstamo variable', () => {
     });
 
     expect(tramosDeTipo(p)).toEqual([
-      { desde: '2021-06-15', tinBase: 3.1, estimado: true },
-      { desde: '2022-06-15', tinBase: 1.752, estimado: false },
-      { desde: '2023-06-15', tinBase: 4.907, estimado: false },
+      { desde: '2021-06-15', tinBase: 3.1, estimado: true, variable: true },
+      { desde: '2022-06-15', tinBase: 1.752, estimado: false, variable: true },
+      { desde: '2023-06-15', tinBase: 4.907, estimado: false, variable: true },
     ]);
   });
 
@@ -115,7 +115,7 @@ describe('un préstamo variable', () => {
     const p = variable({ revisionesDeTipo: [{ desde: '2021-06-15', valorIndice: -0.484 }] });
 
     expect(tramosDeTipo(p)).toEqual([
-      { desde: '2021-06-15', tinBase: 0.416, estimado: false },
+      { desde: '2021-06-15', tinBase: 0.416, estimado: false, variable: true },
     ]);
   });
 });
@@ -134,8 +134,8 @@ describe('las revisiones que no aplican', () => {
     const p = mixto({ revisionesDeTipo: [{ desde: '2024-06-15', valorIndice: 3.5 }] });
 
     expect(tramosDeTipo(p)).toEqual([
-      { desde: '2021-06-15', tinBase: 2, estimado: false },
-      { desde: '2024-06-15', tinBase: 4.4, estimado: false },
+      { desde: '2021-06-15', tinBase: 2, estimado: false, variable: false },
+      { desde: '2024-06-15', tinBase: 4.4, estimado: false, variable: true },
     ]);
   });
 
@@ -148,5 +148,30 @@ describe('las revisiones que no aplican', () => {
     const p = variable({ revisionesDeTipo: [revision as never] });
 
     expect(tramosDeTipo(p)).toHaveLength(1);
+  });
+});
+
+// El TIN que la pantalla enseñaba salía siempre del campo del arranque, así que
+// una mixta 3+17 seguía anunciando su tipo de teaser en el año veinte.
+describe('el tramo que rige un día dado', () => {
+  it('en un fijo es siempre el mismo', () => {
+    expect(tramoVigente(prestamo(), '2043-01-01').tinBase).toBe(2.1);
+  });
+
+  it('en un mixto cambia el día en que acaba el tramo fijo', () => {
+    expect(tramoVigente(mixto(), '2024-06-14').tinBase).toBe(2);
+    expect(tramoVigente(mixto(), '2024-06-15').tinBase).toBe(3.1);
+  });
+
+  it('en un variable manda la última revisión apuntada, no el índice de hoy', () => {
+    const p = variable({ revisionesDeTipo: [{ desde: '2022-06-15', valorIndice: 0.852 }] });
+
+    expect(tramoVigente(p, '2023-01-01').tinBase).toBe(1.752);
+  });
+
+  // Un día anterior a la firma no tiene tramo propio · se responde con el del
+  // arranque en vez de con nada, que es lo que reventaría la pantalla.
+  it('antes de la firma se responde con el del arranque', () => {
+    expect(tramoVigente(mixto(), '2019-01-01').tinBase).toBe(2);
   });
 });

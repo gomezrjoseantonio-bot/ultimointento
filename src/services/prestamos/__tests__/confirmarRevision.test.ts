@@ -25,7 +25,6 @@ const bonif = (id: string, puntos: number, estado: Prestamo['bonificaciones'] ex
   nombre: id,
   reduccionPuntosPorcentuales: puntos,
   impacto: { puntos: -puntos },
-  aplicaEn: 'FIJO' as const,
   lookbackMeses: 6,
   regla: { tipo: 'NOMINA' as const, minimoMensual: 1200 },
   estado,
@@ -176,5 +175,38 @@ describe('lo que no se puede confirmar', () => {
 
     expect(servicio.updatePrestamo).toHaveBeenCalled();
     expect(r!.cuadroRehecho).toBe(false);
+  });
+});
+
+// La primera revisión de un mixto que solo bonifica en su tramo variable trae
+// DOS cosas a la vez: el índice y las bonificaciones. Preguntando el antes y el
+// después al mismo tramo —el del arranque—, esa revisión no movía nada.
+describe('la revisión que estrena el tramo variable', () => {
+  const unicaja = (): Prestamo =>
+    ({
+      ...prestamo(),
+      tipo: 'MIXTO',
+      tipoNominalAnualFijo: undefined,
+      tipoNominalAnualMixtoFijo: 2.6,
+      tramoFijoMeses: 36,
+      plazoMesesTotal: 240,
+      valorIndiceActual: 2.1,
+      diferencial: 1.75,
+      bonificacionesDesde: 'TRAMO_VARIABLE',
+      fechaFirma: '2023-08-25',
+    }) as unknown as Prestamo;
+
+  const alCambiarDeTramo = { fecha: '2026-08', aplicaDesde: '2026-08-25' };
+
+  it('el antes es el tipo fijo entero y el después ya viene bonificado', async () => {
+    servicio.getPrestamoById.mockResolvedValue(unicaja());
+
+    const r = await confirmarRevision('p1', { ...alCambiarDeTramo, decision: {} });
+
+    // 2,600 % sin rebajar · durante el tramo fijo no bonifica nada.
+    expect(r!.tinAntes).toBe(2.6);
+    // Euríbor 2,10 + 1,75 diferencial − 0,55 de bonificaciones.
+    expect(r!.tinDespues).toBe(3.3);
+    expect(r!.cuadroRehecho).toBe(true);
   });
 });

@@ -6,7 +6,8 @@
 // migraciones) sigue en los services del repositorio (NO se duplica).
 
 import type { Prestamo, PlanPagos, PeriodoPago } from '../../types/prestamos';
-import { tinConBonificaciones } from '../../services/bonificaciones/tinEfectivo';
+import { tinDelTramo } from '../../services/prestamos/tinDelTramo';
+import { tramoVigente } from '../../services/prestamos/tramosDeTipo';
 import type { BankPalette, LoanKind, LoanRow } from './types';
 
 const BANK_KEYWORDS: Record<string, BankPalette> = {
@@ -58,25 +59,30 @@ export const inferLoanKind = (p: Prestamo): LoanKind => {
   return 'personal';
 };
 
-/** El TIN antes de bonificar · lo que decide el tipo del préstamo. */
-export const tinBase = (p: Prestamo): number => {
-  if (p.tipo === 'FIJO') return p.tipoNominalAnualFijo ?? 0;
-  if (p.tipo === 'VARIABLE') return (p.valorIndiceActual ?? 0) + (p.diferencial ?? 0);
-  if (p.tipo === 'MIXTO') return p.tipoNominalAnualMixtoFijo ?? 0;
-  return 0;
-};
+/** Hoy, en ISO · el día contra el que se pregunta «¿a qué tipo vas ahora?». */
+const hoyISO = (): string => new Date().toISOString().slice(0, 10);
 
 /**
- * TIN efectivo aproximado · el base menos lo que rebajan las bonificaciones.
+ * El TIN de HOY antes de bonificar · el del tramo que rige ahora mismo.
  *
- * La rebaja la calcula `tinConBonificaciones` y no este fichero: era una de las
- * cuatro copias de la misma regla, y la que estaba peor —multiplicaba los
- * puntos por cien y descartaba las bonificaciones recién contratadas, así que
- * la pantalla enseñaba el TIN sin bonificar mientras tesorería preveía la cuota
- * ya bonificada (§6 ter).
+ * Antes se leía del campo del arranque, así que un mixto anunciaba su tipo de
+ * teaser hasta el último recibo: la Unicaja de Jose —36 meses al 2,600 % y
+ * después Euríbor + 1,750— habría seguido diciendo 2,600 % en 2043. Y un
+ * variable ignoraba las revisiones apuntadas de sus cartas, que son hechos.
  */
-export const effectiveTIN = (p: Prestamo): number =>
-  tinConBonificaciones(tinBase(p), p.bonificaciones, p);
+export const tinBase = (p: Prestamo): number => tramoVigente(p, hoyISO()).tinBase;
+
+/**
+ * TIN efectivo aproximado · el de hoy, menos lo que rebajen las bonificaciones
+ * SI en este tramo rebajan.
+ *
+ * La rebaja la calcula `tinDelTramo` y no este fichero: era una de las cuatro
+ * copias de la misma regla, y la que estaba peor —multiplicaba los puntos por
+ * cien y descartaba las bonificaciones recién contratadas, así que la pantalla
+ * enseñaba el TIN sin bonificar mientras tesorería preveía la cuota ya
+ * bonificada (§6 ter).
+ */
+export const effectiveTIN = (p: Prestamo): number => tinDelTramo(p, tramoVigente(p, hoyISO()));
 
 const monthsBetween = (start: Date, end: Date): number => {
   return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());

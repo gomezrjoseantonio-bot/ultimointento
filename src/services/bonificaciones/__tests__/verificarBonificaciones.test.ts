@@ -43,7 +43,6 @@ const bonif = (over: Partial<Bonificacion> = {}): Bonificacion => ({
   nombre: 'Uso tarjeta',
   reduccionPuntosPorcentuales: 0.001,
   impacto: { puntos: -0.1 },
-  aplicaEn: 'FIJO',
   lookbackMeses: 6,
   regla: { tipo: 'TARJETA', importeMinimo: 3000 },
   estado: 'SELECCIONADO',

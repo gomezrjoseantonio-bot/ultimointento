@@ -20,14 +20,15 @@ import { recibosDomiciliados } from '../../services/bonificaciones/recibosDomici
 import { listarTarjetas } from '../../services/tarjetasService';
 import { verificarBonificaciones } from '../../services/bonificaciones/verificarBonificaciones';
 import type { MovimientosQuePrueban } from '../../services/bonificaciones/verificarBonificaciones';
-import { tinSiRevisaranHoy } from '../../services/bonificaciones/tinEfectivo';
+import { tinDelTramoSiRevisaranHoy } from '../../services/prestamos/tinDelTramo';
+import { tramoVigente } from '../../services/prestamos/tramosDeTipo';
 import { proximaRevision, revisionPendiente } from '../../services/bonificaciones/revisionDelBanco';
 import { confirmarRevision } from '../../services/prestamos/confirmarRevision';
 import type { LoQueDecidioElBanco } from '../../services/prestamos/confirmarRevision';
 import { estaAplicada } from '../../services/bonificaciones/tinEfectivo';
 import { nombreMes } from '../tesoreria/v6/formatoV6';
 import type { Prestamo } from '../../types/prestamos';
-import { cuotaMensualConTin, effectiveTIN, tinBase } from './helpers';
+import { cuotaMensualConTin, effectiveTIN } from './helpers';
 import { textoDeCumplimiento, textoDeLoQueEstaEnJuego } from './textoBonificacion';
 import styles from './BonificacionesVerificadas.module.css';
 
@@ -92,13 +93,13 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
   // cuota sale de la misma fórmula en los dos casos, solo cambia el tipo — y el
   // segundo se recalcula entero desde el base, no sumando puntos al primero:
   // con un tope, perder una bonificación puede no subir el tipo nada.
+  //
+  // Los dos se preguntan sobre el tramo que rige HOY. En un mixto que solo
+  // bonifica en su tramo variable, durante el fijo los dos valen lo mismo: ahí
+  // el tipo no lo mueve nada.
+  const tramoHoy = tramoVigente(prestamo, hoy);
   const tinHoy = effectiveTIN(prestamo);
-  const tinSiRevisaran = tinSiRevisaranHoy(
-    tinBase(prestamo),
-    bonificaciones,
-    cumplimientos,
-    prestamo
-  );
+  const tinSiRevisaran = tinDelTramoSiRevisaranHoy(prestamo, tramoHoy, cumplimientos);
   // Cuándo lo mira el banco · `null` cuando la escritura no lo dice, y entonces
   // se sigue diciendo «si la revisión fuera hoy». Inventar un año por defecto
   // pondría una fecha que se lee igual que una real.
