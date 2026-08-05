@@ -19,7 +19,7 @@
 //   · NO se aplica detección retroactiva a préstamos existentes.
 // ============================================================================
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   AlertCircle,
@@ -65,7 +65,10 @@ import { listarTarjetas } from '../../../services/tarjetasService';
 import { bonificaHipoteca } from '../../../services/tarjetasReglas';
 import { tinConBonificaciones } from '../../../services/bonificaciones/tinEfectivo';
 import { effectiveTIN } from '../helpers';
-import { esNumero } from './numeros';
+import { enteroNoNegativo, esNumero, fmtNumeroEs, parseNum } from './numeros';
+import { comisionPactadaDe, type ComisionPactada } from '../../../services/prestamos/comisiones';
+import { topesDeReembolso, type OpcionDeTope } from '../../../services/prestamos/topesLegales';
+import ComisionEditor, { SIN_COMISION, TopesLegales } from './ComisionEditor';
 import { BASE_POR_DEFECTO, NOMBRE_DE_LA_BASE, type BaseDeCalculo }
   from '../../../services/prestamos/baseDeCalculo';
 import styles from './PrestamoPageV2.module.css';
@@ -143,7 +146,9 @@ interface FormState {
   // Bloque 5 · comisiones
   comAperturaRaw: string;
   comMantenimientoRaw: string;
-  comAmortAnticipadaRaw: string;
+  /** El calendario de cada comisión de reembolso · §6 bis · quater. */
+  comReembolsoParcial: ComisionPactada;
+  comReembolsoTotal: ComisionPactada;
   comModifCondicionesRaw: string;
   gastoReclamacionImpagoRaw: string;
   // Bloque 6 · bonificaciones
@@ -182,21 +187,6 @@ const fmtPct = (v: number, dec = 2): string =>
     minimumFractionDigits: dec,
     maximumFractionDigits: dec,
   }).format(Number.isFinite(v) ? v : 0) + ' %';
-
-const parseNum = (raw: string): number => {
-  if (!raw) return 0;
-  const normalized = String(raw).replace(/\./g, '').replace(',', '.').trim();
-  const n = parseFloat(normalized);
-  return Number.isFinite(n) ? n : 0;
-};
-
-const fmtNumeroEs = (v: number, dec = 2): string => {
-  if (!Number.isFinite(v)) return '';
-  return new Intl.NumberFormat('es-ES', {
-    minimumFractionDigits: dec,
-    maximumFractionDigits: dec,
-  }).format(v);
-};
 
 const fmtFechaCorta = (iso: string): string => {
   if (!iso) return '';
@@ -292,9 +282,6 @@ function condicionDeRegla(r: ReglaBonificacion): string {
  * esto se podría guardar «2,5 recibos», que no existe y acabaría dicho tal cual
  * en la ficha y en la comprobación.
  */
-const enteroNoNegativo = (n: number): number =>
-  Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
-
 /** La ventana por defecto · medio año, como el `lookbackMeses` que ya se guardaba. */
 const LOOKBACK_POR_DEFECTO = 6;
 
@@ -414,7 +401,8 @@ function emptyFormState(): FormState {
     tinTramoFijoRaw: '',
     comAperturaRaw: '0',
     comMantenimientoRaw: '0',
-    comAmortAnticipadaRaw: '0',
+    comReembolsoParcial: SIN_COMISION,
+    comReembolsoTotal: SIN_COMISION,
     comModifCondicionesRaw: '0',
     gastoReclamacionImpagoRaw: '0',
     bonificacionesActivas: false,
@@ -591,7 +579,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       tinTramoFijoRaw: p.tipoNominalAnualMixtoFijo !== undefined ? fmtNumeroEs(p.tipoNominalAnualMixtoFijo) : '',
       comAperturaRaw: fmtNumeroEs(p.comisionApertura ?? 0),
       comMantenimientoRaw: fmtNumeroEs(p.comisionMantenimiento ?? 0),
-      comAmortAnticipadaRaw: fmtNumeroEs(p.comisionAmortizacionAnticipada ?? 0),
+      comReembolsoParcial: comisionPactadaDe(p, 'PARCIAL') ?? SIN_COMISION,
+      comReembolsoTotal: comisionPactadaDe(p, 'TOTAL') ?? SIN_COMISION,
       comModifCondicionesRaw: fmtNumeroEs(p.comisionModificacionCondiciones ?? 0),
       gastoReclamacionImpagoRaw: fmtNumeroEs(p.gastoReclamacionImpago ?? 0),
       bonificacionesActivas: bonificaciones.some((b) => b.activa),
@@ -742,6 +731,39 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     }
     return { carencia: mapCarenciaV2ToLegacy(form.carenciaInicialTipo), carenciaMeses: meses };
   }, [form.carenciaInicialTipo, form.carenciaInicialMesesRaw]);
+
+  /**
+   * El tope que la ley permite para ESTE préstamo · §6 bis · quater.
+   *
+   * Vacío cuando no se puede saber —una mixta, un personal, una hipoteca muy
+   * antigua—: entonces no se propone nada, que es mejor que proponer mal.
+   */
+  const topesLegales = useMemo(
+    () =>
+      topesDeReembolso({
+        tipoPrestamo: form.tipoPrestamo,
+        tipoInteres: form.tipoInteres,
+        fechaFirma: form.fechaFirma,
+      }),
+    [form.tipoPrestamo, form.tipoInteres, form.fechaFirma]
+  );
+
+  /** Poner el tope en las dos · queda marcado como propuesto, no leído. */
+  const aplicarTope = useCallback((tope: OpcionDeTope) => {
+    const pactada: ComisionPactada = { tramos: tope.tramos, origen: 'TOPE_LEGAL' };
+    setForm((f) => ({ ...f, comReembolsoParcial: pactada, comReembolsoTotal: pactada }));
+  }, []);
+
+  // Al dar de alta se propone el tope · dejar el campo en cero tampoco es
+  // neutral, porque cero afirma «no hay comisión». Solo en préstamos NUEVOS y
+  // solo mientras nadie lo haya tocado: editar uno existente no puede pisar lo
+  // que ya diga su escritura.
+  const yaPropuesto = useRef(false);
+  useEffect(() => {
+    if (prestamoId || yaPropuesto.current || topesLegales.length === 0) return;
+    yaPropuesto.current = true;
+    aplicarTope(topesLegales[0]);
+  }, [prestamoId, topesLegales, aplicarTope]);
 
   /** Los días sueltos entre la firma y el primer mes de cobro · cargo aparte. */
   const carenciaTecnica = useMemo(() => {
@@ -1033,7 +1055,13 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         baseCalculoIntereses: form.baseCalculo,
         comisionApertura: parseNum(form.comAperturaRaw),
         comisionMantenimiento: parseNum(form.comMantenimientoRaw),
-        comisionAmortizacionAnticipada: parseNum(form.comAmortAnticipadaRaw),
+        comisionReembolsoParcial: form.comReembolsoParcial,
+        comisionReembolsoTotal: form.comReembolsoTotal,
+        // Los sueltos se siguen escribiendo para que el exportador y la
+        // plantilla no se queden en blanco · el calendario manda, y esto es su
+        // primer tramo.
+        comisionAmortizacionAnticipada: form.comReembolsoParcial.tramos[0]?.porcentaje ?? 0,
+        comisionCancelacionTotal: form.comReembolsoTotal.tramos[0]?.porcentaje ?? 0,
         bonificaciones,
         proximaRevisionBonificaciones: form.proximaRevision || undefined,
         periodoRevisionBonificacionMeses: revisionCada || undefined,
@@ -1656,15 +1684,6 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                       </div>
                     </div>
                     <div className={styles.field}>
-                      <label className={styles.fieldLabel}>Amort. anticipada</label>
-                      <div className={styles.inputSuffix}>
-                        <input className={`${styles.input} ${styles.inputMono}`}
-                          value={form.comAmortAnticipadaRaw}
-                          onChange={(e) => update('comAmortAnticipadaRaw', e.target.value)} />
-                        <span className={styles.suffix}>%</span>
-                      </div>
-                    </div>
-                    <div className={styles.field}>
                       <label className={styles.fieldLabel}>Modif. condiciones</label>
                       <div className={styles.inputSuffix}>
                         <input className={`${styles.input} ${styles.inputMono}`}
@@ -1681,6 +1700,49 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                           onChange={(e) => update('gastoReclamacionImpagoRaw', e.target.value)} />
                         <span className={styles.suffix}>€</span>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Adelantar dinero · §6 bis · quater.
+                      Parcial y total son DOS comisiones: los topes legales son
+                      máximos y no obligan a que se pacten iguales. Lo normal es
+                      que no lo sean, y de esa diferencia sale una decisión. */}
+                  <div className={styles.revisiones}>
+                    <div className={styles.revisionesHd}>
+                      Adelantar dinero
+                      <span className={styles.revisionesSub}>
+                        adelantar una parte y cancelar del todo no cuestan lo mismo
+                      </span>
+                    </div>
+
+                    <TopesLegales opciones={topesLegales} onElegir={aplicarTope} />
+
+                    <div className={styles.comisiones}>
+                      <ComisionEditor
+                        titulo="Amortización parcial"
+                        valor={form.comReembolsoParcial}
+                        onChange={(c) => update('comReembolsoParcial', c)}
+                      />
+                      <ComisionEditor
+                        titulo="Cancelación total"
+                        valor={form.comReembolsoTotal}
+                        onChange={(c) => update('comReembolsoTotal', c)}
+                      />
+                    </div>
+
+                    <div className={styles.revisionesNota}>
+                      En <b>puntos porcentuales</b>: 0,25 es un 0,25 %. Cada tramo rige hasta el
+                      mes que digas; el último, en adelante. Lo que vale es{' '}
+                      <b>lo que ponga tu escritura</b> — la ley pone topes, pero dependen de tu
+                      préstamo y ATLAS no los aplica por su cuenta.
+                      {(form.comReembolsoParcial.origen === 'TOPE_LEGAL' ||
+                        form.comReembolsoTotal.origen === 'TOPE_LEGAL') && (
+                        <>
+                          {' '}
+                          <b>Ahora mismo hay una cifra propuesta por ATLAS</b>, no leída de tu
+                          escritura: contrástala.
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

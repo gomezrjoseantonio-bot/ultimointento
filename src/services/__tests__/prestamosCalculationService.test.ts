@@ -388,7 +388,10 @@ describe('PrestamosCalculationService', () => {
       plazoMesesTotal: 240,
       tipo: 'FIJO',
       tipoNominalAnualFijo: 3.6,
-      comisionAmortizacionParcial: 0.01,
+      // 1 % en PUNTOS PORCENTUALES (§6 bis · quater) · antes esto decía `0.01`
+      // en un campo que además el simulador leía y nadie escribía, así que la
+      // comisión de una amortización parcial salía siempre cero en la app.
+      comisionAmortizacionAnticipada: 1,
       gastosFijosOperacion: 50,
       diaCargoMes: 10,
       cuentaCargoId: 'cuenta1',

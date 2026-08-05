@@ -4,6 +4,7 @@
 import { Prestamo, PlanPagos, CalculoAmortizacion, Bonificacion } from '../types/prestamos';
 import { estaAplicada, tinConBonificaciones } from './bonificaciones/tinEfectivo';
 import { cuotaFrancesa, generarCuadro } from './prestamos/cuadro';
+import { comisionDeReembolso } from './prestamos/comisiones';
 
 export class PrestamosCalculationService {
   
@@ -362,8 +363,20 @@ export class PrestamosCalculationService {
     modo: 'REDUCIR_PLAZO' | 'REDUCIR_CUOTA'
   ): CalculoAmortizacion {
     
-    // Calculate penalty
-    const comision = (prestamo.comisionAmortizacionParcial || 0) * importeAmortizar;
+    // Lo que cuesta adelantar · §6 bis · quater.
+    //
+    // Aquí se multiplicaba `comisionAmortizacionParcial` en crudo por el
+    // importe, o sea leyéndola como fracción. Y ese campo NO LO ESCRIBÍA NADIE,
+    // así que la comisión de una amortización parcial salía siempre cero por
+    // dos motivos a la vez.
+    // Siempre PARCIAL · esta simulación adelanta una parte y sigue con el
+    // préstamo, tanto si reduce plazo como si reduce cuota. La cancelación
+    // total tiene su propia comisión, que suele ser otra cifra.
+    const comision = comisionDeReembolso(prestamo, {
+      tipo: 'PARCIAL',
+      importe: importeAmortizar,
+      fecha: fechaAmortizacion,
+    }).importe;
     const gastosFijos = prestamo.gastosFijosOperacion || 0;
     const penalizacion = comision + gastosFijos;
 
