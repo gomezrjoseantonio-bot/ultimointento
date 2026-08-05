@@ -392,7 +392,7 @@ export class PrestamosService {
     const criticalFields = [
       'principalInicial', 'plazoMesesTotal', 'tipo',
       'tipoNominalAnualFijo', 'valorIndiceActual', 'diferencial', 
-      'tramoFijoMeses', 'tipoNominalAnualMixtoFijo', 'mesesSoloIntereses',
+      'tramoFijoMeses', 'tipoNominalAnualMixtoFijo', 'carencia', 'carenciaMeses',
       'diferirPrimeraCuotaMeses', 'diaCargoMes', 'fechaFirma', 'fechaPrimerCargo',
       'esquemaPrimerRecibo', 'prorratearPrimerPeriodo'
     ];

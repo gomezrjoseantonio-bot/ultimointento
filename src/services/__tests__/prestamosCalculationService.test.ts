@@ -262,7 +262,10 @@ describe('PrestamosCalculationService', () => {
         plazoMesesTotal: 6,
         tipo: 'FIJO',
         tipoNominalAnualFijo: 3.6,
-        mesesSoloIntereses: 2, // First 2 months interest only
+        // Dos meses de carencia de capital · antes esto se pedía con
+        // `mesesSoloIntereses`, un campo que el motor leía y nadie escribía.
+        carencia: 'CAPITAL',
+        carenciaMeses: 2,
         diaCargoMes: 10,
         cuentaCargoId: 'cuenta1',
         createdAt: '2024-08-10T00:00:00Z',

@@ -42,10 +42,17 @@
 //     sabe no se inventa: después de la última revisión conocida se sigue con
 //     el último tipo, marcado como estimación.
 //
+//   - **La carencia inicial se aplica** (`carenciaDe`). De capital paga solo los
+//     intereses y el capital se queda quieto; total no paga nada y los
+//     intereses se capitalizan, así que al acabar se debe más de lo que se
+//     pidió. Acabada la carencia, la cuota se recalcula sobre lo que se deba
+//     ESE día y en los meses que queden (§6 bis · ter).
+//
 // Lo que este motor todavía NO hace, y hay que saberlo:
 //
-//   - **La carencia inicial (`carencia` / `carenciaMeses`) sigue sin aplicarse.**
-//     Ninguno de los dos motores la aplicaba; unificarlos no la arregla.
+//   - **La base de cálculo de intereses no se pregunta.** Está clavada: mes
+//     comercial para la cuota normal y por días para el arranque irregular. La
+//     base es una cláusula de la escritura y varía (365/360, 365/365, 30/360).
 //   - **La TAE es la aproximación que traía el v2**, no la TIR de los flujos.
 // ============================================================================
 
@@ -55,6 +62,7 @@ import { cuotaFrancesa } from './cuotaFrancesa';
 import { diasEntre, esISO, partes, restarUnDia, sumarMeses } from './fechas';
 import { recalcularDesde } from './cuadroPorTramos';
 import { tramosDeTipo, type TramoDeTipo } from './tramosDeTipo';
+import { carenciaDe } from './carencia';
 
 export { cuotaFrancesa } from './cuotaFrancesa';
 export type { TramoDeTipo } from './tramosDeTipo';
@@ -178,16 +186,10 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
   // ── Irregularidades del arranque ──────────────────────────────────────────
   // Los campos explícitos mandan; si no están, se deducen de `esquemaPrimerRecibo`.
   //
-  // Siempre queda al menos una cuota que amortiza. Con tantos meses de solo
-  // intereses como plazo —un dato mal tecleado, una importación torcida— el
-  // préstamo no devolvería el capital nunca: el cuadro terminaría debiendo lo
-  // mismo que el primer día, y de ahí saldrían las previsiones y la fiscalidad.
-  const pedidos = prestamo.mesesSoloIntereses
-    ?? (prestamo.esquemaPrimerRecibo === 'SOLO_INTERESES' ? 1 : 0);
-  const mesesSoloIntereses = Math.max(
-    0,
-    Math.min(pedidos, Math.max(0, prestamo.plazoMesesTotal - 1))
-  );
+  // La carencia · el periodo inicial en que NO se amortiza capital. De capital
+  // se pagan los intereses del mes; total no se paga nada y los intereses se
+  // capitalizan, así que al acabar se debe más de lo que se pidió (§6 bis·ter).
+  const carencia = carenciaDe(prestamo);
 
   // Con carencia técnica la primera cuota es una cuota ENTERA · los días
   // sueltos ya se han cobrado en la línea 0, y prorratearla además los cobraría
@@ -201,9 +203,14 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     : (prestamo.prorratearPrimerPeriodo ?? (prestamo.esquemaPrimerRecibo === 'PRORRATA'));
 
   const plazo = prestamo.plazoMesesTotal;
-  const cuotaCentimos = aCentimos(
-    cuotaFrancesa(prestamo.principalInicial, tinEfectivo, plazo - mesesSoloIntereses)
-  );
+
+  // La cuota sale del capital que quede vivo AL ACABAR la carencia, repartido
+  // en los meses que amortizan. Con carencia de capital ese capital es el
+  // inicial; con carencia total es mayor, porque los intereses del periodo se
+  // han ido sumando. Por eso no se puede calcular antes del bucle.
+  let cuotaCentimos = carencia.tipo === 'NINGUNA'
+    ? aCentimos(cuotaFrancesa(prestamo.principalInicial, tinEfectivo, plazo))
+    : 0;
 
   let cargo = cargoInicial;
   // De dónde arranca el devengo de la primera cuota · si hubo carencia técnica,
@@ -211,7 +218,9 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
   let devengoPrevio = periodos.length > 0 ? periodos[0].fechaCargo : fechaFirma;
 
   for (let periodo = 1; periodo <= plazo; periodo++) {
-    const esSoloIntereses = periodo <= mesesSoloIntereses;
+    const enCarencia = periodo <= carencia.meses;
+    const esSoloIntereses = enCarencia && carencia.tipo === 'CAPITAL';
+    const enCarenciaTotal = enCarencia && carencia.tipo === 'TOTAL';
     const esProrrateado = periodo === 1 && prorratearPrimero;
     const esUltimo = periodo === plazo;
 
@@ -219,8 +228,8 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     const dias = diasEntre(devengoPrevio, devengoHasta);
 
     // El interés del periodo. Por días solo en el arranque irregular —la
-    // prorrata y el primer mes de solo intereses—; el resto, mes comercial.
-    const porDias = esProrrateado || (periodo === 1 && esSoloIntereses);
+    // prorrata y el primer mes de carencia—; el resto, mes comercial.
+    const porDias = esProrrateado || (periodo === 1 && enCarencia);
     const interesCentimos = porDias
       ? Math.round((vivoCentimos / 100) * (tinEfectivo / 100) / 365 * dias * 100)
       : Math.round((vivoCentimos / 100) * (tinEfectivo / 100) / 12 * 100);
@@ -228,7 +237,11 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     let amortizacionCentimos: number;
     let cuotaDelPeriodo: number;
 
-    if (esSoloIntereses) {
+    if (enCarenciaTotal) {
+      // No se paga NADA · el interés se capitaliza y la deuda crece.
+      amortizacionCentimos = -interesCentimos;
+      cuotaDelPeriodo = 0;
+    } else if (esSoloIntereses) {
       amortizacionCentimos = 0;
       cuotaDelPeriodo = interesCentimos;
     } else if (esUltimo) {
@@ -250,6 +263,15 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     }
 
     vivoCentimos = Math.max(0, vivoCentimos - amortizacionCentimos);
+
+    // Acabada la carencia se fija la cuota del resto de la vida del préstamo ·
+    // sobre lo que se debe AHORA, que con carencia total es más de lo que se
+    // pidió, y en los meses que quedan.
+    if (carencia.meses > 0 && periodo === carencia.meses) {
+      cuotaCentimos = aCentimos(
+        cuotaFrancesa(vivoCentimos / 100, tinEfectivo, plazo - carencia.meses)
+      );
+    }
 
     periodos.push({
       periodo,

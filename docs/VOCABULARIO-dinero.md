@@ -488,8 +488,59 @@ la carta. Se guarda el **índice**, no el tipo final, porque el diferencial es
 del contrato: guardar la suma obligaría a rehacerla si alguien corrige el
 diferencial, y las dos cifras acabarían contradiciéndose.
 
-Lo que este motor **todavía no hace** está en §8: la carencia inicial no se
-aplica y la base de cálculo de intereses no se pregunta.
+### 6 bis · ter · La carencia · qué es y qué le hace a tu deuda
+
+**Una carencia es un periodo inicial en el que no se amortiza capital.** Hay
+dos, y no se parecen en lo único que importa: qué le pasa a lo que debes.
+
+| | Qué pagas | Qué pasa con la deuda |
+|---|---|---|
+| **De capital** *(«solo intereses»)* | Los intereses del mes | Se queda **quieta** · al acabar debes lo mismo que el primer día |
+| **Total** | **Nada** | **CRECE** · los intereses se capitalizan y al acabar debes **más de lo que pediste** |
+
+La segunda es la que sorprende, y es la que el asistente ya prometía por
+escrito —«Total · sin pagos durante N meses · los intereses se capitalizan»—.
+Lo decía desde el principio; lo que no hacía era cumplirlo.
+
+Dos reglas más:
+
+- **El plazo INCLUYE la carencia.** Una hipoteca a 360 meses con 24 de carencia
+  son 24 sin amortizar y 336 amortizando, no 384 en total.
+- **Al acabar, la cuota se recalcula** sobre lo que se deba **ese día** y en los
+  meses que queden. Con carencia total eso es más capital que el inicial, así
+  que la cuota sube por partida doble: menos meses y más deuda.
+
+#### La carencia NO es la carencia técnica
+
+Comparten la palabra y no comparten nada más:
+
+- La **carencia** (ésta) es un pacto: N meses sin amortizar, y se cuenta en
+  meses.
+- La **carencia técnica** son los **días sueltos** entre la firma y el primer
+  mes de cobro, que el banco liquida en un cargo aparte (§6 bis · bis, línea 0
+  del cuadro). No la eliges: sale de las fechas.
+
+**Decisión · 5 de agosto de 2026: una sola forma de decir carencia.**
+
+Había **cuatro**, y las dos que importaban no se hablaban entre sí:
+
+1. `carencia` + `carenciaMeses` · se preguntaba en el alta, se guardaba, se
+   importaba y se exportaba. **Ningún cálculo la leía.**
+2. `mesesSoloIntereses` · el motor la aplicaba, y hacía exactamente una
+   carencia de capital. **Nadie la escribía.**
+3. `esquemaPrimerRecibo: 'SOLO_INTERESES'` · un tercer nombre, y solo para un
+   mes. Lo escribía la importación desde plantilla.
+4. `carenciaTecnica` · ni siquiera es esto.
+
+> Quien pedía doce meses de carencia veía un cuadro sin carencia, porque la
+> mitad que se rellenaba y la mitad que se aplicaba eran campos distintos.
+
+Ahora manda `carencia` + `carenciaMeses` —la que ya se rellenaba—, el motor la
+lee, `mesesSoloIntereses` se retira y el esquema de la importación se **traduce**
+a un mes de carencia de capital en vez de mantener un camino aparte.
+
+Lo que este motor **todavía no hace** está en §8: la base de cálculo de
+intereses no se pregunta.
 
 ---
 
@@ -745,10 +796,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
   —365/360, que sube el interés un 1,39 %; 365/365; 30/360—. Mientras no se
   pregunte, el desglose interés/capital de cada recibo **no puede cuadrar con
   el del banco**, aunque la cuota coincida. §6 bis · bis.
-- **2026-08-05** · **La carencia inicial no hace nada.** `carencia` y
-  `carenciaMeses` se piden en el alta, se guardan y se exportan, y **ningún
-  cálculo los lee** — el motor v2 lo decía por escrito en su propio código.
-  Quien pida doce meses de carencia ve un cuadro sin carencia. §6 bis · bis.
 - **2026-08-05** · **La TAE es una suma, no una TIR.** Se calcula sumando la
   capitalización del TIN, la comisión de apertura repartida por años y la
   carencia técnica. La TAE es por definición el tipo que iguala los flujos, y
@@ -817,6 +864,13 @@ Escrito para no perderlo, con la fecha en que se detectó.
   un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
 
 ### Resuelto
+
+- **2026-08-05** · **La carencia se aplica, y hay una sola forma de decirla.**
+  Había cuatro campos para lo mismo y las dos mitades no se tocaban: la que se
+  rellenaba en el alta no la leía nadie, y la que el motor aplicaba no la
+  escribía nadie. Ahora la de capital deja el capital quieto y la **total** no
+  cobra nada y **capitaliza los intereses**, que es lo que el asistente ya
+  prometía por escrito. `mesesSoloIntereses` se retira. §6 bis · ter.
 
 - **2026-08-05** · **El cuadro se parte en tramos.** Un mixto cambia de tipo
   cuando acaba su tramo fijo —la fecha está en la escritura— y un variable

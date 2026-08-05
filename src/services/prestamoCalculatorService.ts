@@ -155,6 +155,13 @@ export function generarTreasuryEventDescriptors(
   const cuotas = periodos.filter((p) => p.periodo > 0).length;
 
   for (const p of periodos) {
+    // Lo que no se cobra no se prevé · un cargo de 0 € pondría en tesorería un
+    // recibo que nadie va a ver en su extracto, y que además habría que
+    // puntear. Hoy solo pasa en la carencia TOTAL, donde no se paga nada y los
+    // intereses se capitalizan (§6 bis · ter), pero la regla vale para
+    // cualquier periodo que no mueva dinero.
+    if (p.cuota === 0) continue;
+
     // El periodo 0 es la carencia técnica · cargo aparte, sin capital.
     if (p.periodo === 0) {
       descriptores.push({

@@ -331,11 +331,11 @@ describe('lo que no se puede calcular', () => {
   });
 
   // Un dato mal tecleado o una importación torcida podían pedir tantos meses de
-  // solo intereses como plazo. Ese cuadro no devuelve el capital NUNCA: termina
+  // carencia como plazo. Ese cuadro no devuelve el capital NUNCA: termina
   // debiendo lo mismo que el primer día, y de él salen las previsiones de
   // tesorería y los intereses del ejercicio.
   it('una carencia tan larga como el plazo deja igualmente una cuota que amortiza', () => {
-    const p = prestamo({ plazoMesesTotal: 12, mesesSoloIntereses: 12 });
+    const p = prestamo({ plazoMesesTotal: 12, carencia: 'CAPITAL', carenciaMeses: 12 });
     const { periodos } = generarCuadro(p).plan;
 
     expect(periodos[periodos.length - 1].principalFinal).toBe(0);
@@ -343,10 +343,104 @@ describe('lo que no se puede calcular', () => {
   });
 
   it('y una más larga todavía, tampoco', () => {
-    const p = prestamo({ plazoMesesTotal: 12, mesesSoloIntereses: 99 });
+    const p = prestamo({ plazoMesesTotal: 12, carencia: 'TOTAL', carenciaMeses: 99 });
     const { periodos } = generarCuadro(p).plan;
 
     expect(periodos[periodos.length - 1].principalFinal).toBe(0);
+  });
+});
+
+// §6 bis · ter · la carencia se pedía en el alta, se guardaba, se importaba y
+// se exportaba, y NINGÚN cálculo la leía: quien pedía doce meses de carencia
+// veía un cuadro sin carencia.
+describe('la carencia se aplica', () => {
+  const conCarencia = (over: Partial<Prestamo>) =>
+    generarCuadro(
+      prestamo({
+        principalInicial: 120000,
+        plazoMesesTotal: 24,
+        tipoNominalAnualFijo: 3,
+        fechaFirma: '2026-01-01',
+        fechaPrimerCargo: '2026-02-01',
+        diaCargoMes: 1,
+        carenciaTecnica: undefined,
+        ...over,
+      })
+    ).plan.periodos;
+
+  describe('de capital · se pagan los intereses y el capital no baja', () => {
+    const p = () => conCarencia({ carencia: 'CAPITAL', carenciaMeses: 6 });
+
+    it('durante la carencia no se amortiza nada', () => {
+      expect(p().slice(0, 6).every((x) => x.amortizacion === 0)).toBe(true);
+    });
+
+    it('y se debe lo mismo que el primer día', () => {
+      expect(p()[5].principalFinal).toBe(120000);
+    });
+
+    it('la cuota de la carencia es solo el interés', () => {
+      expect(p()[1].cuota).toBe(p()[1].interes);
+    });
+
+    it('después se amortiza, y el cuadro cierra en cero', () => {
+      const periodos = p();
+
+      expect(periodos[6].amortizacion).toBeGreaterThan(0);
+      expect(periodos[periodos.length - 1].principalFinal).toBe(0);
+    });
+  });
+
+  // La que sorprende, y la que la pantalla ya prometía: «Total · sin pagos
+  // durante N meses · los intereses se capitalizan».
+  describe('total · no se paga nada y la deuda CRECE', () => {
+    const p = () => conCarencia({ carencia: 'TOTAL', carenciaMeses: 6 });
+
+    it('durante la carencia no se paga nada', () => {
+      expect(p().slice(0, 6).every((x) => x.cuota === 0)).toBe(true);
+    });
+
+    it('pero los intereses se devengan igual', () => {
+      expect(p()[0].interes).toBeGreaterThan(0);
+    });
+
+    it('y se capitalizan · al acabar se debe MÁS de lo que se pidió', () => {
+      expect(p()[5].principalFinal).toBeGreaterThan(120000);
+    });
+
+    it('la cuota de después sale de esa deuda mayor', () => {
+      const total = p();
+      const soloCapital = conCarencia({ carencia: 'CAPITAL', carenciaMeses: 6 });
+
+      expect(total[6].cuota).toBeGreaterThan(soloCapital[6].cuota);
+    });
+
+    it('y el cuadro sigue cerrando en cero', () => {
+      const periodos = p();
+
+      expect(periodos[periodos.length - 1].principalFinal).toBe(0);
+    });
+  });
+
+  // Las dos cuestan dinero, y la total cuesta más · sobre los intereses
+  // capitalizados se pagan intereses.
+  it('una carencia total sale más cara que una de capital', () => {
+    const conTotal = generarCuadro(
+      prestamo({ plazoMesesTotal: 24, carencia: 'TOTAL', carenciaMeses: 6, carenciaTecnica: undefined })
+    ).resumen.totalIntereses;
+    const conCapital = generarCuadro(
+      prestamo({ plazoMesesTotal: 24, carencia: 'CAPITAL', carenciaMeses: 6, carenciaTecnica: undefined })
+    ).resumen.totalIntereses;
+
+    expect(conTotal).toBeGreaterThan(conCapital);
+  });
+
+  // El plazo INCLUYE la carencia · una hipoteca a 360 meses con 24 de carencia
+  // son 24 sin amortizar y 336 amortizando, no 384 en total.
+  it('la carencia va dentro del plazo, no se suma a él', () => {
+    const periodos = conCarencia({ carencia: 'CAPITAL', carenciaMeses: 6 });
+
+    expect(periodos).toHaveLength(24);
   });
 });
 
