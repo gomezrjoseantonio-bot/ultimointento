@@ -216,8 +216,17 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
 
   // ── Irregularidades del arranque ──────────────────────────────────────────
   // Los campos explícitos mandan; si no están, se deducen de `esquemaPrimerRecibo`.
-  const mesesSoloIntereses = prestamo.mesesSoloIntereses
+  //
+  // Siempre queda al menos una cuota que amortiza. Con tantos meses de solo
+  // intereses como plazo —un dato mal tecleado, una importación torcida— el
+  // préstamo no devolvería el capital nunca: el cuadro terminaría debiendo lo
+  // mismo que el primer día, y de ahí saldrían las previsiones y la fiscalidad.
+  const pedidos = prestamo.mesesSoloIntereses
     ?? (prestamo.esquemaPrimerRecibo === 'SOLO_INTERESES' ? 1 : 0);
+  const mesesSoloIntereses = Math.max(
+    0,
+    Math.min(pedidos, Math.max(0, prestamo.plazoMesesTotal - 1))
+  );
 
   // Con carencia técnica la primera cuota es una cuota ENTERA · los días
   // sueltos ya se han cobrado en la línea 0, y prorratearla además los cobraría

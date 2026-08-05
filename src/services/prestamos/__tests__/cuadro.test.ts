@@ -235,6 +235,25 @@ describe('lo que no se puede calcular', () => {
   it('sin capital, la cuota es cero', () => {
     expect(generarCuadro(prestamo({ principalInicial: 0 })).resumen.cuotaMensual).toBe(0);
   });
+
+  // Un dato mal tecleado o una importación torcida podían pedir tantos meses de
+  // solo intereses como plazo. Ese cuadro no devuelve el capital NUNCA: termina
+  // debiendo lo mismo que el primer día, y de él salen las previsiones de
+  // tesorería y los intereses del ejercicio.
+  it('una carencia tan larga como el plazo deja igualmente una cuota que amortiza', () => {
+    const p = prestamo({ plazoMesesTotal: 12, mesesSoloIntereses: 12 });
+    const { periodos } = generarCuadro(p).plan;
+
+    expect(periodos[periodos.length - 1].principalFinal).toBe(0);
+    expect(periodos.filter((x) => x.esSoloIntereses)).toHaveLength(11);
+  });
+
+  it('y una más larga todavía, tampoco', () => {
+    const p = prestamo({ plazoMesesTotal: 12, mesesSoloIntereses: 99 });
+    const { periodos } = generarCuadro(p).plan;
+
+    expect(periodos[periodos.length - 1].principalFinal).toBe(0);
+  });
 });
 
 // Regenerar un cuadro no puede borrar lo que ya se cuadró contra el banco: el

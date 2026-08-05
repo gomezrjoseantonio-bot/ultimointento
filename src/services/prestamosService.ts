@@ -582,8 +582,16 @@ export class PrestamosService {
     }
 
     // No persisted plan found — generate a fresh one
+    //
+    // Regenerar EN LECTURA es lo mismo que regenerar al editar, así que también
+    // conserva el punteo: un plan viejo que no cuadra con las reglas de hoy se
+    // rehace, pero el enlace de cada cuota con el movimiento del banco lo puso
+    // el usuario y no se puede perder por haber abierto una pantalla.
     console.log(`[PRESTAMOS] Generating fresh amortization schedule for ${prestamoId}`);
-    const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+    const plan = conservarPunteo(
+      prestamosCalculationService.generatePaymentSchedule(prestamo),
+      prestamo.planPagos ?? null,
+    );
     await this.savePaymentPlan(prestamoId, plan);
     
     console.log(`[PRESTAMOS] Schedule generated - ${plan.periodos.length} payments, ends ${plan.resumen.fechaFinalizacion}, total interest: €${plan.resumen.totalIntereses.toFixed(2)}`);
