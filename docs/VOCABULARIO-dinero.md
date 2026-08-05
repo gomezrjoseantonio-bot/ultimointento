@@ -1029,13 +1029,19 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
-- **2026-08-05** · **Cada banco redondea la cuota a su manera.** El Sabadell la
-  redondea **al alza**: la francesa exacta de 24.500 € al 4,49 % a 96 meses son
-  304,2539 € y cobra **304,26**. El Santander redondea al más cercano — 993,4300
-  → 993,43, donde el alza daría 993,44—. ATLAS redondea al más cercano, así que
-  falla un céntimo en ese préstamo. No se ha añadido una regla por banco porque
-  de seis cuadros solo uno distingue las dos, y una regla inventada sobre un
-  dato es lo que hay que evitar. §6 bis · bis.
+- **2026-08-05** · ~~Cada banco redondea la cuota a su manera.~~ **Cerrado sin
+  hacer** *(Jose · 5 ago 2026: «no vamos a liarnos por un céntimo»)*.
+
+  El Sabadell redondea la cuota **al alza** —la francesa exacta de 24.500 € al
+  4,49 % a 96 meses son 304,2539 € y cobra 304,26— y el Santander al más
+  cercano —993,4300 → 993,43, donde el alza daría 993,44—. ATLAS redondea al
+  más cercano, así que falla **un céntimo** en uno de los seis préstamos.
+
+  No se añade una regla de redondeo por banco. De seis cuadros solo uno
+  distingue las dos convenciones, y no hay más papeles del Sabadell que puedan
+  confirmarlo: serían sus dos únicos préstamos. Una regla inventada sobre un
+  solo dato cuesta más de lo que arregla, y lo que arregla es un céntimo.
+  §6 bis · bis.
 - **2026-08-05** · **El tramo suelto de ING no cuadra por 13 céntimos.** Cobra
   218,37 € donde 97.500 € al 2,15 % por 38 días sobre 365 dan 218,24. El tipo
   que explicaría su cifra es el 2,15128 %, y su propio cuadro liquida los meses
@@ -1043,9 +1049,23 @@ Escrito para no perderlo, con la fecha en que se detectó.
   arrastra el resto. Falta el dato que lo explique. §6 bis · bis.
 - **2026-08-05** · **La TAE es una suma, no una TIR.** Se calcula sumando la
   capitalización del TIN, la comisión de apertura repartida por años y la
-  carencia técnica. La TAE es por definición el tipo que iguala los flujos, y
-  además esta no incluye notaría, registro, gestoría, tasación ni AJD, que es
-  donde está el grueso del coste real. §6 bis · bis.
+  carencia técnica. La TAE es por definición el tipo que iguala los flujos.
+
+  *(Esta entrada decía además que faltaba meter «notaría, registro, gestoría,
+  tasación y AJD, que es donde está el grueso del coste real». **Es falso desde
+  2019**, y lo corrigió Jose. En una hipoteca sujeta a la Ley 5/2019 —vivienda
+  residencial, persona física— el artículo 14.1.e) pone notaría, gestoría y
+  registro **a cargo del prestamista**, y el AJD también desde el RDL 17/2018.
+  La escritura de Unicaja lo dice con esas palabras en su cláusula SÉPTIMA: el
+  banco paga comprobación registral, aranceles notariales, gestoría y aranceles
+  registrales; el prestatario paga **la tasación** y las copias que pida. Así
+  que de los cinco solo la tasación es del cliente.*
+
+  *Lo que sí falta en la TAE y sí es del cliente: la **tasación** y los
+  **seguros vinculados** —la propia escritura mete los 59,98 € del seguro de
+  daños en su TAE—. Y ojo: esto vale para hipotecas de la Ley 5/2019; en un
+  préstamo personal o un local los gastos siguen siendo otra historia.)*
+  §6 bis · bis.
 - **2026-08-05** · **ATLAS no avisa de los topes legales de las comisiones.**
   Guarda y calcula lo pactado, que es lo correcto, pero podría decir «0,50 %
   parece pasarse del tope de la Ley 5/2019 para variable, revísalo». No se hizo
