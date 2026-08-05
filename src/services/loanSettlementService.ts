@@ -534,7 +534,10 @@ export const confirmLoanSettlement = async (
     await tx.objectStore('prestamos').put({
       ...prestamoBaseForUpdate,
       principalVivo: simulation.principalAfter,
-      cuotasPagadas: paidPeriods.length,
+      // Sin plan nuevo no hay nada que contar · poner cero aquí borraría las
+      // cuotas que el préstamo ya tenía registradas, y eso no lo arregla nadie
+      // después. Solo pasa si el préstamo no tenía cuadro guardado.
+      cuotasPagadas: partialPlan ? paidPeriods.length : prestamoBaseForUpdate.cuotasPagadas,
       fechaUltimaCuotaPagada: lastPaid?.fechaCargo ?? prestamo.fechaUltimaCuotaPagada,
       liquidacion: [...liquidacionPrev, settlementToPersist],
       // T15.3 · planPagos vive como campo del préstamo.

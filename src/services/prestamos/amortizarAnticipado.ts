@@ -98,7 +98,11 @@ export function amortizarAnticipado(
 
   const laDelAdelanto: PeriodoPago = {
     periodo: (anterior?.periodo ?? 0) + 1,
-    devengoDesde: anterior?.fechaCargo ?? plan.periodos[0].devengoDesde,
+    // Un cuadro viejo puede no traer devengo apuntado —`empieza` ya lo
+    // contempla en el corte—, y `devengoDesde` es obligatorio: dejarlo en
+    // `undefined` guardaría un periodo que rompe cualquier comparación de
+    // fechas posterior, empezando por el corte de la siguiente revisión.
+    devengoDesde: anterior?.fechaCargo || empieza(plan.periodos[0]) || desde,
     devengoHasta: desde,
     fechaCargo: desde,
     cuota: (aplicado + corridos) / 100,
