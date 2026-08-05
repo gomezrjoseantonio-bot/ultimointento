@@ -1060,8 +1060,14 @@ Escrito para no perderlo, con la fecha en que se detectó.
   mismo. Y `DestinoCapital` y `Garantia` están declaradas **dos veces en el
   mismo fichero**. §6 bis · bis.
 - **2026-08-05** · **Conceptos del préstamo que no están**: cláusula suelo y
-  techo, redondeo del índice, gastos de constitución, amortización anticipada
-  **ejecutable** —hoy solo se simula—, novación y subrogación. §6 bis · bis.
+  techo, redondeo del índice, gastos de constitución, novación y subrogación.
+  §6 bis · bis.
+
+  *(Esta entrada decía además que la amortización anticipada «solo se simula».
+  Era falso: `loanSettlementService` la ejecuta —movimiento, evento de
+  tesorería, previsiones futuras borradas y préstamo actualizado— desde el
+  detalle del préstamo. Lo que estaba mal era el cuadro que dejaba, y eso se
+  arregló el mismo día.)*
 
 - **2026-08-05** · **Los puntos de cada bonificación no se pueden cambiar.**
   `ppDescuento` sale del catálogo y solo se PINTA: no hay ningún campo que lo
@@ -1110,6 +1116,20 @@ Escrito para no perderlo, con la fecha en que se detectó.
   un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
 
 ### Resuelto
+
+- **2026-08-05** · **Adelantar capital lo hace el motor único.** El cuadro que
+  quedaba tras amortizar lo construía `loanSettlementService` con un bucle
+  propio —el cuarto motor de la casa— que liquidaba **siempre sobre el mes
+  comercial**, ignorando la base del préstamo, y con un tipo de
+  `calculateBaseRate`, o sea **sin bonificaciones y sin tramos**: adelantar
+  capital en la mixta de Unicaja rehacía el cuadro al 2,600 % hasta 2043 y
+  borraba el paso a Euríbor del 25-08-2026. Y la cancelación total ponía
+  `interes: 0` en la línea de cierre aunque el movimiento sí cobra los
+  intereses corridos, así que el total del préstamo salía corto — y de ahí sale
+  la deducción fiscal. Ahora los dos salen de `amortizarAnticipado`, con
+  `tinDelTramo`, la base del préstamo y `recalcularDesde` para los tramos
+  posteriores. **La cuota que se enseña en la simulación es la del cuadro que se
+  guarda**: eran dos cuentas y decían 620,27 € y 620,09 €. §6 bis · quater.
 
 - **2026-08-05** · **El arranque de un préstamo, contra seis cuadros reales.**
   Cuatro bancos con el papel delante. La fecha del primer cargo **deja de
