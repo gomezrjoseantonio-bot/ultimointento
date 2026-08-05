@@ -1,8 +1,9 @@
 // Préstamos Calculation Service
 // Implements French amortization system with support for irregular payments
 
-import { Prestamo, PeriodoPago, PlanPagos, CalculoAmortizacion, Bonificacion } from '../types/prestamos';
+import { Prestamo, PlanPagos, CalculoAmortizacion, Bonificacion } from '../types/prestamos';
 import { estaAplicada, tinConBonificaciones } from './bonificaciones/tinEfectivo';
+import { cuotaFrancesa, generarCuadro } from './prestamos/cuadro';
 
 export class PrestamosCalculationService {
   
@@ -14,13 +15,7 @@ export class PrestamosCalculationService {
    * @returns Monthly payment amount
    */
   calculateFrenchPayment(principal: number, annualRate: number, months: number): number {
-    if (principal <= 0 || months <= 0) return 0;
-    if (annualRate === 0) return principal / months;
-    
-    const monthlyRate = annualRate / 100 / 12;
-    const payment = principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -months));
-    
-    return Math.round(payment * 100) / 100; // Round to 2 decimals
+    return cuotaFrancesa(principal, annualRate, months);
   }
 
   /**
@@ -321,171 +316,14 @@ export class PrestamosCalculationService {
 
   /**
    * Generate complete payment schedule
-   * @param prestamo Loan configuration
-   * @returns Complete payment plan
+   *
+   * Delega en `generarCuadro` · el motor ÚNICO (`services/prestamos/cuadro`).
+   * Aquí vivía la segunda de las dos versiones que había, y el cuadro que
+   * acababas teniendo dependía de por qué puerta entrabas.
    */
   generatePaymentSchedule(prestamo: Prestamo): PlanPagos {
-    const fechaFirma = new Date(prestamo.fechaFirma);
-    const periodos: PeriodoPago[] = [];
-    let principalVivoCentimos = Math.round(prestamo.principalInicial * 100);
-    
-    // Calculate first payment date considering deferrals.
-    // Keep a stable target day across months, clamping to month-end when needed
-    // (e.g. day 31 -> Feb 28/29) to avoid month skips caused by Date overflow.
-    const mesesDiferimiento = prestamo.diferirPrimeraCuotaMeses || 0;
-    const paymentDay = prestamo.diaCargoMes || fechaFirma.getDate();
-
-    let fechaPrimeraCuota = new Date(prestamo.fechaPrimerCargo);
-    const fechaPrimerCargoValida = !Number.isNaN(fechaPrimeraCuota.getTime());
-    if (!fechaPrimerCargoValida) {
-      const firstOffsetMonths = mesesDiferimiento > 0 ? mesesDiferimiento : 1;
-      fechaPrimeraCuota = this.addMonthsWithClampedDay(
-        fechaFirma,
-        firstOffsetMonths,
-        paymentDay,
-      );
-    }
-
-    // El cuadro va al tipo que SE PAGA, bonificaciones incluidas. Usaba el tipo
-    // base, así que para cualquier préstamo bonificado el cuadro decía una
-    // cuota y las previsiones de tesorería —que sí bonificaban— decían otra.
-    const baseRate = this.calculateBonifiedRate(prestamo);
-
-    // Backward/forward compatibility: honor explicit irregular fields first,
-    // but derive sensible defaults from esquemaPrimerRecibo when they are not present.
-    const mesesSoloIntereses = prestamo.mesesSoloIntereses
-      ?? (prestamo.esquemaPrimerRecibo === 'SOLO_INTERESES' ? 1 : 0);
-    const prorratearPrimerPeriodo = prestamo.prorratearPrimerPeriodo
-      ?? (prestamo.esquemaPrimerRecibo === 'PRORRATA');
-
-    const plazoAmortizacion = prestamo.plazoMesesTotal - mesesSoloIntereses;
-    
-    // Calculate standard payment for amortization period
-    const cuotaEstandarCentimos = Math.round(
-      this.calculateFrenchPayment(prestamo.principalInicial, baseRate, plazoAmortizacion) * 100,
-    );
-
-    let fechaActual = new Date(fechaPrimeraCuota);
-    
-    for (let periodo = 1; periodo <= prestamo.plazoMesesTotal; periodo++) {
-      const esSoloIntereses = periodo <= mesesSoloIntereses;
-      const esProrrateado = periodo === 1 && prorratearPrimerPeriodo;
-      
-      // Calculate accrual period
-      let devengoDesde: Date;
-      let devengoHasta: Date;
-      let fechaCargo = new Date(fechaActual);
-      
-      if (prestamo.cobroMesVencido && periodo === 1) {
-        // First period: from signing to first collection date
-        devengoDesde = new Date(fechaFirma);
-        devengoHasta = new Date(fechaActual);
-        devengoHasta.setDate(devengoHasta.getDate() - 1);
-      } else if (prestamo.cobroMesVencido) {
-        // Subsequent periods: previous month accrual, current month collection
-        devengoDesde = new Date(fechaActual);
-        devengoDesde.setMonth(devengoDesde.getMonth() - 1);
-        devengoHasta = new Date(fechaActual);
-        devengoHasta.setDate(devengoHasta.getDate() - 1);
-      } else {
-        // Current period collection
-        if (periodo === 1) {
-          devengoDesde = new Date(fechaFirma);
-        } else {
-          devengoDesde = new Date(fechaActual);
-          devengoDesde.setMonth(devengoDesde.getMonth() - 1);
-        }
-        devengoHasta = new Date(fechaActual);
-        devengoHasta.setDate(devengoHasta.getDate() - 1);
-      }
-
-      const diasDevengo = this.getDaysDifference(devengoDesde, devengoHasta) + 1;
-
-      // Calculate interest for the period
-      // - PRORRATA: day-count interest for first period
-      // - SOLO_INTERESES on first period: also day-count from signing to first charge
-      // - Otherwise: regular monthly interest
-      let interesCentimos: number;
-      const usarInteresDiario = esProrrateado || (periodo === 1 && esSoloIntereses);
-      if (usarInteresDiario) {
-        const interes = (principalVivoCentimos / 100) * (baseRate / 100) / 365 * diasDevengo;
-        interesCentimos = Math.round(interes * 100);
-      } else {
-        const interes = (principalVivoCentimos / 100) * (baseRate / 100) / 12;
-        interesCentimos = Math.round(interes * 100);
-      }
-
-      let amortizacionCentimos: number;
-      let cuotaCentimos: number;
-
-      if (esSoloIntereses) {
-        // Interest-only payment
-        amortizacionCentimos = 0;
-        cuotaCentimos = interesCentimos;
-      } else {
-        // Standard French payment
-        if (periodo === prestamo.plazoMesesTotal) {
-          // Last payment: pay remaining principal + interest
-          amortizacionCentimos = principalVivoCentimos;
-          cuotaCentimos = amortizacionCentimos + interesCentimos;
-        } else {
-          if (esProrrateado) {
-            // First period in PRORRATA mode: prorate the installment amount by accrual days
-            // so cuota/interés/capital are all coherent for the shortened first period.
-            cuotaCentimos = Math.round(cuotaEstandarCentimos * (diasDevengo / 30));
-          } else {
-            cuotaCentimos = cuotaEstandarCentimos;
-          }
-          amortizacionCentimos = cuotaCentimos - interesCentimos;
-
-          // Guard against edge cases where interest could exceed cuota (very short/irregular periods)
-          if (amortizacionCentimos < 0) {
-            amortizacionCentimos = 0;
-            cuotaCentimos = interesCentimos;
-          }
-        }
-      }
-
-      principalVivoCentimos -= amortizacionCentimos;
-      principalVivoCentimos = Math.max(0, principalVivoCentimos);
-
-      // Calculate days for prorated period
-      const diasCalculo = esProrrateado ? diasDevengo : undefined;
-
-      periodos.push({
-        periodo,
-        devengoDesde: this.formatLocalDate(devengoDesde),
-        devengoHasta: this.formatLocalDate(devengoHasta),
-        fechaCargo: this.formatLocalDate(fechaCargo),
-        cuota: cuotaCentimos / 100,
-        interes: interesCentimos / 100,
-        amortizacion: amortizacionCentimos / 100,
-        principalFinal: principalVivoCentimos / 100,
-        esProrrateado,
-        esSoloIntereses,
-        diasDevengo: diasCalculo && diasCalculo > 0 ? diasCalculo : undefined,
-        pagado: false
-      });
-
-      // Move to next month preserving billing day and clamping when month is shorter
-      fechaActual = this.addMonthsWithClampedDay(fechaActual, 1, paymentDay);
-    }
-
-    const totalIntereses = periodos.reduce((sum, p) => sum + p.interes, 0);
-    const fechaFinalizacion = periodos[periodos.length - 1]?.fechaCargo || '';
-
-    return {
-      prestamoId: prestamo.id,
-      fechaGeneracion: new Date().toISOString(),
-      periodos,
-      resumen: {
-        totalIntereses: Math.round(totalIntereses * 100) / 100,
-        totalCuotas: periodos.length,
-        fechaFinalizacion
-      }
-    };
+    return generarCuadro(prestamo).plan;
   }
-
 
   /**
    * Adds months to a date while keeping a target day-of-month clamped to month end.

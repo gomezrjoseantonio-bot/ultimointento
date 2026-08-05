@@ -24,7 +24,7 @@
 // ============================================================================
 
 import type { PlanPagos, PeriodoPago } from '../../types/prestamos';
-import { prestamosCalculationService } from '../prestamosCalculationService';
+import { cuotaFrancesa } from './cuadro';
 
 export interface RevisionDeTipo {
   /**
@@ -76,13 +76,7 @@ export function recalcularDesde(plan: PlanPagos, revision: RevisionDeTipo): Plan
 
   // La cuota nueva · francesa sobre lo que queda, al tipo nuevo, en los meses
   // que faltan. Es literalmente la cuenta de la carta.
-  const cuotaCentimos = aCentimos(
-    prestamosCalculationService.calculateFrenchPayment(
-      vivoCentimos / 100,
-      tinAnual,
-      porRehacer.length
-    )
-  );
+  const cuotaCentimos = aCentimos(cuotaFrancesa(vivoCentimos / 100, tinAnual, porRehacer.length));
 
   const rehechos: PeriodoPago[] = porRehacer.map((p, i) => {
     const esUltimo = i === porRehacer.length - 1;

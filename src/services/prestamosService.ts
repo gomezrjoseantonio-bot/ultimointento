@@ -2,6 +2,7 @@
 
 import { Prestamo, PlanPagos, DestinoCapital, Garantia } from '../types/prestamos';
 import { prestamosCalculationService } from './prestamosCalculationService';
+import { conservarPunteo } from './prestamos/cuadro';
 import { initDB } from './db';
 import { reduccionPorBonificaciones } from './bonificaciones/tinEfectivo';
 
@@ -358,16 +359,19 @@ export class PrestamosService {
       this.planesGenerados.delete(id);
       
       try {
-        const paymentPlan = prestamosCalculationService.generatePaymentSchedule(prestamos[index]);
-        // Re-mark all installments with fechaCargo <= today as paid
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
-        for (const periodo of paymentPlan.periodos) {
-          if (new Date(periodo.fechaCargo) <= today) {
-            periodo.pagado = true;
-            periodo.fechaPagoReal = periodo.fechaCargo;
-          }
-        }
+        // El punteo del cuadro anterior se conserva · el enlace al movimiento
+        // con el que se cuadró cada cuota es trabajo del usuario, no un dato
+        // calculado, y regenerar no puede borrarlo. Esto lo hacía solo el
+        // wizard, así que editar desde cualquier otro sitio lo perdía entero.
+        //
+        // Se lee el plan GUARDADO, no `getPaymentPlan`: ese ya compara contra
+        // los parámetros nuevos y devolvería un cuadro recién generado, que es
+        // justamente el que no tiene punteo que conservar.
+        const anterior = originalPrestamo.planPagos ?? null;
+        const paymentPlan = conservarPunteo(
+          prestamosCalculationService.generatePaymentSchedule(prestamos[index]),
+          anterior,
+        );
         await this.savePaymentPlan(id, paymentPlan);
         console.log(`[PRESTAMOS] Amortization schedule updated: ${paymentPlan.periodos.length} payments, total interest: €${paymentPlan.resumen.totalIntereses.toFixed(2)}`);
       } catch (error) {
@@ -433,20 +437,13 @@ export class PrestamosService {
       return amortizadoCentimos !== principalInicialCentimos || finalPrincipalCentimos !== 0;
     }
 
-    // S-WIZARD-PRESTAMO-V2 · planes generados por el wizard v2 incluyen
-    // la línea 0 de carencia técnica (N+1 líneas). El motor legacy no la
-    // produce (N líneas) · sin este short-circuit, las comprobaciones de
-    // longitud / cuota más abajo invalidarían el plan en cada lectura y
-    // lo regenerarían desde legacy perdiendo la carencia técnica.
-    if (customPlanSource === 'wizard_v2_generated') {
-      const amortizadoCentimos = plan.periodos.reduce(
-        (sum, p) => sum + Math.round(p.amortizacion * 100),
-        0,
-      );
-      const principalInicialCentimos = Math.round(prestamo.principalInicial * 100);
-      const finalPrincipalCentimos = Math.round((lastPeriod?.principalFinal || 0) * 100);
-      return amortizadoCentimos !== principalInicialCentimos || finalPrincipalCentimos !== 0;
-    }
+    // Aquí había una escotilla para los planes marcados `wizard_v2_generated`:
+    // los escribía el motor del wizard, con su línea 0 de carencia técnica, y
+    // la comparación de abajo —hecha contra el motor legacy, que no la
+    // produce— los daba por inválidos en cada lectura. Con un solo motor la
+    // comparación ya es contra el mismo cuadro que los generó, y la excepción
+    // sobra: mantenerla dejaría fuera del control de coherencia justo a los
+    // préstamos dados de alta por la puerta principal.
 
     if (this.hasIrregularMonthlyCadence(plan)) return true;
 
@@ -585,8 +582,16 @@ export class PrestamosService {
     }
 
     // No persisted plan found — generate a fresh one
+    //
+    // Regenerar EN LECTURA es lo mismo que regenerar al editar, así que también
+    // conserva el punteo: un plan viejo que no cuadra con las reglas de hoy se
+    // rehace, pero el enlace de cada cuota con el movimiento del banco lo puso
+    // el usuario y no se puede perder por haber abierto una pantalla.
     console.log(`[PRESTAMOS] Generating fresh amortization schedule for ${prestamoId}`);
-    const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+    const plan = conservarPunteo(
+      prestamosCalculationService.generatePaymentSchedule(prestamo),
+      prestamo.planPagos ?? null,
+    );
     await this.savePaymentPlan(prestamoId, plan);
     
     console.log(`[PRESTAMOS] Schedule generated - ${plan.periodos.length} payments, ends ${plan.resumen.fechaFinalizacion}, total interest: €${plan.resumen.totalIntereses.toFixed(2)}`);
