@@ -21,7 +21,13 @@
 // ============================================================================
 
 import type { PeriodoPago, PlanPagos, Prestamo } from '../../types/prestamos';
-import { baseDe, interesDelPeriodo } from './baseDeCalculo';
+import {
+  baseDe,
+  baseDiasSueltosDe,
+  diasSegunBase,
+  interesDelPeriodo,
+  interesPorDias,
+} from './baseDeCalculo';
 import { cuotaFrancesa } from './cuotaFrancesa';
 import { recalcularDesde } from './cuadroPorTramos';
 import { diasEntre } from './fechas';
@@ -50,6 +56,19 @@ export interface Adelanto {
    * intereses del préstamo salía corto — y de ahí sale la deducción fiscal.
    */
   interesesCorridos?: number;
+  /**
+   * Qué decide qué se conserva · por defecto el DEVENGO.
+   *
+   * Adelantar capital no cancela nada, así que el corte es el mismo que el de
+   * una revisión: el recibo que se gira ese día paga el mes que acaba de
+   * terminar y se conserva entero.
+   *
+   * Cancelar es otra cosa: lo que manda es lo COBRADO. Un recibo con fecha
+   * posterior a la cancelación **no se va a girar nunca**, así que no puede
+   * quedarse en el cuadro ni servir de referencia para el capital que se salda
+   * —su `principalFinal` está proyectado a una cuota que no va a existir—.
+   */
+  cortePor?: 'DEVENGO' | 'CARGO';
 }
 
 const aCentimos = (euros: number): number => Math.round(euros * 100);
@@ -75,7 +94,14 @@ export function amortizarAnticipado(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) return plan;
   if (!(importe > 0)) return plan;
 
-  const corte = plan.periodos.findIndex((p) => empieza(p) >= desde);
+  // El recibo del día exacto se conserva solo si ya se pagó · si no, es uno de
+  // los que la cancelación se lleva por delante.
+  const seConserva = (p: PeriodoPago): boolean =>
+    adelanto.cortePor === 'CARGO'
+      ? p.fechaCargo < desde || (p.pagado === true && p.fechaCargo <= desde)
+      : empieza(p) < desde;
+
+  const corte = plan.periodos.findIndex((p) => !seConserva(p));
   const intactos = corte === -1 ? plan.periodos.slice() : plan.periodos.slice(0, corte);
   const porRehacer = corte === -1 ? [] : plan.periodos.slice(corte);
 
@@ -214,5 +240,43 @@ export function cancelarAnticipado(
     importe: cierre.capital,
     modo: 'REDUCIR_PLAZO',
     interesesCorridos: cierre.interesesCorridos,
+    cortePor: 'CARGO',
   });
+}
+
+/**
+ * Los intereses corridos desde el último recibo hasta un día · §6 bis · quater.
+ *
+ * Los cobra el banco al cancelar, y se calculaban DOS veces —una en
+ * `loanSettlementService` y otra en `propertySaleService`— con la misma cuenta
+ * equivocada las dos: `vivo × tipo × días ÷ 365` fijo, con un tipo de
+ * `calculateBaseRate`. O sea sin la base del préstamo —un ACT/360 cobra un
+ * 1,39 % más—, sin bonificaciones y sin el tramo que rija ese día.
+ *
+ * Aquí es una sola, con las piezas de siempre.
+ */
+export function interesesCorridos(
+  prestamo: Prestamo,
+  plan: PlanPagos | null,
+  hasta: string,
+  vivo: number
+): number {
+  if (!(vivo > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta)) return 0;
+
+  // Desde el último recibo que ya devengó · si no hay cuadro, desde lo que el
+  // préstamo sepa decir de sí mismo.
+  const ultimo = (plan?.periodos ?? [])
+    .filter((p) => p.fechaCargo && p.fechaCargo <= hasta)
+    .sort((a, b) => a.fechaCargo.localeCompare(b.fechaCargo))
+    .at(-1);
+  const desde =
+    ultimo?.fechaCargo ||
+    prestamo.fechaUltimaCuotaPagada ||
+    prestamo.fechaPrimerCargo ||
+    prestamo.fechaFirma;
+  if (!desde || desde >= hasta) return 0;
+
+  const base = baseDiasSueltosDe(prestamo);
+  const tin = tinDelTramo(prestamo, tramoVigente(prestamo, hasta));
+  return interesPorDias(aCentimos(vivo), tin, diasSegunBase(desde, hasta, base), base) / 100;
 }

@@ -3,7 +3,11 @@ import { triggerTreasuryUpdate } from './treasuryEventsService';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { prestamosService } from './prestamosService';
 import { PlanPagos, PeriodoPago, Prestamo } from '../types/prestamos';
-import { amortizarAnticipado, cancelarAnticipado } from './prestamos/amortizarAnticipado';
+import {
+  amortizarAnticipado,
+  cancelarAnticipado,
+  interesesCorridos,
+} from './prestamos/amortizarAnticipado';
 
 export interface PrepareLoanSettlementResult {
   prestamo: Prestamo;
@@ -89,35 +93,18 @@ const resolveProjectedOutstandingPrincipal = (
   return round2(Number(prestamo.principalVivo || prestamo.capitalVivoAlImportar || prestamo.principalInicial || 0));
 };
 
+/**
+ * Los intereses corridos desde el último recibo · lo calcula el motor único.
+ *
+ * Aquí vivía la cuenta `vivo × tipo × días ÷ 365` con un tipo sin bonificaciones
+ * ni tramos, y `propertySaleService` tenía otra igual de equivocada.
+ */
 const resolveAccruedInterestUntilDate = (
   prestamo: Prestamo,
   paymentPlan: PlanPagos | null,
   operationDate: string,
   outstandingPrincipal: number,
-): number => {
-  if (outstandingPrincipal <= 0) return 0;
-
-  const annualRate = prestamosCalculationService.calculateBaseRate(prestamo);
-  if (!Number.isFinite(annualRate) || annualRate <= 0) return 0;
-
-  const sortedPeriods = sortPeriods(paymentPlan?.periodos ?? []);
-  const lastInstallment = sortedPeriods
-    .filter((periodo) => new Date(periodo.fechaCargo).getTime() <= new Date(operationDate).getTime())
-    .at(-1);
-
-  const accrualStartDate =
-    lastInstallment?.fechaCargo ??
-    prestamo.fechaUltimaCuotaPagada ??
-    prestamo.fechaPrimerCargo ??
-    prestamo.fechaFirma;
-
-  if (!accrualStartDate) return 0;
-
-  const daysAccrued = diffDaysBetweenIsoDates(accrualStartDate, operationDate);
-  if (daysAccrued <= 0) return 0;
-
-  return round2(outstandingPrincipal * (annualRate / 100) * (daysAccrued / 365));
-};
+): number => round2(interesesCorridos(prestamo, paymentPlan, operationDate, outstandingPrincipal));
 
 const resolveCurrentInstallment = (prestamo: Prestamo, paymentPlan: PlanPagos | null, operationDate: string): number => {
   const nextRegularPeriod = sortPeriods(paymentPlan?.periodos ?? []).find((periodo) => {

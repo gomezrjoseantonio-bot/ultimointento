@@ -158,7 +158,9 @@ describe('cancelar del todo', () => {
   it('la línea de cierre lleva los intereses corridos, no un cero', () => {
     const p = unicaja();
     const antes = plan(p);
-    const vivo = antes.periodos.filter((x) => x.devengoDesde < '2026-02-25').at(-1)!.principalFinal;
+    // Al cancelar manda lo COBRADO · el recibo del 25 no está pagado, así que
+    // lo que se debe es el saldo posterior al del 25 de enero.
+    const vivo = antes.periodos.filter((x) => x.fechaCargo < '2026-02-25').at(-1)!.principalFinal;
 
     const d = cancelarAnticipado(p, antes, {
       fecha: '2026-02-25',
@@ -175,14 +177,19 @@ describe('cancelar del todo', () => {
 
   // El recibo del propio día de la cancelación puede seguir pendiente · lo que
   // no puede quedar es nada DESPUÉS.
+  // Un recibo posterior a la cancelación no se gira nunca · tampoco el del
+  // propio día si todavía no estaba pagado.
   it('y no deja ninguna cuota por venir', () => {
     const p = unicaja();
     const antes = plan(p);
-    const vivo = antes.periodos.filter((x) => x.devengoDesde < '2026-02-25').at(-1)!.principalFinal;
+    // Al cancelar manda lo COBRADO · el recibo del 25 no está pagado, así que
+    // lo que se debe es el saldo posterior al del 25 de enero.
+    const vivo = antes.periodos.filter((x) => x.fechaCargo < '2026-02-25').at(-1)!.principalFinal;
 
     const d = cancelarAnticipado(p, antes, { fecha: '2026-02-25', capital: vivo })!;
 
     expect(d.periodos.some((x) => x.fechaCargo > '2026-02-25')).toBe(false);
+    expect(d.periodos.at(-1)!.principalFinal).toBe(0);
   });
 });
 
