@@ -25,7 +25,7 @@
 
 import type { PlanPagos, PeriodoPago } from '../../types/prestamos';
 import { cuotaFrancesa } from './cuotaFrancesa';
-import { BASE_POR_DEFECTO, interesDelPeriodo, type BaseDeCalculo } from './baseDeCalculo';
+import { interesDelPeriodo, type BaseDeCalculo } from './baseDeCalculo';
 import { diasEntre } from './fechas';
 
 export interface RevisionDeTipo {
@@ -41,10 +41,12 @@ export interface RevisionDeTipo {
   /**
    * Cómo cuenta los días el banco (§6 bis · bis) · la del préstamo.
    *
-   * Si no se dice, el mes comercial. Un tramo que contara los días distinto que
-   * el resto del cuadro sería otra vez dos cuentas para lo mismo.
+   * OBLIGATORIA a propósito. Con un valor por defecto, quien llamara sin
+   * pasarla recalcularía el tramo sobre el mes comercial mientras el resto del
+   * cuadro cuenta días reales — y en silencio, que es como se cuelan estas
+   * cosas. Así no compila hasta que alguien decida qué base es la del préstamo.
    */
-  base?: BaseDeCalculo;
+  base: BaseDeCalculo;
 }
 
 const aCentimos = (euros: number): number => Math.round(euros * 100);
@@ -98,7 +100,7 @@ export function recalcularDesde(plan: PlanPagos, revision: RevisionDeTipo): Plan
       vivoCentimos,
       tinAnual,
       diasEntre(p.devengoDesde, p.devengoHasta),
-      base ?? BASE_POR_DEFECTO
+      base
     );
 
     let amortizacionCentimos: number;

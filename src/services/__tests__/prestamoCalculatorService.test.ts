@@ -37,7 +37,7 @@ describe('la carencia técnica', () => {
   });
 
   it('devengan 214,64 €', () => {
-    expect(calcularInteresesCarenciaTecnica(78500, 0.0499, 20)).toBeCloseTo(214.64, 2);
+    expect(calcularInteresesCarenciaTecnica(78500, 0.0499, 20, 'ACT/365')).toBeCloseTo(214.64, 2);
   });
 
   // Firmar el mismo día en que se cobra no deja días sueltos que liquidar.
@@ -50,7 +50,7 @@ describe('la carencia técnica', () => {
   });
 
   it('cero días no devengan nada', () => {
-    expect(calcularInteresesCarenciaTecnica(78500, 0.0499, 0)).toBe(0);
+    expect(calcularInteresesCarenciaTecnica(78500, 0.0499, 0, 'ACT/365')).toBe(0);
   });
 });
 

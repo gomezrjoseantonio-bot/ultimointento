@@ -748,7 +748,14 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     if (esPreV2) return loadedPrestamo?.carenciaTecnica ?? null;
     if (!carencia?.existe || !carencia.fechaLiquidacion || capital <= 0) return null;
 
-    const intereses = calcularInteresesCarenciaTecnica(capital, tinEfectivoPct / 100, carencia.dias);
+    // Con la base del préstamo · este cargo y el resto del cuadro tienen que
+    // contar los días igual (§6 bis · bis).
+    const intereses = calcularInteresesCarenciaTecnica(
+      capital,
+      tinEfectivoPct / 100,
+      carencia.dias,
+      form.baseCalculo
+    );
     if (intereses <= 0) return null;
 
     return {
@@ -756,7 +763,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       fechaLiquidacion: carencia.fechaLiquidacion,
       intereses: Math.round(intereses * 100) / 100,
     };
-  }, [esPreV2, loadedPrestamo, carencia, capital, tinEfectivoPct]);
+  }, [esPreV2, loadedPrestamo, carencia, capital, tinEfectivoPct, form.baseCalculo]);
 
   // El cuadro de la vista previa sale del MISMO motor que el que se guarda
   // (`services/prestamos/cuadro`). Antes lo calculaba un motor propio y después

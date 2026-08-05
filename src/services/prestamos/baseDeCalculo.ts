@@ -28,9 +28,16 @@
 // fecha de revisión y el valor del índice.
 // ============================================================================
 
-import type { Prestamo } from '../../types/prestamos';
+import type { BaseCalculoIntereses, Prestamo } from '../../types/prestamos';
 
-export type BaseDeCalculo = '30/360' | 'ACT/360' | 'ACT/365';
+/**
+ * El tipo del dominio, con el nombre corto que usa este módulo.
+ *
+ * Alias, no una copia: dos uniones paralelas se desincronizan en cuanto alguien
+ * añada o quite una base, y entonces la pantalla ofrecería una que el motor no
+ * sabe calcular.
+ */
+export type BaseDeCalculo = BaseCalculoIntereses;
 
 /** Lo que ATLAS hacía antes de preguntar · el mes comercial. */
 export const BASE_POR_DEFECTO: BaseDeCalculo = '30/360';

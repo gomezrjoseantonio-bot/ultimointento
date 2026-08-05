@@ -56,7 +56,7 @@ const céntimos = (n: number) => Math.round(n * 100);
 describe('lo pagado no se toca', () => {
   it('las cuotas anteriores a la revisión quedan idénticas', () => {
     const original = plan();
-    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 5.5 });
+    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 5.5, base: '30/360' });
 
     expect(nuevo.periodos.slice(0, 8)).toEqual(original.periodos.slice(0, 8));
   });
@@ -65,7 +65,7 @@ describe('lo pagado no se toca', () => {
   // intereses ya cobrados cambiaban de importe.
   it('los intereses ya cobrados no cambian de importe', () => {
     const original = plan();
-    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 9 });
+    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 9, base: '30/360' });
 
     const antesOriginal = original.periodos.slice(0, 8).reduce((s, p) => s + p.interes, 0);
     const antesNuevo = nuevo.periodos.slice(0, 8).reduce((s, p) => s + p.interes, 0);
@@ -76,7 +76,7 @@ describe('lo pagado no se toca', () => {
   // ese día al tipo nuevo.
   it('la del mismo día de la revisión entra en el tramo nuevo', () => {
     const original = plan();
-    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 9 });
+    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 9, base: '30/360' });
 
     expect(nuevo.periodos[8].cuota).not.toBe(original.periodos[8].cuota);
   });
@@ -87,7 +87,7 @@ describe('la cuota nueva sale del capital vivo', () => {
   // amortizar de 47.394,19 € a fecha 31/03/2026».
   it('es la francesa sobre lo que queda, al tipo nuevo, en los meses que faltan', () => {
     const original = plan();
-    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 5.5 });
+    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 5.5, base: '30/360' });
 
     const vivoAlCorte = original.periodos[7].principalFinal;
     const esperada = prestamosCalculationService.calculateFrenchPayment(vivoAlCorte, 5.5, 16);
@@ -99,21 +99,21 @@ describe('la cuota nueva sale del capital vivo', () => {
     const original = plan();
     const cuotaVieja = original.periodos[8].cuota;
 
-    expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual: 6 }).periodos[8].cuota)
+    expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual: 6, base: '30/360' }).periodos[8].cuota)
       .toBeGreaterThan(cuotaVieja);
-    expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual: 2 }).periodos[8].cuota)
+    expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual: 2, base: '30/360' }).periodos[8].cuota)
       .toBeLessThan(cuotaVieja);
   });
 
   it('el préstamo sigue terminando en cero', () => {
-    const nuevo = recalcularDesde(plan(), { desde: '2025-09-28', tinAnual: 5.5 });
+    const nuevo = recalcularDesde(plan(), { desde: '2025-09-28', tinAnual: 5.5, base: '30/360' });
 
     expect(nuevo.periodos[nuevo.periodos.length - 1].principalFinal).toBe(0);
   });
 
   it('el total de intereses se recalcula, no se hereda', () => {
     const original = plan();
-    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 9 });
+    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 9, base: '30/360' });
 
     expect(nuevo.resumen.totalIntereses).toBeGreaterThan(original.resumen.totalIntereses);
     expect(céntimos(nuevo.resumen.totalIntereses)).toBe(
@@ -124,7 +124,7 @@ describe('la cuota nueva sale del capital vivo', () => {
   // Lo que se recalcula está POR VENIR · si constaba pagado, su importe ya no
   // es el que se pagó.
   it('lo rehecho deja de constar pagado', () => {
-    const nuevo = recalcularDesde(plan(), { desde: '2025-05-28', tinAnual: 5.5 });
+    const nuevo = recalcularDesde(plan(), { desde: '2025-05-28', tinAnual: 5.5, base: '30/360' });
 
     expect(nuevo.periodos.slice(4).every((p) => p.pagado === false)).toBe(true);
     expect(nuevo.periodos.slice(0, 4).every((p) => p.pagado === true)).toBe(true);
@@ -137,7 +137,7 @@ describe('la cuota nueva sale del capital vivo', () => {
     original.periodos[8].movimientoTesoreriaId = 'mov-42';
     original.periodos[3].movimientoTesoreriaId = 'mov-7';
 
-    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 5.5 });
+    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 5.5, base: '30/360' });
 
     expect(nuevo.periodos[8].movimientoTesoreriaId).toBeUndefined();
     // El de una cuota intacta se queda: esa sí se pagó por ese importe.
@@ -152,7 +152,7 @@ describe('la cuota nueva sale del capital vivo', () => {
     original.periodos[0].diasDevengo = 18;
     original.periodos[1].esSoloIntereses = true;
 
-    const nuevo = recalcularDesde(original, { desde: '2024-01-01', tinAnual: 5.5 });
+    const nuevo = recalcularDesde(original, { desde: '2024-01-01', tinAnual: 5.5, base: '30/360' });
 
     expect(nuevo.periodos[0].esProrrateado).toBeUndefined();
     expect(nuevo.periodos[0].diasDevengo).toBeUndefined();
@@ -165,17 +165,17 @@ describe('la cuota nueva sale del capital vivo', () => {
 describe('cuando no hay nada que recalcular', () => {
   it('una revisión posterior a la última cuota deja el plan igual', () => {
     const original = plan();
-    expect(recalcularDesde(original, { desde: '2030-01-01', tinAnual: 9 })).toBe(original);
+    expect(recalcularDesde(original, { desde: '2030-01-01', tinAnual: 9, base: '30/360' })).toBe(original);
   });
 
   it('un plan vacío se devuelve tal cual', () => {
     const vacio = plan({ periodos: [] });
-    expect(recalcularDesde(vacio, { desde: '2025-09-28', tinAnual: 9 })).toBe(vacio);
+    expect(recalcularDesde(vacio, { desde: '2025-09-28', tinAnual: 9, base: '30/360' })).toBe(vacio);
   });
 
   it.each([NaN, Infinity, -1])('un tipo de %s no toca nada', (tinAnual) => {
     const original = plan();
-    expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual })).toBe(original);
+    expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual, base: '30/360' })).toBe(original);
   });
 
   // El corte se decide comparando CADENAS · un «2025/09/28» ordena distinto que
@@ -193,7 +193,7 @@ describe('cuando no hay nada que recalcular', () => {
   // al tipo nuevo, que es lo correcto cuando nada se ha pagado aún.
   it('una revisión anterior a todo recalcula el cuadro entero', () => {
     const original = plan();
-    const nuevo = recalcularDesde(original, { desde: '2024-01-01', tinAnual: 9 });
+    const nuevo = recalcularDesde(original, { desde: '2024-01-01', tinAnual: 9, base: '30/360' });
 
     expect(nuevo.periodos[0].cuota).not.toBe(original.periodos[0].cuota);
     expect(nuevo.periodos[nuevo.periodos.length - 1].principalFinal).toBe(0);
@@ -204,7 +204,7 @@ describe('cuando no hay nada que recalcular', () => {
 // negativo, que dejaría un préstamo creciendo solo.
 describe('un tipo que se come la cuota', () => {
   it('no amortiza en negativo', () => {
-    const nuevo = recalcularDesde(plan(), { desde: '2025-09-28', tinAnual: 200 });
+    const nuevo = recalcularDesde(plan(), { desde: '2025-09-28', tinAnual: 200, base: '30/360' });
 
     expect(nuevo.periodos.every((p) => p.amortizacion >= 0)).toBe(true);
   });
