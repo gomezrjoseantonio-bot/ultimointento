@@ -404,7 +404,18 @@ export interface Bonificacion {
   id: string;
   tipo: 'NOMINA'|'RECIBOS'|'SEGURO_HOGAR'|'SEGURO_VIDA'|'TARJETA'|'PENSIONES'|'ALARMA'|'OTROS';
   nombre: string;                 // "Nómina", "Seguro hogar", "Tarjeta"…
-  reduccionPuntosPorcentuales: number; // e.g., 0.003 = 0.30 pp
+  /**
+   * Lo que rebaja, **en puntos porcentuales** · `0.30` es «−0,30 p.p.».
+   *
+   * El nombre del campo lo dice y así lo escribe el asistente (`ppDescuento`) y
+   * lo leen `tinEfectivo` y el simulador. El comentario que había aquí decía
+   * `0.003 = 0.30 pp` —una fracción—, o sea la unidad equivocada por un factor
+   * de cien: quien lo hubiera creído habría guardado bonificaciones que no
+   * rebajan nada. Es exactamente el error que ya cometió la capa de
+   * presentación al revés, multiplicando por cien y comiéndose treinta puntos
+   * de TIN.
+   */
+  reduccionPuntosPorcentuales: number;
   impacto: { puntos: number };    // p.ej. -0,10 p.p.
   // A qué tramo rebaja NO vive aquí: es `bonificacionesDesde`, del préstamo.
   // El campo `aplicaEn` que había aquí lo escribía el asistente con la
