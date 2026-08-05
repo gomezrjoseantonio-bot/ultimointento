@@ -162,3 +162,47 @@
   opacity: 0.6;
   cursor: default;
 }
+
+/* El índice de la carta · §6 ter · ter. */
+.indice {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--atlas-v5-line);
+}
+
+.indiceLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+  margin-bottom: 5px;
+}
+
+.indiceCampo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.indiceInput {
+  width: 76px;
+  font-size: 12px;
+  text-align: right;
+  padding: 5px 8px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 6px;
+  background: var(--atlas-v5-white);
+  color: var(--atlas-v5-ink);
+}
+
+.indiceSufijo {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.indiceHint {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  line-height: 1.5;
+  margin-top: 5px;
+}

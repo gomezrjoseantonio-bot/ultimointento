@@ -26,6 +26,7 @@ import { proximaRevision, revisionPendiente } from '../../services/bonificacione
 import { confirmarRevision } from '../../services/prestamos/confirmarRevision';
 import type { LoQueDecidioElBanco } from '../../services/prestamos/confirmarRevision';
 import { estaAplicada } from '../../services/bonificaciones/tinEfectivo';
+import { esNumero, fmtNumeroEs, parseNum } from './wizards/numeros';
 import { nombreMes } from '../tesoreria/v6/formatoV6';
 import type { Prestamo } from '../../types/prestamos';
 import { cuotaMensualConTin, effectiveTIN } from './helpers';
@@ -48,6 +49,7 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
   const bonificaciones = prestamo.bonificaciones;
   const [movimientos, setMovimientos] = useState<MovimientosQuePrueban | null>(null);
   const [decision, setDecision] = useState<LoQueDecidioElBanco>({});
+  const [indiceRaw, setIndiceRaw] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [atendida, setAtendida] = useState(false);
 
@@ -56,6 +58,7 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
   // pendiente por una que se confirmó en el anterior.
   useEffect(() => {
     setDecision({});
+    setIndiceRaw('');
     setAtendida(false);
   }, [prestamo.id]);
 
@@ -151,6 +154,12 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
 
   const elegido = (id: string) => decision[id] ?? propuesta[id];
 
+  // La misma carta trae el índice · si la revisión cae en un tramo que lo lleva,
+  // se pregunta aquí en vez de mandar al usuario al asistente a apuntarlo.
+  const revisaElIndice = pendiente
+    ? tramoVigente(prestamo, pendiente.aplicaDesde).variable
+    : false;
+
   const guardarRevision = async () => {
     if (!pendiente || !prestamo.id) return;
     setGuardando(true);
@@ -159,6 +168,10 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
         fecha: pendiente.fecha,
         aplicaDesde: pendiente.aplicaDesde,
         decision: { ...propuesta, ...decision },
+        // En blanco o mal escrito no se apunta nada · se sigue proyectando con
+        // el último tipo conocido, que va marcado como estimación. Un dedazo
+        // guardado aquí diría «el Euríbor de esa revisión fue del 0 %».
+        valorIndice: esNumero(indiceRaw) ? parseNum(indiceRaw) : undefined,
       });
       setAtendida(true);
       onCambio?.();
@@ -226,6 +239,45 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
               </div>
             </div>
           ))}
+
+          {/*
+            El índice de la misma carta · §6 ter · ter.
+
+            Hasta ahora la carta se leía dos veces: aquí lo de las
+            bonificaciones y en el asistente el Euríbor. Mientras no se pasara
+            por la segunda puerta, el cuadro seguía proyectando con el índice de
+            HOY, que para una revisión de hace meses es una presunción.
+
+            Se pide el índice a secas, no el tipo: el diferencial ya lo sabe
+            ATLAS y sumarlo dos veces sería el error caro. Por eso se enseña
+            delante lo que se le va a sumar.
+
+            En blanco es una respuesta legítima — hay cartas que no lo dicen — y
+            entonces se sigue proyectando con el último tipo conocido.
+          */}
+          {revisaElIndice && (
+            <div className={styles.indice}>
+              <label className={styles.indiceLabel} htmlFor="revision-indice">
+                Índice de la carta
+              </label>
+              <div className={styles.indiceCampo}>
+                <input
+                  id="revision-indice"
+                  className={styles.indiceInput}
+                  value={indiceRaw}
+                  placeholder="no lo dice"
+                  onChange={(e) => setIndiceRaw(e.target.value)}
+                />
+                <span className={styles.indiceSufijo}>
+                  % + {fmtNumeroEs(prestamo.diferencial ?? 0)} de diferencial
+                </span>
+              </div>
+              <div className={styles.indiceHint}>
+                El {prestamo.indice === 'EURIBOR' ? 'Euríbor' : 'índice'} a secas, sin sumarle tu
+                diferencial. Si lo dejas en blanco se sigue estimando con el último conocido.
+              </div>
+            </div>
+          )}
 
           <button
             type="button"

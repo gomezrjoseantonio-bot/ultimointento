@@ -209,4 +209,131 @@ describe('la revisión que estrena el tramo variable', () => {
     expect(r!.tinDespues).toBe(3.3);
     expect(r!.cuadroRehecho).toBe(true);
   });
+
+  // Y la carta de esa revisión trae el Euríbor que aplicó · las dos cosas
+  // entran por la misma puerta, que es como llegan.
+  it('el índice de la carta manda sobre la estimación', async () => {
+    servicio.getPrestamoById.mockResolvedValue(unicaja());
+
+    const r = await confirmarRevision('p1', {
+      ...alCambiarDeTramo,
+      decision: {},
+      valorIndice: 2.45,
+    });
+
+    // 2,45 de la carta + 1,750 de diferencial − 0,55 de bonificaciones.
+    expect(r!.tinDespues).toBe(3.65);
+  });
+});
+
+// La carta trae DOS cosas · qué pasó con las bonificaciones y a cuánto salió el
+// índice. Antes solo entraba lo primero, y el Euríbor de esa misma carta había
+// que apuntarlo aparte en el asistente: mientras no se hiciera, el cuadro
+// seguía proyectando con `valorIndiceActual`, que es el índice de HOY.
+describe('el índice que traía la carta', () => {
+  const variable = (over: Partial<Prestamo> = {}): Prestamo =>
+    ({
+      ...prestamo(),
+      tipo: 'VARIABLE',
+      tipoNominalAnualFijo: undefined,
+      valorIndiceActual: 2.1,
+      diferencial: 1,
+      bonificaciones: [],
+      ...over,
+    }) as unknown as Prestamo;
+
+  it('queda apuntado como hecho y decide el tipo nuevo', async () => {
+    servicio.getPrestamoById.mockResolvedValue(variable());
+
+    const r = await confirmarRevision('p1', { ...revision, decision: {}, valorIndice: 3.4 });
+
+    const [, updates] = servicio.updatePrestamo.mock.calls[0];
+    expect(updates.revisionesDeTipo).toEqual([{ desde: '2026-03-01', valorIndice: 3.4 }]);
+    // 3,40 de índice + 1,00 de diferencial · no el 2,10 de hoy.
+    expect(r!.tinDespues).toBe(4.4);
+    expect(r!.tinAntes).toBe(3.1);
+  });
+
+  // Dos revisiones el mismo día son la misma revisión rectificada · dejar las
+  // dos haría que el cuadro dependiera del orden en que se guardaron.
+  it('rectificar una ya apuntada la sustituye, no la duplica', async () => {
+    servicio.getPrestamoById.mockResolvedValue(
+      variable({ revisionesDeTipo: [{ desde: '2026-03-01', valorIndice: 9 }] })
+    );
+
+    await confirmarRevision('p1', { ...revision, decision: {}, valorIndice: 3.4 });
+
+    const [, updates] = servicio.updatePrestamo.mock.calls[0];
+    expect(updates.revisionesDeTipo).toEqual([{ desde: '2026-03-01', valorIndice: 3.4 }]);
+  });
+
+  it('las de otros días se conservan y quedan ordenadas', async () => {
+    servicio.getPrestamoById.mockResolvedValue(
+      variable({ revisionesDeTipo: [{ desde: '2025-03-01', valorIndice: 2.5 }] })
+    );
+
+    await confirmarRevision('p1', { ...revision, decision: {}, valorIndice: 3.4 });
+
+    const [, updates] = servicio.updatePrestamo.mock.calls[0];
+    expect(updates.revisionesDeTipo).toEqual([
+      { desde: '2025-03-01', valorIndice: 2.5 },
+      { desde: '2026-03-01', valorIndice: 3.4 },
+    ]);
+  });
+
+  // Lo ya guardado se sanea al pasar · una entrada rota reventaría el orden al
+  // confirmar, y `tramosDeTipo` la descarta igualmente al leer.
+  it('las entradas rotas que hubiera guardadas no revientan ni se propagan', async () => {
+    servicio.getPrestamoById.mockResolvedValue(
+      variable({
+        revisionesDeTipo: [
+          { desde: undefined, valorIndice: 2 },
+          { desde: '2025-03-01', valorIndice: NaN },
+          { desde: '2025-06-01T00:00:00.000Z', valorIndice: 2.5 },
+        ] as never,
+      })
+    );
+
+    await confirmarRevision('p1', { ...revision, decision: {}, valorIndice: 3.4 });
+
+    const [, updates] = servicio.updatePrestamo.mock.calls[0];
+    expect(updates.revisionesDeTipo).toEqual([
+      { desde: '2025-06-01', valorIndice: 2.5 },
+      { desde: '2026-03-01', valorIndice: 3.4 },
+    ]);
+  });
+
+  // Una carta que no lo dice es una respuesta legítima · se sigue proyectando
+  // con el último tipo conocido, marcado como estimación.
+  it('sin índice no se apunta nada', async () => {
+    servicio.getPrestamoById.mockResolvedValue(variable());
+
+    await confirmarRevision('p1', { ...revision, decision: {} });
+
+    const [, updates] = servicio.updatePrestamo.mock.calls[0];
+    expect(updates.revisionesDeTipo).toBeUndefined();
+  });
+
+  // En un préstamo a tipo fijo el índice no pinta nada · guardarlo sería dejar
+  // un dato que no lee nadie.
+  it('en un tramo que no lo lleva no se apunta', async () => {
+    const r = await confirmarRevision('p1', { ...revision, decision: {}, valorIndice: 3.4 });
+
+    const [, updates] = servicio.updatePrestamo.mock.calls[0];
+    expect(updates.revisionesDeTipo).toBeUndefined();
+    expect(r!.tinDespues).toBe(r!.tinAntes);
+  });
+
+  // `updatePrestamo` regenera el cuadro cuando cambian las revisiones, y lo hace
+  // DESDE EL ORIGEN. Sin `conservarPlan` reescribiría intereses ya cobrados.
+  it('apuntarlo obliga a conservar el plan aunque el tipo salga igual', async () => {
+    servicio.getPrestamoById.mockResolvedValue(variable());
+
+    // 2,10 apuntado = el mismo que se estimaba · el tipo no se mueve.
+    const r = await confirmarRevision('p1', { ...revision, decision: {}, valorIndice: 2.1 });
+
+    expect(r!.tinDespues).toBe(r!.tinAntes);
+    const [, , opciones] = servicio.updatePrestamo.mock.calls[0];
+    expect(opciones).toEqual({ conservarPlan: true });
+  });
 });

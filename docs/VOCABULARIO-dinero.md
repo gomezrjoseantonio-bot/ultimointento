@@ -848,6 +848,39 @@ La revisión que espera se distingue de las ya atendidas por
 `ultimaRevisionBonificacionesConfirmada`. Una que caiga dentro del periodo
 inicial no reclama nada: no podía cambiar la cuota.
 
+**Y la carta trae DOS cosas, no una** *(Jose · 5 ago 2026)*: qué pasó con las
+bonificaciones **y a cuánto salió el índice**. Aquí solo entraba lo primero, y
+el Euríbor de esa misma carta había que apuntarlo aparte, a mano, en el
+asistente. Dos puertas para un solo papel — y mientras no se pasara por la
+segunda, el cuadro seguía proyectando con `valorIndiceActual`, que es el índice
+de **hoy**: para una revisión de hace meses, una presunción.
+
+Ahora el índice entra por la misma puerta y queda apuntado como **hecho** en
+`revisionesDeTipo`. Reglas:
+
+- **Se pide el índice a secas, no el tipo.** El diferencial lo sabe ATLAS, y
+  sumarlo dos veces es el error caro. La pantalla enseña delante lo que se le va
+  a sumar.
+- **Solo se pregunta donde lo pone el índice.** En un préstamo a tipo fijo —o
+  durante el tramo fijo de un mixto— guardarlo sería dejar un dato que no lee
+  nadie.
+- **En blanco es una respuesta legítima.** Hay cartas que no lo dicen, y hay
+  revisiones que solo miran las bonificaciones. Entonces se sigue proyectando
+  con el último tipo conocido, marcado como estimación (§6 bis · bis).
+- **Lo que no sea un número no cuenta.** Un dedazo se guardaría como «el Euríbor
+  de esa revisión fue del 0 %», y de esa cifra salen la cuota, las previsiones y
+  los intereses del ejercicio.
+- **Dos revisiones el mismo día son la misma revisión rectificada**, así que la
+  nueva sustituye a la vieja. Dejar las dos haría que el cuadro dependiera del
+  orden en que se guardaron.
+- **Apuntar el índice obliga a rehacer el cuadro DESDE la revisión aunque el
+  tipo salga igual.** El guardado regenera cuando cambian las revisiones, y lo
+  hace desde el origen — reescribiría intereses ya cobrados.
+
+En un **mixto** la primera revisión trae las dos cosas a la vez: el índice
+estrena el tramo variable y las bonificaciones empiezan a rebajar (§6 ter ·
+quater). En la Unicaja de Jose las dos caen el 25 de agosto de 2026.
+
 ### 6 ter · bis · Lo que la bonificación hace con la cuota
 
 **Decisión · 4 de agosto de 2026:**
@@ -1030,6 +1063,13 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-05** · **La revisión recoge también el índice.** La carta del banco
+  trae dos cosas —qué pasó con las bonificaciones y a cuánto salió el Euríbor— y
+  ATLAS solo dejaba entrar la primera: la otra había que apuntarla aparte, en el
+  asistente, y mientras tanto el cuadro proyectaba con el índice de hoy. Ahora
+  entra por la misma puerta y queda apuntado como hecho en `revisionesDeTipo`.
+  Solo se pregunta donde lo pone el índice, en blanco no inventa nada y un
+  dedazo no se guarda como «el Euríbor fue del 0 %». §6 ter · ter.
 - **2026-08-05** · **Una bonificación rebaja el tramo que le toca, no todos.**
   El motor las aplicaba de la firma al último recibo, y la escritura de Unicaja
   dice lo contrario: «en el segundo y en los sucesivos períodos de interés», o
