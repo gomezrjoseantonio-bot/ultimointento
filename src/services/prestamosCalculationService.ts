@@ -4,6 +4,8 @@
 import { Prestamo, PlanPagos, CalculoAmortizacion, Bonificacion } from '../types/prestamos';
 import { estaAplicada, tinConBonificaciones } from './bonificaciones/tinEfectivo';
 import { cuotaFrancesa, generarCuadro } from './prestamos/cuadro';
+import { rebajanEnTramo } from './prestamos/tinDelTramo';
+import { tramoVigente } from './prestamos/tramosDeTipo';
 import { comisionDeReembolso } from './prestamos/comisiones';
 
 export class PrestamosCalculationService {
@@ -77,6 +79,12 @@ export class PrestamosCalculationService {
     if (!prestamo.bonificaciones || prestamo.bonificaciones.length === 0) {
       return baseRate;
     }
+
+    // Hay escrituras que no bonifican hasta el segundo periodo de interés · en
+    // el tramo fijo de una mixta así no rebaja nada, por mucho que esté todo
+    // contratado (§6 ter).
+    const dia = (currentDate || new Date()).toISOString().slice(0, 10);
+    if (!rebajanEnTramo(prestamo, tramoVigente(prestamo, dia))) return baseRate;
 
     // Una sola regla para toda la app · `bonificaciones/tinEfectivo` (§6 ter).
     // Aquí se sumaba en crudo, sin tope y con su propia idea de qué estados

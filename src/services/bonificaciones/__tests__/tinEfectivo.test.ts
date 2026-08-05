@@ -20,7 +20,6 @@ const bonif = (over: Partial<Bonificacion> = {}): Bonificacion => ({
   nombre: 'Nómina',
   reduccionPuntosPorcentuales: 0.3,
   impacto: { puntos: -0.3 },
-  aplicaEn: 'FIJO',
   lookbackMeses: 6,
   regla: { tipo: 'NOMINA', minimoMensual: 1200 },
   estado: 'SELECCIONADO',

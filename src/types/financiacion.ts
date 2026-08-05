@@ -69,7 +69,6 @@ export interface BonificacionFinanciacion {
   condicionParametrizable: string;      // Parametrizable condition description
   descuentoTIN: number;                // TIN discount in percentage points (p.p.)
   impacto: { puntos: number };         // p.ej. -0,10 p.p.
-  aplicaEn: 'FIJO'|'VARIABLE'|'MIXTO_SECCION_FIJA'|'MIXTO_SECCION_VARIABLE';
   ventanaEvaluacion: number;           // Evaluation window in months (e.g., 6)
   periodicidadRevision?: number;       // Review periodicity (inherits from loan if not defined)
   periodoGraciaInicial?: number;       // Initial grace period in months (e.g., 6)

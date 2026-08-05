@@ -41,7 +41,6 @@ const bonif = (id: string, puntos: number, estado: Bonificacion['estado']): Boni
     nombre: id,
     reduccionPuntosPorcentuales: puntos,
     impacto: { puntos: -puntos },
-    aplicaEn: 'FIJO',
     lookbackMeses: 6,
     regla: { tipo: 'NOMINA', minimoMensual: 1200 },
     estado,

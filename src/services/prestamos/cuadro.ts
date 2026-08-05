@@ -20,10 +20,11 @@
 //
 // Esto es el único sitio donde se genera un cuadro. Lo que decide:
 //
-//   - **El tipo sale de `tinConBonificaciones`**, que es la regla de §6 ter y
-//     ya aplica el tope. El wizard sumaba los puntos por su cuenta y sin tope,
-//     así que la vista previa podía enseñar un tipo más bajo que el que después
-//     se guardaba: la tercera versión de la misma regla.
+//   - **El tipo sale de `tinDelTramo`**, que aplica la regla de §6 ter con su
+//     tope y sabe además desde qué tramo rebajan las bonificaciones. El wizard
+//     sumaba los puntos por su cuenta y sin tope, así que la vista previa podía
+//     enseñar un tipo más bajo que el que después se guardaba: la tercera
+//     versión de la misma regla.
 //   - **No mira el reloj.** El legacy resolvía el tipo con `new Date()`, de
 //     modo que el mismo préstamo daba un cuadro distinto según el día en que lo
 //     generaras. Aquí el cuadro es función del préstamo y de nada más.
@@ -60,7 +61,7 @@
 // ============================================================================
 
 import type { Prestamo, PeriodoPago, PlanPagos } from '../../types/prestamos';
-import { tinConBonificaciones } from '../bonificaciones/tinEfectivo';
+import { tinDelTramo } from './tinDelTramo';
 import { cuotaFrancesa } from './cuotaFrancesa';
 import { diasEntre, esISO, partes, restarUnDia, sumarMeses } from './fechas';
 import { recalcularDesde } from './cuadroPorTramos';
@@ -138,12 +139,12 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
 
   // A qué tipo va cada trozo del préstamo · el fijo tiene uno, el mixto cambia
   // cuando acaba su tramo fijo y el variable cambia en cada revisión apuntada.
-  // Las bonificaciones rebajan TODOS los tramos: no se pierden al revisar el
-  // índice, se pierden cuando el banco las retira (§6 ter).
-  const tramos = tramosDeTipo(prestamo).map((t) => ({
-    ...t,
-    tin: tinConBonificaciones(t.tinBase, prestamo.bonificaciones, prestamo),
-  }));
+  //
+  // Y cuánto rebajan las bonificaciones en cada uno lo decide `tinDelTramo`: no
+  // se pierden al revisar el índice —eso solo pasa cuando el banco las retira
+  // (§6 ter)—, pero hay escrituras que no las aplican hasta el segundo periodo
+  // de interés, y entonces el tramo fijo de un mixto va sin rebajar.
+  const tramos = tramosDeTipo(prestamo).map((t) => ({ ...t, tin: tinDelTramo(prestamo, t) }));
 
   // El cuadro nace al tipo del arranque y después se rehace tramo a tramo. Un
   // tramo que empieza ANTES de la primera cuota no parte nada: es el tipo del

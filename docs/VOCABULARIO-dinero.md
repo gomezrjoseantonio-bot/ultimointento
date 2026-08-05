@@ -883,6 +883,58 @@ inicial no reclama nada: no podía cambiar la cuota.
 
 *(Resuelta la de tarjeta · las demás esperan su fuente · §8.)*
 
+### 6 ter · quater · Desde cuándo rebajan
+
+**Decisión · 5 de agosto de 2026 (Jose), con la escritura delante.**
+
+Una bonificación no rebaja necesariamente todo el préstamo. Dos hipotecas
+**mixtas** reales, y dicen lo contrario:
+
+| | Unicaja · 25-08-2023 | ING |
+|---|---|---|
+| Tramo fijo | 36 meses al **2,600 %** | 10 años al **2,15 %** |
+| Con bonificaciones | **nada · sigue al 2,600 %** | baja al **1,35 %** desde el día uno |
+| Después | Euríbor 12m **+ 1,750**, revisión anual | Euríbor + diferencial |
+
+La escritura de Unicaja lo dice en una frase que hay que saber leer:
+
+> «No obstante, **en el segundo y en los sucesivos períodos de interés**, en
+> atención a la fidelidad de la PARTE PRESTATARIA…, esta última aplicará
+> bonificaciones al tipo de interés»
+
+El **primer periodo de interés son los 36 meses fijos**. Durante ellos se paga
+el 2,600 % entero, con el seguro contratado y la nómina domiciliada. La
+bonificación —hasta **1,000 punto**— empieza el 25 de agosto de 2026, el mismo
+día que entra el Euríbor.
+
+ATLAS las aplicaba desde el primer recibo. **Un punto entero sobre 85.000 € a
+240 meses, durante tres años.**
+
+Reglas:
+
+- **Es del préstamo (`bonificacionesDesde`), no de cada bonificación.** La
+  escritura lo dice una vez, para el anexo entero — el mismo motivo que la
+  gracia de §6 ter.
+- **Solo se pregunta en un mixto.** Un fijo y un variable tienen una sola fase.
+  Un préstamo que deja de ser mixto deja de leer el dato: uno que perdió su
+  sentido no puede seguir decidiendo el tipo.
+- **Ausente = desde la firma**, que es lo que ATLAS venía haciendo. Cambiar el
+  valor por defecto habría movido la cuota de todos los mixtos ya guardados.
+- **El campo que había no servía.** `Bonificacion.aplicaEn` existía con los
+  cuatro valores exactos que hacían falta, el asistente lo escribía con la
+  constante `'FIJO'` en todos los préstamos y no lo leía nadie. Leerlo como un
+  hecho habría dejado sin bonificar el tramo fijo de **todos** los mixtos.
+- **En un tramo que todavía no bonifica, «si la revisión fuera hoy» no mueve el
+  tipo.** Durante esos 36 meses da igual lo que demuestren los movimientos. Lo
+  que se juega ahí se cobra en la primera revisión.
+- **El TIN que se enseña es el del tramo de hoy.** Se leía siempre del campo del
+  arranque, así que una mixta 3+17 seguía anunciando su tipo de teaser en el año
+  veinte — y un variable ignoraba las revisiones apuntadas de sus cartas.
+
+**Y la primera revisión de un mixto trae las dos cosas a la vez**: el índice
+nuevo y las bonificaciones que hasta entonces no rebajaban. Preguntando el antes
+y el después al mismo tramo, esa revisión no movía nada.
+
 ## 7 · Combinaciones imposibles
 
 Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
@@ -978,6 +1030,17 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-05** · **Una bonificación rebaja el tramo que le toca, no todos.**
+  El motor las aplicaba de la firma al último recibo, y la escritura de Unicaja
+  dice lo contrario: «en el segundo y en los sucesivos períodos de interés», o
+  sea nunca durante sus 36 meses fijos. Un punto entero sobre 85.000 € durante
+  tres años. Ahora lo dice el préstamo (`bonificacionesDesde`) y lo aplica un
+  solo sitio (`tinDelTramo`), del que beben el cuadro, el listado, el panel, el
+  simulador y la confirmación de una revisión. De paso, el TIN que se enseña ya
+  es el del **tramo de hoy**: una mixta 3+17 anunciaba su tipo de teaser en el
+  año veinte. Retirado `Bonificacion.aplicaEn`, que tenía los cuatro valores
+  que hacían falta, lo escribía el asistente con la constante `'FIJO'` y no lo
+  leía nadie. §6 ter · quater.
 - **2026-08-05** · **Las comisiones de adelantar dinero se calculan bien.** La
   unidad son puntos porcentuales y la cuenta vive en un sitio: había cuatro
   leyéndola de cuatro maneras, y un 0,25 % pactado salía como un 25 %. Además

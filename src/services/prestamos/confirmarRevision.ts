@@ -22,8 +22,9 @@
 
 import type { Prestamo } from '../../types/prestamos';
 import { prestamosService } from '../prestamosService';
-import { tinConBonificaciones } from '../bonificaciones/tinEfectivo';
-import { tinBase } from '../../modules/financiacion/helpers';
+import { tinDelTramo } from './tinDelTramo';
+import { tramoVigente } from './tramosDeTipo';
+import { restarUnDia } from './fechas';
 import { recalcularDesde } from './cuadroPorTramos';
 import { baseDe } from './baseDeCalculo';
 
@@ -62,15 +63,21 @@ export async function confirmarRevision(
   const prestamo = await prestamosService.getPrestamoById(prestamoId);
   if (!prestamo) return null;
 
-  const base = tinBase(prestamo);
-  const tinAntes = tinConBonificaciones(base, prestamo.bonificaciones, prestamo);
+  // El antes y el después se preguntan a DÍAS DISTINTOS, y en un mixto eso es
+  // justo lo que cambia: la primera revisión de la Unicaja de Jose cae el mismo
+  // día en que el 2,600 % fijo se convierte en Euríbor + 1,750 y en que empiezan
+  // a rebajar las bonificaciones. Preguntando los dos al tramo del arranque, esa
+  // revisión no habría movido nada.
+  const tramoAntes = tramoVigente(prestamo, restarUnDia(revision.aplicaDesde));
+  const tramoDespues = tramoVigente(prestamo, revision.aplicaDesde);
+  const tinAntes = tinDelTramo(prestamo, tramoAntes);
 
   const bonificaciones = (prestamo.bonificaciones ?? []).map((b) => {
     const decidido = revision.decision[b.id];
     return decidido ? { ...b, estado: decidido } : b;
   });
 
-  const tinDespues = tinConBonificaciones(base, bonificaciones, prestamo);
+  const tinDespues = tinDelTramo(prestamo, tramoDespues, bonificaciones);
 
   // El cuadro se lee ANTES de guardar, y el guardado va con `conservarPlan`.
   //

@@ -244,6 +244,29 @@ export interface Prestamo {
    * que decirlo en pantalla: quien no lo sepa creerá que va bien.
    */
   graciaMesesBonificaciones?: number;
+  /**
+   * Desde cuándo REBAJAN las bonificaciones · §6 ter.
+   *
+   * Solo tiene sentido en un mixto, y ahí lo cambia todo. Dos escrituras reales
+   * de Jose, las dos mixtas, dicen cosas opuestas:
+   *
+   *   · Unicaja: «en el SEGUNDO y en los sucesivos períodos de interés… UNICAJA
+   *     BANCO aplicará bonificaciones al tipo de interés». El primer periodo son
+   *     los 36 meses al 2,600 % fijo: durante ellos no rebajan nada, por mucho
+   *     que tengas contratados el seguro y la nómina. → `TRAMO_VARIABLE`.
+   *   · ING: 2,15 % desde la firma, que baja a 1,35 % con las bonificaciones ya
+   *     durante el tramo fijo. → `FIRMA`.
+   *
+   * Es del PRÉSTAMO y no de cada bonificación, por el mismo motivo que
+   * `graciaMesesBonificaciones`: la escritura lo dice UNA vez, para el anexo
+   * entero, y preguntarlo bonificación a bonificación era una pregunta repetida
+   * cuya respuesta podía además contradecirse consigo misma.
+   *
+   * Ausente = `FIRMA`, que es lo que ATLAS venía haciendo. Cambiar el valor por
+   * defecto habría movido la cuota de todos los mixtos ya guardados sin que
+   * nadie lo hubiera pedido.
+   */
+  bonificacionesDesde?: 'FIRMA' | 'TRAMO_VARIABLE';
   fechaFinMaximaBonificacion?: string;       // end date for maximum bonification period
 
   // Reglas por defecto de bonificaciones
@@ -383,7 +406,12 @@ export interface Bonificacion {
   nombre: string;                 // "Nómina", "Seguro hogar", "Tarjeta"…
   reduccionPuntosPorcentuales: number; // e.g., 0.003 = 0.30 pp
   impacto: { puntos: number };    // p.ej. -0,10 p.p.
-  aplicaEn: 'FIJO'|'VARIABLE'|'MIXTO_SECCION_FIJA'|'MIXTO_SECCION_VARIABLE';
+  // A qué tramo rebaja NO vive aquí: es `bonificacionesDesde`, del préstamo.
+  // El campo `aplicaEn` que había aquí lo escribía el asistente con la
+  // constante `'FIJO'` en todos los préstamos y no lo leía nadie, así que no
+  // decía nada de ninguno — leerlo como un hecho habría dejado sin bonificar el
+  // tramo fijo de TODOS los mixtos, que es lo correcto para la Unicaja de Jose
+  // y lo contrario de lo que dice su ING.
   lookbackMeses: number;          // compliance window
   regla: ReglaBonificacion;       // declarative rule
   costeAnualEstimado?: number;    // e.g., insurance premium
