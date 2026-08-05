@@ -73,24 +73,50 @@ function diasEntreISO(isoA: string, isoB: string): number {
 // ── Funciones financieras ───────────────────────────────────────────────────
 
 /**
- * Detecta si hay carencia técnica (días entre la firma y la primera fecha de
- * cobro mensual) y devuelve los días y la fecha de liquidación.
+ * Los días sueltos entre la disposición y el primer cargo · §6 bis · bis.
  *
- * Si el día de firma coincide con el día de cobro → NO hay carencia técnica.
+ * El banco los liquida **en la primera fecha de cobro POSTERIOR a la
+ * disposición**, sea del mes que sea. Tres cuadros reales del Santander, los
+ * tres iguales:
+ *
+ *   · 12-05-2026, cobro el día 1  → 01-06-2026 · 20 días · 214,64 € de 78.500
+ *   · 03-07-2025, cobro fin de mes → 31-07-2025 · 28 días · 154,96 € de 50.000
+ *   · 16-10-2023, cobro fin de mes → 31-10-2023 · 15 días ·  29,05 € de 17.675
+ *
+ * Esto decía «el día de cobro del MES SIGUIENTE», y eso solo acierta cuando el
+ * día de cobro ya ha pasado al firmar. En los otros dos se saltaba un cargo
+ * entero: el de 16-10-2023 salía a **45 días y 87,16 €** en vez de 15 y 29,05, y
+ * encima con la fecha del primer recibo de verdad, o sea dos cargos el mismo
+ * día. *(Jose · 5 ago 2026 — «se dice que la primera cuota son 45 días».)*
+ *
+ * Si el día de cobro es el mismo de la disposición no hay días sueltos que
+ * cobrar. Se compara con el día YA RECORTADO: quien cobra «el 31» y dispone un
+ * 30 de noviembre no tiene carencia, porque en noviembre el 31 es el 30.
  */
 export function detectarCarenciaTecnica(
   fechaFirmaISO: string,
   diaCobro: number,
 ): CarenciaTecnicaInfo {
   const firma = parseISODate(fechaFirmaISO);
-  if (firma.d === diaCobro) {
+
+  // El día de cobro de ESTE mes · el 31 en noviembre es el 30.
+  const esteMes = clampDay(firma.y, firma.m, diaCobro);
+  if (esteMes === firma.d) {
     return { existe: false, dias: 0, fechaLiquidacion: null };
   }
-  // Fecha de liquidación = día de cobro del mes siguiente a la firma.
-  const total = firma.y * 12 + (firma.m - 1) + 1;
-  const ly = Math.floor(total / 12);
-  const lm = (total % 12) + 1;
-  const ld = clampDay(ly, lm, diaCobro);
+
+  let ly = firma.y;
+  let lm = firma.m;
+  let ld = esteMes;
+
+  // Solo se salta al mes siguiente si en este el cobro YA HA PASADO.
+  if (esteMes < firma.d) {
+    const total = firma.y * 12 + (firma.m - 1) + 1;
+    ly = Math.floor(total / 12);
+    lm = (total % 12) + 1;
+    ld = clampDay(ly, lm, diaCobro);
+  }
+
   const fechaLiq = toISODate(ly, lm, ld);
   const dias = diasEntreISO(fechaFirmaISO, fechaLiq);
   return { existe: dias > 0, dias, fechaLiquidacion: fechaLiq };

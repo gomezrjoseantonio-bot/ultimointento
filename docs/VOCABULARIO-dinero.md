@@ -1099,6 +1099,15 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-05** · **Los días sueltos del arranque se liquidan en la primera
+  fecha de cobro que llega**, no en la del mes siguiente. Tres cuadros del
+  Santander dicen lo mismo: 12-05-2026 con cobro el día 1 → 01-06 (20 días),
+  03-07-2025 con cobro fin de mes → 31-07 (28 días), 16-10-2023 igual → 31-10
+  (15 días). ATLAS saltaba siempre al mes siguiente, lo cual solo acierta si el
+  cobro de este mes ya pasó al firmar: el de octubre de 2023 salía a **45 días y
+  87,16 €** en vez de 15 y 29,05, con la fecha del primer recibo de verdad —dos
+  cargos el mismo día—. *(Jose · 5 ago 2026: «se dice que la primera cuota son
+  45 días».)* §6 bis · bis.
 - **2026-08-05** · **El tipo nuevo entra por el DEVENGO, no por la fecha de
   cargo.** Un recibo cobra el mes que acaba de terminar, así que el que se gira
   el mismo día en que entra el tipo nuevo va todavía al viejo. ATLAS cortaba por
