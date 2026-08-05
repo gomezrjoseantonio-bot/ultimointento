@@ -146,13 +146,6 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
   // de interés, y entonces el tramo fijo de un mixto va sin rebajar.
   const tramos = tramosDeTipo(prestamo).map((t) => ({ ...t, tin: tinDelTramo(prestamo, t) }));
 
-  // El cuadro nace al tipo del arranque y después se rehace tramo a tramo. Un
-  // tramo que empieza ANTES de la primera cuota no parte nada: es el tipo del
-  // arranque, y aplicarlo como corte reescribiría también la línea 0.
-  const delArranque = tramos.filter((t) => !t.desde || t.desde <= cargoInicial);
-  const porRehacer = tramos.filter((t) => t.desde && t.desde > cargoInicial);
-  const tinEfectivo = delArranque.length > 0 ? delArranque[delArranque.length - 1].tin : 0;
-
   // El día objetivo de la serie es el PACTADO, no el del primer cargo: si la
   // primera cita ya viene recortada —un cargo el 31 que cae en febrero— leerlo
   // de ahí dejaría todos los cargos siguientes clavados en el 28.
@@ -213,6 +206,20 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
 
   const plazo = prestamo.plazoMesesTotal;
 
+  // De dónde arranca el devengo de la primera cuota · si hubo carencia técnica,
+  // desde su liquidación: esos días ya se han cobrado aparte.
+  const arranqueDelDevengo = hayCarenciaTecnica ? periodos[0].fechaCargo : fechaFirma;
+
+  // El cuadro nace al tipo del arranque y después se rehace tramo a tramo.
+  //
+  // El reparto se hace por el DEVENGO de la primera cuota, no por su fecha de
+  // cargo: un recibo cobra el mes que ya ha pasado, así que un tramo que empieza
+  // entre el devengo y el cobro no rige ese recibo — rige el siguiente. Con el
+  // cargo como frontera, ese tramo se tragaba una cuota que no le tocaba.
+  const delArranque = tramos.filter((t) => !t.desde || t.desde <= arranqueDelDevengo);
+  const porRehacer = tramos.filter((t) => t.desde && t.desde > arranqueDelDevengo);
+  const tinEfectivo = delArranque.length > 0 ? delArranque[delArranque.length - 1].tin : 0;
+
   // La cuota sale del capital que quede vivo AL ACABAR la carencia, repartido
   // en los meses que amortizan. Con carencia de capital ese capital es el
   // inicial; con carencia total es mayor, porque los intereses del periodo se
@@ -222,9 +229,7 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     : 0;
 
   let cargo = cargoInicial;
-  // De dónde arranca el devengo de la primera cuota · si hubo carencia técnica,
-  // desde su liquidación: esos días ya se han cobrado aparte.
-  let devengoPrevio = periodos.length > 0 ? periodos[0].fechaCargo : fechaFirma;
+  let devengoPrevio = arranqueDelDevengo;
 
   for (let periodo = 1; periodo <= plazo; periodo++) {
     const enCarencia = periodo <= carencia.meses;

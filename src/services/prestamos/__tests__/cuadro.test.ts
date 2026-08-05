@@ -165,12 +165,25 @@ describe('el cuadro se parte por tramos', () => {
     expect(p[10].cuota).toBe(p[0].cuota);
   });
 
+  // El corte lo decide el DEVENGO, no el cargo · el recibo que se gira después
+  // del cambio pero devenga antes paga todavía el mes viejo, al tipo viejo.
   it('y sube cuando el tramo fijo acaba', () => {
     const p = cuadro();
-    const antes = p.find((x) => x.fechaCargo < '2027-05-12')!;
-    const despues = p.find((x) => x.fechaCargo >= '2027-05-12')!;
+    const antes = p.filter((x) => x.devengoDesde < '2027-05-12').pop()!;
+    const despues = p.find((x) => x.devengoDesde >= '2027-05-12')!;
 
     expect(despues.cuota).toBeGreaterThan(antes.cuota);
+  });
+
+  // El tramo empieza el 12 de mayo y los recibos se giran el día 1. El del 1 de
+  // junio paga del 1 al 31 de mayo —el tramo fijo se acabó a mitad—, así que va
+  // todavía al tipo viejo; el primero al nuevo es el del 1 de julio.
+  it('el recibo que devenga a caballo del cambio va al tipo viejo', () => {
+    const p = cuadro();
+    const primero = p[0].cuota;
+
+    expect(p.find((x) => x.fechaCargo === '2027-06-01')!.cuota).toBe(primero);
+    expect(p.find((x) => x.fechaCargo === '2027-07-01')!.cuota).toBeGreaterThan(primero);
   });
 
   it('el capital de antes del cambio no se toca', () => {
@@ -224,9 +237,12 @@ describe('el cuadro se parte por tramos', () => {
       })
     );
 
-    const antes = plan.periodos.find((p) => p.fechaCargo === '2027-06-01')!;
-    const despues = plan.periodos.find((p) => p.fechaCargo === '2027-07-01')!;
+    // La revisión rige desde el 1 de julio · el recibo de ese día paga junio, al
+    // tipo viejo. El primero al nuevo es el del 1 de agosto.
+    const antes = plan.periodos.find((p) => p.fechaCargo === '2027-07-01')!;
+    const despues = plan.periodos.find((p) => p.fechaCargo === '2027-08-01')!;
 
+    expect(antes.cuota).toBe(plan.periodos[0].cuota);
     expect(despues.cuota).toBeGreaterThan(antes.cuota);
   });
 });

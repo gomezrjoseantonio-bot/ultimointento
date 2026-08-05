@@ -136,3 +136,38 @@ describe('el cuadro de la Unicaja', () => {
     expect(conRegla.totalIntereses).toBeGreaterThan(sinRegla.totalIntereses + 2000);
   });
 });
+
+// El recibo paga el mes que ACABA de terminar · §6 ter · quater.
+//
+// La escritura dice «los primeros TREINTA Y SEIS MESES», o sea del 25-08-2023
+// al 25-08-2026. El recibo que se gira el 25-08-2026 paga del 25-07 al 25-08,
+// entero dentro de ese primer periodo de interés: es la cuota 36 y va al
+// 2,600 %. La primera que devenga al tipo nuevo es la 37, la del 25-09-2026.
+//
+// ATLAS cortaba por la FECHA DE CARGO y le cambiaba la cuota a la 36.
+// (Jose · 5 ago 2026: «Unicaja está cambiando la cuota que hace número 36 y la
+// que cambia es la 37».)
+describe('dónde cambia la cuota de la Unicaja', () => {
+  const periodos = () => generarCuadro(unicaja({ fechaPrimerCargo: '2023-09-25', diaCargoMes: 25 })).plan.periodos;
+
+  it('la 36 se gira el día del cambio y todavía es del tramo fijo', () => {
+    const p36 = periodos().find((x) => x.periodo === 36)!;
+
+    expect(p36.fechaCargo).toBe('2026-08-25');
+    expect(p36.devengoDesde).toBe('2026-07-25');
+    expect(p36.cuota).toBe(periodos()[0].cuota);
+  });
+
+  it('la 37 es la primera que devenga al tipo nuevo', () => {
+    const p37 = periodos().find((x) => x.periodo === 37)!;
+
+    expect(p37.devengoDesde).toBe('2026-08-25');
+    expect(p37.cuota).toBeGreaterThan(periodos()[0].cuota);
+  });
+
+  it('las 36 primeras cuotas son todas iguales', () => {
+    const hasta36 = periodos().filter((x) => x.periodo >= 1 && x.periodo <= 36);
+
+    expect(new Set(hasta36.map((x) => x.cuota)).size).toBe(1);
+  });
+});

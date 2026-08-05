@@ -1099,6 +1099,13 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-05** · **El tipo nuevo entra por el DEVENGO, no por la fecha de
+  cargo.** Un recibo cobra el mes que acaba de terminar, así que el que se gira
+  el mismo día en que entra el tipo nuevo va todavía al viejo. ATLAS cortaba por
+  la fecha de cargo y le cambiaba la cuota a la **36** de la mixta de Unicaja
+  —la del 25-08-2026, que paga del 25-07 al 25-08, entero dentro de los 36 meses
+  al 2,600 %— cuando la que cambia es la **37**. *(Jose · 5 ago 2026, con la
+  escritura y el cuadro del banco delante.)* §6 ter · ter.
 - **2026-08-05** · **El aviso de revisión dice qué toca en cada caso.** Era
   siempre la misma frase, y esa frase solo habla de bonificaciones: respuesta
   entera en un fijo, media en un variable —donde el índice pesa mucho más— y
