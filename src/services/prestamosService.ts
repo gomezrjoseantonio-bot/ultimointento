@@ -403,6 +403,17 @@ export class PrestamosService {
       return true;
     }
 
+    // Las revisiones del índice parten el cuadro en tramos (§6 bis · bis), así
+    // que apuntar una lo cambia. También son un array, y se comparan por lo que
+    // dicen —fecha y valor— y no por identidad de objeto.
+    const comoTexto = (p: Prestamo) =>
+      (p.revisionesDeTipo ?? [])
+        .map((r) => `${r?.desde}:${r?.valorIndice}`)
+        .sort()
+        .join('|');
+
+    if (comoTexto(original) !== comoTexto(updated)) return true;
+
     // Las bonificaciones cambian el tipo que se paga, así que cambian el cuadro
     // (§6 ter). No van en `criticalFields` porque son un array: compararlas con
     // `!==` daría siempre distinto y regeneraría en cada guardado. Lo que hay

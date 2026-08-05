@@ -34,14 +34,16 @@
 //     banco carga—, el interés se calcula sobre el capital vivo y la última
 //     cuota se lleva lo que quede, para que el cuadro no acabe debiendo cuatro
 //     céntimos.
+//   - **El tipo NO es uno para toda la vida.** El cuadro se parte en tramos
+//     (`tramosDeTipo`): un mixto cambia cuando acaba su tramo fijo y un
+//     variable cambia en cada revisión apuntada. Cada tramo se aplica con
+//     `recalcularDesde`, que es lo que hace el banco —lo pagado se queda como
+//     está y la cuota nueva sale del capital vivo de ese día—. Lo que no se
+//     sabe no se inventa: después de la última revisión conocida se sigue con
+//     el último tipo, marcado como estimación.
 //
 // Lo que este motor todavía NO hace, y hay que saberlo:
 //
-//   - **El tipo es uno para toda la vida del préstamo.** Un variable se genera
-//     entero al índice de hoy y un mixto al tipo de su tramo fijo. Partir el
-//     cuadro en tramos es harina de otro costal —`cuadroPorTramos` ya sabe
-//     rehacer desde una fecha—, pero enchufarlo a las revisiones del índice es
-//     otro trabajo.
 //   - **La carencia inicial (`carencia` / `carenciaMeses`) sigue sin aplicarse.**
 //     Ninguno de los dos motores la aplicaba; unificarlos no la arregla.
 //   - **La TAE es la aproximación que traía el v2**, no la TIR de los flujos.
@@ -49,7 +51,16 @@
 
 import type { Prestamo, PeriodoPago, PlanPagos } from '../../types/prestamos';
 import { tinConBonificaciones } from '../bonificaciones/tinEfectivo';
-import { tinBase } from '../../modules/financiacion/helpers';
+import { cuotaFrancesa } from './cuotaFrancesa';
+import { diasEntre, esISO, partes, restarUnDia, sumarMeses } from './fechas';
+import { recalcularDesde } from './cuadroPorTramos';
+import { tramosDeTipo, type TramoDeTipo } from './tramosDeTipo';
+
+export { cuotaFrancesa } from './cuotaFrancesa';
+export type { TramoDeTipo } from './tramosDeTipo';
+
+const aCentimos = (euros: number): number => Math.round(euros * 100);
+const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 export interface ResumenCuadro {
   /** La cuota constante del tramo francés · lo que se ve en pantalla. */
@@ -73,84 +84,19 @@ export interface ResumenCuadro {
   fechaUltimaCuota: string;
   /** Cuántas líneas tiene el cuadro · la carencia técnica cuenta como una. */
   numLineas: number;
+  /**
+   * A qué tipo va cada trozo del préstamo, con el tipo YA bonificado.
+   *
+   * Uno solo en un fijo. En un mixto o un variable, tantos como cambios de
+   * tipo: los `estimado` son proyecciones, no datos de un papel, y la pantalla
+   * tiene que poder decirlo.
+   */
+  tramos: Array<TramoDeTipo & { tin: number }>;
 }
 
 export interface Cuadro {
   plan: PlanPagos;
   resumen: ResumenCuadro;
-}
-
-// ─── Fechas ─────────────────────────────────────────────────────────────────
-// Aritmética sobre la cadena ISO y en UTC. El motor legacy usaba campos
-// locales de `Date`, que en un navegador al este de Greenwich mueve el día.
-
-const DIA = 86_400_000;
-
-const partes = (iso: string): [number, number, number] => {
-  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
-  return [y, m, d];
-};
-
-const aISO = (y: number, m: number, d: number): string =>
-  `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-
-const esISO = (v: unknown): v is string =>
-  typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v);
-
-/** Cuántos días tiene ese mes · `mes` va de 1 a 12. */
-const diasDelMes = (anio: number, mes: number): number =>
-  new Date(Date.UTC(anio, mes, 0)).getUTCDate();
-
-/**
- * Suma meses conservando el día de cargo, recortando al último del mes.
- *
- * Sin el recorte, un cargo el 31 se desborda al 3 de marzo y todas las citas
- * siguientes llegan tarde. Y la serie sale de la fecha base con el día
- * OBJETIVO, no de la anterior ya recortada: recortada una vez a 28, un cargo
- * del 31 debe volver al 31 en los meses que sí lo tienen.
- */
-const sumarMeses = (iso: string, meses: number, diaObjetivo?: number): string => {
-  const [y, m, d] = partes(iso);
-  const total = (y * 12 + (m - 1)) + meses;
-  const anio = Math.floor(total / 12);
-  const mes = (total % 12) + 1;
-  const dia = Math.min(diaObjetivo ?? d, diasDelMes(anio, mes));
-  return aISO(anio, mes, dia);
-};
-
-const restarUnDia = (iso: string): string => {
-  const [y, m, d] = partes(iso);
-  const t = new Date(Date.UTC(y, m - 1, d) - DIA);
-  return aISO(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
-};
-
-/** Días entre dos fechas ISO, ambas incluidas. */
-const diasEntre = (desde: string, hasta: string): number => {
-  const [y1, m1, d1] = partes(desde);
-  const [y2, m2, d2] = partes(hasta);
-  return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / DIA) + 1;
-};
-
-// ─── Dinero ─────────────────────────────────────────────────────────────────
-
-const aCentimos = (euros: number): number => Math.round(euros * 100);
-const round2 = (n: number): number => Math.round(n * 100) / 100;
-
-/**
- * La cuota del sistema francés · LA fórmula, la única.
- *
- * `tinAnual` en porcentaje (4,99 = 4,99 %). Vive aquí y no en el servicio de
- * cálculo para que quien la necesite —el generador, `cuadroPorTramos`— la
- * importe en vez de copiarla: dos fórmulas para lo mismo acaban dando dos
- * cuotas distintas.
- */
-export function cuotaFrancesa(principal: number, tinAnual: number, meses: number): number {
-  if (principal <= 0 || meses <= 0) return 0;
-  if (tinAnual === 0) return principal / meses;
-
-  const i = tinAnual / 100 / 12;
-  const pot = Math.pow(1 + i, meses);
-  return round2((principal * i * pot) / (pot - 1));
 }
 
 // ─── El generador ───────────────────────────────────────────────────────────
@@ -175,9 +121,24 @@ function primerCargo(prestamo: Prestamo): string {
  * dentro de un año.
  */
 export function generarCuadro(prestamo: Prestamo): Cuadro {
-  const tinEfectivo = tinConBonificaciones(tinBase(prestamo), prestamo.bonificaciones, prestamo);
   const fechaFirma = esISO(prestamo.fechaFirma) ? prestamo.fechaFirma.slice(0, 10) : '';
   const cargoInicial = primerCargo(prestamo);
+
+  // A qué tipo va cada trozo del préstamo · el fijo tiene uno, el mixto cambia
+  // cuando acaba su tramo fijo y el variable cambia en cada revisión apuntada.
+  // Las bonificaciones rebajan TODOS los tramos: no se pierden al revisar el
+  // índice, se pierden cuando el banco las retira (§6 ter).
+  const tramos = tramosDeTipo(prestamo).map((t) => ({
+    ...t,
+    tin: tinConBonificaciones(t.tinBase, prestamo.bonificaciones, prestamo),
+  }));
+
+  // El cuadro nace al tipo del arranque y después se rehace tramo a tramo. Un
+  // tramo que empieza ANTES de la primera cuota no parte nada: es el tipo del
+  // arranque, y aplicarlo como corte reescribiría también la línea 0.
+  const delArranque = tramos.filter((t) => !t.desde || t.desde <= cargoInicial);
+  const porRehacer = tramos.filter((t) => t.desde && t.desde > cargoInicial);
+  const tinEfectivo = delArranque.length > 0 ? delArranque[delArranque.length - 1].tin : 0;
 
   // El día objetivo de la serie es el PACTADO, no el del primer cargo: si la
   // primera cita ya viene recortada —un cargo el 31 que cae en febrero— leerlo
@@ -244,7 +205,6 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     cuotaFrancesa(prestamo.principalInicial, tinEfectivo, plazo - mesesSoloIntereses)
   );
 
-  let interesesCuadroCentimos = 0;
   let cargo = cargoInicial;
   // De dónde arranca el devengo de la primera cuota · si hubo carencia técnica,
   // desde su liquidación: esos días ya se han cobrado aparte.
@@ -290,7 +250,6 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     }
 
     vivoCentimos = Math.max(0, vivoCentimos - amortizacionCentimos);
-    interesesCuadroCentimos += interesCentimos;
 
     periodos.push({
       periodo,
@@ -311,29 +270,59 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     cargo = sumarMeses(cargo, 1, diaCargo);
   }
 
-  const interesesCuadro = round2(interesesCuadroCentimos / 100);
-  const ultima = periodos[periodos.length - 1];
+  // ── Los tramos siguientes ─────────────────────────────────────────────────
+  //
+  // Cada uno se aplica con `recalcularDesde`, que es exactamente lo que hace el
+  // banco al revisar: lo pagado se queda como está y la cuota nueva sale del
+  // capital que quede vivo ese día, al tipo nuevo, en los meses que falten. No
+  // se regenera desde el origen, que reescribiría intereses ya devengados.
+  let plan: PlanPagos = {
+    prestamoId: prestamo.id,
+    fechaGeneracion: new Date().toISOString(),
+    periodos,
+    resumen: {
+      totalIntereses: 0,
+      totalCuotas: periodos.length,
+      fechaFinalizacion: periodos[periodos.length - 1]?.fechaCargo ?? '',
+    },
+  };
+
+  for (const tramo of porRehacer) {
+    plan = recalcularDesde(plan, { desde: tramo.desde, tinAnual: tramo.tin });
+  }
+
+  // Las cifras se recuentan del cuadro FINAL · con tramos, los intereses que se
+  // fueron sumando al generarlo son los del primer tipo y ya no valen.
+  const finales = plan.periodos;
+  const interesesCarencia = round2(finales.find((p) => p.periodo === 0)?.interes ?? 0);
+  const interesesCuadro = round2(
+    finales.filter((p) => p.periodo > 0).reduce((s, p) => s + p.interes, 0)
+  );
+  const ultima = finales[finales.length - 1];
+  // La cuota que se enseña es la del ARRANQUE · con tramos no hay una sola, y
+  // la de ahora mismo dependería de qué día es hoy, que es justo lo que este
+  // motor no mira.
+  const primeraCuota = finales.find((p) => p.periodo > 0)?.cuota ?? 0;
 
   return {
     plan: {
-      prestamoId: prestamo.id,
-      fechaGeneracion: new Date().toISOString(),
-      periodos,
+      ...plan,
       resumen: {
-        totalIntereses: round2(interesesCuadro + interesesCarenciaTecnica),
-        totalCuotas: periodos.length,
+        totalIntereses: round2(interesesCuadro + interesesCarencia),
+        totalCuotas: finales.length,
         fechaFinalizacion: ultima?.fechaCargo ?? '',
       },
     },
     resumen: {
-      cuotaMensual: cuotaCentimos / 100,
-      totalIntereses: round2(interesesCuadro + interesesCarenciaTecnica),
+      cuotaMensual: primeraCuota,
+      totalIntereses: round2(interesesCuadro + interesesCarencia),
       interesesCuadro,
-      interesesCarenciaTecnica,
-      tae: taeAproximada(prestamo, tinEfectivo, interesesCarenciaTecnica),
+      interesesCarenciaTecnica: interesesCarencia,
+      tae: taeAproximada(prestamo, tinEfectivo, interesesCarencia),
       tinEfectivo: round2(tinEfectivo),
       fechaUltimaCuota: ultima?.fechaCargo ?? '',
-      numLineas: periodos.length,
+      numLineas: finales.length,
+      tramos,
     },
   };
 }
