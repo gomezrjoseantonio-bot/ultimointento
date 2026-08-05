@@ -66,6 +66,8 @@ import { bonificaHipoteca } from '../../../services/tarjetasReglas';
 import { tinConBonificaciones } from '../../../services/bonificaciones/tinEfectivo';
 import { effectiveTIN } from '../helpers';
 import { esNumero } from './numeros';
+import { BASE_POR_DEFECTO, NOMBRE_DE_LA_BASE, type BaseDeCalculo }
+  from '../../../services/prestamos/baseDeCalculo';
 import styles from './PrestamoPageV2.module.css';
 
 // ─── Tipos auxiliares ───────────────────────────────────────────────────────
@@ -133,6 +135,8 @@ interface FormState {
   revisionPeriodo: 6 | 12;
   /** Las revisiones del índice que ya ocurrieron · §6 bis · bis. */
   revisionesIndice: Array<{ id: string; desde: string; valorRaw: string }>;
+  /** Cómo cuenta los días el banco · §6 bis · bis. */
+  baseCalculo: BaseDeCalculo;
   // mixto
   tramoFijoMesesRaw: string;
   tinTramoFijoRaw: string;
@@ -405,6 +409,7 @@ function emptyFormState(): FormState {
     referenciaInteres: 'euribor_12m',
     revisionPeriodo: 12,
     revisionesIndice: [],
+    baseCalculo: BASE_POR_DEFECTO,
     tramoFijoMesesRaw: '',
     tinTramoFijoRaw: '',
     comAperturaRaw: '0',
@@ -576,6 +581,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       diferencialRaw: p.diferencial !== undefined ? fmtNumeroEs(p.diferencial) : '',
       referenciaInteres: 'euribor_12m',
       revisionPeriodo: (p.periodoRevisionMeses as 6 | 12) || 12,
+      baseCalculo: p.baseCalculoIntereses ?? BASE_POR_DEFECTO,
       revisionesIndice: (p.revisionesDeTipo ?? []).map((r, i) => ({
         id: `rev-${i}`,
         desde: r.desde,
@@ -788,6 +794,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       // La carencia inicial · el motor la aplica, así que la vista previa la
       // enseña. Antes se guardaba y no se veía en ningún sitio.
       ...carenciaInicial,
+      baseCalculoIntereses: form.baseCalculo,
       esquemaPrimerRecibo: 'NORMAL',
     } as Prestamo;
 
@@ -803,6 +810,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     form.tinTramoFijoRaw,
     form.tramoFijoMesesRaw,
     form.comAperturaRaw,
+    form.baseCalculo,
     carenciaInicial,
     revisionesDeTipo,
     tinFijoPct,
@@ -1015,6 +1023,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         tramoFijoMeses: form.tipoInteres === 'mixto' ? parseInt(form.tramoFijoMesesRaw, 10) || undefined : undefined,
         tipoNominalAnualMixtoFijo: form.tipoInteres === 'mixto' ? parseNum(form.tinTramoFijoRaw) : undefined,
         ...carenciaInicial,
+        baseCalculoIntereses: form.baseCalculo,
         comisionApertura: parseNum(form.comAperturaRaw),
         comisionMantenimiento: parseNum(form.comMantenimientoRaw),
         comisionAmortizacionAnticipada: parseNum(form.comAmortAnticipadaRaw),
@@ -1525,6 +1534,36 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                       </div>
                     </div>
                   )}
+
+                  {/* Cómo cuenta los días el banco · §6 bis · bis.
+                      La cuota sale del tipo entre doce, pero el interés que se
+                      liquida cada mes sale de contar días, y la base es una
+                      cláusula de la escritura. Mientras no se diga, el desglose
+                      no puede cuadrar con el recibo aunque la cuota coincida. */}
+                  <div className={styles.revisiones}>
+                    <div className={styles.revisionesHd}>
+                      Base de cálculo de intereses
+                      <span className={styles.revisionesSub}>
+                        lo dice tu escritura · cambia el desglose, no la cuota
+                      </span>
+                    </div>
+                    <div className={styles.field}>
+                      <select
+                        className={styles.select}
+                        value={form.baseCalculo}
+                        onChange={(e) => update('baseCalculo', e.target.value as BaseDeCalculo)}
+                      >
+                        {(Object.keys(NOMBRE_DE_LA_BASE) as BaseDeCalculo[]).map((b) => (
+                          <option key={b} value={b}>{NOMBRE_DE_LA_BASE[b]}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className={styles.revisionesNota}>
+                      La clásica española es <b>días reales / 360</b>, que cobra un
+                      <b> 1,39 % más</b> de intereses que sobre 365. Si no lo sabes, deja el
+                      mes comercial: es lo que ATLAS venía haciendo.
+                    </div>
+                  </div>
 
                   {/* Las revisiones que YA ocurrieron · §6 bis · bis.
                       Sin ellas el cuadro de una variable de hace años se genera

@@ -444,6 +444,85 @@ describe('la carencia se aplica', () => {
   });
 });
 
+// §6 bis · bis · el interés que el banco liquida sale de contar días, y la base
+// es una cláusula de la escritura. Sin ella el desglose interés/capital no
+// puede cuadrar con el recibo, aunque la cuota coincida al céntimo.
+describe('la base de cálculo', () => {
+  const conBase = (base?: Prestamo['baseCalculoIntereses']) =>
+    generarCuadro(
+      prestamo({
+        principalInicial: 100000,
+        plazoMesesTotal: 24,
+        tipoNominalAnualFijo: 3,
+        fechaFirma: '2026-01-01',
+        fechaPrimerCargo: '2026-02-01',
+        diaCargoMes: 1,
+        carenciaTecnica: undefined,
+        baseCalculoIntereses: base,
+      })
+    );
+
+  // Lo que ATLAS venía haciendo · cambiar el defecto movería el cuadro de todos
+  // los préstamos ya guardados sin que nadie lo haya pedido.
+  it('sin decir nada se sigue contando el mes comercial', () => {
+    expect(conBase().plan.periodos).toEqual(conBase('30/360').plan.periodos);
+  });
+
+  // Con el capital congelado —una carencia de capital— se ve limpio qué hace la
+  // base: sin ella todos los meses cuestan lo mismo, con ella febrero cuesta
+  // menos que enero porque tiene tres días menos.
+  const enCarencia = (base?: Prestamo['baseCalculoIntereses']) =>
+    generarCuadro(
+      prestamo({
+        principalInicial: 100000,
+        plazoMesesTotal: 24,
+        tipoNominalAnualFijo: 3,
+        fechaFirma: '2026-01-01',
+        fechaPrimerCargo: '2026-02-01',
+        diaCargoMes: 1,
+        carenciaTecnica: undefined,
+        carencia: 'CAPITAL',
+        carenciaMeses: 6,
+        baseCalculoIntereses: base,
+      })
+    ).plan.periodos;
+
+  it('con el mes comercial, todos los meses cuestan lo mismo', () => {
+    const p = enCarencia('30/360');
+
+    expect(p[1].interes).toBe(p[2].interes);
+    expect(p[2].interes).toBe(p[3].interes);
+  });
+
+  it('contando días, febrero cuesta menos que marzo', () => {
+    const p = enCarencia('ACT/360');
+
+    // Periodo 2 devenga del 1 de febrero al 1 de marzo · 28 días.
+    expect(p[1].interes).toBeLessThan(p[2].interes);
+  });
+
+  // Es la diferencia que hacía imposible cuadrar con el banco.
+  it('la clásica española cobra más intereses que sobre 365', () => {
+    expect(conBase('ACT/360').resumen.totalIntereses)
+      .toBeGreaterThan(conBase('ACT/365').resumen.totalIntereses);
+  });
+
+  // La cuota sale del tipo entre doce y no la toca la base · lo que cambia es
+  // cuánto de esa cuota es interés y cuánto capital.
+  it('la cuota NO cambia · lo que cambia es el desglose', () => {
+    expect(conBase('ACT/360').resumen.cuotaMensual)
+      .toBe(conBase('ACT/365').resumen.cuotaMensual);
+  });
+
+  it('y el cuadro sigue cerrando en cero con cualquiera', () => {
+    for (const base of ['30/360', 'ACT/360', 'ACT/365'] as const) {
+      const p = conBase(base).plan.periodos;
+
+      expect(p[p.length - 1].principalFinal).toBe(0);
+    }
+  });
+});
+
 // Regenerar un cuadro no puede borrar lo que ya se cuadró contra el banco: el
 // enlace al movimiento es trabajo del usuario, no un dato calculado. Esto vivía
 // dentro del wizard, así que cualquier otra puerta lo perdía entero.

@@ -64,6 +64,7 @@ export function cambiaElCuadro(
     'tipoNominalAnualMixtoFijo',
     'carencia',
     'carenciaMeses',
+    'baseCalculoIntereses',
     'diferirPrimeraCuotaMeses',
     'diaCargoMes',
     'fechaFirma',

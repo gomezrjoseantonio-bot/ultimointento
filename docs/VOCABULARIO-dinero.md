@@ -482,6 +482,42 @@ Tres cosas que se derivan y por eso están escritas:
    día**, al tipo nuevo, en los meses que falten. Regenerar desde el origen
    reescribiría intereses ya devengados.
 
+#### La base de cálculo · cómo cuenta los días el banco
+
+La cuota de un préstamo francés sale siempre del tipo entre doce. Pero **el
+interés que el banco liquida cada mes no sale de ahí**: sale de contar días.
+
+> interés = capital × TIN × **días ÷ base**
+
+Y la base es una **cláusula de la escritura**, no una constante:
+
+| Base | Qué hace | |
+|---|---|---|
+| **365/360** | Días reales sobre un año de 360 | La clásica española · **un 1,39 % más cara** |
+| **365/365** | Días reales sobre 365 | Lo que muchos bancos usan hoy |
+| **30/360** | Todos los meses valen 30 | El mes comercial · equivale a dividir entre doce |
+
+Mientras la base no se pregunte, **el desglose interés/capital de cada recibo no
+puede cuadrar con el del banco**, aunque la cuota coincida al céntimo. Era la
+última pieza de «que el cuadro cuadre con el banco».
+
+**Decisión · 5 de agosto de 2026: se pregunta, y ausente = 30/360.** No se
+presume la clásica 365/360 aunque sea la más habitual: eso movería el cuadro de
+todos los préstamos ya guardados sin que nadie lo haya pedido, y presumir una
+cláusula que nadie ha leído es inventarse un dato — la misma regla que la fecha
+de revisión y el valor del índice.
+
+Dos matices:
+
+- **La base no cambia la cuota**, solo el reparto. Lo que sube con 365/360 es la
+  parte de interés de cada recibo, así que se amortiza algo menos cada mes y la
+  última cuota es mayor. Es exactamente lo que pasa en la vida real.
+- **Los tramos sueltos de días se cuentan siempre por días**, aunque la base sea
+  el mes comercial: la prorrata del primer periodo y la liquidación entre la
+  firma y el primer cobro no son un mes, y llamarlos mes cobraría de más o de
+  menos según cuántos días tengan. Con 30/360 se cuentan sobre 365 — que es lo
+  que dice la carta del Santander: 78.500 € al 4,99 % por 20 días, 214,64 €.
+
 Y **las revisiones ya aplicadas se apuntan** en el alta y la edición del
 préstamo: la fecha desde la que rigen y el valor del índice, tal como vienen en
 la carta. Se guarda el **índice**, no el tipo final, porque el diferencial es
@@ -539,8 +575,7 @@ Ahora manda `carencia` + `carenciaMeses` —la que ya se rellenaba—, el motor 
 lee, `mesesSoloIntereses` se retira y el esquema de la importación se **traduce**
 a un mes de carencia de capital en vez de mantener un camino aparte.
 
-Lo que este motor **todavía no hace** está en §8: la base de cálculo de
-intereses no se pregunta.
+Lo que este motor **todavía no hace** está en §8, empezando por la TAE.
 
 ---
 
@@ -790,12 +825,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
-- **2026-08-05** · **La base de cálculo de intereses no se pregunta.** Está
-  clavada: mes comercial (`/12`) para la cuota normal y `/365` por días para el
-  arranque irregular. Pero la base es una **cláusula de la escritura** y varía
-  —365/360, que sube el interés un 1,39 %; 365/365; 30/360—. Mientras no se
-  pregunte, el desglose interés/capital de cada recibo **no puede cuadrar con
-  el del banco**, aunque la cuota coincida. §6 bis · bis.
 - **2026-08-05** · **La TAE es una suma, no una TIR.** Se calcula sumando la
   capitalización del TIN, la comisión de apertura repartida por años y la
   carencia técnica. La TAE es por definición el tipo que iguala los flujos, y
@@ -864,6 +893,14 @@ Escrito para no perderlo, con la fecha en que se detectó.
   un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
 
 ### Resuelto
+
+- **2026-08-05** · **La base de cálculo se pregunta.** El interés que el banco
+  liquida cada mes sale de contar días —`capital × TIN × días ÷ base`— y la base
+  es una cláusula de la escritura: 365/360, la clásica española y un 1,39 % más
+  cara, 365/365 o el mes comercial. Estaba clavada al mes comercial, así que el
+  desglose interés/capital no podía cuadrar con el recibo aunque la cuota
+  coincidiera al céntimo. Ausente sigue siendo 30/360, para no mover lo ya
+  guardado. §6 bis · bis.
 
 - **2026-08-05** · **La carencia se aplica, y hay una sola forma de decirla.**
   Había cuatro campos para lo mismo y las dos mitades no se tocaban: la que se
