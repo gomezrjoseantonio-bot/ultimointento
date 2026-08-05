@@ -53,7 +53,11 @@ export function recalcularDesde(plan: PlanPagos, revision: RevisionDeTipo): Plan
 
   if (!plan?.periodos?.length) return plan;
   if (typeof tinAnual !== 'number' || !Number.isFinite(tinAnual) || tinAnual < 0) return plan;
-  if (typeof desde !== 'string' || desde.length < 10) return plan;
+  // La fecha se valida con forma, no con longitud: el corte se decide comparando
+  // CADENAS (`fechaCargo >= desde`), y un «2025/09/28» ordena distinto que un
+  // «2025-09-28». Con diez caracteres cualquiera de los dos pasaría el filtro y
+  // el tramo rehecho empezaría donde no toca.
+  if (typeof desde !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(desde)) return plan;
 
   const corte = plan.periodos.findIndex((p) => p.fechaCargo >= desde);
   if (corte === -1) return plan;
@@ -117,9 +121,20 @@ export function recalcularDesde(plan: PlanPagos, revision: RevisionDeTipo): Plan
       amortizacion: amortizacionCentimos / 100,
       principalFinal: vivoCentimos / 100,
       // Lo que se recalcula es lo que está POR VENIR · si algo de esto constaba
-      // pagado, deja de constarlo: su importe ya no es el que se pagó.
+      // pagado, deja de constarlo: su importe ya no es el que se pagó, así que
+      // el movimiento con el que se cuadró tampoco lo prueba. Dejar el enlace
+      // sería lo mismo que dejar un `executedMovementId` al vacío: se lee como
+      // «esto ya está», y no lo está.
       pagado: false,
       fechaPagoReal: undefined,
+      movimientoTesoreriaId: undefined,
+      // Las marcas del ARRANQUE se sueltan porque este cálculo no las aplica:
+      // un periodo que siguiera diciendo «prorrateado» con una cuota entera
+      // afirmaría de sí mismo algo que sus cifras desmienten. Solo puede pasar
+      // si la revisión cae sobre los primeros meses del préstamo.
+      esProrrateado: undefined,
+      esSoloIntereses: undefined,
+      diasDevengo: undefined,
     };
   });
 

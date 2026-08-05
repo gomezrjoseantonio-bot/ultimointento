@@ -129,6 +129,35 @@ describe('la cuota nueva sale del capital vivo', () => {
     expect(nuevo.periodos.slice(4).every((p) => p.pagado === false)).toBe(true);
     expect(nuevo.periodos.slice(0, 4).every((p) => p.pagado === true)).toBe(true);
   });
+
+  // Su importe ya no es el que se pagó, así que el movimiento con el que se
+  // cuadró tampoco lo prueba · un enlace al vacío se lee como «esto ya está».
+  it('lo rehecho suelta el movimiento con el que estaba cuadrado', () => {
+    const original = plan();
+    original.periodos[8].movimientoTesoreriaId = 'mov-42';
+    original.periodos[3].movimientoTesoreriaId = 'mov-7';
+
+    const nuevo = recalcularDesde(original, { desde: '2025-09-28', tinAnual: 5.5 });
+
+    expect(nuevo.periodos[8].movimientoTesoreriaId).toBeUndefined();
+    // El de una cuota intacta se queda: esa sí se pagó por ese importe.
+    expect(nuevo.periodos[3].movimientoTesoreriaId).toBe('mov-7');
+  });
+
+  // Un periodo que siguiera diciendo «prorrateado» con una cuota entera
+  // afirmaría de sí mismo algo que sus propias cifras desmienten.
+  it('lo rehecho suelta las marcas del arranque', () => {
+    const original = plan();
+    original.periodos[0].esProrrateado = true;
+    original.periodos[0].diasDevengo = 18;
+    original.periodos[1].esSoloIntereses = true;
+
+    const nuevo = recalcularDesde(original, { desde: '2024-01-01', tinAnual: 5.5 });
+
+    expect(nuevo.periodos[0].esProrrateado).toBeUndefined();
+    expect(nuevo.periodos[0].diasDevengo).toBeUndefined();
+    expect(nuevo.periodos[1].esSoloIntereses).toBeUndefined();
+  });
 });
 
 // Inventar un cuadro es peor que dejar el que había: de él sale la cuota que se
@@ -149,10 +178,16 @@ describe('cuando no hay nada que recalcular', () => {
     expect(recalcularDesde(original, { desde: '2025-09-28', tinAnual })).toBe(original);
   });
 
-  it('sin fecha tampoco', () => {
-    const original = plan();
-    expect(recalcularDesde(original, { desde: '', tinAnual: 5.5 })).toBe(original);
-  });
+  // El corte se decide comparando CADENAS · un «2025/09/28» ordena distinto que
+  // un «2025-09-28», y con diez caracteres los dos pasarían un filtro de
+  // longitud. El tramo rehecho empezaría donde no toca.
+  it.each(['', '2025/09/28', '28-09-2025', '2025-09-28T00:00:00Z', 'mañana'])(
+    '«%s» no es una fecha de corte',
+    (desde) => {
+      const original = plan();
+      expect(recalcularDesde(original, { desde, tinAnual: 5.5 })).toBe(original);
+    }
+  );
 
   // Una revisión anterior a la primera cuota SÍ recalcula: es un cuadro entero
   // al tipo nuevo, que es lo correcto cuando nada se ha pagado aún.
