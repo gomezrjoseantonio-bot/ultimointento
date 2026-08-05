@@ -206,3 +206,11 @@
   line-height: 1.5;
   margin-top: 5px;
 }
+
+/* Qué MÁS trae esa revisión · §6 ter · ter. */
+.trae {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  line-height: 1.5;
+  margin-top: 6px;
+}

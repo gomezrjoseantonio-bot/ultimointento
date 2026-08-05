@@ -4,7 +4,11 @@
 // comprobar» y «te faltan 1.000 €» piden cosas distintas de quien lo lee, y
 // confundirlas manda a gastar para arreglar lo que no se arregla gastando.
 
-import { textoDeCumplimiento, textoDeLoQueEstaEnJuego } from '../textoBonificacion';
+import {
+  textoDeCumplimiento,
+  textoDeLoQueEstaEnJuego,
+  textoDeLoQueTraeLaRevision,
+} from '../textoBonificacion';
 import type { Cumplimiento } from '../../../services/bonificaciones/cumplimiento';
 
 const c = (over: Partial<Cumplimiento> = {}): Cumplimiento => ({
@@ -242,5 +246,66 @@ describe('los meses que todavía no cuentan', () => {
     expect(
       textoDeCumplimiento(conPendientes({ mensual: { conMovimiento: 4, queLlegan: 4, sinCerrar: 0 } }))
     ).not.toContain('todavía no cuenta');
+  });
+});
+
+// Y qué MÁS trae esa revisión · §6 ter · ter.
+//
+// La línea de arriba solo habla de bonificaciones: respuesta entera en un fijo,
+// media en todos los demás. Lo que vigila esto es que no se rellene con una
+// frase genérica —enseñaría un aviso donde no hay ninguno— y que en el mixto se
+// digan las tres cosas que caen ese día.
+describe('qué más trae la revisión', () => {
+  it('en un fijo no hay nada más que decir', () => {
+    expect(textoDeLoQueTraeLaRevision({ elIndice: false })).toBeNull();
+  });
+
+  it('en un variable se avisa de que el índice pesa más, y que no se sabe', () => {
+    const t = textoDeLoQueTraeLaRevision({ elIndice: true, indice: 'EURIBOR' })!;
+
+    expect(t).toContain('mueve también el Euríbor');
+    expect(t).toContain('no se sabe hoy');
+  });
+
+  it('sin saber cuál es el índice se le llama por lo que es', () => {
+    expect(textoDeLoQueTraeLaRevision({ elIndice: true })).toContain('mueve también el índice');
+  });
+
+  // El día que lo cambia todo · el 25 de agosto de 2026 en la Unicaja de Jose.
+  it('el fin del tramo fijo se dice con su día, su tipo y a qué se pasa', () => {
+    expect(
+      textoDeLoQueTraeLaRevision({
+        elIndice: false,
+        indice: 'EURIBOR',
+        acabaElTramoFijo: '2026-08-25',
+        tinQueAcaba: 2.6,
+        diferencial: 1.75,
+        estrenanLasBonificaciones: true,
+      })
+    ).toBe(
+      'El 25 de agosto de 2026 se acaba tu tramo fijo al 2,60 %: pasas al Euríbor + 1,75 %, ' +
+        'y es ahí donde tus bonificaciones empiezan a rebajar. ' +
+        'Cuánto valdrá el Euríbor ese día no se sabe hoy.'
+    );
+  });
+
+  // «pasas a el Euríbor» no se puede leer · el artículo va contraído.
+  it('sin saber cuál es el índice, la contracción sigue estando bien', () => {
+    expect(
+      textoDeLoQueTraeLaRevision({ elIndice: false, acabaElTramoFijo: '2026-08-25' })
+    ).toContain('pasas al índice');
+  });
+
+  it('si ya bonificaban desde la firma no se anuncia ningún estreno', () => {
+    expect(
+      textoDeLoQueTraeLaRevision({
+        elIndice: false,
+        indice: 'EURIBOR',
+        acabaElTramoFijo: '2026-08-25',
+        tinQueAcaba: 2.15,
+        diferencial: 1.09,
+        estrenanLasBonificaciones: false,
+      })
+    ).not.toContain('empiezan a rebajar');
   });
 });

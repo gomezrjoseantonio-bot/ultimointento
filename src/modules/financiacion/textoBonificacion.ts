@@ -6,6 +6,7 @@
 // pierde — «no se puede comprobar» y «te falta» piden cosas distintas.
 
 import type { Cumplimiento } from '../../services/bonificaciones/cumplimiento';
+import type { LoQueTraeLaRevision } from '../../services/prestamos/queTraeLaRevision';
 import { importeSaldo, mesCorto, nombreMes } from '../tesoreria/v6/formatoV6';
 
 /** Los euros, con el formato único de la aplicación (§5). */
@@ -175,4 +176,47 @@ export function textoDeLoQueEstaEnJuego(j: LoQueEstaEnJuego): string {
   return `${hoy}. ${cuando} pasarías al ${pct(j.tinSiRevisaran)} · ${euros(
     j.sobrecosteMensual
   )} más al mes${gracia}`;
+}
+
+/** «25 de agosto de 2026» · leído del ISO, sin pasar por `Date`. */
+const elDia = (iso: string): string => {
+  const [anio, mes, d] = iso.split('-');
+  return `${Number(d)} de ${nombreMes(Number(mes) - 1)} de ${anio}`;
+};
+
+/**
+ * Y qué MÁS trae esa revisión · §6 ter · ter.
+ *
+ * La línea de arriba solo habla de bonificaciones, que es la respuesta entera
+ * en un préstamo a tipo fijo y media en todos los demás. Aquí va la otra mitad,
+ * y va aparte porque no es del mismo tipo: lo de arriba son euros que dependen
+ * de lo que haga el usuario, y esto es lo que va a pasar haga lo que haga.
+ *
+ * Devuelve `null` cuando no hay nada más que decir. Rellenar con una frase
+ * genérica enseñaría un aviso donde no hay ninguno.
+ */
+export function textoDeLoQueTraeLaRevision(t: LoQueTraeLaRevision): string | null {
+  const nombre = t.indice === 'EURIBOR' ? 'el Euríbor' : 'el índice';
+  const alNombre = `al ${nombre.slice(3)}`;
+
+  // El día que lo cambia todo · en un mixto, la primera revisión del tramo
+  // variable trae el índice, el tipo nuevo y —según la escritura— el estreno de
+  // las bonificaciones. Es lo que más mueve la cuota en toda la vida del
+  // préstamo, y no se avisaba.
+  if (t.acabaElTramoFijo) {
+    const aQue =
+      t.diferencial != null ? `pasas ${alNombre} + ${pct(t.diferencial)}` : `pasas ${alNombre}`;
+    const bonis = t.estrenanLasBonificaciones
+      ? ', y es ahí donde tus bonificaciones empiezan a rebajar'
+      : '';
+    const acaba = t.tinQueAcaba != null ? ` al ${pct(t.tinQueAcaba)}` : '';
+
+    return `El ${elDia(t.acabaElTramoFijo)} se acaba tu tramo fijo${acaba}: ${aQue}${bonis}. Cuánto valdrá ${nombre} ese día no se sabe hoy.`;
+  }
+
+  if (t.elIndice) {
+    return `Esa revisión mueve también ${nombre}, y eso pesa más que las bonificaciones. Cuánto valdrá no se sabe hoy: la cifra de arriba solo cuenta lo que decidas tú.`;
+  }
+
+  return null;
 }
