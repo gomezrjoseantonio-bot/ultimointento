@@ -2,9 +2,9 @@
 // Cuánto se ha gastado con una tarjeta en un periodo · VOCABULARIO §3.5
 // ============================================================================
 //
-// «Es una sola cifra y de ella salen las tres respuestas que siguen»: sin ella
-// ni se puede prever el cargo (§3.3), ni demostrar una bonificación de hipoteca
-// (§3.6), ni saber lo que rinde el cashback (§3.7).
+// «Es una sola cifra y de ella salen las dos respuestas que siguen»: sin ella
+// ni se puede prever el cargo (§3.3) ni demostrar una bonificación de hipoteca
+// (§3.6).
 //
 // Y ya existe, sin necesidad de guardar nada nuevo: para una tarjeta de crédito
 // el gasto de un periodo ES su recibo. El banco carga exactamente eso.
@@ -73,8 +73,8 @@ export function yaSeCobro(ev: TreasuryEvent): boolean {
  * El gasto por (tarjeta · periodo), del más reciente al más antiguo.
  *
  * Un recibo DESCARTADO no cuenta: el usuario dijo que no ocurre, así que no es
- * gasto ni previsto ni real. Contarlo inflaría tanto la bonificación como el
- * cashback — y las dos cosas se presumen ante terceros.
+ * gasto ni previsto ni real. Contarlo inflaría la bonificación, y esa cifra se
+ * presume ante el banco.
  */
 export function gastoPorTarjeta(eventos: TreasuryEvent[]): GastoDeUnPeriodo[] {
   const salida: GastoDeUnPeriodo[] = [];
@@ -87,8 +87,8 @@ export function gastoPorTarjeta(eventos: TreasuryEvent[]): GastoDeUnPeriodo[] {
     // Manda lo COBRADO sobre lo previsto. Al confirmar un cargo se rellenan
     // `actualAmount` y `actualDate` y `amount` se queda como estaba: un recibo
     // previsto de 180 € que el banco cobró por 187,40 € seguiría contando 180.
-    // Esta cifra se presume ante un banco para una bonificación y mide el
-    // cashback — tiene que ser la de verdad, no la que se esperaba.
+    // Esta cifra se presume ante un banco para una bonificación: tiene que
+    // ser la de verdad, no la que se esperaba.
     salida.push({
       ...periodo,
       fechaCargo: ev.actualDate ?? ev.predictedDate,

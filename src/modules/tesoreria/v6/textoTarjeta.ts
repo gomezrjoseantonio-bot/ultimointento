@@ -5,11 +5,6 @@
 
 import type { Account } from '../../../services/db';
 import type { Tarjeta } from '../../../types/tarjetas';
-import type { RendimientoDeTarjeta } from '../../../services/rendimientoDeTarjeta';
-import { importeSaldo } from './formatoV6';
-
-/** Los euros, con la misma letra que el resto de las cifras de la pantalla. */
-const euros = (n: number): string => importeSaldo(n);
 
 const DIAS = ['', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 
@@ -35,22 +30,4 @@ export function describirTarjeta(tarjeta: Tarjeta, cuentas: Account[]): string {
   const { periodicidad, corte, diaCargo } = tarjeta.ciclo;
   const como = periodicidad === 'semanal' ? diaSemanal : diaMensual;
   return `Crédito · corta ${como(corte)} y cobra ${como(diaCargo)} ${donde}`;
-}
-
-/**
- * Lo que ha rendido una tarjeta, en una línea · §3.7.
- *
- * Se enseña la COMPARACIÓN —devuelto sobre canalizado— y no un total suelto:
- * la pregunta que responde el cashback es por qué tarjeta canalizar el gasto,
- * y para eso hay que ver las dos cifras juntas.
- *
- * Mientras no haya nada cerrado, lo único que se puede decir es hasta dónde
- * llega ese camino — que ya es una respuesta.
- */
-export function textoDeRendimiento(r: RendimientoDeTarjeta): string {
-  const pct = `${r.porcentaje} %`;
-  const techo = r.techoAnual != null ? ` · hasta ${euros(r.techoAnual)}/año` : '';
-
-  if (r.canalizado <= 0) return `${pct} de vuelta${techo}`;
-  return `${pct} · te ha devuelto ${euros(r.rendimiento)} de ${euros(r.canalizado)}${techo}`;
 }

@@ -40,8 +40,6 @@ import { listarTarjetas } from '../../../services/tarjetasService';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
 import { gastoDeMovimientos, gastoPorTarjeta } from '../../../services/gastoPorTarjeta';
-import { rendimientoDeTarjetas } from '../../../services/rendimientoDeTarjeta';
-import { textoDeRendimiento } from './textoTarjeta';
 import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
@@ -236,12 +234,6 @@ const TesoreriaV6Page: React.FC = () => {
   );
 
   /**
-   * §3.7 · lo que ha rendido cada tarjeta con cashback.
-   *
-   * No es una curiosidad: es la cifra que decide POR QUÉ TARJETA canalizar el
-   * gasto. Solo cuenta lo cerrado — lo que aún puede crecer no ha rendido nada.
-   */
-  /**
    * Las que se pueden elegir en la ficha de un movimiento (§3.5).
    *
    * Una tarjeta sin `id` no se ha guardado todavía y no se puede atribuir nada
@@ -253,11 +245,6 @@ const TesoreriaV6Page: React.FC = () => {
         .filter((t): t is typeof t & { id: number } => t.id != null)
         .map((t) => ({ id: t.id, alias: t.alias })),
     [tarjetas]
-  );
-
-  const rendimiento = useMemo(
-    () => new Map(rendimientoDeTarjetas(tarjetas, periodosDeTarjeta).map((r) => [r.tarjetaId, r])),
-    [tarjetas, periodosDeTarjeta]
   );
 
   const gastoAbierto = useMemo(() => {
@@ -882,14 +869,6 @@ const TesoreriaV6Page: React.FC = () => {
                 {gastoAbierto.get(t.id!) != null && (
                   <span className={styles.tjGasto}>
                     Llevas {importeSaldo(gastoAbierto.get(t.id!)!)} este periodo
-                  </span>
-                )}
-                {/* §3.7 · el cashback es una DECISIÓN: por qué tarjeta
-                    canalizar el gasto. Por eso se enseña la comparación
-                    —devuelto sobre canalizado— y no un total suelto. */}
-                {rendimiento.get(t.id!) && (
-                  <span className={styles.tjRinde}>
-                    {textoDeRendimiento(rendimiento.get(t.id!)!)}
                   </span>
                 )}
               </button>

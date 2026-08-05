@@ -1,8 +1,8 @@
 // Cuánto se ha gastado con una tarjeta en un periodo · VOCABULARIO §3.5.
 //
-// Es la cifra de la que salen las otras tres: el cargo previsto, la
-// bonificación de la hipoteca y el rendimiento del cashback. Si esta miente,
-// mienten las tres — y dos de ellas se presumen ante terceros.
+// Es la cifra de la que salen las otras dos: el cargo previsto y la
+// bonificación de la hipoteca. Si esta miente, mienten las dos — y una de ellas
+// se presume ante el banco.
 
 import { gastoDeLaTarjeta, gastoDeMovimientos, gastoPorTarjeta } from '../gastoPorTarjeta';
 import type { Movement, TreasuryEvent } from '../db';
@@ -104,7 +104,7 @@ describe('lo cobrado manda sobre lo previsto', () => {
 
 describe('lo que no cuenta', () => {
   // El usuario dijo que ese cargo no ocurre: no es gasto ni previsto ni real.
-  // Contarlo inflaría la bonificación y el cashback a la vez.
+  // Contarlo inflaría la bonificación, que se presume ante el banco.
   it('un recibo descartado no es gasto', () => {
     expect(gastoPorTarjeta([recibo({ descartado: true })])).toEqual([]);
   });
