@@ -55,8 +55,6 @@ interface Form {
   corte: string;
   diaCargo: string;
   periodosHastaElCargo: string;
-  limite: string;
-  cashbackPorcentaje: string;
 }
 
 const VACIO: Form = {
@@ -69,8 +67,6 @@ const VACIO: Form = {
   corte: '24',
   diaCargo: '5',
   periodosHastaElCargo: '1',
-  limite: '',
-  cashbackPorcentaje: '',
 };
 
 const DIAS_SEMANA = [
@@ -83,11 +79,6 @@ const DIAS_SEMANA = [
   { v: '7', t: 'domingo' },
 ];
 
-const numeroOpcional = (v: string): number | undefined => {
-  const n = parseFloat(v.replace(',', '.'));
-  return Number.isFinite(n) ? n : undefined;
-};
-
 const desdeTarjeta = (t: Tarjeta): Form => ({
   alias: t.alias,
   emisora: t.emisora ?? '',
@@ -98,8 +89,6 @@ const desdeTarjeta = (t: Tarjeta): Form => ({
   corte: String(t.ciclo?.corte ?? 24),
   diaCargo: String(t.ciclo?.diaCargo ?? 5),
   periodosHastaElCargo: String(t.ciclo?.periodosHastaElCargo ?? 1),
-  limite: t.limite != null ? String(t.limite) : '',
-  cashbackPorcentaje: t.cashbackPorcentaje != null ? String(t.cashbackPorcentaje) : '',
 });
 
 const TarjetaWizard: React.FC<Props> = ({ open, tarjeta, cuentas, onClose, onSuccess }) => {
@@ -179,8 +168,6 @@ const TarjetaWizard: React.FC<Props> = ({ open, tarjeta, cuentas, onClose, onSuc
               periodosHastaElCargo: parseInt(form.periodosHastaElCargo, 10),
             }
           : undefined,
-        limite: numeroOpcional(form.limite),
-        cashbackPorcentaje: numeroOpcional(form.cashbackPorcentaje),
       };
 
       if (tarjeta?.id != null) {
@@ -467,34 +454,6 @@ const TarjetaWizard: React.FC<Props> = ({ open, tarjeta, cuentas, onClose, onSuc
               </>
             )}
 
-            <div className={`${styles.row} ${styles.row2}`}>
-              <div className={styles.field}>
-                <label className={styles.fieldLabel} htmlFor="tj-limite">
-                  Límite del periodo (€)
-                </label>
-                <input
-                  id="tj-limite"
-                  className={styles.input}
-                  inputMode="decimal"
-                  value={form.limite}
-                  placeholder="Ej. 4700"
-                  onChange={(e) => set('limite', e.target.value)}
-                />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.fieldLabel} htmlFor="tj-cashback">
-                  Cashback (%)
-                </label>
-                <input
-                  id="tj-cashback"
-                  className={styles.input}
-                  inputMode="decimal"
-                  value={form.cashbackPorcentaje}
-                  placeholder="Ej. 1"
-                  onChange={(e) => set('cashbackPorcentaje', e.target.value)}
-                />
-              </div>
-            </div>
           </div>
 
           <div className={styles.footer}>

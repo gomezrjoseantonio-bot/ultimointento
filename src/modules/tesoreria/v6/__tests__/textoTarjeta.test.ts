@@ -3,7 +3,7 @@
 // Lo que vigila: que la línea diga lo que decide el dinero —cuándo sale y de
 // dónde— y que no invente un periodo donde no lo hay.
 
-import { describirTarjeta, textoDeRendimiento } from '../textoTarjeta';
+import { describirTarjeta } from '../textoTarjeta';
 import type { Account } from '../../../../services/db';
 import type { Tarjeta } from '../../../../types/tarjetas';
 
@@ -64,40 +64,6 @@ describe('la línea de una tarjeta', () => {
   it('una cuenta que ya no está se nombra por su número', () => {
     expect(describirTarjeta(tarjeta({ cuentaLiquidacionId: 77 }), CUENTAS)).toContain(
       'en cuenta #77'
-    );
-  });
-});
-
-// §3.7 · el cashback es una DECISIÓN: por qué tarjeta canalizar el gasto. Por
-// eso se enseña la comparación —devuelto sobre canalizado—, no un total suelto.
-describe('lo que rinde una tarjeta', () => {
-  const rinde = (over = {}) => ({
-    tarjetaId: 11,
-    alias: 'Carrefour',
-    porcentaje: 1,
-    canalizado: 1000,
-    rendimiento: 10,
-    techoAnual: 564,
-    ...over,
-  });
-
-  it('enseña las dos cifras juntas · devuelto y canalizado', () => {
-    expect(textoDeRendimiento(rinde())).toBe(
-      '1 % · te ha devuelto 10 € de 1.000 € · hasta 564 €/año'
-    );
-  });
-
-  // Sin nada cerrado no hay nada que comparar · lo único que se puede decir es
-  // hasta dónde llega ese camino, que ya es una respuesta.
-  it('sin gasto cerrado dice hasta dónde llega', () => {
-    expect(textoDeRendimiento(rinde({ canalizado: 0, rendimiento: 0 }))).toBe(
-      '1 % de vuelta · hasta 564 €/año'
-    );
-  });
-
-  it('sin límite dicho no promete techo', () => {
-    expect(textoDeRendimiento(rinde({ techoAnual: undefined }))).toBe(
-      '1 % · te ha devuelto 10 € de 1.000 €'
     );
   });
 });

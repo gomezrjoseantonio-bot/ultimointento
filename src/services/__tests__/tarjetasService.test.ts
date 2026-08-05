@@ -6,7 +6,7 @@
 //
 // Y lo otro: que cambiar la domiciliación sea una operación NORMAL. Si la única
 // vía fuese rehacer la tarjeta, se perdería su historial de gasto — que es lo
-// que prueba las bonificaciones y mide el cashback.
+// que prueba las bonificaciones.
 
 import {
   actualizarTarjeta,
@@ -126,7 +126,7 @@ describe('cambiar la domiciliación', () => {
   beforeEach(sembrar);
 
   // La de fuera se muda a menudo · y no puede costar rehacerla, porque se
-  // perdería el historial que prueba bonificaciones y mide el cashback.
+  // perdería el historial que prueba las bonificaciones.
   it('es una edición normal · la tarjeta sigue siendo la misma', async () => {
     const id = await crearTarjeta(carrefour());
 

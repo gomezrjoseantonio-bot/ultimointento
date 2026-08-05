@@ -92,19 +92,20 @@ llamen distinto a lo mismo.
 
 ## 3 · Tarjetas
 
-Una tarjeta plantea **cuatro preguntas distintas** y mezclarlas es lo que
-enreda el diseño. Van separadas a propósito:
+Una tarjeta plantea **tres preguntas distintas** y mezclarlas es lo que enreda
+el diseño. Van separadas a propósito:
 
 | | Pregunta | Sección |
 |---|---|---|
 | **Qué es** | ¿Es una cuenta? ¿De quién cuelga? | §3.1 · §3.2 |
 | **Cuándo mueve el dinero** | ¿Ahora o el día de cargo? | §3.3 · §3.4 |
 | **Qué demuestra** | ¿Bonifica la hipoteca? | §3.6 |
-| **Qué rinde** | ¿Cuánto me devuelve? | §3.7 |
 
-Las tres últimas se apoyan en **un solo dato**, y por eso conviene verlo antes
+Las dos últimas se apoyan en **un solo dato**, y por eso conviene verlo antes
 de nada: **cuánto se ha gastado con ESA tarjeta en ESE periodo** (§3.5). Quien
-tenga ese número tiene las tres respuestas; quien no lo tenga, ninguna.
+tenga ese número tiene las dos respuestas; quien no lo tenga, ninguna.
+
+Hubo una cuarta —**qué rinde**, el cashback— y se retiró. Por qué, en §3.7.
 
 ### 3.1 · Qué es · un método de pago, no una cuenta
 
@@ -186,9 +187,8 @@ Son **tres** datos: **periodicidad** (mensual · semanal), **corte** (día 24 ·
 ### 3.5 · El dato que lo sostiene todo · gasto por tarjeta y periodo
 
 **Cuánto se ha gastado con esa tarjeta en ese periodo.** Es una sola cifra y de
-ella salen las tres respuestas que siguen. No es un extra: sin ella, ni se puede
-prever el cargo (§3.3), ni demostrar una bonificación (§3.6), ni saber lo que
-rinde (§3.7).
+ella salen las dos respuestas que siguen. No es un extra: sin ella, ni se puede
+prever el cargo (§3.3) ni demostrar una bonificación (§3.6).
 
 Y ya existe, sin guardar nada nuevo: **para una tarjeta de crédito, el gasto de
 un periodo ES su recibo.** El banco carga exactamente eso, así que la cifra no
@@ -237,26 +237,49 @@ bonifican una hipoteca o un préstamo (§6 ter).
 - Elegir una de fuera **no** es «no se puede comprobar»: es que **no**. Y no se
   arregla gastando más.
 
-### 3.7 · Qué rinde · el cashback
+### 3.7 · Qué rinde · el cashback · RETIRADO
 
-Algunas tarjetas devuelven un porcentaje del gasto. **Es un ingreso**, y sobre
-todo es una **decisión**: por qué tarjeta canalizar el gasto.
+**ATLAS no modela el cashback.** Se probó —se medía «te ha devuelto X € de Y €
+canalizados», con su techo anual— y se quitó el 5 de agosto de 2026. Queda
+escrito por qué, porque la idea vuelve sola.
 
-> La tarjeta Carrefour la uso mucho porque da un 1 % de cashback cada 3 meses.
-> Si gasto por esa tarjeta al máximo durante 12 meses son 564 € que puedo volver
-> a usar como forma de pago sin que salga dinero de mi caja otra vez.
+Lo que la tumbó es que **«cashback» no es una cosa, son dos**, y son distintas
+justo en lo único que aquí importa: si el dinero llega o no llega a una cuenta.
+
+> El que yo tengo de Carrefour es que te dan un dinero en su tarjeta y que
+> puedes usar para pagar compras del Carrefour … y luego existirán otras como
+> el Sabadell, que el dinero sí que entra en cuenta como un ingreso y que es
+> usable para cualquier cosa. En el caso de Carrefour se acumula trimestral y
+> se usa durante un periodo; el caso del Sabadell es mensual y no caduca.
 >
-> — Jose, 3 de agosto de 2026
+> — Jose, 5 de agosto de 2026
 
-**Decisión · 3 de agosto de 2026:**
+- El del **Sabadell** es dinero de verdad: entra en una cuenta y se concilia
+  como cualquier otro ingreso. No hace falta un concepto para eso.
+- El del **Carrefour** no es dinero en una cuenta tuya, es **saldo dentro de la
+  tienda**, y **ya se refleja solo**: si pagas 50 € con 20 € de ese saldo, el
+  extracto dice 30 €, que es exactamente lo que sale de tu patrimonio.
+  Modelarlo sería construir un monedero aparte —saldo, corte trimestral,
+  ventana de uso, caducidad, avisos— que no mueve ni un euro de tesorería.
 
-- **Se mide lo REALIZADO, no se prevé.** La cifra que decide es «esta tarjeta me
-  devolvió X € sobre Y € canalizados»: eso compara tarjetas. Prever el cashback
-  del trimestre que viene no cambia ninguna decisión y cuesta bastante más.
-- **El límite de gasto se guarda**, no como alerta sino porque **acota el techo
-  de la estrategia**: 4.700 €/mes al 1 % es lo máximo que ese camino puede
-  rendir. Un número que responde «¿hasta dónde llega esto?» sí decide.
-- El cashback que llega se concilia como cualquier otro ingreso.
+Y el coste no era solo de código:
+
+> Nos obligaría de cualquier forma a que uno sea informativo y el otro real, y
+> hay que explicitarlo en la creación de las tarjetas y hacer pensar al cliente
+> de qué forma es uno y otro.
+>
+> — Jose, 5 de agosto de 2026
+
+Ésa es la razón de fondo. Distinguirlos obliga a **preguntar en cada alta de
+tarjeta de qué tipo es su cashback** — una pregunta que solo existe porque
+nosotros no sabemos modelar el segundo caso, y que el usuario tiene que
+contestar bien para que la cifra no mienta. Se paga con carga mental del
+cliente y se cobra en un número que no decide ningún pago.
+
+Con ella se fueron `cashbackPorcentaje` y **`limite`**: el límite del periodo
+solo se guardaba para calcular el techo del cashback, así que sin él era un
+campo que se rellena y nadie lee. Si algún día vuelve, que vuelva porque
+responde a una pregunta de dinero, no para enseñar un porcentaje.
 
 ## 4 · Efectivo
 
@@ -654,13 +677,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
   *(Jose · 5 ago 2026: «no podemos tener en cuenta todas las bonificaciones que
   los bancos inventan, pero sí la mayoría».)* §6 ter.
 
-- **2026-08-04** · El cashback **realmente ingresado** sigue sin casarse con la
-  tarjeta que lo generó. Un movimiento ya puede decir **con qué tarjeta**, pero
-  eso no basta: un ingreso atribuido a una tarjeta puede ser el cashback o una
-  **devolución de una compra**, y no hay forma de distinguirlos. Haría falta
-  poder decir que ESE ingreso es cashback — una categoría que hoy no existe.
-  Lo que se mide sigue siendo lo que le CORRESPONDE al gasto cerrado según su
-  porcentaje, no el apunte visto en el banco. §3.7.
 - **2026-08-04** · El gasto con débito se atribuye **si el usuario lo dice**. El
   extracto no trae la tarjeta y `paymentMethod` como mucho dice que fue con
   una, no cuál — así que lo que no se marque a mano no cuenta. §3.5.
@@ -685,6 +701,15 @@ Escrito para no perderlo, con la fecha en que se detectó.
   un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
 
 ### Resuelto
+
+- **2026-08-05** · **El cashback se retira entero.** No porque costara mucho,
+  sino porque «cashback» son dos cosas distintas —dinero que entra en cuenta y
+  saldo dentro de una tienda— y distinguirlas obliga a preguntar en cada alta
+  de tarjeta de cuál se trata. Eso es carga mental del cliente a cambio de un
+  número que no decide ningún pago: el del Sabadell ya se concilia como
+  cualquier ingreso, y el del Carrefour ya está descontado en lo que paga el
+  extracto. Se van `cashbackPorcentaje`, `limite` —que solo servía para el
+  techo— y la línea de la ficha. §3.7.
 
 - **2026-08-05** · **Confirmar o rectificar una revisión** ya existe, en los dos
   sentidos, y propaga: estados, cuadro recalculado DESDE la revisión —sin tocar
@@ -781,12 +806,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
   pueda usar.** El alta y la importación nacen domiciliadas y eligen una cuenta
   que pueda domiciliar —no la primera de la lista, que podía ser el colchón—, y
   el desplegable de la fila filtra por el medio del gasto. §2.
-- **2026-08-03** · El **cashback se mide como rendimiento**: «te ha devuelto X
-  sobre Y canalizados», solo con periodos **cerrados** —lo abierto aún puede
-  crecer o quedarse corto—, y con el **techo anual** que marca el límite. Los
-  4.700 €/mes al 1 % de la Carrefour salen como **564 €/año**, que es la cifra
-  que decide por qué tarjeta canalizar el gasto. Las tarjetas sin cashback no
-  aparecen: enseñar «0 €» invita a compararlas y no compiten. §3.7.
 - **2026-08-03** · Existe el **gasto por (tarjeta · periodo)**, que es el dato
   del que salen las otras tres respuestas. No hizo falta guardar nada nuevo:
   para una tarjeta de crédito el gasto de un periodo **ES su recibo** — el banco

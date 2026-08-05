@@ -85,13 +85,6 @@ export interface Tarjeta {
   cuentaLiquidacionId: number;
   /** Solo en `credito` · el débito no acumula nada, cobra al momento. */
   ciclo?: CicloTarjeta;
-  /**
-   * Techo de gasto del periodo (§3.7) · acota lo que puede rendir la tarjeta.
-   * No es una alerta.
-   */
-  limite?: number;
-  /** % que devuelve del gasto · para medir lo REALIZADO, no para preverlo. */
-  cashbackPorcentaje?: number;
   activa: boolean;
   createdAt: string;
   updatedAt: string;

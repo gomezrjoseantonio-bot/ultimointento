@@ -148,7 +148,7 @@ describe('editar', () => {
   };
 
   // Re-domiciliar una de fuera es una operación NORMAL (§3.2): rehacerla
-  // perdería el historial que prueba las bonificaciones y mide el cashback.
+  // perdería el historial que prueba las bonificaciones.
   it('cambiar de cuenta es una edición · no una tarjeta nueva', async () => {
     pintar(existente);
 
