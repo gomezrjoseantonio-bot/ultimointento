@@ -114,10 +114,11 @@ describe('lo que no se sabe no se inventa', () => {
   });
 });
 
-// Lo que dice el banco MANDA · en el Santander de Jose la cuenta dice «última
-// revisión 27/02/2026 · próxima revisión 08/2027», que son dieciocho meses.
-// Deducirla de una periodicidad regular habría dado otra fecha, y una fecha
-// equivocada es peor que ninguna: se lee igual que la buena.
+// Lo que dice el banco MANDA · la carta del Santander dice «REVISIÓN ANUAL» y
+// «desde el 31/03/2026 hasta el 30/03/2027». La revisión es regular, pero esa
+// fecha es la SUYA y no tiene por qué caer en el aniversario de la firma:
+// deducirla acierta solo si coinciden, y una fecha equivocada es peor que
+// ninguna porque se lee igual que la buena.
 describe('la fecha que da el banco', () => {
   it('gana a la que saldría de la periodicidad', () => {
     const r = proximaRevision(
@@ -145,6 +146,23 @@ describe('la fecha que da el banco', () => {
 
     expect(r?.fecha).toBe('2027-03-10');
     expect(r?.precision).toBe('dia');
+  });
+
+  // El caso de la carta · «REVISIÓN ANUAL», tipo aplicado del 31/03/2026 al
+  // 30/03/2027. La firma de esa hipoteca no cae en marzo, así que deducir desde
+  // ella habría dado otro mes.
+  it('la revisión anual del Santander se dice tal cual', () => {
+    const r = proximaRevision(
+      {
+        desdeLaFirma: '2021-06-15',
+        cadaMeses: 12,
+        proximaSegunElBanco: '2027-03',
+      },
+      '2026-08-05'
+    );
+
+    expect(r?.fecha).toBe('2027-03');
+    expect(r?.precision).toBe('mes');
   });
 
   it('sin periodicidad, la del banco basta', () => {

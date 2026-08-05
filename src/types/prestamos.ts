@@ -139,11 +139,11 @@ export interface Prestamo {
   /**
    * La próxima revisión TAL COMO LA DA EL BANCO · `YYYY-MM` (§6 ter).
    *
-   * Manda sobre la periodicidad, y por eso existe: la app del Santander dice
-   * «última revisión 27/02/2026 · próxima revisión 08/2027», que son dieciocho
-   * meses. Deducirla de una periodicidad regular desde la firma habría dado
-   * otra fecha, y una fecha equivocada es peor que ninguna porque se lee igual
-   * que la buena.
+   * Manda sobre la periodicidad, y por eso existe. La revisión suele ser
+   * regular —la carta del Santander dice «REVISIÓN ANUAL» y da el periodo
+   * exacto, «desde el 31/03/2026 hasta el 30/03/2027»—, pero esa fecha es la
+   * del banco y no tiene por qué caer en el aniversario de la firma.
+   * Deducirla acierta solo si coinciden.
    *
    * Va en mes y año porque es lo que el banco enseña. Ponerle un día sería
    * prometer una precisión que nadie ha dado.

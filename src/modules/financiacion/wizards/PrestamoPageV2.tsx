@@ -1615,10 +1615,11 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                     <div className={`${styles.fieldsRow} ${styles.rowRevision}`}>
                       {/*
                         Primero el dato BUENO · si tu banco te dice cuándo es la
-                        próxima, eso manda. La app del Santander la enseña tal
-                        cual («Próxima revisión 08/2027»), y puede no cuadrar
-                        con ninguna periodicidad regular: entre la última y la
-                        próxima de Jose hay dieciocho meses.
+                        próxima, eso manda. La carta del Santander la da con el
+                        periodo exacto («desde el 31/03/2026 hasta el
+                        30/03/2027») y la app la enseña tal cual. Suele ser
+                        anual, pero la fecha es la del banco: no tiene por qué
+                        caer en el aniversario de tu firma.
 
                         Va en mes y año porque es lo que el banco da. Pedir un
                         día sería pedir algo que nadie tiene.

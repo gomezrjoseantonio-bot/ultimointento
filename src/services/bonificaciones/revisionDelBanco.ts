@@ -28,11 +28,12 @@ export interface CalendarioDeRevision {
   /**
    * La próxima revisión TAL COMO LA DA EL BANCO · `YYYY-MM`.
    *
-   * Manda sobre todo lo demás, y por eso existe: en el Santander la cuenta de
-   * Jose dice «última revisión 27/02/2026 · próxima revisión 08/2027», que son
-   * dieciocho meses. Deducirla de una periodicidad regular desde la firma
-   * habría dado otra fecha — y una fecha equivocada es peor que ninguna,
-   * porque se lee igual que la buena.
+   * Manda sobre todo lo demás, y por eso existe. La carta del Santander dice
+   * «REVISIÓN ANUAL» y «desde el 31/03/2026 hasta el 30/03/2027»: la revisión
+   * es regular, pero **la fecha es la del banco, no el aniversario de la
+   * firma**, y nada obliga a que coincidan. Deducirla acierta solo si lo hacen,
+   * y una fecha equivocada es peor que ninguna porque se lee igual que la
+   * buena.
    *
    * Va en mes y año porque es lo que el banco enseña. Inventarle un día sería
    * precisión que nadie ha dado.

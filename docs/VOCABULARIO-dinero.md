@@ -494,11 +494,20 @@ corregir**, que es para lo que sirve saberlo.
 | `periodoRevisionBonificacionMeses` | Cada cuánto mira, para deducirla cuando no la tienes | 6 o 12 meses |
 | `graciaMesesBonificaciones` | Periodo inicial en que se dan por cumplidas | Ninguno, 6 meses o el primer año |
 
-**El dato del banco manda sobre la deducción**, y no es un capricho. La app del
-Santander enseña «última revisión 27/02/2026 · próxima revisión 08/2027»: son
-**dieciocho meses**, que no salen de ninguna periodicidad regular contada desde
-la firma. Deducir ahí habría dado otra fecha, y **una fecha equivocada es peor
-que ninguna, porque se lee igual que la buena.**
+**El dato del banco manda sobre la deducción.** La carta anual del Santander lo
+dice con todas las letras: «REVISIÓN ANUAL DE CUMPLIMIENTO DE CONDICIONES», y
+el tipo se aplica «desde el 31/03/2026 hasta el 30/03/2027». O sea que la
+revisión sí es regular —una vez al año, misma fecha—, pero **esa fecha es la
+suya, no el aniversario de tu firma**: nada obliga a que coincidan, y deducirla
+de la firma acierta solo si lo hacen.
+
+Así que la fecha del banco no es un parche para bancos raros: es **el dato
+exacto**, y lo tienes en la carta y en la app. La deducción es el respaldo para
+cuando no la tengas. Una fecha equivocada es peor que ninguna, porque se lee
+igual que la buena.
+
+*(Corrige una lectura anterior: las dos capturas de la app que sugerían un
+intervalo de dieciocho meses eran de **dos hipotecas distintas**.)*
 
 Y va en **mes y año**, que es como lo da el banco. Ponerle un día sería prometer
 una precisión que nadie ha dado; por eso el texto dice «en la revisión de agosto
