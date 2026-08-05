@@ -607,6 +607,29 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-05** · **Los puntos de cada bonificación no se pueden cambiar.**
+  `ppDescuento` sale del catálogo y solo se PINTA: no hay ningún campo que lo
+  modifique, y hasta la bonificación «Personalizada» nace con 0,10 pp fijos. Los
+  de la carta del Santander son 0,50 · 0,05 · «0,10 por cada 100 € de prima», y
+  no tienen por qué coincidir con los del catálogo de nadie. *(Jose · 5 ago
+  2026: «clava los puntos, no hay opción de modificarlo».)* §6 ter.
+- **2026-08-05** · **Financiación se retoca entero en otro momento**, y con él
+  la forma de las bonificaciones. De la carta del Santander salen tres cosas que
+  el modelo de hoy no sabe decir:
+  - **Grupos de alternativas** · el punto 1 es UNA bonificación de 0,50 pp que
+    se cumple con nómina ≥ 600 €/mes **o** pensión ≥ 300 **o** autónomos ≥ 175
+    **o** ayudas PAC. Y «solo se computarán los ingresos de UNO de los
+    prestatarios; nunca se sumarán los de todos». Hoy cada bonificación es
+    independiente y se suman: eso contaría dos veces lo que el banco cuenta una.
+  - **Condiciones proporcionales** · «por cada 100,00 € de prima anual de cada
+    póliza, 0,10 puntos». Hoy un seguro es un booleano.
+  - **Un tope con excepción por fuera** · el máximo de los puntos 1 a 3 es 1,00
+    punto, pero el certificado de eficiencia energética añade 0,10 pp por
+    encima, hasta 1,10. Hoy el tope es único y se lo tragaría.
+
+  *(Jose · 5 ago 2026: «no podemos tener en cuenta todas las bonificaciones que
+  los bancos inventan, pero sí la mayoría».)* §6 ter.
+
 - **2026-08-04** · El cashback **realmente ingresado** sigue sin casarse con la
   tarjeta que lo generó. Un movimiento ya puede decir **con qué tarjeta**, pero
   eso no basta: un ingreso atribuido a una tarjeta puede ser el cashback o una
