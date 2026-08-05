@@ -315,6 +315,9 @@ export function buildPropertyAnalysisInputs({
     const { importe } = comisionDeReembolso(entry.loan, {
       tipo: 'TOTAL',
       importe: entry.loan.principalVivo || 0,
+      // Con la fecha de hoy · sin ella se daría por vigente una comisión cuya
+      // ventana puede llevar años cerrada, y saldría de más.
+      fecha: new Date().toISOString().slice(0, 10),
     });
     return sum + importe * entry.allocationFactor;
   }, 0);

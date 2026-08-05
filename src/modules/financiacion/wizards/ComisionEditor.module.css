@@ -1,0 +1,152 @@
+/* El calendario de una comisión de reembolso · §6 bis · quater. */
+
+.comision {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink);
+}
+
+/* Una cifra que puso ATLAS, no la escritura · hay que poder verlo. */
+.propuesta {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--atlas-v5-ink-4);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.tramo {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 28px;
+  gap: 6px;
+  align-items: center;
+}
+
+.campo {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  padding: 7px 9px;
+  font-size: 12px;
+  font-family: var(--atlas-v5-font-mono-num);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 6px;
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--atlas-v5-brand);
+}
+
+.sufijo {
+  position: absolute;
+  right: 9px;
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  pointer-events: none;
+}
+
+.borrar {
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  color: var(--atlas-v5-ink-4);
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  cursor: pointer;
+}
+
+.borrar:hover:not(:disabled) {
+  color: var(--atlas-v5-neg);
+  border-color: var(--atlas-v5-neg-wash);
+}
+
+.borrar:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.borrar svg { width: 13px; height: 13px; }
+
+.anadir {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--atlas-v5-brand);
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.resumen {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+}
+
+/* El tope que la ley permite · se propone, no se impone. */
+
+.topes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.topesTitulo {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.tope {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  text-align: left;
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  border-radius: 6px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.tope:hover {
+  border-color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-card-alt);
+}
+
+.topeEtiqueta {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink);
+}
+
+.topeFundamento {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+}

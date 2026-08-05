@@ -11,3 +11,24 @@ export const esNumero = (raw: string): boolean => {
   const normalizado = String(raw ?? '').replace(/\./g, '').replace(',', '.').trim();
   return normalizado !== '' && /^-?\d*\.?\d+$/.test(normalizado);
 };
+
+/** Lo tecleado a número · la coma decimal española y el punto de millares. */
+export const parseNum = (raw: string): number => {
+  if (!raw) return 0;
+  const normalized = String(raw).replace(/\./g, '').replace(',', '.').trim();
+  const n = parseFloat(normalized);
+  return Number.isFinite(n) ? n : 0;
+};
+
+/** Un número como se escribe aquí · 1.234,56. */
+export const fmtNumeroEs = (v: number, dec = 2): string => {
+  if (!Number.isFinite(v)) return '';
+  return new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
+  }).format(v);
+};
+
+/** Un conteo · nunca negativo y siempre entero. */
+export const enteroNoNegativo = (n: number): number =>
+  Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;

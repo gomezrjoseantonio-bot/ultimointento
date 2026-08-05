@@ -86,79 +86,147 @@ describe('parcial y total son dos comisiones', () => {
   });
 });
 
-// Casi todas se pactan «durante los N primeros años». Pasada la ventana la
-// comisión es cero, y eso cambia el resultado de cada simulación.
-describe('la ventana', () => {
-  const conVentana = prestamo({
+// Una comisión no suele ser un número: cambia con el tiempo. «2 % los diez
+// primeros años y 1,50 % después» son dos tramos, y con un solo campo no se
+// puede escribir.
+describe('el calendario', () => {
+  const hipotecaFija = prestamo({
     fechaFirma: '2021-06-15',
-    comisionAmortizacionAnticipada: 0.25,
-    comisionAmortizacionVigenciaMeses: 36,
+    comisionReembolsoParcial: {
+      tramos: [{ hastaMes: 120, porcentaje: 2 }, { porcentaje: 1.5 }],
+      origen: 'ESCRITURA',
+    },
   });
 
-  it('dentro de los tres años se cobra', () => {
-    const r = comisionDeReembolso(conVentana, {
+  it('el primer tramo rige al principio', () => {
+    const r = comisionDeReembolso(hipotecaFija, {
       tipo: 'PARCIAL',
       importe: 30000,
-      fecha: '2024-01-10',
+      fecha: '2025-01-10',
     });
 
-    expect(r.importe).toBe(75);
-    expect(r.fueraDeVentana).toBe(false);
+    expect(r.porcentaje).toBe(2);
+    expect(r.importe).toBe(600);
   });
 
-  it('pasados, no', () => {
-    const r = comisionDeReembolso(conVentana, {
+  it('y el siguiente cuando el primero se agota', () => {
+    const r = comisionDeReembolso(hipotecaFija, {
       tipo: 'PARCIAL',
       importe: 30000,
-      fecha: '2024-07-10',
+      fecha: '2032-01-10',
     });
 
-    expect(r.importe).toBe(0);
-    expect(r.fueraDeVentana).toBe(true);
+    expect(r.porcentaje).toBe(1.5);
+    expect(r.importe).toBe(450);
   });
 
-  // El día que se cumplen los 36 meses ya está fuera · la ventana son los tres
-  // primeros años, no tres años y un día.
-  it('el día que se cumplen, ya está fuera', () => {
+  // El mes 120 ya está fuera del tramo «hasta el mes 120» · son los diez
+  // primeros años, no diez años y un mes.
+  it('el mes del tope ya es del tramo siguiente', () => {
     expect(
-      comisionDeReembolso(conVentana, { tipo: 'PARCIAL', importe: 30000, fecha: '2024-06-15' })
-        .fueraDeVentana
-    ).toBe(true);
+      comisionDeReembolso(hipotecaFija, {
+        tipo: 'PARCIAL',
+        importe: 30000,
+        fecha: '2031-06-15',
+      }).porcentaje
+    ).toBe(1.5);
   });
 
-  it('el día anterior todavía dentro', () => {
+  it('el mes anterior todavía no', () => {
     expect(
-      comisionDeReembolso(conVentana, { tipo: 'PARCIAL', importe: 30000, fecha: '2024-06-14' })
-        .importe
-    ).toBe(75);
+      comisionDeReembolso(hipotecaFija, {
+        tipo: 'PARCIAL',
+        importe: 30000,
+        fecha: '2031-05-15',
+      }).porcentaje
+    ).toBe(2);
   });
 
-  // Sin ventana dicha, el contrato la cobra siempre.
-  it('sin ventana se cobra toda la vida', () => {
-    const sinVentana = prestamo({ comisionCancelacionTotal: 0.5 });
+  // El variable de la Ley 5/2019 · cobra los tres primeros años y después nada.
+  it('un calendario que acaba en cero deja de cobrar', () => {
+    const variable = prestamo({
+      fechaFirma: '2021-06-15',
+      comisionReembolsoParcial: {
+        tramos: [{ hastaMes: 36, porcentaje: 0.25 }, { porcentaje: 0 }],
+        origen: 'ESCRITURA',
+      },
+    });
 
-    expect(
-      comisionDeReembolso(sinVentana, { tipo: 'TOTAL', importe: 30000, fecha: '2050-01-01' })
-        .importe
-    ).toBe(150);
+    const dentro = comisionDeReembolso(variable, {
+      tipo: 'PARCIAL', importe: 30000, fecha: '2023-01-10',
+    });
+    const fuera = comisionDeReembolso(variable, {
+      tipo: 'PARCIAL', importe: 30000, fecha: '2025-01-10',
+    });
+
+    expect(dentro.importe).toBe(75);
+    expect(fuera.importe).toBe(0);
+    expect(fuera.agotada).toBe(true);
   });
 
-  // Sin fecha de operación no se puede saber si sigue abierta · se cobra, que
-  // es lo que dice el contrato, en vez de un cero inventado.
-  it('sin fecha se toma por abierta', () => {
-    expect(comisionDeReembolso(conVentana, { tipo: 'PARCIAL', importe: 30000 }).importe).toBe(75);
+  // Sin fecha no se puede saber qué tramo rige · se toma el primero, que es lo
+  // que el contrato cobra hoy mientras nadie diga otra cosa.
+  it('sin fecha rige el primer tramo', () => {
+    expect(comisionDeReembolso(hipotecaFija, { tipo: 'PARCIAL', importe: 30000 }).porcentaje)
+      .toBe(2);
+  });
+});
+
+// Un porcentaje suelto es un calendario de un solo tramo · los préstamos de
+// antes lo guardaban así, y mantener dos formas de lo mismo es lo que llevamos
+// toda la sesión deshaciendo.
+describe('lo que guardaban los préstamos de antes', () => {
+  it('un porcentaje suelto se lee como un tramo único', () => {
+    const antiguo = prestamo({ comisionCancelacionTotal: 0.5 });
+    const r = comisionDeReembolso(antiguo, { tipo: 'TOTAL', importe: 30000 });
+
+    expect(r.importe).toBe(150);
+    expect(r.hayPactada).toBe(true);
+    expect(r.origen).toBe('ESCRITURA');
+  });
+
+  it('y el calendario manda sobre él si existe', () => {
+    const p = prestamo({
+      comisionCancelacionTotal: 0.5,
+      comisionReembolsoTotal: { tramos: [{ porcentaje: 2 }], origen: 'ESCRITURA' },
+    });
+
+    expect(comisionDeReembolso(p, { tipo: 'TOTAL', importe: 30000 }).porcentaje).toBe(2);
+  });
+});
+
+// Una cifra que propuso ATLAS no es una leída de la escritura · la pantalla
+// tiene que poder decirlo.
+describe('de dónde sale la cifra', () => {
+  it('lo propuesto va marcado', () => {
+    const p = prestamo({
+      comisionReembolsoTotal: {
+        tramos: [{ hastaMes: 36, porcentaje: 0.25 }, { porcentaje: 0 }],
+        origen: 'TOPE_LEGAL',
+      },
+    });
+
+    expect(comisionDeReembolso(p, { tipo: 'TOTAL', importe: 30000 }).origen).toBe('TOPE_LEGAL');
   });
 });
 
 // «No hay comisión» y «la había pero se agotó» son cosas distintas, y la
 // pantalla tiene que poder decir cuál.
 describe('no cobrar nada tiene dos motivos', () => {
-  it('sin comisión pactada no está fuera de ventana, es que no hay', () => {
+  it('sin comisión pactada, no es que se agotara · es que no hay', () => {
     const r = comisionDeReembolso(prestamo(), { tipo: 'PARCIAL', importe: 30000 });
 
     expect(r.importe).toBe(0);
-    expect(r.fueraDeVentana).toBe(false);
-    expect(r.porcentaje).toBe(0);
+    expect(r.hayPactada).toBe(false);
+    expect(r.agotada).toBe(false);
+  });
+
+  it('pactada al 0 % tampoco se da por agotada', () => {
+    const p = prestamo({
+      comisionReembolsoParcial: { tramos: [{ porcentaje: 0 }], origen: 'ESCRITURA' },
+    });
+
+    expect(comisionDeReembolso(p, { tipo: 'PARCIAL', importe: 30000 }).agotada).toBe(false);
   });
 });
 
@@ -172,6 +240,7 @@ describe('lo que no se puede calcular', () => {
     expect(r.importe).toBe(0);
     // Pero la comisión sigue existiendo · el cero es del importe, no del pacto.
     expect(r.porcentaje).toBe(1);
+    expect(r.hayPactada).toBe(true);
   });
 
   it.each([undefined, NaN, -0.5])('un porcentaje %s no cobra nada', (pct) => {

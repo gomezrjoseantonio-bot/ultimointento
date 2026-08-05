@@ -606,15 +606,47 @@ es un máximo**: nada obliga a que se pacten iguales, y lo normal es que no lo
 sean. Tratarlas como un solo concepto no podría ni representar esa hipoteca, y
 borraría justo el dato del que sale la decisión.
 
-#### La ventana
+#### Una comisión es un CALENDARIO, no un número
 
-Casi todas se pactan «durante los N primeros años». **Pasada la ventana la
-comisión es cero**, y eso cambia el resultado de cada simulación. Sin ventana
-dicha se cobra toda la vida; sin fecha de operación se toma por abierta, que es
-lo que dice el contrato mientras nadie demuestre lo contrario.
+Lo normal es que cambie con el tiempo: «2 % los diez primeros años y 1,50 %
+después», «0,25 % los tres primeros y nada más». Por eso se guarda como
+**tramos**, y un porcentaje suelto —lo que guardaban los préstamos de antes— se
+lee como un calendario de un solo tramo.
 
-Y «no hay comisión» y «la había pero se agotó» se distinguen, para que la
-pantalla pueda decir por qué no se paga nada.
+**Pasado el último tramo con porcentaje, la comisión es cero**, y eso cambia el
+resultado de cada simulación. Y «no hay comisión» y «la había pero se agotó» se
+distinguen, para que la pantalla pueda decir por qué no se paga nada.
+
+#### El tope legal se PROPONE al dar de alta
+
+> Sí que debería prerrellenar con el % máximo cuando se crea, de tal forma que
+> si es distinto se cambie y si no, al menos guarde un dato.
+>
+> — Jose, 5 de agosto de 2026
+
+Tiene razón, y corrige la lectura fácil de «no inventar»: **dejarlo en cero
+tampoco es neutral**, porque cero afirma «no hay comisión», que es una
+afirmación fuerte y además optimista. Un tope legal propuesto es mejor dato.
+
+Lo que lo hace honesto es guardar **de dónde sale la cifra**:
+
+| `origen` | Qué significa |
+|---|---|
+| `ESCRITURA` | Lo puso el usuario · en cuanto toca el campo, pasa a ser esto |
+| `TOPE_LEGAL` | Lo propuso ATLAS · la pantalla lo marca y pide contrastarlo |
+
+Y solo se propone **donde se puede saber**:
+
+| Préstamo | Qué se propone |
+|---|---|
+| Hipoteca desde el 16-jun-2019 · **variable** | **Las dos opciones** de la Ley 5/2019 — 0,25 % / 3 años o 0,15 % / 5 años — porque la ley dice que se pacta **una**, y cuál no se deduce |
+| La misma · **fijo** | 2 % los 10 primeros años, 1,50 % después |
+| Hipoteca del 09-dic-2007 al 15-jun-2019 | 0,50 % los 5 primeros años, 0,25 % después *(Ley 41/2007)* |
+| **Mixta** | **Nada** · el tope depende del tipo vigente el día que amortices |
+| **Personal o al consumo** | **Nada** · su tope depende del plazo que QUEDA, no del tiempo desde la firma |
+| Hipoteca anterior a 2007 | **Nada** · el régimen era contractual |
+
+Una lista vacía no es un fallo: es que ATLAS no lo sabe, y entonces se calla.
 
 #### La ley acota, pero ATLAS no la aplica
 

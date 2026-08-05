@@ -175,12 +175,25 @@ export interface Prestamo {
    * diferencia sale una decisión de dinero: cancelar dejando viva una cuota.
    */
   comisionAmortizacionAnticipada?: number;
-  /** Cuántos meses desde la firma se cobra · ausente = toda la vida. */
-  comisionAmortizacionVigenciaMeses?: number;
-  /** Cancelación TOTAL · adelantar todo lo que queda vivo. */
+  /** Cancelación TOTAL · adelantar todo lo que queda vivo. @deprecated ver abajo */
   comisionCancelacionTotal?: number;
-  /** Cuántos meses desde la firma se cobra · ausente = toda la vida. */
-  comisionCancelacionVigenciaMeses?: number;
+
+  /**
+   * El calendario de la comisión por adelantar una PARTE del capital.
+   *
+   * Una comisión no suele ser un número: cambia con el tiempo —«2 % los diez
+   * primeros años y 1,50 % después»—, y por eso son tramos. Los dos campos
+   * sueltos de arriba son lo que guardaban los préstamos de antes, y se leen
+   * como un calendario de un solo tramo.
+   *
+   * Lleva de dónde sale la cifra: al dar de alta, ATLAS **propone** el tope
+   * legal —dejarlo en cero afirmaría «no hay comisión», que no es neutral—,
+   * pero una cifra propuesta no es una leída de la escritura y la pantalla
+   * tiene que poder decirlo.
+   */
+  comisionReembolsoParcial?: ComisionPactada;
+  /** Lo mismo, para la cancelación TOTAL · suele ser otra cifra. */
+  comisionReembolsoTotal?: ComisionPactada;
   gastosFijosOperacion?: number;           // €
 
   // Bonifications management
@@ -338,6 +351,21 @@ export interface RevisionDelIndice {
   desde: string;
   /** El valor del índice, en porcentaje (2,164 = 2,164 %). */
   valorIndice: number;
+}
+
+/** Un tramo del calendario de una comisión · «2 % hasta el mes 120». */
+export interface TramoDeComision {
+  /** Hasta qué mes desde la firma rige, sin incluirlo · ausente = al final. */
+  hastaMes?: number;
+  /** En PUNTOS PORCENTUALES · `0.25` son 0,25 %. */
+  porcentaje: number;
+}
+
+/** Lo pactado para una comisión, y de dónde sale · §6 bis · quater. */
+export interface ComisionPactada {
+  tramos: TramoDeComision[];
+  /** `ESCRITURA` lo puso el usuario · `TOPE_LEGAL` lo propuso ATLAS. */
+  origen: 'ESCRITURA' | 'TOPE_LEGAL';
 }
 
 /** Cómo se cuentan los días para liquidar intereses · §6 bis · bis. */

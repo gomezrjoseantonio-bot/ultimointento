@@ -756,3 +756,12 @@
   border-radius: 999px;
   padding: 1px 6px;
 }
+
+/* ─── Comisiones de reembolso · §6 bis · quater ───────────────────────────── */
+
+/* Las dos comisiones de reembolso, una al lado de la otra (§6 bis · quater). */
+.comisiones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
