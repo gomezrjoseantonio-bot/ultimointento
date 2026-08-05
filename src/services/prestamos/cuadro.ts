@@ -42,10 +42,17 @@
 //     sabe no se inventa: después de la última revisión conocida se sigue con
 //     el último tipo, marcado como estimación.
 //
+//   - **La carencia inicial se aplica** (`carenciaDe`). De capital paga solo los
+//     intereses y el capital se queda quieto; total no paga nada y los
+//     intereses se capitalizan, así que al acabar se debe más de lo que se
+//     pidió. Acabada la carencia, la cuota se recalcula sobre lo que se deba
+//     ESE día y en los meses que queden (§6 bis · ter).
+//
 // Lo que este motor todavía NO hace, y hay que saberlo:
 //
-//   - **La carencia inicial (`carencia` / `carenciaMeses`) sigue sin aplicarse.**
-//     Ninguno de los dos motores la aplicaba; unificarlos no la arregla.
+//   - **La base de cálculo de intereses no se pregunta.** Está clavada: mes
+//     comercial para la cuota normal y por días para el arranque irregular. La
+//     base es una cláusula de la escritura y varía (365/360, 365/365, 30/360).
 //   - **La TAE es la aproximación que traía el v2**, no la TIR de los flujos.
 // ============================================================================
 

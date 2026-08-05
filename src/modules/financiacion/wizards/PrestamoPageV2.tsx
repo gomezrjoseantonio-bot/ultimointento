@@ -720,6 +720,23 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   // y detectarla ahora le inyectaría un cargo que nunca tuvo.
   const esPreV2 = Boolean(prestamoId) && loadedPrestamo?.carenciaTecnica === undefined;
 
+  /**
+   * La carencia, normalizada · UN solo cálculo para la vista previa y para lo
+   * que se guarda.
+   *
+   * «Carencia de capital, cero meses» no es una carencia, es un estado que se
+   * contradice: al reabrir la ficha volvería a enseñar un tipo distinto de
+   * «ninguna» con cero meses, y el motor tendría que interpretarlo. Lo que no
+   * es una carencia se guarda como que no la hay.
+   */
+  const carenciaInicial = useMemo(() => {
+    const meses = parseInt(form.carenciaInicialMesesRaw, 10);
+    if (form.carenciaInicialTipo === 'ninguna' || !Number.isFinite(meses) || meses <= 0) {
+      return { carencia: 'NINGUNA' as const, carenciaMeses: undefined };
+    }
+    return { carencia: mapCarenciaV2ToLegacy(form.carenciaInicialTipo), carenciaMeses: meses };
+  }, [form.carenciaInicialTipo, form.carenciaInicialMesesRaw]);
+
   /** Los días sueltos entre la firma y el primer mes de cobro · cargo aparte. */
   const carenciaTecnica = useMemo(() => {
     if (esPreV2) return loadedPrestamo?.carenciaTecnica ?? null;
@@ -770,11 +787,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       carenciaTecnica,
       // La carencia inicial · el motor la aplica, así que la vista previa la
       // enseña. Antes se guardaba y no se veía en ningún sitio.
-      carencia: mapCarenciaV2ToLegacy(form.carenciaInicialTipo),
-      carenciaMeses:
-        form.carenciaInicialTipo !== 'ninguna'
-          ? parseInt(form.carenciaInicialMesesRaw, 10) || 0
-          : undefined,
+      ...carenciaInicial,
       esquemaPrimerRecibo: 'NORMAL',
     } as Prestamo;
 
@@ -790,8 +803,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     form.tinTramoFijoRaw,
     form.tramoFijoMesesRaw,
     form.comAperturaRaw,
-    form.carenciaInicialTipo,
-    form.carenciaInicialMesesRaw,
+    carenciaInicial,
     revisionesDeTipo,
     tinFijoPct,
     diaCobro,
@@ -1002,8 +1014,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
           form.tipoInteres !== 'fijo' && revisionesDeTipo.length > 0 ? revisionesDeTipo : undefined,
         tramoFijoMeses: form.tipoInteres === 'mixto' ? parseInt(form.tramoFijoMesesRaw, 10) || undefined : undefined,
         tipoNominalAnualMixtoFijo: form.tipoInteres === 'mixto' ? parseNum(form.tinTramoFijoRaw) : undefined,
-        carencia: mapCarenciaV2ToLegacy(form.carenciaInicialTipo),
-        carenciaMeses: form.carenciaInicialTipo !== 'ninguna' ? parseInt(form.carenciaInicialMesesRaw, 10) || 0 : undefined,
+        ...carenciaInicial,
         comisionApertura: parseNum(form.comAperturaRaw),
         comisionMantenimiento: parseNum(form.comMantenimientoRaw),
         comisionAmortizacionAnticipada: parseNum(form.comAmortAnticipadaRaw),
