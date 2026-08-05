@@ -136,6 +136,15 @@ export function tramosDeTipo(prestamo: Prestamo): TramoDeTipo[] {
   // Después de la última revisión apuntada no se proyecta ninguna más. Sabemos
   // cuándo revisará el banco, pero no a cuánto: partir el cuadro por una fecha
   // para volver a poner el MISMO tipo no cambia nada y solo añade ruido.
+  //
+  // Y siempre sale al menos uno, que es lo que promete la cabecera: un préstamo
+  // con un `tipo` que no es ninguno de los tres —datos viejos, un `as` de más—
+  // devolvía la lista vacía, y quien preguntara por el tramo de un día se
+  // llevaba un `undefined` con el tipo diciendo que no podía serlo.
+  if (tramos.length === 0) {
+    return [{ desde: firma, tinBase: 0, estimado: false, variable: false }];
+  }
+
   return tramos;
 }
 

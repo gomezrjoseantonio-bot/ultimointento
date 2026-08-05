@@ -1117,6 +1117,16 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Resuelto
 
+- **2026-08-05** · **Vender el activo cancela el préstamo, con la misma cuenta
+  que cancelarlo a mano.** `propertySaleService` tenía el QUINTO constructor de
+  cuadros y la TERCERA copia de los intereses corridos —`vivo × tipo × días ÷
+  365` fijo, con un tipo sin base, sin bonificaciones y sin tramo—, así que
+  vender y cancelar daban cifras distintas para lo mismo. Y su línea de cierre
+  iba a `interes: 0` aunque la venta sí los liquida. Ahora los dos caminos salen
+  de `cancelarAnticipado` e `interesesCorridos`. *(Decisión de Jose · 5 ago
+  2026: vender el activo que aguanta el préstamo lo **cancela**; la subrogación
+  del comprador no se contempla.)* §6 bis · quater.
+
 - **2026-08-05** · **Adelantar capital lo hace el motor único.** El cuadro que
   quedaba tras amortizar lo construía `loanSettlementService` con un bucle
   propio —el cuarto motor de la casa— que liquidaba **siempre sobre el mes

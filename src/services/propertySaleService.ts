@@ -1,9 +1,9 @@
 import { Contract, Property, TreasuryEvent, initDB, PropertySale } from './db';
 import { PlanPagos, Prestamo } from '../types/prestamos';
 import { comisionDeReembolso } from './prestamos/comisiones';
+import { cancelarAnticipado, interesesCorridos } from './prestamos/amortizarAnticipado';
 import { triggerTreasuryUpdate } from './treasuryEventsService';
 import { getFiscalSummary } from './fiscalSummaryService';
-import { prestamosCalculationService } from './prestamosCalculationService';
 import { getAllocationFactor, prestamosService } from './prestamosService';
 import {
   calcularGananciaPatrimonial,
@@ -241,110 +241,59 @@ const resolveProjectedOutstandingPrincipal = (
   return resolveFallbackOutstandingPrincipal(loan);
 };
 
+/**
+ * El cuadro tras cancelar por venta · lo cierra el motor único.
+ *
+ * Aquí vivía el QUINTO constructor de cuadros de la casa, y ponía `interes: 0`
+ * en la línea de cierre aunque la venta sí liquida los intereses corridos: el
+ * total del préstamo salía corto, y de ahí sale la deducción fiscal.
+ *
+ * Decisión de Jose · 5 ago 2026: vender el activo que aguanta el préstamo lo
+ * CANCELA. La subrogación del comprador no se contempla.
+ */
 const truncatePaymentPlanAtCancellation = (
+  loan: Prestamo,
   paymentPlan: PlanPagos,
   saleDate: string,
   outstandingPrincipal: number,
+  accruedInterest: number,
 ): PlanPagos => {
-  if (!paymentPlan?.periodos?.length) {
-    return paymentPlan;
-  }
-
-  const saleDateTs = new Date(saleDate).getTime();
-  const paidPeriods = paymentPlan.periodos.filter((periodo) => {
-    const chargeTs = new Date(periodo.fechaCargo).getTime();
-    return chargeTs < saleDateTs || (periodo.pagado && chargeTs <= saleDateTs);
+  const plan = cancelarAnticipado(loan, paymentPlan, {
+    fecha: saleDate,
+    capital: outstandingPrincipal,
+    interesesCorridos: accruedInterest,
   });
-
-  const lastPaidPeriod = paidPeriods[paidPeriods.length - 1] ?? null;
-  const futurePeriods = paymentPlan.periodos.filter((periodo) => new Date(periodo.fechaCargo).getTime() >= saleDateTs);
-  const templatePeriod = futurePeriods[0] ?? paymentPlan.periodos[paymentPlan.periodos.length - 1];
-  const cancellationPeriodNumber = (lastPaidPeriod?.periodo ?? 0) + 1;
-
-  const cancellationPeriod = {
-    ...templatePeriod,
-    periodo: cancellationPeriodNumber,
-    devengoDesde: lastPaidPeriod?.fechaCargo ?? templatePeriod.devengoDesde,
-    devengoHasta: saleDate,
-    fechaCargo: saleDate,
-    cuota: outstandingPrincipal,
-    interes: 0,
-    amortizacion: outstandingPrincipal,
-    principalFinal: 0,
-    pagado: true,
-    fechaPagoReal: saleDate,
-    movimientoTesoreriaId: templatePeriod.movimientoTesoreriaId,
-    esProrrateado: false,
-    esSoloIntereses: false,
-    diasDevengo: undefined,
-  };
-
-  const periodos = outstandingPrincipal > 0
-    ? [...paidPeriods, cancellationPeriod]
-    : paidPeriods;
-
-  const totalIntereses = periodos.reduce((sum, periodo) => sum + (periodo.interes || 0), 0);
-  const totalCuotas = periodos.reduce((sum, periodo) => sum + (periodo.cuota || 0), 0);
+  if (!plan) return paymentPlan;
 
   return {
-    ...paymentPlan,
+    ...plan,
     fechaGeneracion: new Date().toISOString(),
-    periodos,
-    resumen: {
-      totalIntereses,
-      totalCuotas,
-      fechaFinalizacion: saleDate,
-    },
-    metadata: {
-      source: 'property_sale',
-      operationType: 'TOTAL',
-      operationDate: saleDate,
-    },
+    metadata: { source: 'property_sale', operationType: 'TOTAL', operationDate: saleDate },
   };
 };
 
-const diffDaysBetweenIsoDates = (fromIso: string, toIso: string): number => {
-  const from = new Date(fromIso);
-  const to = new Date(toIso);
-  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return 0;
-  const diffMs = to.getTime() - from.getTime();
-  if (diffMs <= 0) return 0;
-  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-};
-
+/**
+ * Los intereses corridos hasta la fecha de venta · lo calcula el motor único.
+ *
+ * Aquí vivía la TERCERA copia de la misma cuenta: `vivo × tipo × días ÷ 365`
+ * fijo, con un tipo de `calculateBaseRate` —sin la base del préstamo, sin
+ * bonificaciones y sin el tramo que rija ese día—. Vender y cancelar a mano
+ * daban cifras distintas para lo mismo.
+ */
 const resolveAccruedInterestUntilDate = (
   loan: any,
   paymentPlan: PlanPagos | undefined,
   saleDate: string,
   outstandingPrincipal: number
-): number => {
-  if (outstandingPrincipal <= 0) return 0;
-
-  const annualRate = prestamosCalculationService.calculateBaseRate(loan);
-  if (!Number.isFinite(annualRate) || annualRate <= 0) return 0;
-
-  const sortedPeriods = [...(paymentPlan?.periodos ?? [])]
-    .filter((periodo) => periodo?.fechaCargo)
-    .sort((a, b) => new Date(a.fechaCargo).getTime() - new Date(b.fechaCargo).getTime());
-
-  const lastInstallment = sortedPeriods
-    .filter((periodo) => new Date(periodo.fechaCargo).getTime() <= new Date(saleDate).getTime())
-    .at(-1);
-
-  const accrualStartDate =
-    lastInstallment?.fechaCargo ??
-    loan?.fechaUltimaCuotaPagada ??
-    loan?.fechaPrimerCargo ??
-    loan?.fechaFirma;
-
-  if (!accrualStartDate) return 0;
-
-  const daysAccrued = diffDaysBetweenIsoDates(accrualStartDate, saleDate);
-  if (daysAccrued <= 0) return 0;
-
-  const accruedInterest = outstandingPrincipal * (annualRate / 100) * (daysAccrued / 365);
-  return Number(accruedInterest.toFixed(2));
-};
+): number =>
+  Number(
+    interesesCorridos(
+      loan as Prestamo,
+      paymentPlan ?? null,
+      saleDate,
+      outstandingPrincipal
+    ).toFixed(2)
+  );
 
 export const resolveProjectedLoanPayoffAmount = (
   loan: any,
@@ -1309,8 +1258,22 @@ const finalizePropertySaleLoanCancellationBySaleId = async (saleId: number): Pro
 
     const paymentPlan = (loan as unknown as { planPagos?: PlanPagos }).planPagos;
     const outstandingPrincipal = resolveProjectedOutstandingPrincipal(loan, paymentPlan, sale.saleDate);
+    // Los corridos hasta la firma de la venta · el banco los cobra con el
+    // capital, y hasta ahora se perdían: la línea de cierre iba a cero.
+    const accruedInterest = resolveAccruedInterestUntilDate(
+      loan,
+      paymentPlan,
+      sale.saleDate,
+      outstandingPrincipal,
+    );
     const truncatedPlan = paymentPlan?.periodos?.length
-      ? truncatePaymentPlanAtCancellation(paymentPlan, sale.saleDate, outstandingPrincipal)
+      ? truncatePaymentPlanAtCancellation(
+          loan as unknown as Prestamo,
+          paymentPlan,
+          sale.saleDate,
+          outstandingPrincipal,
+          accruedInterest,
+        )
       : null;
 
     const loanForecastEvents = (await tx.objectStore('treasuryEvents').getAll() as TreasuryEvent[])
