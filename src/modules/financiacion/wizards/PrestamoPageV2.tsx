@@ -65,6 +65,7 @@ import { listarTarjetas } from '../../../services/tarjetasService';
 import { bonificaHipoteca } from '../../../services/tarjetasReglas';
 import { tinConBonificaciones } from '../../../services/bonificaciones/tinEfectivo';
 import { effectiveTIN } from '../helpers';
+import { esNumero } from './numeros';
 import styles from './PrestamoPageV2.module.css';
 
 // ─── Tipos auxiliares ───────────────────────────────────────────────────────
@@ -660,11 +661,17 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     return 0;
   }, [form.tipoInteres, tinFijoPct, form.euriborRaw, form.diferencialRaw, form.tinTramoFijoRaw]);
 
-  /** Las que están completas · una a medio escribir no dice nada todavía. */
+  /**
+   * Las que están completas · una a medio escribir no dice nada todavía.
+   *
+   * Y lo que no sea un número NO cuenta: `parseNum` devuelve 0 ante cualquier
+   * cosa, así que un dedazo se guardaría como «el índice fue del 0 %» — una
+   * revisión inventada, que es exactamente lo que este cuadro no puede tener.
+   */
   const revisionesDeTipo = useMemo(
     () =>
       form.revisionesIndice
-        .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.desde) && r.valorRaw.trim() !== '')
+        .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.desde) && esNumero(r.valorRaw))
         .map((r) => ({ desde: r.desde, valorIndice: parseNum(r.valorRaw) }))
         .sort((a, b) => a.desde.localeCompare(b.desde)),
     [form.revisionesIndice],

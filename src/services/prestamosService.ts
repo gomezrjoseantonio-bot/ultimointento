@@ -406,9 +406,14 @@ export class PrestamosService {
     // Las revisiones del índice parten el cuadro en tramos (§6 bis · bis), así
     // que apuntar una lo cambia. También son un array, y se comparan por lo que
     // dicen —fecha y valor— y no por identidad de objeto.
+    // Normalizado a propósito: una fecha guardada con hora o un valor que no es
+    // un número no cambian lo que la revisión DICE, y compararlos en crudo
+    // regeneraría el cuadro —y con él las previsiones de tesorería— en guardados
+    // donde no ha cambiado nada.
     const comoTexto = (p: Prestamo) =>
       (p.revisionesDeTipo ?? [])
-        .map((r) => `${r?.desde}:${r?.valorIndice}`)
+        .filter((r) => typeof r?.desde === 'string' && Number.isFinite(r?.valorIndice))
+        .map((r) => `${r.desde.slice(0, 10)}:${r.valorIndice}`)
         .sort()
         .join('|');
 
