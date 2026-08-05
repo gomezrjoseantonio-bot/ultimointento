@@ -130,6 +130,24 @@ describe('el cuadro se rehace desde la revisión', () => {
     expect(ordenLectura).toBeLessThan(ordenGuardado);
   });
 
+  // Y el guardado NO regenera · dejarle hacerlo y pisarlo después dejaba el
+  // cuadro incorrecto guardado entre las dos escrituras, para siempre si la app
+  // se cerraba en medio.
+  it('el guardado no llega a escribir un cuadro desde el origen', async () => {
+    await confirmarRevision('p1', { ...revision, decision: { nomina: 'PERDIDA' } });
+
+    const [, , opciones] = servicio.updatePrestamo.mock.calls[0];
+    expect(opciones).toEqual({ conservarPlan: true });
+  });
+
+  // Cuando no hay nada que rehacer, el guardado se comporta como siempre.
+  it('sin cambio de tipo, el guardado conserva su comportamiento', async () => {
+    await confirmarRevision('p1', { ...revision, decision: {} });
+
+    const [, , opciones] = servicio.updatePrestamo.mock.calls[0];
+    expect(opciones).toEqual({ conservarPlan: false });
+  });
+
   // Perder una bonificación con el tope ya alcanzado por otras no cambia lo que
   // pagas · rehacer el cuadro sería tocar un cuadro que no ha cambiado.
   it('si el tipo no se mueve, no se rehace nada', async () => {

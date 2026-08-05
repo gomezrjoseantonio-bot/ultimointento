@@ -50,6 +50,14 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
   const [guardando, setGuardando] = useState(false);
   const [atendida, setAtendida] = useState(false);
 
+  // Lo elegido y el «ya atendida» son de ESTE préstamo · sin esto, navegar a
+  // otro arrastraría la decisión al equivocado, o le escondería su revisión
+  // pendiente por una que se confirmó en el anterior.
+  useEffect(() => {
+    setDecision({});
+    setAtendida(false);
+  }, [prestamo.id]);
+
   useEffect(() => {
     let cancelado = false;
     (async () => {
@@ -201,6 +209,7 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
                 <button
                   type="button"
                   className={`${styles.opcion} ${elegido(b.id) === 'CUMPLIDA' ? styles.opcionElegida : ''}`}
+                  aria-pressed={elegido(b.id) === 'CUMPLIDA'}
                   onClick={() => setDecision((d) => ({ ...d, [b.id]: 'CUMPLIDA' }))}
                 >
                   Me la dieron
@@ -208,6 +217,7 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
                 <button
                   type="button"
                   className={`${styles.opcion} ${elegido(b.id) === 'PERDIDA' ? styles.opcionElegida : ''}`}
+                  aria-pressed={elegido(b.id) === 'PERDIDA'}
                   onClick={() => setDecision((d) => ({ ...d, [b.id]: 'PERDIDA' }))}
                 >
                   Me la quitaron

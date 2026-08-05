@@ -71,28 +71,34 @@ export async function confirmarRevision(
 
   const tinDespues = tinConBonificaciones(base, bonificaciones, prestamo);
 
-  // El cuadro se lee ANTES de guardar: `updatePrestamo` regenera el plan cuando
-  // cambia lo que rebajan las bonificaciones, y esa regeneración es la que no
-  // vale aquí —parte del origen—. La buena se calcula sobre el plan de antes y
-  // se guarda encima.
+  // El cuadro se lee ANTES de guardar, y el guardado va con `conservarPlan`.
+  //
+  // `updatePrestamo` regenera el plan cuando cambia lo que rebajan las
+  // bonificaciones, pero lo regenera DESDE EL ORIGEN, que es justo lo que aquí
+  // no vale. Dejarle hacerlo y pisarlo después dejaba el cuadro incorrecto
+  // guardado entre las dos escrituras — y ahí se quedaba para siempre si la app
+  // se cerraba en medio.
   const planAntes = await prestamosService.getPaymentPlan(prestamoId);
 
   const actualizado: Partial<Prestamo> = {
     bonificaciones,
     ultimaRevisionBonificacionesConfirmada: revision.fecha,
   };
-  await prestamosService.updatePrestamo(prestamoId, actualizado);
 
   // Si el tipo no se mueve no hay cuadro que rehacer · perder una bonificación
   // con el tope ya alcanzado por otras no cambia lo que pagas.
   const cambiaElTipo = Math.abs(tinDespues - tinAntes) > 0.000001;
-  if (cambiaElTipo && planAntes) {
-    const planNuevo = recalcularDesde(planAntes, {
+  const rehacer = cambiaElTipo && planAntes != null;
+
+  await prestamosService.updatePrestamo(prestamoId, actualizado, { conservarPlan: rehacer });
+
+  if (rehacer) {
+    const planNuevo = recalcularDesde(planAntes!, {
       desde: revision.aplicaDesde,
       tinAnual: tinDespues,
     });
     await prestamosService.savePaymentPlan(prestamoId, planNuevo);
   }
 
-  return { tinAntes, tinDespues, cuadroRehecho: cambiaElTipo && planAntes != null };
+  return { tinAntes, tinDespues, cuadroRehecho: rehacer };
 }
