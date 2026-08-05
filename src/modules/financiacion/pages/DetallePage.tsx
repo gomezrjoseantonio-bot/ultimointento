@@ -256,7 +256,7 @@ const DetallePage: React.FC = () => {
 
       {tab === 'resumen' && (
         <>
-          <BonificacionesVerificadas prestamo={prestamo} />
+          <BonificacionesVerificadas prestamo={prestamo} onCambio={reload} />
 
           <div className={styles.nota}>
             <div className={styles.notaIcon}>i</div>

@@ -21,7 +21,11 @@ import { listarTarjetas } from '../../services/tarjetasService';
 import { verificarBonificaciones } from '../../services/bonificaciones/verificarBonificaciones';
 import type { MovimientosQuePrueban } from '../../services/bonificaciones/verificarBonificaciones';
 import { tinSiRevisaranHoy } from '../../services/bonificaciones/tinEfectivo';
-import { proximaRevision } from '../../services/bonificaciones/revisionDelBanco';
+import { proximaRevision, revisionPendiente } from '../../services/bonificaciones/revisionDelBanco';
+import { confirmarRevision } from '../../services/prestamos/confirmarRevision';
+import type { LoQueDecidioElBanco } from '../../services/prestamos/confirmarRevision';
+import { estaAplicada } from '../../services/bonificaciones/tinEfectivo';
+import { nombreMes } from '../tesoreria/v6/formatoV6';
 import type { Prestamo } from '../../types/prestamos';
 import { cuotaMensualConTin, effectiveTIN, tinBase } from './helpers';
 import { textoDeCumplimiento, textoDeLoQueEstaEnJuego } from './textoBonificacion';
@@ -35,11 +39,24 @@ const ETIQUETA = {
 
 interface Props {
   prestamo: Prestamo;
+  /** Para que la ficha se refresque cuando una revisión cambia el tipo. */
+  onCambio?: () => void;
 }
 
-const BonificacionesVerificadas: React.FC<Props> = ({ prestamo }) => {
+const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
   const bonificaciones = prestamo.bonificaciones;
   const [movimientos, setMovimientos] = useState<MovimientosQuePrueban | null>(null);
+  const [decision, setDecision] = useState<LoQueDecidioElBanco>({});
+  const [guardando, setGuardando] = useState(false);
+  const [atendida, setAtendida] = useState(false);
+
+  // Lo elegido y el «ya atendida» son de ESTE préstamo · sin esto, navegar a
+  // otro arrastraría la decisión al equivocado, o le escondería su revisión
+  // pendiente por una que se confirmó en el anterior.
+  useEffect(() => {
+    setDecision({});
+    setAtendida(false);
+  }, [prestamo.id]);
 
   useEffect(() => {
     let cancelado = false;
@@ -95,6 +112,19 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo }) => {
     hoy
   );
 
+  // La que YA TOCÓ y nadie ha dado por vista · ATLAS no ve la carta del banco,
+  // así que no la aplica sola.
+  const pendiente = revisionPendiente(
+    {
+      desdeLaFirma: prestamo.fechaFirma,
+      proximaSegunElBanco: prestamo.proximaRevisionBonificaciones,
+      cadaMeses: prestamo.periodoRevisionBonificacionMeses,
+      graciaMeses: prestamo.graciaMesesBonificaciones,
+    },
+    hoy,
+    prestamo.ultimaRevisionBonificacionesConfirmada
+  );
+
   const enJuego = {
     tinHoy,
     tinSiRevisaran,
@@ -104,12 +134,108 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo }) => {
     enGracia: revision?.enGracia,
   };
 
+  /**
+   * Lo que ATLAS propone marcar en cada bonificación.
+   *
+   * Sale del veredicto de los movimientos cuando lo hay; cuando no se puede
+   * comprobar se propone LO QUE YA ESTABA, porque no saber no es motivo para
+   * cambiarle el estado a nadie.
+   */
+  const propuesta: LoQueDecidioElBanco = {};
+  for (const b of bonificaciones) {
+    const v = cumplimientos.find((c) => c.bonificacionId === b.id)?.veredicto;
+    propuesta[b.id] =
+      v === 'cumple' ? 'CUMPLIDA' : v === 'no_cumple' ? 'PERDIDA' : estaAplicada(b) ? 'CUMPLIDA' : 'PERDIDA';
+  }
+
+  const elegido = (id: string) => decision[id] ?? propuesta[id];
+
+  const guardarRevision = async () => {
+    if (!pendiente || !prestamo.id) return;
+    setGuardando(true);
+    try {
+      await confirmarRevision(prestamo.id, {
+        fecha: pendiente.fecha,
+        aplicaDesde: pendiente.aplicaDesde,
+        decision: { ...propuesta, ...decision },
+      });
+      setAtendida(true);
+      onCambio?.();
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  /** «marzo de 2026» o «10 de marzo de 2026», según lo que se sepa. */
+  const cuando = (iso: string): string => {
+    const [anio, mes, dia] = iso.split('-');
+    const nombre = `${nombreMes(Number(mes) - 1)} de ${anio}`;
+    return dia ? `${Number(dia)} de ${nombre}` : nombre;
+  };
+
   return (
     <div className={styles.card}>
       <div className={styles.hd}>
         <div className={styles.title}>Bonificaciones · lo que dicen tus movimientos</div>
         <div className={styles.sub}>se comprueban con lo ya cobrado, no con lo previsto</div>
       </div>
+
+      {/*
+        La revisión que espera respuesta · §6 ter · ter.
+
+        Va ARRIBA y no al final: es lo único de esta ficha que pide hacer algo,
+        y de lo que se decida aquí salen el tipo, el cuadro y las previsiones de
+        todo lo que queda.
+
+        ATLAS propone lo que dicen los movimientos, pero decide el usuario: la
+        carta del banco no la ve nadie más que él, y los bancos perdonan, aplican
+        criterios propios y a veces dan una que no esperabas.
+      */}
+      {pendiente && !atendida && movimientos && (
+        <div className={styles.revision}>
+          <div className={styles.revisionTitulo}>
+            Tocaba revisión en {cuando(pendiente.fecha)}
+          </div>
+          <div className={styles.revisionSub}>
+            Esto es lo que dicen tus movimientos. Corrige lo que el banco haya decidido de
+            otra forma — al confirmarlo se recalculan la cuota y las previsiones desde esa
+            fecha, sin tocar lo ya pagado.
+          </div>
+
+          {bonificaciones.map((b) => (
+            <div key={b.id} className={styles.decision}>
+              <div className={styles.decisionNombre}>{b.nombre}</div>
+              <div className={styles.opciones}>
+                <button
+                  type="button"
+                  className={`${styles.opcion} ${elegido(b.id) === 'CUMPLIDA' ? styles.opcionElegida : ''}`}
+                  aria-pressed={elegido(b.id) === 'CUMPLIDA'}
+                  onClick={() => setDecision((d) => ({ ...d, [b.id]: 'CUMPLIDA' }))}
+                >
+                  Me la dieron
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.opcion} ${elegido(b.id) === 'PERDIDA' ? styles.opcionElegida : ''}`}
+                  aria-pressed={elegido(b.id) === 'PERDIDA'}
+                  onClick={() => setDecision((d) => ({ ...d, [b.id]: 'PERDIDA' }))}
+                >
+                  Me la quitaron
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            className={styles.confirmar}
+            onClick={guardarRevision}
+            disabled={guardando}
+          >
+            {guardando ? 'Aplicando…' : 'Confirmar revisión'}
+          </button>
+        </div>
+      )}
 
       {!movimientos && <div className={styles.vacio}>Mirando los movimientos…</div>}
 

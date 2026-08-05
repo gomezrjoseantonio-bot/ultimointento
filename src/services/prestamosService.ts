@@ -322,7 +322,18 @@ export class PrestamosService {
   /**
    * Update existing loan - ENHANCED to recalculate amortization schedule when parameters change
    */
-  async updatePrestamo(id: string, updates: Partial<Prestamo>): Promise<Prestamo | null> {
+  /**
+   * @param opciones.conservarPlan No regenerar el cuadro aunque cambien los
+   *   parámetros. Lo usa quien va a escribir uno MEJOR justo después —confirmar
+   *   una revisión, que recalcula desde la fecha en vez de desde el origen—.
+   *   Sin esto quedaba persistido un cuadro incorrecto entre las dos escrituras,
+   *   y ahí se queda para siempre si la app se cierra en medio.
+   */
+  async updatePrestamo(
+    id: string,
+    updates: Partial<Prestamo>,
+    opciones?: { conservarPlan?: boolean },
+  ): Promise<Prestamo | null> {
     const prestamos = await this.ensureLoaded();
     const index = prestamos.findIndex(p => p.id === id);
     if (index === -1) return null;
@@ -338,7 +349,9 @@ export class PrestamosService {
     await this.savePrestamo(prestamos[index]);
 
     // Check if parameters that affect amortization schedule changed
-    const parametersChanged = this.hasAmortizationParametersChanged(originalPrestamo, prestamos[index]);
+    const parametersChanged =
+      !opciones?.conservarPlan &&
+      this.hasAmortizationParametersChanged(originalPrestamo, prestamos[index]);
     
     if (parametersChanged) {
       console.log(`[PRESTAMOS] Loan parameters changed, regenerating amortization schedule for ${id}`);

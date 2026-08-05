@@ -150,6 +150,15 @@ export interface Prestamo {
    */
   proximaRevisionBonificaciones?: string;
   /**
+   * La última revisión que ya se dio por vista · `YYYY-MM-DD` o `YYYY-MM`.
+   *
+   * ATLAS no ve la carta del banco: puede decir qué demuestran tus movimientos,
+   * pero no si te dejaron la bonificación. Una revisión que ya pasó queda
+   * ESPERANDO respuesta hasta que se confirma o se rectifica, y esto es lo que
+   * distingue las atendidas de la que sigue reclamando.
+   */
+  ultimaRevisionBonificacionesConfirmada?: string;
+  /**
    * Meses iniciales en que las bonificaciones se dan por cumplidas (§6 ter).
    *
    * Es del PRÉSTAMO, no de cada bonificación (decisión de Jose · 4 ago 2026):
