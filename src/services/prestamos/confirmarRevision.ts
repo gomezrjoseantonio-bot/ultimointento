@@ -69,18 +69,34 @@ export interface ResultadoDeConfirmar {
 }
 
 /**
- * Apunta el índice de una revisión · sustituye el de ese día si ya había uno.
+ * Apunta el índice de una revisión · una por día, y la nueva manda.
  *
  * Se sustituye y no se añade porque dos revisiones el mismo día son la misma
  * revisión rectificada, y dejar las dos haría que el cuadro dependiera del
  * orden en que se guardaron.
+ *
+ * Lo que ya estaba guardado se sanea al pasar: una entrada sin fecha o sin
+ * número no dice nada —`tramosDeTipo` y el guardado ya las descartan al leer—,
+ * y colada hasta el `sort` de abajo reventaría al confirmar una revisión. Las
+ * fechas se recortan a `YYYY-MM-DD` para que una guardada con hora no acabe
+ * siendo un segundo apunte del mismo día.
  */
 function apuntarElIndice(
   revisiones: RevisionDelIndice[] | undefined,
   nueva: RevisionDelIndice
 ): RevisionDelIndice[] {
-  const otras = (revisiones ?? []).filter((r) => r?.desde?.slice(0, 10) !== nueva.desde);
-  return [...otras, nueva].sort((a, b) => a.desde.localeCompare(b.desde));
+  const porDia = new Map<string, RevisionDelIndice>();
+
+  for (const r of revisiones ?? []) {
+    if (typeof r?.desde !== 'string' || !Number.isFinite(r?.valorIndice)) continue;
+    const desde = r.desde.slice(0, 10);
+    porDia.set(desde, { ...r, desde });
+  }
+
+  const desde = nueva.desde.slice(0, 10);
+  porDia.set(desde, { ...nueva, desde });
+
+  return [...porDia.values()].sort((a, b) => a.desde.localeCompare(b.desde));
 }
 
 /**

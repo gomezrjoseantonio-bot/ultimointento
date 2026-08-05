@@ -281,6 +281,28 @@ describe('el índice que traía la carta', () => {
     ]);
   });
 
+  // Lo ya guardado se sanea al pasar · una entrada rota reventaría el orden al
+  // confirmar, y `tramosDeTipo` la descarta igualmente al leer.
+  it('las entradas rotas que hubiera guardadas no revientan ni se propagan', async () => {
+    servicio.getPrestamoById.mockResolvedValue(
+      variable({
+        revisionesDeTipo: [
+          { desde: undefined, valorIndice: 2 },
+          { desde: '2025-03-01', valorIndice: NaN },
+          { desde: '2025-06-01T00:00:00.000Z', valorIndice: 2.5 },
+        ] as never,
+      })
+    );
+
+    await confirmarRevision('p1', { ...revision, decision: {}, valorIndice: 3.4 });
+
+    const [, updates] = servicio.updatePrestamo.mock.calls[0];
+    expect(updates.revisionesDeTipo).toEqual([
+      { desde: '2025-06-01', valorIndice: 2.5 },
+      { desde: '2026-03-01', valorIndice: 3.4 },
+    ]);
+  });
+
   // Una carta que no lo dice es una respuesta legítima · se sigue proyectando
   // con el último tipo conocido, marcado como estimación.
   it('sin índice no se apunta nada', async () => {
