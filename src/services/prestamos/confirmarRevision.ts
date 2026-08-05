@@ -11,16 +11,25 @@
 // una que no tenías baja la cuota igual que perderla la sube, y las dos cosas
 // se confirman aquí.
 //
+// Y la carta trae DOS cosas, no una (Jose · 5 ago 2026): qué pasó con las
+// bonificaciones y **a cuánto salió el índice**. Hasta ahora aquí solo entraba
+// lo primero, y el Euríbor de esa misma carta había que apuntarlo aparte, a mano
+// y en el asistente — dos puertas para un solo papel, y mientras no se pasara
+// por la segunda el cuadro seguía proyectando con `valorIndiceActual`, que es
+// una presunción.
+//
 // Al confirmar se propaga hasta donde se nota:
 //
 //   · Los estados de las bonificaciones pasan a ser lo que el banco decidió.
+//   · El índice queda apuntado como HECHO en `revisionesDeTipo`, así que deja
+//     de ser una estimación y el cuadro se parte por esa fecha.
 //   · El cuadro se recalcula DESDE la revisión, conservando lo pagado
 //     (`recalcularDesde`) — nunca desde el origen, que reescribiría intereses
 //     ya cobrados.
 //   · Las previsiones de tesorería salen del cuadro, así que se corrigen solas.
 // ============================================================================
 
-import type { Prestamo } from '../../types/prestamos';
+import type { Prestamo, RevisionDelIndice } from '../../types/prestamos';
 import { prestamosService } from '../prestamosService';
 import { tinDelTramo } from './tinDelTramo';
 import { tramoVigente } from './tramosDeTipo';
@@ -38,6 +47,16 @@ export interface RevisionConfirmada {
   aplicaDesde: string;
   /** Lo que el banco decidió, bonificación a bonificación. */
   decision: LoQueDecidioElBanco;
+  /**
+   * El índice que aplicó el banco, en porcentaje · el Euríbor a secas, SIN el
+   * diferencial.
+   *
+   * Ausente es una respuesta legítima: hay revisiones que solo miran las
+   * bonificaciones, y hay cartas que no lo dicen. Entonces se sigue proyectando
+   * con el último tipo conocido, marcado como estimación (§6 bis · bis) —
+   * inventar un número aquí sería fabricar un hecho.
+   */
+  valorIndice?: number;
 }
 
 export interface ResultadoDeConfirmar {
@@ -45,8 +64,23 @@ export interface ResultadoDeConfirmar {
   tinAntes: number;
   /** El que se paga desde ella. */
   tinDespues: number;
-  /** Si el cuadro se ha rehecho · no lo hace si el tipo no cambia. */
+  /** Si el cuadro se ha rehecho · no lo hace si no cambia nada. */
   cuadroRehecho: boolean;
+}
+
+/**
+ * Apunta el índice de una revisión · sustituye el de ese día si ya había uno.
+ *
+ * Se sustituye y no se añade porque dos revisiones el mismo día son la misma
+ * revisión rectificada, y dejar las dos haría que el cuadro dependiera del
+ * orden en que se guardaron.
+ */
+function apuntarElIndice(
+  revisiones: RevisionDelIndice[] | undefined,
+  nueva: RevisionDelIndice
+): RevisionDelIndice[] {
+  const otras = (revisiones ?? []).filter((r) => r?.desde?.slice(0, 10) !== nueva.desde);
+  return [...otras, nueva].sort((a, b) => a.desde.localeCompare(b.desde));
 }
 
 /**
@@ -69,7 +103,6 @@ export async function confirmarRevision(
   // a rebajar las bonificaciones. Preguntando los dos al tramo del arranque, esa
   // revisión no habría movido nada.
   const tramoAntes = tramoVigente(prestamo, restarUnDia(revision.aplicaDesde));
-  const tramoDespues = tramoVigente(prestamo, revision.aplicaDesde);
   const tinAntes = tinDelTramo(prestamo, tramoAntes);
 
   const bonificaciones = (prestamo.bonificaciones ?? []).map((b) => {
@@ -77,7 +110,29 @@ export async function confirmarRevision(
     return decidido ? { ...b, estado: decidido } : b;
   });
 
-  const tinDespues = tinDelTramo(prestamo, tramoDespues, bonificaciones);
+  // El índice solo se apunta si en ese tramo lo pone el índice · durante el
+  // tramo fijo de un mixto —o en un préstamo a tipo fijo— sería un dato que no
+  // lee nadie, y `tramosDeTipo` lo descartaría de todas formas.
+  //
+  // Y tiene que ser un número: `parseNum` devuelve 0 ante cualquier cosa, y un
+  // dedazo se guardaría como «el Euríbor de esa revisión fue del 0 %».
+  const apuntaIndice =
+    tramoVigente(prestamo, revision.aplicaDesde).variable &&
+    typeof revision.valorIndice === 'number' &&
+    Number.isFinite(revision.valorIndice);
+
+  const revisionesDeTipo = apuntaIndice
+    ? apuntarElIndice(prestamo.revisionesDeTipo, {
+        desde: revision.aplicaDesde,
+        valorIndice: revision.valorIndice!,
+      })
+    : prestamo.revisionesDeTipo;
+
+  // El tipo de después se pregunta al préstamo YA con la revisión apuntada: si
+  // no, saldría del `valorIndiceActual` —el índice de hoy— y la carta que
+  // acabamos de leer no habría servido de nada.
+  const conLaRevision: Prestamo = { ...prestamo, bonificaciones, revisionesDeTipo };
+  const tinDespues = tinDelTramo(conLaRevision, tramoVigente(conLaRevision, revision.aplicaDesde));
 
   // El cuadro se lee ANTES de guardar, y el guardado va con `conservarPlan`.
   //
@@ -91,12 +146,17 @@ export async function confirmarRevision(
   const actualizado: Partial<Prestamo> = {
     bonificaciones,
     ultimaRevisionBonificacionesConfirmada: revision.fecha,
+    ...(apuntaIndice ? { revisionesDeTipo } : {}),
   };
 
   // Si el tipo no se mueve no hay cuadro que rehacer · perder una bonificación
   // con el tope ya alcanzado por otras no cambia lo que pagas.
+  //
+  // Pero apuntar el índice sí obliga a rehacerlo aunque el tipo salga igual:
+  // `updatePrestamo` regenera el cuadro cuando cambian las revisiones, y lo hace
+  // DESDE EL ORIGEN. Sin `conservarPlan` reescribiría intereses ya cobrados.
   const cambiaElTipo = Math.abs(tinDespues - tinAntes) > 0.000001;
-  const rehacer = cambiaElTipo && planAntes != null;
+  const rehacer = (cambiaElTipo || apuntaIndice) && planAntes != null;
 
   await prestamosService.updatePrestamo(prestamoId, actualizado, { conservarPlan: rehacer });
 
