@@ -56,6 +56,19 @@ export interface Adelanto {
    * intereses del préstamo salía corto — y de ahí sale la deducción fiscal.
    */
   interesesCorridos?: number;
+  /**
+   * Qué decide qué se conserva · por defecto el DEVENGO.
+   *
+   * Adelantar capital no cancela nada, así que el corte es el mismo que el de
+   * una revisión: el recibo que se gira ese día paga el mes que acaba de
+   * terminar y se conserva entero.
+   *
+   * Cancelar es otra cosa: lo que manda es lo COBRADO. Un recibo con fecha
+   * posterior a la cancelación **no se va a girar nunca**, así que no puede
+   * quedarse en el cuadro ni servir de referencia para el capital que se salda
+   * —su `principalFinal` está proyectado a una cuota que no va a existir—.
+   */
+  cortePor?: 'DEVENGO' | 'CARGO';
 }
 
 const aCentimos = (euros: number): number => Math.round(euros * 100);
@@ -81,7 +94,14 @@ export function amortizarAnticipado(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) return plan;
   if (!(importe > 0)) return plan;
 
-  const corte = plan.periodos.findIndex((p) => empieza(p) >= desde);
+  // El recibo del día exacto se conserva solo si ya se pagó · si no, es uno de
+  // los que la cancelación se lleva por delante.
+  const seConserva = (p: PeriodoPago): boolean =>
+    adelanto.cortePor === 'CARGO'
+      ? p.fechaCargo < desde || (p.pagado === true && p.fechaCargo <= desde)
+      : empieza(p) < desde;
+
+  const corte = plan.periodos.findIndex((p) => !seConserva(p));
   const intactos = corte === -1 ? plan.periodos.slice() : plan.periodos.slice(0, corte);
   const porRehacer = corte === -1 ? [] : plan.periodos.slice(corte);
 
@@ -220,6 +240,7 @@ export function cancelarAnticipado(
     importe: cierre.capital,
     modo: 'REDUCIR_PLAZO',
     interesesCorridos: cierre.interesesCorridos,
+    cortePor: 'CARGO',
   });
 }
 
