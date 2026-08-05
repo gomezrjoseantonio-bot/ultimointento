@@ -3,6 +3,7 @@ import { triggerTreasuryUpdate } from './treasuryEventsService';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { prestamosService } from './prestamosService';
 import { PlanPagos, PeriodoPago, Prestamo } from '../types/prestamos';
+import { amortizarAnticipado, cancelarAnticipado } from './prestamos/amortizarAnticipado';
 
 export interface PrepareLoanSettlementResult {
   prestamo: Prestamo;
@@ -52,38 +53,6 @@ const round2 = (value: number): number => Math.round((value + Number.EPSILON) * 
 const normalizeDate = (isoDate?: string): string => {
   if (!isoDate) return new Date().toISOString().slice(0, 10);
   return isoDate.slice(0, 10);
-};
-
-const formatLocalDate = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const addDays = (isoDate: string, days: number): string => {
-  const date = new Date(isoDate);
-  date.setDate(date.getDate() + days);
-  return formatLocalDate(date);
-};
-
-const addMonthsWithClampedDay = (baseIsoDate: string, monthsToAdd: number, dayOfMonth: number): string => {
-  const baseDate = new Date(baseIsoDate);
-  const year = baseDate.getFullYear();
-  const month = baseDate.getMonth() + monthsToAdd;
-  const firstOfTargetMonth = new Date(year, month, 1);
-  const lastDay = new Date(
-    firstOfTargetMonth.getFullYear(),
-    firstOfTargetMonth.getMonth() + 1,
-    0,
-  ).getDate();
-  const safeDay = Math.max(1, Math.min(dayOfMonth, lastDay));
-
-  return formatLocalDate(new Date(
-    firstOfTargetMonth.getFullYear(),
-    firstOfTargetMonth.getMonth(),
-    safeDay,
-  ));
 };
 
 const diffDaysBetweenIsoDates = (fromIso: string, toIso: string): number => {
@@ -249,166 +218,67 @@ const createTreasuryEvent = ({
   updatedAt: new Date().toISOString(),
 });
 
+/**
+ * El cuadro tras cancelar del todo · lo hace el motor único.
+ *
+ * Aquí vivía un constructor propio que ponía `interes: 0` en la línea de
+ * cierre, aunque el movimiento sí cobra los intereses corridos. El total de
+ * intereses del préstamo salía corto, y de ahí sale la deducción fiscal.
+ */
 const buildTotalCancellationPlan = (
+  prestamo: Prestamo,
   currentPlan: PlanPagos | null,
   operationDate: string,
   principalBefore: number,
+  accruedInterest: number,
 ): PlanPagos | null => {
-  if (!currentPlan?.periodos?.length) return null;
-
-  const opTs = new Date(operationDate).getTime();
-  const paidPeriods = sortPeriods(currentPlan.periodos).filter((periodo) => {
-    const chargeTs = new Date(periodo.fechaCargo).getTime();
-    return chargeTs < opTs || (periodo.pagado && chargeTs <= opTs);
+  const plan = cancelarAnticipado(prestamo, currentPlan, {
+    fecha: operationDate,
+    capital: principalBefore,
+    interesesCorridos: accruedInterest,
   });
+  if (!plan) return null;
 
-  const lastPaidPeriod = paidPeriods.at(-1) ?? null;
-  const templatePeriod = sortPeriods(currentPlan.periodos).find((periodo) => new Date(periodo.fechaCargo).getTime() >= opTs)
-    ?? currentPlan.periodos[currentPlan.periodos.length - 1];
-
-  const cancellationPeriod: PeriodoPago = {
-    ...templatePeriod,
-    periodo: (lastPaidPeriod?.periodo ?? 0) + 1,
-    devengoDesde: lastPaidPeriod?.fechaCargo ?? templatePeriod.devengoDesde,
-    devengoHasta: operationDate,
-    fechaCargo: operationDate,
-    cuota: round2(principalBefore),
-    interes: 0,
-    amortizacion: round2(principalBefore),
-    principalFinal: 0,
-    pagado: true,
-    fechaPagoReal: operationDate,
-    esProrrateado: false,
-    esSoloIntereses: false,
-    diasDevengo: undefined,
-  };
-
-  const periodos = principalBefore > 0 ? [...paidPeriods, cancellationPeriod] : paidPeriods;
   return {
-    ...currentPlan,
+    ...plan,
     fechaGeneracion: new Date().toISOString(),
-    periodos,
-    resumen: {
-      totalIntereses: round2(periodos.reduce((sum, periodo) => sum + (periodo.interes || 0), 0)),
-      totalCuotas: periodos.length,
-      fechaFinalizacion: operationDate,
-    },
-    metadata: {
-      source: 'loan_settlement',
-      operationType: 'TOTAL',
-      operationDate,
-    },
+    metadata: { source: 'loan_settlement', operationType: 'TOTAL', operationDate },
   };
 };
 
+/**
+ * El cuadro tras adelantar una parte · lo hace el motor único.
+ *
+ * Aquí vivía el CUARTO motor de la casa: liquidaba siempre sobre el mes
+ * comercial —ignorando la base del préstamo— y con un tipo sin bonificaciones
+ * ni tramos, así que adelantar capital en la mixta de Unicaja rehacía el cuadro
+ * al 2,600 % hasta 2043 y borraba el paso a Euríbor del 25-08-2026.
+ */
 const buildPartialAmortizationPlan = ({
   prestamo,
   currentPlan,
   operationDate,
-  principalBefore,
   amortizationAmount,
   partialMode,
-  monthlyPaymentBefore,
-  monthlyPaymentAfter,
-  termMonthsAfter,
 }: {
   prestamo: Prestamo;
   currentPlan: PlanPagos | null;
   operationDate: string;
-  principalBefore: number;
   amortizationAmount: number;
   partialMode: 'REDUCIR_PLAZO' | 'REDUCIR_CUOTA';
-  monthlyPaymentBefore: number;
-  monthlyPaymentAfter: number;
-  termMonthsAfter: number;
-}): PlanPagos => {
-  const sortedPeriods = sortPeriods(currentPlan?.periodos ?? []);
-  const opTs = new Date(operationDate).getTime();
-  const preservedPeriods = sortedPeriods.filter((periodo) => {
-    const chargeTs = new Date(periodo.fechaCargo).getTime();
-    return chargeTs < opTs || (periodo.pagado && chargeTs <= opTs);
+}): PlanPagos | null => {
+  const plan = amortizarAnticipado(prestamo, currentPlan, {
+    desde: operationDate,
+    importe: amortizationAmount,
+    modo: partialMode,
   });
-  const lastPreserved = preservedPeriods.at(-1) ?? null;
+  if (!plan) return null;
 
-  const principalAfter = round2(Math.max(0, principalBefore - amortizationAmount));
-  const extraAmortizationPeriod: PeriodoPago = {
-    periodo: (lastPreserved?.periodo ?? 0) + 1,
-    devengoDesde: lastPreserved?.fechaCargo ?? operationDate,
-    devengoHasta: operationDate,
-    fechaCargo: operationDate,
-    cuota: round2(amortizationAmount),
-    interes: 0,
-    amortizacion: round2(amortizationAmount),
-    principalFinal: principalAfter,
-    pagado: true,
-    fechaPagoReal: operationDate,
-    esProrrateado: false,
-    esSoloIntereses: false,
-  };
-
-  const nextTemplate = sortedPeriods.find((periodo) => new Date(periodo.fechaCargo).getTime() > opTs);
-  let nextChargeDate = nextTemplate?.fechaCargo;
-  if (!nextChargeDate || new Date(nextChargeDate).getTime() <= opTs) {
-    nextChargeDate = addMonthsWithClampedDay(operationDate, 1, prestamo.diaCargoMes);
-  }
-
-  const baseRate = prestamosCalculationService.calculateBaseRate(prestamo, new Date(operationDate));
-  const monthlyRate = baseRate / 100 / 12;
-  const futurePeriods: PeriodoPago[] = [];
-  let outstanding = principalAfter;
-  let previousReferenceDate = operationDate;
-  let currentChargeDate = nextChargeDate;
-  const targetPayment = partialMode === 'REDUCIR_CUOTA' ? monthlyPaymentAfter : monthlyPaymentBefore;
-
-  for (let index = 0; index < termMonthsAfter; index += 1) {
-    const isLast = index === termMonthsAfter - 1;
-    const interes = monthlyRate > 0 ? round2(outstanding * monthlyRate) : 0;
-    let cuota = round2(targetPayment);
-    let amortizacion = round2(cuota - interes);
-
-    if (isLast || amortizacion >= outstanding) {
-      amortizacion = round2(outstanding);
-      cuota = round2(amortizacion + interes);
-    }
-
-    if (amortizacion < 0) amortizacion = 0;
-
-    outstanding = round2(Math.max(0, outstanding - amortizacion));
-
-    futurePeriods.push({
-      periodo: extraAmortizationPeriod.periodo + 1 + index,
-      devengoDesde: previousReferenceDate,
-      devengoHasta: addDays(currentChargeDate, -1),
-      fechaCargo: currentChargeDate,
-      cuota,
-      interes,
-      amortizacion,
-      principalFinal: outstanding,
-      pagado: false,
-      esProrrateado: false,
-      esSoloIntereses: false,
-    });
-
-    previousReferenceDate = currentChargeDate;
-    currentChargeDate = addMonthsWithClampedDay(currentChargeDate, 1, prestamo.diaCargoMes);
-  }
-
-  const periodos = [...preservedPeriods, extraAmortizationPeriod, ...futurePeriods];
   return {
+    ...plan,
     prestamoId: prestamo.id,
     fechaGeneracion: new Date().toISOString(),
-    periodos,
-    resumen: {
-      totalIntereses: round2(periodos.reduce((sum, periodo) => sum + (periodo.interes || 0), 0)),
-      totalCuotas: periodos.length,
-      fechaFinalizacion: futurePeriods.at(-1)?.fechaCargo ?? operationDate,
-    },
-    metadata: {
-      source: 'loan_settlement',
-      operationType: 'PARTIAL',
-      operationDate,
-      partialMode,
-    },
+    metadata: { source: 'loan_settlement', operationType: 'PARTIAL', operationDate, partialMode },
   };
 };
 
@@ -501,6 +371,18 @@ export const simulateLoanSettlement = async (
     input.partialMode,
   );
 
+  // La cuota y el plazo que se ENSEÑAN salen del cuadro que se va a guardar, no
+  // de una cuenta paralela. Con dos cuentas, la pantalla decía 620,27 € y el
+  // cuadro guardado 620,09 —el plazo restante lo estimaba por diferencia de
+  // fechas y el cuadro tiene los periodos que tiene— y el usuario acababa con
+  // una previsión que su propia app desmentía.
+  const planNuevo = amortizarAnticipado(simulationBaseLoan, prepared.planPagos, {
+    desde: effectiveDate,
+    importe: principalApplied,
+    modo: input.partialMode,
+  });
+  const futuros = (planNuevo?.periodos ?? []).filter((periodo) => !periodo.pagado);
+
   const totalCashOut = round2(principalApplied + feeAmount + fixedCosts);
 
   return {
@@ -515,13 +397,9 @@ export const simulateLoanSettlement = async (
     totalCashOut,
     principalAfter: round2(principalBefore - principalApplied),
     monthlyPaymentBefore: prepared.cuotaActualEstimada,
-    monthlyPaymentAfter: input.partialMode === 'REDUCIR_CUOTA'
-      ? round2(simulation.nuevaCuota || prepared.cuotaActualEstimada)
-      : prepared.cuotaActualEstimada,
+    monthlyPaymentAfter: round2(futuros[0]?.cuota ?? prepared.cuotaActualEstimada),
     termMonthsBefore: prepared.plazoRestanteEstimado,
-    termMonthsAfter: input.partialMode === 'REDUCIR_PLAZO'
-      ? Math.max(1, simulation.nuevoplazo || prepared.plazoRestanteEstimado)
-      : prepared.plazoRestanteEstimado,
+    termMonthsAfter: Math.max(1, futuros.length || prepared.plazoRestanteEstimado),
     interestSavings: round2(simulation.interesesAhorrados || 0),
   };
 };
@@ -619,7 +497,13 @@ export const confirmLoanSettlement = async (
   const prestamoBaseForUpdate = prestamoTx ?? prestamo;
 
   if (simulation.operationType === 'TOTAL') {
-    const totalPlan = buildTotalCancellationPlan(currentPlan, effectiveDate, simulation.principalBefore);
+    const totalPlan = buildTotalCancellationPlan(
+      prestamo,
+      currentPlan,
+      effectiveDate,
+      simulation.principalBefore,
+      simulation.accruedInterest,
+    );
 
     await tx.objectStore('prestamos').put({
       ...prestamoBaseForUpdate,
@@ -640,15 +524,11 @@ export const confirmLoanSettlement = async (
       prestamo,
       currentPlan,
       operationDate: effectiveDate,
-      principalBefore: simulation.principalBefore,
       amortizationAmount: simulation.principalApplied,
       partialMode: simulation.partialMode!,
-      monthlyPaymentBefore: simulation.monthlyPaymentBefore || 0,
-      monthlyPaymentAfter: simulation.monthlyPaymentAfter || 0,
-      termMonthsAfter: simulation.termMonthsAfter || 1,
     });
 
-    const paidPeriods = partialPlan.periodos.filter((periodo) => periodo.pagado);
+    const paidPeriods = (partialPlan?.periodos ?? []).filter((periodo) => periodo.pagado);
     const lastPaid = paidPeriods.at(-1);
 
     await tx.objectStore('prestamos').put({
@@ -658,7 +538,7 @@ export const confirmLoanSettlement = async (
       fechaUltimaCuotaPagada: lastPaid?.fechaCargo ?? prestamo.fechaUltimaCuotaPagada,
       liquidacion: [...liquidacionPrev, settlementToPersist],
       // T15.3 · planPagos vive como campo del préstamo.
-      planPagos: partialPlan,
+      planPagos: partialPlan ?? prestamoBaseForUpdate.planPagos,
       updatedAt: now,
     });
   }
