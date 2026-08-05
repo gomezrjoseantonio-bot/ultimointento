@@ -114,3 +114,22 @@ describe('el mismo mixto, ya en su fase variable', () => {
     expect(queTraeLaRevision(unicaja(), '2028-01-15', despues).elIndice).toBe(true);
   });
 });
+
+// La revisión viene en MES Y AÑO cuando la da el banco («Próxima revisión
+// 08/2027»), y `tramoVigente` compara cadenas ISO: '2027-08-25' no es menor o
+// igual que '2027-08'. Sin completar la fecha, un tramo que empieza dentro de
+// ese mes salía como «todavía no ha llegado».
+describe('una revisión dicha solo en mes y año', () => {
+  const enFaseVariable = (dia: string) =>
+    unicaja({ fechaFirma: `2023-08-${dia}`, tramoFijoMeses: 12 });
+
+  it.each(['01', '15', '28'])('ve el tramo que entra el día %s de ese mes', (dia) => {
+    // El tramo variable arranca el 2024-08-DD · la revisión, «agosto de 2024».
+    expect(queTraeLaRevision(enFaseVariable(dia), '2024-08', '2024-08-30').elIndice).toBe(true);
+  });
+
+  // Y no se pasa de lista: el mes anterior sigue siendo tramo fijo.
+  it('el mes anterior al cambio todavía no lo ve', () => {
+    expect(queTraeLaRevision(enFaseVariable('15'), '2024-07', '2024-07-01').elIndice).toBe(false);
+  });
+});

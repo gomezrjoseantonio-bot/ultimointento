@@ -23,6 +23,26 @@ import type { Prestamo } from '../../types/prestamos';
 import { rebajanEnTramo } from './tinDelTramo';
 import { tramosDeTipo, tramoVigente } from './tramosDeTipo';
 
+/**
+ * Una fecha que sirva para preguntar por un tramo · §6 ter · ter.
+ *
+ * La revisión puede venir en MES y AÑO, que es como la da el banco («Próxima
+ * revisión 08/2027»), y `tramoVigente` compara cadenas ISO: `'2027-08-25'` no es
+ * menor o igual que `'2027-08'`, así que un tramo que empieza a mitad de ese mes
+ * salía como «todavía no ha llegado».
+ *
+ * Se completa al día 31 y no al 1: la revisión cae en algún día de ese mes y no
+ * se sabe cuál, así que la pregunta honesta es si el tramo ha entrado **en algún
+ * momento** del mes. Con el día 1 se respondería «no» de todos los tramos que
+ * empiezan del 2 en adelante, que es el fallo contrario y el más caro — callar
+ * lo que más mueve la cuota.
+ *
+ * El 31 vale aunque el mes no lo tenga: no se construye ninguna fecha, solo se
+ * compara texto, y cualquier día real de ese mes es menor o igual que él.
+ */
+const cualquierDiaDe = (fecha: string): string =>
+  /^\d{4}-\d{2}$/.test(fecha) ? `${fecha}-31` : fecha;
+
 export interface LoQueTraeLaRevision {
   /** Si en esa revisión el tipo lo pone el índice · un fijo no lo mueve nunca. */
   elIndice: boolean;
@@ -57,8 +77,7 @@ export function queTraeLaRevision(
   revisionDesde: string | undefined,
   hoy: string
 ): LoQueTraeLaRevision {
-  const cuando = revisionDesde || hoy;
-  const elIndice = tramoVigente(prestamo, cuando).variable;
+  const elIndice = tramoVigente(prestamo, cualquierDiaDe(revisionDesde || hoy)).variable;
 
   const trae: LoQueTraeLaRevision = { elIndice, indice: prestamo.indice };
 
