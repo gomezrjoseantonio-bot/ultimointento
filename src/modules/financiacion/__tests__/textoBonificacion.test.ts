@@ -95,6 +95,66 @@ describe('lo que está en juego', () => {
       textoDeLoQueEstaEnJuego({ tinHoy: 3, tinSiRevisaran: 3, sobrecosteMensual: 0 })
     ).toContain('3,00 %');
   });
+
+  // Sin fecha es una hipótesis que nadie puede agendar · con ella, una cita.
+  it('con fecha de revisión se dice cuándo, no «si fuera hoy»', () => {
+    const t = textoDeLoQueEstaEnJuego({
+      tinHoy: 2.4,
+      tinSiRevisaran: 2.7,
+      sobrecosteMensual: 31.2,
+      fechaRevision: '2026-03-10',
+    });
+
+    expect(t).toContain('En la revisión del 10 mar');
+    expect(t).not.toContain('Si la revisión fuera hoy');
+  });
+
+  // Se puede ir a mejor · empezar a cumplir una que no tenías baja la cuota, y
+  // eso es tan accionable como perderla. Con «más al mes» se leería al revés.
+  it('lo que mejora se dice como menos, no como más', () => {
+    const t = textoDeLoQueEstaEnJuego({
+      tinHoy: 2.7,
+      tinSiRevisaran: 2.4,
+      sobrecosteMensual: -31.2,
+      fechaRevision: '2026-03-10',
+    });
+
+    expect(t).toContain('pasarías al 2,40 %');
+    expect(t).toContain('31,20 € menos al mes');
+  });
+
+  // El banco da mes y año —«Próxima revisión 08/2027»—, no un día. Ponerle uno
+  // sería prometer una precisión que nadie ha dado.
+  it('con solo mes y año se dice el mes, no un día inventado', () => {
+    const t = textoDeLoQueEstaEnJuego({
+      tinHoy: 2.4,
+      tinSiRevisaran: 2.7,
+      sobrecosteMensual: 31.2,
+      fechaRevision: '2027-08',
+    });
+
+    expect(t).toContain('En la revisión de agosto de 2027');
+  });
+
+  // Durante el periodo inicial la cuota rebajada NO demuestra que cumplas.
+  // Callarlo deja creer que ya está ganada.
+  it('el periodo inicial se dice aunque todo esté en orden', () => {
+    const t = textoDeLoQueEstaEnJuego({
+      tinHoy: 2.4,
+      tinSiRevisaran: 2.4,
+      sobrecosteMensual: 0,
+      fechaRevision: '2026-09-10',
+      enGracia: true,
+    });
+
+    expect(t).toContain('aplicadas por el periodo inicial');
+  });
+
+  it('sin periodo inicial no se menciona', () => {
+    expect(
+      textoDeLoQueEstaEnJuego({ tinHoy: 2.4, tinSiRevisaran: 2.4, sobrecosteMensual: 0 })
+    ).not.toContain('periodo inicial');
+  });
 });
 
 // La nómina se mide MES A MES · «1.200 € al mes» no lo cumple un semestre con

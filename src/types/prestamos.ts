@@ -124,7 +124,42 @@ export interface Prestamo {
   // Bonifications management
   bonificaciones?: Bonificacion[];
   maximoBonificacionPorcentaje?: number;     // maximum total bonification allowed (e.g., 0.006 = 0.60%)
-  periodoRevisionBonificacionMeses?: number; // bonification review period: 6 or 12 months
+  /**
+   * Cada cuántos meses mira el banco si cumples · lo normal, 6 o 12 (§6 ter).
+   *
+   * Una bonificación no se pierde el día que dejas de cumplirla: se pierde el
+   * día que el banco lo mira. Sin este dato, el veredicto solo puede decir «si
+   * la revisión fuera hoy», que es una hipótesis; con él dice una fecha, y da
+   * tiempo a corregir.
+   *
+   * Ausente = la escritura no lo dice. No se supone un año: una fecha inventada
+   * se lee igual que una real.
+   */
+  periodoRevisionBonificacionMeses?: number;
+  /**
+   * La próxima revisión TAL COMO LA DA EL BANCO · `YYYY-MM` (§6 ter).
+   *
+   * Manda sobre la periodicidad, y por eso existe. La revisión suele ser
+   * regular —la carta del Santander dice «REVISIÓN ANUAL» y da el periodo
+   * exacto, «desde el 31/03/2026 hasta el 30/03/2027»—, pero esa fecha es la
+   * del banco y no tiene por qué caer en el aniversario de la firma.
+   * Deducirla acierta solo si coinciden.
+   *
+   * Va en mes y año porque es lo que el banco enseña. Ponerle un día sería
+   * prometer una precisión que nadie ha dado.
+   */
+  proximaRevisionBonificaciones?: string;
+  /**
+   * Meses iniciales en que las bonificaciones se dan por cumplidas (§6 ter).
+   *
+   * Es del PRÉSTAMO, no de cada bonificación (decisión de Jose · 4 ago 2026):
+   * el banco concede un plazo común —el primer año, los primeros seis meses, o
+   * ninguno—, y se cuenta desde `fechaFirma`.
+   *
+   * Durante ese plazo la cuota rebajada NO demuestra que cumplas, y por eso hay
+   * que decirlo en pantalla: quien no lo sepa creerá que va bien.
+   */
+  graciaMesesBonificaciones?: number;
   fechaFinMaximaBonificacion?: string;       // end date for maximum bonification period
 
   // Reglas por defecto de bonificaciones
@@ -248,7 +283,11 @@ export interface Bonificacion {
 
   // Alta (día 1):
   seleccionado?: boolean;         // el usuario lo marca
-  graciaMeses?: 0|6|12;          // opcional (selector)
+  // El periodo inicial en que se dan por cumplidas NO vive aquí: es del
+  // préstamo entero (`graciaMesesBonificaciones`). Decisión de Jose · 4 ago
+  // 2026 — el banco concede un plazo común, y preguntarlo por bonificación era
+  // una pregunta repetida cuya respuesta podía además contradecirse consigo
+  // misma. El campo que había aquí no lo rellenaba nadie.
   
   // Estados a futuro (no en esta vista):
   estado: 'INACTIVO'|'SELECCIONADO'|'ACTIVO_POR_GRACIA'|'ACTIVO_POR_CUMPLIMIENTO'|'PENDIENTE'|'EN_RIESGO'|'CUMPLIDA'|'PERDIDA';

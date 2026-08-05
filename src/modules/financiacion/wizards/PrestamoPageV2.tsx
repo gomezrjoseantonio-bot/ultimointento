@@ -142,6 +142,12 @@ interface FormState {
   // Bloque 6 · bonificaciones
   bonificacionesActivas: boolean;
   bonificaciones: BonificacionRow[];
+  /** La próxima revisión tal como la da el banco · `YYYY-MM`. Manda. */
+  proximaRevision: string;
+  /** Cada cuántos meses las revisa el banco · '' = la escritura no lo dice. */
+  revisionCadaMeses: string;
+  /** Meses iniciales en que se dan por cumplidas · '' o '0' = ninguno. */
+  graciaBonificacionesMeses: string;
   // Bloque 7 · carencia inicial
   carenciaInicialTipo: TipoCarenciaInicialV2;
   carenciaInicialMesesRaw: string;
@@ -479,6 +485,9 @@ function emptyFormState(): FormState {
     gastoReclamacionImpagoRaw: '0',
     bonificacionesActivas: false,
     bonificaciones: filasDelCatalogo(),
+    proximaRevision: '',
+    revisionCadaMeses: '',
+    graciaBonificacionesMeses: '',
     carenciaInicialTipo: 'ninguna',
     carenciaInicialMesesRaw: '0',
     destinos: [
@@ -647,6 +656,13 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       gastoReclamacionImpagoRaw: fmtNumeroEs(p.gastoReclamacionImpago ?? 0),
       bonificacionesActivas: bonificaciones.some((b) => b.activa),
       bonificaciones,
+      proximaRevision: p.proximaRevisionBonificaciones ?? '',
+      revisionCadaMeses: p.periodoRevisionBonificacionMeses
+        ? String(p.periodoRevisionBonificacionMeses)
+        : '',
+      graciaBonificacionesMeses: p.graciaMesesBonificaciones
+        ? String(p.graciaMesesBonificaciones)
+        : '',
       carenciaInicialTipo: mapCarenciaLegacyToV2(p.carencia),
       carenciaInicialMesesRaw: String(p.carenciaMeses ?? 0),
       destinos,
@@ -917,6 +933,12 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
           }
         : (esPreV2 ? (existingPrestamo?.carenciaTecnica ?? null) : null);
 
+      // Cuándo mira el banco · §6 ter. Vacío se guarda como `undefined` y no
+      // como 0: «no lo dice la escritura» y «no revisa nunca» son cosas
+      // distintas, y de la segunda saldría una fecha inventada.
+      const revisionCada = enteroNoNegativo(Number(form.revisionCadaMeses));
+      const graciaBonif = enteroNoNegativo(Number(form.graciaBonificacionesMeses));
+
       const payload: Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> = {
         ambito,
         destinos: destinosLegacy,
@@ -944,6 +966,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         comisionMantenimiento: parseNum(form.comMantenimientoRaw),
         comisionAmortizacionAnticipada: parseNum(form.comAmortAnticipadaRaw),
         bonificaciones,
+        proximaRevisionBonificaciones: form.proximaRevision || undefined,
+        periodoRevisionBonificacionMeses: revisionCada || undefined,
+        graciaMesesBonificaciones: graciaBonif || undefined,
         cuotasPagadas: 0,
         origenCreacion: initialData ? 'FEIN' : 'MANUAL',
         activo: true,
@@ -1573,6 +1598,78 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                 </div>
                 {form.bonificacionesActivas && (
                   <div className={styles.blockBody}>
+                    {/*
+                      CUÁNDO las mira el banco · §6 ter.
+
+                      Una bonificación no se pierde el día que dejas de
+                      cumplirla: se pierde el día que el banco lo mira. Sin
+                      estas dos casillas, la ficha solo puede decir «si la
+                      revisión fuera hoy» —una hipótesis que nadie puede
+                      agendar— en vez de una fecha con la que dé tiempo a
+                      corregir.
+
+                      «No lo dice» es una respuesta legítima y es la de por
+                      defecto: de un año supuesto saldría una fecha inventada,
+                      y una fecha inventada se lee igual que una real.
+                    */}
+                    <div className={`${styles.fieldsRow} ${styles.rowRevision}`}>
+                      {/*
+                        Primero el dato BUENO · si tu banco te dice cuándo es la
+                        próxima, eso manda. La carta del Santander la da con el
+                        periodo exacto («desde el 31/03/2026 hasta el
+                        30/03/2027») y la app la enseña tal cual. Suele ser
+                        anual, pero la fecha es la del banco: no tiene por qué
+                        caer en el aniversario de tu firma.
+
+                        Va en mes y año porque es lo que el banco da. Pedir un
+                        día sería pedir algo que nadie tiene.
+                      */}
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>Próxima revisión</label>
+                        <input
+                          className={styles.input}
+                          type="month"
+                          value={form.proximaRevision}
+                          onChange={(e) => update('proximaRevision', e.target.value)}
+                        />
+                      </div>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>El banco las revisa</label>
+                        <select
+                          className={styles.select}
+                          value={form.revisionCadaMeses}
+                          onChange={(e) => update('revisionCadaMeses', e.target.value)}
+                        >
+                          <option value="">No lo dice la escritura</option>
+                          <option value="6">Cada 6 meses</option>
+                          <option value="12">Cada año</option>
+                          <option value="24">Cada 2 años</option>
+                        </select>
+                      </div>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>Se dan por cumplidas</label>
+                        <select
+                          className={styles.select}
+                          value={form.graciaBonificacionesMeses}
+                          onChange={(e) => update('graciaBonificacionesMeses', e.target.value)}
+                        >
+                          <option value="">Desde el primer día</option>
+                          <option value="6">Los primeros 6 meses</option>
+                          <option value="12">El primer año</option>
+                          <option value="24">Los primeros 2 años</option>
+                        </select>
+                      </div>
+                      <div className={styles.field}>
+                        <div className={styles.hintNote}>
+                          Si sabes la próxima revisión, mándala tal cual: es el dato bueno. La
+                          periodicidad solo sirve para deducirla cuando no la tienes, y se cuenta
+                          desde la firma. Durante el periodo inicial pagas la cuota rebajada
+                          aunque no cumplas, así que la ficha lo dice: si no, se lee como que ya
+                          está ganada.
+                        </div>
+                      </div>
+                    </div>
+
                     <div className={styles.bonifGrid}>
                       {form.bonificaciones.map((b) => (
                         <button
