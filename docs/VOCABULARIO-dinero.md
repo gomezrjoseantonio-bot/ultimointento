@@ -406,6 +406,47 @@ Es decir: el cargo del periodo en curso es una previsión **viva**, que se
 recalcula cada vez que se anota o se importa una compra de esa tarjeta. No es
 una cifra fija que aparece el día del corte.
 
+### 6 bis · bis · El cuadro del préstamo · UN SOLO MOTOR
+
+> El tema de financiación lo tenemos que retocar bastante … debemos hacer un
+> repaso importante de los conceptos que afectan a un préstamo, porque es clave
+> para los cálculos: es la madre del cordero.
+>
+> — Jose, 5 de agosto de 2026
+
+Del cuadro de amortización sale casi todo lo demás: las previsiones de
+tesorería, los intereses del ejercicio, la fiscalidad del alquiler y la cuota
+que se enseña. Si el cuadro está mal, todo eso está mal.
+
+**Había dos motores**, y el cuadro que acababas teniendo dependía de **por qué
+puerta habías entrado**: el asistente de préstamos calculaba el suyo y pisaba
+el que el servicio acababa de guardar… salvo si el préstamo era anterior al
+asistente, o venía de una importación, o de la venta de un inmueble, o de una
+edición hecha desde otra pantalla. Los dos escribían en el mismo sitio y no
+decían lo mismo. Había un **tercero** escondido: las previsiones de tesorería
+se generaban aparte, con su propio cuadro.
+
+**Decisión · 5 de agosto de 2026: un solo motor** (`services/prestamos/cuadro`).
+
+- **Una sola puerta.** El cuadro se genera en un único sitio, y la vista previa
+  del asistente enseña **el mismo** que se va a guardar.
+- **El tipo sale de la regla única** (§6 ter), con su tope. El asistente sumaba
+  los puntos por su cuenta y sin tope, así que podía enseñar una cuota más baja
+  que la que después se guardaba.
+- **El cuadro no mira el reloj.** Antes el tipo se resolvía con la fecha de hoy:
+  el mismo préstamo daba un cuadro distinto según el día en que lo generaras.
+- **La carencia técnica se lee, no se deduce.** Es un cargo aparte —los días
+  sueltos entre la firma y el primer mes de cobro— y solo existe si el préstamo
+  la trae guardada: deducirla se la inventaría en los préstamos antiguos.
+- **Regenerar no borra el punteo.** El enlace de una cuota con el movimiento del
+  banco es trabajo del usuario, no un dato calculado. Se conservaba solo cuando
+  editabas desde el asistente; ahora, siempre.
+
+Lo que este motor **todavía no hace** está en §8, y no es poco: el tipo es uno
+para toda la vida del préstamo —el variable y el mixto no se parten en tramos—,
+la carencia inicial no se aplica y la base de cálculo de intereses no se
+pregunta.
+
 ---
 
 ## 6 ter · Condiciones que se verifican contra la tesorería
@@ -654,6 +695,44 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-05** · **El tipo es UNO para toda la vida del préstamo.** El cuadro
+  se genera entero al mismo tipo: un **variable** sale a treinta años al índice
+  de hoy y un **mixto** al tipo de su tramo fijo, que nunca termina. Y
+  `fechaProximaRevision` está en el modelo sin que nadie lo lea. La pieza que
+  falta ya existe —`cuadroPorTramos` rehace el cuadro desde una fecha sin tocar
+  lo pagado, y es lo que usa la revisión de bonificaciones—: la revisión del
+  índice es el mismo movimiento. §6 bis · bis.
+- **2026-08-05** · **La base de cálculo de intereses no se pregunta.** Está
+  clavada: mes comercial (`/12`) para la cuota normal y `/365` por días para el
+  arranque irregular. Pero la base es una **cláusula de la escritura** y varía
+  —365/360, que sube el interés un 1,39 %; 365/365; 30/360—. Mientras no se
+  pregunte, el desglose interés/capital de cada recibo **no puede cuadrar con
+  el del banco**, aunque la cuota coincida. §6 bis · bis.
+- **2026-08-05** · **La carencia inicial no hace nada.** `carencia` y
+  `carenciaMeses` se piden en el alta, se guardan y se exportan, y **ningún
+  cálculo los lee** — el motor v2 lo decía por escrito en su propio código.
+  Quien pida doce meses de carencia ve un cuadro sin carencia. §6 bis · bis.
+- **2026-08-05** · **La TAE es una suma, no una TIR.** Se calcula sumando la
+  capitalización del TIN, la comisión de apertura repartida por años y la
+  carencia técnica. La TAE es por definición el tipo que iguala los flujos, y
+  además esta no incluye notaría, registro, gestoría, tasación ni AJD, que es
+  donde está el grueso del coste real. §6 bis · bis.
+- **2026-08-05** · **La comisión de amortización puede salir cien veces mayor.**
+  `comisionAmortizacionParcial` se multiplica directamente por el importe, sin
+  dividir entre cien: quien teclee «0,25» pensando en un 0,25 % verá una
+  penalización cien veces más alta. Y no se aplican los topes legales de la Ley
+  5/2019. §6 bis · bis.
+- **2026-08-05** · **Campos del préstamo que no lee nadie**: `tinMin`,
+  `diferencialMin`, `fechaProximaRevision`, `comisionAmortizacionAnticipada`
+  —solo se usa `...Parcial`—, y `fechaFinPeriodo` / `fechaEvaluacion` /
+  `offsetEvaluacionDias`, que alimentan unas alertas T-45/T-21/T-7/T-2 sin
+  llamador. `cobroMesVencido` sí se leía, pero sus dos ramas calculaban lo
+  mismo. Y `DestinoCapital` y `Garantia` están declaradas **dos veces en el
+  mismo fichero**. §6 bis · bis.
+- **2026-08-05** · **Conceptos del préstamo que no están**: cláusula suelo y
+  techo, redondeo del índice, gastos de constitución, amortización anticipada
+  **ejecutable** —hoy solo se simula—, novación y subrogación. §6 bis · bis.
+
 - **2026-08-05** · **Los puntos de cada bonificación no se pueden cambiar.**
   `ppDescuento` sale del catálogo y solo se PINTA: no hay ningún campo que lo
   modifique, y hasta la bonificación «Personalizada» nace con 0,10 pp fijos. Los
@@ -701,6 +780,18 @@ Escrito para no perderlo, con la fecha en que se detectó.
   un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
 
 ### Resuelto
+
+- **2026-08-05** · **Un solo motor para el cuadro.** Había dos, y el cuadro que
+  acababas teniendo dependía de por qué puerta entrabas: el asistente calculaba
+  el suyo y pisaba el que el servicio acababa de guardar, salvo para los
+  préstamos antiguos, los importados, los que venían de la venta de un inmueble
+  o los editados desde otra pantalla. Un tercero, escondido, generaba las
+  previsiones de tesorería. Ahora se genera en un sitio, la vista previa enseña
+  el que se va a guardar, el tipo sale de la regla única con su tope, el cuadro
+  no depende del día en que se genere y regenerar ya no borra el punteo hecho
+  contra el banco. El caso del Santander sigue cuadrando al céntimo.
+  §6 bis · bis.
+
 
 - **2026-08-05** · **El cashback se retira entero.** No porque costara mucho,
   sino porque «cashback» son dos cosas distintas —dinero que entra en cuenta y

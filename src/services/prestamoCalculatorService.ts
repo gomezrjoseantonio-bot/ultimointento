@@ -1,20 +1,22 @@
 /**
- * Préstamo Calculator Service (v2 · S-WIZARD-PRESTAMO-V2)
+ * Lo que rodea al cuadro · carencia técnica y previsiones de tesorería.
  *
- * Motor financiero PURO — sin efectos secundarios — para el wizard único de
- * préstamo. Implementa el caso Santander Jose al céntimo:
- *   capital 78.500 € · TIN 4,99% · 96 cuotas · firma 12/05/2026 · primer
- *   cargo 01/07/2026 · cuota 993,43 € · carencia técnica 20 días · 214,64 €
- *   total intereses 17.083,96 €.
+ * El CUADRO ya no se genera aquí: vive en `services/prestamos/cuadro`, que es
+ * el único motor. Este fichero era el segundo, y de él salía el cuadro de la
+ * vista previa del wizard mientras el otro generaba el que se guardaba.
  *
- * Reglas críticas (§2 del spec):
- *   - Sistema francés cuota constante.
- *   - Carencia técnica = días entre firma y primer mes de cobro (NO suplemento
- *     a la primera cuota · cargo separado).
- *   - Cuadro N+1 líneas cuando existe carencia técnica (línea 0 + N cuotas).
- *   - Cuota NUNCA cambia por carencia técnica.
+ * Queda lo que sí es suyo:
+ *   - **La carencia técnica**, los días sueltos entre la firma y el primer mes
+ *     de cobro. El banco los liquida en un cargo SEPARADO, no como suplemento
+ *     de la primera cuota.
+ *   - **Los descriptores de eventos de tesorería**, que ahora salen del cuadro
+ *     del motor único en vez de generar uno propio — eran un TERCER cuadro, y
+ *     de él salían las previsiones.
+ *
+ * Puro: no lee la base ni el reloj. El caller completa los campos auditables.
  */
-// Tipos auxiliares — definidos aquí para mantener el servicio autocontenido.
+import type { Prestamo } from '../types/prestamos';
+import { generarCuadro } from './prestamos/cuadro';
 
 export type TipoPrestamoV2 = 'hipotecario' | 'personal' | 'linea_credito' | 'otro';
 export type TipoInteresV2 = 'fijo' | 'variable' | 'mixto';
@@ -28,27 +30,6 @@ export type TipoDestinoV2 =
   | 'otro';
 export type TipoGarantiaV2 = 'hipotecaria' | 'personal' | 'pignoraticia';
 
-export interface PrestamoCalculatorInput {
-  capital: number;
-  tinAnual: number;            // 0.0499 = 4,99%
-  numCuotas: number;
-  fechaFirma: string;          // ISO date (YYYY-MM-DD)
-  primerCargoCuadro: string;   // ISO date (YYYY-MM-DD)
-  diaCobro: number;            // 1-31
-  comisiones?: {
-    apertura?: number;             // % sobre capital
-    mantenimiento?: number;        // €/mes
-    amortAnticipada?: number;      // %
-    modifCondiciones?: number;     // %
-    reclamacionImpago?: number;    // € (49 típico)
-  };
-  // NOTA · `carenciaInicial` (solo_capital / total) NO se admite todavía en
-  // el motor v2 — el cuadro francés se genera siempre sin modificaciones por
-  // carencia inicial. Se almacena por separado en el `Prestamo` legacy
-  // (`carencia` / `carenciaMeses`) pero el cuadro generado aquí lo ignora.
-  // Pendiente refinamiento (§7 spec).
-}
-
 export interface CarenciaTecnicaInfo {
   existe: boolean;
   dias: number;
@@ -56,35 +37,7 @@ export interface CarenciaTecnicaInfo {
   fechaLiquidacion: string | null;
 }
 
-export type TipoLineaCuadro = 'carencia_tecnica' | 'cuota';
-
-export interface LineaCuadroV2 {
-  numero: number;              // 0 = carencia técnica · 1..N = cuotas
-  fecha: string;               // ISO date
-  tipo: TipoLineaCuadro;
-  capitalAmortizado: number;
-  intereses: number;
-  cuota: number;
-  capitalPendiente: number;
-}
-
-export interface ResumenCuadroV2 {
-  cuotaMensual: number;
-  totalCuotas: number;         // suma de cuotas pagadas (todas las líneas)
-  totalIntereses: number;      // intereses_cuadro + intereses_carencia_tecnica
-  interesesCuadro: number;     // suma de intereses líneas 1..N
-  interesesCarenciaTecnica: number;
-  tae: number;                 // TAE aproximada en %
-  tinEfectivo: number;         // TIN aplicable en % (sin bonificaciones aquí)
-  fechaUltimaCuota: string;    // ISO date
-  capitalTotal: number;
-  numLineas: number;           // N+1 si carencia técnica, N si no
-}
-
-export interface CuadroAmortizacionV2 {
-  lineas: LineaCuadroV2[];
-  resumen: ResumenCuadroV2;
-}
+const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 // ── Date helpers ────────────────────────────────────────────────────────────
 // Operamos sobre strings ISO YYYY-MM-DD para evitar drift por zona horaria.
@@ -105,15 +58,6 @@ function diasEnMes(y: number, m: number): number {
 
 function clampDay(y: number, m: number, d: number): number {
   return Math.min(d, diasEnMes(y, m));
-}
-
-function addMonthsISO(iso: string, months: number): string {
-  const { y, m, d } = parseISODate(iso);
-  // m está 1-12; convertimos a 0-11 para sumar y volvemos
-  const total = (y * 12 + (m - 1)) + months;
-  const ny = Math.floor(total / 12);
-  const nm = (total % 12) + 1;
-  return toISODate(ny, nm, clampDay(ny, nm, d));
 }
 
 function diasEntreISO(isoA: string, isoB: string): number {
@@ -164,118 +108,6 @@ export function calcularInteresesCarenciaTecnica(
   return capital * tinAnual * dias / 365;
 }
 
-/**
- * Cuota constante sistema francés.
- *   C · ((i·(1+i)^n)/((1+i)^n − 1))   con i = TIN_anual / 12.
- * Si TIN = 0 → C / n.
- */
-export function calcularCuotaFrances(
-  capital: number,
-  tinMensual: number,
-  numCuotas: number,
-): number {
-  if (capital <= 0 || numCuotas <= 0) return 0;
-  if (tinMensual === 0) return capital / numCuotas;
-  const pot = Math.pow(1 + tinMensual, numCuotas);
-  return capital * (tinMensual * pot) / (pot - 1);
-}
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
-/**
- * Genera el cuadro de amortización completo. Devuelve N+1 líneas si existe
- * carencia técnica (línea 0 + N cuotas) o N líneas si no.
- *
- * La carencia técnica genera UN cargo separado (línea 0) sin afectar la cuota.
- * La carencia inicial (solo_capital / total) NO está implementada al 100% en
- * v2 — se documenta como pendiente refinamiento (§7 spec).
- */
-export function generarCuadroAmortizacion(
-  input: PrestamoCalculatorInput,
-): CuadroAmortizacionV2 {
-  const { capital, tinAnual, numCuotas, fechaFirma, primerCargoCuadro, diaCobro } = input;
-  const tinMensual = tinAnual / 12;
-  const lineas: LineaCuadroV2[] = [];
-
-  // Línea 0 · carencia técnica (si aplica)
-  const carencia = detectarCarenciaTecnica(fechaFirma, diaCobro);
-  let interesesCarenciaTecnica = 0;
-  if (carencia.existe && carencia.fechaLiquidacion) {
-    interesesCarenciaTecnica = calcularInteresesCarenciaTecnica(capital, tinAnual, carencia.dias);
-    lineas.push({
-      numero: 0,
-      fecha: carencia.fechaLiquidacion,
-      tipo: 'carencia_tecnica',
-      capitalAmortizado: 0,
-      intereses: round2(interesesCarenciaTecnica),
-      cuota: round2(interesesCarenciaTecnica),
-      capitalPendiente: capital,
-    });
-  }
-
-  // Líneas 1..N · cuadro francés
-  const cuotaRaw = calcularCuotaFrances(capital, tinMensual, numCuotas);
-  const cuota = round2(cuotaRaw);
-  let capitalPendiente = capital;
-  let interesesCuadro = 0;
-
-  for (let i = 1; i <= numCuotas; i++) {
-    const intereses = capitalPendiente * tinMensual;
-    let capitalAmortizado = cuotaRaw - intereses;
-    let cuotaLinea = cuotaRaw;
-    if (i === numCuotas) {
-      // Última cuota · ajustar para que capitalPendiente quede en 0 al céntimo.
-      capitalAmortizado = capitalPendiente;
-      cuotaLinea = capitalAmortizado + intereses;
-    }
-    capitalPendiente = Math.max(0, capitalPendiente - capitalAmortizado);
-    interesesCuadro += intereses;
-    lineas.push({
-      numero: i,
-      fecha: addMonthsISO(primerCargoCuadro, i - 1),
-      tipo: 'cuota',
-      capitalAmortizado: round2(capitalAmortizado),
-      intereses: round2(intereses),
-      cuota: round2(cuotaLinea),
-      capitalPendiente: round2(capitalPendiente),
-    });
-  }
-
-  const totalCuotas = lineas.reduce((sum, l) => sum + l.cuota, 0);
-  const totalIntereses = round2(interesesCuadro + interesesCarenciaTecnica);
-
-  // TAE aproximada · (1 + TIN/12)^12 − 1 más coste comisión apertura prorrateado anualmente.
-  const comApertura = (input.comisiones?.apertura || 0) * capital / 100;
-  const tinEfectivoAnualPct = round2(tinAnual * 100);
-  const taeBase = Math.pow(1 + tinMensual, 12) - 1;
-  const añosPlazo = numCuotas / 12;
-  const taeComision = añosPlazo > 0 ? comApertura / (capital * añosPlazo) : 0;
-  const taeCarencia = capital > 0 && añosPlazo > 0
-    ? interesesCarenciaTecnica / (capital * añosPlazo)
-    : 0;
-  const tae = round2((taeBase + taeComision + taeCarencia) * 100);
-
-  const ultimaLinea = lineas[lineas.length - 1];
-
-  return {
-    lineas,
-    resumen: {
-      cuotaMensual: cuota,
-      totalCuotas: round2(totalCuotas),
-      totalIntereses,
-      interesesCuadro: round2(interesesCuadro),
-      interesesCarenciaTecnica: round2(interesesCarenciaTecnica),
-      tae,
-      tinEfectivo: tinEfectivoAnualPct,
-      fechaUltimaCuota: ultimaLinea ? ultimaLinea.fecha : primerCargoCuadro,
-      capitalTotal: round2(capital),
-      numLineas: lineas.length,
-    },
-  };
-}
-
 // ── Generación de Treasury Events (v2) ──────────────────────────────────────
 // Devuelve descriptores de eventos · el caller los inserta en la DB.
 // NO usa interfaz TreasuryEvent del db.ts para mantener pureza · el caller
@@ -293,74 +125,61 @@ export interface TreasuryEventDescriptor {
   esCarenciaTecnica?: boolean;
 }
 
-export interface PrestamoParaEventos {
-  id: string;
-  alias: string;
-  capital: number;
-  fechaFirma: string;
-  primerCargoCuadro: string;
-  diaCobro: number;
-  tinAnual: number;
-  numCuotas: number;
-  cuentaCargoId: number | undefined;
-}
-
 /**
- * Genera la lista completa de descriptores de eventos para tesorería:
- *   1 ingreso (disposición · día firma)
- * + 1 gasto carencia técnica si aplica (día liquidación)
- * + N gastos cuotas del cuadro (1..N).
+ * Los cargos previstos de un préstamo, para tesorería.
+ *
+ * Un ingreso el día de la firma —la disposición— y un gasto por cada línea del
+ * cuadro, la de carencia técnica incluida.
+ *
+ * El cuadro sale del motor ÚNICO. Antes esta función generaba el suyo, con su
+ * propio TIN pasado por el caller: era el tercer cuadro de la casa, y de él
+ * salían las previsiones que después se cuadraban contra el banco.
  */
 export function generarTreasuryEventDescriptors(
-  prestamo: PrestamoParaEventos,
+  prestamo: Prestamo,
+  cuentaCargoId: number | undefined,
 ): TreasuryEventDescriptor[] {
-  const descriptors: TreasuryEventDescriptor[] = [];
+  const alias = prestamo.nombre;
+  const descriptores: TreasuryEventDescriptor[] = [
+    {
+      fecha: prestamo.fechaFirma,
+      tipo: 'ingreso',
+      importe: round2(prestamo.principalInicial),
+      cuentaId: cuentaCargoId,
+      concepto: `Disposición préstamo · ${alias}`,
+      prestamoId: prestamo.id,
+    },
+  ];
 
-  descriptors.push({
-    fecha: prestamo.fechaFirma,
-    tipo: 'ingreso',
-    importe: round2(prestamo.capital),
-    cuentaId: prestamo.cuentaCargoId,
-    concepto: `Disposición préstamo · ${prestamo.alias}`,
-    prestamoId: prestamo.id,
-  });
+  const { periodos } = generarCuadro(prestamo).plan;
+  const cuotas = periodos.filter((p) => p.periodo > 0).length;
 
-  const cuadro = generarCuadroAmortizacion({
-    capital: prestamo.capital,
-    tinAnual: prestamo.tinAnual,
-    numCuotas: prestamo.numCuotas,
-    fechaFirma: prestamo.fechaFirma,
-    primerCargoCuadro: prestamo.primerCargoCuadro,
-    diaCobro: prestamo.diaCobro,
-  });
-
-  for (const linea of cuadro.lineas) {
-    if (linea.tipo === 'carencia_tecnica') {
-      descriptors.push({
-        fecha: linea.fecha,
+  for (const p of periodos) {
+    // El periodo 0 es la carencia técnica · cargo aparte, sin capital.
+    if (p.periodo === 0) {
+      descriptores.push({
+        fecha: p.fechaCargo,
         tipo: 'gasto',
-        importe: linea.cuota,
-        cuentaId: prestamo.cuentaCargoId,
-        concepto: `Liquidación carencia técnica · ${prestamo.alias}`,
+        importe: p.cuota,
+        cuentaId: cuentaCargoId,
+        concepto: `Liquidación carencia técnica · ${alias}`,
         prestamoId: prestamo.id,
         esCarenciaTecnica: true,
       });
-    } else {
-      descriptors.push({
-        fecha: linea.fecha,
-        tipo: 'gasto',
-        importe: linea.cuota,
-        cuentaId: prestamo.cuentaCargoId,
-        concepto: `Cuota ${linea.numero}/${prestamo.numCuotas} · ${prestamo.alias}`,
-        prestamoId: prestamo.id,
-        numeroCuota: linea.numero,
-        desglose: {
-          capital: linea.capitalAmortizado,
-          intereses: linea.intereses,
-        },
-      });
+      continue;
     }
+
+    descriptores.push({
+      fecha: p.fechaCargo,
+      tipo: 'gasto',
+      importe: p.cuota,
+      cuentaId: cuentaCargoId,
+      concepto: `Cuota ${p.periodo}/${cuotas} · ${alias}`,
+      prestamoId: prestamo.id,
+      numeroCuota: p.periodo,
+      desglose: { capital: p.amortizacion, intereses: p.interes },
+    });
   }
 
-  return descriptors;
+  return descriptores;
 }

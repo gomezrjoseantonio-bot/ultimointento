@@ -47,24 +47,24 @@ import type { Inmueble } from '../../../types/inmueble';
 import type { LucideIcon } from 'lucide-react';
 import { prestamosService } from '../../../services/prestamosService';
 import { planificarEventos, cambiaElCuadro } from '../../../services/prestamoEventosPlan';
+import { generarCuadro, type Cuadro } from '../../../services/prestamos/cuadro';
 import {
+  calcularInteresesCarenciaTecnica,
   detectarCarenciaTecnica,
-  generarCuadroAmortizacion,
   generarTreasuryEventDescriptors,
-  type CuadroAmortizacionV2,
-  type LineaCuadroV2,
   type TipoCarenciaInicialV2,
   type TipoDestinoV2,
   type TipoGarantiaV2,
   type TipoInteresV2,
   type TipoPrestamoV2,
 } from '../../../services/prestamoCalculatorService';
-import type { Bonificacion, DestinoCapital, Garantia, PeriodoPago, PlanPagos, Prestamo, ReglaBonificacion } from '../../../types/prestamos';
+import type { Bonificacion, DestinoCapital, Garantia, PeriodoPago, Prestamo, ReglaBonificacion } from '../../../types/prestamos';
 import type { PrestamoFinanciacion } from '../../../types/financiacion';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import { bonificaHipoteca } from '../../../services/tarjetasReglas';
 import { tinConBonificaciones } from '../../../services/bonificaciones/tinEfectivo';
+import { effectiveTIN } from '../helpers';
 import styles from './PrestamoPageV2.module.css';
 
 // ─── Tipos auxiliares ───────────────────────────────────────────────────────
@@ -372,81 +372,6 @@ function mapGarantiaV2ToLegacy(t: TipoGarantiaV2): Garantia['tipo'] {
   }
 }
 
-// ─── Mapeo cuadro v2 → PlanPagos persistido ─────────────────────────────────
-// `prestamosService` ejecuta automáticamente el motor LEGACY al guardar y
-// persiste en `prestamo.planPagos` un cuadro que NO incluye línea 0 de
-// carencia técnica (la mete como suplemento en la cuota #1). Para mantener
-// coherencia con el motor v2 (preview + tesorería), reescribimos el plan
-// con esta función · llamada tras cada create/update.
-//
-// `existingPlan` se usa para fusionar el estado de pago ya marcado
-// (`pagado`, `fechaPagoReal`, `movimientoTesoreriaId`) y NO desmarcar
-// cuotas históricas tras una edición.
-function buildPlanPagosFromCuadroV2(
-  prestamo: Prestamo,
-  cuadro: CuadroAmortizacionV2,
-  existingPlan: PlanPagos | null,
-): PlanPagos {
-  // Índice del plan existente · clave por fechaCargo (YYYY-MM-DD) y, como
-  // fallback, por número de periodo para preservar estado pagado en cambios
-  // leves de calendario.
-  const prevByFecha = new Map<string, PeriodoPago>();
-  const prevByPeriodo = new Map<number, PeriodoPago>();
-  for (const prev of existingPlan?.periodos ?? []) {
-    if (prev.fechaCargo) prevByFecha.set(prev.fechaCargo.slice(0, 10), prev);
-    prevByPeriodo.set(prev.periodo, prev);
-  }
-
-  // Auto-marca cuotas con fechaCargo <= hoy como pagadas (replica el
-  // comportamiento de prestamosService.createPrestamo/updatePrestamo).
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
-  const periodos: PeriodoPago[] = [];
-  let prevFecha = prestamo.fechaFirma;
-  for (const linea of cuadro.lineas) {
-    const devengoDesde = prevFecha;
-    const devengoHasta = linea.fecha;
-    const fechaKey = linea.fecha.slice(0, 10);
-    const prev = prevByFecha.get(fechaKey) ?? prevByPeriodo.get(linea.numero);
-    const esCarenciaTecnica = linea.tipo === 'carencia_tecnica';
-    const esVencida = new Date(linea.fecha) <= today;
-    const pagado = prev?.pagado ?? esVencida;
-    const fallbackFechaPagoReal = prev?.fechaCargo ?? linea.fecha;
-    const fechaPagoReal = prev?.fechaPagoReal ?? (pagado ? fallbackFechaPagoReal : undefined);
-    periodos.push({
-      periodo: linea.numero,
-      devengoDesde,
-      devengoHasta,
-      fechaCargo: linea.fecha,
-      cuota: linea.cuota,
-      interes: linea.intereses,
-      amortizacion: linea.capitalAmortizado,
-      principalFinal: linea.capitalPendiente,
-      esSoloIntereses: esCarenciaTecnica ? true : prev?.esSoloIntereses,
-      esProrrateado: prev?.esProrrateado,
-      diasDevengo: prev?.diasDevengo,
-      pagado,
-      fechaPagoReal,
-      movimientoTesoreriaId: prev?.movimientoTesoreriaId,
-    });
-    prevFecha = linea.fecha;
-  }
-  return {
-    prestamoId: prestamo.id,
-    fechaGeneracion: new Date().toISOString(),
-    periodos,
-    resumen: {
-      totalIntereses: cuadro.resumen.totalIntereses,
-      totalCuotas: cuadro.resumen.totalCuotas,
-      fechaFinalizacion: cuadro.resumen.fechaUltimaCuota,
-    },
-    // 'wizard_v2_generated' indica a `prestamosService.needsPlanRegeneration`
-    // que NO regenere desde el motor legacy · ese plan es el v2 canónico.
-    metadata: { source: 'wizard_v2_generated' },
-  };
-}
-
 // ─── Estado inicial ─────────────────────────────────────────────────────────
 // ISO YYYY-MM-DD construido desde componentes LOCALES (evita drift por UTC).
 function localIsoToday(): string {
@@ -727,37 +652,115 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     return 0;
   }, [form.tipoInteres, tinFijoPct, form.euriborRaw, form.diferencialRaw, form.tinTramoFijoRaw]);
 
-  // TIN efectivo (con bonificaciones activas)
-  const tinEfectivoPct = useMemo(() => {
-    const base = tinBasePct;
-    if (!form.bonificacionesActivas) return base;
-    const totalBonif = form.bonificaciones
-      .filter((b) => b.activa)
-      .reduce((sum, b) => sum + b.ppDescuento, 0);
-    return Math.max(0, base - totalBonif);
-  }, [tinBasePct, form.bonificacionesActivas, form.bonificaciones]);
+  // Las bonificaciones tal como las entiende el modelo · UN solo mapeo, usado
+  // por la vista previa y por el guardado. Antes la pantalla sumaba los puntos
+  // por su cuenta —sin el tope— y el guardado hacía otra cosa, así que la cuota
+  // de la vista previa podía ser más baja que la que acababa guardada.
+  const bonificacionesModelo: Bonificacion[] = useMemo(
+    () =>
+      form.bonificacionesActivas
+        ? form.bonificaciones.filter((b) => b.activa).map((b) => ({
+            id: b.id,
+            tipo: TIPO_DE_REGLA[b.regla.tipo],
+            nombre: b.nombre,
+            reduccionPuntosPorcentuales: b.ppDescuento,
+            impacto: { puntos: -b.ppDescuento },
+            aplicaEn: 'FIJO',
+            lookbackMeses: b.lookbackMeses,
+            regla: b.regla,
+            tarjetaExigidaId: b.tarjetaExigidaId,
+            cuentaExigidaId: b.cuentaExigidaId,
+            // Solo lo que nace empieza en `SELECCIONADO`; lo demas conserva el
+            // suyo. Ver `estadoPrevio`.
+            estado: b.estadoPrevio && b.estadoPrevio !== 'INACTIVO' ? b.estadoPrevio : 'SELECCIONADO',
+            seleccionado: true,
+          }))
+        : [],
+    [form.bonificacionesActivas, form.bonificaciones],
+  );
 
-  const cuadro: CuadroAmortizacionV2 | null = useMemo(() => {
-    if (capital <= 0 || numCuotas <= 0 || tinEfectivoPct < 0 || !form.fechaFirma || !form.fechaPrimerCargo) {
-      return null;
-    }
-    return generarCuadroAmortizacion({
-      capital,
-      tinAnual: tinEfectivoPct / 100,
-      numCuotas,
-      fechaFirma: form.fechaFirma,
-      primerCargoCuadro: form.fechaPrimerCargo,
-      diaCobro,
-      comisiones: {
-        apertura: parseNum(form.comAperturaRaw),
-      },
-    });
-  }, [capital, numCuotas, tinEfectivoPct, form.fechaFirma, form.fechaPrimerCargo, diaCobro, form.comAperturaRaw]);
+  // El TIN que se paga · la regla de §6 ter, con su tope. Los topes salen del
+  // préstamo cargado porque hoy no hay pantalla que los escriba.
+  const tinEfectivoPct = useMemo(
+    () => tinConBonificaciones(tinBasePct, bonificacionesModelo, loadedPrestamo ?? {}),
+    [tinBasePct, bonificacionesModelo, loadedPrestamo],
+  );
 
   const carencia = useMemo(() => {
     if (!form.fechaFirma) return null;
     return detectarCarenciaTecnica(form.fechaFirma, diaCobro);
   }, [form.fechaFirma, diaCobro]);
+
+  // Un préstamo pre-v2 no estrena carencia técnica al editarlo · nació sin ella
+  // y detectarla ahora le inyectaría un cargo que nunca tuvo.
+  const esPreV2 = Boolean(prestamoId) && loadedPrestamo?.carenciaTecnica === undefined;
+
+  /** Los días sueltos entre la firma y el primer mes de cobro · cargo aparte. */
+  const carenciaTecnica = useMemo(() => {
+    if (esPreV2) return loadedPrestamo?.carenciaTecnica ?? null;
+    if (!carencia?.existe || !carencia.fechaLiquidacion || capital <= 0) return null;
+
+    const intereses = calcularInteresesCarenciaTecnica(capital, tinEfectivoPct / 100, carencia.dias);
+    if (intereses <= 0) return null;
+
+    return {
+      dias: carencia.dias,
+      fechaLiquidacion: carencia.fechaLiquidacion,
+      intereses: Math.round(intereses * 100) / 100,
+    };
+  }, [esPreV2, loadedPrestamo, carencia, capital, tinEfectivoPct]);
+
+  // El cuadro de la vista previa sale del MISMO motor que el que se guarda
+  // (`services/prestamos/cuadro`). Antes lo calculaba un motor propio y después
+  // pisaba el del otro, de modo que quien no pasara por aquí —una importación,
+  // la venta de un inmueble, una edición desde otra pantalla— se quedaba con un
+  // cuadro distinto.
+  const cuadro: Cuadro | null = useMemo(() => {
+    if (capital <= 0 || numCuotas <= 0 || !form.fechaFirma || !form.fechaPrimerCargo) {
+      return null;
+    }
+
+    // Un borrador con lo que el motor lee · el préstamo entero no existe
+    // todavía y pedirlo aquí obligaría a construirlo dos veces.
+    const borrador = {
+      id: prestamoId ?? 'borrador',
+      principalInicial: capital,
+      plazoMesesTotal: numCuotas,
+      fechaFirma: form.fechaFirma,
+      fechaPrimerCargo: form.fechaPrimerCargo,
+      diaCargoMes: diaCobro,
+      tipo: form.tipoInteres.toUpperCase() as Prestamo['tipo'],
+      tipoNominalAnualFijo: form.tipoInteres === 'fijo' ? tinFijoPct : undefined,
+      valorIndiceActual: form.tipoInteres !== 'fijo' ? parseNum(form.euriborRaw) : undefined,
+      diferencial: form.tipoInteres !== 'fijo' ? parseNum(form.diferencialRaw) : undefined,
+      tipoNominalAnualMixtoFijo:
+        form.tipoInteres === 'mixto' ? parseNum(form.tinTramoFijoRaw) : undefined,
+      maximoBonificacionPorcentaje: loadedPrestamo?.maximoBonificacionPorcentaje,
+      topeBonificacionesTotal: loadedPrestamo?.topeBonificacionesTotal,
+      bonificaciones: bonificacionesModelo,
+      comisionApertura: parseNum(form.comAperturaRaw),
+      carenciaTecnica,
+      esquemaPrimerRecibo: 'NORMAL',
+    } as Prestamo;
+
+    return generarCuadro(borrador);
+  }, [
+    capital,
+    numCuotas,
+    form.fechaFirma,
+    form.fechaPrimerCargo,
+    form.tipoInteres,
+    form.euriborRaw,
+    form.diferencialRaw,
+    form.tinTramoFijoRaw,
+    form.comAperturaRaw,
+    tinFijoPct,
+    diaCobro,
+    prestamoId,
+    loadedPrestamo,
+    bonificacionesModelo,
+    carenciaTecnica,
+  ]);
 
   // Cuadre destinos · suma de importes = capital (± 0,01)
   const destinosCuadre = useMemo(() => {
@@ -897,41 +900,12 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         ? 'INMUEBLE'
         : 'PERSONAL';
 
-      const bonificaciones: Bonificacion[] = form.bonificacionesActivas
-        ? form.bonificaciones.filter((b) => b.activa).map((b) => ({
-            id: b.id,
-            tipo: TIPO_DE_REGLA[b.regla.tipo],
-            nombre: b.nombre,
-            reduccionPuntosPorcentuales: b.ppDescuento,
-            impacto: { puntos: -b.ppDescuento },
-            aplicaEn: 'FIJO',
-            lookbackMeses: b.lookbackMeses,
-            regla: b.regla,
-            tarjetaExigidaId: b.tarjetaExigidaId,
-            cuentaExigidaId: b.cuentaExigidaId,
-            // Solo lo que nace empieza en `SELECCIONADO`; lo demás conserva el
-            // suyo. Ver `estadoPrevio`.
-            estado: b.estadoPrevio && b.estadoPrevio !== 'INACTIVO' ? b.estadoPrevio : 'SELECCIONADO',
-            seleccionado: true,
-          }))
-        : [];
-
-      // NO aplicar detección retroactiva a préstamos pre-v2:
-      // si estamos editando y el préstamo existente NO trae el campo
-      // `carenciaTecnica` (undefined ≡ creado antes del wizard v2 o
-      // importado), preservamos null para no inyectar un cargo nuevo.
-      // Si el campo viene de v2 (objeto o null explícito), recalculamos.
+      // Las bonificaciones y la carencia técnica son las MISMAS que ha usado la
+      // vista previa · si se recalcularan aquí volverían a ser dos cuentas.
+      const bonificaciones = bonificacionesModelo;
       const existingPrestamo = prestamoId
         ? await prestamosService.getPrestamoById(prestamoId)
         : null;
-      const esPreV2 = Boolean(existingPrestamo) && existingPrestamo?.carenciaTecnica === undefined;
-      const carenciaInfo = !esPreV2 && cuadro && cuadro.resumen.interesesCarenciaTecnica > 0 && carencia?.existe
-        ? {
-            dias: carencia.dias,
-            fechaLiquidacion: carencia.fechaLiquidacion as string,
-            intereses: cuadro.resumen.interesesCarenciaTecnica,
-          }
-        : (esPreV2 ? (existingPrestamo?.carenciaTecnica ?? null) : null);
 
       // Cuándo mira el banco · §6 ter. Vacío se guarda como `undefined` y no
       // como 0: «no lo dice la escritura» y «no revisa nunca» son cosas
@@ -948,7 +922,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         fechaFirma: form.fechaFirma,
         fechaPrimerCargo: form.fechaPrimerCargo,
         diaCargoMes: diaCobro,
-        esquemaPrimerRecibo: carenciaInfo ? 'PRORRATA' : 'NORMAL',
+        // La carencia técnica es un cargo APARTE (línea 0) · la primera cuota
+        // es entera, y marcarla prorrateada cobraría esos días dos veces.
+        esquemaPrimerRecibo: 'NORMAL',
         principalInicial: capital,
         principalVivo: capital,
         plazoMesesTotal: numCuotas,
@@ -979,7 +955,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         interesDemoraPct: parseNum(form.interesDemoraRaw) || undefined,
         comisionModificacionCondiciones: parseNum(form.comModifCondicionesRaw) || undefined,
         gastoReclamacionImpago: parseNum(form.gastoReclamacionImpagoRaw) || undefined,
-        carenciaTecnica: carenciaInfo,
+        carenciaTecnica,
       };
 
       let saved: Prestamo | null;
@@ -995,29 +971,6 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
       if (!saved) {
         throw new Error('No se ha podido guardar el préstamo.');
-      }
-
-      // Sobreescribir el plan de pagos persistido con el cuadro v2
-      // (línea 0 de carencia técnica + N cuotas constantes). Sin este
-      // override, `prestamosService.{create,update}Prestamo` deja en
-      // `prestamo.planPagos` la versión del motor LEGACY que mete la
-      // carencia técnica como suplemento de la cuota #1 · contradice
-      // el spec §4 regla 6 ("la carencia técnica es cargo SEPARADO").
-      //
-      // NO sobreescribimos si:
-      //   · El préstamo es pre-v2 (regla §4.7 · no detección retroactiva).
-      //   · El plan actual tiene `metadata.source` 'loan_settlement' o
-      //     'property_sale' · son planes custom inmutables que se
-      //     deben preservar (evitamos perder trazabilidad de
-      //     amortizaciones / ventas de inmueble).
-      if (!esPreV2 && cuadro) {
-        const existingPlan = await prestamosService.getPaymentPlan(saved.id);
-        const customSource = existingPlan?.metadata?.source;
-        const isCustomPlan = customSource === 'loan_settlement' || customSource === 'property_sale';
-        if (!isCustomPlan) {
-          const plan = buildPlanPagosFromCuadroV2(saved, cuadro, existingPlan);
-          await prestamosService.savePaymentPlan(saved.id, plan);
-        }
       }
 
       // Treasury events · solo si el cuadro se ha movido.
@@ -1053,30 +1006,11 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   // memoizado · vale para fijo/variable/mixto a tipos no-cero.
   // `incluirCarencia=false` (préstamos pre-v2) excluye la línea 0 de
   // carencia técnica · el resto se persisten igual.
-  const tinEfectivoFromPrestamo = (p: Prestamo): number => {
-    let base = 0;
-    switch (p.tipo) {
-      case 'FIJO':
-        base = p.tipoNominalAnualFijo ?? 0;
-        break;
-      case 'VARIABLE':
-        base = (p.valorIndiceActual ?? 0) + (p.diferencial ?? 0);
-        break;
-      case 'MIXTO':
-        // Cuadro inicial · período fijo del mixto.
-        base = p.tipoNominalAnualMixtoFijo ?? 0;
-        break;
-    }
-    // La rebaja, con la regla única de §6 ter. Aquí se sumaba a mano, sin tope
-    // y contando también la que el banco ya hubiera retirado.
-    return tinConBonificaciones(base, p.bonificaciones, p);
-  };
-
   const regenerarTreasuryEvents = async (
     prestamo: Prestamo,
     options: { incluirCarencia: boolean } = { incluirCarencia: true },
   ) => {
-    const tinPct = tinEfectivoFromPrestamo(prestamo);
+    const tinPct = effectiveTIN(prestamo);
     if (
       prestamo.principalInicial <= 0 ||
       prestamo.plazoMesesTotal <= 0 ||
@@ -1092,20 +1026,10 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     const accountIdNum = parseInt(prestamo.cuentaCargoId, 10);
     const accountId = Number.isFinite(accountIdNum) ? accountIdNum : undefined;
 
-    // 1. generar descriptores · TIN derivado del prestamo (no del memo del
-    //    form) · variable/mixto coherentes.
+    // 1. generar descriptores · del cuadro del préstamo GUARDADO, que es el
+    //    mismo que se persiste y el mismo que enseña la vista previa.
     const todos = await db.getAll('treasuryEvents');
-    const descriptors = generarTreasuryEventDescriptors({
-      id: prestamo.id,
-      alias: prestamo.nombre,
-      capital: prestamo.principalInicial,
-      fechaFirma: prestamo.fechaFirma,
-      primerCargoCuadro: prestamo.fechaPrimerCargo,
-      diaCobro: prestamo.diaCargoMes,
-      tinAnual: tinPct / 100,
-      numCuotas: prestamo.plazoMesesTotal,
-      cuentaCargoId: accountId,
-    });
+    const descriptors = generarTreasuryEventDescriptors(prestamo, accountId);
     const descriptorsAPersistir = options.incluirCarencia
       ? descriptors
       : descriptors.filter((d) => !d.esCarenciaTecnica);
@@ -2045,7 +1969,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                   </button>
 
                   {showCuadroCompleto && (
-                    <CuadroTabla lineas={cuadro.lineas} />
+                    <CuadroTabla periodos={cuadro.plan.periodos} />
                   )}
                 </>
               ) : (
@@ -2130,7 +2054,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 };
 
 // ─── Cuadro completo · tabla simple desplegable ─────────────────────────────
-const CuadroTabla: React.FC<{ lineas: LineaCuadroV2[] }> = ({ lineas }) => {
+const CuadroTabla: React.FC<{ periodos: PeriodoPago[] }> = ({ periodos }) => {
   return (
     <div className={styles.cuadroTabla}>
       <table>
@@ -2145,16 +2069,21 @@ const CuadroTabla: React.FC<{ lineas: LineaCuadroV2[] }> = ({ lineas }) => {
           </tr>
         </thead>
         <tbody>
-          {lineas.map((l) => (
-            <tr key={`${l.tipo}-${l.numero}`} className={l.tipo === 'carencia_tecnica' ? styles.cuadroTablaCarencia : ''}>
-              <td>{l.tipo === 'carencia_tecnica' ? '0 · carencia' : l.numero}</td>
-              <td>{fmtFechaCorta(l.fecha)}</td>
-              <td className={styles.mono}>{fmtEur(l.cuota)}</td>
-              <td className={styles.mono}>{fmtEur(l.capitalAmortizado)}</td>
-              <td className={styles.mono}>{fmtEur(l.intereses)}</td>
-              <td className={styles.mono}>{fmtEur(l.capitalPendiente)}</td>
-            </tr>
-          ))}
+          {periodos.map((p) => {
+            // El periodo 0 es la carencia técnica · los días sueltos entre la
+            // firma y el primer mes de cobro, que el banco cobra aparte.
+            const esCarencia = p.periodo === 0;
+            return (
+              <tr key={p.periodo} className={esCarencia ? styles.cuadroTablaCarencia : ''}>
+                <td>{esCarencia ? '0 · carencia' : p.periodo}</td>
+                <td>{fmtFechaCorta(p.fechaCargo)}</td>
+                <td className={styles.mono}>{fmtEur(p.cuota)}</td>
+                <td className={styles.mono}>{fmtEur(p.amortizacion)}</td>
+                <td className={styles.mono}>{fmtEur(p.interes)}</td>
+                <td className={styles.mono}>{fmtEur(p.principalFinal)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
