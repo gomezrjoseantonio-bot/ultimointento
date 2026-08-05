@@ -144,6 +144,9 @@ interface FormState {
   comAperturaRaw: string;
   comMantenimientoRaw: string;
   comAmortAnticipadaRaw: string;
+  comAmortVigenciaRaw: string;
+  comCancelacionTotalRaw: string;
+  comCancelacionVigenciaRaw: string;
   comModifCondicionesRaw: string;
   gastoReclamacionImpagoRaw: string;
   // Bloque 6 · bonificaciones
@@ -415,6 +418,9 @@ function emptyFormState(): FormState {
     comAperturaRaw: '0',
     comMantenimientoRaw: '0',
     comAmortAnticipadaRaw: '0',
+    comAmortVigenciaRaw: '',
+    comCancelacionTotalRaw: '0',
+    comCancelacionVigenciaRaw: '',
     comModifCondicionesRaw: '0',
     gastoReclamacionImpagoRaw: '0',
     bonificacionesActivas: false,
@@ -592,6 +598,11 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       comAperturaRaw: fmtNumeroEs(p.comisionApertura ?? 0),
       comMantenimientoRaw: fmtNumeroEs(p.comisionMantenimiento ?? 0),
       comAmortAnticipadaRaw: fmtNumeroEs(p.comisionAmortizacionAnticipada ?? 0),
+      comAmortVigenciaRaw: p.comisionAmortizacionVigenciaMeses
+        ? String(p.comisionAmortizacionVigenciaMeses) : '',
+      comCancelacionTotalRaw: fmtNumeroEs(p.comisionCancelacionTotal ?? 0),
+      comCancelacionVigenciaRaw: p.comisionCancelacionVigenciaMeses
+        ? String(p.comisionCancelacionVigenciaMeses) : '',
       comModifCondicionesRaw: fmtNumeroEs(p.comisionModificacionCondiciones ?? 0),
       gastoReclamacionImpagoRaw: fmtNumeroEs(p.gastoReclamacionImpago ?? 0),
       bonificacionesActivas: bonificaciones.some((b) => b.activa),
@@ -1034,6 +1045,11 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         comisionApertura: parseNum(form.comAperturaRaw),
         comisionMantenimiento: parseNum(form.comMantenimientoRaw),
         comisionAmortizacionAnticipada: parseNum(form.comAmortAnticipadaRaw),
+        comisionAmortizacionVigenciaMeses:
+          parseInt(form.comAmortVigenciaRaw, 10) || undefined,
+        comisionCancelacionTotal: parseNum(form.comCancelacionTotalRaw),
+        comisionCancelacionVigenciaMeses:
+          parseInt(form.comCancelacionVigenciaRaw, 10) || undefined,
         bonificaciones,
         proximaRevisionBonificaciones: form.proximaRevision || undefined,
         periodoRevisionBonificacionMeses: revisionCada || undefined,
@@ -1656,15 +1672,6 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                       </div>
                     </div>
                     <div className={styles.field}>
-                      <label className={styles.fieldLabel}>Amort. anticipada</label>
-                      <div className={styles.inputSuffix}>
-                        <input className={`${styles.input} ${styles.inputMono}`}
-                          value={form.comAmortAnticipadaRaw}
-                          onChange={(e) => update('comAmortAnticipadaRaw', e.target.value)} />
-                        <span className={styles.suffix}>%</span>
-                      </div>
-                    </div>
-                    <div className={styles.field}>
                       <label className={styles.fieldLabel}>Modif. condiciones</label>
                       <div className={styles.inputSuffix}>
                         <input className={`${styles.input} ${styles.inputMono}`}
@@ -1681,6 +1688,65 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                           onChange={(e) => update('gastoReclamacionImpagoRaw', e.target.value)} />
                         <span className={styles.suffix}>€</span>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Adelantar dinero · §6 bis · quater.
+                      Parcial y total son DOS comisiones: los topes legales son
+                      máximos y no obligan a que se pacten iguales. Lo normal es
+                      que no lo sean, y de esa diferencia sale una decisión. */}
+                  <div className={styles.revisiones}>
+                    <div className={styles.revisionesHd}>
+                      Adelantar dinero
+                      <span className={styles.revisionesSub}>
+                        adelantar una parte y cancelar del todo no cuestan lo mismo
+                      </span>
+                    </div>
+                    <div className={`${styles.fieldsRow} ${styles.rowComisiones}`}>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>Amortización parcial</label>
+                        <div className={styles.inputSuffix}>
+                          <input className={`${styles.input} ${styles.inputMono}`}
+                            value={form.comAmortAnticipadaRaw}
+                            onChange={(e) => update('comAmortAnticipadaRaw', e.target.value)} />
+                          <span className={styles.suffix}>%</span>
+                        </div>
+                      </div>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>durante</label>
+                        <div className={styles.inputSuffix}>
+                          <input className={`${styles.input} ${styles.inputMono}`}
+                            value={form.comAmortVigenciaRaw}
+                            placeholder="toda la vida"
+                            onChange={(e) => update('comAmortVigenciaRaw', e.target.value)} />
+                          <span className={styles.suffix}>meses</span>
+                        </div>
+                      </div>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>Cancelación total</label>
+                        <div className={styles.inputSuffix}>
+                          <input className={`${styles.input} ${styles.inputMono}`}
+                            value={form.comCancelacionTotalRaw}
+                            onChange={(e) => update('comCancelacionTotalRaw', e.target.value)} />
+                          <span className={styles.suffix}>%</span>
+                        </div>
+                      </div>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>durante</label>
+                        <div className={styles.inputSuffix}>
+                          <input className={`${styles.input} ${styles.inputMono}`}
+                            value={form.comCancelacionVigenciaRaw}
+                            placeholder="toda la vida"
+                            onChange={(e) => update('comCancelacionVigenciaRaw', e.target.value)} />
+                          <span className={styles.suffix}>meses</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={styles.revisionesNota}>
+                      Se teclean en <b>puntos porcentuales</b>: 0,25 es un 0,25 %. Pasados los
+                      meses que digas, la comisión deja de cobrarse. Lo que vale es{' '}
+                      <b>lo que ponga tu escritura</b> — la ley pone topes, pero dependen de tu
+                      préstamo y ATLAS no los aplica por su cuenta.
                     </div>
                   </div>
                 </div>

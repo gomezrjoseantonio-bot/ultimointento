@@ -579,6 +579,57 @@ Lo que este motor **todavía no hace** está en §8, empezando por la TAE.
 
 ---
 
+### 6 bis · quater · Lo que cuesta adelantar dinero
+
+Amortizar antes de tiempo puede llevar comisión, y **la escritura manda**.
+
+**La unidad son PUNTOS PORCENTUALES**: `0,25` es un 0,25 %, como se teclea y
+como lo dice el papel del banco. Había **cuatro** sitios leyéndola de cuatro
+maneras —dos multiplicando en crudo, o sea como fracción, y dos adivinando por
+el tamaño—, así que un 0,25 % pactado salía como un **25 %**: en una
+amortización de 30.000 €, **7.500 € en vez de 75 €**.
+
+Y adivinar era imposible además de feo: la heurística «≤ 1 es una fracción»
+fallaba **justo en las cifras que la ley prescribe** —0,25 %, 0,15 %, 0,5 %,
+1 %— y acertaba solo en las del tipo fijo.
+
+#### Parcial y total son DOS comisiones
+
+> Yo por ejemplo tenía que si cancelaba totalmente la hipoteca era un 0,25 %
+> pero parcial era un 0… el propio banco me dijo: cancelas parcialmente todo
+> menos una cuota y listo.
+>
+> — Jose, 5 de agosto de 2026
+
+Legalmente las dos son «reembolso anticipado» y comparten tope, pero **el tope
+es un máximo**: nada obliga a que se pacten iguales, y lo normal es que no lo
+sean. Tratarlas como un solo concepto no podría ni representar esa hipoteca, y
+borraría justo el dato del que sale la decisión.
+
+#### La ventana
+
+Casi todas se pactan «durante los N primeros años». **Pasada la ventana la
+comisión es cero**, y eso cambia el resultado de cada simulación. Sin ventana
+dicha se cobra toda la vida; sin fecha de operación se toma por abierta, que es
+lo que dice el contrato mientras nadie demuestre lo contrario.
+
+Y «no hay comisión» y «la había pero se agotó» se distinguen, para que la
+pantalla pueda decir por qué no se paga nada.
+
+#### La ley acota, pero ATLAS no la aplica
+
+Los topes existen —Ley 5/2019 para hipotecas, Ley 16/2011 para crédito al
+consumo— pero **dependen de qué préstamo sea**: si es vivienda, si el
+prestatario es consumidor, la fecha de firma, cuál de las dos opciones del
+variable se pactó, y de que exista pérdida financiera para el banco. ATLAS no
+sabe casi nada de eso.
+
+**Así que no recorta nada en silencio.** Guarda lo pactado y calcula con ello.
+Avisar de que una cifra parece pasarse del tope es otra conversación, y está
+en §8: una vez abierta esa puerta hay que mantenerla al día.
+
+---
+
 ## 6 ter · Condiciones que se verifican contra la tesorería
 
 Las bonificaciones de una hipoteca o un préstamo no se cumplen por declararlas:
@@ -830,11 +881,12 @@ Escrito para no perderlo, con la fecha en que se detectó.
   carencia técnica. La TAE es por definición el tipo que iguala los flujos, y
   además esta no incluye notaría, registro, gestoría, tasación ni AJD, que es
   donde está el grueso del coste real. §6 bis · bis.
-- **2026-08-05** · **La comisión de amortización puede salir cien veces mayor.**
-  `comisionAmortizacionParcial` se multiplica directamente por el importe, sin
-  dividir entre cien: quien teclee «0,25» pensando en un 0,25 % verá una
-  penalización cien veces más alta. Y no se aplican los topes legales de la Ley
-  5/2019. §6 bis · bis.
+- **2026-08-05** · **ATLAS no avisa de los topes legales de las comisiones.**
+  Guarda y calcula lo pactado, que es lo correcto, pero podría decir «0,50 %
+  parece pasarse del tope de la Ley 5/2019 para variable, revísalo». No se hizo
+  porque el tope depende de datos que ATLAS no tiene —si es vivienda, si eres
+  consumidor, la fecha de firma, cuál de las dos opciones se pactó— y porque
+  una vez abierta esa puerta hay que mantenerla al día. §6 bis · quater.
 - **2026-08-05** · **Campos del préstamo que no lee nadie**: `tinMin`,
   `diferencialMin`, `fechaProximaRevision`, `comisionAmortizacionAnticipada`
   —solo se usa `...Parcial`—, y `fechaFinPeriodo` / `fechaEvaluacion` /
@@ -893,6 +945,15 @@ Escrito para no perderlo, con la fecha en que se detectó.
   un número que nadie ha elegido. *(Decisión de Jose · 4 ago 2026.)* §6 ter.
 
 ### Resuelto
+
+- **2026-08-05** · **Las comisiones de adelantar dinero se calculan bien.** La
+  unidad son puntos porcentuales y la cuenta vive en un sitio: había cuatro
+  leyéndola de cuatro maneras, y un 0,25 % pactado salía como un 25 %. Además
+  el simulador leía `comisionAmortizacionParcial`, un campo que **nadie
+  escribía**, así que la comisión de una amortización parcial salía siempre
+  cero. Parcial y total siguen siendo dos comisiones distintas —los topes
+  legales son máximos y no obligan a que se pacten iguales—, y ahora se puede
+  decir cuántos meses se cobra cada una. §6 bis · quater.
 
 - **2026-08-05** · **La base de cálculo se pregunta.** El interés que el banco
   liquida cada mes sale de contar días —`capital × TIN × días ÷ base`— y la base

@@ -154,12 +154,33 @@ export interface Prestamo {
   // Collection details
   cuentaCargoId: string;        // treasury account id
 
-  // Costs/commissions
+  // ── Comisiones · §6 bis · quater ──────────────────────────────────────────
+  //
+  // Todas van en PUNTOS PORCENTUALES: `0.25` son 0,25 %, como se teclea y como
+  // lo dice el papel del banco. Había cuatro sitios leyéndolas de cuatro
+  // maneras —dos multiplicando en crudo, dos adivinando por el tamaño—, y la
+  // cuenta vive ahora en `prestamos/comisiones`.
+  //
+  // `comisionAmortizacionParcial` se retiró: nadie la escribía, y era la única
+  // que leía el simulador, así que la comisión de una amortización parcial
+  // salía SIEMPRE cero.
   comisionApertura?: number;
   comisionMantenimiento?: number;
-  comisionAmortizacionAnticipada?: number; // % on amortized amount
-  comisionAmortizacionParcial?: number;    // kept for backwards compatibility
-  comisionCancelacionTotal?: number;       // % on outstanding balance
+  /**
+   * Amortización anticipada PARCIAL · adelantar una parte del capital.
+   *
+   * Distinta de la de cancelación total a propósito: los topes legales son
+   * máximos y no obligan a que se pacten iguales. Lo normal es que no lo sean
+   * —0 % parcial y 0,25 % total es una combinación corriente—, y de esa
+   * diferencia sale una decisión de dinero: cancelar dejando viva una cuota.
+   */
+  comisionAmortizacionAnticipada?: number;
+  /** Cuántos meses desde la firma se cobra · ausente = toda la vida. */
+  comisionAmortizacionVigenciaMeses?: number;
+  /** Cancelación TOTAL · adelantar todo lo que queda vivo. */
+  comisionCancelacionTotal?: number;
+  /** Cuántos meses desde la firma se cobra · ausente = toda la vida. */
+  comisionCancelacionVigenciaMeses?: number;
   gastosFijosOperacion?: number;           // €
 
   // Bonifications management

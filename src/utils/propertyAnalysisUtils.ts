@@ -11,6 +11,7 @@ import {
 } from '../types/propertyAnalysis';
 import type { Contract, Ingreso, Property } from '../services/db';
 import type { Prestamo } from '../types/prestamos';
+import { comisionDeReembolso } from '../services/prestamos/comisiones';
 import type { ValoracionHistorica } from '../types/valoraciones';
 
 export interface PropertyAnalysisInputs {
@@ -307,9 +308,15 @@ export function buildPropertyAnalysisInputs({
     return sum + cuotaCompleta * entry.allocationFactor;
   }, 0);
 
+  // §6 bis · quater · la comisión va en PUNTOS PORCENTUALES. Aquí se
+  // multiplicaba en crudo, o sea leyéndola como fracción: un 0,25 % pactado
+  // salía como un 25 % del capital vivo.
   const comisionCancelacion = propertyLoanAllocations.reduce((sum, entry) => {
-    const commissionRate = entry.loan.comisionCancelacionTotal || 0;
-    return sum + (entry.loan.principalVivo || 0) * commissionRate * entry.allocationFactor;
+    const { importe } = comisionDeReembolso(entry.loan, {
+      tipo: 'TOTAL',
+      importe: entry.loan.principalVivo || 0,
+    });
+    return sum + importe * entry.allocationFactor;
   }, 0);
 
   const interesesFuturosEvitados = propertyLoanAllocations.reduce((sum, entry) => {

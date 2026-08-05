@@ -9,6 +9,7 @@ import {
   LoanSettlementSimulationResult,
 } from '../../../../services/loanSettlementService';
 import { initDB } from '../../../../services/db';
+import { comisionDeReembolso } from '../../../../services/prestamos/comisiones';
 import { formatEuro, formatDate } from '../../../../utils/formatUtils';
 
 interface LoanSettlementModalProps {
@@ -23,14 +24,8 @@ interface AccountOption {
   label: string;
 }
 
-const round2 = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
-const percentToAmount = (percentLike: number | undefined, base: number): number => {
-  const numeric = Number(percentLike || 0);
-  if (!numeric || !base) return 0;
-  const normalizedRate = numeric <= 1 ? numeric : numeric / 100;
-  return round2(base * normalizedRate);
-};
+
 
 const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isOpen, onClose, onConfirmed }) => {
   const today = new Date().toISOString().slice(0, 10);
@@ -73,7 +68,11 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
         setSettlementAccountId((prev) => prev || String(accountList[0]?.id || ''));
         setPrepared(preparedResult);
         setPrincipalAmount(String(preparedResult.principalPendienteEstimado));
-        setFeeAmount(String(percentToAmount(prestamo.comisionCancelacionTotal, preparedResult.principalPendienteEstimado)));
+        setFeeAmount(String(comisionDeReembolso(prestamo, {
+        tipo: 'TOTAL',
+        importe: preparedResult.principalPendienteEstimado,
+        fecha: operationDate,
+      }).importe));
         setFixedCosts(String(prestamo.gastosFijosOperacion || 0));
       } catch (err) {
         console.error(err);
@@ -85,23 +84,21 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
 
     void load();
     return () => { cancelled = true; };
-  }, [isOpen, prestamo.id, prestamo.comisionCancelacionTotal, prestamo.gastosFijosOperacion, operationDate]);
+  }, [isOpen, prestamo, operationDate]);
 
   useEffect(() => {
     if (!prepared) return;
 
-    if (operationType === 'TOTAL') {
-      setPrincipalAmount(String(prepared.principalPendienteEstimado));
-      setFeeAmount(String(percentToAmount(prestamo.comisionCancelacionTotal, prepared.principalPendienteEstimado)));
-    } else {
-      setPrincipalAmount(String(Math.min(prepared.principalPendienteEstimado, prepared.principalPendienteEstimado)));
-      setFeeAmount(String(percentToAmount(
-        prestamo.comisionAmortizacionAnticipada ?? prestamo.comisionAmortizacionParcial,
-        Number(prepared.principalPendienteEstimado || 0),
-      )));
-    }
+    // Cancelar del todo y adelantar una parte son DOS comisiones distintas · lo
+    // normal es que se pacten con cifras distintas (§6 bis · quater).
+    setPrincipalAmount(String(prepared.principalPendienteEstimado));
+    setFeeAmount(String(comisionDeReembolso(prestamo, {
+      tipo: operationType === 'TOTAL' ? 'TOTAL' : 'PARCIAL',
+      importe: prepared.principalPendienteEstimado,
+      fecha: operationDate,
+    }).importe));
     setSimulation(null);
-  }, [operationType, partialMode, prepared, prestamo.comisionAmortizacionAnticipada, prestamo.comisionAmortizacionParcial, prestamo.comisionCancelacionTotal]);
+  }, [operationType, partialMode, prepared, prestamo, operationDate]);
 
   const summaryCards = useMemo(() => {
     if (!prepared) return [];

@@ -1,5 +1,6 @@
 import { Contract, Property, TreasuryEvent, initDB, PropertySale } from './db';
 import { PlanPagos, Prestamo } from '../types/prestamos';
+import { comisionDeReembolso } from './prestamos/comisiones';
 import { triggerTreasuryUpdate } from './treasuryEventsService';
 import { getFiscalSummary } from './fiscalSummaryService';
 import { prestamosCalculationService } from './prestamosCalculationService';
@@ -392,26 +393,17 @@ export const getLinkedLoansForPropertySale = async (
     const payoff = resolveProjectedLoanPayoffAmount(loan, paymentPlan, saleDate) * allocationFactor;
 
     const anyLoan = loan as any;
-    const comisionRate = Number(
-      anyLoan.comisionCancelacionTotal ?? anyLoan.comisionCancelacion ?? anyLoan.comisionAmortizacion ?? 0,
-    );
-    // Normalizamos para cubrir tanto rates decimales (0.01 = 1% como los usa
-    // LoanSettlementModal) como porcentajes "humanos" (1 = 1%). Si el valor
-    // parece un importe fijo en euros (>100) lo dejamos tal cual.
-    const normalizedRate =
-      Number.isFinite(comisionRate) && comisionRate > 0
-        ? comisionRate <= 1
-          ? comisionRate
-          : comisionRate <= 100
-          ? comisionRate / 100
-          : null
-        : null;
-    const comisionContrato =
-      normalizedRate !== null
-        ? Number((payoff * normalizedRate).toFixed(2))
-        : Number.isFinite(comisionRate) && comisionRate > 0
-        ? comisionRate
-        : 0;
+    // Vender el inmueble cancela el préstamo del todo · §6 bis · quater.
+    //
+    // Aquí se adivinaba a tres bandas —fracción si ≤ 1, porcentaje si ≤ 100,
+    // euros si más— y se leían de paso `comisionCancelacion` y
+    // `comisionAmortizacion`, dos campos que no existen en el modelo. La unidad
+    // es una y la cuenta también.
+    const comisionContrato = comisionDeReembolso(loan as unknown as Prestamo, {
+      tipo: 'TOTAL',
+      importe: payoff,
+      fecha: saleDate,
+    }).importe;
 
     rows.push({
       loanId: String(loan.id),
