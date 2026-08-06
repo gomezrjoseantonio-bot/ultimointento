@@ -34,6 +34,34 @@ export function groupByCatalog(
     familiaLabel: tipo.label,
     compromisos: withIds.filter((c) => inferFamilia(c, mode) === tipo.id),
   }));
+
+  // Los que no caen en NINGUNA familia del catálogo van a un grupo de recogida.
+  //
+  // Sin esto desaparecían de la pantalla, y un gasto que no se ve pero sigue
+  // emitiendo previsiones es lo peor de los dos mundos: cobra en Tesorería y no
+  // hay fila donde editarlo ni borrarlo.
+  //
+  // Pasa de verdad, y no hace falta ningún dato corrupto: las familias de los
+  // dos catálogos NO son las mismas (inmueble tiene `seguros`, personal tiene
+  // `seguros_cuotas`). Un seguro de vida dado de alta desde la pestaña de un
+  // inmueble se guarda con `tipoFamilia:'seguros'` y, si el usuario dice que no
+  // va con la hipoteca, se manda a PERSONAL (§4 · `forzarPersonal`). Ahí su
+  // familia no existe, así que no encajaba en ningún grupo y se perdía.
+  //
+  // `groupByBlocksInmueble` ya tenía esta red —su `blockForInmueble` acaba en un
+  // `otros` que lo recoge todo—; esta rama no la tenía. Se le pone nombre propio
+  // en vez de mezclarlo con «Otros» del catálogo: caer aquí significa que la
+  // familia del gasto no es de este catálogo, y eso hay que poder verlo.
+  const clasificados = new Set(groups.flatMap((g) => g.compromisos.map((c) => c.id)));
+  const sinFamilia = withIds.filter((c) => !clasificados.has(c.id));
+  if (sinFamilia.length > 0) {
+    groups.push({
+      familiaId: '__sin_familia__',
+      familiaLabel: 'Sin clasificar',
+      compromisos: sinFamilia,
+    });
+  }
+
   return groups.filter((g) => g.compromisos.length > 0);
 }
 
