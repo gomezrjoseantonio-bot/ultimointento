@@ -494,6 +494,11 @@ Devuelve SOLO un objeto JSON, sin texto alrededor y sin markdown, con esta forma
   "notas": string|null
 }
 
+SÉ BREVE. Esto se genera contra reloj: la función tiene diez segundos y una FEIN
+puede traer catorce bonificaciones. El criterio, en OCHO PALABRAS como mucho
+—«nómina de 2.500 € o más» basta— y las notas, en UNA frase. Nada de repetir el
+texto del documento ni de explicar lo que ya dice el campo.
+
 CÓMO LEER LO QUE NO VIENE EN UNA CASILLA:
 
 1. BASE DE CÁLCULO. Búscala en la fórmula de los intereses, que va en prosa:
@@ -516,7 +521,11 @@ En "notas" escribe, en una o dos frases: qué campos no has encontrado y dónde 
       const result = await callAnthropic({
         model: SCAN_MODEL,
         system,
-        maxTokens: 4000,
+        // 1.500 y no 4.000 · MEDIDO: con 4.000 la función se pasaba de los diez
+        // segundos de Netlify y devolvía un 504 «Inactivity Timeout». Los campos
+        // caben de sobra —veintiún escalares y catorce bonificaciones cortas son
+        // unos 750—; lo que sobraba era sitio para irse por las ramas.
+        maxTokens: 1500,
         temperature: 0,
         messages: [
           {

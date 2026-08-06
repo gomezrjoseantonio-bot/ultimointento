@@ -1136,14 +1136,16 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
-- **2026-08-06** · **La lectura de la FEIN con Claude está sin probar contra
-  documentos reales.** El modo `scan_fein` está escrito y la traducción tiene
-  sus tests, pero **nadie ha visto todavía qué saca de una FEIN de verdad**: en
-  el entorno de desarrollo no hay `ANTHROPIC_API_KEY`. La prueba honesta son las
-  dos FEIN de Jose —Unicaja mixta y Santander fija, bancos y maquetas
-  distintas—, y la vara de medir está escrita: capital, plazo, tipo, tramo fijo,
-  base, diferencial, y las bonificaciones con sus puntos. Si de eso sale poco,
-  el botón se vuelve a esconder. §6 bis · quinquies.
+- **2026-08-06** · **La FEIN se lee bien; el cuello de botella es el tiempo.**
+  Probando contra la FEIN de Unicaja, Claude la leyó **por el modo de facturas**
+  —un prompt que ni pregunta por préstamos— y devolvió: «no es una factura, es
+  una FEIN de 85.000,00 EUR a 240 meses… importe total a reembolsar
+  136.390,31 EUR». Ese número es el que ATLAS reproduce al 0,02 %. O sea que la
+  lectura no es el problema.
+  El problema era el **límite de diez segundos de Netlify**: con `maxTokens` a
+  4.000 la función devolvía un `504 Inactivity Timeout`. Bajado a 1.500 y pedida
+  una respuesta compacta. **Falta confirmar que con eso entra**, y qué campos
+  saca de las dos FEIN. §6 bis · quinquies.
 
 - **2026-08-06** · **La FEIN no está normalizada en forma, solo en contenido**
   *(Jose: «hay mil FEIN, mil documentos distintos»)*. Unicaja numera
