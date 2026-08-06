@@ -437,7 +437,113 @@ INSTRUCCIONES:
       return jsonResponse(200, { ok: true, tipo: 'scan_datos_fiscales', model: SCAN_MODEL, extraido });
     }
 
-    return jsonResponse(400, { ok: false, error: 'El campo "tipo" debe ser "chat", "scan", "scan_irpf" o "scan_datos_fiscales"' });
+    // ── SCAN FEIN ─────────────────────────────────────────────────────────
+    //
+    // La FEIN está normalizada en CONTENIDO por la Ley 5/2019, no en forma:
+    // cada banco la maqueta como quiere. La de Unicaja tiene 9 páginas y
+    // numera «3. CARACTERÍSTICAS / 4. TIPO DE INTERÉS»; la del Santander tiene
+    // 16 y llama «3.- TIPO DE INTERÉS» a lo mismo. Un extractor de entidades
+    // —entrenado para facturas, con su etiqueta al lado del dato— no sirve
+    // aquí: lo que hace falta está escrito en frases.
+    //
+    // Medido sobre esas dos FEIN reales, la vía de regex sacaba CERO campos de
+    // una y tres equivocados de la otra.
+    if (tipo === 'scan_fein') {
+      const base64Data = cleanBase64(body?.imagen);
+      if (!base64Data) return jsonResponse(400, { ok: false, error: 'El campo "imagen" en base64 es obligatorio para tipo "scan_fein"' });
+
+      const mimeType = typeof body?.mimeType === 'string' && body.mimeType.trim()
+        ? body.mimeType.trim().toLowerCase()
+        : 'application/pdf';
+      const isImage = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType);
+      const mediaBlock = isImage
+        ? { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64Data } }
+        : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } };
+
+      const system = `Eres un experto en préstamos hipotecarios españoles. Lees una FEIN (Ficha Europea de Información Normalizada) y extraes sus condiciones.
+
+REGLA PRINCIPAL, POR ENCIMA DE TODAS: si un dato no está en el documento, devuelve null. No lo deduzcas, no uses valores típicos del mercado, no lo copies de otro campo. Un hueco se ve; un dato inventado no, y aquí de estos números sale el cuadro de amortización de una persona.
+
+Devuelve SOLO un objeto JSON, sin texto alrededor y sin markdown, con esta forma:
+
+{
+  "banco": string|null,
+  "capitalInicial": number|null,          // euros
+  "plazoMeses": number|null,
+  "fechaFirmaPrevista": "YYYY-MM-DD"|null,
+  "tipo": "FIJO"|"VARIABLE"|"MIXTO"|null,
+  "tinFijo": number|null,                 // % del tramo fijo, o del préstamo si es FIJO
+  "tramoFijoMeses": number|null,          // solo MIXTO · «durante los primeros 36 meses» → 36
+  "indiceReferencia": "EURIBOR"|"IRPH"|null,
+  "valorIndiceActual": number|null,       // % del índice que la FEIN usa como hipótesis
+  "diferencial": number|null,             // puntos porcentuales
+  "revisionMeses": 6|12|null,
+  "baseCalculoIntereses": "30/360"|"ACT/360"|"ACT/365"|null,
+  "comisionAperturaPct": number|null,     // % · si dice «exenta» o «0,00», devuelve 0
+  "comisionMantenimientoMes": number|null,// EUROS AL MES
+  "amortizacionAnticipadaPct": number|null,
+  "tasacion": number|null,                // euros
+  "taeSinBonificaciones": number|null,    // %
+  "taeConBonificaciones": number|null,    // %
+  "cuotaEstimada": number|null,           // euros
+  "importeTotalAReembolsar": number|null, // euros
+  "topeBonificacionPuntos": number|null,  // p.ej. 1.00
+  "bonificaciones": [
+    { "etiqueta": string, "puntos": number, "criterio": string|null }
+  ],
+  "notas": string|null
+}
+
+CÓMO LEER LO QUE NO VIENE EN UNA CASILLA:
+
+1. BASE DE CÁLCULO. Búscala en la fórmula de los intereses, que va en prosa:
+   · «dividido por treinta y seis mil quinientos» o «año de 365 días» → "ACT/365"
+   · «dividido por treinta y seis mil» o «año de 360 días» → "ACT/360"
+   · «meses de 30 días» / «mes comercial» → "30/360"
+
+2. TRAMO FIJO. «Durante los primeros TREINTA Y SEIS MESES», «36 MESES DESDE FORMALIZ.» → 36. En meses siempre, aunque el documento hable de años.
+
+3. BONIFICACIONES. Son las que el banco OFRECE, con sus puntos tal como están impresos: 0,500000 son 0.5 puntos porcentuales, NO 0.005. Recógelas TODAS, aunque sean catorce. No marques ninguna como contratada: eso no lo dice la FEIN.
+
+4. LAS DOS TAE. Muchas FEIN dan una «sin bonificaciones» y otra «con máxima bonificación». Van a campos distintos. Si solo hay una y no dice cuál es, ponla en taeSinBonificaciones.
+
+5. LOS CEROS SON DATOS. «Exenta de comisión de apertura» o «Comisión de apertura: 0,00 euros» es 0, no null. Null es «no lo dice».
+
+6. TIPOS. Un préstamo con un tramo inicial a un tipo y el resto a otro FIJO no es MIXTO: suele ser FIJO con una bonificación aplicada al principio. MIXTO es fijo primero y luego ligado a un índice.
+
+En "notas" escribe, en una o dos frases: qué campos no has encontrado y dónde has tenido dudas. Es tan útil como los datos.`;
+
+      const result = await callAnthropic({
+        model: SCAN_MODEL,
+        system,
+        maxTokens: 4000,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Extrae las condiciones de esta FEIN.' },
+              mediaBlock,
+            ],
+          },
+        ],
+      });
+
+      if (!result.ok) return jsonResponse(result.status || 502, { ok: false, error: result.error, details: result.raw });
+
+      let extraido = result.text;
+      try {
+        extraido = JSON.parse(result.text);
+      } catch (_e) {
+        // El modelo a veces envuelve el JSON en un bloque de código.
+        const m = typeof result.text === 'string' ? result.text.match(/\{[\s\S]*\}/) : null;
+        if (m) { try { extraido = JSON.parse(m[0]); } catch (_e2) { /* se conserva el texto bruto */ } }
+      }
+
+      return jsonResponse(200, { ok: true, tipo: 'scan_fein', model: SCAN_MODEL, extraido });
+    }
+
+    return jsonResponse(400, { ok: false, error: 'El campo "tipo" debe ser "chat", "scan", "scan_fein", "scan_irpf" o "scan_datos_fiscales"' });
   } catch (error) {
     console.error('netlify/functions/chat error:', error);
     return jsonResponse(500, { ok: false, error: 'No se pudo procesar la solicitud' });

@@ -1136,6 +1136,15 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-06** · **La lectura de la FEIN con Claude está sin probar contra
+  documentos reales.** El modo `scan_fein` está escrito y la traducción tiene
+  sus tests, pero **nadie ha visto todavía qué saca de una FEIN de verdad**: en
+  el entorno de desarrollo no hay `ANTHROPIC_API_KEY`. La prueba honesta son las
+  dos FEIN de Jose —Unicaja mixta y Santander fija, bancos y maquetas
+  distintas—, y la vara de medir está escrita: capital, plazo, tipo, tramo fijo,
+  base, diferencial, y las bonificaciones con sus puntos. Si de eso sale poco,
+  el botón se vuelve a esconder. §6 bis · quinquies.
+
 - **2026-08-06** · **La FEIN no está normalizada en forma, solo en contenido**
   *(Jose: «hay mil FEIN, mil documentos distintos»)*. Unicaja numera
   «3. CARACTERÍSTICAS / 4. TIPO DE INTERÉS»; el Santander llama «3.- TIPO DE
@@ -1240,6 +1249,26 @@ deja de servir para decidir por dónde seguir.
   5 ago 2026: «no vamos a liarnos por un céntimo».)* §6 bis · bis.
 
 ### Resuelto
+
+- **2026-08-06** · **La FEIN la lee Claude, no un extractor de entidades.**
+  Estaba medido y salía mal: sobre las dos FEIN reales, la vía de reglas sacaba
+  **cero** campos de la del Santander y **tres, los tres equivocados**, de la de
+  Unicaja —`VARIABLE` en un mixto, Euríbor a 6 meses cuando es a 12, y dos
+  bonificaciones de 0,1 puntos donde hay catorce bloques y el de haberes vale
+  0,5—. Confianza global 0 en las dos. No era el planteamiento: era el lector.
+  Document AI extrae **entidades de formularios** y la FEIN es **prosa**, con lo
+  importante escrito en frases: «dividido por treinta y seis mil quinientos»,
+  «durante los primeros TREINTA Y SEIS MESES», «bonificación máxima de 1,00
+  p.p.». Ahora va por `functions/chat.js`, el mismo sitio por el que ya pasan
+  las facturas de la bandeja de entrada *(Jose: «otros documentos los pasamos a
+  Claude y funciona bien»)*, con el PDF entero y sin rasterizar. §6 bis ·
+  quinquies.
+
+- **2026-08-06** · **El botón de subir la FEIN vuelve a existir.** Se había
+  ocultado porque `PageHead` solo pinta dos acciones. Ahora ocupa el sitio de
+  «Importar CSV»: dar de alta un préstamo empieza por el papel que te dio el
+  banco, y ese CSV lo usa quien migra de otra herramienta, una vez en la vida.
+  Sigue en `/financiacion/importar`.
 
 - **2026-08-06** · **El Santander SÍ se puede guardar · me lo inventé.** Escribí
   que faltaba una cuarta forma de préstamo, «fijo por tramos», porque su FEIN

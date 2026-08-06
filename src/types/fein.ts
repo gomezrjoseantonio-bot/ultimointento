@@ -179,7 +179,7 @@ export interface FeinLoanDraft {
     sourceFileName: string;
     pagesTotal: number;
     pagesProcessed: number;
-    ocrProvider: 'google' | 'tesseract' | 'azure' | string;
+    ocrProvider: 'google' | 'tesseract' | 'azure' | 'claude' | string;
     processedAt: string; // ISO timestamp
     warnings?: string[];
   };
@@ -194,6 +194,15 @@ export interface FeinLoanDraft {
     valorIndiceActual?: number | null; // %
     diferencial?: number | null;       // %
     tinFijo?: number | null;           // % for fixed portion if applicable
+    /** Cuánto dura el tramo fijo de un mixto · en MESES, como lo dice la FEIN. */
+    tramoFijoMeses?: number | null;
+    /**
+     * Cómo se cuentan los días · la FEIN lo dice en la fórmula, en prosa:
+     * «dividido por treinta y seis mil quinientos» es ACT/365.
+     */
+    baseCalculoIntereses?: '30/360' | 'ACT/360' | 'ACT/365' | null;
+    /** Lo que costó la tasación, en euros · gasto de financiación (§6 bis · quinquies). */
+    tasacion?: number | null;
     comisionAperturaPct?: number | null;
     comisionMantenimientoMes?: number | null; // €
     amortizacionAnticipadaPct?: number | null;

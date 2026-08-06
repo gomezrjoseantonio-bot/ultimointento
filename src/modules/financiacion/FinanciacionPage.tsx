@@ -149,11 +149,15 @@ const FinanciacionPage: React.FC = () => {
           title="Financiación"
           sub="tus hipotecas y préstamos · destino determina deducibilidad fiscal"
           actions={[
+            // `PageHead` recorta a 2 acciones, así que hay que elegir. Sube la
+            // FEIN en lugar de «Importar CSV»: dar de alta un préstamo empieza
+            // por el papel que te dio el banco, y ese CSV lo usa quien migra de
+            // otra herramienta —una vez en la vida—. Sigue en /financiacion/importar.
             {
-              label: 'Importar CSV',
+              label: 'Subir FEIN',
               variant: 'ghost',
               icon: <Icons.Upload size={14} strokeWidth={1.8} />,
-              onClick: () => navigate('/financiacion/importar'),
+              onClick: () => navigate('/financiacion/nuevo-fein'),
             },
             {
               label: 'Nuevo préstamo',
@@ -161,10 +165,6 @@ const FinanciacionPage: React.FC = () => {
               icon: <Icons.Plus size={14} strokeWidth={1.8} />,
               onClick: () => navigate('/financiacion/nuevo'),
             },
-            // "Crear desde FEIN" se oculta del header de página (PageHead recorta
-            // a 2 acciones). Sigue accesible via la ruta /financiacion/nuevo-fein
-            // y desde el propio wizard de creación si se decide reintroducir
-            // un punto de entrada secundario.
           ]}
           tabsSlot={
             showTabs ? (
