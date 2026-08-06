@@ -1145,13 +1145,31 @@ Escrito para no perderlo, con la fecha en que se detectó.
   de seguros, otras por el **importe total** de las primas. La regla necesita
   las tres formas, no una.
 
-  **Y una ventana abierta no puede dar un «no».** Si la prima se paga cada mes y
-  se va sumando, hasta que no llegue el último mes no se puede decir que cumple
-  — pero tampoco que no cumple. Un total por debajo del umbral con meses por
-  venir es **«todavía no consta»**, la tercera respuesta de §6 ter, y es la
-  misma doctrina que el cierre de mes: solo lo cerrado decide. Decir «no
-  cumples» en junio de una condición anual es una acusación falsa, y de esas
-  sale que alguien contrate un producto que no necesita.
+  **Pero no hay que ir sumando cargos hasta diciembre**, y esto lo corrigió Jose
+  cuando yo iba a montarlo así:
+
+  > «Un seguro se da de alta en gastos recurrentes y se proyecta su coste
+  > mensual y anual; en resumen, podemos decir que se cumple. Al revés es no
+  > decir nada... si no prevemos, cómo actuamos; si no informamos, para qué
+  > quiero la aplicación.»
+
+  Y es correcto, porque **un compromiso recurrente no es una previsión
+  incierta**: es un contrato que el usuario dio de alta, con su cuenta de cargo
+  y su calendario, y que ATLAS **ya está proyectando** en tesorería. La
+  diferencia con la nómina es de fondo — una nómina puede venir por menos o no
+  venir, y por eso allí solo cuenta lo cobrado; un seguro contratado ya está
+  contratado. Aquí **lo previsto sí cuenta**: ignorarlo sería que ATLAS
+  desconfiara de su propio dato.
+
+  Con eso la respuesta está el primer día, no en diciembre. `CompromisoRecurrente`
+  ya trae todo lo que hace falta: `tipo: 'seguro'`, `estado: 'activo'`,
+  `cuentaCargo` y su importe. **¿Tienes la póliza?** ¿hay un compromiso activo
+  cargando en esa cuenta. **¿Cuántas?** cuántos compromisos. **¿Prima ≥ X?** lo
+  que ese compromiso tiene proyectado a doce meses.
+
+  Y negarse a responder por prudencia es un modo de fallo, no un valor por
+  defecto: la tercera respuesta de §6 ter está para lo que de verdad no se sabe,
+  no para lo que ATLAS tiene delante.
 
   **Y falta decidir cómo se reconoce un seguro.** No hay `sourceType: 'seguro'`:
   hoy se deduce de la categoría, y en `treasuryConfirmationService` de un
