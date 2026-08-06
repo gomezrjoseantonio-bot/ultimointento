@@ -2,7 +2,7 @@
 // Mantiene los mismos nombres de métodos públicos para no romper importadores
 // Pendiente eliminar en fase de limpieza final
 
-import { initDB, type AEATBox, type AEATFiscalType, type OperacionFiscal, type OpexRule, type GastoInmueble, type GastoCategoria } from './db';
+import { initDB, type AEATBox, type AEATFiscalType, type OperacionFiscal, type GastoInmueble, type GastoCategoria } from './db';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import { OPEX_CATEGORY_TO_AEAT_BOX } from './aeatClassificationService';
 import { prestamosService } from './prestamosService';
