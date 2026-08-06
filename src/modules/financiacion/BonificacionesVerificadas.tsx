@@ -18,6 +18,7 @@ import { gastoPorTarjeta } from '../../services/gastoPorTarjeta';
 import { cobrosDeNomina } from '../../services/bonificaciones/cobrosDeNomina';
 import { recibosDomiciliados } from '../../services/bonificaciones/recibosDomiciliados';
 import { listarTarjetas } from '../../services/tarjetasService';
+import { cierres } from '../../services/cierreDeMes';
 import { verificarBonificaciones } from '../../services/bonificaciones/verificarBonificaciones';
 import type { MovimientosQuePrueban } from '../../services/bonificaciones/verificarBonificaciones';
 import { tinDelTramoSiRevisaranHoy } from '../../services/prestamos/tinDelTramo';
@@ -71,9 +72,13 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
     let cancelado = false;
     (async () => {
       const db = await initDB();
-      const [eventos, tarjetas] = await Promise.all([
+      // Los tres a la vez y ANTES del corte: con una lectura después del
+      // `if (cancelado)`, desmontar durante esa espera dejaba pasar el
+      // `setMovimientos` que el corte viene a evitar.
+      const [eventos, tarjetas, cerrados] = await Promise.all([
         db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
         listarTarjetas(),
+        cierres(),
       ]);
       if (cancelado) return;
       setMovimientos({
@@ -81,6 +86,9 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
         periodosDeTarjeta: gastoPorTarjeta(eventos),
         cobrosDeNomina: cobrosDeNomina(eventos),
         recibosDomiciliados: recibosDomiciliados(eventos),
+        // Los meses cerrados · es lo que convierte «todavía no consta» en un
+        // NO. Sin esto una bonificación no se pierde nunca (§6 quater).
+        mesesCerrados: cerrados.map((c) => c.mes),
       });
     })();
     return () => {

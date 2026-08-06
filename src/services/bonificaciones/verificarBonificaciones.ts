@@ -34,6 +34,17 @@ export interface MovimientosQuePrueban {
   cobrosDeNomina: CobroDeUnMes[];
   /** Los recibos por cuenta y mes · lo que devuelve `recibosDomiciliados`. */
   recibosDomiciliados: RecibosDeUnMes[];
+  /**
+   * Los meses que ya se han cerrado · `YYYY-MM` (§6 quater).
+   *
+   * Es lo que convierte «todavía no consta» en un **no**. Sin esto, un mes sin
+   * la nómina se queda siempre en «no cuenta todavía» y una bonificación no se
+   * puede perder nunca — ni ganarse del todo.
+   *
+   * Ausente = ninguno cerrado, que es como se comportaba antes de existir el
+   * cierre: nada se da por no ocurrido si nadie lo ha dicho.
+   */
+  mesesCerrados?: string[];
 }
 
 /**
@@ -187,7 +198,13 @@ function porNomina(
   }
 
   const todos = cobrosDeLaCuenta(movimientos.cobrosDeNomina, cuentaId, ventana);
-  const meses = todos.filter((m) => m.estado === 'cerrado');
+  // Un mes CERRADO cuenta aunque su cobro no conste: cerrarlo es decir que lo
+  // que quedó abierto no se ha producido (§6 quater), así que ese mes entra con
+  // lo que de verdad entró — cero si no entró nada.
+  const cerrados = new Set(movimientos.mesesCerrados ?? []);
+  const meses = todos
+    .filter((m) => m.estado === 'cerrado' || cerrados.has(m.mes))
+    .map((m) => (m.estado === 'cerrado' ? m : { ...m, importe: 0 }));
   const sinCerrar = todos.length - meses.length;
 
   if (meses.length === 0) {

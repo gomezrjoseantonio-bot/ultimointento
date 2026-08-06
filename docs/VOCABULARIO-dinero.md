@@ -1004,6 +1004,57 @@ Reglas:
 nuevo y las bonificaciones que hasta entonces no rebajaban. Preguntando el antes
 y el después al mismo tramo, esa revisión no movía nada.
 
+## 6 quater · Cerrar el mes
+
+Un mes abierto **no distingue** «el cobro está por llegar» de «el cobro no ha
+llegado». Los dos salen como «todavía no cuenta», y con eso una bonificación no
+se puede perder nunca — ni ganar del todo.
+
+No se arregla con un umbral de días. Lo arregla el cierre: **hay un momento en
+que se trabaja para cerrar el mes, y lo que quede abierto entonces es que no se
+ha producido** *(decisión de Jose · 4 ago 2026)*.
+
+**Cómo se cierra** *(Jose · 5 ago 2026: «mes entero, con la lista delante y
+pudiendo reabrir»)*:
+
+1. **Mes entero**, no cuenta a cuenta. El mes es la unidad con la que se
+   trabaja, y media verdad por cuenta sería peor que ninguna.
+2. **La lista delante.** Antes de tocar nada se enseña exactamente qué se va a
+   dar por no ocurrido, con lo que se deja de cobrar y lo que se deja de pagar.
+   Cerrar sin ver la lista es borrar previsiones de un plumazo.
+3. **Se puede reabrir**, y reabrir devuelve **solo lo que ese cierre descartó**.
+   Lo que el usuario había descartado a mano sigue descartado: no lo descartó el
+   cierre, así que no le toca deshacerlo.
+
+Reglas que se derivan:
+
+- **Solo se cierra un mes ya terminado.** Al mes en curso le quedan días para
+  que llegue lo que falta, y darlo por no ocurrido sería el número inventado que
+  esto viene a evitar.
+- **Cerrar no borra.** Lo no ocurrido se marca con `descartado`, que ya
+  significa eso desde V84: no toca ningún saldo, no vuelve a proponerse y se
+  puede deshacer.
+- **Lo que ya ocurrió no se toca**, y lo que se ejecute DESPUÉS de cerrar
+  tampoco se desanda al reabrir: reabrir un mes no puede borrar un hecho
+  posterior.
+- **Cerrar dos veces no descarta dos veces.**
+
+**Dónde se hace y para qué sirve.** El botón vive en **tesorería**, al final de
+la pantalla: lo que se cierra son previsiones de tesorería, y allí es donde se
+está mirando lo que falta por entrar y por salir. Se ofrecen los **seis últimos
+meses terminados** —no solo el anterior: quien lleve tres sin cerrar tiene que
+poder ponerse al día—, cada uno con lo que le queda abierto y, si ya está
+cerrado, con su fecha y su botón de reabrir.
+
+Y lo que lo hace valer: **quien comprueba las bonificaciones lee los meses
+cerrados**. Un mes cerrado sin nómina cuenta como **cero cobrado** y hace perder
+la bonificación; el mismo mes abierto sigue siendo un «todavía no cuenta» y no
+resta. Esa es toda la diferencia que introduce cerrar (§6 ter).
+
+> **Ojo con la palabra.** En tesorería «cierre» significa hoy otra cosa: el
+> **saldo previsto a fin de mes**. Son dos conceptos distintos con el mismo
+> nombre, y conviene no cruzarlos.
+
 ## 7 · Combinaciones imposibles
 
 Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
@@ -1141,6 +1192,19 @@ deja de servir para decidir por dónde seguir.
   5 ago 2026: «no vamos a liarnos por un céntimo».)* §6 bis · bis.
 
 ### Resuelto
+
+- **2026-08-06** · **El cierre de mes ya se puede hacer, y ya sirve para algo.**
+  El servicio estaba hecho y probado —`loQueQuedaAbierto`, `cerrarMes`,
+  `reabrirMes`— y **no lo llamaba nadie**: la enfermedad de siempre, dos mitades
+  de una función que no se encuentran. Ahora tiene sus dos mitades:
+  **la pantalla**, en tesorería, con la tira de los seis últimos meses
+  terminados, la lista delante antes de confirmar y el botón de reabrir en cada
+  mes cerrado; y **el consumidor**, `verificarBonificaciones`, que lee los meses
+  cerrados y cuenta el mes vacío **como cero** en vez de excluirlo. Un mes
+  cerrado sin nómina ya hace **perder** la bonificación; abierto, sigue siendo un
+  «todavía no cuenta». Qué meses se ofrecen lo dice `mesesParaCerrar`, la misma
+  regla con la que `cerrarMes` se niega a cerrar un mes en curso — no una copia
+  en la vista. §6 quater.
 
 - **2026-08-05** · **Vender el activo cancela el préstamo, con la misma cuenta
   que cancelarlo a mano.** `propertySaleService` tenía el QUINTO constructor de
