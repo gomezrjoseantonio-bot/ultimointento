@@ -19,6 +19,10 @@
 // ============================================================================
 
 (async () => {
+  // El término acota SÓLO la sección 1 («dónde está este apunte»). Las
+  // secciones 2-5 son auditorías del estado de la base y van SIEMPRE enteras:
+  // antes se recortaban por el término, así que un huérfano llamado «Vida» no
+  // salía buscando «seguro» y el informe decía «Ninguno» — falsa tranquilidad.
   const TERMINO = 'seguro';   // <-- cambia esto si quieres ('vida', 'ing', ...)
 
   const norm = s => (s ?? '').toString().normalize('NFD')
@@ -115,7 +119,6 @@
   let d = 0;
   for (const filas of porClave.values()) {
     if (filas.length < 2) continue;
-    if (!filas.some(f => hit(TERMINO, f.alias, f.proveedor?.nombre))) continue;
     d++;
     L.push(`  «${filas[0].alias}» · ${eur(impMes(filas[0]))}/mes · ${filas.length} altas`);
     for (const f of filas) {
@@ -137,7 +140,6 @@
   for (const [k, g] of porCargo) {
     if (g.length < 2) continue;
     if (new Set(g.map(e => `${e.sourceType}|${e.sourceId}`)).size < 2) continue;
-    if (!g.some(e => hit(TERMINO, e.description, e.providerName, e.counterparty))) continue;
     x++;
     const [p, cu] = k.split('|');
     L.push(`  ${p} · cuenta ${cu} · ${eur(Math.abs(g[0].amount))}`);
@@ -152,10 +154,17 @@
   for (const e of eventos) {
     if (e.sourceType !== 'gasto_recurrente' && e.sourceType !== 'opex_rule') continue;
     const s = Number(e.sourceId);
-    if (!Number.isFinite(s) || vivos.has(s)) continue;
-    if (!hit(TERMINO, e.description, e.providerName, e.counterparty)) continue;
+    const existe = Number.isFinite(s) && vivos.has(s);
+    // Un `sourceId` de TEXTO es inalcanzable para el borrado aunque el gasto
+    // siga vivo: `borrarEventosFuturosCompromiso` busca con
+    // `IDBKeyRange.only(número)` y las claves de IndexedDB son estrictas de
+    // tipo, así que "46" nunca casa con 46.
+    const textual = typeof e.sourceId === 'string';
+    if (existe && !textual) continue;
+    if (!Number.isFinite(s) && !textual) continue;
     h++;
-    L.push(`  #${e.id} ${e.predictedDate} · ${eur(e.amount)} · ${e.status} · ${e.description} (gasto ${s} ya no existe)`);
+    if (textual) L.push(`  ⚠ sourceId TEXTO ${JSON.stringify(e.sourceId)} · el borrado no lo alcanza${existe ? ' (el gasto aún existe)' : ''}`);
+    L.push(`  #${e.id} ${e.predictedDate} · ${eur(e.amount)} · ${e.status} · ${e.description} (gasto ${JSON.stringify(e.sourceId)}${existe ? ' SÍ existe' : ' ya no existe'})`);
   }
   if (!h) L.push('  Ninguno.');
 

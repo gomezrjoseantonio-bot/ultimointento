@@ -11,6 +11,7 @@
 import {
   buscarApunte,
   cargosCruzados,
+  diagnosticarApunte,
   eventosHuerfanos,
   gastosRepetidos,
   lineasFiscalesAnomalas,
@@ -317,5 +318,52 @@ describe('eventos que sobreviven a su gasto', () => {
     stores.treasuryEvents = [ev({ id: 10, sourceId: 1 })];
 
     expect(await eventosHuerfanos()).toHaveLength(0);
+  });
+
+  it('un sourceId de TEXTO se marca aunque el gasto siga vivo', async () => {
+    // `borrarEventosFuturosCompromiso` busca con `IDBKeyRange.only(número)`.
+    // Las claves de IndexedDB son estrictas de tipo: "1" nunca casa con 1, así
+    // que borrar el gasto no se lleva este evento y queda sin ficha detrás.
+    stores.compromisosRecurrentes = [gasto({ id: 1 })];
+    stores.treasuryEvents = [ev({ id: 10, sourceId: '1' as unknown as number })];
+
+    const [h] = await eventosHuerfanos();
+
+    expect(h.inalcanzablePorTipo).toBe(true);
+    expect(h.motivo).toContain('TEXTO');
+    expect(h.motivo).toContain('el gasto aún existe');
+  });
+
+  it('un huérfano normal no se marca como inalcanzable', async () => {
+    stores.compromisosRecurrentes = [];
+    stores.treasuryEvents = [ev({ id: 10, sourceId: 99 })];
+
+    expect((await eventosHuerfanos())[0].inalcanzablePorTipo).toBe(false);
+  });
+});
+
+describe('el informe NO se recorta al término buscado', () => {
+  // Regresión: las secciones 2-5 se filtraban por el término, así que un
+  // huérfano llamado «Vida» no salía buscando «seguro» y el informe imprimía
+  // «Ninguno». Un recuento que depende de acertar la palabra da falsa
+  // tranquilidad, que es peor que no darlo.
+  it('un huérfano con otro nombre aparece igualmente', async () => {
+    stores.compromisosRecurrentes = [];
+    stores.treasuryEvents = [ev({ id: 10, sourceId: 99, description: 'Vida' })];
+
+    const inf = await diagnosticarApunte('seguro');
+
+    expect(inf.encontrados).toHaveLength(0);   // la sección 1 sí se acota
+    expect(inf.huerfanos).toHaveLength(1);     // el recuento global, no
+    expect(inf.huerfanos[0].descripcion).toBe('Vida');
+  });
+
+  it('dos altas con otro nombre se cuentan aunque no coincidan', async () => {
+    stores.compromisosRecurrentes = [
+      gasto({ id: 1, alias: 'Vida' }),
+      gasto({ id: 2, alias: 'Vida' }),
+    ];
+
+    expect((await diagnosticarApunte('seguro')).gastosRepetidos).toHaveLength(1);
   });
 });

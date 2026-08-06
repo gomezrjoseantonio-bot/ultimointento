@@ -105,6 +105,15 @@ export interface EventoHuerfano {
   status: string;
   /** Por qué sobrevivió al borrado de su gasto. */
   motivo: string;
+  /**
+   * `true` cuando el gasto SÍ existe pero el borrado no puede alcanzar este
+   * evento. `borrarEventosFuturosCompromiso` busca con
+   * `IDBKeyRange.only(compromisoId)` —un número— y las claves de IndexedDB son
+   * estrictas de tipo: un `sourceId` guardado como texto («46») no lo encuentra
+   * ese cursor jamás. El gasto se borra, el evento se queda, y ya no hay ficha
+   * que lo explique ni forma de llegar a él desde la interfaz.
+   */
+  inalcanzablePorTipo: boolean;
 }
 
 /** Qué le pasa a una línea fiscal materializada de más. */
@@ -517,7 +526,15 @@ export async function eventosHuerfanos(): Promise<EventoHuerfano[]> {
   for (const ev of eventos) {
     if (ev.sourceType !== 'gasto_recurrente' && ev.sourceType !== 'opex_rule') continue;
     const sid = Number(ev.sourceId);
-    if (!Number.isFinite(sid) || vivos.has(sid)) continue;
+    const existeElGasto = Number.isFinite(sid) && vivos.has(sid);
+
+    // Un `sourceId` de texto es un evento que el borrado NO PUEDE alcanzar
+    // aunque su gasto siga vivo · se marca aunque no sea huérfano todavía,
+    // porque lo será en cuanto se borre el gasto y entonces ya no habrá forma
+    // de llegar a él.
+    const inalcanzablePorTipo = typeof ev.sourceId === 'string';
+    if (existeElGasto && !inalcanzablePorTipo) continue;
+    if (!Number.isFinite(sid) && !inalcanzablePorTipo) continue;
 
     out.push({
       id: ev.id as number,
@@ -526,8 +543,13 @@ export async function eventosHuerfanos(): Promise<EventoHuerfano[]> {
       importe: ev.amount,
       fecha: ev.predictedDate,
       status: ev.status,
-      motivo:
-        ev.executedMovementId != null
+      inalcanzablePorTipo,
+      motivo: inalcanzablePorTipo
+        ? `sourceId guardado como TEXTO ("${ev.sourceId}"). ` +
+          'El borrado busca con `IDBKeyRange.only(número)` y las claves de ' +
+          'IndexedDB son estrictas de tipo: este evento no lo encuentra nunca, ' +
+          `así que borrar el gasto no se lo lleva${existeElGasto ? ' (el gasto aún existe)' : ' (el gasto ya no existe)'}.`
+        : ev.executedMovementId != null
           ? 'Conciliado con un movimiento real · el borrado del gasto lo respetó.'
           : ev.status !== 'predicted'
             ? 'Confirmado · el borrado del gasto sólo retira previsiones vivas.'
@@ -644,18 +666,21 @@ export async function diagnosticarApunte(termino: string): Promise<InformeApunte
     lineasFiscalesAnomalas(),
   ]);
 
-  const t = normalizar(termino);
-  // Los tres análisis globales se acotan al término buscado cuando pueden: el
-  // informe tiene que contestar por ESTE apunte, no dar una auditoría entera
-  // que hay que leer para encontrar la línea que importa.
+  // Los análisis 2-5 NO se filtran por el término, y esto es una CORRECCIÓN de
+  // algo que estaba mal: antes se recortaban a lo que coincidía con la
+  // búsqueda. Un huérfano llamado «Vida» no salía si buscabas «seguro», y el
+  // informe imprimía «Ninguno» — que se lee como «está todo bien» cuando en
+  // realidad no se había mirado. Un recuento que depende de acertar la palabra
+  // es peor que no dar recuento: da falsa tranquilidad.
+  //
+  // El término acota la sección 1 (dónde está ESTE apunte) y nada más. Las
+  // demás son auditorías del estado de la base: o se dan enteras, o no valen.
   return {
     termino,
     encontrados,
-    gastosRepetidos: repetidos.filter((g) => g.alias.some((a) => normalizar(a).includes(t))),
-    cargosCruzados: cruzados.filter((c) =>
-      c.origenes.some((o) => normalizar(o.descripcion).includes(t)),
-    ),
-    huerfanos: huerfanos.filter((h) => normalizar(h.descripcion).includes(t)),
+    gastosRepetidos: repetidos,
+    cargosCruzados: cruzados,
+    huerfanos,
     // El resumen fiscal NO se filtra por término: es una foto del store entero.
     // Lo que delata a la proyección es el VOLUMEN y hasta qué año llega, y eso
     // se pierde en cuanto se recorta a un concepto.
