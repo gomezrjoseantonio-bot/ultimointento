@@ -157,5 +157,19 @@
   if (!h) L.push('  Ninguno.');
 
   db.close();
-  console.log(L.join('\n'));
+  const txt = L.join('\n');
+  console.log(txt);
+
+  // `copy()` es una ayuda de DevTools, no del lenguaje: existe cuando esto se
+  // pega en la consola y NO existe si el fichero se carga como script. Por eso
+  // va comprobado y envuelto — que falte no puede tumbar el informe, que ya
+  // está impreso arriba.
+  if (typeof copy === 'function') {
+    copy(txt);
+    console.log('%c✓ Informe copiado al portapapeles · pégalo tal cual', 'color:#16a34a;font-weight:bold');
+  }
+
+  // Se devuelve además del log: así el texto queda en [[PromiseResult]] y se
+  // puede recuperar aunque la consola esté llena de ruido.
+  return txt;
 })();
