@@ -7,11 +7,9 @@
 // congelados desde entonces. La unificación los sustituye por uno: `concepto`,
 // del que se derivan familia y categoría (esta última según el ámbito).
 //
-// Este fichero es SÓLO la traducción de lo viejo a lo nuevo. No proyecta
-// categorías ni casillas AEAT: eso llega en el paso 2, cuando exista el
-// catálogo unificado. Va primero y aparte porque es el contrato del que
-// dependen los demás pasos, y porque es lo único que se puede fijar con tests
-// antes de tocar nada.
+// Este fichero es SÓLO la traducción de lo viejo a lo nuevo. La proyección —a
+// qué categoría y a qué casilla AEAT lleva cada concepto— vive en
+// `catalogoConceptos.ts` (paso 2). Aquí se traduce; allí se clasifica.
 //
 // La clave es `${tipoFamilia}:${subtipo}` porque `subtipo` NO identifica por sí
 // solo: `otros` existe en las seis familias de personal y en ocho de las nueve
@@ -23,137 +21,38 @@
 // contamina la declaración sin que nadie se entere.
 // ============================================================================
 
-/** Las familias del catálogo unificado. */
-export type FamiliaId =
-  | 'alquiler'
-  | 'tributos'
-  | 'comunidad'
-  | 'suministros'
-  | 'seguros'
-  | 'cuotas'
-  | 'suscripciones'
-  | 'dia_a_dia'
-  | 'gestion'
-  | 'reparacion'
-  | 'servicios'
-  | 'mobiliario'
-  | 'otros';
+import { CONCEPTOS, conceptoPorId as conceptoDelCatalogo, ambitosDe } from './catalogoConceptos';
+import type { Ambito, Concepto, FamiliaId } from './catalogoConceptos';
 
-export type Ambito = 'personal' | 'inmueble';
+export type { Ambito, FamiliaId };
 
+/**
+ * Un destino del mapa · el concepto del catálogo unificado, con sus ámbitos ya
+ * resueltos.
+ *
+ * `ambitos` no se declara en ningún sitio: se deduce de qué proyecciones tiene
+ * el concepto en `catalogoConceptos.ts`. Un concepto se puede elegir en un
+ * ámbito exactamente cuando sabe cómo clasificarse en él.
+ */
 export interface ConceptoDestino {
-  /** Único en el sistema entero · sustituye al par (familia, subtipo). */
   id: string;
   familia: FamiliaId;
-  /** Dónde se puede elegir. La categoría se proyecta a partir de esto (paso 2). */
   ambitos: readonly Ambito[];
 }
 
+const destinoDe = (c: Concepto): ConceptoDestino => ({
+  id: c.id,
+  familia: c.familia,
+  ambitos: ambitosDe(c),
+});
+
 /**
- * El vocabulario de llegada.
+ * El vocabulario de llegada · vista del catálogo unificado.
  *
- * Vive aquí de momento para que el mapa se pueda validar contra algo; en el
- * paso 2 se muda al catálogo unificado con su proyección por ámbito, y este
- * fichero pasará a importarlo. Lo que NO cambiará son los `id`: son la
- * referencia que van a guardar los gastos migrados.
+ * Era una copia mientras el catálogo no existía; ahora deriva de él, para que
+ * no haya dos listas de conceptos que puedan separarse.
  */
-export const CONCEPTOS_DESTINO: readonly ConceptoDestino[] = [
-  // ── alquiler ──────────────────────────────────────────────────────────
-  { id: 'alquiler_vivienda', familia: 'alquiler', ambitos: ['personal'] },
-
-  // ── tributos ──────────────────────────────────────────────────────────
-  { id: 'ibi', familia: 'tributos', ambitos: ['personal', 'inmueble'] },
-  { id: 'tasa_basuras', familia: 'tributos', ambitos: ['personal', 'inmueble'] },
-  { id: 'licencia_turistica', familia: 'tributos', ambitos: ['inmueble'] },
-  // Una multa no es deducible en un inmueble · sólo personal.
-  { id: 'multas', familia: 'tributos', ambitos: ['personal'] },
-  { id: 'otros_tributos', familia: 'tributos', ambitos: ['personal', 'inmueble'] },
-
-  // ── comunidad ─────────────────────────────────────────────────────────
-  { id: 'comunidad_ordinaria', familia: 'comunidad', ambitos: ['personal', 'inmueble'] },
-  { id: 'derrama', familia: 'comunidad', ambitos: ['personal', 'inmueble'] },
-  { id: 'otros_comunidad', familia: 'comunidad', ambitos: ['personal', 'inmueble'] },
-
-  // ── suministros ───────────────────────────────────────────────────────
-  { id: 'luz', familia: 'suministros', ambitos: ['personal', 'inmueble'] },
-  { id: 'gas', familia: 'suministros', ambitos: ['personal', 'inmueble'] },
-  { id: 'agua', familia: 'suministros', ambitos: ['personal', 'inmueble'] },
-  { id: 'internet', familia: 'suministros', ambitos: ['personal', 'inmueble'] },
-  // Personal lo llamaba `movil` e inmueble `telefonia` · se unifica en uno.
-  { id: 'telefonia', familia: 'suministros', ambitos: ['personal', 'inmueble'] },
-  { id: 'alarma', familia: 'suministros', ambitos: ['personal', 'inmueble'] },
-  { id: 'otros_suministros', familia: 'suministros', ambitos: ['personal', 'inmueble'] },
-
-  // ── seguros ───────────────────────────────────────────────────────────
-  { id: 'seguro_hogar', familia: 'seguros', ambitos: ['personal', 'inmueble'] },
-  // El que empezó todo: existe en los dos ámbitos, y lo que decide la pregunta
-  // de la hipoteca es a cuál va, no qué concepto se guarda.
-  { id: 'seguro_vida', familia: 'seguros', ambitos: ['personal', 'inmueble'] },
-  { id: 'seguro_salud', familia: 'seguros', ambitos: ['personal'] },
-  { id: 'seguro_coche', familia: 'seguros', ambitos: ['personal'] },
-  { id: 'seguro_impago', familia: 'seguros', ambitos: ['inmueble'] },
-  { id: 'otros_seguros', familia: 'seguros', ambitos: ['personal', 'inmueble'] },
-
-  // ── cuotas ────────────────────────────────────────────────────────────
-  // Sale de partir `seguros_cuotas`: un gimnasio no es un seguro.
-  { id: 'gimnasio', familia: 'cuotas', ambitos: ['personal'] },
-  { id: 'educacion', familia: 'cuotas', ambitos: ['personal'] },
-  { id: 'profesional', familia: 'cuotas', ambitos: ['personal'] },
-  { id: 'ong', familia: 'cuotas', ambitos: ['personal'] },
-  { id: 'otros_cuotas', familia: 'cuotas', ambitos: ['personal'] },
-
-  // ── suscripciones ─────────────────────────────────────────────────────
-  { id: 'streaming', familia: 'suscripciones', ambitos: ['personal'] },
-  { id: 'musica', familia: 'suscripciones', ambitos: ['personal'] },
-  { id: 'software', familia: 'suscripciones', ambitos: ['personal'] },
-  { id: 'cloud', familia: 'suscripciones', ambitos: ['personal'] },
-  { id: 'prensa', familia: 'suscripciones', ambitos: ['personal'] },
-  { id: 'otros_suscripciones', familia: 'suscripciones', ambitos: ['personal'] },
-
-  // ── día a día ─────────────────────────────────────────────────────────
-  { id: 'supermercado', familia: 'dia_a_dia', ambitos: ['personal'] },
-  { id: 'transporte', familia: 'dia_a_dia', ambitos: ['personal'] },
-  { id: 'mantenimiento_coche', familia: 'dia_a_dia', ambitos: ['personal'] },
-  // `salud_gasto` y no `salud` para no confundirlo con la CATEGORÍA `salud`,
-  // que es a donde proyecta. Un id de concepto y una categoría con el mismo
-  // nombre se leen mal en cuanto los dos aparecen juntos en un registro.
-  { id: 'salud_gasto', familia: 'dia_a_dia', ambitos: ['personal'] },
-  { id: 'restaurantes', familia: 'dia_a_dia', ambitos: ['personal'] },
-  { id: 'ocio', familia: 'dia_a_dia', ambitos: ['personal'] },
-  { id: 'ropa', familia: 'dia_a_dia', ambitos: ['personal'] },
-  { id: 'cuidado_personal', familia: 'dia_a_dia', ambitos: ['personal'] },
-  { id: 'otros_dia_a_dia', familia: 'dia_a_dia', ambitos: ['personal'] },
-
-  // ── gestión ───────────────────────────────────────────────────────────
-  { id: 'honorarios_agencia', familia: 'gestion', ambitos: ['inmueble'] },
-  { id: 'gestoria', familia: 'gestion', ambitos: ['inmueble'] },
-  { id: 'asesoria', familia: 'gestion', ambitos: ['inmueble'] },
-  { id: 'comision_plataformas', familia: 'gestion', ambitos: ['inmueble'] },
-  { id: 'otros_gestion', familia: 'gestion', ambitos: ['inmueble'] },
-
-  // ── reparación ────────────────────────────────────────────────────────
-  { id: 'mantenimiento_caldera', familia: 'reparacion', ambitos: ['inmueble'] },
-  { id: 'mantenimiento_integral', familia: 'reparacion', ambitos: ['inmueble'] },
-  { id: 'otros_reparacion', familia: 'reparacion', ambitos: ['inmueble'] },
-
-  // ── servicios ─────────────────────────────────────────────────────────
-  { id: 'limpieza', familia: 'servicios', ambitos: ['inmueble'] },
-  { id: 'limpieza_zonas_comunes', familia: 'servicios', ambitos: ['inmueble'] },
-  { id: 'limpieza_por_estancia', familia: 'servicios', ambitos: ['inmueble'] },
-  { id: 'lavanderia', familia: 'servicios', ambitos: ['inmueble'] },
-  { id: 'consumibles_bienvenida', familia: 'servicios', ambitos: ['inmueble'] },
-  { id: 'otros_servicios', familia: 'servicios', ambitos: ['inmueble'] },
-
-  // ── mobiliario ────────────────────────────────────────────────────────
-  { id: 'ropa_enseres', familia: 'mobiliario', ambitos: ['inmueble'] },
-  { id: 'muebles', familia: 'mobiliario', ambitos: ['inmueble'] },
-  { id: 'otros_mobiliario', familia: 'mobiliario', ambitos: ['inmueble'] },
-
-  // ── otros ─────────────────────────────────────────────────────────────
-  // El que crea el usuario a mano · su proyección fiscal se pregunta al darlo
-  // de alta, no se hereda de la familia.
-  { id: 'personalizado', familia: 'otros', ambitos: ['personal', 'inmueble'] },
-];
+export const CONCEPTOS_DESTINO: readonly ConceptoDestino[] = CONCEPTOS.map(destinoDe);
 
 /**
  * Pares que YA NO están en ningún catálogo pero SÍ pueden estar en los datos.
@@ -253,12 +152,10 @@ export const MAPA_LEGACY: Readonly<Record<string, string>> = {
   'seguros:vida': 'seguro_vida',
 };
 
-/** Índice por id · para resolver sin recorrer la lista en cada llamada. */
-const PORID = new Map(CONCEPTOS_DESTINO.map((c) => [c.id, c]));
-
 /** El concepto de destino, o `undefined` si ese id no existe. */
 export function conceptoPorId(id: string): ConceptoDestino | undefined {
-  return PORID.get(id);
+  const c = conceptoDelCatalogo(id);
+  return c ? destinoDe(c) : undefined;
 }
 
 /**

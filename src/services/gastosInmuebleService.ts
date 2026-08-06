@@ -1,8 +1,9 @@
-import { initDB, GastoInmueble, GastoCategoria } from './db';
+import { initDB, GastoInmueble, GastoCategoria, type AEATBox } from './db';
 import { updateLineaInmueble, deleteLineaInmueble } from './lineasInmuebleService';
 
-// Mapa categoria → casillaAEAT
-export const CATEGORIA_A_CASILLA: Record<GastoCategoria, string> = {
+// Mapa categoria → casillaAEAT · tipado como `AEATBox` y no como `string` para
+// que una casilla que no exista no llegue muda a la declaración.
+export const CATEGORIA_A_CASILLA: Record<GastoCategoria, AEATBox> = {
   intereses:  '0105',
   reparacion: '0106',
   comunidad:  '0109',
