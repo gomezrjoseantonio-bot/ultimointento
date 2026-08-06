@@ -57,6 +57,7 @@ import {
 } from '../../../services/altaMovimientoService';
 import { batchesEnBorrador, sinBorradores } from '../../../services/statementSessionService';
 import { registrarDiagnosticoEnConsola } from '../../../services/duplicadosPrevisionService';
+import { registrarBusquedaEnConsola } from '../../../services/__buscarApunteAudit';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
@@ -266,8 +267,13 @@ const TesoreriaV6Page: React.FC = () => {
   // cuenta previsiones repetidas y dice cuánto distorsionan el cierre. Hace
   // falta porque los datos viven en el navegador y las páginas /dev están
   // apagadas en producción.
+  // Y `atlasDiagnostico.buscar('seguro')`, que contesta a otra pregunta: dónde
+  // vive un apunte concreto, qué pantalla lo enseña (o por qué ninguna) y si
+  // está duplicado por una vía que las auditorías de previsiones no ven —dos
+  // altas del mismo gasto, o el mismo cargo emitido por dos motores distintos—.
   useEffect(() => {
     registrarDiagnosticoEnConsola();
+    registrarBusquedaEnConsola();
   }, []);
 
   useEffect(() => {
