@@ -19,7 +19,7 @@
   const TERMINO = 'seguro';   // <-- cambia esto si quieres ('vida', 'ing', ...)
 
   const norm = s => (s ?? '').toString().normalize('NFD')
-    .replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+    .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
   const hit = (t, ...xs) => xs.some(x => norm(x).includes(norm(t)));
   const cts = n => Math.round(Math.abs(Number(n) || 0) * 100);
   const eur = n => n == null ? '—' : new Intl.NumberFormat('es-ES',
