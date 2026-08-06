@@ -1136,17 +1136,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
-- **2026-08-06** · **Hay préstamos que ATLAS no puede guardar sin mentir.** El
-  Santander de Jose (73.800 €, 360 meses, FEIN de 27-07-2021) es **fijo → fijo**:
-  «Tramo A» al 0,850 % y «Tramo B» al **1,850 % nominal FIJO** hasta el
-  vencimiento, sin índice ninguno. Lo único que mueve el tramo B es la
-  comprobación anual de las bonificaciones. Las tres casillas de ATLAS son
-  fijo / variable / mixto, y `MIXTO` significa fijo → **variable con índice**:
-  para guardar este habría que inventar un índice a 0 con diferencial 1,850, y
-  entonces el tramo sale marcado `variable` y `estimado` — dos cosas falsas
-  sobre un tipo que está escrito en el contrato. Falta la cuarta forma:
-  **fijo por tramos**. §6 bis · bis.
-
 - **2026-08-06** · **La FEIN no está normalizada en forma, solo en contenido**
   *(Jose: «hay mil FEIN, mil documentos distintos»)*. Unicaja numera
   «3. CARACTERÍSTICAS / 4. TIPO DE INTERÉS»; el Santander llama «3.- TIPO DE
@@ -1249,6 +1238,17 @@ deja de servir para decidir por dónde seguir.
   5 ago 2026: «no vamos a liarnos por un céntimo».)* §6 bis · bis.
 
 ### Resuelto
+
+- **2026-08-06** · **El Santander SÍ se puede guardar · me lo inventé.** Escribí
+  que faltaba una cuarta forma de préstamo, «fijo por tramos», porque su FEIN
+  imprime dos tipos —0,850 % en el «Tramo A» y 1,850 % en el «Tramo B»— y los
+  leí como dos tipos contractuales distintos. **No lo son: son el mismo tipo con
+  y sin bonificación** *(Jose · 6 ago 2026: «es fijo al 1,85 y bonificaciones
+  hasta el 1»)*. La propia FEIN lo dice donde explica su cuadro: lo calcula «bajo
+  el supuesto de que no se cumple ninguna de las condiciones para obtener la
+  bonificación». Comprobado contra el motor: `FIJO` al 1,85 % con un punto de
+  bonificación da **232,32 €**, la cuota del tramo A de su FEIN; sin él, 267,28.
+  El modelo ya lo representaba entero. §6 bis · bis.
 
 - **2026-08-06** · **La TAE ya es la TIR de los flujos.** Era una suma
   —capitalización del TIN + apertura repartida por años + carencia técnica—, y
