@@ -246,34 +246,73 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
       continue;
     }
 
+    // Se agrupa POR MES antes de escribir, y los importes del mes se SUMAN.
+    //
+    // `origenId` identifica (gasto · ejercicio · mes), así que dos cargos del
+    // mismo mes comparten clave: escribirlos uno detrás de otro haría que el
+    // segundo pisara al primero y el mes acabaría valiendo el último cargo en
+    // vez de los dos. Hoy ningún patrón devuelve dos fechas en un mismo mes
+    // —todos iteran mes a mes—, pero la clave sí lo permite, y sumar es además
+    // lo que ya hace `importeCompromisoEnMes` para la misma pregunta.
+    const porMes = new Map<number, { fecha: Date; importe: number }>();
     for (const fecha of fechas) {
       const importe = importeCompromisoEnFecha(c, fecha);
       if (importe == null || importe <= 0) continue;
-
       const mes = fecha.getMonth() + 1;
+      const acc = porMes.get(mes);
+      // La fecha que se guarda es la del PRIMER cargo del mes · la línea fiscal
+      // imputa al mes, y adelantarla es menos engañoso que atrasarla.
+      if (acc) acc.importe += importe;
+      else porMes.set(mes, { fecha, importe });
+    }
+
+    for (const [mes, { fecha, importe }] of Array.from(porMes.entries())) {
       const origenId = `recurrente-${c.id}-${ejercicio}-${mes}`;
       const previa = porOrigenId.get(origenId);
 
       // Lo ya confirmado es realidad · no se reescribe.
       if (previa && !esLineaFiscalViva(previa)) continue;
 
+      const fechaOp = toISODateLocal(fecha);
+      const conceptoOp = `${c.alias} — ${MESES[mes - 1]}`;
+
       if (!previa) {
         // Compatibilidad: líneas de antes de que existiera `origenId`. Se
-        // reconocen por no tenerlo, y se dejan en paz para no duplicarlas —
-        // NO se comparan por importe, que ahora lleva IPC y ya no coincidiría.
-        const legacy = existentes.some(
+        // ADOPTAN en vez de saltarse — se les escribe el `origenId` y pasan a
+        // gestionarse como las demás.
+        //
+        // Saltarlas dependía de reconocerlas, y reconocerlas por el alias del
+        // gasto era frágil: al renombrarlo dejaban de casar y se creaba una
+        // línea nueva encima de la vieja, duplicando el mes. La adopción sólo
+        // mira casilla y mes, que no cambian al renombrar.
+        const candidatas = existentes.filter(
           (g) =>
             g.origen === 'recurrente' &&
             !g.origenId &&
             g.casillaAEAT === casillaAEAT &&
-            mesDeISO(g.fecha) === mes &&
-            (g.concepto ?? '').includes(c.alias),
+            mesDeISO(g.fecha) === mes,
         );
-        if (legacy) continue;
+        // Con más de una candidata no se puede saber cuál es de este gasto
+        // (dos recurrentes pueden compartir casilla y mes). Adoptar a ciegas
+        // reescribiría la del otro, así que se dejan las dos como están y no
+        // se crea nada: mejor una previsión de menos que pisar un dato ajeno.
+        if (candidatas.length > 1) continue;
+        if (candidatas.length === 1) {
+          const vieja = candidatas[0];
+          if (!esLineaFiscalViva(vieja) || vieja.id == null) continue;
+          await gastosInmuebleService.update(vieja.id, {
+            origenId,
+            fecha: fechaOp,
+            concepto: conceptoOp,
+            importe,
+          });
+          // Se registra en el índice para que una segunda pasada la vea ya
+          // adoptada y no vuelva a entrar por esta rama.
+          porOrigenId.set(origenId, { ...vieja, origenId, fecha: fechaOp, concepto: conceptoOp, importe });
+          escritas += 1;
+          continue;
+        }
       }
-
-      const fechaOp = toISODateLocal(fecha);
-      const conceptoOp = `${c.alias} — ${MESES[mes - 1]}`;
 
       // Nada que escribir si el resultado es idéntico · evita reescribir la
       // tabla entera (y tocar `updatedAt`) en cada lectura del resumen fiscal.

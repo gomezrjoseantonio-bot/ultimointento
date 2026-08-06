@@ -32,6 +32,10 @@ jest.mock('../gastosInmuebleService', () => ({
       else mockGastos.push({ ...g, id: mockGastos.length + 1 } as GastoInmueble);
       return 1;
     },
+    update: async (id: number, updates: Partial<GastoInmueble>) => {
+      const i = mockGastos.findIndex((x) => x.id === id);
+      if (i >= 0) mockGastos[i] = { ...mockGastos[i], ...updates };
+    },
   },
 }));
 
@@ -160,6 +164,70 @@ describe('la ventana respeta el alta y la baja', () => {
     await generarOperacionesDesdeRecurrentes(2, 2025);
 
     expect(mockGastos).toHaveLength(0);
+  });
+});
+
+describe('líneas antiguas sin origenId', () => {
+  // Reconocerlas por el alias era frágil: al renombrar el gasto dejaban de
+  // casar y se creaba una línea nueva encima de la vieja, duplicando el mes.
+  const legacy = (over: Partial<GastoInmueble> = {}): GastoInmueble =>
+    ({
+      id: 500,
+      inmuebleId: 2,
+      ejercicio: 2026,
+      fecha: '2026-01-01',
+      concepto: 'Comunidad — Enero',
+      casillaAEAT: '0109',
+      importe: 90,
+      origen: 'recurrente',
+      estado: 'previsto',
+      ...over,
+    }) as GastoInmueble;
+
+  it('se adopta · se le escribe el origenId en vez de crear otra al lado', async () => {
+    mockGastos = [legacy()];
+    mockCompromisos = [comunidad()];
+
+    await generarOperacionesDesdeRecurrentes(2, 2026);
+
+    const enero = mockGastos.filter((g) => g.fecha.startsWith('2026-01'));
+    expect(enero).toHaveLength(1);                       // no duplica
+    expect(enero[0].id).toBe(500);                       // es la vieja
+    expect(enero[0].origenId).toBe('recurrente-27-2026-1');
+    expect(enero[0].importe).toBe(100);                  // y ya se recalcula
+  });
+
+  it('renombrar el gasto sigue sin duplicar', async () => {
+    mockGastos = [legacy()];
+    mockCompromisos = [comunidad({ alias: 'Cuota de la finca' })];
+
+    await generarOperacionesDesdeRecurrentes(2, 2026);
+
+    expect(mockGastos.filter((g) => g.fecha.startsWith('2026-01'))).toHaveLength(1);
+  });
+
+  it('con dos candidatas ambiguas no se toca ninguna', async () => {
+    // Dos recurrentes pueden compartir casilla y mes · adoptar a ciegas
+    // reescribiría la del otro gasto.
+    mockGastos = [legacy({ id: 500 }), legacy({ id: 501, concepto: 'Otra cosa — Enero' })];
+    mockCompromisos = [comunidad()];
+
+    await generarOperacionesDesdeRecurrentes(2, 2026);
+
+    const enero = mockGastos.filter((g) => g.fecha.startsWith('2026-01'));
+    expect(enero).toHaveLength(2);                       // las dos, intactas
+    expect(enero.every((g) => g.origenId == null)).toBe(true);
+  });
+
+  it('una línea antigua ya confirmada no se adopta', async () => {
+    mockGastos = [legacy({ estado: 'confirmado', importe: 88 })];
+    mockCompromisos = [comunidad()];
+
+    await generarOperacionesDesdeRecurrentes(2, 2026);
+
+    const enero = mockGastos.filter((g) => g.fecha.startsWith('2026-01'));
+    expect(enero).toHaveLength(1);
+    expect(enero[0].importe).toBe(88);                   // lo pagado manda
   });
 });
 

@@ -67,6 +67,10 @@ export async function fixFechasImposiblesGastos(): Promise<ResultadoFixFechas> {
   const db = await initDB();
   const gastos = ((await db.getAll('gastosInmueble')) ?? []) as GastoInmueble[];
 
+  // Primero se decide qué cambia y luego se escribe, en UNA transacción. Un `put`
+  // suelto por fila abre y cierra transacción cada vez, y esto corre en el
+  // arranque: con un store grande se nota. Además, si algo falla a medias, una
+  // transacción única no deja la tabla medio corregida.
   const cambios: ResultadoFixFechas['cambios'] = [];
   for (const g of gastos) {
     if (g.id == null) continue;
@@ -74,14 +78,44 @@ export async function fixFechasImposiblesGastos(): Promise<ResultadoFixFechas> {
     const despues = acotarFecha(g.fecha);
     if (despues === g.fecha) continue;
     cambios.push({ id: g.id, antes: g.fecha, despues });
-    await db.put('gastosInmueble', { ...g, fecha: despues, updatedAt: new Date().toISOString() });
+  }
+
+  if (cambios.length > 0) {
+    const porId = new Map(cambios.map((c) => [c.id, c.despues]));
+    const ahora = new Date().toISOString();
+    const tx = db.transaction('gastosInmueble', 'readwrite');
+    const store = tx.objectStore('gastosInmueble');
+    for (const g of gastos) {
+      const despues = g.id != null ? porId.get(g.id) : undefined;
+      if (!despues) continue;
+      await store.put({ ...g, fecha: despues, updatedAt: ahora });
+    }
+    await tx.done;
   }
 
   return { revisados: gastos.length, corregidos: cambios.length, cambios };
 }
 
+/** `localStorage` puede no existir o estar bloqueado (iframes, modo privado). */
+function leerFlag(clave: string): string | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage.getItem(clave);
+  } catch {
+    return null;
+  }
+}
+
+function escribirFlag(clave: string, valor: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(clave, valor);
+  } catch {
+    // Sin flag la migración volverá a correr · es idempotente, así que no pasa
+    // nada. Lo que no puede es tumbar el arranque por no poder anotarlo.
+  }
+}
+
 export async function runMigrationIfNeeded(): Promise<void> {
-  if (localStorage.getItem(MIGRATION_KEY)) return;
+  if (leerFlag(MIGRATION_KEY)) return;
   try {
     const r = await fixFechasImposiblesGastos();
     if (r.corregidos > 0) {
@@ -91,7 +125,7 @@ export async function runMigrationIfNeeded(): Promise<void> {
           `de ${r.revisados} línea(s) fiscales · ej. ${r.cambios[0].antes} → ${r.cambios[0].despues}`,
       );
     }
-    localStorage.setItem(MIGRATION_KEY, 'done');
+    escribirFlag(MIGRATION_KEY, 'done');
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[Migración] fixFechasImposiblesGastos falló:', e);
