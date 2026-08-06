@@ -279,7 +279,7 @@ describe('editar un concepto propio', () => {
     expect(conceptoPorId('luz')?.familia).toBe('suministros');
   });
 
-  it('no se deja dejarlo sin nombre, sin ámbito ni en una familia imposible', async () => {
+  it('no se puede dejar sin nombre, sin ámbito ni en una familia imposible', async () => {
     await crearConceptoPropio('suministros', 'Butano', ['personal']);
     const base = { familia: 'suministros', label: 'Butano', ambitos: ['personal'] as const };
     await expect(editarConceptoPropio('usr_butano', { ...base, label: '  ' })).rejects.toThrow();
