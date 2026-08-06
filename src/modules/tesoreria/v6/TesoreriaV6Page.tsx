@@ -32,6 +32,7 @@ import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuen
 import DrawerCuenta from './DrawerCuenta';
 import DrawerExtracto from './DrawerExtracto';
 import DrawerCalendario from './DrawerCalendario';
+import CerrarElMes from './CerrarElMes';
 import TesoreriaMovil from './TesoreriaMovil';
 import { useEsMovil } from './useEsMovil';
 import CuentaWizard from '../../../components/cuenta/CuentaWizard';
@@ -923,6 +924,14 @@ const TesoreriaV6Page: React.FC = () => {
           <BloqueRealidad realidad={realidad} />
         </section>
       </div>
+
+      {/* ── VOCABULARIO §6 quater · cerrar el mes ─────────────────────────
+          Va al final y detrás de lo que viene: mirar hacia delante es el
+          trabajo de todos los días, y cerrar es el de una vez al mes. Pero
+          tiene que estar AQUÍ, en tesorería, porque lo que se cierra son las
+          previsiones de tesorería — y de que un mes esté cerrado depende que
+          una bonificación se pueda perder. */}
+      <CerrarElMes hoy={hoy} onCambio={trasEscribir} />
 
       {/* §4.4 · drawer de cuenta · la bandeja de trabajo */}
       <DrawerCuenta

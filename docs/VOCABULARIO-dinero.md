@@ -660,6 +660,62 @@ sabe casi nada de eso.
 Avisar de que una cifra parece pasarse del tope es otra conversación, y está
 en §8: una vez abierta esa puerta hay que mantenerla al día.
 
+### 6 bis · quinquies · La TAE · lo que cuesta de verdad
+
+La TAE es **el tipo que iguala a cero todos los flujos**, descontados a la fecha
+en que ocurren (Directiva 2014/17/UE Anexo I; es la cuenta de la Circular 5/2012
+del Banco de España). No es una suma de componentes, que es lo que ATLAS hacía:
+capitalización del TIN + apertura repartida por años + carencia técnica.
+
+No hay que inventar los flujos: **los tiene el motor único**. El cuadro ya dice
+qué se paga y qué día, con el arranque irregular y los tramos dentro.
+
+**Qué entra**, porque es lo que el cliente paga por tener el préstamo:
+
+| Entra | No entra |
+|---|---|
+| Comisión de apertura | Notaría |
+| **Tasación** | Registro |
+| Seguros **exigidos para el tipo** | Gestoría |
+| Comisión de mantenimiento (€/mes) | AJD |
+
+Los cuatro de la derecha los paga el banco desde la **Ley 5/2019 art. 14.1.e)** y
+el **RDL 17/2018**. No son coste del cliente, así que no pueden subir su TAE.
+La escritura de Unicaja lo dice con esas palabras en su cláusula SÉPTIMA.
+
+**Dos preguntas distintas que no hay que cruzar.** El seguro de vida vinculado
+**entra en la TAE y no se deduce** *(Jose · 6 ago 2026)*. Si sin él no tienes el
+tipo, es precio del préstamo; y desde la Ley 5/2019 el banco no puede obligarte
+a contratarlo —solo ofrecerlo combinado—, así que apoyar una deducción en «me
+obligaban» es apoyarse en algo que legalmente no existe. Por eso `SeguroVinculado`
+lleva **dos marcas separadas**: `exigidoParaElTipo` la lee la TAE, `naturaleza`
+la lee el IRPF.
+
+**Y la TAE va con un supuesto que hay que decir.** En variable y mixto se calcula
+suponiendo que **el índice de hoy no se mueve** el resto de la vida. Es lo que
+hace la FEIN. Quien pinte la cifra tiene que decirlo: no es una previsión.
+
+#### El candado · la escritura de Unicaja
+
+Cláusula QUINTA: **TAE Variable 5,079 %**, con el Euríbor 12m de julio de 2023
+(4,149 %). 85.000 € a 240 meses, 2,600 % los primeros 36, después Euríbor +
+1,750, ACT/365, exenta de apertura, con el seguro de daños de 59,98 € que la
+propia escritura incluye. El motor da **5,08 %**.
+
+#### Lo que la segunda cifra de esa escritura enseña
+
+La misma cláusula informa de la TAE **con máxima bonificación: 5,593 %** — más
+alta que la de sin bonificar. No es un error: la de «sin bonificación» no cuenta
+los productos, y la bonificada sí. **Los productos que hay que contratar para
+ganar el punto cuestan más de lo que el punto ahorra.**
+
+El punto, solo, bajaría la TAE de 5,08 % a **4,38 %**. Que el banco informe de
+5,593 % significa que esos productos rondan los **690 € al año** *(cifra
+deducida invirtiendo la del banco, no leída de un papel)*.
+
+De aquí sale para qué sirve calcular las dos: **la comparación es la decisión**,
+y sin ella «bonificación» suena siempre a que sales ganando.
+
 ---
 
 ## 6 ter · Condiciones que se verifican contra la tesorería
@@ -1004,6 +1060,57 @@ Reglas:
 nuevo y las bonificaciones que hasta entonces no rebajaban. Preguntando el antes
 y el después al mismo tramo, esa revisión no movía nada.
 
+## 6 quater · Cerrar el mes
+
+Un mes abierto **no distingue** «el cobro está por llegar» de «el cobro no ha
+llegado». Los dos salen como «todavía no cuenta», y con eso una bonificación no
+se puede perder nunca — ni ganar del todo.
+
+No se arregla con un umbral de días. Lo arregla el cierre: **hay un momento en
+que se trabaja para cerrar el mes, y lo que quede abierto entonces es que no se
+ha producido** *(decisión de Jose · 4 ago 2026)*.
+
+**Cómo se cierra** *(Jose · 5 ago 2026: «mes entero, con la lista delante y
+pudiendo reabrir»)*:
+
+1. **Mes entero**, no cuenta a cuenta. El mes es la unidad con la que se
+   trabaja, y media verdad por cuenta sería peor que ninguna.
+2. **La lista delante.** Antes de tocar nada se enseña exactamente qué se va a
+   dar por no ocurrido, con lo que se deja de cobrar y lo que se deja de pagar.
+   Cerrar sin ver la lista es borrar previsiones de un plumazo.
+3. **Se puede reabrir**, y reabrir devuelve **solo lo que ese cierre descartó**.
+   Lo que el usuario había descartado a mano sigue descartado: no lo descartó el
+   cierre, así que no le toca deshacerlo.
+
+Reglas que se derivan:
+
+- **Solo se cierra un mes ya terminado.** Al mes en curso le quedan días para
+  que llegue lo que falta, y darlo por no ocurrido sería el número inventado que
+  esto viene a evitar.
+- **Cerrar no borra.** Lo no ocurrido se marca con `descartado`, que ya
+  significa eso desde V84: no toca ningún saldo, no vuelve a proponerse y se
+  puede deshacer.
+- **Lo que ya ocurrió no se toca**, y lo que se ejecute DESPUÉS de cerrar
+  tampoco se desanda al reabrir: reabrir un mes no puede borrar un hecho
+  posterior.
+- **Cerrar dos veces no descarta dos veces.**
+
+**Dónde se hace y para qué sirve.** El botón vive en **tesorería**, al final de
+la pantalla: lo que se cierra son previsiones de tesorería, y allí es donde se
+está mirando lo que falta por entrar y por salir. Se ofrecen los **seis últimos
+meses terminados** —no solo el anterior: quien lleve tres sin cerrar tiene que
+poder ponerse al día—, cada uno con lo que le queda abierto y, si ya está
+cerrado, con su fecha y su botón de reabrir.
+
+Y lo que lo hace valer: **quien comprueba las bonificaciones lee los meses
+cerrados**. Un mes cerrado sin nómina cuenta como **cero cobrado** y hace perder
+la bonificación; el mismo mes abierto sigue siendo un «todavía no cuenta» y no
+resta. Esa es toda la diferencia que introduce cerrar (§6 ter).
+
+> **Ojo con la palabra.** En tesorería «cierre» significa hoy otra cosa: el
+> **saldo previsto a fin de mes**. Son dos conceptos distintos con el mismo
+> nombre, y conviene no cruzarlos.
+
 ## 7 · Combinaciones imposibles
 
 Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
@@ -1029,30 +1136,22 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-06** · **La FEIN no está normalizada en forma, solo en contenido**
+  *(Jose: «hay mil FEIN, mil documentos distintos»)*. Unicaja numera
+  «3. CARACTERÍSTICAS / 4. TIPO DE INTERÉS»; el Santander llama «3.- TIPO DE
+  INTERÉS» a lo mismo porque no tiene apartado de intermediario, y su PDF se
+  extrae letra a letra. El OCR no puede ser el camino principal del alta: la
+  consecuencia es que **teclear a mano y subir la FEIN tienen que acabar en el
+  mismo sitio** —ya lo hacen: un solo `formDesdePrestamo`— y que cada campo
+  debería decir si lo leyó la máquina o lo escribió una persona. Eso último
+  falta: el OCR ya produce la confianza y la fuente de cada campo (`byField`) y
+  se tira al llegar al formulario.
+
 - **2026-08-05** · **El tramo suelto de ING no cuadra por 13 céntimos.** Cobra
   218,37 € donde 97.500 € al 2,15 % por 38 días sobre 365 dan 218,24. El tipo
   que explicaría su cifra es el 2,15128 %, y su propio cuadro liquida los meses
   al 2,1500 %. La amortización y el capital vivo sí salen exactos, que es lo que
   arrastra el resto. Falta el dato que lo explique. §6 bis · bis.
-- **2026-08-05** · **La TAE es una suma, no una TIR.** Se calcula sumando la
-  capitalización del TIN, la comisión de apertura repartida por años y la
-  carencia técnica. La TAE es por definición el tipo que iguala los flujos.
-
-  *Esta entrada decía además que faltaba meter «notaría, registro, gestoría,
-  tasación y AJD, que es donde está el grueso del coste real». **Es falso desde
-  2019**, y lo corrigió Jose. En una hipoteca sujeta a la Ley 5/2019 —vivienda
-  residencial, persona física— el artículo 14.1.e) pone notaría, gestoría y
-  registro **a cargo del prestamista**, y el AJD también desde el RDL 17/2018.
-  La escritura de Unicaja lo dice con esas palabras en su cláusula SÉPTIMA: el
-  banco paga comprobación registral, aranceles notariales, gestoría y aranceles
-  registrales; el prestatario paga **la tasación** y las copias que pida. Así
-  que de los cinco solo la tasación es del cliente.*
-
-  *Lo que sí falta en la TAE y sí es del cliente: la **tasación** y los
-  **seguros vinculados** —la propia escritura mete los 59,98 € del seguro de
-  daños en su TAE—. Y ojo: esto vale para hipotecas de la Ley 5/2019; en un
-  préstamo personal o un local los gastos siguen siendo otra historia.*
-  §6 bis · bis.
 - **2026-08-05** · **ATLAS no avisa de los topes legales de las comisiones.**
   Guarda y calcula lo pactado, que es lo correcto, pero podría decir «0,50 %
   parece pasarse del tope de la Ley 5/2019 para variable, revísalo». No se hizo
@@ -1141,6 +1240,57 @@ deja de servir para decidir por dónde seguir.
   5 ago 2026: «no vamos a liarnos por un céntimo».)* §6 bis · bis.
 
 ### Resuelto
+
+- **2026-08-06** · **El Santander SÍ se puede guardar · me lo inventé.** Escribí
+  que faltaba una cuarta forma de préstamo, «fijo por tramos», porque su FEIN
+  imprime dos tipos —0,850 % en el «Tramo A» y 1,850 % en el «Tramo B»— y los
+  leí como dos tipos contractuales distintos. **No lo son: son el mismo tipo con
+  y sin bonificación** *(Jose · 6 ago 2026: «es fijo al 1,85 y bonificaciones
+  hasta el 1»)*. La propia FEIN lo dice donde explica su cuadro: lo calcula «bajo
+  el supuesto de que no se cumple ninguna de las condiciones para obtener la
+  bonificación». Comprobado contra el motor: `FIJO` al 1,85 % con un punto de
+  bonificación da **232,32 €**, la cuota del tramo A de su FEIN; sin él, 267,28.
+  El modelo ya lo representaba entero. §6 bis · bis.
+
+- **2026-08-06** · **La TAE ya es la TIR de los flujos.** Era una suma
+  —capitalización del TIN + apertura repartida por años + carencia técnica—, y
+  su propio comentario lo confesaba: con ella, un préstamo con arranque largo
+  salía igual que otro sin él. Ahora se descuentan los flujos del cuadro por su
+  fecha real, en `prestamos/tae`, y `taeAproximada` se ha borrado. Entra lo que
+  paga el cliente —apertura, tasación, seguros exigidos, mantenimiento— y no
+  entran notaría, registro, gestoría ni AJD, que paga el banco. **Calibrada
+  contra la escritura de Unicaja: 5,08 % contra el 5,079 % impreso.** §6 bis ·
+  quinquies.
+
+- **2026-08-06** · **La tasación es gasto de financiación, no de adquisición**
+  *(pregunta de Jose)*. La línea no es cuándo se paga: es de qué contrato nace.
+  Lo de la compraventa —notaría, registro, ITP/AJD, gestoría— es mayor valor de
+  adquisición, se amortiza al 3 % y resta en la ganancia al vender. Lo de la
+  hipoteca —tasación, apertura— es financiación: se deduce el año en que se paga
+  (art. 23.1.a.1.º LIRPF, dentro del límite conjunto con intereses y
+  conservación, que ATLAS ya aplica), **no** se amortiza y **no** toca el valor
+  de adquisición. Y solo si el inmueble está alquilado. Los campos nacen con su
+  `naturaleza` fiscal puesta para que lo fiscal no acabe añadiendo un segundo
+  `tasacion` por su cuenta. §6 bis · quinquies.
+
+- **2026-08-06** · **El seguro de vida vinculado no es deducible** *(decisión de
+  Jose, por prudencia)*. Solo lo sería «cuando te obligan», y desde la Ley
+  5/2019 nadie puede obligarte: la vinculación está prohibida y solo cabe la
+  oferta combinada. La DGT lo ha admitido unas veces y rechazado otras; no está
+  asentado. En la TAE **sí entra**, que es otra pregunta. §6 bis · quinquies.
+
+- **2026-08-06** · **El cierre de mes ya se puede hacer, y ya sirve para algo.**
+  El servicio estaba hecho y probado —`loQueQuedaAbierto`, `cerrarMes`,
+  `reabrirMes`— y **no lo llamaba nadie**: la enfermedad de siempre, dos mitades
+  de una función que no se encuentran. Ahora tiene sus dos mitades:
+  **la pantalla**, en tesorería, con la tira de los seis últimos meses
+  terminados, la lista delante antes de confirmar y el botón de reabrir en cada
+  mes cerrado; y **el consumidor**, `verificarBonificaciones`, que lee los meses
+  cerrados y cuenta el mes vacío **como cero** en vez de excluirlo. Un mes
+  cerrado sin nómina ya hace **perder** la bonificación; abierto, sigue siendo un
+  «todavía no cuenta». Qué meses se ofrecen lo dice `mesesParaCerrar`, la misma
+  regla con la que `cerrarMes` se niega a cerrar un mes en curso — no una copia
+  en la vista. §6 quater.
 
 - **2026-08-05** · **Vender el activo cancela el préstamo, con la misma cuenta
   que cancelarlo a mano.** `propertySaleService` tenía el QUINTO constructor de

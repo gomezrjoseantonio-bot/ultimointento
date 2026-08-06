@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-06",
-  "generatedAt": "2026-08-06T17:14:13.604Z",
+  "generatedAt": "2026-08-06T16:22:12.451Z",
   "git": {
-    "branch": "claude/ing-life-insurance-duplicate-3bfx9x",
-    "head": "0418d2f"
+    "branch": "claude/new-session-hq2846",
+    "head": "2e1a394"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -143,7 +143,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 807 · dead 0 · solo_tests 41 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 806 · dead 0 · solo_tests 41 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -257,7 +257,7 @@
       "approx": false,
       "note": null,
       "detail": [
-        "2508 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
+        "2654 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
         "1963 · src/services/declaracionDistributorService.ts",
         "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
         "1853 · src/services/dashboardService.ts",
@@ -265,12 +265,12 @@
         "1716 · src/services/irpfCalculationService.ts",
         "1704 · src/modules/inversiones/pages/FichaPlanPensiones.tsx",
         "1550 · src/services/aeatParserService.ts",
-        "1511 · src/App.tsx",
+        "1506 · src/App.tsx",
         "1463 · src/services/treasuryConfirmationService.ts",
         "1461 · src/services/declaracionOnboardingService.ts",
         "1421 · scripts/health.mjs",
         "1343 · src/services/propertySaleService.ts",
-        "1325 · src/modules/tesoreria/v6/TesoreriaV6Page.tsx",
+        "1328 · src/modules/tesoreria/v6/TesoreriaV6Page.tsx",
         "1259 · src/pages/GestionPersonal/wizards/NominaPage.tsx"
       ],
       "calibracion": null
@@ -283,7 +283,7 @@
       "approx": false,
       "note": null,
       "detail": [
-        "109 / 352 .tsx sin v5 (consumen v5: 243 · directo o vía .module.css con var(--atlas-v5-*))",
+        "109 / 353 .tsx sin v5 (consumen v5: 244 · directo o vía .module.css con var(--atlas-v5-*))",
         "src/App.tsx",
         "src/components/ImageDescriptionComponent.tsx",
         "src/components/InvoiceBreakdownModal.tsx",

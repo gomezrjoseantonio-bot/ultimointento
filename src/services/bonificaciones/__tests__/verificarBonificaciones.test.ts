@@ -557,3 +557,57 @@ describe('lo que todavía no consta cobrado', () => {
     expect(unaSola(deRecibos, con([], [], [], [abierto])).veredicto).toBe('no_verificable');
   });
 });
+
+
+// Cerrar el mes convierte «todavía no consta» en un NO · §6 quater.
+//
+// Sin el cierre, un mes sin la nómina se queda siempre en «no cuenta todavía» y
+// la bonificación no se puede perder nunca. Al cerrar, ese mes entra con lo que
+// de verdad entró — cero si no entró nada— y el mes más flojo decide.
+describe('con el mes cerrado', () => {
+  const nomina = (mes: string, importe: number, estado: 'cerrado' | 'abierto') =>
+    ({ cuentaId: 1, mes, importe, estado }) as never;
+
+  const bonif = {
+    id: 'n',
+    tipo: 'NOMINA',
+    nombre: 'Nómina',
+    reduccionPuntosPorcentuales: 0.3,
+    impacto: { puntos: -0.3 },
+    lookbackMeses: 6,
+    cuentaExigidaId: '1',
+    regla: { tipo: 'NOMINA', minimoMensual: 1200 },
+    estado: 'SELECCIONADO',
+  } as never;
+
+  const conMeses = (mesesCerrados: string[]) =>
+    verificarBonificaciones(
+      [bonif],
+      {
+        tarjetas: [],
+        periodosDeTarjeta: [],
+        recibosDomiciliados: [],
+        cobrosDeNomina: [
+          nomina('2026-06', 1300, 'cerrado'),
+          nomina('2026-07', 0, 'abierto'),
+        ],
+        mesesCerrados,
+      } as never,
+      '2026-08-05'
+    )[0];
+
+  it('sin cerrar, el mes vacío no cuenta y no se pierde nada', () => {
+    const c = conMeses([]);
+
+    expect(c.veredicto).toBe('cumple');
+    expect(c.mensual?.sinCerrar).toBe(1);
+  });
+
+  it('cerrado, el mes vacío cuenta como cero y la bonificación se pierde', () => {
+    const c = conMeses(['2026-07']);
+
+    expect(c.veredicto).toBe('no_cumple');
+    expect(c.mensual?.sinCerrar).toBe(0);
+    expect(c.mensual?.conMovimiento).toBe(2);
+  });
+});
