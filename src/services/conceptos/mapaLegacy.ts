@@ -74,8 +74,7 @@ export const PARES_HISTORICOS: readonly string[] = ['seguros:vida'];
  * son el mismo gasto, y lo que cambiaba entre catálogos era la categoría, que
  * ahora se proyecta desde el ámbito.
  */
-export const MAPA_LEGACY: Readonly<Record<string, string>> = {
-  // ── catálogo de INMUEBLE ──────────────────────────────────────────────
+const MAPA_INMUEBLE: Readonly<Record<string, string>> = {
   'tributos:ibi': 'ibi',
   'tributos:tasa_basuras': 'tasa_basuras',
   'tributos:licencia_turistica': 'licencia_turistica',
@@ -111,15 +110,34 @@ export const MAPA_LEGACY: Readonly<Record<string, string>> = {
   'mobiliario:muebles': 'muebles',
   'mobiliario:otros': 'otros_mobiliario',
   'otros:personalizado': 'personalizado',
+};
 
-  // ── catálogo PERSONAL ─────────────────────────────────────────────────
+/**
+ * Catálogo PERSONAL.
+ *
+ * Va aparte del de inmueble, y no todo junto, porque el par NO dice de qué
+ * catálogo viene: `tributos:ibi` y `vivienda:ibi` traducen al mismo concepto
+ * pero pertenecen a árboles distintos. Sin esa separación no se puede hacer el
+ * camino de vuelta (`parLegacyDe`), que es el que mantiene agrupadas las listas
+ * cuando se cambia el concepto de un gasto.
+ */
+const MAPA_PERSONAL: Readonly<Record<string, string>> = {
   // `vivienda` era un paquete: dentro había un alquiler, un tributo, una
   // comunidad y un seguro. Al repartirse, cada uno va a su familia real.
   'vivienda:alquiler': 'alquiler_vivienda',
   'vivienda:ibi': 'ibi',
   'vivienda:comunidad': 'comunidad_ordinaria',
   'vivienda:seguro_hogar': 'seguro_hogar',
+  // Las seis claves que están en LOS DOS catálogos se repiten aquí a
+  // propósito · apuntan al mismo concepto, pero cada catálogo tiene que
+  // declarar las suyas para que el camino de vuelta sepa a cuál pertenece.
+  'suministros:luz': 'luz',
+  'suministros:gas': 'gas',
+  'suministros:agua': 'agua',
+  'suministros:internet': 'internet',
   'suministros:movil': 'telefonia',
+  'suministros:otros': 'otros_suministros',
+  'otros:personalizado': 'personalizado',
   'dia_a_dia:supermercado': 'supermercado',
   'dia_a_dia:transporte': 'transporte',
   'dia_a_dia:restaurantes': 'restaurantes',
@@ -147,9 +165,24 @@ export const MAPA_LEGACY: Readonly<Record<string, string>> = {
   'otros:impuestos': 'otros_tributos',
   'otros:multas': 'multas',
   'otros:mantenimiento_coche': 'mantenimiento_coche',
+};
 
-  // ── históricos · ya no están en el catálogo, sí en los datos ──────────
+/**
+ * Pares que ya no están en ningún catálogo pero sí en los datos.
+ *
+ * Sólo sirven para LEER. No entran en el camino de vuelta: si alguien vuelve a
+ * elegir ese concepto, tiene que salirle el par que el catálogo de hoy sabe
+ * enseñar, no el retirado.
+ */
+const MAPA_HISTORICO: Readonly<Record<string, string>> = {
   'seguros:vida': 'seguro_vida',
+};
+
+/** Los tres juntos · las seis claves compartidas apuntan al mismo concepto. */
+export const MAPA_LEGACY: Readonly<Record<string, string>> = {
+  ...MAPA_INMUEBLE,
+  ...MAPA_PERSONAL,
+  ...MAPA_HISTORICO,
 };
 
 /** El concepto de destino, o `undefined` si ese id no existe. */
@@ -173,6 +206,38 @@ export function resolverConcepto(
 ): string | null {
   if (!tipoFamilia || !subtipo) return null;
   return MAPA_LEGACY[`${tipoFamilia}:${subtipo}`] ?? null;
+}
+
+/** Camino de VUELTA · `concepto|ambito` → el par de ESE catálogo. */
+const PARDE = new Map<string, { tipoFamilia: string; subtipo: string }>();
+for (const [mapa, ambito] of [
+  [MAPA_INMUEBLE, 'inmueble'],
+  [MAPA_PERSONAL, 'personal'],
+] as const) {
+  for (const [par, id] of Object.entries(mapa)) {
+    const i = par.indexOf(':');
+    PARDE.set(`${id}|${ambito}`, { tipoFamilia: par.slice(0, i), subtipo: par.slice(i + 1) });
+  }
+}
+
+/**
+ * El par legacy que le corresponde a un concepto en un ámbito.
+ *
+ * Existe porque `tipoFamilia` y `subtipo` siguen siendo la clave con la que las
+ * listas agrupan y con la que se decide qué gastos son «propios de la
+ * modalidad». Mientras queden esos lectores, cambiar el concepto tiene que
+ * arrastrar su par: si no, mueves un gasto de familia y sigue apareciendo bajo
+ * la anterior.
+ *
+ * `null` cuando ese concepto no tiene par en ese ámbito · son las cinco
+ * combinaciones que la unificación estrena y que ningún catálogo viejo conocía.
+ */
+export function parLegacyDe(
+  conceptoId: string | undefined | null,
+  ambito: Ambito,
+): { tipoFamilia: string; subtipo: string } | null {
+  if (!conceptoId) return null;
+  return PARDE.get(`${conceptoId}|${ambito}`) ?? null;
 }
 
 /** `subtipo` → los conceptos a los que podría referirse, por ámbito. */

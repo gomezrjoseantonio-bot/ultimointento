@@ -14,7 +14,9 @@ import {
   MAPA_LEGACY,
   PARES_HISTORICOS,
   conceptoPorId,
+  parLegacyDe,
   resolverConcepto,
+  resolverConceptoPorSubtipoUnico,
 } from '../mapaLegacy';
 import { TIPOS_GASTO_INMUEBLE_V2 } from '../../../modules/inmuebles/wizards/utils/tiposDeGastoInmueble';
 import { TIPOS_GASTO_PERSONAL } from '../../../modules/personal/wizards/utils/tiposDeGastoPersonal';
@@ -153,5 +155,68 @@ describe('ante lo desconocido, no adivina', () => {
 
   it('no resuelve por subtipo suelto · `otros` no significa nada por sí solo', () => {
     expect(resolverConcepto(undefined, 'otros')).toBeNull();
+  });
+});
+
+describe('el camino de vuelta · concepto → par legacy', () => {
+  // `tipoFamilia` y `subtipo` siguen siendo la clave con la que las listas
+  // agrupan. Sin la vuelta, cambiar el concepto de un gasto lo dejaría listado
+  // bajo la familia anterior.
+  it('la vuelta deshace la ida en los dos catálogos', () => {
+    for (const [pares, ambito] of [
+      [PARES_INMUEBLE, 'inmueble'],
+      [PARES_PERSONAL, 'personal'],
+    ] as const) {
+      const rotos = pares
+        .map((p) => {
+          const vuelta = parLegacyDe(MAPA_LEGACY[p], ambito);
+          return { p, vuelto: vuelta ? `${vuelta.tipoFamilia}:${vuelta.subtipo}` : null };
+        })
+        .filter(({ p, vuelto }) => vuelto !== p);
+      expect({ ambito, rotos }).toEqual({ ambito, rotos: [] });
+    }
+  });
+
+  it('un concepto retirado vuelve al par que el catálogo sabe enseñar', () => {
+    // `seguros:vida` ya no está en el catálogo · la vuelta de `seguro_vida` en
+    // personal tiene que dar el par vivo, no el retirado.
+    expect(parLegacyDe('seguro_vida', 'personal')).toEqual({
+      tipoFamilia: 'seguros_cuotas',
+      subtipo: 'seguro_vida',
+    });
+  });
+
+  it('las cinco combinaciones nuevas no tienen par · y lo dicen', () => {
+    // Ningún catálogo viejo las conocía · devolver un par inventado las metería
+    // en una familia que no es la suya.
+    expect(parLegacyDe('tasa_basuras', 'personal')).toBeNull();
+    expect(parLegacyDe('derrama', 'personal')).toBeNull();
+    expect(parLegacyDe('otros_comunidad', 'personal')).toBeNull();
+    expect(parLegacyDe('alarma', 'personal')).toBeNull();
+    expect(parLegacyDe('seguro_vida', 'inmueble')).toBeNull();
+  });
+
+  it('un concepto que no existe en ese ámbito no tiene par', () => {
+    expect(parLegacyDe('gimnasio', 'inmueble')).toBeNull();
+    expect(parLegacyDe('no_existe', 'personal')).toBeNull();
+    expect(parLegacyDe(undefined, 'personal')).toBeNull();
+  });
+});
+
+describe('rescate por subtipo suelto', () => {
+  it('resuelve cuando en ese ámbito no hay elección', () => {
+    expect(resolverConceptoPorSubtipoUnico('luz', 'personal')).toBe('luz');
+    expect(resolverConceptoPorSubtipoUnico('gestoria', 'inmueble')).toBe('gestoria');
+  });
+
+  it('NO resuelve un subtipo que puede ser varias cosas', () => {
+    expect(resolverConceptoPorSubtipoUnico('otros', 'personal')).toBeNull();
+    expect(resolverConceptoPorSubtipoUnico('otros', 'inmueble')).toBeNull();
+  });
+
+  it('NO resuelve fuera de su ámbito', () => {
+    // `gimnasio` sólo existe en personal.
+    expect(resolverConceptoPorSubtipoUnico('gimnasio', 'inmueble')).toBeNull();
+    expect(resolverConceptoPorSubtipoUnico('limpieza', 'personal')).toBeNull();
   });
 });

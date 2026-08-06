@@ -38,6 +38,9 @@ import ConceptoPickerModal, { type ConceptoElegido } from './components/Concepto
 import SeguroVidaModal from './components/SeguroVidaModal';
 import CopiarGastosModal from './components/CopiarGastosModal';
 import ImportarGastosModal from './components/ImportarGastosModal';
+import { conceptoPorId, proyectar } from '../../../../services/conceptos/catalogoConceptos';
+import type { Ambito, ProyeccionPersonal } from '../../../../services/conceptos/catalogoConceptos';
+import { resolverConcepto } from '../../../../services/conceptos/mapaLegacy';
 
 const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   catalog,
@@ -170,12 +173,23 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
         throw new Error('Añade una cuenta bancaria en Cuentas antes de crear un gasto');
       }
       const now = new Date();
+      // La clasificación se PROYECTA sobre el ámbito en el que va a nacer el
+      // gasto, no se copia del catálogo desde el que se eligió. Aquí estaba el
+      // origen del seguro de vida roto: se elegía en la pestaña del inmueble, se
+      // forzaba a personal por no haber hipoteca, y se guardaba con
+      // `categoria: 'inmueble.seguros'` y bolsa `necesidades` a pelo. Un gasto
+      // personal con categoría de inmueble no aparece en ninguna pantalla.
+      const ambito: Ambito = personal ? 'personal' : 'inmueble';
+      const idConcepto = resolverConcepto(concepto.tipoId, concepto.subtipoId);
+      const def = conceptoPorId(idConcepto);
+      const proyeccion = proyectar(idConcepto, ambito);
       const skeleton = {
-        ambito: personal ? 'personal' : 'inmueble',
+        ambito,
         inmuebleId: personal ? undefined : inmuebleId,
         personalDataId: personal ? 1 : undefined,
-        alias: concepto.label,
-        tipo: concepto.tipoCompromiso,
+        alias: def?.label ?? concepto.label,
+        concepto: proyeccion ? idConcepto : undefined,
+        tipo: def?.tipoCompromiso ?? concepto.tipoCompromiso,
         subtipo: concepto.subtipoId,
         tipoFamilia: concepto.tipoId,
         proveedor: { nombre: '' },
@@ -184,8 +198,10 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
         cuentaCargo: cuenta,
         conceptoBancario: '',
         metodoPago: 'domiciliacion',
-        categoria: concepto.categoria,
-        bolsaPresupuesto: personal ? 'necesidades' : 'inmueble',
+        categoria: proyeccion?.categoria ?? concepto.categoria,
+        bolsaPresupuesto: personal
+          ? ((proyeccion as ProyeccionPersonal | undefined)?.bolsa ?? 'necesidades')
+          : 'inmueble',
         responsable: 'titular',
         fechaInicio: now.toISOString().slice(0, 10),
         estado: 'preparado',

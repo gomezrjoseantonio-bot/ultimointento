@@ -163,6 +163,9 @@ export type FamiliaFiscal =
   | 'servicios_profesionales'
   | 'intereses_financiacion'
   | 'mejora'
+  // Mobiliario y enseres · casilla 0117. No es «mejora»: la mejora amortiza al
+  // 3 % sobre el valor del inmueble y el mobiliario al 10 % en diez años.
+  | 'amortizacion_muebles'
   | 'no_deducible';
 
 // Reparto de un mismo recibo entre varios inmuebles (sección 2.7 · embebido, no

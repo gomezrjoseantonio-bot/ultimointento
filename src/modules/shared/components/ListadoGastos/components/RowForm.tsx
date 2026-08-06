@@ -33,6 +33,14 @@ import RejillaMeses from './RejillaMeses';
 import { patronToMeses, mesesToPatron, diaDePatron } from '../utils/rejillaMeses';
 import { fiscalidadDeConcepto, FAMILIAS_FISCALES } from '../utils/fiscalidadConcepto';
 import RepartoEditor, { repartoCuadra, type InmuebleOpcion } from './RepartoEditor';
+import {
+  conceptoPorId,
+  conceptosDe,
+  familiasDeAmbito,
+  proyectar,
+} from '../../../../../services/conceptos/catalogoConceptos';
+import type { ProyeccionPersonal } from '../../../../../services/conceptos/catalogoConceptos';
+import { parLegacyDe, resolverConcepto } from '../../../../../services/conceptos/mapaLegacy';
 
 interface RowFormProps {
   compromiso: CompromisoRecurrente & { id: number };
@@ -93,6 +101,26 @@ function labelFamilia(id: FamiliaFiscal): string {
 }
 
 const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDisponibles, onSaved }) => {
+  // QUÉ es este gasto · el único campo de clasificación que se elige. De él se
+  // derivan familia, categoría, bolsa y fiscalidad. Hasta ahora la ficha de
+  // edición NO lo mostraba: se podía cambiar el importe y la cuenta, pero no
+  // arreglar un gasto mal clasificado, que es exactamente lo que le pasaba al
+  // seguro de vida. Si el registro es anterior a la unificación se traduce su
+  // par legacy para nacer relleno.
+  const conceptoInicial =
+    (c.concepto && conceptoPorId(c.concepto) ? c.concepto : null) ??
+    resolverConcepto(c.tipoFamilia, c.subtipo) ??
+    '';
+  const [concepto, setConcepto] = useState<string>(conceptoInicial);
+  const familias = useMemo(() => familiasDeAmbito(c.ambito), [c.ambito]);
+  const [familia, setFamilia] = useState<string>(
+    () => conceptoPorId(conceptoInicial)?.familia ?? familias[0]?.id ?? '',
+  );
+  const conceptosDeLaFamilia = useMemo(
+    () => (familia ? conceptosDe(familia as never, c.ambito) : []),
+    [familia, c.ambito],
+  );
+
   const [alias, setAlias] = useState(c.alias === 'Nuevo gasto' ? '' : c.alias);
   const [proveedor, setProveedor] = useState(c.proveedor?.nombre ?? '');
   const [nif, setNif] = useState(c.proveedor?.nif ?? '');
@@ -152,8 +180,10 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
   const [comparte, setComparte] = useState<boolean>(!!(c.reparto && c.reparto.length > 0));
   const [reparto, setReparto] = useState<RepartoInmueble[]>(c.reparto ?? []);
   // Fase 3 VH · solo para alquiler personal: ¿es el alquiler de mi vivienda
-  // habitual? (alimenta la deducción autonómica). Default-true.
-  const esAlquilerPersonal = c.ambito === 'personal' && c.categoria === 'vivienda.alquiler';
+  // habitual? (alimenta la deducción autonómica). Default-true. Se mira el
+  // concepto elegido AHORA, no la categoría guardada: si acabas de cambiarlo a
+  // «Alquiler», la casilla tiene que aparecer sin recargar.
+  const esAlquilerPersonal = c.ambito === 'personal' && concepto === 'alquiler_vivienda';
   const [esVH, setEsVH] = useState<boolean>(c.esViviendaHabitual !== false);
   const [saving, setSaving] = useState(false);
 
@@ -168,8 +198,10 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
 
   const mesAncla = useMemo(() => (meses.length ? Math.min(...meses) : new Date().getMonth() + 1), [meses]);
   const estadoLabel = c.estado === 'activo' ? 'Activo · se proyecta' : c.estado === 'preparado' ? 'Preparado · aún no se proyecta' : 'Dado de baja';
-  // Fiscalidad DERIVADA del concepto (informativa · no se pregunta salvo excepción).
-  const fisc = fiscalidadDeConcepto(c.tipoFamilia, c.subtipo, familiaManual || undefined);
+  // Fiscalidad DERIVADA del concepto (informativa · no se pregunta salvo
+  // excepción). Se recalcula con el concepto ELEGIDO, no con el guardado: la
+  // frase tiene que decir la verdad antes de guardar, no después.
+  const fisc = fiscalidadDeConcepto(concepto || undefined, undefined, familiaManual || undefined);
   const opcionesExcepcion = fisc.esDerrama ? DERRAMA_OPCIONES : FAMILIAS_FISCALES.map((f) => f.id);
 
   const handleSave = async () => {
@@ -214,7 +246,30 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       const margen = parseInt(margenGracia, 10);
       const nombre = alias.trim() || proveedor.trim() || 'Gasto recurrente';
 
+      // La clasificación se guarda DERIVADA del concepto elegido, nunca a mano:
+      // `categoria`, `bolsaPresupuesto` y `tipo` salen de la proyección del
+      // concepto en este ámbito. Antes la ficha ni los mandaba, así que un gasto
+      // mal clasificado se quedaba mal clasificado por mucho que se editara.
+      const proyeccion = proyectar(concepto, c.ambito);
+      const conceptoDef = conceptoPorId(concepto);
+      // `tipoFamilia`/`subtipo` van también: siguen siendo la clave con la que
+      // las listas agrupan. Sin arrastrarlas, mover un gasto de familia lo
+      // dejaría listado bajo la anterior.
+      const par = parLegacyDe(concepto, c.ambito);
+      const clasificacion: Partial<CompromisoRecurrente> =
+        proyeccion && conceptoDef
+          ? {
+              concepto,
+              categoria: proyeccion.categoria,
+              tipo: conceptoDef.tipoCompromiso,
+              bolsaPresupuesto:
+                c.ambito === 'personal' ? (proyeccion as ProyeccionPersonal).bolsa : 'inmueble',
+              ...(par ? { tipoFamilia: par.tipoFamilia, subtipo: par.subtipo } : {}),
+            }
+          : {};
+
       const payload: Partial<Omit<CompromisoRecurrente, 'id' | 'createdAt'>> = {
+        ...clasificacion,
         alias: nombre,
         proveedor: { ...c.proveedor, nombre: proveedor.trim() || nombre, nif: nif.trim() || undefined },
         cups: cups.trim() || undefined,
@@ -261,7 +316,44 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       {/* ── Quién lo cobra ── */}
       <div style={dtit}>Quién lo cobra</div>
       <div style={dgrid}>
-        <Field label="Concepto"><input style={inp} value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Luz, comunidad, seguro…" /></Field>
+        {/* QUÉ es · lo único que se elige. Familia y concepto salen del catálogo
+            unificado filtrado por el ámbito de este gasto, así que no se puede
+            elegir algo que en este ámbito no sepa clasificarse. */}
+        <Field label="Familia">
+          <select
+            style={inp}
+            value={familia}
+            onChange={(e) => {
+              const nueva = e.target.value;
+              setFamilia(nueva);
+              // Al cambiar de familia el concepto anterior ya no está en la
+              // lista · se salta al primero de la nueva en vez de quedarse con
+              // uno que no se puede ver.
+              const primero = conceptosDe(nueva as never, c.ambito)[0];
+              setConcepto(primero?.id ?? '');
+              setFamiliaManual('');
+            }}
+          >
+            {familias.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+          </select>
+        </Field>
+        {/* La fiscalidad NO se repite aquí · la dice su propio campo, abajo. */}
+        <Field label="Qué es">
+          <select
+            style={inp}
+            value={concepto}
+            onChange={(e) => {
+              setConcepto(e.target.value);
+              // Una elección fiscal manual pertenecía al concepto anterior ·
+              // arrastrarla haría que el gasto nuevo contase como el viejo.
+              setFamiliaManual('');
+            }}
+          >
+            {conceptoInicial === '' && <option value="">— Sin clasificar —</option>}
+            {conceptosDeLaFamilia.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+          </select>
+        </Field>
+        <Field label="Nombre" hint="Cómo lo llamas tú en la lista"><input style={inp} value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Luz, comunidad, seguro…" /></Field>
         <Field label="Proveedor"><input style={inp} value={proveedor} onChange={(e) => setProveedor(e.target.value)} /></Field>
         <Field
           label="CIF o NIF"
