@@ -6,9 +6,9 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import FEINUploader from '../../../components/financiacion/FEINUploader';
-import { FeinToPrestamoMapper } from '../../../services/fein/feinToPrestamoMapper';
+import { prestamoDesdeDraft } from '../../../services/fein/prestamoDesdeDraft';
 import type { FeinLoanDraft } from '../../../types/fein';
-import type { PrestamoFinanciacion } from '../../../types/financiacion';
+import type { Prestamo } from '../../../types/prestamos';
 import PrestamoPageV2 from '../wizards/PrestamoPageV2';
 
 interface Props {
@@ -25,22 +25,19 @@ const WizardCreatePage: React.FC<Props> = ({ withFEIN = false }) => {
   // (PrestamoPageV2) queda intacto · solo cambia el destino de navegación.
   const [searchParams] = useSearchParams();
   const backTarget = searchParams.get('from') === 'empezar' ? '/empezar/prestamos' : '/financiacion';
-  const [feinData, setFeinData] = useState<Partial<PrestamoFinanciacion> | null>(null);
+  const [feinData, setFeinData] = useState<Partial<Prestamo> | null>(null);
   const [stage, setStage] = useState<'fein' | 'wizard'>(withFEIN ? 'fein' : 'wizard');
 
   const handleFEINDraftReady = (draft: FeinLoanDraft) => {
-    const mapped = FeinToPrestamoMapper.mapToPrestamoFinanciacion(draft);
-    const info = FeinToPrestamoMapper.generateMappingInfo(draft);
-    setFeinData(mapped);
-    if (info.warnings.length > 0 || info.missingFields.length > 0) {
-      const msg = [
-        info.missingFields.length > 0 ? `Campos pendientes · ${info.missingFields.join(', ')}` : '',
-        ...info.warnings.slice(0, 2),
-      ]
-        .filter(Boolean)
-        .join('. ');
-      if (msg) toast.error(`Datos extraídos del FEIN. ${msg}.`);
-    }
+    // Sin escalas · el borrador va directo al tipo bueno. Pasaba antes por
+    // `PrestamoFinanciacion`, que no tiene dónde poner el valor del índice, la
+    // base de cálculo ni la tasación: los tres se leían y se perdían ahí.
+    setFeinData(prestamoDesdeDraft(draft));
+
+    // Lo que el modelo dijo que NO encontró, y los números con los que el banco
+    // se deja comprobar. Es tan útil como los datos.
+    const notas = draft.metadata.warnings ?? [];
+    if (notas.length > 0) toast(notas.join(' · '), { duration: 8000 });
     setStage('wizard');
   };
 

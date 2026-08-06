@@ -62,7 +62,6 @@ import {
   type TipoPrestamoV2,
 } from '../../../services/prestamoCalculatorService';
 import type { Bonificacion, DestinoCapital, Garantia, PeriodoPago, Prestamo, ReglaBonificacion } from '../../../types/prestamos';
-import type { BonificacionFinanciacion, PrestamoFinanciacion } from '../../../types/financiacion';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import { bonificaHipoteca } from '../../../services/tarjetasReglas';
@@ -329,66 +328,6 @@ const filasDelCatalogo = (): BonificacionRow[] =>
     importeMinimoRaw: importeRaw(b.regla),
   }));
 
-/**
- * Qué hay que demostrar, según lo que la FEIN llamó a esa bonificación.
- *
- * Las cifras van a CERO a propósito: la FEIN dice el umbral en prosa
- * —«por importe igual o superior a 2.500,00 euros netos mensuales»— y de ahí
- * no sale un número fiable. Cero significa «no dicho», y la verificación lo
- * dirá así en vez de dar la bonificación por incumplida (§6 ter).
- */
-const reglaDesdeTipoFEIN = (
-  tipo: BonificacionFinanciacion['tipo'],
-  descripcion: string
-): ReglaBonificacion => {
-  switch (tipo) {
-    case 'NOMINA':
-    case 'INGRESOS_RECURRENTES':
-      return { tipo: 'NOMINA', minimoMensual: 0 };
-    case 'SEGURO_HOGAR':
-      return { tipo: 'SEGURO_HOGAR', activo: true };
-    case 'SEGURO_VIDA':
-      return { tipo: 'SEGURO_VIDA', activo: true };
-    case 'PLAN_PENSIONES':
-      return { tipo: 'PLAN_PENSIONES', activo: true };
-    case 'TARJETA':
-      return { tipo: 'TARJETA', importeMinimo: 0 };
-    case 'RECIBOS':
-      return { tipo: 'RECIBOS', minimoRecibos: 0 };
-    case 'ALARMA':
-      return { tipo: 'ALARMA', activo: true };
-    default:
-      return { tipo: 'OTRA', descripcion };
-  }
-};
-
-/**
- * Las bonificaciones que la FEIN OFRECE.
- *
- * Ofrece, no las que tengas: la FEIN de Unicaja lista catorce bloques —seguro
- * agrario y seguro de comercio incluidos— y cuáles contrataste es decisión
- * tuya. Por eso entran `INACTIVO`: se ven, con sus puntos exactos, y tú marcas
- * las que van. Marcarlas todas sería inventarse un contrato.
- *
- * Sustituyen al catálogo por defecto en vez de mezclarse: el catálogo son cinco
- * propuestas de ATLAS, y estas vienen del papel del banco.
- */
-const bonificacionesDesdeFEIN = (bonificaciones: BonificacionFinanciacion[]): Bonificacion[] =>
-  bonificaciones.map((b, i) => ({
-    id: b.id || `fein-${i}`,
-    tipo: (b.tipo === 'PLAN_PENSIONES'
-      ? 'PENSIONES'
-      : b.tipo === 'INGRESOS_RECURRENTES'
-        ? 'NOMINA'
-        : b.tipo) as Bonificacion['tipo'],
-    nombre: b.nombre,
-    reduccionPuntosPorcentuales: b.impacto?.puntos ?? b.descuentoTIN ?? 0,
-    impacto: { puntos: b.impacto?.puntos ?? b.descuentoTIN ?? 0 },
-    estado: 'INACTIVO',
-    regla: reglaDesdeTipoFEIN(b.tipo, b.condicionParametrizable || b.nombre),
-    lookbackMeses: LOOKBACK_POR_DEFECTO,
-  }));
-
 // ─── Mapeos prestamo legacy ↔ v2 ────────────────────────────────────────────
 function mapCarenciaLegacyToV2(c: Prestamo['carencia']): TipoCarenciaInicialV2 {
   if (c === 'CAPITAL') return 'solo_capital';
@@ -601,7 +540,11 @@ function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
     comReembolsoTotal: comisionPactadaDe(p as Prestamo, 'TOTAL') ?? base.comReembolsoTotal,
     comModifCondicionesRaw: numero(p.comisionModificacionCondiciones, base.comModifCondicionesRaw),
     gastoReclamacionImpagoRaw: numero(p.gastoReclamacionImpago, base.gastoReclamacionImpagoRaw),
-    bonificacionesActivas: bonificaciones.some((b) => b.activa),
+    // Que HAYA bonificaciones, no que alguna esté marcada · las de una FEIN
+    // entran sin marcar —el papel dice lo que el banco ofrece, no lo que tú
+    // contrataste— y con `some(activa)` el interruptor salía apagado y las
+    // catorce quedaban escondidas detrás de un «0 activas».
+    bonificacionesActivas: (p.bonificaciones?.length ?? 0) > 0 || base.bonificacionesActivas,
     bonificaciones,
     proximaRevision: p.proximaRevisionBonificaciones ?? base.proximaRevision,
     revisionCadaMeses: p.periodoRevisionBonificacionMeses
@@ -620,58 +563,18 @@ function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
   };
 }
 
-/**
- * Lo que la FEIN dijo, como préstamo.
- *
- * El puente que faltaba. La FEIN aterrizaba en `PrestamoFinanciacion`, un tipo
- * viejo que ni siquiera tiene dónde poner el valor del índice y guarda el tramo
- * fijo en AÑOS cuando la FEIN lo da en meses; la edición usa `Prestamo`. Dos
- * destinos para el mismo papel, y de ahí que no coincidieran.
- */
-function prestamoDesdeFEIN(d: Partial<PrestamoFinanciacion>): Partial<Prestamo> {
-  const plazo = d.plazoTotal
-    ? d.plazoPeriodo === 'AÑOS'
-      ? d.plazoTotal * 12
-      : d.plazoTotal
-    : undefined;
-  const tipo = d.tipo as Prestamo['tipo'] | undefined;
-
-  return {
-    ...(d.alias !== undefined ? { nombre: d.alias } : {}),
-    ...(d.cuentaCargoId !== undefined ? { cuentaCargoId: d.cuentaCargoId } : {}),
-    ...(d.capitalInicial !== undefined ? { principalInicial: d.capitalInicial } : {}),
-    ...(plazo !== undefined ? { plazoMesesTotal: plazo } : {}),
-    ...(d.fechaFirma !== undefined ? { fechaFirma: d.fechaFirma } : {}),
-    ...(tipo !== undefined ? { tipo } : {}),
-    // En un fijo el TIN leído es el del préstamo; en un mixto es el del tramo
-    // fijo, y meterlo en el campo del otro lo escondía.
-    ...(tipo === 'MIXTO'
-      ? {
-          ...(d.tinTramoFijo ?? d.tinFijo) !== undefined
-            ? { tipoNominalAnualMixtoFijo: (d.tinTramoFijo ?? d.tinFijo) as number }
-            : {},
-          ...(d.tramoFijoAnos ? { tramoFijoMeses: d.tramoFijoAnos * 12 } : {}),
-        }
-      : d.tinFijo !== undefined
-        ? { tipoNominalAnualFijo: d.tinFijo }
-        : {}),
-    ...(d.indice !== undefined ? { indice: d.indice as Prestamo['indice'] } : {}),
-    ...(d.diferencial !== undefined ? { diferencial: d.diferencial } : {}),
-    ...(d.revision !== undefined ? { periodoRevisionMeses: d.revision } : {}),
-    ...(d.comisionApertura !== undefined ? { comisionApertura: d.comisionApertura } : {}),
-    ...(d.comisionMantenimiento !== undefined
-      ? { comisionMantenimiento: d.comisionMantenimiento }
-      : {}),
-    ...(d.bonificaciones?.length ? { bonificaciones: bonificacionesDesdeFEIN(d.bonificaciones) } : {}),
-  };
-}
-
 // ─── Props ──────────────────────────────────────────────────────────────────
 export interface PrestamoPageV2Props {
   /** Id del préstamo en modo edición. Undefined/null = creación. */
   prestamoId?: string;
-  /** Datos iniciales (procedentes de FEIN u otro origen). */
-  initialData?: Partial<PrestamoFinanciacion>;
+  /**
+   * Datos iniciales · de una FEIN leída o de donde sea.
+   *
+   * `Partial<Prestamo>`, el tipo BUENO. Antes era `PrestamoFinanciacion`, que
+   * no tiene dónde poner el valor del índice, la base de cálculo ni la
+   * tasación: los tres se leían de la FEIN y morían en esa escala.
+   */
+  initialData?: Partial<Prestamo>;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -773,8 +676,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
    * FEIN no traiga se queda como estaba, que es la diferencia entre rellenar y
    * pisar.
    */
-  const hydrateFromFEIN = (data: Partial<PrestamoFinanciacion>) => {
-    setForm((prev) => formDesdePrestamo(prestamoDesdeFEIN(data), prev));
+  const hydrateFromFEIN = (data: Partial<Prestamo>) => {
+    setForm((prev) => formDesdePrestamo(data, prev));
   };
 
   // ─── Derivados ────────────────────────────────────────────────────────────
@@ -2650,4 +2553,4 @@ export default PrestamoPageV2;
  * Para el candado de que los dos caminos acaban en el mismo sitio · patrón del
  * repo. No es API de la pantalla: es lo que hay que poder probar sin montarla.
  */
-export const __private__ = { formDesdePrestamo, prestamoDesdeFEIN, emptyFormState };
+export const __private__ = { formDesdePrestamo, emptyFormState };

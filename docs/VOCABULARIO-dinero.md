@@ -1136,6 +1136,16 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-06** · **La cuota de la Unicaja son 454,66 €, no 454,57** *(Jose,
+  mirando su recibo)*. ATLAS calcula la anualidad francesa con `TIN/12` y ahí
+  salen 454,58. Nueve céntimos, pero la escritura de Unicaja **no calcula así**:
+  su fórmula lleva un productorio sobre los **días reales** de cada periodo de
+  liquidación, dividiendo entre 36.500. Con meses de 28 a 31 días, la cuota
+  constante que sale de esa fórmula no es la de `TIN/12`. Si se confirma, el
+  rótulo del formulario —«la base cambia el desglose, no la cuota»— es **falso**
+  para ACT/365 y hay que cambiarlo, y con él la cuota. Falta medirlo contra un
+  recibo o el cuadro del banco. §6 bis · bis.
+
 - **2026-08-06** · **La FEIN se lee bien; el cuello de botella es el tiempo.**
   Probando contra la FEIN de Unicaja, Claude la leyó **por el modo de facturas**
   —un prompt que ni pregunta por préstamos— y devolvió: «no es una factura, es
