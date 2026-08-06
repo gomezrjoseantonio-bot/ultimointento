@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-06",
-  "generatedAt": "2026-08-06T18:09:00.560Z",
+  "generatedAt": "2026-08-06T19:13:05.508Z",
   "git": {
-    "branch": "claude/new-session-hq2846",
-    "head": "5ea5d3a"
+    "branch": "claude/ing-life-insurance-duplicate-3bfx9x",
+    "head": "856739aaf"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -143,7 +143,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 805 · dead 0 · solo_tests 44 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 809 · dead 0 · solo_tests 45 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -265,12 +265,12 @@
         "1716 · src/services/irpfCalculationService.ts",
         "1704 · src/modules/inversiones/pages/FichaPlanPensiones.tsx",
         "1550 · src/services/aeatParserService.ts",
-        "1506 · src/App.tsx",
+        "1511 · src/App.tsx",
         "1463 · src/services/treasuryConfirmationService.ts",
         "1461 · src/services/declaracionOnboardingService.ts",
         "1421 · scripts/health.mjs",
         "1343 · src/services/propertySaleService.ts",
-        "1328 · src/modules/tesoreria/v6/TesoreriaV6Page.tsx",
+        "1334 · src/modules/tesoreria/v6/TesoreriaV6Page.tsx",
         "1259 · src/pages/GestionPersonal/wizards/NominaPage.tsx"
       ],
       "calibracion": null
