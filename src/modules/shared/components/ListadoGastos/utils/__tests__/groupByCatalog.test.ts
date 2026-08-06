@@ -100,3 +100,38 @@ describe('groupByCatalog · no se pierde ninguna fila', () => {
     expect(grupos).toHaveLength(0);
   });
 });
+
+describe('el concepto manda sobre tipoFamilia', () => {
+  // `tipoFamilia` es una copia del concepto que puede haberse quedado vieja ·
+  // agrupar por ella dejaba el gasto bajo la familia que ya no es la suya.
+  const base = (over: Record<string, unknown> = {}) =>
+    ({
+      id: 1,
+      alias: 'Un gasto',
+      tipo: 'otros',
+      ambito: 'personal',
+      categoria: 'personal',
+      bolsaPresupuesto: 'deseos',
+      responsable: 'titular',
+      ...over,
+    }) as never;
+
+  const CATALOGO = [
+    { id: 'suscripciones', label: 'Suscripciones', subtipos: [] },
+    { id: 'seguros_cuotas', label: 'Seguros y cuotas', subtipos: [] },
+  ] as never;
+
+  it('agrupa por el concepto aunque tipoFamilia diga otra cosa', () => {
+    const grupos = groupByCatalog(
+      [base({ concepto: 'musica', tipoFamilia: 'seguros_cuotas' })],
+      CATALOGO,
+      'personal',
+    );
+    expect(grupos.map((g) => g.familiaId)).toEqual(['suscripciones']);
+  });
+
+  it('sin concepto sigue agrupando por tipoFamilia', () => {
+    const grupos = groupByCatalog([base({ tipoFamilia: 'seguros_cuotas' })], CATALOGO, 'personal');
+    expect(grupos.map((g) => g.familiaId)).toEqual(['seguros_cuotas']);
+  });
+});

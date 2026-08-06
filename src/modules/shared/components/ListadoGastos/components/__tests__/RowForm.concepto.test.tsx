@@ -212,3 +212,36 @@ describe('la frase fiscal habla del concepto elegido AHORA', () => {
     screen.getByText(/¿conservación o mejora\?/i);
   });
 });
+
+describe('los campos legacy no se quedan viejos', () => {
+  it('cambiar de concepto reescribe tipoFamilia y subtipo', async () => {
+    pintar(compromiso({ concepto: 'seguro_vida', tipoFamilia: 'seguros_cuotas', subtipo: 'seguro_vida' }));
+
+    fireEvent.change(selectConOpcion('Seguros'), { target: { value: 'suscripciones' } });
+    fireEvent.change(selectConOpcion('Streaming'), { target: { value: 'musica' } });
+    const payload = await guardar();
+
+    expect({ f: payload.tipoFamilia, s: payload.subtipo }).toEqual({
+      f: 'suscripciones',
+      s: 'musica',
+    });
+  });
+
+  it('un concepto SIN par legacy los limpia en vez de dejar el anterior', async () => {
+    // `alarma` en personal es una de las cinco combinaciones que estrena la
+    // unificación · no tiene par. Dejar el del concepto viejo haría que la
+    // lista lo siguiera agrupando bajo aquella familia.
+    pintar(compromiso({ concepto: 'seguro_vida', tipoFamilia: 'seguros_cuotas', subtipo: 'seguro_vida' }));
+
+    fireEvent.change(selectConOpcion('Seguros'), { target: { value: 'suministros' } });
+    fireEvent.change(selectConOpcion('Luz'), { target: { value: 'alarma' } });
+    const payload = await guardar();
+
+    expect(payload.concepto).toBe('alarma');
+    expect('tipoFamilia' in payload).toBe(true);
+    expect({ f: payload.tipoFamilia, s: payload.subtipo }).toEqual({
+      f: undefined,
+      s: undefined,
+    });
+  });
+});

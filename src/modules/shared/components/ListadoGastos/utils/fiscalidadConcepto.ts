@@ -14,7 +14,7 @@
 // par (`tipoFamilia`, `subtipo`). El par sigue entrando por la puerta de atrás
 // —se traduce— mientras queden registros o pantallas que lo usen. Y quién
 // pregunta ya no es una lista escrita aquí: pregunta el que el catálogo marca
-// como `pregunta` (la derrama) o como personalizado. Antes preguntaba TODO
+// como `pregunta` (la derrama) o como personalizado. Antes preguntaba cualquier
 // subtipo llamado `otros`, aunque la capa de persistencia ya hubiera decidido su
 // casilla — justo la clase de desacuerdo que la unificación viene a quitar.
 

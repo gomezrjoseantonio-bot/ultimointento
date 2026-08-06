@@ -255,6 +255,12 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       // `tipoFamilia`/`subtipo` van también: siguen siendo la clave con la que
       // las listas agrupan. Sin arrastrarlas, mover un gasto de familia lo
       // dejaría listado bajo la anterior.
+      //
+      // Y se escriben SIEMPRE, incluso vacías. Las cinco combinaciones que
+      // estrena la unificación no tienen par legacy, y dejar ahí el del
+      // concepto viejo es peor que no tener ninguno: la lista seguiría
+      // agrupando por él. Sin par, la familia se deduce del concepto
+      // (`groupingHelpers`), que es la fuente buena.
       const par = parLegacyDe(concepto, c.ambito);
       const clasificacion: Partial<CompromisoRecurrente> =
         proyeccion && conceptoDef
@@ -264,7 +270,8 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
               tipo: conceptoDef.tipoCompromiso,
               bolsaPresupuesto:
                 c.ambito === 'personal' ? (proyeccion as ProyeccionPersonal).bolsa : 'inmueble',
-              ...(par ? { tipoFamilia: par.tipoFamilia, subtipo: par.subtipo } : {}),
+              tipoFamilia: par?.tipoFamilia,
+              subtipo: par?.subtipo,
             }
           : {};
 

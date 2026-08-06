@@ -127,8 +127,8 @@ const ConceptosPage: React.FC = () => {
         <div>
           <h1 className={containerStyles.contentTitle}>Conceptos</h1>
           <div className={containerStyles.contentSub}>
-            qué puede ser un gasto · el nombre y si se ofrece los decides tú · a qué casilla lleva,
-            no
+            qué puede ser un gasto · el nombre y si se ofrece los decides tú · la casilla AEAT se
+            hereda de la familia
           </div>
         </div>
         <button
