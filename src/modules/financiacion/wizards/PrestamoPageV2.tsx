@@ -62,7 +62,7 @@ import {
   type TipoPrestamoV2,
 } from '../../../services/prestamoCalculatorService';
 import type { Bonificacion, DestinoCapital, Garantia, PeriodoPago, Prestamo, ReglaBonificacion } from '../../../types/prestamos';
-import type { PrestamoFinanciacion } from '../../../types/financiacion';
+import type { BonificacionFinanciacion, PrestamoFinanciacion } from '../../../types/financiacion';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import { bonificaHipoteca } from '../../../services/tarjetasReglas';
@@ -327,6 +327,59 @@ const filasDelCatalogo = (): BonificacionRow[] =>
     // Sembrado desde la propia regla · dejarlo vacío enseñaría un hueco donde
     // el catálogo ya propone una cifra, y esa cifra es la que se guardaría.
     importeMinimoRaw: importeRaw(b.regla),
+  }));
+
+/**
+ * Qué hay que demostrar, según lo que la FEIN llamó a esa bonificación.
+ *
+ * Las cifras van a CERO a propósito: la FEIN dice el umbral en prosa
+ * —«por importe igual o superior a 2.500,00 euros netos mensuales»— y de ahí
+ * no sale un número fiable. Cero significa «no dicho», y la verificación lo
+ * dirá así en vez de dar la bonificación por incumplida (§6 ter).
+ */
+const reglaDesdeTipoFEIN = (
+  tipo: BonificacionFinanciacion['tipo'],
+  descripcion: string
+): ReglaBonificacion => {
+  switch (tipo) {
+    case 'NOMINA':
+    case 'INGRESOS_RECURRENTES':
+      return { tipo: 'NOMINA', minimoMensual: 0 };
+    case 'SEGURO_HOGAR':
+      return { tipo: 'SEGURO_HOGAR', activo: true };
+    case 'SEGURO_VIDA':
+      return { tipo: 'SEGURO_VIDA', activo: true };
+    case 'PLAN_PENSIONES':
+      return { tipo: 'PLAN_PENSIONES', activo: true };
+    case 'TARJETA':
+      return { tipo: 'TARJETA', importeMinimo: 0 };
+    case 'RECIBOS':
+      return { tipo: 'RECIBOS', minimoRecibos: 0 };
+    case 'ALARMA':
+      return { tipo: 'ALARMA', activo: true };
+    default:
+      return { tipo: 'OTRA', descripcion };
+  }
+};
+
+/**
+ * Las bonificaciones de la FEIN, como filas del formulario.
+ *
+ * Vienen del papel del banco, así que **sustituyen** al catálogo por defecto en
+ * vez de mezclarse con él: el catálogo son cinco propuestas de ATLAS, y la FEIN
+ * de Unicaja trae catorce bloques con sus puntos exactos. Enseñar las dos cosas
+ * a la vez sería inventarse bonificaciones que no están en el contrato.
+ */
+const filasDesdeFEIN = (bonificaciones: BonificacionFinanciacion[]): BonificacionRow[] =>
+  bonificaciones.map((b) => ({
+    id: uid(),
+    nombre: b.nombre,
+    ppDescuento: b.impacto?.puntos ?? b.descuentoTIN ?? 0,
+    // Del papel, así que se enseñan marcadas · el usuario quita las que no haya
+    // contratado, que es más corto que buscarlas de una en una.
+    activa: true,
+    regla: reglaDesdeTipoFEIN(b.tipo, b.condicionParametrizable || b.nombre),
+    lookbackMeses: LOOKBACK_POR_DEFECTO,
   }));
 
 // ─── Mapeos prestamo legacy ↔ v2 ────────────────────────────────────────────
@@ -619,9 +672,23 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     });
   };
 
+  /**
+   * Lo leído de la FEIN, al formulario · **todo** lo leído.
+   *
+   * Esto rellenaba diez campos y el mapper produce bastantes más: el
+   * diferencial se leía del papel —`feinOcrService` lo extrae— y no se ponía,
+   * así que subías la FEIN de una variable, ATLAS leía el 1,750, y luego te
+   * pedía que escribieras 1,750. Las bonificaciones igual: se leían con sus
+   * puntos y se quedaban por el camino.
+   *
+   * Sigue habiendo DOS hidratadores —este y `hydrateFromPrestamo`— y eso es lo
+   * que hay que juntar: subir la FEIN y teclearla a mano tienen que acabar en
+   * el mismo sitio. Mientras tanto, que al menos no se pierda nada.
+   */
   const hydrateFromFEIN = (data: Partial<PrestamoFinanciacion>) => {
     const cap = data.capitalInicial ?? 0;
     const plazo = data.plazoPeriodo === 'AÑOS' ? (data.plazoTotal || 0) * 12 : (data.plazoTotal || 0);
+    const tipo = (data.tipo?.toLowerCase() as TipoInteresV2) || undefined;
     setForm((prev) => ({
       ...prev,
       alias: data.alias || prev.alias,
@@ -631,9 +698,33 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       fechaFirma: data.fechaFirma || prev.fechaFirma,
       fechaPrimerCargo: data.fechaPrimerCargo || prev.fechaPrimerCargo,
       diaCobroRaw: data.diaCobroMes ? String(data.diaCobroMes) : prev.diaCobroRaw,
-      tipoInteres: (data.tipo?.toLowerCase() as TipoInteresV2) || prev.tipoInteres,
+      tipoInteres: tipo ?? prev.tipoInteres,
       tinFijoRaw: data.tinFijo !== undefined ? fmtNumeroEs(data.tinFijo) : prev.tinFijoRaw,
-      comAperturaRaw: data.comisionApertura !== undefined ? fmtNumeroEs(data.comisionApertura) : prev.comAperturaRaw,
+      comAperturaRaw:
+        data.comisionApertura !== undefined ? fmtNumeroEs(data.comisionApertura) : prev.comAperturaRaw,
+      comMantenimientoRaw:
+        data.comisionMantenimiento !== undefined
+          ? fmtNumeroEs(data.comisionMantenimiento)
+          : prev.comMantenimientoRaw,
+      // El diferencial y la revisión los lee el OCR y no llegaban.
+      diferencialRaw:
+        data.diferencial !== undefined ? fmtNumeroEs(data.diferencial) : prev.diferencialRaw,
+      revisionPeriodo: (data.revision as 6 | 12) || prev.revisionPeriodo,
+      // En un mixto, el TIN leído es el del TRAMO FIJO · dejarlo solo en
+      // `tinFijoRaw` lo escondía en el campo de otro tipo de préstamo.
+      tinTramoFijoRaw:
+        tipo === 'mixto' && data.tinTramoFijo !== undefined
+          ? fmtNumeroEs(data.tinTramoFijo)
+          : prev.tinTramoFijoRaw,
+      tramoFijoMesesRaw: data.tramoFijoAnos
+        ? String(data.tramoFijoAnos * 12)
+        : prev.tramoFijoMesesRaw,
+      // Las bonificaciones de la FEIN, con sus puntos · vienen del papel, así
+      // que entran marcadas para que se vean y se puedan quitar.
+      bonificacionesActivas: (data.bonificaciones?.length ?? 0) > 0 || prev.bonificacionesActivas,
+      bonificaciones: data.bonificaciones?.length
+        ? filasDesdeFEIN(data.bonificaciones)
+        : prev.bonificaciones,
     }));
   };
 

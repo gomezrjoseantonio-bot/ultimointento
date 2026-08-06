@@ -13,8 +13,6 @@ export class FeinToPrestamoMapper {
     feinDraft: FeinLoanDraft,
     defaultAccountId?: string
   ): Partial<PrestamoFinanciacion> {
-    const today = new Date().toISOString().split('T')[0];
-    
     // Base mapping with defaults
     const mappedData: Partial<PrestamoFinanciacion> = {
       // Default values required by form
@@ -22,12 +20,17 @@ export class FeinToPrestamoMapper {
       esquemaPrimerRecibo: 'NORMAL',
       sistema: 'FRANCES',
       carencia: 'NINGUNA',
-      diaCobroMes: 1,
-      
-      // Dates - use today as defaults
-      fechaFirma: feinDraft.prestamo.fechaFirmaPrevista || today,
-      fechaPrimerCargo: feinDraft.prestamo.fechaFirmaPrevista || today,
-      
+
+      // La fecha de firma, SOLO si la FEIN la trae · poner hoy era inventarse
+      // el dato del que cuelga todo el cuadro, y encima con aspecto de leído.
+      // Ausente, el formulario ya sabe qué hacer.
+      fechaFirma: feinDraft.prestamo.fechaFirmaPrevista || undefined,
+
+      // `fechaPrimerCargo` y `diaCobroMes` NO se rellenan aquí. Se ponían a la
+      // fecha de firma y al día 1: dos datos falsos, y de los dos sale la
+      // primera cuota. La FEIN no los dice —los dice la escritura—, y lo que no
+      // está en el papel no se escribe.
+
       // Loan identification
       alias: feinDraft.prestamo.aliasSugerido || `Préstamo ${feinDraft.prestamo.banco || 'FEIN'}`,
       
@@ -51,6 +54,8 @@ export class FeinToPrestamoMapper {
       
       // Commissions
       comisionApertura: feinDraft.prestamo.comisionAperturaPct || undefined,
+      // Se leía y se tiraba · va en EUROS AL MES, no en porcentaje.
+      comisionMantenimiento: feinDraft.prestamo.comisionMantenimientoMes || undefined,
       comisionAmortizacionAnticipada: feinDraft.prestamo.amortizacionAnticipadaPct || undefined,
       
       // Account - use default if provided, otherwise user will need to select
@@ -92,8 +97,12 @@ export class FeinToPrestamoMapper {
       tipo: this.mapBonificationType(bonif.id),
       nombre: bonif.etiqueta,
       condicionParametrizable: bonif.criterio || bonif.etiqueta,
-      descuentoTIN: bonif.descuentoPuntos ? bonif.descuentoPuntos / 100 : 0, // Convert percentage points to decimal
-      impacto: { puntos: bonif.descuentoPuntos ? bonif.descuentoPuntos / 100 : 0 },
+      // En PUNTOS PORCENTUALES, tal como los da la FEIN y tal como los espera
+      // `descuentoTIN` (financiacion.ts:70). Aquí se dividían entre 100, así que
+      // el bloque de haberes de Unicaja —0,500000 p.p. en su FEIN— aterrizaba
+      // como 0,005 p.p.: una bonificación cien veces más pequeña, o sea ninguna.
+      descuentoTIN: bonif.descuentoPuntos ?? 0,
+      impacto: { puntos: bonif.descuentoPuntos ?? 0 },
       ventanaEvaluacion: 6, // Default 6 months evaluation window
       fuenteVerificacion: this.mapVerificationSource(bonif.id),
       estadoInicial: 'NO_CUMPLE' as const, // Default to not met
