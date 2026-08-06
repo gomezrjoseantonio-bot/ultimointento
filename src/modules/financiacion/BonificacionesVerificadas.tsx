@@ -72,9 +72,13 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
     let cancelado = false;
     (async () => {
       const db = await initDB();
-      const [eventos, tarjetas] = await Promise.all([
+      // Los tres a la vez y ANTES del corte: con una lectura después del
+      // `if (cancelado)`, desmontar durante esa espera dejaba pasar el
+      // `setMovimientos` que el corte viene a evitar.
+      const [eventos, tarjetas, cerrados] = await Promise.all([
         db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
         listarTarjetas(),
+        cierres(),
       ]);
       if (cancelado) return;
       setMovimientos({
@@ -84,7 +88,7 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
         recibosDomiciliados: recibosDomiciliados(eventos),
         // Los meses cerrados · es lo que convierte «todavía no consta» en un
         // NO. Sin esto una bonificación no se pierde nunca (§6 quater).
-        mesesCerrados: (await cierres()).map((c) => c.mes),
+        mesesCerrados: cerrados.map((c) => c.mes),
       });
     })();
     return () => {

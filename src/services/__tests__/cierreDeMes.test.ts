@@ -126,6 +126,18 @@ describe('cerrar', () => {
     expect(segundo).toEqual(primero);
     expect(await cierres()).toHaveLength(1);
   });
+
+  // Dos cierres del mismo mes a la vez dejarían DOS registros, y reabrir cogería
+  // el primero que encontrase — que puede ser el que no descartó nada.
+  it('ni cerrando dos veces a la vez · un mes, un cierre', async () => {
+    const [id] = await sembrar([evento()]);
+
+    await Promise.all([cerrarMes('2026-07', HOY), cerrarMes('2026-07', HOY)]);
+
+    expect(await cierres()).toHaveLength(1);
+    await reabrirMes('2026-07');
+    expect((await leer(id)).descartado).toBeUndefined();
+  });
 });
 
 // La pantalla ofrece exactamente los meses que el motor acepta · si ofreciera
@@ -167,7 +179,11 @@ describe('reabrir', () => {
 
     await reabrirMes('2026-07');
 
-    expect((await leer(id)).descartado).toBe(false);
+    // La marca se QUITA, no se pone a false · un registro sin marca y otro con
+    // `descartado: false` serían dos maneras de decir lo mismo.
+    const despues = await leer(id);
+    expect(despues.descartado).toBeUndefined();
+    expect(despues.motivoDescarte).toBeUndefined();
     expect(await estaCerrado('2026-07')).toBe(false);
   });
 

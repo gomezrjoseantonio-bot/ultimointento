@@ -67,14 +67,11 @@ const mesDe = (iso: string): string => (iso ?? '').slice(0, 7);
  * consta como no ocurrido, y volver a contarlo lo apuntaría dos veces en el
  * recibo del cierre y lo resucitaría al reabrir.
  */
+const sigueAbierto = (e: TreasuryEvent): boolean =>
+  e.status !== 'executed' && e.descartado !== true && typeof e.id === 'number';
+
 const siguenAbiertos = (eventos: TreasuryEvent[], mes: string): TreasuryEvent[] =>
-  eventos.filter(
-    (e) =>
-      mesDe(e.predictedDate) === mes &&
-      e.status !== 'executed' &&
-      e.descartado !== true &&
-      typeof e.id === 'number'
-  );
+  eventos.filter((e) => mesDe(e.predictedDate) === mes && sigueAbierto(e));
 
 /** Los meses cerrados, tal como están guardados. */
 export async function cierres(): Promise<CierreDeMes[]> {
@@ -144,10 +141,11 @@ export interface MesCerrable {
 }
 
 /**
- * La tira de meses cerrables, con su estado · UNA lectura para todos.
+ * La tira de meses cerrables, con su estado · UNA lectura y UNA pasada.
  *
- * Preguntar mes a mes con `loQueQuedaAbierto` daría lo mismo, pero recorriendo
- * los eventos una vez por mes. La lista que enseña la pantalla sale de aquí.
+ * Preguntar mes a mes con `loQueQuedaAbierto` daría lo mismo, pero leyendo la
+ * base de datos y recorriendo los eventos una vez por cada mes. La lista que
+ * enseña la pantalla sale de aquí.
  */
 export async function mesesCerrables(hoy: string, cuantos = 6): Promise<MesCerrable[]> {
   const meses = mesesParaCerrar(hoy, cuantos);
@@ -159,13 +157,29 @@ export async function mesesCerrables(hoy: string, cuantos = 6): Promise<MesCerra
     db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
   ]);
 
+  const porMes = new Map<string, TreasuryEvent[]>();
+  for (const e of eventos) {
+    if (!sigueAbierto(e)) continue;
+    const suyo = porMes.get(mesDe(e.predictedDate));
+    if (suyo) suyo.push(e);
+    else porMes.set(mesDe(e.predictedDate), [e]);
+  }
+
   return meses.map((mes) => {
     const cerrado = cerrados.find((c) => c.mes === mes);
     // Un mes cerrado ya no tiene «lo que quedaría»: lo que quedaba está
     // descartado, y lo que se cuenta es cuánto fue.
-    if (cerrado) return { mes, cerradoAt: cerrado.cerradoAt, cuantos: cerrado.descartados.length, totalEntra: 0, totalSale: 0 };
+    if (cerrado) {
+      return {
+        mes,
+        cerradoAt: cerrado.cerradoAt,
+        cuantos: cerrado.descartados.length,
+        totalEntra: 0,
+        totalSale: 0,
+      };
+    }
 
-    const abiertos = siguenAbiertos(eventos, mes);
+    const abiertos = porMes.get(mes) ?? [];
     return { mes, cuantos: abiertos.length, ...totales(abiertos) };
   });
 }
@@ -202,12 +216,19 @@ export async function cerrarMes(mes: string, hoy: string): Promise<CierreDeMes> 
   }
   await tx.done;
 
+  // Se vuelve a leer para escribir · entre la comprobación de arriba y esta
+  // línea ha habido esperas, y sin esto dos cierres del mismo mes lanzados a la
+  // vez dejarían DOS registros: `reabrirMes` cogería el primero que encuentre y
+  // podría no devolver nada. Un mes, un cierre — y si el otro ya descartó algo,
+  // sus ids se conservan en vez de perderse.
+  const previos = await cierres();
+  const gemelo = previos.find((c) => c.mes === mes);
   const cierre: CierreDeMes = {
     mes,
-    cerradoAt,
-    descartados: abiertos.map((e) => e.id as number),
+    cerradoAt: gemelo?.cerradoAt ?? cerradoAt,
+    descartados: [...new Set([...(gemelo?.descartados ?? []), ...abiertos.map((e) => e.id as number)])],
   };
-  await db.put('keyval', [...(await cierres()), cierre], CLAVE);
+  await db.put('keyval', [...previos.filter((c) => c.mes !== mes), cierre], CLAVE);
   return cierre;
 }
 
@@ -230,7 +251,14 @@ export async function reabrirMes(mes: string): Promise<void> {
     // Uno que ya no existe, o que entretanto se ejecutó de verdad, se deja como
     // está: reabrir el mes no puede desandar un hecho posterior.
     if (!e || e.status === 'executed') continue;
-    await store.put({ ...e, descartado: false, descartadoAt: undefined, motivoDescarte: undefined });
+    // Las marcas se QUITAN, no se ponen a false · es lo que hace
+    // `recuperarPrevisto`, y así no conviven dos maneras de decir «esto no está
+    // descartado»: sin marca, y con la marca a false colgando.
+    const { descartado, descartadoAt, motivoDescarte, ...limpio } = e;
+    void descartado;
+    void descartadoAt;
+    void motivoDescarte;
+    await store.put(limpio as TreasuryEvent);
   }
   await tx.done;
 
