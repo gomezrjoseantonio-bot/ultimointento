@@ -4,6 +4,19 @@
 import { FeinLoanDraft } from '../../types/fein';
 import { PrestamoFinanciacion, BonificacionFinanciacion } from '../../types/financiacion';
 
+/**
+ * Un número leído de la FEIN · **el cero también se lee**.
+ *
+ * Con `|| undefined`, un cero desaparecía por ser falsy, y un cero en una FEIN
+ * no es un hueco: es una afirmación. La del Santander dice «Comisión de
+ * apertura: 0,00 euros» y la de Unicaja «exenta de comisión de apertura» — las
+ * dos están diciendo que no la hay, y perderlo dejaba el campo a merced de
+ * cualquier valor anterior o de un valor por defecto.
+ *
+ * `??` y no `||`: se descarta lo que no se leyó, no lo que vale cero.
+ */
+const leido = (v: number | null | undefined): number | undefined => v ?? undefined;
+
 export class FeinToPrestamoMapper {
   
   /**
@@ -13,8 +26,6 @@ export class FeinToPrestamoMapper {
     feinDraft: FeinLoanDraft,
     defaultAccountId?: string
   ): Partial<PrestamoFinanciacion> {
-    const today = new Date().toISOString().split('T')[0];
-    
     // Base mapping with defaults
     const mappedData: Partial<PrestamoFinanciacion> = {
       // Default values required by form
@@ -22,12 +33,17 @@ export class FeinToPrestamoMapper {
       esquemaPrimerRecibo: 'NORMAL',
       sistema: 'FRANCES',
       carencia: 'NINGUNA',
-      diaCobroMes: 1,
-      
-      // Dates - use today as defaults
-      fechaFirma: feinDraft.prestamo.fechaFirmaPrevista || today,
-      fechaPrimerCargo: feinDraft.prestamo.fechaFirmaPrevista || today,
-      
+
+      // La fecha de firma, SOLO si la FEIN la trae · poner hoy era inventarse
+      // el dato del que cuelga todo el cuadro, y encima con aspecto de leído.
+      // Ausente, el formulario ya sabe qué hacer.
+      fechaFirma: feinDraft.prestamo.fechaFirmaPrevista || undefined,
+
+      // `fechaPrimerCargo` y `diaCobroMes` NO se rellenan aquí. Se ponían a la
+      // fecha de firma y al día 1: dos datos falsos, y de los dos sale la
+      // primera cuota. La FEIN no los dice —los dice la escritura—, y lo que no
+      // está en el papel no se escribe.
+
       // Loan identification
       alias: feinDraft.prestamo.aliasSugerido || `Préstamo ${feinDraft.prestamo.banco || 'FEIN'}`,
       
@@ -38,20 +54,22 @@ export class FeinToPrestamoMapper {
       
       // Interest type and rates
       tipo: this.mapTipo(feinDraft.prestamo.tipo),
-      tinFijo: feinDraft.prestamo.tinFijo || undefined,
+      tinFijo: leido(feinDraft.prestamo.tinFijo),
       
       // Variable/Mixed specific
       indice: this.mapIndice(feinDraft.prestamo.indiceReferencia || null),
-      diferencial: feinDraft.prestamo.diferencial || undefined,
+      diferencial: leido(feinDraft.prestamo.diferencial),
       revision: feinDraft.prestamo.revisionMeses || 12,
       
       // Mixed specific
       tramoFijoAnos: undefined, // TODO: Extract from FEIN if available
-      tinTramoFijo: feinDraft.prestamo.tipo === 'MIXTO' ? (feinDraft.prestamo.tinFijo || undefined) : undefined,
+      tinTramoFijo: feinDraft.prestamo.tipo === 'MIXTO' ? leido(feinDraft.prestamo.tinFijo) : undefined,
       
-      // Commissions
-      comisionApertura: feinDraft.prestamo.comisionAperturaPct || undefined,
-      comisionAmortizacionAnticipada: feinDraft.prestamo.amortizacionAnticipadaPct || undefined,
+      // Commissions · un CERO leído es un dato, no un hueco. Ver `leido`.
+      comisionApertura: leido(feinDraft.prestamo.comisionAperturaPct),
+      // Se leía y se tiraba · va en EUROS AL MES, no en porcentaje.
+      comisionMantenimiento: leido(feinDraft.prestamo.comisionMantenimientoMes),
+      comisionAmortizacionAnticipada: leido(feinDraft.prestamo.amortizacionAnticipadaPct),
       
       // Account - use default if provided, otherwise user will need to select
       cuentaCargoId: defaultAccountId,
@@ -92,8 +110,12 @@ export class FeinToPrestamoMapper {
       tipo: this.mapBonificationType(bonif.id),
       nombre: bonif.etiqueta,
       condicionParametrizable: bonif.criterio || bonif.etiqueta,
-      descuentoTIN: bonif.descuentoPuntos ? bonif.descuentoPuntos / 100 : 0, // Convert percentage points to decimal
-      impacto: { puntos: bonif.descuentoPuntos ? bonif.descuentoPuntos / 100 : 0 },
+      // En PUNTOS PORCENTUALES, tal como los da la FEIN y tal como los espera
+      // `descuentoTIN` (financiacion.ts:70). Aquí se dividían entre 100, así que
+      // el bloque de haberes de Unicaja —0,500000 p.p. en su FEIN— aterrizaba
+      // como 0,005 p.p.: una bonificación cien veces más pequeña, o sea ninguna.
+      descuentoTIN: bonif.descuentoPuntos ?? 0,
+      impacto: { puntos: bonif.descuentoPuntos ?? 0 },
       ventanaEvaluacion: 6, // Default 6 months evaluation window
       fuenteVerificacion: this.mapVerificationSource(bonif.id),
       estadoInicial: 'NO_CUMPLE' as const, // Default to not met

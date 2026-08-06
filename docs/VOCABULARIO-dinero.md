@@ -1136,6 +1136,17 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-06** · **La FEIN no está normalizada en forma, solo en contenido**
+  *(Jose: «hay mil FEIN, mil documentos distintos»)*. Unicaja numera
+  «3. CARACTERÍSTICAS / 4. TIPO DE INTERÉS»; el Santander llama «3.- TIPO DE
+  INTERÉS» a lo mismo porque no tiene apartado de intermediario, y su PDF se
+  extrae letra a letra. El OCR no puede ser el camino principal del alta: la
+  consecuencia es que **teclear a mano y subir la FEIN tienen que acabar en el
+  mismo sitio** —ya lo hacen: un solo `formDesdePrestamo`— y que cada campo
+  debería decir si lo leyó la máquina o lo escribió una persona. Eso último
+  falta: el OCR ya produce la confianza y la fuente de cada campo (`byField`) y
+  se tira al llegar al formulario.
+
 - **2026-08-05** · **El tramo suelto de ING no cuadra por 13 céntimos.** Cobra
   218,37 € donde 97.500 € al 2,15 % por 38 días sobre 365 dan 218,24. El tipo
   que explicaría su cifra es el 2,15128 %, y su propio cuadro liquida los meses
@@ -1229,6 +1240,17 @@ deja de servir para decidir por dónde seguir.
   5 ago 2026: «no vamos a liarnos por un céntimo».)* §6 bis · bis.
 
 ### Resuelto
+
+- **2026-08-06** · **El Santander SÍ se puede guardar · me lo inventé.** Escribí
+  que faltaba una cuarta forma de préstamo, «fijo por tramos», porque su FEIN
+  imprime dos tipos —0,850 % en el «Tramo A» y 1,850 % en el «Tramo B»— y los
+  leí como dos tipos contractuales distintos. **No lo son: son el mismo tipo con
+  y sin bonificación** *(Jose · 6 ago 2026: «es fijo al 1,85 y bonificaciones
+  hasta el 1»)*. La propia FEIN lo dice donde explica su cuadro: lo calcula «bajo
+  el supuesto de que no se cumple ninguna de las condiciones para obtener la
+  bonificación». Comprobado contra el motor: `FIJO` al 1,85 % con un punto de
+  bonificación da **232,32 €**, la cuota del tramo A de su FEIN; sin él, 267,28.
+  El modelo ya lo representaba entero. §6 bis · bis.
 
 - **2026-08-06** · **La TAE ya es la TIR de los flujos.** Era una suma
   —capitalización del TIN + apertura repartida por años + carencia técnica—, y
