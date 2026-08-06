@@ -1142,8 +1142,10 @@ Escrito para no perderlo, con la fecha en que se detectó.
   INTERÉS» a lo mismo porque no tiene apartado de intermediario, y su PDF se
   extrae letra a letra. El OCR no puede ser el camino principal del alta: la
   consecuencia es que **teclear a mano y subir la FEIN tienen que acabar en el
-  mismo sitio**, y que cada campo debe decir si lo leyó la máquina o lo escribió
-  una persona. Hoy son dos hidratadores distintos.
+  mismo sitio** —ya lo hacen: un solo `formDesdePrestamo`— y que cada campo
+  debería decir si lo leyó la máquina o lo escribió una persona. Eso último
+  falta: el OCR ya produce la confianza y la fuente de cada campo (`byField`) y
+  se tira al llegar al formulario.
 
 - **2026-08-05** · **El tramo suelto de ING no cuadra por 13 céntimos.** Cobra
   218,37 € donde 97.500 € al 2,15 % por 38 días sobre 365 dan 218,24. El tipo

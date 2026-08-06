@@ -363,21 +363,28 @@ const reglaDesdeTipoFEIN = (
 };
 
 /**
- * Las bonificaciones de la FEIN, como filas del formulario.
+ * Las bonificaciones que la FEIN OFRECE.
  *
- * Vienen del papel del banco, así que **sustituyen** al catálogo por defecto en
- * vez de mezclarse con él: el catálogo son cinco propuestas de ATLAS, y la FEIN
- * de Unicaja trae catorce bloques con sus puntos exactos. Enseñar las dos cosas
- * a la vez sería inventarse bonificaciones que no están en el contrato.
+ * Ofrece, no las que tengas: la FEIN de Unicaja lista catorce bloques —seguro
+ * agrario y seguro de comercio incluidos— y cuáles contrataste es decisión
+ * tuya. Por eso entran `INACTIVO`: se ven, con sus puntos exactos, y tú marcas
+ * las que van. Marcarlas todas sería inventarse un contrato.
+ *
+ * Sustituyen al catálogo por defecto en vez de mezclarse: el catálogo son cinco
+ * propuestas de ATLAS, y estas vienen del papel del banco.
  */
-const filasDesdeFEIN = (bonificaciones: BonificacionFinanciacion[]): BonificacionRow[] =>
-  bonificaciones.map((b) => ({
-    id: uid(),
+const bonificacionesDesdeFEIN = (bonificaciones: BonificacionFinanciacion[]): Bonificacion[] =>
+  bonificaciones.map((b, i) => ({
+    id: b.id || `fein-${i}`,
+    tipo: (b.tipo === 'PLAN_PENSIONES'
+      ? 'PENSIONES'
+      : b.tipo === 'INGRESOS_RECURRENTES'
+        ? 'NOMINA'
+        : b.tipo) as Bonificacion['tipo'],
     nombre: b.nombre,
-    ppDescuento: b.impacto?.puntos ?? b.descuentoTIN ?? 0,
-    // Del papel, así que se enseñan marcadas · el usuario quita las que no haya
-    // contratado, que es más corto que buscarlas de una en una.
-    activa: true,
+    reduccionPuntosPorcentuales: b.impacto?.puntos ?? b.descuentoTIN ?? 0,
+    impacto: { puntos: b.impacto?.puntos ?? b.descuentoTIN ?? 0 },
+    estado: 'INACTIVO',
     regla: reglaDesdeTipoFEIN(b.tipo, b.condicionParametrizable || b.nombre),
     lookbackMeses: LOOKBACK_POR_DEFECTO,
   }));
@@ -489,6 +496,176 @@ function emptyFormState(): FormState {
   };
 }
 
+/**
+ * Un préstamo, en el formulario · **el único camino**.
+ *
+ * Se llega aquí desde los dos sitios: editando uno guardado y subiendo una
+ * FEIN. Antes eran dos funciones distintas —treinta y tantos campos una, diez
+ * la otra— y por eso el mismo préstamo salía distinto según por dónde entrara.
+ *
+ * Acepta un préstamo INCOMPLETO porque una FEIN lo es: **está normalizada en
+ * contenido, no en forma** *(Jose · 6 ago 2026: «hay mil FEIN, mil documentos
+ * distintos»)*, así que ningún lector va a sacarlo todo nunca. Lo que no venga
+ * se queda como está en `base`, que es la diferencia entre rellenar un hueco y
+ * pisar lo que había.
+ */
+function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
+  const destinos: DestinoRow[] =
+    p.destinos && p.destinos.length > 0
+      ? p.destinos.map((d) => ({
+          id: d.id || uid(),
+          tipo: mapDestinoLegacyToV2(d.tipo),
+          inmuebleId: d.inmuebleId || '',
+          importe: d.importe,
+          porcentaje:
+            d.porcentaje ??
+            ((p.principalInicial ?? 0) > 0 ? (d.importe / (p.principalInicial as number)) * 100 : 0),
+          descripcion: d.descripcion,
+        }))
+      : p.principalInicial !== undefined || p.inmuebleId
+        ? [
+            {
+              id: uid(),
+              tipo: p.inmuebleId ? 'adquisicion_inmueble' : 'personal',
+              inmuebleId: p.inmuebleId || '',
+              importe: p.principalInicial ?? 0,
+              porcentaje: 100,
+            },
+          ]
+        : base.destinos;
+
+  const garantiaPrimera = p.garantias?.[0];
+
+  // Se traen TODOS los campos, no solo nombre y puntos: lo que no se leía aquí
+  // se perdía al guardar, y con ello se iba la única forma de mirar la
+  // bonificación contra los movimientos (§6 ter).
+  const bonificaciones: BonificacionRow[] =
+    p.bonificaciones && p.bonificaciones.length > 0
+      ? p.bonificaciones.map((b) => {
+          const regla: ReglaBonificacion = b.regla ?? { tipo: 'OTRA', descripcion: b.nombre };
+          return {
+            id: b.id,
+            nombre: b.nombre,
+            ppDescuento: b.reduccionPuntosPorcentuales,
+            activa: b.estado !== 'INACTIVO',
+            regla,
+            lookbackMeses: b.lookbackMeses ?? LOOKBACK_POR_DEFECTO,
+            tarjetaExigidaId: b.tarjetaExigidaId,
+            cuentaExigidaId: b.cuentaExigidaId,
+            importeMinimoRaw: importeRaw(regla),
+            estadoPrevio: b.estado,
+          };
+        })
+      : base.bonificaciones;
+
+  const texto = (v: string | undefined, previo: string): string => v ?? previo;
+  const numero = (v: number | undefined, previo: string): string =>
+    v !== undefined ? fmtNumeroEs(v) : previo;
+
+  return {
+    ...base,
+    tipoPrestamo:
+      (p.tipoPrestamoV2 as TipoPrestamoV2) ||
+      (p.inmuebleId ? 'hipotecario' : p.tipoPrestamoV2 === undefined ? base.tipoPrestamo : 'personal'),
+    alias: texto(p.nombre, base.alias),
+    banco: texto(p.banco, base.banco),
+    cuentaCargoId: texto(p.cuentaCargoId, base.cuentaCargoId),
+    numeroContrato: texto(p.numeroContrato, base.numeroContrato),
+    capitalRaw: numero(p.principalInicial, base.capitalRaw),
+    plazoRaw: p.plazoMesesTotal !== undefined ? String(p.plazoMesesTotal) : base.plazoRaw,
+    plazoPeriodo: 'MESES',
+    fechaFirma: texto(p.fechaFirma, base.fechaFirma),
+    fechaPrimerCargo: texto(p.fechaPrimerCargo, base.fechaPrimerCargo),
+    diaCobroRaw: p.diaCargoMes !== undefined ? String(p.diaCargoMes) : base.diaCobroRaw,
+    diasSueltos: p.diasSueltosDelArranque ?? base.diasSueltos,
+    baseDiasSueltos: p.baseCalculoIntereses ? baseDiasSueltosDe(p as Prestamo) : base.baseDiasSueltos,
+    tipoInteres: (p.tipo?.toLowerCase() as TipoInteresV2) ?? base.tipoInteres,
+    tinFijoRaw: numero(p.tipoNominalAnualFijo, base.tinFijoRaw),
+    interesDemoraRaw: numero(p.interesDemoraPct, base.interesDemoraRaw),
+    euriborRaw: numero(p.valorIndiceActual, base.euriborRaw),
+    diferencialRaw: numero(p.diferencial, base.diferencialRaw),
+    revisionPeriodo: (p.periodoRevisionMeses as 6 | 12) || base.revisionPeriodo,
+    baseCalculo: p.baseCalculoIntereses ?? base.baseCalculo,
+    revisionesIndice: p.revisionesDeTipo
+      ? p.revisionesDeTipo.map((r, i) => ({
+          id: `rev-${i}`,
+          desde: r.desde,
+          valorRaw: fmtNumeroEs(r.valorIndice),
+        }))
+      : base.revisionesIndice,
+    tramoFijoMesesRaw: p.tramoFijoMeses ? String(p.tramoFijoMeses) : base.tramoFijoMesesRaw,
+    tinTramoFijoRaw: numero(p.tipoNominalAnualMixtoFijo, base.tinTramoFijoRaw),
+    comAperturaRaw: numero(p.comisionApertura, base.comAperturaRaw),
+    comMantenimientoRaw: numero(p.comisionMantenimiento, base.comMantenimientoRaw),
+    comReembolsoParcial: comisionPactadaDe(p as Prestamo, 'PARCIAL') ?? base.comReembolsoParcial,
+    comReembolsoTotal: comisionPactadaDe(p as Prestamo, 'TOTAL') ?? base.comReembolsoTotal,
+    comModifCondicionesRaw: numero(p.comisionModificacionCondiciones, base.comModifCondicionesRaw),
+    gastoReclamacionImpagoRaw: numero(p.gastoReclamacionImpago, base.gastoReclamacionImpagoRaw),
+    bonificacionesActivas: bonificaciones.some((b) => b.activa),
+    bonificaciones,
+    proximaRevision: p.proximaRevisionBonificaciones ?? base.proximaRevision,
+    revisionCadaMeses: p.periodoRevisionBonificacionMeses
+      ? String(p.periodoRevisionBonificacionMeses)
+      : base.revisionCadaMeses,
+    bonificacionesDesde: p.bonificacionesDesde ?? base.bonificacionesDesde,
+    graciaBonificacionesMeses: p.graciaMesesBonificaciones
+      ? String(p.graciaMesesBonificaciones)
+      : base.graciaBonificacionesMeses,
+    carenciaInicialTipo: p.carencia ? mapCarenciaLegacyToV2(p.carencia) : base.carenciaInicialTipo,
+    carenciaInicialMesesRaw:
+      p.carenciaMeses !== undefined ? String(p.carenciaMeses) : base.carenciaInicialMesesRaw,
+    destinos,
+    garantiaTipo: garantiaPrimera ? mapGarantiaLegacyToV2(garantiaPrimera.tipo) : base.garantiaTipo,
+    garantiaInmuebleId: garantiaPrimera?.inmuebleId || base.garantiaInmuebleId,
+  };
+}
+
+/**
+ * Lo que la FEIN dijo, como préstamo.
+ *
+ * El puente que faltaba. La FEIN aterrizaba en `PrestamoFinanciacion`, un tipo
+ * viejo que ni siquiera tiene dónde poner el valor del índice y guarda el tramo
+ * fijo en AÑOS cuando la FEIN lo da en meses; la edición usa `Prestamo`. Dos
+ * destinos para el mismo papel, y de ahí que no coincidieran.
+ */
+function prestamoDesdeFEIN(d: Partial<PrestamoFinanciacion>): Partial<Prestamo> {
+  const plazo = d.plazoTotal
+    ? d.plazoPeriodo === 'AÑOS'
+      ? d.plazoTotal * 12
+      : d.plazoTotal
+    : undefined;
+  const tipo = d.tipo as Prestamo['tipo'] | undefined;
+
+  return {
+    ...(d.alias !== undefined ? { nombre: d.alias } : {}),
+    ...(d.cuentaCargoId !== undefined ? { cuentaCargoId: d.cuentaCargoId } : {}),
+    ...(d.capitalInicial !== undefined ? { principalInicial: d.capitalInicial } : {}),
+    ...(plazo !== undefined ? { plazoMesesTotal: plazo } : {}),
+    ...(d.fechaFirma !== undefined ? { fechaFirma: d.fechaFirma } : {}),
+    ...(tipo !== undefined ? { tipo } : {}),
+    // En un fijo el TIN leído es el del préstamo; en un mixto es el del tramo
+    // fijo, y meterlo en el campo del otro lo escondía.
+    ...(tipo === 'MIXTO'
+      ? {
+          ...(d.tinTramoFijo ?? d.tinFijo) !== undefined
+            ? { tipoNominalAnualMixtoFijo: (d.tinTramoFijo ?? d.tinFijo) as number }
+            : {},
+          ...(d.tramoFijoAnos ? { tramoFijoMeses: d.tramoFijoAnos * 12 } : {}),
+        }
+      : d.tinFijo !== undefined
+        ? { tipoNominalAnualFijo: d.tinFijo }
+        : {}),
+    ...(d.indice !== undefined ? { indice: d.indice as Prestamo['indice'] } : {}),
+    ...(d.diferencial !== undefined ? { diferencial: d.diferencial } : {}),
+    ...(d.revision !== undefined ? { periodoRevisionMeses: d.revision } : {}),
+    ...(d.comisionApertura !== undefined ? { comisionApertura: d.comisionApertura } : {}),
+    ...(d.comisionMantenimiento !== undefined
+      ? { comisionMantenimiento: d.comisionMantenimiento }
+      : {}),
+    ...(d.bonificaciones?.length ? { bonificaciones: bonificacionesDesdeFEIN(d.bonificaciones) } : {}),
+  };
+}
+
 // ─── Props ──────────────────────────────────────────────────────────────────
 export interface PrestamoPageV2Props {
   /** Id del préstamo en modo edición. Undefined/null = creación. */
@@ -579,153 +756,25 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   }, [prestamoId]);
 
   const hydrateFromPrestamo = (p: Prestamo, _accs: Account[]) => {
-    const destinos: DestinoRow[] = (p.destinos && p.destinos.length > 0)
-      ? p.destinos.map((d) => ({
-          id: d.id || uid(),
-          tipo: mapDestinoLegacyToV2(d.tipo),
-          inmuebleId: d.inmuebleId || '',
-          importe: d.importe,
-          porcentaje: d.porcentaje ?? (p.principalInicial > 0 ? (d.importe / p.principalInicial) * 100 : 0),
-          descripcion: d.descripcion,
-        }))
-      : [{
-          id: uid(),
-          tipo: p.inmuebleId ? 'adquisicion_inmueble' : 'personal',
-          inmuebleId: p.inmuebleId || '',
-          importe: p.principalInicial,
-          porcentaje: 100,
-        }];
-
-    const garantiaPrimera = p.garantias?.[0];
-
-    // Se traen TODOS los campos, no solo nombre y puntos: lo que no se leía
-    // aquí se perdía al guardar, y con ello se iba la única forma de mirar la
-    // bonificación contra los movimientos (§6 ter).
-    const bonificaciones: BonificacionRow[] = (p.bonificaciones && p.bonificaciones.length > 0)
-      ? p.bonificaciones.map((b) => {
-          const regla: ReglaBonificacion = b.regla ?? { tipo: 'OTRA', descripcion: b.nombre };
-          return {
-            id: b.id,
-            nombre: b.nombre,
-            ppDescuento: b.reduccionPuntosPorcentuales,
-            activa: b.estado !== 'INACTIVO',
-            regla,
-            lookbackMeses: b.lookbackMeses ?? LOOKBACK_POR_DEFECTO,
-            tarjetaExigidaId: b.tarjetaExigidaId,
-            cuentaExigidaId: b.cuentaExigidaId,
-            importeMinimoRaw: importeRaw(regla),
-            estadoPrevio: b.estado,
-          };
-        })
-      : filasDelCatalogo();
-
-    setForm({
-      tipoPrestamo: (p.tipoPrestamoV2 as TipoPrestamoV2) || (p.inmuebleId ? 'hipotecario' : 'personal'),
-      alias: p.nombre || '',
-      banco: p.banco || '',
-      cuentaCargoId: p.cuentaCargoId || '',
-      numeroContrato: p.numeroContrato || '',
-      capitalRaw: fmtNumeroEs(p.principalInicial),
-      plazoRaw: String(p.plazoMesesTotal),
-      plazoPeriodo: 'MESES',
-      fechaFirma: p.fechaFirma,
-      fechaPrimerCargo: p.fechaPrimerCargo,
-      diaCobroRaw: String(p.diaCargoMes ?? 1),
-      diasSueltos: p.diasSueltosDelArranque ?? 'CARGO_APARTE',
-      baseDiasSueltos: baseDiasSueltosDe(p),
-      tipoInteres: p.tipo.toLowerCase() as TipoInteresV2,
-      tinFijoRaw: p.tipoNominalAnualFijo !== undefined ? fmtNumeroEs(p.tipoNominalAnualFijo) : '',
-      interesDemoraRaw: p.interesDemoraPct !== undefined ? fmtNumeroEs(p.interesDemoraPct) : '',
-      euriborRaw: p.valorIndiceActual !== undefined ? fmtNumeroEs(p.valorIndiceActual) : '',
-      diferencialRaw: p.diferencial !== undefined ? fmtNumeroEs(p.diferencial) : '',
-      referenciaInteres: 'euribor_12m',
-      revisionPeriodo: (p.periodoRevisionMeses as 6 | 12) || 12,
-      baseCalculo: p.baseCalculoIntereses ?? BASE_POR_DEFECTO,
-      revisionesIndice: (p.revisionesDeTipo ?? []).map((r, i) => ({
-        id: `rev-${i}`,
-        desde: r.desde,
-        valorRaw: fmtNumeroEs(r.valorIndice),
-      })),
-      tramoFijoMesesRaw: p.tramoFijoMeses ? String(p.tramoFijoMeses) : '',
-      tinTramoFijoRaw: p.tipoNominalAnualMixtoFijo !== undefined ? fmtNumeroEs(p.tipoNominalAnualMixtoFijo) : '',
-      comAperturaRaw: fmtNumeroEs(p.comisionApertura ?? 0),
-      comMantenimientoRaw: fmtNumeroEs(p.comisionMantenimiento ?? 0),
-      comReembolsoParcial: comisionPactadaDe(p, 'PARCIAL') ?? SIN_COMISION,
-      comReembolsoTotal: comisionPactadaDe(p, 'TOTAL') ?? SIN_COMISION,
-      comModifCondicionesRaw: fmtNumeroEs(p.comisionModificacionCondiciones ?? 0),
-      gastoReclamacionImpagoRaw: fmtNumeroEs(p.gastoReclamacionImpago ?? 0),
-      bonificacionesActivas: bonificaciones.some((b) => b.activa),
-      bonificaciones,
-      proximaRevision: p.proximaRevisionBonificaciones ?? '',
-      revisionCadaMeses: p.periodoRevisionBonificacionMeses
-        ? String(p.periodoRevisionBonificacionMeses)
-        : '',
-      bonificacionesDesde: p.bonificacionesDesde ?? 'FIRMA',
-      graciaBonificacionesMeses: p.graciaMesesBonificaciones
-        ? String(p.graciaMesesBonificaciones)
-        : '',
-      carenciaInicialTipo: mapCarenciaLegacyToV2(p.carencia),
-      carenciaInicialMesesRaw: String(p.carenciaMeses ?? 0),
-      destinos,
-      garantiaTipo: garantiaPrimera ? mapGarantiaLegacyToV2(garantiaPrimera.tipo) : 'personal',
-      garantiaInmuebleId: garantiaPrimera?.inmuebleId || '',
-    });
+    setForm(formDesdePrestamo(p, emptyFormState()));
   };
 
   /**
-   * Lo leído de la FEIN, al formulario · **todo** lo leído.
+   * Lo leído de la FEIN, al formulario · por el MISMO sitio que lo tecleado.
    *
-   * Esto rellenaba diez campos y el mapper produce bastantes más: el
-   * diferencial se leía del papel —`feinOcrService` lo extrae— y no se ponía,
-   * así que subías la FEIN de una variable, ATLAS leía el 1,750, y luego te
-   * pedía que escribieras 1,750. Las bonificaciones igual: se leían con sus
-   * puntos y se quedaban por el camino.
+   * Había dos hidratadores. Este rellenaba diez campos y el de edición treinta
+   * y tantos, así que subir la FEIN y escribirla a mano acababan en préstamos
+   * distintos: el diferencial se leía del papel —`feinOcrService` lo extrae— y
+   * no llegaba, con lo que ATLAS leía el 1,750 y luego te pedía que
+   * escribieras 1,750.
    *
-   * Sigue habiendo DOS hidratadores —este y `hydrateFromPrestamo`— y eso es lo
-   * que hay que juntar: subir la FEIN y teclearla a mano tienen que acabar en
-   * el mismo sitio. Mientras tanto, que al menos no se pierda nada.
+   * Ahora hay uno. La FEIN se traduce primero a un `Prestamo` —el tipo bueno,
+   * el mismo que usa la edición— y entra por `formDesdePrestamo`. Lo que la
+   * FEIN no traiga se queda como estaba, que es la diferencia entre rellenar y
+   * pisar.
    */
   const hydrateFromFEIN = (data: Partial<PrestamoFinanciacion>) => {
-    const cap = data.capitalInicial ?? 0;
-    const plazo = data.plazoPeriodo === 'AÑOS' ? (data.plazoTotal || 0) * 12 : (data.plazoTotal || 0);
-    const tipo = (data.tipo?.toLowerCase() as TipoInteresV2) || undefined;
-    setForm((prev) => ({
-      ...prev,
-      alias: data.alias || prev.alias,
-      cuentaCargoId: data.cuentaCargoId || prev.cuentaCargoId,
-      capitalRaw: cap ? fmtNumeroEs(cap) : prev.capitalRaw,
-      plazoRaw: plazo ? String(plazo) : prev.plazoRaw,
-      fechaFirma: data.fechaFirma || prev.fechaFirma,
-      fechaPrimerCargo: data.fechaPrimerCargo || prev.fechaPrimerCargo,
-      diaCobroRaw: data.diaCobroMes ? String(data.diaCobroMes) : prev.diaCobroRaw,
-      tipoInteres: tipo ?? prev.tipoInteres,
-      tinFijoRaw: data.tinFijo !== undefined ? fmtNumeroEs(data.tinFijo) : prev.tinFijoRaw,
-      comAperturaRaw:
-        data.comisionApertura !== undefined ? fmtNumeroEs(data.comisionApertura) : prev.comAperturaRaw,
-      comMantenimientoRaw:
-        data.comisionMantenimiento !== undefined
-          ? fmtNumeroEs(data.comisionMantenimiento)
-          : prev.comMantenimientoRaw,
-      // El diferencial y la revisión los lee el OCR y no llegaban.
-      diferencialRaw:
-        data.diferencial !== undefined ? fmtNumeroEs(data.diferencial) : prev.diferencialRaw,
-      revisionPeriodo: (data.revision as 6 | 12) || prev.revisionPeriodo,
-      // En un mixto, el TIN leído es el del TRAMO FIJO · dejarlo solo en
-      // `tinFijoRaw` lo escondía en el campo de otro tipo de préstamo.
-      tinTramoFijoRaw:
-        tipo === 'mixto' && data.tinTramoFijo !== undefined
-          ? fmtNumeroEs(data.tinTramoFijo)
-          : prev.tinTramoFijoRaw,
-      tramoFijoMesesRaw: data.tramoFijoAnos
-        ? String(data.tramoFijoAnos * 12)
-        : prev.tramoFijoMesesRaw,
-      // Las bonificaciones de la FEIN, con sus puntos · vienen del papel, así
-      // que entran marcadas para que se vean y se puedan quitar.
-      bonificacionesActivas: (data.bonificaciones?.length ?? 0) > 0 || prev.bonificacionesActivas,
-      bonificaciones: data.bonificaciones?.length
-        ? filasDesdeFEIN(data.bonificaciones)
-        : prev.bonificaciones,
-    }));
+    setForm((prev) => formDesdePrestamo(prestamoDesdeFEIN(data), prev));
   };
 
   // ─── Derivados ────────────────────────────────────────────────────────────
@@ -2596,3 +2645,9 @@ const CuadroTabla: React.FC<{ periodos: PeriodoPago[] }> = ({ periodos }) => {
 };
 
 export default PrestamoPageV2;
+
+/**
+ * Para el candado de que los dos caminos acaban en el mismo sitio · patrón del
+ * repo. No es API de la pantalla: es lo que hay que poder probar sin montarla.
+ */
+export const __private__ = { formDesdePrestamo, prestamoDesdeFEIN, emptyFormState };
