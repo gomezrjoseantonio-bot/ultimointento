@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { FileText, AlertTriangle, CheckCircle, X, Loader2 } from 'lucide-react';
 import { FeinLoanDraft } from '../../types/fein';
-import { feinOcrService } from '../../services/feinOcrService';
+import { leerFeinConClaude } from '../../services/fein/leerFeinConClaude';
 import { showError, showSuccess, showInfo } from '../../services/toastService';
 
 interface FEINUploaderProps {
@@ -75,41 +75,44 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
       setUploadProgress(20);
       setProcessingStage('Preparando documento...');
 
-      // Use main implementation
-      const result = await feinOcrService.processFEINDocument(file, (progress) => {
-        setProcessingStage(progress.message);
-        if (progress.stage === 'processing') {
-          setUploadProgress(50);
-        } else if (progress.stage === 'complete') {
-          setUploadProgress(100);
-        }
-      });
-      
+      // Lo lee Claude, no un extractor de entidades · VOCABULARIO §6 bis ·
+      // quinquies. Medido sobre las dos FEIN reales de Jose, la vía anterior
+      // sacaba CERO campos de la del Santander y tres equivocados de la de
+      // Unicaja. Lo que hace falta está en frases, no en casillas.
+      setProcessingStage('Leyendo las condiciones…');
+      setUploadProgress(50);
+      const loanDraft = await leerFeinConClaude(file);
+
       setProcessingStage('Procesamiento completado');
       setUploadProgress(100);
-      
-      setTimeout(() => {
-        setIsProcessing(false);
-        
-        if (result.success && result.loanDraft) {
-          // Apply to form using new method
-          console.log('[FEIN] Successfully extracted data:', result.loanDraft);
-          // Show appropriate toast based on extraction completeness
-          if (result.fieldsMissing && result.fieldsMissing.includes('all')) {
-            showInfo('FEIN procesado. Complete manualmente los campos faltantes.');
-          } else {
-            showSuccess('FEIN procesado correctamente. Datos extraídos y prellenados.');
-          }
-          onFEINDraftReady(result.loanDraft);
-        } else {
-          handleProcessingError(result.errors || ['Error procesando documento'], file);
-        }
-      }, 500);
+      setIsProcessing(false);
+
+      // Cuántas condiciones se han sacado de verdad · decirlo es la diferencia
+      // entre ayudar y prometer. Una FEIN nunca viene entera.
+      //
+      // `periodicidadCuota` no cuenta: vale 'MENSUAL' siempre, venga lo que
+      // venga, así que sumarla inflaba el recuento y ablandaba justo el aviso
+      // de «hemos leído poco» — que es el que hay que dar cuando toca.
+      const PUESTOS_POR_ATLAS = ['periodicidadCuota', 'aliasSugerido', 'ibanCargoParcial'];
+      const leidos = Object.entries(loanDraft.prestamo).filter(
+        ([campo, v]) =>
+          !PUESTOS_POR_ATLAS.includes(campo) && v !== null && v !== undefined && v !== ''
+      ).length;
+      if (leidos <= 3) {
+        showInfo('Hemos leído poco de esta FEIN. Revisa y completa a mano lo que falte.');
+      } else {
+        showSuccess(`FEIN leída · ${leidos} condiciones. Revísalas antes de guardar.`);
+      }
+      onFEINDraftReady(loanDraft);
 
     } catch (error) {
+      // El motivo REAL, no «error de conexión» · esto se tragaba lo que decía
+      // el servicio —falta de clave, tiempo agotado, PDF ilegible— y dejaba a
+      // ciegas a quien lo sufre y a quien lo arregla.
       console.error('Error processing FEIN:', error);
       setIsProcessing(false);
-      handleProcessingError(['Error de conexión. Inténtalo de nuevo.'], file);
+      const motivo = error instanceof Error && error.message ? error.message : null;
+      handleProcessingError([motivo ?? 'No hemos podido leer la FEIN.'], file);
     }
   };
 

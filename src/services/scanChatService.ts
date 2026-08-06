@@ -1,5 +1,5 @@
 interface ScanChatPayload {
-  tipo: 'scan' | 'scan_irpf' | 'scan_datos_fiscales';
+  tipo: 'scan' | 'scan_fein' | 'scan_irpf' | 'scan_datos_fiscales';
   imagen?: string;
   imagenes?: string[];
   mimeType?: string;
@@ -13,7 +13,7 @@ interface CallScanChatOptions {
 
 export interface ScanChatResponse {
   ok: boolean;
-  tipo?: 'scan' | 'scan_irpf' | 'scan_datos_fiscales';
+  tipo?: 'scan' | 'scan_fein' | 'scan_irpf' | 'scan_datos_fiscales';
   model?: string;
   extraido?: any;
   error?: string;
@@ -65,10 +65,17 @@ export const callScanChat = async (
   try {
     data = JSON.parse(responseText);
   } catch {
-    if (!response.ok) {
-      throw new Error(`OCR error ${response.status}: ${responseText.slice(0, 180)}`);
+    // Un 504 lo devuelve la PASARELA, no la función, así que llega como una
+    // página HTML («Inactivity Timeout») y no como JSON. Volcarla en un aviso
+    // era enseñarle a alguien el `<HEAD>` de un error de infraestructura;
+    // decirle que el documento tardó demasiado sí es información.
+    if (response.status === 504 || response.status === 408) {
+      throw new Error('El documento ha tardado demasiado en leerse. Prueba otra vez.');
     }
-    throw new Error('El servicio de escaneo devolvió una respuesta no JSON');
+    if (!response.ok) {
+      throw new Error(`El servicio de escaneo falló (${response.status})`);
+    }
+    throw new Error('El servicio de escaneo devolvió una respuesta que no se entiende');
   }
 
   if (!response.ok || !data.ok) {

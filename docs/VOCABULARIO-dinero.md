@@ -1136,6 +1136,74 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-06** · **La reforma de las bonificaciones · qué se estandariza y qué
+  no** *(Jose, en tres apuntes que cambian el modelo)*.
+
+  **No se enumeran bancos.** «Hay 45 bancos con 8 o 10 bonificaciones cada uno»
+  y el nombre y los puntos son suyos: «Bloque Seguro Vida Riesgo Prima Única 8
+  años», −0,50. Texto libre y un número, salidos de la FEIN. Ahí no hay catálogo
+  que mantener.
+
+  **Lo único estándar es CONTRA QUÉ se comprueba**, y son pocas formas porque
+  ATLAS solo sabe mirar unos pocos sitios:
+
+  1. **Entra dinero** · con importe, periodicidad y —esto es lo importante— si
+     vale **cualquier ingreso recurrente** o solo una nómina.
+  2. **Sale un recibo domiciliado** · con su concepto.
+  3. **Se usa la tarjeta.**
+  4. **Hay una aportación a un producto** · planes, fondos, unit-linked.
+  5. **Nada que ATLAS pueda ver** · manual, y dicho en pantalla.
+
+  **Los seguros son recibos, todos.** *«Los seguros tienen que domiciliarse, ya
+  sea agrario o medio pensionista.»* Hoy el modelo tiene `SEGURO_HOGAR` y
+  `SEGURO_VIDA` como tipos distintos y el agrario, el de comercio, el de salud,
+  el de auto y el de RC caen a `OTRA` y se vuelven incomprobables. Son lo mismo:
+  **¿hay un cargo periódico de esa póliza?** No hace falta un módulo de seguros
+  para verlo, hace falta mirar la tesorería.
+
+  **La pantalla dice lo que no es.** Enseña «las que se cumplen» cuando debe
+  enseñar **las que el banco propone** —eso es un hecho del contrato, sale de la
+  FEIN y no se marca a mano— y al lado, derivado, si **existe o va existiendo**.
+  Una casilla que el usuario marca es una bonificación declarada, y §6 ter dice
+  que eso no vale.
+
+  **Y ojo con las nóminas, que es la madre del cordero.** La FEIN de Unicaja
+  dice: «Nómina, o Pensión, o Prestación económica de la Seguridad Social, por
+  importe igual o superior a 2.500,00 euros netos mensuales; **o ingresos
+  recurrentes por importe anual igual o superior a 30.000 euros netos**». Eso no
+  es `{tipo: 'NOMINA', minimoMensual}`: es una **disyunción** con dos ventanas
+  distintas —mensual y anual— y una de las ramas **no exige nómina ninguna**.
+  Con el modelo de hoy, alguien que cumple por alquileres recurrentes sale como
+  que **no cumple**, y se le dice que pierde un punto que no pierde. §6 ter.
+
+- **2026-08-06** · **El destino y la garantía de una hipoteca siguen saliendo
+  «personal».** La FEIN lo dice —«ADQUISICION DE VIVIENDA PARA ALQUILER»— y por
+  no leerlo ATLAS avisa de que los intereses **no** son deducibles cuando sí lo
+  son. El tipo de préstamo ya se lee (`hipotecario`); faltan el destino y el
+  inmueble, que no salen de la FEIN sino de lo que el usuario tenga dado de
+  alta. §6 bis · quinquies.
+
+- **2026-08-06** · **La cuota de la Unicaja son 454,66 €, no 454,57** *(Jose,
+  mirando su recibo)*. ATLAS calcula la anualidad francesa con `TIN/12` y ahí
+  salen 454,58. Nueve céntimos, pero la escritura de Unicaja **no calcula así**:
+  su fórmula lleva un productorio sobre los **días reales** de cada periodo de
+  liquidación, dividiendo entre 36.500. Con meses de 28 a 31 días, la cuota
+  constante que sale de esa fórmula no es la de `TIN/12`. Si se confirma, el
+  rótulo del formulario —«la base cambia el desglose, no la cuota»— es **falso**
+  para ACT/365 y hay que cambiarlo, y con él la cuota. Falta medirlo contra un
+  recibo o el cuadro del banco. §6 bis · bis.
+
+- **2026-08-06** · **La FEIN se lee bien; el cuello de botella es el tiempo.**
+  Probando contra la FEIN de Unicaja, Claude la leyó **por el modo de facturas**
+  —un prompt que ni pregunta por préstamos— y devolvió: «no es una factura, es
+  una FEIN de 85.000,00 EUR a 240 meses… importe total a reembolsar
+  136.390,31 EUR». Ese número es el que ATLAS reproduce al 0,02 %. O sea que la
+  lectura no es el problema.
+  El problema era el **límite de diez segundos de Netlify**: con `maxTokens` a
+  4.000 la función devolvía un `504 Inactivity Timeout`. Bajado a 1.500 y pedida
+  una respuesta compacta. **Falta confirmar que con eso entra**, y qué campos
+  saca de las dos FEIN. §6 bis · quinquies.
+
 - **2026-08-06** · **La FEIN no está normalizada en forma, solo en contenido**
   *(Jose: «hay mil FEIN, mil documentos distintos»)*. Unicaja numera
   «3. CARACTERÍSTICAS / 4. TIPO DE INTERÉS»; el Santander llama «3.- TIPO DE
@@ -1240,6 +1308,26 @@ deja de servir para decidir por dónde seguir.
   5 ago 2026: «no vamos a liarnos por un céntimo».)* §6 bis · bis.
 
 ### Resuelto
+
+- **2026-08-06** · **La FEIN la lee Claude, no un extractor de entidades.**
+  Estaba medido y salía mal: sobre las dos FEIN reales, la vía de reglas sacaba
+  **cero** campos de la del Santander y **tres, los tres equivocados**, de la de
+  Unicaja —`VARIABLE` en un mixto, Euríbor a 6 meses cuando es a 12, y dos
+  bonificaciones de 0,1 puntos donde hay catorce bloques y el de haberes vale
+  0,5—. Confianza global 0 en las dos. No era el planteamiento: era el lector.
+  Document AI extrae **entidades de formularios** y la FEIN es **prosa**, con lo
+  importante escrito en frases: «dividido por treinta y seis mil quinientos»,
+  «durante los primeros TREINTA Y SEIS MESES», «bonificación máxima de 1,00
+  p.p.». Ahora va por `functions/chat.js`, el mismo sitio por el que ya pasan
+  las facturas de la bandeja de entrada *(Jose: «otros documentos los pasamos a
+  Claude y funciona bien»)*, con el PDF entero y sin rasterizar. §6 bis ·
+  quinquies.
+
+- **2026-08-06** · **El botón de subir la FEIN vuelve a existir.** Se había
+  ocultado porque `PageHead` solo pinta dos acciones. Ahora ocupa el sitio de
+  «Importar CSV»: dar de alta un préstamo empieza por el papel que te dio el
+  banco, y ese CSV lo usa quien migra de otra herramienta, una vez en la vida.
+  Sigue en `/financiacion/importar`.
 
 - **2026-08-06** · **El Santander SÍ se puede guardar · me lo inventé.** Escribí
   que faltaba una cuarta forma de préstamo, «fijo por tramos», porque su FEIN

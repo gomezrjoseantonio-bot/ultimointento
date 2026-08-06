@@ -15,15 +15,13 @@ jest.mock('../../../services/toastService', () => ({
   showInfo: jest.fn()
 }));
 
-// Mock the FEIN OCR service
-jest.mock('../../../services/feinOcrService', () => ({
-  feinOcrService: {
-    processFEINDocument: jest.fn()
-  }
+// Lo lee Claude · lo que se prueba aquí es la pantalla, no la lectura.
+jest.mock('../../../services/fein/leerFeinConClaude', () => ({
+  leerFeinConClaude: jest.fn(),
 }));
 
 import { showError, showSuccess, showInfo } from '../../../services/toastService';
-import { feinOcrService } from '../../../services/feinOcrService';
+import { leerFeinConClaude } from '../../../services/fein/leerFeinConClaude';
 
 describe('FEINUploader Component', () => {
   const mockOnFEINDraftReady = jest.fn();
@@ -100,17 +98,7 @@ describe('FEINUploader Component', () => {
       bonificaciones: []
     };
 
-    (feinOcrService.processFEINDocument as jest.Mock).mockResolvedValue({
-      success: true,
-      loanDraft: mockLoanDraft,
-      confidence: 0.85,
-      errors: [],
-      warnings: [],
-      fieldsExtracted: ['capitalInicial', 'banco', 'tipo'],
-      fieldsMissing: [],
-      pendingFields: [],
-      providerUsed: 'docai'
-    });
+    (leerFeinConClaude as jest.Mock).mockResolvedValue(mockLoanDraft);
 
     render(
       <FEINUploader 
@@ -125,7 +113,9 @@ describe('FEINUploader Component', () => {
     fireEvent.change(fileInput, { target: { files: [validFile] } });
 
     await waitFor(() => {
-      expect(showSuccess).toHaveBeenCalledWith('FEIN procesado correctamente. Datos extraídos y prellenados.');
+      // Cuántas condiciones se han leído · decirlo es la diferencia entre
+      // ayudar y prometer. Una FEIN nunca viene entera.
+      expect(showSuccess).toHaveBeenCalledWith(expect.stringContaining('condiciones'));
     }, { timeout: 3000 });
 
     expect(mockOnFEINDraftReady).toHaveBeenCalledWith(mockLoanDraft);
@@ -161,16 +151,11 @@ describe('FEINUploader Component', () => {
       bonificaciones: []
     };
 
-    (feinOcrService.processFEINDocument as jest.Mock).mockResolvedValue({
-      success: true,
-      loanDraft: mockLoanDraft,
-      confidence: 0.3,
-      errors: [],
-      warnings: [],
-      fieldsExtracted: [],
-      fieldsMissing: ['all'],
-      pendingFields: ['all'],
-      providerUsed: 'docai'
+    // Casi nada leído · con mil FEIN distintas esto va a pasar, y hay que
+    // decirlo en vez de dar por bueno un formulario vacío.
+    (leerFeinConClaude as jest.Mock).mockResolvedValue({
+      ...mockLoanDraft,
+      prestamo: { tipo: null, banco: 'Test Bank', ibanCargoParcial: null },
     });
 
     render(
@@ -186,19 +171,14 @@ describe('FEINUploader Component', () => {
     fireEvent.change(fileInput, { target: { files: [validFile] } });
 
     await waitFor(() => {
-      expect(showInfo).toHaveBeenCalledWith('FEIN procesado. Complete manualmente los campos faltantes.');
+      expect(showInfo).toHaveBeenCalledWith(expect.stringContaining('Hemos leído poco'));
     }, { timeout: 3000 });
   });
 
   it('should show error toast for timeout', async () => {
-    (feinOcrService.processFEINDocument as jest.Mock).mockResolvedValue({
-      success: false,
-      errors: ['Tiempo de espera agotado. Intenta de nuevo'],
-      warnings: [],
-      fieldsExtracted: [],
-      fieldsMissing: ['all'],
-      pendingFields: ['all']
-    });
+    (leerFeinConClaude as jest.Mock).mockRejectedValue(
+      new Error('Tiempo de espera agotado. Intenta de nuevo')
+    );
 
     render(
       <FEINUploader 
@@ -214,7 +194,7 @@ describe('FEINUploader Component', () => {
 
     await waitFor(() => {
       expect(showError).toHaveBeenCalledWith(
-        'Tiempo de espera agotado. Intenta de nuevo',
+        expect.any(String),
         'Intenta de nuevo o procesa manualmente'
       );
     }, { timeout: 3000 });

@@ -61,8 +61,12 @@ export class FeinToPrestamoMapper {
       diferencial: leido(feinDraft.prestamo.diferencial),
       revision: feinDraft.prestamo.revisionMeses || 12,
       
-      // Mixed specific
-      tramoFijoAnos: undefined, // TODO: Extract from FEIN if available
+      // Mixed specific · la FEIN da el tramo en MESES («durante los primeros
+      // TREINTA Y SEIS MESES») y este tipo viejo lo guarda en años. Se divide
+      // aquí, y `prestamoDesdeFEIN` lo vuelve a multiplicar para el tipo bueno.
+      tramoFijoAnos: feinDraft.prestamo.tramoFijoMeses
+        ? feinDraft.prestamo.tramoFijoMeses / 12
+        : undefined,
       tinTramoFijo: feinDraft.prestamo.tipo === 'MIXTO' ? leido(feinDraft.prestamo.tinFijo) : undefined,
       
       // Commissions · un CERO leído es un dato, no un hueco. Ver `leido`.

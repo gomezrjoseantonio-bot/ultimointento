@@ -12,46 +12,50 @@
 // Ahora hay uno, y la FEIN pasa por él. Esto lo vigila.
 
 import { __private__ } from '../PrestamoPageV2';
+import { prestamoDesdeDraft } from '../../../../services/fein/prestamoDesdeDraft';
 import type { Prestamo } from '../../../../types/prestamos';
-import type { PrestamoFinanciacion } from '../../../../types/financiacion';
+import type { FeinLoanDraft } from '../../../../types/fein';
 
-const { formDesdePrestamo, prestamoDesdeFEIN, emptyFormState } = __private__;
+const { formDesdePrestamo, emptyFormState } = __private__;
 
 /** La hipoteca de Unicaja de Jose, tal como la da su FEIN de 11/08/2023. */
-const feinDeUnicaja = (): Partial<PrestamoFinanciacion> => ({
-  alias: 'Hipoteca Unicaja',
-  capitalInicial: 85000,
-  plazoTotal: 240,
-  plazoPeriodo: 'MESES',
-  fechaFirma: '2023-08-25',
-  tipo: 'MIXTO',
-  tinTramoFijo: 2.6,
-  tramoFijoAnos: 3,
-  indice: 'EURIBOR',
-  diferencial: 1.75,
-  revision: 12,
+const feinDeUnicaja = (): FeinLoanDraft => ({
+  metadata: {
+    sourceFileName: 'FEIN_2.pdf',
+    pagesTotal: 0,
+    pagesProcessed: 0,
+    ocrProvider: 'claude',
+    processedAt: '2026-08-06T00:00:00.000Z',
+  },
+  prestamo: {
+    banco: 'Unicaja',
+    capitalInicial: 85000,
+    plazoMeses: 240,
+    fechaFirmaPrevista: '2023-08-25',
+    tipo: 'MIXTO',
+    tinFijo: 2.6,
+    tramoFijoMeses: 36,
+    indiceReferencia: 'EURIBOR',
+    // Los tres que el tipo viejo no sabía llevar y se perdían por el camino.
+    valorIndiceActual: 4.149,
+    baseCalculoIntereses: 'ACT/365',
+    tasacion: 300,
+    diferencial: 1.75,
+    revisionMeses: 12,
+  },
   bonificaciones: [
-    {
-      id: 'nomina',
-      tipo: 'NOMINA',
-      nombre: 'Bloque Haberes',
-      condicionParametrizable: 'Nómina ≥ 2.500 €',
-      descuentoTIN: 0.5,
-      impacto: { puntos: 0.5 },
-      ventanaEvaluacion: 12,
-      fuenteVerificacion: 'TESORERIA',
-      estadoInicial: 'NO_CUMPLE',
-      seleccionado: false,
-      graciaMeses: 0,
-      activa: true,
-    },
+    { id: 'nomina', etiqueta: 'Bloque Haberes', descuentoPuntos: 0.5, criterio: 'Nómina ≥ 2.500 €' },
   ],
 });
 
 /** El mismo préstamo, tecleado a mano leyendo ese mismo papel. */
 const aMano = (): Partial<Prestamo> =>
   ({
-    nombre: 'Hipoteca Unicaja',
+    nombre: 'Préstamo Unicaja',
+    banco: 'Unicaja',
+    valorIndiceActual: 4.149,
+    baseCalculoIntereses: 'ACT/365',
+    tasacion: 300,
     principalInicial: 85000,
     plazoMesesTotal: 240,
     fechaFirma: '2023-08-25',
@@ -65,11 +69,14 @@ const aMano = (): Partial<Prestamo> =>
 
 describe('subirla y teclearla dan lo mismo', () => {
   it('los campos del préstamo coinciden campo a campo', () => {
-    const porFEIN = formDesdePrestamo(prestamoDesdeFEIN(feinDeUnicaja()), emptyFormState());
+    const porFEIN = formDesdePrestamo(prestamoDesdeDraft(feinDeUnicaja()), emptyFormState());
     const porTeclado = formDesdePrestamo(aMano(), emptyFormState());
 
     for (const campo of [
       'alias',
+      'banco',
+      'euriborRaw',
+      'baseCalculo',
       'capitalRaw',
       'plazoRaw',
       'fechaFirma',
@@ -85,7 +92,7 @@ describe('subirla y teclearla dan lo mismo', () => {
 });
 
 describe('lo que la FEIN trae, llega', () => {
-  const form = () => formDesdePrestamo(prestamoDesdeFEIN(feinDeUnicaja()), emptyFormState());
+  const form = () => formDesdePrestamo(prestamoDesdeDraft(feinDeUnicaja()), emptyFormState());
 
   // El caso que lo destapó: se leía y no aparecía.
   it('el diferencial', () => {
@@ -103,7 +110,7 @@ describe('lo que la FEIN trae, llega', () => {
 });
 
 describe('las bonificaciones de la FEIN', () => {
-  const form = () => formDesdePrestamo(prestamoDesdeFEIN(feinDeUnicaja()), emptyFormState());
+  const form = () => formDesdePrestamo(prestamoDesdeDraft(feinDeUnicaja()), emptyFormState());
 
   it('llegan con sus puntos, en PUNTOS', () => {
     expect(form().bonificaciones[0].ppDescuento).toBe(0.5);
@@ -113,6 +120,12 @@ describe('las bonificaciones de la FEIN', () => {
   // seguro agrario incluido. Cuáles contrataste es decisión tuya.
   it('entran sin marcar · marcarlas sería inventarse un contrato', () => {
     expect(form().bonificaciones.every((b) => !b.activa)).toBe(true);
+  });
+
+  // Pero el bloque se ABRE · con `some(activa)` el interruptor salía apagado y
+  // las catorce quedaban escondidas detrás de un «0 activas».
+  it('y aun así el bloque se ve', () => {
+    expect(form().bonificacionesActivas).toBe(true);
   });
 
   it('y sustituyen al catálogo de ATLAS, no se mezclan con él', () => {
@@ -126,7 +139,7 @@ describe('lo que la FEIN no trae, no se pisa', () => {
   it('lo ya escrito a mano sobrevive a subir la FEIN', () => {
     const empezado = { ...emptyFormState(), diaCobroRaw: '25', numeroContrato: '0230066020' };
 
-    const despues = formDesdePrestamo(prestamoDesdeFEIN(feinDeUnicaja()), empezado);
+    const despues = formDesdePrestamo(prestamoDesdeDraft(feinDeUnicaja()), empezado);
 
     expect(despues.diaCobroRaw).toBe('25');
     expect(despues.numeroContrato).toBe('0230066020');
@@ -134,8 +147,16 @@ describe('lo que la FEIN no trae, no se pisa', () => {
     expect(despues.capitalRaw).toBe('85.000,00');
   });
 
-  it('una FEIN vacía no toca nada', () => {
+  // Una FEIN de la que no se saca nada existe · con mil maquetas distintas, es
+  // el caso que hay que sobrevivir sin estropear el formulario.
+  it('una FEIN de la que no se lee nada no toca nada', () => {
+    const vacia: FeinLoanDraft = {
+      metadata: feinDeUnicaja().metadata,
+      prestamo: { tipo: null },
+      bonificaciones: [],
+    };
     const base = emptyFormState();
-    expect(formDesdePrestamo(prestamoDesdeFEIN({}), base)).toEqual(base);
+
+    expect(formDesdePrestamo(prestamoDesdeDraft(vacia), base)).toEqual(base);
   });
 });
