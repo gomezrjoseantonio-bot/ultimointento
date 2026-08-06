@@ -10,6 +10,39 @@ import { prestamosCalculationService } from './prestamosCalculationService';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { mapCompromisoToOpexRule } from './opexService';
 
+// ── Fechas de cargo ──────────────────────────────────────────────────────────
+
+/**
+ * Fecha ISO de un cargo, ACOTANDO el día al último del mes.
+ *
+ * El día de cobro de un recurrente es un número del 1 al 31 que vale para todos
+ * los meses, así que hay que bajarlo cuando el mes se queda corto: día 31 en
+ * febrero es el 28 (o el 29 en bisiesto), no «el 31 de febrero».
+ *
+ * Concatenar `${ejercicio}-${mes}-${diaCobro}` sin acotar producía fechas que no
+ * existen, y `Date` no protesta: las hace RODAR al mes siguiente
+ * (`new Date('2026-02-31')` → 3 de marzo). Eso desplazaba el gasto de mes en
+ * cuanto alguien leía la fecha con `Date`, incluida la única herramienta que
+ * limpia duplicados fiscales.
+ *
+ * Es el MISMO criterio que `fechaDiaFijoDelMes` en `personal/patronCalendario`,
+ * el motor que genera las previsiones de tesorería. Tenerlo escrito de dos
+ * formas distintas era la razón de que Tesorería dijera `2027-02-28` y
+ * Fiscalidad `2027-02-31` para el mismo recibo.
+ */
+export function fechaDeCargo(ejercicio: number, mes: number, dia: number): string {
+  // `new Date(año, mes, 0)` es el último día del mes anterior · con `mes` en
+  // base 1 eso es justo el último día del mes que nos interesa.
+  const ultimo = new Date(ejercicio, mes, 0).getDate();
+  const diaAcotado = Math.min(Math.max(dia || 1, 1), ultimo);
+  return `${ejercicio}-${String(mes).padStart(2, '0')}-${String(diaAcotado).padStart(2, '0')}`;
+}
+
+/** El mes (1-12) de una fecha ISO · leído del texto, nunca con `Date`. */
+export function mesDeISO(iso: string): number {
+  return Number((iso ?? '').slice(5, 7));
+}
+
 // ── Mapping helpers ──
 
 function mapCasillaToCategoria(casilla: string): GastoCategoria {
@@ -211,7 +244,7 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
       const total = getRecurringAmountForMonth(rule, mes);
       if (total <= 0) continue;
 
-      const fechaOp = `${ejercicio}-${String(mes).padStart(2, '0')}-${String(rule.diaCobro || 1).padStart(2, '0')}`;
+      const fechaOp = fechaDeCargo(ejercicio, mes, rule.diaCobro || 1);
       const conceptoOp = `${rule.concepto} — ${MESES[mes - 1]}`;
 
       await gastosInmuebleService.add({
@@ -301,7 +334,11 @@ export async function limpiarDuplicadosRecurrentes(
 
   for (const g of recurrentes) {
     if (g.id == null) continue;
-    const mes = new Date(g.fecha).getMonth() + 1;
+    // El mes se lee del TEXTO, no con `Date`. Una fecha imposible como
+    // `2026-02-31` no da error al parsearla: rueda al 3 de marzo, y entonces
+    // esta clave creía que una línea de febrero era de marzo — justo en los
+    // registros que el bug de la fecha había estropeado.
+    const mes = mesDeISO(g.fecha);
     const key = `${g.origenId ?? 'null'}-${g.casillaAEAT}-${mes}`;
     if (!seen.has(key)) {
       seen.set(key, g.id);
