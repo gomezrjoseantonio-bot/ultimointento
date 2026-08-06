@@ -91,6 +91,22 @@ describe('qué conceptos entran', () => {
     );
   });
 
+  // `esISO` acepta un timestamp con hora, y el orden y el `<=` del calendario
+  // de seguros son lexicográficos: '2024-01-15T00:00' no es ≤ '2024-01-15'.
+  it('una firma con hora no ensucia el calendario · todo va a día pelado', () => {
+    const conHora = fijo({
+      fechaFirma: '2024-01-15T09:30:00.000Z',
+      segurosVinculados: [seguro()],
+    } as Partial<Prestamo>);
+    const flujos = flujosDelPrestamo(conHora, generarCuadro(conHora).plan);
+
+    expect(flujos.every((f) => /^\d{4}-\d{2}-\d{2}$/.test(f.fecha))).toBe(true);
+    // Diez primas · una por cada año que el préstamo vive, la primera el día
+    // de la firma. La que caería el día del último recibo NO: ese día se acaba.
+    expect(flujos.filter((f) => f.concepto === 'Seguros vinculados')).toHaveLength(10);
+    expect(deTae(conHora)).toBeCloseTo(deTae(fijo({ segurosVinculados: [seguro()] })), 2);
+  });
+
   it('el capital entra el día de la firma, y la apertura sale ese mismo día', () => {
     const p = fijo({ comisionApertura: 1 });
     const delDia = flujosDelPrestamo(p, generarCuadro(p).plan).filter(
@@ -180,7 +196,7 @@ describe('contra la escritura de Unicaja', () => {
   // La escritura informa también de la TAE «con máxima bonificación», y es MÁS
   // ALTA: 5,593 %. No es un error del banco — los productos que hay que
   // contratar para ganar el punto cuestan más de lo que el punto ahorra.
-  it('y el punto de bonificación, SOLO, la baja al 4,39 %', () => {
-    expect(deTae({ ...real(), diferencial: 0.75 } as Prestamo)).toBeCloseTo(4.39, 2);
+  it('y el punto de bonificación, SOLO, la baja al 4,38 %', () => {
+    expect(deTae({ ...real(), diferencial: 0.75 } as Prestamo)).toBeCloseTo(4.38, 2);
   });
 });

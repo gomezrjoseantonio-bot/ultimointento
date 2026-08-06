@@ -118,9 +118,15 @@ export function tir(flujos: Flujo[]): number | null {
  * suelto del que nadie sabe de dónde sale.
  */
 export function flujosDelPrestamo(prestamo: Prestamo, plan: PlanPagos | null): Flujo[] {
-  const firma = prestamo.fechaFirma;
   const capital = Number(prestamo.principalInicial) || 0;
-  if (!esISO(firma) || capital <= 0 || !plan?.periodos?.length) return [];
+  if (!esISO(prestamo.fechaFirma) || capital <= 0 || !plan?.periodos?.length) return [];
+
+  // A día pelado, como en todo el módulo · `esISO` acepta un timestamp con
+  // hora, y entonces se mezclarían fechas de dos formas en la misma lista:
+  // el orden y el `<=` del calendario de seguros son LEXICOGRÁFICOS, y
+  // '2023-08-25T00:00' no es menor o igual que '2023-08-25'.
+  const dia = (iso: string): string => iso.slice(0, 10);
+  const firma = dia(prestamo.fechaFirma);
 
   const flujos: Flujo[] = [{ fecha: firma, importe: capital, concepto: 'Capital' }];
 
@@ -141,7 +147,7 @@ export function flujosDelPrestamo(prestamo: Prestamo, plan: PlanPagos | null): F
     if (!esISO(p.fechaCargo)) continue;
     const importe = (Number(p.cuota) || 0) + mantenimiento;
     if (importe > 0) {
-      flujos.push({ fecha: p.fechaCargo, importe: -importe, concepto: 'Recibo' });
+      flujos.push({ fecha: dia(p.fechaCargo), importe: -importe, concepto: 'Recibo' });
     }
   }
 
@@ -152,11 +158,13 @@ export function flujosDelPrestamo(prestamo: Prestamo, plan: PlanPagos | null): F
     .filter((s) => s.exigidoParaElTipo)
     .reduce((total, s) => total + (Number(s.primaAnual) || 0), 0);
   if (prima > 0) {
-    const ultima = plan.periodos[plan.periodos.length - 1]?.fechaCargo ?? firma;
-    // Uno al año desde la firma, mientras el préstamo viva. Se paga por
-    // adelantado: la prima del último año se paga aunque el préstamo termine
-    // dentro de ese año.
-    for (let fecha = firma; fecha <= ultima; fecha = sumarMeses(fecha, 12)) {
+    const ultima = dia(plan.periodos[plan.periodos.length - 1]?.fechaCargo ?? firma);
+    // Uno al año desde la firma, mientras el préstamo VIVA. Se paga por
+    // adelantado, así que la prima del último año se paga entera aunque el
+    // préstamo termine dentro de ese año — pero no la que caiga justo el día
+    // del último recibo: ese día el préstamo se acaba y ya no hay nada que
+    // asegurar por delante. De ahí el `<` y no el `<=`.
+    for (let fecha = firma; fecha < ultima; fecha = sumarMeses(fecha, 12)) {
       flujos.push({ fecha, importe: -prima, concepto: 'Seguros vinculados' });
     }
   }

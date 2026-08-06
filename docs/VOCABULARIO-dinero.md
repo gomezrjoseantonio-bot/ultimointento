@@ -709,7 +709,7 @@ alta que la de sin bonificar. No es un error: la de «sin bonificación» no cue
 los productos, y la bonificada sí. **Los productos que hay que contratar para
 ganar el punto cuestan más de lo que el punto ahorra.**
 
-El punto, solo, bajaría la TAE de 5,08 % a **4,39 %**. Que el banco informe de
+El punto, solo, bajaría la TAE de 5,08 % a **4,38 %**. Que el banco informe de
 5,593 % significa que esos productos rondan los **690 € al año** *(cifra
 deducida invirtiendo la del banco, no leída de un papel)*.
 
