@@ -203,6 +203,18 @@ export interface FeinLoanDraft {
     baseCalculoIntereses?: '30/360' | 'ACT/360' | 'ACT/365' | null;
     /** Lo que costó la tasación, en euros · gasto de financiación (§6 bis · quinquies). */
     tasacion?: number | null;
+    /**
+     * Hasta dónde puede rebajar el conjunto de bonificaciones · en p.p.
+     *
+     * «con una bonificación máxima de 1,00 p.p. sobre el diferencial». Sin este
+     * dato, los catorce bloques de la FEIN de Unicaja suman 3,00 puntos y se
+     * comerían entero un TIN del 2,60 %.
+     */
+    topeBonificacionPuntos?: number | null;
+    /** Lo que cuesta al año el seguro que el banco exige · entra en la TAE. */
+    primaSegurosAnual?: number | null;
+    /** Si el préstamo es hipotecario · la FEIN lo dice en «Tipo de préstamo». */
+    hipotecario?: boolean | null;
     comisionAperturaPct?: number | null;
     comisionMantenimientoMes?: number | null; // €
     amortizacionAnticipadaPct?: number | null;

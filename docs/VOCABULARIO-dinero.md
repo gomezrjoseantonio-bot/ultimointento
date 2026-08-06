@@ -1136,6 +1136,24 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-06** · **Diez de las catorce bonificaciones de una FEIN no se pueden
+  comprobar** *(pregunta de Jose: «en un modelo donde las metes a capón sin
+  estructura, ¿cómo las vas a controlar?»)*. ATLAS sabe mirar contra la
+  tesorería la nómina, los recibos y la tarjeta, y contra seguros el hogar y el
+  vida. Pero «Bloque Unit Linked», «Bloque Fondos de Inversión» o «Bloque Seguro
+  Agrario» entran como `OTRA` con su descripción, y una `OTRA` **no se puede
+  verificar**: se cumple por declararla, que es justo lo que §6 ter prohíbe.
+  Dos de ellas —planes de pensiones y fondos— ATLAS **sí podría** mirarlas, en
+  Inversiones. El resto tendrían que decir en pantalla que son de palabra.
+  §6 ter.
+
+- **2026-08-06** · **El destino y la garantía de una hipoteca siguen saliendo
+  «personal».** La FEIN lo dice —«ADQUISICION DE VIVIENDA PARA ALQUILER»— y por
+  no leerlo ATLAS avisa de que los intereses **no** son deducibles cuando sí lo
+  son. El tipo de préstamo ya se lee (`hipotecario`); faltan el destino y el
+  inmueble, que no salen de la FEIN sino de lo que el usuario tenga dado de
+  alta. §6 bis · quinquies.
+
 - **2026-08-06** · **La cuota de la Unicaja son 454,66 €, no 454,57** *(Jose,
   mirando su recibo)*. ATLAS calcula la anualidad francesa con `TIN/12` y ahí
   salen 454,58. Nueve céntimos, pero la escritura de Unicaja **no calcula así**:

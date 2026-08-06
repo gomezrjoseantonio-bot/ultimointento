@@ -29,6 +29,8 @@ const unicaja: FeinLeida = {
   taeSinBonificaciones: 5.079,
   taeConBonificaciones: 5.593,
   topeBonificacionPuntos: 1,
+  primaSegurosAnual: 59.98,
+  hipotecario: true,
   bonificaciones: [
     { etiqueta: 'Bloque Haberes', puntos: 0.5, criterio: 'Nómina ≥ 2.500 € netos' },
     { etiqueta: 'Bloque Seguro Vida Riesgo Prima Anual', puntos: 0.4 },
@@ -145,6 +147,26 @@ describe('los números con los que el banco se deja comprobar', () => {
 
   it('y lo que el modelo diga que no encontró viaja con ellos', () => {
     expect(draftDesdeLeida(unicaja, 'f.pdf').metadata.warnings![0]).toContain('día de cargo');
+  });
+});
+
+// «¿Cómo las vas a controlar?» *(Jose · 6 ago 2026)*. Con el tope y con la
+// periodicidad, que la FEIN dice y ATLAS ya sabe aplicar. Los catorce bloques
+// de la de Unicaja suman 3,00 p.p.: sin tope se comerían entero un TIN del
+// 2,60 %, y el contrato dice que como mucho rebajan 1,00.
+describe('lo que las mantiene a raya', () => {
+  const p = () => draftDesdeLeida(unicaja, 'f.pdf').prestamo;
+
+  it('el tope, en puntos', () => {
+    expect(p().topeBonificacionPuntos).toBe(1);
+  });
+
+  it('el seguro que el banco exige, que es precio del préstamo', () => {
+    expect(p().primaSegurosAnual).toBe(59.98);
+  });
+
+  it('y que es hipotecario, no personal', () => {
+    expect(p().hipotecario).toBe(true);
   });
 });
 

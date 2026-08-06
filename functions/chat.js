@@ -487,7 +487,9 @@ Devuelve SOLO un objeto JSON, sin texto alrededor y sin markdown, con esta forma
   "taeConBonificaciones": number|null,    // %
   "cuotaEstimada": number|null,           // euros
   "importeTotalAReembolsar": number|null, // euros
-  "topeBonificacionPuntos": number|null,  // p.ej. 1.00
+  "topeBonificacionPuntos": number|null,  // p.ej. 1.00 · «bonificación máxima de 1,00 p.p.»
+  "primaSegurosAnual": number|null,       // euros/año del seguro que el banco EXIGE
+  "hipotecario": true|false|null,         // ¿es un préstamo con garantía hipotecaria?
   "bonificaciones": [
     { "etiqueta": string, "puntos": number, "criterio": string|null }
   ],
@@ -515,6 +517,12 @@ CÓMO LEER LO QUE NO VIENE EN UNA CASILLA:
 5. LOS CEROS SON DATOS. «Exenta de comisión de apertura» o «Comisión de apertura: 0,00 euros» es 0, no null. Null es «no lo dice».
 
 6. TIPOS. Un préstamo con un tramo inicial a un tipo y el resto a otro FIJO no es MIXTO: suele ser FIJO con una bonificación aplicada al principio. MIXTO es fijo primero y luego ligado a un índice.
+
+7. EL TOPE DE LAS BONIFICACIONES. Búscalo con ellas: «podrán ser acumulativas entre sí, con una bonificación máxima de 1,00 p.p. sobre el diferencial» → 1.00. Es lo que impide que la suma de los bloques se coma el tipo entero.
+
+8. SEGUROS EXIGIDOS. Solo los que el banco EXIGE, no los que ofrece para bonificar. Si la FEIN los mete en su propio cálculo de la TAE «sin bonificaciones», son exigidos. Suma sus primas anuales.
+
+9. HIPOTECARIO. Si el préstamo lleva garantía hipotecaria o dice «adquisición de vivienda», es true.
 
 En "notas" escribe, en una o dos frases: qué campos no has encontrado y dónde has tenido dudas. Es tan útil como los datos.`;
 

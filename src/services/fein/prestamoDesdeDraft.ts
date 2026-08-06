@@ -135,5 +135,28 @@ export function prestamoDesdeDraft(draft: FeinLoanDraft): Partial<Prestamo> {
     ...(hay(p.comisionMantenimientoMes) ? { comisionMantenimiento: p.comisionMantenimientoMes } : {}),
 
     ...(bonificaciones.length ? { bonificaciones } : {}),
+    // CÓMO SE CONTROLAN · sin esto, las catorce de la FEIN de Unicaja suman
+    // 3,00 p.p. y se comen entero un TIN del 2,60 %. El motor ya sabe aplicar
+    // el tope (`tinConBonificaciones`); lo que faltaba era traérselo del papel.
+    ...(hay(p.topeBonificacionPuntos) ? { topeBonificacionesTotal: p.topeBonificacionPuntos } : {}),
+    // Y cuándo las mira el banco · §6 ter: una bonificación no se pierde el día
+    // que dejas de cumplirla, sino el día que él lo comprueba.
+    ...(hay(p.revisionMeses) ? { periodoRevisionBonificacionMeses: p.revisionMeses } : {}),
+
+    // El seguro que el banco exige · no es cuota del préstamo, pero es precio
+    // suyo y por eso entra en la TAE (§6 bis · quinquies).
+    ...(hay(p.primaSegurosAnual) && p.primaSegurosAnual > 0
+      ? {
+          segurosVinculados: [
+            {
+              concepto: 'Seguro exigido por el banco',
+              primaAnual: p.primaSegurosAnual,
+              exigidoParaElTipo: true,
+              naturaleza: 'GASTO_DEL_INMUEBLE' as const,
+            },
+          ],
+        }
+      : {}),
+    ...(p.hipotecario ? { tipoPrestamoV2: 'hipotecario' } : {}),
   };
 }

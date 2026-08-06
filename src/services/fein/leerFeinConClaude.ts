@@ -49,6 +49,8 @@ export interface FeinLeida {
   cuotaEstimada?: number | null;
   importeTotalAReembolsar?: number | null;
   topeBonificacionPuntos?: number | null;
+  primaSegurosAnual?: number | null;
+  hipotecario?: boolean | null;
   bonificaciones?: Array<{ etiqueta?: string; puntos?: number; criterio?: string | null }>;
   notas?: string | null;
 }
@@ -150,6 +152,10 @@ export function draftDesdeLeida(leida: FeinLeida, sourceFileName: string): FeinL
       comisionMantenimientoMes: leido(leida.comisionMantenimientoMes) ?? null,
       amortizacionAnticipadaPct: leido(leida.amortizacionAnticipadaPct) ?? null,
       tasacion: leido(leida.tasacion) ?? null,
+      // Sin el tope, catorce bloques de la FEIN de Unicaja suman 3,00 puntos.
+      topeBonificacionPuntos: leido(leida.topeBonificacionPuntos) ?? null,
+      primaSegurosAnual: leido(leida.primaSegurosAnual) ?? null,
+      hipotecario: typeof leida.hipotecario === 'boolean' ? leida.hipotecario : null,
       fechaFirmaPrevista: texto(leida.fechaFirmaPrevista) ?? null,
       banco: texto(leida.banco) ?? null,
       ibanCargoParcial: null,
