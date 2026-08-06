@@ -18,6 +18,9 @@ const items: AjustesNavItem[] = [
   { key: 'notificaciones', label: 'Notificaciones', icon: Icons.Bell, path: '/ajustes/notificaciones' },
   { key: 'plantillas', label: 'Plantillas', icon: Icons.Contratos, path: '/ajustes/plantillas' },
   { key: 'fiscal', label: 'Perfil fiscal y convivencia', icon: Icons.Fiscal, path: '/ajustes/fiscal' },
+  // Qué puede ser un gasto · el catálogo de conceptos, que hasta ahora sólo
+  // existía en código y por eso nadie podía ver dónde caía cada cosa.
+  { key: 'conceptos', label: 'Conceptos de gasto', icon: Icons.Tag, path: '/ajustes/conceptos' },
   { key: 'datos-mercado', label: 'Datos de mercado', icon: Icons.Proyeccion, path: '/ajustes/datos-mercado' },
   { key: 'avisos', label: 'Avisos', icon: Icons.Bell, path: '/ajustes/avisos' },
   { key: 'seguridad', label: 'Seguridad y datos', icon: Icons.Lock, path: '/ajustes/seguridad' },

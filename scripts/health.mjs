@@ -489,9 +489,18 @@ function navDestinations() {
   // regex), `window.location.href=/assign/replace`. `Link`/`NavLink to=` ya
   // los cubría `to=`. RESIDUO conocido: `navigate(variable)` / `onNavigate(var)`
   // con la ruta en una constante (no literal) sigue sin verse.
+  //
+  // AMPLIADO (punto ciego de los sub-menús): las páginas con barra lateral
+  // propia —Ajustes, Fiscal, Mi Plan, Financiación— declaran sus destinos en
+  // un array de items y navegan con `navigate(item.path)`. La ruta es una
+  // VARIABLE, así que el regex de arriba no la veía y sus sub-páginas salían
+  // como huérfanas teniendo entrada de menú. `path:` con literal que empieza
+  // por `/` sólo aparece en esas definiciones de menú (una `<Route path=…>` es
+  // atributo JSX, con `=`, no con `:`).
   const PREFIX =
     "(?:navigate\\(\\s*|onNavigate\\(\\s*|\\bto=|\\bhref=|window\\.location\\.(?:href\\s*=|assign\\(|replace\\())\\{?\\s*";
   const litRe = new RegExp(PREFIX + "(['\"])(\\/[^'\"]*)\\1(\\s*\\+)?", 'g');
+  const menuRe = /\bpath:\s*(['"])(\/[^'"]*)\1/g;
   const tplRe = new RegExp(PREFIX + '`(\\/[^`]*)`', 'g');
   const ASSET = /\.(md|html|pdf|png|jpe?g|svg|json|csv|txt|xml|ico)$/i;
   const add = (segs, f) => {
@@ -523,6 +532,9 @@ function navDestinations() {
           f
         );
       }
+    }
+    while ((m = menuRe.exec(s))) {
+      add(m[2].split('/').filter(Boolean).map((v) => ({ v })), f);
     }
     while ((m = tplRe.exec(s))) {
       const p = m[1].split(/[?#]/)[0];
