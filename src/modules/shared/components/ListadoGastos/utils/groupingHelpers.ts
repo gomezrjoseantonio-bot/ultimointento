@@ -1,5 +1,6 @@
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import type { TipoGasto } from '../../TipoGastoSelector/TipoGastoSelector.types';
+import { parLegacyDe } from '../../../../../services/conceptos/mapaLegacy';
 
 export interface GastoGroup {
   familiaId: string;
@@ -8,6 +9,11 @@ export interface GastoGroup {
 }
 
 function inferFamilia(c: CompromisoRecurrente, mode: 'personal' | 'inmueble'): string {
+  // El CONCEPTO manda · `tipoFamilia` es una copia suya que puede haberse
+  // quedado vieja. Se traduce a la familia del catálogo de este ámbito, que es
+  // con la que están hechos los grupos de esta pantalla.
+  const porConcepto = parLegacyDe(c.concepto, mode)?.tipoFamilia;
+  if (porConcepto) return porConcepto;
   if (c.tipoFamilia) return c.tipoFamilia;
   if (mode === 'personal') {
     if (c.tipo === 'suministro') return 'suministros';

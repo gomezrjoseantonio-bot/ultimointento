@@ -14,6 +14,8 @@ import { runMigrationIfNeeded as limpiarGastosReparacion0106 } from './services/
 import { runMigrationIfNeeded as backfillImporteBruto0106 } from './services/migrations/backfillImporteBruto0106';
 import { runMigrationIfNeeded as cleanStaleCPAndInferITP } from './services/migrations/cleanStaleCPAndInferITP';
 import { runMigrationIfNeeded as fixFechasImposiblesGastos } from './services/migrations/fixFechasImposiblesGastos';
+import { runMigrationIfNeeded as migrarConceptoUnificado } from './services/migrations/migrarConceptoUnificado';
+import { cargarConceptosUsuario } from './services/conceptos/conceptosUsuarioService';
 import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphanedInmuebleIds';
 import { runKeyvalCleanup } from './services/keyvalCleanupService';
 import { migrateKeyvalPlanpagosToPrestamos } from './services/migrations/migrateKeyvalPlanpagosToPrestamos';
@@ -294,6 +296,7 @@ const AjustesIntegraciones = lazyWithPreload(() => import('./modules/ajustes/pag
 const AjustesNotificaciones = lazyWithPreload(() => import('./modules/ajustes/pages/NotificacionesPage'));
 const AjustesPlantillas = lazyWithPreload(() => import('./modules/ajustes/pages/PlantillasPage'));
 const AjustesPerfilFiscal = lazyWithPreload(() => import('./modules/ajustes/pages/PerfilFiscalPage'));
+const AjustesConceptos = lazyWithPreload(() => import('./modules/ajustes/pages/ConceptosPage'));
 const AjustesSeguridad = lazyWithPreload(() => import('./modules/ajustes/pages/SeguridadPage'));
 const AjustesDatosMercado = lazyWithPreload(() => import('./modules/ajustes/pages/DatosMercadoPage'));
 const AjustesAvisos = lazyWithPreload(() => import('./modules/ajustes/pages/AvisosPage'));
@@ -318,6 +321,14 @@ function App() {
       // imposible no falla al parsearse, rueda al mes siguiente, así que quien
       // la lea antes de arreglarla imputa el gasto a otro mes.
       .then(() => fixFechasImposiblesGastos())
+      // Los conceptos propios del usuario se aplican al catálogo en memoria
+      // ANTES de que nadie lo consulte · si no, un gasto que use uno suyo se
+      // leería como «sin clasificar» durante el primer render.
+      .then(() => cargarConceptosUsuario())
+      // Va DESPUÉS de las limpiezas de `gastosInmueble` y ANTES de que nadie
+      // lea la clasificación: escribe `concepto` en cada gasto y realinea
+      // `categoria`, `bolsaPresupuesto` y `tipo` con el ámbito del registro.
+      .then(() => migrarConceptoUnificado())
       .then(() => migrateOrphanedInmuebleIds())
       .then((migrationReport) => {
         if (migrationReport && !migrationReport.skipped && Object.keys(migrationReport.storeUpdates).length > 0) {
@@ -1437,6 +1448,11 @@ function App() {
               <Route path="fiscal" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <AjustesPerfilFiscal />
+                </React.Suspense>
+              } />
+              <Route path="conceptos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AjustesConceptos />
                 </React.Suspense>
               } />
               <Route path="seguridad" element={

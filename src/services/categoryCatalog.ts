@@ -51,6 +51,7 @@ import {
   Phone,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import type { AEATBox } from './db/types-contratos';
 
 export type MovementType = 'ingreso' | 'gasto' | 'financiacion' | 'traspaso';
 export type Ambito = 'personal' | 'inmueble';
@@ -67,8 +68,16 @@ export interface CategoryDef {
   tipo: MovementType;
   /** Ámbito (personal, inmueble o ambos). */
   ambito: Ambito | 'ambos';
-  /** Casilla AEAT por defecto para deducción (solo gastos de inmueble). */
-  casillaAEAT?: string;
+  /**
+   * Casilla AEAT por defecto para deducción (solo gastos de inmueble).
+   *
+   * Tipada como `AEATBox` y no como `string` a propósito: `mapBoxToFiscalType`
+   * indexa un `Record<AEATBox, …>` con este valor, así que una casilla que no
+   * sea del juego devuelve `undefined` y el gasto llega a la declaración sin
+   * `categoriaFiscal`, sin que nada falle por el camino. Es lo que llevaba
+   * pasando con la 0108.
+   */
+  casillaAEAT?: AEATBox;
   /** Store de destino al materializar la línea (solo gastos de inmueble). */
   storeName?: CategoryStoreName;
   /** Si aparece como opción en "Nueva regla OPEX". */
@@ -247,7 +256,12 @@ export const GASTO_INMUEBLE_CATEGORIES: CategoryDef[] = [
     icon: Briefcase,
     tipo: 'gasto',
     ambito: 'inmueble',
-    casillaAEAT: '0108',
+    // Era `0108`, que NO es una casilla de gasto: en el Modelo 100 la 0108 es
+    // «exceso a deducir en los 4 años siguientes», el arrastre de la 0107. Los
+    // servicios de explotación —limpieza, lavandería, gestoría, alarma— van a la
+    // 0112, «servicios personales». Con la 0108 estos gastos salían de
+    // `mapBoxToFiscalType` sin tipo fiscal y llegaban a la declaración mudos.
+    casillaAEAT: '0112',
     storeName: 'gastosInmueble',
     availableInOpex: true,
     requiereInmueble: true,

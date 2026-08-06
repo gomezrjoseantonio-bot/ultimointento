@@ -55,3 +55,47 @@ describe('fiscalidadConcepto · la elección manual SIEMPRE manda (seguro de vid
     expect(f.frase).toMatch(/no deducible/);
   });
 });
+
+describe('desde la unificación · se deriva del concepto', () => {
+  it('acepta el id de concepto directamente', () => {
+    expect(fiscalidadDeConcepto('luz').familia).toBe('suministros');
+    expect(fiscalidadDeConcepto('gestoria').familia).toBe('servicios_profesionales');
+  });
+
+  it('«Servicios y explotación» cuenta como servicios profesionales', () => {
+    // Familia nueva de la unificación · antes caía en `no_deducible` porque
+    // `familiaBaseDe` no la conocía, y sus gastos van a la casilla 0112.
+    expect(fiscalidadDeConcepto('limpieza').familia).toBe('servicios_profesionales');
+    expect(fiscalidadDeConcepto('lavanderia').tratamiento).toBe('deducibleDirecto');
+  });
+
+  it('el mobiliario se amortiza al 10 %, no es «no deducible» ni «mejora»', () => {
+    // Casilla 0117 · la mejora amortiza al 3 % sobre el inmueble, el mobiliario
+    // al 10 % en diez años. Meterlos en el mismo saco los declara mal.
+    const f = fiscalidadDeConcepto('muebles');
+    expect(f.familia).toBe('amortizacion_muebles');
+    expect(f.tratamiento).toBe('amortizable10');
+  });
+
+  it('un gasto personal corriente no se resta de nada', () => {
+    expect(fiscalidadDeConcepto('supermercado').tratamiento).toBe('noDeducible');
+    expect(fiscalidadDeConcepto('gimnasio').tratamiento).toBe('noDeducible');
+  });
+
+  it('sólo preguntan la derrama y el personalizado', () => {
+    expect(conceptoPregunta('derrama')).toBe(true);
+    expect(conceptoPregunta('personalizado')).toBe(true);
+    // Un «otros» de familia SÍ tiene tratamiento · lo trae su familia. Antes
+    // preguntaba por llamarse `otros`, aunque la capa de persistencia ya
+    // hubiera decidido su casilla — el desacuerdo que la unificación quita.
+    expect(conceptoPregunta('otros_suministros')).toBe(false);
+    expect(conceptoPregunta('otros_gestion')).toBe(false);
+    expect(fiscalidadDeConcepto('otros_suministros').familia).toBe('suministros');
+  });
+
+  it('un concepto desconocido pregunta · no se deriva de la nada', () => {
+    expect(conceptoPregunta('no_existe')).toBe(true);
+    expect(conceptoPregunta(undefined)).toBe(true);
+    expect(fiscalidadDeConcepto('no_existe').familia).toBeNull();
+  });
+});

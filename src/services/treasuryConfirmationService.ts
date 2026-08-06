@@ -141,7 +141,8 @@ export function resolveCasillaAEAT(labelOrKey?: string): string | undefined {
   if (n.includes('seguro')) return '0114';
   if (n.includes('ibi') || n.includes('tribut') || n.includes('basura')) return '0115';
   if (n.includes('suministro')) return '0113';
-  if (n.includes('servicio')) return '0108';
+  // 0112 «servicios personales» · la 0108 es el arrastre de la 0107, no un gasto.
+  if (n.includes('servicio')) return '0112';
   if (n.includes('mobiliario') || n.includes('muebles')) return '0117';
   return undefined;
 }
