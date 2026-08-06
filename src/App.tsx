@@ -13,6 +13,7 @@ import { runMigrationIfNeeded as fixReparacionesDuplicadas } from './services/mi
 import { runMigrationIfNeeded as limpiarGastosReparacion0106 } from './services/migrations/limpiarGastosReparacionCasilla0106';
 import { runMigrationIfNeeded as backfillImporteBruto0106 } from './services/migrations/backfillImporteBruto0106';
 import { runMigrationIfNeeded as cleanStaleCPAndInferITP } from './services/migrations/cleanStaleCPAndInferITP';
+import { runMigrationIfNeeded as fixFechasImposiblesGastos } from './services/migrations/fixFechasImposiblesGastos';
 import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphanedInmuebleIds';
 import { runKeyvalCleanup } from './services/keyvalCleanupService';
 import { migrateKeyvalPlanpagosToPrestamos } from './services/migrations/migrateKeyvalPlanpagosToPrestamos';
@@ -313,6 +314,10 @@ function App() {
       .then(() => limpiarGastosReparacion0106())
       .then(() => backfillImporteBruto0106())
       .then(() => cleanStaleCPAndInferITP())
+      // Va ANTES de cualquier cosa que lea fechas de `gastosInmueble`: una fecha
+      // imposible no falla al parsearse, rueda al mes siguiente, así que quien
+      // la lea antes de arreglarla imputa el gasto a otro mes.
+      .then(() => fixFechasImposiblesGastos())
       .then(() => migrateOrphanedInmuebleIds())
       .then((migrationReport) => {
         if (migrationReport && !migrationReport.skipped && Object.keys(migrationReport.storeUpdates).length > 0) {
