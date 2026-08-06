@@ -1039,6 +1039,18 @@ Reglas que se derivan:
   posterior.
 - **Cerrar dos veces no descarta dos veces.**
 
+**Dónde se hace y para qué sirve.** El botón vive en **tesorería**, al final de
+la pantalla: lo que se cierra son previsiones de tesorería, y allí es donde se
+está mirando lo que falta por entrar y por salir. Se ofrecen los **seis últimos
+meses terminados** —no solo el anterior: quien lleve tres sin cerrar tiene que
+poder ponerse al día—, cada uno con lo que le queda abierto y, si ya está
+cerrado, con su fecha y su botón de reabrir.
+
+Y lo que lo hace valer: **quien comprueba las bonificaciones lee los meses
+cerrados**. Un mes cerrado sin nómina cuenta como **cero cobrado** y hace perder
+la bonificación; el mismo mes abierto sigue siendo un «todavía no cuenta» y no
+resta. Esa es toda la diferencia que introduce cerrar (§6 ter).
+
 > **Ojo con la palabra.** En tesorería «cierre» significa hoy otra cosa: el
 > **saldo previsto a fin de mes**. Son dos conceptos distintos con el mismo
 > nombre, y conviene no cruzarlos.
@@ -1067,15 +1079,6 @@ Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
 Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
-
-- **2026-08-05** · **El cierre de mes no tiene pantalla.** El servicio está
-  hecho y probado —`loQueQuedaAbierto`, `cerrarMes`, `reabrirMes`— pero **no lo
-  llama nadie**: es exactamente la enfermedad que esta sesión lleva persiguiendo
-  —dos mitades de una función que no se encuentran—, y se deja dicho en vez de
-  esconderlo. Falta el botón de cerrar en tesorería con la lista delante, la
-  marca de mes cerrado y el aviso de que reabrir es posible. Y falta lo que lo
-  hace valer: que `cobrosDeNomina` y compañía lean el mes cerrado para que un
-  `sinCerrar` pase a ser un **no** en vez de un «todavía no cuenta». §6 quater.
 
 - **2026-08-05** · **El tramo suelto de ING no cuadra por 13 céntimos.** Cobra
   218,37 € donde 97.500 € al 2,15 % por 38 días sobre 365 dan 218,24. El tipo
@@ -1189,6 +1192,19 @@ deja de servir para decidir por dónde seguir.
   5 ago 2026: «no vamos a liarnos por un céntimo».)* §6 bis · bis.
 
 ### Resuelto
+
+- **2026-08-06** · **El cierre de mes ya se puede hacer, y ya sirve para algo.**
+  El servicio estaba hecho y probado —`loQueQuedaAbierto`, `cerrarMes`,
+  `reabrirMes`— y **no lo llamaba nadie**: la enfermedad de siempre, dos mitades
+  de una función que no se encuentran. Ahora tiene sus dos mitades:
+  **la pantalla**, en tesorería, con la tira de los seis últimos meses
+  terminados, la lista delante antes de confirmar y el botón de reabrir en cada
+  mes cerrado; y **el consumidor**, `verificarBonificaciones`, que lee los meses
+  cerrados y cuenta el mes vacío **como cero** en vez de excluirlo. Un mes
+  cerrado sin nómina ya hace **perder** la bonificación; abierto, sigue siendo un
+  «todavía no cuenta». Qué meses se ofrecen lo dice `mesesParaCerrar`, la misma
+  regla con la que `cerrarMes` se niega a cerrar un mes en curso — no una copia
+  en la vista. §6 quater.
 
 - **2026-08-05** · **Vender el activo cancela el préstamo, con la misma cuenta
   que cancelarlo a mano.** `propertySaleService` tenía el QUINTO constructor de

@@ -18,6 +18,7 @@ import { gastoPorTarjeta } from '../../services/gastoPorTarjeta';
 import { cobrosDeNomina } from '../../services/bonificaciones/cobrosDeNomina';
 import { recibosDomiciliados } from '../../services/bonificaciones/recibosDomiciliados';
 import { listarTarjetas } from '../../services/tarjetasService';
+import { cierres } from '../../services/cierreDeMes';
 import { verificarBonificaciones } from '../../services/bonificaciones/verificarBonificaciones';
 import type { MovimientosQuePrueban } from '../../services/bonificaciones/verificarBonificaciones';
 import { tinDelTramoSiRevisaranHoy } from '../../services/prestamos/tinDelTramo';
@@ -81,6 +82,9 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
         periodosDeTarjeta: gastoPorTarjeta(eventos),
         cobrosDeNomina: cobrosDeNomina(eventos),
         recibosDomiciliados: recibosDomiciliados(eventos),
+        // Los meses cerrados · es lo que convierte «todavía no consta» en un
+        // NO. Sin esto una bonificación no se pierde nunca (§6 quater).
+        mesesCerrados: (await cierres()).map((c) => c.mes),
       });
     })();
     return () => {

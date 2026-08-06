@@ -10,6 +10,8 @@ import {
   cierres,
   estaCerrado,
   loQueQuedaAbierto,
+  mesesCerrables,
+  mesesParaCerrar,
   reabrirMes,
 } from '../cierreDeMes';
 
@@ -123,6 +125,38 @@ describe('cerrar', () => {
 
     expect(segundo).toEqual(primero);
     expect(await cierres()).toHaveLength(1);
+  });
+});
+
+// La pantalla ofrece exactamente los meses que el motor acepta · si ofreciera
+// uno más, el botón daría un error en vez de cerrar.
+describe('qué meses se pueden cerrar', () => {
+  it('el mes en curso no está', () => {
+    expect(mesesParaCerrar(HOY)).not.toContain('2026-08');
+  });
+
+  it('empieza por el último terminado y va hacia atrás', () => {
+    expect(mesesParaCerrar(HOY, 3)).toEqual(['2026-07', '2026-06', '2026-05']);
+  });
+
+  it('y cruza el año sin inventarse un mes trece', () => {
+    expect(mesesParaCerrar('2026-01-15', 2)).toEqual(['2025-12', '2025-11']);
+  });
+
+  it('la tira dice, de cada mes, qué queda y si está cerrado', async () => {
+    await sembrar([evento(), evento({ type: 'expense', amount: 300 })]);
+    await cerrarMes('2026-06', HOY);
+
+    const [julio, junio] = await mesesCerrables(HOY, 2);
+
+    expect(julio).toEqual({ mes: '2026-07', cuantos: 2, totalEntra: 1200, totalSale: 300 });
+    expect(junio.cerradoAt).toBeDefined();
+  });
+
+  it('todos los que ofrece los acepta el motor', async () => {
+    for (const mes of mesesParaCerrar(HOY)) {
+      await expect(cerrarMes(mes, HOY)).resolves.toBeDefined();
+    }
   });
 });
 

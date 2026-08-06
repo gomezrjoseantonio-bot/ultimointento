@@ -89,6 +89,25 @@ export async function estaCerrado(mes: string): Promise<boolean> {
 }
 
 /**
+ * Los meses que se pueden cerrar · del más reciente al más antiguo.
+ *
+ * Vive aquí y no en la pantalla porque «qué mes se puede cerrar» es la misma
+ * regla que aplica `cerrarMes` al negarse: solo un mes YA TERMINADO. Escrita en
+ * los dos sitios, la pantalla acabaría ofreciendo un botón que el motor rechaza.
+ */
+export function mesesParaCerrar(hoy: string, cuantos = 6): string[] {
+  const actual = mesDe(hoy);
+  if (!esMes(actual)) return [];
+
+  const [y, m] = actual.split('-').map(Number);
+  const meses: string[] = [];
+  for (let i = 1; i <= cuantos; i++) {
+    meses.push(new Date(Date.UTC(y, m - 1 - i, 1)).toISOString().slice(0, 7));
+  }
+  return meses;
+}
+
+/**
  * Qué se va a dar por no ocurrido · LA LISTA DELANTE.
  *
  * Se llama antes de cerrar y no toca nada. Devuelve la lista vacía si el mes ya
@@ -101,16 +120,55 @@ export async function loQueQuedaAbierto(mes: string): Promise<LoQueQuedaAbierto>
   const db = await initDB();
   const eventos = siguenAbiertos((await db.getAll('treasuryEvents')) as TreasuryEvent[], mes);
 
-  return {
-    mes,
-    eventos,
-    totalEntra: redondear(eventos.filter((e) => e.type === 'income').reduce(suma, 0)),
-    totalSale: redondear(eventos.filter((e) => e.type !== 'income').reduce(suma, 0)),
-  };
+  return { mes, eventos, ...totales(eventos) };
 }
 
 const suma = (total: number, e: TreasuryEvent): number => total + Math.abs(Number(e.amount) || 0);
 const redondear = (n: number): number => Math.round(n * 100) / 100;
+
+/** Lo que no entraría y lo que no saldría · el mismo reparto para los dos sitios. */
+const totales = (eventos: TreasuryEvent[]): { totalEntra: number; totalSale: number } => ({
+  totalEntra: redondear(eventos.filter((e) => e.type === 'income').reduce(suma, 0)),
+  totalSale: redondear(eventos.filter((e) => e.type !== 'income').reduce(suma, 0)),
+});
+
+/** Un mes de la tira de cierre · lo que hay que saber de él sin abrirlo. */
+export interface MesCerrable {
+  mes: string;
+  /** Cuándo se cerró · ausente = sigue abierto. */
+  cerradoAt?: string;
+  /** Lo que quedaría por ocurrido · o lo que quedó, si ya está cerrado. */
+  cuantos: number;
+  totalEntra: number;
+  totalSale: number;
+}
+
+/**
+ * La tira de meses cerrables, con su estado · UNA lectura para todos.
+ *
+ * Preguntar mes a mes con `loQueQuedaAbierto` daría lo mismo, pero recorriendo
+ * los eventos una vez por mes. La lista que enseña la pantalla sale de aquí.
+ */
+export async function mesesCerrables(hoy: string, cuantos = 6): Promise<MesCerrable[]> {
+  const meses = mesesParaCerrar(hoy, cuantos);
+  if (meses.length === 0) return [];
+
+  const db = await initDB();
+  const [cerrados, eventos] = await Promise.all([
+    cierres(),
+    db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+  ]);
+
+  return meses.map((mes) => {
+    const cerrado = cerrados.find((c) => c.mes === mes);
+    // Un mes cerrado ya no tiene «lo que quedaría»: lo que quedaba está
+    // descartado, y lo que se cuenta es cuánto fue.
+    if (cerrado) return { mes, cerradoAt: cerrado.cerradoAt, cuantos: cerrado.descartados.length, totalEntra: 0, totalSale: 0 };
+
+    const abiertos = siguenAbiertos(eventos, mes);
+    return { mes, cuantos: abiertos.length, ...totales(abiertos) };
+  });
+}
 
 /**
  * Cierra el mes · lo que quedaba abierto pasa a NO ocurrido.
