@@ -59,6 +59,9 @@ const selectConOpcion = (texto: string): HTMLSelectElement => {
 };
 const opcionesDe = (s: HTMLSelectElement) =>
   Array.from(s.querySelectorAll('option')).map((o) => o.textContent);
+/** Las familias del selector de concepto · son `optgroup`, no opciones. */
+const gruposDe = (s: HTMLSelectElement) =>
+  Array.from(s.querySelectorAll('optgroup')).map((g) => g.getAttribute('label'));
 
 const guardar = async () => {
   fireEvent.click(screen.getByRole('button', { name: /guardar/i }));
@@ -93,28 +96,28 @@ describe('la ficha nace sabiendo qué es el gasto', () => {
 describe('sólo se ofrece lo que sabe clasificarse en este ámbito', () => {
   it('en personal no aparecen las familias que son sólo de inmueble', () => {
     pintar(compromiso({ concepto: 'seguro_vida' }));
-    const fam = selectConOpcion('Seguros');
-    expect(opcionesDe(fam)).toContain('Suministros');
-    expect(opcionesDe(fam)).toContain('Día a día');
-    expect(opcionesDe(fam)).not.toContain('Servicios y explotación');
-    expect(opcionesDe(fam)).not.toContain('Mobiliario y enseres');
+    const sel = selectConOpcion('Seguro vida');
+    expect(gruposDe(sel)).toContain('Suministros');
+    expect(gruposDe(sel)).toContain('Día a día');
+    expect(gruposDe(sel)).not.toContain('Servicios y explotación');
+    expect(gruposDe(sel)).not.toContain('Mobiliario y enseres');
   });
 
   it('en inmueble no aparecen las de sólo personal', () => {
     pintar(compromiso({ ambito: 'inmueble', inmuebleId: 3, concepto: 'ibi' }));
-    const fam = selectConOpcion('Tributos');
-    expect(opcionesDe(fam)).toContain('Servicios y explotación');
-    expect(opcionesDe(fam)).not.toContain('Suscripciones');
-    expect(opcionesDe(fam)).not.toContain('Cuotas');
+    const sel = selectConOpcion('IBI');
+    expect(gruposDe(sel)).toContain('Servicios y explotación');
+    expect(gruposDe(sel)).not.toContain('Suscripciones');
+    expect(gruposDe(sel)).not.toContain('Cuotas');
   });
 
   it('dentro de una familia sólo salen sus conceptos de este ámbito', () => {
     pintar(compromiso({ ambito: 'inmueble', inmuebleId: 3, concepto: 'seguro_hogar' }));
-    const conceptos = selectConOpcion('Seguro hogar');
+    const sel = selectConOpcion('Seguro hogar');
     // `seguro_salud` y `seguro_coche` son de la misma familia pero sólo personal.
-    expect(opcionesDe(conceptos)).toContain('Impago');
-    expect(opcionesDe(conceptos)).not.toContain('Seguro salud');
-    expect(opcionesDe(conceptos)).not.toContain('Seguro coche');
+    expect(opcionesDe(sel)).toContain('Impago');
+    expect(opcionesDe(sel)).not.toContain('Seguro salud');
+    expect(opcionesDe(sel)).not.toContain('Seguro coche');
   });
 });
 
@@ -134,8 +137,7 @@ describe('al guardar, la clasificación se deriva del concepto', () => {
   it('cambiar el concepto cambia categoría, tipo y bolsa a la vez', async () => {
     pintar(compromiso({ concepto: 'seguro_vida' }));
 
-    fireEvent.change(selectConOpcion('Seguros'), { target: { value: 'suscripciones' } });
-    fireEvent.change(selectConOpcion('Streaming'), { target: { value: 'musica' } });
+    fireEvent.change(selectConOpcion('Seguro vida'), { target: { value: 'musica' } });
     const payload = await guardar();
 
     expect(payload.concepto).toBe('musica');
@@ -171,16 +173,7 @@ describe('al guardar, la clasificación se deriva del concepto', () => {
   });
 });
 
-describe('cambiar de familia no deja restos del concepto anterior', () => {
-  it('el concepto salta al primero de la familia nueva', () => {
-    pintar(compromiso({ concepto: 'seguro_vida' }));
-
-    fireEvent.change(selectConOpcion('Seguros'), { target: { value: 'dia_a_dia' } });
-
-    // Ya no puede seguir seleccionado un seguro dentro de «Día a día».
-    expect(selectConOpcion('Supermercado · alimentación').value).toBe('supermercado');
-  });
-
+describe('cambiar de concepto no deja restos del anterior', () => {
   it('la elección fiscal manual del concepto viejo no se arrastra', async () => {
     // Un seguro de vida vinculado a hipoteca guarda `intereses_financiacion`.
     // Si luego se convierte en otra cosa, esa elección ya no es de este gasto.
@@ -188,7 +181,7 @@ describe('cambiar de familia no deja restos del concepto anterior', () => {
       compromiso({ concepto: 'seguro_vida', familiaFiscalManual: 'intereses_financiacion' }),
     );
 
-    fireEvent.change(selectConOpcion('Seguros'), { target: { value: 'suscripciones' } });
+    fireEvent.change(selectConOpcion('Seguro vida'), { target: { value: 'musica' } });
     const payload = await guardar();
 
     expect(payload.familiaFiscalManual).toBeUndefined();
@@ -201,7 +194,7 @@ describe('la frase fiscal habla del concepto elegido AHORA', () => {
     // `getByText` ya falla si no está · no hace falta afirmarlo dos veces.
     screen.getByText(/cuenta como seguros · deducible/i);
 
-    fireEvent.change(selectConOpcion('Seguros'), { target: { value: 'mobiliario' } });
+    fireEvent.change(selectConOpcion('Seguro hogar'), { target: { value: 'muebles' } });
 
     // Mobiliario no se resta: se amortiza al 10 % (casilla 0117).
     screen.getByText(/se amortiza al 10 %/i);
@@ -217,8 +210,7 @@ describe('los campos legacy no se quedan viejos', () => {
   it('cambiar de concepto reescribe tipoFamilia y subtipo', async () => {
     pintar(compromiso({ concepto: 'seguro_vida', tipoFamilia: 'seguros_cuotas', subtipo: 'seguro_vida' }));
 
-    fireEvent.change(selectConOpcion('Seguros'), { target: { value: 'suscripciones' } });
-    fireEvent.change(selectConOpcion('Streaming'), { target: { value: 'musica' } });
+    fireEvent.change(selectConOpcion('Seguro vida'), { target: { value: 'musica' } });
     const payload = await guardar();
 
     expect({ f: payload.tipoFamilia, s: payload.subtipo }).toEqual({
@@ -233,8 +225,7 @@ describe('los campos legacy no se quedan viejos', () => {
     // lista lo siguiera agrupando bajo aquella familia.
     pintar(compromiso({ concepto: 'seguro_vida', tipoFamilia: 'seguros_cuotas', subtipo: 'seguro_vida' }));
 
-    fireEvent.change(selectConOpcion('Seguros'), { target: { value: 'suministros' } });
-    fireEvent.change(selectConOpcion('Luz'), { target: { value: 'alarma' } });
+    fireEvent.change(selectConOpcion('Seguro vida'), { target: { value: 'alarma' } });
     const payload = await guardar();
 
     expect(payload.concepto).toBe('alarma');
@@ -243,5 +234,41 @@ describe('los campos legacy no se quedan viejos', () => {
       f: undefined,
       s: undefined,
     });
+  });
+});
+
+describe('la ficha no repite lo mismo cuatro veces', () => {
+  it('familia y concepto son UN campo · la familia es la cabecera del grupo', () => {
+    pintar(compromiso({ concepto: 'seguro_vida' }));
+    // Un único desplegable de clasificación · «Seguros» es un `optgroup`, no
+    // una opción de otro select.
+    const select = selectConOpcion('Seguro vida');
+    const grupos = Array.from(select.querySelectorAll('optgroup')).map((g) =>
+      g.getAttribute('label'),
+    );
+    expect(grupos).toContain('Seguros');
+    expect(grupos).toContain('Suministros');
+    expect(opcionesDe(select)).not.toContain('Seguros');
+  });
+
+  it('el nombre sale VACÍO cuando repite al concepto · con él de marcador', () => {
+    pintar(compromiso({ concepto: 'seguro_vida', alias: 'Seguro vida' }));
+    const nombre = screen.getByPlaceholderText('Seguro vida') as HTMLInputElement;
+    expect(nombre.value).toBe('');
+  });
+
+  it('un nombre que SÍ distingue se enseña', () => {
+    pintar(compromiso({ concepto: 'seguro_vida', alias: 'Vida de Ana' }));
+    expect((screen.getByDisplayValue('Vida de Ana') as HTMLInputElement).value).toBe('Vida de Ana');
+  });
+
+  it('sin proveedor no se inventa uno con el nombre del gasto', async () => {
+    // Guardaba `proveedor.nombre = alias`, así que la lista enseñaba
+    // «Alquiler» debajo de «Alquiler» como si lo cobrara alguien así llamado.
+    pintar(compromiso({ concepto: 'alquiler_vivienda', alias: 'Alquiler', proveedor: { nombre: '' } }));
+
+    const payload = await guardar();
+
+    expect(payload.proveedor?.nombre).toBe('');
   });
 });
