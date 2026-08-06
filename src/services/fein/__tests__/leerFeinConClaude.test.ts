@@ -8,7 +8,7 @@
 // Jose, con las cifras tal como están impresas en cada papel. Son de bancos
 // distintos a propósito: es justo lo que el camino anterior no soportaba.
 
-import { draftDesdeLeida, idDeBonificacion } from '../leerFeinConClaude';
+import { draftDesdeLeida, idDeBonificacion, leido } from '../leerFeinConClaude';
 import { FeinToPrestamoMapper } from '../feinToPrestamoMapper';
 import type { FeinLeida } from '../leerFeinConClaude';
 
@@ -53,6 +53,39 @@ const santander: FeinLeida = {
   importeTotalAReembolsar: 97905.83,
   bonificaciones: [],
 };
+
+// Un número que llega como texto · el modelo devuelve JSON, pero lo que hay
+// dentro puede venir escrito a la española. Esto se rompe sin hacer ruido.
+describe('leer un número del papel', () => {
+  it.each([
+    // `Number('')` es 0, no NaN · un campo vacío se colaría como un cero, y
+    // aquí el cero afirma «exenta de comisión».
+    ['', undefined],
+    ['   ', undefined],
+    [null, undefined],
+    [undefined, undefined],
+    ['no consta', undefined],
+    // El cero SÍ se lee.
+    ['0', 0],
+    [0, 0],
+    // Coma decimal española.
+    ['4,149', 4.149],
+    ['2,600', 2.6],
+    // Y punto de millar · «97.905,83» con solo cambiar la coma daba NaN.
+    ['97.905,83', 97905.83],
+    ['1.234.567,89', 1234567.89],
+    // `'4.149'` es ambiguo y se resuelve a la española: cuatro mil ciento
+    // cuarenta y nueve. En un papel español el punto separa millares, y el tipo
+    // del Euríbor viene como `4,149`. El caso de verdad es `85.000`.
+    ['4.149', 4149],
+    ['85.000', 85000],
+    // Y un número de JSON llega intacto, sin pasar por ninguna de estas reglas.
+    [4.149, 4.149],
+    [85000, 85000],
+  ])('%p → %p', (entrada, esperado) => {
+    expect(leido(entrada)).toBe(esperado);
+  });
+});
 
 describe('lo leído llega al borrador', () => {
   const draft = () => draftDesdeLeida(unicaja, 'FEIN_2.pdf');

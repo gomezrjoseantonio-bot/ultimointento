@@ -529,7 +529,13 @@ En "notas" escribe, en una o dos frases: qué campos no has encontrado y dónde 
         ],
       });
 
-      if (!result.ok) return jsonResponse(result.status || 502, { ok: false, error: result.error, details: result.raw });
+      if (!result.ok) {
+        // El detalle crudo del proveedor se queda en el servidor: puede traer
+        // metadatos de la respuesta y no le hace falta a nadie en el navegador.
+        // El motivo sí viaja, porque sin él quien lo sufre no sabe qué pasó.
+        console.error('scan_fein · error del proveedor:', JSON.stringify(result.raw));
+        return jsonResponse(result.status || 502, { ok: false, error: result.error });
+      }
 
       let extraido = result.text;
       try {

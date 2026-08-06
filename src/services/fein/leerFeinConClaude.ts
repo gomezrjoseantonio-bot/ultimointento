@@ -53,10 +53,30 @@ export interface FeinLeida {
   notas?: string | null;
 }
 
-/** Un número que vino del papel · el CERO también vino del papel. */
-const leido = (v: unknown): number | undefined => {
-  const n = typeof v === 'string' ? Number(v.replace(',', '.')) : v;
-  return typeof n === 'number' && Number.isFinite(n) ? n : undefined;
+/**
+ * Un número que vino del papel · el CERO también vino del papel.
+ *
+ * Dos trampas, las dos reales:
+ *
+ *   · `Number('')` es **0**, no `NaN`. Un campo vacío se habría colado como un
+ *     cero, y aquí el cero es una afirmación —«exenta de comisión de apertura»—,
+ *     así que habríamos convertido «no lo dice» en «dice que no hay».
+ *   · Un importe español lleva el punto de los miles y la coma de los
+ *     decimales: `97.905,83`. Cambiar solo la coma deja `97.905.83`, que es
+ *     `NaN`. Se quitan los puntos de millar y luego la coma pasa a punto.
+ *
+ * Se exporta para poder fijarla con tests: es de las cosas que se rompen sin
+ * hacer ruido.
+ */
+export const leido = (v: unknown): number | undefined => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
+  if (typeof v !== 'string') return undefined;
+
+  const limpio = v.trim();
+  if (!limpio) return undefined;
+
+  const n = Number(limpio.replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : undefined;
 };
 
 const texto = (v: unknown): string | undefined =>
@@ -104,6 +124,9 @@ export function draftDesdeLeida(leida: FeinLeida, sourceFileName: string): FeinL
   return {
     metadata: {
       sourceFileName,
+      // El PDF va entero al modelo, así que no hay un recuento de páginas que
+      // dar. Cero significa «no se contaron»; poner 1 sería afirmar que la FEIN
+      // tiene una página, y ninguna la tiene.
       pagesTotal: 0,
       pagesProcessed: 0,
       ocrProvider: 'claude',
@@ -146,11 +169,8 @@ export function draftDesdeLeida(leida: FeinLeida, sourceFileName: string): FeinL
 /** Lee una FEIN y devuelve el borrador · lanza si el servicio falla. */
 export async function leerFeinConClaude(archivo: File | Blob): Promise<FeinLoanDraft> {
   const nombre = archivo instanceof File ? archivo.name : 'FEIN';
-  const respuesta = await callScanChat(
-    archivo,
-    (archivo as File).type || 'application/pdf',
-    'scan_fein'
-  );
+  // `Blob` ya trae `type`; no hace falta fingir que es un `File`.
+  const respuesta = await callScanChat(archivo, archivo.type || 'application/pdf', 'scan_fein');
 
   const leida = respuesta.extraido;
   if (!leida || typeof leida !== 'object') {

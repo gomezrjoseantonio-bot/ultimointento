@@ -89,8 +89,14 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
 
       // Cuántas condiciones se han sacado de verdad · decirlo es la diferencia
       // entre ayudar y prometer. Una FEIN nunca viene entera.
-      const leidos = Object.values(loanDraft.prestamo).filter(
-        (v) => v !== null && v !== undefined && v !== ''
+      //
+      // `periodicidadCuota` no cuenta: vale 'MENSUAL' siempre, venga lo que
+      // venga, así que sumarla inflaba el recuento y ablandaba justo el aviso
+      // de «hemos leído poco» — que es el que hay que dar cuando toca.
+      const PUESTOS_POR_ATLAS = ['periodicidadCuota', 'aliasSugerido', 'ibanCargoParcial'];
+      const leidos = Object.entries(loanDraft.prestamo).filter(
+        ([campo, v]) =>
+          !PUESTOS_POR_ATLAS.includes(campo) && v !== null && v !== undefined && v !== ''
       ).length;
       if (leidos <= 3) {
         showInfo('Hemos leído poco de esta FEIN. Revisa y completa a mano lo que falte.');
@@ -100,9 +106,13 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
       onFEINDraftReady(loanDraft);
 
     } catch (error) {
+      // El motivo REAL, no «error de conexión» · esto se tragaba lo que decía
+      // el servicio —falta de clave, tiempo agotado, PDF ilegible— y dejaba a
+      // ciegas a quien lo sufre y a quien lo arregla.
       console.error('Error processing FEIN:', error);
       setIsProcessing(false);
-      handleProcessingError(['Error de conexión. Inténtalo de nuevo.'], file);
+      const motivo = error instanceof Error && error.message ? error.message : null;
+      handleProcessingError([motivo ?? 'No hemos podido leer la FEIN.'], file);
     }
   };
 
