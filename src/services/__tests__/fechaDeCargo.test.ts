@@ -1,64 +1,18 @@
-// La fecha de cargo de un recurrente fiscal.
+// Leer el mes de una fecha fiscal.
 //
-// El día de cobro es un número del 1 al 31 que vale para TODOS los meses, así
-// que hay que bajarlo cuando el mes se queda corto. Concatenarlo sin acotar
-// producía `2026-02-31`, y `Date` no protesta: rueda al mes siguiente.
+// Parece una tontería y no lo es: `new Date('2026-02-31')` no falla, RUEDA al 3
+// de marzo. `limpiarDuplicadosRecurrentes` agrupa por mes, así que leerlo con
+// `Date` le hacía creer que una línea de febrero era de marzo — justo en los
+// registros que el bug de la fecha había estropeado.
 //
-// El criterio tiene que ser el MISMO que el del motor de tesorería
-// (`fechaDiaFijoDelMes` en `personal/patronCalendario`), porque los dos generan
-// el mismo recibo y tenerlo escrito de dos formas era la razón de que Tesorería
-// dijera 2027-02-28 y Fiscalidad 2027-02-31.
+// La generación de fechas imposibles ya no es posible: las fechas las produce
+// `expandirPatron`, el mismo motor que tesorería, que acota el día al último
+// del mes por construcción. Esto cubre la lectura de lo que quedó escrito.
 
-import { fechaDeCargo, mesDeISO } from '../operacionFiscalService';
-
-describe('fechaDeCargo', () => {
-  it('el día 31 en febrero baja al 28', () => {
-    expect(fechaDeCargo(2026, 2, 31)).toBe('2026-02-28');
-  });
-
-  it('…y al 29 si el año es bisiesto', () => {
-    expect(fechaDeCargo(2028, 2, 31)).toBe('2028-02-29');
-  });
-
-  it('el día 31 en los meses de 30 baja al 30', () => {
-    expect(fechaDeCargo(2026, 4, 31)).toBe('2026-04-30');
-    expect(fechaDeCargo(2026, 6, 31)).toBe('2026-06-30');
-    expect(fechaDeCargo(2026, 9, 31)).toBe('2026-09-30');
-    expect(fechaDeCargo(2026, 11, 31)).toBe('2026-11-30');
-  });
-
-  it('un día que cabe se respeta', () => {
-    expect(fechaDeCargo(2026, 1, 31)).toBe('2026-01-31');
-    expect(fechaDeCargo(2026, 8, 15)).toBe('2026-08-15');
-  });
-
-  it('sin día de cobro se usa el 1 · nunca el día 0', () => {
-    expect(fechaDeCargo(2026, 5, 0)).toBe('2026-05-01');
-  });
-
-  it('el resultado SIEMPRE es una fecha que existe', () => {
-    // La garantía dura, mes a mes y con bisiesto por medio.
-    for (const anio of [2026, 2027, 2028]) {
-      for (let mes = 1; mes <= 12; mes++) {
-        const iso = fechaDeCargo(anio, mes, 31);
-        const d = new Date(iso);
-        expect(d.getMonth()).toBe(mes - 1);   // no ha rodado al mes siguiente
-      }
-    }
-  });
-
-  it('coincide con lo que produce el motor de tesorería', () => {
-    // `fechaDiaFijoDelMes`: new Date(year, month0, Math.min(dia, ultimo)).
-    for (let mes = 1; mes <= 12; mes++) {
-      const ultimo = new Date(2027, mes, 0).getDate();
-      const esperado = `2027-${String(mes).padStart(2, '0')}-${String(Math.min(31, ultimo)).padStart(2, '0')}`;
-      expect(fechaDeCargo(2027, mes, 31)).toBe(esperado);
-    }
-  });
-});
+import { mesDeISO } from '../operacionFiscalService';
 
 describe('mesDeISO', () => {
-  it('lee el mes del texto, sin pasar por Date', () => {
+  it('lee el mes del texto', () => {
     expect(mesDeISO('2026-02-15')).toBe(2);
     expect(mesDeISO('2026-12-01')).toBe(12);
   });
@@ -66,5 +20,10 @@ describe('mesDeISO', () => {
   it('una fecha imposible conserva SU mes · Date la habría rodado', () => {
     // `new Date('2026-02-31').getMonth() + 1` daría 3 (marzo).
     expect(mesDeISO('2026-02-31')).toBe(2);
+    expect(mesDeISO('2026-04-31')).toBe(4);
+  });
+
+  it('acepta una fecha ISO con hora detrás', () => {
+    expect(mesDeISO('2026-07-15T00:00:00.000Z')).toBe(7);
   });
 });

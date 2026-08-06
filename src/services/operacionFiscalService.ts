@@ -9,34 +9,15 @@ import { prestamosService } from './prestamosService';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { mapCompromisoToOpexRule } from './opexService';
+// El calendario y el importe salen de las MISMAS funciones que usa el motor de
+// previsiones de tesorería. Es el punto de todo este arreglo: mientras cada
+// motor tuviera su propia aritmética, Fiscalidad y Tesorería daban cifras
+// distintas del mismo recibo — y la de Fiscalidad no llevaba IPC.
+import { expandirPatron } from './personal/patronCalendario';
+import { importeCompromisoEnFecha } from './personal/compromisosRecurrentesService';
+import { toISODateLocal } from '../utils/recurrenceDateUtils';
 
-// ── Fechas de cargo ──────────────────────────────────────────────────────────
-
-/**
- * Fecha ISO de un cargo, ACOTANDO el día al último del mes.
- *
- * El día de cobro de un recurrente es un número del 1 al 31 que vale para todos
- * los meses, así que hay que bajarlo cuando el mes se queda corto: día 31 en
- * febrero es el 28 (o el 29 en bisiesto), no «el 31 de febrero».
- *
- * Concatenar `${ejercicio}-${mes}-${diaCobro}` sin acotar producía fechas que no
- * existen, y `Date` no protesta: las hace RODAR al mes siguiente
- * (`new Date('2026-02-31')` → 3 de marzo). Eso desplazaba el gasto de mes en
- * cuanto alguien leía la fecha con `Date`, incluida la única herramienta que
- * limpia duplicados fiscales.
- *
- * Es el MISMO criterio que `fechaDiaFijoDelMes` en `personal/patronCalendario`,
- * el motor que genera las previsiones de tesorería. Tenerlo escrito de dos
- * formas distintas era la razón de que Tesorería dijera `2027-02-28` y
- * Fiscalidad `2027-02-31` para el mismo recibo.
- */
-export function fechaDeCargo(ejercicio: number, mes: number, dia: number): string {
-  // `new Date(año, mes, 0)` es el último día del mes anterior · con `mes` en
-  // base 1 eso es justo el último día del mes que nos interesa.
-  const ultimo = new Date(ejercicio, mes, 0).getDate();
-  const diaAcotado = Math.min(Math.max(dia || 1, 1), ultimo);
-  return `${ejercicio}-${String(mes).padStart(2, '0')}-${String(diaAcotado).padStart(2, '0')}`;
-}
+// ── Fechas ──────────────────────────────────────────────────────────────────
 
 /** El mes (1-12) de una fecha ISO · leído del texto, nunca con `Date`. */
 export function mesDeISO(iso: string): number {
@@ -182,71 +163,132 @@ export async function getResumenCasillasAEAT(inmuebleId: number, ejercicio: numb
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-function calcularMesesAplicables(rule: OpexRule, _ejercicio: number): number[] {
-  const startMonth = rule.mesInicio && rule.mesInicio >= 1 && rule.mesInicio <= 12 ? rule.mesInicio : 1;
-  const allMonthsByFrequency: Record<string, number[]> = {
-    mensual: [1,2,3,4,5,6,7,8,9,10,11,12],
-    bimestral: [1,3,5,7,9,11],
-    trimestral: [1,4,7,10],
-    semestral: [1,7],
-    anual: [startMonth],
-    meses_especificos: Array.isArray(rule.mesesCobro) && rule.mesesCobro.length > 0 ? rule.mesesCobro : [startMonth],
-    semanal: [1,2,3,4,5,6,7,8,9,10,11,12],
-  };
-  const months = allMonthsByFrequency[rule.frecuencia] || [1,2,3,4,5,6,7,8,9,10,11,12];
-  return months.filter((mes) => mes >= 1 && mes <= 12 && (rule.frecuencia === 'mensual' || rule.frecuencia === 'semanal' || mes >= startMonth || rule.frecuencia === 'meses_especificos' || rule.frecuencia === 'anual'));
+/**
+ * ¿Esta línea fiscal sigue siendo una PREVISIÓN viva?
+ *
+ * Misma idea que `esPrevisionIntocable` en tesorería, y por el mismo motivo: lo
+ * que ya ocurrió es realidad y no se reescribe. Una línea confirmada, conciliada
+ * o casada con un movimiento del banco se queda como está aunque el compromiso
+ * cambie después — subir la cuota de la comunidad no reescribe lo que pagaste
+ * en enero.
+ */
+function esLineaFiscalViva(g: GastoInmueble): boolean {
+  return g.estado === 'previsto' && g.movimientoId == null && g.estadoTesoreria !== 'confirmed';
 }
 
-function getRecurringAmountForMonth(rule: OpexRule, month: number): number {
-  if (rule.frecuencia === 'meses_especificos' && rule.asymmetricPayments?.length) {
-    return rule.asymmetricPayments.find((payment) => payment.mes === month)?.importe ?? 0;
-  }
-  if (rule.frecuencia === 'semanal') {
-    return Math.round(((rule.importeEstimado * 52) / 12) * 100) / 100;
-  }
-  return rule.importeEstimado;
+/** La mayor de dos fechas ISO · comparar cadenas `YYYY-MM-DD` ordena bien. */
+function maxISO(a: string, b?: string): string {
+  return b && b > a ? b : a;
 }
 
+/** La menor de dos fechas ISO. */
+function minISO(a: string, b?: string): string {
+  return b && b < a ? b : a;
+}
+
+/**
+ * Materializa las líneas fiscales de los gastos recurrentes de un inmueble.
+ *
+ * REGENERA, no rellena huecos. Antes se saltaba con un `continue` cualquier mes
+ * que ya tuviera línea, así que una línea escrita una vez se quedaba con aquel
+ * importe PARA SIEMPRE: subir la comunidad no se reflejaba en 2030, y el
+ * presupuesto a 20 años enseñaba la cifra del día en que se generó por primera
+ * vez. Ahora vuelve a calcular y reescribe lo que sigue siendo previsión.
+ *
+ * Lo confirmado NO se toca (`esLineaFiscalViva`). Es la misma regla que ya
+ * cumple tesorería: el futuro se recalcula, el pasado confirmado se queda.
+ *
+ * El importe sale de `importeCompromisoEnFecha` —la fuente única— y por tanto
+ * lleva IPC. Antes salía de `rule.importeEstimado`, plano: `OpexRule` ni
+ * siquiera tiene campo `variacion`, así que el IPC se perdía al traducir el
+ * compromiso a regla y el presupuesto de 2044 costaba lo mismo que el de hoy.
+ * Por eso el calendario también pasa a `expandirPatron`: si el importe viene de
+ * un motor y las fechas de otro, vuelven a divergir.
+ *
+ * Devuelve cuántas líneas se han escrito (creadas + actualizadas).
+ */
 export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, ejercicio: number): Promise<number> {
   const db = await initDB();
   // V5.4+: read from compromisosRecurrentes (ambito='inmueble') instead of opexRules (DEPRECATED)
-  const compromisos = await db.getAllFromIndex('compromisosRecurrentes', 'inmuebleId', inmuebleId);
-  const rules = compromisos
-    .filter((c: CompromisoRecurrente) => c.ambito === 'inmueble' && c.estado === 'activo')
-    .map(mapCompromisoToOpexRule)
-    .filter((r): r is OpexRule => r !== null);
-  let creadas = 0;
+  const compromisos = (await db.getAllFromIndex('compromisosRecurrentes', 'inmuebleId', inmuebleId))
+    .filter((c: CompromisoRecurrente) => c.ambito === 'inmueble' && c.estado === 'activo' && c.id != null);
 
-  for (const rule of rules.filter((item) => item.activo)) {
-    if (rule.id == null) continue;
+  // Una sola lectura de la tabla · antes se releía entera DENTRO del bucle de
+  // meses, o sea doce veces por gasto y por ejercicio.
+  const existentes = await gastosInmuebleService.getByInmuebleYEjercicio(inmuebleId, ejercicio);
+  const porOrigenId = new Map<string, GastoInmueble>();
+  for (const g of existentes) {
+    if (g.origen === 'recurrente' && g.origenId) porOrigenId.set(g.origenId, g);
+  }
+
+  let escritas = 0;
+
+  for (const c of compromisos) {
+    const rule = mapCompromisoToOpexRule(c);
+    if (!rule) continue;
 
     const casillaAEAT = (rule.casillaAEAT as AEATBox | undefined) || OPEX_CATEGORY_TO_AEAT_BOX[rule.categoria as keyof typeof OPEX_CATEGORY_TO_AEAT_BOX];
     if (!casillaAEAT) continue;
 
-    for (const mes of calcularMesesAplicables(rule, ejercicio)) {
-      // Dedup: check gastosInmueble by origenId
-      const origenId = `recurrente-${rule.id}-${ejercicio}-${mes}`;
-      const existentes = await gastosInmuebleService.getByInmuebleYEjercicio(inmuebleId, ejercicio);
-      const yaExiste = existentes.some(g =>
-        g.origen === 'recurrente' && g.origenId === origenId
-      );
-      if (yaExiste) continue;
+    // La ventana es el ejercicio, recortada por el alta y la baja del gasto: un
+    // recurrente que empieza en junio no debe tener línea de enero.
+    const desde = maxISO(`${ejercicio}-01-01`, c.fechaInicio);
+    const hasta = minISO(`${ejercicio}-12-31`, c.fechaFin);
+    if (desde > hasta) continue;
 
-      // Also check by concepto+mes for legacy dedup
-      const duplicadoPorMes = existentes.some(g =>
-        g.origen === 'recurrente'
-        && g.casillaAEAT === casillaAEAT
-        && g.concepto?.includes(MESES[mes - 1])
-        && Math.abs(g.importe - getRecurringAmountForMonth(rule, mes)) < 0.01
-      );
-      if (duplicadoPorMes) continue;
+    let fechas: Date[];
+    try {
+      fechas = expandirPatron(c.patron, desde, hasta);
+    } catch {
+      // Patrón corrupto · `expandirPatron` lanza en vez de girar sin fin. Se
+      // salta este gasto, igual que hace `buildOpexPorMes`, en lugar de tumbar
+      // la generación entera del inmueble.
+      continue;
+    }
 
-      const total = getRecurringAmountForMonth(rule, mes);
-      if (total <= 0) continue;
+    for (const fecha of fechas) {
+      const importe = importeCompromisoEnFecha(c, fecha);
+      if (importe == null || importe <= 0) continue;
 
-      const fechaOp = fechaDeCargo(ejercicio, mes, rule.diaCobro || 1);
-      const conceptoOp = `${rule.concepto} — ${MESES[mes - 1]}`;
+      const mes = fecha.getMonth() + 1;
+      const origenId = `recurrente-${c.id}-${ejercicio}-${mes}`;
+      const previa = porOrigenId.get(origenId);
 
+      // Lo ya confirmado es realidad · no se reescribe.
+      if (previa && !esLineaFiscalViva(previa)) continue;
+
+      if (!previa) {
+        // Compatibilidad: líneas de antes de que existiera `origenId`. Se
+        // reconocen por no tenerlo, y se dejan en paz para no duplicarlas —
+        // NO se comparan por importe, que ahora lleva IPC y ya no coincidiría.
+        const legacy = existentes.some(
+          (g) =>
+            g.origen === 'recurrente' &&
+            !g.origenId &&
+            g.casillaAEAT === casillaAEAT &&
+            mesDeISO(g.fecha) === mes &&
+            (g.concepto ?? '').includes(c.alias),
+        );
+        if (legacy) continue;
+      }
+
+      const fechaOp = toISODateLocal(fecha);
+      const conceptoOp = `${c.alias} — ${MESES[mes - 1]}`;
+
+      // Nada que escribir si el resultado es idéntico · evita reescribir la
+      // tabla entera (y tocar `updatedAt`) en cada lectura del resumen fiscal.
+      if (
+        previa &&
+        previa.fecha === fechaOp &&
+        Math.abs(previa.importe - importe) < 0.005 &&
+        previa.concepto === conceptoOp
+      ) {
+        continue;
+      }
+
+      // `add` hace upsert por (origen, origenId): crea si no está, actualiza si
+      // ya estaba. La comprobación de intocable de arriba es la que garantiza
+      // que ese upsert nunca pise una línea confirmada.
       await gastosInmuebleService.add({
         inmuebleId,
         ejercicio,
@@ -254,18 +296,18 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
         concepto: conceptoOp,
         categoria: mapCasillaToCategoria(casillaAEAT),
         casillaAEAT: casillaAEAT as any,
-        importe: total,
+        importe,
         origen: 'recurrente',
         origenId,
         estado: 'previsto',
         proveedorNIF: rule.proveedorNIF || undefined,
         proveedorNombre: rule.proveedorNombre || undefined,
       });
-      creadas += 1;
+      escritas += 1;
     }
   }
 
-  return creadas;
+  return escritas;
 }
 
 export async function generarOperacionesDesdeIntereses(inmuebleId: number, ejercicio: number): Promise<number> {
