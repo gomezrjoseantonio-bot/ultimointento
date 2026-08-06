@@ -1136,6 +1136,26 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-06** · **Hay préstamos que ATLAS no puede guardar sin mentir.** El
+  Santander de Jose (73.800 €, 360 meses, FEIN de 27-07-2021) es **fijo → fijo**:
+  «Tramo A» al 0,850 % y «Tramo B» al **1,850 % nominal FIJO** hasta el
+  vencimiento, sin índice ninguno. Lo único que mueve el tramo B es la
+  comprobación anual de las bonificaciones. Las tres casillas de ATLAS son
+  fijo / variable / mixto, y `MIXTO` significa fijo → **variable con índice**:
+  para guardar este habría que inventar un índice a 0 con diferencial 1,850, y
+  entonces el tramo sale marcado `variable` y `estimado` — dos cosas falsas
+  sobre un tipo que está escrito en el contrato. Falta la cuarta forma:
+  **fijo por tramos**. §6 bis · bis.
+
+- **2026-08-06** · **La FEIN no está normalizada en forma, solo en contenido**
+  *(Jose: «hay mil FEIN, mil documentos distintos»)*. Unicaja numera
+  «3. CARACTERÍSTICAS / 4. TIPO DE INTERÉS»; el Santander llama «3.- TIPO DE
+  INTERÉS» a lo mismo porque no tiene apartado de intermediario, y su PDF se
+  extrae letra a letra. El OCR no puede ser el camino principal del alta: la
+  consecuencia es que **teclear a mano y subir la FEIN tienen que acabar en el
+  mismo sitio**, y que cada campo debe decir si lo leyó la máquina o lo escribió
+  una persona. Hoy son dos hidratadores distintos.
+
 - **2026-08-05** · **El tramo suelto de ING no cuadra por 13 céntimos.** Cobra
   218,37 € donde 97.500 € al 2,15 % por 38 días sobre 365 dan 218,24. El tipo
   que explicaría su cifra es el 2,15128 %, y su propio cuadro liquida los meses

@@ -1,7 +1,16 @@
 // De la FEIN al formulario · lo que el banco te da es lo que ATLAS debe tener.
 //
-// La FEIN es un documento NORMALIZADO por la Ley 5/2019: los mismos apartados
-// en todos los bancos. Así que no hay que adivinar nada — hay que no perderlo.
+// **La FEIN está normalizada en CONTENIDO, no en forma** *(Jose · 6 ago 2026:
+// «hay mil FEIN, mil documentos distintos»)*. La Ley 5/2019 fija qué hay que
+// informar; cada banco lo maqueta como quiere. La de Unicaja tiene 9 páginas y
+// numera «3. CARACTERÍSTICAS PRINCIPALES / 4. TIPO DE INTERÉS»; la del
+// Santander tiene 16 y ese mismo contenido es su «3.- TIPO DE INTERÉS», porque
+// no lleva apartado de intermediario. Y hasta el PDF sale distinto: el del
+// Santander se extrae letra a letra.
+//
+// De ahí la regla de esta capa: **el OCR no puede ser el camino principal**.
+// Llena lo que reconoce y dice lo que no; el resto lo escribe una persona por
+// el mismo sitio y en las mismas casillas.
 //
 // El caso de abajo es la FEIN real de la hipoteca de Unicaja de Jose
 // (11/08/2023), con sus cifras tal como están impresas.
