@@ -1136,6 +1136,29 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-06** · **Los seguros, y una regla que hoy no existe** *(Jose, con
+  dos matices que cambian el diseño)*.
+
+  **Un seguro se domicilia** —«ya sea agrario o medio pensionista»— así que la
+  prueba está en tesorería y no hace falta un módulo de pólizas. Pero **cada
+  entidad bonifica de forma distinta**: unas por tenerlo, otras por el **número**
+  de seguros, otras por el **importe total** de las primas. La regla necesita
+  las tres formas, no una.
+
+  **Y una ventana abierta no puede dar un «no».** Si la prima se paga cada mes y
+  se va sumando, hasta que no llegue el último mes no se puede decir que cumple
+  — pero tampoco que no cumple. Un total por debajo del umbral con meses por
+  venir es **«todavía no consta»**, la tercera respuesta de §6 ter, y es la
+  misma doctrina que el cierre de mes: solo lo cerrado decide. Decir «no
+  cumples» en junio de una condición anual es una acusación falsa, y de esas
+  sale que alguien contrate un producto que no necesita.
+
+  **Y falta decidir cómo se reconoce un seguro.** No hay `sourceType: 'seguro'`:
+  hoy se deduce de la categoría, y en `treasuryConfirmationService` de un
+  `concepto.includes('seguro')`. Esa decisión tiene que ser explícita y estar en
+  un sitio, no heredada de una heurística escondida — es la que decide si una
+  bonificación se gana o se pierde. §6 ter.
+
 - **2026-08-06** · **La reforma de las bonificaciones · qué se estandariza y qué
   no** *(Jose, en tres apuntes que cambian el modelo)*.
 
