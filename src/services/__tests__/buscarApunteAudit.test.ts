@@ -13,6 +13,7 @@ import {
   cargosCruzados,
   eventosHuerfanos,
   gastosRepetidos,
+  lineasFiscalesAnomalas,
 } from '../__buscarApunteAudit';
 import { analizarDuplicados } from '../duplicadosPrevisionService';
 import type { TreasuryEvent } from '../db';
@@ -210,6 +211,91 @@ describe('el mismo cargo emitido por dos motores distintos', () => {
     ];
 
     expect(await cargosCruzados()).toHaveLength(0);
+  });
+});
+
+describe('líneas fiscales materializadas de más', () => {
+  const linea = (over: Record<string, unknown> = {}) =>
+    ({
+      id: 1,
+      inmuebleId: 2,
+      ejercicio: 2026,
+      fecha: '2026-01-01',
+      concepto: 'Seguro hogar — Enero',
+      importe: 40.29,
+      origen: 'recurrente',
+      ...over,
+    }) as never;
+
+  it('el 31 de febrero se marca como fecha imposible', async () => {
+    // `generarOperacionesDesdeRecurrentes` monta la fecha concatenando
+    // `${ejercicio}-${mes}-${diaCobro}` sin acotar al último día del mes.
+    stores.gastosInmueble = [linea({ id: 1, fecha: '2026-02-31' })];
+
+    const r = await lineasFiscalesAnomalas();
+
+    expect(r.fechasImposibles).toBe(1);
+    expect(r.muestra[0].anomalias).toContain('fecha_imposible');
+  });
+
+  it('el 30 de abril y el 29 de febrero bisiesto son fechas válidas', async () => {
+    stores.gastosInmueble = [
+      linea({ id: 1, fecha: '2026-04-30' }),
+      linea({ id: 2, fecha: '2028-02-29', ejercicio: 2028 }),
+    ];
+
+    expect((await lineasFiscalesAnomalas()).fechasImposibles).toBe(0);
+  });
+
+  it('un ejercicio muy por delante delata a la proyección', async () => {
+    const lejano = new Date().getFullYear() + 18;
+    stores.gastosInmueble = [linea({ id: 1, ejercicio: lejano, fecha: `${lejano}-01-01` })];
+
+    const r = await lineasFiscalesAnomalas();
+
+    expect(r.ejerciciosFuturos).toBe(1);
+    expect(r.ejercicioMaximo).toBe(lejano);
+  });
+
+  it('el ejercicio en curso y el siguiente NO son anomalía · se declaran en breve', async () => {
+    const hoy = new Date().getFullYear();
+    stores.gastosInmueble = [
+      linea({ id: 1, ejercicio: hoy, fecha: `${hoy}-01-01` }),
+      linea({ id: 2, ejercicio: hoy + 1, fecha: `${hoy + 1}-01-01` }),
+    ];
+
+    expect((await lineasFiscalesAnomalas()).ejerciciosFuturos).toBe(0);
+  });
+
+  it('dos líneas idénticas del mismo inmueble y ejercicio son duplicado', async () => {
+    stores.gastosInmueble = [linea({ id: 1 }), linea({ id: 2 })];
+
+    expect((await lineasFiscalesAnomalas()).duplicadosExactos).toBe(2);
+  });
+
+  it('el mismo concepto en OTRO ejercicio no es duplicado', async () => {
+    // Es lo normal en un recurrente: enero de cada año existe una vez.
+    stores.gastosInmueble = [
+      linea({ id: 1, ejercicio: 2025, fecha: '2025-01-01' }),
+      linea({ id: 2, ejercicio: 2026, fecha: '2026-01-01' }),
+    ];
+
+    expect((await lineasFiscalesAnomalas()).duplicadosExactos).toBe(0);
+  });
+
+  it('cuenta las líneas por ejercicio · el volumen es lo que delata', async () => {
+    stores.gastosInmueble = [
+      linea({ id: 1, ejercicio: 2026, fecha: '2026-01-01' }),
+      linea({ id: 2, ejercicio: 2026, fecha: '2026-02-01', concepto: 'Seguro hogar — Febrero' }),
+      linea({ id: 3, ejercicio: 2044, fecha: '2044-01-01' }),
+    ];
+
+    const r = await lineasFiscalesAnomalas();
+
+    expect(r.porEjercicio).toEqual([
+      { ejercicio: 2026, lineas: 2 },
+      { ejercicio: 2044, lineas: 1 },
+    ]);
   });
 });
 
