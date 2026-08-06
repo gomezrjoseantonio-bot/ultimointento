@@ -251,6 +251,21 @@ export interface CompromisoRecurrente {
   tarjetaId?: number;
 
   // Categorización
+  /**
+   * QUÉ es este gasto · id del catálogo unificado (`services/conceptos`).
+   *
+   * Es el único campo de clasificación que se elige. `categoria`,
+   * `bolsaPresupuesto` y `tipo` se DERIVAN de él según el ámbito
+   * (`proyectar(concepto, ambito)`) y se siguen guardando por retrocompatibilidad
+   * con todo lo que hoy los lee.
+   *
+   * Sustituye al par (`tipoFamilia`, `subtipo`), que se conserva mientras quede
+   * código leyéndolo. Ausente = registro anterior a la unificación que la
+   * migración no supo traducir; hay que revisarlo a mano, no adivinarlo.
+   *
+   * Campo opcional sin índice · no mueve `DB_VERSION`.
+   */
+  concepto?: string;
   categoria: string; // normalizado a "familia.subfamilia" en T38; retrocompatible con CategoriaGastoCompromiso legacy
   // Fase 3 vivienda habitual · SOLO relevante en ámbito personal con categoria
   // 'vivienda.alquiler': marca si este alquiler es el de la vivienda habitual

@@ -174,3 +174,34 @@ export function resolverConcepto(
   if (!tipoFamilia || !subtipo) return null;
   return MAPA_LEGACY[`${tipoFamilia}:${subtipo}`] ?? null;
 }
+
+/** `subtipo` → los conceptos a los que podría referirse, por ámbito. */
+const PORSUBTIPO = new Map<string, Set<string>>();
+for (const [par, id] of Object.entries(MAPA_LEGACY)) {
+  const subtipo = par.slice(par.indexOf(':') + 1);
+  for (const ambito of conceptoPorId(id)?.ambitos ?? []) {
+    const clave = `${ambito}|${subtipo}`;
+    if (!PORSUBTIPO.has(clave)) PORSUBTIPO.set(clave, new Set());
+    PORSUBTIPO.get(clave)!.add(id);
+  }
+}
+
+/**
+ * Rescate para registros SIN `tipoFamilia` · sólo cuando no hay elección.
+ *
+ * `tipoFamilia` es un campo que se rellenó a posteriori (migración V68), así que
+ * hay registros antiguos que sólo tienen `subtipo`. Esto NO es la vuelta del
+ * «resolver por subtipo suelto» que `resolverConcepto` prohíbe: aquí se exige
+ * que en ese ámbito haya EXACTAMENTE UN concepto posible. `luz` sólo puede ser
+ * `luz`, así que no se está eligiendo nada; `otros` puede ser nueve cosas, así
+ * que devuelve `null` y el registro se queda para revisar.
+ */
+export function resolverConceptoPorSubtipoUnico(
+  subtipo: string | undefined,
+  ambito: Ambito,
+): string | null {
+  if (!subtipo) return null;
+  const candidatos = PORSUBTIPO.get(`${ambito}|${subtipo}`);
+  if (!candidatos || candidatos.size !== 1) return null;
+  return [...candidatos][0];
+}
