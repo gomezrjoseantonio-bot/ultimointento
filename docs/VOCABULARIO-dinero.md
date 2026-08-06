@@ -1004,6 +1004,45 @@ Reglas:
 nuevo y las bonificaciones que hasta entonces no rebajaban. Preguntando el antes
 y el después al mismo tramo, esa revisión no movía nada.
 
+## 6 quater · Cerrar el mes
+
+Un mes abierto **no distingue** «el cobro está por llegar» de «el cobro no ha
+llegado». Los dos salen como «todavía no cuenta», y con eso una bonificación no
+se puede perder nunca — ni ganar del todo.
+
+No se arregla con un umbral de días. Lo arregla el cierre: **hay un momento en
+que se trabaja para cerrar el mes, y lo que quede abierto entonces es que no se
+ha producido** *(decisión de Jose · 4 ago 2026)*.
+
+**Cómo se cierra** *(Jose · 5 ago 2026: «mes entero, con la lista delante y
+pudiendo reabrir»)*:
+
+1. **Mes entero**, no cuenta a cuenta. El mes es la unidad con la que se
+   trabaja, y media verdad por cuenta sería peor que ninguna.
+2. **La lista delante.** Antes de tocar nada se enseña exactamente qué se va a
+   dar por no ocurrido, con lo que se deja de cobrar y lo que se deja de pagar.
+   Cerrar sin ver la lista es borrar previsiones de un plumazo.
+3. **Se puede reabrir**, y reabrir devuelve **solo lo que ese cierre descartó**.
+   Lo que el usuario había descartado a mano sigue descartado: no lo descartó el
+   cierre, así que no le toca deshacerlo.
+
+Reglas que se derivan:
+
+- **Solo se cierra un mes ya terminado.** Al mes en curso le quedan días para
+  que llegue lo que falta, y darlo por no ocurrido sería el número inventado que
+  esto viene a evitar.
+- **Cerrar no borra.** Lo no ocurrido se marca con `descartado`, que ya
+  significa eso desde V84: no toca ningún saldo, no vuelve a proponerse y se
+  puede deshacer.
+- **Lo que ya ocurrió no se toca**, y lo que se ejecute DESPUÉS de cerrar
+  tampoco se desanda al reabrir: reabrir un mes no puede borrar un hecho
+  posterior.
+- **Cerrar dos veces no descarta dos veces.**
+
+> **Ojo con la palabra.** En tesorería «cierre» significa hoy otra cosa: el
+> **saldo previsto a fin de mes**. Son dos conceptos distintos con el mismo
+> nombre, y conviene no cruzarlos.
+
 ## 7 · Combinaciones imposibles
 
 Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
@@ -1028,6 +1067,15 @@ Ninguna de estas debe poder guardarse, y ninguna debe siquiera ofrecerse:
 Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
+
+- **2026-08-05** · **El cierre de mes no tiene pantalla.** El servicio está
+  hecho y probado —`loQueQuedaAbierto`, `cerrarMes`, `reabrirMes`— pero **no lo
+  llama nadie**: es exactamente la enfermedad que esta sesión lleva persiguiendo
+  —dos mitades de una función que no se encuentran—, y se deja dicho en vez de
+  esconderlo. Falta el botón de cerrar en tesorería con la lista delante, la
+  marca de mes cerrado y el aviso de que reabrir es posible. Y falta lo que lo
+  hace valer: que `cobrosDeNomina` y compañía lean el mes cerrado para que un
+  `sinCerrar` pase a ser un **no** en vez de un «todavía no cuenta». §6 quater.
 
 - **2026-08-05** · **El tramo suelto de ING no cuadra por 13 céntimos.** Cobra
   218,37 € donde 97.500 € al 2,15 % por 38 días sobre 365 dan 218,24. El tipo
