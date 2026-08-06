@@ -32,6 +32,17 @@ export interface MovimientosQuePrueban {
   periodosDeTarjeta: GastoDeUnPeriodo[];
   /** La nómina por cuenta y mes · lo que devuelve `cobrosDeNomina`. */
   cobrosDeNomina: CobroDeUnMes[];
+  /**
+   * **Todo** lo que entra en una cuenta, mes a mes · `ingresosDeLaCuenta`.
+   *
+   * La otra rama de la condición de ingresos: muchos bancos aceptan «ingresos
+   * recurrentes por importe anual igual o superior a X» sin exigir nómina, y
+   * eso lo cumple quien cobra alquileres. Mirando solo `cobrosDeNomina` esa
+   * rama no se podía cumplir jamás.
+   *
+   * Ausente = no se mira esa rama, y manda la nómina.
+   */
+  ingresosRecurrentes?: CobroDeUnMes[];
   /** Los recibos por cuenta y mes · lo que devuelve `recibosDomiciliados`. */
   recibosDomiciliados: RecibosDeUnMes[];
   /**
@@ -163,6 +174,47 @@ function loQueFaltaParaMirarla(b: Bonificacion): string | null {
 }
 
 /**
+ * ¿Cumple por la rama de los INGRESOS RECURRENTES?
+ *
+ * Devuelve un cumplimiento solo si la rama existe y **se cumple**; si no,
+ * `null` y manda la nómina. Es una disyunción: basta con una de las dos, y
+ * fallar por aquí no es fallar.
+ *
+ * Se suma lo que entra en la cuenta del banco durante la ventana, venga de
+ * donde venga. Solo cuentan los meses CERRADOS —o los cerrados a mano (§6
+ * quater)—: una bonificación se demuestra con lo cobrado, no con lo previsto.
+ */
+function cumplePorIngresosRecurrentes(
+  b: Bonificacion,
+  regla: Extract<ReglaBonificacion, { tipo: 'NOMINA' }>,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban,
+  cuentaId: number
+): Cumplimiento | null {
+  const minimo = regla.minimoAnualRecurrente;
+  if (!Number.isFinite(minimo) || (minimo as number) <= 0) return null;
+  if (!movimientos.ingresosRecurrentes?.length) return null;
+
+  const cerrados = new Set(movimientos.mesesCerrados ?? []);
+  const meses = cobrosDeLaCuenta(movimientos.ingresosRecurrentes, cuentaId, ventana).filter(
+    (m) => m.estado === 'cerrado' || cerrados.has(m.mes)
+  );
+  const total = centimos(meses.reduce((s, m) => s + (m.estado === 'cerrado' ? m.importe : 0), 0));
+
+  if (veredictoDelImporte(total, minimo as number) !== 'cumple') return null;
+
+  return {
+    bonificacionId: b.id,
+    nombre: b.nombre,
+    veredicto: 'cumple',
+    ventana,
+    exigido: minimo as number,
+    medido: total,
+    motivo: `por ingresos recurrentes · ${meses.length} meses cobrados en esa cuenta`,
+  };
+}
+
+/**
  * La condición de nómina · §6 ter.
  *
  * Lo que el banco mira es **lo que le entra a él**: la nómina domiciliada en su
@@ -191,6 +243,14 @@ function porNomina(
   if (!Number.isFinite(regla.minimoMensual) || regla.minimoMensual <= 0) {
     return noVerificable(b, 'no dice cuánto tiene que entrar al mes');
   }
+
+  // LA OTRA RAMA · «o ingresos recurrentes por importe anual igual o superior a
+  // 30.000 euros netos». No exige nómina ninguna: valen alquileres, dividendos,
+  // lo que entre. Se mira PRIMERO porque basta con una de las dos, y mirando
+  // solo la nómina se le decía que no cumple a quien sí cumple —la madre del
+  // cordero de §6 ter—.
+  const porRecurrentes = cumplePorIngresosRecurrentes(b, regla, ventana, movimientos, cuentaId);
+  if (porRecurrentes) return porRecurrentes;
 
   // Sin una sola nómina en toda la tesorería, el silencio no es un «no»: es que
   // ATLAS no sabe de ninguna. Distinto de tenerla domiciliada en otro banco,

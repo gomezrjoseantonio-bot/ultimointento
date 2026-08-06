@@ -623,7 +623,20 @@ export interface Bonificacion {
 }
 
 export type ReglaBonificacion =
-  | { tipo: 'NOMINA'; minimoMensual: number }
+  /**
+   * Que le entre dinero al banco · **con sus dos ramas**.
+   *
+   * No es «nómina de X al mes» a secas. La FEIN de Unicaja dice: «Nómina, o
+   * Pensión, o Prestación económica de la Seguridad Social, por importe igual o
+   * superior a 2.500,00 euros netos mensuales; **o ingresos recurrentes por
+   * importe anual igual o superior a 30.000 euros netos**».
+   *
+   * Son dos condiciones con dos ventanas distintas, y basta con UNA. La segunda
+   * no exige nómina ninguna: valen alquileres, dividendos, lo que entre. Con
+   * solo `minimoMensual`, quien cumple por esa vía salía como que **no cumple**
+   * *(Jose · 6 ago 2026: «esto es la madre del cordero»)*.
+   */
+  | { tipo: 'NOMINA'; minimoMensual: number; minimoAnualRecurrente?: number }
   /**
    * Plan de pensiones o previsión · «aportar al menos N € al año».
    *

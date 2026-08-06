@@ -15,7 +15,7 @@
 import React, { useEffect, useState } from 'react';
 import { initDB, type TreasuryEvent } from '../../services/db';
 import { gastoPorTarjeta } from '../../services/gastoPorTarjeta';
-import { cobrosDeNomina } from '../../services/bonificaciones/cobrosDeNomina';
+import { cobrosDeNomina, ingresosDeLaCuenta } from '../../services/bonificaciones/cobrosDeNomina';
 import { recibosDomiciliados } from '../../services/bonificaciones/recibosDomiciliados';
 import { listarTarjetas } from '../../services/tarjetasService';
 import { cierres } from '../../services/cierreDeMes';
@@ -85,6 +85,9 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
         tarjetas,
         periodosDeTarjeta: gastoPorTarjeta(eventos),
         cobrosDeNomina: cobrosDeNomina(eventos),
+        // La otra rama · «o ingresos recurrentes de X al año», que no exige
+        // nómina y la cumple quien cobra alquileres (§6 ter).
+        ingresosRecurrentes: ingresosDeLaCuenta(eventos),
         recibosDomiciliados: recibosDomiciliados(eventos),
         // Los meses cerrados · es lo que convierte «todavía no consta» en un
         // NO. Sin esto una bonificación no se pierde nunca (§6 quater).
