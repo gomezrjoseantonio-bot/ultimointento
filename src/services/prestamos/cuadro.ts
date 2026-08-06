@@ -75,6 +75,7 @@ import {
   interesPorDias,
 } from './baseDeCalculo';
 import { fechaDeLaPrimeraCuota } from './fechasDelArranque';
+import { tae } from './tae';
 
 export { cuotaFrancesa } from './cuotaFrancesa';
 export type { TramoDeTipo } from './tramosDeTipo';
@@ -92,11 +93,14 @@ export interface ResumenCuadro {
   /** Los del cargo separado de la línea 0 · 0 si no hay. */
   interesesCarenciaTecnica: number;
   /**
-   * TAE aproximada, en porcentaje.
+   * La TAE, en porcentaje · §6 bis · quinquies.
    *
-   * Es una APROXIMACIÓN heredada del motor v2, no la TIR de los flujos: suma
-   * la capitalización del TIN, la comisión de apertura prorrateada y la
-   * carencia técnica. Queda pendiente hacerla de verdad.
+   * El tipo que iguala a cero los flujos de ESTE cuadro, con la apertura, la
+   * tasación, el mantenimiento y los seguros exigidos. Como el cuadro lleva las
+   * bonificaciones aplicadas, esta es la TAE **bonificada**.
+   *
+   * En variable y mixto va con un supuesto que la pantalla debe decir: que el
+   * índice de hoy no se mueve.
    */
   tae: number;
   /** El TIN que se paga, bonificaciones y tope incluidos · en porcentaje. */
@@ -379,21 +383,25 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
   // motor no mira.
   const primeraCuota = finales.find((p) => p.periodo > 0)?.cuota ?? 0;
 
-  return {
-    plan: {
-      ...plan,
-      resumen: {
-        totalIntereses: round2(interesesCuadro + interesesCarencia),
-        totalCuotas: finales.length,
-        fechaFinalizacion: ultima?.fechaCargo ?? '',
-      },
+  const planFinal: PlanPagos = {
+    ...plan,
+    resumen: {
+      totalIntereses: round2(interesesCuadro + interesesCarencia),
+      totalCuotas: finales.length,
+      fechaFinalizacion: ultima?.fechaCargo ?? '',
     },
+  };
+
+  return {
+    plan: planFinal,
     resumen: {
       cuotaMensual: primeraCuota,
       totalIntereses: round2(interesesCuadro + interesesCarencia),
       interesesCuadro,
       interesesCarenciaTecnica: interesesCarencia,
-      tae: taeAproximada(prestamo, tinEfectivo, interesesCarencia),
+      // La TAE sale de los flujos de ESTE cuadro · con las bonificaciones ya
+      // aplicadas, o sea la bonificada. §6 bis · quinquies.
+      tae: tae(prestamo, planFinal),
       tinEfectivo: round2(tinEfectivo),
       fechaUltimaCuota: ultima?.fechaCargo ?? '',
       numLineas: finales.length,
@@ -444,25 +452,3 @@ export function conservarPunteo(plan: PlanPagos, anterior: PlanPagos | null): Pl
   };
 }
 
-/**
- * La TAE, aproximada · heredada tal cual del motor v2.
- *
- * NO es la TIR de los flujos, que es lo que la TAE es por definición: suma la
- * capitalización del TIN, la comisión de apertura repartida por años y la
- * carencia técnica. Se conserva como estaba para que unificar los motores no
- * mueva además esta cifra; hacerla de verdad es trabajo aparte.
- */
-function taeAproximada(prestamo: Prestamo, tinEfectivo: number, interesesCT: number): number {
-  const capital = prestamo.principalInicial;
-  const anios = prestamo.plazoMesesTotal / 12;
-  if (capital <= 0 || anios <= 0) return 0;
-
-  const i = tinEfectivo / 100 / 12;
-  const comisionApertura = ((prestamo.comisionApertura || 0) * capital) / 100;
-
-  const base = Math.pow(1 + i, 12) - 1;
-  const porComision = comisionApertura / (capital * anios);
-  const porCarencia = interesesCT / (capital * anios);
-
-  return round2((base + porComision + porCarencia) * 100);
-}

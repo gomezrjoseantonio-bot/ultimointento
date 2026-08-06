@@ -176,16 +176,43 @@ export interface Prestamo {
 
   // ── Comisiones · §6 bis · quater ──────────────────────────────────────────
   //
-  // Todas van en PUNTOS PORCENTUALES: `0.25` son 0,25 %, como se teclea y como
-  // lo dice el papel del banco. Había cuatro sitios leyéndolas de cuatro
-  // maneras —dos multiplicando en crudo, dos adivinando por el tamaño—, y la
-  // cuenta vive ahora en `prestamos/comisiones`.
+  // Van en PUNTOS PORCENTUALES: `0.25` son 0,25 %, como se teclea y como lo
+  // dice el papel del banco. Había cuatro sitios leyéndolas de cuatro maneras
+  // —dos multiplicando en crudo, dos adivinando por el tamaño—, y la cuenta
+  // vive ahora en `prestamos/comisiones`.
+  //
+  // TODAS MENOS LA DE MANTENIMIENTO, que va en EUROS AL MES. Este comentario
+  // decía que también era un porcentaje y el formulario pide «€/mes» desde
+  // siempre: el que mandaba era el formulario, porque es lo que el usuario
+  // tecleó. Queda dicho aquí para que nadie lo multiplique por el capital.
   //
   // `comisionAmortizacionParcial` se retiró: nadie la escribía, y era la única
   // que leía el simulador, así que la comisión de una amortización parcial
   // salía SIEMPRE cero.
+  /** En PUNTOS PORCENTUALES del capital · gasto de FINANCIACIÓN. */
   comisionApertura?: number;
+  /** En EUROS AL MES · se paga con cada recibo. */
   comisionMantenimiento?: number;
+
+  // ── Lo que costó formalizarlo · §6 bis · quinquies ────────────────────────
+  //
+  // Estos dos existen por la TAE, pero NO son «entradas de la TAE»: son costes
+  // del préstamo, y su segundo lector es el IRPF. Por eso nacen con su
+  // naturaleza fiscal puesta — si entraran solo como números, el día que
+  // alguien necesite lo fiscal añadiría OTRO campo y tendríamos el mismo dato
+  // escrito dos veces, divergiendo.
+  /**
+   * Lo que costó la tasación, en EUROS.
+   *
+   * Es gasto de **financiación**, no de adquisición: nace del préstamo —el
+   * banco la exige para conceder—, no de la compraventa. Se deduce el año en
+   * que se paga (art. 23.1.a.1.º LIRPF, dentro del límite conjunto con
+   * intereses y conservación), **no** se amortiza al 3 % y **no** sube el
+   * valor de adquisición, así que tampoco resta en la ganancia al vender.
+   */
+  tasacion?: number;
+  /** Los seguros que acompañan al préstamo · ver `SeguroVinculado`. */
+  segurosVinculados?: SeguroVinculado[];
   /**
    * Amortización anticipada PARCIAL · adelantar una parte del capital.
    *
@@ -413,6 +440,50 @@ export interface ComisionPactada {
 
 /** Cómo se cuentan los días para liquidar intereses · §6 bis · bis. */
 export type BaseCalculoIntereses = '30/360' | 'ACT/360' | 'ACT/365';
+
+/**
+ * Qué es fiscalmente un coste del préstamo · §6 bis · quinquies.
+ *
+ * La línea que separa los dos primeros no es cuándo se paga, es **de qué
+ * contrato nace**. Lo que nace de la COMPRAVENTA —notaría, registro, ITP/AJD,
+ * gestoría— es mayor valor de adquisición: se amortiza al 3 % y resta en la
+ * ganancia al vender. Lo que nace de la HIPOTECA —tasación, apertura— es gasto
+ * de financiación: se deduce el año en que se paga y no toca el valor de
+ * adquisición.
+ */
+export type NaturalezaFiscal =
+  /** Art. 23.1.a.1.º LIRPF · con los intereses, y con su mismo límite. */
+  | 'FINANCIACION'
+  /** Art. 23.1.a.3.º · primas de seguro del inmueble, como el de hogar. */
+  | 'GASTO_DEL_INMUEBLE'
+  /** Se paga, pero no se resta. */
+  | 'NO_DEDUCIBLE';
+
+/**
+ * Un seguro que acompaña al préstamo.
+ *
+ * Tiene DOS lectores que responden cosas distintas, y por eso lleva dos
+ * marcas separadas en vez de una:
+ *
+ *   · la **TAE** mira `exigidoParaElTipo` · si sin ese seguro no tendrías el
+ *     tipo que te ofrecieron, el seguro es precio del préstamo;
+ *   · el **IRPF** mira `naturaleza` · que es otra pregunta.
+ *
+ * El seguro de vida vinculado es el caso donde las dos se separan: entra en la
+ * TAE y **no** se deduce. Desde la Ley 5/2019 el banco no puede obligarte a
+ * contratarlo —solo ofrecerlo combinado—, así que apoyar la deducción en «me
+ * obligaban» es apoyarse en algo que legalmente no existe *(decisión de Jose ·
+ * 6 ago 2026, por prudencia)*.
+ */
+export interface SeguroVinculado {
+  /** «Hogar», «Vida»… */
+  concepto: string;
+  /** En EUROS AL AÑO. */
+  primaAnual: number;
+  /** Si sin él no tienes el tipo ofertado · entonces entra en la TAE. */
+  exigidoParaElTipo?: boolean;
+  naturaleza: NaturalezaFiscal;
+}
 
 /**
  * Qué hace el banco con los días entre la disposición y la primera cuota.

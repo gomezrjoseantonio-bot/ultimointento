@@ -660,6 +660,62 @@ sabe casi nada de eso.
 Avisar de que una cifra parece pasarse del tope es otra conversación, y está
 en §8: una vez abierta esa puerta hay que mantenerla al día.
 
+### 6 bis · quinquies · La TAE · lo que cuesta de verdad
+
+La TAE es **el tipo que iguala a cero todos los flujos**, descontados a la fecha
+en que ocurren (Directiva 2014/17/UE Anexo I; es la cuenta de la Circular 5/2012
+del Banco de España). No es una suma de componentes, que es lo que ATLAS hacía:
+capitalización del TIN + apertura repartida por años + carencia técnica.
+
+No hay que inventar los flujos: **los tiene el motor único**. El cuadro ya dice
+qué se paga y qué día, con el arranque irregular y los tramos dentro.
+
+**Qué entra**, porque es lo que el cliente paga por tener el préstamo:
+
+| Entra | No entra |
+|---|---|
+| Comisión de apertura | Notaría |
+| **Tasación** | Registro |
+| Seguros **exigidos para el tipo** | Gestoría |
+| Comisión de mantenimiento (€/mes) | AJD |
+
+Los cuatro de la derecha los paga el banco desde la **Ley 5/2019 art. 14.1.e)** y
+el **RDL 17/2018**. No son coste del cliente, así que no pueden subir su TAE.
+La escritura de Unicaja lo dice con esas palabras en su cláusula SÉPTIMA.
+
+**Dos preguntas distintas que no hay que cruzar.** El seguro de vida vinculado
+**entra en la TAE y no se deduce** *(Jose · 6 ago 2026)*. Si sin él no tienes el
+tipo, es precio del préstamo; y desde la Ley 5/2019 el banco no puede obligarte
+a contratarlo —solo ofrecerlo combinado—, así que apoyar una deducción en «me
+obligaban» es apoyarse en algo que legalmente no existe. Por eso `SeguroVinculado`
+lleva **dos marcas separadas**: `exigidoParaElTipo` la lee la TAE, `naturaleza`
+la lee el IRPF.
+
+**Y la TAE va con un supuesto que hay que decir.** En variable y mixto se calcula
+suponiendo que **el índice de hoy no se mueve** el resto de la vida. Es lo que
+hace la FEIN. Quien pinte la cifra tiene que decirlo: no es una previsión.
+
+#### El candado · la escritura de Unicaja
+
+Cláusula QUINTA: **TAE Variable 5,079 %**, con el Euríbor 12m de julio de 2023
+(4,149 %). 85.000 € a 240 meses, 2,600 % los primeros 36, después Euríbor +
+1,750, ACT/365, exenta de apertura, con el seguro de daños de 59,98 € que la
+propia escritura incluye. El motor da **5,08 %**.
+
+#### Lo que la segunda cifra de esa escritura enseña
+
+La misma cláusula informa de la TAE **con máxima bonificación: 5,593 %** — más
+alta que la de sin bonificar. No es un error: la de «sin bonificación» no cuenta
+los productos, y la bonificada sí. **Los productos que hay que contratar para
+ganar el punto cuestan más de lo que el punto ahorra.**
+
+El punto, solo, bajaría la TAE de 5,08 % a **4,38 %**. Que el banco informe de
+5,593 % significa que esos productos rondan los **690 € al año** *(cifra
+deducida invirtiendo la del banco, no leída de un papel)*.
+
+De aquí sale para qué sirve calcular las dos: **la comparación es la decisión**,
+y sin ella «bonificación» suena siempre a que sales ganando.
+
 ---
 
 ## 6 ter · Condiciones que se verifican contra la tesorería
@@ -1085,25 +1141,6 @@ Escrito para no perderlo, con la fecha en que se detectó.
   que explicaría su cifra es el 2,15128 %, y su propio cuadro liquida los meses
   al 2,1500 %. La amortización y el capital vivo sí salen exactos, que es lo que
   arrastra el resto. Falta el dato que lo explique. §6 bis · bis.
-- **2026-08-05** · **La TAE es una suma, no una TIR.** Se calcula sumando la
-  capitalización del TIN, la comisión de apertura repartida por años y la
-  carencia técnica. La TAE es por definición el tipo que iguala los flujos.
-
-  *Esta entrada decía además que faltaba meter «notaría, registro, gestoría,
-  tasación y AJD, que es donde está el grueso del coste real». **Es falso desde
-  2019**, y lo corrigió Jose. En una hipoteca sujeta a la Ley 5/2019 —vivienda
-  residencial, persona física— el artículo 14.1.e) pone notaría, gestoría y
-  registro **a cargo del prestamista**, y el AJD también desde el RDL 17/2018.
-  La escritura de Unicaja lo dice con esas palabras en su cláusula SÉPTIMA: el
-  banco paga comprobación registral, aranceles notariales, gestoría y aranceles
-  registrales; el prestatario paga **la tasación** y las copias que pida. Así
-  que de los cinco solo la tasación es del cliente.*
-
-  *Lo que sí falta en la TAE y sí es del cliente: la **tasación** y los
-  **seguros vinculados** —la propia escritura mete los 59,98 € del seguro de
-  daños en su TAE—. Y ojo: esto vale para hipotecas de la Ley 5/2019; en un
-  préstamo personal o un local los gastos siguen siendo otra historia.*
-  §6 bis · bis.
 - **2026-08-05** · **ATLAS no avisa de los topes legales de las comisiones.**
   Guarda y calcula lo pactado, que es lo correcto, pero podría decir «0,50 %
   parece pasarse del tope de la Ley 5/2019 para variable, revísalo». No se hizo
@@ -1192,6 +1229,33 @@ deja de servir para decidir por dónde seguir.
   5 ago 2026: «no vamos a liarnos por un céntimo».)* §6 bis · bis.
 
 ### Resuelto
+
+- **2026-08-06** · **La TAE ya es la TIR de los flujos.** Era una suma
+  —capitalización del TIN + apertura repartida por años + carencia técnica—, y
+  su propio comentario lo confesaba: con ella, un préstamo con arranque largo
+  salía igual que otro sin él. Ahora se descuentan los flujos del cuadro por su
+  fecha real, en `prestamos/tae`, y `taeAproximada` se ha borrado. Entra lo que
+  paga el cliente —apertura, tasación, seguros exigidos, mantenimiento— y no
+  entran notaría, registro, gestoría ni AJD, que paga el banco. **Calibrada
+  contra la escritura de Unicaja: 5,08 % contra el 5,079 % impreso.** §6 bis ·
+  quinquies.
+
+- **2026-08-06** · **La tasación es gasto de financiación, no de adquisición**
+  *(pregunta de Jose)*. La línea no es cuándo se paga: es de qué contrato nace.
+  Lo de la compraventa —notaría, registro, ITP/AJD, gestoría— es mayor valor de
+  adquisición, se amortiza al 3 % y resta en la ganancia al vender. Lo de la
+  hipoteca —tasación, apertura— es financiación: se deduce el año en que se paga
+  (art. 23.1.a.1.º LIRPF, dentro del límite conjunto con intereses y
+  conservación, que ATLAS ya aplica), **no** se amortiza y **no** toca el valor
+  de adquisición. Y solo si el inmueble está alquilado. Los campos nacen con su
+  `naturaleza` fiscal puesta para que lo fiscal no acabe añadiendo un segundo
+  `tasacion` por su cuenta. §6 bis · quinquies.
+
+- **2026-08-06** · **El seguro de vida vinculado no es deducible** *(decisión de
+  Jose, por prudencia)*. Solo lo sería «cuando te obligan», y desde la Ley
+  5/2019 nadie puede obligarte: la vinculación está prohibida y solo cabe la
+  oferta combinada. La DGT lo ha admitido unas veces y rechazado otras; no está
+  asentado. En la TAE **sí entra**, que es otra pregunta. §6 bis · quinquies.
 
 - **2026-08-06** · **El cierre de mes ya se puede hacer, y ya sirve para algo.**
   El servicio estaba hecho y probado —`loQueQuedaAbierto`, `cerrarMes`,
