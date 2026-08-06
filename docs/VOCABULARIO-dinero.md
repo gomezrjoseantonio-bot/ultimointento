@@ -1136,16 +1136,45 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
-- **2026-08-06** · **Diez de las catorce bonificaciones de una FEIN no se pueden
-  comprobar** *(pregunta de Jose: «en un modelo donde las metes a capón sin
-  estructura, ¿cómo las vas a controlar?»)*. ATLAS sabe mirar contra la
-  tesorería la nómina, los recibos y la tarjeta, y contra seguros el hogar y el
-  vida. Pero «Bloque Unit Linked», «Bloque Fondos de Inversión» o «Bloque Seguro
-  Agrario» entran como `OTRA` con su descripción, y una `OTRA` **no se puede
-  verificar**: se cumple por declararla, que es justo lo que §6 ter prohíbe.
-  Dos de ellas —planes de pensiones y fondos— ATLAS **sí podría** mirarlas, en
-  Inversiones. El resto tendrían que decir en pantalla que son de palabra.
-  §6 ter.
+- **2026-08-06** · **La reforma de las bonificaciones · qué se estandariza y qué
+  no** *(Jose, en tres apuntes que cambian el modelo)*.
+
+  **No se enumeran bancos.** «Hay 45 bancos con 8 o 10 bonificaciones cada uno»
+  y el nombre y los puntos son suyos: «Bloque Seguro Vida Riesgo Prima Única 8
+  años», −0,50. Texto libre y un número, salidos de la FEIN. Ahí no hay catálogo
+  que mantener.
+
+  **Lo único estándar es CONTRA QUÉ se comprueba**, y son pocas formas porque
+  ATLAS solo sabe mirar unos pocos sitios:
+
+  1. **Entra dinero** · con importe, periodicidad y —esto es lo importante— si
+     vale **cualquier ingreso recurrente** o solo una nómina.
+  2. **Sale un recibo domiciliado** · con su concepto.
+  3. **Se usa la tarjeta.**
+  4. **Hay una aportación a un producto** · planes, fondos, unit-linked.
+  5. **Nada que ATLAS pueda ver** · manual, y dicho en pantalla.
+
+  **Los seguros son recibos, todos.** *«Los seguros tienen que domiciliarse, ya
+  sea agrario o medio pensionista.»* Hoy el modelo tiene `SEGURO_HOGAR` y
+  `SEGURO_VIDA` como tipos distintos y el agrario, el de comercio, el de salud,
+  el de auto y el de RC caen a `OTRA` y se vuelven incomprobables. Son lo mismo:
+  **¿hay un cargo periódico de esa póliza?** No hace falta un módulo de seguros
+  para verlo, hace falta mirar la tesorería.
+
+  **La pantalla dice lo que no es.** Enseña «las que se cumplen» cuando debe
+  enseñar **las que el banco propone** —eso es un hecho del contrato, sale de la
+  FEIN y no se marca a mano— y al lado, derivado, si **existe o va existiendo**.
+  Una casilla que el usuario marca es una bonificación declarada, y §6 ter dice
+  que eso no vale.
+
+  **Y ojo con las nóminas, que es la madre del cordero.** La FEIN de Unicaja
+  dice: «Nómina, o Pensión, o Prestación económica de la Seguridad Social, por
+  importe igual o superior a 2.500,00 euros netos mensuales; **o ingresos
+  recurrentes por importe anual igual o superior a 30.000 euros netos**». Eso no
+  es `{tipo: 'NOMINA', minimoMensual}`: es una **disyunción** con dos ventanas
+  distintas —mensual y anual— y una de las ramas **no exige nómina ninguna**.
+  Con el modelo de hoy, alguien que cumple por alquileres recurrentes sale como
+  que **no cumple**, y se le dice que pierde un punto que no pierde. §6 ter.
 
 - **2026-08-06** · **El destino y la garantía de una hipoteca siguen saliendo
   «personal».** La FEIN lo dice —«ADQUISICION DE VIVIENDA PARA ALQUILER»— y por
