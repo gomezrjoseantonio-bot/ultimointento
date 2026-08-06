@@ -91,6 +91,8 @@ export interface GastoRepetido {
 export interface CargoCruzado {
   periodo: string;
   cuentaId: number | null;
+  /** El inmueble al que pertenece el cargo · dos pisos nunca se comparan. */
+  inmuebleId: number | null;
   importe: number;
   /** Los orígenes distintos que cargan lo mismo el mismo mes. */
   origenes: Array<{ id: number; sourceType: string; sourceId: string; descripcion: string }>;
@@ -410,7 +412,17 @@ export async function gastosRepetidos(): Promise<GastoRepetido[]> {
     // seguro es una SUSTITUCIÓN legítima (cambio de compañía), no un duplicado.
     if (c.estado === 'baja') continue;
     const importe = importeMensualAprox(c);
+    // El INMUEBLE entra en la clave · dos gastos de dos inmuebles distintos no
+    // son el mismo gasto por mucho que se llamen y cuesten igual.
+    //
+    // Y se parecen mucho más de lo que uno esperaría: dos pisos del mismo
+    // portal pagan la MISMA comunidad y el MISMO IBI —al céntimo—, y la luz y
+    // el agua se dan de alta a ojo con la misma cifra redonda para los dos.
+    // Sin esto, un edificio con dos pisos salía entero como «duplicado», que es
+    // el peor falso positivo posible: empuja a borrar gastos legítimos.
     const clave = [
+      c.ambito,
+      c.ambito === 'inmueble' ? (c.inmuebleId ?? 'sin-inmueble') : (c.personalDataId ?? 'sin-titular'),
       normalizar(c.alias),
       importe != null ? céntimos(importe) : 'sin-importe',
       c.patron?.tipo ?? 'sin-patron',
@@ -469,7 +481,12 @@ export async function cargosCruzados(): Promise<CargoCruzado[]> {
     if (ev.type !== 'expense') continue;
     const periodo = (ev.predictedDate ?? '').slice(0, 7);
     if (!periodo) continue;
-    const clave = `${periodo}|${ev.accountId ?? 'sin-cuenta'}|${céntimos(ev.amount)}`;
+    // El INMUEBLE entra en la clave, igual que en la sección 2 y por lo mismo:
+    // dos pisos del mismo portal pagan la misma comunidad, el mismo IBI y el
+    // mismo día, y muchas veces DESDE LA MISMA CUENTA. Sin esto, un edificio
+    // con dos pisos aparecía como si el dinero se contara dos veces.
+    const donde = ev.inmuebleId != null ? `inm-${ev.inmuebleId}` : (ev.ambito ?? 'sin-ambito');
+    const clave = `${periodo}|${ev.accountId ?? 'sin-cuenta'}|${céntimos(ev.amount)}|${donde}`;
     const arr = porClave.get(clave);
     if (arr) arr.push(ev);
     else porClave.set(clave, [ev]);
@@ -488,6 +505,7 @@ export async function cargosCruzados(): Promise<CargoCruzado[]> {
     out.push({
       periodo,
       cuentaId: cuenta === 'sin-cuenta' ? null : Number(cuenta),
+      inmuebleId: grupo[0].inmuebleId != null ? Number(grupo[0].inmuebleId) : null,
       importe: Math.abs(grupo[0].amount),
       origenes: grupo.map((e) => ({
         id: e.id as number,

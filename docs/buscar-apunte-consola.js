@@ -112,7 +112,11 @@
   for (const c of gastos) {
     if (c.id == null || c.estado === 'baja') continue;
     const i = impMes(c);
-    const k = [norm(c.alias), i != null ? cts(i) : 'sin-importe', c.patron?.tipo ?? 'sin-patron'].join('|');
+    // El INMUEBLE entra en la clave: dos pisos del mismo portal pagan la misma
+    // comunidad y el mismo IBI al céntimo, y la luz y el agua se dan de alta a
+    // ojo con la misma cifra. Sin esto un edificio entero salía «duplicado».
+    const donde = c.ambito === 'inmueble' ? (c.inmuebleId ?? 'sin-inmueble') : (c.personalDataId ?? 'sin-titular');
+    const k = [c.ambito, donde, norm(c.alias), i != null ? cts(i) : 'sin-importe', c.patron?.tipo ?? 'sin-patron'].join('|');
     (porClave.get(k) || porClave.set(k, []).get(k)).push(c);
   }
   L.push('\n2 · DADO DE ALTA DOS VECES');
@@ -132,7 +136,9 @@
   for (const e of eventos) {
     if (e.descartado || e.type !== 'expense') continue;
     const p = (e.predictedDate || '').slice(0, 7); if (!p) continue;
-    const k = `${p}|${e.accountId ?? 'x'}|${cts(e.amount)}`;
+    // Mismo motivo: dos pisos cargan lo mismo, el mismo día y de la misma cuenta.
+    const dnd = e.inmuebleId != null ? `inm-${e.inmuebleId}` : (e.ambito ?? 'x');
+    const k = `${p}|${e.accountId ?? 'x'}|${cts(e.amount)}|${dnd}`;
     (porCargo.get(k) || porCargo.set(k, []).get(k)).push(e);
   }
   L.push('\n3 · MISMO CARGO POR DOS MOTORES DISTINTOS');

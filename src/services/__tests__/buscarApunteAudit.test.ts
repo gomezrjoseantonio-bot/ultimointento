@@ -126,6 +126,28 @@ describe('el duplicado que las otras auditorías no pueden ver', () => {
     expect(await gastosRepetidos()).toHaveLength(0);
   });
 
+  it('dos pisos del mismo portal NO son un duplicado', async () => {
+    // Caso real (Tenderina 64 · 4D y 4I): misma comunidad al céntimo, mismo
+    // IBI, y la luz y el agua dadas de alta a ojo con la misma cifra para los
+    // dos. Marcarlo como duplicado empuja a borrar gastos legítimos, que es el
+    // peor falso positivo que puede dar esta herramienta.
+    stores.compromisosRecurrentes = [
+      gasto({ id: 27, alias: 'Comunidad', ambito: 'inmueble', inmuebleId: 2, personalDataId: undefined }),
+      gasto({ id: 40, alias: 'Comunidad', ambito: 'inmueble', inmuebleId: 3, personalDataId: undefined }),
+    ];
+
+    expect(await gastosRepetidos()).toHaveLength(0);
+  });
+
+  it('dos altas en el MISMO inmueble sí son un duplicado', async () => {
+    stores.compromisosRecurrentes = [
+      gasto({ id: 27, alias: 'Comunidad', ambito: 'inmueble', inmuebleId: 2, personalDataId: undefined }),
+      gasto({ id: 41, alias: 'Comunidad', ambito: 'inmueble', inmuebleId: 2, personalDataId: undefined }),
+    ];
+
+    expect(await gastosRepetidos()).toHaveLength(1);
+  });
+
   it('una baja seguida de un alta nueva es una sustitución, no un duplicado', async () => {
     // Cambiar de compañía se hace así · marcarlo como duplicado empujaría a
     // borrar el histórico que sostiene la deducción.
@@ -203,6 +225,26 @@ describe('el mismo cargo emitido por dos motores distintos', () => {
     stores.treasuryEvents = [ev({ id: 10 }), ev({ id: 11 })];
 
     expect(await cargosCruzados()).toHaveLength(0);
+  });
+
+  it('dos pisos que cargan lo mismo en la MISMA cuenta no es el mismo cargo', async () => {
+    // Lo normal en un edificio: las dos comunidades salen el mismo día, por el
+    // mismo importe y de la misma cuenta corriente. Son dos recibos reales.
+    stores.treasuryEvents = [
+      ev({ id: 10, sourceId: 27, inmuebleId: 2, amount: -74.09, description: 'Comunidad' }),
+      ev({ id: 11, sourceId: 40, inmuebleId: 3, amount: -74.09, description: 'Comunidad' }),
+    ];
+
+    expect(await cargosCruzados()).toHaveLength(0);
+  });
+
+  it('dos orígenes del MISMO inmueble sí se señalan', async () => {
+    stores.treasuryEvents = [
+      ev({ id: 10, sourceType: 'gasto_recurrente', sourceId: 27, inmuebleId: 2, amount: -74.09 }),
+      ev({ id: 11, sourceType: 'tarjeta_recibo', sourceId: 'visa', inmuebleId: 2, amount: -74.09 }),
+    ];
+
+    expect(await cargosCruzados()).toHaveLength(1);
   });
 
   it('mismo importe en cuentas distintas no es el mismo cargo', async () => {
