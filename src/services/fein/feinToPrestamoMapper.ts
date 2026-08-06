@@ -4,6 +4,19 @@
 import { FeinLoanDraft } from '../../types/fein';
 import { PrestamoFinanciacion, BonificacionFinanciacion } from '../../types/financiacion';
 
+/**
+ * Un número leído de la FEIN · **el cero también se lee**.
+ *
+ * Con `|| undefined`, un cero desaparecía por ser falsy, y un cero en una FEIN
+ * no es un hueco: es una afirmación. La del Santander dice «Comisión de
+ * apertura: 0,00 euros» y la de Unicaja «exenta de comisión de apertura» — las
+ * dos están diciendo que no la hay, y perderlo dejaba el campo a merced de
+ * cualquier valor anterior o de un valor por defecto.
+ *
+ * `??` y no `||`: se descarta lo que no se leyó, no lo que vale cero.
+ */
+const leido = (v: number | null | undefined): number | undefined => v ?? undefined;
+
 export class FeinToPrestamoMapper {
   
   /**
@@ -41,22 +54,22 @@ export class FeinToPrestamoMapper {
       
       // Interest type and rates
       tipo: this.mapTipo(feinDraft.prestamo.tipo),
-      tinFijo: feinDraft.prestamo.tinFijo || undefined,
+      tinFijo: leido(feinDraft.prestamo.tinFijo),
       
       // Variable/Mixed specific
       indice: this.mapIndice(feinDraft.prestamo.indiceReferencia || null),
-      diferencial: feinDraft.prestamo.diferencial || undefined,
+      diferencial: leido(feinDraft.prestamo.diferencial),
       revision: feinDraft.prestamo.revisionMeses || 12,
       
       // Mixed specific
       tramoFijoAnos: undefined, // TODO: Extract from FEIN if available
-      tinTramoFijo: feinDraft.prestamo.tipo === 'MIXTO' ? (feinDraft.prestamo.tinFijo || undefined) : undefined,
+      tinTramoFijo: feinDraft.prestamo.tipo === 'MIXTO' ? leido(feinDraft.prestamo.tinFijo) : undefined,
       
-      // Commissions
-      comisionApertura: feinDraft.prestamo.comisionAperturaPct || undefined,
+      // Commissions · un CERO leído es un dato, no un hueco. Ver `leido`.
+      comisionApertura: leido(feinDraft.prestamo.comisionAperturaPct),
       // Se leía y se tiraba · va en EUROS AL MES, no en porcentaje.
-      comisionMantenimiento: feinDraft.prestamo.comisionMantenimientoMes || undefined,
-      comisionAmortizacionAnticipada: feinDraft.prestamo.amortizacionAnticipadaPct || undefined,
+      comisionMantenimiento: leido(feinDraft.prestamo.comisionMantenimientoMes),
+      comisionAmortizacionAnticipada: leido(feinDraft.prestamo.amortizacionAnticipadaPct),
       
       // Account - use default if provided, otherwise user will need to select
       cuentaCargoId: defaultAccountId,

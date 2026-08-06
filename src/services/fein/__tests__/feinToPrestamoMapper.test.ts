@@ -87,6 +87,23 @@ describe('lo que la FEIN dice, llega', () => {
   });
 });
 
+// Cero no es neutral · un cero en una FEIN es una afirmación, no un hueco.
+// La del Santander dice «Comisión de apertura: 0,00 euros» y la de Unicaja
+// «exenta de comisión de apertura»: las dos afirman que no la hay. Con `||`
+// eso se perdía por ser falsy y el campo quedaba a merced de lo que hubiera.
+describe('un cero leído es un dato', () => {
+  it.each([
+    ['comisionAperturaPct', 'comisionApertura'],
+    ['comisionMantenimientoMes', 'comisionMantenimiento'],
+    ['amortizacionAnticipadaPct', 'comisionAmortizacionAnticipada'],
+    ['diferencial', 'diferencial'],
+  ])('%s a 0 llega como 0, no como ausente', (enLaFein, enElPrestamo) => {
+    const m = FeinToPrestamoMapper.mapToPrestamoFinanciacion(feinDeUnicaja({ [enLaFein]: 0 }));
+
+    expect(m[enElPrestamo as keyof typeof m]).toBe(0);
+  });
+});
+
 // Un dato inventado con aspecto de leído es peor que un hueco: el hueco se ve.
 describe('lo que la FEIN NO dice, no se escribe', () => {
   it('la fecha de primer cargo y el día de cobro se quedan vacíos', () => {
