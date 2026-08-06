@@ -227,15 +227,48 @@ function sinVacios(
   );
 }
 
-/** Cuántos gastos usan cada concepto · lo enseña la pantalla de Ajustes. */
-export async function contarUsos(): Promise<Record<string, number>> {
-  const db = await initDB();
-  const gastos = ((await db.getAll('compromisosRecurrentes')) ?? []) as Array<{
-    concepto?: string;
-  }>;
-  const out: Record<string, number> = {};
-  for (const g of gastos) {
-    if (g.concepto) out[g.concepto] = (out[g.concepto] ?? 0) + 1;
+/**
+ * Cambia familia, nombre y ámbitos de un concepto PROPIO.
+ *
+ * De los de fábrica sólo se puede cambiar el nombre (`renombrar`): su familia
+ * decide su casilla AEAT y moverlos reescribiría en silencio cómo declara todo
+ * el que los use. Los tuyos los pusiste tú, así que equivocarte al darlos de
+ * alta no puede ser definitivo.
+ *
+ * El `id` NO cambia aunque cambie el nombre: es lo que llevan guardado los
+ * gastos. Cambiarlo los dejaría apuntando a nada.
+ */
+export async function editarConceptoPropio(
+  id: string,
+  cambios: { familia: string; label: string; ambitos: readonly Ambito[] },
+): Promise<ConceptosUsuario> {
+  const datos = await leerConceptosUsuario();
+  if (!datos.propios.some((p) => p.id === id)) {
+    throw new Error('Ese concepto viene de fábrica · sólo se le puede cambiar el nombre');
   }
-  return out;
+  if (!cambios.label.trim()) throw new Error(EXPLICACION_RECHAZO.sin_nombre);
+  if (cambios.ambitos.length === 0) throw new Error(EXPLICACION_RECHAZO.sin_ambito);
+  if (!FAMILIAS.some((f) => f.id === cambios.familia)) {
+    throw new Error(EXPLICACION_RECHAZO.familia_desconocida);
+  }
+  for (const a of cambios.ambitos) {
+    if (!donanteDe(cambios.familia as FamiliaId, a)) {
+      throw new Error(EXPLICACION_RECHAZO.familia_sin_ambito);
+    }
+  }
+  const nuevos: ConceptosUsuario = {
+    ...datos,
+    propios: datos.propios.map((p) =>
+      p.id === id
+        ? {
+            ...p,
+            familia: cambios.familia as FamiliaId,
+            label: cambios.label.trim(),
+            ambitos: [...cambios.ambitos],
+          }
+        : p,
+    ),
+  };
+  await guardar(nuevos);
+  return nuevos;
 }
