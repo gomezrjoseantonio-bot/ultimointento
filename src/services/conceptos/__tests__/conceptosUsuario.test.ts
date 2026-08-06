@@ -21,7 +21,7 @@ import { CONCEPTOS_BASE } from '../conceptosBase';
 import {
   borrarConceptoPropio,
   crearConceptoPropio,
-  contarUsos,
+  editarConceptoPropio,
   idDeConceptoPropio,
   leerConceptosUsuario,
   ocultar,
@@ -242,31 +242,51 @@ describe('borrar un concepto propio', () => {
   });
 });
 
-describe('el recuento de usos', () => {
-  it('cuenta por concepto y no inventa ceros', async () => {
-    const db = await initDB();
-    for (const c of ['luz', 'luz', 'gas']) {
-      await db.add('compromisosRecurrentes' as never, {
-        ambito: 'personal',
-        alias: 'x',
-        tipo: 'suministro',
-        concepto: c,
-        proveedor: { nombre: '' },
-        patron: { tipo: 'mensual', diaMes: 1 },
-        importe: { modo: 'fijo', importe: 1 },
-        cuentaCargo: 1,
-        conceptoBancario: '',
-        metodoPago: 'domiciliacion',
-        categoria: 'vivienda.suministros',
-        bolsaPresupuesto: 'necesidades',
-        responsable: 'titular',
-        fechaInicio: '2026-01-01',
-        estado: 'activo',
-        createdAt: '',
-        updatedAt: '',
-      } as never);
-    }
-    expect(await contarUsos()).toEqual({ luz: 2, gas: 1 });
+describe('editar un concepto propio', () => {
+  it('cambia familia, nombre y ámbitos · el id NO', async () => {
+    // El id es lo que llevan guardado los gastos · cambiarlo los dejaría
+    // apuntando a nada.
+    await crearConceptoPropio('suministros', 'Butano', ['personal']);
+    await editarConceptoPropio('usr_butano', {
+      familia: 'dia_a_dia',
+      label: 'Bombonas',
+      ambitos: ['personal'],
+    });
+    const c = conceptoPorId('usr_butano');
+    expect({ id: c?.id, label: c?.label, familia: c?.familia }).toEqual({
+      id: 'usr_butano',
+      label: 'Bombonas',
+      familia: 'dia_a_dia',
+    });
+  });
+
+  it('al cambiar de familia hereda la clasificación de la nueva', async () => {
+    await crearConceptoPropio('suministros', 'Butano', ['personal']);
+    await editarConceptoPropio('usr_butano', {
+      familia: 'dia_a_dia',
+      label: 'Butano',
+      ambitos: ['personal'],
+    });
+    expect(proyectar('usr_butano', 'personal')).toEqual(proyectar('otros_dia_a_dia', 'personal'));
+  });
+
+  it('un concepto de fábrica NO se puede mover de familia', async () => {
+    // Su familia decide su casilla AEAT · moverlo reescribiría en silencio
+    // cómo declara todo el que lo use.
+    await expect(
+      editarConceptoPropio('luz', { familia: 'seguros', label: 'Luz', ambitos: ['personal'] }),
+    ).rejects.toThrow(/de fábrica/i);
+    expect(conceptoPorId('luz')?.familia).toBe('suministros');
+  });
+
+  it('no se deja dejarlo sin nombre, sin ámbito ni en una familia imposible', async () => {
+    await crearConceptoPropio('suministros', 'Butano', ['personal']);
+    const base = { familia: 'suministros', label: 'Butano', ambitos: ['personal'] as const };
+    await expect(editarConceptoPropio('usr_butano', { ...base, label: '  ' })).rejects.toThrow();
+    await expect(editarConceptoPropio('usr_butano', { ...base, ambitos: [] })).rejects.toThrow();
+    await expect(
+      editarConceptoPropio('usr_butano', { ...base, familia: 'servicios', ambitos: ['personal'] }),
+    ).rejects.toThrow();
   });
 });
 

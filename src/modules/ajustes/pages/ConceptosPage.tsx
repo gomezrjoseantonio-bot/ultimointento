@@ -3,13 +3,16 @@
 // Es la pantalla que faltaba: hasta ahora la clasificación vivía repartida en
 // dos catálogos de código que nadie podía ver ni tocar, y cuando algo caía
 // entre los dos —un seguro de vida de ámbito personal con familia de
-// inmueble— desaparecía sin dejar rastro. Aquí se ve entera, con la casilla
-// AEAT a la que lleva cada concepto y cuántos gastos lo usan.
+// inmueble— desaparecía sin dejar rastro.
 //
-// Lo editable es DELIBERADAMENTE poco: el nombre y si se ofrece o no. La
-// proyección —categoría y casilla— no se teclea; un concepto propio hereda la
-// de su familia. Poder escribir una casilla desde Ajustes sería poder cambiar
-// la declaración desde Ajustes.
+// Nace PLEGADA por familia. Son 60 conceptos: en lista abierta es un muro por
+// el que hay que hacer scroll para encontrar nada, y lo que se viene a hacer
+// aquí es tocar uno concreto, no leerlos todos.
+//
+// Lo editable es DELIBERADAMENTE poco, y la pantalla lo dice en vez de dejarlo
+// adivinar: de un concepto de fábrica sólo el nombre, porque su familia decide
+// su casilla AEAT y moverlo reescribiría en silencio cómo declara todo el que
+// lo use. De los tuyos, todo menos el id.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icons, showToastV5 } from '../../../design-system/v5';
@@ -25,8 +28,8 @@ import type { Ambito, Concepto, FamiliaId } from '../../../services/conceptos/ca
 import {
   borrarConceptoPropio,
   cargarConceptosUsuario,
-  contarUsos,
   crearConceptoPropio,
+  editarConceptoPropio,
   ocultar,
   renombrar,
 } from '../../../services/conceptos/conceptosUsuarioService';
@@ -45,22 +48,28 @@ function casillaDe(c: Concepto): string {
   return getCategoryByKey(c.inmueble.categoryKey)?.casillaAEAT ?? '—';
 }
 
+/** Lo que se está editando ahora mismo · null = nadie. */
+interface Edicion {
+  id: string;
+  familia: FamiliaId;
+  label: string;
+  ambitos: Ambito[];
+  esPropio: boolean;
+}
+
 const ConceptosPage: React.FC = () => {
   const [datos, setDatos] = useState<ConceptosUsuario>({ propios: [], ajustes: {} });
-  const [usos, setUsos] = useState<Record<string, number>>({});
   const [cargando, setCargando] = useState(true);
-  const [editando, setEditando] = useState<string | null>(null);
-  const [borrador, setBorrador] = useState('');
+  const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
+  const [edicion, setEdicion] = useState<Edicion | null>(null);
   // Alta
-  const [abierto, setAbierto] = useState(false);
+  const [altaAbierta, setAltaAbierta] = useState(false);
   const [nuevaFamilia, setNuevaFamilia] = useState<FamiliaId>('otros');
   const [nuevoLabel, setNuevoLabel] = useState('');
   const [nuevosAmbitos, setNuevosAmbitos] = useState<Ambito[]>(['personal']);
 
   const recargar = useCallback(async () => {
-    const [d, u] = await Promise.all([cargarConceptosUsuario(), contarUsos()]);
-    setDatos(d);
-    setUsos(u);
+    setDatos(await cargarConceptosUsuario());
     setCargando(false);
   }, []);
 
@@ -89,31 +98,54 @@ const ConceptosPage: React.FC = () => {
       await accion();
       await recargar();
       showToastV5(exito, 'success');
+      return true;
     } catch (e) {
       showToastV5((e as Error).message, 'error');
+      return false;
     }
   };
 
-  const onGuardarNombre = async (c: Concepto) => {
-    setEditando(null);
-    if (borrador.trim() === c.label) return;
-    await conAviso(() => renombrar(c.id, borrador), `Ahora se llama «${borrador.trim() || c.label}»`);
-  };
+  const alternarFamilia = (id: string) =>
+    setAbiertas((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
 
-  const onCrear = async () => {
-    await conAviso(
-      () => crearConceptoPropio(nuevaFamilia, nuevoLabel, nuevosAmbitos),
-      `«${nuevoLabel.trim()}» añadido`,
-    );
-    setNuevoLabel('');
-    setAbierto(false);
+  const abrirEdicion = (c: Concepto) =>
+    setEdicion({
+      id: c.id,
+      familia: c.familia,
+      label: c.label,
+      ambitos: ambitosDe(c),
+      esPropio: propios.has(c.id),
+    });
+
+  const guardarEdicion = async () => {
+    if (!edicion) return;
+    const ok = edicion.esPropio
+      ? await conAviso(
+          () =>
+            editarConceptoPropio(edicion.id, {
+              familia: edicion.familia,
+              label: edicion.label,
+              ambitos: edicion.ambitos,
+            }),
+          `«${edicion.label.trim()}» guardado`,
+        )
+      : await conAviso(
+          () => renombrar(edicion.id, edicion.label),
+          `Ahora se llama «${edicion.label.trim()}»`,
+        );
+    if (ok) setEdicion(null);
   };
 
   // Sólo se ofrecen los ámbitos en los que esa familia tiene de quién heredar.
-  const ambitosPosibles = useMemo(
-    () => (['personal', 'inmueble'] as Ambito[]).filter((a) => donanteDe(nuevaFamilia, a)),
-    [nuevaFamilia],
-  );
+  const ambitosDeFamilia = (f: FamiliaId): Ambito[] =>
+    (['personal', 'inmueble'] as Ambito[]).filter((a) => donanteDe(f, a));
+
+  const ambitosPosibles = useMemo(() => ambitosDeFamilia(nuevaFamilia), [nuevaFamilia]);
   useEffect(() => {
     setNuevosAmbitos((prev) => {
       const validos = prev.filter((a) => ambitosPosibles.includes(a));
@@ -121,27 +153,58 @@ const ConceptosPage: React.FC = () => {
     });
   }, [ambitosPosibles]);
 
+  const onCrear = async () => {
+    const ok = await conAviso(
+      () => crearConceptoPropio(nuevaFamilia, nuevoLabel, nuevosAmbitos),
+      `«${nuevoLabel.trim()}» añadido`,
+    );
+    if (!ok) return;
+    // Se abre su familia para que se vea dónde ha caído.
+    setAbiertas((prev) => new Set(prev).add(nuevaFamilia));
+    setNuevoLabel('');
+    setAltaAbierta(false);
+  };
+
+  /** Los checkboxes de ámbito · los comparten el alta y la edición. */
+  const ChecksAmbito: React.FC<{
+    familia: FamiliaId;
+    valor: Ambito[];
+    onChange: (v: Ambito[]) => void;
+  }> = ({ familia, valor, onChange }) => (
+    <div className={styles.checks}>
+      {ambitosDeFamilia(familia).map((a) => (
+        <label key={a} className={styles.check}>
+          <input
+            type="checkbox"
+            checked={valor.includes(a)}
+            onChange={(e) => onChange(e.target.checked ? [...valor, a] : valor.filter((x) => x !== a))}
+          />
+          {AMBITO_LABEL[a]}
+        </label>
+      ))}
+    </div>
+  );
+
   return (
     <>
       <div className={containerStyles.contentHead}>
         <div>
           <h1 className={containerStyles.contentTitle}>Conceptos</h1>
           <div className={containerStyles.contentSub}>
-            qué puede ser un gasto · el nombre y si se ofrece los decides tú · la casilla AEAT se
-            hereda de la familia
+            qué puede ser un gasto · abre una familia para ver los suyos
           </div>
         </div>
         <button
           type="button"
           className={`${containerStyles.btn} ${containerStyles.btnGhost}`}
-          onClick={() => setAbierto((v) => !v)}
+          onClick={() => setAltaAbierta((v) => !v)}
         >
           <Icons.Plus size={14} strokeWidth={1.8} />
           Añadir concepto
         </button>
       </div>
 
-      {abierto && (
+      {altaAbierta && (
         <div className={styles.alta}>
           <div className={styles.altaCampos}>
             <label className={styles.campo}>
@@ -169,25 +232,10 @@ const ConceptosPage: React.FC = () => {
             </label>
             <div className={styles.campo}>
               <span className={styles.lab}>Dónde se usa</span>
-              <div className={styles.checks}>
-                {ambitosPosibles.map((a) => (
-                  <label key={a} className={styles.check}>
-                    <input
-                      type="checkbox"
-                      checked={nuevosAmbitos.includes(a)}
-                      onChange={(e) =>
-                        setNuevosAmbitos((prev) =>
-                          e.target.checked ? [...prev, a] : prev.filter((x) => x !== a),
-                        )
-                      }
-                    />
-                    {AMBITO_LABEL[a]}
-                  </label>
-                ))}
-              </div>
+              <ChecksAmbito familia={nuevaFamilia} valor={nuevosAmbitos} onChange={setNuevosAmbitos} />
             </div>
           </div>
-          <p className={styles.altaNota}>
+          <p className={styles.nota}>
             Se clasificará como el resto de «{FAMILIAS.find((f) => f.id === nuevaFamilia)?.label}»
             {nuevosAmbitos.includes('inmueble') &&
               donanteDe(nuevaFamilia, 'inmueble') &&
@@ -209,93 +257,185 @@ const ConceptosPage: React.FC = () => {
       {cargando ? (
         <div className={styles.empty}>Cargando…</div>
       ) : (
-        porFamilia.map(({ familia, conceptos }) => (
-          <section key={familia.id} className={styles.familia}>
-            <div className={styles.familiaHead}>
-              <span className={styles.familiaLabel}>{familia.label}</span>
-              <span className={styles.familiaSub}>{familia.descripcion}</span>
-            </div>
-            <div className={styles.tabla}>
-              {conceptos.map((c) => {
-                const esPropio = propios.has(c.id);
-                const n = usos[c.id] ?? 0;
-                return (
-                  <div key={c.id} className={c.oculto ? styles.filaOculta : styles.fila}>
-                    <div className={styles.celdaNombre}>
-                      {editando === c.id ? (
-                        <input
-                          className={styles.input}
-                          value={borrador}
-                          autoFocus
-                          onChange={(e) => setBorrador(e.target.value)}
-                          onBlur={() => void onGuardarNombre(c)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') void onGuardarNombre(c);
-                            if (e.key === 'Escape') setEditando(null);
-                          }}
-                          aria-label={`Nombre de ${c.label}`}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          className={styles.nombre}
-                          onClick={() => {
-                            setEditando(c.id);
-                            setBorrador(c.label);
-                          }}
-                        >
-                          {c.label}
-                        </button>
-                      )}
-                      <span className={styles.id}>{c.id}</span>
-                    </div>
-                    <span className={styles.celdaAmbito}>
-                      {ambitosDe(c)
-                        .map((a) => AMBITO_LABEL[a])
-                        .join(' · ')}
-                    </span>
-                    <span className={styles.celdaCasilla}>{casillaDe(c)}</span>
-                    <span className={styles.celdaUsos}>
-                      {n > 0 ? `${n} gasto${n === 1 ? '' : 's'}` : '—'}
-                    </span>
-                    <div className={styles.celdaAcciones}>
-                      {esPropio && <span className={styles.tagPropio}>tuyo</span>}
-                      <button
-                        type="button"
-                        className={styles.accion}
-                        onClick={() =>
-                          void conAviso(
-                            () => ocultar(c.id, !c.oculto),
-                            c.oculto ? `«${c.label}» vuelve a ofrecerse` : `«${c.label}» ya no se ofrece`,
-                          )
-                        }
-                      >
-                        {c.oculto ? 'Mostrar' : 'Esconder'}
-                      </button>
-                      {esPropio && (
-                        <button
-                          type="button"
-                          className={styles.accion}
-                          onClick={() =>
-                            void conAviso(() => borrarConceptoPropio(c.id), `«${c.label}» borrado`)
-                          }
-                        >
-                          Borrar
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ))
+        porFamilia.map(({ familia, conceptos }) => {
+          const abierta = abiertas.has(familia.id);
+          return (
+            <section key={familia.id} className={styles.familia}>
+              <button
+                type="button"
+                className={styles.familiaHead}
+                aria-expanded={abierta}
+                onClick={() => alternarFamilia(familia.id)}
+              >
+                <Icons.ChevronRight
+                  size={14}
+                  strokeWidth={2}
+                  className={abierta ? styles.chevronAbierto : styles.chevron}
+                />
+                <span className={styles.familiaLabel}>{familia.label}</span>
+                <span className={styles.familiaSub}>{familia.descripcion}</span>
+                <span className={styles.familiaCuenta}>{conceptos.length}</span>
+              </button>
+
+              {abierta && (
+                <div className={styles.tabla}>
+                  {conceptos.map((c) => {
+                    const esPropio = propios.has(c.id);
+                    const editandoEste = edicion?.id === c.id;
+
+                    if (editandoEste && edicion) {
+                      return (
+                        <div key={c.id} className={styles.filaEdicion}>
+                          <div className={styles.altaCampos}>
+                            <label className={styles.campo}>
+                              <span className={styles.lab}>Nombre</span>
+                              <input
+                                className={styles.input}
+                                value={edicion.label}
+                                autoFocus
+                                onChange={(e) => setEdicion({ ...edicion, label: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') void guardarEdicion();
+                                  if (e.key === 'Escape') setEdicion(null);
+                                }}
+                                aria-label={`Nombre de ${c.label}`}
+                              />
+                            </label>
+                            {edicion.esPropio ? (
+                              <>
+                                <label className={styles.campo}>
+                                  <span className={styles.lab}>Familia</span>
+                                  <select
+                                    className={styles.input}
+                                    value={edicion.familia}
+                                    onChange={(e) => {
+                                      const f = e.target.value as FamiliaId;
+                                      const posibles = ambitosDeFamilia(f);
+                                      const validos = edicion.ambitos.filter((a) =>
+                                        posibles.includes(a),
+                                      );
+                                      setEdicion({
+                                        ...edicion,
+                                        familia: f,
+                                        ambitos: validos.length > 0 ? validos : posibles.slice(0, 1),
+                                      });
+                                    }}
+                                  >
+                                    {FAMILIAS.map((f) => (
+                                      <option key={f.id} value={f.id}>
+                                        {f.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <div className={styles.campo}>
+                                  <span className={styles.lab}>Dónde se usa</span>
+                                  <ChecksAmbito
+                                    familia={edicion.familia}
+                                    valor={edicion.ambitos}
+                                    onChange={(v) => setEdicion({ ...edicion, ambitos: v })}
+                                  />
+                                </div>
+                              </>
+                            ) : (
+                              <div className={styles.campo}>
+                                <span className={styles.lab}>Clasificación</span>
+                                <div className={styles.soloLectura}>
+                                  {familia.label} · {ambitosDe(c).map((a) => AMBITO_LABEL[a]).join(' · ')}
+                                  {c.inmueble && ` · casilla ${casillaDe(c)}`}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <p className={styles.nota}>
+                            {edicion.esPropio
+                              ? 'Su clasificación la hereda de la familia · cambiar de familia cambia también a qué casilla lleva.'
+                              : 'De un concepto de fábrica sólo se cambia el nombre · su familia decide su casilla AEAT, y moverlo cambiaría cómo declara todo el que lo use.'}
+                          </p>
+                          <div className={styles.celdaAcciones}>
+                            <button
+                              type="button"
+                              className={`${containerStyles.btn} ${containerStyles.btnPrimary}`}
+                              onClick={() => void guardarEdicion()}
+                            >
+                              Guardar
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.accion}
+                              onClick={() => setEdicion(null)}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={c.id} className={c.oculto ? styles.filaOculta : styles.fila}>
+                        <div className={styles.celdaNombre}>
+                          <span className={styles.nombre}>{c.label}</span>
+                          <span className={styles.id}>{c.id}</span>
+                        </div>
+                        <span className={styles.celdaAmbito}>
+                          {ambitosDe(c)
+                            .map((a) => AMBITO_LABEL[a])
+                            .join(' · ')}
+                        </span>
+                        <span className={styles.celdaCasilla}>{casillaDe(c)}</span>
+                        <div className={styles.celdaAcciones}>
+                          {esPropio && <span className={styles.tagPropio}>tuyo</span>}
+                          <button
+                            type="button"
+                            className={styles.accion}
+                            onClick={() => abrirEdicion(c)}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.accion}
+                            onClick={() =>
+                              void conAviso(
+                                () => ocultar(c.id, !c.oculto),
+                                c.oculto
+                                  ? `«${c.label}» vuelve a ofrecerse`
+                                  : `«${c.label}» ya no se ofrece`,
+                              )
+                            }
+                          >
+                            {c.oculto ? 'Mostrar' : 'Esconder'}
+                          </button>
+                          {esPropio && (
+                            <button
+                              type="button"
+                              className={styles.accion}
+                              onClick={() =>
+                                void conAviso(
+                                  () => borrarConceptoPropio(c.id),
+                                  `«${c.label}» borrado`,
+                                )
+                              }
+                            >
+                              Borrar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })
       )}
 
       <p className={styles.pie}>
         Esconder no borra: los gastos que ya usan ese concepto lo conservan y se siguen clasificando
-        igual. Sólo deja de ofrecerse al crear o editar. Los conceptos de fábrica no se pueden
-        borrar, y uno tuyo tampoco mientras haya un gasto usándolo.
+        igual. Sólo deja de ofrecerse al crear o editar un gasto. Los conceptos de fábrica no se
+        pueden borrar, y uno tuyo tampoco mientras haya un gasto usándolo.
       </p>
     </>
   );
