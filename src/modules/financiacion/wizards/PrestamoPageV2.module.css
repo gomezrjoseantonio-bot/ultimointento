@@ -16,6 +16,11 @@
      lo declara para sí, que es donde se usa. */
   --w-shadow-color: rgba(14, 20, 35, 0.28);
   --w-shadow: 0 24px 60px var(--w-shadow-color);
+  /* El aire alrededor del diálogo · lo leen el `inset` y los `min()` que lo
+     acotan, y ahí entra por partida DOBLE (arriba y abajo, izquierda y
+     derecha). Escrito dos veces —una como 20 y otra como 40— el día que
+     alguien cambie uno se rompe el centrado sin que nada avise. */
+  --w-margen: 20px;
   --w-r-sm: 7px;
   --w-r-md: 9px;
   --w-r-lg: 14px;
@@ -47,9 +52,26 @@
 }
 
 /* ─── Encuadre del modal ─────────────────────────────────────── */
+/*
+ * Un diálogo centrado, NO una toma de la pantalla entera.
+ *
+ * El mockup dice `inset: 20px` porque está escrito para un viewport fijo de
+ * 1400 px, y ahí eso da 1360. Copiado tal cual, en un monitor de 2000 px daba
+ * un modal de 1960: la columna del formulario se iba a 1560 px —campos de
+ * cuatro caracteres estirados a un palmo—, el panel de cálculo se quedaba con
+ * un 20 % y la aplicación de debajo desaparecía entera. Un formulario que tapa
+ * hasta la navegación no deja volver a ningún sitio.
+ *
+ * Así que el `inset` acota y el tamaño manda: `margin: auto` centra dentro de
+ * ese hueco, y el `min()` reproduce el mockup a su ancho de diseño sin estirarlo
+ * en pantallas grandes ni desbordar en las pequeñas.
+ */
 .modal {
   position: fixed;
-  inset: 20px;
+  inset: var(--w-margen);
+  margin: auto;
+  width: min(1360px, calc(100vw - var(--w-margen) * 2));
+  height: min(900px, calc(100vh - var(--w-margen) * 2));
   z-index: 101;
   background: var(--atlas-v5-card);
   border-radius: var(--w-r-lg);
