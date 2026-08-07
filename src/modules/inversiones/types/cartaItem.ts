@@ -9,6 +9,8 @@
 import type { PosicionInversion, TipoPosicion } from '../../../types/inversiones';
 import type { PlanPensiones, TipoAdministrativo } from '../../../types/planesPensiones';
 import { calcularTotalAportadoPlan } from '../../../services/planesPensionesService';
+import { toISODateLocal } from '../../../utils/recurrenceDateUtils';
+import { cuadroDePosicion, estadoPrestamoA } from '../utils/prestamoCalendario';
 
 // ── Tipo unificado ────────────────────────────────────────────────────────────
 
@@ -60,7 +62,7 @@ export interface CartaItem {
    * Subtipo del tipo principal · para acciones RSU · préstamos a empresa propia, etc.
    * Solo se usa para render UI · NO persiste en DB.
    */
-  subtipo?: 'rsu' | 'empresa_propia' | string;
+  subtipo?: 'rsu' | 'empresa_propia' | 'familiar' | string;
   /**
    * Tipo administrativo del plan (PPI · PPE · PPES · PPA).
    *
@@ -101,18 +103,36 @@ function calculateMonthlyPayment(
  * normalizado para la galería unificada.
  */
 export function inversionToCartaItem(p: PosicionInversion): CartaItem {
-  const valorActual = safeNum(p.valor_actual);
-  const totalAportado = safeNum(p.total_aportado);
-  const rentEur = safeNum(p.rentabilidad_euros, valorActual - totalAportado);
-  const rentPct = safeNum(
-    p.rentabilidad_porcentaje,
-    totalAportado > 0 ? ((valorActual - totalAportado) / totalAportado) * 100 : 0,
-  );
+  const valorPersistido = safeNum(p.valor_actual);
+  const aportadoPersistido = safeNum(p.total_aportado);
+
+  // ── Préstamo con cuota francesa · el capital vivo baja en cada cuota ──────
+  // El store guarda el capital prestado, no el pendiente: sin esto la carta
+  // pintaba siempre el importe inicial aunque el préstamo llevara media vida
+  // amortizada. `total_aportado` acompaña al saldo para que la rentabilidad
+  // latente no invente una pérdida: el capital devuelto no se ha perdido, ha
+  // vuelto a caja (el rendimiento del préstamo son los intereses, realizados).
+  const cuadro =
+    p.tipo === 'prestamo_p2p' && p.modalidad_devolucion === 'capital_e_intereses'
+      ? cuadroDePosicion(p)
+      : null;
+  const estado = cuadro ? estadoPrestamoA(cuadro, toISODateLocal(new Date())) : null;
+
+  const valorActual = estado ? estado.saldoPendiente : valorPersistido;
+  const totalAportado = estado ? estado.saldoPendiente : aportadoPersistido;
+  const rentEur = estado ? 0 : safeNum(p.rentabilidad_euros, valorActual - totalAportado);
+  const rentPct = estado
+    ? 0
+    : safeNum(
+        p.rentabilidad_porcentaje,
+        totalAportado > 0 ? ((valorActual - totalAportado) / totalAportado) * 100 : 0,
+      );
 
   const tin = p.rendimiento?.tasa_interes_anual;
-  const cuotaMensual =
-    p.tipo === 'prestamo_p2p' && p.modalidad_devolucion === 'capital_e_intereses' && tin
-      ? calculateMonthlyPayment(totalAportado, tin, p.duracion_meses ?? 0)
+  const cuotaMensual = cuadro
+    ? cuadro.cuota
+    : p.tipo === 'prestamo_p2p' && p.modalidad_devolucion === 'capital_e_intereses' && tin
+      ? calculateMonthlyPayment(aportadoPersistido, tin, p.duracion_meses ?? 0)
       : undefined;
 
   // Calcular interés anual en euros (para préstamos solo-intereses)
@@ -122,9 +142,14 @@ export function inversionToCartaItem(p: PosicionInversion): CartaItem {
       : undefined;
 
   // Calcular % amortizado (para préstamos con amortización)
-  const capitalInicial = totalAportado > 0 ? totalAportado : undefined;
-  const pctAmortizado =
-    p.tipo === 'prestamo_p2p' && cuotaMensual && capitalInicial && valorActual < capitalInicial
+  const capitalInicial = cuadro
+    ? cuadro.capitalInicial
+    : aportadoPersistido > 0
+      ? aportadoPersistido
+      : undefined;
+  const pctAmortizado = estado
+    ? estado.pctAmortizado
+    : p.tipo === 'prestamo_p2p' && cuotaMensual && capitalInicial && valorActual < capitalInicial
       ? ((capitalInicial - valorActual) / capitalInicial) * 100
       : undefined;
 
@@ -135,10 +160,21 @@ export function inversionToCartaItem(p: PosicionInversion): CartaItem {
       /rsu/i.test(p.nombre ?? '') ||
       /rsu/i.test(p.notas ?? ''));
 
-  // Detectar préstamo a empresa propia
-  const esEmpresaPropia =
-    p.tipo === 'prestamo_p2p' &&
-    (/propi[ao]/i.test(p.entidad ?? '') || /empresa/i.test(p.entidad ?? ''));
+  // Subtipo de préstamo · canónico si está guardado (`subtipo_prestamo`) ·
+  // heurística por entidad para posiciones anteriores a ese campo.
+  const subtipoPrestamo =
+    p.tipo === 'prestamo_p2p'
+      ? p.subtipo_prestamo ??
+        (/propi[ao]/i.test(p.entidad ?? '') || /empresa/i.test(p.entidad ?? '')
+          ? 'empresa'
+          : undefined)
+      : undefined;
+  const subtipoCarta =
+    subtipoPrestamo === 'empresa'
+      ? 'empresa_propia'
+      : subtipoPrestamo === 'familiar'
+        ? 'familiar'
+        : undefined;
 
   // CAGR estimado para planes y fondos
   let cagrPct: number | undefined;
@@ -185,7 +221,7 @@ export function inversionToCartaItem(p: PosicionInversion): CartaItem {
     precio_actual: p.precio_medio_compra,
     numero_participaciones: p.numero_participaciones,
     cagr_pct: cagrPct,
-    subtipo: esRSU ? 'rsu' : esEmpresaPropia ? 'empresa_propia' : undefined,
+    subtipo: esRSU ? 'rsu' : subtipoCarta,
   };
 }
 

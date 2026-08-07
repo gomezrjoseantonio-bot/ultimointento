@@ -33,7 +33,8 @@ export interface RendimientoPeriodico {
   dia_cobro?: number;                   // NUEVO: day of month on which interest arrives
   reinvertir: boolean;                  // true = added to capital
   cuenta_destino_id?: number;           // If reinvertir=false
-  fecha_inicio_rendimiento: string;
+  fecha_inicio_rendimiento: string;     // Inicio del devengo · el primer cobro cae un periodo después
+  fecha_primer_cobro?: string;          // NUEVO: fecha a partir de la cual se reciben los intereses (primer cobro)
   fecha_fin_rendimiento?: string;       // For term deposits
   retencion_porcentaje?: number;        // NUEVO: withholding tax %, default 19 (Spain)
   integracion_fiscal?: 'ahorro' | 'general'; // Default ahorro; general for casillas 0046-0051 y otros BIG
