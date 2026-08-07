@@ -68,6 +68,11 @@ const MainLayout: React.FC = () => {
   const isContratosRoute =
     location.pathname === '/contratos' || location.pathname === '/contratos/lista';
   const isFullBleedRoute = isInversionesRoute || isTesoreriaRoute || isContratosRoute;
+  // Financiación · la vista principal NUNCA hace scroll (guía v5): el hero, la
+  // escalera y la cartera se reparten el viewport y es la lista de préstamos la
+  // que scrollea por dentro si hay más de los que caben. Solo `/financiacion`
+  // exacto · el detalle, los wizards y la importación siguen con scroll normal.
+  const isFinanciacionVistaRoute = location.pathname === '/financiacion';
   
   // Sprint 5: Command Palette (Cmd+K)
   const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette();
@@ -146,9 +151,11 @@ const MainLayout: React.FC = () => {
           className={`flex-1 overflow-x-hidden min-h-0 min-w-0 ${
             isPanelRoute
               ? 'overflow-y-hidden px-8'
-              : isFullBleedRoute
-                ? 'overflow-y-auto'
-                : 'overflow-y-auto p-3 sm:p-4 lg:p-6'
+              : isFinanciacionVistaRoute
+                ? 'overflow-y-hidden p-3 sm:p-4 lg:p-6'
+                : isFullBleedRoute
+                  ? 'overflow-y-auto'
+                  : 'overflow-y-auto p-3 sm:p-4 lg:p-6'
           }`}
           tabIndex={-1}
         >

@@ -98,19 +98,13 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     return;
   }
   if (href.startsWith('/financiacion')) {
-    const subPage = href.startsWith('/financiacion/listado')
-      ? import('../modules/financiacion/pages/ListadoPage')
-      : href.startsWith('/financiacion/snowball')
-        ? import('../modules/financiacion/pages/SnowballPage')
-        : href.startsWith('/financiacion/calendario')
-          ? import('../modules/financiacion/pages/CalendarioPage')
-          : href.startsWith('/financiacion/nuevo')
-            ? import('../modules/financiacion/pages/WizardCreatePage')
-            : href.match(/^\/financiacion\/[^/]+\/editar/)
-              ? import('../modules/financiacion/pages/WizardEditPage')
-              : href.match(/^\/financiacion\/[^/]+$/)
-                ? import('../modules/financiacion/pages/DetallePage')
-                : import('../modules/financiacion/pages/DashboardPage');
+    const subPage = href.startsWith('/financiacion/nuevo')
+      ? import('../modules/financiacion/pages/WizardCreatePage')
+      : href.match(/^\/financiacion\/[^/]+\/editar/)
+        ? import('../modules/financiacion/pages/WizardEditPage')
+        : href.match(/^\/financiacion\/[^/]+$/)
+          ? import('../modules/financiacion/pages/DetallePage')
+          : import('../modules/financiacion/vista/VistaFinanciacionPage');
     await Promise.all([import('../modules/financiacion/FinanciacionPage'), subPage]);
     return;
   }

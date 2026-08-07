@@ -113,14 +113,12 @@ const InversionesPosicionesCerradas = lazyWithPreload(() => import('./modules/in
 const InversionesFichaPosicion = lazyWithPreload(() => import('./modules/inversiones/pages/FichaPosicionPage'));
 const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
 
-// T20 Fase 3e · Financiación v5 module · Outlet + 4 sub-pages.
-//   Mockup · docs/audit-inputs/atlas-financiacion-v2.html
-//   Dashboard · Listado · Snowball · Calendario · Detalle (sub-route).
+// Financiación · UI nueva (TAREA-CC-UI-financiacion-v1 · Entregable A).
+//   Mockup · atlas-financiacion-v10.html · UNA sola vista sin scroll que
+//   sustituye a las 4 pestañas (Dashboard · Listado · Snowball · Calendario) y
+//   a sus tablas de 12 y 18 columnas. El Detalle sigue en `/financiacion/:id`.
 const FinanciacionPage = lazyWithPreload(() => import('./modules/financiacion/FinanciacionPage'));
-const FinanciacionDashboard = lazyWithPreload(() => import('./modules/financiacion/pages/DashboardPage'));
-const FinanciacionListado = lazyWithPreload(() => import('./modules/financiacion/pages/ListadoPage'));
-const FinanciacionSnowball = lazyWithPreload(() => import('./modules/financiacion/pages/SnowballPage'));
-const FinanciacionCalendario = lazyWithPreload(() => import('./modules/financiacion/pages/CalendarioPage'));
+const FinanciacionVista = lazyWithPreload(() => import('./modules/financiacion/vista/VistaFinanciacionPage'));
 const FinanciacionDetalle = lazyWithPreload(() => import('./modules/financiacion/pages/DetallePage'));
 const FinanciacionWizardCreate = lazyWithPreload(() => import('./modules/financiacion/pages/WizardCreatePage'));
 const FinanciacionWizardEdit = lazyWithPreload(() => import('./modules/financiacion/pages/WizardEditPage'));
@@ -1049,11 +1047,12 @@ function App() {
               } />
             </Route>
             
-            {/* T20 Fase 3e · Financiación v5 (sustituye horizon/financiacion/Financiacion.tsx)
-                Mockup · atlas-financiacion-v2.html · 4 tabs (Dashboard · Listado · Snowball ·
-                Calendario) + Detalle (`/financiacion/:id`) + wizard alta (`/financiacion/nuevo`)
-                + alta vía FEIN (`/financiacion/nuevo-fein`) + edición (`/financiacion/:id/editar`).
-                El wizard reutiliza `PrestamosWizard` legacy hasta Phase 4 cleanup. */}
+            {/* Financiación · vista única (`/financiacion`) + Detalle
+                (`/financiacion/:id`) + wizard alta (`/financiacion/nuevo`) + alta
+                vía FEIN (`/financiacion/nuevo-fein`) + edición
+                (`/financiacion/:id/editar`) + importación CSV.
+                El wizard reutiliza `PrestamosWizard` legacy hasta Phase 4 cleanup.
+                Snowball/Acelerar sale de aquí · su sitio es Mi Plan. */}
             <Route path="financiacion" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <FinanciacionPage />
@@ -1061,22 +1060,7 @@ function App() {
             }>
               <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <FinanciacionDashboard />
-                </React.Suspense>
-              } />
-              <Route path="listado" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <FinanciacionListado />
-                </React.Suspense>
-              } />
-              <Route path="snowball" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <FinanciacionSnowball />
-                </React.Suspense>
-              } />
-              <Route path="calendario" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <FinanciacionCalendario />
+                  <FinanciacionVista />
                 </React.Suspense>
               } />
               <Route path="nuevo" element={

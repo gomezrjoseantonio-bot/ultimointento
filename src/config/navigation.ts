@@ -63,12 +63,7 @@ export const navigationConfig: NavigationItem[] = [
     icon: Icons.Financiacion,
     module: 'shared',
     section: 'mis-activos',
-    subTabs: [
-      { name: 'Dashboard', href: '/financiacion' },
-      { name: 'Listado', href: '/financiacion/listado' },
-      { name: 'Snowball', href: '/financiacion/snowball' },
-      { name: 'Calendario', href: '/financiacion/calendario' },
-    ],
+    // Sin subTabs · Financiación es UNA sola vista (atlas-financiacion-v10).
   },
   {
     name: 'Personal',
