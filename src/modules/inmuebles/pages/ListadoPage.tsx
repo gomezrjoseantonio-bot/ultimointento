@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Building2 } from 'lucide-react';
 import {
@@ -23,6 +23,7 @@ import PortfolioMap from '../components/PortfolioMap';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import styles from './ListadoPage.module.css';
 import { valoracionesService } from '../../../services/valoracionesService';
+import { subscribeFinancialValuesUpdated } from '../../../services/financialValuesService';
 import { gastosInmuebleService } from '../../../services/gastosInmuebleService';
 import { prestamosService, getAllocationFactor } from '../../../services/prestamosService';
 import { computeRentabilidadNeta } from '../utils/computeRentabilidadNeta';
@@ -142,13 +143,17 @@ const ListadoPage: React.FC = () => {
   const today = useMemo(() => new Date(), []);
 
   // Carga de valoraciones: una sola query al store, resultado en matcher
-  useEffect(() => {
-    let mounted = true;
+  const loadValoracionMatcher = useCallback(() => {
     valoracionesService.getMapValoracionesMasRecientesConMatchingPorNombre('inmueble')
-      .then((m) => { if (mounted) setValoracionMatcher(m); })
+      .then((m) => { setValoracionMatcher(m); })
       .catch(() => { /* sin valoraciones disponibles */ });
-    return () => { mounted = false; };
   }, []);
+
+  useEffect(() => {
+    loadValoracionMatcher();
+  }, [loadValoracionMatcher]);
+
+  useEffect(() => subscribeFinancialValuesUpdated(loadValoracionMatcher), [loadValoracionMatcher]);
 
   // T29 · Carga inputs para KPI Rentabilidad neta · OPEX año actual + cuota anual préstamos vivos.
   useEffect(() => {

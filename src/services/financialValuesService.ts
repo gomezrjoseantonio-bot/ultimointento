@@ -54,6 +54,27 @@ const toNumber = (value: unknown, fallback = 0): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const LOAN_TIPOS = new Set(['prestamo_p2p', 'prestamo', 'préstamo', 'loan', 'p2p-loan']);
+
+const TIPO_LABEL: Record<string, string> = {
+  cuenta_remunerada: 'Cuenta remunerada',
+  deposito_plazo: 'Depósito a plazo',
+  deposito: 'Depósito',
+  accion: 'Acción',
+  etf: 'ETF',
+  reit: 'REIT',
+  fondo_inversion: 'Fondo de inversión',
+  plan_pensiones: 'Plan de pensiones',
+  plan_empleo: 'Plan de empleo',
+  crypto: 'Cripto',
+  otro: 'Otro',
+};
+
+const normalizeTipo = (tipo: string | undefined): string | undefined => {
+  if (!tipo) return undefined;
+  return TIPO_LABEL[tipo] ?? tipo;
+};
+
 const normalizeList = (items: FinancialValuationItem[]): FinancialValuationItem[] =>
   items
     .filter((item) => item.id && item.name)
@@ -61,6 +82,7 @@ const normalizeList = (items: FinancialValuationItem[]): FinancialValuationItem[
       id: String(item.id),
       name: item.name.trim(),
       value: toNumber(item.value),
+      ...(item.tipo !== undefined ? { tipo: item.tipo } : {}),
     }));
 
 const resolvePropertyValue = (property: Property & Record<string, unknown>): number =>
@@ -118,11 +140,14 @@ export async function getFinancialValuesSnapshot(): Promise<FinancialValuesSnaps
     value: resolvePropertyValue(property as Property & Record<string, unknown>),
   }));
 
-  const liveInvestments = investmentItems.map((item) => ({
-    id: String(item._idOriginal),
-    name: item.nombre,
-    value: toNumber(item.valor_actual),
-  }));
+  const liveInvestments = investmentItems
+    .filter((item) => !LOAN_TIPOS.has(item.tipo))
+    .map((item) => ({
+      id: String(item._idOriginal),
+      name: item.nombre,
+      value: toNumber(item.valor_actual),
+      tipo: normalizeTipo(item.tipo),
+    }));
 
   return {
     ipcMonthlyPercent:

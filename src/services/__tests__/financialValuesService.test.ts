@@ -71,7 +71,7 @@ describe('financialValuesService', () => {
       { id: '1', name: 'Inmueble 1', value: 210000 },
     ]);
     expect(snapshot.investmentValuations).toEqual([
-      { id: '7', name: 'Inversión 7', value: 6200 },
+      { id: '7', name: 'Inversión 7', value: 6200, tipo: 'Fondo de inversión' },
     ]);
   });
 

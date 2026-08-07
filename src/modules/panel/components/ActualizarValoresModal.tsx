@@ -88,7 +88,7 @@ const ValuationRows: React.FC<{
         <div key={item.id} className={styles.row}>
           <div className={styles.name}>
             <div className={styles.title}>{item.name}</div>
-            <div className={styles.meta}>ID {item.id}</div>
+          {item.tipo ? <div className={styles.meta}>{item.tipo}</div> : null}
           </div>
           <input
             type="number"
