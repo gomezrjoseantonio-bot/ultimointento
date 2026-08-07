@@ -1,11 +1,14 @@
-// Container del módulo Financiación (v5). Sustituye a
-// `src/modules/horizon/financiacion/Financiacion.tsx` con un patrón
-// Outlet + 4 sub-páginas (Dashboard · Listado · Snowball · Calendario)
-// alineado con Mi Plan / Personal / Tesorería / Inversiones.
+// Container del módulo Financiación.
+//
+// Ya no hay pestañas: Financiación es UNA sola vista sin scroll
+// (`vista/VistaFinanciacionPage`, mockup atlas-financiacion-v10) más el
+// Detalle, los wizards y la importación, todos colgando de este Outlet.
 //
 // Carga préstamos + planes una sola vez y los expone vía `useOutletContext`.
-// La página Detalle (no es un tab) se renderiza también en este Outlet
-// dentro de `/financiacion/:id`.
+//
+// OJO · `rows` (derivado de `helpers.ts`) se mantiene solo porque lo consume
+// todavía el Detalle viejo. La vista nueva NO lo usa: lee del motor
+// (`generarCuadro` + `services/prestamos/lecturas`). Se va con el Entregable B.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
@@ -18,27 +21,6 @@ import { interesDeducibleDelAnio, loanRowFromPrestamo } from './helpers';
 import type { LoanRow } from './types';
 import type { FinanciacionOutletContext } from './FinanciacionContext';
 import styles from './FinanciacionPage.module.css';
-
-interface TabItem {
-  key: 'dashboard' | 'listado' | 'snowball' | 'calendario';
-  label: string;
-  path: string;
-  icon: React.ComponentType<{ size?: number | string; strokeWidth?: number | string }>;
-  countFn?: (rows: LoanRow[]) => number;
-}
-
-const tabs: TabItem[] = [
-  { key: 'dashboard', label: 'Dashboard', path: '/financiacion', icon: Icons.Panel },
-  {
-    key: 'listado',
-    label: 'Listado',
-    path: '/financiacion/listado',
-    icon: Icons.Cartera,
-    countFn: (r) => r.length,
-  },
-  { key: 'snowball', label: 'Snowball', path: '/financiacion/snowball', icon: Icons.Reducir },
-  { key: 'calendario', label: 'Calendario', path: '/financiacion/calendario', icon: Icons.Calendar },
-];
 
 const FinanciacionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -109,11 +91,10 @@ const FinanciacionPage: React.FC = () => {
     return <Navigate to="/financiacion" replace />;
   }
 
-  // El Detalle (`/financiacion/:id`) es una sub-ruta · ahí no mostramos las
-  // tabs principales · son sustituidas por un breadcrumb propio en la página.
+  // El Detalle (`/financiacion/:id`) y los wizards traen su propia cabecera.
   const isDetail =
     /^\/financiacion\/[^/]+$/.test(location.pathname) &&
-    !['/financiacion/listado', '/financiacion/snowball', '/financiacion/calendario', '/financiacion/nuevo', '/financiacion/nuevo-fein'].includes(
+    !['/financiacion/nuevo', '/financiacion/nuevo-fein', '/financiacion/importar'].includes(
       location.pathname,
     );
   const isWizard =
@@ -121,71 +102,35 @@ const FinanciacionPage: React.FC = () => {
     location.pathname === '/financiacion/nuevo-fein' ||
     /^\/financiacion\/[^/]+\/editar$/.test(location.pathname);
 
-  const activeKey: TabItem['key'] = (() => {
-    if (location.pathname === '/financiacion' || location.pathname === '/financiacion/') return 'dashboard';
-    if (location.pathname.startsWith('/financiacion/listado')) return 'listado';
-    if (location.pathname.startsWith('/financiacion/snowball')) return 'snowball';
-    if (location.pathname.startsWith('/financiacion/calendario')) return 'calendario';
-    return 'dashboard';
-  })();
-
-  const showTabs = !isDetail && !isWizard;
+  const showHead = !isDetail && !isWizard;
+  // La vista principal manda sin scroll (guía v5): se reparte la altura del
+  // main en vez de crecer hacia abajo. El resto de rutas siguen con el flujo
+  // normal · un wizard sí puede ser más largo que la ventana.
+  const isVistaPrincipal = location.pathname === '/financiacion';
 
   return (
-    <div className={styles.page}>
-      {!isDetail && !isWizard && (
+    <div className={`${styles.page} ${isVistaPrincipal ? styles.pageSinScroll : ''}`}>
+      {showHead && (
         <PageHead
           title="Financiación"
-          sub="tus hipotecas y préstamos · destino determina deducibilidad fiscal"
+          sub="tu deuda · tu cuota · cuándo te liberas"
+          className={styles.head}
           actions={[
-            // `PageHead` recorta a 2 acciones, así que hay que elegir. Sube la
-            // FEIN en lugar de «Importar CSV»: dar de alta un préstamo empieza
-            // por el papel que te dio el banco, y ese CSV lo usa quien migra de
-            // otra herramienta —una vez en la vida—. Sigue en /financiacion/importar.
+            // Solo la FEIN: «Nuevo préstamo» es ahora el botón oro del hero
+            // (v10), y repetirlo aquí daría dos primarios en la misma pantalla.
+            // La importación CSV sigue en /financiacion/importar.
             {
               label: 'Subir FEIN',
               variant: 'ghost',
               icon: <Icons.Upload size={14} strokeWidth={1.8} />,
               onClick: () => navigate('/financiacion/nuevo-fein'),
             },
-            {
-              label: 'Nuevo préstamo',
-              variant: 'gold',
-              icon: <Icons.Plus size={14} strokeWidth={1.8} />,
-              onClick: () => navigate('/financiacion/nuevo'),
-            },
           ]}
-          tabsSlot={
-            showTabs ? (
-              <div className={styles.tabsBar} role="group" aria-label="Tabs Financiación">
-                {tabs.map((tab) => {
-                  const isActive = tab.key === activeKey;
-                  const Icon = tab.icon;
-                  const count = tab.countFn ? tab.countFn(rows) : null;
-                  return (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      className={isActive ? styles.active : ''}
-                      aria-pressed={isActive}
-                      onClick={() => navigate(tab.path)}
-                    >
-                      <Icon size={14} strokeWidth={1.8} />
-                      {tab.label}
-                      {count != null && count > 0 && (
-                        <span className={styles.tabCount}>{count}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : undefined
-          }
         />
       )}
       {loading ? (
         <div className={styles.loading}>Cargando financiación…</div>
-      ) : showTabs && rows.length === 0 ? (
+      ) : showHead && rows.length === 0 ? (
         <EmptyState
           icon={Landmark}
           title="Sin préstamos aún"

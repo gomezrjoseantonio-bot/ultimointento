@@ -1,0 +1,491 @@
+/* ============================================================
+   Financiación · vista principal (Entregable A)
+   Fuente visual · atlas-financiacion-v10.html
+   Guía · GUIA-DISENO-V5-atlas.md (pantalla de GESTIÓN · hero navy)
+
+   Cero hex: todo sale de los tokens de design-system/v5/tokens.css.
+   Sin rojo ni verde en las cifras · el signo − marca la deuda.
+   ============================================================ */
+
+.vista {
+  font-family: var(--atlas-v5-font-ui);
+  color: var(--atlas-v5-ink-2);
+  letter-spacing: var(--atlas-v5-ls-base);
+  /* Sin scroll · la vista se reparte la altura que le queda al main. */
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mono {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--atlas-v5-ls-mono);
+}
+
+/* ═══ HERO GESTIÓN · navy con borde oro ═══════════════════════ */
+
+.hero {
+  background: var(--atlas-v5-brand);
+  border: 1px solid var(--atlas-v5-gold);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: var(--atlas-v5-sp-3);
+  flex-shrink: 0;
+}
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: 1.15fr 0.92fr 0.92fr 0.98fr auto;
+}
+
+.kpi {
+  padding: 15px var(--atlas-v5-sp-8);
+  border-right: 1px solid var(--atlas-v5-navy-line);
+  display: flex;
+  flex-direction: column;
+  min-height: 92px;
+  min-width: 0;
+}
+
+.kpi:last-child { border-right: none; }
+
+.kpiBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px var(--atlas-v5-sp-8);
+}
+
+.kpiLab {
+  font-size: var(--atlas-v5-fs-chip);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-gold-soft);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.kpiVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--atlas-v5-fw-bold);
+  margin-top: 6px;
+  letter-spacing: -0.03em;
+  line-height: var(--atlas-v5-lh-kpi);
+  /* Sobre el hero navy las cifras van en BLANCO · nunca rojo ni verde. */
+  color: var(--atlas-v5-on-navy-1);
+  white-space: nowrap;
+}
+
+.grande { font-size: 33px; }
+.medio { font-size: var(--atlas-v5-fs-kpi); }
+
+/* El oro es solo para la cifra-meta · libre de deuda. */
+.oro { color: var(--atlas-v5-gold-soft); }
+
+.kpiSub {
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-on-navy-5);
+  margin-top: auto;
+  padding-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kpiSub .mono {
+  color: var(--atlas-v5-on-navy-2);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.btnOro {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px var(--atlas-v5-sp-5);
+  border-radius: var(--atlas-v5-radius-sm);
+  font-family: inherit;
+  font-size: var(--atlas-v5-fs-sub);
+  font-weight: var(--atlas-v5-fw-semibold);
+  background: var(--atlas-v5-gold);
+  color: var(--atlas-v5-white);
+  border: 1px solid var(--atlas-v5-gold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btnOro:hover {
+  background: var(--atlas-v5-gold-ink);
+  border-color: var(--atlas-v5-gold-ink);
+}
+
+/* ═══ Escalera de liberación · inset oscuro ═══════════════════ */
+
+.heroChart {
+  background: var(--atlas-v5-brand-ink);
+  border-top: 1px solid var(--atlas-v5-navy-line-soft);
+  padding: 10px var(--atlas-v5-sp-8) 6px;
+}
+
+.chartHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 2px;
+  gap: var(--atlas-v5-sp-3);
+}
+
+.chartTitle {
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-on-navy-1);
+}
+
+.chartHint {
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-on-navy-6);
+}
+
+.escaleraPlot {
+  width: 100%;
+  line-height: 0;
+}
+
+.escaleraPlot svg { display: block; }
+
+.escaleraVacia {
+  height: 168px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-on-navy-5);
+}
+
+.areaTop { stop-color: var(--atlas-v5-gold-soft); stop-opacity: 0.28; }
+.areaBottom { stop-color: var(--atlas-v5-gold-soft); stop-opacity: 0.02; }
+
+.rejilla { stroke: var(--atlas-v5-navy-line-soft); stroke-width: 1; }
+.linea { stroke: var(--atlas-v5-gold-soft); stroke-width: 2.5; stroke-linejoin: round; }
+.marcador { fill: var(--atlas-v5-gold-soft); }
+.marcadorLibre { fill: none; stroke: var(--atlas-v5-gold-soft); stroke-width: 2; }
+
+.ejeY,
+.ejeX,
+.etiquetaPeldano,
+.etiquetaHoy,
+.etiquetaLibre {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Etiquetas del eje en neutro · sin color de marca (guía v5 §5.4). */
+.ejeY { font-size: 9px; fill: var(--atlas-v5-on-navy-6); }
+.ejeX { font-size: 10px; fill: var(--atlas-v5-on-navy-5); }
+.etiquetaHoy { font-size: 10.5px; fill: var(--atlas-v5-on-navy-1); font-weight: var(--atlas-v5-fw-bold); }
+.etiquetaPeldano { font-size: 9px; fill: var(--atlas-v5-gold-soft); font-weight: var(--atlas-v5-fw-bold); }
+.etiquetaLibre { font-size: 10.5px; fill: var(--atlas-v5-gold-soft); font-weight: var(--atlas-v5-fw-bold); }
+
+/* ═══ Alerta operativa · guía v5 §9.1 ═════════════════════════ */
+
+.alerta {
+  background: var(--atlas-v5-gold-wash);
+  border: 1px solid var(--atlas-v5-warn-border);
+  border-radius: var(--atlas-v5-radius-md);
+  padding: 11px var(--atlas-v5-sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-3);
+  margin-bottom: var(--atlas-v5-sp-3);
+  flex-shrink: 0;
+}
+
+.alertaIcono {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-gold-ink);
+  flex-shrink: 0;
+}
+
+.alertaTexto {
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-2);
+  min-width: 0;
+}
+
+.alertaTexto strong {
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.alertaX {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-gold-ink);
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.alertaX:hover { background: var(--atlas-v5-gold-wash-2); }
+
+/* ═══ Cartera ═════════════════════════════════════════════════ */
+
+.carteraWrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.carteraBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 9px;
+  gap: var(--atlas-v5-sp-3);
+  flex-shrink: 0;
+}
+
+.carteraBarIzq {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-5);
+}
+
+.secLab {
+  font-size: var(--atlas-v5-fs-chip);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.chips { display: inline-flex; gap: var(--atlas-v5-sp-2); }
+
+.chip {
+  padding: 6px 13px;
+  border-radius: var(--atlas-v5-radius-pill);
+  font-family: inherit;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.chip:hover { border-color: var(--atlas-v5-ink-5); }
+
+.chipOn {
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-white);
+  border-color: var(--atlas-v5-brand);
+}
+
+.chipN {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--atlas-v5-fs-chip);
+  padding: 1px 5px;
+  border-radius: var(--atlas-v5-sp-2);
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-4);
+}
+
+.chipOn .chipN {
+  background: var(--atlas-v5-navy-fill);
+  color: var(--atlas-v5-gold-light);
+}
+
+.orden select {
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  border-radius: var(--atlas-v5-radius-sm);
+  padding: 6px var(--atlas-v5-sp-9) 6px 10px;
+  font-family: inherit;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+  cursor: pointer;
+}
+
+.cartera {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-lg);
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Con más préstamos de los que caben scrollea la LISTA · nunca la página. */
+.filas {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.fila {
+  display: grid;
+  grid-template-columns: 34px 1fr 132px 118px 92px 150px 74px;
+  gap: var(--atlas-v5-sp-5);
+  align-items: center;
+  padding: 0 var(--atlas-v5-sp-7);
+  height: 44px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  cursor: pointer;
+  text-align: left;
+}
+
+.filas .fila:last-child { border-bottom: none; }
+.fila:hover { background: var(--atlas-v5-card-alt); }
+
+.fila:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: -2px;
+}
+
+.cabecera {
+  height: 32px;
+  cursor: default;
+  background: var(--atlas-v5-card-alt);
+  flex-shrink: 0;
+}
+
+.cabecera:hover { background: var(--atlas-v5-card-alt); }
+
+.th {
+  font-size: var(--atlas-v5-fs-chip-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--atlas-v5-ls-chip);
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.thR { text-align: right; }
+
+/* Logo de banco · colores oficiales de marca (guía v5 §12.5).
+   Identidad, no estado: por eso pueden chocar con la semántica pos/neg. */
+.logoBanco {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--atlas-v5-radius-icon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-white);
+  font-size: 9.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  font-family: var(--atlas-v5-font-mono-num);
+  background: var(--atlas-v5-gold);
+}
+
+.santander { background: var(--atlas-v5-brand-santander); }
+.sabadell { background: var(--atlas-v5-brand-sabadell); }
+.unicaja { background: var(--atlas-v5-brand-unicaja); }
+.bbva { background: var(--atlas-v5-brand-bbva); }
+.ing { background: var(--atlas-v5-brand-ing); }
+.caixabank { background: var(--atlas-v5-brand-caixabank); }
+
+/* Sin banco apuntado · no se adivina, se dice en neutro. */
+.sinMarca {
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-4);
+  border: 1px solid var(--atlas-v5-line);
+}
+
+.celdaNombre { min-width: 0; }
+
+.nombre {
+  font-size: var(--atlas-v5-fs-sub);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  font-size: var(--atlas-v5-fs-label-sm);
+  color: var(--atlas-v5-ink-4);
+  margin-top: 1px;
+  font-family: var(--atlas-v5-font-mono-num);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Las cifras van en TINTA · el signo − es lo que marca la deuda. */
+.valor {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--atlas-v5-fs-sub);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  text-align: right;
+}
+
+.valor small {
+  display: block;
+  font-weight: var(--atlas-v5-fw-regular);
+  font-size: 10px;
+  margin-top: 1px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.vence {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--atlas-v5-fs-sub);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-3);
+  text-align: right;
+}
+
+/* Amortizado · segmentos (opción E de atlas-indicadores-amortizado). */
+.celdaAmortizado {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.pips { display: flex; gap: 2px; flex-shrink: 0; }
+
+.pips i {
+  width: 6px;
+  height: 15px;
+  border-radius: 2px;
+  background: var(--atlas-v5-line);
+}
+
+.pips i.pipOn { background: var(--atlas-v5-gold); }
+
+.amortizadoTxt {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+  width: 30px;
+  text-align: right;
+}
