@@ -6,8 +6,16 @@
 // migraciones) sigue en los services del repositorio (NO se duplica).
 
 import type { Prestamo, PlanPagos, PeriodoPago } from '../../types/prestamos';
-import { tinDelTramo } from '../../services/prestamos/tinDelTramo';
 import { tramoVigente } from '../../services/prestamos/tramosDeTipo';
+import {
+  cuadroDe,
+  cuotasDelAnio as cuotasDelAnioDelCuadro,
+  getCuota,
+  getFechaVencimiento,
+  getInteresDeducible,
+  getTinVigente,
+  getUltimaCuota,
+} from '../../services/prestamos/lecturas';
 import type { BankPalette, LoanKind, LoanRow } from './types';
 
 const BANK_KEYWORDS: Record<string, BankPalette> = {
@@ -72,63 +80,68 @@ const hoyISO = (): string => new Date().toISOString().slice(0, 10);
  */
 export const tinBase = (p: Prestamo): number => tramoVigente(p, hoyISO()).tinBase;
 
-/**
- * TIN efectivo aproximado · el de hoy, menos lo que rebajen las bonificaciones
- * SI en este tramo rebajan.
- *
- * La rebaja la calcula `tinDelTramo` y no este fichero: era una de las cuatro
- * copias de la misma regla, y la que estaba peor —multiplicaba los puntos por
- * cien y descartaba las bonificaciones recién contratadas, así que la pantalla
- * enseñaba el TIN sin bonificar mientras tesorería preveía la cuota ya
- * bonificada (§6 ter).
- */
-export const effectiveTIN = (p: Prestamo): number => tinDelTramo(p, tramoVigente(p, hoyISO()));
+/** El TIN que se paga hoy · el del tramo vigente, ya bonificado. */
+export const effectiveTIN = (p: Prestamo): number => getTinVigente(p, hoyISO());
 
 const monthsBetween = (start: Date, end: Date): number => {
   return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
 };
 
 /**
- * Cuota mensual aproximada de este préstamo **a un TIN dado** · sistema francés.
+ * La cuota que tendría este préstamo **a otro TIN** · para el «¿y si?».
  *
- * El tipo se pasa aparte para poder preguntar «¿y si fuese otro?» sin escribir
- * la fórmula dos veces: es lo que hace falta para enseñar a qué cuota vas si
- * pierdes una bonificación (§6 ter).
+ * Es lo que hace falta para enseñar a qué cuota vas si pierdes una bonificación
+ * (§6 ter), y por eso el tipo se pasa aparte. Pero la cuota la calcula el motor
+ * sobre un préstamo hipotético, no una fórmula escrita aquí: escribirla otra vez
+ * es lo que hacía que la misma cuota valiese dos cosas distintas según qué
+ * pantalla la enseñara.
  */
 export const cuotaMensualConTin = (p: Prestamo, tinAnual: number): number => {
-  const i = tinAnual / 100 / 12;
-  const n = Math.max(1, p.plazoMesesTotal - p.cuotasPagadas);
-  const C = p.principalVivo;
-  if (i === 0) return C / n;
-  return (C * i) / (1 - Math.pow(1 + i, -n));
+  const comoSiFuera: Prestamo = {
+    ...p,
+    tipo: 'FIJO',
+    tipoNominalAnualFijo: tinAnual,
+    // Sin bonificaciones: el tipo que se pasa YA es el efectivo, y dejarlas
+    // puestas lo rebajaría una segunda vez.
+    bonificaciones: [],
+  };
+  return getCuota(cuadroDe(comoSiFuera), hoyISO());
 };
 
-/**
- * Cuota mensual aproximada · la del TIN que se paga hoy, bonificaciones
- * incluidas.
- */
-export const cuotaMensualAprox = (p: Prestamo): number =>
-  cuotaMensualConTin(p, effectiveTIN(p));
+/** La cuota de hoy · la del cuadro, con su tramo y sus bonificaciones. */
+export const cuotaMensualAprox = (p: Prestamo): number => getCuota(cuadroDe(p), hoyISO());
 
 /**
- * Fecha de vencimiento aproximada · firma + plazoMesesTotal.
+ * Cuándo se paga la última cuota · la del cuadro.
+ *
+ * Era «firma + plazoMesesTotal», que ignora la carencia —que corre todos los
+ * vencimientos—, los días sueltos del arranque y cualquier amortización
+ * anticipada. De ahí salía el «libre en enero de 2037» que no cuadraba con el
+ * calendario de al lado.
  */
-export const fechaVencimiento = (p: Prestamo): string | null => {
-  if (!p.fechaFirma) return null;
-  const f = new Date(p.fechaFirma);
-  if (Number.isNaN(f.getTime())) return null;
-  f.setMonth(f.getMonth() + p.plazoMesesTotal);
-  return f.toISOString();
-};
+export const fechaVencimiento = (p: Prestamo): string | null =>
+  getFechaVencimiento(cuadroDe(p));
 
 const aliasFromPrestamo = (p: Prestamo): string => p.nombre || 'Préstamo sin nombre';
 
-/** Extrae el banco a partir del nombre · primera palabra antes de · / · */
-const bancoFromNombre = (p: Prestamo): string => {
+/**
+ * De qué banco es este préstamo.
+ *
+ * **Del campo `banco`**, que existe y nadie leía. Se sacaba de la primera
+ * palabra del nombre libre, así que dos préstamos del mismo banco contaban como
+ * dos entidades distintas en cuanto sus nombres no empezaran igual: de ahí las
+ * «9 entidades» del panel de Jose, que son 9 préstamos en 5 bancos.
+ *
+ * Los préstamos viejos pueden no tenerlo puesto, y para esos se sigue mirando
+ * el nombre — pero como último recurso, no como fuente.
+ */
+const bancoDelPrestamo = (p: Prestamo): string => {
+  const dicho = (p.banco || '').trim();
+  if (dicho) return dicho;
+
   const n = (p.nombre || '').trim();
   if (!n) return '—';
-  const sep = /\s+[·•|-]\s+/;
-  const parts = n.split(sep);
+  const parts = n.split(/\s+[·•|-]\s+/);
   return parts[0]?.trim() || n;
 };
 
@@ -168,7 +181,7 @@ export const loanRowFromPrestamo = (
   return {
     id: p.id,
     alias: aliasFromPrestamo(p),
-    banco: bancoFromNombre(p),
+    banco: bancoDelPrestamo(p),
     kind: inferLoanKind(p),
 
     principalInicial: principal,
@@ -271,7 +284,7 @@ export const upcomingCuotasFromPlanes = (
       out.push({
         prestamoId: p.id,
         alias: aliasFromPrestamo(p),
-        banco: bancoFromNombre(p),
+        banco: bancoDelPrestamo(p),
         fechaISO: target.fechaCargo,
         diasHasta: diff,
         cuota: target.cuota ?? cuotaMensualAprox(p),
@@ -281,59 +294,80 @@ export const upcomingCuotasFromPlanes = (
       });
       continue;
     }
-    // Fallback · estimar próximo cargo según diaCargoMes.
-    const day = Math.min(28, p.diaCargoMes || 1);
-    const candidate = new Date(reference.getFullYear(), reference.getMonth(), day);
-    if (candidate < reference) candidate.setMonth(candidate.getMonth() + 1);
-    if (candidate > end) continue;
-    const cuota = cuotaMensualAprox(p);
-    const interes = (p.principalVivo * effectiveTIN(p)) / 100 / 12;
+    // Sin plan guardado, el cuadro · que también sabe qué día se cobra y cuánto
+    // de esa cuota es capital. Aquí se estimaba el cargo por `diaCargoMes` y el
+    // interés como «capital vivo por el TIN entre doce», o sea un recibo
+    // inventado con fecha inventada, indistinguible en pantalla de uno real.
+    const delCuadro = cuadroDe(p).plan.periodos.find((per) => {
+      const d = new Date(per.fechaCargo);
+      return !Number.isNaN(d.getTime()) && d >= start && d <= end && !per.pagado;
+    });
+    if (!delCuadro) continue;
+    const diff = diffDaysUTC(new Date(delCuadro.fechaCargo), reference);
     out.push({
       prestamoId: p.id,
       alias: aliasFromPrestamo(p),
-      banco: bancoFromNombre(p),
-      fechaISO: candidate.toISOString(),
-      diasHasta: diffDaysUTC(candidate, reference),
-      cuota,
-      capital: cuota - interes,
-      interes,
-      urgente: diffDaysUTC(candidate, reference) <= 7,
+      banco: bancoDelPrestamo(p),
+      fechaISO: delCuadro.fechaCargo,
+      diasHasta: diff,
+      cuota: delCuadro.cuota,
+      capital: delCuadro.amortizacion,
+      interes: delCuadro.interes,
+      urgente: diff <= 7,
     });
   }
   return out.sort((a, b) => a.diasHasta - b.diasHasta);
 };
 
-/** Cuotas mensuales de un año concreto desde el plan. Fallback · cuota constante. */
+/**
+ * Los recibos de un año · del plan guardado, y si no lo hay, del cuadro.
+ *
+ * Sin plan se devolvían **doce meses de cuota plana**, uno por mes del año,
+ * existiera o no el préstamo en enero, con el interés congelado al de hoy. Un
+ * calendario inventado que se pintaba igual que uno de verdad — y para un mixto
+ * que revisa a mitad de año, doce cifras equivocadas.
+ */
 export const cuotasDelAnio = (
   prestamo: Prestamo,
   plan: PlanPagos | null | undefined,
   year: number,
 ): { mes: number; cuota: number; capital: number; interes: number; pagado?: boolean }[] => {
-  if (plan?.periodos?.length) {
-    return plan.periodos
-      .filter((per: PeriodoPago) => {
+  const periodos: PeriodoPago[] = plan?.periodos?.length
+    ? plan.periodos.filter((per) => {
         const d = new Date(per.fechaCargo);
         return !Number.isNaN(d.getTime()) && d.getFullYear() === year;
       })
-      .map((per: PeriodoPago) => {
-        const d = new Date(per.fechaCargo);
-        return {
-          mes: d.getMonth() + 1,
-          cuota: per.cuota ?? 0,
-          capital: per.amortizacion ?? 0,
-          interes: per.interes ?? 0,
-          pagado: per.pagado,
-        };
-      });
-  }
-  const cuota = cuotaMensualAprox(prestamo);
-  const interes = (prestamo.principalVivo * effectiveTIN(prestamo)) / 100 / 12;
-  return Array.from({ length: 12 }, (_, i) => ({
-    mes: i + 1,
-    cuota,
-    capital: Math.max(0, cuota - interes),
-    interes,
+    : cuotasDelAnioDelCuadro(cuadroDe(prestamo), year);
+
+  return periodos.map((per) => ({
+    mes: new Date(per.fechaCargo).getMonth() + 1,
+    cuota: per.cuota ?? 0,
+    capital: per.amortizacion ?? 0,
+    interes: per.interes ?? 0,
+    pagado: per.pagado,
   }));
+};
+
+/**
+ * Los intereses de un año que además son DEDUCIBLES · §5, defecto D5.
+ *
+ * Dos preguntas encadenadas y cada una en su sitio: cuánto interés se paga ese
+ * año lo dice el cuadro y qué parte de él se deduce lo dice el destino del
+ * capital · las dos las encadena `getInteresDeducible`, que además respeta el
+ * año YA DECLARADO: si consta lo que dijo el certificado del banco, ese es el
+ * número que fue a la renta y una proyección no puede pisarlo.
+ *
+ * Se venía estimando el interés del año como `capitalVivo × TIN`, o sea el de
+ * un año entero al tipo de hoy sobre el capital de hoy: ni el capital baja a lo
+ * largo del año, ni el tipo se queda quieto en un mixto, ni el préstamo tiene
+ * por qué haber existido en enero.
+ */
+export const interesDeducibleDelAnio = (prestamo: Prestamo, year: number): number => {
+  try {
+    return getInteresDeducible(prestamo, cuadroDe(prestamo), year);
+  } catch {
+    return 0;
+  }
 };
 
 /** Gradiente vencimiento · "+X €/mes" liberados al amortizar fin del préstamo. */
@@ -354,7 +388,11 @@ export const buildEscalones = (rows: LoanRow[]): Escalon[] => {
       prestamoId: r.id,
       alias: r.alias,
       banco: r.banco,
-      cuotaLiberada: r.cuotaMensual,
+      // Lo que se libera es la cuota que se estará pagando ESE DÍA, no la de
+      // hoy: la Unicaja acaba en 2043 pagando su cuota variable, no los 454,66 €
+      // del tramo fijo. Con la de hoy, el escalón de un mixto se quedaba corto
+      // justo en el préstamo más largo, que es el que más pesa.
+      cuotaLiberada: getUltimaCuota(cuadroDe(r.raw)) || r.cuotaMensual,
       cuotasRestantes: r.cuotasRestantes,
       tin: r.tin,
     }))

@@ -51,10 +51,35 @@ export interface CobroDeUnMes {
  * banco la vio entrar.
  */
 export function cobrosDeNomina(eventos: TreasuryEvent[]): CobroDeUnMes[] {
+  return agrupadoPorCuentaYMes(eventos, (ev) => ev.sourceType === 'nomina');
+}
+
+/**
+ * **Todo** lo que entra en una cuenta, mes a mes · **la otra rama**.
+ *
+ * Muchos bancos no exigen una nómina: la FEIN de Unicaja dice «Nómina, o
+ * Pensión, o Prestación económica de la Seguridad Social, por importe igual o
+ * superior a 2.500,00 euros netos mensuales; **o ingresos recurrentes por
+ * importe anual igual o superior a 30.000 euros netos**».
+ *
+ * Esa segunda rama **no exige nómina ninguna** —valen alquileres, dividendos,
+ * lo que sea, mientras entre—, y mirándola solo con `cobrosDeNomina` no se
+ * puede cumplir jamás: ahí solo entra lo marcado como nómina. Quien cobra de
+ * sus pisos salía como que **no cumple** y se le decía que perdía medio punto
+ * que no pierde *(Jose · 6 ago 2026: «esto es la madre del cordero»)*.
+ */
+export function ingresosDeLaCuenta(eventos: TreasuryEvent[]): CobroDeUnMes[] {
+  return agrupadoPorCuentaYMes(eventos, () => true);
+}
+
+function agrupadoPorCuentaYMes(
+  eventos: TreasuryEvent[],
+  cuenta: (ev: TreasuryEvent) => boolean
+): CobroDeUnMes[] {
   const porClave = new Map<string, CobroDeUnMes>();
 
   for (const ev of eventos) {
-    if (ev.sourceType !== 'nomina' || ev.type !== 'income') continue;
+    if (ev.type !== 'income' || !cuenta(ev)) continue;
     if (ev.descartado === true) continue;
     if (ev.accountId == null) continue;
 

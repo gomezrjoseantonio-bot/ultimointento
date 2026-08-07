@@ -24,7 +24,7 @@
 // ============================================================================
 
 import type { PlanPagos, PeriodoPago } from '../../types/prestamos';
-import { cuotaFrancesa } from './cuotaFrancesa';
+import { cuotaFrancesaPorDias } from './cuotaFrancesa';
 import { interesDelPeriodo, type BaseDeCalculo } from './baseDeCalculo';
 import { diasEntre } from './fechas';
 
@@ -100,7 +100,13 @@ export function recalcularDesde(plan: PlanPagos, revision: RevisionDeTipo): Plan
 
   // La cuota nueva · francesa sobre lo que queda, al tipo nuevo, en los meses
   // que faltan. Es literalmente la cuenta de la carta.
-  const cuotaCentimos = aCentimos(cuotaFrancesa(vivoCentimos / 100, tinAnual, porRehacer.length));
+  //
+  // Los días de cada periodo salen del propio cuadro, que ya los tiene: contar
+  // meses aquí y días abajo daría una cuota que no amortiza a cero.
+  const diasDeCadaCuota = porRehacer.map((p) => diasEntre(p.devengoDesde, p.devengoHasta));
+  const cuotaCentimos = aCentimos(
+    cuotaFrancesaPorDias(vivoCentimos / 100, tinAnual, diasDeCadaCuota, base)
+  );
 
   const rehechos: PeriodoPago[] = porRehacer.map((p, i) => {
     const esUltimo = i === porRehacer.length - 1;

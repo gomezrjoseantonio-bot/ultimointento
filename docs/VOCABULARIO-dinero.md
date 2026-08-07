@@ -1136,6 +1136,47 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-06** · **Los seguros, y una regla que hoy no existe** *(Jose, con
+  dos matices que cambian el diseño)*.
+
+  **Un seguro se domicilia** —«ya sea agrario o medio pensionista»— así que la
+  prueba está en tesorería y no hace falta un módulo de pólizas. Pero **cada
+  entidad bonifica de forma distinta**: unas por tenerlo, otras por el **número**
+  de seguros, otras por el **importe total** de las primas. La regla necesita
+  las tres formas, no una.
+
+  **Pero no hay que ir sumando cargos hasta diciembre**, y esto lo corrigió Jose
+  cuando yo iba a montarlo así:
+
+  > «Un seguro se da de alta en gastos recurrentes y se proyecta su coste
+  > mensual y anual; en resumen, podemos decir que se cumple. Al revés es no
+  > decir nada... si no prevemos, cómo actuamos; si no informamos, para qué
+  > quiero la aplicación.»
+
+  Y es correcto, porque **un compromiso recurrente no es una previsión
+  incierta**: es un contrato que el usuario dio de alta, con su cuenta de cargo
+  y su calendario, y que ATLAS **ya está proyectando** en tesorería. La
+  diferencia con la nómina es de fondo — una nómina puede venir por menos o no
+  venir, y por eso allí solo cuenta lo cobrado; un seguro contratado ya está
+  contratado. Aquí **lo previsto sí cuenta**: ignorarlo sería que ATLAS
+  desconfiara de su propio dato.
+
+  Con eso la respuesta está el primer día, no en diciembre. `CompromisoRecurrente`
+  ya trae todo lo que hace falta: `tipo: 'seguro'`, `estado: 'activo'`,
+  `cuentaCargo` y su importe. **¿Tienes la póliza?** ¿hay un compromiso activo
+  cargando en esa cuenta. **¿Cuántas?** cuántos compromisos. **¿Prima ≥ X?** lo
+  que ese compromiso tiene proyectado a doce meses.
+
+  Y negarse a responder por prudencia es un modo de fallo, no un valor por
+  defecto: la tercera respuesta de §6 ter está para lo que de verdad no se sabe,
+  no para lo que ATLAS tiene delante.
+
+  **Y falta decidir cómo se reconoce un seguro.** No hay `sourceType: 'seguro'`:
+  hoy se deduce de la categoría, y en `treasuryConfirmationService` de un
+  `concepto.includes('seguro')`. Esa decisión tiene que ser explícita y estar en
+  un sitio, no heredada de una heurística escondida — es la que decide si una
+  bonificación se gana o se pierde. §6 ter.
+
 - **2026-08-06** · **La reforma de las bonificaciones · qué se estandariza y qué
   no** *(Jose, en tres apuntes que cambian el modelo)*.
 
@@ -1183,15 +1224,21 @@ Escrito para no perderlo, con la fecha en que se detectó.
   inmueble, que no salen de la FEIN sino de lo que el usuario tenga dado de
   alta. §6 bis · quinquies.
 
-- **2026-08-06** · **La cuota de la Unicaja son 454,66 €, no 454,57** *(Jose,
-  mirando su recibo)*. ATLAS calcula la anualidad francesa con `TIN/12` y ahí
-  salen 454,58. Nueve céntimos, pero la escritura de Unicaja **no calcula así**:
-  su fórmula lleva un productorio sobre los **días reales** de cada periodo de
-  liquidación, dividiendo entre 36.500. Con meses de 28 a 31 días, la cuota
-  constante que sale de esa fórmula no es la de `TIN/12`. Si se confirma, el
-  rótulo del formulario —«la base cambia el desglose, no la cuota»— es **falso**
-  para ACT/365 y hay que cambiarlo, y con él la cuota. Falta medirlo contra un
-  recibo o el cuadro del banco. §6 bis · bis.
+- **2026-08-07** · ~~**La cuota de la Unicaja son 454,66 €, no 454,57**~~ ·
+  **resuelto, y Jose tenía razón**. La anualidad se resolvía con `TIN/12` —la
+  fórmula cerrada— mientras los intereses se liquidaban contando días reales:
+  dos cuentas distintas dentro del mismo cuadro. Resolviendo la cuota constante
+  **contra el calendario** (25→25 desde el 25-08-2023, ACT/365) salen
+  **454,6599 €**, o sea los 454,66 impresos, al céntimo. La misma cuenta en
+  30/360 da 454,5698 €.
+  O sea que **la base de cálculo mueve la cuota**, no solo el desglose, y el
+  rótulo que decía lo contrario era falso —en `baseDeCalculo.ts` y, de otra
+  manera, en el formulario, que ahora lo dice bien—.
+  Lo que lo tapaba: la última cuota se lleva lo que quede, así que el cuadro
+  cerraba en cero igual y la prueba de «cierra en cero» **no podía fallar
+  nunca**. La deriva se acumulaba 240 meses y aterrizaba entera en la cuota que
+  nadie mira —unos 21 € en la Unicaja—. Ahora se comprueba que la última se
+  parezca a la penúltima, que es lo que sí lo detecta. §6 bis · bis.
 
 - **2026-08-06** · **La FEIN se lee bien; el cuello de botella es el tiempo.**
   Probando contra la FEIN de Unicaja, Claude la leyó **por el modo de facturas**

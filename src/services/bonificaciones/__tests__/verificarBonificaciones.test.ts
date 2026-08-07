@@ -611,3 +611,121 @@ describe('con el mes cerrado', () => {
     expect(c.mensual?.conMovimiento).toBe(2);
   });
 });
+
+// ── La madre del cordero · las dos ramas de la condición de ingresos ────────
+//
+// «Ojo con las nóminas... algunos bancos les valen ingresos recurrentes»
+// *(Jose · 6 ago 2026)*. La FEIN de Unicaja: «Nómina, o Pensión, o Prestación
+// económica de la Seguridad Social, por importe igual o superior a 2.500,00
+// euros netos mensuales; o ingresos recurrentes por importe anual igual o
+// superior a 30.000 euros netos».
+//
+// Son DOS condiciones y basta con una. Mirando solo la nómina, quien cumple
+// por alquileres salía como que no cumple y se le decía que perdía medio punto
+// que no pierde.
+describe('ingresos recurrentes · la rama que no exige nómina', () => {
+  const conIngresos = (importeMensual: number, meses: number) =>
+    Array.from({ length: meses }, (_, i) => ({
+      cuentaId: 1,
+      mes: `2026-${String(i + 1).padStart(2, '0')}`,
+      importe: importeMensual,
+      estado: 'cerrado' as const,
+    }));
+
+  const bonif = (minimoAnualRecurrente?: number) =>
+    ({
+      id: 'b1',
+      tipo: 'NOMINA' as const,
+      nombre: 'Bloque Haberes',
+      reduccionPuntosPorcentuales: 0.5,
+      impacto: { puntos: 0.5 },
+      estado: 'SELECCIONADO' as const,
+      cuentaExigidaId: '1',
+      lookbackMeses: 12,
+      regla: { tipo: 'NOMINA' as const, minimoMensual: 2500, minimoAnualRecurrente },
+    });
+
+  const pruebas = (ingresosRecurrentes: any[]) => ({
+    tarjetas: [],
+    periodosDeTarjeta: [],
+    // NINGUNA nómina · quien cobra de sus pisos no tiene ninguna.
+    cobrosDeNomina: [],
+    recibosDomiciliados: [],
+    ingresosRecurrentes,
+  });
+
+  it('cumple quien cobra 3.000 al mes de alquileres, sin una sola nómina', () => {
+    const [c] = verificarBonificaciones(
+      [bonif(30000)],
+      pruebas(conIngresos(3000, 12)),
+      '2026-12-31'
+    );
+
+    expect(c.veredicto).toBe('cumple');
+    expect(c.medido).toBe(36000);
+  });
+
+  // Sin esa rama en el contrato, la nómina manda y sigue sin poder mirarse.
+  it('pero solo si el contrato la ofrece', () => {
+    const [c] = verificarBonificaciones(
+      [bonif(undefined)],
+      pruebas(conIngresos(3000, 12)),
+      '2026-12-31'
+    );
+
+    expect(c.veredicto).toBe('no_verificable');
+  });
+
+  // Fallar por esta rama no es fallar: la disyunción sigue viva por la otra.
+  it('y quedarse corto por aquí no decide nada · manda la nómina', () => {
+    const [c] = verificarBonificaciones(
+      [bonif(30000)],
+      pruebas(conIngresos(500, 12)),
+      '2026-12-31'
+    );
+
+    expect(c.veredicto).toBe('no_verificable');
+    expect(c.motivo).toContain('nómina');
+  });
+
+  // Lo previsto no cuenta, y un mes cerrado A MANO cuenta con CERO: cerrarlo es
+  // decir que lo que quedaba abierto no llegó a entrar (§6 quater). Es la misma
+  // regla que aplica la nómina, y ahora la aplican las dos leyendo el mismo
+  // sitio — escrita dos veces, bastaba tocar una para que contaran distinto.
+  it('un mes abierto no suma aunque el mes esté cerrado a mano', () => {
+    const once = conIngresos(3000, 11);
+    const conUnoAbierto = [
+      ...once,
+      { cuentaId: 1, mes: '2026-12', importe: 3000, estado: 'abierto' as const },
+    ];
+
+    const [sinCerrarElMes] = verificarBonificaciones(
+      [bonif(30000)],
+      pruebas(conUnoAbierto),
+      '2026-12-31'
+    );
+    const [cerrandoloAMano] = verificarBonificaciones(
+      [bonif(30000)],
+      { ...pruebas(conUnoAbierto), mesesCerrados: ['2026-12'] },
+      '2026-12-31'
+    );
+
+    // 33.000 € de los once meses cobrados · el doceavo no entró.
+    expect(sinCerrarElMes.medido).toBe(33000);
+    expect(cerrandoloAMano.medido).toBe(33000);
+  });
+
+  // El motivo decía «N meses cobrados», y entre esos N puede haber alguno
+  // cerrado a mano en el que no entró nada. Afirmar que se cobró un mes vacío
+  // es afirmar un hecho que no ocurrió.
+  it('y el motivo no llama «cobrado» a un mes en el que no entró nada', () => {
+    const [c] = verificarBonificaciones(
+      [bonif(30000)],
+      pruebas(conIngresos(3000, 12)),
+      '2026-12-31'
+    );
+
+    expect(c.motivo).toContain('ingresos recurrentes');
+    expect(c.motivo).not.toContain('cobrados');
+  });
+});
