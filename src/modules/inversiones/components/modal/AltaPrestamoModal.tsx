@@ -1,10 +1,13 @@
-// AltaPrestamoModal · alta préstamo P2P / a empresa · PR 3 T-INVERSIONES-V5
-// Mockup vinculante · docs/specs/atlas-inversiones-v3 (2).html §E.
+// AltaPrestamoModal · alta y edición de préstamo P2P / a empresa / a familiares
+// PR 3 T-INVERSIONES-V5 · Mockup vinculante · docs/specs/atlas-inversiones-v3 (2).html §E.
 // Preview · cálculo financiero · cobros netos previstos en vivo.
+//
+// Modo edición · se activa pasando `posicion`. Reutiliza el mismo formulario
+// (mismos campos, mismo preview) y guarda con `updatePosicion` desde el padre.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { Icons, showToastV5 } from '../../../../design-system/v5';
-import type { PosicionInversion } from '../../../../types/inversiones';
+import type { PosicionInversion, SubtipoPrestamo } from '../../../../types/inversiones';
 import type { RendimientoPeriodico } from '../../../../types/inversiones-extended';
 import ModalAtlas, { ModalAtlasBody, ModalAtlasForm } from './ModalAtlas';
 import ModalAtlasHeader from './ModalAtlasHeader';
@@ -20,14 +23,28 @@ import ModalAtlasPreview, {
 } from './ModalAtlasPreview';
 import CuentaSelect from './CuentaSelect';
 import { formatCurrency } from '../../helpers';
+import {
+  addMonthsISO,
+  diaCobroDesde,
+  mesesCobroDesde,
+  PERIODO_MESES,
+  PERIODOS_ANIO,
+  primerCobroPorDefecto,
+  toDateInput,
+  type FrecuenciaCobro,
+} from '../../utils/prestamoCalendario';
 import styles from '../../styles/atlas-inversiones.module.css';
 
 type Modalidad = 'solo_intereses' | 'capital_e_intereses' | 'al_vencimiento';
-type Frecuencia = 'mensual' | 'trimestral' | 'semestral' | 'anual';
-type Subtipo = 'p2p' | 'empresa';
+type Frecuencia = FrecuenciaCobro;
+type Subtipo = SubtipoPrestamo;
 
 export interface AltaPrestamoModalProps {
+  /** Presente ⇒ modo edición · el formulario se precarga con sus valores. */
+  posicion?: PosicionInversion;
   onSave: (data: Partial<PosicionInversion> & { importe_inicial?: number }) => Promise<void> | void;
+  /** Solo en modo edición · muestra la zona peligrosa con borrado lógico. */
+  onDelete?: () => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -36,6 +53,7 @@ const today = () => new Date().toISOString().split('T')[0];
 const SUBTIPOS: { value: Subtipo; label: string; sub: string }[] = [
   { value: 'p2p', label: 'P2P', sub: 'plataformas (Mintos · SmartFlip…)' },
   { value: 'empresa', label: 'A empresa', sub: 'préstamo a tu propia SL u otra' },
+  { value: 'familiar', label: 'A familiares', sub: 'préstamo a un familiar o allegado' },
 ];
 
 const MODALIDADES: { value: Modalidad; label: string }[] = [
@@ -51,20 +69,135 @@ const FRECUENCIAS: { value: Frecuencia; label: string }[] = [
   { value: 'anual', label: 'Anual' },
 ];
 
-const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }) => {
+const ENTIDAD_LABEL: Record<Subtipo, string> = {
+  p2p: 'Plataforma',
+  empresa: 'Empresa deudora',
+  familiar: 'Familiar deudor',
+};
+
+const ENTIDAD_PLACEHOLDER: Record<Subtipo, string> = {
+  p2p: 'Ej. SmartFlip, Mintos…',
+  empresa: 'Ej. propia, Unihouser…',
+  familiar: 'Ej. hermano, padres…',
+};
+
+/**
+ * Retención por defecto. Solo empresarios, profesionales y entidades están
+ * obligados a retener; un particular que devuelve un préstamo familiar no
+ * practica retención, así que el cobro llega íntegro.
+ */
+const RETENCION_DEFECTO: Record<Subtipo, string> = {
+  p2p: '19',
+  empresa: '19',
+  familiar: '0',
+};
+
+const formatFechaCorta = (iso?: string): string => {
+  if (!iso) return '—';
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  if (!y || !m || !d) return '—';
+  return `${d}/${m}/${y}`;
+};
+
+/** Detecta el subtipo de un préstamo legacy sin `subtipo_prestamo` guardado. */
+const inferirSubtipo = (posicion?: PosicionInversion): Subtipo => {
+  if (!posicion) return 'p2p';
+  if (posicion.subtipo_prestamo) return posicion.subtipo_prestamo;
+  const entidad = posicion.entidad ?? '';
+  if (/propi[ao]|empresa|\bs\.?l\.?\b|\bs\.?a\.?\b/i.test(entidad)) return 'empresa';
+  return 'p2p';
+};
+
+const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
+  posicion,
+  onSave,
+  onDelete,
+  onClose,
+}) => {
+  const uid = useId();
+  const esEdicion = posicion != null;
+  const rendOrig = posicion?.rendimiento as RendimientoPeriodico | undefined;
+
   const [loading, setLoading] = useState(false);
-  const [subtipo, setSubtipo] = useState<Subtipo>('p2p');
-  const [nombre, setNombre] = useState('');
-  const [entidad, setEntidad] = useState('');
-  const [capital, setCapital] = useState('');
-  const [tin, setTin] = useState('');
-  const [duracionMeses, setDuracionMeses] = useState('');
-  const [modalidad, setModalidad] = useState<Modalidad>('solo_intereses');
-  const [frecuencia, setFrecuencia] = useState<Frecuencia>('mensual');
-  const [retencion, setRetencion] = useState('19');
-  const [fecha, setFecha] = useState(today());
-  const [cuentaCargo, setCuentaCargo] = useState('');
-  const [cuentaCobro, setCuentaCobro] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [subtipo, setSubtipo] = useState<Subtipo>(() => inferirSubtipo(posicion));
+  const [nombre, setNombre] = useState(posicion?.nombre ?? '');
+  const [entidad, setEntidad] = useState(posicion?.entidad ?? '');
+  const [capital, setCapital] = useState(() => {
+    const cap = posicion?.total_aportado ?? posicion?.valor_actual;
+    return cap != null && Number.isFinite(cap) ? String(cap) : '';
+  });
+  const [tin, setTin] = useState(() => {
+    const t = rendOrig?.tasa_interes_anual;
+    return t != null && Number.isFinite(t) ? String(t) : '';
+  });
+  const [duracionMeses, setDuracionMeses] = useState(
+    posicion?.duracion_meses != null ? String(posicion.duracion_meses) : '',
+  );
+  const [modalidad, setModalidad] = useState<Modalidad>(
+    posicion?.modalidad_devolucion ?? 'solo_intereses',
+  );
+  const [frecuencia, setFrecuencia] = useState<Frecuencia>(() => {
+    const f = posicion?.frecuencia_cobro;
+    if (f && f !== 'al_vencimiento') return f;
+    const fp = rendOrig?.frecuencia_pago;
+    return fp ?? 'mensual';
+  });
+  const [retencion, setRetencion] = useState(() => {
+    const r = posicion?.retencion_fiscal ?? rendOrig?.retencion_porcentaje;
+    if (r != null && Number.isFinite(r)) return String(r);
+    return RETENCION_DEFECTO[inferirSubtipo(posicion)];
+  });
+  // El usuario ha tocado la retención ⇒ dejamos de autoajustarla por subtipo.
+  const [retencionTocada, setRetencionTocada] = useState(esEdicion);
+  const [fecha, setFecha] = useState(
+    () => toDateInput(posicion?.fecha_compra) || today(),
+  );
+  const [cuentaCargo, setCuentaCargo] = useState(
+    posicion?.cuenta_cargo_id != null ? String(posicion.cuenta_cargo_id) : '',
+  );
+  const [cuentaCobro, setCuentaCobro] = useState(
+    posicion?.cuenta_cobro_id != null ? String(posicion.cuenta_cobro_id) : '',
+  );
+
+  const esVencimiento = modalidad === 'al_vencimiento';
+  const duracionNum = parseFloat(duracionMeses) || 0;
+
+  // ── Fecha a partir de la cual se reciben los intereses ────────────────
+  // Se propone automáticamente (firma + 1 periodo · o vencimiento si bullet)
+  // mientras el usuario no la haya tocado; a partir de ahí manda su valor.
+  const primerCobroSugerido = useMemo(
+    () => primerCobroPorDefecto(fecha, frecuencia, esVencimiento, duracionNum),
+    [fecha, frecuencia, esVencimiento, duracionNum],
+  );
+
+  const [primerCobro, setPrimerCobro] = useState(() => {
+    if (rendOrig?.fecha_primer_cobro) return toDateInput(rendOrig.fecha_primer_cobro);
+    // Legacy · el primer pago cae un periodo después del inicio del devengo.
+    if (rendOrig?.fecha_inicio_rendimiento) {
+      const paso = PERIODO_MESES[rendOrig.frecuencia_pago ?? 'mensual'] ?? 1;
+      return addMonthsISO(toDateInput(rendOrig.fecha_inicio_rendimiento), paso);
+    }
+    return '';
+  });
+  const [primerCobroTocado, setPrimerCobroTocado] = useState(
+    Boolean(rendOrig?.fecha_primer_cobro || rendOrig?.fecha_inicio_rendimiento),
+  );
+
+  useEffect(() => {
+    if (primerCobroTocado) return;
+    setPrimerCobro(primerCobroSugerido);
+  }, [primerCobroSugerido, primerCobroTocado]);
+
+  useEffect(() => {
+    if (retencionTocada) return;
+    setRetencion(RETENCION_DEFECTO[subtipo]);
+  }, [subtipo, retencionTocada]);
+
+  const fechaVencimiento = useMemo(
+    () => (fecha && duracionNum > 0 ? addMonthsISO(fecha, Math.round(duracionNum)) : ''),
+    [fecha, duracionNum],
+  );
 
   // ── Preview · cobros netos previstos ─────────────────────────────
   // capital_e_intereses · cuota francesa real (PMT) · convertida a la
@@ -85,8 +218,7 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
     const retencionImporte = interesBruto * r;
     const neto = interesBruto - retencionImporte;
 
-    const periodosAño =
-      frecuencia === 'mensual' ? 12 : frecuencia === 'trimestral' ? 4 : frecuencia === 'semestral' ? 2 : 1;
+    const periodosAño = PERIODOS_ANIO[frecuencia];
 
     let cuotaPeriodica: number;
     if (modalidad === 'al_vencimiento') {
@@ -127,33 +259,49 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
       showToastV5('Selecciona la cuenta de cargo del capital');
       return;
     }
+    const fechaPrimerCobro = primerCobro || primerCobroSugerido;
+    if (!fechaPrimerCobro) {
+      showToastV5('Indica desde cuándo se reciben los intereses');
+      return;
+    }
+    if (fechaPrimerCobro < fecha) {
+      showToastV5('El primer cobro de intereses no puede ser anterior a la firma');
+      return;
+    }
     setLoading(true);
     try {
-      const esVencimiento = modalidad === 'al_vencimiento';
-      const frecuenciaPago = esVencimiento ? 'anual' : frecuencia;
+      const frecuenciaPago: Frecuencia = esVencimiento ? 'anual' : frecuencia;
       const retencionNum = parseFloat(retencion) || 0;
+      const vencimiento = addMonthsISO(fecha, Math.round(duracion));
+      // Inicio del devengo · el generador emite el primer pago un periodo
+      // después, así que retrocedemos un periodo desde el primer cobro. En
+      // bullet el devengo arranca en la firma (pago único al vencimiento).
+      const inicioDevengo = esVencimiento
+        ? fecha
+        : addMonthsISO(fechaPrimerCobro, -PERIODO_MESES[frecuencia]);
+
       const rendimiento: RendimientoPeriodico = {
         tipo_rendimiento: 'interes_fijo',
         tasa_interes_anual: tinNum,
         frecuencia_pago: frecuenciaPago,
+        meses_cobro: esVencimiento
+          ? mesesCobroDesde(fechaPrimerCobro, 'anual')
+          : mesesCobroDesde(fechaPrimerCobro, frecuencia),
+        dia_cobro: diaCobroDesde(fechaPrimerCobro),
         reinvertir: esVencimiento,
-        fecha_inicio_rendimiento: `${fecha}T12:00:00.000Z`,
+        fecha_inicio_rendimiento: `${inicioDevengo}T12:00:00.000Z`,
+        fecha_primer_cobro: `${fechaPrimerCobro}T12:00:00.000Z`,
+        ...(vencimiento && { fecha_fin_rendimiento: `${vencimiento}T12:00:00.000Z` }),
         retencion_porcentaje: retencionNum,
-        pagos_generados: [],
+        pagos_generados: rendOrig?.pagos_generados ?? [],
       };
-      await onSave({
+
+      const comun: Partial<PosicionInversion> = {
         nombre: nombre.trim(),
         tipo: 'prestamo_p2p',
-        entidad: subtipo === 'empresa' ? entidad.trim() || 'propia' : entidad.trim(),
+        entidad: entidad.trim(),
+        subtipo_prestamo: subtipo,
         fecha_compra: `${fecha}T12:00:00.000Z`,
-        fecha_valoracion: `${fecha}T12:00:00.000Z`,
-        valor_actual: cap,
-        importe_inicial: cap,
-        total_aportado: cap,
-        rentabilidad_euros: 0,
-        rentabilidad_porcentaje: 0,
-        aportaciones: [],
-        activo: true,
         cuenta_cargo_id: Number(cuentaCargo),
         cuenta_cobro_id: cuentaCobro ? Number(cuentaCobro) : undefined,
         duracion_meses: duracion,
@@ -161,19 +309,86 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
         frecuencia_cobro: esVencimiento ? 'al_vencimiento' : frecuencia,
         retencion_fiscal: retencionNum,
         rendimiento,
-      });
+      };
+
+      if (esEdicion && posicion) {
+        // Edición · no reescribimos el histórico de cobros. Si cambia el
+        // capital, ajustamos la aportación inicial y el valor vivo por delta
+        // (así se conserva lo ya amortizado).
+        const capitalPrevio = Number(posicion.total_aportado ?? posicion.valor_actual ?? 0);
+        const delta = cap - capitalPrevio;
+        const aportaciones = [...(posicion.aportaciones ?? [])].sort((a, b) =>
+          String(a.fecha).localeCompare(String(b.fecha)),
+        );
+        const idxInicial = aportaciones.findIndex((a) => a.tipo === 'aportacion');
+        if (delta !== 0 && idxInicial >= 0) {
+          aportaciones[idxInicial] = {
+            ...aportaciones[idxInicial],
+            importe: Number(aportaciones[idxInicial].importe ?? 0) + delta,
+            fecha: `${fecha}T12:00:00.000Z`,
+            cuenta_cargo_id: Number(cuentaCargo),
+          };
+        }
+        const totalAportado = aportaciones.reduce(
+          (sum, a) =>
+            a.tipo === 'reembolso'
+              ? sum - Number(a.importe ?? 0)
+              : a.tipo === 'aportacion'
+                ? sum + Number(a.importe ?? 0)
+                : sum,
+          0,
+        );
+        await onSave({
+          ...comun,
+          ...(delta !== 0 && {
+            aportaciones,
+            total_aportado: totalAportado,
+            valor_actual: Math.max(0, Number(posicion.valor_actual ?? 0) + delta),
+            fecha_valoracion: posicion.fecha_valoracion,
+          }),
+        });
+      } else {
+        await onSave({
+          ...comun,
+          fecha_valoracion: `${fecha}T12:00:00.000Z`,
+          valor_actual: cap,
+          importe_inicial: cap,
+          total_aportado: cap,
+          rentabilidad_euros: 0,
+          rentabilidad_porcentaje: 0,
+          aportaciones: [],
+          activo: true,
+        });
+      }
       onClose();
     } finally {
       setLoading(false);
     }
   };
 
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setLoading(true);
+    try {
+      await onDelete();
+      onClose();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sinRetencion = (parseFloat(retencion) || 0) === 0;
+
   return (
-    <ModalAtlas onClose={onClose} ariaLabel="Alta préstamo">
+    <ModalAtlas onClose={onClose} ariaLabel={esEdicion ? 'Editar préstamo' : 'Alta préstamo'}>
       <ModalAtlasHeader
         icon={<Icons.Banknote size={18} strokeWidth={1.7} />}
-        title="Nuevo préstamo"
-        subtitle="P2P o a empresa · cobros netos previstos en vivo"
+        title={esEdicion ? 'Editar préstamo' : 'Nuevo préstamo'}
+        subtitle={
+          esEdicion
+            ? `${posicion?.nombre ?? ''} · condiciones y calendario de cobros`
+            : 'P2P · a empresa o a familiares · cobros netos previstos en vivo'
+        }
         onClose={onClose}
       />
       <form onSubmit={submit} style={{ display: 'contents' }}>
@@ -181,7 +396,7 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
           <ModalAtlasForm>
             <div className={styles.section}>
               <div className={styles.sectionTitle}>Modalidad de préstamo</div>
-              <div className={`${styles.selectorH} ${styles.cols2}`} role="radiogroup">
+              <div className={`${styles.selectorH} ${styles.cols3}`} role="radiogroup">
                 {SUBTIPOS.map((s) => {
                   const active = subtipo === s.value;
                   return (
@@ -205,10 +420,11 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
               <div className={styles.sectionTitle}>Identificación</div>
               <div className={styles.row}>
                 <div className={styles.field}>
-                  <label className={styles.label}>
+                  <label className={styles.label} htmlFor={`${uid}-nombre`}>
                     Nombre del préstamo<span className={styles.req}>*</span>
                   </label>
                   <input
+                    id={`${uid}-nombre`}
                     type="text"
                     className={styles.input}
                     value={nombre}
@@ -218,16 +434,17 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
                   />
                 </div>
                 <div className={styles.field}>
-                  <label className={styles.label}>
-                    {subtipo === 'p2p' ? 'Plataforma' : 'Empresa deudora'}
+                  <label className={styles.label} htmlFor={`${uid}-entidad`}>
+                    {ENTIDAD_LABEL[subtipo]}
                     <span className={styles.req}>*</span>
                   </label>
                   <input
+                    id={`${uid}-entidad`}
                     type="text"
                     className={styles.input}
                     value={entidad}
                     onChange={(e) => setEntidad(e.target.value)}
-                    placeholder={subtipo === 'p2p' ? 'Ej. SmartFlip, Mintos…' : 'Ej. propia, Unihouser…'}
+                    placeholder={ENTIDAD_PLACEHOLDER[subtipo]}
                     required
                   />
                 </div>
@@ -237,10 +454,11 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
               <div className={styles.sectionTitle}>Condiciones financieras</div>
               <div className={`${styles.row} ${styles.cols3}`}>
                 <div className={styles.field}>
-                  <label className={styles.label}>
+                  <label className={styles.label} htmlFor={`${uid}-capital`}>
                     Capital<span className={styles.req}>€</span>
                   </label>
                   <input
+                    id={`${uid}-capital`}
                     type="number"
                     step="0.01"
                     min="0"
@@ -251,10 +469,11 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
                   />
                 </div>
                 <div className={styles.field}>
-                  <label className={styles.label}>
+                  <label className={styles.label} htmlFor={`${uid}-tin`}>
                     TIN<span className={styles.req}>%</span>
                   </label>
                   <input
+                    id={`${uid}-tin`}
                     type="number"
                     step="0.01"
                     min="0"
@@ -265,10 +484,11 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
                   />
                 </div>
                 <div className={styles.field}>
-                  <label className={styles.label}>
+                  <label className={styles.label} htmlFor={`${uid}-duracion`}>
                     Duración<span className={styles.req}>meses</span>
                   </label>
                   <input
+                    id={`${uid}-duracion`}
                     type="number"
                     step="1"
                     min="1"
@@ -281,8 +501,11 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
               </div>
               <div className={`${styles.row} ${styles.cols3}`}>
                 <div className={styles.field}>
-                  <label className={styles.label}>Modalidad devolución</label>
+                  <label className={styles.label} htmlFor={`${uid}-modalidad`}>
+                    Modalidad devolución
+                  </label>
                   <select
+                    id={`${uid}-modalidad`}
                     className={styles.select}
                     value={modalidad}
                     onChange={(e) => setModalidad(e.target.value as Modalidad)}
@@ -295,11 +518,15 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
                   </select>
                 </div>
                 <div className={styles.field}>
-                  <label className={styles.label}>Frecuencia cobro</label>
+                  <label className={styles.label} htmlFor={`${uid}-frecuencia`}>
+                    Frecuencia cobro
+                  </label>
                   <select
+                    id={`${uid}-frecuencia`}
                     className={styles.select}
                     value={frecuencia}
                     onChange={(e) => setFrecuencia(e.target.value as Frecuencia)}
+                    disabled={esVencimiento}
                   >
                     {FRECUENCIAS.map((f) => (
                       <option key={f.value} value={f.value}>
@@ -307,28 +534,41 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
                       </option>
                     ))}
                   </select>
+                  {esVencimiento && (
+                    <div className={styles.hint}>Bullet · cobro único al vencimiento.</div>
+                  )}
                 </div>
                 <div className={styles.field}>
-                  <label className={styles.label}>
+                  <label className={styles.label} htmlFor={`${uid}-retencion`}>
                     Retención<span className={styles.opt}>%</span>
                   </label>
                   <input
+                    id={`${uid}-retencion`}
                     type="number"
                     step="0.01"
                     min="0"
                     max="100"
                     className={`${styles.input} ${styles.mono}`}
                     value={retencion}
-                    onChange={(e) => setRetencion(e.target.value)}
+                    onChange={(e) => {
+                      setRetencionTocada(true);
+                      setRetencion(e.target.value);
+                    }}
                   />
+                  {subtipo === 'familiar' && sinRetencion && (
+                    <div className={styles.hint}>
+                      Un particular no practica retención · el cobro llega íntegro.
+                    </div>
+                  )}
                 </div>
               </div>
               <div className={styles.row}>
                 <div className={styles.field}>
-                  <label className={styles.label}>
+                  <label className={styles.label} htmlFor={`${uid}-firma`}>
                     Fecha firma<span className={styles.req}>*</span>
                   </label>
                   <input
+                    id={`${uid}-firma`}
                     type="date"
                     className={styles.input}
                     value={fecha}
@@ -336,7 +576,27 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
                     required
                   />
                 </div>
-                <div />
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor={`${uid}-intereses-desde`}>
+                    Intereses desde<span className={styles.req}>*</span>
+                  </label>
+                  <input
+                    id={`${uid}-intereses-desde`}
+                    type="date"
+                    className={styles.input}
+                    value={primerCobro}
+                    min={fecha || undefined}
+                    onChange={(e) => {
+                      setPrimerCobroTocado(true);
+                      setPrimerCobro(e.target.value);
+                    }}
+                    required
+                  />
+                  <div className={styles.hint}>
+                    Fecha del primer cobro de intereses · marca el día y los meses
+                    del calendario de cobros.
+                  </div>
+                </div>
               </div>
             </div>
             <div className={styles.section}>
@@ -355,6 +615,60 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
                 />
               </div>
             </div>
+
+            {/* Zona peligrosa · soft delete · solo en edición */}
+            {esEdicion && onDelete && (
+              <div className={styles.section}>
+                <div className={styles.sectionTitle} style={{ color: 'var(--atlas-v5-neg)' }}>
+                  Zona peligrosa
+                </div>
+                {!confirmDelete ? (
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnGhost}`}
+                    onClick={() => setConfirmDelete(true)}
+                    style={{ borderColor: 'var(--atlas-v5-neg)', color: 'var(--atlas-v5-neg)' }}
+                  >
+                    <Icons.Delete size={13} strokeWidth={2} /> Eliminar préstamo
+                  </button>
+                ) : (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      background: 'var(--atlas-v5-neg-wash)',
+                      borderRadius: 8,
+                      borderLeft: '3px solid var(--atlas-v5-neg)',
+                    }}
+                  >
+                    <div style={{ fontSize: 12, marginBottom: 10, color: 'var(--atlas-v5-ink-2)' }}>
+                      Marca el préstamo como inactivo. No se borra · podrás
+                      recuperarlo desde "Posiciones cerradas".
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <ModalAtlasButtonGhost
+                        type="button"
+                        onClick={() => setConfirmDelete(false)}
+                        disabled={loading}
+                      >
+                        Cancelar
+                      </ModalAtlasButtonGhost>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnGold}`}
+                        onClick={handleDelete}
+                        disabled={loading}
+                        style={{
+                          background: 'var(--atlas-v5-neg)',
+                          borderColor: 'var(--atlas-v5-neg)',
+                        }}
+                      >
+                        Confirmar eliminación
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </ModalAtlasForm>
           <ModalAtlasPreview
             header="Cálculo financiero"
@@ -369,7 +683,7 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
             />
             <ModalAtlasPreviewBlock>
               <ModalAtlasPreviewRow
-                k={`Cuota ${frecuencia}`}
+                k={`Cuota ${esVencimiento ? 'única' : frecuencia}`}
                 v={formatCurrency(calc.cuotaPeriodica)}
               />
               <ModalAtlasPreviewRow k="Interés bruto" v={formatCurrency(calc.interesBruto)} />
@@ -380,10 +694,29 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
               />
               <ModalAtlasPreviewRow k="Neto final" v={formatCurrency(calc.neto)} variant="pos" />
             </ModalAtlasPreviewBlock>
+            <ModalAtlasPreviewBlock>
+              <ModalAtlasPreviewRow
+                k="Primer cobro"
+                v={formatFechaCorta(primerCobro || primerCobroSugerido)}
+              />
+              <ModalAtlasPreviewRow k="Vencimiento" v={formatFechaCorta(fechaVencimiento)} />
+            </ModalAtlasPreviewBlock>
             <ModalAtlasPreviewBanner>
-              Tributación · base ahorro como rendimiento del capital
-              mobiliario. La retención (default 19%) la practica el pagador
-              en cada cobro.
+              {subtipo === 'familiar' ? (
+                <>
+                  Préstamo entre particulares · el prestatario no está obligado a
+                  practicar retención, por eso el neto llega íntegro. Los intereses
+                  siguen tributando en tu base del ahorro como rendimiento del
+                  capital mobiliario. Conviene formalizarlo por escrito y
+                  presentar el modelo 600 (exento de ITP).
+                </>
+              ) : (
+                <>
+                  Tributación · base ahorro como rendimiento del capital
+                  mobiliario. La retención (default 19%) la practica el pagador
+                  en cada cobro.
+                </>
+              )}
             </ModalAtlasPreviewBanner>
           </ModalAtlasPreview>
         </ModalAtlasBody>
@@ -391,7 +724,9 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
           info={
             <>
               <Icons.Info size={13} strokeWidth={2} />
-              Los cobros mensuales se generan automáticamente tras crear.
+              {esEdicion
+                ? 'Los cobros ya registrados se conservan · se recalcula el calendario futuro.'
+                : 'Los cobros se generan automáticamente desde la fecha de inicio de intereses.'}
             </>
           }
           actions={
@@ -400,7 +735,11 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({ onSave, onClose }
                 Cancelar
               </ModalAtlasButtonGhost>
               <ModalAtlasButtonGold type="submit" disabled={loading}>
-                {loading ? 'Guardando…' : 'Crear préstamo'}
+                {loading
+                  ? 'Guardando…'
+                  : esEdicion
+                    ? 'Guardar cambios'
+                    : 'Crear préstamo'}
               </ModalAtlasButtonGold>
             </>
           }

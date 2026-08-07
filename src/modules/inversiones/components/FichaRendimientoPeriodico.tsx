@@ -5,24 +5,29 @@
 // líneas 783-940 (SmartFlip · préstamo P2P).
 
 import React, { useMemo } from 'react';
+import { Icons } from '../../../design-system/v5';
 import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
-import type { PagoRendimiento } from '../../../types/inversiones-extended';
+import type { PagoRendimiento, RendimientoPeriodico } from '../../../types/inversiones-extended';
 import {
   formatCurrency,
   formatPercent,
   getTipoLabel,
 } from '../helpers';
 import { getEntidadLogoConfig } from '../utils/entidadLogo';
+import {
+  addMonthsISO,
+  mesesCobroDesde,
+  PERIODO_MESES,
+  SUBTIPO_PRESTAMO_LABEL,
+  toDateInput,
+  type FrecuenciaCobro,
+} from '../utils/prestamoCalendario';
 import FichaShell from './FichaShell';
 import styles from '../pages/FichaPosicion.module.css';
 
 interface Props {
   posicion: PosicionInversion;
   onBack: () => void;
-  // Mantenidos en la firma para compat con FichaPosicionPage; en el
-  // mockup canónico la barra de acciones desaparece de la ficha P2P
-  // — los dos handlers se siguen exponiendo desde otros flujos
-  // (galería · rendimientos pendientes en tesorería).
   onRegistrarCobro: () => void;
   onEditar: () => void;
 }
@@ -54,13 +59,19 @@ const FREC_DIVISOR: Record<string, number> = {
 const FichaRendimientoPeriodico: React.FC<Props> = ({
   posicion,
   onBack,
-  onRegistrarCobro: _onRegistrarCobro,
-  onEditar: _onEditar,
+  onRegistrarCobro,
+  onEditar,
 }) => {
   const aportado = Number(posicion.total_aportado ?? 0);
-  const tin = Number(posicion.rendimiento?.tasa_interes_anual ?? NaN);
+  const rendimiento = posicion.rendimiento as RendimientoPeriodico | undefined;
+  const tin = Number(rendimiento?.tasa_interes_anual ?? NaN);
   const frecuencia = posicion.frecuencia_cobro;
   const duracionMeses = posicion.duracion_meses;
+  const esPrestamo = posicion.tipo === 'prestamo_p2p';
+  const retencionPct = Number(
+    posicion.retencion_fiscal ?? rendimiento?.retencion_porcentaje ?? 19,
+  );
+  const sinRetencion = Number.isFinite(retencionPct) && retencionPct === 0;
 
   // ── Cobros registrados (fuente canónica · rendimientos.pagos_generados con
   //    estado='pagado'; fallback a aportaciones tipo 'dividendo' · legacy) ───
@@ -108,6 +119,28 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
     return d.toISOString();
   }, [posicion.fecha_compra, duracionMeses]);
 
+  // ── Fecha a partir de la cual se reciben los intereses ────────────────────
+  // Canónica · `rendimiento.fecha_primer_cobro`. Para posiciones anteriores a
+  // ese campo se reconstruye desde el inicio del devengo (el primer pago cae
+  // un periodo después).
+  const fechaPrimerCobro = useMemo<string>(() => {
+    if (rendimiento?.fecha_primer_cobro) return toDateInput(rendimiento.fecha_primer_cobro);
+    if (rendimiento?.fecha_inicio_rendimiento) {
+      const paso = PERIODO_MESES[(rendimiento.frecuencia_pago ?? 'mensual') as FrecuenciaCobro] ?? 1;
+      return addMonthsISO(toDateInput(rendimiento.fecha_inicio_rendimiento), paso);
+    }
+    return '';
+  }, [rendimiento]);
+
+  // Meses naturales (1-12) en los que hay cobro. Vacío = sin restricción.
+  const mesesCobro = useMemo<number[]>(() => {
+    if (rendimiento?.meses_cobro?.length) return rendimiento.meses_cobro;
+    if (fechaPrimerCobro && frecuencia && frecuencia !== 'al_vencimiento') {
+      return mesesCobroDesde(fechaPrimerCobro, frecuencia);
+    }
+    return [];
+  }, [rendimiento, fechaPrimerCobro, frecuencia]);
+
   const aniosOperacion = useMemo(() => {
     if (!duracionMeses) return null;
     return Math.round((duracionMeses / 12) * 10) / 10;
@@ -150,6 +183,29 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
     [cobrosAnio],
   );
 
+  /**
+   * ¿Toca cobro en el mes `i` (0-11) del año en curso? Falso antes del primer
+   * cobro de intereses, después del vencimiento, o si la frecuencia no paga
+   * en ese mes.
+   */
+  const mesTieneCobro = useMemo(() => {
+    const finMes = fechaVencimiento ? fechaVencimiento.slice(0, 7) : null;
+    const inicioMes = fechaPrimerCobro ? fechaPrimerCobro.slice(0, 7) : null;
+    return (i: number): boolean => {
+      const mesActual = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
+      if (inicioMes && mesActual < inicioMes) return false;
+      if (finMes && mesActual > finMes) return false;
+      if (mesesCobro.length > 0 && !mesesCobro.includes(i + 1)) return false;
+      return true;
+    };
+  }, [fechaPrimerCobro, fechaVencimiento, mesesCobro, currentYear]);
+
+  /** Nº de cobros previstos dentro del año en curso. */
+  const cobrosPorAnio = useMemo(() => {
+    const meses = Array.from({ length: 12 }, (_, i) => i).filter(mesTieneCobro);
+    return meses.length;
+  }, [mesTieneCobro]);
+
   // ── CSV export ────────────────────────────────────────────────────────────
   const sanitizeCSVTextCell = (value: string | null | undefined): string => {
     const normalized = String(value ?? '').replace(/;/g, ',');
@@ -184,7 +240,11 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
 
   // ── Hero ──────────────────────────────────────────────────────────────────
   const logoCfg = getEntidadLogoConfig(posicion.entidad);
-  const heroBadge = `${getTipoLabel(posicion.tipo)} · ${
+  const tipoBadge =
+    esPrestamo && posicion.subtipo_prestamo
+      ? SUBTIPO_PRESTAMO_LABEL[posicion.subtipo_prestamo]
+      : getTipoLabel(posicion.tipo);
+  const heroBadge = `${tipoBadge} · ${
     frecuencia ?? 'cobro periódico'
   } · vencimiento único`;
 
@@ -266,7 +326,20 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
         ],
       }}
       onBack={onBack}
-      // Sin barra de acciones · mockup detalle P2P no la tiene.
+      actions={[
+        {
+          label: 'Registrar cobro',
+          variant: 'ghost',
+          icon: <Icons.Plus size={13} strokeWidth={2} />,
+          onClick: onRegistrarCobro,
+        },
+        {
+          label: esPrestamo ? 'Editar préstamo' : 'Editar posición',
+          variant: 'gold',
+          icon: <Icons.Edit size={13} strokeWidth={2} />,
+          onClick: onEditar,
+        },
+      ]}
     >
       {/* ── Calendario 12 meses año en curso · mockup l. 825-849 ─────── */}
       <div className={styles.detailCard}>
@@ -281,8 +354,11 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
               fontFamily: 'var(--atlas-v5-font-mono-num)',
             }}
           >
-            12 cuotas de {formatCurrency(cuotaPorPeriodo)} ·{' '}
-            {formatCurrency(interesAnualEstimado)} anuales
+            {cobrosPorAnio} {cobrosPorAnio === 1 ? 'cuota' : 'cuotas'} de{' '}
+            {formatCurrency(cuotaPorPeriodo)} · {formatCurrency(interesAnualEstimado)} anuales
+            {fechaPrimerCobro && (
+              <> · intereses desde {formatDate(fechaPrimerCobro)}</>
+            )}
             {fechaVencimiento && (
               <> · capital al vencimiento · {formatMesAnio(fechaVencimiento)}</>
             )}
@@ -292,6 +368,7 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
           {MES_NOMBRE.map((mesLabel, i) => {
             const importeReal = cobrosAnio[i];
             const cobrado = importeReal != null && importeReal > 0;
+            const hayCuota = mesTieneCobro(i);
             let cls = styles.calMes;
             let imp: string;
 
@@ -299,6 +376,11 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
               // Pago real registrado vía conciliación tesorería
               cls += ' ' + styles.cobrado;
               imp = '+' + formatCurrency(importeReal);
+            } else if (!hayCuota) {
+              // Fuera del calendario · antes del primer cobro de intereses,
+              // después del vencimiento o mes sin cobro según la frecuencia.
+              cls += ' ' + styles.futuro;
+              imp = '—';
             } else if (i === currentMonth) {
               // Mes actual sin pago aún
               cls += ' ' + styles.pendiente;
@@ -385,10 +467,23 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
             </div>
           </div>
           <div className={styles.fiscalNota}>
-            <strong>Fiscalidad · IRPF base ahorro</strong> · los intereses tributan con retención
-            del <strong>19%</strong> (hasta 6.000 €) · <strong>21%</strong> (6.000-50.000 €) ·{' '}
-            <strong>23%</strong> (50.000-200.000 €). El capital{' '}
-            <strong>queda bloqueado</strong>
+            <strong>Fiscalidad · IRPF base ahorro</strong> ·{' '}
+            {sinRetencion ? (
+              <>
+                el prestatario es un particular y <strong>no practica retención</strong>: el
+                cobro llega íntegro y los intereses se declaran en tu base del ahorro
+                (<strong>19%</strong> hasta 6.000 € · <strong>21%</strong> 6.000-50.000 € ·{' '}
+                <strong>23%</strong> 50.000-200.000 €).
+              </>
+            ) : (
+              <>
+                los intereses tributan con retención del{' '}
+                <strong>{formatPercent(retencionPct)}</strong> (base del ahorro ·{' '}
+                <strong>19%</strong> hasta 6.000 € · <strong>21%</strong> 6.000-50.000 € ·{' '}
+                <strong>23%</strong> 50.000-200.000 €).
+              </>
+            )}{' '}
+            El capital <strong>queda bloqueado</strong>
             {fechaVencimiento ? <> hasta {formatMesAnio(fechaVencimiento)}</> : null}
             {' · '}no hay liquidez anticipada.
           </div>

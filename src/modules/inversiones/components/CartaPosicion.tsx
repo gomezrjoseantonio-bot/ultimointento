@@ -170,12 +170,17 @@ const CartaTop: React.FC<{ item: CartaItem }> = ({ item }) => {
     tipoLabel = 'ACCIONES · RSU';
   } else if (item.tipo === 'prestamo_p2p' && item.subtipo === 'empresa_propia') {
     tipoLabel = 'PRÉSTAMO A EMPRESA';
+  } else if (item.tipo === 'prestamo_p2p' && item.subtipo === 'familiar') {
+    tipoLabel = 'PRÉSTAMO A FAMILIAR';
   }
 
   // T-INVERSIONES-V5 §5.1 · 13 tags diferenciados (PPI/PPE/PPES/PPA · Fondo ·
   // ETF · REIT · Acción · P2P · Préstamo · Depósito · Crypto · Otro).
   let tipoTagLabel = getTipoTagLabel(item.tipo, item.tipoAdministrativo);
-  if (item.tipo === 'prestamo_p2p' && item.subtipo === 'empresa_propia') {
+  if (
+    item.tipo === 'prestamo_p2p' &&
+    (item.subtipo === 'empresa_propia' || item.subtipo === 'familiar')
+  ) {
     tipoTagLabel = 'PRÉSTAMO';
   }
   const tagCssKey = getTipoTagCssKey(

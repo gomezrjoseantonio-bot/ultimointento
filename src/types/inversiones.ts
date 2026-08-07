@@ -19,6 +19,19 @@ export type TipoPosicion =
   // Legacy (backward compatibility)
   | 'deposito';
 
+/**
+ * Modalidad del préstamo concedido (`tipo: 'prestamo_p2p'`).
+ * - `p2p`      · plataformas de crowdlending (Mintos · SmartFlip…)
+ * - `empresa`  · préstamo a una sociedad (propia o de terceros)
+ * - `familiar` · préstamo entre particulares (familiares o allegados)
+ *
+ * El pagador solo está obligado a practicar retención de IRPF cuando es
+ * empresario, profesional o entidad; en los préstamos a familiares no hay
+ * retención y el cobro llega íntegro (los intereses siguen tributando en la
+ * base del ahorro del prestamista).
+ */
+export type SubtipoPrestamo = 'p2p' | 'empresa' | 'familiar';
+
 export interface Aportacion {
   id: number;
   fecha: string; // ISO date
@@ -94,6 +107,7 @@ export interface PosicionInversion {
   precio_medio_compra?: number;       // Para accion, etf, reit, crypto
   cuenta_cobro_id?: number;           // Cuenta destino de rescates/ventas/dividendos
   duracion_meses?: number;            // Para prestamo_p2p y deposito_plazo
+  subtipo_prestamo?: SubtipoPrestamo;  // Para prestamo_p2p · plataforma P2P · a empresa · a familiares
   modalidad_devolucion?: 'solo_intereses' | 'capital_e_intereses' | 'al_vencimiento'; // Para prestamo_p2p
   frecuencia_cobro?: 'mensual' | 'trimestral' | 'semestral' | 'anual' | 'al_vencimiento'; // Para prestamo_p2p
   liquidacion_intereses?: 'al_vencimiento' | 'mensual' | 'trimestral' | 'anual'; // Para deposito_plazo

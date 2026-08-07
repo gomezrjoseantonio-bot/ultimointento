@@ -768,7 +768,9 @@ export function getTipoTagCssKey(
   if (t === 'plan_pensiones') return 'ppi'; // fallback histórico
   if (t === 'plan_empleo') return 'ppe';
   if (t === 'prestamo_p2p') {
-    return subtipo === 'empresa_propia' ? 'prestamo' : 'p2p';
+    // Préstamos directos (a empresa o a familiares) usan el tag "préstamo";
+    // solo el crowdlending de plataforma conserva el tag "P2P".
+    return subtipo === 'empresa_propia' || subtipo === 'familiar' ? 'prestamo' : 'p2p';
   }
   if (t === 'cuenta_remunerada') return 'deposito';
   if (t === 'deposito_plazo' || t === 'deposito') return 'deposito';

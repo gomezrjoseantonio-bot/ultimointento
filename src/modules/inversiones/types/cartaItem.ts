@@ -60,7 +60,7 @@ export interface CartaItem {
    * Subtipo del tipo principal · para acciones RSU · préstamos a empresa propia, etc.
    * Solo se usa para render UI · NO persiste en DB.
    */
-  subtipo?: 'rsu' | 'empresa_propia' | string;
+  subtipo?: 'rsu' | 'empresa_propia' | 'familiar' | string;
   /**
    * Tipo administrativo del plan (PPI · PPE · PPES · PPA).
    *
@@ -135,10 +135,21 @@ export function inversionToCartaItem(p: PosicionInversion): CartaItem {
       /rsu/i.test(p.nombre ?? '') ||
       /rsu/i.test(p.notas ?? ''));
 
-  // Detectar préstamo a empresa propia
-  const esEmpresaPropia =
-    p.tipo === 'prestamo_p2p' &&
-    (/propi[ao]/i.test(p.entidad ?? '') || /empresa/i.test(p.entidad ?? ''));
+  // Subtipo de préstamo · canónico si está guardado (`subtipo_prestamo`) ·
+  // heurística por entidad para posiciones anteriores a ese campo.
+  const subtipoPrestamo =
+    p.tipo === 'prestamo_p2p'
+      ? p.subtipo_prestamo ??
+        (/propi[ao]/i.test(p.entidad ?? '') || /empresa/i.test(p.entidad ?? '')
+          ? 'empresa'
+          : undefined)
+      : undefined;
+  const subtipoCarta =
+    subtipoPrestamo === 'empresa'
+      ? 'empresa_propia'
+      : subtipoPrestamo === 'familiar'
+        ? 'familiar'
+        : undefined;
 
   // CAGR estimado para planes y fondos
   let cagrPct: number | undefined;
@@ -185,7 +196,7 @@ export function inversionToCartaItem(p: PosicionInversion): CartaItem {
     precio_actual: p.precio_medio_compra,
     numero_participaciones: p.numero_participaciones,
     cagr_pct: cagrPct,
-    subtipo: esRSU ? 'rsu' : esEmpresaPropia ? 'empresa_propia' : undefined,
+    subtipo: esRSU ? 'rsu' : subtipoCarta,
   };
 }
 

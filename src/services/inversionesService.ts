@@ -169,6 +169,17 @@ export const inversionesService = {
       ...(posicionAny.numero_participaciones !== undefined && { numero_participaciones: posicionAny.numero_participaciones }),
       ...(posicionAny.precio_medio_compra !== undefined && { precio_medio_compra: posicionAny.precio_medio_compra }),
       ...(posicionAny.dividendos !== undefined && { dividendos: posicionAny.dividendos }),
+      // Campos del formulario adaptativo · préstamos y depósitos. Sin esta
+      // copia se perdían al crear la posición (la ficha de detalle mostraba
+      // "datos insuficientes" por falta de duración / frecuencia).
+      ...(posicionAny.cuenta_cobro_id !== undefined && { cuenta_cobro_id: posicionAny.cuenta_cobro_id }),
+      ...(posicionAny.duracion_meses !== undefined && { duracion_meses: posicionAny.duracion_meses }),
+      ...(posicionAny.subtipo_prestamo !== undefined && { subtipo_prestamo: posicionAny.subtipo_prestamo }),
+      ...(posicionAny.modalidad_devolucion !== undefined && { modalidad_devolucion: posicionAny.modalidad_devolucion }),
+      ...(posicionAny.frecuencia_cobro !== undefined && { frecuencia_cobro: posicionAny.frecuencia_cobro }),
+      ...(posicionAny.liquidacion_intereses !== undefined && { liquidacion_intereses: posicionAny.liquidacion_intereses }),
+      ...(posicionAny.retencion_fiscal !== undefined && { retencion_fiscal: posicionAny.retencion_fiscal }),
+      ...(posicionAny.dividendo_anual_estimado !== undefined && { dividendo_anual_estimado: posicionAny.dividendo_anual_estimado }),
     };
     const id = await db.add('inversiones', newPosicion as PosicionInversion);
     return id as number;

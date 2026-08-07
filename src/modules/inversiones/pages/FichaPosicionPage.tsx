@@ -21,6 +21,7 @@ import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
 import AportarModal from '../components/modal/AportarModal';
 import ActualizarValoracionModal from '../components/modal/ActualizarValoracionModal';
 import EditarPosicionModal from '../components/modal/EditarPosicionModal';
+import AltaPrestamoModal from '../components/modal/AltaPrestamoModal';
 import VenderModal from '../components/modal/VenderModal';
 import RegistrarCobroDialog from '../components/RegistrarCobroDialog';
 import FichaValoracionSimple from '../components/FichaValoracionSimple';
@@ -170,6 +171,19 @@ const FichaPosicionPage: React.FC = () => {
     }
   };
 
+  const handleEliminarPosicion = async () => {
+    if (!posicion) return;
+    try {
+      await inversionesService.deletePosicion(posicion.id);
+      showToastV5('Posición eliminada.');
+      navigate('/inversiones');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[inversiones] eliminar', err);
+      showToastV5('Error al eliminar la posición.');
+    }
+  };
+
   if (posicion === undefined) {
     return (
       <div className={styles.page}>
@@ -283,23 +297,25 @@ const FichaPosicionPage: React.FC = () => {
         />
       )}
 
-      {showEditar && (
+      {/* Edición · los préstamos reabren su propio wizard (condiciones
+          financieras + calendario de cobros); el resto usa el modal
+          administrativo genérico. */}
+      {showEditar && posicion.tipo === 'prestamo_p2p' && (
+        <AltaPrestamoModal
+          posicion={posicion}
+          onSave={handleSavePosicion}
+          onDelete={handleEliminarPosicion}
+          onClose={() => setShowEditar(false)}
+        />
+      )}
+
+      {showEditar && posicion.tipo !== 'prestamo_p2p' && (
         <EditarPosicionModal
           posicion={cartaItem!}
           onSave={async ({ nombre, entidad, notas }) => {
             await handleSavePosicion({ nombre, entidad, notas });
           }}
-          onDelete={async () => {
-            try {
-              await inversionesService.deletePosicion(posicion.id);
-              showToastV5('Posición eliminada.');
-              navigate('/inversiones');
-            } catch (err) {
-              // eslint-disable-next-line no-console
-              console.error('[inversiones] eliminar', err);
-              showToastV5('Error al eliminar la posición.');
-            }
-          }}
+          onDelete={handleEliminarPosicion}
           onClose={() => setShowEditar(false)}
         />
       )}
