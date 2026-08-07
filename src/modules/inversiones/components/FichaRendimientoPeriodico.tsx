@@ -16,12 +16,15 @@ import {
 import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import {
   addMonthsISO,
+  cuadroDePosicion,
+  estadoPrestamoA,
   mesesCobroDesde,
   PERIODO_MESES,
   SUBTIPO_PRESTAMO_LABEL,
   toDateInput,
   type FrecuenciaCobro,
 } from '../utils/prestamoCalendario';
+import { parseIsoDateAsUTC, toISODateLocal } from '../../../utils/recurrenceDateUtils';
 import FichaShell from './FichaShell';
 import styles from '../pages/FichaPosicion.module.css';
 
@@ -54,6 +57,30 @@ const FREC_DIVISOR: Record<string, number> = {
   trimestral: 4,
   semestral: 2,
   anual: 1,
+};
+
+/** Punto normalizado (0-1) de la curva de intereses acumulados. */
+interface Punto {
+  x: number;
+  y: number;
+}
+
+const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
+
+/** Interpola linealmente la `y` de la curva en la abscisa `x`. */
+const interpolarY = (puntos: Punto[], x: number): number => {
+  if (puntos.length === 0) return 0;
+  if (x <= puntos[0].x) return puntos[0].y;
+  for (let i = 1; i < puntos.length; i++) {
+    const a = puntos[i - 1];
+    const b = puntos[i];
+    if (x <= b.x) {
+      const tramo = b.x - a.x;
+      if (tramo <= 0) return b.y;
+      return a.y + ((x - a.x) / tramo) * (b.y - a.y);
+    }
+  }
+  return puntos[puntos.length - 1].y;
 };
 
 const FichaRendimientoPeriodico: React.FC<Props> = ({
@@ -98,18 +125,35 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
     [cobrosPagados],
   );
 
+  // ── Cuadro de amortización ────────────────────────────────────────────────
+  // Con cuota francesa el capital se devuelve poco a poco: el saldo vivo, los
+  // intereses y el reparto de cada cuota salen del cuadro, no de multiplicar
+  // el capital inicial por el TIN.
+  const cuadro = useMemo(() => cuadroDePosicion(posicion), [posicion]);
+  const hoyISO = toISODateLocal(new Date());
+  const estado = useMemo(
+    () => (cuadro ? estadoPrestamoA(cuadro, hoyISO) : null),
+    [cuadro, hoyISO],
+  );
+  const amortiza = Boolean(cuadro?.amortiza);
+  /** Capital que sigue vivo hoy · en préstamos sin amortización, el prestado. */
+  const capitalVivo = amortiza && estado ? estado.saldoPendiente : aportado;
+
   const interesAnualEstimado = useMemo(() => {
     // Mockup muestra interés ANUAL (capital × TIN/100), no acumulado generado.
-    if (!Number.isFinite(tin) || aportado <= 0) return null;
-    return aportado * (tin / 100);
-  }, [tin, aportado]);
+    // En cuota francesa se calcula sobre el capital que sigue vivo.
+    if (!Number.isFinite(tin) || capitalVivo <= 0) return null;
+    return capitalVivo * (tin / 100);
+  }, [tin, capitalVivo]);
 
   const cuotaPorPeriodo = useMemo(() => {
-    // Importe planificado por período según TIN + frecuencia.
+    // Cuota francesa · importe constante (capital + intereses) del cuadro.
+    if (cuadro?.amortiza) return cuadro.cuota;
+    // Resto · interés planificado del periodo según TIN + frecuencia.
     if (!frecuencia || !FREC_DIVISOR[frecuencia]) return null;
     if (interesAnualEstimado == null) return null;
     return interesAnualEstimado / FREC_DIVISOR[frecuencia];
-  }, [interesAnualEstimado, frecuencia]);
+  }, [cuadro, interesAnualEstimado, frecuencia]);
 
   const fechaVencimiento = useMemo(() => {
     if (!posicion.fecha_compra || !duracionMeses) return null;
@@ -147,9 +191,12 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
   }, [duracionMeses]);
 
   const interesesTotalesProyectados = useMemo(() => {
+    // Con amortización los intereses caen cada periodo (se calculan sobre el
+    // saldo vivo), así que el total sale del cuadro · no de capital × TIN × años.
+    if (cuadro) return cuadro.totalIntereses;
     if (interesAnualEstimado == null || aniosOperacion == null) return null;
     return interesAnualEstimado * aniosOperacion;
-  }, [interesAnualEstimado, aniosOperacion]);
+  }, [cuadro, interesAnualEstimado, aniosOperacion]);
 
   const devolucionTotal = useMemo(() => {
     if (interesesTotalesProyectados == null) return null;
@@ -244,9 +291,9 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
     esPrestamo && posicion.subtipo_prestamo
       ? SUBTIPO_PRESTAMO_LABEL[posicion.subtipo_prestamo]
       : getTipoLabel(posicion.tipo);
-  const heroBadge = `${tipoBadge} · ${
-    frecuencia ?? 'cobro periódico'
-  } · vencimiento único`;
+  const heroBadge = `${tipoBadge} · ${frecuencia ?? 'cobro periódico'} · ${
+    amortiza ? 'capital + intereses en cada cuota' : 'capital al vencimiento'
+  }`;
 
   // ── Gráfica intereses acumulados (curva lineal hasta vencimiento) ─────────
   const chartData = useMemo(() => {
@@ -268,10 +315,32 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
     const t0 = inicio.getTime();
     const t1 = fin.getTime();
     if (t1 <= t0) return null;
-    const ratioHoy = Math.max(0, Math.min(1, (ahora - t0) / (t1 - t0)));
-    const acumuladoHoy = totalIntereses * ratioHoy;
-    return { t0, t1, totalIntereses, ratioHoy, acumuladoHoy, inicio, fin };
-  }, [posicion.fecha_compra, duracionMeses, cuotaPorPeriodo, frecuencia, interesesTotalesProyectados]);
+    const ratioHoy = clamp01((ahora - t0) / (t1 - t0));
+
+    // Curva real de intereses acumulados. Con cuota francesa es cóncava: los
+    // primeros periodos pagan muchos más intereses que los últimos, porque el
+    // interés se calcula sobre el capital vivo. Sin cuadro · recta.
+    let puntos: Punto[] = [
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ];
+    if (cuadro && cuadro.periodos.length > 0) {
+      let acumulado = 0;
+      const trazado: Punto[] = [{ x: 0, y: 0 }];
+      for (const periodo of cuadro.periodos) {
+        acumulado += periodo.interes;
+        const ms = parseIsoDateAsUTC(periodo.fecha).getTime();
+        if (Number.isNaN(ms)) continue;
+        trazado.push({
+          x: clamp01((ms - t0) / (t1 - t0)),
+          y: clamp01(acumulado / totalIntereses),
+        });
+      }
+      if (trazado.length > 1) puntos = trazado;
+    }
+    const acumuladoHoy = interpolarY(puntos, ratioHoy) * totalIntereses;
+    return { totalIntereses, ratioHoy, acumuladoHoy, inicio, fin, puntos };
+  }, [posicion.fecha_compra, duracionMeses, cuotaPorPeriodo, frecuencia, cuadro, interesesTotalesProyectados]);
 
   return (
     <FichaShell
@@ -302,17 +371,33 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
                 TIN <strong>{formatPercent(tin)}</strong>
               </>
             )}
+            {amortiza && estado && (
+              <>
+                <span className={styles.detailHeroSep}>·</span>
+                amortizado <strong>{formatPercent(estado.pctAmortizado)}</strong> de{' '}
+                <strong>{formatCurrency(aportado)}</strong>
+              </>
+            )}
             <span className={styles.detailHeroSep}>·</span>
             IRPF <strong>base ahorro</strong>
           </>
         ),
         stats: [
-          { lab: 'Capital', val: formatCurrency(aportado) },
           {
-            lab: 'Interés anual',
-            val: interesAnualEstimado != null ? formatCurrency(interesAnualEstimado) : '—',
-            valVariant: interesAnualEstimado != null ? 'gold' : undefined,
+            lab: amortiza ? 'Capital pendiente' : 'Capital',
+            val: formatCurrency(capitalVivo),
           },
+          amortiza && cuadro
+            ? {
+                lab: `Cuota ${frecuencia ?? 'periódica'}`,
+                val: formatCurrency(cuadro.cuota),
+                valVariant: 'gold' as const,
+              }
+            : {
+                lab: 'Interés anual',
+                val: interesAnualEstimado != null ? formatCurrency(interesAnualEstimado) : '—',
+                valVariant: interesAnualEstimado != null ? ('gold' as const) : undefined,
+              },
           {
             lab: `Cobrado ${currentYear}`,
             val: cobradoAnio > 0 ? `+${formatCurrency(cobradoAnio)}` : '—',
@@ -355,11 +440,16 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
             }}
           >
             {cobrosPorAnio} {cobrosPorAnio === 1 ? 'cuota' : 'cuotas'} de{' '}
-            {formatCurrency(cuotaPorPeriodo)} · {formatCurrency(interesAnualEstimado)} anuales
+            {formatCurrency(cuotaPorPeriodo)}
+            {amortiza && estado ? (
+              <> · capital + intereses · pendiente {formatCurrency(estado.saldoPendiente)}</>
+            ) : (
+              <> · {formatCurrency(interesAnualEstimado)} anuales</>
+            )}
             {fechaPrimerCobro && (
               <> · intereses desde {formatDate(fechaPrimerCobro)}</>
             )}
-            {fechaVencimiento && (
+            {fechaVencimiento && !amortiza && (
               <> · capital al vencimiento · {formatMesAnio(fechaVencimiento)}</>
             )}
           </div>
@@ -413,13 +503,12 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
           </div>
           {chartData ? (
             <ChartInteresesAcumulados
-              t0={chartData.t0}
-              t1={chartData.t1}
               totalIntereses={chartData.totalIntereses}
               ratioHoy={chartData.ratioHoy}
               acumuladoHoy={chartData.acumuladoHoy}
               inicio={chartData.inicio}
               fin={chartData.fin}
+              puntos={chartData.puntos}
             />
           ) : (
             <div className={styles.bigPlaceholder}>
@@ -439,6 +528,32 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
               <span className={styles.statRowLab}>Capital prestado</span>
               <span className={styles.statRowVal}>{formatCurrency(aportado)}</span>
             </div>
+            {amortiza && estado && (
+              <>
+                <div className={styles.statRow}>
+                  <span className={styles.statRowLab}>
+                    Capital amortizado · {estado.cuotasPagadas}
+                    {estado.cuotasPagadas === 1 ? ' cuota' : ' cuotas'}
+                  </span>
+                  <span className={`${styles.statRowVal} ${styles.pos}`}>
+                    {formatCurrency(estado.capitalAmortizado)} ·{' '}
+                    {formatPercent(estado.pctAmortizado)}
+                  </span>
+                </div>
+                <div className={styles.statRow}>
+                  <span className={styles.statRowLab}>Capital pendiente hoy</span>
+                  <span className={styles.statRowVal}>
+                    {formatCurrency(estado.saldoPendiente)}
+                  </span>
+                </div>
+                <div className={styles.statRow}>
+                  <span className={styles.statRowLab}>Intereses cobrados hasta hoy</span>
+                  <span className={`${styles.statRowVal} ${styles.gold}`}>
+                    +{formatCurrency(estado.interesesAcumulados)}
+                  </span>
+                </div>
+              </>
+            )}
             <div className={styles.statRow}>
               <span className={styles.statRowLab}>
                 Intereses totales
@@ -483,9 +598,19 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
                 <strong>23%</strong> 50.000-200.000 €).
               </>
             )}{' '}
-            El capital <strong>queda bloqueado</strong>
-            {fechaVencimiento ? <> hasta {formatMesAnio(fechaVencimiento)}</> : null}
-            {' · '}no hay liquidez anticipada.
+            {amortiza ? (
+              <>
+                El capital <strong>vuelve a caja en cada cuota</strong>
+                {fechaVencimiento ? <> hasta {formatMesAnio(fechaVencimiento)}</> : null}
+                {' · '}solo tributa la parte de intereses.
+              </>
+            ) : (
+              <>
+                El capital <strong>queda bloqueado</strong>
+                {fechaVencimiento ? <> hasta {formatMesAnio(fechaVencimiento)}</> : null}
+                {' · '}no hay liquidez anticipada.
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -550,13 +675,13 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
 
 // ── Sub-componente · gráfica SVG intereses acumulados ─────────────────────
 interface ChartProps {
-  t0: number;
-  t1: number;
   totalIntereses: number;
   ratioHoy: number;
   acumuladoHoy: number;
   inicio: Date;
   fin: Date;
+  /** Curva normalizada (0-1) de intereses acumulados en el tiempo. */
+  puntos: Punto[];
 }
 
 const ChartInteresesAcumulados: React.FC<ChartProps> = ({
@@ -565,6 +690,7 @@ const ChartInteresesAcumulados: React.FC<ChartProps> = ({
   acumuladoHoy,
   inicio,
   fin,
+  puntos,
 }) => {
   // Eje X = tiempo (0..1) · eje Y = intereses (0..total)
   const W = 900;
@@ -577,7 +703,19 @@ const ChartInteresesAcumulados: React.FC<ChartProps> = ({
   const innerH = H - padT - padB;
 
   const xHoy = padL + innerW * ratioHoy;
-  const yHoy = padT + innerH * (1 - ratioHoy);
+  const yHoy = padT + innerH * (1 - interpolarY(puntos, ratioHoy));
+
+  // Trazado de la curva en coordenadas SVG.
+  const linePath = useMemo(
+    () =>
+      puntos
+        .map(
+          (pt, i) =>
+            `${i === 0 ? 'M' : 'L'} ${padL + innerW * pt.x} ${padT + innerH * (1 - pt.y)}`,
+        )
+        .join(' '),
+    [puntos, padL, innerW, padT, innerH],
+  );
 
   // Etiquetas X · 6 puntos (inicio, 20%, 40%, 60%, 80%, fin)
   const tickLabels = useMemo(() => {
@@ -650,17 +788,20 @@ const ChartInteresesAcumulados: React.FC<ChartProps> = ({
         </linearGradient>
       </defs>
       <path
-        d={`M ${padL} ${padT + innerH} L ${xEnd} ${yEnd} L ${xEnd} ${padT + innerH} Z`}
+        d={`${linePath} L ${xEnd} ${padT + innerH} L ${padL} ${padT + innerH} Z`}
         fill="url(#gradInteresesP2P)"
         opacity={0.6}
       />
-      {/* Línea curva (en realidad recta · lineal en el tiempo) */}
+      {/* Curva de intereses acumulados · cóncava con cuota francesa (el
+          interés se calcula sobre un capital vivo que va bajando) · recta
+          cuando el capital no se amortiza hasta el vencimiento. */}
       <path
-        d={`M ${padL} ${padT + innerH} L ${xEnd} ${yEnd}`}
+        d={linePath}
         stroke="var(--atlas-v5-gold)"
         strokeWidth={2.8}
         fill="none"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
       {/* Marker HOY · vertical dashed */}
       <line

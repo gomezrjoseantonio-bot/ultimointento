@@ -1,5 +1,7 @@
 import {
   addMonthsISO,
+  calcularCuadroPrestamo,
+  estadoPrestamoA,
   diaCobroDesde,
   mesesCobroDesde,
   PERIODO_MESES,
@@ -90,5 +92,152 @@ describe('prestamoCalendario', () => {
       expect(toDateInput('2026-08-07T12:00:00.000Z')).toBe('2026-08-07');
       expect(toDateInput(undefined)).toBe('');
     });
+  });
+});
+
+describe('calcularCuadroPrestamo', () => {
+  const base = {
+    capital: 30000,
+    tinAnual: 3.25,
+    duracionMeses: 60,
+    frecuencia: 'mensual' as const,
+    primerCobro: '2025-04-01',
+  };
+
+  describe('cuota francesa (capital_e_intereses)', () => {
+    const cuadro = calcularCuadroPrestamo({ ...base, modalidad: 'capital_e_intereses' })!;
+
+    it('genera una cuota por periodo', () => {
+      expect(cuadro).not.toBeNull();
+      expect(cuadro.periodos).toHaveLength(60);
+      expect(cuadro.amortiza).toBe(true);
+    });
+
+    it('calcula la cuota constante con la fórmula francesa', () => {
+      // 30.000 € al 3,25% a 60 meses → 542,40 €/mes
+      expect(cuadro.cuota).toBeCloseTo(542.4, 1);
+    });
+
+    it('deja el capital vivo a cero en la última cuota', () => {
+      expect(cuadro.periodos[cuadro.periodos.length - 1].saldoPendiente).toBe(0);
+    });
+
+    it('devuelve exactamente el capital prestado sumando amortizaciones', () => {
+      const amortizado = cuadro.periodos.reduce((s, p) => s + p.amortizacion, 0);
+      expect(amortizado).toBeCloseTo(30000, 2);
+    });
+
+    it('reparte cada cuota entre intereses decrecientes y capital creciente', () => {
+      const primera = cuadro.periodos[0];
+      const ultima = cuadro.periodos[59];
+      expect(primera.interes).toBeGreaterThan(ultima.interes);
+      expect(primera.amortizacion).toBeLessThan(ultima.amortizacion);
+      expect(primera.cuota).toBeCloseTo(ultima.cuota, 0);
+    });
+
+    it('cobra muchos menos intereses que un préstamo solo-intereses', () => {
+      // Solo intereses: 30.000 × 3,25% × 5 años = 4.875 €.
+      const soloIntereses = calcularCuadroPrestamo({ ...base, modalidad: 'solo_intereses' })!;
+      expect(soloIntereses.totalIntereses).toBeCloseTo(4875, 0);
+      expect(cuadro.totalIntereses).toBeLessThan(2600);
+      expect(cuadro.totalIntereses).toBeGreaterThan(2500);
+    });
+
+    it('espacia las cuotas según la frecuencia', () => {
+      expect(cuadro.periodos[0].fecha).toBe('2025-04-01');
+      expect(cuadro.periodos[1].fecha).toBe('2025-05-01');
+      const trimestral = calcularCuadroPrestamo({
+        ...base,
+        frecuencia: 'trimestral',
+        modalidad: 'capital_e_intereses',
+      })!;
+      expect(trimestral.periodos).toHaveLength(20);
+      expect(trimestral.periodos[1].fecha).toBe('2025-07-01');
+    });
+
+    it('reparte el capital a partes iguales con TIN 0', () => {
+      const sinInteres = calcularCuadroPrestamo({
+        ...base,
+        tinAnual: 0,
+        modalidad: 'capital_e_intereses',
+      })!;
+      expect(sinInteres.cuota).toBeCloseTo(500, 2);
+      expect(sinInteres.totalIntereses).toBe(0);
+    });
+  });
+
+  describe('solo_intereses', () => {
+    const cuadro = calcularCuadroPrestamo({ ...base, modalidad: 'solo_intereses' })!;
+
+    it('mantiene el capital vivo hasta la última cuota', () => {
+      expect(cuadro.amortiza).toBe(false);
+      expect(cuadro.periodos[0].saldoPendiente).toBe(30000);
+      expect(cuadro.periodos[58].saldoPendiente).toBe(30000);
+      expect(cuadro.periodos[59].saldoPendiente).toBe(0);
+      expect(cuadro.periodos[59].amortizacion).toBe(30000);
+    });
+
+    it('cobra el mismo interés en todos los periodos', () => {
+      expect(cuadro.periodos[0].interes).toBeCloseTo(81.25, 2);
+      expect(cuadro.periodos[30].interes).toBeCloseTo(81.25, 2);
+    });
+  });
+
+  describe('al_vencimiento', () => {
+    it('genera una única cuota con capital e intereses', () => {
+      const cuadro = calcularCuadroPrestamo({ ...base, modalidad: 'al_vencimiento' })!;
+      expect(cuadro.periodos).toHaveLength(1);
+      expect(cuadro.totalIntereses).toBeCloseTo(4875, 0);
+      expect(cuadro.periodos[0].amortizacion).toBe(30000);
+    });
+  });
+
+  it('devuelve null sin los datos mínimos', () => {
+    expect(
+      calcularCuadroPrestamo({ ...base, capital: 0, modalidad: 'capital_e_intereses' }),
+    ).toBeNull();
+    expect(
+      calcularCuadroPrestamo({ ...base, duracionMeses: 0, modalidad: 'capital_e_intereses' }),
+    ).toBeNull();
+    expect(
+      calcularCuadroPrestamo({ ...base, primerCobro: '', modalidad: 'capital_e_intereses' }),
+    ).toBeNull();
+  });
+});
+
+describe('estadoPrestamoA', () => {
+  const cuadro = calcularCuadroPrestamo({
+    capital: 30000,
+    tinAnual: 3.25,
+    duracionMeses: 60,
+    frecuencia: 'mensual',
+    modalidad: 'capital_e_intereses',
+    primerCobro: '2025-04-01',
+  })!;
+
+  it('antes del primer cobro el capital sigue entero', () => {
+    const estado = estadoPrestamoA(cuadro, '2025-03-31');
+    expect(estado.saldoPendiente).toBe(30000);
+    expect(estado.capitalAmortizado).toBe(0);
+    expect(estado.cuotasPagadas).toBe(0);
+    expect(estado.proximaCuota?.fecha).toBe('2025-04-01');
+  });
+
+  it('a mitad de vida el capital vivo ha bajado', () => {
+    const estado = estadoPrestamoA(cuadro, '2027-10-01');
+    expect(estado.cuotasPagadas).toBe(31);
+    expect(estado.saldoPendiente).toBeLessThan(30000);
+    expect(estado.saldoPendiente).toBeGreaterThan(0);
+    expect(estado.pctAmortizado).toBeGreaterThan(0);
+    expect(estado.pctAmortizado).toBeLessThan(100);
+    expect(estado.capitalAmortizado + estado.saldoPendiente).toBeCloseTo(30000, 2);
+  });
+
+  it('al vencimiento no queda capital vivo', () => {
+    const estado = estadoPrestamoA(cuadro, '2030-04-01');
+    expect(estado.saldoPendiente).toBe(0);
+    expect(estado.pctAmortizado).toBeCloseTo(100, 5);
+    expect(estado.interesesAcumulados).toBeCloseTo(cuadro.totalIntereses, 2);
+    expect(estado.proximaCuota).toBeNull();
   });
 });

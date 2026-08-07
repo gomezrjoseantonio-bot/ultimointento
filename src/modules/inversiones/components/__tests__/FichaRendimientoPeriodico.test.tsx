@@ -113,3 +113,53 @@ describe('FichaRendimientoPeriodico', () => {
     expect(screen.getByText(/tributan con retención del/)).toBeInTheDocument();
   });
 });
+
+describe('FichaRendimientoPeriodico · cuota francesa', () => {
+  // Firmado hace 2 años · 30.000 € al 3,25% a 60 meses · cuota mensual.
+  const amortizando = {
+    ...basePosicion,
+    modalidad_devolucion: 'capital_e_intereses' as const,
+    frecuencia_cobro: 'mensual' as const,
+    fecha_compra: `${ANIO - 2}-01-15T12:00:00.000Z`,
+    rendimiento: {
+      ...(basePosicion as unknown as { rendimiento: Record<string, unknown> }).rendimiento,
+      frecuencia_pago: 'mensual',
+      meses_cobro: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      fecha_primer_cobro: `${ANIO - 2}-02-15T12:00:00.000Z`,
+      fecha_inicio_rendimiento: `${ANIO - 2}-01-15T12:00:00.000Z`,
+    },
+    duracion_meses: 60,
+  } as unknown as PosicionInversion;
+
+  it('muestra el capital pendiente, no el prestado', () => {
+    renderFicha(amortizando);
+
+    const capital = screen.getByText('Capital pendiente').parentElement as HTMLElement;
+    const pendiente = capital.textContent ?? '';
+    expect(pendiente).not.toContain('30.000');
+
+    // Y el prestado sigue visible en el resumen de la operación.
+    const prestado = screen.getByText('Capital prestado').parentElement as HTMLElement;
+    expect(prestado.textContent).toContain('30.000');
+  });
+
+  it('desglosa capital amortizado y pendiente hoy', () => {
+    renderFicha(amortizando);
+    expect(screen.getByText(/Capital amortizado ·/)).toBeInTheDocument();
+    expect(screen.getByText('Capital pendiente hoy')).toBeInTheDocument();
+    expect(screen.getByText('Intereses cobrados hasta hoy')).toBeInTheDocument();
+  });
+
+  it('la cuota incluye capital + intereses y el capital vuelve a caja', () => {
+    renderFicha(amortizando);
+    expect(screen.getByText(/capital \+ intereses · pendiente/)).toBeInTheDocument();
+    expect(screen.getByText(/vuelve a caja en cada cuota/)).toBeInTheDocument();
+  });
+
+  it('un préstamo solo-intereses conserva el capital íntegro', () => {
+    renderFicha();
+    expect(screen.queryByText('Capital pendiente')).not.toBeInTheDocument();
+    const capital = screen.getByText('Capital').parentElement as HTMLElement;
+    expect(capital.textContent).toContain('30.000');
+  });
+});
