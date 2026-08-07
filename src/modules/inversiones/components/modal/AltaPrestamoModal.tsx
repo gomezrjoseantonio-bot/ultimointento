@@ -22,13 +22,21 @@ import ModalAtlasPreview, {
   ModalAtlasPreviewRow,
 } from './ModalAtlasPreview';
 import CuentaSelect from './CuentaSelect';
+import {
+  ajustarCapitalEditado,
+  validarCondiciones,
+} from './prestamoFormHelpers';
+import CuotasVencidasField, {
+  calcularCuotasVencidas,
+  pagosDeCuotasVencidas,
+} from './CuotasVencidasField';
 import { formatCurrency } from '../../helpers';
 import {
   addMonthsISO,
   diaCobroDesde,
   mesesCobroDesde,
   PERIODO_MESES,
-  PERIODOS_ANIO,
+  calcularCuadroPrestamo,
   primerCobroPorDefecto,
   toDateInput,
   type FrecuenciaCobro,
@@ -200,42 +208,74 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
   );
 
   // ── Preview · cobros netos previstos ─────────────────────────────
-  // capital_e_intereses · cuota francesa real (PMT) · convertida a la
-  // frecuencia seleccionada. Fórmula: c × i / (1 − (1+i)^−n) con `i` la
-  // tasa periódica y `n` el nº de periodos. Resto modalidades · solo
-  // intereses devengados en el periodo o `neto` total al vencimiento.
+  // Sale del cuadro de amortización, la misma fuente que usan la ficha y la
+  // previsión de tesorería. Antes se calculaba aquí con interés simple
+  // (capital × TIN × años), que en cuota francesa sobreestima muchísimo: los
+  // intereses se devengan sobre el capital VIVO, que va bajando. En el préstamo
+  // de 30.000 € al 3,25% a 60 meses eran 4.875 € frente a los 2.544 € reales.
   const calc = useMemo(() => {
-    const c = parseFloat(capital) || 0;
-    const t = parseFloat(tin) || 0;
-    const d = parseFloat(duracionMeses) || 0;
-    const r = (parseFloat(retencion) || 0) / 100;
-    if (c <= 0 || t <= 0 || d <= 0) {
+    const cuadro = calcularCuadroPrestamo({
+      capital: parseFloat(capital) || 0,
+      tinAnual: parseFloat(tin) || 0,
+      duracionMeses: parseFloat(duracionMeses) || 0,
+      frecuencia,
+      modalidad,
+      primerCobro: primerCobro || primerCobroSugerido,
+    });
+    if (!cuadro) {
       return { interesBruto: 0, retencionImporte: 0, neto: 0, cuotaPeriodica: 0 };
     }
-    const interesAnual = (c * t) / 100;
-    const años = d / 12;
-    const interesBruto = interesAnual * años;
-    const retencionImporte = interesBruto * r;
+    const interesBruto = cuadro.totalIntereses;
+    const retencionImporte = interesBruto * ((parseFloat(retencion) || 0) / 100);
     const neto = interesBruto - retencionImporte;
+    return {
+      interesBruto,
+      retencionImporte,
+      neto,
+      // Bullet · un único cobro al vencimiento, ya neto de retención.
+      cuotaPeriodica: modalidad === 'al_vencimiento' ? neto : cuadro.cuota,
+    };
+  }, [
+    capital,
+    tin,
+    duracionMeses,
+    retencion,
+    frecuencia,
+    modalidad,
+    primerCobro,
+    primerCobroSugerido,
+  ]);
 
-    const periodosAño = PERIODOS_ANIO[frecuencia];
+  // ── Cuotas ya vencidas al registrar el préstamo ──────────────────
+  // Ver `CuotasVencidasField` para el porqué de no crear movimientos.
+  const cuotasVencidas = useMemo(
+    () =>
+      calcularCuotasVencidas({
+        capital: parseFloat(capital) || 0,
+        tinAnual: parseFloat(tin) || 0,
+        duracionMeses: duracionNum,
+        frecuencia,
+        modalidad,
+        primerCobro: primerCobro || primerCobroSugerido,
+        retencionPorcentaje: parseFloat(retencion) || 0,
+      }),
+    [
+      capital,
+      tin,
+      duracionNum,
+      frecuencia,
+      modalidad,
+      primerCobro,
+      primerCobroSugerido,
+      retencion,
+    ],
+  );
 
-    let cuotaPeriodica: number;
-    if (modalidad === 'al_vencimiento') {
-      cuotaPeriodica = neto;
-    } else if (modalidad === 'capital_e_intereses') {
-      // Cuota francesa · capital + intereses · periodicidad de la frecuencia.
-      const nPeriodos = Math.round((d / 12) * periodosAño);
-      const tasaPeriodo = t / 100 / periodosAño;
-      cuotaPeriodica = nPeriodos > 0 && tasaPeriodo > 0
-        ? (c * tasaPeriodo) / (1 - Math.pow(1 + tasaPeriodo, -nPeriodos))
-        : 0;
-    } else {
-      // solo_intereses · interés del periodo, sin amortizar principal.
-      cuotaPeriodica = interesAnual / periodosAño;
-    }
-    return { interesBruto, retencionImporte, neto, cuotaPeriodica };
-  }, [capital, tin, duracionMeses, retencion, frecuencia, modalidad]);
+  // Solo se ofrece si el préstamo no tiene ya cobros registrados · en una
+  // edición no queremos pisar el histórico existente.
+  const puedeMarcarVencidas =
+    cuotasVencidas != null && !(rendOrig?.pagos_generados?.length);
+  const [darPorCobradas, setDarPorCobradas] = useState(true);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,29 +283,17 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
     const tinNum = parseFloat(tin);
     const duracion = parseFloat(duracionMeses);
     if (!nombre.trim() || !entidad.trim()) return;
-    if (!Number.isFinite(cap) || cap <= 0) {
-      showToastV5('El capital debe ser mayor que 0');
-      return;
-    }
-    if (!Number.isFinite(tinNum) || tinNum <= 0) {
-      showToastV5('El TIN debe ser mayor que 0');
-      return;
-    }
-    if (!Number.isFinite(duracion) || duracion <= 0) {
-      showToastV5('La duración debe ser mayor que 0 meses');
-      return;
-    }
-    if (!cuentaCargo) {
-      showToastV5('Selecciona la cuenta de cargo del capital');
-      return;
-    }
     const fechaPrimerCobro = primerCobro || primerCobroSugerido;
-    if (!fechaPrimerCobro) {
-      showToastV5('Indica desde cuándo se reciben los intereses');
-      return;
-    }
-    if (fechaPrimerCobro < fecha) {
-      showToastV5('El primer cobro de intereses no puede ser anterior a la firma');
+    const error = validarCondiciones({
+      capital: cap,
+      tin: tinNum,
+      duracionMeses: duracion,
+      cuentaCargo,
+      fechaFirma: fecha,
+      fechaPrimerCobro,
+    });
+    if (error) {
+      showToastV5(error);
       return;
     }
     setLoading(true);
@@ -285,6 +313,14 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
       // cajón "SIN CUENTA". Si no se indica una, cobra la de cargo del capital.
       const cuentaDestino = cuentaCobro ? Number(cuentaCobro) : Number(cuentaCargo);
 
+      // Cuotas ya vencidas que el usuario ha dado por cobradas · quedan en el
+      // cuadro del préstamo como 'pagado'. Sin movimientos de tesorería: el
+      // dinero ya está en el saldo del banco (ver bloque "Cuotas ya vencidas").
+      const pagosYaCobrados =
+        puedeMarcarVencidas && darPorCobradas && cuotasVencidas
+          ? pagosDeCuotasVencidas(cuotasVencidas, cuentaDestino)
+          : null;
+
       const rendimiento: RendimientoPeriodico = {
         tipo_rendimiento: 'interes_fijo',
         tasa_interes_anual: tinNum,
@@ -299,7 +335,7 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
         fecha_primer_cobro: `${fechaPrimerCobro}T12:00:00.000Z`,
         ...(vencimiento && { fecha_fin_rendimiento: `${vencimiento}T12:00:00.000Z` }),
         retencion_porcentaje: retencionNum,
-        pagos_generados: rendOrig?.pagos_generados ?? [],
+        pagos_generados: pagosYaCobrados ?? rendOrig?.pagos_generados ?? [],
       };
 
       const comun: Partial<PosicionInversion> = {
@@ -318,41 +354,10 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
       };
 
       if (esEdicion && posicion) {
-        // Edición · no reescribimos el histórico de cobros. Si cambia el
-        // capital, ajustamos la aportación inicial y el valor vivo por delta
-        // (así se conserva lo ya amortizado).
-        const capitalPrevio = Number(posicion.total_aportado ?? posicion.valor_actual ?? 0);
-        const delta = cap - capitalPrevio;
-        const aportaciones = [...(posicion.aportaciones ?? [])].sort((a, b) =>
-          String(a.fecha).localeCompare(String(b.fecha)),
-        );
-        const idxInicial = aportaciones.findIndex((a) => a.tipo === 'aportacion');
-        if (delta !== 0 && idxInicial >= 0) {
-          aportaciones[idxInicial] = {
-            ...aportaciones[idxInicial],
-            importe: Number(aportaciones[idxInicial].importe ?? 0) + delta,
-            fecha: `${fecha}T12:00:00.000Z`,
-            cuenta_cargo_id: Number(cuentaCargo),
-          };
-        }
-        const totalAportado = aportaciones.reduce(
-          (sum, a) =>
-            a.tipo === 'reembolso'
-              ? sum - Number(a.importe ?? 0)
-              : a.tipo === 'aportacion'
-                ? sum + Number(a.importe ?? 0)
-                : sum,
-          0,
-        );
-        await onSave({
-          ...comun,
-          ...(delta !== 0 && {
-            aportaciones,
-            total_aportado: totalAportado,
-            valor_actual: Math.max(0, Number(posicion.valor_actual ?? 0) + delta),
-            fecha_valoracion: posicion.fecha_valoracion,
-          }),
-        });
+        // Edición · no reescribimos el histórico de cobros; si cambia el
+        // capital se ajusta la aportación inicial por la diferencia.
+        const ajuste = ajustarCapitalEditado(posicion, cap, fecha, Number(cuentaCargo));
+        await onSave({ ...comun, ...(ajuste ?? {}) });
       } else {
         await onSave({
           ...comun,
@@ -621,6 +626,14 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
                 />
               </div>
             </div>
+
+            {puedeMarcarVencidas && cuotasVencidas && (
+              <CuotasVencidasField
+                cuotas={cuotasVencidas}
+                darPorCobradas={darPorCobradas}
+                onChange={setDarPorCobradas}
+              />
+            )}
 
             {/* Zona peligrosa · soft delete · solo en edición */}
             {esEdicion && onDelete && (

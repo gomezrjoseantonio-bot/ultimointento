@@ -244,3 +244,78 @@ describe('AltaPrestamoModal · edición', () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('AltaPrestamoModal · cuotas ya vencidas', () => {
+  // Préstamo firmado hace 2 años · al darlo de alta arrastra cuotas cobradas.
+  const rellenarPrestamoPasado = async () => {
+    fireEvent.change(screen.getByPlaceholderText(/SmartFlip · 10% TIN/), {
+      target: { value: 'Préstamo socio' },
+    });
+    fireEvent.change(screen.getByLabelText(/Plataforma|Empresa deudora|Familiar deudor/), {
+      target: { value: 'Unihouser' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('10000'), { target: { value: '30000' } });
+    fireEvent.change(screen.getByPlaceholderText('10.00'), { target: { value: '3.25' } });
+    fireEvent.change(screen.getByPlaceholderText('60'), { target: { value: '60' } });
+    fireEvent.change(screen.getByLabelText(/Modalidad/) as HTMLSelectElement, {
+      target: { value: 'capital_e_intereses' },
+    });
+    const hace2 = new Date();
+    hace2.setFullYear(hace2.getFullYear() - 2);
+    fireEvent.change(screen.getByLabelText(/Fecha firma/), {
+      target: { value: hace2.toISOString().slice(0, 10) },
+    });
+    await waitFor(() => {
+      expect(screen.getAllByRole('option', { name: 'Cuenta principal' })).toHaveLength(2);
+    });
+    fireEvent.change(screen.getByLabelText(/Cuenta de cargo/) as HTMLSelectElement, {
+      target: { value: '1' },
+    });
+  };
+
+  it('avisa de cuántas cuotas arrastra y por cuánto', async () => {
+    render(<AltaPrestamoModal onSave={() => undefined} onClose={() => undefined} />);
+    await rellenarPrestamoPasado();
+
+    expect(screen.getByText('Cuotas ya vencidas')).toBeInTheDocument();
+    expect(screen.getByText(/cuotas ya\s+vencidas/)).toBeInTheDocument();
+    // Y explica por qué no se tocan los movimientos del banco.
+    expect(screen.getByText(/ya está\s+en el saldo de tu banco/)).toBeInTheDocument();
+  });
+
+  it('las da por cobradas por defecto · sin crear movimientos', async () => {
+    const onSave = jest.fn();
+    render(<AltaPrestamoModal onSave={onSave} onClose={() => undefined} />);
+    await rellenarPrestamoPasado();
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear préstamo|Guardar/ }));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+
+    const guardado = onSave.mock.calls[0][0];
+    const pagos = guardado.rendimiento.pagos_generados;
+    expect(pagos.length).toBeGreaterThan(20);
+    expect(pagos.every((p: { estado: string }) => p.estado === 'pagado')).toBe(true);
+    // Cuota completa: intereses netos + capital devuelto (~527 €), no solo intereses.
+    expect(pagos[0].importe_neto).toBeGreaterThan(500);
+    // Y la cuenta de cobro viaja en el rendimiento para que la prevea Tesorería.
+    expect(guardado.rendimiento.cuenta_destino_id).toBe(1);
+  });
+
+  it('respeta que el usuario prefiera puntearlas una a una', async () => {
+    const onSave = jest.fn();
+    render(<AltaPrestamoModal onSave={onSave} onClose={() => undefined} />);
+    await rellenarPrestamoPasado();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Darlas por cobradas/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Crear préstamo|Guardar/ }));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+
+    expect(onSave.mock.calls[0][0].rendimiento.pagos_generados).toEqual([]);
+  });
+
+  it('no pregunta nada si el préstamo empieza hoy', async () => {
+    render(<AltaPrestamoModal onSave={() => undefined} onClose={() => undefined} />);
+    await rellenarAlta();
+    expect(screen.queryByText('Cuotas ya vencidas')).not.toBeInTheDocument();
+  });
+});
