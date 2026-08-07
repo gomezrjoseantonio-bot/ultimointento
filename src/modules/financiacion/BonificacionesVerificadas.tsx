@@ -16,6 +16,8 @@ import React, { useEffect, useState } from 'react';
 import { initDB, type TreasuryEvent } from '../../services/db';
 import { gastoPorTarjeta } from '../../services/gastoPorTarjeta';
 import { cobrosDeNomina, ingresosDeLaCuenta } from '../../services/bonificaciones/cobrosDeNomina';
+import { segurosDomiciliados } from '../../services/bonificaciones/segurosDomiciliados';
+import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import { recibosDomiciliados } from '../../services/bonificaciones/recibosDomiciliados';
 import { listarTarjetas } from '../../services/tarjetasService';
 import { cierres } from '../../services/cierreDeMes';
@@ -75,10 +77,11 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
       // Los tres a la vez y ANTES del corte: con una lectura después del
       // `if (cancelado)`, desmontar durante esa espera dejaba pasar el
       // `setMovimientos` que el corte viene a evitar.
-      const [eventos, tarjetas, cerrados] = await Promise.all([
+      const [eventos, tarjetas, cerrados, compromisos] = await Promise.all([
         db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
         listarTarjetas(),
         cierres(),
+        db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
       ]);
       if (cancelado) return;
       setMovimientos({
@@ -92,6 +95,11 @@ const BonificacionesVerificadas: React.FC<Props> = ({ prestamo, onCambio }) => {
         // Los meses cerrados · es lo que convierte «todavía no consta» en un
         // NO. Sin esto una bonificación no se pierde nunca (§6 quater).
         mesesCerrados: cerrados.map((c) => c.mes),
+        // Las pólizas · un seguro se domicilia, así que la prueba está en los
+        // gastos recurrentes y no en un módulo de pólizas. Y aquí LO PREVISTO
+        // CUENTA: un compromiso activo es un contrato dado de alta, no una
+        // esperanza, así que la respuesta está el primer día (§6 ter).
+        segurosDomiciliados: segurosDomiciliados(compromisos ?? [], new Date().getFullYear()),
       });
     })();
     return () => {

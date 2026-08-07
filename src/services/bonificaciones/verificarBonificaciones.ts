@@ -22,6 +22,8 @@ import { cobrosDeLaCuenta } from './cobrosDeNomina';
 import type { RecibosDeUnMes } from './recibosDomiciliados';
 import { recibosDeLaCuenta } from './recibosDomiciliados';
 import { bonificaHipoteca } from '../tarjetasReglas';
+import type { SeguroDomiciliado } from './segurosDomiciliados';
+import { deLaCuenta, delTipo, primaTotal } from './segurosDomiciliados';
 import type { Cumplimiento, Ventana } from './cumplimiento';
 import { ventanaDeEvaluacion, veredictoDelImporte } from './cumplimiento';
 
@@ -56,6 +58,17 @@ export interface MovimientosQuePrueban {
    * cierre: nada se da por no ocurrido si nadie lo ha dicho.
    */
   mesesCerrados?: string[];
+  /**
+   * Las pólizas domiciliadas · lo que devuelve `segurosDomiciliados`.
+   *
+   * Un seguro se domicilia, así que la prueba está aquí y no en un módulo de
+   * pólizas que no existe. Y a diferencia de la nómina, **lo previsto cuenta**:
+   * un compromiso recurrente activo es un contrato dado de alta, no una
+   * esperanza (§6 ter).
+   *
+   * Ausente = ATLAS no sabe de ninguno, que no es lo mismo que no tenerlos.
+   */
+  segurosDomiciliados?: SeguroDomiciliado[];
 }
 
 /**
@@ -67,12 +80,13 @@ export interface MovimientosQuePrueban {
  * mira» sin que nadie lo decidiera.
  */
 const SIN_FUENTE: Record<
-  Exclude<ReglaBonificacion['tipo'], 'TARJETA' | 'NOMINA' | 'RECIBOS'>,
+  Exclude<
+    ReglaBonificacion['tipo'],
+    'TARJETA' | 'NOMINA' | 'RECIBOS' | 'SEGUROS' | 'SEGURO_HOGAR' | 'SEGURO_VIDA'
+  >,
   string
 > = {
   PLAN_PENSIONES: 'la aportación al plan todavía no se sigue en tesorería',
-  SEGURO_HOGAR: 'un seguro se prueba con su póliza, no con un movimiento',
-  SEGURO_VIDA: 'un seguro se prueba con su póliza, no con un movimiento',
   FONDOS: 'el saldo en fondos se prueba con la posición, no con un movimiento',
   CERTIFICADO_ENERGETICO: 'la letra la dice el certificado del inmueble, no la tesorería',
   ALARMA: 'la alarma se prueba con su contrato, no con un movimiento',
@@ -171,6 +185,109 @@ function loQueFaltaParaMirarla(b: Bonificacion): string | null {
     return 'no dice en cuántos meses se mide';
   }
   return null;
+}
+
+/**
+ * La condición de SEGUROS · §6 ter.
+ *
+ * Aquí ponía «un seguro se prueba con su póliza, no con un movimiento», y era
+ * falso: **un seguro se domicilia** *(Jose · 6 ago 2026, «ya sea agrario o
+ * medio pensionista»)*. La prueba lleva todo este tiempo en tesorería.
+ *
+ * Las tres formas que usan los bancos, con una sola cuenta:
+ *
+ *   · **¿la tienes?** · hay una póliza activa cargando en su cuenta
+ *   · **¿cuántas?** · `minimoPolizas`
+ *   · **¿por cuánto?** · `primaAnualMinima` contra lo proyectado a doce meses
+ *
+ * Y responde el primer día, no en diciembre: lo previsto cuenta porque un
+ * compromiso activo es un contrato, no una esperanza. Negarse a contestar por
+ * prudencia sería un modo de fallo, no un valor por defecto — la tercera
+ * respuesta está para lo que de verdad no se sabe.
+ */
+function porSeguros(
+  b: Bonificacion,
+  regla: Extract<ReglaBonificacion, { tipo: 'SEGUROS' | 'SEGURO_HOGAR' | 'SEGURO_VIDA' }>,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban
+): Cumplimiento {
+  const base = { bonificacionId: b.id, nombre: b.nombre, ventana };
+
+  if (!movimientos.segurosDomiciliados) {
+    return noVerificable(b, 'no hay gastos recurrentes dados de alta donde mirar la póliza');
+  }
+
+  // La cuenta del banco que bonifica · un seguro domiciliado en otro no le
+  // entra a él, igual que la tarjeta de fuera no cuenta (§3.6).
+  const cuentaId = Number(b.cuentaExigidaId);
+  if (!b.cuentaExigidaId || !Number.isFinite(cuentaId)) {
+    return noVerificable(b, 'no dice en qué cuenta hay que domiciliar la póliza');
+  }
+
+  const todas = deLaCuenta(movimientos.segurosDomiciliados, cuentaId);
+  // «Seguro de hogar» y «seguro de vida» piden UNO CONCRETO · «seguros» a secas
+  // vale con cualquiera, que es lo que dicen los anexos que cuentan pólizas.
+  const que = regla.tipo === 'SEGURO_HOGAR' ? 'hogar' : regla.tipo === 'SEGURO_VIDA' ? 'vida' : null;
+  const suyas = que ? delTipo(todas, que) : todas;
+
+  if (suyas.length === 0) {
+    // Con pólizas en la cuenta pero ninguna que diga de qué es, no se puede
+    // decir que no: puede ser justo la que pide y no lo pone. Es la tercera
+    // respuesta, usada para lo que de verdad no se sabe.
+    if (que && todas.length > 0) {
+      return noVerificable(
+        b,
+        `hay ${todas.length} ${todas.length === 1 ? 'póliza domiciliada' : 'pólizas domiciliadas'} en esa cuenta, pero ninguna dice ser de ${que}`
+      );
+    }
+    return {
+      ...base,
+      veredicto: 'no_cumple',
+      motivo: que
+        ? `no hay ningún seguro de ${que} domiciliado en esa cuenta`
+        : 'no hay ningún seguro domiciliado en esa cuenta',
+    };
+  }
+
+  // ¿Cuántas? · el anexo puede pedir dos o tres pólizas.
+  const minimoPolizas = regla.tipo === 'SEGUROS' ? regla.minimoPolizas : undefined;
+  if (minimoPolizas && suyas.length < minimoPolizas) {
+    return {
+      ...base,
+      veredicto: 'no_cumple',
+      medido: suyas.length,
+      exigido: minimoPolizas,
+      motivo: `${suyas.length} de las ${minimoPolizas} pólizas que pide`,
+    };
+  }
+
+  // ¿Por cuánto? · contra la prima proyectada del año, no contra lo cobrado.
+  const minimoPrima =
+    regla.tipo === 'SEGUROS'
+      ? regla.primaAnualMinima
+      : regla.tipo === 'SEGURO_HOGAR'
+        ? regla.primaAnual
+        : undefined;
+  if (minimoPrima && minimoPrima > 0) {
+    const total = primaTotal(suyas);
+    return {
+      ...base,
+      veredicto: veredictoDelImporte(total, minimoPrima),
+      medido: total,
+      exigido: minimoPrima,
+      motivo: `${suyas.length === 1 ? 'la póliza suma' : `${suyas.length} pólizas suman`} ${total.toFixed(2)} € al año`,
+    };
+  }
+
+  return {
+    ...base,
+    veredicto: 'cumple',
+    medido: primaTotal(suyas),
+    motivo:
+      suyas.length === 1
+        ? `${suyas[0].alias} · domiciliado en esa cuenta`
+        : `${suyas.length} pólizas domiciliadas en esa cuenta`,
+  };
 }
 
 /**
@@ -407,6 +524,13 @@ function verificarUna(
   if (b.regla.tipo === 'TARJETA') return porTarjeta(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'NOMINA') return porNomina(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'RECIBOS') return porRecibos(b, b.regla, ventana, movimientos);
+  if (
+    b.regla.tipo === 'SEGUROS' ||
+    b.regla.tipo === 'SEGURO_HOGAR' ||
+    b.regla.tipo === 'SEGURO_VIDA'
+  ) {
+    return porSeguros(b, b.regla, ventana, movimientos);
+  }
 
   // `hasOwnProperty` y no `SIN_FUENTE[...]` a secas: un tipo guardado que ya no
   // esté en la tabla daría un motivo `undefined`, y el usuario leería

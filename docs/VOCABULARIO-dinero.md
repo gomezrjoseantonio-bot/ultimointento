@@ -1136,6 +1136,22 @@ Escrito para no perderlo, con la fecha en que se detectó.
 
 ### Pendiente
 
+- **2026-08-07** · ~~**Los seguros, y una regla que hoy no existe**~~ ·
+  **construido**. `segurosDomiciliados` deriva las pólizas de los compromisos
+  recurrentes activos con `tipo: 'seguro'` —la decisión que faltaba estaba ya en
+  el modelo, así que no hizo falta heurística ninguna— y `porSeguros` responde
+  las tres formas: si la tienes, cuántas y por cuánto. La regla `SEGUROS` es la
+  que faltaba para «dos pólizas cualesquiera» y para el agrario, el de salud, el
+  de auto y el de RC, que caían a `OTRA` y se volvían incomprobables siendo lo
+  mismo que los demás — un recibo.
+  Lo que decía `SIN_FUENTE` —«un seguro se prueba con su póliza, no con un
+  movimiento»— era **falso**, y por eso toda condición de seguro salía como no
+  verificable. Un seguro se domicilia. La prueba llevaba ahí todo el tiempo.
+  Y lo previsto cuenta: 25 € al mes son 300 € al año **desde el primer día**, no
+  en diciembre. Lo que sigue sin contar es una póliza que no dice de qué es
+  —vale para «cuántas», no para «el de vida»— y una domiciliada en otro banco,
+  que no bonifica a este igual que la tarjeta de fuera no cuenta. §6 ter.
+
 - **2026-08-06** · **Los seguros, y una regla que hoy no existe** *(Jose, con
   dos matices que cambian el diseño)*.
 

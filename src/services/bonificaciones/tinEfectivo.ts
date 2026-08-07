@@ -125,6 +125,10 @@ function umbralDeclarado(regla: ReglaBonificacion | undefined): number | null {
     case 'RECIBOS':         return regla.minimoRecibos ?? null;
     case 'TARJETA':         return regla.importeMinimo ?? regla.movimientosMesMin ?? null;
     case 'PLAN_PENSIONES':  return regla.aportacionAnual ?? null;
+    // Dos formas y una sola cifra · manda la prima, que es la que los anexos
+    // escalonan («hasta 300 €, −0,10; desde 600 €, −0,25»). El número de
+    // pólizas se usa cuando es lo único que dicen.
+    case 'SEGUROS':         return regla.primaAnualMinima ?? regla.minimoPolizas ?? null;
     case 'SEGURO_HOGAR':    return regla.primaAnual ?? null;
     case 'SEGURO_VIDA':     return regla.capitalAseguradoPct ?? null;
     case 'FONDOS':          return regla.saldoMinimo ?? null;

@@ -645,6 +645,21 @@ export type ReglaBonificacion =
    * ausente sigue significando eso: contratado, sin cifra dicha.
    */
   | { tipo: 'PLAN_PENSIONES'; activo: boolean; aportacionAnual?: number }
+  /**
+   * Seguros, **contados o sumados** · la forma que ninguna otra podía expresar.
+   *
+   * «Cada entidad bonifica de forma distinta: unas por tenerlo, otras por el
+   * número de seguros, otras por el importe total de las primas» *(Jose · 6 ago
+   * 2026)*. `SEGURO_HOGAR` y `SEGURO_VIDA` dicen «ten ESTE», y con eso no se
+   * puede escribir «dos pólizas cualesquiera» ni «primas por 600 € al año»,
+   * que es lo que piden muchos anexos. Y el agrario, el de comercio, el de
+   * salud, el de auto y el de RC no tienen tipo propio: caían a `OTRA` y se
+   * volvían incomprobables siendo lo mismo que los demás — un recibo.
+   *
+   * Las dos condiciones son un Y: sin `minimoPolizas` no se cuenta, sin
+   * `primaAnualMinima` no se suma, y sin ninguna basta con tener una.
+   */
+  | { tipo: 'SEGUROS'; minimoPolizas?: number; primaAnualMinima?: number }
   /** El seguro del inmueble · `primaAnual` en EUROS AL AÑO, si el anexo la dice. */
   | { tipo: 'SEGURO_HOGAR'; activo: boolean; primaAnual?: number }
   /**

@@ -306,6 +306,10 @@ const CONDICIONES: Condicion[] = [
   { tipo: 'TARJETA',                label: 'Uso de tarjeta',               unidad: '€/año',  ppSugerido: 0.1 },
   { tipo: 'SEGURO_HOGAR',           label: 'Seguro de hogar',              unidad: '€/año',  ppSugerido: 0.2 },
   { tipo: 'SEGURO_VIDA',            label: 'Seguro de vida',               unidad: '% cap.', ppSugerido: 0.4 },
+  // Lo que «seguro de hogar» y «seguro de vida» no saben decir: «dos pólizas,
+  // las que sean». Y da sitio al agrario, al de salud, al de auto y al de RC,
+  // que caían a «Otra» y se volvían incomprobables siendo lo mismo · un recibo.
+  { tipo: 'SEGUROS',                label: 'Seguros · cuántos',            unidad: 'nº',     ppSugerido: 0.2 },
   { tipo: 'PLAN_PENSIONES',         label: 'Plan de pensiones o previsión', unidad: '€/año',  ppSugerido: 0.25 },
   { tipo: 'FONDOS',                 label: 'Fondos de inversión',          unidad: '€',      ppSugerido: 0.1 },
   { tipo: 'ALARMA',                 label: 'Alarma o seguridad',           unidad: null,     ppSugerido: 0.1 },
@@ -322,6 +326,7 @@ function umbralDeRegla(r: ReglaBonificacion): string {
     case 'NOMINA':                 return r.minimoMensual ? fmtNumeroEs(r.minimoMensual, 0) : '';
     case 'RECIBOS':                return r.minimoRecibos ? String(r.minimoRecibos) : '';
     case 'TARJETA':                return r.importeMinimo ? fmtNumeroEs(r.importeMinimo, 0) : '';
+    case 'SEGUROS':                return r.minimoPolizas ? String(r.minimoPolizas) : '';
     case 'SEGURO_HOGAR':           return r.primaAnual ? fmtNumeroEs(r.primaAnual, 0) : '';
     case 'SEGURO_VIDA':            return r.capitalAseguradoPct ? fmtNumeroEs(r.capitalAseguradoPct, 0) : '';
     case 'PLAN_PENSIONES':         return r.aportacionAnual ? fmtNumeroEs(r.aportacionAnual, 0) : '';
@@ -344,6 +349,7 @@ function reglaDeCondicion(tipo: TipoCondicion, umbralRaw: string, nombre: string
     case 'NOMINA':                 return { tipo, minimoMensual: n };
     case 'RECIBOS':                return { tipo, minimoRecibos: enteroNoNegativo(n) };
     case 'TARJETA':                return { tipo, importeMinimo: n };
+    case 'SEGUROS':                return { tipo, minimoPolizas: enteroNoNegativo(n) || undefined };
     case 'SEGURO_HOGAR':           return { tipo, activo: true, primaAnual: n || undefined };
     case 'SEGURO_VIDA':            return { tipo, activo: true, capitalAseguradoPct: n || undefined };
     case 'PLAN_PENSIONES':         return { tipo, activo: true, aportacionAnual: n || undefined };
@@ -360,6 +366,9 @@ const TIPO_DE_REGLA: Record<TipoCondicion, Bonificacion['tipo']> = {
   PLAN_PENSIONES: 'PENSIONES',
   SEGURO_HOGAR: 'SEGURO_HOGAR',
   SEGURO_VIDA: 'SEGURO_VIDA',
+  // `Bonificacion.tipo` es la etiqueta gruesa y no tiene un valor para «seguros
+  // en general» · lo que se comprueba es la REGLA, y esa sí lo distingue.
+  SEGUROS: 'OTROS',
   TARJETA: 'TARJETA',
   RECIBOS: 'RECIBOS',
   FONDOS: 'FONDOS',
