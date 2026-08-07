@@ -343,13 +343,26 @@ function umbralDeRegla(r: ReglaBonificacion): string {
  * Exhaustiva a propósito: una condición nueva no compila hasta que alguien
  * decida qué hay que demostrar para darla por cumplida.
  */
-function reglaDeCondicion(tipo: TipoCondicion, umbralRaw: string, nombre: string): ReglaBonificacion {
+function reglaDeCondicion(
+  tipo: TipoCondicion,
+  umbralRaw: string,
+  nombre: string,
+  anterior?: ReglaBonificacion
+): ReglaBonificacion {
   const n = parseNum(umbralRaw);
   switch (tipo) {
     case 'NOMINA':                 return { tipo, minimoMensual: n };
     case 'RECIBOS':                return { tipo, minimoRecibos: enteroNoNegativo(n) };
     case 'TARJETA':                return { tipo, importeMinimo: n };
-    case 'SEGUROS':                return { tipo, minimoPolizas: enteroNoNegativo(n) || undefined };
+    // La casilla edita el NÚMERO de pólizas, pero la regla admite además una
+    // prima mínima que puede venir del anexo. Sin conservarla, teclear aquí la
+    // borraría en silencio: se guardaría «dos pólizas» y se perdería «y por al
+    // menos 600 € al año», que es media condición.
+    case 'SEGUROS':                return {
+      tipo,
+      minimoPolizas: enteroNoNegativo(n) || undefined,
+      primaAnualMinima: anterior?.tipo === 'SEGUROS' ? anterior.primaAnualMinima : undefined,
+    };
     case 'SEGURO_HOGAR':           return { tipo, activo: true, primaAnual: n || undefined };
     case 'SEGURO_VIDA':            return { tipo, activo: true, capitalAseguradoPct: n || undefined };
     case 'PLAN_PENSIONES':         return { tipo, activo: true, aportacionAnual: n || undefined };
@@ -1282,7 +1295,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   const cambiarUmbral = (b: BonificacionRow, raw: string) =>
     editarBonificacion(b.id, {
       umbralRaw: raw,
-      regla: reglaDeCondicion(b.regla.tipo, raw, b.nombre),
+      regla: reglaDeCondicion(b.regla.tipo, raw, b.nombre, b.regla),
     });
 
   /** Mover una fila · en cascada el orden ES el contrato, no la presentación. */

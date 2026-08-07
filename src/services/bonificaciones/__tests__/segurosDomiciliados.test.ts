@@ -27,7 +27,7 @@ const poliza = (over: Partial<CompromisoRecurrente> = {}): CompromisoRecurrente 
     importe: { modo: 'fijo', importe: 25 },
     cuentaCargo: 1,
     conceptoBancario: 'MAPFRE',
-    metodoPago: 'domiciliado',
+    metodoPago: 'domiciliacion',
     estado: 'activo',
     ...over,
   }) as unknown as CompromisoRecurrente;
@@ -105,6 +105,14 @@ describe('la prima se proyecta, no se espera a que llegue', () => {
 });
 
 describe('las de fuera no bonifican', () => {
+  // Lo que el banco premia es que le pases el recibo a él · pagarla por
+  // transferencia o con tarjeta no es domiciliarla, y con tarjeta la cuenta que
+  // consta es la de liquidación, que puede ser de otro banco entero.
+  it('una póliza que no está domiciliada no cuenta', () => {
+    expect(segurosDomiciliados([poliza({ metodoPago: 'transferencia' })], 2026)).toHaveLength(0);
+    expect(segurosDomiciliados([poliza({ metodoPago: 'tarjeta' })], 2026)).toHaveLength(0);
+  });
+
   it('una póliza cargada en otro banco no cuenta para este', () => {
     const todas = segurosDomiciliados([poliza({ cuentaCargo: 9 })], 2026);
 
@@ -188,6 +196,32 @@ describe('las tres formas que usan los bancos', () => {
     expect(
       verificarBonificaciones([bonif(regla)], pruebas([poliza()]), hoy)[0].veredicto
     ).toBe('no_cumple');
+  });
+
+  // Tesorería prueba que la póliza existe · no por cuánto cubre. Un «cumple»
+  // aquí sería un falso positivo: hay vidas por el 50 % del capital que no dan
+  // la bonificación, y el recibo cuesta lo mismo.
+  it('el % del capital de una vida no se ve en el recibo · y se dice', () => {
+    const [c] = verificarBonificaciones(
+      [bonif({ tipo: 'SEGURO_VIDA', activo: true, capitalAseguradoPct: 100 })],
+      pruebas([poliza({ alias: 'Vida riesgo', subtipo: 'vida' })]),
+      hoy
+    );
+
+    expect(c.veredicto).toBe('no_verificable');
+    expect(c.motivo).toContain('hay seguro de vida domiciliado');
+    expect(c.motivo).toContain('100 %');
+  });
+
+  // Sin cifra pedida, «tener el seguro de vida» sí se comprueba entero.
+  it('pero sin cifra, tener la póliza es toda la condición', () => {
+    const [c] = verificarBonificaciones(
+      [bonif({ tipo: 'SEGURO_VIDA', activo: true })],
+      pruebas([poliza({ alias: 'Vida riesgo', subtipo: 'vida' })]),
+      hoy
+    );
+
+    expect(c.veredicto).toBe('cumple');
   });
 
   // Negarse a responder por prudencia es un modo de fallo, no un valor por

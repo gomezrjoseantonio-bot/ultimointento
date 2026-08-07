@@ -249,6 +249,18 @@ function porSeguros(
     };
   }
 
+  // El % del capital que asegura la vida NO se ve en tesorería · el recibo dice
+  // lo que cuesta, no por cuánto cubre. Con la cifra pedida, decir «cumple»
+  // porque hay una póliza domiciliada sería afirmar lo que no se sabe: hay
+  // vidas por el 50 % del capital que no dan la bonificación. La respuesta
+  // honesta dice lo que SÍ consta y dónde se acaba lo que ATLAS ve.
+  if (regla.tipo === 'SEGURO_VIDA' && regla.capitalAseguradoPct) {
+    return noVerificable(
+      b,
+      `hay seguro de vida domiciliado, pero el recibo no dice si cubre el ${regla.capitalAseguradoPct} % del capital`
+    );
+  }
+
   // ¿Cuántas? · el anexo puede pedir dos o tres pólizas.
   const minimoPolizas = regla.tipo === 'SEGUROS' ? regla.minimoPolizas : undefined;
   if (minimoPolizas && suyas.length < minimoPolizas) {

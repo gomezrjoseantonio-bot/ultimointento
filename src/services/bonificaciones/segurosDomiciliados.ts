@@ -40,6 +40,17 @@
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import { costeAnualDe, esActivoRecurrente } from '../compromisos/costeProyectado';
 
+/**
+ * Que el recibo lo cargue el banco · **domiciliado**, no de otra forma.
+ *
+ * El nombre de este fichero lo dice y la condición del contrato también: lo que
+ * el banco premia es que le pases el recibo a él. Una póliza que pagas por
+ * transferencia o con tarjeta puede estar puesta a una cuenta suya en el modelo
+ * y no ser una domiciliación — con tarjeta, `cuentaCargo` es la de liquidación
+ * de la tarjeta, que puede ser de otro banco entero.
+ */
+const esDomiciliado = (c: CompromisoRecurrente): boolean => c.metodoPago === 'domiciliacion';
+
 /** Una póliza domiciliada, con lo que cuesta al año. */
 export interface SeguroDomiciliado {
   /** La cuenta donde se carga · es lo que el banco exige, su cuenta. */
@@ -74,7 +85,7 @@ export function segurosDomiciliados(
   anio: number
 ): SeguroDomiciliado[] {
   return compromisos
-    .filter((c) => c.tipo === 'seguro' && esActivoRecurrente(c))
+    .filter((c) => c.tipo === 'seguro' && esDomiciliado(c) && esActivoRecurrente(c))
     .map((c) => ({
       cuentaId: c.cuentaCargo,
       alias: c.alias,
