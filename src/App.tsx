@@ -119,7 +119,7 @@ const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis
 //   a sus tablas de 12 y 18 columnas. El Detalle sigue en `/financiacion/:id`.
 const FinanciacionPage = lazyWithPreload(() => import('./modules/financiacion/FinanciacionPage'));
 const FinanciacionVista = lazyWithPreload(() => import('./modules/financiacion/vista/VistaFinanciacionPage'));
-const FinanciacionDetalle = lazyWithPreload(() => import('./modules/financiacion/pages/DetallePage'));
+const FinanciacionDetalle = lazyWithPreload(() => import('./modules/financiacion/vista/DetallePrestamoPage'));
 const FinanciacionWizardCreate = lazyWithPreload(() => import('./modules/financiacion/pages/WizardCreatePage'));
 const FinanciacionWizardEdit = lazyWithPreload(() => import('./modules/financiacion/pages/WizardEditPage'));
 // T20 Fase 2 · Tesorería v5 module (sustituye Tesoreria.tsx + TesoreriaSupervisionPage.tsx)

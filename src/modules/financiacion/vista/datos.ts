@@ -6,8 +6,9 @@
 // origen de las cuotas que bailaban al marcar un recibo como pagado.
 
 import type { Prestamo } from '../../../types/prestamos';
-import { generarCuadro, type Cuadro } from '../../../services/prestamos/cuadro';
+import type { Cuadro } from '../../../services/prestamos/cuadro';
 import {
+  cuadroDe as cuadroDelMotor,
   getCapitalVivo,
   getCuota,
   getDesgloseCuota,
@@ -80,10 +81,17 @@ export function metaDestino(p: Prestamo): string {
   return tipos.join(' · ');
 }
 
-/** Genera el cuadro de un préstamo · `null` si sus datos no dan para uno. */
-export function cuadroDe(p: Prestamo): Cuadro | null {
+/**
+ * El cuadro de un préstamo · `null` si sus datos no dan para uno.
+ *
+ * Delega en el `cuadroDe` del motor, que memoiza: una cartera de nueve
+ * préstamos pregunta lo mismo muchas veces y regenerar 240 periodos por
+ * pregunta se nota. Lo que añade este envoltorio es la red: un préstamo con
+ * datos incompletos no puede tumbar la lista entera, se cae solo su fila.
+ */
+export function cuadroSeguroDe(p: Prestamo): Cuadro | null {
   try {
-    const c = generarCuadro(p);
+    const c = cuadroDelMotor(p);
     return c.plan.periodos.length > 0 ? c : null;
   } catch {
     return null;
