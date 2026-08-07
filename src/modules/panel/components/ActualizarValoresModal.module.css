@@ -1,0 +1,51 @@
+.list {
+  display: grid;
+  gap: 10px;
+}
+
+.listEmpty {
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-card-alt);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  gap: 12px;
+  align-items: center;
+}
+
+.name {
+  min-width: 0;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+}
+
+.meta {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.error {
+  border-left: 3px solid var(--atlas-v5-neg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--atlas-v5-neg-wash);
+  font-size: 12px;
+  color: var(--atlas-v5-ink-2);
+}
+
+@media (max-width: 720px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}

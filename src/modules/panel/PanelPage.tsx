@@ -10,7 +10,7 @@
 //      (la curva de patrimonio a 20 años es FASE C · motor C-PROY-5 no existe → vacío)
 //   3. Cómo va el mes · cinco celdas (split cobrado/pendiente por `type` + `status`)
 //   4. Puedes estar tranquilo · cuatro tarjetas (callado cuando todo va bien · §B.2)
-//   5. Acciones rápidas · cuatro botones
+//   5. Acciones rápidas · accesos de acción
 //
 // Principio de honestidad (§1): si un dato no tiene fuente fiable, lleva estado
 // vacío, nunca un valor de ejemplo ni un cero que parezca real.
@@ -19,7 +19,7 @@
 // sección (HeroPatrimonio · ComoVaElMes · PuedesEstarTranquilo · AccionesRapidas)
 // son presentacionales.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard } from 'lucide-react';
 import { PageHead } from '../../design-system/v5';
@@ -48,6 +48,7 @@ import HeroPatrimonio from './components/HeroPatrimonio';
 import ComoVaElMes from './components/ComoVaElMes';
 import PuedesEstarTranquilo from './components/PuedesEstarTranquilo';
 import AccionesRapidas from './components/AccionesRapidas';
+import ActualizarValoresModal from './components/ActualizarValoresModal';
 import type { AnilloState } from './components/types';
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import { costeMensualRecurrente, importeRecurrenteEnMes } from './compromisosMensual';
@@ -85,6 +86,7 @@ const magnitud = (ev: TreasuryEvent, usarActual = false): number =>
 
 const PanelPage: React.FC = () => {
   const navigate = useNavigate();
+  const isMountedRef = useRef(true);
 
   // El Panel NO hace scroll (requisito duro) · el par outer/inner escala el
   // contenido si no cabe en la altura disponible. Los wrappers se montan
@@ -102,6 +104,12 @@ const PanelPage: React.FC = () => {
       alive = false;
     };
   }, [navigate]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Proyección libertad financiera real (renta pasiva neta vs gasto objetivo).
   const { data: libertadData, loading: libertadLoading, error: libertadError } =
@@ -121,6 +129,7 @@ const PanelPage: React.FC = () => {
   const [alertasFiscales, setAlertasFiscales] = useState<AlertaFiscal[]>([]);
   const [estimacionFiscal, setEstimacionFiscal] = useState<EstimacionEjercicioEnCurso | null>(null);
   const [seriePatrimonio, setSeriePatrimonio] = useState<PuntoPatrimonioAnual[] | null>(null);
+  const [showUpdateValuesModal, setShowUpdateValuesModal] = useState(false);
 
   // Curva del héroe (B4) · salida canónica del motor · carga no bloqueante:
   // el Panel pinta sus escalares al instante y la curva llega cuando llega.
@@ -138,52 +147,52 @@ const PanelPage: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  const loadPanelData = useCallback(async () => {
+    try {
+      const [db, ctx] = await Promise.all([initDB(), getFiscalContextSafe()]);
+      const [props, items, accs, prest, tevents, conts, comps] = await Promise.all([
+        db.getAll('properties') as Promise<Property[]>,
+        getAllCartaItems(),
+        db.getAll('accounts') as Promise<Account[]>,
+        db.getAll('prestamos') as Promise<Prestamo[]>,
+        db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+        db.getAll('contracts') as Promise<Contract[]>,
+        db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
+      ]);
+      if (!isMountedRef.current) return;
+      setProperties(props);
+      setCartaItems(items);
+      setAccounts(accs);
+      setPrestamos(prest.filter((p) => p.activo !== false && p.estado !== 'cancelado'));
+      setTreasuryEvents(tevents);
+      setContracts(conts);
+      setCompromisos(comps);
+      if (ctx?.nombre) setNombreUsuario(ctx.nombre);
+
+      const escenarios = (await db.getAll('escenarios')) as Escenario[];
+      if (!isMountedRef.current) return;
+      setEscenario(escenarios[0] ?? null);
+
       try {
-        const [db, ctx] = await Promise.all([initDB(), getFiscalContextSafe()]);
-        const [props, items, accs, prest, tevents, conts, comps] = await Promise.all([
-          db.getAll('properties') as Promise<Property[]>,
-          getAllCartaItems(),
-          db.getAll('accounts') as Promise<Account[]>,
-          db.getAll('prestamos') as Promise<Prestamo[]>,
-          db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
-          db.getAll('contracts') as Promise<Contract[]>,
-          db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
-        ]);
-        if (cancelled) return;
-        setProperties(props);
-        setCartaItems(items);
-        setAccounts(accs);
-        setPrestamos(prest.filter((p) => p.activo !== false && p.estado !== 'cancelado'));
-        setTreasuryEvents(tevents);
-        setContracts(conts);
-        setCompromisos(comps);
-        if (ctx?.nombre) setNombreUsuario(ctx.nombre);
-
-        const escenarios = (await db.getAll('escenarios')) as Escenario[];
-        if (!cancelled) setEscenario(escenarios[0] ?? null);
-
-        try {
-          const matcher =
-            await valoracionesService.getMapValoracionesMasRecientesConMatchingPorNombre('inmueble');
-          if (!cancelled) setValoracionMatcher(matcher);
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.warn('[panel] no se pudo cargar matcher de valoraciones', e);
-        }
-      } catch (err) {
+        const matcher =
+          await valoracionesService.getMapValoracionesMasRecientesConMatchingPorNombre('inmueble');
+        if (!isMountedRef.current) return;
+        setValoracionMatcher(matcher);
+      } catch (e) {
         // eslint-disable-next-line no-console
-        console.error('[panel] error cargando datos', err);
-      } finally {
-        if (!cancelled) setLoading(false);
+        console.warn('[panel] no se pudo cargar matcher de valoraciones', e);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      if (isMountedRef.current) console.error('[panel] error cargando datos', err);
+    } finally {
+      if (isMountedRef.current) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadPanelData();
+  }, [loadPanelData]);
 
   // Alertas fiscales del ejercicio en curso · alimentan "Próximos 30 días" (modelo 130).
   useEffect(() => {
@@ -501,7 +510,20 @@ const PanelPage: React.FC = () => {
             irpf={irpf}
           />
 
-          <AccionesRapidas onNavigate={navigate} />
+          <AccionesRapidas
+            onNavigate={navigate}
+            onOpenUpdateValues={() => setShowUpdateValuesModal(true)}
+          />
+
+          {showUpdateValuesModal ? (
+            <ActualizarValoresModal
+              onClose={() => setShowUpdateValuesModal(false)}
+              onSaved={async () => {
+                setLoading(true);
+                await loadPanelData();
+              }}
+            />
+          ) : null}
 
           {/* Semáforo onboarding · andamio de arranque · va al final, después de
               acciones rápidas (decisión Jose) · se auto-oculta al 100%. */}
