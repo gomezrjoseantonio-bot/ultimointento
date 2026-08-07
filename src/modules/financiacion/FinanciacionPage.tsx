@@ -12,12 +12,9 @@ import { Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Landmark } from 'lucide-react';
 import { PageHead, Icons, showToastV5 } from '../../design-system/v5';
 import { EmptyState } from '../../components/common/EmptyState';
-import {
-  prestamosService,
-  interesesTotalDeducible,
-} from '../../services/prestamosService';
+import { prestamosService } from '../../services/prestamosService';
 import type { Prestamo, PlanPagos } from '../../types/prestamos';
-import { effectiveTIN, loanRowFromPrestamo } from './helpers';
+import { interesDeducibleDelAnio, loanRowFromPrestamo } from './helpers';
 import type { LoanRow } from './types';
 import type { FinanciacionOutletContext } from './FinanciacionContext';
 import styles from './FinanciacionPage.module.css';
@@ -96,17 +93,9 @@ const FinanciacionPage: React.FC = () => {
   const rows: LoanRow[] = useMemo(() => {
     return prestamos
       .filter((p) => p.activo !== false && p.estado !== 'cancelado')
-      .map((p) => {
-        // Aproximación · intereses anuales = capitalVivo · TIN efectivo.
-        const interesesAnualEstim = (p.principalVivo * effectiveTIN(p)) / 100;
-        let intDed = 0;
-        try {
-          intDed = interesesTotalDeducible(p, interesesAnualEstim);
-        } catch {
-          intDed = 0;
-        }
-        return loanRowFromPrestamo(p, intDed);
-      });
+      // Los intereses deducibles del año EN CURSO · sumados del cuadro, no
+      // estimados como `capitalVivo × TIN`.
+      .map((p) => loanRowFromPrestamo(p, interesDeducibleDelAnio(p, new Date().getFullYear())));
   }, [prestamos]);
 
   const ctx: FinanciacionOutletContext = {

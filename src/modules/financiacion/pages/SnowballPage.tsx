@@ -49,35 +49,66 @@ const orderRows = (rows: LoanRow[], strategy: Strategy): LoanRow[] => {
 };
 
 /**
- * Simulación simplificada · trata el portfolio como deuda agregada que se
- * amortiza al ritmo de cuota actual + extra/mes. Devuelve fecha estimada de
- * libertad y total de intereses pagados.
+ * La simulación · **préstamo a préstamo**, en el orden elegido.
+ *
+ * Trataba la cartera como UNA deuda agregada a un TIN ponderado, pagando la
+ * suma de todas las cuotas hasta que el montón llegaba a cero. De ahí salían
+ * fechas imposibles: el préstamo del coche seguía pagando su cuota diez años
+ * después de haberse acabado, así que el agregado se extinguía mucho antes de
+ * lo que puede extinguirse la hipoteca sola.
+ *
+ * Aquí cada préstamo tiene su saldo, su tipo y su cuota, y se acaba cuando se
+ * acaba. Y lo que se libera al acabar **se suma al ataque** del siguiente, que
+ * es justamente lo que significa «bola de nieve»: el extra crece solo.
+ *
+ * El supuesto que hay que decir: cada préstamo se proyecta al tipo que paga HOY
+ * (`r.tin`, ya bonificado). Para un variable eso es suponer que el índice no se
+ * mueve — la misma hipótesis con la que el banco calcula la TAE.
  */
 const simulateSnowball = (
   rows: LoanRow[],
   extraMonthly: number,
 ): { totalIntereses: number; mesesHastaCero: number } => {
   if (rows.length === 0) return { totalIntereses: 0, mesesHastaCero: 0 };
-  const baseCuota = rows.reduce((s, r) => s + r.cuotaMensual, 0);
-  const tinPond = (() => {
-    const totalVivo = rows.reduce((s, r) => s + r.capitalVivo, 0);
-    return totalVivo > 0
-      ? rows.reduce((s, r) => s + r.tin * r.capitalVivo, 0) / totalVivo
-      : 0;
-  })();
-  let saldo = rows.reduce((s, r) => s + r.capitalVivo, 0);
-  const tasaMensual = tinPond / 100 / 12;
+
+  const vivos = rows.map((r) => ({
+    saldo: r.capitalVivo,
+    cuota: r.cuotaMensual,
+    tasa: r.tin / 100 / 12,
+    // Ningún préstamo dura más de lo que le queda · lo dice su cuadro.
+    quedan: r.cuotasRestantes,
+  }));
+
   let totalIntereses = 0;
   let meses = 0;
   const maxMeses = 12 * 50;
-  while (saldo > 1 && meses < maxMeses) {
-    const interes = saldo * tasaMensual;
-    const cuota = baseCuota + extraMonthly;
-    const amort = Math.min(saldo, Math.max(0, cuota - interes));
-    totalIntereses += interes;
-    saldo = Math.max(0, saldo - amort);
+
+  while (vivos.some((p) => p.saldo > 1 && p.quedan > 0) && meses < maxMeses) {
+    // Lo que hay para atacar · el extra del usuario más la cuota de todo lo que
+    // ya se terminó de pagar.
+    let ataque =
+      extraMonthly +
+      vivos.filter((p) => p.saldo <= 1 || p.quedan <= 0).reduce((s, p) => s + p.cuota, 0);
+
+    for (const p of vivos) {
+      if (p.saldo <= 1 || p.quedan <= 0) continue;
+
+      const interes = p.saldo * p.tasa;
+      totalIntereses += interes;
+      p.saldo = Math.max(0, p.saldo - Math.max(0, p.cuota - interes));
+      p.quedan -= 1;
+
+      // El ataque va entero al primero de la lista que siga vivo · es el orden
+      // que ha elegido el usuario, y concentrarlo es lo que acorta el plazo.
+      if (ataque > 0 && p.saldo > 0) {
+        const extra = Math.min(p.saldo, ataque);
+        p.saldo -= extra;
+        ataque -= extra;
+      }
+    }
     meses++;
   }
+
   return { totalIntereses, mesesHastaCero: meses };
 };
 
@@ -102,8 +133,11 @@ const SnowballPage: React.FC = () => {
 
   const ordered = useMemo(() => orderRows(rows, strategy), [rows, strategy]);
 
-  const baseSim = useMemo(() => simulateSnowball(rows, 0), [rows]);
-  const planSim = useMemo(() => simulateSnowball(rows, extra), [rows, extra]);
+  // Con el orden elegido · el ataque se concentra en el primero de la lista, así
+  // que la estrategia cambia el resultado. Pasando `rows` sin ordenar, elegir
+  // avalancha o bola no movía ni un mes.
+  const baseSim = useMemo(() => simulateSnowball(ordered, 0), [ordered]);
+  const planSim = useMemo(() => simulateSnowball(ordered, extra), [ordered, extra]);
 
   const ahorroMeses = Math.max(0, baseSim.mesesHastaCero - planSim.mesesHastaCero);
   const ahorroIntereses = Math.max(0, baseSim.totalIntereses - planSim.totalIntereses);
