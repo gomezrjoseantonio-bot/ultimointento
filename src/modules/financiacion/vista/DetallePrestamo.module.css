@@ -696,3 +696,36 @@
   font-size: var(--atlas-v5-fs-base);
   color: var(--atlas-v5-ink-3);
 }
+
+/* El veredicto de los movimientos · va al lado del nombre y NO pisa el check
+   del banco: son dos preguntas distintas y la ficha tiene que poder decir las
+   dos a la vez, sobre todo cuando no coinciden.
+
+   Con los tokens de la guía y sin hex a pelo · `--atlas-v5-neg` ya es el rojo
+   de «alerta · fallado» y `--atlas-v5-neg-wash` su fondo, así que escribir el
+   color otra vez sería una cuarta copia del mismo rojo. */
+.bonifAviso,
+.bonifDuda,
+.bonifLogro {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.bonifAviso {
+  color: var(--atlas-v5-neg);
+  background: var(--atlas-v5-neg-wash);
+}
+.bonifDuda {
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-line-3);
+}
+/* La cumples y no te la aplican · no es un error tuyo, es algo que puedes
+   reclamar, y por eso va en verde y no en rojo. */
+.bonifLogro {
+  color: var(--atlas-v5-pos);
+  background: var(--atlas-v5-pos-wash);
+}
