@@ -80,6 +80,45 @@ describe('el tipo que se paga cambia con el tramo', () => {
     expect(getTinVigente(unicaja(), '2024-03-01')).toBeCloseTo(2.6, 3);
     expect(getTinVigente(unicaja(), '2030-03-01')).toBeCloseTo(5.899, 3);
   });
+
+  // El defecto D3 · «el variable ignora las bonificaciones». Ya no: la rebaja
+  // la aplica `tinDelTramo`, y la escritura de Unicaja las aplica SOLO al tramo
+  // variable, que es lo que dice `bonificacionesDesde`.
+  const conBonificacion = () =>
+    unicaja({
+      bonificacionesDesde: 'TRAMO_VARIABLE',
+      topeBonificacionesTotal: 1.0,
+      bonificaciones: [
+        {
+          id: 'b1',
+          tipo: 'NOMINA',
+          nombre: 'Bloque haberes',
+          reduccionPuntosPorcentuales: 1.0,
+          impacto: { puntos: 1.0 },
+          lookbackMeses: 6,
+          regla: { tipo: 'NOMINA', minimoMensual: 2500 },
+          estado: 'ACTIVO_POR_CUMPLIMIENTO',
+        },
+      ],
+    } as Partial<Prestamo>);
+
+  it('el tramo variable SÍ se bonifica · 5,899 − 1,00 = 4,899', () => {
+    expect(getTinVigente(conBonificacion(), '2030-03-01')).toBeCloseTo(4.899, 3);
+  });
+
+  it('y el fijo no, porque esta escritura dice que desde el variable', () => {
+    expect(getTinVigente(conBonificacion(), '2024-03-01')).toBeCloseTo(2.6, 3);
+  });
+
+  // Un punto entero de rebaja son 40,65 € al mes menos de cuota · eso es lo que
+  // vale cumplir las condiciones del banco, y es lo que ATLAS tiene que poder
+  // decir.
+  it('la rebaja llega hasta la cuota, no se queda en el tipo', () => {
+    const bonificada = getCuota(conBonificacion(), '2030-03-01');
+    const teorica = getCuota(unicaja(), '2030-03-01');
+
+    expect(teorica - bonificada).toBeCloseTo(40.65, 2);
+  });
 });
 
 describe('lo que se debe baja con cada recibo', () => {

@@ -9,6 +9,7 @@
 // sitio.
 
 import {
+  buildEscalones,
   cuotaMensualAprox,
   cuotaMensualConTin,
   cuotasDelAnio,
@@ -120,6 +121,41 @@ describe('el calendario ya no se inventa doce meses', () => {
     const meses = cuotasDelAnio(sabadell(), null, 2025);
 
     expect(new Set(meses.map((m) => m.interes)).size).toBeGreaterThan(1);
+  });
+});
+
+describe('el escalón de vencimiento libera la cuota de ese día', () => {
+  // Un mixto acaba pagando su cuota variable, no la del tramo fijo. Con la de
+  // hoy, el escalón se quedaba corto justo en el préstamo más largo.
+  const mixto = (): Prestamo =>
+    ({
+      id: 'm1',
+      nombre: 'Hipoteca',
+      banco: 'Unicaja',
+      principalInicial: 85000,
+      principalVivo: 85000,
+      cuotasPagadas: 0,
+      plazoMesesTotal: 240,
+      fechaFirma: '2023-08-25',
+      fechaPrimerCargo: '2023-09-25',
+      diaCargoMes: 25,
+      tipo: 'MIXTO',
+      tipoNominalAnualMixtoFijo: 2.6,
+      tramoFijoMeses: 36,
+      indice: 'EURIBOR',
+      valorIndiceActual: 4.149,
+      diferencial: 1.75,
+      baseCalculoIntereses: 'ACT/365',
+      esquemaPrimerRecibo: 'NORMAL',
+      ambito: 'INMUEBLE',
+    }) as unknown as Prestamo;
+
+  it('la cuota liberada es la del final, no la de hoy', () => {
+    const [escalon] = buildEscalones([loanRowFromPrestamo(mixto())]);
+
+    expect(escalon.year).toBe(2043);
+    expect(escalon.cuotaLiberada).toBeGreaterThan(500);
+    expect(escalon.cuotaLiberada).not.toBe(454.66);
   });
 });
 

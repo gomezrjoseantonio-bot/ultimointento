@@ -385,7 +385,11 @@ export const buildEscalones = (rows: LoanRow[]): Escalon[] => {
       prestamoId: r.id,
       alias: r.alias,
       banco: r.banco,
-      cuotaLiberada: r.cuotaMensual,
+      // Lo que se libera es la cuota que se estará pagando ESE DÍA, no la de
+      // hoy: la Unicaja acaba en 2043 pagando su cuota variable, no los 454,66 €
+      // del tramo fijo. Con la de hoy, el escalón de un mixto se quedaba corto
+      // justo en el préstamo más largo, que es el que más pesa.
+      cuotaLiberada: r.fechaVencimiento ? getCuota(r.raw, r.fechaVencimiento) : r.cuotaMensual,
       cuotasRestantes: r.cuotasRestantes,
       tin: r.tin,
     }))

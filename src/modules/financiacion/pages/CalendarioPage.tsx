@@ -7,6 +7,7 @@ import {
   cuotasDelAnio,
   formatPct,
   getBankPalette,
+  interesDeducibleDelAnio,
 } from '../helpers';
 import styles from './CalendarioPage.module.css';
 
@@ -50,9 +51,11 @@ const CalendarioPage: React.FC = () => {
   const totalInt = cuotasPorPrestamo.reduce((s, x) => s + x.interesAnio, 0);
   const totalCap = cuotasPorPrestamo.reduce((s, x) => s + x.capitalAnio, 0);
   const cuotaMensual = visible.reduce((s, r) => s + r.cuotaMensual, 0);
-  const intDeduciblesAnio = visible.reduce(
-    (s, r) => s + (r.intDeducibles * (r.intDeduciblesPct / 100 > 0 ? 1 : 0)),
-    0,
+  // Del año que se está mirando · se enseñaba el del año EN CURSO aunque la
+  // tabla de al lado fuese la de 2031.
+  const intDeduciblesAnio = useMemo(
+    () => visible.reduce((s, r) => s + interesDeducibleDelAnio(r.raw, year), 0),
+    [visible, year],
   );
 
   const totalsByMonth = useMemo(() => {
@@ -67,24 +70,25 @@ const CalendarioPage: React.FC = () => {
 
   const escalones = useMemo(() => buildEscalones(rows), [rows]);
 
-  // Vista plurianual · 18 años · suma cuotas/año hasta vencimiento de cada préstamo
+  // Vista plurianual · 18 años, sumando los recibos que hay en cada uno.
+  //
+  // Era `cuotaMensual × 12` para todos los años hasta el vencimiento: la cuota
+  // de HOY congelada dieciocho años. Para un mixto eso es falso en cuanto acaba
+  // su tramo fijo —la Unicaja pasa de 454,66 € a unos 542 en 2026, y esta tabla
+  // habría seguido pintando 454,66 hasta 2043— y además daba doce recibos
+  // también el año de la firma y el del vencimiento, que tienen menos.
   const aniosVistaLargo = useMemo(() => {
     const start = currentYear;
     const end = currentYear + 18;
     return Array.from({ length: end - start + 1 }, (_, i) => {
       const y = start + i;
-      const breakdown = visible.map((r) => {
-        const venceY = r.fechaVencimiento ? new Date(r.fechaVencimiento).getFullYear() : 0;
-        if (venceY === 0 || y < (r.fechaFirma ? new Date(r.fechaFirma).getFullYear() : currentYear)) {
-          return 0;
-        }
-        if (y > venceY) return 0;
-        return r.cuotaMensual * 12;
-      });
+      const breakdown = visible.map((r) =>
+        cuotasDelAnio(r.raw, planes.get(r.id), y).reduce((s, c) => s + c.cuota, 0)
+      );
       const total = breakdown.reduce((s, n) => s + n, 0);
       return { year: y, breakdown, total };
     });
-  }, [visible, currentYear]);
+  }, [visible, planes, currentYear]);
 
   if (rows.length === 0) {
     return (
