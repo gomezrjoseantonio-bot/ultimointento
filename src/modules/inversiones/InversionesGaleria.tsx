@@ -20,6 +20,7 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { TrendingUp } from 'lucide-react';
 import { inversionesService } from '../../services/inversionesService';
 import { rendimientosService } from '../../services/rendimientosService';
+import { resincronizarTesoreriaInversiones } from '../../services/inversionesTesoreriaSync';
 import { migrateInversionesToNewModel } from '../../services/migrations/migrateInversiones';
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
 import CartaPosicion from './components/CartaPosicion';
@@ -191,6 +192,9 @@ const InversionesGaleria: React.FC = () => {
       );
       showToastV5('Posición creada.');
       await rendimientosService.generarRendimientosPendientes();
+      // La posición nueva trae previsiones (cuota, intereses, compra inicial):
+      // hay que generarlas ya, no esperar a que las dispare otro módulo.
+      await resincronizarTesoreriaInversiones('alta de posición');
       await load();
       if (fromEmpezar) volverAlFlujo();
     } catch (err) {

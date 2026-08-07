@@ -24,6 +24,10 @@ import { getBusinessDayForRule } from './treasurySyncHelpers';
 import { TRAMOS_AHORRO_2026 } from '../../../../types/inversiones-extended';
 import type { ReglaDia } from '../../../../types/personal';
 import { inmuebleDelPrestamo, idDeInmueble } from '../../../../services/inmuebleDelPrestamo';
+import {
+  cobroPrevistoDelMes,
+  cuadroDePosicion,
+} from '../../../../services/prestamoInversionCuadro';
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -795,12 +799,68 @@ export async function generateMonthlyForecasts(
               ? rendimiento.meses_cobro
               : [];
 
-        if (mesesCobro.includes(month)) {
+        const retencion = rendimiento.retencion_porcentaje ?? 19;
+
+        // Préstamos · el cobro sale del cuadro de amortización: fecha exacta de
+        // la cuota, intereses sobre el CAPITAL VIVO y, en cuota francesa, el
+        // capital devuelto (que también entra en la cuenta). El cálculo genérico
+        // de abajo —`capital × TIN / periodos`— sobreestima los intereses de un
+        // préstamo que amortiza y se deja fuera toda la devolución de capital.
+        //
+        // Si hay cuadro, MANDA el cuadro: un mes sin cuota es un mes sin
+        // previsión. Sin este corte, acortar o mover el calendario devolvía el
+        // control al cálculo genérico —que sigue leyendo `meses_cobro`— y
+        // resucitaba la previsión vieja con el importe equivocado.
+        const cuadroPrestamo = pos.tipo === 'prestamo_p2p' ? cuadroDePosicion(pos) : null;
+        const cobroPrestamo = cuadroPrestamo
+          ? cobroPrevistoDelMes(pos, monthPrefix, retencion)
+          : null;
+
+        if (cuadroPrestamo) {
+          // Una cuota que el usuario ya dio por cobrada al registrar el
+          // préstamo no se vuelve a prever: ese dinero ya está en el saldo del
+          // banco y proponerlo otra vez sería contarlo dos veces.
+          const pagosPrevios: Array<{ estado?: string; fecha_pago?: string }> =
+            rendimiento.pagos_generados ?? [];
+          const yaCobrada =
+            cobroPrestamo != null &&
+            pagosPrevios.some(
+              (pago) =>
+                pago.estado === 'pagado' &&
+                String(pago.fecha_pago ?? '').startsWith(cobroPrestamo.fecha),
+            );
+
+          // Ojo con el `>= today` que usa el resto de fuentes: la regeneración
+          // borra los `predicted` desde el DÍA 1 del mes en curso, así que
+          // filtrar por "hoy" haría desaparecer la cuota de este mes que ya
+          // venció y sigue sin puntear. La unidad aquí es el mes, no el día.
+          if (cobroPrestamo && !yaCobrada && cobroPrestamo.neto > 0) {
+            if (await isDuplicate('inversion_rendimiento', pos.id)) {
+              skipped++;
+            } else {
+              await insertEvent({
+                type: 'income' as const,
+                amount: Math.round(cobroPrestamo.neto * 100) / 100,
+                predictedDate: cobroPrestamo.fecha,
+                description: cobroPrestamo.incluyeCapital
+                  ? `Cuota préstamo – ${pos.nombre}`
+                  : `Intereses netos – ${pos.nombre}`,
+                sourceType: 'inversion_rendimiento' as const,
+                sourceId: pos.id,
+                accountId: resolveAccountId(
+                  rendimiento.cuenta_destino_id ?? posAny.cuenta_cobro_id ?? posAny.cuenta_cargo_id,
+                ),
+                status: 'predicted' as const,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        } else if (mesesCobro.includes(month)) {
           const diaCobro = rendimiento.dia_cobro ?? 1;
           const fechaRend = buildDate(year, month, diaCobro);
           const fechaInicioRend: string = rendimiento.fecha_inicio_rendimiento?.split('T')[0] ?? '';
           const fechaFinRend: string | undefined = rendimiento.fecha_fin_rendimiento?.split('T')[0];
-          const retencion = rendimiento.retencion_porcentaje ?? 19;
 
           if (
             fechaRend >= today &&
@@ -823,7 +883,9 @@ export async function generateMonthlyForecasts(
                   description: `Intereses netos – ${pos.nombre}`,
                   sourceType: 'inversion_rendimiento' as const,
                   sourceId: pos.id,
-                  accountId: resolveAccountId(rendimiento.cuenta_destino_id),
+                  accountId: resolveAccountId(
+                    rendimiento.cuenta_destino_id ?? posAny.cuenta_cobro_id ?? posAny.cuenta_cargo_id,
+                  ),
                   status: 'predicted' as const,
                   createdAt: now,
                   updatedAt: now,

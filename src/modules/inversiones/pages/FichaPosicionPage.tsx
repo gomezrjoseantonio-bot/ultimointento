@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { showToastV5 } from '../../../design-system/v5';
 import { inversionesService } from '../../../services/inversionesService';
+import { resincronizarTesoreriaInversiones } from '../../../services/inversionesTesoreriaSync';
 import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
 import AportarModal from '../components/modal/AportarModal';
 import ActualizarValoracionModal from '../components/modal/ActualizarValoracionModal';
@@ -33,7 +34,9 @@ import { clasificarTipo } from '../helpers';
 import { inversionToCartaItem } from '../types/cartaItem';
 import styles from './FichaPosicion.module.css';
 
-type CobroVariant = 'cobro' | 'dividendo';
+// Solo 'dividendo': los cobros de un préstamo no se registran a mano · se
+// prevén en Tesorería y se dan por cobrados al puntearlos.
+type CobroVariant = 'dividendo';
 
 const FichaPosicionPage: React.FC = () => {
   const { posicionId } = useParams();
@@ -119,6 +122,7 @@ const FichaPosicionPage: React.FC = () => {
       });
       showToastV5('Valor actualizado.');
       setShowActualizarValor(false);
+      await resincronizarTesoreriaInversiones('actualizar valoración');
       await reload();
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -140,6 +144,7 @@ const FichaPosicionPage: React.FC = () => {
       );
       setShowAportar(false);
       setShowCobro(null);
+      await resincronizarTesoreriaInversiones('aportación');
       // Nota · NO disparamos `rendimientosService.generarRendimientosPendientes()`
       // aquí · es un side-effect global (recorre todas las posiciones · puede
       // generar movimientos de tesorería). La galería ya lo ejecuta al cargar
@@ -160,6 +165,9 @@ const FichaPosicionPage: React.FC = () => {
       await inversionesService.updatePosicion(posicion.id, data);
       showToastV5('Posición actualizada.');
       setShowEditar(false);
+      // Las condiciones han cambiado (importe, cuenta, calendario) · Tesorería
+      // tiene que rehacer las previsiones y soltar las que ya no aplican.
+      await resincronizarTesoreriaInversiones('editar posición');
       await reload();
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -177,6 +185,9 @@ const FichaPosicionPage: React.FC = () => {
     if (!posicion) return;
     try {
       await inversionesService.deletePosicion(posicion.id);
+      // Sin la posición no hay nada que prever · la regeneración se lleva por
+      // delante las previsiones que quedaban vivas.
+      await resincronizarTesoreriaInversiones('baja de posición');
       showToastV5('Posición dada de baja · la tienes en "Posiciones cerradas".');
       navigate('/inversiones');
     } catch (err) {
@@ -228,7 +239,6 @@ const FichaPosicionPage: React.FC = () => {
         <FichaRendimientoPeriodico
           posicion={posicion}
           onBack={handleBack}
-          onRegistrarCobro={() => setShowCobro('cobro')}
           onEditar={() => setShowEditar(true)}
         />
       );

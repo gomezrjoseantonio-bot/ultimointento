@@ -46,16 +46,14 @@ const basePosicion = {
 
 const renderFicha = (posicion = basePosicion) => {
   const onEditar = jest.fn();
-  const onRegistrarCobro = jest.fn();
   render(
     <FichaRendimientoPeriodico
       posicion={posicion}
       onBack={() => undefined}
       onEditar={onEditar}
-      onRegistrarCobro={onRegistrarCobro}
     />,
   );
-  return { onEditar, onRegistrarCobro };
+  return { onEditar };
 };
 
 /** Devuelve el importe pintado en la celda del mes (ENE, FEB…). */
@@ -65,14 +63,23 @@ const importeMes = (mes: string): string => {
 };
 
 describe('FichaRendimientoPeriodico', () => {
-  it('expone las acciones de registrar cobro y editar préstamo', () => {
-    const { onEditar, onRegistrarCobro } = renderFicha();
+  it('deja editar el préstamo pero no registrar cobros a mano', () => {
+    const { onEditar } = renderFicha();
 
-    fireEvent.click(screen.getByRole('button', { name: /Registrar cobro/ }));
-    expect(onRegistrarCobro).toHaveBeenCalledTimes(1);
+    // Los cobros se prevén en Tesorería y se dan por cobrados al puntearlos.
+    expect(screen.queryByRole('button', { name: /Registrar cobro/ })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Editar préstamo/ }));
     expect(onEditar).toHaveBeenCalledTimes(1);
+  });
+
+  it('muestra el cuadro de cuotas con su estado en vez de un histórico vacío', () => {
+    renderFicha();
+    expect(screen.getByText('Cuadro de cuotas')).toBeInTheDocument();
+    expect(screen.getByText(/aquí no se registran cobros a mano/)).toBeInTheDocument();
+    // Cuotas ya vencidas y cuotas por venir, ambas visibles.
+    expect(screen.getAllByText('Vencida · por puntear').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Prevista').length).toBeGreaterThan(0);
   });
 
   it('etiqueta el préstamo por su subtipo', () => {
@@ -159,7 +166,10 @@ describe('FichaRendimientoPeriodico · cuota francesa', () => {
   it('un préstamo solo-intereses conserva el capital íntegro', () => {
     renderFicha();
     expect(screen.queryByText('Capital pendiente')).not.toBeInTheDocument();
-    const capital = screen.getByText('Capital').parentElement as HTMLElement;
-    expect(capital.textContent).toContain('30.000');
+    // 'Capital' también es una columna del cuadro · acotamos al stat del hero.
+    const heroLabel = screen
+      .getAllByText('Capital')
+      .find((el) => el.className.includes('detailHeroStatLab'));
+    expect(heroLabel?.parentElement?.textContent).toContain('30.000');
   });
 });
