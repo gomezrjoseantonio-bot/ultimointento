@@ -73,10 +73,14 @@ describe('Atlas Navigation Audit · v5', () => {
     expect(subs).toEqual(['Resumen', 'Cartera', 'Rendimientos', 'Individual']);
   });
 
-  test('Financiación expone sus 4 sub-páginas v5', () => {
+  test('Financiación es UNA sola vista · sin sub-páginas', () => {
+    // TAREA-CC-UI-financiacion-v1 §5.5 · las 4 pestañas (Dashboard · Listado ·
+    // Snowball · Calendario) y sus tablas de 12 y 18 columnas se retiran: lo
+    // que valía de ellas vive ahora en la escalera y en el detalle, y el
+    // Snowball se va a Mi Plan. Mockup · atlas-financiacion-v10.html.
     const financiacion = navigation.find((item) => item.name === 'Financiación');
-    const subs = financiacion?.subTabs?.map((t) => t.name) ?? [];
-    expect(subs).toEqual(['Dashboard', 'Listado', 'Snowball', 'Calendario']);
+    expect(financiacion?.href).toBe('/financiacion');
+    expect(financiacion?.subTabs).toBeUndefined();
   });
 
   test('Mi Plan expone sus 5 sub-páginas v5 (Retos postpuesto en T27.2-skip)', () => {

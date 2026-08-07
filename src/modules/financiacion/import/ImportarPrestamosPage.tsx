@@ -10,7 +10,7 @@ const ImportarPrestamosPage: React.FC = () => {
   const navigate = useNavigate();
   return (
     <ImportarPrestamos
-      onComplete={() => navigate('/financiacion/listado')}
+      onComplete={() => navigate('/financiacion')}
       onBack={() => navigate('/financiacion')}
     />
   );

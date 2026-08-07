@@ -72,9 +72,9 @@ const DetallePage: React.FC = () => {
               role="button"
               tabIndex={0}
               style={{ color: 'var(--atlas-v5-gold-ink)', cursor: 'pointer', fontWeight: 600 }}
-              onClick={() => navigate('/financiacion/listado')}
+              onClick={() => navigate('/financiacion')}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') navigate('/financiacion/listado');
+                if (e.key === 'Enter') navigate('/financiacion');
               }}
             >
               Volver al listado
@@ -114,7 +114,7 @@ const DetallePage: React.FC = () => {
     if (id) {
       const fresh = await prestamosService.getPrestamoById(id);
       if (!fresh || fresh.activo === false || fresh.estado === 'cancelado') {
-        navigate('/financiacion/listado');
+        navigate('/financiacion');
       }
     }
   };
@@ -130,7 +130,7 @@ const DetallePage: React.FC = () => {
       await prestamosService.deletePrestamo(id);
       showToastV5('Préstamo eliminado.');
       await reload();
-      navigate('/financiacion/listado');
+      navigate('/financiacion');
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[financiacion] delete', err);
@@ -145,9 +145,9 @@ const DetallePage: React.FC = () => {
           className={styles.backBtn}
           role="button"
           tabIndex={0}
-          onClick={() => navigate('/financiacion/listado')}
+          onClick={() => navigate('/financiacion')}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') navigate('/financiacion/listado');
+            if (e.key === 'Enter') navigate('/financiacion');
           }}
         >
           <Icons.ArrowLeft size={12} strokeWidth={2} />
@@ -167,9 +167,9 @@ const DetallePage: React.FC = () => {
         <span
           role="link"
           tabIndex={0}
-          onClick={() => navigate('/financiacion/listado')}
+          onClick={() => navigate('/financiacion')}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') navigate('/financiacion/listado');
+            if (e.key === 'Enter') navigate('/financiacion');
           }}
         >
           Listado
