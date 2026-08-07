@@ -687,4 +687,45 @@ describe('ingresos recurrentes · la rama que no exige nómina', () => {
     expect(c.veredicto).toBe('no_verificable');
     expect(c.motivo).toContain('nómina');
   });
+
+  // Lo previsto no cuenta, y un mes cerrado A MANO cuenta con CERO: cerrarlo es
+  // decir que lo que quedaba abierto no llegó a entrar (§6 quater). Es la misma
+  // regla que aplica la nómina, y ahora la aplican las dos leyendo el mismo
+  // sitio — escrita dos veces, bastaba tocar una para que contaran distinto.
+  it('un mes abierto no suma aunque el mes esté cerrado a mano', () => {
+    const once = conIngresos(3000, 11);
+    const conUnoAbierto = [
+      ...once,
+      { cuentaId: 1, mes: '2026-12', importe: 3000, estado: 'abierto' as const },
+    ];
+
+    const [sinCerrarElMes] = verificarBonificaciones(
+      [bonif(30000)],
+      pruebas(conUnoAbierto),
+      '2026-12-31'
+    );
+    const [cerrandoloAMano] = verificarBonificaciones(
+      [bonif(30000)],
+      { ...pruebas(conUnoAbierto), mesesCerrados: ['2026-12'] },
+      '2026-12-31'
+    );
+
+    // 33.000 € de los once meses cobrados · el doceavo no entró.
+    expect(sinCerrarElMes.medido).toBe(33000);
+    expect(cerrandoloAMano.medido).toBe(33000);
+  });
+
+  // El motivo decía «N meses cobrados», y entre esos N puede haber alguno
+  // cerrado a mano en el que no entró nada. Afirmar que se cobró un mes vacío
+  // es afirmar un hecho que no ocurrió.
+  it('y el motivo no llama «cobrado» a un mes en el que no entró nada', () => {
+    const [c] = verificarBonificaciones(
+      [bonif(30000)],
+      pruebas(conIngresos(3000, 12)),
+      '2026-12-31'
+    );
+
+    expect(c.motivo).toContain('ingresos recurrentes');
+    expect(c.motivo).not.toContain('cobrados');
+  });
 });

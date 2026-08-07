@@ -174,6 +174,25 @@ function loQueFaltaParaMirarla(b: Bonificacion): string | null {
 }
 
 /**
+ * Los meses que CUENTAN para demostrar algo, con su importe ya normalizado.
+ *
+ * Un mes `cerrado` cuenta con lo que entró. Un mes cerrado A MANO cuenta
+ * también, pero **con cero**: cerrarlo es precisamente decir que lo que quedaba
+ * abierto no se ha producido (§6 quater). Lo demás no cuenta: una bonificación
+ * se demuestra con lo cobrado, no con lo previsto.
+ *
+ * Vive aquí porque las dos ramas de la condición de ingresos —la nómina y los
+ * recurrentes— tienen que aplicar la MISMA regla. Escrita dos veces, bastaba
+ * tocar una para que las dos ramas contaran distinto el mismo mes.
+ */
+function mesesQueCuentan(todos: CobroDeUnMes[], mesesCerrados?: string[]): CobroDeUnMes[] {
+  const cerrados = new Set(mesesCerrados ?? []);
+  return todos
+    .filter((m) => m.estado === 'cerrado' || cerrados.has(m.mes))
+    .map((m) => (m.estado === 'cerrado' ? m : { ...m, importe: 0 }));
+}
+
+/**
  * ¿Cumple por la rama de los INGRESOS RECURRENTES?
  *
  * Devuelve un cumplimiento solo si la rama existe y **se cumple**; si no,
@@ -181,8 +200,9 @@ function loQueFaltaParaMirarla(b: Bonificacion): string | null {
  * fallar por aquí no es fallar.
  *
  * Se suma lo que entra en la cuenta del banco durante la ventana, venga de
- * donde venga. Solo cuentan los meses CERRADOS —o los cerrados a mano (§6
- * quater)—: una bonificación se demuestra con lo cobrado, no con lo previsto.
+ * donde venga: alquileres, dividendos, lo que sea. Qué meses cuentan y con qué
+ * importe lo decide `mesesQueCuentan`, la misma regla que aplica la nómina —los
+ * cerrados a mano entran con cero, que es lo que significa cerrarlos—.
  */
 function cumplePorIngresosRecurrentes(
   b: Bonificacion,
@@ -195,11 +215,11 @@ function cumplePorIngresosRecurrentes(
   if (!Number.isFinite(minimo) || (minimo as number) <= 0) return null;
   if (!movimientos.ingresosRecurrentes?.length) return null;
 
-  const cerrados = new Set(movimientos.mesesCerrados ?? []);
-  const meses = cobrosDeLaCuenta(movimientos.ingresosRecurrentes, cuentaId, ventana).filter(
-    (m) => m.estado === 'cerrado' || cerrados.has(m.mes)
+  const meses = mesesQueCuentan(
+    cobrosDeLaCuenta(movimientos.ingresosRecurrentes, cuentaId, ventana),
+    movimientos.mesesCerrados
   );
-  const total = centimos(meses.reduce((s, m) => s + (m.estado === 'cerrado' ? m.importe : 0), 0));
+  const total = centimos(meses.reduce((s, m) => s + m.importe, 0));
 
   if (veredictoDelImporte(total, minimo as number) !== 'cumple') return null;
 
@@ -210,7 +230,10 @@ function cumplePorIngresosRecurrentes(
     ventana,
     exigido: minimo as number,
     medido: total,
-    motivo: `por ingresos recurrentes · ${meses.length} meses cobrados en esa cuenta`,
+    // «meses mirados», no «meses cobrados»: entre ellos puede haber alguno
+    // cerrado a mano, que cuenta con cero porque ese mes no entró nada. Decir
+    // «cobrados» de un mes vacío es afirmar un hecho que no ocurrió.
+    motivo: `por ingresos recurrentes en esa cuenta · ${meses.length} meses mirados`,
   };
 }
 
@@ -260,13 +283,7 @@ function porNomina(
   }
 
   const todos = cobrosDeLaCuenta(movimientos.cobrosDeNomina, cuentaId, ventana);
-  // Un mes CERRADO cuenta aunque su cobro no conste: cerrarlo es decir que lo
-  // que quedó abierto no se ha producido (§6 quater), así que ese mes entra con
-  // lo que de verdad entró — cero si no entró nada.
-  const cerrados = new Set(movimientos.mesesCerrados ?? []);
-  const meses = todos
-    .filter((m) => m.estado === 'cerrado' || cerrados.has(m.mes))
-    .map((m) => (m.estado === 'cerrado' ? m : { ...m, importe: 0 }));
+  const meses = mesesQueCuentan(todos, movimientos.mesesCerrados);
   const sinCerrar = todos.length - meses.length;
 
   if (meses.length === 0) {
