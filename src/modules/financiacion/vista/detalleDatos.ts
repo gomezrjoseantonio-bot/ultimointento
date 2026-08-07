@@ -7,6 +7,7 @@
 // regla que la tarea del motor está desmontando.
 
 import type { Bonificacion, Prestamo } from '../../../types/prestamos';
+import type { Cumplimiento } from '../../../services/bonificaciones/cumplimiento';
 import type { Cuadro } from '../../../services/prestamos/cuadro';
 import { tramosDeTipo, type TramoDeTipo } from '../../../services/prestamos/tramosDeTipo';
 import { tinDelTramo } from '../../../services/prestamos/tinDelTramo';
@@ -99,6 +100,19 @@ export interface BonificacionDetalle {
   alcanzada: boolean;
   /** Lo que rebaja, en puntos porcentuales · siempre positivo. */
   puntos: number;
+  /**
+   * Lo que los movimientos DEMUESTRAN · `undefined` mientras no se han mirado.
+   *
+   * Es otra pregunta distinta de `alcanzada`, y cruzarlas es el error que esta
+   * pantalla venía cometiendo. Lo que el banco aplica es un hecho del contrato;
+   * si la condición se está cumpliendo lo dicen tus movimientos, y pueden no
+   * coincidir — justo cuando conviene enterarse *(Jose · 6 ago 2026: «aquí se
+   * debe decir las bonificaciones que propone el banco, y tú luego comprobarás
+   * las que existen»)*.
+   */
+  veredicto?: Cumplimiento['veredicto'];
+  /** Por qué, cuando hay algo que explicar · sobre todo si no se pudo mirar. */
+  motivo?: string;
 }
 
 export interface ResumenBonificaciones {
@@ -115,13 +129,26 @@ export interface ResumenBonificaciones {
  * Se listan TODAS, no solo las alcanzadas: las que faltan son justo las que
  * puedes ir a buscar, y esconderlas deja la tarjeta diciendo que ya no hay nada
  * que hacer. La rebaja total la calcula el servicio, con su tope.
+ *
+ * Con `cumplimientos` cada una lleva además lo que dicen tus movimientos. Sin
+ * ellos la lista sigue saliendo —el contrato se sabe sin mirar la tesorería—,
+ * solo que sin veredicto.
  */
-export function resumenBonificaciones(prestamo: Prestamo): ResumenBonificaciones {
-  const lista = (prestamo.bonificaciones ?? []).map((b) => ({
-    bonificacion: b,
-    alcanzada: estaAplicada(b),
-    puntos: puntosDe(b),
-  }));
+export function resumenBonificaciones(
+  prestamo: Prestamo,
+  cumplimientos?: Cumplimiento[]
+): ResumenBonificaciones {
+  const porId = new Map((cumplimientos ?? []).map((c) => [c.bonificacionId, c]));
+  const lista = (prestamo.bonificaciones ?? []).map((b) => {
+    const c = porId.get(b.id);
+    return {
+      bonificacion: b,
+      alcanzada: estaAplicada(b),
+      puntos: puntosDe(b),
+      veredicto: c?.veredicto,
+      motivo: c?.motivo,
+    };
+  });
 
   const tope = Number.isFinite(Number(prestamo.topeBonificacionesTotal))
     ? Math.abs(Number(prestamo.topeBonificacionesTotal))

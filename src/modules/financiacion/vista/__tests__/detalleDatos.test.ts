@@ -257,3 +257,74 @@ describe('lecturas del detalle · progreso, coste e importes', () => {
     expect(preview.every((l) => !l.esRevision)).toBe(true);
   });
 });
+
+// ── El contrato y la prueba son dos preguntas ───────────────────────────────
+//
+// «Aquí se debe decir las bonificaciones que propone el banco, y tú luego
+// comprobarás las que existen» *(Jose · 6 ago 2026)*. Lo que el banco aplica es
+// un hecho de tu contrato; si la condición se está cumpliendo lo dicen tus
+// movimientos. Cruzarlas es el error que esta pantalla venía cometiendo — una
+// casilla marcada valía como prueba.
+describe('lo que el banco aplica y lo que se puede demostrar van por separado', () => {
+  const conBonif = () =>
+    unicaja({
+      bonificaciones: [bonificacion({ id: 'b1', nombre: 'Nómina', estado: 'ACTIVO_POR_CUMPLIMIENTO' })],
+    });
+
+  it('sin mirar la tesorería la lista sale igual, pero sin veredicto', () => {
+    const [b] = resumenBonificaciones(conBonif()).lista;
+
+    expect(b.bonificacion.nombre).toBe('Nómina');
+    expect(b.veredicto).toBeUndefined();
+  });
+
+  // El caso que importa: el banco te la está aplicando y tus movimientos dicen
+  // que has dejado de cumplirla. Enterarse ANTES de la revisión es la única
+  // forma de hacer algo al respecto.
+  it('el banco la aplica y los movimientos dicen que no · se enseñan las dos', () => {
+    const [b] = resumenBonificaciones(conBonif(), [
+      {
+        bonificacionId: 'b1',
+        nombre: 'Nómina',
+        veredicto: 'no_cumple',
+        ventana: { desde: '2026-01-01', hasta: '2026-06-30' },
+        motivo: 'no ha entrado ninguna nómina en esa cuenta',
+      },
+    ]).lista;
+
+    expect(b.alcanzada).toBe(true);
+    expect(b.veredicto).toBe('no_cumple');
+    expect(b.motivo).toContain('nómina');
+  });
+
+  // Y la tercera respuesta se conserva hasta la pantalla · «no se puede mirar»
+  // no es «no se cumple», y pintarlo como un no acusaría de incumplir a quien
+  // cumple.
+  it('lo que no se puede comprobar se dice, no se convierte en un no', () => {
+    const [b] = resumenBonificaciones(conBonif(), [
+      {
+        bonificacionId: 'b1',
+        nombre: 'Nómina',
+        veredicto: 'no_verificable',
+        ventana: { desde: '2026-01-01', hasta: '2026-06-30' },
+        motivo: 'no dice en qué cuenta hay que domiciliarla',
+      },
+    ]).lista;
+
+    expect(b.veredicto).toBe('no_verificable');
+    expect(b.motivo).toContain('cuenta');
+  });
+
+  it('un cumplimiento de otra bonificación no se le pega a esta', () => {
+    const [b] = resumenBonificaciones(conBonif(), [
+      {
+        bonificacionId: 'otra',
+        nombre: 'Tarjeta',
+        veredicto: 'no_cumple',
+        ventana: { desde: '2026-01-01', hasta: '2026-06-30' },
+      },
+    ]).lista;
+
+    expect(b.veredicto).toBeUndefined();
+  });
+});

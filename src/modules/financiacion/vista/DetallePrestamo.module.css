@@ -696,3 +696,25 @@
   font-size: var(--atlas-v5-fs-base);
   color: var(--atlas-v5-ink-3);
 }
+
+/* El veredicto de los movimientos · va al lado del nombre y NO pisa el check
+   del banco: son dos preguntas distintas y la ficha tiene que poder decir las
+   dos a la vez, sobre todo cuando no coinciden. */
+.bonifAviso,
+.bonifDuda {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.bonifAviso {
+  color: var(--atlas-v5-danger, #B3261E);
+  background: color-mix(in srgb, var(--atlas-v5-danger, #B3261E) 10%, transparent);
+}
+.bonifDuda {
+  color: var(--atlas-v5-ink-4);
+  background: color-mix(in srgb, var(--atlas-v5-ink-4) 10%, transparent);
+}

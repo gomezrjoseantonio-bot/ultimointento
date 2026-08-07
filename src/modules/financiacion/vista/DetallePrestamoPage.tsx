@@ -13,10 +13,13 @@
 // Como en la vista principal: cada número sale de `generarCuadro` vía
 // `services/prestamos/lecturas`. Nada de `helpers.ts`.
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
 import { prestamosService } from '../../../services/prestamosService';
+import { movimientosQuePrueban } from '../../../services/bonificaciones/movimientosQuePrueban';
+import { verificarBonificaciones } from '../../../services/bonificaciones/verificarBonificaciones';
+import type { Cumplimiento } from '../../../services/bonificaciones/cumplimiento';
 import LoanSettlementModal from '../../horizon/financiacion/components/LoanSettlementModal';
 import type { FinanciacionOutletContext } from '../FinanciacionContext';
 import {
@@ -98,8 +101,31 @@ const DetallePrestamoPage: React.FC = () => {
   const [amortizando, setAmortizando] = useState(false);
 
   const hoy = useMemo(() => hoyISO(), []);
+
+  // Lo que demuestran tus movimientos · se pide una vez y la tarjeta lo espera
+  // sin bloquear: el contrato se enseña ya, el veredicto llega cuando llega.
+  const [cumplimientos, setCumplimientos] = useState<Cumplimiento[] | undefined>(undefined);
   const prestamo = useMemo(() => prestamos.find((p) => p.id === id), [prestamos, id]);
   const cuadro = useMemo(() => (prestamo ? cuadroSeguroDe(prestamo) : null), [prestamo]);
+
+  const bonificaciones0 = prestamo?.bonificaciones;
+  useEffect(() => {
+    if (!bonificaciones0?.length) return;
+    let cancelado = false;
+    (async () => {
+      try {
+        const movimientos = await movimientosQuePrueban(Number(hoy.slice(0, 4)));
+        if (!cancelado) setCumplimientos(verificarBonificaciones(bonificaciones0, movimientos, hoy));
+      } catch {
+        // Sin poder mirar la tesorería la ficha sigue siendo útil · lo que no
+        // se hace es inventar un veredicto.
+        if (!cancelado) setCumplimientos(undefined);
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [bonificaciones0, hoy]);
 
   const datos = useMemo(() => {
     if (!prestamo || !cuadro) return null;
@@ -118,11 +144,11 @@ const DetallePrestamoPage: React.FC = () => {
       interesPendiente: getInteresPendiente(cuadro, hoy),
       preview: getPreviewCuadro(cuadro, hoy, 3),
       tiempo: lineaDeTiempo(prestamo, cuadro, hoy),
-      bonificaciones: resumenBonificaciones(prestamo),
+      bonificaciones: resumenBonificaciones(prestamo, cumplimientos),
       condiciones: condicionesDe(prestamo, cuadro),
       fiscalidad,
     };
-  }, [prestamo, cuadro, hoy]);
+  }, [prestamo, cuadro, hoy, cumplimientos]);
 
   // Una liquidación TOTAL deja el préstamo cancelado, y entonces esta ficha ya
   // no tiene sujeto: hay que salir a la cartera en vez de quedarse enseñando un
@@ -415,8 +441,23 @@ const DetallePrestamoPage: React.FC = () => {
                     >
                       {b.alcanzada && <Icons.Check size={11} strokeWidth={3} />}
                     </div>
-                    <span className={b.alcanzada ? undefined : styles.bonifApagada}>
+                  <span className={b.alcanzada ? undefined : styles.bonifApagada}>
                       {b.bonificacion.nombre}
+                      {/* Lo que dicen TUS movimientos · otra pregunta distinta
+                          de si el banco la está aplicando, y por eso va aparte
+                          y no pisa el check. Cuando no coinciden es justo
+                          cuando hay que enterarse: el banco te la aplica y has
+                          dejado de cumplirla, o la cumples y no te la aplica. */}
+                      {b.veredicto === 'no_cumple' && (
+                        <span className={styles.bonifAviso} title={b.motivo}>
+                          no se cumple
+                        </span>
+                      )}
+                      {b.veredicto === 'no_verificable' && (
+                        <span className={styles.bonifDuda} title={b.motivo}>
+                          sin comprobar
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className={b.alcanzada ? styles.bonifVal : styles.bonifValApagado}>
