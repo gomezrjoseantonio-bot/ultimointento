@@ -87,6 +87,9 @@ import ComisionEditor, { SIN_COMISION, describirComision, TopesLegales } from '.
 import { BASE_POR_DEFECTO, NOMBRE_DE_LA_BASE, type BaseDeCalculo }
   from '../../../services/prestamos/baseDeCalculo';
 import styles from './PrestamoPageV2.module.css';
+// El panel navy es otra superficie y vive en su propio módulo · ver la
+// cabecera de `PanelCalculo.module.css`.
+import panel from './PanelCalculo.module.css';
 
 // ─── Tipos auxiliares ───────────────────────────────────────────────────────
 interface DestinoRow {
@@ -807,9 +810,13 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     (b: BonificacionRow, orden: number): Bonificacion => {
       const tramos: TramoDeRebaja[] = b.tramos
         .filter((t) => esNumero(t.desdeRaw) && esNumero(t.ppRaw))
-        .map((t) => ({ desde: parseNum(t.desdeRaw), pp: parseNum(t.ppRaw) }))
+        .map((t) => ({ desde: parseNum(t.desdeRaw), pp: Math.abs(parseNum(t.ppRaw)) }))
         .sort((x, y) => x.desde - y.desde);
-      const pp = parseNum(b.ppRaw);
+      // La MAGNITUD · una rebaja se escribe «0,30» y se enseña «−0,30 p.p.», así
+      // que el menos ya lo pone la pantalla. Teclear «-0,30» guardaría una
+      // reducción negativa con su `impacto.puntos` en positivo: el signo
+      // invertido en los dos campos a la vez, y cada lector creyéndose el suyo.
+      const pp = Math.abs(parseNum(b.ppRaw));
       const sublimite = esNumero(b.sublimiteRaw) ? Math.abs(parseNum(b.sublimiteRaw)) : 0;
 
       return {
@@ -1060,7 +1067,10 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     [borrador],
   );
 
-  const tramos = cuadro?.resumen.tramos ?? [];
+  // Memoizado, no `?? []` suelto · el array vacío nacía nuevo en cada render y
+  // arrastraba consigo a los memos que dependen de él, que son los que generan
+  // cuadros. Recalcular 240 líneas por cada tecla no se nota hasta que se nota.
+  const tramos = useMemo(() => cuadro?.resumen.tramos ?? [], [cuadro]);
   const hayDosTramos = tramos.length > 1;
 
   /**
@@ -1162,7 +1172,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     () =>
       form.bonificaciones
         .filter((b) => b.activa)
-        .reduce((t, b) => t + parseNum(b.ppRaw), 0),
+        // En magnitud, igual que al construir el modelo · si no, el pie sumaría
+        // una cifra y el motor otra.
+        .reduce((t, b) => t + Math.abs(parseNum(b.ppRaw)), 0),
     [form.bonificaciones],
   );
 
@@ -1170,9 +1182,14 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     if (!form.bonificacionesActivas || form.bonificaciones.length === 0) return 'ninguna';
     const n = form.bonificaciones.length;
     const modo = form.modoBonificaciones === 'CASCADA' ? 'en cascada' : 'independientes';
+    // Sin tope el bloque avisa de que FALTA, no de que no lo haya · el anexo
+    // que las lista siempre dice hasta dónde bajan, y guardarlas sin él las
+    // dejaría sumando sin techo, que es el defecto que este bloque viene a
+    // cerrar. Decir «sin tope dicho» prometía un estado que no se puede
+    // guardar, porque la validación lo exige.
     return topePP > 0
       ? `${n} · ${modo} · tope ${fmtNumeroEs(topePP, 2)} p.p.`
-      : `${n} · ${modo} · sin tope dicho`;
+      : `${n} · ${modo} · falta el tope`;
   }, [form.bonificacionesActivas, form.bonificaciones.length, form.modoBonificaciones, topePP]);
 
   const nombreInmueble = useCallback(
@@ -2392,10 +2409,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                           >
                             {/*
                               Clase propia, no la del acordeón · `.advOpen
-                              .advChev` gira TODO lo que cuelgue del bloque
-                              abierto, y con ella los chevrones de las cuatro
-                              filas apuntaban hacia arriba aunque estuvieran
-                              cerradas.
+                              .advChev` gira cuanto cuelgue del bloque abierto,
+                              y con ella los chevrones de las cuatro filas
+                              apuntaban hacia arriba aunque estuvieran cerradas.
                             */}
                             <ChevronDown
                               className={`${styles.rowChev} ${abierta ? styles.rowChevOpen : ''}`}
@@ -2808,26 +2824,26 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         </div>
 
         {/* ═══ PANEL DE CÁLCULO EN VIVO ═══ */}
-        <div className={styles.aside}>
-          <div className={styles.asLab}>
+        <div className={panel.aside}>
+          <div className={panel.asLab}>
             Cálculo financiero
-            <span className={styles.asLive}><span className={styles.asDot} /> en directo</span>
+            <span className={panel.asLive}><span className={panel.asDot} /> en directo</span>
           </div>
 
           {cuadro && tramo0 ? (
             <>
-              <div className={styles.asHero}>
-                <div className={styles.asHeroLab}>
+              <div className={panel.asHero}>
+                <div className={panel.asHeroLab}>
                   {hayDosTramos ? 'Cuota · tramo fijo' : 'Cuota mensual'}
                 </div>
-                <div className={styles.asCuota}>
+                <div className={panel.asCuota}>
                   {fmtNumeroEs(cuadro.resumen.cuotaMensual)}{' '}
-                  <span className={styles.asCuotaCur}>€</span>
+                  <span className={panel.asCuotaCur}>€</span>
                 </div>
-                <div className={styles.asHeroSub}>
+                <div className={panel.asHeroSub}>
                   {numCuotas} cuotas · sistema francés · fin {fmtMesAnio(finCuadro)}
                 </div>
-                <span className={styles.asTag}>
+                <span className={panel.asTag}>
                   {fmtPct(tramo0.tin)} · {fmtMesAnio(tramo0.desde)} →{' '}
                   {fmtMesAnio(tramo1?.desde ?? finCuadro)}
                 </span>
@@ -2839,11 +2855,11 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                 una inventada se lee igual que una real.
               */}
               {tramo1 && (
-                <div className={styles.asAlert}>
+                <div className={panel.asAlert}>
                   <AlertTriangle />
                   <div>
-                    <div className={styles.asAlertT}>Revisión · {fmtFechaCorta(tramo1.desde)}</div>
-                    <div className={styles.asAlertS}>
+                    <div className={panel.asAlertT}>Revisión · {fmtFechaCorta(tramo1.desde)}</div>
+                    <div className={panel.asAlertS}>
                       {bonificacionesDesde === 'TRAMO_VARIABLE'
                         ? 'interés y bonificaciones · coinciden'
                         : 'cambia el interés'}
@@ -2852,34 +2868,34 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                 </div>
               )}
 
-              <div className={styles.asKpis}>
-                <div className={styles.asKpi}>
-                  <div className={styles.asKpiLab}>
+              <div className={panel.asKpis}>
+                <div className={panel.asKpi}>
+                  <div className={panel.asKpiLab}>
                     {hayDosTramos ? 'TIN tramo fijo' : 'TIN efectivo'}
                   </div>
-                  <div className={styles.asKpiVal}>{fmtPct(tramo0.tin)}</div>
-                  <div className={styles.asKpiSub}>
+                  <div className={panel.asKpiVal}>{fmtPct(tramo0.tin)}</div>
+                  <div className={panel.asKpiSub}>
                     {fmtMesAnio(tramo0.desde)} → {fmtMesAnio(tramo1?.desde ?? finCuadro)}
                   </div>
                 </div>
                 {tramo1 ? (
                   <button
                     type="button"
-                    className={`${styles.asKpi} ${styles.asKpiBtn} ${verVariable ? styles.asKpiOpen : ''}`}
+                    className={`${panel.asKpi} ${panel.asKpiBtn} ${verVariable ? panel.asKpiOpen : ''}`}
                     onClick={() => setVerVariable((v) => !v)}
                     aria-expanded={verVariable}
                   >
-                    <div className={styles.asKpiLab}>TIN variable <ChevronDown /></div>
-                    <div className={styles.asKpiVal}>{fmtPct(tramo1.tin)}</div>
-                    <div className={styles.asKpiSub}>
+                    <div className={panel.asKpiLab}>TIN variable <ChevronDown /></div>
+                    <div className={panel.asKpiVal}>{fmtPct(tramo1.tin)}</div>
+                    <div className={panel.asKpiSub}>
                       {fmtMesAnio(tramo1.desde)} → {fmtMesAnio(finCuadro)}
                     </div>
                   </button>
                 ) : (
-                  <div className={styles.asKpi}>
-                    <div className={styles.asKpiLab}>TAE</div>
-                    <div className={styles.asKpiVal}>{fmtPct(cuadro.resumen.tae)}</div>
-                    <div className={styles.asKpiSub}>
+                  <div className={panel.asKpi}>
+                    <div className={panel.asKpiLab}>TAE</div>
+                    <div className={panel.asKpiVal}>{fmtPct(cuadro.resumen.tae)}</div>
+                    <div className={panel.asKpiSub}>
                       {cuadro.resumen.interesesCarenciaTecnica > 0 ? 'incluye días sueltos' : 'coste real'}
                     </div>
                   </div>
@@ -2887,7 +2903,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
               </div>
 
               {verVariable && tramo1 && (
-                <div className={styles.asVar}>
+                <div className={panel.asVar}>
                   {/*
                     La SUMA, no el tipo ya bonificado · el KPI de arriba enseña
                     lo que se paga y esta fila enseña de dónde sale. Poner aquí
@@ -2895,50 +2911,50 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                     cuenta que no cuadra, y quien la leyera buscaría el error en
                     el diferencial.
                   */}
-                  <div className={styles.asVarRow}>
+                  <div className={panel.asVarRow}>
                     <span>
                       Euríbor {fmtNumeroEs(parseNum(form.euriborRaw), 3)} +{' '}
                       {fmtNumeroEs(parseNum(form.diferencialRaw), 3)}
                     </span>
-                    <span className={styles.mono}>{fmtPct(tramo1.tinBase)}</span>
+                    <span className={panel.mono}>{fmtPct(tramo1.tinBase)}</span>
                   </div>
-                  <div className={styles.asVarRow}>
+                  <div className={panel.asVarRow}>
                     <span>Cuota estimada</span>
-                    <span className={styles.mono}>{fmtEur(cuotaSin, 0)}/mes</span>
+                    <span className={panel.mono}>{fmtEur(cuotaSin, 0)}/mes</span>
                   </div>
                   {bonificacionesTodas.length > 0 && (
                     <>
-                      <div className={styles.asVarRow}>
+                      <div className={panel.asVarRow}>
                         <span>
                           Con bonificación máxima · {fmtPct(tinMaximoVariable)}
                         </span>
-                        <span className={styles.mono}>{fmtEur(cuotaMax, 0)}/mes</span>
+                        <span className={panel.mono}>{fmtEur(cuotaMax, 0)}/mes</span>
                       </div>
                       <button
                         type="button"
-                        className={`${styles.asVarRow} ${styles.asVarRowHl} ${styles.asVarBtn}`}
+                        className={`${panel.asVarRow} ${panel.asVarRowHl} ${panel.asVarBtn}`}
                         onClick={() => setVerAhorro((v) => !v)}
                         aria-expanded={verAhorro}
                       >
                         <span>
                           Ahorro bonificaciones
                           <ChevronDown
-                            className={`${styles.asBdChev} ${verAhorro ? styles.asBdChevOpen : ''}`}
+                            className={`${panel.asBdChev} ${verAhorro ? panel.asBdChevOpen : ''}`}
                           />
                         </span>
-                        <span className={styles.mono}>
+                        <span className={panel.mono}>
                           −{fmtEur(ahorroMes, 0)}/mes · −{fmtEur(ahorroMes * 12, 0)}/año
                         </span>
                       </button>
                       {verAhorro && (
-                        <div className={styles.asBonifDet}>
+                        <div className={panel.asBonifDet}>
                           {ahorroPorBonificacion.map((a) => (
-                            <div key={a.id} className={styles.asSubRow}>
+                            <div key={a.id} className={panel.asSubRow}>
                               <span>{a.nombre}</span>
-                              <span className={styles.mono}>−{fmtEur(a.mes, 0)}/mes</span>
+                              <span className={panel.mono}>−{fmtEur(a.mes, 0)}/mes</span>
                             </div>
                           ))}
-                          <div className={styles.asSubNote}>
+                          <div className={panel.asSubNote}>
                             lo que vale cada una
                             {topePP > 0 && ` · el banco no baja de −${fmtNumeroEs(topePP, 2)} p.p.`}
                           </div>
@@ -2949,36 +2965,36 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                 </div>
               )}
 
-              <div className={styles.asBreak}>
-                <div className={styles.asRow}>
-                  <span className={styles.asRowLab}>Capital prestado</span>
-                  <span className={styles.asRowVal}>{fmtEur(capital)}</span>
+              <div className={panel.asBreak}>
+                <div className={panel.asRow}>
+                  <span className={panel.asRowLab}>Capital prestado</span>
+                  <span className={panel.asRowVal}>{fmtEur(capital)}</span>
                 </div>
-                <div className={styles.asRow}>
-                  <span className={styles.asRowLab}>
+                <div className={panel.asRow}>
+                  <span className={panel.asRowLab}>
                     + Intereses{hayDosTramos ? ' · estimado' : ''}
                   </span>
-                  <span className={styles.asRowVal}>{fmtEur(cuadro.resumen.interesesCuadro)}</span>
+                  <span className={panel.asRowVal}>{fmtEur(cuadro.resumen.interesesCuadro)}</span>
                 </div>
                 {cuadro.resumen.interesesCarenciaTecnica > 0 && (
-                  <div className={styles.asRow}>
-                    <span className={styles.asRowLab}>
+                  <div className={panel.asRow}>
+                    <span className={panel.asRowLab}>
                       + Días sueltos · {carenciaTecnica?.dias} días
                     </span>
-                    <span className={styles.asRowVal}>
+                    <span className={panel.asRowVal}>
                       {fmtEur(cuadro.resumen.interesesCarenciaTecnica)}
                     </span>
                   </div>
                 )}
-                <div className={styles.asRow}>
-                  <span className={styles.asRowLab}>+ Comisión apertura</span>
-                  <span className={styles.asRowVal}>{fmtEur(comisionAperturaEur)}</span>
+                <div className={panel.asRow}>
+                  <span className={panel.asRowLab}>+ Comisión apertura</span>
+                  <span className={panel.asRowVal}>{fmtEur(comisionAperturaEur)}</span>
                 </div>
-                <div className={`${styles.asRow} ${styles.asRowTotal}`}>
-                  <span className={styles.asRowLab}>
+                <div className={`${panel.asRow} ${panel.asRowTotal}`}>
+                  <span className={panel.asRowLab}>
                     Total {hayDosTramos ? 'estimado' : 'a pagar'}
                   </span>
-                  <span className={styles.asRowVal}>
+                  <span className={panel.asRowVal}>
                     {fmtEur(
                       capital +
                         cuadro.resumen.interesesCuadro +
@@ -2990,7 +3006,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
               </div>
 
               {hayDosTramos && (
-                <div className={styles.asNota}>
+                <div className={panel.asNota}>
                   Estimado proyectando el tramo variable con el Euríbor actual. Cambiará en cada
                   revisión.
                 </div>
@@ -2998,7 +3014,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
               <button
                 type="button"
-                className={styles.asBtn}
+                className={panel.asBtn}
                 onClick={() => setShowCuadroCompleto((v) => !v)}
               >
                 <Calendar size={15} />
@@ -3010,7 +3026,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
               {showCuadroCompleto && <CuadroTabla periodos={cuadro.plan.periodos} />}
             </>
           ) : (
-            <div className={styles.asVacio}>
+            <div className={panel.asVacio}>
               Completa capital, plazo, tipo de interés y fechas para ver el cálculo en directo.
             </div>
           )}
@@ -3022,7 +3038,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
 // ─── Cuadro completo · tabla desplegable ────────────────────────────────────
 const CuadroTabla: React.FC<{ periodos: PeriodoPago[] }> = ({ periodos }) => (
-  <div className={styles.cuadroTabla}>
+  <div className={panel.cuadroTabla}>
     <table>
       <thead>
         <tr>
@@ -3040,7 +3056,7 @@ const CuadroTabla: React.FC<{ periodos: PeriodoPago[] }> = ({ periodos }) => (
           // firma y el primer mes de cobro, que el banco cobra aparte.
           const esCarencia = p.periodo === 0;
           return (
-            <tr key={p.periodo} className={esCarencia ? styles.cuadroTablaCarencia : ''}>
+            <tr key={p.periodo} className={esCarencia ? panel.cuadroTablaCarencia : ''}>
               <td>{esCarencia ? '0 · sueltos' : p.periodo}</td>
               <td>{fmtFechaCorta(p.fechaCargo)}</td>
               <td>{fmtEur(p.cuota)}</td>
