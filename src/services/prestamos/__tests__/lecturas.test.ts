@@ -7,11 +7,15 @@
 
 import { generarCuadro } from '../cuadro';
 import {
+  cuadroDe,
+  cuotasDelAnio,
   escaleraDeLiberacion,
   getCapitalVivo,
   getCuota,
   getDesgloseCuota,
   getFechaVencimiento,
+  getInteresDeducible,
+  getInteresDelAnio,
   getPctAmortizado,
   getProximaRevision,
   getTinVigente,
@@ -198,5 +202,110 @@ describe('escaleraDeLiberacion · la cuota del hogar bajando hacia cero', () => 
 
     expect(escalera.puntos).toHaveLength(0);
     expect(escalera.mesLibre).toBeNull();
+  });
+});
+
+// ── Lo que venía de `consulta.ts` ───────────────────────────────────────────
+//
+// Ese fichero era ESTE mismo módulo, escrito en paralelo mientras se arreglaba
+// el motor. Dos capas de lectura sobre el mismo cuadro son exactamente el
+// defecto que las dos venían a quitar, así que se quedó una — y aquí están los
+// candados que la otra traía y aquí faltaban.
+
+describe('la bonificación llega hasta la cuota, no se queda en el tipo', () => {
+  // «El variable ignora las bonificaciones» ya no era cierto: `tinDelTramo` las
+  // aplica. Pero suponerlo no es comprobarlo, y lo que hay que poder decir es
+  // cuánto vale cumplirle las condiciones al banco.
+  const conBonificacion = () =>
+    unicaja({
+      valorIndiceActual: 4.149,
+      bonificacionesDesde: 'TRAMO_VARIABLE',
+      topeBonificacionesTotal: 1.0,
+      bonificaciones: [
+        {
+          id: 'b1',
+          tipo: 'NOMINA',
+          nombre: 'Bloque haberes',
+          reduccionPuntosPorcentuales: 1.0,
+          impacto: { puntos: 1.0 },
+          lookbackMeses: 6,
+          regla: { tipo: 'NOMINA', minimoMensual: 2500 },
+          estado: 'ACTIVO_POR_CUMPLIMIENTO',
+        },
+      ],
+    } as Partial<Prestamo>);
+
+  it('el tramo variable SÍ se bonifica · 5,899 − 1,00 = 4,899', () => {
+    expect(getTinVigente(conBonificacion(), '2030-03-01')).toBeCloseTo(4.899, 3);
+  });
+
+  // Esta escritura dice que las bonificaciones empiezan con el tramo variable.
+  it('y el fijo no, porque esta escritura dice que desde el variable', () => {
+    expect(getTinVigente(conBonificacion(), '2024-03-01')).toBeCloseTo(2.6, 3);
+  });
+
+  it('un punto de rebaja son 40,65 € menos al mes', () => {
+    const sinBonificar = unicaja({ valorIndiceActual: 4.149 });
+    const teorica = getCuota(cuadroDe(sinBonificar), '2030-03-01');
+    const bonificada = getCuota(cuadroDe(conBonificacion()), '2030-03-01');
+
+    expect(teorica - bonificada).toBeCloseTo(40.65, 2);
+  });
+});
+
+describe('los recibos de un año son los que hay, no doce', () => {
+  it('el año de la firma tiene los meses que existieron', () => {
+    // Firmada el 25 de agosto · de septiembre a diciembre son cuatro.
+    expect(cuotasDelAnio(cuadroDe(unicaja()), 2023)).toHaveLength(4);
+  });
+
+  it('un año entero son doce', () => {
+    expect(cuotasDelAnio(cuadroDe(unicaja()), 2024)).toHaveLength(12);
+  });
+
+  it('y un año fuera del préstamo, ninguno', () => {
+    expect(cuotasDelAnio(cuadroDe(unicaja()), 2050)).toHaveLength(0);
+    expect(getInteresDelAnio(cuadroDe(unicaja()), 2050)).toBe(0);
+  });
+});
+
+describe('el año ya declarado manda sobre la proyección', () => {
+  const conDestino = (over: Partial<Prestamo> = {}) =>
+    unicaja({
+      ambito: 'INMUEBLE',
+      destinos: [{ tipo: 'ADQUISICION', inmuebleId: 'i1', importe: 85000, porcentaje: 100 }],
+      ...over,
+    } as Partial<Prestamo>);
+
+  it('sin nada declarado se suman los intereses del cuadro', () => {
+    const p = conDestino();
+
+    expect(getInteresDeducible(p, cuadroDe(p), 2024)).toBeCloseTo(
+      getInteresDelAnio(cuadroDe(p), 2024),
+      2
+    );
+  });
+
+  // Lo que dijo el certificado del banco es lo que fue a la renta · una
+  // proyección no puede reescribir un año ya presentado.
+  it('con el certificado apuntado, gana el certificado', () => {
+    const p = conDestino({ interesesAnualesDeclarados: { 2024: 1234.56 } } as Partial<Prestamo>);
+
+    expect(getInteresDeducible(p, cuadroDe(p), 2024)).toBe(1234.56);
+  });
+});
+
+describe('el cuadro memoizado no puede ser el de otro préstamo', () => {
+  // La huella es el préstamo entero · una lista de campos se queda corta el día
+  // que alguien añada uno al cálculo y no se acuerde de actualizarla.
+  it('cambiar un dato del cálculo da un cuadro distinto', () => {
+    const antes = cuadroDe(unicaja()).resumen.cuotaMensual;
+    const despues = cuadroDe(unicaja({ principalInicial: 90000 })).resumen.cuotaMensual;
+
+    expect(despues).toBeGreaterThan(antes);
+  });
+
+  it('y preguntar dos veces por el mismo da lo mismo', () => {
+    expect(cuadroDe(unicaja()).resumen).toEqual(cuadroDe(unicaja()).resumen);
   });
 });

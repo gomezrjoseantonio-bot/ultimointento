@@ -9,22 +9,53 @@
 // arranque. De ahí venían los números que bailan.
 //
 // Aquí no se calcula nada nuevo: se LEE del cuadro que ya generó el motor
-// (`generarCuadro`). Si el cuadro dice que la cuota de agosto son 454,57 €, eso
-// es lo que se enseña — aunque la escritura diga 454,66 € porque el motor
-// todavía liquida 30/360 en vez de ACT/365. Ese desajuste se arregla en el
-// motor, no compensándolo aquí.
+// (`generarCuadro`). Aquí ponía que la cuota de la Unicaja son 454,57 € «aunque
+// la escritura diga 454,66 porque el motor todavía liquida 30/360 en vez de
+// ACT/365», y que ese desajuste se arreglaba en el motor y no compensándolo
+// aquí. Las dos cosas eran ciertas y **el motor ya está arreglado**: la cuota
+// constante se resuelve contra el calendario real, así que dice 454,66 €. Este
+// fichero no ha tenido que cambiar ni una línea por ello, que era exactamente
+// el punto.
 //
 // Todo va contra fechas ISO `YYYY-MM-DD` y ninguna función mira el reloj: el
 // día se pasa de fuera, igual que hace el resto de `services/prestamos/`.
 // ============================================================================
 
 import type { Prestamo, PeriodoPago } from '../../types/prestamos';
-import type { Cuadro } from './cuadro';
+import { generarCuadro, type Cuadro } from './cuadro';
 import { tinDelTramo } from './tinDelTramo';
 import { tramoVigente } from './tramosDeTipo';
 import { interesesTotalDeducible } from '../prestamosService';
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+// ─── El cuadro, generado una vez ────────────────────────────────────────────
+//
+// Estas lecturas piden el cuadro ya hecho, y está bien: mantiene el fichero
+// puro. Pero una lista de préstamos pregunta lo mismo muchas veces —cuota, tipo,
+// vencimiento, intereses de dieciocho años—, y regenerar 240 periodos en cada
+// pregunta se nota.
+//
+// La huella es el préstamo ENTERO serializado, no una lista de los campos que
+// hoy mira el motor. Una lista se queda corta el día que alguien añada un campo
+// al cálculo y no se acuerde de esto, y entonces devolvería el cuadro de un
+// préstamo que ya no es ese — en silencio, que es como duelen.
+const cuadros = new Map<string, Cuadro>();
+const TOPE = 64;
+
+/** El cuadro de este préstamo · generado una vez y recordado. */
+export function cuadroDe(prestamo: Prestamo): Cuadro {
+  const huella = JSON.stringify(prestamo);
+  const recordado = cuadros.get(huella);
+  if (recordado) return recordado;
+
+  const cuadro = generarCuadro(prestamo);
+  // Sin política de expulsión fina a propósito: no hay «cuál es el más usado»
+  // que valga la pena mantener, y vaciar cuesta lo mismo que un cuadro.
+  if (cuadros.size >= TOPE) cuadros.clear();
+  cuadros.set(huella, cuadro);
+  return cuadro;
+}
 
 /**
  * Las líneas que son CUOTA · sin la línea 0.
@@ -103,11 +134,24 @@ export function getTinTeorico(prestamo: Prestamo, fecha: string): number {
   return tramoVigente(prestamo, fecha).tinBase;
 }
 
-/** La fecha de la última cuota del cuadro · `null` si el cuadro está vacío. */
+/**
+ * La fecha de la última cuota del cuadro · `null` si no hay calendario.
+ *
+ * Se comprueba que sea una fecha de verdad. Un préstamo sin firma ni primer
+ * cargo genera un cuadro cuyas fechas son `NaN-NaN-NaN`, y devolver eso lo
+ * pintaba tal cual en pantalla: un hueco se entiende, un «NaN-NaN-NaN» no.
+ */
 export function getFechaVencimiento(cuadro: Cuadro): string | null {
   const lineas = cuotas(cuadro);
   if (lineas.length === 0) return null;
-  return lineas[lineas.length - 1].fechaCargo;
+  const ultima = lineas[lineas.length - 1].fechaCargo;
+  return /^\d{4}-\d{2}-\d{2}$/.test(ultima) ? ultima : null;
+}
+
+/** La última cuota que se paga · la que se libera al vencer el préstamo. */
+export function getUltimaCuota(cuadro: Cuadro): number {
+  const lineas = cuotas(cuadro);
+  return lineas.length === 0 ? 0 : lineas[lineas.length - 1].cuota;
 }
 
 /**
@@ -126,14 +170,22 @@ export function getPctAmortizado(cuadro: Cuadro, fecha: string): number {
   return Math.min(100, Math.max(0, (1 - vivo / inicial) * 100));
 }
 
+/**
+ * Los recibos que se cargan en un año natural · los que hay, ni uno más.
+ *
+ * El año de la firma tiene los meses que existieron y el del vencimiento los
+ * que quedaban. La capa de presentación devolvía doce filas de cuota plana
+ * cuando no encontraba plan guardado, y para un mixto que revisa a mitad de año
+ * eso son doce cifras equivocadas pintadas igual que un dato real.
+ */
+export function cuotasDelAnio(cuadro: Cuadro, anio: number): PeriodoPago[] {
+  const prefijo = `${anio}-`;
+  return cuadro.plan.periodos.filter((p) => p.fechaCargo.startsWith(prefijo));
+}
+
 /** Los intereses que el cuadro carga en un año natural. */
 export function getInteresDelAnio(cuadro: Cuadro, anio: number): number {
-  const prefijo = `${anio}-`;
-  return round2(
-    cuadro.plan.periodos
-      .filter((p) => p.fechaCargo.startsWith(prefijo))
-      .reduce((s, p) => s + p.interes, 0),
-  );
+  return round2(cuotasDelAnio(cuadro, anio).reduce((s, p) => s + p.interes, 0));
 }
 
 /**

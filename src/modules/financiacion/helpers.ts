@@ -9,13 +9,13 @@ import type { Prestamo, PlanPagos, PeriodoPago } from '../../types/prestamos';
 import { tramoVigente } from '../../services/prestamos/tramosDeTipo';
 import {
   cuadroDe,
+  cuotasDelAnio as cuotasDelAnioDelCuadro,
   getCuota,
-  getCuotasDelAnio,
   getFechaVencimiento,
-  getInteresesDelAnio,
+  getInteresDeducible,
   getTinVigente,
-} from '../../services/prestamos/consulta';
-import { interesesTotalDeducible } from '../../services/prestamosService';
+  getUltimaCuota,
+} from '../../services/prestamos/lecturas';
 import type { BankPalette, LoanKind, LoanRow } from './types';
 
 const BANK_KEYWORDS: Record<string, BankPalette> = {
@@ -105,11 +105,11 @@ export const cuotaMensualConTin = (p: Prestamo, tinAnual: number): number => {
     // puestas lo rebajaría una segunda vez.
     bonificaciones: [],
   };
-  return getCuota(comoSiFuera, hoyISO());
+  return getCuota(cuadroDe(comoSiFuera), hoyISO());
 };
 
 /** La cuota de hoy · la del cuadro, con su tramo y sus bonificaciones. */
-export const cuotaMensualAprox = (p: Prestamo): number => getCuota(p, hoyISO());
+export const cuotaMensualAprox = (p: Prestamo): number => getCuota(cuadroDe(p), hoyISO());
 
 /**
  * Cuándo se paga la última cuota · la del cuadro.
@@ -119,7 +119,8 @@ export const cuotaMensualAprox = (p: Prestamo): number => getCuota(p, hoyISO());
  * anticipada. De ahí salía el «libre en enero de 2037» que no cuadraba con el
  * calendario de al lado.
  */
-export const fechaVencimiento = (p: Prestamo): string | null => getFechaVencimiento(p);
+export const fechaVencimiento = (p: Prestamo): string | null =>
+  getFechaVencimiento(cuadroDe(p));
 
 const aliasFromPrestamo = (p: Prestamo): string => p.nombre || 'Préstamo sin nombre';
 
@@ -336,7 +337,7 @@ export const cuotasDelAnio = (
         const d = new Date(per.fechaCargo);
         return !Number.isNaN(d.getTime()) && d.getFullYear() === year;
       })
-    : getCuotasDelAnio(prestamo, year);
+    : cuotasDelAnioDelCuadro(cuadroDe(prestamo), year);
 
   return periodos.map((per) => ({
     mes: new Date(per.fechaCargo).getMonth() + 1,
@@ -351,8 +352,10 @@ export const cuotasDelAnio = (
  * Los intereses de un año que además son DEDUCIBLES · §5, defecto D5.
  *
  * Dos preguntas encadenadas y cada una en su sitio: cuánto interés se paga ese
- * año lo dice el cuadro (`getInteresesDelAnio`), y qué parte de él se deduce lo
- * dice el destino del capital (`interesesTotalDeducible`).
+ * año lo dice el cuadro y qué parte de él se deduce lo dice el destino del
+ * capital · las dos las encadena `getInteresDeducible`, que además respeta el
+ * año YA DECLARADO: si consta lo que dijo el certificado del banco, ese es el
+ * número que fue a la renta y una proyección no puede pisarlo.
  *
  * Se venía estimando el interés del año como `capitalVivo × TIN`, o sea el de
  * un año entero al tipo de hoy sobre el capital de hoy: ni el capital baja a lo
@@ -361,7 +364,7 @@ export const cuotasDelAnio = (
  */
 export const interesDeducibleDelAnio = (prestamo: Prestamo, year: number): number => {
   try {
-    return interesesTotalDeducible(prestamo, getInteresesDelAnio(prestamo, year));
+    return getInteresDeducible(prestamo, cuadroDe(prestamo), year);
   } catch {
     return 0;
   }
@@ -389,7 +392,7 @@ export const buildEscalones = (rows: LoanRow[]): Escalon[] => {
       // hoy: la Unicaja acaba en 2043 pagando su cuota variable, no los 454,66 €
       // del tramo fijo. Con la de hoy, el escalón de un mixto se quedaba corto
       // justo en el préstamo más largo, que es el que más pesa.
-      cuotaLiberada: r.fechaVencimiento ? getCuota(r.raw, r.fechaVencimiento) : r.cuotaMensual,
+      cuotaLiberada: getUltimaCuota(cuadroDe(r.raw)) || r.cuotaMensual,
       cuotasRestantes: r.cuotasRestantes,
       tin: r.tin,
     }))
