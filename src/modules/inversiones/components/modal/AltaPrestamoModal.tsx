@@ -202,73 +202,75 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
     setRetencion(RETENCION_DEFECTO[subtipo]);
   }, [subtipo, retencionTocada]);
 
-  const fechaVencimiento = useMemo(
-    () => (fecha && duracionNum > 0 ? addMonthsISO(fecha, Math.round(duracionNum)) : ''),
-    [fecha, duracionNum],
-  );
-
-  // ── Preview · cobros netos previstos ─────────────────────────────
-  // Sale del cuadro de amortización, la misma fuente que usan la ficha y la
-  // previsión de tesorería. Antes se calculaba aquí con interés simple
-  // (capital × TIN × años), que en cuota francesa sobreestima muchísimo: los
-  // intereses se devengan sobre el capital VIVO, que va bajando. En el préstamo
-  // de 30.000 € al 3,25% a 60 meses eran 4.875 € frente a los 2.544 € reales.
-  const calc = useMemo(() => {
-    const cuadro = calcularCuadroPrestamo({
-      capital: parseFloat(capital) || 0,
-      tinAnual: parseFloat(tin) || 0,
-      duracionMeses: parseFloat(duracionMeses) || 0,
-      frecuencia,
-      modalidad,
-      primerCobro: primerCobro || primerCobroSugerido,
-    });
-    if (!cuadro) {
-      return { interesBruto: 0, retencionImporte: 0, neto: 0, cuotaPeriodica: 0 };
-    }
-    const interesBruto = cuadro.totalIntereses;
-    const retencionImporte = interesBruto * ((parseFloat(retencion) || 0) / 100);
-    const neto = interesBruto - retencionImporte;
-    return {
-      interesBruto,
-      retencionImporte,
-      neto,
-      // Bullet · un único cobro al vencimiento, ya neto de retención.
-      cuotaPeriodica: modalidad === 'al_vencimiento' ? neto : cuadro.cuota,
-    };
-  }, [
-    capital,
-    tin,
-    duracionMeses,
-    retencion,
-    frecuencia,
-    modalidad,
-    primerCobro,
-    primerCobroSugerido,
-  ]);
-
-  // ── Cuotas ya vencidas al registrar el préstamo ──────────────────
-  // Ver `CuotasVencidasField` para el porqué de no crear movimientos.
-  const cuotasVencidas = useMemo(
+  // Cuadro del préstamo que se está definiendo · de él salen el preview, el
+  // vencimiento real y las cuotas ya vencidas. Una sola fuente para todo.
+  const cuadroPreview = useMemo(
     () =>
-      calcularCuotasVencidas({
+      calcularCuadroPrestamo({
         capital: parseFloat(capital) || 0,
         tinAnual: parseFloat(tin) || 0,
         duracionMeses: duracionNum,
         frecuencia,
         modalidad,
         primerCobro: primerCobro || primerCobroSugerido,
-        retencionPorcentaje: parseFloat(retencion) || 0,
       }),
-    [
-      capital,
-      tin,
-      duracionNum,
-      frecuencia,
-      modalidad,
-      primerCobro,
-      primerCobroSugerido,
-      retencion,
-    ],
+    [capital, tin, duracionNum, frecuencia, modalidad, primerCobro, primerCobroSugerido],
+  );
+
+  // El vencimiento es la fecha de la ÚLTIMA CUOTA, no firma + duración. Con
+  // carencia las dos se separan: un préstamo firmado en marzo de 2024 que no
+  // empieza a pagar hasta marzo de 2025 vence un año más tarde de lo que dice
+  // la resta. Si aún no hay cuadro (faltan datos) se cae a la estimación.
+  const fechaVencimiento = useMemo(() => {
+    const ultima = cuadroPreview?.periodos[cuadroPreview.periodos.length - 1];
+    if (ultima) return ultima.fecha;
+    return fecha && duracionNum > 0 ? addMonthsISO(fecha, Math.round(duracionNum)) : '';
+  }, [cuadroPreview, fecha, duracionNum]);
+
+  // ── Preview · lo que se va a cobrar ──────────────────────────────
+  // Sale del cuadro, la misma fuente que la ficha y la previsión de tesorería.
+  //
+  // OJO con el titular: lo que entra en la cuenta NO son solo los intereses.
+  // El capital prestado vuelve cuota a cuota (o al vencimiento), así que el
+  // total cobrado es capital + intereses − retención. Anunciar solo el
+  // rendimiento neto se dejaba fuera los 30.000 € del principal y contradecía
+  // a la cuota que se muestra justo debajo.
+  const calc = useMemo(() => {
+    if (!cuadroPreview) {
+      return {
+        interesBruto: 0,
+        retencionImporte: 0,
+        interesNeto: 0,
+        capitalDevuelto: 0,
+        totalACobrar: 0,
+        cuotaPeriodica: 0,
+      };
+    }
+    const interesBruto = cuadroPreview.totalIntereses;
+    const retencionImporte = interesBruto * ((parseFloat(retencion) || 0) / 100);
+    const interesNeto = interesBruto - retencionImporte;
+    const capitalDevuelto = cuadroPreview.periodos.reduce(
+      (acc, per) => acc + per.amortizacion,
+      0,
+    );
+    const totalACobrar = capitalDevuelto + interesNeto;
+    return {
+      interesBruto,
+      retencionImporte,
+      interesNeto,
+      capitalDevuelto,
+      totalACobrar,
+      // Bullet · un único cobro al vencimiento: capital e intereses juntos.
+      cuotaPeriodica:
+        modalidad === 'al_vencimiento' ? totalACobrar : cuadroPreview.cuota,
+    };
+  }, [cuadroPreview, retencion, modalidad]);
+
+  // ── Cuotas ya vencidas al registrar el préstamo ──────────────────
+  // Ver `CuotasVencidasField` para el porqué de no crear movimientos.
+  const cuotasVencidas = useMemo(
+    () => calcularCuotasVencidas(cuadroPreview, parseFloat(retencion) || 0),
+    [cuadroPreview, retencion],
   );
 
   // Solo se ofrece si el préstamo no tiene ya cobros registrados · en una
@@ -300,7 +302,10 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
     try {
       const frecuenciaPago: Frecuencia = esVencimiento ? 'anual' : frecuencia;
       const retencionNum = parseFloat(retencion) || 0;
-      const vencimiento = addMonthsISO(fecha, Math.round(duracion));
+      // Mismo vencimiento que enseña el preview · la última cuota del cuadro.
+      // Guardar aquí firma + duración dejaba `fecha_fin_rendimiento` un año
+      // corto en cuanto el préstamo tuviera carencia.
+      const vencimiento = fechaVencimiento || addMonthsISO(fecha, Math.round(duracion));
       // Inicio del devengo · el generador emite el primer pago un periodo
       // después, así que retrocedemos un periodo desde el primer cobro. En
       // bullet el devengo arranca en la firma (pago único al vencimiento).
@@ -694,10 +699,10 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
             headerIcon={<Icons.Banknote size={12} strokeWidth={2} />}
           >
             <ModalAtlasPreviewCardDark
-              label="Cobros netos previstos"
-              value={formatCurrency(calc.neto)}
+              label="Total a cobrar"
+              value={formatCurrency(calc.totalACobrar)}
               valueVariant="gold"
-              sub={`bruto ${formatCurrency(calc.interesBruto)} · retención ${formatCurrency(calc.retencionImporte)}`}
+              sub={`capital ${formatCurrency(calc.capitalDevuelto)} + intereses netos ${formatCurrency(calc.interesNeto)}`}
               subAsText
             />
             <ModalAtlasPreviewBlock>
@@ -711,7 +716,15 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
                 v={formatCurrency(calc.retencionImporte)}
                 variant="neg"
               />
-              <ModalAtlasPreviewRow k="Neto final" v={formatCurrency(calc.neto)} variant="pos" />
+              <ModalAtlasPreviewRow
+                k="Intereses netos"
+                v={formatCurrency(calc.interesNeto)}
+                variant="pos"
+              />
+              <ModalAtlasPreviewRow
+                k="Capital devuelto"
+                v={formatCurrency(calc.capitalDevuelto)}
+              />
             </ModalAtlasPreviewBlock>
             <ModalAtlasPreviewBlock>
               <ModalAtlasPreviewRow

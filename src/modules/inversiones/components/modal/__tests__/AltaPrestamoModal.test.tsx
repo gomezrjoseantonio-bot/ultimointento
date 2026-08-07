@@ -319,3 +319,71 @@ describe('AltaPrestamoModal · cuotas ya vencidas', () => {
     expect(screen.queryByText('Cuotas ya vencidas')).not.toBeInTheDocument();
   });
 });
+
+describe('AltaPrestamoModal · el préstamo de la captura (con carencia)', () => {
+  // Firmado 01/03/2024 · primer cobro 01/03/2025 (un año de carencia) ·
+  // 30.000 € al 3,25% a 60 cuotas mensuales con retención del 19%.
+  const rellenar = async () => {
+    fireEvent.change(screen.getByPlaceholderText(/SmartFlip · 10% TIN/), {
+      target: { value: 'Prestamo Creación' },
+    });
+    fireEvent.change(screen.getByLabelText(/Plataforma|Empresa deudora|Familiar deudor/), {
+      target: { value: 'Unihouser' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('10000'), { target: { value: '30000' } });
+    fireEvent.change(screen.getByPlaceholderText('10.00'), { target: { value: '3.25' } });
+    fireEvent.change(screen.getByPlaceholderText('60'), { target: { value: '60' } });
+    fireEvent.change(screen.getByLabelText(/Modalidad/) as HTMLSelectElement, {
+      target: { value: 'capital_e_intereses' },
+    });
+    fireEvent.change(screen.getByLabelText(/Fecha firma/), {
+      target: { value: '2024-03-01' },
+    });
+    fireEvent.change(screen.getByLabelText(/Intereses desde/), {
+      target: { value: '2025-03-01' },
+    });
+    await waitFor(() => {
+      expect(screen.getAllByRole('option', { name: 'Cuenta principal' })).toHaveLength(2);
+    });
+    fireEvent.change(screen.getByLabelText(/Cuenta de cargo/) as HTMLSelectElement, {
+      target: { value: '1' },
+    });
+  };
+
+  it('anuncia el total que se cobra, capital incluido · no solo los intereses', async () => {
+    render(<AltaPrestamoModal onSave={() => undefined} onClose={() => undefined} />);
+    await rellenar();
+
+    // Entran 30.000 de capital + 2.544 de intereses − 483 de retención.
+    expect(screen.getByText('Total a cobrar')).toBeInTheDocument();
+    expect(screen.getByText(/32\.06[01]/)).toBeInTheDocument();
+    const card = screen.getByText('Total a cobrar').parentElement as HTMLElement;
+    expect(card.textContent).toMatch(/32\.06[01]/);
+    expect(card.textContent).toMatch(/capital 30\.000/);
+    expect(card.textContent).toMatch(/intereses netos 2\.?06[01]/);
+    // Y el desglose sigue visible, sin hacerlo pasar por el total.
+    expect(screen.getByText('Intereses netos')).toBeInTheDocument();
+    expect(screen.getByText('Capital devuelto')).toBeInTheDocument();
+  });
+
+  it('vence en la última cuota, no en firma + duración', async () => {
+    render(<AltaPrestamoModal onSave={() => undefined} onClose={() => undefined} />);
+    await rellenar();
+
+    // Con un año de carencia las 60 cuotas acaban en feb-2030, no en mar-2029.
+    const fila = screen.getByText('Vencimiento').parentElement as HTMLElement;
+    expect(fila.textContent).toMatch(/2030/);
+    expect(fila.textContent).not.toMatch(/2029/);
+  });
+
+  it('guarda ese mismo vencimiento como fin del rendimiento', async () => {
+    const onSave = jest.fn();
+    render(<AltaPrestamoModal onSave={onSave} onClose={() => undefined} />);
+    await rellenar();
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear préstamo|Guardar/ }));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+
+    expect(onSave.mock.calls[0][0].rendimiento.fecha_fin_rendimiento).toContain('2030-02-01');
+  });
+});

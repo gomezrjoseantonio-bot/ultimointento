@@ -7,12 +7,7 @@
 
 import React from 'react';
 import { formatCurrency } from '../../helpers';
-import {
-  calcularCuadroPrestamo,
-  type FrecuenciaCobro,
-  type ModalidadDevolucion,
-  type PeriodoPrestamo,
-} from '../../utils/prestamoCalendario';
+import type { CuadroPrestamo, PeriodoPrestamo } from '../../utils/prestamoCalendario';
 import { toISODateLocal } from '../../../../utils/recurrenceDateUtils';
 import styles from '../../styles/atlas-inversiones.module.css';
 
@@ -38,16 +33,10 @@ export interface CuotasVencidas {
 const aCentimos = (valor: number): number => Math.round(valor * 100) / 100;
 
 /** Cuotas del cuadro cuya fecha ya ha pasado, con el neto que habrán dejado. */
-export function calcularCuotasVencidas(params: {
-  capital: number;
-  tinAnual: number;
-  duracionMeses: number;
-  frecuencia: FrecuenciaCobro;
-  modalidad: ModalidadDevolucion;
-  primerCobro: string;
-  retencionPorcentaje: number;
-}): CuotasVencidas | null {
-  const cuadro = calcularCuadroPrestamo(params);
+export function calcularCuotasVencidas(
+  cuadro: CuadroPrestamo | null,
+  retencionPorcentaje: number,
+): CuotasVencidas | null {
   if (!cuadro) return null;
   const hoy = toISODateLocal(new Date());
   const periodos = cuadro.periodos.filter((per) => per.fecha <= hoy);
@@ -56,7 +45,7 @@ export function calcularCuotasVencidas(params: {
   // Se redondea AQUÍ, una sola vez, y de estos importes salen tanto el resumen
   // que ve el usuario como los pagos que se guardan. Si cada uno redondease por
   // su cuenta, el total anunciado no cuadraría con la suma de los pagos.
-  const tasaRet = (params.retencionPorcentaje || 0) / 100;
+  const tasaRet = (retencionPorcentaje || 0) / 100;
   const cuotas: CuotaVencida[] = periodos.map((periodo) => {
     const retenido = aCentimos(periodo.interes * tasaRet);
     return { periodo, retenido, neto: aCentimos(periodo.cuota - retenido) };
