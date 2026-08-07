@@ -16,6 +16,11 @@
      lo declara para sí, que es donde se usa. */
   --w-shadow-color: rgba(14, 20, 35, 0.28);
   --w-shadow: 0 24px 60px var(--w-shadow-color);
+  /* El aire alrededor del diálogo · lo leen el `inset` y los `min()` que lo
+     acotan, y ahí entra por partida DOBLE (arriba y abajo, izquierda y
+     derecha). Escrito dos veces —una como 20 y otra como 40— el día que
+     alguien cambie uno se rompe el centrado sin que nada avise. */
+  --w-margen: 20px;
   --w-r-sm: 7px;
   --w-r-md: 9px;
   --w-r-lg: 14px;
@@ -63,10 +68,10 @@
  */
 .modal {
   position: fixed;
-  inset: 20px;
+  inset: var(--w-margen);
   margin: auto;
-  width: min(1360px, calc(100vw - 40px));
-  height: min(900px, calc(100vh - 40px));
+  width: min(1360px, calc(100vw - var(--w-margen) * 2));
+  height: min(900px, calc(100vh - var(--w-margen) * 2));
   z-index: 101;
   background: var(--atlas-v5-card);
   border-radius: var(--w-r-lg);
