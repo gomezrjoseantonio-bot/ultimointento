@@ -170,6 +170,79 @@ export function getPctAmortizado(cuadro: Cuadro, fecha: string): number {
   return Math.min(100, Math.max(0, (1 - vivo / inicial) * 100));
 }
 
+/** El capital que se pidió · la primera línea del cuadro lo reconstruye. */
+export function getPrincipalInicial(cuadro: Cuadro): number {
+  const lineas = cuotas(cuadro);
+  if (lineas.length === 0) return 0;
+  return round2(lineas[0].principalFinal + lineas[0].amortizacion);
+}
+
+/**
+ * Lo que queda por pagar de intereses desde una fecha · el coste pendiente.
+ *
+ * Es el 6º KPI del detalle cuando el préstamo NO es deducible: ahí «deducible»
+ * diría siempre cero, y lo que sí interesa saber es cuánto te queda de coste.
+ */
+export function getInteresPendiente(cuadro: Cuadro, fecha: string): number {
+  return round2(
+    cuadro.plan.periodos
+      .filter((p) => p.fechaCargo >= fecha)
+      .reduce((s, p) => s + p.interes, 0),
+  );
+}
+
+export interface ProgresoCuotas {
+  /** Cuántas cuotas han vencido ya. */
+  pagadas: number;
+  /** Cuántas tiene el cuadro en total. */
+  total: number;
+  /** Las que quedan por delante. */
+  restantes: number;
+}
+
+/**
+ * Por dónde va el préstamo, en cuotas.
+ *
+ * Se cuenta por FECHA y no por el campo `pagado` de las líneas: ese lo escribe
+ * la conciliación con tesorería y puede ir por detrás de la realidad, así que
+ * un recibo cobrado y no conciliado haría retroceder el contador.
+ */
+export function getProgresoCuotas(cuadro: Cuadro, fecha: string): ProgresoCuotas {
+  const lineas = cuotas(cuadro);
+  const pagadas = lineas.filter((p) => p.fechaCargo < fecha).length;
+  return { pagadas, total: lineas.length, restantes: lineas.length - pagadas };
+}
+
+/** Una línea del cuadro con el salto de la revisión ya marcado. */
+export type LineaPreview = PeriodoPago & { esRevision: boolean };
+
+/**
+ * Las próximas N cuotas desde una fecha, con el salto de tipo señalado.
+ *
+ * `esRevision` se deriva igual que en `getProximaRevision` —la cuota deja de
+ * ser la de la línea anterior—, porque el cuadro no marca sus líneas. La última
+ * queda fuera de la marca: siempre difiere porque se lleva el resto.
+ */
+export function getPreviewCuadro(cuadro: Cuadro, fecha: string, n = 3): LineaPreview[] {
+  const lineas = cuotas(cuadro);
+  if (lineas.length === 0) return [];
+  const ultima = lineas[lineas.length - 1];
+
+  let desde = lineas.findIndex((p) => p.fechaCargo >= fecha);
+  if (desde === -1) desde = Math.max(0, lineas.length - n);
+
+  return lineas.slice(desde, desde + n).map((p, i) => {
+    // La previa se toma por posición · con `indexOf` era una búsqueda lineal
+    // por cada línea, y además se rompería con dos periodos idénticos.
+    const previa = lineas[desde + i - 1];
+    return {
+      ...p,
+      esRevision:
+        previa != null && p.periodo !== ultima.periodo && Math.abs(p.cuota - previa.cuota) >= 0.5,
+    };
+  });
+}
+
 /**
  * Los recibos que se cargan en un año natural · los que hay, ni uno más.
  *

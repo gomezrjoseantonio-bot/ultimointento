@@ -17,7 +17,7 @@ import { escaleraDeLiberacion } from '../../../services/prestamos/lecturas';
 import { queTraeLaRevision } from '../../../services/prestamos/queTraeLaRevision';
 import EscaleraLiberacion from './EscaleraLiberacion';
 import {
-  cuadroDe,
+  cuadroSeguroDe,
   filaDe,
   ordenar,
   totalesDe,
@@ -141,7 +141,7 @@ const VistaFinanciacionPage: React.FC = () => {
     return prestamos
       .filter((p) => p.activo !== false && p.estado !== 'cancelado')
       .map((p) => {
-        const cuadro = cuadroDe(p);
+        const cuadro = cuadroSeguroDe(p);
         return cuadro ? filaDe(p, cuadro, hoy) : null;
       })
       .filter((f): f is FilaCartera => f !== null);
