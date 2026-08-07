@@ -1,4 +1,4 @@
-// Las filas de la cartera y los totales del hero · TODO sale del motor.
+// Las filas de la cartera y los totales del hero · cada cifra sale del motor.
 //
 // Cada número de esta pantalla se lee del `Cuadro` de `generarCuadro` con las
 // lecturas por fecha de `services/prestamos/lecturas`. Nada viene de

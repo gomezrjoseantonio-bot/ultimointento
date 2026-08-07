@@ -74,6 +74,16 @@
   --atlas-v5-on-navy-7: #6E7688; /* separadores de escala sobre navy */
   --atlas-v5-on-gold: #2A1F08;   /* tinta sobre oro */
 
+  /* ===== Superficies translúcidas SOBRE navy =====
+     Mismo motivo que la rampa de arriba: la v5 tenía tintas sobre navy pero
+     ninguna LÍNEA ni FONDO sobre navy, así que cada hero acababa escribiendo
+     `rgba(255,255,255,.09)` a mano por no tener token al que apuntar. Van en
+     rgba y no en hex a propósito: tienen que dejar ver el navy de debajo, que
+     no siempre es el mismo (--brand en el hero · --brand-ink en los insets). */
+  --atlas-v5-navy-line: rgba(255, 255, 255, 0.09);      /* separador entre KPIs del hero */
+  --atlas-v5-navy-line-soft: rgba(255, 255, 255, 0.08); /* borde de inset · rejilla de gráfico */
+  --atlas-v5-navy-fill: rgba(255, 255, 255, 0.16);      /* fondo de chip/contador sobre navy */
+
   --atlas-v5-neg: #A43328;       /* negativo · gasto · alerta · fallado */
   --atlas-v5-neg-wash: #F5E3E0;  /* negativo tinted */
 

@@ -42,7 +42,7 @@
 
 .kpi {
   padding: 15px var(--atlas-v5-sp-8);
-  border-right: 1px solid rgba(255, 255, 255, 0.09);
+  border-right: 1px solid var(--atlas-v5-navy-line);
   display: flex;
   flex-direction: column;
   min-height: 92px;
@@ -124,7 +124,7 @@
 
 .heroChart {
   background: var(--atlas-v5-brand-ink);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--atlas-v5-navy-line-soft);
   padding: 10px var(--atlas-v5-sp-8) 6px;
 }
 
@@ -166,7 +166,7 @@
 .areaTop { stop-color: var(--atlas-v5-gold-soft); stop-opacity: 0.28; }
 .areaBottom { stop-color: var(--atlas-v5-gold-soft); stop-opacity: 0.02; }
 
-.rejilla { stroke: rgba(255, 255, 255, 0.08); stroke-width: 1; }
+.rejilla { stroke: var(--atlas-v5-navy-line-soft); stroke-width: 1; }
 .linea { stroke: var(--atlas-v5-gold-soft); stroke-width: 2.5; stroke-linejoin: round; }
 .marcador { fill: var(--atlas-v5-gold-soft); }
 .marcadorLibre { fill: none; stroke: var(--atlas-v5-gold-soft); stroke-width: 2; }
@@ -310,7 +310,7 @@
 }
 
 .chipOn .chipN {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--atlas-v5-navy-fill);
   color: var(--atlas-v5-gold-light);
 }
 
