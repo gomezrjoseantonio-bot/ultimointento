@@ -9,6 +9,7 @@ import {
   calcularCuotasVencidas,
   pagosDeCuotasVencidas,
 } from '../CuotasVencidasField';
+import { calcularCuadroPrestamo } from '../../../utils/prestamoCalendario';
 import type { PosicionInversion } from '../../../../../types/inversiones';
 
 const condiciones = (extra: Record<string, unknown> = {}) => ({
@@ -99,18 +100,19 @@ describe('calcularCuotasVencidas', () => {
   // Firmado hace tres años · arrastra cuotas vencidas seguro.
   const hace3 = new Date();
   hace3.setFullYear(hace3.getFullYear() - 3);
-  const params = {
-    capital: 30000,
-    tinAnual: 3.25,
-    duracionMeses: 60,
-    frecuencia: 'mensual' as const,
-    modalidad: 'capital_e_intereses' as const,
-    primerCobro: hace3.toISOString().slice(0, 10),
-    retencionPorcentaje: 19,
-  };
+  const cuadroDesde = (primerCobro: string) =>
+    calcularCuadroPrestamo({
+      capital: 30000,
+      tinAnual: 3.25,
+      duracionMeses: 60,
+      frecuencia: 'mensual',
+      modalidad: 'capital_e_intereses',
+      primerCobro,
+    });
+  const cuadro = cuadroDesde(hace3.toISOString().slice(0, 10));
 
   it('cuenta las cuotas ya vencidas y ninguna futura', () => {
-    const res = calcularCuotasVencidas(params)!;
+    const res = calcularCuotasVencidas(cuadro, 19)!;
     expect(res.cuotas.length).toBeGreaterThan(30);
     const hoy = new Date().toISOString().slice(0, 10);
     expect(res.cuotas.every((c) => c.periodo.fecha <= hoy)).toBe(true);
@@ -118,7 +120,7 @@ describe('calcularCuotasVencidas', () => {
   });
 
   it('el neto anunciado es exactamente la suma de los pagos que se guardan', () => {
-    const res = calcularCuotasVencidas(params)!;
+    const res = calcularCuotasVencidas(cuadro, 19)!;
     const pagos = pagosDeCuotasVencidas(res, 1);
     const suma = pagos.reduce((acc, p) => acc + p.importe_neto, 0);
     // Al céntimo: el resumen y los pagos salen del mismo redondeo, así que no
@@ -129,7 +131,7 @@ describe('calcularCuotasVencidas', () => {
   });
 
   it('cada pago lleva la retención del periodo, no una media', () => {
-    const pagos = pagosDeCuotasVencidas(calcularCuotasVencidas(params)!, 7);
+    const pagos = pagosDeCuotasVencidas(calcularCuotasVencidas(cuadro, 19)!, 7);
     // Con cuota francesa el interés baja, así que la retención también.
     expect(pagos[0].retencion_fiscal).toBeGreaterThan(
       pagos[pagos.length - 1].retencion_fiscal,
@@ -143,7 +145,7 @@ describe('calcularCuotasVencidas', () => {
     const manana = new Date();
     manana.setMonth(manana.getMonth() + 2);
     expect(
-      calcularCuotasVencidas({ ...params, primerCobro: manana.toISOString().slice(0, 10) }),
+      calcularCuotasVencidas(cuadroDesde(manana.toISOString().slice(0, 10)), 19),
     ).toBeNull();
   });
 });
