@@ -110,6 +110,11 @@ const DetallePrestamoPage: React.FC = () => {
 
   const bonificaciones0 = prestamo?.bonificaciones;
   useEffect(() => {
+    // Lo primero, olvidar lo anterior · navegar de un préstamo a otro dejaba en
+    // pantalla los veredictos del que acabas de dejar, pegados a las
+    // bonificaciones del nuevo, hasta que terminara la lectura. Un veredicto
+    // del préstamo equivocado es peor que ninguno: se lee igual de firme.
+    setCumplimientos(undefined);
     if (!bonificaciones0?.length) return;
     let cancelado = false;
     (async () => {
@@ -456,6 +461,15 @@ const DetallePrestamoPage: React.FC = () => {
                       {b.veredicto === 'no_verificable' && (
                         <span className={styles.bonifDuda} title={b.motivo}>
                           sin comprobar
+                        </span>
+                      )}
+                      {/* La discrepancia al revés · la cumples y el banco NO te
+                          la está aplicando. Es dinero que estás pagando de más
+                          y se arregla llamando al banco, así que callarlo sería
+                          lo peor de las dos opciones. */}
+                      {b.veredicto === 'cumple' && !b.alcanzada && (
+                        <span className={styles.bonifLogro} title={b.motivo}>
+                          la cumples · no te la aplican
                         </span>
                       )}
                     </span>

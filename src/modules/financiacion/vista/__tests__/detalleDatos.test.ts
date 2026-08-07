@@ -315,6 +315,26 @@ describe('lo que el banco aplica y lo que se puede demostrar van por separado', 
     expect(b.motivo).toContain('cuenta');
   });
 
+  // La discrepancia al revés, y es la que tiene dinero detrás: la cumples y el
+  // banco no te la está aplicando, o sea que estás pagando más TIN del que te
+  // toca. Se arregla llamando al banco — pero solo si alguien te lo dice.
+  it('la cumples y NO te la aplican · las dos cosas constan', () => {
+    const p = unicaja({
+      bonificaciones: [bonificacion({ id: 'b1', nombre: 'Nómina', estado: 'INACTIVO' })],
+    });
+    const [b] = resumenBonificaciones(p, [
+      {
+        bonificacionId: 'b1',
+        nombre: 'Nómina',
+        veredicto: 'cumple',
+        ventana: { desde: '2026-01-01', hasta: '2026-06-30' },
+      },
+    ]).lista;
+
+    expect(b.alcanzada).toBe(false);
+    expect(b.veredicto).toBe('cumple');
+  });
+
   it('un cumplimiento de otra bonificación no se le pega a esta', () => {
     const [b] = resumenBonificaciones(conBonif(), [
       {
