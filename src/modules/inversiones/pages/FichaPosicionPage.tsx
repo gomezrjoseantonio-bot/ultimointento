@@ -33,7 +33,9 @@ import { clasificarTipo } from '../helpers';
 import { inversionToCartaItem } from '../types/cartaItem';
 import styles from './FichaPosicion.module.css';
 
-type CobroVariant = 'cobro' | 'dividendo';
+// Solo 'dividendo': los cobros de un préstamo no se registran a mano · se
+// prevén en Tesorería y se dan por cobrados al puntearlos.
+type CobroVariant = 'dividendo';
 
 const FichaPosicionPage: React.FC = () => {
   const { posicionId } = useParams();
@@ -228,7 +230,6 @@ const FichaPosicionPage: React.FC = () => {
         <FichaRendimientoPeriodico
           posicion={posicion}
           onBack={handleBack}
-          onRegistrarCobro={() => setShowCobro('cobro')}
           onEditar={() => setShowEditar(true)}
         />
       );

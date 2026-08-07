@@ -1,7 +1,6 @@
 // src/services/rendimientosService.ts
 // ATLAS HORIZON: Service for generating and managing investment returns
 
-import { initDB } from './db';
 import { inversionesService } from './inversionesService';
 import { 
   PosicionInversionExtendida,
@@ -9,7 +8,6 @@ import {
   PagoRendimiento,
   esRendimientoPeriodico,
 } from '../types/inversiones-extended';
-import { PosicionInversion } from '../types/inversiones';
 import { IRPF_RATE, MAX_PAGO_ITERATIONS } from '../constants/inversiones';
 import { calculateNextRecurringDate, parseIsoDateAsUTC } from '../utils/recurrenceDateUtils';
 
@@ -51,29 +49,6 @@ export class RendimientosService {
   }
 
   /**
-   * Create a treasury movement for a payment
-   */
-  private async crearMovimientoTesoreria(
-    pago: PagoRendimiento,
-    posicion: PosicionInversion
-  ): Promise<number> {
-    const db = await initDB();
-    const movimientoId = await db.add('movements', {
-      accountId: pago.cuenta_destino_id!,
-      date: pago.fecha_pago,
-      amount: pago.importe_neto,
-      description: `Rendimiento ${posicion.nombre}`,
-      category: 'Rendimientos inversión',
-      subcategory: 'Intereses',
-      type: 'income',
-      reconciled: true,
-      origen_inversion_id: posicion.id,
-      created_at: new Date().toISOString(),
-    } as any);
-    return movimientoId as number;
-  }
-
-  /**
    * Generate a single payment for a periodic-yield position
    */
   private async generarPago(
@@ -100,16 +75,18 @@ export class RendimientosService {
       estado: rendimiento.reinvertir ? 'reinvertido' : 'pendiente',
     };
 
+    // Si se reinvierte, el rendimiento engorda la posición y no toca caja.
+    //
+    // Si NO se reinvierte, el pago queda 'pendiente' y NO se escribe ningún
+    // movimiento bancario: en este modelo `treasuryEvents` es lo previsto y
+    // `movements` lo que el usuario confirma al puntear
+    // (`treasuryConfirmationService`). El cobro del rendimiento se prevé desde
+    // `treasurySyncService` y se materializa al puntearlo, como cualquier otra
+    // previsión. Antes se insertaba aquí un movimiento a mano —sin `status`,
+    // `unifiedStatus`, `source` ni `category` estructurada, colado con un `as
+    // any`— que daba por cobrado dinero que el banco no había visto.
     if (rendimiento.reinvertir) {
       posicion.valor_actual += importe_neto;
-    } else if (rendimiento.cuenta_destino_id) {
-      try {
-        const movimientoId = await this.crearMovimientoTesoreria(pago, posicion as unknown as PosicionInversion);
-        pago.movimiento_id = movimientoId;
-      } catch (err) {
-        console.error('[RENDIMIENTOS] Error creating treasury movement:', err);
-      }
-      pago.estado = 'pagado';
     }
 
     rendimiento.pagos_generados.push(pago);

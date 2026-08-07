@@ -1,6 +1,7 @@
 import {
   addMonthsISO,
   calcularCuadroPrestamo,
+  cobroPrevistoDelMes,
   estadoPrestamoA,
   diaCobroDesde,
   mesesCobroDesde,
@@ -256,5 +257,70 @@ describe('estadoPrestamoA', () => {
     expect(estado.pctAmortizado).toBeCloseTo(100, 5);
     expect(estado.interesesAcumulados).toBeCloseTo(cuadro.totalIntereses, 2);
     expect(estado.proximaCuota).toBeNull();
+  });
+});
+
+describe('cobroPrevistoDelMes', () => {
+  const prestamo = (extra: Record<string, unknown> = {}) =>
+    ({
+      id: 1,
+      nombre: 'Prestamo Creación',
+      tipo: 'prestamo_p2p',
+      entidad: 'Unihouser',
+      valor_actual: 30000,
+      total_aportado: 30000,
+      aportaciones: [],
+      fecha_compra: '2025-03-01T12:00:00.000Z',
+      duracion_meses: 60,
+      modalidad_devolucion: 'capital_e_intereses',
+      frecuencia_cobro: 'mensual',
+      rendimiento: {
+        tasa_interes_anual: 3.25,
+        frecuencia_pago: 'mensual',
+        fecha_primer_cobro: '2025-04-01T12:00:00.000Z',
+      },
+      activo: true,
+      ...extra,
+    }) as never;
+
+  it('cobra la cuota entera: intereses netos MÁS el capital devuelto', () => {
+    const cobro = cobroPrevistoDelMes(prestamo(), '2025-04', 19)!;
+    expect(cobro).not.toBeNull();
+    // Primera cuota: 81,25 € de intereses (30.000 × 3,25% / 12) y el resto capital.
+    expect(cobro.interesBruto).toBeCloseTo(81.25, 2);
+    expect(cobro.retencion).toBeCloseTo(15.44, 2);
+    expect(cobro.amortizacion).toBeCloseTo(461.15, 1);
+    expect(cobro.incluyeCapital).toBe(true);
+    // Neto = 81,25 − 15,44 + 461,15 ≈ 526,96 · muy por encima de los 65,81 €
+    // que salían de contar solo los intereses.
+    expect(cobro.neto).toBeCloseTo(526.96, 1);
+  });
+
+  it('usa la fecha exacta de la cuota, no un día inventado', () => {
+    const cobro = cobroPrevistoDelMes(prestamo(), '2025-07', 19)!;
+    expect(cobro.fecha).toBe('2025-07-01');
+  });
+
+  it('calcula los intereses sobre el capital vivo · bajan con el tiempo', () => {
+    const primera = cobroPrevistoDelMes(prestamo(), '2025-04', 19)!;
+    const tardia = cobroPrevistoDelMes(prestamo(), '2029-04', 19)!;
+    expect(tardia.interesBruto).toBeLessThan(primera.interesBruto);
+    expect(tardia.amortizacion).toBeGreaterThan(primera.amortizacion);
+  });
+
+  it('en solo-intereses no devuelve capital hasta el vencimiento', () => {
+    const cobro = cobroPrevistoDelMes(
+      prestamo({ modalidad_devolucion: 'solo_intereses' }),
+      '2025-04',
+      19,
+    )!;
+    expect(cobro.amortizacion).toBe(0);
+    expect(cobro.incluyeCapital).toBe(false);
+    expect(cobro.neto).toBeCloseTo(65.81, 2);
+  });
+
+  it('devuelve null en un mes sin cuota', () => {
+    expect(cobroPrevistoDelMes(prestamo(), '2025-03', 19)).toBeNull();
+    expect(cobroPrevistoDelMes(prestamo(), '2031-01', 19)).toBeNull();
   });
 });

@@ -280,10 +280,16 @@ const AltaPrestamoModal: React.FC<AltaPrestamoModalProps> = ({
         ? fecha
         : addMonthsISO(fechaPrimerCobro, -PERIODO_MESES[frecuencia]);
 
+      // La cuenta de cobro viaja DENTRO del rendimiento porque es la que lee la
+      // previsión de tesorería. Sin ella los cobros del préstamo caían en el
+      // cajón "SIN CUENTA". Si no se indica una, cobra la de cargo del capital.
+      const cuentaDestino = cuentaCobro ? Number(cuentaCobro) : Number(cuentaCargo);
+
       const rendimiento: RendimientoPeriodico = {
         tipo_rendimiento: 'interes_fijo',
         tasa_interes_anual: tinNum,
         frecuencia_pago: frecuenciaPago,
+        cuenta_destino_id: cuentaDestino,
         meses_cobro: esVencimiento
           ? mesesCobroDesde(fechaPrimerCobro, 'anual')
           : mesesCobroDesde(fechaPrimerCobro, frecuencia),

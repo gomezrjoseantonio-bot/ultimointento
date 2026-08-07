@@ -36,7 +36,6 @@ import styles from '../pages/FichaPosicion.module.css';
 interface Props {
   posicion: PosicionInversion;
   onBack: () => void;
-  onRegistrarCobro: () => void;
   onEditar: () => void;
 }
 
@@ -67,7 +66,6 @@ const FREC_DIVISOR: Record<string, number> = {
 const FichaRendimientoPeriodico: React.FC<Props> = ({
   posicion,
   onBack,
-  onRegistrarCobro,
   onEditar,
 }) => {
   const aportado = Number(posicion.total_aportado ?? 0);
@@ -117,6 +115,11 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
     [cuadro, hoyISO],
   );
   const amortiza = Boolean(cuadro?.amortiza);
+  /** Fechas de cuota ya cobradas de verdad (punteadas contra el extracto). */
+  const fechasCobradas = useMemo(
+    () => new Set(cobrosPagados.map((c) => c.fecha.slice(0, 10))),
+    [cobrosPagados],
+  );
   /** Capital que sigue vivo hoy · en préstamos sin amortización, el prestado. */
   const capitalVivo = amortiza && estado ? estado.saldoPendiente : aportado;
 
@@ -241,20 +244,41 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
   };
 
   const exportarCSV = () => {
-    const filas = [
-      ['Fecha', 'Importe (€)', 'Notas'].join(';'),
-      ...cobros.map((c) =>
-        [
-          c.fecha,
-          String(Number(c.importe ?? 0).toFixed(2)),
-          sanitizeCSVTextCell(
-            (posicion.aportaciones ?? []).find(
-              (a) => a.tipo === 'dividendo' && a.fecha === c.fecha,
-            )?.notas ?? '',
+    // Con cuadro exportamos el calendario completo (es lo que se ve en pantalla);
+    // sin él, el histórico de cobros registrados.
+    const filas = cuadro
+      ? [
+          ['Nº', 'Fecha', 'Cuota (€)', 'Intereses (€)', 'Capital (€)', 'Pendiente (€)', 'Estado'].join(';'),
+          ...cuadro.periodos.map((p) =>
+            [
+              String(p.numero),
+              p.fecha,
+              p.cuota.toFixed(2),
+              p.interes.toFixed(2),
+              p.amortizacion.toFixed(2),
+              p.saldoPendiente.toFixed(2),
+              fechasCobradas.has(p.fecha)
+                ? 'Cobrada'
+                : p.fecha <= hoyISO
+                  ? 'Vencida'
+                  : 'Prevista',
+            ].join(';'),
           ),
-        ].join(';'),
-      ),
-    ].join('\n');
+        ].join('\n')
+      : [
+          ['Fecha', 'Importe (€)', 'Notas'].join(';'),
+          ...cobros.map((c) =>
+            [
+              c.fecha,
+              String(Number(c.importe ?? 0).toFixed(2)),
+              sanitizeCSVTextCell(
+                (posicion.aportaciones ?? []).find(
+                  (a) => a.tipo === 'dividendo' && a.fecha === c.fecha,
+                )?.notas ?? '',
+              ),
+            ].join(';'),
+          ),
+        ].join('\n');
     const blob = new Blob([filas], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -392,13 +416,10 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
         ],
       }}
       onBack={onBack}
+      // Los cobros NO se registran a mano desde aquí: cada cuota se despliega
+      // como previsión de tesorería al crear el préstamo y se da por cobrada al
+      // puntearla contra el extracto, como cualquier otro movimiento.
       actions={[
-        {
-          label: 'Registrar cobro',
-          variant: 'ghost',
-          icon: <Icons.Plus size={13} strokeWidth={2} />,
-          onClick: onRegistrarCobro,
-        },
         {
           label: esPrestamo ? 'Editar préstamo' : 'Editar posición',
           variant: 'gold',
@@ -607,15 +628,71 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
           }}
         >
           <div className={styles.detailCardTit} style={{ marginBottom: 0 }}>
-            Cobros · histórico
+            {cuadro ? 'Cuadro de cuotas' : 'Cobros · histórico'}
           </div>
-          {cobros.length > 0 && (
+          {(cuadro ? cuadro.periodos.length > 0 : cobros.length > 0) && (
             <button type="button" className={styles.linkBtn} onClick={exportarCSV}>
               Exportar CSV
             </button>
           )}
         </div>
-        {cobros.length === 0 ? (
+        {cuadro ? (
+          <>
+            <div
+              style={{
+                fontSize: 11.5,
+                color: 'var(--atlas-v5-ink-4)',
+                marginTop: -8,
+                marginBottom: 12,
+              }}
+            >
+              Cada cuota se prevé en Tesorería y se da por cobrada cuando la punteas
+              contra el extracto · aquí no se registran cobros a mano.
+            </div>
+            <div className={styles.tablaWrap} style={{ maxHeight: 420, overflowY: 'auto' }}>
+              <table className={styles.tabla}>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Fecha</th>
+                    <th style={{ textAlign: 'right' }}>Cuota</th>
+                    <th style={{ textAlign: 'right' }}>Intereses</th>
+                    <th style={{ textAlign: 'right' }}>Capital</th>
+                    <th style={{ textAlign: 'right' }}>Pendiente</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cuadro.periodos.map((p) => {
+                    const cobrado = fechasCobradas.has(p.fecha);
+                    const vencida = p.fecha <= hoyISO;
+                    return (
+                      <tr key={p.numero}>
+                        <td className={styles.num}>{p.numero}</td>
+                        <td>{formatDate(p.fecha)}</td>
+                        <td className={styles.num}>{formatCurrency(p.cuota)}</td>
+                        <td className={`${styles.num} ${styles.gold}`}>
+                          {formatCurrency(p.interes)}
+                        </td>
+                        <td className={styles.num}>{formatCurrency(p.amortizacion)}</td>
+                        <td className={styles.num}>{formatCurrency(p.saldoPendiente)}</td>
+                        <td className={styles.txt}>
+                          {cobrado ? (
+                            <span className={styles.pos}>Cobrada</span>
+                          ) : vencida ? (
+                            'Vencida · por puntear'
+                          ) : (
+                            'Prevista'
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : cobros.length === 0 ? (
           <div className={styles.tablaEmpty}>
             Aún no se han registrado cobros. Los pagos pasados aparecerán aquí cuando
             la conciliación de tesorería los marque como cobrados.
