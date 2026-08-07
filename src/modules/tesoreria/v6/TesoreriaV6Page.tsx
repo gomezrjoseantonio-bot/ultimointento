@@ -1205,6 +1205,16 @@ const TarjetaMes: React.FC<{ mes: MesProyectado; onAbrir: () => void }> = ({ mes
  * copia del número escrita en el test. */
 export const importeCabeEnLaBarra = (anchoPct: number): boolean => anchoPct >= 40;
 
+/* Dónde empieza el importe que NO cabe dentro del relleno: justo detrás de él.
+ *
+ * Probé a toparlo por la derecha —`min(…, calc(100% - 78px))`— para que no se
+ * saliera de la barra, y en barras estrechas el tope lo devolvía ENCIMA del
+ * relleno: tinta oscura sobre navy, ilegible. Que un importe asome por la
+ * derecha se lee; que se monte sobre el relleno, no. Quien le da sitio es la
+ * rejilla de `.rvline`, que estrecha sus columnas fijas antes que la barra. */
+export const posicionImporteFuera = (anchoPct: number): string =>
+  `calc(${anchoPct}% + 8px)`;
+
 const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }> = ({ realidad }) => {
   const mejor = realidad.desviacion >= 0;
   return (
@@ -1220,78 +1230,67 @@ const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }
         // §3.4 · la fila pierde la barra cuando NO hay porcentaje que pintar:
         // eso pasa con el Neto en negativo, que es justo el caso en que un
         // avance engaña. Con porcentaje, barra.
-        const neto = l.clave === 'Neto' && l.porcentaje == null;
-        // A3 · el Neto NO lleva barra: puede ser negativo, y "más lleno" se
-        // leería como "mejor" cuando significa que se ha gastado de más. En su
-        // lugar enseña real, previsto y la diferencia con signo.
-        const diferencia = Math.round((l.real - l.previsto) * 100) / 100;
+        const sinBarra = l.porcentaje == null;
         // Barra escalada contra SU PROPIO previsto, no contra el máximo global.
         const ancho =
           l.porcentaje == null ? 0 : Math.min(100, Math.max(2, Math.abs(l.porcentaje)));
         return (
           <div key={l.clave} className={styles.rvline}>
             <div className={styles.rvlab}>{l.clave}</div>
-            {neto ? (
-              <div className={styles.rvdelta}>
-                <span className={l.peorQuePrevisto ? styles.rvdeltaWarn : ''}>
-                  {importeConSigno(diferencia)}
-                </span>
-                {/* Cuando real y previsto coinciden no es ni mejor ni peor:
-                    decir "mejor" sobre una diferencia de 0 € se lee como que se
-                    ha ganado algo que no existe. */}
-                <small>
-                  {diferencia === 0
-                    ? 'igual que lo previsto'
-                    : l.peorQuePrevisto
-                      ? 'peor de lo previsto'
-                      : 'mejor de lo previsto'}
-                </small>
+            {/* Las TRES filas dicen lo mismo: lo que llevas, a la izquierda, y
+                lo previsto del mes, a la derecha. Con porcentaje, la cifra va
+                dentro de la barra; sin porcentaje —el Neto en negativo— va
+                sola, en el hueco de la barra.
+
+                Aquí la fila del Neto enseñaba otra cosa: la resta contra el
+                previsto del MES ENTERO, rotulada "mejor/peor de lo previsto".
+                Dos problemas. Uno, el número gordo de la fila "Neto" no era el
+                neto (+935,74 € cuando el neto eran 487,30 €). Y dos, ese
+                veredicto contradecía al del pie —"acabarás −38 € peor de lo
+                previsto"— porque comparaba medio mes contra un mes entero, y
+                así a primeros SIEMPRE sale "mejor". El veredicto es uno y está
+                en el pie, que sí compara iguales. */}
+            {sinBarra ? (
+              <div className={styles.rvsolo}>
+                <span>{importeSaldo(l.real)}</span>
+                <small>llevas</small>
               </div>
             ) : (
-              <>
-                {/* El importe REAL va dentro de la barra, sobre lo que lleva
-                    recorrido: la cifra y su proporción se leen de una sola
-                    mirada en vez de saltar de la barra a una columna.
+              /* El importe REAL va dentro de la barra, sobre lo que lleva
+                 recorrido: la cifra y su proporción se leen de una sola mirada
+                 en vez de saltar de la barra a una columna.
 
-                    Cuándo cabe dentro lo decide `importeCabeEnLaBarra`. */}
-                <div className={styles.rvbar}>
-                  <div
-                    className={`${styles.rvfill} ${l.clave === 'Neto' ? styles.rvfillNet : styles.rvfillIn}`}
-                    style={{ width: `${ancho}%` }}
-                  >
-                    {importeCabeEnLaBarra(ancho) && (
-                      <span className={styles.rvenBarra}>{importeSaldo(l.real)}</span>
-                    )}
-                  </div>
-                  {!importeCabeEnLaBarra(ancho) && (
-                    <span className={styles.rvFueraBarra} style={{ left: `calc(${ancho}% + 8px)` }}>
-                      {importeSaldo(l.real)}
-                    </span>
+                 Cuándo cabe dentro lo decide `importeCabeEnLaBarra`. */
+              <div className={styles.rvbar}>
+                <div
+                  className={`${styles.rvfill} ${l.clave === 'Neto' ? styles.rvfillNet : styles.rvfillIn}`}
+                  style={{ width: `${ancho}%` }}
+                >
+                  {importeCabeEnLaBarra(ancho) && (
+                    <span className={styles.rvenBarra}>{importeSaldo(l.real)}</span>
                   )}
                 </div>
-                {/* Sin porcentaje no se pinta un "%" suelto: un signo sin
-                    número delante no dice nada y parece un dato que falta. */}
-                {/* El % en el color de SU barra · el Neto va en oro, como su
-                    relleno: si la barra es dorada y el número azul, parecen
-                    dos datos distintos. */}
-                <span className={`${styles.rvpct} ${l.clave === 'Neto' ? styles.rvpctNet : ''}`}>
-                  {l.porcentaje != null ? `${l.porcentaje}%` : ''}
-                </span>
-                <div className={styles.rvnum}>
-                  {importeSaldo(l.previsto)}
-                  <small>previsto</small>
-                </div>
-              </>
-            )}
-            {/* Sin barra no hay dónde meter el REAL, así que vuelve aquí: la
-                fila del Neto negativo enseñaba la diferencia y lo previsto,
-                pero se había quedado sin la cifra de lo que llevas. */}
-            {neto && (
-              <div className={`${styles.rvnum} ${styles.rvnumNeto}`}>
-                {importeSaldo(l.real)}
-                <small>de {importeSaldo(l.previsto)} previsto</small>
+                {!importeCabeEnLaBarra(ancho) && (
+                  <span className={styles.rvFueraBarra} style={{ left: posicionImporteFuera(ancho) }}>
+                    {importeSaldo(l.real)}
+                  </span>
+                )}
               </div>
             )}
+            {/* Sin porcentaje no se pinta un "%" suelto: un signo sin
+                número delante no dice nada y parece un dato que falta. Pero la
+                celda se queda: es lo que mantiene los importes de las tres
+                filas en la misma vertical. */}
+            {/* El % en el color de SU barra · el Neto va en oro, como su
+                relleno: si la barra es dorada y el número azul, parecen
+                dos datos distintos. */}
+            <span className={`${styles.rvpct} ${l.clave === 'Neto' ? styles.rvpctNet : ''}`}>
+              {l.porcentaje != null ? `${l.porcentaje}%` : ''}
+            </span>
+            <div className={styles.rvnum}>
+              {importeSaldo(l.previsto)}
+              <small>previsto</small>
+            </div>
           </div>
         );
       })}

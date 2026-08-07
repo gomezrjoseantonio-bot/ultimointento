@@ -301,9 +301,22 @@ export interface LineaRealidad {
    * admiten avance; el Neto no, y por eso no lleva barra.
    */
   porcentaje: number | null;
-  /** true si lo real es PEOR que lo previsto · la nota va en `--warn`. */
-  peorQuePrevisto: boolean;
 }
+
+/* Aquí vivía `peorQuePrevisto`, y era la raíz de una contradicción.
+ *
+ * Estas tres líneas comparan lo ACUMULADO HASTA HOY contra el previsto del MES
+ * ENTERO: por eso Ingresos dice 31 % y Gastos 22 % el día 7. Eso es avance, no
+ * rendimiento. Convertir esa misma resta en un veredicto —"mejor de lo
+ * previsto"— es comparar medio mes contra un mes: a principios de mes SIEMPRE
+ * sale "mejor", porque el grueso del gasto aún no ha pasado.
+ *
+ * Y el veredicto salía a la vez que el del pie, que sí compara iguales (lo
+ * previsto DE LO YA CONFIRMADO contra lo pagado). La tarjeta llegaba a decir
+ * "Neto +935,74 € mejor de lo previsto" y, tres líneas más abajo, "acabarás
+ * −38 € peor de lo previsto".
+ *
+ * El veredicto es UNO y es `desviacion`. Las líneas cuentan avance. */
 
 export interface Realidad {
   lineas: LineaRealidad[];
@@ -446,16 +459,12 @@ export function calcularRealidad(params: {
         real: redondear(realIngresos),
         previsto: redondear(previstoIngresos),
         porcentaje: pct(realIngresos, previstoIngresos),
-        // Ingresar MENOS de lo previsto es peor.
-        peorQuePrevisto: realIngresos < previstoIngresos,
       },
       {
         clave: 'Gastos',
         real: redondear(realGastos),
         previsto: redondear(previstoGastos),
         porcentaje: pct(realGastos, previstoGastos),
-        // Gastar MÁS de lo previsto es peor.
-        peorQuePrevisto: realGastos > previstoGastos,
       },
       {
         clave: 'Neto',
@@ -468,9 +477,8 @@ export function calcularRealidad(params: {
         // eso solo pasa con magnitudes negativas: con las dos en positivo el
         // porcentaje dice exactamente lo que tiene que decir —cuánto llevas de
         // lo previsto— y es lo que hace el mockup. Fuera de ese caso, `null`, y
-        // la fila enseña la diferencia con su signo.
+        // la fila enseña el neto que llevas junto al previsto, sin porcentaje.
         porcentaje: netoReal >= 0 && netoPrev > 0 ? pct(netoReal, netoPrev) : null,
-        peorQuePrevisto: netoReal < netoPrev,
       },
     ],
     desviacion: redondear(previstoDeLoConfirmado - pagadoDeLoConfirmado),
