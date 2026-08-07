@@ -45,6 +45,25 @@ const evento = (over: Partial<TreasuryEvent> = {}): TreasuryEvent => ({
   ...over,
 });
 
+const movimiento = (over: Partial<Movement> = {}): Movement => ({
+  accountId: 1,
+  date: enEsteMes(5),
+  amount: -100,
+  description: 'Movimiento',
+  status: 'pendiente',
+  unifiedStatus: 'conciliado',
+  source: 'import',
+  category: { tipo: 'Gastos' },
+  type: 'Gasto',
+  origin: 'CSV',
+  movementState: 'Confirmado',
+  ambito: 'PERSONAL',
+  statusConciliacion: 'sin_match',
+  createdAt: '',
+  updatedAt: '',
+  ...over,
+});
+
 /**
  * La pantalla lee la URL: qué cuenta está abierta lo dice
  * `/tesoreria/cuenta/:accountId`, y `?extracto=1` abre el de extracto. Así que
@@ -412,13 +431,69 @@ describe('bloque A · los bordes que se colaron', () => {
     expect(pendientes.map((e) => e.id)).toEqual([1]);
   });
 
-  it('si real y previsto coinciden, no es ni mejor ni peor', () => {
-    const etiqueta = (dif: number, peor: boolean) =>
-      dif === 0 ? 'igual que lo previsto' : peor ? 'peor de lo previsto' : 'mejor de lo previsto';
+  it('si real y previsto coinciden, el pie no dice ni mejor ni peor', () => {
+    // La frase del pie · decir "mejor" sobre una desviación de 0 € se lee como
+    // que se ha ganado algo que no existe.
+    const etiqueta = (dif: number) =>
+      dif === 0 ? 'igual que lo previsto' : dif < 0 ? 'peor de lo previsto' : 'mejor de lo previsto';
 
-    expect(etiqueta(0, false)).toBe('igual que lo previsto');
-    expect(etiqueta(-24, true)).toBe('peor de lo previsto');
-    expect(etiqueta(24, false)).toBe('mejor de lo previsto');
+    expect(etiqueta(0)).toBe('igual que lo previsto');
+    expect(etiqueta(-24)).toBe('peor de lo previsto');
+    expect(etiqueta(24)).toBe('mejor de lo previsto');
+  });
+});
+
+// El bloque llegó a decir dos cosas opuestas a la vez: la fila del Neto,
+// "+935,74 € mejor de lo previsto", y el pie, "acabarás −38 € peor de lo
+// previsto". No era un desacuerdo de cálculo sino de pregunta: la fila
+// comparaba lo acumulado a día 7 contra el previsto del MES ENTERO —que a
+// primeros siempre sale "mejor"— y el pie compara iguales.
+describe('§4.10 · el veredicto es UNO', () => {
+  it('las líneas cuentan avance · el "mejor/peor" solo lo dice el pie', async () => {
+    montarDb({
+      accounts: [cuenta(1)],
+      treasuryEvents: [
+        // Ingreso previsto para el mes que aún no ha entrado entero.
+        evento({ type: 'income', amount: 1000, predictedDate: enEsteMes(20) }),
+        // Gasto ya confirmado que costó 50 € MÁS de lo presupuestado.
+        evento({
+          type: 'expense',
+          amount: 200,
+          actualAmount: 250,
+          predictedDate: enEsteMes(5),
+          status: 'executed',
+          accountId: 1,
+        }),
+        // Y el grueso del gasto del mes, todavía por pasar.
+        evento({ type: 'expense', amount: 1250, predictedDate: enEsteMes(Math.min(25, ultimoDia)) }),
+      ],
+      movements: [
+        movimiento({ accountId: 1, date: enEsteMes(5), amount: -250, description: 'Recibo' }),
+        movimiento({ accountId: 1, date: enEsteMes(3), amount: 300, description: 'Cobro' }),
+      ],
+    });
+    montar();
+
+    // Neto: llevas 50 € (300 − 250) de un previsto de −450 € (1.000 − 1.450).
+    // El previsto es negativo, así que no hay porcentaje ni barra: la fila
+    // enseña la cifra que llevas y, a su derecha, lo previsto del mes.
+    const filaNeto = (await screen.findByText('Neto')).parentElement!;
+    expect(filaNeto).toHaveTextContent('50 €');
+    expect(filaNeto).toHaveTextContent('llevas');
+    expect(filaNeto).toHaveTextContent('−450 €');
+    expect(filaNeto).toHaveTextContent('previsto');
+
+    // La resta contra el previsto del mes entero —+500 €— ya no se pinta: era
+    // el número gordo de la fila "Neto" sin ser el neto.
+    expect(filaNeto).not.toHaveTextContent('500 €');
+    expect(filaNeto).not.toHaveTextContent('mejor de lo previsto');
+
+    // Y el único veredicto del bloque es el del pie, que compara iguales:
+    // 200 € presupuestados contra 250 € pagados.
+    expect(screen.getAllByText(/(mejor|peor) de lo previsto|igual que lo previsto/)).toHaveLength(1);
+    const veredicto = screen.getByText(/Acabarás/);
+    expect(veredicto).toHaveTextContent('−50 €');
+    expect(veredicto).toHaveTextContent('peor de lo previsto');
   });
 });
 

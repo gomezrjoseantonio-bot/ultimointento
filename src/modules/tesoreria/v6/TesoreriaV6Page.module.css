@@ -484,6 +484,10 @@
   border: 1px solid var(--atlas-v5-line);
   border-radius: 13px;
   padding: 18px;
+  /* Red de última hora: ningún importe se sale de la tarjeta. Las cifras ya
+     van con `nowrap` y sus columnas medidas, pero un idioma o un tamaño de
+     fuente distintos no deberían poder romper el borde redondeado. */
+  overflow: hidden;
 }
 /* §4.4 · los importes salían cortados por la derecha. La barra es lo único
    que puede encogerse —es una proporción, no un dato— así que se lleva el
@@ -508,6 +512,18 @@
    estrecho: ahí la barra estorba más de lo que aporta y cede todo el ancho. */
 @media (max-width: 1320px) {
   .rvline { grid-template-columns: 84px minmax(0, 1fr) 40px 100px; gap: 8px; }
+}
+/* En móvil las columnas fijas se comían la barra: con la tarjeta a 360 px
+   quedaban 76 px de barra, y ahí el importe que va detrás del relleno no tenía
+   dónde caer sin salirse. Lo que cede es el ancho FIJO —etiqueta, porcentaje y
+   previsto, que solo necesitan lo que miden—, no la barra. */
+@media (max-width: 760px) {
+  .rvline {
+    grid-template-columns: 62px minmax(0, 1fr) 32px 92px;
+    gap: 6px;
+  }
+  .rvlab { font-size: 11px; }
+  .rvnum { font-size: 11.5px; }
 }
 .rvlab {
   font-size: 11.5px;
@@ -546,6 +562,16 @@
   font-weight: 700;
   color: var(--atlas-v5-white);
   white-space: nowrap;
+  /* Si el relleno no da de sí, el recorte se VE.
+     `importeCabeEnLaBarra` decide con el porcentaje, que no sabe cuántos
+     píxeles mide la barra: con la tarjeta estrecha y un importe de seis cifras,
+     un relleno del 58 % entraba en el "sí cabe" y el `overflow: hidden` se
+     comía la cabeza del número — 137.075,10 € se leía como 7.075,10 €, que es
+     mucho peor que cualquier desbordamiento. Con la elipsis se corta la cola y
+     se ve que está cortado. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Cuando el relleno es demasiado estrecho para el texto, el importe sale a su
    derecha. Ensanchar el relleno para que quepa falsearía la proporción, que es
@@ -589,10 +615,6 @@
      respecto de las de arriba. */
   white-space: nowrap;
 }
-/* La fila del Neto sin barra tiene una columna menos (no hay %), así que su
-   importe caería en la del porcentaje —46px— y se rompería ahí. Va a la
-   derecha del todo, ocupando las dos últimas columnas. */
-.rvnumNeto { grid-column: 3 / -1; }
 .rvnum small {
   display: block;
   font-size: 10.5px;
@@ -670,29 +692,39 @@
   cursor: not-allowed;
 }
 
-/* A3 · el Neto no lleva barra de progreso · enseña la diferencia con su signo.
-   Ocupa el mismo hueco que barra + porcentaje para que las tres líneas queden
-   alineadas. */
-.rvdelta {
-  flex: 1;
+/* §3.4 · la fila sin barra (el Neto cuando el porcentaje engañaría) enseña la
+   cifra sola en el hueco de la barra. Ocupa la misma columna, así que el
+   "previsto" de la derecha sigue en la misma vertical que el de las otras dos.
+
+   Antes esta celda llevaba la resta contra el previsto del mes entero y un
+   "mejor/peor de lo previsto" que contradecía al veredicto del pie; el
+   porqué está en el componente y en `LineaRealidad`. */
+.rvsolo {
   min-width: 0;
   display: flex;
   align-items: baseline;
   gap: 8px;
 }
-.rvdelta span {
+/* El importe NO parte nunca · era lo que hacía caer el "€" a una segunda línea
+   y desalineaba la fila entera respecto de las de arriba. */
+.rvsolo span {
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
   font-size: 14px;
   font-weight: 700;
   color: var(--atlas-v5-ink);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.rvdelta small {
+/* Lo que cede cuando no hay sitio es la etiqueta, nunca la cifra. */
+.rvsolo small {
   font-size: 10.5px;
   color: var(--atlas-v5-ink-4);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-/* Única nota de color de la línea, y solo cuando de verdad va peor (§5). */
-.rvdeltaWarn { color: var(--atlas-v5-warn) !important; }
 
 /* ── VOCABULARIO §3 · Tarjetas ─────────────────────────────────────────────
    Una fila por tarjeta, no una tarjeta de carrusel: lo que hay que leer es una
