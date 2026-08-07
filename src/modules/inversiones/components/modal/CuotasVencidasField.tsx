@@ -16,17 +16,26 @@ import {
 import { toISODateLocal } from '../../../../utils/recurrenceDateUtils';
 import styles from '../../styles/atlas-inversiones.module.css';
 
+/** Una cuota vencida, ya redondeada a céntimos tal y como se va a guardar. */
+export interface CuotaVencida {
+  periodo: PeriodoPrestamo;
+  /** Retención practicada sobre los intereses del periodo. */
+  retenido: number;
+  /** Lo que habrá entrado en la cuenta: cuota − retención. */
+  neto: number;
+}
+
 export interface CuotasVencidas {
-  periodos: PeriodoPrestamo[];
+  cuotas: CuotaVencida[];
   /** Intereses brutos devengados en las cuotas ya vencidas. */
   intereses: number;
-  /** Neto que habrá entrado en la cuenta (cuota − retención). */
+  /** Neto total · suma exacta de los netos por cuota, sin deriva. */
   neto: number;
-  /** Retención aplicada, en tanto por uno. */
-  tasaRet: number;
   /** Fecha de la última cuota vencida (`YYYY-MM-DD`). */
   ultima: string;
 }
+
+const aCentimos = (valor: number): number => Math.round(valor * 100) / 100;
 
 /** Cuotas del cuadro cuya fecha ya ha pasado, con el neto que habrán dejado. */
 export function calcularCuotasVencidas(params: {
@@ -43,12 +52,20 @@ export function calcularCuotasVencidas(params: {
   const hoy = toISODateLocal(new Date());
   const periodos = cuadro.periodos.filter((per) => per.fecha <= hoy);
   if (!periodos.length) return null;
+
+  // Se redondea AQUÍ, una sola vez, y de estos importes salen tanto el resumen
+  // que ve el usuario como los pagos que se guardan. Si cada uno redondease por
+  // su cuenta, el total anunciado no cuadraría con la suma de los pagos.
   const tasaRet = (params.retencionPorcentaje || 0) / 100;
+  const cuotas: CuotaVencida[] = periodos.map((periodo) => {
+    const retenido = aCentimos(periodo.interes * tasaRet);
+    return { periodo, retenido, neto: aCentimos(periodo.cuota - retenido) };
+  });
+
   return {
-    periodos,
-    tasaRet,
-    intereses: periodos.reduce((acc, per) => acc + per.interes, 0),
-    neto: periodos.reduce((acc, per) => acc + per.cuota - per.interes * tasaRet, 0),
+    cuotas,
+    intereses: aCentimos(periodos.reduce((acc, per) => acc + per.interes, 0)),
+    neto: aCentimos(cuotas.reduce((acc, c) => acc + c.neto, 0)),
     ultima: periodos[periodos.length - 1].fecha,
   };
 }
@@ -69,18 +86,15 @@ export function pagosDeCuotasVencidas(
   cuenta_destino_id: number;
   estado: 'pagado';
 }> {
-  return cuotas.periodos.map((per) => {
-    const retenido = Math.round(per.interes * cuotas.tasaRet * 100) / 100;
-    return {
-      id: Number(`${per.numero}${Date.parse(per.fecha)}`.slice(-12)),
-      fecha_pago: per.fecha,
-      importe_bruto: per.interes,
-      retencion_fiscal: retenido,
-      importe_neto: Math.round((per.cuota - retenido) * 100) / 100,
-      cuenta_destino_id: cuentaDestinoId,
-      estado: 'pagado' as const,
-    };
-  });
+  return cuotas.cuotas.map(({ periodo, retenido, neto }) => ({
+    id: Number(`${periodo.numero}${Date.parse(periodo.fecha)}`.slice(-12)),
+    fecha_pago: periodo.fecha,
+    importe_bruto: periodo.interes,
+    retencion_fiscal: retenido,
+    importe_neto: neto,
+    cuenta_destino_id: cuentaDestinoId,
+    estado: 'pagado' as const,
+  }));
 }
 
 interface Props {
@@ -104,7 +118,7 @@ const CuotasVencidasField: React.FC<Props> = ({ cuotas, darPorCobradas, onChange
       <div style={{ marginBottom: 10 }}>
         Con estas fechas el préstamo arrastra{' '}
         <strong>
-          {cuotas.periodos.length} {cuotas.periodos.length === 1 ? 'cuota' : 'cuotas'} ya
+          {cuotas.cuotas.length} {cuotas.cuotas.length === 1 ? 'cuota' : 'cuotas'} ya
           vencidas
         </strong>{' '}
         (hasta {cuotas.ultima}), por un neto de{' '}

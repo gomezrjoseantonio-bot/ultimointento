@@ -57,15 +57,27 @@ export function ajustarCapitalEditado(
   const aportaciones: Aportacion[] = [...(posicion.aportaciones ?? [])].sort((a, b) =>
     String(a.fecha).localeCompare(String(b.fecha)),
   );
+  const valorActual = Math.max(0, Number(posicion.valor_actual ?? 0) + delta);
   const idxInicial = aportaciones.findIndex((a) => a.tipo === 'aportacion');
-  if (idxInicial >= 0) {
-    aportaciones[idxInicial] = {
-      ...aportaciones[idxInicial],
-      importe: Number(aportaciones[idxInicial].importe ?? 0) + delta,
-      fecha: `${fechaFirma}T12:00:00.000Z`,
-      cuenta_cargo_id: cuentaCargoId,
+
+  // Sin aportación inicial en el histórico no hay nada que ajustar, y sumar la
+  // lista daría 0 (o solo los dividendos) y dejaría la posición sin capital.
+  // `createPosicion` siembra esa aportación al dar de alta, pero una posición
+  // importada o antigua puede no tenerla: ahí el total sale del valor guardado.
+  if (idxInicial < 0) {
+    return {
+      total_aportado: capitalPrevio + delta,
+      valor_actual: valorActual,
+      fecha_valoracion: posicion.fecha_valoracion,
     };
   }
+
+  aportaciones[idxInicial] = {
+    ...aportaciones[idxInicial],
+    importe: Number(aportaciones[idxInicial].importe ?? 0) + delta,
+    fecha: `${fechaFirma}T12:00:00.000Z`,
+    cuenta_cargo_id: cuentaCargoId,
+  };
   const totalAportado = aportaciones.reduce((sum, a) => {
     if (a.tipo === 'reembolso') return sum - Number(a.importe ?? 0);
     if (a.tipo === 'aportacion') return sum + Number(a.importe ?? 0);
@@ -75,7 +87,7 @@ export function ajustarCapitalEditado(
   return {
     aportaciones,
     total_aportado: totalAportado,
-    valor_actual: Math.max(0, Number(posicion.valor_actual ?? 0) + delta),
+    valor_actual: valorActual,
     fecha_valoracion: posicion.fecha_valoracion,
   };
 }
