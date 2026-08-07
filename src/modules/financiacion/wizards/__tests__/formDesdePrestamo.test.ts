@@ -112,8 +112,11 @@ describe('lo que la FEIN trae, llega', () => {
 describe('las bonificaciones de la FEIN', () => {
   const form = () => formDesdePrestamo(prestamoDesdeDraft(feinDeUnicaja()), emptyFormState());
 
+  // La casilla guarda lo TECLEADO, no un número ya parseado: sin eso no se
+  // puede escribir «0,25» —al teclear la coma el campo valdría cero y se
+  // repintaría como «0,00»—, y ahora la rebaja se edita en pantalla.
   it('llegan con sus puntos, en PUNTOS', () => {
-    expect(form().bonificaciones[0].ppDescuento).toBe(0.5);
+    expect(form().bonificaciones[0].ppRaw).toBe('0,50');
   });
 
   // La FEIN lista lo que el banco OFRECE · la de Unicaja tiene catorce bloques,
