@@ -241,7 +241,12 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
 
       const patron = mesesToPatron(meses.length ? meses : [new Date().getMonth() + 1], dia || 1);
       const margen = parseInt(margenGracia, 10);
-      const nombre = alias.trim() || proveedor.trim() || 'Gasto recurrente';
+      // El nombre en blanco cae al del CONCEPTO, no al del proveedor. Ahora el
+      // campo se enseña vacío a propósito cuando no añade nada, así que dejarlo
+      // así es lo normal, no un descuido: caer al proveedor renombraba el gasto
+      // a «Iberdrola», y sin proveedor lo dejaba en «Gasto recurrente».
+      const nombre =
+        alias.trim() || conceptoDefActual?.label || proveedor.trim() || 'Gasto recurrente';
 
       // La clasificación se guarda DERIVADA del concepto elegido, nunca a mano:
       // `categoria`, `bolsaPresupuesto` y `tipo` salen de la proyección del

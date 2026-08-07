@@ -55,6 +55,18 @@ function casillaDe(c: Concepto): string {
   return getCategoryByKey(c.inmueble.categoryKey)?.casillaAEAT ?? '—';
 }
 
+/**
+ * Cómo se lee la casilla en una frase.
+ *
+ * La derrama no tiene casilla fija —depende de si la obra es conservación o
+ * mejora, y eso lo dice el acta—, así que decir «casilla se pregunta» sería
+ * llamar casilla a una pregunta.
+ */
+function fraseCasilla(c: Concepto): string {
+  const casilla = casillaDe(c);
+  return casilla === 'se pregunta' ? 'se pregunta al confirmarlo' : `casilla ${casilla}`;
+}
+
 /** Lo que se está editando ahora mismo · null = nadie. */
 interface Edicion {
   id: string;
@@ -246,7 +258,7 @@ const ConceptosPage: React.FC = () => {
             Se clasificará como el resto de «{FAMILIAS.find((f) => f.id === nuevaFamilia)?.label}»
             {nuevosAmbitos.includes('inmueble') &&
               donanteDe(nuevaFamilia, 'inmueble') &&
-              ` · casilla ${casillaDe(donanteDe(nuevaFamilia, 'inmueble') as Concepto)}`}
+              ` · ${fraseCasilla(donanteDe(nuevaFamilia, 'inmueble') as Concepto)}`}
             . La casilla no se elige aquí: se hereda, para que dar de alta un concepto no pueda
             cambiar tu declaración.
           </p>
@@ -356,7 +368,7 @@ const ConceptosPage: React.FC = () => {
                                 <div className={styles.soloLectura}>
                                   {familia.label}
                                   {c.personal && ' · como gasto tuyo no se declara'}
-                                  {c.inmueble && ` · como gasto de un inmueble va a la casilla ${casillaDe(c)}`}
+                                  {c.inmueble && ` · como gasto de un inmueble, ${fraseCasilla(c)}`}
                                 </div>
                               </div>
                             )}
@@ -396,7 +408,7 @@ const ConceptosPage: React.FC = () => {
                           {c.personal ? 'sí · no se declara' : 'no aplica'}
                         </span>
                         <span className={c.inmueble ? styles.celdaSi : styles.celdaNo}>
-                          {c.inmueble ? `sí · casilla ${casillaDe(c)}` : 'no aplica'}
+                          {c.inmueble ? `sí · ${fraseCasilla(c)}` : 'no aplica'}
                         </span>
                         <div className={styles.celdaAcciones}>
                           {esPropio && <span className={styles.tagPropio}>tuyo</span>}

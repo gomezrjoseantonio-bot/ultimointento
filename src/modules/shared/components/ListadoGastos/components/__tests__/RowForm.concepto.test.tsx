@@ -272,3 +272,33 @@ describe('la ficha no repite lo mismo cuatro veces', () => {
     expect(payload.proveedor?.nombre).toBe('');
   });
 });
+
+describe('el nombre en blanco cae al concepto', () => {
+  it('borrarlo guarda el nombre del concepto, no el del proveedor', async () => {
+    // El campo se enseña vacío a propósito cuando no añade nada, así que
+    // dejarlo así es lo normal. Caer al proveedor renombraba el gasto a
+    // «Iberdrola»; sin proveedor lo dejaba en «Gasto recurrente».
+    pintar(compromiso({ concepto: 'luz', alias: 'Luz', proveedor: { nombre: 'Iberdrola' } }));
+
+    fireEvent.change(screen.getByPlaceholderText('Luz'), { target: { value: '' } });
+    const payload = await guardar();
+
+    expect(payload.alias).toBe('Luz');
+  });
+
+  it('un gasto recién creado tampoco se queda en «Gasto recurrente»', async () => {
+    pintar(compromiso({ concepto: 'luz', alias: 'Nuevo gasto', proveedor: { nombre: '' } }));
+
+    const payload = await guardar();
+
+    expect(payload.alias).toBe('Luz');
+  });
+
+  it('un nombre escrito manda sobre todo lo demás', async () => {
+    pintar(compromiso({ concepto: 'luz', alias: 'Luz del garaje' }));
+
+    const payload = await guardar();
+
+    expect(payload.alias).toBe('Luz del garaje');
+  });
+});
