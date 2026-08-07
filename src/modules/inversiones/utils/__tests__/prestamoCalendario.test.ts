@@ -92,6 +92,11 @@ describe('prestamoCalendario', () => {
       expect(toDateInput('2026-08-07T12:00:00.000Z')).toBe('2026-08-07');
       expect(toDateInput(undefined)).toBe('');
     });
+
+    it('devuelve cadena vacía ante una fecha con formato inválido', () => {
+      expect(toDateInput('foo')).toBe('');
+      expect(toDateInput('07/08/2026')).toBe('');
+    });
   });
 });
 
@@ -153,6 +158,18 @@ describe('calcularCuadroPrestamo', () => {
       })!;
       expect(trimestral.periodos).toHaveLength(20);
       expect(trimestral.periodos[1].fecha).toBe('2025-07-01');
+    });
+
+    it('cubre la duración completa aunque no sea múltiplo de la frecuencia', () => {
+      // 10 meses en trimestral → 4 cuotas (redondear a la baja dejaría 9).
+      const parcial = calcularCuadroPrestamo({
+        ...base,
+        duracionMeses: 10,
+        frecuencia: 'trimestral',
+        modalidad: 'capital_e_intereses',
+      })!;
+      expect(parcial.periodos).toHaveLength(4);
+      expect(parcial.periodos[3].saldoPendiente).toBe(0);
     });
 
     it('reparte el capital a partes iguales con TIN 0', () => {

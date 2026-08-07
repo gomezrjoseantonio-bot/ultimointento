@@ -40,8 +40,14 @@ export const SUBTIPO_PRESTAMO_LABEL: Record<SubtipoPrestamo, string> = {
   familiar: 'Préstamo a familiar',
 };
 
+const RE_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+
 /** `YYYY-MM-DD` de una fecha ISO (o cadena vacía si no es válida). */
-export const toDateInput = (iso?: string): string => (iso ? iso.slice(0, 10) : '');
+export const toDateInput = (iso?: string): string => {
+  if (!iso) return '';
+  const fecha = iso.slice(0, 10);
+  return RE_FECHA.test(fecha) ? fecha : '';
+};
 
 /**
  * Suma (o resta, con `months` negativo) meses a una fecha `YYYY-MM-DD`
@@ -191,7 +197,10 @@ export function calcularCuadroPrestamo(
     };
   }
 
-  const nPeriodos = Math.max(1, Math.round(duracionMeses / pasoMeses));
+  // `ceil` y no `round`: si la duración no es múltiplo exacto de la frecuencia
+  // (10 meses en trimestral), redondear a la baja dejaría meses sin cubrir y
+  // capital sin amortizar. La última cuota absorbe el periodo incompleto.
+  const nPeriodos = Math.max(1, Math.ceil(duracionMeses / pasoMeses));
   const tasaPeriodo = tinAnual / 100 / periodosAnio;
 
   let cuotaConstante = 0;

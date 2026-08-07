@@ -171,16 +171,18 @@ const FichaPosicionPage: React.FC = () => {
     }
   };
 
+  // `deletePosicion` es un borrado lógico (`activo: false`) · la posición se
+  // recupera desde "Posiciones cerradas", así que el copy habla de baja.
   const handleEliminarPosicion = async () => {
     if (!posicion) return;
     try {
       await inversionesService.deletePosicion(posicion.id);
-      showToastV5('Posición eliminada.');
+      showToastV5('Posición dada de baja · la tienes en "Posiciones cerradas".');
       navigate('/inversiones');
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('[inversiones] eliminar', err);
-      showToastV5('Error al eliminar la posición.');
+      console.error('[inversiones] dar de baja', err);
+      showToastV5('Error al dar de baja la posición.');
     }
   };
 
