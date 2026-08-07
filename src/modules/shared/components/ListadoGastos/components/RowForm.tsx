@@ -113,15 +113,12 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
     '';
   const [concepto, setConcepto] = useState<string>(conceptoInicial);
   const familias = useMemo(() => familiasDeAmbito(c.ambito), [c.ambito]);
-  const [familia, setFamilia] = useState<string>(
-    () => conceptoPorId(conceptoInicial)?.familia ?? familias[0]?.id ?? '',
-  );
-  const conceptosDeLaFamilia = useMemo(
-    () => (familia ? conceptosDe(familia as never, c.ambito) : []),
-    [familia, c.ambito],
-  );
+  const conceptoDefActual = conceptoPorId(concepto);
 
   const [alias, setAlias] = useState(c.alias === 'Nuevo gasto' ? '' : c.alias);
+  // Un alias que repite el nombre del concepto no dice nada · se enseña vacío,
+  // con el del concepto de marcador. Lo que se GUARDA no cambia.
+  const aliasVisible = alias === conceptoDefActual?.label ? '' : alias;
   const [proveedor, setProveedor] = useState(c.proveedor?.nombre ?? '');
   const [nif, setNif] = useState(c.proveedor?.nif ?? '');
   const [cups, setCups] = useState(c.cups ?? '');
@@ -244,7 +241,12 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
 
       const patron = mesesToPatron(meses.length ? meses : [new Date().getMonth() + 1], dia || 1);
       const margen = parseInt(margenGracia, 10);
-      const nombre = alias.trim() || proveedor.trim() || 'Gasto recurrente';
+      // El nombre en blanco cae al del CONCEPTO, no al del proveedor. Ahora el
+      // campo se enseña vacío a propósito cuando no añade nada, así que dejarlo
+      // así es lo normal, no un descuido: caer al proveedor renombraba el gasto
+      // a «Iberdrola», y sin proveedor lo dejaba en «Gasto recurrente».
+      const nombre =
+        alias.trim() || conceptoDefActual?.label || proveedor.trim() || 'Gasto recurrente';
 
       // La clasificación se guarda DERIVADA del concepto elegido, nunca a mano:
       // `categoria`, `bolsaPresupuesto` y `tipo` salen de la proyección del
@@ -278,7 +280,10 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       const payload: Partial<Omit<CompromisoRecurrente, 'id' | 'createdAt'>> = {
         ...clasificacion,
         alias: nombre,
-        proveedor: { ...c.proveedor, nombre: proveedor.trim() || nombre, nif: nif.trim() || undefined },
+        // El proveedor NO se rellena con el alias: si no se ha dicho quién lo
+        // cobra, no se sabe. Ponerle el nombre del gasto inventaba un proveedor
+        // llamado «Alquiler» y luego la lista lo repetía debajo del concepto.
+        proveedor: { ...c.proveedor, nombre: proveedor.trim(), nif: nif.trim() || undefined },
         cups: cups.trim() || undefined,
         numeroContrato: numeroContrato.trim() || undefined,
         // La familia fiscal normal NO se persiste (se deriva del concepto). Se
@@ -323,28 +328,12 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       {/* ── Quién lo cobra ── */}
       <div style={dtit}>Quién lo cobra</div>
       <div style={dgrid}>
-        {/* QUÉ es · lo único que se elige. Familia y concepto salen del catálogo
-            unificado filtrado por el ámbito de este gasto, así que no se puede
-            elegir algo que en este ámbito no sepa clasificarse. */}
-        <Field label="Familia">
-          <select
-            style={inp}
-            value={familia}
-            onChange={(e) => {
-              const nueva = e.target.value;
-              setFamilia(nueva);
-              // Al cambiar de familia el concepto anterior ya no está en la
-              // lista · se salta al primero de la nueva en vez de quedarse con
-              // uno que no se puede ver.
-              const primero = conceptosDe(nueva as never, c.ambito)[0];
-              setConcepto(primero?.id ?? '');
-              setFamiliaManual('');
-            }}
-          >
-            {familias.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
-          </select>
-        </Field>
-        {/* La fiscalidad NO se repite aquí · la dice su propio campo, abajo. */}
+        {/* QUÉ es · lo único que se elige. UN campo, no dos: la familia no es
+            una decisión aparte, es dónde vive el concepto, así que va como
+            cabecera de grupo. Con dos desplegables la ficha pedía «Alquiler» en
+            Familia y «Alquiler» en Qué es, que es preguntar dos veces lo mismo.
+            La lista sale filtrada por el ámbito de este gasto: no se puede
+            elegir algo que aquí no sepa clasificarse. */}
         <Field label="Qué es">
           <select
             style={inp}
@@ -357,11 +346,30 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
             }}
           >
             {conceptoInicial === '' && <option value="">— Sin clasificar —</option>}
-            {conceptosDeLaFamilia.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+            {familias.map((f) => (
+              <optgroup key={f.id} label={f.label}>
+                {conceptosDe(f.id, c.ambito).map((x) => (
+                  <option key={x.id} value={x.id}>{x.label}</option>
+                ))}
+              </optgroup>
+            ))}
           </select>
         </Field>
-        <Field label="Nombre" hint="Cómo lo llamas tú en la lista"><input style={inp} value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Luz, comunidad, seguro…" /></Field>
-        <Field label="Proveedor"><input style={inp} value={proveedor} onChange={(e) => setProveedor(e.target.value)} /></Field>
+        {/* El nombre sale VACÍO cuando no añade nada · el concepto ya se llama
+            así. Sólo se escribe para distinguir dos iguales («Alquiler Pozuelo»
+            y «Alquiler Madrid»), y si se deja en blanco se guarda el del
+            concepto, igual que antes. */}
+        <Field label="Nombre" hint="Sólo si necesitas distinguirlo de otro igual">
+          <input
+            style={inp}
+            value={aliasVisible}
+            onChange={(e) => setAlias(e.target.value)}
+            placeholder={conceptoDefActual?.label ?? 'Luz, comunidad, seguro…'}
+          />
+        </Field>
+        <Field label="Proveedor" hint="Quién lo cobra · el nombre que sale en el banco">
+          <input style={inp} value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder="Iberdrola, la comunidad…" />
+        </Field>
         <Field
           label="CIF o NIF"
           hint={esAlquilerPersonal ? 'El NIF del arrendador lo pide Hacienda para la deducción por alquiler' : undefined}

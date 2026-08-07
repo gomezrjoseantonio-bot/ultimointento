@@ -62,7 +62,7 @@
 .fila,
 .filaOculta {
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) 1fr 0.9fr auto;
+  grid-template-columns: minmax(0, 2.4fr) 1fr 1fr auto;
   gap: 14px;
   align-items: center;
   padding: 10px 16px;
@@ -93,16 +93,29 @@
   color: var(--atlas-v5-ink-4);
 }
 
-.celdaAmbito {
-  font-size: 12px;
+/* Cabecera de las dos columnas de ámbito · sin ella «0115» se leía como si
+   aplicara también al gasto propio, que no se declara. */
+.cabecera {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) 1fr 1fr auto;
+  gap: 14px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+}
+
+.celdaSi {
+  font-size: 11.5px;
   color: var(--atlas-v5-ink-3);
 }
 
-.celdaCasilla {
-  font-family: 'JetBrains Mono', monospace;
+.celdaNo {
   font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
-  color: var(--atlas-v5-ink-3);
+  color: var(--atlas-v5-line);
 }
 
 .celdaAcciones {

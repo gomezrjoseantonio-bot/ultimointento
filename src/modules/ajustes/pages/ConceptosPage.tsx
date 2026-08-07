@@ -41,11 +41,30 @@ const AMBITO_LABEL: Record<Ambito, string> = {
   inmueble: 'De un inmueble',
 };
 
-/** A qué casilla AEAT lleva · vacío en personal, que no declara gastos. */
+/**
+ * A qué casilla AEAT lleva ESTE concepto cuando el gasto es DE UN INMUEBLE.
+ *
+ * Sólo entonces. Un gasto tuyo —el IBI de tu casa, tu seguro de hogar— no se
+ * declara: no hay rendimiento del que restarlo. El mismo concepto puede existir
+ * en los dos ámbitos y sólo llevar casilla en uno, y enseñar la casilla en una
+ * columna suelta se leía como que también aplicaba a los tuyos.
+ */
 function casillaDe(c: Concepto): string {
   if (!c.inmueble) return '—';
   if (c.inmueble.categoryKey === null) return 'se pregunta';
   return getCategoryByKey(c.inmueble.categoryKey)?.casillaAEAT ?? '—';
+}
+
+/**
+ * Cómo se lee la casilla en una frase.
+ *
+ * La derrama no tiene casilla fija —depende de si la obra es conservación o
+ * mejora, y eso lo dice el acta—, así que decir «casilla se pregunta» sería
+ * llamar casilla a una pregunta.
+ */
+function fraseCasilla(c: Concepto): string {
+  const casilla = casillaDe(c);
+  return casilla === 'se pregunta' ? 'se pregunta al confirmarlo' : `casilla ${casilla}`;
 }
 
 /** Lo que se está editando ahora mismo · null = nadie. */
@@ -191,7 +210,7 @@ const ConceptosPage: React.FC = () => {
         <div>
           <h1 className={containerStyles.contentTitle}>Conceptos</h1>
           <div className={containerStyles.contentSub}>
-            qué puede ser un gasto · abre una familia para ver los suyos
+            qué puede ser un gasto · abre una familia para ver los suyos · la casilla AEAT es sólo del gasto de un inmueble
           </div>
         </div>
         <button
@@ -239,7 +258,7 @@ const ConceptosPage: React.FC = () => {
             Se clasificará como el resto de «{FAMILIAS.find((f) => f.id === nuevaFamilia)?.label}»
             {nuevosAmbitos.includes('inmueble') &&
               donanteDe(nuevaFamilia, 'inmueble') &&
-              ` · casilla ${casillaDe(donanteDe(nuevaFamilia, 'inmueble') as Concepto)}`}
+              ` · ${fraseCasilla(donanteDe(nuevaFamilia, 'inmueble') as Concepto)}`}
             . La casilla no se elige aquí: se hereda, para que dar de alta un concepto no pueda
             cambiar tu declaración.
           </p>
@@ -279,6 +298,12 @@ const ConceptosPage: React.FC = () => {
 
               {abierta && (
                 <div className={styles.tabla}>
+                  <div className={styles.cabecera}>
+                    <span>Concepto</span>
+                    <span>Gasto tuyo</span>
+                    <span>Gasto de un inmueble</span>
+                    <span />
+                  </div>
                   {conceptos.map((c) => {
                     const esPropio = propios.has(c.id);
                     const editandoEste = edicion?.id === c.id;
@@ -341,8 +366,9 @@ const ConceptosPage: React.FC = () => {
                               <div className={styles.campo}>
                                 <span className={styles.lab}>Clasificación</span>
                                 <div className={styles.soloLectura}>
-                                  {familia.label} · {ambitosDe(c).map((a) => AMBITO_LABEL[a]).join(' · ')}
-                                  {c.inmueble && ` · casilla ${casillaDe(c)}`}
+                                  {familia.label}
+                                  {c.personal && ' · como gasto tuyo no se declara'}
+                                  {c.inmueble && ` · como gasto de un inmueble, ${fraseCasilla(c)}`}
                                 </div>
                               </div>
                             )}
@@ -378,12 +404,12 @@ const ConceptosPage: React.FC = () => {
                           <span className={styles.nombre}>{c.label}</span>
                           <span className={styles.id}>{c.id}</span>
                         </div>
-                        <span className={styles.celdaAmbito}>
-                          {ambitosDe(c)
-                            .map((a) => AMBITO_LABEL[a])
-                            .join(' · ')}
+                        <span className={c.personal ? styles.celdaSi : styles.celdaNo}>
+                          {c.personal ? 'sí · no se declara' : 'no aplica'}
                         </span>
-                        <span className={styles.celdaCasilla}>{casillaDe(c)}</span>
+                        <span className={c.inmueble ? styles.celdaSi : styles.celdaNo}>
+                          {c.inmueble ? `sí · ${fraseCasilla(c)}` : 'no aplica'}
+                        </span>
                         <div className={styles.celdaAcciones}>
                           {esPropio && <span className={styles.tagPropio}>tuyo</span>}
                           <button
@@ -432,6 +458,12 @@ const ConceptosPage: React.FC = () => {
         })
       )}
 
+      <p className={styles.pie}>
+        La casilla AEAT es <strong>sólo del gasto de un inmueble</strong>. Un gasto tuyo no se
+        declara —el IBI de tu casa no se resta de nada—, así que el mismo concepto puede llevar
+        casilla como gasto de un piso alquilado y ninguna como gasto tuyo. La deducción por
+        alquiler de tu vivienda habitual va por otro lado, en el propio gasto.
+      </p>
       <p className={styles.pie}>
         Esconder no borra: los gastos que ya usan ese concepto lo conservan y se siguen clasificando
         igual. Sólo deja de ofrecerse al crear o editar un gasto. Los conceptos de fábrica no se
