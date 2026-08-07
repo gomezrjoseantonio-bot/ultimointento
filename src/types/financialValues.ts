@@ -2,6 +2,8 @@ export interface FinancialValuationItem {
   id: string;
   name: string;
   value: number;
+  /** Tipo de inversión legible (solo para inversiones, opcional). */
+  tipo?: string;
 }
 
 export interface FinancialValuesSnapshot {

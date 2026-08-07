@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { initDB } from '../../services/db';
 import type { Property, Contract } from '../../services/db';
+import { subscribeFinancialValuesUpdated } from '../../services/financialValuesService';
 import type { InmueblesOutletContext } from './InmueblesContext';
 import styles from './InmueblesPage.module.css';
 
@@ -33,6 +34,8 @@ const InmueblesPage: React.FC = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => subscribeFinancialValuesUpdated(() => { load(); }), [load]);
 
   const ctx: InmueblesOutletContext = {
     properties,
