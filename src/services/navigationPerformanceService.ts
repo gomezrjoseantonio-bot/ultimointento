@@ -108,7 +108,7 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
         : href.match(/^\/financiacion\/[^/]+\/editar/)
           ? import('../modules/financiacion/pages/WizardEditPage')
           : href.match(/^\/financiacion\/[^/]+$/)
-            ? import('../modules/financiacion/pages/DetallePage')
+            ? import('../modules/financiacion/vista/DetallePrestamoPage')
             : import('../modules/financiacion/vista/VistaFinanciacionPage');
     await Promise.all([import('../modules/financiacion/FinanciacionPage'), subPage]);
     return;

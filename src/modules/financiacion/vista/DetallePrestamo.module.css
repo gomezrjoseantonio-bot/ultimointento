@@ -1,0 +1,698 @@
+/* ============================================================
+   Financiación · detalle del préstamo (Entregable B)
+   Fuente visual · atlas-prestamo-detalle-v3.html (mixto)
+                 · atlas-prestamo-detalle-personal-v1.html (fijo)
+   Guía · GUIA-DISENO-V5-atlas.md (pantalla de GESTIÓN · hero navy)
+
+   Cero hex: todo sale de los tokens de design-system/v5/tokens.css.
+   Sin rojo ni verde en las cifras · el signo − marca la deuda.
+   ============================================================ */
+
+.detalle {
+  font-family: var(--atlas-v5-font-ui);
+  color: var(--atlas-v5-ink-2);
+  letter-spacing: var(--atlas-v5-ls-base);
+  /* Sin scroll · se reparte la altura que le queda al main. */
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mono {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--atlas-v5-ls-mono);
+}
+
+.monoInk {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+/* ═══ Breadcrumb ══════════════════════════════════════════════ */
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-2);
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-4);
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  color: var(--atlas-v5-ink-3);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.volver:hover {
+  border-color: var(--atlas-v5-ink-5);
+  color: var(--atlas-v5-ink-2);
+}
+
+.migaLink {
+  color: var(--atlas-v5-gold-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.migaLink:hover { text-decoration: underline; }
+
+.migaActual {
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ═══ Cabecera ════════════════════════════════════════════════ */
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--atlas-v5-sp-4);
+  gap: var(--atlas-v5-sp-7);
+  flex-shrink: 0;
+}
+
+.headIzq { min-width: 0; }
+
+.titulo {
+  font-size: 24px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  line-height: var(--atlas-v5-lh-tight);
+  letter-spacing: var(--atlas-v5-ls-h1);
+  margin: 0;
+}
+
+.sub {
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 3px;
+}
+
+.sub .mono {
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.headAcciones {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.btnGhost,
+.btnOro {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: var(--atlas-v5-radius-sm);
+  font-family: inherit;
+  font-size: var(--atlas-v5-fs-sub);
+  font-weight: var(--atlas-v5-fw-semibold);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btnGhost {
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
+  border-color: var(--atlas-v5-line);
+}
+
+.btnGhost:hover:not(:disabled) { border-color: var(--atlas-v5-ink-5); }
+
+.btnGhost:disabled {
+  color: var(--atlas-v5-ink-5);
+  cursor: not-allowed;
+}
+
+.btnOro {
+  background: var(--atlas-v5-gold);
+  color: var(--atlas-v5-white);
+  border-color: var(--atlas-v5-gold);
+}
+
+.btnOro:hover {
+  background: var(--atlas-v5-gold-ink);
+  border-color: var(--atlas-v5-gold-ink);
+}
+
+/* ═══ HERO navy · 6 KPIs ══════════════════════════════════════ */
+
+.hero {
+  background: var(--atlas-v5-brand);
+  border: 1px solid var(--atlas-v5-gold);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: var(--atlas-v5-sp-5);
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.hk {
+  padding: 15px var(--atlas-v5-sp-7);
+  border-right: 1px solid var(--atlas-v5-navy-line);
+  display: flex;
+  flex-direction: column;
+  min-height: 90px;
+  min-width: 0;
+}
+
+.hk:last-child { border-right: none; }
+
+.hkLab {
+  font-size: var(--atlas-v5-fs-label-sm);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-gold-soft);
+  font-weight: var(--atlas-v5-fw-bold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hkVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--atlas-v5-fw-bold);
+  margin-top: 6px;
+  letter-spacing: -0.03em;
+  line-height: var(--atlas-v5-lh-kpi);
+  /* Cifras en BLANCO sobre el navy · nunca rojo ni verde. */
+  color: var(--atlas-v5-on-navy-1);
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+/* Oro solo para la cifra-meta · cuándo te liberas. */
+.oro { color: var(--atlas-v5-gold-soft); }
+
+.hkSub {
+  font-size: var(--atlas-v5-fs-label-sm);
+  color: var(--atlas-v5-on-navy-5);
+  margin-top: auto;
+  padding-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hkSub .mono {
+  color: var(--atlas-v5-on-navy-2);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+/* El cambio que viene se marca en oro · es un aviso, no un estado malo. */
+.hkCambio {
+  color: var(--atlas-v5-gold-soft);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.heroAmort {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: var(--atlas-v5-sp-2);
+}
+
+.heroAmort i {
+  width: 6px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--atlas-v5-navy-fill);
+}
+
+.heroAmort i.pipOn { background: var(--atlas-v5-gold-soft); }
+
+/* ═══ Rejilla 2×2 de tarjetas ═════════════════════════════════ */
+
+.rejilla {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: var(--atlas-v5-sp-4);
+}
+
+.card {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-lg);
+  padding: 15px var(--atlas-v5-sp-6);
+  border-top: 3px solid var(--atlas-v5-line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.topBrand { border-top-color: var(--atlas-v5-brand); }
+.topGold { border-top-color: var(--atlas-v5-gold); }
+.topGoldSoft { border-top-color: var(--atlas-v5-gold-soft); }
+
+.cardT {
+  font-size: 13.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.01em;
+  margin-bottom: var(--atlas-v5-sp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-2);
+  flex-shrink: 0;
+}
+
+.cardT svg { color: var(--atlas-v5-ink-4); flex-shrink: 0; }
+
+.cardNota {
+  margin-left: auto;
+  font-size: var(--atlas-v5-fs-chip);
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-4);
+  white-space: nowrap;
+}
+
+/* ═══ Línea de tiempo de los tramos ═══════════════════════════ */
+
+.tlWrap {
+  position: relative;
+  margin: 4px 0;
+  flex-shrink: 0;
+}
+
+.tlHoyLab {
+  position: absolute;
+  top: -2px;
+  transform: translateX(-50%);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 9.5px;
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-bold);
+  white-space: nowrap;
+}
+
+.tlBar {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  margin-top: var(--atlas-v5-sp-5);
+  background: var(--atlas-v5-line);
+}
+
+/* Navy el tramo cerrado, oro el que va a índice · sin semántica de estado. */
+.tlFijo { background: var(--atlas-v5-brand); }
+.tlVar { background: var(--atlas-v5-gold); }
+
+.tlHoy {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 18px;
+  background: var(--atlas-v5-white);
+  box-shadow: 0 0 0 1.5px var(--atlas-v5-ink);
+  border-radius: 1px;
+  z-index: 2;
+}
+
+.tlEje {
+  position: relative;
+  height: 14px;
+  margin-top: 5px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.ejeIzq { position: absolute; left: 0; }
+.ejeDer { position: absolute; right: 0; }
+
+.tramo {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: var(--atlas-v5-sp-2) 0;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+  flex-shrink: 0;
+}
+
+.tramo:last-of-type { border-bottom: none; }
+
+.dotFijo,
+.dotVar {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.dotFijo { background: var(--atlas-v5-brand); }
+.dotVar { background: var(--atlas-v5-gold); }
+
+.tramoInfo { flex: 1; min-width: 0; }
+
+.tramoTit {
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+
+.tramoPer {
+  font-size: var(--atlas-v5-fs-label-sm);
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tramoVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tramoVal small {
+  display: block;
+  font-size: 10px;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-regular);
+  margin-top: 1px;
+}
+
+/* El teórico tachado · lo que pagarías sin las bonificaciones. */
+.teorico {
+  text-decoration: line-through;
+  opacity: 0.7;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+/* Ámbar solo aquí · es un aviso operativo (guía v5 §9.1). */
+.revLine {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-2);
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.revLine svg { color: var(--atlas-v5-warn); flex-shrink: 0; }
+.revLine .mono { color: var(--atlas-v5-warn); font-weight: var(--atlas-v5-fw-bold); }
+
+/* ═══ Bonificaciones ══════════════════════════════════════════ */
+
+.bonifLista {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.bonif {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--atlas-v5-sp-2);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+  font-size: 12.5px;
+}
+
+.bonif:last-of-type { border-bottom: none; }
+
+.bonifIzq {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--atlas-v5-ink-2);
+  min-width: 0;
+}
+
+.bonifCheck,
+.bonifPendiente {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bonifCheck {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}
+
+/* La que aún no tienes se ve, apagada · esconderla diría que no hay nada
+   que ir a buscar, y es justo la que puedes conseguir. */
+.bonifPendiente {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+}
+
+.bonifApagada { color: var(--atlas-v5-ink-4); }
+
+.bonifVal,
+.bonifValApagado {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--atlas-v5-fw-bold);
+  white-space: nowrap;
+}
+
+.bonifVal { color: var(--atlas-v5-ink); }
+.bonifValApagado { color: var(--atlas-v5-ink-5); }
+
+.bonifPie {
+  margin-top: auto;
+  padding-top: 11px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+  flex-shrink: 0;
+}
+
+.bonifPieFila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+}
+
+.bonifEfecto {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--atlas-v5-sp-2);
+  margin-top: 9px;
+  padding: var(--atlas-v5-sp-2) 11px;
+  background: var(--atlas-v5-gold-wash);
+  border-radius: var(--atlas-v5-radius-icon);
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-gold-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.bonifEfecto .mono { font-weight: var(--atlas-v5-fw-bold); }
+
+.flecha {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+/* ═══ Listas de definición · condiciones y fiscalidad ═════════ */
+
+.dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 11px var(--atlas-v5-sp-7);
+  align-content: start;
+}
+
+.dlAncho {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 13px;
+  align-content: start;
+  min-height: 0;
+}
+
+.dlItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dlK {
+  font-size: var(--atlas-v5-fs-label-sm);
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.dlV {
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+}
+
+/* El destino es prosa, no una cifra · va en Inter. */
+.dlTexto {
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.dlMotivo {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-4);
+  line-height: var(--atlas-v5-lh-relaxed);
+}
+
+.chipOro,
+.chipNeutro {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: var(--atlas-v5-radius-icon);
+  font-size: var(--atlas-v5-fs-chip);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.chipOro {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+  border: 1px solid var(--atlas-v5-gold-soft);
+}
+
+.chipNeutro {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line-2);
+}
+
+/* ═══ Cuadro de amortización · preview ════════════════════════ */
+
+.qrow {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr;
+  gap: 10px;
+  padding: 6px 0;
+  align-items: center;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+  flex-shrink: 0;
+}
+
+.qhead { padding-bottom: 7px; }
+
+.qh {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.qr { text-align: right; }
+
+.qc {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.qmes { color: var(--atlas-v5-ink); }
+
+/* El mes en que salta la revisión se marca · es el dato de la tarjeta. */
+.qmesRev { color: var(--atlas-v5-gold-ink); }
+
+.revTag {
+  font-size: 8.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-gold-ink);
+  background: var(--atlas-v5-gold-wash);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 6px;
+  letter-spacing: 0.04em;
+}
+
+.cardPie {
+  margin-top: auto;
+  padding-top: 10px;
+  flex-shrink: 0;
+}
+
+.cardPie button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-gold-ink);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cardPie button:hover:not(:disabled) { text-decoration: underline; }
+
+.cardPie button:disabled {
+  color: var(--atlas-v5-ink-5);
+  cursor: not-allowed;
+}
+
+/* ═══ Estado vacío ════════════════════════════════════════════ */
+
+.noEncontrado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--atlas-v5-sp-4);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-lg);
+  padding: var(--atlas-v5-sp-9);
+  font-size: var(--atlas-v5-fs-base);
+  color: var(--atlas-v5-ink-3);
+}

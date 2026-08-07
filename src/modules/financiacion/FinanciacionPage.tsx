@@ -4,11 +4,12 @@
 // (`vista/VistaFinanciacionPage`, mockup atlas-financiacion-v10) más el
 // Detalle, los wizards y la importación, todos colgando de este Outlet.
 //
-// Carga préstamos + planes una sola vez y los expone vía `useOutletContext`.
+// Carga los préstamos una sola vez y los expone vía `useOutletContext`.
 //
-// OJO · `rows` (derivado de `helpers.ts`) se mantiene solo porque lo consume
-// todavía el Detalle viejo. La vista nueva NO lo usa: lee del motor
-// (`generarCuadro` + `services/prestamos/lecturas`). Se va con el Entregable B.
+// Ya no deriva `rows` con `helpers.ts`: con el Detalle nuevo no queda nadie que
+// lo consuma. Las dos pantallas se generan su propio cuadro (`cuadroDe`, que ya
+// memoiza) y leen de él, así que Financiación entera queda sin una sola cifra
+// que venga de la capa de presentación.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
@@ -17,8 +18,6 @@ import { PageHead, Icons, showToastV5 } from '../../design-system/v5';
 import { EmptyState } from '../../components/common/EmptyState';
 import { prestamosService } from '../../services/prestamosService';
 import type { Prestamo, PlanPagos } from '../../types/prestamos';
-import { interesDeducibleDelAnio, loanRowFromPrestamo } from './helpers';
-import type { LoanRow } from './types';
 import type { FinanciacionOutletContext } from './FinanciacionContext';
 import styles from './FinanciacionPage.module.css';
 
@@ -72,17 +71,13 @@ const FinanciacionPage: React.FC = () => {
     };
   }, [load]);
 
-  const rows: LoanRow[] = useMemo(() => {
-    return prestamos
-      .filter((p) => p.activo !== false && p.estado !== 'cancelado')
-      // Los intereses deducibles del año EN CURSO · sumados del cuadro, no
-      // estimados como `capitalVivo × TIN`.
-      .map((p) => loanRowFromPrestamo(p, interesDeducibleDelAnio(p, new Date().getFullYear())));
-  }, [prestamos]);
+  const vivos = useMemo(
+    () => prestamos.filter((p) => p.activo !== false && p.estado !== 'cancelado'),
+    [prestamos],
+  );
 
   const ctx: FinanciacionOutletContext = {
     prestamos,
-    rows,
     planes,
     reload: load,
   };
@@ -103,13 +98,13 @@ const FinanciacionPage: React.FC = () => {
     /^\/financiacion\/[^/]+\/editar$/.test(location.pathname);
 
   const showHead = !isDetail && !isWizard;
-  // La vista principal manda sin scroll (guía v5): se reparte la altura del
-  // main en vez de crecer hacia abajo. El resto de rutas siguen con el flujo
-  // normal · un wizard sí puede ser más largo que la ventana.
-  const isVistaPrincipal = location.pathname === '/financiacion';
+  // La vista principal y el detalle mandan sin scroll (guía v5): se reparten la
+  // altura del main en vez de crecer hacia abajo. El resto de rutas siguen con
+  // el flujo normal · un wizard sí puede ser más largo que la ventana.
+  const sinScroll = location.pathname === '/financiacion' || isDetail;
 
   return (
-    <div className={`${styles.page} ${isVistaPrincipal ? styles.pageSinScroll : ''}`}>
+    <div className={`${styles.page} ${sinScroll ? styles.pageSinScroll : ''}`}>
       {showHead && (
         <PageHead
           title="Financiación"
@@ -130,7 +125,7 @@ const FinanciacionPage: React.FC = () => {
       )}
       {loading ? (
         <div className={styles.loading}>Cargando financiación…</div>
-      ) : showHead && rows.length === 0 ? (
+      ) : showHead && vivos.length === 0 ? (
         <EmptyState
           icon={Landmark}
           title="Sin préstamos aún"
