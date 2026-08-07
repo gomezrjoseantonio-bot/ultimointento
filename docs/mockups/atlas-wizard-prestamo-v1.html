@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Wizard préstamo · rediseño</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5; --line-3: #F3F1EB;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474; --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-soft: #D9B576; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #DAD8D2; color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  button { background: none; border: none; cursor: pointer; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
+  .app-bg { background: rgba(14,20,35,.45); position: fixed; inset: 0; z-index: 1; }
+
+  /* ═════ MODAL ═════ */
+  .wiz {
+    position: fixed; inset: 20px; z-index: 2;
+    background: var(--card); border-radius: 14px;
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    grid-template-rows: 66px 1fr 68px;
+    grid-template-areas: "head aside" "body aside" "footer aside";
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(14,20,35,.28);
+  }
+
+  /* HEADER */
+  .wiz-head { grid-area: head; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; border-bottom: 1px solid var(--line); }
+  .wiz-title-wrap { display: flex; align-items: center; gap: 13px; min-width: 0; }
+  .wiz-title-icon { width: 34px; height: 34px; border-radius: 9px; background: var(--brand-ink); color: var(--gold); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .wiz-title { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.15; }
+  .wiz-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+  .wiz-close { width: 34px; height: 34px; border-radius: 8px; background: var(--card-alt); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--ink-3); }
+  .wiz-close:hover { border-color: var(--ink-5); color: var(--ink); }
+
+  /* BODY */
+  .wiz-body { grid-area: body; overflow-y: auto; padding: 24px 32px 30px; }
+  .wiz-body::-webkit-scrollbar { width: 10px; }
+  .wiz-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; border: 3px solid var(--card); }
+
+  /* Secciones esenciales */
+  .sec { margin-bottom: 22px; }
+  .sec-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 700; margin-bottom: 11px; display: flex; align-items: center; gap: 8px; }
+  .sec-lab .hint { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--ink-5); font-size: 11px; }
+
+  /* Campos */
+  .fld { display: flex; flex-direction: column; gap: 6px; }
+  .fld-lab { font-size: 12px; color: var(--ink-2); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+  .fld-lab .req { color: var(--neg); }
+  .fld-lab .opt { color: var(--ink-5); font-weight: 400; }
+  .inp { width: 100%; height: 38px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--line); background: var(--card); font-size: 13px; color: var(--ink); outline: none; transition: border-color .12s; }
+  .inp:hover { border-color: var(--ink-5); }
+  .inp:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,138,62,0.15); }
+  .inp.mono { font-family: 'JetBrains Mono', monospace; }
+  select.inp { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A92A0' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; padding-right: 30px; cursor: pointer; }
+  .inp-group { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--card); }
+  .inp-group .inp { border: none; box-shadow: none !important; }
+  .inp-group:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,138,62,0.15); }
+  .inp-suffix { display: flex; align-items: center; padding: 0 11px; background: var(--card-alt); color: var(--ink-4); font-size: 12px; font-family: 'JetBrains Mono', monospace; font-weight: 600; border-left: 1px solid var(--line); }
+  .inp-suffix.sel { padding: 0; }
+  .inp-suffix.sel select { height: 100%; border: none; background: var(--card-alt); padding: 0 26px 0 11px; font-size: 12px; font-weight: 600; }
+  .fld-note { font-size: 11px; color: var(--ink-4); margin-top: 5px; }
+  .fld-note .k { color: var(--ink-2); font-weight: 600; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 13px; }
+  .grid-4 { display: grid; grid-template-columns: 1.3fr 0.9fr 1fr 0.7fr; gap: 13px; }
+  .grid-id { display: grid; grid-template-columns: 1.2fr 1fr 1.3fr 0.9fr; gap: 13px; }
+  .row-tight { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .row-tight .fld { flex: 0 0 auto; }
+  .w-sm { width: 104px; }
+  .w-md { width: 140px; }
+  .w-lg { width: 240px; }
+
+  /* Radio cards tipo */
+  .rcard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .rcard { padding: 13px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); cursor: pointer; transition: all .12s; display: flex; align-items: center; gap: 11px; }
+  .rcard:hover { border-color: var(--ink-5); }
+  .rcard.selected { border-left: 3px solid var(--gold); padding-left: 12px; }
+  .rcard-icon { width: 34px; height: 34px; border-radius: 8px; background: var(--card-alt); color: var(--ink-3); display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); flex-shrink: 0; }
+  .rcard.selected .rcard-icon { background: var(--brand-ink); color: var(--gold); border-color: var(--brand-ink); }
+  .rcard-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .rcard-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 1px; }
+
+  /* Segmented */
+  .seg { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 3px; gap: 3px; }
+  .seg.full { display: flex; width: 100%; }
+  .seg button { flex: 1; padding: 8px 16px; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--ink-3); white-space: nowrap; transition: all .12s; }
+  .seg button:hover { color: var(--ink-2); }
+  .seg button.active { background: var(--gold-wash); color: var(--gold-ink); box-shadow: inset 0 0 0 1px var(--gold-soft); }
+
+  .cond-fields { margin-top: 14px; }
+  .hide { display: none !important; }
+
+  /* Bloques avanzados plegables */
+  .adv { border: 1px solid var(--line); border-radius: 11px; background: var(--card); margin-bottom: 11px; overflow: hidden; }
+  .adv-head { display: flex; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; user-select: none; }
+  .adv-head:hover { background: var(--card-alt); }
+  .adv-ic { width: 32px; height: 32px; border-radius: 8px; background: var(--card-alt); color: var(--ink-3); display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); flex-shrink: 0; }
+  .adv.open .adv-ic { background: var(--brand-ink); color: var(--gold); border-color: var(--brand-ink); }
+  .adv-tt { flex: 1; min-width: 0; }
+  .adv-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .adv-sum { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adv.open .adv-sum { display: none; }
+  .adv-chip { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--gold-wash); color: var(--gold-ink); flex-shrink: 0; }
+  .adv-chip.muted { background: var(--bg); color: var(--ink-4); }
+  .adv-chev { color: var(--ink-4); transition: transform .18s; flex-shrink: 0; }
+  .adv.open .adv-chev { transform: rotate(180deg); }
+  .adv-body { padding: 4px 16px 18px; border-top: 1px solid var(--line-2); }
+  .adv:not(.open) .adv-body { display: none; }
+  .sub-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 700; margin: 16px 0 10px; }
+  .sub-lab:first-child { margin-top: 12px; }
+  .helper { font-size: 11px; color: var(--ink-4); line-height: 1.5; margin-top: 8px; }
+  .helper .k { color: var(--ink-2); font-weight: 600; }
+
+  /* Bonif cards */
+  .bonif-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; }
+  .bonif { padding: 12px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); cursor: pointer; text-align: left; transition: all .12s; }
+  .bonif:hover { border-color: var(--ink-5); }
+  .bonif.on { border-color: var(--gold-soft); background: var(--gold-wash); }
+  .bonif-t { font-size: 12px; font-weight: 700; color: var(--ink); }
+  .bonif-s { font-size: 10px; color: var(--ink-4); margin-top: 2px; line-height: 1.35; min-height: 26px; }
+  .bonif-v { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ink-3); margin-top: 6px; }
+  .bonif.on .bonif-v { color: var(--gold-ink); }
+  .link-add { font-size: 12px; color: var(--gold); font-weight: 600; padding: 9px 0 2px; display: inline-flex; align-items: center; gap: 5px; }
+  .bonif-cap { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 10px 14px; border-radius: 8px; background: var(--card-alt); border: 1px solid var(--line); font-size: 11.5px; color: var(--ink-3); flex-wrap: wrap; }
+  .brow { border: 1px solid var(--line); border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
+  .brow-head { display: grid; grid-template-columns: 30px 1fr auto auto 22px; gap: 11px; align-items: center; padding: 11px 12px; cursor: pointer; }
+  .brow-head:hover { background: var(--card-alt); }
+  .brow.open .brow-head { background: var(--card-alt); }
+  .brow-ic { width: 30px; height: 30px; border-radius: 7px; background: var(--card-alt); color: var(--ink-3); display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); }
+  .brow.open .brow-ic { background: var(--brand-ink); color: var(--gold); border-color: var(--brand-ink); }
+  .brow-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .brow-req { font-size: 11px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .brow-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+  .verif { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--brand-wash); color: var(--brand); white-space: nowrap; }
+  .verif svg { width: 11px; height: 11px; }
+  .brow-chev { color: var(--ink-4); transition: transform .18s; }
+  .brow.open .brow-chev { transform: rotate(180deg); }
+  .bedit { padding: 4px 14px 16px; border-top: 1px solid var(--line-2); }
+  .brow:not(.open) .bedit { display: none; }
+  .bedit-del { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--neg); font-weight: 600; margin-top: 16px; }
+  .step { display: none; }
+  .blist.cascade .brow { position: relative; }
+  .blist.cascade .brow-head { padding-left: 46px; }
+  .blist.cascade .step { display: flex; align-items: center; gap: 7px; position: absolute; left: 10px; top: 21px; z-index: 1; }
+  .step-h { color: var(--ink-5); display: flex; cursor: grab; }
+  .step-n { width: 22px; height: 22px; border-radius: 50%; background: var(--brand-ink); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .blist.cascade .brow + .brow { margin-top: 16px; }
+  .blist.cascade .brow:not(:first-child)::before { content: '↓'; position: absolute; top: -15px; left: 27px; color: var(--ink-4); font-size: 13px; font-weight: 700; }
+  .foot-casc { display: none; }
+  .blist.cascade ~ .bonif-cap .foot-indep { display: none; }
+  .blist.cascade ~ .bonif-cap .foot-casc { display: inline; }
+  .crow { display: grid; grid-template-columns: 1.15fr 0.95fr 0.62fr 34px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .blist.cascade .crow { grid-template-columns: 24px 1.15fr 0.95fr 0.62fr 34px; }
+  .beur { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-4); text-align: right; white-space: nowrap; }
+  .cnum { display: none; }
+  .blist.cascade .cnum { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--brand-ink); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; }
+
+  /* Destino rows */
+  .dest-row { display: grid; grid-template-columns: 1fr 1.3fr 0.9fr 0.7fr 34px; gap: 9px; align-items: center; margin-bottom: 9px; }
+  .icon-del { width: 34px; height: 34px; border-radius: 7px; border: 1px solid var(--line); background: var(--card); color: var(--ink-4); display: flex; align-items: center; justify-content: center; }
+  .icon-del:hover { border-color: var(--neg); color: var(--neg); }
+  .dest-ok { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--pos); background: var(--pos-wash); padding: 9px 13px; border-radius: 8px; font-weight: 600; margin-top: 4px; }
+
+  /* FOOTER */
+  .wiz-foot { grid-area: footer; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; border-top: 1px solid var(--line); background: var(--card-alt); gap: 16px; }
+  .foot-hint { font-size: 11.5px; color: var(--ink-4); display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .foot-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid transparent; white-space: nowrap; transition: all .12s; }
+  .btn-ghost { color: var(--ink-2); background: var(--card); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-gold { color: #fff; background: var(--gold); border-color: var(--gold); }
+  .btn-gold:hover { background: var(--gold-ink); border-color: var(--gold-ink); }
+
+  /* ═════ ASIDE · CÁLCULO VIVO ═════ */
+  .wiz-aside { grid-area: aside; background: var(--brand-ink); color: #fff; overflow-y: auto; padding: 22px 22px 24px; }
+  .wiz-aside::-webkit-scrollbar { width: 8px; }
+  .wiz-aside::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 6px; }
+  .as-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; color: rgba(255,255,255,0.55); font-weight: 700; display: flex; align-items: center; gap: 7px; }
+  .as-live { display: inline-flex; align-items: center; gap: 5px; font-size: 9.5px; color: var(--gold-soft); letter-spacing: 0.06em; }
+  .as-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold-soft); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  .as-hero { margin: 16px 0 18px; }
+  .as-hero-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: rgba(255,255,255,0.55); font-weight: 700; }
+  .as-cuota { font-family: 'JetBrains Mono', monospace; font-size: 42px; font-weight: 700; color: var(--gold-2); letter-spacing: -0.03em; line-height: 1; margin-top: 8px; }
+  .as-cuota .cur { font-size: 24px; color: var(--gold-soft); }
+  .as-hero-sub { font-size: 11.5px; color: rgba(255,255,255,0.62); margin-top: 9px; font-family: 'JetBrains Mono', monospace; }
+  .as-tag { display: inline-block; margin-top: 9px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 4px; background: rgba(217,181,118,0.16); color: var(--gold-soft); border: 1px solid rgba(217,181,118,0.3); }
+
+  .as-alert { display: flex; gap: 10px; padding: 12px 13px; border-radius: 9px; background: rgba(217,181,118,0.1); border: 1px solid rgba(217,181,118,0.28); margin-bottom: 16px; }
+  .as-alert svg { color: var(--gold-soft); flex-shrink: 0; margin-top: 1px; }
+  .as-alert-t { font-size: 11.5px; font-weight: 700; color: #fff; }
+  .as-alert-s { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 2px; line-height: 1.4; font-family: 'JetBrains Mono', monospace; }
+
+  .as-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .as-kpi { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 9px; padding: 12px 13px; }
+  .as-kpi-lab { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.5); font-weight: 700; }
+  .as-kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; color: #fff; margin-top: 5px; letter-spacing: -0.02em; }
+  .as-kpi-sub { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+
+  .as-break { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px; }
+  .as-kpi-btn { cursor: pointer; transition: background .12s; }
+  .as-kpi-btn:hover { background: rgba(255,255,255,0.09); }
+  .as-kpi-lab svg { vertical-align: middle; margin-left: 3px; color: var(--gold-soft); transition: transform .18s; }
+  .as-var.open ~ .as-break {} 
+  .as-var { display: none; margin: -6px 0 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 9px; padding: 6px 13px; }
+  .as-var.open { display: block; }
+  .as-var-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; font-size: 11.5px; color: rgba(255,255,255,0.66); border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .as-var-row:last-child { border-bottom: none; }
+  .as-var-row .mono { color: rgba(255,255,255,0.92); font-weight: 600; }
+  .as-var-row.hl span:first-child { color: #fff; font-weight: 700; }
+  .as-var-row.hl .mono { color: var(--gold-2); font-weight: 700; }
+  .as-var-btn { cursor: pointer; }
+  .as-var-btn:hover { opacity: .85; }
+  .as-bd-chev { width: 11px; height: 11px; margin-left: 5px; vertical-align: middle; color: var(--gold-soft); transition: transform .18s; }
+  .as-var-row.open .as-bd-chev { transform: rotate(180deg); }
+  .as-bonif-det { display: none; padding: 2px 0 2px 12px; margin-top: 2px; border-left: 2px solid rgba(217,181,118,0.35); }
+  .as-bonif-det.open { display: block; }
+  .as-sub-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; font-size: 11px; color: rgba(255,255,255,0.6); }
+  .as-sub-row .mono { color: rgba(255,255,255,0.82); font-weight: 600; }
+  .as-sub-note { font-size: 10px; color: rgba(255,255,255,0.42); padding-top: 5px; }
+  .as-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 12px; }
+  .as-row-lab { color: rgba(255,255,255,0.66); }
+  .as-row-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: rgba(255,255,255,0.92); }
+  .as-row.total { border-top: 1px solid rgba(255,255,255,0.14); margin-top: 6px; padding-top: 11px; }
+  .as-row.total .as-row-lab { color: #fff; font-weight: 700; font-size: 13px; }
+  .as-row.total .as-row-val { color: #fff; font-weight: 700; font-size: 15px; }
+
+  .as-fiscal { display: flex; gap: 9px; padding: 12px 13px; border-radius: 9px; background: rgba(30,107,58,0.14); border: 1px solid rgba(46,140,80,0.3); margin: 16px 0; }
+  .as-fiscal svg { color: #8FD3A6; flex-shrink: 0; margin-top: 1px; }
+  .as-fiscal-t { font-size: 11.5px; font-weight: 700; color: #C8ECD4; }
+  .as-fiscal-s { font-size: 11px; color: rgba(255,255,255,0.62); margin-top: 2px; line-height: 1.4; }
+
+  .as-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #fff; font-size: 12.5px; font-weight: 600; }
+  .as-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.24); }
+</style>
+</head>
+<body>
+<div class="app-bg"></div>
+
+<div class="wiz">
+
+  <!-- HEADER -->
+  <div class="wiz-head">
+    <div class="wiz-title-wrap">
+      <div class="wiz-title-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6M3 15h6"/></svg>
+      </div>
+      <div>
+        <div class="wiz-title">Editar préstamo · Hipoteca Unicaja</div>
+        <div class="wiz-sub">hipotecario · firma ago 2023</div>
+      </div>
+    </div>
+    <button class="wiz-close" title="Cerrar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <!-- BODY -->
+  <div class="wiz-body">
+
+    <!-- ══ ESENCIAL ══ -->
+    <div class="sec">
+      <div class="sec-lab">Tipo de préstamo</div>
+      <div class="rcard-grid" style="grid-template-columns: repeat(2, 1fr); max-width: 460px;">
+        <div class="rcard selected" onclick="pick(this)">
+          <div class="rcard-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
+          <div><div class="rcard-title">Hipotecario</div><div class="rcard-sub">garantía sobre el inmueble</div></div>
+        </div>
+        <div class="rcard" onclick="pick(this)">
+          <div class="rcard-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></div>
+          <div><div class="rcard-title">Personal</div><div class="rcard-sub">responde el titular</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-lab">Identificación</div>
+      <div class="grid-id">
+        <div class="fld">
+          <label class="fld-lab">Alias <span class="req">*</span></label>
+          <input class="inp" value="Hipoteca Unicaja" />
+        </div>
+        <div class="fld">
+          <label class="fld-lab">Banco</label>
+          <input class="inp" value="Unicaja" />
+        </div>
+        <div class="fld">
+          <label class="fld-lab">Cuenta cargo <span class="req">*</span></label>
+          <select class="inp"><option selected>Unicaja · ····4437</option><option>Santander Nómina · ····27</option></select>
+        </div>
+        <div class="fld">
+          <label class="fld-lab">Nº contrato <span class="opt">opcional</span></label>
+          <input class="inp mono" placeholder="—" />
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-lab">Importe y plazo</div>
+      <div class="grid-4">
+        <div class="fld">
+          <label class="fld-lab">Capital inicial <span class="req">*</span></label>
+          <div class="inp-group"><input class="inp mono" id="i-capital" value="85.000" oninput="recalc()" /><span class="inp-suffix">€</span></div>
+        </div>
+        <div class="fld">
+          <label class="fld-lab">Plazo <span class="req">*</span></label>
+          <div class="inp-group"><input class="inp mono" id="i-plazo" value="240" oninput="recalc()" /><span class="inp-suffix sel"><select onchange="recalc()"><option selected>meses</option><option>años</option></select></span></div>
+        </div>
+        <div class="fld">
+          <label class="fld-lab">Fecha firma <span class="req">*</span></label>
+          <input type="date" class="inp mono" value="2023-08-25" />
+        </div>
+        <div class="fld">
+          <label class="fld-lab">Día cobro</label>
+          <input class="inp mono" value="25" />
+        </div>
+      </div>
+      <div class="fld-note">1.ª cuota el <span class="k">25 sep 2023</span> · sistema francés · fin <span class="k">25 ago 2043</span></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-lab">Tipo de interés</div>
+      <div class="seg full" style="margin-bottom:2px;">
+        <button onclick="setInteres(this,'fijo')">Fijo</button>
+        <button onclick="setInteres(this,'var')">Variable</button>
+        <button class="active" onclick="setInteres(this,'mixto')">Mixto</button>
+      </div>
+
+      <div class="cond-fields" id="if-fijo" style="display:none;">
+        <div class="grid-2">
+          <div class="fld"><label class="fld-lab">TIN fijo <span class="req">*</span></label><div class="inp-group"><input class="inp mono" value="2,60" oninput="recalc()" /><span class="inp-suffix">%</span></div></div>
+        </div>
+      </div>
+
+      <div class="cond-fields" id="if-var" style="display:none;">
+        <div class="grid-3">
+          <div class="fld"><label class="fld-lab">Euríbor</label><div class="inp-group"><input class="inp mono" value="2,96" /><span class="inp-suffix">%</span></div></div>
+          <div class="fld"><label class="fld-lab">Diferencial</label><div class="inp-group"><input class="inp mono" value="1,75" /><span class="inp-suffix">%</span></div></div>
+          <div class="fld"><label class="fld-lab">Revisión</label><select class="inp"><option selected>Anual</option><option>Semestral</option></select></div>
+        </div>
+      </div>
+
+      <div class="cond-fields" id="if-mixto">
+        <div class="grid-4" style="grid-template-columns: 0.8fr 1fr 1fr 1fr 1fr;">
+          <div class="fld"><label class="fld-lab">Período fijo</label><div class="inp-group"><input class="inp mono" id="i-pf" value="36" oninput="recalc()" /><span class="inp-suffix">mes</span></div></div>
+          <div class="fld"><label class="fld-lab">TIN período fijo <span class="req">*</span></label><div class="inp-group"><input class="inp mono" id="i-tin" value="2,60" oninput="recalc()" /><span class="inp-suffix">%</span></div></div>
+          <div class="fld"><label class="fld-lab">Euríbor</label><div class="inp-group"><input class="inp mono" id="i-eur" value="4,149" oninput="recalc()" /><span class="inp-suffix">%</span></div></div>
+          <div class="fld"><label class="fld-lab">Diferencial</label><div class="inp-group"><input class="inp mono" id="i-dif" value="1,750" oninput="recalc()" /><span class="inp-suffix">%</span></div></div>
+          <div class="fld"><label class="fld-lab">Revisión</label><select class="inp"><option selected>Anual</option><option>Semestral</option></select></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ AVANZADO · PLEGABLE ══ -->
+    <div class="sec-lab" style="margin: 26px 0 12px;">Condiciones avanzadas <span class="hint">· solo si tu escritura las trae</span></div>
+
+    <!-- Condiciones del banco -->
+    <div class="adv" id="adv-cond">
+      <div class="adv-head" onclick="tog('adv-cond')">
+        <div class="adv-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></div>
+        <div class="adv-tt"><div class="adv-title">Condiciones del banco</div><div class="adv-sum">días 365 · demora 5,60% · sin comisiones · amort. 0,25%</div></div>
+        <svg class="adv-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="adv-body">
+        <div class="sub-lab">Intereses</div>
+        <div class="row-tight">
+          <div class="fld w-lg"><label class="fld-lab">Base de cálculo</label><select class="inp"><option>Mes comercial (30/360)</option><option selected>Días reales / 365</option><option>Días reales / 360</option></select></div>
+          <div class="fld w-sm"><label class="fld-lab">Demora</label><div class="inp-group"><input class="inp mono" value="5,60" /><span class="inp-suffix">%</span></div></div>
+        </div>
+
+        <div class="sub-lab" style="margin-top:16px;">Comisiones</div>
+        <div class="row-tight">
+          <div class="fld w-sm"><label class="fld-lab">Apertura</label><div class="inp-group"><input class="inp mono" value="0" /><span class="inp-suffix">%</span></div></div>
+          <div class="fld w-md"><label class="fld-lab">Mantenimiento</label><div class="inp-group"><input class="inp mono" value="0" /><span class="inp-suffix">€/mes</span></div></div>
+          <div class="fld w-md"><label class="fld-lab">Modif. condiciones</label><div class="inp-group"><input class="inp mono" value="0" /><span class="inp-suffix">%</span></div></div>
+          <div class="fld w-md"><label class="fld-lab">Reclamación impago</label><div class="inp-group"><input class="inp mono" value="35" /><span class="inp-suffix">€</span></div></div>
+        </div>
+
+        <div class="sub-lab" style="margin-top:16px;">Amortización anticipada</div>
+        <div class="row-tight">
+          <div class="fld w-sm"><label class="fld-lab">Parcial</label><div class="inp-group"><input class="inp mono" value="0,25" /><span class="inp-suffix">%</span></div></div>
+          <div class="fld w-md"><label class="fld-lab">Cancelación total</label><div class="inp-group"><input class="inp mono" value="0,25" /><span class="inp-suffix">%</span></div></div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Bonificaciones -->
+    <div class="adv" id="adv-bonif">
+      <div class="adv-head" onclick="tog('adv-bonif')">
+        <div class="adv-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></div>
+        <div class="adv-tt"><div class="adv-title">Bonificaciones</div><div class="adv-sum">4 · tope 1,00 p.p.</div></div>
+        <svg class="adv-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="adv-body">
+        <div class="row-tight" style="margin-top:14px;">
+          <div class="fld w-md"><label class="fld-lab">Tope <span class="req">*</span></label><div class="inp-group"><input class="inp mono" value="1,00" /><span class="inp-suffix">p.p.</span></div></div>
+          <div class="fld w-md"><label class="fld-lab">Revisión</label><select class="inp"><option selected>Anual</option><option>Semestral</option><option>Sin revisión · fijo</option></select></div>
+          <div class="fld w-md"><label class="fld-lab">Periodo de gracia</label><select class="inp"><option selected>Ninguno</option><option>6 meses</option><option>12 meses</option></select></div>
+        </div>
+        <div class="fld" style="margin-top:13px;"><label class="fld-lab">Cómo cuentan</label><div class="seg full"><button class="active" onclick="setModo(this,'indep')">Independientes</button><button onclick="setModo(this,'casc')">En cascada</button></div></div>
+
+        <div class="blist" id="bonif-list" style="margin-top:16px;">
+          <div class="crow">
+            <span class="cnum">1</span>
+            <select class="inp"><option selected>Ingresos domiciliados</option><option>Recibos domiciliados</option><option>Uso de tarjeta</option><option>Seguro</option><option>Plan de pensiones / previsión</option><option>Fondos de inversión</option><option>Alarma / seguridad</option><option>Certificado energético</option></select>
+            <div class="inp-group"><input class="inp mono" value="2.500"><span class="inp-suffix">€/mes</span></div>
+            <div class="inp-group"><input class="inp mono" value="0,50"><span class="inp-suffix">p.p.</span></div>
+            <button class="icon-del"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
+          </div>
+          <div class="crow">
+            <span class="cnum">2</span>
+            <select class="inp"><option>Ingresos domiciliados</option><option>Recibos domiciliados</option><option>Uso de tarjeta</option><option selected>Seguro</option><option>Plan de pensiones / previsión</option><option>Fondos de inversión</option><option>Alarma / seguridad</option><option>Certificado energético</option></select>
+            <div class="inp-group"><input class="inp mono" value="vida · 100%"><span class="inp-suffix">cap.</span></div>
+            <div class="inp-group"><input class="inp mono" value="0,40"><span class="inp-suffix">p.p.</span></div>
+            <button class="icon-del"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
+          </div>
+          <div class="crow">
+            <span class="cnum">3</span>
+            <select class="inp"><option>Ingresos domiciliados</option><option>Recibos domiciliados</option><option>Uso de tarjeta</option><option selected>Seguro</option><option>Plan de pensiones / previsión</option><option>Fondos de inversión</option><option>Alarma / seguridad</option><option>Certificado energético</option></select>
+            <div class="inp-group"><input class="inp mono" value="hogar · 199"><span class="inp-suffix">€/año</span></div>
+            <div class="inp-group"><input class="inp mono" value="0,20"><span class="inp-suffix">p.p.</span></div>
+            <button class="icon-del"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
+          </div>
+          <div class="crow">
+            <span class="cnum">4</span>
+            <select class="inp"><option>Ingresos domiciliados</option><option>Recibos domiciliados</option><option>Uso de tarjeta</option><option>Seguro</option><option selected>Plan de pensiones / previsión</option><option>Fondos de inversión</option><option>Alarma / seguridad</option><option>Certificado energético</option></select>
+            <div class="inp-group"><input class="inp mono" value="1,2"><span class="inp-suffix">% cap.</span></div>
+            <div class="inp-group"><input class="inp mono" value="0,25"><span class="inp-suffix">p.p.</span></div>
+            <button class="icon-del"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
+          </div>
+        </div>
+
+        <button class="link-add"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Añadir bonificación</button>
+
+        <div class="bonif-cap">
+          <span class="foot-indep">Suman <span class="mono" style="color:var(--ink-2);font-weight:700;">−1,35 p.p.</span> · tope <span class="mono" style="color:var(--gold-ink);font-weight:700;">−1,00 p.p.</span></span>
+          <span class="foot-casc">En orden — la primera que no cumplas corta las de debajo</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Garantía · qué responde -->
+    <div class="adv" id="adv-gar">
+      <div class="adv-head" onclick="tog('adv-gar')">
+        <div class="adv-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <div class="adv-tt"><div class="adv-title">Garantía <span style="font-weight:400;color:var(--ink-5);font-size:11px;">· qué responde si dejas de pagar</span></div><div class="adv-sum">Tenderina 64 · 4D</div></div>
+        <svg class="adv-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="adv-body">
+        <div class="grid-2" style="margin-top:12px;">
+          <div class="fld"><label class="fld-lab">Inmueble hipotecado <span class="req">*</span></label><select class="inp"><option selected>Tenderina 64 · 4D</option><option>FA32 · Oviedo</option><option>Sant Fruitós</option></select></div>
+        </div>
+        <div class="helper">En un hipotecario responde el inmueble que se hipoteca. <span class="k">No tiene por qué ser donde va el dinero</span> — eso es el destino, justo abajo.</div>
+      </div>
+    </div>
+
+    <!-- Destino del capital · en qué se emplea -->
+    <div class="adv" id="adv-dest">
+      <div class="adv-head" onclick="tog('adv-dest')">
+        <div class="adv-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M13 8l4 4-4 4"/></svg></div>
+        <div class="adv-tt"><div class="adv-title">Destino del capital <span style="font-weight:400;color:var(--ink-5);font-size:11px;">· en qué se emplea el dinero</span></div><div class="adv-sum">Adquisición · Tenderina 64 · 100 %</div></div>
+        <svg class="adv-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="adv-body">
+        <div class="dest-row" style="margin-top:14px;">
+          <select class="inp"><option selected>Adquisición inmueble</option><option>Reforma o mejora</option><option>Cancelar otro préstamo</option><option>Uso personal</option><option>Circulante</option></select>
+          <select class="inp"><option selected>Tenderina 64 · 4D</option><option>FA32 · Oviedo</option><option>Sant Fruitós</option></select>
+          <div class="inp-group"><input class="inp mono" value="85.000" /><span class="inp-suffix">€</span></div>
+          <div class="inp-group"><input class="inp mono" value="100" /><span class="inp-suffix">%</span></div>
+          <button class="icon-del"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
+        </div>
+        <button class="link-add"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Añadir otro destino</button>
+        <div class="dest-ok"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Los destinos cuadran con el capital · 85.000 € / 85.000 €</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="wiz-foot">
+    <div class="foot-hint">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      Al guardar se regeneran los cargos en Tesorería y el cuadro completo
+    </div>
+    <div class="foot-actions">
+      <button class="btn btn-ghost">Cancelar</button>
+      <button class="btn btn-gold"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg> Guardar préstamo</button>
+    </div>
+  </div>
+
+  <!-- ASIDE · CÁLCULO VIVO -->
+  <div class="wiz-aside">
+    <div class="as-lab">Cálculo financiero <span class="as-live"><span class="as-dot"></span> en directo</span></div>
+
+    <div class="as-hero">
+      <div class="as-hero-lab">Cuota · tramo fijo</div>
+      <div class="as-cuota"><span id="as-cuota">454,66</span> <span class="cur">€</span></div>
+      <div class="as-hero-sub">240 cuotas · sistema francés · fin ago 2043</div>
+      <span class="as-tag">2,60 % · ago 2023 → ago 2026</span>
+    </div>
+
+    <div class="as-kpis">
+      <div class="as-kpi"><div class="as-kpi-lab">TIN tramo fijo</div><div class="as-kpi-val" id="as-tin">2,60 %</div><div class="as-kpi-sub">ago 2023 → ago 2026</div></div>
+      <div class="as-kpi as-kpi-btn" onclick="document.getElementById('as-var').classList.toggle('open')">
+        <div class="as-kpi-lab">TIN variable <svg class="as-var-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+        <div class="as-kpi-val">5,90 %</div>
+        <div class="as-kpi-sub">ago 2026 → ago 2043</div>
+      </div>
+    </div>
+
+    <div class="as-var" id="as-var">
+      <div class="as-var-row"><span>Euríbor 4,149 + 1,750</span><span class="mono">5,90 %</span></div>
+      <div class="as-var-row"><span>Cuota estimada</span><span class="mono">582 €/mes</span></div>
+      <div class="as-var-row"><span>Con bonificación máxima · 4,90 %</span><span class="mono">542 €/mes</span></div>
+      <div class="as-var-row hl as-var-btn" onclick="this.classList.toggle('open'); document.getElementById('as-bonif-det').classList.toggle('open')">
+        <span>Ahorro bonificaciones <svg class="as-bd-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        <span class="mono">−41 €/mes · −487 €/año</span>
+      </div>
+      <div class="as-bonif-det" id="as-bonif-det">
+        <div class="as-sub-row"><span>Ingresos domiciliados</span><span class="mono">−21 €/mes</span></div>
+        <div class="as-sub-row"><span>Seguro de vida</span><span class="mono">−16 €/mes</span></div>
+        <div class="as-sub-row"><span>Seguro de hogar</span><span class="mono">−8 €/mes</span></div>
+        <div class="as-sub-row"><span>Plan de pensiones</span><span class="mono">−10 €/mes</span></div>
+        <div class="as-sub-note">lo que vale cada una · el banco no baja de −1,00 p.p.</div>
+      </div>
+    </div>
+
+    <div class="as-break">
+      <div class="as-row"><span class="as-row-lab">Capital prestado</span><span class="as-row-val" id="as-cap">85.000,00 €</span></div>
+      <div class="as-row"><span class="as-row-lab">+ Intereses · estimado</span><span class="as-row-val" id="as-int">50.190,71 €</span></div>
+      <div class="as-row"><span class="as-row-lab">+ Comisión apertura</span><span class="as-row-val">0,00 €</span></div>
+      <div class="as-row total"><span class="as-row-lab">Total estimado</span><span class="as-row-val" id="as-tot">135.190,71 €</span></div>
+    </div>
+    <div style="font-size:10.5px; color:rgba(255,255,255,0.45); margin-top:8px; line-height:1.4;">Estimado proyectando el tramo variable con el Euríbor actual. Cambiará en cada revisión.</div>
+
+    <button class="as-btn" style="margin-top:16px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="4" x2="9" y2="22"/></svg>
+      Ver cuadro de amortización · 240 líneas
+    </button>
+  </div>
+
+</div>
+
+<script>
+  function tog(id){ document.getElementById(id).classList.toggle('open'); }
+
+  function setModo(btn, modo){
+    btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('bonif-list').classList.toggle('cascade', modo==='casc');
+  }
+
+  function pick(el){
+    el.parentElement.querySelectorAll('.rcard').forEach(c=>c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function setInteres(btn, tipo){
+    btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('if-fijo').style.display = tipo==='fijo'?'block':'none';
+    document.getElementById('if-var').style.display  = tipo==='var'?'block':'none';
+    document.getElementById('if-mixto').style.display= tipo==='mixto'?'block':'none';
+    recalc();
+  }
+
+  function num(v){ return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0; }
+  function eur(v){ return v.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+  function cuotaFrancesa(C, i, n){ return i===0 ? C/n : C*i/(1-Math.pow(1+i,-n)); }
+
+  function recalc(){
+    const C = num(document.getElementById('i-capital').value);
+    let n = parseInt(document.getElementById('i-plazo').value)||0;
+    const mixto = document.getElementById('if-mixto').style.display!=='none';
+    const fijo  = document.getElementById('if-fijo').style.display!=='none';
+    if(!C||!n){ return; }
+
+    let cuota, total, intereses, tinFijo;
+
+    if(mixto){
+      tinFijo = num(document.getElementById('i-tin').value);
+      const pf  = parseInt(document.getElementById('i-pf').value)||0;   // meses tramo fijo
+      const eu  = num(document.getElementById('i-eur').value);
+      const dif = num(document.getElementById('i-dif').value);
+      const i1 = tinFijo/100/12;
+      cuota = cuotaFrancesa(C, i1, n);                                   // cuota tramo fijo (plazo total, tipo fijo)
+      // capital pendiente tras el tramo fijo
+      let Cpend = C*Math.pow(1+i1,pf) - cuota*((Math.pow(1+i1,pf)-1)/i1);
+      const i2 = (eu+dif)/100/12;
+      const cuotaVar = cuotaFrancesa(Cpend, i2, n-pf);
+      total = cuota*pf + cuotaVar*(n-pf);
+      intereses = total - C;
+    } else {
+      tinFijo = fijo ? num(document.querySelector('#if-fijo input').value) : num(document.querySelector('#if-var input').value);
+      if(!tinFijo){ return; }
+      const i = tinFijo/100/12;
+      cuota = cuotaFrancesa(C, i, n);
+      total = cuota*n;
+      intereses = total - C;
+    }
+
+    document.getElementById('as-cuota').textContent = cuota.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+    document.getElementById('as-cap').textContent = eur(C);
+    document.getElementById('as-int').textContent = eur(intereses);
+    document.getElementById('as-tot').textContent = eur(total);
+    document.getElementById('as-tin').textContent = tinFijo.toFixed(2).replace('.',',')+' %';
+  }
+</script>
+</body>
+</html>

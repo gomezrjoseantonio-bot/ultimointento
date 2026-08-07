@@ -16,7 +16,12 @@
 // Puro: no lee la base ni el reloj.
 // ============================================================================
 
-import type { Bonificacion } from '../../types/prestamos';
+import type {
+  Bonificacion,
+  ModoBonificaciones,
+  ReglaBonificacion,
+  TramoDeRebaja,
+} from '../../types/prestamos';
 import type { Cumplimiento } from './cumplimiento';
 
 /**
@@ -68,12 +73,20 @@ export function estaAplicada(b: Pick<Bonificacion, 'estado'>): boolean {
   return APLICADA[b.estado] === true;
 }
 
-/** Los dos topes que puede traer un préstamo · cada uno en SU unidad. */
-export interface TopesDeBonificacion {
+/**
+ * Lo que el ANEXO dice sobre el conjunto · los topes y cómo cuentan entre sí.
+ *
+ * Se le pasa el `Prestamo` entero en todas las llamadas: sus campos encajan por
+ * forma, y así no hay que acordarse de traer el modo aparte cada vez —que es
+ * como se llega a que la mitad de la app capa y la otra mitad suma—.
+ */
+export interface ReglasDelAnexo {
   /** Fracción · `0.006` son 0,60 puntos. Así está documentado en el tipo. */
   maximoBonificacionPorcentaje?: number;
   /** Ya en puntos porcentuales · «-1,00 p.p.». Se lee su magnitud. */
   topeBonificacionesTotal?: number;
+  /** Ausente = `INDEPENDIENTES`, que es lo que ATLAS venía haciendo. */
+  modoBonificaciones?: ModoBonificaciones;
 }
 
 /**
@@ -84,7 +97,7 @@ export interface TopesDeBonificacion {
  * pero el día que se escriban, tratarlos igual habría dividido un tope por cien
  * o multiplicado el otro.
  */
-function topeEnPuntos(topes: TopesDeBonificacion): number | null {
+function topeEnPuntos(topes: ReglasDelAnexo): number | null {
   const { maximoBonificacionPorcentaje: fraccion, topeBonificacionesTotal: puntos } = topes;
   if (typeof fraccion === 'number' && Number.isFinite(fraccion) && fraccion > 0) {
     return fraccion * 100;
@@ -96,6 +109,51 @@ function topeEnPuntos(topes: TopesDeBonificacion): number | null {
 }
 
 /**
+ * La cifra que el anexo exige, cuando la exige · en la unidad de su regla.
+ *
+ * Es lo que decide qué escalón de `rebajaPorTramos` rige, y por eso vive aquí y
+ * no en la pantalla: la rebaja que sale de un escalón es la que se paga, así que
+ * quien la calcule tiene que leer el umbral por el mismo sitio que el resto.
+ *
+ * Exhaustiva a propósito, como las demás tablas de este módulo: una regla nueva
+ * no compila hasta que alguien decida si trae cifra y cuál es.
+ */
+function umbralDeclarado(regla: ReglaBonificacion | undefined): number | null {
+  if (!regla) return null;
+  switch (regla.tipo) {
+    case 'NOMINA':          return regla.minimoMensual ?? null;
+    case 'RECIBOS':         return regla.minimoRecibos ?? null;
+    case 'TARJETA':         return regla.importeMinimo ?? regla.movimientosMesMin ?? null;
+    case 'PLAN_PENSIONES':  return regla.aportacionAnual ?? null;
+    case 'SEGURO_HOGAR':    return regla.primaAnual ?? null;
+    case 'SEGURO_VIDA':     return regla.capitalAseguradoPct ?? null;
+    case 'FONDOS':          return regla.saldoMinimo ?? null;
+    // La letra de un certificado no es una cantidad, y la alarma y la condición
+    // escrita a mano no traen ninguna: no hay escalón que elegir.
+    case 'CERTIFICADO_ENERGETICO':
+    case 'ALARMA':
+    case 'OTRA':            return null;
+  }
+}
+
+/**
+ * El escalón que rige · el mayor `desde` que el umbral declarado alcanza.
+ *
+ * Por debajo del primero no rebaja nada, que es lo que dice el anexo: «desde
+ * 2.000 €» no promete nada a quien domicilie mil. Y sin umbral declarado
+ * tampoco se elige ninguno — inventar el escalón alto enseñaría una cuota más
+ * baja de la que se paga, que es el error que sí arruina un mes.
+ */
+function puntosDelEscalon(tramos: TramoDeRebaja[], umbral: number | null): number {
+  if (umbral == null || !Number.isFinite(umbral)) return 0;
+
+  return tramos
+    .filter((t) => Number.isFinite(t?.desde) && Number.isFinite(t?.pp) && umbral >= t.desde)
+    .reduce((mejor, t) => (t.desde >= mejor.desde ? t : mejor), { desde: -Infinity, pp: 0 })
+    .pp;
+}
+
+/**
  * Lo que rebaja una bonificación, en puntos porcentuales.
  *
  * `reduccionPuntosPorcentuales` se guarda **en puntos**: el asistente escribe
@@ -103,12 +161,63 @@ function topeEnPuntos(topes: TopesDeBonificacion): number | null {
  * asistente y el servicio de cálculo; solo la capa de presentación lo
  * multiplicaba por cien, y con ello una bonificación normal se habría comido
  * treinta puntos de TIN.
+ *
+ * Los escalones mandan sobre la cifra fija cuando los hay, y el sublímite capa
+ * el resultado de las dos vías: un anexo puede pactar escalones y además decir
+ * «por este concepto, hasta 0,30 p.p.».
  */
-function puntosDe(b: Bonificacion): number {
+export function puntosDe(b: Bonificacion): number {
+  const escalones = (b.rebajaPorTramos ?? []).filter(Boolean);
+  const bruto = escalones.length > 0
+    ? puntosDelEscalon(escalones, umbralDeclarado(b.regla))
+    : puntosFijosDe(b);
+
+  const sublimite = Number(b.sublimitePP);
+  const acotado = Number.isFinite(sublimite) && sublimite > 0
+    ? Math.min(bruto, sublimite)
+    : bruto;
+
+  return Math.max(0, Math.round(acotado * 10000) / 10000);
+}
+
+/** La cifra fija · con `impacto.puntos` como respaldo de los datos viejos. */
+function puntosFijosDe(b: Bonificacion): number {
   const puntos = Number(b.reduccionPuntosPorcentuales);
   if (Number.isFinite(puntos) && puntos !== 0) return Math.abs(puntos);
   // Los `impacto.puntos` van firmados en negativo («−0,10 p.p.»).
   return Math.abs(Number(b.impacto?.puntos ?? 0)) || 0;
+}
+
+/**
+ * Las que cuentan, en el orden en que cuentan · §6 ter.
+ *
+ * En `INDEPENDIENTES` son todas las aplicadas, y el orden da igual.
+ *
+ * En `CASCADA` el anexo las encadena, así que se recorren por `orden` y **la
+ * primera que no está aplicada corta las de debajo**, cumplan o no. Sumarlas
+ * como si fueran independientes es el error caro: enseña una cuota más baja de
+ * la que el banco va a cobrar, y sobre ella se hacen cuentas.
+ *
+ * `orden` ausente se lee como la posición en la lista, que es el orden en que
+ * se guardaron y en que se ven en pantalla.
+ */
+export function bonificacionesQueCuentan(
+  bonificaciones: Bonificacion[] | undefined,
+  modo: ModoBonificaciones | undefined,
+): Bonificacion[] {
+  const todas = bonificaciones ?? [];
+  if (modo !== 'CASCADA') return todas.filter(estaAplicada);
+
+  const enOrden = todas
+    .map((b, i) => ({ b, orden: Number.isFinite(Number(b.orden)) ? Number(b.orden) : i }))
+    .sort((x, y) => x.orden - y.orden);
+
+  const cuentan: Bonificacion[] = [];
+  for (const { b } of enOrden) {
+    if (!estaAplicada(b)) break;
+    cuentan.push(b);
+  }
+  return cuentan;
 }
 
 /**
@@ -118,10 +227,9 @@ function puntosDe(b: Bonificacion): number {
  */
 export function reduccionPorBonificaciones(
   bonificaciones: Bonificacion[] | undefined,
-  topes: TopesDeBonificacion = {}
+  topes: ReglasDelAnexo = {}
 ): number {
-  const suma = (bonificaciones ?? [])
-    .filter(estaAplicada)
+  const suma = bonificacionesQueCuentan(bonificaciones, topes.modoBonificaciones)
     .reduce((total, b) => total + puntosDe(b), 0);
 
   const tope = topeEnPuntos(topes);
@@ -139,7 +247,7 @@ export function reduccionPorBonificaciones(
 export function tinConBonificaciones(
   tinBase: number,
   bonificaciones: Bonificacion[] | undefined,
-  topes: TopesDeBonificacion = {}
+  topes: ReglasDelAnexo = {}
 ): number {
   const base = Number.isFinite(tinBase) ? tinBase : 0;
   return Math.max(0, Math.round((base - reduccionPorBonificaciones(bonificaciones, topes)) * 10000) / 10000);
@@ -166,7 +274,7 @@ export function tinSiRevisaranHoy(
   tinBase: number,
   bonificaciones: Bonificacion[] | undefined,
   cumplimientos: Cumplimiento[],
-  topes: TopesDeBonificacion = {}
+  topes: ReglasDelAnexo = {}
 ): number {
   const incumplidas = new Set(
     cumplimientos.filter((c) => c.veredicto === 'no_cumple').map((c) => c.bonificacionId)

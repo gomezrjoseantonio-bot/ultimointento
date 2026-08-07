@@ -1,0 +1,363 @@
+/* ============================================================
+   ATLAS V5 · Panel de cálculo en vivo · columna derecha del wizard
+   Mockup canónico · docs/mockups/atlas-wizard-prestamo-v1.html
+
+   Vive aparte de `PrestamoPageV2.module.css` porque es OTRA superficie:
+   todo lo de aquí se pinta sobre navy y no comparte una sola regla con el
+   formulario de la izquierda. Juntos pasaban de las 800 líneas a partir de
+   las cuales este repo pide trocear.
+
+   El oro aparece SOLO en la cifra-veredicto (la cuota del hero).
+   ============================================================ */
+
+.aside {
+  /* Declarados aquí y no heredados del formulario · este fichero se sostiene
+     solo, y el oro translúcido sobre navy no tiene token global. */
+  --p-gold-wash: rgba(217, 181, 118, 0.16);
+  --p-gold-wash-soft: rgba(217, 181, 118, 0.1);
+  --p-gold-line: rgba(217, 181, 118, 0.3);
+  --p-r-md: 9px;
+
+  grid-area: aside;
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-on-navy-1);
+  overflow-y: auto;
+  padding: 22px 22px 24px;
+}
+.aside::-webkit-scrollbar { width: 8px; }
+.aside::-webkit-scrollbar-thumb {
+  background: var(--atlas-v5-border-translucent-strong);
+  border-radius: 6px;
+}
+.asLab {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--atlas-v5-on-navy-5);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.asLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  color: var(--atlas-v5-gold-soft);
+  letter-spacing: 0.06em;
+}
+.asDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold-soft);
+  animation: asPulse 2s infinite;
+}
+@keyframes asPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .asDot { animation: none; }
+}
+
+.asHero { margin: 16px 0 18px; }
+.asHeroLab {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-on-navy-5);
+  font-weight: 700;
+}
+/* La cifra-veredicto · el ÚNICO oro del panel. */
+.asCuota {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--atlas-v5-gold-2);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-top: 8px;
+}
+.asCuotaCur {
+  font-size: 24px;
+  color: var(--atlas-v5-gold-soft);
+}
+.asHeroSub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-on-navy-4);
+  margin-top: 9px;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+.asTag {
+  display: inline-block;
+  margin-top: 9px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--p-gold-wash);
+  color: var(--atlas-v5-gold-soft);
+  border: 1px solid var(--p-gold-line);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.asAlert {
+  display: flex;
+  gap: 10px;
+  padding: 12px 13px;
+  border-radius: var(--p-r-md);
+  background: var(--p-gold-wash-soft);
+  border: 1px solid var(--p-gold-line);
+  margin-bottom: 16px;
+}
+.asAlert svg {
+  color: var(--atlas-v5-gold-soft);
+  flex-shrink: 0;
+  margin-top: 1px;
+  width: 15px;
+  height: 15px;
+}
+.asAlertT {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--atlas-v5-on-navy-1);
+}
+.asAlertS {
+  font-size: 11px;
+  color: var(--atlas-v5-on-navy-4);
+  margin-top: 2px;
+  line-height: 1.4;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.asKpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.asKpi {
+  background: var(--atlas-v5-on-brand-fill);
+  border: 1px solid var(--atlas-v5-border-translucent);
+  border-radius: var(--p-r-md);
+  padding: 12px 13px;
+  text-align: left;
+}
+.asKpiBtn { cursor: pointer; transition: background 0.12s; }
+.asKpiBtn:hover { background: var(--atlas-v5-hover-navy); }
+.asKpiLab {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--atlas-v5-on-navy-5);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.asKpiLab svg {
+  width: 11px;
+  height: 11px;
+  color: var(--atlas-v5-gold-soft);
+  transition: transform 0.18s;
+}
+.asKpiOpen .asKpiLab svg { transform: rotate(180deg); }
+.asKpiVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--atlas-v5-on-navy-1);
+  margin-top: 5px;
+  letter-spacing: -0.02em;
+}
+.asKpiSub {
+  font-size: 10px;
+  color: var(--atlas-v5-on-navy-5);
+  margin-top: 3px;
+}
+
+.asVar {
+  margin: -6px 0 16px;
+  background: var(--atlas-v5-on-brand-fill);
+  border: 1px solid var(--atlas-v5-hover-navy);
+  border-radius: var(--p-r-md);
+  padding: 6px 13px;
+}
+.asVarRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 11.5px;
+  color: var(--atlas-v5-on-navy-4);
+  border-bottom: 1px solid var(--atlas-v5-on-brand-line);
+  width: 100%;
+  text-align: left;
+}
+.asVarRow:last-child { border-bottom: none; }
+.asVarRow .mono {
+  color: var(--atlas-v5-on-navy-2);
+  font-weight: 600;
+}
+.asVarRowHl > span:first-child {
+  color: var(--atlas-v5-on-navy-1);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.asVarRowHl .mono {
+  color: var(--atlas-v5-gold-2);
+  font-weight: 700;
+}
+.asVarBtn { cursor: pointer; border: none; background: none; }
+.asVarBtn:hover { opacity: 0.85; }
+.asBdChev {
+  width: 11px;
+  height: 11px;
+  color: var(--atlas-v5-gold-soft);
+  transition: transform 0.18s;
+}
+.asBdChevOpen { transform: rotate(180deg); }
+.asBonifDet {
+  padding: 2px 0 2px 12px;
+  margin-top: 2px;
+  border-left: 2px solid var(--p-gold-line);
+}
+.asSubRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 11px;
+  color: var(--atlas-v5-on-navy-5);
+}
+.asSubRow .mono {
+  color: var(--atlas-v5-on-navy-3);
+  font-weight: 600;
+}
+.asSubNote {
+  font-size: 10px;
+  color: var(--atlas-v5-on-navy-6);
+  padding-top: 5px;
+  line-height: 1.4;
+}
+
+.asBreak {
+  border-top: 1px solid var(--atlas-v5-on-brand-line);
+  padding-top: 14px;
+}
+.asRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 12px;
+}
+.asRowLab { color: var(--atlas-v5-on-navy-4); }
+.asRowVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: 600;
+  color: var(--atlas-v5-on-navy-2);
+  white-space: nowrap;
+}
+.asRowTotal {
+  border-top: 1px solid var(--atlas-v5-on-brand-border);
+  margin-top: 6px;
+  padding-top: 11px;
+}
+.asRowTotal .asRowLab {
+  color: var(--atlas-v5-on-navy-1);
+  font-weight: 700;
+  font-size: 13px;
+}
+.asRowTotal .asRowVal {
+  color: var(--atlas-v5-on-navy-1);
+  font-weight: 700;
+  font-size: 15px;
+}
+.asNota {
+  font-size: 10.5px;
+  color: var(--atlas-v5-on-navy-6);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+.asBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px;
+  border-radius: 8px;
+  background: var(--atlas-v5-on-brand-fill);
+  border: 1px solid var(--atlas-v5-on-brand-border);
+  color: var(--atlas-v5-on-navy-1);
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-top: 16px;
+  cursor: pointer;
+}
+.asBtn:hover {
+  background: var(--atlas-v5-on-brand-line);
+  border-color: var(--atlas-v5-hover-navy-strong);
+}
+.asVacio {
+  font-size: 12px;
+  color: var(--atlas-v5-on-navy-5);
+  margin-top: 18px;
+  line-height: 1.5;
+}
+
+/* ─── Cuadro de amortización ─────────────────────────────────── */
+.cuadroTabla {
+  margin-top: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--atlas-v5-border-translucent-strong);
+  border-radius: 8px;
+}
+.cuadroTabla table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+}
+.cuadroTabla th {
+  position: sticky;
+  top: 0;
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-on-navy-3);
+  font-weight: 700;
+  text-align: right;
+  padding: 7px 8px;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.cuadroTabla th:first-child,
+.cuadroTabla td:first-child { text-align: left; }
+.cuadroTabla td {
+  padding: 5px 8px;
+  text-align: right;
+  color: var(--atlas-v5-on-navy-3);
+  border-top: 1px solid var(--atlas-v5-on-brand-line);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+.cuadroTablaCarencia td {
+  color: var(--atlas-v5-gold-soft);
+  background: var(--p-gold-wash-soft);
+}
+
+/* El panel la usa en selectores descendentes · un módulo CSS hashea por
+   fichero, así que `.asVarRow .mono` no casaría con la del formulario. */
+.mono {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}

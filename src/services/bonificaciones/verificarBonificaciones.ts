@@ -62,6 +62,8 @@ const SIN_FUENTE: Record<
   PLAN_PENSIONES: 'la aportación al plan todavía no se sigue en tesorería',
   SEGURO_HOGAR: 'un seguro se prueba con su póliza, no con un movimiento',
   SEGURO_VIDA: 'un seguro se prueba con su póliza, no con un movimiento',
+  FONDOS: 'el saldo en fondos se prueba con la posición, no con un movimiento',
+  CERTIFICADO_ENERGETICO: 'la letra la dice el certificado del inmueble, no la tesorería',
   ALARMA: 'la alarma se prueba con su contrato, no con un movimiento',
   OTRA: 'una condición escrita a mano no dice qué hay que mirar',
 };

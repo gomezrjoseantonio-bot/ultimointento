@@ -247,6 +247,20 @@ export interface Prestamo {
   bonificaciones?: Bonificacion[];
   maximoBonificacionPorcentaje?: number;     // maximum total bonification allowed (e.g., 0.006 = 0.60%)
   /**
+   * Cómo cuentan entre sí las bonificaciones del anexo · §6 ter.
+   *
+   *   · `INDEPENDIENTES` · cada una vale por sí misma y se suman las cumplidas.
+   *     Es lo normal, y es lo que ATLAS venía haciendo.
+   *   · `CASCADA` · van en orden, y **la primera que no cumples corta las de
+   *     debajo**. Lo escriben algunos anexos —«se aplicará el escalón siguiente
+   *     únicamente si se mantiene el anterior»— y sin este campo se guardaban
+   *     como si sumaran, que enseña una cuota más baja de la que se paga.
+   *
+   * Ausente = `INDEPENDIENTES`. Cambiar el valor por defecto habría movido la
+   * cuota de todos los préstamos ya guardados sin que nadie lo pidiera.
+   */
+  modoBonificaciones?: ModoBonificaciones;
+  /**
    * Cada cuántos meses mira el banco si cumples · lo normal, 6 o 12 (§6 ter).
    *
    * Una bonificación no se pierde el día que dejas de cumplirla: se pierde el
@@ -510,10 +524,54 @@ export interface AfectacionInmueblePrestamo {
   tipoRelacion?: 'GARANTIA' | 'DESTINO_CAPITAL' | 'MIXTA';
 }
 
+/** Cómo cuentan entre sí las bonificaciones de un préstamo · §6 ter. */
+export type ModoBonificaciones = 'INDEPENDIENTES' | 'CASCADA';
+
+/**
+ * Un escalón de la rebaja · «desde 2.000 € rebaja 0,30; desde 3.000 €, 0,50».
+ *
+ * Hay anexos que no pagan una cifra fija por cumplir, sino una que sube con lo
+ * que aportas. Guardar solo la mayor diría que rebaja más de lo que rebaja, y
+ * guardar solo la menor, menos: las dos versiones enseñan una cuota que no es.
+ */
+export interface TramoDeRebaja {
+  /** Desde qué valor del umbral rige, incluido · en la unidad de la regla. */
+  desde: number;
+  /** Lo que rebaja a partir de ahí, en PUNTOS PORCENTUALES · `0.30`. */
+  pp: number;
+}
+
 export interface Bonificacion {
   id: string;
-  tipo: 'NOMINA'|'RECIBOS'|'SEGURO_HOGAR'|'SEGURO_VIDA'|'TARJETA'|'PENSIONES'|'ALARMA'|'OTROS';
+  tipo: 'NOMINA'|'RECIBOS'|'SEGURO_HOGAR'|'SEGURO_VIDA'|'TARJETA'|'PENSIONES'|'FONDOS'|'CERTIFICADO_ENERGETICO'|'ALARMA'|'OTROS';
   nombre: string;                 // "Nómina", "Seguro hogar", "Tarjeta"…
+  /**
+   * En qué puesto va, cuando el anexo las encadena · solo lo lee `CASCADA`.
+   *
+   * En modo independiente no dice nada y no se mira: ahí el orden de la lista
+   * es presentación, no contrato. Ausente = el orden en que están guardadas.
+   */
+  orden?: number;
+  /**
+   * El tope de ESTA bonificación, en puntos porcentuales.
+   *
+   * Distinto del tope del préstamo (`topeBonificacionesTotal`), que capa la
+   * suma. Este capa una sola, y existe porque hay anexos que ponen las dos
+   * cosas: «por domiciliaciones, hasta 0,30 p.p.» dentro de un anexo que además
+   * no baja de un punto en total. Sin él, una rebaja escalonada podría pasarse
+   * de su propio máximo aunque el total cupiera bajo el tope general.
+   *
+   * Ausente = esta bonificación no trae tope propio.
+   */
+  sublimitePP?: number;
+  /**
+   * La rebaja cuando NO es una cifra fija · escalones sobre el umbral.
+   *
+   * Manda sobre `reduccionPuntosPorcentuales` cuando está: se toma el escalón
+   * cuyo `desde` es el mayor que no supera el umbral declarado. Por debajo del
+   * primer escalón no rebaja nada, que es lo que dice el anexo.
+   */
+  rebajaPorTramos?: TramoDeRebaja[];
   /**
    * Lo que rebaja, **en puntos porcentuales** · `0.30` es «−0,30 p.p.».
    *
@@ -566,10 +624,41 @@ export interface Bonificacion {
 
 export type ReglaBonificacion =
   | { tipo: 'NOMINA'; minimoMensual: number }
-  | { tipo: 'PLAN_PENSIONES'; activo: boolean }
-  | { tipo: 'SEGURO_HOGAR'; activo: boolean }
-  | { tipo: 'SEGURO_VIDA'; activo: boolean }
+  /**
+   * Plan de pensiones o previsión · «aportar al menos N € al año».
+   *
+   * `activo` era todo lo que se podía decir, y por eso una condición con cifra
+   * —la habitual— se guardaba como «lo tengo contratado». `aportacionAnual`
+   * ausente sigue significando eso: contratado, sin cifra dicha.
+   */
+  | { tipo: 'PLAN_PENSIONES'; activo: boolean; aportacionAnual?: number }
+  /** El seguro del inmueble · `primaAnual` en EUROS AL AÑO, si el anexo la dice. */
+  | { tipo: 'SEGURO_HOGAR'; activo: boolean; primaAnual?: number }
+  /**
+   * El seguro de vida · `capitalAseguradoPct` en % DEL CAPITAL del préstamo.
+   *
+   * Es como lo escriben los anexos —«vida por el 100 % del capital»— y no en
+   * euros: el capital baja con cada cuota, así que una cifra fija diría otra
+   * cosa dentro de diez años.
+   */
+  | { tipo: 'SEGURO_VIDA'; activo: boolean; capitalAseguradoPct?: number }
   | { tipo: 'TARJETA'; movimientosMesMin?: number; importeMinimo?: number }
+  /**
+   * Fondos de inversión o valores · «mantener N € en la entidad».
+   *
+   * Se guarda el SALDO exigido, no lo aportado: el anexo mira lo que hay, y
+   * quien aportó hace tres años sigue cumpliendo sin aportar este mes.
+   */
+  | { tipo: 'FONDOS'; saldoMinimo?: number }
+  /**
+   * Certificado de eficiencia energética del inmueble.
+   *
+   * La condición es una LETRA («A», «B», «C»…), no un número: son las que
+   * emite el certificado, y traducirlas a una escala numérica propia sería
+   * inventarse una equivalencia que nadie ha escrito. Ausente = el anexo pide
+   * el certificado sin decir letra mínima.
+   */
+  | { tipo: 'CERTIFICADO_ENERGETICO'; letraMinima?: string }
   /**
    * Recibos domiciliados · «tener domiciliados al menos N recibos».
    *

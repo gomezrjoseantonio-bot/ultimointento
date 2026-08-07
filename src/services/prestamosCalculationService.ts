@@ -307,6 +307,14 @@ export class PrestamosCalculationService {
         return 'Mantener seguro de hogar activo';
       case 'SEGURO_VIDA':
         return 'Mantener seguro de vida activo';
+      case 'FONDOS':
+        return bonification.regla.saldoMinimo
+          ? `Mantener ≥ ${bonification.regla.saldoMinimo} € en fondos`
+          : 'Mantener los fondos contratados';
+      case 'CERTIFICADO_ENERGETICO':
+        return bonification.regla.letraMinima
+          ? `Certificado energético ${bonification.regla.letraMinima} o mejor`
+          : 'Aportar el certificado energético';
       case 'TARJETA':
         const tarjetaReqs = [];
         if (bonification.regla.movimientosMesMin) {
