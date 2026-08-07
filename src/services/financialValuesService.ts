@@ -34,8 +34,16 @@ const localFinancialValuesRepository: FinancialValuesRepository = {
     }
   },
   async write(snapshot) {
-    const db = await initDB();
-    await db.put('keyval', snapshot as never, STORAGE_KEY);
+    try {
+      const db = await initDB();
+      await db.put('keyval', snapshot as never, STORAGE_KEY);
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? `No se pudo persistir la actualización local: ${error.message}`
+          : 'No se pudo persistir la actualización local',
+      );
+    }
   },
 };
 

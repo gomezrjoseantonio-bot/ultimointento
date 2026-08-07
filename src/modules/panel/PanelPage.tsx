@@ -19,7 +19,7 @@
 // sección (HeroPatrimonio · ComoVaElMes · PuedesEstarTranquilo · AccionesRapidas)
 // son presentacionales.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard } from 'lucide-react';
 import { PageHead } from '../../design-system/v5';
@@ -86,6 +86,7 @@ const magnitud = (ev: TreasuryEvent, usarActual = false): number =>
 
 const PanelPage: React.FC = () => {
   const navigate = useNavigate();
+  const isMountedRef = useRef(true);
 
   // El Panel NO hace scroll (requisito duro) · el par outer/inner escala el
   // contenido si no cabe en la altura disponible. Los wrappers se montan
@@ -103,6 +104,12 @@ const PanelPage: React.FC = () => {
       alive = false;
     };
   }, [navigate]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Proyección libertad financiera real (renta pasiva neta vs gasto objetivo).
   const { data: libertadData, loading: libertadLoading, error: libertadError } =
@@ -152,6 +159,7 @@ const PanelPage: React.FC = () => {
         db.getAll('contracts') as Promise<Contract[]>,
         db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
       ]);
+      if (!isMountedRef.current) return;
       setProperties(props);
       setCartaItems(items);
       setAccounts(accs);
@@ -162,11 +170,13 @@ const PanelPage: React.FC = () => {
       if (ctx?.nombre) setNombreUsuario(ctx.nombre);
 
       const escenarios = (await db.getAll('escenarios')) as Escenario[];
+      if (!isMountedRef.current) return;
       setEscenario(escenarios[0] ?? null);
 
       try {
         const matcher =
           await valoracionesService.getMapValoracionesMasRecientesConMatchingPorNombre('inmueble');
+        if (!isMountedRef.current) return;
         setValoracionMatcher(matcher);
       } catch (e) {
         // eslint-disable-next-line no-console
@@ -174,9 +184,9 @@ const PanelPage: React.FC = () => {
       }
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('[panel] error cargando datos', err);
+      if (isMountedRef.current) console.error('[panel] error cargando datos', err);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   }, []);
 

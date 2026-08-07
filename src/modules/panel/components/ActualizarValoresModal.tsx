@@ -161,11 +161,17 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
 
       const realEstateValuations = form.realEstateValuations.map((item) => ({
         ...item,
-        value: parseNumericField(String(item.value), `la valoración de ${item.name}`),
+        value: parseNumericField(
+          Number.isNaN(item.value) ? '' : String(item.value),
+          `la valoración de ${item.name}`,
+        ),
       }));
       const investmentValuations = form.investmentValuations.map((item) => ({
         ...item,
-        value: parseNumericField(String(item.value), `la valoración de ${item.name}`),
+        value: parseNumericField(
+          Number.isNaN(item.value) ? '' : String(item.value),
+          `la valoración de ${item.name}`,
+        ),
       }));
 
       const snapshot = await saveFinancialValuesSnapshot({
