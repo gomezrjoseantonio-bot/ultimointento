@@ -1995,6 +1995,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                         <option key={b} value={b}>{NOMBRE_DE_LA_BASE[b]}</option>
                       ))}
                     </select>
+                    <div className={styles.helper}>
+                      Es una cláusula de tu escritura · mueve <b>la cuota</b>, no solo el desglose
+                    </div>
                   </div>
                   <div className={`${styles.fld} ${styles.wSm}`}>
                     <label className={styles.fldLab} htmlFor="p-demora">Demora</label>

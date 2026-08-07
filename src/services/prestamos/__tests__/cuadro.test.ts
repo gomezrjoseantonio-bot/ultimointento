@@ -522,11 +522,13 @@ describe('la base de cálculo', () => {
       .toBeGreaterThan(conBase('ACT/365').resumen.totalIntereses);
   });
 
-  // La cuota sale del tipo entre doce y no la toca la base · lo que cambia es
-  // cuánto de esa cuota es interés y cuánto capital.
-  it('la cuota NO cambia · lo que cambia es el desglose', () => {
+  // Aquí decía «la cuota NO cambia · lo que cambia es el desglose», y era
+  // mentira: la cuota constante que amortiza a cero depende de lo que devengue
+  // cada periodo, y con días reales cada uno devenga lo suyo. Contando sobre
+  // 360 se debe más, así que la cuota es MÁS ALTA que contando sobre 365.
+  it('la cuota también cambia con la base · más cara sobre 360', () => {
     expect(conBase('ACT/360').resumen.cuotaMensual)
-      .toBe(conBase('ACT/365').resumen.cuotaMensual);
+      .toBeGreaterThan(conBase('ACT/365').resumen.cuotaMensual);
   });
 
   it('y el cuadro sigue cerrando en cero con cualquiera', () => {
@@ -535,6 +537,71 @@ describe('la base de cálculo', () => {
 
       expect(p[p.length - 1].principalFinal).toBe(0);
     }
+  });
+
+  // El de arriba no puede fallar nunca: la última cuota se lleva lo que quede,
+  // así que el cuadro cierra en cero aunque la cuota esté mal y la deriva se
+  // haya ido acumulando doscientos meses. Lo que hay que mirar es si la última
+  // se parece a las demás — con la cuota vieja, la de la Unicaja se desviaba
+  // unos 21 €.
+  it('y la última cuota se parece a las otras · no tapa una deriva', () => {
+    for (const base of ['30/360', 'ACT/360', 'ACT/365'] as const) {
+      const p = conBase(base).plan.periodos;
+      const ultima = p[p.length - 1];
+      const penultima = p[p.length - 2];
+
+      expect(Math.abs(ultima.cuota - penultima.cuota)).toBeLessThan(1);
+    }
+  });
+});
+
+// ── El candado · la escritura de Unicaja ────────────────────────────────────
+//
+// 85.000 € a 240 meses, 2,600 % los primeros 36, después Euríbor + 1,750,
+// ACT/365, firma el 25-08-2023 y cargo el 25. Su cuadro empieza en **454,66 €**.
+//
+// ATLAS decía 454,57 € porque resolvía la anualidad con el tipo entre doce
+// —la fórmula cerrada— mientras liquidaba los intereses contando días reales.
+// Dos cuentas distintas dentro del mismo cuadro: la cuota no daba de sí para
+// amortizar lo que el calendario devengaba, y la deriva la absorbía la cuota
+// 240, que nadie mira *(Jose · 6 ago 2026: «la cuota no son 454,57 son
+// 454,66»)*.
+describe('contra la escritura de Unicaja', () => {
+  const unicaja = () =>
+    generarCuadro(
+      prestamo({
+        principalInicial: 85000,
+        plazoMesesTotal: 240,
+        tipoNominalAnualFijo: 2.6,
+        fechaFirma: '2023-08-25',
+        fechaPrimerCargo: '2023-09-25',
+        diaCargoMes: 25,
+        carenciaTecnica: undefined,
+        baseCalculoIntereses: 'ACT/365',
+      })
+    );
+
+  it('la cuota del tramo fijo son 454,66 €', () => {
+    expect(unicaja().resumen.cuotaMensual).toBe(454.66);
+  });
+
+  // Contando el mes comercial son 454,57 · la diferencia es la base, y por eso
+  // no se puede presumir: mueve la cuota, no solo el desglose.
+  it('y con el mes comercial serían 454,57 €', () => {
+    expect(
+      generarCuadro(
+        prestamo({
+          principalInicial: 85000,
+          plazoMesesTotal: 240,
+          tipoNominalAnualFijo: 2.6,
+          fechaFirma: '2023-08-25',
+          fechaPrimerCargo: '2023-09-25',
+          diaCargoMes: 25,
+          carenciaTecnica: undefined,
+          baseCalculoIntereses: '30/360',
+        })
+      ).resumen.cuotaMensual
+    ).toBe(454.57);
   });
 });
 

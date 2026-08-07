@@ -2,9 +2,8 @@
 // Cómo cuenta los días el banco · VOCABULARIO §6 bis · bis
 // ============================================================================
 //
-// La cuota de un préstamo francés se calcula siempre igual, con el tipo entre
-// doce. Pero **el interés que el banco liquida cada mes no sale de ahí**: sale
-// de contar días.
+// **El interés que el banco liquida cada mes no sale del tipo entre doce**:
+// sale de contar días.
 //
 //   interés = capital × TIN × días ÷ base
 //
@@ -17,9 +16,15 @@
 //   · **30/360** · todos los meses valen 30 y el año 360. Equivale a dividir
 //     entre doce, y es lo único que ATLAS sabía hacer.
 //
-// Mientras la base no se pregunte, el desglose interés/capital de cada recibo
-// **no puede cuadrar con el del banco**, aunque la cuota coincida al céntimo.
-// Es la última pieza de «que el cuadro cuadre con el banco».
+// Y **la cuota tampoco es la misma**. Aquí ponía que la base solo movía el
+// desglose; no es verdad, y la escritura de Unicaja lo dice: si cada periodo
+// devenga días distintos, la cuota constante que amortiza a cero depende del
+// calendario. 85.000 € a 240 meses al 2,600 % en ACT/365 son **454,66 €**, y
+// con el mes comercial 454,57 € (`cuotaFrancesaPorDias`).
+//
+// Mientras la base no se pregunte, ni la cuota ni el desglose interés/capital
+// **pueden cuadrar con los del banco**. Es la última pieza de «que el cuadro
+// cuadre con el banco».
 //
 // **Ausente = 30/360**, que es lo que ATLAS venía haciendo. No se presume la
 // clásica 365/360 aunque sea la más habitual: eso movería el cuadro de todos

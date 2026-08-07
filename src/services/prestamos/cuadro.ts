@@ -62,7 +62,7 @@
 
 import type { Prestamo, PeriodoPago, PlanPagos } from '../../types/prestamos';
 import { tinDelTramo } from './tinDelTramo';
-import { cuotaFrancesa } from './cuotaFrancesa';
+import { cuotaFrancesaPorDias } from './cuotaFrancesa';
 import { diasEntre, esISO, partes, restarUnDia, sumarMeses } from './fechas';
 import { recalcularDesde } from './cuadroPorTramos';
 import { tramosDeTipo, type TramoDeTipo } from './tramosDeTipo';
@@ -141,6 +141,31 @@ function primerCargo(prestamo: Prestamo): string {
   // preguntarla — preguntarla es lo que llevaba ocho intentos fallando, porque
   // «el primer cargo» son dos fechas y ATLAS aceptaba las dos.
   return fechaDeLaPrimeraCuota(prestamo.fechaFirma, diaCargo);
+}
+
+/**
+ * Los días que devenga cada cuota de una serie · lo que la anualidad necesita
+ * saber del calendario.
+ *
+ * Se cuentan igual que dentro del bucle —del cargo anterior a la víspera del
+ * siguiente— porque si no, la cuota no amortizaría a cero contra sus propios
+ * intereses.
+ */
+function diasDeCadaCuota(
+  arranque: string,
+  primerCargoDeLaSerie: string,
+  diaCargo: number,
+  cuantas: number
+): number[] {
+  const dias: number[] = [];
+  let previo = arranque;
+  let cargo = primerCargoDeLaSerie;
+  for (let k = 0; k < cuantas; k++) {
+    dias.push(diasEntre(previo, restarUnDia(cargo)));
+    previo = cargo;
+    cargo = sumarMeses(cargo, 1, diaCargo);
+  }
+  return dias;
 }
 
 /**
@@ -250,8 +275,21 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
   // en los meses que amortizan. Con carencia de capital ese capital es el
   // inicial; con carencia total es mayor, porque los intereses del periodo se
   // han ido sumando. Por eso no se puede calcular antes del bucle.
+  //
+  // Y sale contra el CALENDARIO, no contra un plazo en meses: con días reales
+  // cada cuota devenga lo suyo —febrero cuesta menos que enero—, así que la
+  // cuota constante que amortiza a cero depende de las fechas. Es la diferencia
+  // entre los 454,57 € que ATLAS decía de la Unicaja de Jose y los 454,66 €
+  // que lleva impresos su escritura.
   let cuotaCentimos = carencia.tipo === 'NINGUNA'
-    ? aCentimos(cuotaFrancesa(prestamo.principalInicial, tinEfectivo, plazo))
+    ? aCentimos(
+        cuotaFrancesaPorDias(
+          prestamo.principalInicial,
+          tinEfectivo,
+          diasDeCadaCuota(arranqueDelDevengo, cargoInicial, diaCargo, plazo),
+          base
+        )
+      )
     : 0;
 
   let cargo = cargoInicial;
@@ -326,7 +364,12 @@ export function generarCuadro(prestamo: Prestamo): Cuadro {
     // pidió, y en los meses que quedan.
     if (carencia.meses > 0 && periodo === carencia.meses) {
       cuotaCentimos = aCentimos(
-        cuotaFrancesa(vivoCentimos / 100, tinEfectivo, plazo - carencia.meses)
+        cuotaFrancesaPorDias(
+          vivoCentimos / 100,
+          tinEfectivo,
+          diasDeCadaCuota(cargo, sumarMeses(cargo, 1, diaCargo), diaCargo, plazo - carencia.meses),
+          base
+        )
       );
     }
 

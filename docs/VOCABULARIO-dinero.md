@@ -1224,15 +1224,21 @@ Escrito para no perderlo, con la fecha en que se detectó.
   inmueble, que no salen de la FEIN sino de lo que el usuario tenga dado de
   alta. §6 bis · quinquies.
 
-- **2026-08-06** · **La cuota de la Unicaja son 454,66 €, no 454,57** *(Jose,
-  mirando su recibo)*. ATLAS calcula la anualidad francesa con `TIN/12` y ahí
-  salen 454,58. Nueve céntimos, pero la escritura de Unicaja **no calcula así**:
-  su fórmula lleva un productorio sobre los **días reales** de cada periodo de
-  liquidación, dividiendo entre 36.500. Con meses de 28 a 31 días, la cuota
-  constante que sale de esa fórmula no es la de `TIN/12`. Si se confirma, el
-  rótulo del formulario —«la base cambia el desglose, no la cuota»— es **falso**
-  para ACT/365 y hay que cambiarlo, y con él la cuota. Falta medirlo contra un
-  recibo o el cuadro del banco. §6 bis · bis.
+- **2026-08-07** · ~~**La cuota de la Unicaja son 454,66 €, no 454,57**~~ ·
+  **resuelto, y Jose tenía razón**. La anualidad se resolvía con `TIN/12` —la
+  fórmula cerrada— mientras los intereses se liquidaban contando días reales:
+  dos cuentas distintas dentro del mismo cuadro. Resolviendo la cuota constante
+  **contra el calendario** (25→25 desde el 25-08-2023, ACT/365) salen
+  **454,6599 €**, o sea los 454,66 impresos, al céntimo. La misma cuenta en
+  30/360 da 454,5698 €.
+  O sea que **la base de cálculo mueve la cuota**, no solo el desglose, y el
+  rótulo que decía lo contrario era falso —en `baseDeCalculo.ts` y, de otra
+  manera, en el formulario, que ahora lo dice bien—.
+  Lo que lo tapaba: la última cuota se lleva lo que quede, así que el cuadro
+  cerraba en cero igual y la prueba de «cierra en cero» **no podía fallar
+  nunca**. La deriva se acumulaba 240 meses y aterrizaba entera en la cuota que
+  nadie mira —unos 21 € en la Unicaja—. Ahora se comprueba que la última se
+  parezca a la penúltima, que es lo que sí lo detecta. §6 bis · bis.
 
 - **2026-08-06** · **La FEIN se lee bien; el cuello de botella es el tiempo.**
   Probando contra la FEIN de Unicaja, Claude la leyó **por el modo de facturas**
