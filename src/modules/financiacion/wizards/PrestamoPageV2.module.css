@@ -47,9 +47,26 @@
 }
 
 /* ─── Encuadre del modal ─────────────────────────────────────── */
+/*
+ * Un diálogo centrado, NO una toma de la pantalla entera.
+ *
+ * El mockup dice `inset: 20px` porque está escrito para un viewport fijo de
+ * 1400 px, y ahí eso da 1360. Copiado tal cual, en un monitor de 2000 px daba
+ * un modal de 1960: la columna del formulario se iba a 1560 px —campos de
+ * cuatro caracteres estirados a un palmo—, el panel de cálculo se quedaba con
+ * un 20 % y la aplicación de debajo desaparecía entera. Un formulario que tapa
+ * hasta la navegación no deja volver a ningún sitio.
+ *
+ * Así que el `inset` acota y el tamaño manda: `margin: auto` centra dentro de
+ * ese hueco, y el `min()` reproduce el mockup a su ancho de diseño sin estirarlo
+ * en pantallas grandes ni desbordar en las pequeñas.
+ */
 .modal {
   position: fixed;
   inset: 20px;
+  margin: auto;
+  width: min(1360px, calc(100vw - 40px));
+  height: min(900px, calc(100vh - 40px));
   z-index: 101;
   background: var(--atlas-v5-card);
   border-radius: var(--w-r-lg);
