@@ -291,6 +291,10 @@ motor viejo y el euríbor del alta.
 **g) `valorIndiceActual` sigue siendo editable en la ficha de edición** y ya no
 manda en nada de lo que se ve.
 
-**h) La fila de la nómina dice «cumplido» y «no se cumple» a la vez.** Son dos
-preguntas distintas —lo que el banco aplica y lo que demuestran tus
-movimientos—, las dos útiles, pintadas en una fila sin decir cuál es cuál.
+**h) La fila de la nómina dice «cumplido» y «no se cumple» a la vez.**
+*Corregido el diagnóstico:* no es una contradicción de lógica sino de
+presentación, y el caso de debajo es valioso. La marca dice que **el banco te la
+aplica** —un hecho del contrato— y el aviso dice que **tus movimientos no lo
+demuestran**. Cuando no coinciden es justo cuando hay que enterarse: significa
+que la pierdes en la próxima revisión. Lo que faltaba era decir de quién es cada
+voz y qué día se pierde.

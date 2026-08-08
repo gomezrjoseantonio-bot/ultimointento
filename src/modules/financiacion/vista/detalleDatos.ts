@@ -136,6 +136,22 @@ export interface BonificacionDetalle {
   explicacion?: string;
 }
 
+/**
+ * Si el banco y tus movimientos dicen cosas distintas de esta bonificación.
+ *
+ * Son dos preguntas —lo que el banco APLICA es un hecho del contrato; si la
+ * CUMPLES lo dicen tus recibos— y cuando no coinciden es justo cuando hay que
+ * enterarse: te la aplican y no la demuestras (la pierdes en la próxima
+ * revisión), o la cumples y no te la aplican (pagas de más).
+ *
+ * `no_verificable` no es discrepancia: no afirma lo contrario, dice que no se ha
+ * podido mirar.
+ */
+export function hayDiscrepancia(b: BonificacionDetalle): boolean {
+  if (b.veredicto == null || b.veredicto === 'no_verificable') return false;
+  return (b.veredicto === 'cumple') !== b.alcanzada;
+}
+
 export interface ResumenBonificaciones {
   lista: BonificacionDetalle[];
   /** Lo que rebajan en total · ya con el tope y el modo cascada aplicados. */
