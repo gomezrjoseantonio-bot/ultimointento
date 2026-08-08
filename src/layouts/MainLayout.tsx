@@ -67,7 +67,6 @@ const MainLayout: React.FC = () => {
   // NO aplica al wizard /contratos/nuevo (flujo con padding estándar).
   const isContratosRoute =
     location.pathname === '/contratos' || location.pathname === '/contratos/lista';
-  const isFullBleedRoute = isInversionesRoute || isTesoreriaRoute || isContratosRoute;
   // Financiación · la vista principal y el detalle NUNCA hacen scroll (guía
   // v5): sus bloques se reparten el viewport y scrollean por dentro las listas
   // largas —la cartera en una, las bonificaciones en el otro—. Los wizards y la
@@ -82,6 +81,24 @@ const MainLayout: React.FC = () => {
         location.pathname,
       ));
   const isFinanciacionVistaRoute = rutaFinanciacionSinScroll;
+
+  /**
+   * Las pantallas que van a sangre · sin el contenedor centrado del layout.
+   *
+   * Financiación entra aquí con Tesorería, y el motivo importa porque no basta
+   * con igualar el ancho de la página: la otra rama envuelve el Outlet en
+   * `container mx-auto max-w-7xl`, que **centra y recorta a 1280 px**. Con eso
+   * puesto, poner `max-width: 1560px` en la página no hace nada —manda el
+   * envoltorio— y la pantalla se veía más estrecha y despegada de la barra
+   * lateral que Tesorería aunque las dos dijeran los mismos números *(Jose ·
+   * 8 ago 2026)*. El padding también sale de aquí: la página ya trae el suyo.
+   *
+   * Y con ello Financiación pierde el `TopbarV5`, como Tesorería: su banda
+   * navy con el título dentro **lo sustituye**, y tener las dos era decir el
+   * nombre de la pantalla dos veces en una vista que no puede crecer.
+   */
+  const isFullBleedRoute =
+    isInversionesRoute || isTesoreriaRoute || isContratosRoute || rutaFinanciacionSinScroll;
   
   // Sprint 5: Command Palette (Cmd+K)
   const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette();
@@ -161,7 +178,7 @@ const MainLayout: React.FC = () => {
             isPanelRoute
               ? 'overflow-y-hidden px-8'
               : isFinanciacionVistaRoute
-                ? 'overflow-y-hidden p-3 sm:p-4 lg:p-6'
+                ? 'overflow-y-hidden'
                 : isFullBleedRoute
                   ? 'overflow-y-auto'
                   : 'overflow-y-auto p-3 sm:p-4 lg:p-6'

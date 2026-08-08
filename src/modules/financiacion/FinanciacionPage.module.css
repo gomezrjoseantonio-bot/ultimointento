@@ -1,14 +1,18 @@
 /* Los MISMOS márgenes que Tesorería · las dos son pantallas de una sola vista
    y con medidas distintas se leían como dos aplicaciones. Valores del mockup,
-   no estimados: `padding: 18px 26px 20px; max-width: 1560px`. */
+   no estimados: `padding: 18px 26px 20px; max-width: 1560px`.
+   
+   Y SIN `margin: 0 auto`, que era lo que las seguía separando aunque el ancho
+   coincidiera: centrar la caja de 1560 deja el mismo hueco a los dos lados y la
+   pantalla arrancaba despegada de la barra lateral. Tesorería se alinea a la
+   izquierda y llena hasta su tope, que es como llenan el resto de módulos. */
 .page {
   font-family: var(--atlas-v5-font-ui);
   background: var(--atlas-v5-bg);
   color: var(--atlas-v5-ink-2);
   padding: 18px 26px 20px;
   max-width: 1560px;
-  margin: 0 auto;
-  width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 1180px) {

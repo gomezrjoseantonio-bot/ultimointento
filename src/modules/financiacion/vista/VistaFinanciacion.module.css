@@ -86,7 +86,6 @@
 
 .kpiBtn {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 15px var(--atlas-v5-sp-8);
@@ -469,23 +468,6 @@
   font-size: var(--atlas-v5-fs-sub-sm);
   color: var(--atlas-v5-ink-4);
 }
-
-/* La segunda puerta al alta · secundaria de verdad, no otro primario. */
-.btnFein {
-  margin-top: 6px;
-  border: none;
-  background: transparent;
-  color: var(--atlas-v5-navy-text-2);
-  font-family: inherit;
-  font-size: var(--atlas-v5-fs-sub-sm);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.btnFein:hover { color: var(--atlas-v5-on-navy-1); }
 
 .thR { text-align: right; }
 
