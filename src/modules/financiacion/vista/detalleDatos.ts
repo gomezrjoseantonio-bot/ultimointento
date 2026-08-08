@@ -22,6 +22,8 @@ import {
   getFechaVencimiento,
   getPrincipalInicial,
 } from '../../../services/prestamos/lecturas';
+import type { Revision } from '../../../services/bonificaciones/revisionDelBanco';
+import { diaMesAnio, mesAnio } from './formato';
 
 // ─── La línea de tiempo de los tramos ───────────────────────────────────────
 
@@ -134,6 +136,38 @@ export interface BonificacionDetalle {
    * no consta. Aquí se estaba reinventando con un `motivo` a secas.
    */
   explicacion?: string;
+}
+
+/**
+ * Si el banco y tus movimientos dicen cosas distintas de esta bonificación.
+ *
+ * Son dos preguntas —lo que el banco APLICA es un hecho del contrato; si la
+ * CUMPLES lo dicen tus recibos— y cuando no coinciden es justo cuando hay que
+ * enterarse: te la aplican y no la demuestras (la pierdes en la próxima
+ * revisión), o la cumples y no te la aplican (pagas de más).
+ *
+ * `no_verificable` no es discrepancia: no afirma lo contrario, dice que no se ha
+ * podido mirar.
+ */
+export function hayDiscrepancia(b: BonificacionDetalle): boolean {
+  if (b.veredicto == null || b.veredicto === 'no_verificable') return false;
+  return (b.veredicto === 'cumple') !== b.alcanzada;
+}
+
+/**
+ * Cuándo se pierde una bonificación que hoy te aplican y no demuestras.
+ *
+ * `proximaRevision` puede contestar con precisión de MES —`2026-08`, cuando la
+ * escritura solo dice el periodo—, y entonces no hay día que enseñar:
+ * `diaMesAnio` exige diez caracteres y escribía «la pierdes el —». Se mira la
+ * precisión que la propia revisión trae en vez de adivinarla de la longitud del
+ * texto, que es lo que lo hace fiable.
+ */
+export function cuandoSePierde(proxima: Revision | null): string {
+  if (!proxima?.fecha) return 'te la aplican · no la demuestras';
+  return proxima.precision === 'dia'
+    ? `la pierdes el ${diaMesAnio(proxima.fecha)}`
+    : `la pierdes en ${mesAnio(proxima.fecha)}`;
 }
 
 export interface ResumenBonificaciones {
