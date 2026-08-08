@@ -42,6 +42,15 @@ export interface LoanSettlementSimulationResult {
   principalAfter: number;
   monthlyPaymentBefore?: number;
   monthlyPaymentAfter?: number;
+  /**
+   * El recibo que compara `monthlyPaymentBefore/After` · ISO.
+   *
+   * No siempre es el próximo: un adelanto no toca el recibo a caballo, que
+   * paga un mes ya corrido. Y si en medio cambia el tramo, la cuota comparada
+   * no se parece a la que se paga hoy — la pantalla tiene que poder decir de
+   * qué recibo habla en vez de dejar dos cifras sueltas contradiciéndose.
+   */
+  monthlyPaymentFrom?: string;
   termMonthsBefore?: number;
   termMonthsAfter?: number;
   interestSavings?: number;
@@ -98,8 +107,12 @@ const sortPeriods = (periodos: PeriodoPago[]): PeriodoPago[] => (
 interface LoQueQueda {
   /** Recibos que aún se van a cobrar. */
   recibos: number;
-  /** La cuota que se pasa a pagar · la del primer recibo del lado nuevo. */
+  /** Lo que se paga en el próximo recibo · lo que se está pagando AHORA. */
+  proximaCuota: number;
+  /** La cuota del primer recibo que la operación puede cambiar. */
   cuota: number;
+  /** Cuándo se cobra ese recibo · `null` si no hay ninguno. */
+  cuotaDesde: string | null;
   /** Los intereses que quedan por pagar en esos recibos. */
   intereses: number;
 }
@@ -112,20 +125,27 @@ interface LoQueQueda {
  * propio adelanto, que el motor apunta con esa misma fecha — sin necesidad de
  * reconocerla por un campo, que es como se rompen estas cosas.
  *
- * La cuota es la del primer recibo que DEVENGA ya del lado nuevo, no la del
- * primero que se cobra: el recibo a caballo de la operación paga el mes que ya
- * había corrido y sigue con el importe de antes en los dos cuadros, así que
- * usarlo diría que la cuota no ha cambiado.
+ * **Son dos cuotas distintas y hay que devolver las dos.** Lo que pagas ahora
+ * es el próximo recibo. Lo que la operación mueve es el primero que DEVENGA ya
+ * del lado nuevo, que puede ser otro: el recibo a caballo paga el mes que ya
+ * había corrido y no lo toca ningún adelanto.
+ *
+ * Confundirlas se vio en pantalla *(Jose · 8 ago 2026)*: la tarjeta decía
+ * «CUOTA ACTUAL 518,10 €» un 8 de agosto en una mixta cuyo tramo fijo aguanta
+ * hasta el 25 · lo que se paga ese mes son 455 €, y el 518 era ya del tramo
+ * variable. Se juntaron aquí de más al arreglar el «antes → después».
  */
 const loQueQueda = (plan: PlanPagos | null, desde: string): LoQueQueda => {
   const pendientes = sortPeriods(plan?.periodos ?? []).filter((p) => p.fechaCargo > desde);
-  const delLadoNuevo = pendientes.find(
+  const laQueMueve = pendientes.find(
     (p) => inicioDelDevengo(p) >= desde && !p.esProrrateado && !p.esSoloIntereses,
   );
 
   return {
     recibos: pendientes.length,
-    cuota: round2(delLadoNuevo?.cuota ?? pendientes[0]?.cuota ?? 0),
+    proximaCuota: round2(pendientes[0]?.cuota ?? 0),
+    cuota: round2(laQueMueve?.cuota ?? pendientes[0]?.cuota ?? 0),
+    cuotaDesde: laQueMueve?.fechaCargo ?? pendientes[0]?.fechaCargo ?? null,
     intereses: round2(pendientes.reduce((s, p) => s + (p.interes || 0), 0)),
   };
 };
@@ -165,15 +185,15 @@ const resolveAccruedInterestUntilDate = (
 ): number => round2(interesesCorridos(prestamo, paymentPlan, operationDate, outstandingPrincipal));
 
 /**
- * La cuota que se paga a partir de un día · del mismo sitio que el «después».
+ * Lo que se paga AHORA · el próximo recibo, no el que mueva la operación.
  *
- * Las tarjetas de arriba del modal y la columna «antes» del resumen tienen que
- * salir de la misma cuenta: si no, el propio modal se contradice a media
- * pantalla de distancia.
+ * Es la tarjeta «CUOTA ACTUAL», y actual quiere decir actual: en una mixta a
+ * ocho de agosto cuyo tramo fijo aguanta hasta el 25, son los 455 € de ese
+ * recibo, no los del primero que ya cae en el tramo variable.
  */
 const resolveCurrentInstallment = (prestamo: Prestamo, paymentPlan: PlanPagos | null, operationDate: string): number => {
   const queda = loQueQueda(paymentPlan, operationDate);
-  if (queda.cuota > 0) return queda.cuota;
+  if (queda.proximaCuota > 0) return queda.proximaCuota;
 
   const principal = resolveProjectedOutstandingPrincipal(prestamo, paymentPlan, operationDate);
   const endDate = paymentPlan?.resumen?.fechaFinalizacion || prestamo.fechaCancelacion || prestamo.fechaPrimerCargo;
@@ -440,6 +460,7 @@ export const simulateLoanSettlement = async (
     principalAfter: round2(principalBefore - principalApplied),
     monthlyPaymentBefore: antes.cuota || prepared.cuotaActualEstimada,
     monthlyPaymentAfter: despues.cuota || prepared.cuotaActualEstimada,
+    monthlyPaymentFrom: despues.cuotaDesde ?? antes.cuotaDesde ?? undefined,
     termMonthsBefore: antes.recibos || prepared.plazoRestanteEstimado,
     termMonthsAfter: despues.recibos || prepared.plazoRestanteEstimado,
     // El ahorro sale de restar los dos cuadros, no de un tercer motor. Lo
@@ -510,6 +531,7 @@ export const confirmLoanSettlement = async (
     principalAfter: simulation.principalAfter,
     monthlyPaymentBefore: simulation.monthlyPaymentBefore,
     monthlyPaymentAfter: simulation.monthlyPaymentAfter,
+    monthlyPaymentFrom: simulation.monthlyPaymentFrom,
     termMonthsBefore: simulation.termMonthsBefore,
     termMonthsAfter: simulation.termMonthsAfter,
     interestSavings: simulation.interestSavings,
