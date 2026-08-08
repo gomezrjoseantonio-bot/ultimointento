@@ -181,15 +181,84 @@ describe('el ahorro sale de los mismos dos cuadros que la cuota y el plazo', () 
   });
 });
 
-// Las tarjetas de arriba del modal y la columna «antes» del resumen contestan
-// lo mismo · salían de dos funciones distintas y podían diferir en un mes.
+// El plazo de la tarjeta y el del «antes» sí son la misma pregunta · salían de
+// dos funciones distintas y podían diferir en un mes.
 describe('el modal no se contradice consigo mismo', () => {
-  it('la cuota y el plazo de las tarjetas son los del «antes»', async () => {
+  it('el plazo de la tarjeta es el del «antes»', async () => {
     const loan = await nuevaHipoteca();
     const prep = await prepareLoanSettlement(loan.id, DIA);
     const s = await simular(loan.id, 'REDUCIR_CUOTA');
 
     expect(s.termMonthsBefore).toBe(prep.plazoRestanteEstimado);
+  });
+
+  // En un fijo las dos cuotas coinciden, y de ahí venía el error: se dio por
+  // hecho que eran la misma pregunta.
+  it('y en un fijo la cuota también coincide', async () => {
+    const loan = await nuevaHipoteca();
+    const prep = await prepareLoanSettlement(loan.id, DIA);
+    const s = await simular(loan.id, 'REDUCIR_CUOTA');
+
     expect(s.monthlyPaymentBefore).toBeCloseTo(prep.cuotaActualEstimada, 2);
+  });
+});
+
+// «CUOTA ACTUAL» es lo que se paga AHORA, y la del «antes → después» es la del
+// primer recibo que la operación puede mover. Con un cambio de tramo en medio
+// no son la misma cifra, y darlas por iguales puso «CUOTA ACTUAL 518,10 €» un
+// 8 de agosto en una mixta que ese mes paga 455 € *(Jose · 8 ago 2026)*.
+describe('la cuota de ahora y la que mueve la operación son dos preguntas', () => {
+  // Mixta como la de la pantalla: 36 meses al 2,60 % desde el 25/08/2023, o sea
+  // tramo fijo hasta el 25/08/2026. Operando el 8 de agosto, el recibo del 25
+  // todavía es del tramo fijo y el siguiente ya no.
+  const mixta = async () => {
+    const db = await initDB();
+    await Promise.all([db.clear('prestamos'), db.clear('keyval')]);
+    prestamosService.clearCache();
+    return prestamosService.createPrestamo({
+      ...hipoteca,
+      nombre: 'Mixta como la de Unicaja',
+      principalInicial: 85000,
+      principalVivo: 85000,
+      fechaFirma: '2023-08-25',
+      fechaPrimerCargo: '2023-09-25',
+      diaCargoMes: 25,
+      tipo: 'MIXTO',
+      tipoNominalAnualMixtoFijo: 2.6,
+      tramoFijoMeses: 36,
+      indice: 'EURIBOR',
+      valorIndiceActual: 4,
+      diferencial: 1.75,
+    } as unknown as Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'>);
+  };
+
+  it('la tarjeta enseña el recibo que se cobra este mes, no el del tramo siguiente', async () => {
+    const loan = await mixta();
+    const prep = await prepareLoanSettlement(loan.id, '2026-08-08');
+    const plan = (await prestamosService.getPaymentPlan(loan.id))!;
+    const proximo = plan.periodos.find((p) => p.fechaCargo > '2026-08-08')!;
+
+    expect(prep.cuotaActualEstimada).toBeCloseTo(proximo.cuota, 2);
+    expect(proximo.fechaCargo.slice(0, 7)).toBe('2026-08');
+  });
+
+  // Y la comparación de la operación sí mira el recibo de después, con su
+  // fecha dicha · si no, la pantalla enseña dos cuotas sueltas sin explicar
+  // por qué no coinciden, que es exactamente lo que se preguntó.
+  it('y el «antes → después» dice de qué recibo habla', async () => {
+    const loan = await mixta();
+    const s = await simulateLoanSettlement({
+      loanId: loan.id,
+      operationType: 'PARTIAL',
+      operationDate: '2026-08-08',
+      partialMode: 'REDUCIR_CUOTA',
+      principalAmount: 1000,
+      feeAmount: 0,
+      fixedCosts: 0,
+    });
+
+    expect(s.monthlyPaymentFrom).toBeTruthy();
+    expect(s.monthlyPaymentFrom! > '2026-08-08').toBe(true);
+    expect(s.monthlyPaymentAfter!).toBeLessThan(s.monthlyPaymentBefore!);
   });
 });

@@ -364,8 +364,18 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
                     )}
                     {simulation.operationType === 'PARTIAL' && (
                       <>
+                        {/* De QUÉ recibo habla · un adelanto no toca el que está
+                            a caballo, que paga un mes ya corrido, y si en medio
+                            cambia el tramo la cifra no se parece a la de arriba.
+                            Dos cuotas distintas sin decir cuál es cuál se leen
+                            como una contradicción. */}
                         <div>
-                          <div className="text-gray-500">Cuota antes / después</div>
+                          <div className="text-gray-500">
+                            Cuota antes / después
+                            {simulation.monthlyPaymentFrom && (
+                              <> · desde el {formatDate(simulation.monthlyPaymentFrom)}</>
+                            )}
+                          </div>
                           <div className="font-medium">
                             {formatEuro(simulation.monthlyPaymentBefore || 0)} → {formatEuro(simulation.monthlyPaymentAfter || 0)}
                           </div>
