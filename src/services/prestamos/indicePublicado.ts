@@ -31,6 +31,9 @@ const mesesAtras = (anioMes: string, meses: number): string => {
   const mes = Number(anioMes.slice(5, 7));
   if (!Number.isInteger(anio) || !Number.isInteger(mes) || mes < 1 || mes > 12) return '';
   const total = anio * 12 + (mes - 1) - meses;
+  // Antes del año cero no hay publicación · y sin este corte el `%` de JS da
+  // resto NEGATIVO, así que saldría un «-1--1» con pinta de fecha.
+  if (total < 0) return '';
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`;
 };
 

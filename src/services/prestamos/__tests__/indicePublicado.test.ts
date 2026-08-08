@@ -55,4 +55,11 @@ describe('cuando no se sabe, no se dice', () => {
   it('ni con una fecha que no lo es', () => {
     expect(publicacionDelIndice({ indiceDesfaseMeses: 1 }, 'no-es-fecha')).toBeNull();
   });
+
+  // Restar por debajo del año cero no tiene publicación que devolver · y el `%`
+  // de JS con negativos da resto negativo, así que sin cortar saldría un
+  // «-1--1» que se pinta como si fuera una fecha.
+  it('ni retrocediendo más allá del año cero', () => {
+    expect(publicacionDelIndice({ indiceDesfaseMeses: 6 }, '0000-03-01')).toBeNull();
+  });
 });
