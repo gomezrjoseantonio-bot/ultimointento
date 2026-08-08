@@ -142,15 +142,19 @@ export interface Prestamo {
   valorIndiceActual?: number;
   diferencial?: number;         // 0.012
   /**
+   * De qué mes publicado sale el índice · desfase en meses (§6 ter).
+   *
+   * Lo dice la escritura: «el del mes anterior» es 1. Ausente = no lo dice, y
+   * no se supone ninguno. Lo traduce `publicacionDelIndice`.
+   */
+  indiceDesfaseMeses?: number;
+  /**
    * Cada cuántos meses revisa el banco · lo normal, 6 o 12 (§6 ter).
    *
-   * **UNA periodicidad para todo el préstamo** *(Jose · 8 ago 2026: «se revisa
-   * una única vez al año o dos al año, y en esa revisión se revisa el euríbor +
-   * bonificaciones»)*. La revisión es un acto; cambia qué alcanza.
-   *
-   * También en un FIJO: no revisa el índice porque no tiene, pero sí si
-   * cumples — el de ING mueve el tipo fijo del 2,15 % al 1,35 %. Léase con
-   * `cadaCuantoRevisa`, que cae en el campo legado cuando falta.
+   * **UNA periodicidad para todo el préstamo** *(Jose · 8 ago 2026)*: la
+   * revisión es un acto; lo que cambia es qué alcanza. También en un FIJO —no
+   * revisa el índice porque no tiene, pero sí si cumples, y el de ING mueve su
+   * tipo del 2,15 % al 1,35 %—. Léase con `cadaCuantoRevisa`.
    */
   periodoRevisionMeses?: number;
   fechaProximaRevision?: string;

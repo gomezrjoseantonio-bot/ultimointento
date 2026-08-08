@@ -55,6 +55,7 @@ import { prestamosService } from '../../../services/prestamosService';
 import { planificarEventos, cambiaElCuadro } from '../../../services/prestamoEventosPlan';
 import { generarCuadro, type Cuadro } from '../../../services/prestamos/cuadro';
 import { cadaCuantoRevisa } from '../../../services/bonificaciones/revisionDelBanco';
+import { publicacionDelIndice } from '../../../services/prestamos/indicePublicado';
 import { baseDiasSueltosDe } from '../../../services/prestamos/baseDeCalculo';
 import {
   diasSueltosDelArranqueDe,
@@ -172,6 +173,8 @@ interface FormState {
   baseDiasSueltos: NonNullable<Prestamo['baseDiasSueltos']>;
   /** Las revisiones del índice que ya ocurrieron · §6 bis · bis. */
   revisionesIndice: Array<{ id: string; desde: string; valorRaw: string }>;
+  /** De qué mes publicado sale el índice · '' = no lo dice la escritura. */
+  indiceDesfaseMeses: string;
   comAperturaRaw: string;
   comMantenimientoRaw: string;
   comModifCondicionesRaw: string;
@@ -525,6 +528,7 @@ function emptyFormState(): FormState {
     diasSueltos: 'CARGO_APARTE',
     baseDiasSueltos: 'ACT/365',
     revisionesIndice: [],
+    indiceDesfaseMeses: '',
     comAperturaRaw: '0',
     comMantenimientoRaw: '0',
     comModifCondicionesRaw: '0',
@@ -667,6 +671,8 @@ function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
           valorRaw: fmtNumeroEs(r.valorIndice),
         }))
       : base.revisionesIndice,
+    indiceDesfaseMeses:
+      p.indiceDesfaseMeses != null ? String(p.indiceDesfaseMeses) : base.indiceDesfaseMeses,
     tramoFijoMesesRaw: p.tramoFijoMeses ? String(p.tramoFijoMeses) : base.tramoFijoMesesRaw,
     tinTramoFijoRaw: numero(p.tipoNominalAnualMixtoFijo, base.tinTramoFijoRaw),
     comAperturaRaw: numero(p.comisionApertura, base.comAperturaRaw),
@@ -1462,6 +1468,12 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         tipoNominalAnualFijo: form.tipoInteres === 'fijo' ? tinFijoPct : undefined,
         valorIndiceActual: form.tipoInteres !== 'fijo' ? parseNum(form.euriborRaw) : undefined,
         diferencial: form.tipoInteres !== 'fijo' ? parseNum(form.diferencialRaw) : undefined,
+        // «No lo dice la escritura» no es un cero · de un cero saldría un mes
+        // concreto que se lee igual de firme que uno real.
+        indiceDesfaseMeses:
+          form.tipoInteres !== 'fijo' && form.indiceDesfaseMeses !== ''
+            ? Number(form.indiceDesfaseMeses)
+            : undefined,
         // Una sola periodicidad, y también en un fijo: un fijo no revisa el
         // índice pero sí las bonificaciones, y sin esto no tenía calendario.
         periodoRevisionMeses: revisionCada || undefined,
@@ -2243,8 +2255,42 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                 */}
                 {form.tipoInteres !== 'fijo' && (
                   <>
+                    {/* De qué euríbor habla la escritura · el de una revisión es
+                        un valor YA publicado, el del mes que ella diga. Sin
+                        esto, la pantalla que pide apuntar la revisión sugería el
+                        de «Actualizar valores», que es el de hoy. */}
+                    <div className={`${styles.fld} ${styles.wLg}`}>
+                      <label className={styles.fldLab} htmlFor="p-desfase">
+                        Qué euríbor aplica
+                      </label>
+                      <select
+                        id="p-desfase"
+                        className={styles.inp}
+                        value={form.indiceDesfaseMeses}
+                        onChange={(e) => update('indiceDesfaseMeses', e.target.value)}
+                      >
+                        <option value="">No lo dice la escritura</option>
+                        <option value="1">El publicado el mes anterior</option>
+                        <option value="2">El publicado dos meses antes</option>
+                        <option value="0">El publicado ese mismo mes</option>
+                      </select>
+                    </div>
+
                     <div className={styles.subLab}>Revisiones ya aplicadas</div>
-                    {form.revisionesIndice.map((r) => (
+                    {form.revisionesIndice.map((r) => {
+                      // `Number('')` es 0, y un cero aquí significa «el de ese
+                      // mismo mes» · o sea que «no lo dice la escritura» habría
+                      // pasado por una respuesta.
+                      const deQueMes = publicacionDelIndice(
+                        {
+                          indiceDesfaseMeses:
+                            form.indiceDesfaseMeses === ''
+                              ? undefined
+                              : Number(form.indiceDesfaseMeses),
+                        },
+                        r.desde
+                      );
+                      return (
                       <div key={r.id} className={styles.rowTight}>
                         <div className={`${styles.fld} ${styles.wLg}`}>
                           <input
@@ -2266,6 +2312,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                             />
                             <span className={styles.suffix}>%</span>
                           </div>
+                          {deQueMes && <span className={styles.helper}>el de {deQueMes}</span>}
                         </div>
                         <button
                           type="button"
@@ -2276,7 +2323,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                           <Trash2 />
                         </button>
                       </div>
-                    ))}
+                      );
+                    })}
                     <button type="button" className={styles.linkAdd} onClick={addRevision}>
                       <Plus size={14} /> Añadir una revisión
                     </button>
