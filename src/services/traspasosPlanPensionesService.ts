@@ -126,6 +126,36 @@ export const traspasosPlanPensionesService = {
   },
 
   /**
+   * INVERSIONES V1 · Fase 1 · lectura polimórfica por activo.
+   *
+   * Devuelve los traspasos de un activo (plan o fondo) usando el modelo
+   * generalizado `activoId` + `tipoActivo`. No sustituye a `getTraspasosPorPlan`
+   * (que sigue leyendo por `planId`/`planIdDestino` para retro-compat); este
+   * método es el camino nuevo para fondos y para consumidores que ya piensan en
+   * clave `activoId`.
+   *
+   * Fallback legacy: los traspasos de plan anteriores al backfill que aún no
+   * tuvieran `activoId` poblado se resuelven contra `planId` cuando el activo
+   * pedido es un plan (`activoId === planId` por construcción del backfill), de
+   * modo que la consulta funciona aunque la migración post-open no haya corrido
+   * todavía en esa sesión.
+   */
+  async getTraspasosPorActivo(
+    activoId: string,
+    tipoActivo: 'plan_pensiones' | 'fondo_inversion',
+  ): Promise<TraspasoPlanPensiones[]> {
+    const db = await initDB();
+    const all = (await db.getAll('traspasosPlanPensiones')) as TraspasoPlanPensiones[];
+    return all
+      .filter((t) => {
+        if (t.activoId != null) return t.activoId === activoId && t.tipoActivo === tipoActivo;
+        // Legacy sin activoId: sólo son planes (activoId === planId por backfill).
+        return tipoActivo === 'plan_pensiones' && t.planId === activoId;
+      })
+      .sort((a, b) => a.fechaEjecucion.localeCompare(b.fechaEjecucion));
+  },
+
+  /**
    * Devuelve todos los traspasos que afectan a algún plan del personalData
    * indicado. Útil para historiales agregados a nivel hogar.
    */

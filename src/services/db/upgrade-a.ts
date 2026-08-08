@@ -321,6 +321,16 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
           const traspasosNuevoStore = db.createObjectStore('traspasosPlanPensiones', { keyPath: 'id', autoIncrement: true });
           traspasosNuevoStore.createIndex('planId', 'planId', { unique: false });
           traspasosNuevoStore.createIndex('fechaEjecucion', 'fechaEjecucion', { unique: false });
+          // V88 (INVERSIONES V1 · Fase 1): índice polimórfico `activoId` para
+          // consultar traspasos por activo (plan o fondo). Aditivo · idempotente.
+          ensureIndex(traspasosNuevoStore, 'activoId', 'activoId', { unique: false });
+        } else {
+          // V88 (INVERSIONES V1 · Fase 1): añadir el índice `activoId` a DBs
+          // existentes (upgrade v87→v88). ensureIndex es idempotente, así que no
+          // duplica si ya está. Los índices `planId` y `fechaEjecucion` se
+          // conservan intactos.
+          const traspasosStore = transaction.objectStore('traspasosPlanPensiones');
+          ensureIndex(traspasosStore, 'activoId', 'activoId', { unique: false });
         }
 
         // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' + metadata.otro

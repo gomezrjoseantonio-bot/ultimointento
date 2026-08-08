@@ -697,5 +697,50 @@ export function runPostOpenMigrations(
       return db;
     });
 
+    // ── INVERSIONES V1 · Fase 1 · backfill del índice polimórfico `activoId` ──
+    //
+    // El store `traspasosPlanPensiones` se generaliza de planes a fondos
+    // siguiendo el patrón de `valoracionesActivos` (activoId + tipoActivo). El
+    // índice físico `activoId` se crea en el upgrade (v87→v88); aquí se
+    // rellenan los traspasos EXISTENTES, que sólo eran de planes: por cada uno
+    // sin `activoId`, se fija `activoId = planId` y `tipoActivo = 'plan_pensiones'`.
+    //
+    // No borra ni renombra nada · `planId`/`planIdDestino` quedan intactos. Es
+    // idempotente vía flag propio (`migration_traspasos_activoId_idx`, DISTINTO
+    // del flag de la post-open de tarjetas `migration_v88_cuentas_tarjeta_v1`
+    // para evitar la colisión de nombre «v88») y, aunque se repitiera, el guard
+    // por registro (`if (t.activoId) continue`) evita reescrituras.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_traspasos_activoId_idx';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+
+        const tx = db.transaction(['traspasosPlanPensiones'], 'readwrite');
+        const store = tx.objectStore('traspasosPlanPensiones');
+        const todos = (await store.getAll()) as Array<{
+          id?: number;
+          planId: string;
+          activoId?: string;
+          tipoActivo?: 'plan_pensiones' | 'fondo_inversion';
+        }>;
+        let rellenados = 0;
+        for (const t of todos) {
+          if (t.activoId) continue; // ya poblado · idempotente
+          t.activoId = t.planId;
+          t.tipoActivo = 'plan_pensiones';
+          await store.put(t as any);
+          rellenados++;
+        }
+        await tx.done;
+        if (rellenados > 0) {
+          console.log(`[DB V88 traspasos activoId] ${rellenados} traspaso(s) de plan retro-poblados (activoId=planId · tipoActivo=plan_pensiones)`);
+        }
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB V88 traspasos activoId] backfill falló:', err);
+      }
+      return db;
+    });
+
   return dbPromise;
 }
