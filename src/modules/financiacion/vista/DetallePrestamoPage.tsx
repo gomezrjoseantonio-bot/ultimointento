@@ -524,8 +524,8 @@ const DetallePrestamoPage: React.FC = () => {
                         type="button"
                         className={
                           revision.decision[b.bonificacion.id] === 'CUMPLIDA'
-                            ? styles.revSiOn
-                            : styles.revSi
+                            ? rev.revSiOn
+                            : rev.revSi
                         }
                         onClick={() => revision.responder(b.bonificacion.id, 'CUMPLIDA')}
                       >
@@ -535,8 +535,8 @@ const DetallePrestamoPage: React.FC = () => {
                         type="button"
                         className={
                           revision.decision[b.bonificacion.id] === 'PERDIDA'
-                            ? styles.revNoOn
-                            : styles.revNo
+                            ? rev.revNoOn
+                            : rev.revNo
                         }
                         onClick={() => revision.responder(b.bonificacion.id, 'PERDIDA')}
                       >

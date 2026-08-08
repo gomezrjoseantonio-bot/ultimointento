@@ -129,14 +129,24 @@ describe('y ordena de verdad', () => {
     expect(ordenar(filas, { campo: 'nombre', asc: true }).map((f) => f.id)).toEqual(['b', 'a']);
   });
 
-  // Un préstamo sin fecha no es «el que antes acaba» ni «el que más tarda»:
-  // va al final en las dos direcciones.
-  it('el que no tiene vencimiento se va al final', () => {
-    const conHueco = [...filas, fila({ id: 'c', vencimiento: null })];
+  // Un préstamo sin fecha no es «el que antes acaba» ni «el que más tarda»: va
+  // al final EN LAS DOS DIRECCIONES. Con un '9999-99-99' de relleno quedaba al
+  // final ascendiendo y el primero descendiendo — y esta prueba solo miraba una
+  // dirección, así que lo dejaba pasar.
+  const conHueco = () => [...filas, fila({ id: 'c', vencimiento: null })];
 
-    expect(ordenar(conHueco, { campo: 'vencimiento', asc: true }).map((f) => f.id)).toEqual([
+  it('el que no tiene vencimiento se va al final · ascendiendo', () => {
+    expect(ordenar(conHueco(), { campo: 'vencimiento', asc: true }).map((f) => f.id)).toEqual([
       'b',
       'a',
+      'c',
+    ]);
+  });
+
+  it('y también descendiendo', () => {
+    expect(ordenar(conHueco(), { campo: 'vencimiento', asc: false }).map((f) => f.id)).toEqual([
+      'a',
+      'b',
       'c',
     ]);
   });

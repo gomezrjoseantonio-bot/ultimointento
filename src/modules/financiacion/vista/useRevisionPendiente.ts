@@ -76,9 +76,14 @@ export function useRevisionPendiente(
 
   // Lo contestado es de ESTE préstamo · navegar a otro arrastraría la decisión
   // al equivocado, o le escondería su revisión por una que se confirmó antes.
+  //
+  // `indiceSugerido` se suelta con lo demás: es lo que hace que el pie diga «el
+  // que tienes en Actualizar valores», y dejarlo puesto mientras carga el
+  // siguiente préstamo lo afirmaba de un número que ya no está escrito.
   useEffect(() => {
     setDecision({});
     setIndiceRaw('');
+    setIndiceSugerido(null);
     setAtendida(false);
   }, [prestamo.id]);
 

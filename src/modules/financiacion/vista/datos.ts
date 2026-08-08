@@ -213,7 +213,7 @@ export function alPulsarCabecera(actual: OrdenCartera, campo: CampoOrden): Orden
     : { campo, asc: SENTIDO_NATURAL[campo] };
 }
 
-const valorDe = (f: FilaCartera, campo: CampoOrden): number | string => {
+const valorDe = (f: FilaCartera, campo: CampoOrden): number | string | null => {
   switch (campo) {
     case 'nombre':
       return f.nombre.toLowerCase();
@@ -227,9 +227,7 @@ const valorDe = (f: FilaCartera, campo: CampoOrden): number | string => {
       return f.pctAmortizado;
     case 'vencimiento':
     default:
-      // Sin vencimiento va al final en las dos direcciones · un préstamo cuya
-      // fecha no se sabe no es «el que antes acaba» ni «el que más tarda».
-      return f.vencimiento ?? '9999-99-99';
+      return f.vencimiento;
   }
 };
 
@@ -238,6 +236,17 @@ export function ordenar(filas: FilaCartera[], orden: OrdenCartera): FilaCartera[
   return [...filas].sort((a, b) => {
     const va = valorDe(a, orden.campo);
     const vb = valorDe(b, orden.campo);
+
+    // Lo que no se sabe va al final EN LAS DOS DIRECCIONES, y por eso se decide
+    // antes del signo. Con un `'9999-99-99'` de relleno quedaba al final
+    // ascendiendo y el PRIMERO descendiendo: un préstamo cuya fecha no se sabe
+    // no es «el que antes acaba» ni «el que más tarda», y encabezar la lista
+    // con él es justo lo contrario de lo que se pidió.
+    if (va == null || vb == null) {
+      if (va == null && vb == null) return 0;
+      return va == null ? 1 : -1;
+    }
+
     if (typeof va === 'string' || typeof vb === 'string') {
       return signo * String(va).localeCompare(String(vb), 'es');
     }
