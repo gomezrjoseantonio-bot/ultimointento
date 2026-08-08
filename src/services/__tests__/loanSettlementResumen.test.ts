@@ -120,6 +120,39 @@ describe('un recibo pasado sin puntear no es futuro', () => {
   });
 });
 
+// Hay planes viejos con `devengoDesde` en `2025/09/28`. Se descartaban por no
+// ser ISO y se caía en `fechaCargo`, y eso no es neutral: afirma que el devengo
+// empieza el día del recibo cuando en un préstamo mensual empieza un mes antes.
+// El periodo a caballo de la operación se conservaba o se rehacía según el
+// FORMATO de su fecha, que es lo mismo que decir que el resultado dependía de
+// por qué importador entró el préstamo.
+describe('un plan viejo con las fechas en otro formato da lo mismo', () => {
+  const conBarras = async (loanId: string) => {
+    const plan = (await prestamosService.getPaymentPlan(loanId))!;
+    await prestamosService.savePaymentPlan(loanId, {
+      ...plan,
+      periodos: plan.periodos.map((p) => ({
+        ...p,
+        devengoDesde: (p.devengoDesde || p.fechaCargo).replace(/-/g, '/'),
+      })),
+    });
+    prestamosService.clearCache();
+  };
+
+  it('el resumen sale igual que con las fechas en ISO', async () => {
+    const loan = await nuevaHipoteca();
+    const enIso = await simular(loan.id, 'REDUCIR_CUOTA');
+
+    await conBarras(loan.id);
+    const conOtroFormato = await simular(loan.id, 'REDUCIR_CUOTA');
+
+    expect(conOtroFormato.termMonthsBefore).toBe(enIso.termMonthsBefore);
+    expect(conOtroFormato.termMonthsAfter).toBe(enIso.termMonthsAfter);
+    expect(conOtroFormato.monthlyPaymentAfter).toBeCloseTo(enIso.monthlyPaymentAfter!, 2);
+    expect(conOtroFormato.interestSavings).toBeCloseTo(enIso.interestSavings!, 2);
+  });
+});
+
 describe('el ahorro sale de los mismos dos cuadros que la cuota y el plazo', () => {
   it('adelantar capital ahorra intereses', async () => {
     const loan = await nuevaHipoteca();

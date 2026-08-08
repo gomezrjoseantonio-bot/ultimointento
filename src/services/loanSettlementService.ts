@@ -6,6 +6,7 @@ import { PlanPagos, PeriodoPago, Prestamo } from '../types/prestamos';
 import {
   amortizarAnticipado,
   cancelarAnticipado,
+  inicioDelDevengo,
   interesesCorridos,
 } from './prestamos/amortizarAnticipado';
 
@@ -103,8 +104,6 @@ interface LoQueQueda {
   intereses: number;
 }
 
-const inicioDevengo = (p: PeriodoPago): string => p.devengoDesde || p.fechaCargo;
-
 /**
  * Qué queda de un plan a partir de un día.
  *
@@ -121,7 +120,7 @@ const inicioDevengo = (p: PeriodoPago): string => p.devengoDesde || p.fechaCargo
 const loQueQueda = (plan: PlanPagos | null, desde: string): LoQueQueda => {
   const pendientes = sortPeriods(plan?.periodos ?? []).filter((p) => p.fechaCargo > desde);
   const delLadoNuevo = pendientes.find(
-    (p) => inicioDevengo(p) >= desde && !p.esProrrateado && !p.esSoloIntereses,
+    (p) => inicioDelDevengo(p) >= desde && !p.esProrrateado && !p.esSoloIntereses,
   );
 
   return {
