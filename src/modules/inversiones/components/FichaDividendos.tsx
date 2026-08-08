@@ -58,6 +58,11 @@ const FichaDividendos: React.FC<Props> = ({ posicion, onBack, onVender, onEditar
   const aportado = Number(posicion.total_aportado ?? 0);
   const valorActual = Number(posicion.valor_actual ?? 0);
   const participaciones = posicion.numero_participaciones ?? null;
+  // "acciones" solo aplica a acciones; ETF/REIT y demás cotizados usan
+  // "participaciones" (término neutral).
+  const esAccion = posicion.tipo === 'accion';
+  const unidadLabel = esAccion ? 'acciones' : 'participaciones';
+  const unidadLabelCap = esAccion ? 'Acciones' : 'Participaciones';
 
   const [avisoVisible, setAvisoVisible] = useState(true);
 
@@ -179,7 +184,7 @@ const FichaDividendos: React.FC<Props> = ({ posicion, onBack, onVender, onEditar
             {participaciones != null && (
               <>
                 <span className={styles.dheroSep}>·</span>
-                <strong>{participaciones.toLocaleString('es-ES')}</strong> acciones
+                <strong>{participaciones.toLocaleString('es-ES')}</strong> {unidadLabel}
               </>
             )}
             {precioMedio != null && (
@@ -242,7 +247,7 @@ const FichaDividendos: React.FC<Props> = ({ posicion, onBack, onVender, onEditar
             </div>
             <div className={styles.objCtrl}>
               {participaciones != null && (
-                <div className={`${styles.objChip} ${styles.alt}`}>{participaciones.toLocaleString('es-ES')} acciones</div>
+                <div className={`${styles.objChip} ${styles.alt}`}>{participaciones.toLocaleString('es-ES')} {unidadLabel}</div>
               )}
               {yieldMedio != null && (
                 <div className={styles.objChip}>
@@ -299,7 +304,7 @@ const FichaDividendos: React.FC<Props> = ({ posicion, onBack, onVender, onEditar
           <div className={styles.fcardSub}>lo esencial de esta {getTipoLabel(posicion.tipo).toLowerCase()}</div>
 
           <div className={styles.frow}>
-            <span className={styles.k}>Acciones</span>
+            <span className={styles.k}>{unidadLabelCap}</span>
             <span className={styles.v}>{participaciones != null ? participaciones.toLocaleString('es-ES') : '—'}</span>
           </div>
           <div className={styles.frow}>

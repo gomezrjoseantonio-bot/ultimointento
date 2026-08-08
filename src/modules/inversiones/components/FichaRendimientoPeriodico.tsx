@@ -84,7 +84,8 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({ posicion, onBack, onEditar
   const duracionMeses = posicion.duracion_meses;
   const esPrestamo = posicion.tipo === 'prestamo_p2p';
   const esDeposito = posicion.tipo === 'deposito_plazo' || posicion.tipo === 'deposito';
-  const retencionPct = Number(posicion.retencion_fiscal ?? rendimiento?.retencion_porcentaje ?? 19);
+  const retencionPctRaw = Number(posicion.retencion_fiscal ?? rendimiento?.retencion_porcentaje ?? 19);
+  const retencionPct = Number.isFinite(retencionPctRaw) ? retencionPctRaw : 19;
 
   const [avisoVisible, setAvisoVisible] = useState(true);
 

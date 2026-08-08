@@ -387,6 +387,9 @@
   right: 9px;
   width: 22px;
   height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
   border-radius: var(--atlas-v5-radius-sm);
   display: flex;
   align-items: center;
