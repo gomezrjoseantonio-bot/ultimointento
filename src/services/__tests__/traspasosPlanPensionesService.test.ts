@@ -110,3 +110,74 @@ describe('traspasosPlanPensionesService · registrarTraspaso · side-effects', (
     expect(plan.politicaInversion).toBe('garantizado');
   });
 });
+
+// INVERSIONES V1 · Fase 1 · lectura polimórfica por activo (índice activoId)
+describe('traspasosPlanPensionesService · getTraspasosPorActivo', () => {
+  beforeEach(() => {
+    (globalThis as any).indexedDB = new IDBFactory();
+    jest.resetModules();
+  });
+
+  async function addTraspaso(t: Record<string, unknown>) {
+    const { initDB } = await import('../db');
+    const db = await initDB();
+    const ahora = new Date().toISOString();
+    await (db as any).add('traspasosPlanPensiones', {
+      importeTraspasado: 0,
+      esTotal: true,
+      gestoraOrigen: 'A',
+      gestoraDestino: 'B',
+      fechaCreacion: ahora,
+      fechaActualizacion: ahora,
+      ...t,
+    });
+  }
+
+  it('lee traspasos de un plan por el índice activoId, ordenados por fechaEjecucion', async () => {
+    await addTraspaso({ planId: 'plan-1', activoId: 'plan-1', tipoActivo: 'plan_pensiones', fechaEjecucion: '2022-05-01' });
+    await addTraspaso({ planId: 'plan-1', activoId: 'plan-1', tipoActivo: 'plan_pensiones', fechaEjecucion: '2020-01-01' });
+    await addTraspaso({ planId: 'plan-2', activoId: 'plan-2', tipoActivo: 'plan_pensiones', fechaEjecucion: '2021-01-01' });
+
+    const { traspasosPlanPensionesService } = await import('../traspasosPlanPensionesService');
+    const res = await traspasosPlanPensionesService.getTraspasosPorActivo('plan-1', 'plan_pensiones');
+
+    expect(res.map((t) => t.fechaEjecucion)).toEqual(['2020-01-01', '2022-05-01']);
+    expect(res.every((t) => t.activoId === 'plan-1')).toBe(true);
+  });
+
+  it('distingue por tipoActivo: un fondo no devuelve traspasos de plan con el mismo activoId', async () => {
+    // Mismo id textual pero distinto tipoActivo · no deben mezclarse.
+    await addTraspaso({ planId: 'x', activoId: 'x', tipoActivo: 'plan_pensiones', fechaEjecucion: '2022-01-01' });
+    await addTraspaso({ planId: 'x', activoId: 'x', tipoActivo: 'fondo_inversion', fechaEjecucion: '2023-01-01' });
+
+    const { traspasosPlanPensionesService } = await import('../traspasosPlanPensionesService');
+    const fondo = await traspasosPlanPensionesService.getTraspasosPorActivo('x', 'fondo_inversion');
+    const plan = await traspasosPlanPensionesService.getTraspasosPorActivo('x', 'plan_pensiones');
+
+    expect(fondo).toHaveLength(1);
+    expect(fondo[0].tipoActivo).toBe('fondo_inversion');
+    expect(plan).toHaveLength(1);
+    expect(plan[0].tipoActivo).toBe('plan_pensiones');
+  });
+
+  it('red de seguridad legacy: encuentra traspasos de plan sin activoId (backfill no corrido) vía planId', async () => {
+    // Simula un traspaso legacy anterior al backfill: sin activoId ni tipoActivo.
+    await addTraspaso({ planId: 'plan-legacy', fechaEjecucion: '2019-09-09' });
+
+    const { traspasosPlanPensionesService } = await import('../traspasosPlanPensionesService');
+    const res = await traspasosPlanPensionesService.getTraspasosPorActivo('plan-legacy', 'plan_pensiones');
+
+    expect(res).toHaveLength(1);
+    expect(res[0].planId).toBe('plan-legacy');
+    expect(res[0].activoId).toBeUndefined();
+  });
+
+  it('devuelve vacío para un activo sin traspasos', async () => {
+    await addTraspaso({ planId: 'otro', activoId: 'otro', tipoActivo: 'plan_pensiones', fechaEjecucion: '2022-01-01' });
+
+    const { traspasosPlanPensionesService } = await import('../traspasosPlanPensionesService');
+    const res = await traspasosPlanPensionesService.getTraspasosPorActivo('fondo-inexistente', 'fondo_inversion');
+
+    expect(res).toEqual([]);
+  });
+});

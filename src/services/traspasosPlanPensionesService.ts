@@ -126,33 +126,48 @@ export const traspasosPlanPensionesService = {
   },
 
   /**
-   * INVERSIONES V1 · Fase 1 · lectura polimórfica por activo.
+   * INVERSIONES V1 · Fase 1 · lectura polimórfica por activo (de ORIGEN).
    *
-   * Devuelve los traspasos de un activo (plan o fondo) usando el modelo
-   * generalizado `activoId` + `tipoActivo`. No sustituye a `getTraspasosPorPlan`
-   * (que sigue leyendo por `planId`/`planIdDestino` para retro-compat); este
-   * método es el camino nuevo para fondos y para consumidores que ya piensan en
-   * clave `activoId`.
+   * Devuelve los traspasos cuyo activo de ORIGEN es `activoId` (plan o fondo),
+   * usando el modelo generalizado `activoId` + `tipoActivo`.
    *
-   * Fallback legacy: los traspasos de plan anteriores al backfill que aún no
-   * tuvieran `activoId` poblado se resuelven contra `planId` cuando el activo
-   * pedido es un plan (`activoId === planId` por construcción del backfill), de
-   * modo que la consulta funciona aunque la migración post-open no haya corrido
-   * todavía en esa sesión.
+   * ⚠️ Ámbito (origen, no destino): el modelo de Fase 1 sólo captura el activo
+   * de origen — `activoId` (que en planes coincide con `planId`) — y NO existe
+   * un `activoIdDestino`. Por eso este método NO incluye el caso destino. Si
+   * necesitas el histórico de un plan como origen Y destino (p.ej. rentabilidad
+   * por bloque), usa `getTraspasosPorPlan`, que cruza `planId`/`planIdDestino`.
+   * Este método es el camino nuevo para fondos y para consumidores que piensan
+   * en clave `activoId`.
+   *
+   * Rendimiento: consulta por el índice `activoId` en vez de recorrer todo el
+   * store. El backfill post-open (que corre dentro de initDB) puebla `activoId`
+   * en los traspasos de plan legacy, así que el índice está completo cuando
+   * initDB resuelve. Como red de seguridad ante un backfill que hubiera fallado,
+   * si el índice no devuelve nada para un plan se hace un barrido puntual contra
+   * `planId` (sólo planes · `activoId === planId` por construcción).
    */
   async getTraspasosPorActivo(
     activoId: string,
     tipoActivo: 'plan_pensiones' | 'fondo_inversion',
   ): Promise<TraspasoPlanPensiones[]> {
     const db = await initDB();
-    const all = (await db.getAll('traspasosPlanPensiones')) as TraspasoPlanPensiones[];
-    return all
-      .filter((t) => {
-        if (t.activoId != null) return t.activoId === activoId && t.tipoActivo === tipoActivo;
-        // Legacy sin activoId: sólo son planes (activoId === planId por backfill).
-        return tipoActivo === 'plan_pensiones' && t.planId === activoId;
-      })
-      .sort((a, b) => a.fechaEjecucion.localeCompare(b.fechaEjecucion));
+    const porIndice = (await db.getAllFromIndex(
+      'traspasosPlanPensiones',
+      'activoId',
+      activoId,
+    )) as TraspasoPlanPensiones[];
+    const resultado = porIndice.filter((t) => t.tipoActivo === tipoActivo);
+
+    // Red de seguridad legacy: si el backfill no hubiera corrido, los traspasos
+    // de plan aún sin `activoId` no aparecen en el índice. Sólo aplica a planes.
+    if (resultado.length === 0 && tipoActivo === 'plan_pensiones') {
+      const all = (await db.getAll('traspasosPlanPensiones')) as TraspasoPlanPensiones[];
+      return all
+        .filter((t) => t.activoId == null && t.planId === activoId)
+        .sort((a, b) => a.fechaEjecucion.localeCompare(b.fechaEjecucion));
+    }
+
+    return resultado.sort((a, b) => a.fechaEjecucion.localeCompare(b.fechaEjecucion));
   },
 
   /**
