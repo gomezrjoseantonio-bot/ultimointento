@@ -83,3 +83,29 @@ describe('las dos preguntas salen del mismo calendario', () => {
     expect(cal.graciaMeses).toBe(12);
   });
 });
+
+// La precisión viaja con la fecha, y hay que mirarla antes de pintarla: una
+// revisión que solo se sabe por meses contesta `2026-08`, y un formateador de
+// día sobre eso escribe un guion. La pantalla decía «la pierdes el —».
+describe('la precisión dice cómo se puede enseñar la fecha', () => {
+  const hoy = '2026-08-08';
+
+  it('con la firma sabida, la revisión tiene día', () => {
+    const p = proximaRevision(calendarioDe(unicaja()), hoy)!;
+
+    expect(p.precision).toBe('dia');
+    expect(p.fecha).toHaveLength(10);
+  });
+
+  // Cuando lo que hay es lo que dijo el banco en `YYYY-MM`, no hay día que
+  // inventar · y decirlo es lo que permite escribir «en ago 2026».
+  it('y lo que da el banco por meses se queda en mes', () => {
+    const p = proximaRevision(
+      calendarioDe(unicaja({ proximaRevisionBonificaciones: '2026-11' })),
+      hoy
+    )!;
+
+    expect(p.precision).toBe('mes');
+    expect(p.fecha).toHaveLength(7);
+  });
+});

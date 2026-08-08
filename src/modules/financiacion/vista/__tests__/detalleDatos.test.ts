@@ -15,6 +15,7 @@ import {
 } from '../../../../services/prestamos/lecturas';
 import {
   condicionesDe,
+  cuandoSePierde,
   fiscalidadDe,
   hayDiscrepancia,
   lineaDeTiempo,
@@ -22,6 +23,7 @@ import {
   type BonificacionDetalle,
 } from '../detalleDatos';
 import type { Cumplimiento } from '../../../../services/bonificaciones/cumplimiento';
+import type { Revision } from '../../../../services/bonificaciones/revisionDelBanco';
 import type { Bonificacion, Prestamo } from '../../../../types/prestamos';
 
 const unicaja = (over: Partial<Prestamo> = {}): Prestamo =>
@@ -446,5 +448,29 @@ describe('hayDiscrepancia · las dos voces', () => {
 
   it('ni tampoco no haber mirado todavía', () => {
     expect(hayDiscrepancia(conVeredicto(undefined, true))).toBe(false);
+  });
+});
+
+// Cuándo se pierde · la fecha se enseña como se sepa, no como se quiera.
+describe('cuandoSePierde · con el día si lo hay, con el mes si no', () => {
+  it('con día, lo dice', () => {
+    expect(cuandoSePierde({ fecha: '2026-08-25', precision: 'dia' } as Revision)).toBe(
+      'la pierdes el 25 ago 2026'
+    );
+  });
+
+  // Una revisión que solo se sabe por meses contesta `2026-11`, y un formateador
+  // de día sobre eso escribía «la pierdes el —».
+  it('y con solo el mes, el mes · nunca un guion', () => {
+    const texto = cuandoSePierde({ fecha: '2026-11', precision: 'mes' } as Revision);
+
+    expect(texto).toBe('la pierdes en nov 2026');
+    expect(texto).not.toMatch(/—/);
+  });
+
+  // Sin saber cuándo revisa el banco no hay fecha que poner · pero el aviso
+  // sigue haciendo falta, porque la discrepancia existe igual.
+  it('y sin revisión conocida, lo dice sin fecha', () => {
+    expect(cuandoSePierde(null)).toBe('te la aplican · no la demuestras');
   });
 });

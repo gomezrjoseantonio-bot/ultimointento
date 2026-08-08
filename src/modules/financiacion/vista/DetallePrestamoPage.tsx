@@ -47,6 +47,7 @@ import CuadroPreview from './CuadroPreview';
 import type { Prestamo } from '../../../types/prestamos';
 import {
   condicionesDe,
+  cuandoSePierde,
   fiscalidadDe,
   hayDiscrepancia,
   lineaDeTiempo,
@@ -601,9 +602,7 @@ const DetallePrestamoPage: React.FC = () => {
                         <span className={styles.bonifAviso} title={b.explicacion}>
                           {!b.alcanzada
                             ? 'no se cumple'
-                            : datos.proximaDelBanco?.fecha
-                              ? `la pierdes el ${diaMesAnio(datos.proximaDelBanco.fecha)}`
-                              : 'te la aplican · no la demuestras'}
+                            : cuandoSePierde(datos.proximaDelBanco)}
                         </span>
                       )}
                       {b.veredicto === 'no_verificable' && (
