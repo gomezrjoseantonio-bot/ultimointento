@@ -38,7 +38,7 @@ export function resumenCartera(items: CartaItem[]): ResumenCartera {
 
 // ── Chips por familia (Planes · Préstamos · Acciones) · spec §2.2 ───────────
 
-export type FamiliaChip = 'planes' | 'prestamos' | 'acciones';
+export type FamiliaChip = 'planes' | 'prestamos' | 'acciones' | 'fondos';
 
 export interface ResumenFamilia {
   familia: FamiliaChip;
@@ -50,7 +50,10 @@ export interface ResumenFamilia {
 
 // Mapa categoría-galería → chip del hero. `otros` (crypto) no tiene chip
 // propio pero SÍ cuenta en el total/gauge (resumenCartera los incluye).
+// Los fondos de inversión son renta variable (categoría `equity`) pero tienen
+// chip propio "Fondos": son otra familia y no deben confundirse con acciones.
 function chipDeItem(item: CartaItem): FamiliaChip | null {
+  if (item.tipo === 'fondo_inversion') return 'fondos';
   const cat = getCategoriaGaleria(item.tipo);
   if (cat === 'planes') return 'planes';
   if (cat === 'rentaFija') return 'prestamos';
@@ -69,12 +72,14 @@ export function familiasResumen(items: CartaItem[]): Record<FamiliaChip, Resumen
     planes: { familia: 'planes', aportado: 0, hoy: 0, pctAnual: null },
     prestamos: { familia: 'prestamos', aportado: 0, hoy: 0, pctAnual: null },
     acciones: { familia: 'acciones', aportado: 0, hoy: 0, pctAnual: null },
+    fondos: { familia: 'fondos', aportado: 0, hoy: 0, pctAnual: null },
   };
   // Acumuladores para la media ponderada de %.
   const acc: Record<FamiliaChip, { pesoPct: number; peso: number }> = {
     planes: { pesoPct: 0, peso: 0 },
     prestamos: { pesoPct: 0, peso: 0 },
     acciones: { pesoPct: 0, peso: 0 },
+    fondos: { pesoPct: 0, peso: 0 },
   };
 
   for (const item of items) {

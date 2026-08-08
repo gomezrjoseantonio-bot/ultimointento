@@ -81,6 +81,19 @@ describe('galeriaHero · familiasResumen', () => {
     const f = familiasResumen([item({ tipo: 'plan_pensiones', valor_actual: 100 })]);
     expect(f.planes.pctAnual).toBeNull();
   });
+
+  it('un fondo de inversión va a su propio chip "fondos", no a "acciones"', () => {
+    const f = familiasResumen([
+      item({ tipo: 'fondo_inversion', valor_actual: 1065, total_aportado: 1065, cagr_pct: 5 }),
+      item({ tipo: 'accion', valor_actual: 500, total_aportado: 400, cagr_pct: 12 }),
+    ]);
+    expect(f.fondos.hoy).toBe(1065);
+    expect(f.fondos.aportado).toBe(1065);
+    expect(f.fondos.pctAnual).toBeCloseTo(5);
+    // No se mezcla con acciones (otra familia).
+    expect(f.acciones.hoy).toBe(500);
+    expect(f.acciones.pctAnual).toBeCloseTo(12);
+  });
 });
 
 describe('galeriaHero · rentaPasivaAnual', () => {

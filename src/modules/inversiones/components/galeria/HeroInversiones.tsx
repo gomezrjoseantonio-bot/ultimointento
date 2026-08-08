@@ -61,10 +61,11 @@ const CHIP_META: Record<FamiliaChip, { nombre: string; icon: React.ReactNode }> 
   planes: { nombre: 'Planes de pensión', icon: <Icons.Colchon size={16} strokeWidth={1.8} /> },
   prestamos: { nombre: 'Préstamos', icon: <Icons.Ingreso size={16} strokeWidth={1.8} /> },
   acciones: { nombre: 'Acciones', icon: <Icons.Inversiones size={16} strokeWidth={1.8} /> },
+  fondos: { nombre: 'Fondos', icon: <Icons.Fondos size={16} strokeWidth={1.8} /> },
 };
 
 const HeroInversiones: React.FC<Props> = ({ resumen, familias, rentaPasiva, serie }) => {
-  const chips: FamiliaChip[] = ['planes', 'prestamos', 'acciones'];
+  const chips: FamiliaChip[] = ['planes', 'fondos', 'acciones', 'prestamos'];
   const { intereses, dividendos, total, mensual } = rentaPasiva;
   const pctInteres = total > 0 ? (intereses / total) * 100 : 0;
   const pctDiv = total > 0 ? (dividendos / total) * 100 : 0;

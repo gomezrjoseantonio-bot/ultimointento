@@ -101,6 +101,25 @@ describe('treasurySyncService – deduplication', () => {
   });
 });
 
+// ─── 3bis. Compra inicial no duplica la aportación inicial ───────────────────
+
+describe('treasurySyncService – compra inicial no duplica la aportación inicial', () => {
+  it('salta la "Compra inicial" cuando existe una aportación datada en fecha_compra', () => {
+    // `createPosicion` sintetiza una "Aportación inicial" en fecha_compra con el
+    // mismo importe que total_aportado, y el bloque 1b ya la emite como evento
+    // "Aportación". El bloque 1a (compra) debe saltarse en ese caso · si no,
+    // Tesorería mostraría el MISMO desembolso dos veces (bug del fondo Unicaja).
+    const compraBlock = source.slice(
+      source.indexOf('// 1a. Compra inicial'),
+      source.indexOf('// 1b. Aportaciones puntuales futuras'),
+    );
+    expect(compraBlock).toContain('tieneAportacionInicial');
+    expect(compraBlock).toContain("a.tipo === 'aportacion'");
+    // El guard debe usarse para NO emitir la compra.
+    expect(compraBlock).toContain('!tieneAportacionInicial');
+  });
+});
+
 // ─── 4. Aportaciones puntuales use aportacion.id as sourceId ─────────────────
 
 describe('treasurySyncService – aportaciones puntuales sourceId', () => {
