@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { showToastV5 } from '../../../design-system/v5';
-import { revisionPendiente } from '../../../services/bonificaciones/revisionDelBanco';
+import { calendarioDe, revisionPendiente } from '../../../services/bonificaciones/revisionDelBanco';
 import type { RevisionPendiente } from '../../../services/bonificaciones/revisionDelBanco';
 import { confirmarRevision } from '../../../services/prestamos/confirmarRevision';
 import type { LoQueDecidioElBanco } from '../../../services/prestamos/confirmarRevision';
@@ -59,12 +59,7 @@ export function useRevisionPendiente(
   const pendiente = useMemo(
     () =>
       revisionPendiente(
-        {
-          desdeLaFirma: prestamo.fechaFirma ?? '',
-          proximaSegunElBanco: prestamo.proximaRevisionBonificaciones,
-          cadaMeses: prestamo.periodoRevisionBonificacionMeses,
-          graciaMeses: prestamo.graciaMesesBonificaciones,
-        },
+        calendarioDe(prestamo),
         hoy,
         prestamo.ultimaRevisionBonificacionesConfirmada
       ),

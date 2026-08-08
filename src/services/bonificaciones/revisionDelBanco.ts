@@ -121,6 +121,60 @@ function mesesValidos(n: unknown): number | null {
   return typeof n === 'number' && Number.isInteger(n) && n > 0 ? n : null;
 }
 
+// ─── El calendario de UN préstamo ───────────────────────────────────────────
+//
+// **La revisión es un solo acto** *(Jose · 8 ago 2026)*: una o dos veces al año
+// el banco mira lo que tenga que mirar de este préstamo — el índice si el tramo
+// en curso es variable, y las bonificaciones cuando lo diga la escritura.
+//
+// ATLAS lo tenía partido en dos periodicidades, `periodoRevisionMeses` y
+// `periodoRevisionBonificacionMeses`, cada una con su propio desplegable
+// «Revisión» en la misma pantalla de alta. Dos respuestas a la misma pregunta
+// que podían no coincidir — y no coincidían: la ficha anunciaba una fecha de
+// revisión arriba y otra distinta en la tarjeta de bonificaciones.
+//
+// Y no es que una valga para variables y la otra para fijos: **un fijo también
+// revisa**. El de ING mira todos los años si cumples y mueve el tipo fijo de
+// 2,15 % a 1,35 %. Lo que no revisa un fijo es el índice, porque no tiene.
+
+/** Lo mínimo de un préstamo para saber cuándo lo mira el banco. */
+export type PrestamoRevisable = {
+  fechaFirma?: string;
+  proximaRevisionBonificaciones?: string;
+  periodoRevisionMeses?: number;
+  /** @deprecated Legado · la periodicidad es una sola. Solo se lee de respaldo. */
+  periodoRevisionBonificacionMeses?: number;
+  graciaMesesBonificaciones?: number;
+};
+
+/**
+ * Cada cuántos meses revisa el banco · una sola respuesta.
+ *
+ * `periodoRevisionMeses` es la canónica. La de bonificaciones se lee solo como
+ * respaldo, para los préstamos guardados antes de unificarlas — entre otros los
+ * fijos, a los que el asistente no escribía la canónica porque daba por hecho
+ * que un fijo no revisa nada.
+ */
+export function cadaCuantoRevisa(p: PrestamoRevisable): number | null {
+  return mesesValidos(p.periodoRevisionMeses) ?? mesesValidos(p.periodoRevisionBonificacionMeses);
+}
+
+/**
+ * El calendario de revisión de un préstamo.
+ *
+ * Existe para que nadie vuelva a montarlo a mano: lo hacían dos sitios con los
+ * mismos cuatro campos, y bastaba con que uno cambiara de opinión sobre cuál es
+ * la periodicidad para que la pantalla dijera dos fechas.
+ */
+export function calendarioDe(p: PrestamoRevisable): CalendarioDeRevision {
+  return {
+    desdeLaFirma: p.fechaFirma ?? '',
+    proximaSegunElBanco: p.proximaRevisionBonificaciones,
+    cadaMeses: cadaCuantoRevisa(p) ?? undefined,
+    graciaMeses: p.graciaMesesBonificaciones,
+  };
+}
+
 /**
  * La próxima revisión que DECIDE algo, y si hoy estamos en el periodo inicial.
  *

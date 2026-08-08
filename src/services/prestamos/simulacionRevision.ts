@@ -25,7 +25,7 @@
 // ============================================================================
 
 import type { Prestamo } from '../../types/prestamos';
-import { proximaRevision } from '../bonificaciones/revisionDelBanco';
+import { calendarioDe, proximaRevision } from '../bonificaciones/revisionDelBanco';
 import { cuadroDe, getCuota } from './lecturas';
 import { tinDelTramo } from './tinDelTramo';
 import { tramoVigente } from './tramosDeTipo';
@@ -71,15 +71,7 @@ export function simulacionRevision(
   if (prestamo.tipo === 'FIJO') return null;
   if (typeof indiceHoy !== 'number' || !Number.isFinite(indiceHoy)) return null;
 
-  const proxima = proximaRevision(
-    {
-      desdeLaFirma: prestamo.fechaFirma ?? '',
-      proximaSegunElBanco: prestamo.proximaRevisionBonificaciones,
-      cadaMeses: prestamo.periodoRevisionBonificacionMeses,
-      graciaMeses: prestamo.graciaMesesBonificaciones,
-    },
-    hoy
-  );
+  const proxima = proximaRevision(calendarioDe(prestamo), hoy);
   if (!proxima?.fecha || !proxima.precision) return null;
 
   const desde = aplicaDesde(proxima.fecha, proxima.precision);
