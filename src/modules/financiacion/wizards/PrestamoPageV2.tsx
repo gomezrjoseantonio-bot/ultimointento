@@ -634,6 +634,9 @@ function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
         ? Math.abs(p.topeBonificacionesTotal)
         : undefined;
 
+  /** Una sola lectura · la canónica, con respaldo en la legada. */
+  const revisaCada = cadaCuantoRevisa(p);
+
   return {
     ...base,
     tipoPrestamo:
@@ -682,7 +685,7 @@ function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
       topeEnPuntos !== undefined ? fmtNumeroEs(topeEnPuntos, 2) : base.topeBonificacionesRaw,
     modoBonificaciones: p.modoBonificaciones ?? base.modoBonificaciones,
     proximaRevision: p.proximaRevisionBonificaciones ?? base.proximaRevision,
-    revisionCadaMeses: cadaCuantoRevisa(p) ? String(cadaCuantoRevisa(p)) : base.revisionCadaMeses,
+    revisionCadaMeses: revisaCada != null ? String(revisaCada) : base.revisionCadaMeses,
     bonificacionesDesde: p.bonificacionesDesde ?? base.bonificacionesDesde,
     graciaBonificacionesMeses: p.graciaMesesBonificaciones
       ? String(p.graciaMesesBonificaciones)
