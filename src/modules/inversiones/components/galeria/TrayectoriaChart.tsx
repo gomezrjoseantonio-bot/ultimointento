@@ -8,7 +8,7 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import type { SerieTrayectoria } from '../../adapters/galeriaHero';
-import styles from '../../InversionesGaleria.module.css';
+import styles from './galeriaV5.module.css';
 
 // Marco del lienzo (coordenadas del viewBox · mismas proporciones que el mockup).
 const VB_W = 360;
@@ -18,7 +18,14 @@ const X1 = 352;
 const Y0 = 12;
 const Y1 = 140;
 
-const kfmt = (v: number): string => `${Math.round(v / 1000)}k`;
+// Formato compacto para eje/tooltip. Bajo 1.000 muestra el valor entero (no
+// redondea 500 → "1k"); en miles usa 1 decimal por debajo de 10k para no perder
+// resolución en rangos pequeños/medios.
+const kfmt = (v: number): string => {
+  if (v < 1000) return String(Math.round(v));
+  const k = v / 1000;
+  return `${k >= 10 ? Math.round(k) : Math.round(k * 10) / 10}k`;
+};
 
 interface Props {
   serie: SerieTrayectoria;

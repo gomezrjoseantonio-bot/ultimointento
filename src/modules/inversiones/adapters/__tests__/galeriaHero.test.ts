@@ -163,10 +163,12 @@ describe('galeriaHero · serieTrayectoria', () => {
 });
 
 describe('supuestosProyeccion · tasaNominalPosicion', () => {
-  it('usa la CAGR saneada al rango [0, 15]', () => {
+  it('usa la CAGR saneada al rango [ahorro, 15]', () => {
     expect(tasaNominalPosicion(8, SUP)).toBeCloseTo(0.08);
-    expect(tasaNominalPosicion(30, SUP)).toBeCloseTo(0.15); // clamp máx
-    expect(tasaNominalPosicion(-5, SUP)).toBeCloseTo(0); // clamp mín
+    expect(tasaNominalPosicion(30, SUP)).toBeCloseTo(0.15); // techo
+    // suelo = rentabilidadAhorroPct (2%) · una CAGR negativa no baja de ahí.
+    expect(tasaNominalPosicion(-5, SUP)).toBeCloseTo(0.02);
+    expect(tasaNominalPosicion(1, SUP)).toBeCloseTo(0.02); // CAGR < suelo → suelo
   });
 
   it('cae al suelo de ahorro del escenario si no hay CAGR', () => {

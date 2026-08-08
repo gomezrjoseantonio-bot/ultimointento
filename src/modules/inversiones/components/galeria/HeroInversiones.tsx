@@ -16,7 +16,7 @@ import type {
   SerieTrayectoria,
 } from '../../adapters/galeriaHero';
 import TrayectoriaChart from './TrayectoriaChart';
-import styles from '../../InversionesGaleria.module.css';
+import styles from './galeriaV5.module.css';
 
 interface Props {
   resumen: ResumenCartera;

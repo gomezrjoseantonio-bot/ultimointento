@@ -16,7 +16,7 @@ import {
   getTipoTagLabel,
   type CategoriaGaleria,
 } from '../../helpers';
-import styles from '../../InversionesGaleria.module.css';
+import styles from './galeriaV5.module.css';
 
 type FiltroLedger = 'todas' | 'planes' | 'rentaFija' | 'equity';
 type SortKey = 'nom' | 'year' | 'peso' | 'valor';

@@ -16,7 +16,7 @@
 // (dato real, no inventado) y, cuando no hay CAGR fiable, caemos a la
 // rentabilidad de ahorro del escenario como suelo compartido. Si algún día se
 // añade una "rentabilidadObjetivoInversionesPct" al escenario, este es el
-// único sitio donde hay que conectarla (ver TODO abajo).
+// único sitio donde hay que conectarla (ver nota PENDIENTE abajo).
 
 import { getSupuestosProyeccion } from '../../../services/escenariosService';
 
@@ -34,9 +34,11 @@ export interface SupuestosGaleria {
   rentabilidadObjetivoPct: number | null;
 }
 
-// Límites de saneamiento de la CAGR realizada al proyectar (evitan que una
-// posición con +300% en un año dispare una banda absurda en la trayectoria).
-export const PROY_RATE_MIN_PCT = 0;
+// Techo de saneamiento de la CAGR realizada al proyectar (evita que una
+// posición con +300% en un año dispare una banda absurda en la trayectoria). El
+// SUELO no es una constante: es la rentabilidad de ahorro del escenario (ver
+// `tasaNominalPosicion`), para que ninguna posición se proyecte por debajo del
+// mínimo compartido.
 export const PROY_RATE_MAX_PCT = 15;
 
 /** Horizonte de la trayectoria de la galería (años). Spec Fase 2 §2.2. */
@@ -52,8 +54,8 @@ export async function obtenerSupuestosGaleria(): Promise<SupuestosGaleria> {
   return {
     inflacionPct: s.inflacionGastosPct,
     rentabilidadAhorroPct: s.rentabilidadAhorroPct,
-    // TODO(Fase 5·avisar a Jose): el escenario no tiene "rentabilidad objetivo"
-    // de inversiones. Cuando exista, mapearla aquí en vez de `null`.
+    // PENDIENTE (Fase 5 · avisar a Jose): el escenario no tiene "rentabilidad
+    // objetivo" de inversiones. Cuando exista, mapearla aquí en vez de `null`.
     rentabilidadObjetivoPct: null,
   };
 }
@@ -62,8 +64,11 @@ export async function obtenerSupuestosGaleria(): Promise<SupuestosGaleria> {
  * Tasa de crecimiento nominal anual (fracción, p.ej. 0,07) que se usa para
  * proyectar una posición hacia el futuro:
  *   1. rentabilidad objetivo del escenario, si existe (hoy null).
- *   2. CAGR realizada de la posición, saneada al rango [MIN, MAX].
- *   3. rentabilidad de ahorro del escenario, como suelo compartido.
+ *   2. CAGR realizada de la posición, saneada al rango
+ *      [rentabilidadAhorroPct, PROY_RATE_MAX_PCT]: el SUELO es la rentabilidad
+ *      de ahorro del escenario (una posición no se proyecta por debajo del
+ *      mínimo compartido) y el TECHO evita CAGRs absurdas.
+ *   3. sin CAGR fiable → rentabilidad de ahorro del escenario (el propio suelo).
  *
  * NUNCA hardcodea una tasa: todo sale del escenario o del dato realizado.
  */
@@ -74,9 +79,10 @@ export function tasaNominalPosicion(
   if (supuestos.rentabilidadObjetivoPct != null) {
     return supuestos.rentabilidadObjetivoPct / 100;
   }
+  const suelo = supuestos.rentabilidadAhorroPct;
   if (cagrPct != null && Number.isFinite(cagrPct)) {
-    const clamped = Math.min(PROY_RATE_MAX_PCT, Math.max(PROY_RATE_MIN_PCT, cagrPct));
+    const clamped = Math.min(PROY_RATE_MAX_PCT, Math.max(suelo, cagrPct));
     return clamped / 100;
   }
-  return supuestos.rentabilidadAhorroPct / 100;
+  return suelo / 100;
 }
