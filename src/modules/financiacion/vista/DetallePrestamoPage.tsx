@@ -40,6 +40,7 @@ import { useRevisionPendiente } from './useRevisionPendiente';
 import { simulacionRevision } from '../../../services/prestamos/simulacionRevision';
 import { conIndiceDeHoy } from '../../../services/prestamos/indiceDeHoy';
 import { calendarioDe, proximaRevision } from '../../../services/bonificaciones/revisionDelBanco';
+import { publicacionDelIndice } from '../../../services/prestamos/indicePublicado';
 import { inmueblesAlquiladosEn } from '../../../services/prestamos/inmueblesAlquilados';
 import { getFinancialValuesSnapshot } from '../../../services/financialValuesService';
 import CuadroCompleto from './CuadroCompleto';
@@ -55,6 +56,7 @@ import {
 } from './detalleDatos';
 import {
   anio as soloAnio,
+  cifraIndice,
   diaMesAnio,
   eurAFavor,
   eurDeuda,
@@ -78,16 +80,6 @@ const ETIQUETA_TIPO: Record<string, string> = {
   VARIABLE: 'tipo variable',
   MIXTO: 'tipo mixto',
 };
-
-/**
- * Un valor de índice o diferencial · «2,100» · «—» si el préstamo no lo trae.
- *
- * Nada de `?? 0`: un cero es un valor válido —hubo Euríbor negativo, y hay
- * diferenciales a cero— así que escribirlo por un dato ausente sería enseñar
- * como hecho algo que nadie ha dicho.
- */
-const cifraIndice = (v: number | undefined): string =>
-  typeof v === 'number' && Number.isFinite(v) ? v.toFixed(3).replace('.', ',') : '—';
 
 /** Los cuatro últimos dígitos del contrato · «····4021». */
 const enmascarado = (numero: string | undefined): string | null => {
@@ -177,6 +169,12 @@ const DetallePrestamoPage: React.FC = () => {
   // La revisión que espera respuesta · vive con las bonificaciones, no en una
   // tarjeta aparte que enseñara la misma lista otra vez.
   const revision = useRevisionPendiente(prestamo ?? ({ id: '' } as Prestamo), hoy, reload);
+
+  // De qué mes publicado sale el índice de la revisión pendiente · el de hoy no.
+  const publicacion = useMemo(
+    () => (prestamo ? publicacionDelIndice(prestamo, revision.pendiente?.aplicaDesde) : null),
+    [prestamo, revision.pendiente]
+  );
   useEffect(() => {
     // Lo primero, olvidar lo anterior · navegar de un préstamo a otro dejaba en
     // pantalla los veredictos del que acabas de dejar, pegados a las
@@ -673,10 +671,15 @@ const DetallePrestamoPage: React.FC = () => {
                     />
                     <span>%</span>
                   </div>
+                  {/* De QUÉ euríbor se habla · ver `indicePublicado`. Aquí
+                      ponía «el que tienes en Actualizar valores», que es el de
+                      HOY, y ofrecerlo invita a aceptarlo. */}
                   <span className={rev.revPista}>
-                    {revision.indiceSugerido != null
-                      ? 'el que tienes en Actualizar valores · si la carta dice otro, escríbelo'
-                      : 'sin diferencial · vacío si la carta no lo dice'}
+                    {publicacion
+                      ? `el euríbor publicado de ${mesAnio(`${publicacion}-01`)} · lo dice tu carta`
+                      : revision.indiceSugerido != null
+                        ? 'el de Actualizar valores es el de HOY · escribe el de tu carta'
+                        : 'sin diferencial · vacío si la carta no lo dice'}
                   </span>
                 </div>
               )}

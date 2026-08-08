@@ -59,3 +59,13 @@ export const mesCorto = (iso: string | null | undefined): string => {
   const mes = Number(iso.slice(5, 7));
   return Number.isInteger(mes) && mes >= 1 && mes <= 12 ? MESES[mes - 1] : '';
 };
+
+/**
+ * Un valor de índice o diferencial · «2,100» · «—» si no lo trae.
+ *
+ * Nada de `?? 0`: un cero es un valor válido —hubo Euríbor negativo, y hay
+ * diferenciales a cero— así que escribirlo por un dato ausente sería enseñar
+ * como hecho algo que nadie ha dicho.
+ */
+export const cifraIndice = (v: number | undefined): string =>
+  typeof v === 'number' && Number.isFinite(v) ? v.toFixed(3).replace('.', ',') : '—';

@@ -271,14 +271,20 @@ divergiendo.
 *(`bonificacionesDesde` y `graciaMesesBonificaciones` sí existen y modelan bien
 los tres casos de arriba · el hueco no está ahí.)*
 
-**c) `RevisionDelIndice` guarda demasiado poco.** Hoy es `{desde, valorIndice}`.
-No guarda de qué mes publicado sale el índice, ni el redondeo, ni qué
-bonificaciones concedió el banco en esa misma revisión — que es parte del mismo
-acto. Sin eso, una revisión apuntada no se puede auditar contra la carta.
+**c) `RevisionDelIndice` guarda demasiado poco.** *Medio hecho:* de qué mes
+publicado sale el índice ya no hace falta guardarlo — se **deriva** del desfase
+de la escritura, así que hay un solo sitio que lo dice y no puede
+contradecirse. Lo que sigue sin guardarse es **qué bonificaciones concedió el
+banco en esa misma revisión**, que es parte del mismo acto: hoy solo queda el
+estado actual, que la revisión siguiente pisa. Sin ese histórico no se puede
+mirar atrás y ver cuándo te quitaron una.
 
-**d) La escritura no tiene dónde decir de qué euríbor habla**: no hay campo para
-el desfase ni para el redondeo. Se está suponiendo, y suponer aquí mueve
-décimas.
+**d) La escritura no tiene dónde decir de qué euríbor habla.** *Medio hecho:*
+ya está el **desfase** (`indiceDesfaseMeses`), que es lo que permite decir «el
+euríbor publicado de julio de 2026» en vez de ofrecer el de hoy. Falta el
+**redondeo** —hay escrituras que redondean a un octavo de punto—, que se deja
+fuera a propósito: hoy no lo leería nadie, porque el índice se apunta ya
+redondeado desde la carta. Entrará cuando haya quien lo use.
 
 **e) La ficha llama a la revisión por el recibo, no por la fecha.** Dice
 «próxima revisión 25 sep 2026» cuando el tipo cambia el **25 de agosto**. Son
