@@ -35,6 +35,39 @@
   flex-shrink: 0;
 }
 
+/* El título dentro del hero · como Tesorería. Una cabecera aparte encima
+   repetía el nombre del menú y se comía una banda entera de una vista que no
+   puede tener scroll. */
+.heroLab {
+  padding: 12px var(--atlas-v5-sp-8) 0;
+}
+
+.heroTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--atlas-v5-fs-sub);
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: var(--atlas-v5-ls-chip);
+  text-transform: uppercase;
+  color: var(--atlas-v5-on-navy-1);
+}
+
+.heroDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold);
+  flex-shrink: 0;
+}
+
+.heroSub {
+  margin-top: 2px;
+  padding-left: 15px;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-navy-text-2);
+}
+
 .kpiRow {
   display: grid;
   grid-template-columns: 1.15fr 0.92fr 0.92fr 0.98fr auto;
@@ -53,6 +86,7 @@
 
 .kpiBtn {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 15px var(--atlas-v5-sp-8);
@@ -338,10 +372,13 @@
 }
 
 /* Con más préstamos de los que caben scrollea la LISTA · nunca la página. */
+/* Sin scroll · lo que no cabe se pagina (guía v5). Con `overflow-y: auto` las
+   filas de abajo existían y no se veían, y el préstamo que se te olvida es
+   siempre el de abajo. */
 .filas {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .fila {
@@ -380,6 +417,75 @@
   color: var(--atlas-v5-ink-4);
   font-weight: var(--atlas-v5-fw-bold);
 }
+
+/* Ordenar se pide pulsando la columna · la flecha dice por cuál se está
+   ordenando ahora, que es lo que un desplegable aparte no podía decir. */
+.thOrd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.thR.thOrd { justify-content: flex-end; }
+.thOrd:hover { color: var(--atlas-v5-ink-2); }
+.thOn { color: var(--atlas-v5-ink); }
+
+.thFlecha {
+  font-size: 9px;
+  opacity: 0.45;
+  line-height: 1;
+}
+
+.thOn .thFlecha { opacity: 1; color: var(--atlas-v5-gold); }
+
+/* El paginador · ocupa el sitio del desplegable de ordenar. */
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pager button {
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  border-radius: var(--atlas-v5-radius-sm);
+  width: 26px;
+  height: 26px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--atlas-v5-ink-2);
+  cursor: pointer;
+}
+
+.pager button:disabled { opacity: 0.35; cursor: default; }
+
+.pagerN {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-4);
+}
+
+/* La segunda puerta al alta · secundaria de verdad, no otro primario. */
+.btnFein {
+  margin-top: 6px;
+  border: none;
+  background: transparent;
+  color: var(--atlas-v5-navy-text-2);
+  font-family: inherit;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.btnFein:hover { color: var(--atlas-v5-on-navy-1); }
 
 .thR { text-align: right; }
 

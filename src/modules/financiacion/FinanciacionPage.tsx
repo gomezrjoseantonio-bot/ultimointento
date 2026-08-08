@@ -97,11 +97,15 @@ const FinanciacionPage: React.FC = () => {
     location.pathname === '/financiacion/nuevo-fein' ||
     /^\/financiacion\/[^/]+\/editar$/.test(location.pathname);
 
-  const showHead = !isDetail && !isWizard;
+  // La vista principal y el detalle llevan su título DENTRO del hero, como
+  // Tesorería · una cabecera aparte encima repetía el nombre del menú y se
+  // comía una banda de una pantalla que no puede tener scroll.
+  const isVista = location.pathname === '/financiacion';
+  const showHead = !isDetail && !isWizard && !isVista;
   // La vista principal y el detalle mandan sin scroll (guía v5): se reparten la
   // altura del main en vez de crecer hacia abajo. El resto de rutas siguen con
   // el flujo normal · un wizard sí puede ser más largo que la ventana.
-  const sinScroll = location.pathname === '/financiacion' || isDetail;
+  const sinScroll = isVista || isDetail;
 
   return (
     <div className={`${styles.page} ${sinScroll ? styles.pageSinScroll : ''}`}>
@@ -125,7 +129,7 @@ const FinanciacionPage: React.FC = () => {
       )}
       {loading ? (
         <div className={styles.loading}>Cargando financiación…</div>
-      ) : showHead && vivos.length === 0 ? (
+      ) : (isVista || showHead) && vivos.length === 0 ? (
         <EmptyState
           icon={Landmark}
           title="Sin préstamos aún"

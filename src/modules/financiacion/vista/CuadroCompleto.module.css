@@ -1,0 +1,127 @@
+/* El cuadro entero · panel sobre la ficha. Se pagina y no hace scroll, como la
+   cartera: lo que no cabe se pasa de página, no se esconde debajo. */
+.fondo {
+  position: fixed;
+  inset: 0;
+  background: var(--atlas-v5-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: var(--atlas-v5-sp-7);
+}
+
+.panel {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 720px;
+  overflow: hidden;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px var(--atlas-v5-sp-8);
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.tit {
+  font-size: var(--atlas-v5-fs-h3);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+
+.sub {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+}
+
+.cerrar {
+  border: none;
+  background: transparent;
+  color: var(--atlas-v5-ink-4);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 0;
+}
+
+.cerrar:hover { color: var(--atlas-v5-ink); }
+
+.tabla { padding: 0 var(--atlas-v5-sp-8); }
+
+.fila {
+  display: grid;
+  grid-template-columns: 48px 1fr 96px 96px 96px 108px;
+  align-items: center;
+  height: 30px;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+}
+
+.fila:last-child { border-bottom: none; }
+
+.cabecera {
+  height: 30px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.th {
+  font-size: var(--atlas-v5-fs-chip-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--atlas-v5-ls-chip);
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.c {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-2);
+}
+
+/* Lo ya pagado se apaga · sigue estando, porque el cuadro es el histórico y la
+   proyección a la vez, pero lo que se viene a mirar es lo que queda. */
+.pasada .c { color: var(--atlas-v5-ink-4); }
+
+.r { text-align: right; }
+.mono { font-family: var(--atlas-v5-font-mono-num); }
+
+.pie {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px var(--atlas-v5-sp-8);
+  border-top: 1px solid var(--atlas-v5-line);
+}
+
+.pie button {
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  border-radius: var(--atlas-v5-radius-sm);
+  min-width: 26px;
+  height: 26px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--atlas-v5-ink-2);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.pie button:disabled { opacity: 0.35; cursor: default; }
+
+.pieN {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-4);
+}
+
+.hoy {
+  margin-left: auto;
+  padding: 0 10px;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-gold-ink);
+}

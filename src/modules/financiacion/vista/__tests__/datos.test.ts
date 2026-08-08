@@ -8,7 +8,8 @@
 // y **sin garantía apuntada** —la escritura se firma después—, así que la
 // cartera la llamaba «personal» teniendo el dato delante.
 
-import { familiaDe } from '../datos';
+import { alPulsarCabecera, familiaDe, ordenar, ORDEN_POR_DEFECTO } from '../datos';
+import type { FilaCartera } from '../datos';
 import type { Prestamo } from '../../../../types/prestamos';
 
 const prestamo = (over: Partial<Prestamo> = {}): Prestamo =>
@@ -71,5 +72,72 @@ describe('y si el préstamo no dice nada, el ámbito', () => {
 
   it('sin nada de nada, personal', () => {
     expect(familiaDe(prestamo())).toBe('personal');
+  });
+});
+
+// ── Ordenar por columna ─────────────────────────────────────────────────────
+//
+// El desplegable «Ordenar · …» repetía los nombres de las columnas en una lista
+// aparte y no decía por cuál se estaba ordenando ahora. Se pide pulsando la
+// columna, y la flecha lo dice.
+
+const fila = (over: Partial<FilaCartera>): FilaCartera =>
+  ({
+    id: 'x',
+    nombre: 'Préstamo',
+    meta: '',
+    familia: 'personal',
+    banco: { abbr: 'XX', bg: '#000', fg: '#fff' },
+    capitalVivo: 1000,
+    cuota: 100,
+    tin: 3,
+    pctAmortizado: 10,
+    vencimiento: '2030-01-01',
+    revision: null,
+    ...over,
+  }) as unknown as FilaCartera;
+
+describe('cada columna ordena hacia donde interesa', () => {
+  // De la deuda y la cuota interesa lo GRANDE; del vencimiento, lo PRÓXIMO.
+  // Arrancar todas ascendentes obliga a pulsar dos veces en las que más se
+  // miran.
+  it('el capital arranca de mayor a menor', () => {
+    expect(alPulsarCabecera(ORDEN_POR_DEFECTO, 'capital')).toEqual({ campo: 'capital', asc: false });
+  });
+
+  it('y el nombre, de la A a la Z', () => {
+    expect(alPulsarCabecera(ORDEN_POR_DEFECTO, 'nombre')).toEqual({ campo: 'nombre', asc: true });
+  });
+
+  it('la misma columna otra vez le da la vuelta', () => {
+    const primera = alPulsarCabecera(ORDEN_POR_DEFECTO, 'tin');
+    expect(alPulsarCabecera(primera, 'tin')).toEqual({ campo: 'tin', asc: true });
+  });
+});
+
+describe('y ordena de verdad', () => {
+  const filas = [
+    fila({ id: 'a', nombre: 'Zeta', capitalVivo: 100, vencimiento: '2040-01-01' }),
+    fila({ id: 'b', nombre: 'Alfa', capitalVivo: 900, vencimiento: '2028-01-01' }),
+  ];
+
+  it('por capital, el más gordo primero', () => {
+    expect(ordenar(filas, { campo: 'capital', asc: false }).map((f) => f.id)).toEqual(['b', 'a']);
+  });
+
+  it('por nombre, con la Ñ y los acentos en su sitio', () => {
+    expect(ordenar(filas, { campo: 'nombre', asc: true }).map((f) => f.id)).toEqual(['b', 'a']);
+  });
+
+  // Un préstamo sin fecha no es «el que antes acaba» ni «el que más tarda»:
+  // va al final en las dos direcciones.
+  it('el que no tiene vencimiento se va al final', () => {
+    const conHueco = [...filas, fila({ id: 'c', vencimiento: null })];
+
+    expect(ordenar(conHueco, { campo: 'vencimiento', asc: true }).map((f) => f.id)).toEqual([
+      'b',
+      'a',
+      'c',
+    ]);
   });
 });
