@@ -73,9 +73,30 @@ export interface Adelanto {
 
 const aCentimos = (euros: number): number => Math.round(euros * 100);
 
-/** El primer periodo que DEVENGA a partir de un día · el corte de §6 ter·ter. */
-const empieza = (p: PeriodoPago): string =>
-  /^\d{4}-\d{2}-\d{2}$/.test(p.devengoDesde ?? '') ? p.devengoDesde : p.fechaCargo;
+/**
+ * Desde cuándo devenga un periodo · el corte de §6 ter·ter.
+ *
+ * Comparar fechas como texto exige que TODAS estén en ISO, y hay planes viejos
+ * con `devengoDesde` en `2025/09/28`. Contra un ISO ese formato sale siempre
+ * por delante —la barra es mayor que el guion—, así que el corte se desordena
+ * sin que nada avise.
+ *
+ * Se traduce en vez de descartarse. Caer en `fechaCargo`, que es lo que se
+ * hacía, no es neutral: afirma que el devengo empieza el día del recibo, y en
+ * un préstamo mensual empieza un mes antes. O sea que el periodo a caballo de
+ * la operación se conservaba o se rehacía según el formato de su fecha.
+ * `fechaCargo` queda solo para cuando no hay nada que traducir.
+ *
+ * Se exporta porque el resumen del modal hace este mismo corte, y tenía su
+ * propia versión —la misma pregunta contestada de dos maneras, que es justo lo
+ * que estas dos pantallas llevan arreglando.
+ */
+export const inicioDelDevengo = (p: PeriodoPago): string => {
+  const apuntado = (p.devengoDesde ?? '').replace(/\//g, '-');
+  return /^\d{4}-\d{2}-\d{2}$/.test(apuntado) ? apuntado : p.fechaCargo;
+};
+
+const empieza = inicioDelDevengo;
 
 /**
  * El cuadro después de adelantar capital.
