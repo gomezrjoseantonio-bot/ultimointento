@@ -294,8 +294,13 @@ las dos fechas de la regla 7, y la pantalla enseña una llamándola la otra.
 y el euríbor de hoy; el modal de amortizar lee el plan guardado, hecho con el
 motor viejo y el euríbor del alta.
 
-**g) `valorIndiceActual` sigue siendo editable en la ficha de edición** y ya no
-manda en nada de lo que se ve.
+**g) El «Euríbor» del asistente no dice cuándo manda.** *Corregido el
+diagnóstico y hecho:* el campo **no** está sin usarse —`conIndiceDeHoy` solo lo
+sustituye cuando «Actualizar valores» tiene euríbor, así que es el respaldo—.
+Lo que fallaba era la etiqueta: se llamaba «Euríbor» a secas y quien lo edita
+cree que gobierna la cuota. Ahora es «Euríbor de arranque» y debajo se dice qué
+manda de verdad: valoraciones para proyectar, y por encima de los dos las
+revisiones apuntadas.
 
 **h) La fila de la nómina dice «cumplido» y «no se cumple» a la vez.**
 *Corregido el diagnóstico:* no es una contradicción de lógica sino de
