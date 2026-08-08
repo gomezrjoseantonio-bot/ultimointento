@@ -1933,7 +1933,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
             {form.tipoInteres === 'variable' && (
               <div className={`${styles.condFields} ${styles.grid3}`}>
                 <div className={styles.fld}>
-                  <label className={styles.fldLab} htmlFor="p-eur">Euríbor</label>
+                  <label className={styles.fldLab} htmlFor="p-eur">Euríbor de arranque</label>
                   <div className={styles.inpGroup}>
                     <input
                       id="p-eur"
@@ -1992,7 +1992,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                   </div>
                 </div>
                 <div className={styles.fld}>
-                  <label className={styles.fldLab} htmlFor="p-eurm">Euríbor</label>
+                  <label className={styles.fldLab} htmlFor="p-eurm">Euríbor de arranque</label>
                   <div className={styles.inpGroup}>
                     <input
                       id="p-eurm"
@@ -2017,6 +2017,20 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                     <span className={styles.suffix}>%</span>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Qué manda de verdad · el campo de arriba se llamaba «Euríbor» a
+                secas, y quien lo edita cree que gobierna la cuota. Casi nunca:
+                lo que ATLAS usa para proyectar es el de «Actualizar valores»,
+                que se mantiene al día, y por encima de los dos manda cualquier
+                revisión apuntada. Este solo entra cuando valoraciones está
+                vacío — es el respaldo, no el mando. */}
+            {form.tipoInteres !== 'fijo' && (
+              <div className={styles.helper}>
+                Para proyectar, ATLAS usa el euríbor de <b>Actualizar valores</b>; este solo entra
+                si aquello está vacío. Y por encima de los dos manda lo que apuntes en las
+                revisiones: eso son hechos, y esto una presunción.
               </div>
             )}
           </div>
