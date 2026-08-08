@@ -47,33 +47,42 @@
 ## 2 · Qué es una revisión
 
 **Una hipoteca se revisa una o dos veces al año**, según diga la escritura. Es
-**un solo acto** en el que el banco mira lo que tenga que mirar de este
-préstamo:
+**un solo acto**, y en él el banco mira dos cosas:
 
-| Tipo de préstamo | Qué se revisa |
-|---|---|
-| **Fijo** | Solo **bonificaciones** — no hay euríbor que revisar. |
-| **Variable** | **Euríbor y bonificaciones**. |
-| **Mixto · tramo fijo** | Solo **bonificaciones**. |
-| **Mixto · tramo variable** | **Euríbor y bonificaciones**. |
+- **el índice** — solo si el tramo en curso es variable. En un fijo no hay
+  índice que revisar, y en el tramo fijo de una mixta tampoco;
+- **las bonificaciones** — si cumples o no cumples, para aplicarte o quitarte la
+  rebaja los doce meses siguientes.
 
-O sea: la revisión es una, y lo que cambia es **cuánto de ella tiene efecto**.
-En el tramo fijo de una mixta el banco revisa igualmente las bonificaciones —
-puede quitártelas— pero la cuota no se mueve, porque el tipo está pactado. La
-consecuencia se ve el día que empieza el tramo variable.
+### Y aquí NO hay regla general · lo dice cada escritura
 
-### La primera concesión de bonificaciones puede durar otra cosa
+Esta es la parte que me he inventado dos veces, así que va con las tres
+escrituras reales delante:
 
-Al firmar, el banco suele dar las bonificaciones **por cumplidas de entrada**,
-sin exigir nada todavía, y esa concesión inicial dura:
+| Banco | Forma | Qué pasa en el tramo fijo | Cómo se guarda |
+|---|---|---|---|
+| **ING** | 2,15 % fijo diez años, después euríbor | **Todos los años** revisa si cumples, y **eso mueve el tipo fijo**: de 2,15 % a **1,35 %** | `bonificacionesDesde: 'FIRMA'` |
+| **Unicaja** | mixta · 36 meses al 2,60 % | **No revisa nada.** «Tramo fijo 2,60 y me olvido de ti y de las bonificaciones hasta dentro de tres años» | `bonificacionesDesde: 'TRAMO_VARIABLE'` |
+| **Santander** | fijo | El **primer año** te las da por cumplidas —pagas como si las tuvieras todas, del 1,85 % al 0,85 %—; cumplido el año te mira y fija el tipo nuevo | `graciaMesesBonificaciones: 12` |
 
-- **hasta la primera revisión** — el caso normal; o
-- **todo el tramo fijo** — típico en una mixta, donde no se revisan de verdad
-  hasta que el tipo empieza a depender de ellas.
+> **«Fijo» quiere decir «no depende de un índice», no «no se mueve».** El tipo
+> fijo de ING cambia todos los años —ochenta céntimos de punto— según cumplas o
+> no. Dar por hecho que un tramo fijo es inmune a las bonificaciones es el error
+> que hay que no volver a cometer.
 
-Esto **no es lo mismo que la periodicidad de revisión** y hay que guardarlo
-aparte: un préstamo puede revisar cada 12 meses y tener las bonificaciones
-regaladas durante los 36 primeros.
+Lo que rebajan las bonificaciones tampoco es siempre lo mismo: en ING actúan
+sobre el **tipo fijo**; en Unicaja, sobre el **diferencial** del tramo variable.
+
+### La concesión inicial
+
+Al firmar, el banco puede dar las bonificaciones **por cumplidas de entrada**
+sin exigir nada todavía —el año de Santander—. Durante ese plazo la cuota
+rebajada **no demuestra que cumplas**, y hay que decirlo: quien no lo sepa se
+llevará el susto en la primera revisión de verdad.
+
+Es un plazo del préstamo, no de cada bonificación, y **no es la periodicidad de
+revisión**: un préstamo puede revisar cada 12 meses y tenerlas regaladas los 12
+primeros.
 
 ---
 
@@ -206,35 +215,41 @@ se carga el 25/09/2027**.
 
 Son las que tienen que gobernar el código.
 
-1. **La revisión es UNA**, una o dos veces al año. Lo que cambia es qué alcanza:
-   bonificaciones siempre, euríbor solo si el tramo en curso es variable.
+1. **La revisión es UNA**, una o dos veces al año. El euríbor se revisa solo si
+   el tramo en curso es variable; las bonificaciones, cuando diga la escritura.
 
-2. **La concesión inicial de bonificaciones tiene su propia duración** —hasta la
-   primera revisión, o todo el tramo fijo— y no es la periodicidad de revisión.
+2. **Que un tramo sea fijo no lo hace inmune a las bonificaciones.** Si se
+   revisan durante el tramo fijo, y si al revisarse mueven el tipo, **lo decide
+   la escritura de cada préstamo** — ING sí, Unicaja no. No se deduce del tipo
+   de préstamo, se lee de `bonificacionesDesde`.
 
-3. **El índice de una revisión es un HECHO que se apunta, no un cálculo.** Lo
+3. **La concesión inicial tiene su propia duración** (`graciaMesesBonificaciones`)
+   y no es la periodicidad de revisión. Durante ella la cuota rebajada no
+   demuestra que cumplas.
+
+4. **El índice de una revisión es un HECHO que se apunta, no un cálculo.** Lo
    publica el BOE y lo aplica el banco. Hasta que se apunta, lo que hay es una
    proyección y hay que decirlo con esas palabras.
 
-4. **Lo confirmado corre hasta la revisión siguiente.** El euríbor de
+5. **Lo confirmado corre hasta la revisión siguiente.** El euríbor de
    «Actualizar valores» no toca el cuadro vigente: solo sirve para enseñar por
    dónde iría la revisión que viene.
 
-5. **La revisión cambia la cuota, no el plazo.** Anualidad francesa sobre el
+6. **La revisión cambia la cuota, no el plazo.** Anualidad francesa sobre el
    capital vivo del día de la revisión y el plazo restante.
 
-6. **La fecha de la revisión y la del primer recibo nuevo se llevan un mes.** El
+7. **La fecha de la revisión y la del primer recibo nuevo se llevan un mes.** El
    recibo que se cobra el día de la revisión es todavía del periodo anterior,
    porque paga un devengo ya corrido.
 
-7. **Amortizar anticipadamente no cambia el tipo.** Se aplica el capital y se
+8. **Amortizar anticipadamente no cambia el tipo.** Se aplica el capital y se
    rehace el cuadro **con la estructura de tipos vigente** —las revisiones
    confirmadas—, no con el euríbor de hoy *(Jose · 8 ago 2026: «confirmar una
    amortización no regenera con el de hoy, regenera con el que esté revisado
    anual»)*. Lo que haya más allá de la última revisión confirmada sigue siendo
    proyección, antes y después de amortizar.
 
-8. **La base de cálculo decide la cuota.** No es un detalle de presentación:
+9. **La base de cálculo decide la cuota.** No es un detalle de presentación:
    30/360 y ACT/365 dan cuotas distintas sobre los mismos datos, y la del banco
    es la que manda.
 
@@ -253,30 +268,29 @@ liquida ACT/365. Es lo que hace que la ficha diga 454,57 € donde el recibo dic
 independientes, y la revisión es un solo acto. Dos campos para una cosa acaban
 divergiendo.
 
-**c) No hay dónde guardar la duración de la concesión inicial de
-bonificaciones** —hasta la primera revisión, o todo el tramo fijo—, así que se
-está tratando como si se revisaran desde el primer año.
+*(`bonificacionesDesde` y `graciaMesesBonificaciones` sí existen y modelan bien
+los tres casos de arriba · el hueco no está ahí.)*
 
-**d) `RevisionDelIndice` guarda demasiado poco.** Hoy es `{desde, valorIndice}`.
+**c) `RevisionDelIndice` guarda demasiado poco.** Hoy es `{desde, valorIndice}`.
 No guarda de qué mes publicado sale el índice, ni el redondeo, ni qué
 bonificaciones concedió el banco en esa misma revisión — que es parte del mismo
 acto. Sin eso, una revisión apuntada no se puede auditar contra la carta.
 
-**e) La escritura no tiene dónde decir de qué euríbor habla**: no hay campo para
+**d) La escritura no tiene dónde decir de qué euríbor habla**: no hay campo para
 el desfase ni para el redondeo. Se está suponiendo, y suponer aquí mueve
 décimas.
 
-**f) La ficha llama a la revisión por el recibo, no por la fecha.** Dice
+**e) La ficha llama a la revisión por el recibo, no por la fecha.** Dice
 «próxima revisión 25 sep 2026» cuando el tipo cambia el **25 de agosto**. Son
-las dos fechas de la regla 6, y la pantalla enseña una llamándola la otra.
+las dos fechas de la regla 7, y la pantalla enseña una llamándola la otra.
 
-**g) El mismo préstamo tiene dos cuadros.** La ficha regenera con el motor nuevo
+**f) El mismo préstamo tiene dos cuadros.** La ficha regenera con el motor nuevo
 y el euríbor de hoy; el modal de amortizar lee el plan guardado, hecho con el
 motor viejo y el euríbor del alta.
 
-**h) `valorIndiceActual` sigue siendo editable en la ficha de edición** y ya no
+**g) `valorIndiceActual` sigue siendo editable en la ficha de edición** y ya no
 manda en nada de lo que se ve.
 
-**i) La fila de la nómina dice «cumplido» y «no se cumple» a la vez.** Son dos
+**h) La fila de la nómina dice «cumplido» y «no se cumple» a la vez.** Son dos
 preguntas distintas —lo que el banco aplica y lo que demuestran tus
 movimientos—, las dos útiles, pintadas en una fila sin decir cuál es cuál.
