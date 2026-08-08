@@ -39,6 +39,7 @@ import { cuadroSeguroDe, metaDestino } from './datos';
 import { useRevisionPendiente } from './useRevisionPendiente';
 import { simulacionRevision } from '../../../services/prestamos/simulacionRevision';
 import { conIndiceDeHoy } from '../../../services/prestamos/indiceDeHoy';
+import { calendarioDe, proximaRevision } from '../../../services/bonificaciones/revisionDelBanco';
 import { inmueblesAlquiladosEn } from '../../../services/prestamos/inmueblesAlquilados';
 import { getFinancialValuesSnapshot } from '../../../services/financialValuesService';
 import CuadroCompleto from './CuadroCompleto';
@@ -47,6 +48,7 @@ import type { Prestamo } from '../../../types/prestamos';
 import {
   condicionesDe,
   fiscalidadDe,
+  hayDiscrepancia,
   lineaDeTiempo,
   resumenBonificaciones,
 } from './detalleDatos';
@@ -221,6 +223,9 @@ const DetallePrestamoPage: React.FC = () => {
       // callarse es lo correcto: no habría nada que anunciar.
       simulacion: simulacionRevision(proyectado, hoy, indiceHoy),
       condiciones: condicionesDe(proyectado, cuadro),
+      // Cuándo vuelve a mirar el banco · para poder decir QUÉ DÍA se pierde una
+      // bonificación que hoy te aplican y no estás demostrando.
+      proximaDelBanco: proximaRevision(calendarioDe(proyectado), hoy),
       fiscalidad,
     };
   }, [proyectado, cuadro, hoy, cumplimientos, indiceHoy, alquilados]);
@@ -594,7 +599,11 @@ const DetallePrestamoPage: React.FC = () => {
                           cuando hay que enterarse. */}
                       {b.veredicto === 'no_cumple' && (
                         <span className={styles.bonifAviso} title={b.explicacion}>
-                          no se cumple
+                          {!b.alcanzada
+                            ? 'no se cumple'
+                            : datos.proximaDelBanco?.fecha
+                              ? `la pierdes el ${diaMesAnio(datos.proximaDelBanco.fecha)}`
+                              : 'te la aplican · no la demuestras'}
                         </span>
                       )}
                       {b.veredicto === 'no_verificable' && (
@@ -716,6 +725,19 @@ const DetallePrestamoPage: React.FC = () => {
                       <span className={styles.flecha}>→</span>{' '}
                       <span className={styles.mono}>{pct(datos.tin)}</span>
                     </span>
+                  </div>
+                )}
+                {/* Quién dice qué · el check y el aviso son DOS voces, y pegadas
+                    sin nombrarlas se leen como que la tarjeta se contradice: una
+                    fila marcada como cumplida y a la vez con un «no se cumple»
+                    parece un error de la pantalla, y es justo el caso que hay
+                    que mirar *(Jose · 8 ago 2026)*. Se dice una vez y solo
+                    cuando hay discrepancia — si todas coinciden no hay nada que
+                    aclarar. */}
+                {bonificaciones.lista.some(hayDiscrepancia) && (
+                  <div className={styles.bonifEfecto}>
+                    <span>la marca verde es lo que aplica el banco</span>
+                    <span>el aviso, lo que dicen tus movimientos</span>
                   </div>
                 )}
               </div>

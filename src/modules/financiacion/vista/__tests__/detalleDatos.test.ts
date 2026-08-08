@@ -13,7 +13,15 @@ import {
   getPrincipalInicial,
   getProgresoCuotas,
 } from '../../../../services/prestamos/lecturas';
-import { condicionesDe, fiscalidadDe, lineaDeTiempo, resumenBonificaciones } from '../detalleDatos';
+import {
+  condicionesDe,
+  fiscalidadDe,
+  hayDiscrepancia,
+  lineaDeTiempo,
+  resumenBonificaciones,
+  type BonificacionDetalle,
+} from '../detalleDatos';
+import type { Cumplimiento } from '../../../../services/bonificaciones/cumplimiento';
 import type { Bonificacion, Prestamo } from '../../../../types/prestamos';
 
 const unicaja = (over: Partial<Prestamo> = {}): Prestamo =>
@@ -393,5 +401,50 @@ describe('lo que el banco aplica y lo que se puede demostrar van por separado', 
     ]).lista;
 
     expect(b.veredicto).toBeUndefined();
+  });
+});
+
+// ── Cuando el banco y tus movimientos no dicen lo mismo ─────────────────────
+//
+// La fila enseñaba una marca de cumplida y a la vez un «no se cumple», y se
+// leía como que la pantalla se contradice *(Jose · 8 ago 2026)*. No se
+// contradice: son dos voces. La marca es lo que el banco APLICA —un hecho del
+// contrato— y el aviso es lo que demuestran tus recibos. Que no coincidan es
+// justo el caso que hay que mirar, y por eso la pantalla lo señala.
+
+const conVeredicto = (
+  veredicto: Cumplimiento['veredicto'] | undefined,
+  alcanzada: boolean
+): BonificacionDetalle =>
+  ({ bonificacion: bonificacion(), alcanzada, puntos: 0.3, veredicto }) as BonificacionDetalle;
+
+describe('hayDiscrepancia · las dos voces', () => {
+  // El caso caro: la estás cobrando y no la demuestras · la pierdes en la
+  // próxima revisión y la cuota sube.
+  it('te la aplican y no la cumples', () => {
+    expect(hayDiscrepancia(conVeredicto('no_cumple', true))).toBe(true);
+  });
+
+  // El caso al revés: la cumples y no te la aplican · estás pagando de más.
+  it('la cumples y no te la aplican', () => {
+    expect(hayDiscrepancia(conVeredicto('cumple', false))).toBe(true);
+  });
+
+  it.each([
+    ['cumple', true],
+    ['no_cumple', false],
+  ] as const)('y si coinciden (%s / aplicada=%s), no hay nada que aclarar', (v, a) => {
+    expect(hayDiscrepancia(conVeredicto(v, a))).toBe(false);
+  });
+
+  // «No verificable» no afirma lo contrario · dice que no se ha podido mirar, y
+  // tratarlo como desacuerdo pondría un aviso donde no hay noticia.
+  it('no haberlo podido comprobar no es un desacuerdo', () => {
+    expect(hayDiscrepancia(conVeredicto('no_verificable', true))).toBe(false);
+    expect(hayDiscrepancia(conVeredicto('no_verificable', false))).toBe(false);
+  });
+
+  it('ni tampoco no haber mirado todavía', () => {
+    expect(hayDiscrepancia(conVeredicto(undefined, true))).toBe(false);
   });
 });
