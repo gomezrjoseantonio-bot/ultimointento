@@ -185,17 +185,28 @@ const InversionesGaleria: React.FC = () => {
     data: Partial<PosicionInversion> & { importe_inicial?: number },
   ) => {
     try {
+      // Lo ÚNICO crítico que debe esperar el modal es persistir la posición.
       await inversionesService.createPosicion(
         data as Omit<PosicionInversion, 'id' | 'created_at' | 'updated_at'> & {
           importe_inicial?: number;
         },
       );
       showToastV5('Posición creada.');
-      await rendimientosService.generarRendimientosPendientes();
-      // La posición nueva trae previsiones (cuota, intereses, compra inicial):
-      // hay que generarlas ya, no esperar a que las dispare otro módulo.
-      await resincronizarTesoreriaInversiones('alta de posición');
-      await load();
+      // El resto (generar rendimientos + resync de Tesorería a 24 meses +
+      // recarga de la galería) es trabajo de fondo pesado y NO debe bloquear el
+      // cierre del modal · antes se quedaba "Guardando…" hasta reconstruir toda
+      // la tesorería. Se lanza en segundo plano; la galería/tesorería se
+      // refrescan solas al terminar (el resync tiene su propio manejo de error).
+      void (async () => {
+        try {
+          await rendimientosService.generarRendimientosPendientes();
+          await resincronizarTesoreriaInversiones('alta de posición');
+          await load();
+        } catch (bgErr) {
+          // eslint-disable-next-line no-console
+          console.error('[inversiones] post-alta background', bgErr);
+        }
+      })();
       if (fromEmpezar) volverAlFlujo();
     } catch (err) {
       // eslint-disable-next-line no-console

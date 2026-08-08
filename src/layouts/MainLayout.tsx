@@ -57,6 +57,23 @@ const MainLayout: React.FC = () => {
   // valor total/rentabilidad y libera altura para la pantalla sin scroll). Las
   // sub-rutas (detalle · cerradas · importar) sí la conservan como topbar.
   const isGaleriaInversionesRoute = location.pathname === '/inversiones';
+  // La ficha de detalle (/inversiones/:posicionId) tiene su propio hero navy;
+  // la cinta-resumen sería una barra superior DUPLICADA. Se excluye. Las demás
+  // sub-rutas de un solo segmento (cerradas · importar · análisis · redirects
+  // legacy) SÍ conservan la cinta como topbar.
+  const rutasInversionesConCinta = [
+    'cerradas',
+    'importar-aportaciones',
+    'importar-indexa',
+    'analisis',
+    'resumen',
+    'cartera',
+    'rendimientos',
+    'individual',
+  ];
+  const matchInvSubruta = location.pathname.match(/^\/inversiones\/([^/]+)$/);
+  const isFichaDetalleInversionRoute =
+    matchInvSubruta != null && !rutasInversionesConCinta.includes(matchInvSubruta[1]);
   // S-TESORERIA-FASE-B · sin topbar global en las páginas de Tesorería que
   // renderizan su propio banner navy (vista general · vista cuenta · tab
   // movimientos). NO aplica a `/tesoreria/importar` ni `/tesoreria/importar-cuentas`,
@@ -169,7 +186,9 @@ const MainLayout: React.FC = () => {
             Oculto también en /panel: sin buscador (decisión Jose) el topbar solo
             ocupaba espacio · el Panel sube y debe caber sin scroll. */}
         {!isFullBleedRoute && !isPanelRoute && <TopbarV5 />}
-        {isInversionesRoute && !isGaleriaInversionesRoute && <CintaResumenInversiones />}
+        {isInversionesRoute && !isGaleriaInversionesRoute && !isFichaDetalleInversionRoute && (
+          <CintaResumenInversiones />
+        )}
 
         {/* /panel · overflow-y-hidden obligatorio: el Panel NUNCA hace scroll ·
             PanelPage se auto-ajusta a la altura disponible. */}

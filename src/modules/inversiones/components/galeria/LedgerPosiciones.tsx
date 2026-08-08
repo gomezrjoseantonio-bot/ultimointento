@@ -6,7 +6,7 @@
 // fija) · sin texto de opinión (spec §2.3). El cuerpo hace scroll interno · la
 // página no.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Icons } from '../../../../design-system/v5';
 import type { CartaItem } from '../../types/cartaItem';
 import {
@@ -84,6 +84,47 @@ const LedgerPosiciones: React.FC<Props> = ({
   const [sortKey, setSortKey] = useState<SortKey>('valor');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
+  // ── Paginación (Jose ODIA el scroll): la tabla NUNCA scrollea · se pagina.
+  // El tamaño de página se calcula desde la altura disponible del cuerpo del
+  // ledger (÷ altura de fila) para que quepa exacto. El footer se renderiza
+  // SIEMPRE (altura constante) para no crear un bucle de re-medición al
+  // aparecer/desaparecer el pager. ─────────────────────────────────────────
+  const ROW_H = 46; // .lrow height (galeriaV5.module.css)
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const [rowsPerPage, setRowsPerPage] = useState(8);
+  const [page, setPage] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = rowsRef.current;
+    if (!el) return;
+    const recompute = () => {
+      // clientHeight de `.ledgerRows` es flex:1 · depende del layout (lcard −
+      // head − footer), NO del nº de filas renderizadas → medición estable.
+      const h = el.clientHeight;
+      if (h <= 0) return;
+      const n = Math.max(1, Math.floor(h / ROW_H));
+      setRowsPerPage((prev) => (prev !== n ? n : prev));
+    };
+    recompute();
+    let frame = 0;
+    const onResize = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(recompute);
+    };
+    let ro: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(onResize);
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', onResize);
+    }
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
   const counts = useMemo(() => {
     const c: Record<FiltroLedger, number> = { todas: items.length, planes: 0, rentaFija: 0, equity: 0 };
     for (const it of items) {
@@ -128,6 +169,20 @@ const LedgerPosiciones: React.FC<Props> = ({
 
   const currentYear = new Date().getFullYear();
 
+  // Al cambiar de filtro se vuelve a la primera página.
+  useEffect(() => {
+    setPage(0);
+  }, [filtro]);
+
+  const totalPages = Math.max(1, Math.ceil(visibles.length / rowsPerPage));
+  const safePage = Math.min(page, totalPages - 1);
+  // Si la página actual quedó fuera de rango (cambió el filtro / el tamaño), se
+  // corrige el estado (safePage ya se usa para pintar, esto solo sincroniza).
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
+  const pageItems = visibles.slice(safePage * rowsPerPage, (safePage + 1) * rowsPerPage);
+
   return (
     <div className={styles.ledger}>
       <div className={styles.ledgerTop}>
@@ -170,13 +225,13 @@ const LedgerPosiciones: React.FC<Props> = ({
           <span />
         </div>
 
-        <div className={styles.ledgerRows}>
+        <div className={styles.ledgerRows} ref={rowsRef}>
           {visibles.length === 0 && (
             <div className={styles.ledgerEmpty} role="status">
               Sin posiciones en esta categoría
             </div>
           )}
-          {visibles.map((item) => {
+          {pageItems.map((item) => {
             const cat = getCategoriaGaleria(item.tipo);
             const year = yearOf(item.fecha_apertura);
             const años = year != null ? currentYear - year : null;
@@ -224,6 +279,39 @@ const LedgerPosiciones: React.FC<Props> = ({
               </button>
             );
           })}
+        </div>
+
+        {/* Footer SIEMPRE presente (altura constante · sin bucle de medición):
+            recuento a la izquierda · pager a la derecha solo si hay >1 página. */}
+        <div className={styles.ledgerFoot}>
+          <span className={styles.ledgerFootInfo}>
+            {visibles.length} {visibles.length === 1 ? 'posición' : 'posiciones'}
+          </span>
+          {totalPages > 1 && (
+            <div className={styles.pager}>
+              <button
+                type="button"
+                className={styles.pagerBtn}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={safePage === 0}
+                aria-label="Página anterior"
+              >
+                <Icons.ChevronLeft size={15} strokeWidth={2} />
+              </button>
+              <span className={styles.pagerInfo}>
+                {safePage + 1} / {totalPages}
+              </span>
+              <button
+                type="button"
+                className={styles.pagerBtn}
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={safePage >= totalPages - 1}
+                aria-label="Página siguiente"
+              >
+                <Icons.ChevronRight size={15} strokeWidth={2} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
