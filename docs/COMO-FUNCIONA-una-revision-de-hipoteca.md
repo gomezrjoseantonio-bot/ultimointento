@@ -22,43 +22,58 @@
 | Tramo fijo | 36 meses al **2,600 %** |
 | Tramo variable | **Euríbor + 1,750** |
 | Revisión | **Anual** |
-| Base de cálculo | **30/360** |
-| Bonificaciones | 1 (nómina) · independientes · tope 1,00 p.p. · rebaja **0,30 p.p.** |
+| Bonificaciones | 1 (nómina) · rebaja **0,30 p.p.** · tope 1,00 p.p. |
 | Comisión de amortización anticipada | 0,25 % |
 
-Cuota del tramo fijo: **454,57 €**. Sale de la anualidad francesa sobre 85.000 €
-a 240 meses al 2,600 % — con base 30/360 el interés mensual es exactamente
-`TIN ÷ 12`, y por eso la cuota no baila de un mes a otro.
+**Cuota del tramo fijo: 454,66 €.** Es la del recibo del banco.
+
+> **Cuidado con este número, que ya ha fallado dos veces.** ATLAS enseña
+> **454,57 €**, y no es un redondeo: es que tiene guardada la base de cálculo
+> como **30/360** cuando el banco liquida sobre **días reales (ACT/365)**.
+> Comprobado contra el motor con los datos de arriba:
+>
+> | Base guardada | Cuota que sale |
+> |---|---|
+> | 30/360 | 454,57 € |
+> | ACT/360 | 456,17 € |
+> | **ACT/365** | **454,66 €** ← el recibo |
+>
+> El motor está bien; el dato de entrada está mal. Corregir
+> `baseCalculoIntereses` de este préstamo arrastra todo el cuadro del tramo
+> fijo.
 
 ---
 
-## 2 · Lo primero: son DOS revisiones distintas
+## 2 · Qué es una revisión
 
-Se llaman igual y aquí caen el mismo día, pero no son lo mismo y confundirlas es
-el origen de casi todo lo que se lee raro en pantalla.
+**Una hipoteca se revisa una o dos veces al año**, según diga la escritura. Es
+**un solo acto** en el que el banco mira lo que tenga que mirar de este
+préstamo:
 
-### a) La revisión del ÍNDICE
+| Tipo de préstamo | Qué se revisa |
+|---|---|
+| **Fijo** | Solo **bonificaciones** — no hay euríbor que revisar. |
+| **Variable** | **Euríbor y bonificaciones**. |
+| **Mixto · tramo fijo** | Solo **bonificaciones**. |
+| **Mixto · tramo variable** | **Euríbor y bonificaciones**. |
 
-Cambia el **tipo de interés**. Solo existe mientras el préstamo está en tramo
-variable. En este préstamo la primera es el **25/08/2026**, cuando acaba el
-tramo fijo, y después cada 25 de agosto.
+O sea: la revisión es una, y lo que cambia es **cuánto de ella tiene efecto**.
+En el tramo fijo de una mixta el banco revisa igualmente las bonificaciones —
+puede quitártelas— pero la cuota no se mueve, porque el tipo está pactado. La
+consecuencia se ve el día que empieza el tramo variable.
 
-### b) La revisión de las BONIFICACIONES
+### La primera concesión de bonificaciones puede durar otra cosa
 
-El banco mira si has cumplido las condiciones (nómina, seguros, plan…) durante
-los doce meses anteriores, y decide si te mantiene o te quita la rebaja de
-0,30 p.p. **durante los doce siguientes**. Es independiente del tramo: en este
-préstamo lleva revisándose desde el **25/08/2024**, cuando el tipo todavía era
-fijo y la rebaja no cambiaba nada del recibo.
+Al firmar, el banco suele dar las bonificaciones **por cumplidas de entrada**,
+sin exigir nada todavía, y esa concesión inicial dura:
 
-> Una bonificación no se pierde el día que dejas de cumplirla: se pierde **el día
-> que el banco lo mira**. Hasta entonces sigues pagando la cuota rebajada aunque
-> lleves tres meses sin domiciliar la nómina — y al revés, empezar a cumplir hoy
-> no baja el recibo de este mes.
+- **hasta la primera revisión** — el caso normal; o
+- **todo el tramo fijo** — típico en una mixta, donde no se revisan de verdad
+  hasta que el tipo empieza a depender de ellas.
 
-Las dos se juntan en el mismo número —el TIN que se paga— pero se deciden por
-separado, con datos distintos, y ATLAS las guarda en campos distintos
-(`periodoRevisionMeses` y `periodoRevisionBonificacionMeses`).
+Esto **no es lo mismo que la periodicidad de revisión** y hay que guardarlo
+aparte: un préstamo puede revisar cada 12 meses y tener las bonificaciones
+regaladas durante los 36 primeros.
 
 ---
 
@@ -78,46 +93,45 @@ inventando.
 4. **Qué redondeo** · muchas escrituras redondean a un octavo de punto (0,125) o
    a tres decimales.
 
-O sea: para la revisión del **25/08/2026** el tipo no lo marca el euríbor del día
-25, sino el publicado para **julio de 2026** (o junio, según la escritura). El
-día 25 el número **ya está decidido y publicado** — no hay nada que adivinar,
-solo hay que ir a buscarlo.
+Para la revisión del **25/08/2026** el tipo no lo marca el euríbor del día 25,
+sino el publicado para **julio de 2026** (o junio, según la escritura). El día 25
+el número **ya está decidido y publicado** — no hay nada que adivinar, solo hay
+que ir a buscarlo.
 
 **Consecuencia para ATLAS:** el índice de una revisión es un **hecho que se
-apunta**, no algo que se calcula. Y mientras nadie lo apunte, lo único honesto
-que se puede decir es «con el euríbor de hoy quedaría en X», dicho con esas
-palabras.
+apunta**, no algo que se calcula. Mientras nadie lo apunte, lo único honesto que
+se puede decir es «con el euríbor de hoy quedaría en X», dicho con esas palabras.
 
 ---
 
 ## 4 · Qué ocurre el 26/08/2026
 
-El 26 no ocurre nada. Lo que hay que contar es lo que pasó **el día anterior**,
-y el 26 es el primer día en que todo eso ya está en vigor.
+El 26 no ocurre nada. Lo que hay que contar es lo del día anterior; el 26 es el
+primer día en que todo eso ya está en vigor.
 
-### 25/08/2026 · por la mañana: se cobra el último recibo del tramo fijo
+### 25/08/2026 · por la mañana: último recibo del tramo fijo
 
-Se carga la cuota nº 36: **454,57 €**, de los que **162,89 €** son intereses y
-**291,68 €** capital.
+Se carga la cuota nº 36: **454,66 €**, de los que **166,01 €** son intereses y
+**288,65 €** capital.
 
 Ese recibo paga el interés **devengado del 25/07 al 25/08**, y ese mes corrió
 todavía al 2,600 %. **Es un recibo del tramo fijo aunque se cobre el día de la
-revisión.** Esto importa: el recibo va siempre un mes por detrás de lo que
-devenga.
+revisión.** El recibo va siempre un mes por detrás de lo que devenga.
 
-Capital vivo después del cargo: **≈ 74.887 €**. Cuotas pagadas: 36 de 240.
+Capital vivo después del cargo: **74.890,22 €**. Cuotas pagadas: 36 de 240.
 
-### 25/08/2026 · el mismo día: acaban las dos cosas a la vez
+### 25/08/2026 · el mismo día: la revisión
 
-**El tramo fijo se acaba.** Desde ese día el interés se devenga a
-`Euríbor + 1,750`.
+Es **una sola revisión** y aquí, por primera vez en este préstamo, toca las dos
+cosas — porque justo ese día se entra en el tramo variable:
 
-**El banco revisa las bonificaciones.** Mira los doce meses anteriores y decide
-si mantiene los 0,30 p.p. Esa decisión rige los doce meses siguientes.
+**Bonificaciones.** El banco mira los doce meses anteriores y decide si mantiene
+los 0,30 p.p. Esa decisión rige los doce meses siguientes. (Si la concesión
+inicial iba «por todo el tramo fijo», este es el primer día en que de verdad se
+las juega.)
 
-**El banco fija el índice.** Coge el euríbor publicado del mes que diga la
-escritura, le suma el diferencial de 1,750 y le resta la bonificación si la
-mantiene.
+**Euríbor.** Coge el publicado del mes que diga la escritura, le suma el
+diferencial y le resta la bonificación si la mantiene.
 
 Con el euríbor a **4,000 %** que ATLAS tiene apuntado en «Actualizar valores»:
 
@@ -129,61 +143,57 @@ Con el euríbor a **4,000 %** que ATLAS tiene apuntado en «Actualizar valores»
 = 5,450  TIN aplicable desde el 25/08/2026
 ```
 
-**El banco recalcula la cuota.** Anualidad francesa sobre el capital vivo
-(74.887 €), al TIN nuevo (5,450 %), por **el plazo que queda: 204 meses**
-(240 − 36).
+**Recalcula la cuota:** anualidad francesa sobre el capital vivo (74.890,22 €),
+al TIN nuevo, por **el plazo que queda: 204 meses** (240 − 36).
 
 > **El plazo NO cambia en una revisión.** Cambia la cuota. El préstamo sigue
 > venciendo el 25/08/2043.
 
-Resultado: **563,83 €** ≈ 564 €.
+Resultado: **564,01 €**.
 
-Si el banco le quitara la bonificación, el TIN sería 5,750 % y la cuota
-**576,14 €** — la nómina vale unos **12 € al mes**.
+Sin la bonificación (5,750 %) serían **576,30 €**: la nómina vale **12,29 € al
+mes**.
 
 ### 26/08/2026 · la situación
 
 - El TIN vigente es **5,450 %** y **está congelado hasta el 25/08/2027**.
 - Que el euríbor suba o baje durante esos doce meses **no mueve ni un céntimo**.
-  Lo que se mueva servirá para la revisión *siguiente*, no para esta.
-- La cuota que se va a pagar es **563,83 €**…
-- …**pero el primer recibo a ese importe se carga el 25/09/2026**, no el 25/08.
-  El del 25 de agosto ya se cobró, y era del tramo fijo.
+  Lo que se mueva servirá para la revisión *siguiente*.
+- La cuota pasa a ser **564,01 €**…
+- …**pero el primer recibo a ese importe se carga el 25/09/2026**. El del 25 de
+  agosto ya se cobró, y era del tramo fijo.
 
-Este último punto es el que se lee mal con más facilidad: entre el 25/08 y el
-25/09 el préstamo tiene **un tipo nuevo y ningún recibo todavía a ese tipo**.
+Entre el 25/08 y el 25/09 el préstamo tiene **un tipo nuevo y ningún recibo
+todavía a ese tipo**. Es lo que más fácil se lee mal.
 
 ---
 
 ## 5 · Qué ocurrirá el 26/08/2027
 
-Exactamente lo mismo, sin la parte de «acaba el tramo fijo».
+Lo mismo, ya sin estreno de tramo.
 
 ### 25/08/2027
 
-**Se cobra el recibo nº 48**: 563,83 €, todavía al 5,450 %, porque paga el
+**Se cobra el recibo nº 48**: 564,01 €, todavía al 5,450 %, porque paga el
 devengo del 25/07 al 25/08 de 2027.
 
-Capital vivo después: **≈ 72.135 €**. Plazo restante: **192 meses**.
+Capital vivo después: **72.135,59 €**. Plazo restante: **192 meses**.
 
-**Segunda revisión del índice.** Se coge el euríbor publicado del mes que diga
-la escritura y se rehace la cuenta. **Se parte del capital vivo real de ese día**
-—no del original— y **del plazo que queda** —no de 240—.
+**Revisión anual**, otra vez las dos cosas: bonificaciones para los doce meses
+siguientes, y euríbor publicado del mes que diga la escritura. Se rehace la
+cuota **partiendo del capital vivo real de ese día** —no del original— y **del
+plazo que queda** —no de 240—.
 
-**Segunda revisión de bonificaciones**, otra vez para los doce meses siguientes.
+Como nadie sabe hoy dónde estará el euríbor en julio de 2027, lo que se puede
+decir es cuánto se movería la cuota según dónde caiga (cifras del motor, con la
+bonificación mantenida):
 
-Como nadie sabe hoy dónde estará el euríbor en julio de 2027, lo único que se
-puede decir es cuánto se movería la cuota según dónde caiga:
-
-| Euríbor jul-2027 | TIN (con bonificación) | Cuota desde 25/09/2027 |
+| Euríbor jul-2027 | TIN | Cuota desde 25/09/2027 |
 |---|---|---|
-| 2,000 % | 3,450 % | ≈ 489 € |
-| 3,000 % | 4,450 % | ≈ 526 € |
-| 4,000 % | 5,450 % | ≈ 564 € |
-| 5,000 % | 6,450 % | ≈ 603 € |
-
-(Sobre 72.135 € y 192 meses. Si el banco retirase la bonificación, súmese
-0,300 p.p.: al 4,000 % de euríbor la cuota sería ≈ 575 € en vez de 564 €.)
+| 2,000 % | 3,450 % | **489,53 €** |
+| 3,000 % | 4,450 % | **526,01 €** |
+| 4,000 % | 5,450 % | **564,01 €** |
+| 5,000 % | 6,450 % | **603,49 €** |
 
 ### 26/08/2027
 
@@ -196,61 +206,77 @@ se carga el 25/09/2027**.
 
 Son las que tienen que gobernar el código.
 
-1. **Una revisión es un HECHO que se apunta, no un cálculo.** El índice lo
-   publica el BOE y lo aplica el banco; ATLAS no lo deduce. Hasta que se apunta,
-   lo que hay es una proyección y hay que decirlo con esas palabras.
+1. **La revisión es UNA**, una o dos veces al año. Lo que cambia es qué alcanza:
+   bonificaciones siempre, euríbor solo si el tramo en curso es variable.
 
-2. **Lo confirmado corre doce meses.** Entre dos revisiones el tipo está
-   congelado. El euríbor de «Actualizar valores» no toca el cuadro vigente: solo
-   sirve para enseñar por dónde iría la revisión que viene.
+2. **La concesión inicial de bonificaciones tiene su propia duración** —hasta la
+   primera revisión, o todo el tramo fijo— y no es la periodicidad de revisión.
 
-3. **La revisión cambia la cuota, no el plazo.** Se recalcula la anualidad
-   francesa sobre el capital vivo del día de la revisión y el plazo restante.
+3. **El índice de una revisión es un HECHO que se apunta, no un cálculo.** Lo
+   publica el BOE y lo aplica el banco. Hasta que se apunta, lo que hay es una
+   proyección y hay que decirlo con esas palabras.
 
-4. **La fecha de la revisión y la del primer recibo nuevo son distintas**, y se
-   llevan un mes. El recibo que se cobra el día de la revisión es todavía del
-   periodo anterior, porque paga un devengo ya corrido.
+4. **Lo confirmado corre hasta la revisión siguiente.** El euríbor de
+   «Actualizar valores» no toca el cuadro vigente: solo sirve para enseñar por
+   dónde iría la revisión que viene.
 
-5. **Índice y bonificaciones son dos revisiones**, aunque caigan el mismo día.
-   Una puede estar confirmada y la otra pendiente.
+5. **La revisión cambia la cuota, no el plazo.** Anualidad francesa sobre el
+   capital vivo del día de la revisión y el plazo restante.
 
-6. **Amortizar anticipadamente no cambia el tipo.** Se aplica el capital y se
+6. **La fecha de la revisión y la del primer recibo nuevo se llevan un mes.** El
+   recibo que se cobra el día de la revisión es todavía del periodo anterior,
+   porque paga un devengo ya corrido.
+
+7. **Amortizar anticipadamente no cambia el tipo.** Se aplica el capital y se
    rehace el cuadro **con la estructura de tipos vigente** —las revisiones
-   confirmadas—, no con el euríbor de hoy *(corrección de Jose · 8 ago 2026:
-   «confirmar una amortización no regenera con el de hoy, regenera con el que
-   esté revisado anual»)*. La proyección más allá de la última revisión
-   confirmada sigue siendo proyección, antes y después de amortizar.
+   confirmadas—, no con el euríbor de hoy *(Jose · 8 ago 2026: «confirmar una
+   amortización no regenera con el de hoy, regenera con el que esté revisado
+   anual»)*. Lo que haya más allá de la última revisión confirmada sigue siendo
+   proyección, antes y después de amortizar.
+
+8. **La base de cálculo decide la cuota.** No es un detalle de presentación:
+   30/360 y ACT/365 dan cuotas distintas sobre los mismos datos, y la del banco
+   es la que manda.
 
 ---
 
 ## 7 · Dónde ATLAS todavía no encaja con esto
 
-Sin proponer solución todavía — solo el inventario, para decidir después.
+Inventario, sin proponer solución — para decidir después.
 
-**a) `RevisionDelIndice` guarda demasiado poco.** Hoy es `{desde, valorIndice}`.
-No guarda de qué mes publicado sale ese índice, ni si hubo redondeo, ni qué
-bonificaciones concedió el banco en esa misma revisión. Sin eso, una revisión
-apuntada no se puede auditar contra la carta.
+**a) La base de cálculo de este préstamo está mal.** Guardada 30/360, el banco
+liquida ACT/365. Es lo que hace que la ficha diga 454,57 € donde el recibo dice
+454,66 €.
 
-**b) La escritura no tiene dónde decir de qué euríbor habla.** No hay campo para
-el desfase (mes anterior / segundo mes anterior) ni para el redondeo. Se está
-suponiendo, y suponer aquí mueve décimas.
+**b) Hay dos periodicidades de revisión donde solo hay una.**
+`periodoRevisionMeses` y `periodoRevisionBonificacionMeses` son campos
+independientes, y la revisión es un solo acto. Dos campos para una cosa acaban
+divergiendo.
 
-**c) La ficha llama a la revisión por el recibo, no por la fecha.** Dice
-«próxima revisión 25 sep 2026» cuando el tipo cambia el **25 de agosto** y el 25
-de septiembre es solo el primer recibo afectado. Son las dos fechas de la regla
-4 y la pantalla enseña una llamándola la otra.
+**c) No hay dónde guardar la duración de la concesión inicial de
+bonificaciones** —hasta la primera revisión, o todo el tramo fijo—, así que se
+está tratando como si se revisaran desde el primer año.
 
-**d) El mismo préstamo tiene dos cuadros.** La ficha regenera con el motor nuevo
+**d) `RevisionDelIndice` guarda demasiado poco.** Hoy es `{desde, valorIndice}`.
+No guarda de qué mes publicado sale el índice, ni el redondeo, ni qué
+bonificaciones concedió el banco en esa misma revisión — que es parte del mismo
+acto. Sin eso, una revisión apuntada no se puede auditar contra la carta.
+
+**e) La escritura no tiene dónde decir de qué euríbor habla**: no hay campo para
+el desfase ni para el redondeo. Se está suponiendo, y suponer aquí mueve
+décimas.
+
+**f) La ficha llama a la revisión por el recibo, no por la fecha.** Dice
+«próxima revisión 25 sep 2026» cuando el tipo cambia el **25 de agosto**. Son
+las dos fechas de la regla 6, y la pantalla enseña una llamándola la otra.
+
+**g) El mismo préstamo tiene dos cuadros.** La ficha regenera con el motor nuevo
 y el euríbor de hoy; el modal de amortizar lee el plan guardado, hecho con el
-motor viejo y el euríbor del alta. De ahí que uno diga 564 € y el otro 518 €.
+motor viejo y el euríbor del alta.
 
-**e) `valorIndiceActual` sigue siendo editable en la ficha de edición** y ya no
-manda en nada de lo que se ve. Un campo que se puede escribir y no se usa es un
-cebo.
+**h) `valorIndiceActual` sigue siendo editable en la ficha de edición** y ya no
+manda en nada de lo que se ve.
 
-**f) La fila de la nómina dice «cumplido» y «no se cumple» a la vez.** Son dos
-evaluaciones distintas pintadas en la misma línea: lo que el banco aplica (un
-hecho del contrato) y lo que demuestran los movimientos. Son preguntas
-diferentes y las dos son útiles, pero no pueden compartir una fila sin decir
-cuál es cuál.
+**i) La fila de la nómina dice «cumplido» y «no se cumple» a la vez.** Son dos
+preguntas distintas —lo que el banco aplica y lo que demuestran tus
+movimientos—, las dos útiles, pintadas en una fila sin decir cuál es cuál.
