@@ -320,13 +320,37 @@ const CONDICIONES: Condicion[] = [
 const condicionDe = (t: TipoCondicion): Condicion =>
   CONDICIONES.find((c) => c.tipo === t) ?? CONDICIONES[CONDICIONES.length - 1];
 
+/**
+ * La condición de una fila, con la unidad que de verdad usa SU regla.
+ *
+ * `SEGUROS` admite dos umbrales —cuántas pólizas y cuánta prima al año— y la
+ * fila solo tiene una casilla. En vez de añadir un campo que rompa la rejilla,
+ * la casilla habla del umbral que la regla trae: si viene del anexo con una
+ * prima mínima, se teclea la prima y el sufijo lo dice.
+ *
+ * Antes esa prima era invisible: la casilla enseñaba el número de pólizas —
+ * vacío— y al teclear se perdía la mitad de la condición.
+ */
+const condicionDeLaRegla = (r: ReglaBonificacion): Condicion => {
+  const base = condicionDe(r.tipo);
+  if (r.tipo === 'SEGUROS' && r.primaAnualMinima != null && r.minimoPolizas == null) {
+    return { ...base, label: 'Seguros · prima total', unidad: '€/año' };
+  }
+  return base;
+};
+
 /** La cifra (o la letra) que la regla exige, ya en el crudo de la casilla. */
 function umbralDeRegla(r: ReglaBonificacion): string {
   switch (r.tipo) {
     case 'NOMINA':                 return r.minimoMensual ? fmtNumeroEs(r.minimoMensual, 0) : '';
     case 'RECIBOS':                return r.minimoRecibos ? String(r.minimoRecibos) : '';
     case 'TARJETA':                return r.importeMinimo ? fmtNumeroEs(r.importeMinimo, 0) : '';
-    case 'SEGUROS':                return r.minimoPolizas ? String(r.minimoPolizas) : '';
+    // El que la regla use · si el anexo pidió prima y no número, se enseña la
+    // prima. Enseñar siempre el número dejaba la casilla vacía en un contrato
+    // que sí dice algo.
+    case 'SEGUROS':
+      if (r.minimoPolizas) return String(r.minimoPolizas);
+      return r.primaAnualMinima ? fmtNumeroEs(r.primaAnualMinima, 0) : '';
     case 'SEGURO_HOGAR':           return r.primaAnual ? fmtNumeroEs(r.primaAnual, 0) : '';
     case 'SEGURO_VIDA':            return r.capitalAseguradoPct ? fmtNumeroEs(r.capitalAseguradoPct, 0) : '';
     case 'PLAN_PENSIONES':         return r.aportacionAnual ? fmtNumeroEs(r.aportacionAnual, 0) : '';
@@ -358,11 +382,20 @@ function reglaDeCondicion(
     // prima mínima que puede venir del anexo. Sin conservarla, teclear aquí la
     // borraría en silencio: se guardaría «dos pólizas» y se perdería «y por al
     // menos 600 € al año», que es media condición.
-    case 'SEGUROS':                return {
-      tipo,
-      minimoPolizas: enteroNoNegativo(n) || undefined,
-      primaAnualMinima: anterior?.tipo === 'SEGUROS' ? anterior.primaAnualMinima : undefined,
-    };
+    // Se escribe el umbral que esta fila está editando y se conserva el otro.
+    // Cuál edita lo dice la regla anterior: una que vino del anexo con prima y
+    // sin número sigue editando la prima.
+    case 'SEGUROS': {
+      const previa = anterior?.tipo === 'SEGUROS' ? anterior : undefined;
+      const editaLaPrima = previa?.primaAnualMinima != null && previa.minimoPolizas == null;
+      return editaLaPrima
+        ? { tipo, primaAnualMinima: n > 0 ? n : undefined }
+        : {
+            tipo,
+            minimoPolizas: enteroNoNegativo(n) || undefined,
+            primaAnualMinima: previa?.primaAnualMinima,
+          };
+    }
     case 'SEGURO_HOGAR':           return { tipo, activo: true, primaAnual: n || undefined };
     case 'SEGURO_VIDA':            return { tipo, activo: true, capitalAseguradoPct: n || undefined };
     case 'PLAN_PENSIONES':         return { tipo, activo: true, aportacionAnual: n || undefined };
@@ -2380,7 +2413,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
                 <div className={styles.blist}>
                   {form.bonificaciones.map((b, i) => {
-                    const c = condicionDe(b.regla.tipo);
+                    const c = condicionDeLaRegla(b.regla);
                     const abierta = filaAbierta === b.id;
                     const cascada = form.modoBonificaciones === 'CASCADA';
                     return (
@@ -3102,4 +3135,10 @@ export default PrestamoPageV2;
  * Para el candado de que los dos caminos acaban en el mismo sitio · patrón del
  * repo. No es API de la pantalla: es lo que hay que poder probar sin montarla.
  */
-export const __private__ = { formDesdePrestamo, emptyFormState };
+export const __private__ = {
+  formDesdePrestamo,
+  emptyFormState,
+  reglaDeCondicion,
+  umbralDeRegla,
+  condicionDeLaRegla,
+};

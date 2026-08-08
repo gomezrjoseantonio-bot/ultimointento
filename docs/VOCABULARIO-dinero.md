@@ -1240,6 +1240,33 @@ Escrito para no perderlo, con la fecha en que se detectó.
   inmueble, que no salen de la FEIN sino de lo que el usuario tenga dado de
   alta. §6 bis · quinquies.
 
+- **2026-08-08** · **Lo que estaba escrito y no lo leía nadie.** Cuatro huecos de
+  §8, y en tres de los cuatro **el dato ya existía**:
+
+  · **`tipoPrestamoV2`** lo escriben el asistente, la importación y la FEIN, y la
+    cartera no lo leía. Una hipoteca dada de alta desde su FEIN llega con
+    `'hipotecario'` y sin garantía apuntada —la escritura se firma después—, así
+    que se llamaba «personal» con el dato delante.
+
+  · **La aportación al plan** «todavía no se sigue en tesorería», decía
+    `SIN_FUENTE`. Y es verdad a medias: no se sigue en tesorería porque no es un
+    movimiento, se sigue en `aportacionesPlan`, con su ejercicio fiscal. No
+    faltaba el dato, faltaba la pregunta. La **gestora** pesa tanto como el
+    importe: el anexo pide un plan SUYO, y aportar a uno de otro banco no
+    arregla nada — por eso ahí la respuesta es «no cumple», no «no se sabe».
+
+  · **`textoDeCumplimiento`** ya sabía decir en castellano cuántos meses de
+    cuántos llegan y qué gasto está hecho pero no consta. La ficha nueva lo
+    estaba reinventando con un motivo suelto en un `title`.
+
+  El cuarto era una pérdida silenciosa: la casilla de la condición de seguros
+  enseña **el umbral que la regla usa**. Con una prima mínima venida del anexo
+  salía vacía, y teclear cualquier cosa borraba media condición.
+
+  Y la **revisión pendiente** vuelve a tener puerta. `revisionPendiente` y
+  `confirmarRevision` llevaban dos entregas alcanzables solo desde sus pruebas.
+  Un motor sin puerta es lo mismo que no tenerlo. §6 ter.
+
 - **2026-08-07** · ~~**La cuota de la Unicaja son 454,66 €, no 454,57**~~ ·
   **resuelto, y Jose tenía razón**. La anualidad se resolvía con `TIN/12` —la
   fórmula cerrada— mientras los intereses se liquidaban contando días reales:

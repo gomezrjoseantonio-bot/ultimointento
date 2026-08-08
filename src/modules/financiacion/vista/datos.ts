@@ -46,14 +46,22 @@ export interface FilaCartera {
 /**
  * A qué familia pertenece un préstamo.
  *
- * Manda la garantía —un inmueble responde o no responde—, y el ámbito solo
- * decide cuando no hay ninguna apuntada. Las pignoraticias cuentan como
- * personales: la cartera solo tiene dos filtros y una prenda no es una hipoteca.
+ * Manda la garantía —un inmueble responde o no responde—, y después lo que el
+ * préstamo dice de sí mismo. Las pignoraticias cuentan como personales: la
+ * cartera solo tiene dos filtros y una prenda no es una hipoteca.
+ *
+ * `tipoPrestamoV2` lo escriben el asistente, la importación y la FEIN, y **no lo
+ * leía nadie**. Una hipoteca dada de alta desde su FEIN llega con
+ * `'hipotecario'` y sin garantía apuntada —la escritura la firma después—, así
+ * que la cartera la llamaba «personal» teniendo el dato delante. Es el mismo
+ * patrón de siempre: el dato existe y se tira en la frontera.
  */
 export function familiaDe(p: Prestamo): FamiliaPrestamo {
   const garantias = p.garantias ?? [];
   if (garantias.some((g) => g.tipo === 'HIPOTECARIA')) return 'hipoteca';
   if (garantias.length > 0) return 'personal';
+  if (p.tipoPrestamoV2 === 'hipotecario') return 'hipoteca';
+  if (p.tipoPrestamoV2 === 'personal') return 'personal';
   return p.ambito === 'INMUEBLE' ? 'hipoteca' : 'personal';
 }
 

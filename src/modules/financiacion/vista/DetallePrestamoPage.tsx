@@ -51,6 +51,7 @@ import {
   mesAnio,
   pct,
 } from './formato';
+import RevisionPendienteCard from './RevisionPendiente';
 import styles from './DetallePrestamo.module.css';
 
 /** Hoy en ISO · el día del calendario del usuario (ver la vista principal). */
@@ -109,6 +110,9 @@ const DetallePrestamoPage: React.FC = () => {
   const cuadro = useMemo(() => (prestamo ? cuadroSeguroDe(prestamo) : null), [prestamo]);
 
   const bonificaciones0 = prestamo?.bonificaciones;
+  // El banco del préstamo · lo pide la condición de plan de pensiones, que
+  // exige que el plan sea de ESTA entidad.
+  const banco = prestamo?.banco;
   useEffect(() => {
     // Lo primero, olvidar lo anterior · navegar de un préstamo a otro dejaba en
     // pantalla los veredictos del que acabas de dejar, pegados a las
@@ -119,7 +123,7 @@ const DetallePrestamoPage: React.FC = () => {
     let cancelado = false;
     (async () => {
       try {
-        const movimientos = await movimientosQuePrueban(Number(hoy.slice(0, 4)));
+        const movimientos = await movimientosQuePrueban(Number(hoy.slice(0, 4)), banco);
         if (!cancelado) setCumplimientos(verificarBonificaciones(bonificaciones0, movimientos, hoy));
       } catch {
         // Sin poder mirar la tesorería la ficha sigue siendo útil · lo que no
@@ -130,7 +134,7 @@ const DetallePrestamoPage: React.FC = () => {
     return () => {
       cancelado = true;
     };
-  }, [bonificaciones0, hoy]);
+  }, [bonificaciones0, banco, hoy]);
 
   const datos = useMemo(() => {
     if (!prestamo || !cuadro) return null;
@@ -428,6 +432,11 @@ const DetallePrestamoPage: React.FC = () => {
           </div>
         </div>
 
+        {/* La revisión que espera respuesta · va ARRIBA de las bonificaciones
+            porque es lo único de esta ficha que te pide algo, y de lo que
+            contestes depende el cuadro entero de aquí en adelante. */}
+        <RevisionPendienteCard prestamo={prestamo} hoy={hoy} alConfirmar={reload} />
+
         {/* 2 · Bonificaciones si las hay · si no, su hueco lo ocupa el cuadro */}
         {hayBonificaciones ? (
           <div className={`${styles.card} ${styles.topGold}`}>
@@ -454,12 +463,12 @@ const DetallePrestamoPage: React.FC = () => {
                           cuando hay que enterarse: el banco te la aplica y has
                           dejado de cumplirla, o la cumples y no te la aplica. */}
                       {b.veredicto === 'no_cumple' && (
-                        <span className={styles.bonifAviso} title={b.motivo}>
+                        <span className={styles.bonifAviso} title={b.explicacion}>
                           no se cumple
                         </span>
                       )}
                       {b.veredicto === 'no_verificable' && (
-                        <span className={styles.bonifDuda} title={b.motivo}>
+                        <span className={styles.bonifDuda} title={b.explicacion}>
                           sin comprobar
                         </span>
                       )}
@@ -468,7 +477,7 @@ const DetallePrestamoPage: React.FC = () => {
                           y se arregla llamando al banco, así que callarlo sería
                           lo peor de las dos opciones. */}
                       {b.veredicto === 'cumple' && !b.alcanzada && (
-                        <span className={styles.bonifLogro} title={b.motivo}>
+                        <span className={styles.bonifLogro} title={b.explicacion}>
                           la cumples · no te la aplican
                         </span>
                       )}
