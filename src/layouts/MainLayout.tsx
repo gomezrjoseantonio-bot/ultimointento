@@ -52,6 +52,11 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const isPanelRoute = location.pathname === '/panel';
   const isInversionesRoute = location.pathname === '/inversiones' || location.pathname.startsWith('/inversiones/');
+  // INVERSIONES V1 · Fase 2 · la galería principal (/inversiones exacto) integra
+  // sus KPIs en el hero navy, así que NO monta la cinta-resumen (evita duplicar
+  // valor total/rentabilidad y libera altura para la pantalla sin scroll). Las
+  // sub-rutas (detalle · cerradas · importar) sí la conservan como topbar.
+  const isGaleriaInversionesRoute = location.pathname === '/inversiones';
   // S-TESORERIA-FASE-B · sin topbar global en las páginas de Tesorería que
   // renderizan su propio banner navy (vista general · vista cuenta · tab
   // movimientos). NO aplica a `/tesoreria/importar` ni `/tesoreria/importar-cuentas`,
@@ -164,7 +169,7 @@ const MainLayout: React.FC = () => {
             Oculto también en /panel: sin buscador (decisión Jose) el topbar solo
             ocupaba espacio · el Panel sube y debe caber sin scroll. */}
         {!isFullBleedRoute && !isPanelRoute && <TopbarV5 />}
-        {isInversionesRoute && <CintaResumenInversiones />}
+        {isInversionesRoute && !isGaleriaInversionesRoute && <CintaResumenInversiones />}
 
         {/* /panel · overflow-y-hidden obligatorio: el Panel NUNCA hace scroll ·
             PanelPage se auto-ajusta a la altura disponible. */}

@@ -23,7 +23,6 @@ import { rendimientosService } from '../../services/rendimientosService';
 import { resincronizarTesoreriaInversiones } from '../../services/inversionesTesoreriaSync';
 import { migrateInversionesToNewModel } from '../../services/migrations/migrateInversiones';
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
-import CartaPosicion from './components/CartaPosicion';
 import AportarModal from './components/modal/AportarModal';
 import SelectorNuevaPosicion, { type Familia } from './components/modal/SelectorNuevaPosicion';
 import AltaPlanWizard from './components/modal/AltaPlanWizard';
@@ -32,8 +31,8 @@ import AltaAccionModal from './components/modal/AltaAccionModal';
 import AltaPrestamoModal from './components/modal/AltaPrestamoModal';
 import AltaDepositoModal from './components/modal/AltaDepositoModal';
 import AltaCryptoModal from './components/modal/AltaCryptoModal';
-import GaleriaFiltros, { type FiltroCategoria } from './components/galeria/GaleriaFiltros';
-import PosicionesCerradasSection from './components/galeria/PosicionesCerradasSection';
+import HeroInversiones from './components/galeria/HeroInversiones';
+import LedgerPosiciones from './components/galeria/LedgerPosiciones';
 import {
   calcularKpisCerradas,
   getPosicionesCerradas,
@@ -41,7 +40,16 @@ import {
 } from './adapters/posicionesCerradas';
 import { getAllCartaItems } from './adapters/galeriaAdapter';
 import type { CartaItem } from './types/cartaItem';
-import { getCategoriaGaleria, type CategoriaGaleria } from './helpers';
+import {
+  resumenCartera,
+  familiasResumen,
+  rentaPasivaAnual,
+  serieTrayectoria,
+} from './adapters/galeriaHero';
+import {
+  obtenerSupuestosGaleria,
+  type SupuestosGaleria,
+} from './adapters/supuestosProyeccion';
 import styles from './InversionesGaleria.module.css';
 
 // Familia → modal componente ATLAS. PR 3 sustituye PlanFormV5/PosicionFormV5
@@ -61,8 +69,8 @@ const InversionesGaleria: React.FC = () => {
   const [resumenCerradas, setResumenCerradas] = useState<KpisCerradas>(() =>
     calcularKpisCerradas([]),
   );
+  const [supuestos, setSupuestos] = useState<SupuestosGaleria | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState<FiltroCategoria>('todas');
 
   // Estado del flujo de alta · el selector elige familia, luego se abre
   // el modal ATLAS dedicado. Cada modal invoca el servicio correspondiente
@@ -75,12 +83,14 @@ const InversionesGaleria: React.FC = () => {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [items, cerradas] = await Promise.all([
+      const [items, cerradas, sup] = await Promise.all([
         getAllCartaItems(),
         getPosicionesCerradas().catch(() => []),
+        obtenerSupuestosGaleria().catch(() => null),
       ]);
       setCartaItems(items);
       setResumenCerradas(calcularKpisCerradas(cerradas));
+      if (sup) setSupuestos(sup);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[inversiones] error cargando datos', err);
@@ -108,24 +118,14 @@ const InversionesGaleria: React.FC = () => {
     };
   }, [load]);
 
-  // ── Conteos por categoría ──────────────────────────────────────────
-  const counts = useMemo<Record<CategoriaGaleria, number>>(() => {
-    const acc: Record<CategoriaGaleria, number> = {
-      planes: 0,
-      equity: 0,
-      rentaFija: 0,
-      otros: 0,
-    };
-    for (const item of cartaItems) {
-      acc[getCategoriaGaleria(item.tipo)] += 1;
-    }
-    return acc;
-  }, [cartaItems]);
-
-  const itemsFiltrados = useMemo(() => {
-    if (filtro === 'todas') return cartaItems;
-    return cartaItems.filter((it) => getCategoriaGaleria(it.tipo) === filtro);
-  }, [cartaItems, filtro]);
+  // ── Agregados del hero (supervisión · KPIs integrados) ─────────────
+  const resumen = useMemo(() => resumenCartera(cartaItems), [cartaItems]);
+  const familias = useMemo(() => familiasResumen(cartaItems), [cartaItems]);
+  const rentaPasiva = useMemo(() => rentaPasivaAnual(cartaItems), [cartaItems]);
+  const serie = useMemo(() => {
+    if (!supuestos) return null;
+    return serieTrayectoria(cartaItems, supuestos, new Date().getFullYear());
+  }, [cartaItems, supuestos]);
 
   const posicionesParaAportar = useMemo(
     () =>
@@ -221,18 +221,16 @@ const InversionesGaleria: React.FC = () => {
     }
   };
 
-  const handleSortClick = () => {
-    showToastV5('Orden personalizado · disponible en próximos releases');
-  };
-
   // ── Render ─────────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
-      {/* CintaResumenInversiones se monta desde MainLayout · ocupa el slot
-          del TopbarV5 global en /inversiones/* (mockup atlas-inversiones-v3). */}
+      {/* INVERSIONES V1 · Fase 2 · pantalla de supervisión sin scroll: los KPIs
+          viven en el hero navy, así que la CintaResumenInversiones NO se monta en
+          esta ruta exacta (/inversiones · ver MainLayout). Head + hero fijos · el
+          ledger hace scroll interno. */}
       <PageHead
         title="Inversiones"
-        sub="tus posiciones activas · click en cualquier carta para ver su detalle"
+        sub="tu cartera · y lo que te renta"
         actions={[
           {
             label: 'Aportar',
@@ -263,42 +261,21 @@ const InversionesGaleria: React.FC = () => {
         />
       ) : (
         <>
-          <GaleriaFiltros
-            selected={filtro}
-            onSelect={setFiltro}
-            counts={counts}
-            onSortClick={handleSortClick}
-          />
+          {serie && (
+            <HeroInversiones
+              resumen={resumen}
+              familias={familias}
+              rentaPasiva={rentaPasiva}
+              serie={serie}
+            />
+          )}
 
-          <div className={styles.galleryHd}>
-            <div className={styles.galleryTitle}>Posiciones activas</div>
-            <div className={styles.galleryCount}>
-              {itemsFiltrados.length}{' '}
-              {itemsFiltrados.length === 1 ? 'activa' : 'activas'} ·{' '}
-              {filtro === 'todas'
-                ? 'ordenadas por valor'
-                : `filtradas · ${filtro === 'planes' ? 'planes pensiones' : filtro === 'equity' ? 'equity / fondos' : filtro === 'rentaFija' ? 'renta fija' : 'otros'}`}
-            </div>
-          </div>
-
-          <div className={styles.galleryGrid}>
-            {itemsFiltrados.map((item) => (
-              <CartaPosicion
-                key={String(item._idOriginal)}
-                item={item}
-                onClick={handleClickCarta}
-              />
-            ))}
-            {itemsFiltrados.length === 0 && (
-              <div className={styles.cartaVizPlaceholder} role="status">
-                Sin posiciones en esta categoría
-              </div>
-            )}
-          </div>
-
-          <PosicionesCerradasSection
-            kpis={resumenCerradas}
-            onClick={() => navigate('/inversiones/cerradas')}
+          <LedgerPosiciones
+            items={cartaItems}
+            valorTotal={resumen.valorTotal}
+            onRowClick={handleClickCarta}
+            cerradasCount={resumenCerradas.count}
+            onVerCerradas={() => navigate('/inversiones/cerradas')}
           />
         </>
       )}

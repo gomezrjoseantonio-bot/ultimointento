@@ -10,10 +10,17 @@
   font-family: var(--atlas-v5-font-ui);
   background: var(--atlas-v5-bg);
   color: var(--atlas-v5-ink-2);
-  padding: 22px 32px 48px;
+  padding: 18px 32px 18px;
   max-width: var(--atlas-v5-main-max-width);
   margin: 0 auto;
   width: 100%;
+  /* INVERSIONES V1 · Fase 2 · pantalla de supervisión SIN scroll de página:
+     head + hero fijos · el ledger (tabla) hace scroll interno. */
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .loading {
