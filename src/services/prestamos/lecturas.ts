@@ -25,6 +25,7 @@ import type { Prestamo, PeriodoPago } from '../../types/prestamos';
 import { generarCuadro, type Cuadro } from './cuadro';
 import { tinDelTramo } from './tinDelTramo';
 import { tramoVigente } from './tramosDeTipo';
+import { inicioDelDevengo } from './amortizarAnticipado';
 import { interesesTotalDeducible } from '../prestamosService';
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -293,6 +294,16 @@ export function getInteresDeducible(
 export interface RevisionQueViene {
   /** Fecha de cargo de la primera cuota ya revisada. */
   fecha: string;
+  /**
+   * El día en que el banco REVISA · desde cuándo rige el tipo nuevo.
+   *
+   * No es lo mismo que `fecha`, y se llevan un mes. El banco revisa el 25 de
+   * agosto y el primer recibo al importe nuevo se carga el 25 de septiembre,
+   * porque el del 25 de agosto paga un devengo que ya había corrido al tipo
+   * viejo. La ficha decía «próxima revisión 25 sep 2026» — el recibo llamado
+   * por el nombre de la revisión, teniendo el día bueno aquí al lado.
+   */
+  aplicaDesde: string;
   /** Lo que se paga hoy. */
   cuotaAntes: number;
   /** Lo que se pasará a pagar. */
@@ -342,10 +353,11 @@ export function getProximaRevision(
 
   return {
     fecha: cambio.fechaCargo,
+    aplicaDesde: inicioDelDevengo(cambio),
     cuotaAntes: actual.cuota,
     cuotaDespues: cambio.cuota,
     tinAntes: getTinVigente(prestamo, hoy),
-    tinDespues: getTinVigente(prestamo, cambio.devengoDesde),
+    tinDespues: getTinVigente(prestamo, inicioDelDevengo(cambio)),
   };
 }
 

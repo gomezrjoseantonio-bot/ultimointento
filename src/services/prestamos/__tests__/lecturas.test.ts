@@ -322,3 +322,50 @@ describe('el cuadro memoizado no puede ser el de otro préstamo', () => {
     expect(cuadroDe(unicaja()).resumen).toEqual(cuadroDe(unicaja()).resumen);
   });
 });
+
+// ── La revisión y su primer recibo son dos días ─────────────────────────────
+//
+// El banco revisa el 25 de agosto; el primer recibo al importe nuevo se carga
+// el 25 de septiembre, porque el del 25 de agosto paga un devengo que ya había
+// corrido al tipo viejo. La ficha decía «próxima revisión 25 sep 2026»: el
+// recibo llamado por el nombre de la revisión, teniendo el día bueno al lado.
+describe('la revisión y el recibo que la estrena', () => {
+  // La mixta de Unicaja · 36 meses fijos desde el 25/08/2023, así que el tramo
+  // variable arranca el 25/08/2026 y su primer recibo se cobra el 25/09/2026.
+  const mixta = (): Prestamo =>
+    unicaja({
+      tipo: 'MIXTO',
+      tipoNominalAnualMixtoFijo: 2.6,
+      tramoFijoMeses: 36,
+      valorIndiceActual: 4,
+      diferencial: 1.75,
+    } as Partial<Prestamo>);
+
+  it('se llevan un mes, y cada uno dice lo suyo', () => {
+    const p = mixta();
+    const r = getProximaRevision(p, cuadroDe(p), '2026-08-08', 365)!;
+
+    expect(r.aplicaDesde).toBe('2026-08-25');
+    expect(r.fecha).toBe('2026-09-25');
+  });
+
+  // El candado: si `aplicaDesde` saliera de la fecha de cargo, este test no
+  // distinguiría nada. Tienen que ser distintos.
+  it('y no son el mismo día', () => {
+    const p = mixta();
+    const r = getProximaRevision(p, cuadroDe(p), '2026-08-08', 365)!;
+
+    expect(r.aplicaDesde).not.toBe(r.fecha);
+    expect(r.aplicaDesde < r.fecha).toBe(true);
+  });
+
+  // El TIN de después se lee en el día de la revisión · leerlo en el del recibo
+  // acierta solo mientras los dos caigan en el mismo tramo.
+  it('el TIN de después es el del tramo que estrena la revisión', () => {
+    const p = mixta();
+    const r = getProximaRevision(p, cuadroDe(p), '2026-08-08', 365)!;
+
+    expect(r.tinDespues).toBeCloseTo(getTinVigente(p, r.aplicaDesde), 3);
+    expect(r.tinDespues).toBeGreaterThan(r.tinAntes);
+  });
+});
