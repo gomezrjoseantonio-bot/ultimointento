@@ -67,12 +67,6 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
         setAccounts(accountList);
         setSettlementAccountId((prev) => prev || String(accountList[0]?.id || ''));
         setPrepared(preparedResult);
-        setPrincipalAmount(String(preparedResult.principalPendienteEstimado));
-        setFeeAmount(String(comisionDeReembolso(prestamo, {
-        tipo: 'TOTAL',
-        importe: preparedResult.principalPendienteEstimado,
-        fecha: operationDate,
-      }).importe));
         setFixedCosts(String(prestamo.gastosFijosOperacion || 0));
       } catch (err) {
         console.error(err);
@@ -86,19 +80,44 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
     return () => { cancelled = true; };
   }, [isOpen, prestamo, operationDate]);
 
+  // Cancelar liquida el principal vivo entero y el importe no se elige · en una
+  // parcial lo elige el usuario, y hasta que escribe una cifra no hay ninguna.
+  //
+  // Se rellenaba con el principal entero en los dos casos, y además se volvía a
+  // rellenar al cambiar de modo: escribías 1.000, pulsabas «Reducir cuota» y el
+  // campo se ponía otra vez en los 85.000 que quedan. Un descuido ahí no es un
+  // número mal puesto, es amortizar el préstamo entero.
   useEffect(() => {
     if (!prepared) return;
+    if (operationType === 'TOTAL') setPrincipalAmount(String(prepared.principalPendienteEstimado));
+    else setPrincipalAmount((prev) => (prev === String(prepared.principalPendienteEstimado) ? '' : prev));
+  }, [operationType, prepared]);
 
-    // Cancelar del todo y adelantar una parte son DOS comisiones distintas · lo
-    // normal es que se pacten con cifras distintas (§6 bis · quater).
-    setPrincipalAmount(String(prepared.principalPendienteEstimado));
+  /** Sobre cuánto se cobra la comisión · en una parcial, sobre lo que se adelanta. */
+  const importeDeLaOperacion =
+    operationType === 'TOTAL'
+      ? (prepared?.principalPendienteEstimado ?? 0)
+      : Number(principalAmount || 0);
+
+  // La comisión salía SIEMPRE del principal pendiente entero, también en una
+  // parcial: un 0,50 % sobre 85.000 € por adelantar 1.000 son 425 € en vez de 5.
+  // Y son dos comisiones distintas —cancelar y adelantar se pactan por separado
+  // (§6 bis · quater)—, así que el tipo también cambia con la operación.
+  useEffect(() => {
+    if (!prepared) return;
     setFeeAmount(String(comisionDeReembolso(prestamo, {
       tipo: operationType === 'TOTAL' ? 'TOTAL' : 'PARCIAL',
-      importe: prepared.principalPendienteEstimado,
+      importe: importeDeLaOperacion,
       fecha: operationDate,
     }).importe));
+  }, [operationType, partialMode, prepared, prestamo, operationDate, importeDeLaOperacion]);
+
+  // Un resumen calculado con otras cifras que las que hay ahora en pantalla se
+  // lee como el de ahora · cambiar el importe y quedarse mirando el impacto del
+  // anterior es peor que no ver ninguno.
+  useEffect(() => {
     setSimulation(null);
-  }, [operationType, partialMode, prepared, prestamo, operationDate]);
+  }, [operationType, partialMode, operationDate, principalAmount, feeAmount, fixedCosts]);
 
   const summaryCards = useMemo(() => {
     if (!prepared) return [];

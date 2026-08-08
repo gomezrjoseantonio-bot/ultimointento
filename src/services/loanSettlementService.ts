@@ -72,6 +72,65 @@ const sortPeriods = (periodos: PeriodoPago[]): PeriodoPago[] => (
   [...periodos].sort((a, b) => new Date(a.fechaCargo).getTime() - new Date(b.fechaCargo).getTime())
 );
 
+// ─── Lo que queda de un plan · UNA pregunta, un criterio ────────────────────
+//
+// El modal enseñaba «plazo antes / después» y «cuota antes / después» sacando
+// cada mitad de un sitio distinto: el «antes» contaba los recibos por FECHA
+// (`fechaCargo >= la operación`) y el «después» los contaba por PUNTEO
+// (`!pagado`). Dos preguntas distintas puestas una al lado de la otra con una
+// flecha en medio.
+//
+// De ahí salían los dos números que no se sostienen *(Jose · 8 ago 2026)*:
+//
+//   · **«205 → 206 meses» después de amortizar.** Un recibo pasado que nadie
+//     había punteado no es futuro, pero `!pagado` lo contaba como tal, y
+//     además la línea del adelanto —que sí va marcada pagada— no lo era. El
+//     plazo subía tras meter dinero.
+//   · **«454,57 € → 454,57 €» eligiendo REDUCIR CUOTA.** La cuota «después»
+//     era la del primer recibo sin puntear, o sea uno viejo con la cuota
+//     vieja. La rebaja estaba calculada en el cuadro y no se enseñaba.
+//
+// Aquí se contesta una sola vez, y los dos cuadros —el de antes y el de
+// después— pasan por la misma función. Si el criterio es discutible que lo sea
+// para los dos a la vez; lo que no puede es cambiar entre una columna y otra.
+
+interface LoQueQueda {
+  /** Recibos que aún se van a cobrar. */
+  recibos: number;
+  /** La cuota que se pasa a pagar · la del primer recibo del lado nuevo. */
+  cuota: number;
+  /** Los intereses que quedan por pagar en esos recibos. */
+  intereses: number;
+}
+
+const inicioDevengo = (p: PeriodoPago): string => p.devengoDesde || p.fechaCargo;
+
+/**
+ * Qué queda de un plan a partir de un día.
+ *
+ * `fechaCargo > desde` y no `>=`: el recibo del día de la operación se está
+ * pagando hoy, no es lo que queda. Y de propina eso deja fuera la línea del
+ * propio adelanto, que el motor apunta con esa misma fecha — sin necesidad de
+ * reconocerla por un campo, que es como se rompen estas cosas.
+ *
+ * La cuota es la del primer recibo que DEVENGA ya del lado nuevo, no la del
+ * primero que se cobra: el recibo a caballo de la operación paga el mes que ya
+ * había corrido y sigue con el importe de antes en los dos cuadros, así que
+ * usarlo diría que la cuota no ha cambiado.
+ */
+const loQueQueda = (plan: PlanPagos | null, desde: string): LoQueQueda => {
+  const pendientes = sortPeriods(plan?.periodos ?? []).filter((p) => p.fechaCargo > desde);
+  const delLadoNuevo = pendientes.find(
+    (p) => inicioDevengo(p) >= desde && !p.esProrrateado && !p.esSoloIntereses,
+  );
+
+  return {
+    recibos: pendientes.length,
+    cuota: round2(delLadoNuevo?.cuota ?? pendientes[0]?.cuota ?? 0),
+    intereses: round2(pendientes.reduce((s, p) => s + (p.interes || 0), 0)),
+  };
+};
+
 const resolveProjectedOutstandingPrincipal = (
   prestamo: Prestamo,
   paymentPlan: PlanPagos | null,
@@ -106,15 +165,16 @@ const resolveAccruedInterestUntilDate = (
   outstandingPrincipal: number,
 ): number => round2(interesesCorridos(prestamo, paymentPlan, operationDate, outstandingPrincipal));
 
+/**
+ * La cuota que se paga a partir de un día · del mismo sitio que el «después».
+ *
+ * Las tarjetas de arriba del modal y la columna «antes» del resumen tienen que
+ * salir de la misma cuenta: si no, el propio modal se contradice a media
+ * pantalla de distancia.
+ */
 const resolveCurrentInstallment = (prestamo: Prestamo, paymentPlan: PlanPagos | null, operationDate: string): number => {
-  const nextRegularPeriod = sortPeriods(paymentPlan?.periodos ?? []).find((periodo) => {
-    const chargeDate = new Date(periodo.fechaCargo).getTime();
-    return chargeDate >= new Date(operationDate).getTime() && !periodo.esProrrateado && !periodo.esSoloIntereses;
-  });
-
-  if (nextRegularPeriod?.cuota && nextRegularPeriod.cuota > 0) {
-    return round2(nextRegularPeriod.cuota);
-  }
+  const queda = loQueQueda(paymentPlan, operationDate);
+  if (queda.cuota > 0) return queda.cuota;
 
   const principal = resolveProjectedOutstandingPrincipal(prestamo, paymentPlan, operationDate);
   const endDate = paymentPlan?.resumen?.fechaFinalizacion || prestamo.fechaCancelacion || prestamo.fechaPrimerCargo;
@@ -124,8 +184,8 @@ const resolveCurrentInstallment = (prestamo: Prestamo, paymentPlan: PlanPagos | 
 };
 
 const resolveRemainingTermMonths = (prestamo: Prestamo, paymentPlan: PlanPagos | null, operationDate: string): number => {
-  const futurePeriods = sortPeriods(paymentPlan?.periodos ?? []).filter((periodo) => new Date(periodo.fechaCargo).getTime() >= new Date(operationDate).getTime());
-  if (futurePeriods.length > 0) return futurePeriods.length;
+  const queda = loQueQueda(paymentPlan, operationDate);
+  if (queda.recibos > 0) return queda.recibos;
 
   const fechaFin = paymentPlan?.resumen?.fechaFinalizacion || prestamo.fechaCancelacion || prestamo.fechaPrimerCargo;
   const opDate = new Date(operationDate);
@@ -351,13 +411,6 @@ export const simulateLoanSettlement = async (
     principalVivo: principalBefore,
   };
 
-  const simulation = prestamosCalculationService.simulateAmortization(
-    simulationBaseLoan,
-    principalApplied,
-    effectiveDate,
-    input.partialMode,
-  );
-
   // La cuota y el plazo que se ENSEÑAN salen del cuadro que se va a guardar, no
   // de una cuenta paralela. Con dos cuentas, la pantalla decía 620,27 € y el
   // cuadro guardado 620,09 —el plazo restante lo estimaba por diferencia de
@@ -368,7 +421,10 @@ export const simulateLoanSettlement = async (
     importe: principalApplied,
     modo: input.partialMode,
   });
-  const futuros = (planNuevo?.periodos ?? []).filter((periodo) => !periodo.pagado);
+
+  // Los dos lados de la flecha, por la misma función y sobre el mismo día.
+  const antes = loQueQueda(prepared.planPagos, effectiveDate);
+  const despues = loQueQueda(planNuevo, effectiveDate);
 
   const totalCashOut = round2(principalApplied + feeAmount + fixedCosts);
 
@@ -383,11 +439,15 @@ export const simulateLoanSettlement = async (
     fixedCosts,
     totalCashOut,
     principalAfter: round2(principalBefore - principalApplied),
-    monthlyPaymentBefore: prepared.cuotaActualEstimada,
-    monthlyPaymentAfter: round2(futuros[0]?.cuota ?? prepared.cuotaActualEstimada),
-    termMonthsBefore: prepared.plazoRestanteEstimado,
-    termMonthsAfter: Math.max(1, futuros.length || prepared.plazoRestanteEstimado),
-    interestSavings: round2(simulation.interesesAhorrados || 0),
+    monthlyPaymentBefore: antes.cuota || prepared.cuotaActualEstimada,
+    monthlyPaymentAfter: despues.cuota || prepared.cuotaActualEstimada,
+    termMonthsBefore: antes.recibos || prepared.plazoRestanteEstimado,
+    termMonthsAfter: despues.recibos || prepared.plazoRestanteEstimado,
+    // El ahorro sale de restar los dos cuadros, no de un tercer motor. Lo
+    // calculaba `simulateAmortization`, o sea otra cuenta distinta de la que
+    // producía la cuota y el plazo de al lado: podía anunciar un ahorro de
+    // cuatrocientos euros junto a un «tu cuota no cambia y el plazo sube».
+    interestSavings: round2(Math.max(0, antes.intereses - despues.intereses)),
   };
 };
 
