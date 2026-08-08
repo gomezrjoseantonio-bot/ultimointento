@@ -163,8 +163,15 @@ describe('loanSettlementService', () => {
     expect(paymentPlan?.metadata?.partialMode).toBe('REDUCIR_CUOTA');
     expect(paymentPlan?.periodos.some((periodo) => periodo.fechaCargo === '2025-06-15' && periodo.pagado)).toBe(true);
 
-    const firstFuturePeriod = paymentPlan?.periodos.find((periodo) => !periodo.pagado);
-    expect(firstFuturePeriod?.cuota).toBeCloseTo(settlement.monthlyPaymentAfter || 0, 1);
+    // El recibo se localiza por la fecha que la propia liquidación guarda, no
+    // buscando «el primero sin pagar»: un adelanto no toca el recibo a caballo,
+    // y un recibo viejo que nadie punteó tampoco es el siguiente. Suponerlo es
+    // lo que hacía que el modal enseñara la cuota de otro tramo.
+    expect(settlement.monthlyPaymentFrom).toBeTruthy();
+    const elQueCambia = paymentPlan?.periodos.find(
+      (periodo) => periodo.fechaCargo === settlement.monthlyPaymentFrom,
+    );
+    expect(elQueCambia?.cuota).toBeCloseTo(settlement.monthlyPaymentAfter || 0, 1);
 
     const history = await getLoanSettlementsByLoanId(loan.id);
     expect(history).toHaveLength(1);

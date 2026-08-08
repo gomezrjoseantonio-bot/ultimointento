@@ -531,6 +531,7 @@ export const confirmLoanSettlement = async (
     principalAfter: simulation.principalAfter,
     monthlyPaymentBefore: simulation.monthlyPaymentBefore,
     monthlyPaymentAfter: simulation.monthlyPaymentAfter,
+    monthlyPaymentFrom: simulation.monthlyPaymentFrom,
     termMonthsBefore: simulation.termMonthsBefore,
     termMonthsAfter: simulation.termMonthsAfter,
     interestSavings: simulation.interestSavings,

@@ -246,6 +246,18 @@ export interface LoanSettlement {
   principalAfter: number;
   monthlyPaymentBefore?: number;
   monthlyPaymentAfter?: number;
+  /**
+   * De qué recibo son esas dos cuotas · fecha de cargo ISO.
+   *
+   * No siempre es el primero que quedaba sin pagar: un adelanto no toca el
+   * recibo a caballo, que paga un mes ya corrido. Sin esta fecha el registro
+   * guarda un importe sin decir a qué corresponde, y quien lo lea tiene que
+   * adivinarlo — y adivinándolo «el primero sin pagar» es como se llegó a
+   * enseñar la cuota de otro tramo.
+   *
+   * Opcional para tolerar las liquidaciones ya guardadas, que no la traen.
+   */
+  monthlyPaymentFrom?: string;
   termMonthsBefore?: number;
   termMonthsAfter?: number;
   interestSavings?: number;
