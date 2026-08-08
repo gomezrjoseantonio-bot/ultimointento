@@ -36,7 +36,7 @@ export function resumenCartera(items: CartaItem[]): ResumenCartera {
   return { valorTotal, aportadoTotal, rentabilidadEur, rentabilidadPct };
 }
 
-// ── Chips por familia (Planes · Préstamos · Acciones) · spec §2.2 ───────────
+// ── Chips por familia (Planes · Fondos · Acciones · Préstamos) · spec §2.2 ──
 
 export type FamiliaChip = 'planes' | 'prestamos' | 'acciones' | 'fondos';
 
@@ -62,10 +62,11 @@ function chipDeItem(item: CartaItem): FamiliaChip | null {
 }
 
 /**
- * Devuelve los 3 chips por familia. `pctAnual` es la media ponderada por valor
- * de la rentabilidad anual de cada posición: CAGR realizada para planes/equity
- * y TIN para renta fija (préstamos/depósitos). Si ninguna posición de la
- * familia aporta tasa fiable → null (la UI muestra "—", nunca inventa).
+ * Devuelve los chips por familia (planes · fondos · acciones · préstamos).
+ * `pctAnual` es la media ponderada por valor de la rentabilidad anual de cada
+ * posición: CAGR realizada para planes/fondos/equity y TIN para renta fija
+ * (préstamos/depósitos). Si ninguna posición de la familia aporta tasa fiable →
+ * null (la UI muestra "—", nunca inventa).
  */
 export function familiasResumen(items: CartaItem[]): Record<FamiliaChip, ResumenFamilia> {
   const base: Record<FamiliaChip, ResumenFamilia> = {

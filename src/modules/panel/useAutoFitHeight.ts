@@ -3,8 +3,15 @@
 //
 // Devuelve refs + estilos para un par de wrappers (outer/inner): mide la altura
 // natural del contenido (inner) y, si excede la del contenedor (outer), aplica
-// `transform: scale()` compensando el ancho (100/escala %) para que el
-// contenido siga ocupando todo el ancho visible. Con escala 1 no toca nada.
+// `transform: scale()` (escalado UNIFORME, con origen arriba-izquierda). Con
+// escala 1 no toca nada.
+//
+// ⚠️ NO compensar el ancho (`width: 100/escala %`) sobre el elemento medido:
+// hacerlo acopla ancho↔altura y crea un BUCLE INFINITO de re-medición (el
+// ResizeObserver ve el nuevo ancho → el contenido reflowa a otra altura → otra
+// escala → otro ancho → …). No tiene punto fijo y la pantalla parpadea sin
+// parar. El escalado uniforme deja algo de margen a la derecha cuando reduce,
+// que es la degradación aceptable frente a un Panel inusable.
 //
 // Red de seguridad: por debajo de MIN_SCALE (pantallas extremadamente bajas)
 // el texto sería ilegible · se fija la escala mínima y se permite scroll
@@ -88,7 +95,10 @@ export function useAutoFitHeight(): AutoFitHeight {
     innerStyle:
       scale < 1
         ? {
-            width: `${100 / scale}%`,
+            // Escalado UNIFORME · sin `width: 100/scale%` (ver aviso de cabecera:
+            // realimentar el ancho sobre el elemento medido crea un bucle de
+            // re-medición infinito → parpadeo). El margen a la derecha al reducir
+            // es la degradación aceptable.
             transform: `scale(${scale})`,
             transformOrigin: 'top left',
           }
