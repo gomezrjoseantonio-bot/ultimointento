@@ -36,6 +36,9 @@ import {
   getTinVigente,
 } from '../../../services/prestamos/lecturas';
 import { cuadroSeguroDe, metaDestino } from './datos';
+import { useRevisionPendiente } from './useRevisionPendiente';
+import CuadroCompleto from './CuadroCompleto';
+import type { Prestamo } from '../../../types/prestamos';
 import {
   condicionesDe,
   fiscalidadDe,
@@ -51,8 +54,8 @@ import {
   mesAnio,
   pct,
 } from './formato';
-import RevisionPendienteCard from './RevisionPendiente';
 import styles from './DetallePrestamo.module.css';
+import rev from './RevisionEnBonificaciones.module.css';
 
 /** Hoy en ISO · el día del calendario del usuario (ver la vista principal). */
 const hoyISO = (): string => {
@@ -100,6 +103,7 @@ const DetallePrestamoPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { prestamos, reload } = useOutletContext<FinanciacionOutletContext>();
   const [amortizando, setAmortizando] = useState(false);
+  const [cuadroAbierto, setCuadroAbierto] = useState(false);
 
   const hoy = useMemo(() => hoyISO(), []);
 
@@ -113,6 +117,9 @@ const DetallePrestamoPage: React.FC = () => {
   // El banco del préstamo · lo pide la condición de plan de pensiones, que
   // exige que el plan sea de ESTA entidad.
   const banco = prestamo?.banco;
+  // La revisión que espera respuesta · vive con las bonificaciones, no en una
+  // tarjeta aparte que enseñara la misma lista otra vez.
+  const revision = useRevisionPendiente(prestamo ?? ({ id: '' } as Prestamo), hoy, reload);
   useEffect(() => {
     // Lo primero, olvidar lo anterior · navegar de un préstamo a otro dejaba en
     // pantalla los veredictos del que acabas de dejar, pegados a las
@@ -189,7 +196,6 @@ const DetallePrestamoPage: React.FC = () => {
 
   const { tiempo, bonificaciones, fiscalidad } = datos;
   const esMixtoOVariable = prestamo.tipo !== 'FIJO';
-  const hayBonificaciones = bonificaciones.lista.length > 0;
   const numContrato = enmascarado(prestamo.numeroContrato);
 
   // El 6º KPI cambia de pregunta según el préstamo: en uno deducible interesa
@@ -217,10 +223,12 @@ const DetallePrestamoPage: React.FC = () => {
         <span className={styles.migaActual}>{prestamo.nombre || 'Préstamo'}</span>
       </div>
 
-      <div className={styles.head}>
-        <div className={styles.headIzq}>
-          <h1 className={styles.titulo}>{prestamo.nombre || 'Préstamo sin nombre'}</h1>
-          <div className={styles.sub}>
+      {/* ── HERO navy · el nombre DENTRO, como la vista principal ── */}
+      <div className={styles.hero}>
+      <div className={styles.heroHead}>
+        <div className={styles.heroHeadIzq}>
+          <h1 className={styles.heroTitulo}>{prestamo.nombre || 'Préstamo sin nombre'}</h1>
+          <div className={styles.heroSub}>
             {ETIQUETA_TIPO[prestamo.tipo] ?? 'préstamo'} · destino{' '}
             <span className={styles.mono}>{metaDestino(prestamo)}</span>
             {numContrato && (
@@ -231,10 +239,10 @@ const DetallePrestamoPage: React.FC = () => {
             )}
           </div>
         </div>
-        <div className={styles.headAcciones}>
+        <div className={styles.heroAcciones}>
           {/* No hay pantalla ni documento de FEIN enlazable todavía · el botón
               se deja visible y deshabilitado en vez de inventar un destino. */}
-          <button type="button" className={styles.btnGhost} disabled title="Pendiente · no hay FEIN enlazada">
+          <button type="button" className={styles.btnGhostNavy} disabled title="Pendiente · no hay FEIN enlazada">
             <Icons.Contratos size={14} strokeWidth={2} />
             Ver FEIN
           </button>
@@ -242,13 +250,13 @@ const DetallePrestamoPage: React.FC = () => {
               una operación real que ya funciona y el Detalle era su única
               puerta. Decisión de Jose · se mantiene aquí hasta que Mi Plan /
               Acelerar le dé sitio propio. */}
-          <button type="button" className={styles.btnGhost} onClick={() => setAmortizando(true)}>
+          <button type="button" className={styles.btnGhostNavy} onClick={() => setAmortizando(true)}>
             <Icons.Amortizar size={14} strokeWidth={2} />
             Amortizar
           </button>
           <button
             type="button"
-            className={styles.btnOro}
+            className={styles.btnOroNavy}
             onClick={() => navigate(`/financiacion/${prestamo.id}/editar`)}
           >
             <Icons.Edit size={14} strokeWidth={2} />
@@ -256,9 +264,7 @@ const DetallePrestamoPage: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {/* ── HERO navy · 6 KPIs ── */}
-      <div className={styles.hero}>
+        <div className={styles.hkRow}>
         <div className={styles.hk}>
           <div className={styles.hkLab}>Capital vivo</div>
           <div className={styles.hkVal}>{eurDeuda(datos.capitalVivo)}</div>
@@ -338,6 +344,7 @@ const DetallePrestamoPage: React.FC = () => {
               'lo que queda de coste'
             )}
           </div>
+        </div>
         </div>
       </div>
 
@@ -432,19 +439,45 @@ const DetallePrestamoPage: React.FC = () => {
           </div>
         </div>
 
-        {/* La revisión que espera respuesta · va ARRIBA de las bonificaciones
-            porque es lo único de esta ficha que te pide algo, y de lo que
-            contestes depende el cuadro entero de aquí en adelante. */}
-        <RevisionPendienteCard prestamo={prestamo} hoy={hoy} alConfirmar={reload} />
+        {/* 2 · Bonificaciones · SIEMPRE, y con la revisión dentro.
+            Eran dos tarjetas enseñando la misma lista, y contestar en una no
+            tenía nada que ver con lo que decía la otra. Son la misma pregunta:
+            qué bonificaciones tienes y cuáles te ha dejado el banco. */}
+        <div className={`${styles.card} ${styles.topGold}`}>
+          <div className={styles.cardT}>
+            <Icons.Check size={15} strokeWidth={2} aria-hidden />
+            Bonificaciones
+            <span className={styles.cardNota}>
+              {revision.pendiente ? 'el banco ya ha revisado' : 'bajan tu diferencial'}
+            </span>
+          </div>
 
-        {/* 2 · Bonificaciones si las hay · si no, su hueco lo ocupa el cuadro */}
-        {hayBonificaciones ? (
-          <div className={`${styles.card} ${styles.topGold}`}>
-            <div className={styles.cardT}>
-              <Icons.Check size={15} strokeWidth={2} aria-hidden />
-              Bonificaciones
-              <span className={styles.cardNota}>bajan tu diferencial</span>
+          {revision.pendiente && (
+            <div className={rev.revAviso}>
+              <Icons.Warning size={13} strokeWidth={2} aria-hidden />
+              <span>
+                Revisión de{' '}
+                <strong>{revision.pendiente.aplicaDesde.split('-').reverse().join('/')}</strong> ·
+                dinos cuáles te dejó y el cuadro se rehace desde esa fecha.
+                <em> ATLAS no ve la carta del banco.</em>
+              </span>
             </div>
+          )}
+
+          {bonificaciones.lista.length === 0 ? (
+            /* Sin ninguna apuntada la tarjeta sigue estando · «este préstamo no
+               tiene bonificaciones» es una respuesta, y esconder la tarjeta
+               dejaba la ficha diciendo que la pregunta no existe. */
+            <div className={rev.bonifVacio}>
+              Este préstamo no tiene bonificaciones apuntadas.
+              <button
+                type="button"
+                onClick={() => navigate(`/financiacion/${prestamo.id}/editar`)}
+              >
+                añadir las de tu anexo
+              </button>
+            </div>
+          ) : (
             <div className={styles.bonifLista}>
               {bonificaciones.lista.map((b) => (
                 <div key={b.bonificacion.id} className={styles.bonif}>
@@ -455,13 +488,12 @@ const DetallePrestamoPage: React.FC = () => {
                     >
                       {b.alcanzada && <Icons.Check size={11} strokeWidth={3} />}
                     </div>
-                  <span className={b.alcanzada ? undefined : styles.bonifApagada}>
+                    <span className={b.alcanzada ? undefined : styles.bonifApagada}>
                       {b.bonificacion.nombre}
                       {/* Lo que dicen TUS movimientos · otra pregunta distinta
                           de si el banco la está aplicando, y por eso va aparte
                           y no pisa el check. Cuando no coinciden es justo
-                          cuando hay que enterarse: el banco te la aplica y has
-                          dejado de cumplirla, o la cumples y no te la aplica. */}
+                          cuando hay que enterarse. */}
                       {b.veredicto === 'no_cumple' && (
                         <span className={styles.bonifAviso} title={b.explicacion}>
                           no se cumple
@@ -473,9 +505,7 @@ const DetallePrestamoPage: React.FC = () => {
                         </span>
                       )}
                       {/* La discrepancia al revés · la cumples y el banco NO te
-                          la está aplicando. Es dinero que estás pagando de más
-                          y se arregla llamando al banco, así que callarlo sería
-                          lo peor de las dos opciones. */}
+                          la aplica. Es dinero que estás pagando de más. */}
                       {b.veredicto === 'cumple' && !b.alcanzada && (
                         <span className={styles.bonifLogro} title={b.explicacion}>
                           la cumples · no te la aplican
@@ -483,47 +513,117 @@ const DetallePrestamoPage: React.FC = () => {
                       )}
                     </span>
                   </div>
-                  <div className={b.alcanzada ? styles.bonifVal : styles.bonifValApagado}>
-                    −{b.puntos.toFixed(2).replace('.', ',')}
-                  </div>
+
+                  {revision.pendiente ? (
+                    /* Con revisión abierta, cada fila se contesta aquí mismo ·
+                       la lista es la misma, así que preguntar en otra tarjeta
+                       obligaba a mirar dos veces lo mismo. Nada marcado de
+                       salida: lo que no se conteste se queda como estaba. */
+                    <div className={rev.revBotones}>
+                      <button
+                        type="button"
+                        className={
+                          revision.decision[b.bonificacion.id] === 'CUMPLIDA'
+                            ? rev.revSiOn
+                            : rev.revSi
+                        }
+                        onClick={() => revision.responder(b.bonificacion.id, 'CUMPLIDA')}
+                      >
+                        me la dejan
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          revision.decision[b.bonificacion.id] === 'PERDIDA'
+                            ? rev.revNoOn
+                            : rev.revNo
+                        }
+                        onClick={() => revision.responder(b.bonificacion.id, 'PERDIDA')}
+                      >
+                        la pierdo
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={b.alcanzada ? styles.bonifVal : styles.bonifValApagado}>
+                      −{b.puntos.toFixed(2).replace('.', ',')}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
-            <div className={styles.bonifPie}>
-              <div className={styles.bonifPieFila}>
-                <span>
-                  alcanzas{' '}
-                  <span className={styles.monoInk}>
-                    −{bonificaciones.rebajaTotal.toFixed(2).replace('.', ',')}
-                  </span>
-                  {bonificaciones.tope != null && (
-                    <>
-                      {' de '}
-                      <span className={styles.monoInk}>
-                        {bonificaciones.tope.toFixed(2).replace('.', ',')}
-                      </span>
-                      {' de tope'}
-                    </>
-                  )}
-                </span>
-              </div>
-              {bonificaciones.rebajaTotal > 0 && (
-                <div className={styles.bonifEfecto}>
-                  <span>tu tipo de hoy</span>
-                  <span>
-                    <span className={styles.teorico}>
-                      {pct(datos.tin + bonificaciones.rebajaTotal).replace(' %', '')}
-                    </span>{' '}
-                    <span className={styles.flecha}>→</span>{' '}
-                    <span className={styles.mono}>{pct(datos.tin)}</span>
+          )}
+
+          {revision.pendiente ? (
+            <div className={rev.revPie}>
+              {revision.pideIndice && (
+                <div className={rev.revIndice}>
+                  <label htmlFor="rev-indice">Índice que aplicó</label>
+                  <div className={rev.revInpGrupo}>
+                    <input
+                      id="rev-indice"
+                      className={rev.revInp}
+                      value={revision.indiceRaw}
+                      onChange={(e) => revision.setIndiceRaw(e.target.value)}
+                    />
+                    <span>%</span>
+                  </div>
+                  <span className={rev.revPista}>
+                    {revision.indiceSugerido != null
+                      ? 'el que tienes en Actualizar valores · si la carta dice otro, escríbelo'
+                      : 'sin diferencial · vacío si la carta no lo dice'}
                   </span>
                 </div>
               )}
+              <div className={rev.revAcciones}>
+                <button
+                  type="button"
+                  className={rev.revConfirmar}
+                  onClick={revision.confirmar}
+                  disabled={revision.guardando}
+                >
+                  {revision.guardando ? 'Apuntando…' : 'Apuntar lo que dijo el banco'}
+                </button>
+                <button type="button" className={rev.revLuego} onClick={revision.descartar}>
+                  ahora no
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <CuadroPreview datos={datos} onVerCompleto={undefined} />
-        )}
+          ) : (
+            bonificaciones.lista.length > 0 && (
+              <div className={styles.bonifPie}>
+                <div className={styles.bonifPieFila}>
+                  <span>
+                    alcanzas{' '}
+                    <span className={styles.monoInk}>
+                      −{bonificaciones.rebajaTotal.toFixed(2).replace('.', ',')}
+                    </span>
+                    {bonificaciones.tope != null && (
+                      <>
+                        {' de '}
+                        <span className={styles.monoInk}>
+                          {bonificaciones.tope.toFixed(2).replace('.', ',')}
+                        </span>
+                        {' de tope'}
+                      </>
+                    )}
+                  </span>
+                </div>
+                {bonificaciones.rebajaTotal > 0 && (
+                  <div className={styles.bonifEfecto}>
+                    <span>tu tipo de hoy</span>
+                    <span>
+                      <span className={styles.teorico}>
+                        {pct(datos.tin + bonificaciones.rebajaTotal).replace(' %', '')}
+                      </span>{' '}
+                      <span className={styles.flecha}>→</span>{' '}
+                      <span className={styles.mono}>{pct(datos.tin)}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            )
+          )}
+        </div>
 
         {/* 3 · Condiciones del banco */}
         <div className={`${styles.card} ${styles.topGoldSoft}`}>
@@ -539,37 +639,38 @@ const DetallePrestamoPage: React.FC = () => {
               </div>
             ))}
           </div>
+          {/* El destino y lo que Hacienda hace con sus intereses · es lo que
+              este préstamo ES, y por eso vive con sus condiciones en vez de
+              turnarse con el cuadro por una casilla. */}
+          <div className={rev.fiscalPie}>
+            <span className={styles.dlK}>Destino · IRPF</span>
+            <span className={rev.fiscalTexto}>
+              {fiscalidad.destino} ·{' '}
+              <span className={fiscalidad.deducible ? styles.chipOro : styles.chipNeutro}>
+                {fiscalidad.deducible
+                  ? `deducible ${Math.round(fiscalidad.pctDeducible)}% · casilla 0105`
+                  : 'no deducible'}
+              </span>
+            </span>
+          </div>
         </div>
 
-        {/* 4 · El cuadro si hay bonificaciones arriba · si no, la fiscalidad */}
-        {hayBonificaciones ? (
-          <CuadroPreview datos={datos} onVerCompleto={undefined} />
-        ) : (
-          <div className={`${styles.card} ${styles.topBrand}`}>
-            <div className={styles.cardT}>
-              <Icons.Fiscal size={15} strokeWidth={2} aria-hidden />
-              Destino y fiscalidad
-            </div>
-            <div className={styles.dlAncho}>
-              <div className={styles.dlItem}>
-                <span className={styles.dlK}>Destino del capital</span>
-                <span className={styles.dlTexto}>{fiscalidad.destino}</span>
-              </div>
-              <div className={styles.dlItem}>
-                <span className={styles.dlK}>Deducibilidad IRPF</span>
-                <span>
-                  <span className={fiscalidad.deducible ? styles.chipOro : styles.chipNeutro}>
-                    {fiscalidad.deducible
-                      ? `deducible ${Math.round(fiscalidad.pctDeducible)}% · casilla 0105`
-                      : 'no deducible'}
-                  </span>
-                </span>
-              </div>
-              {fiscalidad.motivo && <div className={styles.dlMotivo}>{fiscalidad.motivo}</div>}
-            </div>
-          </div>
-        )}
+        {/* 4 · El cuadro · SIEMPRE. Antes esta casilla la ocupaba el cuadro o
+            la fiscalidad según hubiera bonificaciones o no, así que un préstamo
+            sin ellas se quedaba sin cuadro de amortización — que es la tabla
+            por la que se entra a esta ficha. La fiscalidad va al pie de las
+            condiciones, que es donde se lee lo que este préstamo ES. */}
+        <CuadroPreview datos={datos} onVerCompleto={() => setCuadroAbierto(true)} />
       </div>
+
+      {cuadroAbierto && cuadro && (
+        <CuadroCompleto
+          cuadro={cuadro}
+          nombre={prestamo.nombre || 'Préstamo'}
+          hoy={hoy}
+          onCerrar={() => setCuadroAbierto(false)}
+        />
+      )}
 
       <LoanSettlementModal
         prestamo={prestamo}
@@ -619,14 +720,7 @@ const CuadroPreview: React.FC<CuadroPreviewProps> = ({ datos, onVerCompleto }) =
       </div>
     ))}
     <div className={styles.cardPie}>
-      {/* La pantalla del cuadro completo (240 filas) está fuera de alcance ·
-          se enlaza cuando exista, no se inventa aquí. */}
-      <button
-        type="button"
-        onClick={onVerCompleto}
-        disabled={!onVerCompleto}
-        title={onVerCompleto ? undefined : 'Pendiente · la pantalla del cuadro completo aún no existe'}
-      >
+      <button type="button" onClick={onVerCompleto}>
         Ver cuadro completo · {datos.progreso.restantes} cuotas restantes →
       </button>
     </div>

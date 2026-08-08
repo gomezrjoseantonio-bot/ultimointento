@@ -174,26 +174,82 @@ export function totalesDe(filas: FilaCartera[], hoy: string): TotalesHero {
 
 // ─── Orden de la cartera ────────────────────────────────────────────────────
 
-export type OrdenCartera = 'vencimiento' | 'tin' | 'capital' | 'cuota';
+/** Por qué columna se ordena · una por cada cabecera que se puede pulsar. */
+export type CampoOrden = 'nombre' | 'capital' | 'cuota' | 'tin' | 'amortizado' | 'vencimiento';
 
-export const ETIQUETA_ORDEN: Record<OrdenCartera, string> = {
-  vencimiento: 'Ordenar · vencimiento',
-  tin: 'Ordenar · TIN más alto',
-  capital: 'Ordenar · capital vivo',
-  cuota: 'Ordenar · cuota',
+export interface OrdenCartera {
+  campo: CampoOrden;
+  /** Ascendente · lo pequeño primero. Cada columna tiene su sentido natural. */
+  asc: boolean;
+}
+
+/**
+ * Hacia dónde ordena una columna la primera vez que la pulsas.
+ *
+ * No es lo mismo para todas: de la deuda y la cuota interesa lo GRANDE, del
+ * vencimiento lo PRÓXIMO y del nombre la A. Arrancar todas ascendentes obliga a
+ * pulsar dos veces en las que más se miran.
+ */
+const SENTIDO_NATURAL: Record<CampoOrden, boolean> = {
+  nombre: true,
+  capital: false,
+  cuota: false,
+  tin: false,
+  amortizado: false,
+  vencimiento: true,
+};
+
+export const ORDEN_POR_DEFECTO: OrdenCartera = { campo: 'vencimiento', asc: true };
+
+/**
+ * El orden que toca al pulsar una cabecera.
+ *
+ * La misma columna otra vez le da la vuelta; una columna distinta arranca en su
+ * sentido natural.
+ */
+export function alPulsarCabecera(actual: OrdenCartera, campo: CampoOrden): OrdenCartera {
+  return actual.campo === campo
+    ? { campo, asc: !actual.asc }
+    : { campo, asc: SENTIDO_NATURAL[campo] };
+}
+
+const valorDe = (f: FilaCartera, campo: CampoOrden): number | string | null => {
+  switch (campo) {
+    case 'nombre':
+      return f.nombre.toLowerCase();
+    case 'capital':
+      return f.capitalVivo;
+    case 'cuota':
+      return f.cuota;
+    case 'tin':
+      return f.tin;
+    case 'amortizado':
+      return f.pctAmortizado;
+    case 'vencimiento':
+    default:
+      return f.vencimiento;
+  }
 };
 
 export function ordenar(filas: FilaCartera[], orden: OrdenCartera): FilaCartera[] {
-  const copia = [...filas];
-  switch (orden) {
-    case 'tin':
-      return copia.sort((a, b) => b.tin - a.tin);
-    case 'capital':
-      return copia.sort((a, b) => b.capitalVivo - a.capitalVivo);
-    case 'cuota':
-      return copia.sort((a, b) => b.cuota - a.cuota);
-    case 'vencimiento':
-    default:
-      return copia.sort((a, b) => (a.vencimiento ?? '9999').localeCompare(b.vencimiento ?? '9999'));
-  }
+  const signo = orden.asc ? 1 : -1;
+  return [...filas].sort((a, b) => {
+    const va = valorDe(a, orden.campo);
+    const vb = valorDe(b, orden.campo);
+
+    // Lo que no se sabe va al final EN LAS DOS DIRECCIONES, y por eso se decide
+    // antes del signo. Con un `'9999-99-99'` de relleno quedaba al final
+    // ascendiendo y el PRIMERO descendiendo: un préstamo cuya fecha no se sabe
+    // no es «el que antes acaba» ni «el que más tarda», y encabezar la lista
+    // con él es justo lo contrario de lo que se pidió.
+    if (va == null || vb == null) {
+      if (va == null && vb == null) return 0;
+      return va == null ? 1 : -1;
+    }
+
+    if (typeof va === 'string' || typeof vb === 'string') {
+      return signo * String(va).localeCompare(String(vb), 'es');
+    }
+    return signo * (va - vb);
+  });
 }

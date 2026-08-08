@@ -20,11 +20,13 @@ import {
   cuadroSeguroDe,
   filaDe,
   ordenar,
+  alPulsarCabecera,
+  ORDEN_POR_DEFECTO,
   totalesDe,
-  ETIQUETA_ORDEN,
   type FamiliaPrestamo,
   type FilaCartera,
   type OrdenCartera,
+  type CampoOrden,
 } from './datos';
 import {
   anio as soloAnio,
@@ -120,13 +122,60 @@ const FilaPrestamo: React.FC<{ fila: FilaCartera; onAbrir: () => void }> = ({
 
 // ─── La vista ───────────────────────────────────────────────────────────────
 
+/**
+ * Cuántos préstamos caben sin scroll.
+ *
+ * La vista es de una pantalla y no puede crecer hacia abajo, así que la cartera
+ * no lleva scroll propio: lo que no cabe se pagina. Con scroll, las filas de
+ * abajo existen y no se ven — y el que se te olvida es siempre el de abajo.
+ */
+const POR_PAGINA = 7;
+
+interface CabeceraProps {
+  campo: CampoOrden;
+  orden: OrdenCartera;
+  onOrdenar: (o: OrdenCartera) => void;
+  derecha?: boolean;
+  children: React.ReactNode;
+}
+
+/**
+ * Una cabecera que ordena · con su flecha cuando manda.
+ *
+ * Ordenar por una columna se pide pulsando ESA columna. El desplegable que
+ * había repetía los nombres de las columnas en una lista aparte y no decía por
+ * cuál se estaba ordenando ahora mismo.
+ */
+const Cabecera: React.FC<CabeceraProps> = ({ campo, orden, onOrdenar, derecha, children }) => {
+  const activa = orden.campo === campo;
+  return (
+    <button
+      type="button"
+      className={`${styles.th} ${derecha ? styles.thR : ''} ${styles.thOrd} ${activa ? styles.thOn : ''}`}
+      onClick={() => onOrdenar(alPulsarCabecera(orden, campo))}
+      aria-label={`Ordenar por ${typeof children === 'string' ? children.toLowerCase() : campo}${
+        activa ? (orden.asc ? ' · ahora de menor a mayor' : ' · ahora de mayor a menor') : ''
+      }`}
+    >
+      {children}
+      <span className={styles.thFlecha} aria-hidden>
+        {activa ? (orden.asc ? '↑' : '↓') : '↕'}
+      </span>
+    </button>
+  );
+};
+
 const VistaFinanciacionPage: React.FC = () => {
   const navigate = useNavigate();
   const { prestamos } = useOutletContext<FinanciacionOutletContext>();
 
   const hoy = useMemo(() => hoyISO(), []);
   const [familias, setFamilias] = useState<FamiliaPrestamo[]>(['hipoteca', 'personal']);
-  const [orden, setOrden] = useState<OrdenCartera>('vencimiento');
+  const [orden, setOrden] = useState<OrdenCartera>(ORDEN_POR_DEFECTO);
+  // Página de la cartera · nunca scroll (guía v5): la pantalla no crece, se
+  // pagina. Con scroll, lo de abajo existe y no se ve — y una cartera es
+  // justamente una lista que hay que poder recorrer entera de un vistazo.
+  const [pagina, setPagina] = useState(0);
   const [alertaDescartada, setAlertaDescartada] = useState<string | null>(null);
 
   useEffect(() => {
@@ -150,10 +199,22 @@ const VistaFinanciacionPage: React.FC = () => {
   const totales = useMemo(() => totalesDe(filas, hoy), [filas, hoy]);
   const escalera = useMemo(() => escaleraDeLiberacion(filas, hoy), [filas, hoy]);
 
-  const visibles = useMemo(
+  const ordenadas = useMemo(
     () => ordenar(filas.filter((f) => familias.includes(f.familia)), orden),
     [filas, familias, orden],
   );
+
+  // Lo que cabe sin scroll · si sobran, se pagina. La página se reinicia al
+  // filtrar o reordenar: quedarse en la 3 de una lista que ahora tiene una
+  // enseñaría un vacío que parece «no tienes préstamos».
+  const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / POR_PAGINA));
+  const paginaSegura = Math.min(pagina, totalPaginas - 1);
+  const desde = paginaSegura * POR_PAGINA;
+  const visibles = ordenadas.slice(desde, desde + POR_PAGINA);
+
+  useEffect(() => {
+    setPagina(0);
+  }, [familias, orden]);
 
   const numHipotecas = totales.numHipotecas;
   const numPersonales = totales.numPersonales;
@@ -202,6 +263,15 @@ const VistaFinanciacionPage: React.FC = () => {
     <div className={styles.vista}>
       {/* ── HERO GESTIÓN · navy con borde oro ── */}
       <div className={styles.hero}>
+        {/* El título vive DENTRO del hero, como en Tesorería · una cabecera
+            aparte encima repetía el nombre del menú y se comía una banda
+            entera de pantalla en una vista que no puede tener scroll. */}
+        <div className={styles.heroLab}>
+          <div className={styles.heroTitle}>
+            <span className={styles.heroDot} /> Mi financiación
+          </div>
+          <div className={styles.heroSub}>tu deuda · tu cuota · cuándo te liberas</div>
+        </div>
         <div className={styles.kpiRow}>
           <div className={styles.kpi}>
             <div className={styles.kpiLab}>Debes ahora</div>
@@ -252,6 +322,9 @@ const VistaFinanciacionPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Un solo primario · «Subir FEIN» era otra puerta al MISMO sitio
+              (dar de alta un préstamo), y como botón propio competía con él.
+              Ahora es la otra forma de empezar lo mismo, dentro. */}
           <div className={styles.kpiBtn}>
             <button
               type="button"
@@ -260,6 +333,14 @@ const VistaFinanciacionPage: React.FC = () => {
             >
               <Icons.Plus size={14} strokeWidth={2.2} />
               Nuevo préstamo
+            </button>
+            <button
+              type="button"
+              className={styles.btnFein}
+              onClick={() => navigate('/financiacion/nuevo-fein')}
+            >
+              <Icons.Upload size={12} strokeWidth={2} />
+              o subir la FEIN
             </button>
           </div>
         </div>
@@ -323,30 +404,43 @@ const VistaFinanciacionPage: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className={styles.orden}>
-            <select
-              value={orden}
-              aria-label="Ordenar la cartera"
-              onChange={(e) => setOrden(e.target.value as OrdenCartera)}
-            >
-              {(Object.keys(ETIQUETA_ORDEN) as OrdenCartera[]).map((o) => (
-                <option key={o} value={o}>
-                  {ETIQUETA_ORDEN[o]}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* El desplegable «Ordenar · …» se ha ido a las cabeceras: ordenar
+              por una columna se pide pulsando esa columna, no buscándola en una
+              lista que además repetía sus nombres. */}
+          {totalPaginas > 1 && (
+            <div className={styles.pager}>
+              <button
+                type="button"
+                aria-label="Página anterior"
+                disabled={pagina === 0}
+                onClick={() => setPagina((p) => Math.max(0, p - 1))}
+              >
+                ‹
+              </button>
+              <span className={styles.pagerN}>
+                {desde + 1}–{Math.min(desde + POR_PAGINA, ordenadas.length)} de {ordenadas.length}
+              </span>
+              <button
+                type="button"
+                aria-label="Página siguiente"
+                disabled={pagina >= totalPaginas - 1}
+                onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
+              >
+                ›
+              </button>
+            </div>
+          )}
         </div>
 
         <div className={styles.cartera}>
           <div className={`${styles.fila} ${styles.cabecera}`}>
             <div />
-            <div className={styles.th}>Préstamo</div>
-            <div className={`${styles.th} ${styles.thR}`}>Capital vivo</div>
-            <div className={`${styles.th} ${styles.thR}`}>Cuota/mes</div>
-            <div className={`${styles.th} ${styles.thR}`}>TIN hoy</div>
-            <div className={`${styles.th} ${styles.thR}`}>Amortizado</div>
-            <div className={`${styles.th} ${styles.thR}`}>Vence</div>
+            <Cabecera campo="nombre" orden={orden} onOrdenar={setOrden}>Préstamo</Cabecera>
+            <Cabecera campo="capital" orden={orden} onOrdenar={setOrden} derecha>Capital vivo</Cabecera>
+            <Cabecera campo="cuota" orden={orden} onOrdenar={setOrden} derecha>Cuota/mes</Cabecera>
+            <Cabecera campo="tin" orden={orden} onOrdenar={setOrden} derecha>TIN hoy</Cabecera>
+            <Cabecera campo="amortizado" orden={orden} onOrdenar={setOrden} derecha>Amortizado</Cabecera>
+            <Cabecera campo="vencimiento" orden={orden} onOrdenar={setOrden} derecha>Vence</Cabecera>
           </div>
           <div className={styles.filas}>
             {visibles.map((fila) => (
