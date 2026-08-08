@@ -126,6 +126,51 @@ export const traspasosPlanPensionesService = {
   },
 
   /**
+   * INVERSIONES V1 · Fase 1 · lectura polimórfica por activo (de ORIGEN).
+   *
+   * Devuelve los traspasos cuyo activo de ORIGEN es `activoId` (plan o fondo),
+   * usando el modelo generalizado `activoId` + `tipoActivo`.
+   *
+   * ⚠️ Ámbito (origen, no destino): el modelo de Fase 1 sólo captura el activo
+   * de origen — `activoId` (que en planes coincide con `planId`) — y NO existe
+   * un `activoIdDestino`. Por eso este método NO incluye el caso destino. Si
+   * necesitas el histórico de un plan como origen Y destino (p.ej. rentabilidad
+   * por bloque), usa `getTraspasosPorPlan`, que cruza `planId`/`planIdDestino`.
+   * Este método es el camino nuevo para fondos y para consumidores que piensan
+   * en clave `activoId`.
+   *
+   * Rendimiento: consulta por el índice `activoId` en vez de recorrer todo el
+   * store. El backfill post-open (que corre dentro de initDB) puebla `activoId`
+   * en los traspasos de plan legacy, así que el índice está completo cuando
+   * initDB resuelve. Como red de seguridad ante un backfill que hubiera fallado,
+   * si el índice no devuelve nada para un plan se hace un barrido puntual contra
+   * `planId` (sólo planes · `activoId === planId` por construcción).
+   */
+  async getTraspasosPorActivo(
+    activoId: string,
+    tipoActivo: 'plan_pensiones' | 'fondo_inversion',
+  ): Promise<TraspasoPlanPensiones[]> {
+    const db = await initDB();
+    const porIndice = (await db.getAllFromIndex(
+      'traspasosPlanPensiones',
+      'activoId',
+      activoId,
+    )) as TraspasoPlanPensiones[];
+    const resultado = porIndice.filter((t) => t.tipoActivo === tipoActivo);
+
+    // Red de seguridad legacy: si el backfill no hubiera corrido, los traspasos
+    // de plan aún sin `activoId` no aparecen en el índice. Sólo aplica a planes.
+    if (resultado.length === 0 && tipoActivo === 'plan_pensiones') {
+      const all = (await db.getAll('traspasosPlanPensiones')) as TraspasoPlanPensiones[];
+      return all
+        .filter((t) => t.activoId == null && t.planId === activoId)
+        .sort((a, b) => a.fechaEjecucion.localeCompare(b.fechaEjecucion));
+    }
+
+    return resultado.sort((a, b) => a.fechaEjecucion.localeCompare(b.fechaEjecucion));
+  },
+
+  /**
    * Devuelve todos los traspasos que afectan a algún plan del personalData
    * indicado. Útil para historiales agregados a nivel hogar.
    */

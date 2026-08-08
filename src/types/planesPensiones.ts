@@ -111,6 +111,18 @@ export interface TraspasoPlanPensiones {
   planId: string; // plan que realiza el traspaso (origen)
   planIdDestino?: string; // plan destino si existe en este sistema
 
+  // FASE 1 (INVERSIONES V1) · generalización de traspasos a fondos.
+  // Un fondo de inversión también se traspasa sin tributar, así que el store
+  // deja de servir sólo a planes. Se sigue el patrón polimórfico que ya usa
+  // `valoracionesActivos` (activoId + tipoActivo · mismo vocabulario). Ambos
+  // campos son OPCIONALES: los traspasos legacy (sólo planes) no los tienen y
+  // el backfill post-open los rellena con `activoId = planId` /
+  // `tipoActivo = 'plan_pensiones'`. `planId`/`planIdDestino` se conservan
+  // intactos (retro-compat total: getTraspasosPorPlan y rentabilidadPlanService
+  // siguen leyendo por planId).
+  activoId?: string;                                 // en planes: activoId === planId
+  tipoActivo?: 'plan_pensiones' | 'fondo_inversion'; // mismo vocabulario que ValoracionActivo
+
   // Fechas: fechaSolicitud (cuando el partícipe firma) precede a fechaEjecucion
   // (cuando la gestora destino recibe el dinero · 7-15 días después).
   fechaSolicitud?: string;
