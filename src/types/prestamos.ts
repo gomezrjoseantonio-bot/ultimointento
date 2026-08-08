@@ -132,10 +132,10 @@ export interface Prestamo {
    * (`revisionesDeTipo`) ese hecho manda y esto deja de pintar nada en el tramo
    * en curso.
    *
-   * **No se escribe aquí el euríbor de «Actualizar valores»**, que es el de hoy
-   * y se mueve con el mercado. Al LEER, `conIndiceDeHoy` pone esa presunción al
-   * día, así que este campo es el respaldo: solo gobierna cuando valoraciones
-   * está vacío. Y por encima de los dos manda una revisión apuntada.
+   * **El euríbor de «Actualizar valores» no entra aquí ni al leer.** El cuadro
+   * se calcula con lo último FIJADO y no se mueve porque el mercado se mueva:
+   * nada cambia de verdad hasta la revisión siguiente *(Jose · 8 ago 2026)*.
+   * Ese euríbor sirve para la guía —`simulacionRevision`—, no para el cuadro.
    */
   valorIndiceActual?: number;
   diferencial?: number;         // 0.012

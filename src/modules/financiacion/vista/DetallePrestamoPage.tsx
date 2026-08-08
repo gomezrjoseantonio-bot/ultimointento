@@ -38,7 +38,6 @@ import {
 import { cuadroSeguroDe, metaDestino } from './datos';
 import { useRevisionPendiente } from './useRevisionPendiente';
 import { simulacionRevision } from '../../../services/prestamos/simulacionRevision';
-import { conIndiceDeHoy } from '../../../services/prestamos/indiceDeHoy';
 import { calendarioDe, proximaRevision } from '../../../services/bonificaciones/revisionDelBanco';
 import { publicacionDelIndice } from '../../../services/prestamos/indicePublicado';
 import { inmueblesAlquiladosEn } from '../../../services/prestamos/inmueblesAlquilados';
@@ -118,13 +117,12 @@ const DetallePrestamoPage: React.FC = () => {
   const banco = prestamo?.banco;
 
   /**
-   * El euríbor de «Actualizar valores» · la ÚNICA presunción de índice.
+   * El euríbor de «Actualizar valores» · solo para la GUÍA.
    *
-   * Lo que ya está confirmado no lo toca: una revisión apuntada fija el índice
-   * y corre hasta la siguiente, y su tramo no lee esto. Lo que sí sustituye es
-   * `valorIndiceActual`, el campo que se escribe al alta y se queda congelado —
-   * de ahí salía el «euríbor 2,850» de la ficha mientras valoraciones decía
-   * 4,000. Se lee aquí y no en el motor porque el motor no mira la base.
+   * No entra en el cuadro. Lo que se paga viene de lo último fijado —el índice
+   * del alta hasta la primera revisión, y después el de cada revisión
+   * confirmada— y no se mueve porque el mercado se mueva. Este sirve para decir
+   * por dónde irá la próxima, que es lo único que el mercado de hoy sabe.
    */
   const [indiceHoy, setIndiceHoy] = useState<number | null>(null);
   useEffect(() => {
@@ -158,14 +156,14 @@ const DetallePrestamoPage: React.FC = () => {
     };
   }, [hoy]);
 
-  // El préstamo que se le pregunta al motor · el guardado, con la presunción de
-  // índice puesta al día. Para ESCRIBIR se usa siempre `prestamo`: lo de aquí
-  // no es un dato del usuario, es lo que hoy se puede suponer.
-  const proyectado = useMemo(
-    () => (prestamo ? conIndiceDeHoy(prestamo, indiceHoy) : undefined),
-    [prestamo, indiceHoy]
-  );
-  const cuadro = useMemo(() => (proyectado ? cuadroSeguroDe(proyectado) : null), [proyectado]);
+  // El cuadro sale del préstamo TAL COMO ESTÁ GUARDADO · el euríbor de
+  // «Actualizar valores» no lo toca *(Jose · 8 ago 2026: «la actualización del
+  // valor del euríbor durante ese tiempo sirve de guía prevista de la cuota
+  // pero no debe cambiar ningún cuadro, porque no va a cambiar nada realmente
+  // hasta la siguiente revisión»)*. Ese euríbor entra por una sola puerta, la
+  // simulación de más abajo, que dice por dónde irá lo que viene sin tocar lo
+  // que se paga.
+  const cuadro = useMemo(() => (prestamo ? cuadroSeguroDe(prestamo) : null), [prestamo]);
   // La revisión que espera respuesta · vive con las bonificaciones, no en una
   // tarjeta aparte que enseñara la misma lista otra vez.
   const revision = useRevisionPendiente(prestamo ?? ({ id: '' } as Prestamo), hoy, reload);
@@ -199,35 +197,35 @@ const DetallePrestamoPage: React.FC = () => {
   }, [bonificaciones0, banco, hoy]);
 
   const datos = useMemo(() => {
-    if (!proyectado || !cuadro) return null;
+    if (!prestamo || !cuadro) return null;
     const anio = Number(hoy.slice(0, 4));
-    const fiscalidad = fiscalidadDe(proyectado, alquilados);
+    const fiscalidad = fiscalidadDe(prestamo, alquilados);
     return {
       capitalVivo: getCapitalVivo(cuadro, hoy),
       principalInicial: getPrincipalInicial(cuadro),
       cuota: getCuota(cuadro, hoy),
-      tin: getTinVigente(proyectado, hoy),
+      tin: getTinVigente(prestamo, hoy),
       pctAmortizado: getPctAmortizado(cuadro, hoy),
       progreso: getProgresoCuotas(cuadro, hoy),
       vencimiento: getFechaVencimiento(cuadro),
-      revision: getProximaRevision(proyectado, cuadro, hoy, 365),
-      deducible: getInteresDeducible(proyectado, cuadro, anio, alquilados ?? new Set<string>()),
+      revision: getProximaRevision(prestamo, cuadro, hoy, 365),
+      deducible: getInteresDeducible(prestamo, cuadro, anio, alquilados ?? new Set<string>()),
       interesPendiente: getInteresPendiente(cuadro, hoy),
       preview: getPreviewCuadro(cuadro, hoy, 3),
-      tiempo: lineaDeTiempo(proyectado, cuadro, hoy),
-      bonificaciones: resumenBonificaciones(proyectado, cumplimientos),
+      tiempo: lineaDeTiempo(prestamo, cuadro, hoy),
+      bonificaciones: resumenBonificaciones(prestamo, cumplimientos),
       // Lo que traería la próxima revisión con el índice de hoy · NO entra en
       // el cuadro: es una respuesta a «¿y si?», no un tramo. Sin revisión
       // confirmada el cuadro YA va al índice de hoy, así que no dice nada — y
       // callarse es lo correcto: no habría nada que anunciar.
-      simulacion: simulacionRevision(proyectado, hoy, indiceHoy),
-      condiciones: condicionesDe(proyectado, cuadro),
+      simulacion: simulacionRevision(prestamo, hoy, indiceHoy),
+      condiciones: condicionesDe(prestamo, cuadro),
       // Cuándo vuelve a mirar el banco · para poder decir QUÉ DÍA se pierde una
       // bonificación que hoy te aplican y no estás demostrando.
-      proximaDelBanco: proximaRevision(calendarioDe(proyectado), hoy),
+      proximaDelBanco: proximaRevision(calendarioDe(prestamo), hoy),
       fiscalidad,
     };
-  }, [proyectado, cuadro, hoy, cumplimientos, indiceHoy, alquilados]);
+  }, [prestamo, cuadro, hoy, cumplimientos, indiceHoy, alquilados]);
 
   // Una liquidación TOTAL deja el préstamo cancelado, y entonces esta ficha ya
   // no tiene sujeto: hay que salir a la cartera en vez de quedarse enseñando un
