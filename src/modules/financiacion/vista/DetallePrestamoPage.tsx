@@ -115,6 +115,11 @@ const DetallePrestamoPage: React.FC = () => {
   // El banco del préstamo · lo pide la condición de plan de pensiones, que
   // exige que el plan sea de ESTA entidad.
   const banco = prestamo?.banco;
+  // La cuenta por la que te cobra la hipoteca · es suya, así que sirve de
+  // respaldo cuando la bonificación no dice en cuál mirar. Ese campo no lo
+  // rellena nadie, y sin respaldo un seguro domiciliado en la cuenta correcta
+  // salía «sin comprobar» teniendo ATLAS la cuenta delante.
+  const cuentaDelPrestamo = Number(prestamo?.cuentaCargoId);
 
   /**
    * El euríbor de «Actualizar valores» · solo para la GUÍA.
@@ -183,7 +188,11 @@ const DetallePrestamoPage: React.FC = () => {
     let cancelado = false;
     (async () => {
       try {
-        const movimientos = await movimientosQuePrueban(Number(hoy.slice(0, 4)), banco);
+        const movimientos = await movimientosQuePrueban(
+          Number(hoy.slice(0, 4)),
+          banco,
+          Number.isFinite(cuentaDelPrestamo) ? cuentaDelPrestamo : undefined
+        );
         if (!cancelado) setCumplimientos(verificarBonificaciones(bonificaciones0, movimientos, hoy));
       } catch {
         // Sin poder mirar la tesorería la ficha sigue siendo útil · lo que no
@@ -194,7 +203,7 @@ const DetallePrestamoPage: React.FC = () => {
     return () => {
       cancelado = true;
     };
-  }, [bonificaciones0, banco, hoy]);
+  }, [bonificaciones0, banco, cuentaDelPrestamo, hoy]);
 
   const datos = useMemo(() => {
     if (!prestamo || !cuadro) return null;

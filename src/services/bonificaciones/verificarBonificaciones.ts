@@ -24,8 +24,8 @@ import { recibosDeLaCuenta } from './recibosDomiciliados';
 import { bonificaHipoteca } from '../tarjetasReglas';
 import type { SeguroDomiciliado } from './segurosDomiciliados';
 import { deLaCuenta, delTipo, primaTotal } from './segurosDomiciliados';
-import type { AportacionDeUnAnio } from './aportacionesAPlanes';
-import { deLaEntidad, totalAportado } from './aportacionesAPlanes';
+import type { AportacionDesdeCuenta } from './aportacionesDeTesoreria';
+import { aportadoDesde } from './aportacionesDeTesoreria';
 import type { Cumplimiento, Ventana } from './cumplimiento';
 import { ventanaDeEvaluacion, veredictoDelImporte } from './cumplimiento';
 
@@ -72,15 +72,29 @@ export interface MovimientosQuePrueban {
    */
   segurosDomiciliados?: SeguroDomiciliado[];
   /**
-   * Lo aportado a planes este ejercicio · lo que da `aportacionesPorPlan`.
+   * Lo que sale de cada cuenta hacia un plan o un fondo · por año.
    *
-   * Va con su gestora porque el anexo no pide «un plan cualquiera»: pide uno
-   * SUYO, igual que la nómina en su cuenta o la tarjeta del propio banco.
+   * La prueba de las dos condiciones de inversión, y estaba en tesorería desde
+   * el principio: una aportación es un `TreasuryEvent` que sale de su cuenta.
    *
-   * Ausente = ATLAS no sabe de ninguno, que no es lo mismo que no tenerlos.
+   * Ausente = ATLAS no sabe de ninguna, que no es lo mismo que no haberlas.
    */
-  aportacionesAPlanes?: AportacionDeUnAnio[];
+  aportacionesDeTesoreria?: AportacionDesdeCuenta[];
   /**
+   * La cuenta de cargo del préstamo · el respaldo de `cuentaExigidaId`.
+   *
+   * El banco bonifica por lo que le entra A ÉL, y la cuenta por la que te cobra
+   * la hipoteca es suya. Pedirla otra vez bonificación a bonificación es
+   * preguntar dos veces lo mismo, y el sitio donde se preguntaba no lo rellena
+   * nadie: un seguro domiciliado en la cuenta correcta salía «sin comprobar ·
+   * no dice en qué cuenta hay que domiciliar la póliza» teniendo ATLAS la
+   * cuenta delante *(Jose · 8 ago 2026)*.
+   *
+   * Sigue mandando `cuentaExigidaId` cuando está: hay anexos que exigen una
+   * cuenta distinta de la del recibo, y eso el préstamo no lo sabe.
+   */
+  cuentaDelPrestamo?: number;
+    /**
    * De qué entidad es el préstamo que se está comprobando.
    *
    * Lo único de aquí que **no sale de la tesorería**: sale del propio préstamo,
@@ -108,10 +122,10 @@ const SIN_FUENTE: Record<
     | 'SEGURO_HOGAR'
     | 'SEGURO_VIDA'
     | 'PLAN_PENSIONES'
+    | 'FONDOS'
   >,
   string
 > = {
-  FONDOS: 'el saldo en fondos se prueba con la posición, no con un movimiento',
   CERTIFICADO_ENERGETICO: 'la letra la dice el certificado del inmueble, no la tesorería',
   ALARMA: 'la alarma se prueba con su contrato, no con un movimiento',
   OTRA: 'una condición escrita a mano no dice qué hay que mirar',
@@ -119,6 +133,27 @@ const SIN_FUENTE: Record<
 
 /** Redondeo a céntimos · restar dos sumas de euros deja 339.99999999999994. */
 const centimos = (n: number): number => Math.round(n * 100) / 100;
+
+/**
+ * En qué cuenta hay que mirar · la que exige la bonificación, o la del préstamo.
+ *
+ * `Number('')` es 0, un id que parece válido, así que se comprueba la cadena
+ * antes de convertirla — el selector deja `''` al no elegir ninguna y se habría
+ * mirado la cuenta cero.
+ *
+ * El respaldo importa más de lo que parece: nadie rellena `cuentaExigidaId`, y
+ * sin él un seguro domiciliado en la cuenta correcta salía «sin comprobar»
+ * teniendo ATLAS la cuenta del préstamo delante. El banco bonifica por lo que
+ * le entra a ÉL, y la cuenta por la que te cobra la hipoteca es suya.
+ */
+function cuentaDondeMira(b: Bonificacion, movimientos: MovimientosQuePrueban): number | null {
+  const dicha = Number(b.cuentaExigidaId);
+  if (b.cuentaExigidaId && Number.isFinite(dicha)) return dicha;
+  const delPrestamo = Number(movimientos.cuentaDelPrestamo);
+  return movimientos.cuentaDelPrestamo != null && Number.isFinite(delPrestamo)
+    ? delPrestamo
+    : null;
+}
 
 const noVerificable = (b: Bonificacion, motivo: string): Cumplimiento => ({
   bonificacionId: b.id,
@@ -148,39 +183,66 @@ function porAportaciones(
   ventana: Ventana,
   movimientos: MovimientosQuePrueban
 ): Cumplimiento {
+  return porLoQueEntraAlProducto(b, ventana, movimientos, regla.aportacionAnual, 'plan');
+}
+
+/**
+ * La condición de FONDOS · la sexta forma, y la que no se miraba.
+ *
+ * Estaba en `SIN_FUENTE` con la excusa «el saldo en fondos se prueba con la
+ * posición, no con un movimiento». Falso: lo que el banco premia no es tu saldo,
+ * es **que le entre dinero a él**, y eso sale de la cuenta como cualquier cargo.
+ */
+function porFondos(
+  b: Bonificacion,
+  regla: Extract<ReglaBonificacion, { tipo: 'FONDOS' }>,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban
+): Cumplimiento {
+  return porLoQueEntraAlProducto(b, ventana, movimientos, regla.saldoMinimo, 'fondo');
+}
+
+/**
+ * Lo que sale de la cuenta del banco hacia un plan o un fondo suyo.
+ *
+ * *«El plan de pensiones y los fondos son MOVIMIENTOS DE TESORERÍA de esa cuenta
+ * a la aportación del plan de ese banco»* *(Jose · 8 ago 2026)*.
+ *
+ * La cuenta ata la condición al banco por sí sola, así que aquí no hace falta
+ * saber la gestora: basta con de dónde salió el dinero. Antes esto se preguntaba
+ * al store de aportaciones y se exigía además saber la entidad del préstamo —
+ * y con ese store vacío no contestaba «no lo sé» sino **«no cumples»**, que es
+ * un falso negativo: te decía que ibas a perder puntos ya ganados.
+ */
+function porLoQueEntraAlProducto(
+  b: Bonificacion,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban,
+  minimo: number | undefined,
+  que: 'plan' | 'fondo'
+): Cumplimiento {
   const base = { bonificacionId: b.id, nombre: b.nombre, ventana };
 
-  if (!movimientos.aportacionesAPlanes) {
-    return noVerificable(b, 'no hay planes dados de alta donde mirar la aportación');
-  }
-  if (!movimientos.entidad?.trim()) {
-    return noVerificable(b, 'no consta de qué banco es el préstamo, y el plan tiene que ser suyo');
+  if (!movimientos.aportacionesDeTesoreria) {
+    return noVerificable(b, `no hay movimientos donde mirar la aportación al ${que}`);
   }
 
-  const suyos = deLaEntidad(movimientos.aportacionesAPlanes, movimientos.entidad);
-
-  // Un plan en otra entidad no le entra a este banco · esto SÍ se sabe, y la
-  // respuesta es que no. Decir «no se puede comprobar» mandaría a aportar más a
-  // un plan que no bonifica.
-  if (suyos.length === 0) {
-    return {
-      ...base,
-      veredicto: 'no_cumple',
-      motivo: `no hay ningún plan en ${movimientos.entidad.trim()}`,
-    };
+  const cuentaId = cuentaDondeMira(b, movimientos);
+  if (cuentaId == null) {
+    return noVerificable(b, `no dice desde qué cuenta se aporta al ${que}`);
   }
 
-  // Sin cifra, la condición es tenerlo · y lo tiene.
-  const minimo = regla.aportacionAnual;
+  const anio = Number(ventana.hasta.slice(0, 4));
+  const delAnio = aportadoDesde(movimientos.aportacionesDeTesoreria, cuentaId, anio);
+  const aportado = delAnio?.importe ?? 0;
+
+  // Sin cifra, la condición es tenerlo · y lo tiene si le ha entrado algo.
   if (!Number.isFinite(minimo) || (minimo as number) <= 0) {
-    return {
-      ...base,
-      veredicto: 'cumple',
-      motivo: `${suyos.length === 1 ? 'un plan' : `${suyos.length} planes`} en ${movimientos.entidad.trim()}`,
-    };
+    return aportado > 0
+      ? { ...base, veredicto: 'cumple', motivo: `aportas a un ${que} de este banco` }
+      : { ...base, veredicto: 'no_cumple', motivo: `no consta ninguna aportación a un ${que} suyo` };
   }
 
-  const aportado = totalAportado(suyos);
   return {
     ...base,
     veredicto: veredictoDelImporte(aportado, minimo as number),
@@ -305,8 +367,8 @@ function porSeguros(
 
   // La cuenta del banco que bonifica · un seguro domiciliado en otro no le
   // entra a él, igual que la tarjeta de fuera no cuenta (§3.6).
-  const cuentaId = Number(b.cuentaExigidaId);
-  if (!b.cuentaExigidaId || !Number.isFinite(cuentaId)) {
+  const cuentaId = cuentaDondeMira(b, movimientos);
+  if (cuentaId == null) {
     return noVerificable(b, 'no dice en qué cuenta hay que domiciliar la póliza');
   }
 
@@ -474,8 +536,8 @@ function porNomina(
   // `!b.cuentaExigidaId` y no `== null`: la cuenta se guarda como texto y el
   // selector deja `''` al no elegir ninguna — y `Number('')` es 0, un id que
   // parece válido. Se habría mirado la cuenta cero.
-  const cuentaId = Number(b.cuentaExigidaId);
-  if (!b.cuentaExigidaId || !Number.isFinite(cuentaId)) {
+  const cuentaId = cuentaDondeMira(b, movimientos);
+  if (cuentaId == null) {
     return noVerificable(b, 'no dice en qué cuenta hay que domiciliarla');
   }
   if (!Number.isFinite(regla.minimoMensual) || regla.minimoMensual <= 0) {
@@ -554,8 +616,8 @@ function porRecibos(
 ): Cumplimiento {
   const base = { bonificacionId: b.id, nombre: b.nombre, unidad: 'recibos' as const };
 
-  const cuentaId = Number(b.cuentaExigidaId);
-  if (!b.cuentaExigidaId || !Number.isFinite(cuentaId)) {
+  const cuentaId = cuentaDondeMira(b, movimientos);
+  if (cuentaId == null) {
     return noVerificable(b, 'no dice en qué cuenta hay que domiciliarlos');
   }
   if (!Number.isFinite(regla.minimoRecibos) || regla.minimoRecibos <= 0) {
@@ -620,6 +682,7 @@ function verificarUna(
 
   const ventana = ventanaDeEvaluacion(hasta, b.lookbackMeses);
   if (b.regla.tipo === 'PLAN_PENSIONES') return porAportaciones(b, b.regla, ventana, movimientos);
+  if (b.regla.tipo === 'FONDOS') return porFondos(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'TARJETA') return porTarjeta(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'NOMINA') return porNomina(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'RECIBOS') return porRecibos(b, b.regla, ventana, movimientos);

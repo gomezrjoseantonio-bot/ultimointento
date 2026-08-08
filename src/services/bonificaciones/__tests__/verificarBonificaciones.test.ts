@@ -6,6 +6,7 @@
 // sabe mirar.
 
 import { verificarBonificaciones } from '../verificarBonificaciones';
+import type { SeguroDomiciliado } from '../segurosDomiciliados';
 import type { MovimientosQuePrueban } from '../verificarBonificaciones';
 import type { GastoDeUnPeriodo } from '../../gastoPorTarjeta';
 import type { CobroDeUnMes } from '../cobrosDeNomina';
@@ -62,8 +63,8 @@ const con = (
   recibosDomiciliados: recibos,
 });
 
-const unaSola = (b: Bonificacion, m: MovimientosQuePrueban) =>
-  verificarBonificaciones([b], m, HOY)[0];
+const unaSola = (b: Bonificacion, m: MovimientosQuePrueban, hasta = HOY) =>
+  verificarBonificaciones([b], m, hasta)[0];
 
 describe('la condición de tarjeta', () => {
   it('cumple cuando el gasto cerrado llega al mínimo', () => {
@@ -727,5 +728,116 @@ describe('ingresos recurrentes · la rama que no exige nómina', () => {
 
     expect(c.motivo).toContain('ingresos recurrentes');
     expect(c.motivo).not.toContain('cobrados');
+  });
+});
+
+// ── La cuenta que nadie rellenaba ───────────────────────────────────────────
+//
+// Un seguro domiciliado en la cuenta correcta salía «sin comprobar · no dice en
+// qué cuenta hay que domiciliar la póliza», teniendo ATLAS la cuenta del
+// préstamo delante *(Jose · 8 ago 2026)*. El banco bonifica por lo que le entra
+// a ÉL, y la cuenta por la que te cobra la hipoteca es suya.
+describe('la cuenta del préstamo hace de respaldo', () => {
+  const poliza = (cuentaId: number): SeguroDomiciliado => ({
+    cuentaId,
+    alias: 'Seguro hogar',
+    subtipo: 'hogar',
+    primaAnual: 483.48,
+  });
+
+  it('sin cuenta en la bonificación, se mira la del préstamo', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'SEGURO_HOGAR', activo: true }, cuentaExigidaId: undefined }), {
+      ...con([tarjeta()], []),
+      segurosDomiciliados: [poliza(3)],
+      cuentaDelPrestamo: 3,
+    });
+
+    expect(r.veredicto).toBe('cumple');
+  });
+
+  // Y sigue mandando la de la bonificación cuando está: hay anexos que exigen
+  // una cuenta distinta de la del recibo, y eso el préstamo no lo sabe.
+  it('pero la que exige la bonificación manda sobre ella', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'SEGURO_HOGAR', activo: true }, cuentaExigidaId: '9' }), {
+      ...con([tarjeta()], []),
+      segurosDomiciliados: [poliza(3)],
+      cuentaDelPrestamo: 3,
+    });
+
+    expect(r.veredicto).not.toBe('cumple');
+  });
+
+  it('y sin ninguna de las dos, sigue diciendo qué falta', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'SEGURO_HOGAR', activo: true }, cuentaExigidaId: undefined }), {
+      ...con([tarjeta()], []),
+      segurosDomiciliados: [poliza(3)],
+    });
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('cuenta');
+  });
+});
+
+// ── Planes y fondos · la prueba estaba en tesorería ─────────────────────────
+//
+// «Son MOVIMIENTOS DE TESORERÍA de esa cuenta a la aportación del plan de ese
+// banco» *(Jose · 8 ago 2026)*. FONDOS estaba en la lista de lo que no se sabe
+// mirar, y los planes se comprobaban contra un store aparte que, vacío, no
+// decía «no lo sé» sino «no cumples» — un falso negativo.
+describe('lo que sale de la cuenta hacia un plan o un fondo', () => {
+  const aportado = (importe: number, cuentaId = 3) => [
+    { cuentaId, anio: 2026, importe, estado: 'cerrado' as const },
+  ];
+  const hasta = '2026-08-31';
+
+  it('un fondo con su aportación se cumple · ya no es «sin comprobar»', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'FONDOS', saldoMinimo: 30000 } }),
+      { ...con([tarjeta()], []), aportacionesDeTesoreria: aportado(30000), cuentaDelPrestamo: 3 },
+      hasta
+    );
+
+    expect(r.veredicto).toBe('cumple');
+    expect(r.medido).toBe(30000);
+  });
+
+  it('y por debajo del mínimo, no', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'FONDOS', saldoMinimo: 30000 } }),
+      { ...con([tarjeta()], []), aportacionesDeTesoreria: aportado(1000), cuentaDelPrestamo: 3 },
+      hasta
+    );
+
+    expect(r.veredicto).toBe('no_cumple');
+  });
+
+  it('un plan sin cifra se cumple con que le entre algo', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'PLAN_PENSIONES', activo: true } }),
+      { ...con([tarjeta()], []), aportacionesDeTesoreria: aportado(600), cuentaDelPrestamo: 3 },
+      hasta
+    );
+
+    expect(r.veredicto).toBe('cumple');
+  });
+
+  // Lo que sale de OTRA cuenta no le entra a este banco · igual que la tarjeta
+  // de fuera no cuenta.
+  it('lo aportado desde otra cuenta no le entra a este banco', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'PLAN_PENSIONES', activo: true } }),
+      { ...con([tarjeta()], []), aportacionesDeTesoreria: aportado(600, 9), cuentaDelPrestamo: 3 },
+      hasta
+    );
+
+    expect(r.veredicto).toBe('no_cumple');
+  });
+
+  // Sin movimientos que mirar no se afirma nada · «no lo sé» y «no cumples» son
+  // respuestas distintas, y confundirlas fue el falso negativo del plan.
+  it('sin movimientos donde mirar, no se dice que no', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'FONDOS', saldoMinimo: 30000 } }), con([tarjeta()], []));
+
+    expect(r.veredicto).toBe('no_verificable');
   });
 });

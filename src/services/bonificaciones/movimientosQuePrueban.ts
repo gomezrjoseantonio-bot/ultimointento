@@ -20,8 +20,7 @@ import { cierres } from '../cierreDeMes';
 import { cobrosDeNomina, ingresosDeLaCuenta } from './cobrosDeNomina';
 import { recibosDomiciliados } from './recibosDomiciliados';
 import { segurosDomiciliados } from './segurosDomiciliados';
-import { aportacionesPorPlan } from './aportacionesAPlanes';
-import type { PlanPensiones, AportacionPlan } from '../../types/planesPensiones';
+import { aportacionesDeTesoreria } from './aportacionesDeTesoreria';
 import type { MovimientosQuePrueban } from './verificarBonificaciones';
 
 /**
@@ -32,24 +31,24 @@ import type { MovimientosQuePrueban } from './verificarBonificaciones';
  * primer día, y esperar a diciembre para decir que se cumple sería desconfiar
  * del propio dato.
  *
- * `entidad` es el banco del préstamo que se va a comprobar. Es lo único de aquí
- * que no sale de la tesorería —sale del préstamo—, y hace falta porque la
- * condición de plan exige que el plan sea de ese banco.
+ * `entidad` y `cuentaDelPrestamo` son lo único de aquí que no sale de la
+ * tesorería: salen del préstamo. La cuenta es la de cargo, y hace de respaldo
+ * cuando la bonificación no dice en cuál mirar — que es casi siempre, porque
+ * ese campo no lo rellena nadie.
  */
 export async function movimientosQuePrueban(
   anio: number,
-  entidad?: string
+  entidad?: string,
+  cuentaDelPrestamo?: number
 ): Promise<MovimientosQuePrueban> {
   const db = await initDB();
 
   // Todas a la vez · son lecturas independientes y la pantalla espera.
-  const [eventos, tarjetas, cerrados, compromisos, planes, aportaciones] = await Promise.all([
+  const [eventos, tarjetas, cerrados, compromisos] = await Promise.all([
     db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
     listarTarjetas(),
     cierres(),
     db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
-    db.getAll('planesPensiones') as Promise<PlanPensiones[]>,
-    db.getAll('aportacionesPlan') as Promise<AportacionPlan[]>,
   ]);
 
   return {
@@ -63,10 +62,11 @@ export async function movimientosQuePrueban(
     // Un seguro se domicilia · la prueba está en los gastos recurrentes, no en
     // un módulo de pólizas que no existe.
     segurosDomiciliados: segurosDomiciliados(compromisos, anio),
-    // La quinta forma · lo aportado a planes, con su gestora, para poder
-    // distinguir el plan que es de este banco del que no.
-    aportacionesAPlanes: aportacionesPorPlan(planes, aportaciones, anio),
+    // Planes y fondos · lo que sale de la cuenta hacia ellos. Es un movimiento
+    // de tesorería, no el saldo de una posición ni un store aparte.
+    aportacionesDeTesoreria: aportacionesDeTesoreria(eventos),
     entidad,
+    cuentaDelPrestamo,
     // Los meses cerrados · es lo que convierte «todavía no consta» en un NO.
     // Sin esto una bonificación no se pierde nunca (§6 quater).
     mesesCerrados: cerrados.map((c) => c.mes),
