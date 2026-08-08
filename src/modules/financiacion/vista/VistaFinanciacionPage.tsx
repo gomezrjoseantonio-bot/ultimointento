@@ -15,6 +15,9 @@ import { Icons } from '../../../design-system/v5';
 import type { FinanciacionOutletContext } from '../FinanciacionContext';
 import { escaleraDeLiberacion } from '../../../services/prestamos/lecturas';
 import { queTraeLaRevision } from '../../../services/prestamos/queTraeLaRevision';
+import { conIndiceDeHoy } from '../../../services/prestamos/indiceDeHoy';
+import { inmueblesAlquiladosEn } from '../../../services/prestamos/inmueblesAlquilados';
+import { getFinancialValuesSnapshot } from '../../../services/financialValuesService';
 import EscaleraLiberacion from './EscaleraLiberacion';
 import {
   cuadroSeguroDe,
@@ -186,17 +189,42 @@ const VistaFinanciacionPage: React.FC = () => {
     }
   }, []);
 
+  // El euríbor de «Actualizar valores» y los inmuebles alquilados este año · la
+  // cartera necesita los dos para no contestar distinto que el detalle: el
+  // primero pone al día la presunción de índice de las variables, el segundo
+  // decide qué intereses deducen. Mientras el segundo no llega, el conjunto
+  // vacío deja el total deducible en cero en vez de afirmarlo sin comprobarlo.
+  const [indiceHoy, setIndiceHoy] = useState<number | null>(null);
+  const [alquilados, setAlquilados] = useState<ReadonlySet<string>>(() => new Set<string>());
+  useEffect(() => {
+    let cancelado = false;
+    getFinancialValuesSnapshot()
+      .then((v) => {
+        if (!cancelado) setIndiceHoy(v.euriborPercent);
+      })
+      .catch(() => {
+        // Sin valoraciones no se presume nada · no se inventa un índice.
+      });
+    inmueblesAlquiladosEn(Number(hoy.slice(0, 4))).then((s) => {
+      if (!cancelado) setAlquilados(s);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [hoy]);
+
   const filas = useMemo(() => {
     return prestamos
       .filter((p) => p.activo !== false && p.estado !== 'cancelado')
       .map((p) => {
-        const cuadro = cuadroSeguroDe(p);
-        return cuadro ? filaDe(p, cuadro, hoy) : null;
+        const proyectado = conIndiceDeHoy(p, indiceHoy);
+        const cuadro = cuadroSeguroDe(proyectado);
+        return cuadro ? filaDe(proyectado, cuadro, hoy) : null;
       })
       .filter((f): f is FilaCartera => f !== null);
-  }, [prestamos, hoy]);
+  }, [prestamos, hoy, indiceHoy]);
 
-  const totales = useMemo(() => totalesDe(filas, hoy), [filas, hoy]);
+  const totales = useMemo(() => totalesDe(filas, hoy, alquilados), [filas, hoy, alquilados]);
   const escalera = useMemo(() => escaleraDeLiberacion(filas, hoy), [filas, hoy]);
 
   const ordenadas = useMemo(

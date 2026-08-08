@@ -39,6 +39,14 @@ export interface TramoDetalle {
   hasta: string;
   /** Cuánto ocupa en la barra · 0..100. */
   anchoPct: number;
+  /**
+   * El índice de ESTE tramo · `null` en uno fijo.
+   *
+   * Sale del tramo, no de `prestamo.valorIndiceActual`. La ficha enseñaba ese
+   * campo debajo de todos los tramos variables, así que un tramo nacido de una
+   * revisión apuntada al 2,000 % seguía anunciando el índice del alta.
+   */
+  indice: number | null;
 }
 
 export interface LineaDeTiempo {
@@ -72,6 +80,11 @@ export function lineaDeTiempo(
   const brutos = tramosDeTipo(prestamo);
   const total = Math.max(1, mesesEntre(firma, fin));
 
+  const diferencial =
+    typeof prestamo.diferencial === 'number' && Number.isFinite(prestamo.diferencial)
+      ? prestamo.diferencial
+      : 0;
+
   const tramos: TramoDetalle[] = brutos.map((t, i) => {
     const desde = t.desde || firma;
     const hasta = brutos[i + 1]?.desde ?? fin;
@@ -83,6 +96,7 @@ export function lineaDeTiempo(
       desde,
       hasta,
       anchoPct: Math.max(0, Math.min(100, (mesesEntre(desde, hasta) / total) * 100)),
+      indice: t.variable ? Math.round((t.tinBase - diferencial) * 10000) / 10000 : null,
     };
   });
 
@@ -171,9 +185,16 @@ export function resumenBonificaciones(
 // ─── Destino y fiscalidad ───────────────────────────────────────────────────
 
 export interface Fiscalidad {
-  /** Si sus intereses reducen el IRPF. */
-  deducible: boolean;
-  /** Qué parte del capital está trazada a inmueble · 0..100. */
+  /**
+   * Si sus intereses reducen el IRPF · `null` mientras no se sabe.
+   *
+   * El tercer estado no es un lujo: saberlo exige leer los contratos, que llega
+   * después de pintar. Con un `false` provisional la ficha diría «no deducible»
+   * durante un instante y luego cambiaría de opinión, y el que lo lea en ese
+   * instante se lleva la respuesta contraria.
+   */
+  deducible: boolean | null;
+  /** Qué parte del capital deduce · 0..100. */
   pctDeducible: number;
   /** El destino, en palabras. */
   destino: string;
@@ -193,23 +214,36 @@ const ETIQUETA_DESTINO: Record<string, string> = {
 /**
  * Si los intereses reducen el IRPF, y por qué no cuando no lo hacen.
  *
- * Deducible es lo trazado a un inmueble por ADQUISICIÓN o REFORMA — la misma
- * regla que aplica `interesesTotalDeducible`. El «por qué no» se dice con
- * palabras porque es lo único que esta tarjeta aporta en un personal: sin el
- * motivo, la ficha solo repetiría un «no» que el usuario ya sabe.
+ * **Lo que deduce no es el destino, es el alquiler** *(Jose · 8 ago 2026)*. El
+ * destino traza el capital a un inmueble y dice qué fracción; lo que abre la
+ * casilla 0105 es que ese inmueble produzca renta. Esta función contestaba solo
+ * la primera mitad, y encima el motivo que escribía cuando decía «no» hablaba
+ * de «un inmueble en alquiler» que no se miraba en ninguna parte.
+ *
+ * `inmueblesAlquilados` en `undefined` significa «todavía no se sabe», no «no
+ * hay ninguno»: los contratos se leen en paralelo y llegan después.
  */
-export function fiscalidadDe(prestamo: Prestamo): Fiscalidad {
+export function fiscalidadDe(
+  prestamo: Prestamo,
+  inmueblesAlquilados: ReadonlySet<string> | undefined
+): Fiscalidad {
   const destinos = prestamo.destinos ?? [];
   const principal = prestamo.principalInicial || 0;
-
-  const trazado = destinos
-    .filter((d) => d.inmuebleId && (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA'))
-    .reduce((s, d) => s + d.importe, 0);
 
   const destino =
     destinos.length === 0
       ? 'sin destino apuntado'
       : [...new Set(destinos.map((d) => ETIQUETA_DESTINO[d.tipo] ?? d.tipo))].join(' · ');
+
+  if (inmueblesAlquilados === undefined) {
+    return { deducible: null, pctDeducible: 0, destino };
+  }
+
+  const aInmueble = destinos.filter(
+    (d) => d.inmuebleId && (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA')
+  );
+  const enAlquiler = aInmueble.filter((d) => inmueblesAlquilados.has(String(d.inmuebleId)));
+  const trazado = enAlquiler.reduce((s, d) => s + d.importe, 0);
 
   if (principal > 0 && trazado > 0) {
     return {
@@ -222,7 +256,9 @@ export function fiscalidadDe(prestamo: Prestamo): Fiscalidad {
   const motivo =
     destinos.length === 0
       ? 'el préstamo no tiene destinos apuntados, así que no se puede trazar su capital a ningún inmueble'
-      : 'el capital no está trazado a un inmueble en alquiler, así que sus intereses no reducen el IRPF';
+      : aInmueble.length === 0
+        ? 'el capital no está trazado a la compra ni a la reforma de un inmueble'
+        : 'el inmueble que financia no está alquilado · los intereses reducen el IRPF mientras produce rendimientos de alquiler, no por haberlo comprado';
 
   return { deducible: false, pctDeducible: 0, destino, motivo };
 }

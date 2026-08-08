@@ -150,20 +150,41 @@ describe('resumenBonificaciones · el teórico y el bonificado', () => {
   });
 });
 
+// ── Fiscalidad ──────────────────────────────────────────────────────────────
+//
+// Lo que abre la casilla 0105 es el ALQUILER, no el destino *(Jose · 8 ago
+// 2026: «la deducción fiscal de un préstamo la genera si el inmueble está
+// alquilado, no si el destino es adquisición — totalmente falso»)*. El destino
+// dice qué inmueble financia el préstamo y qué fracción; el alquiler dice si
+// hay rendimiento del que descontar el gasto.
+
+const ALQUILADO = new Set(['inm-1']);
+const NINGUNO: ReadonlySet<string> = new Set<string>();
+
 describe('fiscalidadDe · deducible, y por qué no cuando no lo es', () => {
-  it('deducible si el capital está trazado a un inmueble', () => {
-    const p = unicaja({
-      destinos: [
-        { id: 'd1', tipo: 'ADQUISICION', inmuebleId: 'inm-1', importe: 85000 },
-      ],
+  const compradoConEsteDinero = (inmuebleId: string) =>
+    unicaja({
+      destinos: [{ id: 'd1', tipo: 'ADQUISICION', inmuebleId, importe: 85000 }],
     } as Partial<Prestamo>);
-    const f = fiscalidadDe(p);
+
+  it('deducible si el inmueble que financia está alquilado', () => {
+    const f = fiscalidadDe(compradoConEsteDinero('inm-1'), ALQUILADO);
 
     expect(f.deducible).toBe(true);
     expect(f.pctDeducible).toBeCloseTo(100, 0);
   });
 
-  it('la parte trazada manda el porcentaje', () => {
+  // El caso que la ficha venía contestando mal: la MISMA hipoteca, el mismo
+  // destino, el inmueble vacío. Decía «deducible 100%».
+  it('y el mismo préstamo, con el inmueble vacío, NO deduce', () => {
+    const f = fiscalidadDe(compradoConEsteDinero('inm-1'), NINGUNO);
+
+    expect(f.deducible).toBe(false);
+    expect(f.pctDeducible).toBe(0);
+    expect(f.motivo).toMatch(/no está alquilado/);
+  });
+
+  it('la parte trazada a un inmueble alquilado manda el porcentaje', () => {
     const p = unicaja({
       destinos: [
         { id: 'd1', tipo: 'ADQUISICION', inmuebleId: 'inm-1', importe: 42500 },
@@ -171,24 +192,48 @@ describe('fiscalidadDe · deducible, y por qué no cuando no lo es', () => {
       ],
     } as Partial<Prestamo>);
 
-    expect(fiscalidadDe(p).pctDeducible).toBeCloseTo(50, 0);
+    expect(fiscalidadDe(p, ALQUILADO).pctDeducible).toBeCloseTo(50, 0);
+  });
+
+  // Dos inmuebles, uno alquilado y otro no: solo cuenta la mitad que produce.
+  it('un inmueble alquilado y otro vacío solo deducen lo que produce', () => {
+    const p = unicaja({
+      destinos: [
+        { id: 'd1', tipo: 'ADQUISICION', inmuebleId: 'inm-1', importe: 42500 },
+        { id: 'd2', tipo: 'ADQUISICION', inmuebleId: 'inm-2', importe: 42500 },
+      ],
+    } as Partial<Prestamo>);
+
+    expect(fiscalidadDe(p, ALQUILADO).pctDeducible).toBeCloseTo(50, 0);
   });
 
   it('un personal NO deducible dice el motivo · es lo que aporta la tarjeta', () => {
     const p = personal({
       destinos: [{ id: 'd1', tipo: 'PERSONAL', importe: 24500 }],
     } as Partial<Prestamo>);
-    const f = fiscalidadDe(p);
+    const f = fiscalidadDe(p, ALQUILADO);
 
     expect(f.deducible).toBe(false);
-    expect(f.motivo).toMatch(/no está trazado a un inmueble/);
+    expect(f.motivo).toMatch(/no está trazado a la compra/);
   });
 
   it('sin destinos apuntados el motivo lo dice · no se calla ni se inventa', () => {
-    const f = fiscalidadDe(personal());
+    const f = fiscalidadDe(personal(), ALQUILADO);
 
     expect(f.deducible).toBe(false);
     expect(f.motivo).toMatch(/no tiene destinos apuntados/);
+  });
+
+  // Mientras los contratos no se han leído la respuesta no es «no»: es que
+  // todavía no se sabe. Un «no deducible» provisional que luego cambia se lee
+  // igual de firme que uno definitivo.
+  it('sin saber qué está alquilado no dice ni sí ni no', () => {
+    const f = fiscalidadDe(compradoConEsteDinero('inm-1'), undefined);
+
+    expect(f.deducible).toBeNull();
+    expect(f.motivo).toBeUndefined();
+    // El destino sí se sabe sin mirar contratos · eso se enseña ya.
+    expect(f.destino).toMatch(/adquisición/);
   });
 });
 

@@ -277,10 +277,13 @@ describe('el año ya declarado manda sobre la proyección', () => {
       ...over,
     } as Partial<Prestamo>);
 
+  const alquilado: ReadonlySet<string> = new Set(['i1']);
+  const vacio: ReadonlySet<string> = new Set<string>();
+
   it('sin nada declarado se suman los intereses del cuadro', () => {
     const p = conDestino();
 
-    expect(getInteresDeducible(p, cuadroDe(p), 2024)).toBeCloseTo(
+    expect(getInteresDeducible(p, cuadroDe(p), 2024, alquilado)).toBeCloseTo(
       getInteresDelAnio(cuadroDe(p), 2024),
       2
     );
@@ -291,7 +294,17 @@ describe('el año ya declarado manda sobre la proyección', () => {
   it('con el certificado apuntado, gana el certificado', () => {
     const p = conDestino({ interesesAnualesDeclarados: { 2024: 1234.56 } } as Partial<Prestamo>);
 
-    expect(getInteresDeducible(p, cuadroDe(p), 2024)).toBe(1234.56);
+    expect(getInteresDeducible(p, cuadroDe(p), 2024, alquilado)).toBe(1234.56);
+  });
+
+  // El certificado dice cuánto INTERÉS hubo, no que sea deducible: si el piso
+  // no está alquilado, ese interés no baja a la casilla 0105 por muy declarado
+  // que esté el importe.
+  it('pero ni el certificado deduce si el inmueble no está alquilado', () => {
+    const p = conDestino({ interesesAnualesDeclarados: { 2024: 1234.56 } } as Partial<Prestamo>);
+
+    expect(getInteresDeducible(p, cuadroDe(p), 2024, vacio)).toBe(0);
+    expect(getInteresDeducible(conDestino(), cuadroDe(conDestino()), 2024, vacio)).toBe(0);
   });
 });
 
