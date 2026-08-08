@@ -268,13 +268,16 @@ export function getInteresDelAnio(cuadro: Cuadro, anio: number): number {
  * el certificado del banco (`interesesAnualesDeclarados`), ese es el número que
  * fue a la renta, y una proyección no puede pisarlo.
  *
- * Qué fracción es deducible lo decide `interesesTotalDeducible`, que ya es la
- * regla única de destinos (ADQUISICIÓN/REFORMA con inmueble detrás).
+ * Qué fracción es deducible lo decide `interesesTotalDeducible`, que es la regla
+ * única: capital trazado a un inmueble (adquisición o reforma) **y** ese
+ * inmueble alquilado en el ejercicio. Por eso hace falta `inmueblesAlquilados`,
+ * que sale de los contratos y se pide una vez por pantalla.
  */
 export function getInteresDeducible(
   prestamo: Prestamo,
   cuadro: Cuadro,
   anio: number,
+  inmueblesAlquilados: ReadonlySet<string>,
 ): number {
   const declarado = prestamo.interesesAnualesDeclarados?.[anio];
   const total =
@@ -282,7 +285,7 @@ export function getInteresDeducible(
       ? declarado
       : getInteresDelAnio(cuadro, anio);
   if (total <= 0) return 0;
-  return round2(interesesTotalDeducible(prestamo, total));
+  return round2(interesesTotalDeducible(prestamo, total, inmueblesAlquilados));
 }
 
 // ─── La revisión que viene ──────────────────────────────────────────────────

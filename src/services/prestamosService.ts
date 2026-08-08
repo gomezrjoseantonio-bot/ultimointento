@@ -46,63 +46,64 @@ export const getAllocationFactor = (
 // ── Fiscal engine ──────────────────────────────────────────────────────────
 
 /**
- * Calcula los intereses deducibles para un inmueble en un año.
+ * El total de intereses DEDUCIBLES de un préstamo en un año · casilla 0105.
  *
- * Solo los destinos de tipo ADQUISICION o REFORMA vinculados a un inmueble
- * de alquiler generan intereses deducibles (casilla 0105).
- * El reparto es proporcional al importe destinado vs principalInicial.
- */
-export function interesesDeduciblesInmueble(
-  prestamo: Prestamo,
-  inmuebleId: string,
-  interesesTotalAño: number,
-): number {
-  if (!prestamo.destinos?.length) {
-    // Legacy: reutilizar getAllocationFactor para cubrir inmuebleId simple y afectacionesInmueble
-    return interesesTotalAño * getAllocationFactor(prestamo, inmuebleId);
-  }
-
-  const destinoDeducible = prestamo.destinos
-    .filter(
-      (d) => d.inmuebleId === inmuebleId && (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA'),
-    )
-    .reduce((sum, d) => sum + d.importe, 0);
-
-  return (prestamo.principalInicial ?? 0) > 0
-    ? interesesTotalAño * (destinoDeducible / prestamo.principalInicial)
-    : 0;
-}
-
-/**
- * Calcula el total de intereses deducibles de un préstamo en un año.
- * Suma solo los destinos que vinculan a inmuebles (ADQUISICION o REFORMA).
+ * Son **dos condiciones**, y hasta ahora solo se comprobaba una:
+ *
+ *   1. El capital tiene que estar TRAZADO a un inmueble, por adquisición o por
+ *      reforma. Eso dice qué inmueble financia el préstamo y qué fracción de él
+ *      —el resto se pidió para otra cosa y no deduce.
+ *   2. Ese inmueble tiene que estar ALQUILADO en el ejercicio. Lo que abre la
+ *      casilla es el rendimiento de capital inmobiliario; sin alquiler no hay
+ *      rendimiento del que descontar el gasto.
+ *
+ * Faltaba la segunda *(Jose · 8 ago 2026: «la deducción fiscal de un préstamo
+ * la genera si el inmueble está alquilado, no si el destino es adquisición»)*,
+ * así que una vivienda comprada con hipoteca y vacía salía «deducible 100%».
+ *
+ * `inmueblesAlquilados` se pide de fuera —lo da `inmueblesAlquiladosEn`— porque
+ * esta función es síncrona y la vive todo el módulo de financiación. Es un
+ * parámetro obligatorio a propósito: con un opcional, quien no lo pasara
+ * volvería a la respuesta falsa sin enterarse.
  */
 export function interesesTotalDeducible(
   prestamo: Prestamo,
   interesesTotalAño: number,
+  inmueblesAlquilados: ReadonlySet<string>,
 ): number {
-  if (!prestamo.destinos?.length) {
-    // Legacy: préstamos PERSONAL/INVERSION/OTRA no generan intereses deducibles
-    const finalidadNoDeducible =
-      prestamo.finalidad === 'PERSONAL' ||
-      prestamo.finalidad === 'INVERSION' ||
-      prestamo.finalidad === 'OTRA';
-    if (finalidadNoDeducible || prestamo.ambito === 'PERSONAL') return 0;
-    // ADQUISICION/REFORMA con afectacionesInmueble: suma porcentajes de todos los inmuebles
-    if (prestamo.afectacionesInmueble?.length) {
-      const pctTotal = prestamo.afectacionesInmueble.reduce((s, a) => s + a.porcentaje, 0);
-      return interesesTotalAño * Math.min(pctTotal / 100, 1);
-    }
-    return interesesTotalAño; // single inmuebleId → 100% deducible
+  const alquilado = (id: string | number | undefined | null): boolean =>
+    id != null && id !== '' && inmueblesAlquilados.has(String(id));
+
+  if (prestamo.destinos?.length) {
+    const importeDeducible = prestamo.destinos
+      .filter(
+        (d) =>
+          alquilado(d.inmuebleId) && (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA'),
+      )
+      .reduce((sum, d) => sum + d.importe, 0);
+
+    return (prestamo.principalInicial ?? 0) > 0
+      ? interesesTotalAño * (importeDeducible / prestamo.principalInicial)
+      : 0;
   }
 
-  const importeDeducible = prestamo.destinos
-    .filter((d) => d.inmuebleId && (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA'))
-    .reduce((sum, d) => sum + d.importe, 0);
+  // Legacy: préstamos PERSONAL/INVERSION/OTRA no generan intereses deducibles
+  const finalidadNoDeducible =
+    prestamo.finalidad === 'PERSONAL' ||
+    prestamo.finalidad === 'INVERSION' ||
+    prestamo.finalidad === 'OTRA';
+  if (finalidadNoDeducible || prestamo.ambito === 'PERSONAL') return 0;
 
-  return (prestamo.principalInicial ?? 0) > 0
-    ? interesesTotalAño * (importeDeducible / prestamo.principalInicial)
-    : 0;
+  // ADQUISICION/REFORMA con afectacionesInmueble: suma los porcentajes de los
+  // inmuebles alquilados, no de todos.
+  if (prestamo.afectacionesInmueble?.length) {
+    const pctTotal = prestamo.afectacionesInmueble
+      .filter((a) => alquilado(a.inmuebleId))
+      .reduce((s, a) => s + a.porcentaje, 0);
+    return interesesTotalAño * Math.min(pctTotal / 100, 1);
+  }
+
+  return alquilado(prestamo.inmuebleId) ? interesesTotalAño : 0;
 }
 
 // ── Migration ─────────────────────────────────────────────────────────────

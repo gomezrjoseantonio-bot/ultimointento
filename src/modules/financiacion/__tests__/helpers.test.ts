@@ -160,10 +160,13 @@ describe('el escalón de vencimiento libera la cuota de ese día', () => {
 });
 
 describe('el interés deducible sale del cuadro · defecto D5', () => {
+  const ALQUILADO: ReadonlySet<string> = new Set(['i1']);
+  const NINGUNO: ReadonlySet<string> = new Set<string>();
+
   // Se estimaba como `capitalVivo × TIN`: un año entero, al tipo de hoy, sobre
   // el capital de hoy.
   it('un préstamo personal no deduce nada', () => {
-    expect(interesDeducibleDelAnio(sabadell(), 2025)).toBe(0);
+    expect(interesDeducibleDelAnio(sabadell(), 2025, ALQUILADO)).toBe(0);
   });
 
   const conDestino = () =>
@@ -180,18 +183,26 @@ describe('el interés deducible sale del cuadro · defecto D5', () => {
   // primer año —y sólo tiene once recibos— porque la cuota amortiza desde el
   // primer mes: al llegar a diciembre ya no se debe el capital de enero.
   it('el del año de la firma son los once recibos que hubo, no un año al tipo de hoy', () => {
-    expect(interesDeducibleDelAnio(conDestino(), 2024)).toBeCloseTo(964.13, 2);
+    expect(interesDeducibleDelAnio(conDestino(), 2024, ALQUILADO)).toBeCloseTo(964.13, 2);
   });
 
   // Y baja cada año, que es lo que la estimación plana no podía enseñar nunca.
   it('y va bajando año a año según se amortiza', () => {
-    const porAnio = [2025, 2026, 2027].map((a) => interesDeducibleDelAnio(conDestino(), a));
+    const porAnio = [2025, 2026, 2027].map((a) =>
+      interesDeducibleDelAnio(conDestino(), a, ALQUILADO)
+    );
 
     expect(porAnio[0]).toBeGreaterThan(porAnio[1]);
     expect(porAnio[1]).toBeGreaterThan(porAnio[2]);
   });
 
   it('un año fuera del préstamo no deduce nada', () => {
-    expect(interesDeducibleDelAnio(conDestino(), 2020)).toBe(0);
+    expect(interesDeducibleDelAnio(conDestino(), 2020, ALQUILADO)).toBe(0);
+  });
+
+  // El mismo préstamo con el mismo destino, el año en que el inmueble no estuvo
+  // alquilado: el interés existe y no es deducible.
+  it('y el año en que el inmueble no estuvo alquilado, tampoco', () => {
+    expect(interesDeducibleDelAnio(conDestino(), 2024, NINGUNO)).toBe(0);
   });
 });

@@ -143,7 +143,19 @@ export interface TotalesHero {
   numDeducibles: number;
 }
 
-export function totalesDe(filas: FilaCartera[], hoy: string): TotalesHero {
+/**
+ * Los totales del hero.
+ *
+ * `inmueblesAlquilados` decide qué intereses deducen: no lo hace el destino del
+ * capital por sí solo, sino que el inmueble que financia esté alquilado. Sin la
+ * lectura de contratos todavía hecha se pasa el conjunto vacío y el total sale
+ * a cero, que es la respuesta prudente mientras no se sabe.
+ */
+export function totalesDe(
+  filas: FilaCartera[],
+  hoy: string,
+  inmueblesAlquilados: ReadonlySet<string>,
+): TotalesHero {
   const anio = Number(hoy.slice(0, 4));
   const bancos = new Set(filas.map((f) => f.banco.nombre).filter(Boolean));
 
@@ -152,7 +164,7 @@ export function totalesDe(filas: FilaCartera[], hoy: string): TotalesHero {
     .sort((a, b) => b.vencimiento!.localeCompare(a.vencimiento!));
 
   const deducibles = filas
-    .map((f) => getInteresDeducible(f.prestamo, f.cuadro, anio))
+    .map((f) => getInteresDeducible(f.prestamo, f.cuadro, anio, inmueblesAlquilados))
     .filter((v) => v > 0);
 
   return {

@@ -352,19 +352,24 @@ export const cuotasDelAnio = (
  * Los intereses de un año que además son DEDUCIBLES · §5, defecto D5.
  *
  * Dos preguntas encadenadas y cada una en su sitio: cuánto interés se paga ese
- * año lo dice el cuadro y qué parte de él se deduce lo dice el destino del
- * capital · las dos las encadena `getInteresDeducible`, que además respeta el
- * año YA DECLARADO: si consta lo que dijo el certificado del banco, ese es el
- * número que fue a la renta y una proyección no puede pisarlo.
+ * año lo dice el cuadro y qué parte de él se deduce lo dicen el destino del
+ * capital **y el alquiler del inmueble que financia** · las dos las encadena
+ * `getInteresDeducible`, que además respeta el año YA DECLARADO: si consta lo
+ * que dijo el certificado del banco, ese es el número que fue a la renta y una
+ * proyección no puede pisarlo.
  *
  * Se venía estimando el interés del año como `capitalVivo × TIN`, o sea el de
  * un año entero al tipo de hoy sobre el capital de hoy: ni el capital baja a lo
  * largo del año, ni el tipo se queda quieto en un mixto, ni el préstamo tiene
  * por qué haber existido en enero.
  */
-export const interesDeducibleDelAnio = (prestamo: Prestamo, year: number): number => {
+export const interesDeducibleDelAnio = (
+  prestamo: Prestamo,
+  year: number,
+  inmueblesAlquilados: ReadonlySet<string>,
+): number => {
   try {
-    return getInteresDeducible(prestamo, cuadroDe(prestamo), year);
+    return getInteresDeducible(prestamo, cuadroDe(prestamo), year, inmueblesAlquilados);
   } catch {
     return 0;
   }

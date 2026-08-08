@@ -38,8 +38,11 @@ import {
 import { cuadroSeguroDe, metaDestino } from './datos';
 import { useRevisionPendiente } from './useRevisionPendiente';
 import { simulacionRevision } from '../../../services/prestamos/simulacionRevision';
+import { conIndiceDeHoy } from '../../../services/prestamos/indiceDeHoy';
+import { inmueblesAlquiladosEn } from '../../../services/prestamos/inmueblesAlquilados';
 import { getFinancialValuesSnapshot } from '../../../services/financialValuesService';
 import CuadroCompleto from './CuadroCompleto';
+import CuadroPreview from './CuadroPreview';
 import type { Prestamo } from '../../../types/prestamos';
 import {
   condicionesDe,
@@ -113,7 +116,6 @@ const DetallePrestamoPage: React.FC = () => {
   // sin bloquear: el contrato se enseña ya, el veredicto llega cuando llega.
   const [cumplimientos, setCumplimientos] = useState<Cumplimiento[] | undefined>(undefined);
   const prestamo = useMemo(() => prestamos.find((p) => p.id === id), [prestamos, id]);
-  const cuadro = useMemo(() => (prestamo ? cuadroSeguroDe(prestamo) : null), [prestamo]);
 
   const bonificaciones0 = prestamo?.bonificaciones;
   // El banco del préstamo · lo pide la condición de plan de pensiones, que
@@ -121,13 +123,13 @@ const DetallePrestamoPage: React.FC = () => {
   const banco = prestamo?.banco;
 
   /**
-   * El euríbor de «Actualizar valores» · para poder decir por dónde irá la
-   * revisión que viene.
+   * El euríbor de «Actualizar valores» · la ÚNICA presunción de índice.
    *
-   * Una revisión confirmada FIJA el índice y corre hasta la siguiente, así que
-   * esto no toca nada de lo que se paga ahora: es lo que pasaría si el mercado
-   * se quedara como hoy. Se lee aquí y no en el motor porque el motor no mira
-   * la base ni el reloj.
+   * Lo que ya está confirmado no lo toca: una revisión apuntada fija el índice
+   * y corre hasta la siguiente, y su tramo no lee esto. Lo que sí sustituye es
+   * `valorIndiceActual`, el campo que se escribe al alta y se queda congelado —
+   * de ahí salía el «euríbor 2,850» de la ficha mientras valoraciones decía
+   * 4,000. Se lee aquí y no en el motor porque el motor no mira la base.
    */
   const [indiceHoy, setIndiceHoy] = useState<number | null>(null);
   useEffect(() => {
@@ -137,12 +139,38 @@ const DetallePrestamoPage: React.FC = () => {
         if (!cancelado) setIndiceHoy(v.euriborPercent);
       })
       .catch(() => {
-        // Sin valoraciones no se simula nada · no se inventa un índice.
+        // Sin valoraciones no se presume nada · no se inventa un índice.
       });
     return () => {
       cancelado = true;
     };
   }, []);
+
+  /**
+   * Los inmuebles alquilados este ejercicio · lo que decide qué deduce.
+   *
+   * `undefined` hasta que se leen los contratos, y la ficha lo respeta: durante
+   * ese rato no dice ni «deducible» ni «no deducible».
+   */
+  const [alquilados, setAlquilados] = useState<ReadonlySet<string> | undefined>(undefined);
+  useEffect(() => {
+    let cancelado = false;
+    inmueblesAlquiladosEn(Number(hoy.slice(0, 4))).then((s) => {
+      if (!cancelado) setAlquilados(s);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [hoy]);
+
+  // El préstamo que se le pregunta al motor · el guardado, con la presunción de
+  // índice puesta al día. Para ESCRIBIR se usa siempre `prestamo`: lo de aquí
+  // no es un dato del usuario, es lo que hoy se puede suponer.
+  const proyectado = useMemo(
+    () => (prestamo ? conIndiceDeHoy(prestamo, indiceHoy) : undefined),
+    [prestamo, indiceHoy]
+  );
+  const cuadro = useMemo(() => (proyectado ? cuadroSeguroDe(proyectado) : null), [proyectado]);
   // La revisión que espera respuesta · vive con las bonificaciones, no en una
   // tarjeta aparte que enseñara la misma lista otra vez.
   const revision = useRevisionPendiente(prestamo ?? ({ id: '' } as Prestamo), hoy, reload);
@@ -170,30 +198,32 @@ const DetallePrestamoPage: React.FC = () => {
   }, [bonificaciones0, banco, hoy]);
 
   const datos = useMemo(() => {
-    if (!prestamo || !cuadro) return null;
+    if (!proyectado || !cuadro) return null;
     const anio = Number(hoy.slice(0, 4));
-    const fiscalidad = fiscalidadDe(prestamo);
+    const fiscalidad = fiscalidadDe(proyectado, alquilados);
     return {
       capitalVivo: getCapitalVivo(cuadro, hoy),
       principalInicial: getPrincipalInicial(cuadro),
       cuota: getCuota(cuadro, hoy),
-      tin: getTinVigente(prestamo, hoy),
+      tin: getTinVigente(proyectado, hoy),
       pctAmortizado: getPctAmortizado(cuadro, hoy),
       progreso: getProgresoCuotas(cuadro, hoy),
       vencimiento: getFechaVencimiento(cuadro),
-      revision: getProximaRevision(prestamo, cuadro, hoy, 365),
-      deducible: getInteresDeducible(prestamo, cuadro, anio),
+      revision: getProximaRevision(proyectado, cuadro, hoy, 365),
+      deducible: getInteresDeducible(proyectado, cuadro, anio, alquilados ?? new Set<string>()),
       interesPendiente: getInteresPendiente(cuadro, hoy),
       preview: getPreviewCuadro(cuadro, hoy, 3),
-      tiempo: lineaDeTiempo(prestamo, cuadro, hoy),
-      bonificaciones: resumenBonificaciones(prestamo, cumplimientos),
+      tiempo: lineaDeTiempo(proyectado, cuadro, hoy),
+      bonificaciones: resumenBonificaciones(proyectado, cumplimientos),
       // Lo que traería la próxima revisión con el índice de hoy · NO entra en
-      // el cuadro: es una respuesta a «¿y si?», no un tramo.
-      simulacion: simulacionRevision(prestamo, hoy, indiceHoy),
-      condiciones: condicionesDe(prestamo, cuadro),
+      // el cuadro: es una respuesta a «¿y si?», no un tramo. Sin revisión
+      // confirmada el cuadro YA va al índice de hoy, así que no dice nada — y
+      // callarse es lo correcto: no habría nada que anunciar.
+      simulacion: simulacionRevision(proyectado, hoy, indiceHoy),
+      condiciones: condicionesDe(proyectado, cuadro),
       fiscalidad,
     };
-  }, [prestamo, cuadro, hoy, cumplimientos, indiceHoy]);
+  }, [proyectado, cuadro, hoy, cumplimientos, indiceHoy, alquilados]);
 
   // Una liquidación TOTAL deja el préstamo cancelado, y entonces esta ficha ya
   // no tiene sujeto: hay que salir a la cartera en vez de quedarse enseñando un
@@ -235,7 +265,11 @@ const DetallePrestamoPage: React.FC = () => {
   // intereses: una hipoteca firmada en diciembre deduce igual, y mirar la cifra
   // le cambiaría el KPI de significado según el mes en que se abriera la ficha.
   // Deducible con 0 € todavía enseña 0 €, que es la respuesta correcta.
-  const mostrarDeducible = fiscalidad.deducible;
+  //
+  // `=== true` y no a secas: mientras los contratos no se han leído la respuesta
+  // es `null`, y un KPI que dijera «Deducible 0 €» para luego cambiar a «Interés
+  // pendiente» —o al revés— cambia de pregunta delante de quien lo está leyendo.
+  const mostrarDeducible = fiscalidad.deducible === true;
 
   return (
     <div className={styles.detalle}>
@@ -426,13 +460,23 @@ const DetallePrestamoPage: React.FC = () => {
                         ? 'Tramo variable'
                         : 'Tramo fijo'}
                   </div>
+                  {/* El índice sale del TRAMO, no de `valorIndiceActual`: un
+                      tramo nacido de una revisión apuntada tiene el suyo, y
+                      enseñar el del alta debajo de él decía dos cosas del mismo
+                      día. Y se dice de dónde viene — mientras nadie confirme
+                      una revisión, el número es el euríbor de hoy, no uno que
+                      el banco haya fijado. */}
                   <div className={styles.tramoPer}>
                     {tiempo.tramos.length === 1
                       ? `las ${datos.progreso.total} cuotas · desde la firma hasta el final`
                       : t.tramo.variable
                         ? `${(prestamo.indice ?? 'índice').toLowerCase()} ${cifraIndice(
-                            prestamo.valorIndiceActual,
-                          )} + diferencial ${cifraIndice(prestamo.diferencial)}`
+                            t.indice ?? undefined,
+                          )} + diferencial ${cifraIndice(prestamo.diferencial)} · ${
+                            t.tramo.estimado
+                              ? 'con el índice de hoy'
+                              : `fijado el ${diaMesAnio(t.desde)}`
+                          }`
                         : `hasta ${mesAnio(t.hasta)}`}
                   </div>
                 </div>
@@ -463,7 +507,7 @@ const DetallePrestamoPage: React.FC = () => {
             ) : prestamo.tipo === 'FIJO' ? (
               'la cuota no cambia · sin revisiones que seguir'
             ) : (
-              'sin revisiones apuntadas · lo que venga se proyecta con el último tipo conocido'
+              'sin revisiones apuntadas · lo que venga se proyecta con el euríbor de hoy, no con uno fijado'
             )}
           </div>
 
@@ -692,27 +736,12 @@ const DetallePrestamoPage: React.FC = () => {
               </div>
             ))}
           </div>
-          {/* El destino y lo que Hacienda hace con sus intereses · es lo que
-              este préstamo ES, y por eso vive con sus condiciones en vez de
-              turnarse con el cuadro por una casilla. */}
-          <div className={rev.fiscalPie}>
-            <span className={styles.dlK}>Destino · IRPF</span>
-            <span className={rev.fiscalTexto}>
-              {fiscalidad.destino} ·{' '}
-              <span className={fiscalidad.deducible ? styles.chipOro : styles.chipNeutro}>
-                {fiscalidad.deducible
-                  ? `deducible ${Math.round(fiscalidad.pctDeducible)}% · casilla 0105`
-                  : 'no deducible'}
-              </span>
-            </span>
-          </div>
         </div>
 
         {/* 4 · El cuadro · SIEMPRE. Antes esta casilla la ocupaba el cuadro o
             la fiscalidad según hubiera bonificaciones o no, así que un préstamo
             sin ellas se quedaba sin cuadro de amortización — que es la tabla
-            por la que se entra a esta ficha. La fiscalidad va al pie de las
-            condiciones, que es donde se lee lo que este préstamo ES. */}
+            por la que se entra a esta ficha. */}
         <CuadroPreview datos={datos} onVerCompleto={() => setCuadroAbierto(true)} />
       </div>
 
@@ -734,55 +763,5 @@ const DetallePrestamoPage: React.FC = () => {
     </div>
   );
 };
-
-// ─── El cuadro · preview de las próximas cuotas ─────────────────────────────
-
-interface CuadroPreviewProps {
-  datos: {
-    preview: ReturnType<typeof getPreviewCuadro>;
-    progreso: { restantes: number };
-    revision: ReturnType<typeof getProximaRevision>;
-  };
-  /**
-   * Obligatorio a propósito · el botón ya no se deshabilita, así que un
-   * `undefined` lo dejaría activo sin hacer nada. Era opcional cuando la
-   * pantalla del cuadro completo no existía; ahora existe.
-   */
-  onVerCompleto: () => void;
-}
-
-const CuadroPreview: React.FC<CuadroPreviewProps> = ({ datos, onVerCompleto }) => (
-  <div className={`${styles.card} ${styles.topGoldSoft}`}>
-    <div className={styles.cardT}>
-      <Icons.Panel size={15} strokeWidth={2} aria-hidden />
-      Cuadro de amortización
-      <span className={styles.cardNota}>
-        {datos.revision ? 'sube en la revisión' : 'cuota constante'}
-      </span>
-    </div>
-    <div className={`${styles.qrow} ${styles.qhead}`}>
-      <div className={styles.qh}>Mes</div>
-      <div className={`${styles.qh} ${styles.qr}`}>Cuota</div>
-      <div className={`${styles.qh} ${styles.qr}`}>Interés</div>
-      <div className={`${styles.qh} ${styles.qr}`}>Capital</div>
-    </div>
-    {datos.preview.map((p) => (
-      <div key={p.periodo} className={styles.qrow}>
-        <div className={`${styles.qc} ${p.esRevision ? styles.qmesRev : styles.qmes}`}>
-          {mesAnio(p.fechaCargo)}
-          {p.esRevision && <span className={styles.revTag}>revisión</span>}
-        </div>
-        <div className={`${styles.qc} ${styles.qr}`}>{eurPlano(p.cuota)}</div>
-        <div className={`${styles.qc} ${styles.qr}`}>{eurPlano(p.interes)}</div>
-        <div className={`${styles.qc} ${styles.qr}`}>{eurPlano(p.amortizacion)}</div>
-      </div>
-    ))}
-    <div className={styles.cardPie}>
-      <button type="button" onClick={onVerCompleto}>
-        Ver cuadro completo · {datos.progreso.restantes} cuotas restantes →
-      </button>
-    </div>
-  </div>
-);
 
 export default DetallePrestamoPage;
