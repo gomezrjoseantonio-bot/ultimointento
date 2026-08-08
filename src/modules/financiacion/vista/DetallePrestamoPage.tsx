@@ -743,7 +743,12 @@ interface CuadroPreviewProps {
     progreso: { restantes: number };
     revision: ReturnType<typeof getProximaRevision>;
   };
-  onVerCompleto: (() => void) | undefined;
+  /**
+   * Obligatorio a propósito · el botón ya no se deshabilita, así que un
+   * `undefined` lo dejaría activo sin hacer nada. Era opcional cuando la
+   * pantalla del cuadro completo no existía; ahora existe.
+   */
+  onVerCompleto: () => void;
 }
 
 const CuadroPreview: React.FC<CuadroPreviewProps> = ({ datos, onVerCompleto }) => (
