@@ -36,9 +36,9 @@ export function resumenCartera(items: CartaItem[]): ResumenCartera {
   return { valorTotal, aportadoTotal, rentabilidadEur, rentabilidadPct };
 }
 
-// ── Chips por familia (Planes · Préstamos · Acciones) · spec §2.2 ───────────
+// ── Chips por familia (Planes · Fondos · Acciones · Préstamos) · spec §2.2 ──
 
-export type FamiliaChip = 'planes' | 'prestamos' | 'acciones';
+export type FamiliaChip = 'planes' | 'prestamos' | 'acciones' | 'fondos';
 
 export interface ResumenFamilia {
   familia: FamiliaChip;
@@ -50,7 +50,10 @@ export interface ResumenFamilia {
 
 // Mapa categoría-galería → chip del hero. `otros` (crypto) no tiene chip
 // propio pero SÍ cuenta en el total/gauge (resumenCartera los incluye).
+// Los fondos de inversión son renta variable (categoría `equity`) pero tienen
+// chip propio "Fondos": son otra familia y no deben confundirse con acciones.
 function chipDeItem(item: CartaItem): FamiliaChip | null {
+  if (item.tipo === 'fondo_inversion') return 'fondos';
   const cat = getCategoriaGaleria(item.tipo);
   if (cat === 'planes') return 'planes';
   if (cat === 'rentaFija') return 'prestamos';
@@ -59,22 +62,25 @@ function chipDeItem(item: CartaItem): FamiliaChip | null {
 }
 
 /**
- * Devuelve los 3 chips por familia. `pctAnual` es la media ponderada por valor
- * de la rentabilidad anual de cada posición: CAGR realizada para planes/equity
- * y TIN para renta fija (préstamos/depósitos). Si ninguna posición de la
- * familia aporta tasa fiable → null (la UI muestra "—", nunca inventa).
+ * Devuelve los chips por familia (planes · fondos · acciones · préstamos).
+ * `pctAnual` es la media ponderada por valor de la rentabilidad anual de cada
+ * posición: CAGR realizada para planes/fondos/equity y TIN para renta fija
+ * (préstamos/depósitos). Si ninguna posición de la familia aporta tasa fiable →
+ * null (la UI muestra "—", nunca inventa).
  */
 export function familiasResumen(items: CartaItem[]): Record<FamiliaChip, ResumenFamilia> {
   const base: Record<FamiliaChip, ResumenFamilia> = {
     planes: { familia: 'planes', aportado: 0, hoy: 0, pctAnual: null },
     prestamos: { familia: 'prestamos', aportado: 0, hoy: 0, pctAnual: null },
     acciones: { familia: 'acciones', aportado: 0, hoy: 0, pctAnual: null },
+    fondos: { familia: 'fondos', aportado: 0, hoy: 0, pctAnual: null },
   };
   // Acumuladores para la media ponderada de %.
   const acc: Record<FamiliaChip, { pesoPct: number; peso: number }> = {
     planes: { pesoPct: 0, peso: 0 },
     prestamos: { pesoPct: 0, peso: 0 },
     acciones: { pesoPct: 0, peso: 0 },
+    fondos: { pesoPct: 0, peso: 0 },
   };
 
   for (const item of items) {

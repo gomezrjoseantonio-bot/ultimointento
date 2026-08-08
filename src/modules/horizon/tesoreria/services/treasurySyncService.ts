@@ -681,7 +681,20 @@ export async function generateMonthlyForecasts(
       const fechaCompra: string | undefined = posAny.fecha_compra;
       if (fechaCompra) {
         const fechaCompraDateOnly = fechaCompra.split('T')[0]; // normalize to YYYY-MM-DD
+        // `inversionesService.createPosicion` sintetiza una "Aportación inicial"
+        // datada en `fecha_compra` con el mismo importe que `total_aportado`, y el
+        // bloque 1b ya la proyecta como evento "Aportación". Si esa aportación
+        // existe, la "Compra inicial" sería EL MISMO desembolso por partida doble
+        // → no la emitimos (era el duplicado que aparecía en Tesorería al crear un
+        // fondo/acción/préstamo con aportación inicial). La aportación es el
+        // registro canónico (es lo que muestra la ficha).
+        const tieneAportacionInicial = pos.aportaciones.some(
+          (a) =>
+            a.tipo === 'aportacion' &&
+            (a.fecha?.split('T')[0] ?? '') === fechaCompraDateOnly,
+        );
         if (
+          !tieneAportacionInicial &&
           fechaCompraDateOnly >= today &&
           fechaCompraDateOnly.startsWith(monthPrefix) &&
           pos.id != null

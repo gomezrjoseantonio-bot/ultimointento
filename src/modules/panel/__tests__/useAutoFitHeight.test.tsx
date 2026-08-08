@@ -63,12 +63,15 @@ describe('useAutoFitHeight', () => {
     expect(screen.getByTestId('inner').style.transform).toBe('');
   });
 
-  it('con contenido más alto que el hueco aplica scale y compensa el ancho', () => {
+  it('con contenido más alto que el hueco aplica scale UNIFORME (sin compensar ancho)', () => {
     render(<Harness disponible={800} natural={1000} />);
     const inner = screen.getByTestId('inner');
     expect(inner.style.transform).toBe('scale(0.8)');
-    expect(inner.style.width).toBe('125%'); // 100 / 0.8
     expect(inner.style.transformOrigin).toBe('top left');
+    // REGRESIÓN · NO debe compensar el ancho (`width: 100/scale%`): eso acopla
+    // ancho↔altura y provoca el bucle de re-medición infinito (parpadeo del
+    // Panel). El escalado es uniforme · sin width.
+    expect(inner.style.width).toBe('');
     // Sigue sin scroll · el contenido escalado cabe entero.
     expect(screen.getByTestId('outer').style.overflow).toBe('hidden');
   });
@@ -77,7 +80,7 @@ describe('useAutoFitHeight', () => {
     render(<Harness disponible={200} natural={1000} />); // ratio 0.2 < MIN_SCALE
     const inner = screen.getByTestId('inner');
     expect(inner.style.transform).toBe(`scale(${MIN_SCALE})`);
-    expect(inner.style.width).toBe(`${100 / MIN_SCALE}%`);
+    expect(inner.style.width).toBe('');
     expect(screen.getByTestId('outer').style.overflow).toBe('hidden auto');
   });
 });

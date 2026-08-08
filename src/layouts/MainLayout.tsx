@@ -184,9 +184,15 @@ const MainLayout: React.FC = () => {
               ? 'overflow-y-hidden px-8'
               : isFinanciacionVistaRoute
                 ? 'overflow-y-hidden'
-                : isFullBleedRoute
-                  ? 'overflow-y-auto'
-                  : 'overflow-y-auto p-3 sm:p-4 lg:p-6'
+                : isGaleriaInversionesRoute
+                  ? // La galería de Inversiones (/inversiones exacto) es una pantalla
+                    // de supervisión SIN scroll de página: head + hero fijos y la tabla
+                    // (ledger) scrollea por dentro. Igual que Panel y Financiación vista.
+                    // Las sub-rutas (/inversiones/:id · cerradas · importar) SÍ scrollean.
+                    'overflow-y-hidden'
+                  : isFullBleedRoute
+                    ? 'overflow-y-auto'
+                    : 'overflow-y-auto p-3 sm:p-4 lg:p-6'
           }`}
           tabIndex={-1}
         >
