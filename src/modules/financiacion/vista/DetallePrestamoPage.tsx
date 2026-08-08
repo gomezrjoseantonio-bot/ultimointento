@@ -37,6 +37,8 @@ import {
 } from '../../../services/prestamos/lecturas';
 import { cuadroSeguroDe, metaDestino } from './datos';
 import { useRevisionPendiente } from './useRevisionPendiente';
+import { simulacionRevision } from '../../../services/prestamos/simulacionRevision';
+import { getFinancialValuesSnapshot } from '../../../services/financialValuesService';
 import CuadroCompleto from './CuadroCompleto';
 import type { Prestamo } from '../../../types/prestamos';
 import {
@@ -117,6 +119,30 @@ const DetallePrestamoPage: React.FC = () => {
   // El banco del préstamo · lo pide la condición de plan de pensiones, que
   // exige que el plan sea de ESTA entidad.
   const banco = prestamo?.banco;
+
+  /**
+   * El euríbor de «Actualizar valores» · para poder decir por dónde irá la
+   * revisión que viene.
+   *
+   * Una revisión confirmada FIJA el índice y corre hasta la siguiente, así que
+   * esto no toca nada de lo que se paga ahora: es lo que pasaría si el mercado
+   * se quedara como hoy. Se lee aquí y no en el motor porque el motor no mira
+   * la base ni el reloj.
+   */
+  const [indiceHoy, setIndiceHoy] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelado = false;
+    getFinancialValuesSnapshot()
+      .then((v) => {
+        if (!cancelado) setIndiceHoy(v.euriborPercent);
+      })
+      .catch(() => {
+        // Sin valoraciones no se simula nada · no se inventa un índice.
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
   // La revisión que espera respuesta · vive con las bonificaciones, no en una
   // tarjeta aparte que enseñara la misma lista otra vez.
   const revision = useRevisionPendiente(prestamo ?? ({ id: '' } as Prestamo), hoy, reload);
@@ -161,10 +187,13 @@ const DetallePrestamoPage: React.FC = () => {
       preview: getPreviewCuadro(cuadro, hoy, 3),
       tiempo: lineaDeTiempo(prestamo, cuadro, hoy),
       bonificaciones: resumenBonificaciones(prestamo, cumplimientos),
+      // Lo que traería la próxima revisión con el índice de hoy · NO entra en
+      // el cuadro: es una respuesta a «¿y si?», no un tramo.
+      simulacion: simulacionRevision(prestamo, hoy, indiceHoy),
       condiciones: condicionesDe(prestamo, cuadro),
       fiscalidad,
     };
-  }, [prestamo, cuadro, hoy, cumplimientos]);
+  }, [prestamo, cuadro, hoy, cumplimientos, indiceHoy]);
 
   // Una liquidación TOTAL deja el préstamo cancelado, y entonces esta ficha ya
   // no tiene sujeto: hay que salir a la cartera en vez de quedarse enseñando un
@@ -437,6 +466,30 @@ const DetallePrestamoPage: React.FC = () => {
               'sin revisiones apuntadas · lo que venga se proyecta con el último tipo conocido'
             )}
           </div>
+
+          {/* Lo que traería la revisión que viene, con el índice de HOY.
+              Durante los doce meses que van de una revisión a otra el euríbor
+              de «Actualizar valores» no decía nada: lo vigente está fijado por
+              la revisión confirmada y no se toca. Esto es lo otro que sí puede
+              decir — por dónde va lo que viene — y por eso vive fuera del
+              cuadro y se recalcula solo. */}
+          {datos.simulacion && (
+            <div className={rev.simula}>
+              <span className={rev.simulaLab}>
+                si el {(prestamo.indice ?? 'índice').toLowerCase()} sigue en{' '}
+                <span className={styles.mono}>{pct(datos.simulacion.indice)}</span>
+              </span>
+              <span className={rev.simulaVal}>
+                {eurPlano(datos.simulacion.cuotaHoy)} <span className={styles.flecha}>→</span>{' '}
+                <span className={styles.mono}>{eurPlano(datos.simulacion.cuotaDespues)} €</span>
+                <small>
+                  {datos.simulacion.cuotaDespues > datos.simulacion.cuotaHoy ? '+' : ''}
+                  {eurPlano(datos.simulacion.cuotaDespues - datos.simulacion.cuotaHoy)} · al{' '}
+                  {pct(datos.simulacion.tinDespues)}
+                </small>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 2 · Bonificaciones · SIEMPRE, y con la revisión dentro.
@@ -690,7 +743,12 @@ interface CuadroPreviewProps {
     progreso: { restantes: number };
     revision: ReturnType<typeof getProximaRevision>;
   };
-  onVerCompleto: (() => void) | undefined;
+  /**
+   * Obligatorio a propósito · el botón ya no se deshabilita, así que un
+   * `undefined` lo dejaría activo sin hacer nada. Era opcional cuando la
+   * pantalla del cuadro completo no existía; ahora existe.
+   */
+  onVerCompleto: () => void;
 }
 
 const CuadroPreview: React.FC<CuadroPreviewProps> = ({ datos, onVerCompleto }) => (

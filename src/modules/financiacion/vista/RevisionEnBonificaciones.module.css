@@ -150,3 +150,36 @@
   color: var(--atlas-v5-ink-2);
   line-height: 1.5;
 }
+
+/* Lo que traería la próxima revisión con el índice de hoy · una SIMULACIÓN, y
+   por eso se lee distinta de las cifras del cuadro: sin fondo de dato, con la
+   condición escrita delante («si el euríbor sigue en…»). No entra en el cuadro
+   porque el cuadro dice lo que se paga, y esto lo que podría pagarse. */
+.simula {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--atlas-v5-line);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: var(--atlas-v5-fs-sub-sm);
+}
+
+.simulaLab {
+  color: var(--atlas-v5-ink-4);
+  min-width: 0;
+}
+
+.simulaVal {
+  color: var(--atlas-v5-ink-2);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.simulaVal small {
+  display: block;
+  font-size: 10px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 1px;
+}

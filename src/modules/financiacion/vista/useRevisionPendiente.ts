@@ -17,6 +17,7 @@ import type { RevisionPendiente } from '../../../services/bonificaciones/revisio
 import { confirmarRevision } from '../../../services/prestamos/confirmarRevision';
 import type { LoQueDecidioElBanco } from '../../../services/prestamos/confirmarRevision';
 import { getFinancialValuesSnapshot } from '../../../services/financialValuesService';
+import { tramoVigente } from '../../../services/prestamos/tramosDeTipo';
 import { esNumero, fmtNumeroEs, parseNum } from '../wizards/numeros';
 import type { Prestamo } from '../../../types/prestamos';
 
@@ -38,9 +39,7 @@ export interface RevisionEnCurso {
   guardando: boolean;
 }
 
-/** Si el tramo que empieza va a índice · un fijo no revisa nada. */
-const revisaElIndice = (p: Prestamo): boolean =>
-  p.tipo === 'VARIABLE' || (p.tipo === 'MIXTO' && (p.tramoFijoMeses ?? 0) > 0);
+
 
 // El nombre va en inglés a la fuerza: la regla `react-hooks/rules-of-hooks`
 // reconoce un hook por el prefijo `use`, y con `usarRevisionPendiente` no
@@ -72,7 +71,16 @@ export function useRevisionPendiente(
     [prestamo, hoy]
   );
 
-  const pideIndice = revisaElIndice(prestamo);
+  /**
+   * Si esta revisión mueve el índice · la MISMA regla que aplica al guardar.
+   *
+   * Se decide por el tramo que rige el día en que la revisión empieza, no por
+   * el tipo del préstamo. Mirando solo el tipo, un mixto cuya revisión cae
+   * todavía dentro del tramo fijo pedía el índice, el usuario lo tecleaba y
+   * `confirmarRevision` lo tiraba —porque solo lo apunta si ese tramo es
+   * variable— sin decir nada. Pedir un dato y no usarlo es peor que no pedirlo.
+   */
+  const pideIndice = pendiente != null && tramoVigente(prestamo, pendiente.aplicaDesde).variable;
 
   // Lo contestado es de ESTE préstamo · navegar a otro arrastraría la decisión
   // al equivocado, o le escondería su revisión por una que se confirmó antes.
