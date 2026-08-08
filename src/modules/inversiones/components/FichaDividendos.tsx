@@ -1,10 +1,13 @@
-// T23.3 · Ficha detalle · grupo `dividendos` (acciones · ETFs · REITs).
-// § 4.3 spec · 4 KPIs · sparkline precio + markers cobro · tablas
-// dividendos y operaciones · botones acción.
+// INVERSIONES V1 · Fase 3 · Ficha detalle · grupo `dividendos`
+// (acciones · ETFs · REITs).
+//
+// Restyle V5 al mockup atlas-inversiones-v10.html · #page-detalle-equity
+// (l.716-794). Pantalla de supervisión sin scroll: back + dhero fijos ·
+// cuerpo de 2 cards (Cotización + "La ficha"). Los dividendos son SOLO
+// LECTURA (regla de oro §3): se muestran, no se registran aquí.
 
 import React, { useMemo, useState } from 'react';
-import { Icons } from '../../../design-system/v5';
-import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
+import type { PosicionInversion } from '../../../types/inversiones';
 import {
   construirSerieValor,
   formatCurrency,
@@ -14,45 +17,54 @@ import {
   getColorByTipo,
   getTipoLabel,
 } from '../helpers';
-import { getEntidadLogoConfig } from '../utils/entidadLogo';
-import FichaShell from './FichaShell';
 import SparklineGigante from './SparklineGigante';
-import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
-import styles from '../pages/FichaPosicion.module.css';
+import styles from './ficha/fichaDetalleV5.module.css';
 
 interface Props {
   posicion: PosicionInversion;
   onBack: () => void;
-  onRegistrarDividendo: () => void;
-  onComprarVender: () => void;
-  onActualizarValor: () => void;
-  /** Callback opcional para recargar la posición tras importar histórico. */
-  onReload?: () => void | Promise<void>;
+  onVender: () => void;
+  onEditar: () => void;
+  onEliminar: () => void;
 }
 
-const formatDate = (iso?: string): string => {
+const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
+
+const yearOf = (iso?: string | null): string => {
   if (!iso) return '—';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return Number.isNaN(d.getTime()) ? '—' : String(d.getFullYear());
 };
 
-const TIPO_LAB: Record<Aportacion['tipo'], string> = {
-  aportacion: 'Compra',
-  reembolso: 'Venta',
-  dividendo: 'Dividendo',
-};
+const TrashIcon: React.FC = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9}>
+    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+  </svg>
+);
 
-const FichaDividendos: React.FC<Props> = ({
-  posicion,
-  onBack,
-  onRegistrarDividendo,
-  onComprarVender,
-  onActualizarValor,
-  onReload,
-}) => {
+const CloseIcon: React.FC = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);
+
+const ChevronLeft: React.FC = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+
+const FichaDividendos: React.FC<Props> = ({ posicion, onBack, onVender, onEditar, onEliminar }) => {
   const aportado = Number(posicion.total_aportado ?? 0);
   const valorActual = Number(posicion.valor_actual ?? 0);
+  const participaciones = posicion.numero_participaciones ?? null;
+  // "acciones" solo aplica a acciones; ETF/REIT y demás cotizados usan
+  // "participaciones" (término neutral).
+  const esAccion = posicion.tipo === 'accion';
+  const unidadLabel = esAccion ? 'acciones' : 'participaciones';
+  const unidadLabelCap = esAccion ? 'Acciones' : 'Participaciones';
+
+  const [avisoVisible, setAvisoVisible] = useState(true);
 
   const dividendos = useMemo(
     () =>
@@ -62,285 +74,325 @@ const FichaDividendos: React.FC<Props> = ({
     [posicion.aportaciones],
   );
 
-  const operaciones = useMemo(
-    () =>
-      (posicion.aportaciones || [])
-        .filter((a) => a.tipo === 'aportacion' || a.tipo === 'reembolso')
-        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()),
-    [posicion.aportaciones],
-  );
-
   const dividendosTotal = useMemo(
     () => dividendos.reduce((s, d) => s + Number(d.importe ?? 0), 0),
     [dividendos],
   );
 
-  /**
-   * Yield medio · proyección anualizada del flujo de dividendos cobrados
-   * sobre el capital invertido. Si el histórico cubre menos de un mes,
-   * devolvemos `null` (datos insuficientes para anualizar con sentido).
-   * Para 1-12 meses de histórico el cálculo extrapola linealmente y la
-   * UI lo etiqueta como "estimado" para que el usuario sepa que es
-   * proyección, no realización.
-   */
+  // Fecha de inicio · primera operación o compra declarada.
+  const fechaInicio = useMemo<string | null>(() => {
+    const fechas = (posicion.aportaciones || [])
+      .filter((a) => a.tipo === 'aportacion')
+      .map((a) => a.fecha)
+      .filter(Boolean)
+      .sort();
+    return fechas[0] ?? posicion.fecha_compra ?? null;
+  }, [posicion.aportaciones, posicion.fecha_compra]);
+
+  const aniosHeld = useMemo(() => {
+    if (!fechaInicio) return null;
+    const t = new Date(fechaInicio).getTime();
+    if (Number.isNaN(t)) return null;
+    return (Date.now() - t) / MS_PER_YEAR;
+  }, [fechaInicio]);
+
   const yieldMedio = useMemo(() => {
     if (dividendos.length === 0 || aportado <= 0) return null;
     const fechas = dividendos.map((d) => new Date(d.fecha).getTime());
     const minTs = Math.min(...fechas);
-    const elapsedYears = (Date.now() - minTs) / (365.25 * 24 * 60 * 60 * 1000);
-    // Mínimo · 1 mes (~0.083 años). Por debajo el yield anualizado se
-    // dispararía artificialmente con un único cobro reciente.
+    const elapsedYears = (Date.now() - minTs) / MS_PER_YEAR;
     if (elapsedYears < 1 / 12) return null;
     return (dividendosTotal / aportado / elapsedYears) * 100;
   }, [dividendos, dividendosTotal, aportado]);
 
+  const dividendoAnual = yieldMedio != null ? (yieldMedio / 100) * aportado : null;
+
+  const plusvalia = valorActual - aportado;
+  const plusvaliaPct = aportado > 0 ? (plusvalia / aportado) * 100 : null;
+
+  // Rentabilidad anualizada (CAGR) si hay ≥1 año; si no, el total.
+  const rentabilidad = useMemo<{ text: string; pos: boolean } | null>(() => {
+    if (aportado <= 0 || valorActual <= 0) return plusvaliaPct != null
+      ? { text: `${plusvaliaPct >= 0 ? '+' : ''}${plusvaliaPct.toFixed(1).replace('.', ',')}%`, pos: plusvaliaPct >= 0 }
+      : null;
+    if (aniosHeld != null && aniosHeld >= 1) {
+      const cagr = (Math.pow(valorActual / aportado, 1 / aniosHeld) - 1) * 100;
+      return { text: `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1).replace('.', ',')}%/año`, pos: cagr >= 0 };
+    }
+    return plusvaliaPct != null
+      ? { text: `${plusvaliaPct >= 0 ? '+' : ''}${plusvaliaPct.toFixed(1).replace('.', ',')}%`, pos: plusvaliaPct >= 0 }
+      : null;
+  }, [aportado, valorActual, aniosHeld, plusvaliaPct]);
+
+  const precioMedio = participaciones && participaciones > 0 ? aportado / participaciones : null;
+  const precioHoy = participaciones && participaciones > 0 ? valorActual / participaciones : null;
+
   const serie = useMemo(() => construirSerieValor(posicion), [posicion]);
   const dividendoMarkers = useMemo(() => {
     if (!serie.length) return [];
-    return dividendos
-      .map((d) => {
-        const ts = new Date(d.fecha).getTime();
-        // Buscar el punto de la serie más cercano por timestamp para
-        // colocar el marker en la línea (no flotando en el aire).
-        let nearest = serie[0];
-        let bestDiff = Math.abs(serie[0].x - ts);
-        for (const p of serie) {
-          const diff = Math.abs(p.x - ts);
-          if (diff < bestDiff) {
-            bestDiff = diff;
-            nearest = p;
-          }
+    return dividendos.map((d) => {
+      const ts = new Date(d.fecha).getTime();
+      let nearest = serie[0];
+      let bestDiff = Math.abs(serie[0].x - ts);
+      for (const p of serie) {
+        const diff = Math.abs(p.x - ts);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          nearest = p;
         }
-        return {
-          x: nearest.x,
-          y: nearest.y,
-          label: `${formatDate(d.fecha)} · ${formatCurrency(Number(d.importe ?? 0))}`,
-        };
-      })
-      .filter(Boolean);
+      }
+      return {
+        x: nearest.x,
+        y: nearest.y,
+        label: `${new Date(d.fecha).toLocaleDateString('es-ES')} · ${formatCurrency(Number(d.importe ?? 0))}`,
+      };
+    });
   }, [dividendos, serie]);
 
-  const logoCfg = getEntidadLogoConfig(posicion.entidad);
-  const heroBadge = `${getTipoLabel(posicion.tipo)} · liquidez disponible · dividendos periódicos`;
+  // Dividendos agregados por año (para el mini bar chart).
+  const divPorAnio = useMemo<Array<[number, number]>>(() => {
+    const m = new Map<number, number>();
+    for (const d of dividendos) {
+      const y = new Date(d.fecha).getFullYear();
+      if (!Number.isNaN(y)) m.set(y, (m.get(y) || 0) + Number(d.importe ?? 0));
+    }
+    return [...m.entries()].sort((a, b) => a[0] - b[0]);
+  }, [dividendos]);
 
-  const [showImportWizard, setShowImportWizard] = useState(false);
+  const desdeYear = yearOf(fechaInicio);
 
   return (
-    <FichaShell
-      hero={{
-        variant: 'accion',
-        badge: heroBadge,
-        logo: {
-          text: logoCfg.text,
-          bg: logoCfg.gradient ?? logoCfg.bg ?? 'var(--atlas-v5-bg)',
-          color: logoCfg.color,
-          noBorder: logoCfg.noBorder,
-        },
-        title: `${posicion.nombre || 'Posición'}${posicion.ticker ? ` · ${posicion.ticker}` : ''}`,
-        meta: (
-          <>
-            {posicion.entidad && (
-              <>broker <strong>{posicion.entidad}</strong></>
+    <div className={styles.page}>
+      <button type="button" className={styles.back} onClick={onBack}>
+        <ChevronLeft />
+        Volver a Inversiones
+      </button>
+
+      {/* ── Hero navy de detalle ─────────────────────────────────────── */}
+      <div className={styles.dhero}>
+        <div>
+          <div className={styles.dheroEyebrow}>
+            {getTipoLabel(posicion.tipo)}
+            {posicion.entidad ? ` · vía ${posicion.entidad}` : ''}
+          </div>
+          <div className={styles.dheroNom}>
+            {posicion.nombre || 'Posición'}
+            {posicion.ticker ? ` · ${posicion.ticker}` : ''}
+          </div>
+          <div className={styles.dheroMeta}>
+            {desdeYear !== '—' && <>desde <strong>{desdeYear}</strong></>}
+            {participaciones != null && (
+              <>
+                <span className={styles.dheroSep}>·</span>
+                <strong>{participaciones.toLocaleString('es-ES')}</strong> {unidadLabel}
+              </>
+            )}
+            {precioMedio != null && (
+              <>
+                <span className={styles.dheroSep}>·</span>
+                precio medio <strong>{formatCurrency2(precioMedio)}</strong>
+              </>
             )}
             {posicion.isin && (
               <>
-                {posicion.entidad && <span className={styles.detailHeroSep}>·</span>}
-                ISIN <strong>{posicion.isin}</strong>
+                <span className={styles.dheroSep}>·</span>ISIN <strong>{posicion.isin}</strong>
               </>
             )}
-          </>
-        ),
-        stats: [
-          {
-            lab: 'Nº acciones',
-            val: posicion.numero_participaciones != null
-              ? posicion.numero_participaciones.toLocaleString('es-ES')
-              : '—',
-          },
-          { lab: 'Valor total', val: formatCurrency(valorActual) },
-          {
-            lab: 'Dividendos',
-            val: dividendos.length ? formatDelta(dividendosTotal) : '—',
-            valVariant: dividendos.length ? 'pos' : undefined,
-          },
-          {
-            lab: 'Yield medio',
-            val: yieldMedio == null ? '—' : formatPercent(yieldMedio),
-            valVariant: yieldMedio != null && yieldMedio > 0 ? 'pos' : undefined,
-          },
-        ],
-      }}
-      onBack={onBack}
-      actions={[
-        {
-          label: 'Registrar dividendo',
-          variant: 'ghost',
-          icon: <Icons.Plus size={14} strokeWidth={1.8} />,
-          onClick: onRegistrarDividendo,
-        },
-        {
-          label: 'Comprar / Vender',
-          variant: 'ghost',
-          icon: <Icons.ArrowUpRight size={14} strokeWidth={1.8} />,
-          onClick: onComprarVender,
-        },
-        {
-          label: 'Importar histórico',
-          variant: 'ghost',
-          icon: <Icons.Upload size={14} strokeWidth={1.8} />,
-          onClick: () => setShowImportWizard(true),
-        },
-        {
-          label: 'Actualizar valor',
-          variant: 'gold',
-          icon: <Icons.Refresh size={14} strokeWidth={1.8} />,
-          onClick: onActualizarValor,
-        },
-      ]}
-    >
+          </div>
+        </div>
+        <div className={styles.dheroStats}>
+          <div className={styles.dstat}>
+            <div className={styles.dstatLab}>Valor hoy</div>
+            <div className={styles.dstatVal}>{formatCurrency(valorActual)}</div>
+          </div>
+          <div className={styles.dstat}>
+            <div className={styles.dstatLab}>Aportado</div>
+            <div className={styles.dstatVal}>{formatCurrency(aportado)}</div>
+          </div>
+          <div className={styles.dstat}>
+            <div className={styles.dstatLab}>Rentabilidad</div>
+            <div className={`${styles.dstatVal}${rentabilidad?.pos ? ' ' + styles.g : ''}`}>
+              {rentabilidad ? rentabilidad.text : '—'}
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {posicion.numero_participaciones && posicion.numero_participaciones > 0 && (() => {
-        const precioImplicito = valorActual / posicion.numero_participaciones;
-        const precioAportado = aportado / posicion.numero_participaciones;
-        const delta = valorActual - aportado;
-        const deltaCls =
-          delta > 0 ? styles.pos : delta < 0 ? styles.neg : '';
-        return (
-          <div className={styles.priceBlock}>
+      {/* ── Cuerpo · 2 columnas ──────────────────────────────────────── */}
+      <div className={styles.dbody}>
+        {/* Cotización · frente a tu precio medio */}
+        <div className={styles.card}>
+          <div className={styles.projHd}>
             <div>
-              <div className={styles.priceLab}>
-                <span className={styles.priceDotLive} />
-                Precio · {posicion.entidad ?? 'cotización'} · estimado
-              </div>
-              <div className={styles.priceVal}>{formatCurrency2(precioImplicito)}</div>
-              <div className={styles.priceDelta}>
-                <span className={`${styles.priceDeltaPill} ${deltaCls}`}>
-                  {formatDelta(delta)}
-                </span>
-                <span className={styles.priceDeltaLabel}>
-                  vs aportado · {formatCurrency2(precioAportado)}
-                </span>
+              <div className={styles.projEyebrow}>Cotización · frente a tu precio medio</div>
+              <div className={styles.projVerdict}>
+                {precioMedio != null && precioHoy != null ? (
+                  <>
+                    Compraste a <span className={styles.g}>{formatCurrency2(precioMedio)}</span> · hoy vale{' '}
+                    <span className={styles.g}>{formatCurrency2(precioHoy)}</span>
+                    <br />
+                    <span className={styles.muted}>
+                      plusvalía latente {formatDelta(plusvalia)}
+                      {plusvaliaPct != null ? ` · ${plusvaliaPct >= 0 ? '+' : ''}${plusvaliaPct.toFixed(1).replace('.', ',')}%` : ''}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Valor hoy <span className={styles.g}>{formatCurrency(valorActual)}</span>
+                    <br />
+                    <span className={styles.muted}>plusvalía latente {formatDelta(plusvalia)}</span>
+                  </>
+                )}
               </div>
             </div>
-            <div className={styles.priceRange}>
-              <div className={styles.priceRangeCell}>
-                <div className={styles.priceRangeLab}>Acciones</div>
-                <div className={styles.priceRangeVal}>
-                  {posicion.numero_participaciones.toLocaleString('es-ES')}
+            <div className={styles.objCtrl}>
+              {participaciones != null && (
+                <div className={`${styles.objChip} ${styles.alt}`}>{participaciones.toLocaleString('es-ES')} {unidadLabel}</div>
+              )}
+              {yieldMedio != null && (
+                <div className={styles.objChip}>
+                  Dividendo <span className={styles.v}>{formatPercent(yieldMedio)}</span>
                 </div>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.projLegend}>
+            <span className={styles.pl}><span className={`${styles.plSwatch} ${styles.solid}`} />Cotización</span>
+            {precioMedio != null && (
+              <span className={styles.pl}>
+                <span className={`${styles.plSwatch} ${styles.dot}`} />Tu precio medio · {formatCurrency2(precioMedio)}
+              </span>
+            )}
+          </div>
+
+          <div className={styles.projChart}>
+            {serie.length >= 2 ? (
+              <SparklineGigante
+                data={serie}
+                color={getColorByTipo(posicion.tipo)}
+                markers={dividendoMarkers}
+                ariaLabel={`Evolución y dividendos de ${posicion.nombre || 'la posición'}`}
+              />
+            ) : (
+              <div className={styles.chartPlaceholder}>
+                Datos insuficientes para la gráfica (necesitamos al menos 2 operaciones).
               </div>
-              <div className={styles.priceRangeCell}>
-                <div className={styles.priceRangeLab}>Aportado</div>
-                <div className={styles.priceRangeVal}>{formatCurrency(aportado)}</div>
-              </div>
-              <div className={styles.priceRangeCell}>
-                <div className={styles.priceRangeLab}>Valor</div>
-                <div className={styles.priceRangeVal}>{formatCurrency(valorActual)}</div>
+            )}
+          </div>
+
+          <div className={styles.projBoxes}>
+            <div className={styles.pbox}>
+              <div className={styles.pboxLab}>Plusvalía latente</div>
+              <div className={styles.pboxVal}>{formatDelta(plusvalia)}</div>
+              <div className={styles.pboxSub}>sin vender · no tributa aún</div>
+            </div>
+            <div className={styles.pbox}>
+              <div className={styles.pboxLab}>Dividendos cobrados</div>
+              <div className={`${styles.pboxVal} ${styles.g}`}>{formatCurrency(dividendosTotal)}</div>
+              <div className={styles.pboxSub}>
+                {desdeYear !== '—' ? `desde ${desdeYear}` : 'histórico'}
+                {yieldMedio != null ? ` · yield ${formatPercent(yieldMedio)}` : ''}
               </div>
             </div>
           </div>
-        );
-      })()}
+        </div>
 
-      <div className={styles.detailCard}>
-        <div className={styles.detailCardTit}>Evolución y dividendos</div>
-        {serie.length >= 2 ? (
-          <SparklineGigante
-            data={serie}
-            color={getColorByTipo(posicion.tipo)}
-            markers={dividendoMarkers}
-            ariaLabel={`Evolución y cobros de dividendo de ${posicion.nombre || 'la posición'}`}
-          />
-        ) : (
-          <div className={styles.bigPlaceholder}>
-            Datos insuficientes para dibujar la evolución (necesitamos al menos 2 operaciones).
+        {/* La ficha · lo esencial */}
+        <div className={`${styles.card} ${styles.cardScroll}`}>
+          <div className={styles.fcardTitle}>La ficha</div>
+          <div className={styles.fcardSub}>lo esencial de esta {getTipoLabel(posicion.tipo).toLowerCase()}</div>
+
+          <div className={styles.frow}>
+            <span className={styles.k}>{unidadLabelCap}</span>
+            <span className={styles.v}>{participaciones != null ? participaciones.toLocaleString('es-ES') : '—'}</span>
           </div>
-        )}
-      </div>
-
-      <div className={styles.detailCols} style={{ marginTop: 16 }}>
-        <div className={styles.detailCard}>
-          <div className={styles.detailCardTit}>Dividendos · histórico</div>
-          {dividendos.length === 0 ? (
-            <div className={styles.tablaEmpty}>
-              Aún no has registrado ningún dividendo.
-            </div>
-          ) : (
-            <div className={styles.tablaWrap}>
-              <table className={styles.tabla}>
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th style={{ textAlign: 'right' }}>Importe</th>
-                    <th>Notas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dividendos.map((d) => (
-                    <tr key={d.id}>
-                      <td>{formatDate(d.fecha)}</td>
-                      <td className={`${styles.num} ${styles.pos}`}>
-                        {formatCurrency(Number(d.importe ?? 0))}
-                      </td>
-                      <td className={styles.txt}>{d.notas || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className={styles.frow}>
+            <span className={styles.k}>Precio medio · hoy</span>
+            <span className={styles.v}>
+              {precioMedio != null && precioHoy != null
+                ? `${formatCurrency2(precioMedio)} → ${formatCurrency2(precioHoy)}`
+                : '—'}
+            </span>
+          </div>
+          <div className={styles.frow}>
+            <span className={styles.k}>Plusvalía latente</span>
+            <span className={`${styles.v} ${plusvalia >= 0 ? styles.pos : styles.neg}`}>{formatDelta(plusvalia)}</span>
+          </div>
+          <div className={styles.frow}>
+            <span className={styles.k}>Dividendo anual</span>
+            <span className={`${styles.v} ${styles.g}`}>{dividendoAnual != null ? `~${formatCurrency(dividendoAnual)}` : '—'}</span>
+          </div>
+          {posicion.entidad && (
+            <div className={styles.frow}>
+              <span className={styles.k}>Bróker</span>
+              <span className={styles.v}>{posicion.entidad}</span>
             </div>
           )}
-        </div>
 
-        <div className={styles.detailCard}>
-          <div className={styles.detailCardTit}>Operaciones · compras / ventas</div>
-          {operaciones.length === 0 ? (
-            <div className={styles.tablaEmpty}>
-              Aún no hay operaciones registradas.
-            </div>
-          ) : (
-            <div className={styles.tablaWrap}>
-              <table className={styles.tabla}>
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th style={{ textAlign: 'right' }}>Importe</th>
-                    <th style={{ textAlign: 'right' }}>Unidades</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {operaciones.map((o) => (
-                    <tr key={o.id}>
-                      <td>{formatDate(o.fecha)}</td>
-                      <td className={styles.tipo}>{TIPO_LAB[o.tipo]}</td>
-                      <td className={`${styles.num} ${o.tipo === 'reembolso' ? styles.neg : ''}`}>
-                        {o.tipo === 'reembolso' ? '−' : ''}
-                        {formatCurrency(Number(o.importe ?? 0))}
-                      </td>
-                      <td className={styles.num}>
-                        {o.unidades != null ? o.unidades.toLocaleString('es-ES') : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {avisoVisible && dividendoAnual != null && dividendoAnual > 0 && (
+            <div className={styles.aviso}>
+              <button type="button" className={styles.avisoX} onClick={() => setAvisoVisible(false)} aria-label="Cerrar aviso">
+                <CloseIcon />
+              </button>
+              <div className={styles.avisoT}>Dividendos</div>
+              <div className={styles.avisoB}>
+                a este ritmo cobras <strong>~{formatCurrency(dividendoAnual)}</strong> al año
+                {yieldMedio != null ? <> · yield <strong>{formatPercent(yieldMedio)}</strong></> : null}
+              </div>
             </div>
           )}
+
+          {divPorAnio.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <div className={styles.sectionHead}>
+                <span className={styles.sectionLab}>Dividendos por año</span>
+                <span className={styles.sectionTotal}>total {formatCurrency(dividendosTotal)}</span>
+              </div>
+              <div className={styles.miniBars}>
+                <svg viewBox="0 0 360 60" preserveAspectRatio="none" role="img" aria-label="Dividendos por año">
+                  {(() => {
+                    const W = 360;
+                    const H = 56;
+                    const n = divPorAnio.length;
+                    const gap = 8;
+                    const bw = (W - gap * (n - 1)) / n;
+                    const max = Math.max(...divPorAnio.map((d) => d[1]), 1);
+                    return divPorAnio.map(([anio, val], i) => {
+                      const bh = 8 + (val / max) * (H - 8);
+                      const x = i * (bw + gap);
+                      const y = H - bh;
+                      return (
+                        <rect key={anio} x={x} y={y} width={bw} height={bh} rx={2} fill="var(--atlas-v5-gold-2)">
+                          <title>{`${anio} · ${formatCurrency(val)}`}</title>
+                        </rect>
+                      );
+                    });
+                  })()}
+                </svg>
+              </div>
+            </div>
+          )}
+
+          <div className={styles.fcardActs}>
+            <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={onVender}>
+              Vender
+            </button>
+            <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={onEditar}>
+              Editar
+            </button>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnDanger}`}
+              onClick={onEliminar}
+              aria-label="Eliminar esta posición"
+            >
+              <TrashIcon />
+            </button>
+          </div>
         </div>
       </div>
-      {showImportWizard && (
-        <ImportValoracionesWizard
-          activoId={String(posicion.id)}
-          tipoActivo="inversion"
-          activoNombre={posicion.nombre}
-          onClose={() => setShowImportWizard(false)}
-          onSuccess={() => {
-            setShowImportWizard(false);
-            void onReload?.();
-          }}
-        />
-      )}
-    </FichaShell>
+    </div>
   );
 };
 

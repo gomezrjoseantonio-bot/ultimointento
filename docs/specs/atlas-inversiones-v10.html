@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas · Inversiones</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F5F4F1;--card:#FFFFFF;--card-alt:#FBFAF6;--line:#E6E3DC;--line-2:#EFECE5;--ink:#141B2E;--ink-2:#2C3547;--ink-3:#5B6474;--ink-4:#8A92A0;--ink-5:#B8BEC8;--brand:#1E2954;--brand-ink:#0C1230;--gold:#B88A3E;--gold-2:#C59A47;--gold-soft:#D9B576;--gold-lt:#E8D9AE;--gold-wash:#F3EAD6;--gold-ink:#7C5C1F;--neg:#A43328}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink-2);font-family:'Inter',system-ui,sans-serif;font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased;letter-spacing:-.005em;overflow:hidden}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;background:none;border:none;cursor:pointer;color:inherit}
+  .app{display:grid;grid-template-columns:240px 1fr;height:100vh;overflow:hidden}
+  .side{background:var(--brand-ink);color:#BFC5D4;padding:22px 0;display:flex;flex-direction:column;overflow-y:auto}
+  .brand{display:flex;align-items:center;gap:11px;padding:4px 22px 20px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .brand-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#E8D9AE,#B88A3E);display:flex;align-items:center;justify-content:center;color:var(--brand-ink);font-weight:700;font-size:15px}
+  .brand-name{color:#fff;font-weight:700;font-size:17px;line-height:1;letter-spacing:-.015em}
+  .brand-sub{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.42);margin-top:3px}
+  .nav-section{padding:18px 22px 6px;font-size:10px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.38)}
+  .nav-sep{margin:12px 22px 4px;border-top:1px solid rgba(255,255,255,.06)}
+  .nav{display:flex;flex-direction:column;gap:1px;padding:0 12px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:8px 12px;border-radius:7px;color:#B9BFCC;font-size:13.5px;font-weight:500;cursor:pointer}
+  .nav a:hover{background:rgba(255,255,255,.04);color:#fff}
+  .nav a.active{background:rgba(255,255,255,.07);color:#fff;box-shadow:inset 2px 0 0 var(--gold);padding-left:10px}
+  .nav a.active svg{color:var(--gold)}
+  .nav a svg{flex-shrink:0;opacity:.85}
+  .nav a .n{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7)}
+  .nav a.active .n{background:rgba(184,138,62,.25);color:#E8D9AE}
+  .side-foot{margin-top:auto;padding:14px 22px 4px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:11px}
+  .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#E8D9AE,#B88A3E);color:var(--brand-ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .side-foot-name{font-size:13px;color:#fff;font-weight:600;line-height:1.15}
+  .side-foot-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px}
+  .main{height:100vh;overflow:hidden;padding:26px 40px 26px;display:flex;flex-direction:column;max-width:1620px}
+  .page{display:none;flex-direction:column;flex:1;min-height:0}
+  .page.active{display:flex}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:16px;flex-shrink:0}
+  .head h1{font-size:25px;font-weight:700;color:var(--ink);letter-spacing:-.025em;line-height:1}
+  .head-sub{font-size:13px;color:var(--ink-4);margin-top:6px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:9px;font-size:13px;font-weight:600;border:1px solid transparent;white-space:nowrap;cursor:pointer}
+  .btn-ghost{background:var(--card);color:var(--ink-2);border-color:var(--line)}
+  .btn-ghost:hover{border-color:var(--ink-5)}
+  .btn-gold{background:var(--gold);color:#fff;box-shadow:0 2px 8px rgba(184,138,62,.28)}
+  .btn-danger{background:var(--card);color:var(--neg);border-color:var(--line);flex:0 0 auto !important;padding:9px 12px !important}
+  .btn-danger:hover{border-color:var(--neg);background:#FBEEEC}
+  .btn-gold:hover{background:var(--gold-2)}
+  .hero{position:relative;background:var(--brand);border-top:3px solid var(--gold);border-radius:18px;padding:13px 32px 12px;overflow:hidden;flex-shrink:0;box-shadow:0 6px 26px rgba(14,20,35,.14)}
+  .hero-grid{display:grid;grid-template-columns:1.05fr 1.25fr;gap:22px;align-items:stretch}
+  .hero-topL{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .gauge{width:118px;flex-shrink:0;text-align:center}
+  .gauge svg{width:118px;height:66px;display:block}
+  .gauge-cap{font-size:8.5px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45);font-weight:700;margin-top:1px}
+  .gauge-won{font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:#C59A47;margin-top:2px}
+  .fchips{margin-top:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:3px}
+  .fchip{display:flex;align-items:center;gap:12px;padding:3px 0;border-top:1px solid rgba(255,255,255,.07)}
+  .fchip:first-child{border-top:none}
+  .fchip-ic{width:32px;height:32px;border-radius:9px;background:rgba(197,154,71,.16);color:#C59A47;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .fchip-body{flex:1;min-width:0}
+  .fchip-top{display:flex;align-items:baseline;gap:8px}
+  .fchip-nom{font-size:12.5px;font-weight:700;color:#fff}
+  .fchip-do{font-size:10px;color:rgba(255,255,255,.5);font-family:'JetBrains Mono',monospace}
+  .fchip-flow{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:rgba(255,255,255,.68);margin-top:3px}
+  .fchip-flow .ar{color:#C59A47;margin:0 6px}
+  .fchip-flow b{color:#C59A47}
+  .fchip-flow .ret{color:#fff;font-weight:700;margin-left:8px}
+  .fchip-flow .cap{color:rgba(255,255,255,.4)}
+  .fchip-flow .div{color:rgba(255,255,255,.55);margin-left:8px}
+  .renta{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1)}
+  .renta-top{display:flex;align-items:baseline;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.6)}
+  .renta-top b{font-size:18px;color:#C59A47;font-weight:700}
+  .renta-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px;margin-top:9px}
+  .renta-bar .ri{background:#C59A47}.renta-bar .rd{background:#E8D9AE}
+  .renta-leg{display:flex;justify-content:space-between;margin-top:7px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.6)}
+  .renta-leg .l{display:flex;align-items:center;gap:6px}.renta-leg .d{width:8px;height:8px;border-radius:2px}
+  .renta-leg b{color:#fff}
+  .hero-R{background:var(--brand-ink);border-radius:14px;padding:14px 14px 10px;display:flex;flex-direction:column;min-height:0;position:relative}
+  .traj-top{display:flex;align-items:baseline;justify-content:space-between;flex-shrink:0}
+  .traj-title{color:#fff;font-size:12.5px;font-weight:700}.traj-sub{color:rgba(255,255,255,.45);font-size:10px;font-family:'JetBrains Mono',monospace}
+  .traj-chart{flex:1;min-height:0;margin:6px 0 2px;position:relative}
+  .traj-chart svg{width:100%;height:100%;display:block}
+  .traj-tip{position:absolute;background:#0C1230;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:7px 10px;pointer-events:none;opacity:0;transition:opacity .1s;font-family:'JetBrains Mono',monospace;white-space:nowrap;z-index:5}
+  .traj-tip .ty{font-size:9px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.08em}
+  .traj-tip .tv{font-size:14px;font-weight:700;color:#C59A47;margin-top:2px}
+  .traj-tip .tb{margin-top:6px;display:flex;flex-direction:column;gap:3px}
+  .traj-tip .tr{display:flex;align-items:center;gap:6px;font-size:10px;color:rgba(255,255,255,.75)}
+  .traj-tip .tr .d{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+  .traj-tip .tr .nm{flex:1}.traj-tip .tr .am{font-weight:700;color:#fff}
+  .traj-tip .tt{margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.15);display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,.6)}
+  .traj-tip .tt b{color:#C59A47}
+  .traj-leg{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 14px;flex-shrink:0;margin-top:2px}
+  .tlg{display:flex;align-items:center;gap:6px;font-size:9.5px;color:rgba(255,255,255,.6);font-family:'JetBrains Mono',monospace}
+  .tlg .d{width:8px;height:8px;border-radius:2px}
+  .hg-row{display:flex;align-items:center;gap:22px;margin-top:16px}
+  .hg-grow{flex:1}
+  .hg-grow-bar{height:11px;border-radius:6px;overflow:hidden;display:flex;background:rgba(255,255,255,.08)}
+  .hg-grow-bar .apor{background:rgba(255,255,255,.34)}.hg-grow-bar .gain{background:#C59A47}
+  .hg-grow-leg{display:flex;justify-content:space-between;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.55)}
+  .hg-grow-leg b{color:#fff}.hg-grow-leg .g{color:#C59A47}
+  .gauge{width:130px;flex-shrink:0;text-align:center}
+  .gauge svg{width:130px;height:74px;display:block}
+  .gauge-cap{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45);font-weight:700;margin-top:2px}
+  .hero-stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}
+  .hero-R{background:var(--brand-ink);border-radius:14px;padding:14px 16px 12px;display:flex;flex-direction:column;min-height:0}
+  .traj-top{display:flex;align-items:baseline;justify-content:space-between;flex-shrink:0}
+  .traj-title{color:#fff;font-size:12.5px;font-weight:700}.traj-sub{color:rgba(255,255,255,.45);font-size:10px;font-family:'JetBrains Mono',monospace}
+  .traj-chart{flex:1;min-height:0;margin:8px 0 4px}.traj-chart svg{width:100%;height:100%;display:block}
+  .traj-leg{display:flex;gap:16px;flex-shrink:0;margin-bottom:4px}
+  .tlg{display:flex;align-items:center;gap:6px;font-size:10px;color:rgba(255,255,255,.6);font-family:'JetBrains Mono',monospace}
+  .tlg .d{width:8px;height:8px;border-radius:2px}
+  .traj-foot{display:flex;justify-content:space-between;color:rgba(255,255,255,.55);font-family:'JetBrains Mono',monospace;font-size:10.5px;flex-shrink:0}.traj-foot b{color:#fff}
+  .hero-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+  .hero-head-r{display:flex;gap:30px;align-items:flex-end;padding-bottom:5px}
+  .hhs{text-align:right}
+  .hhs-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.5);font-weight:600;margin-bottom:5px}
+  .hhs-val{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;color:#fff;letter-spacing:-.02em}
+  .hhs-val.g{color:#C59A47}
+  .hero-traj{margin-top:12px}
+  .hero-traj svg{width:100%;height:180px;display:block}
+  .ht-legend{display:flex;gap:20px;margin-top:4px;align-items:center}
+  .htl{display:flex;align-items:center;gap:7px;font-size:10.5px;color:rgba(255,255,255,.55);font-family:'JetBrains Mono',monospace}
+  .htl .d{width:8px;height:8px;border-radius:50%}
+  .htl .d.p{background:#E6E2D7}.htl .d.r{background:#C59A47}.htl .d.e{background:rgba(255,255,255,.42)}
+  .hero-in{display:grid;grid-template-columns:1fr auto;gap:40px;align-items:flex-start}
+  .hero-stats3{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px;padding-top:15px;border-top:1px solid rgba(255,255,255,.1)}
+  .hs-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5);font-weight:600}
+  .hs-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:#fff;letter-spacing:-.02em;margin-top:5px}
+  .hs-val.g{color:#C59A47}
+  .hs-sub{font-size:10px;color:rgba(255,255,255,.45);margin-top:3px;font-family:'JetBrains Mono',monospace}
+  .hero-R{background:var(--brand-ink);border-radius:14px;padding:15px 18px 13px;display:flex;flex-direction:column;min-height:0}
+  .traj-top{display:flex;align-items:baseline;justify-content:space-between;flex-shrink:0}
+  .traj-title{color:#fff;font-size:12.5px;font-weight:700}
+  .traj-sub{color:rgba(255,255,255,.45);font-size:10px;font-family:'JetBrains Mono',monospace}
+  .traj-chart{flex:1;min-height:0;margin:8px 0 6px}
+  .traj-chart svg{width:100%;height:100%;display:block}
+  .traj-foot{display:flex;justify-content:space-between;color:rgba(255,255,255,.55);font-family:'JetBrains Mono',monospace;font-size:10.5px;flex-shrink:0}
+  .traj-foot b{color:#fff;font-weight:700}
+  .hero-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#C59A47}
+  .hero-val{font-family:'JetBrains Mono',monospace;font-size:50px;font-weight:700;color:#fff;letter-spacing:-.035em;line-height:1;margin-top:10px}
+  .hero-story{font-size:12.5px;color:rgba(255,255,255,.55);margin-top:12px;font-family:'JetBrains Mono',monospace}
+  .hmeta{display:flex;align-items:center;gap:20px;margin-top:14px}
+  .hm-item{display:flex;align-items:center;gap:10px}
+  .hm-dots{display:flex;gap:5px}
+  .hm-dot{width:9px;height:9px;border-radius:50%}
+  .hm-dot.p{background:#E6E2D7}.hm-dot.r{background:#C59A47}.hm-dot.e{background:rgba(230,226,215,.4)}
+  .hm-txt{font-size:11.5px;color:rgba(255,255,255,.62);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+  .hm-txt b{color:#fff;font-weight:700}
+  .hm-grow{width:130px;height:9px;border-radius:5px;overflow:hidden;display:flex;background:rgba(255,255,255,.08)}
+  .hm-grow .apor{background:rgba(255,255,255,.32)}
+  .hm-grow .gain{background:#C59A47}
+  .story{margin-top:16px}
+  .story-h{font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.5);font-weight:700;margin-bottom:8px}
+  .story-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px}
+  .story-bar .s-renta{background:#C59A47}
+  .story-bar .s-crece{background:rgba(255,255,255,.4)}
+  .story-leg{display:flex;justify-content:space-between;margin-top:9px}
+  .sl{display:flex;align-items:center;gap:8px;font-size:11.5px;color:rgba(255,255,255,.62);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+  .sl .d{width:8px;height:8px;border-radius:2px}
+  .sl .d.r{background:#C59A47}.sl .d.c{background:rgba(255,255,255,.4)}
+  .sl b{color:#fff;font-weight:700}
+  .sl .cap{color:rgba(255,255,255,.5);text-transform:none}
+  .hm-sep{width:1px;height:26px;background:rgba(255,255,255,.12)}
+  .hero-rt{display:flex;align-items:flex-start;gap:28px}
+  .hero-stat{text-align:right}
+  .hero-stat-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.5);font-weight:600;margin-bottom:7px}
+  .hero-stat-val{font-family:'JetBrains Mono',monospace;font-size:21px;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1}
+  .hero-stat-val.g{color:#C59A47}
+  .hero-stat-sub{font-size:10.5px;color:rgba(255,255,255,.45);margin-top:5px;font-family:'JetBrains Mono',monospace}
+  .hero-cta{display:inline-flex;align-items:center;gap:8px;padding:11px 17px;border-radius:10px;font-size:13px;font-weight:600;background:var(--gold);color:#fff;white-space:nowrap;box-shadow:0 2px 10px rgba(184,138,62,.4)}
+  .hero-cta:hover{background:var(--gold-2)}
+  .hero-comp{margin-top:18px}
+  .hero-comp-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px;background:rgba(255,255,255,.06)}
+  .hcs{height:100%}
+  .hcs.planes{background:#E6E2D7}
+  .hcs.rf{background:#C59A47}
+  .hcs.eq{background:rgba(230,226,215,.45)}
+  .hero-comp-leg{display:flex;gap:26px;margin-top:11px}
+  .hcl{display:flex;align-items:center;gap:8px}
+  .hcl-dot{width:8px;height:8px;border-radius:2px}
+  .hcl-dot.planes{background:#E6E2D7}
+  .hcl-dot.rf{background:#C59A47}
+  .hcl-dot.eq{background:rgba(230,226,215,.45)}
+  .hcl-nom{font-size:11.5px;color:rgba(255,255,255,.7);font-weight:500}
+  .hcl-val{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#fff;font-weight:700}
+  .hcl-pct{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:rgba(255,255,255,.45)}
+  .iband{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;flex-shrink:0}
+  .icell{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 15px;position:relative}
+  .icell-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-4);font-weight:700}
+  .icell-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.025em;margin-top:4px}
+  .icell-val.g{color:var(--gold-ink)}
+  .icell-sub{font-size:10px;color:var(--ink-4);font-family:'JetBrains Mono',monospace;margin-top:2px}
+  .iprog{height:5px;border-radius:3px;background:var(--line-2);overflow:hidden;margin-top:8px}
+  .iprog-fill{height:100%;background:var(--gold-soft);border-radius:3px}
+  .isplit{display:flex;height:6px;border-radius:3px;overflow:hidden;gap:2px;margin-top:8px}
+  .isplit .a{background:var(--brand)}.isplit .b{background:var(--gold-soft)}
+  .ispark{position:absolute;right:14px;top:12px;width:88px;height:34px;opacity:.9}
+  .ledger{flex:1;min-height:0;display:flex;flex-direction:column;margin-top:8px}
+  .ledger-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;flex-shrink:0}
+  .ledger-title{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-4)}
+  .ledger-filters{display:flex;gap:6px}
+  .lf{padding:4px 11px;border-radius:20px;font-size:11.5px;font-weight:600;color:var(--ink-3);cursor:pointer;border:1px solid transparent}
+  .lf:hover{color:var(--ink-2)}
+  .lf.active{background:var(--brand);color:#fff}
+  .lf .n{font-family:'JetBrains Mono',monospace;opacity:.6;font-size:10.5px;margin-left:4px}
+  .lf.active .n{opacity:.85;color:#C59A47}
+  .lcard{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column}
+  .grid-cols{display:grid;grid-template-columns:minmax(240px,1.7fr) 92px 210px 130px 156px 24px;gap:22px;align-items:center}
+  .ledger-head{padding:10px 24px;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-5);background:var(--card-alt);border-bottom:1px solid var(--line-2);flex-shrink:0}
+  .ledger-head span[data-col]{cursor:pointer;user-select:none;transition:color .12s}
+  .ledger-head span[data-col]:hover{color:var(--ink-3)}
+  .ledger-head span.sa::after{content:" ↑";color:var(--gold-ink)}
+  .ledger-head span.sd::after{content:" ↓";color:var(--gold-ink)}
+  .ledger-head span:nth-child(2){text-align:left}
+  .ledger-head span:nth-child(4){text-align:left} .ledger-head span:nth-child(5){text-align:right}
+  .ledger-rows{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto}
+  .lrow{padding:0 24px;height:46px;border-bottom:1px solid var(--line-2);cursor:pointer;transition:background .12s;align-items:center}
+  .lrow:last-child{border-bottom:none}
+  .lrow:hover{background:var(--card-alt)}
+  .lrow:hover .lrow-cta svg{color:var(--gold);transform:translateX(2px)}
+  .lrow-nom{font-size:14px;font-weight:700;color:var(--ink);letter-spacing:-.01em;line-height:1.2}
+  .lrow-meta{font-size:11px;color:var(--ink-4);margin-top:2px}
+  .lrow-meta .tt{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-5)}
+  .lrow-desde{text-align:left}
+  .lrow-desde-y{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--ink-2);letter-spacing:-.02em}
+  .lrow-desde-l{font-size:9px;color:var(--ink-5);margin-top:2px;text-transform:uppercase;letter-spacing:.08em}
+  .lrow-peso-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .lrow-peso-fam{font-size:10.5px;color:var(--ink-4);font-weight:600}
+  .lrow-peso-pct{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);font-weight:700}
+  .lrow-peso-bar{height:5px;border-radius:3px;background:var(--line-2);overflow:hidden}
+  .lrow-peso-fill{height:100%;border-radius:3px}
+  .lrow-peso-fill.planes{background:var(--brand)}
+  .lrow-peso-fill.rf{background:var(--gold-soft)}
+  .lrow-peso-fill.eq{background:var(--ink-4)}
+  .lrow-val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.025em;text-align:left}
+  .lrow-rend{text-align:right}
+  .lrow-rend-main{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;letter-spacing:-.02em;color:var(--ink-2);display:inline-flex;align-items:center;gap:5px;justify-content:flex-end}
+  .lrow-rend-main .arw{color:var(--gold-soft);font-size:11px}
+  .lrow-rend-main.renta{color:var(--gold-ink)}
+  .lrow-rend-sub{font-size:10.5px;color:var(--ink-4);margin-top:3px;font-family:'JetBrains Mono',monospace}
+  .lrow-cta{display:flex;justify-content:flex-end}
+  .lrow-cta svg{color:var(--ink-5);transition:all .12s}
+  .back{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:var(--card);border:1px solid var(--line);color:var(--ink-3);font-size:12.5px;font-weight:600;cursor:pointer;margin-bottom:14px;align-self:flex-start;flex-shrink:0}
+  .back:hover{border-color:var(--ink-5);color:var(--ink-2)}
+  .dhero{background:var(--brand);border-top:3px solid var(--gold);border-radius:16px;padding:22px 30px;display:flex;align-items:center;gap:24px;flex-shrink:0;box-shadow:0 6px 22px rgba(14,20,35,.13)}
+  .dhero-eyebrow{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#C59A47}
+  .dhero-nom{font-size:24px;font-weight:700;color:#fff;letter-spacing:-.02em;margin-top:5px;line-height:1}
+  .dhero-meta{font-size:12px;color:rgba(255,255,255,.55);margin-top:7px;font-family:'JetBrains Mono',monospace}
+  .dhero-stats{margin-left:auto;display:flex;gap:30px}
+  .dstat{text-align:right}
+  .dstat-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5);font-weight:600;margin-bottom:6px}
+  .dstat-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#fff;letter-spacing:-.02em}
+  .dstat-val.g{color:#C59A47}
+  .dbody{flex:1;min-height:0;display:grid;grid-template-columns:1.85fr 1fr;gap:16px;margin-top:14px}
+  #page-detalle .card:last-child{overflow-y:auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 26px;display:flex;flex-direction:column;min-height:0}
+  .proj-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-shrink:0}
+  .proj-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-4)}
+  .proj-verdict{font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-.02em;margin-top:8px;line-height:1.25}
+  .proj-verdict .g{color:var(--gold-ink)}
+  .proj-verdict .muted{color:var(--ink-3);font-weight:600;font-size:15px}
+  .obj-ctrl{display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0}
+  .obj-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:9px;background:var(--gold-wash);border:1px solid #E8D49B;font-size:12px;font-weight:600;color:var(--gold-ink);cursor:pointer;white-space:nowrap}
+  .obj-chip .v{font-family:'JetBrains Mono',monospace;font-weight:700}
+  .obj-chip.alt{background:var(--card-alt);border-color:var(--line-2);color:var(--ink-3)}
+  .sldr{width:230px}
+  .sldr-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .sldr-lab{font-size:10.5px;font-weight:600;color:var(--ink-4);text-transform:uppercase;letter-spacing:.08em}
+  .sldr-lab .m{opacity:.6;text-transform:none;letter-spacing:0}
+  .sldr-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--gold-ink)}
+  .sldr-val.grey{color:var(--ink-3)}
+  .rng{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;background:var(--line);outline:none;margin:0 0 14px}
+  .rng::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold);border:2px solid #fff;box-shadow:0 1px 4px rgba(184,138,62,.5);cursor:pointer}
+  .rng.grey::-webkit-slider-thumb{background:var(--ink-4);box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  .rng::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--gold);border:2px solid #fff;cursor:pointer}
+  .proj-legend{display:flex;gap:20px;margin-top:12px;flex-shrink:0}
+  .pl{display:inline-flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-3);font-weight:500}
+  .pl-swatch{width:20px;height:0;border-top:3px solid var(--gold);border-radius:2px}
+  .pl-swatch.solid{border-top:3px solid #B88A3E}
+  .pl-swatch.dot{border-top:2px dashed #C59A47}
+  .pl-swatch.dash{border-top:2px dashed var(--ink-5)}
+  .proj-chart{flex:1;min-height:0;margin-top:10px;position:relative}
+  .chart-tip{position:absolute;pointer-events:none;background:var(--brand-ink);color:#fff;padding:7px 10px;border-radius:8px;font-size:11px;font-family:'JetBrains Mono',monospace;white-space:nowrap;opacity:0;transform:translate(-50%,-120%);transition:opacity .1s;z-index:6;box-shadow:0 6px 18px rgba(0,0,0,.28)}
+  .chart-tip.show{opacity:1}
+  .chart-tip .yr{color:#D9B576;font-weight:700}
+  .chart-tip .rt{color:#B8BEC8}
+  .apo-wrap{position:relative}
+  .proj-chart svg{width:100%;height:100%;display:block}
+  .proj-boxes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;flex-shrink:0}
+  .pbox{background:var(--card-alt);border:1px solid var(--line-2);border-radius:11px;padding:14px 18px}
+  .pbox-lab{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-4);font-weight:700}
+  .pbox-val{font-family:'JetBrains Mono',monospace;font-size:23px;font-weight:700;color:var(--ink);letter-spacing:-.03em;margin-top:5px}
+  .pbox-val.g{color:var(--gold-ink)}
+  .pbox-sub{font-size:10.5px;color:var(--ink-4);margin-top:3px;font-family:'JetBrains Mono',monospace}
+  .fcard-title{font-size:13px;font-weight:700;color:var(--ink);flex-shrink:0}
+  .fcard-sub{font-size:11.5px;color:var(--ink-4);margin-top:2px;margin-bottom:6px;flex-shrink:0}
+  .frow{padding:8px 0;border-top:1px solid var(--line-2);display:flex;justify-content:space-between;align-items:baseline}
+  .frow:first-of-type{border-top:none}
+  .frow .k{font-size:12px;color:var(--ink-3)}
+  .frow .v{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--ink)}
+  .frow .v.g{color:var(--gold-ink)}
+  .fcard-acts{margin-top:18px;display:flex;gap:9px;padding-top:0}
+  .fcard-acts .btn{flex:1;justify-content:center;padding:9px 0}
+  .backdrop{position:fixed;inset:0;background:rgba(12,18,48,.55);z-index:100;display:none;align-items:center;justify-content:center;padding:30px}
+  .backdrop.show{display:flex;animation:fade .15s}
+  .modal{background:var(--card);border-radius:16px;width:100%;max-width:720px;overflow:hidden;box-shadow:0 24px 64px rgba(14,20,35,.3)}
+  .modal-hd{background:var(--brand);color:#fff;padding:20px 26px;display:flex;align-items:center;gap:14px}
+  .modal-hd-ic{width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;color:var(--gold)}
+  .modal-hd-t{font-size:17px;font-weight:700}
+  .modal-hd-s{font-size:12px;color:rgba(255,255,255,.6);margin-top:2px}
+  .modal-x{margin-left:auto;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6)}
+  .modal-x:hover{background:rgba(255,255,255,.08);color:#fff}
+  .modal-body{padding:22px 26px}
+  .mfield{margin-bottom:14px}
+  .mfield label{display:block;font-size:11.5px;font-weight:600;color:var(--ink-3);margin-bottom:6px}
+  .mfield input,.mfield select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:13px;color:var(--ink);background:var(--card);font-family:inherit;outline:none}
+  .mfield input:focus,.mfield select:focus{border-color:var(--gold-soft)}
+  .mfield input.mono{font-family:'JetBrains Mono',monospace}
+  .mrow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  #modal-alta .modal{max-height:92vh;display:flex;flex-direction:column}
+  #modal-alta .modal-body{overflow-y:auto}
+  .alta-body{display:grid;grid-template-columns:1.6fr 1fr;gap:22px}
+  .alta-body .mfield{margin-bottom:9px}
+  .alta-body .mfield label{margin-bottom:4px;font-size:11px}
+  .alta-body .mfield input,.alta-body .mfield select{padding:8px 11px;font-size:12.5px}
+  .alta-body .mrow{gap:12px;margin-bottom:0}
+  .alta-sec{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);margin:13px 0 7px}
+  .alta-sec:first-child{margin-top:0}
+  .aseg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .aseg-opt{border:1px solid var(--line);border-radius:9px;padding:8px 8px;text-align:center;cursor:pointer;background:var(--card)}
+  .aseg-opt:hover{border-color:var(--ink-5)}
+  .aseg-opt.on{border-color:var(--gold);background:var(--gold-wash)}
+  .aseg-t{font-size:14px;font-weight:700;color:var(--ink)}
+  .aseg-opt.on .aseg-t{color:var(--gold-ink)}
+  .aseg-s{font-size:9.5px;color:var(--ink-4);margin-top:3px;line-height:1.25}
+  .req{color:var(--neg);margin-left:2px}.opt{color:var(--ink-5);font-weight:400;margin-left:4px}
+  .prev-navy{background:var(--brand);border-radius:12px;padding:18px 20px;color:#fff}
+  .prev-lab{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.55);font-weight:700}
+  .prev-val{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;letter-spacing:-.03em;margin-top:7px;color:#C59A47}
+  .prev-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;font-family:'JetBrains Mono',monospace}
+  .prev-navy .prow{border-top-color:rgba(255,255,255,.12)}
+  .prev-navy .prow .k{color:rgba(255,255,255,.6)}
+  .prev-navy .prow .v{color:#fff}
+  .prow{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line-2);font-size:12px}
+  .prow:first-of-type{border-top:none}.prow .k{color:var(--ink-3)}.prow .v{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ink)}.prow .v.g{color:var(--gold-ink)}
+  .prev-sec{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-4);font-weight:700;margin:14px 0 4px}
+  .prev-note{background:var(--gold-wash);border:1px solid #E8D49B;border-left:3px solid var(--gold);border-radius:8px;padding:12px 14px;font-size:11.5px;color:var(--ink-2);line-height:1.5;margin-top:12px}
+  .prev-note strong{color:var(--gold-ink)}
+  .num{max-width:130px}
+  .prev-lite{background:var(--card-alt);border:1px solid var(--line-2);border-radius:12px;padding:18px 20px}
+  .prev-lite .plab{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-4);font-weight:700}
+  .prev-lite .pval{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--ink);letter-spacing:-.03em;margin-top:6px}
+  .prev-lite .pval.g{color:var(--gold-ink)}
+  .prev-lite .psub{font-size:11px;color:var(--ink-4);margin-top:4px;font-family:'JetBrains Mono',monospace}
+  .modal-q{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);margin-bottom:14px}
+  .fam-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .fam{border:1px solid var(--line);border-radius:12px;padding:18px 16px;text-align:center;cursor:pointer;transition:all .15s}
+  .fam:hover{border-color:var(--gold-soft);box-shadow:0 2px 10px rgba(184,138,62,.12);transform:translateY(-2px)}
+  .fam-ic{width:40px;height:40px;margin:0 auto 11px;border-radius:11px;background:var(--card-alt);border:1px solid var(--line);color:var(--ink-3);display:flex;align-items:center;justify-content:center}
+  .fam-n{font-size:13.5px;font-weight:700;color:var(--ink)}
+  .fam-s{font-size:10.5px;color:var(--ink-4);margin-top:4px;font-family:'JetBrains Mono',monospace}
+  .modal-ft{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 26px;border-top:1px solid var(--line-2);background:var(--card-alt)}
+  .modal-ft-info{font-size:11.5px;color:var(--ink-4);display:inline-flex;align-items:center;gap:8px}
+  .modal-ft-info svg{color:var(--gold-ink)}
+  .modal-ft-acts{display:flex;gap:10px}
+  .aviso{position:relative;background:var(--gold-wash);border:1px solid #E8D49B;border-left:3px solid var(--gold);border-radius:11px;padding:11px 32px 11px 14px;margin-top:12px}
+  .aviso-t{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-ink)}
+  .aviso-b{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink-2);margin-top:6px;line-height:1.55}
+  .aviso-x{position:absolute;top:9px;right:9px;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--gold-ink);opacity:.7}
+  .aviso-x:hover{opacity:1;background:rgba(184,138,62,.14)}
+  .cobros{display:flex;gap:4px;margin-top:10px}
+  .cmes{flex:1;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--ink-4);background:var(--card-alt);border:1px solid var(--line-2)}
+  .cmes.cob{background:var(--gold-wash);color:var(--gold-ink);border-color:#E8D49B}
+  .cmes.now{border:1.5px solid var(--gold);color:var(--gold-ink);background:#fff}
+  .cmes.fut{background:transparent;color:var(--ink-5);border-style:dashed}
+  .gest-row{display:flex;align-items:center;gap:10px;padding:4px 0;border-top:1px solid var(--line-2)}
+  .gest-row:first-of-type{border-top:none}
+  .gr-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+  .gr-main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .gr-nom{font-size:12.5px;font-weight:600;color:var(--ink-2);line-height:1.15}
+  .gr-per{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-4)}
+  .gr-ret{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+  .gr-abs{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--gold-ink)}
+  .gr-pct{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-4)}
+  .gr-total{display:flex;justify-content:space-between;align-items:baseline;padding-top:7px;margin-top:3px;border-top:1px solid var(--line)}
+  .gr-total .k{font-size:10.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+  .gr-total .v{font-family:'JetBrains Mono',monospace;font-size:13.5px;font-weight:700;color:var(--gold-ink)}
+  .tl{position:relative;margin:6px 0 4px;padding-left:20px}
+  .tl::before{content:'';position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:var(--line)}
+  .tl-item{position:relative;padding:9px 0}
+  .tl-dot{position:absolute;left:-19px;top:12px;width:11px;height:11px;border-radius:50%;background:#fff;border:2.5px solid var(--gold)}
+  .tl-item.cur .tl-dot{background:var(--gold)}
+  .tl-flow{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+  .tl-flow .arw{color:var(--gold-ink);margin:0 6px}
+  .tl-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-4);margin-top:3px}
+  .el-warn{width:44px;height:44px;border-radius:12px;background:#FBEEEC;color:var(--neg);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--brand-ink);color:#fff;padding:11px 18px;border-radius:8px;font-size:12.5px;opacity:0;transition:all .2s;pointer-events:none;z-index:300}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="brand-mark">A</div><div><div class="brand-name">Atlas</div><div class="brand-sub">Patrimonio & Renta</div></div></div>
+    <nav class="nav" style="padding-top:10px;"><a onclick="toast('Panel')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Panel</a></nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a onclick="toast('Inmuebles')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles <span class="n">8</span></a>
+      <a class="active" onclick="show('galeria')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>Inversiones <span class="n">6</span></a>
+      <a onclick="toast('Tesorería')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</a>
+      <a onclick="toast('Financiación')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg>Financiación <span class="n">13</span></a>
+      <a onclick="toast('Personal')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>Personal</a>
+    </nav>
+    <div class="nav-section">Operativa</div>
+    <nav class="nav">
+      <a onclick="toast('Contratos')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos <span class="n">30</span></a>
+      <a onclick="toast('Mi Plan')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>Mi Plan</a>
+      <a onclick="toast('Fiscal')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Fiscal <span class="n">3</span></a>
+      <a onclick="toast('Archivo')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav"><a onclick="toast('Ajustes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/></svg>Ajustes</a></nav>
+    <div class="side-foot"><div class="avatar">JA</div><div style="min-width:0"><div class="side-foot-name">José A.</div><div class="side-foot-sub">Plan Pro</div></div></div>
+  </aside>
+
+  <main class="main">
+    <!-- GALERÍA -->
+    <div class="page active" id="page-galeria">
+      <div class="head">
+        <div><h1>Inversiones</h1><div class="head-sub">tu cartera · y lo que te renta</div></div>
+        <button class="btn btn-gold" onclick="openM()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nueva posición</button>
+      </div>
+
+      <div class="hero">
+        <div class="hero-grid">
+          <div>
+            <div class="hero-topL">
+              <div><div class="hero-eyebrow">Mi cartera</div><div class="hero-val">299.781 €</div></div>
+              <div class="gauge"><svg id="gaugeR" viewBox="0 0 118 66"></svg><div class="gauge-cap">rentabilidad</div><div class="gauge-won">+77.317 €</div></div>
+            </div>
+            <div class="fchips">
+              <div class="fchip">
+                <div class="fchip-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                <div class="fchip-body"><div class="fchip-top"><span class="fchip-nom">Planes de pensión</span></div>
+                <div class="fchip-flow"><span class="cap">aportado</span> 85.000 €<span class="ar">▸</span><b>146.041 €</b><span class="ret">+6,8%/año</span></div></div>
+              </div>
+              <div class="fchip">
+                <div class="fchip-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></div>
+                <div class="fchip-body"><div class="fchip-top"><span class="fchip-nom">Préstamos</span></div>
+                <div class="fchip-flow"><span class="cap">empezaste</span> 160.000 €<span class="ar">▸</span><span class="cap">vivo</span> <b>147.246 €</b><span class="ret">+5,8%/año</span></div></div>
+              </div>
+              <div class="fchip">
+                <div class="fchip-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div>
+                <div class="fchip-body"><div class="fchip-top"><span class="fchip-nom">Acciones</span></div>
+                <div class="fchip-flow"><span class="cap">aportado</span> 3.807 €<span class="ar">▸</span><b>6.494 €</b><span class="ret">+8,1%/año</span></div></div>
+              </div>
+            </div>
+            <div class="renta">
+              <div class="renta-top"><span>Tu renta pasiva</span><b>8.494 €</b><span>al año · 708 €/mes</span></div>
+              <div class="renta-bar"><div class="ri" style="width:86%"></div><div class="rd" style="width:14%"></div></div>
+              <div class="renta-leg"><span class="l"><span class="d" style="background:#C59A47"></span>intereses <b>7.314 €</b></span><span class="l"><b>1.180 €</b> dividendos<span class="d" style="background:#E8D9AE"></span></span></div>
+            </div>
+          </div>
+          <div class="hero-R">
+            <div class="traj-top"><div class="traj-title">Trayectoria a 20 años</div><div class="traj-sub">por posición · pasa por encima</div></div>
+            <div class="traj-chart"><svg id="heroTraj" viewBox="0 0 360 170" preserveAspectRatio="none"></svg><div class="traj-tip" id="trajTip"></div></div>
+            <div class="traj-leg" id="trajLeg"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ledger">
+        <div class="ledger-top">
+          <div class="ledger-title">Posiciones</div>
+          <div class="ledger-filters">
+            <div class="lf active" onclick="filt(this)">Todas <span class="n">6</span></div>
+            <div class="lf" onclick="filt(this)">Planes <span class="n">2</span></div>
+            <div class="lf" onclick="filt(this)">Renta fija <span class="n">3</span></div>
+            <div class="lf" onclick="filt(this)">Equity <span class="n">1</span></div>
+          </div>
+        </div>
+        <div class="lcard">
+          <div class="ledger-head grid-cols"><span data-col="nom" onclick="sortLedger('nom')">Posición</span><span data-col="year" onclick="sortLedger('year')">Desde</span><span data-col="peso" onclick="sortLedger('peso')">Peso en cartera</span><span data-col="valor" onclick="sortLedger('valor')">Valor</span><span>Cómo va</span><span></span></div>
+          <div class="ledger-rows">
+            <div class="lrow grid-cols" onclick="show('detalle')" data-nom="Indexado S&amp;P 500" data-year="2013" data-peso="35.6" data-valor="106641">
+              <div><div class="lrow-nom">Indexado S&amp;P 500</div><div class="lrow-meta">Myinvestor <span class="tt">· plan</span></div></div>
+              <div class="lrow-desde"><div class="lrow-desde-y">2013</div><div class="lrow-desde-l">13 años</div></div>
+              <div><div class="lrow-peso-top"><span class="lrow-peso-fam">Planes</span><span class="lrow-peso-pct">35,6%</span></div><div class="lrow-peso-bar"><div class="lrow-peso-fill planes" style="width:73%"></div></div></div>
+              <div class="lrow-val">106.641 €</div>
+              <div class="lrow-rend"><div class="lrow-rend-main">+165%</div></div>
+              <div class="lrow-cta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            </div>
+            <div class="lrow grid-cols" onclick="show('detalle-prestamo')" data-nom="Smart Yield" data-year="2024" data-peso="30.0" data-valor="90000">
+              <div><div class="lrow-nom">Smart Yield</div><div class="lrow-meta">Smartflip <span class="tt">· préstamo p2p</span></div></div>
+              <div class="lrow-desde"><div class="lrow-desde-y">2024</div><div class="lrow-desde-l">2 años</div></div>
+              <div><div class="lrow-peso-top"><span class="lrow-peso-fam">Renta fija</span><span class="lrow-peso-pct">30,0%</span></div><div class="lrow-peso-bar"><div class="lrow-peso-fill rf" style="width:61%"></div></div></div>
+              <div class="lrow-val">90.000 €</div>
+              <div class="lrow-rend"><div class="lrow-rend-main renta">9.000 €/año</div></div>
+              <div class="lrow-cta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            </div>
+            <div class="lrow grid-cols" onclick="toast('Detalle · BBVA')" data-nom="BBVA Empleo" data-year="2016" data-peso="13.1" data-valor="39400">
+              <div><div class="lrow-nom">BBVA Empleo</div><div class="lrow-meta">BBVA <span class="tt">· plan</span></div></div>
+              <div class="lrow-desde"><div class="lrow-desde-y">2016</div><div class="lrow-desde-l">10 años</div></div>
+              <div><div class="lrow-peso-top"><span class="lrow-peso-fam">Planes</span><span class="lrow-peso-pct">13,1%</span></div><div class="lrow-peso-bar"><div class="lrow-peso-fill planes" style="width:27%"></div></div></div>
+              <div class="lrow-val">39.400 €</div>
+              <div class="lrow-rend"><div class="lrow-rend-main">+26%</div></div>
+              <div class="lrow-cta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            </div>
+            <div class="lrow grid-cols" onclick="show('detalle-prestamo')" data-nom="Revitaliza" data-year="2024" data-peso="11.9" data-valor="35741">
+              <div><div class="lrow-nom">Revitaliza</div><div class="lrow-meta">Aroa <span class="tt">· préstamo familiar</span></div></div>
+              <div class="lrow-desde"><div class="lrow-desde-y">2024</div><div class="lrow-desde-l">2 años</div></div>
+              <div><div class="lrow-peso-top"><span class="lrow-peso-fam">Renta fija</span><span class="lrow-peso-pct">11,9%</span></div><div class="lrow-peso-bar"><div class="lrow-peso-fill rf" style="width:24%"></div></div></div>
+              <div class="lrow-val">35.741 €</div>
+              <div class="lrow-rend"><div class="lrow-rend-main renta">427 €/mes</div></div>
+              <div class="lrow-cta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            </div>
+            <div class="lrow grid-cols" onclick="show('detalle-prestamo')" data-nom="Préstamo Creación" data-year="2023" data-peso="7.2" data-valor="21505">
+              <div><div class="lrow-nom">Préstamo Creación</div><div class="lrow-meta">Unihouser <span class="tt">· préstamo empresa</span></div></div>
+              <div class="lrow-desde"><div class="lrow-desde-y">2023</div><div class="lrow-desde-l">3 años</div></div>
+              <div><div class="lrow-peso-top"><span class="lrow-peso-fam">Renta fija</span><span class="lrow-peso-pct">7,2%</span></div><div class="lrow-peso-bar"><div class="lrow-peso-fill rf" style="width:15%"></div></div></div>
+              <div class="lrow-val">21.505 €</div>
+              <div class="lrow-rend"><div class="lrow-rend-main renta">542 €/mes</div></div>
+              <div class="lrow-cta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            </div>
+            <div class="lrow grid-cols" onclick="show('detalle-equity')" data-nom="Orange" data-year="2019" data-peso="2.2" data-valor="6494">
+              <div><div class="lrow-nom">Orange</div><div class="lrow-meta">BNP Paribas <span class="tt">· acción</span></div></div>
+              <div class="lrow-desde"><div class="lrow-desde-y">2019</div><div class="lrow-desde-l">7 años</div></div>
+              <div><div class="lrow-peso-top"><span class="lrow-peso-fam">Equity</span><span class="lrow-peso-pct">2,2%</span></div><div class="lrow-peso-bar"><div class="lrow-peso-fill eq" style="width:5%"></div></div></div>
+              <div class="lrow-val">6.494 €</div>
+              <div class="lrow-rend"><div class="lrow-rend-main">+71%</div></div>
+              <div class="lrow-cta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DETALLE -->
+    <div class="page" id="page-detalle">
+      <div class="back" onclick="show('galeria')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Volver a Inversiones</div>
+      <div class="dhero">
+        <div>
+          <div class="dhero-eyebrow">Plan de pensiones · indexación S&amp;P 500</div>
+          <div class="dhero-nom">Indexado S&amp;P 500 · MyInvestor</div>
+          <div class="dhero-meta">desde 2013 · gestora actual Myinvestor · ha pasado por 4 gestoras</div>
+        </div>
+        <div class="dhero-stats">
+          <div class="dstat"><div class="dstat-lab">Valor hoy</div><div class="dstat-val">106.641 €</div></div>
+          <div class="dstat"><div class="dstat-lab">Aportado</div><div class="dstat-val">40.239 €</div></div>
+          <div class="dstat"><div class="dstat-lab">Rentabilidad</div><div class="dstat-val g">+8,7%/año</div></div>
+        </div>
+      </div>
+      <div class="dbody">
+        <div class="card">
+          <div class="proj-hd">
+            <div>
+              <div class="proj-eyebrow">Proyección · si mantienes tu rentabilidad objetivo</div>
+              <div class="proj-verdict" id="projVerdict">A los 65 (2045) tendrás <span class="g">516 k €</span><br><span class="muted">323 k € en poder adquisitivo real</span></div>
+            </div>
+            <div class="obj-ctrl">
+              <div class="sldr">
+                <div class="sldr-row"><span class="sldr-lab">Rentabilidad objetivo</span><span class="sldr-val" id="objVal">8,7%</span></div>
+                <input type="range" class="rng" id="objRange" min="3" max="14" step="0.1" value="8.7" oninput="renderProj()">
+                <div class="sldr-row"><span class="sldr-lab">Inflación <span class="m">· del escenario</span></span><span class="sldr-val grey" id="inflVal">2,5%</span></div>
+                <input type="range" class="rng grey" id="inflRange" min="0" max="5" step="0.1" value="2.5" oninput="renderProj()">
+              </div>
+              <div class="obj-chip alt" onclick="toast('Editar edad de rescate')">Rescate a los <span class="v">65</span> · 2045</div>
+            </div>
+          </div>
+          <div class="proj-legend">
+            <span class="pl"><span class="pl-swatch solid"></span>Tu valor real · 2013 → hoy</span>
+            <span class="pl"><span class="pl-swatch dot"></span><span id="legObj">Objetivo 8,7% / año</span></span>
+            <span class="pl"><span class="pl-swatch dash"></span>Poder adquisitivo real</span>
+          </div>
+          <div class="proj-chart">
+            <svg id="projSvg" viewBox="0 0 720 300" preserveAspectRatio="none">
+              <defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B88A3E" stop-opacity="0.16"/><stop offset="1" stop-color="#B88A3E" stop-opacity="0"/></linearGradient></defs>
+              <g stroke="#EFECE5" stroke-width="1"><line x1="56" y1="30" x2="672" y2="30"/><line x1="56" y1="127" x2="672" y2="127"/><line x1="56" y1="214" x2="672" y2="214"/></g>
+              <line x1="306" y1="24" x2="306" y2="262" stroke="#D8D4CB" stroke-width="1" stroke-dasharray="2 3"/>
+              <path id="pcArea" fill="url(#pg)"></path>
+              <path id="pcObj" fill="none" stroke="#C59A47" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.85"></path>
+              <path id="pcReal" fill="none" stroke="#8A92A0" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"></path>
+              <path id="pcPast" fill="none" stroke="#B88A3E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path id="pcFut" fill="none" stroke="#B88A3E" stroke-width="2.6" stroke-dasharray="7 4" stroke-linecap="round"></path>
+              
+              
+              
+              <line id="pcGuide" y1="24" y2="262" stroke="#B8BEC8" stroke-width="1" opacity="0"></line>
+              <circle id="pcDot" r="5" fill="#B88A3E" stroke="#fff" stroke-width="2" opacity="0"></circle>
+              <rect id="pcHit" x="56" y="18" width="616" height="252" fill="transparent" style="cursor:crosshair"></rect>
+              <g font-family="JetBrains Mono" font-size="10" fill="#8A92A0"><text x="56" y="278">2013</text><text x="306" y="278" text-anchor="middle">hoy · 2026</text><text x="672" y="278" text-anchor="end">2045</text></g>
+            </svg>
+            <div class="chart-tip" id="pcTip"></div>
+          </div>
+          <div class="proj-boxes">
+            <div class="pbox"><div class="pbox-lab">Valor final nominal</div><div class="pbox-val g" id="boxNom">516 k €</div><div class="pbox-sub">a este ritmo, sin aportar más</div></div>
+            <div class="pbox"><div class="pbox-lab">Poder adquisitivo real</div><div class="pbox-val" id="boxReal">323 k €</div><div class="pbox-sub" id="boxRealSub">descontada inflación 2,5%</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="fcard-title">La ficha</div>
+          <div class="fcard-sub">lo esencial de esta posición</div>
+          <div class="frow"><span class="k">Ganancia acumulada</span><span class="v">+66.401 €</span></div>
+          <div class="frow"><span class="k">Frente al S&amp;P 500</span><span class="v">−0,4% / año</span></div>
+          <div class="frow"><span class="k">Aportación máxima 2026</span><span class="v g">1.500 €</span></div>
+          <div class="frow"><span class="k">Ahorro IRPF si la llenas</span><span class="v g">675 €</span></div>
+          <div class="frow"><span class="k">Liquidez</span><span class="v">jubilación</span></div>
+          <div class="aviso">
+            <button class="aviso-x" onclick="cerrar(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            <div class="aviso-t">Este año aún puedes</div>
+            <div class="aviso-b">aportar <strong>1.500 €</strong> y ahorrar <strong>675 €</strong> de IRPF · sube tu proyección a <strong id="avisoProj">531 k€</strong></div>
+          </div>
+          <div style="margin-top:14px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);margin-bottom:5px;">Rentabilidad por gestora</div>
+            <div class="gest-row"><span class="gr-dot" style="background:#B88A3E"></span><div class="gr-main"><span class="gr-nom">Myinvestor</span><span class="gr-per">2025 – hoy</span></div><span class="gr-ret"><span class="gr-abs">+24.816 €</span><span class="gr-pct">≈ +21%/año</span></span></div>
+            <div class="gest-row"><span class="gr-dot" style="background:#C59A47"></span><div class="gr-main"><span class="gr-nom">Indexa Capital</span><span class="gr-per">2021 – 2025</span></div><span class="gr-ret"><span class="gr-abs">+25.777 €</span><span class="gr-pct">≈ +10%/año</span></span></div>
+            <div class="gest-row"><span class="gr-dot" style="background:#D9B576"></span><div class="gr-main"><span class="gr-nom">ING Naranja S&amp;P 500</span><span class="gr-per">2016 – 2021</span></div><span class="gr-ret"><span class="gr-abs">+13.644 €</span><span class="gr-pct">≈ +7%/año</span></span></div>
+            <div class="gest-row"><span class="gr-dot" style="background:#E6D9B0"></span><div class="gr-main"><span class="gr-nom">Sabadell Pensiones</span><span class="gr-per">2013 – 2016</span></div><span class="gr-ret"><span class="gr-abs">+2.165 €</span><span class="gr-pct">≈ +2%/año</span></span></div>
+            <div class="gr-total"><span class="k">Total generado</span><span class="v">+66.401 €</span></div>
+          </div>
+          <div class="fcard-acts">
+            <button class="btn btn-ghost" onclick="openTraspaso()">Traspasar</button>
+            <button class="btn btn-ghost" onclick="toast('Rescatar (jubilación)')">Rescatar</button>
+            <button class="btn btn-danger" onclick="openEliminar('este plan')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DETALLE PRÉSTAMO -->
+    <div class="page" id="page-detalle-prestamo">
+      <div class="back" onclick="show('galeria')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Volver a Inversiones</div>
+      <div class="dhero">
+        <div>
+          <div class="dhero-eyebrow">Préstamo P2P · rendimiento fijo</div>
+          <div class="dhero-nom">Smart Yield · Smartflip</div>
+          <div class="dhero-meta">desde 2024 · 2 años · TIN 10,0% · cobro mensual · vence 2029</div>
+        </div>
+        <div class="dhero-stats">
+          <div class="dstat"><div class="dstat-lab">Capital prestado</div><div class="dstat-val">90.000 €</div></div>
+          <div class="dstat"><div class="dstat-lab">Cobrado hasta hoy</div><div class="dstat-val g">18.750 €</div></div>
+          <div class="dstat"><div class="dstat-lab">TIN</div><div class="dstat-val">10,0%</div></div>
+        </div>
+      </div>
+      <div class="dbody">
+        <div class="card">
+          <div class="proj-hd">
+            <div>
+              <div class="proj-eyebrow">Renta · lo que te paga este préstamo</div>
+              <div class="proj-verdict">Ya has cobrado <span class="g">18.750 €</span><br><span class="muted">te quedan 26.250 € por cobrar hasta 2029</span></div>
+            </div>
+            <div class="obj-ctrl">
+              <div class="obj-chip" onclick="toast('Editar condiciones')">TIN <span class="v">10,0%</span> · mensual ✎</div>
+              <div class="obj-chip alt">Cobras <span class="v">750 €</span> / mes</div>
+            </div>
+          </div>
+          <div class="proj-legend">
+            <span class="pl"><span class="pl-swatch solid"></span>Cobrado (real)</span>
+            <span class="pl"><span class="pl-swatch dash" style="border-top-color:#B88A3E;"></span>Por cobrar (previsto)</span>
+          </div>
+          <div class="proj-chart">
+            <svg id="loanSvg" viewBox="0 0 720 300" preserveAspectRatio="none">
+              <defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B88A3E" stop-opacity="0.16"/><stop offset="1" stop-color="#B88A3E" stop-opacity="0"/></linearGradient></defs>
+              <g stroke="#EFECE5" stroke-width="1"><line x1="56" y1="40" x2="672" y2="40"/><line x1="56" y1="140" x2="672" y2="140"/><line x1="56" y1="240" x2="672" y2="240"/></g>
+              <g font-family="JetBrains Mono" font-size="10" fill="#8A92A0"><text x="50" y="44" text-anchor="end">45.000 €</text><text x="50" y="144" text-anchor="end">22.500 €</text><text x="50" y="244" text-anchor="end">0 €</text></g>
+              <line id="lnHoy" y1="34" y2="252" stroke="#D8D4CB" stroke-width="1" stroke-dasharray="2 3"></line>
+              <path id="lnArea" fill="url(#lg)"></path>
+              <path id="lnFut" fill="none" stroke="#B88A3E" stroke-width="2.6" stroke-dasharray="7 4" stroke-linecap="round"></path>
+              <path id="lnPast" fill="none" stroke="#B88A3E" stroke-width="3" stroke-linecap="round"></path>
+              <circle id="lnDotHoy" r="4.5" fill="#fff" stroke="#B88A3E" stroke-width="2.5"></circle>
+              <circle cx="672" cy="40" r="5" fill="#B88A3E" stroke="#fff" stroke-width="2"></circle>
+              <line id="lnGuide" y1="34" y2="252" stroke="#B8BEC8" stroke-width="1" opacity="0"></line>
+              <circle id="lnDot" r="5" fill="#B88A3E" stroke="#fff" stroke-width="2" opacity="0"></circle>
+              <rect id="lnHit" x="56" y="30" width="616" height="228" fill="transparent" style="cursor:crosshair"></rect>
+              <g id="lnXlab" font-family="JetBrains Mono" font-size="10" fill="#8A92A0"></g>
+            </svg>
+            <div class="chart-tip" id="lnTip"></div>
+          </div>
+          <div class="proj-boxes">
+            <div class="pbox"><div class="pbox-lab">Cobrado hasta hoy</div><div class="pbox-val g">18.750 €</div><div class="pbox-sub">25 cobros de 750 €</div></div>
+            <div class="pbox"><div class="pbox-lab">Por cobrar hasta 2029</div><div class="pbox-val">26.250 €</div><div class="pbox-sub">35 cobros previstos</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="fcard-title">La ficha</div>
+          <div class="fcard-sub">lo esencial de este préstamo</div>
+          <div class="frow"><span class="k">Interés anual</span><span class="v">9.000 €</span></div>
+          <div class="frow"><span class="k">TIN · TAE</span><span class="v">10,0%</span></div>
+          <div class="frow"><span class="k">Capital vivo</span><span class="v">90.000 €</span></div>
+          <div class="frow"><span class="k">Próximo cobro</span><span class="v g">5 sep · 750 €</span></div>
+          <div class="frow"><span class="k">Vencimiento</span><span class="v">2029</span></div>
+          <div class="frow"><span class="k">Garantía</span><span class="v">sin garantía real</span></div>
+          <div class="aviso">
+            <button class="aviso-x" onclick="cerrar(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            <div class="aviso-t">Próximo cobro</div>
+            <div class="aviso-b">en 28 días entran <strong>750 €</strong> a tu cuenta Santander</div>
+          </div>
+          <div style="margin-top:16px;">
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);">Cobros de 2026</div>
+            <div class="cobros">
+              <div class="cmes cob">E</div><div class="cmes cob">F</div><div class="cmes cob">M</div><div class="cmes cob">A</div>
+              <div class="cmes cob">M</div><div class="cmes cob">J</div><div class="cmes cob">J</div><div class="cmes now">A</div>
+              <div class="cmes fut">S</div><div class="cmes fut">O</div><div class="cmes fut">N</div><div class="cmes fut">D</div>
+            </div>
+          </div>
+          <div class="fcard-acts">
+            <button class="btn btn-ghost" onclick="toast('Cerrar / cancelar préstamo')">Cerrar posición</button>
+            <button class="btn btn-ghost" onclick="toast('Editar datos')">Editar</button>
+            <button class="btn btn-danger" onclick="openEliminar('este préstamo')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DETALLE EQUITY / ACCIONES -->
+    <div class="page" id="page-detalle-equity">
+      <div class="back" onclick="show('galeria')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Volver a Inversiones</div>
+      <div class="dhero">
+        <div>
+          <div class="dhero-eyebrow">Acción · vía BNP Paribas · Euronext Paris</div>
+          <div class="dhero-nom">Orange S.A. · ORA</div>
+          <div class="dhero-meta">desde 2019 · 7 años · 184 acciones · precio medio 20,69 €</div>
+        </div>
+        <div class="dhero-stats">
+          <div class="dstat"><div class="dstat-lab">Valor hoy</div><div class="dstat-val">6.494 €</div></div>
+          <div class="dstat"><div class="dstat-lab">Aportado</div><div class="dstat-val">3.807 €</div></div>
+          <div class="dstat"><div class="dstat-lab">Rentabilidad</div><div class="dstat-val g">+8,1%/año</div></div>
+        </div>
+      </div>
+      <div class="dbody">
+        <div class="card">
+          <div class="proj-hd">
+            <div>
+              <div class="proj-eyebrow">Cotización · frente a tu precio medio</div>
+              <div class="proj-verdict">Compraste a <span class="g">20,69 €</span> · hoy vale <span class="g">35,29 €</span><br><span class="muted">plusvalía latente +2.687 € · +70,6%</span></div>
+            </div>
+            <div class="obj-ctrl">
+              <div class="obj-chip alt">184 acciones</div>
+              <div class="obj-chip">Dividendo <span class="v">6,2%</span></div>
+            </div>
+          </div>
+          <div class="proj-legend">
+            <span class="pl"><span class="pl-swatch solid"></span>Cotización</span>
+            <span class="pl"><span class="pl-swatch dot"></span>Tu precio medio · 20,69 €</span>
+          </div>
+          <div class="proj-chart">
+            <svg id="eqSvg" viewBox="0 0 720 300" preserveAspectRatio="none">
+              <defs><linearGradient id="eg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B88A3E" stop-opacity="0.16"/><stop offset="1" stop-color="#B88A3E" stop-opacity="0"/></linearGradient></defs>
+              <g id="eqGrid" stroke="#EFECE5" stroke-width="1"></g>
+              <g id="eqYlab" font-family="JetBrains Mono" font-size="10" fill="#8A92A0"></g>
+              <path id="eqMedio" fill="none" stroke="#C59A47" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.9"></path>
+              <path id="eqArea" fill="url(#eg)"></path>
+              <path id="eqLine" fill="none" stroke="#B88A3E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+              <circle id="eqEnd" r="5" fill="#B88A3E" stroke="#fff" stroke-width="2"></circle>
+              <line id="eqGuide" y1="30" y2="258" stroke="#B8BEC8" stroke-width="1" opacity="0"></line>
+              <circle id="eqDot" r="5" fill="#B88A3E" stroke="#fff" stroke-width="2" opacity="0"></circle>
+              <rect id="eqHit" x="56" y="26" width="616" height="236" fill="transparent" style="cursor:crosshair"></rect>
+              <g id="eqXlab" font-family="JetBrains Mono" font-size="10" fill="#8A92A0"></g>
+            </svg>
+            <div class="chart-tip" id="eqTip"></div>
+          </div>
+          <div class="proj-boxes">
+            <div class="pbox"><div class="pbox-lab">Plusvalía latente</div><div class="pbox-val">+2.687 €</div><div class="pbox-sub">sin vender · no tributa aún</div></div>
+            <div class="pbox"><div class="pbox-lab">Dividendos cobrados</div><div class="pbox-val g">1.180 €</div><div class="pbox-sub">desde 2019 · yield 6,2%</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="fcard-title">La ficha</div>
+          <div class="fcard-sub">lo esencial de esta acción</div>
+          <div class="frow"><span class="k">Acciones</span><span class="v">184</span></div>
+          <div class="frow"><span class="k">Precio medio · hoy</span><span class="v">20,69 → 35,29 €</span></div>
+          <div class="frow"><span class="k">Plusvalía latente</span><span class="v">+2.687 €</span></div>
+          <div class="frow"><span class="k">Dividendo anual</span><span class="v g">~403 €</span></div>
+          <div class="frow"><span class="k">Mercado · sector</span><span class="v">Euronext · telecom</span></div>
+          <div class="aviso">
+            <button class="aviso-x" onclick="cerrar(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            <div class="aviso-t">Próximo dividendo</div>
+            <div class="aviso-b">estimado dic 2026 · unos <strong>200 €</strong> a tu cuenta</div>
+          </div>
+          <div style="margin-top:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;">
+              <span style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);">Dividendos por año</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ink-3);font-weight:700;">total 1.180 €</span>
+            </div>
+            <div class="apo-wrap"><svg id="eqDivSvg" viewBox="0 0 360 60" style="width:100%;height:auto;display:block;"></svg><div class="chart-tip" id="eqDivTip"></div></div>
+          </div>
+          <div class="fcard-acts">
+            <button class="btn btn-ghost" onclick="toast('Vender acciones')">Vender</button>
+            <button class="btn btn-ghost" onclick="toast('Editar datos')">Editar</button>
+            <button class="btn btn-danger" onclick="openEliminar('esta posición')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="backdrop" id="backdrop">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-hd-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div><div class="modal-hd-t">Nueva posición</div><div class="modal-hd-s">elige la familia · el wizard te guía con los subtipos</div></div>
+      <button class="modal-x" onclick="closeM()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-q">¿Qué tipo de activo quieres añadir?</div>
+      <div class="fam-grid">
+        <div class="fam" onclick="openAlta('plan')"><div class="fam-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div class="fam-n">Plan de pensiones</div><div class="fam-s">PPI · PPE · PPES · PPA</div></div>
+        <div class="fam" onclick="openAlta('fondo')"><div class="fam-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="fam-n">Fondo de inversión</div><div class="fam-s">FI o UCITS · art. 94</div></div>
+        <div class="fam" onclick="openAlta('accion')"><div class="fam-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div><div class="fam-n">Acción / ETF / REIT</div><div class="fam-s">cotizados en bolsa</div></div>
+        <div class="fam" onclick="openAlta('prestamo')"><div class="fam-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/></svg></div><div class="fam-n">Préstamo</div><div class="fam-s">P2P o a empresa</div></div>
+        <div class="fam" onclick="openAlta('deposito')"><div class="fam-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div><div class="fam-n">Depósito o cuenta</div><div class="fam-s">plazo fijo · FGD</div></div>
+        <div class="fam" onclick="openAlta('crypto')"><div class="fam-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M11.5 3l-7 4v10l7 4 7-4V7l-7-4z"/><path d="M11.5 11v10M11.5 11L4.5 7M11.5 11L18.5 7"/></svg></div><div class="fam-n">Crypto u otros</div><div class="fam-s">exchanges · oro</div></div>
+        <div class="fam" style="grid-column:1/-1;display:flex;align-items:center;gap:16px;text-align:left;border-style:dashed;" onclick="event.stopPropagation()">
+          <div class="fam-ic" style="margin:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+          <div style="flex:1"><div class="fam-n">Importar cartera entera</div><div class="fam-s">desde tu bróker · en vez de una a una</div></div>
+          <button class="btn btn-ghost" onclick="closeM();toast('Importar · Indexa Capital')">Indexa Capital</button>
+          <button class="btn btn-ghost" onclick="closeM();toast('Importar · Aportaciones CSV')">CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="backdrop" id="modal-traspaso">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-hd">
+      <div class="modal-hd-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg></div>
+      <div><div class="modal-hd-t">Traspasar plan</div><div class="modal-hd-s">mover a otra gestora sin tributar · art. 51 LIRPF</div></div>
+      <button class="modal-x" onclick="closeTraspaso()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-q">Historial de traspasos</div>
+      <div class="tl">
+        <div class="tl-item cur"><div class="tl-dot"></div><div class="tl-flow">Indexa Capital <span class="arw">→</span> Myinvestor</div><div class="tl-meta">26 mar 2025 · 81.825 € · gestora actual</div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-flow">ING · Renta 4 <span class="arw">→</span> Indexa Capital</div><div class="tl-meta">16 feb 2021 · 56.048 €</div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-flow">Sabadell Pensiones <span class="arw">→</span> ING Naranja S&amp;P 500</div><div class="tl-meta">27 dic 2016 · 34.100 €</div></div>
+      </div>
+      <div class="modal-q" style="margin-top:20px;">Nuevo traspaso</div>
+      <div class="mrow">
+        <div class="mfield"><label>Desde</label><input value="Myinvestor · valor 106.641 €" disabled style="color:var(--ink-4);background:var(--card-alt)"></div>
+        <div class="mfield"><label>Hacia (gestora destino)</label><select><option>Elige gestora…</option><option>Indexa Capital</option><option>Finizens</option><option>Renta 4</option><option>Caser</option></select></div>
+      </div>
+      <div class="mrow">
+        <div class="mfield"><label>Importe a traspasar €</label><input class="mono" value="106.641,00"></div>
+        <div class="mfield"><label>Fecha de solicitud</label><input type="date" class="mono" value="2026-08-08"></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <div class="modal-ft-info"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>el traspaso no tributa · mantiene tu antigüedad fiscal</div>
+      <div class="modal-ft-acts"><button class="btn btn-ghost" onclick="closeTraspaso()">Cancelar</button><button class="btn btn-gold" onclick="closeTraspaso();toast('Traspaso solicitado · seguimiento en el detalle')">Solicitar traspaso</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="modal-eliminar">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-body" style="padding:26px;">
+      <div class="el-warn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></div>
+      <div style="font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.02em;">¿Eliminar <span id="elWhat">esta posición</span>?</div>
+      <div style="font-size:12.5px;color:var(--ink-3);margin-top:8px;line-height:1.55;">Úsalo solo si la creaste por error. No borra movimientos ya conciliados en Tesorería; esos se gestionan allí. Esta acción no se puede deshacer.</div>
+    </div>
+    <div class="modal-ft" style="justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeEliminar()">Cancelar</button>
+      <button class="btn" style="background:var(--neg);color:#fff;" onclick="closeEliminar();showPage('galeria');toast('Posición eliminada')">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="backdrop" id="modal-alta">
+  <div class="modal" style="max-width:940px;">
+    <div class="modal-hd">
+      <div class="modal-hd-ic" id="altaIc"></div>
+      <div><div class="modal-hd-t" id="altaTitle"></div><div class="modal-hd-s" id="altaSub"></div></div>
+      <button class="modal-x" onclick="closeAlta()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body"><div class="alta-body"><div id="altaForm"></div><div id="altaPreview"></div></div></div>
+    <div class="modal-ft">
+      <div class="modal-ft-info" id="altaInfo"></div>
+      <div class="modal-ft-acts"><button class="btn btn-ghost" onclick="closeAlta();openM();">Volver</button><button class="btn btn-gold" onclick="closeAlta();toast('Posición creada · alimenta Tesorería, Fiscal y Panel')">Crear posición</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+  function show(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');}
+  function openM(){document.getElementById('backdrop').classList.add('show');}
+  function closeM(){document.getElementById('backdrop').classList.remove('show');}
+  function filt(el){el.parentElement.querySelectorAll('.lf').forEach(f=>f.classList.remove('active'));el.classList.add('active');toast('Filtrar · '+el.textContent.trim());}
+  document.getElementById('backdrop').addEventListener('click',e=>{if(e.target.id==='backdrop')closeM();});
+
+  // ===== Trayectoria del hero: pasado (hitos) · hoy · futuro (vencimientos + reinversión) =====
+  (function heroTraj(){
+    const svg=document.getElementById('heroTraj'); if(!svg)return;
+    const X0=44,X1=956,Y0=18,Y1=170,YR0=2013,YRH=2026,YR1=2045,VMAX=1150000;
+    function xY(y){return X0+(y-YR0)/(YR1-YR0)*(X1-X0);}
+    function yV(v){return Y1-(v/VMAX)*(Y1-Y0);}
+    // pasado: valor de cartera por año (construyendo poco a poco + saltos al añadir posiciones)
+    const past={2013:10000,2014:22000,2015:33000,2016:72000,2017:84000,2018:80000,2019:95000,2020:86000,2021:104000,2022:100000,2023:132000,2024:272000,2025:290000,2026:299781};
+    // futuro: reinvirtiendo, ~6,8%/año
+    function fut(y){return 299781*Math.pow(1.068,y-YRH);}
+    const P=a=>a.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    let pa=[],fu=[];
+    for(let y=YR0;y<=YRH;y++)pa.push([xY(y),yV(past[y])]);
+    for(let y=YRH;y<=YR1;y++)fu.push([xY(y),yV(fut(y))]);
+    // hitos: año de entrada + familia
+    const hitos=[[2013,'p','Indexado'],[2016,'p','BBVA'],[2019,'e','Orange'],[2023,'r','Creación'],[2024,'r','Smart Yield'],[2024.6,'r','Revitaliza']];
+    const col={p:'#E6E2D7',r:'#C59A47',e:'rgba(255,255,255,.5)'};
+    let dots='';
+    hitos.forEach(hh=>{const yr=hh[0], v=past[Math.round(yr)]||past[2024]; const cx=xY(yr),cy=yV(v);dots+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="4.5" fill="'+col[hh[1]]+'" stroke="#1E2954" stroke-width="1.5"/>';});
+    // evento vencimiento Smart Yield ~2029 (devuelve capital, se reinvierte)
+    const ex=xY(2029), ey=yV(fut(2029));
+    const evento='<line x1="'+ex.toFixed(1)+'" y1="'+(ey-2)+'" x2="'+ex.toFixed(1)+'" y2="30" stroke="rgba(255,255,255,.22)" stroke-width="1" stroke-dasharray="2 3"/>'
+      +'<circle cx="'+ex.toFixed(1)+'" cy="'+ey.toFixed(1)+'" r="5" fill="none" stroke="#C59A47" stroke-width="1.8"/>'
+      +'<text x="'+ex.toFixed(1)+'" y="24" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="rgba(255,255,255,.6)">2029 · vence Smart Yield</text>';
+    // gridlines suaves + etiquetas Y
+    const grid='<g stroke="rgba(255,255,255,.07)" stroke-width="1"><line x1="'+X0+'" y1="'+Y0+'" x2="'+X1+'" y2="'+Y0+'"/><line x1="'+X0+'" y1="'+((Y0+Y1)/2)+'" x2="'+X1+'" y2="'+((Y0+Y1)/2)+'"/><line x1="'+X0+'" y1="'+Y1+'" x2="'+X1+'" y2="'+Y1+'"/></g>';
+    const hoy=xY(YRH);
+    svg.innerHTML=
+      '<defs><linearGradient id="htg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C59A47" stop-opacity=".18"/><stop offset="1" stop-color="#C59A47" stop-opacity="0"/></linearGradient></defs>'
+      +grid
+      +'<line x1="'+hoy.toFixed(1)+'" y1="12" x2="'+hoy.toFixed(1)+'" y2="182" stroke="rgba(255,255,255,.28)" stroke-width="1" stroke-dasharray="2 3"/>'
+      +'<path d="'+P(pa)+' L'+xY(YRH).toFixed(1)+' '+Y1+' L'+X0+' '+Y1+' Z" fill="url(#htg)"/>'
+      +'<path d="'+P(fu)+' L'+X1+' '+Y1+' L'+hoy.toFixed(1)+' '+Y1+' Z" fill="url(#htg)" opacity=".5"/>'
+      +'<path d="'+P(pa)+'" fill="none" stroke="#C59A47" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+      +'<path d="'+P(fu)+'" fill="none" stroke="#C59A47" stroke-width="2.4" stroke-dasharray="7 5" stroke-linecap="round"/>'
+      +evento
+      +dots
+      +'<circle cx="'+hoy.toFixed(1)+'" cy="'+yV(past[2026]).toFixed(1)+'" r="5" fill="#fff" stroke="#C59A47" stroke-width="2.5"/>'
+      +'<circle cx="'+X1+'" cy="'+yV(fut(YR1)).toFixed(1)+'" r="5" fill="#C59A47" stroke="#0C1230" stroke-width="1.5"/>'
+      +'<g font-family="JetBrains Mono" font-size="11" fill="rgba(255,255,255,.55)">'
+      +'<text x="'+X0+'" y="196">2013 · empezaste</text>'
+      +'<text x="'+hoy.toFixed(1)+'" y="196" text-anchor="middle">hoy · 299.781 €</text>'
+      +'<text x="'+X1+'" y="196" text-anchor="end">2045 · ≈1,1 M €</text></g>';
+  })();
+
+
+  (function heroViz(){
+    // GAUGE rentabilidad +34,8%
+    const g=document.getElementById('gaugeR');
+    if(g){
+      const cx=65,cy=66,r=52, pct=0.348; // 34,8% sobre escala 0..1 (0..~50% visual)
+      const scale=Math.min(1, pct/0.5); // llena medio arco a 25%... ajustamos: 34,8% -> casi 70% del arco
+      const frac=Math.min(1,pct/0.5);
+      function pol(a){return [cx+r*Math.cos(Math.PI-a*Math.PI), cy - r*Math.sin(Math.PI-a*Math.PI)];}
+      const bg='M '+(cx-r)+' '+cy+' A '+r+' '+r+' 0 0 1 '+(cx+r)+' '+cy;
+      const p2=pol(frac); const fillArc='M '+(cx-r)+' '+cy+' A '+r+' '+r+' 0 0 1 '+p2[0].toFixed(1)+' '+p2[1].toFixed(1);
+      g.innerHTML='<path d="'+bg+'" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="8" stroke-linecap="round"/>'
+        +'<path d="'+fillArc+'" fill="none" stroke="#C59A47" stroke-width="8" stroke-linecap="round"/>'
+        +'<text x="65" y="60" text-anchor="middle" font-family="JetBrains Mono" font-size="21" font-weight="700" fill="#fff">+34,8%</text>';
+    }
+    // TRAYECTORIA área apilada por familia
+    const svg=document.getElementById('heroTraj'); if(!svg)return;
+    const X0=8,X1=332,Y0=8,Y1=132,Y2026=2026,Y2045=2045,VMAX=1120000;
+    const xY=y=>X0+(y-Y2026)/(Y2045-Y2026)*(X1-X0);
+    const yV=v=>Y1-(v/VMAX)*(Y1-Y0);
+    function planes(y){return 146041*Math.pow(1.08,y-2026) + (y>=2029?90000*Math.pow(1.07,y-2029):0);} // + capital reinvertido de SmartYield
+    function rf(y){return (y<2029?147246:57246)*Math.pow(1.03,Math.max(0,y-2026));}
+    function eq(y){return 6494*Math.pow(1.09,y-2026);}
+    let ys=[]; for(let y=2026;y<=2045;y++)ys.push(y);
+    function band(lower,upper){ // arrays of [x,y]
+      let d='M'+lower[0][0].toFixed(1)+' '+lower[0][1].toFixed(1);
+      for(let i=1;i<lower.length;i++)d+=' L'+lower[i][0].toFixed(1)+' '+lower[i][1].toFixed(1);
+      for(let i=upper.length-1;i>=0;i--)d+=' L'+upper[i][0].toFixed(1)+' '+upper[i][1].toFixed(1);
+      return d+' Z';
+    }
+    let base=ys.map(y=>[xY(y),yV(0)]);
+    let l1=ys.map(y=>[xY(y),yV(planes(y))]);
+    let l2=ys.map(y=>[xY(y),yV(planes(y)+rf(y))]);
+    let l3=ys.map(y=>[xY(y),yV(planes(y)+rf(y)+eq(y))]);
+    // evento: vencimiento SmartYield 2029 (marcador sutil)
+    const ex=xY(2029);
+    svg.innerHTML=
+      '<path d="'+band(base,l1)+'" fill="#E8D9AE" opacity=".92"/>'
+      +'<path d="'+band(l1,l2)+'" fill="#C59A47" opacity=".92"/>'
+      +'<path d="'+band(l2,l3)+'" fill="#9C7A33" opacity=".92"/>'
+      +'<path d="M'+l3.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L')+'" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.2"/>'
+      +'<line x1="'+ex.toFixed(1)+'" y1="8" x2="'+ex.toFixed(1)+'" y2="132" stroke="rgba(255,255,255,.35)" stroke-width="1" stroke-dasharray="2 3"/>'
+      +'<text x="'+ex.toFixed(1)+'" y="20" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="rgba(255,255,255,.65)">2029 · vence Smart Yield</text>'
+      +'<circle cx="'+X0+'" cy="'+yV(planes(2026)+rf(2026)+eq(2026)).toFixed(1)+'" r="3.5" fill="#fff"/>'
+      +'<circle cx="'+X1+'" cy="'+yV(planes(2045)+rf(2045)+eq(2045)).toFixed(1)+'" r="4" fill="#C59A47" stroke="#0C1230" stroke-width="1.5"/>';
+  })();
+
+
+  (function heroViz2(){
+    // GAUGE
+    const g=document.getElementById('gaugeR');
+    if(g){const cx=59,cy=60,r=46,frac=Math.min(1,0.348/0.5);
+      function pol(a){return [cx+r*Math.cos(Math.PI-a*Math.PI), cy - r*Math.sin(Math.PI-a*Math.PI)];}
+      const bg='M '+(cx-r)+' '+cy+' A '+r+' '+r+' 0 0 1 '+(cx+r)+' '+cy;
+      const p2=pol(frac);const fa='M '+(cx-r)+' '+cy+' A '+r+' '+r+' 0 0 1 '+p2[0].toFixed(1)+' '+p2[1].toFixed(1);
+      g.innerHTML='<path d="'+bg+'" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="7" stroke-linecap="round"/>'
+        +'<path d="'+fa+'" fill="none" stroke="#C59A47" stroke-width="7" stroke-linecap="round"/>'
+        +'<text x="59" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="18" font-weight="700" fill="#fff">+34,8%</text>';}
+
+    // TRAYECTORIA por posición — préstamos ACABAN en su vencimiento; capital devuelto -> Reinvertido
+    const svg=document.getElementById('heroTraj'), tip=document.getElementById('trajTip'), leg=document.getElementById('trajLeg');
+    if(!svg)return;
+    const X0=44,X1=352,Y0=12,Y1=140,Y2026=2026,Y2045=2045,VMAX=760000;
+    const xY=y=>X0+(y-Y2026)/(Y2045-Y2026)*(X1-X0);
+    const yV=v=>Y1-(v/VMAX)*(Y1-Y0);
+    // orden abajo->arriba: persistentes primero, reinvertido, y los que vencen ARRIBA (se ve el corte)
+    const POS=[
+      {n:'Indexado',c:'#E8D9AE',f:y=>106641*Math.pow(1.08,y-2026)},
+      {n:'BBVA',c:'#D9B576',f:y=>39400*Math.pow(1.06,y-2026)},
+      {n:'Revitaliza',c:'#B88A3E',f:y=>35741*Math.pow(1.05,y-2026)},
+      {n:'Orange',c:'#B88A3E',f:y=>6494*Math.pow(1.09,y-2026)},
+      {n:'Creación',c:'#9C7A33',f:y=>y<=2028?21505:0,venc:2028},
+      {n:'Smart Yield',c:'#7C5C1F',f:y=>y<=2029?90000:0,venc:2029}
+    ];
+    const ys=[];for(let y=2026;y<=2045;y++)ys.push(y);
+    const total=y=>POS.reduce((s,p)=>s+p.f(y),0);
+    let cum=ys.map(()=>0), bands='';
+    POS.forEach(p=>{
+      let lo=ys.map((y,i)=>[xY(y),yV(cum[i])]);
+      cum=cum.map((c,i)=>c+p.f(ys[i]));
+      let up=ys.map((y,i)=>[xY(y),yV(cum[i])]);
+      let d='M'+lo[0][0].toFixed(1)+' '+lo[0][1].toFixed(1);
+      for(let i=1;i<lo.length;i++)d+=' L'+lo[i][0].toFixed(1)+' '+lo[i][1].toFixed(1);
+      for(let i=up.length-1;i>=0;i--)d+=' L'+up[i][0].toFixed(1)+' '+up[i][1].toFixed(1);
+      bands+='<path d="'+d+' Z" fill="'+p.c+'" opacity=".95"/>';
+    });
+    const kfmt=v=>Math.round(v/1000)+'k';
+    let axes='<g stroke="rgba(255,255,255,.08)"><line x1="'+X0+'" y1="'+Y0+'" x2="'+X1+'" y2="'+Y0+'"/><line x1="'+X0+'" y1="'+((Y0+Y1)/2)+'" x2="'+X1+'" y2="'+((Y0+Y1)/2)+'"/><line x1="'+X0+'" y1="'+Y1+'" x2="'+X1+'" y2="'+Y1+'"/></g>';
+    axes+='<g font-family="JetBrains Mono" font-size="8" fill="rgba(255,255,255,.5)">'
+      +'<text x="'+(X0-4)+'" y="'+(Y0+3)+'" text-anchor="end">'+kfmt(VMAX)+'</text>'
+      +'<text x="'+(X0-4)+'" y="'+((Y0+Y1)/2+3)+'" text-anchor="end">'+kfmt(VMAX/2)+'</text>'
+      +'<text x="'+(X0-4)+'" y="'+Y1+'" text-anchor="end">0</text>';
+    [2026,2030,2035,2040,2045].forEach(y=>{axes+='<text x="'+xY(y).toFixed(1)+'" y="158" text-anchor="middle">'+y+'</text>';});
+    axes+='</g>';
+    let ev='';
+    POS.filter(p=>p.venc).forEach(p=>{const ex=xY(p.venc);ev+='<line x1="'+ex.toFixed(1)+'" y1="'+Y0+'" x2="'+ex.toFixed(1)+'" y2="'+Y1+'" stroke="rgba(255,255,255,.3)" stroke-width="1" stroke-dasharray="2 3"/>';});
+    ev+='<text x="'+xY(2028.5).toFixed(1)+'" y="'+(Y0-3)+'" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="rgba(255,255,255,.55)">vencen préstamos</text>';
+    svg.innerHTML=axes+bands+ev+'<line id="tGuide" x1="0" y1="'+Y0+'" x2="0" y2="'+Y1+'" stroke="#fff" stroke-width="1" opacity="0"/>'
+      +'<rect id="tHit" x="'+X0+'" y="'+Y0+'" width="'+(X1-X0)+'" height="'+(Y1-Y0)+'" fill="transparent"/>';
+    leg.innerHTML=POS.map(p=>'<span class="tlg"><span class="d" style="background:'+p.c+'"></span>'+p.n+'</span>').join('');
+    const hit=svg.querySelector('#tHit'), guide=svg.querySelector('#tGuide'), box=()=>svg.getBoundingClientRect();
+    hit.addEventListener('mousemove',e=>{const b=box();const rx=(e.clientX-b.left)/b.width*360;let y=Math.round(Y2026+(rx-X0)/(X1-X0)*(Y2045-Y2026));y=Math.max(2026,Math.min(2045,y));const gx=xY(y);guide.setAttribute('x1',gx);guide.setAttribute('x2',gx);guide.setAttribute('opacity','.5');tip.style.opacity='1';var rows=POS.map(function(p){var v=p.f(y);return v>0?'<div class="tr"><span class="d" style="background:'+p.c+'"></span><span class="nm">'+p.n+'</span><span class="am">'+Math.round(v/1000)+'k</span></div>':'';}).join('');
+      tip.innerHTML='<div class="ty">'+y+'</div><div class="tb">'+rows+'</div><div class="tt"><span>total</span><b>'+Math.round(total(y)/1000)+'k €</b></div>';const px=(gx/360)*b.width;tip.style.left=Math.min(b.width-90,Math.max(0,px-40))+'px';tip.style.top='6px';});
+    hit.addEventListener('mouseleave',()=>{guide.setAttribute('opacity','0');tip.style.opacity='0';});
+  })();
+
+
+  var sortState={};
+  function sortLedger(key){
+    var cont=document.querySelector('#page-galeria .ledger-rows');
+    var rows=Array.prototype.slice.call(cont.querySelectorAll('.lrow'));
+    var dir=(sortState.key===key && sortState.dir==='asc')?'desc':'asc'; sortState={key:key,dir:dir};
+    rows.sort(function(a,b){
+      var av=a.dataset[key], bv=b.dataset[key];
+      if(key==='nom'){return dir==='asc'?av.localeCompare(bv):bv.localeCompare(av);}
+      av=parseFloat(av)||0; bv=parseFloat(bv)||0; return dir==='asc'?av-bv:bv-av;
+    });
+    rows.forEach(function(r){cont.appendChild(r);});
+    document.querySelectorAll('#page-galeria .ledger-head span[data-col]').forEach(function(s){s.classList.remove('sa','sd');});
+    var th=document.querySelector('#page-galeria .ledger-head span[data-col="'+key+'"]'); if(th)th.classList.add(dir==='asc'?'sa':'sd');
+  }
+
+  function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
+
+
+  function cerrar(el){const a=el.closest('.aviso'); if(a) a.style.display='none';}
+
+  // ===== ALTA · wizard por familia =====
+  function fld(label,req,ph,mono,val){return '<div class="mfield"><label>'+label+(req?'<span class="req">*</span>':'<span class="opt">opcional</span>')+'</label><input '+(mono?'class="mono" ':'')+'placeholder="'+(ph||'')+'"'+(val?' value="'+val+'"':'')+'></div>';}
+  function sel(label,req,opts){return '<div class="mfield"><label>'+label+(req?'<span class="req">*</span>':'')+'</label><select>'+opts.map(o=>'<option>'+o+'</option>').join('')+'</select></div>';}
+  const CUENTAS=['Santander Alquileres ···· 8676','Santander Nómina ···· 2715','Unicaja ···· 4437','BBVA ···· 1120'];
+  const ICO={plan:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',fondo:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>',accion:'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',prestamo:'<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/>',deposito:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',crypto:'<path d="M11.5 3l-7 4v10l7 4 7-4V7l-7-4z"/>'};
+
+  function altaPlanFiscal(){
+    const map={PPI:[1500,1500,0],PPE:[10000,1500,8500],PPES:[4250,4250,0],PPA:[1500,1500,0]};
+    const t=document.querySelector('.aseg-opt.on'); const k=t?t.dataset.k:'PPI';
+    const [lim,tit,emp]=map[k]; const ahorro=Math.round(lim*0.45);
+    document.getElementById('fLim').textContent=sep(lim)+' €';
+    document.getElementById('fDesg').innerHTML= emp>0 ? ('<div class="prow"><span class="k">Aportas tú</span><span class="v">'+sep(tit)+' €</span></div><div class="prow"><span class="k">Aporta la empresa</span><span class="v">'+sep(emp)+' €</span></div>') : ('<div class="prow"><span class="k">Aportación titular</span><span class="v">'+sep(tit)+' €</span></div>');
+    document.getElementById('fAhorro').innerHTML='si la llenas, ahorras <strong>'+sep(ahorro)+' €</strong> de IRPF (marginal 45%) · art. 51.7 LIRPF';
+  }
+  function altaSeg(el){el.parentElement.querySelectorAll('.aseg-opt').forEach(o=>o.classList.remove('on'));el.classList.add('on');altaPlanFiscal();}
+
+  const FAM={
+    plan:{title:'Nuevo plan de pensiones',sub:'elige el tipo administrativo · el límite fiscal se calcula en vivo',info:'alimenta el módulo fiscal · límite art. 51.7 LIRPF',
+      form:'<div class="alta-sec">Tipo administrativo</div><div class="aseg">'
+        +'<div class="aseg-opt on" data-k="PPI" onclick="altaSeg(this)"><div class="aseg-t">PPI</div><div class="aseg-s">individual</div></div>'
+        +'<div class="aseg-opt" data-k="PPE" onclick="altaSeg(this)"><div class="aseg-t">PPE</div><div class="aseg-s">empleo</div></div>'
+        +'<div class="aseg-opt" data-k="PPES" onclick="altaSeg(this)"><div class="aseg-t">PPES</div><div class="aseg-s">simplificado</div></div>'
+        +'<div class="aseg-opt" data-k="PPA" onclick="altaSeg(this)"><div class="aseg-t">PPA</div><div class="aseg-s">asegurado</div></div></div>'
+        +'<div class="alta-sec">Identificación</div>'+fld('Nombre del plan',1,'Indexado S&P 500')+'<div class="mrow">'+fld('Entidad gestora',1,'Myinvestor')+fld('ISIN',0,'ES0110407···')+'</div>'
+        +'<div class="alta-sec">Contratación</div><div class="mrow">'+fld('Fecha de contratación',1,'',1)+sel('Titular',1,['Yo','Cónyuge'])+'</div>'+sel('Política de inversión',0,['Renta variable','Mixta','Renta fija','Garantizado'])
+        +'<div class="alta-sec">Valoración de partida</div>'+fld('Valor actual €',0,'0,00',1),
+      prev:'<div class="prev-navy"><div class="prev-lab">Límite deducible este año</div><div class="prev-val" id="fLim">1.500 €</div><div class="prev-sub">se ajusta según el tipo</div><div style="margin-top:14px" id="fDesg"></div></div><div class="prev-note" id="fAhorro"></div>',
+      wire:altaPlanFiscal},
+    accion:{title:'Nueva acción / ETF / REIT',sub:'valores cotizados · tributan en base del ahorro',info:'la cotización y los dividendos se leerán desde Tesorería',
+      form:'<div class="alta-sec">Tipo</div><div class="aseg" style="grid-template-columns:repeat(3,1fr)"><div class="aseg-opt on" onclick="segOnly(this)"><div class="aseg-t" style="font-size:12.5px">Acción</div></div><div class="aseg-opt" onclick="segOnly(this)"><div class="aseg-t" style="font-size:12.5px">ETF</div></div><div class="aseg-opt" onclick="segOnly(this)"><div class="aseg-t" style="font-size:12.5px">REIT</div></div></div>'
+        +'<div class="alta-sec">Identificación</div>'+fld('Nombre',1,'Ej. Apple · Inditex · iShares Core S&P')+'<div class="mrow" style="grid-template-columns:1fr 130px 190px">'+fld('Bróker / entidad',0,'DEGIRO, IBKR…')+fld('Ticker',0,'AAPL')+fld('ISIN',0,'US0378331005')+'</div>'
+        +'<div class="alta-sec">Posición</div><div class="mrow" style="grid-template-columns:120px 130px 130px 1fr"><div class="mfield"><label>Nº particip.<span class="req">*</span></label><input id="af_part" class="mono" oninput="altaAccion()" value="100"></div><div class="mfield"><label>Precio medio €<span class="req">*</span></label><input id="af_pm" class="mono" oninput="altaAccion()" value="150,00"></div><div class="mfield"><label>Precio actual €</label><input id="af_pa" class="mono" oninput="altaAccion()" value="175,00"></div>'+fld('Fecha de compra',1,'',1)+'</div>'
+        +'<div class="alta-sec">Cuentas</div><div class="mrow" style="grid-template-columns:1fr 1fr">'+sel('De cargo',0,CUENTAS)+sel('De cobro de dividendos',0,CUENTAS)+'</div>',
+      prev:'<div class="prev-lite"><div class="plab">Valor actual</div><div class="pval" id="af_val">17.500 €</div><div class="psub" id="af_pl">plusvalía +2.500 € · +16,7%</div></div><div class="prev-note">El calendario de dividendos (frecuencia, importe, retención) se configura en la <strong>ficha</strong>, no aquí.</div>',
+      wire:function(){altaAccion();}},
+    prestamo:{title:'Nuevo préstamo',sub:'crowdlending, a una empresa o a un familiar · rendimiento periódico',info:'los cobros se declaran aquí y se puntean en Tesorería',
+      form:'<div class="alta-sec">Modalidad</div><div class="aseg" style="grid-template-columns:repeat(3,1fr)">'
+        +'<div class="aseg-opt on" data-k="p2p" data-ret="19" onclick="prSeg(this)"><div class="aseg-t" style="font-size:12.5px">P2P</div><div class="aseg-s">plataformas · SmartFlip</div></div>'
+        +'<div class="aseg-opt" data-k="empresa" data-ret="19" onclick="prSeg(this)"><div class="aseg-t" style="font-size:12.5px">A empresa</div><div class="aseg-s">tu SL u otra</div></div>'
+        +'<div class="aseg-opt" data-k="familiar" data-ret="0" onclick="prSeg(this)"><div class="aseg-t" style="font-size:12.5px">A familiares</div><div class="aseg-s">sin retención</div></div></div>'
+        +'<div class="alta-sec">Identificación</div><div class="mrow" style="grid-template-columns:1fr 1fr">'+fld('Nombre',1,'Smart Yield')+fld('Entidad / prestatario',1,'Smartflip')+'</div>'
+        +'<div class="alta-sec">Condiciones</div><div class="mrow" style="grid-template-columns:1fr 110px 110px"><div class="mfield"><label>Capital prestado €<span class="req">*</span></label><input id="lf_imp" class="mono" oninput="altaPrestamo()" value="90.000"></div><div class="mfield"><label>TIN %<span class="req">*</span></label><input id="lf_tin" class="mono" oninput="altaPrestamo()" value="10,0"></div><div class="mfield"><label>Duración<span class="opt">m</span></label><input id="lf_dur" class="mono" oninput="altaPrestamo()" value="60"></div></div>'
+        +'<div class="mfield"><label>Forma de devolución<span class="req">*</span></label><select id="lf_mod" onchange="altaPrestamo()"><option value="solo_intereses" selected>Solo intereses periódicos · capital al vencimiento</option><option value="capital_e_intereses">Cuota francesa · capital + intereses</option><option value="al_vencimiento">Todo al vencimiento (bullet)</option></select></div>'
+        +'<div class="mrow" style="grid-template-columns:150px 1fr 1fr"><div class="mfield"><label>Frecuencia<span class="req">*</span></label><select id="lf_freq" onchange="altaPrestamo()"><option selected>Mensual</option><option>Trimestral</option><option>Semestral</option><option>Anual</option></select></div><div class="mfield"><label>Fecha de inicio<span class="req">*</span></label><input id="lf_fecha" type="date" class="mono" oninput="altaPrestamo()" value="2026-08-08"></div><div class="mfield"><label>Primer cobro</label><input id="lf_primer" type="date" class="mono" oninput="altaPrestamo()" value="2026-09-08"></div></div>'
+        +'<div class="alta-sec">Dinero y retención</div><div class="mrow" style="grid-template-columns:1fr 1fr 90px">'+sel('Cuenta de cargo del capital',1,CUENTAS)+sel('Cuenta de cobro',1,CUENTAS)+'<div class="mfield"><label>Ret. %</label><input id="lf_ret" class="mono" oninput="altaPrestamo()" value="19"></div></div>',
+      prev:'<div class="prev-lite"><div class="plab" id="pl_lab">Cada cobro <span id="pl_neto_l" style="font-weight:400;text-transform:none;letter-spacing:0">neto</span></div><div class="pval g" id="pl_cobro">608 €</div><div class="psub" id="pl_next">próximo · 8 sep 2026</div></div><div class="prev-lite" style="margin-top:10px"><div class="prow"><span class="k">Renta anual (bruto)</span><span class="v" id="pl_anual">9.000 €</span></div><div class="prow"><span class="k">Retención</span><span class="v" id="pl_ret">19% · −1.710 €/año</span></div><div class="prow"><span class="k" id="pl_modn">Solo intereses</span><span class="v" id="pl_num">12 cobros/año</span></div></div><div class="prev-note" id="pl_note">El capital vuelve al vencimiento; los intereses se puntean en Tesorería.</div>',
+      wire:function(){altaPrestamo();}},
+    fondo:{title:'Nuevo fondo de inversión',sub:'FI español o UCITS · art. 94 · traspasable',info:'traspasable sin tributar entre fondos',
+      form:'<div class="alta-sec">Identificación</div>'+fld('Nombre',1,'Vanguard Global Stock')+'<div class="mrow">'+fld('Gestora',1,'Vanguard')+fld('ISIN',0,'IE00B03HCZ61')+'</div><div class="alta-sec">Posición</div><div class="mrow">'+fld('Nº de participaciones',0,'',1)+fld('Precio medio €',0,'',1)+'</div><div class="mrow">'+fld('Valor actual €',1,'0,00',1)+sel('Cuenta de cargo',0,CUENTAS)+'</div>',
+      prev:'<div class="prev-lite"><div class="plab">Valor de la posición</div><div class="pval">—</div><div class="psub">se actualiza con la valoración</div></div><div class="prev-note">Igual que los planes, un fondo puede <strong>traspasarse a otra gestora sin tributar</strong>; lo verás como opción en su detalle.</div>'},
+    deposito:{title:'Nuevo depósito o cuenta',sub:'capital + TAE · cobertura FGD hasta 100k €',info:'los intereses se puntean en Tesorería',
+      form:'<div class="alta-sec">Identificación</div><div class="mrow" style="grid-template-columns:200px 1fr">'+sel('Tipo',1,['Depósito a plazo','Cuenta remunerada'])+fld('Entidad',1,'EBN Banco')+'</div>'
+        +'<div class="alta-sec">Condiciones</div><div class="mrow" style="grid-template-columns:1fr 100px 100px 90px"><div class="mfield"><label>Importe €<span class="req">*</span></label><input id="df_imp" class="mono" oninput="altaDeposito()" value="20.000"></div><div class="mfield"><label>TAE %<span class="req">*</span></label><input id="df_tae" class="mono" oninput="altaDeposito()" value="3,00"></div><div class="mfield"><label>Plazo<span class="opt">m</span></label><input id="df_pl" class="mono" oninput="altaDeposito()" value="12"></div><div class="mfield"><label>Ret. %</label><input id="df_ret" class="mono" oninput="altaDeposito()" value="19"></div></div>'
+        +'<div class="mrow" style="grid-template-columns:150px 1fr 1fr">'+fld('Fecha inicio',1,'',1)+sel('Abono de intereses',1,['Al vencimiento','Mensual','Trimestral','Anual'])+sel('Cuenta donde se abonan',1,CUENTAS)+'</div>',
+      prev:'<div class="prev-lite"><div class="plab">Interés neto al vencimiento</div><div class="pval g" id="dp_val">466 €</div><div class="psub" id="dp_sub">20.000 € · 3,00% · 12 m · −19%</div></div><div class="prev-note">Cubierto por el FGD hasta 100.000 € por titular y entidad.</div>',
+      wire:function(){altaDeposito();}},
+    crypto:{title:'Nueva posición cripto u otros',sub:'exchanges, carteras frías, oro físico',info:'valoración manual · sin traspaso fiscal',
+      form:'<div class="alta-sec">Identificación</div>'+fld('Nombre',1,'Bitcoin')+fld('Plataforma / custodia',0,'Coinbase')+'<div class="alta-sec">Posición</div><div class="mrow">'+fld('Cantidad',0,'0,25',1)+fld('Precio medio €',0,'',1)+'</div>'+fld('Valor actual €',1,'0,00',1),
+      prev:'<div class="prev-lite"><div class="plab">Valor de la posición</div><div class="pval">—</div><div class="psub">valoración manual</div></div><div class="prev-note">Cripto y "otros" tributan como <strong>ganancia patrimonial</strong> solo al vender; esta ficha solo la valora.</div>'}
+  };
+
+  const MES={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
+  const MESN=['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  function num(v){return parseFloat(String(v||'').replace(/\./g,'').replace(',','.'))||0;}
+  function fmtDate(iso){if(!iso)return '—';const p=iso.split('-');if(p.length<3)return iso;return (+p[2])+' '+MESN[+p[1]]+' '+p[0];}
+  function segOnly(el){el.parentElement.querySelectorAll('.aseg-opt').forEach(o=>o.classList.remove('on'));el.classList.add('on');}
+  function altaAccion(){
+    const part=num(document.getElementById('af_part').value), pm=num(document.getElementById('af_pm').value), pa=num(document.getElementById('af_pa').value||pm);
+    const val=part*pa, apor=part*pm, pl=val-apor, pct=apor>0?pl/apor*100:0;
+    document.getElementById('af_val').textContent=sep(Math.round(val))+' €';
+    const el=document.getElementById('af_pl'); el.textContent='plusvalía '+(pl>=0?'+':'')+sep(Math.round(pl))+' € · '+(pl>=0?'+':'')+pct.toFixed(1).replace('.',',')+'%';
+  }
+  function prSeg(el){el.parentElement.querySelectorAll('.aseg-opt').forEach(o=>o.classList.remove('on'));el.classList.add('on');document.getElementById('lf_ret').value=el.dataset.ret;altaPrestamo();}
+  function prSeg(el){el.parentElement.querySelectorAll('.aseg-opt').forEach(o=>o.classList.remove('on'));el.classList.add('on');document.getElementById('lf_ret').value=el.dataset.ret;altaPrestamo();}
+  function altaPrestamo(){
+    const imp=num(document.getElementById('lf_imp').value), tin=num(document.getElementById('lf_tin').value);
+    const freq=document.getElementById('lf_freq').value, ret=num(document.getElementById('lf_ret').value);
+    const mod=document.getElementById('lf_mod').value, dur=num(document.getElementById('lf_dur').value)||60;
+    const npy={'Mensual':12,'Trimestral':4,'Semestral':2,'Anual':1}[freq], step=12/npy;
+    const anual=imp*tin/100;
+    let perBruto, lab, modn, note;
+    if(mod==='al_vencimiento'){
+      perBruto=anual*(dur/12)+imp; lab='Al vencimiento'; modn='Todo al vencimiento'; note='Un solo cobro al final: capital + todos los intereses.';
+      document.getElementById('pl_num').textContent='1 cobro';
+    } else if(mod==='capital_e_intereses'){
+      const i=tin/100*step/12, n=Math.max(1,Math.round(dur/step));
+      const cuota= i>0 ? imp*i/(1-Math.pow(1+i,-n)) : imp/n;
+      perBruto=cuota; lab='Cada cuota'; modn='Cuota francesa'; note='Cada cuota amortiza capital + intereses (sistema francés).';
+      document.getElementById('pl_num').textContent=n+' cuotas';
+    } else {
+      perBruto=anual/npy; lab='Cada cobro'; modn='Solo intereses'; note='El capital vuelve al vencimiento; los intereses se puntean en Tesorería.';
+      document.getElementById('pl_num').textContent=npy+' cobros/año';
+    }
+    const perNeto = mod==='capital_e_intereses' ? perBruto : perBruto*(1-ret/100); // retención solo sobre intereses (aprox)
+    document.getElementById('pl_lab').innerHTML=lab+' <span id="pl_neto_l" style="font-weight:400;text-transform:none;letter-spacing:0">'+(ret>0?'neto':'íntegro')+'</span>';
+    document.getElementById('pl_cobro').textContent=sep(Math.round(perNeto))+' €';
+    document.getElementById('pl_anual').textContent=sep(Math.round(anual))+' €';
+    document.getElementById('pl_ret').textContent = ret>0 ? (ret.toFixed(0)+'% · −'+sep(Math.round(anual*ret/100))+' €/año') : 'sin retención (familiar)';
+    document.getElementById('pl_modn').textContent=modn;
+    document.getElementById('pl_note').textContent=note;
+    const cuenta=(document.querySelectorAll('#altaForm select')[document.querySelectorAll('#altaForm select').length-2]||{}).value||'';
+    document.getElementById('pl_next').textContent='próximo · '+fmtDate(document.getElementById('lf_primer').value);
+  }
+  function altaDeposito(){
+    const imp=num(document.getElementById('df_imp').value),tae=num(document.getElementById('df_tae').value),pl=num(document.getElementById('df_pl').value)||12,ret=num(document.getElementById('df_ret').value);
+    const bruto=imp*tae/100*pl/12, neto=bruto*(1-ret/100);
+    document.getElementById('dp_val').textContent=sep(Math.round(neto))+' €';
+    document.getElementById('dp_sub').textContent=sep(imp)+' € · '+(document.getElementById('df_tae').value)+'% · '+pl+' m · −'+ret.toFixed(0)+'%';
+  }
+  function openAlta(fam){closeM();const c=FAM[fam];document.getElementById('altaTitle').textContent=c.title;document.getElementById('altaSub').textContent=c.sub;document.getElementById('altaInfo').innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'+c.info;document.getElementById('altaIc').innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">'+ICO[fam]+'</svg>';document.getElementById('altaForm').innerHTML=c.form;document.getElementById('altaPreview').innerHTML=c.prev;if(c.wire)c.wire();document.getElementById('modal-alta').classList.add('show');}
+  function closeAlta(){document.getElementById('modal-alta').classList.remove('show');}
+  document.getElementById('modal-alta').addEventListener('click',e=>{if(e.target.id==='modal-alta')closeAlta();});
+  function openTraspaso(){document.getElementById('modal-traspaso').classList.add('show');}
+  function closeTraspaso(){document.getElementById('modal-traspaso').classList.remove('show');}
+  function openEliminar(w){document.getElementById('elWhat').textContent=w||'esta posición';document.getElementById('modal-eliminar').classList.add('show');}
+  function closeEliminar(){document.getElementById('modal-eliminar').classList.remove('show');}
+  function showPage(id){show(id);}
+  ['modal-traspaso','modal-eliminar'].forEach(id=>{const m=document.getElementById(id);if(m)m.addEventListener('click',e=>{if(e.target.id===id)m.classList.remove('show');});});
+
+
+
+  // ==== Equity · cotización vs precio medio ====
+  (function buildEq(){
+    const svg=document.getElementById('eqSvg'); if(!svg)return;
+    const EX0=56,EX1=672,EY0=30,EY1=258,PMIN=8,PMAX=38,medio=20.69;
+    const px=[[2019,20.0],[2020,15.2],[2021,18.4],[2022,16.6],[2023,24.2],[2024,28.6],[2025,31.8],[2026,35.29]];
+    function xY(y){return EX0+(y-2019)/(2026-2019)*(EX1-EX0);}
+    function yP(p){return EY1-(p-PMIN)/(PMAX-PMIN)*(EY1-EY0);}
+    const P=a=>a.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+    // grid + y labels at 35,20.69,10
+    document.getElementById('eqGrid').innerHTML=[35,medio,10].map(v=>'<line x1="56" y1="'+yP(v).toFixed(1)+'" x2="672" y2="'+yP(v).toFixed(1)+'"/>').join('');
+    document.getElementById('eqYlab').innerHTML=[[35,'35 \u20ac'],[medio,'20,69'],[10,'10 \u20ac']].map(v=>'<text x="50" y="'+(yP(v[0])+3).toFixed(1)+'" text-anchor="end">'+v[1]+'</text>').join('');
+    const pts=px.map(d=>[xY(d[0]),yP(d[1])]);
+    document.getElementById('eqLine').setAttribute('d',P(pts));
+    document.getElementById('eqArea').setAttribute('d',P(pts)+' L'+EX1+' '+EY1+' L'+EX0+' '+EY1+' Z');
+    document.getElementById('eqMedio').setAttribute('d','M56 '+yP(medio).toFixed(1)+' L672 '+yP(medio).toFixed(1));
+    const e=pts[pts.length-1];document.getElementById('eqEnd').setAttribute('cx',e[0]);document.getElementById('eqEnd').setAttribute('cy',e[1]);
+    document.getElementById('eqXlab').innerHTML='<text x="56" y="278">2019</text><text x="672" y="278" text-anchor="end">hoy</text>';
+    const hit=document.getElementById('eqHit'),g=document.getElementById('eqGuide'),dot=document.getElementById('eqDot'),tip=document.getElementById('eqTip');
+    hit.addEventListener('mousemove',ev=>{
+      const r=svg.getBoundingClientRect(); let sx=(ev.clientX-r.left)/r.width*720; sx=Math.max(EX0,Math.min(EX1,sx));
+      let t=(sx-EX0)/(EX1-EX0)*(px.length-1),i=Math.round(t),d=px[i];
+      const cx=xY(d[0]),cy=yP(d[1]),pl=Math.round((d[1]-medio)*184);
+      g.setAttribute('x1',cx);g.setAttribute('x2',cx);g.setAttribute('opacity','1');
+      dot.setAttribute('cx',cx);dot.setAttribute('cy',cy);dot.setAttribute('opacity','1');
+      tip.innerHTML='<span class="yr">'+d[0]+'</span> · '+d[1].toFixed(2).replace('.',',')+' \u20ac <span class="rt">· '+(pl>=0?'+':'')+sep(pl)+' \u20ac latente</span>';
+      tip.style.left=(cx/720*r.width)+'px';tip.style.top=(cy/300*r.height)+'px';tip.classList.add('show');
+    });
+    hit.addEventListener('mouseleave',()=>{g.setAttribute('opacity','0');dot.setAttribute('opacity','0');tip.classList.remove('show');});
+  })();
+  // ==== Equity · dividendos por año ====
+  (function buildEqDiv(){
+    const svg=document.getElementById('eqDivSvg'); if(!svg)return;
+    const data=[[2019,120],[2020,150],[2021,150],[2022,170],[2023,180],[2024,200],[2025,210]];
+    const W=360,H=52,n=data.length,gap=8,bw=(W-gap*(n-1))/n,max=Math.max(...data.map(d=>d[1]));
+    const tip=document.getElementById('eqDivTip');let s='';
+    data.forEach((d,i)=>{const bh=8+d[1]/max*(H-8),x=i*(bw+gap),y=H-bh;
+      s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="2" fill="#C59A47" data-y="'+d[0]+'" data-v="'+d[1]+'"></rect>';});
+    svg.innerHTML=s;
+    svg.querySelectorAll('rect').forEach(rc=>{
+      rc.addEventListener('mouseenter',()=>{const r=svg.getBoundingClientRect(),br=rc.getBoundingClientRect();
+        tip.innerHTML='<span class="yr">'+rc.dataset.y+'</span> · '+sep(+rc.dataset.v)+' \u20ac';
+        tip.style.left=(br.left-r.left+br.width/2)+'px';tip.style.top=(br.top-r.top)+'px';tip.classList.add('show');});
+      rc.addEventListener('mouseleave',()=>tip.classList.remove('show'));
+    });
+  })();
+  // ==== Préstamo · renta acumulada interactiva ====
+  (function buildLoan(){
+    const svg=document.getElementById('loanSvg'); if(!svg)return;
+    const LX0=56,LX1=672,LY0=40,LY1=240,CMAX=45000,M=60,HOYM=25,cuota=750;
+    const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    function xm(m){return LX0+m/M*(LX1-LX0);}
+    function yc(c){return LY1-(c/CMAX)*(LY1-LY0);}
+    let past=[],fut=[];
+    for(let m=0;m<=HOYM;m++)past.push([xm(m),yc(m*cuota)]);
+    for(let m=HOYM;m<=M;m++)fut.push([xm(m),yc(m*cuota)]);
+    const P=a=>a.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    document.getElementById('lnPast').setAttribute('d',P(past));
+    document.getElementById('lnFut').setAttribute('d',P(fut));
+    document.getElementById('lnArea').setAttribute('d',P(fut)+' L'+LX1+' '+LY1+' L'+xm(HOYM)+' '+LY1+' Z');
+    document.getElementById('lnHoy').setAttribute('x1',xm(HOYM));document.getElementById('lnHoy').setAttribute('x2',xm(HOYM));
+    const dh=document.getElementById('lnDotHoy');dh.setAttribute('cx',xm(HOYM));dh.setAttribute('cy',yc(HOYM*cuota));
+    const xl=document.getElementById('lnXlab');
+    xl.innerHTML='<text x="'+LX0+'" y="272">2024</text><text x="'+xm(HOYM)+'" y="272" text-anchor="middle">hoy · 2026</text><text x="'+LX1+'" y="272" text-anchor="end">2029</text>';
+    const hit=document.getElementById('lnHit'),g=document.getElementById('lnGuide'),dot=document.getElementById('lnDot'),tip=document.getElementById('lnTip');
+    hit.addEventListener('mousemove',e=>{
+      const r=svg.getBoundingClientRect(); let sx=(e.clientX-r.left)/r.width*720; sx=Math.max(LX0,Math.min(LX1,sx));
+      let m=Math.round((sx-LX0)/(LX1-LX0)*M); const c=m*cuota,px=xm(m),py=yc(c);
+      g.setAttribute('x1',px);g.setAttribute('x2',px);g.setAttribute('opacity','1');
+      dot.setAttribute('cx',px);dot.setAttribute('cy',py);dot.setAttribute('opacity','1');
+      const yr=2024+Math.floor(m/12), mo=meses[m%12], fut=m>HOYM;
+      tip.innerHTML='<span class="yr">'+mo+' '+yr+'</span> · '+sep(c)+' \u20ac <span class="rt">· '+(fut?'previsto':'cobrado')+'</span>';
+      tip.style.left=(px/720*r.width)+'px';tip.style.top=(py/300*r.height)+'px';tip.classList.add('show');
+    });
+    hit.addEventListener('mouseleave',()=>{g.setAttribute('opacity','0');dot.setAttribute('opacity','0');tip.classList.remove('show');});
+  })();
+  // ==== Gráfica de proyección interactiva ====
+  function sep(n){return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+  function fmtEur(v){return sep(v)+' \u20ac';}
+  const YR0=2013,YR1=2045,HOY=2026;
+  const valNow=106641, objRate=0.087, infl=0.025;
+  const objBase=valNow/Math.pow(1+objRate,HOY-YR0);
+  const pastVal={2013:15000,2014:22000,2015:29000,2016:37000,2017:48000,2018:46000,2019:57000,2020:50000,2021:69000,2022:65000,2023:81000,2024:92000,2025:100000,2026:valNow};
+  const pastRet={2013:22,2014:11,2015:2,2016:9,2017:14,2018:-6,2019:24,2020:-12,2021:27,2022:-18,2023:24,2024:13,2025:9,2026:7};
+  const X0=56,X1=672,YTOP=30,YBOT=262,VMAX=516000;
+  function xY(y){return X0+(y-YR0)/(YR1-YR0)*(X1-X0);}
+  function yV(v){var M=(window.__proj&&window.__proj.finalNom)||VMAX;return YBOT-(v/M)*(YBOT-YTOP);}
+  function valYear(y){return y<=HOY?pastVal[y]:valNow*Math.pow(1+objRate,y-HOY);}
+  function objYear(y){return objBase*Math.pow(1+objRate,y-YR0);}
+  function realYear(y){return valYear(y)/Math.pow(1+infl,Math.max(0,y-HOY));}
+  function path(pts){return pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');}
+  function renderProj(){
+    const svg=document.getElementById('projSvg'); if(!svg)return;
+    const rate=(parseFloat((document.getElementById('objRange')||{}).value)||8.7)/100;
+    const infl=(parseFloat((document.getElementById('inflRange')||{}).value)||2.5)/100;
+    const ov=document.getElementById('objVal'); if(ov) ov.textContent=(rate*100).toFixed(1).replace('.',',')+'%';
+    const iv=document.getElementById('inflVal'); if(iv) iv.textContent=(infl*100).toFixed(1).replace('.',',')+'%';
+    const objBase=valNow/Math.pow(1+rate,HOY-YR0);
+    const finalNom=valNow*Math.pow(1+rate,YR1-HOY);
+    const finalReal=finalNom/Math.pow(1+infl,YR1-HOY);
+    window.__proj={rate:rate,infl:infl,finalNom:finalNom};
+    const VMAX=finalNom;
+    function yV(v){var M=(window.__proj&&window.__proj.finalNom)||VMAX;return YBOT-(v/M)*(YBOT-YTOP);}
+    function valYear(y){return y<=HOY?pastVal[y]:valNow*Math.pow(1+rate,y-HOY);}
+    function objYear(y){return objBase*Math.pow(1+rate,y-YR0);}
+    function realYear(y){return valYear(y)/Math.pow(1+infl,Math.max(0,y-HOY));}
+    window.__valYear=valYear;
+    let past=[],fut=[],obj=[],real=[];
+    for(let y=YR0;y<=HOY;y++)past.push([xY(y),yV(valYear(y))]);
+    for(let y=HOY;y<=YR1;y++)fut.push([xY(y),yV(valYear(y))]);
+    for(let y=YR0;y<=YR1;y++)obj.push([xY(y),yV(objYear(y))]);
+    for(let y=HOY;y<=YR1;y++)real.push([xY(y),yV(realYear(y))]);
+    document.getElementById('pcPast').setAttribute('d',path(past));
+    document.getElementById('pcFut').setAttribute('d',path(fut));
+    document.getElementById('pcObj').setAttribute('d',path(obj));
+    document.getElementById('pcReal').setAttribute('d',path(real));
+    document.getElementById('pcArea').setAttribute('d',path(fut)+' L'+X1+' '+YBOT+' L'+xY(HOY)+' '+YBOT+' Z');
+    // reposicionar puntos/hoy y remaquetar ejes
+    const svgNS='http://www.w3.org/2000/svg';
+    // gridlines fijas en y (30,140,250) → etiquetas dinámicas
+    let gl=svg.querySelector('#pcYlab'); if(!gl){gl=document.createElementNS(svgNS,'g');gl.id='pcYlab';gl.setAttribute('font-family','JetBrains Mono');gl.setAttribute('font-size','10');gl.setAttribute('fill','#8A92A0');svg.appendChild(gl);} 
+    const kfmt=v=>Math.round(v/1000)+'K';
+    gl.innerHTML='<text x="50" y="34" text-anchor="end">'+kfmt(VMAX)+'</text><text x="50" y="131" text-anchor="end">'+kfmt(VMAX*0.582)+'</text><text x="50" y="218" text-anchor="end">'+kfmt(VMAX*0.207)+'</text>';
+    // ocultar viejas etiquetas Y estáticas si existen
+    // puntos
+    const hoyDot=svg.querySelector('circle[cx="306"]'); // hoy node original
+    // reubicar dinámicamente: recomputar
+    let dots=svg.querySelector('#pcDots'); if(!dots){dots=document.createElementNS(svgNS,'g');dots.id='pcDots';svg.appendChild(dots);} 
+    dots.innerHTML='<circle cx="'+xY(HOY)+'" cy="'+yV(valNow)+'" r="4.5" fill="#fff" stroke="#B88A3E" stroke-width="2.5"/>'
+      +'<circle cx="'+xY(YR1)+'" cy="'+yV(finalNom)+'" r="5" fill="#B88A3E" stroke="#fff" stroke-width="2"/>'
+      +'<circle cx="'+xY(YR1)+'" cy="'+yV(finalReal)+'" r="4" fill="#8A92A0" stroke="#fff" stroke-width="2"/>';
+    // bandas gestora (una sola vez)
+    if(!svg.querySelector('#pcBands')){
+      const labs=[[2015,'SAB'],[2019,'ING'],[2023.1,'INDEXA'],[2025.7,'MYI']];
+      const tras=[2016.99,2021.12,2025.24]; let b='';
+      tras.forEach(t=>{const x=xY(t);b+='<line x1="'+x.toFixed(1)+'" y1="30" x2="'+x.toFixed(1)+'" y2="214" stroke="#E3DECF" stroke-width="1" stroke-dasharray="1 3"/>';});
+      labs.forEach(l=>{b+='<text x="'+xY(l[0]).toFixed(1)+'" y="44" text-anchor="middle" font-family="JetBrains Mono" font-size="8.5" fill="#B8AE93" font-weight="700">'+l[1]+'</text>';});
+      const g=document.createElementNS(svgNS,'g');g.id='pcBands';g.innerHTML=b;svg.insertBefore(g,document.getElementById('pcObj'));
+    }
+    // textos verdict / boxes / leyenda / aviso
+    const kf=v=>Math.round(v/1000);
+    const verdict=document.getElementById('projVerdict'); if(verdict) verdict.innerHTML='A los 65 (2045) tendrás <span class="g">'+kf(finalNom)+' k €</span><br><span class="muted">'+kf(finalReal)+' k € en poder adquisitivo real</span>';
+    const bn=document.getElementById('boxNom'); if(bn) bn.textContent=kf(finalNom)+' k €';
+    const br=document.getElementById('boxReal'); if(br) br.textContent=kf(finalReal)+' k €';
+    const brs=document.getElementById('boxRealSub'); if(brs) brs.textContent='descontada inflación '+(infl*100).toFixed(1).replace('.',',')+'%';
+    const lg=document.getElementById('legNom'); if(lg) lg.textContent='Valor nominal · si mantienes '+(rate*100).toFixed(1).replace('.',',')+'%';
+    const lo=document.getElementById('legObj'); if(lo) lo.textContent='Objetivo '+(rate*100).toFixed(1).replace('.',',')+'% / año';
+    const av=document.getElementById('avisoProj'); if(av) av.textContent=kf(finalNom*1.03)+' k€';
+  }
+  renderProj();
+
+  // ==== Aportaciones por año interactivas ====
+  (function buildApo(){
+    const svg=document.getElementById('apoSvg'); if(!svg)return;
+    const data=[[2013,1200],[2014,2400],[2015,2400],[2016,2400],[2017,3000],[2018,3000],[2019,3600],[2020,3600],[2021,3600],[2022,3600],[2023,3639],[2024,3800],[2025,3200],[2026,600]];
+    const W=360,H=60,n=data.length,gap=6,bw=(W-gap*(n-1))/n,max=Math.max(...data.map(d=>d[1]));
+    const tip=document.getElementById('apoTip'); let s='';
+    data.forEach((d,i)=>{const bh=8+d[1]/max*(H-8),x=i*(bw+gap),y=H-bh;
+      s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="2" fill="'+(i===n-1?'#8A92A0':'#C59A47')+'" data-y="'+d[0]+'" data-v="'+d[1]+'"></rect>';});
+    svg.innerHTML=s;
+    svg.querySelectorAll('rect').forEach(rc=>{
+      rc.addEventListener('mouseenter',e=>{const r=svg.getBoundingClientRect(),br=rc.getBoundingClientRect();
+        tip.innerHTML='<span class="yr">'+rc.dataset.y+'</span> · '+sep(+rc.dataset.v)+' \u20ac';
+        tip.style.left=(br.left-r.left+br.width/2)+'px';tip.style.top=(br.top-r.top)+'px';tip.classList.add('show');});
+      rc.addEventListener('mouseleave',()=>tip.classList.remove('show'));
+    });
+  })();
+
+</script>
+</body>
+</html>

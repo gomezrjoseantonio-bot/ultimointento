@@ -1,17 +1,18 @@
-// T23.3 · `<FichaPosicionPage>` dispatcher por grupo de tipo (§ 4.2 spec).
+// `<FichaPosicionPage>` dispatcher por grupo de tipo.
 //
 // Carga la posición desde el store y delega el render a la ficha
 // correspondiente según `clasificarTipo(posicion.tipo)`. Reusa los
-// modales existentes (`ActualizarValorDialog` · `AportacionFormDialog` ·
-// `PosicionFormDialog`) y añade `<RegistrarCobroDialog>` para los flujos
-// de cobro / dividendo (que el form de aportaciones existente no
-// soporta). Cero migración · cero cambios al modelo de datos.
+// modales existentes (`ActualizarValoracionModal` · `AportarModal` ·
+// `VenderModal` · `EditarPosicionModal` · `AltaPrestamoModal`) y el
+// confirm destructivo `<EliminarPosicionModal>`. Cero migración · cero
+// cambios al modelo de datos.
 //
-// T23.6.1 · dispatcher ampliado: si `posicionId` es un UUID (no entero) ·
-// se trata de un plan de pensiones del store `planesPensiones` · muestra
-// placeholder TODO hasta que T23.6.4 implemente la ficha completa.
+// INVERSIONES V1 · Fase 3 · las fichas de posición (préstamo · equity) se
+// restilan al mockup v10 (hero de detalle + 2 cards + acción Eliminar).
+// Los cobros y dividendos son SOLO LECTURA (regla de oro §3).
 //
-// T23.6.2 · CintaResumenInversiones sticky añadida en la parte superior.
+// Si `posicionId` es un UUID (no entero) se trata de un plan de pensiones
+// del store `planesPensiones` y se delega en `FichaPlanPensiones`.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -24,19 +25,15 @@ import ActualizarValoracionModal from '../components/modal/ActualizarValoracionM
 import EditarPosicionModal from '../components/modal/EditarPosicionModal';
 import AltaPrestamoModal from '../components/modal/AltaPrestamoModal';
 import VenderModal from '../components/modal/VenderModal';
-import RegistrarCobroDialog from '../components/RegistrarCobroDialog';
 import FichaValoracionSimple from '../components/FichaValoracionSimple';
 import FichaRendimientoPeriodico from '../components/FichaRendimientoPeriodico';
 import FichaDividendos from '../components/FichaDividendos';
 import FichaGenerica from '../components/FichaGenerica';
 import FichaPlanPensiones from './FichaPlanPensiones';
+import EliminarPosicionModal from '../components/ficha/EliminarPosicionModal';
 import { clasificarTipo } from '../helpers';
 import { inversionToCartaItem } from '../types/cartaItem';
 import styles from './FichaPosicion.module.css';
-
-// Solo 'dividendo': los cobros de un préstamo no se registran a mano · se
-// prevén en Tesorería y se dan por cobrados al puntearlos.
-type CobroVariant = 'dividendo';
 
 const FichaPosicionPage: React.FC = () => {
   const { posicionId } = useParams();
@@ -49,7 +46,7 @@ const FichaPosicionPage: React.FC = () => {
   const [showAportar, setShowAportar] = useState(false);
   const [showEditar, setShowEditar] = useState(false);
   const [showVender, setShowVender] = useState(false);
-  const [showCobro, setShowCobro] = useState<CobroVariant | null>(null);
+  const [showEliminar, setShowEliminar] = useState(false);
 
   const idNumber = Number(posicionId);
   // T23.6.1 · UUID detection: a valid inversiones ID is a positive integer string.
@@ -143,7 +140,6 @@ const FichaPosicionPage: React.FC = () => {
             : 'Aportación añadida.',
       );
       setShowAportar(false);
-      setShowCobro(null);
       await resincronizarTesoreriaInversiones('aportación');
       // Nota · NO disparamos `rendimientosService.generarRendimientosPendientes()`
       // aquí · es un side-effect global (recorre todas las posiciones · puede
@@ -240,6 +236,7 @@ const FichaPosicionPage: React.FC = () => {
           posicion={posicion}
           onBack={handleBack}
           onEditar={() => setShowEditar(true)}
+          onEliminar={() => setShowEliminar(true)}
         />
       );
       break;
@@ -248,12 +245,10 @@ const FichaPosicionPage: React.FC = () => {
         <FichaDividendos
           posicion={posicion}
           onBack={handleBack}
-          onRegistrarDividendo={() => setShowCobro('dividendo')}
-          // PR 4 · "comprar/vender" abre `VenderModal` (flujo de venta con
-          // FIFO en vivo). El alta de compra adicional sigue por Aportar.
-          onComprarVender={() => setShowVender(true)}
-          onActualizarValor={() => setShowActualizarValor(true)}
-          onReload={reload}
+          // "Vender" abre `VenderModal` (flujo de venta con FIFO en vivo).
+          onVender={() => setShowVender(true)}
+          onEditar={() => setShowEditar(true)}
+          onEliminar={() => setShowEliminar(true)}
         />
       );
       break;
@@ -300,12 +295,14 @@ const FichaPosicionPage: React.FC = () => {
         />
       )}
 
-      {showCobro && (
-        <RegistrarCobroDialog
-          posicionNombre={nombrePosicion}
-          variante={showCobro}
-          onSave={handleSaveAportacion}
-          onClose={() => setShowCobro(null)}
+      {showEliminar && (
+        <EliminarPosicionModal
+          what={`«${nombrePosicion}»`}
+          onConfirm={() => {
+            setShowEliminar(false);
+            void handleEliminarPosicion();
+          }}
+          onClose={() => setShowEliminar(false)}
         />
       )}
 
