@@ -660,3 +660,38 @@ select.inp {
   border-color: var(--atlas-v5-gold-ink);
 }
 .btnGold:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* La FEIN, dentro del alta · es una forma de rellenar ESTE formulario, no otro
+   sitio al que ir. Fuera competía con «Nuevo préstamo» siendo la misma tarea, y
+   quien no sepa qué es una FEIN tenía dos puertas para una sola cosa. */
+.desdeFein {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 14px;
+  margin-bottom: 18px;
+  border: 1px dashed var(--atlas-v5-gold-soft);
+  border-radius: var(--atlas-v5-radius-sm);
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.desdeFein:hover { border-style: solid; }
+.desdeFein svg { flex-shrink: 0; }
+
+.desdeFein strong {
+  display: block;
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.desdeFein small {
+  display: block;
+  font-size: 11px;
+  opacity: 0.8;
+  margin-top: 1px;
+}

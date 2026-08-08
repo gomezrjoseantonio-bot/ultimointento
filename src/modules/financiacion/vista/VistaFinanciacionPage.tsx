@@ -322,9 +322,10 @@ const VistaFinanciacionPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Un solo primario · «Subir FEIN» era otra puerta al MISMO sitio
-              (dar de alta un préstamo), y como botón propio competía con él.
-              Ahora es la otra forma de empezar lo mismo, dentro. */}
+          {/* UN botón. La FEIN no es otra puerta: es una forma de rellenar el
+              alta, así que vive DENTRO del alta y no compitiendo con ella aquí
+              *(Jose · 8 ago 2026)*. Como enlace debajo seguía siendo una
+              segunda salida en la misma pantalla. */}
           <div className={styles.kpiBtn}>
             <button
               type="button"
@@ -333,14 +334,6 @@ const VistaFinanciacionPage: React.FC = () => {
             >
               <Icons.Plus size={14} strokeWidth={2.2} />
               Nuevo préstamo
-            </button>
-            <button
-              type="button"
-              className={styles.btnFein}
-              onClick={() => navigate('/financiacion/nuevo-fein')}
-            >
-              <Icons.Upload size={12} strokeWidth={2} />
-              o subir la FEIN
             </button>
           </div>
         </div>

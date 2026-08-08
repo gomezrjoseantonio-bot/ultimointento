@@ -28,6 +28,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   Calendar,
@@ -40,6 +41,7 @@ import {
   Save,
   Shield,
   Sliders,
+  Upload,
   Target,
   Trash2,
   User,
@@ -722,6 +724,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   onSuccess,
   onCancel,
 }) => {
+  const navigate = useNavigate();
   const [form, setForm] = useState<FormState>(emptyFormState);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [inmuebles, setInmuebles] = useState<Inmueble[]>([]);
@@ -1666,6 +1669,26 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
         {/* ═══ CUERPO · FORMULARIO ═══ */}
         <div className={styles.body}>
+
+          {/* La FEIN, aquí dentro · es una forma de RELLENAR este formulario,
+              no otro sitio al que ir. Como botón propio en la pantalla anterior
+              competía con «Nuevo préstamo» siendo la misma cosa, y quien no
+              supiera qué es una FEIN tenía dos puertas para una sola tarea
+              *(Jose · 8 ago 2026)*. Solo al dar de alta: editando ya hay datos
+              que una lectura pisaría. */}
+          {!isEditing && (
+            <button
+              type="button"
+              className={styles.desdeFein}
+              onClick={() => navigate('/financiacion/nuevo-fein')}
+            >
+              <Upload size={15} strokeWidth={2} />
+              <span>
+                <strong>¿Tienes la FEIN?</strong>
+                <small>súbela y rellenamos lo que diga · lo demás lo repasas aquí</small>
+              </span>
+            </button>
+          )}
 
           {/* ── Tipo de préstamo ── */}
           <div className={styles.sec}>
