@@ -141,7 +141,18 @@ export interface Prestamo {
    */
   valorIndiceActual?: number;
   diferencial?: number;         // 0.012
-  periodoRevisionMeses?: number; // 6 or 12
+  /**
+   * Cada cuántos meses revisa el banco · lo normal, 6 o 12 (§6 ter).
+   *
+   * **UNA periodicidad para todo el préstamo** *(Jose · 8 ago 2026: «se revisa
+   * una única vez al año o dos al año, y en esa revisión se revisa el euríbor +
+   * bonificaciones»)*. La revisión es un acto; cambia qué alcanza.
+   *
+   * También en un FIJO: no revisa el índice porque no tiene, pero sí si
+   * cumples — el de ING mueve el tipo fijo del 2,15 % al 1,35 %. Léase con
+   * `cadaCuantoRevisa`, que cae en el campo legado cuando falta.
+   */
+  periodoRevisionMeses?: number;
   fechaProximaRevision?: string;
   /**
    * Las revisiones del índice que YA ocurrieron · §6 bis · bis.
@@ -276,15 +287,14 @@ export interface Prestamo {
    */
   modoBonificaciones?: ModoBonificaciones;
   /**
-   * Cada cuántos meses mira el banco si cumples · lo normal, 6 o 12 (§6 ter).
+   * @deprecated Usar `periodoRevisionMeses` · la periodicidad es una sola.
    *
-   * Una bonificación no se pierde el día que dejas de cumplirla: se pierde el
-   * día que el banco lo mira. Sin este dato, el veredicto solo puede decir «si
-   * la revisión fuera hoy», que es una hipótesis; con él dice una fecha, y da
-   * tiempo a corregir.
+   * Había dos, con su propio desplegable «Revisión» cada una en la misma
+   * pantalla de alta, y no coincidían: la ficha anunciaba una fecha arriba y
+   * otra en la tarjeta de bonificaciones.
    *
-   * Ausente = la escritura no lo dice. No se supone un año: una fecha inventada
-   * se lee igual que una real.
+   * Ya no se escribe · se lee de respaldo en `cadaCuantoRevisa`, que en un fijo
+   * guardado antes de unificarlas es el único sitio donde está el dato.
    */
   periodoRevisionBonificacionMeses?: number;
   /**

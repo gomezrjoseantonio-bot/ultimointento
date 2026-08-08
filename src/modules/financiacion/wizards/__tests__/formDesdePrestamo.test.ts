@@ -84,7 +84,7 @@ describe('subirla y teclearla dan lo mismo', () => {
       'tinTramoFijoRaw',
       'tramoFijoMesesRaw',
       'diferencialRaw',
-      'revisionPeriodo',
+      'revisionCadaMeses',
     ] as const) {
       expect([campo, porFEIN[campo]]).toEqual([campo, porTeclado[campo]]);
     }

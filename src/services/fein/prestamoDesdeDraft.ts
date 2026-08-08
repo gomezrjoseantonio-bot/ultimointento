@@ -126,6 +126,10 @@ export function prestamoDesdeDraft(draft: FeinLoanDraft): Partial<Prestamo> {
     // Sin esto, el tramo variable se estimaba al diferencial pelado.
     ...(hay(p.valorIndiceActual) ? { valorIndiceActual: p.valorIndiceActual } : {}),
     ...(hay(p.diferencial) ? { diferencial: p.diferencial } : {}),
+    // Cuándo mira el banco · UNA periodicidad para el préstamo entero: la
+    // revisión es un acto y en él se revisan el índice y las bonificaciones.
+    // Aquí se escribía además en `periodoRevisionBonificacionMeses`, o sea el
+    // mismo dato en dos campos que después podían editarse por separado.
     ...(hay(p.revisionMeses) ? { periodoRevisionMeses: p.revisionMeses } : {}),
 
     // Los tres que el tipo viejo no sabía llevar.
@@ -139,9 +143,6 @@ export function prestamoDesdeDraft(draft: FeinLoanDraft): Partial<Prestamo> {
     // 3,00 p.p. y se comen entero un TIN del 2,60 %. El motor ya sabe aplicar
     // el tope (`tinConBonificaciones`); lo que faltaba era traérselo del papel.
     ...(hay(p.topeBonificacionPuntos) ? { topeBonificacionesTotal: p.topeBonificacionPuntos } : {}),
-    // Y cuándo las mira el banco · §6 ter: una bonificación no se pierde el día
-    // que dejas de cumplirla, sino el día que él lo comprueba.
-    ...(hay(p.revisionMeses) ? { periodoRevisionBonificacionMeses: p.revisionMeses } : {}),
 
     // El seguro que el banco exige · no es cuota del préstamo, pero es precio
     // suyo y por eso entra en la TAE (§6 bis · quinquies).

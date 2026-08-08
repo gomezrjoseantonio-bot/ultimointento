@@ -54,6 +54,7 @@ import type { LucideIcon } from 'lucide-react';
 import { prestamosService } from '../../../services/prestamosService';
 import { planificarEventos, cambiaElCuadro } from '../../../services/prestamoEventosPlan';
 import { generarCuadro, type Cuadro } from '../../../services/prestamos/cuadro';
+import { cadaCuantoRevisa } from '../../../services/bonificaciones/revisionDelBanco';
 import { baseDiasSueltosDe } from '../../../services/prestamos/baseDeCalculo';
 import {
   diasSueltosDelArranqueDe,
@@ -158,7 +159,6 @@ interface FormState {
   tinFijoRaw: string;
   euriborRaw: string;
   diferencialRaw: string;
-  revisionPeriodo: 6 | 12;
   tramoFijoMesesRaw: string;
   tinTramoFijoRaw: string;
 
@@ -518,7 +518,6 @@ function emptyFormState(): FormState {
     tinFijoRaw: '',
     euriborRaw: '',
     diferencialRaw: '',
-    revisionPeriodo: 12,
     tramoFijoMesesRaw: '',
     tinTramoFijoRaw: '',
     baseCalculo: BASE_POR_DEFECTO,
@@ -635,6 +634,9 @@ function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
         ? Math.abs(p.topeBonificacionesTotal)
         : undefined;
 
+  /** Una sola lectura · la canónica, con respaldo en la legada. */
+  const revisaCada = cadaCuantoRevisa(p);
+
   return {
     ...base,
     tipoPrestamo:
@@ -657,7 +659,6 @@ function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
     interesDemoraRaw: numero(p.interesDemoraPct, base.interesDemoraRaw),
     euriborRaw: numero(p.valorIndiceActual, base.euriborRaw),
     diferencialRaw: numero(p.diferencial, base.diferencialRaw),
-    revisionPeriodo: (p.periodoRevisionMeses as 6 | 12) || base.revisionPeriodo,
     baseCalculo: p.baseCalculoIntereses ?? base.baseCalculo,
     revisionesIndice: p.revisionesDeTipo
       ? p.revisionesDeTipo.map((r, i) => ({
@@ -684,9 +685,7 @@ function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
       topeEnPuntos !== undefined ? fmtNumeroEs(topeEnPuntos, 2) : base.topeBonificacionesRaw,
     modoBonificaciones: p.modoBonificaciones ?? base.modoBonificaciones,
     proximaRevision: p.proximaRevisionBonificaciones ?? base.proximaRevision,
-    revisionCadaMeses: p.periodoRevisionBonificacionMeses
-      ? String(p.periodoRevisionBonificacionMeses)
-      : base.revisionCadaMeses,
+    revisionCadaMeses: revisaCada != null ? String(revisaCada) : base.revisionCadaMeses,
     bonificacionesDesde: p.bonificacionesDesde ?? base.bonificacionesDesde,
     graciaBonificacionesMeses: p.graciaMesesBonificaciones
       ? String(p.graciaMesesBonificaciones)
@@ -1463,7 +1462,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         tipoNominalAnualFijo: form.tipoInteres === 'fijo' ? tinFijoPct : undefined,
         valorIndiceActual: form.tipoInteres !== 'fijo' ? parseNum(form.euriborRaw) : undefined,
         diferencial: form.tipoInteres !== 'fijo' ? parseNum(form.diferencialRaw) : undefined,
-        periodoRevisionMeses: form.tipoInteres !== 'fijo' ? form.revisionPeriodo : undefined,
+        // Una sola periodicidad, y también en un fijo: un fijo no revisa el
+        // índice pero sí las bonificaciones, y sin esto no tenía calendario.
+        periodoRevisionMeses: revisionCada || undefined,
         // Las revisiones que ya ocurrieron · sin ellas el cuadro de una
         // variable de hace años se genera entero al índice de hoy.
         revisionesDeTipo:
@@ -1491,7 +1492,6 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         // guardarlo solo añadiría una respuesta que no cambia nada.
         modoBonificaciones: form.modoBonificaciones === 'CASCADA' ? 'CASCADA' : undefined,
         proximaRevisionBonificaciones: form.proximaRevision || undefined,
-        periodoRevisionBonificacionMeses: revisionCada || undefined,
         // `FIRMA` tampoco se guarda, por el mismo motivo.
         bonificacionesDesde:
           bonificacionesDesde === 'TRAMO_VARIABLE' ? 'TRAMO_VARIABLE' : undefined,
@@ -1946,18 +1946,6 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                     <span className={styles.suffix}>%</span>
                   </div>
                 </div>
-                <div className={styles.fld}>
-                  <label className={styles.fldLab} htmlFor="p-rev">Revisión</label>
-                  <select
-                    id="p-rev"
-                    className={styles.inp}
-                    value={form.revisionPeriodo}
-                    onChange={(e) => update('revisionPeriodo', Number(e.target.value) as 6 | 12)}
-                  >
-                    <option value={12}>Anual</option>
-                    <option value={6}>Semestral</option>
-                  </select>
-                </div>
               </div>
             )}
 
@@ -2016,18 +2004,6 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                     />
                     <span className={styles.suffix}>%</span>
                   </div>
-                </div>
-                <div className={styles.fld}>
-                  <label className={styles.fldLab} htmlFor="p-revm">Revisión</label>
-                  <select
-                    id="p-revm"
-                    className={styles.inp}
-                    value={form.revisionPeriodo}
-                    onChange={(e) => update('revisionPeriodo', Number(e.target.value) as 6 | 12)}
-                  >
-                    <option value={12}>Anual</option>
-                    <option value={6}>Semestral</option>
-                  </select>
                 </div>
               </div>
             )}
@@ -2355,7 +2331,12 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                     </div>
                   </div>
                   <div className={`${styles.fld} ${styles.wMd}`}>
-                    <label className={styles.fldLab} htmlFor="p-revbonif">Revisión</label>
+                    {/* El ÚNICO desplegable de revisión · la revisión es un
+                        solo acto y antes había otro igual en el bloque de
+                        interés, con sus propias opciones. Vive aquí porque
+                        aquí lo tiene también un préstamo fijo, que revisa
+                        bonificaciones aunque no tenga índice que revisar. */}
+                    <label className={styles.fldLab} htmlFor="p-revbonif">Revisión del banco</label>
                     <select
                       id="p-revbonif"
                       className={styles.inp}
