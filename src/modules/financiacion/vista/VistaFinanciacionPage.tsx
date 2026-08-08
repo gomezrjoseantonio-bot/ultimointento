@@ -252,12 +252,15 @@ const VistaFinanciacionPage: React.FC = () => {
   const alerta = useMemo(() => {
     const candidatas = filas
       .filter((f) => f.revision)
-      .sort((a, b) => a.revision!.fecha.localeCompare(b.revision!.fecha));
+      .sort((a, b) => a.revision!.aplicaDesde.localeCompare(b.revision!.aplicaDesde));
     const fila = candidatas[0];
     if (!fila) return null;
-    const trae = queTraeLaRevision(fila.prestamo, fila.revision!.fecha, hoy);
+    // El día en que REVISA, no el del primer recibo · el parámetro se llama
+    // `revisionDesde` y se le estaba pasando la fecha de cargo, que va un mes
+    // por detrás.
+    const trae = queTraeLaRevision(fila.prestamo, fila.revision!.aplicaDesde, hoy);
     return {
-      clave: `${fila.id}:${fila.revision!.fecha}`,
+      clave: `${fila.id}:${fila.revision!.aplicaDesde}`,
       nombre: fila.nombre,
       revision: fila.revision!,
       acabaElTramoFijo: Boolean(trae.acabaElTramoFijo),
@@ -382,7 +385,7 @@ const VistaFinanciacionPage: React.FC = () => {
             <Icons.Warning size={16} strokeWidth={2} />
           </div>
           <div className={styles.alertaTexto}>
-            {alerta.nombre} revisa el <strong>{diaMesAnio(alerta.revision.fecha)}</strong> ·{' '}
+            {alerta.nombre} revisa el <strong>{diaMesAnio(alerta.revision.aplicaDesde)}</strong> ·{' '}
             {alerta.acabaElTramoFijo && 'acaba el tramo fijo y '}la cuota{' '}
             {alerta.revision.cuotaDespues > alerta.revision.cuotaAntes ? 'sube' : 'baja'} de{' '}
             <strong>{eurPlano(alerta.revision.cuotaAntes)} €</strong> a{' '}

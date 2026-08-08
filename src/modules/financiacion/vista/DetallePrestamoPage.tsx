@@ -500,9 +500,10 @@ const DetallePrestamoPage: React.FC = () => {
             <Icons.Warning size={14} strokeWidth={2} aria-hidden />
             {datos.revision ? (
               <>
-                próxima revisión{' '}
-                <span className={styles.mono}>{diaMesAnio(datos.revision.fecha)}</span> · la cuota
-                pasa a {eurPlano(datos.revision.cuotaDespues)} €
+                revisa el{' '}
+                <span className={styles.mono}>{diaMesAnio(datos.revision.aplicaDesde)}</span> · la
+                cuota pasa a {eurPlano(datos.revision.cuotaDespues)} € en el recibo del{' '}
+                <span className={styles.mono}>{diaMesAnio(datos.revision.fecha)}</span>
               </>
             ) : prestamo.tipo === 'FIJO' ? (
               'la cuota no cambia · sin revisiones que seguir'
