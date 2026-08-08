@@ -6,9 +6,9 @@
 // app venía contestando otra *(Jose · 8 ago 2026)*:
 //
 //   «la deducción fiscal de un préstamo la genera si el inmueble está
-//    alquilado, no si el destino es adquisición — totalmente falso»
+//    alquilado, no si el destino es adquisición»
 //
-// Y tenía razón: el destino del capital dice QUÉ inmueble financia el préstamo
+// El destino del capital dice QUÉ inmueble financia el préstamo
 // y CUÁNTA parte, pero lo que abre la casilla 0105 es que ese inmueble produzca
 // rendimientos de alquiler. Una vivienda comprada con hipoteca y vacía no
 // deduce un céntimo, y la ficha la marcaba «deducible 100%».

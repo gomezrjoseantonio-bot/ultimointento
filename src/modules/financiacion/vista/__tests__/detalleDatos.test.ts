@@ -154,9 +154,9 @@ describe('resumenBonificaciones · el teórico y el bonificado', () => {
 //
 // Lo que abre la casilla 0105 es el ALQUILER, no el destino *(Jose · 8 ago
 // 2026: «la deducción fiscal de un préstamo la genera si el inmueble está
-// alquilado, no si el destino es adquisición — totalmente falso»)*. El destino
-// dice qué inmueble financia el préstamo y qué fracción; el alquiler dice si
-// hay rendimiento del que descontar el gasto.
+// alquilado, no si el destino es adquisición»)*. El destino dice qué inmueble
+// financia el préstamo y qué fracción; el alquiler dice si hay rendimiento del
+// que descontar el gasto.
 
 const ALQUILADO = new Set(['inm-1']);
 const NINGUNO: ReadonlySet<string> = new Set<string>();
