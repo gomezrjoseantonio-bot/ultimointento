@@ -8,6 +8,7 @@
 
 import type { Bonificacion, Prestamo } from '../../../types/prestamos';
 import type { Cumplimiento } from '../../../services/bonificaciones/cumplimiento';
+import { textoDeCumplimiento } from '../textoBonificacion';
 import type { Cuadro } from '../../../services/prestamos/cuadro';
 import { tramosDeTipo, type TramoDeTipo } from '../../../services/prestamos/tramosDeTipo';
 import { tinDelTramo } from '../../../services/prestamos/tinDelTramo';
@@ -111,8 +112,14 @@ export interface BonificacionDetalle {
    * las que existen»)*.
    */
   veredicto?: Cumplimiento['veredicto'];
-  /** Por qué, cuando hay algo que explicar · sobre todo si no se pudo mirar. */
-  motivo?: string;
+  /**
+   * Lo que dicen los movimientos, en una línea de castellano.
+   *
+   * Lo escribe `textoDeCumplimiento`, que ya sabía decirlo: cuántos meses de
+   * cuántos llegan, qué falta para el mínimo, y qué gasto está hecho pero aún
+   * no consta. Aquí se estaba reinventando con un `motivo` a secas.
+   */
+  explicacion?: string;
 }
 
 export interface ResumenBonificaciones {
@@ -146,7 +153,7 @@ export function resumenBonificaciones(
       alcanzada: estaAplicada(b),
       puntos: puntosDe(b),
       veredicto: c?.veredicto,
-      motivo: c?.motivo,
+      explicacion: c ? textoDeCumplimiento(c) : undefined,
     };
   });
 

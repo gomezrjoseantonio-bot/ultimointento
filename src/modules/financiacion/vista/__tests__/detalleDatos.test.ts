@@ -294,7 +294,7 @@ describe('lo que el banco aplica y lo que se puede demostrar van por separado', 
 
     expect(b.alcanzada).toBe(true);
     expect(b.veredicto).toBe('no_cumple');
-    expect(b.motivo).toContain('nómina');
+    expect(b.explicacion).toContain('nómina');
   });
 
   // Y la tercera respuesta se conserva hasta la pantalla · «no se puede mirar»
@@ -312,7 +312,9 @@ describe('lo que el banco aplica y lo que se puede demostrar van por separado', 
     ]).lista;
 
     expect(b.veredicto).toBe('no_verificable');
-    expect(b.motivo).toContain('cuenta');
+    // La frase entera, no un motivo suelto · «No se puede comprobar · …».
+    expect(b.explicacion).toContain('No se puede comprobar');
+    expect(b.explicacion).toContain('cuenta');
   });
 
   // La discrepancia al revés, y es la que tiene dinero detrás: la cumples y el

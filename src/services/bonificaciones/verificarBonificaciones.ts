@@ -24,6 +24,8 @@ import { recibosDeLaCuenta } from './recibosDomiciliados';
 import { bonificaHipoteca } from '../tarjetasReglas';
 import type { SeguroDomiciliado } from './segurosDomiciliados';
 import { deLaCuenta, delTipo, primaTotal } from './segurosDomiciliados';
+import type { AportacionDeUnAnio } from './aportacionesAPlanes';
+import { deLaEntidad, totalAportado } from './aportacionesAPlanes';
 import type { Cumplimiento, Ventana } from './cumplimiento';
 import { ventanaDeEvaluacion, veredictoDelImporte } from './cumplimiento';
 
@@ -69,6 +71,23 @@ export interface MovimientosQuePrueban {
    * Ausente = ATLAS no sabe de ninguno, que no es lo mismo que no tenerlos.
    */
   segurosDomiciliados?: SeguroDomiciliado[];
+  /**
+   * Lo aportado a planes este ejercicio · lo que da `aportacionesPorPlan`.
+   *
+   * Va con su gestora porque el anexo no pide «un plan cualquiera»: pide uno
+   * SUYO, igual que la nómina en su cuenta o la tarjeta del propio banco.
+   *
+   * Ausente = ATLAS no sabe de ninguno, que no es lo mismo que no tenerlos.
+   */
+  aportacionesAPlanes?: AportacionDeUnAnio[];
+  /**
+   * De qué entidad es el préstamo que se está comprobando.
+   *
+   * Lo único de aquí que **no sale de la tesorería**: sale del propio préstamo,
+   * y quien llama lo tiene. Hace falta para la condición de plan, que exige que
+   * sea de ese banco. Sin ella no se puede responder, y se dice.
+   */
+  entidad?: string;
 }
 
 /**
@@ -82,11 +101,16 @@ export interface MovimientosQuePrueban {
 const SIN_FUENTE: Record<
   Exclude<
     ReglaBonificacion['tipo'],
-    'TARJETA' | 'NOMINA' | 'RECIBOS' | 'SEGUROS' | 'SEGURO_HOGAR' | 'SEGURO_VIDA'
+    | 'TARJETA'
+    | 'NOMINA'
+    | 'RECIBOS'
+    | 'SEGUROS'
+    | 'SEGURO_HOGAR'
+    | 'SEGURO_VIDA'
+    | 'PLAN_PENSIONES'
   >,
   string
 > = {
-  PLAN_PENSIONES: 'la aportación al plan todavía no se sigue en tesorería',
   FONDOS: 'el saldo en fondos se prueba con la posición, no con un movimiento',
   CERTIFICADO_ENERGETICO: 'la letra la dice el certificado del inmueble, no la tesorería',
   ALARMA: 'la alarma se prueba con su contrato, no con un movimiento',
@@ -102,6 +126,68 @@ const noVerificable = (b: Bonificacion, motivo: string): Cumplimiento => ({
   veredicto: 'no_verificable',
   motivo,
 });
+
+/**
+ * La condición de APORTACIÓN A UN PLAN · §6 ter, la quinta forma.
+ *
+ * `SIN_FUENTE` decía «la aportación al plan todavía no se sigue en tesorería»,
+ * y era verdad a medias: no se sigue en tesorería porque no es un movimiento —
+ * se sigue en el store de aportaciones, que lleva cada una con su ejercicio
+ * fiscal. Lo que faltaba no era el dato, era la pregunta.
+ *
+ * La gestora importa tanto como el importe: el anexo pide un plan SUYO, no uno
+ * cualquiera. Sin saber de qué entidad es el préstamo no se puede responder, y
+ * eso se dice — es la tercera respuesta, no un no.
+ *
+ * Sin cifra pedida (`aportacionAnual` ausente) la condición es «tenerlo
+ * contratado», y entonces basta con que exista un plan de esa gestora.
+ */
+function porAportaciones(
+  b: Bonificacion,
+  regla: Extract<ReglaBonificacion, { tipo: 'PLAN_PENSIONES' }>,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban
+): Cumplimiento {
+  const base = { bonificacionId: b.id, nombre: b.nombre, ventana };
+
+  if (!movimientos.aportacionesAPlanes) {
+    return noVerificable(b, 'no hay planes dados de alta donde mirar la aportación');
+  }
+  if (!movimientos.entidad?.trim()) {
+    return noVerificable(b, 'no consta de qué banco es el préstamo, y el plan tiene que ser suyo');
+  }
+
+  const suyos = deLaEntidad(movimientos.aportacionesAPlanes, movimientos.entidad);
+
+  // Un plan en otra entidad no le entra a este banco · esto SÍ se sabe, y la
+  // respuesta es que no. Decir «no se puede comprobar» mandaría a aportar más a
+  // un plan que no bonifica.
+  if (suyos.length === 0) {
+    return {
+      ...base,
+      veredicto: 'no_cumple',
+      motivo: `no hay ningún plan en ${movimientos.entidad.trim()}`,
+    };
+  }
+
+  // Sin cifra, la condición es tenerlo · y lo tiene.
+  const minimo = regla.aportacionAnual;
+  if (!Number.isFinite(minimo) || (minimo as number) <= 0) {
+    return {
+      ...base,
+      veredicto: 'cumple',
+      motivo: `${suyos.length === 1 ? 'un plan' : `${suyos.length} planes`} en ${movimientos.entidad.trim()}`,
+    };
+  }
+
+  const aportado = totalAportado(suyos);
+  return {
+    ...base,
+    veredicto: veredictoDelImporte(aportado, minimo as number),
+    medido: aportado,
+    exigido: minimo as number,
+  };
+}
 
 /**
  * La condición de tarjeta · §3.6.
@@ -533,6 +619,7 @@ function verificarUna(
   if (falta) return noVerificable(b, falta);
 
   const ventana = ventanaDeEvaluacion(hasta, b.lookbackMeses);
+  if (b.regla.tipo === 'PLAN_PENSIONES') return porAportaciones(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'TARJETA') return porTarjeta(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'NOMINA') return porNomina(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'RECIBOS') return porRecibos(b, b.regla, ventana, movimientos);
