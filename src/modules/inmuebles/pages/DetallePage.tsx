@@ -30,6 +30,7 @@ import {
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
+import GastosResumenInmueble from '../components/GastosResumenInmueble';
 import styles from './DetallePage.module.css';
 
 
@@ -458,6 +459,10 @@ const DetallePage: React.FC = () => {
 
       {tab === 'gastos' && (
         <div style={{ marginTop: 8 }}>
+          <GastosResumenInmueble
+            inmuebleId={propertyId}
+            compromisos={gastos}
+          />
           <ListadoGastosRecurrentes
             catalog={TIPOS_GASTO_INMUEBLE_V2}
             compromisos={gastos}
