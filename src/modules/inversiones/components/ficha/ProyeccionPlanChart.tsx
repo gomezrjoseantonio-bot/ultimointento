@@ -7,7 +7,8 @@
 // librería de charts · SVG a mano. Los sliders (rentabilidad objetivo +
 // inflación) viven en la ficha y solo recalculan el FUTURO.
 
-import React from 'react';
+import React, { useId } from 'react';
+import styles from './fichaDetalleV5.module.css';
 
 export interface PuntoRealizado {
   year: number;
@@ -52,6 +53,9 @@ const ProyeccionPlanChart: React.FC<Props> = ({
   inflPct,
   bandas = [],
 }) => {
+  // Id único para el gradiente · evita colisión si se montan varias gráficas.
+  const gradId = `planProjGrad-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+
   const rate = ratePct / 100;
   const infl = inflPct / 100;
 
@@ -87,9 +91,9 @@ const ProyeccionPlanChart: React.FC<Props> = ({
   const gridYs = [YTOP + (YBOT - YTOP) * 0.12, YTOP + (YBOT - YTOP) * 0.5, YBOT];
 
   return (
-    <svg viewBox={`0 0 ${VW} ${VH}`} preserveAspectRatio="none" role="img" aria-label="Proyección del plan a la jubilación">
+    <svg className={styles.projSvg} viewBox={`0 0 ${VW} ${VH}`} preserveAspectRatio="none" role="img" aria-label="Proyección del plan a la jubilación">
       <defs>
-        <linearGradient id="planProjGrad" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="var(--atlas-v5-gold)" stopOpacity="0.16" />
           <stop offset="1" stopColor="var(--atlas-v5-gold)" stopOpacity="0" />
         </linearGradient>
@@ -124,7 +128,7 @@ const ProyeccionPlanChart: React.FC<Props> = ({
       <line x1={xY(hoy)} y1={YTOP} x2={xY(hoy)} y2={YBOT} stroke="var(--atlas-v5-ink-5)" strokeWidth={1} strokeDasharray="2 3" />
 
       {/* Área bajo el futuro */}
-      <path d={areaFut} fill="url(#planProjGrad)" />
+      <path d={areaFut} fill={`url(#${gradId})`} />
 
       {/* Poder adquisitivo real (punteado gris) */}
       <path d={path(realPts)} fill="none" stroke="var(--atlas-v5-ink-4)" strokeWidth={2} strokeDasharray="5 4" strokeLinecap="round" />

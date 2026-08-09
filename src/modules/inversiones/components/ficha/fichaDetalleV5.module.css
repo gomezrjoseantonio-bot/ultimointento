@@ -410,6 +410,14 @@
   display: block;
 }
 
+/* Clase propia de ProyeccionPlanChart · el componente consume así los tokens
+   v5 de este módulo (además de las var(--atlas-v5-*) de sus trazos). */
+.projSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 /* ── Cajas resumen bajo la gráfica ─────────────────────────────────── */
 .projBoxes {
   display: grid;

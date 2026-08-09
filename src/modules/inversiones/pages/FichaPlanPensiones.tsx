@@ -559,7 +559,9 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
           <div className={d.dheroStats}>
             <div className={d.dstat}>
               <div className={d.dstatLab}>Valor hoy</div>
-              <div className={d.dstatVal}>{fmtShort(valorActual)}</div>
+              <div className={d.dstatVal}>
+                {sinValoracion ? '—' : fmtShort(valorActual)}
+              </div>
             </div>
             <div className={d.dstat}>
               <div className={d.dstatLab}>Aportado</div>
@@ -578,7 +580,24 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
 
         {/* ── Cuerpo · 2 columnas ────────────────────────────────────────── */}
         <div className={d.dbody}>
-          {/* Proyección */}
+          {/* Proyección · sin valoración no hay base sobre la que proyectar ·
+              mostramos un placeholder honesto en vez de cifras a 0. */}
+          {sinValoracion ? (
+            <div className={d.card}>
+              <div className={d.projHd}>
+                <div>
+                  <div className={d.projEyebrow}>Proyección</div>
+                  <div className={d.projVerdict}>
+                    Registra una valoración para proyectar
+                    <br />
+                    <span className={d.muted}>
+                      sabemos lo aportado, pero aún no el valor actual del plan
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className={d.card}>
             <div className={d.projHd}>
               <div>
@@ -661,6 +680,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
               </div>
             </div>
           </div>
+          )}
 
           {/* La ficha */}
           <div className={`${d.card} ${d.cardScroll}`}>
@@ -669,9 +689,13 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
 
             <div className={d.frow}>
               <span className={d.k}>Ganancia acumulada</span>
-              <span className={`${d.v} ${pgLatente >= 0 ? d.pos : d.neg}`}>
-                {pgLatente >= 0 ? '+' : ''}{fmtShort(pgLatente)}
-              </span>
+              {sinValoracion ? (
+                <span className={d.v}>—</span>
+              ) : (
+                <span className={`${d.v} ${pgLatente >= 0 ? d.pos : d.neg}`}>
+                  {pgLatente >= 0 ? '+' : ''}{fmtShort(pgLatente)}
+                </span>
+              )}
             </div>
             <div className={d.frow}>
               <span className={d.k}>Aportación máxima {hoyYear}</span>

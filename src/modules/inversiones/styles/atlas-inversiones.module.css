@@ -484,7 +484,7 @@
   color: var(--atlas-v5-on-navy-1);
 }
 
-/* REGLAS V5 · oro sobre navy = #C59A47 (gold-2) coherente en todo. */
+/* REGLAS V5 · oro sobre navy = gold-2 coherente en todo. */
 .previewCardDark .val.gold { color: var(--atlas-v5-gold-2); }
 .previewCardDark .val.pos { color: var(--atlas-v5-pos-bright); }
 .previewCardDark .val.neg { color: var(--atlas-neg-bright-local); }
