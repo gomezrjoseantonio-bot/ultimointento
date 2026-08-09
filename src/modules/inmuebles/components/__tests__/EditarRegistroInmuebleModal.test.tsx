@@ -97,6 +97,50 @@ describe('EditarRegistroInmuebleModal', () => {
     expect(screen.getByRole('button', { name: /Guardar cambios/i })).toBeDisabled();
   });
 
+  it('modo crear: título "Añadir gasto" y payload con categoría/casilla por defecto', () => {
+    const onGuardar = jest.fn();
+    render(
+      <EditarRegistroInmuebleModal
+        modo="crear"
+        tipoCrear="real"
+        onCancel={jest.fn()}
+        onGuardar={onGuardar}
+      />,
+    );
+    expect(screen.getByText('Añadir gasto')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Concepto'), { target: { value: 'Luz' } });
+    fireEvent.change(screen.getByLabelText('Importe (€)'), { target: { value: '60' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Añadir' }));
+
+    // categoria por defecto 'suministro' → casilla 0113; fecha/ejercicio del día actual.
+    expect(onGuardar).toHaveBeenCalledWith(
+      expect.objectContaining({ concepto: 'Luz', categoria: 'suministro', casillaAEAT: '0113', importe: 60 }),
+    );
+    const payload = onGuardar.mock.calls[0][0];
+    expect(payload.fecha).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(typeof payload.ejercicio).toBe('number');
+  });
+
+  it('modo crear mobiliario: vida útil por defecto 10', () => {
+    const onGuardar = jest.fn();
+    render(
+      <EditarRegistroInmuebleModal
+        modo="crear"
+        tipoCrear="mobiliario"
+        onCancel={jest.fn()}
+        onGuardar={onGuardar}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Nevera' } });
+    fireEvent.change(screen.getByLabelText('Importe (€)'), { target: { value: '500' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Añadir' }));
+
+    expect(onGuardar).toHaveBeenCalledWith(
+      expect.objectContaining({ descripcion: 'Nevera', importe: 500, vidaUtil: 10 }),
+    );
+  });
+
   it('cancela al pulsar Cancelar', () => {
     const onCancel = jest.fn();
     render(

@@ -6,7 +6,10 @@ import {
   construirListaVisualGastosInmueble,
   type GastoInmuebleVisual,
 } from '../adapters/gastosInmuebleAdapter';
-import type { RegistroInmuebleEditable } from './EditarRegistroInmuebleModal';
+import type {
+  RegistroInmuebleEditable,
+  TipoRegistroInmueble,
+} from './EditarRegistroInmuebleModal';
 import styles from './GastosRegistradosInmueble.module.css';
 
 export interface GastosRegistradosInmuebleProps {
@@ -27,7 +30,15 @@ export interface GastosRegistradosInmuebleProps {
   onEditar?: (registro: RegistroInmuebleEditable) => void;
   /** Solicita el borrado del registro. Sin este callback no se ofrece borrar. */
   onBorrar?: (registro: RegistroInmuebleEditable) => void;
+  /** Abre el alta de un registro. Sin este callback no se ofrece añadir. */
+  onAlta?: (tipo: TipoRegistroInmueble) => void;
 }
+
+const ALTA_BOTONES: Array<{ tipo: TipoRegistroInmueble; label: string }> = [
+  { tipo: 'real', label: 'Añadir gasto' },
+  { tipo: 'mejora', label: 'Añadir mejora' },
+  { tipo: 'mobiliario', label: 'Añadir mobiliario' },
+];
 
 type OrigenRegistrado = 'real' | 'mejora' | 'mobiliario';
 
@@ -124,7 +135,23 @@ const GastosRegistradosInmueble: React.FC<GastosRegistradosInmuebleProps> = ({
   ejerciciosBloqueados = [],
   onEditar,
   onBorrar,
+  onAlta,
 }) => {
+  const toolbar = onAlta ? (
+    <div className={styles.toolbar}>
+      {ALTA_BOTONES.map(({ tipo, label }) => (
+        <button
+          key={tipo}
+          type="button"
+          className={styles.toolbarBtn}
+          onClick={() => onAlta(tipo)}
+        >
+          + {label}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   const lista = useMemo(
     () =>
       construirListaVisualGastosInmueble({
@@ -250,26 +277,30 @@ const GastosRegistradosInmueble: React.FC<GastosRegistradosInmuebleProps> = ({
 
   if (!hayDatos) {
     return (
-      <div className={styles.vacio} role="status">
-        <p className={styles.vacioTexto}>
-          No hay gastos registrados
-          {ejercicio !== undefined ? ` en ${ejercicio}` : ''}.
-        </p>
-        {onIrARecurrentes && (
-          <button
-            type="button"
-            className={styles.vacioCta}
-            onClick={onIrARecurrentes}
-          >
-            Ver compromisos recurrentes
-          </button>
-        )}
+      <div className={styles.root}>
+        {toolbar}
+        <div className={styles.vacio} role="status">
+          <p className={styles.vacioTexto}>
+            No hay gastos registrados
+            {ejercicio !== undefined ? ` en ${ejercicio}` : ''}.
+          </p>
+          {onIrARecurrentes && (
+            <button
+              type="button"
+              className={styles.vacioCta}
+              onClick={onIrARecurrentes}
+            >
+              Ver compromisos recurrentes
+            </button>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div className={styles.root}>
+      {toolbar}
       {ejercicio !== undefined && (
         <div className={styles.ejercicioRow}>
           <span>Ejercicio {ejercicio}</span>

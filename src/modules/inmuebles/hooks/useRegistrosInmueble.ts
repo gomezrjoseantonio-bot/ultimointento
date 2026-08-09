@@ -13,7 +13,12 @@ import { gastosInmuebleService } from '../../../services/gastosInmuebleService';
 import { mejorasInmuebleService } from '../../../services/mejorasInmuebleService';
 import { mueblesInmuebleService } from '../../../services/mueblesInmuebleService';
 import { ejercicioFiscalService } from '../../../services/ejercicioFiscalService';
-import type { RegistroInmuebleEditable } from '../components/EditarRegistroInmuebleModal';
+import type {
+  RegistroInmuebleEditable,
+  TipoRegistroInmueble,
+} from '../components/EditarRegistroInmuebleModal';
+
+export type { TipoRegistroInmueble };
 
 export interface RegistrosInmueble {
   gastosReales: GastoInmueble[];
@@ -22,6 +27,8 @@ export interface RegistrosInmueble {
   ejerciciosBloqueados: number[];
   registroEnEdicion: RegistroInmuebleEditable | null;
   registroEnBorrado: RegistroInmuebleEditable | null;
+  /** Tipo de registro que se está dando de alta, o `null` si no hay alta abierta. */
+  tipoAlta: TipoRegistroInmueble | null;
   guardando: boolean;
   borrando: boolean;
   reload: () => void;
@@ -29,7 +36,10 @@ export interface RegistrosInmueble {
   cerrarEdicion: () => void;
   abrirBorrado: (registro: RegistroInmuebleEditable) => void;
   cerrarBorrado: () => void;
+  abrirAlta: (tipo: TipoRegistroInmueble) => void;
+  cerrarAlta: () => void;
   guardar: (updates: Record<string, unknown>) => Promise<void>;
+  crear: (updates: Record<string, unknown>) => Promise<void>;
   confirmarBorrado: () => Promise<void>;
 }
 
@@ -40,6 +50,7 @@ export function useRegistrosInmueble(propertyId: number): RegistrosInmueble {
   const [ejerciciosBloqueados, setEjerciciosBloqueados] = useState<number[]>([]);
   const [registroEnEdicion, setRegistroEnEdicion] = useState<RegistroInmuebleEditable | null>(null);
   const [registroEnBorrado, setRegistroEnBorrado] = useState<RegistroInmuebleEditable | null>(null);
+  const [tipoAlta, setTipoAlta] = useState<TipoRegistroInmueble | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [borrando, setBorrando] = useState(false);
 
@@ -92,6 +103,51 @@ export function useRegistrosInmueble(propertyId: number): RegistrosInmueble {
     [registroEnEdicion, reload],
   );
 
+  // Alta directa de un gasto puntual / mejora / mobiliario ya ocurrido. Un alta
+  // manual no es una previsión de Tesorería, así que se registra directamente
+  // (a diferencia de editar/borrar, que sí propagan a eventos ya vinculados).
+  const crear = useCallback(
+    async (updates: Record<string, unknown>) => {
+      if (!tipoAlta) return;
+      const ejercicio = Number(updates.ejercicio);
+      if (Number.isInteger(ejercicio) && ejerciciosBloqueados.includes(ejercicio)) {
+        showToastV5('No se puede añadir a un ejercicio declarado');
+        return;
+      }
+      setGuardando(true);
+      try {
+        if (tipoAlta === 'real') {
+          await gastosInmuebleService.add({
+            inmuebleId: propertyId,
+            origen: 'manual',
+            estado: 'confirmado',
+            ...updates,
+          } as Omit<GastoInmueble, 'id' | 'createdAt' | 'updatedAt'>);
+        } else if (tipoAlta === 'mejora') {
+          await mejorasInmuebleService.crear({
+            inmuebleId: propertyId,
+            ...updates,
+          } as Omit<MejoraInmueble, 'id' | 'createdAt' | 'updatedAt'>);
+        } else {
+          await mueblesInmuebleService.crear({
+            inmuebleId: propertyId,
+            activo: true,
+            ...updates,
+          } as Omit<MuebleInmueble, 'id' | 'createdAt' | 'updatedAt'>);
+        }
+        reload();
+        setTipoAlta(null);
+        showToastV5('Registro añadido');
+      } catch (err) {
+        console.error('Error añadiendo registro de inmueble', err);
+        showToastV5('No se pudo añadir el registro');
+      } finally {
+        setGuardando(false);
+      }
+    },
+    [tipoAlta, ejerciciosBloqueados, propertyId, reload],
+  );
+
   const confirmarBorrado = useCallback(async () => {
     if (!registroEnBorrado) return;
     const rid = registroEnBorrado.registro.id;
@@ -123,6 +179,7 @@ export function useRegistrosInmueble(propertyId: number): RegistrosInmueble {
     ejerciciosBloqueados,
     registroEnEdicion,
     registroEnBorrado,
+    tipoAlta,
     guardando,
     borrando,
     reload,
@@ -130,7 +187,10 @@ export function useRegistrosInmueble(propertyId: number): RegistrosInmueble {
     cerrarEdicion: () => setRegistroEnEdicion(null),
     abrirBorrado: setRegistroEnBorrado,
     cerrarBorrado: () => setRegistroEnBorrado(null),
+    abrirAlta: setTipoAlta,
+    cerrarAlta: () => setTipoAlta(null),
     guardar,
+    crear,
     confirmarBorrado,
   };
 }

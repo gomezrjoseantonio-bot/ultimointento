@@ -123,6 +123,25 @@ describe('GastosRegistradosInmueble · operativa', () => {
     expect(screen.queryByRole('button', { name: /Borrar/i })).not.toBeInTheDocument();
   });
 
+  it('muestra los botones de alta cuando hay onAlta (incluso sin datos)', () => {
+    render(<GastosRegistradosInmueble inmuebleId={10} onAlta={jest.fn()} />);
+    expect(screen.getByRole('button', { name: /Añadir gasto/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Añadir mejora/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Añadir mobiliario/i })).toBeInTheDocument();
+  });
+
+  it('invoca onAlta con el tipo pulsado', () => {
+    const onAlta = jest.fn();
+    render(<GastosRegistradosInmueble inmuebleId={10} gastosReales={[gasto()]} onAlta={onAlta} />);
+    fireEvent.click(screen.getByRole('button', { name: /Añadir mejora/i }));
+    expect(onAlta).toHaveBeenCalledWith('mejora');
+  });
+
+  it('sin onAlta no muestra botones de alta', () => {
+    render(<GastosRegistradosInmueble inmuebleId={10} gastosReales={[gasto()]} />);
+    expect(screen.queryByRole('button', { name: /Añadir/i })).not.toBeInTheDocument();
+  });
+
   it('bloquea gastos de origen XML aunque el ejercicio esté abierto', () => {
     render(
       <GastosRegistradosInmueble

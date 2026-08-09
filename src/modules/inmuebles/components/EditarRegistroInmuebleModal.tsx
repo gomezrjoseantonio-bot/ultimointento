@@ -4,6 +4,9 @@ import { CATEGORIA_A_CASILLA } from '../../../services/gastosInmuebleService';
 import type { GastoCategoria } from '../../../services/db';
 import styles from './EditarRegistroInmuebleModal.module.css';
 
+/** Los tres tipos de registro operables desde la vista de Gastos → Registrados. */
+export type TipoRegistroInmueble = 'real' | 'mejora' | 'mobiliario';
+
 /** Referencia editable · discrimina el tipo de registro y su entidad concreta. */
 export type RegistroInmuebleEditable =
   | { tipo: 'real'; registro: GastoInmueble }
@@ -11,10 +14,15 @@ export type RegistroInmuebleEditable =
   | { tipo: 'mobiliario'; registro: MuebleInmueble };
 
 export interface EditarRegistroInmuebleModalProps {
-  registro: RegistroInmuebleEditable;
+  /** Registro a editar. Requerido en modo `editar`, ignorado en modo `crear`. */
+  registro?: RegistroInmuebleEditable;
+  /** Modo del modal · por defecto `editar`. */
+  modo?: 'editar' | 'crear';
+  /** Tipo a crear · requerido en modo `crear`. */
+  tipoCrear?: TipoRegistroInmueble;
   guardando?: boolean;
   onCancel: () => void;
-  /** Emite solo los campos modificados · el padre los persiste vía servicio. */
+  /** Emite los campos del formulario · el padre los persiste vía servicio. */
   onGuardar: (updates: Record<string, unknown>) => void;
 }
 
@@ -36,10 +44,16 @@ const TIPOS_MEJORA: Array<{ value: MejoraInmueble['tipo']; label: string }> = [
   { value: 'reparacion', label: 'Reparación' },
 ];
 
-const TITULO: Record<RegistroInmuebleEditable['tipo'], string> = {
+const TITULO_EDITAR: Record<TipoRegistroInmueble, string> = {
   real: 'Editar gasto',
   mejora: 'Editar mejora',
   mobiliario: 'Editar mobiliario',
+};
+
+const TITULO_CREAR: Record<TipoRegistroInmueble, string> = {
+  real: 'Añadir gasto',
+  mejora: 'Añadir mejora',
+  mobiliario: 'Añadir mobiliario',
 };
 
 const anioDeFecha = (fecha: string): number | undefined => {
@@ -47,14 +61,31 @@ const anioDeFecha = (fecha: string): number | undefined => {
   return Number.isInteger(y) && y > 0 ? y : undefined;
 };
 
+const hoyISO = (): string => new Date().toISOString().slice(0, 10);
+
 const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = ({
   registro,
+  modo = 'editar',
+  tipoCrear,
   guardando = false,
   onCancel,
   onGuardar,
 }) => {
-  // Estado de formulario · inicializado desde la entidad.
+  const esCrear = modo === 'crear';
+  const tipo: TipoRegistroInmueble = registro ? registro.tipo : tipoCrear ?? 'real';
+
+  // Estado de formulario · inicializado desde la entidad (editar) o en blanco (crear).
   const inicial = useMemo(() => {
+    if (esCrear || !registro) {
+      return {
+        texto: '',
+        categoria: 'suministro' as GastoCategoria,
+        tipoMejora: 'mejora' as MejoraInmueble['tipo'],
+        fecha: hoyISO(),
+        importe: '',
+        vidaUtil: tipo === 'mobiliario' ? '10' : '',
+      };
+    }
     if (registro.tipo === 'real') {
       const g = registro.registro;
       return {
@@ -86,7 +117,7 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
       importe: String(mu.importe ?? ''),
       vidaUtil: String(mu.vidaUtil ?? ''),
     };
-  }, [registro]);
+  }, [esCrear, registro, tipo]);
 
   const [texto, setTexto] = useState(inicial.texto);
   const [categoria, setCategoria] = useState<GastoCategoria>(inicial.categoria);
@@ -109,13 +140,13 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
   const importeValido = Number.isFinite(importeNum) && importeNum > 0;
   const fechaValida = /^\d{4}-\d{2}-\d{2}$/.test(fecha);
   const vidaUtilValida =
-    registro.tipo !== 'mobiliario' || (Number.isInteger(vidaUtilNum) && vidaUtilNum > 0);
+    tipo !== 'mobiliario' || (Number.isInteger(vidaUtilNum) && vidaUtilNum > 0);
   const valido = textoValido && importeValido && fechaValida && vidaUtilValida;
 
   const handleGuardar = useCallback(() => {
     if (!valido) return;
     const ejercicio = anioDeFecha(fecha);
-    if (registro.tipo === 'real') {
+    if (tipo === 'real') {
       onGuardar({
         concepto: texto.trim(),
         categoria,
@@ -126,7 +157,7 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
       });
       return;
     }
-    if (registro.tipo === 'mejora') {
+    if (tipo === 'mejora') {
       onGuardar({
         descripcion: texto.trim(),
         tipo: tipoMejora,
@@ -143,9 +174,10 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
       vidaUtil: vidaUtilNum,
       ...(ejercicio !== undefined ? { ejercicio } : {}),
     });
-  }, [valido, fecha, registro.tipo, onGuardar, texto, categoria, importeNum, tipoMejora, vidaUtilNum]);
+  }, [valido, fecha, tipo, onGuardar, texto, categoria, importeNum, tipoMejora, vidaUtilNum]);
 
   const tituloId = 'editar-registro-titulo';
+  const titulo = esCrear ? TITULO_CREAR[tipo] : TITULO_EDITAR[tipo];
 
   return (
     <div className={styles.overlay} onClick={() => !guardando && onCancel()}>
@@ -158,14 +190,14 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
       >
         <div className={styles.header}>
           <h2 id={tituloId} className={styles.title}>
-            {TITULO[registro.tipo]}
+            {titulo}
           </h2>
         </div>
 
         <div className={styles.body}>
           <label className={styles.field}>
             <span className={styles.label}>
-              {registro.tipo === 'real' ? 'Concepto' : 'Descripción'}
+              {tipo === 'real' ? 'Concepto' : 'Descripción'}
             </span>
             <input
               type="text"
@@ -176,7 +208,7 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
             />
           </label>
 
-          {registro.tipo === 'real' && (
+          {tipo === 'real' && (
             <label className={styles.field}>
               <span className={styles.label}>Categoría</span>
               <select
@@ -193,7 +225,7 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
             </label>
           )}
 
-          {registro.tipo === 'mejora' && (
+          {tipo === 'mejora' && (
             <label className={styles.field}>
               <span className={styles.label}>Tipo</span>
               <select
@@ -213,7 +245,7 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
           <div className={styles.row}>
             <label className={styles.field}>
               <span className={styles.label}>
-                {registro.tipo === 'mobiliario' ? 'Fecha de alta' : 'Fecha'}
+                {tipo === 'mobiliario' ? 'Fecha de alta' : 'Fecha'}
               </span>
               <input
                 type="date"
@@ -237,7 +269,7 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
             </label>
           </div>
 
-          {registro.tipo === 'mobiliario' && (
+          {tipo === 'mobiliario' && (
             <label className={styles.field}>
               <span className={styles.label}>Vida útil (años)</span>
               <input
@@ -263,7 +295,7 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
             onClick={handleGuardar}
             disabled={!valido || guardando}
           >
-            {guardando ? 'Guardando…' : 'Guardar cambios'}
+            {guardando ? 'Guardando…' : esCrear ? 'Añadir' : 'Guardar cambios'}
           </button>
         </div>
       </div>
