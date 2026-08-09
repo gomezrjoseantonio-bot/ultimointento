@@ -147,18 +147,44 @@ const PanelPage: React.FC = () => {
     };
   }, []);
 
+  /**
+   * Todo lo que el panel necesita, en UNA ronda de lecturas.
+   *
+   * Eran tres, en serie: las siete tablas de golpe, después los escenarios, y
+   * después el matcher de valoraciones —que por dentro son cuatro lecturas
+   * más—. Ninguna de las dos últimas depende de la primera, así que esperar a
+   * que acabara era tiempo regalado, y se notaba: Panel tardaba en abrir como
+   * Financiación *(Jose · 9 ago 2026)*.
+   *
+   * Lo que NO se hace es pintar antes de tener el matcher, aunque se podría:
+   * de él sale el valor de los inmuebles, y de ahí el patrimonio neto. Pintar
+   * primero el valor de compra y cambiarlo medio segundo después es enseñar
+   * dos patrimonios distintos en la misma visita.
+   */
   const loadPanelData = useCallback(async () => {
     try {
       const [db, ctx] = await Promise.all([initDB(), getFiscalContextSafe()]);
-      const [props, items, accs, prest, tevents, conts, comps] = await Promise.all([
-        db.getAll('properties') as Promise<Property[]>,
-        getAllCartaItems(),
-        db.getAll('accounts') as Promise<Account[]>,
-        db.getAll('prestamos') as Promise<Prestamo[]>,
-        db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
-        db.getAll('contracts') as Promise<Contract[]>,
-        db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
-      ]);
+      const [props, items, accs, prest, tevents, conts, comps, escenarios, matcher] =
+        await Promise.all([
+          db.getAll('properties') as Promise<Property[]>,
+          getAllCartaItems(),
+          db.getAll('accounts') as Promise<Account[]>,
+          db.getAll('prestamos') as Promise<Prestamo[]>,
+          db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+          db.getAll('contracts') as Promise<Contract[]>,
+          db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
+          db.getAll('escenarios') as Promise<Escenario[]>,
+          // Sin valoraciones el panel sigue sirviendo · cada inmueble cae a su
+          // valor de compra, que es lo que hacía antes al fallar. Por eso se
+          // atrapa aquí y no tumba la carga entera.
+          valoracionesService
+            .getMapValoracionesMasRecientesConMatchingPorNombre('inmueble')
+            .catch((e) => {
+              // eslint-disable-next-line no-console
+              console.warn('[panel] no se pudo cargar matcher de valoraciones', e);
+              return null;
+            }),
+        ]);
       if (!isMountedRef.current) return;
       setProperties(props);
       setCartaItems(items);
@@ -167,21 +193,9 @@ const PanelPage: React.FC = () => {
       setTreasuryEvents(tevents);
       setContracts(conts);
       setCompromisos(comps);
-      if (ctx?.nombre) setNombreUsuario(ctx.nombre);
-
-      const escenarios = (await db.getAll('escenarios')) as Escenario[];
-      if (!isMountedRef.current) return;
       setEscenario(escenarios[0] ?? null);
-
-      try {
-        const matcher =
-          await valoracionesService.getMapValoracionesMasRecientesConMatchingPorNombre('inmueble');
-        if (!isMountedRef.current) return;
-        setValoracionMatcher(matcher);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('[panel] no se pudo cargar matcher de valoraciones', e);
-      }
+      if (matcher) setValoracionMatcher(matcher);
+      if (ctx?.nombre) setNombreUsuario(ctx.nombre);
     } catch (err) {
       // eslint-disable-next-line no-console
       if (isMountedRef.current) console.error('[panel] error cargando datos', err);
