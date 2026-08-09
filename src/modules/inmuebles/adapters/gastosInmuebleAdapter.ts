@@ -16,6 +16,8 @@ export interface GastoInmuebleVisual {
   origen: 'recurrente' | 'real' | 'mejora' | 'mobiliario';
   registroId?: number;
   inmuebleId: number;
+  /** Ejercicio fiscal del registro (cuando el modelo lo expone). */
+  ejercicio?: number;
   fecha: string;
   descripcion: string;
   estado?: string;
@@ -94,6 +96,7 @@ export function adaptarGastoRealAGastoVisual(gasto: GastoInmueble): GastoInmuebl
     origen: 'real',
     registroId: gasto.id,
     inmuebleId: gasto.inmuebleId,
+    ejercicio: gasto.ejercicio,
     fecha: gasto.fecha,
     descripcion: gasto.concepto,
     estado: gasto.estado,
@@ -115,6 +118,7 @@ export function adaptarMejoraAGastoVisual(mejora: MejoraInmueble): GastoInmueble
     origen: 'mejora',
     registroId: mejora.id,
     inmuebleId: mejora.inmuebleId,
+    ejercicio: mejora.ejercicio,
     fecha: mejora.fecha,
     descripcion: mejora.descripcion,
     estado: undefined,
@@ -135,6 +139,7 @@ export function adaptarMuebleAGastoVisual(mueble: MuebleInmueble): GastoInmueble
     origen: 'mobiliario',
     registroId: mueble.id,
     inmuebleId: mueble.inmuebleId,
+    ejercicio: mueble.ejercicio,
     fecha: mueble.fechaAlta,
     descripcion: mueble.descripcion,
     estado: mueble.activo ? 'activo' : 'baja',
@@ -181,3 +186,102 @@ export function construirListaVisualGastosInmueble(
 
   return [...recurrentes, ...reales, ...mejoras, ...mobiliario];
 }
+
+// ─── Resumen económico por grupo visual ────────────────────────────────────
+
+/**
+ * Totales económicos para un grupo visual (mantener / explotar / mejorar / mobiliario).
+ * `previsto` es la suma de importes previstos de compromisos recurrentes.
+ * `real` es la suma de importes reales de registros concretos.
+ * Ambos son `undefined` cuando no hay ningún dato para ese concepto.
+ */
+export interface ResumenGrupoInmueble {
+  /** Suma de importePrevisto de recurrentes en este grupo. */
+  previsto?: number;
+  /** Suma de importeReal de gastos/mejoras/mobiliario en este grupo. */
+  real?: number;
+}
+
+export interface ResumenGastosInmueble {
+  mantener: ResumenGrupoInmueble;
+  explotar: ResumenGrupoInmueble;
+  mejorar: ResumenGrupoInmueble;
+  mobiliario: ResumenGrupoInmueble;
+  /** Totales agregados de toda la ficha. */
+  total: {
+    /** Suma de previstos recurrentes (mantener + explotar). */
+    previstoRecurrente?: number;
+    /** Suma de reales ordinarios (mantener + explotar). */
+    realOrdinario?: number;
+    /** Suma de importes de mejoras. */
+    mejoras?: number;
+    /** Suma de importes de mobiliario. */
+    mobiliarioReal?: number;
+  };
+}
+
+function sumarOpcional(a: number | undefined, b: number | undefined): number | undefined {
+  if (a === undefined && b === undefined) return undefined;
+  return (a ?? 0) + (b ?? 0);
+}
+
+/**
+ * Calcula el resumen económico agrupado a partir de la lista visual.
+ *
+ * `ejercicio` — cuando se proporciona, los importes reales se filtran por
+ * ese año (usando `GastoInmuebleVisual.ejercicio`). Los registros sin campo
+ * `ejercicio` (p. ej. compromisos recurrentes) no se filtran.
+ *
+ * Decisión de diseño: `importePrevisto` en el visual de recurrentes es el
+ * importe por pago (per-occurrence average devuelto por el adaptador).
+ * No se anualiza aquí para evitar importar la lógica del patrón fuera de
+ * `compromisosRecurrentesService`. El componente lo etiqueta como "previsto".
+ */
+export function calcularResumenGastosInmueble(
+  lista: readonly GastoInmuebleVisual[],
+  ejercicio?: number,
+): ResumenGastosInmueble {
+  const acum: Record<GrupoVisualInmueble, ResumenGrupoInmueble> = {
+    mantener: {},
+    explotar: {},
+    mejorar: {},
+    mobiliario: {},
+    sin_clasificar: {},
+  };
+
+  for (const item of lista) {
+    const grupo = item.grupoVisual;
+
+    // Previsto: solo recurrentes (no hay año fijo, se suman todos)
+    if (item.origen === 'recurrente' && item.importePrevisto !== undefined) {
+      acum[grupo].previsto = (acum[grupo].previsto ?? 0) + item.importePrevisto;
+    }
+
+    // Real: filtrar por ejercicio si se proporciona
+    if (item.origen !== 'recurrente' && item.importeReal !== undefined) {
+      const ejercicioItem = item.ejercicio;
+      if (ejercicio !== undefined && ejercicioItem !== undefined && ejercicioItem !== ejercicio) {
+        continue;
+      }
+      acum[grupo].real = (acum[grupo].real ?? 0) + item.importeReal;
+    }
+  }
+
+  const previstoRecurrente = sumarOpcional(acum.mantener.previsto, acum.explotar.previsto);
+  const realOrdinario = sumarOpcional(acum.mantener.real, acum.explotar.real);
+
+  return {
+    mantener: { previsto: acum.mantener.previsto, real: acum.mantener.real },
+    explotar: { previsto: acum.explotar.previsto, real: acum.explotar.real },
+    mejorar: { real: acum.mejorar.real },
+    mobiliario: { real: acum.mobiliario.real },
+    total: {
+      previstoRecurrente,
+      realOrdinario,
+      mejoras: acum.mejorar.real,
+      mobiliarioReal: acum.mobiliario.real,
+    },
+  };
+}
+
+export { type GrupoVisualInmueble };
