@@ -23,10 +23,10 @@ const ContratosTopHero: React.FC<Props> = ({ kpis }) => {
   const venceCount = kpis.venceProx30.count;
 
   return (
-    <div className={styles.bar} role="group" aria-label="Resumen de contratos">
+    <div className={styles.bar} role="group" aria-label="Resumen de alquileres">
       <div className={styles.title}>
         <span className={styles.titleDot} aria-hidden="true" />
-        Mis contratos
+        Mis alquileres
       </div>
 
       <div className={styles.stat}>

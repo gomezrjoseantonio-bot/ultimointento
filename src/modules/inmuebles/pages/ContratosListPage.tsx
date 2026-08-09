@@ -208,7 +208,7 @@ const ContratosListPage: React.FC = () => {
     return (
       <div className={styles.mainContainer}>
         <main className={styles.main}>
-          <PageHead title="Contratos" actions={headActions} />
+          <PageHead title="Alquileres" actions={headActions} />
           <EmptyState
             icon={FileText}
             title="Sin contratos activos"
@@ -231,12 +231,12 @@ const ContratosListPage: React.FC = () => {
       {/* 2 · MAIN · zona blanca con título · tabs · contenido */}
       <main className={styles.main}>
       <PageHead
-        title="Contratos"
-        sub="Gestiona tus alquileres · revisa histórico · concilia rentas declaradas"
+        title="Alquileres"
+        sub="Gestiona tus contratos e inquilinos · revisa histórico · concilia rentas declaradas"
         actions={headActions}
       />
 
-      <div className={styles.tabsBar} role="group" aria-label="Tabs contratos">
+      <div className={styles.tabsBar} role="group" aria-label="Tabs alquileres">
         {tabs.map((t) => {
           const isActive = t.key === tab;
           return (

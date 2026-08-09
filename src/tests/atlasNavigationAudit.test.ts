@@ -3,9 +3,11 @@
  * (T20 Phase 0-3g). Ver `src/config/navigation.ts`.
  *
  * Las 11 rutas canónicas v5 · Panel · Inmuebles · Inversiones · Tesorería
- * · Financiación · Personal · Contratos · Mi Plan · Fiscal · Archivo ·
- * Ajustes. Items legacy ('Dashboard' · 'Previsiones' · 'Impuestos' ·
- * 'Documentación' · 'Herramientas' · 'Glosario' · 'Alquileres') han sido
+ * · Financiación · Personal · Alquileres · Mi Plan · Fiscal · Archivo ·
+ * Ajustes. El módulo operativo se muestra visualmente como "Alquileres"
+ * (consolidación Contratos → Alquileres) conservando la ruta `/contratos`
+ * y el icono `Icons.Contratos`. Items legacy ('Dashboard' · 'Previsiones' ·
+ * 'Impuestos' · 'Documentación' · 'Herramientas' · 'Glosario') han sido
  * eliminados o renombrados.
  */
 
@@ -27,7 +29,7 @@ describe('Atlas Navigation Audit · v5', () => {
       'Tesorería',
       'Financiación',
       'Personal',
-      'Contratos',
+      'Alquileres',
       'Mi Plan',
       'Fiscal',
       'Archivo',
@@ -47,10 +49,12 @@ describe('Atlas Navigation Audit · v5', () => {
     expect(hrefs).not.toContain('/proyeccion');
   });
 
-  test('Contratos apunta a /contratos directamente · no via redirect', () => {
-    const contratos = navigation.find((item) => item.name === 'Contratos');
-    expect(contratos).toBeDefined();
-    expect(contratos?.href).toBe('/contratos');
+  test('Alquileres apunta a /contratos directamente · no via redirect', () => {
+    // Consolidación Contratos → Alquileres · nombre visual "Alquileres",
+    // ruta conservada `/contratos` (sin renombrado de rutas ni redirects).
+    const alquileres = navigation.find((item) => item.name === 'Alquileres');
+    expect(alquileres).toBeDefined();
+    expect(alquileres?.href).toBe('/contratos');
   });
 
   test('items usan el diccionario Icons v5 · no Lucide directo', () => {
@@ -60,7 +64,8 @@ describe('Atlas Navigation Audit · v5', () => {
     expect(navigationConfig.find((i) => i.name === 'Tesorería')?.icon).toBe(Icons.Tesoreria);
     expect(navigationConfig.find((i) => i.name === 'Financiación')?.icon).toBe(Icons.Financiacion);
     expect(navigationConfig.find((i) => i.name === 'Personal')?.icon).toBe(Icons.Personal);
-    expect(navigationConfig.find((i) => i.name === 'Contratos')?.icon).toBe(Icons.Contratos);
+    // "Alquileres" (nombre visual) conserva el icono interno `Icons.Contratos`.
+    expect(navigationConfig.find((i) => i.name === 'Alquileres')?.icon).toBe(Icons.Contratos);
     expect(navigationConfig.find((i) => i.name === 'Mi Plan')?.icon).toBe(Icons.MiPlan);
     expect(navigationConfig.find((i) => i.name === 'Fiscal')?.icon).toBe(Icons.Fiscal);
     expect(navigationConfig.find((i) => i.name === 'Archivo')?.icon).toBe(Icons.Archivo);
@@ -106,19 +111,34 @@ describe('Atlas Navigation Audit · v5', () => {
     expect(subs).toEqual(['Calendario', 'Ejercicios', 'Deudas', 'Acciones']);
   });
 
-  test('Archivo y Ajustes en sección documentation', () => {
-    const docItems = navigation.filter((item) => item.section === 'documentation');
-    expect(docItems.map((i) => i.name)).toEqual(['Archivo', 'Ajustes']);
+  // Taxonomía T22.1 §2.1 · 4 secciones canónicas: panel · mis-activos ·
+  // operativa · ajustes. (Los nombres antiguos 'documentation' / 'horizon' /
+  // 'pulse' ya no existen en `navigation.ts`.)
+  test('Sección operativa · Alquileres · Mi Plan · Fiscal · Archivo', () => {
+    const operativa = navigation.filter((item) => item.section === 'operativa');
+    expect(operativa.map((i) => i.name)).toEqual([
+      'Alquileres',
+      'Mi Plan',
+      'Fiscal',
+      'Archivo',
+    ]);
   });
 
-  test('Sección horizon contiene los 9 módulos principales v5', () => {
-    const horizon = navigation.filter((item) => item.section === 'horizon');
-    expect(horizon).toHaveLength(9);
+  test('Sección ajustes · solo Ajustes', () => {
+    const ajustes = navigation.filter((item) => item.section === 'ajustes');
+    expect(ajustes.map((i) => i.name)).toEqual(['Ajustes']);
   });
 
-  test('Sección pulse vacía hasta Phase 4 cleanup', () => {
-    const pulse = navigation.filter((item) => item.section === 'pulse');
-    expect(pulse).toHaveLength(0);
+  test('9 módulos principales · secciones mis-activos + operativa', () => {
+    const principales = navigation.filter(
+      (item) => item.section === 'mis-activos' || item.section === 'operativa',
+    );
+    expect(principales).toHaveLength(9);
+  });
+
+  test('solo usa las 4 secciones canónicas v5', () => {
+    const sections = Array.from(new Set(navigation.map((i) => i.section))).sort();
+    expect(sections).toEqual(['ajustes', 'mis-activos', 'operativa', 'panel']);
   });
 
   test('No incluye items legacy de pre-T20', () => {
@@ -129,7 +149,8 @@ describe('Atlas Navigation Audit · v5', () => {
     expect(names).not.toContain('Documentación');
     expect(names).not.toContain('Herramientas');
     expect(names).not.toContain('Glosario');
-    expect(names).not.toContain('Alquileres');
+    // 'Alquileres' es ahora el nombre visual del módulo operativo
+    // (consolidación Contratos → Alquileres), ya no un item legacy retirado.
     expect(names).not.toContain('Informes');
     expect(names).not.toContain('Configuración');
     expect(names).not.toContain('Tareas');

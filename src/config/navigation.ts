@@ -19,7 +19,12 @@ export interface NavigationItem {
  * Agrupación T22.1 (§2.1):
  *  - panel      → Panel solo · sin header
  *  - mis-activos → MIS ACTIVOS header · Inmuebles · Inversiones · Tesorería · Financiación · Personal
- *  - operativa  → OPERATIVA header · Contratos · Mi Plan · Fiscal · Archivo
+ *  - operativa  → OPERATIVA header · Alquileres · Mi Plan · Fiscal · Archivo
+ *
+ * Nota · "Alquileres" es el nombre VISUAL del módulo (consolidación
+ * Contratos → Alquileres). La ruta (`/contratos`) y el icono
+ * (`Icons.Contratos`) se conservan intactos: NO se hace renombrado masivo
+ * de rutas ni de nombres internos de código en esta fase.
  *  - ajustes    → separador + Ajustes
  */
 export const navigationConfig: NavigationItem[] = [
@@ -73,7 +78,9 @@ export const navigationConfig: NavigationItem[] = [
     section: 'mis-activos',
   },
   {
-    name: 'Contratos',
+    // Nombre visual del módulo · consolidación Contratos → Alquileres.
+    // Ruta e icono se conservan (`/contratos` · `Icons.Contratos`).
+    name: 'Alquileres',
     href: '/contratos',
     icon: Icons.Contratos,
     module: 'shared',

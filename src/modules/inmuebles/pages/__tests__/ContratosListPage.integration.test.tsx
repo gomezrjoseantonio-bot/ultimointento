@@ -93,8 +93,8 @@ const renderPage = (): void => {
 describe('ContratosListPage · integración', () => {
   it('banda navy muestra Vigentes=1 (Rentila finalizado NO cuenta)', () => {
     renderPage();
-    const banda = screen.getByLabelText('Resumen de contratos');
-    expect(within(banda).getByText('Mis contratos')).toBeInTheDocument();
+    const banda = screen.getByLabelText('Resumen de alquileres');
+    expect(within(banda).getByText('Mis alquileres')).toBeInTheDocument();
     // Vigentes = 1 (solo Ivan; Aroa finalizado y Pedro próximo no cuentan).
     expect(within(banda).getByText('1')).toBeInTheDocument();
   });
