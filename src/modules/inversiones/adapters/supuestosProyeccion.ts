@@ -45,6 +45,22 @@ export const PROY_RATE_MAX_PCT = 15;
 export const PROY_HORIZONTE_AÑOS = 20;
 
 /**
+ * Rentabilidad objetivo por defecto para inversiones (%) · base del slider de
+ * proyección de una ficha CUANDO la posición aún no tiene un rendimiento
+ * realizado (CAGR/TWR) fiable del que partir. Vive AQUÍ —único punto de
+ * definición— en vez de escondida como número mágico dentro de una ficha
+ * (regla C-PROY-5: ninguna dinámica trae su propia constante).
+ *
+ * TODO (Fase 5 · decisión de Jose · "PARA y avisa"): el escenario compartido
+ * NO define hoy una "rentabilidad objetivo de inversiones" (solo inflación y
+ * rentabilidad de ahorro/caja). Cuando se decida añadir un campo editable
+ * `rentabilidadObjetivoInversionesPct` a `SupuestosProyeccion`, mapearlo en
+ * `obtenerSupuestosGaleria().rentabilidadObjetivoPct` y esta constante pasa a
+ * ser solo el default de ese campo.
+ */
+export const RENT_OBJETIVO_INVERSIONES_DEFAULT_PCT = 8;
+
+/**
  * Lee los supuestos del escenario compartido. Única puerta de lectura para el
  * módulo de Inversiones · si mañana la galería y las fichas necesitan otra
  * fuente, se cambia aquí y en ningún otro sitio.
