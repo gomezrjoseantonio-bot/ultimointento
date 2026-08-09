@@ -193,28 +193,11 @@ const DetallePage: React.FC = () => {
     return catalogoSugeridoPorModalidad(modalidad, unidadTipo).precargados;
   }, [contratosActivos, propertyContracts, property]);
 
-  if (!property) {
-    return (
-      <EmptyState
-        icon={<Icons.Inmuebles size={20} />}
-        title="Inmueble no encontrado"
-        sub={`No existe inmueble con id ${id}.`}
-        ctaLabel="← volver al listado"
-        onCtaClick={() => navigate('/inmuebles')}
-      />
-    );
-  }
-
-  const tipoActivo = getTipoActivoEffective(property);
-  const esPiso = tipoActivo === 'piso';
-  const habitaciones = property.bedrooms || 1;
+  // Precalculados para RentabilidadInmueble — deben estar antes del early return.
   const rentaMensual = contratosActivos.reduce(
     (sum, c) => sum + (c.rentaMensual ?? 0),
     0,
   );
-  const valorAdquisicion = property.acquisitionCosts?.price ?? 0;
-  const rentabilidadBruta =
-    valorAdquisicion > 0 ? (rentaMensual * 12 * 100) / valorAdquisicion : 0;
   const gastosVisuales = useMemo(
     () =>
       construirListaVisualGastosInmueble({
@@ -238,6 +221,25 @@ const DetallePage: React.FC = () => {
       }, 0),
     [gastos, rentaMensual],
   );
+
+  if (!property) {
+    return (
+      <EmptyState
+        icon={<Icons.Inmuebles size={20} />}
+        title="Inmueble no encontrado"
+        sub={`No existe inmueble con id ${id}.`}
+        ctaLabel="← volver al listado"
+        onCtaClick={() => navigate('/inmuebles')}
+      />
+    );
+  }
+
+  const tipoActivo = getTipoActivoEffective(property);
+  const esPiso = tipoActivo === 'piso';
+  const habitaciones = property.bedrooms || 1;
+  const valorAdquisicion = property.acquisitionCosts?.price ?? 0;
+  const rentabilidadBruta =
+    valorAdquisicion > 0 ? (rentaMensual * 12 * 100) / valorAdquisicion : 0;
 
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
     { key: 'patrimonio', label: 'Patrimonio' },

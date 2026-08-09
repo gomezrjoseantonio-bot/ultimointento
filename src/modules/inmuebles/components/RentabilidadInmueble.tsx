@@ -19,7 +19,8 @@ const RentabilidadInmueble: React.FC<RentabilidadInmuebleProps> = ({
   const rentabilidadBruta =
     valorAdquisicion > 0 ? (rentaAnual * 100) / valorAdquisicion : undefined;
 
-  const gastosAnualesDisponibles = gastosPrevistos ?? gastosReales;
+  // Preferimos gastos reales (más precisos) sobre los previstos (estimados).
+  const gastosAnualesDisponibles = gastosReales ?? gastosPrevistos;
   const rentaNeta =
     gastosAnualesDisponibles !== undefined ? rentaAnual - gastosAnualesDisponibles : undefined;
   const rentabilidadNeta =
@@ -81,7 +82,7 @@ const RentabilidadInmueble: React.FC<RentabilidadInmuebleProps> = ({
                 <MoneyValue value={gastosAnualesDisponibles} decimals={0} />
               </div>
               <div className={styles.badgeEst}>
-                {gastosPrevistos !== undefined ? '≈ Previstos' : 'Reales'}
+                {gastosReales !== undefined ? 'Reales' : '≈ Previstos'}
               </div>
             </>
           ) : (
