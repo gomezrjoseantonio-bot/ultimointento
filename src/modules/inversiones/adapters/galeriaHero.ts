@@ -46,6 +46,12 @@ export interface ResumenFamilia {
   hoy: number;
   /** Rentabilidad anualizada agregada de la familia (%), o null si no calculable. */
   pctAnual: number | null;
+  /**
+   * Rentabilidad TOTAL (no anualizada) ponderada por valor · fallback para
+   * familias cuyas posiciones son demasiado nuevas (<1 año) para tener CAGR
+   * anualizada fiable. La UI lo muestra sin "/año".
+   */
+  pctTotal: number | null;
 }
 
 // Mapa categoría-galería → chip del hero. `otros` (crypto) no tiene chip
@@ -70,17 +76,18 @@ function chipDeItem(item: CartaItem): FamiliaChip | null {
  */
 export function familiasResumen(items: CartaItem[]): Record<FamiliaChip, ResumenFamilia> {
   const base: Record<FamiliaChip, ResumenFamilia> = {
-    planes: { familia: 'planes', aportado: 0, hoy: 0, pctAnual: null },
-    prestamos: { familia: 'prestamos', aportado: 0, hoy: 0, pctAnual: null },
-    acciones: { familia: 'acciones', aportado: 0, hoy: 0, pctAnual: null },
-    fondos: { familia: 'fondos', aportado: 0, hoy: 0, pctAnual: null },
+    planes: { familia: 'planes', aportado: 0, hoy: 0, pctAnual: null, pctTotal: null },
+    prestamos: { familia: 'prestamos', aportado: 0, hoy: 0, pctAnual: null, pctTotal: null },
+    acciones: { familia: 'acciones', aportado: 0, hoy: 0, pctAnual: null, pctTotal: null },
+    fondos: { familia: 'fondos', aportado: 0, hoy: 0, pctAnual: null, pctTotal: null },
   };
-  // Acumuladores para la media ponderada de %.
-  const acc: Record<FamiliaChip, { pesoPct: number; peso: number }> = {
-    planes: { pesoPct: 0, peso: 0 },
-    prestamos: { pesoPct: 0, peso: 0 },
-    acciones: { pesoPct: 0, peso: 0 },
-    fondos: { pesoPct: 0, peso: 0 },
+  // Acumuladores para la media ponderada de %. `pesoTot` acumula la rentabilidad
+  // TOTAL (no anualizada) para el fallback de familias sin CAGR fiable.
+  const acc: Record<FamiliaChip, { pesoPct: number; peso: number; pesoTot: number; pesoT: number }> = {
+    planes: { pesoPct: 0, peso: 0, pesoTot: 0, pesoT: 0 },
+    prestamos: { pesoPct: 0, peso: 0, pesoTot: 0, pesoT: 0 },
+    acciones: { pesoPct: 0, peso: 0, pesoTot: 0, pesoT: 0 },
+    fondos: { pesoPct: 0, peso: 0, pesoTot: 0, pesoT: 0 },
   };
 
   for (const item of items) {
@@ -99,10 +106,17 @@ export function familiasResumen(items: CartaItem[]): Record<FamiliaChip, Resumen
       acc[chip].pesoPct += tasa * item.valor_actual;
       acc[chip].peso += item.valor_actual;
     }
+    // Rentabilidad total (no anualizada) · fallback cuando no hay CAGR.
+    const rentTot = item.rentabilidad_porcentaje;
+    if (rentTot != null && Number.isFinite(rentTot) && (item.valor_actual || 0) > 0) {
+      acc[chip].pesoTot += rentTot * item.valor_actual;
+      acc[chip].pesoT += item.valor_actual;
+    }
   }
 
   (Object.keys(base) as FamiliaChip[]).forEach((chip) => {
     base[chip].pctAnual = acc[chip].peso > 0 ? acc[chip].pesoPct / acc[chip].peso : null;
+    base[chip].pctTotal = acc[chip].pesoT > 0 ? acc[chip].pesoTot / acc[chip].pesoT : null;
   });
   return base;
 }

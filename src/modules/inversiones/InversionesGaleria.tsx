@@ -20,7 +20,10 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { TrendingUp } from 'lucide-react';
 import { inversionesService } from '../../services/inversionesService';
 import { rendimientosService } from '../../services/rendimientosService';
-import { resincronizarTesoreriaInversiones } from '../../services/inversionesTesoreriaSync';
+import {
+  resincronizarTesoreriaInversiones,
+  conciliarAportacionInicial,
+} from '../../services/inversionesTesoreriaSync';
 import { migrateInversionesToNewModel } from '../../services/migrations/migrateInversiones';
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
 import AportarModal from './components/modal/AportarModal';
@@ -65,6 +68,15 @@ const InversionesGaleria: React.FC = () => {
   const [searchParams] = useSearchParams();
   const fromEmpezar = searchParams.get('from') === 'empezar';
   const volviendoAlFlujo = useRef(false);
+  // Guard para el `load()` en segundo plano tras el alta: si el componente ya
+  // se desmontó (p.ej. se volvió al flujo /empezar), no hacemos setState.
+  const montadoRef = useRef(true);
+  useEffect(() => {
+    montadoRef.current = true;
+    return () => {
+      montadoRef.current = false;
+    };
+  }, []);
   const [cartaItems, setCartaItems] = useState<CartaItem[]>([]);
   const [resumenCerradas, setResumenCerradas] = useState<KpisCerradas>(() =>
     calcularKpisCerradas([]),
@@ -185,17 +197,34 @@ const InversionesGaleria: React.FC = () => {
     data: Partial<PosicionInversion> & { importe_inicial?: number },
   ) => {
     try {
-      await inversionesService.createPosicion(
+      // Lo ÚNICO crítico que debe esperar el modal es persistir la posición.
+      const nuevaId = await inversionesService.createPosicion(
         data as Omit<PosicionInversion, 'id' | 'created_at' | 'updated_at'> & {
           importe_inicial?: number;
         },
       );
       showToastV5('Posición creada.');
-      await rendimientosService.generarRendimientosPendientes();
-      // La posición nueva trae previsiones (cuota, intereses, compra inicial):
-      // hay que generarlas ya, no esperar a que las dispare otro módulo.
-      await resincronizarTesoreriaInversiones('alta de posición');
-      await load();
+      // El resto (generar rendimientos + resync de Tesorería a 24 meses +
+      // recarga de la galería) es trabajo de fondo pesado y NO debe bloquear el
+      // cierre del modal · antes se quedaba "Guardando…" hasta reconstruir toda
+      // la tesorería. Se lanza en segundo plano; la galería/tesorería se
+      // refrescan solas al terminar (el resync tiene su propio manejo de error).
+      void (async () => {
+        try {
+          await rendimientosService.generarRendimientosPendientes();
+          await resincronizarTesoreriaInversiones('alta de posición');
+          // El desembolso inicial (con cuenta de cargo y fecha ≤ hoy) se
+          // registra como movimiento real → baja YA del saldo y se concilia
+          // contra el extracto sin duplicar (decisión de Jose).
+          await conciliarAportacionInicial(nuevaId);
+          // Solo refrescamos la galería si seguimos montados y no estamos
+          // saliendo al flujo /empezar (evita setState tras desmontar).
+          if (montadoRef.current && !fromEmpezar) await load();
+        } catch (bgErr) {
+          // eslint-disable-next-line no-console
+          console.error('[inversiones] post-alta background', bgErr);
+        }
+      })();
       if (fromEmpezar) volverAlFlujo();
     } catch (err) {
       // eslint-disable-next-line no-console

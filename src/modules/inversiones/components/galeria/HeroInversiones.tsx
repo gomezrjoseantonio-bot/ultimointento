@@ -102,9 +102,13 @@ const HeroInversiones: React.FC<Props> = ({ resumen, familias, rentaPasiva, seri
                       <span className={styles.fchipCap}>aportado</span> {formatCurrency(f.aportado)}
                       <span className={styles.fchipAr}>▸</span>
                       <b>{formatCurrency(f.hoy)}</b>
-                      {f.pctAnual != null && (
+                      {f.pctAnual != null ? (
                         <span className={styles.fchipRet}>{formatPercent(f.pctAnual)}/año</span>
-                      )}
+                      ) : f.pctTotal != null ? (
+                        // Posiciones demasiado nuevas para CAGR anualizada · se
+                        // muestra la rentabilidad total (sin "/año").
+                        <span className={styles.fchipRet}>{formatPercent(f.pctTotal)}</span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
