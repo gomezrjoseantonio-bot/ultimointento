@@ -20,7 +20,10 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { TrendingUp } from 'lucide-react';
 import { inversionesService } from '../../services/inversionesService';
 import { rendimientosService } from '../../services/rendimientosService';
-import { resincronizarTesoreriaInversiones } from '../../services/inversionesTesoreriaSync';
+import {
+  resincronizarTesoreriaInversiones,
+  conciliarAportacionInicial,
+} from '../../services/inversionesTesoreriaSync';
 import { migrateInversionesToNewModel } from '../../services/migrations/migrateInversiones';
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
 import AportarModal from './components/modal/AportarModal';
@@ -195,7 +198,7 @@ const InversionesGaleria: React.FC = () => {
   ) => {
     try {
       // Lo ÚNICO crítico que debe esperar el modal es persistir la posición.
-      await inversionesService.createPosicion(
+      const nuevaId = await inversionesService.createPosicion(
         data as Omit<PosicionInversion, 'id' | 'created_at' | 'updated_at'> & {
           importe_inicial?: number;
         },
@@ -210,6 +213,10 @@ const InversionesGaleria: React.FC = () => {
         try {
           await rendimientosService.generarRendimientosPendientes();
           await resincronizarTesoreriaInversiones('alta de posición');
+          // El desembolso inicial (con cuenta de cargo y fecha ≤ hoy) se
+          // registra como movimiento real → baja YA del saldo y se concilia
+          // contra el extracto sin duplicar (decisión de Jose).
+          await conciliarAportacionInicial(nuevaId);
           // Solo refrescamos la galería si seguimos montados y no estamos
           // saliendo al flujo /empezar (evita setState tras desmontar).
           if (montadoRef.current && !fromEmpezar) await load();
