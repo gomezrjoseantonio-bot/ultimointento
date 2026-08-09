@@ -16,6 +16,8 @@ export interface TabActivosProps {
   inmuebleAliasById: Map<number, string>;
   inmuebleModoById?: Map<number, Property['modoExplotacion']>;
   onNuevoContrato: () => void;
+  /** Fase F.2 · recarga la lista tras renovar/finalizar desde el drawer. */
+  onContratoActualizado?: () => void;
 }
 
 const TabActivos: React.FC<TabActivosProps> = ({
@@ -23,6 +25,7 @@ const TabActivos: React.FC<TabActivosProps> = ({
   inmuebleAliasById,
   inmuebleModoById,
   onNuevoContrato,
+  onContratoActualizado,
 }) => {
   const [filtros, setFiltros] = useFiltrosActivos();
   const hoy = useMemo(() => new Date(), []);
@@ -84,6 +87,7 @@ const TabActivos: React.FC<TabActivosProps> = ({
           inmuebleAlias={inmuebleAliasById.get(contratoAbierto.inmuebleId)}
           open
           onClose={() => setContratoAbierto(null)}
+          onContratoActualizado={onContratoActualizado}
         />
       )}
     </>

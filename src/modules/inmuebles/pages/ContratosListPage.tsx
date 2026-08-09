@@ -259,6 +259,7 @@ const ContratosListPage: React.FC = () => {
             inmuebleAliasById={propertyById}
             inmuebleModoById={modoById}
             onNuevoContrato={() => navigate('/contratos/nuevo')}
+            onContratoActualizado={reload}
           />
         )}
 
