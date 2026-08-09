@@ -172,9 +172,13 @@ export const updateContract = async (id: number, updates: Partial<Contract>): Pr
   // B-TAREA8-MINIS sub-tarea 3 (Caso B): si cambia rentaMensual, registrar
   // entrada en historicoRentas[] con origen='manual'. Activación tras V62
   // (eliminación store rentaMensual) — el campo era huérfano sin escritor.
-  // No se añade UI ni reader: solo escritura para uso futuro.
+  //
+  // Fase F · si el llamante YA gestiona `historicoRentas` explícitamente (p.ej.
+  // `cambiarRentaContrato`/`renovarContrato`, que registran el origen correcto),
+  // NO se auto-añade una entrada 'manual' extra: evita duplicados y deriva.
   const newRenta = updates.rentaMensual;
   if (
+    !('historicoRentas' in updates) &&
     'rentaMensual' in updates &&
     typeof newRenta === 'number' &&
     newRenta !== existing.rentaMensual
