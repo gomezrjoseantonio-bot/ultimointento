@@ -75,13 +75,32 @@ const diasHasta = (desde: string, hasta: string): number => {
 /** El año del descuento · 365 días, como el Anexo I de la Directiva. */
 const DIAS_DEL_ANIO = 365;
 
-/** Lo que valen los flujos descontados a ese tipo · cero es la TIR. */
-function valorDescontado(flujos: Flujo[], tipo: number): number {
+/**
+ * Los flujos, ya medidos en años desde el primero · listos para descontar.
+ *
+ * Se calcula UNA vez y se reutiliza en las doscientas iteraciones de la
+ * bisección: la distancia de cada cuota a la firma no depende del tipo que se
+ * esté probando. Antes se rehacía entera en cada vuelta, y como cada distancia
+ * parte dos cadenas ISO, un cuadro de 240 cuotas pedía ~96.000 parseos de fecha
+ * para calcular UN número. Era el 80 % del coste de generar un cuadro, y el
+ * cuadro se genera varias veces cada vez que se abre Financiación.
+ *
+ * No es una aproximación: el resultado es exactamente el mismo, con las mismas
+ * operaciones en el mismo orden. Solo deja de repetirse lo que no cambia.
+ */
+function enAnios(flujos: Flujo[]): Array<{ importe: number; anios: number }> {
   const origen = flujos[0].fecha;
-  return flujos.reduce((total, f) => {
-    const anios = diasHasta(origen, f.fecha) / DIAS_DEL_ANIO;
-    return total + f.importe / Math.pow(1 + tipo, anios);
-  }, 0);
+  return flujos.map((f) => ({
+    importe: f.importe,
+    anios: diasHasta(origen, f.fecha) / DIAS_DEL_ANIO,
+  }));
+}
+
+/** Lo que valen los flujos descontados a ese tipo · cero es la TIR. */
+function valorDescontado(medidos: ReturnType<typeof enAnios>, tipo: number): number {
+  let total = 0;
+  for (const f of medidos) total += f.importe / Math.pow(1 + tipo, f.anios);
+  return total;
 }
 
 /**
@@ -96,15 +115,23 @@ export function tir(flujos: Flujo[]): number | null {
   if (flujos.length < 2) return null;
   if (flujos.some((f) => !esISO(f.fecha) || !Number.isFinite(f.importe))) return null;
 
+  const medidos = enAnios(flujos);
   let bajo = -0.9999;
   let alto = 10; // 1.000 % · por encima de eso no hay préstamo que valga
-  const enBajo = valorDescontado(flujos, bajo);
+  const enBajo = valorDescontado(medidos, bajo);
   if (enBajo === 0) return bajo;
-  if (Math.sign(enBajo) === Math.sign(valorDescontado(flujos, alto))) return null;
+  if (Math.sign(enBajo) === Math.sign(valorDescontado(medidos, alto))) return null;
 
   for (let i = 0; i < 200; i++) {
     const medio = (bajo + alto) / 2;
-    if (Math.sign(valorDescontado(flujos, medio)) === Math.sign(enBajo)) bajo = medio;
+    // Cuando el punto medio coincide con un extremo, el intervalo ya no cabe en
+    // un `double` y las vueltas que quedan no mueven ni un bit del resultado.
+    // Sobre un préstamo normal eso pasa hacia la vuelta 53 —el intervalo nace
+    // midiendo 11 y cada vuelta lo parte—, así que las ~150 restantes eran
+    // 36.000 potencias calculadas para nada. Salir aquí da EL MISMO número: es
+    // la condición de que seguir no cambie nada.
+    if (medio === bajo || medio === alto) break;
+    if (Math.sign(valorDescontado(medidos, medio)) === Math.sign(enBajo)) bajo = medio;
     else alto = medio;
   }
   return (bajo + alto) / 2;
