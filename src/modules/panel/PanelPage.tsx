@@ -174,9 +174,17 @@ const PanelPage: React.FC = () => {
           db.getAll('contracts') as Promise<Contract[]>,
           db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
           db.getAll('escenarios') as Promise<Escenario[]>,
-          // Sin valoraciones el panel sigue sirviendo · cada inmueble cae a su
-          // valor de compra, que es lo que hacía antes al fallar. Por eso se
-          // atrapa aquí y no tumba la carga entera.
+          // Sin valoraciones el panel sigue sirviendo, así que el fallo se
+          // atrapa aquí y no tumba la tanda entera. A qué se cae depende de si
+          // ya había valoraciones cargadas, y las dos respuestas son las que
+          // queremos:
+          //
+          //   · en la primera carga no hay ninguna · cada inmueble vale su
+          //     precio de compra, que es lo que hacía antes al fallar;
+          //   · al recargar se CONSERVAN las de antes · son valoraciones
+          //     reales de hace un momento, y tirarlas por un fallo pasajero
+          //     haría bajar el patrimonio en pantalla por algo que no ha
+          //     pasado. Una cifra vieja es mejor que una cifra falsa.
           valoracionesService
             .getMapValoracionesMasRecientesConMatchingPorNombre('inmueble')
             .catch((e) => {
