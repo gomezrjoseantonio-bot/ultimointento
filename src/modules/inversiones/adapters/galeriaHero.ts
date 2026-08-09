@@ -15,9 +15,11 @@ import type { DividendoConfig } from '../../../types/inversiones-extended';
 import { getCategoriaGaleria } from '../helpers';
 import {
   tasaNominalPosicion,
+  tasaObjetivo,
   type SupuestosGaleria,
   PROY_HORIZONTE_AÑOS,
 } from './supuestosProyeccion';
+import { getSerie } from '../../../services/valoracionesService';
 
 // ── Resumen global de cartera ───────────────────────────────────────────────
 
@@ -210,8 +212,22 @@ export interface BandaTrayectoria {
 export interface SerieTrayectoria {
   years: number[];
   bandas: BandaTrayectoria[];
-  /** Total apilado por año. */
+  /** Total apilado por año (proyección con la CAGR de cada posición). */
   totalPorAño: number[];
+  /**
+   * Línea de REALIDAD (histórico real leído de `valoracionesActivos`) · valor
+   * en cada año hasta hoy · `null` en los años de proyección (futuro). El punto
+   * de "hoy" (índice `baseYearIdx`) coincide con el total apilado actual, para
+   * que la línea enganche con las áreas.
+   */
+  historicoPorAño: (number | null)[];
+  /**
+   * Línea de OBJETIVO (misma cartera creciendo a la tasa objetivo del
+   * escenario) · definida de hoy hacia el futuro · `null` en el pasado.
+   */
+  objetivoPorAño: (number | null)[];
+  /** Índice de "hoy" dentro de `years` (0 si no hay tramo histórico). */
+  baseYearIdx: number;
   /** Máximo del eje Y (redondeado a valor "bonito"). */
   vmax: number;
 }
@@ -264,18 +280,25 @@ export function serieTrayectoria(
   // Ordenar por valor descendente para un apilado estable y legible.
   const ordenados = [...items].sort((a, b) => (b.valor_actual || 0) - (a.valor_actual || 0));
 
+  // Línea de objetivo (misma cartera, la parte que crece lo hace a la tasa
+  // objetivo del escenario · la renta fija mantiene su regla de vencimiento).
+  const rObjetivo = tasaObjetivo(supuestos);
+  const objetivoPorAño: number[] = years.map(() => 0);
+
   const bandas: BandaTrayectoria[] = ordenados.map((item, idx) => {
     const esRentaFija = TIPOS_RENTA_FIJA.has(item.tipo);
     const vencYear = vencYearDe(item);
     const valor0 = item.valor_actual || 0;
     const rate = tasaNominalPosicion(item.cagr_pct, supuestos);
-    const valores = years.map((y) => {
+    const valores = years.map((y, i) => {
       const t = y - baseYear;
       if (esRentaFija) {
         // Plana hasta vencimiento · luego fuera de la gráfica (capital devuelto).
-        if (vencYear != null && y > vencYear) return 0;
-        return valor0;
+        const v = vencYear != null && y > vencYear ? 0 : valor0;
+        objetivoPorAño[i] += v;
+        return v;
       }
+      objetivoPorAño[i] += valor0 * Math.pow(1 + rObjetivo, t);
       return valor0 * Math.pow(1 + rate, t);
     });
     return {
@@ -287,6 +310,120 @@ export function serieTrayectoria(
   });
 
   const totalPorAño = years.map((_, i) => bandas.reduce((s, b) => s + b.valores[i], 0));
-  const vmax = redondearVmax(Math.max(0, ...totalPorAño));
-  return { years, bandas, totalPorAño, vmax };
+  // Sin tramo histórico aún · la realidad se ancla en "hoy" (índice 0) para que
+  // `serieTrayectoriaConHistorico` la extienda hacia atrás. Ver esa función.
+  const historicoPorAño: (number | null)[] = years.map((_, i) =>
+    i === 0 ? totalPorAño[0] : null,
+  );
+  const vmax = redondearVmax(Math.max(0, ...totalPorAño, ...objetivoPorAño));
+  return {
+    years,
+    bandas,
+    totalPorAño,
+    historicoPorAño,
+    objetivoPorAño,
+    baseYearIdx: 0,
+    vmax,
+  };
+}
+
+/**
+ * Total histórico REAL de la cartera por año (fin de año), leído del store
+ * `valoracionesActivos`. Para cada posición toma su última valoración con fecha
+ * ≤ 31-dic de ese año (carry-forward) y suma. Devuelve solo los años con algún
+ * valor > 0. Enlaza cada `CartaItem` con su histórico por `activoId`
+ * (= `String(_idOriginal)` · UUID de plan o id numérico de inversión).
+ */
+async function historicoTotalPorAño(
+  items: CartaItem[],
+  baseYear: number,
+): Promise<Map<number, number>> {
+  const series = await Promise.all(
+    items.map((it) =>
+      getSerie(String(it._idOriginal)).catch(() => [] as Awaited<ReturnType<typeof getSerie>>),
+    ),
+  );
+
+  let firstYear = baseYear;
+  for (const serie of series) {
+    const f = serie[0]?.fecha;
+    if (f) {
+      const y = Number(f.slice(0, 4));
+      if (Number.isFinite(y) && y < firstYear) firstYear = y;
+    }
+  }
+
+  const totales = new Map<number, number>();
+  for (let y = firstYear; y < baseYear; y++) {
+    const cutoff = `${y}-12-31`;
+    let total = 0;
+    for (const serie of series) {
+      // Serie ASC por fecha · última con fecha ≤ cutoff (carry-forward).
+      let ultimo: number | null = null;
+      for (const v of serie) {
+        if (v.fecha <= cutoff) ultimo = v.valor;
+        else break;
+      }
+      if (ultimo != null) total += ultimo;
+    }
+    if (total > 0) totales.set(y, total);
+  }
+  return totales;
+}
+
+/**
+ * Como `serieTrayectoria`, pero anteponiendo el tramo HISTÓRICO real (línea de
+ * realidad) leído de `valoracionesActivos`. El eje pasa a cubrir
+ * [primer año con valoración .. hoy + `PROY_HORIZONTE_AÑOS`]. Si no hay
+ * histórico, devuelve la serie base tal cual (empieza en hoy).
+ *
+ * Decisión de Jose: la gráfica muestra a la vez la REALIDAD (histórico), la
+ * PROYECCIÓN con la CAGR de cada posición (áreas) y el OBJETIVO (línea).
+ */
+export async function serieTrayectoriaConHistorico(
+  items: CartaItem[],
+  supuestos: SupuestosGaleria,
+  baseYear: number,
+): Promise<SerieTrayectoria> {
+  const fut = serieTrayectoria(items, supuestos, baseYear);
+  const hist = await historicoTotalPorAño(items, baseYear);
+  if (hist.size === 0) return fut;
+
+  const histYears = Array.from(hist.keys()).sort((a, b) => a - b);
+  const firstYear = histYears[0];
+  const prefijo: number[] = [];
+  for (let y = firstYear; y < baseYear; y++) prefijo.push(y);
+
+  const years = [...prefijo, ...fut.years];
+  const nPre = prefijo.length;
+  const ceros = prefijo.map(() => 0);
+  const nulos = prefijo.map(() => null as number | null);
+
+  const bandas = fut.bandas.map((b) => ({
+    ...b,
+    valores: [...ceros, ...b.valores],
+  }));
+  const totalPorAño = [...ceros, ...fut.totalPorAño];
+  const objetivoPorAño = [...nulos, ...fut.objetivoPorAño];
+  const historicoPorAño: (number | null)[] = [
+    ...prefijo.map((y) => hist.get(y) ?? null),
+    ...fut.historicoPorAño,
+  ];
+
+  const finitos = [
+    ...totalPorAño,
+    ...objetivoPorAño,
+    ...historicoPorAño,
+  ].filter((v): v is number => v != null && Number.isFinite(v));
+  const vmax = redondearVmax(Math.max(0, ...finitos));
+
+  return {
+    years,
+    bandas,
+    totalPorAño,
+    historicoPorAño,
+    objetivoPorAño,
+    baseYearIdx: nPre,
+    vmax,
+  };
 }

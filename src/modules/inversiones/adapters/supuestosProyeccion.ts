@@ -102,3 +102,17 @@ export function tasaNominalPosicion(
   }
   return suelo / 100;
 }
+
+/**
+ * Tasa de la LÍNEA DE OBJETIVO de la trayectoria (fracción, p.ej. 0,08) ·
+ * decisión de Jose: el objetivo NO sustituye a la CAGR de cada posición, se
+ * dibuja como una línea aparte para comparar «dónde estarías a tu tasa
+ * objetivo» frente a la proyección real. Sale de la rentabilidad objetivo del
+ * escenario y, mientras el escenario no la defina (hoy `null`), del default del
+ * único punto de definición. NUNCA se hardcodea en la gráfica.
+ */
+export function tasaObjetivo(supuestos: SupuestosGaleria): number {
+  return (
+    (supuestos.rentabilidadObjetivoPct ?? RENT_OBJETIVO_INVERSIONES_DEFAULT_PCT) / 100
+  );
+}

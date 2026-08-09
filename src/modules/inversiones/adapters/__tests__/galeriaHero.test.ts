@@ -7,12 +7,22 @@ import {
   familiasResumen,
   rentaPasivaAnual,
   serieTrayectoria,
+  serieTrayectoriaConHistorico,
 } from '../galeriaHero';
 import {
   tasaNominalPosicion,
+  tasaObjetivo,
   PROY_HORIZONTE_AÑOS,
+  RENT_OBJETIVO_INVERSIONES_DEFAULT_PCT,
   type SupuestosGaleria,
 } from '../supuestosProyeccion';
+import { getSerie } from '../../../../services/valoracionesService';
+
+// El tramo histórico lee de `valoracionesActivos` · se mockea el servicio.
+jest.mock('../../../../services/valoracionesService', () => ({
+  getSerie: jest.fn().mockResolvedValue([]),
+}));
+const getSerieMock = getSerie as jest.MockedFunction<typeof getSerie>;
 
 // ── Fixture helper ──────────────────────────────────────────────────────────
 function item(partial: Partial<CartaItem> & { tipo: TipoPosicion; valor_actual: number }): CartaItem {
@@ -190,6 +200,61 @@ describe('galeriaHero · serieTrayectoria', () => {
     expect(banda.valores[1]).toBeCloseTo(1100); // +10%
     expect(banda.valores[2]).toBeCloseTo(1210);
   });
+
+  it('línea de objetivo: misma cartera creciendo a la tasa objetivo (no CAGR)', () => {
+    // CAGR 10% en las áreas · objetivo al default del escenario (8%).
+    const s = serieTrayectoria([item({ tipo: 'accion', valor_actual: 1000, cagr_pct: 10 })], SUP, baseYear);
+    const r = RENT_OBJETIVO_INVERSIONES_DEFAULT_PCT / 100;
+    expect(s.objetivoPorAño[0]).toBeCloseTo(1000);
+    expect(s.objetivoPorAño[1]).toBeCloseTo(1000 * (1 + r)); // objetivo, no 1100
+    // Las áreas siguen a su CAGR (10%), independientes del objetivo.
+    expect(s.totalPorAño[1]).toBeCloseTo(1100);
+  });
+
+  it('sin histórico: baseYearIdx=0 y realidad anclada solo en hoy', () => {
+    const s = serieTrayectoria([item({ tipo: 'accion', valor_actual: 1000, cagr_pct: 8 })], SUP, baseYear);
+    expect(s.baseYearIdx).toBe(0);
+    expect(s.historicoPorAño[0]).toBeCloseTo(1000); // hoy = total apilado
+    expect(s.historicoPorAño[1]).toBeNull(); // futuro sin realidad
+  });
+});
+
+describe('galeriaHero · serieTrayectoriaConHistorico', () => {
+  const baseYear = 2026;
+  beforeEach(() => getSerieMock.mockReset());
+
+  it('sin valoraciones históricas: devuelve la serie base (empieza en hoy)', async () => {
+    getSerieMock.mockResolvedValue([]);
+    const s = await serieTrayectoriaConHistorico(
+      [item({ tipo: 'accion', valor_actual: 1000, cagr_pct: 8, _idOriginal: 7 })],
+      SUP,
+      baseYear,
+    );
+    expect(s.years[0]).toBe(baseYear);
+    expect(s.baseYearIdx).toBe(0);
+  });
+
+  it('antepone el tramo histórico real leído por activoId (carry-forward)', async () => {
+    // Dos valoraciones reales (2024, 2025) → el eje empieza en 2024.
+    getSerieMock.mockResolvedValue([
+      { fecha: '2024-06-30', valor: 800 },
+      { fecha: '2025-06-30', valor: 900 },
+    ] as unknown as Awaited<ReturnType<typeof getSerie>>);
+    const s = await serieTrayectoriaConHistorico(
+      [item({ tipo: 'accion', valor_actual: 1000, cagr_pct: 8, _idOriginal: 7 })],
+      SUP,
+      baseYear,
+    );
+    expect(getSerieMock).toHaveBeenCalledWith('7');
+    expect(s.years[0]).toBe(2024);
+    expect(s.baseYearIdx).toBe(2); // 2024, 2025 antes de hoy (2026)
+    expect(s.historicoPorAño[0]).toBeCloseTo(800); // fin 2024
+    expect(s.historicoPorAño[1]).toBeCloseTo(900); // fin 2025
+    expect(s.historicoPorAño[2]).toBeCloseTo(1000); // hoy = total apilado
+    // En el pasado no hay áreas ni objetivo.
+    expect(s.bandas[0].valores[0]).toBe(0);
+    expect(s.objetivoPorAño[0]).toBeNull();
+  });
 });
 
 describe('supuestosProyeccion · tasaNominalPosicion', () => {
@@ -207,5 +272,14 @@ describe('supuestosProyeccion · tasaNominalPosicion', () => {
 
   it('usa la rentabilidad objetivo del escenario si existe', () => {
     expect(tasaNominalPosicion(8, { ...SUP, rentabilidadObjetivoPct: 6 })).toBeCloseTo(0.06);
+  });
+});
+
+describe('supuestosProyeccion · tasaObjetivo', () => {
+  it('usa la rentabilidad objetivo del escenario si existe', () => {
+    expect(tasaObjetivo({ ...SUP, rentabilidadObjetivoPct: 6 })).toBeCloseTo(0.06);
+  });
+  it('cae al default del único punto de definición si el escenario no la define', () => {
+    expect(tasaObjetivo(SUP)).toBeCloseTo(RENT_OBJETIVO_INVERSIONES_DEFAULT_PCT / 100);
   });
 });

@@ -1,10 +1,17 @@
 // INVERSIONES V1 · Fase 2 · GALERÍA · "Trayectoria a 20 años" por posición.
 //
-// Área apilada (una banda por posición) sobre panel oscuro (--brand-ink). Hover
-// muestra, para el año bajo el cursor, el desglose por posición (color +
-// importe) y el total. Préstamos terminan en su vencimiento (su banda cae a 0 ·
-// el capital sale de la gráfica · NO se proyecta reinversión). Supuestos del
-// escenario compartido (Fase 5) · ver `serieTrayectoria` / `supuestosProyeccion`.
+// Tres capas sobre panel oscuro (--brand-ink), decisión de Jose:
+//   · REALIDAD  → línea blanca sólida con el histórico real (valoracionesActivos),
+//                 del pasado hasta hoy.
+//   · PROYECCIÓN → áreas apiladas (una banda por posición) creciendo cada una a
+//                 SU CAGR realizada, de hoy hacia el futuro.
+//   · OBJETIVO  → línea oro discontinua: la misma cartera creciendo a la tasa
+//                 objetivo del escenario. NO sustituye a la CAGR, la compara.
+// Un marcador vertical separa "hoy". Hover muestra, para el año bajo el cursor,
+// el desglose por posición y los totales (realidad / proyección / objetivo).
+// Préstamos terminan en su vencimiento (su banda cae a 0 · el capital sale de la
+// gráfica · NO se proyecta reinversión). Supuestos del escenario compartido
+// (Fase 5) · ver `serieTrayectoria` / `supuestosProyeccion`.
 
 import React, { useMemo, useRef, useState } from 'react';
 import type { SerieTrayectoria } from '../../adapters/galeriaHero';
@@ -35,13 +42,29 @@ const TrayectoriaChart: React.FC<Props> = ({ serie }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverYear, setHoverYear] = useState<number | null>(null);
 
-  const { years, bandas, totalPorAño, vmax } = serie;
+  const { years, bandas, totalPorAño, historicoPorAño, objetivoPorAño, baseYearIdx, vmax } =
+    serie;
   const baseYear = years[0] ?? new Date().getFullYear();
   const lastYear = years[years.length - 1] ?? baseYear;
   const span = Math.max(1, lastYear - baseYear);
+  const hoyYear = years[baseYearIdx] ?? baseYear;
+  const hayHistorico = baseYearIdx > 0;
 
   const xY = (year: number): number => X0 + ((year - baseYear) / span) * (X1 - X0);
   const yV = (v: number): number => Y1 - (vmax > 0 ? v / vmax : 0) * (Y1 - Y0);
+
+  // Polilínea sobre los años con valor definido (ignora `null`).
+  const linePath = (vals: (number | null)[]): string => {
+    let d = '';
+    vals.forEach((v, i) => {
+      if (v == null) return;
+      const seg = `${xY(years[i]).toFixed(1)} ${yV(v).toFixed(1)}`;
+      d += d === '' ? `M${seg}` : ` L${seg}`;
+    });
+    return d;
+  };
+  const histPath = linePath(historicoPorAño);
+  const objPath = linePath(objetivoPorAño);
 
   // Paths apilados (de abajo hacia arriba).
   const bandPaths = useMemo(() => {
@@ -122,10 +145,58 @@ const TrayectoriaChart: React.FC<Props> = ({ serie }) => {
           ))}
         </g>
 
-        {/* Bandas apiladas */}
+        {/* Bandas apiladas (proyección con la CAGR de cada posición) */}
         {bandPaths.map((p, i) => (
           <path key={i} d={p.d} fill={p.color} opacity={0.95} />
         ))}
+
+        {/* Marcador "hoy" (separa realidad de proyección) */}
+        {hayHistorico && (
+          <>
+            <line
+              x1={xY(hoyYear).toFixed(1)}
+              y1={Y0}
+              x2={xY(hoyYear).toFixed(1)}
+              y2={Y1}
+              stroke="var(--atlas-v5-on-navy-3)"
+              strokeWidth={1}
+              strokeDasharray="1 2"
+            />
+            <text
+              x={xY(hoyYear).toFixed(1)}
+              y={Y0 - 3}
+              textAnchor="middle"
+              fontFamily="var(--atlas-v5-font-mono-num)"
+              fontSize={7}
+              fill="var(--atlas-v5-on-navy-4)"
+            >
+              hoy
+            </text>
+          </>
+        )}
+
+        {/* Línea de OBJETIVO (oro discontinua) */}
+        {objPath && (
+          <path
+            d={objPath}
+            fill="none"
+            stroke="var(--atlas-v5-gold-2)"
+            strokeWidth={1.5}
+            strokeDasharray="3 2.5"
+            strokeLinejoin="round"
+          />
+        )}
+
+        {/* Línea de REALIDAD (histórico real · blanca sólida) */}
+        {histPath && (
+          <path
+            d={histPath}
+            fill="none"
+            stroke="var(--atlas-v5-on-navy-1)"
+            strokeWidth={1.75}
+            strokeLinejoin="round"
+          />
+        )}
 
         {/* Líneas de vencimiento */}
         {vencimientos.map((y) => (
@@ -157,7 +228,10 @@ const TrayectoriaChart: React.FC<Props> = ({ serie }) => {
 
       {hoverYear != null && hoverIdx >= 0 && (
         <div className={styles.trajTip} style={{ left: `${tipLeftPct}%`, top: 6, opacity: 1 }}>
-          <div className={styles.trajTipYear}>{hoverYear}</div>
+          <div className={styles.trajTipYear}>
+            {hoverYear}
+            {hoverIdx < baseYearIdx ? ' · real' : hoverIdx > baseYearIdx ? ' · proyección' : ''}
+          </div>
           <div className={styles.trajTipRows}>
             {bandas.map((b, i) => {
               const v = b.valores[hoverIdx];
@@ -171,10 +245,24 @@ const TrayectoriaChart: React.FC<Props> = ({ serie }) => {
               );
             })}
           </div>
-          <div className={styles.trajTipTotal}>
-            <span>total</span>
-            <b>{kfmt(totalPorAño[hoverIdx])} €</b>
-          </div>
+          {historicoPorAño[hoverIdx] != null && (
+            <div className={styles.trajTipTotal}>
+              <span>realidad</span>
+              <b>{kfmt(historicoPorAño[hoverIdx] as number)} €</b>
+            </div>
+          )}
+          {hoverIdx >= baseYearIdx && (
+            <div className={styles.trajTipTotal}>
+              <span>proyección</span>
+              <b>{kfmt(totalPorAño[hoverIdx])} €</b>
+            </div>
+          )}
+          {objetivoPorAño[hoverIdx] != null && (
+            <div className={styles.trajTipTotal}>
+              <span>objetivo</span>
+              <b>{kfmt(objetivoPorAño[hoverIdx] as number)} €</b>
+            </div>
+          )}
         </div>
       )}
     </div>

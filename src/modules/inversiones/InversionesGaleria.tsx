@@ -48,7 +48,8 @@ import {
   resumenCartera,
   familiasResumen,
   rentaPasivaAnual,
-  serieTrayectoria,
+  serieTrayectoriaConHistorico,
+  type SerieTrayectoria,
 } from './adapters/galeriaHero';
 import {
   obtenerSupuestosGaleria,
@@ -144,9 +145,20 @@ const InversionesGaleria: React.FC = () => {
   const resumen = useMemo(() => resumenCartera(cartaItems), [cartaItems]);
   const familias = useMemo(() => familiasResumen(cartaItems), [cartaItems]);
   const rentaPasiva = useMemo(() => rentaPasivaAnual(cartaItems), [cartaItems]);
-  const serie = useMemo(() => {
-    if (!supuestos) return null;
-    return serieTrayectoria(cartaItems, supuestos, new Date().getFullYear());
+  // La serie incluye el tramo histórico real (lectura async de
+  // `valoracionesActivos`), así que se calcula en efecto + estado, no en memo.
+  const [serie, setSerie] = useState<SerieTrayectoria | null>(null);
+  useEffect(() => {
+    if (!supuestos) return;
+    let cancelado = false;
+    serieTrayectoriaConHistorico(cartaItems, supuestos, new Date().getFullYear())
+      .then((s) => {
+        if (!cancelado) setSerie(s);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelado = true;
+    };
   }, [cartaItems, supuestos]);
 
   const posicionesParaAportar = useMemo(
