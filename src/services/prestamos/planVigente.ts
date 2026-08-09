@@ -45,6 +45,31 @@ export function olvidarValidado(prestamoId: string): void {
   validados.delete(prestamoId);
 }
 
+/** Se olvida TODO · para cuando se tira la caché entera del servicio. */
+export function olvidarTodoLoValidado(): void {
+  validados.clear();
+}
+
+/**
+ * Sella un cuadro RECIÉN generado, sin pagar la comparación fila a fila.
+ *
+ * Quien acaba de regenerar sabe algo que `needsPlanRegeneration` averigua
+ * caro: que este cuadro sale del mismo generador contra el que se compararía.
+ * Esa parte —la que vuelve a generar el cuadro entero— sobra por construcción.
+ *
+ * Lo que NO sobra son las dos comprobaciones baratas del principio, y por eso
+ * se hacen igual: un cuadro vacío o con cadencia irregular es un cuadro que hay
+ * que rehacer, venga de donde venga. Sellar a ciegas taparía justo eso, y un
+ * sello es una afirmación — si no se puede sostener, no se pone y ya lo mirará
+ * la vía normal.
+ */
+export function sellarReciénGenerado(prestamo: Prestamo, plan: PlanPagos): void {
+  if (!plan.periodos?.length) return;
+  if (plan.metadata?.source === 'loan_settlement') return;
+  if (hasIrregularMonthlyCadence(plan)) return;
+  anotarValidado(prestamo, plan);
+}
+
 export function needsPlanRegeneration(prestamo: Prestamo, plan: PlanPagos): boolean {
   if (!plan.periodos || plan.periodos.length === 0) return true;
 

@@ -4,8 +4,10 @@ import { Prestamo, PlanPagos, DestinoCapital, Garantia } from '../types/prestamo
 import {
   anotarValidado,
   needsPlanRegeneration,
+  olvidarTodoLoValidado,
   olvidarValidado,
   planYaValidado,
+  sellarReciénGenerado,
 } from './prestamos/planVigente';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { conservarPunteo } from './prestamos/cuadro';
@@ -380,6 +382,11 @@ export class PrestamosService {
           anterior,
         );
         await this.savePaymentPlan(id, paymentPlan);
+        // Y se sella · acabamos de generarlo con el mismo motor contra el que
+        // se compararía, así que la lectura siguiente no tiene que rehacerlo
+        // entero para confirmar lo que ya sabemos. Es el coste de guardar un
+        // préstamo, que era la otra mitad de la queja.
+        sellarReciénGenerado(prestamos[index], paymentPlan);
         console.log(`[PRESTAMOS] Amortization schedule updated: ${paymentPlan.periodos.length} payments, total interest: €${paymentPlan.resumen.totalIntereses.toFixed(2)}`);
       } catch (error) {
         console.error(`[PRESTAMOS] Failed to regenerate amortization schedule for loan ${id}:`, error);
@@ -611,6 +618,9 @@ export class PrestamosService {
   clearCache(): void {
     this.planesGenerados.clear();
     this.prestamosCache = null;
+    // Y los sellos · tirar media caché y quedarse con el testigo de la otra
+    // media es cómo se acaba dando por bueno algo que ya no está.
+    olvidarTodoLoValidado();
   }
 
   /**
