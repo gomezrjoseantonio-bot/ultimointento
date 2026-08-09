@@ -19,20 +19,28 @@ interface Props {
   kpis: ContratosKPIs;
 }
 
+// Pluralización mínima es-ES para la línea-resumen ("1 inmueble" / "2 inmuebles").
+const plural = (n: number, singular: string, plural_: string): string =>
+  `${n} ${n === 1 ? singular : plural_}`;
+
 const ContratosTopHero: React.FC<Props> = ({ kpis }) => {
   const venceCount = kpis.venceProx30.count;
 
+  // Línea-resumen de explotación (spec §13) · "N inmuebles · M unidades · K vigentes".
+  const resumen = [
+    plural(kpis.inmueblesActivos, 'inmueble', 'inmuebles'),
+    plural(kpis.unidadesArrendables, 'unidad', 'unidades'),
+    plural(kpis.vigentes, 'vigente', 'vigentes'),
+  ].join(' · ');
+
   return (
     <div className={styles.bar} role="group" aria-label="Resumen de alquileres">
-      <div className={styles.title}>
-        <span className={styles.titleDot} aria-hidden="true" />
-        Mis alquileres
-      </div>
-
-      <div className={styles.stat}>
-        <div className={styles.lab}>Vigentes</div>
-        <div className={styles.val}>{kpis.vigentes}</div>
-        <div className={styles.sub}>de {kpis.unidadesArrendables} unidades</div>
+      <div className={styles.brand}>
+        <div className={styles.title}>
+          <span className={styles.titleDot} aria-hidden="true" />
+          Mis alquileres
+        </div>
+        <div className={styles.summary}>{resumen}</div>
       </div>
 
       <div className={styles.stat}>
@@ -42,9 +50,17 @@ const ContratosTopHero: React.FC<Props> = ({ kpis }) => {
       </div>
 
       <div className={styles.stat}>
-        <div className={styles.lab}>Renta mensual</div>
+        <div className={styles.lab}>Renta prevista</div>
         <div className={styles.val}>{eur(kpis.rentaMensual)}</div>
         <div className={styles.sub}>anual {eur(kpis.rentaAnual)}</div>
+      </div>
+
+      <div className={styles.stat}>
+        <div className={styles.lab}>Unidades libres</div>
+        <div className={`${styles.val} ${kpis.unidadesLibres > 0 ? styles.gold : ''}`}>
+          {kpis.unidadesLibres}
+        </div>
+        <div className={styles.sub}>de {kpis.unidadesArrendables} unidades</div>
       </div>
 
       <div className={styles.stat}>

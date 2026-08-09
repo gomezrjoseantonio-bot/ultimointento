@@ -12,8 +12,12 @@ import {
 import { esInquilinoIdentificado } from './inquilinoUtils';
 
 export interface ContratosKPIs {
+  /** Inmuebles activos de la cartera · para la línea-resumen de la cabecera. */
+  inmueblesActivos: number;
   vigentes: number;
   unidadesArrendables: number;
+  /** Unidades arrendables sin contrato vigente hoy (`arrendables - vigentes`). */
+  unidadesLibres: number;
   ocupacion: number; // % entero
   rentaMensual: number;
   rentaAnual: number;
@@ -22,6 +26,14 @@ export interface ContratosKPIs {
     /** Nombre del primer inmueble afectado · 'sin vencimientos' si count 0. */
     firstName: string;
   };
+}
+
+/** Inmuebles activos de la cartera · misma regla de "activo" que las unidades
+ *  arrendables (`state` ausente o `'activo'`). */
+function contarInmueblesActivos(properties: Property[]): number {
+  return properties.filter(
+    (p) => p.id != null && !(p.state && p.state !== 'activo'),
+  ).length;
 }
 
 /** Alias del inmueble por id · para el sub del KPI "Vencen 30 días". */
@@ -42,6 +54,8 @@ export function calcularKpisContratos(
   );
 
   const unidadesArrendables = calcularUnidadesArrendables(properties);
+  const unidadesLibres = Math.max(0, unidadesArrendables - vigentes.length);
+  const inmueblesActivos = contarInmueblesActivos(properties);
   const ocupacion =
     unidadesArrendables > 0
       ? Math.round((vigentes.length / unidadesArrendables) * 100)
@@ -58,8 +72,10 @@ export function calcularKpisContratos(
     .sort((a, b) => (diasHastaFin(a, hoy) ?? 0) - (diasHastaFin(b, hoy) ?? 0));
 
   return {
+    inmueblesActivos,
     vigentes: vigentes.length,
     unidadesArrendables,
+    unidadesLibres,
     ocupacion,
     rentaMensual,
     rentaAnual,

@@ -16,6 +16,14 @@
   box-shadow: var(--atlas-v5-shadow-card);
 }
 
+/* Bloque de marca (1fr) · título + línea-resumen de explotación. */
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
 .title {
   display: flex;
   align-items: center;
@@ -25,6 +33,18 @@
   letter-spacing: 0.16em;
   color: var(--atlas-v5-on-navy-3);
   font-weight: var(--atlas-v5-fw-semibold);
+}
+
+/* "N inmuebles · M unidades · K vigentes" · Mono, alineada bajo el título. */
+.summary {
+  font-size: 11px;
+  color: var(--atlas-v5-on-navy-6);
+  font-family: var(--atlas-v5-font-mono-num);
+  letter-spacing: 0.01em;
+  padding-left: 18px; /* alinea con el texto del título tras el dot (6px + 12px gap) */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .titleDot {
@@ -86,7 +106,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px 24px;
   }
-  .title {
+  .brand {
     grid-column: 1 / -1;
   }
   .stat:nth-of-type(odd) {

@@ -95,8 +95,11 @@ describe('ContratosListPage · integración', () => {
     renderPage();
     const banda = screen.getByLabelText('Resumen de alquileres');
     expect(within(banda).getByText('Mis alquileres')).toBeInTheDocument();
-    // Vigentes = 1 (solo Ivan; Aroa finalizado y Pedro próximo no cuentan).
-    expect(within(banda).getByText('1')).toBeInTheDocument();
+    // Resumen: 2 inmuebles · 2 unidades · 1 vigente (solo Ivan; Aroa finalizado
+    // y Pedro próximo no cuentan).
+    expect(
+      within(banda).getByText('2 inmuebles · 2 unidades · 1 vigente'),
+    ).toBeInTheDocument();
   });
 
   it('tab Vigentes por defecto muestra el vigente y NO el finalizado', () => {
