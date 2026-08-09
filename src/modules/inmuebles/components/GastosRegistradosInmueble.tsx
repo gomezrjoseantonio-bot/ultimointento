@@ -115,11 +115,11 @@ const GastosRegistradosInmueble: React.FC<GastosRegistradosInmuebleProps> = ({
     () => filtrada.filter((i) => i.origen === 'real'),
     [filtrada],
   );
-  const gastosOp_mantener = useMemo(
+  const gastosOpMantener = useMemo(
     () => gastosOp.filter((i) => i.grupoVisual === 'mantener' || i.grupoVisual === 'sin_clasificar'),
     [gastosOp],
   );
-  const gastosOp_explotar = useMemo(
+  const gastosOpExplotar = useMemo(
     () => gastosOp.filter((i) => i.grupoVisual === 'explotar'),
     [gastosOp],
   );
@@ -162,8 +162,8 @@ const GastosRegistradosInmueble: React.FC<GastosRegistradosInmuebleProps> = ({
           <span>Ejercicio {ejercicio}</span>
         </div>
       )}
-      <Seccion label="Gastos operativos · mantener" items={gastosOp_mantener} />
-      <Seccion label="Gastos operativos · explotar" items={gastosOp_explotar} />
+      <Seccion label="Gastos operativos · mantener" items={gastosOpMantener} />
+      <Seccion label="Gastos operativos · explotar" items={gastosOpExplotar} />
       <Seccion label="Mejoras" items={mejoraItems} />
       <Seccion label="Mobiliario" items={mobiliarioItems} />
     </div>

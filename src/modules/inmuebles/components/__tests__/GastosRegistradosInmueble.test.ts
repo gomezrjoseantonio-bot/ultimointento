@@ -187,15 +187,18 @@ describe('GastosRegistradosInmueble · construirListaVisualGastosInmueble', () =
   });
 });
 
-// ─── Tests del selector de sub-tabs (lógica de tipo) ─────────────────────
+// ─── Tests del selector de sub-tabs (comportamiento de clasificación) ─────
 
-describe('GastosSubTab · control de tipos', () => {
-  it('GastosSubTab acepta solo los valores válidos', () => {
-    type GastosSubTab = 'resumen' | 'registrados' | 'recurrentes';
-    const valid: GastosSubTab[] = ['resumen', 'registrados', 'recurrentes'];
-    expect(valid).toContain('resumen');
-    expect(valid).toContain('registrados');
-    expect(valid).toContain('recurrentes');
-    expect(valid).not.toContain('otro');
+describe('GastosSubTab · clasificación por origen', () => {
+  it('la lista de registrados no incluye compromisos recurrentes', () => {
+    // Sin compromisos recurrentes pasados → lista solo con gastos reales
+    const lista = construirListaVisualGastosInmueble({
+      inmuebleId: 10,
+      compromisosRecurrentes: [],
+      gastosReales: [crearGastoReal()],
+    });
+    const origenes = lista.map((i) => i.origen);
+    expect(origenes).not.toContain('recurrente');
+    expect(origenes).toContain('real');
   });
 });
