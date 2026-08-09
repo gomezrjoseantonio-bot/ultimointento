@@ -223,6 +223,26 @@ describe('resumenBonificaciones · sobre qué tramo rebajan', () => {
     expect(r.aplicadas.map((b) => b.bonificacion.nombre)).toEqual(['Nómina']);
   });
 
+  // En CASCADA la primera no aplicada corta las de debajo · filtrar por estado
+  // habría puesto un chip a una bonificación que no suma al número de al lado,
+  // que es otra contradicción en la misma pantalla. Sale de la misma función
+  // que alimenta `rebajaTotal`, así que no pueden discrepar.
+  it('en cascada solo cuentan las de arriba del corte', () => {
+    const p = unicaja({
+      modoBonificaciones: 'CASCADA',
+      bonificaciones: [
+        bonificacion({ id: 'b1', nombre: 'Nómina', orden: 1 }),
+        bonificacion({ id: 'b2', nombre: 'Seguro', orden: 2, estado: 'PERDIDA' }),
+        bonificacion({ id: 'b3', nombre: 'Tarjeta', orden: 3 }),
+      ],
+    });
+    const r = resumenBonificaciones(p, HOY);
+
+    // La tarjeta está «aplicada», pero el corte de la cascada la deja fuera.
+    expect(r.aplicadas.map((b) => b.bonificacion.nombre)).toEqual(['Nómina']);
+    expect(r.rebajaTotal).toBeCloseTo(r.aplicadas[0].puntos, 3);
+  });
+
   it('y un fijo simple rebaja siempre', () => {
     const p = personal({ bonificaciones: [bonificacion({ reduccionPuntosPorcentuales: 0.3 })] });
 
