@@ -1,0 +1,216 @@
+/* PatrimonioResumenInmueble · foto patrimonial del activo (Fase 9) */
+
+.container {
+  font-family: var(--atlas-v5-font-ui);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.blockHd {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.015em;
+  margin-bottom: 2px;
+}
+
+.sub {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardStrong {
+  background: var(--atlas-v5-gold-wash-2);
+  border-color: var(--atlas-v5-gold-soft);
+}
+
+.cardLabel {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.cardValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 22px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos {
+  color: var(--atlas-v5-pos);
+}
+
+.neg {
+  color: var(--atlas-v5-neg);
+}
+
+.delta {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.noData {
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-4);
+  font-style: italic;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-medium);
+  width: fit-content;
+}
+
+.badgeEst {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+  font-weight: var(--atlas-v5-fw-medium);
+  width: fit-content;
+}
+
+.badgeNa {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-medium);
+  width: fit-content;
+}
+
+/* Listas (financiación · histórico) */
+
+.list {
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--atlas-v5-card);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--atlas-v5-line-3);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rowName {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowMeta {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.rowRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.rowValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-gold-ink);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.linkBtn:hover {
+  color: var(--atlas-v5-ink);
+}
+
+.emptyRow {
+  padding: 16px;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-4);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}

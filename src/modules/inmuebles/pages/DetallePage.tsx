@@ -32,13 +32,25 @@ import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
 import GastosResumenInmueble from '../components/GastosResumenInmueble';
 import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
 import RentabilidadInmueble from '../components/RentabilidadInmueble';
+import PatrimonioResumenInmueble from '../components/PatrimonioResumenInmueble';
 import {
   calcularResumenGastosInmueble,
   construirListaVisualGastosInmueble,
 } from '../adapters/gastosInmuebleAdapter';
+import {
+  calcularPatrimonioInmueble,
+  type FinanciacionLineaInmueble,
+  type ValoracionPunto,
+} from '../adapters/patrimonioInmuebleAdapter';
 import { gastosInmuebleService } from '../../../services/gastosInmuebleService';
 import { mejorasInmuebleService } from '../../../services/mejorasInmuebleService';
 import { mueblesInmuebleService } from '../../../services/mueblesInmuebleService';
+import { valoracionesService } from '../../../services/valoracionesService';
+import { prestamosService, getAllocationFactor } from '../../../services/prestamosService';
+import {
+  getOutstandingPrincipal,
+  getLoanMonthlyInstallment,
+} from '../../horizon/herramientas/exporters/mappers';
 import styles from './DetallePage.module.css';
 
 
@@ -143,6 +155,8 @@ const DetallePage: React.FC = () => {
   const [gastosReales, setGastosReales] = useState<GastoInmueble[]>([]);
   const [mejoras, setMejoras] = useState<MejoraInmueble[]>([]);
   const [mobiliario, setMobiliario] = useState<MuebleInmueble[]>([]);
+  const [valoraciones, setValoraciones] = useState<ValoracionPunto[]>([]);
+  const [financiacion, setFinanciacion] = useState<FinanciacionLineaInmueble[]>([]);
   const [pendingDelete, setPendingDelete] = useState<DeleteInmuebleCascadeReport | null>(null);
   const [isDeletingInmueble, setIsDeletingInmueble] = useState(false);
   // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
@@ -153,6 +167,42 @@ const DetallePage: React.FC = () => {
     void gastosInmuebleService.getByInmueble(propertyId).then(setGastosReales);
     void mejorasInmuebleService.getPorInmueble(propertyId).then(setMejoras);
     void mueblesInmuebleService.getPorInmueble(propertyId).then(setMobiliario);
+
+    // Patrimonio · serie de valoraciones (última = valor actual).
+    void valoracionesService
+      .getEvolucionActivo('inmueble', propertyId)
+      .then((serie) =>
+        setValoraciones(serie.map((v) => ({ fecha: v.fecha_valoracion, valor: v.valor }))),
+      )
+      .catch(() => setValoraciones([]));
+
+    // Patrimonio · financiación vinculada imputada al inmueble (deuda pendiente).
+    void (async () => {
+      const idStr = String(propertyId);
+      const prestamos = await prestamosService.getAllPrestamos();
+      const vinculados = prestamos.filter(
+        (p) =>
+          getAllocationFactor(p, idStr) > 0 &&
+          p.activo !== false &&
+          p.estado !== 'cancelado' &&
+          p.estado !== 'pendiente_cancelacion_venta',
+      );
+      const lineas = await Promise.all(
+        vinculados.map(async (p) => {
+          const plan = await prestamosService.getPaymentPlan(p.id).catch(() => null);
+          const factor = getAllocationFactor(p, idStr);
+          return {
+            id: p.id,
+            nombre: p.nombre,
+            deudaPendiente: getOutstandingPrincipal(p, plan) * factor,
+            principalInicial: (p.principalInicial ?? 0) * factor,
+            cuotaMensual: getLoanMonthlyInstallment(p, plan) * factor,
+            porcentajeAfectacion: factor * 100,
+          };
+        }),
+      );
+      setFinanciacion(lineas);
+    })().catch(() => setFinanciacion([]));
   }, [propertyId]);
 
   const reloadGastos = useCallback(() => {
@@ -220,6 +270,17 @@ const DetallePage: React.FC = () => {
         return sum + (estimado ?? 0);
       }, 0),
     [gastos, rentaMensual],
+  );
+  const patrimonioResumen = useMemo(
+    () =>
+      calcularPatrimonioInmueble({
+        acquisitionCosts: property?.acquisitionCosts,
+        valoraciones,
+        financiacion,
+        mejoras,
+        mobiliario,
+      }),
+    [property?.acquisitionCosts, valoraciones, financiacion, mejoras, mobiliario],
   );
 
   if (!property) {
@@ -375,6 +436,16 @@ const DetallePage: React.FC = () => {
 
       {tab === 'patrimonio' && (
         <>
+          <div style={{ marginTop: 8, marginBottom: 20 }}>
+            <PatrimonioResumenInmueble
+              resumen={patrimonioResumen}
+              onImportarValoraciones={() => setShowImportWizard(true)}
+              onVerFinanciacion={(prestamoId) =>
+                navigate(prestamoId ? `/financiacion/${prestamoId}` : '/financiacion')
+              }
+            />
+          </div>
+
           <div className={styles.section} style={{ marginTop: 0 }}>
             <div className={styles.sectionHd}>
               <div>
