@@ -20,6 +20,7 @@ import {
   type CobroEvento,
 } from '../../utils/estadoCobroContratoService';
 import type { EstadoCobro } from '../../utils/resumenOperativoContrato';
+import AccionContratoModal, { type AccionContratoModo } from './AccionContratoModal';
 import {
   getEstadoEfectivo,
   diasHastaFin,
@@ -40,6 +41,9 @@ export interface DrawerFichaContratoProps {
   inmuebleAlias?: string;
   open: boolean;
   onClose: () => void;
+  /** Fase F.2 · se llama tras renovar/finalizar para recargar la lista. Cuando
+   *  no se provee, las acciones de ciclo de vida caen a su placeholder (toast). */
+  onContratoActualizado?: () => void;
 }
 
 const PILL_LABEL: Record<EstadoChip, { variant: 'gris' | 'warn' | 'neg' | 'brand'; label: string }> = {
@@ -168,8 +172,11 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
   inmuebleAlias,
   open,
   onClose,
+  onContratoActualizado,
 }) => {
   const [tabActivo, setTabActivo] = useState<'ficha' | 'actividad'>('ficha');
+  // Fase F.2 · modal de acción contractual (renovar / finalizar) · null = cerrado.
+  const [modalAccion, setModalAccion] = useState<AccionContratoModo | null>(null);
   // Fase E · estado de cobro derivado de Tesorería (fuente de verdad del dinero).
   // Se cargan los eventos de tesorería al abrir; `null` = aún cargando. Si la
   // lectura falla (p.ej. sin IndexedDB en tests) → lista vacía → `sin_datos`.
@@ -234,6 +241,29 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
   const accion = accionPrincipalPorEstado(estadoEfectivo, estado, firmado);
   const statCtx = statContextual(estadoEfectivo, contrato);
   const AccionIconCmp = accion.icon === 'send' ? Send : accion.icon === 'rotate' ? RotateCw : Icons.Refresh;
+
+  // Fase F.2 · flujos reales (requieren callback de recarga; si no, placeholder).
+  const puedeMutar = typeof onContratoActualizado === 'function';
+  // La acción principal de un vigente al-dia/vence-30d es "Renovar / Proponer
+  // renovación" → abre el modal de renovación (los demás estados mantienen toast).
+  const accionPrincipalEsRenovar =
+    estadoEfectivo === 'vigente' && (estado === 'al-dia' || estado === 'vence-30d');
+  // "Finalizar" disponible para contratos no finalizados.
+  const puedeFinalizar = puedeMutar && estadoEfectivo !== 'finalizado';
+
+  const onAccionAplicada = (): void => {
+    setModalAccion(null);
+    onContratoActualizado?.();
+    onClose();
+  };
+
+  const onPrimaria = (): void => {
+    if (puedeMutar && accionPrincipalEsRenovar) {
+      setModalAccion('renovar');
+      return;
+    }
+    showToastV5(`${accion.label} próximamente · ${accion.toastSuffix}`);
+  };
 
   return (
     <>
@@ -347,15 +377,33 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
           >
             <Icons.Download size={12} strokeWidth={1.8} /> Descargar PDF
           </button>
+          {puedeFinalizar && (
+            <button
+              type="button"
+              className={styles.btnGhost}
+              onClick={() => setModalAccion('finalizar')}
+            >
+              <Icons.Lock size={12} strokeWidth={1.8} /> Finalizar
+            </button>
+          )}
           <button
             type="button"
             className={styles.btnPrimary}
-            onClick={() => showToastV5(`${accion.label} próximamente · ${accion.toastSuffix}`)}
+            onClick={onPrimaria}
           >
             <AccionIconCmp size={12} strokeWidth={1.8} /> {accion.label}
           </button>
         </div>
       </aside>
+
+      {modalAccion !== null && (
+        <AccionContratoModal
+          contrato={contrato}
+          modo={modalAccion}
+          onClose={() => setModalAccion(null)}
+          onHecho={onAccionAplicada}
+        />
+      )}
     </>
   );
 };
