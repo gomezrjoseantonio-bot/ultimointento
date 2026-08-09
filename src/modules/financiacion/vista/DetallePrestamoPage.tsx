@@ -18,6 +18,7 @@ import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
 import { prestamosService } from '../../../services/prestamosService';
 import { movimientosQuePrueban } from '../../../services/bonificaciones/movimientosQuePrueban';
+import { inmuebleDelPrestamo } from '../../../services/prestamos/certificadoDelInmueble';
 import { verificarBonificaciones } from '../../../services/bonificaciones/verificarBonificaciones';
 import type { Cumplimiento } from '../../../services/bonificaciones/cumplimiento';
 import LoanSettlementModal from '../../horizon/financiacion/components/LoanSettlementModal';
@@ -56,6 +57,8 @@ import {
 import {
   anio as soloAnio,
   cifraIndice,
+  enmascarado,
+  ETIQUETA_TIPO,
   diaMesAnio,
   eurAFavor,
   eurDeuda,
@@ -72,18 +75,6 @@ const hoyISO = (): string => {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${mm}-${dd}`;
-};
-
-const ETIQUETA_TIPO: Record<string, string> = {
-  FIJO: 'tipo fijo',
-  VARIABLE: 'tipo variable',
-  MIXTO: 'tipo mixto',
-};
-
-/** Los cuatro últimos dígitos del contrato · «····4021». */
-const enmascarado = (numero: string | undefined): string | null => {
-  const limpio = (numero ?? '').replace(/\s/g, '');
-  return limpio.length >= 4 ? `····${limpio.slice(-4)}` : null;
 };
 
 const Segmentos: React.FC<{ pct: number }> = ({ pct: valor }) => {
@@ -117,9 +108,11 @@ const DetallePrestamoPage: React.FC = () => {
   const banco = prestamo?.banco;
   // La cuenta por la que te cobra la hipoteca · es suya, así que hace de
   // respaldo cuando la bonificación no dice en cuál mirar, que es casi siempre.
-  // Va tal cual: si es una cuenta o una cadena vacía —y `Number('')` es cero, un
-  // id que parece bueno— lo decide `movimientosQuePrueban`, en la puerta.
+  // Va tal cual: si es una cuenta o `''` —y `Number('')` es cero, un id que
+  // parece bueno— lo decide `movimientosQuePrueban`, en la puerta. Y el
+  // inmueble, que lo pide el certificado energético: es del piso, no del préstamo.
   const cuentaDelPrestamo = prestamo?.cuentaCargoId;
+  const inmueble = inmuebleDelPrestamo(prestamo);
 
   /**
    * El euríbor de «Actualizar valores» · solo para la GUÍA.
@@ -191,7 +184,8 @@ const DetallePrestamoPage: React.FC = () => {
         const movimientos = await movimientosQuePrueban(
           Number(hoy.slice(0, 4)),
           banco,
-          cuentaDelPrestamo
+          cuentaDelPrestamo,
+          inmueble
         );
         if (!cancelado) setCumplimientos(verificarBonificaciones(bonificaciones0, movimientos, hoy));
       } catch {
@@ -203,7 +197,7 @@ const DetallePrestamoPage: React.FC = () => {
     return () => {
       cancelado = true;
     };
-  }, [bonificaciones0, banco, cuentaDelPrestamo, hoy]);
+  }, [bonificaciones0, banco, cuentaDelPrestamo, inmueble, hoy]);
 
   const datos = useMemo(() => {
     if (!prestamo || !cuadro) return null;

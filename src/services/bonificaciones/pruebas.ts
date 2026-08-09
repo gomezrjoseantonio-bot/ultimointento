@@ -19,6 +19,7 @@ import type { RecibosDeUnMes } from './recibosDomiciliados';
 import type { GastoDomiciliado } from './gastosDomiciliados';
 import type { AportacionDesdeCuenta } from './aportacionesDeTesoreria';
 import type { SaldoEnProducto } from './saldoEnElBanco';
+import type { LetraEnergetica } from '../prestamos/certificadoDelInmueble';
 import type { Cumplimiento } from './cumplimiento';
 import { idDeCuenta } from './cumplimiento';
 
@@ -110,6 +111,18 @@ export interface MovimientosQuePrueban {
    * sea de ese banco. Sin ella no se puede responder, y se dice.
    */
   entidad?: string;
+  /**
+   * La letra energética del inmueble hipotecado · `null` si no consta.
+   *
+   * La otra cosa de aquí que no sale de la tesorería, y la única condición de
+   * una hipoteca que no se prueba con dinero: *«el certificado energético, si
+   * se tiene o no se tiene, se dice una vez»* *(Jose · 8 ago 2026)*.
+   *
+   * `null` es «nadie lo ha dicho» y `'NO'` es «no lo tiene». Son respuestas
+   * distintas: de la primera sale un «no se puede comprobar», de la segunda un
+   * «no cumples». Colapsarlas haría perder puntos por un campo sin rellenar.
+   */
+  letraEnergetica?: LetraEnergetica | null;
 }
 
 

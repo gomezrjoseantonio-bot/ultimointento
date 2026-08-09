@@ -23,6 +23,7 @@ import type { CobroDeUnMes } from './cobrosDeNomina';
 import { cobrosDeLaCuenta } from './cobrosDeNomina';
 import { recibosDeLaCuenta } from './recibosDomiciliados';
 import { bonificaHipoteca } from '../tarjetasReglas';
+import { letraAlcanza } from '../prestamos/certificadoDelInmueble';
 import { deLaCuenta, delTipo, primaTotal, queSuenanA } from './gastosDomiciliados';
 import { porAportaciones, porFondos } from './reglasDeInversion';
 import type { Cumplimiento, Ventana } from './cumplimiento';
@@ -50,10 +51,10 @@ const SIN_FUENTE: Record<
     | 'PLAN_PENSIONES'
     | 'FONDOS'
     | 'ALARMA'
+    | 'CERTIFICADO_ENERGETICO'
   >,
   string
 > = {
-  CERTIFICADO_ENERGETICO: 'la letra la dice el certificado del inmueble, no la tesorería',
   OTRA: 'una condición escrita a mano no dice qué hay que mirar',
 };
 
@@ -316,6 +317,57 @@ function porAlarma(
 }
 
 /**
+ * La condición de CERTIFICADO ENERGÉTICO · la octava, y la única sin dinero.
+ *
+ * *«Si se tiene o no se tiene se dice una vez · podemos implementarlo en el
+ * alta del piso»* *(Jose · 8 ago 2026)*. Aquí ponía «la letra la dice el
+ * certificado del inmueble, no la tesorería», que era verdad y por eso mismo
+ * estaba mal: la conclusión correcta no era darse por vencido, era ir a
+ * preguntárselo al inmueble.
+ *
+ * Tres respuestas, y las tres importan:
+ *
+ *   · nadie lo ha dicho todavía → no se puede comprobar
+ *   · el inmueble no tiene certificado → no cumple, y se sabe
+ *   · lo tiene → se compara con la letra que pida el anexo, si pide alguna
+ */
+function porCertificado(
+  b: Bonificacion,
+  regla: Extract<ReglaBonificacion, { tipo: 'CERTIFICADO_ENERGETICO' }>,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban
+): Cumplimiento {
+  const base = { bonificacionId: b.id, nombre: b.nombre, ventana };
+  const letra = movimientos.letraEnergetica;
+
+  if (letra == null) {
+    return noVerificable(b, 'no consta si el inmueble tiene certificado energético');
+  }
+  if (letra === 'NO') {
+    return { ...base, veredicto: 'no_cumple', motivo: 'el inmueble no tiene certificado energético' };
+  }
+
+  // Sin letra pedida, la condición es tenerlo · y lo tiene.
+  if (!regla.letraMinima?.trim()) {
+    return { ...base, veredicto: 'cumple', motivo: `certificado energético ${letra}` };
+  }
+
+  const alcanza = letraAlcanza(letra, regla.letraMinima);
+  if (alcanza == null) {
+    return noVerificable(
+      b,
+      `el anexo pide «${regla.letraMinima.trim()}», que no es una letra del certificado`
+    );
+  }
+
+  return {
+    ...base,
+    veredicto: alcanza ? 'cumple' : 'no_cumple',
+    motivo: `el inmueble tiene ${letra} y pide al menos ${regla.letraMinima.trim().toUpperCase()}`,
+  };
+}
+
+/**
  * Los meses que CUENTAN para demostrar algo, con su importe ya normalizado.
  *
  * Un mes `cerrado` cuenta con lo que entró. Un mes cerrado A MANO cuenta
@@ -552,6 +604,9 @@ function verificarUna(
   if (b.regla.tipo === 'NOMINA') return porNomina(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'RECIBOS') return porRecibos(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'ALARMA') return porAlarma(b, ventana, movimientos);
+  if (b.regla.tipo === 'CERTIFICADO_ENERGETICO') {
+    return porCertificado(b, b.regla, ventana, movimientos);
+  }
   if (
     b.regla.tipo === 'SEGUROS' ||
     b.regla.tipo === 'SEGURO_HOGAR' ||

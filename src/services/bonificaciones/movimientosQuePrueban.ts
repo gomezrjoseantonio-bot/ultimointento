@@ -25,6 +25,7 @@ import { saldoEnElBanco } from './saldoEnElBanco';
 import { idDeCuenta } from './cumplimiento';
 import type { PosicionInversion } from '../../types/inversiones';
 import type { MovimientosQuePrueban } from './pruebas';
+import { letraEnergeticaDe } from '../prestamos/certificadoDelInmueble';
 
 /**
  * Todo lo que ATLAS puede enseñar como prueba, a día de hoy.
@@ -34,8 +35,8 @@ import type { MovimientosQuePrueban } from './pruebas';
  * primer día, y esperar a diciembre para decir que se cumple sería desconfiar
  * del propio dato.
  *
- * `entidad` y `cuentaDelPrestamo` son lo único de aquí que no sale de la
- * tesorería: salen del préstamo. La cuenta es la de cargo, y hace de respaldo
+ * `entidad`, `cuentaDelPrestamo` e `inmuebleId` son lo único de aquí que no
+ * sale de la tesorería: salen del préstamo. La cuenta es la de cargo, y hace de respaldo
  * cuando la bonificación no dice en cuál mirar — que es casi siempre, porque
  * ese campo no lo rellena nadie.
  *
@@ -47,7 +48,8 @@ import type { MovimientosQuePrueban } from './pruebas';
 export async function movimientosQuePrueban(
   anio: number,
   entidad?: string,
-  cuentaDelPrestamo?: number | string
+  cuentaDelPrestamo?: number | string,
+  inmuebleId?: string
 ): Promise<MovimientosQuePrueban> {
   const db = await initDB();
 
@@ -59,6 +61,10 @@ export async function movimientosQuePrueban(
     db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
     db.getAll('inversiones') as Promise<PosicionInversion[]>,
   ]);
+
+  // La única prueba que no es dinero · la letra la dice el inmueble, y se dice
+  // una vez en su alta. `null` = nadie lo ha dicho todavía, que no es un «no».
+  const letraEnergetica = await letraEnergeticaDe(inmuebleId);
 
   return {
     tarjetas,
@@ -82,6 +88,7 @@ export async function movimientosQuePrueban(
     // aportado sale de tesorería, lo que tienes sale de la posición.
     saldoEnElBanco: saldoEnElBanco(posiciones),
     entidad,
+    letraEnergetica,
     cuentaDelPrestamo: idDeCuenta(cuentaDelPrestamo) ?? undefined,
     // Los meses cerrados · es lo que convierte «todavía no consta» en un NO.
     // Sin esto una bonificación no se pierde nunca (§6 quater).

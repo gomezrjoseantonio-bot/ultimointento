@@ -1054,3 +1054,64 @@ describe('la condición de alarma', () => {
     expect(r.veredicto).toBe('no_verificable');
   });
 });
+
+// ── El certificado energético · la única prueba que no es dinero ────────────
+//
+// «Si se tiene o no se tiene se dice una vez · podemos implementarlo en el alta
+// del piso» *(Jose · 8 ago 2026)*. Estaba en la lista de lo que no se sabe
+// mirar diciendo «la letra la dice el certificado del inmueble, no la
+// tesorería» — verdad que llevaba a la conclusión contraria de la correcta: no
+// era darse por vencido, era ir a preguntárselo al inmueble.
+describe('la condición de certificado energético', () => {
+  const conLetra = (letraEnergetica: 'NO' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | null) => ({
+    ...con([tarjeta()], []),
+    letraEnergetica,
+  });
+
+  it('sin letra pedida, basta con tenerlo', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO' } }), conLetra('D'));
+
+    expect(r.veredicto).toBe('cumple');
+  });
+
+  it('con letra pedida, se compara en la escala del certificado', () => {
+    const alcanza = unaSola(
+      bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO', letraMinima: 'C' } }),
+      conLetra('B')
+    );
+    const noAlcanza = unaSola(
+      bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO', letraMinima: 'C' } }),
+      conLetra('E')
+    );
+
+    expect(alcanza.veredicto).toBe('cumple');
+    expect(noAlcanza.veredicto).toBe('no_cumple');
+  });
+
+  // Esto SÍ se sabe y la respuesta es que no · un piso sin certificado no la
+  // cumple, y decir «no se puede comprobar» escondería una condición perdida.
+  it('un inmueble sin certificado no cumple, y se dice', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO' } }), conLetra('NO'));
+
+    expect(r.veredicto).toBe('no_cumple');
+    expect(r.motivo).toContain('no tiene certificado');
+  });
+
+  // Y esto NO se sabe · nadie lo ha dicho todavía. Colapsarlo en un «no
+  // cumples» haría perder la bonificación por un campo sin rellenar.
+  it('sin haberlo dicho en el alta del piso, no se afirma nada', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO' } }), conLetra(null));
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('no consta');
+  });
+
+  it('ni cuando el anexo pide una letra que no está en la escala', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO', letraMinima: 'B+' } }),
+      conLetra('A')
+    );
+
+    expect(r.veredicto).toBe('no_verificable');
+  });
+});
