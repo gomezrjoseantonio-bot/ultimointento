@@ -24,7 +24,7 @@ import { PropertyDisposalTaxResult } from './propertyDisposalTaxService';
 import { getRendimientosAtribuidosEjercicio } from './entidadAtribucionService';
 import { ejecutarCompensacionAhorro } from './compensacionAhorroService';
 import type { CompensacionAhorroResult } from './compensacionAhorroService';
-import { getCachedDeclaracion, setCachedDeclaracion } from './fiscalCacheService';
+import { compartirCalculo, getCachedDeclaracion, setCachedDeclaracion } from './fiscalCacheService';
 import { getInmueblesDelEjercicio } from './ejercicioResolverService';
 import {
   ESCALA_ESTATAL_GENERAL_2024,
@@ -1357,7 +1357,21 @@ export async function calcularDeclaracionIRPF(
   if (!opciones?.usarConciliacion && !opciones?.contratosOverride) {
     const cached = await getCachedDeclaracion(ejercicio);
     if (cached) return cached;
+    // Y si otro lo está calculando YA, se espera al suyo en vez de calcular
+    // otro igual · el Panel pide esta declaración por dos sitios a la vez.
+    return compartirCalculo(ejercicio, () => calcularDeclaracionIRPFSinCompartir(ejercicio));
   }
+
+  return calcularDeclaracionIRPFSinCompartir(ejercicio, opciones);
+}
+
+async function calcularDeclaracionIRPFSinCompartir(
+  ejercicio: number,
+  opciones?: {
+    usarConciliacion?: boolean;
+    contratosOverride?: Contract[];
+  }
+): Promise<DeclaracionIRPF> {
 
   // PASO 0 · contexto fiscal unificado (T14.3)
   // Confiamos en el TTL (30s) del gateway · invalidación explícita queda
