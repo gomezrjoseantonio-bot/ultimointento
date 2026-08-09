@@ -23,6 +23,7 @@ import type { ResumenBonificaciones } from './detalleDatos';
 import { cuandoSePierde, hayDiscrepancia } from './detalleDatos';
 import { diaMesAnio, mesAnio, pct } from './formato';
 import styles from './DetallePrestamo.module.css';
+import bon from './TarjetaBonificaciones.module.css';
 import rev from './RevisionEnBonificaciones.module.css';
 
 export interface TarjetaBonificacionesProps {
@@ -107,31 +108,31 @@ const TarjetaBonificaciones: React.FC<TarjetaBonificacionesProps> = ({
         </button>
       </div>
     ) : (
-      <div className={styles.bonifLista}>
+      <div className={bon.bonifLista}>
         {bonificaciones.lista.map((b) => (
-          <div key={b.bonificacion.id} className={styles.bonif}>
-            <div className={styles.bonifIzq}>
+          <div key={b.bonificacion.id} className={bon.bonif}>
+            <div className={bon.bonifIzq}>
               {/* La marca dice lo que TUS MOVIMIENTOS sostienen, no lo que el
                   banco aplica · eso vive ya en la tarjeta del tipo. Mientras
                   la misma fila contestaba las dos preguntas, un check junto a
                   un «no se cumple» parecía un error de la pantalla. */}
               <div
-                className={b.veredicto === 'cumple' ? styles.bonifCheck : styles.bonifPendiente}
+                className={b.veredicto === 'cumple' ? bon.bonifCheck : bon.bonifPendiente}
                 aria-hidden
               >
                 {b.veredicto === 'cumple' && <Icons.Check size={11} strokeWidth={3} />}
               </div>
-              <span className={b.veredicto === 'cumple' ? undefined : styles.bonifApagada}>
+              <span className={b.veredicto === 'cumple' ? undefined : bon.bonifApagada}>
                 {b.bonificacion.nombre}
                 {b.veredicto === 'no_cumple' && (
-                  <span className={styles.bonifAviso} title={b.explicacion}>
+                  <span className={bon.bonifAviso} title={b.explicacion}>
                     {/* Perderla y no tenerla no cuestan lo mismo · si hoy te la
                         aplican, la revisión te la quita y la cuota sube. */}
                     {b.alcanzada ? cuandoSePierde(proximaDelBanco) : 'no se cumple'}
                   </span>
                 )}
                 {b.veredicto === 'no_verificable' && (
-                  <span className={styles.bonifDuda} title={b.explicacion}>
+                  <span className={bon.bonifDuda} title={b.explicacion}>
                     sin comprobar
                   </span>
                 )}
@@ -139,7 +140,7 @@ const TarjetaBonificaciones: React.FC<TarjetaBonificacionesProps> = ({
                     cumples y no te la aplican, así que estás pagando de más y
                     hay algo que reclamar. */}
                 {b.veredicto === 'cumple' && !b.alcanzada && (
-                  <span className={styles.bonifLogro} title={b.explicacion}>
+                  <span className={bon.bonifLogro} title={b.explicacion}>
                     la cumples · no te la aplican
                   </span>
                 )}
@@ -176,7 +177,7 @@ const TarjetaBonificaciones: React.FC<TarjetaBonificacionesProps> = ({
                 </button>
               </div>
             ) : (
-              <div className={b.alcanzada ? styles.bonifVal : styles.bonifValApagado}>
+              <div className={b.alcanzada ? bon.bonifVal : bon.bonifValApagado}>
                 −{b.puntos.toFixed(2).replace('.', ',')}
               </div>
             )}
@@ -227,8 +228,8 @@ const TarjetaBonificaciones: React.FC<TarjetaBonificacionesProps> = ({
       </div>
     ) : (
       bonificaciones.lista.length > 0 && (
-        <div className={styles.bonifPie}>
-          <div className={styles.bonifPieFila}>
+        <div className={bon.bonifPie}>
+          <div className={bon.bonifPieFila}>
             <span>
               alcanzas{' '}
               <span className={styles.monoInk}>
@@ -253,7 +254,7 @@ const TarjetaBonificaciones: React.FC<TarjetaBonificacionesProps> = ({
           {bonificaciones.tinConLasQueTienes != null &&
             bonificaciones.tinSinBonificar != null &&
             bonificaciones.rebajaTotal > 0 && (
-              <div className={styles.bonifEfecto}>
+              <div className={bon.bonifEfecto}>
                 {/* La fecha ya está en la nota de la cabecera de esta misma
                     tarjeta · repetirla aquí era decir dos veces la misma frase
                     con dos renglones de separación. */}
@@ -279,7 +280,7 @@ const TarjetaBonificaciones: React.FC<TarjetaBonificacionesProps> = ({
           {bonificaciones.tinSiRevisaranHoy != null &&
             bonificaciones.tinConLasQueTienes != null &&
             bonificaciones.tinSiRevisaranHoy - bonificaciones.tinConLasQueTienes >= 0.005 && (
-              <div className={styles.bonifEfecto}>
+              <div className={bon.bonifEfecto}>
                 <span>si el banco revisara hoy con lo que demuestras</span>
                 <span className={styles.mono}>{pct(bonificaciones.tinSiRevisaranHoy)}</span>
               </div>
