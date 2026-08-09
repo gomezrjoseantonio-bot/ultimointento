@@ -206,6 +206,23 @@ describe('resumenBonificaciones · sobre qué tramo rebajan', () => {
     expect(r.tinConLasQueTienes).toBeCloseTo(1.6, 2);
   });
 
+  // Lo que el banco APLICA se va a la tarjeta del tipo · lo que tus movimientos
+  // demuestran se queda en la de bonificaciones. Mientras la misma fila
+  // contestaba las dos, un check junto a un «no se cumple» parecía un error de
+  // la pantalla *(Jose · 9 ago 2026)*.
+  it('las que el banco aplica se separan de la lista entera', () => {
+    const p = unicaja({
+      bonificaciones: [
+        bonificacion({ id: 'b1', nombre: 'Nómina' }),
+        bonificacion({ id: 'b2', nombre: 'Seguro de hogar', estado: 'PERDIDA' }),
+      ],
+    });
+    const r = resumenBonificaciones(p, HOY);
+
+    expect(r.lista).toHaveLength(2);
+    expect(r.aplicadas.map((b) => b.bonificacion.nombre)).toEqual(['Nómina']);
+  });
+
   it('y un fijo simple rebaja siempre', () => {
     const p = personal({ bonificaciones: [bonificacion({ reduccionPuntosPorcentuales: 0.3 })] });
 

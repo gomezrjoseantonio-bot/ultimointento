@@ -192,6 +192,21 @@ export interface ResumenBonificaciones {
   rebajanHoy: boolean;
   /** El día en que empiezan a rebajar · solo cuando hoy todavía no lo hacen. */
   rebajanDesde?: string;
+  /**
+   * Las que el banco APLICA hoy · las que hacen que tu tipo sea el que es.
+   *
+   * Viven en la tarjeta del tipo de interés, no en la de bonificaciones. Es el
+   * reparto que pidió Jose *(9 ago 2026)*: *«las bonificaciones aquí son para
+   * el periodo posterior… una vez se validen pasarán a la pestaña de tipo de
+   * interés, como las que se están aplicando»*.
+   *
+   * Y arregla de paso el «check con un “no se cumple” al lado»: mientras la
+   * misma fila contestaba las dos preguntas, la tarjeta parecía contradecirse
+   * consigo misma. Lo que el banco aplica es un hecho del contrato y va con el
+   * tipo; lo que tus movimientos demuestran es lo que decidirá la revisión
+   * siguiente, y va con las bonificaciones.
+   */
+  aplicadas: BonificacionDetalle[];
   /** El tipo del tramo bonificable ANTES de bonificar · `null` si no hay. */
   tinSinBonificar: number | null;
   /** Ese mismo tramo con las que el banco aplica hoy. */
@@ -260,6 +275,7 @@ export function resumenBonificaciones(
 
   return {
     lista,
+    aplicadas: lista.filter((b) => b.alcanzada),
     rebajaTotal: reduccionPorBonificaciones(prestamo.bonificaciones, prestamo),
     tope: tope && tope > 0 ? tope : null,
     rebajanHoy,

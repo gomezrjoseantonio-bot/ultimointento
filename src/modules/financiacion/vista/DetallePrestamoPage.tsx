@@ -357,8 +357,17 @@ const DetallePrestamoPage: React.FC = () => {
         </div>
 
         <div className={styles.hk}>
+          {/* «TIN BONIFICADO 2,60 %» era la misma mentira que la tarjeta, en el
+              número más grande de la pantalla: en el tramo fijo de esta mixta
+              no hay nada bonificado — el 2,600 % es el tipo a secas. Lo decide
+              `rebajanHoy`, la misma respuesta que usa el cuadro. */}
           <div className={styles.hkLab}>
-            TIN {bonificaciones.rebajaTotal > 0 ? 'bonificado' : prestamo.tipo === 'FIJO' ? 'fijo' : 'vigente'}
+            TIN{' '}
+            {bonificaciones.rebajanHoy && bonificaciones.rebajaTotal > 0
+              ? 'bonificado'
+              : prestamo.tipo === 'FIJO'
+                ? 'fijo'
+                : 'vigente'}
           </div>
           <div className={styles.hkVal}>{pct(datos.tin)}</div>
           <div className={styles.hkSub}>
@@ -499,6 +508,35 @@ const DetallePrestamoPage: React.FC = () => {
               </div>
             );
           })}
+
+          {/* Por qué tu tipo es el que es · las bonificaciones que el banco YA
+              aplica viven aquí, con el tipo, no en la tarjeta de al lado. Son
+              un hecho del contrato; lo que todavía tienes que demostrar es la
+              otra pregunta y tiene su propia tarjeta. */}
+          {bonificaciones.rebajanHoy && bonificaciones.aplicadas.length > 0 && (
+            <div className={styles.aplicadas}>
+              <span>el banco te aplica</span>
+              {bonificaciones.aplicadas.map((b) => (
+                <span key={b.bonificacion.id} className={styles.aplicadaChip}>
+                  {b.bonificacion.nombre}
+                </span>
+              ))}
+              <span className={styles.aplicadasVal}>
+                −{bonificaciones.rebajaTotal.toFixed(2).replace('.', ',')} pts
+              </span>
+            </div>
+          )}
+          {/* Y cuando NO tocan este tramo se dice aquí, que es donde el lector
+              está mirando el tipo · en la mixta de Unicaja el anexo entero no
+              mueve el 2,600 % hasta la primera revisión. */}
+          {!bonificaciones.rebajanHoy && bonificaciones.rebajanDesde && (
+            <div className={styles.aplicadas}>
+              {/* Sin repetir la fecha · la dice la línea de revisión, dos
+                  renglones más abajo. Enseñar el mismo día seis veces en una
+                  pantalla es de lo que se quejaba Jose. */}
+              <span>ninguna bonificación toca este tramo</span>
+            </div>
+          )}
 
           <div className={styles.revLine}>
             <Icons.Warning size={14} strokeWidth={2} aria-hidden />

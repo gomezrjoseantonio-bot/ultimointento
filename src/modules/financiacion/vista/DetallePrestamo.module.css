@@ -394,6 +394,35 @@
 .revLine svg { color: var(--atlas-v5-warn); flex-shrink: 0; }
 .revLine .mono { color: var(--atlas-v5-warn); font-weight: var(--atlas-v5-fw-bold); }
 
+/* Qué bonificaciones hacen que tu tipo sea el que es · van con el TIPO, no con
+   las bonificaciones *(Jose · 9 ago 2026: «una vez se validen pasarán a la
+   pestaña de tipo de interés, como las que se están aplicando»)*. Lo que el
+   banco aplica es un hecho; lo que aún hay que demostrar es otra tarjeta. */
+.aplicadas {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  padding-top: 8px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+}
+.aplicadaChip {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--atlas-v5-pos);
+  background: var(--atlas-v5-pos-wash);
+  white-space: nowrap;
+}
+.aplicadasVal {
+  margin-left: auto;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink-1);
+}
+
 /* ═══ Bonificaciones ══════════════════════════════════════════ */
 
 .bonifLista {
