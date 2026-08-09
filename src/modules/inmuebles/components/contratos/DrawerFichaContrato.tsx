@@ -8,12 +8,18 @@ import {
   EmptyState,
   showToastV5,
 } from '../../../../design-system/v5';
-import type { Contract } from '../../../../services/db';
+import { initDB, type Contract, type TreasuryEvent } from '../../../../services/db';
 import {
   calcularEstadoChip,
   type EstadoChip,
   estaFirmado,
 } from '../../utils/calcularEstadoChip';
+import {
+  resumenCobrosContrato,
+  type ResumenCobros,
+  type CobroEvento,
+} from '../../utils/estadoCobroContratoService';
+import type { EstadoCobro } from '../../utils/resumenOperativoContrato';
 import {
   getEstadoEfectivo,
   diasHastaFin,
@@ -42,6 +48,13 @@ const PILL_LABEL: Record<EstadoChip, { variant: 'gris' | 'warn' | 'neg' | 'brand
   impago:       { variant: 'neg',   label: 'Impago' },
   'sin-firmar': { variant: 'brand', label: 'Sin firmar' },
 };
+
+/** Badge por evento de cobro (Fase E) · el estado global (impago) va en el hero. */
+function cobroPill(e: CobroEvento): { variant: 'gris' | 'warn' | 'brand'; label: string } {
+  if (e.cobrado) return { variant: 'gris', label: 'Cobrado' };
+  if (e.vencido) return { variant: 'warn', label: 'Sin cobrar' };
+  return { variant: 'brand', label: 'Previsto' };
+}
 
 const accionPorEstado = (estado: EstadoChip): { label: string; toastSuffix: string } => {
   switch (estado) {
@@ -157,6 +170,10 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
   onClose,
 }) => {
   const [tabActivo, setTabActivo] = useState<'ficha' | 'actividad'>('ficha');
+  // Fase E · estado de cobro derivado de Tesorería (fuente de verdad del dinero).
+  // Se cargan los eventos de tesorería al abrir; `null` = aún cargando. Si la
+  // lectura falla (p.ej. sin IndexedDB en tests) → lista vacía → `sin_datos`.
+  const [eventosTesoreria, setEventosTesoreria] = useState<TreasuryEvent[] | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -172,15 +189,48 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
     };
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) return;
+    let cancelado = false;
+    void (async () => {
+      try {
+        const db = await initDB();
+        const todos = await db.getAll('treasuryEvents');
+        if (!cancelado) setEventosTesoreria(todos as TreasuryEvent[]);
+      } catch {
+        if (!cancelado) setEventosTesoreria([]);
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [open, contrato.id]);
+
   if (!open) return null;
 
   const nombre = getInquilinoNombre(contrato);
   const iniciales = generarIniciales(nombre);
   const colorAvatar = colorAvatarPorContrato(contrato);
-  const estado = calcularEstadoChip(contrato);
-  const pill = PILL_LABEL[estado];
   const firmado = estaFirmado(contrato);
   const estadoEfectivo = getEstadoEfectivo(contrato);
+
+  // Cobros derivados de Tesorería · `null` mientras carga.
+  const resumenCobros: ResumenCobros | null = eventosTesoreria
+    ? resumenCobrosContrato(contrato, eventosTesoreria)
+    : null;
+  const estadoCobro: EstadoCobro = resumenCobros?.estado ?? 'sin_datos';
+
+  // El chip de cobro sube a "Impago" solo si el contrato está firmado, vigente y
+  // Tesorería confirma el impago (T3.6 · antes no calculable). En cualquier otro
+  // caso se mantiene el chip base (sin-firmar / vence-30d / al-dia).
+  const estadoBase = calcularEstadoChip(contrato);
+  const estado: EstadoChip =
+    estadoBase !== 'sin-firmar' &&
+    estadoEfectivo === 'vigente' &&
+    estadoCobro === 'impago'
+      ? 'impago'
+      : estadoBase;
+  const pill = PILL_LABEL[estado];
   const accion = accionPrincipalPorEstado(estadoEfectivo, estado, firmado);
   const statCtx = statContextual(estadoEfectivo, contrato);
   const AccionIconCmp = accion.icon === 'send' ? Send : accion.icon === 'rotate' ? RotateCw : Icons.Refresh;
@@ -278,6 +328,7 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
               contrato={contrato}
               firmado={firmado}
               estadoEfectivo={estadoEfectivo}
+              resumenCobros={resumenCobros}
             />
           ) : (
             <EmptyState
@@ -313,9 +364,15 @@ interface PanelFichaProps {
   contrato: Contract & { id: number };
   firmado: boolean;
   estadoEfectivo: EstadoEfectivo;
+  resumenCobros: ResumenCobros | null;
 }
 
-const PanelFicha: React.FC<PanelFichaProps> = ({ contrato, firmado, estadoEfectivo }) => {
+const PanelFicha: React.FC<PanelFichaProps> = ({
+  contrato,
+  firmado,
+  estadoEfectivo,
+  resumenCobros,
+}) => {
   const inq = contrato.inquilino;
   const esSinFirmar = contrato.estadoContrato === 'sin_firmar';
   const esFinalizado = estadoEfectivo === 'finalizado';
@@ -453,9 +510,30 @@ const PanelFicha: React.FC<PanelFichaProps> = ({ contrato, firmado, estadoEfecti
 
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>Últimos cobros</h3>
-        <div className={styles.emptyMini}>
-          Integración con servicio de cobros próximamente · T3.6.
-        </div>
+        {resumenCobros == null ? (
+          <div className={styles.emptyMini}>Cargando cobros desde Tesorería…</div>
+        ) : resumenCobros.eventos.length === 0 ? (
+          <div className={styles.emptyMini}>
+            Sin rentas registradas en Tesorería para este contrato.
+          </div>
+        ) : (
+          <ul className={styles.cobroList}>
+            {resumenCobros.eventos.slice(0, 6).map((e, i) => {
+              const badge = cobroPill(e);
+              return (
+                <li key={`${e.fecha}-${i}`} className={styles.cobroRow}>
+                  <span className={styles.cobroDate}>
+                    <DateLabel value={e.fecha} format="short" size="sm" />
+                  </span>
+                  <span className={styles.cobroAmount}>
+                    <MoneyValue value={e.importe} decimals={0} tone="ink" />
+                  </span>
+                  <Pill variant={badge.variant} asTag>{badge.label}</Pill>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
     </>
   );

@@ -361,6 +361,38 @@
   background: var(--atlas-v5-card-alt);
 }
 
+/* Fase E · lista de cobros derivada de Tesorería. */
+.cobroList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cobroRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  background: var(--atlas-v5-card-alt);
+}
+
+.cobroDate {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.cobroAmount {
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-align: right;
+}
+
 .footer {
   border-top: 1px solid var(--atlas-v5-line);
   padding: 12px 20px;
