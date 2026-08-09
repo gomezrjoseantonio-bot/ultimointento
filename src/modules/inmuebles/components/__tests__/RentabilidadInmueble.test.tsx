@@ -2,47 +2,58 @@ import '@testing-library/jest-dom';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import RentabilidadInmueble from '../RentabilidadInmueble';
+import type { RentabilidadInmuebleResumen } from '../../adapters/rentabilidadInmuebleAdapter';
+
+const base = (over: Partial<RentabilidadInmuebleResumen> = {}): RentabilidadInmuebleResumen => ({
+  ejercicio: 2026,
+  ingresosPrevistos: 12000,
+  ingresosCobrados: 9000,
+  gastosPrevistos: 3000,
+  gastosPagados: 2500,
+  resultadoOperativoEstimado: 9000,
+  resultadoOperativoReal: 6500,
+  rentabilidadBruta: { valor: 4.5, etiqueta: 'real' },
+  rentabilidadNeta: { valor: 3.25, etiqueta: 'real' },
+  cuotaPrestamoAnual: 7800,
+  cashflowEstimado: 1200,
+  cashflowReal: -1300,
+  ...over,
+});
 
 describe('RentabilidadInmueble', () => {
-  it('muestra la rentabilidad bruta cuando hay datos disponibles', () => {
-    render(
-      <RentabilidadInmueble
-        rentaMensual={1000}
-        valorAdquisicion={200000}
-      />,
-    );
-    expect(screen.getByText(/Rentabilidad bruta/i)).toBeInTheDocument();
-    expect(screen.getByText(/6.00 %/i)).toBeInTheDocument();
+  it('muestra el ejercicio y las secciones de ingresos, gastos, resultado, rentabilidad y cashflow', () => {
+    render(<RentabilidadInmueble resumen={base()} />);
+    expect(screen.getByText(/Rentabilidad del activo · 2026/i)).toBeInTheDocument();
+    expect(screen.getByText('Ingresos (anuales)')).toBeInTheDocument();
+    expect(screen.getByText('Gastos de explotación (anuales)')).toBeInTheDocument();
+    expect(screen.getByText('Resultado operativo (anual)')).toBeInTheDocument();
+    expect(screen.getByText('Rentabilidad')).toBeInTheDocument();
+    expect(screen.getByText(/Cashflow/i)).toBeInTheDocument();
   });
 
-  it('marca como no disponible cuando falta valor de adquisición', () => {
-    render(
-      <RentabilidadInmueble
-        rentaMensual={1000}
-        valorAdquisicion={0}
-      />,
-    );
-    expect(screen.getAllByText(/No disponible/i).length).toBeGreaterThan(0);
+  it('etiqueta cobrados/pagados como Real y previstos con ≈ Previsto', () => {
+    render(<RentabilidadInmueble resumen={base()} />);
+    expect(screen.getAllByText('Real').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('≈ Previsto').length).toBeGreaterThan(0);
+    expect(screen.getByText('4.50 %')).toBeInTheDocument();
+    expect(screen.getByText('3.25 %')).toBeInTheDocument();
   });
 
-  it('muestra gastos previstos con badge estimado', () => {
+  it('marca No disponible cuando faltan datos reales', () => {
     render(
       <RentabilidadInmueble
-        rentaMensual={1000}
-        valorAdquisicion={200000}
-        gastosPrevistos={3600}
+        resumen={base({
+          ingresosCobrados: undefined,
+          gastosPagados: undefined,
+          resultadoOperativoReal: undefined,
+          cashflowReal: undefined,
+          rentabilidadBruta: { valor: 6, etiqueta: 'previsto' },
+          rentabilidadNeta: { valor: 4.5, etiqueta: 'estimado' },
+        })}
       />,
     );
-    expect(screen.getByText(/≈ Previstos/i)).toBeInTheDocument();
-  });
-
-  it('muestra "Sin contrato activo" cuando renta mensual es 0', () => {
-    render(
-      <RentabilidadInmueble
-        rentaMensual={0}
-        valorAdquisicion={200000}
-      />,
-    );
-    expect(screen.getByText(/Sin contrato activo/i)).toBeInTheDocument();
+    expect(screen.getByText('Sin cobros en Tesorería')).toBeInTheDocument();
+    expect(screen.getAllByText('No disponible').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('≈ Estimado').length).toBeGreaterThan(0);
   });
 });
