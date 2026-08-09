@@ -106,10 +106,15 @@ export async function conciliarAportacionInicial(posicionId: number): Promise<vo
 export async function conciliarAportacionesInicialesPendientes(): Promise<void> {
   try {
     const posiciones = await inversionesService.getPosiciones();
-    for (const pos of posiciones) {
-      if (pos.id == null) continue;
-      await conciliarAportacionInicial(pos.id);
-    }
+    // En paralelo · el barrido es idempotente y `conciliarAportacionInicial` ya
+    // absorbe sus propios errores; `allSettled` evita que uno tumbe al resto y
+    // no alarga la carga de la galería en serie. (IndexedDB serializa las
+    // escrituras solapadas, así que no hay riesgo de corrupción.)
+    await Promise.allSettled(
+      posiciones
+        .filter((p): p is typeof p & { id: number } => p.id != null)
+        .map((p) => conciliarAportacionInicial(p.id)),
+    );
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[inversiones] conciliar aportaciones iniciales pendientes', err);

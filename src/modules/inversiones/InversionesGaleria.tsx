@@ -118,11 +118,16 @@ const InversionesGaleria: React.FC = () => {
     const init = async () => {
       try {
         await migrateInversionesToNewModel();
-        await rendimientosService.generarRendimientosPendientes();
-        // Red de seguridad · concilia las aportaciones iniciales que sigan "por
-        // confirmar" (creadas antes de este comportamiento, o si el conciliado
-        // del alta no llegó a correr). Idempotente · solo fecha ≤ hoy.
-        await conciliarAportacionesInicialesPendientes();
+        // Independientes entre sí · en paralelo para no retrasar la primera
+        // carga del ledger:
+        //  - generar rendimientos pendientes (cobros/dividendos),
+        //  - red de seguridad que concilia las aportaciones iniciales que sigan
+        //    "por confirmar" (creadas antes de este comportamiento, o si el
+        //    conciliado del alta no llegó a correr). Idempotente · solo fecha ≤ hoy.
+        await Promise.allSettled([
+          rendimientosService.generarRendimientosPendientes(),
+          conciliarAportacionesInicialesPendientes(),
+        ]);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[inversiones] init', err);
