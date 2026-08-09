@@ -23,6 +23,7 @@ import { rendimientosService } from '../../services/rendimientosService';
 import {
   resincronizarTesoreriaInversiones,
   conciliarAportacionInicial,
+  conciliarAportacionesInicialesPendientes,
 } from '../../services/inversionesTesoreriaSync';
 import { migrateInversionesToNewModel } from '../../services/migrations/migrateInversiones';
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
@@ -118,6 +119,10 @@ const InversionesGaleria: React.FC = () => {
       try {
         await migrateInversionesToNewModel();
         await rendimientosService.generarRendimientosPendientes();
+        // Red de seguridad · concilia las aportaciones iniciales que sigan "por
+        // confirmar" (creadas antes de este comportamiento, o si el conciliado
+        // del alta no llegó a correr). Idempotente · solo fecha ≤ hoy.
+        await conciliarAportacionesInicialesPendientes();
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[inversiones] init', err);
