@@ -103,10 +103,49 @@
   font-weight: var(--atlas-v5-fw-semibold);
 }
 
-.bonifEfecto .mono { font-weight: var(--atlas-v5-fw-bold); }
+/* La cifra de la derecha en negrita.
 
-.flecha {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-weight: var(--atlas-v5-fw-bold);
+   Aquí ponía `.bonifEfecto .mono`, y al partir el CSS dejó de funcionar sin
+   avisar: `.mono` vive en el módulo compartido, así que en el DOM lleva otro
+   nombre generado y este descendiente no lo alcanza nunca. Un selector que
+   cruza dos CSS modules no falla — simplemente no aplica.
+
+   Se resuelve por estructura, que es lo que estas filas tienen en común: la
+   cifra es siempre el último hijo. */
+.bonifEfecto > span:last-child { font-weight: var(--atlas-v5-fw-bold); }
+
+/* El veredicto de los movimientos · va al lado del nombre y NO pisa el check
+   del banco: son dos preguntas distintas y la ficha tiene que poder decir las
+   dos a la vez, sobre todo cuando no coinciden.
+
+   En ÁMBAR, no en rojo *(Jose · 9 ago 2026: «usas el rojo, que está
+   prohibido»)*. Y no es solo la regla de la casa: el rojo de la guía es
+   «alerta · fallado», y una bonificación que vas a perder en la próxima
+   revisión no ha fallado nada todavía — es exactamente lo que `--atlas-v5-warn`
+   nombra, «advertencia · ámbar · en-riesgo». Pintarla de rojo decía que ya
+   estaba perdida, cuando es justo lo que aún estás a tiempo de arreglar. */
+.bonifAviso,
+.bonifDuda,
+.bonifLogro {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
-
+.bonifAviso {
+  color: var(--atlas-v5-warn);
+  background: var(--atlas-v5-warn-wash);
+}
+.bonifDuda {
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-line-3);
+}
+/* La cumples y no te la aplican · no es un error tuyo, es algo que puedes
+   reclamar, y por eso va en verde y no en rojo. */
+.bonifLogro {
+  color: var(--atlas-v5-pos);
+  background: var(--atlas-v5-pos-wash);
+}
