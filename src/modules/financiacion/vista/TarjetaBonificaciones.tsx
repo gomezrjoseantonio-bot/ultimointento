@@ -111,23 +111,23 @@ const TarjetaBonificaciones: React.FC<TarjetaBonificacionesProps> = ({
         {bonificaciones.lista.map((b) => (
           <div key={b.bonificacion.id} className={styles.bonif}>
             <div className={styles.bonifIzq}>
+              {/* La marca dice lo que TUS MOVIMIENTOS sostienen, no lo que el
+                  banco aplica · eso vive ya en la tarjeta del tipo. Mientras
+                  la misma fila contestaba las dos preguntas, un check junto a
+                  un «no se cumple» parecía un error de la pantalla. */}
               <div
-                className={b.alcanzada ? styles.bonifCheck : styles.bonifPendiente}
+                className={b.veredicto === 'cumple' ? styles.bonifCheck : styles.bonifPendiente}
                 aria-hidden
               >
-                {b.alcanzada && <Icons.Check size={11} strokeWidth={3} />}
+                {b.veredicto === 'cumple' && <Icons.Check size={11} strokeWidth={3} />}
               </div>
-              <span className={b.alcanzada ? undefined : styles.bonifApagada}>
+              <span className={b.veredicto === 'cumple' ? undefined : styles.bonifApagada}>
                 {b.bonificacion.nombre}
-                {/* Lo que dicen TUS movimientos · otra pregunta distinta
-                    de si el banco la está aplicando, y por eso va aparte
-                    y no pisa el check. Cuando no coinciden es justo
-                    cuando hay que enterarse. */}
                 {b.veredicto === 'no_cumple' && (
                   <span className={styles.bonifAviso} title={b.explicacion}>
-                    {!b.alcanzada
-                      ? 'no se cumple'
-                      : cuandoSePierde(proximaDelBanco)}
+                    {/* Perderla y no tenerla no cuestan lo mismo · si hoy te la
+                        aplican, la revisión te la quita y la cuota sube. */}
+                    {b.alcanzada ? cuandoSePierde(proximaDelBanco) : 'no se cumple'}
                   </span>
                 )}
                 {b.veredicto === 'no_verificable' && (
@@ -135,8 +135,9 @@ const TarjetaBonificaciones: React.FC<TarjetaBonificacionesProps> = ({
                     sin comprobar
                   </span>
                 )}
-                {/* La discrepancia al revés · la cumples y el banco NO te
-                    la aplica. Es dinero que estás pagando de más. */}
+                {/* La única vez que lo que el banco hace ES noticia aquí · la
+                    cumples y no te la aplican, así que estás pagando de más y
+                    hay algo que reclamar. */}
                 {b.veredicto === 'cumple' && !b.alcanzada && (
                   <span className={styles.bonifLogro} title={b.explicacion}>
                     la cumples · no te la aplican
@@ -253,12 +254,11 @@ const TarjetaBonificaciones: React.FC<TarjetaBonificacionesProps> = ({
             bonificaciones.tinSinBonificar != null &&
             bonificaciones.rebajaTotal > 0 && (
               <div className={styles.bonifEfecto}>
+                {/* La fecha ya está en la nota de la cabecera de esta misma
+                    tarjeta · repetirla aquí era decir dos veces la misma frase
+                    con dos renglones de separación. */}
                 <span>
-                  {bonificaciones.rebajanHoy
-                    ? 'tu tipo de hoy'
-                    : bonificaciones.rebajanDesde
-                      ? `todavía no rebajan · desde el ${diaMesAnio(bonificaciones.rebajanDesde)}`
-                      : 'todavía no rebajan'}
+                  {bonificaciones.rebajanHoy ? 'tu tipo de hoy' : 'tu tipo cuando empiecen'}
                 </span>
                 <span>
                   <span className={styles.teorico}>
