@@ -132,10 +132,10 @@ export interface Prestamo {
    * (`revisionesDeTipo`) ese hecho manda y esto deja de pintar nada en el tramo
    * en curso.
    *
-   * **No se escribe aquí el euríbor de «Actualizar valores»**, que es el de hoy
-   * y se mueve con el mercado. Al LEER, `conIndiceDeHoy` pone esa presunción al
-   * día, así que este campo es el respaldo: solo gobierna cuando valoraciones
-   * está vacío. Y por encima de los dos manda una revisión apuntada.
+   * **El euríbor de «Actualizar valores» no entra aquí ni al leer.** El cuadro
+   * se calcula con lo último FIJADO y no se mueve porque el mercado se mueva:
+   * nada cambia de verdad hasta la revisión siguiente *(Jose · 8 ago 2026)*.
+   * Ese euríbor sirve para la guía —`simulacionRevision`—, no para el cuadro.
    */
   valorIndiceActual?: number;
   diferencial?: number;         // 0.012
@@ -667,11 +667,13 @@ export type ReglaBonificacion =
   /**
    * Plan de pensiones o previsión · «aportar al menos N € al año».
    *
-   * `activo` era todo lo que se podía decir, y por eso una condición con cifra
-   * —la habitual— se guardaba como «lo tengo contratado». `aportacionAnual`
-   * ausente sigue significando eso: contratado, sin cifra dicha.
+   * **Dos ramas, y basta con una** *(Jose · 9 ago 2026)*: unos anexos piden
+   * APORTAR X al año, otros TENER X con el banco. No es la misma pregunta —un
+   * plan sin aportaciones desde hace años puede tener 40.000 € dentro— y se
+   * prueban en sitios distintos: la aportación en tesorería, el saldo en la
+   * posición. Sin ninguna de las dos, la condición es tenerlo contratado.
    */
-  | { tipo: 'PLAN_PENSIONES'; activo: boolean; aportacionAnual?: number }
+  | { tipo: 'PLAN_PENSIONES'; activo: boolean; aportacionAnual?: number; saldoMinimo?: number }
   /**
    * Seguros, **contados o sumados** · la forma que ninguna otra podía expresar.
    *
@@ -699,12 +701,12 @@ export type ReglaBonificacion =
   | { tipo: 'SEGURO_VIDA'; activo: boolean; capitalAseguradoPct?: number }
   | { tipo: 'TARJETA'; movimientosMesMin?: number; importeMinimo?: number }
   /**
-   * Fondos de inversión o valores · «mantener N € en la entidad».
+   * Fondos de inversión o valores · las MISMAS dos ramas que el plan.
    *
-   * Se guarda el SALDO exigido, no lo aportado: el anexo mira lo que hay, y
-   * quien aportó hace tres años sigue cumpliendo sin aportar este mes.
+   * `saldoMinimo` es «mantener N € con ellos», `aportacionAnual` es «meter N €
+   * al año». Basta con una.
    */
-  | { tipo: 'FONDOS'; saldoMinimo?: number }
+  | { tipo: 'FONDOS'; saldoMinimo?: number; aportacionAnual?: number }
   /**
    * Certificado de eficiencia energética del inmueble.
    *

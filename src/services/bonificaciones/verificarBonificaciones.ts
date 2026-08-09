@@ -2,10 +2,14 @@
 // Qué demuestran los movimientos de cada bonificación · VOCABULARIO §6 ter
 // ============================================================================
 //
-// La forma común está en `cumplimiento`. Aquí viven las FUENTES: quién sabe
-// agregar cada tipo de condición. Hoy tres —la tarjeta (§3.6), la nómina y los
-// recibos domiciliados—; lo que queda se prueba con una póliza o un contrato, no
-// con un movimiento, y se dice con todas las letras en vez de darse por bueno.
+// El REPARTO: qué función contesta cada tipo de condición, y la tabla de las
+// que todavía no sabe contestar nadie. La forma de la respuesta está en
+// `cumplimiento`, la de la pregunta en `pruebas`.
+//
+// Aquí viven las condiciones que se prueban con movimientos de la cuenta —la
+// tarjeta (§3.6), la nómina, los recibos, las pólizas y la alarma—. Las de
+// inversión están en `reglasDeInversion`: son otra forma, porque tienen dos
+// pruebas distintas y una de ellas no es un movimiento.
 //
 // Añadir una es quitar su fila de `SIN_FUENTE` y escribir su función. Esa tabla
 // es, literalmente, la lista de lo que falta.
@@ -14,81 +18,18 @@
 // ============================================================================
 
 import type { Bonificacion, ReglaBonificacion } from '../../types/prestamos';
-import type { Tarjeta } from '../../types/tarjetas';
-import type { GastoDeUnPeriodo } from '../gastoPorTarjeta';
 import { gastoDeLaTarjeta } from '../gastoPorTarjeta';
 import type { CobroDeUnMes } from './cobrosDeNomina';
 import { cobrosDeLaCuenta } from './cobrosDeNomina';
-import type { RecibosDeUnMes } from './recibosDomiciliados';
 import { recibosDeLaCuenta } from './recibosDomiciliados';
 import { bonificaHipoteca } from '../tarjetasReglas';
-import type { SeguroDomiciliado } from './segurosDomiciliados';
-import { deLaCuenta, delTipo, primaTotal } from './segurosDomiciliados';
-import type { AportacionDeUnAnio } from './aportacionesAPlanes';
-import { deLaEntidad, totalAportado } from './aportacionesAPlanes';
+import { letraAlcanza } from '../prestamos/certificadoDelInmueble';
+import { deLaCuenta, delTipo, primaTotal, queSuenanA } from './gastosDomiciliados';
+import { porAportaciones, porFondos } from './reglasDeInversion';
 import type { Cumplimiento, Ventana } from './cumplimiento';
 import { ventanaDeEvaluacion, veredictoDelImporte } from './cumplimiento';
-
-/** Lo que la tesorería puede aportar para probar una condición. */
-export interface MovimientosQuePrueban {
-  tarjetas: Tarjeta[];
-  /** El gasto por tarjeta y periodo · lo que devuelve `gastoPorTarjeta`. */
-  periodosDeTarjeta: GastoDeUnPeriodo[];
-  /** La nómina por cuenta y mes · lo que devuelve `cobrosDeNomina`. */
-  cobrosDeNomina: CobroDeUnMes[];
-  /**
-   * **Todo** lo que entra en una cuenta, mes a mes · `ingresosDeLaCuenta`.
-   *
-   * La otra rama de la condición de ingresos: muchos bancos aceptan «ingresos
-   * recurrentes por importe anual igual o superior a X» sin exigir nómina, y
-   * eso lo cumple quien cobra alquileres. Mirando solo `cobrosDeNomina` esa
-   * rama no se podía cumplir jamás.
-   *
-   * Ausente = no se mira esa rama, y manda la nómina.
-   */
-  ingresosRecurrentes?: CobroDeUnMes[];
-  /** Los recibos por cuenta y mes · lo que devuelve `recibosDomiciliados`. */
-  recibosDomiciliados: RecibosDeUnMes[];
-  /**
-   * Los meses que ya se han cerrado · `YYYY-MM` (§6 quater).
-   *
-   * Es lo que convierte «todavía no consta» en un **no**. Sin esto, un mes sin
-   * la nómina se queda siempre en «no cuenta todavía» y una bonificación no se
-   * puede perder nunca — ni ganarse del todo.
-   *
-   * Ausente = ninguno cerrado, que es como se comportaba antes de existir el
-   * cierre: nada se da por no ocurrido si nadie lo ha dicho.
-   */
-  mesesCerrados?: string[];
-  /**
-   * Las pólizas domiciliadas · lo que devuelve `segurosDomiciliados`.
-   *
-   * Un seguro se domicilia, así que la prueba está aquí y no en un módulo de
-   * pólizas que no existe. Y a diferencia de la nómina, **lo previsto cuenta**:
-   * un compromiso recurrente activo es un contrato dado de alta, no una
-   * esperanza (§6 ter).
-   *
-   * Ausente = ATLAS no sabe de ninguno, que no es lo mismo que no tenerlos.
-   */
-  segurosDomiciliados?: SeguroDomiciliado[];
-  /**
-   * Lo aportado a planes este ejercicio · lo que da `aportacionesPorPlan`.
-   *
-   * Va con su gestora porque el anexo no pide «un plan cualquiera»: pide uno
-   * SUYO, igual que la nómina en su cuenta o la tarjeta del propio banco.
-   *
-   * Ausente = ATLAS no sabe de ninguno, que no es lo mismo que no tenerlos.
-   */
-  aportacionesAPlanes?: AportacionDeUnAnio[];
-  /**
-   * De qué entidad es el préstamo que se está comprobando.
-   *
-   * Lo único de aquí que **no sale de la tesorería**: sale del propio préstamo,
-   * y quien llama lo tiene. Hace falta para la condición de plan, que exige que
-   * sea de ese banco. Sin ella no se puede responder, y se dice.
-   */
-  entidad?: string;
-}
+import type { MovimientosQuePrueban } from './pruebas';
+import { centimos, cuentaDondeMira, noVerificable } from './pruebas';
 
 /**
  * Lo que todavía no se puede mirar, y por qué · §6 ter.
@@ -108,86 +49,14 @@ const SIN_FUENTE: Record<
     | 'SEGURO_HOGAR'
     | 'SEGURO_VIDA'
     | 'PLAN_PENSIONES'
+    | 'FONDOS'
+    | 'ALARMA'
+    | 'CERTIFICADO_ENERGETICO'
   >,
   string
 > = {
-  FONDOS: 'el saldo en fondos se prueba con la posición, no con un movimiento',
-  CERTIFICADO_ENERGETICO: 'la letra la dice el certificado del inmueble, no la tesorería',
-  ALARMA: 'la alarma se prueba con su contrato, no con un movimiento',
   OTRA: 'una condición escrita a mano no dice qué hay que mirar',
 };
-
-/** Redondeo a céntimos · restar dos sumas de euros deja 339.99999999999994. */
-const centimos = (n: number): number => Math.round(n * 100) / 100;
-
-const noVerificable = (b: Bonificacion, motivo: string): Cumplimiento => ({
-  bonificacionId: b.id,
-  nombre: b.nombre,
-  veredicto: 'no_verificable',
-  motivo,
-});
-
-/**
- * La condición de APORTACIÓN A UN PLAN · §6 ter, la quinta forma.
- *
- * `SIN_FUENTE` decía «la aportación al plan todavía no se sigue en tesorería»,
- * y era verdad a medias: no se sigue en tesorería porque no es un movimiento —
- * se sigue en el store de aportaciones, que lleva cada una con su ejercicio
- * fiscal. Lo que faltaba no era el dato, era la pregunta.
- *
- * La gestora importa tanto como el importe: el anexo pide un plan SUYO, no uno
- * cualquiera. Sin saber de qué entidad es el préstamo no se puede responder, y
- * eso se dice — es la tercera respuesta, no un no.
- *
- * Sin cifra pedida (`aportacionAnual` ausente) la condición es «tenerlo
- * contratado», y entonces basta con que exista un plan de esa gestora.
- */
-function porAportaciones(
-  b: Bonificacion,
-  regla: Extract<ReglaBonificacion, { tipo: 'PLAN_PENSIONES' }>,
-  ventana: Ventana,
-  movimientos: MovimientosQuePrueban
-): Cumplimiento {
-  const base = { bonificacionId: b.id, nombre: b.nombre, ventana };
-
-  if (!movimientos.aportacionesAPlanes) {
-    return noVerificable(b, 'no hay planes dados de alta donde mirar la aportación');
-  }
-  if (!movimientos.entidad?.trim()) {
-    return noVerificable(b, 'no consta de qué banco es el préstamo, y el plan tiene que ser suyo');
-  }
-
-  const suyos = deLaEntidad(movimientos.aportacionesAPlanes, movimientos.entidad);
-
-  // Un plan en otra entidad no le entra a este banco · esto SÍ se sabe, y la
-  // respuesta es que no. Decir «no se puede comprobar» mandaría a aportar más a
-  // un plan que no bonifica.
-  if (suyos.length === 0) {
-    return {
-      ...base,
-      veredicto: 'no_cumple',
-      motivo: `no hay ningún plan en ${movimientos.entidad.trim()}`,
-    };
-  }
-
-  // Sin cifra, la condición es tenerlo · y lo tiene.
-  const minimo = regla.aportacionAnual;
-  if (!Number.isFinite(minimo) || (minimo as number) <= 0) {
-    return {
-      ...base,
-      veredicto: 'cumple',
-      motivo: `${suyos.length === 1 ? 'un plan' : `${suyos.length} planes`} en ${movimientos.entidad.trim()}`,
-    };
-  }
-
-  const aportado = totalAportado(suyos);
-  return {
-    ...base,
-    veredicto: veredictoDelImporte(aportado, minimo as number),
-    medido: aportado,
-    exigido: minimo as number,
-  };
-}
 
 /**
  * La condición de tarjeta · §3.6.
@@ -305,8 +174,8 @@ function porSeguros(
 
   // La cuenta del banco que bonifica · un seguro domiciliado en otro no le
   // entra a él, igual que la tarjeta de fuera no cuenta (§3.6).
-  const cuentaId = Number(b.cuentaExigidaId);
-  if (!b.cuentaExigidaId || !Number.isFinite(cuentaId)) {
+  const cuentaId = cuentaDondeMira(b, movimientos);
+  if (cuentaId == null) {
     return noVerificable(b, 'no dice en qué cuenta hay que domiciliar la póliza');
   }
 
@@ -385,6 +254,116 @@ function porSeguros(
       suyas.length === 1
         ? `${suyas[0].alias} · domiciliado en esa cuenta`
         : `${suyas.length} pólizas domiciliadas en esa cuenta`,
+  };
+}
+
+/**
+ * La condición de ALARMA · la séptima forma.
+ *
+ * Aquí ponía «la alarma se prueba con su contrato, no con un movimiento», y era
+ * el mismo error que con los seguros: *«la alarma es un gasto recurrente que se
+ * puede crear siempre asociada a la cuenta»* *(Jose · 8 ago 2026)*. La prueba
+ * está donde está la del seguro — en el recibo que le pasas al banco.
+ *
+ * La diferencia es que el modelo no la tipifica: no hay `TipoCompromiso`
+ * `'alarma'`, así que se reconoce por la palabra, en el subtipo o en el alias.
+ * Y de ahí sale la tercera respuesta, que aquí es la importante: con recibos en
+ * esa cuenta y ninguno que diga ser la alarma, ATLAS **no sabe** si la tienes
+ * dada de alta con otro nombre. Un «no cumples» ahí mandaría a contratar una
+ * alarma que ya está contratada.
+ */
+function porAlarma(
+  b: Bonificacion,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban
+): Cumplimiento {
+  const base = { bonificacionId: b.id, nombre: b.nombre, ventana };
+
+  if (!movimientos.gastosDomiciliados) {
+    return noVerificable(b, 'no hay gastos recurrentes dados de alta donde mirar la alarma');
+  }
+
+  const cuentaId = cuentaDondeMira(b, movimientos);
+  if (cuentaId == null) {
+    return noVerificable(b, 'no dice en qué cuenta hay que domiciliar la alarma');
+  }
+
+  const enLaCuenta = deLaCuenta(movimientos.gastosDomiciliados, cuentaId);
+  const alarmas = queSuenanA(enLaCuenta, 'alarma');
+
+  if (alarmas.length > 0) {
+    return {
+      ...base,
+      veredicto: 'cumple',
+      medido: primaTotal(alarmas),
+      motivo: `${alarmas[0].alias} · domiciliada en esa cuenta`,
+    };
+  }
+
+  if (enLaCuenta.length > 0) {
+    return noVerificable(
+      b,
+      `hay ${enLaCuenta.length} ${enLaCuenta.length === 1 ? 'recibo domiciliado' : 'recibos domiciliados'} en esa cuenta, pero ninguno dice ser la alarma`
+    );
+  }
+
+  // Sin un solo recibo en esa cuenta el silencio sí es un «no»: la alarma se
+  // paga todos los meses, y si no se carga ahí no le entra a este banco.
+  return {
+    ...base,
+    veredicto: 'no_cumple',
+    motivo: 'no hay ningún recibo domiciliado en esa cuenta',
+  };
+}
+
+/**
+ * La condición de CERTIFICADO ENERGÉTICO · la octava, y la única sin dinero.
+ *
+ * *«Si se tiene o no se tiene se dice una vez · podemos implementarlo en el
+ * alta del piso»* *(Jose · 8 ago 2026)*. Aquí ponía «la letra la dice el
+ * certificado del inmueble, no la tesorería», que era verdad y por eso mismo
+ * estaba mal: la conclusión correcta no era darse por vencido, era ir a
+ * preguntárselo al inmueble.
+ *
+ * Tres respuestas, y las tres importan:
+ *
+ *   · nadie lo ha dicho todavía → no se puede comprobar
+ *   · el inmueble no tiene certificado → no cumple, y se sabe
+ *   · lo tiene → se compara con la letra que pida el anexo, si pide alguna
+ */
+function porCertificado(
+  b: Bonificacion,
+  regla: Extract<ReglaBonificacion, { tipo: 'CERTIFICADO_ENERGETICO' }>,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban
+): Cumplimiento {
+  const base = { bonificacionId: b.id, nombre: b.nombre, ventana };
+  const letra = movimientos.letraEnergetica;
+
+  if (letra == null) {
+    return noVerificable(b, 'no consta si el inmueble tiene certificado energético');
+  }
+  if (letra === 'NO') {
+    return { ...base, veredicto: 'no_cumple', motivo: 'el inmueble no tiene certificado energético' };
+  }
+
+  // Sin letra pedida, la condición es tenerlo · y lo tiene.
+  if (!regla.letraMinima?.trim()) {
+    return { ...base, veredicto: 'cumple', motivo: `certificado energético ${letra}` };
+  }
+
+  const alcanza = letraAlcanza(letra, regla.letraMinima);
+  if (alcanza == null) {
+    return noVerificable(
+      b,
+      `el anexo pide «${regla.letraMinima.trim()}», que no es una letra del certificado`
+    );
+  }
+
+  return {
+    ...base,
+    veredicto: alcanza ? 'cumple' : 'no_cumple',
+    motivo: `el inmueble tiene ${letra} y pide al menos ${regla.letraMinima.trim().toUpperCase()}`,
   };
 }
 
@@ -474,8 +453,8 @@ function porNomina(
   // `!b.cuentaExigidaId` y no `== null`: la cuenta se guarda como texto y el
   // selector deja `''` al no elegir ninguna — y `Number('')` es 0, un id que
   // parece válido. Se habría mirado la cuenta cero.
-  const cuentaId = Number(b.cuentaExigidaId);
-  if (!b.cuentaExigidaId || !Number.isFinite(cuentaId)) {
+  const cuentaId = cuentaDondeMira(b, movimientos);
+  if (cuentaId == null) {
     return noVerificable(b, 'no dice en qué cuenta hay que domiciliarla');
   }
   if (!Number.isFinite(regla.minimoMensual) || regla.minimoMensual <= 0) {
@@ -554,8 +533,8 @@ function porRecibos(
 ): Cumplimiento {
   const base = { bonificacionId: b.id, nombre: b.nombre, unidad: 'recibos' as const };
 
-  const cuentaId = Number(b.cuentaExigidaId);
-  if (!b.cuentaExigidaId || !Number.isFinite(cuentaId)) {
+  const cuentaId = cuentaDondeMira(b, movimientos);
+  if (cuentaId == null) {
     return noVerificable(b, 'no dice en qué cuenta hay que domiciliarlos');
   }
   if (!Number.isFinite(regla.minimoRecibos) || regla.minimoRecibos <= 0) {
@@ -620,9 +599,14 @@ function verificarUna(
 
   const ventana = ventanaDeEvaluacion(hasta, b.lookbackMeses);
   if (b.regla.tipo === 'PLAN_PENSIONES') return porAportaciones(b, b.regla, ventana, movimientos);
+  if (b.regla.tipo === 'FONDOS') return porFondos(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'TARJETA') return porTarjeta(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'NOMINA') return porNomina(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'RECIBOS') return porRecibos(b, b.regla, ventana, movimientos);
+  if (b.regla.tipo === 'ALARMA') return porAlarma(b, ventana, movimientos);
+  if (b.regla.tipo === 'CERTIFICADO_ENERGETICO') {
+    return porCertificado(b, b.regla, ventana, movimientos);
+  }
   if (
     b.regla.tipo === 'SEGUROS' ||
     b.regla.tipo === 'SEGURO_HOGAR' ||

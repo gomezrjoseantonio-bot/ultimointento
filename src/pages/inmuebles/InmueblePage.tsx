@@ -103,6 +103,15 @@ interface FormState {
   banos: number;
   anioConstruccion: number;
   esUrbana: boolean;
+  /**
+   * Letra del certificado energético · `''` = todavía no se ha dicho.
+   *
+   * Vacío NO es «no lo tiene»: hay un «No lo tiene» explícito en el selector,
+   * porque de la ausencia sale un «no se puede comprobar» y del «no» sale un
+   * «no cumples». Colapsarlos haría perder una bonificación por un campo sin
+   * rellenar (§6 ter).
+   */
+  certificadoEnergetico: string;
   porcentajePropiedad: number;
   titularidad: 'yo' | 'pareja' | 'ambos';
   porcentajePropiedadPareja: number;
@@ -235,6 +244,7 @@ const initialForm = (): FormState => ({
   banos: 0,
   anioConstruccion: 0,
   esUrbana: true,
+  certificadoEnergetico: '',
   porcentajePropiedad: 100,
   titularidad: 'yo',
   porcentajePropiedadPareja: 0,
@@ -368,6 +378,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             banos: prop.bathrooms || 0,
             anioConstruccion: 0,
             esUrbana: prop.esUrbana ?? true,
+            certificadoEnergetico: prop.certificadoEnergetico ?? '',
             porcentajePropiedad: prop.porcentajePropiedad ?? 100,
             titularidad: prop.titularidad ?? 'yo',
             porcentajePropiedadPareja: prop.porcentajePropiedadPareja ?? 0,
@@ -662,6 +673,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
         porcentajePropiedadPareja:
           form.titularidad === 'yo' ? 0 : clampPct(form.porcentajePropiedadPareja),
         esUrbana: form.esUrbana,
+        // Solo se persiste cuando el usuario ha dicho algo · guardar `''` como
+        // «no lo tiene» sería contestar por él.
+        certificadoEnergetico:
+          (form.certificadoEnergetico as Property['certificadoEnergetico']) || undefined,
         acquisitionCosts: {
           price: form.precioCompra,
           notary: form.notaria || 0,
@@ -1152,6 +1167,21 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                       Rústica
                     </label>
                   </div>
+                </Field>
+                <Field label="Certificado energético">
+                  <select
+                    className={styles.input}
+                    value={form.certificadoEnergetico}
+                    onChange={(e) => set('certificadoEnergetico', e.target.value)}
+                  >
+                    <option value="">Sin indicar</option>
+                    <option value="NO">No lo tiene</option>
+                    {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => (
+                      <option key={l} value={l}>
+                        Letra {l}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="Titularidad">
                   <select

@@ -31,6 +31,19 @@ export interface Property {
   // se persiste 0 y el cálculo lo ignora.
   porcentajePropiedadPareja?: number;
   esUrbana?: boolean;
+  /**
+   * Letra del certificado de eficiencia energética · `'NO'` si no lo tiene.
+   *
+   * *«El certificado energético, si se tiene o no se tiene, se dice una vez ·
+   * podemos implementarlo en el alta del piso»* *(Jose · 8 ago 2026)*. Y es
+   * exacto: no es un movimiento ni cambia de mes a mes, así que preguntarlo una
+   * vez aquí resuelve la bonificación de todas las hipotecas del inmueble.
+   *
+   * `undefined` no es «no lo tiene»: es que nadie lo ha dicho todavía, y de ahí
+   * sale un «no se puede comprobar» y no un «no cumples». Por eso el «no» es un
+   * valor explícito y no la ausencia del campo.
+   */
+  certificadoEnergetico?: 'NO' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
   acquisitionCosts: {
     price: number;
     itp?: number;

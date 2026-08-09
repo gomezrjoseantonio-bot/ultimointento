@@ -69,3 +69,22 @@ export const mesCorto = (iso: string | null | undefined): string => {
  */
 export const cifraIndice = (v: number | undefined): string =>
   typeof v === 'number' && Number.isFinite(v) ? v.toFixed(3).replace('.', ',') : '—';
+
+
+/** Cómo se llama cada tipo de préstamo en pantalla. */
+export const ETIQUETA_TIPO: Record<string, string> = {
+  FIJO: 'tipo fijo',
+  VARIABLE: 'tipo variable',
+  MIXTO: 'tipo mixto',
+};
+
+/**
+ * Los cuatro últimos dígitos del contrato · «····4021».
+ *
+ * `null` cuando no llegan a cuatro: enseñar «····21» no identifica el préstamo
+ * y sí sugiere que el número está incompleto en la base.
+ */
+export const enmascarado = (numero: string | undefined): string | null => {
+  const limpio = (numero ?? '').replace(/\s/g, '');
+  return limpio.length >= 4 ? `····${limpio.slice(-4)}` : null;
+};

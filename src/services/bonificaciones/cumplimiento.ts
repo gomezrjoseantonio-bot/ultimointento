@@ -154,3 +154,21 @@ export function ventanaDeEvaluacion(hasta: string, lookbackMeses: number): Venta
 export function veredictoDelImporte(medido: number, exigido: number): Veredicto {
   return medido + 0.005 >= exigido ? 'cumple' : 'no_cumple';
 }
+
+/**
+ * Un id de cuenta que de verdad lo sea · `null` si no hay cuenta.
+ *
+ * `Number('')` es **0**, un id que parece perfectamente válido, y los selectores
+ * dejan `''` cuando no se elige ninguna. Convertir a pelo hacía que «no dice en
+ * qué cuenta» se transformara en «mira la cuenta cero» — y de ahí sale un «no
+ * cumples» sobre una cuenta que no existe.
+ *
+ * Escrito una sola vez a propósito: la comprobación estaba en la bonificación y
+ * faltaba en la pantalla, que es exactamente cómo un criterio repetido acaba
+ * aplicándose en un sitio sí y en otro no.
+ */
+export function idDeCuenta(valor: unknown): number | null {
+  if (valor == null || valor === '') return null;
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}

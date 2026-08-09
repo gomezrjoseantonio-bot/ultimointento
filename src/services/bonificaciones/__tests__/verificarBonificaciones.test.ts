@@ -6,7 +6,8 @@
 // sabe mirar.
 
 import { verificarBonificaciones } from '../verificarBonificaciones';
-import type { MovimientosQuePrueban } from '../verificarBonificaciones';
+import type { GastoDomiciliado } from '../gastosDomiciliados';
+import type { MovimientosQuePrueban } from '../pruebas';
 import type { GastoDeUnPeriodo } from '../../gastoPorTarjeta';
 import type { CobroDeUnMes } from '../cobrosDeNomina';
 import type { RecibosDeUnMes } from '../recibosDomiciliados';
@@ -62,8 +63,8 @@ const con = (
   recibosDomiciliados: recibos,
 });
 
-const unaSola = (b: Bonificacion, m: MovimientosQuePrueban) =>
-  verificarBonificaciones([b], m, HOY)[0];
+const unaSola = (b: Bonificacion, m: MovimientosQuePrueban, hasta = HOY) =>
+  verificarBonificaciones([b], m, hasta)[0];
 
 describe('la condición de tarjeta', () => {
   it('cumple cuando el gasto cerrado llega al mínimo', () => {
@@ -727,5 +728,390 @@ describe('ingresos recurrentes · la rama que no exige nómina', () => {
 
     expect(c.motivo).toContain('ingresos recurrentes');
     expect(c.motivo).not.toContain('cobrados');
+  });
+});
+
+// ── La cuenta que nadie rellenaba ───────────────────────────────────────────
+//
+// Un seguro domiciliado en la cuenta correcta salía «sin comprobar · no dice en
+// qué cuenta hay que domiciliar la póliza», teniendo ATLAS la cuenta del
+// préstamo delante *(Jose · 8 ago 2026)*. El banco bonifica por lo que le entra
+// a ÉL, y la cuenta por la que te cobra la hipoteca es suya.
+describe('la cuenta del préstamo hace de respaldo', () => {
+  const poliza = (cuentaId: number): GastoDomiciliado => ({
+    cuentaId,
+    alias: 'Seguro hogar',
+    subtipo: 'hogar',
+    primaAnual: 483.48,
+  });
+
+  it('sin cuenta en la bonificación, se mira la del préstamo', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'SEGURO_HOGAR', activo: true }, cuentaExigidaId: undefined }), {
+      ...con([tarjeta()], []),
+      segurosDomiciliados: [poliza(3)],
+      cuentaDelPrestamo: 3,
+    });
+
+    expect(r.veredicto).toBe('cumple');
+  });
+
+  // Y sigue mandando la de la bonificación cuando está: hay anexos que exigen
+  // una cuenta distinta de la del recibo, y eso el préstamo no lo sabe.
+  it('pero la que exige la bonificación manda sobre ella', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'SEGURO_HOGAR', activo: true }, cuentaExigidaId: '9' }), {
+      ...con([tarjeta()], []),
+      segurosDomiciliados: [poliza(3)],
+      cuentaDelPrestamo: 3,
+    });
+
+    expect(r.veredicto).not.toBe('cumple');
+  });
+
+  it('y sin ninguna de las dos, sigue diciendo qué falta', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'SEGURO_HOGAR', activo: true }, cuentaExigidaId: undefined }), {
+      ...con([tarjeta()], []),
+      segurosDomiciliados: [poliza(3)],
+    });
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('cuenta');
+  });
+});
+
+// ── Planes y fondos · la prueba estaba en tesorería ─────────────────────────
+//
+// «Son MOVIMIENTOS DE TESORERÍA de esa cuenta a la aportación del plan de ese
+// banco» *(Jose · 8 ago 2026)*. FONDOS estaba en la lista de lo que no se sabe
+// mirar, y los planes se comprobaban contra un store aparte que, vacío, no
+// decía «no lo sé» sino «no cumples» — un falso negativo.
+describe('lo que sale de la cuenta hacia un plan o un fondo', () => {
+  const aportado = (salido: number, cuentaId = 3, previsto = 0) => [
+    {
+      cuentaId,
+      anio: 2026,
+      importe: salido + previsto,
+      salido,
+      estado: (previsto > 0 ? 'abierto' : 'cerrado') as 'abierto' | 'cerrado',
+    },
+  ];
+  const hasta = '2026-08-31';
+
+  it('un fondo con su aportación se cumple · ya no es «sin comprobar»', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'FONDOS', aportacionAnual: 3000 } }),
+      { ...con([tarjeta()], []), aportacionesDeTesoreria: aportado(3000), cuentaDelPrestamo: 3 },
+      hasta
+    );
+
+    expect(r.veredicto).toBe('cumple');
+    expect(r.medido).toBe(3000);
+  });
+
+  it('y por debajo del mínimo, no', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'FONDOS', aportacionAnual: 3000 } }),
+      { ...con([tarjeta()], []), aportacionesDeTesoreria: aportado(1000), cuentaDelPrestamo: 3 },
+      hasta
+    );
+
+    expect(r.veredicto).toBe('no_cumple');
+  });
+
+  it('un plan sin cifra se cumple con que le entre algo', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'PLAN_PENSIONES', activo: true } }),
+      { ...con([tarjeta()], []), aportacionesDeTesoreria: aportado(600), cuentaDelPrestamo: 3 },
+      hasta
+    );
+
+    expect(r.veredicto).toBe('cumple');
+  });
+
+  // Lo que sale de OTRA cuenta no le entra a este banco · igual que la tarjeta
+  // de fuera no cuenta.
+  it('lo aportado desde otra cuenta no le entra a este banco', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'PLAN_PENSIONES', activo: true } }),
+      { ...con([tarjeta()], []), aportacionesDeTesoreria: aportado(600, 9), cuentaDelPrestamo: 3 },
+      hasta
+    );
+
+    expect(r.veredicto).toBe('no_cumple');
+  });
+
+  // Sin movimientos que mirar no se afirma nada · «no lo sé» y «no cumples» son
+  // respuestas distintas, y confundirlas fue el falso negativo del plan.
+  it('sin movimientos donde mirar, no se dice que no', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'FONDOS', aportacionAnual: 3000 } }),
+      con([tarjeta()], [])
+    );
+
+    expect(r.veredicto).toBe('no_verificable');
+  });
+
+  // Una transferencia al plan la haces cuando quieres · una prevista no
+  // demuestra nada, y darla por hecha regalaría la bonificación en enero.
+  describe('lo previsto no cuenta como aportado', () => {
+    it('una aportación que aún no ha salido no cumple', () => {
+      const r = unaSola(
+        bonif({ regla: { tipo: 'PLAN_PENSIONES', activo: true, aportacionAnual: 1500 } }),
+        {
+          ...con([tarjeta()], []),
+          aportacionesDeTesoreria: aportado(0, 3, 1500),
+          cuentaDelPrestamo: 3,
+        },
+        hasta
+      );
+
+      expect(r.veredicto).toBe('no_cumple');
+      expect(r.medido).toBe(0);
+      // Y se dice lo que falta por salir · «todavía no» no es «nunca».
+      expect(r.sinCobrar).toBe(1500);
+    });
+
+    it('y sin cifra pedida tampoco se da por tenido · es un todavía no', () => {
+      const r = unaSola(
+        bonif({ regla: { tipo: 'PLAN_PENSIONES', activo: true } }),
+        {
+          ...con([tarjeta()], []),
+          aportacionesDeTesoreria: aportado(0, 3, 600),
+          cuentaDelPrestamo: 3,
+        },
+        hasta
+      );
+
+      expect(r.veredicto).toBe('no_verificable');
+      expect(r.motivo).toContain('todavía no ha salido');
+    });
+  });
+});
+
+// ── La otra rama · «habrá otros que será TENER X en el fondo» ───────────────
+//
+// *«Es aportación en este caso, pero habrá otros que será tener X en el fondo o
+// en el plan de pensiones del banco — por eso era clave la modelación de las
+// bonificaciones»* *(Jose · 9 ago 2026)*. Son dos preguntas distintas y se
+// prueban en sitios distintos: lo aportado en tesorería, lo que tienes en la
+// posición. Medir una con la otra da un veredicto sobre dinero equivocado.
+describe('lo que TIENES en el producto del banco', () => {
+  const hasta = '2026-08-31';
+  const conSaldo = (valor: number, familia: 'fondo' | 'plan' = 'fondo', entidad = 'unicaja') => ({
+    ...con([tarjeta()], []),
+    entidad: 'Unicaja Banco, S.A.',
+    saldoEnElBanco: [{ entidad, familia, valor }],
+    cuentaDelPrestamo: 3,
+  });
+
+  it('30.000 € en el fondo cumplen la condición de saldo', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'FONDOS', saldoMinimo: 30000 } }),
+      conSaldo(30000),
+      hasta
+    );
+
+    expect(r.veredicto).toBe('cumple');
+    expect(r.medido).toBe(30000);
+  });
+
+  it('y por debajo, no', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'FONDOS', saldoMinimo: 30000 } }),
+      conSaldo(12000),
+      hasta
+    );
+
+    expect(r.veredicto).toBe('no_cumple');
+  });
+
+  // Un fondo no vale por un plan · el anexo dice cuál de los dos.
+  it('el saldo de un fondo no cumple una condición de plan', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'PLAN_PENSIONES', activo: true, saldoMinimo: 10000 } }),
+      conSaldo(30000, 'fondo'),
+      hasta
+    );
+
+    expect(r.veredicto).toBe('no_verificable');
+  });
+
+  // El anexo pide un producto SUYO · el fondo del banco de al lado no bonifica,
+  // igual que la tarjeta de fuera no cuenta.
+  it('el fondo de otra entidad no bonifica en este préstamo', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'FONDOS', saldoMinimo: 30000 } }),
+      conSaldo(30000, 'fondo', 'santander'),
+      hasta
+    );
+
+    expect(r.veredicto).toBe('no_verificable');
+  });
+
+  // Basta con una · la misma disyunción que la nómina, que admite «X al mes o Y
+  // al año». Con las dos ramas escritas, no aportar este año no tumba a quien
+  // lleva el saldo que le piden dentro.
+  it('con el saldo puesto no hace falta haber aportado', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'FONDOS', saldoMinimo: 30000, aportacionAnual: 3000 } }),
+      { ...conSaldo(30000), aportacionesDeTesoreria: [] },
+      hasta
+    );
+
+    expect(r.veredicto).toBe('cumple');
+  });
+
+  // Y al revés · quien acaba de aportar lo que le piden cumple aunque el
+  // mercado haya dejado la posición por debajo.
+  it('y aportando lo pedido se cumple aunque el saldo no llegue', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'FONDOS', saldoMinimo: 30000, aportacionAnual: 3000 } }),
+      {
+        ...conSaldo(2800),
+        aportacionesDeTesoreria: [
+          { cuentaId: 3, anio: 2026, importe: 3000, salido: 3000, estado: 'cerrado' as const },
+        ],
+      },
+      hasta
+    );
+
+    expect(r.veredicto).toBe('cumple');
+    expect(r.medido).toBe(3000);
+  });
+});
+
+// ── La alarma · «un gasto recurrente asociado a la cuenta» ──────────────────
+//
+// «La alarma es un gasto recurrente que se puede crear siempre asociada a la
+// cuenta» *(Jose · 8 ago 2026)*. Estaba en la lista de lo que no se sabe mirar
+// con la excusa de que «se prueba con su contrato», que era el mismo error que
+// se cometió con los seguros.
+describe('la condición de alarma', () => {
+  const recibo = (alias: string, cuentaId = 3, subtipo?: string): GastoDomiciliado => ({
+    cuentaId,
+    alias,
+    subtipo,
+    primaAnual: 420,
+  });
+  const conRecibos = (gastos: GastoDomiciliado[]) => ({
+    ...con([tarjeta()], []),
+    gastosDomiciliados: gastos,
+    cuentaDelPrestamo: 3,
+  });
+
+  it('una alarma domiciliada en su cuenta cumple', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'ALARMA', activo: true } }), conRecibos([
+      recibo('Alarma Securitas'),
+    ]));
+
+    expect(r.veredicto).toBe('cumple');
+    expect(r.motivo).toContain('Alarma Securitas');
+  });
+
+  it('la reconoce por el subtipo aunque el alias sea la marca', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'ALARMA', activo: true } }),
+      conRecibos([recibo('Securitas Direct', 3, 'alarma')])
+    );
+
+    expect(r.veredicto).toBe('cumple');
+  });
+
+  // Igual que la tarjeta de fuera no cuenta · lo que se carga en otro banco no
+  // le entra a este.
+  it('domiciliada en otra cuenta no le entra a este banco', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'ALARMA', activo: true } }),
+      conRecibos([recibo('Alarma Securitas', 9)])
+    );
+
+    expect(r.veredicto).toBe('no_cumple');
+  });
+
+  // La tercera respuesta, y aquí es la que importa: el modelo no tipifica las
+  // alarmas, así que un recibo llamado solo «Securitas» no lo reconoce nadie.
+  // Decir «no cumples» mandaría a contratar una alarma que ya está contratada.
+  it('con recibos en la cuenta y ninguno que lo diga, no se afirma que no', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'ALARMA', activo: true } }),
+      conRecibos([recibo('Securitas'), recibo('Netflix')])
+    );
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('ninguno dice ser la alarma');
+  });
+
+  // Sin un solo recibo en esa cuenta sí es un no · la alarma se paga todos los
+  // meses, y si no se carga ahí no le entra a este banco.
+  it('sin ningún recibo en esa cuenta, es que no', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'ALARMA', activo: true } }), conRecibos([]));
+
+    expect(r.veredicto).toBe('no_cumple');
+  });
+
+  it('y sin gastos recurrentes dados de alta no se afirma nada', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'ALARMA', activo: true } }), con([tarjeta()], []));
+
+    expect(r.veredicto).toBe('no_verificable');
+  });
+});
+
+// ── El certificado energético · la única prueba que no es dinero ────────────
+//
+// «Si se tiene o no se tiene se dice una vez · podemos implementarlo en el alta
+// del piso» *(Jose · 8 ago 2026)*. Estaba en la lista de lo que no se sabe
+// mirar diciendo «la letra la dice el certificado del inmueble, no la
+// tesorería» — verdad que llevaba a la conclusión contraria de la correcta: no
+// era darse por vencido, era ir a preguntárselo al inmueble.
+describe('la condición de certificado energético', () => {
+  const conLetra = (letraEnergetica: 'NO' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | null) => ({
+    ...con([tarjeta()], []),
+    letraEnergetica,
+  });
+
+  it('sin letra pedida, basta con tenerlo', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO' } }), conLetra('D'));
+
+    expect(r.veredicto).toBe('cumple');
+  });
+
+  it('con letra pedida, se compara en la escala del certificado', () => {
+    const alcanza = unaSola(
+      bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO', letraMinima: 'C' } }),
+      conLetra('B')
+    );
+    const noAlcanza = unaSola(
+      bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO', letraMinima: 'C' } }),
+      conLetra('E')
+    );
+
+    expect(alcanza.veredicto).toBe('cumple');
+    expect(noAlcanza.veredicto).toBe('no_cumple');
+  });
+
+  // Esto SÍ se sabe y la respuesta es que no · un piso sin certificado no la
+  // cumple, y decir «no se puede comprobar» escondería una condición perdida.
+  it('un inmueble sin certificado no cumple, y se dice', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO' } }), conLetra('NO'));
+
+    expect(r.veredicto).toBe('no_cumple');
+    expect(r.motivo).toContain('no tiene certificado');
+  });
+
+  // Y esto NO se sabe · nadie lo ha dicho todavía. Colapsarlo en un «no
+  // cumples» haría perder la bonificación por un campo sin rellenar.
+  it('sin haberlo dicho en el alta del piso, no se afirma nada', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO' } }), conLetra(null));
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('no consta');
+  });
+
+  it('ni cuando el anexo pide una letra que no está en la escala', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'CERTIFICADO_ENERGETICO', letraMinima: 'B+' } }),
+      conLetra('A')
+    );
+
+    expect(r.veredicto).toBe('no_verificable');
   });
 });
