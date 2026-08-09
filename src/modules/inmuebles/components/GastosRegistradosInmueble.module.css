@@ -77,6 +77,54 @@
   white-space: nowrap;
 }
 
+/* ── Acciones por fila ── */
+
+.filaAcciones {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.accionBtn {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-3);
+  background: transparent;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.accionBtn:hover {
+  background: var(--atlas-v5-bg);
+  border-color: var(--atlas-v5-ink-4);
+}
+
+.accionBorrar {
+  color: var(--atlas-v5-neg);
+}
+
+.accionBorrar:hover {
+  background: var(--atlas-v5-neg-wash);
+  border-color: var(--atlas-v5-neg);
+}
+
+.filaBloqueada {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 4px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
 .filaOrigen {
   font-size: 10px;
   text-transform: uppercase;

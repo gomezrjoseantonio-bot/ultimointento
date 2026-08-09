@@ -14,7 +14,7 @@ import {
 } from '../../../services/personal/compromisosRecurrentesService';
 import { regenerateForecastsForward } from '../../../services/treasuryBootstrapService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
-import type { Contract, GastoInmueble, MejoraInmueble, MuebleInmueble } from '../../../services/db';
+import type { Contract } from '../../../services/db';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
 import { ListadoGastosRecurrentes } from '../../shared/components/ListadoGastos';
@@ -31,6 +31,7 @@ import ImportValoracionesWizard from '../../../components/valoraciones/ImportVal
 import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
 import GastosResumenInmueble from '../components/GastosResumenInmueble';
 import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
+import EditarRegistroInmuebleModal from '../components/EditarRegistroInmuebleModal';
 import RentabilidadInmueble from '../components/RentabilidadInmueble';
 import PatrimonioResumenInmueble from '../components/PatrimonioResumenInmueble';
 import {
@@ -42,15 +43,10 @@ import {
   type FinanciacionLineaInmueble,
   type ValoracionPunto,
 } from '../adapters/patrimonioInmuebleAdapter';
-import { gastosInmuebleService } from '../../../services/gastosInmuebleService';
-import { mejorasInmuebleService } from '../../../services/mejorasInmuebleService';
-import { mueblesInmuebleService } from '../../../services/mueblesInmuebleService';
 import { valoracionesService } from '../../../services/valoracionesService';
-import { prestamosService, getAllocationFactor } from '../../../services/prestamosService';
-import {
-  getOutstandingPrincipal,
-  getLoanMonthlyInstallment,
-} from '../../horizon/herramientas/exporters/mappers';
+import { getFinanciacionInmueble } from '../../../services/financiacionInmuebleService';
+import { estimarGastoAnualCompromiso } from '../utils/estimacionGastoCompromiso';
+import { useRegistrosInmueble } from '../hooks/useRegistrosInmueble';
 import styles from './DetallePage.module.css';
 
 
@@ -80,65 +76,6 @@ const resolveTab = (param: string | null): Tab => {
   return 'patrimonio';
 };
 
-const estimarPagosAnuales = (patron: CompromisoRecurrente['patron']): number => {
-  switch (patron.tipo) {
-    case 'mensualDiaFijo':
-    case 'mensualDiaRelativo':
-      return 12;
-    case 'cadaNMeses':
-      return patron.cadaNMeses > 0 ? Math.ceil(12 / patron.cadaNMeses) : 0;
-    case 'trimestralFiscal':
-      return 4;
-    case 'anualMesesConcretos':
-      return patron.mesesPago.length;
-    case 'pagasExtra':
-      return patron.mesesExtra.length;
-    case 'variablePorMes':
-      return patron.mesesPago.length;
-    case 'puntual':
-      return 1;
-    default:
-      return 0;
-  }
-};
-
-const estimarGastoAnualCompromiso = (
-  compromiso: CompromisoRecurrente,
-  rentaMensual: number,
-): number | undefined => {
-  if (compromiso.estado !== 'activo') return undefined;
-
-  if (compromiso.patron.tipo === 'variablePorMes') {
-    return Number.isFinite(compromiso.patron.importeObjetivoAnual)
-      ? compromiso.patron.importeObjetivoAnual
-      : undefined;
-  }
-
-  switch (compromiso.importe.modo) {
-    case 'fijo':
-      return compromiso.importe.importe * estimarPagosAnuales(compromiso.patron);
-    case 'variable':
-      return compromiso.importe.importeMedio * estimarPagosAnuales(compromiso.patron);
-    case 'diferenciadoPorMes':
-      return compromiso.importe.importesPorMes.reduce((sum, amount) => sum + amount, 0);
-    case 'porPago':
-      return Object.values(compromiso.importe.importesPorPago).reduce((sum, amount) => sum + amount, 0);
-    case 'porTramos': {
-      const importes = compromiso.importe.tramos
-        .map((tramo) => tramo.importe)
-        .filter((amount) => Number.isFinite(amount));
-      if (importes.length === 0) return undefined;
-      const importeMedio = importes.reduce((sum, amount) => sum + amount, 0) / importes.length;
-      return importeMedio * estimarPagosAnuales(compromiso.patron);
-    }
-    case 'porcentajeRenta':
-      return rentaMensual > 0 ? (rentaMensual * 12 * compromiso.importe.porcentaje) / 100 : undefined;
-    default:
-      return undefined;
-  }
-};
-
-
 const DetallePage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -152,9 +89,6 @@ const DetallePage: React.FC = () => {
   const [tab, setTab] = useState<Tab>(tabInicial);
   const [gastosSubTab, setGastosSubTab] = useState<GastosSubTab>('resumen');
   const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
-  const [gastosReales, setGastosReales] = useState<GastoInmueble[]>([]);
-  const [mejoras, setMejoras] = useState<MejoraInmueble[]>([]);
-  const [mobiliario, setMobiliario] = useState<MuebleInmueble[]>([]);
   const [valoraciones, setValoraciones] = useState<ValoracionPunto[]>([]);
   const [financiacion, setFinanciacion] = useState<FinanciacionLineaInmueble[]>([]);
   const [pendingDelete, setPendingDelete] = useState<DeleteInmuebleCascadeReport | null>(null);
@@ -162,11 +96,12 @@ const DetallePage: React.FC = () => {
   // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
   const [showImportWizard, setShowImportWizard] = useState(false);
 
+  // Fase 8 · operativa de Registrados (carga + editar/borrar con trazabilidad).
+  const registros = useRegistrosInmueble(propertyId);
+  const { gastosReales, mejoras, mobiliario } = registros;
+
   useEffect(() => {
     void listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId }).then(setGastos);
-    void gastosInmuebleService.getByInmueble(propertyId).then(setGastosReales);
-    void mejorasInmuebleService.getPorInmueble(propertyId).then(setMejoras);
-    void mueblesInmuebleService.getPorInmueble(propertyId).then(setMobiliario);
 
     // Patrimonio · serie de valoraciones (última = valor actual).
     void valoracionesService
@@ -177,32 +112,9 @@ const DetallePage: React.FC = () => {
       .catch(() => setValoraciones([]));
 
     // Patrimonio · financiación vinculada imputada al inmueble (deuda pendiente).
-    void (async () => {
-      const idStr = String(propertyId);
-      const prestamos = await prestamosService.getAllPrestamos();
-      const vinculados = prestamos.filter(
-        (p) =>
-          getAllocationFactor(p, idStr) > 0 &&
-          p.activo !== false &&
-          p.estado !== 'cancelado' &&
-          p.estado !== 'pendiente_cancelacion_venta',
-      );
-      const lineas = await Promise.all(
-        vinculados.map(async (p) => {
-          const plan = await prestamosService.getPaymentPlan(p.id).catch(() => null);
-          const factor = getAllocationFactor(p, idStr);
-          return {
-            id: p.id,
-            nombre: p.nombre,
-            deudaPendiente: getOutstandingPrincipal(p, plan) * factor,
-            principalInicial: (p.principalInicial ?? 0) * factor,
-            cuotaMensual: getLoanMonthlyInstallment(p, plan) * factor,
-            porcentajeAfectacion: factor * 100,
-          };
-        }),
-      );
-      setFinanciacion(lineas);
-    })().catch(() => setFinanciacion([]));
+    void getFinanciacionInmueble(propertyId)
+      .then(setFinanciacion)
+      .catch(() => setFinanciacion([]));
   }, [propertyId]);
 
   const reloadGastos = useCallback(() => {
@@ -665,6 +577,9 @@ const DetallePage: React.FC = () => {
                 mejoras={mejoras}
                 mobiliario={mobiliario}
                 onIrARecurrentes={() => setGastosSubTab('recurrentes')}
+                ejerciciosBloqueados={registros.ejerciciosBloqueados}
+                onEditar={registros.abrirEdicion}
+                onBorrar={registros.abrirBorrado}
               />
             </div>
           )}
@@ -773,6 +688,35 @@ const DetallePage: React.FC = () => {
           }}
         />
       )}
+
+      {registros.registroEnEdicion && (
+        <EditarRegistroInmuebleModal
+          registro={registros.registroEnEdicion}
+          guardando={registros.guardando}
+          onCancel={() => { if (!registros.guardando) registros.cerrarEdicion(); }}
+          onGuardar={registros.guardar}
+        />
+      )}
+
+      <ConfirmationModal
+        isOpen={registros.registroEnBorrado !== null}
+        onClose={() => { if (!registros.borrando) registros.cerrarBorrado(); }}
+        onConfirm={registros.confirmarBorrado}
+        title="Eliminar registro"
+        message={
+          registros.registroEnBorrado
+            ? `Vas a eliminar "${
+                registros.registroEnBorrado.tipo === 'real'
+                  ? registros.registroEnBorrado.registro.concepto
+                  : registros.registroEnBorrado.registro.descripcion
+              }". Esta acción no se puede deshacer y también retira su rastro en Tesorería.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={registros.borrando}
+      />
     </>
   );
 };

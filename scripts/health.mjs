@@ -1058,6 +1058,12 @@ const GOBERNANZA_RECALIBRACION =
 // exención.
 const AMPLIACIONES = {
   enlaces_rotos: { antes: 0, motivo: 've onNavigate( y window.location' },
+  // Transición 109→110 · se desactiva sola cuando main incorpora el nuevo
+  // baseline. El +1 lo trae #1643 (Alquileres): RedirectAlquileresAContratos.tsx
+  // es un componente de solo enrutado (`<Navigate>`, sin UI) → falso positivo del
+  // detector v5. main quedó rojo contra su propio baseline; esta exención puentea
+  // el salto sin ocultar regresiones futuras (una vez el baseline es 110, cae).
+  ficheros_no_v5: { antes: 109, motivo: '#1643 · RedirectAlquileresAContratos.tsx (redirect sin UI · falso positivo v5)' },
   hex_hardcoded: { antes: 974, motivo: 've #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js' },
   // Frente A · directorios · antes = valor de main pre-ampliación (se desactiva solo).
   archivos_800: { antes: 43, motivo: 'Frente A · ve functions/ y scripts/ + .mjs/.cjs (antes solo src)' },
