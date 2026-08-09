@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import { RedirectAlquileresAContratos } from './components/routing/RedirectAlquileresAContratos';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
+import { resolveAlquileresRedirect } from './components/routing/resolveAlquileresRedirect';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -134,6 +134,14 @@ const ImportarCuentasPage = lazyWithPreload(() => import('./modules/tesoreria/im
 const RedirectFiscalDeclaracion: React.FC = () => {
   const { anio } = useParams();
   return <Navigate to={`/fiscal/ejercicio/${anio ?? ''}`} replace />;
+};
+
+// Consolidación Contratos → Alquileres · Fase B · alias `/alquileres/*` →
+// `/contratos/*` (canónica), preservando sufijo y query. Lógica pura y testeada
+// en `resolveAlquileresRedirect`.
+const RedirectAlquileresAContratos: React.FC = () => {
+  const { pathname, search } = useLocation();
+  return <Navigate to={resolveAlquileresRedirect(pathname, search)} replace />;
 };
 // T20 Fase 3f-A · Fiscal v5 module · Outlet + sub-páginas.
 //   Mockup · docs/audit-inputs/atlas-fiscal.html

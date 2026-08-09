@@ -92,13 +92,19 @@ const renderPage = (): void => {
 };
 
 describe('PR FIX · E2E caso Jose', () => {
-  it('banda navy arriba · título "Mis alquileres" + KPI Vigentes', () => {
+  it('banda navy arriba · título "Mis alquileres" + resumen de explotación', () => {
     renderPage();
     const banda = screen.getByLabelText('Resumen de alquileres');
     expect(within(banda).getByText('Mis alquileres')).toBeInTheDocument();
+    // Resumen: 2 inmuebles · 5 unidades arrendables (FA32 4 hab + Sant Joan 1) ·
     // 3 vigentes con inquilino real (FA32 H1, H2, Sant Joan); el sin identificar no cuenta.
-    expect(within(banda).getByText('Vigentes')).toBeInTheDocument();
-    expect(within(banda).getByText('3')).toBeInTheDocument();
+    expect(
+      within(banda).getByText('2 inmuebles · 5 unidades · 3 vigentes'),
+    ).toBeInTheDocument();
+    // KPIs operativos de la cabecera (Fase C).
+    expect(within(banda).getByText('Ocupación')).toBeInTheDocument();
+    expect(within(banda).getByText('Renta prevista')).toBeInTheDocument();
+    expect(within(banda).getByText('Unidades libres')).toBeInTheDocument();
   });
 
   it('tabla Vigentes · 7 columnas exactas · sin chips ni botones extra', () => {
@@ -144,7 +150,10 @@ describe('PR FIX · E2E caso Jose', () => {
     expect(screen.getByText('Alarmas tempranas')).toBeInTheDocument();
     // Sant Joan vence en 17 días → alarma de vencimiento.
     expect(screen.getByText(/vence en \d+ días/)).toBeInTheDocument();
-    // NUNCA aparece "unidades libres" como alarma (P7).
-    expect(screen.queryByText(/unidades libres/i)).toBeNull();
+    // NUNCA aparece "unidades libres" como alarma (P7). Se busca solo en el
+    // contenido (<main>), NO en la banda navy persistente, que sí tiene el KPI
+    // operativo "Unidades libres" (Fase C).
+    const main = screen.getByRole('main');
+    expect(within(main).queryByText(/unidades libres/i)).toBeNull();
   });
 });
