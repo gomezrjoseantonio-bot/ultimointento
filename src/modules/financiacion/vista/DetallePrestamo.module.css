@@ -423,105 +423,6 @@
   color: var(--atlas-v5-ink-1);
 }
 
-/* ═══ Bonificaciones ══════════════════════════════════════════ */
-
-.bonifLista {
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.bonif {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--atlas-v5-sp-2);
-  padding: 7px 0;
-  border-bottom: 1px solid var(--atlas-v5-line-3);
-  font-size: 12.5px;
-}
-
-.bonif:last-of-type { border-bottom: none; }
-
-.bonifIzq {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--atlas-v5-ink-2);
-  min-width: 0;
-}
-
-.bonifCheck,
-.bonifPendiente {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.bonifCheck {
-  background: var(--atlas-v5-gold-wash);
-  color: var(--atlas-v5-gold-ink);
-}
-
-/* La que aún no tienes se ve, apagada · esconderla diría que no hay nada
-   que ir a buscar, y es justo la que puedes conseguir. */
-.bonifPendiente {
-  background: var(--atlas-v5-card-alt);
-  border: 1px solid var(--atlas-v5-line);
-}
-
-.bonifApagada { color: var(--atlas-v5-ink-4); }
-
-.bonifVal,
-.bonifValApagado {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--atlas-v5-fw-bold);
-  white-space: nowrap;
-}
-
-.bonifVal { color: var(--atlas-v5-ink); }
-.bonifValApagado { color: var(--atlas-v5-ink-5); }
-
-.bonifPie {
-  margin-top: auto;
-  padding-top: 11px;
-  border-top: 1px solid var(--atlas-v5-line-2);
-  flex-shrink: 0;
-}
-
-.bonifPieFila {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: var(--atlas-v5-fs-sub-sm);
-  color: var(--atlas-v5-ink-3);
-}
-
-.bonifEfecto {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--atlas-v5-sp-2);
-  margin-top: 9px;
-  padding: var(--atlas-v5-sp-2) 11px;
-  background: var(--atlas-v5-gold-wash);
-  border-radius: var(--atlas-v5-radius-icon);
-  font-size: var(--atlas-v5-fs-sub-sm);
-  color: var(--atlas-v5-gold-ink);
-  font-weight: var(--atlas-v5-fw-semibold);
-}
-
-.bonifEfecto .mono { font-weight: var(--atlas-v5-fw-bold); }
-
-.flecha {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-weight: var(--atlas-v5-fw-bold);
-}
-
 /* ═══ Listas de definición · condiciones y fiscalidad ═════════ */
 
 .dl {
@@ -685,40 +586,13 @@
   color: var(--atlas-v5-ink-3);
 }
 
-/* El veredicto de los movimientos · va al lado del nombre y NO pisa el check
-   del banco: son dos preguntas distintas y la ficha tiene que poder decir las
-   dos a la vez, sobre todo cuando no coinciden.
-
-   En ÁMBAR, no en rojo *(Jose · 9 ago 2026: «usas el rojo, que está
-   prohibido»)*. Y no es solo la regla de la casa: el rojo de la guía es
-   «alerta · fallado», y una bonificación que vas a perder en la próxima
-   revisión no ha fallado nada todavía — es exactamente lo que `--atlas-v5-warn`
-   nombra, «advertencia · ámbar · en-riesgo». Pintarla de rojo decía que ya
-   estaba perdida, cuando es justo lo que aún estás a tiempo de arreglar. */
-.bonifAviso,
-.bonifDuda,
-.bonifLogro {
-  margin-left: 6px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  padding: 1px 5px;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-.bonifAviso {
-  color: var(--atlas-v5-warn);
-  background: var(--atlas-v5-warn-wash);
-}
-.bonifDuda {
-  color: var(--atlas-v5-ink-4);
-  background: var(--atlas-v5-line-3);
-}
-/* La cumples y no te la aplican · no es un error tuyo, es algo que puedes
-   reclamar, y por eso va en verde y no en rojo. */
-.bonifLogro {
-  color: var(--atlas-v5-pos);
-  background: var(--atlas-v5-pos-wash);
+/* La flecha «antes → después» · la usan la ficha y la tarjeta de
+   bonificaciones, así que se queda en el módulo compartido. Llevársela al de
+   la tarjeta la habría dejado sin estilo en la ficha, y en silencio: un CSS
+   module devuelve `undefined` para una clase que no tiene, no un error. */
+.flecha {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
 }
 
 /* ── El nombre DENTRO del hero ─────────────────────────────────────────────
