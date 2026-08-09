@@ -35,8 +35,16 @@ export interface AportacionDesdeCuenta {
   cuentaId: number;
   /** El año natural · las condiciones de plan se miden por ejercicio. */
   anio: number;
-  /** La suma de lo aportado ese año desde esa cuenta · siempre positiva. */
+  /** Todo lo que hay apuntado ese año · lo salido **y** lo previsto. */
   importe: number;
+  /**
+   * Lo que ha salido DE VERDAD · es lo único que demuestra la condición.
+   *
+   * Separado del total a propósito. Con una sola cifra, una aportación que
+   * todavía no ha salido daba la bonificación por ganada en enero, y eso es la
+   * misma clase de falso positivo que se paga en el recibo de agosto.
+   */
+  salido: number;
   /**
    * `cerrado` = todo lo sumado salió de verdad. `abierto` = queda algo previsto.
    *
@@ -46,6 +54,9 @@ export interface AportacionDesdeCuenta {
    */
   estado: 'cerrado' | 'abierto';
 }
+
+/** Redondeo a céntimos · sumar euros en coma flotante deja 599.9999999999999. */
+const centimos = (n: number): number => Math.round(n * 100) / 100;
 
 /** Los movimientos que son aportar a un producto de inversión. */
 const esAportacion = (ev: TreasuryEvent): boolean =>
@@ -75,16 +86,20 @@ export function aportacionesDeTesoreria(eventos: TreasuryEvent[]): AportacionDes
     if (!Number.isInteger(anio)) continue;
 
     const importe = Math.abs(ev.actualAmount ?? ev.amount);
+    const yaSalio = yaSeCobro(ev);
     const clave = `${ev.accountId}|${anio}`;
     const previo = porClave.get(clave);
 
     porClave.set(clave, {
       cuentaId: ev.accountId,
       anio,
-      importe: Math.round(((previo?.importe ?? 0) + importe) * 100) / 100,
+      importe: centimos((previo?.importe ?? 0) + importe),
+      // Lo previsto suma al total pero NO a esto · es lo que se pone delante de
+      // una condición, y una transferencia que aún no has hecho no prueba nada.
+      salido: centimos((previo?.salido ?? 0) + (yaSalio ? importe : 0)),
       // El año solo está cerrado si salió todo lo que hay en él · con una
       // aportación hecha y otra prevista, el año todavía puede crecer.
-      estado: previo?.estado === 'abierto' || !yaSeCobro(ev) ? 'abierto' : 'cerrado',
+      estado: previo?.estado === 'abierto' || !yaSalio ? 'abierto' : 'cerrado',
     });
   }
 

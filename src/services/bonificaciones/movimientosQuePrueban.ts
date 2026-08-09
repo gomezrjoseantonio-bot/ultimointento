@@ -21,6 +21,9 @@ import { cobrosDeNomina, ingresosDeLaCuenta } from './cobrosDeNomina';
 import { recibosDomiciliados } from './recibosDomiciliados';
 import { segurosDomiciliados } from './segurosDomiciliados';
 import { aportacionesDeTesoreria } from './aportacionesDeTesoreria';
+import { saldoEnElBanco } from './saldoEnElBanco';
+import { idDeCuenta } from './cumplimiento';
+import type { PosicionInversion } from '../../types/inversiones';
 import type { MovimientosQuePrueban } from './verificarBonificaciones';
 
 /**
@@ -35,20 +38,26 @@ import type { MovimientosQuePrueban } from './verificarBonificaciones';
  * tesorería: salen del préstamo. La cuenta es la de cargo, y hace de respaldo
  * cuando la bonificación no dice en cuál mirar — que es casi siempre, porque
  * ese campo no lo rellena nadie.
+ *
+ * La cuenta entra como venga —número o el texto del selector— y se normaliza
+ * AQUÍ, en la puerta: `Number('')` es cero, y un cero se lee como un id de
+ * cuenta perfectamente válido. Normalizarlo en cada pantalla que llame es cómo
+ * se acaba con un sitio que lo comprueba y otro que no.
  */
 export async function movimientosQuePrueban(
   anio: number,
   entidad?: string,
-  cuentaDelPrestamo?: number
+  cuentaDelPrestamo?: number | string
 ): Promise<MovimientosQuePrueban> {
   const db = await initDB();
 
   // Todas a la vez · son lecturas independientes y la pantalla espera.
-  const [eventos, tarjetas, cerrados, compromisos] = await Promise.all([
+  const [eventos, tarjetas, cerrados, compromisos, posiciones] = await Promise.all([
     db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
     listarTarjetas(),
     cierres(),
     db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
+    db.getAll('inversiones') as Promise<PosicionInversion[]>,
   ]);
 
   return {
@@ -65,8 +74,12 @@ export async function movimientosQuePrueban(
     // Planes y fondos · lo que sale de la cuenta hacia ellos. Es un movimiento
     // de tesorería, no el saldo de una posición ni un store aparte.
     aportacionesDeTesoreria: aportacionesDeTesoreria(eventos),
+    // La otra rama · lo que TIENES con ellos. Hay anexos que piden aportar y
+    // anexos que piden tener X dentro, y no se prueban en el mismo sitio: lo
+    // aportado sale de tesorería, lo que tienes sale de la posición.
+    saldoEnElBanco: saldoEnElBanco(posiciones),
     entidad,
-    cuentaDelPrestamo,
+    cuentaDelPrestamo: idDeCuenta(cuentaDelPrestamo) ?? undefined,
     // Los meses cerrados · es lo que convierte «todavía no consta» en un NO.
     // Sin esto una bonificación no se pierde nunca (§6 quater).
     mesesCerrados: cerrados.map((c) => c.mes),

@@ -667,11 +667,13 @@ export type ReglaBonificacion =
   /**
    * Plan de pensiones o previsión · «aportar al menos N € al año».
    *
-   * `activo` era todo lo que se podía decir, y por eso una condición con cifra
-   * —la habitual— se guardaba como «lo tengo contratado». `aportacionAnual`
-   * ausente sigue significando eso: contratado, sin cifra dicha.
+   * **Dos ramas, y basta con una** *(Jose · 9 ago 2026)*: unos anexos piden
+   * APORTAR X al año, otros TENER X con el banco. No es la misma pregunta —un
+   * plan sin aportaciones desde hace años puede tener 40.000 € dentro— y se
+   * prueban en sitios distintos: la aportación en tesorería, el saldo en la
+   * posición. Sin ninguna de las dos, la condición es tenerlo contratado.
    */
-  | { tipo: 'PLAN_PENSIONES'; activo: boolean; aportacionAnual?: number }
+  | { tipo: 'PLAN_PENSIONES'; activo: boolean; aportacionAnual?: number; saldoMinimo?: number }
   /**
    * Seguros, **contados o sumados** · la forma que ninguna otra podía expresar.
    *
@@ -699,12 +701,12 @@ export type ReglaBonificacion =
   | { tipo: 'SEGURO_VIDA'; activo: boolean; capitalAseguradoPct?: number }
   | { tipo: 'TARJETA'; movimientosMesMin?: number; importeMinimo?: number }
   /**
-   * Fondos de inversión o valores · «mantener N € en la entidad».
+   * Fondos de inversión o valores · las MISMAS dos ramas que el plan.
    *
-   * Se guarda el SALDO exigido, no lo aportado: el anexo mira lo que hay, y
-   * quien aportó hace tres años sigue cumpliendo sin aportar este mes.
+   * `saldoMinimo` es «mantener N € con ellos», `aportacionAnual` es «meter N €
+   * al año». Basta con una.
    */
-  | { tipo: 'FONDOS'; saldoMinimo?: number }
+  | { tipo: 'FONDOS'; saldoMinimo?: number; aportacionAnual?: number }
   /**
    * Certificado de eficiencia energética del inmueble.
    *

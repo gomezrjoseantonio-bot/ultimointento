@@ -26,8 +26,10 @@ import type { SeguroDomiciliado } from './segurosDomiciliados';
 import { deLaCuenta, delTipo, primaTotal } from './segurosDomiciliados';
 import type { AportacionDesdeCuenta } from './aportacionesDeTesoreria';
 import { aportadoDesde } from './aportacionesDeTesoreria';
+import type { SaldoEnProducto } from './saldoEnElBanco';
+import { saldoCon } from './saldoEnElBanco';
 import type { Cumplimiento, Ventana } from './cumplimiento';
-import { ventanaDeEvaluacion, veredictoDelImporte } from './cumplimiento';
+import { idDeCuenta, ventanaDeEvaluacion, veredictoDelImporte } from './cumplimiento';
 
 /** Lo que la tesorería puede aportar para probar una condición. */
 export interface MovimientosQuePrueban {
@@ -80,6 +82,13 @@ export interface MovimientosQuePrueban {
    * Ausente = ATLAS no sabe de ninguna, que no es lo mismo que no haberlas.
    */
   aportacionesDeTesoreria?: AportacionDesdeCuenta[];
+  /**
+   * Lo que TIENES en fondos y planes de cada banco · la otra rama.
+   *
+   * Un anexo puede pedir aportar o pedir tener, y no es la misma pregunta ni se
+   * prueba en el mismo sitio. Ausente = no se han mirado las posiciones.
+   */
+  saldoEnElBanco?: SaldoEnProducto[];
   /**
    * La cuenta de cargo del préstamo · el respaldo de `cuentaExigidaId`.
    *
@@ -137,22 +146,16 @@ const centimos = (n: number): number => Math.round(n * 100) / 100;
 /**
  * En qué cuenta hay que mirar · la que exige la bonificación, o la del préstamo.
  *
- * `Number('')` es 0, un id que parece válido, así que se comprueba la cadena
- * antes de convertirla — el selector deja `''` al no elegir ninguna y se habría
- * mirado la cuenta cero.
- *
  * El respaldo importa más de lo que parece: nadie rellena `cuentaExigidaId`, y
  * sin él un seguro domiciliado en la cuenta correcta salía «sin comprobar»
  * teniendo ATLAS la cuenta del préstamo delante. El banco bonifica por lo que
  * le entra a ÉL, y la cuenta por la que te cobra la hipoteca es suya.
+ *
+ * Las dos pasan por `idDeCuenta`, que es donde vive lo de que `Number('')` sea
+ * cero: un id vacío no puede colarse por ninguna de las dos puertas.
  */
 function cuentaDondeMira(b: Bonificacion, movimientos: MovimientosQuePrueban): number | null {
-  const dicha = Number(b.cuentaExigidaId);
-  if (b.cuentaExigidaId && Number.isFinite(dicha)) return dicha;
-  const delPrestamo = Number(movimientos.cuentaDelPrestamo);
-  return movimientos.cuentaDelPrestamo != null && Number.isFinite(delPrestamo)
-    ? delPrestamo
-    : null;
+  return idDeCuenta(b.cuentaExigidaId) ?? idDeCuenta(movimientos.cuentaDelPrestamo);
 }
 
 const noVerificable = (b: Bonificacion, motivo: string): Cumplimiento => ({
@@ -183,15 +186,16 @@ function porAportaciones(
   ventana: Ventana,
   movimientos: MovimientosQuePrueban
 ): Cumplimiento {
-  return porLoQueEntraAlProducto(b, ventana, movimientos, regla.aportacionAnual, 'plan');
+  return porElProducto(b, ventana, movimientos, regla, 'plan');
 }
 
 /**
  * La condición de FONDOS · la sexta forma, y la que no se miraba.
  *
  * Estaba en `SIN_FUENTE` con la excusa «el saldo en fondos se prueba con la
- * posición, no con un movimiento». Falso: lo que el banco premia no es tu saldo,
- * es **que le entre dinero a él**, y eso sale de la cuenta como cualquier cargo.
+ * posición, no con un movimiento». La mitad era verdad —el saldo sí— y de ahí
+ * salía la conclusión falsa: que por eso no se podía comprobar. Las posiciones
+ * están, y lo aportado también.
  */
 function porFondos(
   b: Bonificacion,
@@ -199,56 +203,102 @@ function porFondos(
   ventana: Ventana,
   movimientos: MovimientosQuePrueban
 ): Cumplimiento {
-  return porLoQueEntraAlProducto(b, ventana, movimientos, regla.saldoMinimo, 'fondo');
+  return porElProducto(b, ventana, movimientos, regla, 'fondo');
 }
 
 /**
- * Lo que sale de la cuenta del banco hacia un plan o un fondo suyo.
+ * Un plan o un fondo del banco · **por lo que le aportas o por lo que tienes**.
  *
- * *«El plan de pensiones y los fondos son MOVIMIENTOS DE TESORERÍA de esa cuenta
- * a la aportación del plan de ese banco»* *(Jose · 8 ago 2026)*.
+ * *«Es aportación en este caso, pero habrá otros que será tener X en el fondo o
+ * en el plan de pensiones del banco»* *(Jose · 9 ago 2026)*. Dos ramas y basta
+ * con una, igual que la nómina admite «X al mes o Y al año».
  *
- * La cuenta ata la condición al banco por sí sola, así que aquí no hace falta
- * saber la gestora: basta con de dónde salió el dinero. Antes esto se preguntaba
- * al store de aportaciones y se exigía además saber la entidad del préstamo —
- * y con ese store vacío no contestaba «no lo sé» sino **«no cumples»**, que es
- * un falso negativo: te decía que ibas a perder puntos ya ganados.
+ * Y se prueban en sitios distintos, que es lo que obliga a distinguirlas:
+ *
+ *   · lo APORTADO sale de tesorería · lo que se va de su cuenta al producto;
+ *   · lo que TIENES sale de la posición · lo que vale hoy.
+ *
+ * Medir una con la otra daría un veredicto sobre dinero que no se corresponde
+ * con la condición: un fondo sin aportaciones desde hace años puede tener
+ * 40.000 € dentro, y quien acaba de meter 30.000 € todavía no los tiene si el
+ * mercado ha caído.
  */
-function porLoQueEntraAlProducto(
+function porElProducto(
   b: Bonificacion,
   ventana: Ventana,
   movimientos: MovimientosQuePrueban,
-  minimo: number | undefined,
+  regla: { aportacionAnual?: number; saldoMinimo?: number },
   que: 'plan' | 'fondo'
 ): Cumplimiento {
   const base = { bonificacionId: b.id, nombre: b.nombre, ventana };
+  const cifra = (n: number | undefined): n is number => Number.isFinite(n) && (n as number) > 0;
 
-  if (!movimientos.aportacionesDeTesoreria) {
-    return noVerificable(b, `no hay movimientos donde mirar la aportación al ${que}`);
+  // ── Rama SALDO · lo que tienes con ellos ──────────────────────────────────
+  const saldo = movimientos.saldoEnElBanco
+    ? saldoCon(movimientos.saldoEnElBanco, movimientos.entidad, que)
+    : null;
+  if (cifra(regla.saldoMinimo) && saldo != null) {
+    const veredicto = veredictoDelImporte(saldo, regla.saldoMinimo);
+    // Basta con una · si el saldo llega, no hace falta mirar lo aportado.
+    if (veredicto === 'cumple') {
+      return { ...base, veredicto, medido: saldo, exigido: regla.saldoMinimo };
+    }
   }
 
+  // ── Rama APORTACIÓN · lo que le entra ─────────────────────────────────────
+  //
+  // Cuenta lo que ha SALIDO, no lo apuntado: una transferencia al plan la haces
+  // cuando quieres, así que una prevista no demuestra nada (§3.5, la misma
+  // regla de la tarjeta). Lo que falta por salir se enseña aparte, que es como
+  // se distingue «todavía no» de «no».
   const cuentaId = cuentaDondeMira(b, movimientos);
-  if (cuentaId == null) {
-    return noVerificable(b, `no dice desde qué cuenta se aporta al ${que}`);
+  const delAnio =
+    movimientos.aportacionesDeTesoreria && cuentaId != null
+      ? aportadoDesde(
+          movimientos.aportacionesDeTesoreria,
+          cuentaId,
+          Number(ventana.hasta.slice(0, 4))
+        )
+      : undefined;
+  const aportado =
+    movimientos.aportacionesDeTesoreria && cuentaId != null ? (delAnio?.salido ?? 0) : null;
+  const porSalir = centimos((delAnio?.importe ?? 0) - (delAnio?.salido ?? 0));
+
+  if (cifra(regla.aportacionAnual)) {
+    if (aportado == null) {
+      return noVerificable(b, `no hay movimientos donde mirar la aportación al ${que}`);
+    }
+    return {
+      ...base,
+      veredicto: veredictoDelImporte(aportado, regla.aportacionAnual),
+      medido: aportado,
+      exigido: regla.aportacionAnual,
+      ...(porSalir > 0 ? { sinCobrar: porSalir } : {}),
+    };
   }
 
-  const anio = Number(ventana.hasta.slice(0, 4));
-  const delAnio = aportadoDesde(movimientos.aportacionesDeTesoreria, cuentaId, anio);
-  const aportado = delAnio?.importe ?? 0;
-
-  // Sin cifra, la condición es tenerlo · y lo tiene si le ha entrado algo.
-  if (!Number.isFinite(minimo) || (minimo as number) <= 0) {
-    return aportado > 0
-      ? { ...base, veredicto: 'cumple', motivo: `aportas a un ${que} de este banco` }
-      : { ...base, veredicto: 'no_cumple', motivo: `no consta ninguna aportación a un ${que} suyo` };
+  // Pedía saldo y no hay posiciones que mirar · no se afirma nada.
+  if (cifra(regla.saldoMinimo)) {
+    return saldo == null
+      ? noVerificable(b, `no consta ninguna posición en ${que}s de este banco`)
+      : { ...base, veredicto: veredictoDelImporte(saldo, regla.saldoMinimo), medido: saldo, exigido: regla.saldoMinimo };
   }
 
-  return {
-    ...base,
-    veredicto: veredictoDelImporte(aportado, minimo as number),
-    medido: aportado,
-    exigido: minimo as number,
-  };
+  // Sin cifra ninguna, la condición es TENERLO · con que le entre algo o que
+  // conste una posición suya, se cumple.
+  if (aportado == null && saldo == null) {
+    return noVerificable(b, `no consta ningún ${que} de este banco`);
+  }
+  if ((aportado ?? 0) > 0 || (saldo ?? 0) > 0) {
+    return { ...base, veredicto: 'cumple', motivo: `tienes un ${que} de este banco` };
+  }
+  // Nada salido todavía y algo previsto · no es un no, es un todavía no. Decir
+  // que no lo tienes cuando la aportación está puesta para el mes que viene
+  // manda a contratar otro producto que ya está contratado.
+  if (porSalir > 0) {
+    return noVerificable(b, `la aportación al ${que} está prevista, pero todavía no ha salido`);
+  }
+  return { ...base, veredicto: 'no_cumple', motivo: `no consta ningún ${que} suyo` };
 }
 
 /**

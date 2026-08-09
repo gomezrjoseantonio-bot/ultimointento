@@ -121,4 +121,24 @@ describe('lo previsto se distingue de lo hecho', () => {
     expect(a.estado).toBe('abierto');
     expect(a.importe).toBe(600);
   });
+
+  // Y no basta con marcar el año · quien juzga la condición necesita la cifra
+  // de lo que HA SALIDO, porque es lo único que demuestra algo. Con una sola
+  // suma, una aportación puesta para noviembre daba la bonificación por ganada
+  // en enero.
+  it('lo salido va aparte de lo apuntado', () => {
+    const [a] = aportacionesDeTesoreria([
+      aportacion(),
+      aportacion({ id: 2, status: 'predicted', predictedDate: '2026-11-10' }),
+    ]);
+
+    expect(a.importe).toBe(600);
+    expect(a.salido).toBe(300);
+  });
+
+  it('y lo que aún no ha salido no suma nada a lo salido', () => {
+    const [a] = aportacionesDeTesoreria([aportacion({ status: 'predicted' })]);
+
+    expect(a.salido).toBe(0);
+  });
 });
