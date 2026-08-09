@@ -92,10 +92,10 @@ const renderPage = (): void => {
 };
 
 describe('PR FIX · E2E caso Jose', () => {
-  it('banda navy arriba · título "Mis contratos" + KPI Vigentes', () => {
+  it('banda navy arriba · título "Mis alquileres" + KPI Vigentes', () => {
     renderPage();
-    const banda = screen.getByLabelText('Resumen de contratos');
-    expect(within(banda).getByText('Mis contratos')).toBeInTheDocument();
+    const banda = screen.getByLabelText('Resumen de alquileres');
+    expect(within(banda).getByText('Mis alquileres')).toBeInTheDocument();
     // 3 vigentes con inquilino real (FA32 H1, H2, Sant Joan); el sin identificar no cuenta.
     expect(within(banda).getByText('Vigentes')).toBeInTheDocument();
     expect(within(banda).getByText('3')).toBeInTheDocument();
