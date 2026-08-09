@@ -95,3 +95,28 @@ export async function conciliarAportacionInicial(posicionId: number): Promise<vo
     console.error('[inversiones] conciliar aportación inicial', err);
   }
 }
+
+/**
+ * Concilia las aportaciones INICIALES que sigan "por confirmar" en TODAS las
+ * posiciones (barrido idempotente). Sirve para las creadas antes de que este
+ * comportamiento existiera y como red de seguridad si el conciliado del alta no
+ * llegó a correr. Solo toca aportaciones iniciales con fecha ≤ hoy · una vez
+ * conciliadas (executed) no se vuelven a tocar. No propaga errores.
+ */
+export async function conciliarAportacionesInicialesPendientes(): Promise<void> {
+  try {
+    const posiciones = await inversionesService.getPosiciones();
+    // En paralelo · el barrido es idempotente y `conciliarAportacionInicial` ya
+    // absorbe sus propios errores; `allSettled` evita que uno tumbe al resto y
+    // no alarga la carga de la galería en serie. (IndexedDB serializa las
+    // escrituras solapadas, así que no hay riesgo de corrupción.)
+    await Promise.allSettled(
+      posiciones
+        .filter((p): p is typeof p & { id: number } => p.id != null)
+        .map((p) => conciliarAportacionInicial(p.id)),
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[inversiones] conciliar aportaciones iniciales pendientes', err);
+  }
+}
