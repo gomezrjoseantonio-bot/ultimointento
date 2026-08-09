@@ -62,7 +62,13 @@ for (const tsx of tsxDe('src')) {
     const fichero = resolve(dirname(tsx), ruta);
     if (!existsSync(fichero)) continue;
     const disponibles = clasesDe(fichero);
-    const usadas = new Set([...src.matchAll(new RegExp(`${alias}\\.([A-Za-z]\\w*)\\b`, 'g'))].map((m) => m[1]));
+    // `(?!\\s*\\()` · una clase de un CSS module nunca se LLAMA. Sin esto, un
+    // alias corto que choque con una variable local —`d` del módulo y `d` de
+    // una fecha— convierte `d.getUTCMonth()` en una clase que falta, y un check
+    // que da la voz en falso se acaba ignorando, que es peor que no tenerlo.
+    const usadas = new Set(
+      [...src.matchAll(new RegExp(`\\b${alias}\\.([A-Za-z]\\w*)\\b(?!\\s*\\()`, 'g'))].map((m) => m[1])
+    );
     for (const cls of [...usadas].sort()) {
       comprobadas++;
       if (disponibles.has(cls)) continue;
