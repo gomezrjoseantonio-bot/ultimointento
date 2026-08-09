@@ -250,7 +250,9 @@ const AltaCryptoModal: React.FC<AltaCryptoModalProps> = ({ onSave, onClose }) =>
             <ModalAtlasPreviewCardDark
               label="Valor declarable"
               value={formatCurrency(valorCalc)}
-              valueVariant={requiere721 ? 'neg' : 'gold'}
+              // El valor declarable no es una pérdida · rojo queda reservado a
+              // semántica de flujo. El umbral 721 se avisa en el banner (warn).
+              valueVariant="gold"
               sub={
                 requiere721
                   ? `supera el umbral Modelo 721 (${formatCurrency(UMBRAL_721)})`

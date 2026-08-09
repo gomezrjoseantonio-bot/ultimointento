@@ -12,7 +12,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icons, showToastV5 } from '../../../../design-system/v5';
 import ModalAtlas, { ModalAtlasBody, ModalAtlasForm } from './ModalAtlas';
 import ModalAtlasHeader from './ModalAtlasHeader';
-import ModalAtlasFooter, { ModalAtlasButtonGhost } from './ModalAtlasFooter';
 import shellStyles from '../../styles/atlas-inversiones.module.css';
 
 export type Familia =
@@ -137,28 +136,42 @@ const SelectorNuevaPosicion: React.FC<SelectorNuevaPosicionProps> = ({
                   <span className={shellStyles.tabSub}>{f.sub}</span>
                 </button>
               ))}
+
+              {/* Importar cartera entera · una opción más dentro del selector
+                  (v10) · en vez de dar de alta las posiciones una a una. */}
+              <div className={shellStyles.importCard} data-familia="importar">
+                <span className={shellStyles.importIcon}>
+                  <Icons.Download size={20} strokeWidth={1.7} />
+                </span>
+                <div className={shellStyles.importText}>
+                  <div className={shellStyles.importTitle}>Importar cartera entera</div>
+                  <div className={shellStyles.importSub}>
+                    desde tu bróker · en vez de una a una
+                  </div>
+                </div>
+                <div className={shellStyles.importActions}>
+                  <button
+                    type="button"
+                    className={`${shellStyles.btn} ${shellStyles.btnGhost}`}
+                    onClick={handleIndexa}
+                    data-action="import-indexa"
+                  >
+                    Indexa Capital
+                  </button>
+                  <button
+                    type="button"
+                    className={`${shellStyles.btn} ${shellStyles.btnGhost}`}
+                    onClick={handleCSV}
+                    data-action="import-csv"
+                  >
+                    CSV
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </ModalAtlasForm>
       </ModalAtlasBody>
-      <ModalAtlasFooter
-        info={
-          <>
-            <Icons.Info size={13} strokeWidth={2} />
-            O importa una cartera completa desde tu broker
-          </>
-        }
-        actions={
-          <>
-            <ModalAtlasButtonGhost onClick={handleIndexa} data-action="import-indexa">
-              <Icons.Download size={13} strokeWidth={2} /> Indexa Capital
-            </ModalAtlasButtonGhost>
-            <ModalAtlasButtonGhost onClick={handleCSV} data-action="import-csv">
-              <Icons.Contratos size={13} strokeWidth={2} /> Aportaciones CSV
-            </ModalAtlasButtonGhost>
-          </>
-        }
-      />
     </ModalAtlas>
   );
 };
