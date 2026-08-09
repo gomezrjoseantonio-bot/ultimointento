@@ -4,7 +4,6 @@ import {
   MoneyValue,
   DateLabel,
   EmptyState,
-  Pill,
   Icons,
   showToastV5,
 } from '../../../design-system/v5';
@@ -32,13 +31,18 @@ import ImportValoracionesWizard from '../../../components/valoraciones/ImportVal
 import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
 import GastosResumenInmueble from '../components/GastosResumenInmueble';
 import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
+import RentabilidadInmueble from '../components/RentabilidadInmueble';
+import {
+  calcularResumenGastosInmueble,
+  construirListaVisualGastosInmueble,
+} from '../adapters/gastosInmuebleAdapter';
 import { gastosInmuebleService } from '../../../services/gastosInmuebleService';
 import { mejorasInmuebleService } from '../../../services/mejorasInmuebleService';
 import { mueblesInmuebleService } from '../../../services/mueblesInmuebleService';
 import styles from './DetallePage.module.css';
 
 
-type Tab = 'resumen' | 'contratos' | 'cobros' | 'gastos' | 'documentos' | 'fiscalidad';
+type Tab = 'patrimonio' | 'gastos' | 'rentabilidad' | 'fiscalidad' | 'documentos';
 type GastosSubTab = 'resumen' | 'registrados' | 'recurrentes';
 
 const HABITACION_COLORS = [
@@ -56,6 +60,73 @@ const isContractActiveAt = (c: Contract, today: Date): boolean => {
   return !Number.isNaN(ini.getTime()) && !Number.isNaN(fin.getTime()) && ini <= today && today <= fin;
 };
 
+const resolveTab = (param: string | null): Tab => {
+  if (param === 'gastos') return 'gastos';
+  if (param === 'fiscalidad') return 'fiscalidad';
+  if (param === 'documentos') return 'documentos';
+  if (param === 'rentabilidad') return 'rentabilidad';
+  return 'patrimonio';
+};
+
+const estimarPagosAnuales = (patron: CompromisoRecurrente['patron']): number => {
+  switch (patron.tipo) {
+    case 'mensualDiaFijo':
+    case 'mensualDiaRelativo':
+      return 12;
+    case 'cadaNMeses':
+      return patron.cadaNMeses > 0 ? Math.ceil(12 / patron.cadaNMeses) : 0;
+    case 'trimestralFiscal':
+      return 4;
+    case 'anualMesesConcretos':
+      return patron.mesesPago.length;
+    case 'pagasExtra':
+      return patron.mesesExtra.length;
+    case 'variablePorMes':
+      return patron.mesesPago.length;
+    case 'puntual':
+      return 1;
+    default:
+      return 0;
+  }
+};
+
+const estimarGastoAnualCompromiso = (
+  compromiso: CompromisoRecurrente,
+  rentaMensual: number,
+): number | undefined => {
+  if (compromiso.estado !== 'activo') return undefined;
+
+  if (compromiso.patron.tipo === 'variablePorMes') {
+    return Number.isFinite(compromiso.patron.importeObjetivoAnual)
+      ? compromiso.patron.importeObjetivoAnual
+      : undefined;
+  }
+
+  switch (compromiso.importe.modo) {
+    case 'fijo':
+      return compromiso.importe.importe * estimarPagosAnuales(compromiso.patron);
+    case 'variable':
+      return compromiso.importe.importeMedio * estimarPagosAnuales(compromiso.patron);
+    case 'diferenciadoPorMes':
+      return compromiso.importe.importesPorMes.reduce((sum, amount) => sum + amount, 0);
+    case 'porPago':
+      return Object.values(compromiso.importe.importesPorPago).reduce((sum, amount) => sum + amount, 0);
+    case 'porTramos': {
+      const importes = compromiso.importe.tramos
+        .map((tramo) => tramo.importe)
+        .filter((amount) => Number.isFinite(amount));
+      if (importes.length === 0) return undefined;
+      const importeMedio = importes.reduce((sum, amount) => sum + amount, 0) / importes.length;
+      return importeMedio * estimarPagosAnuales(compromiso.patron);
+    }
+    case 'porcentajeRenta':
+      return rentaMensual > 0 ? (rentaMensual * 12 * compromiso.importe.porcentaje) / 100 : undefined;
+    default:
+      return undefined;
+  }
+};
+
+
 const DetallePage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -65,11 +136,7 @@ const DetallePage: React.FC = () => {
   // onboarding, que ya no enruta a un wizard sino a la tabla de gastos).
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const tabInicial: Tab =
-    tabParam === 'gastos' || tabParam === 'contratos' || tabParam === 'cobros' ||
-    tabParam === 'documentos' || tabParam === 'fiscalidad'
-      ? tabParam
-      : 'resumen';
+  const tabInicial: Tab = resolveTab(tabParam);
   const [tab, setTab] = useState<Tab>(tabInicial);
   const [gastosSubTab, setGastosSubTab] = useState<GastosSubTab>('resumen');
   const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
@@ -148,14 +215,36 @@ const DetallePage: React.FC = () => {
   const valorAdquisicion = property.acquisitionCosts?.price ?? 0;
   const rentabilidadBruta =
     valorAdquisicion > 0 ? (rentaMensual * 12 * 100) / valorAdquisicion : 0;
+  const gastosVisuales = useMemo(
+    () =>
+      construirListaVisualGastosInmueble({
+        inmuebleId: propertyId,
+        compromisosRecurrentes: gastos,
+        gastosReales,
+        mejoras,
+        mobiliario,
+      }),
+    [propertyId, gastos, gastosReales, mejoras, mobiliario],
+  );
+  const resumenGastosRentabilidad = useMemo(
+    () => calcularResumenGastosInmueble(gastosVisuales, today.getFullYear()),
+    [gastosVisuales, today],
+  );
+  const gastosPrevistosRentabilidad = useMemo(
+    () =>
+      gastos.reduce<number>((sum, compromiso) => {
+        const estimado = estimarGastoAnualCompromiso(compromiso, rentaMensual);
+        return sum + (estimado ?? 0);
+      }, 0),
+    [gastos, rentaMensual],
+  );
 
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
-    { key: 'resumen', label: 'Resumen' },
-    { key: 'contratos', label: 'Contratos', count: propertyContracts.length },
-    { key: 'cobros', label: 'Cobros' },
+    { key: 'patrimonio', label: 'Patrimonio' },
     { key: 'gastos', label: 'Gastos' },
-    { key: 'documentos', label: 'Documentos', count: property.documents?.length },
+    { key: 'rentabilidad', label: 'Rentabilidad' },
     { key: 'fiscalidad', label: 'Fiscalidad' },
+    { key: 'documentos', label: 'Documentos', count: property.documents?.length },
   ];
 
   const astId = `AST-${String(propertyId).padStart(2, '0')}`;
@@ -257,28 +346,21 @@ const DetallePage: React.FC = () => {
                 Vender
               </button>
             )}
-            <button
-              type="button"
-              className={`${pageHeadStyles.btn} ${pageHeadStyles.gold}`}
-              onClick={() => navigate(`/contratos/nuevo?inmueble=${property.id}`)}
-            >
-              <Icons.Plus size={14} strokeWidth={2} />
-              Nuevo contrato
-            </button>
           </div>
         </div>
       </div>
 
-      <div className={styles.tabsBar} role="group" aria-label="Tabs detalle inmueble">
+      <div className={styles.tabsBar} role="tablist" aria-label="Navegación ficha inmueble">
         {tabs.map((t) => {
           const isActive = t.key === tab;
           return (
             <button
               key={t.key}
               type="button"
+              role="tab"
+              aria-selected={isActive}
               className={isActive ? styles.active : ''}
               onClick={() => setTab(t.key)}
-              aria-pressed={isActive}
             >
               {t.label}
               {t.count != null && t.count > 0 && (
@@ -289,38 +371,89 @@ const DetallePage: React.FC = () => {
         })}
       </div>
 
-      {tab === 'resumen' && (
+      {tab === 'patrimonio' && (
         <>
-          <div className={styles.kpisRow}>
-            <div className={`${styles.kpi} ${styles.gold}`}>
-              <div className={styles.kpiLab}>Renta mensual</div>
-              <div className={`${styles.kpiVal} ${styles.pos}`}>
-                <MoneyValue value={rentaMensual} decimals={0} tone="pos" />
+          <div className={styles.section} style={{ marginTop: 0 }}>
+            <div className={styles.sectionHd}>
+              <div>
+                <div className={styles.sectionTitle}>Bloque de explotación</div>
+                <div className={styles.sectionSub}>rentas activas y rendimiento bruto</div>
               </div>
-              <div className={styles.kpiHint}>
-                {esPiso
-                  ? `${contratosActivos.length} de ${habitaciones} unidades activas`
-                  : contratosActivos.length > 0
-                    ? 'Ocupado'
-                    : 'Libre'}
+              <button
+                type="button"
+                className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
+                onClick={() => navigate(`/contratos/nuevo?inmueble=${property.id}`)}
+              >
+                <Icons.Plus size={14} strokeWidth={2} />
+                Nuevo contrato
+              </button>
+            </div>
+            <div className={styles.kpisRow}>
+              <div className={`${styles.kpi} ${styles.gold}`}>
+                <div className={styles.kpiLab}>Renta mensual</div>
+                <div className={`${styles.kpiVal} ${styles.pos}`}>
+                  <MoneyValue value={rentaMensual} decimals={0} tone="pos" />
+                </div>
+                <div className={styles.kpiHint}>
+                  {esPiso
+                    ? `${contratosActivos.length} de ${habitaciones} unidades activas`
+                    : contratosActivos.length > 0
+                      ? 'Ocupado'
+                      : 'Libre'}
+                </div>
+              </div>
+              <div className={`${styles.kpi} ${styles.pos}`}>
+                <div className={styles.kpiLab}>Renta anual bruta</div>
+                <div className={`${styles.kpiVal} ${styles.pos}`}>
+                  <MoneyValue value={rentaMensual * 12} decimals={0} tone="pos" />
+                </div>
+                <div className={styles.kpiHint}>
+                  {esPiso ? `${habitaciones} habitaciones · sin gastos` : 'sin gastos'}
+                </div>
+              </div>
+              <div className={styles.kpi}>
+                <div className={styles.kpiLab}>Rentabilidad bruta</div>
+                <div className={`${styles.kpiVal} ${styles.pos}`}>
+                  {rentabilidadBruta.toFixed(1)}%
+                </div>
+                <div className={styles.kpiHint}>
+                  sobre <MoneyValue value={valorAdquisicion} decimals={0} /> de adquisición
+                </div>
               </div>
             </div>
-            <div className={`${styles.kpi} ${styles.pos}`}>
-              <div className={styles.kpiLab}>Renta anual bruta</div>
-              <div className={`${styles.kpiVal} ${styles.pos}`}>
-                <MoneyValue value={rentaMensual * 12} decimals={0} tone="pos" />
+          </div>
+
+          <div className={styles.section} style={{ marginTop: 0 }}>
+            <div className={styles.sectionHd}>
+              <div>
+                <div className={styles.sectionTitle}>Situación de explotación</div>
+                <div className={styles.sectionSub}>estado actual del activo</div>
               </div>
-              <div className={styles.kpiHint}>
-                {esPiso ? `${habitaciones} habitaciones · sin gastos` : 'sin gastos'}
-              </div>
+              <button
+                type="button"
+                className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
+                onClick={() => navigate(`/contratos?inmueble=${property.id}`)}
+              >
+                Gestionar alquileres
+              </button>
             </div>
-            <div className={styles.kpi}>
-              <div className={styles.kpiLab}>Rentabilidad bruta</div>
-              <div className={`${styles.kpiVal} ${styles.pos}`}>
-                {rentabilidadBruta.toFixed(1)}%
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+              <div className={styles.kpi}>
+                <div className={styles.kpiLab}>Modalidad</div>
+                <div className={styles.kpiVal} style={{ fontSize: 16 }}>
+                  {contratosActivos[0]?.modalidad ?? propertyContracts[0]?.modalidad ?? '—'}
+                </div>
               </div>
-              <div className={styles.kpiHint}>
-                sobre <MoneyValue value={valorAdquisicion} decimals={0} /> de adquisición
+              <div className={styles.kpi}>
+                <div className={styles.kpiLab}>Contratos activos</div>
+                <div className={styles.kpiVal} style={{ fontSize: 22 }}>{contratosActivos.length}</div>
+                <div className={styles.kpiHint}>de {propertyContracts.length} total</div>
+              </div>
+              <div className={`${styles.kpi} ${styles.gold}`}>
+                <div className={styles.kpiLab}>Renta mensual</div>
+                <div className={`${styles.kpiVal} ${styles.pos}`} style={{ fontSize: 22 }}>
+                  <MoneyValue value={rentaMensual} decimals={0} tone="pos" />
+                </div>
               </div>
             </div>
           </div>
@@ -397,76 +530,6 @@ const DetallePage: React.FC = () => {
           </div>
           )}
         </>
-      )}
-
-      {tab === 'contratos' && (
-        <div className={styles.section}>
-          <div className={styles.sectionHd}>
-            <div>
-              <div className={styles.sectionTitle}>
-                Contratos del inmueble · {propertyContracts.length}
-              </div>
-              <div className={styles.sectionSub}>
-                contratos activos y archivados de {property.alias}
-              </div>
-            </div>
-          </div>
-          {propertyContracts.length === 0 ? (
-            <EmptyState
-              icon={<Icons.Contratos size={20} />}
-              title="Sin contratos asociados"
-              sub="Aún no hay contratos en este inmueble."
-              ctaLabel="+ nuevo contrato"
-              onCtaClick={() => navigate(`/contratos/nuevo?inmueble=${property.id}`)}
-            />
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--atlas-v5-line)' }}>
-                  <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: 10.5, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Inquilino</th>
-                  <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: 10.5, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Modalidad</th>
-                  <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: 10.5, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Inicio</th>
-                  <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: 10.5, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Fin</th>
-                  <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: 10.5, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Renta</th>
-                  <th style={{ textAlign: 'center', padding: '10px 8px', fontSize: 10.5, color: 'var(--atlas-v5-ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {propertyContracts.map((c) => {
-                  const activo = isContractActiveAt(c, today);
-                  return (
-                    <tr
-                      key={c.id}
-                      style={{ borderBottom: '1px solid var(--atlas-v5-line-2)', cursor: 'pointer' }}
-                      onClick={() => showToastV5(`Detalle contrato · ${c.inquilino.nombre}`)}
-                    >
-                      <td style={{ padding: '10px 8px', color: 'var(--atlas-v5-ink)', fontWeight: 600 }}>
-                        {c.inquilino.nombre} {c.inquilino.apellidos}
-                      </td>
-                      <td style={{ padding: '10px 8px', color: 'var(--atlas-v5-ink-3)' }}>
-                        {c.modalidad}
-                      </td>
-                      <td style={{ padding: '10px 8px' }}>
-                        <DateLabel value={c.fechaInicio} format="short" size="sm" />
-                      </td>
-                      <td style={{ padding: '10px 8px' }}>
-                        <DateLabel value={c.fechaFin} format="short" size="sm" />
-                      </td>
-                      <td style={{ padding: '10px 8px', textAlign: 'right' }}>
-                        <MoneyValue value={c.rentaMensual} decimals={0} />
-                      </td>
-                      <td style={{ padding: '10px 8px', textAlign: 'center' }}>
-                        <Pill variant={activo ? 'pos' : 'gris'} asTag>
-                          {activo ? 'Activo' : 'Inactivo'}
-                        </Pill>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
       )}
 
       {tab === 'gastos' && (
@@ -561,18 +624,28 @@ const DetallePage: React.FC = () => {
         </div>
       )}
 
+      {tab === 'rentabilidad' && (
+        <div style={{ marginTop: 8 }}>
+          <RentabilidadInmueble
+            rentaMensual={rentaMensual}
+            valorAdquisicion={valorAdquisicion}
+            gastosPrevistos={gastosPrevistosRentabilidad > 0 ? gastosPrevistosRentabilidad : undefined}
+            gastosReales={resumenGastosRentabilidad.total.realOrdinario}
+          />
+        </div>
+      )}
+
       {tab === 'fiscalidad' && (
         <div style={{ marginTop: 8 }}>
           <SeccionHistoricoFiscal inmuebleId={propertyId} />
         </div>
       )}
 
-      {(tab === 'cobros' || tab === 'documentos') && (
+      {tab === 'documentos' && (
         <div className={styles.placeholder}>
-          <strong>{tabs.find((t) => t.key === tab)?.label}</strong>
-          Pestaña en migración a UI v5 · funcionalidad pendiente de sub-tarea
-          follow-up. Datos del usuario intactos en stores · UI consolidada en
-          próxima iteración.
+          <strong>Documentos</strong>
+          Pestaña en migración a UI v5 · funcionalidad pendiente de sub-tarea follow-up.
+          Datos del usuario intactos en stores · UI consolidada en próxima iteración.
         </div>
       )}
 
