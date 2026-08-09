@@ -1,6 +1,12 @@
 // Préstamos Service - CRUD operations
 
 import { Prestamo, PlanPagos, DestinoCapital, Garantia } from '../types/prestamos';
+import {
+  anotarValidado,
+  needsPlanRegeneration,
+  olvidarValidado,
+  planYaValidado,
+} from './prestamos/planVigente';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { conservarPunteo } from './prestamos/cuadro';
 import { initDB } from './db';
@@ -378,10 +384,17 @@ export class PrestamosService {
       } catch (error) {
         console.error(`[PRESTAMOS] Failed to regenerate amortization schedule for loan ${id}:`, error);
       }
-    } else {
-      // Just clear in-memory cache; persisted plan in IndexedDB remains valid
+    } else if (updates.planPagos !== undefined) {
+      // El cuadro llega en el propio update · lo de memoria ya no vale.
       this.planesGenerados.delete(id);
     }
+    // Y si no, el cuadro en memoria SIGUE VALIENDO, así que se queda.
+    //
+    // Antes se borraba siempre, con el comentario «persisted plan remains
+    // valid» al lado — que es justo la razón por la que no había que borrarlo.
+    // Como `autoMarcarCuotasPagadas` pasa por aquí al abrir la pantalla, la
+    // caché se vaciaba entera y la lectura siguiente revalidaba cada cuadro
+    // desde cero.
 
     return prestamos[index];
   }
@@ -431,102 +444,6 @@ export class PrestamosService {
     );
   }
 
-  private needsPlanRegeneration(prestamo: Prestamo, plan: PlanPagos): boolean {
-    if (!plan.periodos || plan.periodos.length === 0) return true;
-
-    const customPlanSource = plan.metadata?.source;
-    const isCancelledLoan = prestamo.activo === false || prestamo.estado === 'cancelado';
-    const lastPeriod = plan.periodos[plan.periodos.length - 1];
-
-    if (isCancelledLoan) {
-      const finalPrincipalCentimos = Math.round((lastPeriod?.principalFinal || 0) * 100);
-      if (prestamo.fechaCancelacion && plan.resumen.fechaFinalizacion === prestamo.fechaCancelacion && finalPrincipalCentimos === 0) {
-        return false;
-      }
-    }
-
-    if (customPlanSource === 'loan_settlement') {
-      const amortizadoCentimos = plan.periodos.reduce(
-        (sum, p) => sum + Math.round(p.amortizacion * 100),
-        0,
-      );
-      const principalInicialCentimos = Math.round(prestamo.principalInicial * 100);
-      const finalPrincipalCentimos = Math.round((lastPeriod?.principalFinal || 0) * 100);
-      return amortizadoCentimos !== principalInicialCentimos || finalPrincipalCentimos !== 0;
-    }
-
-    // Aquí había una escotilla para los planes marcados `wizard_v2_generated`:
-    // los escribía el motor del wizard, con su línea 0 de carencia técnica, y
-    // la comparación de abajo —hecha contra el motor legacy, que no la
-    // produce— los daba por inválidos en cada lectura. Con un solo motor la
-    // comparación ya es contra el mismo cuadro que los generó, y la excepción
-    // sobra: mantenerla dejaría fuera del control de coherencia justo a los
-    // préstamos dados de alta por la puerta principal.
-
-    if (this.hasIrregularMonthlyCadence(plan)) return true;
-
-    // Date sequence must match current generation rules exactly.
-    // This catches legacy persisted plans that kept monthly cadence but drifted
-    // from the configured billing day after short months (e.g. day 31 loans).
-    const expectedPlan = prestamosCalculationService.generatePaymentSchedule(prestamo);
-    if (expectedPlan.periodos.length !== plan.periodos.length) {
-      return true;
-    }
-    for (let i = 0; i < plan.periodos.length; i++) {
-      const expected = expectedPlan.periodos[i];
-      const current = plan.periodos[i];
-
-      if (expected.fechaCargo !== current.fechaCargo) {
-        return true;
-      }
-
-      // Keep canonical financial fields synced with current generation rules.
-      // This forces legacy plans (e.g. old first-installment logic) to be refreshed
-      // so Calendario de pagos and Cuadro de amortización stay aligned.
-      const sameCuota = Math.round(expected.cuota * 100) === Math.round(current.cuota * 100);
-      const sameInteres = Math.round(expected.interes * 100) === Math.round(current.interes * 100);
-      const sameAmortizacion = Math.round(expected.amortizacion * 100) === Math.round(current.amortizacion * 100);
-      const samePrincipalFinal = Math.round(expected.principalFinal * 100) === Math.round(current.principalFinal * 100);
-
-      if (!sameCuota || !sameInteres || !sameAmortizacion || !samePrincipalFinal) {
-        return true;
-      }
-
-      if ((expected.esProrrateado ?? false) !== (current.esProrrateado ?? false)) {
-        return true;
-      }
-
-      if ((expected.esSoloIntereses ?? false) !== (current.esSoloIntereses ?? false)) {
-        return true;
-      }
-    }
-
-    // First installment must match explicit first charge date (date-only compare)
-    if (prestamo.fechaPrimerCargo) {
-      const expectedFirst = prestamo.fechaPrimerCargo.slice(0, 10);
-      const currentFirst = plan.periodos[0]?.fechaCargo?.slice(0, 10);
-      if (expectedFirst && currentFirst && expectedFirst !== currentFirst) {
-        return true;
-      }
-    }
-
-    // Principal amortized must match initial principal to the cent
-    const amortizadoCentimos = plan.periodos.reduce(
-      (sum, p) => sum + Math.round(p.amortizacion * 100),
-      0,
-    );
-    const principalInicialCentimos = Math.round(prestamo.principalInicial * 100);
-    if (amortizadoCentimos !== principalInicialCentimos) {
-      return true;
-    }
-
-    const finalPrincipalCentimos = Math.round((plan.periodos[plan.periodos.length - 1]?.principalFinal || 0) * 100);
-    if (finalPrincipalCentimos !== 0) {
-      return true;
-    }
-
-    return false;
-  }
 
   /**
    * Delete loan
@@ -543,25 +460,6 @@ export class PrestamosService {
   }
 
 
-  private getMonthDistance(fromMonth: string, toMonth: string): number {
-    const [fromY, fromM] = fromMonth.split('-').map(Number);
-    const [toY, toM] = toMonth.split('-').map(Number);
-    return (toY - fromY) * 12 + (toM - fromM);
-  }
-
-  private hasIrregularMonthlyCadence(plan: PlanPagos): boolean {
-    if (!plan.periodos || plan.periodos.length < 2) return false;
-
-    for (let i = 1; i < plan.periodos.length; i++) {
-      const prevMonth = plan.periodos[i - 1].fechaCargo.substring(0, 7);
-      const currentMonth = plan.periodos[i].fechaCargo.substring(0, 7);
-      if (this.getMonthDistance(prevMonth, currentMonth) !== 1) {
-        return true;
-      }
-    }
-
-    return false;
-  }
 
   /**
    * Get or generate payment plan for a loan - reads from IndexedDB first
@@ -573,10 +471,14 @@ export class PrestamosService {
     // Check in-memory cache first
     if (this.planesGenerados.has(prestamoId)) {
       const cachedPlan = this.planesGenerados.get(prestamoId)!;
-      if (!this.needsPlanRegeneration(prestamo, cachedPlan)) {
-        console.log(`[PRESTAMOS] Using cached amortization schedule for ${prestamoId}`);
+      // Lo ya validado no se revalida mientras el préstamo no cambie · sin este
+      // sello, un acierto de caché costaba lo mismo que generar el cuadro.
+      if (planYaValidado(prestamo, cachedPlan)) return cachedPlan;
+      if (!needsPlanRegeneration(prestamo, cachedPlan)) {
+        anotarValidado(prestamo, cachedPlan);
         return cachedPlan;
       }
+      olvidarValidado(prestamoId);
 
       console.warn(`[PRESTAMOS] Cached schedule is outdated/inconsistent, regenerating ${prestamoId}`);
       this.planesGenerados.delete(prestamoId);
@@ -587,9 +489,9 @@ export class PrestamosService {
     try {
       const persistedPlan = prestamo.planPagos;
       if (persistedPlan) {
-        if (!this.needsPlanRegeneration(prestamo, persistedPlan)) {
-          console.log(`[PRESTAMOS] Loaded persisted amortization schedule for ${prestamoId} from IndexedDB`);
+        if (!needsPlanRegeneration(prestamo, persistedPlan)) {
           this.planesGenerados.set(prestamoId, persistedPlan);
+          anotarValidado(prestamo, persistedPlan);
           return persistedPlan;
         }
 
@@ -754,14 +656,29 @@ export class PrestamosService {
       }
     }
 
-    // Save plan only if flags changed, but always recalculate cache so that
-    // data created before this fix (where flags were set but cache was not
-    // updated) gets corrected on first load.
     if (changed) {
       await this.savePaymentPlan(prestamoId, plan);
     }
 
-    return this.updatePrestamo(prestamoId, derivarCachePrestamo(plan, prestamo.principalInicial));
+    // Y la caché derivada solo se reescribe si de verdad está mal.
+    //
+    // Aquí ponía «always recalculate cache so that data created before this fix
+    // gets corrected on first load»: una migración de UNA vez cobrada en CADA
+    // carga. Un `db.put` del préstamo entero —con su cuadro de 240 cuotas
+    // dentro— por préstamo, cada vez que se entra en Financiación, aunque no
+    // hubiera cambiado nada. Comparar cuesta tres números; escribir, un viaje a
+    // IndexedDB. Los datos viejos se siguen corrigiendo la primera vez que se
+    // abren, que es cuando la comparación falla.
+    const cache = derivarCachePrestamo(plan, prestamo.principalInicial);
+    if (
+      prestamo.cuotasPagadas === cache.cuotasPagadas &&
+      prestamo.principalVivo === cache.principalVivo &&
+      prestamo.fechaUltimaCuotaPagada === cache.fechaUltimaCuotaPagada
+    ) {
+      return prestamo;
+    }
+
+    return this.updatePrestamo(prestamoId, cache);
   }
 
   /**

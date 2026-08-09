@@ -96,12 +96,20 @@ describe('Enhanced Amortization Schedule Generation', () => {
         nombre: 'Updated Test Loan'
       });
 
-      // Plan should be cleared but not automatically regenerated
       const planAfterUpdate = await prestamosService.getPaymentPlan(loan.id);
-      
-      // Should still have valid plan (new generation time indicates fresh calculation)
+
+      // El caso se llama «should not regenerate» y comprobaba lo contrario:
+      // exigía una `fechaGeneracion` DISTINTA, que es la huella de haberlo
+      // regenerado. Pasaba porque `updatePrestamo` vaciaba la caché en memoria
+      // en toda edición, crítica o no, y la lectura siguiente rehacía el cuadro
+      // entero. Es decir: el caso protegía justo el trabajo de más que el
+      // nombre decía evitar.
+      //
+      // Cambiar el nombre de un préstamo no mueve una sola cuota, así que el
+      // cuadro es el mismo cuadro — y su sello de generación, el mismo sello.
       expect(planAfterUpdate).toBeDefined();
-      expect(planAfterUpdate!.fechaGeneracion).not.toBe(initialGenerationTime);
+      expect(planAfterUpdate!.fechaGeneracion).toBe(initialGenerationTime);
+      expect(planAfterUpdate!.periodos).toHaveLength(initialPlan!.periodos.length);
     });
   });
 
