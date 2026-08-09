@@ -11,7 +11,7 @@
 // proyectando. Esperar a diciembre para decir que se cumple sería que ATLAS
 // desconfiara de su propio dato.
 
-import { segurosDomiciliados, deLaCuenta, delTipo, primaTotal } from '../segurosDomiciliados';
+import { segurosDomiciliados, deLaCuenta, delTipo, primaTotal } from '../gastosDomiciliados';
 import { verificarBonificaciones } from '../verificarBonificaciones';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import type { Bonificacion, ReglaBonificacion } from '../../../types/prestamos';

@@ -19,12 +19,12 @@ import { listarTarjetas } from '../tarjetasService';
 import { cierres } from '../cierreDeMes';
 import { cobrosDeNomina, ingresosDeLaCuenta } from './cobrosDeNomina';
 import { recibosDomiciliados } from './recibosDomiciliados';
-import { segurosDomiciliados } from './segurosDomiciliados';
+import { gastosDomiciliados, segurosDomiciliados } from './gastosDomiciliados';
 import { aportacionesDeTesoreria } from './aportacionesDeTesoreria';
 import { saldoEnElBanco } from './saldoEnElBanco';
 import { idDeCuenta } from './cumplimiento';
 import type { PosicionInversion } from '../../types/inversiones';
-import type { MovimientosQuePrueban } from './verificarBonificaciones';
+import type { MovimientosQuePrueban } from './pruebas';
 
 /**
  * Todo lo que ATLAS puede enseñar como prueba, a día de hoy.
@@ -71,6 +71,9 @@ export async function movimientosQuePrueban(
     // Un seguro se domicilia · la prueba está en los gastos recurrentes, no en
     // un módulo de pólizas que no existe.
     segurosDomiciliados: segurosDomiciliados(compromisos, anio),
+    // Y la alarma, que se prueba igual pero no tiene tipo propio · va con todo
+    // lo demás que se domicilie, y la regla busca la palabra.
+    gastosDomiciliados: gastosDomiciliados(compromisos, anio),
     // Planes y fondos · lo que sale de la cuenta hacia ellos. Es un movimiento
     // de tesorería, no el saldo de una posición ni un store aparte.
     aportacionesDeTesoreria: aportacionesDeTesoreria(eventos),

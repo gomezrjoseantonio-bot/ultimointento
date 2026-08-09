@@ -2,10 +2,14 @@
 // Qué demuestran los movimientos de cada bonificación · VOCABULARIO §6 ter
 // ============================================================================
 //
-// La forma común está en `cumplimiento`. Aquí viven las FUENTES: quién sabe
-// agregar cada tipo de condición. Hoy tres —la tarjeta (§3.6), la nómina y los
-// recibos domiciliados—; lo que queda se prueba con una póliza o un contrato, no
-// con un movimiento, y se dice con todas las letras en vez de darse por bueno.
+// El REPARTO: qué función contesta cada tipo de condición, y la tabla de las
+// que todavía no sabe contestar nadie. La forma de la respuesta está en
+// `cumplimiento`, la de la pregunta en `pruebas`.
+//
+// Aquí viven las condiciones que se prueban con movimientos de la cuenta —la
+// tarjeta (§3.6), la nómina, los recibos, las pólizas y la alarma—. Las de
+// inversión están en `reglasDeInversion`: son otra forma, porque tienen dos
+// pruebas distintas y una de ellas no es un movimiento.
 //
 // Añadir una es quitar su fila de `SIN_FUENTE` y escribir su función. Esa tabla
 // es, literalmente, la lista de lo que falta.
@@ -14,104 +18,17 @@
 // ============================================================================
 
 import type { Bonificacion, ReglaBonificacion } from '../../types/prestamos';
-import type { Tarjeta } from '../../types/tarjetas';
-import type { GastoDeUnPeriodo } from '../gastoPorTarjeta';
 import { gastoDeLaTarjeta } from '../gastoPorTarjeta';
 import type { CobroDeUnMes } from './cobrosDeNomina';
 import { cobrosDeLaCuenta } from './cobrosDeNomina';
-import type { RecibosDeUnMes } from './recibosDomiciliados';
 import { recibosDeLaCuenta } from './recibosDomiciliados';
 import { bonificaHipoteca } from '../tarjetasReglas';
-import type { SeguroDomiciliado } from './segurosDomiciliados';
-import { deLaCuenta, delTipo, primaTotal } from './segurosDomiciliados';
-import type { AportacionDesdeCuenta } from './aportacionesDeTesoreria';
-import { aportadoDesde } from './aportacionesDeTesoreria';
-import type { SaldoEnProducto } from './saldoEnElBanco';
-import { saldoCon } from './saldoEnElBanco';
+import { deLaCuenta, delTipo, primaTotal, queSuenanA } from './gastosDomiciliados';
+import { porAportaciones, porFondos } from './reglasDeInversion';
 import type { Cumplimiento, Ventana } from './cumplimiento';
-import { idDeCuenta, ventanaDeEvaluacion, veredictoDelImporte } from './cumplimiento';
-
-/** Lo que la tesorería puede aportar para probar una condición. */
-export interface MovimientosQuePrueban {
-  tarjetas: Tarjeta[];
-  /** El gasto por tarjeta y periodo · lo que devuelve `gastoPorTarjeta`. */
-  periodosDeTarjeta: GastoDeUnPeriodo[];
-  /** La nómina por cuenta y mes · lo que devuelve `cobrosDeNomina`. */
-  cobrosDeNomina: CobroDeUnMes[];
-  /**
-   * **Todo** lo que entra en una cuenta, mes a mes · `ingresosDeLaCuenta`.
-   *
-   * La otra rama de la condición de ingresos: muchos bancos aceptan «ingresos
-   * recurrentes por importe anual igual o superior a X» sin exigir nómina, y
-   * eso lo cumple quien cobra alquileres. Mirando solo `cobrosDeNomina` esa
-   * rama no se podía cumplir jamás.
-   *
-   * Ausente = no se mira esa rama, y manda la nómina.
-   */
-  ingresosRecurrentes?: CobroDeUnMes[];
-  /** Los recibos por cuenta y mes · lo que devuelve `recibosDomiciliados`. */
-  recibosDomiciliados: RecibosDeUnMes[];
-  /**
-   * Los meses que ya se han cerrado · `YYYY-MM` (§6 quater).
-   *
-   * Es lo que convierte «todavía no consta» en un **no**. Sin esto, un mes sin
-   * la nómina se queda siempre en «no cuenta todavía» y una bonificación no se
-   * puede perder nunca — ni ganarse del todo.
-   *
-   * Ausente = ninguno cerrado, que es como se comportaba antes de existir el
-   * cierre: nada se da por no ocurrido si nadie lo ha dicho.
-   */
-  mesesCerrados?: string[];
-  /**
-   * Las pólizas domiciliadas · lo que devuelve `segurosDomiciliados`.
-   *
-   * Un seguro se domicilia, así que la prueba está aquí y no en un módulo de
-   * pólizas que no existe. Y a diferencia de la nómina, **lo previsto cuenta**:
-   * un compromiso recurrente activo es un contrato dado de alta, no una
-   * esperanza (§6 ter).
-   *
-   * Ausente = ATLAS no sabe de ninguno, que no es lo mismo que no tenerlos.
-   */
-  segurosDomiciliados?: SeguroDomiciliado[];
-  /**
-   * Lo que sale de cada cuenta hacia un plan o un fondo · por año.
-   *
-   * La prueba de las dos condiciones de inversión, y estaba en tesorería desde
-   * el principio: una aportación es un `TreasuryEvent` que sale de su cuenta.
-   *
-   * Ausente = ATLAS no sabe de ninguna, que no es lo mismo que no haberlas.
-   */
-  aportacionesDeTesoreria?: AportacionDesdeCuenta[];
-  /**
-   * Lo que TIENES en fondos y planes de cada banco · la otra rama.
-   *
-   * Un anexo puede pedir aportar o pedir tener, y no es la misma pregunta ni se
-   * prueba en el mismo sitio. Ausente = no se han mirado las posiciones.
-   */
-  saldoEnElBanco?: SaldoEnProducto[];
-  /**
-   * La cuenta de cargo del préstamo · el respaldo de `cuentaExigidaId`.
-   *
-   * El banco bonifica por lo que le entra A ÉL, y la cuenta por la que te cobra
-   * la hipoteca es suya. Pedirla otra vez bonificación a bonificación es
-   * preguntar dos veces lo mismo, y el sitio donde se preguntaba no lo rellena
-   * nadie: un seguro domiciliado en la cuenta correcta salía «sin comprobar ·
-   * no dice en qué cuenta hay que domiciliar la póliza» teniendo ATLAS la
-   * cuenta delante *(Jose · 8 ago 2026)*.
-   *
-   * Sigue mandando `cuentaExigidaId` cuando está: hay anexos que exigen una
-   * cuenta distinta de la del recibo, y eso el préstamo no lo sabe.
-   */
-  cuentaDelPrestamo?: number;
-    /**
-   * De qué entidad es el préstamo que se está comprobando.
-   *
-   * Lo único de aquí que **no sale de la tesorería**: sale del propio préstamo,
-   * y quien llama lo tiene. Hace falta para la condición de plan, que exige que
-   * sea de ese banco. Sin ella no se puede responder, y se dice.
-   */
-  entidad?: string;
-}
+import { ventanaDeEvaluacion, veredictoDelImporte } from './cumplimiento';
+import type { MovimientosQuePrueban } from './pruebas';
+import { centimos, cuentaDondeMira, noVerificable } from './pruebas';
 
 /**
  * Lo que todavía no se puede mirar, y por qué · §6 ter.
@@ -132,174 +49,13 @@ const SIN_FUENTE: Record<
     | 'SEGURO_VIDA'
     | 'PLAN_PENSIONES'
     | 'FONDOS'
+    | 'ALARMA'
   >,
   string
 > = {
   CERTIFICADO_ENERGETICO: 'la letra la dice el certificado del inmueble, no la tesorería',
-  ALARMA: 'la alarma se prueba con su contrato, no con un movimiento',
   OTRA: 'una condición escrita a mano no dice qué hay que mirar',
 };
-
-/** Redondeo a céntimos · restar dos sumas de euros deja 339.99999999999994. */
-const centimos = (n: number): number => Math.round(n * 100) / 100;
-
-/**
- * En qué cuenta hay que mirar · la que exige la bonificación, o la del préstamo.
- *
- * El respaldo importa más de lo que parece: nadie rellena `cuentaExigidaId`, y
- * sin él un seguro domiciliado en la cuenta correcta salía «sin comprobar»
- * teniendo ATLAS la cuenta del préstamo delante. El banco bonifica por lo que
- * le entra a ÉL, y la cuenta por la que te cobra la hipoteca es suya.
- *
- * Las dos pasan por `idDeCuenta`, que es donde vive lo de que `Number('')` sea
- * cero: un id vacío no puede colarse por ninguna de las dos puertas.
- */
-function cuentaDondeMira(b: Bonificacion, movimientos: MovimientosQuePrueban): number | null {
-  return idDeCuenta(b.cuentaExigidaId) ?? idDeCuenta(movimientos.cuentaDelPrestamo);
-}
-
-const noVerificable = (b: Bonificacion, motivo: string): Cumplimiento => ({
-  bonificacionId: b.id,
-  nombre: b.nombre,
-  veredicto: 'no_verificable',
-  motivo,
-});
-
-/**
- * La condición de APORTACIÓN A UN PLAN · §6 ter, la quinta forma.
- *
- * `SIN_FUENTE` decía «la aportación al plan todavía no se sigue en tesorería»,
- * y era verdad a medias: no se sigue en tesorería porque no es un movimiento —
- * se sigue en el store de aportaciones, que lleva cada una con su ejercicio
- * fiscal. Lo que faltaba no era el dato, era la pregunta.
- *
- * La gestora importa tanto como el importe: el anexo pide un plan SUYO, no uno
- * cualquiera. Sin saber de qué entidad es el préstamo no se puede responder, y
- * eso se dice — es la tercera respuesta, no un no.
- *
- * Sin cifra pedida (`aportacionAnual` ausente) la condición es «tenerlo
- * contratado», y entonces basta con que exista un plan de esa gestora.
- */
-function porAportaciones(
-  b: Bonificacion,
-  regla: Extract<ReglaBonificacion, { tipo: 'PLAN_PENSIONES' }>,
-  ventana: Ventana,
-  movimientos: MovimientosQuePrueban
-): Cumplimiento {
-  return porElProducto(b, ventana, movimientos, regla, 'plan');
-}
-
-/**
- * La condición de FONDOS · la sexta forma, y la que no se miraba.
- *
- * Estaba en `SIN_FUENTE` con la excusa «el saldo en fondos se prueba con la
- * posición, no con un movimiento». La mitad era verdad —el saldo sí— y de ahí
- * salía la conclusión falsa: que por eso no se podía comprobar. Las posiciones
- * están, y lo aportado también.
- */
-function porFondos(
-  b: Bonificacion,
-  regla: Extract<ReglaBonificacion, { tipo: 'FONDOS' }>,
-  ventana: Ventana,
-  movimientos: MovimientosQuePrueban
-): Cumplimiento {
-  return porElProducto(b, ventana, movimientos, regla, 'fondo');
-}
-
-/**
- * Un plan o un fondo del banco · **por lo que le aportas o por lo que tienes**.
- *
- * *«Es aportación en este caso, pero habrá otros que será tener X en el fondo o
- * en el plan de pensiones del banco»* *(Jose · 9 ago 2026)*. Dos ramas y basta
- * con una, igual que la nómina admite «X al mes o Y al año».
- *
- * Y se prueban en sitios distintos, que es lo que obliga a distinguirlas:
- *
- *   · lo APORTADO sale de tesorería · lo que se va de su cuenta al producto;
- *   · lo que TIENES sale de la posición · lo que vale hoy.
- *
- * Medir una con la otra daría un veredicto sobre dinero que no se corresponde
- * con la condición: un fondo sin aportaciones desde hace años puede tener
- * 40.000 € dentro, y quien acaba de meter 30.000 € todavía no los tiene si el
- * mercado ha caído.
- */
-function porElProducto(
-  b: Bonificacion,
-  ventana: Ventana,
-  movimientos: MovimientosQuePrueban,
-  regla: { aportacionAnual?: number; saldoMinimo?: number },
-  que: 'plan' | 'fondo'
-): Cumplimiento {
-  const base = { bonificacionId: b.id, nombre: b.nombre, ventana };
-  const cifra = (n: number | undefined): n is number => Number.isFinite(n) && (n as number) > 0;
-
-  // ── Rama SALDO · lo que tienes con ellos ──────────────────────────────────
-  const saldo = movimientos.saldoEnElBanco
-    ? saldoCon(movimientos.saldoEnElBanco, movimientos.entidad, que)
-    : null;
-  if (cifra(regla.saldoMinimo) && saldo != null) {
-    const veredicto = veredictoDelImporte(saldo, regla.saldoMinimo);
-    // Basta con una · si el saldo llega, no hace falta mirar lo aportado.
-    if (veredicto === 'cumple') {
-      return { ...base, veredicto, medido: saldo, exigido: regla.saldoMinimo };
-    }
-  }
-
-  // ── Rama APORTACIÓN · lo que le entra ─────────────────────────────────────
-  //
-  // Cuenta lo que ha SALIDO, no lo apuntado: una transferencia al plan la haces
-  // cuando quieres, así que una prevista no demuestra nada (§3.5, la misma
-  // regla de la tarjeta). Lo que falta por salir se enseña aparte, que es como
-  // se distingue «todavía no» de «no».
-  const cuentaId = cuentaDondeMira(b, movimientos);
-  const delAnio =
-    movimientos.aportacionesDeTesoreria && cuentaId != null
-      ? aportadoDesde(
-          movimientos.aportacionesDeTesoreria,
-          cuentaId,
-          Number(ventana.hasta.slice(0, 4))
-        )
-      : undefined;
-  const aportado =
-    movimientos.aportacionesDeTesoreria && cuentaId != null ? (delAnio?.salido ?? 0) : null;
-  const porSalir = centimos((delAnio?.importe ?? 0) - (delAnio?.salido ?? 0));
-
-  if (cifra(regla.aportacionAnual)) {
-    if (aportado == null) {
-      return noVerificable(b, `no hay movimientos donde mirar la aportación al ${que}`);
-    }
-    return {
-      ...base,
-      veredicto: veredictoDelImporte(aportado, regla.aportacionAnual),
-      medido: aportado,
-      exigido: regla.aportacionAnual,
-      ...(porSalir > 0 ? { sinCobrar: porSalir } : {}),
-    };
-  }
-
-  // Pedía saldo y no hay posiciones que mirar · no se afirma nada.
-  if (cifra(regla.saldoMinimo)) {
-    return saldo == null
-      ? noVerificable(b, `no consta ninguna posición en ${que}s de este banco`)
-      : { ...base, veredicto: veredictoDelImporte(saldo, regla.saldoMinimo), medido: saldo, exigido: regla.saldoMinimo };
-  }
-
-  // Sin cifra ninguna, la condición es TENERLO · con que le entre algo o que
-  // conste una posición suya, se cumple.
-  if (aportado == null && saldo == null) {
-    return noVerificable(b, `no consta ningún ${que} de este banco`);
-  }
-  if ((aportado ?? 0) > 0 || (saldo ?? 0) > 0) {
-    return { ...base, veredicto: 'cumple', motivo: `tienes un ${que} de este banco` };
-  }
-  // Nada salido todavía y algo previsto · no es un no, es un todavía no. Decir
-  // que no lo tienes cuando la aportación está puesta para el mes que viene
-  // manda a contratar otro producto que ya está contratado.
-  if (porSalir > 0) {
-    return noVerificable(b, `la aportación al ${que} está prevista, pero todavía no ha salido`);
-  }
-  return { ...base, veredicto: 'no_cumple', motivo: `no consta ningún ${que} suyo` };
-}
 
 /**
  * La condición de tarjeta · §3.6.
@@ -497,6 +253,65 @@ function porSeguros(
       suyas.length === 1
         ? `${suyas[0].alias} · domiciliado en esa cuenta`
         : `${suyas.length} pólizas domiciliadas en esa cuenta`,
+  };
+}
+
+/**
+ * La condición de ALARMA · la séptima forma.
+ *
+ * Aquí ponía «la alarma se prueba con su contrato, no con un movimiento», y era
+ * el mismo error que con los seguros: *«la alarma es un gasto recurrente que se
+ * puede crear siempre asociada a la cuenta»* *(Jose · 8 ago 2026)*. La prueba
+ * está donde está la del seguro — en el recibo que le pasas al banco.
+ *
+ * La diferencia es que el modelo no la tipifica: no hay `TipoCompromiso`
+ * `'alarma'`, así que se reconoce por la palabra, en el subtipo o en el alias.
+ * Y de ahí sale la tercera respuesta, que aquí es la importante: con recibos en
+ * esa cuenta y ninguno que diga ser la alarma, ATLAS **no sabe** si la tienes
+ * dada de alta con otro nombre. Un «no cumples» ahí mandaría a contratar una
+ * alarma que ya está contratada.
+ */
+function porAlarma(
+  b: Bonificacion,
+  ventana: Ventana,
+  movimientos: MovimientosQuePrueban
+): Cumplimiento {
+  const base = { bonificacionId: b.id, nombre: b.nombre, ventana };
+
+  if (!movimientos.gastosDomiciliados) {
+    return noVerificable(b, 'no hay gastos recurrentes dados de alta donde mirar la alarma');
+  }
+
+  const cuentaId = cuentaDondeMira(b, movimientos);
+  if (cuentaId == null) {
+    return noVerificable(b, 'no dice en qué cuenta hay que domiciliar la alarma');
+  }
+
+  const enLaCuenta = deLaCuenta(movimientos.gastosDomiciliados, cuentaId);
+  const alarmas = queSuenanA(enLaCuenta, 'alarma');
+
+  if (alarmas.length > 0) {
+    return {
+      ...base,
+      veredicto: 'cumple',
+      medido: primaTotal(alarmas),
+      motivo: `${alarmas[0].alias} · domiciliada en esa cuenta`,
+    };
+  }
+
+  if (enLaCuenta.length > 0) {
+    return noVerificable(
+      b,
+      `hay ${enLaCuenta.length} ${enLaCuenta.length === 1 ? 'recibo domiciliado' : 'recibos domiciliados'} en esa cuenta, pero ninguno dice ser la alarma`
+    );
+  }
+
+  // Sin un solo recibo en esa cuenta el silencio sí es un «no»: la alarma se
+  // paga todos los meses, y si no se carga ahí no le entra a este banco.
+  return {
+    ...base,
+    veredicto: 'no_cumple',
+    motivo: 'no hay ningún recibo domiciliado en esa cuenta',
   };
 }
 
@@ -736,6 +551,7 @@ function verificarUna(
   if (b.regla.tipo === 'TARJETA') return porTarjeta(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'NOMINA') return porNomina(b, b.regla, ventana, movimientos);
   if (b.regla.tipo === 'RECIBOS') return porRecibos(b, b.regla, ventana, movimientos);
+  if (b.regla.tipo === 'ALARMA') return porAlarma(b, ventana, movimientos);
   if (
     b.regla.tipo === 'SEGUROS' ||
     b.regla.tipo === 'SEGURO_HOGAR' ||

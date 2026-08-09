@@ -6,8 +6,8 @@
 // sabe mirar.
 
 import { verificarBonificaciones } from '../verificarBonificaciones';
-import type { SeguroDomiciliado } from '../segurosDomiciliados';
-import type { MovimientosQuePrueban } from '../verificarBonificaciones';
+import type { GastoDomiciliado } from '../gastosDomiciliados';
+import type { MovimientosQuePrueban } from '../pruebas';
 import type { GastoDeUnPeriodo } from '../../gastoPorTarjeta';
 import type { CobroDeUnMes } from '../cobrosDeNomina';
 import type { RecibosDeUnMes } from '../recibosDomiciliados';
@@ -738,7 +738,7 @@ describe('ingresos recurrentes · la rama que no exige nómina', () => {
 // préstamo delante *(Jose · 8 ago 2026)*. El banco bonifica por lo que le entra
 // a ÉL, y la cuenta por la que te cobra la hipoteca es suya.
 describe('la cuenta del préstamo hace de respaldo', () => {
-  const poliza = (cuentaId: number): SeguroDomiciliado => ({
+  const poliza = (cuentaId: number): GastoDomiciliado => ({
     cuentaId,
     alias: 'Seguro hogar',
     subtipo: 'hogar',
@@ -976,5 +976,81 @@ describe('lo que TIENES en el producto del banco', () => {
 
     expect(r.veredicto).toBe('cumple');
     expect(r.medido).toBe(3000);
+  });
+});
+
+// ── La alarma · «un gasto recurrente asociado a la cuenta» ──────────────────
+//
+// «La alarma es un gasto recurrente que se puede crear siempre asociada a la
+// cuenta» *(Jose · 8 ago 2026)*. Estaba en la lista de lo que no se sabe mirar
+// con la excusa de que «se prueba con su contrato», que era el mismo error que
+// se cometió con los seguros.
+describe('la condición de alarma', () => {
+  const recibo = (alias: string, cuentaId = 3, subtipo?: string): GastoDomiciliado => ({
+    cuentaId,
+    alias,
+    subtipo,
+    primaAnual: 420,
+  });
+  const conRecibos = (gastos: GastoDomiciliado[]) => ({
+    ...con([tarjeta()], []),
+    gastosDomiciliados: gastos,
+    cuentaDelPrestamo: 3,
+  });
+
+  it('una alarma domiciliada en su cuenta cumple', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'ALARMA', activo: true } }), conRecibos([
+      recibo('Alarma Securitas'),
+    ]));
+
+    expect(r.veredicto).toBe('cumple');
+    expect(r.motivo).toContain('Alarma Securitas');
+  });
+
+  it('la reconoce por el subtipo aunque el alias sea la marca', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'ALARMA', activo: true } }),
+      conRecibos([recibo('Securitas Direct', 3, 'alarma')])
+    );
+
+    expect(r.veredicto).toBe('cumple');
+  });
+
+  // Igual que la tarjeta de fuera no cuenta · lo que se carga en otro banco no
+  // le entra a este.
+  it('domiciliada en otra cuenta no le entra a este banco', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'ALARMA', activo: true } }),
+      conRecibos([recibo('Alarma Securitas', 9)])
+    );
+
+    expect(r.veredicto).toBe('no_cumple');
+  });
+
+  // La tercera respuesta, y aquí es la que importa: el modelo no tipifica las
+  // alarmas, así que un recibo llamado solo «Securitas» no lo reconoce nadie.
+  // Decir «no cumples» mandaría a contratar una alarma que ya está contratada.
+  it('con recibos en la cuenta y ninguno que lo diga, no se afirma que no', () => {
+    const r = unaSola(
+      bonif({ regla: { tipo: 'ALARMA', activo: true } }),
+      conRecibos([recibo('Securitas'), recibo('Netflix')])
+    );
+
+    expect(r.veredicto).toBe('no_verificable');
+    expect(r.motivo).toContain('ninguno dice ser la alarma');
+  });
+
+  // Sin un solo recibo en esa cuenta sí es un no · la alarma se paga todos los
+  // meses, y si no se carga ahí no le entra a este banco.
+  it('sin ningún recibo en esa cuenta, es que no', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'ALARMA', activo: true } }), conRecibos([]));
+
+    expect(r.veredicto).toBe('no_cumple');
+  });
+
+  it('y sin gastos recurrentes dados de alta no se afirma nada', () => {
+    const r = unaSola(bonif({ regla: { tipo: 'ALARMA', activo: true } }), con([tarjeta()], []));
+
+    expect(r.veredicto).toBe('no_verificable');
   });
 });
