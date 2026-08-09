@@ -660,9 +660,12 @@
    del banco: son dos preguntas distintas y la ficha tiene que poder decir las
    dos a la vez, sobre todo cuando no coinciden.
 
-   Con los tokens de la guía y sin hex a pelo · `--atlas-v5-neg` ya es el rojo
-   de «alerta · fallado» y `--atlas-v5-neg-wash` su fondo, así que escribir el
-   color otra vez sería una cuarta copia del mismo rojo. */
+   En ÁMBAR, no en rojo *(Jose · 9 ago 2026: «usas el rojo, que está
+   prohibido»)*. Y no es solo la regla de la casa: el rojo de la guía es
+   «alerta · fallado», y una bonificación que vas a perder en la próxima
+   revisión no ha fallado nada todavía — es exactamente lo que `--atlas-v5-warn`
+   nombra, «advertencia · ámbar · en-riesgo». Pintarla de rojo decía que ya
+   estaba perdida, cuando es justo lo que aún estás a tiempo de arreglar. */
 .bonifAviso,
 .bonifDuda,
 .bonifLogro {
@@ -675,8 +678,8 @@
   white-space: nowrap;
 }
 .bonifAviso {
-  color: var(--atlas-v5-neg);
-  background: var(--atlas-v5-neg-wash);
+  color: var(--atlas-v5-warn);
+  background: var(--atlas-v5-warn-wash);
 }
 .bonifDuda {
   color: var(--atlas-v5-ink-4);

@@ -42,10 +42,14 @@
   border-color: var(--atlas-v5-pos-border);
 }
 
+/* «La pierdo» en ÁMBAR y no en rojo. Contestar que el banco te la quitó no es
+   un error del usuario ni un fallo del sistema: es un dato que nos está dando,
+   y el que más cuesta dar. Teñirlo de alerta hace que el botón correcto
+   parezca el botón malo. */
 .revNoOn {
-  color: var(--atlas-v5-neg);
-  background: var(--atlas-v5-neg-wash);
-  border-color: var(--atlas-v5-neg);
+  color: var(--atlas-v5-warn);
+  background: var(--atlas-v5-warn-wash);
+  border-color: var(--atlas-v5-warn-border);
 }
 
 .revPie {
