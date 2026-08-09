@@ -8,6 +8,7 @@ import { gastosInmuebleService } from '../../../../services/gastosInmuebleServic
 import { mejorasInmuebleService } from '../../../../services/mejorasInmuebleService';
 import { mueblesInmuebleService } from '../../../../services/mueblesInmuebleService';
 import { valoracionesService } from '../../../../services/valoracionesService';
+import { ejercicioFiscalService } from '../../../../services/ejercicioFiscalService';
 import { prestamosService } from '../../../../services/prestamosService';
 import type { InmueblesOutletContext } from '../../InmueblesContext';
 import DetallePage from '../DetallePage';
@@ -42,6 +43,12 @@ jest.mock('../../../../services/mueblesInmuebleService', () => ({
 jest.mock('../../../../services/valoracionesService', () => ({
   valoracionesService: {
     getEvolucionActivo: jest.fn().mockResolvedValue([]),
+  },
+}));
+
+jest.mock('../../../../services/ejercicioFiscalService', () => ({
+  ejercicioFiscalService: {
+    getAllEjercicios: jest.fn().mockResolvedValue([]),
   },
 }));
 
@@ -104,6 +111,7 @@ beforeEach(() => {
   jest.mocked(mejorasInmuebleService.getPorInmueble).mockResolvedValue([]);
   jest.mocked(mueblesInmuebleService.getPorInmueble).mockResolvedValue([]);
   jest.mocked(valoracionesService.getEvolucionActivo).mockResolvedValue([]);
+  jest.mocked(ejercicioFiscalService.getAllEjercicios).mockResolvedValue([]);
   jest.mocked(prestamosService.getAllPrestamos).mockResolvedValue([]);
   jest.mocked(prestamosService.getPaymentPlan).mockResolvedValue(null);
 });

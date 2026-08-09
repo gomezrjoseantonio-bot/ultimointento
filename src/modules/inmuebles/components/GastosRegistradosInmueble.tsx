@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import type { GastoInmueble, MejoraInmueble, MuebleInmueble } from '../../../services/db';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import { MoneyValue } from '../../../design-system/v5';
@@ -6,6 +6,7 @@ import {
   construirListaVisualGastosInmueble,
   type GastoInmuebleVisual,
 } from '../adapters/gastosInmuebleAdapter';
+import type { RegistroInmuebleEditable } from './EditarRegistroInmuebleModal';
 import styles from './GastosRegistradosInmueble.module.css';
 
 export interface GastosRegistradosInmuebleProps {
@@ -17,6 +18,15 @@ export interface GastosRegistradosInmuebleProps {
   mobiliario?: readonly MuebleInmueble[];
   /** Callback opcional para redirigir al usuario a la vista Recurrentes. */
   onIrARecurrentes?: () => void;
+  /**
+   * Años fiscales bloqueados (declarado/prescrito). Las filas de esos años se
+   * muestran en solo lectura, sin botones de editar/borrar.
+   */
+  ejerciciosBloqueados?: readonly number[];
+  /** Abre la edición del registro. Sin este callback la vista es de consulta. */
+  onEditar?: (registro: RegistroInmuebleEditable) => void;
+  /** Solicita el borrado del registro. Sin este callback no se ofrece borrar. */
+  onBorrar?: (registro: RegistroInmuebleEditable) => void;
 }
 
 type OrigenRegistrado = 'real' | 'mejora' | 'mobiliario';
@@ -33,6 +43,24 @@ const ORIGEN_CLASS: Record<OrigenRegistrado, string> = {
   mobiliario: styles.origenMobiliario,
 };
 
+/**
+ * `true` si el registro no debe poder editarse ni borrarse: pertenece a un
+ * ejercicio fiscal declarado/prescrito, procede del XML de la AEAT, o el propio
+ * gasto ya está marcado como `declarado`.
+ */
+export function registroInmuebleBloqueado(
+  ref: RegistroInmuebleEditable,
+  ejerciciosBloqueados: readonly number[],
+): boolean {
+  const ejercicio = ref.registro.ejercicio;
+  if (ejercicio !== undefined && ejerciciosBloqueados.includes(ejercicio)) return true;
+  if (ref.tipo === 'real') {
+    if (ref.registro.origen === 'xml_aeat') return true;
+    if (ref.registro.estado === 'declarado') return true;
+  }
+  return false;
+}
+
 function formatFecha(fecha: string | undefined | null): string {
   if (!fecha) return '—';
   const d = new Date(fecha);
@@ -43,9 +71,10 @@ function formatFecha(fecha: string | undefined | null): string {
 interface SeccionProps {
   label: string;
   items: GastoInmuebleVisual[];
+  renderAcciones?: (item: GastoInmuebleVisual) => React.ReactNode;
 }
 
-function Seccion({ label, items }: SeccionProps): React.ReactElement | null {
+function Seccion({ label, items, renderAcciones }: SeccionProps): React.ReactElement | null {
   if (items.length === 0) return null;
   return (
     <section className={styles.seccion} aria-label={label}>
@@ -58,6 +87,7 @@ function Seccion({ label, items }: SeccionProps): React.ReactElement | null {
       <ul className={styles.lista}>
         {items.map((item) => {
           const origen = item.origen as OrigenRegistrado;
+          const acciones = renderAcciones?.(item);
           return (
             <li key={item.idVisual} className={styles.fila}>
               <span
@@ -75,6 +105,7 @@ function Seccion({ label, items }: SeccionProps): React.ReactElement | null {
                   <MoneyValue value={item.importeReal} />
                 </span>
               )}
+              {acciones}
             </li>
           );
         })}
@@ -90,6 +121,9 @@ const GastosRegistradosInmueble: React.FC<GastosRegistradosInmuebleProps> = ({
   mejoras = [],
   mobiliario = [],
   onIrARecurrentes,
+  ejerciciosBloqueados = [],
+  onEditar,
+  onBorrar,
 }) => {
   const lista = useMemo(
     () =>
@@ -102,6 +136,85 @@ const GastosRegistradosInmueble: React.FC<GastosRegistradosInmuebleProps> = ({
         mobiliario,
       }),
     [inmuebleId, gastosReales, mejoras, mobiliario],
+  );
+
+  // Mapas id → entidad para resolver la fila visual a su registro editable.
+  const gastoPorId = useMemo(
+    () => new Map(gastosReales.filter((g) => g.id != null).map((g) => [g.id as number, g])),
+    [gastosReales],
+  );
+  const mejoraPorId = useMemo(
+    () => new Map(mejoras.filter((m) => m.id != null).map((m) => [m.id as number, m])),
+    [mejoras],
+  );
+  const mueblePorId = useMemo(
+    () => new Map(mobiliario.filter((m) => m.id != null).map((m) => [m.id as number, m])),
+    [mobiliario],
+  );
+
+  const construirRef = useCallback(
+    (item: GastoInmuebleVisual): RegistroInmuebleEditable | null => {
+      if (item.registroId == null) return null;
+      if (item.origen === 'real') {
+        const g = gastoPorId.get(item.registroId);
+        return g ? { tipo: 'real', registro: g } : null;
+      }
+      if (item.origen === 'mejora') {
+        const m = mejoraPorId.get(item.registroId);
+        return m ? { tipo: 'mejora', registro: m } : null;
+      }
+      if (item.origen === 'mobiliario') {
+        const mu = mueblePorId.get(item.registroId);
+        return mu ? { tipo: 'mobiliario', registro: mu } : null;
+      }
+      return null;
+    },
+    [gastoPorId, mejoraPorId, mueblePorId],
+  );
+
+  const puedeOperar = Boolean(onEditar || onBorrar);
+
+  const renderAcciones = useCallback(
+    (item: GastoInmuebleVisual): React.ReactNode => {
+      if (!puedeOperar) return null;
+      const ref = construirRef(item);
+      if (!ref) return null;
+      if (registroInmuebleBloqueado(ref, ejerciciosBloqueados)) {
+        return (
+          <span
+            className={styles.filaBloqueada}
+            title="Ejercicio declarado o registro de solo lectura"
+          >
+            Bloqueado
+          </span>
+        );
+      }
+      return (
+        <span className={styles.filaAcciones}>
+          {onEditar && (
+            <button
+              type="button"
+              className={styles.accionBtn}
+              onClick={() => onEditar(ref)}
+              aria-label={`Editar ${item.descripcion}`}
+            >
+              Editar
+            </button>
+          )}
+          {onBorrar && (
+            <button
+              type="button"
+              className={`${styles.accionBtn} ${styles.accionBorrar}`}
+              onClick={() => onBorrar(ref)}
+              aria-label={`Borrar ${item.descripcion}`}
+            >
+              Borrar
+            </button>
+          )}
+        </span>
+      );
+    },
+    [puedeOperar, construirRef, ejerciciosBloqueados, onEditar, onBorrar],
   );
 
   const filtrada = useMemo(() => {
@@ -162,10 +275,10 @@ const GastosRegistradosInmueble: React.FC<GastosRegistradosInmuebleProps> = ({
           <span>Ejercicio {ejercicio}</span>
         </div>
       )}
-      <Seccion label="Gastos operativos · mantener" items={gastosOpMantener} />
-      <Seccion label="Gastos operativos · explotar" items={gastosOpExplotar} />
-      <Seccion label="Mejoras" items={mejoraItems} />
-      <Seccion label="Mobiliario" items={mobiliarioItems} />
+      <Seccion label="Gastos operativos · mantener" items={gastosOpMantener} renderAcciones={renderAcciones} />
+      <Seccion label="Gastos operativos · explotar" items={gastosOpExplotar} renderAcciones={renderAcciones} />
+      <Seccion label="Mejoras" items={mejoraItems} renderAcciones={renderAcciones} />
+      <Seccion label="Mobiliario" items={mobiliarioItems} renderAcciones={renderAcciones} />
     </div>
   );
 };

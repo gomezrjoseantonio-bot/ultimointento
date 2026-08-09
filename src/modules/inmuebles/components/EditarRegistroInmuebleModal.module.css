@@ -1,0 +1,128 @@
+/* EditarRegistroInmuebleModal · modal de edición de gasto/mejora/mobiliario */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--atlas-v5-ink) 45%, transparent);
+}
+
+.panel {
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  box-shadow: var(--atlas-v5-shadow-modal);
+  font-family: var(--atlas-v5-font-ui);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: 18px 20px 0;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+.body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.input {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 13.5px;
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  width: 100%;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--atlas-v5-gold);
+  box-shadow: 0 0 0 3px var(--atlas-v5-gold-wash);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--atlas-v5-line-3);
+}
+
+.btnGhost {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-3);
+  background: transparent;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 9px 16px;
+  cursor: pointer;
+}
+
+.btnGhost:hover:not(:disabled) {
+  background: var(--atlas-v5-bg);
+}
+
+.btnPrimary {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-gold-ink);
+  background: var(--atlas-v5-gold-wash);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-radius: 8px;
+  padding: 9px 16px;
+  cursor: pointer;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--atlas-v5-gold-wash-2);
+}
+
+.btnGhost:disabled,
+.btnPrimary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
