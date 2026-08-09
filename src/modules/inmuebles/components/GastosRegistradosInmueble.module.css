@@ -1,0 +1,151 @@
+/* GastosRegistradosInmueble · listado de gastos reales, mejoras y mobiliario */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.seccionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.seccionLabel {
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--atlas-v5-ink-3);
+}
+
+.seccionBadge {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-bg);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--atlas-v5-ink);
+}
+
+.filaDescripcion {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filaFecha {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.filaImporte {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--atlas-v5-fw-semibold);
+  white-space: nowrap;
+}
+
+.filaOrigen {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.origenReal {
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line);
+}
+
+.origenMejora {
+  background: color-mix(in srgb, var(--atlas-v5-pos) 12%, transparent);
+  color: var(--atlas-v5-pos);
+  border: 1px solid color-mix(in srgb, var(--atlas-v5-pos) 25%, transparent);
+}
+
+.origenMobiliario {
+  background: color-mix(in srgb, var(--atlas-v5-brand) 10%, transparent);
+  color: var(--atlas-v5-brand);
+  border: 1px solid color-mix(in srgb, var(--atlas-v5-brand) 22%, transparent);
+}
+
+/* ── Estado vacío ── */
+
+.vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 16px;
+  text-align: center;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+}
+
+.vacioTexto {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.vacioCta {
+  font-size: 12.5px;
+  color: var(--atlas-v5-brand);
+  background: transparent;
+  border: 1px solid var(--atlas-v5-brand);
+  border-radius: 6px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-family: var(--atlas-v5-font-ui);
+  transition: background 0.15s;
+}
+
+.vacioCta:hover {
+  background: color-mix(in srgb, var(--atlas-v5-brand) 8%, transparent);
+}
+
+/* ── Ejercicio header ── */
+
+.ejercicioRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  margin-bottom: 4px;
+}
