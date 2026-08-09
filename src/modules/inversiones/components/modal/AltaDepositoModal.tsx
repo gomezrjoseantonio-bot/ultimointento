@@ -317,7 +317,9 @@ const AltaDepositoModal: React.FC<AltaDepositoModalProps> = ({ onSave, onClose }
               />
               <ModalAtlasPreviewRow k="Neto" v={formatCurrency(calc.neto)} variant="pos" />
             </ModalAtlasPreviewBlock>
-            <ModalAtlasPreviewBanner variant={cubrirFGD ? 'pos' : 'warn'}>
+            {/* «cubierto» es un estado de cobertura, no un flujo · verde queda
+                reservado a ingreso/gasto/pérdida. Oro cuando cubre · warn si no. */}
+            <ModalAtlasPreviewBanner variant={cubrirFGD ? 'gold' : 'warn'}>
               <strong>FGD</strong> · cobertura hasta 100.000 € por
               titular y entidad.{' '}
               {cubrirFGD

@@ -9,7 +9,7 @@ import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import SelectorNuevaPosicion, { type Familia } from '../SelectorNuevaPosicion';
 
 // Helper de testing · refleja la ruta actual en el DOM para verificar
-// navegación tras click en importer del footer.
+// navegación tras click en la tarjeta "Importar cartera" del selector.
 const LocationProbe: React.FC = () => {
   const loc = useLocation();
   return <span data-testid="location-probe">{loc.pathname}</span>;
@@ -89,10 +89,11 @@ describe('SelectorNuevaPosicion · 6 familias', () => {
     },
   );
 
-  it('renderiza 2 hints en el footer (Indexa + CSV)', () => {
+  it('renderiza la tarjeta "Importar cartera" dentro del selector (Indexa + CSV)', () => {
     renderSelector();
-    expect(screen.getByText(/Indexa Capital/)).toBeInTheDocument();
-    expect(screen.getByText(/Aportaciones CSV/)).toBeInTheDocument();
+    expect(screen.getByText('Importar cartera entera')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Indexa Capital/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^CSV$/ })).toBeInTheDocument();
   });
 
   it('click en "Indexa Capital" cierra el selector y navega al importer', () => {
@@ -104,9 +105,9 @@ describe('SelectorNuevaPosicion · 6 familias', () => {
     );
   });
 
-  it('click en "Aportaciones CSV" cierra el selector y navega al importer', () => {
+  it('click en "CSV" cierra el selector y navega al importer de aportaciones', () => {
     const { onClose } = renderSelector();
-    fireEvent.click(screen.getByRole('button', { name: /Aportaciones CSV/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^CSV$/ }));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('location-probe')).toHaveTextContent(
       '/inversiones/importar-aportaciones',

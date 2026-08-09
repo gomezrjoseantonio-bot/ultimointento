@@ -25,7 +25,7 @@
   background: var(--atlas-v5-card);
   border-radius: 14px;
   width: 100%;
-  max-width: 1020px;
+  max-width: 940px;
   max-height: calc(100vh - 60px);
   overflow: hidden;
   display: flex;
@@ -44,8 +44,10 @@
 }
 
 /* ─── Header navy ─── */
+/* REGLAS V5 · navy de contenido `--brand` para héroes/paneles/modales ·
+   `--brand-ink` queda reservado a sidebar y panel oscuro de gráfica. */
 .header {
-  background: var(--atlas-v5-brand-ink);
+  background: var(--atlas-v5-brand);
   color: var(--atlas-v5-on-navy-1);
   padding: 18px 24px;
   display: grid;
@@ -212,6 +214,59 @@
 }
 
 .tab.active .tabSub { color: var(--atlas-v5-gold-ink); }
+
+/* ─── Tarjeta "Importar cartera" · ocupa toda la fila del selector ───
+   v10 · una opción más dentro del selector, en horizontal y con borde
+   discontinuo para distinguirla del alta de una posición suelta. */
+.importCard {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--atlas-v5-card);
+}
+
+.importIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  color: var(--atlas-v5-ink-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.importText {
+  flex: 1;
+  min-width: 0;
+}
+
+.importTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.005em;
+}
+
+.importSub {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+  line-height: 1.35;
+}
+
+.importActions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
 
 /* ─── Filas de inputs ─── */
 .row {
@@ -399,7 +454,7 @@
 .previewHd svg { color: var(--atlas-v5-gold); }
 
 .previewCardDark {
-  background: var(--atlas-v5-brand-ink);
+  background: var(--atlas-v5-brand);
   color: var(--atlas-v5-on-navy-1);
   border-radius: 10px;
   padding: 18px 20px;
@@ -429,7 +484,8 @@
   color: var(--atlas-v5-on-navy-1);
 }
 
-.previewCardDark .val.gold { color: var(--atlas-v5-gold-bright); }
+/* REGLAS V5 · oro sobre navy = gold-2 coherente en todo. */
+.previewCardDark .val.gold { color: var(--atlas-v5-gold-2); }
 .previewCardDark .val.pos { color: var(--atlas-v5-pos-bright); }
 .previewCardDark .val.neg { color: var(--atlas-neg-bright-local); }
 

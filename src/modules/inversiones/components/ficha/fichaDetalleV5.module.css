@@ -220,6 +220,151 @@
   color: var(--atlas-v5-ink-3);
 }
 
+/* ── Sliders (proyección plan · rentabilidad objetivo + inflación) ──── */
+.sldr {
+  width: 230px;
+}
+.sldrRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 5px;
+}
+.sldrLab {
+  font-size: 10.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sldrLab .m {
+  opacity: 0.6;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.sldrVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-gold-ink);
+}
+.sldrVal.grey {
+  color: var(--atlas-v5-ink-3);
+}
+.rng {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 3px;
+  background: var(--atlas-v5-line);
+  outline: none;
+  margin: 0 0 14px;
+}
+.rng::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold);
+  border: 2px solid var(--atlas-v5-card);
+  box-shadow: var(--atlas-v5-shadow-card);
+  cursor: pointer;
+}
+.rng.grey::-webkit-slider-thumb {
+  background: var(--atlas-v5-ink-4);
+}
+.rng::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold);
+  border: 2px solid var(--atlas-v5-card);
+  cursor: pointer;
+}
+.rng.grey::-moz-range-thumb {
+  background: var(--atlas-v5-ink-4);
+}
+
+/* ── Rentabilidad por gestora (plan · tramos) ──────────────────────── */
+.gestRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  border-top: 1px solid var(--atlas-v5-line-2);
+}
+.gestRow:first-of-type {
+  border-top: none;
+}
+.grDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.grMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.grNom {
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+  line-height: 1.15;
+}
+.grPer {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  color: var(--atlas-v5-ink-4);
+}
+.grRet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+.grAbs {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-gold-ink);
+}
+.grPct {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  color: var(--atlas-v5-ink-4);
+}
+.grTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 7px;
+  margin-top: 3px;
+  border-top: 1px solid var(--atlas-v5-line);
+}
+.grTotal .k {
+  font-size: 10.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.grTotal .v {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-gold-ink);
+}
+
 /* ── Leyenda de la gráfica ─────────────────────────────────────────── */
 .projLegend {
   display: flex;
@@ -260,6 +405,14 @@
   position: relative;
 }
 .projChart svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Clase propia de ProyeccionPlanChart · el componente consume así los tokens
+   v5 de este módulo (además de las var(--atlas-v5-*) de sus trazos). */
+.projSvg {
   width: 100%;
   height: 100%;
   display: block;
