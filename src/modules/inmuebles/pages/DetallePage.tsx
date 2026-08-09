@@ -15,7 +15,7 @@ import {
 } from '../../../services/personal/compromisosRecurrentesService';
 import { regenerateForecastsForward } from '../../../services/treasuryBootstrapService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
-import type { Contract } from '../../../services/db';
+import type { Contract, GastoInmueble, MejoraInmueble, MuebleInmueble } from '../../../services/db';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
 import { ListadoGastosRecurrentes } from '../../shared/components/ListadoGastos';
@@ -31,10 +31,15 @@ import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
 import GastosResumenInmueble from '../components/GastosResumenInmueble';
+import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
+import { gastosInmuebleService } from '../../../services/gastosInmuebleService';
+import { mejorasInmuebleService } from '../../../services/mejorasInmuebleService';
+import { mueblesInmuebleService } from '../../../services/mueblesInmuebleService';
 import styles from './DetallePage.module.css';
 
 
 type Tab = 'resumen' | 'contratos' | 'cobros' | 'gastos' | 'documentos' | 'fiscalidad';
+type GastosSubTab = 'resumen' | 'registrados' | 'recurrentes';
 
 const HABITACION_COLORS = [
   'var(--atlas-v5-room-green)',
@@ -66,7 +71,11 @@ const DetallePage: React.FC = () => {
       ? tabParam
       : 'resumen';
   const [tab, setTab] = useState<Tab>(tabInicial);
+  const [gastosSubTab, setGastosSubTab] = useState<GastosSubTab>('resumen');
   const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
+  const [gastosReales, setGastosReales] = useState<GastoInmueble[]>([]);
+  const [mejoras, setMejoras] = useState<MejoraInmueble[]>([]);
+  const [mobiliario, setMobiliario] = useState<MuebleInmueble[]>([]);
   const [pendingDelete, setPendingDelete] = useState<DeleteInmuebleCascadeReport | null>(null);
   const [isDeletingInmueble, setIsDeletingInmueble] = useState(false);
   // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
@@ -74,6 +83,9 @@ const DetallePage: React.FC = () => {
 
   useEffect(() => {
     void listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId }).then(setGastos);
+    void gastosInmuebleService.getByInmueble(propertyId).then(setGastosReales);
+    void mejorasInmuebleService.getPorInmueble(propertyId).then(setMejoras);
+    void mueblesInmuebleService.getPorInmueble(propertyId).then(setMobiliario);
   }, [propertyId]);
 
   const reloadGastos = useCallback(() => {
@@ -459,23 +471,93 @@ const DetallePage: React.FC = () => {
 
       {tab === 'gastos' && (
         <div style={{ marginTop: 8 }}>
-          <GastosResumenInmueble
-            inmuebleId={propertyId}
-            compromisos={gastos}
-          />
-          <ListadoGastosRecurrentes
-            catalog={TIPOS_GASTO_INMUEBLE_V2}
-            compromisos={gastos}
-            mode="inmueble"
-            inmuebleId={propertyId}
-            onDelete={handleDeleteGasto}
-            onReload={reloadGastos}
-            contextoNombre={property.alias}
-            conceptosSugeridos={conceptosSugeridos}
-            inmueblesDisponibles={properties
-              .filter((p): p is typeof p & { id: number } => p.id != null)
-              .map((p) => ({ id: p.id, label: p.alias }))}
-          />
+          {/* ── Selector interno de vistas ── */}
+          <div
+            className={styles.gastosSubTabs}
+            role="tablist"
+            aria-label="Vistas de gastos del inmueble"
+          >
+            {(
+              [
+                { key: 'resumen', label: 'Resumen' },
+                { key: 'registrados', label: 'Registrados' },
+                { key: 'recurrentes', label: 'Recurrentes' },
+              ] as Array<{ key: GastosSubTab; label: string }>
+            ).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={gastosSubTab === key}
+                aria-controls={`gastos-panel-${key}`}
+                id={`gastos-tab-${key}`}
+                className={styles.gastosSubTab}
+                onClick={() => setGastosSubTab(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Resumen ── */}
+          {gastosSubTab === 'resumen' && (
+            <div
+              role="tabpanel"
+              id="gastos-panel-resumen"
+              aria-labelledby="gastos-tab-resumen"
+            >
+              <GastosResumenInmueble
+                inmuebleId={propertyId}
+                compromisos={gastos}
+                gastosReales={gastosReales}
+                mejoras={mejoras}
+                mobiliario={mobiliario}
+              />
+            </div>
+          )}
+
+          {/* ── Registrados ── */}
+          {gastosSubTab === 'registrados' && (
+            <div
+              role="tabpanel"
+              id="gastos-panel-registrados"
+              aria-labelledby="gastos-tab-registrados"
+            >
+              <GastosRegistradosInmueble
+                inmuebleId={propertyId}
+                gastosReales={gastosReales}
+                mejoras={mejoras}
+                mobiliario={mobiliario}
+                onIrARecurrentes={() => setGastosSubTab('recurrentes')}
+              />
+            </div>
+          )}
+
+          {/* ── Recurrentes ── */}
+          {gastosSubTab === 'recurrentes' && (
+            <div
+              role="tabpanel"
+              id="gastos-panel-recurrentes"
+              aria-labelledby="gastos-tab-recurrentes"
+            >
+              <p className={styles.gastosRecurrentesDesc}>
+                Patrones que ATLAS proyecta en Tesorería
+              </p>
+              <ListadoGastosRecurrentes
+                catalog={TIPOS_GASTO_INMUEBLE_V2}
+                compromisos={gastos}
+                mode="inmueble"
+                inmuebleId={propertyId}
+                onDelete={handleDeleteGasto}
+                onReload={reloadGastos}
+                contextoNombre={property.alias}
+                conceptosSugeridos={conceptosSugeridos}
+                inmueblesDisponibles={properties
+                  .filter((p): p is typeof p & { id: number } => p.id != null)
+                  .map((p) => ({ id: p.id, label: p.alias }))}
+              />
+            </div>
+          )}
         </div>
       )}
 
