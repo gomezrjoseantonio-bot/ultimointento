@@ -198,6 +198,14 @@ interface Props {
   onBack: () => void;
 }
 
+// Rangos de los sliders de proyección · un único sitio para el min/max del
+// control y para clampar los defaults que vienen del escenario (así un valor
+// del escenario fuera de rango no deja el slider incoherente · review Copilot).
+const RENT_SLIDER = { min: 3, max: 14 } as const;
+const INFL_SLIDER = { min: 0, max: 5 } as const;
+const clampRango = (v: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, v));
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
@@ -497,12 +505,19 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   // ── Proyección · sliders (override) sobre defaults ────────────────────────
   // Base del slider · el rendimiento realizado (CAGR/TWR) manda si es fiable;
   // si no, la rentabilidad objetivo del escenario compartido (Fase 5).
-  const defaultRatePct =
-    rentFrac != null
-      ? Math.min(14, Math.max(3, Math.round(rentFrac * 1000) / 10))
-      : objetivoBasePct;
+  const defaultRatePct = clampRango(
+    rentFrac != null ? Math.round(rentFrac * 1000) / 10 : objetivoBasePct,
+    RENT_SLIDER.min,
+    RENT_SLIDER.max,
+  );
   const ratePct = rateOverridePct ?? defaultRatePct;
-  const inflPct = inflOverridePct ?? inflEscenarioPct;
+  // Clampado al rango del control: un valor del escenario fuera de [min,max]
+  // dejaría el slider incoherente (value fuera de min/max).
+  const inflPct = clampRango(
+    inflOverridePct ?? inflEscenarioPct,
+    INFL_SLIDER.min,
+    INFL_SLIDER.max,
+  );
   const rescateYear = hoyYear + Math.max(0, Math.round(anosHastaRescateInfo.anos));
 
   // Serie realizada por año (última valoración de cada año).
@@ -640,8 +655,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                   <input
                     type="range"
                     className={d.rng}
-                    min={3}
-                    max={14}
+                    min={RENT_SLIDER.min}
+                    max={RENT_SLIDER.max}
                     step={0.1}
                     value={ratePct}
                     onChange={(e) => setRateOverridePct(Number(e.target.value))}
@@ -656,8 +671,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                   <input
                     type="range"
                     className={`${d.rng} ${d.grey}`}
-                    min={0}
-                    max={5}
+                    min={INFL_SLIDER.min}
+                    max={INFL_SLIDER.max}
                     step={0.1}
                     value={inflPct}
                     onChange={(e) => setInflOverridePct(Number(e.target.value))}

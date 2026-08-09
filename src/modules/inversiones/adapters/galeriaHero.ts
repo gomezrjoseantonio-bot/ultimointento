@@ -353,19 +353,22 @@ async function historicoTotalPorAño(
     }
   }
 
+  // Carry-forward de una pasada: como los años suben y cada serie viene ASC,
+  // se mantiene un índice por serie que solo avanza (O(años + puntos), no
+  // O(años × puntos) · review Copilot).
+  const idx = series.map(() => 0);
+  const carry = series.map(() => null as number | null);
   const totales = new Map<number, number>();
   for (let y = firstYear; y < baseYear; y++) {
     const cutoff = `${y}-12-31`;
     let total = 0;
-    for (const serie of series) {
-      // Serie ASC por fecha · última con fecha ≤ cutoff (carry-forward).
-      let ultimo: number | null = null;
-      for (const v of serie) {
-        if (v.fecha <= cutoff) ultimo = v.valor;
-        else break;
+    series.forEach((serie, s) => {
+      while (idx[s] < serie.length && serie[idx[s]].fecha <= cutoff) {
+        carry[s] = serie[idx[s]].valor;
+        idx[s] += 1;
       }
-      if (ultimo != null) total += ultimo;
-    }
+      if (carry[s] != null) total += carry[s] as number;
+    });
     if (total > 0) totales.set(y, total);
   }
   return totales;

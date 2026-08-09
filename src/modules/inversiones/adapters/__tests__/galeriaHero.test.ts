@@ -221,7 +221,9 @@ describe('galeriaHero · serieTrayectoria', () => {
 
 describe('galeriaHero · serieTrayectoriaConHistorico', () => {
   const baseYear = 2026;
-  beforeEach(() => getSerieMock.mockReset());
+  // `mockClear` (no `mockReset`) para conservar la implementación por defecto
+  // (`mockResolvedValue([])`) del `jest.mock` · review Copilot.
+  beforeEach(() => getSerieMock.mockClear());
 
   it('sin valoraciones históricas: devuelve la serie base (empieza en hoy)', async () => {
     getSerieMock.mockResolvedValue([]);
