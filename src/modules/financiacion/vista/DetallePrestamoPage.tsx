@@ -45,12 +45,11 @@ import { inmueblesAlquiladosEn } from '../../../services/prestamos/inmueblesAlqu
 import { getFinancialValuesSnapshot } from '../../../services/financialValuesService';
 import CuadroCompleto from './CuadroCompleto';
 import CuadroPreview from './CuadroPreview';
+import TarjetaBonificaciones from './TarjetaBonificaciones';
 import type { Prestamo } from '../../../types/prestamos';
 import {
   condicionesDe,
-  cuandoSePierde,
   fiscalidadDe,
-  hayDiscrepancia,
   lineaDeTiempo,
   resumenBonificaciones,
 } from './detalleDatos';
@@ -216,7 +215,7 @@ const DetallePrestamoPage: React.FC = () => {
       interesPendiente: getInteresPendiente(cuadro, hoy),
       preview: getPreviewCuadro(cuadro, hoy, 3),
       tiempo: lineaDeTiempo(prestamo, cuadro, hoy),
-      bonificaciones: resumenBonificaciones(prestamo, cumplimientos),
+      bonificaciones: resumenBonificaciones(prestamo, hoy, cumplimientos),
       // Lo que traería la próxima revisión con el índice de hoy · NO entra en
       // el cuadro: es una respuesta a «¿y si?», no un tramo. Sin revisión
       // confirmada el cuadro YA va al índice de hoy, así que no dice nada — y
@@ -542,212 +541,14 @@ const DetallePrestamoPage: React.FC = () => {
           )}
         </div>
 
-        {/* 2 · Bonificaciones · SIEMPRE, y con la revisión dentro.
-            Eran dos tarjetas enseñando la misma lista, y contestar en una no
-            tenía nada que ver con lo que decía la otra. Son la misma pregunta:
-            qué bonificaciones tienes y cuáles te ha dejado el banco. */}
-        <div className={`${styles.card} ${styles.topGold}`}>
-          <div className={styles.cardT}>
-            <Icons.Check size={15} strokeWidth={2} aria-hidden />
-            Bonificaciones
-            <span className={styles.cardNota}>
-              {revision.pendiente ? 'el banco ya ha revisado' : 'bajan tu diferencial'}
-            </span>
-          </div>
-
-          {revision.pendiente && (
-            <div className={rev.revAviso}>
-              <Icons.Warning size={13} strokeWidth={2} aria-hidden />
-              <span>
-                Revisión de{' '}
-                <strong>{revision.pendiente.aplicaDesde.split('-').reverse().join('/')}</strong> ·
-                dinos cuáles te dejó y el cuadro se rehace desde esa fecha.
-                <em> ATLAS no ve la carta del banco.</em>
-              </span>
-            </div>
-          )}
-
-          {bonificaciones.lista.length === 0 ? (
-            /* Sin ninguna apuntada la tarjeta sigue estando · «este préstamo no
-               tiene bonificaciones» es una respuesta, y esconder la tarjeta
-               dejaba la ficha diciendo que la pregunta no existe. */
-            <div className={rev.bonifVacio}>
-              Este préstamo no tiene bonificaciones apuntadas.
-              <button
-                type="button"
-                onClick={() => navigate(`/financiacion/${prestamo.id}/editar`)}
-              >
-                añadir las de tu anexo
-              </button>
-            </div>
-          ) : (
-            <div className={styles.bonifLista}>
-              {bonificaciones.lista.map((b) => (
-                <div key={b.bonificacion.id} className={styles.bonif}>
-                  <div className={styles.bonifIzq}>
-                    <div
-                      className={b.alcanzada ? styles.bonifCheck : styles.bonifPendiente}
-                      aria-hidden
-                    >
-                      {b.alcanzada && <Icons.Check size={11} strokeWidth={3} />}
-                    </div>
-                    <span className={b.alcanzada ? undefined : styles.bonifApagada}>
-                      {b.bonificacion.nombre}
-                      {/* Lo que dicen TUS movimientos · otra pregunta distinta
-                          de si el banco la está aplicando, y por eso va aparte
-                          y no pisa el check. Cuando no coinciden es justo
-                          cuando hay que enterarse. */}
-                      {b.veredicto === 'no_cumple' && (
-                        <span className={styles.bonifAviso} title={b.explicacion}>
-                          {!b.alcanzada
-                            ? 'no se cumple'
-                            : cuandoSePierde(datos.proximaDelBanco)}
-                        </span>
-                      )}
-                      {b.veredicto === 'no_verificable' && (
-                        <span className={styles.bonifDuda} title={b.explicacion}>
-                          sin comprobar
-                        </span>
-                      )}
-                      {/* La discrepancia al revés · la cumples y el banco NO te
-                          la aplica. Es dinero que estás pagando de más. */}
-                      {b.veredicto === 'cumple' && !b.alcanzada && (
-                        <span className={styles.bonifLogro} title={b.explicacion}>
-                          la cumples · no te la aplican
-                        </span>
-                      )}
-                    </span>
-                  </div>
-
-                  {revision.pendiente ? (
-                    /* Con revisión abierta, cada fila se contesta aquí mismo ·
-                       la lista es la misma, así que preguntar en otra tarjeta
-                       obligaba a mirar dos veces lo mismo. Nada marcado de
-                       salida: lo que no se conteste se queda como estaba. */
-                    <div className={rev.revBotones}>
-                      <button
-                        type="button"
-                        className={
-                          revision.decision[b.bonificacion.id] === 'CUMPLIDA'
-                            ? rev.revSiOn
-                            : rev.revSi
-                        }
-                        onClick={() => revision.responder(b.bonificacion.id, 'CUMPLIDA')}
-                      >
-                        me la dejan
-                      </button>
-                      <button
-                        type="button"
-                        className={
-                          revision.decision[b.bonificacion.id] === 'PERDIDA'
-                            ? rev.revNoOn
-                            : rev.revNo
-                        }
-                        onClick={() => revision.responder(b.bonificacion.id, 'PERDIDA')}
-                      >
-                        la pierdo
-                      </button>
-                    </div>
-                  ) : (
-                    <div className={b.alcanzada ? styles.bonifVal : styles.bonifValApagado}>
-                      −{b.puntos.toFixed(2).replace('.', ',')}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {revision.pendiente ? (
-            <div className={rev.revPie}>
-              {revision.pideIndice && (
-                <div className={rev.revIndice}>
-                  <label htmlFor="rev-indice">Índice que aplicó</label>
-                  <div className={rev.revInpGrupo}>
-                    <input
-                      id="rev-indice"
-                      className={rev.revInp}
-                      value={revision.indiceRaw}
-                      onChange={(e) => revision.setIndiceRaw(e.target.value)}
-                    />
-                    <span>%</span>
-                  </div>
-                  {/* De QUÉ euríbor se habla · ver `indicePublicado`. Aquí
-                      ponía «el que tienes en Actualizar valores», que es el de
-                      HOY, y ofrecerlo invita a aceptarlo. */}
-                  <span className={rev.revPista}>
-                    {publicacion
-                      ? `el euríbor publicado de ${mesAnio(`${publicacion}-01`)} · lo dice tu carta`
-                      : revision.indiceSugerido != null
-                        ? 'el de Actualizar valores es el de HOY · escribe el de tu carta'
-                        : 'sin diferencial · vacío si la carta no lo dice'}
-                  </span>
-                </div>
-              )}
-              <div className={rev.revAcciones}>
-                <button
-                  type="button"
-                  className={rev.revConfirmar}
-                  onClick={revision.confirmar}
-                  disabled={revision.guardando}
-                >
-                  {revision.guardando ? 'Apuntando…' : 'Apuntar lo que dijo el banco'}
-                </button>
-                <button type="button" className={rev.revLuego} onClick={revision.descartar}>
-                  ahora no
-                </button>
-              </div>
-            </div>
-          ) : (
-            bonificaciones.lista.length > 0 && (
-              <div className={styles.bonifPie}>
-                <div className={styles.bonifPieFila}>
-                  <span>
-                    alcanzas{' '}
-                    <span className={styles.monoInk}>
-                      −{bonificaciones.rebajaTotal.toFixed(2).replace('.', ',')}
-                    </span>
-                    {bonificaciones.tope != null && (
-                      <>
-                        {' de '}
-                        <span className={styles.monoInk}>
-                          {bonificaciones.tope.toFixed(2).replace('.', ',')}
-                        </span>
-                        {' de tope'}
-                      </>
-                    )}
-                  </span>
-                </div>
-                {bonificaciones.rebajaTotal > 0 && (
-                  <div className={styles.bonifEfecto}>
-                    <span>tu tipo de hoy</span>
-                    <span>
-                      <span className={styles.teorico}>
-                        {pct(datos.tin + bonificaciones.rebajaTotal).replace(' %', '')}
-                      </span>{' '}
-                      <span className={styles.flecha}>→</span>{' '}
-                      <span className={styles.mono}>{pct(datos.tin)}</span>
-                    </span>
-                  </div>
-                )}
-                {/* Quién dice qué · el check y el aviso son DOS voces, y pegadas
-                    sin nombrarlas se leen como que la tarjeta se contradice: una
-                    fila marcada como cumplida y a la vez con un «no se cumple»
-                    parece un error de la pantalla, y es justo el caso que hay
-                    que mirar *(Jose · 8 ago 2026)*. Se dice una vez y solo
-                    cuando hay discrepancia — si todas coinciden no hay nada que
-                    aclarar. */}
-                {bonificaciones.lista.some(hayDiscrepancia) && (
-                  <div className={styles.bonifEfecto}>
-                    <span>la marca verde es lo que aplica el banco</span>
-                    <span>el aviso, lo que dicen tus movimientos</span>
-                  </div>
-                )}
-              </div>
-            )
-          )}
-        </div>
-
+        <TarjetaBonificaciones
+          prestamo={prestamo}
+          bonificaciones={bonificaciones}
+          revision={revision}
+          proximaDelBanco={datos.proximaDelBanco}
+          publicacion={publicacion}
+          onEditar={() => navigate(`/financiacion/${prestamo.id}/editar`)}
+        />
         {/* 3 · Condiciones del banco */}
         <div className={`${styles.card} ${styles.topGoldSoft}`}>
           <div className={styles.cardT}>

@@ -11,7 +11,11 @@ import type { Cumplimiento } from '../../../services/bonificaciones/cumplimiento
 import { textoDeCumplimiento } from '../textoBonificacion';
 import type { Cuadro } from '../../../services/prestamos/cuadro';
 import { tramosDeTipo, type TramoDeTipo } from '../../../services/prestamos/tramosDeTipo';
-import { tinDelTramo } from '../../../services/prestamos/tinDelTramo';
+import {
+  rebajanEnTramo,
+  tinDelTramo,
+  tinDelTramoSiRevisaranHoy,
+} from '../../../services/prestamos/tinDelTramo';
 import {
   estaAplicada,
   puntosDe,
@@ -176,7 +180,37 @@ export interface ResumenBonificaciones {
   rebajaTotal: number;
   /** El tope del anexo, en puntos · `null` si el préstamo no dice ninguno. */
   tope: number | null;
+  /**
+   * Si rebajan el tramo que corre HOY.
+   *
+   * En la mixta de Jose no lo hacen: la escritura dice «en el SEGUNDO y en los
+   * sucesivos periodos de interés», así que durante los 36 meses al 2,600 % da
+   * igual el anexo entero. La ficha decía «tu tipo de hoy 3,60 → 2,60 %», que
+   * es falso por los dos lados — ni hoy paga 3,60 ni las bonificaciones le
+   * están bajando nada. Lo que se juega ahí se cobra en la primera revisión.
+   */
+  rebajanHoy: boolean;
+  /** El día en que empiezan a rebajar · solo cuando hoy todavía no lo hacen. */
+  rebajanDesde?: string;
+  /** El tipo del tramo bonificable ANTES de bonificar · `null` si no hay. */
+  tinSinBonificar: number | null;
+  /** Ese mismo tramo con las que el banco aplica hoy. */
+  tinConLasQueTienes: number | null;
+  /**
+   * Y con las que TUS MOVIMIENTOS sostienen · `null` mientras no se han mirado.
+   *
+   * Es la cifra que faltaba. La tarjeta anunciaba la rebaja entera dando por
+   * hechas las cuatro bonificaciones mientras dos de sus propias filas decían
+   * que se van a perder: el titular contradecía a la lista que tenía debajo.
+   * Se recalcula entero (no se suman «los puntos en riesgo») porque con un tope
+   * perder una bonificación puede no costar ni un céntimo.
+   */
+  tinSiRevisaranHoy: number | null;
 }
+
+/** El tramo que corre hoy · el último que ya ha empezado. */
+const tramoDeHoy = (tramos: TramoDeTipo[], hoy: string): TramoDeTipo | undefined =>
+  [...tramos].reverse().find((t) => (t.desde || '') <= hoy) ?? tramos[0];
 
 /**
  * Las bonificaciones del préstamo y lo que consiguen.
@@ -188,9 +222,14 @@ export interface ResumenBonificaciones {
  * Con `cumplimientos` cada una lleva además lo que dicen tus movimientos. Sin
  * ellos la lista sigue saliendo —el contrato se sabe sin mirar la tesorería—,
  * solo que sin veredicto.
+ *
+ * Y sobre QUÉ tramo rebajan lo decide `rebajanEnTramo`, no esta pantalla: es la
+ * misma pregunta que se hace el cuadro, y ya sabemos lo que pasa cuando la
+ * misma regla se escribe en dos sitios.
  */
 export function resumenBonificaciones(
   prestamo: Prestamo,
+  hoy: string,
   cumplimientos?: Cumplimiento[]
 ): ResumenBonificaciones {
   const porId = new Map((cumplimientos ?? []).map((c) => [c.bonificacionId, c]));
@@ -209,10 +248,28 @@ export function resumenBonificaciones(
     ? Math.abs(Number(prestamo.topeBonificacionesTotal))
     : null;
 
+  const tramos = tramosDeTipo(prestamo);
+  const ahora = tramoDeHoy(tramos, hoy);
+  const rebajanHoy = ahora ? rebajanEnTramo(prestamo, ahora) : true;
+  // Si hoy no rebajan, el primero que lo hará · es sobre ese tramo sobre el que
+  // hay algo que contar, y su fecha es la respuesta a «¿entonces cuándo?».
+  const futuro = rebajanHoy
+    ? undefined
+    : tramos.find((t) => rebajanEnTramo(prestamo, t) && (t.desde || '') > hoy);
+  const bonificable = rebajanHoy ? ahora : futuro;
+
   return {
     lista,
     rebajaTotal: reduccionPorBonificaciones(prestamo.bonificaciones, prestamo),
     tope: tope && tope > 0 ? tope : null,
+    rebajanHoy,
+    rebajanDesde: futuro?.desde || undefined,
+    tinSinBonificar: bonificable ? bonificable.tinBase : null,
+    tinConLasQueTienes: bonificable ? tinDelTramo(prestamo, bonificable) : null,
+    tinSiRevisaranHoy:
+      bonificable && cumplimientos
+        ? tinDelTramoSiRevisaranHoy(prestamo, bonificable, cumplimientos)
+        : null,
   };
 }
 
