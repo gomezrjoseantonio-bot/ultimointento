@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { RedirectAlquileresAContratos } from './components/routing/RedirectAlquileresAContratos';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -1311,7 +1312,12 @@ function App() {
               } />
               <Route path="gestion" element={<Navigate to="/contratos" replace />} />
             </Route>
-            
+
+            {/* Consolidación Contratos → Alquileres · Fase B · alias de marca
+                visual. `/alquileres[/...]` → `/contratos[/...]` (canónica),
+                preservando sufijo y query. `/contratos` se mantiene intacta. */}
+            <Route path="alquileres/*" element={<RedirectAlquileresAContratos />} />
+
             <Route path="firmas">
               <Route index element={<Navigate to="/firmas/pendientes" replace />} />
               <Route path="pendientes" element={
