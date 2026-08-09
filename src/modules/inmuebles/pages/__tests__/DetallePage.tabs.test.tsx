@@ -7,6 +7,8 @@ import { listarCompromisos } from '../../../../services/personal/compromisosRecu
 import { gastosInmuebleService } from '../../../../services/gastosInmuebleService';
 import { mejorasInmuebleService } from '../../../../services/mejorasInmuebleService';
 import { mueblesInmuebleService } from '../../../../services/mueblesInmuebleService';
+import { valoracionesService } from '../../../../services/valoracionesService';
+import { prestamosService } from '../../../../services/prestamosService';
 import type { InmueblesOutletContext } from '../../InmueblesContext';
 import DetallePage from '../DetallePage';
 
@@ -35,6 +37,20 @@ jest.mock('../../../../services/mueblesInmuebleService', () => ({
   mueblesInmuebleService: {
     getPorInmueble: jest.fn().mockResolvedValue([]),
   },
+}));
+
+jest.mock('../../../../services/valoracionesService', () => ({
+  valoracionesService: {
+    getEvolucionActivo: jest.fn().mockResolvedValue([]),
+  },
+}));
+
+jest.mock('../../../../services/prestamosService', () => ({
+  prestamosService: {
+    getAllPrestamos: jest.fn().mockResolvedValue([]),
+    getPaymentPlan: jest.fn().mockResolvedValue(null),
+  },
+  getAllocationFactor: jest.fn().mockReturnValue(0),
 }));
 
 jest.mock('../../../../services/inmuebleDeleteService', () => ({
@@ -73,6 +89,11 @@ jest.mock('../../components/RentabilidadInmueble', () => ({
   default: () => <div>Rentabilidad mock</div>,
 }));
 
+jest.mock('../../components/PatrimonioResumenInmueble', () => ({
+  __esModule: true,
+  default: () => <div>Patrimonio mock</div>,
+}));
+
 jest.mock('../../../shared/components/ListadoGastos', () => ({
   ListadoGastosRecurrentes: () => <div>Listado recurrentes mock</div>,
 }));
@@ -82,6 +103,9 @@ beforeEach(() => {
   jest.mocked(gastosInmuebleService.getByInmueble).mockResolvedValue([]);
   jest.mocked(mejorasInmuebleService.getPorInmueble).mockResolvedValue([]);
   jest.mocked(mueblesInmuebleService.getPorInmueble).mockResolvedValue([]);
+  jest.mocked(valoracionesService.getEvolucionActivo).mockResolvedValue([]);
+  jest.mocked(prestamosService.getAllPrestamos).mockResolvedValue([]);
+  jest.mocked(prestamosService.getPaymentPlan).mockResolvedValue(null);
 });
 
 const crearProperty = (overrides: Partial<Property> = {}): Property => ({
