@@ -230,74 +230,74 @@ const ContratosListPage: React.FC = () => {
 
       {/* 2 · MAIN · zona blanca con título · tabs · contenido */}
       <main className={styles.main}>
-      <PageHead
-        title="Alquileres"
-        sub="Gestiona tus contratos e inquilinos · revisa histórico · concilia rentas declaradas"
-        actions={headActions}
-      />
-
-      <div className={styles.tabsBar} role="group" aria-label="Tabs alquileres">
-        {tabs.map((t) => {
-          const isActive = t.key === tab;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              className={isActive ? styles.active : ''}
-              onClick={() => handleTabChange(t.key)}
-              aria-pressed={isActive}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {tab === 'vigentes' && (
-        <TabActivos
-          contratos={vigentes}
-          inmuebleAliasById={propertyById}
-          inmuebleModoById={modoById}
-          onNuevoContrato={() => navigate('/contratos/nuevo')}
+        <PageHead
+          title="Alquileres"
+          sub="Gestiona tus contratos e inquilinos · revisa histórico · concilia rentas declaradas"
+          actions={headActions}
         />
-      )}
 
-      {tab === 'proximos' && (
-        <TabProximos contratos={proximos} inmuebleAliasById={propertyById} />
-      )}
+        <div className={styles.tabsBar} role="group" aria-label="Tabs alquileres">
+          {tabs.map((t) => {
+            const isActive = t.key === tab;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                className={isActive ? styles.active : ''}
+                onClick={() => handleTabChange(t.key)}
+                aria-pressed={isActive}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
 
-      {tab === 'historico' && (
-        <TabHistorico
-          contratos={historico}
-          properties={properties}
-          inmuebleAliasById={propertyById}
-          inmuebleModoById={modoById}
-          onEliminar={requestDelete}
-        />
-      )}
+        {tab === 'vigentes' && (
+          <TabActivos
+            contratos={vigentes}
+            inmuebleAliasById={propertyById}
+            inmuebleModoById={modoById}
+            onNuevoContrato={() => navigate('/contratos/nuevo')}
+          />
+        )}
 
-      {tab === 'analisis' && (
-        <TabAnalisis contratos={contracts} properties={properties} />
-      )}
+        {tab === 'proximos' && (
+          <TabProximos contratos={proximos} inmuebleAliasById={propertyById} />
+        )}
 
-      {tab === 'conciliar' && (
-        <TabPorConciliar inmuebleAliasById={propertyById} />
-      )}
+        {tab === 'historico' && (
+          <TabHistorico
+            contratos={historico}
+            properties={properties}
+            inmuebleAliasById={propertyById}
+            inmuebleModoById={modoById}
+            onEliminar={requestDelete}
+          />
+        )}
 
-      {tab === 'disponibilidad' && (
-        <TabDisponibilidad
-          contratos={contracts}
-          properties={properties}
-          onNuevoContrato={(inmuebleId) =>
-            navigate(
-              inmuebleId != null
-                ? `/contratos/nuevo?inmueble=${inmuebleId}`
-                : '/contratos/nuevo',
-            )
-          }
-          onIrAInmuebles={() => navigate('/inmuebles')}
-        />
-      )}
+        {tab === 'analisis' && (
+          <TabAnalisis contratos={contracts} properties={properties} />
+        )}
+
+        {tab === 'conciliar' && (
+          <TabPorConciliar inmuebleAliasById={propertyById} />
+        )}
+
+        {tab === 'disponibilidad' && (
+          <TabDisponibilidad
+            contratos={contracts}
+            properties={properties}
+            onNuevoContrato={(inmuebleId) =>
+              navigate(
+                inmuebleId != null
+                  ? `/contratos/nuevo?inmueble=${inmuebleId}`
+                  : '/contratos/nuevo',
+              )
+            }
+            onIrAInmuebles={() => navigate('/inmuebles')}
+          />
+        )}
       </main>
 
       <ConfirmationModal
