@@ -1,5 +1,5 @@
 // ============================================================================
-// Los seguros que prueban una bonificación · VOCABULARIO §6 ter
+// Lo que se domicilia y prueba una bonificación · VOCABULARIO §6 ter
 // ============================================================================
 //
 // **Un seguro se domicilia.** *«Los seguros tienen que domiciliarse, ya sea
@@ -35,6 +35,15 @@
 // `concepto.includes('seguro')` ni por la categoría: esta es la decisión que
 // dice si una bonificación se gana o se pierde, y tiene que estar escrita en un
 // sitio y no heredada de una heurística escondida.
+//
+// ── Y la alarma, que no tiene casilla ───────────────────────────────────────
+//
+// *«La alarma es un gasto recurrente que se puede crear siempre asociada a la
+// cuenta»* *(Jose · 8 ago 2026)*. Se prueba igual —domiciliada en su cuenta—,
+// pero `TipoCompromiso` no tiene un `'alarma'`: se da de alta como suscripción,
+// como cuota o como «otros». Por eso aquí conviven las dos consultas, y las dos
+// comparten el criterio de «domiciliado y activo»: afinar qué cuenta como
+// domiciliación tiene que afinarlo para las dos a la vez.
 // ============================================================================
 
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
@@ -51,8 +60,8 @@ import { costeAnualDe, esActivoRecurrente } from '../compromisos/costeProyectado
  */
 const esDomiciliado = (c: CompromisoRecurrente): boolean => c.metodoPago === 'domiciliacion';
 
-/** Una póliza domiciliada, con lo que cuesta al año. */
-export interface SeguroDomiciliado {
+/** Un recibo domiciliado —una póliza, una alarma— con lo que cuesta al año. */
+export interface GastoDomiciliado {
   /** La cuenta donde se carga · es lo que el banco exige, su cuenta. */
   cuentaId: number;
   /** Cómo se llama · para poder enseñar de cuál se trata. */
@@ -65,7 +74,13 @@ export interface SeguroDomiciliado {
    * póliza que no dice de qué es.
    */
   subtipo?: string;
-  /** Lo que suman sus recibos en el año · la prima proyectada. */
+  /**
+   * Lo que suman sus recibos en el año · lo proyectado.
+   *
+   * Se llama «prima» porque nació para los seguros y así se llama en el resto
+   * del modelo (`ReglaBonificacion.primaAnual`, `SeguroVinculado`). Para lo que
+   * no es un seguro es, sin más, lo que cuesta al año.
+   */
   primaAnual: number;
 }
 
@@ -83,7 +98,7 @@ export interface SeguroDomiciliado {
 export function segurosDomiciliados(
   compromisos: CompromisoRecurrente[],
   anio: number
-): SeguroDomiciliado[] {
+): GastoDomiciliado[] {
   return compromisos
     .filter((c) => c.tipo === 'seguro' && esDomiciliado(c) && esActivoRecurrente(c))
     .map((c) => ({
@@ -95,6 +110,57 @@ export function segurosDomiciliados(
 }
 
 /**
+ * **Todos** los compromisos domiciliados, sea cual sea su tipo.
+ *
+ * *«La alarma es un gasto recurrente que se puede crear siempre asociada a la
+ * cuenta»* *(Jose · 8 ago 2026)*. Y tiene razón, pero `TipoCompromiso` no tiene
+ * una casilla para ella: una alarma se da de alta como suscripción, como cuota
+ * o como «otros», según a quién le parezca.
+ *
+ * Por eso esto no filtra por tipo — filtra por lo único que la condición del
+ * banco exige de verdad: que el recibo se lo pases a él. Quién es cada
+ * compromiso lo decide luego la regla, con `queSuenanA`.
+ *
+ * Comparte con los seguros el criterio de «domiciliado y activo», escrito una
+ * sola vez: si un día se afina qué cuenta como domiciliación, se afina para
+ * los dos a la vez y no para uno sí y otro no.
+ */
+export function gastosDomiciliados(
+  compromisos: CompromisoRecurrente[],
+  anio: number
+): GastoDomiciliado[] {
+  return compromisos
+    .filter((c) => esDomiciliado(c) && esActivoRecurrente(c))
+    .map((c) => ({
+      cuentaId: c.cuentaCargo,
+      alias: c.alias,
+      subtipo: c.subtipo?.trim() || undefined,
+      primaAnual: Math.round(costeAnualDe(c, anio) * 100) / 100,
+    }));
+}
+
+/**
+ * Los que llevan una palabra en el subtipo o en el alias · sin tildes.
+ *
+ * Es el mismo criterio que `delTipo`, pero para lo que el modelo NO tipifica.
+ * `delTipo` compara en crudo y aquí no vale: «Alarma» y «alarma» son la misma
+ * palabra, y quien escribe «Alarmas Securitas» tiene una alarma.
+ *
+ * Lo que NO hace es adivinar por la marca. Una alarma dada de alta como
+ * «Securitas» y nada más no la reconoce nadie, y eso hay que decirlo como un
+ * «no lo sé» y no como un «no cumples»: quien decide eso es la regla, mirando
+ * si en esa cuenta hay compromisos y ninguno lo dice.
+ */
+export function queSuenanA(gastos: GastoDomiciliado[], palabra: string): GastoDomiciliado[] {
+  const sinTildes = (s: string): string =>
+    s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const buscada = sinTildes(palabra);
+  return gastos.filter(
+    (g) => sinTildes(g.subtipo ?? '').includes(buscada) || sinTildes(g.alias).includes(buscada)
+  );
+}
+
+/**
  * Las de la cuenta que el banco exige · las de fuera no bonifican.
  *
  * Un seguro domiciliado en otro banco no le entra a este, igual que la tarjeta
@@ -102,9 +168,9 @@ export function segurosDomiciliados(
  * daría por cumplida la condición de la hipoteca nueva.
  */
 export const deLaCuenta = (
-  seguros: SeguroDomiciliado[],
+  seguros: GastoDomiciliado[],
   cuentaId: number
-): SeguroDomiciliado[] => seguros.filter((s) => s.cuentaId === cuentaId);
+): GastoDomiciliado[] => seguros.filter((s) => s.cuentaId === cuentaId);
 
 /**
  * Las que son de un tipo concreto · para «seguro de hogar» y «seguro de vida».
@@ -114,7 +180,7 @@ export const deLaCuenta = (
  * cuentan**: dar por buena una póliza cualquiera convertiría «tengo el seguro
  * de vida» en «tengo algún seguro», que no es la condición del contrato.
  */
-export function delTipo(seguros: SeguroDomiciliado[], que: string): SeguroDomiciliado[] {
+export function delTipo(seguros: GastoDomiciliado[], que: string): GastoDomiciliado[] {
   const buscado = que.toLowerCase();
   return seguros.filter(
     (s) =>
@@ -123,5 +189,5 @@ export function delTipo(seguros: SeguroDomiciliado[], que: string): SeguroDomici
 }
 
 /** Lo que suman las primas de un año · para las condiciones por importe total. */
-export const primaTotal = (seguros: SeguroDomiciliado[]): number =>
+export const primaTotal = (seguros: GastoDomiciliado[]): number =>
   Math.round(seguros.reduce((s, x) => s + x.primaAnual, 0) * 100) / 100;

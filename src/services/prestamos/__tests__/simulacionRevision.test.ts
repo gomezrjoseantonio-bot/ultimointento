@@ -133,3 +133,39 @@ describe('cuándo NO hay nada que decir', () => {
     expect(simulacionRevision(yaRevisada(), hoy, 2.0)).toBeNull();
   });
 });
+
+// ── La regla, dicha entera ──────────────────────────────────────────────────
+//
+// «La actualización del valor del euríbor durante ese tiempo sirve de guía
+// prevista de la cuota pero **no debe cambiar ningún cuadro**, porque no va a
+// cambiar nada realmente hasta la siguiente revisión» *(Jose · 8 ago 2026)*.
+//
+// Vale también SIN ninguna revisión apuntada: el cuadro se calculó con el
+// índice del alta y se queda ahí hasta que una revisión lo convierta en hecho.
+// Hubo un momento en que la ficha regeneraba el cuadro con el euríbor de
+// «Actualizar valores», y entonces la guía no tenía nada que decir —comparaba
+// ese índice consigo mismo— mientras el cuadro se movía solo.
+describe('el euríbor de hoy habla en la guía y no toca el cuadro', () => {
+  const hoy = '2027-01-15';
+  // La mixta ya en su tramo variable, sin ninguna revisión confirmada · el
+  // cuadro corre con el 4,149 del alta.
+  const sinRevisiones = () => unicaja();
+
+  it('el cuadro sigue en el índice del alta', () => {
+    const antes = getCuota(cuadroDe(sinRevisiones()), hoy);
+
+    simulacionRevision(sinRevisiones(), hoy, 1);
+    simulacionRevision(sinRevisiones(), hoy, 6);
+
+    expect(getCuota(cuadroDe(sinRevisiones()), hoy)).toBe(antes);
+  });
+
+  it('y la guía sí dice adónde iría con el de hoy', () => {
+    const s = simulacionRevision(sinRevisiones(), hoy, 1)!;
+
+    expect(s.indice).toBe(1);
+    // 4,149 del alta → 1,000 de hoy · la cuota que viene baja.
+    expect(s.cuotaDespues).toBeLessThan(s.cuotaHoy);
+    expect(s.cuotaHoy).toBe(getCuota(cuadroDe(sinRevisiones()), hoy));
+  });
+});

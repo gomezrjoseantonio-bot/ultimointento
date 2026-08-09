@@ -26,6 +26,9 @@ import type { Cumplimiento } from '../../../../services/bonificaciones/cumplimie
 import type { Revision } from '../../../../services/bonificaciones/revisionDelBanco';
 import type { Bonificacion, Prestamo } from '../../../../types/prestamos';
 
+/** Un día del TRAMO FIJO de la Unicaja · los 36 meses acaban el 25/08/2026. */
+const HOY = '2026-08-09';
+
 const unicaja = (over: Partial<Prestamo> = {}): Prestamo =>
   ({
     id: 'unicaja',
@@ -117,7 +120,7 @@ describe('lineaDeTiempo · la ficha se adapta al tipo de préstamo', () => {
 
 describe('resumenBonificaciones · el teórico y el bonificado', () => {
   it('sin bonificaciones no hay lista · su tarjeta se omite', () => {
-    expect(resumenBonificaciones(personal()).lista).toHaveLength(0);
+    expect(resumenBonificaciones(personal(), HOY).lista).toHaveLength(0);
   });
 
   it('lista TODAS · las que faltan también, que son las que puedes ir a buscar', () => {
@@ -127,7 +130,7 @@ describe('resumenBonificaciones · el teórico y el bonificado', () => {
         bonificacion({ id: 'b2', nombre: 'Seguro de hogar', estado: 'PERDIDA' }),
       ],
     });
-    const r = resumenBonificaciones(p);
+    const r = resumenBonificaciones(p, HOY);
 
     expect(r.lista).toHaveLength(2);
     expect(r.lista[0].alcanzada).toBe(true);
@@ -142,7 +145,7 @@ describe('resumenBonificaciones · el teórico y el bonificado', () => {
       ],
     });
 
-    expect(resumenBonificaciones(p).rebajaTotal).toBeCloseTo(0.5, 3);
+    expect(resumenBonificaciones(p, HOY).rebajaTotal).toBeCloseTo(0.5, 3);
   });
 
   it('el tope del anexo capa la suma · no se rebaja más de lo pactado', () => {
@@ -153,10 +156,114 @@ describe('resumenBonificaciones · el teórico y el bonificado', () => {
         bonificacion({ id: 'b2', reduccionPuntosPorcentuales: 0.7 }),
       ],
     });
-    const r = resumenBonificaciones(p);
+    const r = resumenBonificaciones(p, HOY);
 
     expect(r.tope).toBeCloseTo(1, 3);
     expect(r.rebajaTotal).toBeCloseTo(1, 3);
+  });
+});
+
+// ── Sobre QUÉ tipo rebajan ──────────────────────────────────────────────────
+//
+// La tarjeta decía «tu tipo de hoy 3,60 → 2,60 %» en la mixta de Jose, y es
+// falso por los dos lados: ni paga el 3,60 ni las bonificaciones le están
+// bajando nada. Su escritura bonifica «en el SEGUNDO y en los sucesivos
+// periodos de interés», así que durante los 36 meses fijos da igual el anexo
+// entero — lo que se juega ahí se cobra el 25/08/2026.
+describe('resumenBonificaciones · sobre qué tramo rebajan', () => {
+  const conAnexo = (over: Partial<Prestamo> = {}) =>
+    unicaja({
+      bonificaciones: [bonificacion({ reduccionPuntosPorcentuales: 1 })],
+      ...over,
+    });
+
+  it('en el tramo fijo de una mixta que solo bonifica el variable, hoy no rebajan', () => {
+    const r = resumenBonificaciones(conAnexo({ bonificacionesDesde: 'TRAMO_VARIABLE' }), HOY);
+
+    expect(r.rebajanHoy).toBe(false);
+    // Y se dice desde cuándo · el arranque del tramo variable, no una fecha
+    // inventada: «entonces cuándo» es la pregunta que sigue.
+    expect(r.rebajanDesde).toBe('2026-08-25');
+  });
+
+  // El tipo que se enseña tachado es el del tramo que SÍ bonifica · el euríbor
+  // + diferencial que entra el 25/08, no el 2,600 % que paga hoy.
+  it('y el par de tipos es el del tramo que sí bonifica', () => {
+    const r = resumenBonificaciones(conAnexo({ bonificacionesDesde: 'TRAMO_VARIABLE' }), HOY);
+
+    expect(r.tinSinBonificar).toBeCloseTo(3.85, 2);
+    expect(r.tinConLasQueTienes).toBeCloseTo(2.85, 2);
+  });
+
+  // La otra mixta · la de ING, que bonifica desde la firma. Ahí «tu tipo de
+  // hoy» sí es verdad, y decir «todavía no rebajan» sería el error simétrico.
+  it('una mixta que bonifica desde la firma sí rebaja hoy', () => {
+    const r = resumenBonificaciones(conAnexo({ bonificacionesDesde: 'FIRMA' }), HOY);
+
+    expect(r.rebajanHoy).toBe(true);
+    expect(r.rebajanDesde).toBeUndefined();
+    expect(r.tinSinBonificar).toBeCloseTo(2.6, 2);
+    expect(r.tinConLasQueTienes).toBeCloseTo(1.6, 2);
+  });
+
+  it('y un fijo simple rebaja siempre', () => {
+    const p = personal({ bonificaciones: [bonificacion({ reduccionPuntosPorcentuales: 0.3 })] });
+
+    expect(resumenBonificaciones(p, HOY).rebajanHoy).toBe(true);
+  });
+});
+
+// ── Lo que vas a pagar si nada cambia ───────────────────────────────────────
+//
+// El titular daba la rebaja entera por hecha mientras las propias filas de
+// debajo decían que dos se van a perder: la tarjeta se contradecía consigo
+// misma en la misma pantalla.
+describe('resumenBonificaciones · si el banco revisara hoy', () => {
+  const dos = (over: Partial<Prestamo> = {}) =>
+    unicaja({
+      bonificacionesDesde: 'FIRMA',
+      bonificaciones: [
+        bonificacion({ id: 'b1', reduccionPuntosPorcentuales: 0.5 }),
+        bonificacion({ id: 'b2', reduccionPuntosPorcentuales: 0.3 }),
+      ],
+      ...over,
+    });
+  const dice = (id: string, veredicto: Cumplimiento['veredicto']): Cumplimiento => ({
+    bonificacionId: id,
+    nombre: id,
+    veredicto,
+  });
+
+  it('quita las que no demuestras y recalcula', () => {
+    const r = resumenBonificaciones(dos(), HOY, [dice('b1', 'cumple'), dice('b2', 'no_cumple')]);
+
+    expect(r.tinConLasQueTienes).toBeCloseTo(1.8, 2);
+    expect(r.tinSiRevisaranHoy).toBeCloseTo(2.1, 2);
+  });
+
+  // Lo que NO se puede comprobar no cuesta puntos · un «no lo sé» convertido en
+  // «lo pierdes» es el falso negativo de siempre, y aquí sale en el titular.
+  it('lo que no se ha podido comprobar no se da por perdido', () => {
+    const r = resumenBonificaciones(dos(), HOY, [
+      dice('b1', 'cumple'),
+      dice('b2', 'no_verificable'),
+    ]);
+
+    expect(r.tinSiRevisaranHoy).toBeCloseTo(1.8, 2);
+  });
+
+  // Con tope, perder una puede no costar un céntimo · por eso se recalcula
+  // entero en vez de restar «los puntos en riesgo» al tipo de hoy.
+  it('con tope, perder una bonificación puede no cambiar el tipo', () => {
+    const p = dos({ topeBonificacionesTotal: -0.5 });
+    const r = resumenBonificaciones(p, HOY, [dice('b1', 'cumple'), dice('b2', 'no_cumple')]);
+
+    expect(r.tinConLasQueTienes).toBeCloseTo(2.1, 2);
+    expect(r.tinSiRevisaranHoy).toBeCloseTo(2.1, 2);
+  });
+
+  it('y sin haber mirado la tesorería no se afirma ninguna cifra', () => {
+    expect(resumenBonificaciones(dos(), HOY).tinSiRevisaranHoy).toBeNull();
   });
 });
 
@@ -327,7 +434,7 @@ describe('lo que el banco aplica y lo que se puede demostrar van por separado', 
     });
 
   it('sin mirar la tesorería la lista sale igual, pero sin veredicto', () => {
-    const [b] = resumenBonificaciones(conBonif()).lista;
+    const [b] = resumenBonificaciones(conBonif(), HOY).lista;
 
     expect(b.bonificacion.nombre).toBe('Nómina');
     expect(b.veredicto).toBeUndefined();
@@ -337,7 +444,7 @@ describe('lo que el banco aplica y lo que se puede demostrar van por separado', 
   // que has dejado de cumplirla. Enterarse ANTES de la revisión es la única
   // forma de hacer algo al respecto.
   it('el banco la aplica y los movimientos dicen que no · se enseñan las dos', () => {
-    const [b] = resumenBonificaciones(conBonif(), [
+    const [b] = resumenBonificaciones(conBonif(), HOY, [
       {
         bonificacionId: 'b1',
         nombre: 'Nómina',
@@ -356,7 +463,7 @@ describe('lo que el banco aplica y lo que se puede demostrar van por separado', 
   // no es «no se cumple», y pintarlo como un no acusaría de incumplir a quien
   // cumple.
   it('lo que no se puede comprobar se dice, no se convierte en un no', () => {
-    const [b] = resumenBonificaciones(conBonif(), [
+    const [b] = resumenBonificaciones(conBonif(), HOY, [
       {
         bonificacionId: 'b1',
         nombre: 'Nómina',
@@ -379,7 +486,7 @@ describe('lo que el banco aplica y lo que se puede demostrar van por separado', 
     const p = unicaja({
       bonificaciones: [bonificacion({ id: 'b1', nombre: 'Nómina', estado: 'INACTIVO' })],
     });
-    const [b] = resumenBonificaciones(p, [
+    const [b] = resumenBonificaciones(p, HOY, [
       {
         bonificacionId: 'b1',
         nombre: 'Nómina',
@@ -393,7 +500,7 @@ describe('lo que el banco aplica y lo que se puede demostrar van por separado', 
   });
 
   it('un cumplimiento de otra bonificación no se le pega a esta', () => {
-    const [b] = resumenBonificaciones(conBonif(), [
+    const [b] = resumenBonificaciones(conBonif(), HOY, [
       {
         bonificacionId: 'otra',
         nombre: 'Tarjeta',

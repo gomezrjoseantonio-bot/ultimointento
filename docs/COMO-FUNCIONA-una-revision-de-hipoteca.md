@@ -290,9 +290,23 @@ redondeado desde la carta. Entrará cuando haya quien lo use.
 «próxima revisión 25 sep 2026» cuando el tipo cambia el **25 de agosto**. Son
 las dos fechas de la regla 7, y la pantalla enseña una llamándola la otra.
 
-**f) El mismo préstamo tiene dos cuadros.** La ficha regenera con el motor nuevo
-y el euríbor de hoy; el modal de amortizar lee el plan guardado, hecho con el
-motor viejo y el euríbor del alta.
+**f) El mismo préstamo tenía dos cuadros.** *Resuelto, y al revés de lo que yo
+proponía.* La ficha regeneraba con el euríbor de hoy y el modal leía el plan
+guardado — y el que tenía razón era el modal:
+
+> «La actualización del valor del euríbor durante ese tiempo sirve de guía
+> prevista de la cuota **pero no debe cambiar ningún cuadro**, porque no va a
+> cambiar nada realmente hasta la siguiente revisión» *(Jose · 8 ago 2026)*.
+
+El cuadro se calcula con lo último **fijado** —el índice del alta hasta la
+primera revisión, y el de cada revisión confirmada después— y no se mueve porque
+el mercado se mueva. El euríbor de «Actualizar valores» entra por una sola
+puerta, `simulacionRevision`, que dice por dónde irá lo que viene sin tocar lo
+que se paga.
+
+Queda del punto original: el modal sigue leyendo el plan **persistido** y la
+ficha lo **regenera** del préstamo. Ahora coinciden porque parten del mismo
+índice, pero siguen siendo dos caminos.
 
 **g) El «Euríbor» del asistente no dice cuándo manda.** *Corregido el
 diagnóstico y hecho:* el campo **no** está sin usarse —`conIndiceDeHoy` solo lo
