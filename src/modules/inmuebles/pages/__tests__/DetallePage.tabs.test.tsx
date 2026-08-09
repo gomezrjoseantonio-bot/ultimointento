@@ -10,6 +10,7 @@ import { mueblesInmuebleService } from '../../../../services/mueblesInmuebleServ
 import { valoracionesService } from '../../../../services/valoracionesService';
 import { ejercicioFiscalService } from '../../../../services/ejercicioFiscalService';
 import { prestamosService } from '../../../../services/prestamosService';
+import { cargarIngresosCobradosAnual } from '../../utils/cargarIngresosCobrados';
 import type { InmueblesOutletContext } from '../../InmueblesContext';
 import DetallePage from '../DetallePage';
 
@@ -50,6 +51,10 @@ jest.mock('../../../../services/ejercicioFiscalService', () => ({
   ejercicioFiscalService: {
     getAllEjercicios: jest.fn().mockResolvedValue([]),
   },
+}));
+
+jest.mock('../../utils/cargarIngresosCobrados', () => ({
+  cargarIngresosCobradosAnual: jest.fn().mockResolvedValue(0),
 }));
 
 jest.mock('../../../../services/prestamosService', () => ({
@@ -114,6 +119,7 @@ beforeEach(() => {
   jest.mocked(ejercicioFiscalService.getAllEjercicios).mockResolvedValue([]);
   jest.mocked(prestamosService.getAllPrestamos).mockResolvedValue([]);
   jest.mocked(prestamosService.getPaymentPlan).mockResolvedValue(null);
+  jest.mocked(cargarIngresosCobradosAnual).mockResolvedValue(0);
 });
 
 const crearProperty = (overrides: Partial<Property> = {}): Property => ({

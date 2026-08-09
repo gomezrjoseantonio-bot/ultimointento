@@ -43,9 +43,11 @@ import {
   type FinanciacionLineaInmueble,
   type ValoracionPunto,
 } from '../adapters/patrimonioInmuebleAdapter';
+import { calcularRentabilidadInmueble } from '../adapters/rentabilidadInmuebleAdapter';
 import { valoracionesService } from '../../../services/valoracionesService';
 import { getFinanciacionInmueble } from '../../../services/financiacionInmuebleService';
 import { estimarGastoAnualCompromiso } from '../utils/estimacionGastoCompromiso';
+import { cargarIngresosCobradosAnual } from '../utils/cargarIngresosCobrados';
 import { useRegistrosInmueble } from '../hooks/useRegistrosInmueble';
 import styles from './DetallePage.module.css';
 
@@ -91,6 +93,8 @@ const DetallePage: React.FC = () => {
   const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
   const [valoraciones, setValoraciones] = useState<ValoracionPunto[]>([]);
   const [financiacion, setFinanciacion] = useState<FinanciacionLineaInmueble[]>([]);
+  // Fase 7 · renta cobrada del ejercicio (Tesorería) · undefined = aún sin cargar.
+  const [ingresosCobrados, setIngresosCobrados] = useState<number | undefined>(undefined);
   const [pendingDelete, setPendingDelete] = useState<DeleteInmuebleCascadeReport | null>(null);
   const [isDeletingInmueble, setIsDeletingInmueble] = useState(false);
   // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
@@ -115,6 +119,11 @@ const DetallePage: React.FC = () => {
     void getFinanciacionInmueble(propertyId)
       .then(setFinanciacion)
       .catch(() => setFinanciacion([]));
+
+    // Rentabilidad · renta cobrada del ejercicio en curso (Tesorería).
+    void cargarIngresosCobradosAnual(propertyId, new Date().getFullYear())
+      .then(setIngresosCobrados)
+      .catch(() => setIngresosCobrados(undefined));
   }, [propertyId]);
 
   const reloadGastos = useCallback(() => {
@@ -193,6 +202,34 @@ const DetallePage: React.FC = () => {
         mobiliario,
       }),
     [property?.acquisitionCosts, valoraciones, financiacion, mejoras, mobiliario],
+  );
+  const cuotaPrestamoAnual = useMemo(
+    () =>
+      financiacion.length > 0
+        ? financiacion.reduce((sum, l) => sum + l.cuotaMensual, 0) * 12
+        : undefined,
+    [financiacion],
+  );
+  const rentabilidadResumen = useMemo(
+    () =>
+      calcularRentabilidadInmueble({
+        costeAdquisicion: patrimonioResumen.costeAdquisicion,
+        ejercicio: today.getFullYear(),
+        ingresosPrevistosAnual: rentaMensual > 0 ? rentaMensual * 12 : undefined,
+        ingresosCobradosAnual: ingresosCobrados,
+        gastosPrevistosAnual: gastosPrevistosRentabilidad > 0 ? gastosPrevistosRentabilidad : undefined,
+        gastosPagadosAnual: resumenGastosRentabilidad.total.realOrdinario,
+        cuotaPrestamoAnual,
+      }),
+    [
+      patrimonioResumen.costeAdquisicion,
+      today,
+      rentaMensual,
+      ingresosCobrados,
+      gastosPrevistosRentabilidad,
+      resumenGastosRentabilidad,
+      cuotaPrestamoAnual,
+    ],
   );
 
   if (!property) {
@@ -615,12 +652,7 @@ const DetallePage: React.FC = () => {
 
       {tab === 'rentabilidad' && (
         <div style={{ marginTop: 8 }}>
-          <RentabilidadInmueble
-            rentaMensual={rentaMensual}
-            valorAdquisicion={valorAdquisicion}
-            gastosPrevistos={gastosPrevistosRentabilidad > 0 ? gastosPrevistosRentabilidad : undefined}
-            gastosReales={resumenGastosRentabilidad.total.realOrdinario}
-          />
+          <RentabilidadInmueble resumen={rentabilidadResumen} />
         </div>
       )}
 
