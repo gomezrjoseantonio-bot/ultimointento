@@ -580,6 +580,7 @@ const DetallePage: React.FC = () => {
                 ejerciciosBloqueados={registros.ejerciciosBloqueados}
                 onEditar={registros.abrirEdicion}
                 onBorrar={registros.abrirBorrado}
+                onAlta={registros.abrirAlta}
               />
             </div>
           )}
@@ -695,6 +696,16 @@ const DetallePage: React.FC = () => {
           guardando={registros.guardando}
           onCancel={() => { if (!registros.guardando) registros.cerrarEdicion(); }}
           onGuardar={registros.guardar}
+        />
+      )}
+
+      {registros.tipoAlta && (
+        <EditarRegistroInmuebleModal
+          modo="crear"
+          tipoCrear={registros.tipoAlta}
+          guardando={registros.guardando}
+          onCancel={() => { if (!registros.guardando) registros.cerrarAlta(); }}
+          onGuardar={registros.crear}
         />
       )}
 
