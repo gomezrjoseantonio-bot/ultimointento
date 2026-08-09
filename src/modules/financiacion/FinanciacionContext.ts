@@ -4,20 +4,18 @@
 // de `helpers.ts` —con la cuota rehecha a mano y el banco adivinado del
 // nombre—, y era la vía por la que ese cálculo llegaba a todas las pantallas.
 // Ahora cada vista se genera su cuadro con `generarCuadro` y lee de él.
+//
+// Y por eso ya no viaja `planes`: el contenedor leía el plan persistido de cada
+// préstamo en cada carga, lo metía aquí… y no lo leía nadie. Las dos pantallas
+// derivan su cuadro, y la única función con esa forma —`upcomingCuotasFromPlanes`—
+// no la llamaba nadie tampoco. Era media carga de la pantalla, gastada en un
+// dato que se tiraba.
 
-import type { Prestamo, PlanPagos } from '../../types/prestamos';
+import type { Prestamo } from '../../types/prestamos';
 
 export interface FinanciacionOutletContext {
   /** Préstamos crudos del store. */
   prestamos: Prestamo[];
-  /**
-   * Plan de pagos GUARDADO por préstamo · `null` si no se ha generado aún.
-   *
-   * No es la fuente de las cifras de pantalla: para eso está `generarCuadro`,
-   * que es función pura del préstamo. Esto es el plan persistido, que puede
-   * traer punteo de tesorería.
-   */
-  planes: Map<string, PlanPagos | null>;
   /** Recarga datos · usar tras crear/editar/eliminar/amortizar. */
   reload: () => Promise<void>;
 }

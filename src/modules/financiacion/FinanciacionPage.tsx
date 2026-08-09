@@ -17,7 +17,7 @@ import { Landmark } from 'lucide-react';
 import { PageHead, Icons, showToastV5 } from '../../design-system/v5';
 import { EmptyState } from '../../components/common/EmptyState';
 import { prestamosService } from '../../services/prestamosService';
-import type { Prestamo, PlanPagos } from '../../types/prestamos';
+import type { Prestamo } from '../../types/prestamos';
 import type { FinanciacionOutletContext } from './FinanciacionContext';
 import styles from './FinanciacionPage.module.css';
 
@@ -26,31 +26,35 @@ const FinanciacionPage: React.FC = () => {
   const location = useLocation();
 
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
-  const [planes, setPlanes] = useState<Map<string, PlanPagos | null>>(new Map());
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Los préstamos, y la pantalla pintada en cuanto se saben.
+   *
+   * Antes «Cargando financiación…» tapaba la pantalla hasta que terminaba TODO,
+   * y ese todo incluía dos vueltas por préstamo. Era la única entrada del menú
+   * en la que se veía el cargando *(Jose · 9 ago 2026)*.
+   *
+   * Lo que se espera ahora es solo la lectura de los préstamos, que es lo único
+   * sin lo cual no hay nada que enseñar —ni siquiera se puede decidir si toca
+   * el estado vacío—. El refresco de contadores va después y no retiene nada:
+   * ninguna de las dos pantallas de Financiación los lee, porque las dos
+   * derivan sus cifras del cuadro. Quien sí los lee es Mi Plan, y los tendrá
+   * frescos igual, unos milisegundos más tarde.
+   */
   const load = useCallback(async () => {
     try {
       setLoading(true);
       const list = await prestamosService.getAllPrestamos();
-      // Sync cached fields (cuotasPagadas / principalVivo) for data created
-      // before the autoMarcarCuotasPagadas cache-recalc fix.
+      setPrestamos(list);
+      setLoading(false);
+
+      // Y ahora, sin bloquear · pone al día `cuotasPagadas` y `principalVivo`
+      // de los datos anteriores a que se recalcularan solos.
       const synced = await Promise.all(
         list.map((p) => prestamosService.autoMarcarCuotasPagadas(p.id).catch(() => null)),
       );
-      const updatedList = synced.map((s, i) => s ?? list[i]);
-      setPrestamos(updatedList);
-      const planEntries = await Promise.all(
-        updatedList.map(async (p) => {
-          try {
-            const plan = await prestamosService.getPaymentPlan(p.id);
-            return [p.id, plan] as const;
-          } catch {
-            return [p.id, null] as const;
-          }
-        }),
-      );
-      setPlanes(new Map(planEntries));
+      if (synced.some(Boolean)) setPrestamos(synced.map((s, i) => s ?? list[i]));
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[financiacion] error cargando datos', err);
@@ -78,7 +82,6 @@ const FinanciacionPage: React.FC = () => {
 
   const ctx: FinanciacionOutletContext = {
     prestamos,
-    planes,
     reload: load,
   };
 
