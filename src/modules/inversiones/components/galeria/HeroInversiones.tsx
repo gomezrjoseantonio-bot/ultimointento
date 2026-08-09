@@ -146,6 +146,19 @@ const HeroInversiones: React.FC<Props> = ({ resumen, familias, rentaPasiva, seri
           </div>
           <TrayectoriaChart serie={serie} />
           <div className={styles.trajLeg}>
+            {serie.baseYearIdx > 0 && (
+              <span className={styles.tlg}>
+                <span className={styles.tlgLine} style={{ background: 'var(--atlas-v5-on-navy-1)' }} />
+                realidad
+              </span>
+            )}
+            <span className={styles.tlg}>
+              <span
+                className={styles.tlgLineDash}
+                style={{ borderTopColor: 'var(--atlas-v5-gold-2)' }}
+              />
+              objetivo
+            </span>
             {serie.bandas.map((b, i) => (
               <span className={styles.tlg} key={i}>
                 <span className={styles.tlgDot} style={{ background: b.color }} />

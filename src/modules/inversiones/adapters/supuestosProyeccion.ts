@@ -45,6 +45,22 @@ export const PROY_RATE_MAX_PCT = 15;
 export const PROY_HORIZONTE_AÑOS = 20;
 
 /**
+ * Rentabilidad objetivo por defecto para inversiones (%) · base del slider de
+ * proyección de una ficha CUANDO la posición aún no tiene un rendimiento
+ * realizado (CAGR/TWR) fiable del que partir. Vive AQUÍ —único punto de
+ * definición— en vez de escondida como número mágico dentro de una ficha
+ * (regla C-PROY-5: ninguna dinámica trae su propia constante).
+ *
+ * TODO (Fase 5 · decisión de Jose · "PARA y avisa"): el escenario compartido
+ * NO define hoy una "rentabilidad objetivo de inversiones" (solo inflación y
+ * rentabilidad de ahorro/caja). Cuando se decida añadir un campo editable
+ * `rentabilidadObjetivoInversionesPct` a `SupuestosProyeccion`, mapearlo en
+ * `obtenerSupuestosGaleria().rentabilidadObjetivoPct` y esta constante pasa a
+ * ser solo el default de ese campo.
+ */
+export const RENT_OBJETIVO_INVERSIONES_DEFAULT_PCT = 8;
+
+/**
  * Lee los supuestos del escenario compartido. Única puerta de lectura para el
  * módulo de Inversiones · si mañana la galería y las fichas necesitan otra
  * fuente, se cambia aquí y en ningún otro sitio.
@@ -85,4 +101,18 @@ export function tasaNominalPosicion(
     return clamped / 100;
   }
   return suelo / 100;
+}
+
+/**
+ * Tasa de la LÍNEA DE OBJETIVO de la trayectoria (fracción, p.ej. 0,08) ·
+ * decisión de Jose: el objetivo NO sustituye a la CAGR de cada posición, se
+ * dibuja como una línea aparte para comparar «dónde estarías a tu tasa
+ * objetivo» frente a la proyección real. Sale de la rentabilidad objetivo del
+ * escenario y, mientras el escenario no la defina (hoy `null`), del default del
+ * único punto de definición. NUNCA se hardcodea en la gráfica.
+ */
+export function tasaObjetivo(supuestos: SupuestosGaleria): number {
+  return (
+    (supuestos.rentabilidadObjetivoPct ?? RENT_OBJETIVO_INVERSIONES_DEFAULT_PCT) / 100
+  );
 }

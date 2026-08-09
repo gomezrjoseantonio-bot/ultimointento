@@ -46,7 +46,11 @@ import ProyeccionPlanChart, {
 } from '../components/ficha/ProyeccionPlanChart';
 import { planPensionToCartaItem } from '../types/cartaItem';
 import { parseIsoDateAsUTC } from '../../../utils/recurrenceDateUtils';
-import { obtenerSupuestosGaleria } from '../adapters/supuestosProyeccion';
+import {
+  obtenerSupuestosGaleria,
+  RENT_OBJETIVO_INVERSIONES_DEFAULT_PCT,
+} from '../adapters/supuestosProyeccion';
+import { SUPUESTOS_PROYECCION_DEFAULTS } from '../../../types/supuestosProyeccion';
 import styles from './FichaPosicion.module.css';
 import d from '../components/ficha/fichaDetalleV5.module.css';
 
@@ -194,6 +198,14 @@ interface Props {
   onBack: () => void;
 }
 
+// Rangos de los sliders de proyección · un único sitio para el min/max del
+// control y para clampar los defaults que vienen del escenario (así un valor
+// del escenario fuera de rango no deja el slider incoherente · review Copilot).
+const RENT_SLIDER = { min: 3, max: 14 } as const;
+const INFL_SLIDER = { min: 0, max: 5 } as const;
+const clampRango = (v: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, v));
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
@@ -216,7 +228,14 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   const [showEliminar, setShowEliminar] = useState(false);
   const [rateOverridePct, setRateOverridePct] = useState<number | null>(null);
   const [inflOverridePct, setInflOverridePct] = useState<number | null>(null);
-  const [inflEscenarioPct, setInflEscenarioPct] = useState<number>(2.5);
+  // Seeds del escenario compartido (Fase 5) · sin números mágicos en la ficha:
+  // inflación y rentabilidad objetivo salen del único punto de definición.
+  const [inflEscenarioPct, setInflEscenarioPct] = useState<number>(
+    SUPUESTOS_PROYECCION_DEFAULTS.inflacionGastosPct,
+  );
+  const [objetivoBasePct, setObjetivoBasePct] = useState<number>(
+    RENT_OBJETIVO_INVERSIONES_DEFAULT_PCT,
+  );
   const [avisoAportarVisible, setAvisoAportarVisible] = useState(true);
 
   // T-FICHA-PP-DEUDA v1 · Fix #1 · años hasta rescate derivados de
@@ -227,12 +246,20 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
       esEstimacionPorDefecto: true,
     });
 
-  // Fase 3.1 · inflación por defecto del slider = la del escenario compartido.
+  // Fase 5 · los defaults de los sliders (inflación y rentabilidad objetivo)
+  // salen del escenario compartido. `rentabilidadObjetivoPct` es null hoy (el
+  // escenario aún no la define · ver supuestosProyeccion.ts) → cae al default
+  // del único punto de definición; el día que exista el campo, esto lo recoge
+  // sin tocar la ficha.
   useEffect(() => {
     let cancelado = false;
     obtenerSupuestosGaleria()
       .then((s) => {
-        if (!cancelado && Number.isFinite(s.inflacionPct)) setInflEscenarioPct(s.inflacionPct);
+        if (cancelado) return;
+        if (Number.isFinite(s.inflacionPct)) setInflEscenarioPct(s.inflacionPct);
+        setObjetivoBasePct(
+          s.rentabilidadObjetivoPct ?? RENT_OBJETIVO_INVERSIONES_DEFAULT_PCT,
+        );
       })
       .catch(() => undefined);
     return () => {
@@ -476,10 +503,21 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
       : '—';
 
   // ── Proyección · sliders (override) sobre defaults ────────────────────────
-  const defaultRatePct =
-    rentFrac != null ? Math.min(14, Math.max(3, Math.round(rentFrac * 1000) / 10)) : 8;
+  // Base del slider · el rendimiento realizado (CAGR/TWR) manda si es fiable;
+  // si no, la rentabilidad objetivo del escenario compartido (Fase 5).
+  const defaultRatePct = clampRango(
+    rentFrac != null ? Math.round(rentFrac * 1000) / 10 : objetivoBasePct,
+    RENT_SLIDER.min,
+    RENT_SLIDER.max,
+  );
   const ratePct = rateOverridePct ?? defaultRatePct;
-  const inflPct = inflOverridePct ?? inflEscenarioPct;
+  // Clampado al rango del control: un valor del escenario fuera de [min,max]
+  // dejaría el slider incoherente (value fuera de min/max).
+  const inflPct = clampRango(
+    inflOverridePct ?? inflEscenarioPct,
+    INFL_SLIDER.min,
+    INFL_SLIDER.max,
+  );
   const rescateYear = hoyYear + Math.max(0, Math.round(anosHastaRescateInfo.anos));
 
   // Serie realizada por año (última valoración de cada año).
@@ -617,8 +655,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                   <input
                     type="range"
                     className={d.rng}
-                    min={3}
-                    max={14}
+                    min={RENT_SLIDER.min}
+                    max={RENT_SLIDER.max}
                     step={0.1}
                     value={ratePct}
                     onChange={(e) => setRateOverridePct(Number(e.target.value))}
@@ -633,8 +671,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                   <input
                     type="range"
                     className={`${d.rng} ${d.grey}`}
-                    min={0}
-                    max={5}
+                    min={INFL_SLIDER.min}
+                    max={INFL_SLIDER.max}
                     step={0.1}
                     value={inflPct}
                     onChange={(e) => setInflOverridePct(Number(e.target.value))}
