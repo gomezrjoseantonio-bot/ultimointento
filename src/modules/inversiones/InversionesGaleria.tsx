@@ -65,6 +65,15 @@ const InversionesGaleria: React.FC = () => {
   const [searchParams] = useSearchParams();
   const fromEmpezar = searchParams.get('from') === 'empezar';
   const volviendoAlFlujo = useRef(false);
+  // Guard para el `load()` en segundo plano tras el alta: si el componente ya
+  // se desmontó (p.ej. se volvió al flujo /empezar), no hacemos setState.
+  const montadoRef = useRef(true);
+  useEffect(() => {
+    montadoRef.current = true;
+    return () => {
+      montadoRef.current = false;
+    };
+  }, []);
   const [cartaItems, setCartaItems] = useState<CartaItem[]>([]);
   const [resumenCerradas, setResumenCerradas] = useState<KpisCerradas>(() =>
     calcularKpisCerradas([]),
@@ -201,7 +210,9 @@ const InversionesGaleria: React.FC = () => {
         try {
           await rendimientosService.generarRendimientosPendientes();
           await resincronizarTesoreriaInversiones('alta de posición');
-          await load();
+          // Solo refrescamos la galería si seguimos montados y no estamos
+          // saliendo al flujo /empezar (evita setState tras desmontar).
+          if (montadoRef.current && !fromEmpezar) await load();
         } catch (bgErr) {
           // eslint-disable-next-line no-console
           console.error('[inversiones] post-alta background', bgErr);

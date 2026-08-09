@@ -3,8 +3,8 @@
 // Filas compactas · cabeceras ordenables (Posición · Desde · Peso · Valor) ·
 // filtros por familia (Todas / Planes / Renta fija / Equity). "Cómo va" muestra
 // SOLO el dato (rentabilidad % para planes/equity · renta €/año|mes para renta
-// fija) · sin texto de opinión (spec §2.3). El cuerpo hace scroll interno · la
-// página no.
+// fija) · sin texto de opinión (spec §2.3). La tabla NO hace scroll: se PAGINA
+// (tamaño de página = altura disponible ÷ altura de fila) · la página tampoco.
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Icons } from '../../../../design-system/v5';

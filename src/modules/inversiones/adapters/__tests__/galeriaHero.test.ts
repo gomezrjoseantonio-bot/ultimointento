@@ -94,6 +94,23 @@ describe('galeriaHero · familiasResumen', () => {
     expect(f.acciones.hoy).toBe(500);
     expect(f.acciones.pctAnual).toBeCloseTo(12);
   });
+
+  it('pctTotal es el fallback (rentabilidad total) cuando no hay CAGR anualizada', () => {
+    // Posición nueva (<1 año): sin cagr_pct → pctAnual null; con rentabilidad
+    // total → pctTotal la recoge (el hero la muestra sin "/año").
+    const f = familiasResumen([
+      item({ tipo: 'accion', valor_actual: 6494, total_aportado: 3807, rentabilidad_porcentaje: 70.6 }),
+    ]);
+    expect(f.acciones.pctAnual).toBeNull();
+    expect(f.acciones.pctTotal).toBeCloseTo(70.6);
+  });
+
+  it('pctTotal es null si la posición no tiene valor (no pondera sobre 0)', () => {
+    const f = familiasResumen([
+      item({ tipo: 'accion', valor_actual: 0, total_aportado: 100, rentabilidad_porcentaje: 50 }),
+    ]);
+    expect(f.acciones.pctTotal).toBeNull();
+  });
 });
 
 describe('galeriaHero · rentaPasivaAnual', () => {
