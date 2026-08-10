@@ -548,8 +548,8 @@ const TesoreriaV6Page: React.FC = () => {
             fecha: v.fecha,
             cuentaId: v.cuentaId,
             inmuebleId: v.inmuebleId ?? null,
-            categoryKey: v.categoryKey ?? null,
-            subtypeKey: v.subtypeKey ?? null,
+            categoryKey: v.categoryKey,
+            subtypeKey: v.subtypeKey,
             // Viaja para que el servicio pueda NEGARSE: convertir esto en un
             // traspaso interno pediría una segunda pata que aquí no se puede
             // crear. Tragárselo en silencio dejaría el dinero saliendo de una
@@ -990,6 +990,7 @@ const TesoreriaV6Page: React.FC = () => {
           puesta: estaba en pantalla, no tiene sentido volver a pedirla. */}
       <FichaMovimiento
         abierta={altaDelDia != null}
+        esEdicion={false}
         inicial={
           altaDelDia
             ? {

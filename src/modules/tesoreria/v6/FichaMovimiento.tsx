@@ -44,6 +44,9 @@ export interface ValoresFicha {
   familia?: string;
   /** Concepto del catálogo de presentación (`subtipoId`). */
   subtipo?: string;
+  /** Clasificación persistida que se conserva si el catálogo no puede invertirla. */
+  categoryKey?: string | null;
+  subtypeKey?: string | null;
   inmuebleId?: number | null;
   /** Con qué tarjeta se pagó · `null` = ninguna (§3.5). */
   tarjetaId?: number | null;
@@ -74,6 +77,13 @@ export interface FichaMovimientoProps {
   abierta: boolean;
   /** `undefined` = alta ("Anotar") · con valores = edición. */
   inicial?: Partial<ValoresFicha>;
+  /**
+   * Permite prefijar campos en un alta sin convertirla en edición.
+   *
+   * Tesorería necesita pasar la cuenta y/o la fecha de origen al anotar, pero
+   * esos valores no significan que exista todavía un movimiento que editar.
+   */
+  esEdicion?: boolean;
   /** Importe previsto, para el hint al editar (§4.5). */
   importePrevisto?: number;
   cuentas: Account[];
@@ -132,8 +142,9 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   onEliminar,
   documentIds,
   onAbrirDocumento,
+  esEdicion: esEdicionProp,
 }) => {
-  const esEdicion = inicial != null;
+  const esEdicion = esEdicionProp ?? inicial != null;
 
   const [tipo, setTipo] = useState<TipoMovimiento>('gasto');
   const [concepto, setConcepto] = useState('');
@@ -228,10 +239,10 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
       tarjetaId: clasificable ? tarjetaId : null,
       ...(esTransferencia ? { cuentaDestinoId } : {}),
       ...(necesitaPregunta && derrama ? { naturalezaDerrama: derrama } : {}),
-      categoryKey: sinElegir ? undefined : keyElegida,
+      categoryKey: sinElegir ? inicial?.categoryKey : keyElegida,
       // `null` (no `undefined`) para que reclasificar a un concepto sin
       // variante borre el subtipo viejo en vez de dejarlo pegado.
-      subtypeKey: sinElegir ? undefined : traduccion?.subtypeKey ?? null,
+      subtypeKey: sinElegir ? inicial?.subtypeKey : traduccion?.subtypeKey ?? null,
       esMejora,
     });
 
