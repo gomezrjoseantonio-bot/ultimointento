@@ -738,6 +738,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       {/* §4.5 prerrellenada · "Crear movimiento" desde una línea sin cuadre. */}
       <FichaMovimiento
         abierta={creando != null}
+        esEdicion={false}
         inicial={
           creando
             ? {

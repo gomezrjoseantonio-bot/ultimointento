@@ -57,6 +57,8 @@ export function valoresDesdeItem(
     // Sin esto, corregir un importe borraría la tarjeta: la ficha guarda lo que
     // tiene en pantalla, y lo que no le llega llega vacío.
     tarjetaId: item.tarjetaId ?? null,
+    categoryKey: item.categoryKey ?? null,
+    subtypeKey: item.subtypeKey ?? null,
     ...(presentacion ? { familia: presentacion.tipoId, subtipo: presentacion.subtipoId } : {}),
   };
 }

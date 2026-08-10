@@ -404,6 +404,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
       {/* §4.5 · ficha de movimiento · editar con el lápiz o anotar */}
       <FichaMovimiento
         abierta={ficha != null}
+        esEdicion={ficha?.item != null}
         inicial={
           ficha?.item
             ? valoresDesdeItem(ficha.item, cuenta.id ?? null)
