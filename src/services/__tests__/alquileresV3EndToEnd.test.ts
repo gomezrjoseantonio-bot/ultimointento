@@ -136,7 +136,6 @@ describe('alquileres v3 · verificación end-to-end (commits 2-5)', () => {
       endDate: `${ESTE_AÑO}-12-31`,
       monthlyRent: 500,
       paymentDay: 1,
-      status: 'active',
       documents: [],
     });
 

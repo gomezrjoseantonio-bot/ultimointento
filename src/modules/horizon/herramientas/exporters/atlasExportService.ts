@@ -553,11 +553,11 @@ export async function exportarContratosParaImportacion(): Promise<void> {
       deposit?: { amount?: number };
     };
 
-    // Legacy contracts may use `tenant.name` (single string) instead of inquilino.nombre + apellidos
-    const nombreCompania = [
-      [contract.inquilino?.nombre, contract.inquilino?.apellidos].filter(Boolean).join(' ').trim(),
-      contract.tenant?.name ?? '',
-    ].find((v) => Boolean(v?.trim()))?.trim() ?? '';
+    const nombreCompania =
+      [contract.inquilino?.nombre, contract.inquilino?.apellidos]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
 
     // Legacy contracts may store the property reference as `propertyId` instead of `inmuebleId`
     const inmuebleKey = String(contract.inmuebleId ?? contract.propertyId ?? '');

@@ -149,12 +149,10 @@ const construirPayload = (
     // Legacy mirrors
     propertyId: inmuebleId,
     type: unidadTipo,
-    tenant: { nif: d.inquilinoDni || '' },
     startDate: d.fechaInicio,
     endDate: d.fechaFin || FECHA_FIN_INDEFINIDO,
     monthlyRent: d.rentaMensual,
     paymentDay: diaPagoValido(d.diaPago),
-    status: 'upcoming',
     documents: [],
   };
 };

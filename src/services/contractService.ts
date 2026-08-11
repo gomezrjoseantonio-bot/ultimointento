@@ -1,4 +1,4 @@
-import { initDB, Contract, HistoricoRenta, RentaMensual } from './db';
+import { initDB, Contract, HistoricoRenta } from './db';
 
 type SignatureMetadata = NonNullable<Contract['firma']>;
 
@@ -108,9 +108,6 @@ export const saveContract = async (contract: Omit<Contract, 'id' | 'createdAt' |
   // Ensure default values for required fields
   const enhancedContract: Omit<Contract, 'id'> = {
     ...contract,
-    // Set defaults for backward compatibility
-    status: contract.estadoContrato === 'activo' ? 'active' :
-           contract.estadoContrato === 'finalizado' ? 'terminated' : 'upcoming',
     documents: contract.documents || [],
 
     // Ensure default grace period
@@ -130,13 +127,6 @@ export const saveContract = async (contract: Omit<Contract, 'id' | 'createdAt' |
   };
   
   const contractId = await db.add('contracts', enhancedContract);
-  
-  // Generate monthly rent forecasts (RentaMensual)
-  // Skip for sin_identificar contracts — they don't have sufficient data for monthly forecasts
-  if (enhancedContract.estadoContrato !== 'sin_identificar') {
-    await generateRentaMensual(contractId as number, enhancedContract);
-  }
-  
   return contractId as number;
 };
 
@@ -194,16 +184,6 @@ export const updateContract = async (id: number, updates: Partial<Contract>): Pr
   }
 
   await db.put('contracts', updatedContract);
-  
-  // If dates, rent, or fiscal data changed, regenerate monthly forecasts
-  if (
-    'fechaInicio' in updates ||
-    'fechaFin' in updates ||
-    'rentaMensual' in updates ||
-    'ejerciciosFiscales' in updates
-  ) {
-    await regenerateRentaMensual(id, updatedContract);
-  }
 };
 
 export const getContract = async (id: number): Promise<Contract | undefined> => {
@@ -341,22 +321,6 @@ export const rescindContract = async (id: number, fechaRescision: string, motivo
     }
   });
 };
-
-// Generate monthly rent forecasts — store eliminado en V62 · no-op
-// Los datos del contrato (contract.rentaMensual) se usan directamente como fallback.
-export const generateRentaMensual = async (_contratoId: number, _contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
-  // rentaMensual store eliminated in V62 — historic data in contract.historicoRentas[]
-};
-
-export const regenerateRentaMensual = async (contratoId: number, contract: Contract): Promise<void> => {
-  await generateRentaMensual(contratoId, contract);
-};
-
-// Store eliminado en V62 · no-op
-export const clearRentaMensual = async (_contratoId: number): Promise<void> => {};
-
-// Store eliminado en V62 · returns empty array
-export const getRentaMensual = async (_contratoId: number): Promise<RentaMensual[]> => [];
 
 export type SignatureStatus = 'borrador' | 'preparado' | 'enviado' | 'firmado' | 'rechazado';
 

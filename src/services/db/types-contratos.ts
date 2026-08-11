@@ -256,14 +256,7 @@ export interface Contract {
   scope?: 'full-property' | 'units';
   selectedUnits?: string[]; // For multi-unit properties (e.g., ['H1', 'H2'])
   type?: 'vivienda' | 'habitacion';
-  
-  // Legacy tenant information
-  tenant?: {
-    name?: string;
-    nif?: string;
-    email?: string;
-  };
-  
+
   // Legacy contract dates
   startDate?: string;
   endDate?: string; // Optional for indefinite contracts
@@ -299,10 +292,9 @@ export interface Contract {
     [key: string]: boolean | undefined;
   };
   
-  // Legacy notes and status
+  // Legacy notes
   privateNotes?: string;
-  status: 'active' | 'upcoming' | 'terminated'; // Maps to estadoContrato
-  
+
   // Documents
   documents: number[];
   
@@ -311,20 +303,9 @@ export interface Contract {
   updatedAt: string;
 }
 
-// Monthly rent tracking for treasury integration
-export interface RentaMensual {
-  id?: number;
-  contratoId: number;
-  periodo: string; // YYYY-MM format
-  importePrevisto: number; // Expected amount for the period
-  importeCobradoAcum: number; // Accumulated collected amount
-  estado: 'pendiente' | 'parcial' | 'cobrada' | 'impago' | 'revision'; // Payment status
-  movimientosVinculados: number[]; // Linked treasury movement IDs
-  createdAt: string;
-  updatedAt: string;
-}
-
-// NOTE: RentCalendar and RentPayment interfaces removed in V4.5 — migrated to RentaMensual
+// NOTE: RentCalendar y RentPayment se retiraron en V4.5; el store `rentaMensual`
+// se eliminó en V62 (0 registros) y su interfaz `RentaMensual` en Fase G. El
+// importe vigente vive en `Contract.rentaMensual` + `Contract.historicoRentas`.
 
 // H5: AEAT Tax Classification Types
 export type AEATFiscalType = 

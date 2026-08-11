@@ -91,7 +91,6 @@ describe('crearContractsDesdeDrafts', () => {
     expect(contratos).toHaveLength(2);
     contratos.forEach((c: any) => {
       expect(c.estadoContrato).toBe('sin_firmar');
-      expect(c.status).toBe('upcoming');
       expect(c.origenImportacion).toBe('rentila');
     });
     // Cotitulares preservados.
@@ -101,7 +100,7 @@ describe('crearContractsDesdeDrafts', () => {
 
   it('respeta las decisiones de duplicados (omitir / fusionar / crear_nuevo)', async () => {
     const existente = {
-      id: 100, inmuebleId: 2, estadoContrato: 'finalizado', status: 'terminated',
+      id: 100, inmuebleId: 2, estadoContrato: 'finalizado',
       modalidad: 'habitual', fechaInicio: '2022-01-01', fechaFin: '2023-12-31',
       rentaMensual: 420, monthlyRent: 420, diaPago: 1, margenGraciaDias: 5,
       indexacion: 'none', historicoIndexaciones: [], fianzaMeses: 1, fianzaImporte: 420,

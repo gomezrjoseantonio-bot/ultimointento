@@ -76,7 +76,6 @@ describe('ContractsListaEnhanced undefined contract handling', () => {
         fianzaEstado: 'retenida',
         cuentaCobroId: 1,
         estadoContrato: 'activo',
-        status: 'active',
         documents: [],
         createdAt: '2023-01-01',
         updatedAt: '2023-01-01'
@@ -120,7 +119,6 @@ describe('ContractsListaEnhanced undefined contract handling', () => {
         fianzaEstado: 'retenida',
         cuentaCobroId: 1,
         estadoContrato: 'activo',
-        status: 'active',
         documents: [],
         createdAt: '2023-01-01',
         updatedAt: '2023-01-01'
@@ -149,7 +147,6 @@ describe('ContractsListaEnhanced undefined contract handling', () => {
         fianzaEstado: 'retenida',
         cuentaCobroId: 1,
         estadoContrato: 'activo',
-        status: 'active',
         documents: [],
         createdAt: '2023-01-01',
         updatedAt: '2023-01-01'
