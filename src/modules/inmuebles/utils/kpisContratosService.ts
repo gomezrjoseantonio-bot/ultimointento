@@ -48,9 +48,19 @@ export function calcularKpisContratos(
   hoy: Date = new Date(),
 ): ContratosKPIs {
   // FIX § 1.2 · el KPI "Vigentes" cuenta solo contratos con inquilino real (no
-  // los placeholders AEAT sin identificar) · así la banda navy cuadra con el tab.
+  // los placeholders AEAT sin identificar).
+  //
+  // Además · un borrador (`estadoContrato === 'sin_firmar'`) NO es un
+  // arrendamiento en vigor: no ocupa unidad ni genera renta garantizada. Por eso
+  // se excluye de TODOS los KPIs operativos (ocupación, renta prevista, unidades
+  // libres, vencimientos). Así un borrador a medias deja de inflar la ocupación
+  // por encima del 100 %. El borrador sigue visible y accionable en el tab
+  // Vigentes (con su chip "sin firmar"), pero no cuadra la banda navy.
   const vigentes = contracts.filter(
-    (c) => getEstadoEfectivo(c, hoy) === 'vigente' && esInquilinoIdentificado(c),
+    (c) =>
+      getEstadoEfectivo(c, hoy) === 'vigente' &&
+      esInquilinoIdentificado(c) &&
+      c.estadoContrato !== 'sin_firmar',
   );
 
   const unidadesArrendables = calcularUnidadesArrendables(properties);

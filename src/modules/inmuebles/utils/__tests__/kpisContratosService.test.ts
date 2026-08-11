@@ -60,6 +60,21 @@ describe('calcularKpisContratos · KPIs operativos (Fase C)', () => {
     expect(kpis.unidadesLibres).toBe(0);
   });
 
+  it('los borradores (sin_firmar) no cuentan en la ocupación ni en vigentes', () => {
+    const properties = [prop({ id: 1, modoExplotacion: 'piso_completo' })]; // 1 unidad
+    const contracts = [
+      // Contrato real en vigor · ocupa la unidad.
+      contrato({ id: 1, inmuebleId: 1, estadoContrato: 'activo' }),
+      // Borrador con inquilino real y fechas en vigor: antes inflaba a 200 %.
+      contrato({ id: 2, inmuebleId: 1, estadoContrato: 'sin_firmar', rentaMensual: 500 }),
+    ];
+    const kpis = calcularKpisContratos(contracts, properties, HOY);
+    expect(kpis.vigentes).toBe(1); // solo el firmado
+    expect(kpis.ocupacion).toBe(100); // no 200 %
+    expect(kpis.unidadesLibres).toBe(0);
+    expect(kpis.rentaMensual).toBe(1000); // la renta del borrador no se prevé
+  });
+
   it('los contratos sin identificar (AEAT) no cuentan en vigentes ni libres', () => {
     const properties = [prop({ id: 1, bedrooms: 2, modoExplotacion: 'por_habitaciones' })]; // 2 unidades
     const contracts = [
