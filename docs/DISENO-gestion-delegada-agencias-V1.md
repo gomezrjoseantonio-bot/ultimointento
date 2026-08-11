@@ -1,4 +1,4 @@
-# Gestión delegada por agencias · Diseño V1.1
+# Gestión delegada por agencias · Diseño V1.2
 
 > Estado: **propuesta de diseño** (no implementado). Documento de referencia
 > antes de tocar código. Objetivo: modelar la gestión de alquileres a través de
@@ -13,6 +13,9 @@
 > - **Requisito núcleo (no negociable):** los contratos de los inquilinos se
 >   **anexan** a su contrato de gestión (relación padre→hijo por `id`), y **la
 >   facturación fiscal ES la suma de esos subcontratos anexados**. Ver §4.4 y §5.1.
+> - **El contrato de gestión (padre) NO es LAU** (duración libre, sin reducción
+>   fiscal); los subcontratos de inquilinos **sí** (LAU + reducciones). Los
+>   subcontratos se anexan **en cualquier momento**, no en un volcado anual. Ver §4.5.
 
 ## 1. Problema
 
@@ -120,7 +123,11 @@ export interface HonorarioAgencia {
 
 /** Bloque de gestión delegada · va DENTRO de `Contract` (Opción A). Presente
  *  solo en el contrato de gestión (padre), 1 por piso. Su ausencia = contrato
- *  normal (autogestión). */
+ *  normal (autogestión).
+ *
+ *  El padre es NO-LAU: duración libre (fechaFin = plazo pactado, sin +5 auto),
+ *  sin modalidad LAU efectiva y sin reducción fiscal (§4.5). La reducción LAU
+ *  vive en los subcontratos hijos. */
 export interface GestionDelegada {
   /** NIF/CIF del `Proveedor` (agencia). */
   agenciaNif: string;
@@ -196,6 +203,35 @@ Esta es la parte que debe quedar **meridianamente clara**, sin excusas después:
   excluido de vigentes/ocupación/renta prevista igual que hoy se excluyen
   `sin_identificar` y `sin_firmar`. El operativo del piso es SIEMPRE el contrato
   de gestión padre.
+- **Anexado en cualquier momento**: los subcontratos se anexan cuando llegan
+  (cada día, cada trimestre, a fin de año) — NO es un volcado anual único. La
+  facturación del padre se recalcula de forma incremental y queda **"en curso"**
+  hasta que se cierra el ejercicio; el dato parcial es un estado válido, no un
+  error.
+
+### 4.5. LAU y afectación fiscal · padre ≠ hijos
+
+Distinción que debe respetarse en tipos y en lógica:
+
+- **Contrato de gestión (padre) · NO-LAU.** Es un contrato mercantil con la
+  agencia, de **duración libre** (1…N años, lo que se pacte). **No aplica** nada
+  de LAU:
+  - Sin cálculo automático de `fechaFin` (+5 años de habitual): `fechaFin` = plazo
+    pactado con la agencia, tal cual.
+  - Sin `modalidad` LAU (habitual/temporada/vacacional) con sus semánticas.
+  - **Sin reducción fiscal** (`reduccion`, `zonaTensionada`, Ley 12/2023): el padre
+    no genera por sí mismo rendimiento de capital inmobiliario con reducción.
+  - La presencia del bloque `gestion` es lo que marca "no-LAU"; la lógica LAU
+    (auto fechaFin, reducción) se salta cuando `gestion` está presente.
+    *(Impl. fase 1: valorar un valor `modalidad: 'gestion'` o gating por `gestion`.)*
+- **Subcontratos de inquilinos (hijos) · SÍ-LAU.** Aquí está la **afectación
+  fiscal real**. Cada hijo lleva su `modalidad`, `reduccion` (Ley 12/2023),
+  `zonaTensionada`, etc., y la **reducción se aplica a nivel de cada subcontrato**
+  (es el arrendamiento de vivienda real). Su `rentaAnual` suma a la facturación
+  del padre (§4.4), y sobre ese rendimiento operan las reducciones por hijo.
+
+Resumen: **el padre es caja + agregador; los hijos son la sustancia fiscal (LAU +
+reducciones).**
 
 ## 5. Flujos por modo
 
