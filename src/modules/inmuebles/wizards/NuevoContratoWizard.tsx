@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   PageHead,
@@ -9,59 +9,18 @@ import {
   showToastV5,
 } from '../../../design-system/v5';
 import type { Contract } from '../../../services/db';
-import { saveContract, getContract, calculateHabitualEndDate } from '../../../services/contractService';
+import { saveContract, getContract, updateContract, calculateHabitualEndDate } from '../../../services/contractService';
 import { treasuryAPI } from '../../../services/treasuryApiService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
+import {
+  type FormState,
+  emptyForm,
+  toLocalDate,
+  contratoAForm,
+} from './contratoWizardHelpers';
 import styles from './NuevoContratoWizard.module.css';
 
 type StepKey = 'donde' | 'inquilino' | 'economico' | 'documentos' | 'firma';
-
-interface FormState {
-  inmuebleId: number | null;
-  habitacionId: string;
-  modalidad: 'habitual' | 'temporada' | 'vacacional';
-  fechaInicio: string;
-  fechaFin: string;
-  inquilinoNombre: string;
-  inquilinoApellidos: string;
-  inquilinoNif: string;
-  inquilinoEmail: string;
-  inquilinoTelefono: string;
-  rentaMensual: string;
-  diaPago: string;
-  fianzaMensualidades: string;
-  indexacion: 'none' | 'ipc' | 'irav' | 'otros';
-}
-
-/**
- * FIX P3 · convierte un string date-only "YYYY-MM-DD" en un Date construido con
- * componentes LOCALES. Evita el off-by-one de `new Date("YYYY-MM-DD")` (que se
- * parsea como medianoche UTC y al formatear en TZ local cae al día anterior),
- * dejando el resumen en vivo SIEMPRE en el mismo día que el campo. Local al
- * wizard · no se toca `DateLabel` (global).
- */
-const toLocalDate = (iso: string): Date | null => {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return null;
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-};
-
-const emptyForm: FormState = {
-  inmuebleId: null,
-  habitacionId: '',
-  modalidad: 'habitual',
-  fechaInicio: new Date().toISOString().slice(0, 10),
-  fechaFin: '',
-  inquilinoNombre: '',
-  inquilinoApellidos: '',
-  inquilinoNif: '',
-  inquilinoEmail: '',
-  inquilinoTelefono: '',
-  rentaMensual: '',
-  diaPago: '1',
-  fianzaMensualidades: '2',
-  indexacion: 'ipc',
-};
 
 const NuevoContratoWizard: React.FC = () => {
   const navigate = useNavigate();
@@ -76,6 +35,15 @@ const NuevoContratoWizard: React.FC = () => {
     return Number.isFinite(n) ? n : null;
   })();
 
+  // Modo edición · `?edit=<id>` · corrige un contrato ya creado.
+  const editId = (() => {
+    const v = searchParams.get('edit');
+    if (!v) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  })();
+  const esEdicion = editId !== null;
+
   const [step, setStep] = useState<StepKey>('donde');
   const [form, setForm] = useState<FormState>({
     ...emptyForm,
@@ -83,6 +51,28 @@ const NuevoContratoWizard: React.FC = () => {
   });
   const [creando, setCreando] = useState(false);
   const [errorSave, setErrorSave] = useState<string | null>(null);
+
+  // Prefill del formulario al editar (una vez, al montar con `?edit`).
+  useEffect(() => {
+    if (editId === null) return;
+    let cancelado = false;
+    void (async () => {
+      try {
+        const existente = await getContract(editId);
+        if (!cancelado && existente) setForm(contratoAForm(existente));
+        else if (!cancelado) {
+          showToastV5('No se encontró el contrato a editar', 'error');
+          navigate('/contratos?tab=vigentes');
+        }
+      } catch {
+        if (!cancelado) showToastV5('No se pudo cargar el contrato', 'error');
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId]);
 
   const update = <K extends keyof FormState>(key: K, val: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -197,6 +187,33 @@ const NuevoContratoWizard: React.FC = () => {
     setCreando(true);
     try {
       const payload = await construirPayloadContrato();
+
+      if (esEdicion && editId !== null) {
+        // Edición · se actualizan solo los campos editables; NO se toca el
+        // estado del ciclo de vida (estadoContrato / firma / histórico de
+        // indexaciones / cuenta de cobro / margen de gracia se preservan).
+        await updateContract(editId, {
+          inmuebleId: payload.inmuebleId,
+          unidadTipo: payload.unidadTipo,
+          habitacionId: payload.habitacionId,
+          modalidad: payload.modalidad,
+          inquilino: payload.inquilino,
+          fechaInicio: payload.fechaInicio,
+          fechaFin: payload.fechaFin,
+          rentaMensual: payload.rentaMensual,
+          diaPago: payload.diaPago,
+          indexacion: payload.indexacion,
+          fianzaMeses: payload.fianzaMeses,
+          fianzaImporte: payload.fianzaImporte,
+        });
+        showToastV5(
+          `Contrato actualizado · ${payload.inquilino.nombre} ${payload.inquilino.apellidos}`.trim(),
+          'success',
+        );
+        navigate('/contratos?tab=vigentes');
+        return;
+      }
+
       const id = await saveContract(payload as Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>);
       if (typeof id !== 'number') {
         throw new Error('saveContract devolvió sin id');
@@ -253,11 +270,15 @@ const NuevoContratoWizard: React.FC = () => {
       <PageHead
         breadcrumb={[
           { label: 'Contratos', onClick: () => navigate('/contratos') },
-          { label: 'Nuevo' },
+          { label: esEdicion ? 'Editar' : 'Nuevo' },
         ]}
         onBack={() => navigate(fromEmpezar ? '/empezar/contratos' : '/contratos')}
-        title="Nuevo contrato"
-        sub="completa los 5 pasos · los cambios se guardan automáticamente como borrador"
+        title={esEdicion ? 'Editar contrato' : 'Nuevo contrato'}
+        sub={
+          esEdicion
+            ? 'corrige los datos del contrato · los cambios se aplican al guardar'
+            : 'completa los 5 pasos · los cambios se guardan automáticamente como borrador'
+        }
       />
 
       <div style={{ marginBottom: 22 }}>
@@ -683,7 +704,15 @@ const NuevoContratoWizard: React.FC = () => {
                 disabled={!canAdvance || creando}
                 aria-busy={creando || undefined}
               >
-                {isLast ? (creando ? 'Creando...' : 'Crear contrato') : 'Siguiente'}
+                {isLast
+                  ? creando
+                    ? esEdicion
+                      ? 'Guardando...'
+                      : 'Creando...'
+                    : esEdicion
+                      ? 'Guardar cambios'
+                      : 'Crear contrato'
+                  : 'Siguiente'}
                 <Icons.ChevronRight size={14} strokeWidth={2} />
               </button>
             </div>

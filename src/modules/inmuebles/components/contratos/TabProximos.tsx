@@ -17,6 +17,10 @@ import styles from './TabProximos.module.css';
 export interface TabProximosProps {
   contratos: Contract[];
   inmuebleAliasById: Map<number, string>;
+  /** Corregir un error · recargar / editar / eliminar desde el drawer. */
+  onContratoActualizado?: () => void;
+  onEditarContrato?: (id: number) => void;
+  onEliminarContrato?: (contrato: Contract & { id: number }) => void;
 }
 
 const MS_DIA = 1000 * 60 * 60 * 24;
@@ -42,7 +46,13 @@ function unidadLabel(c: Contract, alias: string): string {
   return `${alias} · Hab ${hab ?? '—'}`;
 }
 
-const TabProximos: React.FC<TabProximosProps> = ({ contratos, inmuebleAliasById }) => {
+const TabProximos: React.FC<TabProximosProps> = ({
+  contratos,
+  inmuebleAliasById,
+  onContratoActualizado,
+  onEditarContrato,
+  onEliminarContrato,
+}) => {
   const hoy = useMemo(() => new Date(), []);
   const [contratoAbierto, setContratoAbierto] = useState<(Contract & { id: number }) | null>(
     null,
@@ -107,6 +117,9 @@ const TabProximos: React.FC<TabProximosProps> = ({ contratos, inmuebleAliasById 
           inmuebleAlias={inmuebleAliasById.get(contratoAbierto.inmuebleId)}
           open
           onClose={() => setContratoAbierto(null)}
+          onContratoActualizado={onContratoActualizado}
+          onEditarContrato={onEditarContrato}
+          onEliminarContrato={onEliminarContrato}
         />
       )}
     </>

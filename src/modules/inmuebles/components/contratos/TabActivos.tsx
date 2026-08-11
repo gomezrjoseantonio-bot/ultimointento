@@ -18,6 +18,10 @@ export interface TabActivosProps {
   onNuevoContrato: () => void;
   /** Fase F.2 · recarga la lista tras renovar/finalizar desde el drawer. */
   onContratoActualizado?: () => void;
+  /** Corregir un error · editar el contrato (abre el wizard en modo edición). */
+  onEditarContrato?: (id: number) => void;
+  /** Corregir un error · eliminar el contrato (con cascada + confirmación). */
+  onEliminarContrato?: (contrato: Contract & { id: number }) => void;
 }
 
 const TabActivos: React.FC<TabActivosProps> = ({
@@ -26,6 +30,8 @@ const TabActivos: React.FC<TabActivosProps> = ({
   inmuebleModoById,
   onNuevoContrato,
   onContratoActualizado,
+  onEditarContrato,
+  onEliminarContrato,
 }) => {
   const [filtros, setFiltros] = useFiltrosActivos();
   const hoy = useMemo(() => new Date(), []);
@@ -88,6 +94,8 @@ const TabActivos: React.FC<TabActivosProps> = ({
           open
           onClose={() => setContratoAbierto(null)}
           onContratoActualizado={onContratoActualizado}
+          onEditarContrato={onEditarContrato}
+          onEliminarContrato={onEliminarContrato}
         />
       )}
     </>

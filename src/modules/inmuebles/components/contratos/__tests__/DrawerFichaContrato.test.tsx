@@ -81,12 +81,36 @@ describe('DrawerFichaContrato', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  test('botón "Editar datos" muestra toast', () => {
+  test('botón "Editar contrato" sin callback muestra toast (placeholder)', () => {
     render(
       <DrawerFichaContrato contrato={contrato} open onClose={() => {}} />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /Editar datos/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Editar contrato/ }));
     expect(mockToast).toHaveBeenCalledWith(expect.stringContaining('T3.2'));
+  });
+
+  test('con callbacks · "Corregir un error" edita y elimina cerrando el drawer', () => {
+    const onEditar = jest.fn();
+    const onEliminar = jest.fn();
+    const onClose = jest.fn();
+    render(
+      <DrawerFichaContrato
+        contrato={contrato}
+        open
+        onClose={onClose}
+        onEditarContrato={onEditar}
+        onEliminarContrato={onEliminar}
+      />,
+    );
+    expect(screen.getByText('Corregir un error')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Eliminar contrato/ }));
+    expect(onEliminar).toHaveBeenCalledWith(contrato);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Editar contrato/ })[0]);
+    expect(onEditar).toHaveBeenCalledWith(contrato.id);
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 
   test('botón Renovar (al-dia) muestra toast T4', () => {
