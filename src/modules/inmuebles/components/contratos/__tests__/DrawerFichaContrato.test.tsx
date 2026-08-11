@@ -81,12 +81,12 @@ describe('DrawerFichaContrato', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  test('botón "Editar contrato" sin callback muestra toast (placeholder)', () => {
+  test('sin callbacks · no aparece la sección "Corregir un error"', () => {
     render(
       <DrawerFichaContrato contrato={contrato} open onClose={() => {}} />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /Editar contrato/ }));
-    expect(mockToast).toHaveBeenCalledWith(expect.stringContaining('T3.2'));
+    expect(screen.queryByText('Corregir un error')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Editar contrato/ })).not.toBeInTheDocument();
   });
 
   test('con callbacks · "Corregir un error" edita y elimina cerrando el drawer', () => {

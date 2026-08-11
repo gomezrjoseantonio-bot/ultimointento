@@ -10,7 +10,6 @@ import {
 } from '../../../design-system/v5';
 import type { Contract } from '../../../services/db';
 import { saveContract, getContract, updateContract, calculateHabitualEndDate } from '../../../services/contractService';
-import { treasuryAPI } from '../../../services/treasuryApiService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import {
   type FormState,
@@ -18,6 +17,8 @@ import {
   toLocalDate,
   contratoAForm,
 } from './contratoWizardHelpers';
+import { CuentaCobroField } from './CuentaCobroField';
+import { useCuentasCobro } from './cuentaCobro';
 import styles from './NuevoContratoWizard.module.css';
 
 type StepKey = 'donde' | 'inquilino' | 'economico' | 'documentos' | 'firma';
@@ -51,6 +52,12 @@ const NuevoContratoWizard: React.FC = () => {
   });
   const [creando, setCreando] = useState(false);
   const [errorSave, setErrorSave] = useState<string | null>(null);
+  const cuentas = useCuentasCobro();
+  // Alta nueva · preselecciona la primera cuenta (en edición manda el prefill).
+  useEffect(() => {
+    if (esEdicion || cuentas.length === 0) return;
+    setForm((p) => (p.cuentaCobroId === '' ? { ...p, cuentaCobroId: String(cuentas[0].id) } : p));
+  }, [cuentas, esEdicion]);
 
   // Prefill del formulario al editar (una vez, al montar con `?edit`).
   useEffect(() => {
@@ -103,7 +110,8 @@ const NuevoContratoWizard: React.FC = () => {
         return (
           Number(form.rentaMensual) > 0 &&
           Number(form.diaPago) >= 1 &&
-          Number(form.diaPago) <= 31
+          Number(form.diaPago) <= 31 &&
+          form.cuentaCobroId !== ''
         );
       case 'documentos':
         return true;
@@ -144,10 +152,9 @@ const NuevoContratoWizard: React.FC = () => {
     if (new Date(fechaFin) <= new Date(form.fechaInicio)) {
       throw new Error('La fecha de fin debe ser posterior a la fecha de inicio');
     }
-    const accounts = await treasuryAPI.accounts.getAccounts();
-    const cuentaCobroId = accounts.find((acc) => typeof acc.id === 'number')?.id;
-    if (typeof cuentaCobroId !== 'number') {
-      throw new Error('Debe seleccionar una cuenta bancaria de cobro');
+    const cuentaCobroId = Number(form.cuentaCobroId);
+    if (!Number.isFinite(cuentaCobroId) || form.cuentaCobroId === '') {
+      throw new Error('Debe seleccionar la cuenta bancaria de cobro');
     }
     const unidadTipo: 'vivienda' | 'habitacion' = form.habitacionId
       ? 'habitacion'
@@ -277,7 +284,7 @@ const NuevoContratoWizard: React.FC = () => {
         sub={
           esEdicion
             ? 'corrige los datos del contrato · los cambios se aplican al guardar'
-            : 'completa los 5 pasos · los cambios se guardan automáticamente como borrador'
+            : 'completa los datos del contrato · revisa el resumen antes de crearlo'
         }
       />
 
@@ -492,6 +499,11 @@ const NuevoContratoWizard: React.FC = () => {
                     <option value="otros">Otros</option>
                   </select>
                 </div>
+                <CuentaCobroField
+                  cuentas={cuentas}
+                  value={form.cuentaCobroId}
+                  onChange={(v) => update('cuentaCobroId', v)}
+                />
               </div>
             </>
           )}
@@ -571,9 +583,8 @@ const NuevoContratoWizard: React.FC = () => {
                   lineHeight: 1.55,
                 }}
               >
-                Atlas guardará el contrato como borrador aunque no subas
-                documentos ahora · puedes adjuntarlos después desde la ficha
-                (cuando esté disponible la subida real).
+                Puedes adjuntar los documentos más tarde desde la ficha del
+                contrato · la subida real llega en una sub-tarea follow-up.
               </div>
             </>
           )}
@@ -667,10 +678,9 @@ const NuevoContratoWizard: React.FC = () => {
                   lineHeight: 1.55,
                 }}
               >
-                Al pulsar <strong>Crear contrato</strong> Atlas lo guarda en estado
-                borrador con los datos introducidos. La generación de PDF y la
-                firma electrónica con FactorID/Docusign llegan en sub-tarea
-                follow-up.
+                Al pulsar <strong>Crear contrato</strong> Atlas lo guarda con los
+                datos introducidos. La generación de PDF y la firma electrónica
+                con FactorID/Docusign llegan en sub-tarea follow-up.
               </div>
             </>
           )}
@@ -686,7 +696,7 @@ const NuevoContratoWizard: React.FC = () => {
 
           <div className={styles.footer}>
             <span className={styles.footerNote}>
-              Paso {stepIndex + 1} de {steps.length} · cambios guardados como borrador
+              Paso {stepIndex + 1} de {steps.length}
             </span>
             <div className={styles.footerActions}>
               <button
