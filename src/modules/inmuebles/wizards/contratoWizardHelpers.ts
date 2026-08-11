@@ -18,6 +18,8 @@ export interface FormState {
   diaPago: string;
   fianzaMensualidades: string;
   indexacion: 'none' | 'ipc' | 'irav' | 'otros';
+  /** Id (como string, para el <select>) de la cuenta bancaria de cobro. */
+  cuentaCobroId: string;
 }
 
 /**
@@ -48,6 +50,7 @@ export const emptyForm: FormState = {
   diaPago: '1',
   fianzaMensualidades: '2',
   indexacion: 'ipc',
+  cuentaCobroId: '',
 };
 
 // Edición · mapea un contrato persistido al estado del formulario (prefill).
@@ -66,4 +69,5 @@ export const contratoAForm = (c: Contract): FormState => ({
   diaPago: c.diaPago != null ? String(c.diaPago) : '1',
   fianzaMensualidades: c.fianzaMeses != null ? String(c.fianzaMeses) : '2',
   indexacion: (c.indexacion as FormState['indexacion']) ?? 'ipc',
+  cuentaCobroId: c.cuentaCobroId != null ? String(c.cuentaCobroId) : '',
 });

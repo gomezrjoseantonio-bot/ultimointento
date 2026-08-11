@@ -9,8 +9,7 @@ import {
   showToastV5,
 } from '../../../design-system/v5';
 import type { Contract } from '../../../services/db';
-import { saveContract, getContract, updateContract, calculateHabitualEndDate } from '../../../services/contractService';
-import { treasuryAPI } from '../../../services/treasuryApiService';
+import { saveContract, getContract, updateContract } from '../../../services/contractService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import {
   type FormState,
@@ -18,6 +17,9 @@ import {
   toLocalDate,
   contratoAForm,
 } from './contratoWizardHelpers';
+import { CuentaCobroField } from './CuentaCobroField';
+import { useCuentasCobro } from './cuentaCobro';
+import { construirPayloadCompleto, construirPayloadBorrador } from './contratoWizardPayload';
 import styles from './NuevoContratoWizard.module.css';
 
 type StepKey = 'donde' | 'inquilino' | 'economico' | 'documentos' | 'firma';
@@ -51,6 +53,15 @@ const NuevoContratoWizard: React.FC = () => {
   });
   const [creando, setCreando] = useState(false);
   const [errorSave, setErrorSave] = useState<string | null>(null);
+  // ¿Se puede guardar como borrador? Alta nueva sí; en edición solo si el
+  // contrato es aún un borrador (`sin_firmar`) para no degradar uno activo.
+  const [permiteBorrador, setPermiteBorrador] = useState(!esEdicion);
+  const cuentas = useCuentasCobro();
+  // Alta nueva · preselecciona la primera cuenta (en edición manda el prefill).
+  useEffect(() => {
+    if (esEdicion || cuentas.length === 0) return;
+    setForm((p) => (p.cuentaCobroId === '' ? { ...p, cuentaCobroId: String(cuentas[0].id) } : p));
+  }, [cuentas, esEdicion]);
 
   // Prefill del formulario al editar (una vez, al montar con `?edit`).
   useEffect(() => {
@@ -59,8 +70,10 @@ const NuevoContratoWizard: React.FC = () => {
     void (async () => {
       try {
         const existente = await getContract(editId);
-        if (!cancelado && existente) setForm(contratoAForm(existente));
-        else if (!cancelado) {
+        if (!cancelado && existente) {
+          setForm(contratoAForm(existente));
+          setPermiteBorrador(existente.estadoContrato === 'sin_firmar');
+        } else if (!cancelado) {
           showToastV5('No se encontró el contrato a editar', 'error');
           navigate('/contratos?tab=vigentes');
         }
@@ -103,7 +116,8 @@ const NuevoContratoWizard: React.FC = () => {
         return (
           Number(form.rentaMensual) > 0 &&
           Number(form.diaPago) >= 1 &&
-          Number(form.diaPago) <= 31
+          Number(form.diaPago) <= 31 &&
+          form.cuentaCobroId !== ''
         );
       case 'documentos':
         return true;
@@ -115,79 +129,18 @@ const NuevoContratoWizard: React.FC = () => {
   const stepIndex = steps.findIndex((s) => s.key === step);
   const isLast = step === 'firma';
 
-  const construirPayloadContrato = async (): Promise<
-    Omit<Contract, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'documents'>
-  > => {
-    if (form.inmuebleId == null) {
-      throw new Error('Debe seleccionar un inmueble');
-    }
-    const rentaMensualNum = Number(form.rentaMensual);
-    const diaPagoNum = Number(form.diaPago);
-    const fianzaMesesNum = Number(form.fianzaMensualidades) || 0;
-    if (!Number.isFinite(rentaMensualNum) || rentaMensualNum <= 0) {
-      throw new Error('La renta mensual debe ser mayor que 0');
-    }
-    if (!Number.isFinite(diaPagoNum) || diaPagoNum < 1 || diaPagoNum > 31) {
-      throw new Error('El día de cobro debe estar entre 1 y 31');
-    }
-    if (!form.inquilinoTelefono.trim()) {
-      throw new Error('El teléfono del inquilino es obligatorio');
-    }
-    if (!form.inquilinoEmail.trim()) {
-      throw new Error('El email del inquilino es obligatorio');
-    }
-    const fechaFin = form.fechaFin.trim()
-      || (form.modalidad === 'habitual' ? calculateHabitualEndDate(form.fechaInicio) : '');
-    if (!fechaFin) {
-      throw new Error('La fecha de fin es obligatoria');
-    }
-    if (new Date(fechaFin) <= new Date(form.fechaInicio)) {
-      throw new Error('La fecha de fin debe ser posterior a la fecha de inicio');
-    }
-    const accounts = await treasuryAPI.accounts.getAccounts();
-    const cuentaCobroId = accounts.find((acc) => typeof acc.id === 'number')?.id;
-    if (typeof cuentaCobroId !== 'number') {
-      throw new Error('Debe seleccionar una cuenta bancaria de cobro');
-    }
-    const unidadTipo: 'vivienda' | 'habitacion' = form.habitacionId
-      ? 'habitacion'
-      : 'vivienda';
-    return {
-      inmuebleId: form.inmuebleId,
-      unidadTipo,
-      habitacionId: form.habitacionId || undefined,
-      modalidad: form.modalidad,
-      inquilino: {
-        nombre: form.inquilinoNombre.trim(),
-        apellidos: form.inquilinoApellidos.trim(),
-        dni: form.inquilinoNif.trim(),
-        telefono: form.inquilinoTelefono.trim(),
-        email: form.inquilinoEmail.trim(),
-      },
-      fechaInicio: form.fechaInicio,
-      fechaFin,
-      rentaMensual: rentaMensualNum,
-      diaPago: diaPagoNum,
-      margenGraciaDias: 5,
-      indexacion: form.indexacion,
-      historicoIndexaciones: [],
-      fianzaMeses: fianzaMesesNum,
-      fianzaImporte: Math.round(rentaMensualNum * fianzaMesesNum),
-      fianzaEstado: 'retenida',
-      cuentaCobroId,
-      estadoContrato: 'activo',
-      // REORG Contratos · alta manual → soporte documental disponible por defecto.
-      documentoFirmado: true,
-    };
-  };
-
   const handleCrearContrato = async (): Promise<void> => {
     if (creando) return;
     setErrorSave(null);
+    const res = construirPayloadCompleto(form);
+    if (!res.ok) {
+      setErrorSave(res.error);
+      showToastV5(res.error, 'error');
+      return;
+    }
+    const payload = res.payload;
     setCreando(true);
     try {
-      const payload = await construirPayloadContrato();
-
       if (esEdicion && editId !== null) {
         // Edición · se actualizan solo los campos editables; NO se toca el
         // estado del ciclo de vida (estadoContrato / firma / histórico de
@@ -240,6 +193,34 @@ const NuevoContratoWizard: React.FC = () => {
     }
   };
 
+  // Borrador · mínimo para que sea localizable en la lista: inmueble + nombre.
+  const puedeGuardarBorrador =
+    permiteBorrador && form.inmuebleId != null && form.inquilinoNombre.trim() !== '';
+
+  const handleGuardarBorrador = async (): Promise<void> => {
+    if (!puedeGuardarBorrador || creando) return;
+    setErrorSave(null);
+    setCreando(true);
+    try {
+      const payload = construirPayloadBorrador(form);
+      if (esEdicion && editId !== null) {
+        await updateContract(editId, payload);
+      } else {
+        await saveContract(payload as Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>);
+      }
+      showToastV5('Borrador guardado · puedes completarlo más tarde', 'success');
+      navigate('/contratos?tab=vigentes');
+    } catch (e) {
+      const mensaje = e instanceof Error ? e.message : 'error desconocido';
+      // eslint-disable-next-line no-console
+      console.error('[WizardNuevoContrato] error al guardar borrador:', e);
+      setErrorSave(`No se pudo guardar el borrador · ${mensaje}`);
+      showToastV5('Error al guardar el borrador', 'error');
+    } finally {
+      setCreando(false);
+    }
+  };
+
   const handleNext = () => {
     if (!canAdvance) {
       showToastV5('Completa los campos obligatorios para continuar', 'warn');
@@ -277,7 +258,7 @@ const NuevoContratoWizard: React.FC = () => {
         sub={
           esEdicion
             ? 'corrige los datos del contrato · los cambios se aplican al guardar'
-            : 'completa los 5 pasos · los cambios se guardan automáticamente como borrador'
+            : 'completa los datos del contrato · revisa el resumen antes de crearlo'
         }
       />
 
@@ -492,6 +473,11 @@ const NuevoContratoWizard: React.FC = () => {
                     <option value="otros">Otros</option>
                   </select>
                 </div>
+                <CuentaCobroField
+                  cuentas={cuentas}
+                  value={form.cuentaCobroId}
+                  onChange={(v) => update('cuentaCobroId', v)}
+                />
               </div>
             </>
           )}
@@ -571,9 +557,8 @@ const NuevoContratoWizard: React.FC = () => {
                   lineHeight: 1.55,
                 }}
               >
-                Atlas guardará el contrato como borrador aunque no subas
-                documentos ahora · puedes adjuntarlos después desde la ficha
-                (cuando esté disponible la subida real).
+                Puedes adjuntar los documentos más tarde desde la ficha del
+                contrato · la subida real llega en una sub-tarea follow-up.
               </div>
             </>
           )}
@@ -667,10 +652,9 @@ const NuevoContratoWizard: React.FC = () => {
                   lineHeight: 1.55,
                 }}
               >
-                Al pulsar <strong>Crear contrato</strong> Atlas lo guarda en estado
-                borrador con los datos introducidos. La generación de PDF y la
-                firma electrónica con FactorID/Docusign llegan en sub-tarea
-                follow-up.
+                Al pulsar <strong>Crear contrato</strong> Atlas lo guarda con los
+                datos introducidos. La generación de PDF y la firma electrónica
+                con FactorID/Docusign llegan en sub-tarea follow-up.
               </div>
             </>
           )}
@@ -686,7 +670,7 @@ const NuevoContratoWizard: React.FC = () => {
 
           <div className={styles.footer}>
             <span className={styles.footerNote}>
-              Paso {stepIndex + 1} de {steps.length} · cambios guardados como borrador
+              Paso {stepIndex + 1} de {steps.length}
             </span>
             <div className={styles.footerActions}>
               <button
@@ -697,6 +681,21 @@ const NuevoContratoWizard: React.FC = () => {
                 <Icons.ChevronLeft size={14} strokeWidth={2} />
                 {stepIndex === 0 ? 'Cancelar' : 'Atrás'}
               </button>
+              {permiteBorrador && (
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  onClick={() => void handleGuardarBorrador()}
+                  disabled={!puedeGuardarBorrador || creando}
+                  title={
+                    puedeGuardarBorrador
+                      ? undefined
+                      : 'Necesitas al menos el inmueble y el nombre del inquilino'
+                  }
+                >
+                  Guardar borrador
+                </button>
+              )}
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnGold}`}

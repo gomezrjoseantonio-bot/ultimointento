@@ -457,15 +457,6 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
       <section className={styles.section}>
         <div className={styles.sectionHead}>
           <h3 className={styles.sectionTitle}>Inquilino</h3>
-          <button
-            type="button"
-            className={styles.editBtn}
-            onClick={
-              onEditar ?? (() => showToastV5('Edición de datos próximamente · T3.2'))
-            }
-          >
-            <Icons.Edit size={11} strokeWidth={1.8} /> Editar contrato
-          </button>
         </div>
         <div className={styles.tenantActions}>
           {inq?.telefono && (
