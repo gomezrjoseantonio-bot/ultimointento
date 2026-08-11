@@ -963,8 +963,7 @@ export async function crearOActualizarContrato(params: {
 
   // 2. Deduplicación: si ya existe contrato con mismo NIF → no duplicar
   const duplicado = contractsExistentes.find(c =>
-    (c.inquilino?.dni && normalizeNif(c.inquilino.dni) === normalizeNif(nifArrendatario))
-    || (c.tenant?.nif && normalizeNif(c.tenant.nif) === normalizeNif(nifArrendatario))
+    !!c.inquilino?.dni && normalizeNif(c.inquilino.dni) === normalizeNif(nifArrendatario)
   );
 
   // Variable para trackear el id del contrato (duplicado o nuevo)
@@ -981,14 +980,13 @@ export async function crearOActualizarContrato(params: {
     // 3. Detectar cambio de inquilino: cerrar contrato activo con otro NIF
     const contratoActivoOtroNif = contractsExistentes.find(c =>
       c.estadoContrato === 'activo'
-      && ((c.inquilino?.dni && normalizeNif(c.inquilino.dni) !== normalizeNif(nifArrendatario))
-        || (c.tenant?.nif && normalizeNif(c.tenant.nif) !== normalizeNif(nifArrendatario)))
+      && !!c.inquilino?.dni
+      && normalizeNif(c.inquilino.dni) !== normalizeNif(nifArrendatario)
     );
     if (contratoActivoOtroNif) {
       await updateContract(contratoActivoOtroNif.id!, {
         estadoContrato: 'finalizado',
         fechaFin: `${ejercicio - 1}-12-31`,
-        status: 'terminated',
         endDate: `${ejercicio - 1}-12-31`,
       });
     }
@@ -1042,17 +1040,11 @@ export async function crearOActualizarContrato(params: {
         estado: 'borrador',
       },
       propertyId,
-      tenant: {
-        name: nifArrendatario,
-        nif: nifArrendatario,
-        email: '',
-      },
       startDate: fechaInicio,
       endDate: fechaFinContrato,
       monthlyRent: rentaMensual,
       paymentDay: 1,
       periodicity: 'monthly',
-      status: 'active',
       documents: [],
     });
   }
@@ -1220,17 +1212,11 @@ export async function crearContratoPendienteIdentificar(params: {
       estado: 'borrador',
     },
     propertyId,
-    tenant: {
-      name: '',
-      nif: '',
-      email: '',
-    },
     startDate: fechaInicio,
     endDate: fechaFin,
     monthlyRent: rentaMensualEstimada,
     paymentDay: 1,
     periodicity: 'monthly',
-    status: 'active',
     documents: [],
   });
 
@@ -1387,7 +1373,7 @@ async function cargarContratosExistentes(): Promise<ContratoExistente[]> {
     return contracts.map((contract) => ({
       id: String(contract.id ?? ''),
       inmuebleRef: propertiesById.get(contract.inmuebleId)?.cadastralReference || String(contract.inmuebleId),
-      nifArrendatario: contract.inquilino?.dni || contract.tenant?.nif || '',
+      nifArrendatario: contract.inquilino?.dni || '',
     }));
   } catch {
     return [];

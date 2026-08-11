@@ -392,11 +392,11 @@ const isActiveContract = (contract: Contract, referenceDateIso?: string): boolea
     }
   }
 
-  if (contract.estadoContrato === 'rescindido' || contract.status === 'terminated') {
+  if (contract.estadoContrato === 'rescindido' || contract.estadoContrato === 'finalizado') {
     return false;
   }
 
-  if (contract.estadoContrato === 'activo' || contract.status === 'active') {
+  if (contract.estadoContrato === 'activo') {
     return true;
   }
 
@@ -689,7 +689,6 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
         fechaFin: input.saleDate,
         endDate: input.saleDate,
         estadoContrato: 'rescindido',
-        status: 'terminated',
         rescision: {
           fecha: input.saleDate,
           motivo: 'Venta del inmueble',

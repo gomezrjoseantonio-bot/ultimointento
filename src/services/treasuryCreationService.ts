@@ -41,7 +41,7 @@ export const generateIncomeFromContract = async (contract: Contract): Promise<nu
     }
 
     // Generate income records for active contracts
-    if (contract.status === 'active') {
+    if (contract.estadoContrato === 'activo') {
       const today = new Date();
       const contractEnd = contract.endDate ? new Date(contract.endDate) : null;
       
