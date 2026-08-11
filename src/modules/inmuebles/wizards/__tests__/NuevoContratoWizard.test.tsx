@@ -248,4 +248,24 @@ describe('NuevoContratoWizard · persistencia', () => {
     });
     expect((screen.getAllByRole('textbox')[0] as HTMLInputElement).value).toBe('Ivan');
   });
+
+  test('"Guardar borrador" crea un contrato sin_firmar con datos mínimos', async () => {
+    mockSaveContract.mockResolvedValueOnce(55);
+    renderWizard(baseCtx, '/contratos/nuevo?inmueble=1');
+
+    // Paso 1 → 2 (inmueble preseleccionado). En el borrador NO hace falta renta,
+    // cuenta, NIF, teléfono ni email: solo inmueble + nombre.
+    clickSiguiente();
+    await waitFor(() => {
+      expect(screen.getAllByRole('textbox').length).toBeGreaterThanOrEqual(5);
+    });
+    fireEvent.change(screen.getAllByRole('textbox')[0], { target: { value: 'Ana' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Guardar borrador/i }));
+
+    await waitFor(() => expect(mockSaveContract).toHaveBeenCalledTimes(1));
+    const payload = mockSaveContract.mock.calls[0][0] as { estadoContrato: string; inquilino: { nombre: string } };
+    expect(payload.estadoContrato).toBe('sin_firmar');
+    expect(payload.inquilino.nombre).toBe('Ana');
+  });
 });
