@@ -1,9 +1,21 @@
-# Gestión delegada por agencias · Diseño V1
+# Gestión delegada por agencias · Diseño V1.2
 
 > Estado: **propuesta de diseño** (no implementado). Documento de referencia
 > antes de tocar código. Objetivo: modelar la gestión de alquileres a través de
 > una agencia/empresa —incluida la **renta garantizada**— sin reescribir el
 > modelo cuando cambie la forma de cobrar de cada agencia.
+>
+> **V1.1 · decisiones cerradas con el propietario:**
+> - **Un contrato de gestión por piso** (aunque la agencia sea la misma en varios
+>   pisos). Cada contrato = un acuerdo. Se hacen tantos como pisos. → **Opción A**:
+>   el acuerdo se materializa como un `Contract` con un bloque `gestion`, no como
+>   store aparte.
+> - **Requisito núcleo (no negociable):** los contratos de los inquilinos se
+>   **anexan** a su contrato de gestión (relación padre→hijo por `id`), y **la
+>   facturación fiscal ES la suma de esos subcontratos anexados**. Ver §4.4 y §5.1.
+> - **El contrato de gestión (padre) NO es LAU** (duración libre, sin reducción
+>   fiscal); los subcontratos de inquilinos **sí** (LAU + reducciones). Los
+>   subcontratos se anexan **en cualquier momento**, no en un volcado anual. Ver §4.5.
 
 ## 1. Problema
 
@@ -37,7 +49,7 @@ KPIs operativos con datos que no toca (como pasó con la ocupación al 120 %).
 | Qué es | Lo que cobras/pagas mes a mes | Lo que declaras a Hacienda |
 | Cuándo se conoce | Ya (cierto y recurrente) | Diferido (fin de año, en garantizada) |
 | Alimenta | Tesorería, ocupación, KPIs banda navy | Módulo Fiscal (IRPF) |
-| Fuente de verdad | `treasuryEvents` | `botesAnualesSinIdentificar` + gastos `'gestion'` |
+| Fuente de verdad | `treasuryEvents` (contrato de gestión) | subcontratos anexados (`gestionPadreId`) + gastos `'gestion'` |
 
 Regla de oro: **el operativo del día a día nunca depende de información que no
 tienes hasta enero**. En renta garantizada, el operativo es el importe fijo; los
@@ -50,11 +62,17 @@ Revisado el esquema real de IndexedDB para no duplicar ni confundir stores:
 | Concepto | Store | ¿Nuevo? |
 |---|---|---|
 | **Agencia gestora** | `proveedores` (`Proveedor`, clave `nif`, `tipos` incluye `'gestion'`) | **No** |
-| **Acuerdo de gestión + honorarios[]** | nuevo — referencia al proveedor por `nif` | **Sí (única pieza nueva)** |
+| **Contrato de gestión** (acuerdo, 1 por piso) | `contracts` + bloque `gestion` opcional | Campo opcional |
+| **Subcontratos de inquilinos anexados** | `contracts` + campo `gestionPadreId` | Campo opcional |
+| Honorarios de la agencia | bloque `gestion.honorarios[]` | Campo opcional |
 | Renta garantizada / rentas de inquilinos | `contracts` + `treasuryEvents` | No |
 | Comisión / fees (gastos) | gasto `'gestion'` (`OperacionProveedor` / opex) | No |
-| Suma fiscal anual (garantizada) | `botesAnualesSinIdentificar` | No |
 | Atribución de rentas en copropiedad | `entidadesAtribucion` — **NO se toca** | No |
+
+> **Opción A (decidida)**: no se crea store nuevo. El acuerdo es un `Contract` con
+> un bloque `gestion` opcional (sin bump de `DB_VERSION`, backfill suave como los
+> campos opcionales previos). Si en el futuro un acuerdo multi-piso necesita
+> lifecycle propio, se promueve a store sin perder datos.
 
 Aclaraciones críticas:
 
@@ -103,29 +121,39 @@ export interface HonorarioAgencia {
   nota?: string;
 }
 
-/** Acuerdo de gestión entre el propietario y una agencia para un inmueble.
- *  Única entidad nueva. Referencia al proveedor por su NIF. */
-export interface AcuerdoGestion {
-  id?: number;
-  inmuebleId: number;
+/** Bloque de gestión delegada · va DENTRO de `Contract` (Opción A). Presente
+ *  solo en el contrato de gestión (padre), 1 por piso. Su ausencia = contrato
+ *  normal (autogestión).
+ *
+ *  El padre es NO-LAU: duración libre (fechaFin = plazo pactado, sin +5 auto),
+ *  sin modalidad LAU efectiva y sin reducción fiscal (§4.5). La reducción LAU
+ *  vive en los subcontratos hijos. */
+export interface GestionDelegada {
   /** NIF/CIF del `Proveedor` (agencia). */
   agenciaNif: string;
   modeloIngreso: 'garantizada' | 'traspaso';
-
-  // Solo si modeloIngreso === 'garantizada':
-  rentaGarantizada?: number;              // importe fijo mensual (€)
-  indexacion?: 'none' | 'ipc' | 'irav' | 'otros';
-  diaPago?: number;                        // día de cobro de la garantizada
-  cuentaCobroId?: number;                  // cuenta donde entra la garantizada
-
+  /** Solo si modeloIngreso === 'garantizada'. La renta fija va en
+   *  `Contract.rentaMensual` + `indexacion` (reusa el motor existente). */
+  rentaGarantizada?: number;
   honorarios: HonorarioAgencia[];          // default []
-  fechaInicio: string;                     // ISO
-  fechaFin?: string;                       // ISO · vacío = indefinido
-  estado: 'activo' | 'finalizado';
-  createdAt: string;
-  updatedAt: string;
 }
+
+// Campos que se AÑADEN a la interfaz `Contract` existente (todos opcionales):
+//
+//   gestion?: GestionDelegada;
+//       · Presente → este Contract es el CONTRATO DE GESTIÓN (padre) del piso.
+//         Contraparte = agencia. En 'garantizada', rentaMensual = renta fija.
+//         Es el operativo (Tesorería + ocupación).
+//
+//   gestionPadreId?: number;
+//       · Presente → este Contract es un SUBCONTRATO de inquilino ANEXADO al
+//         contrato de gestión cuyo `id` es `gestionPadreId`. Es fiscal:
+//         NO cuenta en operativo ni ocupación. Su renta suma a la facturación
+//         del padre. Ver §4.4.
 ```
+
+**Un contrato es de gestión, o es un subcontrato anexado, o es normal — nunca
+dos a la vez.** `gestion` y `gestionPadreId` son mutuamente excluyentes.
 
 ### 4.3. Cobertura de la casuística (sin reescribir)
 
@@ -139,26 +167,92 @@ export interface AcuerdoGestion {
 | **Garantizada + captación** | `modeloIngreso:'garantizada'` + una línea `captacion` |
 | **Traspaso + % + fee/habitación** | `modeloIngreso:'traspaso'` + líneas `comision_renta` y `fee_habitacion` |
 
+### 4.4. Anexado de subcontratos y facturación (requisito núcleo)
+
+Esta es la parte que debe quedar **meridianamente clara**, sin excusas después:
+
+- **Cada contrato de inquilino se ANEXA a su contrato de gestión** por `id`:
+  el subcontrato lleva `gestionPadreId = <id del contrato de gestión del piso>`.
+  Un piso → un contrato de gestión (padre) → N subcontratos de inquilinos (hijos).
+- **La facturación es, por definición, la suma de los subcontratos anexados**
+  a ese padre, por ejercicio:
+
+  ```
+  facturación(padre, año) = Σ rentaAnual(hijo)  para todo hijo con
+                              gestionPadreId === padre.id  y solape con `año`
+  ```
+
+- De la facturación se deriva todo lo fiscal, sin números sueltos:
+
+  ```
+  Ingresos íntegros (IRPF, por piso·año) = facturación(padre, año)
+  Comisión agencia (gasto deducible)     = facturación(padre, año)
+                                            − (rentaGarantizada × meses cobrados)
+  ```
+
+- **Trazabilidad garantizada por construcción**: no existe "facturación" que no
+  sea la suma de subcontratos anexados a un padre. No hay cifra fiscal anónima:
+  si hay ingreso declarado, hay subcontratos anexados que lo justifican, y si
+  falta anexar, la facturación de ese piso está incompleta y se marca como tal.
+- Los subcontratos se pueden anexar **individualmente** (cada contrato de
+  habitación) o de forma **agregada** (un subcontrato-resumen anual por piso si la
+  agencia solo da el total) — en ambos casos van con `gestionPadreId` y suman a la
+  facturación del padre. El modelo no obliga al detalle por habitación, pero **sí
+  obliga al anexado**.
+- **Invariante operativo**: un subcontrato (`gestionPadreId` presente) queda
+  excluido de vigentes/ocupación/renta prevista igual que hoy se excluyen
+  `sin_identificar` y `sin_firmar`. El operativo del piso es SIEMPRE el contrato
+  de gestión padre.
+- **Anexado en cualquier momento**: los subcontratos se anexan cuando llegan
+  (cada día, cada trimestre, a fin de año) — NO es un volcado anual único. La
+  facturación del padre se recalcula de forma incremental y queda **"en curso"**
+  hasta que se cierra el ejercicio; el dato parcial es un estado válido, no un
+  error.
+
+### 4.5. LAU y afectación fiscal · padre ≠ hijos
+
+Distinción que debe respetarse en tipos y en lógica:
+
+- **Contrato de gestión (padre) · NO-LAU.** Es un contrato mercantil con la
+  agencia, de **duración libre** (1…N años, lo que se pacte). **No aplica** nada
+  de LAU:
+  - Sin cálculo automático de `fechaFin` (+5 años de habitual): `fechaFin` = plazo
+    pactado con la agencia, tal cual.
+  - Sin `modalidad` LAU (habitual/temporada/vacacional) con sus semánticas.
+  - **Sin reducción fiscal** (`reduccion`, `zonaTensionada`, Ley 12/2023): el padre
+    no genera por sí mismo rendimiento de capital inmobiliario con reducción.
+  - La presencia del bloque `gestion` es lo que marca "no-LAU"; la lógica LAU
+    (auto fechaFin, reducción) se salta cuando `gestion` está presente.
+    *(Impl. fase 1: valorar un valor `modalidad: 'gestion'` o gating por `gestion`.)*
+- **Subcontratos de inquilinos (hijos) · SÍ-LAU.** Aquí está la **afectación
+  fiscal real**. Cada hijo lleva su `modalidad`, `reduccion` (Ley 12/2023),
+  `zonaTensionada`, etc., y la **reducción se aplica a nivel de cada subcontrato**
+  (es el arrendamiento de vivienda real). Su `rentaAnual` suma a la facturación
+  del padre (§4.4), y sobre ese rendimiento operan las reducciones por hijo.
+
+Resumen: **el padre es caja + agregador; los hijos son la sustancia fiscal (LAU +
+reducciones).**
+
 ## 5. Flujos por modo
 
 ### 5.1. Renta garantizada
 
-- **Operativo (Capa 1)**: se crea/gestiona el ingreso garantizado como un cobro
-  recurrente en `treasuryEvents` (importe = `rentaGarantizada`, día = `diaPago`,
-  cuenta = `cuentaCobroId`, contraparte = agencia). Sube por IPC cada año igual
-  que la indexación de un contrato normal.
-  - **Ocupación**: la unidad cuenta como **ocupada al 100 %** mientras el acuerdo
-    esté `activo`, aunque una habitación esté vacía (cobras igual). La vacancia
-    real es riesgo de la agencia, no ensucia tus KPIs.
-  - Los **subcontratos NO existen en Capa 1** → no se crean como `contracts`
-    operativos ni cuentan en la banda navy.
-- **Fiscal (Capa 2)**: a fin de año se registra/importa la **suma anual por
-  inmueble** en `botesAnualesSinIdentificar` (importe declarado a Hacienda). De
-  ahí se deriva la comisión:
+- **Operativo (Capa 1)**: el **contrato de gestión (padre)** genera el ingreso
+  garantizado como cobro recurrente en `treasuryEvents` (importe =
+  `rentaMensual` = renta garantizada, contraparte = agencia). Sube por IPC cada
+  año igual que la indexación de un contrato normal.
+  - **Ocupación**: la unidad cuenta como **ocupada al 100 %** mientras el contrato
+    de gestión esté vigente, aunque una habitación esté vacía (cobras igual). La
+    vacancia real es riesgo de la agencia, no ensucia tus KPIs.
+  - Los **subcontratos de inquilinos NO cuentan en Capa 1**: aunque existan como
+    `contracts` (anexados por `gestionPadreId`), quedan excluidos de la banda navy.
+- **Fiscal (Capa 2)**: los subcontratos se **anexan al padre** (`gestionPadreId`),
+  normalmente a fin de año cuando la agencia da el detalle. La **facturación =
+  suma de los subcontratos anexados** (§4.4), y de ahí se deriva la comisión:
 
   ```
-  Comisión agencia (gasto deducible 'gestion') = Σ subcontratos − (rentaGarantizada × meses cobrados)
-  Ingresos íntegros (IRPF)                      = Σ subcontratos
+  Ingresos íntegros (IRPF)                      = facturación(padre, año) = Σ subcontratos anexados
+  Comisión agencia (gasto deducible 'gestion')  = facturación(padre, año) − (rentaGarantizada × meses cobrados)
   Neto fiscal                                   ≈ rentaGarantizada × meses
   ```
 
@@ -187,23 +281,30 @@ export interface AcuerdoGestion {
   subcontratos garantizados no entran (Capa 2). Igual que ya excluimos
   `sin_identificar` y `sin_firmar`.
 - **Ficha de inmueble**: bloque "Gestión" mostrando agencia, modo, renta
-  garantizada/IPC u honorarios vigentes, y (en garantizada) el estado del bote
-  anual + comisión estimada.
+  garantizada/IPC u honorarios vigentes, y (en garantizada) los **subcontratos
+  anexados** + facturación acumulada + comisión estimada.
+- **Anexar subcontratos**: acción desde el contrato de gestión para vincular
+  contratos de inquilinos (individuales o resumen anual), fijando
+  `gestionPadreId`. La facturación del padre se recalcula al anexar.
 - **Fiscal**: la comisión derivada aparece como gasto deducible `'gestion'`; los
-  ingresos íntegros salen del bote (garantizada) o de los contratos (%).
+  ingresos íntegros = facturación (Σ subcontratos anexados en garantizada) o los
+  contratos directos (%).
 
 ## 7. Plan de implementación (PRs pequeñas, en orden)
 
-1. **Capa 1 · renta garantizada (MVP)** — tipo `AcuerdoGestion` (solo
-   `garantizada`), alta de agencia como `Proveedor`, cobro recurrente de la
+1. **Capa 1 · renta garantizada (MVP)** — bloque `gestion` opcional en `Contract`
+   (solo `garantizada`), alta de agencia como `Proveedor`, cobro recurrente de la
    garantizada en Tesorería con IPC, y ocupación contando la unidad. *Valor
    inmediato: cuadra Fuertes Acevedo 32.*
-2. **Modo por %** — `modeloIngreso:'traspaso'` + `honorarios[]` recurrentes como
+2. **Anexado de subcontratos + facturación** — campo `gestionPadreId`, acción de
+   anexar, cálculo `facturación(padre, año) = Σ subcontratos`, y exclusión de los
+   hijos del operativo. *Es el requisito núcleo (§4.4).*
+3. **Comisión derivada + Fiscal (garantizada)** — `facturación − garantizado×meses`
+   como gasto `'gestion'`, ingresos íntegros = facturación, integración IRPF.
+4. **Modo por %** — `modeloIngreso:'traspaso'` + `honorarios[]` recurrentes como
    gasto `'gestion'`; se apoya casi todo en lo existente.
-3. **Honorarios puntuales** — `periodicidad:'por_inquilino_nuevo'` (captación),
+5. **Honorarios puntuales** — `periodicidad:'por_inquilino_nuevo'` (captación),
    disparados al firmar contrato de inquilino.
-4. **Capa 2 · fiscal (garantizada)** — registro/importación de la suma anual en
-   el bote + cálculo derivado de la comisión + integración en el módulo Fiscal.
 
 ## 8. Invariantes / no-objetivos
 
