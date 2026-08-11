@@ -23,6 +23,10 @@ export interface TabDisponibilidadProps {
   properties: Property[];
   onNuevoContrato: (inmuebleId?: number) => void;
   onIrAInmuebles: () => void;
+  /** Corregir un error · recargar / editar / eliminar desde el drawer. */
+  onContratoActualizado?: () => void;
+  onEditarContrato?: (id: number) => void;
+  onEliminarContrato?: (contrato: Contract & { id: number }) => void;
 }
 
 const RANGO_LABEL: Record<RangoTimeline, string> = {
@@ -41,6 +45,9 @@ const TabDisponibilidad: React.FC<TabDisponibilidadProps> = ({
   properties,
   onNuevoContrato,
   onIrAInmuebles,
+  onContratoActualizado,
+  onEditarContrato,
+  onEliminarContrato,
 }) => {
   const [rango, setRango] = useState<RangoTimeline>('6m');
   const [contratoAbierto, setContratoAbierto] = useState<
@@ -117,6 +124,9 @@ const TabDisponibilidad: React.FC<TabDisponibilidadProps> = ({
           }
           open
           onClose={() => setContratoAbierto(null)}
+          onContratoActualizado={onContratoActualizado}
+          onEditarContrato={onEditarContrato}
+          onEliminarContrato={onEliminarContrato}
         />
       )}
     </div>

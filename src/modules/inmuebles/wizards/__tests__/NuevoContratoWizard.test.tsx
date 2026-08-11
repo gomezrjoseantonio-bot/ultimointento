@@ -8,11 +8,13 @@ import { calculateHabitualEndDate } from '../../../../services/contractService';
 
 const mockSaveContract = jest.fn();
 const mockGetContract = jest.fn();
+const mockUpdateContract = jest.fn();
 const mockGetAccounts = jest.fn();
 jest.mock('../../../../services/contractService', () => ({
   ...jest.requireActual('../../../../services/contractService'),
   saveContract: (...args: unknown[]) => mockSaveContract(...args),
   getContract: (...args: unknown[]) => mockGetContract(...args),
+  updateContract: (...args: unknown[]) => mockUpdateContract(...args),
 }));
 jest.mock('../../../../services/treasuryApiService', () => ({
   treasuryAPI: {
@@ -207,5 +209,43 @@ describe('NuevoContratoWizard · persistencia', () => {
     await act(async () => {
       resolveCrear(99);
     });
+  });
+
+  test('modo edición · título "Editar contrato", prefill del inquilino desde ?edit=5', async () => {
+    mockGetContract.mockResolvedValueOnce({
+      id: 5,
+      inmuebleId: 1,
+      unidadTipo: 'vivienda',
+      modalidad: 'habitual',
+      inquilino: { nombre: 'Ivan', apellidos: 'Gomez', dni: '53069494F', telefono: '600', email: 'i@v.es' },
+      fechaInicio: '2025-01-01',
+      fechaFin: '2027-01-01',
+      rentaMensual: 1000,
+      diaPago: 1,
+      indexacion: 'ipc',
+      fianzaMeses: 2,
+      fianzaImporte: 2000,
+      estadoContrato: 'activo',
+    });
+
+    renderWizard(baseCtx, '/contratos/nuevo?edit=5');
+
+    // Cabecera en modo edición + prefill disparado.
+    expect(screen.getByText('Editar contrato')).toBeInTheDocument();
+    await waitFor(() => expect(mockGetContract).toHaveBeenCalledWith(5));
+
+    // El prefill habilita "Siguiente" en el paso 1 (inmueble + fecha ya cargados).
+    await waitFor(() => {
+      const botones = screen.getAllByRole('button', { name: /Siguiente/i });
+      expect(botones[botones.length - 1]).not.toBeDisabled();
+    });
+    clickSiguiente();
+
+    // Paso 2 · Inquilino · el nombre viene prefijado con "Ivan".
+    await waitFor(() => {
+      const textboxes = screen.getAllByRole('textbox');
+      expect(textboxes.length).toBeGreaterThanOrEqual(5);
+    });
+    expect((screen.getAllByRole('textbox')[0] as HTMLInputElement).value).toBe('Ivan');
   });
 });

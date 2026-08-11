@@ -44,6 +44,10 @@ export interface DrawerFichaContratoProps {
   /** Fase F.2 · se llama tras renovar/finalizar para recargar la lista. Cuando
    *  no se provee, las acciones de ciclo de vida caen a su placeholder (toast). */
   onContratoActualizado?: () => void;
+  /** Corregir un error · abre la edición del contrato (wizard en modo edición). */
+  onEditarContrato?: (id: number) => void;
+  /** Corregir un error · dispara el borrado (con cascada) del contrato. */
+  onEliminarContrato?: (contrato: Contract & { id: number }) => void;
 }
 
 const PILL_LABEL: Record<EstadoChip, { variant: 'gris' | 'warn' | 'neg' | 'brand'; label: string }> = {
@@ -173,6 +177,8 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
   open,
   onClose,
   onContratoActualizado,
+  onEditarContrato,
+  onEliminarContrato,
 }) => {
   const [tabActivo, setTabActivo] = useState<'ficha' | 'actividad'>('ficha');
   // Fase F.2 · modal de acción contractual (renovar / finalizar) · null = cerrado.
@@ -264,6 +270,21 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
     }
     showToastV5(`${accion.label} próximamente · ${accion.toastSuffix}`);
   };
+
+  // Corregir un error · editar / eliminar. Cierran el drawer y delegan en el
+  // padre (navegación al wizard de edición · borrado con cascada + confirmación).
+  const onEditar = onEditarContrato
+    ? (): void => {
+        onEditarContrato(contrato.id);
+        onClose();
+      }
+    : undefined;
+  const onEliminar = onEliminarContrato
+    ? (): void => {
+        onEliminarContrato(contrato);
+        onClose();
+      }
+    : undefined;
 
   return (
     <>
@@ -359,6 +380,8 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
               firmado={firmado}
               estadoEfectivo={estadoEfectivo}
               resumenCobros={resumenCobros}
+              onEditar={onEditar}
+              onEliminar={onEliminar}
             />
           ) : (
             <EmptyState
@@ -413,6 +436,8 @@ interface PanelFichaProps {
   firmado: boolean;
   estadoEfectivo: EstadoEfectivo;
   resumenCobros: ResumenCobros | null;
+  onEditar?: () => void;
+  onEliminar?: () => void;
 }
 
 const PanelFicha: React.FC<PanelFichaProps> = ({
@@ -420,6 +445,8 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
   firmado,
   estadoEfectivo,
   resumenCobros,
+  onEditar,
+  onEliminar,
 }) => {
   const inq = contrato.inquilino;
   const esSinFirmar = contrato.estadoContrato === 'sin_firmar';
@@ -433,9 +460,11 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
           <button
             type="button"
             className={styles.editBtn}
-            onClick={() => showToastV5('Edición de datos próximamente · T3.2')}
+            onClick={
+              onEditar ?? (() => showToastV5('Edición de datos próximamente · T3.2'))
+            }
           >
-            <Icons.Edit size={11} strokeWidth={1.8} /> Editar datos
+            <Icons.Edit size={11} strokeWidth={1.8} /> Editar contrato
           </button>
         </div>
         <div className={styles.tenantActions}>
@@ -583,6 +612,28 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
           </ul>
         )}
       </section>
+
+      {(onEditar || onEliminar) && (
+        <section className={styles.section}>
+          <h3 className={styles.sectionTitle}>Corregir un error</h3>
+          <p className={styles.correccionHint}>
+            ¿Creaste este contrato con datos equivocados? Puedes editarlo o
+            eliminarlo por completo.
+          </p>
+          <div className={styles.correccionRow}>
+            {onEditar && (
+              <button type="button" className={styles.editBtn} onClick={onEditar}>
+                <Icons.Edit size={11} strokeWidth={1.8} /> Editar contrato
+              </button>
+            )}
+            {onEliminar && (
+              <button type="button" className={styles.deleteBtn} onClick={onEliminar}>
+                <Icons.Delete size={11} strokeWidth={1.8} /> Eliminar contrato
+              </button>
+            )}
+          </div>
+        </section>
+      )}
     </>
   );
 };

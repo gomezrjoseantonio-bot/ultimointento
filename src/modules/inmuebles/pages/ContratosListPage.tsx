@@ -260,11 +260,19 @@ const ContratosListPage: React.FC = () => {
             inmuebleModoById={modoById}
             onNuevoContrato={() => navigate('/contratos/nuevo')}
             onContratoActualizado={reload}
+            onEditarContrato={(id) => navigate(`/contratos/nuevo?edit=${id}`)}
+            onEliminarContrato={requestDelete}
           />
         )}
 
         {tab === 'proximos' && (
-          <TabProximos contratos={proximos} inmuebleAliasById={propertyById} />
+          <TabProximos
+            contratos={proximos}
+            inmuebleAliasById={propertyById}
+            onContratoActualizado={reload}
+            onEditarContrato={(id) => navigate(`/contratos/nuevo?edit=${id}`)}
+            onEliminarContrato={requestDelete}
+          />
         )}
 
         {tab === 'historico' && (
@@ -297,6 +305,9 @@ const ContratosListPage: React.FC = () => {
               )
             }
             onIrAInmuebles={() => navigate('/inmuebles')}
+            onContratoActualizado={reload}
+            onEditarContrato={(id) => navigate(`/contratos/nuevo?edit=${id}`)}
+            onEliminarContrato={requestDelete}
           />
         )}
       </main>
