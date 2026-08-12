@@ -29,38 +29,41 @@
 }
 
 .tabsBar {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--atlas-v5-line);
+  display: inline-flex;
+  gap: 3px;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 4px;
   margin-bottom: 18px;
+  box-shadow: var(--atlas-v5-shadow-card);
+  max-width: 100%;
   overflow-x: auto;
 }
 
 .tabsBar button {
-  padding: 11px 18px;
-  font-size: 13.5px;
-  font-weight: var(--atlas-v5-fw-medium);
-  color: var(--atlas-v5-ink-4);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-3);
+  border: none;
+  border-radius: 9px;
   white-space: nowrap;
-  background: transparent;
-  border-top: none;
-  border-left: none;
-  border-right: none;
+  background: none;
   cursor: pointer;
   font-family: var(--atlas-v5-font-ui);
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
-.tabsBar button:hover { color: var(--atlas-v5-ink-2); }
+.tabsBar button:hover { color: var(--atlas-v5-ink); }
 
 .tabsBar button.active {
-  color: var(--atlas-v5-ink);
-  border-bottom-color: var(--atlas-v5-gold);
-  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-card);
+  box-shadow: var(--atlas-v5-shadow-card);
 }
 
 .tabCount {
@@ -145,6 +148,58 @@
   display: flex;
   gap: 8px;
   align-items: flex-start;
+}
+
+/* Menú «Acciones» de la cabecera (mockup · dropdown único) */
+.actionsWrap {
+  position: relative;
+}
+.actionsBtn {
+  gap: 7px;
+}
+.actionsMenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  min-width: 220px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 11px;
+  box-shadow: var(--atlas-v5-shadow-lift);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.actionsItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-2);
+  text-align: left;
+  width: 100%;
+}
+.actionsItem svg {
+  color: var(--atlas-v5-gold-ink);
+  flex-shrink: 0;
+}
+.actionsItem:hover {
+  background: var(--atlas-v5-bg);
+}
+.actionsDanger {
+  color: var(--atlas-v5-neg);
+}
+.actionsDanger svg {
+  color: var(--atlas-v5-neg);
 }
 
 .heroPhoto {

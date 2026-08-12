@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import {
   EmptyState,
@@ -33,7 +33,6 @@ import DocumentosInmueble from '../components/DocumentosInmueble';
 import FiscalidadInmueble from '../components/FiscalidadInmueble';
 import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
 import EditarRegistroInmuebleModal from '../components/EditarRegistroInmuebleModal';
-import RentabilidadInmueble from '../components/RentabilidadInmueble';
 import ResumenCockpitInmueble from '../components/ResumenCockpitInmueble';
 import {
   calcularResumenGastosInmueble,
@@ -54,7 +53,7 @@ import { useRegistrosInmueble } from '../hooks/useRegistrosInmueble';
 import styles from './DetallePage.module.css';
 
 
-type Tab = 'patrimonio' | 'gastos' | 'rentabilidad' | 'fiscalidad' | 'documentos';
+type Tab = 'patrimonio' | 'gastos' | 'fiscalidad' | 'documentos';
 type GastosSubTab = 'resumen' | 'registrados' | 'recurrentes';
 
 const isContractActiveAt = (c: Contract, today: Date): boolean => {
@@ -68,7 +67,6 @@ const resolveTab = (param: string | null): Tab => {
   if (param === 'gastos') return 'gastos';
   if (param === 'fiscalidad') return 'fiscalidad';
   if (param === 'documentos') return 'documentos';
-  if (param === 'rentabilidad') return 'rentabilidad';
   return 'patrimonio';
 };
 
@@ -97,6 +95,20 @@ const DetallePage: React.FC = () => {
   const [isDeletingInmueble, setIsDeletingInmueble] = useState(false);
   // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
   const [showImportWizard, setShowImportWizard] = useState(false);
+  // Menú «Acciones» de la cabecera (mockup · dropdown único).
+  const [accionesOpen, setAccionesOpen] = useState(false);
+  const accionesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!accionesOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (accionesRef.current && !accionesRef.current.contains(e.target as Node)) {
+        setAccionesOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [accionesOpen]);
 
   // Fase 8 · operativa de Registrados (carga + editar/borrar con trazabilidad).
   const registros = useRegistrosInmueble(propertyId);
@@ -251,6 +263,15 @@ const DetallePage: React.FC = () => {
       cuotaPrestamoAnual,
     ],
   );
+  // Rentabilidad para el toggle del cockpit (renta % sobre valor + neta real).
+  const rentabilidadCockpit = useMemo(
+    () => ({
+      rentaMensual,
+      netaPct: rentabilidadResumen.rentabilidadNeta?.valor ?? null,
+      netaEtiqueta: rentabilidadResumen.rentabilidadNeta?.etiqueta,
+    }),
+    [rentaMensual, rentabilidadResumen],
+  );
 
   if (!property) {
     return (
@@ -271,7 +292,6 @@ const DetallePage: React.FC = () => {
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
     { key: 'patrimonio', label: 'Resumen' },
     { key: 'gastos', label: 'Costes' },
-    { key: 'rentabilidad', label: 'Rentabilidad' },
     { key: 'fiscalidad', label: 'Fiscalidad' },
     { key: 'documentos', label: 'Documentos', count: property.documents?.length },
   ];
@@ -332,49 +352,91 @@ const DetallePage: React.FC = () => {
           </div>
           </div>
           <div className={styles.heroActions}>
-            <button
-              type="button"
-              className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
-              onClick={() => setShowImportWizard(true)}
-            >
-              <Icons.Upload size={14} strokeWidth={1.8} />
-              Importar histórico
-            </button>
-            <button
-              type="button"
-              className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
-              onClick={() => navigate(`/inmuebles/${property.id}/editar`)}
-            >
-              <Icons.Edit size={14} strokeWidth={1.8} />
-              Editar
-            </button>
-            <button
-              type="button"
-              className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
-              onClick={async () => {
-                if (property.id == null) return;
-                try {
-                  const report = await previewDeleteInmuebleCascade(property.id);
-                  setPendingDelete(report);
-                } catch (err) {
-                  console.error('Error preparing inmueble deletion', err);
-                  showToastV5('No se pudo preparar el borrado del inmueble');
-                }
-              }}
-            >
-              <Icons.Delete size={14} strokeWidth={1.8} />
-              Eliminar
-            </button>
-            {property.state !== 'vendido' && (
+            <div className={styles.actionsWrap} ref={accionesRef}>
               <button
                 type="button"
-                className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
-                onClick={() => navigate(`/gestion/inmuebles/${property.id}/vender`)}
+                className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost} ${styles.actionsBtn}`}
+                onClick={() => setAccionesOpen((o) => !o)}
+                aria-haspopup="menu"
+                aria-expanded={accionesOpen}
               >
-                <Icons.HandCoins size={14} strokeWidth={1.8} />
-                Vender
+                Acciones
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
               </button>
-            )}
+              {accionesOpen && (
+                <div className={styles.actionsMenu} role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={styles.actionsItem}
+                    onClick={() => {
+                      setAccionesOpen(false);
+                      setShowImportWizard(true);
+                    }}
+                  >
+                    <Icons.Upload size={15} strokeWidth={1.8} />
+                    Importar histórico
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={styles.actionsItem}
+                    onClick={() => {
+                      setAccionesOpen(false);
+                      navigate(`/inmuebles/${property.id}/editar`);
+                    }}
+                  >
+                    <Icons.Edit size={15} strokeWidth={1.8} />
+                    Editar
+                  </button>
+                  {property.state !== 'vendido' && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={styles.actionsItem}
+                      onClick={() => {
+                        setAccionesOpen(false);
+                        navigate(`/gestion/inmuebles/${property.id}/vender`);
+                      }}
+                    >
+                      <Icons.HandCoins size={15} strokeWidth={1.8} />
+                      Vender
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={`${styles.actionsItem} ${styles.actionsDanger}`}
+                    onClick={async () => {
+                      setAccionesOpen(false);
+                      if (property.id == null) return;
+                      try {
+                        const report = await previewDeleteInmuebleCascade(property.id);
+                        setPendingDelete(report);
+                      } catch (err) {
+                        console.error('Error preparing inmueble deletion', err);
+                        showToastV5('No se pudo preparar el borrado del inmueble');
+                      }
+                    }}
+                  >
+                    <Icons.Delete size={15} strokeWidth={1.8} />
+                    Eliminar
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -407,6 +469,7 @@ const DetallePage: React.FC = () => {
               resumen={patrimonioResumen}
               gananciaAcumulada={gananciaAcumuladaDatos}
               costePropiedad={costePropiedadMensual}
+              rentabilidad={rentabilidadCockpit}
               onImportarValoraciones={() => setShowImportWizard(true)}
               onVerFinanciacion={(prestamoId) =>
                 navigate(prestamoId ? `/financiacion/${prestamoId}` : '/financiacion')
@@ -510,12 +573,6 @@ const DetallePage: React.FC = () => {
               />
             </div>
           )}
-        </div>
-      )}
-
-      {tab === 'rentabilidad' && (
-        <div style={{ marginTop: 8 }}>
-          <RentabilidadInmueble resumen={rentabilidadResumen} />
         </div>
       )}
 

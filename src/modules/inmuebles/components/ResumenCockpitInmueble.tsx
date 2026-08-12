@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { MoneyValue } from '../../../design-system/v5';
 import type { PatrimonioInmuebleResumen, ValoracionPunto } from '../adapters/patrimonioInmuebleAdapter';
 import { derivarComposicion } from './ComposicionPatrimonioNeto';
@@ -18,10 +18,18 @@ export interface GananciaAcumuladaDatos {
   desdeAnio: number | null;
 }
 
+/** Rentabilidad para el toggle del chart (renta bruta sobre valor + neta real). */
+export interface RentabilidadCockpit {
+  rentaMensual: number;
+  netaPct: number | null;
+  netaEtiqueta?: string;
+}
+
 export interface ResumenCockpitInmuebleProps {
   resumen: PatrimonioInmuebleResumen;
   gananciaAcumulada?: GananciaAcumuladaDatos;
   costePropiedad?: CostePropiedadMensual;
+  rentabilidad?: RentabilidadCockpit;
   onImportarValoraciones?: () => void;
   onVerFinanciacion?: (prestamoId?: string) => void;
 }
@@ -40,7 +48,7 @@ const formatMes = (fecha: string): string => {
 
 const anioDe = (fecha: string): number => Number(fecha.split('-')[0]);
 
-// ───────────────────────── Chart navy · valor + proyección ─────────────────────────
+// ───────────────────────── Geometría común del chart ─────────────────────────
 
 const CW = 360;
 const CH = 96;
@@ -48,6 +56,8 @@ const CPT = 12;
 const CPB = 6;
 const CPL = 6;
 const CPR = 6;
+const TASA = 0.03; // supuesto Mi Plan · +3 %/año
+const PROY_ANIOS = 20;
 
 /** 'YYYY-MM[-DD]' → año decimal para espaciar el eje X por fecha real. */
 const aAnioDecimal = (fecha: string): number => {
@@ -59,7 +69,9 @@ const aAnioDecimal = (fecha: string): number => {
   return anio + mesIdx / 12;
 };
 
-interface ChartModelo {
+// ───────────────────────── Chart · Valor ─────────────────────────
+
+interface ValorModelo {
   areaReal: string;
   lineaReal: string;
   lineaProyeccion: string | null;
@@ -71,12 +83,7 @@ interface ChartModelo {
   hayProyeccion: boolean;
 }
 
-/** Construye el trazado del chart a partir de la serie real + proyección Mi Plan. */
-function construirChart(
-  puntos: ValoracionPunto[],
-  tasaAnual: number,
-  aniosProyeccion: number,
-): ChartModelo | null {
+function construirValor(puntos: ValoracionPunto[]): ValorModelo | null {
   const reales = [...puntos]
     .filter((p) => Number.isFinite(p.valor))
     .sort((a, b) => aAnioDecimal(a.fecha) - aAnioDecimal(b.fecha));
@@ -86,13 +93,8 @@ function construirChart(
   const xUltimoReal = aAnioDecimal(ultimo.fecha);
 
   const proyeccion: Array<{ x: number; valor: number }> = [];
-  if (aniosProyeccion > 0 && tasaAnual > 0) {
-    for (let k = 1; k <= aniosProyeccion; k++) {
-      proyeccion.push({
-        x: xUltimoReal + k,
-        valor: Math.round(ultimo.valor * Math.pow(1 + tasaAnual, k)),
-      });
-    }
+  for (let k = 1; k <= PROY_ANIOS; k++) {
+    proyeccion.push({ x: xUltimoReal + k, valor: Math.round(ultimo.valor * Math.pow(1 + TASA, k)) });
   }
 
   const puntosReales =
@@ -119,28 +121,123 @@ function construirChart(
   return {
     areaReal,
     lineaReal: linea(puntosReales),
-    lineaProyeccion:
-      proyeccion.length > 0 ? linea([puntosReales[puntosReales.length - 1], ...proyeccion]) : null,
+    lineaProyeccion: linea([puntosReales[puntosReales.length - 1], ...proyeccion]),
     markerX: px(xUltimoReal),
     markerY: py(ultimo.valor),
     etiquetaInicio: String(anioDe(reales[0].fecha)),
     etiquetaHoy: `hoy · ${anioDe(ultimo.fecha)}`,
-    etiquetaFin: proyeccion.length > 0 ? String(Math.round(xMax)) : String(anioDe(ultimo.fecha)),
-    hayProyeccion: proyeccion.length > 0,
+    etiquetaFin: String(Math.round(xMax)),
+    hayProyeccion: true,
   };
 }
 
-const FeatureValorChart: React.FC<{
+// ───────────────────────── Chart · Rentabilidad % ─────────────────────────
+
+interface RentabModelo {
+  renta: { solido: string; discontinuo: string };
+  reval: { solido: string; discontinuo: string } | null;
+  total: { solido: string; discontinuo: string } | null;
+  etiquetaInicio: string;
+  etiquetaHoy: string;
+  etiquetaFin: string;
+  rentaPct: number;
+}
+
+/**
+ * Rentabilidad anual sobre el valor actual: renta bruta (renta/valor, plana),
+ * revalorización real (variación interanual de valoraciones) y total. La parte
+ * futura proyecta la revalorización al supuesto de Mi Plan (+3 %). Solo dato
+ * real; sin histórico de valoraciones la reval solo se proyecta.
+ */
+function construirRentab(
+  puntos: ValoracionPunto[],
+  rentabilidad: RentabilidadCockpit | undefined,
+  valorActual: number | null,
+): RentabModelo | null {
+  if (!rentabilidad || valorActual == null || valorActual <= 0) return null;
+  const rentaAnual = rentabilidad.rentaMensual * 12;
+  const rentaPct = rentaAnual > 0 ? (rentaAnual / valorActual) * 100 : 0;
+
+  // Valoraciones deduplicadas por año (último valor de cada año).
+  const byYear = new Map<number, number>();
+  [...puntos]
+    .filter((p) => Number.isFinite(p.valor))
+    .sort((a, b) => aAnioDecimal(a.fecha) - aAnioDecimal(b.fecha))
+    .forEach((p) => byYear.set(anioDe(p.fecha), p.valor));
+  const years = [...byYear.keys()].sort((a, b) => a - b);
+  if (years.length === 0) return null;
+  const vals = years.map((y) => byYear.get(y) as number);
+  const hoyYear = years[years.length - 1];
+
+  interface P { x: number; renta: number; reval: number | null; total: number | null }
+  const pts: P[] = [];
+  for (let i = 0; i < years.length; i++) {
+    const reval = i === 0 ? null : ((vals[i] - vals[i - 1]) / vals[i - 1]) * 100;
+    pts.push({ x: years[i], renta: rentaPct, reval, total: reval == null ? null : rentaPct + reval });
+  }
+  for (let k = 1; k <= PROY_ANIOS; k++) {
+    const reval = TASA * 100;
+    pts.push({ x: hoyYear + k, renta: rentaPct, reval, total: rentaPct + reval });
+  }
+
+  const xs = pts.map((p) => p.x);
+  const xMin = Math.min(...xs);
+  const xMax = Math.max(...xs);
+  const spanX = xMax - xMin || 1;
+  const valores: number[] = [];
+  pts.forEach((p) => {
+    valores.push(p.renta);
+    if (p.reval != null) valores.push(p.reval);
+    if (p.total != null) valores.push(p.total);
+  });
+  const yMax = Math.max(...valores, 1) * 1.18;
+
+  const px = (x: number) => CPL + ((x - xMin) / spanX) * (CW - CPL - CPR);
+  const py = (v: number) => CPT + (1 - v / yMax) * (CH - CPT - CPB);
+
+  const trazo = (
+    sel: (p: P) => number | null,
+  ): { solido: string; discontinuo: string } | null => {
+    const validos = pts.filter((p) => sel(p) != null);
+    if (validos.length === 0) return null;
+    const solidoPts = validos.filter((p) => p.x <= hoyYear);
+    const proyPts = validos.filter((p) => p.x >= hoyYear);
+    const d = (arr: P[]) =>
+      arr.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.x).toFixed(1)},${py(sel(p) as number).toFixed(1)}`).join(' ');
+    return {
+      solido: solidoPts.length >= 2 ? d(solidoPts) : '',
+      discontinuo: proyPts.length >= 2 ? d(proyPts) : '',
+    };
+  };
+
+  const renta = trazo((p) => p.renta) as { solido: string; discontinuo: string };
+  return {
+    renta,
+    reval: trazo((p) => p.reval),
+    total: trazo((p) => p.total),
+    etiquetaInicio: String(xMin),
+    etiquetaHoy: `hoy · ${hoyYear}`,
+    etiquetaFin: String(xMax),
+    rentaPct,
+  };
+}
+
+// ───────────────────────── Chart con toggle Valor / Rentabilidad % ─────────────────────────
+
+const FeatureProjeccion: React.FC<{
   puntos: ValoracionPunto[];
-  aniosProyeccion: number;
+  valorActual: number | null;
+  rentabilidad?: RentabilidadCockpit;
   onImportar?: () => void;
-}> = ({ puntos, aniosProyeccion, onImportar }) => {
-  const modelo = useMemo(
-    () => construirChart(puntos, 0.03, aniosProyeccion),
-    [puntos, aniosProyeccion],
+}> = ({ puntos, valorActual, rentabilidad, onImportar }) => {
+  const [modo, setModo] = useState<'valor' | 'rentab'>('valor');
+  const valor = useMemo(() => construirValor(puntos), [puntos]);
+  const rentab = useMemo(
+    () => construirRentab(puntos, rentabilidad, valorActual),
+    [puntos, rentabilidad, valorActual],
   );
 
-  if (!modelo) {
+  if (!valor) {
     return (
       <div className={styles.chartEmpty}>
         <span>Aún no hay valoraciones registradas.</span>
@@ -153,25 +250,47 @@ const FeatureValorChart: React.FC<{
     );
   }
 
+  const puedeRentab = rentab != null;
+  const modoEfectivo = modo === 'rentab' && puedeRentab ? 'rentab' : 'valor';
+
   return (
     <>
       <div className={styles.projHd}>
+        <div className={styles.fpTabs} role="group" aria-label="Modo del gráfico">
+          <button
+            type="button"
+            className={modoEfectivo === 'valor' ? styles.fpOn : ''}
+            onClick={() => setModo('valor')}
+          >
+            Valor
+          </button>
+          <button
+            type="button"
+            className={modoEfectivo === 'rentab' ? styles.fpOn : ''}
+            onClick={() => setModo('rentab')}
+            disabled={!puedeRentab}
+          >
+            Rentabilidad %
+          </button>
+        </div>
         <span className={styles.projLg}>
-          <span>
-            <i className={styles.lgReal} />
-            realidad
-          </span>
-          {modelo.hayProyeccion && (
-            <span>
-              <i className={styles.lgProj} />
-              proyección
-            </span>
+          {modoEfectivo === 'valor' ? (
+            <>
+              <span><i className={styles.lgReal} />realidad</span>
+              <span><i className={styles.lgProj} />proyección</span>
+            </>
+          ) : (
+            <>
+              <span><i className={styles.lgRenta} />renta</span>
+              <span><i className={styles.lgRevalL} />reval.</span>
+              <span><i className={styles.lgTotal} />total</span>
+            </>
           )}
         </span>
       </div>
 
       <div className={styles.chart}>
-        <svg viewBox={`0 0 ${CW} ${CH}`} preserveAspectRatio="none" role="img" aria-label="Evolución del valor del inmueble">
+        <svg viewBox={`0 0 ${CW} ${CH}`} preserveAspectRatio="none" role="img" aria-label={modoEfectivo === 'valor' ? 'Evolución del valor' : 'Rentabilidad anual'}>
           <defs>
             <linearGradient id="cockpitValGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor="var(--atlas-v5-gold-soft)" stopOpacity="0.32" />
@@ -179,65 +298,63 @@ const FeatureValorChart: React.FC<{
             </linearGradient>
           </defs>
 
-          <path d={modelo.areaReal} fill="url(#cockpitValGrad)" />
-
-          {modelo.lineaProyeccion && (
-            <path
-              d={modelo.lineaProyeccion}
-              fill="none"
-              stroke="var(--atlas-v5-gold-soft)"
-              strokeWidth={2}
-              strokeDasharray="5 4"
-              strokeOpacity={0.85}
-              vectorEffect="non-scaling-stroke"
-            />
+          {modoEfectivo === 'valor' ? (
+            <>
+              <path d={valor.areaReal} fill="url(#cockpitValGrad)" />
+              {valor.lineaProyeccion && (
+                <path d={valor.lineaProyeccion} fill="none" stroke="var(--atlas-v5-gold-soft)" strokeWidth={2} strokeDasharray="5 4" strokeOpacity={0.85} vectorEffect="non-scaling-stroke" />
+              )}
+              <path d={valor.lineaReal} fill="none" stroke="var(--atlas-v5-gold-soft)" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+              <line x1={valor.markerX} y1={CPT} x2={valor.markerX} y2={CH - CPB} stroke="var(--atlas-v5-on-navy-6)" strokeWidth={1} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
+              <circle cx={valor.markerX} cy={valor.markerY} r={3.6} fill="var(--atlas-v5-card)" stroke="var(--atlas-v5-gold-soft)" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
+            </>
+          ) : (
+            rentab && (
+              <>
+                {rentab.reval && rentab.reval.solido && (
+                  <path d={rentab.reval.solido} fill="none" stroke="var(--atlas-v5-equity-cash)" strokeWidth={1.6} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                )}
+                {rentab.reval && rentab.reval.discontinuo && (
+                  <path d={rentab.reval.discontinuo} fill="none" stroke="var(--atlas-v5-equity-cash)" strokeWidth={1.6} strokeDasharray="4 3" strokeOpacity={0.75} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                )}
+                {rentab.renta.solido && (
+                  <path d={rentab.renta.solido} fill="none" stroke="var(--atlas-v5-equity-amort)" strokeWidth={1.6} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                )}
+                {rentab.renta.discontinuo && (
+                  <path d={rentab.renta.discontinuo} fill="none" stroke="var(--atlas-v5-equity-amort)" strokeWidth={1.6} strokeDasharray="4 3" strokeOpacity={0.75} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                )}
+                {rentab.total && rentab.total.solido && (
+                  <path d={rentab.total.solido} fill="none" stroke="var(--atlas-v5-gold-soft)" strokeWidth={2.6} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                )}
+                {rentab.total && rentab.total.discontinuo && (
+                  <path d={rentab.total.discontinuo} fill="none" stroke="var(--atlas-v5-gold-soft)" strokeWidth={2.6} strokeDasharray="4 3" strokeOpacity={0.75} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                )}
+              </>
+            )
           )}
-
-          <path
-            d={modelo.lineaReal}
-            fill="none"
-            stroke="var(--atlas-v5-gold-soft)"
-            strokeWidth={2.6}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-
-          {modelo.hayProyeccion && (
-            <line
-              x1={modelo.markerX}
-              y1={CPT}
-              x2={modelo.markerX}
-              y2={CH - CPB}
-              stroke="var(--atlas-v5-on-navy-6)"
-              strokeWidth={1}
-              strokeDasharray="2 3"
-              vectorEffect="non-scaling-stroke"
-            />
-          )}
-
-          <circle
-            cx={modelo.markerX}
-            cy={modelo.markerY}
-            r={3.6}
-            fill="var(--atlas-v5-card)"
-            stroke="var(--atlas-v5-gold-soft)"
-            strokeWidth={2.5}
-            vectorEffect="non-scaling-stroke"
-          />
         </svg>
       </div>
 
       <div className={styles.chartX}>
-        <span>{modelo.etiquetaInicio}</span>
-        <span>{modelo.etiquetaHoy}</span>
-        <span>{modelo.etiquetaFin}</span>
+        {modoEfectivo === 'valor' ? (
+          <>
+            <span>{valor.etiquetaInicio}</span>
+            <span>{valor.etiquetaHoy}</span>
+            <span>{valor.etiquetaFin}</span>
+          </>
+        ) : rentab ? (
+          <>
+            <span>{rentab.etiquetaInicio}</span>
+            <span>{rentab.etiquetaHoy}</span>
+            <span>{rentab.etiquetaFin}</span>
+          </>
+        ) : null}
       </div>
-      {modelo.hayProyeccion && (
-        <div className={styles.chartCap}>
-          proyección a {aniosProyeccion} años · supuesto de <b>Mi Plan</b>
-        </div>
-      )}
+      <div className={styles.chartCap}>
+        {modoEfectivo === 'valor'
+          ? <>proyección a {PROY_ANIOS} años · supuesto de <b>Mi Plan</b></>
+          : <>rentabilidad anual sobre el valor actual · realidad + proyección</>}
+      </div>
     </>
   );
 };
@@ -251,7 +368,6 @@ interface SegVisual {
   width: number;
 }
 
-/** Anchos normalizados a 100 sobre los importes positivos. */
 function anchosBarra(segmentos: Array<{ key: SegVisual['key']; label: string; amount: number }>): SegVisual[] {
   const positivos = segmentos.map((s) => Math.max(s.amount, 0));
   const denom = positivos.reduce((sum, v) => sum + v, 0);
@@ -267,6 +383,7 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
   resumen,
   gananciaAcumulada,
   costePropiedad,
+  rentabilidad,
   onImportarValoraciones,
   onVerFinanciacion,
 }) => {
@@ -313,19 +430,16 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
     (s) => s.amount > 0 || s.key === 'cash' || s.key === 'revalorizacion',
   );
 
-  // Ganancia acumulada
   const rentasAcumuladas = gananciaAcumulada?.rentasAcumuladas ?? 0;
   const gananciaTotal = (revalorizacion ?? 0) + rentasAcumuladas;
   const mostrarGanancia =
     gananciaAcumulada != null && (revalorizacion !== null || rentasAcumuladas !== 0);
 
-  // Coste de propiedad
   const costeMensual = costePropiedad
     ? costePropiedad.hipoteca + costePropiedad.mantenimiento + costePropiedad.explotacion
     : 0;
   const mostrarCoste = costePropiedad != null && costeMensual > 0;
 
-  // Financiación
   const cuotaTotal = financiacion.reduce((s, l) => s + l.cuotaMensual, 0);
   const primerPrestamo = financiacion[0];
 
@@ -363,9 +477,10 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
           )}
         </div>
 
-        <FeatureValorChart
+        <FeatureProjeccion
           puntos={historicoValoraciones}
-          aniosProyeccion={20}
+          valorActual={valorActual}
+          rentabilidad={rentabilidad}
           onImportar={onImportarValoraciones}
         />
 
@@ -447,7 +562,7 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
                     <span className="am">
                       <MoneyValue value={Math.abs(revalorizacion)} decimals={0} showCurrency={false} />
                     </span>
-                    <span className={styles.op} style={{ color: 'var(--atlas-v5-ink-5)' }}>reval.</span>
+                    <span className={styles.op}>reval.</span>
                   </>
                 )}
                 {revalorizacion !== null && rentasAcumuladas !== 0 && <span className={styles.op}>+</span>}
@@ -456,7 +571,7 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
                     <span className="am">
                       <MoneyValue value={Math.abs(rentasAcumuladas)} decimals={0} showCurrency={false} />
                     </span>
-                    <span className={styles.op} style={{ color: 'var(--atlas-v5-ink-5)' }}>rentas</span>
+                    <span className={styles.op}>rentas</span>
                   </>
                 )}
               </div>
@@ -491,15 +606,15 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
               </div>
               <div className={styles.flowEq}>
                 <span className="am"><MoneyValue value={costePropiedad!.hipoteca} decimals={0} showCurrency={false} /></span>
-                <span className={styles.op} style={{ color: 'var(--atlas-v5-ink-5)' }}>hipoteca</span>
+                <span className={styles.op}>hipoteca</span>
                 <span className={styles.op}>+</span>
                 <span className="am"><MoneyValue value={costePropiedad!.mantenimiento} decimals={0} showCurrency={false} /></span>
-                <span className={styles.op} style={{ color: 'var(--atlas-v5-ink-5)' }}>manten.</span>
+                <span className={styles.op}>manten.</span>
                 {costePropiedad!.explotacion > 0 && (
                   <>
                     <span className={styles.op}>+</span>
                     <span className="am"><MoneyValue value={costePropiedad!.explotacion} decimals={0} showCurrency={false} /></span>
-                    <span className={styles.op} style={{ color: 'var(--atlas-v5-ink-5)' }}>explot.</span>
+                    <span className={styles.op}>explot.</span>
                   </>
                 )}
               </div>

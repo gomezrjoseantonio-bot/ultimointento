@@ -106,10 +106,6 @@ jest.mock('../../components/GastosRegistradosInmueble', () => ({
   default: () => <div>Registrados gastos mock</div>,
 }));
 
-jest.mock('../../components/RentabilidadInmueble', () => ({
-  __esModule: true,
-  default: () => <div>Rentabilidad mock</div>,
-}));
 
 jest.mock('../../components/ResumenCockpitInmueble', () => ({
   __esModule: true,
@@ -216,28 +212,28 @@ describe('DetallePage · tabs fase 4', () => {
     },
   );
 
-  it('muestra las 5 tabs nuevas y elimina contratos/cobros', async () => {
+  it('muestra las 4 tabs del mockup y elimina contratos/cobros/rentabilidad', async () => {
     await renderPage();
 
     expect(screen.getByRole('tablist', { name: /Navegación ficha inmueble/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Resumen/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Costes/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Rentabilidad/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Fiscalidad/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Documentos/i })).toBeInTheDocument();
+    // El mockup consolida a 4 pestañas · Rentabilidad se pliega en el toggle del chart.
+    expect(screen.queryByRole('tab', { name: /Rentabilidad/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /Contratos/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /Cobros/i })).not.toBeInTheDocument();
   });
 
-  it('Resumen muestra solo el cockpit patrimonial y Rentabilidad se activa al pulsar la tab', async () => {
+  it('Resumen muestra el cockpit y al pulsar Fiscalidad se activa esa tab', async () => {
     await renderPage();
 
-    // La pestaña Resumen ya no arrastra las secciones de explotación.
     expect(screen.getByText('Cockpit resumen mock')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Nuevo contrato/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: /Rentabilidad/i }));
-    expect(screen.getByRole('tab', { name: /Rentabilidad/i })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByText('Rentabilidad mock')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Fiscalidad/i }));
+    expect(screen.getByRole('tab', { name: /Fiscalidad/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Fiscalidad IRPF mock')).toBeInTheDocument();
   });
 
   it('muestra la pestaña Documentos con las carpetas por categoría', async () => {

@@ -117,6 +117,12 @@
   --atlas-v5-room-blue:   #3B5A7F;
   --atlas-v5-room-bw:     #2C2C2C;
 
+  /* ===== Composición de patrimonio neto sobre navy (barra del cockpit) =====
+     Tonos lavanda/periwinkle para los tramos "cash aportado" y "deuda
+     amortizada" de la barra de patrimonio neto, legibles sobre el feature navy. */
+  --atlas-v5-equity-cash:  #7E8BC0;
+  --atlas-v5-equity-amort: #A9B4DE;
+
   /* ===== Categorías chart · 6 colores derivados de la paleta ===== */
   --atlas-v5-c1: var(--atlas-v5-brand);
   --atlas-v5-c2: var(--atlas-v5-gold);
