@@ -3,6 +3,7 @@ import { PlanPagos, Prestamo } from '../types/prestamos';
 import { comisionDeReembolso } from './prestamos/comisiones';
 import { cancelarAnticipado, interesesCorridos } from './prestamos/amortizarAnticipado';
 import { triggerTreasuryUpdate } from './treasuryEventsService';
+import { confirmTreasuryEvent } from './treasuryConfirmationService';
 import { getFiscalSummary } from './fiscalSummaryService';
 import { getAllocationFactor, prestamosService } from './prestamosService';
 import {
@@ -638,6 +639,50 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     );
   }
 
+  // Snapshot fiscal · se resuelve ANTES de abrir la transacción de escritura.
+  // `calcularGananciaPatrimonial` hace sus propias lecturas asíncronas a
+  // IndexedDB; si se ejecutara dentro de la ventana de la tx de venta, ésta se
+  // auto-desactiva al ceder el event-loop y el primer `put` posterior peta con
+  // `InvalidStateError`. Ese era el motivo de que registrar una venta SIN
+  // fiscalSnapshot precomputado (entradas Cartera / Detalle / Análisis, que no
+  // pasan por el wizard) fallara por completo.
+  const now = new Date().toISOString();
+  let resolvedSnapshot: GananciaPatrimonialResult | undefined = input.fiscalSnapshot;
+  if (!resolvedSnapshot) {
+    try {
+      resolvedSnapshot = await calcularGananciaPatrimonial({
+        propertyId: input.propertyId,
+        sellDate: input.saleDate,
+        salePrice: Number(input.salePrice || 0),
+        agencyCommission: Number(input.agencyCommission || 0),
+        municipalTax: Number(input.municipalTax || 0),
+        saleNotaryCosts: Number(input.saleNotaryCosts || 0),
+        otherCosts: Number(input.otherCosts || 0),
+      });
+    } catch (err) {
+      console.warn('No se pudo calcular fiscalSnapshot al confirmar la venta:', err);
+      resolvedSnapshot = undefined;
+    }
+  }
+
+  const fiscalSnapshot = resolvedSnapshot
+    ? {
+        precioAdquisicion: resolvedSnapshot.precioAdquisicion,
+        gastosAdquisicion: resolvedSnapshot.gastosAdquisicion,
+        mejorasCapexAcumuladas: resolvedSnapshot.mejorasCapexAcumuladas,
+        amortizacionAcumuladaDeclarada: resolvedSnapshot.amortizacionAcumuladaDeclarada,
+        amortizacionAcumuladaAtlas: resolvedSnapshot.amortizacionAcumuladaAtlas,
+        costeFiscalAdquisicion: resolvedSnapshot.costeFiscalAdquisicion,
+        gastosVenta: resolvedSnapshot.gastosVenta,
+        valorNetoTransmision: resolvedSnapshot.valorNetoTransmision,
+        gananciaPatrimonial: resolvedSnapshot.gananciaPatrimonial,
+        irpfEstimado: resolvedSnapshot.irpfEstimado,
+        anosDeclaradosXml: resolvedSnapshot.anosDeclaradosXml,
+        anosCalculadosAtlas: resolvedSnapshot.anosCalculadosAtlas,
+        calculatedAt: now,
+      }
+    : undefined;
+
   const tx = db.transaction([...REQUIRED_STORES], 'readwrite');
 
   const property = await tx.objectStore('properties').get(input.propertyId);
@@ -705,46 +750,6 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     { amount: Number(input.saleNotaryCosts || 0), description: `Notaría venta ${propLabel}` },
     { amount: Number(input.otherCosts || 0), description: `Otros costes venta ${propLabel}` },
   ].filter((item) => item.amount > 0);
-  const now = new Date().toISOString();
-
-  // Snapshot fiscal: si el caller (wizard) lo aporta, se usa; si no (callers
-  // legacy, tests), se calcula al vuelo con el servicio de ganancia
-  // patrimonial para mantener compatibilidad y no perder la previsión IRPF.
-  let resolvedSnapshot: GananciaPatrimonialResult | undefined = input.fiscalSnapshot;
-  if (!resolvedSnapshot) {
-    try {
-      resolvedSnapshot = await calcularGananciaPatrimonial({
-        propertyId: input.propertyId,
-        sellDate: input.saleDate,
-        salePrice: Number(input.salePrice || 0),
-        agencyCommission: Number(input.agencyCommission || 0),
-        municipalTax: Number(input.municipalTax || 0),
-        saleNotaryCosts: Number(input.saleNotaryCosts || 0),
-        otherCosts: Number(input.otherCosts || 0),
-      });
-    } catch (err) {
-      console.warn('No se pudo calcular fiscalSnapshot al confirmar la venta:', err);
-      resolvedSnapshot = undefined;
-    }
-  }
-
-  const fiscalSnapshot = resolvedSnapshot
-    ? {
-        precioAdquisicion: resolvedSnapshot.precioAdquisicion,
-        gastosAdquisicion: resolvedSnapshot.gastosAdquisicion,
-        mejorasCapexAcumuladas: resolvedSnapshot.mejorasCapexAcumuladas,
-        amortizacionAcumuladaDeclarada: resolvedSnapshot.amortizacionAcumuladaDeclarada,
-        amortizacionAcumuladaAtlas: resolvedSnapshot.amortizacionAcumuladaAtlas,
-        costeFiscalAdquisicion: resolvedSnapshot.costeFiscalAdquisicion,
-        gastosVenta: resolvedSnapshot.gastosVenta,
-        valorNetoTransmision: resolvedSnapshot.valorNetoTransmision,
-        gananciaPatrimonial: resolvedSnapshot.gananciaPatrimonial,
-        irpfEstimado: resolvedSnapshot.irpfEstimado,
-        anosDeclaradosXml: resolvedSnapshot.anosDeclaradosXml,
-        anosCalculadosAtlas: resolvedSnapshot.anosCalculadosAtlas,
-        calculatedAt: now,
-      }
-    : undefined;
 
   const sale: Omit<PropertySale, 'id'> = {
     propertyId: input.propertyId,
@@ -785,6 +790,12 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     updatedPaymentPlans: [],
     deletedLoanForecastEvents: [],
   };
+
+  // IDs de los treasuryEvents de CAJA de la venta (cobro, gastos, cancelación).
+  // Se materializan automáticamente si la venta ya ocurrió (fecha <= hoy). La
+  // previsión de IRPF NO entra aquí: es una estimación fiscal que se paga vía
+  // Renta, no un movimiento de caja del día de la venta.
+  const saleLineEventIds: number[] = [];
 
   // PR3: la venta ya no crea movements directamente. Los 5+ movimientos de
   // venta (cobro bruto, gastos, cancelación préstamo) nacen como
@@ -956,6 +967,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       const treasuryEventId = await tx.objectStore('treasuryEvents').add(event);
       if (typeof treasuryEventId === 'number') {
         executionJournal.treasuryEventIds.push(treasuryEventId);
+        saleLineEventIds.push(treasuryEventId);
       }
     }
   }
@@ -983,6 +995,42 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   // Conciliación (confirmTreasuryEvent) se cierra el movement y se llama
   // a finalizePropertySaleLoanCancellationFromTreasuryEvent, que cancela
   // el préstamo en prestamosService.
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LÍNEA TEMPORAL · PASADO / PRESENTE = realidad ya ocurrida.
+  //
+  // Una venta con fecha <= hoy YA sucedió: el cobro, los gastos y la cancelación
+  // del préstamo son hechos consumados, no previsiones que el cliente tenga que
+  // perseguir puntéandolas contra un extracto. Cualquiera que empieza a usar
+  // ATLAS a mitad de año registra ventas del pasado, y nadie va a subir
+  // extractos de meses atrás sólo para dar de alta una venta. Materializamos por
+  // tanto sus flujos automáticamente —el MISMO punteo que haría el usuario a
+  // mano vía confirmTreasuryEvent— para que la realidad quede imputada y NO se
+  // quede en la bandeja "Por confirmar" duplicando lo que el cliente ya tiene.
+  //
+  // Una venta FUTURA (fecha > hoy) se queda como previsión punteable: es lo
+  // correcto para una operación planificada que aún no ha pasado por el banco.
+  //
+  // Materializar la línea de "Cancelación deuda" dispara además, dentro de
+  // confirmTreasuryEvent, la finalización del préstamo (cancelado + cuadro
+  // truncado a la fecha de venta), de modo que un préstamo vinculado a una
+  // venta pasada queda cerrado sin pasos manuales.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const saleAlreadyHappened = input.saleDate.slice(0, 10) <= todayIso;
+  if (saleAlreadyHappened && saleLineEventIds.length > 0) {
+    for (const eventId of saleLineEventIds) {
+      try {
+        await confirmTreasuryEvent(eventId);
+      } catch (err) {
+        // Si un flujo concreto no se puede materializar, se queda como previsión
+        // punteable a mano; no abortamos la venta que ya está persistida.
+        console.warn(
+          `[propertySale] No se pudo materializar el flujo pasado (treasuryEvent ${eventId}):`,
+          err,
+        );
+      }
+    }
+  }
 
   await triggerTreasuryUpdate([settlementAccountId]);
   await ensureSaleTaxFiscalYearOpen(input.propertyId, input.saleDate);
