@@ -1,18 +1,33 @@
-# Gestión delegada por agencias · Diseño V1.2
+# Gestión delegada por agencias · Diseño V2
 
-> Estado: **propuesta de diseño** (no implementado). Documento de referencia
-> antes de tocar código. Objetivo: modelar la gestión de alquileres a través de
-> una agencia/empresa —incluida la **renta garantizada**— sin reescribir el
-> modelo cuando cambie la forma de cobrar de cada agencia.
+> Estado: **implementado** (modelo unificado + Tesorería A/B + Fiscal + captación).
+> Documento de referencia vivo. Objetivo: modelar la gestión de alquileres a
+> través de una agencia/empresa —incluida la **renta garantizada**— sin reescribir
+> el modelo cuando cambie la forma de cobrar de cada agencia.
 >
-> **V1.1 · decisiones cerradas con el propietario:**
+> **V2 · modelo unificado (reformulación cerrada con el propietario):**
+> - **La vista FISCAL es SIEMPRE la misma**, sea cual sea la agencia o su forma de
+>   cobrar: `ingresos íntegros (Σ subcontratos) − comisión = neto`. Tributariamente
+>   idéntico en todos los casos. Ver §5.
+> - **Lo único que varía es el FLUJO DE TESORERÍA** (`gestion.liquidacion`), eje
+>   ortogonal a cómo se calcula la comisión:
+>   - **A · `agencia_neto`** (por defecto) · la agencia cobra a los inquilinos y te
+>     ingresa el neto → 1 apunte de ingreso; sin apunte de comisión (va neteada).
+>   - **B · `propietario_bruto`** · tú cobras las rentas íntegras y pagas la comisión
+>     → N ingresos (subcontratos, agregados por piso) + 1 gasto de comisión.
+> - **La comisión** se calcula de tres formas ortogonales a la liquidación
+>   (`gestion.comisionTipo`): `garantizada` (Σ − garantizado) · `porcentaje` (% × Σ)
+>   · `fees` (fee/habitación, fee fijo). Más la **captación** puntual por inquilino
+>   nuevo (solo en %/fees). Ver §5.
+>
+> **V1.1 · decisiones cerradas con el propietario (vigentes):**
 > - **Un contrato de gestión por piso** (aunque la agencia sea la misma en varios
 >   pisos). Cada contrato = un acuerdo. Se hacen tantos como pisos. → **Opción A**:
 >   el acuerdo se materializa como un `Contract` con un bloque `gestion`, no como
 >   store aparte.
 > - **Requisito núcleo (no negociable):** los contratos de los inquilinos se
 >   **anexan** a su contrato de gestión (relación padre→hijo por `id`), y **la
->   facturación fiscal ES la suma de esos subcontratos anexados**. Ver §4.4 y §5.1.
+>   facturación fiscal ES la suma de esos subcontratos anexados**. Ver §4.4 y §5.
 > - **El contrato de gestión (padre) NO es LAU** (duración libre, sin reducción
 >   fiscal); los subcontratos de inquilinos **sí** (LAU + reducciones). Los
 >   subcontratos se anexan **en cualquier momento**, no en un volcado anual. Ver §4.5.
@@ -186,8 +201,8 @@ Esta es la parte que debe quedar **meridianamente clara**, sin excusas después:
 
   ```
   Ingresos íntegros (IRPF, por piso·año) = facturación(padre, año)
-  Comisión agencia (gasto deducible)     = facturación(padre, año)
-                                            − (rentaGarantizada × meses cobrados)
+  Comisión agencia (gasto deducible)     = según comisionTipo (garantizada/%/fees)
+                                            + captación   ·   ver §5.2
   ```
 
 - **Trazabilidad garantizada por construcción**: no existe "facturación" que no
@@ -233,42 +248,69 @@ Distinción que debe respetarse en tipos y en lógica:
 Resumen: **el padre es caja + agregador; los hijos son la sustancia fiscal (LAU +
 reducciones).**
 
-## 5. Flujos por modo
+## 5. Modelo unificado (V2) · fiscal fijo, tesorería variable
 
-### 5.1. Renta garantizada
+La reformulación clave: **no hay "modos" con vistas distintas**. Hay una vista
+fiscal única, y dos ejes ortogonales que solo cambian cómo se calcula la comisión
+y cómo se mueve el dinero.
 
-- **Operativo (Capa 1)**: el **contrato de gestión (padre)** genera el ingreso
-  garantizado como cobro recurrente en `treasuryEvents` (importe =
-  `rentaMensual` = renta garantizada, contraparte = agencia). Sube por IPC cada
-  año igual que la indexación de un contrato normal.
-  - **Ocupación**: la unidad cuenta como **ocupada al 100 %** mientras el contrato
-    de gestión esté vigente, aunque una habitación esté vacía (cobras igual). La
-    vacancia real es riesgo de la agencia, no ensucia tus KPIs.
-  - Los **subcontratos de inquilinos NO cuentan en Capa 1**: aunque existan como
-    `contracts` (anexados por `gestionPadreId`), quedan excluidos de la banda navy.
-- **Fiscal (Capa 2)**: los subcontratos se **anexan al padre** (`gestionPadreId`),
-  normalmente a fin de año cuando la agencia da el detalle. La **facturación =
-  suma de los subcontratos anexados** (§4.4), y de ahí se deriva la comisión:
+### 5.1. La vista fiscal es SIEMPRE la misma
 
-  ```
-  Ingresos íntegros (IRPF)                      = facturación(padre, año) = Σ subcontratos anexados
-  Comisión agencia (gasto deducible 'gestion')  = facturación(padre, año) − (rentaGarantizada × meses cobrados)
-  Neto fiscal                                   ≈ rentaGarantizada × meses
-  ```
+Para cualquier piso en gestión delegada, sea cual sea la agencia:
 
-  > Caso borde: si Σ subcontratos < garantizado×meses (la agencia asumió pérdida),
-  > la "comisión" sería negativa. Se trata como **0 € de comisión** y se marca un
-  > aviso para revisar con el asesor; no se inventa un ingreso extra automáticamente.
+```
+Ingresos íntegros = facturación(padre, año) = Σ subcontratos anexados   (§4.4)
+Comisión agencia  = comisión recurrente + captación                     (deducible, casilla 0112)
+Neto              = Ingresos íntegros − Comisión
+```
 
-### 5.2. Por porcentaje (traspaso)
+- El **contrato de gestión (padre) NO suma** a los ingresos íntegros (su
+  `rentaMensual` —renta garantizada, o 0 en %/fees— es un concepto de caja, no
+  fiscal). Los íntegros son los de los **subcontratos** (que cuelgan del mismo
+  `inmuebleId`). Sumar el padre inflaría/duplicaría los íntegros.
+- **Impl.**: `irpfCalculationService.recopilarDatosInmuebles` excluye al padre
+  (`esContratoGestion`) del sumatorio de íntegros y añade la comisión
+  (`facturacionGestionService.resumenFacturacion(...).comision`) a
+  `gastosDeducibles` con casilla **0112**, exponiéndola en
+  `RendimientoInmueble.comisionGestion`. El desglose de la declaración
+  (`DeclaracionCompletaPage.buildSecciones`) la muestra como línea propia
+  "Comisión de gestión (agencia)".
 
-- **Operativo (Capa 1)**: los **contratos de inquilinos son normales** (se
-  conocen desde el inicio, fluyen a Tesorería y cuentan ocupación como hoy).
-- **Honorarios**: las líneas de `honorarios[]` generan **gastos** en Tesorería
-  (recurrentes las `mensual`/`anual`; puntuales las `por_inquilino_nuevo`,
-  disparadas al firmar un contrato de inquilino nuevo), categoría `'gestion'`,
-  deducibles vía `OperacionProveedor`/opex.
-- No usa el bote: aquí la información fiscal ya está completa en los contratos.
+### 5.2. Eje comisión · cómo se calcula (`gestion.comisionTipo`)
+
+| Tipo | Comisión (anual) |
+|---|---|
+| `garantizada` | `max(0, facturación − rentaGarantizada × meses)` — el spread. Caso borde negativo → 0 € y aviso; no se inventa ingreso. |
+| `porcentaje` | `comisionPorcentaje % × facturación` |
+| `fees` | Σ de `honorarios[]` recurrentes (`fee_habitacion` × nHab, `fee_fijo`) |
+
+**Captación** (honorario puntual "inquilino nuevo", `concepto:'captacion'`,
+`periodicidad:'por_inquilino_nuevo'`): se suma a la comisión del **año en que
+EMPIEZA** cada subcontrato. Configurable como importe fijo (€) o % de la renta
+del inquilino (`base:'mensualidad'`). **Solo aplica en `porcentaje` y `fees`**:
+en `garantizada` el spread ya la absorbe, sumarla duplicaría el gasto.
+*(Impl.: `aplicaCaptacion` / `captacionPorInquilino` / `captacionDelAño`.)*
+
+### 5.3. Eje liquidación · cómo se mueve el dinero (`gestion.liquidacion`)
+
+Ortogonal al eje comisión. **No cambia nada fiscal**; solo la Tesorería.
+*(Impl.: `gestionTesoreria.planificarGestionMes`, consumido por
+`treasurySyncService` §3–3b.)*
+
+| | **A · `agencia_neto`** (por defecto) | **B · `propietario_bruto`** |
+|---|---|---|
+| Ingresos (Tesorería) | 1 apunte en el padre | N apuntes (subcontratos), agregados por piso `inmueble-${id}` |
+| · importe | garantizada → renta garantizada · %/fees → **neto del mes** | rentas íntegras de los inquilinos |
+| Comisión (Tesorería) | neteada (sin apunte) | **1 apunte de gasto** (`sourceType:'comision_gestion'`) |
+| Subcontratos | suprimidos (los cobra la agencia) | cobran, **heredando la cuenta del padre** (`cuentaCobroId=0`) |
+| Padre | ingresa | **no ingresa** (lo cobran los inquilinos) |
+| Captación | reduce el neto del mes del alta (flujo A · %/fees) | se suma al gasto de comisión del mes del alta |
+
+- **Ocupación**: la unidad cuenta ocupada mientras el contrato de gestión padre
+  esté vigente; los subcontratos (`gestionPadreId`) quedan fuera del operativo
+  (banda navy), igual que `sin_identificar` / `sin_firmar`.
+- Esto corrige el **doble cómputo** que había: padre garantizada + subcontratos
+  emitían renta a la vez.
 
 ## 6. Impacto en UI
 
@@ -280,31 +322,43 @@ reducciones).**
   garantizada entra como cobro previsto y la unidad cuenta ocupada; los
   subcontratos garantizados no entran (Capa 2). Igual que ya excluimos
   `sin_identificar` y `sin_firmar`.
-- **Ficha de inmueble**: bloque "Gestión" mostrando agencia, modo, renta
-  garantizada/IPC u honorarios vigentes, y (en garantizada) los **subcontratos
-  anexados** + facturación acumulada + comisión estimada.
-- **Anexar subcontratos**: acción desde el contrato de gestión para vincular
-  contratos de inquilinos (individuales o resumen anual), fijando
-  `gestionPadreId`. La facturación del padre se recalcula al anexar.
-- **Fiscal**: la comisión derivada aparece como gasto deducible `'gestion'`; los
-  ingresos íntegros = facturación (Σ subcontratos anexados en garantizada) o los
-  contratos directos (%).
+- **Ficha del contrato de gestión** (`PanelGestionDelegada`): agencia, renta
+  garantizada, fianza, y facturación/comisión/neto con **selector de ejercicio**
+  (`ejerciciosConActividad`) + fila "incl. captación" cuando aplica. Botón "Anexar
+  contrato de inquilino".
+- **Anexar subcontratos** (`AnexarSubcontratoForm`): form mínimo (sin exigencias
+  LAU) que fija `gestionPadreId`. La facturación del padre se recalcula al anexar.
+  Los subcontratos se ven **anidados** bajo el padre en Vigentes.
+- **Fiscal** (`FiscalInmueblePage` / declaración): la comisión aparece como gasto
+  deducible casilla **0112** (línea propia "Comisión de gestión (agencia)"); los
+  ingresos íntegros = facturación (Σ subcontratos), **sin** el padre.
 
-## 7. Plan de implementación (PRs pequeñas, en orden)
+## 7. Estado de implementación
 
-1. **Capa 1 · renta garantizada (MVP)** — bloque `gestion` opcional en `Contract`
-   (solo `garantizada`), alta de agencia como `Proveedor`, cobro recurrente de la
-   garantizada en Tesorería con IPC, y ocupación contando la unidad. *Valor
-   inmediato: cuadra Fuertes Acevedo 32.*
-2. **Anexado de subcontratos + facturación** — campo `gestionPadreId`, acción de
-   anexar, cálculo `facturación(padre, año) = Σ subcontratos`, y exclusión de los
-   hijos del operativo. *Es el requisito núcleo (§4.4).*
-3. **Comisión derivada + Fiscal (garantizada)** — `facturación − garantizado×meses`
-   como gasto `'gestion'`, ingresos íntegros = facturación, integración IRPF.
-4. **Modo por %** — `modeloIngreso:'traspaso'` + `honorarios[]` recurrentes como
-   gasto `'gestion'`; se apoya casi todo en lo existente.
-5. **Honorarios puntuales** — `periodicidad:'por_inquilino_nuevo'` (captación),
-   disparados al firmar contrato de inquilino.
+Todas las fases están **implementadas** (bloque `gestion`/`gestionPadreId` opcional
+en `Contract`, sin bump de `DB_VERSION`):
+
+1. ✅ **Renta garantizada (MVP)** — bloque `gestion`, agencia como `Proveedor`,
+   cobro recurrente con IPC, ocupación por el padre.
+2. ✅ **Anexado de subcontratos + facturación** — `gestionPadreId`, form de anexar,
+   `facturación(padre, año) = Σ subcontratos`, exclusión del operativo, vista
+   anidada en Vigentes. *(Requisito núcleo §4.4.)*
+3. ✅ **Comisión unificada** — `comisionTipo` garantizada/%/fees
+   (`facturacionGestionService`) + selector de comisión y liquidación en el wizard.
+4. ✅ **Tesorería del flujo de liquidación (A/B)** — `gestionTesoreria` +
+   `treasurySyncService` §3–3b · `sourceType:'comision_gestion'`. Corrige el doble
+   cómputo. (§5.3)
+5. ✅ **Fiscal** — íntegros sin el padre + comisión deducible casilla 0112
+   (`recopilarDatosInmuebles`) + línea propia en el desglose de la declaración.
+   (§5.1)
+6. ✅ **Captación** — `por_inquilino_nuevo`, imputada al ejercicio/mes del alta,
+   en los tres planos (cálculo, Tesorería, Fiscal). (§5.2)
+7. ✅ **Panel de gestión** — agencia, garantizada, facturación/comisión/neto con
+   **selector de ejercicio** (`ejerciciosConActividad`) + fila de captación.
+
+**Backlog abierto**: captación disparada por evento en tiempo real (hoy se imputa
+en la regeneración mensual de previsiones, no al instante de anexar); reparto de la
+reducción Ley 12/2023 por subcontrato ya cubierto por el motor IRPF existente.
 
 ## 8. Invariantes / no-objetivos
 
