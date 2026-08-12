@@ -43,8 +43,7 @@ const NuevoContrato: React.FC = () => {
           </span>
           <span className={styles.cardTitle}>Alquiler directo</span>
           <span className={styles.cardDesc}>
-            Tú firmas con el inquilino y cobras la renta. Contrato LAU (vivienda habitual,
-            temporada…), con inquilino, fianza y reducciones fiscales.
+            Tú firmas con el inquilino y cobras tú la renta.
           </span>
         </button>
 
@@ -54,8 +53,7 @@ const NuevoContrato: React.FC = () => {
           </span>
           <span className={styles.cardTitle}>Gestión delegada</span>
           <span className={styles.cardDesc}>
-            Una agencia gestiona el piso y te paga una renta garantizada fija cada mes,
-            alquile o no. Contrato mercantil con la agencia (no LAU).
+            Una agencia gestiona el alquiler del piso por ti.
           </span>
         </button>
       </div>

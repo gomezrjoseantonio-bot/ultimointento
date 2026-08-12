@@ -5,6 +5,7 @@ const formValido = (over: Partial<GestionGarantizadaForm> = {}): GestionGarantiz
   agenciaNombre: 'Agencia XYZ',
   agenciaNif: 'B12345678',
   rentaGarantizada: '1350',
+  fianza: '',
   indexacion: 'ipc',
   indexacionFormula: '',
   fechaInicio: '2026-01-01',
@@ -54,6 +55,18 @@ describe('construirPayloadGestionGarantizada', () => {
     if (!res.ok) return;
     expect(res.payload.indexacion).toBe('otros');
     expect(res.payload.indexOtros).toEqual({ formula: 'IPC + 1%', frecuencia: 'anual' });
+  });
+
+  it('fianza · opcional (0 por defecto) · se guarda en fianzaImporte si se indica', () => {
+    const sinFianza = construirPayloadGestionGarantizada(formValido({ fianza: '' }));
+    expect(sinFianza.ok).toBe(true);
+    if (sinFianza.ok) expect(sinFianza.payload.fianzaImporte).toBe(0);
+
+    const conFianza = construirPayloadGestionGarantizada(formValido({ fianza: '2700' }));
+    expect(conFianza.ok).toBe(true);
+    if (conFianza.ok) expect(conFianza.payload.fianzaImporte).toBe(2700);
+
+    expect(construirPayloadGestionGarantizada(formValido({ fianza: '-100' }))).toMatchObject({ ok: false });
   });
 
   it('sin indexación · no añade indexOtros', () => {

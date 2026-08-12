@@ -19,6 +19,7 @@ export interface GestionGarantizadaForm {
   agenciaNombre: string;
   agenciaNif: string;
   rentaGarantizada: string; // en € · string desde el input
+  fianza: string; // opcional · importe de fianza que deja la agencia (€)
   indexacion: IndexacionGestion;
   indexacionFormula: string; // solo si indexacion === 'otros'
   fechaInicio: string;
@@ -55,6 +56,11 @@ export function construirPayloadGestionGarantizada(form: GestionGarantizadaForm)
   if (form.indexacion === 'otros' && !form.indexacionFormula.trim())
     return { ok: false, error: 'Indica la fórmula o referencia de la indexación' };
 
+  // Fianza opcional (algunas agencias la dejan, otras no).
+  const fianzaImporte = form.fianza.trim() === '' ? 0 : Number(form.fianza);
+  if (!Number.isFinite(fianzaImporte) || fianzaImporte < 0)
+    return { ok: false, error: 'La fianza no puede ser negativa' };
+
   const cuentaCobroId = Number(form.cuentaCobroId);
   if (form.cuentaCobroId === '' || !Number.isFinite(cuentaCobroId))
     return { ok: false, error: 'Debe seleccionar la cuenta bancaria de cobro' };
@@ -81,7 +87,7 @@ export function construirPayloadGestionGarantizada(form: GestionGarantizadaForm)
     indexacion: form.indexacion,
     historicoIndexaciones: [],
     fianzaMeses: 0,
-    fianzaImporte: 0,
+    fianzaImporte,
     fianzaEstado: 'retenida',
     cuentaCobroId,
     estadoContrato: 'activo',

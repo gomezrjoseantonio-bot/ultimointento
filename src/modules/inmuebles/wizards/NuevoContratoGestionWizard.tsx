@@ -52,6 +52,7 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
     agenciaNombre: '',
     agenciaNif: '',
     rentaGarantizada: '',
+    fianza: '',
     indexacion: 'ipc',
     indexacionFormula: '',
     fechaInicio: hoyISO(),
@@ -89,6 +90,7 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
   };
 
   const renta = Number(form.rentaGarantizada) || 0;
+  const fianza = Number(form.fianza) || 0;
 
   return (
     <>
@@ -98,17 +100,14 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
           { label: 'Nuevo' },
         ]}
         onBack={volver}
-        title="Gestión delegada · renta garantizada"
-        sub="la agencia te paga una renta fija mensual · contrato mercantil (no LAU)"
+        title="Gestión delegada"
+        sub="contrato con la agencia que gestiona el alquiler"
       />
 
       <div className={styles.wrap}>
         <div className={styles.main}>
           <div className={styles.stepHeader}>
             <div className={styles.stepTitle}>Datos del contrato de gestión</div>
-            <div className={styles.stepSub}>
-              El importe garantizado se cobra cada mes, alquilen o no las habitaciones.
-            </div>
           </div>
 
           <div className={styles.fields}>
@@ -174,6 +173,21 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
             </div>
 
             <div className={styles.field}>
+              <label className={styles.label}>Fianza (€)</label>
+              <input
+                className={styles.input}
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={form.fianza}
+                onChange={(e) => set('fianza', e.target.value)}
+                placeholder="0"
+              />
+              <span className={styles.help}>Opcional · si la agencia deja fianza.</span>
+            </div>
+            <div className={styles.field} aria-hidden="true" />
+
+            <div className={styles.field}>
               <label className={styles.label}>Inicio</label>
               <input
                 className={styles.input}
@@ -234,7 +248,7 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
           )}
 
           <div className={styles.footer}>
-            <span className={styles.footerNote}>gestión delegada · no LAU</span>
+            <span />
             <div className={styles.footerActions}>
               <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={volver} disabled={guardando}>
                 Atrás
@@ -256,6 +270,10 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
           <div className={styles.asideRow}>
             <span className={styles.asideLab}>Renta anual</span>
             <span className={styles.asideVal}>{renta > 0 ? eur(renta * 12) : '—'}</span>
+          </div>
+          <div className={styles.asideRow}>
+            <span className={styles.asideLab}>Fianza</span>
+            <span className={`${styles.asideVal} ${styles.muted}`}>{fianza > 0 ? eur(fianza) : '—'}</span>
           </div>
           <div className={styles.asideRow}>
             <span className={styles.asideLab}>Indexación</span>
