@@ -1,0 +1,216 @@
+/* Cartera · sección Vendidos plegable. Port 1:1 del mockup #scr-list .soldSection. */
+
+.soldSection {
+  margin-top: 24px;
+  border-top: 1px solid var(--atlas-v5-line);
+  padding-top: 16px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.soldHd {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 13px;
+  padding: 13px 16px;
+  cursor: pointer;
+  font-family: var(--atlas-v5-font-ui);
+  text-align: left;
+}
+
+.soldHd:hover {
+  border-color: var(--atlas-v5-ink-5);
+}
+
+.soldHd:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+.soldIco {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-4);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.soldIco svg {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.soldMeta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.soldNm {
+  font-size: 13.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink-2);
+}
+
+.soldSub {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.soldRt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.soldTot {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-gold-ink);
+}
+
+.soldRtL {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.soldChev {
+  color: var(--atlas-v5-ink-5);
+  display: grid;
+  place-items: center;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.soldChev svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.openState .soldChev {
+  transform: rotate(90deg);
+}
+
+.soldBody {
+  margin-top: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.soldRow {
+  display: grid;
+  grid-template-columns: 36px 1fr 120px 120px;
+  gap: 14px;
+  align-items: center;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 10px 16px;
+}
+
+.sTile {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(155deg, var(--atlas-v5-cartera-stile-top), var(--atlas-v5-cartera-stile-bot));
+  color: var(--atlas-v5-ink-5);
+  display: grid;
+  place-items: center;
+}
+
+.sTile svg {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sNm {
+  font-size: 13.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sAst {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-bg);
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+.sLoc {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.sCell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: right;
+}
+
+.sL {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.sV {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink-2);
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+.soldNote {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  padding: 4px 4px 0;
+  line-height: 1.5;
+}

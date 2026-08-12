@@ -51,6 +51,22 @@ describe('ResumenCockpitInmueble', () => {
     expect(screen.getAllByText('Revalorización').length).toBeGreaterThanOrEqual(1);
   });
 
+  it('ofrece el toggle Valor / Rentabilidad % y cambia la leyenda al pulsarlo', () => {
+    render(
+      <ResumenCockpitInmueble
+        resumen={baseResumen()}
+        rentabilidad={{ rentaMensual: 1350, netaPct: 6.4, netaEtiqueta: 'real' }}
+      />,
+    );
+    const btnRentab = screen.getByRole('button', { name: /Rentabilidad %/ });
+    expect(btnRentab).toBeEnabled();
+    expect(screen.getByText('realidad')).toBeInTheDocument();
+    fireEvent.click(btnRentab);
+    // En modo rentabilidad la leyenda cita renta/reval/total.
+    expect(screen.getByText('renta')).toBeInTheDocument();
+    expect(screen.getByText('total')).toBeInTheDocument();
+  });
+
   it('muestra los tres KPIs patrimoniales con sus cifras', () => {
     render(
       <ResumenCockpitInmueble

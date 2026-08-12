@@ -75,12 +75,53 @@
   font-style: italic;
 }
 
-/* Cabecera de la proyección · leyenda realidad/proyección */
+/* Cabecera de la proyección · toggle Valor/Rentabilidad % + leyenda */
 .projHd {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 10px;
   margin-top: 14px;
+}
+
+/* Toggle segmentado sobre navy */
+.fpTabs {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--atlas-v5-navy-fill);
+  border: 1px solid var(--atlas-v5-navy-line);
+  border-radius: 8px;
+  padding: 3px;
+}
+.fpTabs button {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  border: none;
+  background: none;
+  color: var(--atlas-v5-on-navy-4);
+  border-radius: 6px;
+  padding: 4px 11px;
+  cursor: pointer;
+}
+.fpTabs button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.fpTabs button.fpOn {
+  background: var(--atlas-v5-navy-fill);
+  color: var(--atlas-v5-on-navy-1);
+  box-shadow: inset 0 0 0 1px var(--atlas-v5-navy-line);
+}
+
+.lgRenta {
+  border-top: 2px solid var(--atlas-v5-equity-amort);
+}
+.lgRevalL {
+  border-top: 2px solid var(--atlas-v5-equity-cash);
+}
+.lgTotal {
+  border-top: 2px solid var(--atlas-v5-gold-soft);
 }
 .projLg {
   display: flex;
@@ -215,10 +256,10 @@
   overflow: hidden;
 }
 .segCash {
-  background: var(--atlas-v5-on-navy-3);
+  background: var(--atlas-v5-equity-cash);
 }
 .segAmortizada {
-  background: var(--atlas-v5-on-navy-5);
+  background: var(--atlas-v5-equity-amort);
 }
 .segReval {
   background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-soft));
@@ -257,10 +298,10 @@
   color: var(--atlas-v5-on-navy-1);
 }
 .swCash {
-  background: var(--atlas-v5-on-navy-3);
+  background: var(--atlas-v5-equity-cash);
 }
 .swAmortizada {
-  background: var(--atlas-v5-on-navy-5);
+  background: var(--atlas-v5-equity-amort);
 }
 .swReval {
   background: var(--atlas-v5-gold-soft);
