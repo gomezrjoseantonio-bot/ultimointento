@@ -19,6 +19,7 @@
 // docs/DISENO-gestion-delegada-agencias-V1.md §5 (tesorería).
 
 import type { Contract, GestionDelegada, HonorarioAgencia } from '../../../../services/db';
+import { captacionPorInquilino } from '../../../inmuebles/utils/facturacionGestionService';
 
 /** Liquidación efectiva de un padre (por defecto 'agencia_neto'). */
 export function liquidacionDe(gestion: GestionDelegada | undefined): 'agencia_neto' | 'propietario_bruto' {
@@ -80,10 +81,16 @@ export interface PlanGestionMes {
 /**
  * Construye el plan de tesorería del mes. `esActivo` decide si un contrato solapa
  * el mes (misma lógica que la sección 3 usa para las rentas normales).
+ *
+ * `iniciaEnMes` (opcional) marca los subcontratos que EMPIEZAN este mes exacto,
+ * para imputar la captación (honorario puntual «inquilino nuevo»). Solo aplica en
+ * comisión %/fees; en garantizada la captación va absorbida por el spread. Sin
+ * este predicado, no se imputa captación (comportamiento previo intacto).
  */
 export function planificarGestionMes(
   contracts: (Contract & { id?: number })[],
   esActivo: (c: Contract) => boolean,
+  iniciaEnMes?: (c: Contract) => boolean,
 ): PlanGestionMes {
   const plan: PlanGestionMes = {
     suprimir: new Set<number>(),
@@ -105,13 +112,20 @@ export function planificarGestionMes(
     const garantizadoMes = padre.gestion?.rentaGarantizada ?? 0;
     const comision = comisionMensual(padre.gestion, facturacionMes, garantizadoMes, hijosActivos.length);
 
+    // Captación puntual · Σ del honorario por cada subcontrato que EMPIEZA este mes.
+    const captacionMes = iniciaEnMes
+      ? contracts
+          .filter((c) => c.gestionPadreId === padreId && iniciaEnMes(c))
+          .reduce((s, h) => s + captacionPorInquilino(padre.gestion, h.rentaMensual ?? 0), 0)
+      : 0;
+
     if (liquidacion === 'agencia_neto') {
       // La agencia cobra a los inquilinos → los subcontratos no generan apunte.
       for (const h of hijosActivos) if (h.id != null) plan.suprimir.add(h.id);
       // El padre ingresa el neto. En garantizada ya es su `rentaMensual`; en
-      // %/fees (rentaMensual=0) hay que forzar el neto del mes.
+      // %/fees (rentaMensual=0) hay que forzar el neto del mes (menos captación).
       if ((padre.gestion?.comisionTipo ?? 'garantizada') !== 'garantizada') {
-        plan.importePorContrato.set(padreId, Math.max(0, facturacionMes - comision));
+        plan.importePorContrato.set(padreId, Math.max(0, facturacionMes - comision - captacionMes));
       }
     } else {
       // propietario_bruto · tú cobras las rentas íntegras (subcontratos) y pagas
@@ -122,12 +136,14 @@ export function planificarGestionMes(
       if (typeof cuentaPadre === 'number' && cuentaPadre > 0) {
         for (const h of hijosActivos) if (h.id != null) plan.cuentaPorContrato.set(h.id, cuentaPadre);
       }
-      if (comision > 0) {
+      // La comisión del mes = recurrente + captación de los inquilinos nuevos.
+      const importeComision = comision + captacionMes;
+      if (importeComision > 0) {
         plan.comisiones.push({
           padreId,
           inmuebleId: padre.inmuebleId,
           agenciaNif: padre.gestion?.agenciaNif,
-          importe: comision,
+          importe: importeComision,
         });
       }
     }

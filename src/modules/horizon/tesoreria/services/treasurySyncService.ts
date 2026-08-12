@@ -295,8 +295,15 @@ export async function generateMonthlyForecasts(
     // qué importe forzar (padre neto en flujo A · %/fees) y de qué cuenta cobran
     // los subcontratos (heredan la del padre). La vista fiscal no cambia: solo
     // el flujo de caja. Ver docs/DISENO-gestion-delegada-agencias-V1.md §5.
-    const planGestion = planificarGestionMes(contracts, (c) =>
-      isContractActiveInMonth(c, year, month),
+    const planGestion = planificarGestionMes(
+      contracts,
+      (c) => isContractActiveInMonth(c, year, month),
+      // Subcontrato que EMPIEZA este mes exacto → imputa captación (inquilino nuevo).
+      (c) => {
+        if (!c.fechaInicio) return false;
+        const ini = new Date(c.fechaInicio);
+        return ini.getFullYear() === year && ini.getMonth() + 1 === month;
+      },
     );
 
     for (const contract of contracts) {

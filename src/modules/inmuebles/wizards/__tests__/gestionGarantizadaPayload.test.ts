@@ -10,6 +10,8 @@ const formValido = (over: Partial<GestionForm> = {}): GestionForm => ({
   comisionPorcentaje: '',
   feeHabitacion: '',
   feeFijo: '',
+  captacionTipo: 'ninguna',
+  captacionValor: '',
   fianza: '',
   indexacion: 'ipc',
   indexacionFormula: '',
@@ -73,6 +75,42 @@ describe('construirPayloadGestion', () => {
       { concepto: 'fee_habitacion', calculo: 'importe', base: 'habitacion', valor: 50, periodicidad: 'mensual' },
       { concepto: 'fee_fijo', calculo: 'importe', base: 'fijo', valor: 20, periodicidad: 'mensual' },
     ]);
+  });
+
+  it('captación · importe fijo € añade línea por_inquilino_nuevo (en fees)', () => {
+    const res = construirPayloadGestion(
+      formValido({ comisionTipo: 'fees', rentaGarantizada: '', feeFijo: '20', captacionTipo: 'fijo', captacionValor: '150' }),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.payload.gestion?.honorarios).toContainEqual(
+      { concepto: 'captacion', calculo: 'importe', base: 'fijo', valor: 150, periodicidad: 'por_inquilino_nuevo' },
+    );
+  });
+
+  it('captación · % de la renta del inquilino (en porcentaje)', () => {
+    const res = construirPayloadGestion(
+      formValido({ comisionTipo: 'porcentaje', rentaGarantizada: '', comisionPorcentaje: '10', captacionTipo: 'porcentaje', captacionValor: '100' }),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.payload.gestion?.honorarios).toContainEqual(
+      { concepto: 'captacion', calculo: 'porcentaje', base: 'mensualidad', valor: 100, periodicidad: 'por_inquilino_nuevo' },
+    );
+  });
+
+  it('captación · en garantizada se ignora (no añade honorario)', () => {
+    const res = construirPayloadGestion(
+      formValido({ comisionTipo: 'garantizada', captacionTipo: 'fijo', captacionValor: '150' }),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.payload.gestion?.honorarios).toEqual([]);
+  });
+
+  it('captación · exige valor > 0 y % ≤ 100', () => {
+    expect(construirPayloadGestion(formValido({ comisionTipo: 'porcentaje', comisionPorcentaje: '10', captacionTipo: 'fijo', captacionValor: '0' }))).toMatchObject({ ok: false });
+    expect(construirPayloadGestion(formValido({ comisionTipo: 'porcentaje', comisionPorcentaje: '10', captacionTipo: 'porcentaje', captacionValor: '150' }))).toMatchObject({ ok: false });
   });
 
   it('fees · exige al menos un honorario', () => {

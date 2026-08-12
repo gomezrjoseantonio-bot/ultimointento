@@ -123,6 +123,47 @@ describe('planificarGestionMes', () => {
     expect(plan.importePorContrato.get(1)).toBe(540);
   });
 
+  it('captación (flujo B) · se suma a la comisión del mes solo para el hijo que empieza', () => {
+    const contracts = [
+      c({ id: 1, rentaMensual: 0, cuentaCobroId: 7, inmuebleId: 9, gestion: { agenciaNif: 'B1', modeloIngreso: 'traspaso', comisionTipo: 'fees', liquidacion: 'propietario_bruto', honorarios: [
+        { concepto: 'fee_fijo', calculo: 'importe', base: 'fijo', valor: 20, periodicidad: 'mensual' },
+        { concepto: 'captacion', calculo: 'importe', base: 'fijo', valor: 150, periodicidad: 'por_inquilino_nuevo' },
+      ] } }),
+      c({ id: 2, gestionPadreId: 1, rentaMensual: 600, cuentaCobroId: 0 }),
+      c({ id: 3, gestionPadreId: 1, rentaMensual: 400, cuentaCobroId: 0 }),
+    ];
+    // Solo el hijo 2 empieza este mes.
+    const plan = planificarGestionMes(contracts, activo, (x) => (x as Contract & { id?: number }).id === 2);
+    // comisión recurrente (fee_fijo 20) + captación 150 (solo id2) = 170
+    expect(plan.comisiones).toEqual([
+      { padreId: 1, inmuebleId: 9, agenciaNif: 'B1', importe: 170 },
+    ]);
+  });
+
+  it('captación (flujo A) · reduce el neto que ingresa el padre el mes del alta', () => {
+    const contracts = [
+      c({ id: 1, rentaMensual: 0, cuentaCobroId: 7, gestion: { agenciaNif: 'B1', modeloIngreso: 'traspaso', comisionTipo: 'porcentaje', comisionPorcentaje: 10, liquidacion: 'agencia_neto', honorarios: [
+        { concepto: 'captacion', calculo: 'importe', base: 'fijo', valor: 150, periodicidad: 'por_inquilino_nuevo' },
+      ] } }),
+      c({ id: 2, gestionPadreId: 1, rentaMensual: 600 }),
+      c({ id: 3, gestionPadreId: 1, rentaMensual: 400 }),
+    ];
+    const plan = planificarGestionMes(contracts, activo, (x) => (x as Contract & { id?: number }).id === 2);
+    // facturación 1000 · comisión 10% = 100 · captación 150 (id2) → neto 1000 − 100 − 150 = 750
+    expect(plan.importePorContrato.get(1)).toBe(750);
+  });
+
+  it('sin predicado de inicio · no imputa captación (comportamiento previo)', () => {
+    const contracts = [
+      c({ id: 1, rentaMensual: 0, cuentaCobroId: 7, inmuebleId: 9, gestion: { agenciaNif: 'B1', modeloIngreso: 'traspaso', comisionTipo: 'fees', liquidacion: 'propietario_bruto', honorarios: [
+        { concepto: 'captacion', calculo: 'importe', base: 'fijo', valor: 150, periodicidad: 'por_inquilino_nuevo' },
+      ] } }),
+      c({ id: 2, gestionPadreId: 1, rentaMensual: 600, cuentaCobroId: 0 }),
+    ];
+    const plan = planificarGestionMes(contracts, activo); // sin iniciaEnMes
+    expect(plan.comisiones).toEqual([]); // fee recurrente 0 + captación 0
+  });
+
   it('contrato normal (sin gestión) no se ve afectado', () => {
     const contracts = [c({ id: 1, rentaMensual: 500 })];
     const plan = planificarGestionMes(contracts, activo);

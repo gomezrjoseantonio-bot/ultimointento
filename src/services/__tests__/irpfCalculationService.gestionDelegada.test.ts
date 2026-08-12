@@ -107,6 +107,28 @@ describe('recopilarDatosInmuebles · gestión delegada', () => {
     expect(piso.rendimientoNetoAlquiler).toBe(10800);
   });
 
+  it('la captación (inquilino nuevo del año) entra como gasto deducible', async () => {
+    const padre = c({
+      id: 1,
+      rentaMensual: 0,
+      gestion: {
+        agenciaNif: 'B1', modeloIngreso: 'traspaso', comisionTipo: 'porcentaje', comisionPorcentaje: 10, liquidacion: 'propietario_bruto',
+        honorarios: [{ concepto: 'captacion', calculo: 'importe', base: 'fijo', valor: 150, periodicidad: 'por_inquilino_nuevo' }],
+      },
+    } as Partial<Contract>);
+    const contratos = [
+      padre,
+      c({ id: 2, gestionPadreId: 1, rentaMensual: 600, fechaInicio: '2026-02-01', fechaFin: '2026-12-31' }), // nuevo en 2026
+      c({ id: 3, gestionPadreId: 1, rentaMensual: 400, fechaInicio: '2025-01-01', fechaFin: '2026-12-31' }), // ya venía de 2025
+    ];
+    const { inmuebles } = await recopilarDatosInmuebles(2026, null, contratos);
+    const piso = inmuebles.find((i) => i.inmuebleId === 9)!;
+    // ingresos íntegros 2026 = (600×11) + (400×12) = 6600 + 4800 = 11400
+    expect(piso.ingresosIntegros).toBe(11400);
+    // comisión = 10% × 11400 (1140) + captación 150 (solo el id2 empezó en 2026) = 1290
+    expect(piso.comisionGestion).toBe(1290);
+  });
+
   it('piso normal (sin gestión) · comisión ausente, íntegros = renta del contrato', async () => {
     const contratos = [c({ id: 1, rentaMensual: 800 })];
     const { inmuebles } = await recopilarDatosInmuebles(2026, null, contratos);

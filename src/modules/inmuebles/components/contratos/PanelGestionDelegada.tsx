@@ -107,6 +107,12 @@ const PanelGestionDelegada: React.FC<Props> = ({ contrato, año }) => {
         <span className={styles.lab}>Comisión estimada de la agencia</span>
         <span className={styles.val}>{eur(resumen.comision)}</span>
       </div>
+      {resumen.captacion > 0 && (
+        <div className={styles.row}>
+          <span className={styles.lab}>· incl. captación (inquilinos nuevos)</span>
+          <span className={styles.val}>{eur(resumen.captacion)}</span>
+        </div>
+      )}
       <div className={styles.row}>
         <span className={styles.lab}>Neto para ti</span>
         <span className={styles.val}>{eur(resumen.neto)}</span>

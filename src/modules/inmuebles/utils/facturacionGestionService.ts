@@ -24,8 +24,10 @@ export interface ResumenFacturacion {
   facturacion: number;
   /** Renta garantizada del padre imputable al año. */
   garantizado: number;
-  /** Comisión de la agencia derivada (según la fórmula: garantizada/%/fees). */
+  /** Comisión de la agencia derivada (según la fórmula: garantizada/%/fees) · incluye captación. */
   comision: number;
+  /** Parte de `comision` correspondiente a captación (inquilinos nuevos del año). */
+  captacion: number;
   /** Neto para el propietario · facturacion − comision. */
   neto: number;
 }
@@ -62,6 +64,46 @@ export function calcularComision(
   }
   // garantizada (default) · la comisión es la diferencia con el neto garantizado.
   return Math.max(0, facturacion - garantizado);
+}
+
+/**
+ * ¿Aplica captación en este contrato? Solo en `porcentaje` y `fees`: en
+ * `garantizada` la comisión ya es `Σ − garantizado`, que ABSORBE lo que la
+ * agencia se queda (incluida la captación); sumarla aparte duplicaría el gasto.
+ */
+export function aplicaCaptacion(gestion: GestionDelegada | undefined): boolean {
+  const tipo = gestion?.comisionTipo ?? 'garantizada';
+  return tipo === 'porcentaje' || tipo === 'fees';
+}
+
+/**
+ * Honorario de captación por UN inquilino nuevo, según la(s) línea(s)
+ * `concepto: 'captacion'` del esquema. Importe fijo (€) o % de la renta del
+ * inquilino (`calculo: 'porcentaje'` sobre su `rentaMensual`).
+ */
+export function captacionPorInquilino(
+  gestion: GestionDelegada | undefined,
+  rentaSubcontrato: number,
+): number {
+  if (!aplicaCaptacion(gestion)) return 0;
+  return (gestion?.honorarios ?? [])
+    .filter((h) => h.concepto === 'captacion' && h.periodicidad === 'por_inquilino_nuevo')
+    .reduce((sum, h) => sum + (h.calculo === 'porcentaje' ? (rentaSubcontrato * h.valor) / 100 : h.valor), 0);
+}
+
+/**
+ * Captación imputable a un ejercicio = Σ del honorario de captación por cada
+ * subcontrato de inquilino que EMPIEZA ese año (evento puntual «inquilino nuevo»).
+ */
+export function captacionDelAño(
+  padre: Contract & { id?: number },
+  contracts: Contract[],
+  año: number,
+): number {
+  if (!aplicaCaptacion(padre.gestion) || padre.id == null) return 0;
+  return subcontratosDe(padre.id, contracts)
+    .filter((h) => h.fechaInicio && parseIsoDateAsUTC(h.fechaInicio).getUTCFullYear() === año)
+    .reduce((sum, h) => sum + captacionPorInquilino(padre.gestion, h.rentaMensual ?? 0), 0);
 }
 
 /** Subcontratos de inquilinos anexados a un contrato de gestión (padre). */
@@ -143,7 +185,9 @@ export function resumenFacturacion(
   const rentaGarantizada = padre.gestion?.rentaGarantizada ?? 0;
   const garantizado = rentaGarantizada * mesesSolapeEnAño(padre, año);
 
-  const comision = calcularComision(padre.gestion, facturacion, garantizado, conSolape.length);
+  const comisionRecurrente = calcularComision(padre.gestion, facturacion, garantizado, conSolape.length);
+  const captacion = captacionDelAño(padre, contracts, año);
+  const comision = comisionRecurrente + captacion;
 
   return {
     año,
@@ -151,6 +195,7 @@ export function resumenFacturacion(
     facturacion,
     garantizado,
     comision,
+    captacion,
     neto: facturacion - comision,
   };
 }
