@@ -46,8 +46,7 @@ const PanelGestionDelegada: React.FC<Props> = ({ contrato, año }) => {
   const resumen = resumenFacturacion(contrato, contracts, ejercicio);
   const rentaGarantizada = contrato.gestion?.rentaGarantizada ?? contrato.rentaMensual;
 
-  const anexar = (): void =>
-    navigate(`/contratos/nuevo?gestionPadre=${contrato.id}&inmueble=${contrato.inmuebleId}`);
+  const anexar = (): void => navigate(`/contratos/gestion/anexar?padre=${contrato.id}`);
 
   return (
     <div className={styles.panel}>

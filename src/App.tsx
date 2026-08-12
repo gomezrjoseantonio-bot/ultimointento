@@ -103,6 +103,7 @@ const InmueblesListado = lazyWithPreload(() => import('./modules/inmuebles/pages
 const InmueblesDetalle = lazyWithPreload(() => import('./modules/inmuebles/pages/DetallePage'));
 const InmueblesContratosLista = lazyWithPreload(() => import('./modules/inmuebles/pages/ContratosListPage'));
 const InmueblesNuevoContrato = lazyWithPreload(() => import('./modules/inmuebles/wizards/NuevoContrato'));
+const InmueblesAnexarSubcontrato = lazyWithPreload(() => import('./modules/inmuebles/wizards/AnexarSubcontratoForm'));
 // T20 Fase 3a · 3 importadores re-ubicados per decisión D3 de Jose.
 const ImportarInmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarInmuebles'));
 const ImportarValoracionesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarValoraciones'));
@@ -1319,6 +1320,12 @@ function App() {
                 </React.Suspense>
               } />
               <Route path="gestion" element={<Navigate to="/contratos" replace />} />
+              {/* Gestión delegada · anexar un subcontrato de inquilino (?padre=<id>). */}
+              <Route path="gestion/anexar" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InmueblesAnexarSubcontrato />
+                </React.Suspense>
+              } />
             </Route>
 
             {/* Consolidación Contratos → Alquileres · Fase B · alias de marca
