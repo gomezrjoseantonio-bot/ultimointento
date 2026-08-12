@@ -45,6 +45,7 @@ import {
   type ValoracionPunto,
 } from '../adapters/patrimonioInmuebleAdapter';
 import { calcularRentabilidadInmueble } from '../adapters/rentabilidadInmuebleAdapter';
+import { calcularRentasNetasDeclaradasAcumuladas } from '../adapters/rentasDeclaradasInmueble';
 import { valoracionesService } from '../../../services/valoracionesService';
 import { getFinanciacionInmueble } from '../../../services/financiacionInmuebleService';
 import { estimarGastoAnualCompromiso } from '../utils/estimacionGastoCompromiso';
@@ -96,6 +97,10 @@ const DetallePage: React.FC = () => {
   const [financiacion, setFinanciacion] = useState<FinanciacionLineaInmueble[]>([]);
   // Fase 7 · renta cobrada del ejercicio (Tesorería) · undefined = aún sin cargar.
   const [ingresosCobrados, setIngresosCobrados] = useState<number | undefined>(undefined);
+  const [rentasDeclaradas, setRentasDeclaradas] = useState<{
+    rentasNetasAcumuladas: number;
+    desdeAnio: number | null;
+  }>({ rentasNetasAcumuladas: 0, desdeAnio: null });
   const [pendingDelete, setPendingDelete] = useState<DeleteInmuebleCascadeReport | null>(null);
   const [isDeletingInmueble, setIsDeletingInmueble] = useState(false);
   // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
@@ -125,6 +130,11 @@ const DetallePage: React.FC = () => {
     void cargarIngresosCobradosAnual(propertyId, new Date().getFullYear())
       .then(setIngresosCobrados)
       .catch(() => setIngresosCobrados(undefined));
+
+    // Patrimonio · rentas netas declaradas acumuladas (IRPF) para la ganancia.
+    void calcularRentasNetasDeclaradasAcumuladas(propertyId)
+      .then(setRentasDeclaradas)
+      .catch(() => setRentasDeclaradas({ rentasNetasAcumuladas: 0, desdeAnio: null }));
   }, [propertyId]);
 
   const reloadGastos = useCallback(() => {
@@ -210,6 +220,23 @@ const DetallePage: React.FC = () => {
         ? financiacion.reduce((sum, l) => sum + l.cuotaMensual, 0) * 12
         : undefined,
     [financiacion],
+  );
+  // Patrimonio · coste mensual de tener el activo (hipoteca + gastos recurrentes).
+  const costePropiedadMensual = useMemo(
+    () => ({
+      hipoteca: financiacion.reduce((sum, l) => sum + l.cuotaMensual, 0),
+      mantenimiento: (resumenGastosRentabilidad.mantener.previsto ?? 0) / 12,
+      explotacion: (resumenGastosRentabilidad.explotar.previsto ?? 0) / 12,
+    }),
+    [financiacion, resumenGastosRentabilidad],
+  );
+  // Patrimonio · ganancia acumulada (rentas netas declaradas + año de arranque).
+  const gananciaAcumuladaDatos = useMemo(
+    () => ({
+      rentasAcumuladas: rentasDeclaradas.rentasNetasAcumuladas,
+      desdeAnio: rentasDeclaradas.desdeAnio,
+    }),
+    [rentasDeclaradas],
   );
   const rentabilidadResumen = useMemo(
     () =>
@@ -389,6 +416,8 @@ const DetallePage: React.FC = () => {
           <div style={{ marginTop: 8, marginBottom: 20 }}>
             <PatrimonioResumenInmueble
               resumen={patrimonioResumen}
+              gananciaAcumulada={gananciaAcumuladaDatos}
+              costePropiedad={costePropiedadMensual}
               onImportarValoraciones={() => setShowImportWizard(true)}
               onVerFinanciacion={(prestamoId) =>
                 navigate(prestamoId ? `/financiacion/${prestamoId}` : '/financiacion')

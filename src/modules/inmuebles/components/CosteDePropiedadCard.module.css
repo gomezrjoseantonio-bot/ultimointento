@@ -1,0 +1,80 @@
+/* CosteDePropiedadCard · coste mensual de tener el activo (hipoteca + gastos) */
+
+.card {
+  font-family: var(--atlas-v5-font-ui);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  background: var(--atlas-v5-card);
+  padding: 16px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.big {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 26px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.per {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-4);
+}
+
+.flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  margin-top: 2px;
+}
+
+.am {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.tag {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.op {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-5);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.sub {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+}

@@ -2,11 +2,30 @@ import React from 'react';
 import { MoneyValue } from '../../../design-system/v5';
 import type { PatrimonioInmuebleResumen } from '../adapters/patrimonioInmuebleAdapter';
 import ComposicionPatrimonioNeto from './ComposicionPatrimonioNeto';
+import CosteDePropiedadCard from './CosteDePropiedadCard';
+import GananciaAcumuladaCard from './GananciaAcumuladaCard';
 import HistoricoValoracionesChart from './HistoricoValoracionesChart';
 import styles from './PatrimonioResumenInmueble.module.css';
 
+/** Coste mensual de tener el activo · importes ya calculados en la página. */
+export interface CostePropiedadMensual {
+  hipoteca: number;
+  mantenimiento: number;
+  explotacion: number;
+}
+
+/** Ganancia acumulada · rentas netas declaradas + año desde el que se acumulan. */
+export interface GananciaAcumuladaDatos {
+  rentasAcumuladas: number;
+  desdeAnio: number | null;
+}
+
 export interface PatrimonioResumenInmuebleProps {
   resumen: PatrimonioInmuebleResumen;
+  /** Ganancia acumulada · si se omite no se muestra el bloque. */
+  gananciaAcumulada?: GananciaAcumuladaDatos;
+  /** Coste de propiedad mensual · si se omite (o suma 0) no se muestra el bloque. */
+  costePropiedad?: CostePropiedadMensual;
   /** Abre el wizard de importación de histórico de valoraciones. */
   onImportarValoraciones?: () => void;
   /** Navega a la financiación · sin `id` va al listado, con `id` al préstamo. */
@@ -26,6 +45,8 @@ const formatMes = (fecha: string): string => {
 
 const PatrimonioResumenInmueble: React.FC<PatrimonioResumenInmuebleProps> = ({
   resumen,
+  gananciaAcumulada,
+  costePropiedad,
   onImportarValoraciones,
   onVerFinanciacion,
 }) => {
@@ -50,6 +71,10 @@ const PatrimonioResumenInmueble: React.FC<PatrimonioResumenInmuebleProps> = ({
     (suma, linea) => suma + linea.principalInicial,
     0,
   );
+
+  const costeMensualTotal = costePropiedad
+    ? costePropiedad.hipoteca + costePropiedad.mantenimiento + costePropiedad.explotacion
+    : 0;
 
   return (
     <div className={styles.container}>
@@ -189,6 +214,42 @@ const PatrimonioResumenInmueble: React.FC<PatrimonioResumenInmuebleProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ── Ganancia acumulada ── */}
+      {gananciaAcumulada &&
+        (revalorizacion !== null || gananciaAcumulada.rentasAcumuladas !== 0) && (
+          <div className={styles.block}>
+            <div className={styles.blockHd}>
+              <div>
+                <div className={styles.title}>Ganancia acumulada</div>
+                <div className={styles.sub}>revalorización latente + rentas netas declaradas</div>
+              </div>
+            </div>
+            <GananciaAcumuladaCard
+              revalorizacion={revalorizacion}
+              rentasAcumuladas={gananciaAcumulada.rentasAcumuladas}
+              costeBase={costeAdquisicion}
+              desdeAnio={gananciaAcumulada.desdeAnio}
+            />
+          </div>
+        )}
+
+      {/* ── Coste de propiedad ── */}
+      {costePropiedad && costeMensualTotal > 0 && (
+        <div className={styles.block}>
+          <div className={styles.blockHd}>
+            <div>
+              <div className={styles.title}>Coste de propiedad</div>
+              <div className={styles.sub}>lo que cuesta tener el activo cada mes</div>
+            </div>
+          </div>
+          <CosteDePropiedadCard
+            hipoteca={costePropiedad.hipoteca}
+            mantenimiento={costePropiedad.mantenimiento}
+            explotacion={costePropiedad.explotacion}
+          />
+        </div>
+      )}
 
       {/* ── Financiación vinculada ── */}
       <div className={styles.block}>
