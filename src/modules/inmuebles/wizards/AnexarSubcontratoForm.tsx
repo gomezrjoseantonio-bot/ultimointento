@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { PageHead, Icons, showToastV5 } from '../../../design-system/v5';
 import type { Contract, Property } from '../../../services/db';
-import { saveContract, getContract } from '../../../services/contractService';
+import { saveContract, getContract, updateContract } from '../../../services/contractService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import {
   construirPayloadSubcontrato,
@@ -31,8 +31,17 @@ const AnexarSubcontratoForm: React.FC = () => {
   const { properties } = useOutletContext<InmueblesOutletContext>();
   const [searchParams] = useSearchParams();
   const padreId = Number(searchParams.get('padre'));
+  const editId = (() => {
+    const v = searchParams.get('edit');
+    const n = v ? Number(v) : NaN;
+    return Number.isFinite(n) ? n : null;
+  })();
+  const esEdicion = editId !== null;
 
+  // Alta: cargamos el contrato de gestión (padre). Edición: cargamos el propio
+  // subcontrato y lo prefijamos.
   const [padre, setPadre] = useState<(Contract & { id: number }) | null>(null);
+  const [original, setOriginal] = useState<(Contract & { id: number }) | null>(null);
   const [form, setForm] = useState<FormState>({
     nombre: '',
     apellidos: '',
@@ -48,39 +57,74 @@ const AnexarSubcontratoForm: React.FC = () => {
   useEffect(() => {
     let cancelado = false;
     void (async () => {
-      if (!Number.isFinite(padreId)) return;
-      const c = await getContract(padreId);
-      if (!cancelado && c?.id != null) setPadre(c as Contract & { id: number });
+      if (esEdicion && editId != null) {
+        const c = await getContract(editId);
+        if (!cancelado && c?.id != null) {
+          setOriginal(c as Contract & { id: number });
+          setForm({
+            nombre: c.inquilino?.nombre ?? '',
+            apellidos: c.inquilino?.apellidos ?? '',
+            dni: c.inquilino?.dni ?? '',
+            habitacionId: c.habitacionId ?? '',
+            fechaInicio: c.fechaInicio || hoyISO(),
+            fechaFin: c.fechaFin ?? '',
+            rentaMensual: c.rentaMensual != null ? String(c.rentaMensual) : '',
+          });
+        }
+      } else if (Number.isFinite(padreId)) {
+        const c = await getContract(padreId);
+        if (!cancelado && c?.id != null) setPadre(c as Contract & { id: number });
+      }
     })();
     return () => {
       cancelado = true;
     };
-  }, [padreId]);
+  }, [esEdicion, editId, padreId]);
 
+  const refInmuebleId = esEdicion ? original?.inmuebleId : padre?.inmuebleId;
   const property = useMemo(
-    () => properties.find((p) => p.id === padre?.inmuebleId),
-    [properties, padre],
+    () => properties.find((p) => p.id === refInmuebleId),
+    [properties, refInmuebleId],
   );
   const habitaciones = useMemo(() => habitacionesDe(property), [property]);
+  const listo = esEdicion ? original != null : padre != null;
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]): void =>
     setForm((f) => ({ ...f, [k]: v }));
 
   const onSubmit = async (): Promise<void> => {
-    if (!padre) return;
+    // Para validar reutilizamos el builder con un "padre" de referencia (en
+    // edición, sintetizado desde el propio subcontrato).
+    const padreRef = esEdicion
+      ? original && ({ ...original, id: original.gestionPadreId ?? 0 } as Contract & { id: number })
+      : padre;
+    if (!padreRef) return;
     setError(null);
-    const res = construirPayloadSubcontrato(form, padre);
+    const res = construirPayloadSubcontrato(form, padreRef);
     if (!res.ok) {
       setError(res.error);
       return;
     }
     setGuardando(true);
     try {
-      await saveContract(res.payload as Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>);
-      showToastV5('Contrato de inquilino anexado');
+      if (esEdicion && original) {
+        const p = res.payload;
+        await updateContract(original.id, {
+          inquilino: p.inquilino,
+          unidadTipo: p.unidadTipo,
+          habitacionId: p.habitacionId,
+          fechaInicio: p.fechaInicio,
+          fechaFin: p.fechaFin,
+          rentaMensual: p.rentaMensual,
+        });
+        showToastV5('Contrato de inquilino actualizado');
+      } else {
+        await saveContract(res.payload as Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>);
+        showToastV5('Contrato de inquilino anexado');
+      }
       navigate('/contratos?tab=vigentes');
     } catch {
-      setError('No se pudo anexar el contrato. Inténtalo de nuevo.');
+      setError('No se pudo guardar el contrato. Inténtalo de nuevo.');
       setGuardando(false);
     }
   };
@@ -90,10 +134,10 @@ const AnexarSubcontratoForm: React.FC = () => {
       <PageHead
         breadcrumb={[
           { label: 'Alquileres', onClick: () => navigate('/contratos') },
-          { label: 'Anexar inquilino' },
+          { label: esEdicion ? 'Editar inquilino' : 'Anexar inquilino' },
         ]}
         onBack={() => navigate('/contratos')}
-        title="Anexar contrato de inquilino"
+        title={esEdicion ? 'Editar contrato de inquilino' : 'Anexar contrato de inquilino'}
         sub="registro del contrato que la agencia firma en tu nombre"
       />
 
@@ -208,10 +252,12 @@ const AnexarSubcontratoForm: React.FC = () => {
                 type="button"
                 className={`${styles.btn} ${styles.btnGold}`}
                 onClick={onSubmit}
-                disabled={guardando || !padre}
+                disabled={guardando || !listo}
               >
                 <Icons.Check size={14} strokeWidth={2} />
-                {guardando ? 'Anexando…' : 'Anexar contrato'}
+                {guardando
+                  ? (esEdicion ? 'Guardando…' : 'Anexando…')
+                  : (esEdicion ? 'Guardar cambios' : 'Anexar contrato')}
               </button>
             </div>
           </div>
