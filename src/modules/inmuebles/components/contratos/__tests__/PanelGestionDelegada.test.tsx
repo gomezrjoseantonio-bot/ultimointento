@@ -62,6 +62,25 @@ test('muestra agencia, renta garantizada y facturación = Σ subcontratos anexad
   expect(screen.getAllByText(/13\.800/).length).toBeGreaterThanOrEqual(1);
 });
 
+test('el selector de ejercicio recalcula la facturación por año', async () => {
+  mockGetAllContracts.mockResolvedValue([
+    padre,
+    // 2025 completo · 1500/mes → 18.000 · 2026 completo · 900/mes → 10.800
+    c({ id: 2, gestionPadreId: 1, rentaMensual: 1500, fechaInicio: '2025-01-01', fechaFin: '2025-12-31' }),
+    c({ id: 3, gestionPadreId: 1, rentaMensual: 900, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+  ]);
+  renderPanel(); // año actual = 2026
+
+  const sel = await screen.findByRole('combobox', { name: /Ejercicio/i });
+  // Opciones = años con actividad, desc: 2026 y 2025.
+  expect([...sel.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['2026', '2025']);
+  expect((sel as HTMLSelectElement).value).toBe('2026');
+  expect(screen.getAllByText(/10\.800/).length).toBeGreaterThanOrEqual(1); // facturación 2026
+
+  fireEvent.change(sel, { target: { value: '2025' } });
+  expect(screen.getAllByText(/18\.000/).length).toBeGreaterThanOrEqual(1); // facturación 2025
+});
+
 test('el botón "Anexar" navega al wizard con gestionPadre + inmueble', async () => {
   mockGetAllContracts.mockResolvedValue([padre]);
   renderPanel();

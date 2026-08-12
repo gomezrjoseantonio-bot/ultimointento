@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { Icons } from '../../../../design-system/v5';
 import type { Contract } from '../../../../services/db';
 import { getAllContracts } from '../../../../services/contractService';
-import { resumenFacturacion, subcontratosDe } from '../../utils/facturacionGestionService';
+import { resumenFacturacion, subcontratosDe, ejerciciosConActividad } from '../../utils/facturacionGestionService';
 import { getInquilinoNombre } from '../../utils/inquilinoUtils';
 import styles from './PanelGestionDelegada.module.css';
 
@@ -24,8 +24,11 @@ interface Props {
 
 const PanelGestionDelegada: React.FC<Props> = ({ contrato, año }) => {
   const navigate = useNavigate();
-  const ejercicio = año ?? new Date().getFullYear();
+  const añoActual = año ?? new Date().getFullYear();
   const [contracts, setContracts] = useState<Contract[]>([]);
+  // Ejercicio seleccionado para la vista de facturación. `null` = seguir el
+  // año actual (hasta que el usuario elija otro explícitamente).
+  const [ejercicioSel, setEjercicioSel] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -41,6 +44,10 @@ const PanelGestionDelegada: React.FC<Props> = ({ contrato, año }) => {
       cancelado = true;
     };
   }, [contrato.id]);
+
+  const ejercicios = ejerciciosConActividad(contrato, contracts, añoActual);
+  // Si el ejercicio elegido ya no está en la lista (p. ej. cambió el padre), cae al actual.
+  const ejercicio = ejercicioSel != null && ejercicios.includes(ejercicioSel) ? ejercicioSel : añoActual;
 
   const anexados = subcontratosDe(contrato.id, contracts);
   const resumen = resumenFacturacion(contrato, contracts, ejercicio);
@@ -69,7 +76,25 @@ const PanelGestionDelegada: React.FC<Props> = ({ contrato, año }) => {
 
       <div className={styles.sep} />
 
-      <div className={styles.title}>Facturación {ejercicio}</div>
+      <div className={styles.facHeader}>
+        <span className={styles.title}>Facturación</span>
+        {ejercicios.length > 1 ? (
+          <select
+            className={styles.ejercicioSel}
+            aria-label="Ejercicio"
+            value={ejercicio}
+            onChange={(e) => setEjercicioSel(Number(e.target.value))}
+          >
+            {ejercicios.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className={styles.title}>{ejercicio}</span>
+        )}
+      </div>
       <div className={styles.row}>
         <span className={styles.lab}>Subcontratos anexados</span>
         <span className={styles.val}>{resumen.nSubcontratos}</span>

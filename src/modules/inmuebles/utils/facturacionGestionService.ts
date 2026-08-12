@@ -93,6 +93,37 @@ export function mesesSolapeEnAño(contract: Contract, año: number): number {
 }
 
 /**
+ * Ejercicios (años) en los que el contrato de gestión tiene actividad = algún
+ * subcontrato de inquilino con solape. Se incluye SIEMPRE el año en curso (para
+ * poder consultarlo aunque aún no haya facturación) y se ordena de más reciente
+ * a más antiguo. Para subcontratos indefinidos el límite superior es el año en
+ * curso (no se especula con ejercicios futuros).
+ */
+export function ejerciciosConActividad(
+  padre: Contract & { id?: number },
+  contracts: Contract[],
+  añoActual: number,
+): number[] {
+  const años = new Set<number>([añoActual]);
+  const hijos = padre.id != null ? subcontratosDe(padre.id, contracts) : [];
+
+  for (const h of hijos) {
+    const iniMs = h.fechaInicio ? parseIsoDateAsUTC(h.fechaInicio).getTime() : NaN;
+    if (Number.isNaN(iniMs)) continue;
+    const desdeAño = new Date(iniMs).getUTCFullYear();
+    const hastaAño = esFechaIndefinida(h.fechaFin)
+      ? añoActual
+      : new Date(parseIsoDateAsUTC(h.fechaFin).getTime()).getUTCFullYear();
+
+    for (let y = desdeAño; y <= hastaAño; y++) {
+      if (mesesSolapeEnAño(h, y) > 0) años.add(y);
+    }
+  }
+
+  return [...años].sort((a, b) => b - a);
+}
+
+/**
  * Resumen de facturación de un contrato de gestión para un ejercicio.
  * `padre` debe llevar bloque `gestion`; si no, garantizado = 0.
  */

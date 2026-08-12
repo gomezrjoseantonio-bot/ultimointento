@@ -2,6 +2,7 @@ import {
   subcontratosDe,
   mesesSolapeEnAño,
   resumenFacturacion,
+  ejerciciosConActividad,
 } from '../facturacionGestionService';
 import type { Contract } from '../../../../services/db';
 
@@ -127,5 +128,37 @@ describe('facturacionGestionService', () => {
     expect(r.nSubcontratos).toBe(0);
     expect(r.facturacion).toBe(0);
     expect(r.comision).toBe(0);
+  });
+
+  describe('ejerciciosConActividad', () => {
+    it('reúne los años con solape de los subcontratos + el año en curso, desc', () => {
+      const contracts = [
+        padre(),
+        c({ id: 2, gestionPadreId: 1, fechaInicio: '2024-06-01', fechaFin: '2024-12-31' }),
+        c({ id: 3, gestionPadreId: 1, fechaInicio: '2025-01-01', fechaFin: '2025-12-31' }),
+      ];
+      expect(ejerciciosConActividad(padre(), contracts, 2026)).toEqual([2026, 2025, 2024]);
+    });
+
+    it('incluye siempre el año en curso aunque no haya actividad', () => {
+      expect(ejerciciosConActividad(padre(), [padre()], 2026)).toEqual([2026]);
+    });
+
+    it('un subcontrato indefinido no genera años futuros más allá del actual', () => {
+      const contracts = [
+        padre(),
+        c({ id: 2, gestionPadreId: 1, fechaInicio: '2025-03-01', fechaFin: '2099-12-31' }),
+      ];
+      expect(ejerciciosConActividad(padre(), contracts, 2026)).toEqual([2026, 2025]);
+    });
+
+    it('no repite años cuando varios subcontratos solapan el mismo ejercicio', () => {
+      const contracts = [
+        padre(),
+        c({ id: 2, gestionPadreId: 1, fechaInicio: '2025-01-01', fechaFin: '2025-12-31' }),
+        c({ id: 3, gestionPadreId: 1, fechaInicio: '2025-06-01', fechaFin: '2025-12-31' }),
+      ];
+      expect(ejerciciosConActividad(padre(), contracts, 2025)).toEqual([2025]);
+    });
   });
 });
