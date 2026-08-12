@@ -32,7 +32,7 @@ import GastosResumenInmueble from '../components/GastosResumenInmueble';
 import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
 import EditarRegistroInmuebleModal from '../components/EditarRegistroInmuebleModal';
 import RentabilidadInmueble from '../components/RentabilidadInmueble';
-import PatrimonioResumenInmueble from '../components/PatrimonioResumenInmueble';
+import ResumenCockpitInmueble from '../components/ResumenCockpitInmueble';
 import {
   calcularResumenGastosInmueble,
   construirListaVisualGastosInmueble,
@@ -267,8 +267,8 @@ const DetallePage: React.FC = () => {
   const habitaciones = property.bedrooms || 1;
 
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
-    { key: 'patrimonio', label: 'Patrimonio' },
-    { key: 'gastos', label: 'Gastos' },
+    { key: 'patrimonio', label: 'Resumen' },
+    { key: 'gastos', label: 'Costes' },
     { key: 'rentabilidad', label: 'Rentabilidad' },
     { key: 'fiscalidad', label: 'Fiscalidad' },
     { key: 'documentos', label: 'Documentos', count: property.documents?.length },
@@ -401,7 +401,7 @@ const DetallePage: React.FC = () => {
       {tab === 'patrimonio' && (
         <>
           <div style={{ marginTop: 8, marginBottom: 20 }}>
-            <PatrimonioResumenInmueble
+            <ResumenCockpitInmueble
               resumen={patrimonioResumen}
               gananciaAcumulada={gananciaAcumuladaDatos}
               costePropiedad={costePropiedadMensual}

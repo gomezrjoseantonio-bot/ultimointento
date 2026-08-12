@@ -1,0 +1,404 @@
+/* ResumenCockpitInmueble · cockpit patrimonial del inmueble
+   Fiel al mockup aprobado (docs · «Inmueble · detalle»): feature navy a la
+   izquierda (valor + proyección + patrimonio neto) y tres KPIs patrimoniales a
+   la derecha (ganancia acumulada · coste de propiedad · financiación). */
+
+.cockpit {
+  font-family: var(--atlas-v5-font-ui);
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+@media (max-width: 900px) {
+  .cockpit {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Feature navy ── */
+.feat {
+  position: relative;
+  background: linear-gradient(
+    155deg,
+    var(--atlas-v5-brand-2) 0%,
+    var(--atlas-v5-brand) 45%,
+    var(--atlas-v5-brand-ink) 100%
+  );
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(20, 27, 46, 0.07);
+  overflow: hidden;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+}
+.feat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-soft));
+}
+
+.featKick {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-gold-2);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+.featBig {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 38px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-on-navy-1);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.featDelta {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12px;
+  color: var(--atlas-v5-gold-soft);
+  margin-top: 6px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.featNoData {
+  font-size: 15px;
+  color: var(--atlas-v5-on-navy-3);
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* Cabecera de la proyección · leyenda realidad/proyección */
+.projHd {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+.projLg {
+  display: flex;
+  gap: 12px;
+  font-size: 9px;
+  color: var(--atlas-v5-on-navy-5);
+}
+.projLg span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.projLg i {
+  width: 12px;
+  height: 0;
+  display: inline-block;
+}
+.lgReal {
+  border-top: 2px solid var(--atlas-v5-gold-soft);
+}
+.lgProj {
+  border-top: 2px dashed var(--atlas-v5-gold-soft);
+}
+
+.chart {
+  position: relative;
+  height: 96px;
+  margin-top: 6px;
+}
+.chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.chartX {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 9px;
+  color: var(--atlas-v5-on-navy-5);
+  margin-top: 2px;
+}
+.chartCap {
+  font-size: 9px;
+  color: var(--atlas-v5-on-navy-5);
+  text-align: right;
+  margin-top: 1px;
+}
+.chartCap b {
+  color: var(--atlas-v5-gold-2);
+}
+.chartEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  margin-top: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  color: var(--atlas-v5-on-navy-4);
+  font-size: 12px;
+  gap: 10px;
+}
+.chartEmptyLink {
+  background: none;
+  border: none;
+  color: var(--atlas-v5-gold-soft);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Patrimonio neto · barra apilada dentro del feature */
+.eqWrap {
+  margin-top: 16px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.eqBarHd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.eqBarHd .eqLabel {
+  font-size: 11px;
+  color: var(--atlas-v5-on-navy-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+.eqBarHd .eqLabel b {
+  color: var(--atlas-v5-on-navy-1);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+.eqHint {
+  font-size: 9.5px;
+  color: var(--atlas-v5-on-navy-5);
+}
+.eqBar {
+  display: flex;
+  height: 24px;
+  border-radius: 7px;
+  overflow: hidden;
+  gap: 1px;
+}
+.eqSeg {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 9px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: #1b2340;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.eqSeg.gold {
+  color: #3a2a08;
+}
+.eqSegDeuda {
+  background: rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: #e7eaf2;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.segCash {
+  background: #7e8bc0;
+}
+.segAmortizada {
+  background: #a9b4de;
+}
+.segReval {
+  background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-soft));
+}
+
+.eqLeg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  margin-top: 12px;
+}
+.eqLegItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.eqLegLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--atlas-v5-on-navy-5);
+  font-weight: var(--atlas-v5-fw-semibold);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.eqLegLabel .sw {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.eqLegValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 15px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-on-navy-1);
+}
+.swCash {
+  background: #7e8bc0;
+}
+.swAmortizada {
+  background: #a9b4de;
+}
+.swReval {
+  background: var(--atlas-v5-gold-soft);
+}
+.swDeuda {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* ── Columna derecha · KPIs patrimoniales ── */
+.colR {
+  display: grid;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 14px;
+}
+.kc {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  padding: 15px 17px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: var(--atlas-v5-shadow-sm, 0 1px 4px rgba(0, 0, 0, 0.05));
+}
+.kc.gold {
+  background: linear-gradient(160deg, var(--atlas-v5-gold-wash), var(--atlas-v5-card) 70%);
+  border-color: var(--atlas-v5-gold-soft);
+}
+.kcTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.kcLab {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+.kcIco {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-3);
+}
+.kc.gold .kcIco {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}
+.kcBig {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 26px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-top: 9px;
+  color: var(--atlas-v5-ink);
+  font-variant-numeric: tabular-nums;
+}
+.kcBig.gold {
+  color: var(--atlas-v5-gold-ink);
+}
+.kcUnit {
+  font-size: 14px;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0;
+}
+.kcUnitSm {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0;
+}
+
+/* flujo · a + b + c con operadores */
+.flowEq {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+  flex-wrap: wrap;
+}
+.flowEq .op {
+  color: var(--atlas-v5-ink-5);
+}
+.flowEq .am {
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.kcBrk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  flex-wrap: wrap;
+}
+.kcChip {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-3);
+  background: var(--atlas-v5-bg);
+  border-radius: 5px;
+  padding: 2px 7px;
+}
+.kcChip.g {
+  color: var(--atlas-v5-gold-ink);
+  background: var(--atlas-v5-gold-wash);
+}
+.kcSub {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kcSub b {
+  color: var(--atlas-v5-ink-2);
+}
+.kcLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-gold-ink);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
