@@ -1,0 +1,86 @@
+import {
+  subcontratosDe,
+  mesesSolapeEnAño,
+  resumenFacturacion,
+} from '../facturacionGestionService';
+import type { Contract } from '../../../../services/db';
+
+const c = (over: Partial<Contract>): Contract =>
+  ({
+    inmuebleId: 1,
+    unidadTipo: 'vivienda',
+    modalidad: 'habitual',
+    inquilino: { nombre: 'A', apellidos: 'B', dni: 'X', telefono: '', email: '' },
+    fechaInicio: '2026-01-01',
+    fechaFin: '2026-12-31',
+    rentaMensual: 500,
+    diaPago: 1,
+    estadoContrato: 'activo',
+    ...over,
+  }) as Contract;
+
+const padre = (over: Partial<Contract> = {}): Contract & { id: number } =>
+  ({
+    ...c({
+      id: 1,
+      rentaMensual: 1350,
+      fechaInicio: '2026-01-01',
+      fechaFin: '2029-01-01',
+      gestion: { agenciaNif: 'B1', modeloIngreso: 'garantizada', rentaGarantizada: 1350, honorarios: [] },
+    }),
+    ...over,
+  }) as Contract & { id: number };
+
+describe('facturacionGestionService', () => {
+  it('subcontratosDe · filtra por gestionPadreId', () => {
+    const contracts = [
+      padre(),
+      c({ id: 2, gestionPadreId: 1 }),
+      c({ id: 3, gestionPadreId: 1 }),
+      c({ id: 4, gestionPadreId: 99 }),
+      c({ id: 5 }),
+    ];
+    expect(subcontratosDe(1, contracts).map((x) => x.id)).toEqual([2, 3]);
+  });
+
+  it('mesesSolapeEnAño · año completo = 12, parcial prorratea, fuera = 0', () => {
+    expect(mesesSolapeEnAño(c({ fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }), 2026)).toBe(12);
+    expect(mesesSolapeEnAño(c({ fechaInicio: '2026-07-01', fechaFin: '2026-12-31' }), 2026)).toBe(6);
+    expect(mesesSolapeEnAño(c({ fechaInicio: '2025-01-01', fechaFin: '2025-12-31' }), 2026)).toBe(0);
+    // Indefinido → hasta fin de año.
+    expect(mesesSolapeEnAño(c({ fechaInicio: '2026-10-01', fechaFin: '2099-12-31' }), 2026)).toBe(3);
+  });
+
+  it('facturación = Σ subcontratos; comisión = facturación − garantizado', () => {
+    const contracts = [
+      padre(),
+      // 2 habitaciones todo el año: 600×12 + 550×12 = 7200 + 6600 = 13800
+      c({ id: 2, gestionPadreId: 1, rentaMensual: 600, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+      c({ id: 3, gestionPadreId: 1, rentaMensual: 550, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+    ];
+    const r = resumenFacturacion(padre(), contracts, 2026);
+    expect(r.nSubcontratos).toBe(2);
+    expect(r.facturacion).toBe(13800);
+    expect(r.garantizado).toBe(1350 * 12); // 16200
+    expect(r.comision).toBe(0); // garantizado > facturación → comisión no negativa
+  });
+
+  it('comisión positiva cuando la facturación supera el garantizado', () => {
+    const contracts = [
+      padre(),
+      c({ id: 2, gestionPadreId: 1, rentaMensual: 900, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+      c({ id: 3, gestionPadreId: 1, rentaMensual: 900, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+    ];
+    const r = resumenFacturacion(padre(), contracts, 2026);
+    expect(r.facturacion).toBe(21600); // 1800×12
+    expect(r.garantizado).toBe(16200);
+    expect(r.comision).toBe(5400);
+  });
+
+  it('sin subcontratos anexados · facturación 0', () => {
+    const r = resumenFacturacion(padre(), [padre()], 2026);
+    expect(r.nSubcontratos).toBe(0);
+    expect(r.facturacion).toBe(0);
+    expect(r.comision).toBe(0);
+  });
+});

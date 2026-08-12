@@ -17,9 +17,11 @@ const NuevoContrato: React.FC = () => {
   const [searchParams] = useSearchParams();
   const esEdicion = searchParams.get('edit') !== null;
   const fromEmpezar = searchParams.get('from') === 'empezar';
+  // Anexar un subcontrato de inquilino a un contrato de gestión → siempre LAU.
+  const esAnexar = searchParams.get('gestionPadre') !== null;
 
-  // En edición no hay elección: se corrige un contrato existente (LAU).
-  const [tipo, setTipo] = useState<Tipo | null>(esEdicion ? 'directo' : null);
+  // En edición o anexado no hay elección: se va directo al contrato LAU.
+  const [tipo, setTipo] = useState<Tipo | null>(esEdicion || esAnexar ? 'directo' : null);
 
   if (tipo === 'directo') return <NuevoContratoWizard />;
   if (tipo === 'gestion') return <NuevoContratoGestionWizard onBack={() => setTipo(null)} />;

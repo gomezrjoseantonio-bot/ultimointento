@@ -50,4 +50,10 @@ describe('NuevoContrato · paso 0 · tipo de contrato', () => {
     expect(screen.getByTestId('wiz-directo')).toBeInTheDocument();
     expect(screen.queryByText('Gestión delegada')).toBeNull();
   });
+
+  it('al anexar (?gestionPadre=) salta el paso 0 y va directo al wizard LAU', () => {
+    renderAt('/contratos/nuevo?gestionPadre=1&inmueble=1');
+    expect(screen.getByTestId('wiz-directo')).toBeInTheDocument();
+    expect(screen.queryByText('Gestión delegada')).toBeNull();
+  });
 });

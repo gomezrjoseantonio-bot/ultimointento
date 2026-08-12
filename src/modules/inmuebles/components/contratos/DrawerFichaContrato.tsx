@@ -21,6 +21,7 @@ import {
 } from '../../utils/estadoCobroContratoService';
 import type { EstadoCobro } from '../../utils/resumenOperativoContrato';
 import AccionContratoModal, { type AccionContratoModo } from './AccionContratoModal';
+import PanelGestionDelegada from './PanelGestionDelegada';
 import {
   getEstadoEfectivo,
   diasHastaFin,
@@ -454,6 +455,12 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
 
   return (
     <>
+      {contrato.gestion && (
+        <section className={styles.section}>
+          <PanelGestionDelegada contrato={contrato} />
+        </section>
+      )}
+
       <section className={styles.section}>
         <div className={styles.sectionHead}>
           <h3 className={styles.sectionTitle}>Inquilino</h3>
