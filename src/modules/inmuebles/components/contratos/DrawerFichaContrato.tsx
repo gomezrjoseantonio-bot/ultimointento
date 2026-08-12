@@ -410,9 +410,9 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
               <Icons.Lock size={12} strokeWidth={1.8} /> Finalizar
             </button>
           )}
-          {/* El contrato de gestión es mercantil (no LAU) · no aplica el flujo
-              LAU de firma/renovación. */}
-          {!contrato.gestion && (
+          {/* Gestión delegada (padre o subcontrato) es mercantil (no LAU) · no
+              aplica el flujo LAU de firma/renovación. */}
+          {!(contrato.gestion || contrato.gestionPadreId != null) && (
             <button
               type="button"
               className={styles.btnPrimary}
@@ -456,6 +456,9 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
   const inq = contrato.inquilino;
   const esSinFirmar = contrato.estadoContrato === 'sin_firmar';
   const esFinalizado = estadoEfectivo === 'finalizado';
+  // Gestión delegada · el contrato de gestión (padre) o un subcontrato anexado
+  // (hijo). Ambos son mercantiles: no aplican firma LAU ni el flujo de anexo.
+  const esGestionDelegada = contrato.gestion != null || contrato.gestionPadreId != null;
 
   return (
     <>
@@ -514,7 +517,7 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
           <h3 className={styles.sectionTitle}>Términos del contrato</h3>
           {/* V79 · un contrato SIN FIRMAR es editable en su totalidad sin anexo;
               la regla de bloqueo + anexo solo aplica a contratos ya activos. */}
-          {!contrato.gestion && (esFinalizado ? (
+          {!esGestionDelegada && (esFinalizado ? (
             <span className={styles.lockedBadge}>
               <Icons.Lock size={10} strokeWidth={1.8} /> Finalizado · solo lectura
             </span>
@@ -547,15 +550,15 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
             label="Día de pago"
             value={contrato.diaPago ? `${contrato.diaPago} de cada mes` : '—'}
           />
-          {/* Reducción LAU y firma no aplican al contrato de gestión (mercantil). */}
-          {!contrato.gestion && <Field label="Reducción fiscal" value={formatReduccion(contrato)} />}
-          {!contrato.gestion && <Field label="Estado firma" value={firmado ? 'Firmado' : 'Pendiente'} />}
+          {/* Reducción LAU y firma no aplican a la gestión delegada (mercantil). */}
+          {!esGestionDelegada && <Field label="Reducción fiscal" value={formatReduccion(contrato)} />}
+          {!esGestionDelegada && <Field label="Estado firma" value={firmado ? 'Firmado' : 'Pendiente'} />}
           <Field
             label="Indexación"
             value={contrato.indexacion === 'none' ? 'No aplica' : (contrato.indexacion ?? '—')}
           />
         </div>
-        {!esSinFirmar && !esFinalizado && !contrato.gestion && (
+        {!esSinFirmar && !esFinalizado && !esGestionDelegada && (
           <div className={styles.anexoRow}>
             <div>
               <strong>¿Necesitas cambiar un término económico?</strong>

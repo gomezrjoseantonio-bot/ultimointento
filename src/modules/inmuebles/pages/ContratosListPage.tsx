@@ -128,6 +128,18 @@ const ContratosListPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Editar · un subcontrato anexado se edita con el formulario mínimo de gestión
+  // (no el wizard LAU, que exigiría teléfono/email/cuenta que el subcontrato no
+  // tiene). El resto va al wizard normal.
+  const handleEditarContrato = (id: number): void => {
+    const c = contracts.find((x) => x.id === id);
+    navigate(
+      c?.gestionPadreId != null
+        ? `/contratos/gestion/anexar?edit=${id}`
+        : `/contratos/nuevo?edit=${id}`,
+    );
+  };
+
   const handleTabChange = (next: Tab): void => {
     setTab(next);
     setSearchParams({ tab: next }, { replace: true });
@@ -269,7 +281,7 @@ const ContratosListPage: React.FC = () => {
             inmuebleModoById={modoById}
             onNuevoContrato={() => navigate('/contratos/nuevo')}
             onContratoActualizado={reload}
-            onEditarContrato={(id) => navigate(`/contratos/nuevo?edit=${id}`)}
+            onEditarContrato={handleEditarContrato}
             onEliminarContrato={requestDelete}
           />
         )}
@@ -279,7 +291,7 @@ const ContratosListPage: React.FC = () => {
             contratos={proximos}
             inmuebleAliasById={propertyById}
             onContratoActualizado={reload}
-            onEditarContrato={(id) => navigate(`/contratos/nuevo?edit=${id}`)}
+            onEditarContrato={handleEditarContrato}
             onEliminarContrato={requestDelete}
           />
         )}
@@ -315,7 +327,7 @@ const ContratosListPage: React.FC = () => {
             }
             onIrAInmuebles={() => navigate('/inmuebles')}
             onContratoActualizado={reload}
-            onEditarContrato={(id) => navigate(`/contratos/nuevo?edit=${id}`)}
+            onEditarContrato={handleEditarContrato}
             onEliminarContrato={requestDelete}
           />
         )}
