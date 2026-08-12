@@ -5,6 +5,7 @@ import ComposicionPatrimonioNeto from './ComposicionPatrimonioNeto';
 import CosteDePropiedadCard from './CosteDePropiedadCard';
 import GananciaAcumuladaCard from './GananciaAcumuladaCard';
 import HistoricoValoracionesChart from './HistoricoValoracionesChart';
+import ValorHoyHero, { calcularCambioAnual } from './ValorHoyHero';
 import styles from './PatrimonioResumenInmueble.module.css';
 
 /** Coste mensual de tener el activo · importes ya calculados en la página. */
@@ -76,14 +77,24 @@ const PatrimonioResumenInmueble: React.FC<PatrimonioResumenInmuebleProps> = ({
     ? costePropiedad.hipoteca + costePropiedad.mantenimiento + costePropiedad.explotacion
     : 0;
 
+  const cambioAnual = calcularCambioAnual(historicoValoraciones);
+
   return (
     <div className={styles.container}>
+      {/* ── Valor hoy · hero ── */}
+      <ValorHoyHero
+        valorActual={valorActual}
+        fechaEtiqueta={fechaValorActual ? formatMes(fechaValorActual) : null}
+        revalorizacionPct={revalorizacionPct}
+        cambioAnual={cambioAnual}
+      />
+
       {/* ── Foto patrimonial ── */}
       <div className={styles.block}>
         <div className={styles.blockHd}>
           <div>
             <div className={styles.title}>Patrimonio</div>
-            <div className={styles.sub}>valor, deuda y patrimonio neto del activo</div>
+            <div className={styles.sub}>deuda y patrimonio neto del activo</div>
           </div>
         </div>
         <div className={styles.grid}>
@@ -95,25 +106,6 @@ const PatrimonioResumenInmueble: React.FC<PatrimonioResumenInmuebleProps> = ({
             <div className={patrimonioNetoEsEstimado ? styles.badgeEst : styles.badge}>
               {patrimonioNetoEsEstimado ? '≈ Sobre coste' : 'Valor − deuda'}
             </div>
-          </div>
-
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Valor actual</div>
-            {valorActual !== null ? (
-              <>
-                <div className={styles.cardValue}>
-                  <MoneyValue value={valorActual} decimals={0} />
-                </div>
-                <div className={styles.badge}>
-                  {fechaValorActual ? formatMes(fechaValorActual) : 'Disponible'}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className={styles.noData}>Sin valoración registrada</div>
-                <div className={styles.badgeNa}>No disponible</div>
-              </>
-            )}
           </div>
 
           <div className={styles.card}>
