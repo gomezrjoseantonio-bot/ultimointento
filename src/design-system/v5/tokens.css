@@ -123,6 +123,31 @@
   --atlas-v5-equity-cash:  #7E8BC0;
   --atlas-v5-equity-amort: #A9B4DE;
 
+  /* ============================================================
+     Cartera de inmuebles · pantalla LISTADO (hero navy + cards foto/icono)
+     Valores propios del mockup aprobado de la cartera. Viven aquí —único
+     sitio autorizado para color crudo— y se referencian con var() desde
+     ListadoPage / CarteraHero / PropiedadCards / VendidosSection.
+     ============================================================ */
+  --atlas-v5-cartera-hero-top: #232F5E;                      /* inicio del degradado del hero navy */
+  --atlas-v5-cartera-caret-line: rgba(255, 255, 255, 0.3);   /* separador del caret en el botón split */
+  --atlas-v5-cartera-gold-glow: rgba(184, 138, 62, 0.2);     /* halo del punto dorado del kicker */
+  --atlas-v5-cartera-photo-glow: rgba(184, 138, 62, 0.3);    /* brillo dorado sobre la foto navy */
+  --atlas-v5-cartera-art-stroke: rgba(255, 255, 255, 0.35);  /* trazo del skyline decorativo sobre la foto */
+  --atlas-v5-cartera-placeholder: rgba(216, 181, 118, 0.55); /* icono placeholder cuando no hay foto */
+  --atlas-v5-cartera-ast-fill: rgba(255, 255, 255, 0.14);    /* fondo del badge AST sobre foto */
+  --atlas-v5-cartera-ast-border: rgba(255, 255, 255, 0.2);   /* borde del badge AST sobre foto */
+  --atlas-v5-cartera-tag-fill: rgba(12, 18, 48, 0.55);       /* fondo del tag de estado sobre foto */
+  --atlas-v5-cartera-val-label: rgba(255, 255, 255, 0.72);   /* label "valor hoy" sobre foto */
+  --atlas-v5-cartera-val-shadow: 0 1px 8px rgba(0, 0, 0, 0.35); /* sombra del valor sobre foto */
+  --atlas-v5-cartera-revpill-cap: rgba(255, 255, 255, 0.62); /* caption "revaloriz." sobre foto */
+  --atlas-v5-cartera-chip-border: #D3D8E6;                   /* borde de chip tipo · ecert */
+  --atlas-v5-cartera-grid: rgba(255, 255, 255, 0.06);        /* rejilla del gráfico de proyección */
+  --atlas-v5-cartera-hoy-line: rgba(255, 255, 255, 0.28);    /* línea vertical "hoy" del gráfico */
+  --atlas-v5-cartera-guide-line: rgba(255, 255, 255, 0.2);   /* guía vertical al hover del gráfico */
+  --atlas-v5-cartera-stile-top: #5B6474;                     /* icono de inmueble vendido · degradado apagado */
+  --atlas-v5-cartera-stile-bot: #2C3547;                     /* icono de inmueble vendido · degradado apagado */
+
   /* ===== Categorías chart · 6 colores derivados de la paleta ===== */
   --atlas-v5-c1: var(--atlas-v5-brand);
   --atlas-v5-c2: var(--atlas-v5-gold);
