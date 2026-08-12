@@ -46,6 +46,7 @@ const AnexarSubcontratoForm: React.FC = () => {
     nombre: '',
     apellidos: '',
     dni: '',
+    modalidad: 'habitual',
     habitacionId: '',
     fechaInicio: hoyISO(),
     fechaFin: '',
@@ -65,6 +66,7 @@ const AnexarSubcontratoForm: React.FC = () => {
             nombre: c.inquilino?.nombre ?? '',
             apellidos: c.inquilino?.apellidos ?? '',
             dni: c.inquilino?.dni ?? '',
+            modalidad: (c.modalidad as FormState['modalidad']) ?? 'habitual',
             habitacionId: c.habitacionId ?? '',
             fechaInicio: c.fechaInicio || hoyISO(),
             fechaFin: c.fechaFin ?? '',
@@ -113,6 +115,7 @@ const AnexarSubcontratoForm: React.FC = () => {
           inquilino: p.inquilino,
           unidadTipo: p.unidadTipo,
           habitacionId: p.habitacionId,
+          modalidad: p.modalidad,
           fechaInicio: p.fechaInicio,
           fechaFin: p.fechaFin,
           rentaMensual: p.rentaMensual,
@@ -148,6 +151,24 @@ const AnexarSubcontratoForm: React.FC = () => {
           </div>
 
           <div className={styles.fields}>
+            <div className={styles.field}>
+              <label className={styles.label}>Inmueble</label>
+              <input className={styles.input} value={property?.alias ?? '—'} disabled />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label}>Tipo de alquiler</label>
+              <select
+                className={styles.select}
+                value={form.modalidad}
+                onChange={(e) => set('modalidad', e.target.value as FormState['modalidad'])}
+              >
+                <option value="habitual">Vivienda habitual</option>
+                <option value="temporada">Temporada</option>
+                <option value="vacacional">Vacacional / turístico</option>
+              </select>
+              <span className={styles.help}>Decide la reducción fiscal aplicable.</span>
+            </div>
+
             <div className={styles.field}>
               <label className={styles.label}>Nombre</label>
               <input
@@ -194,7 +215,10 @@ const AnexarSubcontratoForm: React.FC = () => {
                 </select>
               </div>
             ) : (
-              <div className={styles.field} aria-hidden="true" />
+              <div className={styles.field}>
+                <label className={styles.label}>Unidad</label>
+                <input className={styles.input} value="Piso completo" disabled />
+              </div>
             )}
 
             <div className={styles.field}>
