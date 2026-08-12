@@ -91,6 +91,11 @@ jest.mock('../../components/CostesInmueble', () => ({
   default: () => <div>Costes mock</div>,
 }));
 
+jest.mock('../../components/DocumentosInmueble', () => ({
+  __esModule: true,
+  default: () => <div>Documentos mock</div>,
+}));
+
 jest.mock('../../components/GastosRegistradosInmueble', () => ({
   __esModule: true,
   default: () => <div>Registrados gastos mock</div>,
@@ -230,11 +235,10 @@ describe('DetallePage · tabs fase 4', () => {
     expect(screen.getByText('Rentabilidad mock')).toBeInTheDocument();
   });
 
-  it('muestra el placeholder de Documentos con la nueva etiqueta', async () => {
+  it('muestra la pestaña Documentos con las carpetas por categoría', async () => {
     await renderPage('/inmuebles/1?tab=documentos');
 
     expect(screen.getByRole('tab', { name: /Documentos/i })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getAllByText('Documentos').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Pestaña en migración a UI v5/i)).toBeInTheDocument();
+    expect(screen.getByText('Documentos mock')).toBeInTheDocument();
   });
 });

@@ -29,6 +29,7 @@ import ImportValoracionesWizard from '../../../components/valoraciones/ImportVal
 import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
 import { referenciaInmueble } from '../utils/referenciaInmueble';
 import CostesInmueble from '../components/CostesInmueble';
+import DocumentosInmueble from '../components/DocumentosInmueble';
 import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
 import EditarRegistroInmuebleModal from '../components/EditarRegistroInmuebleModal';
 import RentabilidadInmueble from '../components/RentabilidadInmueble';
@@ -524,10 +525,8 @@ const DetallePage: React.FC = () => {
       )}
 
       {tab === 'documentos' && (
-        <div className={styles.placeholder}>
-          <strong>Documentos</strong>
-          Pestaña en migración a UI v5 · funcionalidad pendiente de sub-tarea follow-up.
-          Datos del usuario intactos en stores · UI consolidada en próxima iteración.
+        <div style={{ marginTop: 8 }}>
+          <DocumentosInmueble inmuebleId={propertyId} documentIds={property.documents} />
         </div>
       )}
 
