@@ -48,7 +48,11 @@ const makeMovement = (overrides: Partial<Movement> = {}): Movement => ({
 });
 
 describe('calculateTreasuryMonthOpeningBalance', () => {
-  it('keeps current and past month openings tied to the real ledger balance', () => {
+  it('no re-suma flujos anteriores al saldo inicial: ya están dentro del openingBalance', () => {
+    // La cuenta arranca su saldo el 1/3/2026 con 1000. Un ingreso y un gasto de
+    // FEBRERO son anteriores a esa fecha, así que ya están reflejados en el
+    // openingBalance: volver a sumarlos lo contaría dos veces. La apertura de
+    // marzo debe quedarse en 1000, no en 1150.
     const balance = calculateTreasuryMonthOpeningBalance({
       account: makeAccount(),
       selectedMonth: '2026-03',
@@ -61,7 +65,7 @@ describe('calculateTreasuryMonthOpeningBalance', () => {
       today: new Date('2026-03-20T12:00:00.000Z'),
     });
 
-    expect(balance).toBeCloseTo(1150, 2);
+    expect(balance).toBeCloseTo(1000, 2);
   });
 
   it('rolls future month openings from the previous month forecast close so april starts where march ends', () => {

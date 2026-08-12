@@ -33,10 +33,20 @@ export function calculateAccountBalanceAtDate(params: {
   const openingDateApplies = !accountOpeningDate || accountOpeningDate <= cutoffDate;
   const openingBalance = openingDateApplies ? (account.openingBalance ?? 0) : 0;
 
+  // Frontera del saldo inicial. `openingBalance` es el saldo YA existente a la
+  // fecha `openingBalanceDate`, así que todo movimiento o evento ANTERIOR a esa
+  // fecha ya está incluido en él: sumarlo otra vez como delta lo contaría dos
+  // veces. Excluimos, por tanto, lo estrictamente anterior a la apertura (el
+  // movimiento sintético `isOpeningBalance` ya se excluye aparte). Sin
+  // `openingBalanceDate` no hay frontera y se cuenta todo, como antes.
+  const isAfterOpening = (dateOnly: string): boolean =>
+    !accountOpeningDate || dateOnly >= accountOpeningDate;
+
   const priorAccountEvents = treasuryEvents.filter(e => (
     e.accountId === account.id &&
     toDateOnly(e.predictedDate) &&
-    toDateOnly(e.predictedDate)! < cutoffDate
+    toDateOnly(e.predictedDate)! < cutoffDate &&
+    isAfterOpening(toDateOnly(e.predictedDate)!)
   ));
 
   const committedPriorEvents = priorAccountEvents.filter(isCommittedTreasuryEvent);
@@ -52,7 +62,8 @@ export function calculateAccountBalanceAtDate(params: {
     !reconciledMovementIds.has(m.id ?? Number.NaN) &&
     !m.isOpeningBalance &&
     toDateOnly(m.date) &&
-    toDateOnly(m.date)! < cutoffDate
+    toDateOnly(m.date)! < cutoffDate &&
+    isAfterOpening(toDateOnly(m.date)!)
   ));
 
   const implicitMovementMatches = new Map<string, number>();
