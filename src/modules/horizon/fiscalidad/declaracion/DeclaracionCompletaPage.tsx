@@ -302,7 +302,7 @@ const FilaResumen: React.FC<FilaResumenProps> = ({ label, valor, esTotal = false
 // HELPER: Build secciones from datos
 // ══════════════════════════════════════════════════════════════
 
-function buildSecciones(datos: DatosFiscalesEjercicio): SeccionDeclaracion[] {
+export function buildSecciones(datos: DatosFiscalesEjercicio): SeccionDeclaracion[] {
   const secciones: SeccionDeclaracion[] = [];
   const decl = datos.declaracionCompleta;
 
@@ -364,7 +364,19 @@ function buildSecciones(datos: DatosFiscalesEjercicio): SeccionDeclaracion[] {
       filas.push({ label: 'Ingresos íntegros', valor: inm.ingresosIntegros });
       
       if (inm.gastosDeducibles > 0) {
-        filas.push({ label: 'Gastos deducibles', valor: -inm.gastosDeducibles, esNegativo: true });
+        // Gestión delegada · desglosa la comisión de la agencia (incluida en
+        // gastosDeducibles · casilla 0112) como línea propia. Las dos líneas
+        // suman el total de deducibles: no hay doble cómputo.
+        const comisionGestion = inm.comisionGestion ?? 0;
+        const otrosGastos = Math.round((inm.gastosDeducibles - comisionGestion) * 100) / 100;
+        if (comisionGestion > 0) {
+          if (otrosGastos > 0) {
+            filas.push({ label: 'Gastos deducibles', valor: -otrosGastos, esNegativo: true });
+          }
+          filas.push({ label: 'Comisión de gestión (agencia)', valor: -comisionGestion, esNegativo: true });
+        } else {
+          filas.push({ label: 'Gastos deducibles', valor: -inm.gastosDeducibles, esNegativo: true });
+        }
       }
       if (inm.amortizacion > 0) {
         filas.push({ label: 'Amortización', valor: -inm.amortizacion, esNegativo: true });

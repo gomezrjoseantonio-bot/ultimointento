@@ -57,6 +57,8 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
     comisionPorcentaje: '',
     feeHabitacion: '',
     feeFijo: '',
+    captacionTipo: 'ninguna',
+    captacionValor: '',
     fianza: '',
     indexacion: 'ipc',
     indexacionFormula: '',
@@ -248,6 +250,41 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
                     placeholder="0"
                   />
                 </div>
+              </>
+            )}
+
+            {(form.comisionTipo === 'porcentaje' || form.comisionTipo === 'fees') && (
+              <>
+                <div className={styles.field}>
+                  <label className={styles.label}>Captación (por inquilino nuevo)</label>
+                  <select
+                    className={styles.input}
+                    value={form.captacionTipo}
+                    onChange={(e) => set('captacionTipo', e.target.value as GestionForm['captacionTipo'])}
+                  >
+                    <option value="ninguna">Sin captación</option>
+                    <option value="fijo">Importe fijo (€)</option>
+                    <option value="porcentaje">% de la renta del inquilino</option>
+                  </select>
+                </div>
+                {form.captacionTipo !== 'ninguna' ? (
+                  <div className={styles.field}>
+                    <label className={styles.label}>
+                      {form.captacionTipo === 'porcentaje' ? 'Captación (% de la renta)' : 'Captación (€ por inquilino)'}
+                    </label>
+                    <input
+                      className={styles.input}
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      value={form.captacionValor}
+                      onChange={(e) => set('captacionValor', e.target.value)}
+                      placeholder={form.captacionTipo === 'porcentaje' ? '100' : '150'}
+                    />
+                  </div>
+                ) : (
+                  <div className={styles.field} aria-hidden="true" />
+                )}
               </>
             )}
 

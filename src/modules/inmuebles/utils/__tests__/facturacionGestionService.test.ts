@@ -2,7 +2,12 @@ import {
   subcontratosDe,
   mesesSolapeEnAño,
   resumenFacturacion,
+  ejerciciosConActividad,
+  aplicaCaptacion,
+  captacionPorInquilino,
+  captacionDelAño,
 } from '../facturacionGestionService';
+import type { GestionDelegada } from '../../../../services/db';
 import type { Contract } from '../../../../services/db';
 
 const c = (over: Partial<Contract>): Contract =>
@@ -127,5 +132,100 @@ describe('facturacionGestionService', () => {
     expect(r.nSubcontratos).toBe(0);
     expect(r.facturacion).toBe(0);
     expect(r.comision).toBe(0);
+  });
+
+  describe('captación (honorario por inquilino nuevo)', () => {
+    const gestionFees = (cap: Partial<GestionDelegada['honorarios'][number]>): GestionDelegada => ({
+      agenciaNif: 'B1',
+      modeloIngreso: 'traspaso',
+      comisionTipo: 'fees',
+      honorarios: [{ concepto: 'captacion', calculo: 'importe', base: 'fijo', valor: 150, periodicidad: 'por_inquilino_nuevo', ...cap }],
+    });
+
+    it('aplicaCaptacion · solo en % y fees, nunca en garantizada', () => {
+      expect(aplicaCaptacion({ agenciaNif: 'B1', modeloIngreso: 'garantizada', honorarios: [], comisionTipo: 'garantizada' })).toBe(false);
+      expect(aplicaCaptacion({ agenciaNif: 'B1', modeloIngreso: 'traspaso', honorarios: [], comisionTipo: 'porcentaje' })).toBe(true);
+      expect(aplicaCaptacion({ agenciaNif: 'B1', modeloIngreso: 'traspaso', honorarios: [], comisionTipo: 'fees' })).toBe(true);
+      expect(aplicaCaptacion(undefined)).toBe(false); // default garantizada
+    });
+
+    it('captacionPorInquilino · importe fijo € por inquilino', () => {
+      expect(captacionPorInquilino(gestionFees({}), 600)).toBe(150);
+    });
+
+    it('captacionPorInquilino · % de la renta del inquilino (una mensualidad)', () => {
+      expect(captacionPorInquilino(gestionFees({ calculo: 'porcentaje', base: 'mensualidad', valor: 100 }), 600)).toBe(600);
+      expect(captacionPorInquilino(gestionFees({ calculo: 'porcentaje', base: 'mensualidad', valor: 50 }), 600)).toBe(300);
+    });
+
+    it('captacionPorInquilino · en garantizada NO aplica (absorbida por el spread)', () => {
+      const g: GestionDelegada = { agenciaNif: 'B1', modeloIngreso: 'garantizada', comisionTipo: 'garantizada', honorarios: [{ concepto: 'captacion', calculo: 'importe', base: 'fijo', valor: 150, periodicidad: 'por_inquilino_nuevo' }] };
+      expect(captacionPorInquilino(g, 600)).toBe(0);
+    });
+
+    it('captacionDelAño · solo cuenta subcontratos que EMPIEZAN ese año', () => {
+      const p = padre({ gestion: gestionFees({}) });
+      const contracts = [
+        p,
+        c({ id: 2, gestionPadreId: 1, rentaMensual: 600, fechaInicio: '2026-03-01', fechaFin: '2026-12-31' }),
+        c({ id: 3, gestionPadreId: 1, rentaMensual: 500, fechaInicio: '2025-06-01', fechaFin: '2026-12-31' }), // empezó en 2025
+      ];
+      expect(captacionDelAño(p, contracts, 2026)).toBe(150); // solo el id2
+      expect(captacionDelAño(p, contracts, 2025)).toBe(150); // solo el id3
+    });
+
+    it('resumenFacturacion · la captación se suma a la comisión (fees)', () => {
+      const p = padre({
+        gestion: {
+          agenciaNif: 'B1', modeloIngreso: 'traspaso', comisionTipo: 'fees',
+          honorarios: [
+            { concepto: 'fee_fijo', calculo: 'importe', base: 'fijo', valor: 20, periodicidad: 'mensual' },
+            { concepto: 'captacion', calculo: 'importe', base: 'fijo', valor: 150, periodicidad: 'por_inquilino_nuevo' },
+          ],
+        },
+      });
+      const contracts = [
+        p,
+        c({ id: 2, gestionPadreId: 1, rentaMensual: 600, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+        c({ id: 3, gestionPadreId: 1, rentaMensual: 400, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+      ];
+      const r = resumenFacturacion(p, contracts, 2026);
+      // fee_fijo 20 × 12 = 240 (recurrente) + captación 150 × 2 inquilinos = 300 → comisión 540
+      expect(r.captacion).toBe(300);
+      expect(r.comision).toBe(540);
+      expect(r.neto).toBe(12000 - 540);
+    });
+  });
+
+  describe('ejerciciosConActividad', () => {
+    it('reúne los años con solape de los subcontratos + el año en curso, desc', () => {
+      const contracts = [
+        padre(),
+        c({ id: 2, gestionPadreId: 1, fechaInicio: '2024-06-01', fechaFin: '2024-12-31' }),
+        c({ id: 3, gestionPadreId: 1, fechaInicio: '2025-01-01', fechaFin: '2025-12-31' }),
+      ];
+      expect(ejerciciosConActividad(padre(), contracts, 2026)).toEqual([2026, 2025, 2024]);
+    });
+
+    it('incluye siempre el año en curso aunque no haya actividad', () => {
+      expect(ejerciciosConActividad(padre(), [padre()], 2026)).toEqual([2026]);
+    });
+
+    it('un subcontrato indefinido no genera años futuros más allá del actual', () => {
+      const contracts = [
+        padre(),
+        c({ id: 2, gestionPadreId: 1, fechaInicio: '2025-03-01', fechaFin: '2099-12-31' }),
+      ];
+      expect(ejerciciosConActividad(padre(), contracts, 2026)).toEqual([2026, 2025]);
+    });
+
+    it('no repite años cuando varios subcontratos solapan el mismo ejercicio', () => {
+      const contracts = [
+        padre(),
+        c({ id: 2, gestionPadreId: 1, fechaInicio: '2025-01-01', fechaFin: '2025-12-31' }),
+        c({ id: 3, gestionPadreId: 1, fechaInicio: '2025-06-01', fechaFin: '2025-12-31' }),
+      ];
+      expect(ejerciciosConActividad(padre(), contracts, 2025)).toEqual([2025]);
+    });
   });
 });

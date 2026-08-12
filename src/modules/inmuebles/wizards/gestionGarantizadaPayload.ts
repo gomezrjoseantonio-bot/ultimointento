@@ -27,6 +27,9 @@ export interface GestionForm {
   comisionPorcentaje: string; // solo comisionTipo='porcentaje'
   feeHabitacion: string; // solo comisionTipo='fees' · € por habitación / mes
   feeFijo: string; // solo comisionTipo='fees' · € fijo / mes
+  /** Captación (honorario por inquilino nuevo) · solo en %/fees. */
+  captacionTipo: 'ninguna' | 'fijo' | 'porcentaje';
+  captacionValor: string; // € (fijo) o % de la renta del inquilino (porcentaje)
   fianza: string; // opcional · fianza que deja la agencia (€)
   indexacion: IndexacionGestion;
   indexacionFormula: string; // solo si indexacion === 'otros'
@@ -72,6 +75,26 @@ export function construirPayloadGestion(form: GestionForm): PayloadResult {
       honorarios.push({ concepto: 'fee_habitacion', calculo: 'importe', base: 'habitacion', valor: feeHab, periodicidad: 'mensual' });
     if (feeFijo > 0)
       honorarios.push({ concepto: 'fee_fijo', calculo: 'importe', base: 'fijo', valor: feeFijo, periodicidad: 'mensual' });
+  }
+
+  // Captación (honorario por inquilino nuevo) · solo tiene sentido en %/fees:
+  // en garantizada la comisión (Σ − garantizado) ya la absorbe.
+  if (
+    (form.comisionTipo === 'porcentaje' || form.comisionTipo === 'fees') &&
+    form.captacionTipo !== 'ninguna'
+  ) {
+    const capVal = Number(form.captacionValor);
+    if (!Number.isFinite(capVal) || capVal <= 0)
+      return { ok: false, error: 'El honorario de captación debe ser mayor que 0' };
+    if (form.captacionTipo === 'porcentaje' && capVal > 100)
+      return { ok: false, error: 'El porcentaje de captación no puede superar el 100%' };
+    honorarios.push({
+      concepto: 'captacion',
+      calculo: form.captacionTipo === 'porcentaje' ? 'porcentaje' : 'importe',
+      base: form.captacionTipo === 'porcentaje' ? 'mensualidad' : 'fijo',
+      valor: capVal,
+      periodicidad: 'por_inquilino_nuevo',
+    });
   }
 
   const diaPago = Number(form.diaPago);

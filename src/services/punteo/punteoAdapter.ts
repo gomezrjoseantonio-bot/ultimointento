@@ -37,6 +37,9 @@ export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'type' | 'c
       // ("Alquiler · el piso"), así que la cabecera del grupo no estrena
       // vocabulario para decir lo mismo.
       return 'Alquiler';
+    case 'comision_gestion':
+      // Gestión delegada · flujo B · lo que le pagas a la agencia por gestionar.
+      return 'Comisión';
     case 'gasto_recurrente':
     case 'personal_expense':
     case 'opex_rule':
