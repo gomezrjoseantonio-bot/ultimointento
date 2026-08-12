@@ -24,6 +24,7 @@ import { getBusinessDayForRule } from './treasurySyncHelpers';
 import { TRAMOS_AHORRO_2026 } from '../../../../types/inversiones-extended';
 import type { ReglaDia } from '../../../../types/personal';
 import { inmuebleDelPrestamo, idDeInmueble } from '../../../../services/inmuebleDelPrestamo';
+import { planificarGestionMes } from './gestionTesoreria';
 import {
   cobroPrevistoDelMes,
   cuadroDePosicion,
@@ -288,9 +289,20 @@ export async function generateMonthlyForecasts(
   // ── 3. CONTRATOS ACTIVOS (rental income) ──────────────────────────────────
   try {
     const contracts = await getAllContracts();
+
+    // Gestión delegada · el plan del mes decide qué contratos NO emiten renta
+    // (los subcontratos que cobra la agencia en flujo A, o el padre en flujo B),
+    // qué importe forzar (padre neto en flujo A · %/fees) y de qué cuenta cobran
+    // los subcontratos (heredan la del padre). La vista fiscal no cambia: solo
+    // el flujo de caja. Ver docs/DISENO-gestion-delegada-agencias-V1.md §5.
+    const planGestion = planificarGestionMes(contracts, (c) =>
+      isContractActiveInMonth(c, year, month),
+    );
+
     for (const contract of contracts) {
       if (!isContractActiveInMonth(contract, year, month)) continue;
       if (contract.id == null) continue;
+      if (planGestion.suprimir.has(contract.id)) continue;
 
       if (await isDuplicate('contrato', contract.id)) {
         skipped++;
@@ -303,7 +315,10 @@ export async function generateMonthlyForecasts(
       const day = contract.diaPago ?? 1;
 
       // rentaMensual store eliminado en V62 — usar contract.rentaMensual directamente.
-      const amount = contract.rentaMensual ?? 0;
+      // El plan puede forzar el importe (padre neto en flujo A · %/fees).
+      const amount = planGestion.importePorContrato.get(contract.id) ?? contract.rentaMensual ?? 0;
+      // Los subcontratos llevan cuentaCobroId=0 y heredan la del padre (flujo B).
+      const cuentaCobro = planGestion.cuentaPorContrato.get(contract.id) ?? contract.cuentaCobroId;
 
       await insertEvent({
         type: 'income' as const,
@@ -312,7 +327,7 @@ export async function generateMonthlyForecasts(
         description: `Renta – ${inquilino}`,
         sourceType: 'contrato' as const,
         sourceId: contract.id,
-        accountId: resolveAccountId(contract.cuentaCobroId),
+        accountId: resolveAccountId(cuentaCobro),
         // De qué piso es la renta · el mismo hueco que tenían las cuotas de
         // préstamo. Sin esto la fila no dice de qué inmueble cobra, y sobre
         // todo las rentas de un piso por habitaciones no pueden colgar de él:
@@ -338,6 +353,31 @@ export async function generateMonthlyForecasts(
         // además `unidadTipo === 'habitacion'` dejaba sin unidad a cualquier
         // contrato antiguo o importado al que no se le fijara ese campo.
         unidadInmueble: contract.habitacionId || undefined,
+        status: 'predicted' as const,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // ── 3b. COMISIÓN DE LA AGENCIA (gestión delegada · flujo B) ──────────────
+    // En propietario_bruto tú cobras las rentas íntegras (arriba) y pagas la
+    // comisión a la agencia: un apunte de GASTO por piso. En agencia_neto la
+    // comisión va neteada en el ingreso, así que el plan no la lista.
+    for (const com of planGestion.comisiones) {
+      const padre = contracts.find((c) => c.id === com.padreId);
+      const day = padre?.diaPago ?? 1;
+      await insertEvent({
+        type: 'expense' as const,
+        amount: com.importe,
+        predictedDate: buildDate(year, month, day),
+        description: `Comisión gestión – ${padre?.inquilino?.nombre ?? 'Agencia'}`,
+        sourceType: 'comision_gestion' as const,
+        sourceId: com.padreId,
+        accountId: resolveAccountId(padre?.cuentaCobroId),
+        inmuebleId: idDeInmueble(com.inmuebleId),
+        proveedor: padre?.inquilino?.nombre || undefined,
+        tipoFamilia: 'gestion',
+        ambito: 'INMUEBLE' as const,
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,
