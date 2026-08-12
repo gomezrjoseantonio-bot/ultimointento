@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import {
-  MoneyValue,
-  DateLabel,
   EmptyState,
   Icons,
   showToastV5,
@@ -56,14 +54,6 @@ import styles from './DetallePage.module.css';
 
 type Tab = 'patrimonio' | 'gastos' | 'rentabilidad' | 'fiscalidad' | 'documentos';
 type GastosSubTab = 'resumen' | 'registrados' | 'recurrentes';
-
-const HABITACION_COLORS = [
-  'var(--atlas-v5-room-green)',
-  'var(--atlas-v5-room-red)',
-  'var(--atlas-v5-room-yellow)',
-  'var(--atlas-v5-room-blue)',
-  'var(--atlas-v5-room-bw)',
-];
 
 const isContractActiveAt = (c: Contract, today: Date): boolean => {
   if (!c.fechaInicio || !c.fechaFin) return false;
@@ -275,9 +265,6 @@ const DetallePage: React.FC = () => {
   const tipoActivo = getTipoActivoEffective(property);
   const esPiso = tipoActivo === 'piso';
   const habitaciones = property.bedrooms || 1;
-  const valorAdquisicion = property.acquisitionCosts?.price ?? 0;
-  const rentabilidadBruta =
-    valorAdquisicion > 0 ? (rentaMensual * 12 * 100) / valorAdquisicion : 0;
 
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
     { key: 'patrimonio', label: 'Patrimonio' },
@@ -424,163 +411,6 @@ const DetallePage: React.FC = () => {
               }
             />
           </div>
-
-          <div className={styles.section} style={{ marginTop: 0 }}>
-            <div className={styles.sectionHd}>
-              <div>
-                <div className={styles.sectionTitle}>Bloque de explotación</div>
-                <div className={styles.sectionSub}>rentas activas y rendimiento bruto</div>
-              </div>
-              <button
-                type="button"
-                className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
-                onClick={() => navigate(`/contratos/nuevo?inmueble=${property.id}`)}
-              >
-                <Icons.Plus size={14} strokeWidth={2} />
-                Nuevo contrato
-              </button>
-            </div>
-            <div className={styles.kpisRow}>
-              <div className={`${styles.kpi} ${styles.gold}`}>
-                <div className={styles.kpiLab}>Renta mensual</div>
-                <div className={`${styles.kpiVal} ${styles.pos}`}>
-                  <MoneyValue value={rentaMensual} decimals={0} tone="pos" />
-                </div>
-                <div className={styles.kpiHint}>
-                  {esPiso
-                    ? `${contratosActivos.length} de ${habitaciones} unidades activas`
-                    : contratosActivos.length > 0
-                      ? 'Ocupado'
-                      : 'Libre'}
-                </div>
-              </div>
-              <div className={`${styles.kpi} ${styles.pos}`}>
-                <div className={styles.kpiLab}>Renta anual bruta</div>
-                <div className={`${styles.kpiVal} ${styles.pos}`}>
-                  <MoneyValue value={rentaMensual * 12} decimals={0} tone="pos" />
-                </div>
-                <div className={styles.kpiHint}>
-                  {esPiso ? `${habitaciones} habitaciones · sin gastos` : 'sin gastos'}
-                </div>
-              </div>
-              <div className={styles.kpi}>
-                <div className={styles.kpiLab}>Rentabilidad bruta</div>
-                <div className={`${styles.kpiVal} ${styles.pos}`}>
-                  {rentabilidadBruta.toFixed(1)}%
-                </div>
-                <div className={styles.kpiHint}>
-                  sobre <MoneyValue value={valorAdquisicion} decimals={0} /> de adquisición
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.section} style={{ marginTop: 0 }}>
-            <div className={styles.sectionHd}>
-              <div>
-                <div className={styles.sectionTitle}>Situación de explotación</div>
-                <div className={styles.sectionSub}>estado actual del activo</div>
-              </div>
-              <button
-                type="button"
-                className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
-                onClick={() => navigate(`/contratos?inmueble=${property.id}`)}
-              >
-                Gestionar alquileres
-              </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
-              <div className={styles.kpi}>
-                <div className={styles.kpiLab}>Modalidad</div>
-                <div className={styles.kpiVal} style={{ fontSize: 16 }}>
-                  {contratosActivos[0]?.modalidad ?? propertyContracts[0]?.modalidad ?? '—'}
-                </div>
-              </div>
-              <div className={styles.kpi}>
-                <div className={styles.kpiLab}>Contratos activos</div>
-                <div className={styles.kpiVal} style={{ fontSize: 22 }}>{contratosActivos.length}</div>
-                <div className={styles.kpiHint}>de {propertyContracts.length} total</div>
-              </div>
-              <div className={`${styles.kpi} ${styles.gold}`}>
-                <div className={styles.kpiLab}>Renta mensual</div>
-                <div className={`${styles.kpiVal} ${styles.pos}`} style={{ fontSize: 22 }}>
-                  <MoneyValue value={rentaMensual} decimals={0} tone="pos" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {esPiso && (
-          <div className={styles.section}>
-            <div className={styles.sectionHd}>
-              <div>
-                <div className={styles.sectionTitle}>
-                  Habitaciones · {contratosActivos.length} / {habitaciones}
-                </div>
-                <div className={styles.sectionSub}>
-                  estado actual de cada unidad arrendable
-                </div>
-              </div>
-            </div>
-            <div className={styles.habitacionesGrid}>
-              {Array.from({ length: habitaciones }, (_, i) => {
-                const contract = contratosActivos[i];
-                const color = HABITACION_COLORS[i % HABITACION_COLORS.length];
-                if (!contract) {
-                  return (
-                    <div key={i} className={`${styles.habCard} ${styles.vacant}`}>
-                      <div className={styles.habHd}>
-                        <span
-                          className={styles.habNum}
-                          style={{ background: 'var(--atlas-v5-line)', color: 'var(--atlas-v5-ink-4)' }}
-                        >
-                          {i + 1}
-                        </span>
-                        <span className={`${styles.habTenant} ${styles.muted}`}>
-                          Habitación libre
-                        </span>
-                      </div>
-                      <div className={styles.habMeta}>disponible</div>
-                    </div>
-                  );
-                }
-                return (
-                  <div key={contract.id ?? i} className={styles.habCard}>
-                    <div className={styles.habHd}>
-                      <span className={styles.habNum} style={{ background: color }}>
-                        {i + 1}
-                      </span>
-                      <div>
-                        <div className={styles.habTenant}>
-                          {contract.inquilino.nombre} {contract.inquilino.apellidos}
-                        </div>
-                        <div className={styles.habMeta}>
-                          {contract.modalidad === 'habitual'
-                            ? 'Largo plazo'
-                            : contract.modalidad === 'temporada'
-                              ? 'Temporada'
-                              : 'Vacacional'}
-                        </div>
-                      </div>
-                    </div>
-                    <div className={styles.habRow}>
-                      <span>Renta</span>
-                      <span className="pos">
-                        <MoneyValue value={contract.rentaMensual} decimals={0} tone="pos" />
-                      </span>
-                    </div>
-                    <div className={styles.habRow}>
-                      <span>Vence</span>
-                      <span>
-                        <DateLabel value={contract.fechaFin} format="short" size="sm" />
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          )}
         </>
       )}
 

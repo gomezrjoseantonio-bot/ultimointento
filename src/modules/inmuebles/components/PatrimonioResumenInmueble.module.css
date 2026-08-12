@@ -7,6 +7,35 @@
   gap: 20px;
 }
 
+/* Cockpit · izquierda ancha (valor + evolución + composición) · derecha cifras */
+.cockpit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.colMain,
+.colSide {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .cockpit {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Rejilla de tarjetas en la columna lateral · siempre 2 en línea si caben */
+.gridSide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
 .block {
   display: flex;
   flex-direction: column;
