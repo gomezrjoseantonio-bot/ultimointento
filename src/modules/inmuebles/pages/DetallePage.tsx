@@ -29,6 +29,7 @@ import {
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
+import { referenciaInmueble } from '../utils/referenciaInmueble';
 import GastosResumenInmueble from '../components/GastosResumenInmueble';
 import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
 import EditarRegistroInmuebleModal from '../components/EditarRegistroInmuebleModal';
@@ -259,7 +260,7 @@ const DetallePage: React.FC = () => {
     { key: 'documentos', label: 'Documentos', count: property.documents?.length },
   ];
 
-  const astId = `AST-${String(propertyId).padStart(2, '0')}`;
+  const astId = referenciaInmueble(property);
 
   return (
     <>
