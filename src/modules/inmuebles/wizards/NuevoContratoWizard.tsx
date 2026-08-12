@@ -46,14 +46,6 @@ const NuevoContratoWizard: React.FC = () => {
   })();
   const esEdicion = editId !== null;
 
-  // Anexar · `?gestionPadre=<id>` · el contrato creado es un subcontrato de
-  // inquilino anexado a un contrato de gestión (gestión delegada · §4.4).
-  const gestionPadreId = (() => {
-    const v = searchParams.get('gestionPadre');
-    const n = v ? Number(v) : NaN;
-    return Number.isFinite(n) ? n : undefined;
-  })();
-
   const [step, setStep] = useState<StepKey>('donde');
   const [form, setForm] = useState<FormState>({
     ...emptyForm,
@@ -140,7 +132,7 @@ const NuevoContratoWizard: React.FC = () => {
   const handleCrearContrato = async (): Promise<void> => {
     if (creando) return;
     setErrorSave(null);
-    const res = construirPayloadCompleto(form, gestionPadreId);
+    const res = construirPayloadCompleto(form);
     if (!res.ok) {
       setErrorSave(res.error);
       showToastV5(res.error, 'error');
@@ -210,7 +202,7 @@ const NuevoContratoWizard: React.FC = () => {
     setErrorSave(null);
     setCreando(true);
     try {
-      const payload = construirPayloadBorrador(form, gestionPadreId);
+      const payload = construirPayloadBorrador(form);
       if (esEdicion && editId !== null) {
         await updateContract(editId, payload);
       } else {

@@ -410,13 +410,17 @@ const DrawerFichaContrato: React.FC<DrawerFichaContratoProps> = ({
               <Icons.Lock size={12} strokeWidth={1.8} /> Finalizar
             </button>
           )}
-          <button
-            type="button"
-            className={styles.btnPrimary}
-            onClick={onPrimaria}
-          >
-            <AccionIconCmp size={12} strokeWidth={1.8} /> {accion.label}
-          </button>
+          {/* El contrato de gestión es mercantil (no LAU) · no aplica el flujo
+              LAU de firma/renovación. */}
+          {!contrato.gestion && (
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              onClick={onPrimaria}
+            >
+              <AccionIconCmp size={12} strokeWidth={1.8} /> {accion.label}
+            </button>
+          )}
         </div>
       </aside>
 
@@ -461,6 +465,9 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
         </section>
       )}
 
+      {/* Para un contrato de gestión, la contraparte (la agencia) ya se muestra
+          en el panel de gestión · no se repite la sección "Inquilino". */}
+      {!contrato.gestion && (
       <section className={styles.section}>
         <div className={styles.sectionHead}>
           <h3 className={styles.sectionTitle}>Inquilino</h3>
@@ -500,13 +507,14 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
         <Field label="Email" value={inq?.email || '—'} />
         <Field label="Teléfono" value={inq?.telefono || '—'} mono />
       </section>
+      )}
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>
           <h3 className={styles.sectionTitle}>Términos del contrato</h3>
           {/* V79 · un contrato SIN FIRMAR es editable en su totalidad sin anexo;
               la regla de bloqueo + anexo solo aplica a contratos ya activos. */}
-          {esFinalizado ? (
+          {!contrato.gestion && (esFinalizado ? (
             <span className={styles.lockedBadge}>
               <Icons.Lock size={10} strokeWidth={1.8} /> Finalizado · solo lectura
             </span>
@@ -518,7 +526,7 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
             <span className={styles.lockedBadge}>
               <Icons.Lock size={10} strokeWidth={1.8} /> Bloqueado · requiere anexo
             </span>
-          )}
+          ))}
         </div>
         <div className={styles.fieldsGrid}>
           <Field label="Desde" value={<DateLabel value={contrato.fechaInicio} format="short" size="sm" />} />
@@ -539,14 +547,15 @@ const PanelFicha: React.FC<PanelFichaProps> = ({
             label="Día de pago"
             value={contrato.diaPago ? `${contrato.diaPago} de cada mes` : '—'}
           />
-          <Field label="Reducción fiscal" value={formatReduccion(contrato)} />
-          <Field label="Estado firma" value={firmado ? 'Firmado' : 'Pendiente'} />
+          {/* Reducción LAU y firma no aplican al contrato de gestión (mercantil). */}
+          {!contrato.gestion && <Field label="Reducción fiscal" value={formatReduccion(contrato)} />}
+          {!contrato.gestion && <Field label="Estado firma" value={firmado ? 'Firmado' : 'Pendiente'} />}
           <Field
             label="Indexación"
             value={contrato.indexacion === 'none' ? 'No aplica' : (contrato.indexacion ?? '—')}
           />
         </div>
-        {!esSinFirmar && !esFinalizado && (
+        {!esSinFirmar && !esFinalizado && !contrato.gestion && (
           <div className={styles.anexoRow}>
             <div>
               <strong>¿Necesitas cambiar un término económico?</strong>

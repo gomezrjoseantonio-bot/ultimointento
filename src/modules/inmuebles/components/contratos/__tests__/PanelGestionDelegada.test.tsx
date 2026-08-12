@@ -41,7 +41,7 @@ const renderPanel = () =>
     <MemoryRouter initialEntries={['/contratos']}>
       <Routes>
         <Route path="/contratos" element={<><PanelGestionDelegada contrato={padre} año={2026} /><LocationProbe /></>} />
-        <Route path="/contratos/nuevo" element={<LocationProbe />} />
+        <Route path="/contratos/gestion/anexar" element={<LocationProbe />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -68,5 +68,5 @@ test('el botón "Anexar" navega al wizard con gestionPadre + inmueble', async ()
   await waitFor(() => expect(mockGetAllContracts).toHaveBeenCalled());
 
   fireEvent.click(screen.getByRole('button', { name: /Anexar contrato de inquilino/i }));
-  expect(screen.getByTestId('loc')).toHaveTextContent('/contratos/nuevo?gestionPadre=1&inmueble=9');
+  expect(screen.getByTestId('loc')).toHaveTextContent('/contratos/gestion/anexar?padre=1');
 });
