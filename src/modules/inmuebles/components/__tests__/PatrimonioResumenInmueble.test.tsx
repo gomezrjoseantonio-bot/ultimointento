@@ -40,8 +40,10 @@ describe('PatrimonioResumenInmueble', () => {
     // Coincidencia exacta · evita chocar con los subtítulos que citan las mismas palabras.
     expect(screen.getByText('Patrimonio neto')).toBeInTheDocument();
     expect(screen.getByText('Valor actual')).toBeInTheDocument();
-    expect(screen.getByText('Deuda pendiente')).toBeInTheDocument();
-    expect(screen.getByText('Revalorización')).toBeInTheDocument();
+    // «Deuda pendiente» y «Revalorización» también aparecen en la leyenda del
+    // desglose de composición · basta con que estén presentes.
+    expect(screen.getAllByText('Deuda pendiente').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Revalorización').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('LTV 50 %')).toBeInTheDocument();
   });
 

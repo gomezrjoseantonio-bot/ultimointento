@@ -1,6 +1,7 @@
 import React from 'react';
 import { MoneyValue } from '../../../design-system/v5';
 import type { PatrimonioInmuebleResumen } from '../adapters/patrimonioInmuebleAdapter';
+import ComposicionPatrimonioNeto from './ComposicionPatrimonioNeto';
 import HistoricoValoracionesChart from './HistoricoValoracionesChart';
 import styles from './PatrimonioResumenInmueble.module.css';
 
@@ -44,6 +45,11 @@ const PatrimonioResumenInmueble: React.FC<PatrimonioResumenInmuebleProps> = ({
     financiacion,
     historicoValoraciones,
   } = resumen;
+
+  const principalInicialTotal = financiacion.reduce(
+    (suma, linea) => suma + linea.principalInicial,
+    0,
+  );
 
   return (
     <div className={styles.container}>
@@ -106,6 +112,24 @@ const PatrimonioResumenInmueble: React.FC<PatrimonioResumenInmuebleProps> = ({
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── Composición del patrimonio neto ── */}
+      <div className={styles.block}>
+        <div className={styles.blockHd}>
+          <div>
+            <div className={styles.title}>Composición del patrimonio neto</div>
+            <div className={styles.sub}>de qué se compone tu patrimonio en este activo</div>
+          </div>
+        </div>
+        <ComposicionPatrimonioNeto
+          costeAdquisicion={costeAdquisicion}
+          valorActual={valorActual}
+          deudaPendiente={deudaPendiente}
+          patrimonioNeto={patrimonioNeto}
+          revalorizacion={revalorizacion}
+          principalInicialTotal={principalInicialTotal}
+        />
       </div>
 
       {/* ── Coste y revalorización ── */}
