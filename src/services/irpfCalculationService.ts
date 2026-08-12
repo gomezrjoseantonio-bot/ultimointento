@@ -26,6 +26,11 @@ import { ejecutarCompensacionAhorro } from './compensacionAhorroService';
 import type { CompensacionAhorroResult } from './compensacionAhorroService';
 import { compartirCalculo, getCachedDeclaracion, setCachedDeclaracion } from './fiscalCacheService';
 import { getInmueblesDelEjercicio } from './ejercicioResolverService';
+// Gestión delegada · el contrato de gestión (padre) NO es un alquiler fiscal
+// (no suma a ingresos íntegros: eso lo hacen sus subcontratos); su comisión SÍ
+// es gasto deducible (casilla 0112). Ver docs/DISENO-gestion-delegada-agencias-V1.md.
+import { esContratoGestion } from '../modules/inmuebles/utils/gestionDelegada';
+import { resumenFacturacion } from '../modules/inmuebles/utils/facturacionGestionService';
 import {
   ESCALA_ESTATAL_GENERAL_2024,
   getEscalaAutonomica,
@@ -130,6 +135,8 @@ export interface RendimientoInmueble {
   // Rendimiento por alquiler (prorrateado a días alquilados)
   ingresosIntegros: number;
   gastosDeducibles: number;
+  /** Comisión de la agencia (gestión delegada) incluida en gastosDeducibles · casilla 0112. */
+  comisionGestion?: number;
   amortizacion: number;
   reduccionHabitual: number; // Reducción por arrendamiento de vivienda aplicada sobre el rendimiento neto positivo
   rendimientoNetoAlquiler: number; // Rendimiento neto del alquiler ANTES de reducción
@@ -639,7 +646,7 @@ export function separarAccesorios(activeProperties: any[]): {
   return { propertiesToProcess, accessoryProperties, linkedAccessoryIds };
 }
 
-async function recopilarDatosInmuebles(
+export async function recopilarDatosInmuebles(
   ejercicio: number,
   ctx: FiscalContext | null,
   contratosOverride?: Contract[],
@@ -761,6 +768,11 @@ async function recopilarDatosInmuebles(
       const contractIncomes: { income: number; reductionPct: number }[] = [];
 
       for (const contract of propContracts) {
+        // Gestión delegada · el contrato de gestión (padre) no es un alquiler:
+        // los ingresos íntegros del piso son los de sus subcontratos de inquilinos
+        // (que también cuelgan de este `inmuebleId`). Sumar el padre —renta
+        // garantizada o 0 en %/fees— duplicaría/inflaría los íntegros.
+        if (esContratoGestion(contract)) continue;
         const renta = contract.rentaMensual ?? 0;
         const inicio = new Date(contract.fechaInicio ?? contract.startDate);
         const fin = new Date(contract.fechaFin ?? contract.endDate ?? `${ejercicio}-12-31`);
@@ -843,6 +855,22 @@ async function recopilarDatosInmuebles(
         // ignore
       }
 
+      // Gestión delegada · comisión de la agencia como gasto deducible (casilla
+      // 0112). Se deriva del contrato (subcontratos + fórmula garantizada/%/fees),
+      // no de Tesorería, para que sea idéntica en ambos flujos de liquidación
+      // (agencia_neto / propietario_bruto) y no dependa de haber conciliado el
+      // pago. Ya viene prorrateada por meses de solape (no aplicar `ratio`).
+      let comisionGestion = 0;
+      for (const padre of propContracts) {
+        if (!esContratoGestion(padre)) continue;
+        comisionGestion = round2(
+          comisionGestion + resumenFacturacion(padre as Contract & { id?: number }, contracts, ejercicio).comision,
+        );
+      }
+      if (comisionGestion > 0) {
+        gastosDeducibles = round2(gastosDeducibles + comisionGestion);
+      }
+
       // Sum amortization and expenses from linked accessories
       const accesorios = accessoryProperties.filter(
         (a: any) => a.fiscalData?.mainPropertyId === prop.id && linkedAccessoryIds.has(a.id)
@@ -921,6 +949,7 @@ async function recopilarDatosInmuebles(
         diasTotal,
         ingresosIntegros: round2(ingresosIntegros),
         gastosDeducibles,
+        comisionGestion: comisionGestion > 0 ? comisionGestion : undefined,
         amortizacion,
         reduccionHabitual,
         rendimientoNetoAlquiler,
