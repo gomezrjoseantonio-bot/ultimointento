@@ -1,0 +1,64 @@
+/* HistoricoValoracionesChart · evolución del valor del inmueble (área + proyección) */
+
+.wrap {
+  font-family: var(--atlas-v5-font-ui);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  background: var(--atlas-v5-card);
+  padding: 14px 16px 12px;
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-bottom: 8px;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lineReal,
+.lineProj {
+  display: inline-block;
+  width: 14px;
+  height: 0;
+  border-top: 2px solid var(--atlas-v5-gold);
+}
+
+.lineProj {
+  border-top-style: dashed;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: 176px;
+  overflow: visible;
+}
+
+.axis {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--atlas-v5-font-mono-tech);
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 4px;
+}
+
+.axisNow {
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.caption {
+  font-size: 10px;
+  color: var(--atlas-v5-ink-4);
+  text-align: right;
+  margin-top: 4px;
+}
