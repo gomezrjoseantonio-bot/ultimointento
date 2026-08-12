@@ -30,6 +30,7 @@ import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
 import { referenciaInmueble } from '../utils/referenciaInmueble';
 import CostesInmueble from '../components/CostesInmueble';
 import DocumentosInmueble from '../components/DocumentosInmueble';
+import FiscalidadInmueble from '../components/FiscalidadInmueble';
 import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
 import EditarRegistroInmuebleModal from '../components/EditarRegistroInmuebleModal';
 import RentabilidadInmueble from '../components/RentabilidadInmueble';
@@ -520,7 +521,10 @@ const DetallePage: React.FC = () => {
 
       {tab === 'fiscalidad' && (
         <div style={{ marginTop: 8 }}>
-          <SeccionHistoricoFiscal inmuebleId={propertyId} />
+          <FiscalidadInmueble inmuebleId={propertyId} />
+          <div style={{ marginTop: 24 }}>
+            <SeccionHistoricoFiscal inmuebleId={propertyId} />
+          </div>
         </div>
       )}
 

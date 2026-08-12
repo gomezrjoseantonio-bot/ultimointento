@@ -86,6 +86,11 @@ jest.mock('../../components/SeccionHistoricoFiscal', () => ({
   default: () => <div>Histórico fiscal mock</div>,
 }));
 
+jest.mock('../../components/FiscalidadInmueble', () => ({
+  __esModule: true,
+  default: () => <div>Fiscalidad IRPF mock</div>,
+}));
+
 jest.mock('../../components/CostesInmueble', () => ({
   __esModule: true,
   default: () => <div>Costes mock</div>,
