@@ -177,6 +177,9 @@ const renderPage = async (initialEntry = '/inmuebles/1'): Promise<void> => {
     reload: jest.fn(),
   };
 
+  // El wrapper `act` es intencional: fuerza el flush de los efectos async de
+  // la ficha (cargas de patrimonio, gastos, rentas declaradas) antes de asertar.
+  // eslint-disable-next-line testing-library/no-unnecessary-act
   await act(async () => {
     render(
       <MemoryRouter
@@ -199,7 +202,7 @@ describe('DetallePage · tabs fase 4', () => {
     async (entry) => {
       await renderPage(entry);
       expect(screen.getByRole('tab', { name: /Patrimonio/i })).toHaveAttribute('aria-selected', 'true');
-      expect(screen.getByText(/Situación de explotación/i)).toBeInTheDocument();
+      expect(screen.getByText('Patrimonio mock')).toBeInTheDocument();
     },
   );
 
@@ -216,10 +219,12 @@ describe('DetallePage · tabs fase 4', () => {
     expect(screen.queryByRole('tab', { name: /Cobros/i })).not.toBeInTheDocument();
   });
 
-  it('mueve Nuevo contrato al contenido de Patrimonio y activa Rentabilidad al pulsar la tab', async () => {
+  it('Patrimonio muestra solo el cockpit patrimonial y Rentabilidad se activa al pulsar la tab', async () => {
     await renderPage();
 
-    expect(screen.getByRole('button', { name: /Nuevo contrato/i })).toBeInTheDocument();
+    // La pestaña Patrimonio ya no arrastra las secciones de explotación.
+    expect(screen.getByText('Patrimonio mock')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Nuevo contrato/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: /Rentabilidad/i }));
     expect(screen.getByRole('tab', { name: /Rentabilidad/i })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Rentabilidad mock')).toBeInTheDocument();
