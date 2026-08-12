@@ -23,6 +23,23 @@ export function esSubcontratoAnexado(c: Contract): boolean {
 }
 
 /**
+ * Agrupa los subcontratos anexados por el id de su contrato de gestión (padre).
+ * Para pintarlos anidados bajo el padre en la lista de Vigentes.
+ */
+export function agruparSubcontratosPorPadre(
+  contracts: Contract[],
+): Map<number, (Contract & { id: number })[]> {
+  const map = new Map<number, (Contract & { id: number })[]>();
+  for (const c of contracts) {
+    if (c.gestionPadreId == null || c.id == null) continue;
+    const arr = map.get(c.gestionPadreId) ?? [];
+    arr.push(c as Contract & { id: number });
+    map.set(c.gestionPadreId, arr);
+  }
+  return map;
+}
+
+/**
  * ¿Debe este contrato contar en los KPIs/tabs OPERATIVOS?
  *
  * Los subcontratos anexados (hijos) son historia fiscal y quedan fuera del

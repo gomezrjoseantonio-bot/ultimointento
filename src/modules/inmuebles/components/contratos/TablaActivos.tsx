@@ -14,6 +14,9 @@ import styles from './TablaActivos.module.css';
 
 export interface TablaActivosProps {
   contratos: Contract[];
+  /** Subcontratos anexados por id de contrato de gestión (padre) · se pintan
+   *  anidados (indentados) bajo su padre. */
+  subcontratosByPadre?: Map<number, (Contract & { id: number })[]>;
   inmuebleAliasById: Map<number, string>;
   /** FIX § 1.3 · modoExplotacion por inmueble · decide "Piso completo" vs "Hab N". */
   inmuebleModoById?: Map<number, Property['modoExplotacion']>;
@@ -41,6 +44,7 @@ function subMetaInquilino(c: Contract): string {
 
 const TablaActivos: React.FC<TablaActivosProps> = ({
   contratos,
+  subcontratosByPadre,
   inmuebleAliasById,
   inmuebleModoById,
   onAbrirFicha,
@@ -72,10 +76,11 @@ const TablaActivos: React.FC<TablaActivosProps> = ({
               const alias = inmuebleAliasById.get(c.inmuebleId) ?? `#${c.inmuebleId}`;
               const subInq = subMetaInquilino(c);
               const subInm = subMetaInmueble(c, inmuebleModoById?.get(c.inmuebleId));
+              const anexados = subcontratosByPadre?.get(c.id) ?? [];
 
               return (
+                <React.Fragment key={c.id}>
                 <tr
-                  key={c.id}
                   className={styles.row}
                   onClick={() => onAbrirFicha(c)}
                   onKeyDown={(e) => {
@@ -153,6 +158,56 @@ const TablaActivos: React.FC<TablaActivosProps> = ({
                     </button>
                   </td>
                 </tr>
+
+                {anexados.map((sub) => {
+                  const subAvatar = avatarInfoPorContrato(sub);
+                  const subFinIndef = !sub.fechaFin || esFechaIndefinida(sub.fechaFin);
+                  const subInmMeta = subMetaInmueble(sub, inmuebleModoById?.get(sub.inmuebleId));
+                  return (
+                    <tr
+                      key={sub.id}
+                      className={`${styles.row} ${styles.subRow}`}
+                      onClick={() => onAbrirFicha(sub)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onAbrirFicha(sub);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Abrir ficha de ${subAvatar.nombre}`}
+                    >
+                      <td className={styles.colInquilino}>
+                        <div className={styles.subTenantCell}>
+                          <span className={styles.subBranch} aria-hidden>↳</span>
+                          <div className={styles.subName}>{subAvatar.nombre}</div>
+                        </div>
+                      </td>
+                      <td className={styles.colInmueble}>
+                        <div className={styles.inmSub}>{subInmMeta.text}</div>
+                      </td>
+                      <td className={styles.colFecha}>
+                        <DateLabel value={sub.fechaInicio} format="short" size="sm" />
+                      </td>
+                      <td className={styles.colFecha}>
+                        {subFinIndef ? (
+                          <span className={styles.dateIndef}>Indefinido</span>
+                        ) : (
+                          <span className={styles.dateMono}>{formatFechaFinContrato(sub.fechaFin)}</span>
+                        )}
+                      </td>
+                      <td className={styles.colRight}>
+                        <MoneyValue value={sub.rentaMensual ?? 0} decimals={0} tone="ink" />
+                      </td>
+                      <td className={`${styles.colRight} ${styles.rentaAnual}`}>
+                        <MoneyValue value={(sub.rentaMensual ?? 0) * 12} decimals={0} tone="muted" />
+                      </td>
+                      <td className={styles.colMore} />
+                    </tr>
+                  );
+                })}
+                </React.Fragment>
               );
             })}
         </tbody>

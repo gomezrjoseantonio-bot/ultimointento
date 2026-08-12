@@ -2,6 +2,7 @@ import {
   esContratoGestion,
   esSubcontratoAnexado,
   cuentaEnOperativo,
+  agruparSubcontratosPorPadre,
 } from '../gestionDelegada';
 import type { Contract } from '../../../../services/db';
 
@@ -41,5 +42,19 @@ describe('gestionDelegada · predicados de dominio', () => {
     expect(esContratoGestion(c)).toBe(false);
     expect(esSubcontratoAnexado(c)).toBe(true);
     expect(cuentaEnOperativo(c)).toBe(false); // es fiscal, fuera del operativo
+  });
+
+  it('agruparSubcontratosPorPadre · agrupa los hijos por su padre', () => {
+    const contracts = [
+      base({ id: 1, gestion: { agenciaNif: 'B1', modeloIngreso: 'garantizada', rentaGarantizada: 1350, honorarios: [] } }),
+      base({ id: 2, gestionPadreId: 1 }),
+      base({ id: 3, gestionPadreId: 1 }),
+      base({ id: 4, gestionPadreId: 5 }),
+      base({ id: 6 }), // normal · no entra
+    ];
+    const map = agruparSubcontratosPorPadre(contracts);
+    expect(map.get(1)?.map((c) => c.id)).toEqual([2, 3]);
+    expect(map.get(5)?.map((c) => c.id)).toEqual([4]);
+    expect(map.has(6)).toBe(false);
   });
 });
