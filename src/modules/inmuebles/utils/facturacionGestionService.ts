@@ -12,7 +12,7 @@
 //
 // Servicio puro · no toca persistencia.
 
-import type { Contract } from '../../../services/db';
+import type { Contract, GestionDelegada, HonorarioAgencia } from '../../../services/db';
 import { esFechaIndefinida } from './formatFechaFin';
 import { parseIsoDateAsUTC } from '../../../utils/recurrenceDateUtils';
 
@@ -24,8 +24,44 @@ export interface ResumenFacturacion {
   facturacion: number;
   /** Renta garantizada del padre imputable al año. */
   garantizado: number;
-  /** Comisión de la agencia derivada · max(0, facturacion − garantizado). */
+  /** Comisión de la agencia derivada (según la fórmula: garantizada/%/fees). */
   comision: number;
+  /** Neto para el propietario · facturacion − comision. */
+  neto: number;
+}
+
+/** Comisión anual de una línea de honorarios (fees). */
+function comisionDeHonorario(h: HonorarioAgencia, facturacion: number, nHabitaciones: number): number {
+  if (h.periodicidad === 'por_inquilino_nuevo') return 0; // evento puntual · no recurrente anual
+  const factorPeriodo = h.periodicidad === 'anual' ? 1 : 12; // mensual → ×12
+  if (h.calculo === 'porcentaje') return (facturacion * h.valor) / 100;
+  // importe
+  if (h.base === 'habitacion') return h.valor * nHabitaciones * factorPeriodo;
+  return h.valor * factorPeriodo; // fijo
+}
+
+/**
+ * Comisión de la agencia según la fórmula configurada. La vista fiscal es la
+ * misma sea cual sea el flujo de liquidación (agencia_neto / propietario_bruto).
+ */
+export function calcularComision(
+  gestion: GestionDelegada | undefined,
+  facturacion: number,
+  garantizado: number,
+  nHabitaciones: number,
+): number {
+  const tipo = gestion?.comisionTipo ?? 'garantizada';
+  if (tipo === 'porcentaje') {
+    return Math.max(0, (facturacion * (gestion?.comisionPorcentaje ?? 0)) / 100);
+  }
+  if (tipo === 'fees') {
+    return (gestion?.honorarios ?? []).reduce(
+      (sum, h) => sum + comisionDeHonorario(h, facturacion, nHabitaciones),
+      0,
+    );
+  }
+  // garantizada (default) · la comisión es la diferencia con el neto garantizado.
+  return Math.max(0, facturacion - garantizado);
 }
 
 /** Subcontratos de inquilinos anexados a un contrato de gestión (padre). */
@@ -76,11 +112,14 @@ export function resumenFacturacion(
   const rentaGarantizada = padre.gestion?.rentaGarantizada ?? 0;
   const garantizado = rentaGarantizada * mesesSolapeEnAño(padre, año);
 
+  const comision = calcularComision(padre.gestion, facturacion, garantizado, conSolape.length);
+
   return {
     año,
     nSubcontratos: conSolape.length,
     facturacion,
     garantizado,
-    comision: Math.max(0, facturacion - garantizado),
+    comision,
+    neto: facturacion - comision,
   };
 }
