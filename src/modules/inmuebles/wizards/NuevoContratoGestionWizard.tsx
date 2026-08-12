@@ -14,8 +14,8 @@ import { CuentaCobroField } from './CuentaCobroField';
 import { useCuentasCobro } from './cuentaCobro';
 import { guardarAgencia } from './agenciaGestionService';
 import {
-  construirPayloadGestionGarantizada,
-  type GestionGarantizadaForm,
+  construirPayloadGestion,
+  type GestionForm,
 } from './gestionGarantizadaPayload';
 import styles from './NuevoContratoWizard.module.css';
 
@@ -24,7 +24,7 @@ const hoyISO = (): string => new Date().toISOString().slice(0, 10);
 const eur = (n: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
-const INDEX_LABEL: Record<GestionGarantizadaForm['indexacion'], string> = {
+const INDEX_LABEL: Record<GestionForm['indexacion'], string> = {
   ipc: 'IPC',
   otros: 'Otros (fórmula)',
   none: 'Sin indexación',
@@ -47,11 +47,16 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
     return Number.isFinite(n) ? n : null;
   })();
 
-  const [form, setForm] = useState<GestionGarantizadaForm>({
+  const [form, setForm] = useState<GestionForm>({
     inmuebleId: inmuebleInicial,
     agenciaNombre: '',
     agenciaNif: '',
+    comisionTipo: 'garantizada',
+    liquidacion: 'agencia_neto',
     rentaGarantizada: '',
+    comisionPorcentaje: '',
+    feeHabitacion: '',
+    feeFijo: '',
     fianza: '',
     indexacion: 'ipc',
     indexacionFormula: '',
@@ -63,14 +68,14 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const set = <K extends keyof GestionGarantizadaForm>(k: K, v: GestionGarantizadaForm[K]): void =>
+  const set = <K extends keyof GestionForm>(k: K, v: GestionForm[K]): void =>
     setForm((f) => ({ ...f, [k]: v }));
 
   const volver = (): void => (onBack ? onBack() : navigate('/contratos'));
 
   const onSubmit = async (): Promise<void> => {
     setError(null);
-    const res = construirPayloadGestionGarantizada(form);
+    const res = construirPayloadGestion(form);
     if (!res.ok) {
       setError(res.error);
       return;
@@ -91,6 +96,16 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
 
   const renta = Number(form.rentaGarantizada) || 0;
   const fianza = Number(form.fianza) || 0;
+  const comisionResumen =
+    form.comisionTipo === 'garantizada'
+      ? renta > 0
+        ? `${eur(renta)}/mes garantizada`
+        : '—'
+      : form.comisionTipo === 'porcentaje'
+        ? form.comisionPorcentaje
+          ? `${form.comisionPorcentaje}% de la renta`
+          : '—'
+        : 'Honorarios (fees)';
 
   return (
     <>
@@ -149,17 +164,93 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label}>Renta garantizada (€/mes)</label>
-              <input
-                className={styles.input}
-                type="number"
-                inputMode="decimal"
-                min={0}
-                value={form.rentaGarantizada}
-                onChange={(e) => set('rentaGarantizada', e.target.value)}
-                placeholder="1350"
-              />
+              <label className={styles.label}>Comisión de la agencia</label>
+              <select
+                className={styles.select}
+                value={form.comisionTipo}
+                onChange={(e) => set('comisionTipo', e.target.value as GestionForm['comisionTipo'])}
+              >
+                <option value="garantizada">Renta garantizada</option>
+                <option value="porcentaje">Porcentaje sobre la renta</option>
+                <option value="fees">Honorarios (fees)</option>
+              </select>
             </div>
+            <div className={styles.field}>
+              <label className={styles.label}>Liquidación</label>
+              <select
+                className={styles.select}
+                value={form.liquidacion}
+                onChange={(e) => set('liquidacion', e.target.value as GestionForm['liquidacion'])}
+              >
+                <option value="agencia_neto">La agencia cobra · te ingresa el neto</option>
+                <option value="propietario_bruto">Tú cobras · pagas a la agencia</option>
+              </select>
+            </div>
+
+            {form.comisionTipo === 'garantizada' && (
+              <>
+                <div className={styles.field}>
+                  <label className={styles.label}>Renta garantizada (€/mes)</label>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    value={form.rentaGarantizada}
+                    onChange={(e) => set('rentaGarantizada', e.target.value)}
+                    placeholder="1350"
+                  />
+                </div>
+                <div className={styles.field} aria-hidden="true" />
+              </>
+            )}
+            {form.comisionTipo === 'porcentaje' && (
+              <>
+                <div className={styles.field}>
+                  <label className={styles.label}>% de comisión</label>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    max={100}
+                    value={form.comisionPorcentaje}
+                    onChange={(e) => set('comisionPorcentaje', e.target.value)}
+                    placeholder="10"
+                  />
+                </div>
+                <div className={styles.field} aria-hidden="true" />
+              </>
+            )}
+            {form.comisionTipo === 'fees' && (
+              <>
+                <div className={styles.field}>
+                  <label className={styles.label}>Fee por habitación (€/mes)</label>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    value={form.feeHabitacion}
+                    onChange={(e) => set('feeHabitacion', e.target.value)}
+                    placeholder="50"
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>Fee fijo (€/mes)</label>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    value={form.feeFijo}
+                    onChange={(e) => set('feeFijo', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+              </>
+            )}
+
             <div className={styles.field}>
               <label className={styles.label}>Día de cobro</label>
               <input
@@ -171,7 +262,6 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
                 onChange={(e) => set('diaPago', e.target.value)}
               />
             </div>
-
             <div className={styles.field}>
               <label className={styles.label}>Fianza (€)</label>
               <input
@@ -185,7 +275,6 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
               />
               <span className={styles.help}>Opcional · si la agencia deja fianza.</span>
             </div>
-            <div className={styles.field} aria-hidden="true" />
 
             <div className={styles.field}>
               <label className={styles.label}>Inicio</label>
@@ -211,7 +300,7 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
               <select
                 className={styles.select}
                 value={form.indexacion}
-                onChange={(e) => set('indexacion', e.target.value as GestionGarantizadaForm['indexacion'])}
+                onChange={(e) => set('indexacion', e.target.value as GestionForm['indexacion'])}
               >
                 <option value="ipc">IPC</option>
                 <option value="otros">Otros (fórmula)</option>
@@ -264,12 +353,14 @@ const NuevoContratoGestionWizard: React.FC<Props> = ({ onBack }) => {
         <aside className={styles.aside}>
           <div className={styles.asideTitle}>Resumen</div>
           <div className={styles.asideRow}>
-            <span className={styles.asideLab}>Renta garantizada</span>
-            <span className={styles.asideVal}>{renta > 0 ? eur(renta) : '—'}</span>
+            <span className={styles.asideLab}>Comisión</span>
+            <span className={styles.asideVal}>{comisionResumen}</span>
           </div>
           <div className={styles.asideRow}>
-            <span className={styles.asideLab}>Renta anual</span>
-            <span className={styles.asideVal}>{renta > 0 ? eur(renta * 12) : '—'}</span>
+            <span className={styles.asideLab}>Liquidación</span>
+            <span className={`${styles.asideVal} ${styles.muted}`}>
+              {form.liquidacion === 'agencia_neto' ? 'Agencia → neto' : 'Tú → pagas agencia'}
+            </span>
           </div>
           <div className={styles.asideRow}>
             <span className={styles.asideLab}>Fianza</span>
