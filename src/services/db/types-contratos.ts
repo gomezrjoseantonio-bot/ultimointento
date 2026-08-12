@@ -94,6 +94,44 @@ export interface BoteContractLink {
   origen: 'sugerencia_atlas' | 'manual_usuario';
 }
 
+/**
+ * Gestión delegada · una línea del esquema de honorarios de la agencia.
+ * Componible: la factura de la agencia = suma de las líneas aplicables.
+ * Ver docs/DISENO-gestion-delegada-agencias-V1.md §4.2.
+ */
+export interface HonorarioAgencia {
+  concepto: 'comision_renta' | 'fee_habitacion' | 'fee_fijo' | 'captacion' | 'otro';
+  calculo: 'porcentaje' | 'importe';
+  /** Sobre qué se aplica `valor`. */
+  base: 'renta_mensual' | 'habitacion' | 'mensualidad' | 'fijo';
+  /** % (si calculo='porcentaje') o € (si calculo='importe'). */
+  valor: number;
+  /** Recurrente (mensual/anual) o puntual por evento. */
+  periodicidad: 'mensual' | 'anual' | 'por_inquilino_nuevo';
+  nota?: string;
+}
+
+/**
+ * Gestión delegada · bloque embebido en el CONTRATO DE GESTIÓN (padre), 1 por
+ * piso (Opción A · sin store nuevo). Su presencia marca el contrato como gestión
+ * delegada y como NO-LAU: duración libre (`fechaFin` = plazo pactado, sin +5
+ * automático), sin reducción fiscal. La reducción LAU vive en los subcontratos
+ * hijos (`gestionPadreId`). Ver docs/DISENO-gestion-delegada-agencias-V1.md §4.5.
+ */
+export interface GestionDelegada {
+  /** NIF/CIF del `Proveedor` (agencia). */
+  agenciaNif: string;
+  modeloIngreso: 'garantizada' | 'traspaso';
+  /**
+   * Solo si `modeloIngreso === 'garantizada'`. La renta fija mensual también se
+   * refleja en `Contract.rentaMensual` (+ `indexacion`) para reutilizar el motor
+   * de cobros e indexación existente.
+   */
+  rentaGarantizada?: number;
+  /** Esquema de honorarios de la agencia. Default `[]`. */
+  honorarios: HonorarioAgencia[];
+}
+
 // Enhanced Contract interface according to CONTRATOS (HORIZON + PULSE) specification
 export interface Contract {
   id?: number;
@@ -250,6 +288,21 @@ export interface Contract {
   notasCasero?: string;
   /** Fecha real de salida (ISO). Si undefined, se usa `fechaFin` como sustituto. */
   fechaCierre?: string;
+
+  // ===== Gestión delegada por agencias (V1 · opcional · sin bump DB_VERSION) =====
+  /**
+   * Presente → este Contract es el CONTRATO DE GESTIÓN (padre) del piso.
+   * Contraparte = agencia. En 'garantizada', `rentaMensual` = renta fija. Es NO-LAU
+   * (duración libre, sin reducción). Mutuamente excluyente con `gestionPadreId`.
+   */
+  gestion?: GestionDelegada;
+  /**
+   * Presente → este Contract es un SUBCONTRATO de inquilino ANEXADO al contrato de
+   * gestión cuyo `id` es `gestionPadreId`. Es fiscal: NO cuenta en operativo ni
+   * ocupación; su renta suma a la facturación del padre. Mutuamente excluyente con
+   * `gestion`. Ver docs/DISENO-gestion-delegada-agencias-V1.md §4.4.
+   */
+  gestionPadreId?: number;
 
   // LEGACY FIELDS for backward compatibility
   propertyId?: number; // Maps to inmuebleId
