@@ -19,6 +19,7 @@ import ContratosTopHero from '../components/contratos/ContratosTopHero';
 import { useContratosKPIs } from '../hooks/useContratosByTab';
 import { getEstadoEfectivo } from '../utils/estadoEfectivoService';
 import { esInquilinoIdentificado } from '../utils/inquilinoUtils';
+import { agruparSubcontratosPorPadre } from '../utils/gestionDelegada';
 import TabActivos from '../components/contratos/TabActivos';
 import TabProximos from '../components/contratos/TabProximos';
 import TabAnalisis from '../components/contratos/TabAnalisis';
@@ -176,6 +177,13 @@ const ContratosListPage: React.FC = () => {
     [contracts],
   );
 
+  // Subcontratos de inquilinos anexados · agrupados por su contrato de gestión
+  // (padre) para pintarlos anidados bajo él en Vigentes.
+  const subcontratosByPadre = useMemo(
+    () => agruparSubcontratosPorPadre(contracts),
+    [contracts],
+  );
+
   // KPIs banda navy GESTIÓN · única fuente de los stats (estado efectivo por fechas).
   const kpis = useContratosKPIs(contracts, properties);
 
@@ -256,6 +264,7 @@ const ContratosListPage: React.FC = () => {
         {tab === 'vigentes' && (
           <TabActivos
             contratos={vigentes}
+            subcontratosByPadre={subcontratosByPadre}
             inmuebleAliasById={propertyById}
             inmuebleModoById={modoById}
             onNuevoContrato={() => navigate('/contratos/nuevo')}

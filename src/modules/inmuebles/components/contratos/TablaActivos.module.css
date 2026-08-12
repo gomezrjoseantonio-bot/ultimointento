@@ -40,6 +40,28 @@
   transition: background-color .08s;
 }
 
+/* Subcontratos de inquilinos anexados · anidados bajo el contrato de gestión. */
+.subRow {
+  background: var(--atlas-v5-card-alt);
+}
+
+.subTenantCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 20px;
+}
+
+.subBranch {
+  color: var(--atlas-v5-ink-4);
+  font-size: 13px;
+}
+
+.subName {
+  color: var(--atlas-v5-ink-2);
+  font-size: 13px;
+}
+
 .row:hover {
   background: var(--atlas-v5-bg);
 }

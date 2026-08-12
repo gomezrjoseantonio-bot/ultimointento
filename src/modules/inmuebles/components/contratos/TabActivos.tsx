@@ -13,6 +13,8 @@ import DrawerFichaContrato from './DrawerFichaContrato';
 
 export interface TabActivosProps {
   contratos: Contract[];
+  /** Subcontratos anexados por id de contrato de gestión (padre) · anidado. */
+  subcontratosByPadre?: Map<number, (Contract & { id: number })[]>;
   inmuebleAliasById: Map<number, string>;
   inmuebleModoById?: Map<number, Property['modoExplotacion']>;
   onNuevoContrato: () => void;
@@ -26,6 +28,7 @@ export interface TabActivosProps {
 
 const TabActivos: React.FC<TabActivosProps> = ({
   contratos,
+  subcontratosByPadre,
   inmuebleAliasById,
   inmuebleModoById,
   onNuevoContrato,
@@ -82,6 +85,7 @@ const TabActivos: React.FC<TabActivosProps> = ({
       ) : (
         <TablaActivos
           contratos={filtrados}
+          subcontratosByPadre={subcontratosByPadre}
           inmuebleAliasById={inmuebleAliasById}
           inmuebleModoById={inmuebleModoById}
           onAbrirFicha={setContratoAbierto}
