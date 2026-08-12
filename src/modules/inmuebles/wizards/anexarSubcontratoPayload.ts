@@ -7,6 +7,9 @@
 import type { Contract } from '../../../services/db';
 
 export interface AnexarSubcontratoForm {
+  /** Piso al que pertenece el subcontrato · debe tener contrato de gestión.
+   *  El builder no lo lee (usa el `padre` que se le pasa), pero el formulario sí. */
+  inmuebleId?: number | null;
   nombre: string;
   apellidos: string;
   dni: string; // opcional · se permite pero no se exige
