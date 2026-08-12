@@ -28,7 +28,7 @@ import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
 import { referenciaInmueble } from '../utils/referenciaInmueble';
-import GastosResumenInmueble from '../components/GastosResumenInmueble';
+import CostesInmueble from '../components/CostesInmueble';
 import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
 import EditarRegistroInmuebleModal from '../components/EditarRegistroInmuebleModal';
 import RentabilidadInmueble from '../components/RentabilidadInmueble';
@@ -451,12 +451,13 @@ const DetallePage: React.FC = () => {
               id="gastos-panel-resumen"
               aria-labelledby="gastos-tab-resumen"
             >
-              <GastosResumenInmueble
+              <CostesInmueble
                 inmuebleId={propertyId}
                 compromisos={gastos}
                 gastosReales={gastosReales}
                 mejoras={mejoras}
                 mobiliario={mobiliario}
+                onGestionarRecurrentes={() => setGastosSubTab('recurrentes')}
               />
             </div>
           )}
