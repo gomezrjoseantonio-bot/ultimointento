@@ -180,7 +180,7 @@ const TablaActivos: React.FC<TablaActivosProps> = ({
                     >
                       <td className={styles.colInquilino}>
                         <div className={styles.subTenantCell}>
-                          <span className={styles.subBranch} aria-hidden>↳</span>
+                          <span className={styles.subConnector} aria-hidden />
                           <div className={styles.subName}>{subAvatar.nombre}</div>
                         </div>
                       </td>
