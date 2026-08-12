@@ -10,6 +10,7 @@ import {
   calcularUnidadesArrendables,
 } from './estadoEfectivoService';
 import { esInquilinoIdentificado } from './inquilinoUtils';
+import { cuentaEnOperativo } from './gestionDelegada';
 
 export interface ContratosKPIs {
   /** Inmuebles activos de la cartera · para la línea-resumen de la cabecera. */
@@ -60,7 +61,8 @@ export function calcularKpisContratos(
     (c) =>
       getEstadoEfectivo(c, hoy) === 'vigente' &&
       esInquilinoIdentificado(c) &&
-      c.estadoContrato !== 'sin_firmar',
+      c.estadoContrato !== 'sin_firmar' &&
+      cuentaEnOperativo(c), // excluye subcontratos anexados (gestión delegada · §4.4)
   );
 
   const unidadesArrendables = calcularUnidadesArrendables(properties);

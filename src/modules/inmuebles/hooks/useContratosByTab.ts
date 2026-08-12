@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 import type { Contract, Property } from '../../../services/db';
 import { getEstadoEfectivo, type TabKey } from '../utils/estadoEfectivoService';
 import { esInquilinoIdentificado } from '../utils/inquilinoUtils';
+import { cuentaEnOperativo } from '../utils/gestionDelegada';
 import { calcularKpisContratos, type ContratosKPIs } from '../utils/kpisContratosService';
 
 /**
@@ -20,17 +21,28 @@ export function useContratosByTab(tab: TabKey, contracts: Contract[]): Contract[
     // FIX § 1.2/§ 1.4 · los tabs de inquilino real excluyen los contratos sin
     // identificar (rentas declaradas AEAT) · su sitio es Por conciliar.
     switch (tab) {
+      // Los subcontratos anexados (gestión delegada · §4.4) son fiscales: no
+      // aparecen en los tabs operativos, igual que los sin identificar.
       case 'vigentes':
         return contracts.filter(
-          (c) => getEstadoEfectivo(c) === 'vigente' && esInquilinoIdentificado(c),
+          (c) =>
+            getEstadoEfectivo(c) === 'vigente' &&
+            esInquilinoIdentificado(c) &&
+            cuentaEnOperativo(c),
         );
       case 'proximos':
         return contracts.filter(
-          (c) => getEstadoEfectivo(c) === 'proximo' && esInquilinoIdentificado(c),
+          (c) =>
+            getEstadoEfectivo(c) === 'proximo' &&
+            esInquilinoIdentificado(c) &&
+            cuentaEnOperativo(c),
         );
       case 'historico':
         return contracts.filter(
-          (c) => getEstadoEfectivo(c) === 'finalizado' && esInquilinoIdentificado(c),
+          (c) =>
+            getEstadoEfectivo(c) === 'finalizado' &&
+            esInquilinoIdentificado(c) &&
+            cuentaEnOperativo(c),
         );
       case 'disponibilidad':
       case 'analisis':
