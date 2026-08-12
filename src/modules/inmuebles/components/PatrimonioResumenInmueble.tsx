@@ -1,6 +1,7 @@
 import React from 'react';
 import { MoneyValue } from '../../../design-system/v5';
 import type { PatrimonioInmuebleResumen } from '../adapters/patrimonioInmuebleAdapter';
+import HistoricoValoracionesChart from './HistoricoValoracionesChart';
 import styles from './PatrimonioResumenInmueble.module.css';
 
 export interface PatrimonioResumenInmuebleProps {
@@ -230,16 +231,7 @@ const PatrimonioResumenInmueble: React.FC<PatrimonioResumenInmuebleProps> = ({
           )}
         </div>
         {historicoValoraciones.length > 0 ? (
-          <div className={styles.list}>
-            {historicoValoraciones.map((punto) => (
-              <div key={`${punto.fecha}-${punto.valor}`} className={styles.row}>
-                <span className={styles.rowMeta}>{formatMes(punto.fecha)}</span>
-                <span className={styles.rowValue}>
-                  <MoneyValue value={punto.valor} decimals={0} />
-                </span>
-              </div>
-            ))}
-          </div>
+          <HistoricoValoracionesChart puntos={historicoValoraciones} />
         ) : (
           <div className={styles.list}>
             <div className={styles.emptyRow}>
