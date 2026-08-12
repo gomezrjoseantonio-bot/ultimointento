@@ -1,0 +1,138 @@
+/* ComposicionPatrimonioNeto · de qué se compone el patrimonio neto del activo */
+
+.wrap {
+  font-family: var(--atlas-v5-font-ui);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  background: var(--atlas-v5-card);
+  padding: 16px 18px 14px;
+}
+
+.hd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.netoLabel {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-2);
+}
+
+.netoValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.netoPct {
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  white-space: nowrap;
+}
+
+/* Barra apilada */
+
+.bar {
+  display: flex;
+  height: 26px;
+  border-radius: 7px;
+  overflow: hidden;
+  gap: 1px;
+  background: var(--atlas-v5-line);
+}
+
+.seg {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  min-width: 0;
+  font-size: 9.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.segTxt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.segCash {
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-on-brand);
+}
+
+.segAmortizada {
+  background: var(--atlas-v5-brand-2);
+  color: var(--atlas-v5-on-brand);
+}
+
+.segReval {
+  background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-soft));
+  color: var(--atlas-v5-on-gold);
+}
+
+.segDeuda {
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-ink-3);
+}
+
+/* Leyenda */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  margin-top: 13px;
+}
+
+.legItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.legLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.sw {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 13.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  font-variant-numeric: tabular-nums;
+  padding-left: 16px;
+}
+
+.neg {
+  color: var(--atlas-v5-neg);
+}
+
+.caption {
+  font-size: 10px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 10px;
+}
