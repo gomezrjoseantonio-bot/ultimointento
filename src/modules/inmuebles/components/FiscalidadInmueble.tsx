@@ -100,6 +100,7 @@ const FiscalidadInmueble: React.FC<FiscalidadInmuebleProps> = ({ inmuebleId }) =
   const [rend, setRend] = useState<RendimientoInmueble | null>(null);
   const [cargando, setCargando] = useState(true);
   const [abierta, setAbierta] = useState<string | null>(null);
+  const [avisoVisible, setAvisoVisible] = useState(true);
 
   useEffect(() => {
     let activo = true;
@@ -184,6 +185,30 @@ const FiscalidadInmueble: React.FC<FiscalidadInmuebleProps> = ({ inmuebleId }) =
               </div>
             </div>
           </div>
+
+          {avisoVisible && (
+            <div className={styles.readNote}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8h.01M11 12h1v4h1" />
+              </svg>
+              <span className={styles.readNoteTx}>
+                Solo son deducibles los gastos del periodo <b>con contrato de alquiler</b>. El consumo
+                en uso propio o vacío no genera deducción; se <b>prorratean por días alquilados</b> (
+                {rend.diasAlquilado}/{rend.diasTotal} en {ejercicio}).
+              </span>
+              <button
+                type="button"
+                className={styles.rnX}
+                aria-label="Descartar aviso"
+                onClick={() => setAvisoVisible(false)}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
 
           <div className={styles.calcNote}>
             Cómo se calcula · <b>pulsa cada línea para ver el desglose</b>
