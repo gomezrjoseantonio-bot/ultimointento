@@ -47,6 +47,54 @@
   font-size: 12px;
   color: var(--atlas-v5-ink-4);
 }
+.yrSeg {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 3px;
+}
+.yrSeg button {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-medium);
+  border: none;
+  background: none;
+  color: var(--atlas-v5-ink-3);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.yrOn {
+  background: var(--atlas-v5-card) !important;
+  color: var(--atlas-v5-ink) !important;
+  box-shadow: var(--atlas-v5-shadow-card);
+  font-weight: var(--atlas-v5-fw-bold) !important;
+}
+.bGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 7px 13px;
+  cursor: pointer;
+  box-shadow: var(--atlas-v5-shadow-card);
+  margin-left: auto;
+}
+.bGhost:hover {
+  border-color: var(--atlas-v5-ink-5, var(--atlas-v5-ink-4));
+}
+.bGhost:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 
 .folders {
   display: grid;
@@ -144,9 +192,15 @@
   gap: 11px;
   padding: 9px 10px;
   border-radius: 9px;
+  cursor: pointer;
+  text-align: left;
 }
 .fDoc:hover {
   background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+}
+.fDoc:focus-visible {
+  outline: 2px solid var(--atlas-v5-brand);
+  outline-offset: 1px;
 }
 .fdIco {
   width: 27px;
