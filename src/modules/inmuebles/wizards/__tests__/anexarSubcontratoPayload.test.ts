@@ -11,6 +11,7 @@ const padre = {
 const form = (over: Partial<AnexarSubcontratoForm> = {}): AnexarSubcontratoForm => ({
   nombre: 'Ana',
   apellidos: 'García',
+  dni: '',
   habitacionId: '',
   fechaInicio: '2026-01-01',
   fechaFin: '2026-12-31',
@@ -32,6 +33,16 @@ describe('construirPayloadSubcontrato', () => {
     expect(p.fianzaImporte).toBe(0);
     expect(p.cuentaCobroId).toBe(0);
     expect(p.unidadTipo).toBe('vivienda');
+  });
+
+  it('DNI opcional · se guarda si se indica, sin exigirlo', () => {
+    const sin = construirPayloadSubcontrato(form({ dni: '' }), padre);
+    expect(sin.ok).toBe(true);
+    if (sin.ok) expect(sin.payload.inquilino.dni).toBe('');
+
+    const con = construirPayloadSubcontrato(form({ dni: '53069494F' }), padre);
+    expect(con.ok).toBe(true);
+    if (con.ok) expect(con.payload.inquilino.dni).toBe('53069494F');
   });
 
   it('con habitación · unidadTipo habitacion + habitacionId', () => {

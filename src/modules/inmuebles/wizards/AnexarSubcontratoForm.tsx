@@ -36,6 +36,7 @@ const AnexarSubcontratoForm: React.FC = () => {
   const [form, setForm] = useState<FormState>({
     nombre: '',
     apellidos: '',
+    dni: '',
     habitacionId: '',
     fechaInicio: hoyISO(),
     fechaFin: '',
@@ -122,25 +123,34 @@ const AnexarSubcontratoForm: React.FC = () => {
               />
             </div>
 
-            {habitaciones.length > 0 && (
-              <>
-                <div className={styles.field}>
-                  <label className={styles.label}>Habitación</label>
-                  <select
-                    className={styles.select}
-                    value={form.habitacionId}
-                    onChange={(e) => set('habitacionId', e.target.value)}
-                  >
-                    <option value="">Sin asignar</option>
-                    {habitaciones.map((h, i) => (
-                      <option key={h} value={h}>
-                        Habitación {i + 1}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className={styles.field} aria-hidden="true" />
-              </>
+            <div className={styles.field}>
+              <label className={styles.label}>DNI / NIE</label>
+              <input
+                className={`${styles.input} ${styles.mono}`}
+                value={form.dni}
+                onChange={(e) => set('dni', e.target.value)}
+                placeholder="Opcional"
+              />
+              <span className={styles.help}>Opcional · si lo conoces.</span>
+            </div>
+            {habitaciones.length > 0 ? (
+              <div className={styles.field}>
+                <label className={styles.label}>Habitación</label>
+                <select
+                  className={styles.select}
+                  value={form.habitacionId}
+                  onChange={(e) => set('habitacionId', e.target.value)}
+                >
+                  <option value="">Sin asignar</option>
+                  {habitaciones.map((h, i) => (
+                    <option key={h} value={h}>
+                      Habitación {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className={styles.field} aria-hidden="true" />
             )}
 
             <div className={styles.field}>

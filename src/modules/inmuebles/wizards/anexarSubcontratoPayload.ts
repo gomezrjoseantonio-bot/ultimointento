@@ -9,6 +9,7 @@ import type { Contract } from '../../../services/db';
 export interface AnexarSubcontratoForm {
   nombre: string;
   apellidos: string;
+  dni: string; // opcional · se permite pero no se exige
   habitacionId: string; // '' si el piso es completo
   fechaInicio: string;
   fechaFin: string;
@@ -48,7 +49,7 @@ export function construirPayloadSubcontrato(
       inquilino: {
         nombre: form.nombre.trim(),
         apellidos: form.apellidos.trim(),
-        dni: '',
+        dni: form.dni.trim(),
         telefono: '',
         email: '',
       },
