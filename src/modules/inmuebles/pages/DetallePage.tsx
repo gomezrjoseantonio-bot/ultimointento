@@ -28,11 +28,13 @@ import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import ImportValoracionesWizard from '../../../components/valoraciones/ImportValoracionesWizard';
 import SeccionHistoricoFiscal from '../components/SeccionHistoricoFiscal';
 import { referenciaInmueble } from '../utils/referenciaInmueble';
-import GastosResumenInmueble from '../components/GastosResumenInmueble';
+import CostesInmueble from '../components/CostesInmueble';
+import DocumentosInmueble from '../components/DocumentosInmueble';
+import FiscalidadInmueble from '../components/FiscalidadInmueble';
 import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
 import EditarRegistroInmuebleModal from '../components/EditarRegistroInmuebleModal';
 import RentabilidadInmueble from '../components/RentabilidadInmueble';
-import PatrimonioResumenInmueble from '../components/PatrimonioResumenInmueble';
+import ResumenCockpitInmueble from '../components/ResumenCockpitInmueble';
 import {
   calcularResumenGastosInmueble,
   construirListaVisualGastosInmueble,
@@ -267,8 +269,8 @@ const DetallePage: React.FC = () => {
   const habitaciones = property.bedrooms || 1;
 
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
-    { key: 'patrimonio', label: 'Patrimonio' },
-    { key: 'gastos', label: 'Gastos' },
+    { key: 'patrimonio', label: 'Resumen' },
+    { key: 'gastos', label: 'Costes' },
     { key: 'rentabilidad', label: 'Rentabilidad' },
     { key: 'fiscalidad', label: 'Fiscalidad' },
     { key: 'documentos', label: 'Documentos', count: property.documents?.length },
@@ -401,7 +403,7 @@ const DetallePage: React.FC = () => {
       {tab === 'patrimonio' && (
         <>
           <div style={{ marginTop: 8, marginBottom: 20 }}>
-            <PatrimonioResumenInmueble
+            <ResumenCockpitInmueble
               resumen={patrimonioResumen}
               gananciaAcumulada={gananciaAcumuladaDatos}
               costePropiedad={costePropiedadMensual}
@@ -451,12 +453,13 @@ const DetallePage: React.FC = () => {
               id="gastos-panel-resumen"
               aria-labelledby="gastos-tab-resumen"
             >
-              <GastosResumenInmueble
+              <CostesInmueble
                 inmuebleId={propertyId}
                 compromisos={gastos}
                 gastosReales={gastosReales}
                 mejoras={mejoras}
                 mobiliario={mobiliario}
+                onGestionarRecurrentes={() => setGastosSubTab('recurrentes')}
               />
             </div>
           )}
@@ -518,15 +521,16 @@ const DetallePage: React.FC = () => {
 
       {tab === 'fiscalidad' && (
         <div style={{ marginTop: 8 }}>
-          <SeccionHistoricoFiscal inmuebleId={propertyId} />
+          <FiscalidadInmueble inmuebleId={propertyId} />
+          <div style={{ marginTop: 24 }}>
+            <SeccionHistoricoFiscal inmuebleId={propertyId} />
+          </div>
         </div>
       )}
 
       {tab === 'documentos' && (
-        <div className={styles.placeholder}>
-          <strong>Documentos</strong>
-          Pestaña en migración a UI v5 · funcionalidad pendiente de sub-tarea follow-up.
-          Datos del usuario intactos en stores · UI consolidada en próxima iteración.
+        <div style={{ marginTop: 8 }}>
+          <DocumentosInmueble inmuebleId={propertyId} documentIds={property.documents} />
         </div>
       )}
 

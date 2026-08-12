@@ -1,0 +1,410 @@
+/* CostesInmueble · coste de propiedad del inmueble (mockup «Costes»).
+   Cards-filtro por grupo + toggle Previsto/Real + lista real agrupada por
+   concepto. Solo tokens --atlas-v5-* (sin colores hardcodeados · trinquete). */
+
+.wrap {
+  font-family: var(--atlas-v5-font-ui);
+  margin-top: 8px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--atlas-v5-ink-3);
+}
+.sub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+}
+
+/* Selector de año */
+.yrSeg {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 3px;
+}
+.yrSeg button {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-medium);
+  border: none;
+  background: none;
+  color: var(--atlas-v5-ink-3);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.yrOn {
+  background: var(--atlas-v5-card) !important;
+  color: var(--atlas-v5-ink) !important;
+  box-shadow: var(--atlas-v5-shadow-card);
+  font-weight: var(--atlas-v5-fw-bold) !important;
+}
+
+/* Cards-filtro por grupo */
+.gFilter {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+@media (max-width: 820px) {
+  .gFilter {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.fCard {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-top: 3px solid var(--atlas-v5-ink-5);
+  border-radius: 12px;
+  padding: 13px 15px;
+  box-shadow: var(--atlas-v5-shadow-card);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--atlas-v5-font-ui);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.fCard:hover {
+  border-color: var(--atlas-v5-ink-5);
+}
+.fCard.fOn {
+  box-shadow: 0 0 0 1.5px var(--atlas-v5-brand);
+  border-bottom-color: var(--atlas-v5-brand);
+  border-left-color: var(--atlas-v5-brand);
+  border-right-color: var(--atlas-v5-brand);
+}
+.fCard.g1 {
+  border-top-color: var(--atlas-v5-brand);
+}
+.fCard.g2 {
+  border-top-color: var(--atlas-v5-brand-2);
+}
+.fCard.g3 {
+  border-top-color: var(--atlas-v5-gold);
+}
+.fCard.g4 {
+  border-top-color: var(--atlas-v5-ink-4);
+}
+.fName {
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink-2);
+}
+.fHint {
+  font-size: 10px;
+  color: var(--atlas-v5-ink-4);
+}
+.fAmt {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 18px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  margin-top: 7px;
+}
+.fPrev {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+}
+
+/* Toggle + estado del filtro */
+.filtBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+}
+.gToggle {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 9px;
+  padding: 3px;
+}
+.gToggle button {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-medium);
+  border: none;
+  background: none;
+  color: var(--atlas-v5-ink-3);
+  border-radius: 7px;
+  padding: 6px 13px;
+  cursor: pointer;
+}
+.gvOn {
+  background: var(--atlas-v5-card) !important;
+  color: var(--atlas-v5-ink) !important;
+  box-shadow: var(--atlas-v5-shadow-card);
+  font-weight: var(--atlas-v5-fw-semibold) !important;
+}
+.filtState {
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+}
+.filtClear {
+  border: none;
+  background: none;
+  color: var(--atlas-v5-gold-ink);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.filtHint {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-bottom: 11px;
+}
+.filtHint b {
+  color: var(--atlas-v5-ink-2);
+}
+
+.actionsRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 11px;
+}
+.linkBtn {
+  border: none;
+  background: none;
+  color: var(--atlas-v5-gold-ink);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.right {
+  text-align: right;
+}
+
+/* Chips de grupo */
+.mCat {
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  border-radius: 5px;
+  padding: 3px 8px;
+  width: fit-content;
+  border: 1px solid var(--atlas-v5-line-2, var(--atlas-v5-line));
+}
+.mCat.g1 {
+  color: var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand-wash);
+  border-color: var(--atlas-v5-brand-wash);
+}
+.mCat.g2 {
+  color: var(--atlas-v5-ink-2);
+  background: var(--atlas-v5-bg);
+}
+.mCat.g3 {
+  color: var(--atlas-v5-gold-ink);
+  background: var(--atlas-v5-gold-wash);
+  border-color: var(--atlas-v5-gold-soft);
+}
+.mCat.g4 {
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-bg);
+}
+
+/* Lista Previsto */
+.mov {
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--atlas-v5-card);
+  box-shadow: var(--atlas-v5-shadow-card);
+}
+.movHd,
+.movRow {
+  display: grid;
+  grid-template-columns: 1.6fr 140px 110px;
+  gap: 12px;
+  align-items: center;
+}
+.movHd {
+  padding: 9px 16px;
+  font-size: 9.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+.movRow {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--atlas-v5-line-3, var(--atlas-v5-line));
+}
+.movRow:last-child {
+  border-bottom: none;
+}
+.movRow:hover {
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+}
+.mCon {
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mAmt {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  text-align: right;
+}
+
+/* Lista Real · agrupada por concepto */
+.cxList {
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--atlas-v5-card);
+  box-shadow: var(--atlas-v5-shadow-card);
+}
+.cxHd,
+.cxRow {
+  display: grid;
+  grid-template-columns: 1.7fr 128px 92px 92px 28px;
+  gap: 12px;
+  align-items: center;
+}
+.cxHd {
+  padding: 9px 16px;
+  font-size: 9.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+.cxRow {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--atlas-v5-line-3, var(--atlas-v5-line));
+  cursor: pointer;
+}
+.cxRow:hover {
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+}
+.cxNm {
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cxCount {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+}
+.cxAmt {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  text-align: right;
+}
+.cxExp {
+  color: var(--atlas-v5-ink-5);
+  text-align: center;
+  font-size: 12px;
+}
+.cxSubRow {
+  display: grid;
+  grid-template-columns: 1.7fr 128px 92px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 16px 8px 34px;
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+  border-bottom: 1px solid var(--atlas-v5-line-3, var(--atlas-v5-line));
+}
+.cxSubClickable {
+  cursor: pointer;
+}
+.cxSubClickable:hover {
+  background: var(--atlas-v5-bg);
+}
+.sNm {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+.sDt {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+.sAm {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+  text-align: right;
+}
+.cxTotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--atlas-v5-brand-wash);
+  border-top: 1px solid var(--atlas-v5-line);
+}
+.cxTotalLabel {
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--atlas-v5-ink-3);
+}
+.cxTotalValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 18px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-gold-ink);
+  letter-spacing: -0.02em;
+}
+
+.empty {
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13px;
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+}

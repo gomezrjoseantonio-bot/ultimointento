@@ -86,9 +86,19 @@ jest.mock('../../components/SeccionHistoricoFiscal', () => ({
   default: () => <div>Histórico fiscal mock</div>,
 }));
 
-jest.mock('../../components/GastosResumenInmueble', () => ({
+jest.mock('../../components/FiscalidadInmueble', () => ({
   __esModule: true,
-  default: () => <div>Resumen gastos mock</div>,
+  default: () => <div>Fiscalidad IRPF mock</div>,
+}));
+
+jest.mock('../../components/CostesInmueble', () => ({
+  __esModule: true,
+  default: () => <div>Costes mock</div>,
+}));
+
+jest.mock('../../components/DocumentosInmueble', () => ({
+  __esModule: true,
+  default: () => <div>Documentos mock</div>,
 }));
 
 jest.mock('../../components/GastosRegistradosInmueble', () => ({
@@ -101,9 +111,9 @@ jest.mock('../../components/RentabilidadInmueble', () => ({
   default: () => <div>Rentabilidad mock</div>,
 }));
 
-jest.mock('../../components/PatrimonioResumenInmueble', () => ({
+jest.mock('../../components/ResumenCockpitInmueble', () => ({
   __esModule: true,
-  default: () => <div>Patrimonio mock</div>,
+  default: () => <div>Cockpit resumen mock</div>,
 }));
 
 jest.mock('../../../shared/components/ListadoGastos', () => ({
@@ -201,8 +211,8 @@ describe('DetallePage · tabs fase 4', () => {
     'redirige alias legacy %s a patrimonio',
     async (entry) => {
       await renderPage(entry);
-      expect(screen.getByRole('tab', { name: /Patrimonio/i })).toHaveAttribute('aria-selected', 'true');
-      expect(screen.getByText('Patrimonio mock')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /Resumen/i })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByText('Cockpit resumen mock')).toBeInTheDocument();
     },
   );
 
@@ -210,8 +220,8 @@ describe('DetallePage · tabs fase 4', () => {
     await renderPage();
 
     expect(screen.getByRole('tablist', { name: /Navegación ficha inmueble/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Patrimonio/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Gastos/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Resumen/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Costes/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Rentabilidad/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Fiscalidad/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Documentos/i })).toBeInTheDocument();
@@ -219,22 +229,21 @@ describe('DetallePage · tabs fase 4', () => {
     expect(screen.queryByRole('tab', { name: /Cobros/i })).not.toBeInTheDocument();
   });
 
-  it('Patrimonio muestra solo el cockpit patrimonial y Rentabilidad se activa al pulsar la tab', async () => {
+  it('Resumen muestra solo el cockpit patrimonial y Rentabilidad se activa al pulsar la tab', async () => {
     await renderPage();
 
-    // La pestaña Patrimonio ya no arrastra las secciones de explotación.
-    expect(screen.getByText('Patrimonio mock')).toBeInTheDocument();
+    // La pestaña Resumen ya no arrastra las secciones de explotación.
+    expect(screen.getByText('Cockpit resumen mock')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Nuevo contrato/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: /Rentabilidad/i }));
     expect(screen.getByRole('tab', { name: /Rentabilidad/i })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Rentabilidad mock')).toBeInTheDocument();
   });
 
-  it('muestra el placeholder de Documentos con la nueva etiqueta', async () => {
+  it('muestra la pestaña Documentos con las carpetas por categoría', async () => {
     await renderPage('/inmuebles/1?tab=documentos');
 
     expect(screen.getByRole('tab', { name: /Documentos/i })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getAllByText('Documentos').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Pestaña en migración a UI v5/i)).toBeInTheDocument();
+    expect(screen.getByText('Documentos mock')).toBeInTheDocument();
   });
 });

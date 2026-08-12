@@ -1,0 +1,303 @@
+/* FiscalidadInmueble · rendimiento IRPF del inmueble (mockup «Fiscalidad»).
+   Hero navy + cascada desplegable + cards de contexto. Cifras del motor IRPF
+   real (irpfCalculationService). Solo tokens --atlas-v5-* · trinquete. */
+
+.wrap {
+  font-family: var(--atlas-v5-font-ui);
+  margin-top: 8px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--atlas-v5-ink-3);
+}
+.sub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+}
+.yrSeg {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 3px;
+}
+.yrSeg button {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-medium);
+  border: none;
+  background: none;
+  color: var(--atlas-v5-ink-3);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.yrOn {
+  background: var(--atlas-v5-card) !important;
+  color: var(--atlas-v5-ink) !important;
+  box-shadow: var(--atlas-v5-shadow-card);
+  font-weight: var(--atlas-v5-fw-bold) !important;
+}
+
+/* Hero navy */
+.nvHero {
+  position: relative;
+  background: linear-gradient(135deg, var(--atlas-v5-brand-2), var(--atlas-v5-brand) 55%, var(--atlas-v5-brand-ink));
+  border-radius: 16px;
+  box-shadow: var(--atlas-v5-shadow-lift);
+  overflow: hidden;
+  padding: 20px 26px;
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.nvHero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-soft));
+}
+.nvId {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding-right: 8px;
+  min-width: 170px;
+}
+.nvT {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-on-navy-1);
+}
+.nvDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold);
+}
+.nvS {
+  font-size: 11px;
+  color: var(--atlas-v5-on-navy-4);
+}
+.nvKpis {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0;
+}
+.nvK {
+  flex: 1;
+  min-width: 130px;
+  padding: 4px 26px;
+  border-left: 1px solid var(--atlas-v5-navy-line);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.kL {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-on-navy-5);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+.kV {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 21px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-on-navy-1);
+  letter-spacing: -0.02em;
+  margin-top: 5px;
+  line-height: 1;
+}
+.kV.gold {
+  color: var(--atlas-v5-gold-soft);
+}
+.kH {
+  font-size: 10px;
+  color: var(--atlas-v5-on-navy-5);
+  margin-top: 4px;
+}
+
+.calcNote {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-bottom: 11px;
+}
+.calcNote b {
+  color: var(--atlas-v5-ink-2);
+}
+
+/* Cascada */
+.fxList {
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--atlas-v5-card);
+  box-shadow: var(--atlas-v5-shadow-card);
+  margin-bottom: 16px;
+}
+.fxRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--atlas-v5-line-3, var(--atlas-v5-line));
+  cursor: pointer;
+}
+.fxRow:last-child {
+  border-bottom: none;
+}
+.fxRow:hover {
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+}
+.op {
+  width: 15px;
+  text-align: center;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink-5);
+  flex-shrink: 0;
+}
+.fxNm {
+  flex: 1;
+  font-size: 13px;
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+.fxHint {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-left: 7px;
+}
+.fxVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+.fxExp {
+  width: 18px;
+  color: var(--atlas-v5-ink-5);
+  text-align: center;
+  font-size: 12px;
+}
+.fxRow.sub {
+  cursor: default;
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+}
+.fxRow.sub .fxNm {
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+.fxRow.tot {
+  cursor: default;
+  background: var(--atlas-v5-brand-wash);
+  border-top: 1px solid var(--atlas-v5-line);
+  border-bottom: none;
+}
+.fxRow.tot .fxNm {
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  font-size: 13.5px;
+}
+.fxRow.tot .fxVal {
+  font-size: 18px;
+  color: var(--atlas-v5-gold-ink);
+}
+.fxSubRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px 8px 46px;
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+  border-bottom: 1px solid var(--atlas-v5-line-3, var(--atlas-v5-line));
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+}
+.sv {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
+
+/* Contexto */
+.ctxGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 820px) {
+  .ctxGrid {
+    grid-template-columns: 1fr;
+  }
+}
+.ctxCard {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 15px 17px;
+  box-shadow: var(--atlas-v5-shadow-card);
+}
+.ctxLab {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+.ctxBig {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 22px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  margin-top: 8px;
+  line-height: 1;
+}
+.ctxUnit {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-4);
+}
+.ctxSub {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 8px;
+}
+
+.empty {
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: 13px;
+  padding: 40px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13px;
+  background: var(--atlas-v5-card-alt, var(--atlas-v5-bg));
+}
