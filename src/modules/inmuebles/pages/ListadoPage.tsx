@@ -20,6 +20,7 @@ import InmuebleCard, {
   InmuebleType,
 } from '../components/InmuebleCard';
 import PortfolioMap from '../components/PortfolioMap';
+import { referenciaInmueble } from '../utils/referenciaInmueble';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import styles from './ListadoPage.module.css';
 import { valoracionesService } from '../../../services/valoracionesService';
@@ -79,7 +80,6 @@ const deriveInmueble = (
   property: Property,
   contracts: Contract[],
   today: Date,
-  index: number,
 ): DerivedInmueble => {
   const tipoActivo = getTipoActivoEffective(property);
   const propContracts = contracts.filter((c) => c.inmuebleId === property.id);
@@ -111,7 +111,7 @@ const deriveInmueble = (
     stateLabel = 'Ocupado';
   }
 
-  const astId = `AST-${String(index + 1).padStart(2, '0')}`;
+  const astId = referenciaInmueble(property);
 
   return {
     property,
@@ -243,7 +243,7 @@ const ListadoPage: React.FC = () => {
   }, [properties, today]);
 
   const derived = useMemo(
-    () => properties.map((p, i) => deriveInmueble(p, contracts, today, i)),
+    () => properties.map((p) => deriveInmueble(p, contracts, today)),
     [properties, contracts, today],
   );
 
