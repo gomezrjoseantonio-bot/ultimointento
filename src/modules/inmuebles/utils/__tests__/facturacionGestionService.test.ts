@@ -63,6 +63,51 @@ describe('facturacionGestionService', () => {
     expect(r.facturacion).toBe(13800);
     expect(r.garantizado).toBe(1350 * 12); // 16200
     expect(r.comision).toBe(0); // garantizado > facturación → comisión no negativa
+    expect(r.neto).toBe(13800); // facturación − comisión
+  });
+
+  it('comisión por porcentaje · % × facturación', () => {
+    const p = padre({
+      gestion: {
+        agenciaNif: 'B1',
+        modeloIngreso: 'traspaso',
+        honorarios: [],
+        comisionTipo: 'porcentaje',
+        comisionPorcentaje: 10,
+      },
+    });
+    const contracts = [
+      p,
+      c({ id: 2, gestionPadreId: 1, rentaMensual: 600, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+      c({ id: 3, gestionPadreId: 1, rentaMensual: 400, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+    ];
+    const r = resumenFacturacion(p, contracts, 2026);
+    expect(r.facturacion).toBe(12000); // 1000×12
+    expect(r.comision).toBe(1200); // 10%
+    expect(r.neto).toBe(10800);
+  });
+
+  it('comisión por fees · fee por habitación + fee fijo', () => {
+    const p = padre({
+      gestion: {
+        agenciaNif: 'B1',
+        modeloIngreso: 'traspaso',
+        comisionTipo: 'fees',
+        honorarios: [
+          { concepto: 'fee_habitacion', calculo: 'importe', base: 'habitacion', valor: 50, periodicidad: 'mensual' },
+          { concepto: 'fee_fijo', calculo: 'importe', base: 'fijo', valor: 20, periodicidad: 'mensual' },
+        ],
+      },
+    });
+    const contracts = [
+      p,
+      c({ id: 2, gestionPadreId: 1, rentaMensual: 600, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+      c({ id: 3, gestionPadreId: 1, rentaMensual: 400, fechaInicio: '2026-01-01', fechaFin: '2026-12-31' }),
+    ];
+    const r = resumenFacturacion(p, contracts, 2026);
+    // fee_habitacion 50 × 2 hab × 12 = 1200 · fee_fijo 20 × 12 = 240 → 1440
+    expect(r.comision).toBe(1440);
+    expect(r.neto).toBe(12000 - 1440);
   });
 
   it('comisión positiva cuando la facturación supera el garantizado', () => {

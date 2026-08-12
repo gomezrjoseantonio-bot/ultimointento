@@ -130,6 +130,28 @@ export interface GestionDelegada {
   rentaGarantizada?: number;
   /** Esquema de honorarios de la agencia. Default `[]`. */
   honorarios: HonorarioAgencia[];
+
+  // ===== Modelo unificado (V2) · ver docs/DISENO-gestion-delegada-agencias-V1.md =====
+  /**
+   * Flujo de tesorería (quién cobra) · ortogonal a la fórmula de comisión. La
+   * vista fiscal (ingresos íntegros + comisión) es la misma en ambos:
+   *   · `agencia_neto`      · la agencia cobra a los inquilinos y te ingresa el
+   *                           neto (1 apunte). Incluye la renta garantizada.
+   *   · `propietario_bruto` · tú cobras las rentas íntegras y pagas la comisión
+   *                           a la agencia (N ingresos + 1 gasto).
+   * Opcional · default `agencia_neto` en contratos previos (garantizada).
+   */
+  liquidacion?: 'agencia_neto' | 'propietario_bruto';
+  /**
+   * Fórmula con la que se calcula la comisión de la agencia:
+   *   · `garantizada` · comisión = Σ subcontratos − (renta garantizada × meses).
+   *   · `porcentaje`  · comisión = `comisionPorcentaje` % × Σ subcontratos.
+   *   · `fees`        · comisión = suma de `honorarios` aplicados.
+   * Opcional · default `garantizada` en contratos previos.
+   */
+  comisionTipo?: 'garantizada' | 'porcentaje' | 'fees';
+  /** % de comisión sobre la renta · solo si `comisionTipo === 'porcentaje'`. */
+  comisionPorcentaje?: number;
 }
 
 // Enhanced Contract interface according to CONTRATOS (HORIZON + PULSE) specification

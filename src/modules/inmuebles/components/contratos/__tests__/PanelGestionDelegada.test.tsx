@@ -58,8 +58,8 @@ test('muestra agencia, renta garantizada y facturación = Σ subcontratos anexad
 
   expect(screen.getByText('Agencia XYZ')).toBeInTheDocument();
   await waitFor(() => expect(screen.getByText('2')).toBeInTheDocument()); // nSubcontratos
-  // Facturación = (600+550)×12 = 13800 €
-  expect(screen.getByText(/13\.800/)).toBeInTheDocument();
+  // Facturación = (600+550)×12 = 13800 € · aparece en facturación y neto (comisión 0).
+  expect(screen.getAllByText(/13\.800/).length).toBeGreaterThanOrEqual(1);
 });
 
 test('el botón "Anexar" navega al wizard con gestionPadre + inmueble', async () => {
