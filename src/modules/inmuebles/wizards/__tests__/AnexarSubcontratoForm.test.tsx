@@ -8,10 +8,12 @@ import type { Contract, Property } from '../../../../services/db';
 const mockSaveContract = jest.fn();
 const mockGetContract = jest.fn();
 const mockUpdateContract = jest.fn();
+const mockDeleteContract = jest.fn();
 jest.mock('../../../../services/contractService', () => ({
   saveContract: (...a: unknown[]) => mockSaveContract(...a),
   getContract: (...a: unknown[]) => mockGetContract(...a),
   updateContract: (...a: unknown[]) => mockUpdateContract(...a),
+  deleteContractWithCascade: (...a: unknown[]) => mockDeleteContract(...a),
 }));
 jest.mock('../../../../design-system/v5', () => {
   const actual = jest.requireActual('../../../../design-system/v5');
@@ -19,14 +21,14 @@ jest.mock('../../../../design-system/v5', () => {
 });
 
 const property = (over: Partial<Property>): Property =>
-  ({ id: 9, alias: 'FA32', bedrooms: 1, modoExplotacion: 'piso_completo', documents: [], ...over }) as Property;
+  ({ id: 9, alias: 'FA32', bedrooms: 4, documents: [], ...over }) as Property;
 
 const padre = { id: 1, inmuebleId: 9, diaPago: 5, gestion: { agenciaNif: 'B1', modeloIngreso: 'garantizada', rentaGarantizada: 1350, honorarios: [] } } as unknown as Contract;
 // Segundo piso con gestión, para probar el re-vinculado (cambio de inmueble).
 const padre2 = { id: 2, inmuebleId: 10, diaPago: 3, gestion: { agenciaNif: 'B2', modeloIngreso: 'traspaso', honorarios: [], comisionTipo: 'porcentaje', comisionPorcentaje: 10 } } as unknown as Contract;
 
 const ctx: InmueblesOutletContext = {
-  properties: [property({}), property({ id: 10, alias: 'Otra 10', modoExplotacion: 'piso_completo' })],
+  properties: [property({}), property({ id: 10, alias: 'Otra 10', bedrooms: 1 })],
   contracts: [padre, padre2],
   reload: jest.fn(),
 };
@@ -47,7 +49,37 @@ beforeEach(() => {
   mockSaveContract.mockReset();
   mockGetContract.mockReset();
   mockUpdateContract.mockReset();
+  mockDeleteContract.mockReset();
   mockGetContract.mockResolvedValue(padre);
+});
+
+test('alta · no ofrece eliminar (aún no existe el contrato)', async () => {
+  renderForm();
+  await waitFor(() => expect(screen.getByRole('button', { name: /Anexar contrato/i })).toBeEnabled());
+  expect(screen.queryByRole('button', { name: /Eliminar/i })).not.toBeInTheDocument();
+});
+
+test('modo edición · eliminar borra el subcontrato (con cascada) y navega', async () => {
+  const subcontrato = {
+    id: 16, inmuebleId: 9, gestionPadreId: 1, unidadTipo: 'vivienda',
+    inquilino: { nombre: 'Jose', apellidos: 'Novo', dni: '', telefono: '', email: '' },
+    fechaInicio: '2026-04-01', fechaFin: '2026-05-31', rentaMensual: 365, diaPago: 5, estadoContrato: 'activo',
+  } as unknown as Contract;
+  mockGetContract.mockReset();
+  mockGetContract.mockResolvedValue(subcontrato);
+  mockDeleteContract.mockResolvedValueOnce({ treasuryEventsPredictedDeleted: 0, treasuryEventsHistoricUnlinked: 0 });
+
+  renderForm('/contratos/gestion/anexar?edit=16');
+  await waitFor(() => expect(screen.getByRole('button', { name: /Guardar cambios/i })).toBeEnabled());
+
+  fireEvent.click(screen.getByRole('button', { name: /Eliminar/i }));
+  // Confirma en el modal (botón "Eliminar" del diálogo).
+  const confirmar = screen.getAllByRole('button', { name: /^Eliminar$/i }).pop()!;
+  fireEvent.click(confirmar);
+
+  await waitFor(() => expect(mockDeleteContract).toHaveBeenCalledWith(16));
+  expect(mockSaveContract).not.toHaveBeenCalled();
+  expect(await screen.findByTestId('lista')).toBeInTheDocument();
 });
 
 test('validación · sin nombre no guarda', async () => {
@@ -146,7 +178,7 @@ test('modo edición · cambiar el inmueble re-vincula al padre de ese piso', asy
   expect(mockUpdateContract).toHaveBeenCalledWith(16, expect.objectContaining({ inmuebleId: 10, gestionPadreId: 2 }));
 });
 
-test('unidad · "Otra habitación" permite asignar una habitación libre (piso sin habitaciones)', async () => {
+test('unidad · el selector lista las habitaciones reales del piso (hab-N, como el wizard normal)', async () => {
   mockSaveContract.mockResolvedValueOnce(77);
   const { container } = renderForm();
   await waitFor(() => expect(screen.getByRole('button', { name: /Anexar contrato/i })).toBeEnabled());
@@ -154,10 +186,13 @@ test('unidad · "Otra habitación" permite asignar una habitación libre (piso s
   const editables = screen.getAllByRole('textbox').filter((el) => !(el as HTMLInputElement).disabled);
   fireEvent.change(editables[0], { target: { value: 'Ana' } }); // nombre
 
-  // Unidad → Otra habitación… → aparece el input libre.
-  fireEvent.change(screen.getByRole('combobox', { name: /Unidad/i }), { target: { value: '__otra__' } });
-  const libre = screen.getByPlaceholderText(/Habitación 3/i);
-  fireEvent.change(libre, { target: { value: 'Habitación 3' } });
+  // El piso tiene 4 habitaciones → opciones: inmueble completo + Habitación 1..4.
+  const unidad = screen.getByRole('combobox', { name: /Unidad/i });
+  expect([...unidad.querySelectorAll('option')].map((o) => o.textContent)).toEqual([
+    '— inmueble completo —', 'Habitación 1', 'Habitación 2', 'Habitación 3', 'Habitación 4',
+  ]);
+  // Se guarda el id canónico hab-2 (mismo esquema que el resto de contratos).
+  fireEvent.change(unidad, { target: { value: 'hab-2' } });
 
   const fechas = container.querySelectorAll('input[type="date"]');
   fireEvent.change(fechas[0], { target: { value: '2026-01-01' } });
@@ -169,6 +204,6 @@ test('unidad · "Otra habitación" permite asignar una habitación libre (piso s
   await waitFor(() => expect(mockSaveContract).toHaveBeenCalledTimes(1));
   expect(mockSaveContract.mock.calls[0][0]).toMatchObject({
     unidadTipo: 'habitacion',
-    habitacionId: 'Habitación 3',
+    habitacionId: 'hab-2',
   });
 });
