@@ -978,4 +978,65 @@ describe('propertySaleService', () => {
     expect(loanAfter?.cancelacionPendienteVenta).toBe(true);
     expect(loanAfter?.activo).toBe(true);
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // PREHISTORIA · venta anterior al saldo inicial de la cuenta → SIN tesorería.
+  // ───────────────────────────────────────────────────────────────────────
+  it('venta anterior al saldo inicial: no crea movimientos ni previsiones de caja (ya están en el saldo de apertura)', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Prehistoria' })));
+    // La cuenta arranca su saldo el 31/7/2026: cualquier flujo anterior ya está
+    // dentro de `openingBalance`.
+    const accountId = Number(await db.add('accounts', createAccount({
+      iban: 'ES6600491500051234567800',
+      openingBalance: 250000,
+      openingBalanceDate: '2026-07-31',
+    })));
+
+    await db.add('prestamos', {
+      id: 'loan-prehistoria-1',
+      inmuebleId: String(propertyId),
+      activo: true,
+      principalVivo: 40000,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+    } as any);
+
+    // Venta el 15/3/2026 · MUY anterior al saldo inicial del 31/7.
+    await confirmPropertySale({
+      propertyId,
+      saleDate: '2026-03-15',
+      salePrice: 180000,
+      agencyCommission: 4000,
+      settlementAccountId: accountId,
+      source: 'wizard',
+      loanPayoffAmount: 40000,
+    });
+
+    const sale = await getLatestConfirmedSaleForProperty(propertyId);
+    expect(sale?.id).toBeDefined();
+
+    // NINGÚN flujo de caja de la venta: ni movimiento real ni previsión.
+    const movements = await db.getAll('movements');
+    expect(movements).toHaveLength(0);
+
+    const cashEvents = (await db.getAll('treasuryEvents')).filter(
+      (e: any) => e.sourceId === sale!.id && e.sourceType === 'manual',
+    );
+    expect(cashEvents).toHaveLength(0);
+
+    // El hecho fiscal SÍ se conserva: la previsión de IRPF (pago futuro) sigue ahí.
+    const irpfEvent = (await db.getAll('treasuryEvents')).find(
+      (e: any) => e.sourceType === 'irpf_prevision',
+    );
+    expect(irpfEvent).toBeTruthy();
+
+    // El inmueble queda vendido y el préstamo cerrado sin movimiento de caja.
+    const soldProperty = await db.get('properties', propertyId);
+    expect(soldProperty?.state).toBe('vendido');
+
+    const loanAfter = await db.get('prestamos', 'loan-prehistoria-1') as any;
+    expect(loanAfter?.estado).toBe('cancelado');
+    expect(loanAfter?.activo).toBe(false);
+  });
 });

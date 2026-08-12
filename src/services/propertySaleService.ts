@@ -705,11 +705,17 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       isActiveContract(contract, input.saleDate)
   );
 
+  // Fecha del saldo inicial de la cuenta de liquidación. Es la frontera de la
+  // tesorería: el `openingBalance` representa el dinero YA existente a esa
+  // fecha, así que cualquier flujo anterior está incluido en él.
+  let settlementOpeningBalanceDate: string | undefined;
   if (input.settlementAccountId !== undefined) {
     const settlementAccount = await tx.objectStore('accounts').get(input.settlementAccountId);
     if (!settlementAccount || settlementAccount.deleted_at || settlementAccount.isActive === false) {
       throw new Error('Selecciona una cuenta de tesorería válida para registrar la venta');
     }
+    const rawOpeningDate = (settlementAccount as { openingBalanceDate?: string }).openingBalanceDate;
+    settlementOpeningBalanceDate = rawOpeningDate ? String(rawOpeningDate).slice(0, 10) : undefined;
   }
 
   if (activeContracts.length > 0 && !input.autoTerminateContracts) {
@@ -920,7 +926,22 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     }
   }
 
-  if (saleId) {
+  // PREHISTORIA · flujos anteriores al saldo inicial de la cuenta.
+  //
+  // Si la venta es anterior a la fecha del `openingBalance` de la cuenta de
+  // liquidación (p. ej. venta el 15/3 y saldos iniciados el 31/7), su cobro,
+  // sus gastos y la cancelación de la deuda YA están dentro del saldo de
+  // apertura. Crear movimientos de tesorería para ellos —previstos o reales—
+  // los contaría DOS veces. Por eso NO se generan líneas de caja: la venta
+  // queda como hecho fiscal (registro + ganancia patrimonial + IRPF) y el
+  // préstamo se cierra sin movimiento (su liquidación también está en el saldo
+  // inicial). Sin `openingBalanceDate` no hay frontera y todo se trata como
+  // tesorería rastreada.
+  const saleIsPrehistory =
+    !!settlementOpeningBalanceDate &&
+    input.saleDate.slice(0, 10) < settlementOpeningBalanceDate;
+
+  if (saleId && !saleIsPrehistory) {
     // PR3: cada línea de la venta nace como treasuryEvent predicted con
     // ambito=INMUEBLE para que aparezca también en la ficha del inmueble
     // y se puntee desde Conciliación cuando el usuario lo vea en el banco.
@@ -1017,7 +1038,23 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   // venta pasada queda cerrado sin pasos manuales.
   const todayIso = new Date().toISOString().slice(0, 10);
   const saleAlreadyHappened = input.saleDate.slice(0, 10) <= todayIso;
-  if (saleAlreadyHappened && saleLineEventIds.length > 0) {
+
+  if (saleIsPrehistory) {
+    // Venta anterior al saldo inicial: NO hay líneas de caja que materializar
+    // (su importe ya está en el `openingBalance`). Pero el préstamo vinculado sí
+    // debe quedar cerrado —su liquidación también está en el saldo inicial—, así
+    // que lo finalizamos directamente, sin generar ningún movimiento.
+    if (saleId && simulation.totalLoanSettlement > 0) {
+      try {
+        await finalizePropertySaleLoanCancellationBySaleId(saleId);
+      } catch (err) {
+        console.warn(
+          `[propertySale] No se pudo cerrar el préstamo de una venta prehistórica (sale ${saleId}):`,
+          err,
+        );
+      }
+    }
+  } else if (saleAlreadyHappened && saleLineEventIds.length > 0) {
     for (const eventId of saleLineEventIds) {
       try {
         await confirmTreasuryEvent(eventId);
