@@ -1,7 +1,8 @@
 /* ResumenCockpitInmueble · cockpit patrimonial del inmueble
    Fiel al mockup aprobado (docs · «Inmueble · detalle»): feature navy a la
    izquierda (valor + proyección + patrimonio neto) y tres KPIs patrimoniales a
-   la derecha (ganancia acumulada · coste de propiedad · financiación). */
+   la derecha (ganancia acumulada · coste de propiedad · financiación).
+   Solo tokens `--atlas-v5-*` · sin colores hardcodeados (trinquete de salud). */
 
 .cockpit {
   font-family: var(--atlas-v5-font-ui);
@@ -26,7 +27,7 @@
     var(--atlas-v5-brand-ink) 100%
   );
   border-radius: 16px;
-  box-shadow: 0 10px 24px rgba(20, 27, 46, 0.07);
+  box-shadow: var(--atlas-v5-shadow-lift);
   overflow: hidden;
   padding: 20px 22px;
   display: flex;
@@ -138,7 +139,7 @@
   justify-content: center;
   height: 96px;
   margin-top: 10px;
-  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border: 1px dashed var(--atlas-v5-navy-fill);
   border-radius: 10px;
   color: var(--atlas-v5-on-navy-4);
   font-size: 12px;
@@ -160,7 +161,7 @@
 .eqWrap {
   margin-top: 16px;
   padding-top: 15px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--atlas-v5-navy-line);
 }
 .eqBarHd {
   display: flex;
@@ -195,29 +196,29 @@
   padding: 0 8px;
   font-size: 9px;
   font-weight: var(--atlas-v5-fw-bold);
-  color: #1b2340;
+  color: var(--atlas-v5-brand-ink);
   white-space: nowrap;
   overflow: hidden;
 }
 .eqSeg.gold {
-  color: #3a2a08;
+  color: var(--atlas-v5-on-gold);
 }
 .eqSegDeuda {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--atlas-v5-navy-fill);
   display: flex;
   align-items: center;
   padding: 0 10px;
   font-size: 10px;
   font-weight: var(--atlas-v5-fw-semibold);
-  color: #e7eaf2;
+  color: var(--atlas-v5-on-navy-2);
   white-space: nowrap;
   overflow: hidden;
 }
 .segCash {
-  background: #7e8bc0;
+  background: var(--atlas-v5-on-navy-3);
 }
 .segAmortizada {
-  background: #a9b4de;
+  background: var(--atlas-v5-on-navy-5);
 }
 .segReval {
   background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-soft));
@@ -256,16 +257,16 @@
   color: var(--atlas-v5-on-navy-1);
 }
 .swCash {
-  background: #7e8bc0;
+  background: var(--atlas-v5-on-navy-3);
 }
 .swAmortizada {
-  background: #a9b4de;
+  background: var(--atlas-v5-on-navy-5);
 }
 .swReval {
   background: var(--atlas-v5-gold-soft);
 }
 .swDeuda {
-  background: rgba(255, 255, 255, 0.32);
+  background: var(--atlas-v5-navy-fill);
 }
 
 /* ── Columna derecha · KPIs patrimoniales ── */
@@ -282,7 +283,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  box-shadow: var(--atlas-v5-shadow-sm, 0 1px 4px rgba(0, 0, 0, 0.05));
+  box-shadow: var(--atlas-v5-shadow-card);
 }
 .kc.gold {
   background: linear-gradient(160deg, var(--atlas-v5-gold-wash), var(--atlas-v5-card) 70%);

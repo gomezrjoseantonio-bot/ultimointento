@@ -209,7 +209,7 @@ const FeatureValorChart: React.FC<{
               y1={CPT}
               x2={modelo.markerX}
               y2={CH - CPB}
-              stroke="rgba(255,255,255,0.28)"
+              stroke="var(--atlas-v5-on-navy-6)"
               strokeWidth={1}
               strokeDasharray="2 3"
               vectorEffect="non-scaling-stroke"
