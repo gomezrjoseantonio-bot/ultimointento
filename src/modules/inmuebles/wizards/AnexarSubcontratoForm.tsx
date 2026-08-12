@@ -7,7 +7,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { PageHead, Icons, showToastV5 } from '../../../design-system/v5';
 import type { Contract, Property } from '../../../services/db';
-import { saveContract, getContract, updateContract } from '../../../services/contractService';
+import { saveContract, getContract, updateContract, deleteContractWithCascade } from '../../../services/contractService';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import {
   construirPayloadSubcontrato,
@@ -17,13 +18,16 @@ import styles from './NuevoContratoWizard.module.css';
 
 const hoyISO = (): string => new Date().toISOString().slice(0, 10);
 
-/** Habitaciones arrendables de un inmueble (H1..Hn) · [] si es piso completo. */
+/**
+ * Habitaciones de un inmueble como ids canónicos `hab-1..hab-N`, EXACTAMENTE como
+ * el wizard normal (NuevoContratoWizard): la cuenta sale de `property.bedrooms` y
+ * el selector solo tiene sentido con más de una. Mismo esquema de id → misma
+ * ocupación y misma etiqueta que el resto de contratos (sin texto libre).
+ */
 function habitacionesDe(property: Property | undefined): string[] {
-  if (!property) return [];
-  const porHab = property.modoExplotacion === 'por_habitaciones' || property.modoExplotacion === 'mixto';
-  if (!porHab) return [];
-  const n = Math.max(1, property.explotacion?.unidadesArrendables ?? property.bedrooms ?? 1);
-  return Array.from({ length: n }, (_, i) => `H${i + 1}`);
+  const n = property?.bedrooms ?? 0;
+  if (n <= 1) return [];
+  return Array.from({ length: n }, (_, i) => `hab-${i + 1}`);
 }
 
 /** Piso con contrato de gestión · datos que necesita el subcontrato de su padre. */
@@ -60,10 +64,9 @@ const AnexarSubcontratoForm: React.FC = () => {
     fechaFin: '',
     rentaMensual: '',
   });
-  // El usuario eligió "Otra habitación" (piso sin habitaciones configuradas).
-  const [otraHab, setOtraHab] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmarBorrado, setConfirmarBorrado] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -129,7 +132,6 @@ const AnexarSubcontratoForm: React.FC = () => {
 
   // Cambiar de piso resetea la unidad (las habitaciones son propias de cada piso).
   const cambiarInmueble = (id: number): void => {
-    setOtraHab(false);
     setForm((f) => ({ ...f, inmuebleId: id, habitacionId: '' }));
   };
 
@@ -176,21 +178,22 @@ const AnexarSubcontratoForm: React.FC = () => {
     }
   };
 
-  // Valor del selector de Unidad · '' (piso completo) · una habitación configurada
-  // · '__otra__' (habitación libre, para pisos sin habitaciones dadas de alta).
-  const unidadValue =
-    otraHab || (form.habitacionId !== '' && !habitaciones.includes(form.habitacionId))
-      ? '__otra__'
-      : form.habitacionId;
-  const cambiarUnidad = (v: string): void => {
-    if (v === '__otra__') {
-      setOtraHab(true);
-      set('habitacionId', '');
-    } else {
-      setOtraHab(false);
-      set('habitacionId', v);
+  // Eliminar el subcontrato · imprescindible cuando se anexó al piso equivocado y
+  // no hay otro piso con gestión al que re-vincularlo.
+  const eliminar = async (): Promise<void> => {
+    if (!original) return;
+    setConfirmarBorrado(false);
+    setGuardando(true);
+    try {
+      await deleteContractWithCascade(original.id);
+      showToastV5('Contrato de inquilino eliminado');
+      navigate('/contratos?tab=vigentes');
+    } catch {
+      setError('No se pudo eliminar el contrato. Inténtalo de nuevo.');
+      setGuardando(false);
     }
   };
+
   const pisosOrdenados = useMemo(
     () => [...pisosGestion.values()].sort((a, b) => a.inmuebleId - b.inmuebleId),
     [pisosGestion],
@@ -278,27 +281,22 @@ const AnexarSubcontratoForm: React.FC = () => {
             </div>
             <div className={styles.field}>
               <label className={styles.label}>Unidad</label>
-              <select
-                className={styles.select}
-                aria-label="Unidad"
-                value={unidadValue}
-                onChange={(e) => cambiarUnidad(e.target.value)}
-              >
-                <option value="">Piso completo</option>
-                {habitaciones.map((h, i) => (
-                  <option key={h} value={h}>
-                    Habitación {i + 1}
-                  </option>
-                ))}
-                <option value="__otra__">Otra habitación…</option>
-              </select>
-              {unidadValue === '__otra__' && (
-                <input
-                  className={styles.input}
+              {habitaciones.length > 0 ? (
+                <select
+                  className={styles.select}
+                  aria-label="Unidad"
                   value={form.habitacionId}
                   onChange={(e) => set('habitacionId', e.target.value)}
-                  placeholder="p. ej. Habitación 3"
-                />
+                >
+                  <option value="">— inmueble completo —</option>
+                  {habitaciones.map((h, i) => (
+                    <option key={h} value={h}>
+                      Habitación {i + 1}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input className={styles.input} value="Piso completo" disabled />
               )}
             </div>
 
@@ -343,7 +341,19 @@ const AnexarSubcontratoForm: React.FC = () => {
           )}
 
           <div className={styles.footer}>
-            <span />
+            {esEdicion ? (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={() => setConfirmarBorrado(true)}
+                disabled={guardando || original == null}
+              >
+                <Icons.Delete size={14} strokeWidth={2} />
+                Eliminar
+              </button>
+            ) : (
+              <span />
+            )}
             <div className={styles.footerActions}>
               <button
                 type="button"
@@ -368,6 +378,16 @@ const AnexarSubcontratoForm: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={confirmarBorrado}
+        onClose={() => setConfirmarBorrado(false)}
+        onConfirm={eliminar}
+        title="Eliminar contrato de inquilino"
+        message="Se eliminará este subcontrato del piso y sus previsiones de tesorería pendientes. Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        variant="danger"
+      />
     </>
   );
 };
