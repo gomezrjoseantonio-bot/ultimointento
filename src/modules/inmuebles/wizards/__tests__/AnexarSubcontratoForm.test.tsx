@@ -61,9 +61,10 @@ test('happy path · crea el subcontrato anexado al padre y navega', async () => 
   const { container } = renderForm();
   await waitFor(() => expect(screen.getByRole("button", { name: /Anexar contrato/i })).toBeEnabled());
 
-  const textboxes = screen.getAllByRole('textbox'); // [nombre, apellidos]
-  fireEvent.change(textboxes[0], { target: { value: 'Ana' } });
-  fireEvent.change(textboxes[1], { target: { value: 'García' } });
+  // Inmueble/Unidad son inputs deshabilitados · filtramos los editables.
+  const editables = screen.getAllByRole('textbox').filter((el) => !(el as HTMLInputElement).disabled);
+  fireEvent.change(editables[0], { target: { value: 'Ana' } }); // nombre
+  fireEvent.change(editables[1], { target: { value: 'García' } }); // apellidos
 
   const fechas = container.querySelectorAll('input[type="date"]'); // [inicio, fin]
   fireEvent.change(fechas[0], { target: { value: '2026-01-01' } });
@@ -106,8 +107,9 @@ test('modo edición · prefill del subcontrato y updateContract (no saveContract
   renderForm('/contratos/gestion/anexar?edit=16');
   await waitFor(() => expect(screen.getByRole('button', { name: /Guardar cambios/i })).toBeEnabled());
 
-  // Prefill del nombre.
-  expect((screen.getAllByRole('textbox')[0] as HTMLInputElement).value).toBe('Jose');
+  // Prefill del nombre (primer textbox editable, tras el Inmueble deshabilitado).
+  const editables = screen.getAllByRole('textbox').filter((el) => !(el as HTMLInputElement).disabled);
+  expect((editables[0] as HTMLInputElement).value).toBe('Jose');
 
   // Cambiamos la renta y guardamos.
   fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '400' } });

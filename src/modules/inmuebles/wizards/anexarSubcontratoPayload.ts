@@ -11,6 +11,8 @@ export interface AnexarSubcontratoForm {
   apellidos: string;
   dni: string; // opcional · se permite pero no se exige
   habitacionId: string; // '' si el piso es completo
+  /** Uso del alquiler · decide la fiscalidad (reducción LAU de vivienda habitual). */
+  modalidad: 'habitual' | 'temporada' | 'vacacional';
   fechaInicio: string;
   fechaFin: string;
   rentaMensual: string;
@@ -45,7 +47,7 @@ export function construirPayloadSubcontrato(
       inmuebleId: padre.inmuebleId,
       unidadTipo: habitacionId ? 'habitacion' : 'vivienda',
       habitacionId: habitacionId || undefined,
-      modalidad: 'habitual',
+      modalidad: form.modalidad,
       inquilino: {
         nombre: form.nombre.trim(),
         apellidos: form.apellidos.trim(),
