@@ -1,0 +1,48 @@
+/* ValorHoyHero · valor actual del activo destacado sobre fondo navy */
+
+.hero {
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-brand);
+  border: 1px solid var(--atlas-v5-brand);
+  border-radius: 14px;
+  padding: 20px 22px;
+}
+
+.kick {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-on-navy-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.big {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 36px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-on-navy-1);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.delta {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-gold-soft);
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sep {
+  color: var(--atlas-v5-on-navy-5);
+}
+
+.noData {
+  font-size: 15px;
+  color: var(--atlas-v5-on-navy-3);
+  margin-top: 8px;
+  font-style: italic;
+}

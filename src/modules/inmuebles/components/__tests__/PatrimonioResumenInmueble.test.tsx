@@ -39,7 +39,8 @@ describe('PatrimonioResumenInmueble', () => {
     render(<PatrimonioResumenInmueble resumen={baseResumen()} />);
     // Coincidencia exacta · evita chocar con los subtítulos que citan las mismas palabras.
     expect(screen.getByText('Patrimonio neto')).toBeInTheDocument();
-    expect(screen.getByText('Valor actual')).toBeInTheDocument();
+    // El valor actual se destaca ahora en el hero «Valor hoy».
+    expect(screen.getByText(/Valor hoy/)).toBeInTheDocument();
     // «Deuda pendiente» y «Revalorización» también aparecen en la leyenda del
     // desglose de composición · basta con que estén presentes.
     expect(screen.getAllByText('Deuda pendiente').length).toBeGreaterThanOrEqual(1);
