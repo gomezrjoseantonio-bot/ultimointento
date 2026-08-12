@@ -1,0 +1,97 @@
+/* Gestión delegada · renta garantizada · formulario de una pantalla.
+   Tokens ATLAS v5 (sin hex). */
+
+.form {
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 560px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.input,
+.select {
+  padding: 9px 12px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-sm);
+  background: var(--atlas-v5-card-alt);
+  font-size: 13.5px;
+  color: var(--atlas-v5-ink-2);
+  font-family: var(--atlas-v5-font-ui);
+  outline: none;
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--atlas-v5-brand);
+}
+
+.error {
+  padding: 10px 12px;
+  border-radius: var(--atlas-v5-radius-sm);
+  border: 1px solid var(--atlas-v5-neg);
+  color: var(--atlas-v5-neg);
+  background: var(--atlas-v5-neg-wash);
+  font-size: 13.5px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.primary,
+.secondary {
+  padding: 9px 18px;
+  border-radius: var(--atlas-v5-radius-sm);
+  font-size: 13.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-family: var(--atlas-v5-font-ui);
+  cursor: pointer;
+}
+
+.primary {
+  border: 1px solid var(--atlas-v5-brand);
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-white);
+}
+
+.secondary {
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-2);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

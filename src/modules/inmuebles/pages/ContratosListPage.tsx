@@ -197,6 +197,12 @@ const ContratosListPage: React.FC = () => {
       onClick: () => navigate('/inmuebles/importar-contratos'),
     },
     {
+      label: 'Renta garantizada',
+      variant: 'ghost' as const,
+      icon: <Icons.Cartera size={14} strokeWidth={1.8} />,
+      onClick: () => navigate('/contratos/gestion/nuevo'),
+    },
+    {
       label: 'Nuevo contrato',
       variant: 'gold' as const,
       icon: <Icons.Plus size={14} strokeWidth={2} />,
