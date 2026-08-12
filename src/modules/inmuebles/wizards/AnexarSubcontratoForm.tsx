@@ -26,9 +26,16 @@ function habitacionesDe(property: Property | undefined): string[] {
   return Array.from({ length: n }, (_, i) => `H${i + 1}`);
 }
 
+/** Piso con contrato de gestión · datos que necesita el subcontrato de su padre. */
+interface PisoGestion {
+  padreId: number;
+  inmuebleId: number;
+  diaPago: number;
+}
+
 const AnexarSubcontratoForm: React.FC = () => {
   const navigate = useNavigate();
-  const { properties } = useOutletContext<InmueblesOutletContext>();
+  const { properties, contracts } = useOutletContext<InmueblesOutletContext>();
   const [searchParams] = useSearchParams();
   const padreId = Number(searchParams.get('padre'));
   const editId = (() => {
@@ -43,6 +50,7 @@ const AnexarSubcontratoForm: React.FC = () => {
   const [padre, setPadre] = useState<(Contract & { id: number }) | null>(null);
   const [original, setOriginal] = useState<(Contract & { id: number }) | null>(null);
   const [form, setForm] = useState<FormState>({
+    inmuebleId: null,
     nombre: '',
     apellidos: '',
     dni: '',
@@ -52,6 +60,8 @@ const AnexarSubcontratoForm: React.FC = () => {
     fechaFin: '',
     rentaMensual: '',
   });
+  // El usuario eligió "Otra habitación" (piso sin habitaciones configuradas).
+  const [otraHab, setOtraHab] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +73,7 @@ const AnexarSubcontratoForm: React.FC = () => {
         if (!cancelado && c?.id != null) {
           setOriginal(c as Contract & { id: number });
           setForm({
+            inmuebleId: c.inmuebleId ?? null,
             nombre: c.inquilino?.nombre ?? '',
             apellidos: c.inquilino?.apellidos ?? '',
             dni: c.inquilino?.dni ?? '',
@@ -75,7 +86,10 @@ const AnexarSubcontratoForm: React.FC = () => {
         }
       } else if (Number.isFinite(padreId)) {
         const c = await getContract(padreId);
-        if (!cancelado && c?.id != null) setPadre(c as Contract & { id: number });
+        if (!cancelado && c?.id != null) {
+          setPadre(c as Contract & { id: number });
+          setForm((f) => ({ ...f, inmuebleId: c.inmuebleId ?? null }));
+        }
       }
     })();
     return () => {
@@ -83,24 +97,52 @@ const AnexarSubcontratoForm: React.FC = () => {
     };
   }, [esEdicion, editId, padreId]);
 
-  const refInmuebleId = esEdicion ? original?.inmuebleId : padre?.inmuebleId;
+  // Pisos con contrato de gestión (un subcontrato solo puede colgar de uno). Se
+  // arma desde el contexto y se garantiza que el piso actual esté presente.
+  const pisosGestion = useMemo(() => {
+    const map = new Map<number, PisoGestion>();
+    for (const cc of contracts) {
+      if (cc.gestion != null && cc.id != null && cc.inmuebleId != null && !map.has(cc.inmuebleId))
+        map.set(cc.inmuebleId, { padreId: cc.id, inmuebleId: cc.inmuebleId, diaPago: cc.diaPago ?? 1 });
+    }
+    if (padre?.id != null && padre.inmuebleId != null && !map.has(padre.inmuebleId))
+      map.set(padre.inmuebleId, { padreId: padre.id, inmuebleId: padre.inmuebleId, diaPago: padre.diaPago ?? 1 });
+    if (original?.inmuebleId != null && original.gestionPadreId != null && !map.has(original.inmuebleId))
+      map.set(original.inmuebleId, {
+        padreId: original.gestionPadreId,
+        inmuebleId: original.inmuebleId,
+        diaPago: original.diaPago ?? 1,
+      });
+    return map;
+  }, [contracts, padre, original]);
+
   const property = useMemo(
-    () => properties.find((p) => p.id === refInmuebleId),
-    [properties, refInmuebleId],
+    () => properties.find((p) => p.id === form.inmuebleId),
+    [properties, form.inmuebleId],
   );
   const habitaciones = useMemo(() => habitacionesDe(property), [property]);
+  const padreSel = form.inmuebleId != null ? pisosGestion.get(form.inmuebleId) : undefined;
   const listo = esEdicion ? original != null : padre != null;
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]): void =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  // Cambiar de piso resetea la unidad (las habitaciones son propias de cada piso).
+  const cambiarInmueble = (id: number): void => {
+    setOtraHab(false);
+    setForm((f) => ({ ...f, inmuebleId: id, habitacionId: '' }));
+  };
+
   const onSubmit = async (): Promise<void> => {
-    // Para validar reutilizamos el builder con un "padre" de referencia (en
-    // edición, sintetizado desde el propio subcontrato).
-    const padreRef = esEdicion
-      ? original && ({ ...original, id: original.gestionPadreId ?? 0 } as Contract & { id: number })
-      : padre;
-    if (!padreRef) return;
+    if (!padreSel) {
+      setError('Selecciona un inmueble con contrato de gestión');
+      return;
+    }
+    const padreRef = {
+      id: padreSel.padreId,
+      inmuebleId: padreSel.inmuebleId,
+      diaPago: padreSel.diaPago,
+    } as Contract & { id: number };
     setError(null);
     const res = construirPayloadSubcontrato(form, padreRef);
     if (!res.ok) {
@@ -112,6 +154,8 @@ const AnexarSubcontratoForm: React.FC = () => {
       if (esEdicion && original) {
         const p = res.payload;
         await updateContract(original.id, {
+          inmuebleId: p.inmuebleId,
+          gestionPadreId: p.gestionPadreId,
           inquilino: p.inquilino,
           unidadTipo: p.unidadTipo,
           habitacionId: p.habitacionId,
@@ -131,6 +175,27 @@ const AnexarSubcontratoForm: React.FC = () => {
       setGuardando(false);
     }
   };
+
+  // Valor del selector de Unidad · '' (piso completo) · una habitación configurada
+  // · '__otra__' (habitación libre, para pisos sin habitaciones dadas de alta).
+  const unidadValue =
+    otraHab || (form.habitacionId !== '' && !habitaciones.includes(form.habitacionId))
+      ? '__otra__'
+      : form.habitacionId;
+  const cambiarUnidad = (v: string): void => {
+    if (v === '__otra__') {
+      setOtraHab(true);
+      set('habitacionId', '');
+    } else {
+      setOtraHab(false);
+      set('habitacionId', v);
+    }
+  };
+  const pisosOrdenados = useMemo(
+    () => [...pisosGestion.values()].sort((a, b) => a.inmuebleId - b.inmuebleId),
+    [pisosGestion],
+  );
+  const aliasDe = (id: number): string => properties.find((p) => p.id === id)?.alias ?? `Inmueble ${id}`;
 
   return (
     <>
@@ -153,7 +218,20 @@ const AnexarSubcontratoForm: React.FC = () => {
           <div className={styles.fields}>
             <div className={styles.field}>
               <label className={styles.label}>Inmueble</label>
-              <input className={styles.input} value={property?.alias ?? '—'} disabled />
+              <select
+                className={styles.select}
+                aria-label="Inmueble"
+                value={form.inmuebleId ?? ''}
+                onChange={(e) => cambiarInmueble(Number(e.target.value))}
+              >
+                {form.inmuebleId == null && <option value="">—</option>}
+                {pisosOrdenados.map((p) => (
+                  <option key={p.inmuebleId} value={p.inmuebleId}>
+                    {aliasDe(p.inmuebleId)}
+                  </option>
+                ))}
+              </select>
+              <span className={styles.help}>El piso al que la agencia lo anexa (con gestión).</span>
             </div>
             <div className={styles.field}>
               <label className={styles.label}>Tipo de alquiler</label>
@@ -198,28 +276,31 @@ const AnexarSubcontratoForm: React.FC = () => {
               />
               <span className={styles.help}>Opcional · si lo conoces.</span>
             </div>
-            {habitaciones.length > 0 ? (
-              <div className={styles.field}>
-                <label className={styles.label}>Habitación</label>
-                <select
-                  className={styles.select}
+            <div className={styles.field}>
+              <label className={styles.label}>Unidad</label>
+              <select
+                className={styles.select}
+                aria-label="Unidad"
+                value={unidadValue}
+                onChange={(e) => cambiarUnidad(e.target.value)}
+              >
+                <option value="">Piso completo</option>
+                {habitaciones.map((h, i) => (
+                  <option key={h} value={h}>
+                    Habitación {i + 1}
+                  </option>
+                ))}
+                <option value="__otra__">Otra habitación…</option>
+              </select>
+              {unidadValue === '__otra__' && (
+                <input
+                  className={styles.input}
                   value={form.habitacionId}
                   onChange={(e) => set('habitacionId', e.target.value)}
-                >
-                  <option value="">Sin asignar</option>
-                  {habitaciones.map((h, i) => (
-                    <option key={h} value={h}>
-                      Habitación {i + 1}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div className={styles.field}>
-                <label className={styles.label}>Unidad</label>
-                <input className={styles.input} value="Piso completo" disabled />
-              </div>
-            )}
+                  placeholder="p. ej. Habitación 3"
+                />
+              )}
+            </div>
 
             <div className={styles.field}>
               <label className={styles.label}>Inicio</label>
