@@ -1,0 +1,50 @@
+/* Paso 0 · elección de tipo de contrato. Tarjetas de opción · tokens v5. */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  max-width: 760px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  padding: 22px 22px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.card:hover {
+  border-color: var(--atlas-v5-gold);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 1px;
+}
+
+.cardIcon {
+  color: var(--atlas-v5-gold);
+  margin-bottom: 4px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.01em;
+}
+
+.cardDesc {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-3);
+  line-height: 1.5;
+}
