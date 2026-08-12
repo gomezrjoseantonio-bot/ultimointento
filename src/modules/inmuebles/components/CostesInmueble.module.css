@@ -245,9 +245,41 @@
 .movHd,
 .movRow {
   display: grid;
-  grid-template-columns: 1.6fr 140px 110px;
+  grid-template-columns: 1.6fr 130px 140px 110px;
   gap: 12px;
   align-items: center;
+}
+.patron {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.patronDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold);
+  flex-shrink: 0;
+}
+.btnGold {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-gold-ink);
+  background: var(--atlas-v5-gold-wash);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.btnGold:hover {
+  background: var(--atlas-v5-gold-wash-2, var(--atlas-v5-gold-wash));
 }
 .movHd {
   padding: 9px 16px;
