@@ -29,10 +29,10 @@ describe('CostesInmueble', () => {
     expect(screen.getByText('Todos los grupos')).toBeInTheDocument();
   });
 
-  it('invoca gestionar recurrentes', () => {
-    const onGestionar = jest.fn();
-    render(<CostesInmueble inmuebleId={1} onGestionarRecurrentes={onGestionar} />);
-    fireEvent.click(screen.getByRole('button', { name: /Gestionar recurrentes/i }));
-    expect(onGestionar).toHaveBeenCalled();
+  it('invoca nuevo recurrente', () => {
+    const onNuevo = jest.fn();
+    render(<CostesInmueble inmuebleId={1} onNuevoRecurrente={onNuevo} />);
+    fireEvent.click(screen.getByRole('button', { name: /Nuevo recurrente/i }));
+    expect(onNuevo).toHaveBeenCalled();
   });
 });

@@ -31,7 +31,6 @@ import { referenciaInmueble } from '../utils/referenciaInmueble';
 import CostesInmueble from '../components/CostesInmueble';
 import DocumentosInmueble from '../components/DocumentosInmueble';
 import FiscalidadInmueble from '../components/FiscalidadInmueble';
-import GastosRegistradosInmueble from '../components/GastosRegistradosInmueble';
 import EditarRegistroInmuebleModal from '../components/EditarRegistroInmuebleModal';
 import ResumenCockpitInmueble from '../components/ResumenCockpitInmueble';
 import {
@@ -54,7 +53,6 @@ import styles from './DetallePage.module.css';
 
 
 type Tab = 'patrimonio' | 'gastos' | 'fiscalidad' | 'documentos';
-type GastosSubTab = 'resumen' | 'registrados' | 'recurrentes';
 
 const isContractActiveAt = (c: Contract, today: Date): boolean => {
   if (!c.fechaInicio || !c.fechaFin) return false;
@@ -81,7 +79,6 @@ const DetallePage: React.FC = () => {
   const tabParam = searchParams.get('tab');
   const tabInicial: Tab = resolveTab(tabParam);
   const [tab, setTab] = useState<Tab>(tabInicial);
-  const [gastosSubTab, setGastosSubTab] = useState<GastosSubTab>('resumen');
   const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
   const [valoraciones, setValoraciones] = useState<ValoracionPunto[]>([]);
   const [financiacion, setFinanciacion] = useState<FinanciacionLineaInmueble[]>([]);
@@ -95,6 +92,8 @@ const DetallePage: React.FC = () => {
   const [isDeletingInmueble, setIsDeletingInmueble] = useState(false);
   // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
   const [showImportWizard, setShowImportWizard] = useState(false);
+  // Gestión de compromisos recurrentes en modal (mockup · «Nuevo recurrente»).
+  const [recurrentesOpen, setRecurrentesOpen] = useState(false);
   // Menú «Acciones» de la cabecera (mockup · dropdown único).
   const [accionesOpen, setAccionesOpen] = useState(false);
   const accionesRef = useRef<HTMLDivElement>(null);
@@ -481,98 +480,26 @@ const DetallePage: React.FC = () => {
 
       {tab === 'gastos' && (
         <div style={{ marginTop: 8 }}>
-          {/* ── Selector interno de vistas ── */}
-          <div
-            className={styles.gastosSubTabs}
-            role="tablist"
-            aria-label="Vistas de gastos del inmueble"
-          >
-            {(
-              [
-                { key: 'resumen', label: 'Resumen' },
-                { key: 'registrados', label: 'Registrados' },
-                { key: 'recurrentes', label: 'Recurrentes' },
-              ] as Array<{ key: GastosSubTab; label: string }>
-            ).map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={gastosSubTab === key}
-                aria-controls={`gastos-panel-${key}`}
-                id={`gastos-tab-${key}`}
-                className={styles.gastosSubTab}
-                onClick={() => setGastosSubTab(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Resumen ── */}
-          {gastosSubTab === 'resumen' && (
-            <div
-              role="tabpanel"
-              id="gastos-panel-resumen"
-              aria-labelledby="gastos-tab-resumen"
-            >
-              <CostesInmueble
-                inmuebleId={propertyId}
-                compromisos={gastos}
-                gastosReales={gastosReales}
-                mejoras={mejoras}
-                mobiliario={mobiliario}
-                onGestionarRecurrentes={() => setGastosSubTab('recurrentes')}
-              />
-            </div>
-          )}
-
-          {/* ── Registrados ── */}
-          {gastosSubTab === 'registrados' && (
-            <div
-              role="tabpanel"
-              id="gastos-panel-registrados"
-              aria-labelledby="gastos-tab-registrados"
-            >
-              <GastosRegistradosInmueble
-                inmuebleId={propertyId}
-                gastosReales={gastosReales}
-                mejoras={mejoras}
-                mobiliario={mobiliario}
-                onIrARecurrentes={() => setGastosSubTab('recurrentes')}
-                ejerciciosBloqueados={registros.ejerciciosBloqueados}
-                onEditar={registros.abrirEdicion}
-                onBorrar={registros.abrirBorrado}
-                onAlta={registros.abrirAlta}
-              />
-            </div>
-          )}
-
-          {/* ── Recurrentes ── */}
-          {gastosSubTab === 'recurrentes' && (
-            <div
-              role="tabpanel"
-              id="gastos-panel-recurrentes"
-              aria-labelledby="gastos-tab-recurrentes"
-            >
-              <p className={styles.gastosRecurrentesDesc}>
-                Patrones que ATLAS proyecta en Tesorería
-              </p>
-              <ListadoGastosRecurrentes
-                catalog={TIPOS_GASTO_INMUEBLE_V2}
-                compromisos={gastos}
-                mode="inmueble"
-                inmuebleId={propertyId}
-                onDelete={handleDeleteGasto}
-                onReload={reloadGastos}
-                contextoNombre={property.alias}
-                conceptosSugeridos={conceptosSugeridos}
-                inmueblesDisponibles={properties
-                  .filter((p): p is typeof p & { id: number } => p.id != null)
-                  .map((p) => ({ id: p.id, label: p.alias }))}
-              />
-            </div>
-          )}
+          <CostesInmueble
+            inmuebleId={propertyId}
+            compromisos={gastos}
+            gastosReales={gastosReales}
+            mejoras={mejoras}
+            mobiliario={mobiliario}
+            onNuevoRecurrente={() => setRecurrentesOpen(true)}
+            onEditarReal={(id, origen) => {
+              if (origen === 'real') {
+                const r = gastosReales.find((g) => g.id === id);
+                if (r) registros.abrirEdicion({ tipo: 'real', registro: r });
+              } else if (origen === 'mejora') {
+                const r = mejoras.find((m) => m.id === id);
+                if (r) registros.abrirEdicion({ tipo: 'mejora', registro: r });
+              } else {
+                const r = mobiliario.find((m) => m.id === id);
+                if (r) registros.abrirEdicion({ tipo: 'mobiliario', registro: r });
+              }
+            }}
+          />
         </div>
       )}
 
@@ -681,6 +608,47 @@ const DetallePage: React.FC = () => {
         variant="danger"
         isLoading={registros.borrando}
       />
+
+      {recurrentesOpen && (
+        <div
+          className={styles.recurrentesOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Gastos recurrentes del inmueble"
+          onClick={() => setRecurrentesOpen(false)}
+        >
+          <div className={styles.recurrentesModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.recurrentesHd}>
+              <span className={styles.recurrentesTitle}>Gastos recurrentes · {property.alias}</span>
+              <button
+                type="button"
+                className={styles.recurrentesClose}
+                onClick={() => setRecurrentesOpen(false)}
+                aria-label="Cerrar"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className={styles.recurrentesBody}>
+              <ListadoGastosRecurrentes
+                catalog={TIPOS_GASTO_INMUEBLE_V2}
+                compromisos={gastos}
+                mode="inmueble"
+                inmuebleId={propertyId}
+                onDelete={handleDeleteGasto}
+                onReload={reloadGastos}
+                contextoNombre={property.alias}
+                conceptosSugeridos={conceptosSugeridos}
+                inmueblesDisponibles={properties
+                  .filter((p): p is typeof p & { id: number } => p.id != null)
+                  .map((p) => ({ id: p.id, label: p.alias }))}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

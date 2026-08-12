@@ -433,3 +433,62 @@
   border-radius: 7px;
   border: 1px solid var(--atlas-v5-line);
 }
+
+/* Modal de gestión de compromisos recurrentes (mockup · «Nuevo recurrente») */
+.recurrentesOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--atlas-v5-overlay);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+}
+.recurrentesModal {
+  background: var(--atlas-v5-bg);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 16px;
+  box-shadow: var(--atlas-v5-shadow-modal);
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.recurrentesHd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+}
+.recurrentesTitle {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+.recurrentesClose {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.recurrentesClose:hover {
+  border-color: var(--atlas-v5-ink-5);
+  color: var(--atlas-v5-ink);
+}
+.recurrentesBody {
+  padding: 18px;
+  overflow-y: auto;
+}

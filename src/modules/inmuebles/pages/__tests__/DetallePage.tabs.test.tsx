@@ -101,10 +101,6 @@ jest.mock('../../components/DocumentosInmueble', () => ({
   default: () => <div>Documentos mock</div>,
 }));
 
-jest.mock('../../components/GastosRegistradosInmueble', () => ({
-  __esModule: true,
-  default: () => <div>Registrados gastos mock</div>,
-}));
 
 
 jest.mock('../../components/ResumenCockpitInmueble', () => ({

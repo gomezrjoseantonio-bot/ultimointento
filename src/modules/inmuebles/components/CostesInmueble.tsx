@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { GastoInmueble, MejoraInmueble, MuebleInmueble } from '../../../services/db';
-import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
+import type { CompromisoRecurrente, PatronRecurrente } from '../../../types/compromisosRecurrentes';
 import { MoneyValue } from '../../../design-system/v5';
 import {
   construirListaVisualGastosInmueble,
@@ -16,10 +16,38 @@ export interface CostesInmuebleProps {
   gastosReales?: readonly GastoInmueble[];
   mejoras?: readonly MejoraInmueble[];
   mobiliario?: readonly MuebleInmueble[];
-  /** Abre la gestión de recurrentes (vista Previsto). */
-  onGestionarRecurrentes?: () => void;
+  /** Abre el alta / gestión de compromisos recurrentes (botón «Nuevo recurrente»). */
+  onNuevoRecurrente?: () => void;
   /** Abre la edición de un registro real concreto. */
   onEditarReal?: (registroId: number, origen: 'real' | 'mejora' | 'mobiliario') => void;
+}
+
+const MESES_PATRON = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** Etiqueta legible del patrón de calendario de un compromiso recurrente. */
+function patronLabel(p: PatronRecurrente | undefined): string {
+  if (!p) return '—';
+  switch (p.tipo) {
+    case 'mensualDiaFijo':
+    case 'mensualDiaRelativo':
+      return 'Mensual';
+    case 'trimestralFiscal':
+      return 'Trimestral';
+    case 'cadaNMeses':
+      return p.cadaNMeses === 3 ? 'Trimestral' : p.cadaNMeses === 12 ? 'Anual' : `Cada ${p.cadaNMeses} meses`;
+    case 'anualMesesConcretos': {
+      const m = p.mesesPago?.[0];
+      return m && m >= 1 && m <= 12 ? `Anual · ${MESES_PATRON[m - 1]}` : 'Anual';
+    }
+    case 'pagasExtra':
+      return 'Pagas extra';
+    case 'variablePorMes':
+      return 'Variable';
+    case 'puntual':
+      return 'Puntual';
+    default:
+      return '—';
+  }
 }
 
 type GrupoKey = 'mantener' | 'explotar' | 'mejorar' | 'mobiliario';
@@ -92,9 +120,17 @@ const CostesInmueble: React.FC<CostesInmuebleProps> = ({
   gastosReales,
   mejoras,
   mobiliario,
-  onGestionarRecurrentes,
+  onNuevoRecurrente,
   onEditarReal,
 }) => {
+  // Patrón de calendario por compromiso (id → etiqueta legible), para la columna «Patrón».
+  const patronPorId = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const c of compromisos ?? []) {
+      if (c.id != null) m.set(c.id, patronLabel(c.patron));
+    }
+    return m;
+  }, [compromisos]);
   const anioActual = new Date().getFullYear();
   const [ejercicio, setEjercicio] = useState<number>(anioActual);
   const [vista, setVista] = useState<'prev' | 'real'>('prev');
@@ -224,10 +260,13 @@ const CostesInmueble: React.FC<CostesInmuebleProps> = ({
       {/* PREVISTO · compromisos recurrentes */}
       {vista === 'prev' && (
         <>
-          {onGestionarRecurrentes && (
+          {onNuevoRecurrente && (
             <div className={styles.actionsRow}>
-              <button type="button" className={styles.linkBtn} onClick={onGestionarRecurrentes}>
-                Gestionar recurrentes
+              <button type="button" className={styles.btnGold} onClick={onNuevoRecurrente}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Nuevo recurrente
               </button>
             </div>
           )}
@@ -236,13 +275,18 @@ const CostesInmueble: React.FC<CostesInmuebleProps> = ({
               <div className={styles.movHd}>
                 <span>Compromiso</span>
                 <span>Grupo</span>
-                <span className={styles.right}>Previsto</span>
+                <span>Patrón</span>
+                <span className={styles.right}>Previsto/año</span>
               </div>
               {previstoItems.map((it) => (
                 <div key={it.idVisual} className={styles.movRow}>
                   <span className={styles.mCon}>{it.descripcion}</span>
                   <span className={`${styles.mCat} ${GRUPO_CHIP[it.grupoVisual]}`}>
                     {GRUPO_LABEL[it.grupoVisual]}
+                  </span>
+                  <span className={styles.patron}>
+                    <span className={styles.patronDot} />
+                    {it.registroId != null ? patronPorId.get(it.registroId) ?? '—' : '—'}
                   </span>
                   <span className={styles.mAmt}>
                     {it.importePrevisto !== undefined ? <MoneyValue value={it.importePrevisto} decimals={0} /> : '—'}
