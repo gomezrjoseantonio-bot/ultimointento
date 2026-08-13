@@ -12,7 +12,8 @@ import {
 } from '../../../services/personal/compromisosRecurrentesService';
 import { regenerateForecastsForward } from '../../../services/treasuryBootstrapService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
-import type { Contract } from '../../../services/db';
+import { initDB } from '../../../services/db';
+import type { Contract, Property } from '../../../services/db';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
 import { ListadoGastosRecurrentes } from '../../shared/components/ListadoGastos';
@@ -88,6 +89,11 @@ const DetallePage: React.FC = () => {
     rentasNetasAcumuladas: number;
     desdeAnio: number | null;
   }>({ rentasNetasAcumuladas: 0, desdeAnio: null });
+  // Un inmueble VENDIDO no está en el outlet context (InmueblesPage solo trae
+  // `state === 'activo'`). Para poder abrir su detalle —y su pestaña de
+  // Fiscalidad— lo cargamos directamente de la BD como respaldo.
+  const [soldFallback, setSoldFallback] = useState<Property | null>(null);
+  const [soldFallbackTried, setSoldFallbackTried] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DeleteInmuebleCascadeReport | null>(null);
   const [isDeletingInmueble, setIsDeletingInmueble] = useState(false);
   // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
@@ -155,10 +161,37 @@ const DetallePage: React.FC = () => {
     [propertyId],
   );
 
-  const property = useMemo(
+  const contextProperty = useMemo(
     () => properties.find((p) => p.id === propertyId),
     [properties, propertyId],
   );
+  const property = contextProperty ?? soldFallback ?? undefined;
+
+  // Respaldo: si el inmueble no está en el contexto (p. ej. vendido), lo
+  // cargamos de la BD para que su detalle/fiscalidad se pueda abrir igualmente.
+  useEffect(() => {
+    if (contextProperty) {
+      setSoldFallback(null);
+      setSoldFallbackTried(true);
+      return;
+    }
+    let cancelled = false;
+    setSoldFallbackTried(false);
+    void (async () => {
+      try {
+        const db = await initDB();
+        const p = (await db.get('properties', propertyId)) as Property | undefined;
+        if (!cancelled) setSoldFallback(p ?? null);
+      } catch {
+        if (!cancelled) setSoldFallback(null);
+      } finally {
+        if (!cancelled) setSoldFallbackTried(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [contextProperty, propertyId]);
   const propertyContracts = useMemo(
     () => contracts.filter((c) => c.inmuebleId === propertyId),
     [contracts, propertyId],
@@ -273,6 +306,9 @@ const DetallePage: React.FC = () => {
   );
 
   if (!property) {
+    // Aún resolviendo (contexto async o carga de BD del respaldo): no mostramos
+    // «no encontrado» hasta confirmar que de verdad no existe.
+    if (!soldFallbackTried) return null;
     return (
       <EmptyState
         icon={<Icons.Inmuebles size={20} />}
