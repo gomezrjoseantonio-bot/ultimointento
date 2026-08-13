@@ -246,20 +246,23 @@ describe('propertySaleService', () => {
       principalVivo: 72500,
       estado: 'vivo',
       ambito: 'INMUEBLE',
+      tipo: 'FIJO',
+      tipoNominalAnualFijo: 6,
+      fechaFirma: '2026-01-01',
       planPagos: {
         prestamoId: 'loan-revert-1',
         fechaGeneracion: new Date().toISOString(),
         periodos: [
           {
             periodo: 1,
-            fechaCargo: '2026-03-20',
+            fechaCargo: '2026-03-01',
             cuota: 999,
             interes: 200,
             amortizacion: 799,
             principalFinal: 71701,
-            devengoDesde: '2026-02-21',
-            devengoHasta: '2026-03-20',
-            pagado: false,
+            devengoDesde: '2026-02-01',
+            devengoHasta: '2026-03-01',
+            pagado: true,
           },
           {
             periodo: 2,
@@ -268,7 +271,7 @@ describe('propertySaleService', () => {
             interes: 198,
             amortizacion: 801,
             principalFinal: 70900,
-            devengoDesde: '2026-03-21',
+            devengoDesde: '2026-03-02',
             devengoHasta: '2026-04-20',
             pagado: false,
           },
@@ -307,13 +310,20 @@ describe('propertySaleService', () => {
     const sale = await getLatestConfirmedSaleForProperty(propertyId);
     expect(sale?.id).toBeDefined();
 
-    const movementsAfterSale = (await db.getAll('movements')).filter((m: any) => m.reference === `property_sale:${sale!.id}`);
+    // Venta con fecha pasada (2026-03-10 <= hoy) → sus flujos de caja se
+    // materializan automáticamente como movimientos reales (mismo punteo que
+    // haría el usuario), con reference `treasury_event:{id}`. Son 4: cobro,
+    // comisión agencia, plusvalía y cancelación de deuda.
+    const movementsAfterSale = (await db.getAll('movements')).filter((m: any) => String(m.reference || '').startsWith('treasury_event:'));
     expect(movementsAfterSale).toHaveLength(4);
     expect(movementsAfterSale.some((m: any) => m.description.includes('Comisión agencia venta Piso Completo'))).toBe(true);
     expect(movementsAfterSale.some((m: any) => m.description.includes('Plusvalía municipal venta Piso Completo'))).toBe(true);
 
-    const eventAfterSale = (await db.getAll('treasuryEvents')).find((e: any) => e.sourceId === sale!.id);
-    expect(eventAfterSale).toBeTruthy();
+    // Los eventos de caja quedan ejecutados (realidad imputada), NO en "Por confirmar".
+    const saleEvents = (await db.getAll('treasuryEvents')).filter((e: any) => e.sourceId === sale!.id);
+    expect(saleEvents.length).toBeGreaterThan(0);
+    const cashEvents = saleEvents.filter((e: any) => e.sourceType === 'manual');
+    expect(cashEvents.every((e: any) => e.status === 'executed')).toBe(true);
 
     const loanAfterSale = await db.get('prestamos', 'loan-revert-1');
     expect(loanAfterSale?.activo).toBe(false);
@@ -341,7 +351,7 @@ describe('propertySaleService', () => {
     const restoredLoanForecast = await db.get('treasuryEvents', loanForecastEventId);
     expect(restoredLoanForecast).toBeTruthy();
 
-    const movementsAfterCancel = (await db.getAll('movements')).filter((m: any) => m.reference === `property_sale:${sale!.id}`);
+    const movementsAfterCancel = (await db.getAll('movements')).filter((m: any) => String(m.reference || '').startsWith('treasury_event:'));
     expect(movementsAfterCancel).toHaveLength(0);
 
     const eventsAfterCancel = (await db.getAll('treasuryEvents')).filter((e: any) => e.sourceId === sale!.id);
@@ -386,7 +396,7 @@ describe('propertySaleService', () => {
       casillaAEAT: '0114',
       importe: 430,
       origen: 'tesoreria',
-      estado: 'confirmado',
+      estado: 'pendiente',
       proveedorNombre: 'Seguro hogar | anual',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -438,7 +448,7 @@ describe('propertySaleService', () => {
     expect(restoredOpex?.estado).toBe('activo');
 
     const restoredGasto = await db.get('gastosInmueble', gastoId);
-    expect(restoredGasto?.estado).toBe('confirmado');
+    expect(restoredGasto?.estado).toBe('pendiente');
   });
 
 
@@ -515,17 +525,14 @@ describe('propertySaleService', () => {
     });
 
     const sale = await getLatestConfirmedSaleForProperty(propertyId);
+    // Venta con fecha pasada (2026-02-10 <= hoy): la línea "Cancelación deuda" se
+    // materializa automáticamente y, al puntearse, cierra el préstamo sin ningún
+    // paso manual. Aparece como movimiento real con reference `treasury_event:`.
     const cancellationMovement = (await db.getAll('movements')).find((m: any) =>
-      m.reference === `property_sale:${sale!.id}` && m.description.includes('Cancelación deuda Piso Punteo Cancelación')
+      String(m.reference || '').startsWith('treasury_event:') &&
+      String(m.description || '').includes('Cancelación deuda Piso Punteo Cancelación')
     );
     expect(cancellationMovement).toBeTruthy();
-
-    // T16-cleanup · `performManualReconciliation` fue eliminado · este test
-    // sólo valida la finalización del préstamo, así que invocamos directamente
-    // `finalizePropertySaleLoanCancellation`, que es lo que la función
-    // eliminada llamaba internamente.
-    const { finalizePropertySaleLoanCancellation } = await import('../propertySaleService');
-    await finalizePropertySaleLoanCancellation(cancellationMovement!.id);
 
     const loanAfterPunteo = await db.get('prestamos', 'loan-punteo-1');
     expect(loanAfterPunteo?.activo).toBe(false);
@@ -867,8 +874,10 @@ describe('propertySaleService', () => {
 
     const updatedLoan = await db.get('prestamos', 'loan-v2-destinos') as any;
     expect(updatedLoan).toBeTruthy();
-    // El préstamo ha quedado marcado como pendiente de cancelación por venta.
-    expect(updatedLoan.cancelacionPendienteVenta).toBe(true);
+    // Venta con fecha pasada + payoff: el préstamo se cierra automáticamente
+    // (realidad ya ocurrida), no se queda pendiente de cancelación.
+    expect(updatedLoan.estado).toBe('cancelado');
+    expect(updatedLoan.activo).toBe(false);
   });
 
   it('detecta préstamo vinculado por garantias[tipo=HIPOTECARIA, inmuebleId]', async () => {
@@ -903,6 +912,131 @@ describe('propertySaleService', () => {
 
     const updatedLoan = await db.get('prestamos', 'loan-v2-garantias') as any;
     expect(updatedLoan).toBeTruthy();
-    expect(updatedLoan.cancelacionPendienteVenta).toBe(true);
+    // Venta pasada + payoff → préstamo cerrado automáticamente.
+    expect(updatedLoan.estado).toBe('cancelado');
+    expect(updatedLoan.activo).toBe(false);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // LÍNEA TEMPORAL · una venta FUTURA se queda como previsión (no realidad).
+  // ───────────────────────────────────────────────────────────────────────
+  it('venta futura: deja los flujos como previsión y el préstamo pendiente (no los materializa)', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Venta Futura' })));
+    const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES4400491500051234567892' })));
+
+    await db.add('prestamos', {
+      id: 'loan-futura-1',
+      inmuebleId: String(propertyId),
+      activo: true,
+      principalVivo: 50000,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+      tipo: 'FIJO',
+      tipoNominalAnualFijo: 2,
+      fechaFirma: '2024-01-15',
+      fechaPrimerCargo: '2024-02-15',
+      plazoMesesTotal: 240,
+      diaCargoMes: 15,
+      esquemaPrimerRecibo: 'NORMAL',
+      sistema: 'FRANCES',
+      carencia: 'NINGUNA',
+      cuentaCargoId: 'acc-1',
+      cuotasPagadas: 12,
+      origenCreacion: 'MANUAL',
+    } as any);
+
+    // Fecha claramente futura respecto de "hoy" (el contenedor corre en 2026).
+    const futureDate = `${new Date().getFullYear() + 1}-06-01`;
+
+    await confirmPropertySale({
+      propertyId,
+      saleDate: futureDate,
+      salePrice: 180000,
+      agencyCommission: 3000,
+      settlementAccountId: accountId,
+      source: 'wizard',
+      loanPayoffAmount: 50000,
+    });
+
+    const sale = await getLatestConfirmedSaleForProperty(propertyId);
+    expect(sale?.id).toBeDefined();
+
+    // Ningún flujo de la venta se materializa: siguen siendo previsiones.
+    const saleEvents = (await db.getAll('treasuryEvents')).filter((e: any) => e.sourceId === sale!.id);
+    const cashEvents = saleEvents.filter((e: any) => e.sourceType === 'manual');
+    expect(cashEvents.length).toBeGreaterThan(0);
+    expect(cashEvents.every((e: any) => e.status === 'predicted')).toBe(true);
+
+    // No se ha creado ningún movimiento real todavía.
+    const movements = (await db.getAll('movements')).filter((m: any) => String(m.reference || '').startsWith('treasury_event:'));
+    expect(movements).toHaveLength(0);
+
+    // El préstamo queda pendiente de cancelación por venta (aún no cerrado).
+    const loanAfter = await db.get('prestamos', 'loan-futura-1') as any;
+    expect(loanAfter?.estado).toBe('pendiente_cancelacion_venta');
+    expect(loanAfter?.cancelacionPendienteVenta).toBe(true);
+    expect(loanAfter?.activo).toBe(true);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // PREHISTORIA · venta anterior al saldo inicial de la cuenta → SIN tesorería.
+  // ───────────────────────────────────────────────────────────────────────
+  it('venta anterior al saldo inicial: no crea movimientos ni previsiones de caja (ya están en el saldo de apertura)', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Prehistoria' })));
+    // La cuenta arranca su saldo el 31/7/2026: cualquier flujo anterior ya está
+    // dentro de `openingBalance`.
+    const accountId = Number(await db.add('accounts', createAccount({
+      iban: 'ES6600491500051234567800',
+      openingBalance: 250000,
+      openingBalanceDate: '2026-07-31',
+    })));
+
+    await db.add('prestamos', {
+      id: 'loan-prehistoria-1',
+      inmuebleId: String(propertyId),
+      activo: true,
+      principalVivo: 40000,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+    } as any);
+
+    // Venta el 15/3/2026 · MUY anterior al saldo inicial del 31/7.
+    await confirmPropertySale({
+      propertyId,
+      saleDate: '2026-03-15',
+      salePrice: 180000,
+      agencyCommission: 4000,
+      settlementAccountId: accountId,
+      source: 'wizard',
+      loanPayoffAmount: 40000,
+    });
+
+    const sale = await getLatestConfirmedSaleForProperty(propertyId);
+    expect(sale?.id).toBeDefined();
+
+    // NINGÚN flujo de caja de la venta: ni movimiento real ni previsión.
+    const movements = await db.getAll('movements');
+    expect(movements).toHaveLength(0);
+
+    const cashEvents = (await db.getAll('treasuryEvents')).filter(
+      (e: any) => e.sourceId === sale!.id && e.sourceType === 'manual',
+    );
+    expect(cashEvents).toHaveLength(0);
+
+    // El hecho fiscal SÍ se conserva: la previsión de IRPF (pago futuro) sigue ahí.
+    const irpfEvent = (await db.getAll('treasuryEvents')).find(
+      (e: any) => e.sourceType === 'irpf_prevision',
+    );
+    expect(irpfEvent).toBeTruthy();
+
+    // El inmueble queda vendido y el préstamo cerrado sin movimiento de caja.
+    const soldProperty = await db.get('properties', propertyId);
+    expect(soldProperty?.state).toBe('vendido');
+
+    const loanAfter = await db.get('prestamos', 'loan-prehistoria-1') as any;
+    expect(loanAfter?.estado).toBe('cancelado');
+    expect(loanAfter?.activo).toBe(false);
   });
 });

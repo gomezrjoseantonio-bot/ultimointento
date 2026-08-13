@@ -221,6 +221,38 @@ describe('accountBalanceService', () => {
   });
 
 
+  it('excluye movimientos y eventos anteriores al saldo inicial (ya incluidos en openingBalance)', () => {
+    const value = calculateAccountBalanceAtDate({
+      account: {
+        id: 1,
+        iban: 'ES1',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        openingBalance: 250000,
+        openingBalanceDate: '2026-07-31',
+      },
+      cutoffDate: '2026-12-31',
+      treasuryEvents: [
+        // Anterior al saldo inicial → NO debe contarse (ya está en openingBalance).
+        { accountId: 1, type: 'income', amount: 180000, predictedDate: '2026-03-15', status: 'executed' } as any,
+        // Posterior → sí cuenta.
+        { accountId: 1, type: 'expense', amount: 500, predictedDate: '2026-09-10', status: 'executed' } as any,
+      ],
+      movements: [
+        // Anterior al saldo inicial → NO debe contarse.
+        { accountId: 1, amount: 180000, date: '2026-03-15' } as any,
+        // Posterior → sí cuenta.
+        { accountId: 1, amount: -1000, date: '2026-08-05' } as any,
+      ],
+    });
+
+    // 250000 (apertura) − 500 (evento post) − 1000 (mov post) = 248500.
+    // Los dos flujos del 15/3 quedan fuera: ya están dentro del saldo de apertura.
+    expect(value).toBe(248500);
+  });
+
   it('sums all active accounts as total initial cash', async () => {
     mockDB.getAll.mockImplementation(async (table: string) => {
       if (table === 'accounts') {

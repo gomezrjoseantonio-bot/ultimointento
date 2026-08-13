@@ -71,11 +71,25 @@ export const recalculateAccountBalance = async (accountId: number): Promise<void
       return dateA.getTime() - dateB.getTime();
     });
     
-    // Calculate balance from opening balance + movements
+    // Calculate balance from opening balance + movements.
+    // Frontera del saldo inicial: `openingBalance` es el saldo YA existente a
+    // `openingBalanceDate`, así que un movimiento ANTERIOR a esa fecha ya está
+    // dentro y sumarlo lo contaría dos veces. Se excluye lo estrictamente
+    // anterior a la apertura (el sintético `isOpeningBalance` ya se salta).
+    const openingDate = account.openingBalanceDate
+      ? (account.openingBalanceDate.includes('T')
+          ? account.openingBalanceDate.split('T')[0]
+          : account.openingBalanceDate)
+      : undefined;
+
     let balance = account.openingBalance || 0;
-    
+
     for (const movement of accountMovements) {
       if (movement.isOpeningBalance) continue;
+      if (openingDate) {
+        const movDate = (movement.valueDate || movement.date || '').slice(0, 10);
+        if (movDate && movDate < openingDate) continue;
+      }
       balance += movement.amount;
     }
     
