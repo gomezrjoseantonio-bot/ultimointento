@@ -62,7 +62,14 @@ export interface Proximos30VM {
 }
 
 export interface IrpfVM {
-  cuota: number;
+  /**
+   * Resultado ESTIMADO de la renta del ejercicio · cuota líquida MENOS lo ya
+   * pagado a cuenta (retención de nómina, M130, retenciones de capital).
+   * Signo: positivo = a pagar · negativo = a devolver (igual que
+   * `irpfCalculationService.resultado` y el módulo Fiscal). NO es la cuota
+   * líquida bruta: eso incluiría el IRPF que ya se paga vía nómina.
+   */
+  resultado: number;
   ejercicio: number;
   mesesConDatos: number;
 }
