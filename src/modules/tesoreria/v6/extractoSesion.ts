@@ -16,7 +16,7 @@ import type { MatchResult } from '../../../services/movementMatchingService';
 import type { Movement, TreasuryEvent } from '../../../services/db';
 import { generateLineHash } from '../../../services/statementIgnoredLinesService';
 
-export type VeredictoLinea = 'cuadra' | 'resolver' | 'ignorada';
+export type VeredictoLinea = 'cuadra' | 'resolver' | 'ignorada' | 'mes_cerrado';
 
 export interface LineaExtracto {
   /** id del `Movement` que `processFile` ya insertó para esta línea. */
@@ -42,6 +42,8 @@ export interface ResumenSesion {
   cuadran: number;
   resolver: number;
   ignoradas: number;
+  /** Líneas de meses ya cerrados · no se cargan en esta sesión. */
+  mesesCerrados: number;
 }
 
 /** Lo que el usuario ha decidido a mano · se aplica todo junto al Guardar. */
@@ -90,7 +92,14 @@ export function construirLineas(
   movimientos: Movement[],
   matchResult: MatchResult,
   eventos: TreasuryEvent[],
-  ignoradasPrevias: Set<string>
+  ignoradasPrevias: Set<string>,
+  /**
+   * Meses ya cerrados (`YYYY-MM`). Una línea de un mes cerrado NO se carga: el
+   * mes se dio por bueno tal como estaba, y meter ahora un cargo le movería el
+   * saldo. Se aparta —como las ignoradas— y no cuenta como "a resolver". Si de
+   * verdad hay que cargarlo, primero se reabre el mes.
+   */
+  mesesCerrados: Set<string> = new Set()
 ): LineaExtracto[] {
   const eventoPorId = new Map<number, TreasuryEvent>();
   for (const e of eventos) if (e.id != null) eventoPorId.set(e.id, e);
@@ -132,12 +141,16 @@ export function construirLineas(
 
     // El orden importa: una línea ya ignorada antes NO se vuelve a proponer,
     // aunque ahora cuadre con algo. Si el usuario dijo que no la quiere, no se
-    // le pregunta otra vez sin que él la recupere.
+    // le pregunta otra vez sin que él la recupere. Y una línea de un mes cerrado
+    // se aparta antes de mirar si cuadra: ese mes ya no se toca.
+    const mesLinea = (m.date ?? '').slice(0, 7);
     const veredicto: VeredictoLinea = ignoradasPrevias.has(hashLinea)
       ? 'ignorada'
-      : previsto
-        ? 'cuadra'
-        : 'resolver';
+      : mesesCerrados.has(mesLinea)
+        ? 'mes_cerrado'
+        : previsto
+          ? 'cuadra'
+          : 'resolver';
 
     lineas.push({
       movementId: m.id,
@@ -188,11 +201,18 @@ export function veredictoEfectivo(
 }
 
 export function resumir(lineas: LineaExtracto[], decisiones: DecisionesSesion): ResumenSesion {
-  const r: ResumenSesion = { lineas: lineas.length, cuadran: 0, resolver: 0, ignoradas: 0 };
+  const r: ResumenSesion = {
+    lineas: lineas.length,
+    cuadran: 0,
+    resolver: 0,
+    ignoradas: 0,
+    mesesCerrados: 0,
+  };
   for (const l of lineas) {
     const v = veredictoEfectivo(l, decisiones);
     if (v === 'cuadra') r.cuadran++;
     else if (v === 'ignorada') r.ignoradas++;
+    else if (v === 'mes_cerrado') r.mesesCerrados++;
     else r.resolver++;
   }
   return r;
@@ -267,8 +287,15 @@ export function lineasPendientes(
   lineas: LineaExtracto[],
   decisiones: DecisionesSesion
 ): Array<{ movementId: number; hashLinea: string; fecha: string; importe: number; concepto: string }> {
+  // "resolver" y "mes_cerrado" comparten destino: NO se materializan. La sin
+  // resolver porque el usuario no la resolvió; la de mes cerrado porque ese mes
+  // ya no se toca. En los dos casos su `Movement` se borra al consolidar, para
+  // que no aparezca como conciliada moviendo un saldo que no debe.
   return lineas
-    .filter((l) => veredictoEfectivo(l, decisiones) === 'resolver')
+    .filter((l) => {
+      const v = veredictoEfectivo(l, decisiones);
+      return v === 'resolver' || v === 'mes_cerrado';
+    })
     .map((l) => ({
       movementId: l.movementId,
       hashLinea: l.hashLinea,

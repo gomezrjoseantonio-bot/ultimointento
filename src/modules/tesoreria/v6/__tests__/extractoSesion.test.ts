@@ -176,10 +176,16 @@ describe('las decisiones del usuario', () => {
     expect(veredictoEfectivo(lineas()[0], d)).toBe('ignorada');
   });
 
-  it('el resumen cuenta las tres categorías', () => {
+  it('el resumen cuenta las categorías', () => {
     const d = decisionesVacias();
     d.ignorados.add(12);
-    expect(resumir(lineas(), d)).toEqual({ lineas: 3, cuadran: 1, resolver: 1, ignoradas: 1 });
+    expect(resumir(lineas(), d)).toEqual({
+      lineas: 3,
+      cuadran: 1,
+      resolver: 1,
+      ignoradas: 1,
+      mesesCerrados: 0,
+    });
   });
 });
 
@@ -289,5 +295,43 @@ describe('la retirada de efectivo', () => {
 
     expect(veredictoEfectivo(lineas()[0], d)).toBe('ignorada');
     expect(movimientosAEfectivo(lineas(), d)).toEqual([]);
+  });
+});
+
+// El extracto trae varios meses · los que ya están cerrados no se cargan.
+describe('meses cerrados · el extracto no reabre lo cerrado', () => {
+  it('una línea de un mes cerrado se aparta · no cuenta como a resolver ni cuadra', () => {
+    const movs = [
+      mov(1, 'RECIBO JULIO', -48, '2026-07-02'), // mes cerrado
+      mov(2, 'RECIBO AGOSTO', -48, '2026-08-02'), // mes abierto
+    ];
+    const ls = construirLineas(movs, sinMatches, [], new Set(), new Set(['2026-07']));
+
+    const porId = new Map(ls.map((l) => [l.movementId, l.veredicto]));
+    expect(porId.get(1)).toBe('mes_cerrado');
+    expect(porId.get(2)).toBe('resolver');
+
+    const r = resumir(ls, decisionesVacias());
+    expect(r.mesesCerrados).toBe(1);
+    expect(r.resolver).toBe(1);
+  });
+
+  it('el cargo de un mes cerrado NO se materializa · su movimiento se limpia', () => {
+    const movs = [mov(1, 'RECIBO JULIO', -48, '2026-07-02')];
+    const ls = construirLineas(movs, sinMatches, [], new Set(), new Set(['2026-07']));
+    const d = decisionesVacias();
+
+    // Va con los "pendientes" (los que se borran al consolidar), no como conciliado.
+    expect(lineasPendientes(ls, d).map((p) => p.movementId)).toEqual([1]);
+    // Y no viaja como match ni como ignorado.
+    const payload = payloadDeConfirmacion(ls, d);
+    expect(payload.approvedMatches).toEqual([]);
+    expect(payload.ignoredMovementIds).toEqual([]);
+  });
+
+  it('sin meses cerrados, todo sigue igual', () => {
+    const ls = construirLineas([mov(1, 'X', -10, '2026-08-01')], sinMatches, [], new Set());
+    expect(ls[0].veredicto).toBe('resolver');
+    expect(resumir(ls, decisionesVacias()).mesesCerrados).toBe(0);
   });
 });
