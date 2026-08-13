@@ -78,12 +78,14 @@ const VendidosSection: React.FC<VendidosSectionProps> = ({ vendidos }) => {
               role="button"
               tabIndex={0}
               style={{ cursor: 'pointer' }}
-              aria-label={`Abrir detalle de ${v.alias}`}
-              onClick={() => navigate(`/inmuebles/${v.id}`)}
+              aria-label={`Abrir fiscalidad de ${v.alias}`}
+              // Un vendido abre directamente en su pestaña de Fiscalidad (es lo
+              // relevante de un activo ya fuera de patrimonio).
+              onClick={() => navigate(`/inmuebles/${v.id}?tab=fiscalidad`)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  navigate(`/inmuebles/${v.id}`);
+                  navigate(`/inmuebles/${v.id}?tab=fiscalidad`);
                 }
               }}
             >
