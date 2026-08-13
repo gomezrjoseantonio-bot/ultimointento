@@ -324,11 +324,14 @@ export async function bootstrapEjercicios(): Promise<void> {
     }
   }
 
-  // Limpiar ejercicios fuera del rango válido (basura de bootstrap anteriores)
+  // Limpiar ejercicios fuera del rango válido (basura de bootstrap anteriores).
+  // Solo se borran los años SIN datos AEAT reales: los ejercicios importados
+  // (con `aeat`) se conservan a cualquier antigüedad, para que quien quiera
+  // pueda reconstruir su historia fiscal con declaraciones anteriores a 2020
+  // (p. ej. 2012). Es opcional: si no se importan, no se crean ni pasa nada.
   const todos = await db.getAll('ejerciciosFiscalesCoord');
   for (const ej of todos) {
-    // Para años futuros: solo borrar si NO tienen datos AEAT reales
-    if ((ej.año > añoFin && !ej.aeat) || ej.año < 2015) {
+    if ((ej.año > añoFin || ej.año < 2015) && !ej.aeat) {
       await db.delete('ejerciciosFiscalesCoord', ej.año);
     }
   }

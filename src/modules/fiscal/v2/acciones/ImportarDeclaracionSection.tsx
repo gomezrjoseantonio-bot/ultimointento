@@ -98,7 +98,11 @@ const ImportarDeclaracionSection: React.FC = () => {
 
   const añosDisponibles = (() => {
     const hoy = new Date().getFullYear();
-    return Array.from({ length: 7 }, (_, i) => hoy - i);
+    // Los años recientes son lo habitual, pero permitimos bajar hasta 2000 para
+    // que quien quiera pueda reconstruir su historia fiscal con declaraciones
+    // antiguas. Es opcional: si no se importan años antiguos, no pasa nada.
+    const AÑO_MIN_IMPORTABLE = 2000;
+    return Array.from({ length: hoy - AÑO_MIN_IMPORTABLE + 1 }, (_, i) => hoy - i);
   })();
 
   return (
