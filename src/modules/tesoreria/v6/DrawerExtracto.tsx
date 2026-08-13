@@ -21,6 +21,7 @@ import { Icons } from '../../../design-system/v5';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { initDB } from '../../../services/db';
 import { nombrarPrevisto as nombrarPrevistoModelo } from './nombrarPrevisto';
+import { candidatosDeLinea } from './conciliacionCandidatos';
 import {
   processFile,
   confirmDecisions,
@@ -588,6 +589,12 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                   asignado != null
                     ? previstos.find((p) => p.id === asignado)
                     : undefined;
+                // Candidatos DE VERDAD para asignar: una entrada por serie,
+                // ordenados por cercanía. Nada de volcar las 14 mensualidades.
+                const candidatos = candidatosDeLinea(
+                  { fecha: l.fecha, importe: l.importe },
+                  previstos,
+                );
                 return (
                   <div key={l.movementId} className={styles.linea}>
                     <div className={styles.lineaTop}>
@@ -636,31 +643,27 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                             }}
                           >
                             <option value="">Elige un previsto…</option>
-                            {(l.candidatos ?? []).map((c) => (
+                            {candidatos.map((c) => (
                               <option key={c.id} value={c.id}>
                                 {nombrarPrevistoPorId(c.id, c.descripcion)} · {importeConSigno(c.importe)}
+                                {c.exacto ? '' : ' · no cuadra'}
                               </option>
                             ))}
-                            {previstos
-                              .filter((p) => !(l.candidatos ?? []).some((c) => c.id === p.id))
-                              .map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {nombrarPrevisto(p)} ·{' '}
-                                  {importeConSigno(
-                                    p.type === 'income' ? Math.abs(p.amount) : -Math.abs(p.amount)
-                                  )}
-                                </option>
-                              ))}
                           </select>
                         ) : (
                           <>
-                            <button
-                              type="button"
-                              className={styles.btnLinea}
-                              onClick={() => setAsignando(l.movementId)}
-                            >
-                              Asignar a un previsto
-                            </button>
+                            {/* Solo se ofrece asignar si hay algún previsto que
+                                pueda ser · si no lo hay, la acción es crear, no
+                                un desplegable vacío o de cosas que no cuadran. */}
+                            {candidatos.length > 0 && (
+                              <button
+                                type="button"
+                                className={styles.btnLinea}
+                                onClick={() => setAsignando(l.movementId)}
+                              >
+                                Asignar a un previsto
+                              </button>
+                            )}
                             <button
                               type="button"
                               className={styles.btnLinea}
