@@ -24,7 +24,7 @@ import { isTransferKey } from './categoryCatalog';
  * patrimonio, cambia de cuenta. Contando sus patas, sacar 20 € al cajero
  * aparecía a la vez como 20 € gastados y 20 € ingresados.
  */
-function esTraspasoInterno(r: { categoryKey?: string }): boolean {
+export function esTraspasoInterno(r: { categoryKey?: string }): boolean {
   return isTransferKey(r.categoryKey);
 }
 
@@ -103,6 +103,10 @@ export function calcularKpisHero(params: {
 
   for (const e of eventos) {
     if (!esPendiente(e)) continue;
+    // Un traspaso interno NO entra ni sale del patrimonio (§6bis · el dinero
+    // solo cambia de cuenta). Sus dos patas espejo hinchaban "queda entrar" y
+    // "queda salir" a la vez. Fuera, igual que en `calcularRealidad`.
+    if (esTraspasoInterno(e)) continue;
     if (!enRango(soloFecha(e.predictedDate), desde, hasta)) continue;
     const imp = importeConSigno(e);
     if (imp > 0) {
@@ -264,6 +268,9 @@ export function proyectarMeses(params: {
     let sale = 0;
     for (const e of eventos) {
       if (!esPendiente(e)) continue;
+      // Traspaso interno · ni entra ni sale (§6bis). Sus patas espejo se
+      // anulan en el cierre pero inflaban `entra` y `sale` por igual.
+      if (esTraspasoInterno(e)) continue;
       if (!enRango(soloFecha(e.predictedDate), desde, hasta)) continue;
       const imp = importeConSigno(e);
       if (imp > 0) entra += imp;

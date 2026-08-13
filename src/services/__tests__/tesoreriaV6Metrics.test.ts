@@ -129,6 +129,27 @@ describe('§4.1 · KPIs del hero', () => {
     expect(k.numCuentas).toBe(1);
     expect(k.saldo).toBe(1000);
   });
+
+  it('un traspaso interno no cuenta como entrar ni salir (§6bis)', () => {
+    // Las dos patas espejo de un traspaso hinchaban entrar y salir a la vez.
+    const k = calcularKpisHero({
+      cuentas: [cuenta(1), cuenta(2)],
+      saldoPorCuenta: saldos,
+      eventos: [
+        ev({ type: 'income', amount: 650, predictedDate: '2026-07-20' }),
+        ev({ type: 'income', amount: 2500, predictedDate: '2026-07-21', categoryKey: 'traspaso_entrada' }),
+        ev({ type: 'expense', amount: 2500, predictedDate: '2026-07-21', categoryKey: 'traspaso_salida' }),
+      ],
+      year: 2026,
+      month0: 6,
+    });
+    expect(k.pendienteEntrar).toBe(650);
+    expect(k.movimientosEntrar).toBe(1);
+    expect(k.pendienteSalir).toBe(0);
+    expect(k.movimientosSalir).toBe(0);
+    // El cierre solo se mueve por el ingreso real, no por el traspaso.
+    expect(k.cierre).toBe(2150);
+  });
 });
 
 describe('§4.2 · estado de la tarjeta', () => {

@@ -33,6 +33,7 @@ import {
 import {
   calcularKpisHero,
   esPendiente,
+  esTraspasoInterno,
   importeConSigno,
   rangoDelMes,
 } from '../../services/tesoreriaV6Metrics';
@@ -396,8 +397,13 @@ const PanelPage: React.FC = () => {
       (ev) =>
         mismoMes(ev.actualDate ?? ev.predictedDate, today) || mismoMes(ev.predictedDate, today),
     );
+    // Un traspaso interno no es ingreso ni gasto (§6bis · el dinero solo cambia
+    // de cuenta), así que no cuenta en "ha entrado/salido". Mismo criterio que
+    // Tesorería (`calcularRealidad` y ahora también `calcularKpisHero`).
     const ejecutadoEnMes = (ev: TreasuryEvent) =>
-      ev.status === 'executed' && mismoMes(ev.actualDate ?? ev.predictedDate, today);
+      ev.status === 'executed' &&
+      !esTraspasoInterno(ev) &&
+      mismoMes(ev.actualDate ?? ev.predictedDate, today);
 
     const ingresosCobrados = enMes.filter((ev) => ev.type === 'income' && ejecutadoEnMes(ev));
     const salidasHechas = enMes.filter((ev) => esSalida(ev) && ejecutadoEnMes(ev));
@@ -453,10 +459,14 @@ const PanelPage: React.FC = () => {
       importe: magnitud(ev, usarReal),
       cuenta: nombreCuenta(ev.accountId),
     });
+    // Traspasos internos fuera · el detalle debe cuadrar con la cifra, y la
+    // cifra ya no los cuenta (§6bis · el dinero solo cambia de cuenta).
     const ejecutadoEnMes = (ev: TreasuryEvent) =>
-      ev.status === 'executed' && mismoMes(ev.actualDate ?? ev.predictedDate, today);
+      ev.status === 'executed' &&
+      !esTraspasoInterno(ev) &&
+      mismoMes(ev.actualDate ?? ev.predictedDate, today);
     const pendienteEnMes = (ev: TreasuryEvent) => {
-      if (!esPendiente(ev)) return false;
+      if (!esPendiente(ev) || esTraspasoInterno(ev)) return false;
       const f = soloDia(ev.predictedDate);
       return f >= desde && f <= hasta;
     };
