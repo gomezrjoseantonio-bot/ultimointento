@@ -51,6 +51,27 @@ export const getAllocationFactor = (
   return prestamo.inmuebleId === inmuebleId ? 1 : 0;
 };
 
+/**
+ * ¿Este préstamo está imputado a este inmueble? Es el GATE de
+ * `getPrestamosByProperty`; la fracción la da `getAllocationFactor`, y los dos
+ * tienen que mirar los mismos sitios o un préstamo bien imputado se cae.
+ *
+ * Mira el modelo actual (`destinos[]`, que es lo único que guarda el asistente
+ * hoy) y cae en los legacy. Sin la rama de `destinos`, un préstamo dado de alta
+ * ahora no salía por ninguna parte y la cartera enseñaba deuda 0.
+ */
+export const prestamoAfectaInmueble = (
+  prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble' | 'destinos'>,
+  inmuebleId: string,
+): boolean => {
+  if (prestamo.destinos?.some((d) => d.inmuebleId === inmuebleId)) return true;
+  if (prestamo.inmuebleId === inmuebleId) return true;
+  if (prestamo.afectacionesInmueble?.length) {
+    return prestamo.afectacionesInmueble.some((a) => a.inmuebleId === inmuebleId);
+  }
+  return false;
+};
+
 // ── Fiscal engine ──────────────────────────────────────────────────────────
 
 /**
@@ -264,13 +285,7 @@ export class PrestamosService {
    */
   async getPrestamosByProperty(inmuebleId: string): Promise<Prestamo[]> {
     const prestamos = await this.ensureLoaded();
-    return prestamos.filter((p) => {
-      if (p.inmuebleId === inmuebleId) return true;
-      if (p.afectacionesInmueble?.length) {
-        return p.afectacionesInmueble.some((a) => a.inmuebleId === inmuebleId);
-      }
-      return false;
-    });
+    return prestamos.filter((p) => prestamoAfectaInmueble(p, inmuebleId));
   }
 
   getPorcentajeAfectacion(prestamo: Prestamo, inmuebleId: string): number {
