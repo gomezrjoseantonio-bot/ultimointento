@@ -2,9 +2,11 @@
 // Principio §B.2: callado cuando todo va bien (tinta neutra, borde --line).
 // Solo aparece color (warn) cuando la tarjeta requiere acción.
 //
-// Honestidad de etiquetas (informe FASE A §3):
-//   · "Sin conciliar" (no "sin cobrar"): no podemos afirmar impago, solo falta
-//     de cuadre con el banco (el estado impago vivía en rentaMensual, eliminado).
+// Honestidad de etiquetas (informe FASE A §3 · VOCABULARIO-dinero §6 ter):
+//   · "Por confirmar" (no "sin cobrar" ni "sin conciliar"): no podemos afirmar
+//     impago. Y NO es conciliación —conciliar es cuadrar contra un extracto
+//     importado, y aquí no se ha subido ninguno—: lo que falta es que el usuario
+//     confirme (puntee) que el cobro entró. Misma palabra que Tesorería.
 //   · "Próximos 30 días": el subtítulo DECLARA el alcance (contratos + modelo
 //     130 · seguros e IBI no vigilados) para no dar tranquilidad falsa.
 //   · Colchón: divisor = cuota mensual de préstamos (decisión Jose).
@@ -12,24 +14,24 @@
 import React from 'react';
 import { Icons } from '../../../design-system/v5';
 import { fmtEur, fmtMeses } from './format';
-import type { ColchonVM, SinConciliarVM, Proximos30VM, IrpfVM } from './types';
+import type { ColchonVM, PorConfirmarVM, Proximos30VM, IrpfVM } from './types';
 import styles from './PuedesEstarTranquilo.module.css';
 
 export interface PuedesEstarTranquiloProps {
   colchon: ColchonVM;
-  sinConciliar: SinConciliarVM;
+  porConfirmar: PorConfirmarVM;
   proximos30: Proximos30VM;
   irpf: IrpfVM | null;
 }
 
 const PuedesEstarTranquilo: React.FC<PuedesEstarTranquiloProps> = ({
   colchon,
-  sinConciliar,
+  porConfirmar,
   proximos30,
   irpf,
 }) => {
   const colchonAlerta = colchon.estado === 'ok' && colchon.meses < 3;
-  const conciliarAlerta = sinConciliar.count > 0;
+  const porConfirmarAlerta = porConfirmar.count > 0;
   const proximosAlerta = proximos30.count > 0;
 
   // Subtítulo del colchón · declara el escenario y QUÉ no está contando (Jose).
@@ -66,19 +68,19 @@ const PuedesEstarTranquilo: React.FC<PuedesEstarTranquiloProps> = ({
           <div className={styles.cardSub}>{colchonSub}</div>
         </div>
 
-        {/* Sin conciliar */}
-        <div className={`${styles.card} ${conciliarAlerta ? styles.alerta : ''}`}>
+        {/* Por confirmar */}
+        <div className={`${styles.card} ${porConfirmarAlerta ? styles.alerta : ''}`}>
           <div className={styles.cardHd}>
             <Icons.HandCoins size={15} strokeWidth={1.8} />
-            <span className={styles.lab}>Sin conciliar</span>
+            <span className={styles.lab}>Por confirmar</span>
           </div>
-          <div className={`${styles.val} ${conciliarAlerta ? styles.warn : ''} mono`}>
-            {fmtEur(sinConciliar.total)}
+          <div className={`${styles.val} ${porConfirmarAlerta ? styles.warn : ''} mono`}>
+            {fmtEur(porConfirmar.total)}
           </div>
           <div className={styles.cardSub}>
-            {conciliarAlerta
-              ? `${sinConciliar.count} ingreso${sinConciliar.count === 1 ? '' : 's'} previsto${sinConciliar.count === 1 ? '' : 's'} vencido${sinConciliar.count === 1 ? '' : 's'} · pendiente de cuadrar con el banco`
-              : 'todos los ingresos previstos están cuadrados con el banco'}
+            {porConfirmarAlerta
+              ? `${porConfirmar.count} ingreso${porConfirmar.count === 1 ? '' : 's'} previsto${porConfirmar.count === 1 ? '' : 's'} vencido${porConfirmar.count === 1 ? '' : 's'} · aún sin confirmar que ha${porConfirmar.count === 1 ? '' : 'n'} entrado`
+              : 'todos los ingresos previstos están confirmados'}
           </div>
         </div>
 
