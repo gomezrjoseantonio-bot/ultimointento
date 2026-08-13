@@ -404,6 +404,26 @@ export interface ConfiguracionFiscal {
 // MODELO FISCAL COORDINADOR — 4 REGÍMENES
 // ═══════════════════════════════════════════════
 
+/**
+ * Una versión importada de la declaración de un ejercicio: la original y cada
+ * autoliquidación rectificativa/complementaria posterior. La activa es la que
+ * `EjercicioFiscalCoord.aeat.versionActivaId` señala (normalmente la última
+ * rectificativa de la cadena).
+ */
+export interface AeatVersion {
+  /** Clave natural: nº de justificante propio o firma resultado+previa. */
+  id: string;
+  fechaImportacion: string;
+  fuenteImportacion?: 'xml' | 'pdf' | 'manual';
+  snapshot: Record<string, number>;
+  resumen: ResumenFiscal;
+  declaracionCompleta?: DeclaracionCompleta;
+  esRectificativa?: boolean;
+  esComplementaria?: boolean;
+  numeroJustificante?: string;
+  resultado?: number;
+}
+
 export interface EjercicioFiscalCoord {
   año: number;  // keyPath — 2020, 2021, ..., 2026
 
@@ -429,7 +449,10 @@ export interface EjercicioFiscalCoord {
   // Fecha de prescripción (calculada: 30 jun del año+5)
   fechaPrescripcion?: string;
 
-  // Fuente AEAT (solo si declarado o prescrito)
+  // Fuente AEAT (solo si declarado o prescrito).
+  // `snapshot`/`resumen`/`declaracionCompleta` reflejan siempre la versión ACTIVA
+  // (compatibilidad con todos los lectores). `versiones` guarda el histórico
+  // (original + rectificativas) y `versionActivaId` apunta a la activa.
   aeat?: {
     snapshot: Record<string, number>;   // casillas: { '0435': 112096.62, ... }
     resumen: ResumenFiscal;
@@ -437,6 +460,8 @@ export interface EjercicioFiscalCoord {
     fechaImportacion: string;
     fuenteImportacion?: 'xml' | 'pdf' | 'manual';
     declaracionCompleta?: DeclaracionCompleta; // Snapshot completo de la declaración importada
+    versiones?: AeatVersion[];
+    versionActivaId?: string;
   };
 
   // Cálculo ATLAS (para pendiente/en_curso; también para comparativa en declarado)

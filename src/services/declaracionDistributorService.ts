@@ -11,7 +11,7 @@
  */
 
 import { initDB } from './db';
-import type { Property, EjercicioFiscalCoord, Document, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria } from './db';
+import type { Property, EjercicioFiscalCoord, AeatVersion, Document, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { baseAmortizableEjercicioService } from './baseAmortizableEjercicioService';
 import { invalidateCachedStores } from './indexedDbCacheService';
@@ -769,23 +769,50 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
     } as EjercicioFiscalCoord;
   }
 
-  ej.aeat = {
+  const resumen = {
+    baseImponibleGeneral: decl.integracion.baseImponibleGeneral,
+    baseImponibleAhorro: decl.integracion.baseImponibleAhorro,
+    baseLiquidableGeneral: decl.integracion.baseLiquidableGeneral,
+    baseLiquidableAhorro: decl.integracion.baseLiquidableAhorro,
+    cuotaIntegra: decl.resultado.cuotaIntegraEstatal + decl.resultado.cuotaIntegraAutonomica,
+    cuotaIntegraEstatal: decl.resultado.cuotaIntegraEstatal,
+    cuotaIntegraAutonomica: decl.resultado.cuotaIntegraAutonomica,
+    cuotaLiquidaEstatal: decl.resultado.cuotaLiquidaEstatal,
+    cuotaLiquidaAutonomica: decl.resultado.cuotaLiquidaAutonomica,
+    resultado: decl.resultado.resultadoDeclaracion,
+  };
+
+  // Histórico de versiones (original + rectificativas). Como `planificarImportacion`
+  // procesa la cadena en orden, la última importada es la ACTIVA. Clave natural:
+  // nº de justificante propio o, si el XML crudo no lo trae, firma
+  // resultado+previa+tipo. Reimportar la misma versión la reemplaza (no duplica).
+  const versionKey =
+    decl.meta.numeroJustificante?.trim() ||
+    `${decl.meta.fuenteImportacion ?? 'xml'}:${decl.resultado.resultadoDeclaracion}:${decl.meta.declaracionPrevia?.ingresosPrevios ?? ''}:${decl.meta.esRectificativa ? 'R' : 'O'}`;
+
+  const nuevaVersion: AeatVersion = {
+    id: versionKey,
+    fechaImportacion: ahora,
+    fuenteImportacion: decl.meta.fuenteImportacion,
     snapshot: decl.casillas,
-    resumen: {
-      baseImponibleGeneral: decl.integracion.baseImponibleGeneral,
-      baseImponibleAhorro: decl.integracion.baseImponibleAhorro,
-      baseLiquidableGeneral: decl.integracion.baseLiquidableGeneral,
-      baseLiquidableAhorro: decl.integracion.baseLiquidableAhorro,
-      cuotaIntegra: decl.resultado.cuotaIntegraEstatal + decl.resultado.cuotaIntegraAutonomica,
-      cuotaIntegraEstatal: decl.resultado.cuotaIntegraEstatal,
-      cuotaIntegraAutonomica: decl.resultado.cuotaIntegraAutonomica,
-      cuotaLiquidaEstatal: decl.resultado.cuotaLiquidaEstatal,
-      cuotaLiquidaAutonomica: decl.resultado.cuotaLiquidaAutonomica,
-      resultado: decl.resultado.resultadoDeclaracion,
-    },
+    resumen,
+    declaracionCompleta: decl,
+    esRectificativa: decl.meta.esRectificativa,
+    esComplementaria: decl.meta.esComplementaria,
+    numeroJustificante: decl.meta.numeroJustificante || undefined,
+    resultado: decl.resultado.resultadoDeclaracion,
+  };
+  const versiones = [...(ej.aeat?.versiones ?? []).filter((v) => v.id !== versionKey), nuevaVersion];
+
+  ej.aeat = {
+    // snapshot/resumen/declaracionCompleta reflejan la versión ACTIVA (la recién importada).
+    snapshot: decl.casillas,
+    resumen,
     fechaImportacion: ahora,
     fuenteImportacion: decl.meta.fuenteImportacion,
     declaracionCompleta: decl,
+    versiones,
+    versionActivaId: versionKey,
   };
 
   const fechaPrescripcion = new Date(año + 5, 5, 30);

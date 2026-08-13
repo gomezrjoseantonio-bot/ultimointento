@@ -22,7 +22,7 @@ import {
   type DatosFiscalesEjercicio,
 } from '../../../services/fiscalResolverService';
 import { getEjercicio } from '../../../services/ejercicioResolverService';
-import type { DeudaFiscal } from '../../../services/db';
+import type { DeudaFiscal, AeatVersion } from '../../../services/db';
 import {
   buildSecciones,
   calcularTipoMedio,
@@ -72,33 +72,52 @@ function detectarParalela(d: DatosFiscalesEjercicio, coordAeat: { paralela?: unk
   return Boolean(decl?.paralela ?? (decl?.versiones && decl.versiones.length > 1));
 }
 
-function buildVersiones(
+const origenVersion = (f?: string): string =>
+  f === 'pdf' ? 'PDF AEAT' : f === 'manual' ? 'Atlas' : 'XML AEAT';
+
+export function buildVersiones(
   d: DatosFiscalesEjercicio,
-  fechaImportacion: string | undefined,
-  fuente: DatosFiscalesEjercicio['fuente'],
+  aeat: { versiones?: AeatVersion[]; versionActivaId?: string; fechaImportacion?: string; fuenteImportacion?: string } | null,
   tieneParalela: boolean,
 ): VersionRow[] {
+  // Histórico real de versiones importadas (original + rectificativas).
+  const hist = aeat?.versiones ?? [];
+  if (hist.length > 0) {
+    const activaId = aeat?.versionActivaId ?? hist[hist.length - 1]?.id;
+    return hist.map((v, i) => ({
+      version: `v${i + 1}`,
+      origen: origenVersion(v.fuenteImportacion),
+      fecha: v.fechaImportacion?.slice(0, 10),
+      resultado: v.resultado ?? v.resumen?.resultado ?? null,
+      nota: v.esRectificativa
+        ? 'rectificativa'
+        : v.esComplementaria
+          ? 'complementaria'
+          : 'original presentada',
+      activa: v.id === activaId,
+    }));
+  }
+
+  // Fallback (coords antiguos sin histórico): comportamiento previo v1 (+ v2 paralela).
   const versiones: VersionRow[] = [];
   if (d.estado === 'declarado' || d.estado === 'pendiente') {
     versiones.push({
       version: 'v1',
-      origen: fuente === 'xml_aeat'
-        ? 'XML AEAT'
-        : fuente === 'pdf_aeat'
-          ? 'PDF AEAT'
-          : 'Atlas',
-      fecha: fechaImportacion?.slice(0, 10),
+      origen: origenVersion(aeat?.fuenteImportacion) ,
+      fecha: aeat?.fechaImportacion?.slice(0, 10),
       resultado: d.resultado,
       nota: 'original presentada',
+      activa: !tieneParalela,
     });
   }
   if (tieneParalela) {
     versiones.push({
       version: 'v2',
       origen: 'Paralela AEAT',
-      fecha: fechaImportacion?.slice(0, 10),
+      fecha: aeat?.fechaImportacion?.slice(0, 10),
       resultado: d.resultado,
       nota: 'corrección posterior',
+      activa: true,
     });
   }
   return versiones;
@@ -158,6 +177,8 @@ const FiscalEjercicioPage: React.FC = () => {
     fechaPresentacion?: string;
     fuenteImportacion?: 'xml' | 'pdf' | 'manual';
     paralela?: unknown;
+    versiones?: AeatVersion[];
+    versionActivaId?: string;
   } | null>(null);
   const [documentos, setDocumentos] = useState<DocumentoRow[]>([]);
   const [ventas, setVentas] = useState<VentaRow[]>([]);
@@ -199,6 +220,8 @@ const FiscalEjercicioPage: React.FC = () => {
         fechaPresentacion: meta?.fechaPresentacion,
         fuenteImportacion: aeat.fuenteImportacion,
         paralela: (aeat as { paralela?: unknown }).paralela,
+        versiones: aeat.versiones,
+        versionActivaId: aeat.versionActivaId,
       } : null);
       setDocumentos(docs);
       setVentas(vs);
@@ -262,12 +285,7 @@ const FiscalEjercicioPage: React.FC = () => {
     return (estatal ?? 0) + (auto ?? 0);
   })();
 
-  const versiones = buildVersiones(
-    datos,
-    coordAeat?.fechaImportacion,
-    datos.fuente,
-    tieneParalela,
-  );
+  const versiones = buildVersiones(datos, coordAeat, tieneParalela);
 
   // Sección E con ventas · sustituimos las rows del helper por cards de venta
   const seccionEVacia = seccionesData.secciones.find((s) => s.letter === 'E');
@@ -326,7 +344,7 @@ const FiscalEjercicioPage: React.FC = () => {
         >
           Versiones
           <span className={styles.tabCount}>
-            {versiones.length === 0 ? '—' : versiones.length > 1 ? 'v1·v2' : 'v1'}
+            {versiones.length === 0 ? '—' : `${versiones.length}`}
           </span>
         </button>
         {!esPrescrito && (
