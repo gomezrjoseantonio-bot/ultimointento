@@ -75,6 +75,35 @@
   background: var(--atlas-v5-card-alt);
 }
 
+/* Celda pulsable · abre el detalle de ese flujo. Solo afordancia; el layout
+   sigue viniendo de `.c` (por eso es un div con role=button y no un <button>,
+   que traería su propio borde/fondo a pelear con la rejilla). */
+.cClick {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.cClick:hover {
+  background: var(--atlas-v5-card-alt);
+}
+
+.cClick:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: -2px;
+}
+
+.hint {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.cClick:hover .hint,
+.cClick:focus-visible .hint {
+  opacity: 1;
+}
+
 .lab {
   font-size: 11.5px;
   color: var(--atlas-v5-ink-3);
