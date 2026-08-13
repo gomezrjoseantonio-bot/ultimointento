@@ -69,11 +69,18 @@ const DetalleFlujoModal: React.FC<DetalleFlujoModalProps> = ({
                       {fmtEur(conSigno(f.importe, signo), signo !== 'neutro')}
                     </span>
                   </div>
-                  {(f.detalle || f.inmueble) && (
-                    <div className={styles.filaDetalle}>
-                      {[f.detalle, f.inmueble].filter(Boolean).join(' · ')}
-                    </div>
-                  )}
+                  {(() => {
+                    // El inmueble NO se dice dos veces: si el título ya lo nombra
+                    // ("Alquiler · Fuertes Acevedo 32") o ya está en el detalle,
+                    // no se repite al final de la segunda línea.
+                    const inmuebleYaVisible =
+                      !!f.inmueble &&
+                      (f.concepto.includes(f.inmueble) || !!f.detalle?.includes(f.inmueble));
+                    const segunda = [f.detalle, inmuebleYaVisible ? null : f.inmueble]
+                      .filter(Boolean)
+                      .join(' · ');
+                    return segunda ? <div className={styles.filaDetalle}>{segunda}</div> : null;
+                  })()}
                   <div className={styles.filaSub}>
                     <span>{fechaCorta(f.fecha)}</span>
                     {f.cuenta ? <span>· {f.cuenta}</span> : null}

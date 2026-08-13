@@ -194,7 +194,7 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
       />
     );
     abrirDia20();
-    expect(screen.getByText('ORANGE ESPAGNE SA')).toBeInTheDocument();
+    expect(screen.getByText('Orange Espagne')).toBeInTheDocument();
     expect(screen.getByText('Nómina')).toBeInTheDocument();
   });
 
@@ -240,8 +240,8 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
     // —sin el "Renta – " que ya encabeza el grupo— y su habitación, con el
     // `hab-1` del contrato convertido en "Hab 1" y no en "Hab hab-1".
     fireEvent.click(madre);
-    expect(screen.getByText('MIGUEL LORENZO CABANELAS')).toBeInTheDocument();
-    expect(screen.getByText('EMILIO CARRERA RIOS')).toBeInTheDocument();
+    expect(screen.getByText('Miguel Lorenzo Cabanelas')).toBeInTheDocument();
+    expect(screen.getByText('Emilio Carrera Rios')).toBeInTheDocument();
     expect(screen.getByText('Hab 1')).toBeInTheDocument();
     expect(screen.getByText('Hab 2')).toBeInTheDocument();
   });
@@ -296,7 +296,7 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
     // Sin habitación no hay madre que lo encabece, así que lo dice la propia
     // fila: qué es y de qué piso arriba, el inquilino debajo.
     expect(screen.getByText('Alquiler · Tenderina 64 4D')).toBeInTheDocument();
-    expect(screen.getByText('ALISSER REAL ESTATE')).toBeInTheDocument();
+    expect(screen.getByText('Alisser Real Estate')).toBeInTheDocument();
     // Y el piso UNA vez: llevándolo el título, la marca de debajo lo repetía.
     expect(screen.getAllByText(/Tenderina 64 4D/)).toHaveLength(1);
     expect(screen.queryByText(/1 renta$/)).not.toBeInTheDocument();

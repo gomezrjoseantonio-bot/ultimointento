@@ -161,6 +161,46 @@ const CONTRAPARTE_TRAS_EL_GUION = new Set([
 
 const SEPARADOR = ' – ';
 
+/** Partículas que van en minúscula dentro de un nombre (menos si abren). */
+const PARTICULAS_MINUSCULA = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'e', 'da', 'do', 'en']);
+
+/**
+ * El nombre de QUIÉN cobra o paga, en formato normal (§ modelo del apunte).
+ *
+ * El contrato y el banco lo traen en MAYÚSCULAS ("ALISSER REAL ESTATE") y a
+ * veces con sufijo societario ("…, S.L."). Aquí se pasa a Título y se limpia el
+ * sufijo, para que el mismo nombre se lea igual en Tesorería y en el Panel.
+ *
+ * Dos cautelas para no estropear lo que ya está bien:
+ *   · si el texto YA trae minúsculas, es un nombre bien escrito y solo se le
+ *     quita el sufijo;
+ *   · una SIGLA corta de una sola palabra (IBI, ING, BBVA) se deja como está —
+ *     no es un nombre que pase a Título.
+ */
+export function normalizarNombre(raw: string | undefined): string {
+  const base = (raw ?? '').trim();
+  if (!base) return base;
+  // Sufijo societario al final: "…, S.L." · "… S.A.U." · "… S.L.U."
+  const sinSufijo =
+    base
+      .replace(/[,\s]+S\.?\s*[LA]\.?\s*(U\.?)?\s*$/i, '')
+      .replace(/[,;\s]+$/, '')
+      .trim() || base;
+  // Ya bien escrito · no se retoca (solo el sufijo).
+  if (/[a-záéíóúñ]/.test(sinSufijo)) return sinSufijo;
+  // Sigla corta de una palabra → se respeta.
+  if (!sinSufijo.includes(' ') && sinSufijo.length < 5) return sinSufijo;
+  return sinSufijo
+    .toLowerCase()
+    .split(/\s+/)
+    .map((palabra, i) =>
+      i > 0 && PARTICULAS_MINUSCULA.has(palabra)
+        ? palabra
+        : palabra.charAt(0).toUpperCase() + palabra.slice(1),
+    )
+    .join(' ');
+}
+
 /**
  * "Hab 2" a partir de lo que traiga el contrato.
  *
@@ -237,7 +277,8 @@ export function piezasDeFila(
   if (e.sourceType === 'contrato' || e.sourceType === 'contract') {
     const desc = e.description ?? '';
     const corte = desc.lastIndexOf(SEPARADOR);
-    const inquilino = (corte > 0 ? desc.slice(corte + SEPARADOR.length).trim() : desc) || desc;
+    const inquilino =
+      normalizarNombre((corte > 0 ? desc.slice(corte + SEPARADOR.length).trim() : desc) || desc);
     const habitacion = etiquetaHabitacion(e.unidadInmueble);
     const titulo = alias ? `Alquiler \u00b7 ${alias}` : 'Alquiler';
     if (habitacion) {
@@ -255,7 +296,7 @@ export function piezasDeFila(
   // ATLAS ("Seguro hogar") baja al subtítulo: es la traducción, no el hecho.
   if (e.proveedor) {
     return {
-      concepto: e.proveedor,
+      concepto: normalizarNombre(e.proveedor),
       detalle: e.description !== e.proveedor ? e.description : undefined,
     };
   }
@@ -269,7 +310,7 @@ export function piezasDeFila(
     if (corte > 0) {
       const quien = desc.slice(corte + SEPARADOR.length).trim();
       const queEs = desc.slice(0, corte).trim();
-      if (quien && queEs) return { concepto: quien, detalle: queEs };
+      if (quien && queEs) return { concepto: normalizarNombre(quien), detalle: queEs };
     }
   }
 
@@ -435,7 +476,7 @@ function piezasDeMovimiento(
   // algo dice.
   if (m.paymentMethod === 'Bizum') {
     return m.counterparty
-      ? { concepto: m.counterparty, detalle: 'Bizum' }
+      ? { concepto: normalizarNombre(m.counterparty), detalle: 'Bizum' }
       : { concepto: m.description ?? 'Bizum', detalle: undefined };
   }
   // Externa · el dinero SÍ se va, y decirlo evita que se confunda con la

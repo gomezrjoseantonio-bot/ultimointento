@@ -39,6 +39,24 @@ describe('DetalleFlujoModal · dos líneas por apunte', () => {
     expect(screen.getByText('· Santander Nómina')).toBeInTheDocument();
   });
 
+  it('no repite el inmueble cuando el título ya lo nombra', () => {
+    const renta: FlujoRow[] = [
+      {
+        id: '9',
+        fecha: '2026-08-01',
+        concepto: 'Alquiler · Fuertes Acevedo 32',
+        detalle: 'Alisser Real Estate',
+        inmueble: 'Fuertes Acevedo 32',
+        importe: 1350,
+        cuenta: 'Santander Nómina',
+      },
+    ];
+    render(<DetalleFlujoModal titulo="Ha entrado" signo="pos" filas={renta} onClose={() => {}} />);
+    // La segunda línea es solo el pagador, sin repetir el piso.
+    expect(screen.getByText('Alisser Real Estate')).toBeInTheDocument();
+    expect(screen.queryByText('Alisser Real Estate · Fuertes Acevedo 32')).not.toBeInTheDocument();
+  });
+
   it('un apunte sin detalle ni inmueble no pinta la segunda línea', () => {
     render(<DetalleFlujoModal titulo="Ha salido" signo="neg" filas={filas} onClose={() => {}} />);
 
