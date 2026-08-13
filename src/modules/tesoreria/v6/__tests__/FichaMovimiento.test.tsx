@@ -47,10 +47,12 @@ describe('el usuario nunca elige categoría fiscal', () => {
     expect(screen.queryByText(/categoryKey/i)).not.toBeInTheDocument();
   });
 
-  it('traduce familia+concepto a categoryKey al guardar', () => {
+  it('un gasto DE INMUEBLE traduce a la key de inmueble (con casilla AEAT)', () => {
     const onGuardar = jest.fn();
     render(<FichaMovimiento {...base} onGuardar={onGuardar} />);
 
+    // El ámbito lo decide el inmueble: al elegirlo, las familias son las de inmueble.
+    fireEvent.change(screen.getByLabelText('Inmueble'), { target: { value: '7' } });
     fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'suministros' } });
     fireEvent.change(screen.getByLabelText('Concepto del gasto'), { target: { value: 'luz' } });
     fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '74,09' } });
@@ -61,23 +63,101 @@ describe('el usuario nunca elige categoría fiscal', () => {
     );
   });
 
+  it('el MISMO concepto, sin inmueble, es un gasto personal (no se declara)', () => {
+    const onGuardar = jest.fn();
+    render(<FichaMovimiento {...base} onGuardar={onGuardar} />);
+
+    // Sin inmueble → ámbito personal → key de brocha gorda, sin casilla.
+    fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'suministros' } });
+    fireEvent.change(screen.getByLabelText('Concepto del gasto'), { target: { value: 'luz' } });
+    fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '74,09' } });
+    guardar();
+
+    expect(onGuardar).toHaveBeenCalledWith(
+      expect.objectContaining({ categoryKey: 'gasto_personal_vivienda', subtypeKey: null })
+    );
+  });
+
+  it('el gasto PERSONAL ofrece familias que el de inmueble no tiene', () => {
+    render(<FichaMovimiento {...base} />);
+    const familia = screen.getByLabelText('Familia');
+    // Las cuatro personales que faltaban cuando la ficha usaba el catálogo de inmueble.
+    expect(familia).toHaveTextContent('Alquiler');
+    expect(familia).toHaveTextContent('Cuotas');
+    expect(familia).toHaveTextContent('Suscripciones');
+    expect(familia).toHaveTextContent('Día a día');
+  });
+
   it('cambiar de familia reinicia el concepto a uno válido de esa familia', () => {
     render(<FichaMovimiento {...base} />);
     fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'comunidad' } });
 
     const concepto = screen.getByLabelText('Concepto del gasto') as HTMLSelectElement;
-    expect(concepto.value).toBe('cuota_ordinaria');
+    expect(concepto.value).toBe('comunidad_ordinaria');
+  });
+});
+
+describe('el ingreso NO usa el catálogo de gasto', () => {
+  it('muestra conceptos de ingreso, no familias de gasto', () => {
+    render(<FichaMovimiento {...base} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ingreso' }));
+
+    expect(screen.queryByLabelText('Familia')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Concepto del gasto')).not.toBeInTheDocument();
+    const concepto = screen.getByLabelText('Concepto del ingreso');
+    expect(concepto).toHaveTextContent('Alquiler');
+    expect(concepto).toHaveTextContent('Otros ingresos');
+  });
+
+  it('guarda la key de ingreso, nunca una de gasto', () => {
+    const onGuardar = jest.fn();
+    render(<FichaMovimiento {...base} onGuardar={onGuardar} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ingreso' }));
+    fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '1200' } });
+    guardar();
+
+    expect(onGuardar).toHaveBeenCalledWith(
+      expect.objectContaining({ tipo: 'ingreso', categoryKey: 'otros_ingresos', importe: 1200 })
+    );
+  });
+
+  it('el alquiler exige inmueble · bloquea guardar hasta ponerlo', () => {
+    const onGuardar = jest.fn();
+    render(<FichaMovimiento {...base} onGuardar={onGuardar} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ingreso' }));
+    fireEvent.change(screen.getByLabelText('Concepto del ingreso'), { target: { value: 'alquiler' } });
+    fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '395' } });
+    guardar();
+
+    // Sin inmueble no se guarda, y lo dice.
+    expect(onGuardar).not.toHaveBeenCalled();
+    expect(screen.getByText('El alquiler necesita un inmueble')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Inmueble'), { target: { value: '7' } });
+    guardar();
+    expect(onGuardar).toHaveBeenCalledWith(
+      expect.objectContaining({ tipo: 'ingreso', categoryKey: 'alquiler', inmuebleId: 7 })
+    );
   });
 });
 
 describe('la derrama · única pregunta fiscal de la ficha', () => {
+  // La derrama solo pregunta en ámbito INMUEBLE: en personal es un gasto más.
   const elegirDerrama = () => {
+    fireEvent.change(screen.getByLabelText('Inmueble'), { target: { value: '7' } });
     fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'comunidad' } });
     fireEvent.change(screen.getByLabelText('Concepto del gasto'), { target: { value: 'derrama' } });
   };
 
   it('no aparece con conceptos normales', () => {
     render(<FichaMovimiento {...base} />);
+    expect(screen.queryByText('¿Conservación o mejora?')).not.toBeInTheDocument();
+  });
+
+  it('una derrama personal (sin inmueble) NO pregunta · es un gasto más', () => {
+    render(<FichaMovimiento {...base} />);
+    fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'comunidad' } });
+    fireEvent.change(screen.getByLabelText('Concepto del gasto'), { target: { value: 'derrama' } });
     expect(screen.queryByText('¿Conservación o mejora?')).not.toBeInTheDocument();
   });
 
@@ -121,7 +201,7 @@ describe('la derrama · única pregunta fiscal de la ficha', () => {
     elegirDerrama();
     fireEvent.click(screen.getByRole('button', { name: 'Mejora' }));
     // Se vuelve a un concepto normal y de nuevo a derrama.
-    fireEvent.change(screen.getByLabelText('Concepto del gasto'), { target: { value: 'cuota_ordinaria' } });
+    fireEvent.change(screen.getByLabelText('Concepto del gasto'), { target: { value: 'comunidad_ordinaria' } });
     fireEvent.change(screen.getByLabelText('Concepto del gasto'), { target: { value: 'derrama' } });
 
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
@@ -257,7 +337,11 @@ describe('no reclasifica a espaldas del usuario', () => {
   it('si el usuario elige familia, esa sí se guarda', () => {
     const onGuardar = jest.fn();
     render(
-      <FichaMovimiento {...base} inicial={{ tipo: 'gasto', concepto: 'x' }} onGuardar={onGuardar} />
+      <FichaMovimiento
+        {...base}
+        inicial={{ tipo: 'gasto', concepto: 'x', inmuebleId: 7 }}
+        onGuardar={onGuardar}
+      />
     );
     fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'tributos' } });
     fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '10' } });
@@ -271,6 +355,7 @@ describe('no reclasifica a espaldas del usuario', () => {
   it('reclasificar a un concepto sin variante manda subtypeKey null · borra el viejo', () => {
     const onGuardar = jest.fn();
     render(<FichaMovimiento {...base} onGuardar={onGuardar} />);
+    fireEvent.change(screen.getByLabelText('Inmueble'), { target: { value: '7' } });
     fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'tributos' } });
     fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '10' } });
     guardar();
