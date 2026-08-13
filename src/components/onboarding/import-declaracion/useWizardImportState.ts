@@ -34,11 +34,66 @@ export interface PlanLlamada {
  * los opt-in que crean entidades únicas (nómina/autónomo/ventas/cónyuge) solo
  * en la última llamada · IBAN y prefill de inmuebles en todas (idempotentes).
  */
+/**
+ * Ordena las declaraciones de un MISMO ejercicio siguiendo la cadena de
+ * autoliquidaciones rectificativas: original → rectificativa 1 → rectificativa 2…
+ * Como el import sobrescribe el snapshot del ejercicio, procesar en este orden
+ * deja activa la ÚLTIMA rectificativa (la válida), sin depender del orden de
+ * subida. El encadenado se hace por «ingresos previos» de la rectificativa, que
+ * coinciden con el «resultado» de la declaración a la que rectifica (el XML
+ * crudo no trae el nº de justificante propio, pero sí ese importe previo).
+ */
+export function ordenarCadenaRectificativas(
+  declaraciones: DeclaracionCompleta[],
+): DeclaracionCompleta[] {
+  if (declaraciones.length <= 1) return declaraciones;
+
+  const resultadoDe = (d: DeclaracionCompleta): number | null =>
+    d.resultado?.resultadoDeclaracion ?? null;
+  const previaDe = (d: DeclaracionCompleta): number | null =>
+    d.meta.declaracionPrevia?.ingresosPrevios ?? null;
+  const coincide = (a: number | null, b: number | null): boolean =>
+    a != null && b != null && Math.abs(a - b) < 0.005;
+
+  const usados = new Set<DeclaracionCompleta>();
+  const orden: DeclaracionCompleta[] = [];
+
+  // Raíz: una declaración que NO rectifica a otra del grupo (original), o la que
+  // no tiene importe previo. Si hay varias, se toma la primera.
+  const esRaiz = (d: DeclaracionCompleta): boolean =>
+    !d.meta.esRectificativa || previaDe(d) == null;
+
+  let actual: DeclaracionCompleta | undefined = declaraciones.find(esRaiz) ?? declaraciones[0];
+  while (actual && !usados.has(actual)) {
+    orden.push(actual);
+    usados.add(actual);
+    const resultadoActual = resultadoDe(actual);
+    actual = declaraciones.find(
+      (d) => !usados.has(d) && d.meta.esRectificativa && coincide(previaDe(d), resultadoActual),
+    );
+  }
+  // Cualquiera que no encaje en la cadena (datos incompletos) va al final.
+  for (const d of declaraciones) if (!usados.has(d)) orden.push(d);
+  return orden;
+}
+
 export function planificarImportacion(
   declaraciones: DeclaracionCompleta[],
   opciones: OpcionesDistribucion,
 ): PlanLlamada[] {
-  const ordenadas = [...declaraciones].sort((a, b) => a.meta.ejercicio - b.meta.ejercicio);
+  // Agrupar por ejercicio, ordenar cada grupo por su cadena de rectificativas y
+  // concatenar los años en orden ascendente. Dentro de un año, la última
+  // rectificativa se procesa la última y su snapshot es el que queda activo.
+  const porAño = new Map<number, DeclaracionCompleta[]>();
+  for (const d of declaraciones) {
+    const grupo = porAño.get(d.meta.ejercicio);
+    if (grupo) grupo.push(d);
+    else porAño.set(d.meta.ejercicio, [d]);
+  }
+  const años = [...porAño.keys()].sort((a, b) => a - b);
+  const ordenadas: DeclaracionCompleta[] = [];
+  for (const año of años) ordenadas.push(...ordenarCadenaRectificativas(porAño.get(año)!));
+
   return ordenadas.map((decl, i) => {
     const esUltima = i === ordenadas.length - 1;
     return {
@@ -200,7 +255,18 @@ export function useWizardImportState(): WizardImportState {
       setArchivos((prev) => prev.map((a) => (a.id === id ? { ...a, ...cambios } : a)));
 
     for (const file of lista) {
-      const tipo = clasificarTipo(file.name);
+      let tipo = clasificarTipo(file.name);
+      // La extensión no siempre es fiable: la Sede AEAT a veces entrega el XML
+      // como .txt. Si no reconocemos la extensión, husmeamos el contenido.
+      if (tipo === 'otro') {
+        try {
+          const muestra = (await file.slice(0, 512).text()).trimStart();
+          if (muestra.startsWith('%PDF')) tipo = 'pdf';
+          else if (muestra.startsWith('<?xml') || muestra.includes('<Declaracion')) tipo = 'xml';
+        } catch {
+          /* se queda como 'otro' */
+        }
+      }
       const id = `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const base: ArchivoSubido = {
         id,

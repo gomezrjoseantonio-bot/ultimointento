@@ -59,3 +59,43 @@ describe('planificarImportacion', () => {
     expect(plan[0].opciones.crearNominaActiva).toBe(true);
   });
 });
+
+// Cadena de autoliquidaciones rectificativas del mismo ejercicio.
+function declChain(ejercicio: number, resultado: number, previoIngresos?: number): DeclaracionCompleta {
+  return {
+    meta: {
+      ejercicio,
+      tipoDeclaracion: 'I',
+      esRectificativa: previoIngresos != null,
+      ...(previoIngresos != null ? { declaracionPrevia: { ingresosPrevios: previoIngresos } } : {}),
+    } as any,
+    declarante: {} as any,
+    inmuebles: [],
+    integracion: {} as any,
+    resultado: { resultadoDeclaracion: resultado } as any,
+    arrastres: {} as any,
+    casillas: {},
+    camposExtra: {},
+  } as DeclaracionCompleta;
+}
+
+describe('planificarImportacion · cadena de rectificativas (mismo ejercicio)', () => {
+  const original = declChain(2024, 2077.61);
+  const rect1 = declChain(2024, 1859.88, 2077.61);
+  const rect2 = declChain(2024, 2899.75, 1859.88);
+
+  it('ordena original → rect1 → rect2 aunque se suban desordenadas · gana la última', () => {
+    const plan = planificarImportacion([rect2, original, rect1], OPCIONES_DEFAULT);
+    expect(plan.map((p) => p.decl.resultado!.resultadoDeclaracion)).toEqual([2077.61, 1859.88, 2899.75]);
+    // La última procesada (la que deja su snapshot activo) es la rectificativa final.
+    expect(plan[plan.length - 1].decl.resultado!.resultadoDeclaracion).toBe(2899.75);
+    expect(plan[plan.length - 1].esUltima).toBe(true);
+  });
+
+  it('varios años · cada año ordena su cadena y los años van ascendentes', () => {
+    const otroAño = declChain(2023, 500);
+    const plan = planificarImportacion([rect2, otroAño, original, rect1], OPCIONES_DEFAULT);
+    expect(plan.map((p) => p.decl.meta.ejercicio)).toEqual([2023, 2024, 2024, 2024]);
+    expect(plan[plan.length - 1].decl.resultado!.resultadoDeclaracion).toBe(2899.75);
+  });
+});
