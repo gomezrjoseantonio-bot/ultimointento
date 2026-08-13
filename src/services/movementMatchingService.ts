@@ -178,6 +178,19 @@ function scorePair(
     reasons.push('cuenta_match');
   }
 
+  // Importe EXACTO en la misma cuenta ⇒ cuadre de confianza, aunque el día no
+  // coincida — pero SOLO en GASTOS. Un recibo domiciliado (luz, gas, cuota) se
+  // carga uno o dos días después de la fecha prevista y con el importe clavado:
+  // exigir que además pegue el proveedor dejaba fuera lo más normal, y ese era
+  // el origen del "0 de 27". En INGRESOS no vale: quién paga es lo que
+  // distingue una renta de un ingreso cualquiera del mismo importe, así que ahí
+  // manda la contraparte (Bizum/alias), no el importe a secas.
+  const esGasto = event.type === 'expense' || event.type === 'financing';
+  if (esGasto && sameSign && diffAbs < 0.005 && movement.accountId === event.accountId) {
+    score += 25;
+    reasons.push('importe_exacto_misma_cuenta');
+  }
+
   // Description / counterparty proximity.
   const description = (movement.description ?? '').toLowerCase();
   const provider = (event.providerName ?? event.counterparty ?? '').toLowerCase().trim();
