@@ -51,6 +51,15 @@
   color: var(--atlas-v5-neg);
 }
 
+.filaDetalle {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--atlas-v5-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .filaSub {
   margin-top: 2px;
   display: flex;
