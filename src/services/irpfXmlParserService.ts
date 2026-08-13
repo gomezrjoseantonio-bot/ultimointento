@@ -60,24 +60,36 @@ export function parseIrpfXml(xmlContent: string): DeclaracionCompleta {
   if (!declaracionNode) {
     throw new Error('No se encontró el nodo <Declaracion> en el XML');
   }
-  const cdataContent = declaracionNode.textContent || '';
 
-  let jsonData: { fichero: string; metadatos?: string };
-  try {
-    jsonData = JSON.parse(cdataContent);
-  } catch {
-    throw new Error('El contenido de <Declaracion> no es JSON válido');
-  }
+  // Dos formatos admitidos:
+  //  (a) XML CRUDO de la AEAT (Renta20XX.xsd) descargado de la Sede: el propio
+  //      <Declaracion> ya lleva los datos (atributo `modelo` o hijo
+  //      <DatosEconomicos>).
+  //  (b) Envoltorio de descarga: <Declaracion> contiene un JSON
+  //      { fichero, metadatos } con el XML interno como texto (CDATA).
+  const esCrudo = !!(declaracionNode.getAttribute('modelo') || declaracionNode.querySelector('DatosEconomicos'));
 
-  const innerXmlString = jsonData.fichero;
-  if (!innerXmlString) {
-    throw new Error('El JSON no contiene el campo "fichero"');
-  }
+  let doc: Document;
+  let jsonData: { fichero?: string; metadatos?: string } = {};
 
-  const doc = parser.parseFromString(innerXmlString, 'text/xml');
-  const innerParseError = doc.querySelector('parsererror');
-  if (innerParseError) {
-    throw new Error(`XML de declaración inválido: ${innerParseError.textContent}`);
+  if (esCrudo) {
+    doc = outerDoc;
+  } else {
+    const cdataContent = declaracionNode.textContent || '';
+    try {
+      jsonData = JSON.parse(cdataContent);
+    } catch {
+      throw new Error('El contenido de <Declaracion> no es JSON válido');
+    }
+    const innerXmlString = jsonData.fichero;
+    if (!innerXmlString) {
+      throw new Error('El JSON no contiene el campo "fichero"');
+    }
+    doc = parser.parseFromString(innerXmlString, 'text/xml');
+    const innerParseError = doc.querySelector('parsererror');
+    if (innerParseError) {
+      throw new Error(`XML de declaración inválido: ${innerParseError.textContent}`);
+    }
   }
 
   const csv = declaracionNode.getAttribute('csv') || '';
@@ -818,7 +830,7 @@ function extraerCasillasResumen(res: Element | null): Record<string, number> {
   const grav = res?.querySelector('GravamenesRes');
   const ret = res?.querySelector('RetencionesRes');
 
-  return {
+  const casillas: Record<string, number> = {
     '0505': num(bl, 'BLGGRAV'),
     '0510': num(bl, 'BLAHOJ'),
     '0545': num(grav, 'CINTEST'),
@@ -829,6 +841,35 @@ function extraerCasillasResumen(res: Element | null): Record<string, number> {
     '0609': num(ret, 'PAGOS'),
     '0695': num(res, 'RESULTADO'),
   };
+
+  // Ganancias patrimoniales por transmisión de inmuebles (Sección E). El bloque
+  // <GPOtrosInmuebles> (datos) y sus resultados no se reflejaban en las casillas,
+  // así que la Sección E salía vacía al importar por XML. Emitimos las casillas
+  // REALES de la AEAT que la Sección E ya sabe leer —las mismas que trae un
+  // import por PDF—: 1826/1830 (valor transmisión/adquisición), 0424 · 1845
+  // (ganancia a integrar en base ahorro) y 0440/0441 (compensación de saldos
+  // negativos de años anteriores).
+  const doc = res?.ownerDocument ?? null;
+  const bi = res?.querySelector('BaseImponibleRes');
+  const elementos = doc ? Array.from(doc.querySelectorAll('GPOtrosInmuebles ElementoInmueble')) : [];
+  const sumaElementos = (tag: string): number =>
+    Math.round(elementos.reduce((s, el) => s + num(el, tag), 0) * 100) / 100;
+
+  const valorTransmision = sumaElementos('G2DINME');
+  const valorAdquisicion = sumaElementos('G2DINMF');
+  const gananciaInmuebles = num(res?.querySelector('GPOtrosInmueblesRes'), 'G2INMT4');
+  const saldoAhorro = num(res?.querySelector('GPPatrimonialesRes'), 'GPAHOG') || num(bi, 'GPAHOH');
+  const comp0440 = num(bi, 'HSALDO44');
+  const comp0441 = num(bi, 'HSALDO44B');
+
+  if (valorTransmision) casillas['1826'] = valorTransmision;
+  if (valorAdquisicion) casillas['1830'] = valorAdquisicion;
+  if (gananciaInmuebles) casillas['1845'] = gananciaInmuebles;
+  if (saldoAhorro) casillas['0424'] = saldoAhorro;
+  if (comp0440) casillas['0440'] = comp0440;
+  if (comp0441) casillas['0441'] = comp0441;
+
+  return casillas;
 }
 
 function gastosVacios(): GastosInmueble {
