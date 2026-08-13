@@ -61,6 +61,28 @@ export interface Proximos30VM {
   primero: string | null;
 }
 
+/** Un apunte concreto detrás de una cifra de "Cómo va el mes". */
+export interface FlujoRow {
+  id: string;
+  /** Fecha del apunte · `YYYY-MM-DD`. */
+  fecha: string;
+  concepto: string;
+  /** Magnitud SIEMPRE en positivo · el signo lo pone la tarjeta. */
+  importe: number;
+  /** Nombre de la cuenta, si se conoce. */
+  cuenta?: string;
+}
+
+export type FlujoClave = 'haEntrado' | 'quedaEntrar' | 'haSalido' | 'quedaSalir';
+
+/** Las cuatro poblaciones que componen las cifras de "Cómo va el mes". */
+export interface FlujosMes {
+  haEntrado: FlujoRow[];
+  quedaEntrar: FlujoRow[];
+  haSalido: FlujoRow[];
+  quedaSalir: FlujoRow[];
+}
+
 export interface IrpfVM {
   /**
    * Resultado ESTIMADO de la renta del ejercicio · cuota líquida MENOS lo ya

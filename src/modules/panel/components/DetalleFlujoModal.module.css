@@ -1,0 +1,77 @@
+/* Panel · lista de apuntes de un flujo de "Cómo va el mes". */
+
+.vacio {
+  padding: 24px 4px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13px;
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fila {
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.fila:last-child {
+  border-bottom: none;
+}
+
+.filaMain {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.concepto {
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.importe {
+  flex: 0 0 auto;
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.importe.pos {
+  color: var(--atlas-v5-pos);
+}
+
+.importe.neg {
+  color: var(--atlas-v5-neg);
+}
+
+.filaSub {
+  margin-top: 2px;
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.totalRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 12px 2px 2px;
+  border-top: 1px solid var(--atlas-v5-line);
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.total {
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+}

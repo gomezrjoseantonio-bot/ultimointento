@@ -30,7 +30,12 @@ import {
   calculateAccountBalanceAtDate,
   corteParaSaldoVivo,
 } from '../../services/accountBalanceService';
-import { calcularKpisHero } from '../../services/tesoreriaV6Metrics';
+import {
+  calcularKpisHero,
+  esPendiente,
+  importeConSigno,
+  rangoDelMes,
+} from '../../services/tesoreriaV6Metrics';
 import { cuentasEnUso } from '../../services/cuentasEnUso';
 import type { Prestamo } from '../../types/prestamos';
 import { getAllCartaItems } from '../inversiones/adapters/galeriaAdapter';
@@ -55,7 +60,7 @@ import ComoVaElMes from './components/ComoVaElMes';
 import PuedesEstarTranquilo from './components/PuedesEstarTranquilo';
 import AccionesRapidas from './components/AccionesRapidas';
 import ActualizarValoresModal from './components/ActualizarValoresModal';
-import type { AnilloState } from './components/types';
+import type { AnilloState, FlujosMes, FlujoRow } from './components/types';
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import { costeMensualRecurrente, importeRecurrenteEnMes } from './compromisosMensual';
 import { decideFirstRun } from '../onboarding/empezar/FirstRunRedirect';
@@ -205,7 +210,12 @@ const PanelPage: React.FC = () => {
             }),
         ]);
       if (!isMountedRef.current) return;
-      setProperties(props);
+      // Solo inmuebles ACTIVOS suman al patrimonio. Un inmueble VENDIDO ya no
+      // es tuyo —su dinero está en tesorería— y uno de BAJA tampoco cuenta.
+      // El Panel los metía a todos y por eso enseñaba más patrimonio inmobiliario
+      // que la propia pantalla Inmuebles, que ya filtra `state === 'activo'`
+      // (`InmueblesPage`). Misma regla aquí para que cuadren.
+      setProperties(props.filter((p) => p.state === 'activo'));
       setCartaItems(items);
       setAccounts(accs);
       setPrestamos(prest.filter((p) => p.activo !== false && p.estado !== 'cancelado'));
@@ -427,6 +437,51 @@ const PanelPage: React.FC = () => {
     };
   }, [treasuryEvents, today, compromisos, kpisTesoreria]);
 
+  // Detalle de cada flujo · las MISMAS poblaciones que alimentan las cuatro
+  // cifras de "Cómo va el mes", para que al abrir una tarjeta se vea justo lo
+  // que la compone (y se pueda cuadrar a mano). Los pendientes usan el mismo
+  // criterio que `calcularKpisHero` (esPendiente + en rango del mes + signo por
+  // `type`), así que la lista y el número no pueden discrepar.
+  const flujos = useMemo<FlujosMes>(() => {
+    const { desde, hasta } = rangoDelMes(today.getFullYear(), today.getMonth());
+    const nombreCuenta = (id?: number) => accounts.find((a) => a.id === id)?.name || undefined;
+    const soloDia = (iso?: string) => (iso ?? '').slice(0, 10);
+    const toRow = (ev: TreasuryEvent, usarReal: boolean): FlujoRow => ({
+      id: String(ev.id ?? `${ev.predictedDate}-${ev.amount}-${ev.description ?? ''}`),
+      fecha: soloDia(usarReal ? ev.actualDate ?? ev.predictedDate : ev.predictedDate),
+      concepto: ev.description || ev.proveedor || ev.categoryLabel || 'Movimiento previsto',
+      importe: magnitud(ev, usarReal),
+      cuenta: nombreCuenta(ev.accountId),
+    });
+    const ejecutadoEnMes = (ev: TreasuryEvent) =>
+      ev.status === 'executed' && mismoMes(ev.actualDate ?? ev.predictedDate, today);
+    const pendienteEnMes = (ev: TreasuryEvent) => {
+      if (!esPendiente(ev)) return false;
+      const f = soloDia(ev.predictedDate);
+      return f >= desde && f <= hasta;
+    };
+    const porDia = (a: FlujoRow, b: FlujoRow) => a.fecha.localeCompare(b.fecha);
+
+    return {
+      haEntrado: treasuryEvents
+        .filter((ev) => ev.type === 'income' && ejecutadoEnMes(ev))
+        .map((ev) => toRow(ev, true))
+        .sort(porDia),
+      haSalido: treasuryEvents
+        .filter((ev) => esSalida(ev) && ejecutadoEnMes(ev))
+        .map((ev) => toRow(ev, true))
+        .sort(porDia),
+      quedaEntrar: treasuryEvents
+        .filter((ev) => pendienteEnMes(ev) && importeConSigno(ev) > 0)
+        .map((ev) => toRow(ev, false))
+        .sort(porDia),
+      quedaSalir: treasuryEvents
+        .filter((ev) => pendienteEnMes(ev) && importeConSigno(ev) < 0)
+        .map((ev) => toRow(ev, false))
+        .sort(porDia),
+    };
+  }, [treasuryEvents, accounts, today]);
+
   // ── Puedes estar tranquilo ───────────────────────────────────────────────
 
   // Colchón · "si no entrara ningún ingreso (ni alquileres ni nómina), ¿cuánto
@@ -597,6 +652,7 @@ const PanelPage: React.FC = () => {
             mesNombre={mesNombre}
             hayDatos={treasuryEvents.length > 0}
             mes={mes}
+            flujos={flujos}
             saldoActual={saldoTesoreria}
             onIrTesoreria={() => navigate('/tesoreria')}
           />
