@@ -25,7 +25,13 @@ import { LayoutDashboard } from 'lucide-react';
 import { PageHead } from '../../design-system/v5';
 import { EmptyState } from '../../components/common/EmptyState';
 import { initDB } from '../../services/db';
-import type { Property, Account, TreasuryEvent, Contract } from '../../services/db';
+import type { Property, Account, TreasuryEvent, Contract, Movement } from '../../services/db';
+import {
+  calculateAccountBalanceAtDate,
+  corteParaSaldoVivo,
+} from '../../services/accountBalanceService';
+import { calcularKpisHero } from '../../services/tesoreriaV6Metrics';
+import { cuentasEnUso } from '../../services/cuentasEnUso';
 import type { Prestamo } from '../../types/prestamos';
 import { getAllCartaItems } from '../inversiones/adapters/galeriaAdapter';
 import type { CartaItem } from '../inversiones/types/cartaItem';
@@ -120,6 +126,7 @@ const PanelPage: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [treasuryEvents, setTreasuryEvents] = useState<TreasuryEvent[]>([]);
+  const [movements, setMovements] = useState<Movement[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [escenario, setEscenario] = useState<Escenario | null>(null);
   const [compromisos, setCompromisos] = useState<CompromisoRecurrente[]>([]);
@@ -164,13 +171,17 @@ const PanelPage: React.FC = () => {
   const loadPanelData = useCallback(async () => {
     try {
       const [db, ctx] = await Promise.all([initDB(), getFiscalContextSafe()]);
-      const [props, items, accs, prest, tevents, conts, comps, escenarios, matcher] =
+      const [props, items, accs, prest, tevents, movs, conts, comps, escenarios, matcher] =
         await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           getAllCartaItems(),
           db.getAll('accounts') as Promise<Account[]>,
           db.getAll('prestamos') as Promise<Prestamo[]>,
           db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+          // Movimientos reales · el saldo VIVO se calcula, no se lee de
+          // `account.balance` (que es solo una foto a principio de mes · ver
+          // `rollForwardAccountBalancesToMonth`). Igual que hace Tesorería.
+          db.getAll('movements') as Promise<Movement[]>,
           db.getAll('contracts') as Promise<Contract[]>,
           db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
           db.getAll('escenarios') as Promise<Escenario[]>,
@@ -199,6 +210,7 @@ const PanelPage: React.FC = () => {
       setAccounts(accs);
       setPrestamos(prest.filter((p) => p.activo !== false && p.estado !== 'cancelado'));
       setTreasuryEvents(tevents);
+      setMovements(movs);
       setContracts(conts);
       setCompromisos(comps);
       setEscenario(escenarios[0] ?? null);
@@ -297,10 +309,48 @@ const PanelPage: React.FC = () => {
     [cartaItems],
   );
 
-  const saldoTesoreria = useMemo(
-    () => accounts.reduce((s, a) => s + ((a as Account).balance ?? a.openingBalance ?? 0), 0),
-    [accounts],
+  // ── Saldo VIVO de tesorería · MISMA fuente que la pantalla Tesorería ─────
+  // El saldo NO se lee de `account.balance` —que es solo una foto a principio
+  // de mes (`rollForwardAccountBalancesToMonth`)—: se calcula con los
+  // movimientos y eventos reales hasta el corte de hoy, exactamente como
+  // Tesorería. Con la foto de mes, el "hoy tienes" del Panel salía por debajo
+  // del "SALDO" de Tesorería (le faltaba todo lo movido desde el día 1).
+  const cuentasVivas = useMemo(() => cuentasEnUso(accounts), [accounts]);
+
+  const saldoPorCuenta = useMemo(() => {
+    const corte = corteParaSaldoVivo(today.toISOString().slice(0, 10));
+    const m = new Map<number, number>();
+    for (const c of cuentasVivas) {
+      if (c.id == null) continue;
+      m.set(
+        c.id,
+        calculateAccountBalanceAtDate({
+          account: c,
+          cutoffDate: corte,
+          treasuryEvents,
+          movements,
+        }),
+      );
+    }
+    return m;
+  }, [cuentasVivas, treasuryEvents, movements, today]);
+
+  // KPIs del hero de Tesorería (§4.1) · calculados con SU propia función, para
+  // que el Panel no pueda desviarse: el saldo de hoy, lo que queda por
+  // entrar/salir este mes y el cierre proyectado salen todos de aquí.
+  const kpisTesoreria = useMemo(
+    () =>
+      calcularKpisHero({
+        cuentas: cuentasVivas,
+        saldoPorCuenta,
+        eventos: treasuryEvents,
+        year: today.getFullYear(),
+        month0: today.getMonth(),
+      }),
+    [cuentasVivas, saldoPorCuenta, treasuryEvents, today],
   );
+
+  const saldoTesoreria = kpisTesoreria.saldo;
 
   const deudaViva = useMemo(
     () => prestamos.reduce((s, p) => s + (p.principalVivo ?? 0), 0),
@@ -320,34 +370,34 @@ const PanelPage: React.FC = () => {
   const activosTotales = valorInmuebles + valorInversiones + saldoTesoreria;
   const patrimonioNeto = activosTotales - deudaViva;
 
-  // ── Cómo va el mes · split cobrado/pendiente por `type` + `status` ───────
-  // Partimos por `type` (no por el signo de `amount`, que se guarda en positivo).
+  // ── Cómo va el mes ───────────────────────────────────────────────────────
+  // Dos lados:
+  //   · lo que YA pasó (ejecutado) → "ha entrado / ha salido", con su importe
+  //     real (`actualAmount`). Es propio del Panel · Tesorería no lo desglosa.
+  //   · lo que QUEDA por entrar/salir y el cierre → salen del HERO de Tesorería
+  //     (`calcularKpisHero`), para que sean EL MISMO número en las dos
+  //     pantallas. Su definición incluye lo previsto/confirmado del mes que aún
+  //     no se ha ejecutado, TAMBIÉN lo ya vencido sin confirmar (por eso "queda
+  //     por salir" puede llevar fecha ya pasada). Antes el Panel solo contaba
+  //     lo FUTURO (fecha ≥ hoy) y se dejaba fuera lo vencido sin confirmar, así
+  //     que ni "queda por salir" ni el cierre cuadraban con Tesorería.
   const mes = useMemo(() => {
     const enMes = treasuryEvents.filter(
       (ev) =>
         mismoMes(ev.actualDate ?? ev.predictedDate, today) || mismoMes(ev.predictedDate, today),
     );
-    const inicioHoy = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const ejecutado = (ev: TreasuryEvent) => ev.status === 'executed';
-    const pendienteFuturo = (ev: TreasuryEvent) =>
-      ev.status !== 'executed' &&
-      mismoMes(ev.predictedDate, today) &&
-      new Date(ev.predictedDate) >= inicioHoy;
     const ejecutadoEnMes = (ev: TreasuryEvent) =>
-      ejecutado(ev) && mismoMes(ev.actualDate ?? ev.predictedDate, today);
+      ev.status === 'executed' && mismoMes(ev.actualDate ?? ev.predictedDate, today);
 
     const ingresosCobrados = enMes.filter((ev) => ev.type === 'income' && ejecutadoEnMes(ev));
-    const ingresosPendientes = enMes.filter((ev) => ev.type === 'income' && pendienteFuturo(ev));
     const salidasHechas = enMes.filter((ev) => esSalida(ev) && ejecutadoEnMes(ev));
-    const salidasPendientes = enMes.filter((ev) => esSalida(ev) && pendienteFuturo(ev));
-
     const haEntrado = ingresosCobrados.reduce((s, ev) => s + magnitud(ev, true), 0);
-    const quedaEntrar = ingresosPendientes.reduce((s, ev) => s + magnitud(ev), 0);
     const haSalido = salidasHechas.reduce((s, ev) => s + magnitud(ev, true), 0);
-    const quedaSalir = salidasPendientes.reduce((s, ev) => s + magnitud(ev), 0);
 
-    // Saldo a fin de mes = saldo actual + lo que aún debe entrar − lo que aún debe salir.
-    const saldoFin = saldoTesoreria + quedaEntrar - quedaSalir;
+    // Lo que queda y el cierre · calcados del hero de Tesorería.
+    const quedaEntrar = kpisTesoreria.pendienteEntrar;
+    const quedaSalir = Math.abs(kpisTesoreria.pendienteSalir);
+    const saldoFin = kpisTesoreria.cierre;
 
     // Fiabilidad del saldo · la regla opex regenera treasuryEvents de forma
     // perezosa (al visitar Tesorería/Gastos/Inmueble). Si hay compromisos que
@@ -367,15 +417,15 @@ const PanelPage: React.FC = () => {
       haEntrado,
       nEntrado: ingresosCobrados.length,
       quedaEntrar,
-      nQuedaEntrar: ingresosPendientes.length,
+      nQuedaEntrar: kpisTesoreria.movimientosEntrar,
       haSalido,
       nSalido: salidasHechas.length,
       quedaSalir,
-      nQuedaSalir: salidasPendientes.length,
+      nQuedaSalir: kpisTesoreria.movimientosSalir,
       saldoFin,
       saldoFinFiable,
     };
-  }, [treasuryEvents, today, saldoTesoreria, compromisos]);
+  }, [treasuryEvents, today, compromisos, kpisTesoreria]);
 
   // ── Puedes estar tranquilo ───────────────────────────────────────────────
 

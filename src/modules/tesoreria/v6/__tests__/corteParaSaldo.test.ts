@@ -6,14 +6,16 @@
 // confirmar" —dejaba de contar como pendiente— y tampoco entraba en el saldo,
 // con lo que confirmar un GASTO subía el saldo final.
 //
-// Este candado empareja las dos piezas: el corte que usa Tesorería contra el
-// servicio real de saldos.
+// Este candado empareja las dos piezas: el corte que usan Tesorería y el Panel
+// (`corteParaSaldoVivo`, compartido) contra el servicio real de saldos.
 
-import { __private__ } from '../TesoreriaV6Page';
-import { calculateAccountBalanceAtDate } from '../../../../services/accountBalanceService';
+import {
+  calculateAccountBalanceAtDate,
+  corteParaSaldoVivo,
+} from '../../../../services/accountBalanceService';
 import type { Account, Movement } from '../../../../services/db';
 
-const { corteParaSaldo } = __private__;
+const corteParaSaldo = corteParaSaldoVivo;
 
 const HOY = '2026-08-03';
 

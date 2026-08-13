@@ -22,6 +22,24 @@ function buildEntryKey(accountId: number, date: string, signedAmount: number): s
   return `${accountId}|${toDateOnly(date) ?? date}|${signedAmount}`;
 }
 
+/**
+ * El corte para pedir el saldo VIVO de una cuenta · MAÑANA, no hoy.
+ *
+ * `calculateAccountBalanceAtDate` filtra por `< cutoffDate` ESTRICTAMENTE, así
+ * que pasarle hoy deja fuera todo lo de hoy —justo lo que el usuario acaba de
+ * confirmar—. El dinero que salió del banco esta mañana está fuera del banco
+ * esta tarde, así que el saldo de hoy tiene que incluir lo de hoy.
+ *
+ * Vive aquí, exportado, para que Tesorería y el Panel usen EL MISMO corte: si
+ * cada pantalla lo calculaba por su cuenta, el "hoy tienes" del Panel y el
+ * "SALDO" de Tesorería podían no cuadrar. Recibe `hoy` en `YYYY-MM-DD`.
+ */
+export function corteParaSaldoVivo(hoy: string): string {
+  const d = new Date(`${hoy}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 export function calculateAccountBalanceAtDate(params: {
   account: Account;
   cutoffDate: string;
