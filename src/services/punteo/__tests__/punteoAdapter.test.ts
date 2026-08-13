@@ -5,7 +5,7 @@
 // el móvil del banco en la mano hay que poder decir cuál es cuál sin abrir
 // nada. Antes ponía "Seguro hogar / Inmueble 2" en las dos.
 
-import { eventoAItem, movimientoAItem, origenDeEvento } from '../punteoAdapter';
+import { eventoAItem, movimientoAItem, origenDeEvento, normalizarNombre } from '../punteoAdapter';
 import { agruparHijas } from '../punteoModel';
 import type { Movement, TreasuryEvent } from '../../db';
 
@@ -141,13 +141,13 @@ describe('la renta de una habitación, suelta y bajo su piso', () => {
   // alquiler; y sin el piso, no se sabe de cuál de ellos entra el dinero.
   it('suelta lo dice TODO · qué es, de qué piso, quién paga y qué habitación', () => {
     expect(renta.concepto).toBe('Alquiler · Tenderina 64 4IZ');
-    expect(renta.detalle).toBe('ADNAN PARWEZ · Hab 2');
+    expect(renta.detalle).toBe('Adnan Parwez · Hab 2');
   });
 
   // Bajo la madre el piso ya lo encabeza el grupo · repetirlo en cada
   // habitación es escribirlo cuatro veces.
   it('bajo su piso se queda con lo que la distingue de sus hermanas', () => {
-    expect(renta.bajoMadre).toEqual({ concepto: 'ADNAN PARWEZ', detalle: 'Hab 2' });
+    expect(renta.bajoMadre).toEqual({ concepto: 'Adnan Parwez', detalle: 'Hab 2' });
   });
 
   // Piso completo · no hay habitación que decir, así que tampoco hay una
@@ -164,7 +164,7 @@ describe('la renta de una habitación, suelta y bajo su piso', () => {
       }) as TreasuryEvent & { id: number }
     );
     expect(completa.concepto).toBe('Alquiler · Carles Buigas 15');
-    expect(completa.detalle).toBe('CONCEPCION RAMIREZ');
+    expect(completa.detalle).toBe('Concepcion Ramirez');
     expect(completa.bajoMadre).toBeUndefined();
   });
 });
@@ -201,7 +201,7 @@ describe('el movimiento se lee igual que la previsión de la que nació', () => 
       () => 'Tenderina 64 4DR'
     );
     expect(it.concepto).toBe('Alquiler · Tenderina 64 4DR');
-    expect(it.detalle).toBe('ALISSER REAL ESTATE');
+    expect(it.detalle).toBe('Alisser Real Estate');
   });
 
   // La misma regla del guion que en las previsiones: la contraparte al título y
@@ -331,7 +331,7 @@ describe('un Bizum dice QUIÉN, no cómo', () => {
 
   it('la persona arriba y la forma de pago debajo', () => {
     const it = bizum({ id: 1 });
-    expect(it.concepto).toBe('ADNAN PARWEZ');
+    expect(it.concepto).toBe('Adnan Parwez');
     expect(it.detalle).toBe('Bizum');
   });
 
@@ -431,5 +431,33 @@ describe('un gasto anotado a mano enseña su clasificación', () => {
       gasto({ id: 5, providerName: 'Naturgy', description: undefined })
     );
     expect(it.concepto).toBe('Naturgy');
+  });
+});
+
+// § modelo del apunte · el nombre de quién cobra/paga va en formato normal.
+describe('normalizarNombre', () => {
+  it('MAYÚSCULAS de varias palabras pasan a Título, con partículas en minúscula', () => {
+    expect(normalizarNombre('ALISSER REAL ESTATE')).toBe('Alisser Real Estate');
+    expect(normalizarNombre('ADNAN PARWEZ')).toBe('Adnan Parwez');
+    expect(normalizarNombre('BANCO DE SANTANDER')).toBe('Banco de Santander');
+  });
+
+  it('respeta un nombre que ya viene bien escrito', () => {
+    expect(normalizarNombre('Iberdrola Clientes')).toBe('Iberdrola Clientes');
+  });
+
+  it('deja las siglas cortas como están (IBI, ING, BBVA)', () => {
+    expect(normalizarNombre('IBI')).toBe('IBI');
+    expect(normalizarNombre('ING')).toBe('ING');
+    expect(normalizarNombre('BBVA')).toBe('BBVA');
+  });
+
+  it('limpia el sufijo societario del final', () => {
+    expect(normalizarNombre('ALISSER REAL ESTATE, S.L.')).toBe('Alisser Real Estate');
+    expect(normalizarNombre('Orange Espagne S.A.U.')).toBe('Orange Espagne');
+  });
+
+  it('una palabra larga en mayúsculas también pasa a Título', () => {
+    expect(normalizarNombre('IBERDROLA')).toBe('Iberdrola');
   });
 });
