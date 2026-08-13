@@ -1,9 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ScanLine, Link2, Building, CheckCircle, X } from 'lucide-react';
 import { confirmLink, CandidatoMatch } from '../../services/documentMatchingService';
 import { initDB, Property } from '../../services/db';
 import { mejorasInmuebleService } from '../../services/mejorasInmuebleService';
 import { mueblesInmuebleService } from '../../services/mueblesInmuebleService';
+import {
+  classifyDocumentFromOCR,
+  assignDocumentToProperty,
+  toIsoDate,
+} from '../../services/documentAutoClassifyService';
 import toast from 'react-hot-toast';
 
 interface InboxV3ExtractedPanelProps {
@@ -138,14 +143,35 @@ const MatchCandidateCard: React.FC<{
 
 // ── Manual assignment form for pendiente_asignacion ──────────────────────────
 
+type AsignacionTipo = 'suministro' | 'mejora' | 'ampliacion' | 'reparacion' | 'mobiliario';
+
+const ASIGNACION_OPCIONES: Array<{ value: AsignacionTipo; label: string }> = [
+  { value: 'suministro', label: 'Suministro / Gasto (luz, agua, gas, seguro…)' },
+  { value: 'mejora',     label: 'Mejora (CAPEX)' },
+  { value: 'ampliacion', label: 'Ampliación (CAPEX)' },
+  { value: 'reparacion', label: 'Reparación' },
+  { value: 'mobiliario', label: 'Mobiliario' },
+];
+
 const ManualAssignmentForm: React.FC<{
-  documentId: number;
-  onAssigned: () => void;
-}> = ({ documentId, onAssigned }) => {
+  document: any;
+  onAssigned: (updatedDoc: any) => void;
+}> = ({ document, onAssigned }) => {
+  const classification = useMemo(
+    () => (document ? classifyDocumentFromOCR(document) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [document?.id],
+  );
+
   const [properties, setProperties] = useState<Property[]>([]);
-  const [inmuebleId, setInmuebleId] = useState<number | ''>('');
-  const [tipo, setTipo] = useState<'mejora' | 'reparacion' | 'mobiliario'>('mejora');
-  const [ejercicio, setEjercicio] = useState(new Date().getFullYear());
+  const [inmuebleId, setInmuebleId] = useState<number | ''>(
+    document?.metadata?.entityId ?? document?.metadata?.suggestedEntityId ?? '',
+  );
+  const defaultTipo: AsignacionTipo = classification?.meta.capex
+    ? (classification.tipoGasto === 'mobiliario' ? 'mobiliario' : 'mejora')
+    : 'suministro';
+  const [tipo, setTipo] = useState<AsignacionTipo>(defaultTipo);
+  const [ejercicio, setEjercicio] = useState(classification?.ejercicio ?? new Date().getFullYear());
   const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
@@ -154,34 +180,45 @@ const ManualAssignmentForm: React.FC<{
 
   const handleAssign = async () => {
     if (!inmuebleId) { toast.error('Selecciona un inmueble'); return; }
+    if (!document?.id || !classification) return;
     setAssigning(true);
     try {
-      const db = await initDB();
+      const importe = classification.total ?? classification.base ?? 0;
+      const fechaIso = toIsoDate(classification.fecha) ?? `${ejercicio}-01-01`;
+      const descripcion = classification.proveedor
+        ? `${classification.meta.label} · ${classification.proveedor}`
+        : classification.meta.label;
 
+      // Sólo el CAPEX/mobiliario crea un registro de operación declarada.
+      // Un suministro/gasto se archiva vinculado al inmueble, sin inventar una
+      // mejora de importe 0 (que era el comportamiento anterior).
       if (tipo === 'mobiliario') {
         await mueblesInmuebleService.crear({
           inmuebleId: inmuebleId as number, ejercicio,
-          descripcion: 'Asignado desde factura', fechaAlta: `${ejercicio}-01-01`,
-          importe: 0, vidaUtil: 10, activo: true, documentId,
+          descripcion, fechaAlta: fechaIso,
+          importe, vidaUtil: 10, activo: true,
+          proveedorNombre: classification.proveedor,
+          proveedorNIF: document?.metadata?.financialData?.nifProveedor,
+          invoiceNumber: classification.numeroFactura,
+          documentId: document.id,
         });
-      } else {
+      } else if (tipo !== 'suministro') {
         await mejorasInmuebleService.crear({
           inmuebleId: inmuebleId as number, ejercicio,
-          descripcion: 'Asignado desde factura',
-          tipo: tipo as 'mejora' | 'ampliacion' | 'reparacion',
-          importe: 0, fecha: `${ejercicio}-01-01`, documentId,
+          descripcion, tipo, importe, fecha: fechaIso,
+          proveedorNombre: classification.proveedor,
+          proveedorNIF: document?.metadata?.financialData?.nifProveedor,
+          invoiceNumber: classification.numeroFactura,
+          documentId: document.id,
         });
       }
 
-      // Mark document as Asignado
-      const doc = await db.get('documents', documentId);
-      if (doc) {
-        doc.metadata = { ...doc.metadata, status: 'Asignado', matchCandidates: undefined };
-        await db.put('documents', doc);
-      }
+      // En todos los casos, el documento queda vinculado al inmueble y
+      // clasificado (entityType/entityId + financialData).
+      const updated = await assignDocumentToProperty(document.id, inmuebleId as number, classification);
 
-      toast.success('Documento asignado correctamente');
-      onAssigned();
+      toast.success('Documento asignado al inmueble');
+      onAssigned(updated);
     } catch (e: any) {
       toast.error(e.message || 'Error al asignar');
     } finally {
@@ -201,6 +238,13 @@ const ManualAssignmentForm: React.FC<{
         </span>
       </div>
 
+      {classification && (
+        <p className="text-xs mb-3" style={{ color: 'var(--n-500)' }}>
+          Detectado: <strong style={{ color: 'var(--n-700)' }}>{classification.meta.label}</strong>
+          {classification.proveedor ? ` · ${classification.proveedor}` : ''}
+        </p>
+      )}
+
       <div className="space-y-2">
         <select
           value={inmuebleId}
@@ -216,13 +260,13 @@ const ManualAssignmentForm: React.FC<{
 
         <select
           value={tipo}
-          onChange={(e) => setTipo(e.target.value as any)}
+          onChange={(e) => setTipo(e.target.value as AsignacionTipo)}
           className="w-full px-2 py-1.5 border text-xs"
           style={{ borderColor: 'var(--n-300)', borderRadius: 'var(--r-sm)', background: 'var(--white)' }}
         >
-          <option value="mejora">Mejora</option>
-          <option value="reparacion">Reparación</option>
-          <option value="mobiliario">Mobiliario</option>
+          {ASIGNACION_OPCIONES.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
         </select>
 
         <input
@@ -296,16 +340,13 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
       const store = candidate.tipo === 'mobiliarioActivo' ? 'mueblesInmueble' : 'mejorasInmueble';
       await confirmLink(store, candidate.id, document.id);
 
-      // Update document status
-      const db = await initDB();
-      const doc = await db.get('documents', document.id);
-      if (doc) {
-        doc.metadata = { ...doc.metadata, status: 'Asignado', matchCandidates: undefined };
-        await db.put('documents', doc);
-      }
+      // Vincular la operación NO basta: hay que dejar el documento archivado en
+      // el inmueble del candidato (entityType/entityId) y clasificado.
+      const classification = classifyDocumentFromOCR(document);
+      const updated = await assignDocumentToProperty(document.id, candidate.inmuebleId, classification);
 
       toast.success('Documento vinculado correctamente');
-      onDocumentUpdated?.(doc || { ...document, metadata: { ...document.metadata, status: 'Asignado', matchCandidates: undefined } });
+      onDocumentUpdated?.(updated);
     } catch (e: any) {
       toast.error(e.message || 'Error al vincular');
     } finally {
@@ -503,10 +544,8 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
             {isPendienteAsignacion && document?.id && (
               <div className="mt-2">
                 <ManualAssignmentForm
-                  documentId={document.id}
-                  onAssigned={() => {
-                    onDocumentUpdated?.({ ...document, metadata: { ...document.metadata, status: 'Asignado', matchCandidates: undefined } });
-                  }}
+                  document={document}
+                  onAssigned={(updatedDoc) => onDocumentUpdated?.(updatedDoc)}
                 />
               </div>
             )}

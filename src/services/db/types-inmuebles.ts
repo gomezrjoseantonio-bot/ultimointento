@@ -646,6 +646,10 @@ export interface Document {
     categoria?: string;
     destino?: 'Personal' | 'Inmueble';
     status?: 'Nuevo' | 'Procesado' | 'Asignado' | 'Archivado' | 'pendiente_vinculacion' | 'pendiente_asignacion';
+    /** Estado de la cola de la bandeja de entrada (pendiente · procesado · error). */
+    queueStatus?: 'pendiente' | 'procesado' | 'error';
+    /** Inmueble sugerido automáticamente por dirección tras el OCR (a confirmar). */
+    suggestedEntityId?: number;
     notas?: string;
     carpeta?: 'todos' | 'facturas' | 'contratos' | 'extractos' | 'mejoras' | 'otros';
     // H9: Enhanced fiscal classification
@@ -674,6 +678,12 @@ export interface Document {
       iban?: string;
       predictedPaymentDate?: string;
       isMejora?: boolean;
+      /** NIF/CIF del proveedor extraído del OCR (para matching). */
+      nifProveedor?: string;
+      /** Dirección del inmueble/servicio detectada en la factura. */
+      direccionInmueble?: string;
+      /** Fecha del documento en el formato original del OCR. */
+      fechaDocumento?: string;
     };
     // H8: Bank extract specific metadata
     extractMetadata?: {
