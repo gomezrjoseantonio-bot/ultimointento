@@ -45,7 +45,7 @@ const PasoConfirmar: React.FC<Props> = ({ s, onClose, onImported }) => {
     setErrores([]);
     const r = await s.importar();
     if (r.errores.length === 0) {
-      toast.success(`Importación completada · ${r.informes.length} ejercicio(s)`);
+      toast.success(`Importación completada · ${s.ejerciciosDetectados} ejercicio(s)`);
       onImported?.();
       onClose();
     } else {
@@ -61,7 +61,7 @@ const PasoConfirmar: React.FC<Props> = ({ s, onClose, onImported }) => {
       </div>
       <div className={styles.stepSub}>
         Revisa lo que se va a crear y actualizar · al confirmar, ATLAS aplicará los cambios de los{' '}
-        {s.declaraciones.length} ejercicio(s) cronológicamente.
+        {s.ejerciciosDetectados} ejercicio(s) cronológicamente.
       </div>
 
       <div className={styles.secTitle}>
@@ -95,10 +95,10 @@ const PasoConfirmar: React.FC<Props> = ({ s, onClose, onImported }) => {
       </div>
 
       <div className={styles.secTitle}>
-        Datos fiscales por ejercicio <span className={styles.count}>{s.declaraciones.length} años</span>
+        Datos fiscales por ejercicio <span className={styles.count}>{s.ejerciciosDetectados} años</span>
       </div>
       <div className={styles.resumenGrid}>
-        <ResCard lab="Ejercicios" val={s.declaraciones.length} sub="Cargados en Fiscal" />
+        <ResCard lab="Ejercicios" val={s.ejerciciosDetectados} sub="Cargados en Fiscal" />
         <ResCard lab="Arrendamientos" val={totalArrend} sub="Distribuidos por año" />
         <ResCard lab="Inmuebles totales" val={det.inmuebles.length} sub="En tu cartera" />
       </div>
@@ -137,7 +137,7 @@ const PasoConfirmar: React.FC<Props> = ({ s, onClose, onImported }) => {
           type="button"
           className={`${styles.btn} ${styles.btnPos}`}
           style={{ padding: '9px 22px' }}
-          disabled={s.importando || s.declaraciones.length === 0}
+          disabled={s.importando || s.ejerciciosDetectados === 0}
           onClick={onImportar}
         >
           {s.importando ? (

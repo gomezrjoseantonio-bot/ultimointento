@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useState } from 'react';
-import { UploadCloud, FileText, Check, X, AlertCircle, Lightbulb } from 'lucide-react';
+import { UploadCloud, FileText, Check, X, AlertCircle, Lightbulb, Loader2 } from 'lucide-react';
 import type { WizardImportState } from '../useWizardImportState';
 import styles from '../WizardImportarDeclaracion.module.css';
 
@@ -20,7 +20,10 @@ const PasoFuente: React.FC<{ s: WizardImportState }> = ({ s }) => {
   const [smartCerrado, setSmartCerrado] = useState(false);
 
   const validos = s.archivos.filter((a) => a.estado === 'validado');
-  const ejercicios = s.declaraciones.map((d) => d.meta.ejercicio).sort((a, b) => a - b);
+  const ejercicios = validos
+    .map((a) => a.ejercicio)
+    .filter((y): y is number => typeof y === 'number')
+    .sort((a, b) => a - b);
   const rangoEjercicios = ejercicios.length ? `${ejercicios[0]}-${ejercicios[ejercicios.length - 1]}` : '—';
 
   const onSelect = (files: FileList | null) => {
@@ -33,9 +36,10 @@ const PasoFuente: React.FC<{ s: WizardImportState }> = ({ s }) => {
         <span className={styles.stepTitleNum}>01</span> Sube tu declaración IRPF
       </div>
       <div className={styles.stepSub}>
-        ATLAS lee XML AEAT (Modelo 100 · Sede Electrónica · DeclaVisor / Renta Web) y opcionalmente
-        PDF · puedes subir varios ejercicios a la vez · cada uno enriquecerá los datos del anterior.
-        Si solo tienes el PDF, usa el wizard de Corrección desde el detalle del ejercicio.
+        ATLAS lee XML AEAT (Modelo 100 · Sede Electrónica · DeclaVisor / Renta Web) y también
+        PDF de la declaración · puedes subir varios ejercicios a la vez · cada uno enriquecerá los
+        datos del anterior. El PDF se analiza y se importa como snapshot de casillas del ejercicio
+        (los escaneados antiguos pueden tardar un poco).
       </div>
 
       <div
@@ -80,22 +84,33 @@ const PasoFuente: React.FC<{ s: WizardImportState }> = ({ s }) => {
       {s.archivos.length > 0 && (
         <>
           <div className={styles.secTitle}>
-            Archivos subidos · {s.declaraciones.length} ejercicios detectados
+            Archivos subidos · {s.ejerciciosDetectados} ejercicios detectados
             {ejercicios.length > 0 && <span className={styles.count}>{rangoEjercicios}</span>}
           </div>
 
           <div className={styles.uploadList}>
             {s.archivos.map((a) => {
               const esError = a.estado === 'error';
+              const procesando = a.estado === 'procesando';
               const meta = esError
                 ? a.error
-                : a.tipo === 'pdf'
-                  ? 'PDF de declaración · adjunto · enriquecerá nombres y conceptos'
-                  : `Modelo 100 · ejercicio ${a.ejercicio ?? '—'}${a.tipoDeclaracion ? ` · tipo ${a.tipoDeclaracion}` : ''}${a.resultado !== undefined ? ` · resultado ${fmtEuro(a.resultado)}` : ''}`;
+                : procesando
+                  ? a.tipo === 'pdf'
+                    ? 'Analizando PDF… (puede tardar en escaneados)'
+                    : 'Analizando…'
+                  : a.tipo === 'pdf'
+                    ? `Modelo 100 (PDF) · ejercicio ${a.ejercicio ?? '—'}${a.extraccion ? ` · ${a.extraccion.totalCasillas} casillas leídas` : ''}`
+                    : `Modelo 100 · ejercicio ${a.ejercicio ?? '—'}${a.tipoDeclaracion ? ` · tipo ${a.tipoDeclaracion}` : ''}${a.resultado !== undefined ? ` · resultado ${fmtEuro(a.resultado)}` : ''}`;
               return (
                 <div key={a.id} className={styles.uploadItem}>
                   <div className={`${styles.uploadItemIcon} ${esError ? styles.err : ''}`}>
-                    {esError ? <AlertCircle size={13} /> : <Check size={13} strokeWidth={2.5} />}
+                    {esError ? (
+                      <AlertCircle size={13} />
+                    ) : procesando ? (
+                      <Loader2 size={13} className={styles.spin} />
+                    ) : (
+                      <Check size={13} strokeWidth={2.5} />
+                    )}
                   </div>
                   <div>
                     <div className={styles.uploadItemName}>{a.nombre}</div>
@@ -103,7 +118,7 @@ const PasoFuente: React.FC<{ s: WizardImportState }> = ({ s }) => {
                   </div>
                   <div className={styles.uploadItemMeta}>{a.tamanoKB} KB</div>
                   <div className={`${styles.uploadItemStatus} ${esError ? styles.err : ''}`}>
-                    {esError ? 'ERROR' : 'VALIDADO'}
+                    {esError ? 'ERROR' : procesando ? 'PROCESANDO' : 'VALIDADO'}
                   </div>
                   <button
                     type="button"

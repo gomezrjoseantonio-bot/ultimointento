@@ -396,3 +396,7 @@ select.inp { appearance: none; padding-right: 30px; }
 .wizBody::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 .wizAside::-webkit-scrollbar-track { background: transparent; }
 .wizAside::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+
+/* Spinner de archivos en proceso (parseo de PDF asíncrono). */
+.spin { animation: wizImportSpin 0.8s linear infinite; }
+@keyframes wizImportSpin { to { transform: rotate(360deg); } }

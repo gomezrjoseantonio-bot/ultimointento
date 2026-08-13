@@ -11,6 +11,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { parseIrpfXml } from '../../../services/irpfXmlParserService';
+import type { ExtraccionCompleta } from '../../../services/aeatParserService';
 import type { DeclaracionCompleta } from '../../../types/declaracionCompleta';
 import type { OpcionesDistribucion } from '../../../types/opcionesDistribucion';
 import { OPCIONES_DEFAULT } from '../../../types/opcionesDistribucion';
@@ -54,7 +55,7 @@ export function planificarImportacion(
   });
 }
 
-export type EstadoArchivo = 'validado' | 'error';
+export type EstadoArchivo = 'procesando' | 'validado' | 'error';
 
 export interface ArchivoSubido {
   id: string;
@@ -65,7 +66,10 @@ export interface ArchivoSubido {
   ejercicio?: number;
   resultado?: number;
   tipoDeclaracion?: string;
+  /** XML AEAT parseado (pipeline de distribución completo). */
   declaracion?: DeclaracionCompleta;
+  /** PDF AEAT parseado (se importa como snapshot de casillas del ejercicio). */
+  extraccion?: ExtraccionCompleta;
   error?: string;
 }
 
@@ -133,6 +137,8 @@ export function pasoAplica(num: PasoNum, decls: DeclaracionCompleta[]): boolean 
 export interface WizardImportState {
   archivos: ArchivoSubido[];
   declaraciones: DeclaracionCompleta[];
+  /** Nº de ejercicios detectados (XML parseados + PDF parseados). */
+  ejerciciosDetectados: number;
   declaracionPrincipal: DeclaracionCompleta | null;
   pasoActual: PasoNum;
   opciones: OpcionesDistribucion;
@@ -171,57 +177,78 @@ export function useWizardImportState(): WizardImportState {
     () => archivos.filter((a) => a.estado === 'validado' && a.declaracion).map((a) => a.declaracion!),
     [archivos],
   );
+  const extracciones = useMemo(
+    () => archivos.filter((a) => a.estado === 'validado' && a.extraccion).map((a) => a.extraccion!),
+    [archivos],
+  );
+  // Ejercicios detectados = XML parseados + PDF parseados (snapshot de casillas).
+  const ejerciciosDetectados = declaraciones.length + extracciones.length;
   const principal = useMemo(() => declaracionPrincipal(declaraciones), [declaraciones]);
 
-  const pasosAplicables = useMemo<PasoNum[]>(
-    () => PASOS.map((p) => p.num).filter((n) => pasoAplica(n, declaraciones)) as PasoNum[],
-    [declaraciones],
-  );
+  const pasosAplicables = useMemo<PasoNum[]>(() => {
+    const base = PASOS.map((p) => p.num).filter((n) => pasoAplica(n, declaraciones)) as PasoNum[];
+    // Un PDF se importa como snapshot AEAT (sin los pasos de detalle del XML):
+    // basta con Fuente (1) y Confirmar (10) para poder finalizar.
+    if (extracciones.length > 0 && !base.includes(10)) base.push(10);
+    return base.sort((a, b) => a - b) as PasoNum[];
+  }, [declaraciones, extracciones]);
 
   const agregarArchivos = useCallback(async (files: FileList | File[]) => {
     const lista = Array.from(files);
-    const nuevos: ArchivoSubido[] = [];
+
+    const patch = (id: string, cambios: Partial<ArchivoSubido>) =>
+      setArchivos((prev) => prev.map((a) => (a.id === id ? { ...a, ...cambios } : a)));
 
     for (const file of lista) {
       const tipo = clasificarTipo(file.name);
+      const id = `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const base: ArchivoSubido = {
-        id: `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id,
         nombre: file.name,
         tamanoKB: Math.max(1, Math.round(file.size / 1024)),
         tipo,
-        estado: 'validado',
+        // XML y PDF arrancan en 'procesando' (el parseo es asíncrono); 'otro' es error directo.
+        estado: tipo === 'otro' ? 'error' : 'procesando',
+        ...(tipo === 'otro' ? { error: 'Formato no soportado · sube XML AEAT o PDF' } : {}),
       };
+      setArchivos((prev) => [...prev, base]);
+      if (tipo === 'otro') continue;
 
-      if (tipo === 'pdf') {
-        // El PDF no se parsea aquí · sólo se lista como adjunto que enriquecerá nombres.
-        nuevos.push(base);
+      if (tipo === 'xml') {
+        try {
+          const decl = parseIrpfXml(await file.text());
+          patch(id, {
+            estado: 'validado',
+            declaracion: decl,
+            ejercicio: decl.meta.ejercicio,
+            resultado: decl.resultado?.resultadoDeclaracion,
+            tipoDeclaracion: decl.meta.tipoDeclaracion,
+          });
+        } catch (err) {
+          patch(id, { estado: 'error', error: err instanceof Error ? err.message : 'XML no válido' });
+        }
         continue;
       }
-      if (tipo !== 'xml') {
-        nuevos.push({ ...base, estado: 'error', error: 'Formato no soportado · sube XML AEAT o PDF' });
-        continue;
-      }
 
+      // PDF · se parsea con el extractor real (pdfjs + IA/OCR para escaneados)
+      // y se importará como snapshot AEAT de casillas del ejercicio en importar().
       try {
-        const contenido = await file.text();
-        const decl = parseIrpfXml(contenido);
-        nuevos.push({
-          ...base,
-          declaracion: decl,
-          ejercicio: decl.meta.ejercicio,
-          resultado: decl.resultado?.resultadoDeclaracion,
-          tipoDeclaracion: decl.meta.tipoDeclaracion,
-        });
+        const { parsearDeclaracionAEAT } = await import('../../../services/aeatParserService');
+        const ext = await parsearDeclaracionAEAT(file);
+        if (ext.exito && ext.meta.ejercicio > 0) {
+          patch(id, {
+            estado: 'validado',
+            extraccion: ext,
+            ejercicio: ext.meta.ejercicio,
+            tipoDeclaracion: ext.meta.modelo,
+          });
+        } else {
+          patch(id, { estado: 'error', error: ext.errores[0] ?? 'No se pudieron leer casillas del PDF' });
+        }
       } catch (err) {
-        nuevos.push({
-          ...base,
-          estado: 'error',
-          error: err instanceof Error ? err.message : 'XML no válido',
-        });
+        patch(id, { estado: 'error', error: err instanceof Error ? err.message : 'PDF no válido' });
       }
     }
-
-    setArchivos((prev) => [...prev, ...nuevos]);
   }, []);
 
   const quitarArchivo = useCallback((id: string) => {
@@ -269,22 +296,43 @@ export function useWizardImportState(): WizardImportState {
     const informes: InformeDistribucion[] = [];
     const errores: string[] = [];
     try {
-      const { distribuirDeclaracion } = await import('../../../services/declaracionDistributorService');
-      const plan = planificarImportacion(declaraciones, opciones);
-      for (const { decl, opciones: opc } of plan) {
-        try {
-          const informe = await distribuirDeclaracion(decl, opc);
-          informes.push(informe);
-          for (const e of informe.faseB?.errores ?? []) errores.push(`${decl.meta.ejercicio}: ${e}`);
-        } catch (err) {
-          errores.push(`${decl.meta.ejercicio}: ${err instanceof Error ? err.message : String(err)}`);
+      if (declaraciones.length > 0) {
+        const { distribuirDeclaracion } = await import('../../../services/declaracionDistributorService');
+        const plan = planificarImportacion(declaraciones, opciones);
+        for (const { decl, opciones: opc } of plan) {
+          try {
+            const informe = await distribuirDeclaracion(decl, opc);
+            informes.push(informe);
+            for (const e of informe.faseB?.errores ?? []) errores.push(`${decl.meta.ejercicio}: ${e}`);
+          } catch (err) {
+            errores.push(`${decl.meta.ejercicio}: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+      }
+
+      // PDF · importa el snapshot AEAT de casillas al ejercicio correspondiente.
+      // Reutiliza `importarDeclaracionAEAT`, que crea/actualiza el ejercicio con
+      // el snapshot (visible en el Modelo 100) y admite años antiguos.
+      if (extracciones.length > 0) {
+        const { importarDeclaracionAEAT } = await import('../../../services/ejercicioResolverService');
+        for (const ext of extracciones) {
+          try {
+            const casillas: Record<string, number> = {};
+            for (const [clave, valor] of Object.entries(ext.casillasRaw)) {
+              const num = typeof valor === 'number' ? valor : Number(valor);
+              if (Number.isFinite(num)) casillas[clave] = num;
+            }
+            await importarDeclaracionAEAT({ año: ext.meta.ejercicio, casillas });
+          } catch (err) {
+            errores.push(`${ext.meta.ejercicio}: ${err instanceof Error ? err.message : String(err)}`);
+          }
         }
       }
     } finally {
       setImportando(false);
     }
     return { informes, errores };
-  }, [declaraciones, opciones]);
+  }, [declaraciones, extracciones, opciones]);
 
   const estadoPaso = useCallback(
     (num: PasoNum): 'done' | 'active' | 'skipped' | 'pending' => {
@@ -296,8 +344,8 @@ export function useWizardImportState(): WizardImportState {
     [pasosAplicables, pasoActual],
   );
 
-  // Paso 1 exige al menos un XML válido; el resto valida según su propio estado.
-  const validacionPaso1 = declaraciones.length > 0;
+  // Paso 1 exige al menos un ejercicio detectado (XML o PDF); el resto valida según su propio estado.
+  const validacionPaso1 = ejerciciosDetectados > 0;
   const puedeContinuar = useMemo(() => {
     if (pasoActual === 1) return validacionPaso1;
     return validaciones[pasoActual] ?? true;
@@ -306,6 +354,7 @@ export function useWizardImportState(): WizardImportState {
   return {
     archivos,
     declaraciones,
+    ejerciciosDetectados,
     declaracionPrincipal: principal,
     pasoActual,
     opciones,
