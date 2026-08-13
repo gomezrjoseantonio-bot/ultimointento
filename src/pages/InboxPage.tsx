@@ -14,10 +14,18 @@ import { processDocumentOCR } from '../services/documentAIService';
 import { getCachedStoreRecords, invalidateCachedStores } from '../services/indexedDbCacheService';
 import {
   findCandidates,
+  matchPropertiesByAddress,
   extractNifFromDocument,
   extractDireccionFromDocument,
   extractFechaFromDocument,
 } from '../services/documentMatchingService';
+import {
+  classifyDocumentFromOCR,
+  applyClassificationMetadata,
+  assignDocumentToProperty,
+  matchCompromisoPrevisto,
+  withConcepto,
+} from '../services/documentAutoClassifyService';
 import toast from 'react-hot-toast';
 import InboxV3DocumentList from '../components/inbox/InboxV3DocumentList';
 import InboxV3Actions from '../components/inbox/InboxV3Actions';
@@ -176,58 +184,110 @@ const InboxPage: React.FC = () => {
         metadata: { ...selectedDocument.metadata, ocr, queueStatus: ocr.status === 'error' ? 'error' : 'procesado' }
       };
 
-      // --- Post-OCR matching (Pieza 8) ---
+      // --- Post-OCR classification + assignment ---
+      let assignedAlias: string | null = null;
+      let autoAssignPropertyId: number | undefined;
+      let classification: ReturnType<typeof classifyDocumentFromOCR> | null = null;
       if (ocr.status !== 'error') {
         const nif = extractNifFromDocument(updated);
         const direccion = extractDireccionFromDocument(updated);
         const fecha = extractFechaFromDocument(updated);
 
-        // Persist financial data extracted from OCR
-        updated.metadata = {
-          ...updated.metadata,
-          financialData: {
-            ...updated.metadata.financialData,
-            ...(nif ? { nifProveedor: nif } : {}),
-            ...(direccion ? { direccionInmueble: direccion, serviceAddress: direccion } : {}),
-            ...(fecha ? { fechaDocumento: fecha, issueDate: fecha } : {}),
-          },
-        };
-
-        // Run multicriteria matching
-        if (nif || direccion || fecha) {
-          try {
-            const candidates = await findCandidates({ nif, direccion, fecha });
-            if (candidates.length > 0) {
-              updated.metadata = {
-                ...updated.metadata,
-                status: 'pendiente_vinculacion',
-                matchCandidates: candidates,
-              };
-            } else {
-              updated.metadata = {
-                ...updated.metadata,
-                status: 'pendiente_asignacion',
-              };
-            }
-          } catch (_matchErr) {
-            // Matching failure is non-blocking — keep document as processed
-            updated.metadata = {
-              ...updated.metadata,
-              status: 'pendiente_asignacion',
-            };
-          }
-        } else {
+        // 1) Clasificar SIEMPRE a partir del OCR: concepto del catálogo,
+        //    proveedor, tipo, carpeta e importes quedan escritos en el documento.
+        //    Así deja de aparecer como «Otros / Sin clasificar» en el Archivo
+        //    aunque todavía no esté asignado a un inmueble.
+        classification = classifyDocumentFromOCR(updated);
+        updated = applyClassificationMetadata(updated, classification);
+        if (nif) {
           updated.metadata = {
             ...updated.metadata,
+            financialData: { ...updated.metadata.financialData, nifProveedor: nif },
+          };
+        }
+
+        // 2a) Match determinista contra un gasto PREVISTO (compromiso
+        //     recurrente) por CUPS / nº de contrato / NIF. Si acierta, el
+        //     inmueble y el concepto salen del previsto — sin adivinar — y la
+        //     factura lo confirma. Es el camino principal para recibos que ya
+        //     estaban previstos (luz, agua, seguro…).
+        let singleMatchId: number | undefined;
+        let singleMatchAlias: string | null = null;
+        try {
+          const previsto = await matchCompromisoPrevisto(updated);
+          if (previsto && previsto.conceptoId) {
+            classification = withConcepto(classification, previsto.conceptoId);
+            updated = applyClassificationMetadata(updated, classification);
+            if (nif) {
+              updated.metadata = {
+                ...updated.metadata,
+                financialData: { ...updated.metadata.financialData, nifProveedor: nif },
+              };
+            }
+            singleMatchId = previsto.inmuebleId;
+            singleMatchAlias = previsto.inmuebleAlias;
+          }
+        } catch { /* matching no bloqueante */ }
+
+        // 2b) Si no había previsto, asignación automática por dirección: si una
+        //     única propiedad coincide Y se reconoció el concepto, se asigna; si
+        //     el concepto no está claro, se deja sugerida para confirmar.
+        if (singleMatchId == null) {
+          try {
+            const propMatches = await matchPropertiesByAddress(direccion);
+            if (propMatches.length === 1) {
+              singleMatchId = propMatches[0].property.id;
+              singleMatchAlias = propMatches[0].property.alias || propMatches[0].property.address || null;
+            } else if (propMatches.length > 1) {
+              updated.metadata = { ...updated.metadata, suggestedEntityId: propMatches[0].property.id };
+            }
+          } catch { /* matching no bloqueante */ }
+        }
+
+        if (singleMatchId != null && classification.conceptoId) {
+          autoAssignPropertyId = singleMatchId;
+          assignedAlias = singleMatchAlias;
+          updated.metadata = { ...updated.metadata, status: 'Asignado' };
+        } else if (singleMatchId != null) {
+          // Propiedad clara pero concepto por confirmar → sugerida.
+          updated.metadata = {
+            ...updated.metadata,
+            suggestedEntityId: singleMatchId,
             status: 'pendiente_asignacion',
           };
+        } else if (nif || direccion || fecha) {
+          // 3) Sin propiedad clara: intentar vincular a una operación declarada
+          //    (mejora/mueble). Si no hay, queda a asignación manual.
+          try {
+            const candidates = await findCandidates({ nif, direccion, fecha });
+            updated.metadata = candidates.length > 0
+              ? { ...updated.metadata, status: 'pendiente_vinculacion', matchCandidates: candidates }
+              : { ...updated.metadata, status: 'pendiente_asignacion' };
+          } catch {
+            updated.metadata = { ...updated.metadata, status: 'pendiente_asignacion' };
+          }
+        } else {
+          updated.metadata = { ...updated.metadata, status: 'pendiente_asignacion' };
         }
       }
 
       const updatedDocs = documents.map((doc) => (doc.id === updated.id ? updated : doc));
       await persistDocuments(updatedDocs);
-      setSelectedDocument(updated);
-      toast.success('OCR completado');
+
+      // Si procede, asignar al inmueble y materializar el gasto/mueble (con su
+      // casilla AEAT) a través del servicio, que lee el documento ya persistido.
+      let finalDoc = updated;
+      if (autoAssignPropertyId != null && updated.id != null) {
+        try {
+          finalDoc = await assignDocumentToProperty(updated.id, autoAssignPropertyId, classification ?? undefined);
+          const docs2 = documents.map((doc) => (doc.id === finalDoc.id ? finalDoc : doc));
+          setDocuments(docs2);
+          invalidateCachedStores(['documents']);
+        } catch { finalDoc = updated; }
+      }
+
+      setSelectedDocument(finalDoc);
+      toast.success(assignedAlias ? `OCR completado · asignado a ${assignedAlias}` : 'OCR completado');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error en OCR');
     } finally {
@@ -235,8 +295,58 @@ const InboxPage: React.FC = () => {
     }
   };
 
+  // «Confirmar y guardar»: persiste la clasificación del OCR y, si hay un
+  // inmueble asignado o sugerido, deja el documento vinculado. Antes era un
+  // toast vacío que no guardaba nada.
+  const handleConfirmSave = async () => {
+    if (!selectedDocument) return;
+    try {
+      let updated = { ...selectedDocument, metadata: { ...selectedDocument.metadata } };
+      const md = updated.metadata || {};
+      if (md.ocr && md.ocr.status !== 'error') {
+        updated = applyClassificationMetadata(updated, classifyDocumentFromOCR(updated));
+      }
+
+      const alreadyAssigned = updated.metadata?.entityType === 'property' && updated.metadata?.entityId;
+      const targetPropertyId = updated.metadata?.entityId ?? updated.metadata?.suggestedEntityId;
+
+      if (alreadyAssigned) {
+        updated.metadata = { ...updated.metadata, status: 'Asignado', destino: 'Inmueble' };
+      } else if (targetPropertyId != null) {
+        updated.metadata = {
+          ...updated.metadata,
+          entityType: 'property',
+          entityId: targetPropertyId,
+          destino: 'Inmueble',
+          status: 'Asignado',
+          suggestedEntityId: undefined,
+          matchCandidates: undefined,
+        };
+      }
+
+      const updatedDocs = documents.map((d) => (d.id === updated.id ? updated : d));
+      await persistDocuments(updatedDocs);
+      setSelectedDocument(updated);
+      toast.success(
+        updated.metadata?.entityType === 'property'
+          ? 'Guardado y asignado al inmueble'
+          : 'Datos guardados. Asigna un inmueble para archivarlo.'
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
+    }
+  };
+
+  // Botón «Asignar» de la barra: reabre la asignación manual del documento.
   const handleAssign = () => {
-    toast('Asignación manual pendiente de implementar', { icon: 'ℹ️' });
+    if (!selectedDocument) return;
+    const updated = {
+      ...selectedDocument,
+      metadata: { ...selectedDocument.metadata, status: 'pendiente_asignacion' as const },
+    };
+    const updatedDocs = documents.map((d) => (d.id === updated.id ? updated : d));
+    persistDocuments(updatedDocs);
+    setSelectedDocument(updated);
   };
 
   const requestDelete = (documentToDelete?: any) => {
@@ -454,7 +564,7 @@ const InboxPage: React.FC = () => {
             <div className="h-full" style={{ width: '30%', background: 'var(--white)' }}>
               <InboxV3ExtractedPanel
                 document={selectedDocument}
-                onConfirm={() => toast.success('Datos confirmados y guardados')}
+                onConfirm={handleConfirmSave}
                 onProcessOCR={handleProcessOCR}
                 processingOCR={processingOCR}
                 onDocumentUpdated={(updatedDoc) => {

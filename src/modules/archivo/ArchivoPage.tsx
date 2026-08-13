@@ -11,8 +11,15 @@ import { Archive } from 'lucide-react';
 import { PageHead, Icons, MoneyValue, showToastV5 } from '../../design-system/v5';
 import { EmptyState } from '../../components/common/EmptyState';
 import { initDB } from '../../services/db';
-import type { Document } from '../../services/db';
+import type { Document, Property } from '../../services/db';
 import styles from './ArchivoPage.module.css';
+
+const ENTITY_LABELS: Record<string, string> = {
+  property: 'Inmueble',
+  contract: 'Contrato',
+  expense: 'Gasto',
+  personal: 'Personal',
+};
 
 type EntityType = NonNullable<Document['metadata']['entityType']> | 'all' | 'sin_asignar';
 type TipoFiltro = 'all' | 'fiscal' | 'contrato' | 'bancario' | 'otro';
@@ -77,6 +84,7 @@ const labelTipo: Record<TipoFiltro, string> = {
 const ArchivoPage: React.FC = () => {
   const navigate = useNavigate();
   const [docs, setDocs] = useState<Document[]>([]);
+  const [propertyAlias, setPropertyAlias] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   /**
    * §7 · el Archivo sabe recibir un documento concreto (`/archivo?doc=12`).
@@ -99,7 +107,13 @@ const ArchivoPage: React.FC = () => {
       try {
         const db = await initDB();
         const list = (await db.getAll('documents')) as Document[];
-        if (!cancelled) setDocs(list);
+        const props = (await db.getAll('properties')) as Property[];
+        if (!cancelled) {
+          setDocs(list);
+          const map: Record<number, string> = {};
+          for (const p of props) if (p.id != null) map[p.id] = p.alias || p.address || `Inmueble #${p.id}`;
+          setPropertyAlias(map);
+        }
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[archivo] error cargando documentos', err);
@@ -395,7 +409,11 @@ const ArchivoPage: React.FC = () => {
                         <span className={`${styles.tipoChip} ${styles[tipo]}`}>{labelTipo[tipo]}</span>
                       </td>
                       <td style={{ color: 'var(--atlas-v5-ink-4)', fontSize: 11.5 }}>
-                        {d.metadata.entityType ?? 'Sin asignar'}
+                        {d.metadata.entityType === 'property' && d.metadata.entityId != null
+                          ? (propertyAlias[d.metadata.entityId] ?? 'Inmueble')
+                          : d.metadata.entityType
+                            ? (ENTITY_LABELS[d.metadata.entityType] ?? d.metadata.entityType)
+                            : 'Sin asignar'}
                       </td>
                       <td className={styles.right}>
                         <MoneyValue value={d.size / 1024} decimals={0} tone="muted" showCurrency={false} /> KB

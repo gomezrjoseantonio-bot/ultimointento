@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ScanLine, Link2, Building, CheckCircle, X } from 'lucide-react';
 import { confirmLink, CandidatoMatch } from '../../services/documentMatchingService';
 import { initDB, Property } from '../../services/db';
-import { mejorasInmuebleService } from '../../services/mejorasInmuebleService';
-import { mueblesInmuebleService } from '../../services/mueblesInmuebleService';
+import {
+  classifyDocumentFromOCR,
+  assignDocumentToProperty,
+  conceptosInmueblePorFamilia,
+} from '../../services/documentAutoClassifyService';
+import { conceptoPorId } from '../../services/conceptos/catalogoConceptos';
 import toast from 'react-hot-toast';
 
 interface InboxV3ExtractedPanelProps {
@@ -138,14 +142,26 @@ const MatchCandidateCard: React.FC<{
 
 // ── Manual assignment form for pendiente_asignacion ──────────────────────────
 
+const CONCEPTOS_POR_FAMILIA = conceptosInmueblePorFamilia();
+
 const ManualAssignmentForm: React.FC<{
-  documentId: number;
-  onAssigned: () => void;
-}> = ({ documentId, onAssigned }) => {
+  document: any;
+  onAssigned: (updatedDoc: any) => void;
+}> = ({ document, onAssigned }) => {
+  const classification = useMemo(
+    () => (document ? classifyDocumentFromOCR(document) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [document?.id],
+  );
+
   const [properties, setProperties] = useState<Property[]>([]);
-  const [inmuebleId, setInmuebleId] = useState<number | ''>('');
-  const [tipo, setTipo] = useState<'mejora' | 'reparacion' | 'mobiliario'>('mejora');
-  const [ejercicio, setEjercicio] = useState(new Date().getFullYear());
+  const [inmuebleId, setInmuebleId] = useState<number | ''>(
+    document?.metadata?.entityId ?? document?.metadata?.suggestedEntityId ?? '',
+  );
+  const [conceptoId, setConceptoId] = useState<string>(
+    document?.metadata?.concepto ?? classification?.conceptoId ?? '',
+  );
+  const [ejercicio, setEjercicio] = useState(classification?.ejercicio ?? new Date().getFullYear());
   const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
@@ -154,34 +170,27 @@ const ManualAssignmentForm: React.FC<{
 
   const handleAssign = async () => {
     if (!inmuebleId) { toast.error('Selecciona un inmueble'); return; }
+    if (!conceptoId) { toast.error('Selecciona un concepto de gasto'); return; }
+    if (!document?.id || !classification) return;
     setAssigning(true);
     try {
-      const db = await initDB();
+      // La clasificación del OCR, con el concepto que el usuario confirma/corrige.
+      const chosen = conceptoPorId(conceptoId);
+      const c = {
+        ...classification,
+        conceptoId,
+        concepto: chosen,
+        familia: chosen?.familia,
+        label: chosen?.label ?? classification.label,
+        ejercicio,
+      };
 
-      if (tipo === 'mobiliario') {
-        await mueblesInmuebleService.crear({
-          inmuebleId: inmuebleId as number, ejercicio,
-          descripcion: 'Asignado desde factura', fechaAlta: `${ejercicio}-01-01`,
-          importe: 0, vidaUtil: 10, activo: true, documentId,
-        });
-      } else {
-        await mejorasInmuebleService.crear({
-          inmuebleId: inmuebleId as number, ejercicio,
-          descripcion: 'Asignado desde factura',
-          tipo: tipo as 'mejora' | 'ampliacion' | 'reparacion',
-          importe: 0, fecha: `${ejercicio}-01-01`, documentId,
-        });
-      }
+      // Vincula el documento al inmueble y materializa el gasto/mueble con su
+      // casilla AEAT (o el mueble amortizable si es mobiliario).
+      const updated = await assignDocumentToProperty(document.id, inmuebleId as number, c);
 
-      // Mark document as Asignado
-      const doc = await db.get('documents', documentId);
-      if (doc) {
-        doc.metadata = { ...doc.metadata, status: 'Asignado', matchCandidates: undefined };
-        await db.put('documents', doc);
-      }
-
-      toast.success('Documento asignado correctamente');
-      onAssigned();
+      toast.success('Documento asignado al inmueble');
+      onAssigned(updated);
     } catch (e: any) {
       toast.error(e.message || 'Error al asignar');
     } finally {
@@ -201,6 +210,13 @@ const ManualAssignmentForm: React.FC<{
         </span>
       </div>
 
+      {classification?.conceptoId && (
+        <p className="text-xs mb-3" style={{ color: 'var(--n-500)' }}>
+          Detectado: <strong style={{ color: 'var(--n-700)' }}>{classification.label}</strong>
+          {classification.proveedor ? ` · ${classification.proveedor}` : ''}
+        </p>
+      )}
+
       <div className="space-y-2">
         <select
           value={inmuebleId}
@@ -215,14 +231,19 @@ const ManualAssignmentForm: React.FC<{
         </select>
 
         <select
-          value={tipo}
-          onChange={(e) => setTipo(e.target.value as any)}
+          value={conceptoId}
+          onChange={(e) => setConceptoId(e.target.value)}
           className="w-full px-2 py-1.5 border text-xs"
           style={{ borderColor: 'var(--n-300)', borderRadius: 'var(--r-sm)', background: 'var(--white)' }}
         >
-          <option value="mejora">Mejora</option>
-          <option value="reparacion">Reparación</option>
-          <option value="mobiliario">Mobiliario</option>
+          <option value="">Concepto de gasto...</option>
+          {CONCEPTOS_POR_FAMILIA.map((g) => (
+            <optgroup key={g.familia} label={g.label}>
+              {g.conceptos.map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </optgroup>
+          ))}
         </select>
 
         <input
@@ -239,13 +260,13 @@ const ManualAssignmentForm: React.FC<{
         <button
           type="button"
           onClick={handleAssign}
-          disabled={assigning || !inmuebleId}
+          disabled={assigning || !inmuebleId || !conceptoId}
           className="w-full px-3 py-1.5 text-xs font-medium"
           style={{
             borderRadius: 'var(--r-sm)',
             background: 'var(--blue)',
             color: 'var(--white)',
-            opacity: (assigning || !inmuebleId) ? 0.5 : 1,
+            opacity: (assigning || !inmuebleId || !conceptoId) ? 0.5 : 1,
           }}
         >
           Asignar
@@ -296,16 +317,13 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
       const store = candidate.tipo === 'mobiliarioActivo' ? 'mueblesInmueble' : 'mejorasInmueble';
       await confirmLink(store, candidate.id, document.id);
 
-      // Update document status
-      const db = await initDB();
-      const doc = await db.get('documents', document.id);
-      if (doc) {
-        doc.metadata = { ...doc.metadata, status: 'Asignado', matchCandidates: undefined };
-        await db.put('documents', doc);
-      }
+      // Vincular la operación NO basta: hay que dejar el documento archivado en
+      // el inmueble del candidato (entityType/entityId) y clasificado.
+      const classification = classifyDocumentFromOCR(document);
+      const updated = await assignDocumentToProperty(document.id, candidate.inmuebleId, classification);
 
       toast.success('Documento vinculado correctamente');
-      onDocumentUpdated?.(doc || { ...document, metadata: { ...document.metadata, status: 'Asignado', matchCandidates: undefined } });
+      onDocumentUpdated?.(updated);
     } catch (e: any) {
       toast.error(e.message || 'Error al vincular');
     } finally {
@@ -503,10 +521,8 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
             {isPendienteAsignacion && document?.id && (
               <div className="mt-2">
                 <ManualAssignmentForm
-                  documentId={document.id}
-                  onAssigned={() => {
-                    onDocumentUpdated?.({ ...document, metadata: { ...document.metadata, status: 'Asignado', matchCandidates: undefined } });
-                  }}
+                  document={document}
+                  onAssigned={(updatedDoc) => onDocumentUpdated?.(updatedDoc)}
                 />
               </div>
             )}

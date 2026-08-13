@@ -26,6 +26,40 @@ interface FindCandidatesParams {
   fecha?: string;
 }
 
+/** A property matched directly from a document's address (not via a mejora/mueble record). */
+export interface PropertyMatch {
+  property: Property;
+  score: number;
+}
+
+/**
+ * Match a document address directly against the user's properties.
+ *
+ * This is the piece that lets a plain recurring invoice (luz, agua, gas…) be
+ * assigned to an inmueble even when there is no pre-declared mejora/mueble
+ * operation to link it to. Returns matches sorted by score (best first),
+ * only those with score ≥ 2 (a real address/alias hit).
+ */
+export async function matchPropertiesByAddress(direccion?: string): Promise<PropertyMatch[]> {
+  const dir = (direccion || '').trim();
+  if (!dir) return [];
+
+  const db = await initDB();
+  const properties = (await db.getAll('properties')) as Property[];
+
+  const matches: PropertyMatch[] = [];
+  for (const property of properties) {
+    if (property.id == null) continue;
+    if (property.state === 'baja') continue;
+    const alias = property.alias || property.address || '';
+    if (addressMatches(dir, property.address || '', alias)) {
+      matches.push({ property, score: 2 });
+    }
+  }
+
+  return matches.sort((a, b) => b.score - a.score);
+}
+
 /**
  * Normalise a string for fuzzy address comparison: lowercase, remove accents,
  * collapse whitespace.

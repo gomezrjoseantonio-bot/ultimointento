@@ -558,6 +558,9 @@ export interface OCRResult {
     notas?: string;
     direccion?: string;
     tipo_gasto?: string;
+    nif_proveedor?: string;
+    numero_contrato?: string;
+    cups?: string;
   }; // Raw extracted payload using snake_case keys from OCR backend
   status: 'pending' | 'processing' | 'completed' | 'error';
   error?: string;
@@ -644,8 +647,14 @@ export interface Document {
     tipo?: 'Factura' | 'Contrato' | 'Mejora' | 'Extracto bancario' | 'Otros'
       | 'fiscal' | 'contrato' | 'bancario' | 'otro';
     categoria?: string;
+    /** Concepto del catálogo unificado (id, p.ej. 'luz', 'ibi', 'seguro_hogar'). */
+    concepto?: string;
     destino?: 'Personal' | 'Inmueble';
     status?: 'Nuevo' | 'Procesado' | 'Asignado' | 'Archivado' | 'pendiente_vinculacion' | 'pendiente_asignacion';
+    /** Estado de la cola de la bandeja de entrada (pendiente · procesado · error). */
+    queueStatus?: 'pendiente' | 'procesado' | 'error';
+    /** Inmueble sugerido automáticamente por dirección tras el OCR (a confirmar). */
+    suggestedEntityId?: number;
     notas?: string;
     carpeta?: 'todos' | 'facturas' | 'contratos' | 'extractos' | 'mejoras' | 'otros';
     // H9: Enhanced fiscal classification
@@ -674,6 +683,12 @@ export interface Document {
       iban?: string;
       predictedPaymentDate?: string;
       isMejora?: boolean;
+      /** NIF/CIF del proveedor extraído del OCR (para matching). */
+      nifProveedor?: string;
+      /** Dirección del inmueble/servicio detectada en la factura. */
+      direccionInmueble?: string;
+      /** Fecha del documento en el formato original del OCR. */
+      fechaDocumento?: string;
     };
     // H8: Bank extract specific metadata
     extractMetadata?: {
