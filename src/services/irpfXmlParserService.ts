@@ -333,9 +333,58 @@ function extraerCapitalMobiliario(tda: Element): CapitalMobiliarioDeclarado | un
   };
 }
 
+/** Normaliza una referencia catastral para comparar (sin espacios/puntos/guiones, mayúsculas). */
+function normalizarRef(ref: string): string {
+  return (ref || '').replace(/[\s.-]/g, '').toUpperCase();
+}
+
+/**
+ * Refs catastrales que la declaración registra como TRANSMITIDAS (vendidas) en el
+ * ejercicio, junto con su fecha de transmisión si la trae el bloque de ganancias.
+ * Fuente robusta: <GPOtrosInmuebles><ElementoInmueble> (Sección E), que existe
+ * siempre que hay venta, independientemente de la etiqueta que use la casilla 0121
+ * dentro del propio <Inmueble>.
+ */
+function refsTransmitidas(tda: Element): Map<string, string> {
+  const mapa = new Map<string, string>();
+  const doc = tda.ownerDocument;
+  const elementos = doc ? Array.from(doc.querySelectorAll('GPOtrosInmuebles ElementoInmueble')) : [];
+  for (const el of elementos) {
+    const rc = normalizarRef(txt(el, 'G2INMRC1'));
+    if (!rc) continue;
+    // Fecha de transmisión si el bloque de ganancias la trae (etiquetas conocidas).
+    const fecha = txt(el, 'G2INMFT1') || txt(el, 'G2INMFTR') || '';
+    mapa.set(rc, fecha);
+  }
+  return mapa;
+}
+
+/**
+ * Fecha de transmisión de un inmueble. Prioriza la casilla del propio bloque
+ * <Inmueble> (C_FTRA / FTRAINM = casilla 0121) y, si no está, deduce la venta
+ * del bloque de ganancias por referencia catastral. Devuelve `undefined` si el
+ * inmueble no se transmitió (para no marcarlo como vendido).
+ */
+function fechaTransmisionInmueble(
+  nodo: Element,
+  transmitidas: Map<string, string>,
+  datosArr?: Element | null,
+): string | undefined {
+  const propia = txt(nodo, 'C_FTRA') || (datosArr ? txt(datosArr, 'FTRAINM') : '');
+  if (propia) return propia;
+  const rc = normalizarRef(txt(nodo, 'RC'));
+  if (rc && transmitidas.has(rc)) {
+    // Vendido según Sección E aunque el bloque <Inmueble> no traiga la fecha:
+    // usamos la fecha del bloque de ganancias si existe; si no, marcador no vacío.
+    return transmitidas.get(rc) || 'transmitido';
+  }
+  return undefined;
+}
+
 function extraerInmuebles(tda: Element): InmuebleDeclarado[] {
   const inmuebles: InmuebleDeclarado[] = [];
   const nodos = tda.querySelectorAll('Inmuebles > Inmueble');
+  const transmitidas = refsTransmitidas(tda);
 
   for (const nodo of nodos) {
     if (
@@ -355,6 +404,7 @@ function extraerInmuebles(tda: Element): InmuebleDeclarado[] {
         porcentajeConstruccion: num(nodo, 'C_PORVCC'),
         catastralRevisado: txt(nodo, 'C_REV') === 'SI' ? true : undefined,
         fechaAdquisicion: txt(nodo, 'C_FADQ'),
+        fechaTransmision: fechaTransmisionInmueble(nodo, transmitidas),
         precioAdquisicion: num(nodo, 'C_COSTEAD'),
         gastosAdquisicion: num(nodo, 'C_TRIBUAD'),
         tipoAdquisicion: nodo.querySelector('C_ONEROSA') ? 'onerosa' : undefined,
@@ -395,6 +445,7 @@ function extraerInmuebles(tda: Element): InmuebleDeclarado[] {
       catastralRevisado: txt(nodo, 'C_REV') === 'SI',
       tipoAdquisicion: nodo.querySelector('C_ONEROSA') ? 'onerosa' : undefined,
       fechaAdquisicion: txt(nodo, 'C_FADQ') || txt(datosArr, 'FADQINM'),
+      fechaTransmision: fechaTransmisionInmueble(nodo, transmitidas, datosArr),
       precioAdquisicion: num(nodo, 'C_COSTEAD') || num(datosArr, 'COSTEAD'),
       gastosAdquisicion: num(nodo, 'C_TRIBUAD') || num(datosArr, 'TRIBUAD'),
       mejorasAnteriores: num(nodo, 'C_IMPMJEA'),
