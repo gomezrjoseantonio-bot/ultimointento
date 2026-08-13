@@ -118,7 +118,10 @@ describe('movementMatchingService.matchBatch', () => {
     );
   });
 
-  it('2. One-day-adjacent date diff ⇒ 65 without provider, 90 with provider', async () => {
+  it('2. Un INGRESO sin proveedor no cuadra solo por importe · quién paga manda', async () => {
+    // En ingresos, el importe a secas no basta: un cargo del mismo importe de un
+    // desconocido no es la renta del inquilino. Sin proveedor/alias se va a
+    // resolver; con proveedor cuadra.
     const noProviderStores: FakeStores = {
       movements: [
         movement({
@@ -130,20 +133,14 @@ describe('movementMatchingService.matchBatch', () => {
         }),
       ],
       treasuryEvents: [
-        event({
-          id: 100,
-          accountId: 42,
-          type: 'income',
-          amount: 380,
-          predictedDate: '2026-04-22',
-        }),
+        event({ id: 100, accountId: 42, type: 'income', amount: 380, predictedDate: '2026-04-22' }),
       ],
     };
     (initDB as jest.Mock).mockResolvedValue(buildDb(noProviderStores));
 
     const noProviderResult = await matchBatch([1]);
-    // 20 (fecha_dia_adyacente) + 30 (importe_exacto) + 15 (cuenta_match) = 65
-    // Threshold 70 → no candidate clears, goes to sinMatch.
+    // 20 (fecha_dia_adyacente) + 30 (importe_exacto) + 15 (cuenta_match) = 65 < 70.
+    // El bonus de importe-exacto-misma-cuenta NO aplica a ingresos.
     expect(noProviderResult.sinMatch).toEqual([1]);
     expect(noProviderResult.matches).toEqual([]);
 
@@ -174,6 +171,43 @@ describe('movementMatchingService.matchBatch', () => {
     // 65 (above) + 25 (descripcion_proveedor) = 90
     expect(withProviderResult.matches).toHaveLength(1);
     expect(withProviderResult.matches[0].score).toBe(90);
+  });
+
+  it('2b. Un GASTO del importe exacto cuadra aunque el día no pegue y sin proveedor', async () => {
+    // El caso real del "0 de 27": un recibo domiciliado (luz/gas) llega un par
+    // de días tarde, con el importe clavado, y el texto del banco no es el
+    // proveedor de la previsión. Debe cuadrar solo.
+    const stores: FakeStores = {
+      movements: [
+        movement({
+          id: 1,
+          accountId: 42,
+          date: '2026-08-03',
+          amount: -48,
+          description: 'ELECTRICIDAD IBERDROLA COMERCIALIZACION GAS 105',
+        }),
+      ],
+      treasuryEvents: [
+        event({
+          id: 100,
+          accountId: 42,
+          type: 'expense',
+          amount: 48,
+          predictedDate: '2026-08-01',
+          providerName: 'Curenergía',
+        }),
+      ],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+    // 10 (fecha_proxima ≤3) + 30 (importe_exacto) + 15 (cuenta) + 25 (bonus) = 80.
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].treasuryEventId).toBe(100);
+    expect(result.matches[0].reasons).toEqual(
+      expect.arrayContaining(['importe_exacto', 'importe_exacto_misma_cuenta']),
+    );
+    expect(result.sinMatch).toEqual([]);
   });
 
   it('3. One movement vs two passing events ⇒ multiMatches[]', async () => {
