@@ -3,7 +3,6 @@ import { useOutletContext } from 'react-router-dom';
 import { eliminarCompromiso } from '../../../services/personal/compromisosRecurrentesService';
 import { regenerateForecastsForward } from '../../../services/treasuryBootstrapService';
 import { ListadoGastosRecurrentes } from '../../../modules/shared/components/ListadoGastos';
-import { TIPOS_GASTO_PERSONAL } from '../wizards/utils/tiposDeGastoPersonal';
 import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 
@@ -24,7 +23,6 @@ const GastosPage: React.FC = () => {
 
   return (
     <ListadoGastosRecurrentes
-      catalog={TIPOS_GASTO_PERSONAL}
       compromisos={personalCompromisos}
       mode="personal"
       onDelete={handleDelete}

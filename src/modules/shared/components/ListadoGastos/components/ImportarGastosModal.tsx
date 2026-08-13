@@ -12,6 +12,7 @@ import type { TipoGasto } from '../../TipoGastoSelector';
 import type { Account } from '../../../../../services/db';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import { crearCompromiso } from '../../../../../services/personal/compromisosRecurrentesService';
+import { conceptoPorId } from '../../../../../services/conceptos/catalogoConceptos';
 import { mesesToPatron } from '../utils/rejillaMeses';
 import {
 
@@ -182,6 +183,9 @@ const ImportarGastosModal: React.FC<ImportarGastosModalProps> = ({
           inmuebleId: mode === 'inmueble' ? inmuebleId : undefined,
           personalDataId: mode === 'personal' ? 1 : undefined,
           alias: l.conceptoRaw,
+          // El matcher devuelve el id de concepto UNIFICADO en `subtipoId`: se
+          // guarda como `concepto` canónico para que agrupe como el resto.
+          concepto: concepto && conceptoPorId(concepto.subtipoId) ? concepto.subtipoId : undefined,
           tipo: concepto?.tipoCompromiso ?? 'otros',
           subtipo: concepto?.subtipoId,
           tipoFamilia: concepto?.tipoId ?? 'otros',

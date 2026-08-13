@@ -2,7 +2,12 @@ import type { TipoGasto } from '../TipoGastoSelector/TipoGastoSelector.types';
 import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
 
 export interface ListadoGastosRecurrentesProps {
-  catalog: TipoGasto[];
+  /**
+   * Catálogo de presentación. OPCIONAL: si no se pasa, se construye desde el
+   * catálogo UNIFICADO según `mode` (`catalogoTipoGasto`). Así todas las
+   * pantallas ofrecen el mismo árbol de gastos y deja de haber uno por sitio.
+   */
+  catalog?: TipoGasto[];
   compromisos: CompromisoRecurrente[];
   mode: 'personal' | 'inmueble';
   onDelete: (c: CompromisoRecurrente) => Promise<void>;
