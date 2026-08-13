@@ -20,6 +20,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { initDB } from '../../../services/db';
+import { nombrarPrevisto as nombrarPrevistoModelo } from './nombrarPrevisto';
 import {
   processFile,
   confirmDecisions,
@@ -89,6 +90,25 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [asignando, setAsignando] = useState<number | null>(null);
   const [previstos, setPrevistos] = useState<TreasuryEvent[]>([]);
   const [ignoradasPlegadas, setIgnoradasPlegadas] = useState(true);
+
+  // El previsto se nombra con el MISMO adaptador que el resto de la app (§modelo
+  // del apunte): título = quién · qué es · inmueble. Antes salía su `description`
+  // en crudo, distinta a como se ve el mismo previsto en Tesorería.
+  const aliasInmueble = useCallback(
+    (id: number | string) => inmuebles.find((i) => String(i.id) === String(id))?.alias,
+    [inmuebles],
+  );
+  const nombrarPrevisto = useCallback(
+    (ev: TreasuryEvent): string => nombrarPrevistoModelo(ev, aliasInmueble),
+    [aliasInmueble],
+  );
+  const nombrarPrevistoPorId = useCallback(
+    (id: number | null | undefined, respaldo: string): string => {
+      const ev = id != null ? previstos.find((p) => p.id === id) : undefined;
+      return ev ? nombrarPrevisto(ev) : respaldo;
+    },
+    [previstos, nombrarPrevisto],
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const [arrastrando, setArrastrando] = useState(false);
   /** Fichero a la espera de que el usuario diga a qué cuenta va (puerta global). */
@@ -597,7 +617,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                         <Icons.Check size={13} aria-hidden="true" />
                         <span>
                           cuadra con{' '}
-                          {previstoMostrado?.description ?? l.previsto?.descripcion ?? 'un previsto'}
+                          {previstoMostrado
+                            ? nombrarPrevisto(previstoMostrado)
+                            : l.previsto?.descripcion ?? 'un previsto'}
                         </span>
                       </div>
                     ) : (
@@ -616,14 +638,14 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                             <option value="">Elige un previsto…</option>
                             {(l.candidatos ?? []).map((c) => (
                               <option key={c.id} value={c.id}>
-                                {c.descripcion} · {importeConSigno(c.importe)}
+                                {nombrarPrevistoPorId(c.id, c.descripcion)} · {importeConSigno(c.importe)}
                               </option>
                             ))}
                             {previstos
                               .filter((p) => !(l.candidatos ?? []).some((c) => c.id === p.id))
                               .map((p) => (
                                 <option key={p.id} value={p.id}>
-                                  {p.description} ·{' '}
+                                  {nombrarPrevisto(p)} ·{' '}
                                   {importeConSigno(
                                     p.type === 'income' ? Math.abs(p.amount) : -Math.abs(p.amount)
                                   )}
