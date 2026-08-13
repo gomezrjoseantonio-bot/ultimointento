@@ -319,7 +319,71 @@ export function buildSeccionE(d: DatosFiscalesEjercicio): BoxSection {
   const rows: BoxRow[] = [];
   if (box0316 !== null) rows.push({ num: '0316', concepto: 'Valor de transmisión', importe: box0316 });
   if (box0317 !== null) rows.push({ num: '0317', concepto: 'Valor de adquisición actualizado', importe: box0317, negativeSign: true });
-  if (box0320 !== null) rows.push({ num: '0320', concepto: 'Ganancia bruta', importe: box0320, subtotal: true });
+
+  // Desglose explícito de cómo se forma el 0320 (Σ plusvalías) y cómo se
+  // compensa hasta el 0325 (integra base del ahorro), para que el cálculo se
+  // vea y no haya que intuirlo. Fuente: la compensación de base del ahorro
+  // (inmuebles con detalle por operación + inversiones agregadas + arrastres).
+  const comp = d.declaracionCompleta?.compensacionAhorro;
+  const fmtFecha = (iso: string): string => {
+    const t = Date.parse(iso);
+    return Number.isNaN(t) ? iso : new Date(t).toLocaleDateString('es-ES');
+  };
+
+  if (comp) {
+    // 1 · Plusvalías que suman en la ganancia bruta (0320) · solo positivas.
+    for (const v of comp.fuentes.inmuebles.detalle.filter((x) => x.gananciaPatrimonial > 0)) {
+      rows.push({
+        num: '',
+        concepto: `▸ ${v.alias}`,
+        subtitulo: `venta ${fmtFecha(v.fechaVenta)}`,
+        importe: v.gananciaPatrimonial,
+      });
+    }
+    if (comp.fuentes.inversiones.plusvalias > 0) {
+      rows.push({
+        num: '',
+        concepto: '▸ Inversiones · valores y fondos',
+        subtitulo: `${comp.fuentes.inversiones.operaciones} operación${comp.fuentes.inversiones.operaciones === 1 ? '' : 'es'} con ganancia`,
+        importe: comp.fuentes.inversiones.plusvalias,
+      });
+    }
+  }
+
+  if (box0320 !== null) {
+    rows.push({ num: '0320', concepto: 'Ganancia bruta · Σ plusvalías', importe: box0320, subtotal: true });
+  }
+
+  if (comp) {
+    // 2 · Compensación hasta el 0325: se restan las pérdidas del ejercicio y
+    //     los arrastres de años anteriores.
+    for (const v of comp.fuentes.inmuebles.detalle.filter((x) => x.gananciaPatrimonial < 0)) {
+      rows.push({
+        num: '',
+        concepto: `▸ ${v.alias} · pérdida`,
+        subtitulo: `venta ${fmtFecha(v.fechaVenta)}`,
+        importe: Math.abs(v.gananciaPatrimonial),
+        negativeSign: true,
+      });
+    }
+    if (comp.fuentes.inversiones.minusvalias > 0) {
+      rows.push({
+        num: '',
+        concepto: '▸ Inversiones · pérdidas',
+        importe: comp.fuentes.inversiones.minusvalias,
+        negativeSign: true,
+      });
+    }
+    if (comp.totalCompensado > 0) {
+      rows.push({
+        num: '',
+        concepto: '▸ Arrastres de años anteriores compensados',
+        importe: comp.totalCompensado,
+        negativeSign: true,
+      });
+    }
+  }
+
   if (box0325 !== null) {
     rows.push({ num: '0325', concepto: 'Ganancia reducida · integra BI ahorro', importe: box0325, subtotal: true });
   }
