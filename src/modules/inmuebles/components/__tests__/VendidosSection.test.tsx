@@ -16,8 +16,8 @@ const vendido = (over: Partial<VendidoVM>): VendidoVM => ({
 });
 
 const LocationProbe = () => {
-  const { pathname } = useLocation();
-  return <div data-testid="location">{pathname}</div>;
+  const { pathname, search } = useLocation();
+  return <div data-testid="location">{`${pathname}${search}`}</div>;
 };
 
 const renderWithRouter = (ui: React.ReactElement) =>
@@ -52,10 +52,10 @@ describe('VendidosSection', () => {
     expect(screen.getByText('Garaje Uría 8')).toBeInTheDocument();
   });
 
-  it('al clicar una fila de vendido navega a su detalle', () => {
+  it('al clicar una fila de vendido navega a su detalle en la pestaña Fiscalidad', () => {
     renderWithRouter(<VendidosSection vendidos={[vendido({ id: 6 })]} />);
     fireEvent.click(screen.getByText('Vendidos')); // desplegar
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir detalle de Campoamor 12' }));
-    expect(screen.getByTestId('location')).toHaveTextContent('/inmuebles/6');
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir fiscalidad de Campoamor 12' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/inmuebles/6?tab=fiscalidad');
   });
 });
