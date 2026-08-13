@@ -84,8 +84,8 @@ const EjercicioBoxSection: React.FC<EjercicioBoxSectionProps> = ({
             inmuebles · cards de venta · placeholder ilustración custom) sin
             depender de que la sección tenga rows del helper. */}
         {children}
-        {section.rows.map((row) => (
-          <BoxRowCasilla key={`${section.letter}-${row.num}`} row={row} />
+        {section.rows.map((row, idx) => (
+          <BoxRowCasilla key={`${section.letter}-${row.num || 'det'}-${idx}`} row={row} />
         ))}
         {section.empty && section.rows.length === 0 && !children && (
           <div className={styles.boxRow}>
