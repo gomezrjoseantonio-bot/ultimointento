@@ -720,7 +720,7 @@ describe('propertySaleService', () => {
     expect(salePreview.automationPreview.suggestedOutstandingDebt).toBe(84000);
   });
 
-  it('abre fiscalidad del año siguiente al confirmar una venta', async () => {
+  it('asegura el ejercicio del AÑO DE LA VENTA y le asocia el inmueble (no el año del pago)', async () => {
     const db = await initDB();
     const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Fiscal' })));
     const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES2212341234123412341234' })));
@@ -733,10 +733,15 @@ describe('propertySaleService', () => {
       source: 'cartera',
     });
 
-    // fiscalSummaries store eliminated — calculateFiscalSummary now computes in memory
-    // Verify gastos exist for the property instead
-    const gastos2027 = await db.getAllFromIndex('gastosInmueble', 'inmueble-ejercicio', [propertyId, 2027]);
-    expect(gastos2027).toBeDefined();
+    // La ganancia tributa en la declaración del año de la venta (2026), que se
+    // presenta el año siguiente. El ejercicio 2026 debe existir y llevar el
+    // inmueble asociado.
+    const { getInmueblesDelEjercicio } = await import('../ejercicioResolverService');
+    const inmuebles2026 = await getInmueblesDelEjercicio(2026);
+    expect(inmuebles2026).toContain(propertyId);
+
+    const ejercicio2026 = await db.get('ejerciciosFiscalesCoord', 2026);
+    expect(ejercicio2026).toBeTruthy();
   });
 
 

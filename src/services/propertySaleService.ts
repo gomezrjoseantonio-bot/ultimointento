@@ -1421,6 +1421,31 @@ const ensureSaleTaxFiscalYearOpen = async (propertyId: number, saleDate: string)
   const saleYear = new Date(saleDate).getFullYear();
   if (!Number.isFinite(saleYear)) return;
 
-  const paymentFiscalYear = saleYear + 1;
-  await getFiscalSummary(propertyId, paymentFiscalYear);
+  // La ganancia patrimonial de la venta forma parte de la declaración del AÑO DE
+  // LA VENTA (saleYear), que se presenta el año siguiente. Aseguramos que ese
+  // ejercicio existe y que el inmueble está asociado a él, para que su
+  // declaración recoja la operación.
+  //
+  // Antes se abría `saleYear + 1` (el año en que se PAGA), que ni contiene la
+  // ganancia ni sobrevive al bootstrap de ejercicios (que borra los años
+  // futuros sin datos AEAT): la venta no dejaba rastro en la declaración que le
+  // corresponde.
+  try {
+    const {
+      getOrCreateEjercicio,
+      getInmueblesDelEjercicio,
+      setInmueblesDelEjercicio,
+    } = await import('./ejercicioResolverService');
+    await getOrCreateEjercicio(saleYear, { allowFuture: true });
+    const inmuebles = await getInmueblesDelEjercicio(saleYear);
+    if (!inmuebles.includes(propertyId)) {
+      await setInmueblesDelEjercicio(saleYear, [...inmuebles, propertyId]);
+    }
+  } catch (err) {
+    console.warn('No se pudo asegurar el ejercicio fiscal del año de la venta:', err);
+  }
+
+  // Warm del resumen fiscal del año de la venta (materializa gastos/amortización
+  // prorrateada hasta la fecha de venta) para que la declaración esté lista.
+  await getFiscalSummary(propertyId, saleYear).catch(() => undefined);
 };

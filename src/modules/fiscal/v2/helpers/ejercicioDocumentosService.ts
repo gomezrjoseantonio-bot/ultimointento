@@ -90,7 +90,10 @@ export async function getVentasDelAño(año: number): Promise<VentaRow[]> {
     }
     const añoStr = String(año);
     return ventas
-      .filter((v) => v.saleDate && isoYear(v.saleDate) === añoStr && v.status !== 'cancelled')
+      // Solo ventas CONFIRMADAS. Una venta anulada tiene estado 'reverted'
+      // (no 'cancelled'), así que el filtro anterior la dejaba colar como
+      // ganancia patrimonial del ejercicio.
+      .filter((v) => v.saleDate && isoYear(v.saleDate) === añoStr && v.status === 'confirmed')
       .map((v) => ({
         id: v.id ?? v.propertyId,
         alias: aliasById.get(v.propertyId) ?? `Inmueble ${v.propertyId}`,
