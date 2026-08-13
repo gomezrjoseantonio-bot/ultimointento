@@ -50,6 +50,25 @@ interface ScoredCandidate {
   score: number;
   reasons: string[];
   daysDiff: number;
+  /** Clave de SERIE del previsto · colapsa las instancias mensuales de un recurrente. */
+  serieKey: string;
+}
+
+/**
+ * Ventana ancha para el IMPORTE EXACTO. Un recibo mensual se carga el día que el
+ * banco quiere, que puede caer semanas lejos del día previsto; con ±5 no se veía
+ * su previsión y no cuadraba nada. Con importe clavado, mirar todo el mes es
+ * seguro —y la serie se colapsa a su instancia más cercana antes de decidir—.
+ */
+const VENTANA_IMPORTE_EXACTO_DIAS = 35;
+
+/** Clave de serie de un previsto · igual criterio que el picker de asignación. */
+function serieDeEvento(e: TreasuryEvent): string {
+  const quien = (e.providerName ?? e.counterparty ?? e.description ?? '').trim().toLowerCase();
+  const cuanto = Math.round(Math.abs(e.actualAmount ?? e.amount) * 100);
+  const donde = e.inmuebleId ?? '';
+  const que = e.categoryKey ?? e.sourceType ?? '';
+  return `${quien}|${cuanto}|${donde}|${que}`;
 }
 
 export async function matchBatch(
@@ -120,7 +139,13 @@ function collectCandidates(
     const events = eventsByAccount.get(movement.accountId) ?? [];
     for (const event of events) {
       const daysDiff = Math.abs(daysBetween(movement.date, event.predictedDate));
-      if (!Number.isFinite(daysDiff) || daysDiff > opts.fechaWindowDays) continue;
+      if (!Number.isFinite(daysDiff)) continue;
+      // Importe clavado ⇒ se mira todo el mes; el resto sigue con ±5 días.
+      const importeExacto =
+        signMatchesType(movement.amount, event.type) &&
+        Math.abs(Math.abs(movement.amount) - Math.abs(event.amount)) < 0.005;
+      const ventana = importeExacto ? VENTANA_IMPORTE_EXACTO_DIAS : opts.fechaWindowDays;
+      if (daysDiff > ventana) continue;
       const scored = scorePair(movement, event, daysDiff, alias, opts);
       if (scored.score <= 0) continue;
       candidates.push({
@@ -129,6 +154,7 @@ function collectCandidates(
         score: scored.score,
         reasons: scored.reasons,
         daysDiff,
+        serieKey: serieDeEvento(event),
       });
     }
   }
@@ -336,7 +362,11 @@ function classify(
 
   for (const movement of movements) {
     if (movement.id == null) continue;
-    const list = candidatesByMovement.get(movement.id) ?? [];
+    const listaCruda = candidatesByMovement.get(movement.id) ?? [];
+    // Colapsar la SERIE: 14 mensualidades del mismo recurrente son UN candidato,
+    // el más cercano. Sin esto, ampliar la ventana convertía cada recibo en un
+    // multiMatch de doce opciones idénticas y no cuadraba nada solo.
+    const list = dedupePorSerie(listaCruda);
     if (list.length === 0) {
       sinMatch.push(movement.id);
       continue;
@@ -353,6 +383,22 @@ function classify(
   }
 
   return { matches, multiMatches, sinMatch };
+}
+
+/**
+ * Una entrada por SERIE · la instancia más cercana (mejor puntuada, y a igualdad
+ * la de menos días). Así un recurrente con doce mensualidades en la ventana no
+ * se lee como doce candidatos distintos.
+ */
+function dedupePorSerie(candidates: ScoredCandidate[]): ScoredCandidate[] {
+  const mejorPorSerie = new Map<string, ScoredCandidate>();
+  for (const c of candidates) {
+    const previa = mejorPorSerie.get(c.serieKey);
+    if (!previa || c.score > previa.score || (c.score === previa.score && c.daysDiff < previa.daysDiff)) {
+      mejorPorSerie.set(c.serieKey, c);
+    }
+  }
+  return [...mejorPorSerie.values()];
 }
 
 function toMatchScore(candidate: ScoredCandidate): MatchScore {
