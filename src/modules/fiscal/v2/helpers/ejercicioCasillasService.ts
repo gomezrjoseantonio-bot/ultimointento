@@ -296,10 +296,25 @@ export function buildSeccionE(d: DatosFiscalesEjercicio): BoxSection {
   const gp = d.declaracionCompleta?.baseAhorro?.gananciasYPerdidas;
   const ventasInmuebles = d.declaracionCompleta?.ventasInmuebles ?? [];
 
-  const box0316 = getCasilla(c, '0316');
-  const box0317 = getCasilla(c, '0317');
-  const box0320 = getCasilla(c, '0320') ?? safeNum(gp?.plusvalias);
-  const box0325 = getCasilla(c, '0325') ?? safeNum(gp?.compensado);
+  // Preferimos el motor en vivo (casillas internas 0320/0325 + `gp`), pero si no
+  // existe —caso de una declaración IMPORTADA— leemos las casillas REALES de la
+  // AEAT del snapshot, igual que hacen las secciones A-H:
+  //   1826/1830 → valor de transmisión / adquisición
+  //   0424 · 1845 → ganancia patrimonial que integra la base del ahorro
+  //   0440/0441 → compensación de saldos negativos de años anteriores
+  const round2 = (n: number): number => Math.round(n * 100) / 100;
+  const nz = (n: number | null | undefined): number | null =>
+    typeof n === 'number' && Number.isFinite(n) && n !== 0 ? n : null;
+
+  const box0316 = getCasilla(c, '0316') ?? getCasilla(c, '1826');
+  const box0317 = getCasilla(c, '0317') ?? getCasilla(c, '1830');
+  const box0320 =
+    getCasilla(c, '0320') ?? nz(safeNum(gp?.plusvalias)) ?? getCasilla(c, '0424') ?? getCasilla(c, '1845');
+  const compensacionesImportadas = round2((getCasilla(c, '0440') ?? 0) + (getCasilla(c, '0441') ?? 0));
+  const box0325 =
+    getCasilla(c, '0325')
+    ?? nz(safeNum(gp?.compensado))
+    ?? (box0320 !== null ? round2(box0320 - compensacionesImportadas) : null);
 
   const tieneOperaciones = ventasInmuebles.length > 0
     || (box0316 ?? 0) !== 0
@@ -384,13 +399,27 @@ export function buildSeccionE(d: DatosFiscalesEjercicio): BoxSection {
     }
   }
 
+  // Declaración IMPORTADA (sin motor en vivo): mostramos la compensación de
+  // saldos negativos de años anteriores desde las casillas reales (0440/0441)
+  // para que el salto de 0320 a 0325 quede a la vista.
+  if (!comp && compensacionesImportadas > 0) {
+    rows.push({
+      num: '',
+      concepto: '▸ Compensación de saldos negativos de años anteriores',
+      importe: compensacionesImportadas,
+      negativeSign: true,
+    });
+  }
+
   if (box0325 !== null) {
     rows.push({ num: '0325', concepto: 'Ganancia reducida · integra BI ahorro', importe: box0325, subtotal: true });
   }
 
   return {
     letter: 'E',
-    title: `Ganancias y pérdidas patrimoniales · ${ventasInmuebles.length} operación${ventasInmuebles.length === 1 ? '' : 'es'}`,
+    title: ventasInmuebles.length > 0
+      ? `Ganancias y pérdidas patrimoniales · ${ventasInmuebles.length} operación${ventasInmuebles.length === 1 ? '' : 'es'}`
+      : 'Ganancias y pérdidas patrimoniales',
     total: box0325 ?? box0320,
     rows,
   };

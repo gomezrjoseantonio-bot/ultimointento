@@ -68,3 +68,39 @@ describe('buildSeccionE · desglose visible de 0320 y 0325', () => {
     expect(box0320 - sumaMinus).toBeCloseTo(box0325, 2);
   });
 });
+
+describe('buildSeccionE · declaración IMPORTADA (casillas reales AEAT, sin motor en vivo)', () => {
+  // Caso real 2025 · venta de Tenderina 64 (transmisión 27/11/2025):
+  //   1826 valor transmisión 176.928,44 · 1830 valor adquisición 145.358,22
+  //   0424 · 1845 ganancia 31.570,22 · 0440 1.344,99 · 0441 27.764,23
+  const importada = (): any => ({
+    casillas: {
+      '1826': 176928.44,
+      '1830': 145358.22,
+      '0424': 31570.22,
+      '1845': 31570.22,
+      '0440': 1344.99,
+      '0441': 27764.23,
+      '0460': 3222.65,
+    },
+    declaracionCompleta: null, // importación: sin ventasInmuebles ni compensacionAhorro
+  });
+
+  it('NO queda vacía: lee la ganancia real (0424/1845) del snapshot', () => {
+    const sec = buildSeccionE(importada());
+    expect(sec.empty).not.toBe(true);
+    const box0320 = sec.rows.find((r) => r.num === '0320');
+    expect(box0320?.importe).toBeCloseTo(31570.22, 2);
+  });
+
+  it('muestra valor transmisión/adquisición reales y la compensación de años anteriores', () => {
+    const sec = buildSeccionE(importada());
+    expect(sec.rows.find((r) => r.num === '0316')?.importe).toBeCloseTo(176928.44, 2);
+    expect(sec.rows.find((r) => r.num === '0317')?.importe).toBeCloseTo(145358.22, 2);
+    const comp = sec.rows.find((r) => /Compensación de saldos negativos/i.test(r.concepto));
+    expect(comp?.importe).toBeCloseTo(1344.99 + 27764.23, 2);
+    expect(comp?.negativeSign).toBe(true);
+    // 0325 = 0320 − compensaciones = 31.570,22 − 29.109,22 = 2.461,00
+    expect(sec.rows.find((r) => r.num === '0325')?.importe).toBeCloseTo(2461.0, 2);
+  });
+});
