@@ -310,3 +310,32 @@ export function proyectar(
 export function requierenPregunta(): Concepto[] {
   return EFECTIVOS.filter((c) => c.inmueble?.estado === 'pregunta');
 }
+
+/**
+ * Camino INVERSO: de lo persistido (`categoryKey` + `subtypeKey`) al concepto
+ * que ve el usuario. Lo necesita la ficha de §4.5 para nacer rellena con la
+ * clasificación que ya tiene el registro.
+ *
+ * Solo el ámbito INMUEBLE es invertible: ahí cada concepto lleva su propia
+ * `categoryKey`. En personal la key es de brocha gorda (`gasto_personal_*`) y
+ * la comparten familias enteras, así que la vuelta no es unívoca y se devuelve
+ * `undefined` — que la ficha traduce como «Sin clasificar», la verdad, en vez
+ * de inventar una familia y reclasificar a espaldas del usuario.
+ *
+ * También devuelve `undefined` cuando varias conceptos caen en la misma key
+ * (p. ej. `servicio_inmueble`, que comparten limpieza, gestoría y alarma):
+ * adivinar uno sería peor que no rellenar.
+ */
+export function conceptoDesdeClasificacion(
+  categoryKey: string | null | undefined,
+  subtypeKey: string | null | undefined,
+  ambito: Ambito,
+): { familia: FamiliaId; conceptoId: string } | undefined {
+  if (!categoryKey || ambito !== 'inmueble') return undefined;
+  const sub = subtypeKey ?? undefined;
+  const candidatos = EFECTIVOS.filter(
+    (c) => c.inmueble?.categoryKey === categoryKey && (c.inmueble?.subtypeKey ?? undefined) === sub,
+  );
+  if (candidatos.length !== 1) return undefined;
+  return { familia: candidatos[0].familia, conceptoId: candidatos[0].id };
+}

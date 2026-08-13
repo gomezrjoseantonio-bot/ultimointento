@@ -208,6 +208,39 @@ export function traducirPersonal(tipoId: string): TraduccionCategoria | undefine
 }
 
 /**
+ * Clave persistida de un gasto PERSONAL a partir de su familia del catálogo
+ * unificado (`FamiliaId`).
+ *
+ * En personal no hay casilla AEAT que ganar con la granularidad —lo dice la
+ * cabecera de `TRADUCCION_PERSONAL`—, así que las trece familias colapsan en
+ * las cinco macro-categorías `gasto_personal_*` de `categoryCatalog.ts`, que
+ * son las que ya usa el otro alta manual. Elegir aquí y no en la ficha
+ * mantiene la regla: la pantalla enseña familia y concepto, la persistencia la
+ * fija esta capa.
+ *
+ * Nunca devuelve vacío: lo que no encaje cae en `gasto_personal_otros`, que es
+ * exactamente lo que es.
+ */
+export function keyPersonalDeFamilia(familia: string): string {
+  switch (familia) {
+    case 'alquiler':
+    case 'tributos':
+    case 'comunidad':
+    case 'suministros':
+      return 'gasto_personal_vivienda';
+    case 'dia_a_dia':
+      return 'gasto_personal_dia_dia';
+    case 'suscripciones':
+      return 'gasto_personal_suscripciones';
+    case 'seguros':
+    case 'cuotas':
+      return 'gasto_personal_seguros_cuotas';
+    default:
+      return 'gasto_personal_otros';
+  }
+}
+
+/**
  * Camino INVERSO: de lo persistido (`categoryKey` + `subtypeKey`) a lo que ve
  * el usuario (familia + concepto). Lo necesita la ficha de §4.5 para nacer
  * rellena con la clasificación que ya tiene el registro.

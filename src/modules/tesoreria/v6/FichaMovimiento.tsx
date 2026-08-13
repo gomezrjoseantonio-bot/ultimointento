@@ -6,25 +6,39 @@
 // frases de ayuda innecesarias — confirmar tiene que ser rápido.
 //
 // Reglas de §4.5 que el código cumple y los tests fijan:
-//   · Familia y concepto vienen PREFIJADOS por la clasificación automática de
-//     ATLAS. El usuario solo corrige si se equivocó.
-//   · NUNCA se le pide elegir "categoría fiscal": el mapeo a la casilla de
-//     Hacienda es responsabilidad de ATLAS, no suya. Por eso la ficha enseña
-//     familia/concepto (presentación) y guarda `categoryKey` (persistencia),
-//     traduciendo por dentro.
+//   · Familia y concepto salen del CATÁLOGO UNIFICADO, filtrado por ámbito:
+//       - Sin inmueble (personal) → las familias personales (incluye Alquiler,
+//         Cuotas, Suscripciones, Día a día).
+//       - Con inmueble → solo las familias que proyectan a inmueble.
+//     La ficha enseña familia/concepto (presentación) y guarda `categoryKey`
+//     (persistencia), traduciendo por dentro. El usuario NUNCA elige "categoría
+//     fiscal": el mapeo a la casilla de Hacienda es responsabilidad de ATLAS.
+//   · Ingreso NO usa el catálogo de gasto · tiene sus propios conceptos
+//     (Alquiler · Otros ingresos). El alquiler exige inmueble.
 //   · Transferencia oculta familia/concepto/inmueble y pide cuenta destino.
 //     No es gasto fiscal.
 //   · NO hay campo de documento: la factura vive en el Archivo (§4.5).
 //   · Tipo solo en alta. Al editar, el tipo ya está decidido.
 //
 // La única pregunta fiscal es la derrama (D3), y solo aparece cuando el
-// concepto elegido de verdad la necesita.
+// concepto elegido de verdad la necesita — y solo en ámbito inmueble.
 // ============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
-import { TIPOS_GASTO_INMUEBLE_V2 } from '../../inmuebles/wizards/utils/tiposDeGastoInmueble';
-import { traducirInmueble } from '../../../services/catalogoPresentacionPersistencia';
+import {
+  familiasDeAmbito,
+  conceptosDe,
+  proyectar,
+  type Ambito,
+  type FamiliaId,
+  type ProyeccionInmueble,
+} from '../../../services/conceptos/catalogoConceptos';
+import {
+  traducirInmueble,
+  keyPersonalDeFamilia,
+} from '../../../services/catalogoPresentacionPersistencia';
+import { INGRESO_CATEGORIES } from '../../../services/categoryCatalog';
 import type { Account } from '../../../services/db';
 import { importeSaldo } from './formatoV6';
 import styles from './FichaMovimiento.module.css';
@@ -40,9 +54,9 @@ export interface ValoresFicha {
   importe: number;
   fecha: string;
   cuentaId: number | null;
-  /** Familia del catálogo de presentación (`tipoId`). */
+  /** Familia del catálogo unificado (`FamiliaId`). */
   familia?: string;
-  /** Concepto del catálogo de presentación (`subtipoId`). */
+  /** Concepto del catálogo unificado (`id` del concepto). */
   subtipo?: string;
   /** Clasificación persistida que se conserva si el catálogo no puede invertirla. */
   categoryKey?: string | null;
@@ -120,8 +134,9 @@ export interface FichaMovimientoProps {
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 
-/** Familias que ofrece el selector · Financiación y Traspaso NO son categoría (D3). */
-const FAMILIAS = TIPOS_GASTO_INMUEBLE_V2;
+/** El ámbito de un gasto lo decide si hay inmueble detrás · nada más. */
+const ambitoDe = (inmuebleId: number | null): Ambito =>
+  inmuebleId != null ? 'inmueble' : 'personal';
 
 /**
  * Valor del selector cuando ATLAS no sabe cómo está clasificado el registro.
@@ -129,6 +144,13 @@ const FAMILIAS = TIPOS_GASTO_INMUEBLE_V2;
  * clasificación existente intacta.
  */
 const SIN_CLASIFICAR = '';
+
+/** Las keys de ingreso que exigen inmueble (hoy solo el alquiler). */
+const INGRESO_CON_INMUEBLE = new Set(
+  INGRESO_CATEGORIES.filter((c) => c.requiereInmueble).map((c) => c.key),
+);
+const INGRESO_KEY_DEFECTO =
+  INGRESO_CATEGORIES.find((c) => !c.requiereInmueble)?.key ?? INGRESO_CATEGORIES[0]?.key ?? '';
 
 const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   abierta,
@@ -151,8 +173,10 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   const [importe, setImporte] = useState('');
   const [fecha, setFecha] = useState(hoyISO());
   const [cuentaId, setCuentaId] = useState<number | null>(null);
-  const [familia, setFamilia] = useState<string>(FAMILIAS[0]?.id ?? '');
+  const [familia, setFamilia] = useState<string>('');
   const [subtipo, setSubtipo] = useState<string>('');
+  /** Concepto de INGRESO · key del catálogo de ingresos. */
+  const [ingresoKey, setIngresoKey] = useState<string>(INGRESO_KEY_DEFECTO);
   const [inmuebleId, setInmuebleId] = useState<number | null>(null);
   const [tarjetaId, setTarjetaId] = useState<number | null>(null);
   const [cuentaDestinoId, setCuentaDestinoId] = useState<number | null>(null);
@@ -163,27 +187,46 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   // usuario NO parte de un formulario vacío que tenga que completar.
   useEffect(() => {
     if (!abierta) return;
-    setTipo(inicial?.tipo ?? 'gasto');
+    const tipoIni = inicial?.tipo ?? 'gasto';
+    setTipo(tipoIni);
     setConcepto(inicial?.concepto ?? '');
     setImporte(inicial?.importe != null ? String(Math.abs(inicial.importe)).replace('.', ',') : '');
     setFecha(inicial?.fecha ?? hoyISO());
     setCuentaId(inicial?.cuentaId ?? cuentas[0]?.id ?? null);
-    // En ALTA se parte de la primera familia, que es una elección del usuario
-    // desde el primer momento. Al EDITAR, si no se conoce la clasificación del
-    // registro, se abre SIN CLASIFICAR en vez de fingir una: así guardar no
-    // reclasifica nada que el usuario no haya tocado.
-    const fam = inicial?.familia ?? (esEdicion ? SIN_CLASIFICAR : FAMILIAS[0]?.id ?? '');
-    setFamilia(fam);
-    setSubtipo(inicial?.subtipo ?? subtiposDe(fam)[0]?.id ?? '');
     setInmuebleId(inicial?.inmuebleId ?? null);
     setTarjetaId(inicial?.tarjetaId ?? null);
     setCuentaDestinoId(inicial?.cuentaDestinoId ?? null);
     setDerrama(inicial?.naturalezaDerrama ?? null);
     setTocado(false);
+
+    // El ingreso parte de su propia clasificación · si el registro traía una
+    // key de ingreso, se respeta; si no, la primera que no exige inmueble.
+    const keyIni = inicial?.categoryKey;
+    setIngresoKey(
+      keyIni && INGRESO_CATEGORIES.some((c) => c.key === keyIni) ? keyIni : INGRESO_KEY_DEFECTO,
+    );
+
+    // Gasto: familia/concepto del ámbito que toca. En ALTA se parte de la
+    // primera familia (una elección desde el primer momento). Al EDITAR sin
+    // clasificación conocida se abre SIN CLASIFICAR en vez de fingir una, para
+    // que guardar no reclasifique nada que el usuario no haya tocado.
+    const amb = ambitoDe(inicial?.inmuebleId ?? null);
+    const fam = inicial?.familia ?? (esEdicion ? SIN_CLASIFICAR : familiasDeAmbito(amb)[0]?.id ?? '');
+    setFamilia(fam);
+    setSubtipo(inicial?.subtipo ?? (fam ? conceptosDe(fam as FamiliaId, amb)[0]?.id ?? '' : ''));
   }, [abierta, inicial, cuentas, esEdicion]);
 
-  const subtipos = useMemo(() => subtiposDe(familia), [familia]);
   const esTransferencia = tipo === 'transferencia';
+  const esIngreso = tipo === 'ingreso';
+  const esGasto = tipo === 'gasto';
+  const ambito = ambitoDe(inmuebleId);
+
+  const familias = useMemo(() => (esGasto ? familiasDeAmbito(ambito) : []), [esGasto, ambito]);
+  const conceptos = useMemo(
+    () => (esGasto && familia !== SIN_CLASIFICAR ? conceptosDe(familia as FamiliaId, ambito) : []),
+    [esGasto, familia, ambito],
+  );
+
   /**
    * Sacar del cajero es una TRANSFERENCIA INTERNA a la cuenta de Efectivo · el
    * dinero no se gasta, cambia de sitio.
@@ -196,53 +239,111 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   const cuentaEfectivo = useMemo(() => cuentas.find((c) => c.tipo === 'EFECTIVO'), [cuentas]);
   const esCajero =
     esTransferencia && cuentaEfectivo?.id != null && cuentaDestinoId === cuentaEfectivo.id;
-  const clasificable = !esTransferencia;
 
-  const traduccion = clasificable ? traducirInmueble(familia, subtipo) : undefined;
-  const necesitaPregunta = traduccion?.estado === 'pregunta';
+  // La proyección del concepto elegido · de aquí sale la key que se persiste y
+  // si el concepto obliga a preguntar (derrama).
+  const proyeccion = useMemo(
+    () => (esGasto && familia !== SIN_CLASIFICAR ? proyectar(subtipo, ambito) : undefined),
+    [esGasto, familia, subtipo, ambito],
+  );
+  const necesitaPregunta =
+    ambito === 'inmueble' && (proyeccion as ProyeccionInmueble | undefined)?.estado === 'pregunta';
+  // Las salidas de la pregunta viven en la tabla de traducción (fuente única de
+  // la decisión fiscal de la derrama). Hoy la única `pregunta` es
+  // `comunidad:derrama`, cuyos ids coinciden en los dos catálogos.
+  const opcionesDerrama = necesitaPregunta
+    ? traducirInmueble(familia, subtipo)?.opciones
+    : undefined;
+
+  const faltaInmuebleIngreso = esIngreso && INGRESO_CON_INMUEBLE.has(ingresoKey) && inmuebleId == null;
 
   const importeNum = parseImporte(importe);
   const errorImporte = tocado && (importeNum == null || importeNum <= 0);
   const errorDestino = tocado && esTransferencia && cuentaDestinoId === undefined;
+  const errorInmuebleIngreso = tocado && faltaInmuebleIngreso;
   const faltaDerrama = necesitaPregunta && derrama == null;
-  const puedeGuardar = importeNum != null && importeNum > 0 && !faltaDerrama;
+  const puedeGuardar =
+    importeNum != null && importeNum > 0 && !faltaDerrama && !faltaInmuebleIngreso;
+
+  /** Cambiar de inmueble mueve el ámbito · el gasto reajusta familia/concepto. */
+  const cambiarInmueble = (nuevo: number | null) => {
+    setInmuebleId(nuevo);
+    if (!esGasto || familia === SIN_CLASIFICAR) return;
+    const amb = ambitoDe(nuevo);
+    const fams = familiasDeAmbito(amb);
+    const fam = fams.some((f) => f.id === familia) ? familia : fams[0]?.id ?? '';
+    const cs = conceptosDe(fam as FamiliaId, amb);
+    const sub = fam === familia && cs.some((c) => c.id === subtipo) ? subtipo : cs[0]?.id ?? '';
+    if (fam !== familia) setFamilia(fam);
+    if (sub !== subtipo) setSubtipo(sub);
+    setDerrama(null);
+  };
 
   const guardar = () => {
     setTocado(true);
     if (!puedeGuardar || importeNum == null) return;
 
-    // Una mejora NO es gasto: se capitaliza y amortiza, así que no lleva
-    // `categoryKey` de gasto sino alta en `mejorasInmueble` (D3).
-    // La respuesta a la pregunta decide la key: la tabla no puede fijarla, pero
-    // sí sabe a dónde va cada opción.
-    const opcion = necesitaPregunta && derrama ? traduccion?.opciones?.[derrama] : undefined;
-    const esMejora = Boolean(opcion?.esMejora);
+    // Traducción PRESENTACIÓN → PERSISTENCIA, por tipo:
+    let categoryKey: string | null | undefined;
+    let subtypeKey: string | null | undefined = null;
+    let esMejora = false;
+    let naturaleza: NaturalezaDerrama | undefined;
 
-    // `undefined` = "no toques la clasificación". Solo cuando se edita algo que
-    // abrió sin clasificar y el usuario tampoco eligió familia.
-    const sinElegir = clasificable && familia === SIN_CLASIFICAR;
-    const keyElegida = necesitaPregunta
-      ? opcion?.categoryKey ?? null
-      : traduccion?.categoryKey ?? null;
+    if (esTransferencia) {
+      // Un traspaso no es gasto fiscal · sin clasificación.
+      categoryKey = null;
+      subtypeKey = null;
+    } else if (esIngreso) {
+      // El ingreso lleva su propia key · nunca una familia de gasto.
+      categoryKey = ingresoKey || null;
+      subtypeKey = null;
+    } else if (familia === SIN_CLASIFICAR) {
+      // Se editaba algo que abrió sin clasificar y el usuario no eligió: no se
+      // toca (`undefined`), no se sobreescribe con la primera del catálogo.
+      categoryKey = inicial?.categoryKey;
+      subtypeKey = inicial?.subtypeKey;
+    } else if (ambito === 'inmueble') {
+      const proy = proyeccion as ProyeccionInmueble | undefined;
+      if (necesitaPregunta) {
+        // Derrama · la respuesta decide la key. Una mejora NO es gasto: se
+        // capitaliza y amortiza, así que no lleva key de gasto sino alta en
+        // `mejorasInmueble`.
+        const opt = derrama ? opcionesDerrama?.[derrama] : undefined;
+        esMejora = Boolean(opt?.esMejora);
+        categoryKey = opt?.categoryKey ?? null;
+        naturaleza = derrama ?? undefined;
+        subtypeKey = null;
+      } else {
+        categoryKey = proy?.categoryKey ?? null;
+        // `null` (no `undefined`) para que reclasificar a un concepto sin
+        // variante borre el subtipo viejo en vez de dejarlo pegado.
+        subtypeKey = proy?.subtypeKey ?? null;
+      }
+    } else {
+      // Personal · las trece familias colapsan en las cinco macro-categorías
+      // `gasto_personal_*`; sin casilla AEAT (no se declara).
+      categoryKey = keyPersonalDeFamilia(familia);
+      subtypeKey = null;
+    }
 
     const resultado = onGuardar({
       tipo,
       concepto,
       // El signo lo marca el tipo, no lo que teclee el usuario.
-      importe: tipo === 'ingreso' ? Math.abs(importeNum) : -Math.abs(importeNum),
+      importe: esIngreso ? Math.abs(importeNum) : -Math.abs(importeNum),
       fecha,
       cuentaId,
-      ...(clasificable ? { familia, subtipo } : {}),
-      inmuebleId: clasificable ? inmuebleId : null,
-      // Una transferencia no se paga con tarjeta · dejarla puesta al cambiar de
-      // tipo atribuiría a la tarjeta un traspaso entre cuentas propias.
-      tarjetaId: clasificable ? tarjetaId : null,
+      ...(esGasto ? { familia, subtipo } : {}),
+      // El inmueble viaja en gasto (ámbito) y en ingreso (alquiler); un traspaso
+      // entre cuentas propias no tiene inmueble.
+      inmuebleId: esTransferencia ? null : inmuebleId,
+      // Solo un gasto se paga con tarjeta · dejarla puesta en un ingreso o un
+      // traspaso la atribuiría a algo que no es un gasto suyo.
+      tarjetaId: esGasto ? tarjetaId : null,
       ...(esTransferencia ? { cuentaDestinoId } : {}),
-      ...(necesitaPregunta && derrama ? { naturalezaDerrama: derrama } : {}),
-      categoryKey: sinElegir ? inicial?.categoryKey : keyElegida,
-      // `null` (no `undefined`) para que reclasificar a un concepto sin
-      // variante borre el subtipo viejo en vez de dejarlo pegado.
-      subtypeKey: sinElegir ? inicial?.subtypeKey : traduccion?.subtypeKey ?? null,
+      ...(naturaleza ? { naturalezaDerrama: naturaleza } : {}),
+      categoryKey,
+      subtypeKey,
       esMejora,
     });
 
@@ -400,8 +501,62 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
             </select>
           </div>
 
-          {/* Transferencia: sin familia, concepto ni inmueble · no es gasto fiscal. */}
-          {clasificable ? (
+          {esTransferencia ? (
+            /* Transferencia: sin familia, concepto ni inmueble · no es gasto fiscal. */
+            <div className={styles.fld}>
+              <label className={styles.lab} htmlFor="fm-destino">Cuenta destino</label>
+              <select
+                id="fm-destino"
+                className={`${styles.select} ${errorDestino ? styles.inputError : ''}`}
+                value={cuentaDestinoId ?? ''}
+                onChange={(e) => setCuentaDestinoId(e.target.value ? Number(e.target.value) : null)}
+              >
+                {cuentas
+                  .filter((c) => c.id !== cuentaId)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>{etiquetaCuenta(c)}</option>
+                  ))}
+                <option value="">Externa · fuera de mis cuentas</option>
+              </select>
+            </div>
+          ) : esIngreso ? (
+            /* Ingreso: concepto propio (no familias de gasto) + inmueble para la renta. */
+            <>
+              <div className={styles.fld}>
+                <label className={styles.lab} htmlFor="fm-ingreso">Concepto</label>
+                <select
+                  id="fm-ingreso"
+                  aria-label="Concepto del ingreso"
+                  className={styles.select}
+                  value={ingresoKey}
+                  onChange={(e) => setIngresoKey(e.target.value)}
+                >
+                  {INGRESO_CATEGORIES.map((c) => (
+                    <option key={c.key} value={c.key}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.fld}>
+                <label className={styles.lab} htmlFor="fm-inmueble">Inmueble</label>
+                <select
+                  id="fm-inmueble"
+                  className={`${styles.select} ${errorInmuebleIngreso ? styles.inputError : ''}`}
+                  value={inmuebleId ?? ''}
+                  onChange={(e) => cambiarInmueble(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">Sin inmueble · personal</option>
+                  {inmuebles.map((i) => (
+                    <option key={i.id} value={i.id}>{i.alias}</option>
+                  ))}
+                </select>
+                {faltaInmuebleIngreso && (
+                  <div className={styles.error}>El alquiler necesita un inmueble</div>
+                )}
+              </div>
+            </>
+          ) : (
+            /* Gasto: familia + concepto del catálogo unificado, filtrados por ámbito. */
             <>
               <div className={styles.fld}>
                 <label className={styles.lab} htmlFor="fm-familia">Familia</label>
@@ -410,8 +565,9 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                   className={styles.select}
                   value={familia}
                   onChange={(e) => {
-                    setFamilia(e.target.value);
-                    setSubtipo(subtiposDe(e.target.value)[0]?.id ?? '');
+                    const f = e.target.value;
+                    setFamilia(f);
+                    setSubtipo(f ? conceptosDe(f as FamiliaId, ambito)[0]?.id ?? '' : '');
                     setDerrama(null);
                   }}
                 >
@@ -420,7 +576,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                   {familia === SIN_CLASIFICAR && (
                     <option value={SIN_CLASIFICAR}>Sin clasificar</option>
                   )}
-                  {FAMILIAS.map((f) => (
+                  {familias.map((f) => (
                     <option key={f.id} value={f.id}>{f.label}</option>
                   ))}
                 </select>
@@ -442,8 +598,8 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                   {familia === SIN_CLASIFICAR && (
                     <option value="">Elige antes la familia</option>
                   )}
-                  {subtipos.map((s) => (
-                    <option key={s.id} value={s.id}>{s.label}</option>
+                  {conceptos.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
                   ))}
                 </select>
               </div>
@@ -457,7 +613,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                     inmueble y se amortiza. No podemos saberlo por ti.
                   </div>
                   <div className={styles.preguntaOpts}>
-                    {Object.entries(traduccion?.opciones ?? {}).map(([clave, opt]) => (
+                    {Object.entries(opcionesDerrama ?? {}).map(([clave, opt]) => (
                       <button
                         key={clave}
                         type="button"
@@ -503,7 +659,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                   id="fm-inmueble"
                   className={styles.select}
                   value={inmuebleId ?? ''}
-                  onChange={(e) => setInmuebleId(e.target.value ? Number(e.target.value) : null)}
+                  onChange={(e) => cambiarInmueble(e.target.value ? Number(e.target.value) : null)}
                 >
                   <option value="">Sin inmueble · personal</option>
                   {inmuebles.map((i) => (
@@ -512,23 +668,6 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                 </select>
               </div>
             </>
-          ) : (
-            <div className={styles.fld}>
-              <label className={styles.lab} htmlFor="fm-destino">Cuenta destino</label>
-              <select
-                id="fm-destino"
-                className={`${styles.select} ${errorDestino ? styles.inputError : ''}`}
-                value={cuentaDestinoId ?? ''}
-                onChange={(e) => setCuentaDestinoId(e.target.value ? Number(e.target.value) : null)}
-              >
-                {cuentas
-                  .filter((c) => c.id !== cuentaId)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>{etiquetaCuenta(c)}</option>
-                  ))}
-                <option value="">Externa · fuera de mis cuentas</option>
-              </select>
-            </div>
           )}
         </div>
 
@@ -558,10 +697,6 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
 };
 
 // ─── Auxiliares ─────────────────────────────────────────────────────────────
-
-function subtiposDe(familiaId: string): Array<{ id: string; label: string }> {
-  return FAMILIAS.find((f) => f.id === familiaId)?.subtipos ?? [];
-}
 
 function etiquetaCuenta(c: Account): string {
   const nombre = c.alias || c.name || c.banco?.name || 'Cuenta';
