@@ -173,6 +173,34 @@ describe('movementMatchingService.matchBatch', () => {
     expect(withProviderResult.matches[0].score).toBe(90);
   });
 
+  it('2c. Un recibo recurrente cuadra con la mensualidad más cercana, no multiMatch', async () => {
+    // El caso real del usuario: la previsión mensual del recibo cae lejos de ±5
+    // días del cargo, y hay varias mensualidades. Con la ventana ancha + colapso
+    // de serie, cuadra SOLO con la de su mes, no se va a "elegir".
+    const stores: FakeStores = {
+      movements: [
+        movement({
+          id: 1,
+          accountId: 42,
+          date: '2026-08-02',
+          amount: -48,
+          description: 'ELECTRICIDAD IBERDROLA COMERCIALIZACION GAS 105',
+        }),
+      ],
+      treasuryEvents: [
+        event({ id: 100, accountId: 42, type: 'expense', amount: 48, predictedDate: '2026-08-01', providerName: 'Curenergía' }),
+        event({ id: 101, accountId: 42, type: 'expense', amount: 48, predictedDate: '2026-09-01', providerName: 'Curenergía' }),
+        event({ id: 102, accountId: 42, type: 'expense', amount: 48, predictedDate: '2026-10-01', providerName: 'Curenergía' }),
+      ],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+    expect(result.multiMatches).toEqual([]);
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].treasuryEventId).toBe(100); // la de agosto, la más cercana
+  });
+
   it('2b. Un GASTO del importe exacto cuadra aunque el día no pegue y sin proveedor', async () => {
     // El caso real del "0 de 27": un recibo domiciliado (luz/gas) llega un par
     // de días tarde, con el importe clavado, y el texto del banco no es el
@@ -222,12 +250,16 @@ describe('movementMatchingService.matchBatch', () => {
         }),
       ],
       treasuryEvents: [
+        // Dos SERIES distintas del mismo importe (dos inquilinos de 500) · el
+        // usuario tiene que decidir cuál es. Si fueran la misma serie —mismo
+        // proveedor— se colapsarían en una.
         event({
           id: 100,
           accountId: 42,
           type: 'income',
           amount: 500,
           predictedDate: '2026-04-22',
+          providerName: 'Inquilino Norte',
         }),
         event({
           id: 101,
@@ -235,6 +267,7 @@ describe('movementMatchingService.matchBatch', () => {
           type: 'income',
           amount: 500,
           predictedDate: '2026-04-22',
+          providerName: 'Inquilino Sur',
         }),
       ],
     };
@@ -338,7 +371,9 @@ describe('movementMatchingService.matchBatch', () => {
     expect(result.sinMatch).toEqual([1]);
   });
 
-  it('6. fechaWindowDays excludes events outside the window', async () => {
+  it('6. una previsión demasiado lejos en fecha queda fuera de la ventana', async () => {
+    // El importe exacto ensancha la ventana a un mes (para el recibo que se carga
+    // con desfase), pero no más: a casi dos meses ya no se considera.
     const stores: FakeStores = {
       movements: [
         movement({
@@ -355,7 +390,7 @@ describe('movementMatchingService.matchBatch', () => {
           accountId: 42,
           type: 'income',
           amount: 380,
-          predictedDate: '2026-04-30', // 8 days away
+          predictedDate: '2026-06-20', // ~59 días · fuera hasta de la ventana de importe exacto
           providerName: 'Inquilino Perez',
         }),
       ],
