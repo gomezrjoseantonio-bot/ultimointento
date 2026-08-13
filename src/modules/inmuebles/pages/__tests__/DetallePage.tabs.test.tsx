@@ -1,7 +1,8 @@
 import '@testing-library/jest-dom';
 import React, { act } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
+import { initDB } from '../../../../services/db';
 import type { Contract, Property } from '../../../../services/db';
 import { listarCompromisos } from '../../../../services/personal/compromisosRecurrentesService';
 import { gastosInmuebleService } from '../../../../services/gastosInmuebleService';
@@ -237,5 +238,36 @@ describe('DetallePage · tabs fase 4', () => {
 
     expect(screen.getByRole('tab', { name: /Documentos/i })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Documentos mock')).toBeInTheDocument();
+  });
+
+  it('un inmueble VENDIDO (fuera del outlet context) abre su detalle y su pestaña Fiscalidad', async () => {
+    // El outlet context solo trae activos; el vendido debe resolverse desde BD.
+    const db = await initDB();
+    await db.clear('properties');
+    await db.add('properties', crearProperty({ id: 99, state: 'vendido', alias: 'Sant Joan den Coll' }));
+
+    const ctx: InmueblesOutletContext = { properties: [], contracts: [], reload: jest.fn() };
+
+    // eslint-disable-next-line testing-library/no-unnecessary-act
+    await act(async () => {
+      render(
+        <MemoryRouter
+          initialEntries={['/inmuebles/99?tab=fiscalidad']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <Routes>
+            <Route element={<Outlet context={ctx} />}>
+              <Route path="/inmuebles/:id" element={<DetallePage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>,
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /Fiscalidad/i })).toHaveAttribute('aria-selected', 'true');
+    });
+    expect(screen.getByText('Fiscalidad IRPF mock')).toBeInTheDocument();
+    expect(screen.queryByText('Inmueble no encontrado')).not.toBeInTheDocument();
   });
 });

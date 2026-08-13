@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MoneyValue } from '../../../design-system/v5';
 import styles from './VendidosSection.module.css';
 
@@ -28,6 +29,7 @@ const BuildingGlyph: React.FC = () => (
 
 const VendidosSection: React.FC<VendidosSectionProps> = ({ vendidos }) => {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   // El outlet context solo trae activos · si no hay vendidos, la sección no existe.
   if (vendidos.length === 0) return null;
@@ -70,7 +72,21 @@ const VendidosSection: React.FC<VendidosSectionProps> = ({ vendidos }) => {
       {open && (
         <div className={styles.soldBody}>
           {vendidos.map((v) => (
-            <div key={v.id} className={styles.soldRow}>
+            <div
+              key={v.id}
+              className={styles.soldRow}
+              role="button"
+              tabIndex={0}
+              style={{ cursor: 'pointer' }}
+              aria-label={`Abrir detalle de ${v.alias}`}
+              onClick={() => navigate(`/inmuebles/${v.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(`/inmuebles/${v.id}`);
+                }
+              }}
+            >
               <span className={styles.sTile}>
                 <BuildingGlyph />
               </span>
