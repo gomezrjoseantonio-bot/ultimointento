@@ -165,6 +165,8 @@ export interface InmuebleDeclarado {
   catastralRevisado?: boolean;
   tipoAdquisicion?: 'onerosa' | 'herencia' | 'donacion';
   fechaAdquisicion?: string;
+  /** Fecha de transmisión (venta) si el inmueble se transmitió en el ejercicio. */
+  fechaTransmision?: string;
   precioAdquisicion?: number;
   gastosAdquisicion?: number;
   mejorasAnteriores?: number;

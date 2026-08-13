@@ -893,6 +893,9 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
   const todasProperties = await db.getAll('properties');
   const porRefCatastral = new Map<string, Property>();
   const porDireccionNorm = new Map<string, Property>();
+  // Índice por "núcleo de calle" (calle + número). Se agrupa en lista para poder
+  // detectar ambigüedad: si una firma apunta a varias properties, no se usa.
+  const porFirmaCalle = new Map<string, Property[]>();
   for (const property of todasProperties) {
     const ref = normalizeRef(property.cadastralReference);
     if (ref) {
@@ -903,7 +906,21 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
       if (dirN) porDireccionNorm.set(dirN, property);
       const aliasN = normalizeDireccion(property.alias);
       if (aliasN && aliasN !== dirN) porDireccionNorm.set(aliasN, property);
+      for (const firma of new Set([firmaCalle(property.address), firmaCalle(property.alias)])) {
+        if (!firma) continue;
+        const lista = porFirmaCalle.get(firma) ?? [];
+        if (!lista.some((p) => p.id === property.id)) lista.push(property);
+        porFirmaCalle.set(firma, lista);
+      }
     }
+  }
+
+  // Cuántos inmuebles del import comparten cada firma de calle: si son varios
+  // (edificio con varias viviendas), la firma es ambigua y no se usa para casar.
+  const firmasEnImport = new Map<string, number>();
+  for (const inm of decl.inmuebles) {
+    const firma = firmaCalle(inm.direccion);
+    if (firma) firmasEnImport.set(firma, (firmasEnImport.get(firma) ?? 0) + 1);
   }
 
   for (const inm of decl.inmuebles) {
@@ -920,6 +937,19 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
       existente = porDireccionNorm.get(dirXml)
         || porDireccionNorm.get(aliasXml)
         || undefined;
+
+      // Fallback 2 (más tolerante): casar por "núcleo de calle" (calle + número),
+      // que ignora conector, municipio y piso/puerta. Solo si NO hay ambigüedad:
+      // la firma debe apuntar a UNA sola property y aparecer UNA sola vez en el
+      // import (así nunca se fusionan dos viviendas del mismo edificio).
+      if (!existente) {
+        const firma = firmaCalle(inm.direccion);
+        const candidatos = firma ? porFirmaCalle.get(firma) : undefined;
+        if (firma && candidatos && candidatos.length === 1 && firmasEnImport.get(firma) === 1) {
+          existente = candidatos[0];
+        }
+      }
+
       if (existente) {
         // Register in cadastral map so subsequent lookups and downstream
         // functions (escribirFiscalSummaries, etc.) find the right property
@@ -927,6 +957,9 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         // Remove from address map to prevent double-matching
         porDireccionNorm.delete(normalizeDireccion(existente.address));
         porDireccionNorm.delete(normalizeDireccion(existente.alias));
+        // Remove from firma map too, to keep uniqueness guarantees on later inmuebles
+        const firmaExistente = firmaCalle(existente.address) || firmaCalle(existente.alias);
+        if (firmaExistente) porFirmaCalle.delete(firmaExistente);
         console.log(`[distribuidor] Inmueble ${rc} vinculado por dirección a property id=${existente.id} (${existente.alias})`);
       }
     }
@@ -951,6 +984,15 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
       const next: Property = { ...existente, acquisitionCosts: { ...(existente.acquisitionCosts || { price: 0 }) } };
 
       next.fiscalData = { ...(existente.fiscalData || {}) };
+
+      // Si la declaración registra la transmisión del inmueble, queda VENDIDO.
+      // No se revierte a activo al importar años anteriores (donde aún se poseía),
+      // porque solo se marca cuando la propia declaración trae la transmisión.
+      if (inm.fechaTransmision && next.state !== 'vendido') {
+        next.state = 'vendido';
+        camposNuevos.push('Estado: vendido');
+        modificado = true;
+      }
 
       // Enrich cadastral reference if missing (e.g., manually-created property matched by address)
       if (!next.cadastralReference && rc) {
@@ -1356,7 +1398,9 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Propert
     squareMeters: 0,
     bedrooms: 0,
     transmissionRegime: esUsada ? 'usada' : 'obra-nueva',
-    state: 'activo',
+    // Si la declaración registra la transmisión (venta) del inmueble, se crea
+    // ya en estado VENDIDO (la AEAT marca la fecha de transmisión).
+    state: inm.fechaTransmision ? 'vendido' : 'activo',
     porcentajePropiedad: inm.porcentajePropiedad > 0 ? inm.porcentajePropiedad : undefined,
     esUrbana: inm.esUrbana,
     acquisitionCosts,
@@ -1646,12 +1690,35 @@ function normalizeRef(value?: string | null): string {
 export function normalizeDireccion(dir?: string | null): string {
   if (!dir) return '';
   return dir
+    // Quita acentos/diacríticos: "Buïgas" y "BUIGAS" deben casar (la AEAT y el
+    // alta manual no siempre coinciden en la acentuación de la misma calle).
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
     .replace(/^(CL|CR|AV|PZ|PS|CM|C\/|CALLE|CARRER|AVDA|AVENIDA|PLAZA|PASEO|CAMINO)\s+/i, '')
     .replace(/[.,\-/]/g, '')
     .replace(/\s+/g, ' ')
     .replace(/\b0+(\d+)/g, '$1')
     .trim();
+}
+
+/**
+ * Firma "núcleo de calle" de una dirección: nombre de vía + número, ignorando
+ * conectores ("de", "del", "la"…), municipio y piso/puerta al final. Sirve para
+ * casar un alta manual escueta ("Carrer de Carles Buïgas 12") con la dirección
+ * larga de la AEAT ("CL CARLES BUIGAS 0012 BARCELONA"). Devuelve '' si no hay
+ * número (demasiado débil para casar sin riesgo). Deliberadamente descarta el
+ * piso/puerta: por eso su uso va SIEMPRE protegido por unicidad (ver más abajo),
+ * para no fusionar por error dos viviendas del mismo edificio.
+ */
+export function firmaCalle(dir?: string | null): string {
+  const norm = normalizeDireccion(dir); // sin acentos, sin prefijo de vía, número sin ceros
+  if (!norm) return '';
+  const sinConector = norm.replace(/^(DE LA|DE LOS|DE LAS|DEL|DE|LA|EL|LOS|LAS)\s+/, '');
+  const tokens = sinConector.split(' ').filter(Boolean);
+  const idxNumero = tokens.findIndex((t) => /^\d+$/.test(t));
+  if (idxNumero < 0) return '';
+  return tokens.slice(0, idxNumero + 1).join(' ');
 }
 
 function sumGastosAdquisicion(acquisitionCosts: Property['acquisitionCosts']): number {
