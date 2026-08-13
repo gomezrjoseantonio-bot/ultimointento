@@ -17,7 +17,6 @@ import type { Contract, Property } from '../../../services/db';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
 import { ListadoGastosRecurrentes } from '../../shared/components/ListadoGastos';
-import { TIPOS_GASTO_INMUEBLE_V2 } from '../wizards/utils/tiposDeGastoInmueble';
 import { catalogoSugeridoPorModalidad } from '../wizards/utils/catalogoModalidadInmueble';
 import {
   deleteInmuebleWithCascade,
@@ -669,7 +668,6 @@ const DetallePage: React.FC = () => {
             </div>
             <div className={styles.recurrentesBody}>
               <ListadoGastosRecurrentes
-                catalog={TIPOS_GASTO_INMUEBLE_V2}
                 compromisos={gastos}
                 mode="inmueble"
                 inmuebleId={propertyId}

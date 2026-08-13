@@ -40,7 +40,8 @@ import CopiarGastosModal from './components/CopiarGastosModal';
 import ImportarGastosModal from './components/ImportarGastosModal';
 import { conceptoPorId, proyectar } from '../../../../services/conceptos/catalogoConceptos';
 import type { Ambito, ProyeccionPersonal } from '../../../../services/conceptos/catalogoConceptos';
-import { resolverConcepto } from '../../../../services/conceptos/mapaLegacy';
+import { resolverConcepto, parLegacyDe } from '../../../../services/conceptos/mapaLegacy';
+import { catalogoTipoGasto } from './utils/catalogoTipoGasto';
 
 const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   catalog,
@@ -57,6 +58,29 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   inmueblesDisponibles,
 }) => {
   const navigate = useNavigate();
+
+  // El catálogo de gastos SALE del catálogo unificado según el ámbito. Se acepta
+  // un `catalog` por prop por compatibilidad, pero ninguna pantalla lo pasa ya:
+  // así el árbol de gastos es idéntico en toda la app.
+  const ambitoCatalogo: Ambito = mode === 'inmueble' ? 'inmueble' : 'personal';
+  const catalogo = useMemo<import('../TipoGastoSelector/TipoGastoSelector.types').TipoGasto[]>(
+    () => catalog ?? catalogoTipoGasto(ambitoCatalogo),
+    [catalog, ambitoCatalogo],
+  );
+
+  // Los "habituales" (sugeridos por la modalidad) llegan como pares legacy
+  // `{tipoId, subtipoId}`; el picker los compara contra `familia:concepto`
+  // unificados, así que se traducen aquí una vez.
+  const sugeridosUnificados = useMemo(() => {
+    if (!conceptosSugeridos?.length) return conceptosSugeridos;
+    return conceptosSugeridos
+      .map((s) => {
+        const id = resolverConcepto(s.tipoId, s.subtipoId);
+        const c = conceptoPorId(id);
+        return c ? { tipoId: c.familia as string, subtipoId: c.id } : null;
+      })
+      .filter((x): x is { tipoId: string; subtipoId: string } => x != null);
+  }, [conceptosSugeridos]);
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   useEffect(() => {
@@ -120,14 +144,14 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
       (c): c is CompromisoRecurrente & { id: number } => c.estado === 'baja' && c.id != null,
     );
     const activeGroups =
-      mode === 'inmueble' ? groupByBlocksInmueble(activos) : groupByCatalog(activos, catalog, mode);
+      mode === 'inmueble' ? groupByBlocksInmueble(activos) : groupByCatalog(activos, catalogo, mode);
     const estadoGroups: GastoGroup[] = [];
     if (preparados.length > 0)
       estadoGroups.push({ familiaId: '__preparados__', familiaLabel: 'Preparados · sin activar todavía', compromisos: preparados });
     if (bajas.length > 0)
       estadoGroups.push({ familiaId: '__bajas__', familiaLabel: 'Dados de baja', compromisos: bajas });
     return [...activeGroups, ...estadoGroups];
-  }, [compromisos, catalog, mode]);
+  }, [compromisos, catalogo, mode]);
 
   // Pie (§3.1): coste anual · solo lo vigente. «—» si es 0 (nunca «-0 €»).
   const costeAnualVigente = useMemo(() => {
@@ -180,9 +204,16 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
       // `categoria: 'inmueble.seguros'` y bolsa `necesidades` a pelo. Un gasto
       // personal con categoría de inmueble no aparece en ninguna pantalla.
       const ambito: Ambito = personal ? 'personal' : 'inmueble';
-      const idConcepto = resolverConcepto(concepto.tipoId, concepto.subtipoId);
+      // El picker ya emite el id de concepto UNIFICADO en `subtipoId`. Se acepta
+      // el par legacy por si viniera de un catálogo viejo (`resolverConcepto`).
+      const idConcepto = conceptoPorId(concepto.subtipoId)
+        ? concepto.subtipoId
+        : resolverConcepto(concepto.tipoId, concepto.subtipoId);
       const def = conceptoPorId(idConcepto);
       const proyeccion = proyectar(idConcepto, ambito);
+      // El par legacy (familia, subtipo) se sigue guardando porque hay código que
+      // lo lee (bloques de modalidad, listas viejas); se deriva del id canónico.
+      const par = parLegacyDe(idConcepto, ambito);
       const skeleton = {
         ambito,
         inmuebleId: personal ? undefined : inmuebleId,
@@ -190,8 +221,8 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
         alias: def?.label ?? concepto.label,
         concepto: proyeccion ? idConcepto : undefined,
         tipo: def?.tipoCompromiso ?? concepto.tipoCompromiso,
-        subtipo: concepto.subtipoId,
-        tipoFamilia: concepto.tipoId,
+        subtipo: par?.subtipo ?? concepto.subtipoId,
+        tipoFamilia: par?.tipoFamilia ?? concepto.tipoId,
         proveedor: { nombre: '' },
         patron: { tipo: 'mensualDiaFijo', dia: 1 },
         importe: { modo: 'fijo', importe: 0 },
@@ -399,14 +430,14 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
           </div>
         )}
         {pickerOpen && (
-          <ConceptoPickerModal catalog={catalog} sugeridos={conceptosSugeridos} onCancel={() => setPickerOpen(false)} onPick={handlePickConcepto} />
+          <ConceptoPickerModal catalog={catalogo} sugeridos={sugeridosUnificados} onCancel={() => setPickerOpen(false)} onPick={handlePickConcepto} />
         )}
         {importarOpen && (
           <ImportarGastosModal
             mode={mode}
             inmuebleId={inmuebleId}
             accounts={accounts}
-            catalog={catalog}
+            catalog={catalogo}
             onCancel={() => setImportarOpen(false)}
             onImportado={() => {
               setImportarOpen(false);
@@ -457,7 +488,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
       </div>
 
       {pickerOpen && (
-        <ConceptoPickerModal catalog={catalog} sugeridos={conceptosSugeridos} onCancel={() => setPickerOpen(false)} onPick={handlePickConcepto} />
+        <ConceptoPickerModal catalog={catalogo} sugeridos={sugeridosUnificados} onCancel={() => setPickerOpen(false)} onPick={handlePickConcepto} />
       )}
 
       {copiarOpen && mode === 'inmueble' && inmuebleId != null && (
@@ -478,7 +509,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
           mode={mode}
           inmuebleId={inmuebleId}
           accounts={accounts}
-          catalog={catalog}
+          catalog={catalogo}
           onCancel={() => setImportarOpen(false)}
           onImportado={() => {
             setImportarOpen(false);

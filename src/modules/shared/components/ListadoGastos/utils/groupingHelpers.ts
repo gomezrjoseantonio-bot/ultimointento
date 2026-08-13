@@ -1,6 +1,7 @@
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import type { TipoGasto } from '../../TipoGastoSelector/TipoGastoSelector.types';
-import { parLegacyDe } from '../../../../../services/conceptos/mapaLegacy';
+import { resolverConcepto } from '../../../../../services/conceptos/mapaLegacy';
+import { conceptoPorId, familiaPorId } from '../../../../../services/conceptos/catalogoConceptos';
 
 export interface GastoGroup {
   familiaId: string;
@@ -9,17 +10,26 @@ export interface GastoGroup {
 }
 
 function inferFamilia(c: CompromisoRecurrente, mode: 'personal' | 'inmueble'): string {
-  // El CONCEPTO manda · `tipoFamilia` es una copia suya que puede haberse
-  // quedado vieja. Se traduce a la familia del catálogo de este ámbito, que es
-  // con la que están hechos los grupos de esta pantalla.
-  const porConcepto = parLegacyDe(c.concepto, mode)?.tipoFamilia;
+  // La familia sale del CONCEPTO unificado guardado · una sola fuente, la misma
+  // que usa el resto de la app. `tipoFamilia`/`subtipo` son copias legacy que
+  // solo se miran para recuperar registros anteriores a la unificación.
+  const porConcepto = conceptoPorId(c.concepto)?.familia;
   if (porConcepto) return porConcepto;
-  if (c.tipoFamilia) return c.tipoFamilia;
+  const porParLegacy = conceptoPorId(resolverConcepto(c.tipoFamilia, c.subtipo) ?? undefined)?.familia;
+  if (porParLegacy) return porParLegacy;
+  // Registros sin `concepto` pero cuyo `tipoFamilia` YA es una familia unificada
+  // (todo el inmueble, y lo migrado): se respeta tal cual. Las familias legacy
+  // que no existen en el árbol unificado (`seguros_cuotas`, `vivienda`) NO pasan
+  // por aquí y caen a la heurística.
+  if (c.tipoFamilia && familiaPorId(c.tipoFamilia)) return c.tipoFamilia;
+  // Sin concepto reconocible · heurística por tipo → familia UNIFICADA.
   if (mode === 'personal') {
     if (c.tipo === 'suministro') return 'suministros';
     if (c.tipo === 'suscripcion') return 'suscripciones';
-    if (c.tipo === 'seguro' || c.tipo === 'cuota') return 'seguros_cuotas';
-    if (c.tipo === 'impuesto') return 'otros';
+    if (c.tipo === 'seguro') return 'seguros';
+    if (c.tipo === 'cuota') return 'cuotas';
+    if (c.tipo === 'impuesto') return 'tributos';
+    if (c.tipo === 'comunidad') return 'comunidad';
   } else {
     if (c.tipo === 'impuesto') return 'tributos';
     if (c.tipo === 'suministro') return 'suministros';
