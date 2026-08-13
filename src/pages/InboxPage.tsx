@@ -23,6 +23,8 @@ import {
   classifyDocumentFromOCR,
   applyClassificationMetadata,
   assignDocumentToProperty,
+  matchCompromisoPrevisto,
+  withConcepto,
 } from '../services/documentAutoClassifyService';
 import toast from 'react-hot-toast';
 import InboxV3DocumentList from '../components/inbox/InboxV3DocumentList';
@@ -204,21 +206,43 @@ const InboxPage: React.FC = () => {
           };
         }
 
-        // 2) Asignación automática por dirección: el caso normal de una factura
-        //    recurrente. Si una única propiedad coincide Y se ha reconocido el
-        //    concepto, se asigna y se crea el gasto directamente; si el concepto
-        //    no está claro, se deja sugerida para que el usuario lo confirme.
+        // 2a) Match determinista contra un gasto PREVISTO (compromiso
+        //     recurrente) por CUPS / nº de contrato / NIF. Si acierta, el
+        //     inmueble y el concepto salen del previsto — sin adivinar — y la
+        //     factura lo confirma. Es el camino principal para recibos que ya
+        //     estaban previstos (luz, agua, seguro…).
         let singleMatchId: number | undefined;
         let singleMatchAlias: string | null = null;
         try {
-          const propMatches = await matchPropertiesByAddress(direccion);
-          if (propMatches.length === 1) {
-            singleMatchId = propMatches[0].property.id;
-            singleMatchAlias = propMatches[0].property.alias || propMatches[0].property.address || null;
-          } else if (propMatches.length > 1) {
-            updated.metadata = { ...updated.metadata, suggestedEntityId: propMatches[0].property.id };
+          const previsto = await matchCompromisoPrevisto(updated);
+          if (previsto && previsto.conceptoId) {
+            classification = withConcepto(classification, previsto.conceptoId);
+            updated = applyClassificationMetadata(updated, classification);
+            if (nif) {
+              updated.metadata = {
+                ...updated.metadata,
+                financialData: { ...updated.metadata.financialData, nifProveedor: nif },
+              };
+            }
+            singleMatchId = previsto.inmuebleId;
+            singleMatchAlias = previsto.inmuebleAlias;
           }
         } catch { /* matching no bloqueante */ }
+
+        // 2b) Si no había previsto, asignación automática por dirección: si una
+        //     única propiedad coincide Y se reconoció el concepto, se asigna; si
+        //     el concepto no está claro, se deja sugerida para confirmar.
+        if (singleMatchId == null) {
+          try {
+            const propMatches = await matchPropertiesByAddress(direccion);
+            if (propMatches.length === 1) {
+              singleMatchId = propMatches[0].property.id;
+              singleMatchAlias = propMatches[0].property.alias || propMatches[0].property.address || null;
+            } else if (propMatches.length > 1) {
+              updated.metadata = { ...updated.metadata, suggestedEntityId: propMatches[0].property.id };
+            }
+          } catch { /* matching no bloqueante */ }
+        }
 
         if (singleMatchId != null && classification.conceptoId) {
           autoAssignPropertyId = singleMatchId;

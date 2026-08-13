@@ -27,6 +27,7 @@ import {
 } from './conceptos/catalogoConceptos';
 import { gastosInmuebleService, CATEGORIA_A_CASILLA } from './gastosInmuebleService';
 import { mueblesInmuebleService } from './mueblesInmuebleService';
+import { listarCompromisos } from './personal/compromisosRecurrentesService';
 import type { GastoCategoria } from './db';
 
 // ── OCR "tipo_gasto" → concepto del catálogo ─────────────────────────────────
@@ -283,6 +284,112 @@ export function applyClassificationMetadata(
   };
 }
 
+/** Replace the concepto of a classification with a chosen catalog id. */
+export function withConcepto(base: DocumentClassification, conceptoId: string): DocumentClassification {
+  const chosen = conceptoPorId(conceptoId);
+  return {
+    ...base,
+    conceptoId,
+    concepto: chosen,
+    familia: chosen?.familia,
+    label: chosen?.label ?? base.label,
+  };
+}
+
+// ── deterministic match against a predicted expense (compromiso) ──────────────
+
+const normId = (s?: string): string => (s || '').toUpperCase().replace(/[\s.\-/]/g, '');
+
+/** The minimum a compromiso needs to expose for identity matching (testable). */
+export interface CompromisoLike {
+  id?: number;
+  concepto?: string;
+  cups?: string;
+  numeroContrato?: string;
+  proveedor?: { nombre?: string; nif?: string };
+  inmuebleId?: number;
+  reparto?: Array<{ inmuebleId: number }>;
+}
+
+export interface PrevistoMatch {
+  compromiso: CompromisoLike;
+  inmuebleId: number;
+  inmuebleAlias: string;
+  conceptoId?: string;
+  matchedBy: 'cups' | 'numeroContrato' | 'nif';
+}
+
+/**
+ * Pick the predicted expense that a document belongs to, by identity — CUPS
+ * first (unique per supply point), then contract number, then supplier NIF.
+ * Pure, so the matching rules can be tested without a database.
+ */
+export function elegirCompromiso(
+  compromisos: readonly CompromisoLike[],
+  keys: { cups?: string; nif?: string; numeroContrato?: string },
+): { compromiso: CompromisoLike; matchedBy: PrevistoMatch['matchedBy'] } | null {
+  const cups = normId(keys.cups);
+  const contrato = normId(keys.numeroContrato);
+  const nif = normId(keys.nif);
+
+  if (cups) {
+    const hit = compromisos.find((c) => c.cups && normId(c.cups) === cups);
+    if (hit) return { compromiso: hit, matchedBy: 'cups' };
+  }
+  if (contrato) {
+    const hit = compromisos.find((c) => c.numeroContrato && normId(c.numeroContrato) === contrato);
+    if (hit) return { compromiso: hit, matchedBy: 'numeroContrato' };
+  }
+  if (nif) {
+    const hits = compromisos.filter((c) => c.proveedor?.nif && normId(c.proveedor.nif) === nif);
+    // El NIF sólo es concluyente si señala a un único compromiso: un mismo
+    // proveedor (p.ej. una aseguradora) puede cubrir varios inmuebles.
+    if (hits.length === 1) return { compromiso: hits[0], matchedBy: 'nif' };
+  }
+  return null;
+}
+
+function readCups(doc: Document): string | undefined {
+  return ocrValue(doc, 'cups') || (doc.metadata as any)?.financialData?.cups;
+}
+function readNif(doc: Document): string | undefined {
+  return ocrValue(doc, 'nif_proveedor') || (doc.metadata as any)?.financialData?.nifProveedor;
+}
+
+/**
+ * Find the predicted expense (compromiso recurrente) this document belongs to.
+ * Returns the inmueble + concepto to use, so assignment is deterministic instead
+ * of guessed from the provider name.
+ */
+export async function matchCompromisoPrevisto(doc: Document): Promise<PrevistoMatch | null> {
+  const cups = readCups(doc);
+  const nif = readNif(doc);
+  const numeroContrato = ocrValue(doc, 'numero_contrato');
+  if (!cups && !nif && !numeroContrato) return null;
+
+  const compromisos = await listarCompromisos({ ambito: 'inmueble', soloActivos: true });
+  const chosen = elegirCompromiso(compromisos as unknown as CompromisoLike[], { cups, nif, numeroContrato });
+  if (!chosen) return null;
+
+  const inmuebleId = chosen.compromiso.inmuebleId ?? chosen.compromiso.reparto?.[0]?.inmuebleId;
+  if (inmuebleId == null) return null;
+
+  let inmuebleAlias = `Inmueble #${inmuebleId}`;
+  try {
+    const db = await initDB();
+    const p = (await db.get('properties', inmuebleId)) as any;
+    if (p) inmuebleAlias = p.alias || p.address || inmuebleAlias;
+  } catch { /* ignore */ }
+
+  return {
+    compromiso: chosen.compromiso,
+    inmuebleId,
+    inmuebleAlias,
+    conceptoId: chosen.compromiso.concepto,
+    matchedBy: chosen.matchedBy,
+  };
+}
+
 // ── downstream fiscal record ──────────────────────────────────────────────────
 
 /** Remove any gasto/mueble previously materialised from this document (idempotency). */
@@ -309,6 +416,7 @@ async function materializarRegistroInmueble(
   documentId: number,
   inmuebleId: number,
   c: DocumentClassification,
+  nif?: string,
 ): Promise<void> {
   if (!c.conceptoId || !c.concepto?.inmueble) return; // sólo conceptos deducibles en inmueble
 
@@ -316,7 +424,7 @@ async function materializarRegistroInmueble(
   const fecha = toIsoDate(c.fecha) ?? `${ejercicio}-01-01`;
   const importe = c.total ?? c.base ?? 0;
   const descripcion = c.proveedor ? `${c.label} · ${c.proveedor}` : c.label;
-  const nif = undefined; // el NIF vive en financialData; se rellena desde el doc si hace falta
+  const nifProveedor = nif;
 
   await limpiarRegistrosPrevios(documentId);
 
@@ -326,7 +434,7 @@ async function materializarRegistroInmueble(
       descripcion, fechaAlta: fecha,
       importe, vidaUtil: 10, activo: true,
       proveedorNombre: c.proveedor,
-      proveedorNIF: nif,
+      proveedorNIF: nifProveedor,
       invoiceNumber: c.numeroFactura,
       documentId,
     });
@@ -334,20 +442,50 @@ async function materializarRegistroInmueble(
   }
 
   const categoria = (c.familia && FAMILIA_A_GASTO_CATEGORIA[c.familia]) ?? 'otro';
-  await gastosInmuebleService.add({
-    inmuebleId, ejercicio, fecha,
+  const casillaAEAT = CATEGORIA_A_CASILLA[categoria];
+  const camposComunes = {
     concepto: c.label,
     categoria,
-    casillaAEAT: CATEGORIA_A_CASILLA[categoria],
+    casillaAEAT,
     importe,
-    origen: 'manual',
-    origenId: `doc-${documentId}`,
-    estado: 'previsto',
+    fecha,
     proveedorNombre: c.proveedor,
+    ...(nifProveedor ? { proveedorNIF: nifProveedor } : {}),
     invoiceNumber: c.numeroFactura,
     documentId,
     categoryKey: c.concepto.inmueble.categoryKey ?? undefined,
     subtypeKey: c.concepto.inmueble.subtypeKey,
+  };
+
+  // Si ya existe un gasto PREVISTO de este ejercicio que cuadra (misma casilla,
+  // importe ≈), la factura lo CONFIRMA en vez de crear una línea nueva: así no
+  // se cuenta el gasto dos veces (una prevista, otra desde el documento).
+  const existentes = await gastosInmuebleService
+    .getByInmuebleYEjercicio(inmuebleId, ejercicio)
+    .catch(() => [] as any[]);
+  const tolerancia = Math.max(importe * 0.02, 1);
+  const casaImporte = (g: any) => importe > 0 && Math.abs((g.importe ?? 0) - importe) <= tolerancia;
+
+  const yaVinculado = existentes.find((g: any) => g.documentId === documentId);
+  const previstoNif = !yaVinculado && nifProveedor
+    ? existentes.find((g: any) => g.estado === 'previsto' && !g.documentId && normId(g.proveedorNIF) === normId(nifProveedor) && casaImporte(g))
+    : undefined;
+  const previstoCasilla = !yaVinculado && !previstoNif
+    ? existentes.find((g: any) => g.estado === 'previsto' && !g.documentId && g.casillaAEAT === casillaAEAT && casaImporte(g))
+    : undefined;
+
+  const objetivo = yaVinculado || previstoNif || previstoCasilla;
+  if (objetivo?.id != null) {
+    await gastosInmuebleService.update(objetivo.id, { ...camposComunes, estado: 'confirmado' });
+    return;
+  }
+
+  await gastosInmuebleService.add({
+    inmuebleId, ejercicio,
+    ...camposComunes,
+    estado: 'confirmado',
+    origen: 'manual',
+    origenId: `doc-${documentId}`,
   });
 }
 
@@ -390,17 +528,7 @@ export async function assignDocumentToProperty(
 
   // Materialise the fiscal record (non-blocking for the document assignment).
   try {
-    await materializarRegistroInmueble(documentId, propertyId, { ...c, /* keep nif for provider */ });
-    // Backfill provider NIF onto the created gasto line if we have it.
-    if (nif) {
-      const lineas = await gastosInmuebleService
-        .getByInmueble(propertyId)
-        .catch(() => [] as any[]);
-      const linea = lineas.find((g: any) => g.origenId === `doc-${documentId}`);
-      if (linea?.id != null && !linea.proveedorNIF) {
-        await gastosInmuebleService.update(linea.id, { proveedorNIF: nif }).catch(() => {});
-      }
-    }
+    await materializarRegistroInmueble(documentId, propertyId, c, nif);
   } catch { /* la vinculación del documento no debe fallar por el registro fiscal */ }
 
   return updated;

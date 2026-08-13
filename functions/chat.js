@@ -129,7 +129,10 @@ Analiza el documento y extrae datos con máxima precisión.
 
 CAMPOS A EXTRAER:
 - proveedor: nombre de la empresa emisora (quien emite la factura, NO el receptor).
+- nif_proveedor: NIF/CIF del emisor (empieza por letra o número, 9 caracteres, p.ej. "B99340564"). String o null.
 - numero_factura: número o referencia del documento.
+- numero_contrato: número de contrato o póliza del suministro/servicio, si aparece. String o null.
+- cups: código CUPS del punto de suministro (empieza por "ES" seguido de 20-22 dígitos/letras, p.ej. "ES0026000000024563MV"). Solo en facturas de luz/gas. String o null.
 - fecha: fecha de emisión en formato DD/MM/YYYY.
 - base_imponible: importe antes de IVA. Busca "BASE", "SUBTOTAL", "BASE IMPONIBLE". Número.
 - iva: importe del IVA en euros (NO el porcentaje). Busca "IVA 21%", "Cuota IVA". Número.

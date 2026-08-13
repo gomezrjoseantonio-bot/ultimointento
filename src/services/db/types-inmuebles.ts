@@ -558,6 +558,9 @@ export interface OCRResult {
     notas?: string;
     direccion?: string;
     tipo_gasto?: string;
+    nif_proveedor?: string;
+    numero_contrato?: string;
+    cups?: string;
   }; // Raw extracted payload using snake_case keys from OCR backend
   status: 'pending' | 'processing' | 'completed' | 'error';
   error?: string;
