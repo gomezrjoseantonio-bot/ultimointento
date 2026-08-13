@@ -38,6 +38,7 @@ import {
   rangoDelMes,
 } from '../../services/tesoreriaV6Metrics';
 import { cuentasEnUso } from '../../services/cuentasEnUso';
+import { eventoAItem } from '../../services/punteo/punteoAdapter';
 import type { Prestamo } from '../../types/prestamos';
 import { getAllCartaItems } from '../inversiones/adapters/galeriaAdapter';
 import type { CartaItem } from '../inversiones/types/cartaItem';
@@ -451,11 +452,24 @@ const PanelPage: React.FC = () => {
   const flujos = useMemo<FlujosMes>(() => {
     const { desde, hasta } = rangoDelMes(today.getFullYear(), today.getMonth());
     const nombreCuenta = (id?: number) => accounts.find((a) => a.id === id)?.name || undefined;
+    const aliasInmueble = (id: number | string) =>
+      properties.find((p) => String(p.id) === String(id))?.alias;
     const soloDia = (iso?: string) => (iso ?? '').slice(0, 10);
+    // El apunte se nombra con el MISMO adaptador que Tesorería (§ modelo del
+    // apunte): título = quién · detalle = qué es · inmueble. Así el Panel deja
+    // de tener su propio `description || proveedor || categoryLabel`, que pintaba
+    // el mismo movimiento distinto aquí y en Tesorería.
+    const nombrar = (ev: TreasuryEvent): Pick<FlujoRow, 'concepto' | 'detalle' | 'inmueble'> => {
+      if (ev.id == null) {
+        return { concepto: ev.description || ev.proveedor || ev.categoryLabel || 'Movimiento previsto' };
+      }
+      const it = eventoAItem(ev as TreasuryEvent & { id: number }, aliasInmueble);
+      return { concepto: it.concepto, detalle: it.detalle, inmueble: it.activo?.alias };
+    };
     const toRow = (ev: TreasuryEvent, usarReal: boolean): FlujoRow => ({
       id: String(ev.id ?? `${ev.predictedDate}-${ev.amount}-${ev.description ?? ''}`),
       fecha: soloDia(usarReal ? ev.actualDate ?? ev.predictedDate : ev.predictedDate),
-      concepto: ev.description || ev.proveedor || ev.categoryLabel || 'Movimiento previsto',
+      ...nombrar(ev),
       importe: magnitud(ev, usarReal),
       cuenta: nombreCuenta(ev.accountId),
     });
@@ -490,7 +504,7 @@ const PanelPage: React.FC = () => {
         .map((ev) => toRow(ev, false))
         .sort(porDia),
     };
-  }, [treasuryEvents, accounts, today]);
+  }, [treasuryEvents, accounts, properties, today]);
 
   // ── Puedes estar tranquilo ───────────────────────────────────────────────
 

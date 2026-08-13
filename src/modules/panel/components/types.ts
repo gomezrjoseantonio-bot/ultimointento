@@ -66,7 +66,12 @@ export interface FlujoRow {
   id: string;
   /** Fecha del apunte · `YYYY-MM-DD`. */
   fecha: string;
+  /** Título del apunte · QUIÉN cobra o paga (modelo del apunte · L1). */
   concepto: string;
+  /** Segunda línea · QUÉ ES (concepto del catálogo). `undefined` si no aporta. */
+  detalle?: string;
+  /** Inmueble al que pertenece el apunte, si lo hay. */
+  inmueble?: string;
   /** Magnitud SIEMPRE en positivo · el signo lo pone la tarjeta. */
   importe: number;
   /** Nombre de la cuenta, si se conoce. */

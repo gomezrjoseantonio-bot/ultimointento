@@ -69,6 +69,11 @@ const DetalleFlujoModal: React.FC<DetalleFlujoModalProps> = ({
                       {fmtEur(conSigno(f.importe, signo), signo !== 'neutro')}
                     </span>
                   </div>
+                  {(f.detalle || f.inmueble) && (
+                    <div className={styles.filaDetalle}>
+                      {[f.detalle, f.inmueble].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
                   <div className={styles.filaSub}>
                     <span>{fechaCorta(f.fecha)}</span>
                     {f.cuenta ? <span>· {f.cuenta}</span> : null}
