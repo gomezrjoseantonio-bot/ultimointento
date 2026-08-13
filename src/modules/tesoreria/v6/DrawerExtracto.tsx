@@ -31,6 +31,7 @@ import {
 } from '../../../services/bankStatementOrchestrator';
 import { getIgnoredLineHashes, ignoreLine, recoverLine } from '../../../services/statementIgnoredLinesService';
 import { consolidarSesion, archivarExtracto } from '../../../services/statementSessionService';
+import { cierres } from '../../../services/cierreDeMes';
 import { mejoraDesdeMovimiento } from '../../../services/altaMovimientoService';
 import {
   construirLineas,
@@ -91,6 +92,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [asignando, setAsignando] = useState<number | null>(null);
   const [previstos, setPrevistos] = useState<TreasuryEvent[]>([]);
   const [ignoradasPlegadas, setIgnoradasPlegadas] = useState(true);
+  const [cerradosPlegados, setCerradosPlegados] = useState(true);
 
   // El previsto se nombra con el MISMO adaptador que el resto de la app (§modelo
   // del apunte): título = quién · qué es · inmueble. Antes salía su `description`
@@ -150,19 +152,23 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         const res = await processFile(file, { accountId: destino.id, allowReimport });
         ficheroRef.current = file;
         const db = await initDB();
-        const [todosMovs, todosEventos, ignoradasPrevias] = await Promise.all([
+        const [todosMovs, todosEventos, ignoradasPrevias, mesesCerrados] = await Promise.all([
           db.getAll('movements') as Promise<Movement[]>,
           db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
           getIgnoredLineHashes(destino.id),
+          cierres(),
         ]);
         const delLote = (todosMovs ?? []).filter((m) => m.importBatch === res.importBatchId);
         const abiertos = (todosEventos ?? []).filter(
           (e) => e.accountId === destino.id && e.status !== 'executed'
         );
+        // Un extracto suele traer varios meses · los que ya están cerrados no se
+        // cargan (§ cerrar el mes): se apartan y no piden atención.
+        const setCerrados = new Set((mesesCerrados ?? []).map((c) => c.mes));
 
         setResultado(res);
         setPrevistos(abiertos);
-        setLineas(construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias));
+        setLineas(construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, setCerrados));
         setDecisiones(decisionesVacias());
         setPaso('resolver');
       } catch (err) {
@@ -402,8 +408,12 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
   if (!abierto) return null;
 
-  const visibles = lineas.filter((l) => veredictoEfectivo(l, decisiones) !== 'ignorada');
+  const visibles = lineas.filter((l) => {
+    const v = veredictoEfectivo(l, decisiones);
+    return v !== 'ignorada' && v !== 'mes_cerrado';
+  });
   const ignoradas = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'ignorada');
+  const deMesesCerrados = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'mes_cerrado');
 
   return (
     <>
@@ -463,6 +473,12 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 <div className={chasis.akl}>Ignoradas</div>
                 <div className={chasis.akv}>{resumen.ignoradas}</div>
               </div>
+              {resumen.mesesCerrados > 0 && (
+                <div className={chasis.ak}>
+                  <div className={chasis.akl}>Meses cerrados</div>
+                  <div className={chasis.akv}>{resumen.mesesCerrados}</div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -732,6 +748,40 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                         </button>
                       </div>
                     ))}
+                </div>
+              )}
+
+              {/* Meses cerrados · el extracto trae varios meses y estos ya están
+                  cerrados · no se cargan. Para cargarlos, se reabre el mes. */}
+              {deMesesCerrados.length > 0 && (
+                <div className={styles.grupoIgn}>
+                  <button
+                    type="button"
+                    className={styles.grupoIgnHd}
+                    onClick={() => setCerradosPlegados((v) => !v)}
+                    aria-expanded={!cerradosPlegados}
+                  >
+                    {cerradosPlegados ? (
+                      <Icons.ChevronRight size={14} aria-hidden="true" />
+                    ) : (
+                      <Icons.ChevronDown size={14} aria-hidden="true" />
+                    )}
+                    <span>{deMesesCerrados.length} de meses cerrados · no se cargan</span>
+                  </button>
+                  {!cerradosPlegados && (
+                    <>
+                      <div className={styles.zonaS} style={{ padding: '2px 4px 8px' }}>
+                        Estos cargos son de meses que ya cerraste. Para cargarlos, reabre el mes
+                        en «Cerrar el mes».
+                      </div>
+                      {deMesesCerrados.map((l) => (
+                        <div key={l.movementId} className={styles.lineaIgn}>
+                          <div className={styles.lineaTextoIgn}>{l.textoBanco}</div>
+                          <div className={styles.lineaImporteIgn}>{importeConSigno(l.importe)}</div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               )}
 
