@@ -644,6 +644,8 @@ export interface Document {
     tipo?: 'Factura' | 'Contrato' | 'Mejora' | 'Extracto bancario' | 'Otros'
       | 'fiscal' | 'contrato' | 'bancario' | 'otro';
     categoria?: string;
+    /** Concepto del catálogo unificado (id, p.ej. 'luz', 'ibi', 'seguro_hogar'). */
+    concepto?: string;
     destino?: 'Personal' | 'Inmueble';
     status?: 'Nuevo' | 'Procesado' | 'Asignado' | 'Archivado' | 'pendiente_vinculacion' | 'pendiente_asignacion';
     /** Estado de la cola de la bandeja de entrada (pendiente · procesado · error). */

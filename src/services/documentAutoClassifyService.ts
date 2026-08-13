@@ -2,62 +2,89 @@
  * Document Auto-Classification Service
  *
  * The OCR layer already extracts everything from an invoice (proveedor, tipo de
- * gasto, dirección, base, IVA, total, fecha…). What was missing was the bridge
- * from "OCR extracted fields" to "a classified document actually linked to an
- * inmueble". This service is that bridge:
+ * gasto, dirección, base, IVA, total, fecha…). This service is the bridge from
+ * "OCR extracted fields" to "a classified document that is actually a gasto of
+ * an inmueble":
  *
- *  1. `classifyDocumentFromOCR` turns raw OCR data into a real metadata patch
- *     (financialData, proveedor, tipo, carpeta, categoría) so the document stops
- *     showing as «Sin clasificar / Otros» in the Archivo the moment it is read.
- *  2. `assignDocumentToProperty` writes the two fields that actually bind a
- *     document to an inmueble — `entityType='property'` + `entityId` — which is
- *     what the property's «Documentos» tab and the Archivo «Vinculado a» column
- *     read. Without this a document is orphaned no matter how good the OCR was.
+ *  1. `classifyDocumentFromOCR` reads the OCR data and picks a **concepto** from
+ *     the unified catalog (`conceptosBase`) — luz, IBI, comunidad, seguro hogar,
+ *     gestoría, caldera… not just "suministro". That concepto carries the AEAT
+ *     casilla, so a factura is filed the way the rest of the app expects.
+ *  2. `assignDocumentToProperty` writes `entityType='property'` + `entityId`
+ *     (what the property Documentos tab / Archivo read) AND materialises the
+ *     downstream fiscal record: a `GastoInmueble` line (with its casilla) for a
+ *     recurring expense, or a `MuebleInmueble` for furniture. Re-assigning is
+ *     idempotent — the previous line/mueble for the document is replaced.
  */
 
 import { initDB, Document } from './db';
+import {
+  CONCEPTOS,
+  conceptoPorId,
+  familiaPorId,
+  type Concepto,
+  type FamiliaId,
+} from './conceptos/catalogoConceptos';
+import { gastosInmuebleService, CATEGORIA_A_CASILLA } from './gastosInmuebleService';
+import { mueblesInmuebleService } from './mueblesInmuebleService';
+import type { GastoCategoria } from './db';
 
-// ── OCR "tipo_gasto" → app taxonomy ──────────────────────────────────────────
+// ── OCR "tipo_gasto" → concepto del catálogo ─────────────────────────────────
 
-export interface TipoGastoMeta {
-  /** Human label shown in the UI. */
-  label: string;
-  /** Folder used by the inmueble «Documentos» view (documentosInmuebleVista). */
-  carpeta: NonNullable<Document['metadata']['carpeta']>;
-  /** Coarse document type persisted in `metadata.tipo`. */
-  tipo: NonNullable<Document['metadata']['tipo']>;
-  /** Whether this is a CAPEX operation (mejora/mobiliario) rather than a recurring expense. */
-  capex: boolean;
-}
-
-/**
- * Canonical map from the OCR `tipo_gasto` key to how the document should be
- * filed. Recurring supplies/services all land in the «facturas» folder (which
- * the inmueble view renders as «Suministros»); CAPEX lands in «mejoras».
- */
-export const TIPO_GASTO_META: Record<string, TipoGastoMeta> = {
-  electricidad:            { label: 'Electricidad',            carpeta: 'facturas', tipo: 'Factura', capex: false },
-  agua:                    { label: 'Agua',                    carpeta: 'facturas', tipo: 'Factura', capex: false },
-  gas:                     { label: 'Gas',                     carpeta: 'facturas', tipo: 'Factura', capex: false },
-  telecomunicaciones:      { label: 'Telecomunicaciones',      carpeta: 'facturas', tipo: 'Factura', capex: false },
-  seguros:                 { label: 'Seguros',                 carpeta: 'facturas', tipo: 'Factura', capex: false },
-  comunidad:               { label: 'Comunidad',               carpeta: 'facturas', tipo: 'Factura', capex: false },
-  mantenimiento:           { label: 'Mantenimiento',           carpeta: 'facturas', tipo: 'Factura', capex: false },
-  servicios_profesionales: { label: 'Servicios profesionales', carpeta: 'facturas', tipo: 'Factura', capex: false },
-  alquiler:                { label: 'Alquiler',                carpeta: 'facturas', tipo: 'Factura', capex: false },
-  transporte:              { label: 'Transporte',              carpeta: 'otros',    tipo: 'Factura', capex: false },
-  alimentacion:            { label: 'Alimentación',            carpeta: 'otros',    tipo: 'Factura', capex: false },
-  material_oficina:        { label: 'Material de oficina',     carpeta: 'otros',    tipo: 'Factura', capex: false },
-  mejora:                  { label: 'Mejora',                  carpeta: 'mejoras',  tipo: 'Mejora',  capex: true },
-  reforma:                 { label: 'Reforma',                 carpeta: 'mejoras',  tipo: 'Mejora',  capex: true },
-  mobiliario:              { label: 'Mobiliario',              carpeta: 'mejoras',  tipo: 'Mejora',  capex: true },
-  otros:                   { label: 'Otros',                   carpeta: 'otros',    tipo: 'Otros',   capex: false },
+/** Baseline: el tipo_gasto que emite el OCR se traduce a un concepto concreto. */
+const TIPO_GASTO_A_CONCEPTO: Record<string, string> = {
+  electricidad:            'luz',
+  agua:                    'agua',
+  gas:                     'gas',
+  telecomunicaciones:      'telefonia',
+  seguros:                 'seguro_hogar',
+  comunidad:               'comunidad_ordinaria',
+  mantenimiento:           'mantenimiento_integral',
+  servicios_profesionales: 'gestoria',
+  alquiler:                'alquiler_vivienda',
+  transporte:              'transporte',
+  alimentacion:            'supermercado',
+  material_oficina:        'otros_gestion',
+  mobiliario:              'muebles',
 };
 
-export function metaForTipoGasto(tipoGasto?: string): TipoGastoMeta {
-  const key = (tipoGasto || '').trim().toLowerCase();
-  return TIPO_GASTO_META[key] ?? TIPO_GASTO_META.otros;
-}
+/**
+ * Refinado por texto (proveedor + notas + nombre de fichero). Se evalúa en orden
+ * y el primero que casa gana, así que van de más específico a más genérico.
+ * Sólo captura lo que se puede afirmar con confianza a partir del emisor.
+ */
+const KEYWORD_A_CONCEPTO: Array<{ re: RegExp; concepto: string }> = [
+  // Tributos
+  { re: /\b(ibi|impuesto sobre bienes|bienes inmuebles)\b/i, concepto: 'ibi' },
+  { re: /\b(basura|residuos|alcantarillado|saneamiento)\b/i, concepto: 'tasa_basuras' },
+  { re: /\blicencia tur[ií]stica\b/i, concepto: 'licencia_turistica' },
+  // Comunidad
+  { re: /\bderrama\b/i, concepto: 'derrama' },
+  { re: /\b(comunidad de propietarios|administrad\w* de fincas|finca\w*)\b/i, concepto: 'comunidad_ordinaria' },
+  // Suministros — agua
+  { re: /\b(aqualia|emasesa|emacsa|canal de isabel|aig[üu]es|aguas de|hidrogea|facsa|gestagua|aguas municipal)\b/i, concepto: 'agua' },
+  // Suministros — gas (antes que luz, porque comercializadoras venden ambos)
+  { re: /\b(nedgia|gas natural|redexis|naturgas)\b/i, concepto: 'gas' },
+  // Suministros — luz
+  { re: /\b(iberdrola|endesa|naturgy|edp|holaluz|totalenergies|curenergia|gana energ|repsol|octopus|som energia|imagina energ|visalia|adph)\b/i, concepto: 'luz' },
+  // Alarma (antes que telefonía, porque algunas son telecom)
+  { re: /\b(securitas|prosegur|verisure|sector alarm|adt|tyco|alarma)\b/i, concepto: 'alarma' },
+  // Telecomunicaciones
+  { re: /\b(movistar|vodafone|orange|masmovil|m[áa]smovil|yoigo|jazztel|pepephone|lowi|finetwork|digi|o2|simyo|avatel)\b/i, concepto: 'telefonia' },
+  // Seguros
+  { re: /\b(mapfre|axa|allianz|generali|mutua|zurich|l[íi]nea directa|catalana occidente|reale|pelayo|caser|helvetia|santalucia|santaluc[íi]a|seguros|p[óo]liza)\b/i, concepto: 'seguro_hogar' },
+  // Gestión
+  { re: /\b(gestor[íi]a|asesor[íi]a|asesoramiento)\b/i, concepto: 'gestoria' },
+  { re: /\b(honorarios|agencia inmobiliaria|gesti[óo]n del alquiler)\b/i, concepto: 'honorarios_agencia' },
+  // Reparación y conservación
+  { re: /\b(caldera|calefacci[óo]n)\b/i, concepto: 'mantenimiento_caldera' },
+  { re: /\b(fontaner|electricist|pintur|alba[ñn]il|reparaci[óo]n|reforma|manitas)\b/i, concepto: 'otros_reparacion' },
+  // Servicios y explotación
+  { re: /\b(limpieza)\b/i, concepto: 'limpieza' },
+  { re: /\b(lavander[íi]a)\b/i, concepto: 'lavanderia' },
+  // Mobiliario
+  { re: /\b(mueble|mobiliario|ikea|conforama|leroy merl[íi]n colch|colch[óo]n|electrodom[ée]stic)\b/i, concepto: 'muebles' },
+];
 
 // ── amount parsing ────────────────────────────────────────────────────────────
 
@@ -73,7 +100,6 @@ export function parseAmount(value: unknown): number | undefined {
   const hasComma = s.includes(',');
   const hasDot = s.includes('.');
   if (hasComma && hasDot) {
-    // Last separator is the decimal one; the other groups thousands.
     if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.');
     else s = s.replace(/,/g, '');
   } else if (hasComma) {
@@ -83,7 +109,7 @@ export function parseAmount(value: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-// ── read a snake-case OCR field with a couple of fallbacks ────────────────────
+// ── OCR field readers ─────────────────────────────────────────────────────────
 
 function ocrValue(doc: Document, key: string): string | undefined {
   const data = (doc.metadata as any)?.ocr?.data;
@@ -100,7 +126,6 @@ function fieldValue(doc: Document, names: string[]): string | undefined {
 
 function yearFromDate(fecha?: string): number | undefined {
   if (!fecha) return undefined;
-  // Accept dd/mm/yyyy, yyyy-mm-dd, etc.
   const dmy = fecha.match(/(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})/);
   if (dmy) return Number(dmy[3]);
   const ymd = fecha.match(/(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})/);
@@ -124,12 +149,69 @@ export function toIsoDate(fecha?: string): string | undefined {
   return undefined;
 }
 
+// ── concepto detection ────────────────────────────────────────────────────────
+
+/**
+ * Pick the best catalog concepto for a document from its OCR data.
+ * Text (proveedor + notas + filename) wins over the coarse `tipo_gasto`, because
+ * the emisor is the most reliable signal. Telecom refines to internet when the
+ * invoice mentions fibra/internet. Returns undefined when nothing is confident —
+ * the caller then asks the user instead of inventing a concepto.
+ */
+export function detectConceptoId(doc: Document): string | undefined {
+  const proveedor = ocrValue(doc, 'proveedor') || fieldValue(doc, ['supplier_name']) || '';
+  const notas = ocrValue(doc, 'notas') || '';
+  const filename = String(doc.filename || '');
+  const haystack = `${proveedor} ${notas} ${filename}`;
+
+  for (const { re, concepto } of KEYWORD_A_CONCEPTO) {
+    if (re.test(haystack)) {
+      if (concepto === 'telefonia' && /\b(fibra|internet|adsl)\b/i.test(haystack)) return 'internet';
+      return concepto;
+    }
+  }
+
+  const tipoGasto = (ocrValue(doc, 'tipo_gasto') || '').trim().toLowerCase();
+  const byTipo = TIPO_GASTO_A_CONCEPTO[tipoGasto];
+  if (byTipo) {
+    if (byTipo === 'telefonia' && /\b(fibra|internet|adsl)\b/i.test(haystack)) return 'internet';
+    return byTipo;
+  }
+  return undefined;
+}
+
+// ── familia → carpeta / GastoCategoria ────────────────────────────────────────
+
+const FAMILIA_A_CARPETA: Partial<Record<FamiliaId, NonNullable<Document['metadata']['carpeta']>>> = {
+  suministros: 'facturas',
+  mobiliario:  'mejoras',
+};
+
+/** El tipo coarse persistido en `metadata.tipo`, para el filtro del Archivo. */
+function tipoParaFamilia(familia?: FamiliaId): NonNullable<Document['metadata']['tipo']> {
+  if (familia === 'mobiliario') return 'Mejora';
+  return 'Factura';
+}
+
+const FAMILIA_A_GASTO_CATEGORIA: Partial<Record<FamiliaId, GastoCategoria>> = {
+  tributos:    'ibi',
+  comunidad:   'comunidad',
+  suministros: 'suministro',
+  seguros:     'seguro',
+  gestion:     'gestion',
+  reparacion:  'reparacion',
+  servicios:   'servicio',
+};
+
 // ── classification patch ──────────────────────────────────────────────────────
 
 export interface DocumentClassification {
-  /** OCR `tipo_gasto` key (lowercased), or 'otros'. */
-  tipoGasto: string;
-  meta: TipoGastoMeta;
+  /** Id del concepto del catálogo, o undefined si no se pudo determinar. */
+  conceptoId?: string;
+  concepto?: Concepto;
+  familia?: FamiliaId;
+  /** Etiqueta legible (label del concepto o del tipo_gasto). */
+  label: string;
   proveedor?: string;
   direccion?: string;
   fecha?: string;
@@ -140,13 +222,19 @@ export interface DocumentClassification {
   numeroFactura?: string;
 }
 
-/** Read OCR data off a document and produce a normalized classification. */
+/** Read OCR data off a document and produce a catalog-driven classification. */
 export function classifyDocumentFromOCR(doc: Document): DocumentClassification {
-  const tipoGasto = (ocrValue(doc, 'tipo_gasto') || '').trim().toLowerCase();
+  const conceptoId = detectConceptoId(doc);
+  const concepto = conceptoPorId(conceptoId);
   const fecha = ocrValue(doc, 'fecha') || fieldValue(doc, ['invoice_date', 'issue_date']);
+  const label = concepto?.label
+    || (ocrValue(doc, 'tipo_gasto') ? String(ocrValue(doc, 'tipo_gasto')) : 'Sin clasificar');
+
   return {
-    tipoGasto: tipoGasto || 'otros',
-    meta: metaForTipoGasto(tipoGasto),
+    conceptoId,
+    concepto,
+    familia: concepto?.familia,
+    label,
     proveedor: ocrValue(doc, 'proveedor') || fieldValue(doc, ['supplier_name']),
     direccion: ocrValue(doc, 'direccion') ||
       fieldValue(doc, ['service_address', 'supplier_address', 'receiver_address']),
@@ -162,20 +250,23 @@ export function classifyDocumentFromOCR(doc: Document): DocumentClassification {
 /**
  * Merge a classification into a document's metadata WITHOUT touching the
  * property link. Safe to run right after OCR: it makes the document show up with
- * a real type/provider/amount in the Archivo even before it is assigned.
+ * a real concepto/provider/amount in the Archivo even before it is assigned.
  */
 export function applyClassificationMetadata(
   doc: Document,
   c: DocumentClassification,
 ): Document {
   const md = doc.metadata || ({} as Document['metadata']);
+  const carpeta = (c.familia && FAMILIA_A_CARPETA[c.familia]) || 'facturas';
+  const isCapex = c.familia === 'mobiliario';
   return {
     ...doc,
     metadata: {
       ...md,
-      tipo: c.meta.tipo,
-      carpeta: c.meta.carpeta,
-      categoria: c.meta.label,
+      tipo: tipoParaFamilia(c.familia),
+      carpeta,
+      categoria: c.label,
+      ...(c.conceptoId ? { concepto: c.conceptoId } : {}),
       ...(c.proveedor ? { proveedor: c.proveedor, counterpartyName: c.proveedor } : {}),
       ...(c.ejercicio ? { ejercicio: c.ejercicio } : {}),
       financialData: {
@@ -186,19 +277,87 @@ export function applyClassificationMetadata(
         ...(c.numeroFactura ? { invoiceNumber: c.numeroFactura } : {}),
         ...(toIsoDate(c.fecha) ? { issueDate: toIsoDate(c.fecha) } : {}),
         ...(c.direccion ? { serviceAddress: c.direccion } : {}),
-        ...(c.meta.capex ? { isMejora: true } : {}),
+        ...(isCapex ? { isMejora: true } : {}),
       },
     },
   };
+}
+
+// ── downstream fiscal record ──────────────────────────────────────────────────
+
+/** Remove any gasto/mueble previously materialised from this document (idempotency). */
+async function limpiarRegistrosPrevios(documentId: number): Promise<void> {
+  await gastosInmuebleService.deleteByOrigenId('manual', `doc-${documentId}`).catch(() => {});
+  try {
+    const db = await initDB();
+    const muebles = (await db.getAll('mueblesInmueble')) as any[];
+    for (const m of muebles) {
+      if (m.documentId === documentId && m.id != null) {
+        await mueblesInmuebleService.eliminar(m.id).catch(() => {});
+      }
+    }
+  } catch { /* store may not exist */ }
+}
+
+/**
+ * Create the fiscal record that corresponds to a classified document assigned to
+ * an inmueble: a `MuebleInmueble` for furniture (amortizable), or a
+ * `GastoInmueble` line (with its AEAT casilla) for a deductible recurring
+ * expense. Returns silently when the concepto has no inmueble treatment.
+ */
+async function materializarRegistroInmueble(
+  documentId: number,
+  inmuebleId: number,
+  c: DocumentClassification,
+): Promise<void> {
+  if (!c.conceptoId || !c.concepto?.inmueble) return; // sólo conceptos deducibles en inmueble
+
+  const ejercicio = c.ejercicio ?? new Date().getFullYear();
+  const fecha = toIsoDate(c.fecha) ?? `${ejercicio}-01-01`;
+  const importe = c.total ?? c.base ?? 0;
+  const descripcion = c.proveedor ? `${c.label} · ${c.proveedor}` : c.label;
+  const nif = undefined; // el NIF vive en financialData; se rellena desde el doc si hace falta
+
+  await limpiarRegistrosPrevios(documentId);
+
+  if (c.familia === 'mobiliario') {
+    await mueblesInmuebleService.crear({
+      inmuebleId, ejercicio,
+      descripcion, fechaAlta: fecha,
+      importe, vidaUtil: 10, activo: true,
+      proveedorNombre: c.proveedor,
+      proveedorNIF: nif,
+      invoiceNumber: c.numeroFactura,
+      documentId,
+    });
+    return;
+  }
+
+  const categoria = (c.familia && FAMILIA_A_GASTO_CATEGORIA[c.familia]) ?? 'otro';
+  await gastosInmuebleService.add({
+    inmuebleId, ejercicio, fecha,
+    concepto: c.label,
+    categoria,
+    casillaAEAT: CATEGORIA_A_CASILLA[categoria],
+    importe,
+    origen: 'manual',
+    origenId: `doc-${documentId}`,
+    estado: 'previsto',
+    proveedorNombre: c.proveedor,
+    invoiceNumber: c.numeroFactura,
+    documentId,
+    categoryKey: c.concepto.inmueble.categoryKey ?? undefined,
+    subtypeKey: c.concepto.inmueble.subtypeKey,
+  });
 }
 
 // ── assignment to a property ──────────────────────────────────────────────────
 
 /**
  * Bind a document to an inmueble and mark it classified. This writes the
- * `entityType`/`entityId` pair that every downstream view (property Documentos
- * tab, Archivo «Vinculado a») actually reads, persists the classification, and
- * clears any pending-match state. Returns the updated document.
+ * `entityType`/`entityId` pair every downstream view reads, persists the
+ * classification, materialises the corresponding gasto/mueble record, and clears
+ * any pending-match state. Returns the updated document.
  */
 export async function assignDocumentToProperty(
   documentId: number,
@@ -209,7 +368,10 @@ export async function assignDocumentToProperty(
   const doc = (await db.get('documents', documentId)) as Document | undefined;
   if (!doc) throw new Error(`Documento #${documentId} no encontrado`);
 
-  const withClass = classification ? applyClassificationMetadata(doc, classification) : doc;
+  const c = classification ?? classifyDocumentFromOCR(doc);
+  const withClass = applyClassificationMetadata(doc, c);
+
+  const nif = withClass.metadata?.financialData?.nifProveedor;
 
   const updated: Document = {
     ...withClass,
@@ -225,5 +387,37 @@ export async function assignDocumentToProperty(
   };
 
   await db.put('documents', updated);
+
+  // Materialise the fiscal record (non-blocking for the document assignment).
+  try {
+    await materializarRegistroInmueble(documentId, propertyId, { ...c, /* keep nif for provider */ });
+    // Backfill provider NIF onto the created gasto line if we have it.
+    if (nif) {
+      const lineas = await gastosInmuebleService
+        .getByInmueble(propertyId)
+        .catch(() => [] as any[]);
+      const linea = lineas.find((g: any) => g.origenId === `doc-${documentId}`);
+      if (linea?.id != null && !linea.proveedorNIF) {
+        await gastosInmuebleService.update(linea.id, { proveedorNIF: nif }).catch(() => {});
+      }
+    }
+  } catch { /* la vinculación del documento no debe fallar por el registro fiscal */ }
+
   return updated;
+}
+
+/** All catalog concepts selectable for an inmueble, grouped by family (for the UI). */
+export function conceptosInmueblePorFamilia(): Array<{ familia: string; label: string; conceptos: Concepto[] }> {
+  const groups = new Map<FamiliaId, Concepto[]>();
+  for (const c of CONCEPTOS) {
+    if (!c.inmueble || c.oculto) continue;
+    const arr = groups.get(c.familia) ?? [];
+    arr.push(c);
+    groups.set(c.familia, arr);
+  }
+  const out: Array<{ familia: string; label: string; conceptos: Concepto[] }> = [];
+  for (const [familia, conceptos] of groups) {
+    out.push({ familia, label: familiaPorId(familia)?.label ?? familia, conceptos });
+  }
+  return out;
 }

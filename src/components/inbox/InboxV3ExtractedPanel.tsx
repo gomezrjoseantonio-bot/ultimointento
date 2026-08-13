@@ -2,13 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ScanLine, Link2, Building, CheckCircle, X } from 'lucide-react';
 import { confirmLink, CandidatoMatch } from '../../services/documentMatchingService';
 import { initDB, Property } from '../../services/db';
-import { mejorasInmuebleService } from '../../services/mejorasInmuebleService';
-import { mueblesInmuebleService } from '../../services/mueblesInmuebleService';
 import {
   classifyDocumentFromOCR,
   assignDocumentToProperty,
-  toIsoDate,
+  conceptosInmueblePorFamilia,
 } from '../../services/documentAutoClassifyService';
+import { conceptoPorId } from '../../services/conceptos/catalogoConceptos';
 import toast from 'react-hot-toast';
 
 interface InboxV3ExtractedPanelProps {
@@ -143,15 +142,7 @@ const MatchCandidateCard: React.FC<{
 
 // ── Manual assignment form for pendiente_asignacion ──────────────────────────
 
-type AsignacionTipo = 'suministro' | 'mejora' | 'ampliacion' | 'reparacion' | 'mobiliario';
-
-const ASIGNACION_OPCIONES: Array<{ value: AsignacionTipo; label: string }> = [
-  { value: 'suministro', label: 'Suministro / Gasto (luz, agua, gas, seguro…)' },
-  { value: 'mejora',     label: 'Mejora (CAPEX)' },
-  { value: 'ampliacion', label: 'Ampliación (CAPEX)' },
-  { value: 'reparacion', label: 'Reparación' },
-  { value: 'mobiliario', label: 'Mobiliario' },
-];
+const CONCEPTOS_POR_FAMILIA = conceptosInmueblePorFamilia();
 
 const ManualAssignmentForm: React.FC<{
   document: any;
@@ -167,10 +158,9 @@ const ManualAssignmentForm: React.FC<{
   const [inmuebleId, setInmuebleId] = useState<number | ''>(
     document?.metadata?.entityId ?? document?.metadata?.suggestedEntityId ?? '',
   );
-  const defaultTipo: AsignacionTipo = classification?.meta.capex
-    ? (classification.tipoGasto === 'mobiliario' ? 'mobiliario' : 'mejora')
-    : 'suministro';
-  const [tipo, setTipo] = useState<AsignacionTipo>(defaultTipo);
+  const [conceptoId, setConceptoId] = useState<string>(
+    document?.metadata?.concepto ?? classification?.conceptoId ?? '',
+  );
   const [ejercicio, setEjercicio] = useState(classification?.ejercicio ?? new Date().getFullYear());
   const [assigning, setAssigning] = useState(false);
 
@@ -180,42 +170,24 @@ const ManualAssignmentForm: React.FC<{
 
   const handleAssign = async () => {
     if (!inmuebleId) { toast.error('Selecciona un inmueble'); return; }
+    if (!conceptoId) { toast.error('Selecciona un concepto de gasto'); return; }
     if (!document?.id || !classification) return;
     setAssigning(true);
     try {
-      const importe = classification.total ?? classification.base ?? 0;
-      const fechaIso = toIsoDate(classification.fecha) ?? `${ejercicio}-01-01`;
-      const descripcion = classification.proveedor
-        ? `${classification.meta.label} · ${classification.proveedor}`
-        : classification.meta.label;
+      // La clasificación del OCR, con el concepto que el usuario confirma/corrige.
+      const chosen = conceptoPorId(conceptoId);
+      const c = {
+        ...classification,
+        conceptoId,
+        concepto: chosen,
+        familia: chosen?.familia,
+        label: chosen?.label ?? classification.label,
+        ejercicio,
+      };
 
-      // Sólo el CAPEX/mobiliario crea un registro de operación declarada.
-      // Un suministro/gasto se archiva vinculado al inmueble, sin inventar una
-      // mejora de importe 0 (que era el comportamiento anterior).
-      if (tipo === 'mobiliario') {
-        await mueblesInmuebleService.crear({
-          inmuebleId: inmuebleId as number, ejercicio,
-          descripcion, fechaAlta: fechaIso,
-          importe, vidaUtil: 10, activo: true,
-          proveedorNombre: classification.proveedor,
-          proveedorNIF: document?.metadata?.financialData?.nifProveedor,
-          invoiceNumber: classification.numeroFactura,
-          documentId: document.id,
-        });
-      } else if (tipo !== 'suministro') {
-        await mejorasInmuebleService.crear({
-          inmuebleId: inmuebleId as number, ejercicio,
-          descripcion, tipo, importe, fecha: fechaIso,
-          proveedorNombre: classification.proveedor,
-          proveedorNIF: document?.metadata?.financialData?.nifProveedor,
-          invoiceNumber: classification.numeroFactura,
-          documentId: document.id,
-        });
-      }
-
-      // En todos los casos, el documento queda vinculado al inmueble y
-      // clasificado (entityType/entityId + financialData).
-      const updated = await assignDocumentToProperty(document.id, inmuebleId as number, classification);
+      // Vincula el documento al inmueble y materializa el gasto/mueble con su
+      // casilla AEAT (o el mueble amortizable si es mobiliario).
+      const updated = await assignDocumentToProperty(document.id, inmuebleId as number, c);
 
       toast.success('Documento asignado al inmueble');
       onAssigned(updated);
@@ -238,9 +210,9 @@ const ManualAssignmentForm: React.FC<{
         </span>
       </div>
 
-      {classification && (
+      {classification?.conceptoId && (
         <p className="text-xs mb-3" style={{ color: 'var(--n-500)' }}>
-          Detectado: <strong style={{ color: 'var(--n-700)' }}>{classification.meta.label}</strong>
+          Detectado: <strong style={{ color: 'var(--n-700)' }}>{classification.label}</strong>
           {classification.proveedor ? ` · ${classification.proveedor}` : ''}
         </p>
       )}
@@ -259,13 +231,18 @@ const ManualAssignmentForm: React.FC<{
         </select>
 
         <select
-          value={tipo}
-          onChange={(e) => setTipo(e.target.value as AsignacionTipo)}
+          value={conceptoId}
+          onChange={(e) => setConceptoId(e.target.value)}
           className="w-full px-2 py-1.5 border text-xs"
           style={{ borderColor: 'var(--n-300)', borderRadius: 'var(--r-sm)', background: 'var(--white)' }}
         >
-          {ASIGNACION_OPCIONES.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+          <option value="">Concepto de gasto...</option>
+          {CONCEPTOS_POR_FAMILIA.map((g) => (
+            <optgroup key={g.familia} label={g.label}>
+              {g.conceptos.map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </optgroup>
           ))}
         </select>
 
@@ -283,13 +260,13 @@ const ManualAssignmentForm: React.FC<{
         <button
           type="button"
           onClick={handleAssign}
-          disabled={assigning || !inmuebleId}
+          disabled={assigning || !inmuebleId || !conceptoId}
           className="w-full px-3 py-1.5 text-xs font-medium"
           style={{
             borderRadius: 'var(--r-sm)',
             background: 'var(--blue)',
             color: 'var(--white)',
-            opacity: (assigning || !inmuebleId) ? 0.5 : 1,
+            opacity: (assigning || !inmuebleId || !conceptoId) ? 0.5 : 1,
           }}
         >
           Asignar

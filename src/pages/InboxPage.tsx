@@ -22,6 +22,7 @@ import {
 import {
   classifyDocumentFromOCR,
   applyClassificationMetadata,
+  assignDocumentToProperty,
 } from '../services/documentAutoClassifyService';
 import toast from 'react-hot-toast';
 import InboxV3DocumentList from '../components/inbox/InboxV3DocumentList';
@@ -183,16 +184,18 @@ const InboxPage: React.FC = () => {
 
       // --- Post-OCR classification + assignment ---
       let assignedAlias: string | null = null;
+      let autoAssignPropertyId: number | undefined;
+      let classification: ReturnType<typeof classifyDocumentFromOCR> | null = null;
       if (ocr.status !== 'error') {
         const nif = extractNifFromDocument(updated);
         const direccion = extractDireccionFromDocument(updated);
         const fecha = extractFechaFromDocument(updated);
 
-        // 1) Clasificar SIEMPRE a partir del OCR: proveedor, tipo, carpeta,
-        //    categoría e importes quedan escritos en el documento. Así deja de
-        //    aparecer como «Otros / Sin clasificar» en el Archivo aunque todavía
-        //    no esté asignado a un inmueble.
-        const classification = classifyDocumentFromOCR(updated);
+        // 1) Clasificar SIEMPRE a partir del OCR: concepto del catálogo,
+        //    proveedor, tipo, carpeta e importes quedan escritos en el documento.
+        //    Así deja de aparecer como «Otros / Sin clasificar» en el Archivo
+        //    aunque todavía no esté asignado a un inmueble.
+        classification = classifyDocumentFromOCR(updated);
         updated = applyClassificationMetadata(updated, classification);
         if (nif) {
           updated.metadata = {
@@ -201,28 +204,32 @@ const InboxPage: React.FC = () => {
           };
         }
 
-        // 2) Asignación automática por dirección: es el caso normal de una
-        //    factura recurrente (luz, agua, gas…). Si una única propiedad
-        //    coincide, se asigna directamente; si hay varias, se deja sugerida.
-        let matchedPropertyId: number | undefined;
+        // 2) Asignación automática por dirección: el caso normal de una factura
+        //    recurrente. Si una única propiedad coincide Y se ha reconocido el
+        //    concepto, se asigna y se crea el gasto directamente; si el concepto
+        //    no está claro, se deja sugerida para que el usuario lo confirme.
+        let singleMatchId: number | undefined;
+        let singleMatchAlias: string | null = null;
         try {
           const propMatches = await matchPropertiesByAddress(direccion);
           if (propMatches.length === 1) {
-            matchedPropertyId = propMatches[0].property.id;
-            assignedAlias = propMatches[0].property.alias || propMatches[0].property.address || null;
+            singleMatchId = propMatches[0].property.id;
+            singleMatchAlias = propMatches[0].property.alias || propMatches[0].property.address || null;
           } else if (propMatches.length > 1) {
             updated.metadata = { ...updated.metadata, suggestedEntityId: propMatches[0].property.id };
           }
         } catch { /* matching no bloqueante */ }
 
-        if (matchedPropertyId != null) {
+        if (singleMatchId != null && classification.conceptoId) {
+          autoAssignPropertyId = singleMatchId;
+          assignedAlias = singleMatchAlias;
+          updated.metadata = { ...updated.metadata, status: 'Asignado' };
+        } else if (singleMatchId != null) {
+          // Propiedad clara pero concepto por confirmar → sugerida.
           updated.metadata = {
             ...updated.metadata,
-            entityType: 'property',
-            entityId: matchedPropertyId,
-            destino: 'Inmueble',
-            status: 'Asignado',
-            matchCandidates: undefined,
+            suggestedEntityId: singleMatchId,
+            status: 'pendiente_asignacion',
           };
         } else if (nif || direccion || fecha) {
           // 3) Sin propiedad clara: intentar vincular a una operación declarada
@@ -242,7 +249,20 @@ const InboxPage: React.FC = () => {
 
       const updatedDocs = documents.map((doc) => (doc.id === updated.id ? updated : doc));
       await persistDocuments(updatedDocs);
-      setSelectedDocument(updated);
+
+      // Si procede, asignar al inmueble y materializar el gasto/mueble (con su
+      // casilla AEAT) a través del servicio, que lee el documento ya persistido.
+      let finalDoc = updated;
+      if (autoAssignPropertyId != null && updated.id != null) {
+        try {
+          finalDoc = await assignDocumentToProperty(updated.id, autoAssignPropertyId, classification ?? undefined);
+          const docs2 = documents.map((doc) => (doc.id === finalDoc.id ? finalDoc : doc));
+          setDocuments(docs2);
+          invalidateCachedStores(['documents']);
+        } catch { finalDoc = updated; }
+      }
+
+      setSelectedDocument(finalDoc);
       toast.success(assignedAlias ? `OCR completado · asignado a ${assignedAlias}` : 'OCR completado');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error en OCR');
