@@ -99,17 +99,21 @@ const PuedesEstarTranquilo: React.FC<PuedesEstarTranquiloProps> = ({
           </div>
         </div>
 
-        {/* Impuesto acumulado */}
+        {/* Resultado renta · lo que TOCARÍA liquidar, no el IRPF bruto */}
         <div className={styles.card}>
           <div className={styles.cardHd}>
             <Icons.Impuestos size={15} strokeWidth={1.8} />
-            <span className={styles.lab}>Impuesto acumulado</span>
+            <span className={styles.lab}>Resultado renta</span>
           </div>
           {irpf ? (
             <>
-              <div className={`${styles.val} mono`}>{fmtEur(irpf.cuota)}</div>
+              <div className={`${styles.val} mono`}>{fmtEur(Math.abs(irpf.resultado))}</div>
               <div className={styles.cardSub}>
-                IRPF que llevas generado en {irpf.ejercicio} · lo pagarás en {irpf.ejercicio + 1}
+                {irpf.resultado > 0
+                  ? `a pagar en la renta de ${irpf.ejercicio + 1} · ya descontado lo retenido en nómina`
+                  : irpf.resultado < 0
+                    ? `a devolver en la renta de ${irpf.ejercicio + 1} · según lo retenido en ${irpf.ejercicio}`
+                    : `justo cubierto con lo retenido en ${irpf.ejercicio} · sin renta a pagar`}
               </div>
             </>
           ) : (

@@ -245,7 +245,8 @@ const PanelPage: React.FC = () => {
     };
   }, []);
 
-  // Impuesto acumulado · IRPF devengado del ejercicio en curso.
+  // Resultado de la renta · estimación en curso de la declaración (cuota
+  // líquida menos lo ya pagado a cuenta), para la tarjeta "Resultado renta".
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -454,11 +455,19 @@ const PanelPage: React.FC = () => {
     return { count: contratosVencen.length + m130.length, primero };
   }, [contracts, alertasFiscales, today]);
 
-  // Impuesto acumulado · IRPF devengado del ejercicio en curso.
+  // Resultado de la renta · lo que TOCARÍA liquidar en la declaración del año
+  // siguiente, NO el IRPF bruto del ejercicio.
+  //
+  // Antes se pintaba `cuotaLiquida` (la cuota bruta), y eso contaba como "a
+  // pagar" el IRPF que el usuario YA está pagando vía retención de nómina: la
+  // cifra era imposible. Lo que se declara y se liquida es el RESULTADO =
+  // cuota líquida − pagos a cuenta (retención de trabajo + M130 + retenciones
+  // de capital). El servicio ya lo calcula (`resultadoEstimado.resultadoEstimado`,
+  // "+ pagar / − devolver"), que es exactamente `declaracion.resultado`.
   const irpf = useMemo(() => {
     if (!estimacionFiscal) return null;
     return {
-      cuota: estimacionFiscal.resultadoEstimado.cuotaLiquida,
+      resultado: estimacionFiscal.resultadoEstimado.resultadoEstimado,
       ejercicio: estimacionFiscal.ejercicio,
       mesesConDatos: estimacionFiscal.cobertura.mesesConDatos,
     };
