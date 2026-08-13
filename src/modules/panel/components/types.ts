@@ -51,7 +51,7 @@ export type ColchonVM =
       hayInmuebles: boolean;
     };
 
-export interface SinConciliarVM {
+export interface PorConfirmarVM {
   count: number;
   total: number;
 }

@@ -401,14 +401,31 @@ const PanelPage: React.FC = () => {
     };
   }, [saldoTesoreria, cuotaMensualPrestamos, gastoFijoRecurrenteMensual, properties]);
 
-  // Sin conciliar · ingreso previsto ya vencido y sin cuadrar con el banco (de
-  // cualquier periodo). NO afirma impago (FASE A §3, gate 2).
-  const sinConciliar = useMemo(() => {
-    const inicioHoy = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  // Por confirmar · ingreso previsto cuya fecha ya pasó y que sigue SIN
+  // confirmar (de cualquier periodo). NO afirma impago (FASE A §3, gate 2).
+  //
+  // NO es conciliación. Conciliar es cuadrar contra un extracto importado
+  // (VOCABULARIO-dinero §6 ter · treasuryConfirmationService); aquí no se ha
+  // subido ningún extracto, así que nada se puede "conciliar". Lo que falta es
+  // que el usuario CONFIRME (puntee) que el cobro entró. Y como avisa el
+  // vocabulario, un previsto vencido puede estar por confirmar o sencillamente
+  // no haber pasado aún, y desde aquí no se distingue: por eso no se dice impago.
+  //
+  // Mismo criterio que la bandeja "por confirmar" de Tesorería
+  // (tesoreriaV6Metrics · estadoDeCuenta) para que las dos pantallas cuadren:
+  //   · solo `predicted` — los `confirmed` están decididos y esperan al banco,
+  //     no al usuario, así que no son una tarea "por confirmar";
+  //   · descartado nunca cuenta (no ocurrió);
+  //   · fecha ya vencida, comparando `YYYY-MM-DD` como cadenas igual que allí
+  //     (`f !== '' && f <= hoy`, hoy incluido).
+  const porConfirmar = useMemo(() => {
+    const hoy = today.toISOString().slice(0, 10);
     const pendientes = treasuryEvents.filter((ev) => {
       if (ev.type !== 'income') return false;
-      if (ev.status === 'executed' || ev.movementId !== undefined) return false;
-      return new Date(ev.actualDate ?? ev.predictedDate) < inicioHoy;
+      if (ev.descartado) return false;
+      if (ev.status !== 'predicted') return false;
+      const f = (ev.predictedDate ?? '').slice(0, 10);
+      return f !== '' && f <= hoy;
     });
     return {
       count: pendientes.length,
@@ -527,7 +544,7 @@ const PanelPage: React.FC = () => {
 
           <PuedesEstarTranquilo
             colchon={colchon}
-            sinConciliar={sinConciliar}
+            porConfirmar={porConfirmar}
             proximos30={proximos30}
             irpf={irpf}
           />
