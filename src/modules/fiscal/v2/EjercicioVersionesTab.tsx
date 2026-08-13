@@ -10,11 +10,13 @@ import React from 'react';
 import styles from './FiscalEjercicioPage.module.css';
 
 export interface VersionRow {
-  version: 'v1' | 'v2';
+  version: string;
   fecha?: string;
   origen: string;
   resultado: number | null;
   nota?: string;
+  /** Versión válida/vigente (la última rectificativa de la cadena). */
+  activa?: boolean;
 }
 
 export interface EjercicioVersionesTabProps {
@@ -45,7 +47,7 @@ const EjercicioVersionesTab: React.FC<EjercicioVersionesTabProps> = ({ versiones
         <div>
           <div className={styles.cardTitle}>Versiones de la declaración</div>
           <div className={styles.cardSub}>
-            v1 · original presentada · v2 · corrección posterior por paralela AEAT
+            Original y rectificativas/complementarias · la marcada como «activa» es la vigente
           </div>
         </div>
       </div>
@@ -71,6 +73,21 @@ const EjercicioVersionesTab: React.FC<EjercicioVersionesTabProps> = ({ versiones
                 <tr key={v.version}>
                   <td>
                     <span className={`${styles.mono} ${styles.tStrong}`}>{v.version}</span>
+                    {v.activa && (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          color: 'var(--pos)',
+                          border: '1px solid var(--pos)',
+                          borderRadius: 4,
+                          padding: '1px 6px',
+                        }}
+                      >
+                        activa
+                      </span>
+                    )}
                   </td>
                   <td>{v.origen}</td>
                   <td>
