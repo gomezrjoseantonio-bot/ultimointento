@@ -72,7 +72,7 @@ function buildOptimizacionesLineas(
   if (!calculo.tieneGastosVentaConfirmados) {
     lineas.push({
       titulo: 'Faltan gastos de venta por confirmar.',
-      detalle: 'Notaría · plusvalía municipal · cancelación hipoteca · agencia. Confirmar estos importes reduce la ganancia tributable y el impuesto final.',
+      detalle: 'Notaría · plusvalía municipal · agencia · otros gastos de venta. Confirmar estos importes reduce la ganancia tributable y el impuesto final.',
     });
   }
 

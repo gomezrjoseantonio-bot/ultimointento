@@ -365,12 +365,17 @@ export async function buildVentaCalculo(opts: BuildOpts): Promise<VentaCalculoDa
   };
 }
 
-function buildGastosVentaIndent(sale: PropertySale, tieneGastos: boolean): VentaCalcLine[] {
+export function buildGastosVentaIndent(sale: PropertySale, tieneGastos: boolean): VentaCalcLine[] {
   const sc = sale.saleCosts;
+  // Solo los gastos INHERENTES A LA TRANSMISIÓN minoran el valor de transmisión
+  // (art. 35.3 y 35.1.b Ley 35/2006 IRPF; los intereses quedan excluidos). La
+  // comisión de cancelación/reembolso del préstamo es un gasto financiero, no
+  // inherente a la transmisión: no se deduce aquí (vive en `loanSettlement`, que
+  // solo afecta al efectivo neto de la venta). Antes se listaba como fila
+  // decorativa y el desglose no cuadraba con el subtotal deducible.
   const items = [
     { text: 'Notaría venta', amount: sc?.saleNotaryCosts ?? 0 },
     { text: 'Plusvalía municipal (IIVTNU)', amount: sc?.municipalTax ?? 0 },
-    { text: 'Cancelación hipoteca', amount: sale.loanSettlement?.cancellationFee ?? 0 },
     { text: 'Agencia inmobiliaria', amount: sc?.agencyCommission ?? 0 },
     { text: 'Otros gastos venta', amount: sc?.otherCosts ?? 0 },
   ];

@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MoneyValue } from '../../../design-system/v5';
 import {
   recopilarDatosInmuebles,
   type RendimientoInmueble,
 } from '../../../services/irpfCalculationService';
+import { getLatestConfirmedSaleForProperty } from '../../../services/propertySaleService';
+import type { PropertySale } from '../../../services/db';
 import styles from './FiscalidadInmueble.module.css';
 
 export interface FiscalidadInmuebleProps {
@@ -95,12 +98,45 @@ function construirCascada(r: RendimientoInmueble): LineaCascada[] {
 }
 
 const FiscalidadInmueble: React.FC<FiscalidadInmuebleProps> = ({ inmuebleId }) => {
+  const navigate = useNavigate();
   const anioActual = new Date().getFullYear();
   const [ejercicio, setEjercicio] = useState<number>(anioActual - 1);
   const [rend, setRend] = useState<RendimientoInmueble | null>(null);
+  const [venta, setVenta] = useState<PropertySale | null>(null);
   const [cargando, setCargando] = useState(true);
   const [abierta, setAbierta] = useState<string | null>(null);
   const [avisoVisible, setAvisoVisible] = useState(true);
+
+  // Venta confirmada del inmueble (si la hay): su ganancia patrimonial tributa
+  // en la declaración del año de la venta. Se muestra en la pestaña aunque no
+  // haya rendimiento de alquiler (caso de un inmueble ya vendido).
+  useEffect(() => {
+    let activo = true;
+    getLatestConfirmedSaleForProperty(inmuebleId)
+      .then((s) => {
+        if (activo) setVenta(s);
+      })
+      .catch(() => {
+        if (activo) setVenta(null);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [inmuebleId]);
+
+  const ventaDelEjercicio = useMemo(
+    () =>
+      venta?.saleDate && new Date(venta.saleDate).getFullYear() === ejercicio ? venta : null,
+    [venta, ejercicio],
+  );
+
+  // Si el inmueble se vendió, arrancar el selector en el año de la venta (dentro
+  // del rango disponible) para que su ganancia se vea sin tener que buscar el año.
+  useEffect(() => {
+    if (!venta?.saleDate) return;
+    const y = new Date(venta.saleDate).getFullYear();
+    if (y >= anioActual - 2 && y <= anioActual) setEjercicio(y);
+  }, [venta, anioActual]);
 
   useEffect(() => {
     let activo = true;
@@ -140,12 +176,60 @@ const FiscalidadInmueble: React.FC<FiscalidadInmuebleProps> = ({ inmuebleId }) =
         </div>
       </div>
 
+      {ventaDelEjercicio && (
+        <div className={styles.nvHero}>
+          <div className={styles.nvId}>
+            <div className={styles.nvT}>
+              <span className={styles.nvDot} />
+              Venta · ganancia patrimonial
+            </div>
+            <div className={styles.nvS}>tributa en la declaración de {ejercicio}</div>
+          </div>
+          <div className={styles.nvKpis}>
+            <div className={styles.nvK}>
+              <div className={styles.kL}>Ganancia</div>
+              <div className={`${styles.kV} ${styles.gold}`}>
+                <MoneyValue value={ventaDelEjercicio.fiscalSnapshot?.gananciaPatrimonial ?? 0} decimals={0} />
+              </div>
+              <div className={styles.kH}>patrimonial</div>
+            </div>
+            <div className={styles.nvK}>
+              <div className={styles.kL}>Impuesto estimado</div>
+              <div className={styles.kV}>
+                <MoneyValue value={ventaDelEjercicio.fiscalSnapshot?.irpfEstimado ?? 0} decimals={0} />
+              </div>
+              <div className={styles.kH}>base ahorro</div>
+            </div>
+            <div className={styles.nvK}>
+              <div className={styles.kL}>Valor transmisión</div>
+              <div className={styles.kV}>
+                <MoneyValue value={ventaDelEjercicio.fiscalSnapshot?.valorNetoTransmision ?? ventaDelEjercicio.salePrice} decimals={0} />
+              </div>
+              <div className={styles.kH}>tras gastos deducibles</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ventaDelEjercicio && (
+        <button
+          type="button"
+          className={styles.calcNote}
+          style={{ cursor: 'pointer', textAlign: 'left', width: '100%', background: 'none', border: 0 }}
+          onClick={() => navigate(`/fiscal/ejercicio/${ejercicio}/venta/${ventaDelEjercicio.id}`)}
+        >
+          Ver el desglose completo de la venta →
+        </button>
+      )}
+
       {cargando ? (
         <div className={styles.empty}>Calculando el rendimiento fiscal…</div>
       ) : !rend ? (
-        <div className={styles.empty}>
-          Sin actividad fiscal registrada para este inmueble en {ejercicio}.
-        </div>
+        ventaDelEjercicio ? null : (
+          <div className={styles.empty}>
+            Sin actividad fiscal registrada para este inmueble en {ejercicio}.
+          </div>
+        )
       ) : (
         <>
           {/* Hero navy · resumen del rendimiento */}
