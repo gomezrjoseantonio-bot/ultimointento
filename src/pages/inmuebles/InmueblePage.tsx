@@ -22,6 +22,7 @@ import {
   X as IconX,
   Check as IconCheck,
   AlertCircle as IconAlert,
+  Activity as IconActivity,
   Banknote as IconBank,
   Image as IconImage,
   MapPin as IconPin,
@@ -727,7 +728,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </div>
                 </span>
               </div>
-              {/* fila A · fecha, precio, impuestos */}
+              {/* una sola fila · fecha · precio · impuestos · gastos (sin salto de línea) */}
               <div className={styles.wrap}>
                 <div className={`${styles.fld} ${styles.fldC}`}>
                   <label className={styles.lab}>Fecha <span className={styles.req}>*</span></label>
@@ -742,9 +743,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 ) : (
                   eurField('ITP', 'ITP', form.itp, (n) => { set('itp', n); set('itpIsManual', true); }, styles.wEur)
                 )}
-              </div>
-              {/* fila B · gastos */}
-              <div className={styles.wrap} style={{ marginTop: 8 }}>
                 {eurField('Notaría', 'Notaría', form.notaria, (n) => set('notaria', n), styles.wEurS)}
                 {eurField('Registro', 'Registro', form.registro, (n) => set('registro', n), styles.wEurS)}
                 {eurField('Gestoría', 'Gestoría', form.gestoria, (n) => set('gestoria', n), styles.wEurS)}
@@ -821,17 +819,19 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             </div>
           </div>
 
-          {/* PREVIEW · raíl navy "en directo" */}
+          {/* PREVIEW · fondo claro con tarjeta navy (mockup aprobado) */}
           <div className={styles.colPreview}>
             <div className={styles.pvHd}>
-              <span>Cálculo fiscal</span>
-              <span className={styles.pvLive}>● en directo</span>
+              <IconActivity size={12} /> Cálculo fiscal · vista previa
             </div>
-            <div className={styles.pvHeroLab}>Coste base · adquisición</div>
-            <div className={styles.pvHeroVal}>{eur(resumen.costeBaseAdquisicion)} <span className={styles.pvCur}>€</span></div>
-            <div className={styles.pvHeroSub}>Base de plusvalía y amortización</div>
 
-            <div className={styles.pvBreak}>
+            <div className={styles.pvHero}>
+              <div className={styles.pvHeroLab}>Coste base · adquisición</div>
+              <div className={styles.pvHeroVal}>{eur(resumen.costeBaseAdquisicion)} <span className={styles.pvCur}>€</span></div>
+              <div className={styles.pvHeroSub}>Base de cálculo de plusvalía y amortización</div>
+            </div>
+
+            <div className={styles.pvBox}>
               <div className={styles.pvRow}>
                 <span className={styles.pvL}>Precio compra</span>
                 <span className={styles.pvV}>{eur(form.precioCompra)} €</span>
@@ -863,8 +863,8 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
 
             {vinculado && (
               <>
-                <div className={styles.pvSubHd}>Financiación vinculada</div>
-                <div className={styles.pvBreak}>
+                <div className={styles.pvSubHd}><IconBank size={12} /> Financiación vinculada</div>
+                <div className={styles.pvBox} style={{ marginBottom: 0 }}>
                   {vinculadas.map((l) => (
                     <div
                       className={`${styles.pvRow} ${styles.pvRowLink}`}
