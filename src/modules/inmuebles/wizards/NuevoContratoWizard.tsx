@@ -20,6 +20,8 @@ import {
 import { CuentaCobroField } from './CuentaCobroField';
 import { useCuentasCobro } from './cuentaCobro';
 import { construirPayloadCompleto, construirPayloadBorrador } from './contratoWizardPayload';
+import { vincularAccesorioDesdeContrato } from '../../../services/vinculoAccesorioService';
+import CampoAccesorioContrato from './CampoAccesorioContrato';
 import styles from './NuevoContratoWizard.module.css';
 
 type StepKey = 'donde' | 'inquilino' | 'economico' | 'documentos' | 'firma';
@@ -53,6 +55,7 @@ const NuevoContratoWizard: React.FC = () => {
   });
   const [creando, setCreando] = useState(false);
   const [errorSave, setErrorSave] = useState<string | null>(null);
+  const [accesorioId, setAccesorioId] = useState<number | null>(null); // accesorio que se alquila junto
   // ¿Se puede guardar como borrador? Alta nueva sí; en edición solo si el
   // contrato es aún un borrador (`sin_firmar`) para no degradar uno activo.
   const [permiteBorrador, setPermiteBorrador] = useState(!esEdicion);
@@ -175,6 +178,8 @@ const NuevoContratoWizard: React.FC = () => {
       if (!verificado) {
         throw new Error(`Contrato ${id} no se pudo recuperar tras guardar`);
       }
+      const vinculado = await vincularAccesorioDesdeContrato(accesorioId, payload);
+      if (!vinculado) showToastV5('Contrato creado, pero el accesorio no se pudo vincular', 'error');
       showToastV5(
         `Contrato creado · ${payload.inquilino.nombre} ${payload.inquilino.apellidos}`.trim(),
         'success',
@@ -302,6 +307,12 @@ const NuevoContratoWizard: React.FC = () => {
                     ))}
                   </select>
                 </div>
+                <CampoAccesorioContrato
+                  principalId={form.inmuebleId}
+                  properties={properties}
+                  value={accesorioId}
+                  onChange={setAccesorioId}
+                />
                 {habitacionesTotales > 1 && (
                   <div className={styles.field}>
                     <label className={styles.label}>Habitación</label>
