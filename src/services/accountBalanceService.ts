@@ -6,11 +6,18 @@ function toDateOnly(date: string | undefined): string | undefined {
 }
 
 function getSignedEventAmount(event: TreasuryEvent): number {
-  // Magnitud SIEMPRE por |amount| y dirección por `type`. Los generadores no
-  // comparten convención de signo: treasurySyncService guarda gastos en POSITIVO
-  // y compromisos/vivienda en NEGATIVO. Sin Math.abs, un gasto negativo se contaba
+  // Para un evento YA materializado (executed/confirmed) manda el importe REAL,
+  // no el previsto: una previsión de 30 € que se confirmó en 13,38 € tiene que
+  // descontar del saldo 13,38, no los 30. `actualAmount` se rellena al puntear
+  // (confirmTreasuryEvent / confirmDecisions) y solo existe en lo ya cobrado, así
+  // que un previsto puro cae a `amount` como antes.
+  //
+  // Magnitud SIEMPRE por |·| y dirección por `type`. Los generadores no comparten
+  // convención de signo: treasurySyncService guarda gastos en POSITIVO y
+  // compromisos/vivienda en NEGATIVO. Sin Math.abs, un gasto negativo se contaba
   // como INGRESO (`-(-100)=+100`) → saldos mal y que bailan al regenerar.
-  const magnitude = Math.abs(event.amount);
+  const base = event.actualAmount != null ? event.actualAmount : event.amount;
+  const magnitude = Math.abs(base);
   return event.type === 'income' ? magnitude : -magnitude;
 }
 

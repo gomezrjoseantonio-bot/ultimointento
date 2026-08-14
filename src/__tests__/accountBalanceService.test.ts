@@ -47,6 +47,45 @@ describe('accountBalanceService', () => {
     expect(value).toBe(1130);
   });
 
+  it('un evento executed descuenta su importe REAL (actualAmount), no el previsto', () => {
+    // Previsión de gas: previsto 30 €, real 13,38 €. Al puntear se marca executed
+    // con actualAmount=13,38 y su movimiento (−13,38) queda vinculado (movementId).
+    // El saldo debe bajar 13,38, no 30. Antes contaba `amount` (30) → saldo 16,62
+    // demasiado bajo (760 en vez de 777).
+    const value = calculateAccountBalanceAtDate({
+      account: {
+        id: 4,
+        iban: 'ES4',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        openingBalance: 1000,
+        openingBalanceDate: '2026-01-01',
+      } as any,
+      cutoffDate: '2026-08-15',
+      treasuryEvents: [
+        {
+          id: 900,
+          accountId: 4,
+          type: 'expense',
+          amount: -30, // previsto
+          actualAmount: 13.38, // real (magnitud positiva)
+          predictedDate: '2026-08-03',
+          status: 'executed',
+          movementId: 55,
+        } as any,
+      ],
+      movements: [
+        // El movimiento real vinculado · se excluye (reconciledMovementIds) para
+        // no contar dos veces; el importe lo aporta el evento con su actualAmount.
+        { id: 55, accountId: 4, amount: -13.38, date: '2026-08-03' } as any,
+      ],
+    });
+
+    expect(value).toBeCloseTo(986.62, 2); // 1000 − 13,38
+  });
+
 
   it('allows callers to ignore imported movements when projecting month openings for treasury forecast continuity', () => {
     const value = calculateAccountBalanceAtDate({
