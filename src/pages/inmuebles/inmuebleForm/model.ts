@@ -222,18 +222,21 @@ export function modelFromProperty(
   // "manual" cuando el importe guardado difiere del auto (mismo patrón que el
   // valor de referencia · evita pisar un importe puesto a mano por el usuario).
   const auto = calcularTributosAuto({ tipoActivo, ccaa: ccaaResolved, precioCompra: precio, valorReferencia: vRef });
+  // Un importe guardado a 0 o vacío NO es "manual": es que nadie lo puso, y debe
+  // auto-calcularse (si no, una usada migrada sin ITP se queda en 0 para siempre).
+  // Solo se respeta como manual un importe > 0 que difiere del auto, o el flag explícito.
   const itpStored = prop.acquisitionCosts.itp;
   const ivaStored = prop.acquisitionCosts.iva;
   const ajdStored = prop.acquisitionCosts.ajd;
-  const itp = itpStored ?? auto.itp;
-  const iva = ivaStored ?? auto.iva;
-  const ajd = ajdStored ?? auto.ajd;
   const itpIsManual =
-    prop.acquisitionCosts.itpIsManual ?? (itpStored != null && Math.abs(itpStored - auto.itp) > 0.5);
+    prop.acquisitionCosts.itpIsManual ?? (!!itpStored && Math.abs(itpStored - auto.itp) > 0.5);
   const ivaIsManual =
-    prop.acquisitionCosts.ivaIsManual ?? (ivaStored != null && Math.abs(ivaStored - auto.iva) > 0.5);
+    prop.acquisitionCosts.ivaIsManual ?? (!!ivaStored && Math.abs(ivaStored - auto.iva) > 0.5);
   const ajdIsManual =
-    prop.acquisitionCosts.ajdIsManual ?? (ajdStored != null && Math.abs(ajdStored - auto.ajd) > 0.5);
+    prop.acquisitionCosts.ajdIsManual ?? (!!ajdStored && Math.abs(ajdStored - auto.ajd) > 0.5);
+  const itp = itpIsManual ? (itpStored as number) : auto.itp;
+  const iva = ivaIsManual ? (ivaStored as number) : auto.iva;
+  const ajd = ajdIsManual ? (ajdStored as number) : auto.ajd;
 
   const model: InmuebleFormModel = {
     tipoActivo,
