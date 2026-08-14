@@ -23,6 +23,8 @@ import { mejorasInmuebleService } from '../mejorasInmuebleService';
 import { getCarryForwardsDisponibles } from '../carryForwardService';
 import { calcularDeclaracionIRPF } from '../irpfCalculationService';
 import { invalidateFiscalCache } from '../fiscalCacheService';
+import { extraerCasillasDeterministasDesdeTexto } from '../aeatParserService';
+import { construirDeclaracionCompletaDesdeCasillas } from '../justificantePdfImportService';
 import { OPCIONES_DEFAULT } from '../../types/opcionesDistribucion';
 import type { DeclaracionCompleta, InmuebleDeclarado } from '../../types/declaracionCompleta';
 
@@ -273,12 +275,44 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
     // que el denominador sea el año y el porcentaje dependa de `revisado`.
     expect(impRv!.imputacion).toBeLessThan(impNr!.imputacion);
   });
-});
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HUECOS CONOCIDOS · el modelo aún no los cubre. Son el backlog objetivo.
-// Se dejan como `todo` (visibles en CI, sin romper la build) hasta implementarlos.
-// ═══════════════════════════════════════════════════════════════════════════
-describe('Garantía de importación · huecos conocidos (pendientes de implementar)', () => {
-  it.todo('Import por PDF (justificante): extrae el resumen de forma fiable, sin depender de conversores externos');
+  it('import PDF (justificante): del texto → DeclaracionCompleta pdf → mismo pipeline, sin conversores externos', async () => {
+    // Texto tal como lo devuelve pdfjs de un justificante de la AEAT (una página
+    // por string). La extracción es 100% determinista —regex sobre el texto, sin
+    // IA ni servicios externos— reutilizando la del parser AEAT ya existente.
+    const paginasJustificante = [[
+      'Agencia Tributaria',
+      'Impuesto sobre la Renta de las Personas Físicas',
+      'Ejercicio 2023',
+      'Número de justificante 2023000111222',
+      'Código Seguro de Verificación: ABC123XYZ456',
+      'Base imponible general 0435 30000,00',
+      'Base imponible del ahorro 0460 2000,00',
+      'Cuota íntegra estatal 0545 4000,00',
+      'Cuota íntegra autonómica 0546 3800,00',
+      'Retenciones y demás pagos a cuenta 0609 9500,00',
+      'Cuota diferencial 0610 -800,00',
+      'Resultado de la declaración 0670 -800,00',
+    ].join('\n')];
+
+    const raw = extraerCasillasDeterministasDesdeTexto(paginasJustificante);
+    const decl = construirDeclaracionCompletaDesdeCasillas(raw, { ejercicioFallback: 2023 });
+
+    // El resumen se extrae fiable y determinista (sin red).
+    expect(decl.meta.fuenteImportacion).toBe('pdf');
+    expect(decl.meta.ejercicio).toBe(2023);
+    expect(decl.meta.numeroJustificante).toBe('2023000111222');
+    expect(decl.meta.csv).toBe('ABC123XYZ456');
+    expect(decl.resultado.resultadoDeclaracion).toBeCloseTo(-800, 2);
+    expect(decl.integracion.baseImponibleGeneral).toBeCloseTo(30000, 2);
+    expect(decl.integracion.baseImponibleAhorro).toBeCloseTo(2000, 2);
+
+    // Y fluye por el MISMO distribuidor que el XML.
+    await distribuirDeclaracion(decl, OPCIONES_DEFAULT);
+    const ej = await getEjercicio(2023);
+    const activa = ej?.aeat?.versiones?.find((v) => v.id === ej.aeat?.versionActivaId);
+    expect(activa?.resultado).toBeCloseTo(-800, 2);
+    expect(activa?.fuenteImportacion).toBe('pdf');
+    expect((await props())).toHaveLength(0); // el resumen no reconstruye inmuebles
+  });
 });
