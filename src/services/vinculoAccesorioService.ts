@@ -69,6 +69,32 @@ export async function crearVinculoAccesorioManual(datos: AltaVinculoManual): Pro
 }
 
 /**
+ * Crea el vínculo desde un contrato recién guardado, si procede (hay accesorio y
+ * no es el propio principal). Deriva ejercicio/fechas del contrato. NO lanza: el
+ * contrato ya está guardado, así que un fallo aquí solo se registra y devuelve
+ * `false` (sin accesorio → `true`, no hay nada que hacer).
+ */
+export async function vincularAccesorioDesdeContrato(
+  accesorioId: number | null,
+  contrato: { inmuebleId: number; fechaInicio: string; fechaFin?: string },
+): Promise<boolean> {
+  if (accesorioId == null || accesorioId === contrato.inmuebleId) return true;
+  try {
+    await crearVinculoAccesorioManual({
+      inmueblePrincipalId: contrato.inmuebleId,
+      inmuebleAccesorioId: accesorioId,
+      ejercicio: Number(contrato.fechaInicio.slice(0, 4)) || new Date().getFullYear(),
+      fechaInicio: contrato.fechaInicio,
+      fechaFin: contrato.fechaFin,
+    });
+    return true;
+  } catch (e) {
+    console.warn('[vinculoAccesorio] alta desde contrato falló:', e);
+    return false;
+  }
+}
+
+/**
  * Inmuebles que PUEDEN ser accesorios de `principalId`: cualquier otro inmueble
  * de la cartera (todos tienen referencia catastral propia = Caso 1). Un anexo
  * sin referencia (Caso 2) no es un inmueble en ATLAS, así que nunca aparece.

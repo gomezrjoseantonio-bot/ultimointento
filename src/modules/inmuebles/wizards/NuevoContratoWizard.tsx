@@ -20,7 +20,8 @@ import {
 import { CuentaCobroField } from './CuentaCobroField';
 import { useCuentasCobro } from './cuentaCobro';
 import { construirPayloadCompleto, construirPayloadBorrador } from './contratoWizardPayload';
-import { crearVinculoAccesorioManual } from '../../../services/vinculoAccesorioService';
+import { vincularAccesorioDesdeContrato } from '../../../services/vinculoAccesorioService';
+import CampoAccesorioContrato from './CampoAccesorioContrato';
 import styles from './NuevoContratoWizard.module.css';
 
 type StepKey = 'donde' | 'inquilino' | 'economico' | 'documentos' | 'firma';
@@ -54,10 +55,7 @@ const NuevoContratoWizard: React.FC = () => {
   });
   const [creando, setCreando] = useState(false);
   const [errorSave, setErrorSave] = useState<string | null>(null);
-  // Accesorio que se alquila JUNTO al inmueble (parking/trastero con ref propia).
-  // Es una relación temporal → no es un campo del contrato, sino un vínculo que
-  // se crea al guardar. Local al wizard, no toca el payload.
-  const [accesorioId, setAccesorioId] = useState<number | null>(null);
+  const [accesorioId, setAccesorioId] = useState<number | null>(null); // accesorio que se alquila junto
   // ¿Se puede guardar como borrador? Alta nueva sí; en edición solo si el
   // contrato es aún un borrador (`sin_firmar`) para no degradar uno activo.
   const [permiteBorrador, setPermiteBorrador] = useState(!esEdicion);
@@ -180,22 +178,8 @@ const NuevoContratoWizard: React.FC = () => {
       if (!verificado) {
         throw new Error(`Contrato ${id} no se pudo recuperar tras guardar`);
       }
-      // Accesorio que se alquila junto → vínculo temporal con las fechas del
-      // contrato. No bloquea el alta si falla (el contrato ya está guardado).
-      if (accesorioId != null && accesorioId !== payload.inmuebleId) {
-        try {
-          await crearVinculoAccesorioManual({
-            inmueblePrincipalId: payload.inmuebleId,
-            inmuebleAccesorioId: accesorioId,
-            ejercicio: Number(payload.fechaInicio.slice(0, 4)) || new Date().getFullYear(),
-            fechaInicio: payload.fechaInicio,
-            fechaFin: payload.fechaFin,
-          });
-        } catch (vErr) {
-          console.warn('[WizardNuevoContrato] no se pudo crear el vínculo de accesorio:', vErr);
-          showToastV5('Contrato creado, pero el accesorio no se pudo vincular', 'error');
-        }
-      }
+      const vinculado = await vincularAccesorioDesdeContrato(accesorioId, payload);
+      if (!vinculado) showToastV5('Contrato creado, pero el accesorio no se pudo vincular', 'error');
       showToastV5(
         `Contrato creado · ${payload.inquilino.nombre} ${payload.inquilino.apellidos}`.trim(),
         'success',
@@ -323,29 +307,12 @@ const NuevoContratoWizard: React.FC = () => {
                     ))}
                   </select>
                 </div>
-                {form.inmuebleId != null && (
-                  <div className={`${styles.field} ${styles.full}`}>
-                    <label className={styles.label}>Accesorio que se alquila junto (opcional)</label>
-                    <select
-                      className={styles.select}
-                      value={accesorioId ?? ''}
-                      onChange={(e) => setAccesorioId(e.target.value ? Number(e.target.value) : null)}
-                    >
-                      <option value="">— sin accesorio —</option>
-                      {properties
-                        .filter((p) => p.id !== form.inmuebleId)
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.alias} · {p.address}
-                          </option>
-                        ))}
-                    </select>
-                    <div className={styles.help}>
-                      Parking o trastero con referencia catastral propia que se alquila con este piso.
-                      Su amortización y gastos se suman al principal mientras dure el alquiler.
-                    </div>
-                  </div>
-                )}
+                <CampoAccesorioContrato
+                  principalId={form.inmuebleId}
+                  properties={properties}
+                  value={accesorioId}
+                  onChange={setAccesorioId}
+                />
                 {habitacionesTotales > 1 && (
                   <div className={styles.field}>
                     <label className={styles.label}>Habitación</label>
