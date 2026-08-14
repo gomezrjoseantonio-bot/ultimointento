@@ -170,7 +170,7 @@ const TesoreriaV6Page: React.FC = () => {
         db.getAll('accounts') as Promise<Account[]>,
         db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
         db.getAll('movements') as Promise<Movement[]>,
-        db.getAll('properties') as Promise<Array<{ id?: number; alias?: string; address?: string }>>,
+        db.getAll('properties') as Promise<Array<{ id?: number; alias?: string; address?: string; state?: string }>>,
         leerOrdenCuentas(),
         batchesEnBorrador(),
       ]);
@@ -182,6 +182,10 @@ const TesoreriaV6Page: React.FC = () => {
       // V6, y no en cada consumidor: así no hay forma de olvidarlo en uno.
       movimientos: sinBorradores(movimientos ?? [], borradores),
       inmuebles: (properties ?? [])
+        // Un inmueble VENDIDO (o de baja) ya no recibe apuntes: sale del selector
+        // de la ficha para no poder asignarle un gasto nuevo. Mismo criterio que
+        // el resto de la app (`financialValuesService`, Panel).
+        .filter((p) => p.state !== 'vendido' && p.state !== 'baja')
         .filter((p): p is { id: number; alias?: string; address?: string } => p.id != null)
         // §2.2 · ningún identificador interno visible. El respaldo era
         // `Inmueble ${id}`, y eso reintroducía por detrás justo lo que el
