@@ -307,6 +307,7 @@ export async function distribuirDeclaracion(
 
   await guardarEjercicioFiscal(db, decl);
   await archivarDocumentoImportado(db, decl);
+  await procesarEntidadesAtribucion(decl);
 
   const resultadoInmuebles = await procesarInmuebles(db, decl);
   invalidateCachedStores(['properties']);
@@ -866,6 +867,46 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
     await sincronizarPerdidasAhorroImportadas(año, decl.arrastres.perdidasPatrimoniales);
   } catch (e) {
     console.warn(`[saldosBIA] sincronización falló · ejercicio ${año}:`, e);
+  }
+}
+
+/**
+ * Régimen de atribución de rentas (Comunidad de Bienes, etc.). Vuelca las
+ * entidades declaradas al store canónico `entidadesAtribucion` (que el cálculo
+ * IRPF ya consume: suma el rendimiento a su base y aplica la retención). El
+ * store nunca se alimentaba desde el import. Idempotente: se casa por NIF y se
+ * hace upsert del ejercicio (reimportar deja el mismo estado).
+ */
+async function procesarEntidadesAtribucion(decl: DeclaracionCompleta): Promise<void> {
+  const entidades = decl.entidadesAtribucion || [];
+  if (entidades.length === 0) return;
+  const { getEntidadByNIF, crearEntidad, actualizarEjercicio } = await import('./entidadAtribucionService');
+  const ejercicio = decl.meta.ejercicio;
+
+  for (const e of entidades) {
+    if (!e.nif) continue;
+    const datosEjercicio = {
+      ejercicio,
+      rendimientosAtribuidos: e.rendimientoAtribuido || 0,
+      retencionesAtribuidas: e.retencionAtribuida || 0,
+    };
+    try {
+      const existente = await getEntidadByNIF(e.nif);
+      if (existente?.id != null) {
+        await actualizarEjercicio(existente.id, datosEjercicio);
+      } else {
+        await crearEntidad({
+          nif: e.nif,
+          nombre: e.nombre || `Entidad ${e.nif}`,
+          tipoEntidad: e.tipoEntidad,
+          porcentajeParticipacion: e.porcentajeParticipacion || 0,
+          tipoRenta: e.tipoRenta,
+          ejercicios: [datosEjercicio],
+        });
+      }
+    } catch (err) {
+      console.warn(`[atribucion] sincronización falló · NIF ${e.nif} · ejercicio ${ejercicio}:`, err);
+    }
   }
 }
 

@@ -128,9 +128,62 @@ export function parseIrpfXml(xmlContent: string): DeclaracionCompleta {
     cuentaDevolucion: extraerCuentaDevolucion(doc),
     cuentaIngreso: extraerCuentaIngreso(doc),
     deducciones: extraerDeducciones(tda, resultados),
+    entidadesAtribucion: extraerEntidadesAtribucion(tda),
     casillas: extraerCasillasResumen(resultados),
     camposExtra: {},
   };
+}
+
+/**
+ * Régimen de atribución de rentas (Comunidad de Bienes, etc.):
+ * <RegimenesEspeciales><REAtRentas><ENTIDADAR>. Cada entidad atribuye al
+ * declarante su % del rendimiento neto y la retención correspondiente.
+ */
+function extraerEntidadesAtribucion(tda: Element | null): import('../types/declaracionCompleta').EntidadAtribucionDeclarada[] {
+  if (!tda) return [];
+  const out: import('../types/declaracionCompleta').EntidadAtribucionDeclarada[] = [];
+  tda.querySelectorAll('REAtRentas > ENTIDADAR').forEach((ent) => {
+    const nif = (txt(ent, 'F1NIFAR') || txt(ent, 'F1NIFNACDLG')).toUpperCase();
+    if (!nif) return;
+    const porcentaje = num(ent, 'F1PCT') || num(ent, 'F1PCTDLG');
+
+    let tipoRenta: 'capital_inmobiliario' | 'actividad_economica' | 'capital_mobiliario' = 'capital_inmobiliario';
+    let rendimiento = 0;
+    let retencion = 0;
+    const inmob = ent.querySelector('AR_RendCapiInmobiliario');
+    const mobil = ent.querySelector('AR_RendCapiMobiliario');
+    const activ = ent.querySelector('AR_RendActividad') || ent.querySelector('AR_RendActividadEconomica');
+    if (inmob) {
+      tipoRenta = 'capital_inmobiliario';
+      rendimiento = num(inmob, 'IMP1');
+      retencion = num(inmob, 'VRET5B') || num(inmob, 'VRET');
+    } else if (mobil) {
+      tipoRenta = 'capital_mobiliario';
+      rendimiento = num(mobil, 'IMP1');
+      retencion = num(mobil, 'VRET5B') || num(mobil, 'VRET');
+    } else if (activ) {
+      tipoRenta = 'actividad_economica';
+      rendimiento = num(activ, 'IMP1');
+      retencion = num(activ, 'VRET5B') || num(activ, 'VRET');
+    }
+    // Fallbacks a los agregados de la entidad (F1EG rendimiento, F1EP retención).
+    rendimiento = rendimiento || num(ent, 'F1EG') || num(ent, 'F1EE');
+    retencion = retencion || num(ent, 'F1EP');
+
+    // Letra del NIF: E = Comunidad de Bienes, J = Sociedad Civil (resto → 'otra').
+    const letra = nif.charAt(0);
+    const tipoEntidad: 'CB' | 'SC' | 'HY' | 'otra' = letra === 'E' ? 'CB' : letra === 'J' ? 'SC' : letra === 'H' ? 'HY' : 'otra';
+
+    out.push({
+      nif,
+      tipoEntidad,
+      porcentajeParticipacion: porcentaje,
+      tipoRenta,
+      rendimientoAtribuido: rendimiento,
+      retencionAtribuida: retencion,
+    });
+  });
+  return out;
 }
 
 function txt(el: Element | null | undefined, tag: string): string {

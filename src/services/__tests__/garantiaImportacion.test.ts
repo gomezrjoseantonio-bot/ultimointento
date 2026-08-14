@@ -53,7 +53,7 @@ function inmueble(p: Partial<InmuebleDeclarado> & { refCatastral: string; direcc
 function declaracion(
   ejercicio: number,
   inmuebles: InmuebleDeclarado[],
-  opts: { resultado?: number; previaIngresos?: number; perdidas?: any[] } = {},
+  opts: { resultado?: number; previaIngresos?: number; perdidas?: any[]; entidades?: any[] } = {},
 ): DeclaracionCompleta {
   return {
     meta: {
@@ -78,6 +78,7 @@ function declaracion(
       resultadoDeclaracion: opts.resultado ?? 0,
     },
     arrastres: { gastosPendientes: [], perdidasPatrimoniales: opts.perdidas ?? [] },
+    entidadesAtribucion: opts.entidades ?? [],
     casillas: { '0695': opts.resultado ?? 0 },
     camposExtra: {},
   } as DeclaracionCompleta;
@@ -105,6 +106,7 @@ async function limpiar() {
     db.clear('properties'), db.clear('ejerciciosFiscalesCoord'),
     db.clear('mejorasInmueble'), db.clear('gastosInmueble'), db.clear('mueblesInmueble'),
     db.clear('aeatCarryForwards'), db.clear('perdidasPatrimonialesAhorro'),
+    db.clear('entidadesAtribucion'),
   ]);
 }
 
@@ -199,6 +201,17 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
     expect(total).toBeCloseTo(6000, 2);
   });
 
+  it('Comunidad de Bienes: el import crea la entidad de atribución (no un inmueble)', async () => {
+    const { getEntidades } = await import('../entidadAtribucionService');
+    await distribuirDeclaracion(declaracion(2025, [], {
+      entidades: [{ nif: 'E25904640', tipoEntidad: 'CB', porcentajeParticipacion: 10, tipoRenta: 'capital_inmobiliario', rendimientoAtribuido: 1682.8, retencionAtribuida: 136.05 }],
+    }), OPCIONES_DEFAULT);
+    const entidades = await getEntidades();
+    expect(entidades).toHaveLength(1);
+    expect(entidades[0].nif).toBe('E25904640');
+    expect((await props())).toHaveLength(0); // no se crea como inmueble
+  });
+
   it('saldos BIA: el import alimenta perdidasPatrimonialesAhorro (genera y consume)', async () => {
     await distribuirDeclaracion(declaracion(2023, [], {
       perdidas: [{ tipo: 'ahorro', importeInicial: 5000, importeAplicado: 0, importePendiente: 5000, añoOrigen: 0 }],
@@ -228,7 +241,6 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
 // Se dejan como `todo` (visibles en CI, sin romper la build) hasta implementarlos.
 // ═══════════════════════════════════════════════════════════════════════════
 describe('Garantía de importación · huecos conocidos (pendientes de implementar)', () => {
-  it.todo('Comunidad de Bienes: un inmueble en proindiviso (p.ej. 10%) prorratea rendimiento y gastos por % — hoy se asume 100%');
   it.todo('Imputación de renta: días vacantes generan imputación (2% / 1,1% si catastral revisado) prorrateada');
   it.todo('Import por PDF (justificante): extrae el resumen de forma fiable, sin depender de conversores externos');
 });

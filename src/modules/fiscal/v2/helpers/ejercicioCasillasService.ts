@@ -129,7 +129,14 @@ export function buildSeccionA(d: DatosFiscalesEjercicio): BoxSection {
 export function buildSeccionB(d: DatosFiscalesEjercicio): { section: BoxSection; data: SeccionBData } {
   const c = d.casillas;
   const decl = d.declaracionCompleta;
-  const inmuebles = decl?.baseGeneral?.rendimientosInmuebles ?? [];
+  const todos = decl?.baseGeneral?.rendimientosInmuebles ?? [];
+  // El rendimiento atribuido por entidades (Comunidad de Bienes) llega como un
+  // inmueble sintético (inmuebleId === -1). NO es un inmueble en propiedad: se
+  // saca de esta sección y se presenta en su propio apartado (atribución).
+  const inmuebles = todos.filter((i) => i.inmuebleId !== -1);
+  const atribInmob = todos
+    .filter((i) => i.inmuebleId === -1)
+    .reduce((s, i) => s + (safeNum(i.rendimientoNetoReducido) ?? safeNum(i.rendimientoNeto) ?? 0), 0);
 
   const inmueblesVm: InmuebleSeccionB[] = inmuebles.map((inm) => ({
     inmuebleId: inm.inmuebleId,
@@ -141,9 +148,13 @@ export function buildSeccionB(d: DatosFiscalesEjercicio): { section: BoxSection;
     metaText: buildInmuebleMeta(inm),
   }));
 
+  // La casilla 0156 (total AEAT de capital inmobiliario) incluye lo atribuido;
+  // como la atribución se presenta aparte, se descuenta para no duplicar.
+  const casilla156 = getCasilla(c, '0156');
   const totalRendimientos =
-    getCasilla(c, '0156') ??
-    inmueblesVm.reduce((s, i) => s + i.rendimientoNetoReducido, 0);
+    casilla156 != null
+      ? Math.round((casilla156 - atribInmob) * 100) / 100
+      : inmueblesVm.reduce((s, i) => s + i.rendimientoNetoReducido, 0);
   const totalImputaciones =
     getCasilla(c, '0155') ??
     (decl?.baseGeneral?.imputacionRentas ?? []).reduce((s, i) => s + (i.imputacion ?? 0), 0);
@@ -572,14 +583,43 @@ export interface SeccionesData {
   inmueblesB: InmuebleSeccionB[];
 }
 
+// ─── Régimen de atribución de rentas (Comunidad de Bienes) ──────────────────
+// Apartado propio del Modelo 100. El rendimiento atribuido integra en la base de
+// su naturaleza (aquí, capital inmobiliario), pero se DECLARA en su apartado, no
+// como un inmueble en propiedad. Devuelve null si no hay atribución.
+export function buildSeccionAtribucion(d: DatosFiscalesEjercicio): BoxSection | null {
+  const todos = d.declaracionCompleta?.baseGeneral?.rendimientosInmuebles ?? [];
+  const atrib = todos.filter((i) => i.inmuebleId === -1);
+  const totalInmob =
+    Math.round(atrib.reduce((s, i) => s + (safeNum(i.rendimientoNetoReducido) ?? safeNum(i.rendimientoNeto) ?? 0), 0) * 100) / 100;
+  if (totalInmob === 0) return null;
+
+  const rows: BoxRow[] = atrib.map((i) => ({
+    num: '',
+    concepto: i.alias || 'Entidad en atribución de rentas',
+    subtitulo: 'Comunidad de Bienes · integra en la base de capital inmobiliario',
+    importe: safeNum(i.rendimientoNetoReducido) ?? safeNum(i.rendimientoNeto) ?? 0,
+  }));
+
+  return {
+    letter: 'AR',
+    letterVariant: 'gold',
+    title: 'Régimen de atribución de rentas',
+    total: totalInmob,
+    rows,
+  };
+}
+
 export function buildSecciones(d: DatosFiscalesEjercicio): SeccionesData {
   const seccionB = buildSeccionB(d);
+  const seccionAtribucion = buildSeccionAtribucion(d);
   return {
     secciones: [
       buildSeccionA(d),
       seccionB.section,
       buildSeccionC(d),
       buildSeccionD(d),
+      ...(seccionAtribucion ? [seccionAtribucion] : []),
       buildSeccionE(d),
       buildSeccionF(d),
       buildSeccionG(d),
