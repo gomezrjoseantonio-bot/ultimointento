@@ -1,4 +1,4 @@
-import { getAllocationFactor, prestamoAfectaInmueble } from '../prestamosService';
+import { getAllocationFactor, prestamoAfectaInmueble, deudaVivaPorGarantia } from '../prestamosService';
 import type { Prestamo } from '../../types/prestamos';
 
 describe('prestamoAfectaInmueble · gate de getPrestamosByProperty', () => {
@@ -87,5 +87,50 @@ describe('getAllocationFactor', () => {
 
     expect(getAllocationFactor(loan, '1')).toBe(0.7);
     expect(getAllocationFactor(loan, '2')).toBe(0.3);
+  });
+});
+
+describe('deudaVivaPorGarantia · deuda por colateral (LTV)', () => {
+  it('reparte una hipoteca de dos pisos por el importe de su destino (Tenderina)', () => {
+    const prestamo = {
+      principalVivo: 90000,
+      garantias: [
+        { tipo: 'HIPOTECARIA', inmuebleId: '2' },
+        { tipo: 'HIPOTECARIA', inmuebleId: '3' },
+      ],
+      destinos: [
+        { tipo: 'ADQUISICION', inmuebleId: '2', importe: 60000, porcentaje: 60 },
+        { tipo: 'ADQUISICION', inmuebleId: '3', importe: 40000, porcentaje: 40 },
+      ],
+    } as unknown as Prestamo;
+
+    const m = deudaVivaPorGarantia(prestamo);
+    expect(m.get('2')).toBeCloseTo(54000); // 90.000 × 60%
+    expect(m.get('3')).toBeCloseTo(36000); // 90.000 × 40%
+  });
+
+  it('sin destinos por inmueble, reparte a partes iguales entre las garantías', () => {
+    const prestamo = {
+      principalVivo: 100000,
+      garantias: [
+        { tipo: 'HIPOTECARIA', inmuebleId: '2' },
+        { tipo: 'HIPOTECARIA', inmuebleId: '3' },
+      ],
+      destinos: [],
+    } as unknown as Prestamo;
+
+    const m = deudaVivaPorGarantia(prestamo);
+    expect(m.get('2')).toBeCloseTo(50000);
+    expect(m.get('3')).toBeCloseTo(50000);
+  });
+
+  it('un préstamo personal (sin garantía hipotecaria) no carga ningún inmueble', () => {
+    const prestamo = {
+      principalVivo: 20000,
+      garantias: [{ tipo: 'PERSONAL' }],
+      destinos: [{ tipo: 'ADQUISICION', inmuebleId: '2', importe: 20000, porcentaje: 100 }],
+    } as unknown as Prestamo;
+
+    expect(deudaVivaPorGarantia(prestamo).size).toBe(0);
   });
 });

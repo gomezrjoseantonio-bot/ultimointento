@@ -72,6 +72,52 @@ export const prestamoAfectaInmueble = (
   return false;
 };
 
+/**
+ * Deuda viva imputada a cada inmueble por su GARANTÍA hipotecaria.
+ *
+ * El LTV es un ratio de colateral: cuánto debes SOBRE el inmueble que está
+ * hipotecado. Así que la deuda «de un inmueble» son los préstamos cuya garantía
+ * HIPOTECARIA es ese inmueble —no los que lo financiaron: eso es el destino, y
+ * sirve para la fiscalidad, no para el LTV—.
+ *
+ * Cuando una hipoteca tiene VARIOS inmuebles de garantía (caso Tenderina), el
+ * principal vivo se reparte entre ellos por el importe de su DESTINO —dato real
+ * del préstamo—, y a partes iguales solo si esa hipoteca no trae destinos por
+ * inmueble. La decisión del reparto vive aquí, en Financiación: quien lo lea
+ * (la cartera de Inmuebles) no inventa nada.
+ *
+ * Un préstamo sin garantía hipotecaria (personal) no carga NINGÚN inmueble,
+ * aunque su destino apunte a uno: si no está hipotecado, no encumbra al LTV.
+ */
+export const deudaVivaPorGarantia = (
+  prestamo: Pick<Prestamo, 'garantias' | 'destinos' | 'principalVivo'>,
+): Map<string, number> => {
+  const out = new Map<string, number>();
+  const inmueblesGarantia = [
+    ...new Set(
+      (prestamo.garantias ?? [])
+        .filter((g) => g.tipo === 'HIPOTECARIA' && g.inmuebleId)
+        .map((g) => g.inmuebleId as string),
+    ),
+  ];
+  const principal = prestamo.principalVivo ?? 0;
+  if (inmueblesGarantia.length === 0 || principal === 0) return out;
+
+  const pesoDestino = (id: string): number =>
+    (prestamo.destinos ?? [])
+      .filter((d) => d.inmuebleId === id && (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA'))
+      .reduce((s, d) => s + (d.importe ?? 0), 0);
+
+  const pesos = inmueblesGarantia.map((id) => ({ id, peso: pesoDestino(id) }));
+  const sumaPesos = pesos.reduce((s, p) => s + p.peso, 0);
+
+  for (const { id, peso } of pesos) {
+    const fraccion = sumaPesos > 0 ? peso / sumaPesos : 1 / inmueblesGarantia.length;
+    out.set(id, (out.get(id) ?? 0) + principal * fraccion);
+  }
+  return out;
+};
+
 // ── Fiscal engine ──────────────────────────────────────────────────────────
 
 /**
