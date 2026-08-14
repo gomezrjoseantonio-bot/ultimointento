@@ -5,6 +5,7 @@ import { MoneyValue } from '../../../design-system/v5';
 import {
   construirListaVisualGastosInmueble,
   calcularResumenGastosInmueble,
+  esCosteRealDelAnioInmueble,
   type GastoInmuebleVisual,
   type GrupoVisualInmueble,
 } from '../adapters/gastosInmuebleAdapter';
@@ -145,7 +146,7 @@ const CostesInmueble: React.FC<CostesInmuebleProps> = ({
         gastosReales: gastosReales ?? [],
         mejoras: mejoras ?? [],
         mobiliario: mobiliario ?? [],
-      }),
+      }).filter(esCosteRealDelAnioInmueble),
     [inmuebleId, compromisos, gastosReales, mejoras, mobiliario],
   );
 

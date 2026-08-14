@@ -24,6 +24,8 @@ export interface GastoInmuebleVisual {
   concepto?: string;
   categoryKey?: string;
   categoria?: string;
+  /** Casilla del Modelo 100 cuando la fila procede de una declaración AEAT. */
+  casillaAEAT?: string;
   subtipo?: string;
   tipoFamilia?: string;
   familiaFiscalManual?: CompromisoRecurrente['familiaFiscalManual'];
@@ -91,6 +93,16 @@ export function adaptarCompromisoRecurrenteAGastoVisual(
 }
 
 export function adaptarGastoRealAGastoVisual(gasto: GastoInmueble): GastoInmuebleVisual {
+  const grupoBase = clasificarGastoVisualInmueble({
+    ambito: 'inmueble',
+    categoryKey: gasto.categoryKey,
+    categoria: gasto.categoria,
+  });
+  // La amortización del mobiliario (casilla 0117) es el coste ANUAL de los
+  // muebles: se muestra en el grupo Mobiliario, no en «Otros».
+  const grupoVisual: GrupoVisualInmueble =
+    gasto.casillaAEAT === '0117' ? 'mobiliario' : grupoBase;
+
   return {
     idVisual: `real:${gasto.id ?? `${gasto.inmuebleId}:${gasto.fecha}:${gasto.concepto}`}`,
     origen: 'real',
@@ -102,11 +114,8 @@ export function adaptarGastoRealAGastoVisual(gasto: GastoInmueble): GastoInmuebl
     estado: gasto.estado,
     categoryKey: gasto.categoryKey,
     categoria: gasto.categoria,
-    grupoVisual: clasificarGastoVisualInmueble({
-      ambito: 'inmueble',
-      categoryKey: gasto.categoryKey,
-      categoria: gasto.categoria,
-    }),
+    casillaAEAT: gasto.casillaAEAT,
+    grupoVisual,
     importePrevisto: undefined,
     importeReal: gasto.importe,
   };
@@ -131,6 +140,25 @@ export function adaptarMejoraAGastoVisual(mejora: MejoraInmueble): GastoInmueble
     importePrevisto: undefined,
     importeReal: mejora.importe,
   };
+}
+
+// Casillas del Modelo 100 que la declaración trae pero que NO son un gasto del
+// año: bases contables o duplicados de otro registro.
+//   0130 · base de amortización del inmueble (valor amortizable, no un desembolso)
+//   0129 · mejoras del ejercicio (la misma mejora ya se registra como mejora)
+const CASILLAS_NO_COSTE = new Set(['0130', '0129']);
+
+/**
+ * ¿La fila cuenta como «lo que costó tener el activo este año»? Fuera quedan las
+ * bases contables (0130), los duplicados de mejora (0129) y el alta patrimonial
+ * del mobiliario —un mueble es un activo; su coste anual es la amortización
+ * (casilla 0117), que sí se conserva—. No altera la persistencia ni el motor
+ * fiscal: es solo criterio de presentación del coste.
+ */
+export function esCosteRealDelAnioInmueble(it: GastoInmuebleVisual): boolean {
+  if (it.origen === 'mobiliario') return false;
+  if (it.origen === 'real' && it.casillaAEAT && CASILLAS_NO_COSTE.has(it.casillaAEAT)) return false;
+  return true;
 }
 
 export function adaptarMuebleAGastoVisual(mueble: MuebleInmueble): GastoInmuebleVisual {
