@@ -233,7 +233,8 @@
 .rowIdentif { grid-template-columns: 1.1fr 1.5fr 1.4fr; }
 .rowUbicac { grid-template-columns: 0.7fr 1.2fr 1fr 1.3fr; }
 .rowCompra1 { grid-template-columns: 1fr 1fr 1fr 0.9fr; }
-.rowCompra2 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+.rowCompra2 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.rowImpuestos { grid-template-columns: repeat(3, minmax(0, 180px)); }
 .rowFisicasPiso { grid-template-columns: 0.7fr 0.7fr 0.6fr 0.7fr 1fr 0.7fr; }
 .rowFisicasOtro { grid-template-columns: 0.7fr 0.7fr 1fr 0.7fr; }
 .rowCatastro { grid-template-columns: 1fr 1fr 0.6fr 1fr; }
@@ -564,7 +565,7 @@
   .colForm { border-right: none; border-bottom: 1px solid var(--atlas-v5-line); }
   .typeSelector { grid-template-columns: repeat(3, 1fr); }
   .usoCards, .usoCards6 { grid-template-columns: repeat(2, 1fr); }
-  .rowIdentif, .rowUbicac, .rowCompra1, .rowCompra2,
+  .rowIdentif, .rowUbicac, .rowCompra1, .rowCompra2, .rowImpuestos,
   .rowFisicasPiso, .rowFisicasOtro, .rowCatastro {
     grid-template-columns: 1fr 1fr;
   }

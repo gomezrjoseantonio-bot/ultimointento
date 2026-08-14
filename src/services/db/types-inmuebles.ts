@@ -50,6 +50,9 @@ export interface Property {
     itpIsManual?: boolean;
     iva?: number;
     ivaIsManual?: boolean;
+    /** Obra nueva · AJD (Actos Jurídicos Documentados) sobre el precio · auto 1.5% salvo edición manual. */
+    ajd?: number;
+    ajdIsManual?: boolean;
     notary?: number;
     registry?: number;
     management?: number;

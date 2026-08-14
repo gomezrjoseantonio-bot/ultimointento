@@ -1,11 +1,11 @@
 // Ficha de inmueble · bloque FINANCIACIÓN (dentro de "Compra y coste").
 //
-// Tres estados, según haya préstamo vinculado o no:
-//   · VINCULADO  → el importe financiado se LEE del préstamo (solo lectura),
-//     con enlace a editarlo. La aportación se deriva del coste.
-//   · SIN VINCULAR + financiado > 0 → botones "Crear préstamo" (abre el
-//     asistente prerrellenado) y "Vincular existente" (selector).
-//   · Reconciliación viva: coste total = aportación + financiado.
+// Regla (decisión Jose · ronda 2): el importe financiado NUNCA se teclea a mano.
+//   · SIN préstamo → se DERIVA del coste: financiado = coste − aportación propia.
+//     La única variable que teclea el usuario es la aportación.
+//   · CON préstamo vinculado → se LEE del préstamo (una sola fuente de verdad),
+//     con enlace a editarlo en Financiación.
+// Reconciliación viva: aportación + financiado debe cuadrar con el coste total.
 
 import React, { useState } from 'react';
 import { Banknote as IconBank, Plus as IconPlus, Link2 as IconLink, ExternalLink } from 'lucide-react';
@@ -19,9 +19,7 @@ const eur = (n: number): string =>
 export interface FinanciacionBlockProps {
   costeTotal: number;
   aportacion: number;
-  financiado: number;
   onAportacion: (n: number) => void;
-  onFinanciado: (n: number) => void;
   num: (v: string) => number;
   /** Líneas de préstamo ya imputadas al inmueble (vía servicio canónico). */
   vinculadas: FinanciacionLineaInmueble[];
@@ -35,9 +33,7 @@ export interface FinanciacionBlockProps {
 const FinanciacionBlock: React.FC<FinanciacionBlockProps> = ({
   costeTotal,
   aportacion,
-  financiado,
   onAportacion,
-  onFinanciado,
   num,
   vinculadas,
   vinculables,
@@ -48,10 +44,12 @@ const FinanciacionBlock: React.FC<FinanciacionBlockProps> = ({
   const [mostrarSelector, setMostrarSelector] = useState(false);
   const vinculado = vinculadas.length > 0;
 
-  // Con préstamo vinculado, el financiado lo manda el préstamo (una sola fuente).
+  // Financiado · del préstamo si hay vínculo; si no, derivado del coste.
   const financiadoEfectivo = vinculado
     ? vinculadas.reduce((s, l) => s + (l.principalInicial || 0), 0)
-    : financiado;
+    : costeTotal > 0
+      ? Math.max(0, costeTotal - aportacion)
+      : 0;
 
   const suma = aportacion + financiadoEfectivo;
   const descuadre = costeTotal > 0 ? suma - costeTotal : 0;
@@ -71,12 +69,7 @@ const FinanciacionBlock: React.FC<FinanciacionBlockProps> = ({
             <input
               className={`${styles.input} ${styles.inputMono}`}
               value={aportacion || ''}
-              onChange={(e) => {
-                const v = num(e.target.value);
-                onAportacion(v);
-                // Deriva el financiado con el coste (solo si no lo manda un préstamo).
-                if (!vinculado && costeTotal > 0) onFinanciado(Math.max(0, costeTotal - v));
-              }}
+              onChange={(e) => onAportacion(num(e.target.value))}
               inputMode="decimal"
             />
             <span className={styles.suffix}>€</span>
@@ -85,20 +78,15 @@ const FinanciacionBlock: React.FC<FinanciacionBlockProps> = ({
 
         <div className={styles.finField}>
           <label className={styles.finLabel}>
-            Importe financiado {vinculado && <span className={styles.finBadge}>del préstamo</span>}
+            Importe financiado{' '}
+            <span className={styles.finBadge}>{vinculado ? 'del préstamo' : '= coste − aportación'}</span>
           </label>
           <div className={styles.finInputWrap}>
             <input
-              className={`${styles.input} ${styles.inputMono} ${vinculado ? styles.inputReadonlyTeal : ''}`}
-              value={vinculado ? eur(financiadoEfectivo) : financiado || ''}
-              readOnly={vinculado}
-              onChange={(e) => {
-                if (vinculado) return;
-                const v = num(e.target.value);
-                onFinanciado(v);
-                if (costeTotal > 0) onAportacion(Math.max(0, costeTotal - v));
-              }}
-              inputMode="decimal"
+              className={`${styles.input} ${styles.inputMono} ${styles.inputReadonlyTeal}`}
+              value={eur(financiadoEfectivo)}
+              readOnly
+              tabIndex={-1}
             />
             <span className={styles.suffix}>€</span>
           </div>
@@ -142,7 +130,7 @@ const FinanciacionBlock: React.FC<FinanciacionBlockProps> = ({
             </button>
           ))}
         </div>
-      ) : financiado > 0 ? (
+      ) : financiadoEfectivo > 0 ? (
         <div className={styles.finActions}>
           <span className={styles.finPrompt}>Este importe está financiado:</span>
           <button

@@ -20,8 +20,6 @@ import {
   Store as IconStore,
   HelpCircle as IconOther,
   X as IconX,
-  Plus as IconPlus,
-  Trash2 as IconTrash,
   Check as IconCheck,
   AlertCircle as IconAlert,
   Activity as IconActivity,
@@ -29,10 +27,8 @@ import {
   Image as IconImage,
 } from 'lucide-react';
 
-import { initDB, MejoraInmueble, MuebleInmueble } from '../../services/db';
+import { initDB } from '../../services/db';
 import { TipoActivo } from '../../types/tipoActivo';
-import { mejorasInmuebleService } from '../../services/mejorasInmuebleService';
-import { mueblesInmuebleService } from '../../services/mueblesInmuebleService';
 import { personalDataService } from '../../services/personalDataService';
 import type { Prestamo } from '../../types/prestamos';
 import type { FinanciacionLineaInmueble } from '../../modules/inmuebles/adapters/patrimonioInmuebleAdapter';
@@ -50,10 +46,11 @@ import {
   modelFromProperty,
   propertyFromModel,
   visibilidad,
+  impuestosTotal,
   type InmuebleFormModel,
   type InmuebleFormMeta,
-  type UsoTipo,
 } from './inmuebleForm/model';
+import { calcularTributosAuto } from './inmuebleForm/tributos';
 import {
   prefillPrestamoDesdeInmueble,
   prestamosVinculablesA,
@@ -87,22 +84,6 @@ const TIPO_LABELS: Record<TipoActivo, string> = {
   otro: 'Otro',
 };
 
-const USO_OPTIONS_PISO: { value: UsoTipo; label: string; sub: string }[] = [
-  { value: 'larga_estancia', label: 'Larga estancia', sub: 'Reducción 50-90% según contrato' },
-  { value: 'temporada', label: 'Temporada', sub: 'Sin reducción' },
-  { value: 'turistico', label: 'Turístico', sub: 'Actividad económica · IVA' },
-  { value: 'mixto', label: 'Mixto', sub: 'Larga + temporada · habitaciones' },
-  { value: 'vivienda_habitual', label: 'Vivienda habitual', sub: 'Tu residencia · no genera renta' },
-  { value: 'disponible', label: 'Disponible', sub: 'Sin uso · imputación rentas' },
-];
-
-const USO_OPTIONS_LOCAL: { value: UsoTipo; label: string; sub: string }[] = [
-  { value: 'larga_estancia', label: 'Larga estancia', sub: 'Reducción 50-90% según contrato' },
-  { value: 'temporada', label: 'Temporada', sub: 'Sin reducción' },
-  { value: 'turistico', label: 'Turístico', sub: 'Actividad económica · IVA' },
-  { value: 'disponible', label: 'Disponible', sub: 'Sin uso · imputación rentas' },
-];
-
 const formatCurrency = (n: number): string =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 const formatInt = (n: number): string =>
@@ -115,19 +96,6 @@ const formatDateLong = (iso: string): string => {
   const d = parseIsoDateAsUTC(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-};
-
-const today = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-const ejercicioFromDate = (iso: string): number => {
-  if (iso) {
-    const d = parseIsoDateAsUTC(iso);
-    if (!isNaN(d.getTime())) return d.getUTCFullYear();
-  }
-  return new Date().getFullYear();
 };
 
 const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
@@ -174,13 +142,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             navigate('/inmuebles');
             return;
           }
-          const [mejorasDB, mueblesDB] = await Promise.all([
-            mejorasInmuebleService.getPorInmueble(propertyId),
-            mueblesInmuebleService.getPorInmueble(propertyId),
-          ]);
-          if (cancelled) return;
-
-          const { model, meta } = modelFromProperty(prop, mejorasDB, mueblesDB, fallbackCCAA);
+          const { model, meta } = modelFromProperty(prop, fallbackCCAA);
           metaRef.current = meta;
           setForm(model);
           setOriginalSnapshot(JSON.stringify(model));
@@ -251,6 +213,34 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.precioCompra, form.valorReferenciaIsManual]);
 
+  // ─── impuestos AUTO por estado (editables · override manual) ───
+  // ITP = valor de referencia × tipo CCAA · IVA = precio × 10/21% · AJD = precio × 1.5%.
+  const tributosAuto = useMemo(
+    () =>
+      calcularTributosAuto({
+        tipoActivo: form.tipoActivo,
+        ccaa: form.ccaa,
+        precioCompra: form.precioCompra,
+        valorReferencia: form.valorReferencia,
+      }),
+    [form.tipoActivo, form.ccaa, form.precioCompra, form.valorReferencia],
+  );
+  useEffect(() => {
+    if (form.itpIsManual) return;
+    if (Math.abs(form.itp - tributosAuto.itp) > 0.005) setForm((p) => ({ ...p, itp: tributosAuto.itp }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tributosAuto.itp, form.itpIsManual]);
+  useEffect(() => {
+    if (form.ivaIsManual) return;
+    if (Math.abs(form.iva - tributosAuto.iva) > 0.005) setForm((p) => ({ ...p, iva: tributosAuto.iva }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tributosAuto.iva, form.ivaIsManual]);
+  useEffect(() => {
+    if (form.ajdIsManual) return;
+    if (Math.abs(form.ajd - tributosAuto.ajd) > 0.005) setForm((p) => ({ ...p, ajd: tributosAuto.ajd }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tributosAuto.ajd, form.ajdIsManual]);
+
   // ─── cálculo fiscal (preview) ───
   const resumen = useMemo(
     () =>
@@ -263,13 +253,13 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
           gestoria: form.gestoria,
           otros: form.otros,
         },
-        impuestos: form.impuestos,
+        impuestos: impuestosTotal(form),
         valorCatastralTotal: form.valorCatastralTotal,
         valorCatastralConstruccion: form.valorCatastralConstruccion,
         diasArrendado: DIAS_ARRENDADO_PREVIEW,
-        mejorasPosteriores: form.mejoras
-          .filter((m) => !m._deleted)
-          .map((m) => ({ importe: m.importe, tipo: m.tipo })),
+        // Mejoras posteriores se gestionan en el detalle · la ficha calcula el
+        // coste de adquisición puro (sin mejoras) para no duplicar la fuente.
+        mejorasPosteriores: [],
       }),
     [form],
   );
@@ -280,7 +270,21 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   );
 
   const vis = visibilidad(form);
-  const usoOptions = vis.isPiso ? USO_OPTIONS_PISO : USO_OPTIONS_LOCAL;
+  const vinculado = vinculadas.length > 0;
+
+  // ─── financiado DERIVADO del coste cuando NO hay préstamo (una sola variable
+  // libre: la aportación). Con préstamo vinculado, el importe lo manda el préstamo. ───
+  useEffect(() => {
+    // Esperar a que termine la carga (incluida la financiación vinculada) para
+    // no pisar el importe con una derivación transitoria antes de saber si hay
+    // préstamo.
+    if (isLoading || vinculado) return;
+    const derived = Math.max(0, resumen.costeBaseAdquisicion - form.aportacionPropia);
+    if (Math.abs(derived - form.importeFinanciado) > 0.005) {
+      setForm((p) => ({ ...p, importeFinanciado: derived }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumen.costeBaseAdquisicion, form.aportacionPropia, vinculado, isLoading]);
 
   // ─── helpers ───
   const set = <K extends keyof InmuebleFormModel>(k: K, v: InmuebleFormModel[K]) =>
@@ -301,37 +305,11 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
         u.tieneTrastero = false;
         u.habitaciones = 0;
         u.banos = 0;
-        u.alquilerHabActivo = false;
-        u.alquilerHabNum = 0;
-        if ((next === 'local' || next === 'otro') && (u.usoTipo === 'vivienda_habitual' || u.usoTipo === 'mixto')) {
-          u.usoTipo = 'larga_estancia';
-        }
+        u.esViviendaHabitual = false;
       }
       return u;
     });
   };
-
-  // ─── mejoras ───
-  const addMejora = () =>
-    setForm((p) => ({ ...p, mejoras: [...p.mejoras, { concepto: '', fecha: today(), importe: 0, tipo: 'mejora' }] }));
-  const updateMejora = (idx: number, patch: Partial<InmuebleFormModel['mejoras'][number]>) =>
-    setForm((p) => ({ ...p, mejoras: p.mejoras.map((m, i) => (i === idx ? { ...m, ...patch } : m)) }));
-  const removeMejora = (idx: number) =>
-    setForm((p) => ({
-      ...p,
-      mejoras: p.mejoras.map((m, i) => (i === idx ? { ...m, _deleted: true } : m)).filter((m) => m.id !== undefined || !m._deleted),
-    }));
-
-  // ─── muebles ───
-  const addMueble = () =>
-    setForm((p) => ({ ...p, muebles: [...p.muebles, { concepto: '', fechaAlta: today(), importe: 0 }] }));
-  const updateMueble = (idx: number, patch: Partial<InmuebleFormModel['muebles'][number]>) =>
-    setForm((p) => ({ ...p, muebles: p.muebles.map((m, i) => (i === idx ? { ...m, ...patch } : m)) }));
-  const removeMueble = (idx: number) =>
-    setForm((p) => ({
-      ...p,
-      muebles: p.muebles.map((m, i) => (i === idx ? { ...m, _deleted: true } : m)).filter((m) => m.id !== undefined || !m._deleted),
-    }));
 
   // ─── foto ───
   const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -361,7 +339,11 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     return null;
   };
 
-  /** Persiste el inmueble (+ mejoras/muebles) y devuelve el id, o null si falla. */
+  /**
+   * Persiste el inmueble (el ACTIVO) y devuelve el id, o null si falla. Mejoras
+   * y mobiliario ya NO se tocan aquí: viven en sus stores y se gestionan en el
+   * detalle · la ficha no crea ni borra esos registros (se conservan).
+   */
   const persistirInmueble = async (): Promise<number | null> => {
     const err = validate();
     if (err) {
@@ -377,50 +359,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       savedId = propertyId;
     } else {
       savedId = Number(await db.add('properties', propertyData));
-    }
-
-    // mejoras · upsert uno-a-uno
-    if (form.mejorasOn) {
-      for (const m of form.mejoras) {
-        if (m._deleted && m.id) {
-          await mejorasInmuebleService.eliminar(m.id);
-        } else if (!m._deleted && m.concepto.trim() && m.importe > 0) {
-          const payload: Omit<MejoraInmueble, 'id' | 'createdAt' | 'updatedAt'> = {
-            inmuebleId: savedId,
-            ejercicio: ejercicioFromDate(m.fecha),
-            descripcion: m.concepto.trim(),
-            tipo: m.tipo,
-            importe: m.importe,
-            fecha: m.fecha,
-          };
-          if (m.id) await mejorasInmuebleService.actualizar(m.id, payload);
-          else await mejorasInmuebleService.crear(payload);
-        }
-      }
-    } else {
-      for (const m of form.mejoras) if (m.id) await mejorasInmuebleService.eliminar(m.id);
-    }
-
-    if (form.mueblesOn) {
-      for (const mu of form.muebles) {
-        if (mu._deleted && mu.id) {
-          await mueblesInmuebleService.eliminar(mu.id);
-        } else if (!mu._deleted && mu.concepto.trim() && mu.importe > 0) {
-          const payload: Omit<MuebleInmueble, 'id' | 'createdAt' | 'updatedAt'> = {
-            inmuebleId: savedId,
-            ejercicio: ejercicioFromDate(mu.fechaAlta),
-            descripcion: mu.concepto.trim(),
-            fechaAlta: mu.fechaAlta,
-            importe: mu.importe,
-            vidaUtil: 10,
-            activo: true,
-          };
-          if (mu.id) await mueblesInmuebleService.actualizar(mu.id, payload);
-          else await mueblesInmuebleService.crear(payload);
-        }
-      }
-    } else {
-      for (const mu of form.muebles) if (mu.id) await mueblesInmuebleService.eliminar(mu.id);
     }
 
     return savedId;
@@ -669,20 +607,63 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                     <span className={styles.suffix}>€</span>
                   </Suffix>
                 </Field>
-                <Field label="Impuestos" hint="ITP / AJD">
-                  <Suffix>
-                    <input className={`${styles.input} ${styles.inputMono}`} value={form.impuestos || ''} onChange={(e) => set('impuestos', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </Suffix>
-                </Field>
+              </div>
+
+              {/* Impuestos · AUTO por estado · editables (override manual) */}
+              <div className={`${styles.fieldsRow} ${styles.rowImpuestos}`} style={{ marginTop: 12 }}>
+                {form.estado === 'usada' ? (
+                  <Field label="ITP" hint={`${formatPct(tributosAuto.itpRate)} · ${form.itpIsManual ? 'manual' : 'auto · valor ref.'}`}>
+                    <Suffix>
+                      <input
+                        className={`${styles.input} ${styles.inputMono}`}
+                        value={form.itp || ''}
+                        onChange={(e) => {
+                          set('itp', num(e.target.value));
+                          set('itpIsManual', true);
+                        }}
+                        inputMode="decimal"
+                      />
+                      <span className={styles.suffix}>€</span>
+                    </Suffix>
+                  </Field>
+                ) : (
+                  <>
+                    <Field label="IVA" hint={`${formatPct(tributosAuto.ivaRate)} · ${form.ivaIsManual ? 'manual' : 'auto · precio'}`}>
+                      <Suffix>
+                        <input
+                          className={`${styles.input} ${styles.inputMono}`}
+                          value={form.iva || ''}
+                          onChange={(e) => {
+                            set('iva', num(e.target.value));
+                            set('ivaIsManual', true);
+                          }}
+                          inputMode="decimal"
+                        />
+                        <span className={styles.suffix}>€</span>
+                      </Suffix>
+                    </Field>
+                    <Field label="AJD" hint={`${formatPct(tributosAuto.ajdRate)} · ${form.ajdIsManual ? 'manual' : 'auto · precio'}`}>
+                      <Suffix>
+                        <input
+                          className={`${styles.input} ${styles.inputMono}`}
+                          value={form.ajd || ''}
+                          onChange={(e) => {
+                            set('ajd', num(e.target.value));
+                            set('ajdIsManual', true);
+                          }}
+                          inputMode="decimal"
+                        />
+                        <span className={styles.suffix}>€</span>
+                      </Suffix>
+                    </Field>
+                  </>
+                )}
               </div>
 
               <FinanciacionBlock
                 costeTotal={resumen.costeBaseAdquisicion}
                 aportacion={form.aportacionPropia}
-                financiado={form.importeFinanciado}
                 onAportacion={(n) => set('aportacionPropia', n)}
-                onFinanciado={(n) => set('importeFinanciado', n)}
                 num={num}
                 vinculadas={vinculadas}
                 vinculables={vinculables}
@@ -694,9 +675,9 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
               <div className={styles.hintNote}>
                 <b>Coste total</b> {formatCurrency(resumen.costeBaseAdquisicion)} € · precio +{' '}
                 {formatCurrency(resumen.costeTotalFormalizacion)} € formalización +{' '}
-                {formatCurrency(form.impuestos)} € impuestos · usado para cálculo de plusvalía y base
-                amortizable. <b>Valor referencia</b> auto-rellenado con el precio · modifícalo si tu
-                valor de referencia catastral es distinto (Ley 11/2021 · ITP desde 2022).
+                {formatCurrency(impuestosTotal(form))} €{' '}
+                {form.estado === 'usada' ? 'ITP' : 'IVA + AJD'} · usado para cálculo de plusvalía y base
+                amortizable. Impuestos <b>auto-calculados</b> ({form.estado === 'usada' ? 'ITP sobre el valor de referencia' : 'IVA + AJD sobre el precio'}) · edítalos si tu caso difiere.
               </div>
             </Block>
 
@@ -817,120 +798,26 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
               </label>
             </Block>
 
-            {/* B7 · USO Y ALQUILER */}
-            {vis.showUso && (
-              <Block title="Uso y alquiler">
-                <div className={`${styles.usoCards} ${usoOptions.length === 6 ? styles.usoCards6 : ''}`}>
-                  {usoOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      className={`${styles.usoCard} ${form.usoTipo === opt.value ? styles.selected : ''}`}
-                      onClick={() => set('usoTipo', opt.value)}
-                      aria-pressed={form.usoTipo === opt.value}
-                    >
-                      <span className={styles.usoCardLabel}>{opt.label}</span>
-                      <span className={styles.usoCardSub}>{opt.sub}</span>
-                    </button>
-                  ))}
+            {/* B7 · VIVIENDA HABITUAL · el arrendamiento se gestiona en el detalle */}
+            {vis.showViviendaHabitual && (
+              <Block title="Uso">
+                <label className={styles.checkInline}>
+                  <input
+                    type="checkbox"
+                    checked={form.esViviendaHabitual}
+                    onChange={(e) => set('esViviendaHabitual', e.target.checked)}
+                  />
+                  Es mi vivienda habitual
+                </label>
+                <div className={styles.hintNote} style={{ marginTop: 6 }}>
+                  Márcalo solo si es tu residencia habitual: no genera imputación de rentas y cuenta
+                  para la exención por reinversión si vendes y compras otra. El{' '}
+                  <b>alquiler y su tipo de explotación</b> se gestionan en el detalle del inmueble, no aquí.
                 </div>
-                {vis.showAlquilerHab && (
-                  <div className={styles.subBlock}>
-                    <span className={styles.subBlockLabel}>Alquiler por habitaciones</span>
-                    <label className={styles.radioOpt}>
-                      <input type="radio" checked={!form.alquilerHabActivo} onChange={() => set('alquilerHabActivo', false)} /> No · piso completo
-                    </label>
-                    <label className={styles.radioOpt}>
-                      <input type="radio" checked={form.alquilerHabActivo} onChange={() => set('alquilerHabActivo', true)} /> Sí
-                    </label>
-                    {form.alquilerHabActivo && (
-                      <>
-                        <span className={styles.subBlockLabel}>Nº habitaciones</span>
-                        <input className={styles.subBlockInput} value={form.alquilerHabNum || ''} onChange={(e) => set('alquilerHabNum', num(e.target.value))} inputMode="numeric" />
-                      </>
-                    )}
-                  </div>
-                )}
               </Block>
             )}
 
-            {/* B8 · MEJORAS */}
-            <Block
-              title="Mejoras previas"
-              count={
-                form.mejorasOn && form.mejoras.filter((m) => !m._deleted).length > 0
-                  ? `· ${form.mejoras.filter((m) => !m._deleted).length} registrada${form.mejoras.filter((m) => !m._deleted).length === 1 ? '' : 's'} · CAPEX ${formatInt(form.mejoras.filter((m) => !m._deleted && m.tipo !== 'reparacion').reduce((s, m) => s + (m.importe || 0), 0))} €`
-                  : undefined
-              }
-              toggle={{ on: form.mejorasOn, onChange: (v) => set('mejorasOn', v) }}
-            >
-              {form.mejorasOn && (
-                <>
-                  <div className={styles.rowList}>
-                    {form.mejoras.map((m, i) => ({ m, i })).filter(({ m }) => !m._deleted).map(({ m, i }) => (
-                      <div key={i} className={styles.capexRow}>
-                        <input className={styles.input} placeholder="Concepto" value={m.concepto} onChange={(e) => updateMejora(i, { concepto: e.target.value })} />
-                        <input className={`${styles.input} ${styles.inputMono}`} type="date" value={m.fecha} onChange={(e) => updateMejora(i, { fecha: e.target.value })} />
-                        <Suffix>
-                          <input className={`${styles.input} ${styles.inputMono}`} value={m.importe || ''} onChange={(e) => updateMejora(i, { importe: num(e.target.value) })} inputMode="decimal" />
-                          <span className={styles.suffix}>€</span>
-                        </Suffix>
-                        <select className={styles.select} value={m.tipo} onChange={(e) => updateMejora(i, { tipo: e.target.value as 'mejora' | 'reparacion' })}>
-                          <option value="mejora">Mejora · amortizable</option>
-                          <option value="reparacion">Reparación · gasto</option>
-                        </select>
-                        <button type="button" className={styles.del} onClick={() => removeMejora(i)} aria-label="Eliminar mejora">
-                          <IconTrash size={14} />
-                        </button>
-                      </div>
-                    ))}
-                    <button type="button" className={styles.rowAdd} onClick={addMejora}>
-                      <IconPlus size={14} /> Añadir mejora previa
-                    </button>
-                  </div>
-                  <div className={styles.hintNote}>
-                    Las mejoras suman al coste de adquisición y aumentan la base amortizable. Las reparaciones son gasto deducible del año.
-                  </div>
-                </>
-              )}
-            </Block>
-
-            {/* B9 · MOBILIARIO */}
-            <Block
-              title="Mobiliario"
-              count={
-                form.mueblesOn && form.muebles.filter((m) => !m._deleted).length > 0
-                  ? `· ${form.muebles.filter((m) => !m._deleted).length} registrado${form.muebles.filter((m) => !m._deleted).length === 1 ? '' : 's'}`
-                  : undefined
-              }
-              toggle={{ on: form.mueblesOn, onChange: (v) => set('mueblesOn', v) }}
-            >
-              {form.mueblesOn && (
-                <>
-                  <div className={styles.rowList}>
-                    {form.muebles.map((m, i) => ({ m, i })).filter(({ m }) => !m._deleted).map(({ m, i }) => (
-                      <div key={i} className={styles.muebleRow}>
-                        <input className={styles.input} placeholder="Concepto" value={m.concepto} onChange={(e) => updateMueble(i, { concepto: e.target.value })} />
-                        <input className={`${styles.input} ${styles.inputMono}`} type="date" value={m.fechaAlta} onChange={(e) => updateMueble(i, { fechaAlta: e.target.value })} />
-                        <Suffix>
-                          <input className={`${styles.input} ${styles.inputMono}`} value={m.importe || ''} onChange={(e) => updateMueble(i, { importe: num(e.target.value) })} inputMode="decimal" />
-                          <span className={styles.suffix}>€</span>
-                        </Suffix>
-                        <button type="button" className={styles.del} onClick={() => removeMueble(i)} aria-label="Eliminar mueble">
-                          <IconTrash size={14} />
-                        </button>
-                      </div>
-                    ))}
-                    <button type="button" className={styles.rowAdd} onClick={addMueble}>
-                      <IconPlus size={14} /> Añadir mueble
-                    </button>
-                  </div>
-                  <div className={styles.hintNote}>Amortización al 10 % anual durante 10 años (casilla 0117 IRPF).</div>
-                </>
-              )}
-            </Block>
-
-            {/* B10 · FOTO */}
+            {/* B8 · FOTO */}
             <Block title="Foto del inmueble" count="· opcional" toggle={{ on: form.fotoOn, onChange: (v) => set('fotoOn', v) }}>
               {form.fotoOn && (
                 <div className={styles.photoBody}>
@@ -984,8 +871,8 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 <span className={styles.value}>{formatCurrency(resumen.costeTotalFormalizacion)} €</span>
               </div>
               <div className={styles.previewDesgloseRow}>
-                <span className={styles.label}>+ Impuestos ITP / AJD</span>
-                <span className={styles.value}>{formatCurrency(form.impuestos)} €</span>
+                <span className={styles.label}>+ Impuestos {form.estado === 'usada' ? 'ITP' : 'IVA + AJD'}</span>
+                <span className={styles.value}>{formatCurrency(impuestosTotal(form))} €</span>
               </div>
               <div className={`${styles.previewDesgloseRow} ${styles.total}`}>
                 <span className={styles.label}>Coste base adquisición</span>

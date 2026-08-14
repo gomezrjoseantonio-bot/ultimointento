@@ -1,39 +1,30 @@
 // Ficha de inmueble · MODELO del formulario y mappers Property <-> modelo.
 //
 // El modelo es la forma que edita la UI; los mappers lo traducen a/desde el
-// `Property` de la DB SIN PÉRDIDA. Aquí se corrigen tres defectos de la ficha
-// vieja (informe de reescritura):
-//   · "otros gastos" ya no aplasta N conceptos en uno: se preserva el desglose
-//     original mientras no se edite el agregado.
-//   · `añoConstrucción` y `díasArrendado` desaparecen: eran campos que se
-//     enseñaban pero no se guardaban (nadie los leía / el modelo no los tiene).
+// `Property` de la DB SIN PÉRDIDA. La ficha (decisión Jose · ronda 2) es la
+// del ACTIVO patrimonial: tipo, ubicación, compra/coste con financiación e
+// impuestos, características y datos fiscales. Lo que NO es del activo se saca
+// de aquí pero se CONSERVA al guardar:
+//   · arrendamiento (usoTipo de alquiler · alquiler por habitaciones) → se
+//     gestiona en el detalle; aquí solo un check de "vivienda habitual" que
+//     alterna vivienda_habitual ↔ disponible sin pisar la config de alquiler.
+//   · mejoras y mobiliario → viven en sus stores y se gestionan en el detalle;
+//     la ficha ya no los toca (no crea ni borra).
+// Además:
+//   · "otros gastos" no aplasta N conceptos en uno (se preserva el desglose).
+//   · impuestos AUTO por estado: ITP (usada · sobre valor de referencia) o
+//     IVA+AJD (nueva · sobre precio), editables (override manual).
 //   · la financiación deja de ser dato huérfano: el modelo lleva la FK al
 //     préstamo y quién manda cuando hay uno vinculado (ver `financiacion.ts`).
 
-import type { Property, MejoraInmueble, MuebleInmueble } from '../../../services/db';
+import type { Property } from '../../../services/db';
 import type { TipoActivo } from '../../../types/tipoActivo';
 import { getCCAAFromProvince } from '../../../utils/locationUtils';
+import { calcularTributosAuto } from './tributos';
 
 export type UsoTipo = NonNullable<Property['usoTipo']>;
 export type Titularidad = 'yo' | 'pareja' | 'ambos';
 export type EstadoCompra = 'usada' | 'obra-nueva';
-
-export interface MejoraDraft {
-  id?: number;
-  concepto: string;
-  fecha: string;
-  importe: number;
-  tipo: 'mejora' | 'reparacion';
-  _deleted?: boolean;
-}
-
-export interface MuebleDraft {
-  id?: number;
-  concepto: string;
-  fechaAlta: string;
-  importe: number;
-  _deleted?: boolean;
-}
 
 /** Un concepto de "otros gastos" de adquisición (se preserva el desglose). */
 export interface OtroGasto {
@@ -64,7 +55,13 @@ export interface InmuebleFormModel {
   registro: number;
   gestoria: number;
   otros: number;
-  impuestos: number;
+  // 4a · impuestos (auto por estado · editables con override)
+  itp: number;
+  itpIsManual: boolean;
+  iva: number;
+  ivaIsManual: boolean;
+  ajd: number;
+  ajdIsManual: boolean;
   // 4b · estructura de compra (financiación)
   aportacionPropia: number;
   importeFinanciado: number;
@@ -83,29 +80,35 @@ export interface InmuebleFormModel {
   valorCatastralTotal: number;
   valorCatastralConstruccion: number;
   cadastralRevised: boolean;
-  // 7 · uso
-  usoTipo: UsoTipo;
-  alquilerHabActivo: boolean;
-  alquilerHabNum: number;
-  // 8-10 · colecciones y foto
-  mejorasOn: boolean;
-  mejoras: MejoraDraft[];
-  mueblesOn: boolean;
-  muebles: MuebleDraft[];
+  // 7 · uso · SOLO el check de vivienda habitual (el arrendamiento se gestiona
+  // en el detalle · aquí no). vivienda_habitual → sin imputación de rentas y
+  // relevante para reinversión; sin marcar → disponible (imputación).
+  esViviendaHabitual: boolean;
+  // 8 · foto
   fotoOn: boolean;
   foto?: string;
 }
 
+/** Impuesto de compra vigente según el estado (usada = ITP · nueva = IVA + AJD). */
+export function impuestosTotal(m: InmuebleFormModel): number {
+  return m.estado === 'usada' ? m.itp || 0 : (m.iva || 0) + (m.ajd || 0);
+}
+
 /**
  * Datos que el formulario NO edita pero tiene que conservar al guardar, para no
- * pisar lo que la ficha no gestiona (documentos), no perder el desglose de
- * otros gastos, ni romper el vínculo con el préstamo.
+ * pisar lo que la ficha ya no gestiona: documentos, desglose de otros gastos, la
+ * FK del préstamo, y el arrendamiento (usoTipo de alquiler + alquiler por
+ * habitaciones), que ahora vive en el detalle.
  */
 export interface InmuebleFormMeta {
   documents: number[];
   prestamoVinculadoId?: string;
   otrosOriginal: OtroGasto[];
   purchaseDateOriginal: string;
+  /** usoTipo original en DB · se conserva salvo que el check de vivienda habitual lo cambie. */
+  usoTipoOriginal?: UsoTipo;
+  /** Config de alquiler por habitaciones original · se conserva verbatim (se gestiona en el detalle). */
+  alquilerOriginal?: Property['alquilerPorHabitaciones'];
 }
 
 export function emptyModel(fallbackCCAA = ''): InmuebleFormModel {
@@ -128,7 +131,12 @@ export function emptyModel(fallbackCCAA = ''): InmuebleFormModel {
     registro: 0,
     gestoria: 0,
     otros: 0,
-    impuestos: 0,
+    itp: 0,
+    itpIsManual: false,
+    iva: 0,
+    ivaIsManual: false,
+    ajd: 0,
+    ajdIsManual: false,
     aportacionPropia: 0,
     importeFinanciado: 0,
     m2: 0,
@@ -144,20 +152,21 @@ export function emptyModel(fallbackCCAA = ''): InmuebleFormModel {
     valorCatastralTotal: 0,
     valorCatastralConstruccion: 0,
     cadastralRevised: false,
-    usoTipo: 'larga_estancia',
-    alquilerHabActivo: false,
-    alquilerHabNum: 0,
-    mejorasOn: false,
-    mejoras: [],
-    mueblesOn: false,
-    muebles: [],
+    esViviendaHabitual: false,
     fotoOn: false,
     foto: undefined,
   };
 }
 
 export function emptyMeta(): InmuebleFormMeta {
-  return { documents: [], prestamoVinculadoId: undefined, otrosOriginal: [], purchaseDateOriginal: '' };
+  return {
+    documents: [],
+    prestamoVinculadoId: undefined,
+    otrosOriginal: [],
+    purchaseDateOriginal: '',
+    usoTipoOriginal: undefined,
+    alquilerOriginal: undefined,
+  };
 }
 
 // ── Visibilidad por tipo de activo (pura · la usan la UI y el mapper) ────────
@@ -165,11 +174,13 @@ export interface Visibilidad {
   isPiso: boolean;
   showHabitacionesBanos: boolean;
   showAnexos: boolean;
+  /** ¿Se persiste usoTipo? (parking/trastero no tienen uso fiscal de renta). */
   showUso: boolean;
-  showAlquilerHab: boolean;
+  /** ¿Se ofrece el check de vivienda habitual? (solo tiene sentido en vivienda). */
+  showViviendaHabitual: boolean;
 }
 
-export function visibilidad(m: Pick<InmuebleFormModel, 'tipoActivo' | 'usoTipo'>): Visibilidad {
+export function visibilidad(m: Pick<InmuebleFormModel, 'tipoActivo'>): Visibilidad {
   const isPiso = m.tipoActivo === 'piso';
   const isParkingOrTrastero = m.tipoActivo === 'parking' || m.tipoActivo === 'trastero';
   return {
@@ -177,12 +188,7 @@ export function visibilidad(m: Pick<InmuebleFormModel, 'tipoActivo' | 'usoTipo'>
     showHabitacionesBanos: isPiso,
     showAnexos: isPiso,
     showUso: !isParkingOrTrastero,
-    showAlquilerHab:
-      isPiso &&
-      (m.usoTipo === 'larga_estancia' ||
-        m.usoTipo === 'temporada' ||
-        m.usoTipo === 'turistico' ||
-        m.usoTipo === 'mixto'),
+    showViviendaHabitual: isPiso,
   };
 }
 
@@ -192,26 +198,41 @@ const sumOtros = (items: OtroGasto[]): number =>
 // ── DB → modelo ──────────────────────────────────────────────────────────────
 export function modelFromProperty(
   prop: Property,
-  mejorasDB: MejoraInmueble[],
-  mueblesDB: MuebleInmueble[],
   fallbackCCAA: string,
 ): { model: InmuebleFormModel; meta: InmuebleFormMeta } {
   const otrosOriginal: OtroGasto[] = Array.isArray(prop.acquisitionCosts.other)
     ? prop.acquisitionCosts.other.map((o) => ({ concept: o.concept, amount: o.amount || 0 }))
     : [];
-  const impuestos = prop.acquisitionCosts.itp ?? prop.acquisitionCosts.iva ?? 0;
 
   const ccaaResolved = prop.ccaa || fallbackCCAA;
   const inferredCCAA = prop.province ? getCCAAFromProvince(prop.province) ?? '' : '';
   const ccaaIsManual = ccaaResolved !== '' && ccaaResolved !== inferredCCAA;
 
+  const tipoActivo = prop.tipoActivo ?? 'piso';
   const precio = prop.acquisitionCosts.price || 0;
   const vRef = prop.valorReferencia ?? precio;
   const valorRefIsManual =
     typeof prop.valorReferencia === 'number' && Math.abs(vRef - precio) > 0.01;
 
+  // Impuestos · respetamos el flag manual explícito; si no lo hay, inferimos
+  // "manual" cuando el importe guardado difiere del auto (mismo patrón que el
+  // valor de referencia · evita pisar un importe puesto a mano por el usuario).
+  const auto = calcularTributosAuto({ tipoActivo, ccaa: ccaaResolved, precioCompra: precio, valorReferencia: vRef });
+  const itpStored = prop.acquisitionCosts.itp;
+  const ivaStored = prop.acquisitionCosts.iva;
+  const ajdStored = prop.acquisitionCosts.ajd;
+  const itp = itpStored ?? auto.itp;
+  const iva = ivaStored ?? auto.iva;
+  const ajd = ajdStored ?? auto.ajd;
+  const itpIsManual =
+    prop.acquisitionCosts.itpIsManual ?? (itpStored != null && Math.abs(itpStored - auto.itp) > 0.5);
+  const ivaIsManual =
+    prop.acquisitionCosts.ivaIsManual ?? (ivaStored != null && Math.abs(ivaStored - auto.iva) > 0.5);
+  const ajdIsManual =
+    prop.acquisitionCosts.ajdIsManual ?? (ajdStored != null && Math.abs(ajdStored - auto.ajd) > 0.5);
+
   const model: InmuebleFormModel = {
-    tipoActivo: prop.tipoActivo ?? 'piso',
+    tipoActivo,
     alias: prop.alias || '',
     direccion: prop.address || '',
     refCatastral: prop.cadastralReference || '',
@@ -229,7 +250,12 @@ export function modelFromProperty(
     registro: prop.acquisitionCosts.registry || 0,
     gestoria: prop.acquisitionCosts.management || 0,
     otros: sumOtros(otrosOriginal),
-    impuestos,
+    itp,
+    itpIsManual,
+    iva,
+    ivaIsManual,
+    ajd,
+    ajdIsManual,
     aportacionPropia: prop.estructuraCompra?.aportacionPropia || 0,
     importeFinanciado: prop.estructuraCompra?.importeFinanciado || 0,
     m2: prop.squareMeters || 0,
@@ -245,24 +271,7 @@ export function modelFromProperty(
     valorCatastralTotal: prop.fiscalData?.cadastralValue || 0,
     valorCatastralConstruccion: prop.fiscalData?.constructionCadastralValue || 0,
     cadastralRevised: prop.fiscalData?.cadastralRevised ?? false,
-    usoTipo: prop.usoTipo ?? 'larga_estancia',
-    alquilerHabActivo: prop.alquilerPorHabitaciones?.activo ?? false,
-    alquilerHabNum: prop.alquilerPorHabitaciones?.numeroHabitaciones ?? 0,
-    mejorasOn: mejorasDB.length > 0,
-    mejoras: mejorasDB.map((m) => ({
-      id: m.id,
-      concepto: m.descripcion,
-      fecha: m.fecha,
-      importe: m.importe,
-      tipo: m.tipo === 'reparacion' ? 'reparacion' : 'mejora',
-    })),
-    mueblesOn: mueblesDB.length > 0,
-    muebles: mueblesDB.map((mu) => ({
-      id: mu.id,
-      concepto: mu.descripcion,
-      fechaAlta: mu.fechaAlta,
-      importe: mu.importe,
-    })),
+    esViviendaHabitual: prop.usoTipo === 'vivienda_habitual',
     fotoOn: !!prop.foto,
     foto: prop.foto,
   };
@@ -272,6 +281,8 @@ export function modelFromProperty(
     prestamoVinculadoId: prop.estructuraCompra?.prestamoVinculadoId,
     otrosOriginal,
     purchaseDateOriginal: prop.purchaseDate || '',
+    usoTipoOriginal: prop.usoTipo,
+    alquilerOriginal: prop.alquilerPorHabitaciones,
   };
 
   return { model, meta };
@@ -301,6 +312,16 @@ export function propertyFromModel(
   const tieneEstructura =
     m.aportacionPropia > 0 || m.importeFinanciado > 0 || !!meta.prestamoVinculadoId;
 
+  // Uso fiscal · el check solo alterna vivienda_habitual ↔ disponible; cualquier
+  // otro uso (arrendamiento) se conserva del original, que se gestiona aparte.
+  const usoTipo: UsoTipo | undefined = vis.showUso
+    ? m.esViviendaHabitual
+      ? 'vivienda_habitual'
+      : meta.usoTipoOriginal && meta.usoTipoOriginal !== 'vivienda_habitual'
+        ? meta.usoTipoOriginal
+        : 'disponible'
+    : undefined;
+
   return {
     tipoActivo: m.tipoActivo,
     foto: m.fotoOn ? m.foto : undefined,
@@ -329,7 +350,14 @@ export function propertyFromModel(
       registry: m.registro || 0,
       management: m.gestoria || 0,
       other: acquisitionOther,
-      ...(m.estado === 'usada' ? { itp: m.impuestos || 0 } : { iva: m.impuestos || 0 }),
+      ...(m.estado === 'usada'
+        ? { itp: m.itp || 0, itpIsManual: m.itpIsManual }
+        : {
+            iva: m.iva || 0,
+            ivaIsManual: m.ivaIsManual,
+            ajd: m.ajd || 0,
+            ajdIsManual: m.ajdIsManual,
+          }),
     },
     ...(tieneEstructura
       ? {
@@ -345,13 +373,9 @@ export function propertyFromModel(
     anexos: vis.showAnexos
       ? { tieneParking: m.tieneParking, tieneTrastero: m.tieneTrastero }
       : undefined,
-    usoTipo: vis.showUso ? m.usoTipo : undefined,
-    alquilerPorHabitaciones:
-      vis.showAlquilerHab && m.alquilerHabActivo
-        ? { activo: true, numeroHabitaciones: m.alquilerHabNum || undefined }
-        : vis.showAlquilerHab
-          ? { activo: false }
-          : undefined,
+    usoTipo,
+    // Arrendamiento · se conserva verbatim del original (se gestiona en el detalle).
+    alquilerPorHabitaciones: meta.alquilerOriginal,
     fiscalData: {
       cadastralValue: m.valorCatastralTotal || undefined,
       constructionCadastralValue: m.valorCatastralConstruccion || undefined,
