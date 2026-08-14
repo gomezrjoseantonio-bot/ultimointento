@@ -448,6 +448,10 @@ export interface AEATCarryForward {
   excessAmount: number; // financingAndRepair - limitApplied
   expirationYear: number; // taxYear + 4
   remainingAmount: number; // Current remaining amount that can be used
+  // Importe de arrastres de años ANTERIORES aplicado (consumido) en este taxYear
+  // — casilla 0103 / IMP4GCPEA. Lo rellena el import y permite recomputar de
+  // forma idempotente el `remainingAmount` de los años origen (reset + replay FIFO).
+  appliedInYear?: number;
   // S-FISCAL-FIXES Fix 1 · proporción del exceso por concepto cuando aplica
   carryForwardType?: 'excess_0105' | 'excess_0106' | 'excess_mixed';
   createdAt: string;

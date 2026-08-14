@@ -20,6 +20,7 @@ import { distribuirDeclaracion } from '../declaracionDistributorService';
 import { getEjercicio } from '../ejercicioResolverService';
 import { gastosInmuebleService } from '../gastosInmuebleService';
 import { mejorasInmuebleService } from '../mejorasInmuebleService';
+import { getCarryForwardsDisponibles } from '../carryForwardService';
 import { OPCIONES_DEFAULT } from '../../types/opcionesDistribucion';
 import type { DeclaracionCompleta, InmuebleDeclarado } from '../../types/declaracionCompleta';
 
@@ -103,6 +104,7 @@ async function limpiar() {
   await Promise.all([
     db.clear('properties'), db.clear('ejerciciosFiscalesCoord'),
     db.clear('mejorasInmueble'), db.clear('gastosInmueble'), db.clear('mueblesInmueble'),
+    db.clear('aeatCarryForwards'),
   ]);
 }
 
@@ -184,6 +186,19 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
     expect(activa?.resultado).toBeCloseTo(2899.75, 2);
   });
 
+  it('arrastre 4 años: el import alimenta la bolsa aeatCarryForwards (genera y consume)', async () => {
+    // Año que genera pendiente, año posterior que lo aplica → queda el resto.
+    await distribuirDeclaracion(declaracion(2024, [
+      inmueble({ refCatastral: U1, direccion: 'CL PRUEBA 10 1 DR MADRID', gastosPendientesGenerados: 10000 }),
+    ]), OPCIONES_DEFAULT);
+    await distribuirDeclaracion(declaracion(2025, [
+      inmueble({ refCatastral: U1, direccion: 'CL PRUEBA 10 1 DR MADRID', arrastresRecibidos: 4000 }),
+    ]), OPCIONES_DEFAULT);
+    const p = await propByRef(U1);
+    const { total } = await getCarryForwardsDisponibles(p.id, 2026);
+    expect(total).toBeCloseTo(6000, 2);
+  });
+
   it('gastos por casilla: se propagan a gastosInmueble con origen xml_aeat', async () => {
     await distribuirDeclaracion(declaracion(2024, [
       inmueble({ refCatastral: U1, direccion: 'CL PRUEBA 10 1 DR MADRID',
@@ -202,8 +217,7 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 describe('Garantía de importación · huecos conocidos (pendientes de implementar)', () => {
   it.todo('Comunidad de Bienes: un inmueble en proindiviso (p.ej. 10%) prorratea rendimiento y gastos por % — hoy se asume 100%');
-  it.todo('Arrastre 4 años: el pendiente de intereses+reparación (C_INTGRCEF) se guarda como bolsa con caducidad y se aplica el año siguiente');
-  it.todo('Saldos negativos BIA: se siguen como bolsa con caducidad y se consumen en la venta');
+  it.todo('Saldos negativos BIA: el import alimenta perdidasPatrimonialesAhorro (hoy escribe solo en el coord, que la compensación IRPF no lee)');
   it.todo('Imputación de renta: días vacantes generan imputación (2% / 1,1% si catastral revisado) prorrateada');
   it.todo('Import por PDF (justificante): extrae el resumen de forma fiable, sin depender de conversores externos');
 });

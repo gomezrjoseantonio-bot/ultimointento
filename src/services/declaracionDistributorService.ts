@@ -14,6 +14,7 @@ import { initDB } from './db';
 import type { Property, EjercicioFiscalCoord, AeatVersion, Document, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria, MejoraInmueble } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { baseAmortizableEjercicioService } from './baseAmortizableEjercicioService';
+import { sincronizarArrastreImportado } from './carryForwardService';
 import { invalidateCachedStores } from './indexedDbCacheService';
 import { CCAA_LIST } from '../utils/locationUtils';
 import type {
@@ -1848,6 +1849,28 @@ async function escribirFiscalSummaries(
             e,
           );
         }
+      }
+    }
+
+    // ── Arrastre 4 años de intereses+reparación (art. 23.1 LIRPF) ──
+    // Alimenta el store canónico `aeatCarryForwards` (motor FIFO + caducidad ya
+    // existente) con lo que la declaración dice: el pendiente NUEVO generado este
+    // año (C_INTGRCEF, casilla 0108) y el pendiente previo APLICADO (IMP4GCPEA,
+    // casilla 0103). Idempotente (reset + replay), así que reimportar o cambiar el
+    // orden de importación deja el mismo saldo pendiente.
+    const arrGenerado = inm.gastosPendientesGenerados || 0;
+    const arrAplicado = inm.arrastresRecibidos ?? inm.gastosPendientesPreviosAplicados ?? 0;
+    if (arrGenerado > 0 || arrAplicado > 0) {
+      try {
+        await sincronizarArrastreImportado(property.id, decl.meta.ejercicio, {
+          generated: arrGenerado,
+          applied: arrAplicado,
+        });
+      } catch (e) {
+        console.warn(
+          `[arrastre] sincronización falló · inmueble ${property.id} · ejercicio ${decl.meta.ejercicio}:`,
+          e,
+        );
       }
     }
   }
