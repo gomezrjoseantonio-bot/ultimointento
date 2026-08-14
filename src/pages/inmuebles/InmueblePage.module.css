@@ -43,13 +43,13 @@
 .headerInfo { display: flex; align-items: center; gap: 13px; }
 .headerIcon {
   width: 35px; height: 35px;
-  background: rgba(184, 138, 62, 0.15); /* gold @ 15% sobre navy · emblema */
-  color: var(--atlas-v5-gold-light);
+  background: var(--atlas-v5-navy-fill);
+  color: var(--atlas-v5-white);
   border-radius: 9px;
   display: grid; place-items: center;
 }
 .headerIcon svg { width: 19px; height: 19px; }
-.headerTitle { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; }
+.headerTitle { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; color: var(--atlas-v5-white); }
 .headerSub { font-size: 11px; color: var(--atlas-v5-navy-text-2); margin-top: 2px; letter-spacing: 0.3px; }
 .headerClose {
   width: 30px; height: 30px;
@@ -70,12 +70,12 @@
   min-height: 0;
 }
 .colForm {
-  padding: 13px 20px;
+  padding: 11px 18px;
   overflow-y: auto;
   border-right: 1px solid var(--atlas-v5-line);
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 7px;
 }
 .colPreview { padding: 20px 22px 24px; overflow-y: auto; background: var(--atlas-v5-brand-ink); color: var(--atlas-v5-on-navy-1); }
 .colForm::-webkit-scrollbar, .colPreview::-webkit-scrollbar { width: 6px; }
@@ -88,9 +88,9 @@
   background: var(--atlas-v5-card);
   border: 1px solid var(--atlas-v5-line);
   border-radius: 11px;
-  padding: 11px 14px 12px;
+  padding: 9px 14px 10px;
 }
-.bandHd { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.bandHd { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
 .bandNo {
   font-family: var(--atlas-v5-font-mono-num);
   font-size: 11px; font-weight: 700;
@@ -107,14 +107,14 @@
   font-size: 11px; color: var(--atlas-v5-ink-3); font-weight: 600;
 }
 
-/* ─── SELECTOR DE TIPO · tarjetas estilo asistente de préstamo ─── */
-.types { display: flex; gap: 8px; margin-bottom: 11px; }
+/* ─── SELECTOR DE TIPO · tarjetas estilo asistente de préstamo (icono a la izquierda) ─── */
+.types { display: flex; gap: 8px; margin-bottom: 9px; }
 .type {
   flex: 1;
   border: 1px solid var(--atlas-v5-line);
   border-radius: 9px;
-  padding: 10px 6px 9px;
-  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 7px 9px;
+  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px;
   cursor: pointer;
   background: var(--atlas-v5-card);
   font-family: inherit;
@@ -123,15 +123,16 @@
 .type:hover { border-color: var(--atlas-v5-ink-5); }
 /* caja de icono · gris → NAVY con icono ORO al seleccionar (como Hipotecario/Personal) */
 .typeIcon {
-  width: 34px; height: 34px;
+  width: 30px; height: 30px;
   border-radius: 8px;
   background: var(--atlas-v5-card-alt);
   color: var(--atlas-v5-ink-3);
   border: 1px solid var(--atlas-v5-line);
   display: grid; place-items: center;
+  flex-shrink: 0;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.typeIcon svg { width: 17px; height: 17px; }
+.typeIcon svg { width: 16px; height: 16px; }
 .type span { font-size: 12px; font-weight: 600; color: var(--atlas-v5-ink-2); }
 .typeSel { border-color: var(--atlas-v5-gold-soft); }
 .typeSel .typeIcon { background: var(--atlas-v5-brand-ink); color: var(--atlas-v5-gold); border-color: var(--atlas-v5-brand-ink); }
@@ -139,7 +140,10 @@
 
 /* ─── FIELDS ─── */
 .wrap { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; }
-.fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+/* Reparte los campos a lo ANCHO (sin hueco muerto a la derecha) · bloques 2/3/4 */
+.wrapSpread { justify-content: space-between; }
+.wrapSpread.wrap { gap: 10px 10px; }
+.fld { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .fldC { align-items: center; }
 .fldC .lab { justify-content: center; }
 .lab {
@@ -151,7 +155,7 @@
 .hint { font-weight: 400; color: var(--atlas-v5-ink-4); }
 .input {
   width: 100%;
-  padding: 7px 9px;
+  padding: 6px 9px;
   border: 1px solid var(--atlas-v5-line);
   border-radius: 8px;
   background: var(--atlas-v5-card);
@@ -220,13 +224,13 @@ select.input { width: auto; padding-right: 26px; }
 
 /* ─── FINANCIACIÓN ─── */
 .fin {
-  margin-top: 10px;
-  padding: 10px 14px;
+  margin-top: 9px;
+  padding: 8px 14px 9px;
   border: 1px solid var(--atlas-v5-line);
   border-radius: 9px;
   background: var(--atlas-v5-card-alt);
 }
-.finHd { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; color: var(--atlas-v5-ink-2); margin-bottom: 8px; }
+.finHd { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; color: var(--atlas-v5-ink-2); margin-bottom: 7px; }
 .finHd svg { width: 14px; height: 14px; color: var(--atlas-v5-ink-3); }
 .finLine { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
 .finSpacer { flex: 1; min-width: 8px; }

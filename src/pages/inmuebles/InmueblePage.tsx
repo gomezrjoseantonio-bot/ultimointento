@@ -642,7 +642,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 <span className={styles.bandNo}>2</span>
                 <span className={styles.bandTitle}>Características del activo</span>
               </div>
-              <div className={styles.wrap}>
+              <div className={`${styles.wrap} ${styles.wrapSpread}`}>
                 <div className={styles.fld}>
                   <label className={styles.lab}>m²</label>
                   <input className={`${styles.input} ${styles.inputMono} ${styles.wM2}`} value={form.m2 || ''} onChange={(e) => set('m2', num(e.target.value))} inputMode="decimal" />
@@ -686,7 +686,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 <span className={styles.bandNo}>3</span>
                 <span className={styles.bandTitle}>Fiscalidad</span>
               </div>
-              <div className={styles.wrap}>
+              <div className={`${styles.wrap} ${styles.wrapSpread}`}>
                 <div className={styles.toggleField}>
                   <span className={styles.lab}>Suelo</span>
                   <div className={styles.tog}>
@@ -733,7 +733,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 </span>
               </div>
               {/* línea 1 · fecha · precio · impuestos */}
-              <div className={styles.wrap}>
+              <div className={`${styles.wrap} ${styles.wrapSpread}`}>
                 <div className={styles.fld}>
                   <label className={styles.lab}>Fecha <span className={styles.req}>*</span></label>
                   <input className={`${styles.input} ${styles.inputMonoL} ${styles.wDate}`} type="date" value={form.fechaCompra} onChange={(e) => set('fechaCompra', e.target.value)} />
@@ -749,7 +749,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 )}
               </div>
               {/* línea 2 · gastos */}
-              <div className={styles.wrap} style={{ marginTop: 8 }}>
+              <div className={`${styles.wrap} ${styles.wrapSpread}`} style={{ marginTop: 8 }}>
                 {eurField('Notaría', 'Notaría', form.notaria, (n) => set('notaria', n), styles.wEur)}
                 {eurField('Registro', 'Registro', form.registro, (n) => set('registro', n), styles.wEur)}
                 {eurField('Gestoría', 'Gestoría', form.gestoria, (n) => set('gestoria', n), styles.wEur)}
