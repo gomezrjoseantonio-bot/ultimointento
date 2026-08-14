@@ -3,11 +3,11 @@
  *
  * Un solo lienzo sin scroll en 3 capítulos con hilo + foto: 1 El activo · 2
  * Características y fiscal · 3 La compra · 4 Foto (drawer). Campos del ANCHO de su
- * dato, empaquetados; toggles de un toque (booleanos azul · Estado con oro cuando
- * "Nueva"); ubicación derivada del CP; impuestos AUTO por estado (ITP o IVA+AJD);
- * financiación en una línea con "vincular existente" inline. El estado del
- * formulario pasa por un MODELO con mappers SIN pérdida (`inmuebleForm/model.ts`)
- * y la financiación se integra con el módulo Financiación (crear/vincular/leer).
+ * dato; toggles de un toque; ubicación derivada del CP; impuestos AUTO por estado
+ * (ITP o IVA+AJD); financiación en una línea con "vincular existente" inline. Los
+ * importes se formatean en es-ES (miles + coma) vía `MoneyInput`. El preview de la
+ * derecha es un raíl NAVY "en directo" (coherente con el asistente de préstamo).
+ * El estado pasa por un MODELO con mappers SIN pérdida (`inmuebleForm/model.ts`).
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -22,12 +22,12 @@ import {
   X as IconX,
   Check as IconCheck,
   AlertCircle as IconAlert,
-  Activity as IconActivity,
   Banknote as IconBank,
   Image as IconImage,
   MapPin as IconPin,
   Plus as IconPlus,
   Link2 as IconLink,
+  ExternalLink as IconExternal,
 } from 'lucide-react';
 
 import { initDB } from '../../services/db';
@@ -65,7 +65,6 @@ interface InmueblePageProps {
   mode: 'create' | 'edit';
 }
 
-// Días arrendado del preview · supuesto (365) para la amortización estimada.
 const DIAS_ARRENDADO_PREVIEW = 365;
 
 type IconComp = React.ComponentType<{ size?: number; className?: string }>;
@@ -84,18 +83,57 @@ const TIPO_LABELS: Record<TipoActivo, string> = {
   otro: 'Otro',
 };
 
-const eur = (n: number): string =>
-  new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-const int = (n: number): string =>
-  new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n);
-const pct = (n: number): string =>
-  `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(n)} %`;
+// ─── formato / parseo es-ES ───
+const nfEur = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nfMoney = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 });
+const nfPlain = new Intl.NumberFormat('es-ES', { useGrouping: false, maximumFractionDigits: 2 });
+const eur = (n: number): string => nfEur.format(n || 0);
+const int = (n: number): string => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n || 0);
+const pct = (n: number): string => `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(n || 0)} %`;
+/** Muestra el importe agrupado (miles + coma) para el campo, vacío si es 0. */
+const fmtCampo = (n: number): string => (n ? nfMoney.format(n) : '');
+/** Parsea "75.285,13" / "75285,13" / "75285.13" → número. */
+const parseEs = (s: string): number => {
+  if (!s) return 0;
+  let t = s.replace(/[^\d.,-]/g, '');
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  else if ((t.match(/\./g) || []).length > 1) t = t.replace(/\./g, '');
+  const n = parseFloat(t);
+  return isFinite(n) ? n : 0;
+};
 
 const formatDateLong = (iso: string): string => {
   if (!iso) return '';
   const d = parseIsoDateAsUTC(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+};
+
+// ─── Campo de importe · formatea en es-ES (agrupado + coma) y no trunca ───
+const MoneyInput: React.FC<{ value: number; onChange: (n: number) => void; className: string; ariaLabel: string; readOnly?: boolean }> = ({
+  value,
+  onChange,
+  className,
+  ariaLabel,
+  readOnly,
+}) => {
+  const [text, setText] = useState<string>(() => fmtCampo(value));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setText(fmtCampo(value));
+  }, [value, focused]);
+  return (
+    <input
+      className={className}
+      inputMode="decimal"
+      aria-label={ariaLabel}
+      readOnly={readOnly}
+      value={text}
+      onFocus={() => { setFocused(true); setText(value ? nfPlain.format(value) : ''); }}
+      onChange={(e) => { setText(e.target.value); onChange(parseEs(e.target.value)); }}
+      onBlur={() => { setFocused(false); const n = parseEs(text); onChange(n); setText(fmtCampo(n)); }}
+    />
+  );
 };
 
 // ─── Toggle de un toque (booleano · azul) ───
@@ -140,6 +178,8 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [vincularOpen, setVincularOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const formRef = useRef(form);
+  formRef.current = form;
 
   const recargarFinanciacion = React.useCallback(async (inmuebleId: number) => {
     const [lineas, cand] = await Promise.all([
@@ -281,39 +321,51 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     [form],
   );
 
-  const isDirty = useMemo(
-    () => originalSnapshot !== '' && JSON.stringify(form) !== originalSnapshot,
-    [form, originalSnapshot],
-  );
-
   const vis = visibilidad(form);
   const vinculado = vinculadas.length > 0;
   const financiadoDelPrestamo = vinculadas.reduce((s, l) => s + (l.principalInicial || 0), 0);
+  const deudaVinculada = vinculadas.reduce((s, l) => s + (l.deudaPendiente || 0), 0);
   const financiadoEfectivo = vinculado ? financiadoDelPrestamo : form.importeFinanciado;
   const costeTotal = resumen.costeBaseAdquisicion;
   const descuadre = costeTotal > 0 ? form.aportacionPropia + financiadoEfectivo - costeTotal : 0;
   const hayDescuadre = costeTotal > 0 && Math.abs(descuadre) >= 1;
 
-  // ─── financiado DERIVADO del coste cuando NO hay préstamo (aportación = variable libre) ───
+  // ─── financiación · normalización (aportación/financiado) ───
+  // · Con préstamo: el financiado lo manda el préstamo; si la aportación no se
+  //   migró (0), se deriva = coste − financiado (así cuadra y no salta el aviso).
+  // · Sin préstamo: el financiado se deriva = coste − aportación.
   useEffect(() => {
-    if (isLoading || vinculado) return;
-    const derived = Math.max(0, resumen.costeBaseAdquisicion - form.aportacionPropia);
-    if (Math.abs(derived - form.importeFinanciado) > 0.005) {
-      setForm((p) => ({ ...p, importeFinanciado: derived }));
+    if (isLoading) return;
+    if (vinculado) {
+      if (form.aportacionPropia === 0 && costeTotal > 0) {
+        const ap = Math.max(0, costeTotal - financiadoDelPrestamo);
+        if (ap > 0.005) setForm((p) => ({ ...p, aportacionPropia: ap }));
+      }
+    } else {
+      const derived = Math.max(0, costeTotal - form.aportacionPropia);
+      if (Math.abs(derived - form.importeFinanciado) > 0.005) setForm((p) => ({ ...p, importeFinanciado: derived }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumen.costeBaseAdquisicion, form.aportacionPropia, vinculado, isLoading]);
+  }, [costeTotal, form.aportacionPropia, vinculado, financiadoDelPrestamo, isLoading]);
+
+  // ─── re-captura del snapshot cuando la carga y sus normalizaciones se asientan,
+  //     para que "Cambios sin guardar" NO aparezca solo por abrir la ficha ───
+  useEffect(() => {
+    if (isLoading) return;
+    const t = setTimeout(() => setOriginalSnapshot(JSON.stringify(formRef.current)), 120);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
+
+  const isDirty = useMemo(
+    () => originalSnapshot !== '' && JSON.stringify(form) !== originalSnapshot,
+    [form, originalSnapshot],
+  );
 
   // ─── helpers ───
   const set = <K extends keyof InmuebleFormModel>(k: K, v: InmuebleFormModel[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }));
-
-  const num = (v: string): number => {
-    if (v === '' || v == null) return 0;
-    const cleaned = v.replace(/[^0-9.,-]/g, '').replace(',', '.');
-    const n = parseFloat(cleaned);
-    return isFinite(n) ? n : 0;
-  };
+  const num = (v: string): number => parseEs(v);
 
   const handleTipoChange = (next: TipoActivo) => {
     setForm((prev) => {
@@ -343,7 +395,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     reader.readAsDataURL(file);
   };
 
-  // ─── validación ───
   const validate = (): string | null => {
     if (!form.alias.trim()) return 'El alias es obligatorio';
     if (!/^\d{5}$/.test(form.cp)) return 'El código postal debe tener 5 dígitos';
@@ -391,12 +442,9 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     }
   };
 
-  const handleCancel = () => {
-    navigate(fromEmpezar ? '/empezar/inmuebles' : '/inmuebles?tab=cartera');
-  };
+  const handleCancel = () => navigate(fromEmpezar ? '/empezar/inmuebles' : '/inmuebles?tab=cartera');
   cancelRef.current = handleCancel;
 
-  // ─── financiación · crear / vincular / editar ───
   const handleCrearPrestamo = async () => {
     setIsSaving(true);
     let savedId: number | null = propertyId ?? null;
@@ -452,6 +500,17 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       : `${ubic} · nuevo registro`;
   const chipUbic = [form.municipality, form.ccaa].filter(Boolean).join(' · ');
   const esNueva = form.estado === 'obra-nueva';
+
+  // Campo de importe reutilizable
+  const eurField = (label: React.ReactNode, ariaLabel: string, value: number, onChange: (n: number) => void, width: string) => (
+    <div className={`${styles.fld} ${styles.fldC}`}>
+      <label className={styles.lab}>{label}</label>
+      <div className={styles.inputSuffix}>
+        <MoneyInput className={`${styles.input} ${styles.inputMono} ${width}`} value={value} onChange={onChange} ariaLabel={ariaLabel} />
+        <span className={styles.suffix}>€</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={`Ficha · ${headerTitle}`}>
@@ -638,36 +697,13 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                     <span className={styles.togVal}>{form.esUrbana ? 'Urbana' : 'Rústica'}</span>
                   </div>
                 </div>
-                <div className={`${styles.fld} ${styles.fldC}`}>
-                  <label className={styles.lab}>V. cat. total</label>
-                  <div className={styles.inputSuffix}>
-                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.valorCatastralTotal || ''} onChange={(e) => set('valorCatastralTotal', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </div>
-                </div>
-                <div className={`${styles.fld} ${styles.fldC}`}>
-                  <label className={styles.lab}>V. cat. constr.</label>
-                  <div className={styles.inputSuffix}>
-                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.valorCatastralConstruccion || ''} onChange={(e) => set('valorCatastralConstruccion', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </div>
-                </div>
+                {eurField('V. cat. total', 'Valor catastral total', form.valorCatastralTotal, (n) => set('valorCatastralTotal', n), styles.wEur)}
+                {eurField('V. cat. constr.', 'Valor catastral construcción', form.valorCatastralConstruccion, (n) => set('valorCatastralConstruccion', n), styles.wEur)}
                 <div className={`${styles.fld} ${styles.fldC}`}>
                   <label className={styles.lab}>% const.</label>
                   <input className={`${styles.input} ${styles.inputRo} ${styles.wPct}`} readOnly value={pct(resumen.porcentajeConstruccion)} />
                 </div>
-                <div className={`${styles.fld} ${styles.fldC}`}>
-                  <label className={styles.lab}>Valor referencia</label>
-                  <div className={styles.inputSuffix}>
-                    <input
-                      className={`${styles.input} ${styles.inputMono} ${styles.wEur}`}
-                      value={form.valorReferencia || ''}
-                      onChange={(e) => { set('valorReferencia', num(e.target.value)); set('valorReferenciaIsManual', true); }}
-                      inputMode="decimal"
-                    />
-                    <span className={styles.suffix}>€</span>
-                  </div>
-                </div>
+                {eurField('Valor referencia', 'Valor de referencia', form.valorReferencia, (n) => { set('valorReferencia', n); set('valorReferenciaIsManual', true); }, styles.wEur)}
                 <Toggle label="Catastral revisado" on={form.cadastralRevised} onChange={(v) => set('cadastralRevised', v)} />
               </div>
             </div>
@@ -692,94 +728,46 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </div>
                 </span>
               </div>
+              {/* fila A · fecha, precio, impuestos */}
               <div className={styles.wrap}>
                 <div className={`${styles.fld} ${styles.fldC}`}>
                   <label className={styles.lab}>Fecha <span className={styles.req}>*</span></label>
                   <input className={`${styles.input} ${styles.inputMonoL} ${styles.wDate}`} type="date" value={form.fechaCompra} onChange={(e) => set('fechaCompra', e.target.value)} />
                 </div>
-                <div className={`${styles.fld} ${styles.fldC}`}>
-                  <label className={styles.lab}>Precio <span className={styles.req}>*</span></label>
-                  <div className={styles.inputSuffix}>
-                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.precioCompra || ''} onChange={(e) => set('precioCompra', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </div>
-                </div>
+                {eurField(<>Precio <span className={styles.req}>*</span></>, 'Precio de compra', form.precioCompra, (n) => set('precioCompra', n), styles.wEur)}
                 {esNueva ? (
                   <>
-                    <div className={`${styles.fld} ${styles.fldC}`}>
-                      <label className={styles.lab}>IVA</label>
-                      <div className={styles.inputSuffix}>
-                        <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.iva || ''} onChange={(e) => { set('iva', num(e.target.value)); set('ivaIsManual', true); }} inputMode="decimal" />
-                        <span className={styles.suffix}>€</span>
-                      </div>
-                    </div>
-                    <div className={`${styles.fld} ${styles.fldC}`}>
-                      <label className={styles.lab}>AJD</label>
-                      <div className={styles.inputSuffix}>
-                        <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.ajd || ''} onChange={(e) => { set('ajd', num(e.target.value)); set('ajdIsManual', true); }} inputMode="decimal" />
-                        <span className={styles.suffix}>€</span>
-                      </div>
-                    </div>
+                    {eurField('IVA', 'IVA', form.iva, (n) => { set('iva', n); set('ivaIsManual', true); }, styles.wEur)}
+                    {eurField('AJD', 'AJD', form.ajd, (n) => { set('ajd', n); set('ajdIsManual', true); }, styles.wEur)}
                   </>
                 ) : (
-                  <div className={`${styles.fld} ${styles.fldC}`}>
-                    <label className={styles.lab}>ITP</label>
-                    <div className={styles.inputSuffix}>
-                      <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.itp || ''} onChange={(e) => { set('itp', num(e.target.value)); set('itpIsManual', true); }} inputMode="decimal" />
-                      <span className={styles.suffix}>€</span>
-                    </div>
-                  </div>
+                  eurField('ITP', 'ITP', form.itp, (n) => { set('itp', n); set('itpIsManual', true); }, styles.wEur)
                 )}
-                <div className={`${styles.fld} ${styles.fldC}`}>
-                  <label className={styles.lab}>Notaría</label>
-                  <div className={styles.inputSuffix}>
-                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEurS}`} value={form.notaria || ''} onChange={(e) => set('notaria', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </div>
-                </div>
-                <div className={`${styles.fld} ${styles.fldC}`}>
-                  <label className={styles.lab}>Registro</label>
-                  <div className={styles.inputSuffix}>
-                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEurS}`} value={form.registro || ''} onChange={(e) => set('registro', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </div>
-                </div>
-                <div className={`${styles.fld} ${styles.fldC}`}>
-                  <label className={styles.lab}>Gestoría</label>
-                  <div className={styles.inputSuffix}>
-                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEurS}`} value={form.gestoria || ''} onChange={(e) => set('gestoria', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </div>
-                </div>
-                <div className={`${styles.fld} ${styles.fldC}`}>
-                  <label className={styles.lab}>Otros</label>
-                  <div className={styles.inputSuffix}>
-                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEurS}`} value={form.otros || ''} onChange={(e) => set('otros', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </div>
-                </div>
+              </div>
+              {/* fila B · gastos */}
+              <div className={styles.wrap} style={{ marginTop: 8 }}>
+                {eurField('Notaría', 'Notaría', form.notaria, (n) => set('notaria', n), styles.wEurS)}
+                {eurField('Registro', 'Registro', form.registro, (n) => set('registro', n), styles.wEurS)}
+                {eurField('Gestoría', 'Gestoría', form.gestoria, (n) => set('gestoria', n), styles.wEurS)}
+                {eurField('Otros', 'Otros gastos', form.otros, (n) => set('otros', n), styles.wEurS)}
               </div>
 
-              {/* Financiación · una línea */}
+              {/* Financiación */}
               <div className={styles.fin}>
                 <div className={styles.finHd}>
                   <IconBank size={14} /> Financiación de la operación
                 </div>
                 <div className={styles.finLine}>
-                  <div className={`${styles.fld} ${styles.fldC}`}>
-                    <label className={styles.lab}>Aportación propia</label>
-                    <div className={styles.inputSuffix}>
-                      <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.aportacionPropia || ''} onChange={(e) => set('aportacionPropia', num(e.target.value))} inputMode="decimal" />
-                      <span className={styles.suffix}>€</span>
+                  {eurField('Aportación propia', 'Aportación propia', form.aportacionPropia, (n) => set('aportacionPropia', n), styles.wEur)}
+                  {!vinculado && (
+                    <div className={`${styles.fld} ${styles.fldC}`}>
+                      <label className={styles.lab}>Importe financiado</label>
+                      <div className={styles.inputSuffix}>
+                        <input className={`${styles.input} ${styles.inputRo} ${styles.wEur}`} readOnly value={fmtCampo(financiadoEfectivo)} aria-label="Importe financiado" />
+                        <span className={styles.suffix}>€</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className={`${styles.fld} ${styles.fldC}`}>
-                    <label className={styles.lab}>Importe financiado</label>
-                    <div className={styles.inputSuffix}>
-                      <input className={`${styles.input} ${styles.inputRo} ${styles.wEur}`} readOnly value={financiadoEfectivo ? eur(financiadoEfectivo) : '0'} />
-                      <span className={styles.suffix}>€</span>
-                    </div>
-                  </div>
+                  )}
                   <div className={styles.finSpacer} />
                   {financiadoEfectivo > 0 && !vinculado && (
                     <>
@@ -817,9 +805,13 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 {vinculado && (
                   <div className={styles.finLink}>
                     {vinculadas.map((l) => (
-                      <button key={l.id} type="button" className={styles.btnGh} style={{ justifyContent: 'space-between', display: 'flex', width: '100%' }} onClick={() => navigate(`/financiacion/${l.id}/editar`)}>
-                        <span><IconLink size={12} /> {l.nombre || 'Préstamo'}</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{eur(l.principalInicial)} €</span>
+                      <button key={l.id} type="button" className={styles.finLinked} onClick={() => navigate(`/financiacion/${l.id}/editar`)} title="Editar préstamo">
+                        <span className={styles.finLinkedName}>
+                          <IconLink size={13} /> {l.nombre || 'Préstamo'}
+                        </span>
+                        <span className={styles.finLinkedMeta}>
+                          financiado {eur(l.principalInicial)} € · deuda {eur(l.deudaPendiente)} € <IconExternal size={12} />
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -847,17 +839,17 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             </div>
           </div>
 
-          {/* PREVIEW */}
+          {/* PREVIEW · raíl navy "en directo" */}
           <div className={styles.colPreview}>
-            <div className={styles.previewTitle}>
-              <IconActivity size={12} /> Cálculo fiscal · vista previa
+            <div className={styles.pvHd}>
+              <span>Cálculo fiscal</span>
+              <span className={styles.pvLive}>● en directo</span>
             </div>
-            <div className={styles.pvHero}>
-              <div className={styles.pvHeroLab}>Coste base · adquisición</div>
-              <div className={styles.pvHeroVal}>{eur(resumen.costeBaseAdquisicion)} €</div>
-              <div className={styles.pvHeroSub}>Base de cálculo de plusvalía y amortización</div>
-            </div>
-            <div className={styles.pvBox}>
+            <div className={styles.pvHeroLab}>Coste base · adquisición</div>
+            <div className={styles.pvHeroVal}>{eur(resumen.costeBaseAdquisicion)} <span className={styles.pvCur}>€</span></div>
+            <div className={styles.pvHeroSub}>Base de plusvalía y amortización</div>
+
+            <div className={styles.pvBreak}>
               <div className={styles.pvRow}>
                 <span className={styles.pvL}>Precio compra</span>
                 <span className={styles.pvV}>{eur(form.precioCompra)} €</span>
@@ -875,6 +867,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 <span className={styles.pvV}>{eur(resumen.costeBaseAdquisicion)} €</span>
               </div>
             </div>
+
             <div className={styles.pvMini}>
               <div className={styles.pvCard}>
                 <div className={styles.pvCardL}>Base amortizable</div>
@@ -885,24 +878,21 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 <div className={styles.pvCardV}>{eur(resumen.amortizacionProrrateada)} €</div>
               </div>
             </div>
-            {vinculadas.length > 0 && (
+
+            {vinculado && (
               <>
-                <div className={styles.previewTitle} style={{ marginTop: 2 }}>
-                  <IconBank size={12} /> Financiación vinculada
-                </div>
-                <div className={styles.pvBox} style={{ marginBottom: 0 }}>
+                <div className={styles.pvSubHd}>Financiación vinculada</div>
+                <div className={styles.pvBreak}>
                   {vinculadas.map((l) => (
-                    <React.Fragment key={l.id}>
-                      <div className={styles.pvRow}>
-                        <span className={styles.pvL}>{l.nombre || 'Préstamo'}</span>
-                        <span className={styles.pvV}>{eur(l.deudaPendiente)} €</span>
-                      </div>
-                      <div className={styles.pvRow}>
-                        <span className={styles.pvL}>Cuota mensual imputada</span>
-                        <span className={styles.pvV}>{eur(l.cuotaMensual)} €</span>
-                      </div>
-                    </React.Fragment>
+                    <div className={styles.pvRow} key={l.id}>
+                      <span className={styles.pvL}>{l.nombre || 'Préstamo'} · cuota {eur(l.cuotaMensual)} €</span>
+                      <span className={styles.pvV}>{eur(l.deudaPendiente)} €</span>
+                    </div>
                   ))}
+                  <div className={`${styles.pvRow} ${styles.pvRowTot}`}>
+                    <span className={styles.pvL}>Deuda pendiente</span>
+                    <span className={styles.pvV}>{eur(deudaVinculada)} €</span>
+                  </div>
                 </div>
               </>
             )}
@@ -912,7 +902,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
           <div className={`${styles.drawer} ${drawerOpen ? styles.drawerOpen : ''}`}>
             <div className={styles.drawerHd}>
               Foto del inmueble
-              <button type="button" className={styles.headerClose} style={{ color: 'var(--atlas-v5-ink-3)', borderColor: 'var(--atlas-v5-line)' }} onClick={() => setDrawerOpen(false)} aria-label="Cerrar foto">
+              <button type="button" className={styles.headerCloseLight} onClick={() => setDrawerOpen(false)} aria-label="Cerrar foto">
                 <IconX size={14} />
               </button>
             </div>
