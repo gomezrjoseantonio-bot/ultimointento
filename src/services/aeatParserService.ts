@@ -249,7 +249,7 @@ interface PdfPreparado {
 const MIN_CASILLAS_PARSING_OK = 5;
 const OCR_TIMEOUT_MS = 90_000;
 
-async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
+export async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
   try {
     const { pdfjs } = await import('react-pdf');
     pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
@@ -373,7 +373,7 @@ function buscarCabeceraPdf(bytes: Uint8Array): number {
   return -1;
 }
 
-function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): CasillasRaw {
+export function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): CasillasRaw {
   const resultado: CasillasRaw = {};
   const patrones = obtenerPatronesCasillasNumericas();
 
