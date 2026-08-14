@@ -11,7 +11,7 @@
  */
 
 import { initDB } from './db';
-import type { Property, EjercicioFiscalCoord, AeatVersion, Document, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria } from './db';
+import type { Property, EjercicioFiscalCoord, AeatVersion, Document, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria, MejoraInmueble } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { baseAmortizableEjercicioService } from './baseAmortizableEjercicioService';
 import { invalidateCachedStores } from './indexedDbCacheService';
@@ -1853,11 +1853,32 @@ async function escribirFiscalSummaries(
   }
 }
 
+/** Descripción del marcador de mejoras anteriores aún sin identificar por año origen. */
+const DESC_MEJORAS_PENDIENTES = 'Mejoras anteriores sin identificar';
+/** Descripción del marcador legacy (import antiguo) — se reconcilia igual. */
+const DESC_MEJORAS_LEGACY = 'Mejoras anteriores acumuladas declaradas en IRPF';
+
+/**
+ * ¿Es un MARCADOR de mejoras anteriores (no un origen real)? Un marcador
+ * representa el CAPEX de reformas hechas en años que todavía no se han
+ * importado; se disuelve cuando se importa el año origen que lo explica.
+ */
+function esMarcadorMejorasAnteriores(m: MejoraInmueble): boolean {
+  return (
+    m.tipo !== 'reparacion' &&
+    (m.descripcion.startsWith(DESC_MEJORAS_PENDIENTES) || m.descripcion.startsWith(DESC_MEJORAS_LEGACY))
+  );
+}
+
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+
 async function escribirMejoras(
   db: DB,
   decl: DeclaracionCompleta,
   porRefCatastral: Map<string, Property>,
 ): Promise<void> {
+  const { mejorasInmuebleService } = await import('./mejorasInmuebleService');
+
   for (const inm of decl.inmuebles) {
     if (inm.esAccesorioDe) continue;
 
@@ -1868,37 +1889,68 @@ async function escribirMejoras(
       continue;
     }
 
-    const { mejorasInmuebleService } = await import('./mejorasInmuebleService');
-    const existentes = await mejorasInmuebleService.getPorInmueble(property.id);
+    const Y = decl.meta.ejercicio;
 
-    // 1. Mejoras del ejercicio
+    // ── Estado ANTES de este import (para reconciliar sin depender del orden) ──
+    const inicial = await mejorasInmuebleService.getPorInmueble(property.id);
+    const marcadorInicial = inicial.find(esMarcadorMejorasAnteriores) ?? null;
+    const phInicial = marcadorInicial ? marcadorInicial.importe : 0;
+    const sumOrigenesInicial = inicial
+      .filter((m) => m.tipo !== 'reparacion' && !esMarcadorMejorasAnteriores(m))
+      .reduce((s, m) => s + m.importe, 0);
+    // Máximo CAPEX total "prometido" por declaraciones ya vistas: orígenes reales
+    // más lo que quedaba pendiente de identificar.
+    const prevMax = sumOrigenesInicial + phInicial;
+
+    // ── 1. Mejoras del ejercicio (orígenes reales del año Y) ──
+    let creadasEsteAnio = 0;
     for (const mejora of inm.mejorasEjercicio) {
       if (mejora.importe <= 0) continue;
       const nifProv = mejora.nifProveedor || '';
-      const duplicada = existentes.find(m =>
-        m.ejercicio === decl.meta.ejercicio && m.tipo === 'mejora' &&
+      const duplicada = inicial.find(m =>
+        m.ejercicio === Y && m.tipo === 'mejora' &&
         Math.abs(m.importe - mejora.importe) < 1 && (m.proveedorNIF || '') === nifProv
       );
       if (duplicada) continue;
       await mejorasInmuebleService.crear({
-        inmuebleId: property.id, ejercicio: decl.meta.ejercicio, tipo: 'mejora',
-        importe: mejora.importe, descripcion: `Mejora declarada IRPF ${decl.meta.ejercicio}`,
-        fecha: mejora.fecha ? toISODate(mejora.fecha) : `${decl.meta.ejercicio}-12-31`,
+        inmuebleId: property.id, ejercicio: Y, tipo: 'mejora',
+        importe: mejora.importe, descripcion: `Mejora declarada IRPF ${Y}`,
+        fecha: mejora.fecha ? toISODate(mejora.fecha) : `${Y}-12-31`,
         proveedorNIF: nifProv,
       });
+      creadasEsteAnio += mejora.importe;
     }
 
-    // 2. Mejoras anteriores acumuladas (reparaciones van a gastosInmueble via escribirFiscalSummaries)
-    if (inm.mejorasAnteriores && inm.mejorasAnteriores > 0) {
-      const tieneAnteriores = existentes.some(m => m.tipo !== 'reparacion' && m.ejercicio < decl.meta.ejercicio);
-      if (!tieneAnteriores) {
+    // ── 2. Reconciliación de mejoras anteriores (información que se nutre a sí misma) ──
+    // La declaración de Y afirma un CAPEX acumulado total = anteriores + las del
+    // propio ejercicio. Ese total, cruzado con los orígenes reales ya conocidos,
+    // define cuánto queda "pendiente de identificar" (marcador). El marcador se
+    // reduce/disuelve solo cuando se importan los años origen que lo explican.
+    const mejorasEjercicioSum = (inm.mejorasEjercicio || []).reduce((s, m) => s + (m.importe || 0), 0);
+    const totalReportadoY = round2((inm.mejorasAnteriores || 0) + mejorasEjercicioSum);
+    const sumOrigenesFinal = round2(sumOrigenesInicial + creadasEsteAnio);
+    // Nunca "olvidamos" CAPEX ya prometido: el objetivo es el máximo visto.
+    const objetivoCapex = Math.max(prevMax, totalReportadoY);
+    const pendiente = round2(Math.max(0, objetivoCapex - sumOrigenesFinal));
+
+    if (pendiente > 1) {
+      if (marcadorInicial?.id != null) {
+        await mejorasInmuebleService.actualizar(marcadorInicial.id, {
+          importe: pendiente,
+          descripcion: `${DESC_MEJORAS_PENDIENTES} (origen anterior a ${Y})`,
+        });
+      } else {
         await mejorasInmuebleService.crear({
-          inmuebleId: property.id, ejercicio: decl.meta.ejercicio - 1, tipo: 'mejora',
-          importe: inm.mejorasAnteriores,
-          descripcion: `Mejoras anteriores acumuladas declaradas en IRPF ${decl.meta.ejercicio}`,
-          fecha: `${decl.meta.ejercicio - 1}-12-31`, proveedorNIF: '',
+          inmuebleId: property.id, ejercicio: Y - 1, tipo: 'mejora',
+          importe: pendiente,
+          descripcion: `${DESC_MEJORAS_PENDIENTES} (origen anterior a ${Y})`,
+          fecha: `${Y - 1}-12-31`, proveedorNIF: '',
         });
       }
+    } else if (marcadorInicial?.id != null) {
+      // Todo el CAPEX anterior queda explicado por orígenes reales → el marcador
+      // se disuelve (evita doble conteo en la base de la plusvalía).
+      await mejorasInmuebleService.eliminar(marcadorInicial.id);
     }
   }
 }
