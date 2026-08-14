@@ -397,6 +397,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     if (savedId == null) return;
     const initialData = prefillPrestamoDesdeInmueble({
       alias: form.alias.trim(),
+      direccion: form.direccion.trim(),
       importeFinanciado: form.importeFinanciado,
       fechaCompra: form.fechaCompra,
       inmuebleId: savedId,

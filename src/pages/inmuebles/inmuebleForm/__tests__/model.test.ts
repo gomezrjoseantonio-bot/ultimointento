@@ -176,20 +176,33 @@ describe('emptyMeta', () => {
 });
 
 describe('prefillPrestamoDesdeInmueble', () => {
-  it('con inmueble · destino ADQUISICIÓN + garantía hipotecaria + importe', () => {
+  it('con inmueble · hipotecario + destino ADQUISICIÓN + garantía · nombre por dirección', () => {
     const pre = prefillPrestamoDesdeInmueble({
       alias: 'Tenderina 64',
+      direccion: 'CL Tenderina 64',
       importeFinanciado: 75000,
       fechaCompra: '2023-08-25',
       inmuebleId: 2,
     });
     expect(pre.principalInicial).toBe(75000);
     expect(pre.ambito).toBe('INMUEBLE');
+    expect(pre.tipoPrestamoV2).toBe('hipotecario'); // arranca como hipotecario, sin clic extra
+    expect(pre.nombre).toBe('Hipoteca CL Tenderina 64'); // dirección, no alias
     expect(pre.destinos?.[0]).toMatchObject({ tipo: 'ADQUISICION', inmuebleId: '2', importe: 75000 });
     expect(pre.garantias?.[0]).toMatchObject({ tipo: 'HIPOTECARIA', inmuebleId: '2' });
   });
 
-  it('sin inmueble (alta sin guardar) · solo importe, sin destino/garantía', () => {
+  it('sin dirección · cae al alias para el nombre', () => {
+    const pre = prefillPrestamoDesdeInmueble({
+      alias: 'Tenderina 64',
+      importeFinanciado: 75000,
+      fechaCompra: '2023-08-25',
+      inmuebleId: 2,
+    });
+    expect(pre.nombre).toBe('Hipoteca Tenderina 64');
+  });
+
+  it('sin inmueble (alta sin guardar) · solo importe, sin destino/garantía/tipo', () => {
     const pre = prefillPrestamoDesdeInmueble({
       alias: 'Nuevo',
       importeFinanciado: 50000,
@@ -198,6 +211,7 @@ describe('prefillPrestamoDesdeInmueble', () => {
     });
     expect(pre.principalInicial).toBe(50000);
     expect(pre.ambito).toBe('PERSONAL');
+    expect(pre.tipoPrestamoV2).toBeUndefined();
     expect(pre.destinos).toBeUndefined();
     expect(pre.garantias).toBeUndefined();
   });

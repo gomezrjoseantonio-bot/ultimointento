@@ -36,14 +36,19 @@ const esVivo = (p: Prestamo): boolean =>
  * `inmuebleId` es `undefined` en altas todavía sin guardar: en ese caso el
  * asistente se abre con el importe pero sin inmueble, y el enlace se hará
  * cuando el inmueble ya exista.
+ *
+ * Con inmueble el asistente arranca ya como HIPOTECARIO (`tipoPrestamoV2`) para
+ * no obligar a otro clic, y el nombre se toma de la DIRECCIÓN del inmueble
+ * (el alias es un mote; la dirección identifica mejor la hipoteca).
  */
 export function prefillPrestamoDesdeInmueble(params: {
   alias: string;
+  direccion?: string;
   importeFinanciado: number;
   fechaCompra: string;
   inmuebleId?: number;
 }): Partial<Prestamo> {
-  const { alias, importeFinanciado, fechaCompra, inmuebleId } = params;
+  const { alias, direccion, importeFinanciado, fechaCompra, inmuebleId } = params;
   const idStr = inmuebleId != null ? String(inmuebleId) : undefined;
 
   const destinos: DestinoCapital[] | undefined = idStr
@@ -62,9 +67,14 @@ export function prefillPrestamoDesdeInmueble(params: {
     ? [{ tipo: 'HIPOTECARIA', inmuebleId: idStr }]
     : undefined;
 
+  const etiqueta = (direccion || '').trim() || (alias || '').trim();
+
   return {
-    nombre: alias ? `Hipoteca ${alias}` : undefined,
+    nombre: etiqueta ? `Hipoteca ${etiqueta}` : undefined,
     ambito: idStr ? 'INMUEBLE' : 'PERSONAL',
+    // Marca el tipo para que el asistente lo lea (formDesdePrestamo mira
+    // `tipoPrestamoV2`/legacy `inmuebleId`, no `ambito`) y no caiga en personal.
+    ...(idStr ? { tipoPrestamoV2: 'hipotecario' as const } : {}),
     principalInicial: importeFinanciado || undefined,
     fechaFirma: fechaCompra || undefined,
     ...(destinos ? { destinos } : {}),
