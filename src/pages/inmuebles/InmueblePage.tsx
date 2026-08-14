@@ -22,11 +22,11 @@ import {
   X as IconX,
   Check as IconCheck,
   AlertCircle as IconAlert,
+  Activity as IconActivity,
   Banknote as IconBank,
   Image as IconImage,
   MapPin as IconPin,
   Plus as IconPlus,
-  Link2 as IconLink,
   ExternalLink as IconExternal,
 } from 'lucide-react';
 
@@ -728,7 +728,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </div>
                 </span>
               </div>
-              {/* fila A · fecha, precio, impuestos */}
+              {/* una sola fila · fecha · precio · impuestos · gastos (sin salto de línea) */}
               <div className={styles.wrap}>
                 <div className={`${styles.fld} ${styles.fldC}`}>
                   <label className={styles.lab}>Fecha <span className={styles.req}>*</span></label>
@@ -743,9 +743,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 ) : (
                   eurField('ITP', 'ITP', form.itp, (n) => { set('itp', n); set('itpIsManual', true); }, styles.wEur)
                 )}
-              </div>
-              {/* fila B · gastos */}
-              <div className={styles.wrap} style={{ marginTop: 8 }}>
                 {eurField('Notaría', 'Notaría', form.notaria, (n) => set('notaria', n), styles.wEurS)}
                 {eurField('Registro', 'Registro', form.registro, (n) => set('registro', n), styles.wEurS)}
                 {eurField('Gestoría', 'Gestoría', form.gestoria, (n) => set('gestoria', n), styles.wEurS)}
@@ -759,15 +756,13 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 </div>
                 <div className={styles.finLine}>
                   {eurField('Aportación propia', 'Aportación propia', form.aportacionPropia, (n) => set('aportacionPropia', n), styles.wEur)}
-                  {!vinculado && (
-                    <div className={`${styles.fld} ${styles.fldC}`}>
-                      <label className={styles.lab}>Importe financiado</label>
-                      <div className={styles.inputSuffix}>
-                        <input className={`${styles.input} ${styles.inputRo} ${styles.wEur}`} readOnly value={fmtCampo(financiadoEfectivo)} aria-label="Importe financiado" />
-                        <span className={styles.suffix}>€</span>
-                      </div>
+                  <div className={`${styles.fld} ${styles.fldC}`}>
+                    <label className={styles.lab}>Importe financiado {vinculado && <span className={styles.hint}>· del préstamo</span>}</label>
+                    <div className={styles.inputSuffix}>
+                      <input className={`${styles.input} ${styles.inputRo} ${styles.wEur}`} readOnly value={fmtCampo(financiadoEfectivo)} aria-label="Importe financiado" />
+                      <span className={styles.suffix}>€</span>
                     </div>
-                  )}
+                  </div>
                   <div className={styles.finSpacer} />
                   {financiadoEfectivo > 0 && !vinculado && (
                     <>
@@ -802,21 +797,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </div>
                 )}
 
-                {vinculado && (
-                  <div className={styles.finLink}>
-                    {vinculadas.map((l) => (
-                      <button key={l.id} type="button" className={styles.finLinked} onClick={() => navigate(`/financiacion/${l.id}/editar`)} title="Editar préstamo">
-                        <span className={styles.finLinkedName}>
-                          <IconLink size={13} /> {l.nombre || 'Préstamo'}
-                        </span>
-                        <span className={styles.finLinkedMeta}>
-                          financiado {eur(l.principalInicial)} € · deuda {eur(l.deudaPendiente)} € <IconExternal size={12} />
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
                 {hayDescuadre && (
                   <div className={styles.warnLine}>
                     Aportación + financiado no cuadra con el coste ({descuadre > 0 ? 'sobran' : 'faltan'} {eur(Math.abs(descuadre))} €)
@@ -839,17 +819,19 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             </div>
           </div>
 
-          {/* PREVIEW · raíl navy "en directo" */}
+          {/* PREVIEW · fondo claro con tarjeta navy (mockup aprobado) */}
           <div className={styles.colPreview}>
             <div className={styles.pvHd}>
-              <span>Cálculo fiscal</span>
-              <span className={styles.pvLive}>● en directo</span>
+              <IconActivity size={12} /> Cálculo fiscal · vista previa
             </div>
-            <div className={styles.pvHeroLab}>Coste base · adquisición</div>
-            <div className={styles.pvHeroVal}>{eur(resumen.costeBaseAdquisicion)} <span className={styles.pvCur}>€</span></div>
-            <div className={styles.pvHeroSub}>Base de plusvalía y amortización</div>
 
-            <div className={styles.pvBreak}>
+            <div className={styles.pvHero}>
+              <div className={styles.pvHeroLab}>Coste base · adquisición</div>
+              <div className={styles.pvHeroVal}>{eur(resumen.costeBaseAdquisicion)} <span className={styles.pvCur}>€</span></div>
+              <div className={styles.pvHeroSub}>Base de cálculo de plusvalía y amortización</div>
+            </div>
+
+            <div className={styles.pvBox}>
               <div className={styles.pvRow}>
                 <span className={styles.pvL}>Precio compra</span>
                 <span className={styles.pvV}>{eur(form.precioCompra)} €</span>
@@ -881,11 +863,20 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
 
             {vinculado && (
               <>
-                <div className={styles.pvSubHd}>Financiación vinculada</div>
-                <div className={styles.pvBreak}>
+                <div className={styles.pvSubHd}><IconBank size={12} /> Financiación vinculada</div>
+                <div className={styles.pvBox} style={{ marginBottom: 0 }}>
                   {vinculadas.map((l) => (
-                    <div className={styles.pvRow} key={l.id}>
-                      <span className={styles.pvL}>{l.nombre || 'Préstamo'} · cuota {eur(l.cuotaMensual)} €</span>
+                    <div
+                      className={`${styles.pvRow} ${styles.pvRowLink}`}
+                      key={l.id}
+                      role="button"
+                      tabIndex={0}
+                      title="Editar préstamo en Financiación"
+                      onClick={() => navigate(`/financiacion/${l.id}/editar`)}
+                    >
+                      <span className={styles.pvL}>
+                        {l.nombre || 'Préstamo'} · cuota {eur(l.cuotaMensual)} € <IconExternal size={11} />
+                      </span>
                       <span className={styles.pvV}>{eur(l.deudaPendiente)} €</span>
                     </div>
                   ))}
