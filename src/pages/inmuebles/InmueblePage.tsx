@@ -1,13 +1,14 @@
 /**
  * Ficha de inmueble · alta/edición · pantalla única ATLAS (rediseño · decisión Jose).
  *
- * Un solo lienzo sin scroll en 3 capítulos con hilo + foto: 1 El activo · 2
- * Características y fiscal · 3 La compra · 4 Foto (drawer). Campos del ANCHO de su
- * dato; toggles de un toque; ubicación derivada del CP; impuestos AUTO por estado
- * (ITP o IVA+AJD); financiación en una línea con "vincular existente" inline. Los
- * importes se formatean en es-ES (miles + coma) vía `MoneyInput`. El preview de la
- * derecha es un raíl NAVY "en directo" (coherente con el asistente de préstamo).
- * El estado pasa por un MODELO con mappers SIN pérdida (`inmuebleForm/model.ts`).
+ * Cuatro capítulos: 1 El activo · 2 Características del activo (con iconos) · 3
+ * Fiscalidad · 4 La compra. Campos del ANCHO de su dato; toggles de un toque;
+ * ubicación derivada del CP; impuestos AUTO por estado (ITP o IVA+AJD);
+ * financiación con "vincular existente" inline. Importes en es-ES (miles + coma)
+ * vía `MoneyInput`. El raíl DERECHO es navy "en directo" con el mismo lenguaje que
+ * el asistente de préstamo (número en oro, tarjetas navy) e incluye la subsección
+ * de FOTO (se añade ahí mismo, sin drawer). El estado pasa por un MODELO con
+ * mappers SIN pérdida (`inmuebleForm/model.ts`).
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -22,12 +23,17 @@ import {
   X as IconX,
   Check as IconCheck,
   AlertCircle as IconAlert,
-  Activity as IconActivity,
   Banknote as IconBank,
   Image as IconImage,
   MapPin as IconPin,
   Plus as IconPlus,
   ExternalLink as IconExternal,
+  BedDouble as IconBed,
+  Bath as IconBath,
+  Sun as IconSun,
+  Package as IconPackage,
+  Car as IconCar,
+  MoveVertical as IconElevator,
 } from 'lucide-react';
 
 import { initDB } from '../../services/db';
@@ -137,15 +143,16 @@ const MoneyInput: React.FC<{ value: number; onChange: (n: number) => void; class
 };
 
 // ─── Toggle de un toque (booleano · azul) ───
-const Toggle: React.FC<{ label: string; on: boolean; onChange: (v: boolean) => void; onText?: string; offText?: string }> = ({
+const Toggle: React.FC<{ label: string; icon?: React.ReactNode; on: boolean; onChange: (v: boolean) => void; onText?: string; offText?: string }> = ({
   label,
+  icon,
   on,
   onChange,
   onText = 'Sí',
   offText = 'No',
 }) => (
   <div className={styles.toggleField}>
-    <span className={styles.lab}>{label}</span>
+    <span className={styles.lab} title={label} aria-hidden={!!icon}>{icon ?? label}</span>
     <div className={styles.tog}>
       <button
         type="button"
@@ -175,7 +182,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   const [vinculadas, setVinculadas] = useState<FinanciacionLineaInmueble[]>([]);
   const [vinculables, setVinculables] = useState<Prestamo[]>([]);
   const [purchaseDateOriginal, setPurchaseDateOriginal] = useState<string>('');
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [vincularOpen, setVincularOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const formRef = useRef(form);
@@ -237,13 +243,12 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (drawerOpen) setDrawerOpen(false);
-        else cancelRef.current();
+        cancelRef.current();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [drawerOpen]);
+  }, []);
 
   // ─── auto-rellenar ubicación desde CP ───
   useEffect(() => {
@@ -551,7 +556,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                       onClick={() => handleTipoChange(t)}
                       aria-pressed={form.tipoActivo === t}
                     >
-                      <Icon size={16} />
+                      <span className={styles.typeIcon}><Icon size={17} /></span>
                       <span>{TIPO_LABELS[t]}</span>
                     </button>
                   );
@@ -639,11 +644,11 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
               </div>
             </div>
 
-            {/* 2 · CARACTERÍSTICAS Y FISCAL */}
+            {/* 2 · CARACTERÍSTICAS DEL ACTIVO */}
             <div className={styles.band}>
               <div className={styles.bandHd}>
                 <span className={styles.bandNo}>2</span>
-                <span className={styles.bandTitle}>Características y fiscal</span>
+                <span className={styles.bandTitle}>Características del activo</span>
               </div>
               <div className={styles.wrap}>
                 <div className={`${styles.fld} ${styles.fldC}`}>
@@ -653,18 +658,18 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 {vis.showHabitacionesBanos && (
                   <>
                     <div className={`${styles.fld} ${styles.fldC}`}>
-                      <label className={styles.lab}>Hab.</label>
-                      <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.habitaciones || ''} onChange={(e) => set('habitaciones', num(e.target.value))} inputMode="numeric" />
+                      <label className={styles.lab} title="Habitaciones"><IconBed size={16} /></label>
+                      <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.habitaciones || ''} onChange={(e) => set('habitaciones', num(e.target.value))} inputMode="numeric" aria-label="Habitaciones" />
                     </div>
                     <div className={`${styles.fld} ${styles.fldC}`}>
-                      <label className={styles.lab}>Baños</label>
-                      <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.banos || ''} onChange={(e) => set('banos', num(e.target.value))} inputMode="numeric" />
+                      <label className={styles.lab} title="Baños"><IconBath size={16} /></label>
+                      <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.banos || ''} onChange={(e) => set('banos', num(e.target.value))} inputMode="numeric" aria-label="Baños" />
                     </div>
                   </>
                 )}
                 <div className={`${styles.fld} ${styles.fldC}`}>
                   <label className={styles.lab}>Cert.</label>
-                  <select className={styles.input} style={{ width: 66 }} value={form.certificadoEnergetico} onChange={(e) => set('certificadoEnergetico', e.target.value)}>
+                  <select className={styles.input} style={{ width: 68 }} value={form.certificadoEnergetico} onChange={(e) => set('certificadoEnergetico', e.target.value)} aria-label="Certificado energético">
                     <option value="">—</option>
                     <option value="NO">No</option>
                     {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => (
@@ -674,15 +679,12 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 </div>
                 {vis.showAnexos && (
                   <>
-                    <Toggle label="Terraza" on={form.tieneTerraza} onChange={(v) => set('tieneTerraza', v)} />
-                    <Toggle label="Trastero" on={form.tieneTrastero} onChange={(v) => set('tieneTrastero', v)} />
-                    <Toggle label="Parking" on={form.tieneParking} onChange={(v) => set('tieneParking', v)} />
-                    <Toggle label="Ascensor" on={form.tieneAscensor} onChange={(v) => set('tieneAscensor', v)} />
+                    <Toggle label="Terraza" icon={<IconSun size={16} />} on={form.tieneTerraza} onChange={(v) => set('tieneTerraza', v)} />
+                    <Toggle label="Trastero" icon={<IconPackage size={16} />} on={form.tieneTrastero} onChange={(v) => set('tieneTrastero', v)} />
+                    <Toggle label="Parking" icon={<IconCar size={16} />} on={form.tieneParking} onChange={(v) => set('tieneParking', v)} />
+                    <Toggle label="Ascensor" icon={<IconElevator size={16} />} on={form.tieneAscensor} onChange={(v) => set('tieneAscensor', v)} />
                   </>
                 )}
-              </div>
-
-              <div className={styles.wrap} style={{ marginTop: 8 }}>
                 <div className={styles.toggleField}>
                   <span className={styles.lab}>Suelo</span>
                   <div className={styles.tog}>
@@ -697,6 +699,16 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                     <span className={styles.togVal}>{form.esUrbana ? 'Urbana' : 'Rústica'}</span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* 3 · FISCALIDAD */}
+            <div className={styles.band}>
+              <div className={styles.bandHd}>
+                <span className={styles.bandNo}>3</span>
+                <span className={styles.bandTitle}>Fiscalidad</span>
+              </div>
+              <div className={styles.wrap}>
                 {eurField('V. cat. total', 'Valor catastral total', form.valorCatastralTotal, (n) => set('valorCatastralTotal', n), styles.wEur)}
                 {eurField('V. cat. constr.', 'Valor catastral construcción', form.valorCatastralConstruccion, (n) => set('valorCatastralConstruccion', n), styles.wEur)}
                 <div className={`${styles.fld} ${styles.fldC}`}>
@@ -708,10 +720,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
               </div>
             </div>
 
-            {/* 3 · LA COMPRA */}
+            {/* 4 · LA COMPRA */}
             <div className={styles.band}>
               <div className={styles.bandHd}>
-                <span className={styles.bandNo}>3</span>
+                <span className={styles.bandNo}>4</span>
                 <span className={styles.bandTitle}>La compra</span>
                 <span className={styles.estadoWrap}>
                   Estado
@@ -805,30 +817,30 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
               </div>
             </div>
 
-            {/* 4 · FOTO */}
-            <div className={styles.fotoBar}>
-              <div className={styles.fotoL}>
-                <span className={styles.bandNo}>4</span> Foto del inmueble
-              </div>
-              <div className={styles.fotoThumbWrap}>
-                {form.foto && <img className={styles.fotoThumb} src={form.foto} alt="Miniatura del inmueble" />}
-                <button type="button" className={styles.fotoBtn} onClick={() => setDrawerOpen(true)}>
-                  <IconImage size={14} /> {form.foto ? 'Cambiar foto' : 'Añadir foto'}
-                </button>
-              </div>
-            </div>
           </div>
 
-          {/* PREVIEW · fondo claro con tarjeta navy (mockup aprobado) */}
+          {/* PREVIEW · raíl navy "en directo" (mismo lenguaje que el asistente de préstamo) */}
           <div className={styles.colPreview}>
             <div className={styles.pvHd}>
-              <IconActivity size={12} /> Cálculo fiscal · vista previa
+              <span>Cálculo fiscal</span>
+              <span className={styles.pvLive}><span className={styles.pvDot} /> en directo</span>
             </div>
 
             <div className={styles.pvHero}>
               <div className={styles.pvHeroLab}>Coste base · adquisición</div>
               <div className={styles.pvHeroVal}>{eur(resumen.costeBaseAdquisicion)} <span className={styles.pvCur}>€</span></div>
               <div className={styles.pvHeroSub}>Base de cálculo de plusvalía y amortización</div>
+            </div>
+
+            <div className={styles.pvMini}>
+              <div className={styles.pvCard}>
+                <div className={styles.pvCardL}>Base amortizable</div>
+                <div className={styles.pvCardV}>{int(resumen.baseAmortizable)} €</div>
+              </div>
+              <div className={styles.pvCard}>
+                <div className={styles.pvCardL}>Amortización 3%/año</div>
+                <div className={styles.pvCardV}>{eur(resumen.amortizacionProrrateada)} €</div>
+              </div>
             </div>
 
             <div className={styles.pvBox}>
@@ -850,21 +862,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
               </div>
             </div>
 
-            <div className={styles.pvMini}>
-              <div className={styles.pvCard}>
-                <div className={styles.pvCardL}>Base amortizable</div>
-                <div className={styles.pvCardV}>{int(resumen.baseAmortizable)} €</div>
-              </div>
-              <div className={styles.pvCard}>
-                <div className={styles.pvCardL}>Amortización 3%/año</div>
-                <div className={styles.pvCardV}>{eur(resumen.amortizacionProrrateada)} €</div>
-              </div>
-            </div>
-
             {vinculado && (
               <>
                 <div className={styles.pvSubHd}><IconBank size={12} /> Financiación vinculada</div>
-                <div className={styles.pvBox} style={{ marginBottom: 0 }}>
+                <div className={styles.pvBox}>
                   {vinculadas.map((l) => (
                     <div
                       className={`${styles.pvRow} ${styles.pvRowLink}`}
@@ -887,38 +888,29 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 </div>
               </>
             )}
-          </div>
 
-          {/* DRAWER FOTO */}
-          <div className={`${styles.drawer} ${drawerOpen ? styles.drawerOpen : ''}`}>
-            <div className={styles.drawerHd}>
-              Foto del inmueble
-              <button type="button" className={styles.headerCloseLight} onClick={() => setDrawerOpen(false)} aria-label="Cerrar foto">
-                <IconX size={14} />
-              </button>
-            </div>
-            {form.foto ? (
-              <img className={styles.photoPreview} src={form.foto} alt="Foto del inmueble" />
-            ) : (
-              <div className={styles.dropZone} onClick={() => fileInputRef.current?.click()}>
-                <IconImage size={26} />
-                <div style={{ marginTop: 8 }}>
-                  Pulsa para subir una imagen
-                  <br />
-                  <span className={styles.hint}>JPG / PNG · máx 1.5 MB</span>
-                </div>
+            {/* FOTO · subsección del raíl (sin drawer · se añade aquí mismo) */}
+            <div className={styles.pvFoto}>
+              <div className={styles.pvSubHd}><IconImage size={12} /> Foto del inmueble</div>
+              <div className={styles.pvFotoBody}>
+                {form.foto && <img className={styles.pvFotoThumb} src={form.foto} alt="Foto del inmueble" />}
+                {form.foto ? (
+                  <div className={styles.pvFotoActions}>
+                    <button type="button" className={styles.pvFotoBtn} onClick={() => fileInputRef.current?.click()}>
+                      <IconImage size={13} /> Cambiar
+                    </button>
+                    <button type="button" className={styles.pvFotoBtn} onClick={() => setForm((p) => ({ ...p, foto: undefined, fotoOn: false }))}>
+                      Quitar
+                    </button>
+                  </div>
+                ) : (
+                  <div className={styles.pvFotoDrop} role="button" tabIndex={0} onClick={() => fileInputRef.current?.click()}>
+                    <IconImage />
+                    <div style={{ marginTop: 6 }}>Pulsa para subir · JPG / PNG · máx 1.5 MB</div>
+                  </div>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
               </div>
-            )}
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" className={styles.btnGh} style={{ flex: 1 }} onClick={() => fileInputRef.current?.click()}>
-                {form.foto ? 'Cambiar' : 'Elegir archivo'}
-              </button>
-              {form.foto && (
-                <button type="button" className={styles.btnGh} style={{ flex: 1 }} onClick={() => setForm((p) => ({ ...p, foto: undefined, fotoOn: false }))}>
-                  Quitar
-                </button>
-              )}
             </div>
           </div>
         </div>
