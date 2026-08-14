@@ -21,6 +21,8 @@ import { getEjercicio } from '../ejercicioResolverService';
 import { gastosInmuebleService } from '../gastosInmuebleService';
 import { mejorasInmuebleService } from '../mejorasInmuebleService';
 import { getCarryForwardsDisponibles } from '../carryForwardService';
+import { calcularDeclaracionIRPF } from '../irpfCalculationService';
+import { invalidateFiscalCache } from '../fiscalCacheService';
 import { OPCIONES_DEFAULT } from '../../types/opcionesDistribucion';
 import type { DeclaracionCompleta, InmuebleDeclarado } from '../../types/declaracionCompleta';
 
@@ -234,6 +236,43 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
     const casillas = filas.filter((g) => g.origen === 'xml_aeat').map((g) => g.casillaAEAT).sort();
     expect(casillas).toEqual(['0109', '0114', '0115']); // comunidad, seguros, IBI
   });
+
+  it('imputación días vacantes: el import propaga VC + revisado y el motor imputa 2% / 1,1% prorrateado', async () => {
+    // Dos inmuebles a disposición del titular todo el año (sin arrendamiento).
+    // Mismo valor catastral; uno con catastral SIN revisar (2%) y otro revisado
+    // (1,1%). Antes el motor leía un campo legacy que el import nunca escribe, de
+    // modo que todo importado se imputaba al 2% fijo; este test lo blinda.
+    const IMP_NR = '4444444DD4444D0001EE'; // no revisado
+    const IMP_RV = '5555555EE5555E0001FF'; // revisado
+    const disposicionTodoElAnio = [{ tipo: 'disposicion' as const, dias: 365 }];
+    await distribuirDeclaracion(declaracion(2023, [
+      inmueble({ refCatastral: IMP_NR, direccion: 'CL VACIA 1 A VALENCIA',
+        valorCatastral: 100000, catastralRevisado: false, usos: disposicionTodoElAnio }),
+      inmueble({ refCatastral: IMP_RV, direccion: 'CL VACIA 2 B VALENCIA',
+        valorCatastral: 100000, catastralRevisado: true, usos: disposicionTodoElAnio }),
+    ]), OPCIONES_DEFAULT);
+
+    // El import creó las properties con fiscalData.cadastralValue + cadastralRevised.
+    const pNr = await propByRef(IMP_NR);
+    const pRv = await propByRef(IMP_RV);
+    expect(pNr.fiscalData?.cadastralValue).toBe(100000);
+    expect(pNr.fiscalData?.cadastralRevised).toBe(false);
+    expect(pRv.fiscalData?.cadastralRevised).toBe(true);
+
+    invalidateFiscalCache(2023); // el motor cachea por ejercicio en memoria
+    const decl = await calcularDeclaracionIRPF(2023);
+    const impNr = decl.baseGeneral.imputacionRentas.find((i) => i.inmuebleId === pNr.id);
+    const impRv = decl.baseGeneral.imputacionRentas.find((i) => i.inmuebleId === pRv.id);
+
+    // Sin alquiler ni obras → días vacantes = año completo (365). Prorrateo ×1.
+    expect(impNr?.diasVacio).toBe(365);
+    expect(impNr?.imputacion).toBeCloseTo(2000, 2);   // 100000 × 2%   × 365/365
+    expect(impRv?.imputacion).toBeCloseTo(1100, 2);   // 100000 × 1,1% × 365/365
+    // El prorrateo por días es real: mismo VC, mismo tipo, media imputación si
+    // se vendiera a mitad de año lo verifica el bloque de venta; aquí basta con
+    // que el denominador sea el año y el porcentaje dependa de `revisado`.
+    expect(impRv!.imputacion).toBeLessThan(impNr!.imputacion);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -241,6 +280,5 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
 // Se dejan como `todo` (visibles en CI, sin romper la build) hasta implementarlos.
 // ═══════════════════════════════════════════════════════════════════════════
 describe('Garantía de importación · huecos conocidos (pendientes de implementar)', () => {
-  it.todo('Imputación de renta: días vacantes generan imputación (2% / 1,1% si catastral revisado) prorrateada');
   it.todo('Import por PDF (justificante): extrae el resumen de forma fiable, sin depender de conversores externos');
 });
