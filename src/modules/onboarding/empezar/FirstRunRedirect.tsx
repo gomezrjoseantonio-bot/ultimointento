@@ -19,6 +19,21 @@ type Decision = 'pending' | 'empezar' | 'panel';
  */
 export async function decideFirstRun(): Promise<Exclude<Decision, 'pending'>> {
   try {
+    // Escape para QA / previews: `?skipOnboarding=1` salta el "día 0" y entra
+    // directo al Panel (el flag se guarda en la sesión para sobrevivir a los
+    // redirects internos). Es OPT-IN: en producción nadie pasa ese parámetro,
+    // así que el onboarding real no se toca. Útil porque cada deploy-preview es
+    // un dominio nuevo con IndexedDB vacío y siempre caería en el onboarding.
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('skipOnboarding')) sessionStorage.setItem('atlas_skip_first_run', '1');
+        if (sessionStorage.getItem('atlas_skip_first_run') === '1') return 'panel';
+      } catch {
+        /* sin window/sessionStorage · seguimos con la decisión normal */
+      }
+    }
+
     const db = await initDB();
     const [properties, accounts, contracts] = await Promise.all([
       db.getAll('properties'),
