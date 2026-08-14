@@ -732,7 +732,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </div>
                 </span>
               </div>
-              {/* línea 1 · fecha · precio · impuestos */}
+              {/* una sola fila · fecha · precio · impuestos · gastos (repartida a lo ancho) */}
               <div className={`${styles.wrap} ${styles.wrapSpread}`}>
                 <div className={styles.fld}>
                   <label className={styles.lab}>Fecha <span className={styles.req}>*</span></label>
@@ -747,13 +747,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 ) : (
                   eurField('ITP', 'ITP', form.itp, (n) => { set('itp', n); set('itpIsManual', true); }, styles.wEur)
                 )}
-              </div>
-              {/* línea 2 · gastos */}
-              <div className={`${styles.wrap} ${styles.wrapSpread}`} style={{ marginTop: 8 }}>
-                {eurField('Notaría', 'Notaría', form.notaria, (n) => set('notaria', n), styles.wEur)}
-                {eurField('Registro', 'Registro', form.registro, (n) => set('registro', n), styles.wEur)}
-                {eurField('Gestoría', 'Gestoría', form.gestoria, (n) => set('gestoria', n), styles.wEur)}
-                {eurField('Otros', 'Otros gastos', form.otros, (n) => set('otros', n), styles.wEur)}
+                {eurField('Notaría', 'Notaría', form.notaria, (n) => set('notaria', n), styles.wEurS)}
+                {eurField('Registro', 'Registro', form.registro, (n) => set('registro', n), styles.wEurS)}
+                {eurField('Gestoría', 'Gestoría', form.gestoria, (n) => set('gestoria', n), styles.wEurS)}
+                {eurField('Otros', 'Otros gastos', form.otros, (n) => set('otros', n), styles.wEurS)}
               </div>
 
               {/* Financiación */}

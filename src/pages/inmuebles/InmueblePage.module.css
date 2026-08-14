@@ -75,7 +75,7 @@
   border-right: 1px solid var(--atlas-v5-line);
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 4px;
 }
 .colPreview { padding: 20px 22px 24px; overflow-y: auto; background: var(--atlas-v5-brand-ink); color: var(--atlas-v5-on-navy-1); }
 .colForm::-webkit-scrollbar, .colPreview::-webkit-scrollbar { width: 6px; }
@@ -88,9 +88,9 @@
   background: var(--atlas-v5-card);
   border: 1px solid var(--atlas-v5-line);
   border-radius: 11px;
-  padding: 9px 14px 10px;
+  padding: 7px 14px 8px;
 }
-.bandHd { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.bandHd { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
 .bandNo {
   font-family: var(--atlas-v5-font-mono-num);
   font-size: 11px; font-weight: 700;
@@ -155,7 +155,7 @@
 .hint { font-weight: 400; color: var(--atlas-v5-ink-4); }
 .input {
   width: 100%;
-  padding: 6px 9px;
+  padding: 5px 9px;
   border: 1px solid var(--atlas-v5-line);
   border-radius: 8px;
   background: var(--atlas-v5-card);
@@ -177,8 +177,8 @@ select.input { width: auto; padding-right: 26px; }
 
 /* anchos por tipo de dato · holgados para que quepan miles + decimales y el % */
 .wCp { width: 66px; } .wM2 { width: 62px; } .wInt { width: 54px; }
-.wEur { width: 104px; } .wEurS { width: 88px; } .wPct { width: 70px; }
-.wDate { width: 132px; } .wRef { width: 178px; } .wAlias { width: 156px; }
+.wEur { width: 96px; } .wEurS { width: 82px; } .wPct { width: 68px; }
+.wDate { width: 116px; } .wRef { width: 178px; } .wAlias { width: 156px; }
 .wDir { flex: 1; min-width: 210px; }
 .wTit { width: 98px; }
 
@@ -224,8 +224,8 @@ select.input { width: auto; padding-right: 26px; }
 
 /* ─── FINANCIACIÓN ─── */
 .fin {
-  margin-top: 9px;
-  padding: 8px 14px 9px;
+  margin-top: 7px;
+  padding: 7px 14px 8px;
   border: 1px solid var(--atlas-v5-line);
   border-radius: 9px;
   background: var(--atlas-v5-card-alt);
