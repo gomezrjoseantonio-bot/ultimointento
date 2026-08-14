@@ -50,6 +50,9 @@ export interface Property {
     itpIsManual?: boolean;
     iva?: number;
     ivaIsManual?: boolean;
+    /** Obra nueva · AJD (Actos Jurídicos Documentados) sobre el precio · auto 1.5% salvo edición manual. */
+    ajd?: number;
+    ajdIsManual?: boolean;
     notary?: number;
     registry?: number;
     management?: number;
@@ -113,6 +116,9 @@ export interface Property {
     tieneTrastero: boolean;
     /** V77 · wizard import XML V2 (pilar 1) · nº de plazas de parking integradas sin RC propia. Sustituye al uso booleano puro cuando se conoce el número. */
     plazasParking?: number;
+    /** Características físicas de la vivienda · terraza y ascensor (sí/no · ficha rediseñada). */
+    tieneTerraza?: boolean;
+    tieneAscensor?: boolean;
   };
   /** S-WIZARD-INMUEBLE-V4 · uso fiscal del inmueble · `vendido` no entra (flujo aparte) */
   usoTipo?:

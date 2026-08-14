@@ -52,6 +52,7 @@ import { inmuebleService } from '../../../services/inmuebleService';
 import type { Inmueble } from '../../../types/inmueble';
 import type { LucideIcon } from 'lucide-react';
 import { prestamosService } from '../../../services/prestamosService';
+import { sincronizarVinculoTrasCrearPrestamo } from '../../../services/vinculoPrestamoInmueble';
 import { planificarEventos, cambiaElCuadro } from '../../../services/prestamoEventosPlan';
 import { generarCuadro, type Cuadro } from '../../../services/prestamos/cuadro';
 import { cadaCuantoRevisa } from '../../../services/bonificaciones/revisionDelBanco';
@@ -1545,6 +1546,17 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       }
 
       if (!saved) throw new Error('No se ha podido guardar el préstamo.');
+
+      // Si el préstamo NUEVO financia un inmueble (destino ADQUISICIÓN/REFORMA),
+      // enlaza su ficha (FK `estructuraCompra.prestamoVinculadoId`). Es lo que
+      // hace la importación FEIN; así la ficha de inmueble, tras "Crear
+      // préstamo", queda vinculada sin pasos extra. No pisa inmuebles ya
+      // vinculados a otra hipoteca.
+      if (!prestamoId) {
+        await sincronizarVinculoTrasCrearPrestamo(saved).catch((e) =>
+          console.warn('[PrestamoPageV2] no se pudo enlazar el préstamo al inmueble', e),
+        );
+      }
 
       // Treasury events · solo si el cuadro se ha movido.
       //
