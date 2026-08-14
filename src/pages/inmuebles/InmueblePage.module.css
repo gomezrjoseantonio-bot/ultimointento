@@ -300,15 +300,17 @@ select.input { width: auto; padding-right: 26px; }
   color: var(--atlas-v5-navy-text-2);
   margin-bottom: 14px;
 }
-.pvLive { color: var(--atlas-v5-gold-bright); font-weight: 700; }
+/* "en directo" · único toque de oro real (no el pálido de antes) */
+.pvLive { color: var(--atlas-v5-gold-soft); font-weight: 700; }
 .pvHeroLab { font-size: 10px; color: var(--atlas-v5-navy-text-2); letter-spacing: 0.5px; text-transform: uppercase; font-weight: 700; }
+/* Número grande en BLANCO sobre navy (coherente con el asistente de préstamo) */
 .pvHeroVal {
   font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums;
   font-size: 34px; font-weight: 800; letter-spacing: -1.5px; line-height: 1;
-  color: var(--atlas-v5-gold-bright);
+  color: var(--atlas-v5-on-navy-1);
   margin-top: 6px;
 }
-.pvCur { font-size: 22px; }
+.pvCur { font-size: 22px; color: var(--atlas-v5-navy-text-2); }
 .pvHeroSub { font-size: 11px; color: var(--atlas-v5-navy-text-2); margin-top: 7px; margin-bottom: 16px; }
 
 .pvBreak { border-top: 1px solid var(--atlas-v5-navy-line); margin-bottom: 16px; }
@@ -318,7 +320,11 @@ select.input { width: auto; padding-right: 26px; }
 .pvL { color: var(--atlas-v5-on-navy-3); font-size: 12px; }
 .pvV { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; color: var(--atlas-v5-on-navy-1); font-weight: 600; font-size: 12px; text-align: right; }
 .pvRowTot .pvL { color: var(--atlas-v5-on-navy-1); font-weight: 700; }
-.pvRowTot .pvV { color: var(--atlas-v5-gold-bright); font-size: 14px; font-weight: 800; }
+.pvRowTot .pvV { color: var(--atlas-v5-on-navy-1); font-size: 14px; font-weight: 800; }
+/* Fila de préstamo clicable en el preview (editar en Financiación) */
+.pvRowLink { cursor: pointer; }
+.pvRowLink:hover .pvL { color: var(--atlas-v5-on-navy-1); }
+.pvRowLink .pvL { display: inline-flex; align-items: center; gap: 5px; }
 
 .pvMini { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
 .pvCard {
