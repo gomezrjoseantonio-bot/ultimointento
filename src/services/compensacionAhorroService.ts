@@ -328,6 +328,73 @@ export async function ejecutarCompensacionAhorro(
   };
 }
 
+/**
+ * Sincroniza en el store canónico `perdidasPatrimonialesAhorro` los saldos
+ * negativos de la base del ahorro (BIA) que DECLARA una importación, para que la
+ * compensación real del IRPF (`ejecutarCompensacionAhorro`) y la venta los vean.
+ *
+ * Antes, el import solo los escribía en `ejerciciosFiscalesCoord`, que la
+ * compensación no lee. Aquí se vuelca al motor real, `tipoOrigen: 'importado'`.
+ *
+ * Fuente: `decl.arrastres.perdidasPatrimoniales` (parser SaldosNegGyPAhorroRes),
+ * donde `añoOrigen` es el OFFSET en años respecto al ejercicio declarado
+ * (0 = generado este año, 1 = hace un año, …). Idempotente y order-independiente:
+ * `importeOriginal` se fija desde el año origen y las aplicaciones se registran
+ * por `ejercicioDestino`; reimportar o cambiar el orden deja el mismo pendiente.
+ */
+export async function sincronizarPerdidasAhorroImportadas(
+  ejercicioDeclaracion: number,
+  perdidas: Array<{ tipo: 'ahorro' | 'general'; importeInicial: number; importeAplicado: number; importePendiente: number; añoOrigen: number }>,
+): Promise<void> {
+  const db = await initDB();
+  const now = new Date().toISOString();
+  const soloAhorro = (perdidas || []).filter(
+    (p) => p.tipo === 'ahorro' && ((p.importeInicial || 0) > 0 || (p.importeAplicado || 0) > 0 || (p.importePendiente || 0) > 0),
+  );
+  if (soloAhorro.length === 0) return;
+
+  const todas = (await db.getAll('perdidasPatrimonialesAhorro')) as PerdidaPatrimonialAhorro[];
+
+  for (const p of soloAhorro) {
+    const ejercicioOrigen = ejercicioDeclaracion - (p.añoOrigen || 0);
+    const aplicado = round2(p.importeAplicado || 0);
+    // Estimación del original = pendiente al INICIO del año que lo reporta
+    // (importeInicial), que en el año origen es el importe generado y en años
+    // posteriores es pendiente-fin + aplicado-ese-año. NO se suma el aplicado
+    // aparte (ya está incluido en el inicio) para no inflar el original. El
+    // máximo con lo existente se queda con el valor del año origen (el más alto).
+    const originEstimado = round2(p.importeInicial || ((p.importePendiente || 0) + aplicado));
+
+    const existente = todas.find((x) => x.ejercicioOrigen === ejercicioOrigen && x.tipoOrigen === 'importado');
+    const importeOriginal = round2(Math.max(existente?.importeOriginal ?? 0, originEstimado));
+
+    const aplicaciones = (existente?.aplicaciones ?? []).filter((a) => a.ejercicioDestino !== ejercicioDeclaracion);
+    if (aplicado > 0) aplicaciones.push({ ejercicioDestino: ejercicioDeclaracion, importe: aplicado, fecha: now });
+
+    const totalAplicado = round2(aplicaciones.reduce((s, a) => s + a.importe, 0));
+    const importePendiente = round2(Math.max(0, importeOriginal - totalAplicado));
+    const estado: PerdidaPatrimonialAhorro['estado'] =
+      importePendiente <= 0 ? 'aplicado_total' : totalAplicado > 0 ? 'aplicado_parcial' : 'pendiente';
+
+    const registro: PerdidaPatrimonialAhorro = {
+      ...(existente ?? {}),
+      ejercicioOrigen,
+      ejercicioCaducidad: ejercicioOrigen + 4,
+      importeOriginal,
+      importeAplicado: totalAplicado,
+      importePendiente,
+      tipoOrigen: 'importado',
+      estado,
+      aplicaciones,
+      createdAt: existente?.createdAt ?? now,
+      updatedAt: now,
+    };
+
+    if (existente?.id != null) await db.put('perdidasPatrimonialesAhorro', { ...registro, id: existente.id });
+    else await db.add('perdidasPatrimonialesAhorro', registro);
+  }
+}
+
 export async function migrarPerdidasLegacy(): Promise<number> {
   const db = await initDB();
 
