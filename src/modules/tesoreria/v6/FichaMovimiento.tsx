@@ -560,6 +560,25 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
           ) : (
             /* Gasto: familia + concepto del catálogo unificado, filtrados por ámbito. */
             <>
+              {/* El inmueble va PRIMERO: decide el ÁMBITO (personal vs inmueble) y,
+                  con él, qué familias y conceptos se ofrecen (los enseres del piso
+                  solo existen en ámbito inmueble). Tenerlo al final obligaba a
+                  adivinar la familia antes de decir de qué es el gasto. */}
+              <div className={styles.fld}>
+                <label className={styles.lab} htmlFor="fm-inmueble">Inmueble</label>
+                <select
+                  id="fm-inmueble"
+                  className={styles.select}
+                  value={inmuebleId ?? ''}
+                  onChange={(e) => cambiarInmueble(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">Sin inmueble · personal</option>
+                  {inmuebles.map((i) => (
+                    <option key={i.id} value={i.id}>{i.alias}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className={styles.fld}>
                 <label className={styles.lab} htmlFor="fm-familia">Familia</label>
                 <select
@@ -654,21 +673,6 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                   </select>
                 </div>
               )}
-
-              <div className={styles.fld}>
-                <label className={styles.lab} htmlFor="fm-inmueble">Inmueble</label>
-                <select
-                  id="fm-inmueble"
-                  className={styles.select}
-                  value={inmuebleId ?? ''}
-                  onChange={(e) => cambiarInmueble(e.target.value ? Number(e.target.value) : null)}
-                >
-                  <option value="">Sin inmueble · personal</option>
-                  {inmuebles.map((i) => (
-                    <option key={i.id} value={i.id}>{i.alias}</option>
-                  ))}
-                </select>
-              </div>
             </>
           )}
         </div>
