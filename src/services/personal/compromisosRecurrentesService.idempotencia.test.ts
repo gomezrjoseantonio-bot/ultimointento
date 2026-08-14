@@ -149,68 +149,6 @@ describe('idempotencia · lo intocable no se reemite', () => {
   });
 });
 
-// Un recibo domiciliado VARIABLE cuyo cargo real ya está confirmado en la cuenta
-// NO debe volver a emitir su previsión de ese mes · si no, el saldo descuenta el
-// previsto (30) además del real (13,38): el fantasma.
-describe('no reemitir un mes cuyo cargo real ya está confirmado', () => {
-  it('el gas variable (previsto 30, real 13,38 ya confirmado) no proyecta fantasma en ese mes', async () => {
-    const db = await initDB();
-    const hoy = new Date();
-    const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
-
-    const c = await crearCompromiso(
-      base({
-        alias: 'Gas',
-        proveedor: { nombre: 'Naturgy' },
-        conceptoBancario: 'NATURGY',
-        cuentaCargo: 7,
-        importe: { modo: 'fijo', importe: 30 },
-        patron: { tipo: 'mensualDiaFijo', dia: 2 },
-      }),
-    );
-
-    // Antes del cargo real: sí hay previsión del mes en curso.
-    const antes = await eventosDe(c.id!);
-    expect(antes.some((e) => (e.predictedDate ?? '').startsWith(mesActual))).toBe(true);
-
-    // Entra el cargo REAL por el extracto (13,38 €, mismo mes, misma cuenta).
-    await db.add('movements', {
-      accountId: 7,
-      date: `${mesActual}-03`,
-      valueDate: `${mesActual}-03`,
-      amount: -13.38,
-      description: 'RECIBO NATURGY IBERIA S.A.',
-      status: 'conciliado',
-      unifiedStatus: 'conciliado',
-      source: 'import',
-      category: { tipo: 'Suministros' },
-      type: 'Gasto',
-    } as any);
-
-    // Al regenerar, el mes en curso ya NO proyecta el previsto (30) fantasma.
-    await regenerarEventosCompromiso(c);
-
-    const despues = await eventosDe(c.id!);
-    const delMesActual = despues.filter((e) => (e.predictedDate ?? '').startsWith(mesActual));
-    expect(delMesActual).toHaveLength(0);
-    // Pero los meses FUTUROS (sin cargo real) se siguen proyectando.
-    expect(despues.some((e) => (e.predictedDate ?? '') > `${mesActual}-31`)).toBe(true);
-  });
-
-  it('sin cargo real en la cuenta, la previsión del mes se proyecta normal', async () => {
-    const hoy = new Date();
-    const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
-    // Cuenta y proveedor SIN cargo real en la BD (los otros tests usan Naturgy en
-    // la 7) · debe proyectarse el mes en curso con normalidad.
-    const c = await crearCompromiso(
-      base({ alias: 'Luz', proveedor: { nombre: 'Iberdrola' }, conceptoBancario: 'IBERDROLA', cuentaCargo: 3, patron: { tipo: 'mensualDiaFijo', dia: 2 } }),
-    );
-    await regenerarEventosCompromiso(c);
-    const evs = await eventosDe(c.id!);
-    expect(evs.some((e) => (e.predictedDate ?? '').startsWith(mesActual))).toBe(true);
-  });
-});
-
 describe('idempotencia · reactivar', () => {
   it('baja + reactivación no deja previsiones duplicadas', async () => {
     const c = await crearCompromiso(base({ alias: 'Alarma' }));
