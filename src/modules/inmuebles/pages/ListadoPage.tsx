@@ -15,7 +15,11 @@ import { valoracionesService } from '../../../services/valoracionesService';
 import { subscribeFinancialValuesUpdated } from '../../../services/financialValuesService';
 import { gastosInmuebleService } from '../../../services/gastosInmuebleService';
 import { mejorasInmuebleService } from '../../../services/mejorasInmuebleService';
-import { prestamosService, getAllocationFactor } from '../../../services/prestamosService';
+import {
+  prestamosService,
+  getAllocationFactor,
+  deudaVivaPorGarantia,
+} from '../../../services/prestamosService';
 import { getLatestConfirmedSaleForProperty } from '../../../services/propertySaleService';
 import CarteraHero, { CarteraAgregados } from '../components/CarteraHero';
 import {
@@ -112,7 +116,9 @@ const ListadoPage: React.FC = () => {
             opex.set(id, 0);
           }
 
-          // Préstamos vivos → cuota anual + deuda pendiente imputada
+          // Cuota anual imputada · por DESTINO (getAllocationFactor): es el
+          // coste de financiar ESTE inmueble, que es lo que pide la
+          // rentabilidad. La deuda/LTV va aparte, por garantía (ver abajo).
           try {
             const idStr = String(id);
             const prestamos = await prestamosService.getPrestamosByProperty(idStr);
@@ -120,10 +126,8 @@ const ListadoPage: React.FC = () => {
               (p) => p.activo !== false && p.estado !== 'cancelado',
             );
             let cuotaMensual = 0;
-            let deudaViva = 0;
             for (const p of vivos) {
               const factor = getAllocationFactor(p, idStr);
-              deudaViva += (p.principalVivo ?? 0) * factor;
               const principal = p.principalInicial ?? 0;
               if (principal > 0 && p.plazoMesesTotal) {
                 let tasaAnual: number;
@@ -141,10 +145,8 @@ const ListadoPage: React.FC = () => {
               }
             }
             cuota.set(id, cuotaMensual * 12);
-            deuda.set(id, deudaViva);
           } catch {
             cuota.set(id, 0);
-            deuda.set(id, 0);
           }
 
           // Mejoras acumuladas (CAPEX)
@@ -156,6 +158,27 @@ const ListadoPage: React.FC = () => {
           }
         }),
       );
+
+      // Deuda por GARANTÍA · el LTV es un ratio de colateral (cuánto debes
+      // SOBRE el inmueble hipotecado), no de qué financió el préstamo. El
+      // reparto entre las garantías de una misma hipoteca lo decide
+      // Financiación (`deudaVivaPorGarantia`); aquí solo se agrega. Va en UNA
+      // pasada sobre TODOS los préstamos porque una hipoteca puede avalar un
+      // inmueble cuyo destino esté en otro (garantía cruzada), y ese caso no lo
+      // ve `getPrestamosByProperty`.
+      try {
+        const todos = await prestamosService.getAllPrestamos();
+        const vivos = todos.filter((p) => p.activo !== false && p.estado !== 'cancelado');
+        for (const p of vivos) {
+          for (const [inmuebleId, importe] of deudaVivaPorGarantia(p)) {
+            const key = Number(inmuebleId);
+            if (!Number.isFinite(key)) continue;
+            deuda.set(key, (deuda.get(key) ?? 0) + importe);
+          }
+        }
+      } catch {
+        /* sin préstamos · la deuda queda a 0 */
+      }
 
       if (!mounted) return;
       setOpexMap(opex);
