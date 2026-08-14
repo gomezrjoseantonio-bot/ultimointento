@@ -30,8 +30,24 @@ export interface DeclaracionCompleta {
   cuentaDevolucion?: CuentaBancaria;
   cuentaIngreso?: CuentaBancaria;
   deducciones?: DeduccionesDeclaradas;
+  /** Entidades en régimen de atribución de rentas (Comunidad de Bienes, etc.). */
+  entidadesAtribucion?: EntidadAtribucionDeclarada[];
   casillas: Record<string, number>;
   camposExtra: Record<string, any>;
+}
+
+// ═══════════════════════════════════════════════
+// ATRIBUCIÓN DE RENTAS (Comunidad de Bienes, arts. 86-90 LIRPF)
+// ═══════════════════════════════════════════════
+
+export interface EntidadAtribucionDeclarada {
+  nif: string;
+  nombre?: string;
+  tipoEntidad: 'CB' | 'SC' | 'HY' | 'otra';
+  porcentajeParticipacion: number;
+  tipoRenta: 'capital_inmobiliario' | 'actividad_economica' | 'capital_mobiliario';
+  rendimientoAtribuido: number;
+  retencionAtribuida: number;
 }
 
 // ═══════════════════════════════════════════════
