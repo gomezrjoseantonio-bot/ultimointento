@@ -329,6 +329,26 @@ describe('meses cerrados · el extracto no reabre lo cerrado', () => {
     expect(payload.ignoredMovementIds).toEqual([]);
   });
 
+  it('un cargo que CUADRA con su previsto cuadra aunque su mes esté cerrado', () => {
+    // El recibo de tarjeta (o cualquier recibo recurrente) casa con su previsión
+    // aunque el cargo caiga en un mes ya cerrado. Casarlo es lo correcto: consume
+    // la previsión y usa el importe real. Apartarlo como "mes_cerrado" era lo que
+    // rompía el cuadre del recibo de tarjeta.
+    const movs = [mov(1, 'RECIBO CARREFOUR', -1010.72, '2026-07-31')]; // mes cerrado
+    const ls = construirLineas(
+      movs,
+      { ...sinMatches, matches: [{ movementId: 1, treasuryEventId: 9, score: 95, reasons: [] }] },
+      [evt(9, 'Tarjeta Carrefour', -1010.72, '2026-07-31')],
+      new Set(),
+      new Set(['2026-07'])
+    );
+    expect(ls[0].veredicto).toBe('cuadra');
+    // Y viaja como match al confirmar (no se queda apartado).
+    expect(payloadDeConfirmacion(ls, decisionesVacias()).approvedMatches).toEqual([
+      { movementId: 1, treasuryEventId: 9 },
+    ]);
+  });
+
   it('sin meses cerrados, todo sigue igual', () => {
     const ls = construirLineas([mov(1, 'X', -10, '2026-08-01')], sinMatches, [], new Set());
     expect(ls[0].veredicto).toBe('resolver');

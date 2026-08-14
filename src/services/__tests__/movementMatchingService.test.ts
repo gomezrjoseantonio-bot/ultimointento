@@ -594,4 +594,76 @@ describe('movementMatchingService.matchBatch', () => {
     expect(result.matches).toEqual([]);
     expect(result.sinMatch).toEqual([1]);
   });
+
+  // Un recibo domiciliado VARIABLE (gas: previsto 30 €, real 13,38 €) cuyo día no
+  // clava (cargo un día después de lo previsto) debe cuadrar con su previsión:
+  // así se consume y deja de descontar el previsto del saldo. Sin el empujón de
+  // recurrente quedaba en 60 (fecha_adyacente 20 + cuenta 15 + proveedor 25).
+  it('12. Un recibo recurrente variable cuadra aunque el importe difiera y el día resbale', async () => {
+    const stores: FakeStores = {
+      movements: [
+        movement({
+          id: 1,
+          accountId: 9,
+          date: '2026-08-03', // el previsto era el 2 · resbala un día
+          amount: -13.38, // real muy distinto del previsto (30)
+          description: 'RECIBO NATURGY IBERIA S.A.',
+        }),
+      ],
+      treasuryEvents: [
+        event({
+          id: 200,
+          accountId: 9,
+          type: 'expense',
+          amount: -30, // previsto
+          predictedDate: '2026-08-02',
+          providerName: 'Naturgy',
+          sourceType: 'gasto_recurrente',
+        }),
+      ],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+
+    expect(result.sinMatch).toEqual([]);
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].treasuryEventId).toBe(200);
+    expect(result.matches[0].reasons).toEqual(
+      expect.arrayContaining(['recibo_recurrente_misma_cuenta']),
+    );
+  });
+
+  // El empujón de recurrente NO inventa emparejamientos: sin proveedor ni importe
+  // reconocibles (solo cuenta + fecha + recurrente = 55) se queda sin match.
+  it('13. El recibo recurrente no casa solo con cuenta y fecha si nada más coincide', async () => {
+    const stores: FakeStores = {
+      movements: [
+        movement({
+          id: 1,
+          accountId: 9,
+          date: '2026-08-02',
+          amount: -13.38,
+          description: 'ADEUDO SEPA 4471X', // no delata al proveedor
+        }),
+      ],
+      treasuryEvents: [
+        event({
+          id: 200,
+          accountId: 9,
+          type: 'expense',
+          amount: -30,
+          predictedDate: '2026-08-02',
+          providerName: 'Naturgy',
+          sourceType: 'gasto_recurrente',
+        }),
+      ],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+
+    expect(result.matches).toEqual([]);
+    expect(result.sinMatch).toEqual([1]);
+  });
 });

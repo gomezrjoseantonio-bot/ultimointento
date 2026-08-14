@@ -217,6 +217,23 @@ function scorePair(
     reasons.push('importe_exacto_misma_cuenta');
   }
 
+  // Un recibo recurrente —domiciliación de luz/gas/cuota o el recibo de una
+  // tarjeta— se carga en SU cuenta con el día a menudo desplazado uno o dos
+  // respecto a lo previsto, y con el importe VARIABLE mes a mes (el gas de un
+  // mes no es el de otro: previsto 30 €, real 13,38 €). Sin este empujón, un
+  // recibo variable cuyo día no clava se quedaba en 60 (fecha_adyacente 20 +
+  // cuenta 15 + proveedor 25) —por debajo del umbral—, su previsión no se
+  // consumía, y seguía descontando el PREVISTO del saldo mientras el cargo real
+  // ya había salido. El +10 cierra ese hueco. Nunca casa por sí solo: sin
+  // proveedor ni importe reconocibles no llega al umbral (cuenta 15 + fecha 30 +
+  // 10 = 55), así que no inventa emparejamientos.
+  const esReciboRecurrente =
+    event.sourceType === 'gasto_recurrente' || event.sourceType === 'tarjeta_recibo';
+  if (esReciboRecurrente && esGasto && sameSign && movement.accountId === event.accountId) {
+    score += 10;
+    reasons.push('recibo_recurrente_misma_cuenta');
+  }
+
   // Description / counterparty proximity.
   const description = (movement.description ?? '').toLowerCase();
   const provider = (event.providerName ?? event.counterparty ?? '').toLowerCase().trim();
