@@ -87,6 +87,85 @@ export async function registrarArrastre(
   }
 }
 
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+/**
+ * Recomputa `remainingAmount` de TODOS los arrastres de un inmueble de forma
+ * DETERMINISTA (idempotente): parte del exceso generado en cada año origen y
+ * consume, año a año en orden, el importe aplicado (`appliedInYear`) contra los
+ * orígenes anteriores por FIFO (más antiguo primero), respetando la caducidad.
+ *
+ * Al ser un "reset + replay" desde los datos declarados, reimportar un año o
+ * cambiar el orden de importación deja SIEMPRE el mismo estado.
+ */
+export async function recomputarRemainingArrastres(propertyId: number): Promise<void> {
+  const db = await initDB();
+  const rows: AEATCarryForward[] = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
+  if (rows.length === 0) return;
+
+  const byYear = rows.slice().sort((a, b) => a.taxYear - b.taxYear);
+  // 1. Reset: cada origen vuelve a su exceso íntegro.
+  for (const r of byYear) r.remainingAmount = r.excessAmount;
+  // 2. Replay FIFO: el aplicado de cada año consume orígenes anteriores no caducados.
+  for (const dest of byYear) {
+    let aplicar = round2(dest.appliedInYear ?? 0);
+    if (aplicar <= 0) continue;
+    for (const src of byYear) {
+      if (aplicar <= 0) break;
+      if (src.taxYear >= dest.taxYear) break; // solo orígenes anteriores (ordenado asc)
+      if (src.expirationYear < dest.taxYear) continue; // caducado para el año que aplica
+      if (src.remainingAmount <= 0) continue;
+      const toma = Math.min(src.remainingAmount, aplicar);
+      src.remainingAmount = round2(src.remainingAmount - toma);
+      aplicar = round2(aplicar - toma);
+    }
+  }
+
+  const now = new Date().toISOString();
+  for (const r of byYear) await db.put('aeatCarryForwards', { ...r, updatedAt: now });
+}
+
+/**
+ * Sincroniza en `aeatCarryForwards` lo que una declaración importada dice de un
+ * inmueble para un ejercicio: el pendiente NUEVO generado (`generated` =
+ * C_INTGRCEF, casilla 0108) como alta del origen, y el pendiente previo APLICADO
+ * (`applied` = IMP4GCPEA, casilla 0103) para el replay FIFO. Idempotente.
+ */
+export async function sincronizarArrastreImportado(
+  propertyId: number,
+  taxYear: number,
+  d: { generated: number; applied: number; totalIncome?: number; financingAndRepair?: number },
+): Promise<void> {
+  const generated = Math.max(0, round2(d.generated || 0));
+  const applied = Math.max(0, round2(d.applied || 0));
+
+  const db = await initDB();
+  const rows: AEATCarryForward[] = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
+  const prev = rows.find((cf) => cf.taxYear === taxYear);
+  const now = new Date().toISOString();
+
+  if (generated > 0 || applied > 0) {
+    const base = {
+      propertyId,
+      taxYear,
+      totalIncome: d.totalIncome ?? prev?.totalIncome ?? 0,
+      financingAndRepair: d.financingAndRepair ?? prev?.financingAndRepair ?? 0,
+      limitApplied: prev?.limitApplied ?? 0,
+      excessAmount: generated,
+      appliedInYear: applied,
+      expirationYear: taxYear + 4,
+      remainingAmount: generated, // se recalcula abajo
+    };
+    if (prev?.id != null) {
+      await db.put('aeatCarryForwards', { ...prev, ...base, updatedAt: now });
+    } else {
+      await db.add('aeatCarryForwards', { ...base, createdAt: now, updatedAt: now } as AEATCarryForward);
+    }
+  }
+
+  await recomputarRemainingArrastres(propertyId);
+}
+
 /**
  * Consume arrastres anteriores que se han podido aplicar este ejercicio.
  * Aplica FIFO: primero los más antiguos (que caducan antes).
