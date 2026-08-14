@@ -139,17 +139,25 @@ export function construirLineas(
     const candidatosIds = candidatosPorMovimiento.get(m.id);
     const previsto = eventoId != null ? resumirEvento(eventoId) : undefined;
 
-    // El orden importa: una línea ya ignorada antes NO se vuelve a proponer,
-    // aunque ahora cuadre con algo. Si el usuario dijo que no la quiere, no se
-    // le pregunta otra vez sin que él la recupere. Y una línea de un mes cerrado
-    // se aparta antes de mirar si cuadra: ese mes ya no se toca.
+    // El orden importa:
+    //   1. Una línea ya ignorada antes NO se vuelve a proponer, aunque ahora
+    //      cuadre con algo. Si el usuario dijo que no la quiere, no se le
+    //      pregunta otra vez sin que él la recupere.
+    //   2. Si CUADRA con un previsto, cuadra — aunque su mes esté cerrado. Casar
+    //      un cargo real con su previsión es siempre correcto: consume la
+    //      previsión, usa el importe REAL y hace que un recibo de tarjeta cierre
+    //      su periodo. Ese cargo ya estaba proyectado en el mes; confirmarlo solo
+    //      lo pasa de previsto a real. Apartarlo aquí era lo que rompía el cuadre
+    //      del recibo de tarjeta ("cuadraba antes y ahora no").
+    //   3. Solo si NO cuadra y su mes está cerrado se aparta: eso es el ruido que
+    //      el usuario no quiere reabrir, no un cuadre legítimo.
     const mesLinea = (m.date ?? '').slice(0, 7);
     const veredicto: VeredictoLinea = ignoradasPrevias.has(hashLinea)
       ? 'ignorada'
-      : mesesCerrados.has(mesLinea)
-        ? 'mes_cerrado'
-        : previsto
-          ? 'cuadra'
+      : previsto
+        ? 'cuadra'
+        : mesesCerrados.has(mesLinea)
+          ? 'mes_cerrado'
           : 'resolver';
 
     lineas.push({
