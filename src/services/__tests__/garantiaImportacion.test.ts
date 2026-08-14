@@ -25,6 +25,8 @@ import { calcularDeclaracionIRPF } from '../irpfCalculationService';
 import { invalidateFiscalCache } from '../fiscalCacheService';
 import { extraerCasillasDeterministasDesdeTexto } from '../aeatParserService';
 import { construirDeclaracionCompletaDesdeCasillas } from '../justificantePdfImportService';
+import { parseIrpfXml } from '../irpfXmlParserService';
+import { getEntidades } from '../entidadAtribucionService';
 import { OPCIONES_DEFAULT } from '../../types/opcionesDistribucion';
 import type { DeclaracionCompleta, InmuebleDeclarado } from '../../types/declaracionCompleta';
 
@@ -206,7 +208,6 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
   });
 
   it('Comunidad de Bienes: el import crea la entidad de atribución (no un inmueble)', async () => {
-    const { getEntidades } = await import('../entidadAtribucionService');
     await distribuirDeclaracion(declaracion(2025, [], {
       entidades: [{ nif: 'E25904640', tipoEntidad: 'CB', porcentajeParticipacion: 10, tipoRenta: 'capital_inmobiliario', rendimientoAtribuido: 1682.8, retencionAtribuida: 136.05 }],
     }), OPCIONES_DEFAULT);
@@ -214,6 +215,46 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
     expect(entidades).toHaveLength(1);
     expect(entidades[0].nif).toBe('E25904640');
     expect((await props())).toHaveLength(0); // no se crea como inmueble
+  });
+
+  it('Comunidad de Bienes por XML ENVUELTO real (DocumentoElectronicoV2 + CDATA): parser → distribuidor → store', async () => {
+    // El XML de Renta Web viene envuelto: <DocumentoElectronicoV2> con un CDATA
+    // que contiene un JSON {"fichero": "<xml interno crudo>"}, y la entidad de
+    // atribución cuelga de Declaracion>DatosEconomicos>TomaDatosAmpliada>
+    // RegimenesEspeciales>REAtRentas>ENTIDADAR. El harness inyectaba las entidades
+    // a mano; esto ejercita el PARSER sobre la estructura real (fixture sintético,
+    // sin datos personales) para que la CB no vuelva a perderse en el import.
+    const inner =
+      '<?xml version="1.0" encoding="ISO-8859-1"?>' +
+      '<Declaracion modelo="100" ejercicio="2025" periodo="0A" versionxsd="1.02">' +
+      '<Declarante><NIFDeclarante>00000000T</NIFDeclarante></Declarante>' +
+      '<DatosEconomicos><TomaDatosAmpliada><RegimenesEspeciales>' +
+      '<REAtRentas><ENTIDADAR>' +
+      '<AR_NifContribuyente><F1NIFNACDLG>E00000000</F1NIFNACDLG><F1PCTDLG>10.00</F1PCTDLG></AR_NifContribuyente>' +
+      '<AR_RendCapiInmobiliario><IMP1>1682.80</IMP1><VRET5B>136.05</VRET5B></AR_RendCapiInmobiliario>' +
+      '<F1NIFAR>E00000000</F1NIFAR><F1PCT>10.00</F1PCT><F1EG>1682.80</F1EG><F1EP>136.05</F1EP>' +
+      '</ENTIDADAR></REAtRentas>' +
+      '</RegimenesEspeciales></TomaDatosAmpliada></DatosEconomicos></Declaracion>';
+    const outer =
+      '<?xml version="1.0" encoding="UTF-8"?>' +
+      '<DocumentoElectronicoV2><DatosDocumento>' +
+      `<Declaracion csv="TESTCSV"><![CDATA[${JSON.stringify({ fichero: inner })}]]></Declaracion>` +
+      '</DatosDocumento></DocumentoElectronicoV2>';
+
+    const decl = parseIrpfXml(outer);
+    // El parser extrae la CB de la estructura envuelta.
+    expect(decl.entidadesAtribucion).toHaveLength(1);
+    expect(decl.entidadesAtribucion![0].nif).toBe('E00000000');
+    expect(decl.entidadesAtribucion![0].tipoEntidad).toBe('CB');
+    expect(decl.entidadesAtribucion![0].tipoRenta).toBe('capital_inmobiliario');
+    expect(decl.entidadesAtribucion![0].rendimientoAtribuido).toBeCloseTo(1682.8, 2);
+
+    // Y el distribuidor la persiste en el store (no como inmueble).
+    await distribuirDeclaracion(decl, OPCIONES_DEFAULT);
+    const ents = await getEntidades();
+    expect(ents).toHaveLength(1);
+    expect(ents[0].nif).toBe('E00000000');
+    expect(ents[0].ejercicios.find((e: any) => e.ejercicio === 2025)?.rendimientosAtribuidos).toBeCloseTo(1682.8, 2);
   });
 
   it('saldos BIA: el import alimenta perdidasPatrimonialesAhorro (genera y consume)', async () => {
