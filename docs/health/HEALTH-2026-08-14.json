@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-14",
-  "generatedAt": "2026-08-14T11:57:52.364Z",
+  "generatedAt": "2026-08-14T19:56:37.948Z",
   "git": {
-    "branch": "claude/panel-informacion-discrepancia-nvynmk",
-    "head": "c428550"
+    "branch": "claude/property-sale-accounting-cascade-worfne",
+    "head": "e0ad105"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -150,7 +150,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 25 raíces estrictas · alive 884 · dead 0 · solo_tests 56 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 25 raíces estrictas · alive 886 · dead 0 · solo_tests 56 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -262,10 +262,10 @@
       "note": null,
       "detail": [
         "3245 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
-        "2057 · src/services/declaracionDistributorService.ts",
+        "2183 · src/services/declaracionDistributorService.ts",
         "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
         "1853 · src/services/dashboardService.ts",
-        "1759 · src/services/irpfCalculationService.ts",
+        "1771 · src/services/irpfCalculationService.ts",
         "1550 · src/services/aeatParserService.ts",
         "1532 · src/App.tsx",
         "1464 · src/services/treasuryConfirmationService.ts",
@@ -322,12 +322,12 @@
       "calibracion": null
     },
     "tests_rojos": {
-      "value": null,
+      "value": 37,
       "direction": "down",
       "objetivo": 0,
-      "measurable": false,
+      "measurable": true,
       "approx": false,
-      "note": "NO MEDIBLE · usa `npm run health:ci` (--with-tests) para ejecutar la suite",
+      "note": "medido vía react-scripts test (CI)",
       "detail": null,
       "calibracion": null
     },
