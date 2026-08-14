@@ -28,12 +28,6 @@ import {
   MapPin as IconPin,
   Plus as IconPlus,
   ExternalLink as IconExternal,
-  BedDouble as IconBed,
-  Bath as IconBath,
-  Sun as IconSun,
-  Package as IconPackage,
-  Car as IconCar,
-  MoveVertical as IconElevator,
 } from 'lucide-react';
 
 import { initDB } from '../../services/db';
@@ -143,16 +137,15 @@ const MoneyInput: React.FC<{ value: number; onChange: (n: number) => void; class
 };
 
 // ─── Toggle de un toque (booleano · azul) ───
-const Toggle: React.FC<{ label: string; icon?: React.ReactNode; on: boolean; onChange: (v: boolean) => void; onText?: string; offText?: string }> = ({
+const Toggle: React.FC<{ label: string; on: boolean; onChange: (v: boolean) => void; onText?: string; offText?: string }> = ({
   label,
-  icon,
   on,
   onChange,
   onText = 'Sí',
   offText = 'No',
 }) => (
   <div className={styles.toggleField}>
-    <span className={styles.lab} title={label} aria-hidden={!!icon}>{icon ?? label}</span>
+    <span className={styles.lab}>{label}</span>
     <div className={styles.tog}>
       <button
         type="button"
@@ -508,7 +501,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
 
   // Campo de importe reutilizable
   const eurField = (label: React.ReactNode, ariaLabel: string, value: number, onChange: (n: number) => void, width: string) => (
-    <div className={`${styles.fld} ${styles.fldC}`}>
+    <div className={styles.fld}>
       <label className={styles.lab}>{label}</label>
       <div className={styles.inputSuffix}>
         <MoneyInput className={`${styles.input} ${styles.inputMono} ${width}`} value={value} onChange={onChange} ariaLabel={ariaLabel} />
@@ -593,7 +586,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   <label className={styles.lab}>Ref. catastral</label>
                   <input
                     className={`${styles.input} ${styles.inputMonoL} ${styles.wRef}`}
-                    style={{ fontSize: 11 }}
                     value={form.refCatastral}
                     onChange={(e) => set('refCatastral', e.target.value)}
                   />
@@ -621,7 +613,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </select>
                 </div>
                 {form.titularidad !== 'pareja' && (
-                  <div className={`${styles.fld} ${styles.fldC}`}>
+                  <div className={styles.fld}>
                     <label className={styles.lab}>{form.titularidad === 'ambos' ? '% tuyo' : '% prop.'}</label>
                     <div className={styles.inputSuffix}>
                       <input className={`${styles.input} ${styles.inputMono} ${styles.wPct}`} value={form.porcentajePropiedad || ''} onChange={(e) => set('porcentajePropiedad', num(e.target.value))} inputMode="decimal" />
@@ -630,7 +622,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </div>
                 )}
                 {form.titularidad !== 'yo' && (
-                  <div className={`${styles.fld} ${styles.fldC}`}>
+                  <div className={styles.fld}>
                     <label className={styles.lab}>% pareja</label>
                     <div className={styles.inputSuffix}>
                       <input className={`${styles.input} ${styles.inputMono} ${styles.wPct}`} value={form.porcentajePropiedadPareja || ''} onChange={(e) => set('porcentajePropiedadPareja', num(e.target.value))} inputMode="decimal" />
@@ -651,25 +643,25 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 <span className={styles.bandTitle}>Características del activo</span>
               </div>
               <div className={styles.wrap}>
-                <div className={`${styles.fld} ${styles.fldC}`}>
+                <div className={styles.fld}>
                   <label className={styles.lab}>m²</label>
                   <input className={`${styles.input} ${styles.inputMono} ${styles.wM2}`} value={form.m2 || ''} onChange={(e) => set('m2', num(e.target.value))} inputMode="decimal" />
                 </div>
                 {vis.showHabitacionesBanos && (
                   <>
-                    <div className={`${styles.fld} ${styles.fldC}`}>
-                      <label className={styles.lab} title="Habitaciones"><IconBed size={16} /></label>
+                    <div className={styles.fld}>
+                      <label className={styles.lab}>Hab.</label>
                       <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.habitaciones || ''} onChange={(e) => set('habitaciones', num(e.target.value))} inputMode="numeric" aria-label="Habitaciones" />
                     </div>
-                    <div className={`${styles.fld} ${styles.fldC}`}>
-                      <label className={styles.lab} title="Baños"><IconBath size={16} /></label>
+                    <div className={styles.fld}>
+                      <label className={styles.lab}>Baños</label>
                       <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.banos || ''} onChange={(e) => set('banos', num(e.target.value))} inputMode="numeric" aria-label="Baños" />
                     </div>
                   </>
                 )}
-                <div className={`${styles.fld} ${styles.fldC}`}>
+                <div className={styles.fld}>
                   <label className={styles.lab}>Cert.</label>
-                  <select className={styles.input} style={{ width: 68 }} value={form.certificadoEnergetico} onChange={(e) => set('certificadoEnergetico', e.target.value)} aria-label="Certificado energético">
+                  <select className={styles.input} style={{ width: 72 }} value={form.certificadoEnergetico} onChange={(e) => set('certificadoEnergetico', e.target.value)} aria-label="Certificado energético">
                     <option value="">—</option>
                     <option value="NO">No</option>
                     {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => (
@@ -679,12 +671,22 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 </div>
                 {vis.showAnexos && (
                   <>
-                    <Toggle label="Terraza" icon={<IconSun size={16} />} on={form.tieneTerraza} onChange={(v) => set('tieneTerraza', v)} />
-                    <Toggle label="Trastero" icon={<IconPackage size={16} />} on={form.tieneTrastero} onChange={(v) => set('tieneTrastero', v)} />
-                    <Toggle label="Parking" icon={<IconCar size={16} />} on={form.tieneParking} onChange={(v) => set('tieneParking', v)} />
-                    <Toggle label="Ascensor" icon={<IconElevator size={16} />} on={form.tieneAscensor} onChange={(v) => set('tieneAscensor', v)} />
+                    <Toggle label="Terraza" on={form.tieneTerraza} onChange={(v) => set('tieneTerraza', v)} />
+                    <Toggle label="Trastero" on={form.tieneTrastero} onChange={(v) => set('tieneTrastero', v)} />
+                    <Toggle label="Parking" on={form.tieneParking} onChange={(v) => set('tieneParking', v)} />
+                    <Toggle label="Ascensor" on={form.tieneAscensor} onChange={(v) => set('tieneAscensor', v)} />
                   </>
                 )}
+              </div>
+            </div>
+
+            {/* 3 · FISCALIDAD */}
+            <div className={styles.band}>
+              <div className={styles.bandHd}>
+                <span className={styles.bandNo}>3</span>
+                <span className={styles.bandTitle}>Fiscalidad</span>
+              </div>
+              <div className={styles.wrap}>
                 <div className={styles.toggleField}>
                   <span className={styles.lab}>Suelo</span>
                   <div className={styles.tog}>
@@ -699,19 +701,9 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                     <span className={styles.togVal}>{form.esUrbana ? 'Urbana' : 'Rústica'}</span>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* 3 · FISCALIDAD */}
-            <div className={styles.band}>
-              <div className={styles.bandHd}>
-                <span className={styles.bandNo}>3</span>
-                <span className={styles.bandTitle}>Fiscalidad</span>
-              </div>
-              <div className={styles.wrap}>
                 {eurField('V. cat. total', 'Valor catastral total', form.valorCatastralTotal, (n) => set('valorCatastralTotal', n), styles.wEur)}
                 {eurField('V. cat. constr.', 'Valor catastral construcción', form.valorCatastralConstruccion, (n) => set('valorCatastralConstruccion', n), styles.wEur)}
-                <div className={`${styles.fld} ${styles.fldC}`}>
+                <div className={styles.fld}>
                   <label className={styles.lab}>% const.</label>
                   <input className={`${styles.input} ${styles.inputRo} ${styles.wPct}`} readOnly value={pct(resumen.porcentajeConstruccion)} />
                 </div>
@@ -740,9 +732,9 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </div>
                 </span>
               </div>
-              {/* una sola fila · fecha · precio · impuestos · gastos (sin salto de línea) */}
+              {/* línea 1 · fecha · precio · impuestos */}
               <div className={styles.wrap}>
-                <div className={`${styles.fld} ${styles.fldC}`}>
+                <div className={styles.fld}>
                   <label className={styles.lab}>Fecha <span className={styles.req}>*</span></label>
                   <input className={`${styles.input} ${styles.inputMonoL} ${styles.wDate}`} type="date" value={form.fechaCompra} onChange={(e) => set('fechaCompra', e.target.value)} />
                 </div>
@@ -755,10 +747,13 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 ) : (
                   eurField('ITP', 'ITP', form.itp, (n) => { set('itp', n); set('itpIsManual', true); }, styles.wEur)
                 )}
-                {eurField('Notaría', 'Notaría', form.notaria, (n) => set('notaria', n), styles.wEurS)}
-                {eurField('Registro', 'Registro', form.registro, (n) => set('registro', n), styles.wEurS)}
-                {eurField('Gestoría', 'Gestoría', form.gestoria, (n) => set('gestoria', n), styles.wEurS)}
-                {eurField('Otros', 'Otros gastos', form.otros, (n) => set('otros', n), styles.wEurS)}
+              </div>
+              {/* línea 2 · gastos */}
+              <div className={styles.wrap} style={{ marginTop: 8 }}>
+                {eurField('Notaría', 'Notaría', form.notaria, (n) => set('notaria', n), styles.wEur)}
+                {eurField('Registro', 'Registro', form.registro, (n) => set('registro', n), styles.wEur)}
+                {eurField('Gestoría', 'Gestoría', form.gestoria, (n) => set('gestoria', n), styles.wEur)}
+                {eurField('Otros', 'Otros gastos', form.otros, (n) => set('otros', n), styles.wEur)}
               </div>
 
               {/* Financiación */}
@@ -768,7 +763,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 </div>
                 <div className={styles.finLine}>
                   {eurField('Aportación propia', 'Aportación propia', form.aportacionPropia, (n) => set('aportacionPropia', n), styles.wEur)}
-                  <div className={`${styles.fld} ${styles.fldC}`}>
+                  <div className={styles.fld}>
                     <label className={styles.lab}>Importe financiado {vinculado && <span className={styles.hint}>· del préstamo</span>}</label>
                     <div className={styles.inputSuffix}>
                       <input className={`${styles.input} ${styles.inputRo} ${styles.wEur}`} readOnly value={fmtCampo(financiadoEfectivo)} aria-label="Importe financiado" />

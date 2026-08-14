@@ -162,9 +162,10 @@
   transition: border-color 0.1s, box-shadow 0.1s;
 }
 .input:focus { outline: none; border-color: var(--atlas-v5-brand); box-shadow: var(--atlas-v5-focus-ring-neutral); }
-.inputMono { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; font-weight: 600; text-align: center; }
+/* Números SIEMPRE alineados a la izquierda (regla Jose) · mismo tamaño que el resto */
+.inputMono { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; font-weight: 600; text-align: left; }
 .inputMonoL { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; font-weight: 600; text-align: left; }
-.inputRo { background: var(--atlas-v5-line-3); color: var(--atlas-v5-brand); font-weight: 700; font-family: var(--atlas-v5-font-mono-num); text-align: center; }
+.inputRo { background: var(--atlas-v5-line-3); color: var(--atlas-v5-brand); font-weight: 700; font-family: var(--atlas-v5-font-mono-num); text-align: left; }
 .inputSuffix { position: relative; }
 .inputSuffix .input { padding-right: 20px; }
 .suffix { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); color: var(--atlas-v5-ink-4); font-size: 11px; pointer-events: none; }
