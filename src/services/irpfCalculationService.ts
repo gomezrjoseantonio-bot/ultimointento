@@ -833,26 +833,38 @@ export async function recopilarDatosInmuebles(
 
         const limitedFinancingRepairs = Math.min(financingAndRepairsRaw, ingresosIntegros);
 
-        // Apply carryforwards from previous years (FIFO, oldest first)
-        // Note: remainingAmount tracking is managed dynamically by calculateCarryForwards()
-        // which recomputes available amounts from fiscal summaries each time it is called.
-        const carryForwards = await calculateCarryForwards(prop.id!, ejercicio);
-        const availableForCarryforward = Math.max(0, ingresosIntegros - limitedFinancingRepairs);
-        let cfApplied = 0;
-        for (const cf of carryForwards) {
-          if (availableForCarryforward - cfApplied <= 0) break;
-          const canApply = Math.min(cf.remainingAmount, availableForCarryforward - cfApplied);
-          cfApplied = round2(cfApplied + canApply);
-        }
-
-        gastosDeducibles = round2(limitedFinancingRepairs + cfApplied + otherExpenses);
+        // Amortización y gastos base salen SOLO del summary ya obtenido: se
+        // fijan antes de tocar arrastres para que un fallo del cálculo de
+        // arrastres (art. 23.1 LIRPF) no borre la amortización ni los gastos
+        // deducibles del inmueble (ni, por extensión, los de sus accesorios).
         amortizacion = round2((summary.annualDepreciation ?? 0) * ratio);
         gastosFinanciacionYReparacion = round2(financingAndRepairsRaw);
         limiteAplicado = round2(limitedFinancingRepairs);
         excesoArrastrable = round2(Math.max(0, financingAndRepairsRaw - limitedFinancingRepairs));
+
+        // Apply carryforwards from previous years (FIFO, oldest first) en su
+        // propio try: es un cálculo secundario (recursivo sobre otros
+        // ejercicios) que puede fallar sin invalidar el resto del rendimiento.
+        // Note: remainingAmount tracking is managed dynamically by calculateCarryForwards()
+        // which recomputes available amounts from fiscal summaries each time it is called.
+        let cfApplied = 0;
+        try {
+          const carryForwards = await calculateCarryForwards(prop.id!, ejercicio);
+          const availableForCarryforward = Math.max(0, ingresosIntegros - limitedFinancingRepairs);
+          for (const cf of carryForwards) {
+            if (availableForCarryforward - cfApplied <= 0) break;
+            const canApply = Math.min(cf.remainingAmount, availableForCarryforward - cfApplied);
+            cfApplied = round2(cfApplied + canApply);
+          }
+        } catch {
+          // Arrastres no disponibles · se aplican 0 sin perder el resto.
+          cfApplied = 0;
+        }
+
+        gastosDeducibles = round2(limitedFinancingRepairs + cfApplied + otherExpenses);
         arrastresAplicados = round2(cfApplied);
       } catch {
-        // ignore
+        // Summary no disponible para este inmueble · se deja en 0.
       }
 
       // Gestión delegada · comisión de la agencia como gasto deducible (casilla

@@ -22,6 +22,7 @@ jest.mock('../services/personalDataService', () => ({
 
 import { initDB } from '../services/db';
 import { calculateFiscalSummary } from '../services/fiscalSummaryService';
+import { invalidateFiscalCache } from '../services/fiscalCacheService';
 
 const mockInitDB = initDB as jest.MockedFunction<typeof initDB>;
 const mockCalculateFiscalSummary = calculateFiscalSummary as jest.MockedFunction<typeof calculateFiscalSummary>;
@@ -87,6 +88,10 @@ const fullYearContract = {
 describe('IRPF – Inmuebles accesorios', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // La declaración se cachea en memoria por ejercicio; todos los tests usan
+    // 2025, así que sin invalidar la caché el resultado de un test se filtra al
+    // siguiente. Invalidar aquí aísla cada caso.
+    invalidateFiscalCache();
   });
 
   describe('calcularDiasAnio', () => {
@@ -410,16 +415,17 @@ describe('IRPF – Inmuebles accesorios', () => {
       );
 
       const result = await calcularDeclaracionIRPF(EJERCICIO);
-      // isAccessory=true but no mainPropertyId means mainPropertyId === undefined,
-      // so the filter `p.fiscalData?.mainPropertyId === prop.id` never matches;
-      // the property itself IS filtered by `if (prop.fiscalData?.isAccessory) continue`
-      // so it should NOT appear in any list — this is by design (orphan accessory is skipped).
+      // isAccessory=true pero sin mainPropertyId válido = accesorio HUÉRFANO. No
+      // hay principal al que sumarlo, así que `separarAccesorios` lo mantiene en
+      // `propertiesToProcess` (ver su docstring) y se procesa como un inmueble
+      // independiente. Es lo correcto fiscalmente: un inmueble real (con su
+      // referencia catastral) nunca debe desaparecer de la declaración por un
+      // enlace de accesorio roto — eso infra-declararía. Vacío → imputación.
       const allIds = [
         ...result.baseGeneral.rendimientosInmuebles.map(r => r.inmuebleId),
         ...result.baseGeneral.imputacionRentas.map(i => i.inmuebleId),
       ];
-      // Orphan accessories are skipped (no principal to attach to), not shown independently
-      expect(allIds).not.toContain(5);
+      expect(allIds).toContain(5);
     });
 
     it('inmueble sin isAccessory se procesa normalmente (compatibilidad hacia atrás)', async () => {
