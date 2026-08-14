@@ -53,7 +53,7 @@ function inmueble(p: Partial<InmuebleDeclarado> & { refCatastral: string; direcc
 function declaracion(
   ejercicio: number,
   inmuebles: InmuebleDeclarado[],
-  opts: { resultado?: number; previaIngresos?: number } = {},
+  opts: { resultado?: number; previaIngresos?: number; perdidas?: any[] } = {},
 ): DeclaracionCompleta {
   return {
     meta: {
@@ -77,7 +77,7 @@ function declaracion(
       cuotaAutoliquidacion: 0, totalRetencionesPagos: 0, cuotaDiferencial: 0,
       resultadoDeclaracion: opts.resultado ?? 0,
     },
-    arrastres: { gastosPendientes: [], perdidasPatrimoniales: [] },
+    arrastres: { gastosPendientes: [], perdidasPatrimoniales: opts.perdidas ?? [] },
     casillas: { '0695': opts.resultado ?? 0 },
     camposExtra: {},
   } as DeclaracionCompleta;
@@ -104,7 +104,7 @@ async function limpiar() {
   await Promise.all([
     db.clear('properties'), db.clear('ejerciciosFiscalesCoord'),
     db.clear('mejorasInmueble'), db.clear('gastosInmueble'), db.clear('mueblesInmueble'),
-    db.clear('aeatCarryForwards'),
+    db.clear('aeatCarryForwards'), db.clear('perdidasPatrimonialesAhorro'),
   ]);
 }
 
@@ -199,6 +199,18 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
     expect(total).toBeCloseTo(6000, 2);
   });
 
+  it('saldos BIA: el import alimenta perdidasPatrimonialesAhorro (genera y consume)', async () => {
+    await distribuirDeclaracion(declaracion(2023, [], {
+      perdidas: [{ tipo: 'ahorro', importeInicial: 5000, importeAplicado: 0, importePendiente: 5000, añoOrigen: 0 }],
+    }), OPCIONES_DEFAULT);
+    await distribuirDeclaracion(declaracion(2025, [], {
+      perdidas: [{ tipo: 'ahorro', importeInicial: 5000, importeAplicado: 2000, importePendiente: 3000, añoOrigen: 2 }],
+    }), OPCIONES_DEFAULT);
+    const all = (await (await initDB()).getAll('perdidasPatrimonialesAhorro')) as any[];
+    const r = all.find((x) => x.ejercicioOrigen === 2023 && x.tipoOrigen === 'importado');
+    expect(r.importePendiente).toBeCloseTo(3000, 2);
+  });
+
   it('gastos por casilla: se propagan a gastosInmueble con origen xml_aeat', async () => {
     await distribuirDeclaracion(declaracion(2024, [
       inmueble({ refCatastral: U1, direccion: 'CL PRUEBA 10 1 DR MADRID',
@@ -217,7 +229,6 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 describe('Garantía de importación · huecos conocidos (pendientes de implementar)', () => {
   it.todo('Comunidad de Bienes: un inmueble en proindiviso (p.ej. 10%) prorratea rendimiento y gastos por % — hoy se asume 100%');
-  it.todo('Saldos negativos BIA: el import alimenta perdidasPatrimonialesAhorro (hoy escribe solo en el coord, que la compensación IRPF no lee)');
   it.todo('Imputación de renta: días vacantes generan imputación (2% / 1,1% si catastral revisado) prorrateada');
   it.todo('Import por PDF (justificante): extrae el resumen de forma fiable, sin depender de conversores externos');
 });

@@ -15,6 +15,7 @@ import type { Property, EjercicioFiscalCoord, AeatVersion, Document, VinculoAcce
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { baseAmortizableEjercicioService } from './baseAmortizableEjercicioService';
 import { sincronizarArrastreImportado } from './carryForwardService';
+import { sincronizarPerdidasAhorroImportadas } from './compensacionAhorroService';
 import { invalidateCachedStores } from './indexedDbCacheService';
 import { CCAA_LIST } from '../utils/locationUtils';
 import type {
@@ -857,6 +858,15 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
 
   ej.updatedAt = ahora;
   await db.put('ejerciciosFiscalesCoord', ej);
+
+  // ── Saldos negativos BIA → store canónico perdidasPatrimonialesAhorro ──
+  // El coord es solo display; la compensación real del IRPF y la venta leen del
+  // store. Volcamos aquí los saldos declarados (idempotente, order-independiente).
+  try {
+    await sincronizarPerdidasAhorroImportadas(año, decl.arrastres.perdidasPatrimoniales);
+  } catch (e) {
+    console.warn(`[saldosBIA] sincronización falló · ejercicio ${año}:`, e);
+  }
 }
 
 async function archivarDocumentoImportado(db: DB, decl: DeclaracionCompleta): Promise<void> {
