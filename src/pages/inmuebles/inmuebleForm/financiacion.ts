@@ -15,7 +15,6 @@ import {
   prestamoAfectaInmueble,
 } from '../../../services/prestamosService';
 import { getFinanciacionInmueble } from '../../../services/financiacionInmuebleService';
-import { fijarPrestamoVinculado } from '../../../services/vinculoPrestamoInmueble';
 import type { FinanciacionLineaInmueble } from '../../../modules/inmuebles/adapters/patrimonioInmuebleAdapter';
 import type { Prestamo, DestinoCapital, Garantia } from '../../../types/prestamos';
 

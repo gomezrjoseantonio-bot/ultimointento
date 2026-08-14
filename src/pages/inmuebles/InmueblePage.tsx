@@ -33,7 +33,6 @@ import { initDB, MejoraInmueble, MuebleInmueble } from '../../services/db';
 import { TipoActivo } from '../../types/tipoActivo';
 import { mejorasInmuebleService } from '../../services/mejorasInmuebleService';
 import { mueblesInmuebleService } from '../../services/mueblesInmuebleService';
-import { prestamosService } from '../../services/prestamosService';
 import { personalDataService } from '../../services/personalDataService';
 import type { Prestamo } from '../../types/prestamos';
 import type { FinanciacionLineaInmueble } from '../../modules/inmuebles/adapters/patrimonioInmuebleAdapter';
