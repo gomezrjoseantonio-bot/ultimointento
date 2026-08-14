@@ -1,20 +1,12 @@
-// ============================================================================
-// Tesorería V6 · §4.7 · drawer · subir extracto
-// ============================================================================
+// Tesorería V6 · §4.7 · drawer · subir extracto.
 //
-// Dos puertas, un solo flujo:
-//   · desde el hero → la cuenta se detecta por el IBAN del fichero;
-//   · desde una cuenta → la cuenta ya viene fijada.
-//
-// Paso 1 · dropzone. Paso 2 · resultado del emparejamiento, con las tres
-// acciones por línea sin cuadre (asignar · crear · ignorar).
-//
-// **Un solo botón Guardar** al pie, que consolida la sesión entera. No hay
-// botón intermedio de conciliar. El aspa sale SIN guardar, y eso significa
-// borrar el batch: `processFile` ya insertó los movimientos al procesar, así
-// que "no guardar" tiene que deshacerlos de verdad (`cancelImportBatch`), no
-// solo cerrar la ventana.
-// ============================================================================
+// Dos puertas, un flujo: desde el hero la cuenta se detecta por el IBAN del
+// fichero; desde una cuenta ya viene fijada. Paso 1 · dropzone. Paso 2 ·
+// resultado del emparejamiento, con las tres acciones por línea sin cuadre
+// (asignar · crear · ignorar). **Un solo botón Guardar** al pie consolida la
+// sesión entera; no hay botón intermedio de conciliar. El aspa sale SIN guardar,
+// y eso significa borrar el batch: `processFile` ya insertó los movimientos al
+// procesar, así que "no guardar" tiene que deshacerlos (`cancelImportBatch`).
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
@@ -53,6 +45,7 @@ import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { pareceRetiradaDeCajero } from '../../../services/retiradaCajero';
 import { convertirEnTraspaso } from '../../../services/traspasoDesdeMovimiento';
 import { importeConSigno, fechaLarga } from './formatoV6';
+import GrupoPlegableExtracto from './GrupoPlegableExtracto';
 import chasis from './DrawerV6.module.css';
 import styles from './DrawerExtracto.module.css';
 
@@ -720,69 +713,33 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
               {/* Ignoradas · agrupadas y plegadas (D1). */}
               {ignoradas.length > 0 && (
-                <div className={styles.grupoIgn}>
-                  <button
-                    type="button"
-                    className={styles.grupoIgnHd}
-                    onClick={() => setIgnoradasPlegadas((v) => !v)}
-                    aria-expanded={!ignoradasPlegadas}
-                  >
-                    {ignoradasPlegadas ? (
-                      <Icons.ChevronRight size={14} aria-hidden="true" />
-                    ) : (
-                      <Icons.ChevronDown size={14} aria-hidden="true" />
-                    )}
-                    <span>{ignoradas.length} ignoradas</span>
-                  </button>
-                  {!ignoradasPlegadas &&
-                    ignoradas.map((l) => (
-                      <div key={l.movementId} className={styles.lineaIgn}>
-                        <div className={styles.lineaTextoIgn}>{l.textoBanco}</div>
-                        <div className={styles.lineaImporteIgn}>{importeConSigno(l.importe)}</div>
-                        <button
-                          type="button"
-                          className={styles.recuperar}
-                          onClick={() => recuperar(l.movementId)}
-                        >
-                          recuperar
-                        </button>
-                      </div>
-                    ))}
-                </div>
+                <GrupoPlegableExtracto
+                  plegado={ignoradasPlegadas}
+                  onToggle={() => setIgnoradasPlegadas((v) => !v)}
+                  titulo={`${ignoradas.length} ignoradas`}
+                  lineas={ignoradas}
+                  accion={(l) => (
+                    <button
+                      type="button"
+                      className={styles.recuperar}
+                      onClick={() => recuperar(l.movementId)}
+                    >
+                      recuperar
+                    </button>
+                  )}
+                />
               )}
 
               {/* Meses cerrados · el extracto trae varios meses y estos ya están
                   cerrados · no se cargan. Para cargarlos, se reabre el mes. */}
               {deMesesCerrados.length > 0 && (
-                <div className={styles.grupoIgn}>
-                  <button
-                    type="button"
-                    className={styles.grupoIgnHd}
-                    onClick={() => setCerradosPlegados((v) => !v)}
-                    aria-expanded={!cerradosPlegados}
-                  >
-                    {cerradosPlegados ? (
-                      <Icons.ChevronRight size={14} aria-hidden="true" />
-                    ) : (
-                      <Icons.ChevronDown size={14} aria-hidden="true" />
-                    )}
-                    <span>{deMesesCerrados.length} de meses cerrados · no se cargan</span>
-                  </button>
-                  {!cerradosPlegados && (
-                    <>
-                      <div className={styles.zonaS} style={{ padding: '2px 4px 8px' }}>
-                        Estos cargos son de meses que ya cerraste. Para cargarlos, reabre el mes
-                        en «Cerrar el mes».
-                      </div>
-                      {deMesesCerrados.map((l) => (
-                        <div key={l.movementId} className={styles.lineaIgn}>
-                          <div className={styles.lineaTextoIgn}>{l.textoBanco}</div>
-                          <div className={styles.lineaImporteIgn}>{importeConSigno(l.importe)}</div>
-                        </div>
-                      ))}
-                    </>
-                  )}
-                </div>
+                <GrupoPlegableExtracto
+                  plegado={cerradosPlegados}
+                  onToggle={() => setCerradosPlegados((v) => !v)}
+                  titulo={`${deMesesCerrados.length} de meses cerrados · no se cargan`}
+                  intro="Estos cargos son de meses que ya cerraste. Para cargarlos, reabre el mes en «Cerrar el mes»."
+                  lineas={deMesesCerrados}
+                />
               )}
 
               {error && <div className={styles.error}>{error}</div>}
