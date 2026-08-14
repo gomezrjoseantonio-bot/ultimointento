@@ -163,3 +163,26 @@ describe('lo que la FEIN no trae, no se pisa', () => {
     expect(formDesdePrestamo(prestamoDesdeDraft(vacia), base)).toEqual(base);
   });
 });
+
+// Una hipoteca puede tener VARIOS inmuebles como garantía (caso Tenderina:
+// un préstamo, dos pisos que responden). El formulario tiene que leer todos.
+describe('garantía multi-inmueble', () => {
+  it('recompone garantiaInmuebleIds de todas las garantías hipotecarias', () => {
+    const prestamo = {
+      garantias: [
+        { tipo: 'HIPOTECARIA', inmuebleId: '2' },
+        { tipo: 'HIPOTECARIA', inmuebleId: '3' },
+      ],
+    } as unknown as Prestamo;
+
+    const form = formDesdePrestamo(prestamo, emptyFormState());
+    expect(form.garantiaInmuebleIds).toEqual(['2', '3']);
+    expect(form.garantiaTipo).toBe('hipotecaria');
+  });
+
+  it('un préstamo personal no deja inmuebles de garantía', () => {
+    const prestamo = { garantias: [{ tipo: 'PERSONAL' }] } as unknown as Prestamo;
+    const form = formDesdePrestamo(prestamo, emptyFormState());
+    expect(form.garantiaInmuebleIds).toEqual([]);
+  });
+});
