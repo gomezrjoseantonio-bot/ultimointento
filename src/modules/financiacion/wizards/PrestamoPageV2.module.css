@@ -695,3 +695,35 @@ select.inp {
   opacity: 0.8;
   margin-top: 1px;
 }
+
+/* Lista de inmuebles que hipotecan (garantía) · checkboxes multi-selección. */
+.garantiaList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--w-r-md);
+  padding: 6px;
+}
+
+.garantiaItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--w-r-sm, 8px);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--atlas-v5-ink-2);
+}
+
+.garantiaItem:hover {
+  background: var(--atlas-v5-card-alt);
+}
+
+.garantiaItem input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--atlas-v5-brand-ink);
+  cursor: pointer;
+}

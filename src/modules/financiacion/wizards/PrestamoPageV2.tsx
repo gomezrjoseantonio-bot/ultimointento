@@ -202,7 +202,12 @@ interface FormState {
   // ── Garantía y destino ──────────────────────────────────────────────────
   destinos: DestinoRow[];
   garantiaTipo: TipoGarantiaV2;
-  garantiaInmuebleId: string;
+  /**
+   * Inmuebles que hipotecan el préstamo · uno o VARIOS. Una misma hipoteca
+   * puede tener dos pisos como garantía (caso real: Tenderina). Se guarda una
+   * `Garantia` HIPOTECARIA por inmueble.
+   */
+  garantiaInmuebleIds: string[];
 
   // ── Fuera del wizard, pero NO se pierde ─────────────────────────────────
   /**
@@ -547,7 +552,7 @@ function emptyFormState(): FormState {
       { id: uid(), tipo: 'personal', inmuebleId: '', importe: 0, porcentaje: 100 },
     ],
     garantiaTipo: 'personal',
-    garantiaInmuebleId: '',
+    garantiaInmuebleIds: [],
     carenciaInicialTipo: 'ninguna',
     carenciaInicialMesesRaw: '0',
   };
@@ -592,6 +597,10 @@ function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
         : base.destinos;
 
   const garantiaPrimera = p.garantias?.[0];
+  // Todos los inmuebles que hipotecan · una hipoteca puede tener varios.
+  const garantiaInmuebleIds = (p.garantias ?? [])
+    .filter((g) => g.tipo === 'HIPOTECARIA' && g.inmuebleId)
+    .map((g) => g.inmuebleId as string);
 
   // Se traen TODOS los campos, no solo nombre y puntos: lo que no se leía aquí
   // se perdía al guardar, y con ello se iba la única forma de mirar la
@@ -701,7 +710,7 @@ function formDesdePrestamo(p: Partial<Prestamo>, base: FormState): FormState {
       p.carenciaMeses !== undefined ? String(p.carenciaMeses) : base.carenciaInicialMesesRaw,
     destinos,
     garantiaTipo: garantiaPrimera ? mapGarantiaLegacyToV2(garantiaPrimera.tipo) : base.garantiaTipo,
-    garantiaInmuebleId: garantiaPrimera?.inmuebleId || base.garantiaInmuebleId,
+    garantiaInmuebleIds: garantiaInmuebleIds.length > 0 ? garantiaInmuebleIds : base.garantiaInmuebleIds,
   };
 }
 
@@ -1265,8 +1274,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
   const resumenGarantia = useMemo(() => {
     if (form.tipoPrestamo !== 'hipotecario') return 'responde el titular';
-    return nombreInmueble(form.garantiaInmuebleId) || 'sin inmueble elegido';
-  }, [form.tipoPrestamo, form.garantiaInmuebleId, nombreInmueble]);
+    const nombres = form.garantiaInmuebleIds.map(nombreInmueble).filter(Boolean);
+    return nombres.length > 0 ? nombres.join(' · ') : 'sin inmueble elegido';
+  }, [form.tipoPrestamo, form.garantiaInmuebleIds, nombreInmueble]);
 
   const resumenDestino = useMemo(() => {
     if (form.destinos.length === 0) return 'sin destino';
@@ -1390,8 +1400,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     if (form.destinos.some((d) => PIDE_INMUEBLE(d.tipo) && !d.inmuebleId)) {
       return 'Selecciona un inmueble para todos los destinos de compra o reforma.';
     }
-    if (form.tipoPrestamo === 'hipotecario' && !form.garantiaInmuebleId) {
-      return 'Selecciona el inmueble hipotecado · en un hipotecario, es lo que responde.';
+    if (form.tipoPrestamo === 'hipotecario' && form.garantiaInmuebleIds.length === 0) {
+      return 'Selecciona al menos un inmueble hipotecado · en un hipotecario, es lo que responde.';
     }
     return null;
   };
@@ -1426,10 +1436,13 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
           : form.garantiaTipo === 'pignoraticia'
             ? 'pignoraticia'
             : 'personal';
-      const garantias: Garantia[] = [{
-        tipo: mapGarantiaV2ToLegacy(tipoGarantia),
-        inmuebleId: tipoGarantia === 'hipotecaria' ? form.garantiaInmuebleId || undefined : undefined,
-      }];
+      // Hipotecaria · UNA garantía por inmueble (`garantias[]` es un array).
+      // Así una hipoteca sobre dos pisos guarda las dos, y el lector de
+      // Inmuebles sabe que ambos responden. Personal/pignoraticia · una sola.
+      const garantias: Garantia[] =
+        tipoGarantia === 'hipotecaria'
+          ? form.garantiaInmuebleIds.map((id) => ({ tipo: 'HIPOTECARIA', inmuebleId: id }))
+          : [{ tipo: mapGarantiaV2ToLegacy(tipoGarantia), inmuebleId: undefined }];
 
       const ambito: 'PERSONAL' | 'INMUEBLE' = destinosLegacy.some((d) => d.inmuebleId)
         ? 'INMUEBLE'
@@ -2798,28 +2811,37 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
               <div className={styles.advBody}>
                 {form.tipoPrestamo === 'hipotecario' ? (
                   <>
-                    <div className={styles.grid2} style={{ marginTop: 12 }}>
-                      <div className={styles.fld}>
-                        <label className={styles.fldLab} htmlFor="p-garantia">
-                          Inmueble hipotecado <span className={styles.req}>*</span>
-                        </label>
-                        <select
-                          id="p-garantia"
-                          className={styles.inp}
-                          value={form.garantiaInmuebleId}
-                          onChange={(e) => update('garantiaInmuebleId', e.target.value)}
-                        >
-                          <option value="">— Selecciona —</option>
-                          {inmuebles.map((p) => (
-                            <option key={p.id} value={String(p.id)}>
-                              {p.alias || `Inmueble ${p.id}`}
-                            </option>
-                          ))}
-                        </select>
+                    <div className={styles.fld} style={{ marginTop: 12 }}>
+                      <label className={styles.fldLab}>
+                        Inmuebles hipotecados <span className={styles.req}>*</span>
+                      </label>
+                      <div className={styles.garantiaList} role="group" aria-label="Inmuebles hipotecados">
+                        {inmuebles.map((p) => {
+                          const id = String(p.id);
+                          const marcado = form.garantiaInmuebleIds.includes(id);
+                          return (
+                            <label key={p.id} className={styles.garantiaItem}>
+                              <input
+                                type="checkbox"
+                                checked={marcado}
+                                onChange={() =>
+                                  update(
+                                    'garantiaInmuebleIds',
+                                    marcado
+                                      ? form.garantiaInmuebleIds.filter((x) => x !== id)
+                                      : [...form.garantiaInmuebleIds, id],
+                                  )
+                                }
+                              />
+                              <span>{p.alias || `Inmueble ${p.id}`}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                     <div className={styles.helper}>
-                      En un hipotecario responde el inmueble que se hipoteca.{' '}
+                      Marca <b>todos</b> los inmuebles que hipotecan este préstamo · pueden ser
+                      varios (una hipoteca sobre dos pisos responde con los dos).{' '}
                       <b>No tiene por qué ser donde va el dinero</b> — eso es el destino, justo
                       abajo.
                     </div>
