@@ -76,6 +76,8 @@ export interface InmuebleFormModel {
   porcentajePropiedadPareja: number;
   tieneParking: boolean;
   tieneTrastero: boolean;
+  tieneTerraza: boolean;
+  tieneAscensor: boolean;
   // 6 · datos fiscales
   valorCatastralTotal: number;
   valorCatastralConstruccion: number;
@@ -149,6 +151,8 @@ export function emptyModel(fallbackCCAA = ''): InmuebleFormModel {
     porcentajePropiedadPareja: 0,
     tieneParking: false,
     tieneTrastero: false,
+    tieneTerraza: false,
+    tieneAscensor: false,
     valorCatastralTotal: 0,
     valorCatastralConstruccion: 0,
     cadastralRevised: false,
@@ -268,6 +272,8 @@ export function modelFromProperty(
     porcentajePropiedadPareja: prop.porcentajePropiedadPareja ?? 0,
     tieneParking: prop.anexos?.tieneParking ?? false,
     tieneTrastero: prop.anexos?.tieneTrastero ?? false,
+    tieneTerraza: prop.anexos?.tieneTerraza ?? false,
+    tieneAscensor: prop.anexos?.tieneAscensor ?? false,
     valorCatastralTotal: prop.fiscalData?.cadastralValue || 0,
     valorCatastralConstruccion: prop.fiscalData?.constructionCadastralValue || 0,
     cadastralRevised: prop.fiscalData?.cadastralRevised ?? false,
@@ -371,7 +377,12 @@ export function propertyFromModel(
     documents: meta.documents.length > 0 ? meta.documents : [],
     valorReferencia: m.valorReferenciaIsManual ? m.valorReferencia : undefined,
     anexos: vis.showAnexos
-      ? { tieneParking: m.tieneParking, tieneTrastero: m.tieneTrastero }
+      ? {
+          tieneParking: m.tieneParking,
+          tieneTrastero: m.tieneTrastero,
+          tieneTerraza: m.tieneTerraza,
+          tieneAscensor: m.tieneAscensor,
+        }
       : undefined,
     usoTipo,
     // Arrendamiento · se conserva verbatim del original (se gestiona en el detalle).

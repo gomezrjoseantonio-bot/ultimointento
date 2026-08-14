@@ -1,13 +1,13 @@
 /**
- * Ficha de inmueble · alta/edición · pantalla única ATLAS.
+ * Ficha de inmueble · alta/edición · pantalla única ATLAS (rediseño · decisión Jose).
  *
- * Reescritura (decisión Jose): el estado deja de ser un blob de 55 campos y
- * pasa por un MODELO con mappers `Property <-> modelo` SIN pérdida
- * (`inmuebleForm/model.ts`). La financiación deja de ser dato huérfano: se
- * integra con el módulo Financiación (crear préstamo prerrellenado · vincular ·
- * leer el vinculado), en `inmuebleForm/financiacion.ts` y el bloque
- * `<FinanciacionBlock/>`. El preview de "financiación vinculada" usa el servicio
- * CANÓNICO, no una fórmula a mano.
+ * Un solo lienzo sin scroll en 3 capítulos con hilo + foto: 1 El activo · 2
+ * Características y fiscal · 3 La compra · 4 Foto (drawer). Campos del ANCHO de su
+ * dato, empaquetados; toggles de un toque (booleanos azul · Estado con oro cuando
+ * "Nueva"); ubicación derivada del CP; impuestos AUTO por estado (ITP o IVA+AJD);
+ * financiación en una línea con "vincular existente" inline. El estado del
+ * formulario pasa por un MODELO con mappers SIN pérdida (`inmuebleForm/model.ts`)
+ * y la financiación se integra con el módulo Financiación (crear/vincular/leer).
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -25,6 +25,9 @@ import {
   Activity as IconActivity,
   Banknote as IconBank,
   Image as IconImage,
+  MapPin as IconPin,
+  Plus as IconPlus,
+  Link2 as IconLink,
 } from 'lucide-react';
 
 import { initDB } from '../../services/db';
@@ -57,14 +60,12 @@ import {
   leerFinanciacionInmueble,
   fijarPrestamoVinculado,
 } from './inmuebleForm/financiacion';
-import FinanciacionBlock from './inmuebleForm/Financiacion';
 
 interface InmueblePageProps {
   mode: 'create' | 'edit';
 }
 
-// Días arrendado del preview · supuesto (365). Ya no es un campo de la ficha:
-// el dato real sale de los contratos y no vivía en el modelo (era campo muerto).
+// Días arrendado del preview · supuesto (365) para la amortización estimada.
 const DIAS_ARRENDADO_PREVIEW = 365;
 
 type IconComp = React.ComponentType<{ size?: number; className?: string }>;
@@ -75,7 +76,6 @@ const TIPO_ICONS: Record<TipoActivo, IconComp> = {
   local: IconStore as unknown as IconComp,
   otro: IconOther as unknown as IconComp,
 };
-
 const TIPO_LABELS: Record<TipoActivo, string> = {
   piso: 'Piso',
   parking: 'Parking',
@@ -84,11 +84,11 @@ const TIPO_LABELS: Record<TipoActivo, string> = {
   otro: 'Otro',
 };
 
-const formatCurrency = (n: number): string =>
+const eur = (n: number): string =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-const formatInt = (n: number): string =>
+const int = (n: number): string =>
   new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n);
-const formatPct = (n: number): string =>
+const pct = (n: number): string =>
   `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(n)} %`;
 
 const formatDateLong = (iso: string): string => {
@@ -97,6 +97,30 @@ const formatDateLong = (iso: string): string => {
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 };
+
+// ─── Toggle de un toque (booleano · azul) ───
+const Toggle: React.FC<{ label: string; on: boolean; onChange: (v: boolean) => void; onText?: string; offText?: string }> = ({
+  label,
+  on,
+  onChange,
+  onText = 'Sí',
+  offText = 'No',
+}) => (
+  <div className={styles.toggleField}>
+    <span className={styles.lab}>{label}</span>
+    <div className={styles.tog}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        className={`${styles.togSw} ${on ? styles.togSwOn : ''}`}
+        onClick={() => onChange(!on)}
+      />
+      <span className={styles.togVal}>{on ? onText : offText}</span>
+    </div>
+  </div>
+);
 
 const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   const navigate = useNavigate();
@@ -113,9 +137,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   const [vinculadas, setVinculadas] = useState<FinanciacionLineaInmueble[]>([]);
   const [vinculables, setVinculables] = useState<Prestamo[]>([]);
   const [purchaseDateOriginal, setPurchaseDateOriginal] = useState<string>('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [vincularOpen, setVincularOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // ─── carga de la financiación vinculada (reutilizable tras vincular) ───
   const recargarFinanciacion = React.useCallback(async (inmuebleId: number) => {
     const [lineas, cand] = await Promise.all([
       leerFinanciacionInmueble(inmuebleId).catch(() => [] as FinanciacionLineaInmueble[]),
@@ -132,7 +157,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       try {
         const personal = await personalDataService.getPersonalData();
         const fallbackCCAA = personal?.comunidadAutonoma || '';
-
         if (mode === 'edit' && propertyId) {
           const db = await initDB();
           const prop = await db.get('properties', propertyId);
@@ -173,12 +197,13 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        cancelRef.current();
+        if (drawerOpen) setDrawerOpen(false);
+        else cancelRef.current();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [drawerOpen]);
 
   // ─── auto-rellenar ubicación desde CP ───
   useEffect(() => {
@@ -214,7 +239,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   }, [form.precioCompra, form.valorReferenciaIsManual]);
 
   // ─── impuestos AUTO por estado (editables · override manual) ───
-  // ITP = valor de referencia × tipo CCAA · IVA = precio × 10/21% · AJD = precio × 1.5%.
   const tributosAuto = useMemo(
     () =>
       calcularTributosAuto({
@@ -247,18 +271,11 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       calcularInmuebleResumen({
         precio: form.precioCompra,
         valorReferencia: form.valorReferencia,
-        formalizacion: {
-          notaria: form.notaria,
-          registro: form.registro,
-          gestoria: form.gestoria,
-          otros: form.otros,
-        },
+        formalizacion: { notaria: form.notaria, registro: form.registro, gestoria: form.gestoria, otros: form.otros },
         impuestos: impuestosTotal(form),
         valorCatastralTotal: form.valorCatastralTotal,
         valorCatastralConstruccion: form.valorCatastralConstruccion,
         diasArrendado: DIAS_ARRENDADO_PREVIEW,
-        // Mejoras posteriores se gestionan en el detalle · la ficha calcula el
-        // coste de adquisición puro (sin mejoras) para no duplicar la fuente.
         mejorasPosteriores: [],
       }),
     [form],
@@ -271,13 +288,14 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
 
   const vis = visibilidad(form);
   const vinculado = vinculadas.length > 0;
+  const financiadoDelPrestamo = vinculadas.reduce((s, l) => s + (l.principalInicial || 0), 0);
+  const financiadoEfectivo = vinculado ? financiadoDelPrestamo : form.importeFinanciado;
+  const costeTotal = resumen.costeBaseAdquisicion;
+  const descuadre = costeTotal > 0 ? form.aportacionPropia + financiadoEfectivo - costeTotal : 0;
+  const hayDescuadre = costeTotal > 0 && Math.abs(descuadre) >= 1;
 
-  // ─── financiado DERIVADO del coste cuando NO hay préstamo (una sola variable
-  // libre: la aportación). Con préstamo vinculado, el importe lo manda el préstamo. ───
+  // ─── financiado DERIVADO del coste cuando NO hay préstamo (aportación = variable libre) ───
   useEffect(() => {
-    // Esperar a que termine la carga (incluida la financiación vinculada) para
-    // no pisar el importe con una derivación transitoria antes de saber si hay
-    // préstamo.
     if (isLoading || vinculado) return;
     const derived = Math.max(0, resumen.costeBaseAdquisicion - form.aportacionPropia);
     if (Math.abs(derived - form.importeFinanciado) > 0.005) {
@@ -303,6 +321,8 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       if (next !== 'piso') {
         u.tieneParking = false;
         u.tieneTrastero = false;
+        u.tieneTerraza = false;
+        u.tieneAscensor = false;
         u.habitaciones = 0;
         u.banos = 0;
         u.esViviendaHabitual = false;
@@ -311,7 +331,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     });
   };
 
-  // ─── foto ───
   const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -320,7 +339,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => set('foto', reader.result as string);
+    reader.onload = () => setForm((p) => ({ ...p, fotoOn: true, foto: reader.result as string }));
     reader.readAsDataURL(file);
   };
 
@@ -339,11 +358,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     return null;
   };
 
-  /**
-   * Persiste el inmueble (el ACTIVO) y devuelve el id, o null si falla. Mejoras
-   * y mobiliario ya NO se tocan aquí: viven en sus stores y se gestionan en el
-   * detalle · la ficha no crea ni borra esos registros (se conservan).
-   */
   const persistirInmueble = async (): Promise<number | null> => {
     const err = validate();
     if (err) {
@@ -352,7 +366,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     }
     const db = await initDB();
     const propertyData = propertyFromModel(form, metaRef.current);
-
     let savedId: number;
     if (mode === 'edit' && propertyId) {
       await db.put('properties', { ...propertyData, id: propertyId });
@@ -360,7 +373,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     } else {
       savedId = Number(await db.add('properties', propertyData));
     }
-
     return savedId;
   };
 
@@ -386,7 +398,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
 
   // ─── financiación · crear / vincular / editar ───
   const handleCrearPrestamo = async () => {
-    // El préstamo necesita el inmueble ya guardado (su destino apunta a un id).
     setIsSaving(true);
     let savedId: number | null = propertyId ?? null;
     try {
@@ -402,9 +413,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       fechaCompra: form.fechaCompra,
       inmuebleId: savedId,
     });
-    navigate('/financiacion/nuevo', {
-      state: { initialData, volverA: `/inmuebles/${savedId}/editar` },
-    });
+    navigate('/financiacion/nuevo', { state: { initialData, volverA: `/inmuebles/${savedId}/editar` } });
   };
 
   const handleVincularExistente = async (prestamoId: string) => {
@@ -416,14 +425,11 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       await fijarPrestamoVinculado(propertyId, prestamoId);
       metaRef.current = { ...metaRef.current, prestamoVinculadoId: prestamoId };
       await recargarFinanciacion(propertyId);
+      setVincularOpen(false);
       toast.success('Préstamo vinculado');
     } catch {
       toast.error('No se pudo vincular el préstamo');
     }
-  };
-
-  const handleEditarPrestamo = (prestamoId: string) => {
-    navigate(`/financiacion/${prestamoId}/editar`);
   };
 
   // ─── render ───
@@ -438,17 +444,17 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   }
 
   const HeaderIcon = TIPO_ICONS[form.tipoActivo];
-  const headerTitle =
-    mode === 'edit'
-      ? `Editar inmueble · ${form.alias || TIPO_LABELS[form.tipoActivo]}`
-      : `Nuevo inmueble · ${TIPO_LABELS[form.tipoActivo]}`;
+  const headerTitle = form.alias || TIPO_LABELS[form.tipoActivo];
+  const ubic = [form.municipality, form.ccaa].filter(Boolean).join(' · ') || '—';
   const headerSub =
     mode === 'edit' && purchaseDateOriginal
-      ? `${form.municipality || form.ccaa || '—'} · adquirido ${formatDateLong(purchaseDateOriginal)} · activo`
-      : 'Crear nuevo registro';
+      ? `${ubic} · adquirido ${formatDateLong(purchaseDateOriginal)}`
+      : `${ubic} · nuevo registro`;
+  const chipUbic = [form.municipality, form.ccaa].filter(Boolean).join(' · ');
+  const esNueva = form.estado === 'obra-nueva';
 
   return (
-    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={headerTitle}>
+    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={`Ficha · ${headerTitle}`}>
       <div className={styles.modal}>
         {/* HEADER */}
         <div className={styles.header}>
@@ -469,257 +475,69 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
         {/* BODY */}
         <div className={styles.body}>
           <div className={styles.colForm}>
-            {/* B1 · TIPO */}
-            <Block title="Tipo de activo">
-              <div className={styles.typeSelector}>
+            {/* 1 · EL ACTIVO */}
+            <div className={styles.band}>
+              <div className={styles.bandHd}>
+                <span className={styles.bandNo}>1</span>
+                <span className={styles.bandTitle}>El activo</span>
+              </div>
+              <div className={styles.types}>
                 {(Object.keys(TIPO_LABELS) as TipoActivo[]).map((t) => {
                   const Icon = TIPO_ICONS[t];
                   return (
                     <button
                       key={t}
                       type="button"
-                      className={`${styles.typeCard} ${form.tipoActivo === t ? styles.selected : ''}`}
+                      className={`${styles.type} ${form.tipoActivo === t ? styles.typeSel : ''}`}
                       onClick={() => handleTipoChange(t)}
                       aria-pressed={form.tipoActivo === t}
                     >
-                      <Icon size={22} />
-                      <span className={styles.typeCardLabel}>{TIPO_LABELS[t]}</span>
+                      <Icon size={16} />
+                      <span>{TIPO_LABELS[t]}</span>
                     </button>
                   );
                 })}
               </div>
-            </Block>
 
-            {/* B2 · IDENTIFICACIÓN */}
-            <Block title="Identificación">
-              <div className={`${styles.fieldsRow} ${styles.rowIdentif}`}>
-                <Field label="Alias" required>
-                  <input className={styles.input} value={form.alias} onChange={(e) => set('alias', e.target.value)} />
-                </Field>
-                <Field label="Dirección">
+              <div className={styles.wrap}>
+                <div className={`${styles.fld} ${styles.wDir}`}>
+                  <label className={styles.lab}>Dirección <span className={styles.req}>*</span></label>
                   <input className={styles.input} value={form.direccion} onChange={(e) => set('direccion', e.target.value)} />
-                </Field>
-                <Field label="Ref. catastral">
+                </div>
+                <div className={styles.fld}>
+                  <label className={styles.lab}>CP <span className={styles.req}>*</span></label>
                   <input
-                    className={`${styles.input} ${styles.inputMono}`}
-                    style={{ fontSize: 11 }}
-                    value={form.refCatastral}
-                    onChange={(e) => set('refCatastral', e.target.value)}
-                  />
-                </Field>
-              </div>
-            </Block>
-
-            {/* B3 · UBICACIÓN */}
-            <Block title="Ubicación">
-              <div className={`${styles.fieldsRow} ${styles.rowUbicac}`}>
-                <Field label="CP" required>
-                  <input
-                    className={`${styles.input} ${styles.inputMono}`}
+                    className={`${styles.input} ${styles.inputMonoL} ${styles.wCp}`}
                     value={form.cp}
                     onChange={(e) => set('cp', e.target.value.replace(/\D/g, '').slice(0, 5))}
                     inputMode="numeric"
                   />
-                </Field>
-                <Field label="Población">
-                  <input className={styles.input} value={form.municipality} onChange={(e) => set('municipality', e.target.value)} />
-                </Field>
-                <Field label="Provincia">
-                  <input className={styles.input} value={form.province} onChange={(e) => set('province', e.target.value)} />
-                </Field>
-                <Field label="Comunidad autónoma" hint={form.ccaaIsManual ? 'manual' : 'auto'}>
+                </div>
+                {chipUbic && (
+                  <span className={styles.chip}>
+                    <IconPin size={12} /> {chipUbic}
+                  </span>
+                )}
+              </div>
+
+              <div className={styles.wrap} style={{ marginTop: 8 }}>
+                <div className={styles.fld}>
+                  <label className={styles.lab}>Alias <span className={styles.req}>*</span></label>
+                  <input className={`${styles.input} ${styles.wAlias}`} value={form.alias} onChange={(e) => set('alias', e.target.value)} />
+                </div>
+                <div className={styles.fld}>
+                  <label className={styles.lab}>Ref. catastral</label>
                   <input
-                    className={styles.input}
-                    value={form.ccaa}
-                    onChange={(e) => {
-                      set('ccaa', e.target.value);
-                      set('ccaaIsManual', true);
-                    }}
+                    className={`${styles.input} ${styles.inputMonoL} ${styles.wRef}`}
+                    style={{ fontSize: 11 }}
+                    value={form.refCatastral}
+                    onChange={(e) => set('refCatastral', e.target.value)}
                   />
-                </Field>
-              </div>
-            </Block>
-
-            {/* B4 · COMPRA Y COSTE */}
-            <Block title="Compra y coste">
-              <div className={`${styles.fieldsRow} ${styles.rowCompra1}`}>
-                <Field label="Fecha compra" required>
-                  <input className={styles.input} type="date" value={form.fechaCompra} onChange={(e) => set('fechaCompra', e.target.value)} />
-                </Field>
-                <Field label="Precio compra" required>
-                  <Suffix>
-                    <input
-                      className={`${styles.input} ${styles.inputMono}`}
-                      value={form.precioCompra || ''}
-                      onChange={(e) => set('precioCompra', num(e.target.value))}
-                      inputMode="decimal"
-                    />
-                    <span className={styles.suffix}>€</span>
-                  </Suffix>
-                </Field>
-                <Field label="Valor referencia" hint="base ITP">
-                  <Suffix>
-                    <input
-                      className={`${styles.input} ${styles.inputMono}`}
-                      value={form.valorReferencia || ''}
-                      onChange={(e) => {
-                        set('valorReferencia', num(e.target.value));
-                        set('valorReferenciaIsManual', true);
-                      }}
-                      inputMode="decimal"
-                    />
-                    <span className={styles.suffix}>€</span>
-                  </Suffix>
-                </Field>
-                <Field label="Estado">
-                  <div className={styles.radioInline}>
-                    <label className={styles.radioOpt}>
-                      <input type="radio" checked={form.estado === 'usada'} onChange={() => set('estado', 'usada')} /> Usada
-                    </label>
-                    <label className={styles.radioOpt}>
-                      <input type="radio" checked={form.estado === 'obra-nueva'} onChange={() => set('estado', 'obra-nueva')} /> Nueva
-                    </label>
-                  </div>
-                </Field>
-              </div>
-
-              <div className={`${styles.fieldsRow} ${styles.rowCompra2}`} style={{ marginTop: 12 }}>
-                <Field label="Notaría">
-                  <Suffix>
-                    <input className={`${styles.input} ${styles.inputMono}`} value={form.notaria || ''} onChange={(e) => set('notaria', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </Suffix>
-                </Field>
-                <Field label="Registro">
-                  <Suffix>
-                    <input className={`${styles.input} ${styles.inputMono}`} value={form.registro || ''} onChange={(e) => set('registro', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </Suffix>
-                </Field>
-                <Field label="Gestoría">
-                  <Suffix>
-                    <input className={`${styles.input} ${styles.inputMono}`} value={form.gestoria || ''} onChange={(e) => set('gestoria', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </Suffix>
-                </Field>
-                <Field label="Otros gastos">
-                  <Suffix>
-                    <input className={`${styles.input} ${styles.inputMono}`} value={form.otros || ''} onChange={(e) => set('otros', num(e.target.value))} inputMode="decimal" />
-                    <span className={styles.suffix}>€</span>
-                  </Suffix>
-                </Field>
-              </div>
-
-              {/* Impuestos · AUTO por estado · editables (override manual) */}
-              <div className={`${styles.fieldsRow} ${styles.rowImpuestos}`} style={{ marginTop: 12 }}>
-                {form.estado === 'usada' ? (
-                  <Field label="ITP" hint={`${formatPct(tributosAuto.itpRate)} · ${form.itpIsManual ? 'manual' : 'auto · valor ref.'}`}>
-                    <Suffix>
-                      <input
-                        className={`${styles.input} ${styles.inputMono}`}
-                        value={form.itp || ''}
-                        onChange={(e) => {
-                          set('itp', num(e.target.value));
-                          set('itpIsManual', true);
-                        }}
-                        inputMode="decimal"
-                      />
-                      <span className={styles.suffix}>€</span>
-                    </Suffix>
-                  </Field>
-                ) : (
-                  <>
-                    <Field label="IVA" hint={`${formatPct(tributosAuto.ivaRate)} · ${form.ivaIsManual ? 'manual' : 'auto · precio'}`}>
-                      <Suffix>
-                        <input
-                          className={`${styles.input} ${styles.inputMono}`}
-                          value={form.iva || ''}
-                          onChange={(e) => {
-                            set('iva', num(e.target.value));
-                            set('ivaIsManual', true);
-                          }}
-                          inputMode="decimal"
-                        />
-                        <span className={styles.suffix}>€</span>
-                      </Suffix>
-                    </Field>
-                    <Field label="AJD" hint={`${formatPct(tributosAuto.ajdRate)} · ${form.ajdIsManual ? 'manual' : 'auto · precio'}`}>
-                      <Suffix>
-                        <input
-                          className={`${styles.input} ${styles.inputMono}`}
-                          value={form.ajd || ''}
-                          onChange={(e) => {
-                            set('ajd', num(e.target.value));
-                            set('ajdIsManual', true);
-                          }}
-                          inputMode="decimal"
-                        />
-                        <span className={styles.suffix}>€</span>
-                      </Suffix>
-                    </Field>
-                  </>
-                )}
-              </div>
-
-              <FinanciacionBlock
-                costeTotal={resumen.costeBaseAdquisicion}
-                aportacion={form.aportacionPropia}
-                onAportacion={(n) => set('aportacionPropia', n)}
-                num={num}
-                vinculadas={vinculadas}
-                vinculables={vinculables}
-                onCrearPrestamo={handleCrearPrestamo}
-                onVincularExistente={handleVincularExistente}
-                onEditarPrestamo={handleEditarPrestamo}
-              />
-
-              <div className={styles.hintNote}>
-                <b>Coste total</b> {formatCurrency(resumen.costeBaseAdquisicion)} € · precio +{' '}
-                {formatCurrency(resumen.costeTotalFormalizacion)} € formalización +{' '}
-                {formatCurrency(impuestosTotal(form))} €{' '}
-                {form.estado === 'usada' ? 'ITP' : 'IVA + AJD'} · usado para cálculo de plusvalía y base
-                amortizable. Impuestos <b>auto-calculados</b> ({form.estado === 'usada' ? 'ITP sobre el valor de referencia' : 'IVA + AJD sobre el precio'}) · edítalos si tu caso difiere.
-              </div>
-            </Block>
-
-            {/* B5 · CARACTERÍSTICAS FÍSICAS */}
-            <Block title="Características físicas">
-              <div className={`${styles.fieldsRow} ${vis.isPiso ? styles.rowFisicasPiso : styles.rowFisicasOtro}`}>
-                <Field label="m² útiles">
-                  <input className={`${styles.input} ${styles.inputMono}`} value={form.m2 || ''} onChange={(e) => set('m2', num(e.target.value))} inputMode="decimal" />
-                </Field>
-                {vis.showHabitacionesBanos && (
-                  <>
-                    <Field label="Habitaciones">
-                      <input className={`${styles.input} ${styles.inputMono}`} value={form.habitaciones || ''} onChange={(e) => set('habitaciones', num(e.target.value))} inputMode="numeric" />
-                    </Field>
-                    <Field label="Baños">
-                      <input className={`${styles.input} ${styles.inputMono}`} value={form.banos || ''} onChange={(e) => set('banos', num(e.target.value))} inputMode="numeric" />
-                    </Field>
-                  </>
-                )}
-                <Field label="Tipo">
-                  <div className={styles.radioInline}>
-                    <label className={styles.radioOpt}>
-                      <input type="radio" checked={form.esUrbana} onChange={() => set('esUrbana', true)} /> Urbana
-                    </label>
-                    <label className={styles.radioOpt}>
-                      <input type="radio" checked={!form.esUrbana} onChange={() => set('esUrbana', false)} /> Rústica
-                    </label>
-                  </div>
-                </Field>
-                <Field label="Certificado energético">
-                  <select className={styles.input} value={form.certificadoEnergetico} onChange={(e) => set('certificadoEnergetico', e.target.value)}>
-                    <option value="">Sin indicar</option>
-                    <option value="NO">No lo tiene</option>
-                    {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => (
-                      <option key={l} value={l}>Letra {l}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Titularidad">
+                </div>
+                <div className={styles.fld}>
+                  <label className={styles.lab}>Titularidad</label>
                   <select
-                    className={styles.input}
+                    className={`${styles.input} ${styles.wTit}`}
                     value={form.titularidad}
                     onChange={(e) => {
                       const t = e.target.value as InmuebleFormModel['titularidad'];
@@ -734,116 +552,299 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                     }}
                   >
                     <option value="yo">Yo</option>
-                    <option value="pareja">Mi pareja</option>
+                    <option value="pareja">Pareja</option>
                     <option value="ambos">Ambos</option>
                   </select>
-                </Field>
+                </div>
                 {form.titularidad !== 'pareja' && (
-                  <Field label={form.titularidad === 'ambos' ? '% tuyo' : '% propiedad'}>
-                    <Suffix>
-                      <input className={`${styles.input} ${styles.inputMono}`} value={form.porcentajePropiedad || ''} onChange={(e) => set('porcentajePropiedad', num(e.target.value))} inputMode="decimal" />
+                  <div className={`${styles.fld} ${styles.fldC}`}>
+                    <label className={styles.lab}>{form.titularidad === 'ambos' ? '% tuyo' : '% prop.'}</label>
+                    <div className={styles.inputSuffix}>
+                      <input className={`${styles.input} ${styles.inputMono} ${styles.wPct}`} value={form.porcentajePropiedad || ''} onChange={(e) => set('porcentajePropiedad', num(e.target.value))} inputMode="decimal" />
                       <span className={styles.suffix}>%</span>
-                    </Suffix>
-                  </Field>
+                    </div>
+                  </div>
                 )}
                 {form.titularidad !== 'yo' && (
-                  <Field label={form.titularidad === 'ambos' ? '% pareja' : '% propiedad'}>
-                    <Suffix>
-                      <input className={`${styles.input} ${styles.inputMono}`} value={form.porcentajePropiedadPareja || ''} onChange={(e) => set('porcentajePropiedadPareja', num(e.target.value))} inputMode="decimal" />
+                  <div className={`${styles.fld} ${styles.fldC}`}>
+                    <label className={styles.lab}>% pareja</label>
+                    <div className={styles.inputSuffix}>
+                      <input className={`${styles.input} ${styles.inputMono} ${styles.wPct}`} value={form.porcentajePropiedadPareja || ''} onChange={(e) => set('porcentajePropiedadPareja', num(e.target.value))} inputMode="decimal" />
                       <span className={styles.suffix}>%</span>
-                    </Suffix>
-                  </Field>
+                    </div>
+                  </div>
+                )}
+                {vis.showViviendaHabitual && (
+                  <Toggle label="Vivienda habitual" on={form.esViviendaHabitual} onChange={(v) => set('esViviendaHabitual', v)} />
+                )}
+              </div>
+            </div>
+
+            {/* 2 · CARACTERÍSTICAS Y FISCAL */}
+            <div className={styles.band}>
+              <div className={styles.bandHd}>
+                <span className={styles.bandNo}>2</span>
+                <span className={styles.bandTitle}>Características y fiscal</span>
+              </div>
+              <div className={styles.wrap}>
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>m²</label>
+                  <input className={`${styles.input} ${styles.inputMono} ${styles.wM2}`} value={form.m2 || ''} onChange={(e) => set('m2', num(e.target.value))} inputMode="decimal" />
+                </div>
+                {vis.showHabitacionesBanos && (
+                  <>
+                    <div className={`${styles.fld} ${styles.fldC}`}>
+                      <label className={styles.lab}>Hab.</label>
+                      <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.habitaciones || ''} onChange={(e) => set('habitaciones', num(e.target.value))} inputMode="numeric" />
+                    </div>
+                    <div className={`${styles.fld} ${styles.fldC}`}>
+                      <label className={styles.lab}>Baños</label>
+                      <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.banos || ''} onChange={(e) => set('banos', num(e.target.value))} inputMode="numeric" />
+                    </div>
+                  </>
+                )}
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>Cert.</label>
+                  <select className={styles.input} style={{ width: 66 }} value={form.certificadoEnergetico} onChange={(e) => set('certificadoEnergetico', e.target.value)}>
+                    <option value="">—</option>
+                    <option value="NO">No</option>
+                    {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                {vis.showAnexos && (
+                  <>
+                    <Toggle label="Terraza" on={form.tieneTerraza} onChange={(v) => set('tieneTerraza', v)} />
+                    <Toggle label="Trastero" on={form.tieneTrastero} onChange={(v) => set('tieneTrastero', v)} />
+                    <Toggle label="Parking" on={form.tieneParking} onChange={(v) => set('tieneParking', v)} />
+                    <Toggle label="Ascensor" on={form.tieneAscensor} onChange={(v) => set('tieneAscensor', v)} />
+                  </>
                 )}
               </div>
 
-              {vis.showAnexos && (
-                <div className={styles.anexosRow}>
-                  <div className={styles.anexosLine}>
-                    <span className={styles.anexosLabel}>Anexos</span>
-                    <label className={styles.anexoCheck}>
-                      <input type="checkbox" checked={form.tieneParking} onChange={(e) => set('tieneParking', e.target.checked)} /> Parking
-                    </label>
-                    <label className={styles.anexoCheck}>
-                      <input type="checkbox" checked={form.tieneTrastero} onChange={(e) => set('tieneTrastero', e.target.checked)} /> Trastero
-                    </label>
-                  </div>
-                  <div className={styles.hintNote} style={{ marginTop: 4 }}>
-                    Marcar solo si el anexo <b>comparte RC con el piso</b>. Si el parking o trastero tiene <b>RC propia</b> · se da de alta como inmueble separado.
+              <div className={styles.wrap} style={{ marginTop: 8 }}>
+                <div className={styles.toggleField}>
+                  <span className={styles.lab}>Suelo</span>
+                  <div className={styles.tog}>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={form.esUrbana}
+                      aria-label="Suelo urbano o rústico"
+                      className={`${styles.togSw} ${form.esUrbana ? styles.togSwOn : ''}`}
+                      onClick={() => set('esUrbana', !form.esUrbana)}
+                    />
+                    <span className={styles.togVal}>{form.esUrbana ? 'Urbana' : 'Rústica'}</span>
                   </div>
                 </div>
-              )}
-            </Block>
-
-            {/* B6 · DATOS FISCALES */}
-            <Block title="Datos fiscales">
-              <div className={`${styles.fieldsRow} ${styles.rowCatastro}`}>
-                <Field label="Valor catastral total">
-                  <Suffix>
-                    <input className={`${styles.input} ${styles.inputMono}`} value={form.valorCatastralTotal || ''} onChange={(e) => set('valorCatastralTotal', num(e.target.value))} inputMode="decimal" />
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>V. cat. total</label>
+                  <div className={styles.inputSuffix}>
+                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.valorCatastralTotal || ''} onChange={(e) => set('valorCatastralTotal', num(e.target.value))} inputMode="decimal" />
                     <span className={styles.suffix}>€</span>
-                  </Suffix>
-                </Field>
-                <Field label="V. cat. construcción">
-                  <Suffix>
-                    <input className={`${styles.input} ${styles.inputMono}`} value={form.valorCatastralConstruccion || ''} onChange={(e) => set('valorCatastralConstruccion', num(e.target.value))} inputMode="decimal" />
+                  </div>
+                </div>
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>V. cat. constr.</label>
+                  <div className={styles.inputSuffix}>
+                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.valorCatastralConstruccion || ''} onChange={(e) => set('valorCatastralConstruccion', num(e.target.value))} inputMode="decimal" />
                     <span className={styles.suffix}>€</span>
-                  </Suffix>
-                </Field>
-                <Field label="% construcción" hint="auto">
-                  <input className={`${styles.input} ${styles.inputMono} ${styles.inputReadonlyTeal}`} readOnly value={`${formatPct(resumen.porcentajeConstruccion)}`} />
-                </Field>
+                  </div>
+                </div>
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>% const.</label>
+                  <input className={`${styles.input} ${styles.inputRo} ${styles.wPct}`} readOnly value={pct(resumen.porcentajeConstruccion)} />
+                </div>
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>Valor referencia</label>
+                  <div className={styles.inputSuffix}>
+                    <input
+                      className={`${styles.input} ${styles.inputMono} ${styles.wEur}`}
+                      value={form.valorReferencia || ''}
+                      onChange={(e) => { set('valorReferencia', num(e.target.value)); set('valorReferenciaIsManual', true); }}
+                      inputMode="decimal"
+                    />
+                    <span className={styles.suffix}>€</span>
+                  </div>
+                </div>
+                <Toggle label="Catastral revisado" on={form.cadastralRevised} onChange={(v) => set('cadastralRevised', v)} />
               </div>
-              <label className={styles.checkInline}>
-                <input type="checkbox" checked={form.cadastralRevised} onChange={(e) => set('cadastralRevised', e.target.checked)} />
-                Valor catastral revisado en el último año (afecta a imputación de rentas)
-              </label>
-            </Block>
+            </div>
 
-            {/* B7 · VIVIENDA HABITUAL · el arrendamiento se gestiona en el detalle */}
-            {vis.showViviendaHabitual && (
-              <Block title="Uso">
-                <label className={styles.checkInline}>
-                  <input
-                    type="checkbox"
-                    checked={form.esViviendaHabitual}
-                    onChange={(e) => set('esViviendaHabitual', e.target.checked)}
-                  />
-                  Es mi vivienda habitual
-                </label>
-                <div className={styles.hintNote} style={{ marginTop: 6 }}>
-                  Márcalo solo si es tu residencia habitual: no genera imputación de rentas y cuenta
-                  para la exención por reinversión si vendes y compras otra. El{' '}
-                  <b>alquiler y su tipo de explotación</b> se gestionan en el detalle del inmueble, no aquí.
+            {/* 3 · LA COMPRA */}
+            <div className={styles.band}>
+              <div className={styles.bandHd}>
+                <span className={styles.bandNo}>3</span>
+                <span className={styles.bandTitle}>La compra</span>
+                <span className={styles.estadoWrap}>
+                  Estado
+                  <div className={styles.tog}>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={esNueva}
+                      aria-label="Estado usada u obra nueva"
+                      className={`${styles.togSw} ${esNueva ? styles.togSwOnGold : styles.togSwNavyLeft}`}
+                      onClick={() => set('estado', esNueva ? 'usada' : 'obra-nueva')}
+                    />
+                    <span className={styles.togVal}>{esNueva ? 'Nueva' : 'Usada'}</span>
+                  </div>
+                </span>
+              </div>
+              <div className={styles.wrap}>
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>Fecha <span className={styles.req}>*</span></label>
+                  <input className={`${styles.input} ${styles.inputMonoL} ${styles.wDate}`} type="date" value={form.fechaCompra} onChange={(e) => set('fechaCompra', e.target.value)} />
                 </div>
-              </Block>
-            )}
-
-            {/* B8 · FOTO */}
-            <Block title="Foto del inmueble" count="· opcional" toggle={{ on: form.fotoOn, onChange: (v) => set('fotoOn', v) }}>
-              {form.fotoOn && (
-                <div className={styles.photoBody}>
-                  {form.foto ? (
-                    <img className={styles.photoPreview} src={form.foto} alt="Foto del inmueble" />
-                  ) : (
-                    <div className={styles.photoEmpty}>
-                      <IconImage size={28} /> <br />
-                      Sube una imagen JPG / PNG · máx 1.5 MB
-                    </div>
-                  )}
-                  <div className={styles.photoBtnRow}>
-                    <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
-                    <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => fileInputRef.current?.click()}>
-                      {form.foto ? 'Cambiar foto' : 'Subir foto'}
-                    </button>
-                    {form.foto && (
-                      <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => set('foto', undefined)}>
-                        Quitar
-                      </button>
-                    )}
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>Precio <span className={styles.req}>*</span></label>
+                  <div className={styles.inputSuffix}>
+                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.precioCompra || ''} onChange={(e) => set('precioCompra', num(e.target.value))} inputMode="decimal" />
+                    <span className={styles.suffix}>€</span>
                   </div>
                 </div>
-              )}
-            </Block>
+                {esNueva ? (
+                  <>
+                    <div className={`${styles.fld} ${styles.fldC}`}>
+                      <label className={styles.lab}>IVA</label>
+                      <div className={styles.inputSuffix}>
+                        <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.iva || ''} onChange={(e) => { set('iva', num(e.target.value)); set('ivaIsManual', true); }} inputMode="decimal" />
+                        <span className={styles.suffix}>€</span>
+                      </div>
+                    </div>
+                    <div className={`${styles.fld} ${styles.fldC}`}>
+                      <label className={styles.lab}>AJD</label>
+                      <div className={styles.inputSuffix}>
+                        <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.ajd || ''} onChange={(e) => { set('ajd', num(e.target.value)); set('ajdIsManual', true); }} inputMode="decimal" />
+                        <span className={styles.suffix}>€</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className={`${styles.fld} ${styles.fldC}`}>
+                    <label className={styles.lab}>ITP</label>
+                    <div className={styles.inputSuffix}>
+                      <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.itp || ''} onChange={(e) => { set('itp', num(e.target.value)); set('itpIsManual', true); }} inputMode="decimal" />
+                      <span className={styles.suffix}>€</span>
+                    </div>
+                  </div>
+                )}
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>Notaría</label>
+                  <div className={styles.inputSuffix}>
+                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEurS}`} value={form.notaria || ''} onChange={(e) => set('notaria', num(e.target.value))} inputMode="decimal" />
+                    <span className={styles.suffix}>€</span>
+                  </div>
+                </div>
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>Registro</label>
+                  <div className={styles.inputSuffix}>
+                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEurS}`} value={form.registro || ''} onChange={(e) => set('registro', num(e.target.value))} inputMode="decimal" />
+                    <span className={styles.suffix}>€</span>
+                  </div>
+                </div>
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>Gestoría</label>
+                  <div className={styles.inputSuffix}>
+                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEurS}`} value={form.gestoria || ''} onChange={(e) => set('gestoria', num(e.target.value))} inputMode="decimal" />
+                    <span className={styles.suffix}>€</span>
+                  </div>
+                </div>
+                <div className={`${styles.fld} ${styles.fldC}`}>
+                  <label className={styles.lab}>Otros</label>
+                  <div className={styles.inputSuffix}>
+                    <input className={`${styles.input} ${styles.inputMono} ${styles.wEurS}`} value={form.otros || ''} onChange={(e) => set('otros', num(e.target.value))} inputMode="decimal" />
+                    <span className={styles.suffix}>€</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financiación · una línea */}
+              <div className={styles.fin}>
+                <div className={styles.finHd}>
+                  <IconBank size={14} /> Financiación de la operación
+                </div>
+                <div className={styles.finLine}>
+                  <div className={`${styles.fld} ${styles.fldC}`}>
+                    <label className={styles.lab}>Aportación propia</label>
+                    <div className={styles.inputSuffix}>
+                      <input className={`${styles.input} ${styles.inputMono} ${styles.wEur}`} value={form.aportacionPropia || ''} onChange={(e) => set('aportacionPropia', num(e.target.value))} inputMode="decimal" />
+                      <span className={styles.suffix}>€</span>
+                    </div>
+                  </div>
+                  <div className={`${styles.fld} ${styles.fldC}`}>
+                    <label className={styles.lab}>Importe financiado</label>
+                    <div className={styles.inputSuffix}>
+                      <input className={`${styles.input} ${styles.inputRo} ${styles.wEur}`} readOnly value={financiadoEfectivo ? eur(financiadoEfectivo) : '0'} />
+                      <span className={styles.suffix}>€</span>
+                    </div>
+                  </div>
+                  <div className={styles.finSpacer} />
+                  {financiadoEfectivo > 0 && !vinculado && (
+                    <>
+                      <button type="button" className={styles.btnSm} onClick={handleCrearPrestamo} disabled={isSaving}>
+                        <IconPlus size={13} /> Crear préstamo
+                      </button>
+                      {vinculables.length > 0 && (
+                        <button type="button" className={styles.btnGh} onClick={() => setVincularOpen((v) => !v)}>
+                          Vincular existente
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {vincularOpen && !vinculado && vinculables.length > 0 && (
+                  <div className={styles.finLink}>
+                    <label className={styles.lab}>Vincular a un préstamo vivo (no imputado aún a este inmueble)</label>
+                    <select
+                      className={styles.input}
+                      style={{ maxWidth: 380 }}
+                      defaultValue=""
+                      onChange={(e) => { if (e.target.value) handleVincularExistente(e.target.value); }}
+                    >
+                      <option value="">— Elige un préstamo —</option>
+                      {vinculables.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nombre || `Préstamo ${p.id}`} · {eur(p.principalVivo ?? 0)} €
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {vinculado && (
+                  <div className={styles.finLink}>
+                    {vinculadas.map((l) => (
+                      <button key={l.id} type="button" className={styles.btnGh} style={{ justifyContent: 'space-between', display: 'flex', width: '100%' }} onClick={() => navigate(`/financiacion/${l.id}/editar`)}>
+                        <span><IconLink size={12} /> {l.nombre || 'Préstamo'}</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{eur(l.principalInicial)} €</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {hayDescuadre && (
+                  <div className={styles.warnLine}>
+                    Aportación + financiado no cuadra con el coste ({descuadre > 0 ? 'sobran' : 'faltan'} {eur(Math.abs(descuadre))} €)
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 4 · FOTO */}
+            <div className={styles.fotoBar}>
+              <div className={styles.fotoL}>
+                <span className={styles.bandNo}>4</span> Foto del inmueble
+              </div>
+              <div className={styles.fotoThumbWrap}>
+                {form.foto && <img className={styles.fotoThumb} src={form.foto} alt="Miniatura del inmueble" />}
+                <button type="button" className={styles.fotoBtn} onClick={() => setDrawerOpen(true)}>
+                  <IconImage size={14} /> {form.foto ? 'Cambiar foto' : 'Añadir foto'}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* PREVIEW */}
@@ -851,84 +852,93 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             <div className={styles.previewTitle}>
               <IconActivity size={12} /> Cálculo fiscal · vista previa
             </div>
-
-            <div className={styles.previewKpiMain}>
-              <div className={styles.previewKpiMainLabel}>Coste base · adquisición</div>
-              <div className={styles.previewKpiMainValue}>{formatCurrency(resumen.costeBaseAdquisicion)} €</div>
-              <div className={styles.previewKpiMainSub}>
-                {resumen.costeMejorasPosteriores > 0
-                  ? `+ ${formatCurrency(resumen.costeMejorasPosteriores)} € de mejoras posteriores · base de cálculo plusvalía`
-                  : 'Base de cálculo plusvalía y amortización'}
+            <div className={styles.pvHero}>
+              <div className={styles.pvHeroLab}>Coste base · adquisición</div>
+              <div className={styles.pvHeroVal}>{eur(resumen.costeBaseAdquisicion)} €</div>
+              <div className={styles.pvHeroSub}>Base de cálculo de plusvalía y amortización</div>
+            </div>
+            <div className={styles.pvBox}>
+              <div className={styles.pvRow}>
+                <span className={styles.pvL}>Precio compra</span>
+                <span className={styles.pvV}>{eur(form.precioCompra)} €</span>
+              </div>
+              <div className={styles.pvRow}>
+                <span className={styles.pvL}>+ Gastos (notaría · registro · gestoría · otros)</span>
+                <span className={styles.pvV}>{eur(resumen.costeTotalFormalizacion)} €</span>
+              </div>
+              <div className={styles.pvRow}>
+                <span className={styles.pvL}>+ Impuestos {esNueva ? 'IVA + AJD' : 'ITP'}</span>
+                <span className={styles.pvV}>{eur(impuestosTotal(form))} €</span>
+              </div>
+              <div className={`${styles.pvRow} ${styles.pvRowTot}`}>
+                <span className={styles.pvL}>Coste base adquisición</span>
+                <span className={styles.pvV}>{eur(resumen.costeBaseAdquisicion)} €</span>
               </div>
             </div>
-
-            <div className={styles.previewDesglose}>
-              <div className={styles.previewDesgloseRow}>
-                <span className={styles.label}>Precio compra</span>
-                <span className={styles.value}>{formatCurrency(form.precioCompra)} €</span>
+            <div className={styles.pvMini}>
+              <div className={styles.pvCard}>
+                <div className={styles.pvCardL}>Base amortizable</div>
+                <div className={styles.pvCardV}>{int(resumen.baseAmortizable)} €</div>
               </div>
-              <div className={styles.previewDesgloseRow}>
-                <span className={styles.label}>+ Notaría · Registro · Gestoría · Otros</span>
-                <span className={styles.value}>{formatCurrency(resumen.costeTotalFormalizacion)} €</span>
-              </div>
-              <div className={styles.previewDesgloseRow}>
-                <span className={styles.label}>+ Impuestos {form.estado === 'usada' ? 'ITP' : 'IVA + AJD'}</span>
-                <span className={styles.value}>{formatCurrency(impuestosTotal(form))} €</span>
-              </div>
-              <div className={`${styles.previewDesgloseRow} ${styles.total}`}>
-                <span className={styles.label}>Coste base adquisición</span>
-                <span className={styles.value}>{formatCurrency(resumen.costeBaseAdquisicion)} €</span>
+              <div className={styles.pvCard}>
+                <div className={styles.pvCardL}>Amortización 3%/año</div>
+                <div className={styles.pvCardV}>{eur(resumen.amortizacionProrrateada)} €</div>
               </div>
             </div>
-
-            <div className={styles.previewKpiSecondary}>
-              <div className={styles.previewKpiMini}>
-                <div className={styles.previewKpiMiniLabel}>Base amortizable</div>
-                <div className={styles.previewKpiMiniValue}>{formatInt(resumen.baseAmortizable)} €</div>
-                <div className={styles.previewKpiMiniSub}>Mayor de coste construcción ({formatPct(resumen.porcentajeConstruccion)} del coste) o V.cat construcción</div>
-              </div>
-              <div className={styles.previewKpiMini}>
-                <div className={styles.previewKpiMiniLabel}>Amortización 3 % / año</div>
-                <div className={styles.previewKpiMiniValue}>{formatCurrency(resumen.amortizacionProrrateada)} €</div>
-                <div className={styles.previewKpiMiniSub}>Casilla 0115 IRPF · supone año completo arrendado</div>
-              </div>
-            </div>
-
-            <div className={styles.previewKpiSecondary}>
-              <div className={styles.previewKpiMini}>
-                <div className={styles.previewKpiMiniLabel}>% construcción</div>
-                <div className={styles.previewKpiMiniValue}>{formatPct(resumen.porcentajeConstruccion)}</div>
-                <div className={styles.previewKpiMiniSub}>{formatInt(form.valorCatastralConstruccion)} € de {formatInt(form.valorCatastralTotal)} € catastral</div>
-              </div>
-            </div>
-
             {vinculadas.length > 0 && (
               <>
-                <div className={styles.previewTitle}>
+                <div className={styles.previewTitle} style={{ marginTop: 2 }}>
                   <IconBank size={12} /> Financiación vinculada
                 </div>
-                <div className={styles.previewDesglose} style={{ marginBottom: 0 }}>
+                <div className={styles.pvBox} style={{ marginBottom: 0 }}>
                   {vinculadas.map((l) => (
                     <React.Fragment key={l.id}>
-                      <div className={styles.previewDesgloseRow}>
-                        <span className={styles.label}>{l.nombre || 'Préstamo'}</span>
-                        <span className={styles.value}>{formatCurrency(l.deudaPendiente)} €</span>
+                      <div className={styles.pvRow}>
+                        <span className={styles.pvL}>{l.nombre || 'Préstamo'}</span>
+                        <span className={styles.pvV}>{eur(l.deudaPendiente)} €</span>
                       </div>
-                      {l.porcentajeAfectacion < 100 && (
-                        <div className={styles.previewDesgloseRow}>
-                          <span className={styles.label}>% afectación a este inmueble</span>
-                          <span className={styles.value}>{formatPct(l.porcentajeAfectacion)}</span>
-                        </div>
-                      )}
-                      <div className={styles.previewDesgloseRow}>
-                        <span className={styles.label}>Cuota mensual imputada</span>
-                        <span className={styles.value}>{formatCurrency(l.cuotaMensual)} €</span>
+                      <div className={styles.pvRow}>
+                        <span className={styles.pvL}>Cuota mensual imputada</span>
+                        <span className={styles.pvV}>{eur(l.cuotaMensual)} €</span>
                       </div>
                     </React.Fragment>
                   ))}
                 </div>
               </>
             )}
+          </div>
+
+          {/* DRAWER FOTO */}
+          <div className={`${styles.drawer} ${drawerOpen ? styles.drawerOpen : ''}`}>
+            <div className={styles.drawerHd}>
+              Foto del inmueble
+              <button type="button" className={styles.headerClose} style={{ color: 'var(--atlas-v5-ink-3)', borderColor: 'var(--atlas-v5-line)' }} onClick={() => setDrawerOpen(false)} aria-label="Cerrar foto">
+                <IconX size={14} />
+              </button>
+            </div>
+            {form.foto ? (
+              <img className={styles.photoPreview} src={form.foto} alt="Foto del inmueble" />
+            ) : (
+              <div className={styles.dropZone} onClick={() => fileInputRef.current?.click()}>
+                <IconImage size={26} />
+                <div style={{ marginTop: 8 }}>
+                  Pulsa para subir una imagen
+                  <br />
+                  <span className={styles.hint}>JPG / PNG · máx 1.5 MB</span>
+                </div>
+              </div>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className={styles.btnGh} style={{ flex: 1 }} onClick={() => fileInputRef.current?.click()}>
+                {form.foto ? 'Cambiar' : 'Elegir archivo'}
+              </button>
+              {form.foto && (
+                <button type="button" className={styles.btnGh} style={{ flex: 1 }} onClick={() => setForm((p) => ({ ...p, foto: undefined, fotoOn: false }))}>
+                  Quitar
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -937,7 +947,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
           <div className={styles.footerMeta}>
             {isDirty && (
               <>
-                <IconAlert size={13} /> Cambios sin guardar · al guardar se recalculan amortización y arrastres del ejercicio actual
+                <IconAlert size={13} /> Cambios sin guardar · al guardar se recalculan amortización y arrastres
               </>
             )}
           </div>
@@ -955,51 +965,5 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     </div>
   );
 };
-
-// ─── Sub-componentes ───
-const Block: React.FC<{
-  title: string;
-  count?: string;
-  toggle?: { on: boolean; onChange: (v: boolean) => void };
-  children?: React.ReactNode;
-}> = ({ title, count, toggle, children }) => (
-  <div className={styles.block}>
-    <div className={styles.blockHd}>
-      <div className={styles.blockHdTitle}>
-        {title} {count && <span className={styles.count}>{count}</span>}
-      </div>
-      {toggle && (
-        <button
-          type="button"
-          className={`${styles.toggle} ${toggle.on ? styles.toggleOn : ''}`}
-          onClick={() => toggle.onChange(!toggle.on)}
-          aria-pressed={toggle.on}
-          aria-label={toggle.on ? 'Desactivar' : 'Activar'}
-        />
-      )}
-    </div>
-    {(toggle ? toggle.on : true) && children && <div className={styles.blockBody}>{children}</div>}
-  </div>
-);
-
-const Field: React.FC<{ label: string; required?: boolean; hint?: string; children: React.ReactNode }> = ({
-  label,
-  required,
-  hint,
-  children,
-}) => (
-  <div className={styles.field}>
-    <label className={styles.fieldLabel}>
-      {label}
-      {required && <span className={styles.req}>*</span>}
-      {hint && <span className={styles.hint}>{hint}</span>}
-    </label>
-    {children}
-  </div>
-);
-
-const Suffix: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className={styles.inputSuffix}>{children}</div>
-);
 
 export default InmueblePage;

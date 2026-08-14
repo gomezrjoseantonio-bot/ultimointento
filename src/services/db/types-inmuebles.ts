@@ -116,6 +116,9 @@ export interface Property {
     tieneTrastero: boolean;
     /** V77 · wizard import XML V2 (pilar 1) · nº de plazas de parking integradas sin RC propia. Sustituye al uso booleano puro cuando se conoce el número. */
     plazasParking?: number;
+    /** Características físicas de la vivienda · terraza y ascensor (sí/no · ficha rediseñada). */
+    tieneTerraza?: boolean;
+    tieneAscensor?: boolean;
   };
   /** S-WIZARD-INMUEBLE-V4 · uso fiscal del inmueble · `vendido` no entra (flujo aparte) */
   usoTipo?:
