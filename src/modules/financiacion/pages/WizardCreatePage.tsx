@@ -3,7 +3,7 @@
 // primero presenta el upload FEIN y, al obtener un draft, hidrata la pantalla.
 
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import FEINUploader from '../../../components/financiacion/FEINUploader';
 import { prestamoDesdeDraft } from '../../../services/fein/prestamoDesdeDraft';
@@ -24,7 +24,17 @@ const WizardCreatePage: React.FC<Props> = ({ withFEIN = false }) => {
   // al re-montar /empezar (syncBloquesFromData detecta ≥1 préstamo). El wizard
   // (PrestamoPageV2) queda intacto · solo cambia el destino de navegación.
   const [searchParams] = useSearchParams();
-  const backTarget = searchParams.get('from') === 'empezar' ? '/empezar/prestamos' : '/financiacion';
+  // La ficha de inmueble abre este asistente prerrellenado por `location.state`
+  // (`initialData` = el inmueble como destino/garantía + importe) y con `volverA`
+  // para regresar a la ficha tras crear el préstamo. Si no viene de ahí, el
+  // comportamiento es el de siempre.
+  const location = useLocation();
+  const navState = (location.state ?? null) as
+    | { initialData?: Partial<Prestamo>; volverA?: string }
+    | null;
+  const backTarget =
+    navState?.volverA ??
+    (searchParams.get('from') === 'empezar' ? '/empezar/prestamos' : '/financiacion');
   const [feinData, setFeinData] = useState<Partial<Prestamo> | null>(null);
   const [stage, setStage] = useState<'fein' | 'wizard'>(withFEIN ? 'fein' : 'wizard');
 
@@ -55,7 +65,7 @@ const WizardCreatePage: React.FC<Props> = ({ withFEIN = false }) => {
 
   return (
     <PrestamoPageV2
-      initialData={feinData || undefined}
+      initialData={feinData || navState?.initialData || undefined}
       onSuccess={handleSuccess}
       onCancel={handleCancel}
     />
