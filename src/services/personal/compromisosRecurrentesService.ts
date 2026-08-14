@@ -1,16 +1,8 @@
-// ============================================================================
-// ATLAS Personal v1.1 · CompromisosRecurrentesService
-// ============================================================================
-//
-// CRUD del catálogo `compromisosRecurrentes` + generación automática de
-// eventos en `treasuryEvents` (regla de oro #1 · cada compromiso se da de
-// alta UNA vez · genera N eventos automáticamente).
-//
-// Decisiones aplicadas:
-//   G-01 · Schema único con discriminador `ambito` (personal | inmueble)
-//   G-08 · Aprendizaje: las reglas de conciliación viven en otro store
-//   Regla #2 · viviendaHabitual genera derivados aparte (NO via este service)
-// ============================================================================
+// ATLAS Personal · CompromisosRecurrentesService.
+// CRUD de `compromisosRecurrentes` + generación automática de eventos en
+// `treasuryEvents` (regla #1 · un compromiso se da de alta UNA vez · genera N).
+// Schema único con discriminador `ambito` (personal|inmueble); el aprendizaje de
+// conciliación vive en otro store; viviendaHabitual genera derivados aparte.
 
 import { initDB } from '../db';
 import type { Account, TreasuryEvent } from '../db';
@@ -44,6 +36,7 @@ import {
   ventanaDeRecibos,
 } from './recibosDeTarjetaPrevistos';
 import type { Tarjeta } from '../../types/tarjetas';
+import { mesesConCargoReal, sinMesesYaCobrados } from './previsionYaCobrada';
 
 const STORE_COMPROMISOS = 'compromisosRecurrentes';
 const STORE_TREASURY = 'treasuryEvents';
@@ -745,7 +738,13 @@ export async function regenerarEventosCompromiso(
     tarjeta,
     cuentas,
   );
-  const propios = await persistirPrevisionesCompromiso(compromiso.id, eventos);
+  // No reemitir la previsión de un mes cuyo cargo real ya está confirmado (si no,
+  // el saldo descuenta el previsto además del real · el gas 30/13,38 los dos).
+  const eventosVivos = sinMesesYaCobrados(
+    eventos,
+    await mesesConCargoReal(compromiso, eventos),
+  );
+  const propios = await persistirPrevisionesCompromiso(compromiso.id, eventosVivos);
 
   // Si paga con crédito aplazado no ha emitido nada suyo: su dinero sale en el
   // RECIBO de la tarjeta, que hay que rehacer entero porque cruza otros gastos.
