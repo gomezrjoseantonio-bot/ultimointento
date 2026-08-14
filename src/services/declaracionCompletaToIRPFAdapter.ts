@@ -236,6 +236,45 @@ function buildBaseGeneral(
     const alias = prop?.alias || prop?.address || inm.direccion || ref || `Inmueble ${inmuebleId}`;
     return buildRendimientoInmueble(inm, inmuebleId, alias, ejercicio);
   });
+
+  // Régimen de atribución de rentas (Comunidad de Bienes, arts. 86-90 LIRPF): el
+  // rendimiento de capital inmobiliario ATRIBUIDO por la entidad se declara en su
+  // apartado propio ('AR'), no como inmueble en propiedad. Se inyecta como fila
+  // sintética `inmuebleId:-1` —idéntica a la del motor en vivo
+  // (irpfCalculationService)— para que `buildSeccionAtribucion` la pinte también
+  // en años YA DECLARADOS, que se leen por este adapter y no por el cálculo en
+  // vivo. Sin esto, la CB importada por XML se guardaba en el store pero nunca
+  // llegaba a la pantalla de Fiscalidad.
+  const atribInmobiliaria = (decl.entidadesAtribucion ?? []).filter(
+    (e) => e.tipoRenta === 'capital_inmobiliario',
+  );
+  const totalAtribInmob = round2(
+    atribInmobiliaria.reduce((s, e) => s + (e.rendimientoAtribuido ?? 0), 0),
+  );
+  if (totalAtribInmob !== 0) {
+    inmuebles.push({
+      inmuebleId: -1,
+      alias: `Entidades en atribución (${atribInmobiliaria.length})`,
+      diasAlquilado: 365,
+      diasVacio: 0,
+      diasEnObras: 0,
+      diasTotal: 365,
+      ingresosIntegros: totalAtribInmob,
+      gastosDeducibles: 0,
+      amortizacion: 0,
+      reduccionHabitual: 0,
+      rendimientoNetoAlquiler: totalAtribInmob,
+      rendimientoNetoReducido: totalAtribInmob,
+      porcentajeReduccionHabitual: 0,
+      esHabitual: false,
+      imputacionRenta: 0,
+      rendimientoNeto: totalAtribInmob,
+      gastosFinanciacionYReparacion: 0,
+      limiteAplicado: 0,
+      excesoArrastrable: 0,
+      arrastresAplicados: 0,
+    });
+  }
   return {
     rendimientosTrabajo: trabajo,
     rendimientosAutonomo: autonomo,
