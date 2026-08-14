@@ -36,7 +36,6 @@ import {
   ventanaDeRecibos,
 } from './recibosDeTarjetaPrevistos';
 import type { Tarjeta } from '../../types/tarjetas';
-import { mesesConCargoReal, sinMesesYaCobrados } from './previsionYaCobrada';
 
 const STORE_COMPROMISOS = 'compromisosRecurrentes';
 const STORE_TREASURY = 'treasuryEvents';
@@ -738,13 +737,7 @@ export async function regenerarEventosCompromiso(
     tarjeta,
     cuentas,
   );
-  // No reemitir la previsión de un mes cuyo cargo real ya está confirmado (si no,
-  // el saldo descuenta el previsto además del real · el gas 30/13,38 los dos).
-  const eventosVivos = sinMesesYaCobrados(
-    eventos,
-    await mesesConCargoReal(compromiso, eventos),
-  );
-  const propios = await persistirPrevisionesCompromiso(compromiso.id, eventosVivos);
+  const propios = await persistirPrevisionesCompromiso(compromiso.id, eventos);
 
   // Si paga con crédito aplazado no ha emitido nada suyo: su dinero sale en el
   // RECIBO de la tarjeta, que hay que rehacer entero porque cruza otros gastos.
