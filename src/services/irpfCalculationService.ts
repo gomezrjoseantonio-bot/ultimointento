@@ -614,6 +614,24 @@ export function calcularDiasAlquiladoDesdeContratos(
 }
 
 /**
+ * ¿El valor catastral del inmueble fue revisado (últimos 10 años)? Determina el
+ * tipo de imputación de rentas: 1,1% si revisado, 2% si no (art. 85 LIRPF).
+ *
+ * El import de declaraciones AEAT persiste el dato en `fiscalData.cadastralRevised`
+ * (C_REV del Modelo 100). Se mantiene el fallback al campo legacy
+ * `fiscalidad.catastro_revisado_post_1994` para inmuebles dados de alta a mano
+ * con el modelo antiguo. Antes se leía SOLO el legacy, así que todo inmueble
+ * importado se imputaba al 2% fijo aunque su catastral estuviera revisado.
+ */
+function esCatastralRevisado(prop: any): boolean {
+  return Boolean(
+    prop?.fiscalData?.cadastralRevised ??
+    prop?.fiscalidad?.catastro_revisado_post_1994 ??
+    false,
+  );
+}
+
+/**
  * Separates a list of active properties into:
  * - `propertiesToProcess`: main properties + orphan accessories (those whose mainPropertyId
  *   does not reference any active main property)
@@ -943,8 +961,7 @@ export async function recopilarDatosInmuebles(
       );
       let imputacionRenta = 0;
       if (diasVacio > 0 && valorCatastralTotal > 0) {
-        const revisado = (prop as any).fiscalidad?.catastro_revisado_post_1994 ?? false;
-        const porcentajeImputacion = revisado
+        const porcentajeImputacion = esCatastralRevisado(prop)
           ? CONSTANTES_IRPF.imputacionRentasRevisado
           : CONSTANTES_IRPF.imputacionRentasNoRevisado;
         imputacionRenta = round2(valorCatastralTotal * porcentajeImputacion * (diasVacio / diasTotal));
@@ -989,8 +1006,7 @@ export async function recopilarDatosInmuebles(
           sum + (a.fiscalData?.cadastralValue ?? a.fiscalData?.accessoryData?.cadastralValue ?? 0), 0)
       );
       if (valorCatastralTotal > 0) {
-        const revisado = (prop as any).fiscalidad?.catastro_revisado_post_1994 ?? false;
-        const porcentajeImputacion = revisado
+        const porcentajeImputacion = esCatastralRevisado(prop)
           ? CONSTANTES_IRPF.imputacionRentasRevisado
           : CONSTANTES_IRPF.imputacionRentasNoRevisado;
         const imputacion = round2(valorCatastralTotal * porcentajeImputacion * (diasVacio / diasTotal));
