@@ -30,6 +30,7 @@ import {
   calculateAccountBalanceAtDate,
   corteParaSaldoVivo,
 } from '../../services/accountBalanceService';
+import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 import {
   calcularKpisHero,
   esPendiente,
@@ -330,7 +331,10 @@ const PanelPage: React.FC = () => {
   const cuentasVivas = useMemo(() => cuentasEnUso(accounts), [accounts]);
 
   const saldoPorCuenta = useMemo(() => {
-    const corte = corteParaSaldoVivo(today.toISOString().slice(0, 10));
+    // Fecha LOCAL, no UTC · a medianoche en España `toISOString()` da el día
+    // anterior y el "hoy tienes" se quedaba un día atrás (y descuadraba con
+    // Tesorería).
+    const corte = corteParaSaldoVivo(toISODateLocal(today));
     const m = new Map<number, number>();
     for (const c of cuentasVivas) {
       if (c.id == null) continue;

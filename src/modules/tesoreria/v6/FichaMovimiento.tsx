@@ -42,6 +42,7 @@ import { INGRESO_CATEGORIES } from '../../../services/categoryCatalog';
 import type { Account } from '../../../services/db';
 import { importeSaldo } from './formatoV6';
 import styles from './FichaMovimiento.module.css';
+import { toISODateLocal } from '../../../utils/recurrenceDateUtils';
 
 export type TipoMovimiento = 'gasto' | 'ingreso' | 'transferencia';
 
@@ -132,7 +133,8 @@ export interface FichaMovimientoProps {
   onAbrirDocumento?: (documentId: number) => void;
 }
 
-const hoyISO = () => new Date().toISOString().slice(0, 10);
+// Fecha LOCAL, no UTC · a medianoche en España `toISOString()` da el día anterior.
+const hoyISO = () => toISODateLocal(new Date());
 
 /** El ámbito de un gasto lo decide si hay inmueble detrás · nada más. */
 const ambitoDe = (inmuebleId: number | null): Ambito =>
