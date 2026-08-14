@@ -63,8 +63,13 @@ import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
 import styles from './TesoreriaV6Page.module.css';
+import { toISODateLocal } from '../../../utils/recurrenceDateUtils';
 
-const hoyISO = (): string => new Date().toISOString().slice(0, 10);
+// «Hoy» en fecha LOCAL, no en UTC. Con `toISOString()` la medianoche local en
+// España (UTC+1/+2) cae en el día ANTERIOR: a las 00:50 del 15 el saldo y el
+// «Por confirmar» seguían creyendo que era 14, así que la previsión de hoy no
+// aparecía para puntear. `toISODateLocal` usa los componentes locales.
+const hoyISO = (): string => toISODateLocal(new Date());
 
 // El corte para el saldo vivo (MAÑANA, no hoy) vive en accountBalanceService
 // como `corteParaSaldoVivo`, para que el Panel use exactamente el mismo.
