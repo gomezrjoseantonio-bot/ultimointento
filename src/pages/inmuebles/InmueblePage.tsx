@@ -244,17 +244,33 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   }, []);
 
   // ─── auto-rellenar ubicación desde CP ───
+  // Al CARGAR (primer CP) solo rellena huecos, para no pisar datos guardados.
+  // Al CAMBIAR el CP el usuario, RE-DERIVA población/provincia/CCAA (si no, se
+  // quedaban las viejas: "Oviedo · Asturias · Cataluña" al cambiar a un CP nuevo).
+  const prevCpRef = useRef<string>('');
   useEffect(() => {
+    const prevCp = prevCpRef.current;
+    prevCpRef.current = form.cp;
     if (!/^\d{5}$/.test(form.cp)) return;
     const exact = getLocationFromPostalCode(form.cp);
     const inferred = exact ?? inferLocationFromPostalCodeRange(form.cp);
     if (!inferred) return;
     const inferredMunicipality = inferred.municipalities?.[0] ?? '';
+    const cpCambiadoPorUsuario = prevCp !== '' && prevCp !== form.cp;
     setForm((prev) => {
       const next: InmuebleFormModel = { ...prev };
-      if (!prev.municipality && inferredMunicipality) next.municipality = inferredMunicipality;
-      if (!prev.province) next.province = inferred.province;
-      if (!prev.ccaaIsManual && (!prev.ccaa || prev.ccaa !== inferred.ccaa)) next.ccaa = inferred.ccaa;
+      if (cpCambiadoPorUsuario) {
+        // nuevo CP → re-derivar todo (sobrescribe lo viejo)
+        if (inferredMunicipality) next.municipality = inferredMunicipality;
+        else if (prev.province !== inferred.province) next.municipality = '';
+        next.province = inferred.province;
+        if (!prev.ccaaIsManual) next.ccaa = inferred.ccaa;
+      } else {
+        // carga inicial → solo rellenar huecos
+        if (!prev.municipality && inferredMunicipality) next.municipality = inferredMunicipality;
+        if (!prev.province) next.province = inferred.province;
+        if (!prev.ccaaIsManual && (!prev.ccaa || prev.ccaa !== inferred.ccaa)) next.ccaa = inferred.ccaa;
+      }
       return next;
     });
   }, [form.cp]);
