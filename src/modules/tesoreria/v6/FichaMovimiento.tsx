@@ -109,7 +109,7 @@ export interface FichaMovimientoProps {
    * Sin ninguna dada de alta, preguntar «¿con qué tarjeta?» es una casilla que
    * solo puede quedarse vacía.
    */
-  tarjetas?: Array<{ id: number; alias: string }>;
+  tarjetas?: Array<{ id: number; alias: string; modalidad?: 'debito' | 'credito' }>;
   onCerrar: () => void;
   onGuardar: (v: GuardadoFicha) => void | Promise<void>;
   /** Solo en edición · el pie muestra Eliminar a la izquierda. */
@@ -671,6 +671,14 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                       <option key={t.id} value={t.id}>{t.alias}</option>
                     ))}
                   </select>
+                  {/* Con una de crédito la compra no sale de la cuenta el día que
+                      se hace: se acumula y sale entera en el recibo (§3.3). */}
+                  {tarjetas.find((t) => t.id === tarjetaId)?.modalidad === 'credito' && (
+                    <div className={styles.hint}>
+                      Crédito · el cargo no sale de la cuenta ahora; engorda el recibo de la
+                      tarjeta y la cuenta se mueve cuando llega.
+                    </div>
+                  )}
                 </div>
               )}
             </>

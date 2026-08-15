@@ -40,7 +40,7 @@ import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
-import { gastoDeMovimientos, gastoPorTarjeta } from '../../../services/gastoPorTarjeta';
+import { gastoDeMovimientos, gastoDeMovimientosCredito, gastoPorTarjeta } from '../../../services/gastoPorTarjeta';
 import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
@@ -222,11 +222,13 @@ const TesoreriaV6Page: React.FC = () => {
       ...gastoPorTarjeta(estado.eventos),
       // El DÉBITO no tiene recibo del que deducir su gasto —cobra al momento—,
       // así que sale de los movimientos que el usuario atribuyó a una tarjeta.
-      // Solo el débito: el de una de crédito ya viene por su recibo, y contarlo
-      // aquí también lo sumaría dos veces.
       ...gastoDeMovimientos(estado.movimientos, tarjetas),
+      // Las compras MANUALES en tarjeta de crédito engordan el periodo abierto
+      // (§3.5) · el recibo previsto viene de los compromisos, esto son las
+      // sueltas que el usuario anota a mano.
+      ...gastoDeMovimientosCredito(estado.movimientos, tarjetas, hoy),
     ],
-    [estado.eventos, estado.movimientos, tarjetas]
+    [estado.eventos, estado.movimientos, tarjetas, hoy]
   );
 
   /**
@@ -239,17 +241,26 @@ const TesoreriaV6Page: React.FC = () => {
     () =>
       tarjetas
         .filter((t): t is typeof t & { id: number } => t.id != null)
-        .map((t) => ({ id: t.id, alias: t.alias })),
+        .map((t) => ({ id: t.id, alias: t.alias, modalidad: t.modalidad })),
     [tarjetas]
   );
 
   const gastoAbierto = useMemo(() => {
+    // El corte del periodo abierto vigente por tarjeta · igual que antes: el
+    // primero (más reciente) que trae la lista ya ordenada.
+    const corteVigente = new Map<number, string>();
+    for (const p of periodosDeTarjeta) {
+      if (p.estado !== 'abierto') continue;
+      if (!corteVigente.has(p.tarjetaId)) corteVigente.set(p.tarjetaId, p.fechaCorte);
+    }
+    // La cifra viva = TODO lo abierto de ese corte: la previsión del recibo (de
+    // los compromisos) MÁS las compras manuales de crédito de ese mismo periodo.
+    // Antes solo cogía la primera, así que una compra suelta no engordaba nada.
     const porTarjeta = new Map<number, number>();
     for (const p of periodosDeTarjeta) {
       if (p.estado !== 'abierto') continue;
-      // El periodo abierto más cercano · los recibos vienen del más reciente al
-      // más antiguo, así que el primero de cada tarjeta es el que toca.
-      if (!porTarjeta.has(p.tarjetaId)) porTarjeta.set(p.tarjetaId, p.importe);
+      if (p.fechaCorte !== corteVigente.get(p.tarjetaId)) continue;
+      porTarjeta.set(p.tarjetaId, (porTarjeta.get(p.tarjetaId) ?? 0) + p.importe);
     }
     return porTarjeta;
   }, [periodosDeTarjeta]);
@@ -560,17 +571,30 @@ const TesoreriaV6Page: React.FC = () => {
           if (item?.kind === 'evento' && v.esMejora) {
             await descartarPrevisto(item.refId, 'registrada como mejora del inmueble');
           }
+          // §3.5 · con qué tarjeta se pagó. La ficha se olvidaba de pasarlo, así
+          // que un gasto en tarjeta caía como cargo directo a la cuenta. Con una
+          // de CRÉDITO no toca la cuenta —sale en el recibo— y el cargo se
+          // atribuye a su cuenta de liquidación (donde luego cae el recibo).
+          const tarjetaDelGasto =
+            v.tarjetaId != null ? tarjetas.find((t) => t.id === v.tarjetaId) : undefined;
+          const esCredito = tarjetaDelGasto?.modalidad === 'credito';
+          const cuentaParaAlta =
+            esCredito && tarjetaDelGasto?.cuentaLiquidacionId != null
+              ? tarjetaDelGasto.cuentaLiquidacionId
+              : v.cuentaId;
           await altaMovimiento({
             tipo: v.tipo,
             concepto: v.concepto,
             importe: v.importe,
             fecha: v.fecha,
-            cuentaId: v.cuentaId,
+            cuentaId: cuentaParaAlta,
             inmuebleId: v.inmuebleId ?? null,
             categoryKey: v.categoryKey ?? null,
             subtypeKey: v.subtypeKey ?? null,
             esMejora: v.esMejora,
             cuentaDestinoId: v.cuentaDestinoId,
+            tarjetaId: v.tarjetaId ?? null,
+            gastoTarjetaCredito: esCredito,
           });
           await trasEscribir();
           return;
@@ -598,7 +622,7 @@ const TesoreriaV6Page: React.FC = () => {
         console.error('[TesoreriaV6] no se pudo guardar el movimiento', err);
       }
     },
-    [trasEscribir]
+    [trasEscribir, tarjetas]
   );
 
   /**

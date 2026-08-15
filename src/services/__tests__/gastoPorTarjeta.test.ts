@@ -4,8 +4,14 @@
 // bonificación de la hipoteca. Si esta miente, mienten las dos — y una de ellas
 // se presume ante el banco.
 
-import { gastoDeLaTarjeta, gastoDeMovimientos, gastoPorTarjeta } from '../gastoPorTarjeta';
+import {
+  gastoDeLaTarjeta,
+  gastoDeMovimientos,
+  gastoDeMovimientosCredito,
+  gastoPorTarjeta,
+} from '../gastoPorTarjeta';
 import type { Movement, TreasuryEvent } from '../db';
+import type { Tarjeta } from '../../types/tarjetas';
 
 const recibo = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
@@ -201,5 +207,60 @@ describe('el gasto con tarjeta de débito', () => {
 
     expect(gastoDeLaTarjeta(periodos, 11)).toBe(100);
     expect(gastoDeLaTarjeta(periodos, 12)).toBe(0);
+  });
+});
+
+// §3.5 · una compra MANUAL en tarjeta de crédito no mueve la cuenta —sale en el
+// recibo— pero engorda el periodo abierto de la tarjeta.
+describe('el gasto manual con tarjeta de crédito', () => {
+  const CREDITO: Tarjeta = {
+    id: 12,
+    alias: 'Carrefour',
+    origen: 'banco',
+    modalidad: 'credito',
+    cuentaLiquidacionId: 9,
+    ciclo: { periodicidad: 'mensual', corte: 20, diaCargo: 31, periodosHastaElCargo: 0 },
+    activa: true,
+    createdAt: '',
+    updatedAt: '',
+  } as Tarjeta;
+
+  const compra = (over: Partial<Movement> = {}): Movement =>
+    ({
+      id: 1,
+      accountId: 9,
+      date: '2026-08-10',
+      amount: -50,
+      description: 'Toallas',
+      tarjetaId: 12,
+      gastoTarjetaCredito: true,
+      ...over,
+    }) as Movement;
+
+  it('la compra aparece como periodo ABIERTO que crece', () => {
+    const periodos = gastoDeMovimientosCredito([compra()], [CREDITO], '2026-08-15');
+    expect(periodos).toHaveLength(1);
+    expect(periodos[0]).toMatchObject({ tarjetaId: 12, importe: 50, estado: 'abierto' });
+  });
+
+  it('dos compras del mismo periodo se suman', () => {
+    const periodos = gastoDeMovimientosCredito(
+      [compra({ id: 1, amount: -50 }), compra({ id: 2, amount: -13.38, date: '2026-08-12' })],
+      [CREDITO],
+      '2026-08-15'
+    );
+    expect(gastoDeLaTarjeta(periodos, 12)).toBeCloseTo(63.38, 2);
+  });
+
+  it('un movimiento sin la marca de crédito NO cuenta aquí', () => {
+    expect(
+      gastoDeMovimientosCredito([compra({ gastoTarjetaCredito: undefined })], [CREDITO], '2026-08-15')
+    ).toEqual([]);
+  });
+
+  it('un periodo ya cobrado no se re-suma · su importe real vendrá por el recibo', () => {
+    // Compra de junio · su cargo (30-jun) ya salió antes de hoy (15-ago).
+    const periodos = gastoDeMovimientosCredito([compra({ date: '2026-06-05' })], [CREDITO], '2026-08-15');
+    expect(periodos).toEqual([]);
   });
 });

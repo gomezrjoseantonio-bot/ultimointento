@@ -86,6 +86,31 @@ describe('accountBalanceService', () => {
     expect(value).toBeCloseTo(986.62, 2); // 1000 − 13,38
   });
 
+  it('una compra con tarjeta de CRÉDITO no mueve el saldo (sale en el recibo)', () => {
+    const value = calculateAccountBalanceAtDate({
+      account: {
+        id: 5,
+        iban: 'ES5',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        openingBalance: 1000,
+        openingBalanceDate: '2026-01-01',
+      } as any,
+      cutoffDate: '2026-08-20',
+      treasuryEvents: [],
+      movements: [
+        // Compra manual en tarjeta de crédito · NO descuenta ahora.
+        { id: 70, accountId: 5, amount: -80, date: '2026-08-10', gastoTarjetaCredito: true } as any,
+        // Un gasto normal de la misma cuenta sí descuenta.
+        { id: 71, accountId: 5, amount: -20, date: '2026-08-11' } as any,
+      ],
+    });
+
+    expect(value).toBe(980); // 1000 − 20 (la compra de crédito de 80 no cuenta)
+  });
+
 
   it('allows callers to ignore imported movements when projecting month openings for treasury forecast continuity', () => {
     const value = calculateAccountBalanceAtDate({

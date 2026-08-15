@@ -84,6 +84,10 @@ export function calculateAccountBalanceAtDate(params: {
 
   const rawMovements = movements.filter(m => (
     m.accountId === account.id &&
+    // Una compra con tarjeta de CRÉDITO no mueve la cuenta el día de la compra:
+    // sale entera en el recibo (§3.3). El recibo sí es un movimiento normal que
+    // descuenta; contar además cada compra descontaría dos veces.
+    !m.gastoTarjetaCredito &&
     !reconciledMovementIds.has(m.id ?? Number.NaN) &&
     !m.isOpeningBalance &&
     toDateOnly(m.date) &&
