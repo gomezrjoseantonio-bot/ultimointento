@@ -1,28 +1,11 @@
-// ============================================================================
-// Tesorería V6 · §4.5 · ficha de movimiento (editar / anotar)
-// ============================================================================
-//
-// Formulario PLANO: etiqueta + campo. Sin iconos decorativos, sin chips, sin
-// frases de ayuda innecesarias — confirmar tiene que ser rápido.
-//
-// Reglas de §4.5 que el código cumple y los tests fijan:
-//   · Familia y concepto salen del CATÁLOGO UNIFICADO, filtrado por ámbito:
-//       - Sin inmueble (personal) → las familias personales (incluye Alquiler,
-//         Cuotas, Suscripciones, Día a día).
-//       - Con inmueble → solo las familias que proyectan a inmueble.
-//     La ficha enseña familia/concepto (presentación) y guarda `categoryKey`
-//     (persistencia), traduciendo por dentro. El usuario NUNCA elige "categoría
-//     fiscal": el mapeo a la casilla de Hacienda es responsabilidad de ATLAS.
-//   · Ingreso NO usa el catálogo de gasto · tiene sus propios conceptos
-//     (Alquiler · Otros ingresos). El alquiler exige inmueble.
-//   · Transferencia oculta familia/concepto/inmueble y pide cuenta destino.
-//     No es gasto fiscal.
-//   · NO hay campo de documento: la factura vive en el Archivo (§4.5).
-//   · Tipo solo en alta. Al editar, el tipo ya está decidido.
-//
-// La única pregunta fiscal es la derrama (D3), y solo aparece cuando el
-// concepto elegido de verdad la necesita — y solo en ámbito inmueble.
-// ============================================================================
+// Tesorería V6 · §4.5 · ficha de movimiento (editar / anotar). Formulario PLANO:
+// etiqueta + campo. Reglas que los tests fijan: familia/concepto salen del
+// catálogo unificado filtrado por ámbito (personal vs inmueble) y la ficha guarda
+// `categoryKey` por dentro —el usuario NUNCA elige «categoría fiscal»—; el ingreso
+// tiene sus propios conceptos (el alquiler exige inmueble); la transferencia oculta
+// familia/concepto/inmueble; no hay campo de documento (la factura vive en el
+// Archivo); el tipo solo se elige en alta. La única pregunta fiscal es la derrama
+// (D3), y solo en inmueble cuando el concepto la necesita.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
@@ -52,9 +35,8 @@ import { cuentasQuePuedenPagar } from '../../../services/cuentasPorMetodoPago';
  */
 type MetodoDePago = 'cuenta' | 'efectivo' | 'bizum' | 'tarjeta_credito' | 'tarjeta_debito';
 
-// Default ESTABLE · sin él, `tarjetas = []` crea un array nuevo en cada render y,
-// al estar en las deps del efecto de apertura, lo re-dispararía en cada render
-// borrando lo que el usuario acaba de teclear.
+// Default ESTABLE · un `= []` inline crea un array nuevo por render y, al estar en
+// las deps del efecto de apertura, lo re-dispararía borrando lo tecleado.
 const SIN_TARJETAS: Array<{ id: number; alias: string; modalidad?: 'debito' | 'credito' }> = [];
 
 export type TipoMovimiento = 'gasto' | 'ingreso' | 'transferencia';
@@ -86,14 +68,10 @@ export interface ValoresFicha {
 /** Lo que sale al guardar: los valores + lo que hay que persistir. */
 export interface GuardadoFicha extends ValoresFicha {
   /**
-   * Traducido desde familia/concepto.
-   *   · `string`    → clasificar así.
-   *   · `null`      → limpiar la clasificación (transferencia · derrama-mejora,
-   *                   que no lleva key de gasto porque se amortiza).
-   *   · `undefined` → NO tocar lo que ya hubiera. Pasa cuando la ficha abrió
-   *                   sin conocer la clasificación del registro y el usuario no
-   *                   la eligió: sobrescribirla con la primera del catálogo
-   *                   sería reclasificar a su espalda.
+   * Traducido desde familia/concepto. `string` clasifica; `null` limpia
+   * (transferencia · derrama-mejora, que se amortiza y no lleva key de gasto);
+   * `undefined` NO toca lo que hubiera (ficha abierta sin clasificación conocida
+   * y el usuario no la eligió · sobrescribir sería reclasificar a su espalda).
    */
   categoryKey?: string | null;
   subtypeKey?: string | null;
@@ -211,9 +189,8 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
     setCuentaId(inicial?.cuentaId ?? cuentas[0]?.id ?? null);
     setInmuebleId(inicial?.inmuebleId ?? null);
     setTarjetaId(inicial?.tarjetaId ?? null);
-    // El método de pago se deduce de lo que traiga: con tarjeta, la modalidad de
-    // esa tarjeta; si no, cargo en cuenta. Efectivo/Bizum no se reconstruyen aquí
-    // (haría falta mirar el tipo de la cuenta) · por defecto «Cuenta bancaria».
+    // Método de pago deducido de lo que traiga: con tarjeta, su modalidad; si no,
+    // «Cuenta bancaria» (efectivo/Bizum no se reconstruyen aquí).
     const tarIni =
       inicial?.tarjetaId != null ? tarjetas.find((t) => t.id === inicial.tarjetaId) : undefined;
     setMetodo(
