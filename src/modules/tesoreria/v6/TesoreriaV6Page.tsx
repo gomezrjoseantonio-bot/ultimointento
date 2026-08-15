@@ -579,8 +579,10 @@ const TesoreriaV6Page: React.FC = () => {
           const tarjetaDelGasto =
             v.tarjetaId != null ? tarjetas.find((t) => t.id === v.tarjetaId) : undefined;
           const esCredito = tarjetaDelGasto?.modalidad === 'credito';
+          // Cualquier tarjeta se paga con su cuenta de liquidación · el débito
+          // la mueve al momento, el crédito cuando llega el recibo.
           const cuentaParaAlta =
-            esCredito && tarjetaDelGasto?.cuentaLiquidacionId != null
+            tarjetaDelGasto?.cuentaLiquidacionId != null
               ? tarjetaDelGasto.cuentaLiquidacionId
               : v.cuentaId;
           await altaMovimiento({

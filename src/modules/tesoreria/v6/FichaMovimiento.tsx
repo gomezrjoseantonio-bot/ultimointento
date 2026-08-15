@@ -43,6 +43,19 @@ import type { Account } from '../../../services/db';
 import { importeSaldo } from './formatoV6';
 import styles from './FichaMovimiento.module.css';
 import { toISODateLocal } from '../../../utils/recurrenceDateUtils';
+import { cuentasQuePuedenPagar } from '../../../services/cuentasPorMetodoPago';
+
+/**
+ * Cómo se paga un GASTO (§ VOCABULARIO-dinero). Un único selector decide qué se
+ * pregunta después: con tarjeta no se elige cuenta —la pone la tarjeta—, y en
+ * efectivo o Bizum la cuenta la decide el método, no el usuario.
+ */
+type MetodoDePago = 'cuenta' | 'efectivo' | 'bizum' | 'tarjeta_credito' | 'tarjeta_debito';
+
+// Default ESTABLE · sin él, `tarjetas = []` crea un array nuevo en cada render y,
+// al estar en las deps del efecto de apertura, lo re-dispararía en cada render
+// borrando lo que el usuario acaba de teclear.
+const SIN_TARJETAS: Array<{ id: number; alias: string; modalidad?: 'debito' | 'credito' }> = [];
 
 export type TipoMovimiento = 'gasto' | 'ingreso' | 'transferencia';
 
@@ -160,7 +173,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   importePrevisto,
   cuentas,
   inmuebles,
-  tarjetas = [],
+  tarjetas = SIN_TARJETAS,
   onCerrar,
   onGuardar,
   onEliminar,
@@ -181,6 +194,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   const [ingresoKey, setIngresoKey] = useState<string>(INGRESO_KEY_DEFECTO);
   const [inmuebleId, setInmuebleId] = useState<number | null>(null);
   const [tarjetaId, setTarjetaId] = useState<number | null>(null);
+  const [metodo, setMetodo] = useState<MetodoDePago>('cuenta');
   const [cuentaDestinoId, setCuentaDestinoId] = useState<number | null>(null);
   const [derrama, setDerrama] = useState<NaturalezaDerrama | null>(null);
   const [tocado, setTocado] = useState(false);
@@ -197,6 +211,14 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
     setCuentaId(inicial?.cuentaId ?? cuentas[0]?.id ?? null);
     setInmuebleId(inicial?.inmuebleId ?? null);
     setTarjetaId(inicial?.tarjetaId ?? null);
+    // El método de pago se deduce de lo que traiga: con tarjeta, la modalidad de
+    // esa tarjeta; si no, cargo en cuenta. Efectivo/Bizum no se reconstruyen aquí
+    // (haría falta mirar el tipo de la cuenta) · por defecto «Cuenta bancaria».
+    const tarIni =
+      inicial?.tarjetaId != null ? tarjetas.find((t) => t.id === inicial.tarjetaId) : undefined;
+    setMetodo(
+      tarIni ? (tarIni.modalidad === 'debito' ? 'tarjeta_debito' : 'tarjeta_credito') : 'cuenta',
+    );
     setCuentaDestinoId(inicial?.cuentaDestinoId ?? null);
     setDerrama(inicial?.naturalezaDerrama ?? null);
     setTocado(false);
@@ -216,12 +238,47 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
     const fam = inicial?.familia ?? (esEdicion ? SIN_CLASIFICAR : familiasDeAmbito(amb)[0]?.id ?? '');
     setFamilia(fam);
     setSubtipo(inicial?.subtipo ?? (fam ? conceptosDe(fam as FamiliaId, amb)[0]?.id ?? '' : ''));
-  }, [abierta, inicial, cuentas, esEdicion]);
+  }, [abierta, inicial, cuentas, tarjetas, esEdicion]);
 
   const esTransferencia = tipo === 'transferencia';
   const esIngreso = tipo === 'ingreso';
   const esGasto = tipo === 'gasto';
   const ambito = ambitoDe(inmuebleId);
+
+  // ── Método de pago (solo GASTO) · un único selector decide el resto ──────────
+  const tarjetasCredito = useMemo(() => tarjetas.filter((t) => t.modalidad === 'credito'), [tarjetas]);
+  const tarjetasDebito = useMemo(() => tarjetas.filter((t) => t.modalidad === 'debito'), [tarjetas]);
+  const ctaEfectivoPago = useMemo(() => cuentasQuePuedenPagar('efectivo', cuentas)[0], [cuentas]);
+  const ctaBizumPago = useMemo(() => cuentasQuePuedenPagar('bizum', cuentas)[0], [cuentas]);
+  const metodosDisponibles = useMemo(() => {
+    // «Cuenta bancaria» siempre; el resto solo si HAY con qué: sin tarjeta de
+    // débito dada de alta no se ofrece «Tarjeta de débito», etc.
+    const out: Array<{ id: MetodoDePago; label: string }> = [
+      { id: 'cuenta', label: 'Cuenta bancaria' },
+    ];
+    if (ctaEfectivoPago) out.push({ id: 'efectivo', label: 'Efectivo' });
+    if (ctaBizumPago) out.push({ id: 'bizum', label: 'Bizum' });
+    if (tarjetasCredito.length > 0) out.push({ id: 'tarjeta_credito', label: 'Tarjeta de crédito' });
+    if (tarjetasDebito.length > 0) out.push({ id: 'tarjeta_debito', label: 'Tarjeta de débito' });
+    return out;
+  }, [ctaEfectivoPago, ctaBizumPago, tarjetasCredito, tarjetasDebito]);
+
+  // Al elegir método se recoloca la cuenta/tarjeta que toca, para que lo que se
+  // guarda case con lo que se ve (nada de una cuenta pegada de un método viejo).
+  const cambiarMetodo = (m: MetodoDePago) => {
+    setMetodo(m);
+    if (m === 'tarjeta_credito') {
+      setTarjetaId(tarjetasCredito[0]?.id ?? null);
+    } else if (m === 'tarjeta_debito') {
+      setTarjetaId(tarjetasDebito[0]?.id ?? null);
+    } else {
+      setTarjetaId(null);
+      if (m === 'efectivo' && ctaEfectivoPago?.id != null) setCuentaId(ctaEfectivoPago.id);
+      else if (m === 'bizum' && ctaBizumPago?.id != null) setCuentaId(ctaBizumPago.id);
+      else setCuentaId((prev) => prev ?? cuentas[0]?.id ?? null);
+    }
+  };
+  const tarjetasDelMetodo = metodo === 'tarjeta_debito' ? tarjetasDebito : tarjetasCredito;
 
   const familias = useMemo(() => (esGasto ? familiasDeAmbito(ambito) : []), [esGasto, ambito]);
   const conceptos = useMemo(
@@ -487,21 +544,82 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
             </div>
           </div>
 
-          <div className={styles.fld}>
-            <label className={styles.lab} htmlFor="fm-cuenta">Cuenta</label>
-            <select
-              id="fm-cuenta"
-              className={styles.select}
-              value={cuentaId ?? ''}
-              onChange={(e) => setCuentaId(e.target.value ? Number(e.target.value) : null)}
-            >
-              {cuentas.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {etiquetaCuenta(c)}
-                </option>
-              ))}
-            </select>
-          </div>
+          {esGasto ? (
+            /* Un GASTO se paga de una forma · el método decide qué se pregunta:
+               con tarjeta no hay cuenta que elegir, y en efectivo/Bizum la cuenta
+               la pone el método, no el usuario. */
+            <div className={styles.fld}>
+              <label className={styles.lab} htmlFor="fm-metodo">Método de pago</label>
+              <select
+                id="fm-metodo"
+                className={styles.select}
+                value={metodo}
+                onChange={(e) => cambiarMetodo(e.target.value as MetodoDePago)}
+              >
+                {metodosDisponibles.map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+
+              {metodo === 'cuenta' && (
+                <select
+                  aria-label="Cuenta de cargo"
+                  className={styles.select}
+                  style={{ marginTop: 8 }}
+                  value={cuentaId ?? ''}
+                  onChange={(e) => setCuentaId(e.target.value ? Number(e.target.value) : null)}
+                >
+                  {cuentas.map((c) => (
+                    <option key={c.id} value={c.id}>{etiquetaCuenta(c)}</option>
+                  ))}
+                </select>
+              )}
+
+              {(metodo === 'efectivo' || metodo === 'bizum') && (
+                <div className={styles.hint}>
+                  Sale de {etiquetaCuenta((metodo === 'efectivo' ? ctaEfectivoPago : ctaBizumPago)!)}
+                </div>
+              )}
+
+              {(metodo === 'tarjeta_credito' || metodo === 'tarjeta_debito') && (
+                <>
+                  <select
+                    aria-label="Tarjeta"
+                    className={styles.select}
+                    style={{ marginTop: 8 }}
+                    value={tarjetaId ?? ''}
+                    onChange={(e) => setTarjetaId(e.target.value ? Number(e.target.value) : null)}
+                  >
+                    {tarjetasDelMetodo.map((t) => (
+                      <option key={t.id} value={t.id}>{t.alias}</option>
+                    ))}
+                  </select>
+                  {metodo === 'tarjeta_credito' && (
+                    <div className={styles.hint}>
+                      Crédito · el cargo no sale de la cuenta ahora; engorda el recibo de la
+                      tarjeta y la cuenta se mueve cuando llega.
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className={styles.fld}>
+              <label className={styles.lab} htmlFor="fm-cuenta">Cuenta</label>
+              <select
+                id="fm-cuenta"
+                className={styles.select}
+                value={cuentaId ?? ''}
+                onChange={(e) => setCuentaId(e.target.value ? Number(e.target.value) : null)}
+              >
+                {cuentas.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {etiquetaCuenta(c)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {esTransferencia ? (
             /* Transferencia: sin familia, concepto ni inmueble · no es gasto fiscal. */
@@ -649,38 +767,8 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                 </div>
               )}
 
-              {/*
-                §3.5 · con qué tarjeta se pagó.
-
-                El extracto no lo trae y `paymentMethod` como mucho dice que fue
-                con tarjeta, no CUÁL. Sin decirlo, el gasto de una tarjeta de
-                débito no se puede atribuir a ninguna — el débito cobra al
-                momento, así que no hay recibo del que deducirlo.
-              */}
-              {tarjetas.length > 0 && (
-                <div className={styles.fld}>
-                  <label className={styles.lab} htmlFor="fm-tarjeta">Tarjeta</label>
-                  <select
-                    id="fm-tarjeta"
-                    className={styles.select}
-                    value={tarjetaId ?? ''}
-                    onChange={(e) => setTarjetaId(e.target.value ? Number(e.target.value) : null)}
-                  >
-                    <option value="">Sin tarjeta</option>
-                    {tarjetas.map((t) => (
-                      <option key={t.id} value={t.id}>{t.alias}</option>
-                    ))}
-                  </select>
-                  {/* Con una de crédito la compra no sale de la cuenta el día que
-                      se hace: se acumula y sale entera en el recibo (§3.3). */}
-                  {tarjetas.find((t) => t.id === tarjetaId)?.modalidad === 'credito' && (
-                    <div className={styles.hint}>
-                      Crédito · el cargo no sale de la cuenta ahora; engorda el recibo de la
-                      tarjeta y la cuenta se mueve cuando llega.
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* La tarjeta ya no vive aquí: es parte del «Método de pago» de
+                  arriba (§3.5), que decide cuenta vs tarjeta en un solo sitio. */}
             </>
           )}
         </div>
