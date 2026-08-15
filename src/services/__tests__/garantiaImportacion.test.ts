@@ -354,6 +354,63 @@ describe('Garantía de importación · invariantes que se cumplen hoy', () => {
     const activa = ej?.aeat?.versiones?.find((v) => v.id === ej.aeat?.versionActivaId);
     expect(activa?.resultado).toBeCloseTo(-800, 2);
     expect(activa?.fuenteImportacion).toBe('pdf');
-    expect((await props())).toHaveLength(0); // el resumen no reconstruye inmuebles
+    expect((await props())).toHaveLength(0); // este texto no trae bloques de inmueble
+  });
+
+  it('import PDF COMPLETO: inmuebles + Comunidad de Bienes + arrastres, igual que el XML', async () => {
+    // Texto de un justificante con el detalle completo (mismo formato que el
+    // Modelo 100 real): un inmueble arrendado con sus casillas por bloque
+    // `Inmueble N`, y el apartado de atribución de rentas (CB). El PDF debe
+    // reconstruir la DeclaracionCompleta con inmuebles y CB, no solo el resumen.
+    const paginas = [[
+      'Ejercicio 2024',
+      'Número de justificante 2024000999888',
+      'Bienes inmuebles',
+      'Inmueble 1',
+      'Porcentaje de propiedad.   100,00   0063',
+      'Referencia catastral.   9999999XX9999X0001XX   0066',
+      'Urbana.   X   0067',
+      'Dirección del inmueble   CL EJEMPLO 0010 1 A MADRID   0069',
+      'Arrendamiento.   X   0075',
+      'Nº de días que el inmueble ha estado arrendado   366   0101',
+      'Ingresos íntegros computables de capital inmobiliario.   12.000,00   0102',
+      'Gastos de comunidad   600,00   0109',
+      'Amortización del inmueble   1.100,00   0131',
+      'Rendimiento neto.   9.100,00   0149',
+      'Rendimiento neto reducido.   9.100,00   0154',
+      'Regímenes especiales de imputación de rentas',
+      'IMPUTACIONES DE ENTIDADES EN RÉGIMEN DE ATRIBUCIÓN DE RENTAS',
+      'N.I.F. de la entidad en régimen de atribución de rentas   E00000000   1562',
+      'Porcentaje de participación del contribuyente en la entidad   10,00   1564',
+      'Rendimiento neto atribuido por la entidad   1.682,80   1571',
+      'Atribución de retenciones de rendimientos de capital inmobiliario   136,05   1598',
+      'Base imponible general   30000,00   0435',
+      'Resultado de la declaración   -500,00   0670',
+    ].join('\n')];
+
+    const decl = construirDeclaracionCompletaDesdeCasillas(
+      extraerCasillasDeterministasDesdeTexto(paginas), { ejercicioFallback: 2024 });
+
+    // Inmueble reconstruido con su desglose (no vacío).
+    expect(decl.inmuebles).toHaveLength(1);
+    const inm = decl.inmuebles[0];
+    expect(inm.refCatastral).toBe('9999999XX9999X0001XX');
+    expect(inm.amortizacionAnualInmueble).toBeCloseTo(1100, 2);
+    expect(inm.rendimientoNetoReducido).toBeCloseTo(9100, 2);
+    expect(inm.gastos.comunidad).toBeCloseTo(600, 2);
+    expect(inm.arrendamientos[0].ingresos).toBeCloseTo(12000, 2);
+
+    // Comunidad de Bienes extraída del apartado de atribución del PDF.
+    expect(decl.entidadesAtribucion).toHaveLength(1);
+    expect(decl.entidadesAtribucion![0].nif).toBe('E00000000');
+    expect(decl.entidadesAtribucion![0].tipoEntidad).toBe('CB');
+    expect(decl.entidadesAtribucion![0].rendimientoAtribuido).toBeCloseTo(1682.8, 2);
+
+    // Fluye por el MISMO distribuidor: crea la property y la entidad.
+    await distribuirDeclaracion(decl, OPCIONES_DEFAULT);
+    expect((await props())).toHaveLength(1);
+    const ents = await getEntidades();
+    expect(ents).toHaveLength(1);
+    expect(ents[0].nif).toBe('E00000000');
   });
 });
