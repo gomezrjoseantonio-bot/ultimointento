@@ -13,6 +13,7 @@
 // ============================================================================
 
 import type { MatchResult } from '../../../services/movementMatchingService';
+import type { MovimientoConfirmadoRef } from '../../../services/conciliacionConfirmados';
 import type { Movement, TreasuryEvent } from '../../../services/db';
 import { generateLineHash } from '../../../services/statementIgnoredLinesService';
 
@@ -30,6 +31,12 @@ export interface LineaExtracto {
   veredicto: VeredictoLinea;
   /** Solo si cuadra · el previsto con el que casó. */
   previsto?: { id: number; descripcion: string; importe: number; fecha: string };
+  /**
+   * Solo si cuadra con algo que YA tenías anotado a mano (Confirmado) y no con
+   * un previsto. Al guardar, ese confirmado sube a Conciliado y esta línea no se
+   * duplica. Evidencia más fuerte: la palabra del banco sobre la tuya.
+   */
+  confirmado?: { id: number; descripcion: string; importe: number; fecha: string };
   /**
    * Varios previstos compiten por esta línea. El emparejamiento automático NO
    * elige por su cuenta: §4.7 manda a "a resolver" y deja que el usuario asigne.
@@ -99,7 +106,13 @@ export function construirLineas(
    * saldo. Se aparta —como las ignoradas— y no cuenta como "a resolver". Si de
    * verdad hay que cargarlo, primero se reabre el mes.
    */
-  mesesCerrados: Set<string> = new Set()
+  mesesCerrados: Set<string> = new Set(),
+  /**
+   * Por línea del import, el confirmado que YA tenías y con el que casa (§ la
+   * secuencia previsto → confirmado / conciliado). Vacío si nadie hace "las dos
+   * cosas".
+   */
+  confirmadosPorMovimiento: Map<number, MovimientoConfirmadoRef> = new Map()
 ): LineaExtracto[] {
   const eventoPorId = new Map<number, TreasuryEvent>();
   for (const e of eventos) if (e.id != null) eventoPorId.set(e.id, e);
@@ -138,6 +151,10 @@ export function construirLineas(
     const eventoId = matchPorMovimiento.get(m.id);
     const candidatosIds = candidatosPorMovimiento.get(m.id);
     const previsto = eventoId != null ? resumirEvento(eventoId) : undefined;
+    // Un confirmado que ya tenías solo cuenta si la línea no casó con un
+    // previsto: la previsión manda (la consume), y el confirmado es el respaldo
+    // para quien lo anotó a mano en vez de tenerlo previsto.
+    const confirmado = previsto ? undefined : confirmadosPorMovimiento.get(m.id);
 
     // El orden importa:
     //   1. Una línea ya ignorada antes NO se vuelve a proponer, aunque ahora
@@ -149,12 +166,15 @@ export function construirLineas(
     //      su periodo. Ese cargo ya estaba proyectado en el mes; confirmarlo solo
     //      lo pasa de previsto a real. Apartarlo aquí era lo que rompía el cuadre
     //      del recibo de tarjeta ("cuadraba antes y ahora no").
-    //   3. Solo si NO cuadra y su mes está cerrado se aparta: eso es el ruido que
-    //      el usuario no quiere reabrir, no un cuadre legítimo.
+    //   3. Si CUADRA con algo que ya tenías anotado (Confirmado), también cuadra:
+    //      es el mismo movimiento visto por el banco, y sube a Conciliado en vez
+    //      de duplicarse. Aunque su mes esté cerrado, por lo mismo que el previsto.
+    //   4. Solo si NO cuadra con nada y su mes está cerrado se aparta: eso es el
+    //      ruido que el usuario no quiere reabrir, no un cuadre legítimo.
     const mesLinea = (m.date ?? '').slice(0, 7);
     const veredicto: VeredictoLinea = ignoradasPrevias.has(hashLinea)
       ? 'ignorada'
-      : previsto
+      : previsto || confirmado
         ? 'cuadra'
         : mesesCerrados.has(mesLinea)
           ? 'mes_cerrado'
@@ -168,6 +188,7 @@ export function construirLineas(
       importe: m.amount,
       veredicto,
       ...(previsto ? { previsto } : {}),
+      ...(confirmado ? { confirmado } : {}),
       ...(candidatosIds
         ? {
             candidatos: candidatosIds
@@ -239,9 +260,17 @@ export function payloadDeConfirmacion(
   approvedMatches: Array<{ movementId: number; treasuryEventId: number }>;
   approvedSuggestions: Array<{ movementId: number; suggestionIndex: number }>;
   ignoredMovementIds: number[];
+  /**
+   * Líneas que cuadran con un Confirmado que ya tenías · al aplicarlas, ese
+   * confirmado sube a Conciliado y la línea del import se descarta como
+   * duplicado. `importMovementId` es la línea del banco; `confirmadoMovementId`
+   * lo que ya habías anotado.
+   */
+  reconciliacionesConfirmado: Array<{ importMovementId: number; confirmadoMovementId: number }>;
 } {
   const approvedMatches: Array<{ movementId: number; treasuryEventId: number }> = [];
   const ignoredMovementIds: number[] = [];
+  const reconciliacionesConfirmado: Array<{ importMovementId: number; confirmadoMovementId: number }> = [];
 
   for (const l of lineas) {
     const v = veredictoEfectivo(l, decisiones);
@@ -259,14 +288,27 @@ export function payloadDeConfirmacion(
     // Una asignación a mano gana al emparejamiento automático: es el usuario
     // corrigiendo, que es justo lo que la pantalla le ofrece hacer.
     const eventoId = decisiones.asignados.get(l.movementId) ?? l.previsto?.id;
-    if (eventoId != null) approvedMatches.push({ movementId: l.movementId, treasuryEventId: eventoId });
+    if (eventoId != null) {
+      approvedMatches.push({ movementId: l.movementId, treasuryEventId: eventoId });
+      continue;
+    }
+
+    // Sin previsto, pero cuadra con un Confirmado que ya tenías: se reconcilia
+    // (sube a Conciliado) salvo que el usuario lo haya resuelto a mano creando
+    // un movimiento, que ya deja la línea clasificada por su cuenta.
+    if (l.confirmado && !decisiones.creados.has(l.movementId)) {
+      reconciliacionesConfirmado.push({
+        importMovementId: l.movementId,
+        confirmadoMovementId: l.confirmado.id,
+      });
+    }
   }
 
   // `approvedSuggestions` queda vacío a propósito: §4.7 ofrece asignar a un
   // previsto o crear un movimiento, no aceptar sugerencias de categoría. El
   // campo existe porque el servicio lo pide y lo usa el camino de importación
   // antiguo.
-  return { approvedMatches, approvedSuggestions: [], ignoredMovementIds };
+  return { approvedMatches, approvedSuggestions: [], ignoredMovementIds, reconciliacionesConfirmado };
 }
 
 /**
