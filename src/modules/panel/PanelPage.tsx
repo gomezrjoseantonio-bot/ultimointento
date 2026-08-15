@@ -345,6 +345,9 @@ const PanelPage: React.FC = () => {
           cutoffDate: corte,
           treasuryEvents,
           movements,
+          // Saldo VIVO · misma regla que Tesorería: la realidad del extracto
+          // cuenta aunque el banco la valore por delante de hoy.
+          incluirRealesFuturos: true,
         }),
       );
     }
