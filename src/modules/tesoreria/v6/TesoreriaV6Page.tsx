@@ -332,6 +332,9 @@ const TesoreriaV6Page: React.FC = () => {
           cutoffDate: corte,
           treasuryEvents: porCuenta.eventos.get(c.id) ?? [],
           movements: porCuenta.movimientos.get(c.id) ?? [],
+          // Saldo VIVO · un cargo/abono real del extracto cuenta aunque el banco
+          // lo valore un par de días adelante (la remuneración mensual).
+          incluirRealesFuturos: true,
         })
       );
     }

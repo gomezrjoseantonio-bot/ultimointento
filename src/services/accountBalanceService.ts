@@ -52,8 +52,23 @@ export function calculateAccountBalanceAtDate(params: {
   cutoffDate: string;
   treasuryEvents: TreasuryEvent[];
   movements: Movement[];
+  /**
+   * SALDO VIVO · cuenta los movimientos REALES aunque el banco los haya
+   * fechado por delante de hoy.
+   *
+   * Un movimiento es realidad: confirmado (lo vio el usuario) o conciliado (lo
+   * dice el extracto) —nunca una previsión, que va por `treasuryEvents`—. Si ha
+   * ocurrido, cuenta, aunque no estuviera previsto. Y el banco a veces valora un
+   * apunte un par de días adelante: la remuneración mensual llega el 17 y ya
+   * está en el extracto y en el saldo del banco el 15. Con el corte estricto
+   * (`< cutoffDate`) ese ingreso quedaba fuera y el saldo no cuadraba con el
+   * banco. Con este flag —solo en las vistas de saldo VIVO— la realidad manda
+   * sobre la fecha de valor; los cortes históricos (cierres de mes, informes) lo
+   * dejan en `false` para no colar en un mes algo del mes siguiente.
+   */
+  incluirRealesFuturos?: boolean;
 }): number {
-  const { account, cutoffDate, treasuryEvents, movements } = params;
+  const { account, cutoffDate, treasuryEvents, movements, incluirRealesFuturos = false } = params;
   const accountOpeningDate = toDateOnly(account.openingBalanceDate);
   const openingDateApplies = !accountOpeningDate || accountOpeningDate <= cutoffDate;
   const openingBalance = openingDateApplies ? (account.openingBalance ?? 0) : 0;
@@ -91,7 +106,9 @@ export function calculateAccountBalanceAtDate(params: {
     !reconciledMovementIds.has(m.id ?? Number.NaN) &&
     !m.isOpeningBalance &&
     toDateOnly(m.date) &&
-    toDateOnly(m.date)! < cutoffDate &&
+    // La realidad cuenta aunque el banco la valore por delante de hoy · solo en
+    // saldo vivo (`incluirRealesFuturos`). Los cortes históricos siguen estrictos.
+    (incluirRealesFuturos || toDateOnly(m.date)! < cutoffDate) &&
     isAfterOpening(toDateOnly(m.date)!)
   ));
 

@@ -57,6 +57,8 @@ export async function loadSaldosActualesCuentas(): Promise<{
       cutoffDate,
       treasuryEvents,
       movements,
+      // Saldo VIVO · la realidad cuenta aunque el banco la valore por delante.
+      incluirRealesFuturos: true,
     });
     saldos.set(acc.id, saldo);
   }

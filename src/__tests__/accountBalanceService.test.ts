@@ -112,6 +112,62 @@ describe('accountBalanceService', () => {
   });
 
 
+  it('saldo vivo · un abono real del extracto cuenta aunque el banco lo valore por delante de hoy', () => {
+    // Caso real Sabadell: hoy es 15/08, y la remuneración mensual (+1,03) llega
+    // en el extracto fechada el 17/08 con el saldo del banco ya subido. Con el
+    // corte estricto (mañana = 16/08) ese abono quedaba fuera y "no subía a la
+    // cuenta". En saldo VIVO tiene que contar: ha ocurrido, lo dice el extracto.
+    const params = {
+      account: {
+        id: 6,
+        iban: 'ES6',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        openingBalance: 777.04,
+        openingBalanceDate: '2026-01-01',
+      } as any,
+      cutoffDate: '2026-08-16', // corteParaSaldoVivo('2026-08-15')
+      treasuryEvents: [],
+      movements: [
+        { id: 80, accountId: 6, amount: 1.03, date: '2026-08-17', source: 'import' } as any,
+      ],
+    };
+
+    // Histórico (por defecto): el abono del 17 no entra en un corte del 16.
+    expect(calculateAccountBalanceAtDate(params)).toBeCloseTo(777.04, 2);
+    // Vivo: la realidad manda sobre la fecha de valor · 777,04 + 1,03 = 778,07.
+    expect(
+      calculateAccountBalanceAtDate({ ...params, incluirRealesFuturos: true })
+    ).toBeCloseTo(778.07, 2);
+  });
+
+  it('saldo vivo · una previsión futura NO cuenta aunque se incluyan reales futuros', () => {
+    // El flag solo abre la puerta a la REALIDAD (movimientos). Una previsión
+    // sigue esperando su día: contarla inflaría el saldo con dinero no ocurrido.
+    const value = calculateAccountBalanceAtDate({
+      account: {
+        id: 7,
+        iban: 'ES7',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        openingBalance: 100,
+        openingBalanceDate: '2026-01-01',
+      } as any,
+      cutoffDate: '2026-08-16',
+      treasuryEvents: [
+        { accountId: 7, type: 'income', amount: 500, predictedDate: '2026-08-30', status: 'predicted' } as any,
+      ],
+      movements: [],
+      incluirRealesFuturos: true,
+    });
+
+    expect(value).toBe(100);
+  });
+
   it('allows callers to ignore imported movements when projecting month openings for treasury forecast continuity', () => {
     const value = calculateAccountBalanceAtDate({
       account: {
