@@ -1,7 +1,7 @@
 /* Ficha de inmueble · pantalla única ATLAS · rediseño (decisión Jose).
  *
  * Un solo lienzo sin scroll en 3 capítulos + foto: 1 El activo · 2 Características
- * y fiscal · 3 La compra · 4 Foto (drawer). Campos del ANCHO de su dato,
+ * del activo · 3 Fiscalidad · 4 La compra. Foto en el raíl derecho. Campos del ANCHO de su dato,
  * empaquetados con wrap (nada de una fila por dato enano). Azul de base, oro solo
  * en toques (CTA, coste total, Estado=Nueva). Cero hex hardcoded · todo del
  * design-system v5 (los dos rgba de scrim/emblema ya venían del baseline).
@@ -25,11 +25,40 @@
   background: var(--atlas-v5-bg);
   border-radius: 14px;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 1fr auto;
   box-shadow: var(--atlas-v5-shadow-modal);
   overflow: hidden;
   position: relative;
 }
+
+/* ─── CABECERA sobre el formulario (claro · como el asistente de préstamo) ─── */
+.formHead {
+  display: flex; align-items: center; gap: 12px;
+  padding: 2px 2px 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+.formHeadIcon {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.formHeadIcon svg { width: 18px; height: 18px; }
+.formHeadTitle { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; color: var(--atlas-v5-ink); }
+.formHeadSub { font-size: 11px; color: var(--atlas-v5-ink-4); margin-top: 2px; letter-spacing: 0.2px; }
+.formHeadClose {
+  margin-left: auto;
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  display: grid; place-items: center;
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line);
+  background: none; cursor: pointer;
+}
+.formHeadClose:hover { background: var(--atlas-v5-line-3); }
 
 /* ─── HEADER navy ─── */
 .header {
@@ -43,13 +72,13 @@
 .headerInfo { display: flex; align-items: center; gap: 13px; }
 .headerIcon {
   width: 35px; height: 35px;
-  background: rgba(184, 138, 62, 0.15); /* gold @ 15% sobre navy · emblema */
-  color: var(--atlas-v5-gold-light);
+  background: var(--atlas-v5-navy-fill);
+  color: var(--atlas-v5-white);
   border-radius: 9px;
   display: grid; place-items: center;
 }
 .headerIcon svg { width: 19px; height: 19px; }
-.headerTitle { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; }
+.headerTitle { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; color: var(--atlas-v5-white); }
 .headerSub { font-size: 11px; color: var(--atlas-v5-navy-text-2); margin-top: 2px; letter-spacing: 0.3px; }
 .headerClose {
   width: 30px; height: 30px;
@@ -65,19 +94,19 @@
 /* ─── BODY ─── */
 .body {
   display: grid;
-  grid-template-columns: 1.7fr 1fr;
+  grid-template-columns: minmax(0, 1fr) 396px;
   overflow: hidden;
   min-height: 0;
 }
 .colForm {
-  padding: 13px 20px;
+  padding: 11px 18px;
   overflow-y: auto;
   border-right: 1px solid var(--atlas-v5-line);
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 4px;
 }
-.colPreview { padding: 16px 20px; overflow-y: auto; background: var(--atlas-v5-line-3); }
+.colPreview { padding: 20px 22px 24px; overflow-y: auto; background: var(--atlas-v5-brand-ink); color: var(--atlas-v5-on-navy-1); }
 .colForm::-webkit-scrollbar, .colPreview::-webkit-scrollbar { width: 6px; }
 .colForm::-webkit-scrollbar-thumb, .colPreview::-webkit-scrollbar-thumb {
   background: var(--atlas-v5-ink-5); border-radius: 3px;
@@ -88,9 +117,9 @@
   background: var(--atlas-v5-card);
   border: 1px solid var(--atlas-v5-line);
   border-radius: 11px;
-  padding: 11px 14px 12px;
+  padding: 7px 14px 8px;
 }
-.bandHd { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.bandHd { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
 .bandNo {
   font-family: var(--atlas-v5-font-mono-num);
   font-size: 11px; font-weight: 700;
@@ -107,28 +136,43 @@
   font-size: 11px; color: var(--atlas-v5-ink-3); font-weight: 600;
 }
 
-/* ─── SELECTOR DE TIPO · fila fina ─── */
-.types { display: flex; gap: 8px; margin-bottom: 10px; }
+/* ─── SELECTOR DE TIPO · tarjetas estilo asistente de préstamo (icono a la izquierda) ─── */
+.types { display: flex; gap: 8px; margin-bottom: 9px; }
 .type {
   flex: 1;
-  border: 1.5px solid var(--atlas-v5-line);
-  border-radius: 8px;
-  padding: 8px 6px;
-  display: flex; align-items: center; justify-content: center; gap: 7px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 9px;
+  padding: 7px 9px;
+  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px;
   cursor: pointer;
   background: var(--atlas-v5-card);
   font-family: inherit;
-  transition: background 0.1s, border-color 0.1s;
+  transition: border-color 0.12s;
 }
-.type:hover { background: var(--atlas-v5-line-3); }
-.type svg { width: 16px; height: 16px; color: var(--atlas-v5-ink-4); }
-.type span { font-size: 12px; font-weight: 600; color: var(--atlas-v5-ink-3); }
-.typeSel { background: var(--atlas-v5-gold-wash); border-color: var(--atlas-v5-gold-soft); }
-.typeSel svg, .typeSel span { color: var(--atlas-v5-gold-ink); }
+.type:hover { border-color: var(--atlas-v5-ink-5); }
+/* caja de icono · gris → NAVY con icono ORO al seleccionar (como Hipotecario/Personal) */
+.typeIcon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.typeIcon svg { width: 16px; height: 16px; }
+.type span { font-size: 12px; font-weight: 600; color: var(--atlas-v5-ink-2); }
+.typeSel { border-color: var(--atlas-v5-gold-soft); }
+.typeSel .typeIcon { background: var(--atlas-v5-brand-ink); color: var(--atlas-v5-gold); border-color: var(--atlas-v5-brand-ink); }
+.typeSel span { color: var(--atlas-v5-ink); }
 
 /* ─── FIELDS ─── */
-.wrap { display: flex; flex-wrap: wrap; gap: 9px 10px; align-items: flex-end; }
-.fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.wrap { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; }
+/* Reparte los campos a lo ANCHO (sin hueco muerto a la derecha) · bloques 2/3/4 */
+.wrapSpread { justify-content: space-between; }
+.wrapSpread.wrap { gap: 10px 10px; }
+.fld { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .fldC { align-items: center; }
 .fldC .lab { justify-content: center; }
 .lab {
@@ -140,7 +184,7 @@
 .hint { font-weight: 400; color: var(--atlas-v5-ink-4); }
 .input {
   width: 100%;
-  padding: 7px 9px;
+  padding: 5px 9px;
   border: 1px solid var(--atlas-v5-line);
   border-radius: 8px;
   background: var(--atlas-v5-card);
@@ -151,20 +195,22 @@
   transition: border-color 0.1s, box-shadow 0.1s;
 }
 .input:focus { outline: none; border-color: var(--atlas-v5-brand); box-shadow: var(--atlas-v5-focus-ring-neutral); }
-.inputMono { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; font-weight: 600; text-align: center; font-size: 12px; }
-.inputMonoL { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; font-weight: 600; text-align: left; font-size: 12px; }
-.inputRo { background: var(--atlas-v5-line-3); color: var(--atlas-v5-brand); font-weight: 700; font-family: var(--atlas-v5-font-mono-num); text-align: center; font-size: 12px; }
+/* Números SIEMPRE alineados a la izquierda (regla Jose) · mismo tamaño que el resto */
+.inputMono { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; font-weight: 600; text-align: left; }
+.inputMonoL { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; font-weight: 600; text-align: left; }
+.inputRo { background: var(--atlas-v5-line-3); color: var(--atlas-v5-brand); font-weight: 700; font-family: var(--atlas-v5-font-mono-num); text-align: left; }
 .inputSuffix { position: relative; }
 .inputSuffix .input { padding-right: 20px; }
 .suffix { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); color: var(--atlas-v5-ink-4); font-size: 11px; pointer-events: none; }
 select.input { width: auto; padding-right: 26px; }
 
-/* anchos por tipo de dato */
-.wCp { width: 62px; } .wM2 { width: 54px; } .wInt { width: 46px; }
-.wEur { width: 86px; } .wEurS { width: 78px; } .wPct { width: 56px; }
-.wDate { width: 118px; } .wRef { width: 168px; } .wAlias { width: 148px; }
-.wDir { flex: 1; min-width: 200px; }
-.wTit { width: 94px; }
+/* anchos por tipo de dato · holgados para que quepan miles + decimales y el % */
+.wCp { width: 66px; } .wM2 { width: 62px; } .wInt { width: 54px; }
+.wEur { width: 96px; } .wEurS { width: 82px; } .wPct { width: 68px; }
+.wDate { width: 116px; } .wRef { width: 178px; } .wAlias { width: 156px; }
+.wDir { flex: 1; min-width: 190px; }
+.wTit { width: 98px; }
+.wPobla { width: 150px; }
 
 /* ─── CHIP ubicación derivada ─── */
 .chip {
@@ -208,13 +254,13 @@ select.input { width: auto; padding-right: 26px; }
 
 /* ─── FINANCIACIÓN ─── */
 .fin {
-  margin-top: 10px;
-  padding: 10px 14px;
+  margin-top: 7px;
+  padding: 7px 14px 8px;
   border: 1px solid var(--atlas-v5-line);
   border-radius: 9px;
   background: var(--atlas-v5-card-alt);
 }
-.finHd { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; color: var(--atlas-v5-ink-2); margin-bottom: 8px; }
+.finHd { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; color: var(--atlas-v5-ink-2); margin-bottom: 7px; }
 .finHd svg { width: 14px; height: 14px; color: var(--atlas-v5-ink-3); }
 .finLine { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
 .finSpacer { flex: 1; min-width: 8px; }
@@ -241,115 +287,82 @@ select.input { width: auto; padding-right: 26px; }
 .finLinkedName { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--atlas-v5-ink); }
 .finLinkedMeta { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--atlas-v5-ink-3); font-variant-numeric: tabular-nums; }
 
-/* ─── FOTO (barra + drawer) ─── */
-.fotoBar {
-  background: var(--atlas-v5-card);
-  border: 1px solid var(--atlas-v5-line);
-  border-radius: 11px;
-  padding: 8px 16px;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.fotoL { display: flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--atlas-v5-ink); }
-.fotoBtn {
-  padding: 6px 13px;
-  border-radius: 7px;
-  font-size: 12px; font-weight: 600;
-  border: 1px dashed var(--atlas-v5-ink-5);
-  background: transparent;
-  color: var(--atlas-v5-ink-3);
-  cursor: pointer;
-  display: inline-flex; gap: 6px; align-items: center;
-  font-family: inherit;
-}
-.fotoBtn:hover { border-color: var(--atlas-v5-brand); color: var(--atlas-v5-ink); }
-.fotoBtn svg { width: 14px; height: 14px; }
-.fotoThumbWrap { display: flex; align-items: center; gap: 10px; }
-.fotoThumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; border: 1px solid var(--atlas-v5-line); }
-
-.drawer {
-  position: absolute; top: 0; right: 0; bottom: 0;
-  width: 340px;
-  background: var(--atlas-v5-card);
-  border-left: 1px solid var(--atlas-v5-line);
-  box-shadow: var(--atlas-v5-shadow-modal);
-  padding: 18px;
-  display: flex; flex-direction: column; gap: 12px;
-  transform: translateX(100%);
-  transition: transform 0.25s;
-  z-index: 5;
-}
-.drawerOpen { transform: none; }
-.drawerHd { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--atlas-v5-ink); }
-.headerCloseLight { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; color: var(--atlas-v5-ink-3); border: 1px solid var(--atlas-v5-line); background: none; cursor: pointer; }
-.headerCloseLight:hover { background: var(--atlas-v5-line-3); }
-.dropZone {
-  border: 1.5px dashed var(--atlas-v5-ink-5);
-  border-radius: 10px;
-  padding: 30px 14px;
-  text-align: center;
-  font-size: 12px; color: var(--atlas-v5-ink-3);
-  cursor: pointer;
-}
-.dropZone svg { width: 26px; height: 26px; color: var(--atlas-v5-ink-4); }
-.photoPreview { max-width: 100%; border-radius: 8px; border: 1px solid var(--atlas-v5-line); }
-
-/* ─── PREVIEW · fondo claro con tarjeta navy (mockup aprobado) ─── */
+/* ─── PREVIEW · raíl NAVY "en directo" (mismo lenguaje que el asistente de préstamo) ─── */
 .pvHd {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
-  color: var(--atlas-v5-ink-3);
-  margin-bottom: 11px;
-  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--atlas-v5-on-navy-5);
+  margin-bottom: 4px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
-.pvHd svg { width: 12px; height: 12px; }
-/* Tarjeta navy · número grande en blanco · filo superior de oro (toque) */
-.pvHero {
-  background: var(--atlas-v5-brand-ink);
-  color: var(--atlas-v5-white);
-  border-radius: 11px;
-  padding: 15px 18px;
-  margin-bottom: 13px;
-  position: relative;
-  overflow: hidden;
-}
-.pvHero::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-soft));
-}
-.pvHeroLab { font-size: 10px; color: var(--atlas-v5-navy-text-2); letter-spacing: 0.5px; text-transform: uppercase; font-weight: 700; }
+.pvLive { display: inline-flex; align-items: center; gap: 5px; font-size: 9.5px; letter-spacing: 0.06em; color: var(--atlas-v5-gold-soft); }
+.pvDot { width: 6px; height: 6px; border-radius: 50%; background: var(--atlas-v5-gold-soft); animation: pvPulse 2s infinite; }
+@keyframes pvPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .pvDot { animation: none; } }
+
+.pvHero { margin: 14px 0 18px; }
+.pvHeroLab { font-size: 10px; color: var(--atlas-v5-on-navy-5); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
 .pvHeroVal {
   font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums;
-  font-size: 27px; font-weight: 800; letter-spacing: -1px; line-height: 1;
-  color: var(--atlas-v5-white);
-  margin-top: 6px;
+  font-size: 38px; font-weight: 700; letter-spacing: -0.03em; line-height: 1;
+  color: var(--atlas-v5-gold-2);
+  margin-top: 8px;
 }
-.pvCur { font-size: 20px; color: var(--atlas-v5-navy-text-2); }
-.pvHeroSub { font-size: 11px; color: var(--atlas-v5-navy-text-2); margin-top: 6px; }
+.pvCur { font-size: 22px; color: var(--atlas-v5-gold-soft); }
+.pvHeroSub { font-size: 11px; color: var(--atlas-v5-on-navy-4); margin-top: 8px; }
 
-.pvBox { padding: 10px 14px; background: var(--atlas-v5-card); border: 1px solid var(--atlas-v5-line); border-radius: 9px; margin-bottom: 12px; }
-.pvRow { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; gap: 12px; }
-.pvRow + .pvRow { border-top: 1px dashed var(--atlas-v5-line); }
-.pvRowTot { padding-top: 7px; margin-top: 3px; border-top: 1.5px solid var(--atlas-v5-gold-soft); font-weight: 700; }
-.pvL { color: var(--atlas-v5-ink-3); font-size: 12px; }
-.pvV { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; color: var(--atlas-v5-ink-2); font-weight: 600; font-size: 12px; text-align: right; }
-.pvRowTot .pvL { color: var(--atlas-v5-ink); font-weight: 700; }
-/* Total en el ORO DEFINIDO (gold-ink), no blanco ni oro pálido */
-.pvRowTot .pvV { color: var(--atlas-v5-gold-ink); font-size: 14px; font-weight: 800; }
-/* Fila de préstamo clicable (editar en Financiación) */
+/* mini tarjetas navy (base amortizable / amortización) */
+.pvMini { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.pvCard {
+  background: var(--atlas-v5-on-brand-fill);
+  border: 1px solid var(--atlas-v5-border-translucent);
+  border-radius: 9px;
+  padding: 12px 13px;
+}
+.pvCardL { font-size: 9.5px; color: var(--atlas-v5-on-navy-5); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; }
+.pvCardV { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; font-size: 19px; font-weight: 700; color: var(--atlas-v5-on-navy-1); margin-top: 5px; line-height: 1; letter-spacing: -0.02em; }
+
+/* desglose */
+.pvBox { border-top: 1px solid var(--atlas-v5-on-brand-line); padding-top: 12px; margin-bottom: 16px; }
+.pvRow { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; gap: 10px; font-size: 12px; }
+.pvL { color: var(--atlas-v5-on-navy-4); }
+.pvV { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; color: var(--atlas-v5-on-navy-2); font-weight: 600; white-space: nowrap; }
+.pvRowTot { border-top: 1px solid var(--atlas-v5-on-brand-border); margin-top: 6px; padding-top: 11px; }
+.pvRowTot .pvL { color: var(--atlas-v5-on-navy-1); font-weight: 700; font-size: 13px; }
+.pvRowTot .pvV { color: var(--atlas-v5-on-navy-1); font-weight: 700; font-size: 15px; }
 .pvRowLink { cursor: pointer; }
-.pvRowLink:hover .pvL { color: var(--atlas-v5-ink); }
+.pvRowLink:hover .pvL { color: var(--atlas-v5-on-navy-1); }
 .pvRowLink .pvL { display: inline-flex; align-items: center; gap: 5px; }
 
-.pvMini { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-.pvCard {
-  background: var(--atlas-v5-card);
-  border: 1px solid var(--atlas-v5-line);
+.pvSubHd { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--atlas-v5-on-navy-5); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+
+/* ─── FOTO · subsección dentro del raíl (sin drawer) ─── */
+.pvFoto { margin-top: 18px; border-top: 1px solid var(--atlas-v5-on-brand-line); padding-top: 14px; }
+.pvFotoBody { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.pvFotoThumb { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid var(--atlas-v5-border-translucent-strong); flex-shrink: 0; }
+.pvFotoDrop {
+  flex: 1;
+  border: 1px dashed var(--atlas-v5-border-translucent-strong);
   border-radius: 9px;
-  padding: 11px 13px;
+  padding: 14px 12px;
+  text-align: center;
+  font-size: 11px; color: var(--atlas-v5-on-navy-4);
+  cursor: pointer;
+  background: var(--atlas-v5-on-brand-fill);
 }
-.pvCardL { font-size: 10px; color: var(--atlas-v5-ink-3); letter-spacing: 0.4px; text-transform: uppercase; font-weight: 700; }
-.pvCardV { font-family: var(--atlas-v5-font-mono-num); font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 800; color: var(--atlas-v5-ink); margin-top: 5px; line-height: 1; }
-.pvSubHd { font-size: 10px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--atlas-v5-ink-3); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.pvFotoDrop:hover { background: var(--atlas-v5-hover-navy); }
+.pvFotoDrop svg { width: 20px; height: 20px; color: var(--atlas-v5-on-navy-5); }
+.pvFotoActions { display: flex; flex-direction: column; gap: 6px; }
+.pvFotoBtn {
+  padding: 7px 12px; border-radius: 7px;
+  font-size: 12px; font-weight: 600;
+  background: var(--atlas-v5-on-brand-fill);
+  border: 1px solid var(--atlas-v5-on-brand-border);
+  color: var(--atlas-v5-on-navy-1);
+  cursor: pointer; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+}
+.pvFotoBtn:hover { background: var(--atlas-v5-on-brand-line); }
+.pvFotoBtn svg { width: 13px; height: 13px; }
 
 /* ─── FOOTER ─── */
 .footer {
@@ -406,5 +419,4 @@ select.input { width: auto; padding-right: 26px; }
   .colForm { border-right: none; border-bottom: 1px solid var(--atlas-v5-line); }
   .types { flex-wrap: wrap; }
   .type { flex: 1 1 30%; }
-  .drawer { width: 100%; }
 }
