@@ -25,11 +25,40 @@
   background: var(--atlas-v5-bg);
   border-radius: 14px;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 1fr auto;
   box-shadow: var(--atlas-v5-shadow-modal);
   overflow: hidden;
   position: relative;
 }
+
+/* ─── CABECERA sobre el formulario (claro · como el asistente de préstamo) ─── */
+.formHead {
+  display: flex; align-items: center; gap: 12px;
+  padding: 2px 2px 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+.formHeadIcon {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.formHeadIcon svg { width: 18px; height: 18px; }
+.formHeadTitle { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; color: var(--atlas-v5-ink); }
+.formHeadSub { font-size: 11px; color: var(--atlas-v5-ink-4); margin-top: 2px; letter-spacing: 0.2px; }
+.formHeadClose {
+  margin-left: auto;
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  display: grid; place-items: center;
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line);
+  background: none; cursor: pointer;
+}
+.formHeadClose:hover { background: var(--atlas-v5-line-3); }
 
 /* ─── HEADER navy ─── */
 .header {
@@ -179,8 +208,9 @@ select.input { width: auto; padding-right: 26px; }
 .wCp { width: 66px; } .wM2 { width: 62px; } .wInt { width: 54px; }
 .wEur { width: 96px; } .wEurS { width: 82px; } .wPct { width: 68px; }
 .wDate { width: 116px; } .wRef { width: 178px; } .wAlias { width: 156px; }
-.wDir { flex: 1; min-width: 210px; }
+.wDir { flex: 1; min-width: 190px; }
 .wTit { width: 98px; }
+.wPobla { width: 150px; }
 
 /* ─── CHIP ubicación derivada ─── */
 .chip {

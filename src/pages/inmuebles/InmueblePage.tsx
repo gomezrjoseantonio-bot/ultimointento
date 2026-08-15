@@ -496,7 +496,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     mode === 'edit' && purchaseDateOriginal
       ? `${ubic} · adquirido ${formatDateLong(purchaseDateOriginal)}`
       : `${ubic} · nuevo registro`;
-  const chipUbic = [form.municipality, form.ccaa].filter(Boolean).join(' · ');
+  const chipProvCcaa = [form.province, form.ccaa].filter(Boolean).join(' · ');
   const esNueva = form.estado === 'obra-nueva';
 
   // Campo de importe reutilizable
@@ -513,25 +513,23 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={`Ficha · ${headerTitle}`}>
       <div className={styles.modal}>
-        {/* HEADER */}
-        <div className={styles.header}>
-          <div className={styles.headerInfo}>
-            <div className={styles.headerIcon}>
-              <HeaderIcon size={19} />
-            </div>
-            <div>
-              <div className={styles.headerTitle}>{headerTitle}</div>
-              <div className={styles.headerSub}>{headerSub}</div>
-            </div>
-          </div>
-          <button type="button" className={styles.headerClose} onClick={handleCancel} aria-label="Cerrar">
-            <IconX size={14} />
-          </button>
-        </div>
-
-        {/* BODY */}
+        {/* BODY · el raíl navy (preview) ocupa toda la altura; el título va sobre el form (claro), como en el asistente de préstamo */}
         <div className={styles.body}>
           <div className={styles.colForm}>
+            {/* CABECERA (clara) */}
+            <div className={styles.formHead}>
+              <div className={styles.formHeadIcon}>
+                <HeaderIcon size={18} />
+              </div>
+              <div>
+                <div className={styles.formHeadTitle}>{headerTitle}</div>
+                <div className={styles.formHeadSub}>{headerSub}</div>
+              </div>
+              <button type="button" className={styles.formHeadClose} onClick={handleCancel} aria-label="Cerrar">
+                <IconX size={14} />
+              </button>
+            </div>
+
             {/* 1 · EL ACTIVO */}
             <div className={styles.band}>
               <div className={styles.bandHd}>
@@ -570,11 +568,13 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                     inputMode="numeric"
                   />
                 </div>
-                {chipUbic && (
-                  <span className={styles.chip}>
-                    <IconPin size={12} /> {chipUbic}
-                  </span>
-                )}
+                <div className={styles.fld}>
+                  <label className={styles.lab}>Población</label>
+                  <input className={`${styles.input} ${styles.wPobla}`} value={form.municipality} onChange={(e) => set('municipality', e.target.value)} placeholder="del CP" />
+                </div>
+                <span className={styles.chip}>
+                  <IconPin size={12} /> {chipProvCcaa || 'Provincia · CCAA'}
+                </span>
               </div>
 
               <div className={styles.wrap} style={{ marginTop: 8 }}>
