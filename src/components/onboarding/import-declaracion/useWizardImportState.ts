@@ -296,17 +296,25 @@ export function useWizardImportState(): WizardImportState {
         continue;
       }
 
-      // PDF · se parsea con el extractor real (pdfjs + IA/OCR para escaneados)
-      // y se importará como snapshot AEAT de casillas del ejercicio en importar().
+      // PDF · se parsea con el extractor real (pdfjs + IA/OCR para escaneados) y
+      // se PROYECTA a la MISMA `DeclaracionCompleta` que el XML (inmuebles,
+      // arrastres, Comunidad de Bienes, resumen), de modo que fluye por el mismo
+      // `distribuirDeclaracion` y propaga a todo el modelo — no un snapshot plano.
       try {
         const { parsearDeclaracionAEAT } = await import('../../../services/aeatParserService');
+        const { construirDeclaracionCompletaDesdeCasillas } = await import('../../../services/justificantePdfImportService');
         const ext = await parsearDeclaracionAEAT(file);
         if (ext.exito && ext.meta.ejercicio > 0) {
+          const decl = construirDeclaracionCompletaDesdeCasillas(ext.casillasRaw, {
+            fileName: file.name,
+            ejercicioFallback: ext.meta.ejercicio,
+          });
           patch(id, {
             estado: 'validado',
-            extraccion: ext,
-            ejercicio: ext.meta.ejercicio,
-            tipoDeclaracion: ext.meta.modelo,
+            declaracion: decl,
+            ejercicio: decl.meta.ejercicio,
+            resultado: decl.resultado?.resultadoDeclaracion,
+            tipoDeclaracion: decl.meta.tipoDeclaracion,
           });
         } else {
           patch(id, { estado: 'error', error: ext.errores[0] ?? 'No se pudieron leer casillas del PDF' });

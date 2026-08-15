@@ -97,7 +97,7 @@ const CASILLAS_INMUEBLE_REPETIBLES = [
   '0085', '0089', '0090', '0091', '0093', '0094', '0100', '0101', '0102',
   '0103', '0104', '0105', '0106', '0107', '0108', '0109', '0112', '0113',
   '0114', '0115', '0117', '0118', '0120', '0123', '0124', '0125', '0126',
-  '0127', '0129', '0130', '0131', '0133', '0135', '0137', '0138', '0139',
+  '0127', '0129', '0130', '0131', '0132', '0133', '0135', '0137', '0138', '0139',
   '0140', '0141', '0142', '0145', '0146', '0149', '0150', '0154', '1212',
   '1221', '1222', '1224', '1394', '1395', '1396', '1416', '1417', '1421',
   '1422', '1423',
@@ -498,6 +498,12 @@ function extraerMetadatosDesdeTexto(paginasTexto: string[]): CasillasRaw {
     resultado.nombre = limpiarTextoExtraido(presentadorNombre);
   }
 
+  // Régimen de atribución de rentas (Comunidad de Bienes): el NIF de la entidad
+  // (casilla 1562) es alfanumérico, así que el patrón numérico no lo captura. Los
+  // importes (1564 %, 1571/1604 rendimiento, 1598 retención) sí caen por casilla.
+  const nifEntidadAtribucion = texto.match(/N\.?I\.?F\.? de la entidad[^\n]*?\s([A-Z][0-9A-Z]{7,8})\s+1562\b/i)?.[1];
+  if (nifEntidadAtribucion) resultado['1562'] = nifEntidadAtribucion.trim().toUpperCase();
+
   return resultado;
 }
 
@@ -886,7 +892,7 @@ function parsearRespuestaClaude(textoRespuesta: string): CasillasRaw {
   }
 }
 
-function mapearCasillasADeclaracion(
+export function mapearCasillasADeclaracion(
   raw: CasillasRaw,
   fileName?: string,
   ejercicioFallback?: number,
@@ -1079,7 +1085,9 @@ function extraerInmuebles(
       gastosAdquisicion: n(`0127${suffix}`) || undefined,
       mejoras: n(`0129${suffix}`) || undefined,
       baseAmortizacion: n(`0130${suffix}`) || undefined,
-      amortizacionInmueble: n(`0131${suffix}`),
+      // 0131 amortización ordinaria; 0132 "amortización en casos especiales"
+      // (p.ej. vivienda habitual arrendada). El justificante usa una u otra.
+      amortizacionInmueble: n(`0131${suffix}`) || n(`0132${suffix}`),
       accesorio: extraerAccesorio(n, s, b, suffix),
       rendimientoNeto: n(`0149${suffix}`),
       reduccion: n(`0150${suffix}`),
@@ -1186,24 +1194,23 @@ function extraerArrastres(
     });
   }
 
-  if (n('1264') > 0 || n('1266') > 0) {
-    perdidas.push({
-      tipo: 'ahorro',
-      ejercicioOrigen: ejercicio - 2,
-      pendienteInicio: n('1264'),
-      aplicado: n('1265'),
-      pendienteFuturo: n('1266'),
-    });
-  }
-
-  if (n('1267') > 0 || n('1269') > 0) {
-    perdidas.push({
-      tipo: 'ahorro',
-      ejercicioOrigen: ejercicio - 1,
-      pendienteInicio: n('1267'),
-      aplicado: n('1268'),
-      pendienteFuturo: n('1269'),
-    });
+  // Saldos negativos de G y P del ahorro pendientes (art. 49 LIRPF, 4 años).
+  // El justificante los lista en tríos consecutivos por año de origen:
+  // [pendienteInicio, aplicado, pendienteFuturo]. 1261-1263 = ejercicio-3,
+  // 1264-1266 = ejercicio-2, 1267-1269 = ejercicio-1. Antes sólo se leían los
+  // dos tríos más recientes y se perdía el año más antiguo.
+  const triosPerdidas: Array<[string, string, string, number]> = [
+    ['1261', '1262', '1263', ejercicio - 3],
+    ['1264', '1265', '1266', ejercicio - 2],
+    ['1267', '1268', '1269', ejercicio - 1],
+  ];
+  for (const [cPend, cApl, cFut, ejOrigen] of triosPerdidas) {
+    const pendienteInicio = n(cPend);
+    const aplicado = n(cApl);
+    const pendienteFuturo = n(cFut);
+    if (pendienteInicio > 0 || aplicado > 0 || pendienteFuturo > 0) {
+      perdidas.push({ tipo: 'ahorro', ejercicioOrigen: ejOrigen, pendienteInicio, aplicado, pendienteFuturo });
+    }
   }
 
   for (let i = 1; i <= 10; i += 1) {

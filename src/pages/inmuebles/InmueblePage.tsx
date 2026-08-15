@@ -1,13 +1,14 @@
 /**
  * Ficha de inmueble · alta/edición · pantalla única ATLAS (rediseño · decisión Jose).
  *
- * Un solo lienzo sin scroll en 3 capítulos con hilo + foto: 1 El activo · 2
- * Características y fiscal · 3 La compra · 4 Foto (drawer). Campos del ANCHO de su
- * dato; toggles de un toque; ubicación derivada del CP; impuestos AUTO por estado
- * (ITP o IVA+AJD); financiación en una línea con "vincular existente" inline. Los
- * importes se formatean en es-ES (miles + coma) vía `MoneyInput`. El preview de la
- * derecha es un raíl NAVY "en directo" (coherente con el asistente de préstamo).
- * El estado pasa por un MODELO con mappers SIN pérdida (`inmuebleForm/model.ts`).
+ * Cuatro capítulos: 1 El activo · 2 Características del activo (con iconos) · 3
+ * Fiscalidad · 4 La compra. Campos del ANCHO de su dato; toggles de un toque;
+ * ubicación derivada del CP; impuestos AUTO por estado (ITP o IVA+AJD);
+ * financiación con "vincular existente" inline. Importes en es-ES (miles + coma)
+ * vía `MoneyInput`. El raíl DERECHO es navy "en directo" con el mismo lenguaje que
+ * el asistente de préstamo (número en oro, tarjetas navy) e incluye la subsección
+ * de FOTO (se añade ahí mismo, sin drawer). El estado pasa por un MODELO con
+ * mappers SIN pérdida (`inmuebleForm/model.ts`).
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -22,7 +23,6 @@ import {
   X as IconX,
   Check as IconCheck,
   AlertCircle as IconAlert,
-  Activity as IconActivity,
   Banknote as IconBank,
   Image as IconImage,
   MapPin as IconPin,
@@ -36,7 +36,6 @@ import { personalDataService } from '../../services/personalDataService';
 import type { Prestamo } from '../../types/prestamos';
 import type { FinanciacionLineaInmueble } from '../../modules/inmuebles/adapters/patrimonioInmuebleAdapter';
 import {
-  getLocationFromPostalCode,
   inferLocationFromPostalCodeRange,
   getCCAAFromProvince,
 } from '../../utils/locationUtils';
@@ -54,6 +53,7 @@ import {
   type InmuebleFormMeta,
 } from './inmuebleForm/model';
 import { calcularTributosAuto } from './inmuebleForm/tributos';
+import { getMunicipioFromPostalCode } from './inmuebleForm/municipioLookup';
 import {
   prefillPrestamoDesdeInmueble,
   prestamosVinculablesA,
@@ -175,7 +175,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   const [vinculadas, setVinculadas] = useState<FinanciacionLineaInmueble[]>([]);
   const [vinculables, setVinculables] = useState<Prestamo[]>([]);
   const [purchaseDateOriginal, setPurchaseDateOriginal] = useState<string>('');
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [vincularOpen, setVincularOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const formRef = useRef(form);
@@ -237,28 +236,52 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (drawerOpen) setDrawerOpen(false);
-        else cancelRef.current();
+        cancelRef.current();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [drawerOpen]);
+  }, []);
 
   // ─── auto-rellenar ubicación desde CP ───
+  // Al CARGAR (primer CP) solo rellena huecos, para no pisar datos guardados.
+  // Al CAMBIAR el CP el usuario, RE-DERIVA población/provincia/CCAA (si no, se
+  // quedaban las viejas: "Oviedo · Asturias · Cataluña" al cambiar a un CP nuevo).
+  const prevCpRef = useRef<string>('');
   useEffect(() => {
+    const prevCp = prevCpRef.current;
+    prevCpRef.current = form.cp;
     if (!/^\d{5}$/.test(form.cp)) return;
-    const exact = getLocationFromPostalCode(form.cp);
-    const inferred = exact ?? inferLocationFromPostalCodeRange(form.cp);
+    const inferred = inferLocationFromPostalCodeRange(form.cp);
     if (!inferred) return;
-    const inferredMunicipality = inferred.municipalities?.[0] ?? '';
+    const cpCambiadoPorUsuario = prevCp !== '' && prevCp !== form.cp;
+    // provincia/CCAA salen del prefijo del CP (síncrono)
     setForm((prev) => {
       const next: InmuebleFormModel = { ...prev };
-      if (!prev.municipality && inferredMunicipality) next.municipality = inferredMunicipality;
-      if (!prev.province) next.province = inferred.province;
-      if (!prev.ccaaIsManual && (!prev.ccaa || prev.ccaa !== inferred.ccaa)) next.ccaa = inferred.ccaa;
+      if (cpCambiadoPorUsuario) {
+        next.province = inferred.province;
+        if (!prev.ccaaIsManual) next.ccaa = inferred.ccaa;
+      } else {
+        if (!prev.province) next.province = inferred.province;
+        if (!prev.ccaaIsManual && (!prev.ccaa || prev.ccaa !== inferred.ccaa)) next.ccaa = inferred.ccaa;
+      }
       return next;
     });
+    // municipio sale del dataset completo INE (~11k CP), carga perezosa
+    const cpAtLookup = form.cp;
+    let cancelled = false;
+    getMunicipioFromPostalCode(cpAtLookup).then((muni) => {
+      if (cancelled) return;
+      setForm((prev) => {
+        if (prev.cp !== cpAtLookup) return prev; // el CP cambió mientras cargaba
+        if (cpCambiadoPorUsuario) return { ...prev, municipality: muni ?? '' };
+        if (!prev.municipality && muni) return { ...prev, municipality: muni };
+        return prev;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [form.cp]);
 
   // ─── auto-rellenar CCAA desde provincia ───
@@ -498,12 +521,12 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     mode === 'edit' && purchaseDateOriginal
       ? `${ubic} · adquirido ${formatDateLong(purchaseDateOriginal)}`
       : `${ubic} · nuevo registro`;
-  const chipUbic = [form.municipality, form.ccaa].filter(Boolean).join(' · ');
+  const chipProvCcaa = [form.province, form.ccaa].filter(Boolean).join(' · ');
   const esNueva = form.estado === 'obra-nueva';
 
   // Campo de importe reutilizable
   const eurField = (label: React.ReactNode, ariaLabel: string, value: number, onChange: (n: number) => void, width: string) => (
-    <div className={`${styles.fld} ${styles.fldC}`}>
+    <div className={styles.fld}>
       <label className={styles.lab}>{label}</label>
       <div className={styles.inputSuffix}>
         <MoneyInput className={`${styles.input} ${styles.inputMono} ${width}`} value={value} onChange={onChange} ariaLabel={ariaLabel} />
@@ -515,25 +538,23 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={`Ficha · ${headerTitle}`}>
       <div className={styles.modal}>
-        {/* HEADER */}
-        <div className={styles.header}>
-          <div className={styles.headerInfo}>
-            <div className={styles.headerIcon}>
-              <HeaderIcon size={19} />
-            </div>
-            <div>
-              <div className={styles.headerTitle}>{headerTitle}</div>
-              <div className={styles.headerSub}>{headerSub}</div>
-            </div>
-          </div>
-          <button type="button" className={styles.headerClose} onClick={handleCancel} aria-label="Cerrar">
-            <IconX size={14} />
-          </button>
-        </div>
-
-        {/* BODY */}
+        {/* BODY · el raíl navy (preview) ocupa toda la altura; el título va sobre el form (claro), como en el asistente de préstamo */}
         <div className={styles.body}>
           <div className={styles.colForm}>
+            {/* CABECERA (clara) */}
+            <div className={styles.formHead}>
+              <div className={styles.formHeadIcon}>
+                <HeaderIcon size={18} />
+              </div>
+              <div>
+                <div className={styles.formHeadTitle}>{headerTitle}</div>
+                <div className={styles.formHeadSub}>{headerSub}</div>
+              </div>
+              <button type="button" className={styles.formHeadClose} onClick={handleCancel} aria-label="Cerrar">
+                <IconX size={14} />
+              </button>
+            </div>
+
             {/* 1 · EL ACTIVO */}
             <div className={styles.band}>
               <div className={styles.bandHd}>
@@ -551,7 +572,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                       onClick={() => handleTipoChange(t)}
                       aria-pressed={form.tipoActivo === t}
                     >
-                      <Icon size={16} />
+                      <span className={styles.typeIcon}><Icon size={17} /></span>
                       <span>{TIPO_LABELS[t]}</span>
                     </button>
                   );
@@ -572,11 +593,13 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                     inputMode="numeric"
                   />
                 </div>
-                {chipUbic && (
-                  <span className={styles.chip}>
-                    <IconPin size={12} /> {chipUbic}
-                  </span>
-                )}
+                <div className={styles.fld}>
+                  <label className={styles.lab}>Población</label>
+                  <input className={`${styles.input} ${styles.wPobla}`} value={form.municipality} onChange={(e) => set('municipality', e.target.value)} placeholder="del CP" />
+                </div>
+                <span className={styles.chip}>
+                  <IconPin size={12} /> {chipProvCcaa || 'Provincia · CCAA'}
+                </span>
               </div>
 
               <div className={styles.wrap} style={{ marginTop: 8 }}>
@@ -588,7 +611,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   <label className={styles.lab}>Ref. catastral</label>
                   <input
                     className={`${styles.input} ${styles.inputMonoL} ${styles.wRef}`}
-                    style={{ fontSize: 11 }}
                     value={form.refCatastral}
                     onChange={(e) => set('refCatastral', e.target.value)}
                   />
@@ -616,7 +638,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </select>
                 </div>
                 {form.titularidad !== 'pareja' && (
-                  <div className={`${styles.fld} ${styles.fldC}`}>
+                  <div className={styles.fld}>
                     <label className={styles.lab}>{form.titularidad === 'ambos' ? '% tuyo' : '% prop.'}</label>
                     <div className={styles.inputSuffix}>
                       <input className={`${styles.input} ${styles.inputMono} ${styles.wPct}`} value={form.porcentajePropiedad || ''} onChange={(e) => set('porcentajePropiedad', num(e.target.value))} inputMode="decimal" />
@@ -625,7 +647,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </div>
                 )}
                 {form.titularidad !== 'yo' && (
-                  <div className={`${styles.fld} ${styles.fldC}`}>
+                  <div className={styles.fld}>
                     <label className={styles.lab}>% pareja</label>
                     <div className={styles.inputSuffix}>
                       <input className={`${styles.input} ${styles.inputMono} ${styles.wPct}`} value={form.porcentajePropiedadPareja || ''} onChange={(e) => set('porcentajePropiedadPareja', num(e.target.value))} inputMode="decimal" />
@@ -639,32 +661,32 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
               </div>
             </div>
 
-            {/* 2 · CARACTERÍSTICAS Y FISCAL */}
+            {/* 2 · CARACTERÍSTICAS DEL ACTIVO */}
             <div className={styles.band}>
               <div className={styles.bandHd}>
                 <span className={styles.bandNo}>2</span>
-                <span className={styles.bandTitle}>Características y fiscal</span>
+                <span className={styles.bandTitle}>Características del activo</span>
               </div>
-              <div className={styles.wrap}>
-                <div className={`${styles.fld} ${styles.fldC}`}>
+              <div className={`${styles.wrap} ${styles.wrapSpread}`}>
+                <div className={styles.fld}>
                   <label className={styles.lab}>m²</label>
                   <input className={`${styles.input} ${styles.inputMono} ${styles.wM2}`} value={form.m2 || ''} onChange={(e) => set('m2', num(e.target.value))} inputMode="decimal" />
                 </div>
                 {vis.showHabitacionesBanos && (
                   <>
-                    <div className={`${styles.fld} ${styles.fldC}`}>
+                    <div className={styles.fld}>
                       <label className={styles.lab}>Hab.</label>
-                      <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.habitaciones || ''} onChange={(e) => set('habitaciones', num(e.target.value))} inputMode="numeric" />
+                      <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.habitaciones || ''} onChange={(e) => set('habitaciones', num(e.target.value))} inputMode="numeric" aria-label="Habitaciones" />
                     </div>
-                    <div className={`${styles.fld} ${styles.fldC}`}>
+                    <div className={styles.fld}>
                       <label className={styles.lab}>Baños</label>
-                      <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.banos || ''} onChange={(e) => set('banos', num(e.target.value))} inputMode="numeric" />
+                      <input className={`${styles.input} ${styles.inputMono} ${styles.wInt}`} value={form.banos || ''} onChange={(e) => set('banos', num(e.target.value))} inputMode="numeric" aria-label="Baños" />
                     </div>
                   </>
                 )}
-                <div className={`${styles.fld} ${styles.fldC}`}>
+                <div className={styles.fld}>
                   <label className={styles.lab}>Cert.</label>
-                  <select className={styles.input} style={{ width: 66 }} value={form.certificadoEnergetico} onChange={(e) => set('certificadoEnergetico', e.target.value)}>
+                  <select className={styles.input} style={{ width: 72 }} value={form.certificadoEnergetico} onChange={(e) => set('certificadoEnergetico', e.target.value)} aria-label="Certificado energético">
                     <option value="">—</option>
                     <option value="NO">No</option>
                     {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => (
@@ -681,8 +703,15 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </>
                 )}
               </div>
+            </div>
 
-              <div className={styles.wrap} style={{ marginTop: 8 }}>
+            {/* 3 · FISCALIDAD */}
+            <div className={styles.band}>
+              <div className={styles.bandHd}>
+                <span className={styles.bandNo}>3</span>
+                <span className={styles.bandTitle}>Fiscalidad</span>
+              </div>
+              <div className={`${styles.wrap} ${styles.wrapSpread}`}>
                 <div className={styles.toggleField}>
                   <span className={styles.lab}>Suelo</span>
                   <div className={styles.tog}>
@@ -699,7 +728,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 </div>
                 {eurField('V. cat. total', 'Valor catastral total', form.valorCatastralTotal, (n) => set('valorCatastralTotal', n), styles.wEur)}
                 {eurField('V. cat. constr.', 'Valor catastral construcción', form.valorCatastralConstruccion, (n) => set('valorCatastralConstruccion', n), styles.wEur)}
-                <div className={`${styles.fld} ${styles.fldC}`}>
+                <div className={styles.fld}>
                   <label className={styles.lab}>% const.</label>
                   <input className={`${styles.input} ${styles.inputRo} ${styles.wPct}`} readOnly value={pct(resumen.porcentajeConstruccion)} />
                 </div>
@@ -708,10 +737,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
               </div>
             </div>
 
-            {/* 3 · LA COMPRA */}
+            {/* 4 · LA COMPRA */}
             <div className={styles.band}>
               <div className={styles.bandHd}>
-                <span className={styles.bandNo}>3</span>
+                <span className={styles.bandNo}>4</span>
                 <span className={styles.bandTitle}>La compra</span>
                 <span className={styles.estadoWrap}>
                   Estado
@@ -728,9 +757,9 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                   </div>
                 </span>
               </div>
-              {/* una sola fila · fecha · precio · impuestos · gastos (sin salto de línea) */}
-              <div className={styles.wrap}>
-                <div className={`${styles.fld} ${styles.fldC}`}>
+              {/* una sola fila · fecha · precio · impuestos · gastos (repartida a lo ancho) */}
+              <div className={`${styles.wrap} ${styles.wrapSpread}`}>
+                <div className={styles.fld}>
                   <label className={styles.lab}>Fecha <span className={styles.req}>*</span></label>
                   <input className={`${styles.input} ${styles.inputMonoL} ${styles.wDate}`} type="date" value={form.fechaCompra} onChange={(e) => set('fechaCompra', e.target.value)} />
                 </div>
@@ -756,7 +785,7 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 </div>
                 <div className={styles.finLine}>
                   {eurField('Aportación propia', 'Aportación propia', form.aportacionPropia, (n) => set('aportacionPropia', n), styles.wEur)}
-                  <div className={`${styles.fld} ${styles.fldC}`}>
+                  <div className={styles.fld}>
                     <label className={styles.lab}>Importe financiado {vinculado && <span className={styles.hint}>· del préstamo</span>}</label>
                     <div className={styles.inputSuffix}>
                       <input className={`${styles.input} ${styles.inputRo} ${styles.wEur}`} readOnly value={fmtCampo(financiadoEfectivo)} aria-label="Importe financiado" />
@@ -805,30 +834,30 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
               </div>
             </div>
 
-            {/* 4 · FOTO */}
-            <div className={styles.fotoBar}>
-              <div className={styles.fotoL}>
-                <span className={styles.bandNo}>4</span> Foto del inmueble
-              </div>
-              <div className={styles.fotoThumbWrap}>
-                {form.foto && <img className={styles.fotoThumb} src={form.foto} alt="Miniatura del inmueble" />}
-                <button type="button" className={styles.fotoBtn} onClick={() => setDrawerOpen(true)}>
-                  <IconImage size={14} /> {form.foto ? 'Cambiar foto' : 'Añadir foto'}
-                </button>
-              </div>
-            </div>
           </div>
 
-          {/* PREVIEW · fondo claro con tarjeta navy (mockup aprobado) */}
+          {/* PREVIEW · raíl navy "en directo" (mismo lenguaje que el asistente de préstamo) */}
           <div className={styles.colPreview}>
             <div className={styles.pvHd}>
-              <IconActivity size={12} /> Cálculo fiscal · vista previa
+              <span>Cálculo fiscal</span>
+              <span className={styles.pvLive}><span className={styles.pvDot} /> en directo</span>
             </div>
 
             <div className={styles.pvHero}>
               <div className={styles.pvHeroLab}>Coste base · adquisición</div>
               <div className={styles.pvHeroVal}>{eur(resumen.costeBaseAdquisicion)} <span className={styles.pvCur}>€</span></div>
               <div className={styles.pvHeroSub}>Base de cálculo de plusvalía y amortización</div>
+            </div>
+
+            <div className={styles.pvMini}>
+              <div className={styles.pvCard}>
+                <div className={styles.pvCardL}>Base amortizable</div>
+                <div className={styles.pvCardV}>{int(resumen.baseAmortizable)} €</div>
+              </div>
+              <div className={styles.pvCard}>
+                <div className={styles.pvCardL}>Amortización 3%/año</div>
+                <div className={styles.pvCardV}>{eur(resumen.amortizacionProrrateada)} €</div>
+              </div>
             </div>
 
             <div className={styles.pvBox}>
@@ -850,21 +879,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
               </div>
             </div>
 
-            <div className={styles.pvMini}>
-              <div className={styles.pvCard}>
-                <div className={styles.pvCardL}>Base amortizable</div>
-                <div className={styles.pvCardV}>{int(resumen.baseAmortizable)} €</div>
-              </div>
-              <div className={styles.pvCard}>
-                <div className={styles.pvCardL}>Amortización 3%/año</div>
-                <div className={styles.pvCardV}>{eur(resumen.amortizacionProrrateada)} €</div>
-              </div>
-            </div>
-
             {vinculado && (
               <>
                 <div className={styles.pvSubHd}><IconBank size={12} /> Financiación vinculada</div>
-                <div className={styles.pvBox} style={{ marginBottom: 0 }}>
+                <div className={styles.pvBox}>
                   {vinculadas.map((l) => (
                     <div
                       className={`${styles.pvRow} ${styles.pvRowLink}`}
@@ -887,38 +905,29 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                 </div>
               </>
             )}
-          </div>
 
-          {/* DRAWER FOTO */}
-          <div className={`${styles.drawer} ${drawerOpen ? styles.drawerOpen : ''}`}>
-            <div className={styles.drawerHd}>
-              Foto del inmueble
-              <button type="button" className={styles.headerCloseLight} onClick={() => setDrawerOpen(false)} aria-label="Cerrar foto">
-                <IconX size={14} />
-              </button>
-            </div>
-            {form.foto ? (
-              <img className={styles.photoPreview} src={form.foto} alt="Foto del inmueble" />
-            ) : (
-              <div className={styles.dropZone} onClick={() => fileInputRef.current?.click()}>
-                <IconImage size={26} />
-                <div style={{ marginTop: 8 }}>
-                  Pulsa para subir una imagen
-                  <br />
-                  <span className={styles.hint}>JPG / PNG · máx 1.5 MB</span>
-                </div>
+            {/* FOTO · subsección del raíl (sin drawer · se añade aquí mismo) */}
+            <div className={styles.pvFoto}>
+              <div className={styles.pvSubHd}><IconImage size={12} /> Foto del inmueble</div>
+              <div className={styles.pvFotoBody}>
+                {form.foto && <img className={styles.pvFotoThumb} src={form.foto} alt="Foto del inmueble" />}
+                {form.foto ? (
+                  <div className={styles.pvFotoActions}>
+                    <button type="button" className={styles.pvFotoBtn} onClick={() => fileInputRef.current?.click()}>
+                      <IconImage size={13} /> Cambiar
+                    </button>
+                    <button type="button" className={styles.pvFotoBtn} onClick={() => setForm((p) => ({ ...p, foto: undefined, fotoOn: false }))}>
+                      Quitar
+                    </button>
+                  </div>
+                ) : (
+                  <div className={styles.pvFotoDrop} role="button" tabIndex={0} onClick={() => fileInputRef.current?.click()}>
+                    <IconImage />
+                    <div style={{ marginTop: 6 }}>Pulsa para subir · JPG / PNG · máx 1.5 MB</div>
+                  </div>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
               </div>
-            )}
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" className={styles.btnGh} style={{ flex: 1 }} onClick={() => fileInputRef.current?.click()}>
-                {form.foto ? 'Cambiar' : 'Elegir archivo'}
-              </button>
-              {form.foto && (
-                <button type="button" className={styles.btnGh} style={{ flex: 1 }} onClick={() => setForm((p) => ({ ...p, foto: undefined, fotoOn: false }))}>
-                  Quitar
-                </button>
-              )}
             </div>
           </div>
         </div>
