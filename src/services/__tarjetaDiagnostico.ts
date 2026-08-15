@@ -55,7 +55,7 @@ interface TarjetaDiagnostico {
   origen: string;
   cuentaLiquidacionId: number | null;
   ciclo: Tarjeta['ciclo'] | null;
-  /** Problemas de la propia tarjeta que tumban TODO su cálculo. */
+  /** Problemas de la propia tarjeta que tumban su cálculo entero. */
   avisos: string[];
   compras: CompraDiagnostico[];
   /** Cortes de los recibos PREVISTOS (de compromisos) · para ver si cuadran. */
