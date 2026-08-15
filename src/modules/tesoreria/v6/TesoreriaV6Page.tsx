@@ -253,9 +253,10 @@ const TesoreriaV6Page: React.FC = () => {
       if (p.estado !== 'abierto') continue;
       if (!corteVigente.has(p.tarjetaId)) corteVigente.set(p.tarjetaId, p.fechaCorte);
     }
-    // La cifra viva = TODO lo abierto de ese corte: la previsión del recibo (de
-    // los compromisos) MÁS las compras manuales de crédito de ese mismo periodo.
-    // Antes solo cogía la primera, así que una compra suelta no engordaba nada.
+    // La cifra viva = la suma de lo abierto de ese corte: la previsión del recibo
+    // (de los compromisos) MÁS las compras manuales de crédito de ese mismo
+    // periodo. Antes solo cogía la primera, así que una compra suelta no
+    // engordaba nada.
     const porTarjeta = new Map<number, number>();
     for (const p of periodosDeTarjeta) {
       if (p.estado !== 'abierto') continue;
