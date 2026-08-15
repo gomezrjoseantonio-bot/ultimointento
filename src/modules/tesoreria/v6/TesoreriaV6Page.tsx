@@ -59,6 +59,7 @@ import {
 import { batchesEnBorrador, sinBorradores } from '../../../services/statementSessionService';
 import { registrarDiagnosticoEnConsola } from '../../../services/duplicadosPrevisionService';
 import { registrarBusquedaEnConsola } from '../../../services/__buscarApunteAudit';
+import { registrarDiagnosticoTarjetasEnConsola } from '../../../services/__tarjetaDiagnostico';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
@@ -281,6 +282,7 @@ const TesoreriaV6Page: React.FC = () => {
   useEffect(() => {
     registrarDiagnosticoEnConsola();
     registrarBusquedaEnConsola();
+    registrarDiagnosticoTarjetasEnConsola();
   }, []);
 
   useEffect(() => {
