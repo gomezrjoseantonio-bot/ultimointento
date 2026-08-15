@@ -53,6 +53,12 @@ export interface AltaMovimiento {
    * al momento, así que no hay recibo del que deducirlo.
    */
   tarjetaId?: number | null;
+  /**
+   * true si `tarjetaId` es una tarjeta de CRÉDITO: la compra no mueve la cuenta
+   * el día que se hace (sale en el recibo), solo engorda el periodo de la
+   * tarjeta. Lo decide quien llama (la ficha, que sabe la modalidad).
+   */
+  gastoTarjetaCredito?: boolean;
 }
 
 export class SinCuentaError extends Error {
@@ -166,6 +172,9 @@ async function altaMovimientoNormal(v: AltaMovimiento): Promise<number> {
     ...(v.subtypeKey ? { subtypeKey: v.subtypeKey } : {}),
     ...(v.inmuebleId != null ? { inmuebleId: String(v.inmuebleId) } : {}),
     ...(v.tarjetaId != null ? { tarjetaId: v.tarjetaId } : {}),
+    // Una compra con tarjeta de crédito no mueve la cuenta hasta el recibo · se
+    // marca para que el saldo la excluya y el periodo de la tarjeta la sume.
+    ...(v.gastoTarjetaCredito ? { gastoTarjetaCredito: true } : {}),
     createdAt: ahora,
     updatedAt: ahora,
   } as Movement;

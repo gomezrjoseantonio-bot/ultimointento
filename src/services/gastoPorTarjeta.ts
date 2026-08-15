@@ -23,6 +23,7 @@
 
 import type { Movement, TreasuryEvent } from './db';
 import type { Tarjeta } from '../types/tarjetas';
+import { recibosDeTarjeta } from './reciboDeTarjeta';
 
 /** Lo gastado con UNA tarjeta en UN periodo. */
 export interface GastoDeUnPeriodo {
@@ -154,6 +155,58 @@ export function gastoDeMovimientos(
       // Un movimiento del extracto ya ocurrió · no hay nada que esperar.
       estado: 'cerrado',
     });
+  }
+
+  return salida.sort((a, b) => b.fechaCorte.localeCompare(a.fechaCorte));
+}
+
+/**
+ * El gasto de una tarjeta de CRÉDITO por las COMPRAS MANUALES que el usuario
+ * anotó (movimientos con `gastoTarjetaCredito`), agrupadas en su periodo (§3.4).
+ *
+ * Es la otra mitad de «Llevas X este periodo»: el recibo previsto sale de los
+ * compromisos (`gastoPorTarjeta`), y estas son las compras sueltas que el
+ * usuario mete a mano y que hacen crecer la cifra viva. No mueven la cuenta
+ * —salen en el recibo— y por eso el saldo las excluye (`accountBalanceService`).
+ *
+ * Solo emite periodos ABIERTOS (cargo aún por salir): en cuanto el recibo real
+ * de un periodo se cobra, su importe verdadero ya viene por el extracto, así que
+ * seguir sumando aquí las compras de ese periodo las contaría dos veces.
+ */
+export function gastoDeMovimientosCredito(
+  movimientos: Movement[],
+  tarjetas: Tarjeta[],
+  hoy: string,
+): GastoDeUnPeriodo[] {
+  const credito = new Map<number, Tarjeta & { id: number }>();
+  for (const t of tarjetas) {
+    if (t.id != null && t.modalidad === 'credito' && t.ciclo) {
+      credito.set(t.id, t as Tarjeta & { id: number });
+    }
+  }
+
+  const comprasPorTarjeta = new Map<number, Array<{ fecha: string; importe: number }>>();
+  for (const m of movimientos) {
+    if (m.tarjetaId == null || !m.gastoTarjetaCredito || !credito.has(m.tarjetaId)) continue;
+    // Un ingreso/devolución en la tarjeta no suma consumo.
+    if (m.amount >= 0) continue;
+    const arr = comprasPorTarjeta.get(m.tarjetaId) ?? [];
+    arr.push({ fecha: m.date.slice(0, 10), importe: Math.abs(m.amount) });
+    comprasPorTarjeta.set(m.tarjetaId, arr);
+  }
+
+  const salida: GastoDeUnPeriodo[] = [];
+  for (const [tarjetaId, compras] of Array.from(comprasPorTarjeta.entries())) {
+    for (const r of recibosDeTarjeta(credito.get(tarjetaId)!, compras)) {
+      if (r.fechaCargo < hoy) continue; // ya cobrado · su importe real viene por el recibo
+      salida.push({
+        tarjetaId,
+        fechaCorte: r.fechaCorte,
+        fechaCargo: r.fechaCargo,
+        importe: r.importe,
+        estado: 'abierto',
+      });
+    }
   }
 
   return salida.sort((a, b) => b.fechaCorte.localeCompare(a.fechaCorte));

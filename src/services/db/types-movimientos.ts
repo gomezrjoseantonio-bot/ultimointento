@@ -131,6 +131,14 @@ export interface Movement {
    * Lo dice el usuario en la ficha del movimiento; el extracto no lo trae.
    */
   tarjetaId?: number;
+  /**
+   * Marca una compra hecha con una tarjeta de CRÉDITO (§3.3): no sale de la
+   * cuenta el día de la compra —se acumula y sale entera en el recibo—, así que
+   * este movimiento NO mueve el saldo de la cuenta (lo excluye
+   * `calculateAccountBalanceAtDate`) y en su lugar engorda el periodo abierto de
+   * la tarjeta («Llevas X este periodo»). El débito no lo lleva: cobra al momento.
+   */
+  gastoTarjetaCredito?: boolean;
   statusConciliacion: 'sin_match' | 'match_automatico' | 'match_manual'; // Reconciliation status
   learnKey?: string; // Hash for learning rules (normalized counterparty + description pattern + amount sign)
   isOpeningBalance?: boolean; // Marks the system-generated opening balance movement
