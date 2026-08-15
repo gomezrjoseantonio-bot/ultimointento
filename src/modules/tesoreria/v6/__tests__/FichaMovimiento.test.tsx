@@ -534,3 +534,39 @@ describe('el atajo del cajero', () => {
     expect(onGuardar).toHaveBeenCalledWith(expect.objectContaining({ cuentaDestinoId: null }));
   });
 });
+
+// § VOCABULARIO-dinero · un GASTO se paga de una forma · el método decide qué se
+// pregunta (cuenta vs tarjeta), y solo se ofrece lo que HAY con qué pagar.
+describe('el método de pago de un gasto', () => {
+  const credito = { id: 20, alias: 'Carrefour', modalidad: 'credito' as const };
+  const debito = { id: 21, alias: 'BBVA débito', modalidad: 'debito' as const };
+
+  it('sin tarjetas no ofrece ni crédito ni débito · solo cuenta bancaria', () => {
+    render(<FichaMovimiento {...base} />);
+    const metodo = screen.getByLabelText('Método de pago');
+    expect(metodo).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Tarjeta de crédito' })).toBeNull();
+    expect(screen.queryByRole('option', { name: 'Tarjeta de débito' })).toBeNull();
+  });
+
+  it('con tarjeta de crédito pero SIN débito, no ofrece «Tarjeta de débito»', () => {
+    render(<FichaMovimiento {...base} tarjetas={[credito]} />);
+    expect(screen.getByRole('option', { name: 'Tarjeta de crédito' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Tarjeta de débito' })).toBeNull();
+  });
+
+  it('al elegir Tarjeta de crédito desaparece la cuenta y se guarda con la tarjeta', () => {
+    const onGuardar = jest.fn();
+    render(<FichaMovimiento {...base} tarjetas={[credito, debito]} onGuardar={onGuardar} />);
+
+    // De cuenta bancaria a tarjeta de crédito.
+    fireEvent.change(screen.getByLabelText('Método de pago'), { target: { value: 'tarjeta_credito' } });
+    // Ya no se elige cuenta bancaria · la pone la tarjeta.
+    expect(screen.queryByLabelText('Cuenta de cargo')).toBeNull();
+    expect(screen.getByLabelText('Tarjeta')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Importe real'), { target: { value: '30' } });
+    guardar();
+    expect(onGuardar).toHaveBeenCalledWith(expect.objectContaining({ tarjetaId: 20 }));
+  });
+});
