@@ -87,6 +87,87 @@ describe('construir las líneas de la sesión', () => {
   });
 });
 
+describe('cuadra con lo que ya tenías anotado (Confirmado · "las dos cosas")', () => {
+  const conf = (id: number, descripcion: string, importe: number, fecha = '2026-03-10') => ({
+    id,
+    descripcion,
+    importe,
+    fecha,
+  });
+
+  it('sin previsto pero con un confirmado que ya tenías · cuadra', () => {
+    const lineas = construirLineas(
+      [mov(10, 'DISPOSICION CAJERO 4521', -20)],
+      sinMatches,
+      [],
+      new Set(),
+      new Set(),
+      new Map([[10, conf(7, 'Sacar del cajero', -20)]])
+    );
+    expect(lineas[0].veredicto).toBe('cuadra');
+    expect(lineas[0].confirmado).toMatchObject({ id: 7 });
+  });
+
+  it('al guardar sube el confirmado a Conciliado · no lo empareja con ningún previsto', () => {
+    const lineas = construirLineas(
+      [mov(10, 'DISPOSICION CAJERO 4521', -20)],
+      sinMatches,
+      [],
+      new Set(),
+      new Set(),
+      new Map([[10, conf(7, 'Sacar del cajero', -20)]])
+    );
+    const payload = payloadDeConfirmacion(lineas, decisionesVacias());
+    expect(payload.reconciliacionesConfirmado).toEqual([
+      { importMovementId: 10, confirmadoMovementId: 7 },
+    ]);
+    expect(payload.approvedMatches).toEqual([]);
+  });
+
+  it('el previsto MANDA · si la línea casa con un previsto no se usa el confirmado', () => {
+    const lineas = construirLineas(
+      [mov(10, 'RECIBO', -20)],
+      { ...sinMatches, matches: [{ movementId: 10, treasuryEventId: 5, score: 92, reasons: [] }] },
+      [evt(5, 'Un previsto', -20)],
+      new Set(),
+      new Set(),
+      new Map([[10, conf(7, 'Confirmado suelto', -20)]])
+    );
+    expect(lineas[0].confirmado).toBeUndefined();
+    const payload = payloadDeConfirmacion(lineas, decisionesVacias());
+    expect(payload.approvedMatches).toEqual([{ movementId: 10, treasuryEventId: 5 }]);
+    expect(payload.reconciliacionesConfirmado).toEqual([]);
+  });
+
+  it('un cuadre con confirmado NO es pendiente · su línea del import sobrevive', () => {
+    const lineas = construirLineas(
+      [mov(10, 'CAJERO', -20)],
+      sinMatches,
+      [],
+      new Set(),
+      new Set(),
+      new Map([[10, conf(7, 'Cajero', -20)]])
+    );
+    expect(lineasPendientes(lineas, decisionesVacias())).toEqual([]);
+  });
+
+  it('ignorar una línea que cuadraba con un confirmado gana · no la reconcilia', () => {
+    const lineas = construirLineas(
+      [mov(10, 'CAJERO', -20)],
+      sinMatches,
+      [],
+      new Set(),
+      new Set(),
+      new Map([[10, conf(7, 'Cajero', -20)]])
+    );
+    const d = decisionesVacias();
+    d.ignorados.add(10);
+    const payload = payloadDeConfirmacion(lineas, d);
+    expect(payload.reconciliacionesConfirmado).toEqual([]);
+    expect(payload.ignoredMovementIds).toEqual([10]);
+  });
+});
+
 describe('líneas ignoradas de importaciones anteriores (D1)', () => {
   const conIgnorada = () => {
     const lineas = construirLineas([mov(10, 'COMISION', -3)], sinMatches, [], new Set());

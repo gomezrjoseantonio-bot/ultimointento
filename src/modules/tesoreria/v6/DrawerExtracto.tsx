@@ -22,6 +22,7 @@ import {
   type OrchestratorResult,
 } from '../../../services/bankStatementOrchestrator';
 import { getIgnoredLineHashes, ignoreLine, recoverLine } from '../../../services/statementIgnoredLinesService';
+import { confirmadosPorLinea } from '../../../services/conciliacionConfirmados';
 import { consolidarSesion, archivarExtracto } from '../../../services/statementSessionService';
 import { cierres } from '../../../services/cierreDeMes';
 import { mejoraDesdeMovimiento } from '../../../services/altaMovimientoService';
@@ -152,6 +153,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           cierres(),
         ]);
         const delLote = (todosMovs ?? []).filter((m) => m.importBatch === res.importBatchId);
+        // "Las dos cosas" · lo que ya anotaste a mano sube a Conciliado, no duplica.
+        const confirmados = confirmadosPorLinea(delLote, todosMovs ?? [], destino.id);
         const abiertos = (todosEventos ?? []).filter(
           (e) => e.accountId === destino.id && e.status !== 'executed'
         );
@@ -161,7 +164,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
         setResultado(res);
         setPrevistos(abiertos);
-        setLineas(construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, setCerrados));
+        setLineas(construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, setCerrados, confirmados));
         setDecisiones(decisionesVacias());
         setPaso('resolver');
       } catch (err) {
@@ -635,7 +638,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                           cuadra con{' '}
                           {previstoMostrado
                             ? nombrarPrevisto(previstoMostrado)
-                            : l.previsto?.descripcion ?? 'un previsto'}
+                            : l.previsto?.descripcion
+                              ?? (l.confirmado ? 'lo que ya tenías anotado' : 'un previsto')}
                         </span>
                       </div>
                     ) : (

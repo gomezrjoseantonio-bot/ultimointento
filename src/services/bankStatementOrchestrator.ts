@@ -62,6 +62,12 @@ export interface ConfirmationPayload {
   approvedMatches: { movementId: number; treasuryEventId: number }[];
   approvedSuggestions: { movementId: number; suggestionIndex: number }[];
   ignoredMovementIds: number[];
+  /**
+   * Líneas del extracto que son un movimiento que YA tenías anotado
+   * (Confirmado). Al aplicarlas, ese confirmado sube a Conciliado con la
+   * clasificación que le pusiste, y la línea duplicada del import se borra.
+   */
+  reconciliacionesConfirmado?: { importMovementId: number; confirmadoMovementId: number }[];
 }
 
 const PROFILE_CONFIDENCE_THRESHOLD = 60;
@@ -303,6 +309,40 @@ export async function confirmDecisions(
       deriveCategoryFromEvent(event),
       event.counterparty ?? event.providerName
     );
+  }
+
+  // Reconciliar contra un Confirmado que ya tenías · "las dos cosas".
+  //
+  // La línea del extracto y el confirmado son la MISMA operación. Sobrevive la
+  // del import —es la palabra del banco: su texto y su fecha son los que hacen
+  // que un reimport del mismo extracto la reconozca por hash y no la duplique—,
+  // hereda la clasificación que le pusiste al confirmado (categoría, inmueble,
+  // tarjeta) y sube a Conciliado. El confirmado se borra: dejarlo contaría el
+  // dinero dos veces.
+  for (const { importMovementId, confirmadoMovementId } of payload.reconciliacionesConfirmado ?? []) {
+    const importMov = (await db.get('movements', importMovementId)) as Movement | undefined;
+    if (!importMov) continue;
+    const confirmado = (await db.get('movements', confirmadoMovementId)) as Movement | undefined;
+    await db.put('movements', {
+      ...importMov,
+      ...(confirmado
+        ? {
+            categoryKey: confirmado.categoryKey,
+            subtypeKey: confirmado.subtypeKey,
+            inmuebleId: confirmado.inmuebleId,
+            ambito: confirmado.ambito,
+            ...(confirmado.tarjetaId != null ? { tarjetaId: confirmado.tarjetaId } : {}),
+          }
+        : {}),
+      unifiedStatus: 'conciliado',
+      movementState: 'Conciliado',
+      statusConciliacion: 'match_automatico',
+      updatedAt: now,
+    });
+    if (confirmado?.id != null && confirmado.id !== importMovementId) {
+      await db.delete('movements', confirmado.id);
+    }
+    movementIdsTouched.add(importMovementId);
   }
 
   // Apply approved suggestions.

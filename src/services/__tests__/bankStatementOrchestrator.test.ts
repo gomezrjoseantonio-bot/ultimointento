@@ -326,6 +326,62 @@ describe('bankStatementOrchestrator', () => {
     expect((createOrUpdateRule as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(3);
   });
 
+  it('3 bis. confirmDecisions · reconcilia contra un Confirmado que ya tenías · sin duplicar', async () => {
+    // "Las dos cosas": el usuario anotó a mano una disposición de cajero
+    // (Confirmado, con su clasificación) y AHORA sube el extracto, que trae la
+    // misma línea (id 50, source import). Al reconciliar: la del import sube a
+    // Conciliado heredando la clasificación, y el confirmado (id 9) se borra.
+    stores.movements.push(
+      {
+        id: 9,
+        accountId: 42,
+        date: '2026-04-14',
+        amount: -20,
+        description: 'Sacar del cajero',
+        source: 'manual',
+        unifiedStatus: 'no_planificado',
+        movementState: 'Confirmado',
+        statusConciliacion: 'sin_match',
+        ambito: 'PERSONAL',
+        categoryKey: 'personal.efectivo',
+        updatedAt: '',
+        createdAt: '',
+      } as any,
+      {
+        id: 50,
+        accountId: 42,
+        date: '2026-04-15',
+        amount: -20,
+        description: 'DISPOSICION CAJERO 4521',
+        source: 'import',
+        unifiedStatus: 'no_planificado',
+        statusConciliacion: 'sin_match',
+        importBatch: 'batch-A',
+        updatedAt: '',
+        createdAt: '',
+      } as any,
+    );
+
+    await confirmDecisions('batch-A', {
+      approvedMatches: [],
+      approvedSuggestions: [],
+      ignoredMovementIds: [],
+      reconciliacionesConfirmado: [{ importMovementId: 50, confirmadoMovementId: 9 }],
+    });
+
+    // El confirmado se borró · no se cuenta dos veces.
+    expect(stores.movements.find(m => m.id === 9)).toBeUndefined();
+    // La línea del import sobrevive, ahora Conciliada y con la clasificación heredada.
+    const conciliado = stores.movements.find(m => m.id === 50)!;
+    expect(conciliado.unifiedStatus).toBe('conciliado');
+    expect(conciliado.movementState).toBe('Conciliado');
+    expect(conciliado.statusConciliacion).toBe('match_automatico');
+    expect(conciliado.categoryKey).toBe('personal.efectivo');
+    // Conserva el texto y la fecha del banco (para reconocerse en un reimport).
+    expect(conciliado.description).toBe('DISPOSICION CAJERO 4521');
+    expect(conciliado.source).toBe('import');
+  });
+
   it('4. processFile · bankProfileMatcher devuelve confidence baja sin hint ⇒ BankProfileNotDetectedError', async () => {
     (bankProfileMatcher.match as jest.Mock).mockResolvedValueOnce({
       profile: 'Generic',
