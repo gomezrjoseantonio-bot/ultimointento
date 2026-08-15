@@ -36,7 +36,6 @@ import { personalDataService } from '../../services/personalDataService';
 import type { Prestamo } from '../../types/prestamos';
 import type { FinanciacionLineaInmueble } from '../../modules/inmuebles/adapters/patrimonioInmuebleAdapter';
 import {
-  getLocationFromPostalCode,
   inferLocationFromPostalCodeRange,
   getCCAAFromProvince,
 } from '../../utils/locationUtils';
@@ -54,6 +53,7 @@ import {
   type InmuebleFormMeta,
 } from './inmuebleForm/model';
 import { calcularTributosAuto } from './inmuebleForm/tributos';
+import { getMunicipioFromPostalCode } from './inmuebleForm/municipioLookup';
 import {
   prefillPrestamoDesdeInmueble,
   prestamosVinculablesA,
@@ -252,27 +252,36 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     const prevCp = prevCpRef.current;
     prevCpRef.current = form.cp;
     if (!/^\d{5}$/.test(form.cp)) return;
-    const exact = getLocationFromPostalCode(form.cp);
-    const inferred = exact ?? inferLocationFromPostalCodeRange(form.cp);
+    const inferred = inferLocationFromPostalCodeRange(form.cp);
     if (!inferred) return;
-    const inferredMunicipality = inferred.municipalities?.[0] ?? '';
     const cpCambiadoPorUsuario = prevCp !== '' && prevCp !== form.cp;
+    // provincia/CCAA salen del prefijo del CP (síncrono)
     setForm((prev) => {
       const next: InmuebleFormModel = { ...prev };
       if (cpCambiadoPorUsuario) {
-        // nuevo CP → re-derivar todo (sobrescribe lo viejo)
-        if (inferredMunicipality) next.municipality = inferredMunicipality;
-        else if (prev.province !== inferred.province) next.municipality = '';
         next.province = inferred.province;
         if (!prev.ccaaIsManual) next.ccaa = inferred.ccaa;
       } else {
-        // carga inicial → solo rellenar huecos
-        if (!prev.municipality && inferredMunicipality) next.municipality = inferredMunicipality;
         if (!prev.province) next.province = inferred.province;
         if (!prev.ccaaIsManual && (!prev.ccaa || prev.ccaa !== inferred.ccaa)) next.ccaa = inferred.ccaa;
       }
       return next;
     });
+    // municipio sale del dataset completo INE (~11k CP), carga perezosa
+    const cpAtLookup = form.cp;
+    let cancelled = false;
+    getMunicipioFromPostalCode(cpAtLookup).then((muni) => {
+      if (cancelled) return;
+      setForm((prev) => {
+        if (prev.cp !== cpAtLookup) return prev; // el CP cambió mientras cargaba
+        if (cpCambiadoPorUsuario) return { ...prev, municipality: muni ?? '' };
+        if (!prev.municipality && muni) return { ...prev, municipality: muni };
+        return prev;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [form.cp]);
 
   // ─── auto-rellenar CCAA desde provincia ───
