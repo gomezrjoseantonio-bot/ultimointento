@@ -12,11 +12,16 @@ import {
 // amortizaciones necesita esta misma cuenta: ahí es puro y no arrastra la base
 // de datos detrás. El criterio sigue siendo uno solo, que era todo el asunto.
 import { loQueQueda } from './prestamos/loQueQueda';
+import { sincronizarPrevisionesDelPlan } from './prestamos/previsionesDelPlan';
+import type { PlanDeAmortizaciones } from '../types/planDeAmortizaciones';
 import {
   compararModos,
+  importeParaAcabarEn,
   type LimiteAnualExento,
+  type ObjetivoDeFecha,
   type ReglaDeAdelanto,
   type SimulacionDelPlan,
+  type SolucionDelObjetivo,
 } from './prestamos/planDeAdelantos';
 
 export interface PrepareLoanSettlementResult {
@@ -454,6 +459,73 @@ export const simulateLoanAmortizationPlan = async (
     gastosFijosPorOperacion: input.gastosFijosPorOperacion,
     desde: input.desde,
   });
+};
+
+export interface LoanAmortizationTargetInput {
+  loanId: string;
+  objetivo: ObjetivoDeFecha;
+  limiteAnualExento?: LimiteAnualExento | null;
+  gastosFijosPorOperacion?: number;
+}
+
+/**
+ * La pregunta al revés · «quiero acabar en 2032, ¿cuánto meto cada mes?».
+ *
+ * También solo simulación. Y también reducir PLAZO y no cuota: reducir cuota
+ * conserva las citas del banco, así que la fecha final no es la palanca que se
+ * está moviendo y contestar con ella sería contestar a otra cosa.
+ */
+export const solveLoanAmortizationTarget = async (
+  input: LoanAmortizationTargetInput,
+): Promise<SolucionDelObjetivo> => {
+  const prestamo = await prestamosService.getPrestamoById(input.loanId);
+  if (!prestamo) throw new Error('Préstamo no encontrado');
+
+  const planPagos = await prestamosService.getPaymentPlan(input.loanId);
+  if (!planPagos?.periodos?.length) {
+    throw new Error('El préstamo todavía no tiene cuadro de amortización sobre el que simular');
+  }
+  if (!input.objetivo?.fechaObjetivo || !input.objetivo?.desde) {
+    throw new Error('Indica desde cuándo puedes amortizar y en qué fecha quieres acabar');
+  }
+
+  return importeParaAcabarEn(prestamo, planPagos, input.objetivo, {
+    limiteAnualExento: input.limiteAnualExento,
+    gastosFijosPorOperacion: input.gastosFijosPorOperacion,
+  });
+};
+
+/**
+ * Guarda el plan de amortizaciones del préstamo · y lo lleva a tesorería.
+ *
+ * Guardar NO es haber amortizado: el cuadro no se toca y el préstamo sigue
+ * debiendo lo que debía. Lo único que sale de aquí son previsiones `predicted`
+ * —dinero que va a salir, no que ha salido—, y solo si el plan lo pide.
+ *
+ * Pasar `null` borra el plan y, con él, sus previsiones pendientes: un plan que
+ * ya no está no puede seguir prometiendo cargos.
+ */
+export const saveLoanAmortizationPlan = async (
+  loanId: string,
+  plan: Omit<PlanDeAmortizaciones, 'actualizadoEn'> | null,
+): Promise<{ borradas: number; emitidas: number }> => {
+  const prestamo = await prestamosService.getPrestamoById(loanId);
+  if (!prestamo) throw new Error('Préstamo no encontrado');
+
+  const guardado: PlanDeAmortizaciones | undefined = plan
+    ? { ...plan, actualizadoEn: new Date().toISOString() }
+    : undefined;
+
+  const actualizado = await prestamosService.updatePrestamo(loanId, {
+    planDeAmortizaciones: guardado,
+  });
+
+  const planPagos = await prestamosService.getPaymentPlan(loanId);
+  return sincronizarPrevisionesDelPlan(
+    actualizado ?? { ...prestamo, planDeAmortizaciones: guardado },
+    planPagos,
+    normalizeDate(),
+  );
 };
 
 export const confirmLoanSettlement = async (

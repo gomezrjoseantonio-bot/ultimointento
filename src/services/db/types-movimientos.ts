@@ -231,7 +231,7 @@ export interface TreasuryEvent {
   predictedDate: string;
   description: string;
   // Source tracking
-  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'comision_gestion' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'autonomo_gasto' | 'autonomo_cuota' | 'autonomo_gasto_legacy' | 'otros_ingresos' | 'inversion_compra' | 'inversion_aportacion' | 'inversion_rendimiento' | 'inversion_dividendo' | 'inversion_liquidacion' | 'irpf_prevision' | 'tarjeta_recibo';
+  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'comision_gestion' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'autonomo_gasto' | 'autonomo_cuota' | 'autonomo_gasto_legacy' | 'otros_ingresos' | 'inversion_compra' | 'inversion_aportacion' | 'inversion_rendimiento' | 'inversion_dividendo' | 'inversion_liquidacion' | 'irpf_prevision' | 'tarjeta_recibo' | 'amortizacion_anticipada';
   // Document/Contract ID (número) o clave compuesta (string · p.ej. autonomo:
   // `${autonomoId}-cuota`). `isDuplicate`/`insertEvent` ya asumían number|string.
   sourceId?: number | string;

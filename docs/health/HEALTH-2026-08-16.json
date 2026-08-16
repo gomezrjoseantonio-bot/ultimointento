@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-16",
-  "generatedAt": "2026-08-16T15:44:28.800Z",
+  "generatedAt": "2026-08-16T18:32:09.393Z",
   "git": {
     "branch": "claude/amortizacion-parcial-hipoteca-jlh11f",
-    "head": "388dac2"
+    "head": "081d3fd"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -48,7 +48,7 @@
       "indicador": "ficheros_no_v5",
       "fecha": "2026-07-20",
       "anterior": "pct_v5 = 61.3 % (subía · trinquete invertido)",
-      "nueva": 110,
+      "nueva": 109,
       "motivo": "pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total)."
     }
   ],
@@ -63,7 +63,7 @@
     {
       "indicador": "ficheros_no_v5",
       "antes": 109,
-      "despues": 110,
+      "despues": 109,
       "motivo": "#1643 · RedirectAlquileresAContratos.tsx (redirect sin UI · falso positivo v5)",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -150,7 +150,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 25 raíces estrictas · alive 893 · dead 0 · solo_tests 56 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 25 raíces estrictas · alive 898 · dead 0 · solo_tests 56 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -280,14 +280,14 @@
       "calibracion": null
     },
     "ficheros_no_v5": {
-      "value": 110,
+      "value": 109,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "110 / 378 .tsx sin v5 (consumen v5: 268 · directo o vía .module.css con var(--atlas-v5-*))",
+        "109 / 380 .tsx sin v5 (consumen v5: 271 · directo o vía .module.css con var(--atlas-v5-*))",
         "src/App.tsx",
         "src/components/ImageDescriptionComponent.tsx",
         "src/components/InvoiceBreakdownModal.tsx",
@@ -307,7 +307,7 @@
       "calibracion": {
         "fecha": "2026-07-20",
         "anterior": "pct_v5 = 61.3 % (subía · trinquete invertido)",
-        "nueva": 110,
+        "nueva": 109,
         "motivo": "pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total)."
       }
     },

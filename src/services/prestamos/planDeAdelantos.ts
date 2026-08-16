@@ -27,52 +27,24 @@
 
 import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import { amortizarAnticipado } from './amortizarAnticipado';
-import {
-  comisionDeReembolso,
-  cupoAnualExento,
-  ventanaAnual,
-  type LimiteAnualExento,
-} from './comisiones';
+import { comisionDeReembolso, cupoAnualExento, ventanaAnual } from './comisiones';
+import type {
+  Cadencia,
+  LimiteAnualExento,
+  ReglaDeAdelanto,
+} from '../../types/planDeAmortizaciones';
 import { diasDelMes, esISO, partes, sumarMeses } from './fechas';
 import { loQueQueda, ordenarPeriodos, type LoQueQueda } from './loQueQueda';
 
-export type { LimiteAnualExento } from './comisiones';
-
-/** Cada cuánto se repite un adelanto. */
-export type Cadencia = 'UNICA' | 'MENSUAL' | 'CADA_N_MESES' | 'ANUAL';
-
-/**
- * Una regla de amortización · «200 € todos los meses desde enero».
- *
- * Son varias a la vez a propósito. «200 €/mes **y** 3.000 € cada junio» es un
- * caso corriente —el ahorro del mes por un lado y la paga extra por otro—, y
- * con una sola regla habría que elegir cuál de los dos se simula.
- */
-export interface ReglaDeAdelanto {
-  /** Para poder editarla y borrarla en la pantalla. */
-  id: string;
-  cadencia: Cadencia;
-  /** Lo que se mete CADA VEZ, en euros. */
-  importe: number;
-  /** El primer día en que se aplica · ISO `YYYY-MM-DD`. */
-  desde: string;
-  /** Último día en que puede aplicarse · ausente = hasta que se acabe el préstamo. */
-  hasta?: string;
-  /** Cuántas veces como mucho · ausente = las que quepan. */
-  veces?: number;
-  /** Cada cuántos meses, solo en `CADA_N_MESES` · 3 es trimestral. */
-  cadaMeses?: number;
-  /** En qué mes del año cae, solo en `ANUAL` · 1-12, 6 es junio. */
-  mes?: number;
-  /**
-   * Cuánto sube el importe cada año, en % · para acompañar sueldo o IPC.
-   *
-   * Se aplica por años completos desde el primer adelanto de la regla, no por
-   * año natural: la regla la escribe quien va a meter el dinero, y sube cuando
-   * a esa persona le suben.
-   */
-  crecimientoAnual?: number;
-}
+// Las formas que se GUARDAN viven en `types/planDeAmortizaciones`: desde que el
+// plan se persiste dejaron de ser argumentos de una función y pasaron a ser
+// datos del usuario. Se reexportan para que nadie tenga que cambiar de import.
+export type {
+  Cadencia,
+  LimiteAnualExento,
+  PlanDeAmortizaciones,
+  ReglaDeAdelanto,
+} from '../../types/planDeAmortizaciones';
 
 /** Un adelanto concreto que la regla produce. */
 export interface AdelantoPrevisto {
@@ -147,7 +119,16 @@ export interface SimulacionDelPlan {
    * eligiendo.
    */
   cuotaEnUnAnio: number;
-  /** El día en que se acaba de pagar, antes y después. */
+  /**
+   * El día en que se acaba de pagar, antes y después.
+   *
+   * «Después» es el ÚLTIMO de los dos: el último recibo que queda, o el último
+   * adelanto si el plan se lleva el préstamo por delante. Con el recibo solo,
+   * un plan que salda la hipoteca entera no dejaba ninguno detrás y la fecha
+   * salía `null` — o sea «—» en pantalla, y «no llega» para quien busca una
+   * fecha objetivo, justo en el caso en que mejor sale. Terminar de pagar es un
+   * día concreto, y el día que entra el último euro cuenta como tal.
+   */
   fechaFinAntes: string | null;
   fechaFinDespues: string | null;
   /** El cuadro resultante · NO se guarda, es para pintarlo. */
@@ -440,10 +421,137 @@ export function simularPlanDeAdelantos(
     mesesGanados: Math.max(0, antes.recibos - despues.recibos),
     cuotaEnUnAnio: loQueQueda(plan, sumarMeses(desde, 12)).cuota,
     fechaFinAntes: antes.fechaFin,
-    fechaFinDespues: despues.fechaFin,
+    fechaFinDespues:
+      [despues.fechaFin, aplicados.at(-1)?.fecha ?? null]
+        .filter((f): f is string => !!f)
+        .sort()
+        .at(-1) ?? null,
     plan,
     avisos,
   };
+}
+
+// ── La pregunta al revés · «¿cuánto tengo que meter?» ───────────────────────
+//
+// Todo lo de arriba contesta a «si meto 200 €/mes, ¿cuándo acabo?». Quien
+// tiene una hipoteca y una fecha en la cabeza —el año que se jubila, el año que
+// el pequeño entra en la universidad— hace la pregunta al revés, y contestarla
+// a ojo son diez simulaciones a mano apuntando resultados en un papel.
+//
+// No hay fórmula cerrada: el importe entra en un cuadro con tramos, cupos
+// anuales de comisión y una base de días que no es la del mes comercial. Así
+// que se busca por bisección sobre el motor de verdad. Veinticinco pasadas
+// dejan el importe al céntimo, y cada pasada es la misma simulación que
+// enseñaría la pantalla — no una aproximación paralela que luego no cuadre con
+// lo que se ve.
+
+export interface ObjetivoDeFecha {
+  /** El día en que se quiere haber terminado de pagar · ISO. */
+  fechaObjetivo: string;
+  /** Con qué ritmo se mete el dinero · lo demás sale de aquí. */
+  cadencia: Cadencia;
+  /** Desde cuándo se empieza a meter. */
+  desde: string;
+  /** En qué mes, si la cadencia es anual. */
+  mes?: number;
+  /** Cada cuántos meses, si es `CADA_N_MESES`. */
+  cadaMeses?: number;
+}
+
+export interface SolucionDelObjetivo {
+  /** Lo que hay que meter cada vez para llegar · 0 si no hace falta nada. */
+  importe: number;
+  /** El plan que sale de ese importe · con todas sus cifras. */
+  simulacion: SimulacionDelPlan;
+  /** Si de verdad se llega a la fecha pedida. */
+  alcanzado: boolean;
+  /**
+   * Por qué no se llega, cuando no se llega.
+   *
+   * Un importe devuelto sin decir que se queda corto es peor que no devolver
+   * ninguno: se teclea en el banco y no hace lo que promete.
+   */
+  motivo?: string;
+}
+
+/** El techo de la búsqueda · más que el capital vivo no tiene sentido meter. */
+const techoDeLaBusqueda = (plan: PlanPagos | null, prestamo: Prestamo, desde: string): number =>
+  Math.max(1000, vivoAntesDe(plan, prestamo, desde));
+
+/**
+ * Cuánto hay que meter cada vez para acabar en una fecha.
+ *
+ * Solo tiene sentido REDUCIENDO PLAZO: reducir cuota conserva las citas del
+ * banco, así que la fecha final no es la palanca que se está moviendo. Se fija
+ * aquí en vez de dejar elegir un modo que no contesta a la pregunta.
+ */
+export function importeParaAcabarEn(
+  prestamo: Prestamo,
+  planOriginal: PlanPagos | null,
+  objetivo: ObjetivoDeFecha,
+  opciones: Omit<OpcionesDelPlan, 'modo'> = {}
+): SolucionDelObjetivo {
+  const reglaCon = (importe: number): ReglaDeAdelanto[] => [
+    {
+      id: 'objetivo',
+      cadencia: objetivo.cadencia,
+      importe,
+      desde: objetivo.desde,
+      mes: objetivo.mes,
+      cadaMeses: objetivo.cadaMeses,
+    },
+  ];
+
+  const simular = (importe: number): SimulacionDelPlan =>
+    simularPlanDeAdelantos(prestamo, planOriginal, reglaCon(importe), {
+      ...opciones,
+      modo: 'REDUCIR_PLAZO',
+    });
+
+  const llega = (s: SimulacionDelPlan): boolean =>
+    !!s.fechaFinDespues && s.fechaFinDespues <= objetivo.fechaObjetivo;
+
+  // Sin meter nada · si ya se acaba antes, la respuesta es cero y se dice.
+  const sinNada = simularPlanDeAdelantos(prestamo, planOriginal, [], {
+    ...opciones,
+    modo: 'REDUCIR_PLAZO',
+    desde: objetivo.desde,
+  });
+  if (llega(sinNada)) {
+    return {
+      importe: 0,
+      simulacion: sinNada,
+      alcanzado: true,
+      motivo: 'El préstamo ya termina antes de esa fecha sin adelantar nada.',
+    };
+  }
+
+  // Con el techo · si ni así se llega, la fecha no es alcanzable con este ritmo.
+  let alto = techoDeLaBusqueda(planOriginal, prestamo, objetivo.desde);
+  const conElTecho = simular(alto);
+  if (!llega(conElTecho)) {
+    return {
+      importe: alto,
+      simulacion: conElTecho,
+      alcanzado: false,
+      motivo:
+        `Ni adelantando ${alto.toFixed(0)} € cada vez se termina antes del ` +
+        `${enEspanol(objetivo.fechaObjetivo)}: con esta periodicidad no da tiempo a ` +
+        `meter el capital que queda. Prueba con una fecha más tarde o metiendo más a menudo.`,
+    };
+  }
+
+  // Bisección · el menor importe que llega. La respuesta se redondea SIEMPRE
+  // hacia arriba al céntimo: quedarse un céntimo corto es no llegar.
+  let bajo = 0;
+  for (let i = 0; i < 25 && alto - bajo > 0.01; i++) {
+    const medio = (alto + bajo) / 2;
+    if (llega(simular(medio))) alto = medio;
+    else bajo = medio;
+  }
+
+  const importe = Math.ceil(alto * 100) / 100;
+  return { importe, simulacion: simular(importe), alcanzado: true };
 }
 
 /**
