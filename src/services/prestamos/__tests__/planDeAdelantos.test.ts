@@ -8,6 +8,7 @@ import {
   adelantosDeLaRegla,
   calendarioDeAdelantos,
   compararModos,
+  importeParaAcabarEn,
   simularPlanDeAdelantos,
   type ReglaDeAdelanto,
 } from '../planDeAdelantos';
@@ -302,5 +303,88 @@ describe('sin reglas no hay plan', () => {
     const sim = simularPlanDeAdelantos(p, null, [regla({})], { modo: 'REDUCIR_PLAZO' });
     expect(sim.avisos.join(' ')).toMatch(/no tiene cuadro/);
     expect(sim.adelantos).toHaveLength(0);
+  });
+});
+
+// ── La pregunta al revés · «¿cuánto tengo que meter?» ───────────────────────
+
+describe('cuánto hay que meter para acabar en una fecha', () => {
+  const p = unicaja();
+
+  it('el importe que devuelve LLEGA, y uno menor no llega', () => {
+    const sol = importeParaAcabarEn(p, plan(p), {
+      fechaObjetivo: '2035-12-31',
+      cadencia: 'MENSUAL',
+      desde: '2026-03-25',
+    });
+
+    expect(sol.alcanzado).toBe(true);
+    expect(sol.importe).toBeGreaterThan(0);
+    expect(sol.simulacion.fechaFinDespues! <= '2035-12-31').toBe(true);
+
+    // Y es el MÍNIMO: con un 5 % menos ya no se llega. Si no, la pantalla
+    // estaría pidiendo más dinero del necesario, que es la peor manera de
+    // contestar a esta pregunta.
+    const menos = simularPlanDeAdelantos(
+      p,
+      plan(p),
+      [regla({ importe: sol.importe * 0.95 })],
+      { modo: 'REDUCIR_PLAZO' }
+    );
+    expect(menos.fechaFinDespues! > '2035-12-31').toBe(true);
+  });
+
+  it('si ya se acaba antes de esa fecha, la respuesta es cero y lo dice', () => {
+    const sol = importeParaAcabarEn(p, plan(p), {
+      fechaObjetivo: '2050-01-01',
+      cadencia: 'MENSUAL',
+      desde: '2026-03-25',
+    });
+    expect(sol.importe).toBe(0);
+    expect(sol.alcanzado).toBe(true);
+    expect(sol.motivo).toMatch(/ya termina antes/);
+  });
+
+  it('una fecha imposible se dice, en vez de devolver una cifra que no llega', () => {
+    // Metiendo una vez al año en junio, el primer euro no entra hasta el 25 de
+    // junio: para el 1 de mayo no se llega ni pagándolo todo de golpe.
+    const sol = importeParaAcabarEn(p, plan(p), {
+      fechaObjetivo: '2026-05-01',
+      cadencia: 'ANUAL',
+      mes: 6,
+      desde: '2026-03-25',
+    });
+    expect(sol.alcanzado).toBe(false);
+    expect(sol.motivo).toMatch(/no da tiempo/);
+  });
+
+  it('cuanto más lejos la fecha, menos hay que meter cada mes', () => {
+    const cerca = importeParaAcabarEn(p, plan(p), {
+      fechaObjetivo: '2032-12-31',
+      cadencia: 'MENSUAL',
+      desde: '2026-03-25',
+    });
+    const lejos = importeParaAcabarEn(p, plan(p), {
+      fechaObjetivo: '2038-12-31',
+      cadencia: 'MENSUAL',
+      desde: '2026-03-25',
+    });
+    expect(cerca.importe).toBeGreaterThan(lejos.importe);
+  });
+
+  it('la comisión del cupo cuenta también aquí · el plan que sale es el que se enseña', () => {
+    const conComision = unicaja({
+      comisionReembolsoParcial: { tramos: [{ porcentaje: 0.5 }], origen: 'ESCRITURA' },
+    } as Partial<Prestamo>);
+
+    const sol = importeParaAcabarEn(conComision, plan(conComision), {
+      fechaObjetivo: '2036-12-31',
+      cadencia: 'MENSUAL',
+      desde: '2026-03-25',
+    }, { limiteAnualExento: { base: 'ANUALIDAD', importe: 1000 } });
+
+    expect(sol.alcanzado).toBe(true);
+    expect(sol.simulacion.totalComisiones).toBeGreaterThan(0);
+    expect(sol.simulacion.adelantos[0].aplicado).toBe(sol.importe);
   });
 });

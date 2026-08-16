@@ -19,10 +19,13 @@ import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { Prestamo } from '../../../../types/prestamos';
 import {
   simulateLoanAmortizationPlan,
+  solveLoanAmortizationTarget,
 } from '../../../../services/loanSettlementService';
 import type {
+  Cadencia,
   ReglaDeAdelanto,
   SimulacionDelPlan,
+  SolucionDelObjetivo,
 } from '../../../../services/prestamos/planDeAdelantos';
 import { comisionPactadaDe } from '../../../../services/prestamos/comisiones';
 import { formatEuro, formatDate } from '../../../../utils/formatUtils';
@@ -63,6 +66,22 @@ const nuevaRegla = (): ReglaEditable => ({
   fin: 'FINAL',
 });
 
+/**
+ * Las dos maneras de plantear lo mismo.
+ *
+ * `IMPORTE` es «puedo meter 200 € al mes, ¿hasta dónde llego?» · `FECHA` es
+ * «quiero acabar en 2032, ¿cuánto tengo que meter?». La segunda no se puede
+ * contestar a ojo con la primera: son diez simulaciones apuntando resultados en
+ * un papel, y es justo lo que la pantalla puede hacer por su cuenta.
+ */
+type Planteamiento = 'IMPORTE' | 'FECHA';
+
+/** Dentro de N años, para proponer una fecha objetivo que no sea hoy. */
+const dentroDeAnios = (n: number): string => {
+  const [y, m, d] = hoyISO().split('-');
+  return `${Number(y) + n}-${m}-${d}`;
+};
+
 const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
   const [reglas, setReglas] = useState<ReglaEditable[]>([nuevaRegla()]);
   const [modo, setModo] = useState<'REDUCIR_PLAZO' | 'REDUCIR_CUOTA'>('REDUCIR_PLAZO');
@@ -79,11 +98,19 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
   const [verTodos, setVerTodos] = useState(false);
   const lista = useRef<HTMLDivElement>(null);
 
+  // ── El planteamiento · «cuánto meto» o «cuándo quiero acabar» ────────────
+  const [planteamiento, setPlanteamiento] = useState<Planteamiento>('IMPORTE');
+  const [fechaObjetivo, setFechaObjetivo] = useState(dentroDeAnios(10));
+  const [cadenciaObjetivo, setCadenciaObjetivo] = useState<Cadencia>('MENSUAL');
+  const [mesObjetivo, setMesObjetivo] = useState(6);
+  const [solucion, setSolucion] = useState<SolucionDelObjetivo | null>(null);
+
   // Un resumen calculado con otras cifras que las que hay en pantalla se lee
   // como el de ahora · es la misma razón por la que el modal de al lado limpia
   // su simulación al tocar cualquier campo.
   const invalidar = () => {
     setResultado(null);
+    setSolucion(null);
     setVerTodos(false);
   };
 
@@ -100,6 +127,15 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
   /** Lo que dice la escritura sobre la comisión · para avisar de si es estimada. */
   const comision = useMemo(() => comisionPactadaDe(prestamo, 'PARCIAL'), [prestamo]);
 
+  /** El cupo tal como lo entiende el motor · `null` si no se ha puesto ninguno. */
+  const cupoDeLaEscritura = () => {
+    const cupo = Number(cupoImporte) || 0;
+    const pct = Number(cupoPorcentaje) || 0;
+    return cupo > 0 || pct > 0
+      ? { base: cupoBase, importe: cupo || undefined, porcentajeDelCapitalInicial: pct || undefined }
+      : null;
+  };
+
   const calcular = async () => {
     try {
       setCargando(true);
@@ -112,18 +148,12 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
         veces: fin === 'VECES' ? Number(r.veces) || undefined : undefined,
       }));
 
-      const cupo = Number(cupoImporte) || 0;
-      const pct = Number(cupoPorcentaje) || 0;
-
       setResultado(
         await simulateLoanAmortizationPlan({
           loanId: prestamo.id,
           reglas: limpias,
           gastosFijosPorOperacion: Number(gastosPorOperacion) || 0,
-          limiteAnualExento:
-            cupo > 0 || pct > 0
-              ? { base: cupoBase, importe: cupo || undefined, porcentajeDelCapitalInicial: pct || undefined }
-              : null,
+          limiteAnualExento: cupoDeLaEscritura(),
         })
       );
       // El resultado aparece más abajo · sin esto hay que buscarlo a mano.
@@ -137,10 +167,200 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
     }
   };
 
+  /**
+   * La pregunta al revés · se resuelve buscando sobre el mismo motor.
+   *
+   * El resultado se vuelca en las reglas de arriba: quien pregunta «¿cuánto
+   * meto?» quiere después tocar la cifra a mano y ver qué pasa, y dejarla en un
+   * cuadro aparte obligaría a copiarla. Así la respuesta es el punto de partida.
+   */
+  const resolverObjetivo = async () => {
+    try {
+      setCargando(true);
+      setError('');
+
+      const sol = await solveLoanAmortizationTarget({
+        loanId: prestamo.id,
+        objetivo: {
+          fechaObjetivo,
+          cadencia: cadenciaObjetivo,
+          desde: reglas[0]?.desde || mesQueViene(),
+          mes: cadenciaObjetivo === 'ANUAL' ? mesObjetivo : undefined,
+          cadaMeses: cadenciaObjetivo === 'CADA_N_MESES' ? reglas[0]?.cadaMeses ?? 3 : undefined,
+        },
+        gastosFijosPorOperacion: Number(gastosPorOperacion) || 0,
+        limiteAnualExento: cupoDeLaEscritura(),
+      });
+
+      setSolucion(sol);
+      setResultado(null);
+
+      // Sin fecha alcanzable no hay cifra que copiar: dejarla arriba haría creer
+      // que ese importe llega, que es justo lo que el motor acaba de negar.
+      if (sol.alcanzado && sol.importe > 0) {
+        setReglas([
+          {
+            id: `regla-${++contador}`,
+            cadencia: cadenciaObjetivo,
+            importe: sol.importe,
+            desde: reglas[0]?.desde || mesQueViene(),
+            mes: cadenciaObjetivo === 'ANUAL' ? mesObjetivo : undefined,
+            cadaMeses: cadenciaObjetivo === 'CADA_N_MESES' ? reglas[0]?.cadaMeses ?? 3 : undefined,
+            fin: 'FINAL',
+          },
+        ]);
+      }
+      setTimeout(() => lista.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || 'No se pudo calcular el importe');
+      setSolucion(null);
+    } finally {
+      setCargando(false);
+    }
+  };
+
   const elegido = resultado ? (modo === 'REDUCIR_PLAZO' ? resultado.reducirPlazo : resultado.reducirCuota) : null;
 
   return (
     <div className="space-y-6">
+      {/* ── El planteamiento · las dos maneras de plantear lo mismo ──────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setPlanteamiento('IMPORTE');
+            invalidar();
+          }}
+          className={`rounded-xl border p-4 text-left ${
+            planteamiento === 'IMPORTE' ? 'border-atlas-blue bg-primary-50' : 'border-gray-200'
+          }`}
+        >
+          <div className="font-medium">Sé cuánto puedo meter</div>
+          <div className="text-sm text-gray-500 mt-1">200 € al mes · ¿hasta dónde llego?</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setPlanteamiento('FECHA');
+            invalidar();
+          }}
+          className={`rounded-xl border p-4 text-left ${
+            planteamiento === 'FECHA' ? 'border-atlas-blue bg-primary-50' : 'border-gray-200'
+          }`}
+        >
+          <div className="font-medium">Sé cuándo quiero acabar</div>
+          <div className="text-sm text-gray-500 mt-1">En 2036 · ¿cuánto tengo que meter?</div>
+        </button>
+      </div>
+
+      {planteamiento === 'FECHA' && (
+        <div className="rounded-xl border border-gray-200 p-4 space-y-3" style={{ backgroundColor: 'var(--bg)' }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <span className={etiqueta}>Quiero acabar antes de</span>
+              <input
+                type="date"
+                value={fechaObjetivo}
+                onChange={(e) => {
+                  setFechaObjetivo(e.target.value);
+                  invalidar();
+                }}
+                className={campo}
+                aria-label="Fecha en la que quieres terminar de pagar"
+              />
+            </div>
+            <div>
+              <span className={etiqueta}>Metiendo dinero</span>
+              <select
+                value={cadenciaObjetivo}
+                onChange={(e) => {
+                  setCadenciaObjetivo(e.target.value as Cadencia);
+                  invalidar();
+                }}
+                className={campo}
+                aria-label="Con qué periodicidad puedes amortizar"
+              >
+                <option value="MENSUAL">Todos los meses</option>
+                <option value="CADA_N_MESES">Cada N meses</option>
+                <option value="ANUAL">Una vez al año</option>
+              </select>
+            </div>
+            {cadenciaObjetivo === 'ANUAL' && (
+              <div>
+                <span className={etiqueta}>En qué mes</span>
+                <select
+                  value={mesObjetivo}
+                  onChange={(e) => {
+                    setMesObjetivo(Number(e.target.value));
+                    invalidar();
+                  }}
+                  className={campo}
+                  aria-label="Mes del año en que amortizas"
+                >
+                  {MESES.map((m, i) => (
+                    <option key={m} value={i + 1}>
+                      {m.charAt(0).toUpperCase() + m.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={resolverObjetivo}
+                disabled={cargando}
+                className="w-full px-4 py-2 rounded-lg bg-atlas-blue text-white disabled:opacity-60"
+              >
+                {cargando ? 'Buscando…' : 'Calcular importe'}
+              </button>
+            </div>
+          </div>
+
+          {solucion && (
+            <div
+              className={`rounded-xl border px-4 py-3 text-sm ${
+                solucion.alcanzado
+                  ? 'border-gray-200 bg-white'
+                  : 'border-amber-200 bg-amber-50 text-amber-800'
+              }`}
+            >
+              {solucion.alcanzado && solucion.importe > 0 ? (
+                <>
+                  <span className="text-gray-500">Tendrías que amortizar </span>
+                  <strong style={{ color: 'var(--atlas-navy-1)' }}>
+                    {formatEuro(solucion.importe)}
+                  </strong>
+                  <span className="text-gray-500">
+                    {cadenciaObjetivo === 'MENSUAL'
+                      ? ' cada mes'
+                      : cadenciaObjetivo === 'ANUAL'
+                        ? ` cada ${MESES[mesObjetivo - 1]}`
+                        : ' cada vez'}
+                    , y acabarías el{' '}
+                  </span>
+                  <strong style={{ color: 'var(--atlas-navy-1)' }}>
+                    {solucion.simulacion.fechaFinDespues
+                      ? formatDate(solucion.simulacion.fechaFinDespues)
+                      : '—'}
+                  </strong>
+                  <span className="text-gray-500">
+                    . Lo hemos puesto abajo como regla: cámbialo y vuelve a simular si quieres
+                    ajustarlo.
+                  </span>
+                </>
+              ) : (
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{solucion.motivo}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Las reglas ──────────────────────────────────────────────────── */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
