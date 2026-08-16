@@ -4,6 +4,8 @@
 // El cuadro vive en `planPagos.ts` · se importa porque `Prestamo` lo usa, y se
 // reexporta más abajo para que ningún import de fuera tenga que enterarse.
 import type { PlanPagos } from './planPagos';
+// El plan de amortizaciones no es del contrato · ver su propio fichero.
+import type { PlanDeAmortizaciones } from './planDeAmortizaciones';
 
 // ── DestinoCapital ─────────────────────────────────────────────────────────
 // Para qué se pide el dinero — determina fiscalidad (no la garantía)
@@ -446,6 +448,19 @@ export interface Prestamo {
    * `PlanPagos` cuando esté disponible.
    */
   planPagos?: PlanPagos;
+
+  /**
+   * Lo que su dueño ha dicho que va a amortizar · §6 bis · quater.
+   *
+   * No es del contrato: el banco no sabe nada de esto. Es una intención de
+   * quien paga —«200 € todos los meses y la extra de junio»— y por eso vive
+   * junto al préstamo pero se lee aparte, en `types/planDeAmortizaciones`.
+   *
+   * Guardarlo NO es haberlo hecho. De aquí salen previsiones `predicted` si su
+   * dueño lo pide, pero el cuadro no se toca: lo que ocurra de verdad se
+   * registra el día que ocurra, con `confirmLoanSettlement`.
+   */
+  planDeAmortizaciones?: PlanDeAmortizaciones;
 
   activo: boolean;
 

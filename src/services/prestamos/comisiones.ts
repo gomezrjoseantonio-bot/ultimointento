@@ -51,6 +51,7 @@
 // ============================================================================
 
 import type { Prestamo } from '../../types/prestamos';
+import type { LimiteAnualExento } from '../../types/planDeAmortizaciones';
 import { esISO, partes } from './fechas';
 
 /** Adelantar una parte del capital, o cancelar el préstamo entero. */
@@ -165,22 +166,10 @@ export function comisionPactadaDe(
 // doce comisiones al año que el banco no va a cobrar, y el ahorro neto que
 // enseña —que es lo que se mira para decidir— saldría corto.
 
-/** El cupo anual que no paga comisión, tal como lo dice la escritura. */
-export interface LimiteAnualExento {
-  /**
-   * Sobre qué año se cuenta.
-   *
-   * `ANUALIDAD` cuenta desde la firma —«en cada anualidad del préstamo»—, que es
-   * la fórmula habitual; `ANIO_NATURAL` cuenta del 1 de enero al 31 de
-   * diciembre. No es lo mismo y decide si dos adelantos de diciembre y enero
-   * comparten cupo o no.
-   */
-  base: 'ANIO_NATURAL' | 'ANUALIDAD';
-  /** Cupo en EUROS al año. */
-  importe?: number;
-  /** Cupo como % del capital CONCEDIDO · `20` es el 20 % del principal inicial. */
-  porcentajeDelCapitalInicial?: number;
-}
+// La forma la define `types/planDeAmortizaciones`: el cupo se GUARDA con el
+// plan, y un dato que se persiste no puede tener su definición dentro del
+// módulo que lo calcula.
+export type { LimiteAnualExento } from '../../types/planDeAmortizaciones';
 
 /**
  * Cuántos euros al año se pueden adelantar sin comisión · 0 si no hay cupo.

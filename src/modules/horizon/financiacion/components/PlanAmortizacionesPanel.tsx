@@ -10,14 +10,20 @@
 //
 // Aquí no se confirma nada. Un plan a diez años son ciento veinte operaciones
 // que aún no han ocurrido, y darlas por hechas convertiría una intención en un
-// saldo: ni movimiento de tesorería, ni cuadro guardado. Lo que ocurra de
+// saldo: no se toca el cuadro ni se apunta ningún movimiento. Lo que ocurra de
 // verdad se registra el día que ocurra, por la pestaña de al lado.
+//
+// El plan SÍ se puede guardar, y entonces salen previsiones de tesorería — pero
+// `predicted`, que es lo que son: dinero que va a salir, no que ha salido. Sin
+// ellas la tesorería diría que en junio salen 455 € cuando su dueño ya ha
+// decidido que salen 3.655, y el aviso de saldo corto llegaría tarde.
 // ============================================================================
 
 import React, { useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Prestamo } from '../../../../types/prestamos';
 import {
+  saveLoanAmortizationPlan,
   simulateLoanAmortizationPlan,
   solveLoanAmortizationTarget,
 } from '../../../../services/loanSettlementService';
@@ -29,25 +35,13 @@ import type {
 } from '../../../../services/prestamos/planDeAdelantos';
 import { comisionPactadaDe } from '../../../../services/prestamos/comisiones';
 import { formatEuro, formatDate } from '../../../../utils/formatUtils';
+import ReglasDelPlan from './ReglasDelPlan';
+import ResultadoDelPlan from './ResultadoDelPlan';
+import { MESES, campo, etiqueta, type ReglaEditable } from './planDeAmortizacionesUI';
 
 interface Props {
   prestamo: Prestamo;
 }
-
-type Fin = 'FINAL' | 'FECHA' | 'VECES';
-
-/** Una regla en la pantalla · el «hasta cuándo» se teclea de tres maneras. */
-interface ReglaEditable extends ReglaDeAdelanto {
-  fin: Fin;
-}
-
-const MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-];
-
-const campo = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm';
-const etiqueta = 'block text-xs font-medium text-gray-600 mb-1';
 
 const hoyISO = (): string => new Date().toISOString().slice(0, 10);
 
@@ -67,6 +61,18 @@ const nuevaRegla = (): ReglaEditable => ({
 });
 
 /**
+ * Una regla guardada, lista para editarse.
+ *
+ * El «hasta cuándo» se guarda como lo que es —una fecha o un número de veces— y
+ * en pantalla es un desplegable, así que al abrir hay que deducir cuál de los
+ * tres estaba puesto.
+ */
+const comoEditable = (r: ReglaDeAdelanto): ReglaEditable => ({
+  ...r,
+  fin: r.hasta ? 'FECHA' : r.veces ? 'VECES' : 'FINAL',
+});
+
+/**
  * Las dos maneras de plantear lo mismo.
  *
  * `IMPORTE` es «puedo meter 200 € al mes, ¿hasta dónde llego?» · `FECHA` es
@@ -83,12 +89,27 @@ const dentroDeAnios = (n: number): string => {
 };
 
 const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
-  const [reglas, setReglas] = useState<ReglaEditable[]>([nuevaRegla()]);
-  const [modo, setModo] = useState<'REDUCIR_PLAZO' | 'REDUCIR_CUOTA'>('REDUCIR_PLAZO');
-  const [cupoImporte, setCupoImporte] = useState('');
-  const [cupoPorcentaje, setCupoPorcentaje] = useState('');
-  const [cupoBase, setCupoBase] = useState<'ANIO_NATURAL' | 'ANUALIDAD'>('ANUALIDAD');
-  const [gastosPorOperacion, setGastosPorOperacion] = useState('0');
+  // Lo guardado manda al abrir · si no hay nada, una regla de ejemplo.
+  const previo = prestamo.planDeAmortizaciones;
+
+  const [reglas, setReglas] = useState<ReglaEditable[]>(
+    previo?.reglas?.length ? previo.reglas.map(comoEditable) : [nuevaRegla()]
+  );
+  const [modo, setModo] = useState<'REDUCIR_PLAZO' | 'REDUCIR_CUOTA'>(previo?.modo ?? 'REDUCIR_PLAZO');
+  const [cupoImporte, setCupoImporte] = useState(
+    previo?.limiteAnualExento?.importe ? String(previo.limiteAnualExento.importe) : ''
+  );
+  const [cupoPorcentaje, setCupoPorcentaje] = useState(
+    previo?.limiteAnualExento?.porcentajeDelCapitalInicial
+      ? String(previo.limiteAnualExento.porcentajeDelCapitalInicial)
+      : ''
+  );
+  const [cupoBase, setCupoBase] = useState<'ANIO_NATURAL' | 'ANUALIDAD'>(
+    previo?.limiteAnualExento?.base ?? 'ANUALIDAD'
+  );
+  const [gastosPorOperacion, setGastosPorOperacion] = useState(
+    String(previo?.gastosFijosPorOperacion ?? 0)
+  );
   const [resultado, setResultado] = useState<{
     reducirPlazo: SimulacionDelPlan;
     reducirCuota: SimulacionDelPlan;
@@ -97,6 +118,13 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
   const [error, setError] = useState('');
   const [verTodos, setVerTodos] = useState(false);
   const lista = useRef<HTMLDivElement>(null);
+
+  // ── Guardar el plan · lo que su dueño dice que va a hacer ────────────────
+  const [generaPrevisiones, setGeneraPrevisiones] = useState(
+    prestamo.planDeAmortizaciones?.generaPrevisiones ?? false
+  );
+  const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState('');
 
   // ── El planteamiento · «cuánto meto» o «cuándo quiero acabar» ────────────
   const [planteamiento, setPlanteamiento] = useState<Planteamiento>('IMPORTE');
@@ -141,17 +169,10 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
       setCargando(true);
       setError('');
 
-      const limpias: ReglaDeAdelanto[] = reglas.map(({ fin, ...r }) => ({
-        ...r,
-        importe: Number(r.importe) || 0,
-        hasta: fin === 'FECHA' ? r.hasta : undefined,
-        veces: fin === 'VECES' ? Number(r.veces) || undefined : undefined,
-      }));
-
       setResultado(
         await simulateLoanAmortizationPlan({
           loanId: prestamo.id,
-          reglas: limpias,
+          reglas: reglasLimpias(),
           gastosFijosPorOperacion: Number(gastosPorOperacion) || 0,
           limiteAnualExento: cupoDeLaEscritura(),
         })
@@ -217,6 +238,63 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
       setSolucion(null);
     } finally {
       setCargando(false);
+    }
+  };
+
+  /** Las reglas tal como se guardan · sin el «fin» de la pantalla. */
+  const reglasLimpias = (): ReglaDeAdelanto[] =>
+    reglas
+      .map(({ fin, ...r }) => ({
+        ...r,
+        importe: Number(r.importe) || 0,
+        hasta: fin === 'FECHA' ? r.hasta : undefined,
+        veces: fin === 'VECES' ? Number(r.veces) || undefined : undefined,
+      }))
+      .filter((r) => r.importe > 0 && !!r.desde);
+
+  const guardar = async () => {
+    try {
+      setGuardando(true);
+      setError('');
+      const limpias = reglasLimpias();
+      if (limpias.length === 0) {
+        setError('Añade al menos una regla con importe y fecha antes de guardar');
+        return;
+      }
+
+      const { emitidas } = await saveLoanAmortizationPlan(prestamo.id, {
+        reglas: limpias,
+        modo,
+        limiteAnualExento: cupoDeLaEscritura(),
+        gastosFijosPorOperacion: Number(gastosPorOperacion) || 0,
+        generaPrevisiones,
+      });
+
+      setGuardado(
+        generaPrevisiones
+          ? `Plan guardado · ${emitidas} ${emitidas === 1 ? 'previsión' : 'previsiones'} en tesorería`
+          : 'Plan guardado'
+      );
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || 'No se pudo guardar el plan');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const borrarPlan = async () => {
+    try {
+      setGuardando(true);
+      setError('');
+      await saveLoanAmortizationPlan(prestamo.id, null);
+      setGeneraPrevisiones(false);
+      setGuardado('Plan borrado · sus previsiones pendientes también');
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || 'No se pudo borrar el plan');
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -361,181 +439,15 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
         </div>
       )}
 
-      {/* ── Las reglas ──────────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
-              Cuánto y cada cuánto
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Puedes combinar varias: el ahorro del mes por un lado y la paga extra por otro.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setReglas((prev) => [...prev, nuevaRegla()]);
-              invalidar();
-            }}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700"
-          >
-            <Plus className="h-4 w-4" /> Añadir regla
-          </button>
-        </div>
-
-        {reglas.map((r) => (
-          <div key={r.id} className="rounded-xl border border-gray-200 p-4" style={{ backgroundColor: 'var(--bg)' }}>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
-                <span className={etiqueta}>Cada cuánto</span>
-                <select
-                  value={r.cadencia}
-                  onChange={(e) => cambiar(r.id, { cadencia: e.target.value as ReglaDeAdelanto['cadencia'] })}
-                  className={campo}
-                  aria-label="Periodicidad de la amortización"
-                >
-                  <option value="MENSUAL">Todos los meses</option>
-                  <option value="CADA_N_MESES">Cada N meses</option>
-                  <option value="ANUAL">Una vez al año</option>
-                  <option value="UNICA">Una sola vez</option>
-                </select>
-              </div>
-
-              <div>
-                <span className={etiqueta}>Importe cada vez</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="50"
-                  value={r.importe}
-                  onChange={(e) => cambiar(r.id, { importe: Number(e.target.value) })}
-                  className={campo}
-                  aria-label="Importe de cada amortización"
-                />
-              </div>
-
-              {r.cadencia === 'CADA_N_MESES' && (
-                <div>
-                  <span className={etiqueta}>Cada cuántos meses</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max="60"
-                    value={r.cadaMeses ?? 3}
-                    onChange={(e) => cambiar(r.id, { cadaMeses: Number(e.target.value) })}
-                    className={campo}
-                    aria-label="Número de meses entre amortizaciones"
-                  />
-                </div>
-              )}
-
-              {r.cadencia === 'ANUAL' && (
-                <div>
-                  <span className={etiqueta}>En qué mes</span>
-                  <select
-                    value={r.mes ?? 6}
-                    onChange={(e) => cambiar(r.id, { mes: Number(e.target.value) })}
-                    className={campo}
-                    aria-label="Mes del año en que se amortiza"
-                  >
-                    {MESES.map((m, i) => (
-                      <option key={m} value={i + 1}>
-                        {m.charAt(0).toUpperCase() + m.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <span className={etiqueta}>Desde</span>
-                <input
-                  type="date"
-                  value={r.desde}
-                  onChange={(e) => cambiar(r.id, { desde: e.target.value })}
-                  className={campo}
-                  aria-label="Fecha de la primera amortización"
-                />
-              </div>
-
-              {r.cadencia !== 'UNICA' && (
-                <div>
-                  <span className={etiqueta}>Hasta</span>
-                  <select
-                    value={r.fin}
-                    onChange={(e) => cambiar(r.id, { fin: e.target.value as Fin })}
-                    className={campo}
-                    aria-label="Hasta cuándo se repite"
-                  >
-                    <option value="FINAL">El final del préstamo</option>
-                    <option value="FECHA">Una fecha</option>
-                    <option value="VECES">Un número de veces</option>
-                  </select>
-                </div>
-              )}
-
-              {r.cadencia !== 'UNICA' && r.fin === 'FECHA' && (
-                <div>
-                  <span className={etiqueta}>Fecha final</span>
-                  <input
-                    type="date"
-                    value={r.hasta ?? ''}
-                    onChange={(e) => cambiar(r.id, { hasta: e.target.value })}
-                    className={campo}
-                    aria-label="Fecha de la última amortización"
-                  />
-                </div>
-              )}
-
-              {r.cadencia !== 'UNICA' && r.fin === 'VECES' && (
-                <div>
-                  <span className={etiqueta}>Cuántas veces</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={r.veces ?? 12}
-                    onChange={(e) => cambiar(r.id, { veces: Number(e.target.value) })}
-                    className={campo}
-                    aria-label="Número de amortizaciones"
-                  />
-                </div>
-              )}
-
-              {r.cadencia !== 'UNICA' && (
-                <div>
-                  <span className={etiqueta}>Sube cada año</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={r.crecimientoAnual ?? 0}
-                      onChange={(e) => cambiar(r.id, { crecimientoAnual: Number(e.target.value) })}
-                      className={campo}
-                      aria-label="Subida anual del importe en porcentaje"
-                    />
-                    <span className="text-sm text-gray-500">%</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {reglas.length > 1 && (
-              <div className="flex justify-end mt-3">
-                <button
-                  type="button"
-                  onClick={() => quitar(r.id)}
-                  className="flex items-center gap-1 text-sm text-red-600"
-                  aria-label="Quitar esta regla"
-                >
-                  <Trash2 className="h-4 w-4" /> Quitar
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      <ReglasDelPlan
+        reglas={reglas}
+        onCambiar={cambiar}
+        onQuitar={quitar}
+        onAnadir={() => {
+          setReglas((prev) => [...prev, nuevaRegla()]);
+          invalidar();
+        }}
+      />
 
       {/* ── Lo que cuesta amortizar ─────────────────────────────────────── */}
       <div className="rounded-xl border border-gray-200 p-4" style={{ backgroundColor: 'var(--bg)' }}>
@@ -620,7 +532,7 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
 
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-gray-500">
-          Solo simulación · no genera movimientos ni cambia tu cuadro.
+          Simular no cambia nada · tu cuadro y tu tesorería se quedan como están.
         </p>
         <button
           type="button"
@@ -630,6 +542,66 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
         >
           {cargando ? 'Calculando…' : 'Simular plan'}
         </button>
+      </div>
+
+      {/* ── Guardarlo · para volver a verlo y para que cuente en tesorería ── */}
+      <div className="rounded-xl border border-gray-200 p-4" style={{ backgroundColor: 'var(--bg)' }}>
+        <h3 className="font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
+          Guardar este plan
+        </h3>
+        <p className="text-sm text-gray-500 mt-1">
+          Guardarlo no es haberlo hecho: tu préstamo sigue debiendo lo mismo y el cuadro no se toca.
+          Cada amortización se registra el día que la hagas, desde «Amortización parcial».
+        </p>
+
+        <label className="flex items-start gap-3 mt-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={generaPrevisiones}
+            onChange={(e) => {
+              setGeneraPrevisiones(e.target.checked);
+              setGuardado('');
+            }}
+            className="mt-1"
+          />
+          <span className="text-sm">
+            <span className="font-medium">Contar estas salidas en mi tesorería</span>
+            <span className="block text-gray-500">
+              Aparecerán como previsiones pendientes de confirmar, con la comisión incluida, para
+              que el saldo previsto cuente con ellas. Lo que ya hayas confirmado o descartado no se
+              toca.
+            </span>
+          </span>
+        </label>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+          <div className="text-xs text-gray-500">
+            {previo?.actualizadoEn
+              ? `Guardado por última vez el ${formatDate(previo.actualizadoEn.slice(0, 10))}.`
+              : 'Todavía no has guardado ningún plan para este préstamo.'}
+            {guardado && <span className="block text-green-700 font-medium mt-1">{guardado}</span>}
+          </div>
+          <div className="flex items-center gap-3">
+            {previo && (
+              <button
+                type="button"
+                onClick={borrarPlan}
+                disabled={guardando}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 disabled:opacity-60"
+              >
+                Borrar plan
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={guardar}
+              disabled={guardando}
+              className="px-4 py-2 rounded-lg border border-atlas-blue text-atlas-blue disabled:opacity-60"
+            >
+              {guardando ? 'Guardando…' : 'Guardar plan'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -642,142 +614,15 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
       {/* ── El resultado, por los dos caminos ───────────────────────────── */}
       <div ref={lista}>
         {resultado && elegido && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
-                Qué pasa con tu préstamo
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Comparado desde el {formatDate(elegido.desde)}. Elige qué le pides al banco que haga
-                con lo que amortizas.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(['REDUCIR_PLAZO', 'REDUCIR_CUOTA'] as const).map((m) => {
-                const sim = m === 'REDUCIR_PLAZO' ? resultado.reducirPlazo : resultado.reducirCuota;
-                const activo = modo === m;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setModo(m)}
-                    className={`rounded-2xl border p-5 text-left ${
-                      activo ? 'border-atlas-blue bg-primary-50' : 'border-gray-200 bg-white'
-                    }`}
-                  >
-                    <div className="font-medium" style={{ color: 'var(--atlas-navy-1)' }}>
-                      {m === 'REDUCIR_PLAZO' ? 'Reducir plazo' : 'Reducir cuota'}
-                    </div>
-
-                    <dl className="mt-3 space-y-2 text-sm">
-                      <div className="flex justify-between gap-3">
-                        <dt className="text-gray-500">Acabas de pagar</dt>
-                        <dd className="font-medium text-right">
-                          {sim.fechaFinDespues ? formatDate(sim.fechaFinDespues) : '—'}
-                          {sim.mesesGanados > 0 && (
-                            <span className="text-gray-500"> · {sim.mesesGanados} meses antes</span>
-                          )}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <dt className="text-gray-500">Cuota dentro de un año</dt>
-                        <dd className="font-medium text-right">
-                          {formatEuro(sim.antes.cuota)} → {formatEuro(sim.cuotaEnUnAnio)}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <dt className="text-gray-500">Intereses que te ahorras</dt>
-                        <dd className="font-medium text-right">{formatEuro(sim.ahorroIntereses)}</dd>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <dt className="text-gray-500">Comisiones y gastos</dt>
-                        <dd className="font-medium text-right">
-                          −{formatEuro(sim.totalComisiones + sim.totalGastos)}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-3 border-t border-gray-200 pt-2">
-                        <dt className="text-gray-700 font-medium">Ahorro neto</dt>
-                        <dd className="font-semibold text-right" style={{ color: 'var(--atlas-navy-1)' }}>
-                          {formatEuro(sim.ahorroNeto)}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <dt className="text-gray-500">Capital que aportas</dt>
-                        <dd className="font-medium text-right">
-                          {formatEuro(sim.totalAportado)}{' '}
-                          <span className="text-gray-500">en {sim.adelantos.length} veces</span>
-                        </dd>
-                      </div>
-                    </dl>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Un plan que se queda corto en silencio se lee como un plan que
-                cabía · si algo no se pudo hacer, se dice. */}
-            {elegido.avisos.length > 0 && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 space-y-1">
-                {elegido.avisos.map((a) => (
-                  <div key={a} className="flex items-start gap-2">
-                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>{a}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {prestamo.inmuebleId && (
-              <p className="text-xs text-gray-500">
-                Este préstamo está vinculado a un inmueble: si lo tienes alquilado, los intereses que
-                dejas de pagar también dejan de ser gasto deducible, así que el ahorro real en tu
-                bolsillo es algo menor que el financiero.
-              </p>
-            )}
-
-            {/* ── Las operaciones, una a una ────────────────────────────── */}
-            <div className="rounded-2xl border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-500">
-                    <tr>
-                      <th className="text-left px-4 py-2 font-medium">Fecha</th>
-                      <th className="text-right px-4 py-2 font-medium">Amortizas</th>
-                      <th className="text-right px-4 py-2 font-medium">Sin comisión</th>
-                      <th className="text-right px-4 py-2 font-medium">Comisión</th>
-                      <th className="text-right px-4 py-2 font-medium">Sale de la cuenta</th>
-                      <th className="text-right px-4 py-2 font-medium">Queda vivo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(verTodos ? elegido.adelantos : elegido.adelantos.slice(0, 12)).map((a) => (
-                      <tr key={a.fecha} className="border-t border-gray-100">
-                        <td className="px-4 py-2">{formatDate(a.fecha)}</td>
-                        <td className="px-4 py-2 text-right">{formatEuro(a.aplicado)}</td>
-                        <td className="px-4 py-2 text-right text-gray-500">{formatEuro(a.exento)}</td>
-                        <td className="px-4 py-2 text-right">{formatEuro(a.comision)}</td>
-                        <td className="px-4 py-2 text-right">{formatEuro(a.salidaCaja)}</td>
-                        <td className="px-4 py-2 text-right">{formatEuro(a.principalDespues)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {elegido.adelantos.length > 12 && (
-                <button
-                  type="button"
-                  onClick={() => setVerTodos((v) => !v)}
-                  className="w-full px-4 py-3 text-sm text-center border-t border-gray-200 bg-gray-50 text-gray-700"
-                >
-                  {verTodos
-                    ? 'Ver solo las 12 primeras'
-                    : `Ver las ${elegido.adelantos.length} operaciones del plan`}
-                </button>
-              )}
-            </div>
-          </div>
+          <ResultadoDelPlan
+            prestamo={prestamo}
+            resultado={resultado}
+            elegido={elegido}
+            modo={modo}
+            setModo={setModo}
+            verTodos={verTodos}
+            setVerTodos={setVerTodos}
+          />
         )}
       </div>
     </div>

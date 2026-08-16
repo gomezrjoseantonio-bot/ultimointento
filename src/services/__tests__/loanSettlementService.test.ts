@@ -4,6 +4,7 @@ import {
   confirmLoanSettlement,
   getLoanSettlementsByLoanId,
   prepareLoanSettlement,
+  saveLoanAmortizationPlan,
   simulateLoanAmortizationPlan,
   simulateLoanSettlement,
 } from '../loanSettlementService';
@@ -227,5 +228,142 @@ describe('loanSettlementService', () => {
         reglas: [{ id: 'vacia', cadencia: 'MENSUAL', importe: 0, desde: '2026-01-01' }],
       }),
     ).rejects.toThrow(/al menos una regla/);
+  });
+
+  // ── Guardar el plan · y lo que eso hace (y no hace) en tesorería ──────────
+  //
+  // Guardar un plan es decir «voy a hacer esto», no «lo he hecho». La línea
+  // está aquí: salen previsiones `predicted` para que el saldo cuente con
+  // ellas, y NO se toca ni el cuadro ni el capital vivo.
+
+  const planMensual = {
+    reglas: [
+      {
+        id: 'mensual',
+        cadencia: 'MENSUAL' as const,
+        importe: 300,
+        // En el futuro a propósito: `planificarEventos` no emite lo vencido, y
+        // con razón — un adelanto planificado para el año pasado no proyecta
+        // nada. Con fechas pasadas este test no probaría nada.
+        desde: '2027-01-01',
+        veces: 6,
+      },
+    ],
+    modo: 'REDUCIR_PLAZO' as const,
+    gastosFijosPorOperacion: 10,
+    generaPrevisiones: true,
+  };
+
+  it('guardar el plan emite previsiones con la salida de caja entera, sin tocar el cuadro', async () => {
+    const db = await initDB();
+    const loan = await prestamosService.createPrestamo(baseLoanData);
+    const cuadroAntes = await prestamosService.getPaymentPlan(loan.id);
+
+    const { emitidas } = await saveLoanAmortizationPlan(loan.id, planMensual);
+    expect(emitidas).toBe(6);
+
+    const eventos = (await db.getAll('treasuryEvents') as any[])
+      .filter((e) => e.sourceType === 'amortizacion_anticipada');
+    expect(eventos).toHaveLength(6);
+    expect(eventos.every((e) => e.status === 'predicted')).toBe(true);
+    expect(eventos.every((e) => e.prestamoId === loan.id)).toBe(true);
+
+    // El importe previsto es lo que SALE de la cuenta, no el capital solo: una
+    // previsión corta deja el saldo en rojo sin avisar. Son 300 € de capital,
+    // 10 € de gastos y la comisión pactada — que va en PUNTOS PORCENTUALES,
+    // así que el `0.005` de este préstamo es un 0,005 %, no un 0,5 %.
+    expect(eventos[0].amount).toBeCloseTo(300 + 10 + 300 * (0.005 / 100), 2);
+
+    // Y el préstamo sigue exactamente como estaba.
+    const despues = await db.get('prestamos', loan.id) as any;
+    expect(despues.principalVivo).toBe(baseLoanData.principalVivo);
+    expect(despues.planDeAmortizaciones.reglas).toHaveLength(1);
+    expect(despues.planDeAmortizaciones.actualizadoEn).toBeTruthy();
+    expect(await prestamosService.getPaymentPlan(loan.id)).toEqual(cuadroAntes);
+  });
+
+  it('sin marcar la casilla, el plan se guarda pero no llena la tesorería', async () => {
+    const db = await initDB();
+    const loan = await prestamosService.createPrestamo(baseLoanData);
+
+    const { emitidas } = await saveLoanAmortizationPlan(loan.id, {
+      ...planMensual,
+      generaPrevisiones: false,
+    });
+
+    expect(emitidas).toBe(0);
+    expect(await db.getAll('treasuryEvents')).toHaveLength(0);
+    expect(((await db.get('prestamos', loan.id)) as any).planDeAmortizaciones).toBeTruthy();
+  });
+
+  it('volver a guardar rehace las pendientes y respeta lo ya confirmado', async () => {
+    const db = await initDB();
+    const loan = await prestamosService.createPrestamo(baseLoanData);
+    await saveLoanAmortizationPlan(loan.id, planMensual);
+
+    // El usuario confirma la primera: ese apunte ya es suyo.
+    const primera = (await db.getAll('treasuryEvents') as any[])
+      .filter((e) => e.sourceType === 'amortizacion_anticipada')
+      .sort((a, b) => a.predictedDate.localeCompare(b.predictedDate))[0];
+    await db.put('treasuryEvents', { ...primera, status: 'confirmed' });
+
+    // Y cambia de idea sobre el resto.
+    await saveLoanAmortizationPlan(loan.id, {
+      ...planMensual,
+      reglas: [{ ...planMensual.reglas[0], importe: 500 }],
+    });
+
+    const eventos = (await db.getAll('treasuryEvents') as any[])
+      .filter((e) => e.sourceType === 'amortizacion_anticipada')
+      .sort((a, b) => a.predictedDate.localeCompare(b.predictedDate));
+
+    // La confirmada sigue ahí con su importe viejo · no se resucita ni se pisa.
+    expect(eventos[0].status).toBe('confirmed');
+    expect(eventos[0].amount).toBeCloseTo(300 + 10 + 300 * (0.005 / 100), 2);
+    // Y no se ha duplicado: sigue habiendo una sola por fecha.
+    expect(new Set(eventos.map((e) => e.predictedDate)).size).toBe(eventos.length);
+    // Las demás son ya del importe nuevo.
+    expect(eventos[1].amount).toBeCloseTo(500 + 10 + 500 * (0.005 / 100), 2);
+  });
+
+  it('borrar el plan se lleva sus previsiones pendientes', async () => {
+    const db = await initDB();
+    const loan = await prestamosService.createPrestamo(baseLoanData);
+    await saveLoanAmortizationPlan(loan.id, planMensual);
+
+    await saveLoanAmortizationPlan(loan.id, null);
+
+    expect(((await db.get('prestamos', loan.id)) as any).planDeAmortizaciones).toBeUndefined();
+    const quedan = (await db.getAll('treasuryEvents') as any[])
+      .filter((e) => e.sourceType === 'amortizacion_anticipada');
+    expect(quedan).toHaveLength(0);
+  });
+
+  it('las previsiones del plan no borran ni tapan las cuotas del préstamo', async () => {
+    const db = await initDB();
+    const loan = await prestamosService.createPrestamo(baseLoanData);
+
+    // Una cuota prevista del cuadro, como la emite el guardado del préstamo.
+    await db.add('treasuryEvents', {
+      type: 'financing',
+      amount: 700,
+      predictedDate: '2027-01-01',
+      description: 'Cuota 24',
+      sourceType: 'prestamo',
+      prestamoId: loan.id,
+      numeroCuota: 24,
+      status: 'predicted',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any);
+
+    await saveLoanAmortizationPlan(loan.id, planMensual);
+
+    const eventos = await db.getAll('treasuryEvents') as any[];
+    // La cuota sigue viva y el adelanto del mismo día convive con ella.
+    expect(eventos.filter((e) => e.sourceType === 'prestamo')).toHaveLength(1);
+    expect(
+      eventos.filter((e) => e.sourceType === 'amortizacion_anticipada' && e.predictedDate === '2027-01-01'),
+    ).toHaveLength(1);
   });
 });

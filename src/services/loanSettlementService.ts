@@ -12,6 +12,8 @@ import {
 // amortizaciones necesita esta misma cuenta: ahí es puro y no arrastra la base
 // de datos detrás. El criterio sigue siendo uno solo, que era todo el asunto.
 import { loQueQueda } from './prestamos/loQueQueda';
+import { sincronizarPrevisionesDelPlan } from './prestamos/previsionesDelPlan';
+import type { PlanDeAmortizaciones } from '../types/planDeAmortizaciones';
 import {
   compararModos,
   importeParaAcabarEn,
@@ -491,6 +493,39 @@ export const solveLoanAmortizationTarget = async (
     limiteAnualExento: input.limiteAnualExento,
     gastosFijosPorOperacion: input.gastosFijosPorOperacion,
   });
+};
+
+/**
+ * Guarda el plan de amortizaciones del préstamo · y lo lleva a tesorería.
+ *
+ * Guardar NO es haber amortizado: el cuadro no se toca y el préstamo sigue
+ * debiendo lo que debía. Lo único que sale de aquí son previsiones `predicted`
+ * —dinero que va a salir, no que ha salido—, y solo si el plan lo pide.
+ *
+ * Pasar `null` borra el plan y, con él, sus previsiones pendientes: un plan que
+ * ya no está no puede seguir prometiendo cargos.
+ */
+export const saveLoanAmortizationPlan = async (
+  loanId: string,
+  plan: Omit<PlanDeAmortizaciones, 'actualizadoEn'> | null,
+): Promise<{ borradas: number; emitidas: number }> => {
+  const prestamo = await prestamosService.getPrestamoById(loanId);
+  if (!prestamo) throw new Error('Préstamo no encontrado');
+
+  const guardado: PlanDeAmortizaciones | undefined = plan
+    ? { ...plan, actualizadoEn: new Date().toISOString() }
+    : undefined;
+
+  const actualizado = await prestamosService.updatePrestamo(loanId, {
+    planDeAmortizaciones: guardado,
+  });
+
+  const planPagos = await prestamosService.getPaymentPlan(loanId);
+  return sincronizarPrevisionesDelPlan(
+    actualizado ?? { ...prestamo, planDeAmortizaciones: guardado },
+    planPagos,
+    normalizeDate(),
+  );
 };
 
 export const confirmLoanSettlement = async (

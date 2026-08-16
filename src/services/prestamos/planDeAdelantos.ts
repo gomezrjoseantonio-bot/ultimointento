@@ -27,52 +27,24 @@
 
 import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import { amortizarAnticipado } from './amortizarAnticipado';
-import {
-  comisionDeReembolso,
-  cupoAnualExento,
-  ventanaAnual,
-  type LimiteAnualExento,
-} from './comisiones';
+import { comisionDeReembolso, cupoAnualExento, ventanaAnual } from './comisiones';
+import type {
+  Cadencia,
+  LimiteAnualExento,
+  ReglaDeAdelanto,
+} from '../../types/planDeAmortizaciones';
 import { diasDelMes, esISO, partes, sumarMeses } from './fechas';
 import { loQueQueda, ordenarPeriodos, type LoQueQueda } from './loQueQueda';
 
-export type { LimiteAnualExento } from './comisiones';
-
-/** Cada cuánto se repite un adelanto. */
-export type Cadencia = 'UNICA' | 'MENSUAL' | 'CADA_N_MESES' | 'ANUAL';
-
-/**
- * Una regla de amortización · «200 € todos los meses desde enero».
- *
- * Son varias a la vez a propósito. «200 €/mes **y** 3.000 € cada junio» es un
- * caso corriente —el ahorro del mes por un lado y la paga extra por otro—, y
- * con una sola regla habría que elegir cuál de los dos se simula.
- */
-export interface ReglaDeAdelanto {
-  /** Para poder editarla y borrarla en la pantalla. */
-  id: string;
-  cadencia: Cadencia;
-  /** Lo que se mete CADA VEZ, en euros. */
-  importe: number;
-  /** El primer día en que se aplica · ISO `YYYY-MM-DD`. */
-  desde: string;
-  /** Último día en que puede aplicarse · ausente = hasta que se acabe el préstamo. */
-  hasta?: string;
-  /** Cuántas veces como mucho · ausente = las que quepan. */
-  veces?: number;
-  /** Cada cuántos meses, solo en `CADA_N_MESES` · 3 es trimestral. */
-  cadaMeses?: number;
-  /** En qué mes del año cae, solo en `ANUAL` · 1-12, 6 es junio. */
-  mes?: number;
-  /**
-   * Cuánto sube el importe cada año, en % · para acompañar sueldo o IPC.
-   *
-   * Se aplica por años completos desde el primer adelanto de la regla, no por
-   * año natural: la regla la escribe quien va a meter el dinero, y sube cuando
-   * a esa persona le suben.
-   */
-  crecimientoAnual?: number;
-}
+// Las formas que se GUARDAN viven en `types/planDeAmortizaciones`: desde que el
+// plan se persiste dejaron de ser argumentos de una función y pasaron a ser
+// datos del usuario. Se reexportan para que nadie tenga que cambiar de import.
+export type {
+  Cadencia,
+  LimiteAnualExento,
+  PlanDeAmortizaciones,
+  ReglaDeAdelanto,
+} from '../../types/planDeAmortizaciones';
 
 /** Un adelanto concreto que la regla produce. */
 export interface AdelantoPrevisto {
