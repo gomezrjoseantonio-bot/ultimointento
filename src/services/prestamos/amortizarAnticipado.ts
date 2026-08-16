@@ -158,6 +158,10 @@ export function amortizarAnticipado(
     principalFinal: vivo / 100,
     pagado: true,
     fechaPagoReal: desde,
+    // No es un recibo: es capital que entra. Quien cuente cuotas tiene que
+    // poder saltársela sin adivinarlo por la fecha — un plan de amortizaciones
+    // mete doce al año en medio del tramo que se está contando.
+    esAdelantoDeCapital: true,
   };
 
   // ── Lo que queda ─────────────────────────────────────────────────────────
@@ -215,6 +219,8 @@ export function amortizarAnticipado(
       esProrrateado: undefined,
       esSoloIntereses: undefined,
       diasDevengo: undefined,
+      // Lo rehecho es una cuota calculada, venga de donde venga la línea.
+      esAdelantoDeCapital: undefined,
     });
 
     devengoPrevio = p.fechaCargo;

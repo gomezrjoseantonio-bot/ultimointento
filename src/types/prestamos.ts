@@ -745,6 +745,22 @@ export interface PeriodoPago {
   pagado: boolean;
   fechaPagoReal?: string;
   movimientoTesoreriaId?: string;
+  /**
+   * Esta línea es una ENTREGA DE CAPITAL, no un recibo · §6 bis · quater.
+   *
+   * La apunta `amortizarAnticipado` cuando se adelanta dinero: lleva el capital
+   * que entra y los intereses corridos que se liquidan, pero no es una cuota
+   * que el banco vaya a girar.
+   *
+   * Nació al planificar amortizaciones recurrentes. Con una sola operación se
+   * podía distinguir por la fecha —la línea cae justo el día del corte, así que
+   * el filtro `fechaCargo > desde` la dejaba fuera sin nombrarla—, pero un plan
+   * mete doce al año DENTRO del tramo que se cuenta, y sin marca se contaban
+   * como recibos: «209 → 214 meses» después de meter 2.400 €. El plazo subía
+   * por amortizar, que es la misma cara del error que ya dio `!pagado` en su
+   * día. Doce lo hacen imposible de sostener, así que la línea dice lo que es.
+   */
+  esAdelantoDeCapital?: boolean;
 }
 
 export interface PlanPagos {
