@@ -12,6 +12,7 @@
 
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { CardV5 } from '../../../../design-system/v5';
 import type { Prestamo } from '../../../../types/prestamos';
 import type { SimulacionDelPlan } from '../../../../services/prestamos/planDeAdelantos';
 import { formatEuro, formatDate } from '../../../../utils/formatUtils';
@@ -130,7 +131,7 @@ const ResultadoDelPlan: React.FC<Props> = ({
     )}
 
     {/* ── Las operaciones, una a una ────────────────────────────── */}
-    <div className="rounded-2xl border border-gray-200 overflow-hidden">
+    <CardV5 className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500">
@@ -169,7 +170,7 @@ const ResultadoDelPlan: React.FC<Props> = ({
             : `Ver las ${elegido.adelantos.length} operaciones del plan`}
         </button>
       )}
-      </div>
+    </CardV5>
   </div>
 );
 

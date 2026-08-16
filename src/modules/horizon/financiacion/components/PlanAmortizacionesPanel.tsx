@@ -35,6 +35,7 @@ import type {
 } from '../../../../services/prestamos/planDeAdelantos';
 import { comisionPactadaDe } from '../../../../services/prestamos/comisiones';
 import { formatEuro, formatDate } from '../../../../utils/formatUtils';
+import { CardV5 } from '../../../../design-system/v5';
 import ReglasDelPlan from './ReglasDelPlan';
 import ResultadoDelPlan from './ResultadoDelPlan';
 import { MESES, campo, etiqueta, type ReglaEditable } from './planDeAmortizacionesUI';
@@ -333,7 +334,8 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
       </div>
 
       {planteamiento === 'FECHA' && (
-        <div className="rounded-xl border border-gray-200 p-4 space-y-3" style={{ backgroundColor: 'var(--bg)' }}>
+        <CardV5>
+          <CardV5.Body className="space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <span className={etiqueta}>Quiero acabar antes de</span>
@@ -436,7 +438,8 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
               )}
             </div>
           )}
-        </div>
+          </CardV5.Body>
+        </CardV5>
       )}
 
       <ReglasDelPlan
@@ -450,7 +453,8 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
       />
 
       {/* ── Lo que cuesta amortizar ─────────────────────────────────────── */}
-      <div className="rounded-xl border border-gray-200 p-4" style={{ backgroundColor: 'var(--bg)' }}>
+      <CardV5>
+        <CardV5.Body>
         <h3 className="font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
           Lo que cuesta amortizar
         </h3>
@@ -528,7 +532,8 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
             />
           </div>
         </div>
-      </div>
+        </CardV5.Body>
+      </CardV5>
 
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-gray-500">
@@ -545,7 +550,8 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
       </div>
 
       {/* ── Guardarlo · para volver a verlo y para que cuente en tesorería ── */}
-      <div className="rounded-xl border border-gray-200 p-4" style={{ backgroundColor: 'var(--bg)' }}>
+      <CardV5>
+        <CardV5.Body>
         <h3 className="font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
           Guardar este plan
         </h3>
@@ -602,7 +608,8 @@ const PlanAmortizacionesPanel: React.FC<Props> = ({ prestamo }) => {
             </button>
           </div>
         </div>
-      </div>
+        </CardV5.Body>
+      </CardV5>
 
       {error && (
         <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

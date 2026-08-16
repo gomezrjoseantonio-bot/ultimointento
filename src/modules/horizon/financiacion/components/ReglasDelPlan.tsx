@@ -13,6 +13,7 @@
 
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { CardV5 } from '../../../../design-system/v5';
 import type { ReglaDeAdelanto } from '../../../../services/prestamos/planDeAdelantos';
 import { MESES, campo, etiqueta, type Fin, type ReglaEditable } from './planDeAmortizacionesUI';
 
@@ -47,7 +48,8 @@ const ReglasDelPlan: React.FC<Props> = ({ reglas, onCambiar, onQuitar, onAnadir 
   </div>
 
   {reglas.map((r) => (
-    <div key={r.id} className="rounded-xl border border-gray-200 p-4" style={{ backgroundColor: 'var(--bg)' }}>
+    <CardV5 key={r.id} compact>
+      <CardV5.Body>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div>
           <span className={etiqueta}>Cada cuánto</span>
@@ -195,7 +197,8 @@ const ReglasDelPlan: React.FC<Props> = ({ reglas, onCambiar, onQuitar, onAnadir 
           </button>
         </div>
       )}
-    </div>
+      </CardV5.Body>
+    </CardV5>
   ))}
 </div>
     </>
