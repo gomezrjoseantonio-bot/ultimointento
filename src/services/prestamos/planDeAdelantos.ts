@@ -365,7 +365,7 @@ export function simularPlanDeAdelantos(
 
     const aplicado = round2(Math.min(cita.importe, vivo));
 
-    // El cupo se consume con TODO lo adelantado, no solo con la parte exenta:
+    // El cupo se consume con **todo** lo adelantado, no solo con la parte exenta:
     // gastarlo entero en enero es justo lo que deja el resto del año a
     // comisión completa, y esa es la decisión que el plan tiene que enseñar.
     const clave = ventanaAnual(prestamo, cita.fecha, baseCupo);

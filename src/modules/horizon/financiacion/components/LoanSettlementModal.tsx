@@ -221,7 +221,7 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
             ))}
           </div>
 
-          {/* El tipo de operación manda sobre TODO lo de abajo, así que se elige
+          {/* El tipo de operación manda sobre **todo** lo de abajo, así que se elige
               arriba y a lo ancho · metido en la columna izquierda parecía un
               campo más del formulario que él mismo hace aparecer y desaparecer. */}
           <div>
