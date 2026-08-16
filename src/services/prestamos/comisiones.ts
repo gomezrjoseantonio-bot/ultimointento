@@ -154,6 +154,69 @@ export function comisionPactadaDe(
   return null;
 }
 
+// ── El cupo que la escritura deja adelantar gratis ──────────────────────────
+//
+// Muchas escrituras no dicen «0,25 % de lo que adelantes» a secas: dicen «0,25 %
+// de lo que exceda del 20 % del capital concedido en cada anualidad». Con una
+// amortización PUNTUAL ese matiz casi no se ve —o entras en el cupo o no—, pero
+// en cuanto se planifica un extra todos los meses lo cambia todo: 200 €/mes son
+// 2.400 € al año, que en una hipoteca de 85.000 € caben enteros en el cupo del
+// 20 % y no pagan **ni un euro** de comisión. Sin esto, el simulador cobraría
+// doce comisiones al año que el banco no va a cobrar, y el ahorro neto que
+// enseña —que es lo que se mira para decidir— saldría corto.
+
+/** El cupo anual que no paga comisión, tal como lo dice la escritura. */
+export interface LimiteAnualExento {
+  /**
+   * Sobre qué año se cuenta.
+   *
+   * `ANUALIDAD` cuenta desde la firma —«en cada anualidad del préstamo»—, que es
+   * la fórmula habitual; `ANIO_NATURAL` cuenta del 1 de enero al 31 de
+   * diciembre. No es lo mismo y decide si dos adelantos de diciembre y enero
+   * comparten cupo o no.
+   */
+  base: 'ANIO_NATURAL' | 'ANUALIDAD';
+  /** Cupo en EUROS al año. */
+  importe?: number;
+  /** Cupo como % del capital CONCEDIDO · `20` es el 20 % del principal inicial. */
+  porcentajeDelCapitalInicial?: number;
+}
+
+/**
+ * Cuántos euros al año se pueden adelantar sin comisión · 0 si no hay cupo.
+ *
+ * Con las dos formas puestas manda la mayor: son dos maneras de escribir el
+ * mismo pacto, y quedarse con la pequeña cobraría una comisión que la escritura
+ * —en su otra lectura— no ampara.
+ */
+export function cupoAnualExento(prestamo: Prestamo, limite?: LimiteAnualExento | null): number {
+  if (!limite) return 0;
+  const porImporte = numero(limite.importe);
+  const porPorcentaje =
+    numero(limite.porcentajeDelCapitalInicial) > 0
+      ? (numero(prestamo.principalInicial) * numero(limite.porcentajeDelCapitalInicial)) / 100
+      : 0;
+  return Math.round(Math.max(porImporte, porPorcentaje) * 100) / 100;
+}
+
+/**
+ * En qué año cae esa fecha a efectos del cupo · la clave con la que se acumula.
+ *
+ * Se devuelve una etiqueta y no un número porque las dos bases cuentan cosas
+ * distintas —«2027» y «la 4.ª anualidad»— y mezclarlas en un mismo entero es
+ * pedir que algún día se sumen dos adelantos que no comparten cupo.
+ */
+export function ventanaAnual(
+  prestamo: Prestamo,
+  fecha: string,
+  base: LimiteAnualExento['base']
+): string {
+  if (base === 'ANIO_NATURAL' || !esISO(prestamo.fechaFirma) || !esISO(fecha)) {
+    return `N${fecha.slice(0, 4)}`;
+  }
+  return `A${Math.floor(Math.max(0, mesesEntre(prestamo.fechaFirma, fecha)) / 12)}`;
+}
+
 /**
  * Lo que cuesta adelantar `importe` euros ese día.
  *

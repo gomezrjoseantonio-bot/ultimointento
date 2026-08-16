@@ -11,6 +11,7 @@ import {
 import { initDB } from '../../../../services/db';
 import { comisionDeReembolso } from '../../../../services/prestamos/comisiones';
 import { formatEuro, formatDate } from '../../../../utils/formatUtils';
+import PlanAmortizacionesPanel from './PlanAmortizacionesPanel';
 
 interface LoanSettlementModalProps {
   prestamo: Prestamo;
@@ -29,7 +30,10 @@ interface AccountOption {
 
 const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isOpen, onClose, onConfirmed }) => {
   const today = new Date().toISOString().slice(0, 10);
-  const [operationType, setOperationType] = useState<'TOTAL' | 'PARTIAL'>('TOTAL');
+  // `PLAN` no es un tercer tipo de operación: es la otra pregunta. Las dos de
+  // arriba registran algo que ocurre hoy; la tercera solo simula un calendario
+  // que aún no ha ocurrido, y por eso ni confirma ni toca tesorería.
+  const [operationType, setOperationType] = useState<'TOTAL' | 'PARTIAL' | 'PLAN'>('TOTAL');
   const [partialMode, setPartialMode] = useState<'REDUCIR_PLAZO' | 'REDUCIR_CUOTA'>('REDUCIR_PLAZO');
   const [operationDate, setOperationDate] = useState(today);
   const [principalAmount, setPrincipalAmount] = useState('');
@@ -130,6 +134,7 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
   }, [prepared]);
 
   const handleSimulate = async () => {
+    if (operationType === 'PLAN') return;
     try {
       setLoading(true);
       setError('');
@@ -153,6 +158,9 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
   };
 
   const handleConfirm = async () => {
+    // Un plan no se confirma · son operaciones que aún no han ocurrido, y el
+    // botón ni siquiera se pinta en esa pestaña.
+    if (operationType === 'PLAN') return;
     try {
       if (!settlementAccountId) {
         setError('Selecciona una cuenta de tesorería.');
@@ -213,30 +221,46 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
             ))}
           </div>
 
+          {/* El tipo de operación manda sobre **todo** lo de abajo, así que se elige
+              arriba y a lo ancho · metido en la columna izquierda parecía un
+              campo más del formulario que él mismo hace aparecer y desaparecer. */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de operación</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => setOperationType('TOTAL')}
+                className={`rounded-xl border p-4 text-left ${operationType === 'TOTAL' ? 'border-atlas-blue bg-primary-50' : 'border-gray-200'}`}
+              >
+                <div className="font-medium">Cancelación total</div>
+                <div className="text-sm text-gray-500 mt-1">Liquida por completo el préstamo.</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOperationType('PARTIAL')}
+                className={`rounded-xl border p-4 text-left ${operationType === 'PARTIAL' ? 'border-atlas-blue bg-primary-50' : 'border-gray-200'}`}
+              >
+                <div className="font-medium">Amortización parcial</div>
+                <div className="text-sm text-gray-500 mt-1">Una entrega, hoy. Reduce cuota o plazo.</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOperationType('PLAN')}
+                className={`rounded-xl border p-4 text-left ${operationType === 'PLAN' ? 'border-atlas-blue bg-primary-50' : 'border-gray-200'}`}
+              >
+                <div className="font-medium">Plan de amortizaciones</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  Cada mes, cada año… solo simulación.
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {operationType === 'PLAN' && <PlanAmortizacionesPanel prestamo={prestamo} />}
+
+          {operationType !== 'PLAN' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de operación</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setOperationType('TOTAL')}
-                    className={`rounded-xl border p-4 text-left ${operationType === 'TOTAL' ? 'border-atlas-blue bg-primary-50' : 'border-gray-200'}`}
-                  >
-                    <div className="font-medium">Cancelación total</div>
-                    <div className="text-sm text-gray-500 mt-1">Liquida por completo el préstamo.</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOperationType('PARTIAL')}
-                    className={`rounded-xl border p-4 text-left ${operationType === 'PARTIAL' ? 'border-atlas-blue bg-primary-50' : 'border-gray-200'}`}
-                  >
-                    <div className="font-medium">Amortización parcial</div>
-                    <div className="text-sm text-gray-500 mt-1">Reduce cuota o plazo.</div>
-                  </button>
-                </div>
-              </div>
-
               {operationType === 'PARTIAL' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Modo</label>
@@ -401,8 +425,9 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
               )}
             </div>
           </div>
+          )}
 
-          {error && (
+          {error && operationType !== 'PLAN' && (
             <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               <AlertTriangle className="h-4 w-4" />
               <span>{error}</span>
@@ -411,16 +436,23 @@ const LoanSettlementModal: React.FC<LoanSettlementModalProps> = ({ prestamo, isO
         </div>
 
         <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-200 bg-white sticky bottom-0">
+          {/* El pie tiene que decir la verdad de la pestaña que se está viendo ·
+              prometer una salida de tesorería mientras se simula un plan a diez
+              años es exactamente lo que no se va a hacer. */}
           <div className="text-xs text-gray-500">
-            La operación generará salida de tesorería y actualizará el cuadro de amortización.
+            {operationType === 'PLAN'
+              ? 'Un plan solo se simula: no genera movimientos ni cambia tu cuadro. Cada amortización se registra el día que la hagas, desde «Amortización parcial».'
+              : 'La operación generará salida de tesorería y actualizará el cuadro de amortización.'}
           </div>
           <div className="flex items-center gap-3">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700">
-              Cancelar
+              {operationType === 'PLAN' ? 'Cerrar' : 'Cancelar'}
             </button>
-            <button type="button" onClick={handleConfirm} disabled={loading} className="px-4 py-2 rounded-lg bg-atlas-blue text-white disabled:opacity-60">
-              {loading ? 'Guardando…' : operationType === 'TOTAL' ? 'Confirmar cancelación' : 'Confirmar amortización'}
-            </button>
+            {operationType !== 'PLAN' && (
+              <button type="button" onClick={handleConfirm} disabled={loading} className="px-4 py-2 rounded-lg bg-atlas-blue text-white disabled:opacity-60">
+                {loading ? 'Guardando…' : operationType === 'TOTAL' ? 'Confirmar cancelación' : 'Confirmar amortización'}
+              </button>
+            )}
           </div>
         </div>
       </div>

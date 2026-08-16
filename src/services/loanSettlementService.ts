@@ -6,9 +6,18 @@ import { PlanPagos, PeriodoPago, Prestamo } from '../types/prestamos';
 import {
   amortizarAnticipado,
   cancelarAnticipado,
-  inicioDelDevengo,
   interesesCorridos,
 } from './prestamos/amortizarAnticipado';
+// `loQueQueda` vive en su propio módulo desde que la simulación de un PLAN de
+// amortizaciones necesita esta misma cuenta: ahí es puro y no arrastra la base
+// de datos detrás. El criterio sigue siendo uno solo, que era todo el asunto.
+import { loQueQueda } from './prestamos/loQueQueda';
+import {
+  compararModos,
+  type LimiteAnualExento,
+  type ReglaDeAdelanto,
+  type SimulacionDelPlan,
+} from './prestamos/planDeAdelantos';
 
 export interface PrepareLoanSettlementResult {
   prestamo: Prestamo;
@@ -81,74 +90,6 @@ const diffDaysBetweenIsoDates = (fromIso: string, toIso: string): number => {
 const sortPeriods = (periodos: PeriodoPago[]): PeriodoPago[] => (
   [...periodos].sort((a, b) => new Date(a.fechaCargo).getTime() - new Date(b.fechaCargo).getTime())
 );
-
-// ─── Lo que queda de un plan · UNA pregunta, un criterio ────────────────────
-//
-// El modal enseñaba «plazo antes / después» y «cuota antes / después» sacando
-// cada mitad de un sitio distinto: el «antes» contaba los recibos por FECHA
-// (`fechaCargo >= la operación`) y el «después» los contaba por PUNTEO
-// (`!pagado`). Dos preguntas distintas puestas una al lado de la otra con una
-// flecha en medio.
-//
-// De ahí salían los dos números que no se sostienen *(Jose · 8 ago 2026)*:
-//
-//   · **«205 → 206 meses» después de amortizar.** Un recibo pasado que nadie
-//     había punteado no es futuro, pero `!pagado` lo contaba como tal, y
-//     además la línea del adelanto —que sí va marcada pagada— no lo era. El
-//     plazo subía tras meter dinero.
-//   · **«454,57 € → 454,57 €» eligiendo REDUCIR CUOTA.** La cuota «después»
-//     era la del primer recibo sin puntear, o sea uno viejo con la cuota
-//     vieja. La rebaja estaba calculada en el cuadro y no se enseñaba.
-//
-// Aquí se contesta una sola vez, y los dos cuadros —el de antes y el de
-// después— pasan por la misma función. Si el criterio es discutible que lo sea
-// para los dos a la vez; lo que no puede es cambiar entre una columna y otra.
-
-interface LoQueQueda {
-  /** Recibos que aún se van a cobrar. */
-  recibos: number;
-  /** Lo que se paga en el próximo recibo · lo que se está pagando AHORA. */
-  proximaCuota: number;
-  /** La cuota del primer recibo que la operación puede cambiar. */
-  cuota: number;
-  /** Cuándo se cobra ese recibo · `null` si no hay ninguno. */
-  cuotaDesde: string | null;
-  /** Los intereses que quedan por pagar en esos recibos. */
-  intereses: number;
-}
-
-/**
- * Qué queda de un plan a partir de un día.
- *
- * `fechaCargo > desde` y no `>=`: el recibo del día de la operación se está
- * pagando hoy, no es lo que queda. Y de propina eso deja fuera la línea del
- * propio adelanto, que el motor apunta con esa misma fecha — sin necesidad de
- * reconocerla por un campo, que es como se rompen estas cosas.
- *
- * **Son dos cuotas distintas y hay que devolver las dos.** Lo que pagas ahora
- * es el próximo recibo. Lo que la operación mueve es el primero que DEVENGA ya
- * del lado nuevo, que puede ser otro: el recibo a caballo paga el mes que ya
- * había corrido y no lo toca ningún adelanto.
- *
- * Confundirlas se vio en pantalla *(Jose · 8 ago 2026)*: la tarjeta decía
- * «CUOTA ACTUAL 518,10 €» un 8 de agosto en una mixta cuyo tramo fijo aguanta
- * hasta el 25 · lo que se paga ese mes son 455 €, y el 518 era ya del tramo
- * variable. Se juntaron aquí de más al arreglar el «antes → después».
- */
-const loQueQueda = (plan: PlanPagos | null, desde: string): LoQueQueda => {
-  const pendientes = sortPeriods(plan?.periodos ?? []).filter((p) => p.fechaCargo > desde);
-  const laQueMueve = pendientes.find(
-    (p) => inicioDelDevengo(p) >= desde && !p.esProrrateado && !p.esSoloIntereses,
-  );
-
-  return {
-    recibos: pendientes.length,
-    proximaCuota: round2(pendientes[0]?.cuota ?? 0),
-    cuota: round2(laQueMueve?.cuota ?? pendientes[0]?.cuota ?? 0),
-    cuotaDesde: laQueMueve?.fechaCargo ?? pendientes[0]?.fechaCargo ?? null,
-    intereses: round2(pendientes.reduce((s, p) => s + (p.interes || 0), 0)),
-  };
-};
 
 const resolveProjectedOutstandingPrincipal = (
   prestamo: Prestamo,
@@ -469,6 +410,50 @@ export const simulateLoanSettlement = async (
     // cuatrocientos euros junto a un «tu cuota no cambia y el plazo sube».
     interestSavings: round2(Math.max(0, antes.intereses - despues.intereses)),
   };
+};
+
+export interface LoanAmortizationPlanInput {
+  loanId: string;
+  reglas: ReglaDeAdelanto[];
+  limiteAnualExento?: LimiteAnualExento | null;
+  gastosFijosPorOperacion?: number;
+  /** Desde cuándo se compara · por defecto, el día del primer adelanto. */
+  desde?: string;
+}
+
+/**
+ * Un PLAN de amortizaciones, por los dos caminos · solo simulación.
+ *
+ * No escribe: ni movimiento, ni cuadro, ni `loan_settlements`. Un plan a diez
+ * años son ciento veinte operaciones que aún no han ocurrido, y confirmarlas de
+ * golpe convertiría una intención en un saldo. Lo que sí ocurrió se registra
+ * por donde se ha registrado siempre, con `confirmLoanSettlement`.
+ *
+ * Devuelve los dos modos porque esa es la decisión de la pantalla: quien mete
+ * 200 € al mes está eligiendo entre acabar antes o pagar menos cada mes, y
+ * enseñarlo de uno en uno obliga a apuntar la cifra anterior en un papel.
+ */
+export const simulateLoanAmortizationPlan = async (
+  input: LoanAmortizationPlanInput,
+): Promise<{ reducirPlazo: SimulacionDelPlan; reducirCuota: SimulacionDelPlan }> => {
+  const prestamo = await prestamosService.getPrestamoById(input.loanId);
+  if (!prestamo) throw new Error('Préstamo no encontrado');
+
+  const planPagos = await prestamosService.getPaymentPlan(input.loanId);
+  if (!planPagos?.periodos?.length) {
+    throw new Error('El préstamo todavía no tiene cuadro de amortización sobre el que simular');
+  }
+
+  const reglas = (input.reglas ?? []).filter((r) => r && r.importe > 0 && !!r.desde);
+  if (reglas.length === 0) {
+    throw new Error('Añade al menos una regla de amortización con importe y fecha');
+  }
+
+  return compararModos(prestamo, planPagos, reglas, {
+    limiteAnualExento: input.limiteAnualExento,
+    gastosFijosPorOperacion: input.gastosFijosPorOperacion,
+    desde: input.desde,
+  });
 };
 
 export const confirmLoanSettlement = async (

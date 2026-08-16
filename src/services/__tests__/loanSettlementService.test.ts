@@ -4,6 +4,7 @@ import {
   confirmLoanSettlement,
   getLoanSettlementsByLoanId,
   prepareLoanSettlement,
+  simulateLoanAmortizationPlan,
   simulateLoanSettlement,
 } from '../loanSettlementService';
 import { Prestamo } from '../../types/prestamos';
@@ -176,5 +177,55 @@ describe('loanSettlementService', () => {
     const history = await getLoanSettlementsByLoanId(loan.id);
     expect(history).toHaveLength(1);
     expect(history[0].notes).toBe('Amortización parcial con reducción de cuota');
+  });
+
+  // ── Un PLAN de amortizaciones se simula · no se confirma ──────────────────
+  //
+  // Es la línea que separa esta pestaña de las otras dos, y la que hay que
+  // vigilar: ciento veinte operaciones que aún no han ocurrido no pueden dejar
+  // rastro en tesorería ni cambiar el cuadro con el que se cuentan las cuotas.
+
+  it('simula un plan recurrente por los dos caminos y no escribe nada', async () => {
+    const db = await initDB();
+    const loan = await prestamosService.createPrestamo(baseLoanData);
+    const planAntes = await prestamosService.getPaymentPlan(loan.id);
+
+    const { reducirPlazo, reducirCuota } = await simulateLoanAmortizationPlan({
+      loanId: loan.id,
+      reglas: [
+        { id: 'mensual', cadencia: 'MENSUAL', importe: 200, desde: '2026-01-01' },
+        { id: 'extra', cadencia: 'ANUAL', mes: 6, importe: 3000, desde: '2026-01-01' },
+      ],
+      limiteAnualExento: { base: 'ANUALIDAD', porcentajeDelCapitalInicial: 20 },
+    });
+
+    // Junio lleva las dos reglas en una sola operación.
+    const junio = reducirPlazo.adelantos.find((a) => a.fecha === '2026-06-01');
+    expect(junio?.aplicado).toBe(3200);
+
+    expect(reducirPlazo.ahorroNeto).toBeGreaterThan(0);
+    expect(reducirPlazo.mesesGanados).toBeGreaterThan(reducirCuota.mesesGanados);
+    expect(reducirCuota.cuotaEnUnAnio).toBeLessThan(reducirCuota.antes.cuota);
+
+    // Y ahora lo que de verdad importa: el préstamo sigue como estaba.
+    const loanDespues = await db.get('prestamos', loan.id) as any;
+    expect(loanDespues.principalVivo).toBe(baseLoanData.principalVivo);
+    expect(loanDespues.activo).toBe(true);
+
+    expect(await prestamosService.getPaymentPlan(loan.id)).toEqual(planAntes);
+    expect(await db.getAll('movements')).toHaveLength(0);
+    expect(await db.getAll('treasuryEvents')).toHaveLength(0);
+    expect(await getLoanSettlementsByLoanId(loan.id)).toHaveLength(0);
+  });
+
+  it('un plan sin reglas con importe no se simula a medias · lo dice', async () => {
+    const loan = await prestamosService.createPrestamo(baseLoanData);
+
+    await expect(
+      simulateLoanAmortizationPlan({
+        loanId: loan.id,
+        reglas: [{ id: 'vacia', cadencia: 'MENSUAL', importe: 0, desde: '2026-01-01' }],
+      }),
+    ).rejects.toThrow(/al menos una regla/);
   });
 });
