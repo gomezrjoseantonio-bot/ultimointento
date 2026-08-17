@@ -17,9 +17,10 @@
 
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import type { Tarjeta } from '../../types/tarjetas';
-import type { TreasuryEvent } from '../db';
+import type { Movement, TreasuryEvent } from '../db';
 import { aplicarVariacion, calcularImporte, expandirPatron } from './patronCalendario';
 import { claveDeRecibo, previsionDeTarjetas } from '../previsionDeTarjetas';
+import { recibosDeTarjeta } from '../reciboDeTarjeta';
 import type { ReciboDeTarjeta } from '../reciboDeTarjeta';
 import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 import { listarTarjetas } from '../tarjetasService';
@@ -76,6 +77,69 @@ export function recibosPrevistos(
     .flatMap((c) => comprasDelCompromiso(c, desde, hasta));
 
   return previsionDeTarjetas(compras, tarjetas).recibos;
+}
+
+/**
+ * Los recibos que forman las COMPRAS MANUALES de crédito · las que el usuario
+ * anota sueltas (movimientos con `gastoTarjetaCredito`), agrupadas por
+ * (tarjeta · corte).
+ *
+ * Solo periodos ABIERTOS (cargo aún por salir): lo ya cobrado viene por su
+ * recibo confirmado, y volver a sumarlo aquí lo contaría dos veces. Es la otra
+ * mitad del recibo: hasta ahora estas compras solo se veían en la tarjeta y NO
+ * engordaban el cargo real del banco.
+ */
+export function recibosDeComprasManuales(
+  movimientos: Movement[],
+  tarjetas: Tarjeta[],
+  hoy: string
+): ReciboDeTarjeta[] {
+  const credito = new Map<number, Tarjeta & { id: number }>();
+  for (const t of tarjetas) {
+    if (t.id != null && t.modalidad === 'credito' && t.ciclo) {
+      credito.set(t.id, t as Tarjeta & { id: number });
+    }
+  }
+
+  const porTarjeta = new Map<number, { fecha: string; importe: number }[]>();
+  for (const m of movimientos) {
+    if (m.tarjetaId == null || !m.gastoTarjetaCredito || !credito.has(m.tarjetaId)) continue;
+    // Un ingreso/devolución en la tarjeta no suma consumo.
+    if (m.amount >= 0) continue;
+    const arr = porTarjeta.get(m.tarjetaId) ?? [];
+    arr.push({ fecha: (m.date ?? '').slice(0, 10), importe: Math.abs(m.amount) });
+    porTarjeta.set(m.tarjetaId, arr);
+  }
+
+  const out: ReciboDeTarjeta[] = [];
+  for (const [tarjetaId, compras] of Array.from(porTarjeta.entries())) {
+    for (const r of recibosDeTarjeta(credito.get(tarjetaId)!, compras)) {
+      if (r.fechaCargo < hoy) continue; // ya cobrado · lo trae su recibo confirmado
+      out.push(r);
+    }
+  }
+  return out;
+}
+
+/**
+ * Funde los recibos del mismo (tarjeta · corte) en uno solo, sumando importe y
+ * número de compras. Así el recibo previsto (de los compromisos) y las compras
+ * manuales del mismo periodo forman UN único cargo —que es lo que hace el
+ * banco—, con la misma identidad `sourceId` para que no nazcan dos.
+ */
+export function fusionarRecibos(recibos: ReciboDeTarjeta[]): ReciboDeTarjeta[] {
+  const porClave = new Map<string, ReciboDeTarjeta>();
+  for (const r of recibos) {
+    const clave = `${r.tarjetaId}|${r.fechaCorte}`;
+    const previo = porClave.get(clave);
+    if (!previo) {
+      porClave.set(clave, { ...r });
+      continue;
+    }
+    previo.importe = Math.round((previo.importe + r.importe) * 100) / 100;
+    previo.compras += r.compras;
+  }
+  return [...porClave.values()];
 }
 
 /**
