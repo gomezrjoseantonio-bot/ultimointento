@@ -161,6 +161,55 @@ export function gastoDeMovimientos(
 }
 
 /**
+ * De dos cortes ABIERTOS, cuál es el del periodo VIGENTE hoy.
+ *
+ * Vigente = el que aún acumula compras: el corte más CERCANO que todavía no ha
+ * pasado (el menor `>= hoy`). Si los dos ya pasaron —raro, un recibo abierto con
+ * el corte vencido esperando cargo—, manda el más reciente.
+ */
+function corteMasVigente(a: string, b: string, hoy: string): string {
+  const aFuturo = a >= hoy;
+  const bFuturo = b >= hoy;
+  if (aFuturo && bFuturo) return a <= b ? a : b; // los dos por venir · el más próximo
+  if (aFuturo) return a;
+  if (bFuturo) return b;
+  return a >= b ? a : b; // los dos vencidos · el más reciente
+}
+
+/**
+ * «Llevas X este periodo» por tarjeta · la cifra VIVA del periodo abierto vigente.
+ *
+ * Suma, del corte que corresponde a HOY, la previsión del recibo (compromisos)
+ * MÁS las compras manuales de ese mismo periodo. El corte vigente NO es el
+ * primero de la lista —los recibos previstos llegan ordenados del más lejano al
+ * más cercano, así que el primero es el de dentro de dos años, no el de este mes;
+ * ese fallo dejaba fuera la compra recién anotada—. Es el corte abierto más
+ * próximo que aún no ha pasado.
+ */
+export function gastoAbiertoPorTarjeta(
+  periodos: GastoDeUnPeriodo[],
+  hoy: string
+): Map<number, number> {
+  const corteVigente = new Map<number, string>();
+  for (const p of periodos) {
+    if (p.estado !== 'abierto') continue;
+    const actual = corteVigente.get(p.tarjetaId);
+    corteVigente.set(
+      p.tarjetaId,
+      actual == null ? p.fechaCorte : corteMasVigente(actual, p.fechaCorte, hoy)
+    );
+  }
+
+  const porTarjeta = new Map<number, number>();
+  for (const p of periodos) {
+    if (p.estado !== 'abierto') continue;
+    if (p.fechaCorte !== corteVigente.get(p.tarjetaId)) continue;
+    porTarjeta.set(p.tarjetaId, Math.round(((porTarjeta.get(p.tarjetaId) ?? 0) + p.importe) * 100) / 100);
+  }
+  return porTarjeta;
+}
+
+/**
  * El gasto de una tarjeta de CRÉDITO por las COMPRAS MANUALES que el usuario
  * anotó (movimientos con `gastoTarjetaCredito`), agrupadas en su periodo (§3.4).
  *

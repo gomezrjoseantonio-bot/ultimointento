@@ -40,7 +40,7 @@ import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
-import { gastoDeMovimientos, gastoDeMovimientosCredito, gastoPorTarjeta } from '../../../services/gastoPorTarjeta';
+import { gastoDeMovimientos, gastoDeMovimientosCredito, gastoPorTarjeta, gastoAbiertoPorTarjeta } from '../../../services/gastoPorTarjeta';
 import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
@@ -246,26 +246,13 @@ const TesoreriaV6Page: React.FC = () => {
     [tarjetas]
   );
 
-  const gastoAbierto = useMemo(() => {
-    // El corte del periodo abierto vigente por tarjeta · igual que antes: el
-    // primero (más reciente) que trae la lista ya ordenada.
-    const corteVigente = new Map<number, string>();
-    for (const p of periodosDeTarjeta) {
-      if (p.estado !== 'abierto') continue;
-      if (!corteVigente.has(p.tarjetaId)) corteVigente.set(p.tarjetaId, p.fechaCorte);
-    }
-    // La cifra viva = la suma de lo abierto de ese corte: la previsión del recibo
-    // (de los compromisos) MÁS las compras manuales de crédito de ese mismo
-    // periodo. Antes solo cogía la primera, así que una compra suelta no
-    // engordaba nada.
-    const porTarjeta = new Map<number, number>();
-    for (const p of periodosDeTarjeta) {
-      if (p.estado !== 'abierto') continue;
-      if (p.fechaCorte !== corteVigente.get(p.tarjetaId)) continue;
-      porTarjeta.set(p.tarjetaId, (porTarjeta.get(p.tarjetaId) ?? 0) + p.importe);
-    }
-    return porTarjeta;
-  }, [periodosDeTarjeta]);
+  // «Llevas X este periodo» por tarjeta · el corte vigente es el abierto más
+  // PRÓXIMO que aún no ha pasado (no el primero de la lista, que es el recibo
+  // previsto más lejano). Lógica pura y testeada en `gastoPorTarjeta`.
+  const gastoAbierto = useMemo(
+    () => gastoAbiertoPorTarjeta(periodosDeTarjeta, hoy),
+    [periodosDeTarjeta, hoy]
+  );
 
   useEffect(() => {
     void recargarTarjetas();

@@ -5,11 +5,13 @@
 // se presume ante el banco.
 
 import {
+  gastoAbiertoPorTarjeta,
   gastoDeLaTarjeta,
   gastoDeMovimientos,
   gastoDeMovimientosCredito,
   gastoPorTarjeta,
 } from '../gastoPorTarjeta';
+import type { GastoDeUnPeriodo } from '../gastoPorTarjeta';
 import type { Movement, TreasuryEvent } from '../db';
 import type { Tarjeta } from '../../types/tarjetas';
 
@@ -207,6 +209,46 @@ describe('el gasto con tarjeta de débito', () => {
 
     expect(gastoDeLaTarjeta(periodos, 11)).toBe(100);
     expect(gastoDeLaTarjeta(periodos, 12)).toBe(0);
+  });
+});
+
+// «Llevas X este periodo» · el corte vigente es el abierto más PRÓXIMO, no el
+// primero de la lista. El caso real de Jose: los recibos previstos llegan del
+// más lejano (2028) al más cercano, así que coger el primero fijaba el corte en
+// 2028 y la compra recién anotada (corte de este mes) se quedaba fuera.
+describe('la cifra viva del periodo abierto vigente', () => {
+  const per = (over: Partial<GastoDeUnPeriodo>): GastoDeUnPeriodo =>
+    ({ tarjetaId: 1, fechaCorte: '2026-08-20', fechaCargo: '2026-08-31', importe: 0, estado: 'abierto', ...over });
+
+  it('suma el recibo previsto de ESTE mes MÁS la compra manual del mismo corte', () => {
+    // Recibos previstos de 2026-08 a 2028-08 (ordenados del más lejano al más
+    // cercano, como los devuelve gastoPorTarjeta) + una compra manual de agosto.
+    const previstos: GastoDeUnPeriodo[] = [];
+    for (let y = 2028; y >= 2026; y--) previstos.push(per({ fechaCorte: `${y}-08-20`, fechaCargo: `${y}-08-31`, importe: 1010.72 }));
+    const compra = per({ fechaCorte: '2026-08-20', fechaCargo: '2026-08-31', importe: 9.99 });
+
+    const abierto = gastoAbiertoPorTarjeta([...previstos, compra], '2026-08-16');
+    expect(abierto.get(1)).toBeCloseTo(1020.71, 2); // 1010,72 + 9,99, NO el corte de 2028
+  });
+
+  it('el corte vigente es el más próximo que aún no ha pasado', () => {
+    const abierto = gastoAbiertoPorTarjeta(
+      [
+        per({ fechaCorte: '2026-09-20', importe: 100 }),
+        per({ fechaCorte: '2026-08-20', importe: 30 }), // ya pasó (hoy 09-01)
+        per({ fechaCorte: '2026-10-20', importe: 500 }),
+      ],
+      '2026-09-01'
+    );
+    expect(abierto.get(1)).toBe(100); // el de septiembre, no el vencido ni el lejano
+  });
+
+  it('lo cerrado no entra en la cifra viva', () => {
+    const abierto = gastoAbiertoPorTarjeta(
+      [per({ fechaCorte: '2026-08-20', importe: 50, estado: 'cerrado' })],
+      '2026-08-16'
+    );
+    expect(abierto.get(1)).toBeUndefined();
   });
 });
 
