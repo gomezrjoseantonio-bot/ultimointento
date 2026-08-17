@@ -30,6 +30,7 @@ import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga, diaYMes } from './formatoV6';
 import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
+import DrawerTarjeta from './DrawerTarjeta';
 import DrawerExtracto from './DrawerExtracto';
 import DrawerCalendario from './DrawerCalendario';
 import CerrarElMes from './CerrarElMes';
@@ -40,7 +41,7 @@ import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
-import { gastoDeMovimientos, gastoDeMovimientosCredito, gastoPorTarjeta } from '../../../services/gastoPorTarjeta';
+import { gastoDeMovimientos, gastoDeMovimientosCredito, gastoPorTarjeta, gastoAbiertoPorTarjeta } from '../../../services/gastoPorTarjeta';
 import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
@@ -148,6 +149,8 @@ const TesoreriaV6Page: React.FC = () => {
    */
   const [tarjetas, setTarjetas] = useState<Tarjeta[]>([]);
   const [fichaTarjeta, setFichaTarjeta] = useState<{ tarjeta: Tarjeta | null } | null>(null);
+  // §3.5 · el cajón de una tarjeta · sus compras del periodo, como un banco.
+  const [tarjetaAbierta, setTarjetaAbierta] = useState<Tarjeta | null>(null);
   /** §9 · alta desde el drawer del día · guarda la fecha para prefijarla. */
   const [altaDelDia, setAltaDelDia] = useState<string | null>(null);
   /**
@@ -246,26 +249,13 @@ const TesoreriaV6Page: React.FC = () => {
     [tarjetas]
   );
 
-  const gastoAbierto = useMemo(() => {
-    // El corte del periodo abierto vigente por tarjeta · igual que antes: el
-    // primero (más reciente) que trae la lista ya ordenada.
-    const corteVigente = new Map<number, string>();
-    for (const p of periodosDeTarjeta) {
-      if (p.estado !== 'abierto') continue;
-      if (!corteVigente.has(p.tarjetaId)) corteVigente.set(p.tarjetaId, p.fechaCorte);
-    }
-    // La cifra viva = la suma de lo abierto de ese corte: la previsión del recibo
-    // (de los compromisos) MÁS las compras manuales de crédito de ese mismo
-    // periodo. Antes solo cogía la primera, así que una compra suelta no
-    // engordaba nada.
-    const porTarjeta = new Map<number, number>();
-    for (const p of periodosDeTarjeta) {
-      if (p.estado !== 'abierto') continue;
-      if (p.fechaCorte !== corteVigente.get(p.tarjetaId)) continue;
-      porTarjeta.set(p.tarjetaId, (porTarjeta.get(p.tarjetaId) ?? 0) + p.importe);
-    }
-    return porTarjeta;
-  }, [periodosDeTarjeta]);
+  // «Llevas X este periodo» por tarjeta · el corte vigente es el abierto más
+  // PRÓXIMO que aún no ha pasado (no el primero de la lista, que es el recibo
+  // previsto más lejano). Lógica pura y testeada en `gastoPorTarjeta`.
+  const gastoAbierto = useMemo(
+    () => gastoAbiertoPorTarjeta(periodosDeTarjeta, hoy),
+    [periodosDeTarjeta, hoy]
+  );
 
   useEffect(() => {
     void recargarTarjetas();
@@ -893,7 +883,7 @@ const TesoreriaV6Page: React.FC = () => {
                 key={t.id}
                 type="button"
                 className={styles.tjItem}
-                onClick={() => setFichaTarjeta({ tarjeta: t })}
+                onClick={() => setTarjetaAbierta(t)}
               >
                 <span className={styles.tjAlias}>{t.alias}</span>
                 <span className={styles.tjSub}>{describirTarjeta(t, cuentasVivas)}</span>
@@ -979,6 +969,30 @@ const TesoreriaV6Page: React.FC = () => {
         tarjetas={tarjetasElegibles}
         aliasInmueble={aliasInmueble}
         onSubirExtracto={(c) => setExtracto({ cuenta: c })}
+      />
+
+      {/* §3.5 · el cajón de una tarjeta · sus compras del periodo en curso y el
+          recibo a pagar (que se cobra en su cuenta de liquidación). */}
+      <DrawerTarjeta
+        tarjeta={tarjetaAbierta}
+        banco={
+          tarjetaAbierta != null
+            ? cuentasVivas.find((c) => c.id === tarjetaAbierta.cuentaLiquidacionId)
+            : undefined
+        }
+        cuentas={cuentasVivas}
+        movimientos={estado.movimientos}
+        totalPeriodo={tarjetaAbierta?.id != null ? gastoAbierto.get(tarjetaAbierta.id) ?? 0 : 0}
+        hoy={hoy}
+        inmuebles={inmuebles}
+        tarjetas={tarjetasElegibles}
+        onCerrar={() => setTarjetaAbierta(null)}
+        onEditarTarjeta={(t) => {
+          setTarjetaAbierta(null);
+          setFichaTarjeta({ tarjeta: t });
+        }}
+        onGuardarFicha={guardarFicha}
+        onEliminar={descartarItem}
       />
 
       {/* §4.9 · calendario diario · navega entre meses sin cerrarse */}

@@ -193,6 +193,9 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
     const movs = movimientos
       .filter((m): m is Movement & { id: number } => m.id != null)
       .filter((m) => !m.isOpeningBalance)
+      // Una compra con tarjeta de CRÉDITO no es un cargo de la cuenta: sale en el
+      // recibo el día de cargo (§3.5). Vive en el cajón de la tarjeta, no aquí.
+      .filter((m) => !m.gastoTarjetaCredito)
       .filter((m) => enMes((m.date ?? '').slice(0, 10)))
       .map((m) => movimientoAItem(m, aliasInmueble, aliasCuenta))
       .filter((i) => i.estado === 'confirmado');
@@ -210,6 +213,8 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
     const movs = movimientos
       .filter((m): m is Movement & { id: number } => m.id != null)
       .filter((m) => !m.isOpeningBalance)
+      // La compra de crédito vive en la tarjeta · a la cuenta llega el recibo.
+      .filter((m) => !m.gastoTarjetaCredito)
       .filter((m) => enMes((m.date ?? '').slice(0, 10)))
       .map((m) => movimientoAItem(m, aliasInmueble, aliasCuenta));
     return [...evs, ...movs];
