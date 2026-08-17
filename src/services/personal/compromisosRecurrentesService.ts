@@ -5,7 +5,7 @@
 // conciliación vive en otro store; viviendaHabitual genera derivados aparte.
 
 import { initDB } from '../db';
-import type { Account, TreasuryEvent } from '../db';
+import type { Account, Movement, TreasuryEvent } from '../db';
 import type {
   CompromisoRecurrente,
   PatronRecurrente,
@@ -29,7 +29,9 @@ import {
 } from './previsionesIdempotencia';
 import {
   eventoDeRecibo,
+  fusionarRecibos,
   persistirRecibos,
+  recibosDeComprasManuales,
   recibosPrevistos,
   tarjetaDelCompromiso,
   vaEnRecibo,
@@ -757,18 +759,24 @@ export async function regenerarEventosCompromiso(
  * respeta lo intocable: un recibo ya confirmado o descartado no se reescribe.
  */
 export async function regenerarRecibosDeTarjeta(hasta?: Date): Promise<number> {
-  const [compromisos, tarjetas] = await Promise.all([
+  const db = await initDB();
+  const [compromisos, tarjetas, movimientos] = await Promise.all([
     listarCompromisos({ soloActivos: true }),
     listarTarjetas(),
+    db.getAll('movements') as Promise<Movement[]>,
   ]);
 
   const { desde, hasta: tope } = ventanaDeRecibos(hasta, HORIZONTE_MESES_DEFECTO);
-  const recibos = recibosPrevistos(compromisos, tarjetas, desde, tope);
+  const hoy = toISODateLocal(new Date());
+  // El recibo = lo previsto (compromisos con la tarjeta) MÁS las compras manuales
+  // del periodo, fundidas por (tarjeta · corte) en el único cargo que hace el banco.
+  const recibos = fusionarRecibos([
+    ...recibosPrevistos(compromisos, tarjetas, desde, tope),
+    ...recibosDeComprasManuales(movimientos ?? [], tarjetas, hoy),
+  ]);
   const ahora = new Date().toISOString();
   return persistirRecibos(recibos.map((r) => eventoDeRecibo(r, tarjetas, ahora)));
 }
-
-
 
 /**
  * Regenera eventos para todos los compromisos activos. Útil tras cambios de

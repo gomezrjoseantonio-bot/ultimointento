@@ -39,9 +39,10 @@ import { useEsMovil } from './useEsMovil';
 import CuentaWizard from '../../../components/cuenta/CuentaWizard';
 import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
 import { listarTarjetas } from '../../../services/tarjetasService';
+import { regenerarRecibosDeTarjeta } from '../../../services/personal/compromisosRecurrentesService';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
-import { gastoDeMovimientos, gastoDeMovimientosCredito, gastoPorTarjeta, gastoAbiertoPorTarjeta } from '../../../services/gastoPorTarjeta';
+import { gastoDeMovimientos, gastoPorTarjeta, gastoAbiertoPorTarjeta } from '../../../services/gastoPorTarjeta';
 import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
@@ -168,6 +169,15 @@ const TesoreriaV6Page: React.FC = () => {
 
   // ── Carga · una sola lectura, todo lo demás se deriva ────────────────────
   const recargar = useCallback(async () => {
+    // El recibo de tarjeta = lo previsto + las compras manuales del periodo. Se
+    // rehace ANTES de leer para que el cargo del banco cuadre siempre con lo que
+    // se ve en la tarjeta. Idempotente y tolerante a fallo: si peta, se lee lo
+    // que haya y no se tumba la pantalla.
+    try {
+      await regenerarRecibosDeTarjeta();
+    } catch (err) {
+      console.warn('[TesoreriaV6] no se pudieron regenerar los recibos de tarjeta', err);
+    }
     const db = await initDB();
     const [cuentas, eventos, movimientos, properties, ordenGuardado, borradores] =
       await Promise.all([
@@ -227,12 +237,11 @@ const TesoreriaV6Page: React.FC = () => {
       // El DÉBITO no tiene recibo del que deducir su gasto —cobra al momento—,
       // así que sale de los movimientos que el usuario atribuyó a una tarjeta.
       ...gastoDeMovimientos(estado.movimientos, tarjetas),
-      // Las compras MANUALES en tarjeta de crédito engordan el periodo abierto
-      // (§3.5) · el recibo previsto viene de los compromisos, esto son las
-      // sueltas que el usuario anota a mano.
-      ...gastoDeMovimientosCredito(estado.movimientos, tarjetas, hoy),
+      // Las compras MANUALES de crédito YA vienen dentro del recibo (se funden en
+      // `regenerarRecibosDeTarjeta`), así que NO se suman aquí otra vez: hacerlo
+      // las contaría dos veces en «Llevas X este periodo».
     ],
-    [estado.eventos, estado.movimientos, tarjetas, hoy]
+    [estado.eventos, estado.movimientos, tarjetas]
   );
 
   /**

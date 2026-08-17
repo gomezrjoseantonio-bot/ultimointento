@@ -9,11 +9,15 @@
 
 import {
   eventoDeRecibo,
+  fusionarRecibos,
   pagaConCreditoAplazado,
+  recibosDeComprasManuales,
   recibosPrevistos,
 } from '../recibosDeTarjetaPrevistos';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import type { Tarjeta } from '../../../types/tarjetas';
+import type { Movement } from '../../db';
+import type { ReciboDeTarjeta } from '../../reciboDeTarjeta';
 
 const BANKINTER = 2;
 
@@ -142,5 +146,62 @@ describe('el cargo que se apunta', () => {
 
   it('se llama por el nombre de la tarjeta, que es lo que verás en el extracto', () => {
     expect(eventoDeRecibo(recibo, [carrefour()], '').description).toBe('Recibo tarjeta Carrefour');
+  });
+});
+
+// Las compras MANUALES sueltas también forman recibo · hasta ahora solo se veían
+// en la tarjeta y no engordaban el cargo real del banco.
+describe('recibos de las compras manuales', () => {
+  const compra = (over: Partial<Movement> = {}): Movement =>
+    ({
+      id: 1,
+      accountId: BANKINTER,
+      date: '2026-01-10',
+      amount: -50,
+      description: 'Tabaco',
+      tarjetaId: 11,
+      gastoTarjetaCredito: true,
+      ...over,
+    }) as Movement;
+
+  it('agrupa las compras de crédito por (tarjeta · corte)', () => {
+    const r = recibosDeComprasManuales([compra()], [carrefour()], '2026-01-01');
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ tarjetaId: 11, fechaCorte: '2026-01-24', importe: 50 });
+  });
+
+  it('un movimiento sin la marca de crédito NO cuenta', () => {
+    expect(recibosDeComprasManuales([compra({ gastoTarjetaCredito: undefined })], [carrefour()], '2026-01-01')).toEqual([]);
+  });
+
+  it('un ingreso/devolución no suma consumo', () => {
+    expect(recibosDeComprasManuales([compra({ amount: 30 })], [carrefour()], '2026-01-01')).toEqual([]);
+  });
+
+  it('lo ya cobrado (cargo anterior a hoy) no se re-emite · viene por su recibo', () => {
+    // Compra de noviembre · su cargo (05-ene) ya pasó respecto a hoy (01-feb).
+    const r = recibosDeComprasManuales([compra({ date: '2025-11-10' })], [carrefour()], '2026-02-01');
+    expect(r).toEqual([]);
+  });
+});
+
+describe('fusionar recibos del mismo periodo', () => {
+  const r = (over: Partial<ReciboDeTarjeta>): ReciboDeTarjeta =>
+    ({ tarjetaId: 11, cuentaLiquidacionId: BANKINTER, fechaCorte: '2026-01-24', fechaCargo: '2026-02-05', importe: 0, compras: 1, ...over });
+
+  it('previsto + compras manuales del mismo corte = un solo recibo con la suma', () => {
+    const out = fusionarRecibos([r({ importe: 1010.72, compras: 3 }), r({ importe: 53.5, compras: 1 })]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ importe: 1064.22, compras: 4 });
+  });
+
+  it('cortes distintos NO se funden', () => {
+    const out = fusionarRecibos([r({ fechaCorte: '2026-01-24' }), r({ fechaCorte: '2026-02-24', fechaCargo: '2026-03-05' })]);
+    expect(out).toHaveLength(2);
+  });
+
+  it('tarjetas distintas NO se funden aunque coincida el corte', () => {
+    const out = fusionarRecibos([r({ tarjetaId: 11 }), r({ tarjetaId: 12 })]);
+    expect(out).toHaveLength(2);
   });
 });
