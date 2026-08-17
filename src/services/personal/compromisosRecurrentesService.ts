@@ -768,10 +768,8 @@ export async function regenerarRecibosDeTarjeta(hasta?: Date): Promise<number> {
 
   const { desde, hasta: tope } = ventanaDeRecibos(hasta, HORIZONTE_MESES_DEFECTO);
   const hoy = toISODateLocal(new Date());
-  // El recibo de un periodo = lo previsto (compromisos que pagan con la tarjeta)
-  // MÁS las compras manuales sueltas de ese mismo periodo. Se funden por
-  // (tarjeta · corte) en un solo cargo, que es lo que el banco cobra. Hasta ahora
-  // las compras manuales solo se veían en la tarjeta y no engordaban el recibo.
+  // El recibo = lo previsto (compromisos con la tarjeta) MÁS las compras manuales
+  // del periodo, fundidas por (tarjeta · corte) en el único cargo que hace el banco.
   const recibos = fusionarRecibos([
     ...recibosPrevistos(compromisos, tarjetas, desde, tope),
     ...recibosDeComprasManuales(movimientos ?? [], tarjetas, hoy),
@@ -779,8 +777,6 @@ export async function regenerarRecibosDeTarjeta(hasta?: Date): Promise<number> {
   const ahora = new Date().toISOString();
   return persistirRecibos(recibos.map((r) => eventoDeRecibo(r, tarjetas, ahora)));
 }
-
-
 
 /**
  * Regenera eventos para todos los compromisos activos. Útil tras cambios de
