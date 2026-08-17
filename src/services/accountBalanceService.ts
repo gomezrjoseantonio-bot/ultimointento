@@ -84,6 +84,10 @@ export function calculateAccountBalanceAtDate(params: {
 
   const priorAccountEvents = treasuryEvents.filter(e => (
     e.accountId === account.id &&
+    // Una PIEZA de tarjeta (`gasto_tarjeta`) no sale de ninguna cuenta: el dinero
+    // sale en el recibo. Contarla aquí lo cobraría dos veces. Nace sin
+    // `accountId` (ya no casaría), pero el guard explícito lo blinda.
+    e.sourceType !== 'gasto_tarjeta' &&
     toDateOnly(e.predictedDate) &&
     toDateOnly(e.predictedDate)! < cutoffDate &&
     isAfterOpening(toDateOnly(e.predictedDate)!)

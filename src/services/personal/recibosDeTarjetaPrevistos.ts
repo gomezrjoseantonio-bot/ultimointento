@@ -19,7 +19,7 @@ import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import type { Tarjeta } from '../../types/tarjetas';
 import type { Movement, TreasuryEvent } from '../db';
 import { aplicarVariacion, calcularImporte, expandirPatron } from './patronCalendario';
-import { claveDeRecibo, previsionDeTarjetas } from '../previsionDeTarjetas';
+import { claveDePieza, claveDeRecibo, previsionDeTarjetas } from '../previsionDeTarjetas';
 import { recibosDeTarjeta } from '../reciboDeTarjeta';
 import type { ReciboDeTarjeta } from '../reciboDeTarjeta';
 import { toISODateLocal } from '../../utils/recurrenceDateUtils';
@@ -77,6 +77,128 @@ export function recibosPrevistos(
     .flatMap((c) => comprasDelCompromiso(c, desde, hasta));
 
   return previsionDeTarjetas(compras, tarjetas).recibos;
+}
+
+// ── PIEZAS · cada gasto de tarjeta como evento propio y punteable (Fase 2a) ──
+//
+// Una pieza es UNA compra que un compromiso hace con la tarjeta en un día. Se
+// materializa como evento `gasto_tarjeta` para poder puntearla una a una; su
+// suma por (tarjeta · corte) forma el recibo. La pieza NO mueve ninguna cuenta
+// —el dinero sale en el recibo—, por eso nace SIN `accountId` y queda fuera del
+// saldo y de los agregadores de cashflow.
+
+/** El evento de una PIEZA de tarjeta · un gasto individual, punteable. */
+export function eventoDePieza(
+  compromiso: Pick<CompromisoRecurrente, 'id' | 'alias' | 'tarjetaId'>,
+  fecha: string,
+  importe: number,
+  ahora: string
+): Omit<TreasuryEvent, 'id'> {
+  const dia = fecha.slice(0, 10);
+  const [año, mes] = dia.split('-').map(Number);
+  return {
+    type: 'expense',
+    amount: -Math.abs(importe),
+    predictedDate: dia,
+    description: compromiso.alias || 'Gasto con tarjeta',
+    sourceType: 'gasto_tarjeta',
+    sourceId: claveDePieza(compromiso.id as number, dia),
+    tarjetaId: compromiso.tarjetaId,
+    año,
+    mes,
+    certeza: 'estimado',
+    generadoPor: 'treasurySyncService',
+    // SIN accountId a propósito · la pieza no sale de ninguna cuenta hasta el recibo.
+    status: 'predicted',
+    ambito: 'PERSONAL',
+    createdAt: ahora,
+    updatedAt: ahora,
+  } as Omit<TreasuryEvent, 'id'>;
+}
+
+/**
+ * Las piezas previstas de los compromisos que pagan con crédito aplazado, en la
+ * ventana [desde, hasta]. Cada compra individual del patrón es una pieza.
+ */
+export function piezasPrevistas(
+  compromisos: CompromisoRecurrente[],
+  tarjetas: Tarjeta[],
+  desde: string,
+  hasta: string,
+  ahora: string
+): Omit<TreasuryEvent, 'id'>[] {
+  const out: Omit<TreasuryEvent, 'id'>[] = [];
+  for (const c of compromisos) {
+    if (!pagaConCreditoAplazado(c, tarjetas)) continue;
+    for (const compra of comprasDelCompromiso(c, desde, hasta)) {
+      out.push(eventoDePieza(c, compra.fecha, compra.importe, ahora));
+    }
+  }
+  return out;
+}
+
+/**
+ * Los recibos DERIVADOS de las piezas · agrupa las piezas por (tarjeta · corte)
+ * y suma su importe EFECTIVO (el real donde se confirmó, el previsto donde no).
+ *
+ * Esto es lo que hace que el recibo «se nutra de lo confirmado»: al puntear una
+ * pieza con su importe real, el recibo la recoge con ese importe, no con la
+ * previsión. Una pieza descartada no cuenta: el usuario dijo que no ocurre.
+ */
+export function recibosDePiezas(piezas: TreasuryEvent[], tarjetas: Tarjeta[]): ReciboDeTarjeta[] {
+  const credito = new Map<number, Tarjeta & { id: number }>();
+  for (const t of tarjetas) {
+    if (t.id != null && t.modalidad === 'credito' && t.ciclo) {
+      credito.set(t.id, t as Tarjeta & { id: number });
+    }
+  }
+
+  const porTarjeta = new Map<number, { fecha: string; importe: number }[]>();
+  for (const p of piezas) {
+    if (p.descartado === true) continue;
+    if (p.tarjetaId == null || !credito.has(p.tarjetaId)) continue;
+    const fecha = (p.actualDate ?? p.predictedDate ?? '').slice(0, 10);
+    const importe = Math.abs(p.actualAmount ?? p.amount);
+    const arr = porTarjeta.get(p.tarjetaId) ?? [];
+    arr.push({ fecha, importe });
+    porTarjeta.set(p.tarjetaId, arr);
+  }
+
+  const out: ReciboDeTarjeta[] = [];
+  for (const [tarjetaId, compras] of Array.from(porTarjeta.entries())) {
+    out.push(...recibosDeTarjeta(credito.get(tarjetaId)!, compras));
+  }
+  return out;
+}
+
+/**
+ * Escribe las piezas, retirando primero las vivas y respetando las intocables ·
+ * clon del patrón de `persistirRecibos` para el `sourceType` de las piezas.
+ */
+export async function persistirPiezas(eventos: Array<Omit<TreasuryEvent, 'id'>>): Promise<number> {
+  const db = await initDB();
+  const tx = db.transaction('treasuryEvents', 'readwrite');
+  const store = tx.objectStore('treasuryEvents');
+
+  const ocupadas = new Set<string>();
+  let cursor = await store.index('sourceType').openCursor(IDBKeyRange.only('gasto_tarjeta'));
+  while (cursor) {
+    const ev = cursor.value as TreasuryEvent;
+    if (esPrevisionIntocable(ev)) ocupadas.add(String(ev.sourceId));
+    else await cursor.delete();
+    cursor = await cursor.continue();
+  }
+
+  let creados = 0;
+  for (const ev of eventos) {
+    const clave = String(ev.sourceId);
+    if (ocupadas.has(clave)) continue;
+    ocupadas.add(clave);
+    await store.add(ev as TreasuryEvent);
+    creados += 1;
+  }
+  await tx.done;
+  return creados;
 }
 
 /**
@@ -140,6 +262,42 @@ export function fusionarRecibos(recibos: ReciboDeTarjeta[]): ReciboDeTarjeta[] {
     previo.compras += r.compras;
   }
   return [...porClave.values()];
+}
+
+/** Cuántos meses por delante se materializan PIEZAS individuales (punteables). */
+export const HORIZONTE_PIEZAS_MESES = 3;
+
+/**
+ * La frontera entre lo CERCANO (piezas individuales, punteables) y lo LEJANO
+ * (recibo agregado para la proyección). Se materializan piezas solo del periodo
+ * vivo y los próximos, para no inflar la base con cientos de eventos a 2 años.
+ */
+export function finDePiezas(desde: string): string {
+  const [y, m] = desde.split('-').map(Number);
+  return toISODateLocal(new Date(y, m - 1 + HORIZONTE_PIEZAS_MESES, 28));
+}
+
+/**
+ * El conjunto de recibos de una tarjeta = piezas cercanas (derivadas, con lo
+ * confirmado) + previsión agregada de lo lejano + compras manuales, todo fundido
+ * por (tarjeta · corte) en un solo cargo. Un corte que cruce la frontera suma su
+ * parte de piezas y su parte agregada sin contarse dos veces (los tramos de
+ * compras no se solapan).
+ */
+export function ensamblarRecibos(
+  piezas: TreasuryEvent[],
+  compromisos: CompromisoRecurrente[],
+  tarjetas: Tarjeta[],
+  movimientos: Movement[],
+  finPiezas: string,
+  tope: string,
+  hoy: string
+): ReciboDeTarjeta[] {
+  return fusionarRecibos([
+    ...recibosDePiezas(piezas, tarjetas),
+    ...recibosPrevistos(compromisos, tarjetas, finPiezas, tope),
+    ...recibosDeComprasManuales(movimientos, tarjetas, hoy),
+  ]);
 }
 
 /**

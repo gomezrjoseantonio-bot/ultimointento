@@ -231,7 +231,7 @@ export interface TreasuryEvent {
   predictedDate: string;
   description: string;
   // Source tracking
-  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'comision_gestion' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'autonomo_gasto' | 'autonomo_cuota' | 'autonomo_gasto_legacy' | 'otros_ingresos' | 'inversion_compra' | 'inversion_aportacion' | 'inversion_rendimiento' | 'inversion_dividendo' | 'inversion_liquidacion' | 'irpf_prevision' | 'tarjeta_recibo' | 'amortizacion_anticipada';
+  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'comision_gestion' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'autonomo_gasto' | 'autonomo_cuota' | 'autonomo_gasto_legacy' | 'otros_ingresos' | 'inversion_compra' | 'inversion_aportacion' | 'inversion_rendimiento' | 'inversion_dividendo' | 'inversion_liquidacion' | 'irpf_prevision' | 'tarjeta_recibo' | 'gasto_tarjeta' | 'amortizacion_anticipada';
   // Document/Contract ID (número) o clave compuesta (string · p.ej. autonomo:
   // `${autonomoId}-cuota`). `isDuplicate`/`insertEvent` ya asumían number|string.
   sourceId?: number | string;
@@ -263,6 +263,16 @@ export interface TreasuryEvent {
    */
   unidadInmueble?: string;
   contratoId?: number;
+  /**
+   * §3.5 · con qué TARJETA de crédito se paga · solo en las PIEZAS de tarjeta
+   * (`sourceType: 'gasto_tarjeta'`) y no se usa en el resto de eventos.
+   *
+   * Una pieza es un gasto individual que se paga con la tarjeta y que se punteará
+   * uno a uno; su suma por (tarjeta · corte) forma el `tarjeta_recibo`. La pieza
+   * NO mueve ninguna cuenta —el dinero sale en el recibo—, por eso nace sin
+   * `accountId` y queda fuera del saldo y de los agregadores de cashflow.
+   */
+  tarjetaId?: number;
   // Account information
   accountId?: number;
   paymentMethod?: MetodoDePago;

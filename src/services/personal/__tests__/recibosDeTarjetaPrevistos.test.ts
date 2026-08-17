@@ -8,10 +8,13 @@
 // (gasto · mes · cuenta): un recibo cruza varios gastos.
 
 import {
+  ensamblarRecibos,
   eventoDeRecibo,
   fusionarRecibos,
   pagaConCreditoAplazado,
+  piezasPrevistas,
   recibosDeComprasManuales,
+  recibosDePiezas,
   recibosPrevistos,
 } from '../recibosDeTarjetaPrevistos';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
@@ -203,5 +206,72 @@ describe('fusionar recibos del mismo periodo', () => {
   it('tarjetas distintas NO se funden aunque coincida el corte', () => {
     const out = fusionarRecibos([r({ tarjetaId: 11 }), r({ tarjetaId: 12 })]);
     expect(out).toHaveLength(2);
+  });
+});
+
+// PIEZAS · cada gasto de tarjeta como evento propio y punteable (Fase 2a).
+describe('piezas de tarjeta', () => {
+  const ahora = '2026-01-01T00:00:00.000Z';
+
+  const pieza = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
+    ({
+      id: 1,
+      type: 'expense',
+      amount: -100,
+      predictedDate: '2026-01-10',
+      sourceType: 'gasto_tarjeta',
+      tarjetaId: 11,
+      status: 'predicted',
+      description: 'Compra',
+      ...over,
+    }) as TreasuryEvent;
+
+  it('cada compra de un compromiso con crédito es una pieza propia · sin cuenta', () => {
+    const piezas = piezasPrevistas([gasto()], [carrefour()], '2026-01-01', '2026-03-28', ahora);
+    expect(piezas).toHaveLength(3); // ene, feb, mar
+    expect(piezas[0]).toMatchObject({
+      sourceType: 'gasto_tarjeta',
+      tarjetaId: 11,
+      amount: -100,
+      status: 'predicted',
+    });
+    expect(piezas[0].accountId).toBeUndefined(); // no sale de ninguna cuenta hasta el recibo
+    expect(piezas[0].sourceId).toBe('gasto_tarjeta-1-2026-01-10');
+  });
+
+  it('el débito no genera piezas', () => {
+    const debito = carrefour({ modalidad: 'debito', ciclo: undefined });
+    expect(piezasPrevistas([gasto()], [debito], '2026-01-01', '2026-03-28', ahora)).toEqual([]);
+  });
+
+  it('el recibo derivado usa el importe REAL de la pieza confirmada', () => {
+    const recibos = recibosDePiezas([pieza({ actualAmount: 87.4, status: 'executed' })], [carrefour()]);
+    expect(recibos[0].importe).toBe(87.4);
+  });
+
+  it('una pieza descartada no cuenta en el recibo', () => {
+    expect(recibosDePiezas([pieza({ descartado: true })], [carrefour()])).toEqual([]);
+  });
+
+  // REGRESIÓN: con nada confirmado, el recibo (piezas cercanas derivadas +
+  // agregado lejano) es IDÉNTICO al modelo anterior. La Fase 2a no mueve el recibo.
+  it('sin nada confirmado, el recibo total es idéntico al modelo anterior', () => {
+    const compromisos = [
+      gasto({ id: 1, importe: { modo: 'fijo', importe: 100 } }),
+      gasto({ id: 2, alias: 'Gasolina', importe: { modo: 'fijo', importe: 60 } }),
+    ];
+    const desde = '2026-01-01';
+    const finPiezas = '2026-03-28';
+    const tope = '2027-12-28';
+    const piezas = piezasPrevistas(compromisos, [carrefour()], desde, finPiezas, ahora).map(
+      (p, i) => ({ ...p, id: i + 1 }) as TreasuryEvent
+    );
+    const total = (rs: ReciboDeTarjeta[]) => Math.round(rs.reduce((s, r) => s + r.importe, 0) * 100) / 100;
+
+    const nuevo = ensamblarRecibos(piezas, compromisos, [carrefour()], [], finPiezas, tope, '2026-01-01');
+    const viejo = recibosPrevistos(compromisos, [carrefour()], desde, tope);
+
+    expect(total(nuevo)).toBeCloseTo(total(viejo), 2);
+    expect(total(nuevo)).toBeGreaterThan(0);
   });
 });

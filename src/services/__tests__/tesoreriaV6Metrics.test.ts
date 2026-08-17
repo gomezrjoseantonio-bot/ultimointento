@@ -70,6 +70,9 @@ describe('convenciones de signo y pendiente', () => {
     expect(esPendiente(ev({ status: 'predicted', descartado: true }))).toBe(false);
     // Ya tiene su Movement · contarlo otra vez duplicaría el importe.
     expect(esPendiente(ev({ status: 'executed' }))).toBe(false);
+    // Una PIEZA de tarjeta no es pendiente del banco ni del cierre: la
+    // representa el recibo agregado. Se puntea en el cajón de la tarjeta.
+    expect(esPendiente(ev({ status: 'predicted', sourceType: 'gasto_tarjeta' }))).toBe(false);
   });
 
   it('rangoDelMes acierta con los meses de 30, 31 y con febrero bisiesto', () => {
