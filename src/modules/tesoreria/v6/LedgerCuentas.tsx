@@ -1,30 +1,29 @@
 // ============================================================================
-// Ledger de cuentas · Tesorería V6 (rediseño §4.2 · iteración 3)
+// Ledger de cuentas · Tesorería V6 (rediseño §4.2 · iteración 4)
 // ============================================================================
 //
 // Con muchas cuentas corrientes hace falta el control POR CUENTA Y EL TOTAL:
-// cada cuenta es una fila, todas a la vista, y el pie es la suma.
+// cada cuenta es una fila, todas a la vista, y el pie es la suma. TODOS los
+// datos de la fila son necesarios (Jose · 18 ago 2026): saldo, lo que queda
+// por entrar y salir este mes, el cierre proyectado y el estado.
 //
-// Pero un banco privado no enseña una hoja de cálculo (feedback Jose · 18 ago
-// 2026: «demasiado número · tabla de excel»). Cada fila lleva DOS cifras y
-// nada más: el saldo, grande, y su cierre del mes, pequeño debajo. Lo demás
-// se dice sin números:
-//   · la BARRA DE PESO, en el color del banco, dice cuánto de mi dinero vive
-//     en esa cuenta — el mismo lenguaje que el «peso en cartera» de
-//     Inversiones, y el mismo punto de color en todo el módulo;
-//   · el ESTADO es un chip solo cuando pide actuar: navy para la tarea («3
-//     por confirmar»), rojo para el problema («se queda en −X el día D» ·
-//     quedarse en negativo es un problema, no una advertencia dorada);
-//   · «al día» es texto mudo · lo que está bien no grita.
+// Lo que se trabaja es CÓMO se leen, con el patrón del ledger de Inversiones
+// (`LedgerPosiciones`) y la GUIA-DISENO-V5 en la mano:
+//   · cabecera silenciosa · versalita 9.5 ink-5 sobre card-alt, sin flechas
+//     de orden (el orden vive en el selector de arriba);
+//   · la celda de cuenta es rica: punto del banco, nombre, máscara y el
+//     ESTADO debajo como segunda línea — texto gris, sin chip (§4.2), y
+//     ámbar --warn con su punto solo en «se queda corta», que es el único
+//     que pide actuar (§2.2 de la guía: warn = riesgo · atención);
+//   · «queda entrar / salir» comparten UNA columna, apiladas con su flecha:
+//     cuatro datos, tres columnas de cifra — la fila respira;
+//   · jerarquía tipográfica: el saldo manda (700 ink), el cierre confirma
+//     (700 ink-2), los flujos acompañan (600 ink-2) y los ceros callan
+//     (ink-5), todo en mono tabular alineado a la derecha.
 //
-// Lo que le quede al mes por entrar y salir NO va aquí: eso ya lo dicen el
-// hero (total) y la previsión (mes a mes) — repetirlo por fila era el
-// «demasiado número».
-//
-// El ORDEN es del usuario: a mano arrastrando (el de siempre) o por un campo
-// desde el selector de arriba. Sin cabeceras clicables: la cabecera de
-// columnas era la mitad del aspecto de hoja de cálculo. La elección se
-// persiste (`ordenLedger`).
+// Animaciones: solo el hover permitido por la guía (§15). El orden es del
+// usuario: arrastrando (por defecto) o por campo desde el selector; la
+// elección se persiste (`ordenLedger`).
 // ============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -42,7 +41,7 @@ import {
   type CampoLedger,
   type OrdenLedger,
 } from './ordenCuentas';
-import { importeSaldo, diaYMes, mesCorto } from './formatoV6';
+import { importeConSigno, importeSaldo, diaYMes, nombreMes, mesCorto } from './formatoV6';
 import styles from './LedgerCuentas.module.css';
 
 interface Props {
@@ -63,6 +62,8 @@ interface Fila {
   cuenta: Account;
   nombre: string;
   saldo: number;
+  entra: number;
+  sale: number;
   cierre: number;
   estado: EstadoCuenta;
 }
@@ -73,10 +74,11 @@ const pesoEstado = (e: EstadoCuenta): number =>
 
 /**
  * Cada campo ordena en SU dirección natural · el dinero de mayor a menor, el
- * estado del que arde al que espera, el nombre de la A a la Z. Elegir campo y
- * dirección por separado es vocabulario de hoja de cálculo.
+ * estado del que pide actuar al que espera, el nombre de la A a la Z.
  */
-const ORDENES: Partial<Record<CampoLedger, { dir: 'asc' | 'desc'; cmp: (a: Fila, b: Fila) => number }>> = {
+const ORDENES: Partial<
+  Record<CampoLedger, { dir: 'asc' | 'desc'; cmp: (a: Fila, b: Fila) => number }>
+> = {
   saldo: { dir: 'desc', cmp: (a, b) => a.saldo - b.saldo },
   cierre: { dir: 'desc', cmp: (a, b) => a.cierre - b.cierre },
   estado: { dir: 'desc', cmp: (a, b) => pesoEstado(a.estado) - pesoEstado(b.estado) },
@@ -135,30 +137,32 @@ const LedgerCuentas: React.FC<Props> = ({
     onReordenar(nuevo);
   };
 
-  // El pie suma las filas · así la lista siempre cuadra consigo misma y con
-  // el hero (las dos patas de un traspaso interno se anulan entre cuentas).
+  // El pie suma las filas · así el ledger cuadra consigo mismo y con el hero
+  // (las dos patas de un traspaso interno se anulan entre cuentas; en
+  // entrar/salir pueden diferir del hero exactamente en los traspasos, que
+  // para el patrimonio no son flujo pero para cada cuenta sí).
   let totalSaldo = 0;
-  let totalCierre = 0;
+  let totalEntra = 0;
+  let totalSale = 0;
   const filas: Fila[] = cuentas.map((c) => {
     const saldo = saldoPorCuenta.get(c.id!) ?? 0;
     const eventos = eventosPorCuenta.get(c.id!) ?? [];
     const resumen = resumenMesDeCuenta({ saldoHoy: saldo, eventos, year, month0 });
     const estado = estadoDeCuenta({ saldoHoy: saldo, eventos, year, month0, hoy });
     totalSaldo += saldo;
-    totalCierre += resumen.cierre;
+    totalEntra += resumen.entra;
+    totalSale += resumen.sale;
     return {
       cuenta: c,
       nombre: c.alias || c.name || c.banco?.name || 'Cuenta',
       saldo,
+      entra: resumen.entra,
+      sale: resumen.sale,
       cierre: resumen.cierre,
       estado,
     };
   });
-
-  // La barra de peso · qué parte de mi dinero vive en cada cuenta. Sobre el
-  // total POSITIVO: una cuenta en negativo no «pesa», avisa (y para eso está
-  // su chip).
-  const totalPositivo = filas.reduce((s, f) => s + Math.max(0, f.saldo), 0);
+  const totalCierre = totalSaldo + totalEntra + totalSale;
 
   const visibles = manual
     ? filas
@@ -171,6 +175,8 @@ const LedgerCuentas: React.FC<Props> = ({
   if (cuentas.length === 0) {
     return <div className={styles.vacio}>Todavía no has dado de alta ninguna cuenta.</div>;
   }
+
+  const mes = nombreMes(month0);
 
   return (
     <div>
@@ -196,17 +202,24 @@ const LedgerCuentas: React.FC<Props> = ({
       </div>
 
       <div className={styles.lcard}>
-        {visibles.map(({ cuenta: c, nombre, saldo, cierre, estado }, i) => {
+        {/* Cabecera silenciosa · el mismo registro que el ledger de
+            Inversiones: dice qué es cada columna y se aparta. */}
+        <div className={`${styles.gridCols} ${styles.head}`}>
+          <span>Cuenta</span>
+          <span className={styles.colNum}>Saldo</span>
+          <span className={styles.colNum}>Queda en {mes}</span>
+          <span className={styles.colNum}>Cierre · {mesCorto(month0)}</span>
+          <span />
+        </div>
+
+        {visibles.map(({ cuenta: c, nombre, saldo, entra, sale, cierre, estado }) => {
           const mask = (c.ultimosCuatro || c.iban?.slice(-4)) ?? '';
-          const color = colorDeBanco(c);
-          const peso = totalPositivo > 0 ? Math.max(0, saldo) / totalPositivo : 0;
           return (
             <div
               key={c.id}
-              className={`${styles.fila} ${arrastrando === c.id ? styles.filaDragging : ''} ${
-                encima === c.id ? styles.filaOver : ''
-              }`}
-              style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}
+              className={`${styles.gridCols} ${styles.fila} ${
+                arrastrando === c.id ? styles.filaDragging : ''
+              } ${encima === c.id ? styles.filaOver : ''}`}
               role="button"
               tabIndex={0}
               onClick={() => onAbrir(c.id!)}
@@ -226,41 +239,42 @@ const LedgerCuentas: React.FC<Props> = ({
               }}
               onDrop={() => soltarSobre(c.id!)}
             >
+              {/* La celda rica · identidad arriba, estado debajo. */}
               <span className={styles.celCuenta}>
-                <span className={styles.bankDot} style={{ background: color }} />
+                <span className={styles.bankDot} style={{ background: colorDeBanco(c) }} />
                 <span className={styles.accId}>
-                  <span className={styles.accNm}>{nombre}</span>
-                  {mask && <span className={styles.accMask}>···· {mask}</span>}
+                  <span className={styles.accLinea}>
+                    <span className={styles.accNm}>{nombre}</span>
+                    {mask && <span className={styles.accMask}>···· {mask}</span>}
+                  </span>
+                  <EstadoFila estado={estado} />
                 </span>
               </span>
 
-              {/* Cuánto de mi dinero vive aquí · sin cifra: la proporción SE VE.
-                  El detalle exacto ya lo da el saldo de al lado. */}
-              <span
-                className={styles.peso}
-                title={`${Math.round(peso * 100)} % del saldo total`}
-                aria-hidden="true"
-              >
-                <span
-                  className={styles.pesoFill}
-                  style={{ width: `${Math.max(peso > 0 ? 2.5 : 0, peso * 100)}%`, background: color }}
-                />
-              </span>
+              <span className={`${styles.colNum} ${styles.saldo}`}>{importeSaldo(saldo)}</span>
 
-              <span className={styles.colEstado}>
-                <EstadoFila estado={estado} />
-              </span>
-
-              <span className={styles.dinero}>
-                <span className={styles.saldo}>{importeSaldo(saldo)}</span>
-                {/* El cierre, SOLO cuando difiere del saldo: si al mes no le
-                    queda nada en esta cuenta, repetir la cifra es ruido. */}
-                {cierre !== saldo && (
-                  <span className={styles.cierreSub}>
-                    cierre {mesCorto(month0)} · {importeSaldo(cierre)}
-                  </span>
+              {/* Queda entrar / salir · una columna, apilados con su flecha.
+                  Los ceros callan (ink-5) y si no queda NADA, un guion mudo:
+                  dos «0 €» apilados en media lista es justo el ruido que esta
+                  columna no puede permitirse. */}
+              <span className={`${styles.colNum} ${styles.flujos}`}>
+                {entra === 0 && sale === 0 ? (
+                  <span className={styles.flujoNada}>—</span>
+                ) : (
+                  <>
+                    <span className={`${styles.flujo} ${entra === 0 ? styles.flujoCero : ''}`}>
+                      <Icons.ArrowUp size={11} strokeWidth={2} />
+                      {importeConSigno(entra)}
+                    </span>
+                    <span className={`${styles.flujo} ${sale === 0 ? styles.flujoCero : ''}`}>
+                      <Icons.ArrowDown size={11} strokeWidth={2} />
+                      {importeConSigno(-Math.abs(sale))}
+                    </span>
+                  </>
                 )}
               </span>
+
+              <span className={`${styles.colNum} ${styles.cierre}`}>{importeSaldo(cierre)}</span>
 
               <span className={styles.acciones}>
                 {/* stopPropagation obligatorio: la fila entera es clicable. */}
@@ -293,17 +307,24 @@ const LedgerCuentas: React.FC<Props> = ({
           );
         })}
 
-        {/* El cuadre, en una línea muda · el protagonismo es de las filas. */}
-        <div className={styles.foot}>
-          <span className={styles.footLab}>
+        {/* El total · el control del conjunto, en las mismas verticales. */}
+        <div className={`${styles.gridCols} ${styles.total}`}>
+          <span className={styles.totalLab}>
             Total · {cuentas.length} {cuentas.length === 1 ? 'cuenta' : 'cuentas'}
           </span>
-          <span className={styles.footNum}>
-            {importeSaldo(totalSaldo)}
-            <span className={styles.footSub}>
-              cierre {mesCorto(month0)} · {importeSaldo(totalCierre)}
+          <span className={`${styles.colNum} ${styles.totalNum}`}>{importeSaldo(totalSaldo)}</span>
+          <span className={`${styles.colNum} ${styles.flujos}`}>
+            <span className={`${styles.flujo} ${totalEntra === 0 ? styles.flujoCero : ''}`}>
+              <Icons.ArrowUp size={11} strokeWidth={2} />
+              {importeConSigno(totalEntra)}
+            </span>
+            <span className={`${styles.flujo} ${totalSale === 0 ? styles.flujoCero : ''}`}>
+              <Icons.ArrowDown size={11} strokeWidth={2} />
+              {importeConSigno(-Math.abs(totalSale))}
             </span>
           </span>
+          <span className={`${styles.colNum} ${styles.totalNum}`}>{importeSaldo(totalCierre)}</span>
+          <span />
         </div>
       </div>
     </div>
@@ -311,27 +332,30 @@ const LedgerCuentas: React.FC<Props> = ({
 };
 
 /**
- * Un solo estado por fila · y el color con SEMÁNTICA (feedback 18 ago 2026):
- * navy-wash para la tarea, rojo para el problema. Nada de ámbar-oro en una
- * alerta: el oro de este módulo es del veredicto, no del peligro.
+ * Un solo estado por fila, bajo el nombre · exactamente el vocabulario del
+ * carrusel que este ledger sustituye (§4.2): texto gris sin chip, y ámbar
+ * --warn con su punto SOLO en «se queda corta» — el único que pide actuar.
+ * Es el color que la guía V5 reserva al riesgo (§2.2); el rojo --neg es
+ * pérdida consumada y aquí no ha pasado nada todavía.
  */
 const EstadoFila: React.FC<{ estado: EstadoCuenta }> = ({ estado }) => {
   if (estado.tipo === 'se-queda-corta') {
     return (
-      <span className={`${styles.chip} ${styles.chipAlerta}`}>
-        se queda en <span className={styles.chipVal}>{importeSaldo(estado.minimo)}</span> el{' '}
+      <span className={`${styles.state} ${styles.stateAlerta}`}>
+        <span className={styles.stateDot} />
+        se queda en <span className={styles.stateVal}>{importeSaldo(estado.minimo)}</span> el{' '}
         {diaYMes(estado.dia)}
       </span>
     );
   }
   if (estado.tipo === 'por-confirmar') {
     return (
-      <span className={`${styles.chip} ${styles.chipTarea}`}>
-        <span className={styles.chipVal}>{estado.n}</span> por confirmar
+      <span className={styles.state}>
+        <span className={styles.stateN}>{estado.n}</span> por confirmar
       </span>
     );
   }
-  return <span className={styles.alDia}>al día</span>;
+  return <span className={styles.state}>al día</span>;
 };
 
 export default LedgerCuentas;

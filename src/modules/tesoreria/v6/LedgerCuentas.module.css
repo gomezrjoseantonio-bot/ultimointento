@@ -1,11 +1,15 @@
 /* ===========================================================================
-   Ledger de cuentas · Tesorería V6 (rediseño §4.2 · iteración 3)
+   Ledger de cuentas · Tesorería V6 (rediseño §4.2 · iteración 4)
 
-   La lista de cuentas de un banco privado, no una hoja de cálculo: sin fila
-   de cabecera, dos cifras por fila (saldo grande · cierre pequeño), la barra
-   de peso en el color del banco como ancla visual, y chips con semántica
-   (navy = tarea · rojo = problema · «al día» calla). El único color libre
-   sigue siendo la identidad del banco — y aquí se le da su sitio.
+   Todos los datos, agradables de leer · el registro del ledger de Inversiones
+   aplicado con la GUIA-DISENO-V5:
+     · cabecera versalita 9.5 ink-5 sobre card-alt (§ ledger Inversiones);
+     · jerarquía tipográfica: el saldo manda, el cierre confirma, los flujos
+       acompañan y los ceros callan;
+     · estados del set canónico (§4.2): texto gris sin chip · ámbar --warn
+       con punto solo en «se queda corta»;
+     · animaciones: solo el hover permitido (§15 de la guía);
+     · el único color libre es el punto del banco (§12.5).
    =========================================================================== */
 
 /* ── La barra de arriba · el orden, en palabras y no en cabeceras ────────── */
@@ -21,7 +25,6 @@
 .pista {
   font-size: 11px;
   color: var(--atlas-v5-ink-5);
-  font-style: italic;
 }
 .ordenCtl {
   display: inline-flex;
@@ -42,7 +45,7 @@
   color: var(--atlas-v5-ink-2);
   background: var(--atlas-v5-card);
   border: 1px solid var(--atlas-v5-line);
-  border-radius: 8px;
+  border-radius: 7px;
   padding: 4px 8px;
   cursor: pointer;
 }
@@ -52,7 +55,7 @@
   outline-offset: 1px;
 }
 
-/* ── La lista ────────────────────────────────────────────────────────────── */
+/* ── El ledger ───────────────────────────────────────────────────────────── */
 
 .lcard {
   background: var(--atlas-v5-card);
@@ -61,24 +64,36 @@
   overflow: hidden;
 }
 
-.fila {
+.gridCols {
   display: grid;
-  grid-template-columns: minmax(190px, 1.2fr) minmax(110px, 1fr) minmax(150px, 0.95fr) 170px 62px;
-  gap: 18px;
+  grid-template-columns: minmax(230px, 1.6fr) minmax(130px, 1fr) minmax(140px, 1fr) minmax(130px, 1fr) 62px;
+  gap: 22px;
   align-items: center;
-  padding: 12px 18px;
+  padding: 0 20px;
+}
+.colNum { text-align: right; }
+
+/* Cabecera silenciosa · dice qué es cada columna y se aparta. */
+.head {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-5);
+  background: var(--atlas-v5-card-alt);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+/* ── Filas ────────────────────────────────────────────────────────────────── */
+
+.fila {
+  padding-top: 12px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--atlas-v5-line-2);
   cursor: pointer;
   transition: background 0.14s;
-  /* Entrada escalonada · una sola coreografía al cargar, nada más. */
-  animation: filaIn 0.34s cubic-bezier(0.22, 0.8, 0.36, 1) both;
-}
-@keyframes filaIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .fila { animation: none; }
 }
 .fila:hover { background: var(--atlas-v5-card-alt); }
 .fila:focus-visible {
@@ -88,26 +103,32 @@
 .filaDragging { opacity: 0.4; cursor: grabbing; }
 .filaOver { box-shadow: inset 0 2px 0 var(--atlas-v5-gold); }
 
-/* Identidad · el punto del banco, con su halo, y el nombre. */
+/* La celda rica · identidad arriba, estado debajo. */
 .celCuenta {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   min-width: 0;
 }
+/* Único color libre: la identidad del banco (§12.5). */
 .bankDot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
-  box-shadow: 0 0 0 3px var(--atlas-v5-card-alt);
+  margin-top: 5px;
 }
-.fila:hover .bankDot { box-shadow: 0 0 0 3px var(--atlas-v5-line-3); }
 .accId {
   min-width: 0;
   display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.accLinea {
+  display: flex;
   align-items: baseline;
   gap: 8px;
+  min-width: 0;
 }
 .accNm {
   font-size: 13.5px;
@@ -124,88 +145,95 @@
   flex-shrink: 0;
 }
 
-/* El peso · cuánto de mi dinero vive aquí. Proporción, no cifra. */
-.peso {
-  display: block;
-  height: 6px;
-  border-radius: 4px;
-  background: var(--atlas-v5-line-3);
-  overflow: hidden;
-}
-.pesoFill {
-  display: block;
-  height: 100%;
-  border-radius: 4px;
-  opacity: 0.85;
-  transition: width 0.4s cubic-bezier(0.22, 0.8, 0.36, 1);
-}
-.fila:hover .pesoFill { opacity: 1; }
-
-/* Estado · chip solo cuando pide actuar. */
-.colEstado {
-  min-width: 0;
+/* El estado · texto, no chip (§4.2) · una frase que no se parte. */
+.state {
+  font-size: 11px;
   display: flex;
-}
-.chip {
-  display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 999px;
-  padding: 3px 10px;
+  color: var(--atlas-v5-ink-4);
+  font-weight: 500;
   white-space: nowrap;
-  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
-.chipVal {
+.state > * { flex: 0 0 auto; }
+.stateN {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: 700;
+  color: var(--atlas-v5-ink-3);
+}
+/* Ámbar --warn · riesgo que pide actuar (§2.2 de la guía) · único color de
+   estado de la fila, con su punto. */
+.stateAlerta {
+  color: var(--atlas-v5-warn);
+  font-weight: 600;
+}
+.stateDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--atlas-v5-warn);
+  flex-shrink: 0;
+  align-self: center;
+}
+.stateVal {
   font-family: var(--atlas-v5-font-mono-num);
   font-weight: 700;
 }
-/* La tarea · navy sobre lavado navy · trabajo, no peligro. */
-.chipTarea {
-  background: var(--atlas-v5-brand-wash);
-  color: var(--atlas-v5-brand);
-}
-/* El problema · rojo con semántica. Quedarse en negativo no es «ámbar». */
-.chipAlerta {
-  background: var(--atlas-v5-neg-wash);
-  color: var(--atlas-v5-neg);
-}
-/* Lo que está bien, calla. */
-.alDia {
-  font-size: 11px;
-  color: var(--atlas-v5-ink-5);
-}
 
-/* El dinero · DOS cifras y nada más: el saldo y su cierre. */
-.dinero {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  text-align: right;
-}
+/* ── La jerarquía del dinero · mono tabular, derecha ─────────────────────── */
+
+/* El saldo manda. */
 .saldo {
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
-  font-size: 15.5px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--atlas-v5-ink);
   letter-spacing: -0.02em;
-  line-height: 1;
   white-space: nowrap;
 }
-.cierreSub {
+/* Los flujos acompañan · apilados, con su flecha en gris sutil. */
+.flujos {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+.flujo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
-  color: var(--atlas-v5-ink-4);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
+.flujo svg { color: var(--atlas-v5-ink-5); }
+/* Los ceros callan · la columna se lee de un vistazo. */
+.flujoCero { color: var(--atlas-v5-ink-5); }
+/* Y si no queda nada, un guion mudo en vez de dos ceros apilados. */
+.flujoNada {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-5);
+}
+
+/* El cierre confirma · es la respuesta de la fila. */
+.cierre {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink-2);
   white-space: nowrap;
 }
 
-/* Acciones · aparecen al posarse en la fila. */
+/* ── Acciones · aparecen al posarse en la fila ───────────────────────────── */
+
 .acciones {
   display: flex;
   justify-content: flex-end;
@@ -215,7 +243,7 @@
   opacity: 0;
   width: 26px;
   height: 26px;
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -232,37 +260,28 @@
   color: var(--atlas-v5-brand);
 }
 
-/* El cuadre · una línea muda al pie. */
-.foot {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 18px;
+/* ── El total · el control del conjunto, en las mismas verticales ────────── */
+
+.total {
+  padding-top: 11px;
+  padding-bottom: 11px;
   background: var(--atlas-v5-card-alt);
+  border-top: 1px solid var(--atlas-v5-line);
 }
-.footLab {
+.totalLab {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--atlas-v5-ink-4);
+  color: var(--atlas-v5-ink-3);
 }
-.footNum {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 12px;
+.totalNum {
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--atlas-v5-ink-2);
+  color: var(--atlas-v5-ink);
   white-space: nowrap;
-}
-.footSub {
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--atlas-v5-ink-4);
 }
 
 .vacio {
@@ -271,12 +290,15 @@
   padding: 12px 0;
 }
 
-/* ── Responsive · cede primero la barra de peso, nunca el estado ─────────── */
+/* ── Responsive · cede primero la columna de flujos (vive también en el
+   hero y en la previsión) · el estado nunca, va con el nombre ───────────── */
 
-@media (max-width: 1200px) {
-  .fila { grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 1fr) 170px 62px; gap: 14px; }
-  .fila > .peso { display: none; }
+@media (max-width: 1100px) {
+  .gridCols { grid-template-columns: minmax(200px, 1.6fr) minmax(120px, 1fr) minmax(120px, 1fr) 40px; gap: 14px; }
+  .gridCols > :nth-child(3) { display: none; }
 }
-@media (max-width: 900px) {
-  .fila { grid-template-columns: minmax(150px, 1.2fr) minmax(130px, 1fr) 150px 34px; gap: 10px; padding: 11px 14px; }
+@media (max-width: 860px) {
+  .gridCols { grid-template-columns: minmax(160px, 1.6fr) minmax(110px, 1fr) 34px; gap: 10px; padding: 0 14px; }
+  /* También el cierre · quedan nombre + estado + saldo, lo esencial. */
+  .gridCols > :nth-child(4) { display: none; }
 }
