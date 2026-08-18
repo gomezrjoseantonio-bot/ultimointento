@@ -1,7 +1,16 @@
-// El parser del extracto de tarjeta (Carrefour) · líneas reales del PDF de Jose.
-// Solo las compras (empiezan por fecha); cabeceras, totales y pie caen solos.
+// Lector universal del extracto de tarjeta · las dos vías (IA y SheetJS)
+// desembocan en la misma lista de líneas, ya normalizada.
 
-import { parsearLineasCarrefour, importeEspañol } from '../extractoTarjeta';
+import {
+  importeEspañol,
+  esPdf,
+  lineasDeIA,
+  lineasDeMovimientos,
+} from '../extractoTarjeta';
+import type { ParsedMovement } from '../../../types/bankProfiles';
+
+const file = (name: string, type = ''): File =>
+  new File(['x'], name, { type });
 
 describe('importe español a número', () => {
   it('con miles y decimales', () => {
@@ -12,53 +21,69 @@ describe('importe español a número', () => {
   });
 });
 
-describe('parsear el detalle del extracto', () => {
-  // Copiadas del PDF real (reconstruidas por línea).
-  const LINEAS = [
-    'Detalle de tus operaciones a Contado Fin de Mes',
-    '20/06/2026 UBER1892231HELP help.uber.com NL 20,89 €',
-    '23/06/2026 ANTH1892231CLAU SAN FRANCISCO US 108,90 €',
-    '03/07/2026 MERCADONA ONLINE 122,36 €',
-    '04/07/2026 EXPENDEDURIA 6 POZUELO 53,50 €',
-    'Total compras realizadas a Contado Fin de Mes 31/07/2026 1.667,13 €',
-    '6377- 0/0',
-  ];
-
-  it('saca una compra por línea de detalle', () => {
-    const compras = parsearLineasCarrefour(LINEAS);
-    expect(compras).toHaveLength(4);
+describe('esPdf', () => {
+  it('reconoce el PDF por tipo MIME', () => {
+    expect(esPdf(file('x', 'application/pdf'))).toBe(true);
   });
+  it('reconoce el PDF por extensión', () => {
+    expect(esPdf(file('extracto.PDF'))).toBe(true);
+  });
+  it('un xls no es PDF', () => {
+    expect(esPdf(file('export.xls'))).toBe(false);
+  });
+});
 
-  it('cada compra lleva fecha ISO, concepto literal e importe positivo', () => {
-    const [uber] = parsearLineasCarrefour(LINEAS);
-    expect(uber).toEqual({
-      fecha: '2026-06-20',
-      concepto: 'UBER1892231HELP help.uber.com NL',
-      importe: 20.89,
+describe('lineasDeIA · lo que devuelve el modelo', () => {
+  it('normaliza fecha, concepto e importe', () => {
+    const l = lineasDeIA({
+      lineas: [{ fecha: '2026-07-04', concepto: 'EXPENDEDURIA 6', importe: 53.5 }],
     });
+    expect(l).toEqual([{ fecha: '2026-07-04', concepto: 'EXPENDEDURIA 6', importe: 53.5 }]);
   });
 
-  it('la del tabaco (EXPENDEDURIA) sale con su importe', () => {
-    const tabaco = parsearLineasCarrefour(LINEAS).find((c) => c.concepto.startsWith('EXPENDEDURIA'));
-    expect(tabaco?.importe).toBe(53.5);
+  it('acepta también un array pelado y fechas DD/MM/YYYY', () => {
+    const l = lineasDeIA([{ fecha: '20/06/2026', concepto: 'UBER', importe: '20,89' as unknown as number }]);
+    // El importe llega como string numérico español mal formado: se descarta si
+    // no es número. `Number('20,89')` es NaN → fuera.
+    expect(l).toEqual([]);
   });
 
-  it('la línea de TOTAL no es una compra · empieza por "Total", no por fecha', () => {
-    const compras = parsearLineasCarrefour(LINEAS);
-    expect(compras.some((c) => c.importe === 1667.13)).toBe(false);
+  it('descarta líneas sin fecha, sin concepto o de importe 0', () => {
+    const l = lineasDeIA({
+      lineas: [
+        { fecha: '', concepto: 'X', importe: 5 },
+        { fecha: '2026-07-04', concepto: '', importe: 5 },
+        { fecha: '2026-07-04', concepto: 'X', importe: 0 },
+        { fecha: '2026-07-04', concepto: 'OK', importe: -12.5 },
+      ],
+    });
+    expect(l).toEqual([{ fecha: '2026-07-04', concepto: 'OK', importe: -12.5 }]);
   });
 
-  it('la cabecera y el pie no cuelan', () => {
-    expect(parsearLineasCarrefour(['Detalle de tus operaciones', '6377- 0/0', ''])).toEqual([]);
+  it('un extraído sin líneas devuelve vacío', () => {
+    expect(lineasDeIA('no es json')).toEqual([]);
+    expect(lineasDeIA({})).toEqual([]);
+  });
+});
+
+describe('lineasDeMovimientos · lo que saca SheetJS (xls/csv)', () => {
+  const mov = (date: Date, amount: number, description: string): ParsedMovement => ({
+    date,
+    amount,
+    description,
   });
 
-  it('una compra del próximo recibo también se lee', () => {
-    const [c] = parsearLineasCarrefour(['20/07/2026 SIMYO\\POZUELO DE AL\\ 7,50 €']);
-    expect(c).toMatchObject({ fecha: '2026-07-20', importe: 7.5 });
+  it('adapta la forma del ParsedMovement a la línea', () => {
+    const l = lineasDeMovimientos([mov(new Date('2026-07-04T00:00:00Z'), -53.5, 'EXPENDEDURIA 6')]);
+    expect(l).toEqual([{ fecha: '2026-07-04', concepto: 'EXPENDEDURIA 6', importe: -53.5 }]);
   });
 
-  it('una devolución (importe negativo) se lee con su signo', () => {
-    const [c] = parsearLineasCarrefour(['15/07/2026 DEVOLUCION MERCADONA -12,50 €']);
-    expect(c.importe).toBe(-12.5);
+  it('salta filas sin fecha, sin concepto o de importe 0', () => {
+    const l = lineasDeMovimientos([
+      mov(new Date('2026-07-04T00:00:00Z'), 0, 'ruido'),
+      mov(new Date('2026-07-05T00:00:00Z'), 10, ''),
+      mov(new Date('2026-07-06T00:00:00Z'), 10, 'BUENA'),
+    ]);
+    expect(l).toEqual([{ fecha: '2026-07-06', concepto: 'BUENA', importe: 10 }]);
   });
 });

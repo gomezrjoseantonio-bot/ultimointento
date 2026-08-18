@@ -1,16 +1,23 @@
 // ============================================================================
-// El extracto de una TARJETA de crédito · §3 (Fase 3a)
+// Lector universal del extracto de una TARJETA · §3
 // ============================================================================
 //
-// El extracto de la tarjeta (Carrefour) llega en PDF y lista sus compras del
-// periodo: fecha · concepto · importe. No es un extracto BANCARIO —el import de
-// banco solo lee CSV/XLS y va atado a una cuenta—, así que se lee aparte y sirve
-// para CONCILIAR las piezas de la tarjeta (previsto/confirmado → conciliado).
+// UN solo sitio para subir extractos, y no atado a un emisor. El extracto de la
+// tarjeta llega en PDF, en Excel o en CSV, y cada banco lo maqueta a su manera
+// (la Carrefour no se parece al Santander, y algunos vienen escaneados). Por eso
+// no hay un parser a medida:
 //
-// El parser (`parsearLineasCarrefour`) es PURO —trabaja sobre las líneas de
-// texto ya extraídas— para poder probarlo sin un PDF. La lectura del PDF
-// (`leerExtractoTarjeta`) es una capa fina encima, con `pdfjs`.
+//   · PDF   → lo lee la IA (`functions/chat.js`, tipo `scan_extracto`), que
+//             saca fecha · concepto · importe de cualquier maquetación.
+//   · XLS/CSV → lo lee el MISMO parser de banco (SheetJS) que ya usamos.
+//
+// Las dos vías desembocan en la misma lista de `LineaExtractoTarjeta`, que luego
+// concilia `conciliarExtractoTarjeta` (previsto/confirmado → conciliado).
 // ============================================================================
+
+import { callScanChat } from '../scanChatService';
+import { BankParserService } from '../../features/inbox/importers/bankParser';
+import type { ParsedMovement } from '../../types/bankProfiles';
 
 /** Una compra del extracto de la tarjeta. */
 export interface LineaExtractoTarjeta {
@@ -18,88 +25,91 @@ export interface LineaExtractoTarjeta {
   fecha: string;
   /** El texto LITERAL del extracto. */
   concepto: string;
-  /** Magnitud del cargo · positiva (una devolución vendría negativa). */
+  /** Importe · positivo = compra/cargo · negativo = abono/devolución. */
   importe: number;
 }
 
-// `DD/MM/YYYY <concepto...> <importe>[ €]` · el importe es el ÚLTIMO número con
-// dos decimales de la línea (formato español: 1.667,13 · 20,89 · -12,50).
-const RE_LINEA = /^(\d{2})\/(\d{2})\/(\d{4})\s+(.+?)\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*€?$/;
-
 /** Un importe español a número · `1.667,13` → 1667.13. */
 export function importeEspañol(texto: string): number {
-  return Number(texto.replace(/\./g, '').replace(',', '.'));
+  return Number(String(texto).replace(/\./g, '').replace(',', '.'));
+}
+
+/** ¿El fichero es un PDF? · por tipo MIME o por extensión. */
+export function esPdf(file: File): boolean {
+  return file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+}
+
+/** Un `Date` (o texto de fecha) a ISO `YYYY-MM-DD`, o `null` si no hay fecha. */
+function aIso(fecha: unknown): string | null {
+  if (fecha instanceof Date && !Number.isNaN(fecha.getTime())) {
+    return fecha.toISOString().slice(0, 10);
+  }
+  if (typeof fecha === 'string') {
+    const s = fecha.trim();
+    // Ya ISO.
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    // DD/MM/YYYY o DD-MM-YYYY.
+    const es = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    if (es) return `${es[3]}-${es[2].padStart(2, '0')}-${es[1].padStart(2, '0')}`;
+  }
+  return null;
 }
 
 /**
- * Saca las compras de las líneas de texto del extracto.
+ * Normaliza lo que devuelve la IA (`scan_extracto`) a líneas del extracto.
  *
- * Solo las que EMPIEZAN por una fecha `DD/MM/YYYY`; las de cabecera, totales
- * ("Total compras…") y pie no empiezan por fecha, así que caen solas. El importe
- * 0 es ruido y no se emite.
+ * Puro para poder probarlo sin llamar a la red. Acepta `{ lineas: [...] }` o
+ * directamente un array. Descarta lo que no tenga fecha, concepto e importe.
  */
-export function parsearLineasCarrefour(lineas: string[]): LineaExtractoTarjeta[] {
-  const out: LineaExtractoTarjeta[] = [];
-  for (const raw of lineas) {
-    const m = RE_LINEA.exec((raw ?? '').trim());
-    if (!m) continue;
-    const [, dd, mm, yyyy, concepto, imp] = m;
-    const importe = importeEspañol(imp);
-    if (!Number.isFinite(importe) || importe === 0) continue;
-    out.push({ fecha: `${yyyy}-${mm}-${dd}`, concepto: concepto.trim(), importe });
+export function lineasDeIA(extraido: unknown): LineaExtractoTarjeta[] {
+  const bruto = Array.isArray(extraido)
+    ? extraido
+    : Array.isArray((extraido as { lineas?: unknown })?.lineas)
+      ? (extraido as { lineas: unknown[] }).lineas
+      : [];
+  const lineas: LineaExtractoTarjeta[] = [];
+  for (const item of bruto) {
+    const o = item as { fecha?: unknown; concepto?: unknown; importe?: unknown };
+    const fecha = aIso(o?.fecha);
+    const importe = typeof o?.importe === 'number' ? o.importe : Number(o?.importe);
+    const concepto = typeof o?.concepto === 'string' ? o.concepto.trim() : '';
+    if (!fecha || !concepto || !Number.isFinite(importe) || importe === 0) continue;
+    lineas.push({ fecha, concepto, importe });
   }
-  return out;
-}
-
-/** Reconstruye las líneas de una página agrupando por Y y ordenando por X. */
-function lineasDePagina(items: Array<{ str: string; x: number; y: number }>): string[] {
-  const filas = new Map<number, Array<{ str: string; x: number }>>();
-  for (const it of items) {
-    const y = Math.round(it.y);
-    const fila = filas.get(y) ?? [];
-    fila.push({ str: it.str, x: it.x });
-    filas.set(y, fila);
-  }
-  return Array.from(filas.entries())
-    .sort((a, b) => b[0] - a[0]) // de arriba a abajo
-    .map(([, fila]) =>
-      fila
-        .sort((a, b) => a.x - b.x)
-        .map((c) => c.str)
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-    )
-    .filter(Boolean);
+  return lineas;
 }
 
 /**
- * Lee el PDF del extracto de una tarjeta y devuelve sus compras.
+ * Convierte los movimientos que saca SheetJS (XLS/CSV) en líneas del extracto.
  *
- * Mismo `pdfjs` que el resto de la app (`aeatParserService`). Puro de red: no
- * sube nada, todo se resuelve en el navegador.
+ * El parser de banco ya normaliza fecha, importe y descripción; aquí solo se
+ * adapta la forma. Puro y sin red, como `lineasDeIA`.
+ */
+export function lineasDeMovimientos(movimientos: ParsedMovement[]): LineaExtractoTarjeta[] {
+  const lineas: LineaExtractoTarjeta[] = [];
+  for (const m of movimientos ?? []) {
+    const fecha = aIso(m?.date);
+    const importe = typeof m?.amount === 'number' ? m.amount : Number(m?.amount);
+    const concepto = (m?.description ?? m?.counterparty ?? '').trim();
+    if (!fecha || !concepto || !Number.isFinite(importe) || importe === 0) continue;
+    lineas.push({ fecha, concepto, importe });
+  }
+  return lineas;
+}
+
+/**
+ * Lee el extracto de una tarjeta desde cualquier fichero soportado.
+ *
+ * PDF → IA; XLS/CSV → SheetJS. Devuelve la lista de líneas ya normalizada. Si el
+ * fichero no da ninguna línea, devuelve `[]` (la UI avisa de que no se pudo leer).
  */
 export async function leerExtractoTarjeta(file: File): Promise<LineaExtractoTarjeta[]> {
-  const { pdfjs } = await import('react-pdf');
-  pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const pdf = await pdfjs.getDocument({ data: bytes }).promise;
-
-  const lineas: string[] = [];
-  for (let p = 1; p <= pdf.numPages; p += 1) {
-    const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    const items = content.items
-      .map((it) => {
-        if (!('str' in it)) return null;
-        const str = String(it.str ?? '').trim();
-        const t = Array.isArray(it.transform) ? it.transform : [];
-        return str ? { str, x: Number(t[4]) || 0, y: Number(t[5]) || 0 } : null;
-      })
-      .filter((it): it is { str: string; x: number; y: number } => Boolean(it));
-    lineas.push(...lineasDePagina(items));
+  if (esPdf(file)) {
+    const r = await callScanChat(file, 'application/pdf', 'scan_extracto');
+    if (!r.ok) throw new Error(r.error || 'No se pudo leer el PDF del extracto.');
+    return lineasDeIA(r.extraido);
   }
-
-  return parsearLineasCarrefour(lineas);
+  const parsed = await new BankParserService().parseFile(file);
+  return lineasDeMovimientos(parsed.movements ?? []);
 }

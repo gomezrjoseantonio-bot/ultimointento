@@ -1,12 +1,10 @@
-// Tesorería V6 · §4.7 · drawer · subir extracto.
+// Tesorería V6 · §4.7 · drawer · subir extracto · ÚNICO sitio para subirlos.
 //
-// Dos puertas, un flujo: desde el hero la cuenta se detecta por el IBAN del
-// fichero; desde una cuenta ya viene fijada. Paso 1 · dropzone. Paso 2 ·
-// resultado del emparejamiento, con las tres acciones por línea sin cuadre
-// (asignar · crear · ignorar). **Un solo botón Guardar** al pie consolida la
-// sesión entera; no hay botón intermedio de conciliar. El aspa sale SIN guardar,
-// y eso significa borrar el batch: `processFile` ya insertó los movimientos al
-// procesar, así que "no guardar" tiene que deshacerlos (`cancelImportBatch`).
+// Desde el hero la cuenta se detecta por IBAN; desde una cuenta ya viene fijada;
+// un PDF (o XLS/CSV) de TARJETA se concilia aparte (§3, `PanelExtractoTarjeta`).
+// Paso 1 · dropzone. Paso 2 · emparejamiento, con tres acciones por línea sin
+// cuadre (asignar · crear · ignorar). Un solo botón Guardar consolida la sesión;
+// el aspa sale SIN guardar y borra el batch (`processFile` ya insertó todo).
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
@@ -40,6 +38,8 @@ import {
   type DecisionesSesion,
 } from './extractoSesion';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
+import { esPdf } from '../../../services/personal/extractoTarjeta';
+import PanelExtractoTarjeta from './PanelExtractoTarjeta';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
@@ -80,6 +80,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [avisoReimport, setAvisoReimport] = useState<{ mensaje: string; file: File } | null>(null);
   const [cuentaElegida, setCuentaElegida] = useState<Account | null>(cuenta);
   const [deteccion, setDeteccion] = useState<DeteccionCuenta | null>(null);
+  // Fichero de TARJETA · el destino no es una cuenta, se concilia aparte (§3).
+  const [tarjetaDestino, setTarjetaDestino] = useState<{ id: number; alias: string } | null>(null);
   const [resultado, setResultado] = useState<OrchestratorResult | null>(null);
   const [lineas, setLineas] = useState<LineaExtracto[]>([]);
   const [decisiones, setDecisiones] = useState<DecisionesSesion>(decisionesVacias);
@@ -88,9 +90,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [ignoradasPlegadas, setIgnoradasPlegadas] = useState(true);
   const [cerradosPlegados, setCerradosPlegados] = useState(true);
 
-  // El previsto se nombra con el MISMO adaptador que el resto de la app (§modelo
-  // del apunte): título = quién · qué es · inmueble. Antes salía su `description`
-  // en crudo, distinta a como se ve el mismo previsto en Tesorería.
+  // El previsto se nombra con el MISMO adaptador que el resto de la app: título
+  // = quién · qué es · inmueble (no su `description` en crudo).
   const aliasInmueble = useCallback(
     (id: number | string) => inmuebles.find((i) => String(i.id) === String(id))?.alias,
     [inmuebles],
@@ -108,11 +109,11 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const [arrastrando, setArrastrando] = useState(false);
-  /** Fichero a la espera de que el usuario diga a qué cuenta va (puerta global). */
+  /** Fichero a la espera de que el usuario elija destino (puerta global). */
   const pendienteRef = useRef<File | null>(null);
-  /** El fichero de la sesión en curso · se archiva en el Archivo al guardar. */
+  /** El fichero de la sesión en curso · se archiva al guardar. */
   const ficheroRef = useRef<File | null>(null);
-  /** Línea para la que se ha abierto la ficha de §4.5 con "Crear movimiento". */
+  /** Línea para la que se ha abierto la ficha con "Crear movimiento". */
   const [creando, setCreando] = useState<LineaExtracto | null>(null);
 
   const cuentaActiva = cuenta ?? cuentaElegida;
@@ -127,6 +128,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setLineas([]);
     setDecisiones(decisionesVacias());
     setDeteccion(null);
+    setTarjetaDestino(null);
     setAsignando(null);
     setCreando(null);
     ficheroRef.current = null;
@@ -158,8 +160,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         const abiertos = (todosEventos ?? []).filter(
           (e) => e.accountId === destino.id && e.status !== 'executed'
         );
-        // Un extracto suele traer varios meses · los que ya están cerrados no se
-        // cargan (§ cerrar el mes): se apartan y no piden atención.
+        // Los meses ya cerrados no se cargan · se apartan (§ cerrar el mes).
         const setCerrados = new Set((mesesCerrados ?? []).map((c) => c.mes));
 
         setResultado(res);
@@ -169,8 +170,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         setPaso('resolver');
       } catch (err) {
         if (err instanceof StatementAlreadyImportedError) {
-          // No es un error del usuario: es la protección de idempotencia. Se le
-          // enseña cuándo se importó y se le deja decidir (D1 bis).
+          // Idempotencia (D1 bis) · se enseña cuándo se importó y se deja decidir.
           setAvisoReimport({ mensaje: err.message, file });
           setPaso('soltar');
           return;
@@ -186,6 +186,14 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     async (file: File) => {
       if (cuenta) {
         await procesar(file, cuenta);
+        return;
+      }
+      // Un PDF no lo lee SheetJS ni trae IBAN (es de tarjeta o escaneado): se
+      // salta la detección y se pide destino, donde están las tarjetas.
+      if (esPdf(file)) {
+        setAvisoReimport(null);
+        setDeteccion({ estado: 'sin-iban' });
+        pendienteRef.current = file;
         return;
       }
       // Puerta global · §4.7 dice que la cuenta se detecta por el IBAN.
@@ -204,13 +212,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     [cuenta, cuentas, procesar]
   );
 
-  /**
-   * La cuenta de Efectivo · sin ella no se puede ofrecer nada.
-   *
-   * Sacar del cajero es un traspaso, y un traspaso necesita una cuenta al otro
-   * lado. Si el usuario no la tiene creada, el botón no aparece: prometer una
-   * acción que no se puede completar es peor que no ofrecerla.
-   */
+  // La cuenta de Efectivo · sin ella no se ofrece "Es efectivo" (un traspaso la necesita).
   const cuentaEfectivo = useMemo(
     () => cuentasEnUso(cuentas).find((c) => c.tipo === 'EFECTIVO'),
     [cuentas]
@@ -223,8 +225,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     try {
       await confirmDecisions(resultado.importBatchId, payloadDeConfirmacion(lineas, decisiones));
 
-      // El ignorado se persiste por hash de línea, no por movimiento: por D4 lo
-      // no resuelto no se materializa, así que el registro vive en el fichero.
+      // El ignorado se persiste por hash de línea (D4 · vive en el fichero).
       for (const l of lineasAIgnorar(lineas, decisiones)) {
         await ignoreLine(resultado.importBatchId, {
           date: l.fecha,
@@ -236,18 +237,15 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         await recoverLine(cuentaActiva.id, hash);
       }
 
-      // Las retiradas de efectivo · el movimiento del cargo YA existe, así que
-      // se transforma en la pata de salida y nace su espejo en la cuenta de
-      // efectivo. Crear el traspaso desde cero duplicaría el apunte y el saldo
-      // dejaría de cuadrar con el banco.
+      // Retiradas de efectivo · el cargo YA existe, se transforma en la pata de
+      // salida y nace su espejo en Efectivo (crearlo de cero duplicaría el saldo).
       if (cuentaEfectivo?.id != null) {
         for (const movementId of movimientosAEfectivo(lineas, decisiones)) {
           await convertirEnTraspaso(movementId, cuentaEfectivo.id);
         }
       }
 
-      // §4.7 · el fichero se archiva vinculado a cuenta y periodo. Va antes de
-      // consolidar pero no puede tumbarla: `archivarExtracto` traga sus errores.
+      // §4.7 · el fichero se archiva por cuenta y periodo (traga sus errores).
       if (ficheroRef.current) {
         await archivarExtracto(
           ficheroRef.current,
@@ -256,13 +254,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         );
       }
 
-      // Lo último: hasta aquí la sesión era un borrador invisible. Si algo de
-      // lo anterior falla, mejor que siga siéndolo.
-      //
-      // Las líneas sin resolver viajan aquí para que `consolidarSesion` las
-      // DESMATERIALICE (D4): borra sus movimientos y guarda su identidad en el
-      // batch. Si se quedasen en el store, al dejar de ser borrador aparecerían
-      // en la lista de la cuenta como conciliadas y moverían el saldo.
+      // Lo último · `consolidarSesion` DESMATERIALIZA (D4) las líneas sin resolver:
+      // borra sus movimientos para que no cuenten como conciliados en el saldo.
       await consolidarSesion(resultado.importBatchId, lineasPendientes(lineas, decisiones));
       await onGuardado();
       reiniciar();
@@ -275,8 +268,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
   // ── Salir sin guardar ─────────────────────────────────────────────────────
   const salirSinGuardar = useCallback(async () => {
-    // `processFile` ya insertó los movimientos, así que cerrar sin más los
-    // dejaría en la base de datos. Cerrar es descartar de verdad.
+    // `processFile` ya insertó los movimientos · cerrar es descartarlos.
     if (resultado) {
       try {
         await cancelImportBatch(resultado.importBatchId);
@@ -321,11 +313,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       d.aEfectivo.delete(movementId);
     });
 
-  /**
-   * "Es efectivo" · el cargo se convierte en un traspaso a la cuenta de
-   * Efectivo al guardar. Sacar del cajero no es un gasto: el dinero no se va,
-   * cambia de sitio.
-   */
+  // "Es efectivo" · el cargo pasa a un traspaso a Efectivo al guardar (sacar del
+  // cajero no es gasto: el dinero cambia de sitio).
   const marcarEfectivo = (movementId: number) =>
     conDecisiones((d) => {
       d.aEfectivo.add(movementId);
@@ -337,18 +326,14 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     conDecisiones((d) => d.aEfectivo.delete(movementId));
 
   /**
-   * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto, así
-   * que se queda como gasto/ingreso suelto.
-   *
-   * El `Movement` YA existe —`processFile` lo insertó al procesar—, de modo que
-   * crear aquí es clasificarlo: ponerle familia, concepto e inmueble. La ficha
-   * de §4.5 se abre prerrellenada con lo que dice el banco.
+   * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto. El
+   * `Movement` YA existe (`processFile` lo insertó), así que crear aquí es
+   * clasificarlo: familia, concepto e inmueble, sobre la ficha prerrellenada.
    */
   const crearDesdeFicha = useCallback(
     async (linea: LineaExtracto, v: GuardadoFicha) => {
-      // Una derrama que resultó ser MEJORA no se clasifica como gasto: el
-      // apunte bancario se queda (el dinero salió) pero la deducción va por
-      // amortización, así que la inversión se registra en `mejorasInmueble`.
+      // Una derrama que resultó ser MEJORA no es gasto: el apunte se queda (el
+      // dinero salió) pero la deducción va por amortización (`mejorasInmueble`).
       if (v.esMejora) {
         if (v.inmuebleId == null) {
           setError('Una mejora se suma al valor de un inmueble: elige a cuál.');
@@ -480,8 +465,18 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         </div>
 
         <div className={chasis.body}>
+          {/* Fichero de TARJETA · se lee y concilia aparte (§3). */}
+          {tarjetaDestino && pendienteRef.current && (
+            <PanelExtractoTarjeta
+              tarjeta={tarjetaDestino}
+              file={pendienteRef.current}
+              onGuardado={onGuardado}
+              onCerrar={salirSinGuardar}
+            />
+          )}
+
           {/* ── Paso 1 · dropzone ───────────────────────────────────────── */}
-          {(paso === 'soltar' || paso === 'procesando') && (
+          {!tarjetaDestino && (paso === 'soltar' || paso === 'procesando') && (
             <div className={styles.zonaWrap}>
               {!cuenta && deteccion && deteccion.estado !== 'detectada' && (
                 <div className={styles.avisoCuenta}>
@@ -493,29 +488,42 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                         : 'No se ha encontrado el IBAN en el fichero'}
                   </div>
                   <div className={styles.avisoS}>
-                    Elige la cuenta. Importar en la equivocada mueve saldos que no son.
+                    Elige la cuenta o la tarjeta de este extracto. Importar en el sitio
+                    equivocado mueve saldos que no son.
                   </div>
                   <select
                     className={styles.selectCuenta}
-                    aria-label="Cuenta de destino"
-                    // Cambiar de cuenta a mitad de una importación lanzaría un
+                    aria-label="Destino del extracto"
+                    // Cambiar de destino a mitad de una importación lanzaría un
                     // segundo `processFile` y dejaría el batch anterior huérfano.
                     disabled={paso === 'procesando'}
-                    value={cuentaElegida?.id ?? ''}
+                    value=""
                     onChange={(e) => {
-                      const elegida = cuentas.find((c) => c.id === Number(e.target.value)) ?? null;
-                      setCuentaElegida(elegida);
+                      const v = e.target.value;
                       const f = pendienteRef.current;
-                      if (elegida && f) void procesar(f, elegida);
+                      if (!v || !f) return;
+                      // `t:ID` una tarjeta (se concilia aparte) · `c:ID` una cuenta.
+                      if (v.startsWith('t:')) {
+                        const t = tarjetas.find((x) => x.id === Number(v.slice(2)));
+                        if (t) setTarjetaDestino({ id: t.id, alias: t.alias });
+                        return;
+                      }
+                      const elegida = cuentas.find((c) => c.id === Number(v.slice(2))) ?? null;
+                      setCuentaElegida(elegida);
+                      if (elegida) void procesar(f, elegida);
                     }}
                   >
-                    <option value="">Elige una cuenta…</option>
-                    {cuentasEnUso(cuentas)
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.alias} · ****{c.ultimosCuatro}
-                        </option>
-                      ))}
+                    <option value="">Elige cuenta o tarjeta…</option>
+                    {cuentasEnUso(cuentas).map((c) => (
+                      <option key={`c${c.id}`} value={`c:${c.id}`}>
+                        {c.alias} · ****{c.ultimosCuatro}
+                      </option>
+                    ))}
+                    {tarjetas.map((t) => (
+                      <option key={`t${t.id}`} value={`t:${t.id}`}>
+                        {t.alias} · tarjeta
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
@@ -566,13 +574,13 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                     ? 'Leyendo el extracto…'
                     : 'Arrastra aquí el extracto o haz clic para elegir'}
                 </div>
-                <div className={styles.zonaS}>Norma 43, Excel o CSV</div>
+                <div className={styles.zonaS}>Excel, CSV, Norma 43 o PDF (tarjeta)</div>
               </button>
 
               <input
                 ref={inputRef}
                 type="file"
-                accept=".csv,.xls,.xlsx,.txt,.n43,.csb"
+                accept=".csv,.xls,.xlsx,.txt,.n43,.csb,.pdf"
                 className={styles.inputFile}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -601,8 +609,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                   asignado != null
                     ? previstos.find((p) => p.id === asignado)
                     : undefined;
-                // Candidatos DE VERDAD para asignar: una entrada por serie,
-                // ordenados por cercanía. Nada de volcar las 14 mensualidades.
+                // Candidatos para asignar · una entrada por serie, por cercanía.
                 const candidatos = candidatosDeLinea(
                   { fecha: l.fecha, importe: l.importe },
                   previstos,
@@ -665,9 +672,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                           </select>
                         ) : (
                           <>
-                            {/* Solo se ofrece asignar si hay algún previsto que
-                                pueda ser · si no lo hay, la acción es crear, no
-                                un desplegable vacío o de cosas que no cuadran. */}
+                            {/* Asignar solo si hay algún previsto que pueda ser. */}
                             {candidatos.length > 0 && (
                               <button
                                 type="button"
@@ -684,12 +689,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                             >
                               Crear movimiento
                             </button>
-                            {/* Solo donde encaja · una retirada de cajero llega
-                                como un cargo más, y apuntarla como gasto hunde
-                                el patrimonio el día que el dinero solo ha
-                                cambiado de sitio. Se PROPONE, no se adivina:
-                                un reintegro también puede ser dinero que sacas
-                                para llevártelo a otro sitio. */}
+                            {/* Retirada de cajero · se PROPONE pasarla a Efectivo
+                                (no es gasto, el dinero cambia de sitio), no se adivina. */}
                             {cuentaEfectivo?.id != null &&
                               pareceRetiradaDeCajero(l.textoBanco, l.importe) && (
                                 <button
@@ -734,8 +735,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 />
               )}
 
-              {/* Meses cerrados · el extracto trae varios meses y estos ya están
-                  cerrados · no se cargan. Para cargarlos, se reabre el mes. */}
+              {/* Meses ya cerrados · no se cargan (reabre el mes para cargarlos). */}
               {deMesesCerrados.length > 0 && (
                 <GrupoPlegableExtracto
                   plegado={cerradosPlegados}
