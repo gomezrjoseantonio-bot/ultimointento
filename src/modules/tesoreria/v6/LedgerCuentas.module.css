@@ -1,10 +1,58 @@
 /* ===========================================================================
-   Ledger de cuentas · Tesorería V6 (rediseño §4.2)
-   El patrón visual del ledger de Inversiones: cabecera en versalita sobre
-   --card-alt, filas separadas por --line-2, números en mono tabular.
-   Regla §5: números SIEMPRE en ink · color solo donde hay que actuar (--warn).
-   El único color libre es el punto del banco.
+   Ledger de cuentas · Tesorería V6 (rediseño §4.2 · iteración 3)
+
+   La lista de cuentas de un banco privado, no una hoja de cálculo: sin fila
+   de cabecera, dos cifras por fila (saldo grande · cierre pequeño), la barra
+   de peso en el color del banco como ancla visual, y chips con semántica
+   (navy = tarea · rojo = problema · «al día» calla). El único color libre
+   sigue siendo la identidad del banco — y aquí se le da su sitio.
    =========================================================================== */
+
+/* ── La barra de arriba · el orden, en palabras y no en cabeceras ────────── */
+
+.barra {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-bottom: 8px;
+  min-height: 22px;
+}
+.pista {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-5);
+  font-style: italic;
+}
+.ordenCtl {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.ordenLab {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+}
+.ordenSel {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.ordenSel:hover { border-color: var(--atlas-v5-ink-5); }
+.ordenSel:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 1px;
+}
+
+/* ── La lista ────────────────────────────────────────────────────────────── */
 
 .lcard {
   background: var(--atlas-v5-card);
@@ -13,64 +61,24 @@
   overflow: hidden;
 }
 
-.gridCols {
-  display: grid;
-  grid-template-columns:
-    minmax(170px, 1.5fr) minmax(104px, 0.9fr) minmax(104px, 0.9fr)
-    minmax(104px, 0.9fr) minmax(112px, 0.95fr) minmax(150px, 1.2fr) 64px;
-  gap: 14px;
-  align-items: center;
-  padding: 0 18px;
-}
-
-.head {
-  padding-top: 10px;
-  padding-bottom: 10px;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--atlas-v5-ink-5);
-  background: var(--atlas-v5-card-alt);
-  border-bottom: 1px solid var(--atlas-v5-line-2);
-}
-
-.colNum { text-align: right; }
-.colEstado { min-width: 0; }
-
-/* Cabecera ordenable · clic: asc → desc → volver al orden manual. La flecha
-   en oro-tinta, como el ledger de Inversiones. */
-.cab {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--atlas-v5-ink-5);
-  cursor: pointer;
-  text-align: left;
-  user-select: none;
-  white-space: nowrap;
-  transition: color 0.12s;
-}
-.cab:hover { color: var(--atlas-v5-ink-3); }
-.cab.colNum { text-align: right; }
-.cabAsc { color: var(--atlas-v5-ink-3); }
-.cabAsc::after { content: ' ↑'; color: var(--atlas-v5-gold-ink); }
-.cabDesc { color: var(--atlas-v5-ink-3); }
-.cabDesc::after { content: ' ↓'; color: var(--atlas-v5-gold-ink); }
-
-/* ── Filas ────────────────────────────────────────────────────────────────── */
-
 .fila {
-  padding-top: 11px;
-  padding-bottom: 11px;
+  display: grid;
+  grid-template-columns: minmax(190px, 1.2fr) minmax(110px, 1fr) minmax(150px, 0.95fr) 170px 62px;
+  gap: 18px;
+  align-items: center;
+  padding: 12px 18px;
   border-bottom: 1px solid var(--atlas-v5-line-2);
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background 0.14s;
+  /* Entrada escalonada · una sola coreografía al cargar, nada más. */
+  animation: filaIn 0.34s cubic-bezier(0.22, 0.8, 0.36, 1) both;
+}
+@keyframes filaIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fila { animation: none; }
 }
 .fila:hover { background: var(--atlas-v5-card-alt); }
 .fila:focus-visible {
@@ -80,19 +88,21 @@
 .filaDragging { opacity: 0.4; cursor: grabbing; }
 .filaOver { box-shadow: inset 0 2px 0 var(--atlas-v5-gold); }
 
+/* Identidad · el punto del banco, con su halo, y el nombre. */
 .celCuenta {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   min-width: 0;
 }
-/* Único color libre: la identidad del banco. */
 .bankDot {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 0 0 3px var(--atlas-v5-card-alt);
 }
+.fila:hover .bankDot { box-shadow: 0 0 0 3px var(--atlas-v5-line-3); }
 .accId {
   min-width: 0;
   display: flex;
@@ -100,7 +110,7 @@
   gap: 8px;
 }
 .accNm {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--atlas-v5-ink);
   white-space: nowrap;
@@ -110,75 +120,92 @@
 .accMask {
   font-family: var(--atlas-v5-font-mono-num);
   font-size: 10.5px;
-  color: var(--atlas-v5-ink-4);
+  color: var(--atlas-v5-ink-5);
   flex-shrink: 0;
 }
 
-/* El saldo SIEMPRE en ink · nunca se colorea (§4.2). */
+/* El peso · cuánto de mi dinero vive aquí. Proporción, no cifra. */
+.peso {
+  display: block;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--atlas-v5-line-3);
+  overflow: hidden;
+}
+.pesoFill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  opacity: 0.85;
+  transition: width 0.4s cubic-bezier(0.22, 0.8, 0.36, 1);
+}
+.fila:hover .pesoFill { opacity: 1; }
+
+/* Estado · chip solo cuando pide actuar. */
+.colEstado {
+  min-width: 0;
+  display: flex;
+}
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chipVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: 700;
+}
+/* La tarea · navy sobre lavado navy · trabajo, no peligro. */
+.chipTarea {
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-brand);
+}
+/* El problema · rojo con semántica. Quedarse en negativo no es «ámbar». */
+.chipAlerta {
+  background: var(--atlas-v5-neg-wash);
+  color: var(--atlas-v5-neg);
+}
+/* Lo que está bien, calla. */
+.alDia {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-5);
+}
+
+/* El dinero · DOS cifras y nada más: el saldo y su cierre. */
+.dinero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
 .saldo {
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
-  font-size: 14px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--atlas-v5-ink);
   letter-spacing: -0.02em;
+  line-height: 1;
   white-space: nowrap;
 }
-.flujo {
+.cierreSub {
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--atlas-v5-ink-3);
-  white-space: nowrap;
-}
-.cierre {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--atlas-v5-ink-2);
+  font-size: 10px;
+  color: var(--atlas-v5-ink-4);
   white-space: nowrap;
 }
 
-/* ── Estado · mismas frases que el carrusel que sustituye ─────────────────── */
-
-.state {
-  font-size: 11.5px;
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  color: var(--atlas-v5-ink-3);
-  font-weight: 500;
-  white-space: nowrap;
-  min-width: 0;
-  overflow: hidden;
-}
-.stateOk { color: var(--atlas-v5-ink-4); }
-.stateN {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-weight: 700;
-  color: var(--atlas-v5-ink-2);
-}
-.stateAlerta {
-  color: var(--atlas-v5-warn);
-  font-weight: 600;
-}
-.stateDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--atlas-v5-warn);
-  flex-shrink: 0;
-  align-self: center;
-}
-.stateVal {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-weight: 700;
-}
-
-/* ── Acciones · aparecen al pasar por la fila, como el lápiz del carrusel ── */
-
+/* Acciones · aparecen al posarse en la fila. */
 .acciones {
   display: flex;
   justify-content: flex-end;
@@ -205,36 +232,37 @@
   color: var(--atlas-v5-brand);
 }
 
-/* ── Fila total · el control del conjunto ─────────────────────────────────── */
-
-.total {
-  padding-top: 11px;
-  padding-bottom: 11px;
+/* El cuadre · una línea muda al pie. */
+.foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 18px;
   background: var(--atlas-v5-card-alt);
-  border-top: 1px solid var(--atlas-v5-line);
 }
-.totalLab {
-  font-size: 11px;
+.footLab {
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--atlas-v5-ink-3);
+  color: var(--atlas-v5-ink-4);
 }
-.totalNum {
+.footNum {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
   font-family: var(--atlas-v5-font-mono-num);
   font-variant-numeric: tabular-nums;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--atlas-v5-ink);
-  white-space: nowrap;
-}
-.totalFlujo {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--atlas-v5-ink-2);
   white-space: nowrap;
+}
+.footSub {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--atlas-v5-ink-4);
 }
 
 .vacio {
@@ -243,25 +271,12 @@
   padding: 12px 0;
 }
 
-/* ── Responsive · lo que cede son las columnas de flujo, nunca el saldo ──── */
+/* ── Responsive · cede primero la barra de peso, nunca el estado ─────────── */
 
-@media (max-width: 1240px) {
-  .gridCols {
-    grid-template-columns:
-      minmax(160px, 1.5fr) minmax(104px, 0.9fr) minmax(112px, 0.95fr)
-      minmax(140px, 1.2fr) 64px;
-  }
-  /* Queda entrar / queda salir · ya están en el hero y en la tarjeta del mes. */
-  .gridCols > :nth-child(3),
-  .gridCols > :nth-child(4) { display: none; }
+@media (max-width: 1200px) {
+  .fila { grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 1fr) 170px 62px; gap: 14px; }
+  .fila > .peso { display: none; }
 }
-
 @media (max-width: 900px) {
-  .gridCols {
-    grid-template-columns: minmax(150px, 1.5fr) minmax(104px, 0.9fr) minmax(130px, 1.2fr) 40px;
-    gap: 10px;
-    padding: 0 14px;
-  }
-  /* El cierre del mes también cede · el estado no: es la tarea. */
-  .gridCols > :nth-child(5) { display: none; }
+  .fila { grid-template-columns: minmax(150px, 1.2fr) minmax(130px, 1fr) 150px 34px; gap: 10px; padding: 11px 14px; }
 }

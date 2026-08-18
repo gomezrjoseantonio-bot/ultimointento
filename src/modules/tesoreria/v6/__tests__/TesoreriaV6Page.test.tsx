@@ -464,11 +464,11 @@ describe('rediseño · el ledger de cuentas', () => {
     expect(await screen.findByRole('dialog', { name: 'Calendario' })).toBeInTheDocument();
   });
 
-  it('las columnas ordenan · asc → desc → volver a tu orden', async () => {
+  it('el orden es del usuario · un selector, no cabeceras de hoja de cálculo', async () => {
     montarDb({
       accounts: [
-        cuenta(1, { alias: 'Grande', openingBalance: 9000 }),
-        cuenta(2, { alias: 'Pequeña', openingBalance: 100 }),
+        cuenta(1, { alias: 'Pequeña', openingBalance: 100 }),
+        cuenta(2, { alias: 'Grande', openingBalance: 9000 }),
       ],
     });
     const { container } = montar();
@@ -476,22 +476,21 @@ describe('rediseño · el ledger de cuentas', () => {
 
     const nombres = () =>
       Array.from(container.querySelectorAll('.accNm')).map((n) => n.textContent);
-    // Orden manual de partida · el natural.
-    expect(nombres()).toEqual(['Grande', 'Pequeña']);
+    // Orden manual de partida · el natural (o el que dejó el arrastre).
+    expect(nombres()).toEqual(['Pequeña', 'Grande']);
 
-    const cabSaldo = screen.getByRole('button', { name: 'Saldo' });
-    fireEvent.click(cabSaldo); // asc · de menor a mayor
+    const selector = screen.getByLabelText('Ordenar las cuentas');
+    // Por saldo · de mayor a menor, la dirección natural del dinero.
+    fireEvent.change(selector, { target: { value: 'saldo' } });
+    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
+
+    // Por nombre · de la A a la Z.
+    fireEvent.change(selector, { target: { value: 'nombre' } });
+    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
+
+    // Y de vuelta a mi manera.
+    fireEvent.change(selector, { target: { value: 'manual' } });
     await waitFor(() => expect(nombres()).toEqual(['Pequeña', 'Grande']));
-
-    fireEvent.click(cabSaldo); // desc · de mayor a menor
-    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
-
-    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' })); // otra columna · asc
-    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
-
-    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' })); // desc
-    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' })); // y de vuelta al manual
-    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
   });
 });
 

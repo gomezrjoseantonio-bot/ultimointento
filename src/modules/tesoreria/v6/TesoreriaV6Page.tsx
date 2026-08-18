@@ -793,8 +793,7 @@ const TesoreriaV6Page: React.FC = () => {
           <div>
             <div className={styles.secK}>Mis cuentas</div>
             <div className={styles.secT}>
-              entra en una cuenta para puntear sus movimientos · ordena por cualquier columna o
-              arrastra las filas a tu orden
+              entra en una cuenta para puntear y conciliar sus movimientos
             </div>
           </div>
           <div className={styles.secActs}>

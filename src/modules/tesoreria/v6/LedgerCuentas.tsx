@@ -1,27 +1,30 @@
 // ============================================================================
-// Ledger de cuentas · Tesorería V6 (rediseño §4.2)
+// Ledger de cuentas · Tesorería V6 (rediseño §4.2 · iteración 3)
 // ============================================================================
 //
-// Sustituye al carrusel paginado. Con muchas cuentas corrientes el carrusel
-// escondía la mitad detrás de un "1–5 de 10", y esta pantalla es justo donde
-// hace falta el control POR CUENTA Y EL TOTAL: cada cuenta es una fila, todas
-// a la vista, y la última fila es la suma.
+// Con muchas cuentas corrientes hace falta el control POR CUENTA Y EL TOTAL:
+// cada cuenta es una fila, todas a la vista, y el pie es la suma.
 //
-// Cada fila dice lo que decide el trabajo del día: saldo, lo que le queda al
-// mes por entrar y por salir EN ESA CUENTA, su cierre proyectado y su
-// estado (al día · N por confirmar · se queda corta). Clic en la fila abre la
-// bandeja de la cuenta; el clip sube un extracto YA fijado a esa cuenta.
+// Pero un banco privado no enseña una hoja de cálculo (feedback Jose · 18 ago
+// 2026: «demasiado número · tabla de excel»). Cada fila lleva DOS cifras y
+// nada más: el saldo, grande, y su cierre del mes, pequeño debajo. Lo demás
+// se dice sin números:
+//   · la BARRA DE PESO, en el color del banco, dice cuánto de mi dinero vive
+//     en esa cuenta — el mismo lenguaje que el «peso en cartera» de
+//     Inversiones, y el mismo punto de color en todo el módulo;
+//   · el ESTADO es un chip solo cuando pide actuar: navy para la tarea («3
+//     por confirmar»), rojo para el problema («se queda en −X el día D» ·
+//     quedarse en negativo es un problema, no una advertencia dorada);
+//   · «al día» es texto mudo · lo que está bien no grita.
 //
-// El ORDEN es del usuario, de dos maneras (rediseño · 18 ago 2026):
-//   · por columna · clic en la cabecera: asc → desc → volver a su orden;
-//   · a mano · arrastrando filas, que es el orden de siempre y el que rige
-//     cuando ninguna columna manda. Arrastrar solo tiene sentido ahí: sobre
-//     una columna ordenada, soltar una fila no podría respetarse.
-// La elección se persiste (`ordenLedger`), como el orden manual.
+// Lo que le quede al mes por entrar y salir NO va aquí: eso ya lo dicen el
+// hero (total) y la previsión (mes a mes) — repetirlo por fila era el
+// «demasiado número».
 //
-// El patrón visual es el ledger de Inversiones (`LedgerPosiciones`): cabecera
-// en versalita sobre --card-alt, filas separadas por --line-2, números en mono
-// tabular. Los números SIEMPRE en ink; el color solo donde hay que actuar (§5).
+// El ORDEN es del usuario: a mano arrastrando (el de siempre) o por un campo
+// desde el selector de arriba. Sin cabeceras clicables: la cabecera de
+// columnas era la mitad del aspecto de hoja de cálculo. La elección se
+// persiste (`ordenLedger`).
 // ============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -39,7 +42,7 @@ import {
   type CampoLedger,
   type OrdenLedger,
 } from './ordenCuentas';
-import { importeConSigno, importeSaldo, diaYMes, mesCorto } from './formatoV6';
+import { importeSaldo, diaYMes, mesCorto } from './formatoV6';
 import styles from './LedgerCuentas.module.css';
 
 interface Props {
@@ -60,8 +63,6 @@ interface Fila {
   cuenta: Account;
   nombre: string;
   saldo: number;
-  entra: number;
-  sale: number;
   cierre: number;
   estado: EstadoCuenta;
 }
@@ -70,13 +71,16 @@ interface Fila {
 const pesoEstado = (e: EstadoCuenta): number =>
   e.tipo === 'se-queda-corta' ? 2 : e.tipo === 'por-confirmar' ? 1 : 0;
 
-const comparadores: Record<CampoLedger, (a: Fila, b: Fila) => number> = {
-  nombre: (a, b) => a.nombre.localeCompare(b.nombre, 'es'),
-  saldo: (a, b) => a.saldo - b.saldo,
-  entra: (a, b) => a.entra - b.entra,
-  sale: (a, b) => a.sale - b.sale,
-  cierre: (a, b) => a.cierre - b.cierre,
-  estado: (a, b) => pesoEstado(a.estado) - pesoEstado(b.estado),
+/**
+ * Cada campo ordena en SU dirección natural · el dinero de mayor a menor, el
+ * estado del que arde al que espera, el nombre de la A a la Z. Elegir campo y
+ * dirección por separado es vocabulario de hoja de cálculo.
+ */
+const ORDENES: Partial<Record<CampoLedger, { dir: 'asc' | 'desc'; cmp: (a: Fila, b: Fila) => number }>> = {
+  saldo: { dir: 'desc', cmp: (a, b) => a.saldo - b.saldo },
+  cierre: { dir: 'desc', cmp: (a, b) => a.cierre - b.cierre },
+  estado: { dir: 'desc', cmp: (a, b) => pesoEstado(a.estado) - pesoEstado(b.estado) },
+  nombre: { dir: 'asc', cmp: (a, b) => a.nombre.localeCompare(b.nombre, 'es') },
 };
 
 const LedgerCuentas: React.FC<Props> = ({
@@ -106,19 +110,16 @@ const LedgerCuentas: React.FC<Props> = ({
     };
   }, []);
 
-  /** Clic en cabecera · asc → desc → de vuelta al orden manual. */
-  const ordenarPor = (campo: CampoLedger) => {
-    const siguiente: OrdenLedger | null =
-      orden?.campo !== campo
-        ? { campo, dir: 'asc' }
-        : orden.dir === 'asc'
-          ? { campo, dir: 'desc' }
-          : null;
+  const elegirOrden = (valor: string) => {
+    const regla = ORDENES[valor as CampoLedger];
+    const siguiente: OrdenLedger | null = regla
+      ? { campo: valor as CampoLedger, dir: regla.dir }
+      : null;
     setOrden(siguiente);
     void guardarOrdenLedger(siguiente);
   };
 
-  const manual = orden == null;
+  const manual = orden == null || ORDENES[orden.campo] == null;
 
   const soltarSobre = (destinoId: number) => {
     if (!manual) return;
@@ -134,39 +135,37 @@ const LedgerCuentas: React.FC<Props> = ({
     onReordenar(nuevo);
   };
 
-  // La fila TOTAL suma las filas · así la tabla siempre cuadra consigo misma.
-  // El cierre total coincide con el del hero (las dos patas de un traspaso
-  // interno se anulan entre cuentas); entrar/salir pueden diferir del hero
-  // exactamente en los traspasos, que para el patrimonio no son flujo pero
-  // para cada cuenta sí.
+  // El pie suma las filas · así la lista siempre cuadra consigo misma y con
+  // el hero (las dos patas de un traspaso interno se anulan entre cuentas).
   let totalSaldo = 0;
-  let totalEntra = 0;
-  let totalSale = 0;
+  let totalCierre = 0;
   const filas: Fila[] = cuentas.map((c) => {
     const saldo = saldoPorCuenta.get(c.id!) ?? 0;
     const eventos = eventosPorCuenta.get(c.id!) ?? [];
     const resumen = resumenMesDeCuenta({ saldoHoy: saldo, eventos, year, month0 });
     const estado = estadoDeCuenta({ saldoHoy: saldo, eventos, year, month0, hoy });
     totalSaldo += saldo;
-    totalEntra += resumen.entra;
-    totalSale += resumen.sale;
+    totalCierre += resumen.cierre;
     return {
       cuenta: c,
       nombre: c.alias || c.name || c.banco?.name || 'Cuenta',
       saldo,
-      entra: resumen.entra,
-      sale: resumen.sale,
       cierre: resumen.cierre,
       estado,
     };
   });
-  const totalCierre = totalSaldo + totalEntra + totalSale;
+
+  // La barra de peso · qué parte de mi dinero vive en cada cuenta. Sobre el
+  // total POSITIVO: una cuenta en negativo no «pesa», avisa (y para eso está
+  // su chip).
+  const totalPositivo = filas.reduce((s, f) => s + Math.max(0, f.saldo), 0);
 
   const visibles = manual
     ? filas
     : [...filas].sort((a, b) => {
-        const d = comparadores[orden.campo](a, b);
-        return orden.dir === 'asc' ? d : -d;
+        const regla = ORDENES[orden!.campo]!;
+        const d = regla.cmp(a, b);
+        return regla.dir === 'asc' ? d : -d;
       });
 
   if (cuentas.length === 0) {
@@ -174,173 +173,165 @@ const LedgerCuentas: React.FC<Props> = ({
   }
 
   return (
-    <div className={styles.lcard}>
-      <div className={`${styles.gridCols} ${styles.head}`}>
-        <Cab campo="nombre" orden={orden} onOrdenar={ordenarPor}>
-          Cuenta
-        </Cab>
-        <Cab campo="saldo" num orden={orden} onOrdenar={ordenarPor}>
-          Saldo
-        </Cab>
-        <Cab campo="entra" num orden={orden} onOrdenar={ordenarPor}>
-          Queda entrar
-        </Cab>
-        <Cab campo="sale" num orden={orden} onOrdenar={ordenarPor}>
-          Queda salir
-        </Cab>
-        <Cab campo="cierre" num orden={orden} onOrdenar={ordenarPor}>
-          Cierre {mesCorto(month0)}
-        </Cab>
-        <Cab campo="estado" orden={orden} onOrdenar={ordenarPor}>
-          Estado
-        </Cab>
-        <span />
+    <div>
+      <div className={styles.barra}>
+        {manual && cuentas.length > 1 && (
+          <span className={styles.pista}>arrastra las filas para ordenarlas a tu gusto</span>
+        )}
+        <label className={styles.ordenCtl}>
+          <span className={styles.ordenLab}>Ordenar</span>
+          <select
+            className={styles.ordenSel}
+            value={manual ? 'manual' : orden!.campo}
+            onChange={(e) => elegirOrden(e.target.value)}
+            aria-label="Ordenar las cuentas"
+          >
+            <option value="manual">a mi manera</option>
+            <option value="saldo">por saldo</option>
+            <option value="cierre">por cierre del mes</option>
+            <option value="estado">por estado</option>
+            <option value="nombre">por nombre</option>
+          </select>
+        </label>
       </div>
 
-      {visibles.map(({ cuenta: c, nombre, saldo, entra, sale, cierre, estado }) => {
-        const mask = (c.ultimosCuatro || c.iban?.slice(-4)) ?? '';
-        return (
-          <div
-            key={c.id}
-            className={`${styles.gridCols} ${styles.fila} ${
-              arrastrando === c.id ? styles.filaDragging : ''
-            } ${encima === c.id ? styles.filaOver : ''}`}
-            role="button"
-            tabIndex={0}
-            onClick={() => onAbrir(c.id!)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onAbrir(c.id!);
-              }
-            }}
-            draggable={manual}
-            onDragStart={() => manual && setArrastrando(c.id!)}
-            onDragEnter={() => manual && setEncima(c.id!)}
-            onDragOver={(e) => e.preventDefault()}
-            onDragEnd={() => {
-              setArrastrando(null);
-              setEncima(null);
-            }}
-            onDrop={() => soltarSobre(c.id!)}
-          >
-            <span className={styles.celCuenta}>
-              <span className={styles.bankDot} style={{ background: colorDeBanco(c) }} />
-              <span className={styles.accId}>
-                <span className={styles.accNm}>{nombre}</span>
-                {mask && <span className={styles.accMask}>···· {mask}</span>}
+      <div className={styles.lcard}>
+        {visibles.map(({ cuenta: c, nombre, saldo, cierre, estado }, i) => {
+          const mask = (c.ultimosCuatro || c.iban?.slice(-4)) ?? '';
+          const color = colorDeBanco(c);
+          const peso = totalPositivo > 0 ? Math.max(0, saldo) / totalPositivo : 0;
+          return (
+            <div
+              key={c.id}
+              className={`${styles.fila} ${arrastrando === c.id ? styles.filaDragging : ''} ${
+                encima === c.id ? styles.filaOver : ''
+              }`}
+              style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}
+              role="button"
+              tabIndex={0}
+              onClick={() => onAbrir(c.id!)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onAbrir(c.id!);
+                }
+              }}
+              draggable={manual}
+              onDragStart={() => manual && setArrastrando(c.id!)}
+              onDragEnter={() => manual && setEncima(c.id!)}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnd={() => {
+                setArrastrando(null);
+                setEncima(null);
+              }}
+              onDrop={() => soltarSobre(c.id!)}
+            >
+              <span className={styles.celCuenta}>
+                <span className={styles.bankDot} style={{ background: color }} />
+                <span className={styles.accId}>
+                  <span className={styles.accNm}>{nombre}</span>
+                  {mask && <span className={styles.accMask}>···· {mask}</span>}
+                </span>
               </span>
-            </span>
-            <span className={`${styles.colNum} ${styles.saldo}`}>{importeSaldo(saldo)}</span>
-            <span className={`${styles.colNum} ${styles.flujo}`}>
-              {entra !== 0 ? importeConSigno(entra) : '—'}
-            </span>
-            <span className={`${styles.colNum} ${styles.flujo}`}>
-              {sale !== 0 ? importeConSigno(sale) : '—'}
-            </span>
-            <span className={`${styles.colNum} ${styles.cierre}`}>{importeSaldo(cierre)}</span>
-            <span className={styles.colEstado}>
-              <EstadoFila estado={estado} />
-            </span>
-            <span className={styles.acciones}>
-              {/* stopPropagation obligatorio: la fila entera es clicable. */}
-              <button
-                type="button"
-                className={styles.accBtn}
-                aria-label={`Subir extracto de ${nombre}`}
-                title="Subir extracto de esta cuenta"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSubirExtracto(c);
-                }}
-              >
-                <Icons.Upload size={14} strokeWidth={1.8} />
-              </button>
-              <button
-                type="button"
-                className={styles.accBtn}
-                aria-label={`Editar ${nombre}`}
-                title="Editar la cuenta"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEditar(c);
-                }}
-              >
-                <Icons.Edit size={14} strokeWidth={1.8} />
-              </button>
-            </span>
-          </div>
-        );
-      })}
 
-      <div className={`${styles.gridCols} ${styles.total}`}>
-        <span className={styles.totalLab}>
-          Total · {cuentas.length} {cuentas.length === 1 ? 'cuenta' : 'cuentas'}
-        </span>
-        <span className={`${styles.colNum} ${styles.totalNum}`}>{importeSaldo(totalSaldo)}</span>
-        <span className={`${styles.colNum} ${styles.totalFlujo}`}>
-          {totalEntra !== 0 ? importeConSigno(totalEntra) : '—'}
-        </span>
-        <span className={`${styles.colNum} ${styles.totalFlujo}`}>
-          {totalSale !== 0 ? importeConSigno(totalSale) : '—'}
-        </span>
-        <span className={`${styles.colNum} ${styles.totalNum}`}>{importeSaldo(totalCierre)}</span>
-        <span className={styles.colEstado} />
-        <span />
+              {/* Cuánto de mi dinero vive aquí · sin cifra: la proporción SE VE.
+                  El detalle exacto ya lo da el saldo de al lado. */}
+              <span
+                className={styles.peso}
+                title={`${Math.round(peso * 100)} % del saldo total`}
+                aria-hidden="true"
+              >
+                <span
+                  className={styles.pesoFill}
+                  style={{ width: `${Math.max(peso > 0 ? 2.5 : 0, peso * 100)}%`, background: color }}
+                />
+              </span>
+
+              <span className={styles.colEstado}>
+                <EstadoFila estado={estado} />
+              </span>
+
+              <span className={styles.dinero}>
+                <span className={styles.saldo}>{importeSaldo(saldo)}</span>
+                {/* El cierre, SOLO cuando difiere del saldo: si al mes no le
+                    queda nada en esta cuenta, repetir la cifra es ruido. */}
+                {cierre !== saldo && (
+                  <span className={styles.cierreSub}>
+                    cierre {mesCorto(month0)} · {importeSaldo(cierre)}
+                  </span>
+                )}
+              </span>
+
+              <span className={styles.acciones}>
+                {/* stopPropagation obligatorio: la fila entera es clicable. */}
+                <button
+                  type="button"
+                  className={styles.accBtn}
+                  aria-label={`Subir extracto de ${nombre}`}
+                  title="Subir extracto de esta cuenta"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSubirExtracto(c);
+                  }}
+                >
+                  <Icons.Upload size={14} strokeWidth={1.8} />
+                </button>
+                <button
+                  type="button"
+                  className={styles.accBtn}
+                  aria-label={`Editar ${nombre}`}
+                  title="Editar la cuenta"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditar(c);
+                  }}
+                >
+                  <Icons.Edit size={14} strokeWidth={1.8} />
+                </button>
+              </span>
+            </div>
+          );
+        })}
+
+        {/* El cuadre, en una línea muda · el protagonismo es de las filas. */}
+        <div className={styles.foot}>
+          <span className={styles.footLab}>
+            Total · {cuentas.length} {cuentas.length === 1 ? 'cuenta' : 'cuentas'}
+          </span>
+          <span className={styles.footNum}>
+            {importeSaldo(totalSaldo)}
+            <span className={styles.footSub}>
+              cierre {mesCorto(month0)} · {importeSaldo(totalCierre)}
+            </span>
+          </span>
+        </div>
       </div>
     </div>
   );
 };
 
-/** Cabecera de columna · clic para ordenar · asc → desc → tu orden manual. */
-const Cab: React.FC<{
-  campo: CampoLedger;
-  num?: boolean;
-  orden: OrdenLedger | null;
-  onOrdenar: (campo: CampoLedger) => void;
-  children: React.ReactNode;
-}> = ({ campo, num, orden, onOrdenar, children }) => {
-  const activo = orden?.campo === campo;
-  return (
-    <button
-      type="button"
-      className={`${styles.cab} ${num ? styles.colNum : ''} ${
-        activo ? (orden!.dir === 'asc' ? styles.cabAsc : styles.cabDesc) : ''
-      }`}
-      onClick={() => onOrdenar(campo)}
-      title={
-        activo
-          ? orden!.dir === 'asc'
-            ? 'Otro clic · de mayor a menor'
-            : 'Otro clic · volver a tu orden'
-          : 'Ordenar por esta columna'
-      }
-    >
-      {children}
-    </button>
-  );
-};
-
-/** Un solo estado por fila · el color solo aparece si hay que actuar (§4.2). */
+/**
+ * Un solo estado por fila · y el color con SEMÁNTICA (feedback 18 ago 2026):
+ * navy-wash para la tarea, rojo para el problema. Nada de ámbar-oro en una
+ * alerta: el oro de este módulo es del veredicto, no del peligro.
+ */
 const EstadoFila: React.FC<{ estado: EstadoCuenta }> = ({ estado }) => {
   if (estado.tipo === 'se-queda-corta') {
     return (
-      <span className={`${styles.state} ${styles.stateAlerta}`}>
-        <span className={styles.stateDot} />
-        se queda en <span className={styles.stateVal}>{importeSaldo(estado.minimo)}</span> el{' '}
+      <span className={`${styles.chip} ${styles.chipAlerta}`}>
+        se queda en <span className={styles.chipVal}>{importeSaldo(estado.minimo)}</span> el{' '}
         {diaYMes(estado.dia)}
       </span>
     );
   }
   if (estado.tipo === 'por-confirmar') {
-    // La cifra en mono y algo más de peso: es la tarea pendiente de la fila.
     return (
-      <span className={styles.state}>
-        <span className={styles.stateN}>{estado.n}</span> por confirmar
+      <span className={`${styles.chip} ${styles.chipTarea}`}>
+        <span className={styles.chipVal}>{estado.n}</span> por confirmar
       </span>
     );
   }
-  return <span className={`${styles.state} ${styles.stateOk}`}>al día</span>;
+  return <span className={styles.alDia}>al día</span>;
 };
 
 export default LedgerCuentas;
