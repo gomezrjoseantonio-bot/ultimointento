@@ -340,6 +340,27 @@ export async function confirmDecisions(
       updatedAt: now,
     });
     if (confirmado?.id != null && confirmado.id !== importMovementId) {
+      // Si el confirmado era la materialización de un previsto punteado
+      // (`confirmTreasuryEvent` lo crea con `reference: treasury_event:<id>` y
+      // deja el evento en `executed` apuntándole por `movementId`), al borrarlo
+      // hay que RE-APUNTAR ese evento a la línea del import que sobrevive. Si no,
+      // el saldo cuenta el evento (por su `movementId` muerto ya no descuenta la
+      // línea) y la línea por separado, y vuelve a duplicar el importe.
+      const ref = typeof confirmado.reference === 'string' ? confirmado.reference : '';
+      const eventId = ref.startsWith('treasury_event:') ? Number(ref.slice('treasury_event:'.length)) : NaN;
+      if (Number.isFinite(eventId)) {
+        const ev = (await db.get('treasuryEvents', eventId)) as TreasuryEvent | undefined;
+        if (ev && (ev.movementId === confirmado.id || ev.executedMovementId === confirmado.id)) {
+          await db.put('treasuryEvents', {
+            ...ev,
+            movementId: importMovementId,
+            executedMovementId: importMovementId,
+            actualDate: importMov.date,
+            actualAmount: Math.abs(importMov.amount),
+            updatedAt: now,
+          });
+        }
+      }
       await db.delete('movements', confirmado.id);
     }
     movementIdsTouched.add(importMovementId);

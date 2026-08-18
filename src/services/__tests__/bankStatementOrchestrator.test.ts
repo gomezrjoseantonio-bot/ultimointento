@@ -382,6 +382,71 @@ describe('bankStatementOrchestrator', () => {
     expect(conciliado.source).toBe('import');
   });
 
+  it('3 ter. reconciliar un previsto PUNTEADO · re-apunta su evento a la línea del import', () => {
+    // Regresión del bug de duplicados en cuenta: un previsto punteado deja un
+    // evento `executed` apuntando por `movementId` al confirmado (id 9) que
+    // `confirmTreasuryEvent` creó con `reference: treasury_event:<id>`. Al subir
+    // el extracto se reconcilia contra ese confirmado y se borra; el evento debe
+    // RE-APUNTAR a la línea del import (id 50), o el saldo contaría el evento y la
+    // línea por separado (fechas distintas) y duplicaría el importe.
+    stores.treasuryEvents.push({
+      id: 700,
+      accountId: 42,
+      type: 'expense',
+      amount: -20,
+      predictedDate: '2026-04-14',
+      status: 'executed',
+      movementId: 9,
+      executedMovementId: 9,
+      actualDate: '2026-04-14',
+      actualAmount: 20,
+    } as any);
+    stores.movements.push(
+      {
+        id: 9,
+        accountId: 42,
+        date: '2026-04-14',
+        amount: -20,
+        description: 'Comunidad',
+        source: 'manual',
+        unifiedStatus: 'conciliado',
+        movementState: 'Conciliado',
+        reference: 'treasury_event:700',
+        categoryKey: 'inmueble.comunidad',
+        updatedAt: '',
+        createdAt: '',
+      } as any,
+      {
+        id: 50,
+        accountId: 42,
+        date: '2026-04-15',
+        amount: -20,
+        description: 'RECIBO FUERTES ACEVEDO 32',
+        source: 'import',
+        unifiedStatus: 'no_planificado',
+        importBatch: 'batch-A',
+        updatedAt: '',
+        createdAt: '',
+      } as any,
+    );
+
+    return confirmDecisions('batch-A', {
+      approvedMatches: [],
+      approvedSuggestions: [],
+      ignoredMovementIds: [],
+      reconciliacionesConfirmado: [{ importMovementId: 50, confirmadoMovementId: 9 }],
+    }).then(() => {
+      // El confirmado se borró.
+      expect(stores.movements.find(m => m.id === 9)).toBeUndefined();
+      // El evento ahora apunta a la línea del import (id 50), con su fecha/importe.
+      const ev = stores.treasuryEvents.find(e => e.id === 700)!;
+      expect(ev.movementId).toBe(50);
+      expect(ev.executedMovementId).toBe(50);
+      expect(ev.actualDate).toBe('2026-04-15');
+      expect(ev.actualAmount).toBe(20);
+    });
+  });
+
   it('4. processFile · bankProfileMatcher devuelve confidence baja sin hint ⇒ BankProfileNotDetectedError', async () => {
     (bankProfileMatcher.match as jest.Mock).mockResolvedValueOnce({
       profile: 'Generic',
