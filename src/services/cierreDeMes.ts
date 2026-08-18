@@ -68,7 +68,12 @@ const mesDe = (iso: string): string => (iso ?? '').slice(0, 7);
  * recibo del cierre y lo resucitaría al reabrir.
  */
 const sigueAbierto = (e: TreasuryEvent): boolean =>
-  e.status !== 'executed' && e.descartado !== true && typeof e.id === 'number';
+  e.status !== 'executed' &&
+  e.descartado !== true &&
+  // Una PIEZA de tarjeta no es un cargo del cierre: el dinero sale en el RECIBO
+  // agregado, que sí cuenta. Contar las piezas aparte lo apuntaría dos veces.
+  e.sourceType !== 'gasto_tarjeta' &&
+  typeof e.id === 'number';
 
 const siguenAbiertos = (eventos: TreasuryEvent[], mes: string): TreasuryEvent[] =>
   eventos.filter((e) => mesDe(e.predictedDate) === mes && sigueAbierto(e));

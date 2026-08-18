@@ -168,6 +168,32 @@ describe('accountBalanceService', () => {
     expect(value).toBe(100);
   });
 
+  it('una PIEZA de tarjeta (gasto_tarjeta) NO mueve el saldo · el dinero sale en el recibo', () => {
+    const value = calculateAccountBalanceAtDate({
+      account: {
+        id: 8,
+        iban: 'ES8',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        openingBalance: 1000,
+        openingBalanceDate: '2026-01-01',
+      } as any,
+      cutoffDate: '2026-09-01',
+      treasuryEvents: [
+        // Pieza confirmada, incluso con accountId de la cuenta: NO debe contar
+        // (la representa el recibo agregado). El guard la excluye.
+        { accountId: 8, type: 'expense', amount: -100, actualAmount: 100, predictedDate: '2026-08-10', status: 'executed', sourceType: 'gasto_tarjeta', tarjetaId: 11 } as any,
+        // El RECIBO agregado sí cuenta cuando está confirmado.
+        { accountId: 8, type: 'expense', amount: -100, predictedDate: '2026-08-31', status: 'confirmed', sourceType: 'tarjeta_recibo' } as any,
+      ],
+      movements: [],
+    });
+
+    expect(value).toBe(900); // 1000 − 100 (recibo). La pieza no descuenta aparte.
+  });
+
   it('allows callers to ignore imported movements when projecting month openings for treasury forecast continuity', () => {
     const value = calculateAccountBalanceAtDate({
       account: {

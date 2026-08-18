@@ -86,3 +86,15 @@ export function previsionDeTarjetas<G extends GastoPrevisto>(
 export function claveDeRecibo(recibo: ReciboDeTarjeta): string {
   return `tarjeta-${recibo.tarjetaId}-${recibo.fechaCorte}`;
 }
+
+/**
+ * La identidad de una PIEZA de tarjeta · (compromiso · fecha de la compra).
+ *
+ * Una pieza es un gasto individual que un compromiso hace con la tarjeta en un
+ * día concreto. Un patrón no repite dos veces el mismo día, así que
+ * (compromiso · fecha) la identifica de forma estable e idempotente: al
+ * regenerar, la misma compra reescribe la misma pieza en vez de duplicarla.
+ */
+export function claveDePieza(compromisoId: number, fecha: string): string {
+  return `gasto_tarjeta-${compromisoId}-${fecha.slice(0, 10)}`;
+}

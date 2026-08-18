@@ -28,11 +28,12 @@ import {
   esPrevisionIntocable,
 } from './previsionesIdempotencia';
 import {
+  ensamblarRecibos,
   eventoDeRecibo,
-  fusionarRecibos,
+  finDePiezas,
+  persistirPiezas,
   persistirRecibos,
-  recibosDeComprasManuales,
-  recibosPrevistos,
+  piezasPrevistas,
   tarjetaDelCompromiso,
   vaEnRecibo,
   ventanaDeRecibos,
@@ -767,14 +768,13 @@ export async function regenerarRecibosDeTarjeta(hasta?: Date): Promise<number> {
   ]);
 
   const { desde, hasta: tope } = ventanaDeRecibos(hasta, HORIZONTE_MESES_DEFECTO);
-  const hoy = toISODateLocal(new Date());
-  // El recibo = lo previsto (compromisos con la tarjeta) MÁS las compras manuales
-  // del periodo, fundidas por (tarjeta · corte) en el único cargo que hace el banco.
-  const recibos = fusionarRecibos([
-    ...recibosPrevistos(compromisos, tarjetas, desde, tope),
-    ...recibosDeComprasManuales(movimientos ?? [], tarjetas, hoy),
-  ]);
+  const finPiezas = finDePiezas(desde);
   const ahora = new Date().toISOString();
+  const hoy = toISODateLocal(new Date());
+  // Piezas punteables de lo cercano; el recibo = su suma + previsión lejana + manuales.
+  await persistirPiezas(piezasPrevistas(compromisos, tarjetas, desde, finPiezas, ahora));
+  const piezas = (await db.getAllFromIndex('treasuryEvents', 'sourceType', 'gasto_tarjeta')) as TreasuryEvent[];
+  const recibos = ensamblarRecibos(piezas ?? [], compromisos, tarjetas, movimientos ?? [], finPiezas, tope, hoy);
   return persistirRecibos(recibos.map((r) => eventoDeRecibo(r, tarjetas, ahora)));
 }
 

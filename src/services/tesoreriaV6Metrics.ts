@@ -63,6 +63,11 @@ export function importeConSigno(e: Pick<TreasuryEvent, 'amount' | 'type'>): numb
  */
 export function esPendiente(e: TreasuryEvent): boolean {
   if (e.descartado) return false;
+  // Una PIEZA de tarjeta (`gasto_tarjeta`) no es un pendiente del banco ni del
+  // Cierre: el dinero sale en el RECIBO agregado, que sí cuenta. La pieza se
+  // puntea en el cajón de la tarjeta, no en las cuentas. Excluirla aquí la deja
+  // fuera de los KPIs, la proyección y el cierre de una vez.
+  if (e.sourceType === 'gasto_tarjeta') return false;
   return e.status === 'predicted' || e.status === 'confirmed';
 }
 
