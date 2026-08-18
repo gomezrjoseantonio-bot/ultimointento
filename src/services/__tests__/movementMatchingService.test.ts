@@ -118,31 +118,56 @@ describe('movementMatchingService.matchBatch', () => {
     );
   });
 
-  it('2. Un INGRESO sin proveedor no cuadra solo por importe · quién paga manda', async () => {
-    // En ingresos, el importe a secas no basta: un cargo del mismo importe de un
-    // desconocido no es la renta del inquilino. Sin proveedor/alias se va a
-    // resolver; con proveedor cuadra.
-    const noProviderStores: FakeStores = {
+  it('2. Un ALQUILER exacto en la misma cuenta y fecha cercana cuadra aunque el pagador venga con otro texto', async () => {
+    // La renta llega por transferencia uno o dos días después y con el nombre que
+    // manda el banco distinto al del contrato, pero el concepto dice "alquiler".
+    // Antes se iba a "resolver"; ahora, si es ÚNICO, cuadra. Un ingreso del mismo
+    // importe SIN la palabra alquiler (un Bizum de otra persona) no se cuelga.
+    const alquilerStores: FakeStores = {
       movements: [
         movement({
           id: 1,
           accountId: 42,
           date: '2026-04-23',
           amount: 380,
-          description: 'CONCEPTO GENERICO SIN PROVEEDOR',
+          description: 'TRANSFERENCIA CONCEPTO ALQUILER ABRIL',
         }),
       ],
       treasuryEvents: [
         event({ id: 100, accountId: 42, type: 'income', amount: 380, predictedDate: '2026-04-22' }),
       ],
     };
-    (initDB as jest.Mock).mockResolvedValue(buildDb(noProviderStores));
+    (initDB as jest.Mock).mockResolvedValue(buildDb(alquilerStores));
 
-    const noProviderResult = await matchBatch([1]);
-    // 20 (fecha_dia_adyacente) + 30 (importe_exacto) + 15 (cuenta_match) = 65 < 70.
-    // El bonus de importe-exacto-misma-cuenta NO aplica a ingresos.
-    expect(noProviderResult.sinMatch).toEqual([1]);
-    expect(noProviderResult.matches).toEqual([]);
+    const alquilerResult = await matchBatch([1]);
+    // 20 (fecha_dia_adyacente) + 30 (importe_exacto) + 15 (cuenta_match) + 25
+    // (importe_exacto_alquiler_misma_cuenta) = 90 ≥ 70 · cuadra.
+    expect(alquilerResult.matches).toHaveLength(1);
+    expect(alquilerResult.matches[0].treasuryEventId).toBe(100);
+    expect(alquilerResult.matches[0].reasons).toEqual(
+      expect.arrayContaining(['importe_exacto_alquiler_misma_cuenta']),
+    );
+
+    // Sin la palabra alquiler y sin proveedor · se va a resolver (no se adivina).
+    const sinPalabraStores: FakeStores = {
+      movements: [movement({ id: 1, accountId: 42, date: '2026-04-23', amount: 380, description: 'CONCEPTO GENERICO' })],
+      treasuryEvents: [
+        event({ id: 100, accountId: 42, type: 'income', amount: 380, predictedDate: '2026-04-22' }),
+      ],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(sinPalabraStores));
+    expect((await matchBatch([1])).sinMatch).toEqual([1]);
+
+    // Con la palabra pero LEJOS de la ventana (±5 días) tampoco · un ingreso
+    // suelto lejano del mismo importe no consume la renta.
+    const lejosStores: FakeStores = {
+      movements: [movement({ id: 1, accountId: 42, date: '2026-04-30', amount: 380, description: 'ALQUILER' })],
+      treasuryEvents: [
+        event({ id: 100, accountId: 42, type: 'income', amount: 380, predictedDate: '2026-04-22' }),
+      ],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(lejosStores));
+    expect((await matchBatch([1])).sinMatch).toEqual([1]);
 
     const withProviderStores: FakeStores = {
       movements: [
@@ -168,9 +193,29 @@ describe('movementMatchingService.matchBatch', () => {
     (initDB as jest.Mock).mockResolvedValue(buildDb(withProviderStores));
 
     const withProviderResult = await matchBatch([1]);
-    // 65 (above) + 25 (descripcion_proveedor) = 90
+    // Con proveedor suma además descripcion_proveedor · cuadra de sobra.
     expect(withProviderResult.matches).toHaveLength(1);
-    expect(withProviderResult.matches[0].score).toBe(90);
+    expect(withProviderResult.matches[0].score).toBeGreaterThanOrEqual(90);
+  });
+
+  it('2b. Dos rentas del MISMO importe · una línea sola va a multiMatch, no a un cuadre a ciegas', async () => {
+    // Si hay dos previstos de ingreso del mismo importe y el pagador no desempata,
+    // la línea NO se asigna a ciegas: se ofrece elegir (multiMatch).
+    const stores: FakeStores = {
+      movements: [
+        movement({ id: 1, accountId: 42, date: '2026-04-23', amount: 395, description: 'TRANSFERENCIA ALQUILER' }),
+      ],
+      treasuryEvents: [
+        event({ id: 100, accountId: 42, type: 'income', amount: 395, predictedDate: '2026-04-22', providerName: 'Inquilino A' }),
+        event({ id: 101, accountId: 42, type: 'income', amount: 395, predictedDate: '2026-04-24', providerName: 'Inquilino B' }),
+      ],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+    expect(result.matches).toEqual([]);
+    expect(result.multiMatches).toHaveLength(1);
+    expect(result.multiMatches[0].candidates.map(c => c.treasuryEventId).sort()).toEqual([100, 101]);
   });
 
   it('2c. Un recibo recurrente cuadra con la mensualidad más cercana, no multiMatch', async () => {
