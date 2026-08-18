@@ -428,17 +428,22 @@ describe('estado vacío', () => {
 // El rediseño del ledger: con muchas cuentas corrientes hace falta el control
 // POR CUENTA Y EL TOTAL. El carrusel escondía la mitad detrás de un "1–5 de 10".
 describe('rediseño · el ledger de cuentas', () => {
-  it('todas las cuentas a la vista y una fila de total · sin paginación', async () => {
+  it('el ledger se pagina · 6 por página, con el total de TODAS debajo', async () => {
     montarDb({
       accounts: [1, 2, 3, 4, 5, 6, 7].map((i) => cuenta(i, { alias: `Banco ${i}` })),
     });
     montar();
 
-    await waitFor(() => expect(screen.getByText('Banco 7')).toBeInTheDocument());
-    // La primera y la última a la vez: no hay páginas.
-    expect(screen.getByText('Banco 1')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Cuentas siguientes')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Banco 1')).toBeInTheDocument());
+    expect(screen.getByText('Banco 6')).toBeInTheDocument();
+    expect(screen.queryByText('Banco 7')).not.toBeInTheDocument();
+    expect(screen.getByText('1–6 de 7')).toBeInTheDocument();
+    // El total es del CONJUNTO, no de la página.
     expect(screen.getByText('Total · 7 cuentas')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Cuentas siguientes'));
+    expect(await screen.findByText('Banco 7')).toBeInTheDocument();
+    expect(screen.queryByText('Banco 1')).not.toBeInTheDocument();
   });
 
   it('el clip de una fila abre el extracto YA fijado a esa cuenta', async () => {
@@ -464,11 +469,11 @@ describe('rediseño · el ledger de cuentas', () => {
     expect(await screen.findByRole('dialog', { name: 'Calendario' })).toBeInTheDocument();
   });
 
-  it('el orden es del usuario · un selector, no cabeceras de hoja de cálculo', async () => {
+  it('las columnas ordenan · clic: ascendente → descendente → tu orden', async () => {
     montarDb({
       accounts: [
-        cuenta(1, { alias: 'Pequeña', openingBalance: 100 }),
-        cuenta(2, { alias: 'Grande', openingBalance: 9000 }),
+        cuenta(1, { alias: 'Grande', openingBalance: 9000 }),
+        cuenta(2, { alias: 'Pequeña', openingBalance: 100 }),
       ],
     });
     const { container } = montar();
@@ -477,20 +482,23 @@ describe('rediseño · el ledger de cuentas', () => {
     const nombres = () =>
       Array.from(container.querySelectorAll('.accNm')).map((n) => n.textContent);
     // Orden manual de partida · el natural (o el que dejó el arrastre).
-    expect(nombres()).toEqual(['Pequeña', 'Grande']);
+    expect(nombres()).toEqual(['Grande', 'Pequeña']);
 
-    const selector = screen.getByLabelText('Ordenar las cuentas');
-    // Por saldo · de mayor a menor, la dirección natural del dinero.
-    fireEvent.change(selector, { target: { value: 'saldo' } });
-    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
-
-    // Por nombre · de la A a la Z.
-    fireEvent.change(selector, { target: { value: 'nombre' } });
-    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
-
-    // Y de vuelta a mi manera.
-    fireEvent.change(selector, { target: { value: 'manual' } });
+    const cabSaldo = screen.getByRole('button', { name: 'Saldo' });
+    fireEvent.click(cabSaldo); // ascendente
     await waitFor(() => expect(nombres()).toEqual(['Pequeña', 'Grande']));
+
+    fireEvent.click(cabSaldo); // descendente
+    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' })); // otra columna · A→Z
+    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' })); // Z→A
+    await waitFor(() => expect(nombres()).toEqual(['Pequeña', 'Grande']));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' })); // y a mi orden
+    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
   });
 });
 

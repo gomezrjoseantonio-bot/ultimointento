@@ -164,6 +164,27 @@
   align-items: center;
   gap: 18px;
 }
+/* Botón fantasma de sección · la previsión (meses y días) vive junto a la
+   sección de cuentas, no en el hero: es una vista de trabajo, no la acción
+   principal de la pantalla. */
+.secGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.secGhost:hover {
+  border-color: var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold-wash);
+}
 
 /* ── Dos columnas · tarjetas + cierre a la izquierda, realidad a la derecha ─ */
 
@@ -396,18 +417,6 @@
   color: var(--atlas-v5-on-gold);
   border-color: var(--atlas-v5-gold);
 }
-/* Botón fantasma SOBRE NAVY · la previsión es una vista, no una escritura,
-   así que no compite con el oro del extracto. */
-.btnHeroGhost {
-  background: none;
-  color: var(--atlas-v5-on-brand);
-  border-color: var(--atlas-v5-on-brand-line);
-  margin-right: 10px;
-}
-.btnHeroGhost:hover {
-  border-color: var(--atlas-v5-gold-soft);
-  color: var(--atlas-v5-gold-soft);
-}
 .btnGold:hover:not([aria-disabled='true']) {
   background: var(--atlas-v5-gold-2);
   border-color: var(--atlas-v5-gold-2);
@@ -522,11 +531,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* La cuenta de cargo · el mismo punto que su fila del ledger. */
+/* La cuenta de cargo · en texto, sin color de banco. */
 .tjCuenta {
-  display: flex;
-  align-items: center;
-  gap: 7px;
   font-size: 11.5px;
   font-weight: 600;
   color: var(--atlas-v5-ink-3);
@@ -535,12 +541,9 @@
   text-overflow: ellipsis;
   min-width: 0;
 }
-.tjDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+/* Arrastre · el mismo lenguaje que las filas de cuenta. */
+.tjDragging { opacity: 0.4; cursor: grabbing; }
+.tjOver { box-shadow: inset 0 2px 0 var(--atlas-v5-gold); }
 .tjVacio {
   font-size: 12.5px;
   color: var(--atlas-v5-ink-4);

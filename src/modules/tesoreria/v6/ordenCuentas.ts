@@ -27,6 +27,28 @@ export async function guardarOrdenCuentas(ids: number[]): Promise<void> {
   await db.put('keyval', ids, CLAVE);
 }
 
+// ── Orden manual de las TARJETAS (rediseño · 18 ago 2026) ───────────────────
+//
+// El mismo gesto que las cuentas: arrastrar. Misma naturaleza (preferencia de
+// presentación) y mismo destino (keyval).
+
+const CLAVE_TARJETAS = 'tesoreria.v6.ordenTarjetas';
+
+export async function leerOrdenTarjetas(): Promise<number[]> {
+  try {
+    const db = await initDB();
+    const guardado = (await db.get('keyval', CLAVE_TARJETAS)) as unknown;
+    return Array.isArray(guardado) ? guardado.filter((x): x is number => typeof x === 'number') : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function guardarOrdenTarjetas(ids: number[]): Promise<void> {
+  const db = await initDB();
+  await db.put('keyval', ids, CLAVE_TARJETAS);
+}
+
 // ── Orden por columna del ledger (rediseño §4.2) ────────────────────────────
 //
 // Cada cual ordena sus cuentas como trabaja: por saldo, por lo que queda al

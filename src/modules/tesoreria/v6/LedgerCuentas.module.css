@@ -1,61 +1,13 @@
 /* ===========================================================================
-   Ledger de cuentas · Tesorería V6 (rediseño §4.2 · iteración 4)
+   Ledger de cuentas · Tesorería V6 (rediseño §4.2 · iteración 5)
 
-   Todos los datos, agradables de leer · el registro del ledger de Inversiones
-   aplicado con la GUIA-DISENO-V5:
-     · cabecera versalita 9.5 ink-5 sobre card-alt (§ ledger Inversiones);
-     · jerarquía tipográfica: el saldo manda, el cierre confirma, los flujos
-       acompañan y los ceros callan;
-     · estados del set canónico (§4.2): texto gris sin chip · ámbar --warn
-       con punto solo en «se queda corta»;
-     · animaciones: solo el hover permitido (§15 de la guía);
-     · el único color libre es el punto del banco (§12.5).
+   Columnas desdobladas · orden desde las cabeceras (flecha en oro-tinta,
+   como Inversiones) · sin colores de banco · dígitos bajo el nombre ·
+   paginado con pie «1–6 de N». Jerarquía: el saldo manda (700 ink), el
+   cierre confirma (700 ink-2), los flujos acompañan (600 ink-2) y los ceros
+   callan (ink-5). Estados del set canónico §4.2: texto gris sin chip, ámbar
+   --warn con punto solo en «se queda corta».
    =========================================================================== */
-
-/* ── La barra de arriba · el orden, en palabras y no en cabeceras ────────── */
-
-.barra {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 14px;
-  margin-bottom: 8px;
-  min-height: 22px;
-}
-.pista {
-  font-size: 11px;
-  color: var(--atlas-v5-ink-5);
-}
-.ordenCtl {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.ordenLab {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--atlas-v5-ink-4);
-}
-.ordenSel {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--atlas-v5-ink-2);
-  background: var(--atlas-v5-card);
-  border: 1px solid var(--atlas-v5-line);
-  border-radius: 7px;
-  padding: 4px 8px;
-  cursor: pointer;
-}
-.ordenSel:hover { border-color: var(--atlas-v5-ink-5); }
-.ordenSel:focus-visible {
-  outline: 2px solid var(--atlas-v5-gold);
-  outline-offset: 1px;
-}
-
-/* ── El ledger ───────────────────────────────────────────────────────────── */
 
 .lcard {
   background: var(--atlas-v5-card);
@@ -66,31 +18,52 @@
 
 .gridCols {
   display: grid;
-  grid-template-columns: minmax(230px, 1.6fr) minmax(130px, 1fr) minmax(140px, 1fr) minmax(130px, 1fr) 62px;
-  gap: 22px;
+  grid-template-columns:
+    minmax(150px, 1.3fr) minmax(104px, 0.9fr) minmax(104px, 0.9fr)
+    minmax(104px, 0.9fr) minmax(112px, 0.95fr) minmax(150px, 1.2fr) 62px;
+  gap: 16px;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 18px;
 }
 .colNum { text-align: right; }
+.colEstado { min-width: 0; }
 
-/* Cabecera silenciosa · dice qué es cada columna y se aparta. */
+/* ── Cabecera ordenable · clic: asc → desc → tu orden manual ─────────────── */
+
 .head {
   padding-top: 10px;
   padding-bottom: 10px;
+  background: var(--atlas-v5-card-alt);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+.cab {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--atlas-v5-ink-5);
-  background: var(--atlas-v5-card-alt);
-  border-bottom: 1px solid var(--atlas-v5-line-2);
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+  white-space: nowrap;
+  transition: color 0.12s;
 }
+.cab:hover { color: var(--atlas-v5-ink-3); }
+.cabNum { text-align: right; }
+.cabAsc,
+.cabDesc { color: var(--atlas-v5-ink-3); }
+.cabAsc::after { content: ' ↑'; color: var(--atlas-v5-gold-ink); }
+.cabDesc::after { content: ' ↓'; color: var(--atlas-v5-gold-ink); }
 
 /* ── Filas ────────────────────────────────────────────────────────────────── */
 
 .fila {
-  padding-top: 12px;
-  padding-bottom: 12px;
+  padding-top: 10px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--atlas-v5-line-2);
   cursor: pointer;
   transition: background 0.14s;
@@ -103,32 +76,12 @@
 .filaDragging { opacity: 0.4; cursor: grabbing; }
 .filaOver { box-shadow: inset 0 2px 0 var(--atlas-v5-gold); }
 
-/* La celda rica · identidad arriba, estado debajo. */
-.celCuenta {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  min-width: 0;
-}
-/* Único color libre: la identidad del banco (§12.5). */
-.bankDot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-top: 5px;
-}
+/* Identidad · el nombre manda y los dígitos van debajo. Sin color de banco. */
 .accId {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-}
-.accLinea {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
+  gap: 2px;
 }
 .accNm {
   font-size: 13.5px;
@@ -142,12 +95,42 @@
   font-family: var(--atlas-v5-font-mono-num);
   font-size: 10.5px;
   color: var(--atlas-v5-ink-5);
-  flex-shrink: 0;
 }
 
-/* El estado · texto, no chip (§4.2) · una frase que no se parte. */
+/* ── La jerarquía del dinero · mono tabular, derecha ─────────────────────── */
+
+.saldo {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.flujo {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
+/* Los ceros callan · un guion en gris sutil. */
+.flujoCero { color: var(--atlas-v5-ink-5); }
+.cierre {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
+
+/* ── Estado · el set canónico §4.2 · texto, no chip ──────────────────────── */
+
 .state {
-  font-size: 11px;
+  font-size: 11.5px;
   display: flex;
   align-items: baseline;
   gap: 4px;
@@ -164,7 +147,7 @@
   color: var(--atlas-v5-ink-3);
 }
 /* Ámbar --warn · riesgo que pide actuar (§2.2 de la guía) · único color de
-   estado de la fila, con su punto. */
+   estado, con su punto. */
 .stateAlerta {
   color: var(--atlas-v5-warn);
   font-weight: 600;
@@ -180,56 +163,6 @@
 .stateVal {
   font-family: var(--atlas-v5-font-mono-num);
   font-weight: 700;
-}
-
-/* ── La jerarquía del dinero · mono tabular, derecha ─────────────────────── */
-
-/* El saldo manda. */
-.saldo {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--atlas-v5-ink);
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-/* Los flujos acompañan · apilados, con su flecha en gris sutil. */
-.flujos {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-}
-.flujo {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--atlas-v5-font-mono-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--atlas-v5-ink-2);
-  white-space: nowrap;
-}
-.flujo svg { color: var(--atlas-v5-ink-5); }
-/* Los ceros callan · la columna se lee de un vistazo. */
-.flujoCero { color: var(--atlas-v5-ink-5); }
-/* Y si no queda nada, un guion mudo en vez de dos ceros apilados. */
-.flujoNada {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-size: 11.5px;
-  color: var(--atlas-v5-ink-5);
-}
-
-/* El cierre confirma · es la respuesta de la fila. */
-.cierre {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--atlas-v5-ink-2);
-  white-space: nowrap;
 }
 
 /* ── Acciones · aparecen al posarse en la fila ───────────────────────────── */
@@ -260,7 +193,7 @@
   color: var(--atlas-v5-brand);
 }
 
-/* ── El total · el control del conjunto, en las mismas verticales ────────── */
+/* ── Total · todas las cuentas, en las mismas verticales ─────────────────── */
 
 .total {
   padding-top: 11px;
@@ -283,6 +216,55 @@
   color: var(--atlas-v5-ink);
   white-space: nowrap;
 }
+.totalFlujo {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
+
+/* ── El pie · recuento + paginación (patrón del ledger de Inversiones) ───── */
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 18px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+  background: var(--atlas-v5-card-alt);
+}
+.footInfo {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+.pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pagerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-3);
+  cursor: pointer;
+}
+.pagerBtn:hover:not(:disabled) {
+  border-color: var(--atlas-v5-ink-5);
+  color: var(--atlas-v5-ink-2);
+}
+.pagerBtn:disabled { opacity: 0.4; cursor: default; }
 
 .vacio {
   font-size: 12.5px;
@@ -290,15 +272,24 @@
   padding: 12px 0;
 }
 
-/* ── Responsive · cede primero la columna de flujos (vive también en el
-   hero y en la previsión) · el estado nunca, va con el nombre ───────────── */
+/* ── Responsive · ceden primero los flujos (viven también en el hero y en
+   la previsión) · el estado va con su columna hasta el final ─────────────── */
 
-@media (max-width: 1100px) {
-  .gridCols { grid-template-columns: minmax(200px, 1.6fr) minmax(120px, 1fr) minmax(120px, 1fr) 40px; gap: 14px; }
-  .gridCols > :nth-child(3) { display: none; }
-}
-@media (max-width: 860px) {
-  .gridCols { grid-template-columns: minmax(160px, 1.6fr) minmax(110px, 1fr) 34px; gap: 10px; padding: 0 14px; }
-  /* También el cierre · quedan nombre + estado + saldo, lo esencial. */
+@media (max-width: 1240px) {
+  .gridCols {
+    grid-template-columns:
+      minmax(140px, 1.3fr) minmax(104px, 0.9fr) minmax(112px, 0.95fr)
+      minmax(140px, 1.2fr) 40px;
+    gap: 12px;
+  }
+  .gridCols > :nth-child(3),
   .gridCols > :nth-child(4) { display: none; }
+}
+@media (max-width: 900px) {
+  .gridCols {
+    grid-template-columns: minmax(130px, 1.3fr) minmax(104px, 0.9fr) minmax(130px, 1.2fr) 34px;
+    gap: 10px;
+    padding: 0 14px;
+  }
+  .gridCols > :nth-child(5) { display: none; }
 }

@@ -22,11 +22,16 @@ import {
   calcularRealidad,
   proyectarMeses,
 } from '../../../services/tesoreriaV6Metrics';
-import { colorDeBanco } from './bancoColores';
 import LedgerCuentas from './LedgerCuentas';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { importeConSigno, importeSaldo, nombreMes, fechaLarga } from './formatoV6';
-import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
+import {
+  leerOrdenCuentas,
+  guardarOrdenCuentas,
+  leerOrdenTarjetas,
+  guardarOrdenTarjetas,
+  aplicarOrden,
+} from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
 import DrawerTarjeta from './DrawerTarjeta';
 import DrawerExtracto from './DrawerExtracto';
@@ -209,8 +214,36 @@ const TesoreriaV6Page: React.FC = () => {
   }, [recargar]);
 
   const recargarTarjetas = useCallback(async () => {
-    setTarjetas(await listarTarjetas());
+    // Las tarjetas también se ordenan arrastrando (rediseño · 18 ago 2026):
+    // se cargan YA en el orden del usuario y el estado se mantiene ordenado.
+    const [lista, ordenT] = await Promise.all([listarTarjetas(), leerOrdenTarjetas()]);
+    setTarjetas(aplicarOrden(lista, ordenT));
   }, []);
+
+  /** Arrastre de tarjetas · reordena en pantalla y persiste. */
+  const [tarjetaArrastrando, setTarjetaArrastrando] = useState<number | null>(null);
+  const [tarjetaEncima, setTarjetaEncima] = useState<number | null>(null);
+  const soltarTarjetaSobre = useCallback(
+    async (destinoId: number) => {
+      if (tarjetaArrastrando == null || tarjetaArrastrando === destinoId) return;
+      const ids = tarjetas.map((t) => t.id!).filter((x) => x != null);
+      const from = ids.indexOf(tarjetaArrastrando);
+      const to = ids.indexOf(destinoId);
+      setTarjetaArrastrando(null);
+      setTarjetaEncima(null);
+      if (from < 0 || to < 0) return;
+      const nuevo = [...ids];
+      nuevo.splice(to, 0, ...nuevo.splice(from, 1));
+      setTarjetas((ts) => aplicarOrden(ts, nuevo));
+      try {
+        await guardarOrdenTarjetas(nuevo);
+      } catch (err) {
+        // Preferencia perdida · no un motivo para romper la interacción.
+        console.warn('[TesoreriaV6] no se pudo guardar el orden de las tarjetas', err);
+      }
+    },
+    [tarjetaArrastrando, tarjetas]
+  );
 
   /**
    * §3.5 · lo gastado con cada tarjeta en su periodo ABIERTO.
@@ -760,17 +793,9 @@ const TesoreriaV6Page: React.FC = () => {
         />
 
         <div className={styles.heroAct}>
-          {/* Las dos puertas de trabajo, juntas y al nivel de la pantalla:
-              la previsión (meses y días, donde también se puntea por día) y
-              el extracto. El oro es del extracto, que es la acción que
-              escribe; la previsión es una vista y va en fantasma. */}
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnHeroGhost}`}
-            onClick={() => setCalendario({ year, month0 })}
-          >
-            <Icons.Calendar size={15} strokeWidth={1.8} /> Previsión · meses y días
-          </button>
+          {/* El hero se queda con UNA acción, la que escribe: el extracto.
+              La previsión (meses y días) vive junto a la sección de cuentas,
+              que es donde se trabaja (decisión Jose · 18 ago 2026). */}
           <button
             type="button"
             className={`${styles.btn} ${styles.btnGold}`}
@@ -797,6 +822,13 @@ const TesoreriaV6Page: React.FC = () => {
             </div>
           </div>
           <div className={styles.secActs}>
+            <button
+              type="button"
+              className={styles.secGhost}
+              onClick={() => setCalendario({ year, month0 })}
+            >
+              <Icons.Calendar size={14} strokeWidth={1.8} /> Previsión · meses y días
+            </button>
             <button
               type="button"
               className={styles.secAdd}
@@ -856,8 +888,19 @@ const TesoreriaV6Page: React.FC = () => {
                 <button
                   key={t.id}
                   type="button"
-                  className={styles.tjItem}
+                  className={`${styles.tjItem} ${
+                    tarjetaArrastrando === t.id ? styles.tjDragging : ''
+                  } ${tarjetaEncima === t.id ? styles.tjOver : ''}`}
                   onClick={() => setTarjetaAbierta(t)}
+                  draggable
+                  onDragStart={() => setTarjetaArrastrando(t.id!)}
+                  onDragEnter={() => setTarjetaEncima(t.id!)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnd={() => {
+                    setTarjetaArrastrando(null);
+                    setTarjetaEncima(null);
+                  }}
+                  onDrop={() => void soltarTarjetaSobre(t.id!)}
                 >
                   <span className={styles.tjId}>
                     <span className={styles.tjAlias}>{t.alias}</span>
@@ -870,21 +913,11 @@ const TesoreriaV6Page: React.FC = () => {
                     </span>
                   </span>
                   <span className={styles.tjSub}>{describirCiclo(t)}</span>
-                  {/* La cuenta con SU punto de banco · el vínculo tarjeta →
-                      cuenta se ve, no solo se lee: es el mismo punto que la
-                      fila de esa cuenta en el ledger de arriba. */}
+                  {/* La cuenta de cargo · en texto, sin color de banco. */}
                   <span className={styles.tjCuenta}>
-                    {liquidacion ? (
-                      <>
-                        <span
-                          className={styles.tjDot}
-                          style={{ background: colorDeBanco(liquidacion) }}
-                        />
-                        {liquidacion.alias || liquidacion.name || 'Cuenta'}
-                      </>
-                    ) : (
-                      'sin cuenta de cargo'
-                    )}
+                    {liquidacion
+                      ? liquidacion.alias || liquidacion.name || 'Cuenta'
+                      : 'sin cuenta de cargo'}
                   </span>
                   {/* §3.5 · lo que llevas gastado con ella en el periodo que aún
                       no ha cerrado · es una cifra VIVA, crece con cada compra. */}
