@@ -26,6 +26,7 @@ import { bankProfilesService } from './bankProfilesService';
 import { matchBatch, MatchOptions, MatchResult } from './movementMatchingService';
 import { suggestForUnmatched, MovementSuggestion, SuggestionAction } from './movementSuggestionService';
 import { buildLearnKey, createOrUpdateRule } from './movementLearningService';
+import { aplicarReconciliacionConfirmado } from './reconciliarConfirmado';
 import type { ParsedMovement } from '../types/bankProfiles';
 
 export interface OrchestratorOptions {
@@ -312,57 +313,12 @@ export async function confirmDecisions(
   }
 
   // Reconciliar contra un Confirmado que ya tenías · "las dos cosas".
-  //
-  // La línea del extracto y el confirmado son la MISMA operación. Sobrevive la
-  // del import —es la palabra del banco: su texto y su fecha son los que hacen
-  // que un reimport del mismo extracto la reconozca por hash y no la duplique—,
-  // hereda la clasificación que le pusiste al confirmado (categoría, inmueble,
-  // tarjeta) y sube a Conciliado. El confirmado se borra: dejarlo contaría el
-  // dinero dos veces.
+  // Una sola implementación del colapso, compartida con la limpieza de
+  // duplicados ya creados (`reconciliarConfirmado`).
   for (const { importMovementId, confirmadoMovementId } of payload.reconciliacionesConfirmado ?? []) {
     const importMov = (await db.get('movements', importMovementId)) as Movement | undefined;
     if (!importMov) continue;
-    const confirmado = (await db.get('movements', confirmadoMovementId)) as Movement | undefined;
-    await db.put('movements', {
-      ...importMov,
-      ...(confirmado
-        ? {
-            categoryKey: confirmado.categoryKey,
-            subtypeKey: confirmado.subtypeKey,
-            inmuebleId: confirmado.inmuebleId,
-            ambito: confirmado.ambito,
-            ...(confirmado.tarjetaId != null ? { tarjetaId: confirmado.tarjetaId } : {}),
-          }
-        : {}),
-      unifiedStatus: 'conciliado',
-      movementState: 'Conciliado',
-      statusConciliacion: 'match_automatico',
-      updatedAt: now,
-    });
-    if (confirmado?.id != null && confirmado.id !== importMovementId) {
-      // Si el confirmado era la materialización de un previsto punteado
-      // (`confirmTreasuryEvent` lo crea con `reference: treasury_event:<id>` y
-      // deja el evento en `executed` apuntándole por `movementId`), al borrarlo
-      // hay que RE-APUNTAR ese evento a la línea del import que sobrevive. Si no,
-      // el saldo cuenta el evento (por su `movementId` muerto ya no descuenta la
-      // línea) y la línea por separado, y vuelve a duplicar el importe.
-      const ref = typeof confirmado.reference === 'string' ? confirmado.reference : '';
-      const eventId = ref.startsWith('treasury_event:') ? Number(ref.slice('treasury_event:'.length)) : NaN;
-      if (Number.isFinite(eventId)) {
-        const ev = (await db.get('treasuryEvents', eventId)) as TreasuryEvent | undefined;
-        if (ev && (ev.movementId === confirmado.id || ev.executedMovementId === confirmado.id)) {
-          await db.put('treasuryEvents', {
-            ...ev,
-            movementId: importMovementId,
-            executedMovementId: importMovementId,
-            actualDate: importMov.date,
-            actualAmount: Math.abs(importMov.amount),
-            updatedAt: now,
-          });
-        }
-      }
-      await db.delete('movements', confirmado.id);
-    }
+    await aplicarReconciliacionConfirmado(db, importMov, confirmadoMovementId, now);
     movementIdsTouched.add(importMovementId);
   }
 

@@ -41,6 +41,10 @@ import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import { regenerarRecibosDeTarjeta } from '../../../services/personal/compromisosRecurrentesService';
 import { confirmarPieza, despuntearPieza, descartarPieza } from '../../../services/personal/puntearPieza';
+import {
+  contarDuplicadosPunteados,
+  reconciliarDuplicadosExistentes,
+} from '../../../services/reconciliarDuplicadosExistentes';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
 import { gastoDeMovimientos, gastoPorTarjeta, gastoAbiertoPorTarjeta } from '../../../services/gastoPorTarjeta';
@@ -402,6 +406,25 @@ const TesoreriaV6Page: React.FC = () => {
     invalidateCachedStores(['treasuryEvents', 'movements', 'accounts']);
     await recargar();
   }, [recargar]);
+
+  // Duplicados de previstos punteados que dejó el bug de conciliación · se
+  // avisan y se limpian bajo demanda (borra datos, no se hace solo).
+  const numDuplicados = useMemo(
+    () => contarDuplicadosPunteados(estado.movimientos),
+    [estado.movimientos]
+  );
+  const [limpiandoDup, setLimpiandoDup] = useState(false);
+  const limpiarDuplicados = useCallback(async () => {
+    setLimpiandoDup(true);
+    try {
+      await reconciliarDuplicadosExistentes();
+      await trasEscribir();
+    } catch (err) {
+      console.error('[TesoreriaV6] no se pudieron limpiar los duplicados', err);
+    } finally {
+      setLimpiandoDup(false);
+    }
+  }, [trasEscribir]);
 
   /** Confirmar un previsto por id · lo usan la lista de punteo y el móvil. */
   const confirmarPrevisto = useCallback(
@@ -798,6 +821,27 @@ const TesoreriaV6Page: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Aviso · duplicados de previstos punteados que dejó el bug (limpieza
+          bajo demanda: borra el confirmado suelto, deja la línea del banco). */}
+      {numDuplicados > 0 && (
+        <div className={styles.dupAviso}>
+          <div className={styles.dupText}>
+            <strong>{numDuplicados}</strong>{' '}
+            {numDuplicados === 1 ? 'movimiento duplicado' : 'movimientos duplicados'} de subidas
+            anteriores. Al reconciliarlos, se queda la línea del banco (conciliada) y se borra el
+            confirmado repetido.
+          </div>
+          <button
+            type="button"
+            className={styles.dupBtn}
+            onClick={limpiarDuplicados}
+            disabled={limpiandoDup}
+          >
+            {limpiandoDup ? 'Reconciliando…' : `Reconciliar ${numDuplicados}`}
+          </button>
+        </div>
+      )}
 
       {/* ── §4.2 · Carrusel de cuentas ──────────────────────────────────── */}
       <section className={styles.sec}>
