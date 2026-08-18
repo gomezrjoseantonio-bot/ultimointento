@@ -41,8 +41,6 @@ import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import { regenerarRecibosDeTarjeta } from '../../../services/personal/compromisosRecurrentesService';
 import { confirmarPieza, despuntearPieza, descartarPieza } from '../../../services/personal/puntearPieza';
-import { leerExtractoTarjeta } from '../../../services/personal/extractoTarjeta';
-import { aplicarExtractoTarjeta } from '../../../services/personal/conciliarExtractoTarjeta';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
 import { gastoDeMovimientos, gastoPorTarjeta, gastoAbiertoPorTarjeta } from '../../../services/gastoPorTarjeta';
@@ -660,19 +658,6 @@ const TesoreriaV6Page: React.FC = () => {
   const despuntearPiezaItem = useMemo(() => puntearPiezaAccion((id) => despuntearPieza(id)), [puntearPiezaAccion]);
   const descartarPiezaItem = useMemo(() => puntearPiezaAccion((id) => descartarPieza(id)), [puntearPiezaAccion]);
 
-  // §3 · subir el extracto (PDF) de una tarjeta · lee y concilia sus gastos.
-  const subirExtractoTarjeta = useCallback(
-    async (t: Tarjeta, file: File) => {
-      if (t.id == null) return null;
-      const lineas = await leerExtractoTarjeta(file);
-      if (lineas.length === 0) return null;
-      const r = await aplicarExtractoTarjeta(t.id, lineas);
-      await trasEscribir();
-      return r;
-    },
-    [trasEscribir]
-  );
-
   /**
    * `?extracto=1` abre el drawer de §4.7 · lo usan el atajo del Panel y las
    * rutas viejas de importación. Se aplica UNA vez: si no, cerrar el drawer lo
@@ -1048,7 +1033,6 @@ const TesoreriaV6Page: React.FC = () => {
         onConfirmarPiezaImporte={confirmarPiezaImporteItem}
         onDespuntearPieza={despuntearPiezaItem}
         onDescartarPieza={descartarPiezaItem}
-        onSubirExtracto={subirExtractoTarjeta}
       />
 
       {/* §4.9 · calendario diario · navega entre meses sin cerrarse */}

@@ -569,7 +569,72 @@ En "notas" escribe, en una o dos frases: qué campos no has encontrado y dónde 
       return jsonResponse(200, { ok: true, tipo: 'scan_fein', model: SCAN_MODEL, extraido });
     }
 
-    return jsonResponse(400, { ok: false, error: 'El campo "tipo" debe ser "chat", "scan", "scan_fein", "scan_irpf" o "scan_datos_fiscales"' });
+    // ── SCAN EXTRACTO ─────────────────────────────────────────────────────
+    //
+    // Lee el extracto de una TARJETA (o de un banco) que llega en PDF y saca
+    // sus líneas de movimiento. El PDF de una tarjeta no es normalizado: la
+    // Carrefour lo maqueta distinto del Santander, y algunos vienen escaneados.
+    // Un parser a medida por emisor no escala; el modelo lee cualquiera y
+    // devuelve solo lo que necesita la conciliación: fecha, concepto e importe.
+    if (tipo === 'scan_extracto') {
+      const base64Data = cleanBase64(body?.imagen);
+      if (!base64Data) return jsonResponse(400, { ok: false, error: 'El campo "imagen" en base64 es obligatorio para tipo "scan_extracto"' });
+
+      const mimeType = typeof body?.mimeType === 'string' && body.mimeType.trim()
+        ? body.mimeType.trim().toLowerCase()
+        : 'application/pdf';
+      const isImage = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType);
+      const mediaBlock = isImage
+        ? { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64Data } }
+        : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } };
+
+      const system = `Eres un lector de extractos bancarios y de tarjetas de crédito españoles. Recibes un extracto (de tarjeta o de cuenta) y extraes TODAS sus líneas de movimiento.
+
+Devuelve ÚNICAMENTE un objeto JSON, sin markdown y sin texto alrededor, con esta forma:
+
+{ "lineas": [ { "fecha": "YYYY-MM-DD", "concepto": string, "importe": number } ] }
+
+REGLAS:
+1. Una línea por cada movimiento/compra del extracto. Recorre TODAS las páginas.
+2. "fecha": la fecha de operación (no la de valor) en formato ISO "YYYY-MM-DD". Si el año no aparece en la línea, tómalo de la cabecera del extracto.
+3. "concepto": el texto literal del comercio o descripción, tal cual aparece.
+4. "importe": número con punto decimal (12,34 → 12.34, sin separador de miles). POSITIVO para una compra o cargo; NEGATIVO para un abono, devolución o pago del recibo.
+5. NO incluyas líneas de cabecera, subtotales, "Total compras", saldos ni el importe total del recibo: solo movimientos individuales.
+6. Si no hay ninguna línea legible, devuelve { "lineas": [] }. No inventes.`;
+
+      const result = await callAnthropic({
+        model: SCAN_MODEL,
+        system,
+        maxTokens: 4000,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Extrae todas las líneas de movimiento de este extracto y devuelve solo JSON válido.' },
+              mediaBlock,
+            ],
+          },
+        ],
+      });
+
+      if (!result.ok) {
+        console.error('scan_extracto · error del proveedor:', JSON.stringify(result.raw));
+        return jsonResponse(result.status || 502, { ok: false, error: result.error });
+      }
+
+      let extraido = result.text;
+      try {
+        extraido = JSON.parse(result.text);
+      } catch (_e) {
+        const m = typeof result.text === 'string' ? result.text.match(/\{[\s\S]*\}/) : null;
+        if (m) { try { extraido = JSON.parse(m[0]); } catch (_e2) { /* se conserva el texto bruto */ } }
+      }
+
+      return jsonResponse(200, { ok: true, tipo: 'scan_extracto', model: SCAN_MODEL, extraido });
+    }
+
+    return jsonResponse(400, { ok: false, error: 'El campo "tipo" debe ser "chat", "scan", "scan_extracto", "scan_fein", "scan_irpf" o "scan_datos_fiscales"' });
   } catch (error) {
     console.error('netlify/functions/chat error:', error);
     return jsonResponse(500, { ok: false, error: 'No se pudo procesar la solicitud' });
