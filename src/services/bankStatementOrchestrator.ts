@@ -27,6 +27,7 @@ import { matchBatch, MatchOptions, MatchResult } from './movementMatchingService
 import { suggestForUnmatched, MovementSuggestion, SuggestionAction } from './movementSuggestionService';
 import { buildLearnKey, createOrUpdateRule } from './movementLearningService';
 import { aplicarReconciliacionConfirmado } from './reconciliarConfirmado';
+import { leerExtractoBancoPdf } from './leerExtractoBancoPdf';
 import type { ParsedMovement } from '../types/bankProfiles';
 
 export interface OrchestratorOptions {
@@ -180,16 +181,73 @@ export async function processFile(
     throw new Error(parsed.error ?? 'No se pudieron parsear movimientos del archivo.');
   }
 
-  const filteredMovements = filterByPeriod(parsed.movements, options.periodStart, options.periodEnd);
+  return procesarLoteParseado(file, options, parsed.movements, {
+    hashLote,
+    bankProfileUsed,
+    warnings,
+    format,
+  });
+}
+
+/**
+ * V6 · el extracto de una cuenta en PDF · lo lee la IA y sigue el MISMO camino
+ * que un xls (insertar → emparejar → revisar en el drawer). Mantiene la
+ * idempotencia por fichero (hash del PDF), así que subir dos veces el mismo PDF
+ * avisa igual que un xls repetido.
+ */
+export async function processPdf(
+  file: File,
+  options: OrchestratorOptions
+): Promise<OrchestratorResult> {
+  const warnings: string[] = [];
+  const { generateBatchHash } = await import('../utils/batchHashUtils');
+  const hashLote = await generateBatchHash(file);
+  const previo = await findBatchByHash(hashLote);
+  if (previo && !options.allowReimport) {
+    throw new StatementAlreadyImportedError(hashLote, previo.timestampImport, previo.filename);
+  }
+  if (previo) {
+    warnings.push(
+      `Extracto reimportado a petición del usuario · ya se había importado el ` +
+        `${previo.timestampImport.slice(0, 10)}. Las líneas repetidas se descartan por hash de movimiento.`
+    );
+  }
+
+  const lineas = await leerExtractoBancoPdf(file);
+  if (lineas.length === 0) {
+    throw new Error('No se leyó ningún movimiento en el PDF. ¿Es un extracto de esta cuenta?');
+  }
+  warnings.push(`Extracto leído con IA · ${lineas.length} movimientos. Revísalos antes de guardar.`);
+
+  return procesarLoteParseado(file, options, lineas, {
+    hashLote,
+    bankProfileUsed: 'IA (PDF)',
+    warnings,
+    format: 'csv',
+  });
+}
+
+/**
+ * Cola común del import · desde los movimientos ya parseados (por SheetJS o por
+ * la IA): filtra por periodo, persiste el lote, inserta, empareja y propone. NO
+ * toca `treasuryEvents` ni reglas: eso lo hace `confirmDecisions` al Guardar.
+ */
+async function procesarLoteParseado(
+  file: File,
+  options: OrchestratorOptions,
+  parsedMovements: ParsedMovement[],
+  ctx: { hashLote: string; bankProfileUsed?: string; warnings: string[]; format: BankFormat }
+): Promise<OrchestratorResult> {
+  const filteredMovements = filterByPeriod(parsedMovements, options.periodStart, options.periodEnd);
   const movementsParsed = filteredMovements.length;
 
   const importBatchId = await persistImportBatch(
     file,
     options,
     movementsParsed,
-    format,
-    bankProfileUsed,
-    hashLote
+    ctx.format,
+    ctx.bankProfileUsed,
+    ctx.hashLote
   );
   const insertResult = await insertMovements(filteredMovements, options.accountId, importBatchId);
 
@@ -205,8 +263,8 @@ export async function processFile(
     duplicatesSkipped: insertResult.duplicates,
     matchResult,
     suggestions,
-    bankProfileUsed,
-    warnings,
+    bankProfileUsed: ctx.bankProfileUsed,
+    warnings: ctx.warnings,
   };
 }
 

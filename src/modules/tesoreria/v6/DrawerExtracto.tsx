@@ -1,10 +1,9 @@
 // Tesorería V6 · §4.7 · drawer · subir extracto · ÚNICO sitio para subirlos.
 //
-// Desde el hero la cuenta se detecta por IBAN; desde una cuenta ya viene fijada;
-// un PDF (o XLS/CSV) de TARJETA se concilia aparte (§3, `PanelExtractoTarjeta`).
-// Paso 1 · dropzone. Paso 2 · emparejamiento, con tres acciones por línea sin
-// cuadre (asignar · crear · ignorar). Un solo botón Guardar consolida la sesión;
-// el aspa sale SIN guardar y borra el batch (`processFile` ya insertó todo).
+// La cuenta se detecta por IBAN (o ya viene fijada); un PDF de banco lo lee la
+// IA; un extracto de TARJETA se concilia aparte (§3, `PanelExtractoTarjeta`).
+// Paso 1 · dropzone. Paso 2 · emparejamiento (asignar · crear · ignorar). Un solo
+// botón Guardar consolida; el aspa sale SIN guardar y borra el batch.
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
@@ -14,6 +13,7 @@ import { nombrarPrevisto as nombrarPrevistoModelo } from './nombrarPrevisto';
 import { candidatosDeLinea } from './conciliacionCandidatos';
 import {
   processFile,
+  processPdf,
   confirmDecisions,
   cancelImportBatch,
   StatementAlreadyImportedError,
@@ -145,7 +145,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       setError(null);
       setAvisoReimport(null);
       try {
-        const res = await processFile(file, { accountId: destino.id, allowReimport });
+        // PDF de banco → IA; xls/csv/N43 → SheetJS. Misma revisión (Paso 2).
+        const opc = { accountId: destino.id, allowReimport };
+        const res = esPdf(file) ? await processPdf(file, opc) : await processFile(file, opc);
         ficheroRef.current = file;
         const db = await initDB();
         const [todosMovs, todosEventos, ignoradasPrevias, mesesCerrados] = await Promise.all([
@@ -188,8 +190,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         await procesar(file, cuenta);
         return;
       }
-      // Un PDF no lo lee SheetJS ni trae IBAN (es de tarjeta o escaneado): se
-      // salta la detección y se pide destino, donde están las tarjetas.
+      // Un PDF no trae IBAN: se salta la detección y se pide destino (cuenta o tarjeta).
       if (esPdf(file)) {
         setAvisoReimport(null);
         setDeteccion({ estado: 'sin-iban' });
@@ -204,8 +205,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         await procesar(file, d.cuenta);
         return;
       }
-      // Sin certeza no se adivina: importar en la cuenta equivocada falsea
-      // todos los saldos. Se guarda el fichero y se pide elegir.
+      // Sin certeza no se adivina (importar en la cuenta equivocada falsea saldos).
       setAvisoReimport(null);
       pendienteRef.current = file;
     },
@@ -574,7 +574,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                     ? 'Leyendo el extracto…'
                     : 'Arrastra aquí el extracto o haz clic para elegir'}
                 </div>
-                <div className={styles.zonaS}>Excel, CSV, Norma 43 o PDF (tarjeta)</div>
+                <div className={styles.zonaS}>Excel, CSV, Norma 43 o PDF</div>
               </button>
 
               <input

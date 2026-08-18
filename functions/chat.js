@@ -634,7 +634,70 @@ REGLAS:
       return jsonResponse(200, { ok: true, tipo: 'scan_extracto', model: SCAN_MODEL, extraido });
     }
 
-    return jsonResponse(400, { ok: false, error: 'El campo "tipo" debe ser "chat", "scan", "scan_extracto", "scan_fein", "scan_irpf" o "scan_datos_fiscales"' });
+    // ── SCAN EXTRACTO BANCO ────────────────────────────────────────────────
+    //
+    // Igual que scan_extracto pero para un extracto de CUENTA bancaria en PDF, con
+    // el signo en convención de banco: negativo = sale dinero, positivo = entra.
+    // (El de tarjeta lista cargos y usa el signo al revés, por eso es otro tipo.)
+    if (tipo === 'scan_extracto_banco') {
+      const base64Data = cleanBase64(body?.imagen);
+      if (!base64Data) return jsonResponse(400, { ok: false, error: 'El campo "imagen" en base64 es obligatorio para tipo "scan_extracto_banco"' });
+
+      const mimeType = typeof body?.mimeType === 'string' && body.mimeType.trim()
+        ? body.mimeType.trim().toLowerCase()
+        : 'application/pdf';
+      const isImage = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType);
+      const mediaBlock = isImage
+        ? { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64Data } }
+        : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } };
+
+      const system = `Eres un lector de extractos de CUENTA bancaria españoles. Recibes un extracto de cuenta (en PDF) y extraes TODAS sus líneas de movimiento.
+
+Devuelve ÚNICAMENTE un objeto JSON, sin markdown y sin texto alrededor, con esta forma:
+
+{ "lineas": [ { "fecha": "YYYY-MM-DD", "concepto": string, "importe": number } ] }
+
+REGLAS:
+1. Una línea por cada movimiento del extracto. Recorre TODAS las páginas.
+2. "fecha": la fecha de operación (no la de valor) en formato ISO "YYYY-MM-DD". Si el año no aparece en la línea, tómalo de la cabecera del extracto.
+3. "concepto": el texto literal del movimiento, tal cual aparece (incluye el nombre de quien paga o cobra si viene: "Transferencia de ...", "Recibo ...", "Bizum de ...").
+4. "importe": número con punto decimal (1.234,56 → 1234.56, sin separador de miles). NEGATIVO si SALE dinero de la cuenta (recibo, cargo, transferencia enviada, compra); POSITIVO si ENTRA (ingreso, nómina, alquiler, transferencia recibida, abono). Respeta la columna de cargo/abono o el signo del extracto.
+5. NO incluyas cabeceras, subtotales, "Saldo anterior", "Saldo", ni el saldo por línea: solo movimientos.
+6. Si no hay ninguna línea legible, devuelve { "lineas": [] }. No inventes.`;
+
+      const result = await callAnthropic({
+        model: SCAN_MODEL,
+        system,
+        maxTokens: 6000,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Extrae todas las líneas de movimiento de este extracto de cuenta y devuelve solo JSON válido.' },
+              mediaBlock,
+            ],
+          },
+        ],
+      });
+
+      if (!result.ok) {
+        console.error('scan_extracto_banco · error del proveedor:', JSON.stringify(result.raw));
+        return jsonResponse(result.status || 502, { ok: false, error: result.error });
+      }
+
+      let extraido = result.text;
+      try {
+        extraido = JSON.parse(result.text);
+      } catch (_e) {
+        const m = typeof result.text === 'string' ? result.text.match(/\{[\s\S]*\}/) : null;
+        if (m) { try { extraido = JSON.parse(m[0]); } catch (_e2) { /* se conserva el texto bruto */ } }
+      }
+
+      return jsonResponse(200, { ok: true, tipo: 'scan_extracto_banco', model: SCAN_MODEL, extraido });
+    }
+
+    return jsonResponse(400, { ok: false, error: 'El campo "tipo" debe ser "chat", "scan", "scan_extracto", "scan_extracto_banco", "scan_fein", "scan_irpf" o "scan_datos_fiscales"' });
   } catch (error) {
     console.error('netlify/functions/chat error:', error);
     return jsonResponse(500, { ok: false, error: 'No se pudo procesar la solicitud' });
