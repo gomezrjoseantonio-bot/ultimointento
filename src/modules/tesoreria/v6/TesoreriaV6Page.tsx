@@ -21,12 +21,11 @@ import {
   calcularKpisHero,
   calcularRealidad,
   proyectarMeses,
-  type MesProyectado,
 } from '../../../services/tesoreriaV6Metrics';
 import { colorDeBanco } from './bancoColores';
 import LedgerCuentas from './LedgerCuentas';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
-import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga } from './formatoV6';
+import { importeConSigno, importeSaldo, nombreMes, fechaLarga } from './formatoV6';
 import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
 import DrawerTarjeta from './DrawerTarjeta';
@@ -761,6 +760,17 @@ const TesoreriaV6Page: React.FC = () => {
         />
 
         <div className={styles.heroAct}>
+          {/* Las dos puertas de trabajo, juntas y al nivel de la pantalla:
+              la previsión (meses y días, donde también se puntea por día) y
+              el extracto. El oro es del extracto, que es la acción que
+              escribe; la previsión es una vista y va en fantasma. */}
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnHeroGhost}`}
+            onClick={() => setCalendario({ year, month0 })}
+          >
+            <Icons.Calendar size={15} strokeWidth={1.8} /> Previsión · meses y días
+          </button>
           <button
             type="button"
             className={`${styles.btn} ${styles.btnGold}`}
@@ -776,24 +786,18 @@ const TesoreriaV6Page: React.FC = () => {
           Con muchas cuentas corrientes lo que hace falta es el control POR
           CUENTA Y EL TOTAL: todas a la vista, cada una con lo que le queda al
           mes, y la suma debajo. Cada cual puntea a su manera: por cuenta
-          (clic en la fila), por días (el botón de al lado) o subiendo
+          (clic en la fila), por días (la previsión del hero) o subiendo
           extractos (el hero, o el clip de cada fila, ya fijado a su cuenta). */}
       <section className={styles.sec}>
         <div className={styles.secHd}>
           <div>
             <div className={styles.secK}>Mis cuentas</div>
             <div className={styles.secT}>
-              entra en una cuenta para puntear sus movimientos · o trabaja por días con el calendario
+              entra en una cuenta para puntear sus movimientos · ordena por cualquier columna o
+              arrastra las filas a tu orden
             </div>
           </div>
           <div className={styles.secActs}>
-            <button
-              type="button"
-              className={styles.secGhost}
-              onClick={() => setCalendario({ year, month0 })}
-            >
-              <Icons.Calendar size={14} strokeWidth={1.8} /> Puntear por días
-            </button>
             <button
               type="button"
               className={styles.secAdd}
@@ -818,8 +822,10 @@ const TesoreriaV6Page: React.FC = () => {
         />
       </section>
 
+      <div className={styles.cols}>
+        <div className={styles.colIzq}>
       {/* ── VOCABULARIO §3 · Tarjetas ────────────────────────────────────
-          Van debajo de las cuentas y NO dentro del carrusel: una tarjeta no
+          Van debajo de las cuentas y NO dentro del ledger: una tarjeta no
           tiene saldo, tiene un ciclo. Meterla entre las cuentas es lo que
           llevaba a creer que era una cuenta más. */}
       <section className={styles.sec}>
@@ -895,34 +901,18 @@ const TesoreriaV6Page: React.FC = () => {
         )}
       </section>
 
-      <div className={styles.cols}>
-        {/* ── §4.3 · Rejilla de 6 meses ─────────────────────────────────── */}
-        <section className={styles.sec}>
-          <div className={styles.secHd}>
-            <div>
-              <div className={styles.secK}>
-                {/* "Previstos" y no "próximos 6 meses": el cuántos ya lo dicen
-                    las seis tarjetas de debajo, y el desde-hasta lo dice el
-                    rango que va al lado. Lo que no se sabía es que esto son
-                    previsiones y no lo que ya ha pasado. */}
-                Movimientos bancarios previstos
-                <span className={styles.rng}>{rangoMeses(meses[0], meses[meses.length - 1])}</span>
-              </div>
-              <div className={styles.secT}>
-                concilia lo previsto contra lo real · toca un mes para ver los días
-              </div>
-            </div>
-          </div>
-          <div className={styles.mesgrid}>
-            {meses.map((m) => (
-              <TarjetaMes
-                key={`${m.year}-${m.month0}`}
-                mes={m}
-                onAbrir={() => setCalendario({ year: m.year, month0: m.month0 })}
-              />
-            ))}
-          </div>
-        </section>
+      {/* ── VOCABULARIO §6 quater · cerrar el mes ─────────────────────────
+          Debajo de las tarjetas y detrás de lo que viene: mirar hacia delante
+          es el trabajo de todos los días, y cerrar es el de una vez al mes.
+          Pero tiene que estar AQUÍ, en tesorería, porque lo que se cierra son
+          las previsiones de tesorería — y de que un mes esté cerrado depende
+          que una bonificación se pueda perder.
+
+          La rejilla de 6 meses ya no vive en la página: la vista de meses y
+          días entera está detrás de «Previsión · meses y días» (§4.9), y la
+          página se queda con lo que se mira a diario, sin scroll. */}
+        <CerrarElMes hoy={hoy} onCambio={trasEscribir} />
+        </div>
 
         {/* ── §4.10 · Cómo va {mes} ─────────────────────────────────────── */}
         <section className={styles.sec}>
@@ -935,14 +925,6 @@ const TesoreriaV6Page: React.FC = () => {
           <BloqueRealidad realidad={realidad} />
         </section>
       </div>
-
-      {/* ── VOCABULARIO §6 quater · cerrar el mes ─────────────────────────
-          Va al final y detrás de lo que viene: mirar hacia delante es el
-          trabajo de todos los días, y cerrar es el de una vez al mes. Pero
-          tiene que estar AQUÍ, en tesorería, porque lo que se cierra son las
-          previsiones de tesorería — y de que un mes esté cerrado depende que
-          una bonificación se pueda perder. */}
-      <CerrarElMes hoy={hoy} onCambio={trasEscribir} />
 
       {/* §4.4 · drawer de cuenta · la bandeja de trabajo */}
       <DrawerCuenta
@@ -996,13 +978,14 @@ const TesoreriaV6Page: React.FC = () => {
         onSubirExtracto={subirExtractoTarjeta}
       />
 
-      {/* §4.9 · calendario diario · navega entre meses sin cerrarse */}
+      {/* §4.9 · la previsión entera · los 6 meses y, dentro, los días */}
       {calendario && (
         <DrawerCalendario
           abierto
           year={calendario.year}
           month0={calendario.month0}
           onMes={(y, m) => setCalendario({ year: y, month0: m })}
+          meses={meses}
           eventos={estado.eventos}
           movimientos={estado.movimientos}
           cuentas={cuentasVivas}
@@ -1101,54 +1084,6 @@ const Kpi: React.FC<{ lab: string; val: string; sub: string; gold?: boolean }> =
     <div className={styles.hkSub}>{sub}</div>
   </div>
 );
-
-const TarjetaMes: React.FC<{ mes: MesProyectado; onAbrir: () => void }> = ({ mes, onAbrir }) => {
-  const nombre = nombreMes(mes.month0);
-  const titulo = nombre.charAt(0).toUpperCase() + nombre.slice(1);
-  return (
-    <button
-      type="button"
-      className={`${styles.mes} ${mes.enCurso ? styles.mesNow : ''}`}
-      onClick={onAbrir}
-      aria-label={`Ver los días de ${titulo}`}
-    >
-      <div className={styles.mesTop}>
-        <span className={styles.mesNm}>{titulo}</span>
-        {mes.enCurso && <span className={styles.mesChip}>en curso</span>}
-      </div>
-      {/* Vocabulario único: "Cierre" en todo el módulo (§4.3). */}
-      <div className={styles.mesLab}>Cierre</div>
-      <div className={styles.mesBal}>{importeSaldo(mes.cierre)}</div>
-      {/* §4.3 · el pie lleva SIGNO como el resto de la pantalla (§2.2): la
-          flecha dice la dirección de un vistazo, pero el importe se escribe
-          igual aquí que en el hero o en el drawer.
-
-          Y en el mes en curso la etiqueta es texto VISIBLE, no un `title`: los
-          táctiles no enseñan tooltips, y no es lo mismo lo que entra en el mes
-          que lo que QUEDA por entrar. */}
-      {/* §4.3 · en el mes en curso, cada columna lleva SU etiqueta encima.
-          Iban las dos juntas en una línea debajo ("queda entrar · queda salir"),
-          y así no se sabía cuál era cuál: la etiqueta tiene que estar sobre su
-          cifra, no al lado de la otra. */}
-      <div className={styles.mesFlow}>
-        <span className={styles.ff}>
-          {mes.enCurso && <span className={styles.ffLab}>queda entrar</span>}
-          <span className={styles.ffVal}>
-            <Icons.ArrowUp size={14} strokeWidth={1.8} />
-            <span className={styles.fv}>{importeConSigno(mes.entra)}</span>
-          </span>
-        </span>
-        <span className={styles.ff}>
-          {mes.enCurso && <span className={styles.ffLab}>queda salir</span>}
-          <span className={styles.ffVal}>
-            <Icons.ArrowDown size={14} strokeWidth={1.8} />
-            <span className={styles.fv}>{importeConSigno(-Math.abs(mes.sale))}</span>
-          </span>
-        </span>
-      </div>
-    </button>
-  );
-};
 
 /* §4.10 · ¿cabe el importe DENTRO del relleno de la barra?
  *

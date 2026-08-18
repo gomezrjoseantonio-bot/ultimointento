@@ -24,7 +24,7 @@ import PunteoList from '../../shared/components/Punteo/PunteoList';
 import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
 import { compararEnDia, type ItemPunteo } from '../../../services/punteo/punteoModel';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
-import { esPendiente } from '../../../services/tesoreriaV6Metrics';
+import { esPendiente, type MesProyectado } from '../../../services/tesoreriaV6Metrics';
 import { construirDias, resumirMes, huecosIniciales, saldoAlEmpezarElDia } from './calendarioDias';
 import { colorDeBanco } from './bancoColores';
 import { mesMinimo, puedeRetroceder } from './limiteMeses';
@@ -45,6 +45,12 @@ export interface DrawerCalendarioProps {
   month0: number;
   /** Cambia el mes sin cerrar el drawer (§4.9). */
   onMes: (year: number, month0: number) => void;
+  /**
+   * Rediseño · la proyección de 6 meses que antes vivía en la página. Aquí es
+   * la tira de arriba: los meses de un vistazo con su cierre, y clic en uno
+   * para bajar a sus días. La misma solución que había fuera, dentro.
+   */
+  meses?: MesProyectado[];
   eventos: TreasuryEvent[];
   movimientos: Movement[];
   cuentas: Account[];
@@ -88,6 +94,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
   year,
   month0,
   onMes,
+  meses = [],
   eventos,
   movimientos,
   cuentas,
@@ -267,7 +274,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
     <>
       <div className={`${chasis.back} ${chasis.backOpen}`} onClick={onCerrar} aria-hidden="true" />
       <aside
-        className={`${chasis.drw} ${chasis.drwOpen}`}
+        className={`${chasis.drw} ${chasis.drwOpen} ${styles.panelAncho}`}
         role="dialog"
         aria-modal="true"
         aria-label="Calendario"
@@ -331,6 +338,51 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
         </div>
 
         <div className={chasis.body}>
+          {/* ── La proyección de 6 meses · la vista que antes vivía fuera ──
+              Cada mes con su cierre y sus flujos, y clic en uno para bajar a
+              sus días. El mes abierto lleva el filo de oro; el «en curso»,
+              su chip, como las tarjetas de la página que sustituye. */}
+          {meses.length > 0 && (
+            <div className={styles.mesesStrip} aria-label="Meses proyectados">
+              {meses.map((m) => {
+                const nombre = nombreMes(m.month0);
+                const titulo = nombre.charAt(0).toUpperCase() + nombre.slice(1);
+                const abiertoEste = m.year === year && m.month0 === month0;
+                return (
+                  <button
+                    key={`${m.year}-${m.month0}`}
+                    type="button"
+                    aria-pressed={abiertoEste}
+                    aria-label={`Ver los días de ${titulo}`}
+                    className={`${styles.mesMini} ${abiertoEste ? styles.mesMiniOn : ''}`}
+                    onClick={() => {
+                      setDiaElegido(null);
+                      onMes(m.year, m.month0);
+                    }}
+                  >
+                    <span className={styles.mesMiniTop}>
+                      <span className={styles.mesMiniNm}>{titulo}</span>
+                      {m.enCurso && <span className={styles.mesMiniChip}>en curso</span>}
+                    </span>
+                    {/* Vocabulario único del módulo: «Cierre» (§4.3). */}
+                    <span className={styles.mesMiniLab}>Cierre</span>
+                    <span className={styles.mesMiniVal}>{importeSaldo(m.cierre)}</span>
+                    <span className={styles.mesMiniFlow}>
+                      <span className={styles.mesMiniF}>
+                        <Icons.ArrowUp size={11} strokeWidth={2} />
+                        {importeConSigno(m.entra, false)}
+                      </span>
+                      <span className={styles.mesMiniF}>
+                        <Icons.ArrowDown size={11} strokeWidth={2} />
+                        {importeConSigno(-Math.abs(m.sale), false)}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* ── Rejilla de días · lunes primero (§4.9) ──────────────────── */}
           <div className={styles.rejilla} role="grid" aria-label={`Días de ${nombreMes(month0)}`}>
             {DIAS_SEMANA.map((d) => (

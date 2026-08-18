@@ -109,7 +109,8 @@ describe('§4.1 · hero', () => {
     });
     montar();
 
-    await waitFor(() => expect(screen.getByText('Saldo')).toBeInTheDocument());
+    // "Saldo" está en el hero Y en la cabecera del ledger · mismo vocabulario.
+    await waitFor(() => expect(screen.getAllByText('Saldo').length).toBeGreaterThanOrEqual(1));
     expect(screen.getByText('2 cuentas · hoy')).toBeInTheDocument();
     // "Queda entrar/salir" está en el hero Y en la cabecera del ledger de
     // cuentas: mismo vocabulario en los dos sitios, a propósito.
@@ -180,14 +181,23 @@ describe('§4.2 · tarjetas de cuenta', () => {
   });
 });
 
-describe('§4.3 · rejilla de meses', () => {
-  it('pinta 6 meses, marca el actual y usa el vocabulario "Cierre"', async () => {
+describe('§4.3 · la proyección de meses vive DENTRO de la previsión', () => {
+  it('la página ya no pinta la rejilla · los 6 meses están en el drawer', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
 
-    await waitFor(() => expect(screen.getByText('en curso')).toBeInTheDocument());
+    // Fuera, nada de meses: la página se queda con lo que se mira a diario.
+    await waitFor(() => expect(screen.getByText('1 cuenta · hoy')).toBeInTheDocument());
+    expect(screen.queryByText('en curso')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Previsión · meses y días/ }));
+    const drawer = await screen.findByRole('dialog', { name: 'Calendario' });
+
+    // Dentro, la misma solución que había fuera: 6 meses con su cierre.
+    expect(within(drawer).getAllByRole('button', { name: /Ver los días de/ })).toHaveLength(6);
+    expect(within(drawer).getByText('en curso')).toBeInTheDocument();
     // Vocabulario único en todo el módulo: nunca "saldo a fin de mes" (§4.3).
-    expect(screen.getAllByText('Cierre')).toHaveLength(6);
+    expect(within(drawer).getAllByText('Cierre').length).toBeGreaterThanOrEqual(6);
     expect(screen.queryByText(/saldo a fin de mes/i)).not.toBeInTheDocument();
   });
 });
@@ -277,37 +287,49 @@ describe('§4.7 · la puerta global del extracto', () => {
 });
 
 describe('§4.9 · la puerta del calendario', () => {
-  it('tocar un mes abre los días de ESE mes, sin cerrar la pantalla', async () => {
+  const abrirPrevision = async () => {
+    fireEvent.click(await screen.findByRole('button', { name: /Previsión · meses y días/ }));
+    return screen.findByRole('dialog', { name: 'Calendario' });
+  };
+
+  it('tocar un mes de la tira abre los días de ESE mes, sin cerrar el drawer', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
 
-    // Hay 6 tarjetas · se abre la del mes en curso, que es la primera.
-    const meses = await screen.findAllByRole('button', { name: /Ver los días de/ });
-    fireEvent.click(meses[0]);
-
-    expect(await screen.findByRole('dialog', { name: 'Calendario' })).toBeInTheDocument();
+    const drawer = await abrirPrevision();
     // Navegación ‹ › · el drawer cambia de mes sin cerrarse (§4.9).
     expect(screen.getByLabelText('Mes anterior')).toBeInTheDocument();
     expect(screen.getByLabelText('Mes siguiente')).toBeInTheDocument();
+
+    // La tira de meses · clic en el segundo baja a sus días.
+    const minis = within(drawer).getAllByRole('button', { name: /Ver los días de/ });
+    fireEvent.click(minis[1]);
+    const siguiente = new Date(HOY.getFullYear(), HOY.getMonth() + 1, 1);
+    // A mano y no por locale: el ICU reducido del Node de los tests no
+    // garantiza los nombres en español.
+    const nombreSiguiente = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+    ][siguiente.getMonth()];
+    expect(
+      await within(drawer).findByRole('heading', { name: new RegExp(nombreSiguiente, 'i') })
+    ).toBeInTheDocument();
   });
 
   it('el resumen del mes habla de Cierre · vocabulario único del módulo', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
-    fireEvent.click((await screen.findAllByRole('button', { name: /Ver los días de/ }))[0]);
+    const drawer = await abrirPrevision();
 
-    const drawer = await screen.findByRole('dialog', { name: 'Calendario' });
-    expect(within(drawer).getByText('Queda entrar')).toBeInTheDocument();
-    expect(within(drawer).getByText('Queda salir')).toBeInTheDocument();
-    expect(within(drawer).getByText('Cierre')).toBeInTheDocument();
+    expect(within(drawer).getAllByText('Queda entrar').length).toBeGreaterThanOrEqual(1);
+    expect(within(drawer).getAllByText('Queda salir').length).toBeGreaterThanOrEqual(1);
+    expect(within(drawer).getAllByText('Cierre').length).toBeGreaterThanOrEqual(1);
   });
 
   it('en el día NO se concilia · conciliar es por cuenta y por fichero (§4.9)', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
-    fireEvent.click((await screen.findAllByRole('button', { name: /Ver los días de/ }))[0]);
-
-    const drawer = await screen.findByRole('dialog', { name: 'Calendario' });
+    const drawer = await abrirPrevision();
     expect(within(drawer).queryByText(/concilia/i)).not.toBeInTheDocument();
   });
 });
@@ -434,12 +456,42 @@ describe('rediseño · el ledger de cuentas', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('«Puntear por días» abre el calendario · la segunda manera de trabajar', async () => {
+  it('«Previsión · meses y días» abre la vista de meses con su punteo por día', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
 
-    fireEvent.click(await screen.findByRole('button', { name: /Puntear por días/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Previsión · meses y días/ }));
     expect(await screen.findByRole('dialog', { name: 'Calendario' })).toBeInTheDocument();
+  });
+
+  it('las columnas ordenan · asc → desc → volver a tu orden', async () => {
+    montarDb({
+      accounts: [
+        cuenta(1, { alias: 'Grande', openingBalance: 9000 }),
+        cuenta(2, { alias: 'Pequeña', openingBalance: 100 }),
+      ],
+    });
+    const { container } = montar();
+    await waitFor(() => expect(screen.getByText('Grande')).toBeInTheDocument());
+
+    const nombres = () =>
+      Array.from(container.querySelectorAll('.accNm')).map((n) => n.textContent);
+    // Orden manual de partida · el natural.
+    expect(nombres()).toEqual(['Grande', 'Pequeña']);
+
+    const cabSaldo = screen.getByRole('button', { name: 'Saldo' });
+    fireEvent.click(cabSaldo); // asc · de menor a mayor
+    await waitFor(() => expect(nombres()).toEqual(['Pequeña', 'Grande']));
+
+    fireEvent.click(cabSaldo); // desc · de mayor a menor
+    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' })); // otra columna · asc
+    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' })); // desc
+    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' })); // y de vuelta al manual
+    await waitFor(() => expect(nombres()).toEqual(['Grande', 'Pequeña']));
   });
 });
 

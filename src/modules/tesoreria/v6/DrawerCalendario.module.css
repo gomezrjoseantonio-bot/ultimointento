@@ -5,6 +5,104 @@
    Aquí vive la rejilla de días y el detalle del día.
    =========================================================================== */
 
+/* ── El panel de la previsión es más ANCHO que el chasis (rediseño) ─────────
+   Dentro viven ahora los 6 meses Y el calendario de días: a 580px las
+   tarjetas de mes no respiraban y la rejilla quedaba apretada. */
+.panelAncho { width: min(760px, 100vw); }
+
+/* ── La tira de 6 meses · la vista que antes vivía en la página ──────────── */
+
+.mesesStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 20px 2px;
+}
+.mesMini {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-top: 2px solid transparent;
+  border-radius: 10px;
+  padding: 9px 11px 8px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+.mesMini:hover { border-top-color: var(--atlas-v5-gold-soft); }
+/* El mes ABIERTO en la rejilla de abajo · filo de oro, como el «en curso»
+   de la página que esta tira sustituye. */
+.mesMiniOn {
+  border-top: 2px solid var(--atlas-v5-gold);
+  box-shadow: var(--atlas-v5-shadow-lift);
+}
+.mesMiniTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.mesMiniNm {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mesMiniChip {
+  flex-shrink: 0;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-on-brand);
+  background: var(--atlas-v5-gold);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+.mesMiniLab {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+}
+.mesMiniVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.mesMiniFlow {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 5px;
+  border-top: 1px solid var(--atlas-v5-line-3);
+}
+.mesMiniF {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-3);
+  white-space: nowrap;
+  min-width: 0;
+}
+
 /* ── Navegación entre meses · sin cerrar el drawer ───────────────────────── */
 
 .nav {

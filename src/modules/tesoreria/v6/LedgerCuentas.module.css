@@ -38,6 +38,31 @@
 .colNum { text-align: right; }
 .colEstado { min-width: 0; }
 
+/* Cabecera ordenable · clic: asc → desc → volver al orden manual. La flecha
+   en oro-tinta, como el ledger de Inversiones. */
+.cab {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-5);
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+  white-space: nowrap;
+  transition: color 0.12s;
+}
+.cab:hover { color: var(--atlas-v5-ink-3); }
+.cab.colNum { text-align: right; }
+.cabAsc { color: var(--atlas-v5-ink-3); }
+.cabAsc::after { content: ' ↑'; color: var(--atlas-v5-gold-ink); }
+.cabDesc { color: var(--atlas-v5-ink-3); }
+.cabDesc::after { content: ' ↓'; color: var(--atlas-v5-gold-ink); }
+
 /* ── Filas ────────────────────────────────────────────────────────────────── */
 
 .fila {

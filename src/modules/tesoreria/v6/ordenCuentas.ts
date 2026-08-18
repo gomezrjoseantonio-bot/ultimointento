@@ -27,6 +27,52 @@ export async function guardarOrdenCuentas(ids: number[]): Promise<void> {
   await db.put('keyval', ids, CLAVE);
 }
 
+// ── Orden por columna del ledger (rediseño §4.2) ────────────────────────────
+//
+// Cada cual ordena sus cuentas como trabaja: por saldo, por lo que queda al
+// mes, por estado… o a mano, arrastrando. La elección es preferencia de
+// presentación, como el orden manual, así que vive en el mismo sitio.
+
+const CLAVE_LEDGER = 'tesoreria.v6.ordenLedger';
+
+export type CampoLedger = 'nombre' | 'saldo' | 'entra' | 'sale' | 'cierre' | 'estado';
+
+export interface OrdenLedger {
+  campo: CampoLedger;
+  dir: 'asc' | 'desc';
+}
+
+const CAMPOS: CampoLedger[] = ['nombre', 'saldo', 'entra', 'sale', 'cierre', 'estado'];
+
+/** El orden por columna elegido · `null` = orden manual (el de arrastrar). */
+export async function leerOrdenLedger(): Promise<OrdenLedger | null> {
+  try {
+    const db = await initDB();
+    const guardado = (await db.get('keyval', CLAVE_LEDGER)) as OrdenLedger | undefined;
+    if (
+      guardado &&
+      CAMPOS.includes(guardado.campo) &&
+      (guardado.dir === 'asc' || guardado.dir === 'desc')
+    ) {
+      return guardado;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function guardarOrdenLedger(orden: OrdenLedger | null): Promise<void> {
+  try {
+    const db = await initDB();
+    if (orden == null) await db.delete('keyval', CLAVE_LEDGER);
+    else await db.put('keyval', orden, CLAVE_LEDGER);
+  } catch (err) {
+    // Preferencia de UI · perderla no puede romper la interacción.
+    console.warn('[ordenCuentas] no se pudo guardar el orden del ledger', err);
+  }
+}
+
 /**
  * Aplica el orden guardado.
  *
