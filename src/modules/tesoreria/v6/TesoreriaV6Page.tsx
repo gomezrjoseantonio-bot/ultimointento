@@ -40,6 +40,7 @@ import CuentaWizard from '../../../components/cuenta/CuentaWizard';
 import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
 import { listarTarjetas } from '../../../services/tarjetasService';
 import { regenerarRecibosDeTarjeta } from '../../../services/personal/compromisosRecurrentesService';
+import { confirmarPieza, despuntearPieza, descartarPieza } from '../../../services/personal/puntearPieza';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { describirTarjeta } from './textoTarjeta';
 import { gastoDeMovimientos, gastoPorTarjeta, gastoAbiertoPorTarjeta } from '../../../services/gastoPorTarjeta';
@@ -632,6 +633,31 @@ const TesoreriaV6Page: React.FC = () => {
     [trasEscribir, tarjetas]
   );
 
+  // §3.5 · puntear una PIEZA de tarjeta · confirma/despunta/descarta en el sitio
+  // (sin crear movimiento de caja) y regenera el recibo al recargar.
+  const puntearPiezaAccion = useCallback(
+    (accion: (id: number, importe?: number) => Promise<void>) =>
+      async (item: ItemPunteo, importe?: number) => {
+        try {
+          await accion(item.refId, importe);
+          await trasEscribir();
+        } catch (err) {
+          console.error('[TesoreriaV6] no se pudo puntear la pieza', err);
+        }
+      },
+    [trasEscribir]
+  );
+  const confirmarPiezaItem = useMemo(
+    () => puntearPiezaAccion((id) => confirmarPieza(id)),
+    [puntearPiezaAccion]
+  );
+  const confirmarPiezaImporteItem = useMemo(
+    () => (item: ItemPunteo, importe: number) => puntearPiezaAccion((id, imp) => confirmarPieza(id, imp))(item, Math.abs(importe)),
+    [puntearPiezaAccion]
+  );
+  const despuntearPiezaItem = useMemo(() => puntearPiezaAccion((id) => despuntearPieza(id)), [puntearPiezaAccion]);
+  const descartarPiezaItem = useMemo(() => puntearPiezaAccion((id) => descartarPieza(id)), [puntearPiezaAccion]);
+
   /**
    * `?extracto=1` abre el drawer de §4.7 · lo usan el atajo del Panel y las
    * rutas viejas de importación. Se aplica UNA vez: si no, cerrar el drawer lo
@@ -990,6 +1016,7 @@ const TesoreriaV6Page: React.FC = () => {
             : undefined
         }
         cuentas={cuentasVivas}
+        eventos={estado.eventos}
         movimientos={estado.movimientos}
         totalPeriodo={tarjetaAbierta?.id != null ? gastoAbierto.get(tarjetaAbierta.id) ?? 0 : 0}
         hoy={hoy}
@@ -1002,6 +1029,10 @@ const TesoreriaV6Page: React.FC = () => {
         }}
         onGuardarFicha={guardarFicha}
         onEliminar={descartarItem}
+        onConfirmarPieza={confirmarPiezaItem}
+        onConfirmarPiezaImporte={confirmarPiezaImporteItem}
+        onDespuntearPieza={despuntearPiezaItem}
+        onDescartarPieza={descartarPiezaItem}
       />
 
       {/* §4.9 · calendario diario · navega entre meses sin cerrarse */}

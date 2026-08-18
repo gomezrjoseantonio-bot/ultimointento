@@ -2,23 +2,22 @@
 // Tesorería V6 · §3.5 · el cajón de una TARJETA
 // ============================================================================
 //
-// Una tarjeta no es una cuenta —no tiene saldo— pero hasta ahora tampoco tenía
-// dónde MIRARSE: al pulsarla se abría el asistente de configuración y sus
-// compras no se veían por ningún lado. Este cajón es su espejo del cajón de
-// banco: enseña el MES EN CURSO (las compras del periodo abierto) y, como dato,
-// el recibo que se pagará el día de cargo —que no sale de la tarjeta, sale de la
-// cuenta de liquidación: por eso es una tarjeta de crédito EXTERNA—.
+// Una tarjeta no es una cuenta —no tiene saldo— pero sí una superficie de
+// PUNTEO propia, espejo del cajón de banco. Sus gastos (las PIEZAS de los
+// compromisos que pagan con ella + las compras sueltas anotadas a mano) se
+// puntean uno a uno: previsto → confirmado. Su suma forma el RECIBO, que se paga
+// en la cuenta de liquidación el día de cargo —no en la tarjeta, porque es una
+// tarjeta de crédito EXTERNA—. El recibo es un DATO aquí, no un saldo.
 //
-// Lo que NO hace: tratar la tarjeta como cuenta con saldo. El dinero vive en el
-// banco; aquí solo se ve lo que se va a pagar y con qué compras se forma.
+// Foco en el MES EN CURSO: se enseña el periodo abierto, no el histórico.
 // ============================================================================
 
 import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import PunteoList from '../../shared/components/Punteo/PunteoList';
-import { movimientoAItem } from '../../../services/punteo/punteoAdapter';
+import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
-import type { Account, Movement } from '../../../services/db';
+import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { recibosDeTarjeta } from '../../../services/reciboDeTarjeta';
 import { importeSaldo, fechaLarga } from './formatoV6';
@@ -32,9 +31,11 @@ export interface DrawerTarjetaProps {
   /** La cuenta donde se liquida el recibo · para decir «se cobra en …». */
   banco?: Account;
   cuentas: Account[];
-  /** TODOS los movimientos · dentro se filtran los de esta tarjeta. */
+  /** TODOS los eventos · dentro se filtran las PIEZAS de esta tarjeta. */
+  eventos: TreasuryEvent[];
+  /** TODOS los movimientos · dentro se filtran las compras de esta tarjeta. */
   movimientos: Movement[];
-  /** Lo que se pagará este periodo (previsto + compras) · lo calcula la página. */
+  /** Lo que se pagará este periodo (recibo) · lo calcula la página. */
   totalPeriodo: number;
   /** ISO yyyy-mm-dd. */
   hoy: string;
@@ -43,16 +44,27 @@ export interface DrawerTarjetaProps {
   onCerrar: () => void;
   /** El lápiz de la cabecera · abre el asistente de configuración. */
   onEditarTarjeta: (tarjeta: Tarjeta) => void;
-  /** Guardar una compra (alta o edición) desde la ficha. */
+  /** Guardar una compra MANUAL (alta o edición) desde la ficha. */
   onGuardarFicha: (item: ItemPunteo | null, valores: GuardadoFicha) => void | Promise<void>;
   /** Borrar una compra anotada a mano. */
   onEliminar?: (item: ItemPunteo) => void | Promise<void>;
+  /** Puntear una PIEZA · confirmar con su previsto. */
+  onConfirmarPieza: (item: ItemPunteo) => void | Promise<void>;
+  /** Confirmar una PIEZA con su importe REAL (desde la ficha). */
+  onConfirmarPiezaImporte: (item: ItemPunteo, importe: number) => void | Promise<void>;
+  /** Despuntear una PIEZA · vuelve a prevista. */
+  onDespuntearPieza: (item: ItemPunteo) => void | Promise<void>;
+  /** Descartar una PIEZA · ese gasto no ocurre este periodo. */
+  onDescartarPieza: (item: ItemPunteo) => void | Promise<void>;
 }
+
+type Pestana = 'porConfirmar' | 'confirmados' | 'movimientos';
 
 const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
   tarjeta,
   banco,
   cuentas,
+  eventos,
   movimientos,
   totalPeriodo,
   hoy,
@@ -62,9 +74,15 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
   onEditarTarjeta,
   onGuardarFicha,
   onEliminar,
+  onConfirmarPieza,
+  onConfirmarPiezaImporte,
+  onDespuntearPieza,
+  onDescartarPieza,
 }) => {
-  // `null` = ficha cerrada · `{item: null}` = anotar compra · con item = editar.
-  const [ficha, setFicha] = useState<{ item: ItemPunteo | null } | null>(null);
+  const [pestana, setPestana] = useState<Pestana>('porConfirmar');
+  // `null` = ficha cerrada · con `esPieza` sabemos si guardar confirma una pieza
+  // (con su importe real) o da de alta/edita una compra manual.
+  const [ficha, setFicha] = useState<{ item: ItemPunteo | null; esPieza: boolean } | null>(null);
 
   const abierto = tarjeta != null;
 
@@ -74,35 +92,83 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
     return recibosDeTarjeta(tarjeta as Tarjeta & { id: number }, [{ fecha: hoy, importe: 0.01 }])[0];
   }, [tarjeta, hoy]);
 
-  // Las compras de crédito de ESTA tarjeta que caen en el periodo vigente · son
-  // las que aún no se han cargado y forman el recibo que viene.
-  const comprasVigentes = useMemo<ItemPunteo[]>(() => {
+  const corteDe = (fecha: string, importe: number): string | undefined => {
+    if (tarjeta?.id == null || !tarjeta.ciclo) return undefined;
+    return recibosDeTarjeta(tarjeta as Tarjeta & { id: number }, [{ fecha, importe }])[0]?.fechaCorte;
+  };
+
+  // Las PIEZAS de esta tarjeta que caen en el periodo vigente.
+  const piezasDelPeriodo = useMemo<TreasuryEvent[]>(() => {
     if (tarjeta?.id == null || !periodoActual) return [];
     const id = tarjeta.id;
-    return movimientos
-      .filter((m): m is Movement & { id: number } => m.id != null)
-      .filter((m) => m.tarjetaId === id && m.gastoTarjetaCredito === true && m.amount < 0)
-      .filter((m) => {
-        const [r] = recibosDeTarjeta(tarjeta as Tarjeta & { id: number }, [
-          { fecha: (m.date ?? '').slice(0, 10), importe: Math.abs(m.amount) },
-        ]);
-        return r?.fechaCorte === periodoActual.fechaCorte;
-      })
-      .map((m) => movimientoAItem(m))
-      .sort((a, b) => b.fecha.localeCompare(a.fecha));
+    return eventos.filter(
+      (e) =>
+        e.id != null &&
+        e.sourceType === 'gasto_tarjeta' &&
+        e.tarjetaId === id &&
+        e.descartado !== true &&
+        corteDe((e.actualDate ?? e.predictedDate ?? '').slice(0, 10), Math.abs(e.actualAmount ?? e.amount)) ===
+          periodoActual.fechaCorte
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventos, tarjeta, periodoActual]);
+
+  // Las compras MANUALES de crédito de esta tarjeta en el periodo vigente.
+  const comprasDelPeriodo = useMemo<Movement[]>(() => {
+    if (tarjeta?.id == null || !periodoActual) return [];
+    const id = tarjeta.id;
+    return movimientos.filter(
+      (m) =>
+        m.id != null &&
+        m.tarjetaId === id &&
+        m.gastoTarjetaCredito === true &&
+        m.amount < 0 &&
+        corteDe((m.date ?? '').slice(0, 10), Math.abs(m.amount)) === periodoActual.fechaCorte
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [movimientos, tarjeta, periodoActual]);
+
+  const desc = (a: ItemPunteo, b: ItemPunteo) => b.fecha.localeCompare(a.fecha);
+  const piezaItem = (e: TreasuryEvent) => eventoAItem(e as TreasuryEvent & { id: number });
+  const compraItem = (m: Movement) => movimientoAItem(m as Movement & { id: number });
+
+  // Por confirmar: piezas previstas que ya deberían haber ocurrido (fecha ≤ hoy).
+  const itemsPorConfirmar = useMemo<ItemPunteo[]>(
+    () =>
+      piezasDelPeriodo
+        .filter((e) => e.status === 'predicted' && (e.predictedDate ?? '').slice(0, 10) <= hoy)
+        .map(piezaItem)
+        .sort(desc),
+    [piezasDelPeriodo, hoy]
+  );
+
+  // Confirmados: piezas confirmadas + las compras manuales (tu palabra).
+  const itemsConfirmados = useMemo<ItemPunteo[]>(
+    () =>
+      [
+        ...piezasDelPeriodo.filter((e) => e.status !== 'predicted').map(piezaItem),
+        ...comprasDelPeriodo.map(compraItem),
+      ].sort(desc),
+    [piezasDelPeriodo, comprasDelPeriodo]
+  );
+
+  // Movimientos: todo lo del periodo, como consulta.
+  const itemsMovimientos = useMemo<ItemPunteo[]>(
+    () => [...piezasDelPeriodo.map(piezaItem), ...comprasDelPeriodo.map(compraItem)].sort(desc),
+    [piezasDelPeriodo, comprasDelPeriodo]
+  );
 
   if (!tarjeta) return null;
 
   const bancoNombre = banco?.alias || banco?.name || banco?.banco?.name || 'su cuenta';
+  const esPieza = (item: ItemPunteo) => item.kind === 'evento';
+
+  const items =
+    pestana === 'porConfirmar' ? itemsPorConfirmar : pestana === 'confirmados' ? itemsConfirmados : itemsMovimientos;
 
   return (
     <>
-      <div
-        className={`${styles.back} ${abierto ? styles.backOpen : ''}`}
-        onClick={onCerrar}
-        aria-hidden="true"
-      />
+      <div className={`${styles.back} ${abierto ? styles.backOpen : ''}`} onClick={onCerrar} aria-hidden="true" />
       <aside
         className={`${styles.drw} ${abierto ? styles.drwOpen : ''}`}
         role="dialog"
@@ -133,39 +199,55 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
               liquidación el día de cargo, porque la tarjeta es externa. */}
           <div className={styles.kpis}>
             <Ak lab="Recibo de este periodo" val={importeSaldo(totalPeriodo)} gold />
-            {periodoActual && (
-              <Ak lab="Se cobra el" val={fechaLarga(periodoActual.fechaCargo)} />
-            )}
+            {periodoActual && <Ak lab="Se cobra el" val={fechaLarga(periodoActual.fechaCargo)} />}
             <Ak lab="En" val={bancoNombre} />
           </div>
         </div>
 
         <div className={styles.controles}>
-          <span className={styles.tab + ' ' + styles.tabOn} aria-hidden="true">
-            Compras de este periodo
-          </span>
-          <span className={styles.sp} />
           <button
             type="button"
-            className={styles.btnCmp}
-            onClick={() => setFicha({ item: null })}
+            className={`${styles.tab} ${pestana === 'porConfirmar' ? styles.tabOn : ''}`}
+            onClick={() => setPestana('porConfirmar')}
           >
+            Por confirmar
+          </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${pestana === 'confirmados' ? styles.tabOn : ''}`}
+            onClick={() => setPestana('confirmados')}
+          >
+            Confirmados
+          </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${pestana === 'movimientos' ? styles.tabOn : ''}`}
+            onClick={() => setPestana('movimientos')}
+          >
+            Movimientos
+          </button>
+          <span className={styles.sp} />
+          <button type="button" className={styles.btnCmp} onClick={() => setFicha({ item: null, esPieza: false })}>
             <Icons.Plus size={13} strokeWidth={2} /> Anotar compra
           </button>
         </div>
 
         <div className={styles.body}>
-          {comprasVigentes.length === 0 ? (
+          {items.length === 0 ? (
             <div className={styles.vacio}>
               <Icons.Tesoreria size={34} strokeWidth={1.6} className={styles.vacioIc} />
-              <div className={styles.vacioT}>Sin compras este periodo</div>
+              <div className={styles.vacioT}>
+                {pestana === 'porConfirmar' ? 'Nada por confirmar este periodo' : 'Sin movimientos este periodo'}
+              </div>
               <div className={styles.vacioS}>
-                lo que gastes con esta tarjeta aparece aquí y engorda el recibo a pagar
+                {pestana === 'porConfirmar'
+                  ? 'los gastos que pagas con esta tarjeta aparecen aquí para confirmarlos'
+                  : 'lo que gastes con esta tarjeta forma el recibo a pagar'}
               </div>
             </div>
           ) : (
             <PunteoList
-              items={comprasVigentes}
+              items={items}
               chip="todos"
               onChipChange={() => undefined}
               mostrarChips={false}
@@ -173,39 +255,39 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
               ocultarCuenta
               sinOrigen
               rowVariant="tesoreria"
-              // Una compra ya es real (confirmada): no hay que puntearla ni
-              // descartarla. Solo se edita o se borra desde el lápiz.
-              onConfirmar={() => undefined}
-              onNoPaso={() => undefined}
-              onEditar={(item) => setFicha({ item })}
+              soloLectura={pestana === 'movimientos'}
+              // Confirmar/despuntear/descartar solo aplica a las PIEZAS; una compra
+              // manual ya es real y se edita/borra desde el lápiz.
+              onConfirmar={(item) => (esPieza(item) ? onConfirmarPieza(item) : undefined)}
+              onNoPaso={(item) => (esPieza(item) ? onDescartarPieza(item) : undefined)}
+              onDespuntear={pestana === 'confirmados' ? (item) => (esPieza(item) ? onDespuntearPieza(item) : undefined) : undefined}
+              onEditar={(item) => setFicha({ item, esPieza: esPieza(item) })}
             />
           )}
         </div>
       </aside>
 
-      {/* Anotar o editar una compra · la ficha abre con la tarjeta ya puesta. */}
+      {/* La ficha · anotar/editar una compra manual, o confirmar una pieza con su
+          importe real (el usuario ajusta lo previsto a lo que de verdad gastó). */}
       <FichaMovimiento
         abierta={ficha != null}
         esEdicion={ficha?.item != null}
         inicial={
           ficha?.item
             ? valoresDesdeItem(ficha.item, banco?.id ?? null)
-            : {
-                tipo: 'gasto',
-                cuentaId: banco?.id ?? null,
-                tarjetaId: tarjeta.id ?? null,
-              }
+            : { tipo: 'gasto', cuentaId: banco?.id ?? null, tarjetaId: tarjeta.id ?? null }
         }
         cuentas={cuentas}
         inmuebles={inmuebles}
         tarjetas={tarjetas}
         onCerrar={() => setFicha(null)}
         onGuardar={async (v) => {
-          await onGuardarFicha(ficha?.item ?? null, v);
+          if (ficha?.esPieza && ficha.item) await onConfirmarPiezaImporte(ficha.item, v.importe);
+          else await onGuardarFicha(ficha?.item ?? null, v);
           setFicha(null);
         }}
         onEliminar={
-          ficha?.item && onEliminar
+          ficha?.item && !ficha.esPieza && onEliminar
             ? async () => {
                 await onEliminar(ficha.item!);
                 setFicha(null);
