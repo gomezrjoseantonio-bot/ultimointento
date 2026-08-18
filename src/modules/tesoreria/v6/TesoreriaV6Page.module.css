@@ -773,3 +773,36 @@
   margin-top: 2px;
 }
 
+
+/* Aviso de duplicados de previstos punteados (limpieza bajo demanda). */
+.dupAviso {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 14px 0 4px;
+  padding: 12px 16px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  background: var(--atlas-v5-card);
+}
+.dupText {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--atlas-v5-ink-2);
+}
+.dupBtn {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--atlas-v5-brand);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dupBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
