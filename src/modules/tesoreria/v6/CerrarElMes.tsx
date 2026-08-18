@@ -51,6 +51,14 @@ const CerrarElMes: React.FC<Props> = ({ hoy, onCambio }) => {
   const [filas, setFilas] = useState<MesCerrable[]>([]);
   const [confirmando, setConfirmando] = useState<LoQueQuedaAbierto | null>(null);
   const [trabajando, setTrabajando] = useState(false);
+  /**
+   * La tira entera no puede ocupar media página. Plegado, se ve solo lo que
+   * toca ahora (los meses recientes por cerrar); lo demás —meses antiguos sin
+   * cerrar y el historial de cerrados con su Reabrir— espera detrás de una
+   * línea-resumen. Se abre a demanda, y también al cerrar un mes: el
+   * resultado del gesto tiene que verse.
+   */
+  const [plegadoAbierto, setPlegadoAbierto] = useState(false);
 
   const recargar = useCallback(async () => {
     try {
@@ -81,6 +89,9 @@ const CerrarElMes: React.FC<Props> = ({ hoy, onCambio }) => {
     try {
       await cerrarMes(confirmando.mes, hoy);
       setConfirmando(null);
+      // El mes recién cerrado pasa al historial · se abre para que el
+      // resultado del gesto no desaparezca de la pantalla.
+      setPlegadoAbierto(true);
       await recargar();
       await onCambio();
     } catch (err) {
@@ -109,6 +120,33 @@ const CerrarElMes: React.FC<Props> = ({ hoy, onCambio }) => {
 
   if (filas.length === 0) return null;
 
+  // Lo que pide trabajo, delante · lo hecho, plegado detrás de una línea. Y de
+  // lo que pide trabajo, a la vista solo lo RECIENTE: quien no ha cerrado
+  // nunca tendría seis filas de «cerrar febrero», y eso es media página para
+  // una tarea de una vez al mes. `mesesCerrables` viene del más reciente al
+  // más antiguo, así que lo visible es lo que toca cerrar ahora.
+  const abiertos = filas.filter((f) => !f.cerradoAt);
+  const cerrados = filas.filter((f) => f.cerradoAt);
+  const ultimoCerrado = cerrados[0];
+
+  const ABIERTOS_A_LA_VISTA = 2;
+  const abiertosVisibles = plegadoAbierto ? abiertos : abiertos.slice(0, ABIERTOS_A_LA_VISTA);
+  const abiertosOcultos = Math.max(0, abiertos.length - ABIERTOS_A_LA_VISTA);
+  const hayPliegue = abiertosOcultos > 0 || cerrados.length > 0;
+
+  const resumenPliegue = [
+    !plegadoAbierto && abiertosOcultos > 0
+      ? `${abiertosOcultos} ${abiertosOcultos === 1 ? 'mes más por cerrar' : 'meses más por cerrar'}`
+      : null,
+    cerrados.length > 0
+      ? cerrados.length === 1
+        ? `1 mes cerrado · ${rotuloMes(cerrados[0].mes)}`
+        : `${cerrados.length} meses cerrados · el último, ${rotuloMes(ultimoCerrado.mes)}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <section className={styles.sec}>
       <div className={styles.hd}>
@@ -120,14 +158,47 @@ const CerrarElMes: React.FC<Props> = ({ hoy, onCambio }) => {
       </div>
 
       <div className={styles.lista}>
-        {filas.map((f) => (
-          <div key={f.mes} className={`${styles.fila} ${f.cerradoAt ? styles.filaCerrada : ''}`}>
+        {abiertosVisibles.map((f) => (
+          <div key={f.mes} className={styles.fila}>
             <span className={styles.mes}>{rotuloMes(f.mes)}</span>
 
-            {f.cerradoAt ? (
+            <span className={styles.estado}>
+              {f.cuantos === 0
+                ? 'no queda nada abierto'
+                : `${f.cuantos} ${f.cuantos === 1 ? 'movimiento' : 'movimientos'} sin ocurrir`}
+              {f.cuantos > 0 && (
+                <span className={styles.detalle}>
+                  · {importeConSigno(f.totalEntra)} sin entrar ·{' '}
+                  {importeConSigno(-Math.abs(f.totalSale))} sin salir
+                </span>
+              )}
+            </span>
+
+            <button
+              type="button"
+              className={`${styles.accion} ${styles.accionCerrar}`}
+              disabled={trabajando}
+              onClick={() => void pedirCierre(f.mes)}
+            >
+              Cerrar {rotuloMes(f.mes).split(' ')[0]}
+            </button>
+          </div>
+        ))}
+
+        {abiertos.length === 0 && cerrados.length > 0 && (
+          <div className={styles.fila}>
+            <span className={styles.estado}>nada pendiente de cerrar</span>
+          </div>
+        )}
+
+        {plegadoAbierto &&
+          cerrados.map((f) => (
+            <div key={f.mes} className={`${styles.fila} ${styles.filaCerrada}`}>
+              <span className={styles.mes}>{rotuloMes(f.mes)}</span>
+
               <span className={styles.estado}>
                 <Icons.Lock size={13} strokeWidth={1.9} />
-                cerrado el {diaYMes(f.cerradoAt.slice(0, 10))}
+                cerrado el {diaYMes(f.cerradoAt!.slice(0, 10))}
                 {f.cuantos > 0 && (
                   <span className={styles.detalle}>
                     · {f.cuantos} {f.cuantos === 1 ? 'previsión dada' : 'previsiones dadas'} por no
@@ -135,21 +206,7 @@ const CerrarElMes: React.FC<Props> = ({ hoy, onCambio }) => {
                   </span>
                 )}
               </span>
-            ) : (
-              <span className={styles.estado}>
-                {f.cuantos === 0
-                  ? 'no queda nada abierto'
-                  : `${f.cuantos} ${f.cuantos === 1 ? 'movimiento' : 'movimientos'} sin ocurrir`}
-                {f.cuantos > 0 && (
-                  <span className={styles.detalle}>
-                    · {importeConSigno(f.totalEntra)} sin entrar ·{' '}
-                    {importeConSigno(-Math.abs(f.totalSale))} sin salir
-                  </span>
-                )}
-              </span>
-            )}
 
-            {f.cerradoAt ? (
               <button
                 type="button"
                 className={styles.accion}
@@ -158,18 +215,28 @@ const CerrarElMes: React.FC<Props> = ({ hoy, onCambio }) => {
               >
                 <Icons.Unlock size={13} strokeWidth={1.9} /> Reabrir
               </button>
-            ) : (
-              <button
-                type="button"
-                className={`${styles.accion} ${styles.accionCerrar}`}
-                disabled={trabajando}
-                onClick={() => void pedirCierre(f.mes)}
-              >
-                Cerrar {rotuloMes(f.mes).split(' ')[0]}
-              </button>
-            )}
-          </div>
-        ))}
+            </div>
+          ))}
+
+        {hayPliegue && (
+          <button
+            type="button"
+            className={styles.resumenCerrados}
+            aria-expanded={plegadoAbierto}
+            onClick={() => setPlegadoAbierto((v) => !v)}
+          >
+            {cerrados.length > 0 && <Icons.Lock size={13} strokeWidth={1.9} />}
+            <span>{plegadoAbierto ? 'meses antiguos a la vista' : resumenPliegue}</span>
+            <span className={styles.resumenAccion}>
+              {plegadoAbierto ? 'Ocultar historial' : 'Ver historial'}
+              {plegadoAbierto ? (
+                <Icons.ChevronUp size={14} strokeWidth={2} />
+              ) : (
+                <Icons.ChevronDown size={14} strokeWidth={2} />
+              )}
+            </span>
+          </button>
+        )}
       </div>
 
       {confirmando && (

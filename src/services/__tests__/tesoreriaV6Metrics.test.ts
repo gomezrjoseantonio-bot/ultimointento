@@ -12,6 +12,7 @@ import {
   importeConSigno,
   esPendiente,
   rangoDelMes,
+  resumenMesDeCuenta,
 } from '../tesoreriaV6Metrics';
 import type { Account, Movement, TreasuryEvent } from '../db';
 
@@ -487,5 +488,37 @@ describe('§4.10 · cómo va el mes', () => {
       month0: 6,
     });
     expect(r.lineas[1].previsto).toBe(0);
+  });
+});
+
+// Rediseño §4.2 · la fila del ledger de cuentas.
+describe('resumenMesDeCuenta', () => {
+  it('suma lo pendiente del mes de ESA cuenta y proyecta su cierre', () => {
+    const eventos = [
+      ev({ type: 'income', amount: 650 }),
+      ev({ type: 'expense', amount: 200 }),
+      // Otro mes · no cuenta en julio.
+      ev({ type: 'expense', amount: 100, predictedDate: '2026-08-02' }),
+      // Descartado y ejecutado · no son pendientes.
+      ev({ type: 'expense', amount: 999, descartado: true }),
+      ev({ type: 'expense', amount: 50, status: 'executed' }),
+    ];
+    expect(resumenMesDeCuenta({ saldoHoy: 1000, eventos, year: 2026, month0: 6 })).toEqual({
+      entra: 650,
+      sale: -200,
+      cierre: 1450,
+    });
+  });
+
+  it('un traspaso interno SÍ cuenta en la fila · de esta cuenta sale de verdad', () => {
+    // El hero lo excluye porque para el patrimonio no es flujo; para la cuenta
+    // origen sí lo es, y sin contarlo el cierre de la fila no cuadraría con el
+    // saldo que la cuenta va a tener.
+    const eventos = [ev({ type: 'expense', amount: 300, categoryKey: 'traspaso_salida' })];
+    expect(resumenMesDeCuenta({ saldoHoy: 500, eventos, year: 2026, month0: 6 })).toEqual({
+      entra: 0,
+      sale: -300,
+      cierre: 200,
+    });
   });
 });

@@ -161,7 +161,6 @@
   margin-top: 4px;
 }
 .secAdd {
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -173,179 +172,33 @@
   border: none;
 }
 .secAdd:hover { color: var(--atlas-v5-brand-2); }
-.rngRight {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-size: 11px;
-  color: var(--atlas-v5-ink-3);
-  font-weight: 600;
-}
-
-/* ── §4.2 · Carrusel de cuentas ──────────────────────────────────────────── */
-
-.carr { position: relative; }
-.viewport { overflow: hidden; }
-.track {
-  display: flex;
-  gap: 12px;
-  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-}
-/* §4.2 · las flechas van FUERA del carrusel, en el margen de la página.
-   
-   Es lo que hace el mockup (`left:-17px`), y ahí no desborda porque `.main`
-   tiene 26px de padding lateral: los 17px que sobresale la flecha caben en ese
-   margen.
-   
-   En producción no había padding —Tesorería iba a sangre— así que la misma
-   regla se salía de la pantalla. Lo arreglé metiéndolas dentro con `+4px`, y
-   entonces taparon el saldo de la primera tarjeta; luego les di un carril
-   propio de 46px, que encogía la tira. Con el padding ya puesto, el valor del
-   mockup funciona tal cual: ni desbordan ni tapan ni quitan sitio. */
-.pager {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--atlas-v5-line);
-  border-radius: 50%;
-  background: var(--atlas-v5-card);
+/* Las acciones de la cabecera de sección · a la derecha, en fila. */
+.secActs {
+  margin-left: auto;
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--atlas-v5-ink-3);
-  cursor: pointer;
-  z-index: 3;
-  box-shadow: var(--atlas-v5-shadow-pager);
-  transition: all 0.14s;
+  gap: 18px;
 }
-.pagerPrev { left: -17px; }
-.pagerNext { right: -17px; }
-.pager:hover {
+/* Botón fantasma de sección · para la segunda manera de trabajar (por días).
+   Con borde para que se lea como acción y no como enlace, pero sin el peso
+   del oro: el oro es del "Subir extracto" del hero. */
+.secGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.secGhost:hover {
   border-color: var(--atlas-v5-gold);
   background: var(--atlas-v5-gold-wash);
-}
-.pagerOff { opacity: 0; pointer-events: none; }
-
-.acc {
-  flex: 0 0 calc((100% - (var(--pp) - 1) * 12px) / var(--pp));
-  background: var(--atlas-v5-card);
-  border: 1px solid var(--atlas-v5-line);
-  border-top: 2px solid transparent;
-  border-radius: 13px;
-  padding: 14px 14px 13px;
-  position: relative;
-  cursor: grab;
-  text-align: left;
-  transition: transform 0.14s, box-shadow 0.14s, border-color 0.14s;
-}
-.acc:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--atlas-v5-shadow-lift);
-  border-top-color: var(--atlas-v5-gold-soft);
-}
-/* Filo ámbar · la única nota de aviso de la tarjeta. */
-.accCorta { border-top-color: var(--atlas-v5-warn); }
-.accDragging { opacity: 0.4; cursor: grabbing; }
-.accOver {
-  border-color: var(--atlas-v5-gold);
-  box-shadow: 0 0 0 2px var(--atlas-v5-gold-wash);
-}
-.accTop {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 11px;
-}
-/* Único color libre: la identidad del banco. */
-.bankDot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.accId { min-width: 0; }
-.accNm {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--atlas-v5-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.accMask {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-size: 10.5px;
-  color: var(--atlas-v5-ink-4);
-  margin-top: 1px;
-}
-.accEd {
-  opacity: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--atlas-v5-ink-4);
-  background: none;
-  border: none;
-  cursor: pointer;
-  margin-left: auto;
-  transition: opacity 0.12s;
-}
-.acc:hover .accEd { opacity: 1; }
-.accEd:hover {
-  background: var(--atlas-v5-brand-wash);
-  color: var(--atlas-v5-brand);
-}
-/* El saldo SIEMPRE en ink · nunca se colorea (§4.2). */
-.accBal {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--atlas-v5-ink);
-  letter-spacing: -0.03em;
-  line-height: 1;
-}
-.accFoot {
-  margin-top: 11px;
-  padding-top: 9px;
-  border-top: 1px solid var(--atlas-v5-line-3);
-  min-height: 20px;
-  display: flex;
-  align-items: center;
-}
-/* §4.2 · el pie de la tarjeta de cuenta.
-   
-   "se queda en −103,23 € el 31 de agosto" se partía en TRES líneas y descuadraba
-   la tarjeta contra las de al lado. La frase entera es una unidad: o cabe o se
-   acorta, pero no se rompe por cualquier espacio. */
-.state {
-  font-size: 11.5px;
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  color: var(--atlas-v5-ink-4);
-  font-weight: 500;
-  white-space: nowrap;
-  min-width: 0;
-}
-.state > * { flex: 0 0 auto; }
-.stateAlerta {
-  color: var(--atlas-v5-warn);
-  font-weight: 600;
-}
-.stateDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--atlas-v5-warn);
-  flex-shrink: 0;
-}
-.stateVal {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-weight: 700;
 }
 
 /* ── §4.3 y §4.10 · dos columnas ─────────────────────────────────────────── */
@@ -727,35 +580,91 @@
 }
 
 /* ── VOCABULARIO §3 · Tarjetas ─────────────────────────────────────────────
-   Una fila por tarjeta, no una tarjeta de carrusel: lo que hay que leer es una
-   frase —cuándo corta, cuándo cobra y en qué cuenta—, no una cifra. Una tarjeta
-   no tiene saldo. */
+   Una FILA por tarjeta, con las mismas columnas para todas: qué es (alias +
+   Crédito/Débito), su ciclo, de qué cuenta se paga (con el MISMO punto de
+   banco que esa cuenta lleva en el ledger de arriba — el vínculo se ve) y lo
+   que llevas gastado en el periodo abierto. Una tarjeta no tiene saldo: tiene
+   un ciclo y una cuenta de cargo, y eso es lo que hay que poder leer. */
 .tjLista {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 8px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  background: var(--atlas-v5-card);
+  overflow: hidden;
 }
 .tjItem {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  border: 1px solid var(--atlas-v5-line);
-  border-radius: 9px;
-  background: var(--atlas-v5-bg);
+  display: grid;
+  grid-template-columns: minmax(150px, 1.1fr) minmax(180px, 1.4fr) minmax(140px, 1fr) minmax(170px, 1fr);
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 11px 18px;
+  border: none;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  background: none;
   text-align: left;
   cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
 }
-.tjItem:hover { background: var(--atlas-v5-line-3); }
+.tjItem:last-child { border-bottom: none; }
+.tjItem:hover { background: var(--atlas-v5-card-alt); }
+.tjId {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .tjAlias {
   font-size: 13px;
   font-weight: 700;
   color: var(--atlas-v5-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* La modalidad decide el dinero (al momento o al corte) · pill, no prosa. */
+.tjPill {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.tjPillCredito {
+  color: var(--atlas-v5-brand);
+  border-color: var(--atlas-v5-brand-wash);
+  background: var(--atlas-v5-brand-wash);
 }
 .tjSub {
   font-size: 11.5px;
   color: var(--atlas-v5-ink-4);
   line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* La cuenta de cargo · el mismo punto que su fila del ledger. */
+.tjCuenta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.tjDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 .tjVacio {
   font-size: 12.5px;
@@ -767,9 +676,17 @@
    mono como el resto de las cifras: es un dato, no una frase. */
 .tjGasto {
   font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
   font-size: 11.5px;
   font-weight: 600;
   color: var(--atlas-v5-ink-2);
-  margin-top: 2px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 1000px) {
+  .tjItem { grid-template-columns: minmax(150px, 1.1fr) minmax(140px, 1fr) minmax(150px, 1fr); }
+  /* El ciclo cede antes que la cuenta: dónde cae el cargo importa más. */
+  .tjItem > .tjSub { display: none; }
 }
 

@@ -1,0 +1,242 @@
+/* ===========================================================================
+   Ledger de cuentas · Tesorería V6 (rediseño §4.2)
+   El patrón visual del ledger de Inversiones: cabecera en versalita sobre
+   --card-alt, filas separadas por --line-2, números en mono tabular.
+   Regla §5: números SIEMPRE en ink · color solo donde hay que actuar (--warn).
+   El único color libre es el punto del banco.
+   =========================================================================== */
+
+.lcard {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.gridCols {
+  display: grid;
+  grid-template-columns:
+    minmax(170px, 1.5fr) minmax(104px, 0.9fr) minmax(104px, 0.9fr)
+    minmax(104px, 0.9fr) minmax(112px, 0.95fr) minmax(150px, 1.2fr) 64px;
+  gap: 14px;
+  align-items: center;
+  padding: 0 18px;
+}
+
+.head {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-5);
+  background: var(--atlas-v5-card-alt);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.colNum { text-align: right; }
+.colEstado { min-width: 0; }
+
+/* ── Filas ────────────────────────────────────────────────────────────────── */
+
+.fila {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.fila:hover { background: var(--atlas-v5-card-alt); }
+.fila:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: -2px;
+}
+.filaDragging { opacity: 0.4; cursor: grabbing; }
+.filaOver { box-shadow: inset 0 2px 0 var(--atlas-v5-gold); }
+
+.celCuenta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+/* Único color libre: la identidad del banco. */
+.bankDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.accId {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.accNm {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.accMask {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  flex-shrink: 0;
+}
+
+/* El saldo SIEMPRE en ink · nunca se colorea (§4.2). */
+.saldo {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.flujo {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-3);
+  white-space: nowrap;
+}
+.cierre {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
+
+/* ── Estado · mismas frases que el carrusel que sustituye ─────────────────── */
+
+.state {
+  font-size: 11.5px;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--atlas-v5-ink-3);
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+.stateOk { color: var(--atlas-v5-ink-4); }
+.stateN {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: 700;
+  color: var(--atlas-v5-ink-2);
+}
+.stateAlerta {
+  color: var(--atlas-v5-warn);
+  font-weight: 600;
+}
+.stateDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--atlas-v5-warn);
+  flex-shrink: 0;
+  align-self: center;
+}
+.stateVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: 700;
+}
+
+/* ── Acciones · aparecen al pasar por la fila, como el lápiz del carrusel ── */
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+}
+.accBtn {
+  opacity: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+.fila:hover .accBtn,
+.fila:focus-within .accBtn { opacity: 1; }
+.accBtn:hover {
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-brand);
+}
+
+/* ── Fila total · el control del conjunto ─────────────────────────────────── */
+
+.total {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  background: var(--atlas-v5-card-alt);
+  border-top: 1px solid var(--atlas-v5-line);
+}
+.totalLab {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-3);
+}
+.totalNum {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  white-space: nowrap;
+}
+.totalFlujo {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
+
+.vacio {
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-4);
+  padding: 12px 0;
+}
+
+/* ── Responsive · lo que cede son las columnas de flujo, nunca el saldo ──── */
+
+@media (max-width: 1240px) {
+  .gridCols {
+    grid-template-columns:
+      minmax(160px, 1.5fr) minmax(104px, 0.9fr) minmax(112px, 0.95fr)
+      minmax(140px, 1.2fr) 64px;
+  }
+  /* Queda entrar / queda salir · ya están en el hero y en la tarjeta del mes. */
+  .gridCols > :nth-child(3),
+  .gridCols > :nth-child(4) { display: none; }
+}
+
+@media (max-width: 900px) {
+  .gridCols {
+    grid-template-columns: minmax(150px, 1.5fr) minmax(104px, 0.9fr) minmax(130px, 1.2fr) 40px;
+    gap: 10px;
+    padding: 0 14px;
+  }
+  /* El cierre del mes también cede · el estado no: es la tarea. */
+  .gridCols > :nth-child(5) { display: none; }
+}

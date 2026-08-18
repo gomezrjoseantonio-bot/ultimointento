@@ -111,6 +111,31 @@ describe('la lista delante', () => {
   });
 });
 
+// Rediseño · lo hecho no puede ocupar media página. Los meses ya cerrados van
+// plegados detrás de una línea-resumen; solo lo que pide trabajo queda delante.
+describe('el historial plegado', () => {
+  it('un mes recién cerrado se ve · y el historial se puede plegar y abrir', async () => {
+    await sembrar([evento()]);
+    await pintar();
+
+    await clic(screen.getByRole('button', { name: /Cerrar julio/ }));
+    await clic(await screen.findByRole('button', { name: /Cerrar el mes/ }));
+
+    // Recién cerrado, el resultado del gesto se ve sin más clics.
+    expect(await screen.findByText(/cerrado el/)).toBeInTheDocument();
+
+    // Plegado: queda solo la línea-resumen.
+    await clic(screen.getByRole('button', { name: /Ocultar historial/ }));
+    expect(screen.queryByText(/cerrado el/)).not.toBeInTheDocument();
+    expect(screen.getByText(/1 mes cerrado/)).toBeInTheDocument();
+
+    // Y vuelve a abrirse a demanda, con su Reabrir dentro.
+    await clic(screen.getByRole('button', { name: /Ver historial/ }));
+    expect(await screen.findByText(/cerrado el/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Reabrir/ })).toBeInTheDocument();
+  });
+});
+
 describe('cerrar y reabrir', () => {
   it('cerrar marca el mes y avisa a la pantalla', async () => {
     await sembrar([evento()]);

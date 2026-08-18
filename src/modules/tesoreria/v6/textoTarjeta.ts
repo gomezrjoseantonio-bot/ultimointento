@@ -31,3 +31,17 @@ export function describirTarjeta(tarjeta: Tarjeta, cuentas: Account[]): string {
   const como = periodicidad === 'semanal' ? diaSemanal : diaMensual;
   return `Crédito · corta ${como(corte)} y cobra ${como(diaCargo)} ${donde}`;
 }
+
+/**
+ * Solo el CICLO, sin la cuenta · para la fila del ledger de tarjetas, donde la
+ * cuenta de liquidación va aparte con su punto de banco — así el vínculo
+ * tarjeta → cuenta se ve, no solo se lee.
+ */
+export function describirCiclo(tarjeta: Tarjeta): string {
+  if (tarjeta.modalidad !== 'credito' || !tarjeta.ciclo) {
+    return 'sale al momento';
+  }
+  const { periodicidad, corte, diaCargo } = tarjeta.ciclo;
+  const como = periodicidad === 'semanal' ? diaSemanal : diaMensual;
+  return `corta ${como(corte)} y cobra ${como(diaCargo)}`;
+}

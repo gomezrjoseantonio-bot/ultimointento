@@ -111,8 +111,10 @@ describe('§4.1 · hero', () => {
 
     await waitFor(() => expect(screen.getByText('Saldo')).toBeInTheDocument());
     expect(screen.getByText('2 cuentas · hoy')).toBeInTheDocument();
-    expect(screen.getByText('Queda entrar')).toBeInTheDocument();
-    expect(screen.getByText('Queda salir')).toBeInTheDocument();
+    // "Queda entrar/salir" está en el hero Y en la cabecera del ledger de
+    // cuentas: mismo vocabulario en los dos sitios, a propósito.
+    expect(screen.getAllByText('Queda entrar').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Queda salir').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(`proyectado a día ${ultimoDia}`)).toBeInTheDocument();
   });
 
@@ -258,7 +260,9 @@ describe('§4.7 · la puerta global del extracto', () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
 
-    const subir = await screen.findByRole('button', { name: /Subir extracto/ });
+    // Nombre EXACTO: cada fila del ledger tiene su "Subir extracto de {cuenta}",
+    // ya fijado a esa cuenta; el del hero es el global, sin cuenta.
+    const subir = await screen.findByRole('button', { name: /^Subir extracto$/ });
     expect(subir).not.toBeDisabled();
     fireEvent.click(subir);
 
@@ -396,6 +400,46 @@ describe('estado vacío', () => {
     montarDb({});
     montar();
     await waitFor(() => expect(screen.getByText('0 cuentas · hoy')).toBeInTheDocument());
+  });
+});
+
+// El rediseño del ledger: con muchas cuentas corrientes hace falta el control
+// POR CUENTA Y EL TOTAL. El carrusel escondía la mitad detrás de un "1–5 de 10".
+describe('rediseño · el ledger de cuentas', () => {
+  it('todas las cuentas a la vista y una fila de total · sin paginación', async () => {
+    montarDb({
+      accounts: [1, 2, 3, 4, 5, 6, 7].map((i) => cuenta(i, { alias: `Banco ${i}` })),
+    });
+    montar();
+
+    await waitFor(() => expect(screen.getByText('Banco 7')).toBeInTheDocument());
+    // La primera y la última a la vez: no hay páginas.
+    expect(screen.getByText('Banco 1')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Cuentas siguientes')).not.toBeInTheDocument();
+    expect(screen.getByText('Total · 7 cuentas')).toBeInTheDocument();
+  });
+
+  it('el clip de una fila abre el extracto YA fijado a esa cuenta', async () => {
+    montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
+    montar();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Subir extracto de Sabadell' }));
+
+    const drawer = await screen.findByRole('dialog', { name: 'Subir extracto' });
+    // Con la cuenta fijada el drawer la dice · la puerta global, en cambio,
+    // detecta por IBAN.
+    expect(within(drawer).getByText(/Sabadell/)).toBeInTheDocument();
+    expect(
+      within(drawer).queryByText('La cuenta se detecta por el IBAN del fichero')
+    ).not.toBeInTheDocument();
+  });
+
+  it('«Puntear por días» abre el calendario · la segunda manera de trabajar', async () => {
+    montarDb({ accounts: [cuenta(1)] });
+    montar();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Puntear por días/ }));
+    expect(await screen.findByRole('dialog', { name: 'Calendario' })).toBeInTheDocument();
   });
 });
 

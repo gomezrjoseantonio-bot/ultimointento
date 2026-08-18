@@ -210,6 +210,52 @@ export function estadoDeCuenta(params: {
   return porConfirmar > 0 ? { tipo: 'por-confirmar', n: porConfirmar } : { tipo: 'al-dia' };
 }
 
+// ─── §4.2 · Resumen del mes de UNA cuenta (fila del ledger) ─────────────────
+
+export interface ResumenMesCuenta {
+  /** Pendiente de entrar en ESTA cuenta este mes. */
+  entra: number;
+  /** Pendiente de salir de ESTA cuenta este mes (negativo o 0). */
+  sale: number;
+  /** Saldo hoy + entra + sale · el cierre del mes visto desde la cuenta. */
+  cierre: number;
+}
+
+/**
+ * Lo que le queda al mes a UNA cuenta · para la fila del ledger.
+ *
+ * A diferencia de los KPIs del hero, aquí un traspaso interno SÍ cuenta: el
+ * dinero no sale del patrimonio, pero sí sale de esta cuenta y entra en otra.
+ * Excluirlo haría que el cierre de la fila no cuadrara con el saldo que la
+ * cuenta va a tener de verdad — y la suma de filas seguiría cuadrando con el
+ * hero, porque las dos patas de un traspaso se anulan entre cuentas.
+ */
+export function resumenMesDeCuenta(params: {
+  saldoHoy: number;
+  eventos: TreasuryEvent[];
+  year: number;
+  month0: number;
+}): ResumenMesCuenta {
+  const { saldoHoy, eventos, year, month0 } = params;
+  const { desde, hasta } = rangoDelMes(year, month0);
+
+  let entra = 0;
+  let sale = 0;
+  for (const e of eventos) {
+    if (!esPendiente(e)) continue;
+    if (!enRango(soloFecha(e.predictedDate), desde, hasta)) continue;
+    const imp = importeConSigno(e);
+    if (imp > 0) entra += imp;
+    else sale += imp;
+  }
+
+  return {
+    entra: redondear(entra),
+    sale: redondear(sale),
+    cierre: redondear(saldoHoy + entra + sale),
+  };
+}
+
 // ─── §4.3 · Rejilla de 6 meses ──────────────────────────────────────────────
 
 export interface MesProyectado {

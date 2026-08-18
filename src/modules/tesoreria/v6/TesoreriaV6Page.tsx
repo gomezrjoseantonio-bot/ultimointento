@@ -20,14 +20,13 @@ import { calculateAccountBalanceAtDate, corteParaSaldoVivo } from '../../../serv
 import {
   calcularKpisHero,
   calcularRealidad,
-  estadoDeCuenta,
   proyectarMeses,
-  type EstadoCuenta,
   type MesProyectado,
 } from '../../../services/tesoreriaV6Metrics';
 import { colorDeBanco } from './bancoColores';
+import LedgerCuentas from './LedgerCuentas';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
-import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga, diaYMes } from './formatoV6';
+import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga } from './formatoV6';
 import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
 import DrawerTarjeta from './DrawerTarjeta';
@@ -44,7 +43,7 @@ import { confirmarPieza, despuntearPieza, descartarPieza } from '../../../servic
 import { leerExtractoTarjeta } from '../../../services/personal/extractoTarjeta';
 import { aplicarExtractoTarjeta } from '../../../services/personal/conciliarExtractoTarjeta';
 import type { Tarjeta } from '../../../types/tarjetas';
-import { describirTarjeta } from './textoTarjeta';
+import { describirCiclo } from './textoTarjeta';
 import { gastoDeMovimientos, gastoPorTarjeta, gastoAbiertoPorTarjeta } from '../../../services/gastoPorTarjeta';
 import {
   confirmTreasuryEvent,
@@ -80,13 +79,6 @@ const hoyISO = (): string => toISODateLocal(new Date());
 // El corte para el saldo vivo (MAÑANA, no hoy) vive en accountBalanceService
 // como `corteParaSaldoVivo`, para que el Panel use exactamente el mismo.
 
-/** Tarjetas visibles según ancho · 5 ≥1240px · 4 ≥1000px · 3 por debajo (§4.2). */
-function tarjetasVisibles(ancho: number): number {
-  if (ancho >= 1240) return 5;
-  if (ancho >= 1000) return 4;
-  return 3;
-}
-
 interface Estado {
   cuentas: Account[];
   eventos: TreasuryEvent[];
@@ -106,13 +98,7 @@ const TesoreriaV6Page: React.FC = () => {
   const esMovil = useEsMovil();
   const [estado, setEstado] = useState<Estado>({ cuentas: [], eventos: [], movimientos: [], inmuebles: [] });
   const [cargando, setCargando] = useState(true);
-  const [pagina, setPagina] = useState(0);
-  const [porPagina, setPorPagina] = useState(() =>
-    tarjetasVisibles(typeof window === 'undefined' ? 1280 : window.innerWidth)
-  );
   const [orden, setOrden] = useState<number[]>([]);
-  const [arrastrando, setArrastrando] = useState<number | null>(null);
-  const [encima, setEncima] = useState<number | null>(null);
   /**
    * Qué cuenta está abierta lo dice la URL, no un estado local.
    *
@@ -287,12 +273,6 @@ const TesoreriaV6Page: React.FC = () => {
     registrarDiagnosticoTarjetasEnConsola();
   }, []);
 
-  useEffect(() => {
-    const onResize = () => setPorPagina(tarjetasVisibles(window.innerWidth));
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
   // ── Derivados ────────────────────────────────────────────────────────────
 
   // §4.8 · una cuenta dada de baja deja de salir. Aquí se comprobaba solo
@@ -360,33 +340,10 @@ const TesoreriaV6Page: React.FC = () => {
     [estado.eventos, estado.movimientos, year, month0]
   );
 
-  // Sin el `+1` de la tarjeta fantasma de "Añadir cuenta": ya no está en la
-  // tira, así que la paginación cuenta solo cuentas de verdad y el rótulo
-  // "1–5 de N" dice la verdad.
-  const totalPaginas = Math.max(1, Math.ceil(cuentasVivas.length / porPagina));
-  const pageSafe = Math.min(pagina, totalPaginas - 1);
-
-  // Si al redimensionar (cambia `porPagina`) o al borrar cuentas la página
-  // actual se queda fuera de rango, hay que corregir el ESTADO y no solo el
-  // render: si no, "anterior" decrementa un número invisible y hacen falta
-  // varios clics para que se mueva algo.
-  useEffect(() => {
-    setPagina((p) => (p > totalPaginas - 1 ? Math.max(0, totalPaginas - 1) : p));
-  }, [totalPaginas]);
-
   // ── Reordenar cuentas · se persiste el orden del usuario (§4.2) ──────────
 
-  const soltarSobre = async (destinoId: number) => {
-    if (arrastrando == null || arrastrando === destinoId) return;
-    const ids = cuentasVivas.map((c) => c.id!).filter((x) => x != null);
-    const from = ids.indexOf(arrastrando);
-    const to = ids.indexOf(destinoId);
-    if (from < 0 || to < 0) return;
-    const nuevo = [...ids];
-    nuevo.splice(to, 0, ...nuevo.splice(from, 1));
+  const reordenarCuentas = useCallback(async (nuevo: number[]) => {
     setOrden(nuevo);
-    setArrastrando(null);
-    setEncima(null);
     try {
       await guardarOrdenCuentas(nuevo);
     } catch (err) {
@@ -394,7 +351,7 @@ const TesoreriaV6Page: React.FC = () => {
       // es una preferencia perdida, no un motivo para romper la interacción.
       console.warn('[TesoreriaV6] no se pudo guardar el orden de las cuentas', err);
     }
-  };
+  }, []);
 
   // ── §4.6 · saldo vivo ────────────────────────────────────────────────────
   // Confirmar y descartar recargan el estado, y de ahí se recalculan KPIs,
@@ -814,91 +771,51 @@ const TesoreriaV6Page: React.FC = () => {
         </div>
       </div>
 
-      {/* ── §4.2 · Carrusel de cuentas ──────────────────────────────────── */}
+      {/* ── §4.2 · Ledger de cuentas ────────────────────────────────────────
+          El carrusel escondía la mitad de las cuentas detrás de un "1–5 de 10".
+          Con muchas cuentas corrientes lo que hace falta es el control POR
+          CUENTA Y EL TOTAL: todas a la vista, cada una con lo que le queda al
+          mes, y la suma debajo. Cada cual puntea a su manera: por cuenta
+          (clic en la fila), por días (el botón de al lado) o subiendo
+          extractos (el hero, o el clip de cada fila, ya fijado a su cuenta). */}
       <section className={styles.sec}>
         <div className={styles.secHd}>
           <div>
-            <div className={styles.secK}>Saldo actual en mis cuentas</div>
-            <div className={styles.secT}>entra en una cuenta para ver el detalle de movimientos</div>
-          </div>
-          <button
-            type="button"
-            className={styles.secAdd}
-            onClick={() => setFichaCuenta({ cuenta: null })}
-          >
-            <Icons.Plus size={14} strokeWidth={2} /> Añadir cuenta
-          </button>
-          {cuentasVivas.length > porPagina && (
-            <span className={styles.rngRight}>
-              {pageSafe * porPagina + 1}–{Math.min((pageSafe + 1) * porPagina, cuentasVivas.length)} de{' '}
-              {cuentasVivas.length}
-            </span>
-          )}
-        </div>
-
-        <div className={styles.carr}>
-          {/* La flecha deshabilitada es INVISIBLE, no un hueco gris (§4.2). */}
-          <button
-            type="button"
-            aria-label="Cuentas anteriores"
-            className={`${styles.pager} ${styles.pagerPrev} ${pageSafe === 0 ? styles.pagerOff : ''}`}
-            onClick={() => setPagina((p) => Math.max(0, p - 1))}
-          >
-            <Icons.ChevronLeft size={18} strokeWidth={2.2} />
-          </button>
-
-          <div className={styles.viewport}>
-            <div
-              className={styles.track}
-              style={
-                {
-                  '--pp': porPagina,
-                  transform: `translateX(calc(-${pageSafe} * (100% + 12px)))`,
-                } as React.CSSProperties
-              }
-            >
-              {cuentasVivas.map((c) => (
-                <TarjetaCuenta
-                  key={c.id}
-                  cuenta={c}
-                  saldo={saldoPorCuenta.get(c.id!) ?? 0}
-                  estado={estadoDeCuenta({
-                    saldoHoy: saldoPorCuenta.get(c.id!) ?? 0,
-                    eventos: porCuenta.eventos.get(c.id!) ?? [],
-                    year,
-                    month0,
-                    hoy,
-                  })}
-                  arrastrando={arrastrando === c.id}
-                  encima={encima === c.id}
-                  onDragStart={() => setArrastrando(c.id!)}
-                  onDragEnter={() => setEncima(c.id!)}
-                  onDragEnd={() => {
-                    setArrastrando(null);
-                    setEncima(null);
-                  }}
-                  onDrop={() => void soltarSobre(c.id!)}
-                  onAbrir={() => abrirCuenta(c.id!)}
-                  onEditar={() => setFichaCuenta({ cuenta: c })}
-                />
-              ))}
-              {/* §4.2 · "Añadir cuenta" NO va dentro del carrusel.
-                  Ya está arriba, junto al rótulo de la sección, y repetirlo
-                  aquí lo mete en la paginación: una tarjeta fantasma que hace
-                  que la tira diga "1–5 de 9" contando algo que no es una
-                  cuenta, y que empuja las de verdad a la página siguiente. */}
+            <div className={styles.secK}>Mis cuentas</div>
+            <div className={styles.secT}>
+              entra en una cuenta para puntear sus movimientos · o trabaja por días con el calendario
             </div>
           </div>
-
-          <button
-            type="button"
-            aria-label="Cuentas siguientes"
-            className={`${styles.pager} ${styles.pagerNext} ${pageSafe >= totalPaginas - 1 ? styles.pagerOff : ''}`}
-            onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
-          >
-            <Icons.ChevronRight size={18} strokeWidth={2.2} />
-          </button>
+          <div className={styles.secActs}>
+            <button
+              type="button"
+              className={styles.secGhost}
+              onClick={() => setCalendario({ year, month0 })}
+            >
+              <Icons.Calendar size={14} strokeWidth={1.8} /> Puntear por días
+            </button>
+            <button
+              type="button"
+              className={styles.secAdd}
+              onClick={() => setFichaCuenta({ cuenta: null })}
+            >
+              <Icons.Plus size={14} strokeWidth={2} /> Añadir cuenta
+            </button>
+          </div>
         </div>
+
+        <LedgerCuentas
+          cuentas={cuentasVivas}
+          saldoPorCuenta={saldoPorCuenta}
+          eventosPorCuenta={porCuenta.eventos}
+          year={year}
+          month0={month0}
+          hoy={hoy}
+          onAbrir={abrirCuenta}
+          onEditar={(c) => setFichaCuenta({ cuenta: c })}
+          onSubirExtracto={(c) => setExtracto({ cuenta: c })}
+          onReordenar={(ids) => void reordenarCuentas(ids)}
+        />
       </section>
 
       {/* ── VOCABULARIO §3 · Tarjetas ────────────────────────────────────
@@ -928,24 +845,52 @@ const TesoreriaV6Page: React.FC = () => {
           </div>
         ) : (
           <div className={styles.tjLista}>
-            {tarjetas.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={styles.tjItem}
-                onClick={() => setTarjetaAbierta(t)}
-              >
-                <span className={styles.tjAlias}>{t.alias}</span>
-                <span className={styles.tjSub}>{describirTarjeta(t, cuentasVivas)}</span>
-                {/* §3.5 · lo que llevas gastado con ella en el periodo que aún
-                    no ha cerrado · es una cifra VIVA, crece con cada compra. */}
-                {gastoAbierto.get(t.id!) != null && (
-                  <span className={styles.tjGasto}>
-                    Llevas {importeSaldo(gastoAbierto.get(t.id!)!)} este periodo
+            {tarjetas.map((t) => {
+              const liquidacion = cuentasVivas.find((c) => c.id === t.cuentaLiquidacionId);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={styles.tjItem}
+                  onClick={() => setTarjetaAbierta(t)}
+                >
+                  <span className={styles.tjId}>
+                    <span className={styles.tjAlias}>{t.alias}</span>
+                    <span
+                      className={`${styles.tjPill} ${
+                        t.modalidad === 'credito' ? styles.tjPillCredito : ''
+                      }`}
+                    >
+                      {t.modalidad === 'credito' ? 'Crédito' : 'Débito'}
+                    </span>
                   </span>
-                )}
-              </button>
-            ))}
+                  <span className={styles.tjSub}>{describirCiclo(t)}</span>
+                  {/* La cuenta con SU punto de banco · el vínculo tarjeta →
+                      cuenta se ve, no solo se lee: es el mismo punto que la
+                      fila de esa cuenta en el ledger de arriba. */}
+                  <span className={styles.tjCuenta}>
+                    {liquidacion ? (
+                      <>
+                        <span
+                          className={styles.tjDot}
+                          style={{ background: colorDeBanco(liquidacion) }}
+                        />
+                        {liquidacion.alias || liquidacion.name || 'Cuenta'}
+                      </>
+                    ) : (
+                      'sin cuenta de cargo'
+                    )}
+                  </span>
+                  {/* §3.5 · lo que llevas gastado con ella en el periodo que aún
+                      no ha cerrado · es una cifra VIVA, crece con cada compra. */}
+                  <span className={styles.tjGasto}>
+                    {gastoAbierto.get(t.id!) != null
+                      ? `Llevas ${importeSaldo(gastoAbierto.get(t.id!)!)} este periodo`
+                      : ''}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
       </section>
@@ -1156,89 +1101,6 @@ const Kpi: React.FC<{ lab: string; val: string; sub: string; gold?: boolean }> =
     <div className={styles.hkSub}>{sub}</div>
   </div>
 );
-
-const TarjetaCuenta: React.FC<{
-  cuenta: Account;
-  saldo: number;
-  estado: EstadoCuenta;
-  arrastrando: boolean;
-  encima: boolean;
-  onDragStart: () => void;
-  onDragEnter: () => void;
-  onDragEnd: () => void;
-  onDrop: () => void;
-  onAbrir: () => void;
-  onEditar: () => void;
-}> = ({ cuenta, saldo, estado, arrastrando, encima, onDragStart, onDragEnter, onDragEnd, onDrop, onAbrir, onEditar }) => {
-  const nombre = cuenta.alias || cuenta.name || cuenta.banco?.name || 'Cuenta';
-  const mask = (cuenta.ultimosCuatro || cuenta.iban?.slice(-4)) ?? '';
-
-  return (
-    <div
-      className={`${styles.acc} ${estado.tipo === 'se-queda-corta' ? styles.accCorta : ''} ${
-        arrastrando ? styles.accDragging : ''
-      } ${encima ? styles.accOver : ''}`}
-      role="button"
-      tabIndex={0}
-      onClick={onAbrir}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onAbrir();
-        }
-      }}
-      draggable
-      onDragStart={onDragStart}
-      onDragEnter={onDragEnter}
-      onDragOver={(e) => e.preventDefault()}
-      onDragEnd={onDragEnd}
-      onDrop={onDrop}
-    >
-      <div className={styles.accTop}>
-        <span className={styles.bankDot} style={{ background: colorDeBanco(cuenta) }} />
-        <div className={styles.accId}>
-          <div className={styles.accNm}>{nombre}</div>
-          {mask && <div className={styles.accMask}>···· {mask}</div>}
-        </div>
-        {/* stopPropagation obligatorio: la tarjeta entera es clicable (§4.2). */}
-        <button
-          type="button"
-          className={styles.accEd}
-          aria-label={`Editar ${nombre}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onEditar();
-          }}
-        >
-          <Icons.Edit size={14} strokeWidth={1.8} />
-        </button>
-      </div>
-
-      <div className={styles.accBal}>{importeSaldo(saldo)}</div>
-
-      <div className={styles.accFoot}>
-        <EstadoTarjeta estado={estado} />
-      </div>
-    </div>
-  );
-};
-
-/** Un solo estado por tarjeta · el color solo aparece si hay que actuar (§4.2). */
-const EstadoTarjeta: React.FC<{ estado: EstadoCuenta }> = ({ estado }) => {
-  if (estado.tipo === 'se-queda-corta') {
-    return (
-      <span className={`${styles.state} ${styles.stateAlerta}`}>
-        <span className={styles.stateDot} />
-        se queda en <span className={styles.stateVal}>{importeSaldo(estado.minimo)}</span> el {diaYMes(estado.dia)}
-      </span>
-    );
-  }
-  if (estado.tipo === 'por-confirmar') {
-    // Texto gris, sin chip de fondo (§4.2).
-    return <span className={styles.state}>{estado.n} por confirmar</span>;
-  }
-  return <span className={styles.state}>al día</span>;
-};
 
 const TarjetaMes: React.FC<{ mes: MesProyectado; onAbrir: () => void }> = ({ mes, onAbrir }) => {
   const nombre = nombreMes(mes.month0);
