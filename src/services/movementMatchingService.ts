@@ -217,6 +217,31 @@ function scorePair(
     reasons.push('importe_exacto_misma_cuenta');
   }
 
+  // Ingreso de ALQUILER · importe EXACTO en la misma cuenta, fecha dentro de la
+  // ventana (±5 días) y el concepto del banco dice "alquiler/renta/..." ⇒ cuadre,
+  // aunque el pagador venga con otro texto que el del contrato. La renta llega
+  // por transferencia uno o dos días después y con el nombre del banco distinto;
+  // exigir además que pegue la contraparte la dejaba en "resolver". La palabra
+  // "alquiler" es lo que la distingue de un Bizum del mismo importe de otra
+  // persona (que NO debe colgarse de la renta): sin ella, no hay empujón. La
+  // contraparte SIGUE sumando (desempata dos rentas iguales), y si hay dos
+  // previstos del mismo importe la ambigüedad va a multiMatch, no a un cuadre a
+  // ciegas. Se acota a ±5 días para que un ingreso suelto lejano no la consuma.
+  const esIngreso = event.type === 'income';
+  const textoIngreso = `${movement.description ?? ''} ${movement.counterparty ?? ''}`.toLowerCase();
+  const pareceAlquiler = /alquiler|arrendamiento|mensualidad|inquilin|\brenta\b/.test(textoIngreso);
+  if (
+    esIngreso &&
+    pareceAlquiler &&
+    sameSign &&
+    diffAbs < 0.005 &&
+    movement.accountId === event.accountId &&
+    daysDiff <= opts.fechaWindowDays
+  ) {
+    score += 25;
+    reasons.push('importe_exacto_alquiler_misma_cuenta');
+  }
+
   // Un recibo recurrente —domiciliación de luz/gas/cuota o el recibo de una
   // tarjeta— se carga en SU cuenta con el día a menudo desplazado uno o dos
   // respecto a lo previsto, y con el importe VARIABLE mes a mes (el gas de un
