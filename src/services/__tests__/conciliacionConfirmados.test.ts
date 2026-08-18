@@ -57,9 +57,13 @@ describe('solo lo anotado a mano y suelto', () => {
     expect(r.size).toBe(0);
   });
 
-  it('uno ya conciliado no vuelve a casar', () => {
+  it('un previsto PUNTEADO (manual, stampado unifiedStatus:conciliado) SÍ casa', () => {
+    // Regresión del bug de duplicados: `confirmTreasuryEvent` marca el confirmado
+    // como `unifiedStatus:'conciliado'` aunque no haya extracto. Es un Confirmado
+    // "a ojo" y la línea del banco debe reconocerlo, no duplicarlo. Lo conciliado
+    // de verdad es `source:'import'`, que sí se excluye (test de arriba).
     const r = emparejarConfirmados([lineaImport()], [mov({ id: 7, unifiedStatus: 'conciliado' })]);
-    expect(r.size).toBe(0);
+    expect(r.get(100)).toBe(7);
   });
 
   it('una pata de traspaso no casa · no es un cargo suelto', () => {

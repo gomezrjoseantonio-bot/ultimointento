@@ -44,8 +44,13 @@ const VENTANA_DIAS_DEFECTO = 5;
  */
 function esConfirmadoEmparejable(m: Movement): boolean {
   if (m.id == null) return false;
+  // Solo lo anotado a mano ("tu palabra"). `source === 'import'` es ya del
+  // banco: no se re-concilia. NO se mira `unifiedStatus`: un previsto punteado
+  // (confirmTreasuryEvent) nace `source:'manual'` PERO stampado
+  // `unifiedStatus:'conciliado'` sin que haya extracto —es un Confirmado, no un
+  // Conciliado—, y filtrarlo por ahí impedía que la línea del extracto lo
+  // reconociera, duplicándolo. Lo conciliado DE VERDAD tiene `source:'import'`.
   if (m.source !== 'manual') return false;
-  if (m.unifiedStatus === 'conciliado') return false;
   if (m.isOpeningBalance) return false;
   if (m.transferMetadata || m.is_transfer) return false;
   // Una compra a crédito no mueve la cuenta el día de la compra (sale en el
