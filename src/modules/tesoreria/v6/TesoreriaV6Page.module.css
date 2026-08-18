@@ -772,8 +772,6 @@
   color: var(--atlas-v5-ink-2);
   margin-top: 2px;
 }
-
-
 /* Aviso de duplicados de previstos punteados (limpieza bajo demanda). */
 .dupAviso {
   display: flex;
@@ -785,24 +783,16 @@
   border-radius: 12px;
   background: var(--atlas-v5-card);
 }
-.dupText {
-  flex: 1;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--atlas-v5-ink-2);
-}
+.dupText { flex: 1; font-size: 13px; line-height: 1.45; color: var(--atlas-v5-ink-2); }
 .dupBtn {
   flex-shrink: 0;
   padding: 9px 16px;
   border: 0;
   border-radius: 9px;
   background: var(--atlas-v5-brand);
-  color: #fff;
+  color: var(--atlas-v5-on-brand);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
-.dupBtn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
+.dupBtn:disabled { opacity: 0.6; cursor: default; }
