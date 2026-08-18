@@ -12,7 +12,7 @@
 // Foco en el MES EN CURSO: se enseña el periodo abierto, no el histórico.
 // ============================================================================
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import PunteoList from '../../shared/components/Punteo/PunteoList';
 import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
@@ -56,6 +56,11 @@ export interface DrawerTarjetaProps {
   onDespuntearPieza: (item: ItemPunteo) => void | Promise<void>;
   /** Descartar una PIEZA · ese gasto no ocurre este periodo. */
   onDescartarPieza: (item: ItemPunteo) => void | Promise<void>;
+  /** Subir el extracto (PDF) de la tarjeta · concilia sus gastos (§3 · Fase 3). */
+  onSubirExtracto?: (
+    tarjeta: Tarjeta,
+    file: File
+  ) => Promise<{ conciliadas: number; nuevas: number } | null>;
 }
 
 type Pestana = 'porConfirmar' | 'confirmados' | 'movimientos';
@@ -78,11 +83,33 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
   onConfirmarPiezaImporte,
   onDespuntearPieza,
   onDescartarPieza,
+  onSubirExtracto,
 }) => {
   const [pestana, setPestana] = useState<Pestana>('porConfirmar');
   // `null` = ficha cerrada · con `esPieza` sabemos si guardar confirma una pieza
   // (con su importe real) o da de alta/edita una compra manual.
   const [ficha, setFicha] = useState<{ item: ItemPunteo | null; esPieza: boolean } | null>(null);
+  const inputExtracto = useRef<HTMLInputElement>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [resumen, setResumen] = useState<string | null>(null);
+
+  const subirExtracto = async (file: File) => {
+    if (!tarjeta || !onSubirExtracto) return;
+    setSubiendo(true);
+    setResumen(null);
+    try {
+      const r = await onSubirExtracto(tarjeta, file);
+      setResumen(
+        r == null
+          ? 'No se pudo leer el extracto. ¿Es el PDF de la tarjeta?'
+          : `Conciliadas ${r.conciliadas} · nuevas ${r.nuevas}`
+      );
+    } catch {
+      setResumen('No se pudo leer el extracto. ¿Es el PDF de la tarjeta?');
+    } finally {
+      setSubiendo(false);
+    }
+  };
 
   const abierto = tarjeta != null;
 
@@ -129,7 +156,11 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
   }, [movimientos, tarjeta, periodoActual]);
 
   const desc = (a: ItemPunteo, b: ItemPunteo) => b.fecha.localeCompare(a.fecha);
-  const piezaItem = (e: TreasuryEvent) => eventoAItem(e as TreasuryEvent & { id: number });
+  // Una pieza avalada por el extracto de la tarjeta sube a CONCILIADO.
+  const piezaItem = (e: TreasuryEvent): ItemPunteo => {
+    const it = eventoAItem(e as TreasuryEvent & { id: number });
+    return e.conciliadoExtracto ? { ...it, estado: 'conciliado' } : it;
+  };
   const compraItem = (m: Movement) => movimientoAItem(m as Movement & { id: number });
 
   // Por confirmar: piezas previstas que ya deberían haber ocurrido (fecha ≤ hoy).
@@ -230,7 +261,31 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
           <button type="button" className={styles.btnCmp} onClick={() => setFicha({ item: null, esPieza: false })}>
             <Icons.Plus size={13} strokeWidth={2} /> Anotar compra
           </button>
+          {onSubirExtracto && (
+            <button
+              type="button"
+              className={`${styles.btnCmp} ${styles.btnCmpGold}`}
+              onClick={() => inputExtracto.current?.click()}
+              disabled={subiendo}
+            >
+              <Icons.Upload size={13} strokeWidth={1.8} /> {subiendo ? 'Leyendo…' : 'Subir extracto'}
+            </button>
+          )}
+          <input
+            ref={inputExtracto}
+            type="file"
+            accept=".pdf"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void subirExtracto(f);
+              e.target.value = '';
+            }}
+          />
         </div>
+        {resumen && (
+          <div style={{ padding: '8px 16px', fontSize: 13, opacity: 0.85 }}>{resumen}</div>
+        )}
 
         <div className={styles.body}>
           {items.length === 0 ? (

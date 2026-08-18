@@ -273,6 +273,11 @@ export interface TreasuryEvent {
    * `accountId` y queda fuera del saldo y de los agregadores de cashflow.
    */
   tarjetaId?: number;
+  /**
+   * §3 (Fase 3) · una PIEZA que el EXTRACTO de la tarjeta ha avalado · sube de
+   * confirmado a CONCILIADO ("la palabra del extracto"). Solo en piezas.
+   */
+  conciliadoExtracto?: boolean;
   // Account information
   accountId?: number;
   paymentMethod?: MetodoDePago;
