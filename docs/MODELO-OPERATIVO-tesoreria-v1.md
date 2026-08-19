@@ -1,8 +1,10 @@
 # Modelo operativo de tesorería · el ciclo del apunte de extremo a extremo
 
-**Estado: BORRADOR v5 · cuadro ÚNICO de conceptos (§9 quater: Personal ·
-Inmueble base · Alquiler por tipo · Ingreso). Falta que Jose valide §9, §13.9 y
-§13.10. NO se toca código hasta que esté acordado.**
+**Estado: BORRADOR v6 · fiscalidad separada de la naturaleza (§9 ter/quater): el
+gasto tiene UNA naturaleza; el alquiler es lo que lo hace deducible, prorrateado
+por tiempo y tipo; la amortización NO es un gasto (mejora/mobiliario = CAPEX).
+Falta que Jose valide §9, §13.9 y §13.10. NO se toca código hasta que esté
+acordado.**
 
 Este documento fija QUÉ pasa con el dinero desde que se prevé hasta que se
 concilia: previsión → confirmación → conciliación, la subida de ficheros, el
@@ -306,114 +308,102 @@ conceptos propios. Lo que NO: su casilla fiscal (la hereda de la familia, para n
 cambiar la Renta sin querer). Es decir: la pieza editable existe, pero cuelga de
 un modelo roto.
 
-### 9 ter · Modelo propuesto · el CONCEPTO como unidad única (a validar, Jose)
+### 9 ter · Modelo corregido (Jose) · separar TRES cosas que hoy están mezcladas
 
-Un solo principio: **el CONCEPTO es la unidad**. Ni "familia" como identidad, ni
-categoría gorda como lo que se guarda. Cinco reglas:
+El colapso mental viene de meter en la misma bolsa la naturaleza del gasto, si
+es deducible y la amortización. **Son tres cosas distintas y se separan:**
 
-1. **UN solo catálogo de conceptos** (se matan los otros tres). El concepto es lo
-   atómico y con sentido (IBI, comunidad, suministro-luz, seguro-hogar, médico,
-   reparación, mejora, intereses-hipoteca…). La **"familia" pasa a ser un grupo
-   VISUAL opcional** (para plegar la lista), no parte de la clasificación.
-2. **El concepto se GUARDA en el apunte** (también en los movimientos, no solo en
-   los recurrentes). La casilla fiscal y el "store" se **derivan** del concepto;
-   se guarda además una foto denormalizada para el histórico fiscal. Así una fila
-   conciliada SIEMPRE sabe qué es.
-3. **Cada concepto lleva lo que sirve a los 4 usos**, y nada más:
-   - `id`, `label`, `aliases[]` (para auto-puntear por el texto del banco).
-   - `grupo?` (visual: suministros, seguros… editable).
-   - `ambitos`: en cuáles vale (`personal`, `inmueble`, o los dos).
-   - **Inmueble →** `casillaAEAT` (o "pregunta" para la derrama) + `tratamiento`:
-     `gasto` (deducible) · `mejora` (se amortiza) · `mobiliario` (se amortiza) ·
-     `financiero` (intereses). El tratamiento decide el store y la amortización;
-     "deducible = tiene casilla".
-   - **Personal →** `bolsa` (50/30/20) para tu presupuesto.
-   - `origen`: base | usuario · `oculto`.
-4. **Editable y escalable en Ajustes**, con **red fiscal**: puedes crear,
-   renombrar, ocultar, agrupar. Un concepto de inmueble elige su casilla **de una
-   lista cerrada de casillas válidas** (no texto libre), así que nunca rompe la
-   Renta. Un concepto personal solo elige su bolsa.
-5. **La fila** enseña el **concepto** (+ inmueble), nunca la familia:
-   `IBI · Tenderina 64 4DR` · `Comunidad · Carles Buigas 15` · `Médico`.
+1. **La NATURALEZA del gasto (el concepto).** Qué es, y ya. Una **lista PLANA y
+   limpia**, cada gasto UNA vez: Comunidad, IBI, Basuras, Seguro hogar,
+   Suministro luz/agua/gas, Reparación, Gestión del alquiler, Supermercado,
+   Médico… **Sin "familia" que agrupe conceptos redundantes.** El grupo, si
+   acaso, es una etiqueta VISUAL para plegar, nada más.
+2. **La IMPUTACIÓN.** A dónde va ese gasto: a **personal**, o a un **inmueble
+   concreto**. Eso lo pones tú (o lo hereda del previsto/contrato). La naturaleza
+   no cambia por dónde se impute; comunidad es comunidad.
+3. **La FISCALIDAD, que se DERIVA (no se guarda en el gasto).** Un gasto es
+   deducible **solo** si se imputa a un inmueble **alquilado**, y **no al 100 %**:
+   se deduce **en proporción al tiempo alquilado** (días del ejercicio) y **según
+   el tipo** de alquiler. La **naturaleza** determina la **casilla** de la Renta
+   (comunidad→0109); el **contexto** (alquilado / cuánto / qué tipo) determina
+   **cuánto** es deducible. El motor fiscal lo calcula; el concepto NO lleva un
+   "deducible sí/no".
 
-**Migración:** los apuntes viejos se llevan a su `conceptoId` con los
-diccionarios que ya existen (`mapaLegacy`), y se deprecan `categoryLabel` y los
-catálogos duplicados → queda uno. (Esto es P7 bien hecho: primero el modelo,
-luego la pasada retroactiva.)
+**Y una regla que faltaba, importante:**
 
-**Fases (cuando lo apruebes):** (F1) definir el catálogo base y el tipo `Concepto`
-único · (F2) guardar `conceptoId` en el apunte y derivar casilla/store · (F3)
-Ajustes editable con red fiscal · (F4) migrar lo viejo · (F5) enseñar el concepto
-en la fila. Cada fase, su PR.
+4. **La amortización NO es un gasto.** No es un movimiento ni sale en la lista de
+   gastos. **Mejora y mobiliario tampoco son gastos: son INVERSIÓN (CAPEX)** —
+   aumentan el valor del inmueble y se **amortizan** (3 % construcción/año,
+   10 % mobiliario/año). Eso vive en el módulo del inmueble/fiscal, aparte del
+   catálogo de gastos. Mezclarlo era parte del ruido.
 
-### 9 quater · CUADRO ÚNICO de conceptos (esto es lo que nos quedamos)
+**Qué se guarda en el apunte:** su **concepto** (naturaleza) + su **imputación**
+(personal o inmueble X). La casilla y la parte deducible se **derivan** al vuelo
+(se guarda una foto para el histórico fiscal). La fila enseña el concepto (+
+inmueble): `Comunidad · Tenderina 64 4DR`, `Médico`.
 
-Una sola lista (no cuatro catálogos). Tomada de los conceptos que la app ya
-conoce, deduplicada y separada por **cuándo se siembra**: Personal · Inmueble
-base · Alquiler (por tipo). Casillas del catálogo actual; "?" = por confirmar.
-Repásalo y edítalo directamente.
+### 9 quater · CUADRO corregido (para revisar en el Excel)
 
-Tipos de alquiler: **C** completo · **H** por habitaciones · **T** turístico.
+Tres tablas separadas, no una mezcla. **Casilla** = solo se usa cuando el gasto
+se imputa a un **inmueble alquilado**; entonces se deduce prorrateado por tiempo
+y tipo. En personal no hay casilla.
 
-**A · PERSONAL** — tu presupuesto, NO deducible. Se siembra para todos.
+**Tabla 1 · GASTOS (naturaleza · lista plana).** `P`=puede ser personal ·
+`I`=puede ser de inmueble. Semilla al alquilar: **C** completo · **H**
+habitaciones · **T** turístico.
 
-| Concepto | Bolsa 50/30/20 |
+| Concepto | Casilla (si inmueble alq.) | P | I | Semilla |
+|---|---|:-:|:-:|---|
+| Comunidad | 0109 | ✓ | ✓ | C H T |
+| Derrama | pregunta | | ✓ | C H T |
+| IBI | 0115 | ✓ | ✓ | C H T |
+| Basuras | 0115 | ✓ | ✓ | C H T |
+| Seguro hogar | 0114 | ✓ | ✓ | C H T |
+| Reparación / conservación | 0106 | ✓ | ✓ | C H T |
+| Mantenimiento caldera | 0106 | ✓ | ✓ | C H T |
+| Intereses de hipoteca | financiación | ✓ | ✓ | C H T |
+| Suministro · luz | 0113 | ✓ | ✓ | H T (C si pagas tú) |
+| Suministro · agua | 0113 | ✓ | ✓ | H T (C si pagas tú) |
+| Suministro · gas | 0113 | ✓ | ✓ | H T (C si pagas tú) |
+| Internet / telefonía | 0113 | ✓ | ✓ | H T |
+| Alarma | 0113 | ✓ | ✓ | H T |
+| Gestión del alquiler / agencia | 0112 | | ✓ | C H |
+| Gestoría / asesoría | 0112 | ✓ | ✓ | C H T |
+| Seguro de impago | 0114 | | ✓ | C H |
+| Limpieza de zonas comunes | 0112 | | ✓ | H |
+| Licencia turística | 0115 | | ✓ | T |
+| Comisión de plataformas | 0112 | | ✓ | T |
+| Limpieza por estancia | 0112 | | ✓ | T |
+| Lavandería | 0112 | | ✓ | T |
+| Consumibles de bienvenida | 0112 | | ✓ | T |
+| Supermercado / alimentación | — | ✓ | | (personal) |
+| Transporte / combustible | — | ✓ | | (personal) |
+| Salud (médico, farmacia) | — | ✓ | | (personal) |
+| Seguros personales (vida/salud/coche) | — | ✓ | | (personal) |
+| Cuotas (gimnasio/educación/ONG) | — | ✓ | | (personal) |
+| Suscripciones | — | ✓ | | (personal) |
+| Ocio / restaurantes / ropa | — | ✓ | | (personal) |
+
+**Tabla 2 · INVERSIÓN del inmueble (CAPEX · NO es gasto · se amortiza).**
+
+| Concepto | Amortización |
 |---|---|
-| Alquiler / hipoteca de tu vivienda | Necesidades |
-| Suministros de tu vivienda (luz · agua · gas) | Necesidades |
-| Internet · teléfono · móvil | Necesidades |
-| Supermercado · alimentación | Necesidades |
-| Transporte · gasolina · mantenimiento coche | Necesidades |
-| Salud · farmacia · médicos | Necesidades |
-| Seguros personales (vida · salud · coche) | Necesidades |
-| Cuotas (gimnasio · educación · colegio profesional · ONG) | Necesidades / Deseos |
-| Suscripciones (streaming · música · software · cloud · prensa) | Deseos |
-| Restaurantes · ocio · ropa · cuidado personal | Deseos |
-| Ahorro · inversión · aportación a plan | Ahorro |
+| Mejora / ampliación | Se suma al valor · amortiza |
+| Mobiliario | 10 % anual |
+| (Amortización del inmueble) | 3 % anual sobre el valor de construcción |
 
-**B · INMUEBLE (base)** — por TENER el inmueble, esté alquilado o no. Deducible
-al alquilar (salvo mejora/mobiliario, que se amortizan).
+> La **amortización** no se anota como gasto: la calcula el módulo fiscal a
+> partir del valor de construcción y de las inversiones (tabla 2).
 
-| Concepto | Casilla | Tratamiento |
-|---|---|---|
-| IBI | 0115 | gasto |
-| Tasa de basuras | 0115 | gasto |
-| Comunidad · cuota ordinaria | 0109 | gasto |
-| Derrama | pregunta | gasto **o** mejora (se decide al confirmar) |
-| Seguro · hogar | 0114 | gasto |
-| Mantenimiento caldera | 0106 | gasto |
-| Reparación / conservación | 0106 | gasto |
-| Intereses de hipoteca | ? financiación | financiero |
-| Amortización del inmueble | — | amortiza (3 % s/ construcción) |
-| Mejora | — | mejora (amortiza) |
-| Muebles / mobiliario | 0117 | mobiliario (amortiza 10 %) |
+**Tabla 3 · Presupuesto personal (bolsa 50/30/20).** Solo para los conceptos con
+`P`. Cada uno cae en Necesidades / Deseos / Ahorro (lo decides tú en el Excel).
 
-**C · ALQUILER** — se AÑADE cuando el inmueble está alquilado. Columna = en qué
-tipo aparece por defecto.
+**Ingreso:** la **renta** se siembra desde el **contrato** (por piso o
+habitación); no es un gasto.
 
-| Concepto | Casilla | Trat. | C | H | T |
-|---|---|---|:-:|:-:|:-:|
-| Gestión del alquiler / honorarios agencia | 0112 | gasto | ✓ | ✓ | |
-| Gestoría / asesoría | 0112 | gasto | ✓ | ✓ | ✓ |
-| Seguro de impago | 0114 | gasto | ✓ | ✓ | |
-| Suministros (luz·agua·gas·internet·tel·alarma) | 0113 | gasto | ¹ | ✓ | ✓ |
-| Limpieza de zonas comunes | 0112 | gasto | | ✓ | |
-| Licencia turística | 0115 | gasto | | | ✓ |
-| Comisión de plataformas (Airbnb/Booking) | 0112 | gasto | | | ✓ |
-| Limpieza por estancia | 0112 | gasto | | | ✓ |
-| Lavandería | 0112 | gasto | | | ✓ |
-| Consumibles de bienvenida | 0112 | gasto | | | ✓ |
-
-¹ En completo, los suministros solo si los pagas tú (normalmente los paga el
-inquilino).
-
-**D · INGRESO** — la **renta** (alquiler) se siembra desde el **contrato** (por
-piso o por habitación). No es un gasto; es el ingreso del inmueble.
-
-> **Fiscal por tipo (clave):** larga duración → **reducción 60 %** del rendimiento
-> neto; temporada → capital inmobiliario **sin** reducción; turístico **con
-> servicios de hostelería** → puede ser **actividad económica** (otro régimen).
-> El tipo condiciona qué conceptos se siembran (tabla C) Y el tratamiento fiscal.
+> **Fiscal por tipo:** larga → **reducción 60 %**; temporada → **sin** reducción;
+> turístico **con servicios** → puede ser **actividad económica**. Y recuerda: la
+> deducción de CADA gasto se **prorratea por los días alquilados** del ejercicio.
 
 ### 9 quinquies · Semillado al poner un inmueble en alquiler (Jose)
 
@@ -539,15 +529,18 @@ respalda y puede completar datos fiscales —nº factura, base, IVA—.)
 **Lo que queda por cerrar (esto es lo gordo, §13.5):**
 
 5. **La taxonomía (P8).** Ya está mapeado el desastre actual (§9 bis) y hay una
-   **propuesta concreta** de modelo decente, editable y escalable (§9 ter) con un
-   **catálogo base semilla** (§9 quater). Tu criterio ya está recogido: la
-   clasificación es a la vez **fiscal + por inmueble + personal + para puntear**
-   (no se elige una), la **familia vaga muere**, manda el **concepto/subtipo**, y
-   todo **editable**. Lo que necesito de ti para cerrar F1:
-   - ¿Te vale el **modelo** de §9 ter (concepto único, guardado en el apunte,
-     editable con red fiscal)?
-   - ¿Te vale la **semilla** de §9 quater? ¿Qué conceptos de inmueble te
-     faltan/sobran, y qué nivel quieres en personal?
+   **propuesta corregida** (§9 ter) que separa las TRES cosas que hoy están
+   mezcladas: **naturaleza** del gasto (una lista plana, cada gasto una vez, sin
+   familia), **imputación** (personal o inmueble X) y **fiscalidad DERIVADA** (un
+   gasto solo es deducible si se imputa a un inmueble alquilado, y prorrateado por
+   tiempo y tipo — no se guarda "deducible sí/no" en el concepto). La
+   **amortización NO es un gasto** y mejora/mobiliario son **CAPEX**, fuera del
+   catálogo de gastos. El **catálogo base semilla** está en §9 quater (tres tablas
+   separadas). Lo que necesito de ti para cerrar F1:
+   - ¿Te vale la **separación** de §9 ter (naturaleza / imputación / fiscalidad
+     derivada; amortización fuera; CAPEX aparte)?
+   - ¿Te vale la **Tabla 1 de gastos** de §9 quater? Revísala en el Excel: ¿qué
+     conceptos te faltan/sobran, y están bien las casillas y las semillas C/H/T?
 
 9. **Bonificación (§4 bis):** ¿cómo se marca que un traspaso cuenta para una
    bonificación? ¿automático (todo abono ≥ umbral en esa cuenta) o manual?
