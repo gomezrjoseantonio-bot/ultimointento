@@ -74,6 +74,18 @@ export function esPendiente(e: TreasuryEvent): boolean {
 const enRango = (iso: string, desde: string, hasta: string): boolean =>
   iso >= desde && iso <= hasta;
 
+/**
+ * El filtro ÚNICO de "pendiente que cuenta para el cierre de un mes":
+ * pendiente vivo, no traspaso interno, y con fecha dentro del mes.
+ *
+ * Vive en una sola función porque vivía en cuatro sitios (hero, drawer de
+ * cuenta, calendario y móvil) con TRES variantes — dos de ellas sin excluir
+ * los traspasos internos, con lo que la cabecera del calendario podía decir
+ * un cierre distinto del hero en el mismo mes.
+ */
+const pendienteDelMes = (e: TreasuryEvent, desde: string, hasta: string): boolean =>
+  esPendiente(e) && !esTraspasoInterno(e) && enRango(soloFecha(e.predictedDate), desde, hasta);
+
 // ─── §4.1 · Hero ────────────────────────────────────────────────────────────
 
 export interface KpisHero {
@@ -107,12 +119,12 @@ export function calcularKpisHero(params: {
   let movimientosSalir = 0;
 
   for (const e of eventos) {
-    if (!esPendiente(e)) continue;
     // Un traspaso interno NO entra ni sale del patrimonio (§6bis · el dinero
     // solo cambia de cuenta). Sus dos patas espejo hinchaban "queda entrar" y
-    // "queda salir" a la vez. Fuera, igual que en `calcularRealidad`.
-    if (esTraspasoInterno(e)) continue;
-    if (!enRango(soloFecha(e.predictedDate), desde, hasta)) continue;
+    // "queda salir" a la vez. El filtro completo es `pendienteDelMes`, el
+    // MISMO de `cierrePorCuenta`: si divergen, el total de la tabla de
+    // cuentas deja de cuadrar con el hero.
+    if (!pendienteDelMes(e, desde, hasta)) continue;
     const imp = importeConSigno(e);
     if (imp > 0) {
       pendienteEntrar += imp;
@@ -272,11 +284,9 @@ export function proyectarMeses(params: {
     let entra = 0;
     let sale = 0;
     for (const e of eventos) {
-      if (!esPendiente(e)) continue;
       // Traspaso interno · ni entra ni sale (§6bis). Sus patas espejo se
       // anulan en el cierre pero inflaban `entra` y `sale` por igual.
-      if (esTraspasoInterno(e)) continue;
-      if (!enRango(soloFecha(e.predictedDate), desde, hasta)) continue;
+      if (!pendienteDelMes(e, desde, hasta)) continue;
       const imp = importeConSigno(e);
       if (imp > 0) entra += imp;
       else sale += imp;
@@ -294,6 +304,179 @@ export function proyectarMeses(params: {
   }
 
   return out;
+}
+
+// ─── Cierre proyectado de UNA cuenta (V9 · tabla "Mis cuentas") ─────────────
+
+export interface CierreProyectado {
+  /** Lo que queda por entrar en el mes · positivo. */
+  entra: number;
+  /** Lo que queda por salir en el mes · negativo. */
+  sale: number;
+  /** `saldoHoy + entra + sale`. */
+  cierre: number;
+}
+
+/**
+ * Cierre de mes proyectado sobre UN conjunto de eventos: una cuenta si le
+ * pasas los suyos, el consolidado si le pasas todos con el saldo total.
+ *
+ * Es LA función canónica (decisión Jose · spec rediseño V9 §2): antes este
+ * cálculo vivía inline en `DrawerCuenta`, `movilAgrupacion` y
+ * `calendarioDias.resumirMes`, cada uno con su variante — dos de las tres no
+ * excluían los traspasos internos y sus cifras podían discrepar del hero.
+ * Comparte `pendienteDelMes` con `calcularKpisHero`, así que la suma de los
+ * cierres por cuenta cuadra con `KpisHero.cierre` por construcción.
+ */
+export function cierrePorCuenta(params: {
+  saldoHoy: number;
+  eventos: TreasuryEvent[];
+  year: number;
+  month0: number;
+}): CierreProyectado {
+  const { saldoHoy, eventos, year, month0 } = params;
+  const { desde, hasta } = rangoDelMes(year, month0);
+
+  let entra = 0;
+  let sale = 0;
+  for (const e of eventos) {
+    if (!pendienteDelMes(e, desde, hasta)) continue;
+    const imp = importeConSigno(e);
+    if (imp > 0) entra += imp;
+    else sale += imp;
+  }
+
+  return {
+    entra: redondear(entra),
+    sale: redondear(sale),
+    cierre: redondear(saldoHoy + entra + sale),
+  };
+}
+
+// ─── Serie diaria consolidada · "Lo que viene · próximos 30 días" (V9) ──────
+
+export interface PuntoSerieDiaria {
+  /** ISO `YYYY-MM-DD` · el primer punto es hoy. */
+  dia: string;
+  /** Saldo consolidado proyectado AL CIERRE de ese día. */
+  saldo: number;
+}
+
+export interface DescubiertoSerie {
+  dia: string;
+  cuentaId: number;
+  cuentaAlias: string;
+  /** Saldo de ESA cuenta al cierre de ese día · negativo. */
+  importe: number;
+}
+
+export interface SerieDiaria {
+  /** `dias + 1` puntos · hoy y los `dias` siguientes. */
+  puntos: PuntoSerieDiaria[];
+  /**
+   * Primer día en que ALGUNA cuenta cruza de ≥0 a <0, atribuido a esa cuenta
+   * (decisión Jose · umbral fijo 0). `null` si ninguna cruza en la ventana.
+   * Una cuenta que YA está en negativo hoy no "cruza": eso es presente, no
+   * previsión, y su sitio es el saldo de la tabla, no el marcador del gráfico.
+   */
+  descubierto: DescubiertoSerie | null;
+}
+
+/**
+ * Serie diaria del saldo consolidado · hoy → hoy+`dias` (30 rodantes, no mes
+ * natural · decisión Jose).
+ *
+ * Reglas, las mismas del resto de la capa:
+ *   · Solo pendientes vivos (`esPendiente` · fuera descartados, ejecutados y
+ *     piezas `gasto_tarjeta`, igual que `accountBalanceService`).
+ *   · Un previsto VENCIDO sin confirmar sigue por venir aunque su fecha
+ *     pasara — se aplica en el punto de HOY, que es cuando puede ocurrir ya.
+ *   · Los traspasos internos SÍ entran: mueven cuentas de verdad (pueden
+ *     dejar una corta) y en el consolidado sus patas se anulan solas.
+ *   · Los movimientos reales NO se re-suman: `saldoPorCuenta` viene del saldo
+ *     vivo (`incluirRealesFuturos`), que ya los incorpora.
+ *
+ * El acumulador por cuenta es el mismo recorrido de `estadoDeCuenta` y del
+ * punto ámbar del calendario — pero aquí la serie se CONSERVA en vez de
+ * tirarse, que era lo que faltaba para poder pintar la línea.
+ */
+export function serieDiariaConsolidada(params: {
+  cuentas: Account[];
+  saldoPorCuenta: Map<number, number>;
+  eventos: TreasuryEvent[];
+  hoy: string;
+  dias?: number;
+}): SerieDiaria {
+  const { cuentas, saldoPorCuenta, eventos, hoy, dias = 30 } = params;
+
+  const activas = cuentas.filter((c) => c.status !== 'DELETED' && c.id != null);
+  const idsVivos = new Set(activas.map((c) => c.id as number));
+
+  const fechas: string[] = [];
+  {
+    const [y, m, d] = hoy.split('-').map(Number);
+    for (let i = 0; i <= dias; i++) {
+      const f = new Date(y, m - 1, d + i);
+      fechas.push(
+        `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`
+      );
+    }
+  }
+  const ultima = fechas[fechas.length - 1];
+
+  // Flujo por (cuenta · día). Clave -1 = eventos sin cuenta: cuentan en el
+  // consolidado (el hero también los cuenta) pero no pueden dejar corta a
+  // nadie. Lo vencido sin confirmar se aplica en HOY.
+  const flujo = new Map<number, Map<string, number>>();
+  const anota = (cuentaId: number, fecha: string, importe: number) => {
+    let porFecha = flujo.get(cuentaId);
+    if (!porFecha) {
+      porFecha = new Map();
+      flujo.set(cuentaId, porFecha);
+    }
+    porFecha.set(fecha, (porFecha.get(fecha) ?? 0) + importe);
+  };
+  for (const e of eventos) {
+    if (!esPendiente(e)) continue;
+    const f = soloFecha(e.predictedDate);
+    if (f === '' || f > ultima) continue;
+    const cuentaId = e.accountId != null && idsVivos.has(e.accountId) ? e.accountId : -1;
+    anota(cuentaId, f <= hoy ? hoy : f, importeConSigno(e));
+  }
+
+  const saldos = new Map<number, number>();
+  for (const c of activas) saldos.set(c.id as number, saldoPorCuenta.get(c.id as number) ?? 0);
+  saldos.set(-1, 0);
+
+  const nombreDe = (id: number): string => {
+    const c = activas.find((x) => x.id === id);
+    return c?.alias || c?.name || c?.banco?.name || 'Cuenta';
+  };
+
+  const puntos: PuntoSerieDiaria[] = [];
+  let descubierto: DescubiertoSerie | null = null;
+
+  for (const fecha of fechas) {
+    let candidato: DescubiertoSerie | null = null;
+    for (const [cuentaId, saldo] of Array.from(saldos.entries())) {
+      const delDia = flujo.get(cuentaId)?.get(fecha) ?? 0;
+      if (delDia === 0) continue;
+      const nuevo = saldo + delDia;
+      saldos.set(cuentaId, nuevo);
+      // Cruce ≥0 → <0 · si varias cruzan el mismo día, manda la más honda.
+      if (cuentaId !== -1 && saldo >= 0 && nuevo < 0) {
+        if (candidato == null || nuevo < candidato.importe) {
+          candidato = { dia: fecha, cuentaId, cuentaAlias: nombreDe(cuentaId), importe: redondear(nuevo) };
+        }
+      }
+    }
+    if (descubierto == null && candidato != null) descubierto = candidato;
+    let total = 0;
+    for (const s of Array.from(saldos.values())) total += s;
+    puntos.push({ dia: fecha, saldo: redondear(total) });
+  }
+
+  return { puntos, descubierto };
 }
 
 // ─── §4.10 · Cómo va {mes} ──────────────────────────────────────────────────

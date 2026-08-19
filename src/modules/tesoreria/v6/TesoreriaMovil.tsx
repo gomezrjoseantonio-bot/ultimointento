@@ -29,6 +29,7 @@ export interface TesoreriaMovilProps {
   saldoPorCuenta: Map<number, number>;
   saldoHoy: number;
   cierre: number;
+  year: number;
   month0: number;
   aliasInmueble?: (id: number | string) => string | undefined;
   /** Toque en el círculo · confirma y el saldo se mueve al instante (§4.11). */
@@ -42,14 +43,15 @@ const TesoreriaMovil: React.FC<TesoreriaMovilProps> = ({
   saldoPorCuenta,
   saldoHoy,
   cierre,
+  year,
   month0,
   aliasInmueble,
   onConfirmar,
   onSubirExtracto,
 }) => {
   const grupos = useMemo(
-    () => agruparPendientesPorCuenta({ cuentas, eventos, saldoPorCuenta, aliasInmueble }),
-    [cuentas, eventos, saldoPorCuenta, aliasInmueble]
+    () => agruparPendientesPorCuenta({ cuentas, eventos, saldoPorCuenta, year, month0, aliasInmueble }),
+    [cuentas, eventos, saldoPorCuenta, year, month0, aliasInmueble]
   );
   const pendientes = contarPendientes(grupos);
   const mes = nombreMes(month0);

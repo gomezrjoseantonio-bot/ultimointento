@@ -735,6 +735,7 @@ const TesoreriaV6Page: React.FC = () => {
           saldoPorCuenta={saldoPorCuenta}
           saldoHoy={kpis.saldo}
           cierre={kpis.cierre}
+          year={year}
           month0={month0}
           onConfirmar={confirmarPrevisto}
           onSubirExtracto={() => setExtracto({ cuenta: null })}
