@@ -351,8 +351,16 @@ obliga.
 
 - **Imputación (ámbito).** Solo dos valores: **Personal** · **Inmueble : ‹cuál›**.
   NO existe "Actividad/General": si hay actividad económica es un **autónomo**
-  (otro régimen en Hacienda), fuera de esta app. La **vivienda habitual** (quien
-  la tenga) es un **inmueble** con uso propio, no "personal".
+  (otro régimen en Hacienda), fuera de esta app.
+  - **Personal** = tu vida **+ el sitio donde vives** (tu hogar, de alquiler o en
+    propiedad). No deducible → tu presupuesto. La luz/gas/agua/internet **de tu
+    vivienda** son Personal, con el Alquiler que pagas.
+  - **Inmueble** = un inmueble **de inversión** tuyo (que alquilas o para alquilar).
+  - Muchos conceptos "de vivienda" son **Ambos** y **lo decide el apunte**: la
+    misma *luz* es Personal si es la de tu casa, Inmueble si es la de un piso que
+    alquilas. Solo son Inmueble-puro los que únicamente tiene un arrendador
+    (licencia turística, seguro de impagos, agencia, comisión de plataformas,
+    consumibles de bienvenida).
 - **Fiscalidad derivada — SIEMPRE por TIEMPO, nunca en bloque (Jose, 19 ago).**
   Un gasto de inmueble es **continuo**: la luz de un inmueble existe los 365 días
   del año. Lo deducible/asumido se **prorratea por DÍAS** según el estado del
