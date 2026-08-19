@@ -22,7 +22,9 @@ import {
   calcularRealidad,
   cierrePorCuenta,
   estadoDeCuenta,
+  serieDiariaConsolidada,
 } from '../../../services/tesoreriaV6Metrics';
+import GraficoTreintaDias from './GraficoTreintaDias';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { importeConSigno, importeSaldo, nombreMes } from './formatoV6';
@@ -343,6 +345,12 @@ const TesoreriaV6Page: React.FC = () => {
   const realidad = useMemo(
     () => calcularRealidad({ eventos: estado.eventos, movimientos: estado.movimientos, year, month0 }),
     [estado.eventos, estado.movimientos, year, month0]
+  );
+
+  /** V9 · la serie del gráfico "Lo que viene · próximos 30 días" (fase 1). */
+  const serie = useMemo(
+    () => serieDiariaConsolidada({ cuentas: cuentasVivas, saldoPorCuenta, eventos: estado.eventos, hoy }),
+    [cuentasVivas, saldoPorCuenta, estado.eventos, hoy]
   );
 
   /**
@@ -786,6 +794,7 @@ const TesoreriaV6Page: React.FC = () => {
         hoy={hoy}
         mesActual={mesActual}
         onSubirExtracto={() => setExtracto({ cuenta: null })}
+        grafico={<GraficoTreintaDias serie={serie} />}
       />
 
       {/* Aviso · duplicados de previstos punteados que dejó el bug (limpieza
