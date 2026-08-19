@@ -1,8 +1,8 @@
 # Modelo operativo de tesorería · el ciclo del apunte de extremo a extremo
 
-**Estado: BORRADOR v4 · semilla repasada y añadido el semillado al poner en
-alquiler (§9 quater/quinquies). Falta que Jose valide §9 (concepto + semilla +
-semillado), §13.9 y §13.10. NO se toca código hasta que esté acordado.**
+**Estado: BORRADOR v5 · cuadro ÚNICO de conceptos (§9 quater: Personal ·
+Inmueble base · Alquiler por tipo · Ingreso). Falta que Jose valide §9, §13.9 y
+§13.10. NO se toca código hasta que esté acordado.**
 
 Este documento fija QUÉ pasa con el dinero desde que se prevé hasta que se
 concilia: previsión → confirmación → conciliación, la subida de ficheros, el
@@ -346,61 +346,74 @@ luego la pasada retroactiva.)
 Ajustes editable con red fiscal · (F4) migrar lo viejo · (F5) enseñar el concepto
 en la fila. Cada fase, su PR.
 
-### 9 quater · Catálogo base propuesto (semilla · para repasar contigo)
+### 9 quater · CUADRO ÚNICO de conceptos (esto es lo que nos quedamos)
 
-Punto de partida, no dogma. Alineado con los conceptos que la app ya conoce
-(`catalogoModalidadInmueble`). La columna **Alq.** dice en qué tipo de alquiler
-aparece por defecto: **C** completo · **H** habitaciones · **T** turístico ·
-**·** todos.
+Una sola lista (no cuatro catálogos). Tomada de los conceptos que la app ya
+conoce, deduplicada y separada por **cuándo se siembra**: Personal · Inmueble
+base · Alquiler (por tipo). Casillas del catálogo actual; "?" = por confirmar.
+Repásalo y edítalo directamente.
 
-**INMUEBLE** (deducible salvo mejora/mobiliario, que se amortizan):
+Tipos de alquiler: **C** completo · **H** por habitaciones · **T** turístico.
 
-| Concepto | Casilla | Tratamiento | Alq. |
-|---|---|---|---|
-| Comunidad · cuota ordinaria | 0109 | gasto | · |
-| Derrama | pregunta | gasto **o** mejora (se decide al confirmar) | · |
-| IBI | 0115 | gasto | · |
-| Tasa de basuras | 0115 | gasto | · |
-| Licencia turística | 0115 | gasto | T |
-| Seguro · hogar | 0114 | gasto | · |
-| Seguro · impago de alquiler | 0114 | gasto | C, H |
-| Suministro · luz | 0113 | gasto | H, T (C si lo pagas tú) |
-| Suministro · agua | 0113 | gasto | H, T (C si lo pagas tú) |
-| Suministro · gas | 0113 | gasto | H, T (C si lo pagas tú) |
-| Internet | 0113 | gasto | H, T |
-| Telefonía | 0113 | gasto | H, T |
-| Alarma | 0113 | gasto | H, T |
-| Honorarios de agencia / gestión | 0112 | gasto | C, H |
-| Comisión de plataformas (Airbnb/Booking) | 0112 | gasto | T |
-| Limpieza de zonas comunes | 0112 | gasto | H |
-| Limpieza por estancia | 0112 | gasto | T |
-| Mantenimiento caldera | 0106 | gasto | · |
-| Reparación / conservación | 0106 | gasto | · |
-| Intereses de hipoteca | ? (financiación) | financiero | · |
-| Amortización del inmueble | (0117 grupo) | amortiza (3 % s/ construcción) | · |
-| Mejora | — | mejora (amortiza) | · |
-| Mobiliario | 0117 | mobiliario (amortiza 10 %) | H, T |
-
-> Fiscal por tipo (importante): **larga duración** → reducción del 60 % del
-> rendimiento neto; **temporada** → capital inmobiliario **sin** reducción;
-> **turístico con servicios de hostelería** → puede ser **actividad económica**
-> (otro régimen). El tipo de alquiler condiciona conceptos Y tratamiento fiscal.
-
-**PERSONAL** (no deducible · sirve para tu presupuesto):
+**A · PERSONAL** — tu presupuesto, NO deducible. Se siembra para todos.
 
 | Concepto | Bolsa 50/30/20 |
 |---|---|
-| Hipoteca / alquiler de tu vivienda | Necesidades |
-| Suministros de tu vivienda (luz/agua/gas) | Necesidades |
-| Internet / teléfono / móvil | Necesidades |
-| Alimentación / supermercado | Necesidades |
-| Salud (médico, farmacia, dentista) | Necesidades |
-| Seguros (vida, salud, coche) | Necesidades |
-| Transporte / combustible | Necesidades |
-| Suscripciones (streaming, software) | Deseos |
-| Ocio / restaurantes / viajes | Deseos |
-| Ropa / compras | Deseos |
-| Ahorro / inversión / aportación a plan | Ahorro |
+| Alquiler / hipoteca de tu vivienda | Necesidades |
+| Suministros de tu vivienda (luz · agua · gas) | Necesidades |
+| Internet · teléfono · móvil | Necesidades |
+| Supermercado · alimentación | Necesidades |
+| Transporte · gasolina · mantenimiento coche | Necesidades |
+| Salud · farmacia · médicos | Necesidades |
+| Seguros personales (vida · salud · coche) | Necesidades |
+| Cuotas (gimnasio · educación · colegio profesional · ONG) | Necesidades / Deseos |
+| Suscripciones (streaming · música · software · cloud · prensa) | Deseos |
+| Restaurantes · ocio · ropa · cuidado personal | Deseos |
+| Ahorro · inversión · aportación a plan | Ahorro |
+
+**B · INMUEBLE (base)** — por TENER el inmueble, esté alquilado o no. Deducible
+al alquilar (salvo mejora/mobiliario, que se amortizan).
+
+| Concepto | Casilla | Tratamiento |
+|---|---|---|
+| IBI | 0115 | gasto |
+| Tasa de basuras | 0115 | gasto |
+| Comunidad · cuota ordinaria | 0109 | gasto |
+| Derrama | pregunta | gasto **o** mejora (se decide al confirmar) |
+| Seguro · hogar | 0114 | gasto |
+| Mantenimiento caldera | 0106 | gasto |
+| Reparación / conservación | 0106 | gasto |
+| Intereses de hipoteca | ? financiación | financiero |
+| Amortización del inmueble | — | amortiza (3 % s/ construcción) |
+| Mejora | — | mejora (amortiza) |
+| Muebles / mobiliario | 0117 | mobiliario (amortiza 10 %) |
+
+**C · ALQUILER** — se AÑADE cuando el inmueble está alquilado. Columna = en qué
+tipo aparece por defecto.
+
+| Concepto | Casilla | Trat. | C | H | T |
+|---|---|---|:-:|:-:|:-:|
+| Gestión del alquiler / honorarios agencia | 0112 | gasto | ✓ | ✓ | |
+| Gestoría / asesoría | 0112 | gasto | ✓ | ✓ | ✓ |
+| Seguro de impago | 0114 | gasto | ✓ | ✓ | |
+| Suministros (luz·agua·gas·internet·tel·alarma) | 0113 | gasto | ¹ | ✓ | ✓ |
+| Limpieza de zonas comunes | 0112 | gasto | | ✓ | |
+| Licencia turística | 0115 | gasto | | | ✓ |
+| Comisión de plataformas (Airbnb/Booking) | 0112 | gasto | | | ✓ |
+| Limpieza por estancia | 0112 | gasto | | | ✓ |
+| Lavandería | 0112 | gasto | | | ✓ |
+| Consumibles de bienvenida | 0112 | gasto | | | ✓ |
+
+¹ En completo, los suministros solo si los pagas tú (normalmente los paga el
+inquilino).
+
+**D · INGRESO** — la **renta** (alquiler) se siembra desde el **contrato** (por
+piso o por habitación). No es un gasto; es el ingreso del inmueble.
+
+> **Fiscal por tipo (clave):** larga duración → **reducción 60 %** del rendimiento
+> neto; temporada → capital inmobiliario **sin** reducción; turístico **con
+> servicios de hostelería** → puede ser **actividad económica** (otro régimen).
+> El tipo condiciona qué conceptos se siembran (tabla C) Y el tratamiento fiscal.
 
 ### 9 quinquies · Semillado al poner un inmueble en alquiler (Jose)
 
@@ -429,7 +442,7 @@ modelo de datos ya existe**, solo hay que fijar el flujo.
    deriva, o al revés?).
 2. **Cuándo se dispara el semillado.** Propuesta: al **dar de alta/activar el
    contrato** (o al marcar el inmueble como alquilado), se abre la lista de
-   conceptos sugeridos según el tipo (§9 quater columna Alq.), tú marcas los que
+   conceptos sugeridos según el tipo (§9 quater · tabla C), tú marcas los que
    aplican, pones importe/periodicidad/cuenta, y de ahí nacen las **previsiones**
    (recurrentes) de ese inmueble.
 3. **Qué se siembra por tipo:** completo → comunidad, IBI, seguros, reparación
