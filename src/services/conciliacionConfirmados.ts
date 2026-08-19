@@ -18,6 +18,7 @@
 // ============================================================================
 
 import type { Movement } from './db';
+import { isTransferKey } from './categoryCatalog';
 
 export interface MovimientoConfirmadoRef {
   id: number;
@@ -52,7 +53,14 @@ function esConfirmadoEmparejable(m: Movement): boolean {
   // reconociera, duplicándolo. Lo conciliado DE VERDAD tiene `source:'import'`.
   if (m.source !== 'manual') return false;
   if (m.isOpeningBalance) return false;
-  if (m.transferMetadata || m.is_transfer) return false;
+  // Una PATA de traspaso SÍ está en el extracto de su cuenta (§4.4): al subir
+  // ese extracto, su línea debe cuadrar con la pata ya creada y subirla a
+  // conciliado, sin duplicar. Antes se excluía toda `transferMetadata`, y por eso
+  // la pata de entrada de un traspaso importado se quedaba huérfana. Solo se
+  // admiten las patas de traspaso (`isTransferKey`); cualquier otra cosa con
+  // `transferMetadata` sigue fuera. La pata creada al importar es `source:
+  // 'import'` y ya la filtra la guarda de arriba: aquí solo entran las manuales.
+  if ((m.transferMetadata || m.is_transfer) && !isTransferKey(m.categoryKey)) return false;
   // Una compra a crédito no mueve la cuenta el día de la compra (sale en el
   // recibo), así que no le corresponde una línea del extracto de la cuenta.
   if (m.gastoTarjetaCredito) return false;

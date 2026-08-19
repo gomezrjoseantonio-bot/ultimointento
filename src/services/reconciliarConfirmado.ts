@@ -19,6 +19,7 @@
 
 import type { initDB } from './db';
 import type { Movement, TreasuryEvent } from './db';
+import { isTransferKey } from './categoryCatalog';
 
 type DB = Awaited<ReturnType<typeof initDB>>;
 
@@ -41,6 +42,12 @@ export async function aplicarReconciliacionConfirmado(
   now: string,
 ): Promise<void> {
   const confirmado = (await db.get('movements', confirmadoMovementId)) as Movement | undefined;
+  // Una pata de traspaso ya creada (§4.4): al subir el extracto de su cuenta, la
+  // línea del banco la confirma. Hereda además del resto la identidad de traspaso
+  // —`transferMetadata`, `type`, la categoría— para no perder que es un traspaso
+  // (los KPIs y el saldo la dejan fuera por `isTransferKey`), y luego se repunta
+  // su pata pareja. Sin esto, la línea sobreviviría como un ingreso/gasto normal.
+  const esTraspaso = confirmado != null && isTransferKey(confirmado.categoryKey);
   await db.put('movements', {
     ...importMov,
     ...(confirmado
@@ -50,6 +57,13 @@ export async function aplicarReconciliacionConfirmado(
           inmuebleId: confirmado.inmuebleId,
           ambito: confirmado.ambito,
           ...(confirmado.tarjetaId != null ? { tarjetaId: confirmado.tarjetaId } : {}),
+          ...(esTraspaso
+            ? {
+                transferMetadata: confirmado.transferMetadata,
+                type: 'Transferencia' as const,
+                category: confirmado.category,
+              }
+            : {}),
         }
       : {}),
     unifiedStatus: 'conciliado',
@@ -59,6 +73,23 @@ export async function aplicarReconciliacionConfirmado(
   });
 
   if (confirmado?.id == null || confirmado.id === importMov.id) return;
+
+  // La pata pareja apuntaba con `pairMovementId` a este confirmado, que se va a
+  // borrar; se repunta a la línea del import, que es quien queda. Sin esto, la
+  // salida quedaría enlazada a un id inexistente y el par se rompería.
+  if (esTraspaso && importMov.id != null) {
+    const todos = (await db.getAll('movements')) as Movement[];
+    for (const m of todos) {
+      if (m.id == null || m.id === confirmado.id) continue;
+      if (m.transferMetadata?.pairMovementId === confirmado.id) {
+        await db.put('movements', {
+          ...m,
+          transferMetadata: { ...m.transferMetadata, pairMovementId: importMov.id },
+          updatedAt: now,
+        });
+      }
+    }
+  }
 
   const eventId = eventIdDeReferencia(confirmado.reference);
   if (eventId != null) {
