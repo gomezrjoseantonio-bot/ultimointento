@@ -46,6 +46,7 @@ const base = {
   ]),
   saldoHoy: 2000,
   cierre: 2400,
+  year: 2026,
   month0: 7, // agosto
   onConfirmar: jest.fn(),
   onSubirExtracto: jest.fn(),

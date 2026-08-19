@@ -32,7 +32,7 @@ import type { EjeAgrupacion } from '../../shared/components/Punteo/punteoAgrupac
 import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
-import { esPendiente, importeConSigno as signo, rangoDelMes } from '../../../services/tesoreriaV6Metrics';
+import { cierrePorCuenta, esPendiente, rangoDelMes } from '../../../services/tesoreriaV6Metrics';
 import { colorDeBanco } from './bancoColores';
 import { importeConSigno, importeSaldo } from './formatoV6';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
@@ -111,19 +111,14 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   const { desde, hasta } = rangoDelMes(year, month0);
 
   // ── KPIs de la cabecera · se recalculan en vivo (§4.4) ───────────────────
+  //
+  // La función canónica de cierre (V9): antes esto se sumaba aquí inline SIN
+  // excluir los traspasos internos, y el "final" del drawer podía discrepar
+  // del cierre del hero en el mismo mes.
   const kpis = useMemo(() => {
-    let entrar = 0;
-    let salir = 0;
-    for (const e of eventos) {
-      if (!esPendiente(e)) continue;
-      const f = (e.predictedDate ?? '').slice(0, 10);
-      if (f < desde || f > hasta) continue;
-      const imp = signo(e);
-      if (imp > 0) entrar += imp;
-      else salir += imp;
-    }
-    return { entrar, salir, final: saldoHoy + entrar + salir };
-  }, [eventos, saldoHoy, desde, hasta]);
+    const c = cierrePorCuenta({ saldoHoy, eventos, year, month0 });
+    return { entrar: c.entra, salir: c.sale, final: c.cierre };
+  }, [eventos, saldoHoy, year, month0]);
 
   /** El nombre de la otra cuenta · lo pide un traspaso para decir a dónde va. */
   const aliasCuenta = useMemo(() => {

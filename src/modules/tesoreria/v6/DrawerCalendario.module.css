@@ -21,13 +21,13 @@
   justify-content: center;
   background: none;
   border: none;
-  color: var(--atlas-v5-on-brand-soft);
+  color: var(--atlas-v5-on-navy-5);
   cursor: pointer;
   flex-shrink: 0;
 }
 .navBtn:hover {
-  background: var(--atlas-v5-on-brand-fill);
-  color: var(--atlas-v5-on-brand);
+  background: var(--atlas-v5-navy-line-soft);
+  color: var(--atlas-v5-on-navy-1);
 }
 
 /* ── Rejilla ─────────────────────────────────────────────────────────────── */

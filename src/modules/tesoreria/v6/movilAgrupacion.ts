@@ -13,7 +13,7 @@
 // ============================================================================
 
 import type { Account, TreasuryEvent } from '../../../services/db';
-import { esPendiente, importeConSigno } from '../../../services/tesoreriaV6Metrics';
+import { cierrePorCuenta, esPendiente, importeConSigno } from '../../../services/tesoreriaV6Metrics';
 
 export interface PendienteMovil {
   eventoId: number;
@@ -27,7 +27,10 @@ export interface PendienteMovil {
 export interface GrupoCuentaMovil {
   cuenta: Account;
   pendientes: PendienteMovil[];
-  /** Saldo tras aplicar todo lo pendiente · si es negativo, la cuenta se queda corta. */
+  /**
+   * Cierre del mes proyectado de la cuenta (`cierrePorCuenta` · la función
+   * canónica V9) · si es negativo, la cuenta se queda corta.
+   */
   saldoProyectado: number;
   seQuedaCorta: boolean;
 }
@@ -42,9 +45,21 @@ export function agruparPendientesPorCuenta(params: {
   cuentas: Account[];
   eventos: TreasuryEvent[];
   saldoPorCuenta: Map<number, number>;
+  year: number;
+  month0: number;
   aliasInmueble?: (id: number | string) => string | undefined;
 }): GrupoCuentaMovil[] {
-  const { cuentas, eventos, saldoPorCuenta, aliasInmueble } = params;
+  const { cuentas, eventos, saldoPorCuenta, year, month0, aliasInmueble } = params;
+
+  // Los eventos crudos de cada cuenta · los pide `cierrePorCuenta`, que aplica
+  // su propio filtro (el canónico, con traspasos internos fuera).
+  const eventosPorCuenta = new Map<number, TreasuryEvent[]>();
+  for (const e of eventos) {
+    if (e.accountId == null) continue;
+    const arr = eventosPorCuenta.get(e.accountId);
+    if (arr) arr.push(e);
+    else eventosPorCuenta.set(e.accountId, [e]);
+  }
 
   const porCuenta = new Map<number, PendienteMovil[]>();
   for (const e of eventos) {
@@ -79,9 +94,15 @@ export function agruparPendientesPorCuenta(params: {
     if (!pendientes || pendientes.length === 0) continue;
 
     pendientes.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.eventoId - b.eventoId);
-    const saldoHoy = saldoPorCuenta.get(c.id) ?? 0;
-    const saldoProyectado =
-      Math.round((saldoHoy + pendientes.reduce((s, p) => s + p.importe, 0)) * 100) / 100;
+    // La función canónica de cierre (V9): antes se sumaban aquí TODOS los
+    // pendientes, sin tope de mes y con las patas de los traspasos internos
+    // dentro, y esta cifra podía discrepar del hero y del drawer.
+    const saldoProyectado = cierrePorCuenta({
+      saldoHoy: saldoPorCuenta.get(c.id) ?? 0,
+      eventos: eventosPorCuenta.get(c.id) ?? [],
+      year,
+      month0,
+    }).cierre;
 
     grupos.push({
       cuenta: c,

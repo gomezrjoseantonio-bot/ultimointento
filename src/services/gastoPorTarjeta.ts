@@ -24,6 +24,7 @@
 import type { Movement, TreasuryEvent } from './db';
 import type { Tarjeta } from '../types/tarjetas';
 import { recibosDeTarjeta } from './reciboDeTarjeta';
+import { rangoDelMes } from './tesoreriaV6Metrics';
 
 /** Lo gastado con UNA tarjeta en UN periodo. */
 export interface GastoDeUnPeriodo {
@@ -158,6 +159,41 @@ export function gastoDeMovimientos(
   }
 
   return salida.sort((a, b) => b.fechaCorte.localeCompare(a.fechaCorte));
+}
+
+/**
+ * Lo gastado con una tarjeta de DÉBITO en el MES NATURAL de `hoy` (V9 ·
+ * "gastado · {mes}" · decisión Jose).
+ *
+ * El débito no tiene ciclo: cada movimiento es su propio periodo
+ * (`gastoDeMovimientos`), así que «lo que llevas este mes» no es un periodo
+ * abierto — es la suma de los movimientos del mes atribuidos a la tarjeta
+ * (`Movement.tarjetaId`). Antes esta cifra NO existía y una tarjeta de débito
+ * enseñaba siempre 0: sus periodos nacen `cerrado` y el agregado del periodo
+ * abierto (`gastoAbiertoPorTarjeta`) solo suma abiertos.
+ *
+ * Solo débito: un movimiento con tarjeta de CRÉDITO es su recibo y ese gasto
+ * ya viene por `gastoPorTarjeta`; sumarlo aquí lo contaría dos veces.
+ * Los ingresos (devoluciones) no restan: consumo es lo gastado, no el neto.
+ */
+export function gastadoEnElMes(
+  movimientos: Movement[],
+  tarjeta: Pick<Tarjeta, 'id' | 'modalidad'>,
+  hoy: string
+): number {
+  if (tarjeta.id == null || tarjeta.modalidad !== 'debito') return 0;
+  const [y, m] = hoy.split('-').map(Number);
+  const { desde, hasta } = rangoDelMes(y, m - 1);
+
+  let total = 0;
+  for (const mov of movimientos) {
+    if (mov.tarjetaId !== tarjeta.id) continue;
+    if (mov.amount >= 0) continue;
+    const fecha = (mov.date ?? '').slice(0, 10);
+    if (fecha < desde || fecha > hasta) continue;
+    total += Math.abs(mov.amount);
+  }
+  return Math.round(total * 100) / 100;
 }
 
 /**

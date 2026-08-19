@@ -5,6 +5,7 @@
 // se presume ante el banco.
 
 import {
+  gastadoEnElMes,
   gastoAbiertoPorTarjeta,
   gastoDeLaTarjeta,
   gastoDeMovimientos,
@@ -304,5 +305,50 @@ describe('el gasto manual con tarjeta de crédito', () => {
     // Compra de junio · su cargo (30-jun) ya salió antes de hoy (15-ago).
     const periodos = gastoDeMovimientosCredito([compra({ date: '2026-06-05' })], [CREDITO], '2026-08-15');
     expect(periodos).toEqual([]);
+  });
+});
+
+// V9 · «gastado · {mes}» de una tarjeta de DÉBITO · el agregado del mes natural
+// que antes no existía (el débito enseñaba siempre 0: sus periodos nacen
+// `cerrado` y el agregado vivo solo suma abiertos).
+describe('gastadoEnElMes · débito · mes natural', () => {
+  const DEBITO = { id: 11, modalidad: 'debito' as const };
+  const CREDITO = { id: 12, modalidad: 'credito' as const };
+
+  const mov = (over: Partial<Movement> = {}): Movement =>
+    ({
+      id: 1,
+      accountId: 3,
+      date: '2026-08-14',
+      amount: -42.5,
+      description: 'Mercadona',
+      tarjetaId: 11,
+      ...over,
+    }) as Movement;
+
+  it('suma los movimientos de la tarjeta dentro del mes de hoy', () => {
+    const total = gastadoEnElMes(
+      [
+        mov({ id: 1, amount: -40 }),
+        mov({ id: 2, amount: -60.25, date: '2026-08-01' }),
+        mov({ id: 3, amount: -99, date: '2026-07-31' }), // mes anterior · fuera
+        mov({ id: 4, amount: -99, date: '2026-09-01' }), // mes siguiente · fuera
+      ],
+      DEBITO,
+      '2026-08-18'
+    );
+    expect(total).toBe(100.25);
+  });
+
+  it('una devolución no resta · consumo es lo gastado, no el neto', () => {
+    expect(gastadoEnElMes([mov({ amount: -40 }), mov({ id: 2, amount: 15 })], DEBITO, '2026-08-18')).toBe(40);
+  });
+
+  it('otra tarjeta o sin tarjeta no cuentan', () => {
+    expect(gastadoEnElMes([mov({ tarjetaId: 99 }), mov({ id: 2, tarjetaId: undefined })], DEBITO, '2026-08-18')).toBe(0);
+  });
+
+  it('una de crédito devuelve 0 · su gasto es su recibo', () => {
+    expect(gastadoEnElMes([mov({ tarjetaId: 12 })], CREDITO, '2026-08-18')).toBe(0);
   });
 });

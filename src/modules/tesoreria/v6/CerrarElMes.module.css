@@ -4,25 +4,33 @@
    sección más de la pantalla, no un módulo aparte.
    =========================================================================== */
 
-.sec {
-  margin-bottom: 32px;
-  padding-bottom: 28px;
-  border-bottom: 1px solid var(--atlas-v5-line);
+/* V9 · la sección pasa a ser una card (CardV5) en la fila inferior. */
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
-.sec:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
 
-.hd { margin-bottom: 11px; }
+.hd { margin-bottom: 7px; }
 .k {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--atlas-v5-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--atlas-v5-ink);
 }
 .t {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 1px;
+}
+
+.vacio {
   font-size: 12.5px;
   color: var(--atlas-v5-ink-4);
-  margin-top: 4px;
+  padding: 14px 12px;
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: 9px;
+  text-align: center;
 }
 
 /* ── La tira de meses ─────────────────────────────────────────────────────── */
@@ -32,12 +40,17 @@
   border-radius: 12px;
   background: var(--atlas-v5-card);
   overflow: hidden;
+  /* V9 · no-scroll de PÁGINA: los meses viejos se alcanzan desplazando la
+     tira dentro de la card, no estirando la fila de tres. */
+  max-height: 158px;
+  overflow-y: auto;
 }
 .fila {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--atlas-v5-line-2);
 }
 .fila:last-child { border-bottom: none; }
@@ -45,7 +58,7 @@
 .filaCerrada { background: var(--atlas-v5-card-alt); }
 
 .mes {
-  min-width: 132px;
+  min-width: 96px;
   font-size: 13px;
   font-weight: 600;
   color: var(--atlas-v5-ink);

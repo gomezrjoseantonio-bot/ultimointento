@@ -41,6 +41,7 @@ import {
   Activity,
   ArrowUpRight,
   ArrowDownRight,
+  CreditCard,
   // UI utilitarios
   Upload,
   Download,
@@ -196,6 +197,7 @@ export const Icons = {
   Refresh: RefreshCw,
   Inbox,
   Banknote,             // §AA.7 · timeline devolución
+  CreditCard,           // Tesorería V9 · fila de tarjeta (crédito/débito)
   Sparkles,
   Lightbulb,            // T6 · insights del histórico
   Star,                 // T6 · valoración (rating) ex-inquilino · soporta fill

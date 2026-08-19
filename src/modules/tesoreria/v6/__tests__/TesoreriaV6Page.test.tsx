@@ -109,30 +109,33 @@ describe('§4.1 · hero', () => {
     });
     montar();
 
-    await waitFor(() => expect(screen.getByText('Saldo')).toBeInTheDocument());
-    expect(screen.getByText('2 cuentas · hoy')).toBeInTheDocument();
-    expect(screen.getByText('Queda entrar')).toBeInTheDocument();
-    expect(screen.getByText('Queda salir')).toBeInTheDocument();
-    expect(screen.getByText(`proyectado a día ${ultimoDia}`)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Saldo hoy · consolidado')).toBeInTheDocument());
+    expect(screen.getByText('2 cuentas')).toBeInTheDocument();
+    // "Queda entrar/salir" salen dos veces: KPI del héroe y cabecera de la tabla.
+    expect(screen.getAllByText('Queda entrar').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Queda salir').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('proyectado')).toBeInTheDocument();
   });
 
   it('singulariza "1 cuenta", que si no queda "1 cuentas"', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
-    await waitFor(() => expect(screen.getByText('1 cuenta · hoy')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('1 cuenta')).toBeInTheDocument());
   });
 });
 
-describe('§4.2 · tarjetas de cuenta', () => {
-  it('muestra saldo y "al día" cuando no queda nada pendiente', async () => {
+describe('V9 · tabla "Mis cuentas" · columna Estado', () => {
+  it('"al día" NO pinta chip · la celda queda en blanco (decisión del spec)', async () => {
     montarDb({ accounts: [cuenta(1, { alias: 'Sabadell principal' })] });
     montar();
 
     await waitFor(() => expect(screen.getByText('Sabadell principal')).toBeInTheDocument());
-    expect(screen.getByText('al día')).toBeInTheDocument();
+    expect(screen.queryByText('al día')).not.toBeInTheDocument();
+    expect(screen.queryByText(/por confirmar/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/descubierto/)).not.toBeInTheDocument();
   });
 
-  it('avisa de que la cuenta se queda corta, con importe y día', async () => {
+  it('la cuenta que se queda corta lleva el chip "descubierto · {día}"', async () => {
     montarDb({
       accounts: [cuenta(1, { openingBalance: 50 })],
       treasuryEvents: [
@@ -141,11 +144,10 @@ describe('§4.2 · tarjetas de cuenta', () => {
     });
     montar();
 
-    await waitFor(() => expect(screen.getByText(/se queda en/)).toBeInTheDocument());
-    // Un solo estado por tarjeta: si avisa de que se queda corta, no dice
-    // además "N por confirmar" (§4.2).
+    await waitFor(() => expect(screen.getByText(/descubierto ·/)).toBeInTheDocument());
+    // Un solo estado por fila: si está en descubierto, no dice además
+    // "N por confirmar".
     expect(screen.queryByText(/por confirmar/)).not.toBeInTheDocument();
-    expect(screen.queryByText('al día')).not.toBeInTheDocument();
   });
 
   // "N por confirmar" es lo VENCIDO sin confirmar · el mismo N que la bandeja
@@ -160,7 +162,7 @@ describe('§4.2 · tarjetas de cuenta', () => {
     await waitFor(() => expect(screen.getByText(/por confirmar/)).toBeInTheDocument());
   });
 
-  it('una cuenta dada de baja desaparece de la tira', async () => {
+  it('una cuenta dada de baja desaparece de la tabla', async () => {
     // La baja es SUAVE (`status: 'INACTIVE'`) para que Deshacer sea inmediato.
     // Aquí se filtraba solo por `DELETED`, así que la cuenta seguía saliendo
     // aunque la baja se hubiera guardado de verdad.
@@ -174,18 +176,18 @@ describe('§4.2 · tarjetas de cuenta', () => {
 
     await waitFor(() => expect(screen.getByText('La que sigue')).toBeInTheDocument());
     expect(screen.queryByText('La dada de baja')).not.toBeInTheDocument();
-    expect(screen.getByText('1 cuenta · hoy')).toBeInTheDocument();
+    expect(screen.getByText('1 cuenta')).toBeInTheDocument();
   });
 });
 
-describe('§4.3 · rejilla de meses', () => {
-  it('pinta 6 meses, marca el actual y usa el vocabulario "Cierre"', async () => {
+describe('V9 · la rejilla de meses deja el lienzo', () => {
+  it('la previsión vive detrás de "Previsión · meses y días"', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
 
-    await waitFor(() => expect(screen.getByText('en curso')).toBeInTheDocument());
-    // Vocabulario único en todo el módulo: nunca "saldo a fin de mes" (§4.3).
-    expect(screen.getAllByText('Cierre')).toHaveLength(6);
+    expect(await screen.findByRole('button', { name: /Previsión · meses y días/ })).toBeInTheDocument();
+    // Las 6 tarjetas de mes ya no se pintan en la página.
+    expect(screen.queryByText('en curso')).not.toBeInTheDocument();
     expect(screen.queryByText(/saldo a fin de mes/i)).not.toBeInTheDocument();
   });
 });
@@ -273,13 +275,12 @@ describe('§4.7 · la puerta global del extracto', () => {
 });
 
 describe('§4.9 · la puerta del calendario', () => {
-  it('tocar un mes abre los días de ESE mes, sin cerrar la pantalla', async () => {
+  it('el botón abre los días del mes en curso, sin cerrar la pantalla', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
 
-    // Hay 6 tarjetas · se abre la del mes en curso, que es la primera.
-    const meses = await screen.findAllByRole('button', { name: /Ver los días de/ });
-    fireEvent.click(meses[0]);
+    // V9 · el calendario se abre desde la cabecera de la tabla, en el mes en curso.
+    fireEvent.click(await screen.findByRole('button', { name: /Previsión · meses y días/ }));
 
     expect(await screen.findByRole('dialog', { name: 'Calendario' })).toBeInTheDocument();
     // Navegación ‹ › · el drawer cambia de mes sin cerrarse (§4.9).
@@ -290,7 +291,7 @@ describe('§4.9 · la puerta del calendario', () => {
   it('el resumen del mes habla de Cierre · vocabulario único del módulo', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
-    fireEvent.click((await screen.findAllByRole('button', { name: /Ver los días de/ }))[0]);
+    fireEvent.click(await screen.findByRole('button', { name: /Previsión · meses y días/ }));
 
     const drawer = await screen.findByRole('dialog', { name: 'Calendario' });
     expect(within(drawer).getByText('Queda entrar')).toBeInTheDocument();
@@ -301,7 +302,7 @@ describe('§4.9 · la puerta del calendario', () => {
   it('en el día NO se concilia · conciliar es por cuenta y por fichero (§4.9)', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
-    fireEvent.click((await screen.findAllByRole('button', { name: /Ver los días de/ }))[0]);
+    fireEvent.click(await screen.findByRole('button', { name: /Previsión · meses y días/ }));
 
     const drawer = await screen.findByRole('dialog', { name: 'Calendario' });
     expect(within(drawer).queryByText(/concilia/i)).not.toBeInTheDocument();
@@ -386,7 +387,7 @@ describe('las puertas por URL', () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
 
-    await waitFor(() => expect(screen.getByText('1 cuenta · hoy')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('1 cuenta')).toBeInTheDocument());
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
@@ -395,12 +396,12 @@ describe('estado vacío', () => {
   it('no revienta sin cuentas ni movimientos', async () => {
     montarDb({});
     montar();
-    await waitFor(() => expect(screen.getByText('0 cuentas · hoy')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('0 cuentas')).toBeInTheDocument());
   });
 });
 
-describe('§4.2 · orden guardado de las tarjetas', () => {
-  it('respeta el orden que dejó el usuario', async () => {
+describe('§4.2 · orden guardado de las cuentas', () => {
+  it('sigue siendo el orden por defecto de la tabla', async () => {
     montarDb({
       accounts: [cuenta(1, { alias: 'Primera' }), cuenta(2, { alias: 'Segunda' })],
       keyval: { 'tesoreria.v6.ordenCuentas': [2, 1] },
@@ -408,7 +409,7 @@ describe('§4.2 · orden guardado de las tarjetas', () => {
     const { container } = montar();
 
     await waitFor(() => expect(screen.getByText('Segunda')).toBeInTheDocument());
-    const nombres = Array.from(container.querySelectorAll('.accNm')).map((n) => n.textContent);
+    const nombres = Array.from(container.querySelectorAll('.nombre')).map((n) => n.textContent);
     expect(nombres).toEqual(['Segunda', 'Primera']);
   });
 });

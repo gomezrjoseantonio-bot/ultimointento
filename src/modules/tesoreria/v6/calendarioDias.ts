@@ -13,7 +13,7 @@
 // ============================================================================
 
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
-import { esPendiente, importeConSigno, rangoDelMes } from '../../../services/tesoreriaV6Metrics';
+import { cierrePorCuenta, esPendiente, importeConSigno, rangoDelMes } from '../../../services/tesoreriaV6Metrics';
 
 export interface DiaCalendario {
   /** ISO yyyy-mm-dd. */
@@ -218,7 +218,12 @@ export function saldoAlEmpezarElDia(params: {
   return saldos;
 }
 
-/** Resumen de la cabecera del drawer (§4.9). */
+/**
+ * Resumen de la cabecera del drawer (§4.9) · la función canónica de cierre.
+ *
+ * Antes se sumaba aquí inline SIN excluir los traspasos internos, y con un
+ * traspaso en el mes la cabecera del calendario discrepaba del hero (V9).
+ */
 export function resumirMes(params: {
   year: number;
   month0: number;
@@ -226,22 +231,6 @@ export function resumirMes(params: {
   saldoTotalHoy: number;
 }): ResumenMes {
   const { year, month0, eventos, saldoTotalHoy } = params;
-  const { desde, hasta } = rangoDelMes(year, month0);
-
-  let quedaEntrar = 0;
-  let quedaSalir = 0;
-  for (const e of eventos) {
-    if (!esPendiente(e)) continue;
-    const fecha = (e.predictedDate ?? '').slice(0, 10);
-    if (fecha < desde || fecha > hasta) continue;
-    const imp = importeConSigno(e);
-    if (imp > 0) quedaEntrar += imp;
-    else quedaSalir += imp;
-  }
-
-  return {
-    quedaEntrar,
-    quedaSalir,
-    cierre: saldoTotalHoy + quedaEntrar + quedaSalir,
-  };
+  const c = cierrePorCuenta({ saldoHoy: saldoTotalHoy, eventos, year, month0 });
+  return { quedaEntrar: c.entra, quedaSalir: c.sale, cierre: c.cierre };
 }

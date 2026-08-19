@@ -46,6 +46,8 @@ describe('qué cuentas salen', () => {
       cuentas,
       eventos: [ev({ accountId: 1 })],
       saldoPorCuenta: saldos,
+      year: 2026,
+      month0: 7,
     });
 
     expect(grupos).toHaveLength(1);
@@ -53,7 +55,7 @@ describe('qué cuentas salen', () => {
   });
 
   it('sin nada pendiente, la lista está vacía', () => {
-    const grupos = agruparPendientesPorCuenta({ cuentas, eventos: [], saldoPorCuenta: saldos });
+    const grupos = agruparPendientesPorCuenta({ cuentas, eventos: [], saldoPorCuenta: saldos, year: 2026, month0: 7 });
     expect(grupos).toEqual([]);
     expect(contarPendientes(grupos)).toBe(0);
   });
@@ -63,6 +65,8 @@ describe('qué cuentas salen', () => {
       cuentas,
       eventos: [ev({ id: 1, descartado: true }), ev({ id: 2, status: 'executed' })],
       saldoPorCuenta: saldos,
+      year: 2026,
+      month0: 7,
     });
     expect(grupos).toEqual([]);
   });
@@ -77,6 +81,8 @@ describe('el orden lo manda el pulgar', () => {
         ev({ id: 2, accountId: 2, amount: 5000 }),    // Abanca se queda corta
       ],
       saldoPorCuenta: saldos,
+      year: 2026,
+      month0: 7,
     });
 
     expect(grupos.map((g) => g.cuenta.alias)).toEqual(['Abanca', 'Santander']);
@@ -92,6 +98,8 @@ describe('el orden lo manda el pulgar', () => {
       cuentas: cinco,
       eventos: cinco.map((c, i) => ev({ id: i + 1, accountId: c.id!, amount: 10 })),
       saldoPorCuenta: new Map(cinco.map((c) => [c.id!, 1000])),
+      year: 2026,
+      month0: 7,
     });
 
     expect(grupos.map((g) => g.cuenta.alias)).toEqual([
@@ -112,6 +120,8 @@ describe('el orden lo manda el pulgar', () => {
         ev({ id: i + 1, accountId: c.id!, amount: c.id! % 2 === 0 ? 5000 : 10 })
       ),
       saldoPorCuenta: new Map(cinco.map((c) => [c.id!, 1000])),
+      year: 2026,
+      month0: 7,
     });
 
     expect(grupos.map((g) => g.cuenta.alias)).toEqual([
@@ -131,12 +141,14 @@ describe('el orden lo manda el pulgar', () => {
         ev({ id: 2, predictedDate: '2026-08-05', description: 'Pronto' }),
       ],
       saldoPorCuenta: saldos,
+      year: 2026,
+      month0: 7,
     });
 
     expect(grupos[0].pendientes.map((p) => p.concepto)).toEqual(['Pronto', 'Tarde']);
   });
 
-  it('el saldo proyectado cuenta TODO lo pendiente de esa cuenta', () => {
+  it('el saldo proyectado es el cierre del mes de la cuenta (función canónica V9)', () => {
     const grupos = agruparPendientesPorCuenta({
       cuentas,
       eventos: [
@@ -145,9 +157,11 @@ describe('el orden lo manda el pulgar', () => {
         ev({ id: 3, type: 'income', amount: 100 }),
       ],
       saldoPorCuenta: saldos,
+      year: 2026,
+      month0: 7,
     });
 
-    expect(grupos[0].saldoProyectado).toBe(500); // 1000 − 300 − 300 + 100
+    expect(grupos[0].saldoProyectado).toBe(500); // 1000 − 300 − 300 + 100 · pendientes del mes
   });
 });
 
@@ -157,6 +171,8 @@ describe('lo que se lee en cada fila', () => {
       cuentas,
       eventos: [ev({ type: 'income', amount: 475, description: 'Lucía Fernández' })],
       saldoPorCuenta: saldos,
+      year: 2026,
+      month0: 7,
     });
     expect(grupos[0].pendientes[0].importe).toBe(475);
   });
@@ -166,6 +182,8 @@ describe('lo que se lee en cada fila', () => {
       cuentas,
       eventos: [ev({ inmuebleId: 7 })],
       saldoPorCuenta: saldos,
+      year: 2026,
+      month0: 7,
       aliasInmueble: (id) => (id === 7 ? 'Tenderina 64' : undefined),
     });
     expect(grupos[0].pendientes[0].detalle).toBe('Tenderina 64');
@@ -176,6 +194,8 @@ describe('lo que se lee en cada fila', () => {
       cuentas,
       eventos: [ev()],
       saldoPorCuenta: saldos,
+      year: 2026,
+      month0: 7,
     });
     expect(grupos[0].pendientes[0].detalle).toBe('');
   });
@@ -185,6 +205,8 @@ describe('lo que se lee en cada fila', () => {
       cuentas,
       eventos: [ev({ id: 1, accountId: 1 }), ev({ id: 2, accountId: 2 }), ev({ id: 3, accountId: 2 })],
       saldoPorCuenta: saldos,
+      year: 2026,
+      month0: 7,
     });
     expect(contarPendientes(grupos)).toBe(3);
   });
@@ -210,6 +232,8 @@ describe('quién cobra, también en el móvil', () => {
         } as never,
       ],
       saldoPorCuenta: new Map([[1, 1000]]),
+      year: 2026,
+      month0: 7,
     });
 
     expect(g[0].pendientes[0].concepto).toBe('Mapfre');
@@ -231,6 +255,8 @@ describe('quién cobra, también en el móvil', () => {
         } as never,
       ],
       saldoPorCuenta: new Map([[1, 1000]]),
+      year: 2026,
+      month0: 7,
     });
 
     expect(g[0].pendientes[0].concepto).toBe('Seguro hogar');
