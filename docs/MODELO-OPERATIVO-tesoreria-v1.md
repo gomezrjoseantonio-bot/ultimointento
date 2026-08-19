@@ -575,10 +575,10 @@ respalda y puede completar datos fiscales —nº factura, base, IVA—.)
 
 | # | Problema | Estado |
 |---|---|---|
-| **P1** | Al **importar**, un traspaso entra como "TRANSFERENCIA" y no se puede emparejar con el traspaso anotado (anotar a mano ya funciona) | ABIERTO · prioridad 1 |
-| **P2** | El **saldo** baja con lo que no debería (previsiones/ignoradas) y los traspasos no netean → cuenta en −16.241 € | ABIERTO · prioridad 1 |
-| **P3** | El **traspaso** en el import no se cierra con sus dos patas (cada extracto debe conciliar su pata; crear la que falte) | ABIERTO · prioridad 1 |
-| **P4** | El **gráfico** cuenta traspasos/transferencias internas como **gasto real** | ABIERTO · prioridad 1 |
+| **P1** | Al **importar**, un traspaso entra como "TRANSFERENCIA" y no se puede emparejar con el traspaso anotado (anotar a mano ya funciona) | RESUELTO · "Es traspaso a [cuenta]" al cotejar crea las dos patas |
+| **P2** | El **saldo** baja con lo que no debería (previsiones/ignoradas) y los traspasos no netean → cuenta en −16.241 € | RESUELTO vía P1 · el saldo ya excluía previsión/ignorada; con las dos patas netea |
+| **P3** | El **traspaso** en el import no se cierra con sus dos patas (cada extracto debe conciliar su pata; crear la que falte) | RESUELTO · crea las dos patas y el extracto destino cuadra con la pata de entrada (§4.4) |
+| **P4** | El **gráfico** cuenta traspasos/transferencias internas como **gasto real** | RESUELTO vía P1 · el gráfico ya excluía `isTransferKey`; el traspaso ya lo lleva |
 | **P8** | La **taxonomía de familias** no sirve ("familia Salud no aporta"); rediseñar qué se clasifica y para qué (fiscal/inmueble/personal) | ABIERTO · prioridad 1 (bloquea P6/P7) |
 | **P5** | El **nombre del pagador** no desempata importes iguales (no está en el campo del emparejador) | ABIERTO · prioridad 2 |
 | **P6** | La **familia** que clasificas no se muestra en la fila (Bizum/pagador la ocultan) | ABIERTO · prioridad 2 (tras P8) |
