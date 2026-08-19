@@ -5,9 +5,10 @@ NATURALEZA acordado (§9 quater). Ejes: naturaleza (catálogo universal Tipo→S
 · origen (apunte real vs derivado: intereses/amortización) · recurrencia
 (atributo de la previsión). Intereses de hipoteca fuera del catálogo (derivado).
 Ámbito = Personal · Inmueble (sin "Actividad": eso es autónomo). Fiscalidad
-SIEMPRE prorrateada por días, nunca en bloque. Falta la capa de encima
-(imputación + fiscalidad + presentación) y validar §13.9 y §13.10. NO se toca
-código hasta que esté acordado.**
+SIEMPRE prorrateada por días, nunca en bloque. **CATÁLOGO (naturaleza + ámbito)
+ACORDADO por Jose (19 ago).** Falta la capa fiscal (casilla + prorrateo por
+días/modalidad), la presentación (recurrente/puntual, por inmueble) y validar
+§13.9 y §13.10. NO se toca código hasta que esté acordado.**
 
 Este documento fija QUÉ pasa con el dinero desde que se prevé hasta que se
 concilia: previsión → confirmación → conciliación, la subida de ficheros, el
