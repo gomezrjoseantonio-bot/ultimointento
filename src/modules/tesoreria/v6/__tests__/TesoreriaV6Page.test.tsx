@@ -109,17 +109,17 @@ describe('§4.1 · hero', () => {
     });
     montar();
 
-    await waitFor(() => expect(screen.getByText('Saldo')).toBeInTheDocument());
-    expect(screen.getByText('2 cuentas · hoy')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Saldo hoy · consolidado')).toBeInTheDocument());
+    expect(screen.getByText('2 cuentas')).toBeInTheDocument();
     expect(screen.getByText('Queda entrar')).toBeInTheDocument();
     expect(screen.getByText('Queda salir')).toBeInTheDocument();
-    expect(screen.getByText(`proyectado a día ${ultimoDia}`)).toBeInTheDocument();
+    expect(screen.getByText('proyectado')).toBeInTheDocument();
   });
 
   it('singulariza "1 cuenta", que si no queda "1 cuentas"', async () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
-    await waitFor(() => expect(screen.getByText('1 cuenta · hoy')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('1 cuenta')).toBeInTheDocument());
   });
 });
 
@@ -174,7 +174,7 @@ describe('§4.2 · tarjetas de cuenta', () => {
 
     await waitFor(() => expect(screen.getByText('La que sigue')).toBeInTheDocument());
     expect(screen.queryByText('La dada de baja')).not.toBeInTheDocument();
-    expect(screen.getByText('1 cuenta · hoy')).toBeInTheDocument();
+    expect(screen.getByText('1 cuenta')).toBeInTheDocument();
   });
 });
 
@@ -386,7 +386,7 @@ describe('las puertas por URL', () => {
     montarDb({ accounts: [cuenta(1)] });
     montar();
 
-    await waitFor(() => expect(screen.getByText('1 cuenta · hoy')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('1 cuenta')).toBeInTheDocument());
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
@@ -395,7 +395,7 @@ describe('estado vacío', () => {
   it('no revienta sin cuentas ni movimientos', async () => {
     montarDb({});
     montar();
-    await waitFor(() => expect(screen.getByText('0 cuentas · hoy')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('0 cuentas')).toBeInTheDocument());
   });
 });
 

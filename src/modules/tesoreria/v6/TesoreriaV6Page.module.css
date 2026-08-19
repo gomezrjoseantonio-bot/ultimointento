@@ -31,94 +31,6 @@
   .pag { padding: 14px 16px 20px; }
 }
 
-/* ── §4.1 · Hero ─────────────────────────────────────────────────────────── */
-
-.hero {
-  background: var(--atlas-v5-brand);
-  border-radius: 14px;
-  border-top: 3px solid var(--atlas-v5-gold);
-  padding: 14px 8px 14px 22px;
-  display: flex;
-  align-items: stretch;
-  flex-wrap: wrap;
-  row-gap: 12px;
-  /* §4.5 · el aire va hacia ARRIBA.
-     Lo interpreté al revés y REDUJE los márgenes: así el contenido ocupa menos
-     y sobra todavía más abajo, que es justo lo contrario de repartirlo. El
-     mockup dice 34px, y con eso el bloque llega hasta abajo. */
-  margin-bottom: 34px;
-}
-.heroLab {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding-right: 24px;
-  min-width: 148px;
-}
-.heroTitle {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--atlas-v5-on-brand);
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-.heroDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--atlas-v5-gold);
-}
-.heroDate {
-  font-size: 11px;
-  color: var(--atlas-v5-on-brand-soft);
-  margin-top: 6px;
-  padding-left: 17px;
-}
-.hk {
-  flex: 1;
-  min-width: 150px;
-  padding: 0 22px;
-  border-left: 1px solid var(--atlas-v5-on-brand-line);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 92px;
-}
-.hkLab {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--atlas-v5-on-brand-soft);
-}
-.hkVal {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 23px;
-  font-weight: 700;
-  color: var(--atlas-v5-on-brand);
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  margin-top: 5px;
-}
-/* Cifra-veredicto · el cierre. `gold-soft` para que respire sobre el navy. */
-.hkValGold { color: var(--atlas-v5-gold-soft); }
-.hkSub {
-  font-size: 10.5px;
-  color: var(--atlas-v5-on-brand-soft);
-  margin-top: auto;
-  padding-top: 6px;
-}
-.heroAct {
-  display: flex;
-  align-items: center;
-  padding: 0 16px 0 22px;
-  border-left: 1px solid var(--atlas-v5-on-brand-line);
-}
-
 /* ── Cabecera de sección ─────────────────────────────────────────────────── */
 
 .sec {
@@ -411,7 +323,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--atlas-v5-on-brand);
+  color: var(--atlas-v5-on-navy-1);
   background: var(--atlas-v5-gold);
   border-radius: 4px;
   padding: 2px 6px;
@@ -660,38 +572,6 @@
   color: var(--atlas-v5-ink-3);
 }
 
-/* ── Botones ─────────────────────────────────────────────────────────────── */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 14px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.12s;
-  white-space: nowrap;
-}
-.btnGold {
-  background: var(--atlas-v5-gold);
-  color: var(--atlas-v5-on-gold);
-  border-color: var(--atlas-v5-gold);
-}
-.btnGold:hover:not([aria-disabled='true']) {
-  background: var(--atlas-v5-gold-2);
-  border-color: var(--atlas-v5-gold-2);
-}
-/* `aria-disabled` y no `:disabled`: un botón deshabilitado de verdad no muestra
-   su `title` al hover en la mayoría de navegadores, y aquí el title es lo que
-   explica de qué sección depende la acción. */
-[aria-disabled='true'] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* §3.4 · la fila sin barra (el Neto cuando el porcentaje engañaría) enseña la
    cifra sola en el hueco de la barra. Ocupa la misma columna, así que el
    "previsto" de la derecha sigue en la misma vertical que el de las otras dos.
@@ -790,7 +670,7 @@
   border: 0;
   border-radius: 9px;
   background: var(--atlas-v5-brand);
-  color: var(--atlas-v5-on-brand);
+  color: var(--atlas-v5-on-navy-1);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;

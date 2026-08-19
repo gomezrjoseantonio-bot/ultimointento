@@ -27,7 +27,8 @@ import {
 } from '../../../services/tesoreriaV6Metrics';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
-import { importeConSigno, importeSaldo, nombreMes, rangoMeses, fechaLarga, diaYMes } from './formatoV6';
+import { importeConSigno, importeSaldo, nombreMes, rangoMeses, diaYMes } from './formatoV6';
+import HeroTesoreria from './HeroTesoreria';
 import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
 import DrawerTarjeta from './DrawerTarjeta';
@@ -781,47 +782,13 @@ const TesoreriaV6Page: React.FC = () => {
 
   return (
     <div className={styles.pag}>
-      {/* ── §4.1 · Hero ─────────────────────────────────────────────────── */}
-      <div className={styles.hero}>
-        <div className={styles.heroLab}>
-          <div className={styles.heroTitle}>
-            <span className={styles.heroDot} /> Mi tesorería
-          </div>
-          <div className={styles.heroDate}>{fechaLarga(hoy)}</div>
-        </div>
-
-        <Kpi
-          lab="Saldo"
-          val={importeSaldo(kpis.saldo)}
-          sub={`${kpis.numCuentas} ${kpis.numCuentas === 1 ? 'cuenta' : 'cuentas'} · hoy`}
-        />
-        <Kpi
-          lab="Queda entrar"
-          val={importeConSigno(kpis.pendienteEntrar)}
-          sub={`${kpis.movimientosEntrar} ${kpis.movimientosEntrar === 1 ? 'movimiento' : 'movimientos'} · ${mesActual}`}
-        />
-        <Kpi
-          lab="Queda salir"
-          val={importeConSigno(kpis.pendienteSalir)}
-          sub={`${kpis.movimientosSalir} ${kpis.movimientosSalir === 1 ? 'movimiento' : 'movimientos'} · ${mesActual}`}
-        />
-        <Kpi
-          lab={`Cierre · ${mesActual}`}
-          val={importeSaldo(kpis.cierre)}
-          sub={`proyectado a día ${kpis.ultimoDia}`}
-          gold
-        />
-
-        <div className={styles.heroAct}>
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnGold}`}
-            onClick={() => setExtracto({ cuenta: null })}
-          >
-            <Icons.Upload size={15} strokeWidth={1.8} /> Subir extracto
-          </button>
-        </div>
-      </div>
+      {/* ── V9 · héroe navy con el inset del gráfico (P4) ────────────────── */}
+      <HeroTesoreria
+        kpis={kpis}
+        hoy={hoy}
+        mesActual={mesActual}
+        onSubirExtracto={() => setExtracto({ cuenta: null })}
+      />
 
       {/* Aviso · duplicados de previstos punteados que dejó el bug (limpieza
           bajo demanda: borra el confirmado suelto, deja la línea del banco). */}
@@ -1177,14 +1144,6 @@ const TesoreriaV6Page: React.FC = () => {
 };
 
 // ─── Sub-componentes ────────────────────────────────────────────────────────
-
-const Kpi: React.FC<{ lab: string; val: string; sub: string; gold?: boolean }> = ({ lab, val, sub, gold }) => (
-  <div className={styles.hk}>
-    <div className={styles.hkLab}>{lab}</div>
-    <div className={`${styles.hkVal} ${gold ? styles.hkValGold : ''}`}>{val}</div>
-    <div className={styles.hkSub}>{sub}</div>
-  </div>
-);
 
 const TarjetaCuenta: React.FC<{
   cuenta: Account;

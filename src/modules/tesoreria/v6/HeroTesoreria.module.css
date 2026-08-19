@@ -1,0 +1,200 @@
+/* ===========================================================================
+   Tesorería V9 · héroe navy (mockup atlas-tesoreria-v9 · patrón CarteraHero).
+
+   Tinta sobre navy: SOLO la rampa `--atlas-v5-on-navy-*` de la guía (§2.1).
+   Los componentes del DS (KPIStrip · KPI · MoneyValue) pintan con los tokens
+   de tinta de fondo claro, así que dentro del ámbito navy se REMAPEAN esos
+   tokens a la rampa on-navy — cero hex, solo tokens, y el componente sigue
+   siendo el del DS.
+   =========================================================================== */
+
+.hero {
+  position: relative;
+  background: linear-gradient(
+    150deg,
+    var(--atlas-v5-cartera-hero-top) 0%,
+    var(--atlas-v5-brand) 42%,
+    var(--atlas-v5-brand-ink) 100%
+  );
+  border-radius: 15px;
+  box-shadow: var(--atlas-v5-shadow-lift);
+  overflow: hidden;
+  font-family: var(--atlas-v5-font-ui);
+  flex-shrink: 0;
+  margin-bottom: 16px;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-soft));
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(400px, 1.02fr) 0.95fr;
+}
+
+@media (max-width: 1180px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ── Columna izquierda · saldo + KPIs ───────────────────────────────────── */
+
+.izq {
+  padding: 12px 20px 10px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Remapeo de ámbito: la tinta base pasa a la rampa on-navy para que
+     MoneyValue y KPI (DS) pinten legible sobre el navy. */
+  --atlas-v5-ink: var(--atlas-v5-on-navy-1);
+  --atlas-v5-ink-2: var(--atlas-v5-on-navy-2);
+  --atlas-v5-ink-3: var(--atlas-v5-on-navy-5);
+  --atlas-v5-ink-4: var(--atlas-v5-on-navy-5);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold-2);
+  box-shadow: 0 0 0 3px var(--atlas-v5-cartera-gold-glow);
+  flex-shrink: 0;
+}
+
+.lab {
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-gold-2);
+  white-space: nowrap;
+}
+
+.fecha {
+  font-size: 12px;
+  color: var(--atlas-v5-on-navy-5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btnExtracto {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: var(--atlas-v5-radius-sm);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-gold);
+  color: var(--atlas-v5-white);
+  border: 1px solid var(--atlas-v5-gold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.btnExtracto:hover {
+  background: var(--atlas-v5-gold-ink);
+  border-color: var(--atlas-v5-gold-ink);
+}
+
+.saldo { margin-top: 10px; }
+
+.saldoLab {
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-on-navy-5);
+}
+
+/* MoneyValue kpiStar · la remap de --atlas-v5-ink ya lo pone en blanco. */
+.saldoGrande {
+  display: block;
+  margin-top: 4px;
+  line-height: 1.05;
+}
+
+.saldoSub {
+  font-size: 11px;
+  color: var(--atlas-v5-on-navy-5);
+  margin-top: 4px;
+}
+
+/* ── KPIStrip del DS sobre navy · remapeo de tokens, no re-implementación ── */
+
+.kpisNavy {
+  margin-top: auto;
+  padding-top: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-top: 1px solid var(--atlas-v5-navy-line);
+  /* Lo que el componente lee de tokens · redirigido a la rampa navy. */
+  --atlas-v5-card: transparent;
+  --atlas-v5-line-2: var(--atlas-v5-navy-line);
+  /* La cifra-veredicto (tone="gold") usa gold-ink, que sobre navy se lee
+     marrón (§5): sobre navy manda gold-2, como el mockup. */
+  --atlas-v5-gold-ink: var(--atlas-v5-gold-2);
+}
+
+/* ── Columna derecha · inset del gráfico ────────────────────────────────── */
+
+.der {
+  background: var(--atlas-v5-brand-ink);
+  border-left: 1px solid var(--atlas-v5-navy-line);
+  padding: 11px 16px 9px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.insetHd {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.insetTitle {
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-on-navy-1);
+  white-space: nowrap;
+}
+
+.insetHint {
+  font-size: 10px;
+  color: var(--atlas-v5-on-navy-6);
+  white-space: nowrap;
+}
+
+.insetBody {
+  flex: 1;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}

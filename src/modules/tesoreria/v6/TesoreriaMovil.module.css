@@ -45,7 +45,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--atlas-v5-on-brand-soft);
+  color: var(--atlas-v5-on-navy-5);
 }
 .heroRow {
   display: flex;
@@ -59,7 +59,7 @@
   font-variant-numeric: tabular-nums;
   font-size: 27px;
   font-weight: 700;
-  color: var(--atlas-v5-on-brand);
+  color: var(--atlas-v5-on-navy-1);
   letter-spacing: -0.02em;
   line-height: 1;
 }
@@ -70,7 +70,7 @@
 .heroFinL {
   display: block;
   font-size: 9.5px;
-  color: var(--atlas-v5-on-brand-soft);
+  color: var(--atlas-v5-on-navy-5);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
