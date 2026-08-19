@@ -4,8 +4,10 @@
 NATURALEZA acordado (§9 quater). Ejes: naturaleza (catálogo universal Tipo→Subtipo)
 · origen (apunte real vs derivado: intereses/amortización) · recurrencia
 (atributo de la previsión). Intereses de hipoteca fuera del catálogo (derivado).
-Falta la capa de encima (imputación + fiscalidad + presentación) y validar §13.9
-y §13.10. NO se toca código hasta que esté acordado.**
+Ámbito = Personal · Inmueble (sin "Actividad": eso es autónomo). Fiscalidad
+SIEMPRE prorrateada por días, nunca en bloque. Falta la capa de encima
+(imputación + fiscalidad + presentación) y validar §13.9 y §13.10. NO se toca
+código hasta que esté acordado.**
 
 Este documento fija QUÉ pasa con el dinero desde que se prevé hasta que se
 concilia: previsión → confirmación → conciliación, la subida de ficheros, el
@@ -346,11 +348,25 @@ mensual). El catálogo solo lleva un **default sugerido** que pre-rellena, no
 obliga.
 
 **Ejes 4 y 5 · IMPUTACIÓN y FISCALIDAD — son CAPA DE ENCIMA (siguiente paso).**
-La **imputación** (personal / inmueble X) y la **fiscalidad derivada** (un gasto
-solo es deducible si se imputa a un inmueble **alquilado**, y **no al 100 %**:
-prorrateado por **días alquilados** y por **tipo**; la naturaleza fija la
-**casilla**, el contexto fija **cuánto**) **consumen** el catálogo, no lo
-definen. Se diseñan DESPUÉS. El concepto NO lleva un "deducible sí/no".
+
+- **Imputación (ámbito).** Solo dos valores: **Personal** · **Inmueble : ‹cuál›**.
+  NO existe "Actividad/General": si hay actividad económica es un **autónomo**
+  (otro régimen en Hacienda), fuera de esta app. La **vivienda habitual** (quien
+  la tenga) es un **inmueble** con uso propio, no "personal".
+- **Fiscalidad derivada — SIEMPRE por TIEMPO, nunca en bloque (Jose, 19 ago).**
+  Un gasto de inmueble es **continuo**: la luz de un inmueble existe los 365 días
+  del año. Lo deducible/asumido se **prorratea por DÍAS** según el estado del
+  inmueble en cada tramo. Ejemplo: luz 30 €/mes = 360 €/año; si el inmueble está
+  alquilado (completo) **1 día**, ese día lo asume el **inquilino** y los otros
+  **364 días** (vacío) los asume el **propietario**. NO es "la luz es del
+  inquilino": es 1 día suyo y 364 tuyos.
+  - La **modalidad** solo decide **quién asume los suministros durante los días
+    alquilados**: completo → inquilino; habitaciones/turístico → propietario. El
+    resto del año (vacío) siempre lo asume el propietario.
+  - La **naturaleza** fija la **casilla**; el **tiempo + modalidad + estado** del
+    inmueble fijan **cuánto**. El concepto NO lleva un "deducible sí/no".
+
+Estas dos capas **consumen** el catálogo, no lo definen. Se diseñan DESPUÉS.
 
 **Regla que ordena el ruido:** la **amortización NO es un gasto** (es derivado,
 eje 2b). **Mejora y mobiliario** sí son apuntes reales, pero su naturaleza es
@@ -387,6 +403,7 @@ es el concepto**. Todo **editable** (se pueden añadir subtipos en cualquier Tip
 | Ocio | *(sin subtipo)* |
 | Viaje | *(sin subtipo)* |
 | Restaurante | *(sin subtipo)* |
+| Alquiler | Vivienda *(personal — quien vive de alquiler)* |
 | Hipoteca / préstamo | Cuota *(el interés es DERIVADO, no un subtipo)* |
 | Otros | *(editable y trazable)* |
 
