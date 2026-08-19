@@ -14,22 +14,23 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Icons } from '../../../design-system/v5';
+import { Icons, ToastHost, showToastV5 } from '../../../design-system/v5';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../services/db';
 import { calculateAccountBalanceAtDate, corteParaSaldoVivo } from '../../../services/accountBalanceService';
 import {
   calcularKpisHero,
   calcularRealidad,
+  cierrePorCuenta,
   estadoDeCuenta,
-  proyectarMeses,
-  type EstadoCuenta,
-  type MesProyectado,
 } from '../../../services/tesoreriaV6Metrics';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
-import { importeConSigno, importeSaldo, nombreMes, rangoMeses, diaYMes } from './formatoV6';
+import { importeConSigno, importeSaldo, nombreMes } from './formatoV6';
 import HeroTesoreria from './HeroTesoreria';
-import { leerOrdenCuentas, guardarOrdenCuentas, aplicarOrden } from './ordenCuentas';
+import TablaCuentas, { type FilaCuenta } from './TablaCuentas';
+import ConfirmaV6 from './ConfirmaV6';
+import { darDeBajaCuenta, CuentaConPendientesError } from '../../../services/bajaCuentaService';
+import { leerOrdenCuentas, aplicarOrden } from './ordenCuentas';
 import DrawerCuenta from './DrawerCuenta';
 import DrawerTarjeta from './DrawerTarjeta';
 import DrawerExtracto from './DrawerExtracto';
@@ -83,13 +84,6 @@ const hoyISO = (): string => toISODateLocal(new Date());
 // El corte para el saldo vivo (MAÑANA, no hoy) vive en accountBalanceService
 // como `corteParaSaldoVivo`, para que el Panel use exactamente el mismo.
 
-/** Tarjetas visibles según ancho · 5 ≥1240px · 4 ≥1000px · 3 por debajo (§4.2). */
-function tarjetasVisibles(ancho: number): number {
-  if (ancho >= 1240) return 5;
-  if (ancho >= 1000) return 4;
-  return 3;
-}
-
 interface Estado {
   cuentas: Account[];
   eventos: TreasuryEvent[];
@@ -109,13 +103,12 @@ const TesoreriaV6Page: React.FC = () => {
   const esMovil = useEsMovil();
   const [estado, setEstado] = useState<Estado>({ cuentas: [], eventos: [], movimientos: [], inmuebles: [] });
   const [cargando, setCargando] = useState(true);
-  const [pagina, setPagina] = useState(0);
-  const [porPagina, setPorPagina] = useState(() =>
-    tarjetasVisibles(typeof window === 'undefined' ? 1280 : window.innerWidth)
-  );
+  /** Orden guardado de las cuentas (§4.2) · sigue siendo el orden POR DEFECTO
+   *  de la tabla; la ordenación por cabecera lo pisa solo en sesión. */
   const [orden, setOrden] = useState<number[]>([]);
-  const [arrastrando, setArrastrando] = useState<number | null>(null);
-  const [encima, setEncima] = useState<number | null>(null);
+  /** V9 · baja de cuenta desde el menú "⋯" de la tabla. */
+  const [bajaCuenta, setBajaCuenta] = useState<Account | null>(null);
+  const [bajando, setBajando] = useState(false);
   /**
    * Qué cuenta está abierta lo dice la URL, no un estado local.
    *
@@ -290,12 +283,6 @@ const TesoreriaV6Page: React.FC = () => {
     registrarDiagnosticoTarjetasEnConsola();
   }, []);
 
-  useEffect(() => {
-    const onResize = () => setPorPagina(tarjetasVisibles(window.innerWidth));
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
   // ── Derivados ────────────────────────────────────────────────────────────
 
   // §4.8 · una cuenta dada de baja deja de salir. Aquí se comprobaba solo
@@ -353,51 +340,39 @@ const TesoreriaV6Page: React.FC = () => {
     [cuentasVivas, saldoPorCuenta, estado.eventos, year, month0]
   );
 
-  const meses = useMemo(
-    () => proyectarMeses({ saldoHoy: kpis.saldo, eventos: estado.eventos, year, month0, hoy }),
-    [kpis.saldo, estado.eventos, year, month0, hoy]
-  );
-
   const realidad = useMemo(
     () => calcularRealidad({ eventos: estado.eventos, movimientos: estado.movimientos, year, month0 }),
     [estado.eventos, estado.movimientos, year, month0]
   );
 
-  // Sin el `+1` de la tarjeta fantasma de "Añadir cuenta": ya no está en la
-  // tira, así que la paginación cuenta solo cuentas de verdad y el rótulo
-  // "1–5 de N" dice la verdad.
-  const totalPaginas = Math.max(1, Math.ceil(cuentasVivas.length / porPagina));
-  const pageSafe = Math.min(pagina, totalPaginas - 1);
+  /**
+   * V9 · las filas de la tabla "Mis cuentas". Cada número sale de la capa
+   * canónica: saldo vivo, `cierrePorCuenta` y `estadoDeCuenta`. La fila Total
+   * de la tabla pinta los del hero (`kpis`), no una suma propia.
+   */
+  const filasCuentas = useMemo<FilaCuenta[]>(
+    () =>
+      cuentasVivas
+        .filter((c): c is Account & { id: number } => c.id != null)
+        .map((c) => {
+          const eventos = porCuenta.eventos.get(c.id) ?? [];
+          const saldo = saldoPorCuenta.get(c.id) ?? 0;
+          const cierre = cierrePorCuenta({ saldoHoy: saldo, eventos, year, month0 });
+          return {
+            cuenta: c,
+            color: colorDeBanco(c),
+            nombre: c.alias || c.name || c.banco?.name || 'Cuenta',
+            mask: (c.ultimosCuatro || c.iban?.slice(-4)) ?? '',
+            saldo,
+            entra: cierre.entra,
+            sale: cierre.sale,
+            cierre: cierre.cierre,
+            estado: estadoDeCuenta({ saldoHoy: saldo, eventos, year, month0, hoy }),
+          };
+        }),
+    [cuentasVivas, porCuenta, saldoPorCuenta, year, month0, hoy]
+  );
 
-  // Si al redimensionar (cambia `porPagina`) o al borrar cuentas la página
-  // actual se queda fuera de rango, hay que corregir el ESTADO y no solo el
-  // render: si no, "anterior" decrementa un número invisible y hacen falta
-  // varios clics para que se mueva algo.
-  useEffect(() => {
-    setPagina((p) => (p > totalPaginas - 1 ? Math.max(0, totalPaginas - 1) : p));
-  }, [totalPaginas]);
-
-  // ── Reordenar cuentas · se persiste el orden del usuario (§4.2) ──────────
-
-  const soltarSobre = async (destinoId: number) => {
-    if (arrastrando == null || arrastrando === destinoId) return;
-    const ids = cuentasVivas.map((c) => c.id!).filter((x) => x != null);
-    const from = ids.indexOf(arrastrando);
-    const to = ids.indexOf(destinoId);
-    if (from < 0 || to < 0) return;
-    const nuevo = [...ids];
-    nuevo.splice(to, 0, ...nuevo.splice(from, 1));
-    setOrden(nuevo);
-    setArrastrando(null);
-    setEncima(null);
-    try {
-      await guardarOrdenCuentas(nuevo);
-    } catch (err) {
-      // El orden ya se ha aplicado en pantalla; que no se haya podido guardar
-      // es una preferencia perdida, no un motivo para romper la interacción.
-      console.warn('[TesoreriaV6] no se pudo guardar el orden de las cuentas', err);
-    }
-  };
 
   // ── §4.6 · saldo vivo ────────────────────────────────────────────────────
   // Confirmar y descartar recargan el estado, y de ahí se recalculan KPIs,
@@ -426,6 +401,29 @@ const TesoreriaV6Page: React.FC = () => {
       setLimpiandoDup(false);
     }
   }, [trasEscribir]);
+
+  /** V9 · dar de baja desde la tabla · la baja es suave y bloqueada con
+   *  pendientes (`bajaCuentaService`), igual que desde la ficha. */
+  const confirmarBaja = useCallback(async () => {
+    if (bajaCuenta?.id == null || bajando) return;
+    setBajando(true);
+    try {
+      await darDeBajaCuenta(bajaCuenta.id);
+      showToastV5('Cuenta dada de baja · su histórico se conserva y puede deshacerse desde su ficha', 'success');
+      setBajaCuenta(null);
+      await trasEscribir();
+    } catch (err) {
+      if (err instanceof CuentaConPendientesError) {
+        showToastV5(err.message, 'warn');
+      } else {
+        console.error('[TesoreriaV6] no se pudo dar de baja la cuenta', err);
+        showToastV5('No se pudo dar de baja la cuenta', 'error');
+      }
+      setBajaCuenta(null);
+    } finally {
+      setBajando(false);
+    }
+  }, [bajaCuenta, bajando, trasEscribir]);
 
   /** Confirmar un previsto por id · lo usan la lista de punteo y el móvil. */
   const confirmarPrevisto = useCallback(
@@ -811,92 +809,17 @@ const TesoreriaV6Page: React.FC = () => {
         </div>
       )}
 
-      {/* ── §4.2 · Carrusel de cuentas ──────────────────────────────────── */}
-      <section className={styles.sec}>
-        <div className={styles.secHd}>
-          <div>
-            <div className={styles.secK}>Saldo actual en mis cuentas</div>
-            <div className={styles.secT}>entra en una cuenta para ver el detalle de movimientos</div>
-          </div>
-          <button
-            type="button"
-            className={styles.secAdd}
-            onClick={() => setFichaCuenta({ cuenta: null })}
-          >
-            <Icons.Plus size={14} strokeWidth={2} /> Añadir cuenta
-          </button>
-          {cuentasVivas.length > porPagina && (
-            <span className={styles.rngRight}>
-              {pageSafe * porPagina + 1}–{Math.min((pageSafe + 1) * porPagina, cuentasVivas.length)} de{' '}
-              {cuentasVivas.length}
-            </span>
-          )}
-        </div>
-
-        <div className={styles.carr}>
-          {/* La flecha deshabilitada es INVISIBLE, no un hueco gris (§4.2). */}
-          <button
-            type="button"
-            aria-label="Cuentas anteriores"
-            className={`${styles.pager} ${styles.pagerPrev} ${pageSafe === 0 ? styles.pagerOff : ''}`}
-            onClick={() => setPagina((p) => Math.max(0, p - 1))}
-          >
-            <Icons.ChevronLeft size={18} strokeWidth={2.2} />
-          </button>
-
-          <div className={styles.viewport}>
-            <div
-              className={styles.track}
-              style={
-                {
-                  '--pp': porPagina,
-                  transform: `translateX(calc(-${pageSafe} * (100% + 12px)))`,
-                } as React.CSSProperties
-              }
-            >
-              {cuentasVivas.map((c) => (
-                <TarjetaCuenta
-                  key={c.id}
-                  cuenta={c}
-                  saldo={saldoPorCuenta.get(c.id!) ?? 0}
-                  estado={estadoDeCuenta({
-                    saldoHoy: saldoPorCuenta.get(c.id!) ?? 0,
-                    eventos: porCuenta.eventos.get(c.id!) ?? [],
-                    year,
-                    month0,
-                    hoy,
-                  })}
-                  arrastrando={arrastrando === c.id}
-                  encima={encima === c.id}
-                  onDragStart={() => setArrastrando(c.id!)}
-                  onDragEnter={() => setEncima(c.id!)}
-                  onDragEnd={() => {
-                    setArrastrando(null);
-                    setEncima(null);
-                  }}
-                  onDrop={() => void soltarSobre(c.id!)}
-                  onAbrir={() => abrirCuenta(c.id!)}
-                  onEditar={() => setFichaCuenta({ cuenta: c })}
-                />
-              ))}
-              {/* §4.2 · "Añadir cuenta" NO va dentro del carrusel.
-                  Ya está arriba, junto al rótulo de la sección, y repetirlo
-                  aquí lo mete en la paginación: una tarjeta fantasma que hace
-                  que la tira diga "1–5 de 9" contando algo que no es una
-                  cuenta, y que empuja las de verdad a la página siguiente. */}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            aria-label="Cuentas siguientes"
-            className={`${styles.pager} ${styles.pagerNext} ${pageSafe >= totalPaginas - 1 ? styles.pagerOff : ''}`}
-            onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
-          >
-            <Icons.ChevronRight size={18} strokeWidth={2.2} />
-          </button>
-        </div>
-      </section>
+      {/* ── V9 · tabla "Mis cuentas" (sustituye al carrusel de §4.2) ────── */}
+      <TablaCuentas
+        filas={filasCuentas}
+        kpis={kpis}
+        mesActual={mesActual}
+        onAbrir={(c) => abrirCuenta(c.id!)}
+        onEditar={(c) => setFichaCuenta({ cuenta: c })}
+        onEliminar={(c) => setBajaCuenta(c)}
+        onPrevision={() => setCalendario({ year, month0 })}
+        onAnadir={() => setFichaCuenta({ cuenta: null })}
+      />
 
       {/* ── VOCABULARIO §3 · Tarjetas ────────────────────────────────────
           Van debajo de las cuentas y NO dentro del carrusel: una tarjeta no
@@ -947,46 +870,19 @@ const TesoreriaV6Page: React.FC = () => {
         )}
       </section>
 
-      <div className={styles.cols}>
-        {/* ── §4.3 · Rejilla de 6 meses ─────────────────────────────────── */}
-        <section className={styles.sec}>
-          <div className={styles.secHd}>
-            <div>
-              <div className={styles.secK}>
-                {/* "Previstos" y no "próximos 6 meses": el cuántos ya lo dicen
-                    las seis tarjetas de debajo, y el desde-hasta lo dice el
-                    rango que va al lado. Lo que no se sabía es que esto son
-                    previsiones y no lo que ya ha pasado. */}
-                Movimientos bancarios previstos
-                <span className={styles.rng}>{rangoMeses(meses[0], meses[meses.length - 1])}</span>
-              </div>
-              <div className={styles.secT}>
-                concilia lo previsto contra lo real · toca un mes para ver los días
-              </div>
-            </div>
+      {/* La rejilla de 6 meses (§4.3) deja el lienzo (mockup V9): la previsión
+          mes a mes y día a día vive ahora detrás de "Previsión · meses y días"
+          en la tabla, que abre el calendario (§4.9) con su navegación ‹ ›. */}
+      {/* ── §4.10 · Cómo va {mes} ─────────────────────────────────────────── */}
+      <section className={styles.sec}>
+        <div className={styles.secHd}>
+          <div>
+            <div className={styles.secK}>Cómo va {mesActual}</div>
+            <div className={styles.secT}>cuánto llevas de lo previsto para {mesActual}</div>
           </div>
-          <div className={styles.mesgrid}>
-            {meses.map((m) => (
-              <TarjetaMes
-                key={`${m.year}-${m.month0}`}
-                mes={m}
-                onAbrir={() => setCalendario({ year: m.year, month0: m.month0 })}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* ── §4.10 · Cómo va {mes} ─────────────────────────────────────── */}
-        <section className={styles.sec}>
-          <div className={styles.secHd}>
-            <div>
-              <div className={styles.secK}>Cómo va {mesActual}</div>
-              <div className={styles.secT}>cuánto llevas de lo previsto para {mesActual}</div>
-            </div>
-          </div>
-          <BloqueRealidad realidad={realidad} />
-        </section>
-      </div>
+        </div>
+        <BloqueRealidad realidad={realidad} />
+      </section>
 
       {/* ── VOCABULARIO §6 quater · cerrar el mes ─────────────────────────
           Va al final y detrás de lo que viene: mirar hacia delante es el
@@ -1139,142 +1035,28 @@ const TesoreriaV6Page: React.FC = () => {
           onGuardado={trasEscribir}
         />
       )}
+
+      {/* V9 · baja de cuenta desde el "⋯" de la tabla · la baja es SUAVE y se
+          bloquea con pendientes (bajaCuentaService), igual que en la ficha. */}
+      <ConfirmaV6
+        abierto={bajaCuenta != null}
+        titulo={`Dar de baja ${bajaCuenta?.alias || bajaCuenta?.banco?.name || 'la cuenta'}`}
+        confirmar="Dar de baja"
+        trabajando={bajando}
+        onConfirmar={() => void confirmarBaja()}
+        onCancelar={() => setBajaCuenta(null)}
+      >
+        La cuenta deja de salir en Tesorería. <b>No se borra nada</b>: su histórico de
+        movimientos se conserva y la baja se puede deshacer desde su ficha. Con
+        movimientos pendientes, la baja se bloquea hasta confirmarlos o descartarlos.
+      </ConfirmaV6>
+
+      <ToastHost />
     </div>
   );
 };
 
 // ─── Sub-componentes ────────────────────────────────────────────────────────
-
-const TarjetaCuenta: React.FC<{
-  cuenta: Account;
-  saldo: number;
-  estado: EstadoCuenta;
-  arrastrando: boolean;
-  encima: boolean;
-  onDragStart: () => void;
-  onDragEnter: () => void;
-  onDragEnd: () => void;
-  onDrop: () => void;
-  onAbrir: () => void;
-  onEditar: () => void;
-}> = ({ cuenta, saldo, estado, arrastrando, encima, onDragStart, onDragEnter, onDragEnd, onDrop, onAbrir, onEditar }) => {
-  const nombre = cuenta.alias || cuenta.name || cuenta.banco?.name || 'Cuenta';
-  const mask = (cuenta.ultimosCuatro || cuenta.iban?.slice(-4)) ?? '';
-
-  return (
-    <div
-      className={`${styles.acc} ${estado.tipo === 'se-queda-corta' ? styles.accCorta : ''} ${
-        arrastrando ? styles.accDragging : ''
-      } ${encima ? styles.accOver : ''}`}
-      role="button"
-      tabIndex={0}
-      onClick={onAbrir}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onAbrir();
-        }
-      }}
-      draggable
-      onDragStart={onDragStart}
-      onDragEnter={onDragEnter}
-      onDragOver={(e) => e.preventDefault()}
-      onDragEnd={onDragEnd}
-      onDrop={onDrop}
-    >
-      <div className={styles.accTop}>
-        <span className={styles.bankDot} style={{ background: colorDeBanco(cuenta) }} />
-        <div className={styles.accId}>
-          <div className={styles.accNm}>{nombre}</div>
-          {mask && <div className={styles.accMask}>···· {mask}</div>}
-        </div>
-        {/* stopPropagation obligatorio: la tarjeta entera es clicable (§4.2). */}
-        <button
-          type="button"
-          className={styles.accEd}
-          aria-label={`Editar ${nombre}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onEditar();
-          }}
-        >
-          <Icons.Edit size={14} strokeWidth={1.8} />
-        </button>
-      </div>
-
-      <div className={styles.accBal}>{importeSaldo(saldo)}</div>
-
-      <div className={styles.accFoot}>
-        <EstadoTarjeta estado={estado} />
-      </div>
-    </div>
-  );
-};
-
-/** Un solo estado por tarjeta · el color solo aparece si hay que actuar (§4.2). */
-const EstadoTarjeta: React.FC<{ estado: EstadoCuenta }> = ({ estado }) => {
-  if (estado.tipo === 'se-queda-corta') {
-    return (
-      <span className={`${styles.state} ${styles.stateAlerta}`}>
-        <span className={styles.stateDot} />
-        se queda en <span className={styles.stateVal}>{importeSaldo(estado.minimo)}</span> el {diaYMes(estado.dia)}
-      </span>
-    );
-  }
-  if (estado.tipo === 'por-confirmar') {
-    // Texto gris, sin chip de fondo (§4.2).
-    return <span className={styles.state}>{estado.n} por confirmar</span>;
-  }
-  return <span className={styles.state}>al día</span>;
-};
-
-const TarjetaMes: React.FC<{ mes: MesProyectado; onAbrir: () => void }> = ({ mes, onAbrir }) => {
-  const nombre = nombreMes(mes.month0);
-  const titulo = nombre.charAt(0).toUpperCase() + nombre.slice(1);
-  return (
-    <button
-      type="button"
-      className={`${styles.mes} ${mes.enCurso ? styles.mesNow : ''}`}
-      onClick={onAbrir}
-      aria-label={`Ver los días de ${titulo}`}
-    >
-      <div className={styles.mesTop}>
-        <span className={styles.mesNm}>{titulo}</span>
-        {mes.enCurso && <span className={styles.mesChip}>en curso</span>}
-      </div>
-      {/* Vocabulario único: "Cierre" en todo el módulo (§4.3). */}
-      <div className={styles.mesLab}>Cierre</div>
-      <div className={styles.mesBal}>{importeSaldo(mes.cierre)}</div>
-      {/* §4.3 · el pie lleva SIGNO como el resto de la pantalla (§2.2): la
-          flecha dice la dirección de un vistazo, pero el importe se escribe
-          igual aquí que en el hero o en el drawer.
-
-          Y en el mes en curso la etiqueta es texto VISIBLE, no un `title`: los
-          táctiles no enseñan tooltips, y no es lo mismo lo que entra en el mes
-          que lo que QUEDA por entrar. */}
-      {/* §4.3 · en el mes en curso, cada columna lleva SU etiqueta encima.
-          Iban las dos juntas en una línea debajo ("queda entrar · queda salir"),
-          y así no se sabía cuál era cuál: la etiqueta tiene que estar sobre su
-          cifra, no al lado de la otra. */}
-      <div className={styles.mesFlow}>
-        <span className={styles.ff}>
-          {mes.enCurso && <span className={styles.ffLab}>queda entrar</span>}
-          <span className={styles.ffVal}>
-            <Icons.ArrowUp size={14} strokeWidth={1.8} />
-            <span className={styles.fv}>{importeConSigno(mes.entra)}</span>
-          </span>
-        </span>
-        <span className={styles.ff}>
-          {mes.enCurso && <span className={styles.ffLab}>queda salir</span>}
-          <span className={styles.ffVal}>
-            <Icons.ArrowDown size={14} strokeWidth={1.8} />
-            <span className={styles.fv}>{importeConSigno(-Math.abs(mes.sale))}</span>
-          </span>
-        </span>
-      </div>
-    </button>
-  );
-};
 
 /* §4.10 · ¿cabe el importe DENTRO del relleno de la barra?
  *

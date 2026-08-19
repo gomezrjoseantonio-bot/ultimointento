@@ -1,0 +1,318 @@
+/* ===========================================================================
+   Tesorería V9 · tabla "Mis cuentas" (mockup atlas-tesoreria-v9 · .cta-card).
+   Cifras SIEMPRE en mono tabular y a la derecha, en cuerpo Y pie (spec P3).
+   =========================================================================== */
+
+.card {
+  margin-bottom: 16px;
+}
+
+.hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.hdTitulo {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: -0.01em;
+  color: var(--atlas-v5-ink);
+}
+
+.hdBotones {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--atlas-v5-radius-sm);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
+  border: 1px solid var(--atlas-v5-line);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.btnGhost:hover {
+  border-color: var(--atlas-v5-ink-5);
+}
+
+.ayuda {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin: 3px 0 2px;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.th {
+  padding: 5px 12px;
+  font-size: 9.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.th.der .thBtn { justify-content: flex-end; }
+
+.thBtn {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  padding: 0;
+}
+
+.thBtn:hover { color: var(--atlas-v5-ink-2); }
+
+.thActiva,
+.thActiva .thBtn { color: var(--atlas-v5-gold-ink); }
+
+.thInd { font-size: 8px; }
+
+.td {
+  padding: 5px 12px;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-2);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.der {
+  text-align: right;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.fila { cursor: pointer; transition: background-color 0.08s; }
+.fila:hover { background: var(--atlas-v5-bg); }
+.fila:focus-visible { outline: 2px solid var(--atlas-v5-gold); outline-offset: -2px; }
+
+/* Tinte suave en la fila cuya cuenta se queda corta · como el mockup. */
+.filaRiesgo td { background: var(--atlas-v5-gold-wash); }
+
+.id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Único color libre de la fila: la identidad del banco. */
+.logo {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.idTx { min-width: 0; }
+
+.nombre {
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mask {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 1px;
+}
+
+.fuerte {
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.mudo { color: var(--atlas-v5-ink-5); }
+
+.oro {
+  color: var(--atlas-v5-gold-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+/* Estado · texto ámbar-dorado con punto para "N por confirmar" · chip para
+   "descubierto" (mockup .estado.desc · oro con tinta blanca). */
+.estadoConf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-gold-ink);
+}
+
+.puntoEstado {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold);
+  flex-shrink: 0;
+}
+
+.estadoDesc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-white);
+  background: var(--atlas-v5-gold);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.puntoEstadoBlanco {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--atlas-v5-white);
+  flex-shrink: 0;
+}
+
+/* ── Menú "⋯" por fila ──────────────────────────────────────────────────── */
+
+.tdKebab {
+  width: 34px;
+  position: relative;
+  padding-left: 2px;
+  padding-right: 8px;
+}
+
+.kebab {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--atlas-v5-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.fila:hover .kebab,
+.kebab:focus-visible,
+.kebabFijo { opacity: 1; }
+
+.kebab:hover { background: var(--atlas-v5-line-2); color: var(--atlas-v5-ink-2); }
+
+.menu {
+  position: absolute;
+  right: 8px;
+  top: 30px;
+  z-index: 30;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  box-shadow: var(--atlas-v5-shadow-modal);
+  padding: 5px;
+  min-width: 190px;
+}
+
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-family: var(--atlas-v5-font-ui);
+  color: var(--atlas-v5-ink-2);
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.menu button:hover { background: var(--atlas-v5-bg); }
+
+.menu button svg { color: var(--atlas-v5-ink-4); flex-shrink: 0; }
+
+.menuSep {
+  height: 1px;
+  background: var(--atlas-v5-line-2);
+  margin: 4px 2px;
+}
+
+.menuBaja { color: var(--atlas-v5-gold-ink) !important; }
+
+/* ── Pie · total y paginación ───────────────────────────────────────────── */
+
+.pie td {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  border-top: 2px solid var(--atlas-v5-line);
+  border-bottom: none;
+}
+
+.foot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 7px;
+  padding-top: 6px;
+}
+
+.rango {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  margin-right: 1px;
+}
+
+.flecha {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--atlas-v5-radius-sm);
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-3);
+  cursor: pointer;
+}
+
+.flecha:hover:not(:disabled) { border-color: var(--atlas-v5-gold); color: var(--atlas-v5-gold); }
+.flecha:disabled { opacity: 0.4; cursor: default; }
