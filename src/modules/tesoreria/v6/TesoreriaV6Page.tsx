@@ -642,6 +642,9 @@ const TesoreriaV6Page: React.FC = () => {
         await updateTreasuryEventFields(item.refId, {
           ...(v.categoryKey !== undefined ? { categoryKey: v.categoryKey } : {}),
           ...(v.subtypeKey !== undefined ? { subtypeKey: v.subtypeKey } : {}),
+          // F2b · el concepto fino elegido en la ficha viaja al evento y de ahí
+          // al movimiento al confirmar. `?? null` para poder limpiarlo.
+          ...(v.subtipo !== undefined ? { conceptoId: v.subtipo ?? null } : {}),
           ...(v.inmuebleId !== undefined ? { inmuebleId: v.inmuebleId } : {}),
         });
         await confirmTreasuryEvent(item.refId, {

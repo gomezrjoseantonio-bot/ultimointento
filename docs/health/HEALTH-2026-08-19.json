@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-19",
-  "generatedAt": "2026-08-19T23:40:44.130Z",
+  "generatedAt": "2026-08-19T23:46:40.389Z",
   "git": {
     "branch": "claude/bank-notes-model-g78h0t",
-    "head": "622b916"
+    "head": "76a0782"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -268,8 +268,8 @@
         "1787 · src/services/irpfCalculationService.ts",
         "1557 · src/services/aeatParserService.ts",
         "1532 · src/App.tsx",
-        "1464 · src/services/treasuryConfirmationService.ts",
-        "1457 · src/modules/tesoreria/v6/TesoreriaV6Page.tsx",
+        "1474 · src/services/treasuryConfirmationService.ts",
+        "1460 · src/modules/tesoreria/v6/TesoreriaV6Page.tsx",
         "1452 · src/services/propertySaleService.ts",
         "1447 · src/services/declaracionOnboardingService.ts",
         "1439 · scripts/health.mjs",

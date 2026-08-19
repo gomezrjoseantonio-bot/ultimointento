@@ -335,6 +335,9 @@ export interface TreasuryEvent {
   categoryKey?: string;
   // Sub-tipo para categorías con variantes (p. ej. Suministro → luz/agua/gas/internet).
   subtypeKey?: string;
+  // Concepto FINO del catálogo unificado (F2b) · viaja al movimiento al confirmar
+  // la previsión, para que la fila enseñe el subtipo concreto.
+  conceptoId?: string;
   /**
    * PR-C1 · sub-clasificador de gastos personales reutilizando el
    * vocabulario de `compromisosRecurrentes.tipoFamilia`. Opcional.

@@ -297,6 +297,9 @@ function buildMovementPayload({
     // PR5-HOTFIX v2: propagar categoría canónica + sub-tipo + metadatos de traspaso
     categoryKey: event.categoryKey,
     subtypeKey: event.subtypeKey,
+    // F2b · el concepto fino de la previsión viaja al movimiento al confirmar,
+    // igual que categoryKey/subtypeKey, para que la fila enseñe el subtipo.
+    conceptoId: event.conceptoId,
     transferMetadata: event.transferMetadata,
     createdAt: now,
     updatedAt: now,
@@ -1299,6 +1302,8 @@ export interface TreasuryEventPatch {
   // restos de la clasificación fiscal previa.
   categoryKey?: string | null;
   subtypeKey?: string | null;
+  /** F2b · concepto fino del catálogo unificado · `null` = limpiar. */
+  conceptoId?: string | null;
   inmuebleId?: number | null;
 }
 
@@ -1341,6 +1346,11 @@ export async function updateTreasuryEventFields(
       ? patch.subtypeKey === null
         ? { subtypeKey: undefined }
         : { subtypeKey: patch.subtypeKey }
+      : {}),
+    ...(patch.conceptoId !== undefined
+      ? patch.conceptoId === null
+        ? { conceptoId: undefined }
+        : { conceptoId: patch.conceptoId }
       : {}),
     ...(patch.inmuebleId !== undefined
       ? patch.inmuebleId === null
