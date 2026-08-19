@@ -1,8 +1,8 @@
 # Modelo operativo de tesorería · el ciclo del apunte de extremo a extremo
 
-**Estado: BORRADOR v2 · Jose respondió §13 (19 ago 2026); incorporado. Falta
-cerrar SOLO la taxonomía (§13.5) y el marcado de bonificación (§13.9). NO se toca
-código hasta que eso esté acordado.**
+**Estado: BORRADOR v3 · mapeada la taxonomía real y propuesta de modelo nuevo
+(§9 bis/ter/quater). Falta que Jose valide §9 (concepto único + semilla) y §13.9.
+NO se toca código hasta que esté acordado.**
 
 Este documento fija QUÉ pasa con el dinero desde que se prevé hasta que se
 concilia: previsión → confirmación → conciliación, la subida de ficheros, el
@@ -275,34 +275,117 @@ factura.
 **Problema P6:** hoy el subtítulo con tu familia **se oculta** cuando el apunte
 trae nombre de pagador o es un Bizum, y por eso "defines y no lo ves".
 
-### 9 bis · La TAXONOMÍA de familias está mal (Jose: "de lo peor que tenemos")
+### 9 bis · Diagnóstico · por qué la clasificación es una mierda HOY
 
-> «la familia es parcial… familia Salud, ¿qué es? no aporta una mierda.»
+> Jose: «familia Salud › Médicos me dice 0… lo importante es el subtipo… y
+> quiero que sea editable. Busquemos un modelo decente y escalable.»
 
-El problema no es solo que la familia no se vea (P6). Es que **la lista de
-familias en sí no sirve**: etiquetas de "categoría de vida" (Salud, Ocio…) no
-dicen lo único que a ti te importa de un apunte. **Rediseño pendiente (P8), y es
-prioritario.** Para hacerlo bien hay que responder PARA QUÉ clasificas:
+No es una opinión, es estructural. Hoy conviven **CUATRO catálogos** para lo
+mismo, y no comparten espina dorsal:
 
-1. **Fiscal** — que cada gasto de inmueble caiga en su **casilla de la Renta**
-   (IBI, comunidad, seguro, suministros, intereses, reparación vs mejora…). Esto
-   sí "aporta": es deducible o no, y en qué casilla.
-2. **Por inmueble** — cuánto cuesta y renta CADA piso/habitación (P&L por activo).
-3. **Personal** — lo tuyo que no es de inmuebles, con un nivel de detalle que a
-   ti te valga para tu presupuesto (no una etiqueta genérica que no usas).
+1. `categoryCatalog.ts` — las **keys + casilla AEAT** que se guardan (~18 gordas).
+2. `conceptos/` — el árbol de **13 familias → 60 conceptos** que eliges (el bueno).
+3. Árboles **legacy** por pestaña (`tiposDeGastoInmueble`, …), aún vivos.
+4. Una **tabla de traducción** entre 1 y 2 (que en su cabecera jura "no soy un
+   tercer catálogo" — señal de que lo es).
 
-**Propuesta de dirección (a validar contigo):** la clasificación de un apunte se
-compone de piezas que SÍ aportan, no de una "familia" vaga:
+Consecuencias que sufres:
 
-- **Ámbito**: `INMUEBLE` (¿cuál?) · `PERSONAL` · `ACTIVIDAD` (si aplica).
-- **Concepto/tipo**: el que tiene sentido fiscal y operativo (comunidad, IBI,
-  suministro-luz, suministro-agua, seguro, reparación, mejora, intereses…),
-  no "Salud" a secas.
-- **Deducibilidad / casilla** cuando es de inmueble.
+- **El concepto real NO se guarda en el movimiento.** Un apunte guarda la
+  categoría gorda (`categoryKey`) y a veces un `subtypeKey` (solo suministros).
+  El concepto fino (limpieza vs gestoría vs alarma; médico vs farmacia) solo vive
+  en los **compromisos recurrentes**, no en el movimiento. Por eso una fila ya
+  conciliada no sabe qué es de verdad.
+- **Personal es brocha gorda:** 13 familias colapsan a **5 cajones** sin casilla.
+- **Doble identidad heredada** (`categoryLabel` texto libre vs `categoryKey`) con
+  heurísticos de `includes('reparacion')→0106` en tres sitios que deben coincidir.
+- **La familia es lo que MENOS aporta** y es justo lo que se enseña.
 
-**Decisión abierta (§13.5):** define la lista de conceptos que SÍ usas y qué debe
-verse en la fila. Hasta cerrarlo, no tocamos ni el subtítulo (P6) ni la pasada
-retroactiva (P7): sería pintar bien una taxonomía que vamos a cambiar.
+**Lo que YA es editable** (Ajustes → Conceptos): renombrar, ocultar y crear
+conceptos propios. Lo que NO: su casilla fiscal (la hereda de la familia, para no
+cambiar la Renta sin querer). Es decir: la pieza editable existe, pero cuelga de
+un modelo roto.
+
+### 9 ter · Modelo propuesto · el CONCEPTO como unidad única (a validar, Jose)
+
+Un solo principio: **el CONCEPTO es la unidad**. Ni "familia" como identidad, ni
+categoría gorda como lo que se guarda. Cinco reglas:
+
+1. **UN solo catálogo de conceptos** (se matan los otros tres). El concepto es lo
+   atómico y con sentido (IBI, comunidad, suministro-luz, seguro-hogar, médico,
+   reparación, mejora, intereses-hipoteca…). La **"familia" pasa a ser un grupo
+   VISUAL opcional** (para plegar la lista), no parte de la clasificación.
+2. **El concepto se GUARDA en el apunte** (también en los movimientos, no solo en
+   los recurrentes). La casilla fiscal y el "store" se **derivan** del concepto;
+   se guarda además una foto denormalizada para el histórico fiscal. Así una fila
+   conciliada SIEMPRE sabe qué es.
+3. **Cada concepto lleva lo que sirve a los 4 usos**, y nada más:
+   - `id`, `label`, `aliases[]` (para auto-puntear por el texto del banco).
+   - `grupo?` (visual: suministros, seguros… editable).
+   - `ambitos`: en cuáles vale (`personal`, `inmueble`, o los dos).
+   - **Inmueble →** `casillaAEAT` (o "pregunta" para la derrama) + `tratamiento`:
+     `gasto` (deducible) · `mejora` (se amortiza) · `mobiliario` (se amortiza) ·
+     `financiero` (intereses). El tratamiento decide el store y la amortización;
+     "deducible = tiene casilla".
+   - **Personal →** `bolsa` (50/30/20) para tu presupuesto.
+   - `origen`: base | usuario · `oculto`.
+4. **Editable y escalable en Ajustes**, con **red fiscal**: puedes crear,
+   renombrar, ocultar, agrupar. Un concepto de inmueble elige su casilla **de una
+   lista cerrada de casillas válidas** (no texto libre), así que nunca rompe la
+   Renta. Un concepto personal solo elige su bolsa.
+5. **La fila** enseña el **concepto** (+ inmueble), nunca la familia:
+   `IBI · Tenderina 64 4DR` · `Comunidad · Carles Buigas 15` · `Médico`.
+
+**Migración:** los apuntes viejos se llevan a su `conceptoId` con los
+diccionarios que ya existen (`mapaLegacy`), y se deprecan `categoryLabel` y los
+catálogos duplicados → queda uno. (Esto es P7 bien hecho: primero el modelo,
+luego la pasada retroactiva.)
+
+**Fases (cuando lo apruebes):** (F1) definir el catálogo base y el tipo `Concepto`
+único · (F2) guardar `conceptoId` en el apunte y derivar casilla/store · (F3)
+Ajustes editable con red fiscal · (F4) migrar lo viejo · (F5) enseñar el concepto
+en la fila. Cada fase, su PR.
+
+### 9 quater · Catálogo base propuesto (semilla · para que lo edites)
+
+Punto de partida, no dogma. Tú añades/quitas/renombras. Casillas tomadas del
+catálogo actual (las que no, marcadas "?").
+
+**Inmueble (deducibles salvo mejora/mobiliario, que se amortizan):**
+
+| Concepto | Casilla | Tratamiento |
+|---|---|---|
+| Comunidad | 0109 | gasto |
+| IBI | 0115 | gasto |
+| Basuras / tasas | 0115 | gasto |
+| Seguro (hogar/impago) | 0114 | gasto |
+| Suministro · luz | 0113 | gasto |
+| Suministro · agua | 0113 | gasto |
+| Suministro · gas | 0113 | gasto |
+| Internet / teléfono | 0113 | gasto |
+| Servicios (limpieza, gestoría, alarma…) | 0112 | gasto |
+| Reparación / conservación | 0106 | gasto |
+| Intereses de hipoteca | ? (financiación) | financiero |
+| Mejora | — | mejora (amortiza) |
+| Mobiliario | 0117 | mobiliario (amortiza) |
+| Derrama | pregunta | gasto **o** mejora (se decide al confirmar) |
+
+**Personal (no deducible · sirve para tu presupuesto):**
+
+| Concepto | Bolsa 50/30/20 |
+|---|---|
+| Hipoteca/alquiler vivienda | Necesidades |
+| Suministros vivienda | Necesidades |
+| Alimentación / día a día | Necesidades |
+| Salud (médico, farmacia) | Necesidades |
+| Seguros y cuotas | Necesidades |
+| Suscripciones | Deseos |
+| Ocio | Deseos |
+| Ahorro / inversión | Ahorro |
+
+**Decisión abierta (§13.5):** ¿te vale esta semilla como arranque? ¿Qué conceptos
+de inmueble te faltan o sobran? ¿Y en personal, con este nivel te basta o quieres
+más/menos cajas? Con tu OK, F1 es cerrar esta tabla.
 
 ---
 
@@ -382,17 +465,16 @@ respalda y puede completar datos fiscales —nº factura, base, IVA—.)
 
 **Lo que queda por cerrar (esto es lo gordo, §13.5):**
 
-5. **La taxonomía (P8).** Dijiste que la familia "no aporta una mierda". Antes de
-   tocar cómo se ve la fila (P6) o reclasificar lo viejo (P7), necesito que
-   definas la **clasificación que SÍ usas**. Para arrancar, dime:
-   - ¿La clasificación es sobre todo **fiscal** (que cada gasto de inmueble caiga
-     en su casilla de la Renta) o también quieres **presupuesto personal**?
-   - Dame la **lista de conceptos** de inmueble que usas de verdad (p.ej.
-     comunidad, IBI, seguro, suministro luz/agua/gas, reparación, mejora,
-     intereses, seguro de vida/hogar ligado a hipoteca…).
-   - En **personal**, ¿qué nivel quieres? ¿pocas cajas útiles o detalle?
-   - En la **fila**, ¿qué subtítulo te sirve? ¿"IBI · Tenderina 64 4DR"?
-     ¿"Comunidad · deducible"? Dime el formato que a ti te dice algo.
+5. **La taxonomía (P8).** Ya está mapeado el desastre actual (§9 bis) y hay una
+   **propuesta concreta** de modelo decente, editable y escalable (§9 ter) con un
+   **catálogo base semilla** (§9 quater). Tu criterio ya está recogido: la
+   clasificación es a la vez **fiscal + por inmueble + personal + para puntear**
+   (no se elige una), la **familia vaga muere**, manda el **concepto/subtipo**, y
+   todo **editable**. Lo que necesito de ti para cerrar F1:
+   - ¿Te vale el **modelo** de §9 ter (concepto único, guardado en el apunte,
+     editable con red fiscal)?
+   - ¿Te vale la **semilla** de §9 quater? ¿Qué conceptos de inmueble te
+     faltan/sobran, y qué nivel quieres en personal?
 
 9. **Bonificación (§4 bis):** ¿cómo se marca que un traspaso cuenta para una
    bonificación? ¿automático (todo abono ≥ umbral en esa cuenta) o manual?
