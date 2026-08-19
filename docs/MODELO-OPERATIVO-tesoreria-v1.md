@@ -1,7 +1,8 @@
 # Modelo operativo de tesorería · el ciclo del apunte de extremo a extremo
 
-**Estado: BORRADOR v1 · para cerrar entre Jose y Claude. NO se toca código hasta
-que esté acordado.**
+**Estado: BORRADOR v2 · Jose respondió §13 (19 ago 2026); incorporado. Falta
+cerrar SOLO la taxonomía (§13.5) y el marcado de bonificación (§13.9). NO se toca
+código hasta que eso esté acordado.**
 
 Este documento fija QUÉ pasa con el dinero desde que se prevé hasta que se
 concilia: previsión → confirmación → conciliación, la subida de ficheros, el
@@ -56,26 +57,35 @@ saldo y las listas cuentan una, no dos.*
 
 ## 2 · Los tres estados del apunte y sus transiciones
 
-La secuencia canónica es **previsto → confirmado → conciliado**. No hay saltos
-raros: un confirmado puede subir a conciliado, y ambos se pueden deshacer.
+**Corregido en v2 (Jose):** confirmado NO es un paso obligatorio antes de
+conciliado. Hay **tres perfiles de persona** y los tres son válidos:
+
+| Perfil | Cómo trabaja | Camino |
+|---|---|---|
+| **A · a mano** | Solo confirma a mano lo que ve | `previsto → confirmado` |
+| **B · por fichero** | Solo sube extractos | `previsto → conciliado` (directo) |
+| **C · las dos cosas** | Anota a mano Y sube el fichero | `previsto → confirmado → conciliado` |
+
+O sea: **conciliado puede venir directo de previsto** (perfil B), sin pasar por
+confirmado. Confirmado es un estado intermedio opcional para quien anota a mano.
 
 | Estado | Qué significa | Evidencia | ¿Cuenta al saldo? | ¿Reversible? |
 |---|---|---|---|---|
 | **Previsto** | Lo espero, aún no ha pasado | Una regla/contrato | No | — (es solo previsión) |
 | **Confirmado** | Lo he visto yo · "mis ojos" | Tu palabra (anotado a mano, o un previsto que punteas) | **Sí** | Sí → vuelve a previsto |
-| **Conciliado** | Lo dice el extracto · más fuerte que confirmado | El fichero del banco | **Sí** | Sí → vuelve a confirmado |
+| **Conciliado** | Lo dice el extracto · más fuerte que confirmado | El fichero del banco | **Sí** | Sí → vuelve a confirmado o a previsto |
 
 **Transiciones válidas:**
 
-- `previsto → confirmado`: punteas la previsión (la das por ocurrida). Se crea
-  el apunte con TU clasificación.
-- `previsto → conciliado`: la línea del extracto cuadra con la previsión al
-  subir el fichero.
-- `confirmado → conciliado`: subes el extracto y la línea cuadra con algo que ya
-  habías anotado a mano. **El confirmado NO se duplica**: sube a conciliado
+- `previsto → confirmado` (perfil A/C): punteas la previsión. Se crea el apunte
+  con TU clasificación.
+- `previsto → conciliado` (perfil B): subes el fichero y la línea cuadra con la
+  previsión, sin haberla confirmado antes.
+- `confirmado → conciliado` (perfil C): subes el extracto y la línea cuadra con
+  algo que ya habías anotado a mano. **NO se duplica**: sube a conciliado
   heredando tu clasificación, y la línea del banco es la que sobrevive (su texto
   y fecha permiten reconocerla en un reimport).
-- Deshacer: conciliado → confirmado → previsto, sin perder la clasificación.
+- Deshacer: conciliado → (confirmado o previsto), sin perder la clasificación.
 
 **Regla dura:** el **SALDO HOY** solo suma **confirmado + conciliado**. Un
 previsto jamás resta del saldo de hoy (sí del saldo proyectado a fin de mes).
@@ -110,24 +120,56 @@ Jose: Santander Alquileres → Santander Nómina.
    **entrada** en la cuenta destino (+X), por la MISMA cantidad, enlazadas entre
    sí (son el mismo traspaso).
 2. **No es gasto ni ingreso.** En el gráfico "cómo va el mes" **no aparece** ni
-   como gasto ni como ingreso. En el patrimonio total **netea a cero**.
+   como gasto ni como ingreso. En el patrimonio total **netea a cero**. (Matiz
+   importante en §4 bis: un traspaso PUEDE contar como "ingreso recurrente" para
+   una bonificación de hipoteca sin ser por ello un ingreso de verdad.)
 3. En el **saldo por cuenta**: la salida resta en origen, la entrada suma en
    destino. Correcto y esperado. Lo que NO puede pasar es que la salida cuente y
    la entrada no exista → la cuenta origen se hunde (el −16.241 € que viste).
-4. **Al anotar un movimiento de tipo "Transferencia" debe poder elegirse una
-   cuenta PROPIA como destino** (hoy solo ofrece "Externa · fuera de mis
-   cuentas", y por eso Jose tuvo que ignorar todos los traspasos). Elegir cuenta
-   propia lo convierte en traspaso (dos patas); elegir "Externa" lo deja como
-   transferencia externa (una pata, sale de verdad).
-5. **Al subir el extracto**, una línea que es un traspaso a otra cuenta tuya debe
-   poder emparejarse con la pata de la otra cuenta (o marcarse como traspaso),
-   no clasificarse como gasto.
 
-**Problemas actuales (§12):** P1, P2, P3.
+**Al ANOTAR a mano · YA FUNCIONA (Jose lo confirma):** el selector "Cuenta
+destino" lista tus cuentas (menos la de origen) + "Externa", y al elegir cuenta
+propia se crean automáticamente las dos patas. Aquí no hay que tocar nada.
+
+**Al IMPORTAR · AQUÍ ESTÁ EL PROBLEMA (P1/P3):** cuando subes el extracto y hay
+una línea que es un traspaso, el import la mete como "TRANSFERENCIA" y **no la
+puedes emparejar con el traspaso que ya habías anotado**. Reglas acordadas:
+
+4. **Cada extracto empareja SU pata.** Al subir el extracto de la cuenta origen,
+   la línea de salida cuadra con la **pata de salida** del traspaso ya anotado;
+   al subir el de la cuenta destino, la de entrada cuadra con la **pata de
+   entrada**. Cada lado concilia lo suyo (no se busca la pata de la otra cuenta).
+5. **Si el traspaso NO existía** (no lo habías anotado), al reconocer la línea
+   como traspaso a `[cuenta]` **se crean las dos patas** (la de este extracto,
+   ya conciliada, y la de la otra cuenta, que quedará por conciliar hasta que
+   subas su extracto).
+
+**Problemas actuales (§12):** P1, P3 (el import no empareja traspasos).
 
 ---
 
-## 5 · El saldo · qué cuenta y qué NO
+## 4 bis · Un traspaso que además cuenta como "ingreso recurrente" (Jose, v2)
+
+Segunda contradicción resuelta. Algunos bancos —**Unicaja** es el caso de
+Jose— **exigen un traspaso** (te ingresas dinero desde otra cuenta tuya) y lo
+**contabilizan como "ingreso recurrente"** para cumplir la condición de una
+**bonificación de hipoteca**.
+
+Esto NO rompe el modelo: son **dos lecturas del mismo apunte**.
+
+- **Para el dinero** (saldo, patrimonio, gráfico): sigue siendo un **traspaso**.
+  Netea a cero, no es ingreso, no cuenta como ingreso en la gráfica del mes.
+- **Para la bonificación** (condiciones que se verifican contra la tesorería,
+  ver `VOCABULARIO-dinero.md` §6 ter): ese mismo traspaso **SÍ satisface** el
+  requisito de "ingreso recurrente mensual de ≥ X €" que pide el banco.
+
+Es decir: un traspaso puede llevar una **etiqueta de "cuenta para la bonificación
+Y"** sin dejar de ser un traspaso. Lo que verifica la bonificación no es "¿es un
+ingreso?", es "¿ha entrado en esta cuenta un abono ≥ X este mes?", y un traspaso
+entrante lo cumple.
+
+**Decisión abierta (§13.9):** ¿cómo se marca que un traspaso concreto cuenta para
+una bonificación? ¿automático (todo abono ≥ umbral en esa cuenta) o manual?
 
 **SALDO HOY de una cuenta** = saldo inicial (a su fecha de apertura)
 　＋ Σ apuntes **reales** (confirmado/conciliado) con fecha ≤ hoy
@@ -154,17 +196,22 @@ saldo de hoy, no.
 
 ## 6 · El gráfico "Cómo va el mes"
 
-Compara lo real contra lo previsto del mes. Definición estricta:
+El gráfico compara **lo real contra lo previsto**. **Aclaración de Jose (v2):**
+las exclusiones de abajo son para el lado **REAL** (lo que llevas ejecutado del
+mes), que es donde está el bug — NO redefinen la parte prevista.
 
-- **Ingresos (real)** = Σ apuntes reales de entrada del mes, **excluyendo**:
-  traspasos internos, aportaciones entre cuentas propias.
-- **Gastos (real)** = Σ apuntes reales de salida del mes, **excluyendo**:
+- **Ingresos (real)** = Σ apuntes **reales** de entrada del mes, **excluyendo**:
+  traspasos internos y aportaciones entre cuentas propias.
+- **Gastos (real)** = Σ apuntes **reales** de salida del mes, **excluyendo**:
   traspasos internos, tarjeta de crédito del día de compra, líneas ignoradas.
-- **Neto** = Ingresos − Gastos (reales, ya sin traspasos).
+- **Neto (real)** = Ingresos − Gastos reales, ya sin traspasos.
+- **Previsto** = la línea base de lo que se esperaba (no se toca aquí; por
+  coherencia tampoco debería contar traspasos como gasto/ingreso previsto, pero
+  el foco del arreglo es el lado real).
 
-**Regla dura:** un traspaso NUNCA suma a "Gastos" ni a "Ingresos". Si el gráfico
-dice "Gastos 29.364 € · 387% de lo previsto" es porque está metiendo los
-traspasos y transferencias internas como gasto — **eso es el bug P4**.
+**Regla dura:** un traspaso NUNCA suma a "Gastos" ni a "Ingresos" reales. Si el
+gráfico dice "Gastos 29.364 € · 387% de lo previsto" es porque está metiendo los
+traspasos y transferencias internas como gasto real — **eso es el bug P4**.
 
 ---
 
@@ -228,6 +275,35 @@ factura.
 **Problema P6:** hoy el subtítulo con tu familia **se oculta** cuando el apunte
 trae nombre de pagador o es un Bizum, y por eso "defines y no lo ves".
 
+### 9 bis · La TAXONOMÍA de familias está mal (Jose: "de lo peor que tenemos")
+
+> «la familia es parcial… familia Salud, ¿qué es? no aporta una mierda.»
+
+El problema no es solo que la familia no se vea (P6). Es que **la lista de
+familias en sí no sirve**: etiquetas de "categoría de vida" (Salud, Ocio…) no
+dicen lo único que a ti te importa de un apunte. **Rediseño pendiente (P8), y es
+prioritario.** Para hacerlo bien hay que responder PARA QUÉ clasificas:
+
+1. **Fiscal** — que cada gasto de inmueble caiga en su **casilla de la Renta**
+   (IBI, comunidad, seguro, suministros, intereses, reparación vs mejora…). Esto
+   sí "aporta": es deducible o no, y en qué casilla.
+2. **Por inmueble** — cuánto cuesta y renta CADA piso/habitación (P&L por activo).
+3. **Personal** — lo tuyo que no es de inmuebles, con un nivel de detalle que a
+   ti te valga para tu presupuesto (no una etiqueta genérica que no usas).
+
+**Propuesta de dirección (a validar contigo):** la clasificación de un apunte se
+compone de piezas que SÍ aportan, no de una "familia" vaga:
+
+- **Ámbito**: `INMUEBLE` (¿cuál?) · `PERSONAL` · `ACTIVIDAD` (si aplica).
+- **Concepto/tipo**: el que tiene sentido fiscal y operativo (comunidad, IBI,
+  suministro-luz, suministro-agua, seguro, reparación, mejora, intereses…),
+  no "Salud" a secas.
+- **Deducibilidad / casilla** cuando es de inmueble.
+
+**Decisión abierta (§13.5):** define la lista de conceptos que SÍ usas y qué debe
+verse en la fila. Hasta cerrarlo, no tocamos ni el subtítulo (P6) ni la pasada
+retroactiva (P7): sería pintar bien una taxonomía que vamos a cambiar.
+
 ---
 
 ## 10 · Tarjeta de crédito (ref. `VOCABULARIO-dinero.md` §3)
@@ -241,14 +317,20 @@ trae nombre de pagador o es un Bizum, y por eso "defines y no lo ves".
 
 ---
 
-## 11 · Anexo de facturas (por definir con Jose)
+## 11 · Anexo de facturas (Jose, v2)
 
-Objetivo: vincular una factura (PDF/imagen) a su apunte, para el fiscal y el
-cotejo. Preguntas abiertas en §13.
+**Regla fijada:** una factura **se vincula a un apunte REAL** —confirmado o
+conciliado—, **nunca a una previsión**. Tiene sentido: la factura es el papel de
+algo que ya ocurrió; una previsión aún no ha pasado.
 
-Idea base: la factura se cruza con el apunte por **importe + fecha/proveedor +
-inmueble**, y una vez vinculada, el apunte muestra que tiene "papel" (documento)
-y la factura hereda la clasificación del apunte (o al revés). **Falta cerrarlo.**
+- Al vincularla, el apunte muestra que tiene "papel" (documento) y sirve para el
+  cotejo y el fiscal.
+- El cruce se propone por **importe + fecha/proveedor + inmueble**, y se
+  confirma a mano (no se vincula a ciegas).
+
+**Decisión abierta (§13.6):** ¿la clasificación la manda el apunte o la factura?
+(Por ahora: el apunte ya trae su clasificación del previsto; la factura la
+respalda y puede completar datos fiscales —nº factura, base, IVA—.)
 
 ---
 
@@ -256,13 +338,14 @@ y la factura hereda la clasificación del apunte (o al revés). **Falta cerrarlo
 
 | # | Problema | Estado |
 |---|---|---|
-| **P1** | No se puede elegir una **cuenta propia** como destino de una transferencia → no se pueden marcar traspasos | ABIERTO · prioridad 1 |
+| **P1** | Al **importar**, un traspaso entra como "TRANSFERENCIA" y no se puede emparejar con el traspaso anotado (anotar a mano ya funciona) | ABIERTO · prioridad 1 |
 | **P2** | El **saldo** baja con lo que no debería (previsiones/ignoradas) y los traspasos no netean → cuenta en −16.241 € | ABIERTO · prioridad 1 |
-| **P3** | El **traspaso** entre cuentas propias no se modela con dos patas enlazadas | ABIERTO · prioridad 1 |
-| **P4** | El **gráfico** cuenta traspasos/transferencias internas como **gasto** | ABIERTO · prioridad 1 |
+| **P3** | El **traspaso** en el import no se cierra con sus dos patas (cada extracto debe conciliar su pata; crear la que falte) | ABIERTO · prioridad 1 |
+| **P4** | El **gráfico** cuenta traspasos/transferencias internas como **gasto real** | ABIERTO · prioridad 1 |
+| **P8** | La **taxonomía de familias** no sirve ("familia Salud no aporta"); rediseñar qué se clasifica y para qué (fiscal/inmueble/personal) | ABIERTO · prioridad 1 (bloquea P6/P7) |
 | **P5** | El **nombre del pagador** no desempata importes iguales (no está en el campo del emparejador) | ABIERTO · prioridad 2 |
-| **P6** | La **familia** que clasificas no se muestra en la fila (Bizum/pagador la ocultan) | ABIERTO · prioridad 2 |
-| P7 | Los apuntes **ya conciliados** antes de la herencia no muestran su categoría (no se reclasifican solos) | ABIERTO · prioridad 3 |
+| **P6** | La **familia** que clasificas no se muestra en la fila (Bizum/pagador la ocultan) | ABIERTO · prioridad 2 (tras P8) |
+| P7 | Los apuntes **ya conciliados** antes de la herencia no muestran su categoría (pasada retroactiva) | ABIERTO · prioridad 3 (tras P8) |
 | ✔ | Dos cargos idénticos del mismo extracto se colapsaban en uno | RESUELTO (PR #1752) |
 | ✔ | Al cuadrar con un previsto no se heredaba la clasificación | RESUELTO (PR #1751) |
 | ✔ | Importes iguales con nombre → "ganador claro" en vez de elegir entre seis | RESUELTO (PR #1751) |
@@ -272,30 +355,50 @@ y la factura hereda la clasificación del apunte (o al revés). **Falta cerrarlo
 
 ---
 
-## 13 · Decisiones abiertas (para cerrar entre Jose y Claude)
+## 13 · Decisiones · RESPONDIDAS por Jose (19 ago 2026) y lo que queda
 
-1. **Traspaso al anotar:** ¿el selector "Cuenta destino" lista todas tus cuentas
-   (menos la de origen) + "Externa"? ¿Al elegir cuenta propia se crea
-   automáticamente la pata de entrada en la otra cuenta?
-2. **Traspaso al importar:** cuando subes el extracto de la cuenta origen y hay
-   una salida que es un traspaso, ¿se empareja con la entrada ya importada en la
-   otra cuenta, o se marca "es traspaso a [cuenta]" y se crea la pata que falte?
-3. **Saldo vivo:** ¿confirmamos que el SALDO HOY = solo confirmado/conciliado, y
-   que ni una sola previsión ni línea ignorada lo tocan?
-4. **Gráfico:** ¿"Ingresos/Gastos del mes" excluyen traspasos, aportaciones entre
-   cuentas propias, tarjeta de crédito y líneas ignoradas? ¿Algo más?
-5. **Título vs familia:** confirmado que el título es el texto del banco y el
-   subtítulo tu familia — ¿siempre, en todos los métodos de pago?
-6. **Facturas:** ¿cómo se vincula una factura a un apunte? ¿por importe+fecha,
-   manual, o las dos? ¿la factura manda la clasificación o el apunte?
-7. **Reclasificar lo ya conciliado (P7):** ¿quieres una pasada única que repase
-   los apuntes conciliados antes de la herencia y les ponga la categoría del
-   previsto con el que casaron?
-8. **Aportaciones propias:** los "GOMEZ RAMIREZ JOSE ANTONIO +2.500" que entran
-   en Nómina, ¿son traspasos desde otra cuenta tuya, ingresos de verdad, o
-   aportaciones de capital? Define cómo tratarlos en saldo y gráfico.
+**Respondidas (ya incorporadas arriba):**
+
+1. ✅ **Traspaso al anotar** — YA funciona (destino lista tus cuentas + "Externa",
+   se crean las dos patas). El problema es al **importar** (§4, P1/P3).
+2. ✅ **Traspaso al importar** — **cada extracto empareja SU pata**; si no existía
+   el traspaso, se crean las dos patas (§4.4–4.5).
+3. ✅ **Saldo vivo** — SÍ: SALDO HOY = solo confirmado/conciliado; ni previsión ni
+   ignorada lo tocan (§5).
+4. ✅ **Gráfico** — las exclusiones (traspasos, aportaciones propias, tarjeta
+   crédito, ignoradas) son para el lado **REAL**, no para el previsto (§6).
+6. ✅ **Facturas** — se vinculan a un apunte **confirmado/conciliado**, nunca a un
+   previsto (§11).
+8. ✅ **Aportaciones "+2.500"** — son **traspasos entre cuentas**. Y ojo: un banco
+   (Unicaja) puede exigir ese traspaso y contarlo como **ingreso recurrente** para
+   la bonificación de la hipoteca (§4 bis).
+
+**Contradicciones que planteaste, resueltas:**
+
+- **C1 · confirmado no es obligatorio antes de conciliado** — hay 3 perfiles
+  (a mano / por fichero / las dos cosas). Corregido en §2.
+- **C2 · un traspaso no es ingreso, pero cuenta como "ingreso recurrente" para la
+  bonificación** — son dos lecturas del mismo apunte. Resuelto en §4 bis.
+
+**Lo que queda por cerrar (esto es lo gordo, §13.5):**
+
+5. **La taxonomía (P8).** Dijiste que la familia "no aporta una mierda". Antes de
+   tocar cómo se ve la fila (P6) o reclasificar lo viejo (P7), necesito que
+   definas la **clasificación que SÍ usas**. Para arrancar, dime:
+   - ¿La clasificación es sobre todo **fiscal** (que cada gasto de inmueble caiga
+     en su casilla de la Renta) o también quieres **presupuesto personal**?
+   - Dame la **lista de conceptos** de inmueble que usas de verdad (p.ej.
+     comunidad, IBI, seguro, suministro luz/agua/gas, reparación, mejora,
+     intereses, seguro de vida/hogar ligado a hipoteca…).
+   - En **personal**, ¿qué nivel quieres? ¿pocas cajas útiles o detalle?
+   - En la **fila**, ¿qué subtítulo te sirve? ¿"IBI · Tenderina 64 4DR"?
+     ¿"Comunidad · deducible"? Dime el formato que a ti te dice algo.
+
+9. **Bonificación (§4 bis):** ¿cómo se marca que un traspaso cuenta para una
+   bonificación? ¿automático (todo abono ≥ umbral en esa cuenta) o manual?
 
 ---
 
-*Cuando cerremos §13, este documento pasa a v2 "acordado" y de él salen las
-tareas de código, una por problema, en orden de prioridad.*
+*En cuanto cierres §13.5 (la taxonomía) y §13.9, este documento pasa a
+**v2 "acordado"** y de él salen las tareas de código, una por problema:
+**P1–P4 (traspasos y saldo) primero**, luego P8 → P5/P6/P7.*
