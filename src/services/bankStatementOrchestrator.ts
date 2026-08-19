@@ -585,6 +585,13 @@ async function insertMovements(
       updatedAt: now,
     };
 
+    // Se deduplica SOLO contra movimientos que YA existían (de otros lotes), no
+    // contra las otras líneas de ESTE extracto. Un banco lista dos cargos
+    // idénticos —misma fecha, mismo importe, mismo concepto— cuando de verdad
+    // hubo dos (p.ej. la comunidad de dos pisos: Nº mov 839 y 840): son dos
+    // movimientos reales y deben entrar los dos. Reimportar el MISMO fichero ya
+    // lo frena el hash del lote (D1 bis); un fichero solapado sí casa contra lo
+    // previo. Por eso el hash del nuevo NO se añade al set.
     if (existingHashes.has(hashMovement(candidate))) {
       duplicates++;
       continue;
@@ -592,7 +599,6 @@ async function insertMovements(
 
     const id = (await db.add('movements', candidate)) as number;
     insertedIds.push(id);
-    existingHashes.add(hashMovement({ ...candidate, id }));
   }
 
   return { insertedIds, inserted: insertedIds.length, duplicates };
