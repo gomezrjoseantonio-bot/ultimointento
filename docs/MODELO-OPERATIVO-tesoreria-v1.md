@@ -1,8 +1,8 @@
 # Modelo operativo de tesorería · el ciclo del apunte de extremo a extremo
 
-**Estado: BORRADOR v3 · mapeada la taxonomía real y propuesta de modelo nuevo
-(§9 bis/ter/quater). Falta que Jose valide §9 (concepto único + semilla) y §13.9.
-NO se toca código hasta que esté acordado.**
+**Estado: BORRADOR v4 · semilla repasada y añadido el semillado al poner en
+alquiler (§9 quater/quinquies). Falta que Jose valide §9 (concepto + semilla +
+semillado), §13.9 y §13.10. NO se toca código hasta que esté acordado.**
 
 Este documento fija QUÉ pasa con el dinero desde que se prevé hasta que se
 concilia: previsión → confirmación → conciliación, la subida de ficheros, el
@@ -346,42 +346,101 @@ luego la pasada retroactiva.)
 Ajustes editable con red fiscal · (F4) migrar lo viejo · (F5) enseñar el concepto
 en la fila. Cada fase, su PR.
 
-### 9 quater · Catálogo base propuesto (semilla · para que lo edites)
+### 9 quater · Catálogo base propuesto (semilla · para repasar contigo)
 
-Punto de partida, no dogma. Tú añades/quitas/renombras. Casillas tomadas del
-catálogo actual (las que no, marcadas "?").
+Punto de partida, no dogma. Alineado con los conceptos que la app ya conoce
+(`catalogoModalidadInmueble`). La columna **Alq.** dice en qué tipo de alquiler
+aparece por defecto: **C** completo · **H** habitaciones · **T** turístico ·
+**·** todos.
 
-**Inmueble (deducibles salvo mejora/mobiliario, que se amortizan):**
+**INMUEBLE** (deducible salvo mejora/mobiliario, que se amortizan):
 
-| Concepto | Casilla | Tratamiento |
-|---|---|---|
-| Comunidad | 0109 | gasto |
-| IBI | 0115 | gasto |
-| Basuras / tasas | 0115 | gasto |
-| Seguro (hogar/impago) | 0114 | gasto |
-| Suministro · luz | 0113 | gasto |
-| Suministro · agua | 0113 | gasto |
-| Suministro · gas | 0113 | gasto |
-| Internet / teléfono | 0113 | gasto |
-| Servicios (limpieza, gestoría, alarma…) | 0112 | gasto |
-| Reparación / conservación | 0106 | gasto |
-| Intereses de hipoteca | ? (financiación) | financiero |
-| Mejora | — | mejora (amortiza) |
-| Mobiliario | 0117 | mobiliario (amortiza) |
-| Derrama | pregunta | gasto **o** mejora (se decide al confirmar) |
+| Concepto | Casilla | Tratamiento | Alq. |
+|---|---|---|---|
+| Comunidad · cuota ordinaria | 0109 | gasto | · |
+| Derrama | pregunta | gasto **o** mejora (se decide al confirmar) | · |
+| IBI | 0115 | gasto | · |
+| Tasa de basuras | 0115 | gasto | · |
+| Licencia turística | 0115 | gasto | T |
+| Seguro · hogar | 0114 | gasto | · |
+| Seguro · impago de alquiler | 0114 | gasto | C, H |
+| Suministro · luz | 0113 | gasto | H, T (C si lo pagas tú) |
+| Suministro · agua | 0113 | gasto | H, T (C si lo pagas tú) |
+| Suministro · gas | 0113 | gasto | H, T (C si lo pagas tú) |
+| Internet | 0113 | gasto | H, T |
+| Telefonía | 0113 | gasto | H, T |
+| Alarma | 0113 | gasto | H, T |
+| Honorarios de agencia / gestión | 0112 | gasto | C, H |
+| Comisión de plataformas (Airbnb/Booking) | 0112 | gasto | T |
+| Limpieza de zonas comunes | 0112 | gasto | H |
+| Limpieza por estancia | 0112 | gasto | T |
+| Mantenimiento caldera | 0106 | gasto | · |
+| Reparación / conservación | 0106 | gasto | · |
+| Intereses de hipoteca | ? (financiación) | financiero | · |
+| Amortización del inmueble | (0117 grupo) | amortiza (3 % s/ construcción) | · |
+| Mejora | — | mejora (amortiza) | · |
+| Mobiliario | 0117 | mobiliario (amortiza 10 %) | H, T |
 
-**Personal (no deducible · sirve para tu presupuesto):**
+> Fiscal por tipo (importante): **larga duración** → reducción del 60 % del
+> rendimiento neto; **temporada** → capital inmobiliario **sin** reducción;
+> **turístico con servicios de hostelería** → puede ser **actividad económica**
+> (otro régimen). El tipo de alquiler condiciona conceptos Y tratamiento fiscal.
+
+**PERSONAL** (no deducible · sirve para tu presupuesto):
 
 | Concepto | Bolsa 50/30/20 |
 |---|---|
-| Hipoteca/alquiler vivienda | Necesidades |
-| Suministros vivienda | Necesidades |
-| Alimentación / día a día | Necesidades |
-| Salud (médico, farmacia) | Necesidades |
-| Seguros y cuotas | Necesidades |
-| Suscripciones | Deseos |
-| Ocio | Deseos |
-| Ahorro / inversión | Ahorro |
+| Hipoteca / alquiler de tu vivienda | Necesidades |
+| Suministros de tu vivienda (luz/agua/gas) | Necesidades |
+| Internet / teléfono / móvil | Necesidades |
+| Alimentación / supermercado | Necesidades |
+| Salud (médico, farmacia, dentista) | Necesidades |
+| Seguros (vida, salud, coche) | Necesidades |
+| Transporte / combustible | Necesidades |
+| Suscripciones (streaming, software) | Deseos |
+| Ocio / restaurantes / viajes | Deseos |
+| Ropa / compras | Deseos |
+| Ahorro / inversión / aportación a plan | Ahorro |
+
+### 9 quinquies · Semillado al poner un inmueble en alquiler (Jose)
+
+Cuando un inmueble pasa a alquilarse, sus gastos típicos deberían **sembrarse**
+solos (sugeridos), en vez de tener que crearlos uno a uno. Buena noticia: **el
+modelo de datos ya existe**, solo hay que fijar el flujo.
+
+**Lo que YA hay:**
+
+- El inmueble guarda **`usoTipo`** (`vivienda_habitual` · `larga` · `temporada` ·
+  `turistico` · …), **`modoExplotacion`** (`piso_completo` · `por_habitaciones` ·
+  `mixto`) y **`estadoOperativo`** (`operativo` · `vacante` · `en_reforma` ·
+  `uso_propio`). El contrato lleva su **modalidad**.
+- Ya existe **`catalogoModalidadInmueble`**: por modalidad
+  (`viviendaCompleta` / `habitaciones` / `turistico`) da una lista de conceptos
+  **precargados** (marcados) y **disponibles** (a un clic). Y ya avisa de algo
+  clave: **NO crea registros** — sugiere; tú rellenas importe/calendario/cuenta y
+  guardas.
+
+**Lo que falta ajustar (decisión §13.10) — dónde y cuándo:**
+
+1. **Dónde se marca que un inmueble está en alquiler y de qué tipo.** Propuesta:
+   un único sitio (la ficha del inmueble / el alta de contrato) donde se fija
+   `usoTipo` + `modoExplotacion`. Hoy el dato existe pero está repartido; hay que
+   decidir **la fuente única de verdad** (¿el contrato manda y el inmueble lo
+   deriva, o al revés?).
+2. **Cuándo se dispara el semillado.** Propuesta: al **dar de alta/activar el
+   contrato** (o al marcar el inmueble como alquilado), se abre la lista de
+   conceptos sugeridos según el tipo (§9 quater columna Alq.), tú marcas los que
+   aplican, pones importe/periodicidad/cuenta, y de ahí nacen las **previsiones**
+   (recurrentes) de ese inmueble.
+3. **Qué se siembra por tipo:** completo → comunidad, IBI, seguros, reparación
+   (+ suministros si los pagas tú); habitaciones → lo anterior + suministros +
+   limpieza zonas + internet; turístico → + licencia, comisión plataformas,
+   limpieza por estancia, y aviso del posible régimen de actividad económica.
+4. **Ingresos:** el alquiler previsto (renta por contrato/habitación) también se
+   siembra desde el contrato (esto ya funciona vía contratos).
+
+**Regla:** sembrar = **sugerir**, nunca crear a ciegas. Cada previsión nace
+completa (importe, periodicidad, cuenta) tras tu confirmación.
 
 **Decisión abierta (§13.5):** ¿te vale esta semilla como arranque? ¿Qué conceptos
 de inmueble te faltan o sobran? ¿Y en personal, con este nivel te basta o quieres
@@ -429,6 +488,7 @@ respalda y puede completar datos fiscales —nº factura, base, IVA—.)
 | **P5** | El **nombre del pagador** no desempata importes iguales (no está en el campo del emparejador) | ABIERTO · prioridad 2 |
 | **P6** | La **familia** que clasificas no se muestra en la fila (Bizum/pagador la ocultan) | ABIERTO · prioridad 2 (tras P8) |
 | P7 | Los apuntes **ya conciliados** antes de la herencia no muestran su categoría (pasada retroactiva) | ABIERTO · prioridad 3 (tras P8) |
+| **P9** | El **semillado** al poner un inmueble en alquiler no tiene flujo fijado (dónde se marca el tipo, cuándo se dispara) | ABIERTO · prioridad 2 (va con P8) |
 | ✔ | Dos cargos idénticos del mismo extracto se colapsaban en uno | RESUELTO (PR #1752) |
 | ✔ | Al cuadrar con un previsto no se heredaba la clasificación | RESUELTO (PR #1751) |
 | ✔ | Importes iguales con nombre → "ganador claro" en vez de elegir entre seis | RESUELTO (PR #1751) |
@@ -479,8 +539,14 @@ respalda y puede completar datos fiscales —nº factura, base, IVA—.)
 9. **Bonificación (§4 bis):** ¿cómo se marca que un traspaso cuenta para una
    bonificación? ¿automático (todo abono ≥ umbral en esa cuenta) o manual?
 
+10. **Semillado al alquilar (§9 quinquies, P9):** ¿cuál es la **fuente única de
+    verdad** del tipo de alquiler — manda el **contrato** y el inmueble lo deriva,
+    o al revés? ¿El semillado se dispara al **activar el contrato** o al marcar el
+    inmueble como alquilado? ¿La columna **Alq.** de §9 quater refleja bien qué
+    conceptos van en completo / habitaciones / turístico?
+
 ---
 
-*En cuanto cierres §13.5 (la taxonomía) y §13.9, este documento pasa a
+*En cuanto cierres §13.5 (la taxonomía), §13.9 y §13.10, este documento pasa a
 **v2 "acordado"** y de él salen las tareas de código, una por problema:
 **P1–P4 (traspasos y saldo) primero**, luego P8 → P5/P6/P7.*
