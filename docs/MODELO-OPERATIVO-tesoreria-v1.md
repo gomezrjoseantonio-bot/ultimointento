@@ -479,6 +479,60 @@ completa (importe, periodicidad, cuenta) tras tu confirmación.
 de inmueble te faltan o sobran? ¿Y en personal, con este nivel te basta o quieres
 más/menos cajas? Con tu OK, F1 es cerrar esta tabla.
 
+### 9 sexies · Fiscalidad DERIVADA · casilla + prorrateo (siguiente ladrillo)
+
+Se **deriva**, no se guarda en el gasto. Números de casilla tomados del código
+actual (no inventados). Solo aplica cuando el gasto es de un **inmueble alquilado**.
+
+**(a) Naturaleza → casilla AEAT:**
+
+| Naturaleza | Casilla |
+|---|---|
+| Comunidad · Cuota | 0109 |
+| Comunidad · Derrama | *pregunta:* conservación (0106) o mejora (CAPEX, 0129) |
+| IBI · Basuras · Licencia turística | 0115 (tributos) |
+| Seguro hogar · impagos | 0114 |
+| Reparación / Mantenimiento (caldera, electrodomésticos) | 0106 |
+| Suministro (luz/agua/gas/internet) | 0113 |
+| Alarma · Gestión (agencia/gestoría/asesoría/comisión/consumibles) · Limpieza | 0112 (servicios) |
+| Intereses de hipoteca *(derivado)* | 0105 |
+| Amortización inmueble 3% · mobiliario 10% *(derivado)* | 0131 · 0117 |
+| Mejora *(CAPEX)* | 0129 |
+| Personal (súper, coche, salud, ocio, móvil, alquiler…) | — (nunca deducible) |
+
+**(b) Prorrateo (el motor):**
+
+1. Deducible **solo** si es de un inmueble alquilado; personal → 0 siempre.
+2. **Siempre por días:** deducible = gasto × (días alquilado / días del periodo).
+3. **Quién asume, por modalidad** (los suministros): completo → los días
+   alquilados los paga el **inquilino** (no deducibles para ti); habitaciones/
+   turístico → los pagas **tú** (deducibles); días vacío → siempre tú. El resto
+   (comunidad, IBI, seguro, reparación) siempre del propietario.
+4. Límite **intereses (0105) + reparación (0106) ≤ ingresos íntegros**; exceso a
+   4 años (0108, FIFO).
+5. Reducción del alquiler de vivienda: **60 %** (contratos previos a la ley) ·
+   50/70/90 % (ley nueva según zona/joven/rehabilitación); temporada y turístico
+   → **0**. Se aplica solo al rendimiento neto positivo (0150 sobre 0149).
+
+**Huecos del código actual (a corregir cuando toque, NO ahora):**
+
+- **DOS motores divergentes:** `fiscalSummaryService` (páginas fiscales v2) **NO
+  prorratea** los gastos ordinarios por días (deduce el año entero aunque
+  alquiles 1 día); `irpfCalculationService` **SÍ**. Unificar al que prorratea
+  (regla 2). Es un bug real.
+- **La regla 3 (suministros por modalidad) no existe** en el motor. Añadir.
+- **"Otros" no tiene casilla** (no hay 0116 implementado) → el gasto "llega mudo"
+  a la declaración. Decidir: mapear a 0116 "otros gastos deducibles" o marcar
+  no-deducible.
+- **Amortización de mejoras (0129)** está a 0 hoy. Cablear.
+
+**Decisiones para cerrar F2 (fiscalidad):**
+
+1. **Prorrateo siempre por días** (unificar los dos motores). ¿OK?
+2. **Suministros por modalidad** (completo → inquilino; H/T → tú). ¿OK?
+3. **"Otros"**: ¿a 0116 "otros gastos deducibles" o no-deducible?
+4. **Derrama**: ¿siempre preguntar conservación (0106) vs mejora (0129)?
+
 ---
 
 ## 10 · Tarjeta de crédito (ref. `VOCABULARIO-dinero.md` §3)
