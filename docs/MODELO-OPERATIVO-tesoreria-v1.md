@@ -1,10 +1,11 @@
 # Modelo operativo de tesorería · el ciclo del apunte de extremo a extremo
 
-**Estado: BORRADOR v6 · fiscalidad separada de la naturaleza (§9 ter/quater): el
-gasto tiene UNA naturaleza; el alquiler es lo que lo hace deducible, prorrateado
-por tiempo y tipo; la amortización NO es un gasto (mejora/mobiliario = CAPEX).
-Falta que Jose valide §9, §13.9 y §13.10. NO se toca código hasta que esté
-acordado.**
+**Estado: BORRADOR v7 · ejes ortogonales ACORDADOS (§9 ter) y catálogo de
+NATURALEZA acordado (§9 quater). Ejes: naturaleza (catálogo universal Tipo→Subtipo)
+· origen (apunte real vs derivado: intereses/amortización) · recurrencia
+(atributo de la previsión). Intereses de hipoteca fuera del catálogo (derivado).
+Falta la capa de encima (imputación + fiscalidad + presentación) y validar §13.9
+y §13.10. NO se toca código hasta que esté acordado.**
 
 Este documento fija QUÉ pasa con el dinero desde que se prevé hasta que se
 concilia: previsión → confirmación → conciliación, la subida de ficheros, el
@@ -308,102 +309,105 @@ conceptos propios. Lo que NO: su casilla fiscal (la hereda de la familia, para n
 cambiar la Renta sin querer). Es decir: la pieza editable existe, pero cuelga de
 un modelo roto.
 
-### 9 ter · Modelo corregido (Jose) · separar TRES cosas que hoy están mezcladas
+### 9 ter · Modelo acordado (Jose) · EJES ORTOGONALES que no hay que mezclar
 
-El colapso mental viene de meter en la misma bolsa la naturaleza del gasto, si
-es deducible y la amortización. **Son tres cosas distintas y se separan:**
+El colapso viene de meter en la misma bolsa cosas que son ejes distintos.
+**Acordado con Jose (19 ago):** se separan en ejes independientes, y el
+**catálogo de naturaleza es universal** — no lo define la pantalla ni el uso.
 
-1. **La NATURALEZA del gasto (el concepto).** Qué es, y ya. Una **lista PLANA y
-   limpia**, cada gasto UNA vez: Comunidad, IBI, Basuras, Seguro hogar,
-   Suministro luz/agua/gas, Reparación, Gestión del alquiler, Supermercado,
-   Médico… **Sin "familia" que agrupe conceptos redundantes.** El grupo, si
-   acaso, es una etiqueta VISUAL para plegar, nada más.
-2. **La IMPUTACIÓN.** A dónde va ese gasto: a **personal**, o a un **inmueble
-   concreto**. Eso lo pones tú (o lo hereda del previsto/contrato). La naturaleza
-   no cambia por dónde se impute; comunidad es comunidad.
-3. **La FISCALIDAD, que se DERIVA (no se guarda en el gasto).** Un gasto es
-   deducible **solo** si se imputa a un inmueble **alquilado**, y **no al 100 %**:
-   se deduce **en proporción al tiempo alquilado** (días del ejercicio) y **según
-   el tipo** de alquiler. La **naturaleza** determina la **casilla** de la Renta
-   (comunidad→0109); el **contexto** (alquilado / cuánto / qué tipo) determina
-   **cuánto** es deducible. El motor fiscal lo calcula; el concepto NO lleva un
-   "deducible sí/no".
+**Eje 1 · NATURALEZA (el catálogo universal).** Qué es el gasto, y ya. Es lo
+único que fijamos ahora (§9 quater). Estructura **Tipo → Subtipo**, donde el
+**subtipo es el concepto** (la unidad con la que se puntea y se guarda) y el
+**Tipo es solo una carpeta visual** para plegar. Si un Tipo no tiene subtipo, el
+**Tipo es el concepto** (Alarma, Supermercado, Ocio…). Universal y **editable**:
+se pueden añadir subtipos en cualquier Tipo. No cambia por dónde se use ni cómo
+se pague.
 
-**Y una regla que faltaba, importante:**
+**Eje 2 · ORIGEN del importe.** De dónde sale la cifra:
+- **(a) Apunte real** — hay movimiento: lo creas (recurrente o puntual), lo
+  anotas a mano, o lo sube el banco y se concilia.
+- **(b) Derivado / calculado** — **NO hay apunte: no lo creas, no lo concilias,
+  el banco no lo apunta por separado.** Lo calcula un motor. Aquí van los
+  **intereses de hipoteca** (del cuadro de amortización del préstamo), la
+  **amortización del inmueble** (3 % construcción) y la **del mobiliario** (10 %).
+  → Por eso **"Intereses de hipoteca" NO está en el catálogo de gastos.** El
+  apunte real es la **cuota de la hipoteca** (naturaleza *Hipoteca · cuota*); el
+  motor la parte en **capital** (baja de deuda, ni gasto ni CAPEX) e **interés**
+  (gasto derivado, deducible solo si el inmueble está alquilado). Tú no tecleas
+  el interés nunca.
 
-4. **La amortización NO es un gasto.** No es un movimiento ni sale en la lista de
-   gastos. **Mejora y mobiliario tampoco son gastos: son INVERSIÓN (CAPEX)** —
-   aumentan el valor del inmueble y se **amortizan** (3 % construcción/año,
-   10 % mobiliario/año). Eso vive en el módulo del inmueble/fiscal, aparte del
-   catálogo de gastos. Mezclarlo era parte del ruido.
+**Eje 3 · RECURRENCIA.** **Atributo de la PREVISIÓN, no de la naturaleza.**
+- **Recurrente** = compromiso con periodicidad (comunidad mensual, seguro anual);
+  genera previsiones futuras.
+- **Puntual** = una vez (una reparación, un mueble, una comida); no genera futuras.
 
-**Qué se guarda en el apunte:** su **concepto** (naturaleza) + su **imputación**
-(personal o inmueble X). La casilla y la parte deducible se **derivan** al vuelo
-(se guarda una foto para el histórico fiscal). La fila enseña el concepto (+
-inmueble): `Comunidad · Tenderina 64 4DR`, `Médico`.
+El mismo concepto puede ser las dos cosas (una *Gestoría* puntual, o una iguala
+mensual). El catálogo solo lleva un **default sugerido** que pre-rellena, no
+obliga.
 
-### 9 quater · CUADRO corregido (para revisar en el Excel)
+**Ejes 4 y 5 · IMPUTACIÓN y FISCALIDAD — son CAPA DE ENCIMA (siguiente paso).**
+La **imputación** (personal / inmueble X) y la **fiscalidad derivada** (un gasto
+solo es deducible si se imputa a un inmueble **alquilado**, y **no al 100 %**:
+prorrateado por **días alquilados** y por **tipo**; la naturaleza fija la
+**casilla**, el contexto fija **cuánto**) **consumen** el catálogo, no lo
+definen. Se diseñan DESPUÉS. El concepto NO lleva un "deducible sí/no".
 
-Tres tablas separadas, no una mezcla. **Casilla** = solo se usa cuando el gasto
-se imputa a un **inmueble alquilado**; entonces se deduce prorrateado por tiempo
-y tipo. En personal no hay casilla.
+**Regla que ordena el ruido:** la **amortización NO es un gasto** (es derivado,
+eje 2b). **Mejora y mobiliario** sí son apuntes reales, pero su naturaleza es
+**INVERSIÓN (CAPEX)**, no gasto: se **amortizan**. Están fuera del catálogo de
+gastos.
 
-**Tabla 1 · GASTOS (naturaleza · lista plana).** `P`=puede ser personal ·
-`I`=puede ser de inmueble. Semilla al alquilar: **C** completo · **H**
-habitaciones · **T** turístico.
+**Y lo más importante:** el **catálogo (naturaleza) ≠ la presentación**. Cómo se
+muestra (plegar por Tipo, separar recurrentes de puntuales, ver por inmueble, el
+alta de un puntual vs la pantalla de recurrentes) es una capa de encima. Ahí
+nacían los problemas: se dejaba que la pantalla decidiera la naturaleza.
 
-| Concepto | Casilla (si inmueble alq.) | P | I | Semilla |
-|---|---|:-:|:-:|---|
-| Comunidad | 0109 | ✓ | ✓ | C H T |
-| Derrama | pregunta | | ✓ | C H T |
-| IBI | 0115 | ✓ | ✓ | C H T |
-| Basuras | 0115 | ✓ | ✓ | C H T |
-| Seguro hogar | 0114 | ✓ | ✓ | C H T |
-| Reparación / conservación | 0106 | ✓ | ✓ | C H T |
-| Mantenimiento caldera | 0106 | ✓ | ✓ | C H T |
-| Intereses de hipoteca | financiación | ✓ | ✓ | C H T |
-| Suministro · luz | 0113 | ✓ | ✓ | H T (C si pagas tú) |
-| Suministro · agua | 0113 | ✓ | ✓ | H T (C si pagas tú) |
-| Suministro · gas | 0113 | ✓ | ✓ | H T (C si pagas tú) |
-| Internet / telefonía | 0113 | ✓ | ✓ | H T |
-| Alarma | 0113 | ✓ | ✓ | H T |
-| Gestión del alquiler / agencia | 0112 | | ✓ | C H |
-| Gestoría / asesoría | 0112 | ✓ | ✓ | C H T |
-| Seguro de impago | 0114 | | ✓ | C H |
-| Limpieza de zonas comunes | 0112 | | ✓ | H |
-| Licencia turística | 0115 | | ✓ | T |
-| Comisión de plataformas | 0112 | | ✓ | T |
-| Limpieza por estancia | 0112 | | ✓ | T |
-| Lavandería | 0112 | | ✓ | T |
-| Consumibles de bienvenida | 0112 | | ✓ | T |
-| Supermercado / alimentación | — | ✓ | | (personal) |
-| Transporte / combustible | — | ✓ | | (personal) |
-| Salud (médico, farmacia) | — | ✓ | | (personal) |
-| Seguros personales (vida/salud/coche) | — | ✓ | | (personal) |
-| Cuotas (gimnasio/educación/ONG) | — | ✓ | | (personal) |
-| Suscripciones | — | ✓ | | (personal) |
-| Ocio / restaurantes / ropa | — | ✓ | | (personal) |
+### 9 quater · CATÁLOGO DE NATURALEZA acordado (Jose, 19 ago)
 
-**Tabla 2 · INVERSIÓN del inmueble (CAPEX · NO es gasto · se amortiza).**
+Solo **naturaleza** (eje 1). NO lleva todavía casilla, imputación ni semilla —
+eso es capa de encima y se hace en el siguiente paso. Estructura **Tipo →
+Subtipo**; el **subtipo es el concepto**; si el Tipo no tiene subtipo, el **Tipo
+es el concepto**. Todo **editable** (se pueden añadir subtipos en cualquier Tipo).
 
-| Concepto | Amortización |
+| Tipo (carpeta) | Subtipos (el concepto) |
 |---|---|
-| Mejora / ampliación | Se suma al valor · amortiza |
-| Mobiliario | 10 % anual |
-| (Amortización del inmueble) | 3 % anual sobre el valor de construcción |
+| Comunidad | Cuota · Derrama |
+| Impuestos | IBI · Basuras · Licencia turística · Circulación |
+| Seguro | Hogar · Vida · Impagos · Decesos · Vehículo · Médico |
+| Reparación | Vehículo · Caldera · Electrodomésticos · *(editable)* |
+| Mantenimiento | Caldera · Vehículo · ITV · *(editable)* |
+| Suministro | Luz · Agua · Gas · Internet · Móvil |
+| Alarma | *(sin subtipo — el Tipo es el concepto)* |
+| Gestión | Agencia alquiler · Gestoría · Asesoría · Comisión de plataformas · Consumibles de bienvenida |
+| Limpieza | Zonas comunes · Integral · Lavandería |
+| Supermercado | *(sin subtipo)* |
+| Transporte | Renting · Combustible |
+| Farmacia | *(sin subtipo)* |
+| Suscripciones | Gimnasio · Educación · ONG · Streaming · Cloud |
+| Ocio | *(sin subtipo)* |
+| Viaje | *(sin subtipo)* |
+| Restaurante | *(sin subtipo)* |
+| Hipoteca / préstamo | Cuota *(el interés es DERIVADO, no un subtipo)* |
+| Otros | *(editable y trazable)* |
 
-> La **amortización** no se anota como gasto: la calcula el módulo fiscal a
-> partir del valor de construcción y de las inversiones (tabla 2).
+**FUERA del catálogo de gastos (a propósito):**
 
-**Tabla 3 · Presupuesto personal (bolsa 50/30/20).** Solo para los conceptos con
-`P`. Cada uno cae en Necesidades / Deseos / Ahorro (lo decides tú en el Excel).
+- **Derivados (eje 2b · no son apuntes, los calcula un motor):** Intereses de
+  hipoteca (del cuadro del préstamo) · Amortización del inmueble (3 %) ·
+  Amortización del mobiliario (10 %).
+- **Inversión / CAPEX (apunte real, pero naturaleza *inversión*, no gasto):**
+  Mejora / ampliación · Mobiliario. Se amortizan; viven en el módulo del inmueble.
 
-**Ingreso:** la **renta** se siembra desde el **contrato** (por piso o
-habitación); no es un gasto.
+**Ingreso** (no es gasto): la **renta** se siembra desde el **contrato** (por
+piso o habitación). Aparte, un **traspaso** puede contar como "ingreso
+recurrente" para la bonificación de Unicaja (§4 bis) sin ser ingreso patrimonial.
 
-> **Fiscal por tipo:** larga → **reducción 60 %**; temporada → **sin** reducción;
-> turístico **con servicios** → puede ser **actividad económica**. Y recuerda: la
-> deducción de CADA gasto se **prorratea por los días alquilados** del ejercicio.
+> **Siguiente paso (capa de encima, NO ahora):** a cada concepto se le cuelga
+> dónde aplica (personal / inmueble) y — solo si se imputa a inmueble alquilado —
+> su **casilla** de la Renta y la **deducción prorrateada** por días y tipo
+> (larga → reducción 60 %; temporada → sin reducción; turístico con servicios →
+> posible actividad económica). El presupuesto personal 50/30/20 es otra vista
+> más sobre los conceptos personales.
 
 ### 9 quinquies · Semillado al poner un inmueble en alquiler (Jose)
 
@@ -528,19 +532,17 @@ respalda y puede completar datos fiscales —nº factura, base, IVA—.)
 
 **Lo que queda por cerrar (esto es lo gordo, §13.5):**
 
-5. **La taxonomía (P8).** Ya está mapeado el desastre actual (§9 bis) y hay una
-   **propuesta corregida** (§9 ter) que separa las TRES cosas que hoy están
-   mezcladas: **naturaleza** del gasto (una lista plana, cada gasto una vez, sin
-   familia), **imputación** (personal o inmueble X) y **fiscalidad DERIVADA** (un
-   gasto solo es deducible si se imputa a un inmueble alquilado, y prorrateado por
-   tiempo y tipo — no se guarda "deducible sí/no" en el concepto). La
-   **amortización NO es un gasto** y mejora/mobiliario son **CAPEX**, fuera del
-   catálogo de gastos. El **catálogo base semilla** está en §9 quater (tres tablas
-   separadas). Lo que necesito de ti para cerrar F1:
-   - ¿Te vale la **separación** de §9 ter (naturaleza / imputación / fiscalidad
-     derivada; amortización fuera; CAPEX aparte)?
-   - ¿Te vale la **Tabla 1 de gastos** de §9 quater? Revísala en el Excel: ¿qué
-     conceptos te faltan/sobran, y están bien las casillas y las semillas C/H/T?
+5. **La taxonomía (P8).** Mapeado el desastre actual (§9 bis). **ACORDADO** el
+   modelo de **ejes ortogonales** (§9 ter: naturaleza / origen / recurrencia;
+   imputación y fiscalidad como capa de encima) y el **catálogo de naturaleza**
+   (§9 quater, Tipo→Subtipo, editable; intereses de hipoteca fuera por ser
+   derivado). Lo que queda para cerrar F1 (la **capa de encima**, siguiente paso):
+   - **Imputación + fiscalidad:** colgar a cada concepto dónde aplica (personal /
+     inmueble) y la casilla + deducción prorrateada cuando es inmueble alquilado.
+   - **Presentación:** cómo se muestra (plegar por Tipo, recurrentes vs puntuales,
+     por inmueble, alta de puntual vs pantalla de recurrentes).
+   - **Motor de derivados:** cuadro de amortización del préstamo (parte capital /
+     interés de la cuota) y amortizaciones del inmueble y del mobiliario.
 
 9. **Bonificación (§4 bis):** ¿cómo se marca que un traspaso cuenta para una
    bonificación? ¿automático (todo abono ≥ umbral en esa cuenta) o manual?
