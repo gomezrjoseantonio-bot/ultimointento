@@ -17,6 +17,7 @@ import {
   lineasPendientes,
   hashesARecuperar,
   movimientosAEfectivo,
+  movimientosATraspaso,
   decisionesVacias,
   type LineaExtracto,
 } from '../extractoSesion';
@@ -376,6 +377,55 @@ describe('la retirada de efectivo', () => {
 
     expect(veredictoEfectivo(lineas()[0], d)).toBe('ignorada');
     expect(movimientosAEfectivo(lineas(), d)).toEqual([]);
+  });
+});
+
+// Un traspaso a otra cuenta propia entra en el extracto como un cargo más
+// (P1). Si se apunta como gasto, hunde el saldo y lo cuela en el gráfico. §4.7
+// deja marcarlo como "traspaso a [cuenta]" y al guardar se convierte.
+describe('el traspaso a otra cuenta al importar (P1)', () => {
+  const lineas = (): LineaExtracto[] =>
+    construirLineas(
+      [mov(10, 'TRANSFERENCIA A NOMINA', -1500), mov(11, 'RECIBO LUZ', -74)],
+      sinMatches,
+      [],
+      new Set()
+    );
+
+  // Como efectivo: queda RESUELTA (su movimiento sobrevive) y viaja con su
+  // cuenta destino para convertirse al guardar.
+  it('queda resuelta y lleva su cuenta destino', () => {
+    const d = decisionesVacias();
+    d.aTraspaso.set(10, 7); // traspaso a la cuenta 7
+
+    expect(veredictoEfectivo(lineas()[0], d)).toBe('cuadra');
+    expect(lineasPendientes(lineas(), d).map((l) => l.movementId)).toEqual([11]);
+    expect(movimientosATraspaso(lineas(), d)).toEqual([{ movementId: 10, cuentaDestinoId: 7 }]);
+  });
+
+  // Confirmarle además un previsto lo daría por pagado dos veces.
+  it('marcada como traspaso NO se empareja con ningún previsto', () => {
+    const conMatch = () =>
+      construirLineas(
+        [mov(10, 'TRANSFERENCIA A NOMINA', -1500)],
+        { ...sinMatches, matches: [{ movementId: 10, treasuryEventId: 5, score: 90, reasons: [] }] },
+        [evt(5, 'Un previsto de 1500', -1500)],
+        new Set()
+      );
+    const d = decisionesVacias();
+    d.aTraspaso.set(10, 7);
+
+    expect(payloadDeConfirmacion(conMatch(), d).approvedMatches).toEqual([]);
+  });
+
+  // Ignorar es la última palabra: no se convierte en traspaso.
+  it('ignorar gana · no se convierte', () => {
+    const d = decisionesVacias();
+    d.aTraspaso.set(10, 7);
+    d.ignorados.add(10);
+
+    expect(veredictoEfectivo(lineas()[0], d)).toBe('ignorada');
+    expect(movimientosATraspaso(lineas(), d)).toEqual([]);
   });
 });
 

@@ -10,7 +10,6 @@ import { Icons } from '../../../design-system/v5';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { initDB } from '../../../services/db';
 import { nombrarPrevisto as nombrarPrevistoModelo } from './nombrarPrevisto';
-import { candidatosDeLinea } from './conciliacionCandidatos';
 import {
   processFile,
   processPdf,
@@ -31,21 +30,21 @@ import {
   payloadDeConfirmacion,
   lineasAIgnorar,
   movimientosAEfectivo,
+  movimientosATraspaso,
   lineasPendientes,
   hashesARecuperar,
   decisionesVacias,
   type LineaExtracto,
   type DecisionesSesion,
 } from './extractoSesion';
+import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import { esPdf } from '../../../services/personal/extractoTarjeta';
 import PanelExtractoTarjeta from './PanelExtractoTarjeta';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
-import { pareceRetiradaDeCajero } from '../../../services/retiradaCajero';
 import { convertirEnTraspaso } from '../../../services/traspasoDesdeMovimiento';
-import { importeConSigno, fechaLarga } from './formatoV6';
 import GrupoPlegableExtracto from './GrupoPlegableExtracto';
 import chasis from './DrawerV6.module.css';
 import styles from './DrawerExtracto.module.css';
@@ -86,6 +85,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [lineas, setLineas] = useState<LineaExtracto[]>([]);
   const [decisiones, setDecisiones] = useState<DecisionesSesion>(decisionesVacias);
   const [asignando, setAsignando] = useState<number | null>(null);
+  const [traspasando, setTraspasando] = useState<number | null>(null);
   const [previstos, setPrevistos] = useState<TreasuryEvent[]>([]);
   const [ignoradasPlegadas, setIgnoradasPlegadas] = useState(true);
   const [cerradosPlegados, setCerradosPlegados] = useState(true);
@@ -130,6 +130,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setDeteccion(null);
     setTarjetaDestino(null);
     setAsignando(null);
+    setTraspasando(null);
     setCreando(null);
     ficheroRef.current = null;
     pendienteRef.current = null;
@@ -245,6 +246,13 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         }
       }
 
+      // Traspasos a otra cuenta propia (P1) · mismo mecanismo que efectivo: el
+      // cargo importado pasa a ser la pata de salida y nace su espejo en la
+      // cuenta destino. Así netea en el saldo y sale del gráfico (P2/P4).
+      for (const { movementId, cuentaDestinoId } of movimientosATraspaso(lineas, decisiones)) {
+        await convertirEnTraspaso(movementId, cuentaDestinoId);
+      }
+
       // §4.7 · el fichero se archiva por cuenta y periodo (traga sus errores).
       if (ficheroRef.current) {
         await archivarExtracto(
@@ -289,6 +297,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         creados: new Set(prev.creados),
         recuperados: new Set(prev.recuperados),
         aEfectivo: new Set(prev.aEfectivo),
+        aTraspaso: new Map(prev.aTraspaso),
       };
       mut(d);
       return d;
@@ -298,6 +307,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     conDecisiones((d) => {
       d.ignorados.add(movementId);
       d.asignados.delete(movementId);
+      d.aTraspaso.delete(movementId);
     });
 
   const recuperar = (movementId: number) =>
@@ -311,6 +321,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       d.asignados.set(movementId, eventoId);
       d.ignorados.delete(movementId);
       d.aEfectivo.delete(movementId);
+      d.aTraspaso.delete(movementId);
     });
 
   // "Es efectivo" · el cargo pasa a un traspaso a Efectivo al guardar (sacar del
@@ -320,10 +331,24 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       d.aEfectivo.add(movementId);
       d.ignorados.delete(movementId);
       d.asignados.delete(movementId);
+      d.aTraspaso.delete(movementId);
     });
 
   const desmarcarEfectivo = (movementId: number) =>
     conDecisiones((d) => d.aEfectivo.delete(movementId));
+
+  // "Es traspaso" · el cargo pasa a un traspaso a la cuenta destino al guardar
+  // (P1) · el dinero no se gasta, cambia de sitio.
+  const marcarTraspaso = (movementId: number, cuentaDestinoId: number) =>
+    conDecisiones((d) => {
+      d.aTraspaso.set(movementId, cuentaDestinoId);
+      d.ignorados.delete(movementId);
+      d.asignados.delete(movementId);
+      d.aEfectivo.delete(movementId);
+    });
+
+  const desmarcarTraspaso = (movementId: number) =>
+    conDecisiones((d) => d.aTraspaso.delete(movementId));
 
   /**
    * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto. El
@@ -602,119 +627,30 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 </div>
               ))}
 
-              {visibles.map((l) => {
-                const v = veredictoEfectivo(l, decisiones);
-                const asignado = decisiones.asignados.get(l.movementId);
-                const previstoMostrado =
-                  asignado != null
-                    ? previstos.find((p) => p.id === asignado)
-                    : undefined;
-                // Candidatos para asignar · una entrada por serie, por cercanía.
-                const candidatos = candidatosDeLinea(
-                  { fecha: l.fecha, importe: l.importe },
-                  previstos,
-                );
-                return (
-                  <div key={l.movementId} className={styles.linea}>
-                    <div className={styles.lineaTop}>
-                      {/* El texto LITERAL del banco · §4.7. */}
-                      <div className={styles.lineaTexto}>{l.textoBanco}</div>
-                      <div className={styles.lineaImporte}>{importeConSigno(l.importe)}</div>
-                    </div>
-                    <div className={styles.lineaFecha}>{fechaLarga(l.fecha)}</div>
-
-                    {decisiones.aEfectivo.has(l.movementId) ? (
-                      <div className={styles.veredicto}>
-                        <Icons.Check size={13} aria-hidden="true" />
-                        <span>
-                          pasa a {cuentaEfectivo?.alias || 'Efectivo'} · el dinero no se gasta,
-                          cambia de sitio
-                        </span>
-                        <button
-                          type="button"
-                          className={styles.btnLinea}
-                          onClick={() => desmarcarEfectivo(l.movementId)}
-                        >
-                          Deshacer
-                        </button>
-                      </div>
-                    ) : v === 'cuadra' ? (
-                      <div className={styles.veredicto}>
-                        <Icons.Check size={13} aria-hidden="true" />
-                        <span>
-                          cuadra con{' '}
-                          {previstoMostrado
-                            ? nombrarPrevisto(previstoMostrado)
-                            : l.previsto?.descripcion
-                              ?? (l.confirmado ? 'lo que ya tenías anotado' : 'un previsto')}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className={styles.acciones}>
-                        {asignando === l.movementId ? (
-                          <select
-                            className={styles.selectPrevisto}
-                            aria-label={`Previsto para ${l.textoBanco}`}
-                            defaultValue=""
-                            onChange={(e) => {
-                              const id = Number(e.target.value);
-                              if (id) asignar(l.movementId, id);
-                              setAsignando(null);
-                            }}
-                          >
-                            <option value="">Elige un previsto…</option>
-                            {candidatos.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {nombrarPrevistoPorId(c.id, c.descripcion)} · {importeConSigno(c.importe)}
-                                {c.exacto ? '' : ' · no cuadra'}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <>
-                            {/* Asignar solo si hay algún previsto que pueda ser. */}
-                            {candidatos.length > 0 && (
-                              <button
-                                type="button"
-                                className={styles.btnLinea}
-                                onClick={() => setAsignando(l.movementId)}
-                              >
-                                Asignar a un previsto
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className={styles.btnLinea}
-                              onClick={() => setCreando(l)}
-                            >
-                              Crear movimiento
-                            </button>
-                            {/* Retirada de cajero · se PROPONE pasarla a Efectivo
-                                (no es gasto, el dinero cambia de sitio), no se adivina. */}
-                            {cuentaEfectivo?.id != null &&
-                              pareceRetiradaDeCajero(l.textoBanco, l.importe) && (
-                                <button
-                                  type="button"
-                                  className={styles.btnLinea}
-                                  onClick={() => marcarEfectivo(l.movementId)}
-                                >
-                                  Es efectivo
-                                </button>
-                              )}
-                            <button
-                              type="button"
-                              className={styles.btnLinea}
-                              onClick={() => ignorar(l.movementId)}
-                            >
-                              Ignorar
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {visibles.map((l) => (
+                <LineaExtractoItem
+                  key={l.movementId}
+                  linea={l}
+                  decisiones={decisiones}
+                  previstos={previstos}
+                  cuentas={cuentas}
+                  cuentaActivaId={cuentaActiva?.id}
+                  cuentaEfectivo={cuentaEfectivo}
+                  asignando={asignando}
+                  setAsignando={setAsignando}
+                  traspasando={traspasando}
+                  setTraspasando={setTraspasando}
+                  asignar={asignar}
+                  ignorar={ignorar}
+                  marcarEfectivo={marcarEfectivo}
+                  desmarcarEfectivo={desmarcarEfectivo}
+                  marcarTraspaso={marcarTraspaso}
+                  desmarcarTraspaso={desmarcarTraspaso}
+                  abrirCrear={setCreando}
+                  nombrarPrevisto={nombrarPrevisto}
+                  nombrarPrevistoPorId={nombrarPrevistoPorId}
+                />
+              ))}
 
               {/* Ignoradas · agrupadas y plegadas (D1). */}
               {ignoradas.length > 0 && (

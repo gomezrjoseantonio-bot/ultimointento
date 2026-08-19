@@ -76,6 +76,16 @@ export interface DecisionesSesion {
    * nace su pata espejo. El dinero no se ha gastado, ha cambiado de sitio.
    */
   aEfectivo: Set<number>;
+  /**
+   * movementId → cuenta destino · el usuario ha marcado esta línea como un
+   * TRASPASO a otra cuenta suya (P1/P3). Es el caso general de `aEfectivo`: al
+   * importar, un traspaso entra como un cargo normal y sin esto se cuenta como
+   * gasto (hunde el saldo y lo cuela en el gráfico). Al guardar, ese cargo se
+   * convierte en la pata de salida (`convertirEnTraspaso`) y nace su espejo en
+   * la cuenta destino. Solo cargos (importe < 0): la salida de un traspaso es un
+   * cargo, y la pata de entrada del otro extracto se concilia aparte (§4.4).
+   */
+  aTraspaso: Map<number, number>;
 }
 
 export function decisionesVacias(): DecisionesSesion {
@@ -85,6 +95,7 @@ export function decisionesVacias(): DecisionesSesion {
     creados: new Set(),
     recuperados: new Set(),
     aEfectivo: new Set(),
+    aTraspaso: new Map(),
   };
 }
 
@@ -220,6 +231,10 @@ export function veredictoEfectivo(
   // efectivo. Por eso NO cuenta como pendiente y su movimiento sobrevive a
   // `consolidarSesion`, que es lo contrario de lo que pasa con lo sin resolver.
   if (decisiones.aEfectivo.has(linea.movementId)) return 'cuadra';
+  // Marcada como traspaso a otra cuenta · igual que efectivo: el cargo se queda
+  // (convertido en la pata de salida), no cuenta como pendiente y sobrevive a
+  // `consolidarSesion`.
+  if (decisiones.aTraspaso.has(linea.movementId)) return 'cuadra';
 
   // Recuperar una ignorada de una importación anterior la devuelve al flujo,
   // no la da por buena: vuelve a "a resolver" salvo que además cuadre sola.
@@ -280,10 +295,11 @@ export function payloadDeConfirmacion(
     }
     if (v !== 'cuadra') continue;
 
-    // Marcada como efectivo, NO se empareja con ningún previsto aunque hubiera
-    // cuadrado sola: el usuario ha dicho qué es esa línea, y confirmarle además
-    // un previsto lo daría por pagado con el mismo dinero dos veces.
+    // Marcada como efectivo o traspaso, NO se empareja con ningún previsto
+    // aunque hubiera cuadrado sola: el usuario ha dicho qué es esa línea, y
+    // confirmarle además un previsto lo daría por pagado dos veces.
     if (decisiones.aEfectivo.has(l.movementId)) continue;
+    if (decisiones.aTraspaso.has(l.movementId)) continue;
 
     // Una asignación a mano gana al emparejamiento automático: es el usuario
     // corrigiendo, que es justo lo que la pantalla le ofrece hacer.
@@ -384,4 +400,26 @@ export function movimientosAEfectivo(
     .filter((l) => decisiones.aEfectivo.has(l.movementId))
     .filter((l) => !decisiones.ignorados.has(l.movementId))
     .map((l) => l.movementId);
+}
+
+/**
+ * Líneas que el usuario ha marcado como TRASPASO a otra cuenta suya, con la
+ * cuenta destino elegida.
+ *
+ * Como en efectivo, se transforman al guardar (`convertirEnTraspaso`): el cargo
+ * pasa a ser la pata de salida y nace la de entrada en la cuenta destino. Se
+ * devuelve el par (movementId, cuentaDestinoId) porque el movimiento ya existe
+ * y lo que hace falta es transformarlo.
+ */
+export function movimientosATraspaso(
+  lineas: LineaExtracto[],
+  decisiones: DecisionesSesion
+): Array<{ movementId: number; cuentaDestinoId: number }> {
+  return lineas
+    .filter((l) => decisiones.aTraspaso.has(l.movementId))
+    .filter((l) => !decisiones.ignorados.has(l.movementId))
+    .map((l) => ({
+      movementId: l.movementId,
+      cuentaDestinoId: decisiones.aTraspaso.get(l.movementId) as number,
+    }));
 }
