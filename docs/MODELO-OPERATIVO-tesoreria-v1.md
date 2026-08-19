@@ -405,13 +405,13 @@ es el concepto**. Todo **editable** (se pueden añadir subtipos en cualquier Tip
 | Gestión | Agencia alquiler · Gestoría · Asesoría · Comisión de plataformas · Consumibles de bienvenida |
 | Limpieza | Zonas comunes · Integral · Lavandería |
 | Supermercado | *(sin subtipo)* |
-| Transporte | Renting · Combustible |
+| Transporte | Combustible |
 | Farmacia | *(sin subtipo)* |
 | Suscripciones | Gimnasio · Educación · ONG · Streaming · Cloud |
 | Ocio | *(sin subtipo)* |
 | Viaje | *(sin subtipo)* |
 | Restaurante | *(sin subtipo)* |
-| Alquiler | Vivienda *(personal — quien vive de alquiler)* |
+| Alquiler | Vivienda · Vehículo *(personal — renting de coche incluido)* |
 | Hipoteca / préstamo | Cuota *(el interés es DERIVADO, no un subtipo)* |
 | Otros | *(editable y trazable)* |
 
