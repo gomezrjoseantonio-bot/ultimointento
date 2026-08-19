@@ -581,7 +581,7 @@ respalda y puede completar datos fiscales —nº factura, base, IVA—.)
 | **P4** | El **gráfico** cuenta traspasos/transferencias internas como **gasto real** | RESUELTO vía P1 · el gráfico ya excluía `isTransferKey`; el traspaso ya lo lleva |
 | **P8** | La **taxonomía de familias** no sirve ("familia Salud no aporta"); rediseñar qué se clasifica y para qué (fiscal/inmueble/personal) | ABIERTO · prioridad 1 (bloquea P6/P7) |
 | **P5** | El **nombre del pagador** no desempata importes iguales (no está en el campo del emparejador) | ABIERTO · prioridad 2 |
-| **P6** | La **familia** que clasificas no se muestra en la fila (Bizum/pagador la ocultan) | ABIERTO · prioridad 2 (tras P8) |
+| **P6** | La **familia** que clasificas no se muestra en la fila (Bizum/pagador la ocultan) | RESUELTO · el subtítulo enseña la clasificación siempre (Bizum/pagador/externa) |
 | P7 | Los apuntes **ya conciliados** antes de la herencia no muestran su categoría (pasada retroactiva) | ABIERTO · prioridad 3 (tras P8) |
 | **P9** | El **semillado** al poner un inmueble en alquiler no tiene flujo fijado (dónde se marca el tipo, cuándo se dispara) | ABIERTO · prioridad 2 (va con P8) |
 | ✔ | Dos cargos idénticos del mismo extracto se colapsaban en uno | RESUELTO (PR #1752) |
