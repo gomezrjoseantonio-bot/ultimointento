@@ -479,7 +479,15 @@ completa (importe, periodicidad, cuenta) tras tu confirmación.
 de inmueble te faltan o sobran? ¿Y en personal, con este nivel te basta o quieres
 más/menos cajas? Con tu OK, F1 es cerrar esta tabla.
 
-### 9 sexies · Fiscalidad DERIVADA · casilla + prorrateo (siguiente ladrillo)
+### 9 sexies · Fiscalidad DERIVADA · casilla + prorrateo — **DIFERIDO (módulo aparte)**
+
+> **Decisión de Jose (19 ago): la fiscalidad NO se trata aquí.** La tesorería
+> maneja gastos e ingresos (imputados a Personal / Inmueble:X) y el saldo; la
+> **fiscalidad es un módulo propio**, de extremo a extremo, con su cierre anual —
+> y **ya tiene muchísimo código hecho** (dos motores, ver más abajo). Meterla
+> ahora rompería la mesa limpia de la tesorería. Esta sección se queda como
+> **notas de traspaso** para ese trabajo futuro: su **única entrada** es lo que la
+> tesorería ya guarda (concepto + imputación). No se pierde nada.
 
 Se **deriva**, no se guarda en el gasto. Números de casilla tomados del código
 actual (no inventados). Solo aplica cuando el gasto es de un **inmueble alquilado**.
