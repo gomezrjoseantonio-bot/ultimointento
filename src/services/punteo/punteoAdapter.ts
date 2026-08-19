@@ -14,6 +14,7 @@ import {
   TRANSFER_KEYS,
 } from '../categoryCatalog';
 import { esMovimientoEditable } from '../altaMovimientoService';
+import { conceptoPorId } from '../conceptos/catalogoConceptos';
 import {
   estadoDeEvento,
   estadoDeMovimiento,
@@ -111,10 +112,16 @@ const DICE_OTRA_COSA_EL_EVENTO: Record<string, string> = {
  * gas. `undefined` si no eligió nada.
  */
 function etiquetaDeClasificacion(
-  m: Pick<Movement, 'categoryKey' | 'subtypeKey'>
+  m: Pick<Movement, 'categoryKey' | 'subtypeKey' | 'conceptoId'>
 ): string | undefined {
+  // El concepto FINO manda: "Limpieza" y "Gestoría" colapsan las dos en la
+  // categoría `servicio_inmueble`, así que sin él la fila solo diría "Servicios"
+  // (F2). Detrás, el subtipo (suministros) y por último la categoría gorda.
   return (
-    getSubtypeByKey(m.subtypeKey)?.label ?? getCategoryByKey(m.categoryKey)?.label ?? undefined
+    conceptoPorId(m.conceptoId)?.label ??
+    getSubtypeByKey(m.subtypeKey)?.label ??
+    getCategoryByKey(m.categoryKey)?.label ??
+    undefined
   );
 }
 
@@ -454,6 +461,7 @@ function piezasDeMovimiento(
     Movement,
     | 'categoryKey'
     | 'subtypeKey'
+    | 'conceptoId'
     | 'category'
     | 'description'
     | 'providerName'
@@ -547,5 +555,6 @@ export function movimientoAItem(
     importe: m.amount,
     categoryKey: m.categoryKey,
     subtypeKey: m.subtypeKey,
+    conceptoId: m.conceptoId,
   };
 }

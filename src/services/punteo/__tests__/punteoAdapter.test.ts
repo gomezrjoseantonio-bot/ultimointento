@@ -454,6 +454,20 @@ describe('un gasto anotado a mano enseña su clasificación', () => {
     expect(movimientoAItem(gasto({ id: 3 })).origen).toBe('Suministro');
   });
 
+  // F2 · el concepto FINO manda: "Limpieza" y "Gestoría" colapsan las dos en la
+  // categoría `servicio_inmueble`. Sin guardar el concepto, la fila decía
+  // "Servicios" para las dos; con él, cada una dice lo suyo.
+  it('con concepto fino guardado, enseña el subtipo concreto, no la categoría gorda', () => {
+    const limpieza = movimientoAItem(
+      gasto({ id: 8, description: 'Recibo', categoryKey: 'servicio_inmueble', subtypeKey: undefined, conceptoId: 'limpieza' })
+    );
+    const gestoria = movimientoAItem(
+      gasto({ id: 9, description: 'Recibo', categoryKey: 'servicio_inmueble', subtypeKey: undefined, conceptoId: 'gestoria' })
+    );
+    expect(limpieza.detalle).toBe('Limpieza');
+    expect(gestoria.detalle).toBe('Gestoría');
+  });
+
   it('sin clasificar sigue siendo un gasto a secas', () => {
     const it = movimientoAItem(
       gasto({ id: 4, categoryKey: undefined, subtypeKey: undefined, description: 'Compra' })

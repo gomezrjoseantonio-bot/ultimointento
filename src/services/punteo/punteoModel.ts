@@ -171,6 +171,8 @@ export interface ItemPunteo {
    */
   categoryKey?: string;
   subtypeKey?: string;
+  /** Concepto fino guardado (F2) · para reabrir la ficha en el subtipo exacto. */
+  conceptoId?: string;
 }
 
 export interface DiscrepanciaPunteo {

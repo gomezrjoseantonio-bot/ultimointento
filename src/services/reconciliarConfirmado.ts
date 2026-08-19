@@ -54,6 +54,7 @@ export async function aplicarReconciliacionConfirmado(
       ? {
           categoryKey: confirmado.categoryKey,
           subtypeKey: confirmado.subtypeKey,
+          conceptoId: confirmado.conceptoId,
           inmuebleId: confirmado.inmuebleId,
           ambito: confirmado.ambito,
           ...(confirmado.tarjetaId != null ? { tarjetaId: confirmado.tarjetaId } : {}),

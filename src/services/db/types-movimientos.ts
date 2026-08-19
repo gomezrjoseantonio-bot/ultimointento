@@ -153,6 +153,11 @@ export interface Movement {
   // (mismo esquema que TreasuryEvent para propagación 1:1).
   categoryKey?: string;
   subtypeKey?: string;
+  // Concepto FINO del catálogo unificado (`conceptos/`), el que eligió el usuario
+  // (p.ej. "limpieza" vs "gestoría", que colapsan las dos en categoryKey
+  // `servicio_inmueble`). Se guarda para que la fila enseñe el subtipo concreto y
+  // sobreviva al conciliar. No lleva fiscalidad: la casilla se deriva aparte.
+  conceptoId?: string;
   transferMetadata?: {
     targetAccountId: number;
     pairEventId?: number;
