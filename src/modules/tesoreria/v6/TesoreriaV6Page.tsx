@@ -25,7 +25,7 @@ import {
   serieDiariaConsolidada,
 } from '../../../services/tesoreriaV6Metrics';
 import GraficoTreintaDias from './GraficoTreintaDias';
-import { colorDeBanco } from './bancoColores';
+import { colorDeBanco, SIN_COLOR } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { importeConSigno, importeSaldo, nombreMes } from './formatoV6';
 import HeroTesoreria from './HeroTesoreria';
@@ -42,7 +42,8 @@ import TesoreriaMovil from './TesoreriaMovil';
 import { useEsMovil } from './useEsMovil';
 import CuentaWizard from '../../../components/cuenta/CuentaWizard';
 import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
-import { listarTarjetas } from '../../../services/tarjetasService';
+import { eliminarTarjeta, listarTarjetas } from '../../../services/tarjetasService';
+import TarjetasCard, { type FilaTarjeta } from './TarjetasCard';
 import { regenerarRecibosDeTarjeta } from '../../../services/personal/compromisosRecurrentesService';
 import { confirmarPieza, despuntearPieza, descartarPieza } from '../../../services/personal/puntearPieza';
 import {
@@ -50,8 +51,12 @@ import {
   reconciliarDuplicadosExistentes,
 } from '../../../services/reconciliarDuplicadosExistentes';
 import type { Tarjeta } from '../../../types/tarjetas';
-import { describirTarjeta } from './textoTarjeta';
-import { gastoDeMovimientos, gastoPorTarjeta, gastoAbiertoPorTarjeta } from '../../../services/gastoPorTarjeta';
+import {
+  gastadoEnElMes,
+  gastoDeMovimientos,
+  gastoPorTarjeta,
+  gastoAbiertoPorTarjeta,
+} from '../../../services/gastoPorTarjeta';
 import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
@@ -111,6 +116,9 @@ const TesoreriaV6Page: React.FC = () => {
   /** V9 · baja de cuenta desde el menú "⋯" de la tabla. */
   const [bajaCuenta, setBajaCuenta] = useState<Account | null>(null);
   const [bajando, setBajando] = useState(false);
+  /** V9 · eliminar tarjeta desde el "⋯" de su card. */
+  const [bajaTarjeta, setBajaTarjeta] = useState<Tarjeta | null>(null);
+  const [borrandoTarjeta, setBorrandoTarjeta] = useState(false);
   /**
    * Qué cuenta está abierta lo dice la URL, no un estado local.
    *
@@ -167,6 +175,7 @@ const TesoreriaV6Page: React.FC = () => {
   const ahora = useMemo(() => new Date(`${hoy}T12:00:00`), [hoy]);
   const year = ahora.getFullYear();
   const month0 = ahora.getMonth();
+  const mesActual = nombreMes(month0);
 
   // ── Carga · una sola lectura, todo lo demás se deriva ────────────────────
   const recargar = useCallback(async () => {
@@ -354,6 +363,33 @@ const TesoreriaV6Page: React.FC = () => {
   );
 
   /**
+   * V9 · filas de "Mis tarjetas" · SOLO las activas (spec: las de baja no se
+   * pintan). Consumo: crédito = ciclo abierto vivo; débito = gastado en el
+   * mes natural (`gastadoEnElMes` · antes era 0 estructural).
+   */
+  const filasTarjetas = useMemo<FilaTarjeta[]>(
+    () =>
+      tarjetas
+        .filter((t): t is Tarjeta & { id: number } => t.id != null && t.activa !== false)
+        .map((t) => {
+          const liquida = cuentasVivas.find((c) => c.id === t.cuentaLiquidacionId);
+          const esCredito = t.modalidad === 'credito';
+          return {
+            tarjeta: t,
+            sub:
+              t.emisora ||
+              (liquida ? `liquida en ${liquida.alias || liquida.banco?.name || 'su cuenta'}` : ''),
+            color: liquida ? colorDeBanco(liquida) : SIN_COLOR,
+            consumo: esCredito
+              ? gastoAbierto.get(t.id) ?? 0
+              : gastadoEnElMes(estado.movimientos, t, hoy),
+            etiqueta: esCredito ? 'consumido · ciclo' : `gastado · ${mesActual}`,
+          };
+        }),
+    [tarjetas, cuentasVivas, gastoAbierto, estado.movimientos, hoy, mesActual]
+  );
+
+  /**
    * V9 · las filas de la tabla "Mis cuentas". Cada número sale de la capa
    * canónica: saldo vivo, `cierrePorCuenta` y `estadoDeCuenta`. La fila Total
    * de la tabla pinta los del hero (`kpis`), no una suma propia.
@@ -432,6 +468,29 @@ const TesoreriaV6Page: React.FC = () => {
       setBajando(false);
     }
   }, [bajaCuenta, bajando, trasEscribir]);
+
+  /**
+   * V9 · eliminar una tarjeta desde su "⋯". `eliminarTarjeta` es borrado duro
+   * del registro (el saneo referencial es tarea aparte · fuera de alcance);
+   * los recibos se regeneran en la recarga.
+   */
+  const confirmarBajaTarjeta = useCallback(async () => {
+    if (bajaTarjeta?.id == null || borrandoTarjeta) return;
+    setBorrandoTarjeta(true);
+    try {
+      await eliminarTarjeta(bajaTarjeta.id);
+      showToastV5('Tarjeta eliminada', 'success');
+      setBajaTarjeta(null);
+      await recargarTarjetas();
+      await trasEscribir();
+    } catch (err) {
+      console.error('[TesoreriaV6] no se pudo eliminar la tarjeta', err);
+      showToastV5('No se pudo eliminar la tarjeta', 'error');
+      setBajaTarjeta(null);
+    } finally {
+      setBorrandoTarjeta(false);
+    }
+  }, [bajaTarjeta, borrandoTarjeta, recargarTarjetas, trasEscribir]);
 
   /** Confirmar un previsto por id · lo usan la lista de punteo y el móvil. */
   const confirmarPrevisto = useCallback(
@@ -717,7 +776,6 @@ const TesoreriaV6Page: React.FC = () => {
   if (cargando) return null;
 
   const inmuebles = estado.inmuebles;
-  const mesActual = nombreMes(month0);
 
   /**
    * De qué inmueble es cada cargo.
@@ -830,54 +888,15 @@ const TesoreriaV6Page: React.FC = () => {
         onAnadir={() => setFichaCuenta({ cuenta: null })}
       />
 
-      {/* ── VOCABULARIO §3 · Tarjetas ────────────────────────────────────
-          Van debajo de las cuentas y NO dentro del carrusel: una tarjeta no
-          tiene saldo, tiene un ciclo. Meterla entre las cuentas es lo que
-          llevaba a creer que era una cuenta más. */}
-      <section className={styles.sec}>
-        <div className={styles.secHd}>
-          <div>
-            <div className={styles.secK}>Mis tarjetas</div>
-            <div className={styles.secT}>
-              lo que gastas con una de crédito sale entero el día de cargo, en su cuenta
-            </div>
-          </div>
-          <button
-            type="button"
-            className={styles.secAdd}
-            onClick={() => setFichaTarjeta({ tarjeta: null })}
-          >
-            <Icons.Plus size={14} strokeWidth={2} /> Añadir tarjeta
-          </button>
-        </div>
-
-        {tarjetas.length === 0 ? (
-          <div className={styles.tjVacio}>
-            Todavía no has dado de alta ninguna tarjeta.
-          </div>
-        ) : (
-          <div className={styles.tjLista}>
-            {tarjetas.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={styles.tjItem}
-                onClick={() => setTarjetaAbierta(t)}
-              >
-                <span className={styles.tjAlias}>{t.alias}</span>
-                <span className={styles.tjSub}>{describirTarjeta(t, cuentasVivas)}</span>
-                {/* §3.5 · lo que llevas gastado con ella en el periodo que aún
-                    no ha cerrado · es una cifra VIVA, crece con cada compra. */}
-                {gastoAbierto.get(t.id!) != null && (
-                  <span className={styles.tjGasto}>
-                    Llevas {importeSaldo(gastoAbierto.get(t.id!)!)} este periodo
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* ── V9 · card "Mis tarjetas" · una tarjeta no tiene saldo, tiene un
+          ciclo — su cifra es el consumo, no un balance. */}
+      <TarjetasCard
+        filas={filasTarjetas}
+        onDetalle={(t) => setTarjetaAbierta(t)}
+        onEditar={(t) => setFichaTarjeta({ tarjeta: t })}
+        onEliminar={(t) => setBajaTarjeta(t)}
+        onAnadir={() => setFichaTarjeta({ tarjeta: null })}
+      />
 
       {/* La rejilla de 6 meses (§4.3) deja el lienzo (mockup V9): la previsión
           mes a mes y día a día vive ahora detrás de "Previsión · meses y días"
@@ -1058,6 +1077,19 @@ const TesoreriaV6Page: React.FC = () => {
         La cuenta deja de salir en Tesorería. <b>No se borra nada</b>: su histórico de
         movimientos se conserva y la baja se puede deshacer desde su ficha. Con
         movimientos pendientes, la baja se bloquea hasta confirmarlos o descartarlos.
+      </ConfirmaV6>
+
+      {/* V9 · eliminar tarjeta desde el "⋯" de su card. */}
+      <ConfirmaV6
+        abierto={bajaTarjeta != null}
+        titulo={`Eliminar ${bajaTarjeta?.alias ?? 'la tarjeta'}`}
+        confirmar="Eliminar tarjeta"
+        trabajando={borrandoTarjeta}
+        onConfirmar={() => void confirmarBajaTarjeta()}
+        onCancelar={() => setBajaTarjeta(null)}
+      >
+        La tarjeta desaparece de Tesorería. Sus compras y recibos ya anotados{' '}
+        <b>no se borran</b>: siguen en sus cuentas y movimientos.
       </ConfirmaV6>
 
       <ToastHost />
