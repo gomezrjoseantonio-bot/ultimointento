@@ -340,6 +340,59 @@ describe('un Bizum dice QUIÉN, no cómo', () => {
     const it = bizum({ id: 2, counterparty: undefined, description: 'BIZUM 00218832' });
     expect(it.concepto).toBe('BIZUM 00218832');
   });
+
+  // P6 · si el Bizum está clasificado, el subtítulo enseña TU clasificación en
+  // vez de "Bizum": la persona arriba, lo que es (según tú) debajo. Antes se
+  // perdía y "definías y no lo veías".
+  it('clasificado, el subtítulo enseña la clasificación, no "Bizum"', () => {
+    const it = bizum({ id: 3, categoryKey: 'suministro_inmueble', subtypeKey: 'gas' });
+    expect(it.concepto).toBe('Adnan Parwez');
+    expect(it.detalle).toBe('Gas');
+  });
+});
+
+// P6 · "defino y no lo veo": con nombre de pagador o transferencia externa, la
+// clasificación del usuario se descartaba. Ahora baja al subtítulo siempre.
+describe('P6 · la clasificación se ve aunque haya pagador o sea externa', () => {
+  const base = (over: Partial<Movement> & { id: number }): Movement & { id: number } =>
+    ({
+      accountId: 1,
+      date: '2026-08-03',
+      amount: -48,
+      status: 'pendiente',
+      unifiedStatus: 'no_planificado',
+      source: 'import',
+      category: { tipo: 'Gastos' },
+      type: 'Gasto',
+      origin: 'CSV',
+      movementState: 'Confirmado',
+      ambito: 'INMUEBLE',
+      statusConciliacion: 'sin_match',
+      createdAt: '',
+      updatedAt: '',
+      categoryKey: 'suministro_inmueble',
+      subtypeKey: 'gas',
+      ...over,
+    }) as Movement & { id: number };
+
+  it('con nombre de pagador, la clasificación baja al subtítulo', () => {
+    const it = movimientoAItem(base({ id: 1, providerName: 'Iberdrola', description: 'RECIBO IBERDROLA' }));
+    expect(it.detalle).toBe('Gas');
+  });
+
+  it('una transferencia externa clasificada enseña la clasificación', () => {
+    const it = movimientoAItem(
+      base({ id: 2, type: 'Transferencia', description: 'TRANSFERENCIA A TERCERO' })
+    );
+    expect(it.detalle).toBe('Gas');
+  });
+
+  it('sin clasificar, la transferencia externa sigue diciendo "Transferencia externa"', () => {
+    const it = movimientoAItem(
+      base({ id: 3, type: 'Transferencia', categoryKey: undefined, subtypeKey: undefined })
+    );
+    expect(it.detalle).toBe('Transferencia externa');
+  });
 });
 
 // ============================================================================

@@ -468,32 +468,33 @@ function piezasDeMovimiento(
   const traspaso = piezasDeTransferencia(m, aliasCuenta);
   if (traspaso) return traspaso;
 
+  // §9 · la clasificación del usuario se enseña SIEMPRE que exista, en el
+  // subtítulo · también en Bizums, transferencias externas y líneas con nombre
+  // de pagador. Antes se descartaba en esos casos (Bizum/externa salían antes; y
+  // con proveedor se ponía a `undefined`) y por eso "definías y no lo veías"
+  // (P6). El título sigue siendo el texto del banco; el subtítulo, tu familia.
+  const clasificacion = etiquetaDeClasificacion(m);
+
   // §Bizum · arriba QUIÉN, abajo qué es · la misma regla que un recibo.
   //
   // El texto del banco es "BIZUM DE ADNAN PARWEZ" de un tirón: con él de título
   // la fila grita la forma de pago y esconde a la persona, que es lo único que
   // permite reconocer el cobro. Sin nombre leído se deja el texto tal cual, que
-  // algo dice.
+  // algo dice. El subtítulo enseña tu clasificación si la hay; si no, "Bizum".
   if (m.paymentMethod === 'Bizum') {
-    return m.counterparty
-      ? { concepto: normalizarNombre(m.counterparty), detalle: 'Bizum' }
-      : { concepto: m.description ?? 'Bizum', detalle: undefined };
+    const quien = m.counterparty ? normalizarNombre(m.counterparty) : (m.description ?? 'Bizum');
+    return { concepto: quien, detalle: clasificacion ?? 'Bizum' };
   }
   // Externa · el dinero SÍ se va, y decirlo evita que se confunda con la
-  // interna, que se lee igual de lejos y no significa lo mismo.
+  // interna, que se lee igual de lejos y no significa lo mismo. Tu clasificación
+  // manda en el subtítulo cuando existe.
   if (m.type === 'Transferencia') {
-    return { concepto: m.description ?? '', detalle: 'Transferencia externa' };
+    return { concepto: m.description ?? '', detalle: clasificacion ?? 'Transferencia externa' };
   }
-  // §6.3 · lo que el usuario clasificó SÍ se enseña.
-  //
-  // Un gasto anotado a mano sin proveedor —los hay: el recibo que pagas y ya—
-  // se quedaba con la fila en blanco si tampoco escribías concepto, porque
-  // `piezasDeFila` sólo mira descripción y proveedor. Y con concepto escrito,
-  // la familia elegida no aparecía por ningún lado. Aquí la clasificación es
-  // lo único que hay, así que titula; y si hay concepto, baja al subtítulo,
-  // que es el sitio de la traducción de ATLAS.
-  const clasificacion = m.providerName ? undefined : etiquetaDeClasificacion(m);
-  if (clasificacion) {
+  // §6.3 · sin nombre de pagador, la clasificación es lo único que hay: titula;
+  // y si además hay concepto escrito, baja al subtítulo (el sitio de la
+  // traducción de ATLAS).
+  if (clasificacion && !m.providerName) {
     // Escribir "Gas" de concepto y elegir la familia Gas es lo normal, y
     // entonces la fila decía "Gas · Gas". Repetir la misma palabra no añade
     // nada: se deja una sola vez.
@@ -511,7 +512,9 @@ function piezasDeMovimiento(
     },
     alias
   );
-  return { concepto, detalle };
+  // Con nombre de pagador el título sale del recibo (proveedor); tu
+  // clasificación, si la hay, baja al subtítulo en vez de perderse (P6).
+  return { concepto, detalle: clasificacion ?? detalle };
 }
 
 export function movimientoAItem(
