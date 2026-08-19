@@ -23,7 +23,7 @@
      max-width:1560px}`. El tope de ancho importa tanto como el padding — sin él
      la tira de cuentas y la columna de realidad se estiran en pantallas anchas
      y el bloque deja de leerse como una unidad. */
-  padding: 18px 26px 20px;
+  padding: 12px 26px 14px;
   max-width: 1560px;
   min-width: 0;
 }
@@ -33,38 +33,13 @@
 
 /* ── Cabecera de sección ─────────────────────────────────────────────────── */
 
-.sec {
-  margin-bottom: 32px;
-  padding-bottom: 28px;
-  border-bottom: 1px solid var(--atlas-v5-line);
-}
-/* La última sección no necesita raya ni hueco: debajo no hay nada. */
-.sec:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
-.secHd {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-  margin-bottom: 11px;
-}
-.secK {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--atlas-v5-ink-2);
-}
-.secT {
-  font-size: 12.5px;
-  color: var(--atlas-v5-ink-4);
-  margin-top: 4px;
-}
-/* ── §4.10 · Cómo va {mes} ───────────────────────────────────────────────── */
-
 .rvcard {
-  background: var(--atlas-v5-card);
-  border: 1px solid var(--atlas-v5-line);
-  border-radius: 13px;
-  padding: 18px;
+  /* V9 · embebida en la CardV5 de "Cómo va {mes}" · el contenedor pone el
+     borde y el padding; esto solo aporta las filas. */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   /* Red de última hora: ningún importe se sale de la tarjeta. Las cifras ya
      van con `nowrap` y sus columnas medidas, pero un idioma o un tamaño de
      fuente distintos no deberían poder romper el borde redondeado. */
@@ -78,21 +53,16 @@
   /* Valores del mockup: etiqueta 100px · barra 1fr · % 46px · importe 108px.
      Los míos (62/40/max-content) apretaban la etiqueta y dejaban el importe
      midiendo distinto en cada fila. */
-  grid-template-columns: 100px minmax(0, 1fr) 46px 108px;
+  grid-template-columns: 62px minmax(0, 1fr) 34px 96px;
   align-items: center;
-  gap: 10px;
-  padding: 10px 0;
+  gap: 8px;
+  padding: 7px 0;
 }
 /* El Neto va separado de las dos líneas que lo componen (§4.10). */
 .rvline:last-of-type {
   border-top: 1px solid var(--atlas-v5-line-3);
   padding-top: 16px;
   margin-top: 4px;
-}
-/* Bajo 1180px las dos columnas ya se apilan (.cols), pero el bloque sigue
-   estrecho: ahí la barra estorba más de lo que aporta y cede todo el ancho. */
-@media (max-width: 1320px) {
-  .rvline { grid-template-columns: 84px minmax(0, 1fr) 40px 100px; gap: 8px; }
 }
 /* En móvil las columnas fijas se comían la barra: con la tarjeta a 360 px
    quedaban 76 px de barra, y ahí el importe que va detrás del relleno no tenía
@@ -299,3 +269,41 @@
   cursor: pointer;
 }
 .dupBtn:disabled { opacity: 0.6; cursor: default; }
+
+
+/* ── V9 · fila inferior de tres cards (mockup .row-3b) ──────────────────── */
+
+.row3 {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1.15fr;
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.row3 > * { min-width: 0; }
+
+@media (max-width: 1180px) {
+  .row3 { grid-template-columns: 1fr; }
+}
+
+.comoVa {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.comoVaHd { margin-bottom: 7px; }
+
+.comoVaTitulo {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: -0.01em;
+  color: var(--atlas-v5-ink);
+}
+
+.comoVaSub {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 1px;
+}

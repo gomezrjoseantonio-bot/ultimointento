@@ -14,7 +14,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Icons, ToastHost, showToastV5 } from '../../../design-system/v5';
+import { CardV5, Icons, ToastHost, showToastV5 } from '../../../design-system/v5';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../services/db';
 import { calculateAccountBalanceAtDate, corteParaSaldoVivo } from '../../../services/accountBalanceService';
 import {
@@ -888,37 +888,34 @@ const TesoreriaV6Page: React.FC = () => {
         onAnadir={() => setFichaCuenta({ cuenta: null })}
       />
 
-      {/* ── V9 · card "Mis tarjetas" · una tarjeta no tiene saldo, tiene un
-          ciclo — su cifra es el consumo, no un balance. */}
-      <TarjetasCard
-        filas={filasTarjetas}
-        onDetalle={(t) => setTarjetaAbierta(t)}
-        onEditar={(t) => setFichaTarjeta({ tarjeta: t })}
-        onEliminar={(t) => setBajaTarjeta(t)}
-        onAnadir={() => setFichaTarjeta({ tarjeta: null })}
-      />
+      {/* ── V9 · fila inferior de tres cards (mockup .row-3b) ─────────────
+          La rejilla de 6 meses (§4.3) deja el lienzo: la previsión mes a mes y
+          día a día vive detrás de "Previsión · meses y días" en la tabla, que
+          abre el calendario (§4.9) con su navegación ‹ ›. */}
+      <div className={styles.row3}>
+        {/* Una tarjeta no tiene saldo, tiene un ciclo · su cifra es el consumo. */}
+        <TarjetasCard
+          filas={filasTarjetas}
+          onDetalle={(t) => setTarjetaAbierta(t)}
+          onEditar={(t) => setFichaTarjeta({ tarjeta: t })}
+          onEliminar={(t) => setBajaTarjeta(t)}
+          onAnadir={() => setFichaTarjeta({ tarjeta: null })}
+        />
 
-      {/* La rejilla de 6 meses (§4.3) deja el lienzo (mockup V9): la previsión
-          mes a mes y día a día vive ahora detrás de "Previsión · meses y días"
-          en la tabla, que abre el calendario (§4.9) con su navegación ‹ ›. */}
-      {/* ── §4.10 · Cómo va {mes} ─────────────────────────────────────────── */}
-      <section className={styles.sec}>
-        <div className={styles.secHd}>
-          <div>
-            <div className={styles.secK}>Cómo va {mesActual}</div>
-            <div className={styles.secT}>cuánto llevas de lo previsto para {mesActual}</div>
+        {/* VOCABULARIO §6 quater · cerrar el mes. Tiene que estar AQUÍ, en
+            tesorería: lo que se cierra son previsiones de tesorería, y de un
+            mes cerrado depende que una bonificación se pueda perder. */}
+        <CerrarElMes hoy={hoy} onCambio={trasEscribir} />
+
+        {/* §4.10 · Cómo va {mes} · confirmado frente a lo previsto. */}
+        <CardV5 compact className={styles.comoVa}>
+          <div className={styles.comoVaHd}>
+            <div className={styles.comoVaTitulo}>Cómo va {mesActual}</div>
+            <div className={styles.comoVaSub}>confirmado frente a lo previsto</div>
           </div>
-        </div>
-        <BloqueRealidad realidad={realidad} />
-      </section>
-
-      {/* ── VOCABULARIO §6 quater · cerrar el mes ─────────────────────────
-          Va al final y detrás de lo que viene: mirar hacia delante es el
-          trabajo de todos los días, y cerrar es el de una vez al mes. Pero
-          tiene que estar AQUÍ, en tesorería, porque lo que se cierra son las
-          previsiones de tesorería — y de que un mes esté cerrado depende que
-          una bonificación se pueda perder. */}
-      <CerrarElMes hoy={hoy} onCambio={trasEscribir} />
+          <BloqueRealidad realidad={realidad} />
+        </CardV5>
+      </div>
 
       {/* §4.4 · drawer de cuenta · la bandeja de trabajo */}
       <DrawerCuenta

@@ -21,7 +21,7 @@
   overflow: hidden;
   font-family: var(--atlas-v5-font-ui);
   flex-shrink: 0;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .hero::before {

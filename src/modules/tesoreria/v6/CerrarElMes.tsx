@@ -20,7 +20,7 @@
 // ============================================================================
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Icons } from '../../../design-system/v5';
+import { CardV5, Icons } from '../../../design-system/v5';
 import {
   cerrarMes,
   loQueQuedaAbierto,
@@ -107,18 +107,19 @@ const CerrarElMes: React.FC<Props> = ({ hoy, onCambio }) => {
     [trabajando, recargar, onCambio]
   );
 
-  if (filas.length === 0) return null;
-
   return (
-    <section className={styles.sec}>
+    <CardV5 compact className={styles.card}>
       <div className={styles.hd}>
         <div className={styles.k}>Cerrar el mes</div>
-        <div className={styles.t}>
-          lo que siga previsto cuando cierres un mes se da por no ocurrido · no se borra, y el mes
-          se puede reabrir
-        </div>
+        {/* Copy del spec V9 · la semántica en una línea. */}
+        <div className={styles.t}>lo no confirmado se da por no ocurrido · no se borra · reabrible</div>
       </div>
 
+      {/* V9 · la card no desaparece sin meses: el hueco vacío en la fila de
+          tres desconcierta más que una frase que dice por qué no hay nada. */}
+      {filas.length === 0 ? (
+        <div className={styles.vacio}>no hay meses que cerrar todavía</div>
+      ) : (
       <div className={styles.lista}>
         {filas.map((f) => (
           <div key={f.mes} className={`${styles.fila} ${f.cerradoAt ? styles.filaCerrada : ''}`}>
@@ -171,6 +172,7 @@ const CerrarElMes: React.FC<Props> = ({ hoy, onCambio }) => {
           </div>
         ))}
       </div>
+      )}
 
       {confirmando && (
         <div className={styles.velo} role="dialog" aria-modal="true" aria-label="Cerrar el mes">
@@ -232,7 +234,7 @@ const CerrarElMes: React.FC<Props> = ({ hoy, onCambio }) => {
           </div>
         </div>
       )}
-    </section>
+    </CardV5>
   );
 };
 
