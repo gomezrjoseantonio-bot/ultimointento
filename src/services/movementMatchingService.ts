@@ -44,6 +44,11 @@ const DEFAULT_OPTIONS: Required<MatchOptions> = {
   scoreThreshold: 70,
 };
 
+// Cuánto tiene que sacar el primer candidato al segundo para cuadrar SOLO (en
+// vez de pedir elegir). Es un bonus de nombre completo (descripcion_proveedor o
+// alias_aprendido = 25): quien lleva el nombre gana; un parecido flojo, no.
+const MARGEN_GANADOR_CLARO = 20;
+
 interface ScoredCandidate {
   movementId: number;
   treasuryEventId: number;
@@ -418,6 +423,16 @@ function classify(
       continue;
     }
     list.sort((a, b) => b.score - a.score || a.daysDiff - b.daysDiff);
+    // GANADOR CLARO · con seis habitaciones del mismo importe, la línea del banco
+    // trae el nombre del inquilino y solo UNA previsión casa ese nombre (+25). Si
+    // el primero saca al segundo por un margen de nombre, cuadra con él en vez de
+    // pedir elegir entre seis idénticas; si van pegados (mismo importe y nadie
+    // desempata), sí se ofrece elegir. Sin esto, el empujón del alquiler subía las
+    // seis por encima del umbral y convertía un cuadre limpio en un multiMatch.
+    if (list[0].score - list[1].score >= MARGEN_GANADOR_CLARO) {
+      matches.push(toMatchScore(list[0]));
+      continue;
+    }
     multiMatches.push({
       movementId: movement.id,
       candidates: list.map(toMatchScore),

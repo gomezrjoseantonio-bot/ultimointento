@@ -218,6 +218,29 @@ describe('movementMatchingService.matchBatch', () => {
     expect(result.multiMatches[0].candidates.map(c => c.treasuryEventId).sort()).toEqual([100, 101]);
   });
 
+  it('2d. Seis habitaciones de 395 · la que trae el nombre del inquilino cuadra SOLA (ganador claro)', async () => {
+    // El caso real de Jose: 6 rentas iguales de 395. La línea trae el nombre del
+    // inquilino y solo UNA previsión lo casa (+25). Ese margen la hace cuadrar
+    // sola, sin pedir elegir entre seis idénticas. El empujón del alquiler sube
+    // las seis por encima del umbral, pero el nombre desempata.
+    const stores: FakeStores = {
+      movements: [
+        movement({ id: 1, accountId: 42, date: '2026-04-23', amount: 395, description: 'TRANSFERENCIA DE MIGUEL LORENZO ALQUILER' }),
+      ],
+      treasuryEvents: [
+        event({ id: 100, accountId: 42, type: 'income', amount: 395, predictedDate: '2026-04-22', providerName: 'Miguel Lorenzo' }),
+        event({ id: 101, accountId: 42, type: 'income', amount: 395, predictedDate: '2026-04-22', providerName: 'Otro Uno' }),
+        event({ id: 102, accountId: 42, type: 'income', amount: 395, predictedDate: '2026-04-24', providerName: 'Otro Dos' }),
+      ],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await matchBatch([1]);
+    expect(result.multiMatches).toEqual([]);
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].treasuryEventId).toBe(100);
+  });
+
   it('2c. Un recibo recurrente cuadra con la mensualidad más cercana, no multiMatch', async () => {
     // El caso real del usuario: la previsión mensual del recibo cae lejos de ±5
     // días del cargo, y hay varias mensualidades. Con la ventana ancha + colapso

@@ -349,8 +349,18 @@ export async function confirmDecisions(
       actualDate: movement.date,
       actualAmount: movement.amount,
     });
+    // La línea del banco HEREDA la clasificación de la previsión con la que
+    // cuadra: categoría, familia, ámbito e inmueble. Tú los definiste en el
+    // previsto; la conciliación no debe perderlos y quedarse solo con el texto
+    // en crudo del banco (que sí se conserva como descripción, para cotejar y
+    // para cruzar con la factura). Sin esto, cuadrar un gasto lo dejaba sin
+    // familia y no había forma de cruzarlo luego.
     await db.put('movements', {
       ...movement,
+      ...(event.categoryKey != null ? { categoryKey: event.categoryKey } : {}),
+      ...(event.subtypeKey != null ? { subtypeKey: event.subtypeKey } : {}),
+      ...(event.ambito != null ? { ambito: event.ambito } : {}),
+      ...(event.inmuebleId != null ? { inmuebleId: String(event.inmuebleId) } : {}),
       unifiedStatus: 'conciliado',
       statusConciliacion: 'match_manual',
       updatedAt: now,

@@ -320,6 +320,13 @@ describe('bankStatementOrchestrator', () => {
     expect(stores.movements.find(m => m.id === 3)?.unifiedStatus).toBe('conciliado');
     expect(stores.movements.find(m => m.id === 4)?.unifiedStatus).toBe('no_planificado');
 
+    // La línea del banco HEREDA la clasificación de la previsión con la que
+    // cuadra (categoría + ámbito), no se queda solo con el texto del banco.
+    expect(stores.movements.find(m => m.id === 1)?.categoryKey).toBe('inmueble.alquiler');
+    expect(stores.movements.find(m => m.id === 1)?.ambito).toBe('INMUEBLE');
+    // La descripción del banco se conserva para cotejar y cruzar con la factura.
+    expect(stores.movements.find(m => m.id === 1)?.description).toBe('RENTA 1');
+
     // Learning rule fed at least once for each conciliated movement (matches +
     // suggestion). Excludes movement 4 (ignored) and rejects the contract
     // suggestion path (which deriveCategoryFromAction returns null for).
