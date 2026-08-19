@@ -218,9 +218,34 @@ describe('bankStatementOrchestrator', () => {
     expect(stores.importBatches).toHaveLength(1);
   });
 
+  it('1b. Dos cargos IDÉNTICOS en el mismo extracto entran los DOS (comunidad de dos pisos)', async () => {
+    // Caso real de Jose: el banco lista dos "CDAD PROP … -38,00" del mismo día
+    // (Nº mov 839 y 840). Son dos movimientos reales; la dedup por línea NO debe
+    // colapsarlos. Solo se deduplica contra lo que YA existía de otros lotes.
+    (BankParserService as unknown as jest.Mock).mockImplementationOnce(() => ({
+      parseFile: jest.fn(async () => ({
+        success: true,
+        movements: [
+          { date: new Date('2026-08-05T00:00:00Z'), amount: -38, description: 'CDAD PROP 01B046 000278300002' },
+          { date: new Date('2026-08-05T00:00:00Z'), amount: -38, description: 'CDAD PROP 01B046 000278300002' },
+        ],
+        metadata: {},
+      })),
+    }));
+    (matchBatch as jest.Mock).mockResolvedValueOnce({ matches: [], multiMatches: [], sinMatch: [] });
+    (suggestForUnmatched as jest.Mock).mockResolvedValueOnce(new Map());
+
+    const file = new File(['mock'], 'unicaja.xls');
+    const result = await processFile(file, { accountId: 42 });
+
+    expect(result.movementsInserted).toBe(2);
+    expect(result.duplicatesSkipped).toBe(0);
+    expect(stores.movements.filter(m => m.amount === -38)).toHaveLength(2);
+  });
+
   // V6 · D1 bis · el mismo fichero ya no se reprocesa en silencio: `hashLote`
-  // lo corta ANTES de parsear. La dedup por línea sigue existiendo y es la
-  // segunda red, para cuando el usuario fuerza la reimportación.
+  // lo corta ANTES de parsear. La dedup por línea (contra otros lotes) sigue
+  // siendo la segunda red, para cuando el usuario fuerza la reimportación.
   it('2. processFile con el mismo fichero · se planta antes de insertar nada', async () => {
     const file = new File(['mock'], 'sabadell-extracto.xlsx');
 
