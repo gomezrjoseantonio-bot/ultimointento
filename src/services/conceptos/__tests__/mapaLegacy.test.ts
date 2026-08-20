@@ -18,7 +18,7 @@ import {
   resolverConcepto,
   resolverConceptoPorSubtipoUnico,
 } from '../mapaLegacy';
-import { TIPOS_GASTO_INMUEBLE_V2 } from '../../../modules/inmuebles/wizards/utils/tiposDeGastoInmueble';
+import { TIPOS_GASTO_INMUEBLE_V2 } from './fixtures/baselineInmuebleLegacy';
 import { TIPOS_GASTO_PERSONAL } from '../../../modules/personal/wizards/utils/tiposDeGastoPersonal';
 
 const paresDe = (catalogo: ReadonlyArray<{ id: string; subtipos: ReadonlyArray<{ id: string }> }>) =>

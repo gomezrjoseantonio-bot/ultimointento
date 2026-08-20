@@ -1,12 +1,15 @@
-// CAPA DE PRESENTACIÓN · fuente única del árbol familia → concepto que ELIGE el
-// usuario (alta de gasto del inmueble · ficha de movimiento de Tesorería V6).
-// NO decide el tratamiento fiscal: la casilla AEAT y el store de destino los
-// fija `services/categoryCatalog.ts` (capa de persistencia, vía `categoryKey`).
-// La traducción entre ambas vive en
-// `services/catalogoPresentacionPersistencia.ts` (Tesorería V6 · D3).
+// BASELINE HISTÓRICO CONGELADO · SOLO TESTS (P8c, 20 ago 2026).
+//
+// Esto FUE el 4º catálogo (el árbol familia→concepto del alta de gasto del
+// inmueble). Se retiró del runtime: el alta del inmueble y el semillado de OPEX
+// ya consumen el catálogo unificado (`services/conceptos/`). Pero los tests de
+// equivalencia lo siguen usando como FOTO FIJA contra la que comprobar que el
+// catálogo unificado no ha cambiado en silencio la clasificación fiscal de un
+// gasto de inmueble. No lo importa ningún código de producción; no lo edites
+// para «arreglar» un test —eso taparía justo lo que vigila—.
 
 import { Landmark, Users, Zap, Shield, Briefcase, Wrench, Sparkles, Armchair, CirclePlus } from 'lucide-react';
-import type { TipoGasto, SubtipoGasto } from '../../../shared/components/TipoGastoSelector';
+import type { TipoGasto, SubtipoGasto } from '../../../../modules/shared/components/TipoGastoSelector';
 import type {
   CategoriaGastoCompromiso,
   TipoCompromiso,

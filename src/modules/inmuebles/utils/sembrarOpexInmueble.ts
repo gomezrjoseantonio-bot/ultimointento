@@ -24,11 +24,23 @@ import {
   restarYaDados,
   type ConceptoInmuebleRef,
 } from '../wizards/utils/catalogoModalidadInmueble';
-import { findSubtipoInmueble } from '../wizards/utils/tiposDeGastoInmueble';
 import {
   crearCompromiso,
   listarCompromisos,
 } from '../../../services/personal/compromisosRecurrentesService';
+
+/**
+ * El id de concepto unificado de una ref del catálogo por modalidad · P8c.
+ *
+ * La ref habla en pares legacy `{tipoId, subtipoId}`. La mayoría de subtipoIds ya
+ * SON el id de concepto (luz, gas…), pero tres no (`cuota_ordinaria`, `hogar`,
+ * `impago`), así que el atajo por subtipoId va siempre respaldado por el mapa de
+ * pares. Antes esto tiraba de `tiposDeGastoInmueble` (el 4º catálogo, retirado).
+ */
+function idConceptoDeRef(ref: ConceptoInmuebleRef): string | undefined {
+  if (conceptoPorId(ref.subtipoId)) return ref.subtipoId;
+  return resolverConcepto(ref.tipoId, ref.subtipoId) ?? undefined;
+}
 
 export type Periodicidad = 'mensual' | 'trimestral' | 'anual';
 
@@ -62,7 +74,8 @@ export function refDeCompromiso(
 
 /** Etiqueta legible de un concepto del catálogo de inmueble. */
 export function etiquetaConcepto(ref: ConceptoInmuebleRef): string {
-  return findSubtipoInmueble(ref.tipoId, ref.subtipoId)?.label ?? ref.subtipoId;
+  const id = idConceptoDeRef(ref);
+  return (id ? conceptoPorId(id)?.label : undefined) ?? ref.subtipoId;
 }
 
 /** Periodicidad por defecto sugerida · lo anual es anual, el resto mensual. */
@@ -105,21 +118,18 @@ export function construirSkeletonOpex(
   opts: OpcionesSkeleton,
 ): Omit<CompromisoRecurrente, 'id' | 'createdAt' | 'updatedAt'> {
   const ambito: Ambito = 'inmueble';
-  const idConcepto = conceptoPorId(ref.subtipoId)
-    ? ref.subtipoId
-    : resolverConcepto(ref.tipoId, ref.subtipoId);
+  const idConcepto = idConceptoDeRef(ref);
   const def = idConcepto ? conceptoPorId(idConcepto) : undefined;
   const proyeccion = idConcepto ? proyectar(idConcepto, ambito) : undefined;
   const par = idConcepto ? parLegacyDe(idConcepto, ambito) : undefined;
-  const sub = findSubtipoInmueble(ref.tipoId, ref.subtipoId);
   const estado: CompromisoRecurrente['estado'] = opts.importe > 0 ? 'activo' : 'preparado';
 
   return {
     ambito,
     inmuebleId: opts.inmuebleId,
-    alias: def?.label ?? sub?.label ?? ref.subtipoId,
+    alias: def?.label ?? ref.subtipoId,
     concepto: proyeccion ? idConcepto : undefined,
-    tipo: def?.tipoCompromiso ?? sub?.tipoCompromiso,
+    tipo: def?.tipoCompromiso,
     subtipo: par?.subtipo ?? ref.subtipoId,
     tipoFamilia: par?.tipoFamilia ?? ref.tipoId,
     proveedor: { nombre: '' },
@@ -128,7 +138,7 @@ export function construirSkeletonOpex(
     cuentaCargo: opts.cuentaCargo,
     conceptoBancario: '',
     metodoPago: 'domiciliacion',
-    categoria: proyeccion?.categoria ?? sub?.categoria ?? 'inmueble.otros',
+    categoria: proyeccion?.categoria ?? 'inmueble.otros',
     bolsaPresupuesto: 'inmueble',
     responsable: 'titular',
     fechaInicio: opts.fechaInicio,
