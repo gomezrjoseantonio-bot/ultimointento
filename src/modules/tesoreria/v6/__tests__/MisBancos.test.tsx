@@ -38,8 +38,10 @@ const filaCuenta: FilaCuenta = {
 const filaTarjeta: FilaTarjeta = {
   tarjeta: { id: 7, alias: 'Visa Oro', modalidad: 'credito', activa: true } as Tarjeta,
   sub: 'liquida en Unicaja',
-  consumo: 250,
-  etiqueta: 'consumido · ciclo',
+  gastado: 90,
+  pendiente: 160,
+  total: 250,
+  porConfirmar: 2,
 };
 
 const noop = () => undefined;
@@ -56,6 +58,9 @@ const montar = (over: Partial<React.ComponentProps<typeof MisBancos>> = {}) =>
       onAnadirCuenta={noop}
       onPrevision={noop}
       filasTarjetas={[filaTarjeta]}
+      periodoTarjeta="agosto"
+      tarjetaSeleccionada={null}
+      onSeleccionarTarjeta={noop}
       onAbrirTarjeta={noop}
       onEditarTarjeta={noop}
       onEliminarTarjeta={noop}
@@ -145,7 +150,8 @@ describe('las tarjetas se comportan como las cuentas', () => {
     irA('Tarjetas');
 
     expect(screen.getByRole('button', { name: /Tarjeta/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Consumo/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Gastado/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Gasto agosto/ })).toBeInTheDocument();
     expect(screen.getByText(/Total · 1 tarjeta/)).toBeInTheDocument();
   });
 
@@ -162,5 +168,49 @@ describe('las tarjetas se comportan como las cuentas', () => {
     // "Confirmar movimientos" lleva al cajón de la tarjeta · su punteo.
     fireEvent.click(screen.getByRole('button', { name: /Confirmar movimientos/ }));
     expect(onAbrirTarjeta).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Lo anotado y lo consumido no son lo mismo, y la fila tiene que decirlo: el
+// recibo del ciclo sumaba las compras punteadas y las que no bajo el rótulo
+// "consumido", así que una tarjeta sin puntear nada decía haber consumido
+// todo. Aquí se comprueba que las dos cifras van por separado.
+describe('la tarjeta separa lo gastado de lo que falta por confirmar', () => {
+  it('enseña las dos cifras y su suma, cada una en su columna', () => {
+    montar();
+    irA('Tarjetas');
+
+    // El formateador de la casa omite los decimales cuando son cero. Y con una
+    // sola tarjeta la fila y el pie dicen la misma cifra, de ahí el getAll.
+    expect(screen.getAllByText('90 €').length).toBeGreaterThan(0);  // gastado de verdad
+    expect(screen.getAllByText('160 €').length).toBeGreaterThan(0); // anotado sin puntear
+    expect(screen.getAllByText('250 €').length).toBeGreaterThan(0); // la suma
+    expect(screen.getByText('2 por confirmar')).toBeInTheDocument();
+  });
+
+  it('ninguna columna se llama "consumido"', () => {
+    montar();
+    irA('Tarjetas');
+    expect(screen.queryByText(/consumido/i)).not.toBeInTheDocument();
+  });
+
+  it('el clic en la tarjeta la selecciona · no abre sus compras', () => {
+    const onSeleccionarTarjeta = jest.fn();
+    const onAbrirTarjeta = jest.fn();
+    montar({ onSeleccionarTarjeta, onAbrirTarjeta });
+    irA('Tarjetas');
+
+    fireEvent.click(screen.getByText('Visa Oro'));
+    expect(onSeleccionarTarjeta).toHaveBeenCalledWith(7);
+    expect(onAbrirTarjeta).not.toHaveBeenCalled();
+  });
+
+  it('la seleccionada despliega su día a día debajo', () => {
+    montar({
+      tarjetaSeleccionada: 7,
+      graficoTarjeta: <div>día a día de la tarjeta</div>,
+    });
+    irA('Tarjetas');
+    expect(screen.getByText('día a día de la tarjeta')).toBeInTheDocument();
   });
 });

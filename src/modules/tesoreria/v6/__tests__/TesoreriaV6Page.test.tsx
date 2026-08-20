@@ -268,27 +268,30 @@ describe('las puertas por URL', () => {
     expect(await screen.findByRole('dialog', { name: /Cuenta Sabadell/ })).toBeInTheDocument();
   });
 
-  it('al entrar, la primera cuenta ya enseña su día a día', async () => {
-    // Con el hueco vacío nadie descubre que las filas se abren.
+  it('al entrar, TODAS las cuentas están colapsadas', async () => {
+    // Abrir una por su cuenta decide por el usuario qué mira nada más entrar y
+    // le mete media pantalla de gráfico sin haberlo pedido. La lista entera es
+    // mejor primera pregunta (decisión de Jose).
     montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
     montar();
 
-    expect(await screen.findByText(/Día a día de/)).toBeInTheDocument();
+    await screen.findByText('Sabadell');
+    expect(screen.queryByText(/Día a día de/)).not.toBeInTheDocument();
   });
 
   it('el clic en la fila abre y cierra su día a día · sin abrir el punteo', async () => {
     montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
     montar();
-    await screen.findByText(/Día a día de/);
-
-    // Cerrar tiene que AGUANTAR: la selección por defecto se aplica una vez,
-    // no cada vez que la fila queda cerrada.
-    fireEvent.click(screen.getByText('Sabadell'));
-    await waitFor(() => expect(screen.queryByText(/Día a día de/)).not.toBeInTheDocument());
+    await screen.findByText('Sabadell');
 
     fireEvent.click(screen.getByText('Sabadell'));
     expect(await screen.findByText(/Día a día de/)).toBeInTheDocument();
-    // Y mirar no es tocar: el punteo sigue cerrado.
+
+    // Y cerrar tiene que AGUANTAR: nada vuelve a abrirla por su cuenta.
+    fireEvent.click(screen.getByText('Sabadell'));
+    await waitFor(() => expect(screen.queryByText(/Día a día de/)).not.toBeInTheDocument());
+
+    // Mirar no es tocar: el punteo sigue cerrado.
     expect(screen.queryByRole('dialog', { name: /Cuenta Sabadell/ })).not.toBeInTheDocument();
   });
 

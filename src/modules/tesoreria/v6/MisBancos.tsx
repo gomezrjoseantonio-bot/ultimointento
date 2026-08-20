@@ -49,6 +49,12 @@ interface Props {
 
   // ── Tarjetas ──
   filasTarjetas: FilaTarjeta[];
+  /** Qué periodo rotula el recibo de la tarjeta. */
+  periodoTarjeta: string;
+  /** La tarjeta abierta · enseña su día a día, igual que una cuenta. */
+  tarjetaSeleccionada: number | null;
+  onSeleccionarTarjeta: (tarjetaId: number | null) => void;
+  graficoTarjeta?: React.ReactNode;
   onAbrirTarjeta: (t: Tarjeta) => void;
   onEditarTarjeta: (t: Tarjeta) => void;
   onEliminarTarjeta: (t: Tarjeta) => void;
@@ -68,6 +74,10 @@ const MisBancos: React.FC<Props> = ({
   onSeleccionarCuenta,
   graficoCuenta,
   filasTarjetas,
+  periodoTarjeta,
+  tarjetaSeleccionada,
+  onSeleccionarTarjeta,
+  graficoTarjeta,
   onAbrirTarjeta,
   onEditarTarjeta,
   onEliminarTarjeta,
@@ -118,7 +128,7 @@ const MisBancos: React.FC<Props> = ({
             acciones —empezando por el punteo— viven en el "⋯". */}
         {enCuentas
           ? 'clic en una cuenta para ver su día a día · el menú ⋯ abre el punteo'
-          : 'clic en una tarjeta para ver sus compras del periodo · el menú ⋯ tiene sus acciones'}
+          : 'clic en una tarjeta para ver su día a día · el menú ⋯ abre sus compras'}
       </div>
 
       {enCuentas ? (
@@ -136,6 +146,10 @@ const MisBancos: React.FC<Props> = ({
       ) : (
         <ListaTarjetas
           filas={filasTarjetas}
+          periodo={periodoTarjeta}
+          seleccionada={tarjetaSeleccionada}
+          onSeleccionar={onSeleccionarTarjeta}
+          grafico={graficoTarjeta}
           onAbrir={onAbrirTarjeta}
           onEditar={onEditarTarjeta}
           onEliminar={onEliminarTarjeta}

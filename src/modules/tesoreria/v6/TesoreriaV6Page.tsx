@@ -12,13 +12,16 @@
 // obligar a refrescar la pantalla.
 // ============================================================================
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ToastHost, showToastV5 } from '../../../design-system/v5';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../services/db';
 import { calculateAccountBalanceAtDate, corteParaSaldoVivo } from '../../../services/accountBalanceService';
 import {
   calcularKpisHero,
+  consumoDeTarjeta,
+  rangoDelMes,
+  serieDiariaTarjeta,
   cierrePorCuenta,
   estadoDeCuenta,
   serieDiariaConsolidada,
@@ -52,7 +55,6 @@ import {
 } from '../../../services/reconciliarDuplicadosExistentes';
 import type { Tarjeta } from '../../../types/tarjetas';
 import {
-  gastadoEnElMes,
   gastoDeMovimientos,
   gastoPorTarjeta,
   gastoAbiertoPorTarjeta,
@@ -370,26 +372,30 @@ const TesoreriaV6Page: React.FC = () => {
     [cuentasVivas, saldoPorCuenta, estado.eventos, year, month0]
   );
 
-  /**
-   * Al entrar, la PRIMERA cuenta queda seleccionada.
-   *
-   * Con el hueco vacío nadie descubre que las filas se abren; con una abierta,
-   * el patrón se ve solo.
-   *
-   * UNA sola vez, y por eso el ref: mirando solo `cuentaSeleccionada == null`,
-   * cerrar la fila abierta la volvía a abrir en el acto —el efecto corría otra
-   * vez y reponía la primera—, así que no había forma de cerrarla. Cerrar es
-   * una decisión del usuario y tiene que aguantar.
-   */
-  const defectoAplicado = useRef(false);
-  useEffect(() => {
-    if (cargando || defectoAplicado.current) return;
-    const primera = cuentasVivas.find((c) => c.id != null)?.id;
-    if (primera == null) return;
-    defectoAplicado.current = true;
-    // El deep-link manda: si se entró por `/tesoreria/cuenta/:id`, esa ya está.
-    setCuentaSeleccionada((actual) => actual ?? primera);
-  }, [cargando, cuentasVivas]);
+  // Tesorería abre con TODAS las cuentas colapsadas (decisión de Jose).
+  //
+  // Arrancaba con la primera desplegada para que el patrón se viera solo, pero
+  // eso decide por el usuario qué cuenta mira nada más entrar y le mete media
+  // pantalla de gráfico antes de que haya pedido nada. La lista entera de un
+  // vistazo es mejor primera pregunta. El deep-link `/tesoreria/cuenta/:id`
+  // sigue seleccionando la suya, porque ahí sí se pidió una cuenta concreta.
+
+  /** La tarjeta abierta · su día a día se lee igual que el de una cuenta. */
+  const [tarjetaSeleccionada, setTarjetaSeleccionada] = useState<number | null>(null);
+
+  const diasTarjeta = useMemo(
+    () =>
+      tarjetaSeleccionada == null
+        ? null
+        : serieDiariaTarjeta({
+            tarjetaId: tarjetaSeleccionada,
+            eventos: estado.eventos,
+            movimientos: estado.movimientos,
+            year,
+            month0,
+          }),
+    [tarjetaSeleccionada, estado.eventos, estado.movimientos, year, month0]
+  );
 
   /**
    * F3 · el día a día de la cuenta que se está mirando.
@@ -419,30 +425,43 @@ const TesoreriaV6Page: React.FC = () => {
   );
 
   /**
-   * V9 · filas de "Mis tarjetas" · SOLO las activas (spec: las de baja no se
-   * pintan). Consumo: crédito = ciclo abierto vivo; débito = gastado en el
-   * mes natural (`gastadoEnElMes` · antes era 0 estructural).
+   * Filas de tarjetas · SOLO las activas (spec: las de baja no se pintan).
+   *
+   * Enseñaban el importe del RECIBO bajo el rótulo "consumido", y el recibo
+   * suma las compras punteadas y las que no: una tarjeta con cinco compras
+   * anotadas y ninguna confirmada decía "consumido 1.010,72 €" sin haberse
+   * confirmado un euro. Ahora se separan lo real y lo previsto
+   * (`consumoDeTarjeta`), y la suma va aparte, dicha por su nombre.
+   *
+   * El periodo es el MES en curso, el mismo que miran las cuentas y el mismo
+   * del gráfico de debajo. El ciclo de facturación sigue viviendo en el cajón
+   * de la tarjeta, que es donde se mira un recibo.
    */
-  const filasTarjetas = useMemo<FilaTarjeta[]>(
-    () =>
-      tarjetas
-        .filter((t): t is Tarjeta & { id: number } => t.id != null && t.activa !== false)
-        .map((t) => {
-          const liquida = cuentasVivas.find((c) => c.id === t.cuentaLiquidacionId);
-          const esCredito = t.modalidad === 'credito';
-          return {
-            tarjeta: t,
-            sub:
-              t.emisora ||
-              (liquida ? `liquida en ${liquida.alias || liquida.banco?.name || 'su cuenta'}` : ''),
-            consumo: esCredito
-              ? gastoAbierto.get(t.id) ?? 0
-              : gastadoEnElMes(estado.movimientos, t, hoy),
-            etiqueta: esCredito ? 'consumido · ciclo' : `gastado · ${mesActual}`,
-          };
-        }),
-    [tarjetas, cuentasVivas, gastoAbierto, estado.movimientos, hoy, mesActual]
-  );
+  const filasTarjetas = useMemo<FilaTarjeta[]>(() => {
+    const { desde, hasta } = rangoDelMes(year, month0);
+    return tarjetas
+      .filter((t): t is Tarjeta & { id: number } => t.id != null && t.activa !== false)
+      .map((t) => {
+        const liquida = cuentasVivas.find((c) => c.id === t.cuentaLiquidacionId);
+        const c = consumoDeTarjeta({
+          tarjetaId: t.id,
+          eventos: estado.eventos,
+          movimientos: estado.movimientos,
+          desde,
+          hasta,
+        });
+        return {
+          tarjeta: t,
+          sub:
+            t.emisora ||
+            (liquida ? `liquida en ${liquida.alias || liquida.banco?.name || 'su cuenta'}` : ''),
+          gastado: c.confirmado,
+          pendiente: c.pendiente,
+          total: c.total,
+          porConfirmar: c.porConfirmar,
+        };
+      });
+  }, [tarjetas, cuentasVivas, estado.eventos, estado.movimientos, year, month0]);
 
   /**
    * V9 · las filas de la tabla "Mis cuentas". Cada número sale de la capa
@@ -954,6 +973,12 @@ const TesoreriaV6Page: React.FC = () => {
           diasCuenta && <GraficoDiarioCuenta dias={diasCuenta} hoy={hoy} month0={month0} />
         }
         filasTarjetas={filasTarjetas}
+        periodoTarjeta={mesActual}
+        tarjetaSeleccionada={tarjetaSeleccionada}
+        onSeleccionarTarjeta={setTarjetaSeleccionada}
+        graficoTarjeta={
+          diasTarjeta && <GraficoDiarioCuenta dias={diasTarjeta} hoy={hoy} month0={month0} />
+        }
         onAbrirTarjeta={(t) => setTarjetaAbierta(t)}
         onEditarTarjeta={(t) => setFichaTarjeta({ tarjeta: t })}
         onEliminarTarjeta={(t) => setBajaTarjeta(t)}
