@@ -2,7 +2,7 @@
 // Tesorería V9 · confirmación destructiva del módulo
 // ============================================================================
 //
-// El mismo lenguaje visual que el modal de CerrarElMes (velo + panel v5). El
+// Velo + panel v5, el lenguaje visual de los modales del módulo. El
 // `ConfirmationModal` de `components/common` es legacy pre-v5 (Tailwind) y la
 // guía manda no reintroducirlo en pantallas nuevas.
 // ============================================================================

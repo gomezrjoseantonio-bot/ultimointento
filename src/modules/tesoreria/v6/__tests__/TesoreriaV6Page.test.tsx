@@ -9,7 +9,7 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import TesoreriaV6Page, { importeCabeEnLaBarra } from '../TesoreriaV6Page';
+import TesoreriaV6Page from '../TesoreriaV6Page';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../../services/db';
 
 jest.mock('../../../../services/db', () => ({ initDB: jest.fn() }));
@@ -189,69 +189,6 @@ describe('V9 · la rejilla de meses deja el lienzo', () => {
     // Las 6 tarjetas de mes ya no se pintan en la página.
     expect(screen.queryByText('en curso')).not.toBeInTheDocument();
     expect(screen.queryByText(/saldo a fin de mes/i)).not.toBeInTheDocument();
-  });
-});
-
-describe('§4.10 · cómo va el mes', () => {
-  it('cierra con la DESVIACIÓN, no repitiendo el cierre del hero', async () => {
-    montarDb({
-      accounts: [cuenta(1)],
-      treasuryEvents: [
-        // A2 · la desviación compara el PREVISTO ORIGINAL (`amount`) con lo que
-        // de verdad costó (`actualAmount`), movimiento a movimiento. Antes se
-        // comparaba contra el total de gastos del mes y salía 0 € siempre.
-        evento({
-          type: 'expense',
-          amount: 1838.42,
-          actualAmount: 1473.42,
-          predictedDate: enEsteMes(5),
-          status: 'executed',
-          // Con cuenta · un ejecutado siempre la tiene. Sin ella no se puede
-          // casar con el movimiento que lo materializó, y ese pago contaría
-          // dos veces: una por su previsión y otra como gasto no planificado.
-          accountId: 1,
-        }),
-      ],
-      movements: [
-        {
-          accountId: 1,
-          date: enEsteMes(5),
-          amount: -1473.42,
-          description: 'Pago',
-          status: 'pendiente',
-          unifiedStatus: 'conciliado',
-          source: 'import',
-          category: { tipo: 'Gastos' },
-          type: 'Gasto',
-          origin: 'CSV',
-          movementState: 'Confirmado',
-          ambito: 'PERSONAL',
-          statusConciliacion: 'sin_match',
-          createdAt: '',
-          updatedAt: '',
-        },
-      ],
-    });
-    montar();
-
-    const veredicto = await screen.findByText(/Acabarás/);
-    expect(veredicto).toHaveTextContent('+365 €');
-    expect(veredicto).toHaveTextContent('mejor de lo previsto');
-    // La explicación compara iguales: lo previsto DE LO YA CONFIRMADO.
-    expect(screen.getByText(/habías previsto pagar/)).toHaveTextContent('1.838,42 €');
-  });
-
-  it('escala cada línea contra su propio previsto', async () => {
-    montarDb({
-      accounts: [cuenta(1)],
-      treasuryEvents: [evento({ type: 'income', amount: 1000, predictedDate: enEsteMes(5) })],
-      movements: [],
-    });
-    montar();
-
-    await waitFor(() => expect(screen.getByText('Ingresos')).toBeInTheDocument());
-    expect(screen.getByText('Gastos')).toBeInTheDocument();
-    expect(screen.getByText('Neto')).toBeInTheDocument();
   });
 });
 
@@ -441,81 +378,5 @@ describe('bloque A · los bordes que se colaron', () => {
     expect(etiqueta(0)).toBe('igual que lo previsto');
     expect(etiqueta(-24)).toBe('peor de lo previsto');
     expect(etiqueta(24)).toBe('mejor de lo previsto');
-  });
-});
-
-// El bloque llegó a decir dos cosas opuestas a la vez: la fila del Neto,
-// "+935,74 € mejor de lo previsto", y el pie, "acabarás −38 € peor de lo
-// previsto". No era un desacuerdo de cálculo sino de pregunta: la fila
-// comparaba lo acumulado a día 7 contra el previsto del MES ENTERO —que a
-// primeros siempre sale "mejor"— y el pie compara iguales.
-describe('§4.10 · el veredicto es UNO', () => {
-  it('las líneas cuentan avance · el "mejor/peor" solo lo dice el pie', async () => {
-    montarDb({
-      accounts: [cuenta(1)],
-      treasuryEvents: [
-        // Ingreso previsto para el mes que aún no ha entrado entero.
-        evento({ type: 'income', amount: 1000, predictedDate: enEsteMes(20) }),
-        // Gasto ya confirmado que costó 50 € MÁS de lo presupuestado.
-        evento({
-          type: 'expense',
-          amount: 200,
-          actualAmount: 250,
-          predictedDate: enEsteMes(5),
-          status: 'executed',
-          accountId: 1,
-        }),
-        // Y el grueso del gasto del mes, todavía por pasar.
-        evento({ type: 'expense', amount: 1250, predictedDate: enEsteMes(Math.min(25, ultimoDia)) }),
-      ],
-      movements: [
-        movimiento({ accountId: 1, date: enEsteMes(5), amount: -250, description: 'Recibo' }),
-        movimiento({ accountId: 1, date: enEsteMes(3), amount: 300, description: 'Cobro' }),
-      ],
-    });
-    montar();
-
-    // Neto: llevas 50 € (300 − 250) de un previsto de −450 € (1.000 − 1.450).
-    // El previsto es negativo, así que no hay porcentaje ni barra: la fila
-    // enseña la cifra que llevas y, a su derecha, lo previsto del mes.
-    const filaNeto = (await screen.findByText('Neto')).parentElement!;
-    expect(filaNeto).toHaveTextContent('50 €');
-    expect(filaNeto).toHaveTextContent('llevas');
-    expect(filaNeto).toHaveTextContent('−450 €');
-    expect(filaNeto).toHaveTextContent('previsto');
-
-    // La resta contra el previsto del mes entero —+500 €— ya no se pinta: era
-    // el número gordo de la fila "Neto" sin ser el neto.
-    expect(filaNeto).not.toHaveTextContent('500 €');
-    expect(filaNeto).not.toHaveTextContent('mejor de lo previsto');
-
-    // Y el único veredicto del bloque es el del pie, que compara iguales:
-    // 200 € presupuestados contra 250 € pagados.
-    expect(screen.getAllByText(/(mejor|peor) de lo previsto|igual que lo previsto/)).toHaveLength(1);
-    const veredicto = screen.getByText(/Acabarás/);
-    expect(veredicto).toHaveTextContent('−50 €');
-    expect(veredicto).toHaveTextContent('peor de lo previsto');
-  });
-});
-
-
-// §4.10 · la barra con el importe dentro.
-describe('la barra de "Cómo va {mes}"', () => {
-  it('con relleno ancho el importe va DENTRO · con relleno estrecho, fuera', () => {
-    // Ensanchar el relleno para que quepa el texto falsearía la proporción,
-    // que es justo lo que la barra viene a decir. Así que por debajo del umbral
-    // el importe sale a la derecha del relleno, no dentro.
-    //
-    // El umbral es 40 y no 22: con 22 el texto entraba pero se salía del
-    // relleno por la derecha, que es el aspecto que se quería evitar. Un
-    // importe con miles y dos decimales pide más de un tercio de la barra.
-    //
-    // Se comprueba LA función que usa el render, no una copia del número
-    // escrita aquí: una copia seguiría en verde aunque el componente cambiara
-    // de umbral, que es justo lo que un candado no puede permitirse.
-    expect(importeCabeEnLaBarra(82)).toBe(true);
-    expect(importeCabeEnLaBarra(40)).toBe(true);
-    expect(importeCabeEnLaBarra(22)).toBe(false);
-    expect(importeCabeEnLaBarra(7)).toBe(false);
   });
 });

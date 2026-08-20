@@ -714,13 +714,16 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 />
               )}
 
-              {/* Meses ya cerrados · no se cargan (reabre el mes para cargarlos). */}
+              {/* Meses ya cerrados · no se cargan. El bloqueo lo sigue
+                  imponiendo `cierreDeMes`; lo que cambió es a dónde se manda al
+                  usuario: la card "Cerrar el mes" ya no existe (F2), así que
+                  remitir a ella era mandarlo a ninguna parte. */}
               {deMesesCerrados.length > 0 && (
                 <GrupoPlegableExtracto
                   plegado={cerradosPlegados}
                   onToggle={() => setCerradosPlegados((v) => !v)}
                   titulo={`${deMesesCerrados.length} de meses cerrados · no se cargan`}
-                  intro="Estos cargos son de meses que ya cerraste. Para cargarlos, reabre el mes en «Cerrar el mes»."
+                  intro="Estos cargos son de un mes que ya diste por cerrado, así que se quedan fuera para no mover un saldo que ya diste por bueno. Si alguno hace falta, anótalo desde el punteo de su cuenta."
                   lineas={deMesesCerrados}
                 />
               )}
