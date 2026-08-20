@@ -733,9 +733,14 @@ respalda y puede completar datos fiscales —nº factura, base, IVA—.)
     que nace al **marcar el inmueble como alquilable**; (b) el control vive en
     **Alquileres › Disponibilidad**, no en la ficha; (c) las **habitaciones** suben
     a **lista ligera con nombre + renta objetivo**. El semillado de OPEX se dispara
-    al marcar **operativo** / cambiar el modo. → De aquí salen las tareas de código
-    (R1: entidad + marcar; R2: Disponibilidad como editor; R3: habitaciones con
-    nombre; R4: disparo del semillado; R5: migración desde `Property`).
+    al marcar **operativo** / cambiar el modo. → Tareas de código: **R1 ✅**
+    (entidad + marcar + migración v90 · #1760), **R2 ✅** (Disponibilidad como
+    editor · #1760), **R3 ✅** (habitaciones con nombre + renta objetivo · #1762),
+    **R4 ✅** (semillado de OPEX al marcar operativo · modal de sugerencias desde
+    `catalogoModalidadInmueble` → `CompromisoRecurrente` de inmueble; se abre solo
+    la 1ª vez y con botón «Sembrar gastos»; sugerir, nunca crear a ciegas — sin
+    importe nacen `preparado` y no generan previsión). La renta (ingreso) se sigue
+    sembrando desde el contrato.
 
 ---
 
