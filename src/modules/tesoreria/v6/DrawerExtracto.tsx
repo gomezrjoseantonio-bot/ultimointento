@@ -161,7 +161,16 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         // "Las dos cosas" · lo que ya anotaste a mano sube a Conciliado, no duplica.
         const confirmados = confirmadosPorLinea(delLote, todosMovs ?? [], destino.id);
         const abiertos = (todosEventos ?? []).filter(
-          (e) => e.accountId === destino.id && e.status !== 'executed'
+          (e) =>
+            e.status !== 'executed' &&
+            (e.accountId === destino.id ||
+              // Una cuota de préstamo (`financing`) que quedó HUÉRFANA de cuenta
+              // (sin `accountId`) no la ofrecía nadie, porque el drawer filtra por
+              // cuenta: la hipoteca salía "sin rastro". Se ofrece para poder
+              // conciliarla a mano (el importe y la fecha la acotan). La raíz —el
+              // regenerado del arranque que pierde la cuenta— se arregla en
+              // `resolveAccountId`; esto es la red para datos ya huérfanos.
+              (e.type === 'financing' && e.accountId == null))
         );
         // Los meses ya cerrados no se cargan · se apartan (§ cerrar el mes).
         const setCerrados = new Set((mesesCerrados ?? []).map((c) => c.mes));

@@ -260,7 +260,15 @@ export async function generateMonthlyForecasts(
     if (mapped != null) return mapped;
     // Step 2: rawId might already be a valid IndexedDB account ID
     const directMatch = dbAccounts.find(acc => acc.id === rawId);
-    return directMatch?.id;
+    if (directMatch) return directMatch.id;
+    // Step 3: no se pudo mapear (p.ej. el mapa de cuentas está vacío porque
+    // cuentasService no estaba listo en el arranque). Antes se devolvía
+    // `undefined` y la previsión nacía HUÉRFANA de cuenta —y la cuota de hipoteca
+    // no aparecía al conciliar ("ni rastro")—. El asistente de préstamos usa
+    // `parseInt(cuentaCargoId)` DIRECTO como accountId y funciona, así que se hace
+    // lo mismo aquí: se conserva `rawId`. Si resulta no ser una cuenta real, no
+    // casa con ninguna (igual que antes); si lo es, la cuota ya cuadra.
+    return rawId;
   }
 
   // ── 1 y 2 · RETIRADAS · los gastos recurrentes ya los prevé otro ──────────
