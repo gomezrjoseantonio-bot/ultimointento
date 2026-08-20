@@ -16,6 +16,7 @@ import { runMigrationIfNeeded as backfillImporteBruto0106 } from './services/mig
 import { runMigrationIfNeeded as cleanStaleCPAndInferITP } from './services/migrations/cleanStaleCPAndInferITP';
 import { runMigrationIfNeeded as fixFechasImposiblesGastos } from './services/migrations/fixFechasImposiblesGastos';
 import { runMigrationIfNeeded as migrarConceptoUnificado } from './services/migrations/migrarConceptoUnificado';
+import { runMigrationIfNeeded as backfillClasificacionConciliados } from './services/migrations/backfillClasificacionConciliados';
 import { cargarConceptosUsuario } from './services/conceptos/conceptosUsuarioService';
 import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphanedInmuebleIds';
 import { runKeyvalCleanup } from './services/keyvalCleanupService';
@@ -513,6 +514,9 @@ function App() {
           console.warn('[ATLAS] NORMALIZAR-nombres-empresas · errores parciales:', nombresReport.errors);
         }
       })
+      // P7 · rellena la clasificación de los apuntes conciliados ANTES de que
+      // existiera la herencia · desde su previsión, sin pisar lo ya clasificado.
+      .then(() => backfillClasificacionConciliados())
       .catch((error) => {
         console.error('[ATLAS] Error inicializando IndexedDB o ejecutando migraciones iniciales:', error);
       });
