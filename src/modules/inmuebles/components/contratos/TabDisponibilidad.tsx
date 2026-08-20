@@ -1,12 +1,23 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icons, EmptyState } from '../../../../design-system/v5';
-import type { Contract, Property } from '../../../../services/db';
+import type {
+  Contract,
+  Property,
+  ExplotacionAlquiler,
+  ModoExplotacionAlquiler,
+  EstadoExplotacion,
+} from '../../../../services/db';
+import {
+  getExplotacionesPorInmueble,
+  marcarAlquilable,
+  actualizarExplotacion,
+  desmarcarAlquilable,
+} from '../../../../services/explotacionAlquilerService';
 import {
   type RangoTimeline,
   type RangoFechas,
   calcularRangoFechas,
   calcularLeftPorcentaje,
-  contarUnidadesArrendables,
 } from '../../utils/timelineRango';
 import {
   type LineaTimeline,
@@ -40,6 +51,23 @@ const NOMBRES_MES = [
   'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
 ];
 
+const MODO_LABEL: Record<ModoExplotacionAlquiler, string> = {
+  completo: 'Piso completo',
+  habitaciones: 'Por habitaciones',
+  turistico: 'Turístico',
+};
+
+const ESTADO_LABEL: Record<EstadoExplotacion, string> = {
+  operativo: 'Operativo',
+  vacante: 'Vacante',
+  en_reforma: 'En reforma',
+};
+
+/** Unidades arrendables de una explotación · por habitaciones cuenta las habitaciones. */
+function unidadesDeExplotacion(e: ExplotacionAlquiler): number {
+  return e.modo === 'habitaciones' ? Math.max(1, e.habitaciones?.length ?? 1) : 1;
+}
+
 const TabDisponibilidad: React.FC<TabDisponibilidadProps> = ({
   contratos,
   properties,
@@ -53,22 +81,40 @@ const TabDisponibilidad: React.FC<TabDisponibilidadProps> = ({
   const [contratoAbierto, setContratoAbierto] = useState<
     (Contract & { id: number }) | null
   >(null);
+  const [explotaciones, setExplotaciones] = useState<Map<number, ExplotacionAlquiler>>(
+    new Map(),
+  );
+
+  const recargarExplotaciones = useCallback(() => {
+    getExplotacionesPorInmueble()
+      .then(setExplotaciones)
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    recargarExplotaciones();
+  }, [recargarExplotaciones]);
 
   const hoy = useMemo(() => new Date(), []);
   const rangoFechas = useMemo(() => calcularRangoFechas(rango, hoy), [rango, hoy]);
 
-  const propiedadesAlquilables = useMemo(
+  const propiedadesActivas = useMemo(
     () => properties.filter((p) => !p.state || p.state === 'activo'),
     [properties],
   );
 
-  const totalUnidades = useMemo(
-    () => contarUnidadesArrendables(propiedadesAlquilables),
-    [propiedadesAlquilables],
-  );
+  // Las unidades del mercado son las de los inmuebles MARCADOS como alquilables,
+  // no las de todos los activos (un inmueble sin marcar es uso propio).
+  const totalUnidades = useMemo(() => {
+    let n = 0;
+    for (const p of propiedadesActivas) {
+      const e = p.id != null ? explotaciones.get(p.id) : undefined;
+      if (e) n += unidadesDeExplotacion(e);
+    }
+    return n;
+  }, [propiedadesActivas, explotaciones]);
   const unidadesLabel = totalUnidades === 1 ? 'unidad' : 'unidades';
 
-  if (propiedadesAlquilables.length === 0) {
+  if (propiedadesActivas.length === 0) {
     return (
       <EmptyState
         icon={<Icons.Calendar size={20} />}
@@ -99,16 +145,18 @@ const TabDisponibilidad: React.FC<TabDisponibilidadProps> = ({
 
         <div className={styles.bodyWrap}>
           <LineaHoy rangoFechas={rangoFechas} hoy={hoy} />
-          {propiedadesAlquilables.map((p) => (
+          {propiedadesActivas.map((p) => (
             <PropiedadGroup
               key={p.id ?? p.alias}
               propiedad={p}
+              explotacion={p.id != null ? explotaciones.get(p.id) : undefined}
               contratos={contratos.filter((c) => c.inmuebleId === p.id)}
               rangoFechas={rangoFechas}
               hoy={hoy}
               onAbrirContrato={setContratoAbierto}
               onNuevoContrato={onNuevoContrato}
               onIrAInmuebles={onIrAInmuebles}
+              onExplotacionCambio={recargarExplotaciones}
             />
           ))}
         </div>
@@ -198,46 +246,67 @@ const LineaHoy: React.FC<{ rangoFechas: RangoFechas; hoy: Date }> = ({
 
 interface PropiedadGroupProps {
   propiedad: Property;
+  explotacion?: ExplotacionAlquiler;
   contratos: Contract[];
   rangoFechas: RangoFechas;
   hoy: Date;
   onAbrirContrato: (c: Contract & { id: number }) => void;
   onNuevoContrato: (inmuebleId?: number) => void;
   onIrAInmuebles: () => void;
+  onExplotacionCambio: () => void;
 }
 
 const PropiedadGroup: React.FC<PropiedadGroupProps> = ({
   propiedad,
+  explotacion,
   contratos,
   rangoFechas,
   hoy,
   onAbrirContrato,
   onNuevoContrato,
   onIrAInmuebles,
+  onExplotacionCambio,
 }) => {
   const { lineas, overlaysCompletos } = useMemo(
     () => generarPropiedadGroupData(propiedad, contratos, rangoFechas, hoy),
     [propiedad, contratos, rangoFechas, hoy],
   );
 
+  // Un inmueble NO marcado como alquilable no está en el mercado: se muestra con
+  // su control para ponerlo en alquiler, sin dibujar disponibilidad (uso propio).
+  if (!explotacion) {
+    return (
+      <div className={styles.propGroup}>
+        <PropiedadHeader
+          propiedad={propiedad}
+          explotacion={undefined}
+          numHab={lineas.length}
+          onExplotacionCambio={onExplotacionCambio}
+        />
+        <div className={styles.noAlquiler}>No está en alquiler · uso propio.</div>
+      </div>
+    );
+  }
+
   // Propiedad sin bedrooms declarado · empty state por propiedad
   if (propiedad.bedrooms == null) {
     return (
       <div className={styles.propGroup}>
-        <div className={styles.propHead}>
-          <div className={styles.propHeadLab}>
-            <span className={styles.propAlias}>{propiedad.alias}</span>
-          </div>
-          <div className={styles.propMetaWarn}>
-            Indica el número de habitaciones para ver disponibilidad ·{' '}
-            <button
-              type="button"
-              className={styles.linkInline}
-              onClick={onIrAInmuebles}
-            >
-              Configurar inmueble →
-            </button>
-          </div>
+        <PropiedadHeader
+          propiedad={propiedad}
+          explotacion={explotacion}
+          numHab={lineas.length}
+          onExplotacionCambio={onExplotacionCambio}
+        />
+        <div className={styles.propMetaWarn}>
+          Indica el número de habitaciones para ver disponibilidad ·{' '}
+          <button
+            type="button"
+            className={styles.linkInline}
+            onClick={onIrAInmuebles}
+          >
+            Configurar inmueble →
+          </button>
         </div>
       </div>
     );
@@ -245,7 +314,12 @@ const PropiedadGroup: React.FC<PropiedadGroupProps> = ({
 
   return (
     <div className={styles.propGroup}>
-      <PropiedadHeader propiedad={propiedad} numHab={lineas.length} />
+      <PropiedadHeader
+        propiedad={propiedad}
+        explotacion={explotacion}
+        numHab={lineas.length}
+        onExplotacionCambio={onExplotacionCambio}
+      />
       <div className={styles.lineasWrap}>
         {lineas.map((linea) => (
           <Linea
@@ -281,22 +355,134 @@ const PropiedadGroup: React.FC<PropiedadGroupProps> = ({
 
 // ─── Header de una propiedad ────────────────────────────────────────────────
 
-const PropiedadHeader: React.FC<{ propiedad: Property; numHab: number }> = ({
-  propiedad,
-  numHab,
-}) => (
+const PropiedadHeader: React.FC<{
+  propiedad: Property;
+  explotacion?: ExplotacionAlquiler;
+  numHab: number;
+  onExplotacionCambio: () => void;
+}> = ({ propiedad, explotacion, onExplotacionCambio }) => (
   <div className={styles.propHead}>
     <div className={styles.propHeadLab}>
       <span className={styles.propAlias}>{propiedad.alias}</span>
+      {propiedad.municipality ? (
+        <span className={styles.propMeta}>{propiedad.municipality}</span>
+      ) : null}
     </div>
-    <div className={styles.propMeta}>
-      {numHab === 1
-        ? 'piso completo'
-        : `${numHab} habitaciones`}
-      {propiedad.municipality ? ` · ${propiedad.municipality}` : ''}
-    </div>
+    <ControlExplotacion
+      propiedad={propiedad}
+      explotacion={explotacion}
+      onCambio={onExplotacionCambio}
+    />
   </div>
 );
+
+// ─── Control de explotación · marcar / modo / estado / desmarcar ─────────────
+//
+// Aquí es donde se «pone y quita un inmueble del mercado» (Jose, 20 ago). Un
+// inmueble sin explotación enseña «Poner en alquiler»; uno marcado enseña su
+// modo y estado editables y un «Quitar del alquiler». Toda escritura recarga la
+// lista en el padre.
+
+const ControlExplotacion: React.FC<{
+  propiedad: Property;
+  explotacion?: ExplotacionAlquiler;
+  onCambio: () => void;
+}> = ({ propiedad, explotacion, onCambio }) => {
+  const [guardando, setGuardando] = useState(false);
+  const inmuebleId = propiedad.id;
+
+  const ejecutar = useCallback(
+    async (accion: () => Promise<unknown>) => {
+      if (inmuebleId == null) return;
+      setGuardando(true);
+      try {
+        await accion();
+        onCambio();
+      } finally {
+        setGuardando(false);
+      }
+    },
+    [inmuebleId, onCambio],
+  );
+
+  if (inmuebleId == null) return null;
+
+  if (!explotacion) {
+    return (
+      <div className={styles.controlExplotacion}>
+        <button
+          type="button"
+          className={styles.ponerEnAlquiler}
+          disabled={guardando}
+          onClick={() =>
+            ejecutar(() =>
+              marcarAlquilable(inmuebleId, { modo: 'completo', estado: 'vacante' }),
+            )
+          }
+        >
+          <Icons.Plus size={13} /> Poner en alquiler
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.controlExplotacion}>
+      <label className={styles.controlCampo}>
+        <span className={styles.controlLab}>Modo</span>
+        <select
+          className={styles.selectMini}
+          value={explotacion.modo}
+          disabled={guardando}
+          onChange={(e) =>
+            ejecutar(() =>
+              marcarAlquilable(inmuebleId, {
+                modo: e.target.value as ModoExplotacionAlquiler,
+                estado: explotacion.estado,
+                numeroHabitaciones: propiedad.bedrooms ?? 1,
+              }),
+            )
+          }
+        >
+          {(Object.keys(MODO_LABEL) as ModoExplotacionAlquiler[]).map((m) => (
+            <option key={m} value={m}>
+              {MODO_LABEL[m]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={styles.controlCampo}>
+        <span className={styles.controlLab}>Estado</span>
+        <select
+          className={styles.selectMini}
+          value={explotacion.estado}
+          disabled={guardando}
+          onChange={(e) =>
+            ejecutar(() =>
+              actualizarExplotacion(inmuebleId, {
+                estado: e.target.value as EstadoExplotacion,
+              }),
+            )
+          }
+        >
+          {(Object.keys(ESTADO_LABEL) as EstadoExplotacion[]).map((s) => (
+            <option key={s} value={s}>
+              {ESTADO_LABEL[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="button"
+        className={styles.linkInline}
+        disabled={guardando}
+        onClick={() => ejecutar(() => desmarcarAlquilable(inmuebleId))}
+      >
+        Quitar del alquiler
+      </button>
+    </div>
+  );
+};
 
 // ─── Línea (track + segmentos) ──────────────────────────────────────────────
 
