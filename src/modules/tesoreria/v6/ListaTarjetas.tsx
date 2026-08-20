@@ -30,24 +30,45 @@ export interface FilaTarjeta {
   tarjeta: Tarjeta;
   /** Segunda línea · emisora, o la cuenta donde liquida. */
   sub: string;
-  consumo: number;
-  /** "consumido · ciclo" (crédito) · "gastado · {mes}" (débito). */
-  etiqueta: string;
+  /** Lo que YA se punteó del periodo · el gasto REAL. */
+  gastado: number;
+  /** Lo anotado que falta por confirmar. */
+  pendiente: number;
+  /** `gastado + pendiente` · todo lo que la tarjeta lleva del periodo. */
+  total: number;
+  /** Cuántas compras quedan por puntear · columna Estado. */
+  porConfirmar: number;
 }
 
 const POR_PAGINA = 5;
 
-type ColumnaTj = 'nombre' | 'tipo' | 'consumo';
+type ColumnaTj = 'nombre' | 'tipo' | 'gastado' | 'pendiente' | 'total';
 
 interface Props {
   filas: FilaTarjeta[];
+  /** Qué periodo se está mirando · rotula la columna del recibo. */
+  periodo: string;
+  /** La tarjeta abierta · la que enseña su día a día. */
+  seleccionada: number | null;
+  onSeleccionar: (tarjetaId: number | null) => void;
+  /** El gráfico de la seleccionada · lo arma la página. */
+  grafico?: React.ReactNode;
   /** Las MISMAS acciones que una cuenta · el cajón de la tarjeta es su punteo. */
   onAbrir: (t: Tarjeta) => void;
   onEditar: (t: Tarjeta) => void;
   onEliminar: (t: Tarjeta) => void;
 }
 
-const ListaTarjetas: React.FC<Props> = ({ filas, onAbrir, onEditar, onEliminar }) => {
+const ListaTarjetas: React.FC<Props> = ({
+  filas,
+  periodo,
+  seleccionada,
+  onSeleccionar,
+  grafico,
+  onAbrir,
+  onEditar,
+  onEliminar,
+}) => {
   const [orden, setOrden] = useState<{ col: ColumnaTj; dir: 1 | -1 } | null>(null);
   const [pagina, setPagina] = useState(0);
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
@@ -76,7 +97,7 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onAbrir, onEditar, onEliminar }
           ? dir * a.tarjeta.alias.localeCompare(b.tarjeta.alias, 'es')
           : col === 'tipo'
             ? dir * (a.tarjeta.modalidad ?? '').localeCompare(b.tarjeta.modalidad ?? '', 'es')
-            : dir * (a.consumo - b.consumo)
+            : dir * (a[col] - b[col])
       );
   }, [filas, orden]);
 
@@ -87,8 +108,12 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onAbrir, onEditar, onEliminar }
   }, [totalPaginas]);
   const visibles = ordenadas.slice(pageSafe * POR_PAGINA, (pageSafe + 1) * POR_PAGINA);
 
-  const totalConsumo = useMemo(
-    () => Math.round(filas.reduce((s, f) => s + f.consumo, 0) * 100) / 100,
+  const totales = useMemo(
+    () => ({
+      gastado: Math.round(filas.reduce((s, f) => s + f.gastado, 0) * 100) / 100,
+      pendiente: Math.round(filas.reduce((s, f) => s + f.pendiente, 0) * 100) / 100,
+      total: Math.round(filas.reduce((s, f) => s + f.total, 0) * 100) / 100,
+    }),
     [filas]
   );
 
@@ -96,7 +121,9 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onAbrir, onEditar, onEliminar }
     setMenuAbierto(null);
     setPagina(0);
     setOrden((o) =>
-      o?.col === col ? { col, dir: o.dir === 1 ? -1 : 1 } : { col, dir: col === 'consumo' ? -1 : 1 }
+      o?.col === col
+        ? { col, dir: o.dir === 1 ? -1 : 1 }
+        : { col, dir: col === 'nombre' || col === 'tipo' ? 1 : -1 }
     );
   };
 
@@ -128,22 +155,28 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onAbrir, onEditar, onEliminar }
           <tr>
             {th('nombre', 'Tarjeta')}
             {th('tipo', 'Tipo')}
-            {th('consumo', 'Consumo', true)}
-            <th className={styles.th} aria-label="Periodo" />
+            {th('gastado', 'Gastado', true)}
+            {th('pendiente', 'Por confirmar', true)}
+            {th('total', `Gasto ${periodo}`, true)}
+            <th className={styles.th} aria-label="Estado" />
             <th className={styles.th} aria-label="Acciones" />
           </tr>
         </thead>
         <tbody>
-          {visibles.map((f) => (
+          {visibles.map((f) => {
+            const abierta = seleccionada === f.tarjeta.id;
+            const alternar = () => onSeleccionar(abierta ? null : f.tarjeta.id ?? null);
+            return (
+            <React.Fragment key={f.tarjeta.id}>
             <tr
-              key={f.tarjeta.id}
-              className={styles.fila}
+              className={`${styles.fila} ${abierta ? styles.filaSel : styles.filaFina}`}
               tabIndex={0}
-              onClick={() => onAbrir(f.tarjeta)}
+              aria-expanded={abierta}
+              onClick={alternar}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  onAbrir(f.tarjeta);
+                  alternar();
                 }
               }}
             >
@@ -152,6 +185,9 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onAbrir, onEditar, onEliminar }
                     ya dice cuál es y el color solo ensuciaba una fila de
                     cifras. */}
                 <div className={styles.id}>
+                  <span className={styles.caret} aria-hidden="true">
+                    <Icons.ChevronRight size={14} strokeWidth={2.2} />
+                  </span>
                   <div className={styles.idTx}>
                     <div className={styles.nombre}>{f.tarjeta.alias}</div>
                     {f.sub && <div className={styles.mask}>{f.sub}</div>}
@@ -163,13 +199,35 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onAbrir, onEditar, onEliminar }
                   {f.tarjeta.modalidad === 'credito' ? 'Crédito' : 'Débito'}
                 </Pill>
               </td>
+              {/* Lo que YA se confirmó · esto sí es "gastado". */}
               <td className={`${styles.td} ${styles.der}`}>
-                {/* Una tarjeta no tiene saldo, tiene un ciclo · lo consumido es
-                    su cifra-veredicto, como el cierre en una cuenta. */}
-                <span className={styles.oro}>{importeSaldo(f.consumo)}</span>
+                {f.gastado === 0 ? (
+                  <span className={styles.mudo}>—</span>
+                ) : (
+                  <span className={styles.fuerte}>{importeSaldo(f.gastado)}</span>
+                )}
               </td>
-              <td className={styles.td}>
-                <span className={styles.periodo}>{f.etiqueta}</span>
+              {/* Lo anotado sin puntear · no es consumo todavía. */}
+              <td className={`${styles.td} ${styles.der}`}>
+                {f.pendiente === 0 ? (
+                  <span className={styles.mudo}>—</span>
+                ) : (
+                  importeSaldo(f.pendiente)
+                )}
+              </td>
+              {/* La cifra-veredicto de la tarjeta, como el cierre en una
+                  cuenta: todo lo que lleva el periodo. Y es la SUMA de las dos
+                  de al lado, no un dato suelto que haya que creerse. */}
+              <td className={`${styles.td} ${styles.der}`}>
+                <span className={styles.oro}>{importeSaldo(f.total)}</span>
+              </td>
+              <td className={`${styles.td} ${styles.der}`}>
+                {f.porConfirmar > 0 && (
+                  <span className={styles.estadoConf}>
+                    <span className={styles.puntoEstado} aria-hidden="true" />
+                    {f.porConfirmar} por confirmar
+                  </span>
+                )}
               </td>
               <td className={`${styles.td} ${styles.tdKebab}`}>
                 <button
@@ -205,7 +263,16 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onAbrir, onEditar, onEliminar }
                 )}
               </td>
             </tr>
-          ))}
+            {abierta && grafico && (
+              <tr className={styles.filaGrafico}>
+                <td className={styles.tdGrafico} colSpan={7}>
+                  {grafico}
+                </td>
+              </tr>
+            )}
+            </React.Fragment>
+            );
+          })}
         </tbody>
         <tfoot>
           <tr className={styles.pie}>
@@ -214,7 +281,21 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onAbrir, onEditar, onEliminar }
             </td>
             <td className={styles.td} />
             <td className={`${styles.td} ${styles.der}`}>
-              <span className={styles.oro}>{importeSaldo(totalConsumo)}</span>
+              {totales.gastado === 0 ? (
+                <span className={styles.mudo}>—</span>
+              ) : (
+                importeSaldo(totales.gastado)
+              )}
+            </td>
+            <td className={`${styles.td} ${styles.der}`}>
+              {totales.pendiente === 0 ? (
+                <span className={styles.mudo}>—</span>
+              ) : (
+                importeSaldo(totales.pendiente)
+              )}
+            </td>
+            <td className={`${styles.td} ${styles.der}`}>
+              <span className={styles.oro}>{importeSaldo(totales.total)}</span>
             </td>
             <td className={styles.td} />
             <td className={styles.td} />

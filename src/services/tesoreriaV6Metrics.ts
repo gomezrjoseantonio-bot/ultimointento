@@ -47,7 +47,7 @@ export function rangoDelMes(year: number, month0: number): RangoMes {
   };
 }
 
-const soloFecha = (iso?: string): string => (iso ?? '').slice(0, 10);
+export const soloFecha = (iso?: string): string => (iso ?? '').slice(0, 10);
 
 /** Importe con signo: magnitud por |amount|, dirección por `type`. */
 export function importeConSigno(e: Pick<TreasuryEvent, 'amount' | 'type'>): number {
@@ -71,7 +71,7 @@ export function esPendiente(e: TreasuryEvent): boolean {
   return e.status === 'predicted' || e.status === 'confirmed';
 }
 
-const enRango = (iso: string, desde: string, hasta: string): boolean =>
+export const enRango = (iso: string, desde: string, hasta: string): boolean =>
   iso >= desde && iso <= hasta;
 
 /**
@@ -790,6 +790,6 @@ export function serieDiariaCuenta(params: {
   return Array.from(dias.values());
 }
 
-function redondear(n: number): number {
+export function redondear(n: number): number {
   return Math.round(n * 100) / 100;
 }
