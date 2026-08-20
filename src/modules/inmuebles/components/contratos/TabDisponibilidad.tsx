@@ -270,20 +270,17 @@ const PropiedadGroup: React.FC<PropiedadGroupProps> = ({
 }) => {
   // R3 · las habitaciones vienen de la explotación, no de `bedrooms`. Por
   // habitaciones → su lista; completo/turístico → `[]` (una sola línea "Piso").
-  const habitacionesTimeline =
-    explotacion?.modo === 'habitaciones' ? explotacion.habitaciones ?? [] : [];
-  const { lineas, overlaysCompletos } = useMemo(
-    () =>
-      generarPropiedadGroupData(
-        propiedad,
-        contratos,
-        rangoFechas,
-        hoy,
-        explotacion ? habitacionesTimeline : undefined,
-      ),
-    // habitacionesTimeline se deriva de explotacion · basta con esta última
-    [propiedad, contratos, rangoFechas, hoy, explotacion, habitacionesTimeline],
-  );
+  const { lineas, overlaysCompletos } = useMemo(() => {
+    const habitaciones =
+      explotacion?.modo === 'habitaciones' ? explotacion.habitaciones ?? [] : [];
+    return generarPropiedadGroupData(
+      propiedad,
+      contratos,
+      rangoFechas,
+      hoy,
+      explotacion ? habitaciones : undefined,
+    );
+  }, [propiedad, contratos, rangoFechas, hoy, explotacion]);
 
   // Un inmueble NO marcado como alquilable no está en el mercado: se muestra con
   // su control para ponerlo en alquiler, sin dibujar disponibilidad (uso propio).
