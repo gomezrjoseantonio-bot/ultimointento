@@ -1,51 +1,8 @@
-/* Tesorería V9 · card "Mis tarjetas" (mockup atlas-tesoreria-v9 · .tarjeta-row).
+/* Tesorería · lista de tarjetas · cuerpo de la vista "Tarjetas" de Mis Bancos
+   (mockup `docs/mockups/atlas-bancos-grafico-v5.html`).
+
+   La card, el título y el botón de añadir viven en `MisBancos.module.css`.
    Las cifras van al MISMO cuerpo que las de la tabla de cuentas (spec P5). */
-
-.card {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.hd {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-
-.hdTitulo {
-  font-size: 13px;
-  font-weight: var(--atlas-v5-fw-semibold);
-  letter-spacing: -0.01em;
-  color: var(--atlas-v5-ink);
-}
-
-.hdSub {
-  font-size: 10.5px;
-  color: var(--atlas-v5-ink-4);
-  margin-top: 1px;
-}
-
-.btnGhost {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: var(--atlas-v5-radius-sm);
-  font-size: 12px;
-  font-weight: var(--atlas-v5-fw-semibold);
-  font-family: var(--atlas-v5-font-ui);
-  background: var(--atlas-v5-card);
-  color: var(--atlas-v5-ink-2);
-  border: 1px solid var(--atlas-v5-line);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: border-color 0.12s;
-}
-
-.btnGhost:hover { border-color: var(--atlas-v5-ink-5); }
 
 .vacio {
   font-size: 12.5px;

@@ -1,0 +1,109 @@
+/* ===========================================================================
+   Tesorería · "Mis Bancos" · contenedor con switch Cuentas · Tarjetas
+   Mockup: `docs/mockups/atlas-bancos-grafico-v5.html` (.bank · .switch · .seg).
+   =========================================================================== */
+
+.card {
+  margin-bottom: 12px;
+}
+
+.hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.hdIzq {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* El título manda sobre el switch · es el nombre de la sección, no una
+   pestaña más. Por eso pesa más que los segmentos que lleva al lado. */
+.hdTitulo {
+  font-size: 15px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: -0.02em;
+  color: var(--atlas-v5-ink);
+  white-space: nowrap;
+}
+
+/* ── Switch segmentado ──────────────────────────────────────────────────────
+   No existe primitivo en el design system (`HeroToggle` vive atado al héroe
+   navy y `TabsUnderline` es subrayado, no segmentado), así que se construye
+   aquí con tokens · mismo patrón que las pestañas del drawer. */
+
+.switch {
+  display: inline-flex;
+  background: var(--atlas-v5-line-2);
+  border-radius: var(--atlas-v5-radius-md);
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.seg {
+  padding: 5px 14px;
+  border-radius: var(--atlas-v5-radius-sm);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-family: var(--atlas-v5-font-ui);
+  color: var(--atlas-v5-ink-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s;
+}
+
+.seg:hover { color: var(--atlas-v5-ink-2); }
+
+/* El activo se levanta sobre el carril · el relieve dice cuál está puesto sin
+   gastar color en algo que la posición ya cuenta. */
+.segOn {
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  box-shadow: var(--atlas-v5-shadow-card);
+}
+
+.segOn:hover { color: var(--atlas-v5-ink); }
+
+.seg:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 1px;
+}
+
+/* ── Acciones de cabecera ───────────────────────────────────────────────── */
+
+.hdBotones {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--atlas-v5-radius-sm);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
+  border: 1px solid var(--atlas-v5-line);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.btnGhost:hover { border-color: var(--atlas-v5-ink-5); }
+
+.ayuda {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin: 3px 0 2px;
+}

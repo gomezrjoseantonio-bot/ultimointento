@@ -29,7 +29,8 @@ import { colorDeBanco, SIN_COLOR } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { importeConSigno, importeSaldo, nombreMes } from './formatoV6';
 import HeroTesoreria from './HeroTesoreria';
-import TablaCuentas, { type FilaCuenta } from './TablaCuentas';
+import MisBancos from './MisBancos';
+import type { FilaCuenta } from './TablaCuentas';
 import ConfirmaV6 from './ConfirmaV6';
 import { darDeBajaCuenta, CuentaConPendientesError } from '../../../services/bajaCuentaService';
 import { leerOrdenCuentas, aplicarOrden } from './ordenCuentas';
@@ -43,7 +44,7 @@ import { useEsMovil } from './useEsMovil';
 import CuentaWizard from '../../../components/cuenta/CuentaWizard';
 import TarjetaWizard from '../../../components/tarjeta/TarjetaWizard';
 import { eliminarTarjeta, listarTarjetas } from '../../../services/tarjetasService';
-import TarjetasCard, { type FilaTarjeta } from './TarjetasCard';
+import type { FilaTarjeta } from './ListaTarjetas';
 import { regenerarRecibosDeTarjeta } from '../../../services/personal/compromisosRecurrentesService';
 import { confirmarPieza, despuntearPieza, descartarPieza } from '../../../services/personal/puntearPieza';
 import {
@@ -404,7 +405,9 @@ const TesoreriaV6Page: React.FC = () => {
           const cierre = cierrePorCuenta({ saldoHoy: saldo, eventos, year, month0 });
           return {
             cuenta: c,
-            color: colorDeBanco(c),
+            // Sin color de banco · la fila de cuenta ya no lo pinta (F1). El
+            // resto de la V6 (tarjetas, drawers, calendario, móvil) lo sigue
+            // usando, así que `bancoColores` se queda.
             nombre: c.alias || c.name || c.banco?.name || 'Cuenta',
             mask: (c.ultimosCuatro || c.iban?.slice(-4)) ?? '',
             saldo,
@@ -881,32 +884,29 @@ const TesoreriaV6Page: React.FC = () => {
         </div>
       )}
 
-      {/* ── V9 · tabla "Mis cuentas" (sustituye al carrusel de §4.2) ────── */}
-      <TablaCuentas
-        filas={filasCuentas}
+      {/* ── "Mis Bancos" · cuentas y tarjetas comparten espacio (F1) ────── */}
+      <MisBancos
+        filasCuentas={filasCuentas}
         kpis={kpis}
         mesActual={mesActual}
-        onAbrir={(c) => abrirCuenta(c.id!)}
-        onEditar={(c) => setFichaCuenta({ cuenta: c })}
-        onEliminar={(c) => setBajaCuenta(c)}
+        onAbrirCuenta={(c) => abrirCuenta(c.id!)}
+        onEditarCuenta={(c) => setFichaCuenta({ cuenta: c })}
+        onEliminarCuenta={(c) => setBajaCuenta(c)}
+        onAnadirCuenta={() => setFichaCuenta({ cuenta: null })}
         onPrevision={() => setCalendario({ year, month0 })}
-        onAnadir={() => setFichaCuenta({ cuenta: null })}
+        filasTarjetas={filasTarjetas}
+        onDetalleTarjeta={(t) => setTarjetaAbierta(t)}
+        onEditarTarjeta={(t) => setFichaTarjeta({ tarjeta: t })}
+        onEliminarTarjeta={(t) => setBajaTarjeta(t)}
+        onAnadirTarjeta={() => setFichaTarjeta({ tarjeta: null })}
       />
 
-      {/* ── V9 · fila inferior de tres cards (mockup .row-3b) ─────────────
+      {/* ── Fila inferior de cards (mockup .row-3b) ───────────────────────
+          Las tarjetas subieron a "Mis Bancos" (F1), así que aquí quedan dos.
           La rejilla de 6 meses (§4.3) deja el lienzo: la previsión mes a mes y
-          día a día vive detrás de "Previsión · meses y días" en la tabla, que
-          abre el calendario (§4.9) con su navegación ‹ ›. */}
-      <div className={styles.row3}>
-        {/* Una tarjeta no tiene saldo, tiene un ciclo · su cifra es el consumo. */}
-        <TarjetasCard
-          filas={filasTarjetas}
-          onDetalle={(t) => setTarjetaAbierta(t)}
-          onEditar={(t) => setFichaTarjeta({ tarjeta: t })}
-          onEliminar={(t) => setBajaTarjeta(t)}
-          onAnadir={() => setFichaTarjeta({ tarjeta: null })}
-        />
-
+          día a día vive detrás de "Previsión · meses y días", que abre el
+          calendario (§4.9) con su navegación ‹ ›. */}
+      <div className={styles.row2}>
         {/* VOCABULARIO §6 quater · cerrar el mes. Tiene que estar AQUÍ, en
             tesorería: lo que se cierra son previsiones de tesorería, y de un
             mes cerrado depende que una bonificación se pueda perder. */}
