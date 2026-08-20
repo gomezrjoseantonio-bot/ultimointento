@@ -1,58 +1,11 @@
 /* ===========================================================================
-   Tesorería V9 · tabla "Mis cuentas" (mockup atlas-tesoreria-v9 · .cta-card).
-   Cifras SIEMPRE en mono tabular y a la derecha, en cuerpo Y pie (spec P3).
+   Tesorería V9 · tabla de cuentas · cuerpo de la vista "Cuentas" de Mis Bancos
+   (mockup `docs/mockups/atlas-bancos-grafico-v5.html`).
+
+   La card, el título y los botones viven en `MisBancos.module.css`: aquí solo
+   queda la tabla. Cifras SIEMPRE en mono tabular y a la derecha, en cuerpo Y
+   pie (spec P3).
    =========================================================================== */
-
-.card {
-  margin-bottom: 12px;
-}
-
-.hd {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.hdTitulo {
-  font-size: 13px;
-  font-weight: var(--atlas-v5-fw-semibold);
-  letter-spacing: -0.01em;
-  color: var(--atlas-v5-ink);
-}
-
-.hdBotones {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.btnGhost {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: var(--atlas-v5-radius-sm);
-  font-size: 12px;
-  font-weight: var(--atlas-v5-fw-semibold);
-  font-family: var(--atlas-v5-font-ui);
-  background: var(--atlas-v5-card);
-  color: var(--atlas-v5-ink-2);
-  border: 1px solid var(--atlas-v5-line);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: border-color 0.12s, color 0.12s;
-}
-
-.btnGhost:hover {
-  border-color: var(--atlas-v5-ink-5);
-}
-
-.ayuda {
-  font-size: 11px;
-  color: var(--atlas-v5-ink-4);
-  margin: 3px 0 2px;
-}
 
 .tabla {
   width: 100%;
@@ -122,14 +75,6 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-}
-
-/* Único color libre de la fila: la identidad del banco. */
-.logo {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 .idTx { min-width: 0; }

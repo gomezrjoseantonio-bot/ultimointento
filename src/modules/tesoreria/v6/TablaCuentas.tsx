@@ -1,10 +1,14 @@
 // ============================================================================
-// Tesorería V9 · tabla "Mis cuentas" (sustituye al carrusel de §4.2)
+// Tesorería V9 · tabla de cuentas (sustituye al carrusel de §4.2)
 // ============================================================================
 //
-// Mockup: `atlas-tesoreria-v9.html` (#cta-body). Decisión 4 del spec: tabla
-// LOCAL al módulo, ordenable por cabecera y paginable en cliente — el design
-// system v5 no tiene componente de tabla todavía y no se crea aquí.
+// Mockup: `docs/mockups/atlas-bancos-grafico-v5.html`. Decisión 4 del spec:
+// tabla LOCAL al módulo, ordenable por cabecera y paginable en cliente — el
+// design system v5 no tiene componente de tabla todavía y no se crea aquí.
+//
+// Es el CUERPO de la vista "Cuentas": la card, el título y los botones viven
+// en `MisBancos`, que la alterna con la lista de tarjetas. Aquí solo queda la
+// tabla, para que las dos mitades compartan un único marco.
 //
 // Los números salen de la capa canónica: `cierrePorCuenta` (columna Cierre) y
 // `estadoDeCuenta` (columna Estado). La fila Total NO suma por su cuenta: pinta
@@ -13,7 +17,7 @@
 // ============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { CardV5, Icons } from '../../../design-system/v5';
+import { Icons } from '../../../design-system/v5';
 import type { Account } from '../../../services/db';
 import type { EstadoCuenta, KpisHero } from '../../../services/tesoreriaV6Metrics';
 import { diaYMes, importeConSigno, importeSaldo } from './formatoV6';
@@ -21,8 +25,6 @@ import styles from './TablaCuentas.module.css';
 
 export interface FilaCuenta {
   cuenta: Account;
-  /** Color del punto de banco · `colorDeBanco`. */
-  color: string;
   nombre: string;
   /** Últimos 4 del IBAN · '' si no hay. */
   mask: string;
@@ -49,8 +51,6 @@ interface Props {
   onAbrir: (cuenta: Account) => void;
   onEditar: (cuenta: Account) => void;
   onEliminar: (cuenta: Account) => void;
-  onPrevision: () => void;
-  onAnadir: () => void;
 }
 
 const TablaCuentas: React.FC<Props> = ({
@@ -60,8 +60,6 @@ const TablaCuentas: React.FC<Props> = ({
   onAbrir,
   onEditar,
   onEliminar,
-  onPrevision,
-  onAnadir,
 }) => {
   const [orden, setOrden] = useState<{ col: Columna; dir: 1 | -1 } | null>(null);
   const [pagina, setPagina] = useState(0);
@@ -131,20 +129,7 @@ const TablaCuentas: React.FC<Props> = ({
   );
 
   return (
-    <CardV5 compact className={styles.card}>
-      <div className={styles.hd}>
-        <div className={styles.hdTitulo}>Mis cuentas</div>
-        <div className={styles.hdBotones}>
-          <button type="button" className={styles.btnGhost} onClick={onPrevision}>
-            <Icons.Calendar size={14} strokeWidth={1.9} /> Previsión · meses y días
-          </button>
-          <button type="button" className={styles.btnGhost} onClick={onAnadir}>
-            + Añadir cuenta
-          </button>
-        </div>
-      </div>
-      <div className={styles.ayuda}>clic en una cuenta para confirmar sus movimientos</div>
-
+    <>
       <table className={styles.tabla}>
         <thead>
           <tr>
@@ -172,8 +157,10 @@ const TablaCuentas: React.FC<Props> = ({
               }}
             >
               <td className={styles.td}>
+                {/* Sin punto ni logo de banco · el color no distinguía nada
+                    que el nombre no diga ya, y ensuciaba una fila que es toda
+                    cifras (decisión de Jose · F1). */}
                 <div className={styles.id}>
-                  <span className={styles.logo} style={{ background: f.color }} aria-hidden="true" />
                   <div className={styles.idTx}>
                     <div className={styles.nombre}>{f.nombre}</div>
                     {f.mask && <div className={styles.mask}>···· {f.mask}</div>}
@@ -288,7 +275,7 @@ const TablaCuentas: React.FC<Props> = ({
           </button>
         </div>
       )}
-    </CardV5>
+    </>
   );
 };
 

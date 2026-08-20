@@ -1,5 +1,6 @@
-// V9 · tabla "Mis cuentas" · orden por cabecera, paginación en cliente y la
-// fila Total pintando LOS MISMOS números que el hero (no una suma propia).
+// V9 · tabla de cuentas (cuerpo de "Mis Bancos") · orden por cabecera,
+// paginación en cliente y la fila Total pintando LOS MISMOS números que el
+// hero (no una suma propia).
 
 import React from 'react';
 import '@testing-library/jest-dom';
@@ -10,7 +11,6 @@ import type { KpisHero } from '../../../../services/tesoreriaV6Metrics';
 
 const fila = (id: number, nombre: string, saldo: number, over: Partial<FilaCuenta> = {}): FilaCuenta => ({
   cuenta: { id, iban: `ES00${id}`, status: 'ACTIVE', activa: true, createdAt: '', updatedAt: '' } as Account,
-  color: 'var(--atlas-v5-ink-5)',
   nombre,
   mask: String(1000 + id),
   saldo,
@@ -43,8 +43,6 @@ const montar = (filas: FilaCuenta[]) =>
       onAbrir={noop}
       onEditar={noop}
       onEliminar={noop}
-      onPrevision={noop}
-      onAnadir={noop}
     />
   );
 

@@ -1,11 +1,16 @@
 // ============================================================================
-// Tesorería V9 · card "Mis tarjetas" (sustituye a la lista plana de §3)
+// Tesorería · lista de tarjetas · cuerpo de la vista "Tarjetas" de Mis Bancos
 // ============================================================================
 //
-// Mockup: `atlas-tesoreria-v9.html` (#tarjetas-list). Una fila por tarjeta con
+// Mockup: `docs/mockups/atlas-bancos-grafico-v5.html`. Una fila por tarjeta con
 // su consumo a la derecha: crédito = lo que llevas del ciclo abierto
 // (`gastoAbiertoPorTarjeta`); débito = lo gastado en el mes natural
 // (`gastadoEnElMes` · fase 1 — antes el débito enseñaba 0 estructural).
+//
+// Era una card suelta debajo de la tabla de cuentas (`TarjetasCard`) y ahora es
+// la otra mitad de "Mis Bancos": misma card, mismo sitio, se alternan con el
+// switch. Por eso pierde su marco, su título y su botón de añadir —los pone el
+// contenedor— y conserva lo suyo: orden, paginación y el menú "⋯".
 //
 // Solo tarjetas con `activa` (spec · las de baja no se pintan). Las fechas de
 // corte/cargo y la cuenta de liquidación viven en el detalle (DrawerTarjeta),
@@ -13,10 +18,10 @@
 // ============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { CardV5, Icons, Pill } from '../../../design-system/v5';
+import { Icons, Pill } from '../../../design-system/v5';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { importeSaldo } from './formatoV6';
-import styles from './TarjetasCard.module.css';
+import styles from './ListaTarjetas.module.css';
 
 export interface FilaTarjeta {
   tarjeta: Tarjeta;
@@ -38,10 +43,9 @@ interface Props {
   onDetalle: (t: Tarjeta) => void;
   onEditar: (t: Tarjeta) => void;
   onEliminar: (t: Tarjeta) => void;
-  onAnadir: () => void;
 }
 
-const TarjetasCard: React.FC<Props> = ({ filas, onDetalle, onEditar, onEliminar, onAnadir }) => {
+const ListaTarjetas: React.FC<Props> = ({ filas, onDetalle, onEditar, onEliminar }) => {
   const [orden, setOrden] = useState<{ col: ColumnaTj; dir: 1 | -1 } | null>(null);
   const [pagina, setPagina] = useState(0);
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
@@ -91,17 +95,7 @@ const TarjetasCard: React.FC<Props> = ({ filas, onDetalle, onEditar, onEliminar,
     orden?.col === col ? (orden.dir === 1 ? ' ▲' : ' ▼') : '';
 
   return (
-    <CardV5 compact className={styles.card}>
-      <div className={styles.hd}>
-        <div>
-          <div className={styles.hdTitulo}>Mis tarjetas</div>
-          <div className={styles.hdSub}>consumo del ciclo actual</div>
-        </div>
-        <button type="button" className={styles.btnGhost} onClick={onAnadir}>
-          + Añadir tarjeta
-        </button>
-      </div>
-
+    <>
       {filas.length === 0 ? (
         <div className={styles.vacio}>Todavía no has dado de alta ninguna tarjeta.</div>
       ) : (
@@ -218,8 +212,8 @@ const TarjetasCard: React.FC<Props> = ({ filas, onDetalle, onEditar, onEliminar,
           )}
         </>
       )}
-    </CardV5>
+    </>
   );
 };
 
-export default TarjetasCard;
+export default ListaTarjetas;
