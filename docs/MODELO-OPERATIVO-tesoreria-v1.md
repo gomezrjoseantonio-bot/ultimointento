@@ -479,6 +479,98 @@ completa (importe, periodicidad, cuenta) tras tu confirmación.
 de inmueble te faltan o sobran? ¿Y en personal, con este nivel te basta o quieres
 más/menos cajas? Con tu OK, F1 es cerrar esta tabla.
 
+### 9 quinquies bis · Poner un inmueble en alquiler · DÓNDE y CÓMO (Jose, 20 ago)
+
+> **Directiva de Jose (20 ago): paramos la serie P. Antes hay que resolver
+> _dónde_ y _cómo_ se pone un piso en alquiler.** Eso "se hacía en el propio
+> inmueble y se ha retirado de la UI". El sitio es **Alquileres** (la ruta sigue
+> siendo `/contratos`), y de esa declaración se nutre después el semillado
+> (§9 quinquies), la disponibilidad y la validación de contratos.
+
+**El agujero, en una frase.** "Poner en alquiler" = declarar el **modo de
+explotación** del inmueble (piso completo · por habitaciones · turístico) y su
+**estado operativo** (operativo · vacante · en reforma · uso propio). Esos campos
+**ya existen en `Property`** (`modoExplotacion`, `explotacion.estadoOperativo`,
+`usoTipo`, `alquilerPorHabitaciones`) **pero hoy NINGUNA pantalla los edita**: la
+ficha del inmueble los quitó ("se gestiona en el detalle") y el detalle solo los
+**lee**. Solo entran por import o por migración. Resultado: **desde la app no se
+puede poner un piso en alquiler**, y todo lo que cuelga de ahí queda a ciegas —
+la línea de Disponibilidad no sabe cuántas habitaciones dibujar, el semillado de
+OPEX no tiene disparador, y el contrato no se valida contra una modalidad.
+
+**Decisión de fuente única (§13.10, resuelta por Jose 20 ago) — CAMBIO DE
+LÓGICA.** La explotación **NO es un atributo del inmueble**. Palabras de Jose:
+_"esto debe decidirse en alquileres marcando los inmuebles susceptibles de
+alquilar. no es una entidad del inmueble en sí."_ El inmueble se queda como el
+**activo puro** (dónde está, coste, hipoteca). La explotación pasa a ser una
+**entidad propia del dominio Alquileres** que **referencia** al inmueble por id.
+
+Hoy los campos viven en `Property` (`modoExplotacion`, `explotacion`, `usoTipo`,
+`alquilerPorHabitaciones`). Eso es lo que hay que **cambiar**: se saca a un
+registro nuevo —llamémoslo **`explotacionAlquiler`** (store propio)— con:
+
+```
+explotacionAlquiler = {
+  inmuebleId,                        // referencia al activo
+  modo: 'completo' | 'habitaciones' | 'turistico',
+  estado: 'operativo' | 'vacante' | 'en_reforma',   // 'uso_propio' = NO marcado
+  habitaciones?: [{ id, nombre, rentaObjetivo?, estado? }],   // solo si modo==='habitaciones'
+  cuentaCobroPorDefecto?, ...
+}
+```
+
+**Marcar = existir.** En Alquileres marcas qué inmuebles son **susceptibles de
+alquilar**; ese gesto **crea** su `explotacionAlquiler`. Un inmueble **no marcado**
+no está en el circuito de alquiler (es tu vivienda / uso propio / no lo explotas)
+— y esto encaja con el eje de imputación (§9 ter): lo no marcado es **Personal**,
+lo marcado es **Inmueble de inversión**. Un mismo activo puede dejar de ser
+alquilable (desmarcar) sin tocar su ficha de activo.
+
+El **CONTRATO** sigue llevando su propia **modalidad** (`habitual` · `temporada` ·
+`vacacional`) — un hecho de **ese arrendamiento** —; no pisa el modo de la
+explotación. Es el patrón de siempre: el marco (aquí, la explotación) es estable;
+el hecho puntual (el contrato) cuelga de él.
+
+**DÓNDE: Alquileres › Disponibilidad.** Esa pestaña ya lista cada inmueble como
+una fila-timeline. Se convierte en **donde marcas los inmuebles alquilables** y
+editas su explotación (modo · estado · habitaciones con nombre y renta objetivo).
+Deja de ser solo lectura y pasa a ser **donde pones y quitas el piso del mercado**.
+La ficha del inmueble **no** recupera estos campos (va en contra de la directiva).
+
+**CÓMO — el flujo:**
+
+1. En **Alquileres › Disponibilidad**, cada inmueble se puede **marcar como
+   alquilable** → nace su `explotacionAlquiler`. Editas **modo** + **estado** (+
+   **habitaciones** con nombre + renta objetivo si el modo es por habitaciones).
+2. Marcarlo **operativo** (o cambiar el modo) **dispara el semillado de OPEX**
+   (§9 quinquies · `catalogoModalidadInmueble` → conceptos sugeridos según modo →
+   confirmas importe/cuenta/periodicidad → nacen las **previsiones recurrentes**).
+   Sembrar = **sugerir**, nunca crear a ciegas. Este es el disparador que a P9 le
+   faltaba.
+3. La timeline lee la explotación (no `Property.bedrooms`) y redibuja **una línea
+   por habitación** con su **nombre**. Los huecos libres → **"Nuevo contrato"** ya
+   pre-rellenado con inmueble + habitación + modalidad coherente.
+4. El **ingreso** (renta) se sigue sembrando **pull** desde los contratos
+   (`generateMonthlyForecasts`, ya funciona) — no se toca.
+
+**Habitaciones — lista ligera (resuelto).** Suben a **lista con nombre + renta
+objetivo** dentro de `explotacionAlquiler.habitaciones` (no store propio, no
+entidad global). Así la habitación 2 puede estar *operativa* mientras la 3 está
+*en reforma*, cada una lleva su **renta objetivo** (los 395 €/hab de Jose), y la
+timeline muestra **nombres** en vez de "hab-2". El `Contract.habitacionId` deja de
+ser el sintético `hab-N` y pasa a apuntar al `id` real de la habitación.
+
+**Migración.** Los inmuebles que hoy tienen `modoExplotacion`/`alquilerPorHabitaciones`
+en `Property` (puestos por import o por la migración V78) se **siembran** como
+`explotacionAlquiler` marcados; los de `usoTipo: 'vivienda_habitual'` / `'disponible'`
+**no** se marcan (uso propio). Idempotente, un solo write, patrón `runMigrationIfNeeded`.
+Los campos de `Property` quedan como **legacy de solo lectura** hasta que no queden
+lectores.
+
+**Regla:** este trabajo **precede** a P9 (semillado) y lo **habilita** — P9 sin un
+sitio donde declarar la explotación no tiene disparador. No se toca fiscalidad
+(§9 sexies, módulo aparte) ni el catálogo de naturaleza (ya acordado, §9 quater).
+
 ### 9 sexies · Fiscalidad DERIVADA · casilla + prorrateo — **DIFERIDO (módulo aparte)**
 
 > **Decisión de Jose (19 ago): la fiscalidad NO se trata aquí.** La tesorería
@@ -635,11 +727,15 @@ respalda y puede completar datos fiscales —nº factura, base, IVA—.)
 9. **Bonificación (§4 bis):** ¿cómo se marca que un traspaso cuenta para una
    bonificación? ¿automático (todo abono ≥ umbral en esa cuenta) o manual?
 
-10. **Semillado al alquilar (§9 quinquies, P9):** ¿cuál es la **fuente única de
-    verdad** del tipo de alquiler — manda el **contrato** y el inmueble lo deriva,
-    o al revés? ¿El semillado se dispara al **activar el contrato** o al marcar el
-    inmueble como alquilado? ¿La columna **Alq.** de §9 quater refleja bien qué
-    conceptos van en completo / habitaciones / turístico?
+10. **Poner en alquiler + semillado (§9 quinquies bis + §9 quinquies, P9):**
+    **RESUELTO por Jose (20 ago):** (a) la explotación **no es atributo del
+    inmueble** — es una **entidad propia de Alquileres** (`explotacionAlquiler`)
+    que nace al **marcar el inmueble como alquilable**; (b) el control vive en
+    **Alquileres › Disponibilidad**, no en la ficha; (c) las **habitaciones** suben
+    a **lista ligera con nombre + renta objetivo**. El semillado de OPEX se dispara
+    al marcar **operativo** / cambiar el modo. → De aquí salen las tareas de código
+    (R1: entidad + marcar; R2: Disponibilidad como editor; R3: habitaciones con
+    nombre; R4: disparo del semillado; R5: migración desde `Property`).
 
 ---
 
