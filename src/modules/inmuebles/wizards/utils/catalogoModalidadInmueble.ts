@@ -10,7 +10,8 @@
 // Cada fila que llega a la base viene completa. El catálogo ofrece lo que aún no
 // está dado de alta (el consumidor filtra los ya creados · ver `restarYaDados`).
 
-import { findSubtipoInmueble } from './tiposDeGastoInmueble';
+import { conceptoPorId } from '../../../../services/conceptos/catalogoConceptos';
+import { resolverConcepto } from '../../../../services/conceptos/mapaLegacy';
 
 /** Referencia a una entrada del catálogo (tipo + subtipo). */
 export interface ConceptoInmuebleRef {
@@ -137,7 +138,11 @@ export function restarYaDados(
   return sugeridos.filter((r) => !dados.has(keyOf(r)));
 }
 
-/** true si la ref existe en el catálogo (guard defensivo para tests/consumo). */
+/** true si la ref resuelve a un concepto del catálogo unificado (guard defensivo). */
 export function refExisteEnCatalogo(r: ConceptoInmuebleRef): boolean {
-  return findSubtipoInmueble(r.tipoId, r.subtipoId) !== undefined;
+  // P8c · se comprueba contra el catálogo vivo (conceptos/), no contra el 4º
+  // catálogo retirado. El subtipoId suele ser ya el id de concepto; si no, se
+  // traduce por el mapa de pares.
+  const id = conceptoPorId(r.subtipoId) ? r.subtipoId : resolverConcepto(r.tipoId, r.subtipoId);
+  return id != null && conceptoPorId(id) != null;
 }

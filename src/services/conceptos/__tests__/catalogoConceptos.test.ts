@@ -24,7 +24,7 @@ import {
 } from '../catalogoConceptos';
 import type { Concepto, ProyeccionInmueble, ProyeccionPersonal } from '../catalogoConceptos';
 import { MAPA_LEGACY, resolverConcepto } from '../mapaLegacy';
-import { TIPOS_GASTO_INMUEBLE_V2 } from '../../../modules/inmuebles/wizards/utils/tiposDeGastoInmueble';
+import { TIPOS_GASTO_INMUEBLE_V2 } from './fixtures/baselineInmuebleLegacy';
 import { TIPOS_GASTO_PERSONAL } from '../../../modules/personal/wizards/utils/tiposDeGastoPersonal';
 import { TRADUCCION_INMUEBLE } from '../../catalogoPresentacionPersistencia';
 import { getCategoryByKey } from '../../categoryCatalog';
