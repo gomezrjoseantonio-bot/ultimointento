@@ -211,6 +211,43 @@ describe('generarPropiedadGroupData', () => {
     });
     expect(() => generarPropiedadGroupData(prop(2), [invalido], rango, HOY)).not.toThrow();
   });
+
+  // ── R3 · habitaciones desde la explotación (nombre + estado) ──────────────
+
+  test('con lista de habitaciones · una línea por habitación con su nombre', () => {
+    const { lineas } = generarPropiedadGroupData(prop(9), [], rango, HOY, [
+      { id: 'hab-1', nombre: 'Suite' },
+      { id: 'hab-2', nombre: 'Exterior' },
+    ]);
+    expect(lineas).toHaveLength(2); // manda la explotación, no bedrooms=9
+    expect(lineas[0].nombre).toBe('Suite');
+    expect(lineas[1].nombre).toBe('Exterior');
+  });
+
+  test('lista con habitaciones · empareja el contrato por su id de habitación', () => {
+    const ct = c(1, { unidadTipo: 'habitacion', habitacionId: 'hab-2' });
+    const { lineas } = generarPropiedadGroupData(prop(2), [ct], rango, HOY, [
+      { id: 'hab-1', nombre: 'A' },
+      { id: 'hab-2', nombre: 'B' },
+    ]);
+    expect(lineas[0].segmentos.some((s) => s.tipo === 'contrato')).toBe(false);
+    expect(lineas[1].segmentos.some((s) => s.tipo === 'contrato')).toBe(true);
+  });
+
+  test('habitación en_reforma · la línea lo refleja', () => {
+    const { lineas } = generarPropiedadGroupData(prop(2), [], rango, HOY, [
+      { id: 'hab-1', nombre: 'A', estado: 'en_reforma' },
+      { id: 'hab-2', nombre: 'B' },
+    ]);
+    expect(lineas[0].estadoHabitacion).toBe('en_reforma');
+    expect(lineas[1].estadoHabitacion).toBeUndefined();
+  });
+
+  test('lista vacía (completo/turístico) · una sola línea "Piso" aunque bedrooms>1', () => {
+    const { lineas } = generarPropiedadGroupData(prop(5), [c(1)], rango, HOY, []);
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0].esPiso).toBe(true);
+  });
 });
 
 describe('claseBarraContrato · prioridades', () => {

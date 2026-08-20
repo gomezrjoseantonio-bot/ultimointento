@@ -1,4 +1,9 @@
-import type { Contract, Property } from '../../../services/db';
+import type {
+  Contract,
+  Property,
+  HabitacionAlquiler,
+  EstadoExplotacion,
+} from '../../../services/db';
 import { isContratoActivo } from './contratoEstado';
 import { calcularEstadoChip, estaFirmado } from './calcularEstadoChip';
 import { mapearTipoContrato } from './mapearTipoContrato';
@@ -53,6 +58,10 @@ export interface LineaTimeline {
   color: ColorHabitacion;
   tipoLabel: 'larga' | 'corta' | 'libre';
   segmentos: Segmento[];
+  /** Nombre de la habitación (explotación R3) · si falta, la vista usa «Hab N». */
+  nombre?: string;
+  /** Estado de la habitación (explotación R3) · `en_reforma` se ve apagada. */
+  estadoHabitacion?: EstadoExplotacion;
 }
 
 export interface OverlayCompleto {
@@ -190,19 +199,54 @@ function generarSegmentos(
   return segmentos;
 }
 
+/** Descriptor de una línea de habitación · unifica explotación (R3) y legacy. */
+interface DescriptorHabitacion {
+  id: string;
+  numero: number;
+  nombre?: string;
+  estado?: EstadoExplotacion;
+}
+
+/** Número que le toca a una habitación · del id `hab-N`, o su posición. */
+function numeroDeHabitacion(h: HabitacionAlquiler, indice: number): number {
+  const m = /^hab-(\d+)$/.exec(h.id);
+  return m ? Number(m[1]) : indice + 1;
+}
+
+/**
+ * Las habitaciones a dibujar. Con explotación (R3) manda su lista (nombre, renta,
+ * estado); sin ella se derivan de `bedrooms` con el esquema `hab-N` de siempre.
+ */
+function descriptoresHabitacion(
+  propiedad: Property,
+  habitaciones: HabitacionAlquiler[] | undefined,
+): DescriptorHabitacion[] {
+  if (habitaciones !== undefined) {
+    return habitaciones.map((h, i) => ({
+      id: h.id,
+      numero: numeroDeHabitacion(h, i),
+      nombre: h.nombre,
+      estado: h.estado,
+    }));
+  }
+  const N = Math.max(1, propiedad.bedrooms || 1);
+  return Array.from({ length: N }, (_, i) => ({ id: `hab-${i + 1}`, numero: i + 1 }));
+}
+
 export function generarPropiedadGroupData(
   propiedad: Property,
   contratos: Contract[],
   rangoFechas: RangoFechas,
   hoy: Date = new Date(),
+  habitaciones?: HabitacionAlquiler[],
 ): PropiedadGroupData {
-  const N = Math.max(1, propiedad.bedrooms || 1);
+  const descriptores = descriptoresHabitacion(propiedad, habitaciones);
   const contratosConId = contratos.filter(
     (c): c is Contract & { id: number } => c.id != null,
   );
 
-  // Si la propiedad sólo tiene una unidad arrendable · 1 línea "Piso"
-  if (N === 1) {
+  // Una sola unidad arrendable · 1 línea "Piso" (piso completo · turístico).
+  if (descriptores.length <= 1) {
     const segmentos = generarSegmentos(contratosConId, rangoFechas, hoy);
     const ultimo = contratosConId.find(isContratoActivo);
     return {
@@ -214,6 +258,8 @@ export function generarPropiedadGroupData(
           color: 'verde',
           tipoLabel: ultimo ? mapearTipoContrato(ultimo) : 'libre',
           segmentos,
+          nombre: habitaciones?.[0]?.nombre,
+          estadoHabitacion: habitaciones?.[0]?.estado,
         },
       ],
       overlaysCompletos: [],
@@ -228,24 +274,24 @@ export function generarPropiedadGroupData(
     (c) => c.unidadTipo === 'habitacion',
   );
 
-  // N líneas · una por habitación · con segmentos de los contratos asignados
-  const lineas: LineaTimeline[] = [];
-  for (let i = 0; i < N; i += 1) {
-    const habNum = i + 1;
+  // Una línea por habitación · empareja por id real y, por compat, por número.
+  const lineas: LineaTimeline[] = descriptores.map((desc) => {
     const contratosDeHab = contratosPorHab.filter(
-      (c) => habitacionNumeroDe(c) === habNum,
+      (c) => c.habitacionId === desc.id || habitacionNumeroDe(c) === desc.numero,
     );
     const segmentos = generarSegmentos(contratosDeHab, rangoFechas, hoy);
     const ultimo = contratosDeHab.find(isContratoActivo);
-    lineas.push({
-      key: `hab-${habNum}`,
-      habitacionNumero: habNum,
+    return {
+      key: desc.id,
+      habitacionNumero: desc.numero,
       esPiso: false,
-      color: colorPorNumeroHabitacion(habNum),
+      color: colorPorNumeroHabitacion(desc.numero),
       tipoLabel: ultimo ? mapearTipoContrato(ultimo) : 'libre',
       segmentos,
-    });
-  }
+      nombre: desc.nombre,
+      estadoHabitacion: desc.estado,
+    };
+  });
 
   // Overlays · contratos piso_completo que intersectan con el rango
   const overlaysCompletos: OverlayCompleto[] = contratosCompleto
