@@ -1,51 +1,53 @@
 // ============================================================================
-// Tesorería · lista de tarjetas · cuerpo de la vista "Tarjetas" de Mis Bancos
+// Tesorería · tabla de tarjetas · cuerpo de la vista "Tarjetas" de Mis Bancos
 // ============================================================================
 //
-// Mockup: `docs/mockups/atlas-bancos-grafico-v5.html`. Una fila por tarjeta con
-// su consumo a la derecha: crédito = lo que llevas del ciclo abierto
-// (`gastoAbiertoPorTarjeta`); débito = lo gastado en el mes natural
-// (`gastadoEnElMes` · fase 1 — antes el débito enseñaba 0 estructural).
+// Mockup: `docs/mockups/atlas-bancos-grafico-v5.html`.
 //
-// Era una card suelta debajo de la tabla de cuentas (`TarjetasCard`) y ahora es
-// la otra mitad de "Mis Bancos": misma card, mismo sitio, se alternan con el
-// switch. Por eso pierde su marco, su título y su botón de añadir —los pone el
-// contenedor— y conserva lo suyo: orden, paginación y el menú "⋯".
+// Una tarjeta se lee EN LA MISMA TABLA que una cuenta, con el mismo chasis
+// (`TablaBanco.module.css`): mismas cabeceras ordenables, mismas filas, mismo
+// menú "⋯" y mismo pie con el total. Era una lista con otra forma —icono de
+// color, filas altas, otras acciones— y cambiar de pestaña parecía cambiar de
+// pantalla, cuando lo que hay debajo es lo mismo: dinero en un banco.
+//
+// Lo que NO es igual es la pregunta que contesta cada una. Una cuenta tiene
+// saldo; una tarjeta tiene un ciclo, y su cifra es lo consumido: crédito = lo
+// que llevas del ciclo abierto (`gastoAbiertoPorTarjeta`), débito = lo gastado
+// en el mes natural (`gastadoEnElMes`). Por eso las columnas cambian aunque la
+// tabla sea la misma.
 //
 // Solo tarjetas con `activa` (spec · las de baja no se pintan). Las fechas de
-// corte/cargo y la cuenta de liquidación viven en el detalle (DrawerTarjeta),
-// no en la fila.
+// corte/cargo y la cuenta de liquidación viven en el detalle (DrawerTarjeta).
 // ============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Icons, Pill } from '../../../design-system/v5';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { importeSaldo } from './formatoV6';
-import styles from './ListaTarjetas.module.css';
+import styles from './TablaBanco.module.css';
 
 export interface FilaTarjeta {
   tarjeta: Tarjeta;
   /** Segunda línea · emisora, o la cuenta donde liquida. */
   sub: string;
-  /** Color del punto/chip · el del banco de su cuenta de liquidación. */
-  color: string;
   consumo: number;
   /** "consumido · ciclo" (crédito) · "gastado · {mes}" (débito). */
   etiqueta: string;
 }
 
-const POR_PAGINA = 2;
+const POR_PAGINA = 5;
 
-type ColumnaTj = 'nombre' | 'consumo';
+type ColumnaTj = 'nombre' | 'tipo' | 'consumo';
 
 interface Props {
   filas: FilaTarjeta[];
-  onDetalle: (t: Tarjeta) => void;
+  /** Las MISMAS acciones que una cuenta · el cajón de la tarjeta es su punteo. */
+  onAbrir: (t: Tarjeta) => void;
   onEditar: (t: Tarjeta) => void;
   onEliminar: (t: Tarjeta) => void;
 }
 
-const ListaTarjetas: React.FC<Props> = ({ filas, onDetalle, onEditar, onEliminar }) => {
+const ListaTarjetas: React.FC<Props> = ({ filas, onAbrir, onEditar, onEliminar }) => {
   const [orden, setOrden] = useState<{ col: ColumnaTj; dir: 1 | -1 } | null>(null);
   const [pagina, setPagina] = useState(0);
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
@@ -72,7 +74,9 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onDetalle, onEditar, onEliminar
       .sort((a, b) =>
         col === 'nombre'
           ? dir * a.tarjeta.alias.localeCompare(b.tarjeta.alias, 'es')
-          : dir * (a.consumo - b.consumo)
+          : col === 'tipo'
+            ? dir * (a.tarjeta.modalidad ?? '').localeCompare(b.tarjeta.modalidad ?? '', 'es')
+            : dir * (a.consumo - b.consumo)
       );
   }, [filas, orden]);
 
@@ -83,75 +87,91 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onDetalle, onEditar, onEliminar
   }, [totalPaginas]);
   const visibles = ordenadas.slice(pageSafe * POR_PAGINA, (pageSafe + 1) * POR_PAGINA);
 
+  const totalConsumo = useMemo(
+    () => Math.round(filas.reduce((s, f) => s + f.consumo, 0) * 100) / 100,
+    [filas]
+  );
+
   const ordenarPor = (col: ColumnaTj) => {
     setMenuAbierto(null);
     setPagina(0);
     setOrden((o) =>
-      o?.col === col ? { col, dir: o.dir === 1 ? -1 : 1 } : { col, dir: col === 'nombre' ? 1 : -1 }
+      o?.col === col ? { col, dir: o.dir === 1 ? -1 : 1 } : { col, dir: col === 'consumo' ? -1 : 1 }
     );
   };
 
-  const indicador = (col: ColumnaTj): string =>
-    orden?.col === col ? (orden.dir === 1 ? ' ▲' : ' ▼') : '';
+  // Función de render y NO un componente anidado · mismo motivo que en la tabla
+  // de cuentas: un componente definido dentro del render se REMONTA en cada
+  // pasada y pierde el foco entre clics.
+  const th = (col: ColumnaTj, rotulo: React.ReactNode, num?: boolean) => (
+    <th
+      className={`${styles.th} ${num ? styles.der : ''} ${orden?.col === col ? styles.thActiva : ''}`}
+      aria-sort={orden?.col === col ? (orden.dir === 1 ? 'ascending' : 'descending') : undefined}
+    >
+      <button type="button" className={styles.thBtn} onClick={() => ordenarPor(col)}>
+        {rotulo}
+        <span className={styles.thInd} aria-hidden="true">
+          {orden?.col === col ? (orden.dir === 1 ? '▲' : '▼') : ''}
+        </span>
+      </button>
+    </th>
+  );
+
+  if (filas.length === 0) {
+    return <div className={styles.vacio}>Todavía no has dado de alta ninguna tarjeta.</div>;
+  }
 
   return (
     <>
-      {filas.length === 0 ? (
-        <div className={styles.vacio}>Todavía no has dado de alta ninguna tarjeta.</div>
-      ) : (
-        <>
-          <div className={styles.cabecera}>
-            <button
-              type="button"
-              className={`${styles.cabBtn} ${orden?.col === 'nombre' ? styles.cabActiva : ''}`}
-              onClick={() => ordenarPor('nombre')}
+      <table className={styles.tabla}>
+        <thead>
+          <tr>
+            {th('nombre', 'Tarjeta')}
+            {th('tipo', 'Tipo')}
+            {th('consumo', 'Consumo', true)}
+            <th className={styles.th} aria-label="Periodo" />
+            <th className={styles.th} aria-label="Acciones" />
+          </tr>
+        </thead>
+        <tbody>
+          {visibles.map((f) => (
+            <tr
+              key={f.tarjeta.id}
+              className={styles.fila}
+              tabIndex={0}
+              onClick={() => onAbrir(f.tarjeta)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onAbrir(f.tarjeta);
+                }
+              }}
             >
-              Tarjeta{indicador('nombre')}
-            </button>
-            <button
-              type="button"
-              className={`${styles.cabBtn} ${orden?.col === 'consumo' ? styles.cabActiva : ''}`}
-              onClick={() => ordenarPor('consumo')}
-            >
-              Consumo{indicador('consumo')}
-            </button>
-          </div>
-
-          <div className={styles.lista}>
-            {visibles.map((f) => (
-              <div
-                key={f.tarjeta.id}
-                className={styles.fila}
-                role="button"
-                tabIndex={0}
-                onClick={() => onDetalle(f.tarjeta)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onDetalle(f.tarjeta);
-                  }
-                }}
-              >
-                <span className={styles.ico} style={{ background: f.color }} aria-hidden="true">
-                  <Icons.CreditCard size={14} strokeWidth={1.8} />
-                </span>
-                <div className={styles.main}>
-                  <div className={styles.nombre}>
-                    {f.tarjeta.alias}
-                    <Pill
-                      asTag
-                      variant={f.tarjeta.modalidad === 'credito' ? 'gold' : 'brand'}
-                      className={styles.tipo}
-                    >
-                      {f.tarjeta.modalidad === 'credito' ? 'Crédito' : 'Débito'}
-                    </Pill>
+              <td className={styles.td}>
+                {/* Sin cuadro de color · igual que las cuentas (F1): el alias
+                    ya dice cuál es y el color solo ensuciaba una fila de
+                    cifras. */}
+                <div className={styles.id}>
+                  <div className={styles.idTx}>
+                    <div className={styles.nombre}>{f.tarjeta.alias}</div>
+                    {f.sub && <div className={styles.mask}>{f.sub}</div>}
                   </div>
-                  {f.sub && <div className={styles.sub}>{f.sub}</div>}
                 </div>
-                <div className={styles.consumo}>
-                  <div className={styles.importe}>{importeSaldo(f.consumo)}</div>
-                  <div className={styles.etiqueta}>{f.etiqueta}</div>
-                </div>
+              </td>
+              <td className={styles.td}>
+                <Pill asTag variant={f.tarjeta.modalidad === 'credito' ? 'gold' : 'brand'}>
+                  {f.tarjeta.modalidad === 'credito' ? 'Crédito' : 'Débito'}
+                </Pill>
+              </td>
+              <td className={`${styles.td} ${styles.der}`}>
+                {/* Una tarjeta no tiene saldo, tiene un ciclo · lo consumido es
+                    su cifra-veredicto, como el cierre en una cuenta. */}
+                <span className={styles.oro}>{importeSaldo(f.consumo)}</span>
+              </td>
+              <td className={styles.td}>
+                <span className={styles.periodo}>{f.etiqueta}</span>
+              </td>
+              <td className={`${styles.td} ${styles.tdKebab}`}>
                 <button
                   type="button"
                   className={`${styles.kebab} ${menuAbierto === f.tarjeta.id ? styles.kebabFijo : ''}`}
@@ -165,8 +185,10 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onDetalle, onEditar, onEliminar
                 </button>
                 {menuAbierto === f.tarjeta.id && (
                   <div className={styles.menu} onClick={(e) => e.stopPropagation()}>
-                    <button type="button" onClick={() => { setMenuAbierto(null); onDetalle(f.tarjeta); }}>
-                      <Icons.Eye size={14} strokeWidth={1.9} /> Ver detalle
+                    {/* Las mismas tres acciones que una cuenta · en la tarjeta
+                        el punteo son sus compras del periodo (DrawerTarjeta). */}
+                    <button type="button" onClick={() => { setMenuAbierto(null); onAbrir(f.tarjeta); }}>
+                      <Icons.Check size={14} strokeWidth={1.9} /> Confirmar movimientos
                     </button>
                     <button type="button" onClick={() => { setMenuAbierto(null); onEditar(f.tarjeta); }}>
                       <Icons.Edit size={14} strokeWidth={1.9} /> Editar tarjeta
@@ -181,36 +203,49 @@ const ListaTarjetas: React.FC<Props> = ({ filas, onDetalle, onEditar, onEliminar
                     </button>
                   </div>
                 )}
-              </div>
-            ))}
-          </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className={styles.pie}>
+            <td className={styles.td}>
+              Total · {filas.length} {filas.length === 1 ? 'tarjeta' : 'tarjetas'}
+            </td>
+            <td className={styles.td} />
+            <td className={`${styles.td} ${styles.der}`}>
+              <span className={styles.oro}>{importeSaldo(totalConsumo)}</span>
+            </td>
+            <td className={styles.td} />
+            <td className={styles.td} />
+          </tr>
+        </tfoot>
+      </table>
 
-          {ordenadas.length > POR_PAGINA && (
-            <div className={styles.foot}>
-              <span className={styles.rango}>
-                {Math.min((pageSafe + 1) * POR_PAGINA, ordenadas.length)} de {ordenadas.length}
-              </span>
-              <button
-                type="button"
-                className={styles.flecha}
-                aria-label="Tarjetas anteriores"
-                disabled={pageSafe === 0}
-                onClick={() => setPagina((p) => Math.max(0, p - 1))}
-              >
-                <Icons.ChevronLeft size={14} strokeWidth={2.2} />
-              </button>
-              <button
-                type="button"
-                className={styles.flecha}
-                aria-label="Tarjetas siguientes"
-                disabled={pageSafe >= totalPaginas - 1}
-                onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
-              >
-                <Icons.ChevronRight size={14} strokeWidth={2.2} />
-              </button>
-            </div>
-          )}
-        </>
+      {ordenadas.length > POR_PAGINA && (
+        <div className={styles.foot}>
+          <span className={styles.rango}>
+            {Math.min((pageSafe + 1) * POR_PAGINA, ordenadas.length)} de {ordenadas.length}
+          </span>
+          <button
+            type="button"
+            className={styles.flecha}
+            aria-label="Tarjetas anteriores"
+            disabled={pageSafe === 0}
+            onClick={() => setPagina((p) => Math.max(0, p - 1))}
+          >
+            <Icons.ChevronLeft size={14} strokeWidth={2.2} />
+          </button>
+          <button
+            type="button"
+            className={styles.flecha}
+            aria-label="Tarjetas siguientes"
+            disabled={pageSafe >= totalPaginas - 1}
+            onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
+          >
+            <Icons.ChevronRight size={14} strokeWidth={2.2} />
+          </button>
+        </div>
       )}
     </>
   );

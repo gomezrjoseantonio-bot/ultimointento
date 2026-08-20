@@ -38,7 +38,6 @@ const filaCuenta: FilaCuenta = {
 const filaTarjeta: FilaTarjeta = {
   tarjeta: { id: 7, alias: 'Visa Oro', modalidad: 'credito', activa: true } as Tarjeta,
   sub: 'liquida en Unicaja',
-  color: 'var(--atlas-v5-ink-5)',
   consumo: 250,
   etiqueta: 'consumido · ciclo',
 };
@@ -57,7 +56,7 @@ const montar = (over: Partial<React.ComponentProps<typeof MisBancos>> = {}) =>
       onAnadirCuenta={noop}
       onPrevision={noop}
       filasTarjetas={[filaTarjeta]}
-      onDetalleTarjeta={noop}
+      onAbrirTarjeta={noop}
       onEditarTarjeta={noop}
       onEliminarTarjeta={noop}
       onAnadirTarjeta={noop}
@@ -79,9 +78,11 @@ describe('el switch Cuentas · Tarjetas', () => {
     montar();
     irA('Tarjetas');
     expect(screen.getByText('Visa Oro')).toBeInTheDocument();
-    // La tabla de cuentas desaparece entera, con su fila Total incluida.
+    // La tabla de cuentas desaparece entera, con su fila Total incluida. Las
+    // dos mitades tienen pie, así que se comprueba CUÁL de los dos está.
     expect(screen.queryByText('Unicaja')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Total ·/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Total · 1 cuenta/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Total · 1 tarjeta/)).toBeInTheDocument();
   });
 
   it('se puede volver a Cuentas', () => {
@@ -132,5 +133,34 @@ describe('la cabecera', () => {
     montar();
     irA('Tarjetas');
     expect(screen.getByRole('button', { name: /Previsión · meses y días/ })).toBeInTheDocument();
+  });
+});
+
+// Una tarjeta y una cuenta son dos formas de lo mismo, y por eso se leen y se
+// manejan igual: misma tabla, mismas cabeceras ordenables, mismo pie y —sobre
+// todo— las mismas tres acciones en el "⋯".
+describe('las tarjetas se comportan como las cuentas', () => {
+  it('se pintan en tabla, con cabeceras y pie de total', () => {
+    montar();
+    irA('Tarjetas');
+
+    expect(screen.getByRole('button', { name: /Tarjeta/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Consumo/ })).toBeInTheDocument();
+    expect(screen.getByText(/Total · 1 tarjeta/)).toBeInTheDocument();
+  });
+
+  it('el "⋯" ofrece las MISMAS tres acciones que una cuenta', () => {
+    const onAbrirTarjeta = jest.fn();
+    montar({ onAbrirTarjeta });
+    irA('Tarjetas');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Acciones de Visa Oro' }));
+    expect(screen.getByRole('button', { name: /Confirmar movimientos/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Editar tarjeta/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Eliminar tarjeta/ })).toBeInTheDocument();
+
+    // "Confirmar movimientos" lleva al cajón de la tarjeta · su punteo.
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar movimientos/ }));
+    expect(onAbrirTarjeta).toHaveBeenCalledTimes(1);
   });
 });

@@ -21,7 +21,7 @@ import { Icons } from '../../../design-system/v5';
 import type { Account } from '../../../services/db';
 import type { EstadoCuenta, KpisHero } from '../../../services/tesoreriaV6Metrics';
 import { diaYMes, importeConSigno, importeSaldo } from './formatoV6';
-import styles from './TablaCuentas.module.css';
+import styles from './TablaBanco.module.css';
 
 export interface FilaCuenta {
   cuenta: Account;
@@ -210,7 +210,11 @@ const TablaCuentas: React.FC<Props> = ({
                 {f.sale === 0 ? <span className={styles.mudo}>—</span> : importeConSigno(f.sale)}
               </td>
               <td className={`${styles.td} ${styles.der}`}>
-                <span className={styles.fuerte}>{importeSaldo(f.cierre)}</span>
+                {/* La cifra-veredicto de la fila, en oro como la del Total: es
+                    la que contesta "¿con cuánto acabo el mes?". Iba en tinta
+                    normal y sobre la fila navy salía en blanco, indistinguible
+                    del resto; el CSS ya tenía preparado el oro suave. */}
+                <span className={styles.oro}>{importeSaldo(f.cierre)}</span>
               </td>
               <td className={`${styles.td} ${styles.der}`}>
                 {/* "al día" no pinta nada (decisión del spec · celda en blanco). */}

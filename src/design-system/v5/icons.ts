@@ -70,7 +70,7 @@ import {
   ArrowLeft,
   ArrowUp,
   ArrowDown,
-  MoreHorizontal,
+  MoreVertical,
   Filter,
   Calendar,
   Clock,
@@ -181,7 +181,10 @@ export const Icons = {
   ArrowLeft,
   ArrowUp,          // Tesorería V6 · entra / sale del mes
   ArrowDown,
-  More: MoreHorizontal,
+  // Menú de acciones de una fila · VERTICAL. En horizontal se confunde con
+  // un separador o un "cargando", y el kebab vertical es lo que la gente
+  // ya reconoce como "aquí hay más cosas que hacer".
+  More: MoreVertical,
   Filter,
   Calendar,
   Clock,
