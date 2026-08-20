@@ -267,6 +267,7 @@ describe('las decisiones del usuario', () => {
       resolver: 1,
       ignoradas: 1,
       mesesCerrados: 0,
+      mesesAnteriores: 0,
     });
   });
 });
@@ -484,5 +485,56 @@ describe('meses cerrados · el extracto no reabre lo cerrado', () => {
     const ls = construirLineas([mov(1, 'X', -10, '2026-08-01')], sinMatches, [], new Set());
     expect(ls[0].veredicto).toBe('resolver');
     expect(resumir(ls, decisionesVacias()).mesesCerrados).toBe(0);
+  });
+});
+
+// A1 · subir un extracto largo no debe ahogar la sesión con meses viejos: las
+// líneas de meses ANTERIORES al actual que no cuadran se apartan por defecto,
+// recuperables una a una.
+describe('meses anteriores · se apartan por defecto (A1)', () => {
+  const movs = () => [
+    mov(1, 'VIEJO MAYO', -30, '2026-05-10'),
+    mov(2, 'VIEJO JULIO', -30, '2026-07-10'),
+    mov(3, 'ACTUAL AGOSTO', -30, '2026-08-10'),
+  ];
+
+  it('lo de meses anteriores se aparta; lo del mes actual queda a resolver', () => {
+    const ls = construirLineas(movs(), sinMatches, [], new Set(), new Set(), new Map(), '2026-08');
+    expect(ls[0].veredicto).toBe('mes_anterior');
+    expect(ls[1].veredicto).toBe('mes_anterior');
+    expect(ls[2].veredicto).toBe('resolver');
+    const r = resumir(ls, decisionesVacias());
+    expect(r.mesesAnteriores).toBe(2);
+    expect(r.resolver).toBe(1);
+  });
+
+  it('un mes anterior NO se materializa al guardar', () => {
+    const ls = construirLineas(movs(), sinMatches, [], new Set(), new Set(), new Map(), '2026-08');
+    expect(lineasPendientes(ls, decisionesVacias()).map((l) => l.movementId).sort()).toEqual([1, 2, 3]);
+  });
+
+  it('recuperar un mes anterior lo devuelve a resolver', () => {
+    const ls = construirLineas(movs(), sinMatches, [], new Set(), new Set(), new Map(), '2026-08');
+    const d = decisionesVacias();
+    d.recuperados.add(1);
+    expect(veredictoEfectivo(ls[0], d)).toBe('resolver');
+  });
+
+  it('un mes anterior que CUADRA con su previsto cuadra igual, no se aparta', () => {
+    const ls = construirLineas(
+      [mov(1, 'RENTA MAYO', -30, '2026-05-10')],
+      { ...sinMatches, matches: [{ movementId: 1, treasuryEventId: 9, score: 90, reasons: [] }] },
+      [evt(9, 'Renta prevista', -30, '2026-05-10')],
+      new Set(),
+      new Set(),
+      new Map(),
+      '2026-08'
+    );
+    expect(ls[0].veredicto).toBe('cuadra');
+  });
+
+  it('sin mesActual, nada se aparta por antigüedad (comportamiento previo)', () => {
+    const ls = construirLineas(movs(), sinMatches, [], new Set());
+    expect(ls.every((l) => l.veredicto === 'resolver')).toBe(true);
   });
 });

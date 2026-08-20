@@ -89,6 +89,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [previstos, setPrevistos] = useState<TreasuryEvent[]>([]);
   const [ignoradasPlegadas, setIgnoradasPlegadas] = useState(true);
   const [cerradosPlegados, setCerradosPlegados] = useState(true);
+  const [anterioresPlegados, setAnterioresPlegados] = useState(true);
 
   // El previsto se nombra con el MISMO adaptador que el resto de la app: título
   // = quién · qué es · inmueble (no su `description` en crudo).
@@ -174,10 +175,16 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         );
         // Los meses ya cerrados no se cargan · se apartan (§ cerrar el mes).
         const setCerrados = new Set((mesesCerrados ?? []).map((c) => c.mes));
+        // Mes en curso · las líneas de meses anteriores (no cerrados) que no
+        // cuadran se apartan por defecto (A1), para no ahogar la sesión con lo
+        // viejo al subir un extracto largo. Recuperables una a una.
+        const mesActual = new Date().toISOString().slice(0, 7);
 
         setResultado(res);
         setPrevistos(abiertos);
-        setLineas(construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, setCerrados, confirmados));
+        setLineas(
+          construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, setCerrados, confirmados, mesActual)
+        );
         setDecisiones(decisionesVacias());
         setPaso('resolver');
       } catch (err) {
@@ -425,10 +432,11 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
   const visibles = lineas.filter((l) => {
     const v = veredictoEfectivo(l, decisiones);
-    return v !== 'ignorada' && v !== 'mes_cerrado';
+    return v !== 'ignorada' && v !== 'mes_cerrado' && v !== 'mes_anterior';
   });
   const ignoradas = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'ignorada');
   const deMesesCerrados = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'mes_cerrado');
+  const deMesesAnteriores = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'mes_anterior');
 
   return (
     <>
@@ -492,6 +500,12 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 <div className={chasis.ak}>
                   <div className={chasis.akl}>Meses cerrados</div>
                   <div className={chasis.akv}>{resumen.mesesCerrados}</div>
+                </div>
+              )}
+              {resumen.mesesAnteriores > 0 && (
+                <div className={chasis.ak}>
+                  <div className={chasis.akl}>Meses anteriores</div>
+                  <div className={chasis.akv}>{resumen.mesesAnteriores}</div>
                 </div>
               )}
             </div>
@@ -688,6 +702,27 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                   titulo={`${deMesesCerrados.length} de meses cerrados · no se cargan`}
                   intro="Estos cargos son de meses que ya cerraste. Para cargarlos, reabre el mes en «Cerrar el mes»."
                   lineas={deMesesCerrados}
+                />
+              )}
+
+              {/* Meses anteriores al actual · apartados por defecto (A1) ·
+                  recuperables uno a uno, sin reabrir nada. */}
+              {deMesesAnteriores.length > 0 && (
+                <GrupoPlegableExtracto
+                  plegado={anterioresPlegados}
+                  onToggle={() => setAnterioresPlegados((v) => !v)}
+                  titulo={`${deMesesAnteriores.length} de meses anteriores · no se cargan`}
+                  intro="Son de meses anteriores al actual. Se apartan para no ahogar la sesión; si quieres tratar alguno, recupéralo."
+                  lineas={deMesesAnteriores}
+                  accion={(l) => (
+                    <button
+                      type="button"
+                      className={styles.recuperar}
+                      onClick={() => recuperar(l.movementId)}
+                    >
+                      recuperar
+                    </button>
+                  )}
                 />
               )}
 

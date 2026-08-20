@@ -17,7 +17,12 @@ import type { MovimientoConfirmadoRef } from '../../../services/conciliacionConf
 import type { Movement, TreasuryEvent } from '../../../services/db';
 import { generateLineHash } from '../../../services/statementIgnoredLinesService';
 
-export type VeredictoLinea = 'cuadra' | 'resolver' | 'ignorada' | 'mes_cerrado';
+export type VeredictoLinea =
+  | 'cuadra'
+  | 'resolver'
+  | 'ignorada'
+  | 'mes_cerrado'
+  | 'mes_anterior';
 
 export interface LineaExtracto {
   /** id del `Movement` que `processFile` ya insertó para esta línea. */
@@ -51,6 +56,11 @@ export interface ResumenSesion {
   ignoradas: number;
   /** Líneas de meses ya cerrados · no se cargan en esta sesión. */
   mesesCerrados: number;
+  /**
+   * Líneas de meses ANTERIORES al actual (no cerrados) · se apartan por defecto
+   * para no ahogar la sesión con lo viejo. Recuperables una a una.
+   */
+  mesesAnteriores: number;
 }
 
 /** Lo que el usuario ha decidido a mano · se aplica todo junto al Guardar. */
@@ -123,7 +133,15 @@ export function construirLineas(
    * secuencia previsto → confirmado / conciliado). Vacío si nadie hace "las dos
    * cosas".
    */
-  confirmadosPorMovimiento: Map<number, MovimientoConfirmadoRef> = new Map()
+  confirmadosPorMovimiento: Map<number, MovimientoConfirmadoRef> = new Map(),
+  /**
+   * Mes en curso (`YYYY-MM`). Una línea de un mes ANTERIOR (y no cerrado) que no
+   * cuadra con nada se aparta por defecto: subir un extracto largo no debe ahogar
+   * la sesión con meses viejos que no estás tratando. A diferencia del mes
+   * cerrado, es recuperable línea a línea (no hay que reabrir nada). Vacío/undef
+   * = no se aparta nada por antigüedad (comportamiento previo).
+   */
+  mesActual?: string
 ): LineaExtracto[] {
   const eventoPorId = new Map<number, TreasuryEvent>();
   for (const e of eventos) if (e.id != null) eventoPorId.set(e.id, e);
@@ -182,6 +200,9 @@ export function construirLineas(
     //      de duplicarse. Aunque su mes esté cerrado, por lo mismo que el previsto.
     //   4. Solo si NO cuadra con nada y su mes está cerrado se aparta: eso es el
     //      ruido que el usuario no quiere reabrir, no un cuadre legítimo.
+    //   5. Y si no cuadra ni está cerrado pero es de un mes ANTERIOR al actual,
+    //      se aparta como "mes anterior": no lo estás tratando al subir un
+    //      extracto largo. Recuperable una a una, sin reabrir nada.
     const mesLinea = (m.date ?? '').slice(0, 7);
     const veredicto: VeredictoLinea = ignoradasPrevias.has(hashLinea)
       ? 'ignorada'
@@ -189,7 +210,9 @@ export function construirLineas(
         ? 'cuadra'
         : mesesCerrados.has(mesLinea)
           ? 'mes_cerrado'
-          : 'resolver';
+          : mesActual && mesLinea && mesLinea < mesActual
+            ? 'mes_anterior'
+            : 'resolver';
 
     lineas.push({
       movementId: m.id,
@@ -236,9 +259,13 @@ export function veredictoEfectivo(
   // `consolidarSesion`.
   if (decisiones.aTraspaso.has(linea.movementId)) return 'cuadra';
 
-  // Recuperar una ignorada de una importación anterior la devuelve al flujo,
-  // no la da por buena: vuelve a "a resolver" salvo que además cuadre sola.
-  if (linea.veredicto === 'ignorada' && decisiones.recuperados.has(linea.movementId)) {
+  // Recuperar una ignorada de una importación anterior, o un mes anterior
+  // apartado, la devuelve al flujo · no la da por buena: vuelve a "a resolver"
+  // salvo que además cuadre sola.
+  if (
+    (linea.veredicto === 'ignorada' || linea.veredicto === 'mes_anterior') &&
+    decisiones.recuperados.has(linea.movementId)
+  ) {
     return linea.previsto ? 'cuadra' : 'resolver';
   }
   return linea.veredicto;
@@ -251,12 +278,14 @@ export function resumir(lineas: LineaExtracto[], decisiones: DecisionesSesion): 
     resolver: 0,
     ignoradas: 0,
     mesesCerrados: 0,
+    mesesAnteriores: 0,
   };
   for (const l of lineas) {
     const v = veredictoEfectivo(l, decisiones);
     if (v === 'cuadra') r.cuadran++;
     else if (v === 'ignorada') r.ignoradas++;
     else if (v === 'mes_cerrado') r.mesesCerrados++;
+    else if (v === 'mes_anterior') r.mesesAnteriores++;
     else r.resolver++;
   }
   return r;
@@ -353,14 +382,15 @@ export function lineasPendientes(
   lineas: LineaExtracto[],
   decisiones: DecisionesSesion
 ): Array<{ movementId: number; hashLinea: string; fecha: string; importe: number; concepto: string }> {
-  // "resolver" y "mes_cerrado" comparten destino: NO se materializan. La sin
-  // resolver porque el usuario no la resolvió; la de mes cerrado porque ese mes
-  // ya no se toca. En los dos casos su `Movement` se borra al consolidar, para
-  // que no aparezca como conciliada moviendo un saldo que no debe.
+  // "resolver", "mes_cerrado" y "mes_anterior" comparten destino: NO se
+  // materializan. La sin resolver porque el usuario no la resolvió; la de mes
+  // cerrado porque ese mes ya no se toca; la de mes anterior porque se apartó por
+  // defecto y no la recuperó. En todos los casos su `Movement` se borra al
+  // consolidar, para que no aparezca como conciliada moviendo un saldo que no debe.
   return lineas
     .filter((l) => {
       const v = veredictoEfectivo(l, decisiones);
-      return v === 'resolver' || v === 'mes_cerrado';
+      return v === 'resolver' || v === 'mes_cerrado' || v === 'mes_anterior';
     })
     .map((l) => ({
       movementId: l.movementId,
