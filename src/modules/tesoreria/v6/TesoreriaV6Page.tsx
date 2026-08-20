@@ -14,12 +14,11 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { CardV5, Icons, ToastHost, showToastV5 } from '../../../design-system/v5';
+import { ToastHost, showToastV5 } from '../../../design-system/v5';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../services/db';
 import { calculateAccountBalanceAtDate, corteParaSaldoVivo } from '../../../services/accountBalanceService';
 import {
   calcularKpisHero,
-  calcularRealidad,
   cierrePorCuenta,
   estadoDeCuenta,
   serieDiariaConsolidada,
@@ -27,7 +26,7 @@ import {
 import GraficoTreintaDias from './GraficoTreintaDias';
 import { colorDeBanco, SIN_COLOR } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
-import { importeConSigno, importeSaldo, nombreMes } from './formatoV6';
+import { nombreMes } from './formatoV6';
 import HeroTesoreria from './HeroTesoreria';
 import MisBancos from './MisBancos';
 import type { FilaCuenta } from './TablaCuentas';
@@ -38,7 +37,6 @@ import DrawerCuenta from './DrawerCuenta';
 import DrawerTarjeta from './DrawerTarjeta';
 import DrawerExtracto from './DrawerExtracto';
 import DrawerCalendario from './DrawerCalendario';
-import CerrarElMes from './CerrarElMes';
 import TesoreriaMovil from './TesoreriaMovil';
 import { useEsMovil } from './useEsMovil';
 import CuentaWizard from '../../../components/cuenta/CuentaWizard';
@@ -350,11 +348,6 @@ const TesoreriaV6Page: React.FC = () => {
   const kpis = useMemo(
     () => calcularKpisHero({ cuentas: cuentasVivas, saldoPorCuenta, eventos: estado.eventos, year, month0 }),
     [cuentasVivas, saldoPorCuenta, estado.eventos, year, month0]
-  );
-
-  const realidad = useMemo(
-    () => calcularRealidad({ eventos: estado.eventos, movimientos: estado.movimientos, year, month0 }),
-    [estado.eventos, estado.movimientos, year, month0]
   );
 
   /** V9 · la serie del gráfico "Lo que viene · próximos 30 días" (fase 1). */
@@ -901,26 +894,14 @@ const TesoreriaV6Page: React.FC = () => {
         onAnadirTarjeta={() => setFichaTarjeta({ tarjeta: null })}
       />
 
-      {/* ── Fila inferior de cards (mockup .row-3b) ───────────────────────
-          Las tarjetas subieron a "Mis Bancos" (F1), así que aquí quedan dos.
-          La rejilla de 6 meses (§4.3) deja el lienzo: la previsión mes a mes y
-          día a día vive detrás de "Previsión · meses y días", que abre el
-          calendario (§4.9) con su navegación ‹ ›. */}
-      <div className={styles.row2}>
-        {/* VOCABULARIO §6 quater · cerrar el mes. Tiene que estar AQUÍ, en
-            tesorería: lo que se cierra son previsiones de tesorería, y de un
-            mes cerrado depende que una bonificación se pueda perder. */}
-        <CerrarElMes hoy={hoy} onCambio={trasEscribir} />
+      {/* Aquí vivían "Cerrar el mes" y "Cómo va {mes}" (F2 · decisión de
+          producto): Tesorería mira hacia delante. Cerrar el mes era una
+          ceremonia que la pantalla no necesita —el motor sigue ahí, y con él
+          el bloqueo de meses cerrados—, y "cómo va" comparaba avance contra el
+          mes entero, que a primeros siempre se lee bien y no dice nada.
 
-        {/* §4.10 · Cómo va {mes} · confirmado frente a lo previsto. */}
-        <CardV5 compact className={styles.comoVa}>
-          <div className={styles.comoVaHd}>
-            <div className={styles.comoVaTitulo}>Cómo va {mesActual}</div>
-            <div className={styles.comoVaSub}>confirmado frente a lo previsto</div>
-          </div>
-          <BloqueRealidad realidad={realidad} />
-        </CardV5>
-      </div>
+          Lo que la pantalla contesta —¿tengo para pagar lo que viene?— ya está
+          arriba: el hero, la línea de 30 días y "Mis Bancos". */}
 
       {/* §4.4 · drawer de cuenta · la bandeja de trabajo */}
       <DrawerCuenta
@@ -1095,143 +1076,6 @@ const TesoreriaV6Page: React.FC = () => {
       </ConfirmaV6>
 
       <ToastHost />
-    </div>
-  );
-};
-
-// ─── Sub-componentes ────────────────────────────────────────────────────────
-
-/* §4.10 · ¿cabe el importe DENTRO del relleno de la barra?
- *
- * Si el relleno no da para el texto, el importe sale FUERA, a su derecha.
- * Ensanchar el relleno para que quepa sería falsear la proporción, que es justo
- * lo que la barra viene a decir.
- *
- * El umbral es 40 % y no 22 %: con 22 el texto entraba pero se salía del
- * relleno por la derecha, que es exactamente el aspecto que se quería evitar.
- * Un importe con miles y dos decimales necesita más de un tercio de la barra.
- *
- * Se exporta para que el candado apriete sobre ESTA función y no sobre una
- * copia del número escrita en el test. */
-export const importeCabeEnLaBarra = (anchoPct: number): boolean => anchoPct >= 40;
-
-/* Dónde empieza el importe que NO cabe dentro del relleno: justo detrás de él.
- *
- * Probé a toparlo por la derecha —`min(…, calc(100% - 78px))`— para que no se
- * saliera de la barra, y en barras estrechas el tope lo devolvía ENCIMA del
- * relleno: tinta oscura sobre navy, ilegible. Que un importe asome por la
- * derecha se lee; que se monte sobre el relleno, no. Quien le da sitio es la
- * rejilla de `.rvline`, que estrecha sus columnas fijas antes que la barra. */
-export const posicionImporteFuera = (anchoPct: number): string =>
-  `calc(${anchoPct}% + 8px)`;
-
-const BloqueRealidad: React.FC<{ realidad: ReturnType<typeof calcularRealidad> }> = ({ realidad }) => {
-  const mejor = realidad.desviacion >= 0;
-  return (
-    <div className={styles.rvcard}>
-      {realidad.lineas.map((l) => {
-        // §3.4 · el Neto pierde la barra SOLO cuando es negativo.
-        //
-        // Me pasé de largo y la quité siempre. Lo que no funciona con
-        // magnitudes negativas es el porcentaje de avance: "128 % lleno" se lee
-        // como mejor cuando significa haber gastado de más. Pero con un neto
-        // positivo la barra dice justo lo que tiene que decir —cuánto llevas de
-        // lo previsto— y el mockup la mantiene.
-        // §3.4 · la fila pierde la barra cuando NO hay porcentaje que pintar:
-        // eso pasa con el Neto en negativo, que es justo el caso en que un
-        // avance engaña. Con porcentaje, barra.
-        const sinBarra = l.porcentaje == null;
-        // Barra escalada contra SU PROPIO previsto, no contra el máximo global.
-        const ancho =
-          l.porcentaje == null ? 0 : Math.min(100, Math.max(2, Math.abs(l.porcentaje)));
-        return (
-          <div key={l.clave} className={styles.rvline}>
-            <div className={styles.rvlab}>{l.clave}</div>
-            {/* Las TRES filas dicen lo mismo: lo que llevas, a la izquierda, y
-                lo previsto del mes, a la derecha. Con porcentaje, la cifra va
-                dentro de la barra; sin porcentaje —el Neto en negativo— va
-                sola, en el hueco de la barra.
-
-                Aquí la fila del Neto enseñaba otra cosa: la resta contra el
-                previsto del MES ENTERO, rotulada "mejor/peor de lo previsto".
-                Dos problemas. Uno, el número gordo de la fila "Neto" no era el
-                neto (+935,74 € cuando el neto eran 487,30 €). Y dos, ese
-                veredicto contradecía al del pie —"acabarás −38 € peor de lo
-                previsto"— porque comparaba medio mes contra un mes entero, y
-                así a primeros SIEMPRE sale "mejor". El veredicto es uno y está
-                en el pie, que sí compara iguales. */}
-            {sinBarra ? (
-              <div className={styles.rvsolo}>
-                <span>{importeSaldo(l.real)}</span>
-                <small>llevas</small>
-              </div>
-            ) : (
-              /* El importe REAL va dentro de la barra, sobre lo que lleva
-                 recorrido: la cifra y su proporción se leen de una sola mirada
-                 en vez de saltar de la barra a una columna.
-
-                 Cuándo cabe dentro lo decide `importeCabeEnLaBarra`. */
-              <div className={styles.rvbar}>
-                <div
-                  className={`${styles.rvfill} ${l.clave === 'Neto' ? styles.rvfillNet : styles.rvfillIn}`}
-                  style={{ width: `${ancho}%` }}
-                >
-                  {importeCabeEnLaBarra(ancho) && (
-                    <span className={styles.rvenBarra}>{importeSaldo(l.real)}</span>
-                  )}
-                </div>
-                {!importeCabeEnLaBarra(ancho) && (
-                  <span className={styles.rvFueraBarra} style={{ left: posicionImporteFuera(ancho) }}>
-                    {importeSaldo(l.real)}
-                  </span>
-                )}
-              </div>
-            )}
-            {/* Sin porcentaje no se pinta un "%" suelto: un signo sin
-                número delante no dice nada y parece un dato que falta. Pero la
-                celda se queda: es lo que mantiene los importes de las tres
-                filas en la misma vertical. */}
-            {/* El % en el color de SU barra · el Neto va en oro, como su
-                relleno: si la barra es dorada y el número azul, parecen
-                dos datos distintos. */}
-            <span className={`${styles.rvpct} ${l.clave === 'Neto' ? styles.rvpctNet : ''}`}>
-              {l.porcentaje != null ? `${l.porcentaje}%` : ''}
-            </span>
-            <div className={styles.rvnum}>
-              {importeSaldo(l.previsto)}
-              <small>previsto</small>
-            </div>
-          </div>
-        );
-      })}
-
-      <div className={styles.rvsep} />
-
-      {/* El cierre del bloque es la DESVIACIÓN, no el cierre: ese ya está en
-          el hero y repetirlo no aporta (§4.10). */}
-      <div className={styles.rvend}>
-        <div className={styles.rvendIc}>
-          {mejor ? <Icons.ArrowUp size={18} strokeWidth={2.2} /> : <Icons.ArrowDown size={18} strokeWidth={2.2} />}
-        </div>
-        <div>
-          <div className={styles.rvendTt}>
-            {/* Con 0 no es ni mejor ni peor · el mismo caso que la línea del
-                Neto, que también decía "mejor" sobre una diferencia nula. */}
-            {realidad.desviacion === 0 ? (
-              <>Acabarás <b>igual que lo previsto</b></>
-            ) : (
-              <>
-                Acabarás <b>{importeConSigno(realidad.desviacion)}</b>{' '}
-                {mejor ? 'mejor' : 'peor'} de lo previsto
-              </>
-            )}
-          </div>
-          <div className={styles.rvendSs}>
-            de lo ya confirmado, habías previsto pagar <b>{importeSaldo(realidad.previstoDeLoConfirmado)}</b> y has
-            pagado <b>{importeSaldo(realidad.pagadoReal)}</b>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
