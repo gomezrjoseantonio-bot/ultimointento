@@ -6,7 +6,7 @@
 // consumido 1.010,72 €" cuando no se había confirmado ni un euro. Estos casos
 // son el candado de esa distinción.
 
-import { consumoDeTarjeta, serieDiariaTarjeta } from '../tesoreriaV6Metrics';
+import { consumoDeTarjeta, serieDiariaTarjeta } from '../tarjetaMetrics';
 import type { Movement, TreasuryEvent } from '../db';
 
 /** Una PIEZA de tarjeta · una compra anotada, punteable una a una. */

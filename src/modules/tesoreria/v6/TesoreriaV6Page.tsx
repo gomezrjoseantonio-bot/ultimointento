@@ -19,14 +19,13 @@ import { initDB, type Account, type Movement, type TreasuryEvent } from '../../.
 import { calculateAccountBalanceAtDate, corteParaSaldoVivo } from '../../../services/accountBalanceService';
 import {
   calcularKpisHero,
-  consumoDeTarjeta,
   rangoDelMes,
-  serieDiariaTarjeta,
   cierrePorCuenta,
   estadoDeCuenta,
   serieDiariaConsolidada,
   serieDiariaCuenta,
 } from '../../../services/tesoreriaV6Metrics';
+import { consumoDeTarjeta, serieDiariaTarjeta } from '../../../services/tarjetaMetrics';
 import GraficoTreintaDias from './GraficoTreintaDias';
 import GraficoDiarioCuenta from './GraficoDiarioCuenta';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
