@@ -8,6 +8,7 @@ import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfil
 import { migrarTiposDeCuenta } from '../migrations/v86-tiposDeCuenta';
 import { migrarTarjetas } from '../migrations/v87-tarjetas';
 import { borrarCuentasDeTarjeta } from '../migrations/v88-borrarCuentasDeTarjeta';
+import { migrarExplotacionAlquiler } from '../migrations/v90-explotacionAlquiler';
 import { migrarBaseAmortizableEjercicio } from '../baseAmortizableEjercicioService';
 import { inmuebleDelPrestamo, idDeInmueble, type PrestamoConDestinos } from '../inmuebleDelPrestamo';
 
@@ -738,6 +739,32 @@ export function runPostOpenMigrations(
         await db.put('keyval', 'completed', FLAG);
       } catch (err) {
         console.warn('[DB V88 traspasos activoId] backfill falló:', err);
+      }
+      return db;
+    });
+
+    // ── V90 · R1 · ALQUILERES · siembra de `explotacionAlquiler` ──────────────
+    //
+    // «Poner en alquiler» pasa a ser entidad propia. Por cada inmueble con señal
+    // de alquiler (uso de arrendamiento · habitaciones activas · estado operativo
+    // · contrato) se crea su explotación equivalente desde los campos legacy de
+    // `Property`. La vivienda habitual y los inmuebles sin señal NO se marcan
+    // (uso propio · se marcan a mano en Disponibilidad). Idempotente por
+    // `inmuebleId` (índice único) y por su flag.
+    dbPromise = dbPromise.then(async (db) => {
+      try {
+        const FLAG = 'migration_v90_explotacion_alquiler_v1';
+        if ((await db.get('keyval', FLAG)) === 'completed') return db;
+
+        const r = await migrarExplotacionAlquiler(db as unknown as IDBPDatabase<any>);
+        if (r.explotacionesCreadas > 0) {
+          console.log(
+            `[DB V90 explotacionAlquiler] ${r.explotacionesCreadas} inmueble(s) marcado(s) como alquilable(s) desde su config legacy`,
+          );
+        }
+        await db.put('keyval', 'completed', FLAG);
+      } catch (err) {
+        console.warn('[DB V90 explotacionAlquiler] siembra falló:', err);
       }
       return db;
     });
