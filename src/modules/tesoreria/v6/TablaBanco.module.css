@@ -1,6 +1,11 @@
 /* ===========================================================================
-   Tesorería V9 · tabla de cuentas · cuerpo de la vista "Cuentas" de Mis Bancos
+   Tesorería · chasis de tabla de "Mis Bancos" · lo comparten las dos mitades
    (mockup `docs/mockups/atlas-bancos-grafico-v5.html`).
+
+   Una cuenta y una tarjeta son dos formas de lo mismo —dinero en un banco— y
+   se leen en la misma tabla: mismas cabeceras ordenables, mismas filas, mismo
+   menú "⋯" y mismo pie con el total. Tenían dos formas distintas y saltar de
+   una pestaña a otra parecía cambiar de pantalla.
 
    La card, el título y los botones viven en `MisBancos.module.css`: aquí solo
    queda la tabla. Cifras SIEMPRE en mono tabular y a la derecha, en cuerpo Y
@@ -49,7 +54,7 @@
 .thInd { font-size: 8px; }
 
 .td {
-  padding: 4px 12px;
+  padding: 8px 12px;
   font-size: 12.5px;
   color: var(--atlas-v5-ink-2);
   border-bottom: 1px solid var(--atlas-v5-line-2);
@@ -80,8 +85,8 @@
 .idTx { min-width: 0; }
 
 .nombre {
-  font-size: 12.5px;
-  font-weight: var(--atlas-v5-fw-semibold);
+  font-size: var(--atlas-v5-fs-sub);
+  font-weight: var(--atlas-v5-fw-bold);
   color: var(--atlas-v5-ink);
   line-height: 1.2;
   white-space: nowrap;
@@ -336,4 +341,23 @@
 .tdGrafico {
   padding: 0;
   background: var(--atlas-v5-card-alt);
+}
+
+/* ── Piezas de la vista Tarjetas ────────────────────────────────────────── */
+
+/* El periodo al que se refiere el consumo ("consumido · ciclo") · va junto a
+   la cifra y en tinta apagada: es la unidad de medida, no el dato. */
+.periodo {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  white-space: nowrap;
+}
+
+.vacio {
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-4);
+  padding: 14px 12px;
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  text-align: center;
 }

@@ -147,14 +147,36 @@ describe('serieDiariaConsolidada · 30 días rodantes', () => {
     expect(puntos[30]).toEqual({ dia: '2026-09-17', saldo: 2050 });
   });
 
-  it('lo vencido sin confirmar se aplica en HOY · sigue por venir', () => {
+  // El punto de HOY es el saldo de hoy, y manda el mismo número que el hero:
+  // dos cifras distintas para el mismo día, una al lado de otra en la misma
+  // pantalla, es lo que hacía que el gráfico "no marcara lo mismo".
+  //
+  // Lo vencido sin confirmar NO desaparece: sigue por venir, y por eso se
+  // aplica a partir del día siguiente en vez de descontarse de lo que hay hoy
+  // en el banco.
+  it('el punto de hoy es el saldo de hoy · lo vencido se ve desde mañana', () => {
     const { puntos } = serieDiariaConsolidada({
       cuentas: [cuenta(1)],
       saldoPorCuenta: new Map([[1, 100]]),
       eventos: [ev({ accountId: 1, type: 'expense', amount: 30, predictedDate: '2026-08-01' })],
       hoy: HOY,
     });
-    expect(puntos[0].saldo).toBe(70);
+    expect(puntos[0].saldo).toBe(100);
+    expect(puntos[1].saldo).toBe(70);
+  });
+
+  // Un cargo de hoy que hunde la cuenta se avisa HOY, aunque el punto de hoy
+  // enseñe el saldo todavía en positivo: el aviso mira lo que va a pasar.
+  it('el descubierto de hoy se detecta aunque el punto de hoy no lo pinte', () => {
+    const { puntos, descubierto } = serieDiariaConsolidada({
+      cuentas: [cuenta(1, 'Sabadell')],
+      saldoPorCuenta: new Map([[1, 20]]),
+      eventos: [ev({ accountId: 1, type: 'expense', amount: 50, predictedDate: HOY })],
+      hoy: HOY,
+    });
+    expect(puntos[0].saldo).toBe(20);
+    expect(descubierto?.dia).toBe(HOY);
+    expect(descubierto?.importe).toBe(-30);
   });
 
   it('el primer día en que UNA cuenta cruza 0 se atribuye a esa cuenta', () => {

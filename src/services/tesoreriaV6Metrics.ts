@@ -456,6 +456,18 @@ export function serieDiariaConsolidada(params: {
   const puntos: PuntoSerieDiaria[] = [];
   let descubierto: DescubiertoSerie | null = null;
 
+  /* El punto de HOY es el saldo de hoy, no una proyección: lo que hay en el
+     banco es un hecho, y la línea dibuja lo que falta por pasar a partir de
+     ahí. Se aplicaba el flujo del día ANTES de emitir el punto y, como lo
+     vencido sin confirmar se acumula en `hoy`, el gráfico arrancaba en 35.119 €
+     mientras el KPI de al lado decía 35.641 € — dos cifras para el mismo día,
+     una junto a otra. El flujo de hoy se ve desde el día siguiente. */
+  {
+    let total = 0;
+    for (const s of Array.from(saldos.values())) total += s;
+    puntos.push({ dia: fechas[0], saldo: redondear(total) });
+  }
+
   for (const fecha of fechas) {
     let candidato: DescubiertoSerie | null = null;
     for (const [cuentaId, saldo] of Array.from(saldos.entries())) {
@@ -471,6 +483,9 @@ export function serieDiariaConsolidada(params: {
       }
     }
     if (descubierto == null && candidato != null) descubierto = candidato;
+    // Hoy ya salió, con su saldo sin proyectar. El descubierto SÍ se sigue
+    // buscando en él: un cargo de hoy que hunde la cuenta hay que avisarlo hoy.
+    if (fecha === fechas[0]) continue;
     let total = 0;
     for (const s of Array.from(saldos.values())) total += s;
     puntos.push({ dia: fecha, saldo: redondear(total) });

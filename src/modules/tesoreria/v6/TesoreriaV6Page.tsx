@@ -26,7 +26,6 @@ import {
 } from '../../../services/tesoreriaV6Metrics';
 import GraficoTreintaDias from './GraficoTreintaDias';
 import GraficoDiarioCuenta from './GraficoDiarioCuenta';
-import { colorDeBanco, SIN_COLOR } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { nombreMes } from './formatoV6';
 import HeroTesoreria from './HeroTesoreria';
@@ -436,7 +435,6 @@ const TesoreriaV6Page: React.FC = () => {
             sub:
               t.emisora ||
               (liquida ? `liquida en ${liquida.alias || liquida.banco?.name || 'su cuenta'}` : ''),
-            color: liquida ? colorDeBanco(liquida) : SIN_COLOR,
             consumo: esCredito
               ? gastoAbierto.get(t.id) ?? 0
               : gastadoEnElMes(estado.movimientos, t, hoy),
@@ -956,7 +954,7 @@ const TesoreriaV6Page: React.FC = () => {
           diasCuenta && <GraficoDiarioCuenta dias={diasCuenta} hoy={hoy} month0={month0} />
         }
         filasTarjetas={filasTarjetas}
-        onDetalleTarjeta={(t) => setTarjetaAbierta(t)}
+        onAbrirTarjeta={(t) => setTarjetaAbierta(t)}
         onEditarTarjeta={(t) => setFichaTarjeta({ tarjeta: t })}
         onEliminarTarjeta={(t) => setBajaTarjeta(t)}
         onAnadirTarjeta={() => setFichaTarjeta({ tarjeta: null })}

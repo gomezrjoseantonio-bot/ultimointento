@@ -49,7 +49,7 @@ interface Props {
 
   // ── Tarjetas ──
   filasTarjetas: FilaTarjeta[];
-  onDetalleTarjeta: (t: Tarjeta) => void;
+  onAbrirTarjeta: (t: Tarjeta) => void;
   onEditarTarjeta: (t: Tarjeta) => void;
   onEliminarTarjeta: (t: Tarjeta) => void;
   onAnadirTarjeta: () => void;
@@ -68,7 +68,7 @@ const MisBancos: React.FC<Props> = ({
   onSeleccionarCuenta,
   graficoCuenta,
   filasTarjetas,
-  onDetalleTarjeta,
+  onAbrirTarjeta,
   onEditarTarjeta,
   onEliminarTarjeta,
   onAnadirTarjeta,
@@ -118,7 +118,7 @@ const MisBancos: React.FC<Props> = ({
             acciones —empezando por el punteo— viven en el "⋯". */}
         {enCuentas
           ? 'clic en una cuenta para ver su día a día · el menú ⋯ abre el punteo'
-          : 'clic en una tarjeta para ver sus compras del periodo'}
+          : 'clic en una tarjeta para ver sus compras del periodo · el menú ⋯ tiene sus acciones'}
       </div>
 
       {enCuentas ? (
@@ -136,7 +136,7 @@ const MisBancos: React.FC<Props> = ({
       ) : (
         <ListaTarjetas
           filas={filasTarjetas}
-          onDetalle={onDetalleTarjeta}
+          onAbrir={onAbrirTarjeta}
           onEditar={onEditarTarjeta}
           onEliminar={onEliminarTarjeta}
         />
