@@ -18,14 +18,22 @@ import {
   Users,
   Zap,
   Shield,
-  Dumbbell,
   Tv,
   ShoppingCart,
   Briefcase,
   Wrench,
-  Layers,
   Package,
   CirclePlus,
+  Settings,
+  Bell,
+  Sparkles,
+  Car,
+  Pill,
+  Film,
+  Plane,
+  UtensilsCrossed,
+  Shirt,
+  Scissors,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TipoGasto } from '../../TipoGastoSelector/TipoGastoSelector.types';
@@ -37,19 +45,27 @@ import {
   type FamiliaId,
 } from '../../../../../services/conceptos/catalogoConceptos';
 
-/** Un icono por familia del catálogo unificado (las 13). */
-const ICONO_FAMILIA: Record<FamiliaId, LucideIcon> = {
-  alquiler: Home,
-  tributos: Landmark,
+/** Un icono por Tipo del catálogo unificado · los que falten caen a `CirclePlus`. */
+const ICONO_FAMILIA: Partial<Record<FamiliaId, LucideIcon>> = {
   comunidad: Users,
-  suministros: Zap,
+  tributos: Landmark,
   seguros: Shield,
-  cuotas: Dumbbell,
-  suscripciones: Tv,
-  dia_a_dia: ShoppingCart,
-  gestion: Briefcase,
   reparacion: Wrench,
-  servicios: Layers,
+  mantenimiento: Settings,
+  suministros: Zap,
+  alarma: Bell,
+  gestion: Briefcase,
+  limpieza: Sparkles,
+  supermercado: ShoppingCart,
+  transporte: Car,
+  farmacia: Pill,
+  suscripciones: Tv,
+  ocio: Film,
+  viaje: Plane,
+  restaurante: UtensilsCrossed,
+  ropa: Shirt,
+  cuidado_personal: Scissors,
+  alquiler: Home,
   mobiliario: Package,
   otros: CirclePlus,
 };

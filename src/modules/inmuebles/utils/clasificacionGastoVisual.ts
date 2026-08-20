@@ -35,8 +35,8 @@ export interface ClasificacionVisualInmuebleInput {
   esRegistroMobiliario?: boolean;
 }
 
-const FAMILIAS_MANTENER = new Set<FamiliaId>(['tributos', 'comunidad', 'seguros', 'reparacion']);
-const FAMILIAS_EXPLOTAR = new Set<FamiliaId>(['suministros', 'gestion', 'servicios']);
+const FAMILIAS_MANTENER = new Set<FamiliaId>(['tributos', 'comunidad', 'seguros', 'reparacion', 'mantenimiento']);
+const FAMILIAS_EXPLOTAR = new Set<FamiliaId>(['suministros', 'alarma', 'gestion', 'limpieza']);
 
 const CATEGORY_KEYS_MANTENER = new Set([
   'ibi_inmueble',

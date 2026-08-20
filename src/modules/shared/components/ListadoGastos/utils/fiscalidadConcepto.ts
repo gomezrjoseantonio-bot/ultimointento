@@ -61,18 +61,27 @@ const META = new Map(FAMILIAS_FISCALES.map((f) => [f.id, f]));
  * deducción autonómica, que es otra cosa y va por su lado.
  */
 const FAMILIA_FISCAL_DE: Record<FamiliaId, FamiliaFiscal> = {
-  alquiler: 'no_deducible',
-  tributos: 'ibi_tasas',
   comunidad: 'comunidad',
-  suministros: 'suministros',
+  tributos: 'ibi_tasas',
   seguros: 'seguros',
-  cuotas: 'no_deducible',
-  suscripciones: 'no_deducible',
-  dia_a_dia: 'no_deducible',
-  gestion: 'servicios_profesionales',
   reparacion: 'reparaciones_conservacion',
+  mantenimiento: 'reparaciones_conservacion',
+  suministros: 'suministros',
+  // Alarma en un inmueble va por «servicios» (casilla 0112), como iba de suministro.
+  alarma: 'servicios_profesionales',
+  gestion: 'servicios_profesionales',
   // Limpieza, lavandería, consumibles… · casilla 0112 «servicios personales».
-  servicios: 'servicios_profesionales',
+  limpieza: 'servicios_profesionales',
+  supermercado: 'no_deducible',
+  transporte: 'no_deducible',
+  farmacia: 'no_deducible',
+  suscripciones: 'no_deducible',
+  ocio: 'no_deducible',
+  viaje: 'no_deducible',
+  restaurante: 'no_deducible',
+  ropa: 'no_deducible',
+  cuidado_personal: 'no_deducible',
+  alquiler: 'no_deducible',
   mobiliario: 'amortizacion_muebles',
   otros: 'no_deducible',
 };

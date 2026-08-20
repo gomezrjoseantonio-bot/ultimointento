@@ -45,19 +45,36 @@ import type {
 } from '../../types/compromisosRecurrentes';
 import { CONCEPTOS_BASE } from './conceptosBase';
 
-/** Las 13 familias del árbol unificado. */
+/**
+ * Los Tipos (carpetas) del árbol unificado · P8a (Jose, 20 ago 2026).
+ *
+ * Reorganizado para coincidir con el catálogo acordado (§9 quater): «Día a día»
+ * se rompe en Tipos propios (Supermercado, Transporte, Farmacia, Ocio, Viaje,
+ * Restaurante, Ropa, Cuidado personal), «Cuotas» se funde en Suscripciones,
+ * «Servicios» se reparte en Limpieza + Gestión, y salen Tipos nuevos
+ * (Mantenimiento, Alarma, Limpieza). Hipoteca/préstamo NO está: nace en
+ * Financiación y su cuota salta sola a tesorería, no se crea a mano aquí.
+ */
 export type FamiliaId =
-  | 'alquiler'
-  | 'tributos'
   | 'comunidad'
-  | 'suministros'
+  | 'tributos'
   | 'seguros'
-  | 'cuotas'
-  | 'suscripciones'
-  | 'dia_a_dia'
-  | 'gestion'
   | 'reparacion'
-  | 'servicios'
+  | 'mantenimiento'
+  | 'suministros'
+  | 'alarma'
+  | 'gestion'
+  | 'limpieza'
+  | 'supermercado'
+  | 'transporte'
+  | 'farmacia'
+  | 'suscripciones'
+  | 'ocio'
+  | 'viaje'
+  | 'restaurante'
+  | 'ropa'
+  | 'cuidado_personal'
+  | 'alquiler'
   | 'mobiliario'
   | 'otros';
 
@@ -77,17 +94,25 @@ export interface Familia {
  * un segundo sitio donde equivocarse.
  */
 export const FAMILIAS: readonly Familia[] = [
-  { id: 'alquiler', label: 'Alquiler', descripcion: 'Alquiler de la vivienda' },
-  { id: 'tributos', label: 'Tributos', descripcion: 'IBI · tasas municipales · multas' },
   { id: 'comunidad', label: 'Comunidad', descripcion: 'Cuota ordinaria · derramas' },
-  { id: 'suministros', label: 'Suministros', descripcion: 'Luz · gas · agua · internet · telefonía' },
-  { id: 'seguros', label: 'Seguros', descripcion: 'Hogar · vida · salud · coche · impago' },
-  { id: 'cuotas', label: 'Cuotas', descripcion: 'Gimnasio · educación · colegios · ONG' },
-  { id: 'suscripciones', label: 'Suscripciones', descripcion: 'Streaming · música · software · cloud · prensa' },
-  { id: 'dia_a_dia', label: 'Día a día', descripcion: 'Supermercado · transporte · ocio · salud · ropa' },
-  { id: 'gestion', label: 'Gestión', descripcion: 'Agencia · gestoría · asesoría' },
-  { id: 'reparacion', label: 'Reparación y conservación', descripcion: 'Caldera · mantenimiento integral' },
-  { id: 'servicios', label: 'Servicios y explotación', descripcion: 'Limpieza · lavandería · consumibles' },
+  { id: 'tributos', label: 'Impuestos', descripcion: 'IBI · basuras · licencia turística · circulación' },
+  { id: 'seguros', label: 'Seguro', descripcion: 'Hogar · vida · impagos · decesos · vehículo · médico' },
+  { id: 'reparacion', label: 'Reparación', descripcion: 'Vehículo · caldera · electrodomésticos' },
+  { id: 'mantenimiento', label: 'Mantenimiento', descripcion: 'Caldera · vehículo · ITV' },
+  { id: 'suministros', label: 'Suministro', descripcion: 'Luz · agua · gas · internet · móvil' },
+  { id: 'alarma', label: 'Alarma', descripcion: 'Alarma y seguridad' },
+  { id: 'gestion', label: 'Gestión', descripcion: 'Agencia · gestoría · asesoría · plataformas · consumibles' },
+  { id: 'limpieza', label: 'Limpieza', descripcion: 'Zonas comunes · integral · lavandería' },
+  { id: 'supermercado', label: 'Supermercado', descripcion: 'Alimentación · compra' },
+  { id: 'transporte', label: 'Transporte', descripcion: 'Combustible' },
+  { id: 'farmacia', label: 'Farmacia', descripcion: 'Farmacia · salud · médicos' },
+  { id: 'suscripciones', label: 'Suscripciones', descripcion: 'Gimnasio · educación · ONG · streaming · cloud' },
+  { id: 'ocio', label: 'Ocio', descripcion: 'Cine · planes · ocio' },
+  { id: 'viaje', label: 'Viaje', descripcion: 'Viajes · escapadas' },
+  { id: 'restaurante', label: 'Restaurante', descripcion: 'Restaurantes · cafeterías' },
+  { id: 'ropa', label: 'Ropa y calzado', descripcion: 'Ropa · calzado' },
+  { id: 'cuidado_personal', label: 'Cuidado personal', descripcion: 'Peluquería · cuidado personal' },
+  { id: 'alquiler', label: 'Alquiler', descripcion: 'Vivienda · vehículo (renting)' },
   { id: 'mobiliario', label: 'Mobiliario y enseres', descripcion: 'Ropa de cama · menaje · muebles' },
   { id: 'otros', label: 'Otros', descripcion: 'Gastos personalizados' },
 ];

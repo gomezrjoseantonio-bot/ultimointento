@@ -122,7 +122,7 @@ describe('el reparto de los paquetes personales', () => {
 
   it('«seguros_cuotas» se reparte en seguros y cuotas', () => {
     expect(conceptoPorId(resolverConcepto('seguros_cuotas', 'seguro_vida')!)?.familia).toBe('seguros');
-    expect(conceptoPorId(resolverConcepto('seguros_cuotas', 'gimnasio')!)?.familia).toBe('cuotas');
+    expect(conceptoPorId(resolverConcepto('seguros_cuotas', 'gimnasio')!)?.familia).toBe('suscripciones');
   });
 
   it('«movil» y «telefonia» acaban en el mismo concepto', () => {
