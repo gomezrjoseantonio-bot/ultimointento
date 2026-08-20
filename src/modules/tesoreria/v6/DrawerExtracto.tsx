@@ -714,10 +714,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 />
               )}
 
-              {/* Meses ya cerrados · no se cargan. El bloqueo lo sigue
-                  imponiendo `cierreDeMes`; lo que cambió es a dónde se manda al
-                  usuario: la card "Cerrar el mes" ya no existe (F2), así que
-                  remitir a ella era mandarlo a ninguna parte. */}
+              {/* Meses ya cerrados · no se cargan. Sigue bloqueando `cierreDeMes`; lo que cambió (F2) es a dónde se remite. */}
               {deMesesCerrados.length > 0 && (
                 <GrupoPlegableExtracto
                   plegado={cerradosPlegados}
