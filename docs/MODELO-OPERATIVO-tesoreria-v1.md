@@ -387,7 +387,22 @@ muestra (plegar por Tipo, separar recurrentes de puntuales, ver por inmueble, el
 alta de un puntual vs la pantalla de recurrentes) es una capa de encima. Ahí
 nacían los problemas: se dejaba que la pantalla decidiera la naturaleza.
 
-### 9 quater · CATÁLOGO DE NATURALEZA acordado (Jose, 19 ago)
+### 9 quater · CATÁLOGO DE NATURALEZA acordado (Jose, 19 ago) — **IMPLEMENTADO P8a (20 ago)**
+
+> **P8a (20 ago):** el catálogo unificado (`conceptos/`) se reconcilió con esta
+> tabla: se rompió «Día a día» en Tipos propios (Supermercado, Transporte,
+> Farmacia, Ocio, Viaje, Restaurante, Ropa, Cuidado personal), «Cuotas» se fundió
+> en Suscripciones, «Servicios» se repartió (Limpieza + Gestión), y salieron los
+> Tipos nuevos (Mantenimiento, Alarma, Limpieza) y los subtipos que faltaban
+> (Circulación, Decesos, Reparación·Vehículo/Electrodomésticos, Mantenimiento·
+> Caldera/Vehículo/ITV, Alquiler·Vehículo). **Regla de Jose que ordena todo: el
+> catálogo es para TESORERÍA —de dónde sale el dinero—, todo gasto real tiene que
+> poder elegirse; la fiscalidad es capa de encima (diferida).** Por eso Mobiliario
+> se queda visible (comprar un mueble se clasifica) y gana ámbito personal.
+> **Hipoteca/préstamo NO está**: el préstamo nace en Financiación y su cuota salta
+> sola a tesorería, no se crea a mano. El `conceptoId` de los apuntes NO cambia y
+> ninguna proyección fiscal se movió (candado de equivalencia verde).
+
 
 Solo **naturaleza** (eje 1). NO lleva todavía casilla, imputación ni semilla —
 eso es capa de encima y se hace en el siguiente paso. Estructura **Tipo →

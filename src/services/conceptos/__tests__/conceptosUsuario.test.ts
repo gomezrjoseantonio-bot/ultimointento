@@ -70,9 +70,9 @@ describe('qué se deja crear', () => {
   });
 
   it('NO en un ámbito donde su familia no existe', () => {
-    // «Servicios y explotación» es sólo de inmueble · no habría de quién
-    // heredar la clasificación y nacería sin saber dónde va.
-    expect(puedeCrear('servicios', 'Jardinero', ['personal'])).toEqual({
+    // «Limpieza» es sólo de inmueble · no habría de quién heredar la
+    // clasificación y nacería sin saber dónde va.
+    expect(puedeCrear('limpieza', 'Jardinero', ['personal'])).toEqual({
       ok: false,
       motivo: 'familia_sin_ambito',
     });
@@ -248,7 +248,7 @@ describe('editar un concepto propio', () => {
     // apuntando a nada.
     await crearConceptoPropio('suministros', 'Butano', ['personal']);
     await editarConceptoPropio('usr_butano', {
-      familia: 'dia_a_dia',
+      familia: 'otros',
       label: 'Bombonas',
       ambitos: ['personal'],
     });
@@ -256,14 +256,14 @@ describe('editar un concepto propio', () => {
     expect({ id: c?.id, label: c?.label, familia: c?.familia }).toEqual({
       id: 'usr_butano',
       label: 'Bombonas',
-      familia: 'dia_a_dia',
+      familia: 'otros',
     });
   });
 
   it('al cambiar de familia hereda la clasificación de la nueva', async () => {
     await crearConceptoPropio('suministros', 'Butano', ['personal']);
     await editarConceptoPropio('usr_butano', {
-      familia: 'dia_a_dia',
+      familia: 'otros',
       label: 'Butano',
       ambitos: ['personal'],
     });
@@ -285,7 +285,7 @@ describe('editar un concepto propio', () => {
     await expect(editarConceptoPropio('usr_butano', { ...base, label: '  ' })).rejects.toThrow();
     await expect(editarConceptoPropio('usr_butano', { ...base, ambitos: [] })).rejects.toThrow();
     await expect(
-      editarConceptoPropio('usr_butano', { ...base, familia: 'servicios', ambitos: ['personal'] }),
+      editarConceptoPropio('usr_butano', { ...base, familia: 'limpieza', ambitos: ['personal'] }),
     ).rejects.toThrow();
   });
 });
@@ -293,18 +293,18 @@ describe('editar un concepto propio', () => {
 // ─── El catálogo de fábrica no se mueve ─────────────────────────────────────
 
 describe('nada de esto toca el catálogo de fábrica', () => {
-  it('sigue teniendo sus 60 conceptos después de añadir y esconder', async () => {
+  it('sigue teniendo sus conceptos de fábrica después de añadir y esconder', async () => {
     await crearConceptoPropio('suministros', 'Butano', ['personal']);
     await ocultar('gimnasio', true);
-    expect(CONCEPTOS_BASE).toHaveLength(60);
-    expect(conceptosEfectivos()).toHaveLength(61);
+    expect(CONCEPTOS_BASE).toHaveLength(68);
+    expect(conceptosEfectivos()).toHaveLength(69);
   });
 
   it('ningún propio puede traer casilla AEAT propia', async () => {
     // La proyección de inmueble se copia entera del donante · no hay forma de
     // que un concepto de usuario apunte a una `categoryKey` que su familia no
     // usara ya.
-    await crearConceptoPropio('servicios', 'Jardinero', ['inmueble']);
+    await crearConceptoPropio('limpieza', 'Jardinero', ['inmueble']);
     const keysDeFabrica = new Set(
       CONCEPTOS_BASE.filter((c) => c.inmueble).map((c) => c.inmueble!.categoryKey),
     );

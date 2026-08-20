@@ -201,7 +201,8 @@ const FAMILIA_A_GASTO_CATEGORIA: Partial<Record<FamiliaId, GastoCategoria>> = {
   seguros:     'seguro',
   gestion:     'gestion',
   reparacion:  'reparacion',
-  servicios:   'servicio',
+  mantenimiento: 'reparacion',
+  limpieza:    'servicio',
 };
 
 // ── classification patch ──────────────────────────────────────────────────────

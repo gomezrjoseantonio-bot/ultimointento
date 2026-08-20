@@ -9,10 +9,12 @@ import {
 } from '../../../../../../services/conceptos/catalogoConceptos';
 
 describe('catalogoTipoGasto · un solo catálogo, por ámbito', () => {
-  it('personal ofrece las familias que el catálogo viejo no tenía', () => {
+  it('personal ofrece los Tipos que el catálogo viejo no tenía', () => {
     const familias = catalogoTipoGasto('personal').map((t) => t.id);
-    // Las cuatro que faltaban cuando personal usaba su catálogo propio.
-    expect(familias).toEqual(expect.arrayContaining(['alquiler', 'cuotas', 'suscripciones', 'dia_a_dia']));
+    // Tipos personales del §9 quater (P8a) · antes enterrados en «Día a día».
+    expect(familias).toEqual(
+      expect.arrayContaining(['alquiler', 'suscripciones', 'supermercado', 'transporte', 'restaurante']),
+    );
   });
 
   it('cada familia y concepto sale 1:1 del catálogo unificado del ámbito', () => {

@@ -1,27 +1,49 @@
-// Los 60 conceptos del catálogo unificado · SÓLO DATOS.
+// Los conceptos del catálogo unificado · SÓLO DATOS.
 //
 // Vive aparte de `catalogoConceptos.ts` porque aquello es la lógica —tipos,
 // consultas y la capa de conceptos propios del usuario— y esto es una tabla que
 // se lee de arriba abajo. Mezclarlas hacía un fichero en el que había que
 // bajar quinientas líneas para encontrar una función.
 //
-// Cómo se llenó y por qué no reasigna nada: ver la cabecera de
-// `catalogoConceptos.ts`.
+// P8a (Jose, 20 ago 2026): reorganizado a los Tipos acordados (§9 quater). El
+// `id` de cada concepto NO cambia —los apuntes guardan `conceptoId` y tienen que
+// seguir resolviendo— y su proyección fiscal tampoco; lo único que se mueve es la
+// carpeta (`familia`). Se añaden los subtipos que faltaban y se le da ámbito
+// personal a mobiliario (comprar un mueble de tu casa también se clasifica). El
+// catálogo es para TESORERÍA —de dónde sale el dinero—: todo gasto real tiene que
+// poder elegirse; la fiscalidad es capa de encima (diferida).
 
 import type { Concepto } from './catalogoConceptos';
 
 /** El catálogo de fábrica · lo que trae ATLAS. Los propios del usuario se
  *  suman aparte (`conceptosUsuarioService`) y nunca se mezclan aquí. */
 export const CONCEPTOS_BASE: readonly Concepto[] = [
-  // ── Alquiler ──────────────────────────────────────────────────────
+  // ── Comunidad ─────────────────────────────────────────────────────
   {
-    id: 'alquiler_vivienda',
-    familia: 'alquiler',
-    label: 'Alquiler',
-    tipoCompromiso: 'otros',
-    personal: { categoria: 'vivienda.alquiler', bolsa: 'necesidades' },
+    id: 'comunidad_ordinaria',
+    familia: 'comunidad',
+    label: 'Comunidad',
+    tipoCompromiso: 'comunidad',
+    personal: { categoria: 'vivienda.comunidad', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.comunidad', categoryKey: 'comunidad_inmueble', estado: 'ok' },
   },
-  // ── Tributos ──────────────────────────────────────────────────────
+  {
+    id: 'derrama',
+    familia: 'comunidad',
+    label: 'Derrama',
+    tipoCompromiso: 'comunidad',
+    personal: { categoria: 'vivienda.comunidad', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.comunidad', categoryKey: null, estado: 'pregunta' },
+  },
+  {
+    id: 'otros_comunidad',
+    familia: 'comunidad',
+    label: 'Otros',
+    tipoCompromiso: 'comunidad',
+    personal: { categoria: 'vivienda.comunidad', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.comunidad', categoryKey: 'comunidad_inmueble', estado: 'ok' },
+  },
+  // ── Impuestos ─────────────────────────────────────────────────────
   {
     id: 'ibi',
     familia: 'tributos',
@@ -35,7 +57,6 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
     familia: 'tributos',
     label: 'Basuras y alcantarillado',
     tipoCompromiso: 'impuesto',
-    // Ámbito nuevo · hereda de `ibi`: un tributo local, igual que el IBI.
     personal: { categoria: 'vivienda.ibi', bolsa: 'necesidades' },
     inmueble: { categoria: 'inmueble.ibi', categoryKey: 'basuras_inmueble', estado: 'ok' },
   },
@@ -45,6 +66,14 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
     label: 'Licencia turística',
     tipoCompromiso: 'impuesto',
     inmueble: { categoria: 'inmueble.otros', categoryKey: 'tributo_inmueble', estado: 'ok' },
+  },
+  {
+    id: 'circulacion',
+    familia: 'tributos',
+    label: 'Impuesto de circulación',
+    tipoCompromiso: 'impuesto',
+    // Tributo del vehículo · personal. Hereda la lógica de un tributo local.
+    personal: { categoria: 'transporte', bolsa: 'necesidades' },
   },
   {
     id: 'multas',
@@ -61,34 +90,122 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
     personal: { categoria: 'obligaciones.multas', bolsa: 'obligaciones' },
     inmueble: { categoria: 'inmueble.otros', categoryKey: 'tributo_inmueble', estado: 'ok' },
   },
-  // ── Comunidad ─────────────────────────────────────────────────────
+  // ── Seguro ────────────────────────────────────────────────────────
   {
-    id: 'comunidad_ordinaria',
-    familia: 'comunidad',
-    label: 'Comunidad',
-    tipoCompromiso: 'comunidad',
-    personal: { categoria: 'vivienda.comunidad', bolsa: 'necesidades' },
-    inmueble: { categoria: 'inmueble.comunidad', categoryKey: 'comunidad_inmueble', estado: 'ok' },
+    id: 'seguro_hogar',
+    familia: 'seguros',
+    label: 'Seguro hogar',
+    tipoCompromiso: 'seguro',
+    personal: { categoria: 'vivienda.seguros', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.seguros', categoryKey: 'seguro_inmueble', estado: 'ok' },
   },
   {
-    id: 'derrama',
-    familia: 'comunidad',
-    label: 'Derrama',
-    tipoCompromiso: 'comunidad',
-    // Ámbito nuevo · hereda de `comunidad_ordinaria`: lo cobra la comunidad, igual que la cuota.
-    personal: { categoria: 'vivienda.comunidad', bolsa: 'necesidades' },
-    inmueble: { categoria: 'inmueble.comunidad', categoryKey: null, estado: 'pregunta' },
+    id: 'seguro_vida',
+    familia: 'seguros',
+    label: 'Seguro vida',
+    tipoCompromiso: 'seguro',
+    personal: { categoria: 'salud', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.seguros', categoryKey: 'seguro_inmueble', estado: 'ok' },
   },
   {
-    id: 'otros_comunidad',
-    familia: 'comunidad',
+    id: 'seguro_impago',
+    familia: 'seguros',
+    label: 'Impago',
+    tipoCompromiso: 'seguro',
+    inmueble: { categoria: 'inmueble.seguros', categoryKey: 'seguro_inmueble', estado: 'ok' },
+  },
+  {
+    id: 'seguro_decesos',
+    familia: 'seguros',
+    label: 'Decesos',
+    tipoCompromiso: 'seguro',
+    personal: { categoria: 'personal', bolsa: 'necesidades' },
+  },
+  {
+    id: 'seguro_coche',
+    familia: 'seguros',
+    label: 'Seguro vehículo',
+    tipoCompromiso: 'seguro',
+    personal: { categoria: 'transporte', bolsa: 'necesidades' },
+  },
+  {
+    id: 'seguro_salud',
+    familia: 'seguros',
+    label: 'Seguro médico',
+    tipoCompromiso: 'seguro',
+    personal: { categoria: 'salud', bolsa: 'necesidades' },
+  },
+  {
+    id: 'otros_seguros',
+    familia: 'seguros',
+    label: 'Seguro · otros',
+    tipoCompromiso: 'seguro',
+    personal: { categoria: 'personal', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.seguros', categoryKey: 'seguro_inmueble', estado: 'ok' },
+  },
+  // ── Reparación ────────────────────────────────────────────────────
+  {
+    id: 'reparacion_vehiculo',
+    familia: 'reparacion',
+    label: 'Vehículo',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'transporte', bolsa: 'necesidades' },
+  },
+  {
+    id: 'reparacion_caldera',
+    familia: 'reparacion',
+    label: 'Caldera',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'personal', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.opex', categoryKey: 'reparacion_inmueble', estado: 'ok' },
+  },
+  {
+    id: 'reparacion_electrodomesticos',
+    familia: 'reparacion',
+    label: 'Electrodomésticos',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'personal', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.opex', categoryKey: 'reparacion_inmueble', estado: 'ok' },
+  },
+  {
+    id: 'otros_reparacion',
+    familia: 'reparacion',
     label: 'Otros',
-    tipoCompromiso: 'comunidad',
-    // Ámbito nuevo · hereda de `comunidad_ordinaria`: lo cobra la comunidad, igual que la cuota.
-    personal: { categoria: 'vivienda.comunidad', bolsa: 'necesidades' },
-    inmueble: { categoria: 'inmueble.comunidad', categoryKey: 'comunidad_inmueble', estado: 'ok' },
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'personal', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.opex', categoryKey: 'reparacion_inmueble', estado: 'ok' },
   },
-  // ── Suministros ───────────────────────────────────────────────────
+  // ── Mantenimiento ─────────────────────────────────────────────────
+  {
+    id: 'mantenimiento_caldera',
+    familia: 'mantenimiento',
+    label: 'Caldera',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'personal', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.opex', categoryKey: 'reparacion_inmueble', estado: 'ok' },
+  },
+  {
+    id: 'mantenimiento_coche',
+    familia: 'mantenimiento',
+    label: 'Vehículo',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'transporte', bolsa: 'necesidades' },
+  },
+  {
+    id: 'mantenimiento_itv',
+    familia: 'mantenimiento',
+    label: 'ITV',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'transporte', bolsa: 'necesidades' },
+  },
+  {
+    id: 'mantenimiento_integral',
+    familia: 'mantenimiento',
+    label: 'Mantenimiento integral',
+    tipoCompromiso: 'otros',
+    inmueble: { categoria: 'inmueble.opex', categoryKey: 'reparacion_inmueble', estado: 'ok' },
+  },
+  // ── Suministro ────────────────────────────────────────────────────
   {
     id: 'luz',
     familia: 'suministros',
@@ -103,19 +220,6 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
     },
   },
   {
-    id: 'gas',
-    familia: 'suministros',
-    label: 'Gas',
-    tipoCompromiso: 'suministro',
-    personal: { categoria: 'vivienda.suministros', bolsa: 'necesidades' },
-    inmueble: {
-      categoria: 'inmueble.suministros',
-      categoryKey: 'suministro_inmueble',
-      subtypeKey: 'gas',
-      estado: 'ok',
-    },
-  },
-  {
     id: 'agua',
     familia: 'suministros',
     label: 'Agua',
@@ -125,6 +229,19 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
       categoria: 'inmueble.suministros',
       categoryKey: 'suministro_inmueble',
       subtypeKey: 'agua',
+      estado: 'ok',
+    },
+  },
+  {
+    id: 'gas',
+    familia: 'suministros',
+    label: 'Gas',
+    tipoCompromiso: 'suministro',
+    personal: { categoria: 'vivienda.suministros', bolsa: 'necesidades' },
+    inmueble: {
+      categoria: 'inmueble.suministros',
+      categoryKey: 'suministro_inmueble',
+      subtypeKey: 'gas',
       estado: 'ok',
     },
   },
@@ -144,7 +261,7 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
   {
     id: 'telefonia',
     familia: 'suministros',
-    label: 'Telefonía · móvil',
+    label: 'Móvil · telefonía',
     tipoCompromiso: 'suministro',
     personal: { categoria: 'vivienda.suministros', bolsa: 'necesidades' },
     inmueble: {
@@ -153,15 +270,6 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
       subtypeKey: 'telefonia',
       estado: 'ok',
     },
-  },
-  {
-    id: 'alarma',
-    familia: 'suministros',
-    label: 'Alarma',
-    tipoCompromiso: 'suministro',
-    // Ámbito nuevo · hereda de `luz`: es un recibo de suministro más.
-    personal: { categoria: 'vivienda.suministros', bolsa: 'necesidades' },
-    inmueble: { categoria: 'inmueble.suministros', categoryKey: 'servicio_inmueble', estado: 'ok' },
   },
   {
     id: 'otros_suministros',
@@ -175,195 +283,14 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
       estado: 'ok',
     },
   },
-  // ── Seguros ───────────────────────────────────────────────────────
+  // ── Alarma ────────────────────────────────────────────────────────
   {
-    id: 'seguro_hogar',
-    familia: 'seguros',
-    label: 'Seguro hogar',
-    tipoCompromiso: 'seguro',
-    personal: { categoria: 'vivienda.seguros', bolsa: 'necesidades' },
-    inmueble: { categoria: 'inmueble.seguros', categoryKey: 'seguro_inmueble', estado: 'ok' },
-  },
-  {
-    id: 'seguro_vida',
-    familia: 'seguros',
-    label: 'Seguro vida',
-    tipoCompromiso: 'seguro',
-    personal: { categoria: 'salud', bolsa: 'necesidades' },
-    // Ámbito nuevo · hereda de `seguro_hogar`: una vez vive en el inmueble es una prima de seguro (0114).
-    inmueble: { categoria: 'inmueble.seguros', categoryKey: 'seguro_inmueble', estado: 'ok' },
-  },
-  {
-    id: 'seguro_salud',
-    familia: 'seguros',
-    label: 'Seguro salud',
-    tipoCompromiso: 'seguro',
-    personal: { categoria: 'salud', bolsa: 'necesidades' },
-  },
-  {
-    id: 'seguro_coche',
-    familia: 'seguros',
-    label: 'Seguro coche',
-    tipoCompromiso: 'seguro',
-    personal: { categoria: 'transporte', bolsa: 'necesidades' },
-  },
-  {
-    id: 'seguro_impago',
-    familia: 'seguros',
-    label: 'Impago',
-    tipoCompromiso: 'seguro',
-    inmueble: { categoria: 'inmueble.seguros', categoryKey: 'seguro_inmueble', estado: 'ok' },
-  },
-  {
-    id: 'otros_seguros',
-    familia: 'seguros',
-    label: 'Seguro · otros',
-    tipoCompromiso: 'seguro',
-    personal: { categoria: 'personal', bolsa: 'necesidades' },
-    inmueble: { categoria: 'inmueble.seguros', categoryKey: 'seguro_inmueble', estado: 'ok' },
-  },
-  // ── Cuotas ────────────────────────────────────────────────────────
-  {
-    id: 'gimnasio',
-    familia: 'cuotas',
-    label: 'Gimnasio',
-    tipoCompromiso: 'cuota',
-    personal: { categoria: 'ocio', bolsa: 'deseos' },
-  },
-  {
-    id: 'educacion',
-    familia: 'cuotas',
-    label: 'Educación · colegio · universidad',
-    tipoCompromiso: 'cuota',
-    personal: { categoria: 'educacion', bolsa: 'necesidades' },
-  },
-  {
-    id: 'profesional',
-    familia: 'cuotas',
-    label: 'Profesional · colegio · sindicato',
-    tipoCompromiso: 'cuota',
-    personal: { categoria: 'educacion', bolsa: 'necesidades' },
-  },
-  {
-    id: 'ong',
-    familia: 'cuotas',
-    label: 'ONG · donaciones recurrentes',
-    tipoCompromiso: 'cuota',
-    personal: { categoria: 'ocio', bolsa: 'deseos' },
-  },
-  {
-    id: 'otros_cuotas',
-    familia: 'cuotas',
-    label: 'Otros',
-    tipoCompromiso: 'cuota',
-    personal: { categoria: 'personal', bolsa: 'deseos' },
-  },
-  // ── Suscripciones ─────────────────────────────────────────────────
-  {
-    id: 'streaming',
-    familia: 'suscripciones',
-    label: 'Streaming',
-    tipoCompromiso: 'suscripcion',
-    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
-  },
-  {
-    id: 'musica',
-    familia: 'suscripciones',
-    label: 'Música',
-    tipoCompromiso: 'suscripcion',
-    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
-  },
-  {
-    id: 'software',
-    familia: 'suscripciones',
-    label: 'Software',
-    tipoCompromiso: 'suscripcion',
-    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
-  },
-  {
-    id: 'cloud',
-    familia: 'suscripciones',
-    label: 'Cloud',
-    tipoCompromiso: 'suscripcion',
-    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
-  },
-  {
-    id: 'prensa',
-    familia: 'suscripciones',
-    label: 'Prensa',
-    tipoCompromiso: 'suscripcion',
-    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
-  },
-  {
-    id: 'otros_suscripciones',
-    familia: 'suscripciones',
-    label: 'Otros',
-    tipoCompromiso: 'suscripcion',
-    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
-  },
-  // ── Día a día ─────────────────────────────────────────────────────
-  {
-    id: 'supermercado',
-    familia: 'dia_a_dia',
-    label: 'Supermercado · alimentación',
-    tipoCompromiso: 'otros',
-    personal: { categoria: 'alimentacion', bolsa: 'necesidades' },
-  },
-  {
-    id: 'transporte',
-    familia: 'dia_a_dia',
-    label: 'Transporte · gasolina',
-    tipoCompromiso: 'otros',
-    personal: { categoria: 'transporte', bolsa: 'necesidades' },
-  },
-  {
-    id: 'mantenimiento_coche',
-    familia: 'dia_a_dia',
-    label: 'Mantenimiento coche',
-    tipoCompromiso: 'otros',
-    personal: { categoria: 'transporte', bolsa: 'necesidades' },
-  },
-  {
-    id: 'salud_gasto',
-    familia: 'dia_a_dia',
-    label: 'Salud · farmacia · médicos',
-    tipoCompromiso: 'otros',
-    personal: { categoria: 'salud', bolsa: 'necesidades' },
-  },
-  {
-    id: 'restaurantes',
-    familia: 'dia_a_dia',
-    label: 'Restaurantes · cafeterías',
-    tipoCompromiso: 'otros',
-    personal: { categoria: 'ocio', bolsa: 'deseos' },
-  },
-  {
-    id: 'ocio',
-    familia: 'dia_a_dia',
-    label: 'Ocio · cine · planes',
-    tipoCompromiso: 'otros',
-    personal: { categoria: 'ocio', bolsa: 'deseos' },
-  },
-  {
-    id: 'ropa',
-    familia: 'dia_a_dia',
-    label: 'Ropa · calzado',
-    tipoCompromiso: 'otros',
-    personal: { categoria: 'personal', bolsa: 'deseos' },
-  },
-  {
-    id: 'cuidado_personal',
-    familia: 'dia_a_dia',
-    label: 'Cuidado personal · peluquería',
-    tipoCompromiso: 'otros',
-    personal: { categoria: 'personal', bolsa: 'deseos' },
-  },
-  {
-    id: 'otros_dia_a_dia',
-    familia: 'dia_a_dia',
-    label: 'Otros',
-    tipoCompromiso: 'otros',
-    personal: { categoria: 'personal', bolsa: 'deseos' },
+    id: 'alarma',
+    familia: 'alarma',
+    label: 'Alarma',
+    tipoCompromiso: 'suministro',
+    personal: { categoria: 'vivienda.suministros', bolsa: 'necesidades' },
+    inmueble: { categoria: 'inmueble.suministros', categoryKey: 'servicio_inmueble', estado: 'ok' },
   },
   // ── Gestión ───────────────────────────────────────────────────────
   {
@@ -411,6 +338,13 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
     },
   },
   {
+    id: 'consumibles_bienvenida',
+    familia: 'gestion',
+    label: 'Consumibles de bienvenida',
+    tipoCompromiso: 'otros',
+    inmueble: { categoria: 'inmueble.opex', categoryKey: 'servicio_inmueble', estado: 'ok' },
+  },
+  {
     id: 'otros_gestion',
     familia: 'gestion',
     label: 'Otros',
@@ -421,77 +355,210 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
       estado: 'ok',
     },
   },
-  // ── Reparación y conservación ─────────────────────────────────────
+  // ── Limpieza ──────────────────────────────────────────────────────
   {
-    id: 'mantenimiento_caldera',
-    familia: 'reparacion',
-    label: 'Mantenimiento de la caldera',
-    tipoCompromiso: 'otros',
-    inmueble: { categoria: 'inmueble.opex', categoryKey: 'reparacion_inmueble', estado: 'ok' },
-  },
-  {
-    id: 'mantenimiento_integral',
-    familia: 'reparacion',
-    label: 'Mantenimiento integral',
-    tipoCompromiso: 'otros',
-    inmueble: { categoria: 'inmueble.opex', categoryKey: 'reparacion_inmueble', estado: 'ok' },
-  },
-  {
-    id: 'otros_reparacion',
-    familia: 'reparacion',
-    label: 'Otros',
-    tipoCompromiso: 'otros',
-    inmueble: { categoria: 'inmueble.opex', categoryKey: 'reparacion_inmueble', estado: 'ok' },
-  },
-  // ── Servicios y explotación ───────────────────────────────────────
-  {
-    id: 'limpieza',
-    familia: 'servicios',
-    label: 'Limpieza',
+    id: 'limpieza_zonas_comunes',
+    familia: 'limpieza',
+    label: 'Zonas comunes',
     tipoCompromiso: 'otros',
     inmueble: { categoria: 'inmueble.opex', categoryKey: 'servicio_inmueble', estado: 'ok' },
   },
   {
-    id: 'limpieza_zonas_comunes',
-    familia: 'servicios',
-    label: 'Limpieza de zonas comunes',
+    id: 'limpieza',
+    familia: 'limpieza',
+    label: 'Integral',
     tipoCompromiso: 'otros',
     inmueble: { categoria: 'inmueble.opex', categoryKey: 'servicio_inmueble', estado: 'ok' },
   },
   {
     id: 'limpieza_por_estancia',
-    familia: 'servicios',
-    label: 'Limpieza por estancia',
+    familia: 'limpieza',
+    label: 'Por estancia',
     tipoCompromiso: 'otros',
     inmueble: { categoria: 'inmueble.opex', categoryKey: 'servicio_inmueble', estado: 'ok' },
   },
   {
     id: 'lavanderia',
-    familia: 'servicios',
+    familia: 'limpieza',
     label: 'Lavandería',
     tipoCompromiso: 'otros',
     inmueble: { categoria: 'inmueble.opex', categoryKey: 'servicio_inmueble', estado: 'ok' },
   },
   {
-    id: 'consumibles_bienvenida',
-    familia: 'servicios',
-    label: 'Consumibles de bienvenida',
-    tipoCompromiso: 'otros',
-    inmueble: { categoria: 'inmueble.opex', categoryKey: 'servicio_inmueble', estado: 'ok' },
-  },
-  {
     id: 'otros_servicios',
-    familia: 'servicios',
+    familia: 'limpieza',
     label: 'Otros',
     tipoCompromiso: 'otros',
     inmueble: { categoria: 'inmueble.opex', categoryKey: 'servicio_inmueble', estado: 'ok' },
   },
-  // ── Mobiliario y enseres ──────────────────────────────────────────
+  // ── Supermercado ──────────────────────────────────────────────────
+  {
+    id: 'supermercado',
+    familia: 'supermercado',
+    label: 'Supermercado · alimentación',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'alimentacion', bolsa: 'necesidades' },
+  },
+  // ── Transporte ────────────────────────────────────────────────────
+  {
+    id: 'transporte',
+    familia: 'transporte',
+    label: 'Combustible · transporte',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'transporte', bolsa: 'necesidades' },
+  },
+  // ── Farmacia ──────────────────────────────────────────────────────
+  {
+    id: 'salud_gasto',
+    familia: 'farmacia',
+    label: 'Farmacia · salud · médicos',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'salud', bolsa: 'necesidades' },
+  },
+  // ── Suscripciones ─────────────────────────────────────────────────
+  {
+    id: 'gimnasio',
+    familia: 'suscripciones',
+    label: 'Gimnasio',
+    tipoCompromiso: 'cuota',
+    personal: { categoria: 'ocio', bolsa: 'deseos' },
+  },
+  {
+    id: 'educacion',
+    familia: 'suscripciones',
+    label: 'Educación · colegio · universidad',
+    tipoCompromiso: 'cuota',
+    personal: { categoria: 'educacion', bolsa: 'necesidades' },
+  },
+  {
+    id: 'profesional',
+    familia: 'suscripciones',
+    label: 'Profesional · colegio · sindicato',
+    tipoCompromiso: 'cuota',
+    personal: { categoria: 'educacion', bolsa: 'necesidades' },
+  },
+  {
+    id: 'ong',
+    familia: 'suscripciones',
+    label: 'ONG · donaciones recurrentes',
+    tipoCompromiso: 'cuota',
+    personal: { categoria: 'ocio', bolsa: 'deseos' },
+  },
+  {
+    id: 'streaming',
+    familia: 'suscripciones',
+    label: 'Streaming',
+    tipoCompromiso: 'suscripcion',
+    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
+  },
+  {
+    id: 'musica',
+    familia: 'suscripciones',
+    label: 'Música',
+    tipoCompromiso: 'suscripcion',
+    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
+  },
+  {
+    id: 'software',
+    familia: 'suscripciones',
+    label: 'Software',
+    tipoCompromiso: 'suscripcion',
+    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
+  },
+  {
+    id: 'cloud',
+    familia: 'suscripciones',
+    label: 'Cloud',
+    tipoCompromiso: 'suscripcion',
+    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
+  },
+  {
+    id: 'prensa',
+    familia: 'suscripciones',
+    label: 'Prensa',
+    tipoCompromiso: 'suscripcion',
+    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
+  },
+  {
+    id: 'otros_suscripciones',
+    familia: 'suscripciones',
+    label: 'Otros',
+    tipoCompromiso: 'suscripcion',
+    personal: { categoria: 'suscripciones', bolsa: 'deseos' },
+  },
+  {
+    // Legacy «Otros» de la antigua familia Cuotas · redundante con el de
+    // Suscripciones · se conserva oculto para que los gastos que lo usaban sigan
+    // resolviendo, pero no se ofrece.
+    id: 'otros_cuotas',
+    familia: 'suscripciones',
+    label: 'Otros',
+    tipoCompromiso: 'cuota',
+    oculto: true,
+    personal: { categoria: 'personal', bolsa: 'deseos' },
+  },
+  // ── Ocio ──────────────────────────────────────────────────────────
+  {
+    id: 'ocio',
+    familia: 'ocio',
+    label: 'Ocio · cine · planes',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'ocio', bolsa: 'deseos' },
+  },
+  // ── Viaje ─────────────────────────────────────────────────────────
+  {
+    id: 'viaje',
+    familia: 'viaje',
+    label: 'Viajes · escapadas',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'viajes', bolsa: 'deseos' },
+  },
+  // ── Restaurante ───────────────────────────────────────────────────
+  {
+    id: 'restaurantes',
+    familia: 'restaurante',
+    label: 'Restaurantes · cafeterías',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'ocio', bolsa: 'deseos' },
+  },
+  // ── Ropa y calzado ────────────────────────────────────────────────
+  {
+    id: 'ropa',
+    familia: 'ropa',
+    label: 'Ropa · calzado',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'personal', bolsa: 'deseos' },
+  },
+  // ── Cuidado personal ──────────────────────────────────────────────
+  {
+    id: 'cuidado_personal',
+    familia: 'cuidado_personal',
+    label: 'Cuidado personal · peluquería',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'personal', bolsa: 'deseos' },
+  },
+  // ── Alquiler ──────────────────────────────────────────────────────
+  {
+    id: 'alquiler_vivienda',
+    familia: 'alquiler',
+    label: 'Vivienda',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'vivienda.alquiler', bolsa: 'necesidades' },
+  },
+  {
+    id: 'alquiler_vehiculo',
+    familia: 'alquiler',
+    label: 'Vehículo (renting)',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'transporte', bolsa: 'necesidades' },
+  },
+  // ── Mobiliario y enseres · ámbito personal añadido (P8a) ───────────
   {
     id: 'ropa_enseres',
     familia: 'mobiliario',
     label: 'Ropa de cama y enseres',
     tipoCompromiso: 'otros',
+    personal: { categoria: 'personal', bolsa: 'deseos' },
     inmueble: { categoria: 'inmueble.opex', categoryKey: 'mobiliario_inmueble', estado: 'ok' },
   },
   {
@@ -499,6 +566,7 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
     familia: 'mobiliario',
     label: 'Muebles',
     tipoCompromiso: 'otros',
+    personal: { categoria: 'personal', bolsa: 'deseos' },
     inmueble: { categoria: 'inmueble.opex', categoryKey: 'mobiliario_inmueble', estado: 'ok' },
   },
   {
@@ -506,9 +574,17 @@ export const CONCEPTOS_BASE: readonly Concepto[] = [
     familia: 'mobiliario',
     label: 'Otros',
     tipoCompromiso: 'otros',
+    personal: { categoria: 'personal', bolsa: 'deseos' },
     inmueble: { categoria: 'inmueble.opex', categoryKey: 'mobiliario_inmueble', estado: 'ok' },
   },
   // ── Otros ─────────────────────────────────────────────────────────
+  {
+    id: 'otros_dia_a_dia',
+    familia: 'otros',
+    label: 'Otros gastos del día a día',
+    tipoCompromiso: 'otros',
+    personal: { categoria: 'personal', bolsa: 'deseos' },
+  },
   {
     id: 'personalizado',
     familia: 'otros',

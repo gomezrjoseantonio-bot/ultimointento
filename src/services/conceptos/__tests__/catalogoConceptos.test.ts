@@ -83,23 +83,44 @@ describe('el tipo de compromiso tampoco se mueve', () => {
   );
 });
 
-describe('los cinco ámbitos nuevos', () => {
-  // Unificar abre combinaciones que antes no se podían elegir. No heredan de
-  // ninguna fuente viva, así que van enumeradas: si mañana aparece una sexta sin
-  // que nadie lo haya decidido, este test la caza.
+describe('los ámbitos nuevos sin fuente viva', () => {
+  // Unificar (paso 2) abrió 5 combinaciones que antes no se podían elegir; P8a
+  // (reconciliación al §9 quater) añadió conceptos nuevos y dio ámbito personal a
+  // mobiliario y reparaciones. Ninguno hereda de una fuente viva, así que van
+  // enumerados: si mañana aparece uno sin que nadie lo haya decidido, este test
+  // lo caza. El catálogo es para tesorería (salidas de dinero); la fiscalidad de
+  // estos nuevos es capa de encima diferida.
   const NUEVOS = [
+    // paso 2 · unificación
     ['tasa_basuras', 'personal'],
     ['derrama', 'personal'],
     ['otros_comunidad', 'personal'],
     ['alarma', 'personal'],
     ['seguro_vida', 'inmueble'],
+    // P8a · conceptos nuevos (§9 quater)
+    ['circulacion', 'personal'],
+    ['seguro_decesos', 'personal'],
+    ['reparacion_vehiculo', 'personal'],
+    ['reparacion_caldera', 'personal'],
+    ['reparacion_caldera', 'inmueble'],
+    ['reparacion_electrodomesticos', 'personal'],
+    ['reparacion_electrodomesticos', 'inmueble'],
+    ['mantenimiento_itv', 'personal'],
+    ['alquiler_vehiculo', 'personal'],
+    ['viaje', 'personal'],
+    // P8a · ámbito personal añadido a conceptos que ya existían
+    ['mantenimiento_caldera', 'personal'],
+    ['otros_reparacion', 'personal'],
+    ['ropa_enseres', 'personal'],
+    ['muebles', 'personal'],
+    ['otros_mobiliario', 'personal'],
   ] as const;
 
   const conFuente = new Set<string>();
   for (const par of Object.keys(PERSONAL)) conFuente.add(`${MAPA_LEGACY[par]}|personal`);
   for (const par of Object.keys(INMUEBLE)) conFuente.add(`${MAPA_LEGACY[par]}|inmueble`);
 
-  it('son exactamente cinco y son éstos', () => {
+  it('son exactamente éstos y ningún otro', () => {
     const sinFuente = CONCEPTOS.flatMap((c) =>
       ambitosDe(c)
         .filter((a) => !conFuente.has(`${c.id}|${a}`))
@@ -118,6 +139,39 @@ describe('los cinco ámbitos nuevos', () => {
     );
     expect(proyectar('alarma', 'personal')).toEqual(proyectar('luz', 'personal'));
     expect(proyectar('seguro_vida', 'inmueble')).toEqual(proyectar('seguro_hogar', 'inmueble'));
+  });
+});
+
+describe('los Tipos son los del §9 quater (P8a)', () => {
+  it('la lista de Tipos es exactamente la acordada, en orden', () => {
+    expect(FAMILIAS.map((f) => f.id)).toEqual([
+      'comunidad', 'tributos', 'seguros', 'reparacion', 'mantenimiento',
+      'suministros', 'alarma', 'gestion', 'limpieza', 'supermercado',
+      'transporte', 'farmacia', 'suscripciones', 'ocio', 'viaje',
+      'restaurante', 'ropa', 'cuidado_personal', 'alquiler', 'mobiliario',
+      'otros',
+    ]);
+  });
+
+  it('Hipoteca/préstamo NO está en el catálogo · nace en Financiación', () => {
+    expect(FAMILIAS.some((f) => f.id === ('hipoteca' as never))).toBe(false);
+    expect(CONCEPTOS.some((c) => c.id === 'hipoteca_cuota')).toBe(false);
+  });
+
+  it('los subtipos que pidió Jose existen', () => {
+    for (const id of [
+      'circulacion', 'seguro_decesos', 'reparacion_vehiculo',
+      'reparacion_electrodomesticos', 'reparacion_caldera', 'mantenimiento_caldera',
+      'mantenimiento_coche', 'mantenimiento_itv', 'alquiler_vehiculo', 'viaje',
+    ]) {
+      expect(conceptoPorId(id)?.id).toBe(id);
+    }
+  });
+
+  it('mobiliario se puede elegir también en personal (comprar un mueble de tu casa)', () => {
+    for (const id of ['muebles', 'ropa_enseres']) {
+      expect(ambitosDe(conceptoPorId(id) as Concepto).sort()).toEqual(['inmueble', 'personal']);
+    }
   });
 });
 
