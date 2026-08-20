@@ -48,9 +48,15 @@ interface Props {
   filas: FilaCuenta[];
   kpis: KpisHero;
   mesActual: string;
+  /** Abrir el punteo · SOLO desde el "⋯" (F3): el clic de fila selecciona. */
   onAbrir: (cuenta: Account) => void;
   onEditar: (cuenta: Account) => void;
   onEliminar: (cuenta: Account) => void;
+  /** Cuenta seleccionada · la que se pinta en navy y enseña su gráfico. */
+  seleccionada: number | null;
+  onSeleccionar: (cuentaId: number | null) => void;
+  /** Lo que se despliega bajo la fila seleccionada. */
+  grafico?: React.ReactNode;
 }
 
 const TablaCuentas: React.FC<Props> = ({
@@ -60,6 +66,9 @@ const TablaCuentas: React.FC<Props> = ({
   onAbrir,
   onEditar,
   onEliminar,
+  seleccionada,
+  onSeleccionar,
+  grafico,
 }) => {
   const [orden, setOrden] = useState<{ col: Columna; dir: 1 | -1 } | null>(null);
   const [pagina, setPagina] = useState(0);
@@ -143,16 +152,33 @@ const TablaCuentas: React.FC<Props> = ({
           </tr>
         </thead>
         <tbody>
-          {visibles.map((f) => (
+          {visibles.map((f) => {
+            const esta = f.cuenta.id === seleccionada;
+            // Con una cuenta abierta, las demás se encogen a una línea: así el
+            // conjunto —tabla + gráfico— cabe de una vez y no hay que bajar.
+            const encogida = seleccionada != null && !esta;
+            const alternar = () => onSeleccionar(esta ? null : f.cuenta.id ?? null);
+            return (
+            <React.Fragment key={f.cuenta.id}>
             <tr
-              key={f.cuenta.id}
-              className={`${styles.fila} ${f.estado.tipo === 'se-queda-corta' ? styles.filaRiesgo : ''}`}
+              className={[
+                styles.fila,
+                esta ? styles.filaSel : '',
+                encogida ? styles.filaFina : '',
+                // El aviso de descubierto se calla en la fila navy: sobre el
+                // navy, su tinte dorado no se ve, y la fila abierta ya enseña
+                // el detalle día a día justo debajo.
+                f.estado.tipo === 'se-queda-corta' && !esta ? styles.filaRiesgo : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
               tabIndex={0}
-              onClick={() => onAbrir(f.cuenta)}
+              aria-expanded={esta}
+              onClick={alternar}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  onAbrir(f.cuenta);
+                  alternar();
                 }
               }}
             >
@@ -161,9 +187,16 @@ const TablaCuentas: React.FC<Props> = ({
                     que el nombre no diga ya, y ensuciaba una fila que es toda
                     cifras (decisión de Jose · F1). */}
                 <div className={styles.id}>
+                  {/* El caret anuncia que la fila se abre, y girado, que ya
+                      está abierta · sin él, nadie descubre el gráfico. */}
+                  <span className={styles.caret} aria-hidden="true">
+                    <Icons.ChevronRight size={13} strokeWidth={2.2} />
+                  </span>
                   <div className={styles.idTx}>
                     <div className={styles.nombre}>{f.nombre}</div>
-                    {f.mask && <div className={styles.mask}>···· {f.mask}</div>}
+                    {/* En tira fina el número sobra: lo que se busca es cuál
+                        de las cuentas es, y para eso basta el nombre. */}
+                    {f.mask && !encogida && <div className={styles.mask}>···· {f.mask}</div>}
                   </div>
                 </div>
               </td>
@@ -226,7 +259,16 @@ const TablaCuentas: React.FC<Props> = ({
                 )}
               </td>
             </tr>
-          ))}
+            {esta && grafico && (
+              <tr className={styles.filaGrafico}>
+                <td className={styles.tdGrafico} colSpan={7}>
+                  {grafico}
+                </td>
+              </tr>
+            )}
+            </React.Fragment>
+            );
+          })}
         </tbody>
         <tfoot>
           <tr className={styles.pie}>

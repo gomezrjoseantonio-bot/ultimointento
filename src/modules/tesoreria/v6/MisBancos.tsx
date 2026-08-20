@@ -41,6 +41,11 @@ interface Props {
   onAnadirCuenta: () => void;
   /** Calendario de §4.9 · vive en la cabecera, no depende del switch. */
   onPrevision: () => void;
+  /** Cuenta seleccionada · la que enseña su gráfico diario (F3). */
+  cuentaSeleccionada: number | null;
+  onSeleccionarCuenta: (cuentaId: number | null) => void;
+  /** El gráfico de la cuenta seleccionada · lo arma la página. */
+  graficoCuenta?: React.ReactNode;
 
   // ── Tarjetas ──
   filasTarjetas: FilaTarjeta[];
@@ -59,6 +64,9 @@ const MisBancos: React.FC<Props> = ({
   onEliminarCuenta,
   onAnadirCuenta,
   onPrevision,
+  cuentaSeleccionada,
+  onSeleccionarCuenta,
+  graficoCuenta,
   filasTarjetas,
   onDetalleTarjeta,
   onEditarTarjeta,
@@ -106,8 +114,10 @@ const MisBancos: React.FC<Props> = ({
       </div>
 
       <div className={styles.ayuda}>
+        {/* Mirar y tocar se separan (F3): la fila abre el gráfico, y las
+            acciones —empezando por el punteo— viven en el "⋯". */}
         {enCuentas
-          ? 'clic en una cuenta para confirmar sus movimientos'
+          ? 'clic en una cuenta para ver su día a día · el menú ⋯ abre el punteo'
           : 'clic en una tarjeta para ver sus compras del periodo'}
       </div>
 
@@ -119,6 +129,9 @@ const MisBancos: React.FC<Props> = ({
           onAbrir={onAbrirCuenta}
           onEditar={onEditarCuenta}
           onEliminar={onEliminarCuenta}
+          seleccionada={cuentaSeleccionada}
+          onSeleccionar={onSeleccionarCuenta}
+          grafico={graficoCuenta}
         />
       ) : (
         <ListaTarjetas
