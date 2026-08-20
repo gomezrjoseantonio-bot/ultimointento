@@ -683,6 +683,98 @@ export function calcularRealidad(params: {
   };
 }
 
+// ─── Serie diaria de UNA cuenta · gráfico "Día a día de {mes}" (F3) ─────────
+
+export interface DiaCuenta {
+  /** ISO `YYYY-MM-DD`. */
+  dia: string;
+  /** Dinero que YA entró ese día · positivo. */
+  entradaConf: number;
+  /** Lo que falta por cobrar ese día · positivo. */
+  entradaPrev: number;
+  /** Dinero que YA salió ese día · positivo (la dirección la da el eje). */
+  salidaConf: number;
+  /** Lo que falta por pagar ese día · positivo. */
+  salidaPrev: number;
+}
+
+/**
+ * Un día por cada día del mes, con lo confirmado y lo pendiente separados.
+ *
+ * **De dónde sale cada término** (decisión D-FUENTE-GRÁFICO · preflight):
+ *
+ *   · confirmado (`entradaConf`/`salidaConf`) → de `movements`, el dinero que
+ *     YA se movió;
+ *   · pendiente (`entradaPrev`/`salidaPrev`) → de `treasuryEvents` vivos.
+ *
+ * La razón de leer dos fuentes y no una: en este modelo `status: 'confirmed'`
+ * NO significa "ya ocurrió" sino "decidido, esperando al banco" —la venta de un
+ * piso, la liquidación de un préstamo—, y lo que de verdad se movió pasa a
+ * `executed` y vive como `Movement`. Construyendo la serie solo con eventos,
+ * las barras sólidas saldrían casi siempre vacías. Es el mismo par de fuentes
+ * que ya cruza `calcularRealidad`.
+ *
+ * Reglas heredadas del resto de la capa, para que el gráfico y la fila de la
+ * cuenta cuenten LO MISMO:
+ *   · pendiente = `esPendiente` (fuera descartados, ejecutados y las piezas
+ *     `gasto_tarjeta`, que se puntean en el cajón de su tarjeta);
+ *   · los traspasos internos NO entran (D-TRASPASOS · `esTraspasoInterno`): el
+ *     dinero no entra ni sale del patrimonio, cambia de cuenta, y sus dos patas
+ *     espejo inflarían las barras de los dos lados a la vez;
+ *   · el saldo de apertura no es un movimiento del día: no se pinta.
+ *
+ * Los importes salen SIEMPRE en positivo; arriba o abajo del cero lo decide el
+ * campo, no el signo.
+ */
+export function serieDiariaCuenta(params: {
+  cuentaId: number;
+  eventos: TreasuryEvent[];
+  movimientos: Movement[];
+  year: number;
+  month0: number;
+}): DiaCuenta[] {
+  const { cuentaId, eventos, movimientos, year, month0 } = params;
+  const { desde, hasta, ultimoDia } = rangoDelMes(year, month0);
+  const mm = String(month0 + 1).padStart(2, '0');
+
+  const dias = new Map<string, DiaCuenta>();
+  for (let d = 1; d <= ultimoDia; d++) {
+    const dia = `${year}-${mm}-${String(d).padStart(2, '0')}`;
+    dias.set(dia, { dia, entradaConf: 0, entradaPrev: 0, salidaConf: 0, salidaPrev: 0 });
+  }
+
+  // Lo PENDIENTE · previsiones vivas de esta cuenta.
+  for (const e of eventos) {
+    if (e.accountId !== cuentaId) continue;
+    if (!esPendiente(e) || esTraspasoInterno(e)) continue;
+    const f = soloFecha(e.predictedDate);
+    if (!enRango(f, desde, hasta)) continue;
+    const punto = dias.get(f);
+    if (!punto) continue;
+    const imp = importeConSigno(e);
+    if (imp > 0) punto.entradaPrev = redondear(punto.entradaPrev + imp);
+    else punto.salidaPrev = redondear(punto.salidaPrev + Math.abs(imp));
+  }
+
+  // Lo CONFIRMADO · lo que ya se movió de verdad.
+  for (const m of movimientos) {
+    if (m.accountId !== cuentaId) continue;
+    if (m.isOpeningBalance) continue;
+    // La compra con tarjeta de crédito no es un cargo de la cuenta: llega en el
+    // recibo el día de cargo, y contarla aquí la cobraría dos veces.
+    if (m.gastoTarjetaCredito) continue;
+    if (esTraspasoInterno(m)) continue;
+    const f = soloFecha(m.date);
+    if (!enRango(f, desde, hasta)) continue;
+    const punto = dias.get(f);
+    if (!punto) continue;
+    if (m.amount > 0) punto.entradaConf = redondear(punto.entradaConf + m.amount);
+    else punto.salidaConf = redondear(punto.salidaConf + Math.abs(m.amount));
+  }
+
+  return Array.from(dias.values());
+}
+
 function redondear(n: number): number {
   return Math.round(n * 100) / 100;
 }

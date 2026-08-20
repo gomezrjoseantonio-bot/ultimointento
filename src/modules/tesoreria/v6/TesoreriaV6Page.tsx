@@ -12,7 +12,7 @@
 // obligar a refrescar la pantalla.
 // ============================================================================
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ToastHost, showToastV5 } from '../../../design-system/v5';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../services/db';
@@ -22,8 +22,10 @@ import {
   cierrePorCuenta,
   estadoDeCuenta,
   serieDiariaConsolidada,
+  serieDiariaCuenta,
 } from '../../../services/tesoreriaV6Metrics';
 import GraficoTreintaDias from './GraficoTreintaDias';
+import GraficoDiarioCuenta from './GraficoDiarioCuenta';
 import { colorDeBanco, SIN_COLOR } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { nombreMes } from './formatoV6';
@@ -169,6 +171,14 @@ const TesoreriaV6Page: React.FC = () => {
   const [calendario, setCalendario] = useState<{ year: number; month0: number } | null>(null);
   /** El extracto sí es estado local · no tiene ruta propia, solo un query. */
   const [extractoAplicado, setExtractoAplicado] = useState(false);
+  /**
+   * F3 · qué cuenta se está MIRANDO (fila navy + su gráfico diario).
+   *
+   * Es distinto de `cuentaAbierta`, que es la que tiene el punteo abierto y
+   * vive en la URL: aquí se mira, allí se toca. `null` = ninguna, y entonces
+   * la tabla se ve entera.
+   */
+  const [cuentaSeleccionada, setCuentaSeleccionada] = useState<number | null>(null);
 
   const hoy = hoyISO();
   const ahora = useMemo(() => new Date(`${hoy}T12:00:00`), [hoy]);
@@ -279,6 +289,17 @@ const TesoreriaV6Page: React.FC = () => {
     void recargarTarjetas();
   }, [recargarTarjetas]);
 
+  /**
+   * Entrar por `/tesoreria/cuenta/:id` además SELECCIONA esa cuenta.
+   *
+   * Si no, al cerrar el punteo el gráfico visible sería el de otra cuenta —o
+   * ninguno— y el usuario acabaría mirando algo que no es lo que estaba
+   * tocando.
+   */
+  useEffect(() => {
+    if (cuentaAbierta != null) setCuentaSeleccionada(cuentaAbierta);
+  }, [cuentaAbierta]);
+
   // FASE 0 · deja `atlasDiagnostico.duplicados()` en la consola. Solo lectura:
   // cuenta previsiones repetidas y dice cuánto distorsionan el cierre. Hace
   // falta porque los datos viven en el navegador y las páginas /dev están
@@ -348,6 +369,48 @@ const TesoreriaV6Page: React.FC = () => {
   const kpis = useMemo(
     () => calcularKpisHero({ cuentas: cuentasVivas, saldoPorCuenta, eventos: estado.eventos, year, month0 }),
     [cuentasVivas, saldoPorCuenta, estado.eventos, year, month0]
+  );
+
+  /**
+   * Al entrar, la PRIMERA cuenta queda seleccionada.
+   *
+   * Con el hueco vacío nadie descubre que las filas se abren; con una abierta,
+   * el patrón se ve solo.
+   *
+   * UNA sola vez, y por eso el ref: mirando solo `cuentaSeleccionada == null`,
+   * cerrar la fila abierta la volvía a abrir en el acto —el efecto corría otra
+   * vez y reponía la primera—, así que no había forma de cerrarla. Cerrar es
+   * una decisión del usuario y tiene que aguantar.
+   */
+  const defectoAplicado = useRef(false);
+  useEffect(() => {
+    if (cargando || defectoAplicado.current) return;
+    const primera = cuentasVivas.find((c) => c.id != null)?.id;
+    if (primera == null) return;
+    defectoAplicado.current = true;
+    // El deep-link manda: si se entró por `/tesoreria/cuenta/:id`, esa ya está.
+    setCuentaSeleccionada((actual) => actual ?? primera);
+  }, [cargando, cuentasVivas]);
+
+  /**
+   * F3 · el día a día de la cuenta que se está mirando.
+   *
+   * Fuente doble (`serieDiariaCuenta`): lo confirmado sale de `movements` y lo
+   * pendiente de `treasuryEvents`. Se recalcula al escribir, como todo lo
+   * demás de la pantalla.
+   */
+  const diasCuenta = useMemo(
+    () =>
+      cuentaSeleccionada == null
+        ? null
+        : serieDiariaCuenta({
+            cuentaId: cuentaSeleccionada,
+            eventos: porCuenta.eventos.get(cuentaSeleccionada) ?? [],
+            movimientos: porCuenta.movimientos.get(cuentaSeleccionada) ?? [],
+            year,
+            month0,
+          }),
+    [cuentaSeleccionada, porCuenta, year, month0]
   );
 
   /** V9 · la serie del gráfico "Lo que viene · próximos 30 días" (fase 1). */
@@ -887,6 +950,11 @@ const TesoreriaV6Page: React.FC = () => {
         onEliminarCuenta={(c) => setBajaCuenta(c)}
         onAnadirCuenta={() => setFichaCuenta({ cuenta: null })}
         onPrevision={() => setCalendario({ year, month0 })}
+        cuentaSeleccionada={cuentaSeleccionada}
+        onSeleccionarCuenta={setCuentaSeleccionada}
+        graficoCuenta={
+          diasCuenta && <GraficoDiarioCuenta dias={diasCuenta} hoy={hoy} month0={month0} />
+        }
         filasTarjetas={filasTarjetas}
         onDetalleTarjeta={(t) => setTarjetaAbierta(t)}
         onEditarTarjeta={(t) => setFichaTarjeta({ tarjeta: t })}

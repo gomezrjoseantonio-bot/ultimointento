@@ -34,7 +34,7 @@ const kpis: KpisHero = {
 
 const noop = () => undefined;
 
-const montar = (filas: FilaCuenta[]) =>
+const montar = (filas: FilaCuenta[], over: Partial<React.ComponentProps<typeof TablaCuentas>> = {}) =>
   render(
     <TablaCuentas
       filas={filas}
@@ -43,6 +43,9 @@ const montar = (filas: FilaCuenta[]) =>
       onAbrir={noop}
       onEditar={noop}
       onEliminar={noop}
+      seleccionada={null}
+      onSeleccionar={noop}
+      {...over}
     />
   );
 
@@ -104,5 +107,67 @@ describe('la fila Total', () => {
     expect(screen.getByText('+5.435,32 €')).toBeInTheDocument();
     expect(screen.getByText('−4.143,59 €')).toBeInTheDocument();
     expect(screen.getByText('42.965,63 €')).toBeInTheDocument();
+  });
+});
+
+
+// F3 · mirar y tocar se separan: la fila abre el día a día, y el punteo pasa a
+// vivir detrás del "⋯". Antes el clic de fila hacía las dos cosas a la vez.
+describe('F3 · seleccionar una cuenta', () => {
+  const dos = [fila(1, 'Unicaja', 900), fila(2, 'Sabadell', 300)];
+
+  it('el clic en la fila SELECCIONA · ya no abre el punteo', () => {
+    const onSeleccionar = jest.fn();
+    const onAbrir = jest.fn();
+    montar(dos, { onSeleccionar, onAbrir });
+
+    fireEvent.click(screen.getByText('Unicaja'));
+    expect(onSeleccionar).toHaveBeenCalledWith(1);
+    expect(onAbrir).not.toHaveBeenCalled();
+  });
+
+  it('volver a pulsar la fila abierta la cierra', () => {
+    const onSeleccionar = jest.fn();
+    montar(dos, { seleccionada: 1, onSeleccionar });
+
+    fireEvent.click(screen.getByText('Unicaja'));
+    expect(onSeleccionar).toHaveBeenCalledWith(null);
+  });
+
+  it('el teclado hace lo mismo que el ratón', () => {
+    const onSeleccionar = jest.fn();
+    const { container } = montar(dos, { onSeleccionar });
+
+    fireEvent.keyDown(container.querySelectorAll('tbody tr')[0], { key: 'Enter' });
+    expect(onSeleccionar).toHaveBeenCalledWith(1);
+  });
+
+  it('el "⋯ → Confirmar movimientos" SIGUE abriendo el punteo', () => {
+    const onAbrir = jest.fn();
+    const onSeleccionar = jest.fn();
+    montar(dos, { onAbrir, onSeleccionar });
+
+    fireEvent.click(screen.getByLabelText('Acciones de Unicaja'));
+    fireEvent.click(screen.getByText('Confirmar movimientos'));
+    expect(onAbrir).toHaveBeenCalledTimes(1);
+    // Y el kebab no arrastra consigo la selección de la fila.
+    expect(onSeleccionar).not.toHaveBeenCalled();
+  });
+
+  it('la fila abierta se marca, y el gráfico se despliega SOLO bajo ella', () => {
+    const { container } = montar(dos, {
+      seleccionada: 1,
+      grafico: <div data-testid="grafico">día a día</div>,
+    });
+
+    const filas = container.querySelectorAll('tbody tr[aria-expanded]');
+    expect(filas[0]).toHaveAttribute('aria-expanded', 'true');
+    expect(filas[1]).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getAllByTestId('grafico')).toHaveLength(1);
+  });
+
+  it('sin cuenta abierta no hay gráfico', () => {
+    montar(dos, { grafico: <div data-testid="grafico">día a día</div> });
+    expect(screen.queryByTestId('grafico')).not.toBeInTheDocument();
   });
 });

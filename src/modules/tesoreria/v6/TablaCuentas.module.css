@@ -261,3 +261,79 @@
 
 .flecha:hover:not(:disabled) { border-color: var(--atlas-v5-gold); color: var(--atlas-v5-gold); }
 .flecha:disabled { opacity: 0.4; cursor: default; }
+
+/* ── F3 · seleccionar una cuenta ────────────────────────────────────────────
+   Mirar y tocar se separan: la fila se abre y enseña su día a día; el punteo
+   vive detrás del "⋯". */
+
+.caret {
+  display: inline-flex;
+  align-items: center;
+  color: var(--atlas-v5-ink-4);
+  flex-shrink: 0;
+  transition: transform 0.14s, color 0.14s;
+}
+
+/* La fila ABIERTA · navy, con TODA la cifra en blanco y el filo dorado.
+   El navy dice "esta es la que estás mirando" sin necesidad de un marcador
+   aparte, y el gráfico de debajo cuelga visualmente de ella. */
+.filaSel td {
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-on-navy-1);
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-bottom-color: var(--atlas-v5-brand);
+}
+
+.filaSel:hover td { background: var(--atlas-v5-brand); }
+
+/* El filo dorado a la izquierda · el mismo recurso que marca lo activo en el
+   resto de la app. */
+.filaSel td:first-child { box-shadow: inset 3px 0 0 var(--atlas-v5-gold-2); }
+
+.filaSel .nombre { color: var(--atlas-v5-on-navy-1); }
+.filaSel .mask { color: var(--atlas-v5-on-navy-5); }
+.filaSel .fuerte { color: var(--atlas-v5-on-navy-1); }
+.filaSel .mudo { color: var(--atlas-v5-on-navy-5); }
+/* La cifra-veredicto sigue siendo la del cierre · sobre navy va en oro suave,
+   nunca en `gold-ink`, que sobre navy no se lee (§5). */
+.filaSel .oro { color: var(--atlas-v5-gold-2); }
+.filaSel .estadoConf { color: var(--atlas-v5-gold-soft); }
+.filaSel .estadoConf .puntoEstado,
+.filaSel .puntoEstado { background: var(--atlas-v5-gold-2); }
+
+.filaSel .caret {
+  color: var(--atlas-v5-on-navy-5);
+  transform: rotate(90deg);
+}
+
+.filaSel .kebab { color: var(--atlas-v5-on-navy-5); opacity: 1; }
+.filaSel .kebab:hover {
+  background: var(--atlas-v5-navy-line-soft);
+  color: var(--atlas-v5-on-navy-1);
+}
+
+.filaSel:focus-visible { outline-color: var(--atlas-v5-gold-2); }
+
+/* Las OTRAS cuentas, encogidas · una línea, atenuada. Con una abierta, el
+   conjunto tiene que caber de una vez: si hay que bajar para ver el gráfico,
+   la comparación entre cuentas se pierde. */
+.filaFina td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.filaFina .nombre { font-size: 12px; color: var(--atlas-v5-ink-2); }
+.filaFina .fuerte { font-weight: var(--atlas-v5-fw-medium); }
+.filaFina .caret { opacity: 0.4; }
+
+/* El gráfico desplegado · sin padding de celda, que lo pone el propio
+   componente, y con el mismo fondo para que se lea como una sola pieza. */
+.filaGrafico td { border-bottom: 1px solid var(--atlas-v5-line); }
+
+.tdGrafico {
+  padding: 0;
+  background: var(--atlas-v5-card-alt);
+}

@@ -261,9 +261,44 @@ describe('las puertas por URL', () => {
     montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
     montar();
 
-    // La tarjeta entera es clicable (§4.2).
-    fireEvent.click(await screen.findByText('Sabadell'));
+    // F3 · el punteo se abre desde el "⋯"; el clic de fila ahora SELECCIONA
+    // (enseña el día a día), que es mirar, no tocar.
+    fireEvent.click(await screen.findByLabelText('Acciones de Sabadell'));
+    fireEvent.click(screen.getByText('Confirmar movimientos'));
     expect(await screen.findByRole('dialog', { name: /Cuenta Sabadell/ })).toBeInTheDocument();
+  });
+
+  it('al entrar, la primera cuenta ya enseña su día a día', async () => {
+    // Con el hueco vacío nadie descubre que las filas se abren.
+    montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
+    montar();
+
+    expect(await screen.findByText(/Día a día de/)).toBeInTheDocument();
+  });
+
+  it('el clic en la fila abre y cierra su día a día · sin abrir el punteo', async () => {
+    montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
+    montar();
+    await screen.findByText(/Día a día de/);
+
+    // Cerrar tiene que AGUANTAR: la selección por defecto se aplica una vez,
+    // no cada vez que la fila queda cerrada.
+    fireEvent.click(screen.getByText('Sabadell'));
+    await waitFor(() => expect(screen.queryByText(/Día a día de/)).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Sabadell'));
+    expect(await screen.findByText(/Día a día de/)).toBeInTheDocument();
+    // Y mirar no es tocar: el punteo sigue cerrado.
+    expect(screen.queryByRole('dialog', { name: /Cuenta Sabadell/ })).not.toBeInTheDocument();
+  });
+
+  it('el deep-link además SELECCIONA la cuenta · al cerrar el punteo se ve la suya', async () => {
+    montarDb({ accounts: [cuenta(1, { alias: 'Sabadell' })] });
+    montar('/tesoreria/cuenta/1');
+
+    const drawer = await screen.findByRole('dialog', { name: /Cuenta Sabadell/ });
+    fireEvent.click(within(drawer).getByLabelText('Cerrar'));
+    expect(await screen.findByText(/Día a día de/)).toBeInTheDocument();
   });
 
   it('?extracto=1 abre el drawer de extracto · lo usan el Panel y las rutas viejas', async () => {

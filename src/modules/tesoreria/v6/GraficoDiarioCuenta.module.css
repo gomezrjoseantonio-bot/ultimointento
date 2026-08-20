@@ -1,0 +1,130 @@
+/* ===========================================================================
+   Tesorería · "Día a día de {mes}" · gráfico de una cuenta (F3)
+   Mockup: `docs/mockups/atlas-bancos-grafico-v5.html` (.graf-in).
+
+   Altura FIJA: el gráfico se despliega bajo una fila de la tabla y no puede
+   empujar la página. Fondo claro (`card-alt`), NO navy: el navy es de la fila
+   seleccionada, y repetirlo aquí fundiría las dos piezas en una mancha.
+   =========================================================================== */
+
+.caja {
+  background: var(--atlas-v5-card-alt);
+  padding: 8px 16px 10px;
+  height: 196px;
+  display: flex;
+  flex-direction: column;
+}
+
+.hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+/* Sin título grande · el nombre de la cuenta ya lo encabeza la fila navy de
+   justo encima, y repetirlo era decirlo dos veces seguidas. */
+.eyebrow {
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+  white-space: nowrap;
+}
+
+.leyenda {
+  display: flex;
+  gap: 14px;
+  font-size: 10px;
+  color: var(--atlas-v5-ink-3);
+  flex-wrap: wrap;
+}
+
+.leyItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.muestra {
+  width: 12px;
+  height: 9px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* Los cuatro tramos · sólido = ya pasó · tenue con contorno = falta. */
+.mEntradaConf { background: var(--atlas-v5-brand); }
+.mEntradaPrev {
+  background: var(--atlas-v5-brand-wash);
+  border: 1px solid var(--atlas-v5-brand-2);
+}
+.mSalidaConf { background: var(--atlas-v5-gold); }
+.mSalidaPrev {
+  background: var(--atlas-v5-gold-wash);
+  border: 1px solid var(--atlas-v5-gold-soft);
+}
+
+.lienzo {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.vacio {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  pointer-events: none;
+}
+
+/* El tooltip sigue al día · se topa dentro del lienzo con `translate`, para
+   que en los últimos días del mes no se salga por la derecha. */
+.tip {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  box-shadow: var(--atlas-v5-shadow-modal);
+  padding: 7px 10px;
+  font-size: 11px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 5;
+  max-width: 100%;
+}
+
+.tipDia {
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  margin-bottom: 3px;
+}
+
+.tipFila {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.tipFila b {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
