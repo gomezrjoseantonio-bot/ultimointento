@@ -650,6 +650,7 @@ const TesoreriaV6Page: React.FC = () => {
             inmuebleId: v.inmuebleId ?? null,
             categoryKey: v.categoryKey,
             subtypeKey: v.subtypeKey,
+            conceptoId: v.subtipo ?? null,
             // Viaja para que el servicio pueda NEGARSE: convertir esto en un
             // traspaso interno pediría una segunda pata que aquí no se puede
             // crear. Tragárselo en silencio dejaría el dinero saliendo de una
@@ -688,6 +689,7 @@ const TesoreriaV6Page: React.FC = () => {
             inmuebleId: v.inmuebleId ?? null,
             categoryKey: v.categoryKey ?? null,
             subtypeKey: v.subtypeKey ?? null,
+            conceptoId: v.subtipo ?? null,
             esMejora: v.esMejora,
             cuentaDestinoId: v.cuentaDestinoId,
             tarjetaId: v.tarjetaId ?? null,
@@ -706,6 +708,9 @@ const TesoreriaV6Page: React.FC = () => {
         await updateTreasuryEventFields(item.refId, {
           ...(v.categoryKey !== undefined ? { categoryKey: v.categoryKey } : {}),
           ...(v.subtypeKey !== undefined ? { subtypeKey: v.subtypeKey } : {}),
+          // F2b · el concepto fino elegido en la ficha viaja al evento y de ahí
+          // al movimiento al confirmar. `?? null` para poder limpiarlo.
+          ...(v.subtipo !== undefined ? { conceptoId: v.subtipo ?? null } : {}),
           ...(v.inmuebleId !== undefined ? { inmuebleId: v.inmuebleId } : {}),
         });
         await confirmTreasuryEvent(item.refId, {

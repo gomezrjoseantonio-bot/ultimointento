@@ -66,12 +66,22 @@ describe('solo lo anotado a mano y suelto', () => {
     expect(r.get(100)).toBe(7);
   });
 
-  it('una pata de traspaso no casa · no es un cargo suelto', () => {
+  it('algo con transferMetadata pero sin categoryKey de traspaso no casa', () => {
     const r = emparejarConfirmados(
       [lineaImport()],
       [mov({ id: 7, transferMetadata: { targetAccountId: 9 } })]
     );
     expect(r.size).toBe(0);
+  });
+
+  // §4.4 · la pata de un traspaso SÍ está en el extracto de su cuenta: al subirlo
+  // debe cuadrar con la pata ya creada (antes se excluía y quedaba huérfana).
+  it('una pata de traspaso (categoryKey traspaso_*) SÍ casa · §4.4', () => {
+    const r = emparejarConfirmados(
+      [lineaImport({ amount: 1500 })],
+      [mov({ id: 7, amount: 1500, categoryKey: 'traspaso_entrada', transferMetadata: { targetAccountId: 9 } })]
+    );
+    expect(r.get(100)).toBe(7);
   });
 
   it('una compra a crédito no casa · sale en el recibo, no en la cuenta', () => {

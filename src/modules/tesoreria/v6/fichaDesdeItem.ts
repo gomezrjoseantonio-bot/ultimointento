@@ -8,7 +8,7 @@
 // un mapeo que se corrige en un sitio y se olvida en el otro.
 // ============================================================================
 
-import { conceptoDesdeClasificacion } from '../../../services/conceptos/catalogoConceptos';
+import { conceptoDesdeClasificacion, conceptoPorId } from '../../../services/conceptos/catalogoConceptos';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
 import type { ValoresFicha } from './FichaMovimiento';
 
@@ -45,11 +45,18 @@ export function valoresDesdeItem(
   // El ámbito lo decide el inmueble del apunte · en personal la clasificación
   // no es invertible (la key es de brocha gorda) y la ficha abre sin ella.
   const inmuebleId = typeof item.activo?.inmuebleId === 'number' ? item.activo.inmuebleId : null;
-  const clas = conceptoDesdeClasificacion(
-    item.categoryKey,
-    item.subtypeKey,
-    inmuebleId != null ? 'inmueble' : 'personal',
-  );
+  // El concepto FINO guardado (F2) manda sobre la inversión gorda del
+  // `categoryKey`: si el apunte recuerda que era "limpieza" o "gestoría", la
+  // ficha reabre justo ese, en vez de re-derivar uno cualquiera de su familia y
+  // corromperlo al guardar. Solo si no lo hay se recurre a la inversión.
+  const guardado = item.conceptoId ? conceptoPorId(item.conceptoId) : undefined;
+  const clas = guardado
+    ? { familia: guardado.familia, conceptoId: guardado.id }
+    : conceptoDesdeClasificacion(
+        item.categoryKey,
+        item.subtypeKey,
+        inmuebleId != null ? 'inmueble' : 'personal',
+      );
   return {
     tipo: item.importe >= 0 ? 'ingreso' : 'gasto',
     // La ficha edita la DESCRIPCIÓN del movimiento, no el rótulo de la fila.

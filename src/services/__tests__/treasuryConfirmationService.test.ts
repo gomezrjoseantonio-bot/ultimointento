@@ -111,6 +111,20 @@ describe('treasuryConfirmationService · PR3', () => {
       expect(movement.type).toBe('Ingreso');
     });
 
+    // F2b · el concepto fino de la previsión viaja al movimiento al confirmar,
+    // para que la fila enseñe el subtipo (no la categoría gorda).
+    it('propaga el conceptoId de la previsión al movimiento', async () => {
+      const db = await initDB();
+      const eventId = Number(
+        await db.add('treasuryEvents', baseEvent({ conceptoId: 'limpieza' }) as any),
+      );
+
+      const { movementId } = await confirmTreasuryEvent(eventId);
+
+      const movement = (await db.get('movements', movementId)) as Movement;
+      expect(movement.conceptoId).toBe('limpieza');
+    });
+
     it('materializa events type=financing como Movement.type=Gasto', async () => {
       // En el codebase, un financiar (pago/cancelación de préstamo) es salida
       // de caja, no transferencia interna.

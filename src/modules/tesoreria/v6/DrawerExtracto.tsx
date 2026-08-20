@@ -10,7 +10,6 @@ import { Icons } from '../../../design-system/v5';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { initDB } from '../../../services/db';
 import { nombrarPrevisto as nombrarPrevistoModelo } from './nombrarPrevisto';
-import { candidatosDeLinea } from './conciliacionCandidatos';
 import {
   processFile,
   processPdf,
@@ -31,21 +30,22 @@ import {
   payloadDeConfirmacion,
   lineasAIgnorar,
   movimientosAEfectivo,
+  movimientosATraspaso,
+  contarIgualesSinResolver, idsIgualesAResolver, claveDeLineaIgual,
   lineasPendientes,
   hashesARecuperar,
   decisionesVacias,
   type LineaExtracto,
   type DecisionesSesion,
 } from './extractoSesion';
+import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import { esPdf } from '../../../services/personal/extractoTarjeta';
 import PanelExtractoTarjeta from './PanelExtractoTarjeta';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
-import { pareceRetiradaDeCajero } from '../../../services/retiradaCajero';
 import { convertirEnTraspaso } from '../../../services/traspasoDesdeMovimiento';
-import { importeConSigno, fechaLarga } from './formatoV6';
 import GrupoPlegableExtracto from './GrupoPlegableExtracto';
 import chasis from './DrawerV6.module.css';
 import styles from './DrawerExtracto.module.css';
@@ -86,9 +86,11 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [lineas, setLineas] = useState<LineaExtracto[]>([]);
   const [decisiones, setDecisiones] = useState<DecisionesSesion>(decisionesVacias);
   const [asignando, setAsignando] = useState<number | null>(null);
+  const [traspasando, setTraspasando] = useState<number | null>(null);
   const [previstos, setPrevistos] = useState<TreasuryEvent[]>([]);
   const [ignoradasPlegadas, setIgnoradasPlegadas] = useState(true);
   const [cerradosPlegados, setCerradosPlegados] = useState(true);
+  const [anterioresPlegados, setAnterioresPlegados] = useState(true);
 
   // El previsto se nombra con el MISMO adaptador que el resto de la app: título
   // = quién · qué es · inmueble (no su `description` en crudo).
@@ -130,6 +132,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setDeteccion(null);
     setTarjetaDestino(null);
     setAsignando(null);
+    setTraspasando(null);
     setCreando(null);
     ficheroRef.current = null;
     pendienteRef.current = null;
@@ -160,14 +163,29 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         // "Las dos cosas" · lo que ya anotaste a mano sube a Conciliado, no duplica.
         const confirmados = confirmadosPorLinea(delLote, todosMovs ?? [], destino.id);
         const abiertos = (todosEventos ?? []).filter(
-          (e) => e.accountId === destino.id && e.status !== 'executed'
+          (e) =>
+            e.status !== 'executed' &&
+            (e.accountId === destino.id ||
+              // Una cuota de préstamo (`financing`) que quedó HUÉRFANA de cuenta
+              // (sin `accountId`) no la ofrecía nadie, porque el drawer filtra por
+              // cuenta: la hipoteca salía "sin rastro". Se ofrece para poder
+              // conciliarla a mano (el importe y la fecha la acotan). La raíz —el
+              // regenerado del arranque que pierde la cuenta— se arregla en
+              // `resolveAccountId`; esto es la red para datos ya huérfanos.
+              (e.type === 'financing' && e.accountId == null))
         );
         // Los meses ya cerrados no se cargan · se apartan (§ cerrar el mes).
         const setCerrados = new Set((mesesCerrados ?? []).map((c) => c.mes));
+        // Mes en curso · las líneas de meses anteriores (no cerrados) que no
+        // cuadran se apartan por defecto (A1), para no ahogar la sesión con lo
+        // viejo al subir un extracto largo. Recuperables una a una.
+        const mesActual = new Date().toISOString().slice(0, 7);
 
         setResultado(res);
         setPrevistos(abiertos);
-        setLineas(construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, setCerrados, confirmados));
+        setLineas(
+          construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, setCerrados, confirmados, mesActual)
+        );
         setDecisiones(decisionesVacias());
         setPaso('resolver');
       } catch (err) {
@@ -245,6 +263,13 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         }
       }
 
+      // Traspasos a otra cuenta propia (P1) · mismo mecanismo que efectivo: el
+      // cargo importado pasa a ser la pata de salida y nace su espejo en la
+      // cuenta destino. Así netea en el saldo y sale del gráfico (P2/P4).
+      for (const { movementId, cuentaDestinoId } of movimientosATraspaso(lineas, decisiones)) {
+        await convertirEnTraspaso(movementId, cuentaDestinoId);
+      }
+
       // §4.7 · el fichero se archiva por cuenta y periodo (traga sus errores).
       if (ficheroRef.current) {
         await archivarExtracto(
@@ -289,6 +314,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         creados: new Set(prev.creados),
         recuperados: new Set(prev.recuperados),
         aEfectivo: new Set(prev.aEfectivo),
+        aTraspaso: new Map(prev.aTraspaso),
       };
       mut(d);
       return d;
@@ -298,6 +324,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     conDecisiones((d) => {
       d.ignorados.add(movementId);
       d.asignados.delete(movementId);
+      d.aTraspaso.delete(movementId);
     });
 
   const recuperar = (movementId: number) =>
@@ -311,6 +338,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       d.asignados.set(movementId, eventoId);
       d.ignorados.delete(movementId);
       d.aEfectivo.delete(movementId);
+      d.aTraspaso.delete(movementId);
     });
 
   // "Es efectivo" · el cargo pasa a un traspaso a Efectivo al guardar (sacar del
@@ -320,10 +348,39 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       d.aEfectivo.add(movementId);
       d.ignorados.delete(movementId);
       d.asignados.delete(movementId);
+      d.aTraspaso.delete(movementId);
     });
 
   const desmarcarEfectivo = (movementId: number) =>
     conDecisiones((d) => d.aEfectivo.delete(movementId));
+
+  // "Es traspaso" · el cargo pasa a un traspaso a la cuenta destino al guardar
+  // (P1) · el dinero no se gasta, cambia de sitio.
+  const marcarTraspaso = (movementId: number, cuentaDestinoId: number) =>
+    conDecisiones((d) => {
+      d.aTraspaso.set(movementId, cuentaDestinoId);
+      d.ignorados.delete(movementId);
+      d.asignados.delete(movementId);
+      d.aEfectivo.delete(movementId);
+    });
+
+  const desmarcarTraspaso = (movementId: number) =>
+    conDecisiones((d) => d.aTraspaso.delete(movementId));
+
+  // A2 · las iguales sin resolver como traspaso a la misma cuenta (28 Revolut de un clic).
+  const marcarTraspasoLote = (linea: LineaExtracto) => {
+    const destino = decisiones.aTraspaso.get(linea.movementId);
+    if (destino == null) return;
+    const ids = idsIgualesAResolver(lineas, decisiones, linea);
+    conDecisiones((d) => {
+      for (const id of ids) {
+        d.aTraspaso.set(id, destino);
+        d.ignorados.delete(id);
+        d.asignados.delete(id);
+        d.aEfectivo.delete(id);
+      }
+    });
+  };
 
   /**
    * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto. El
@@ -391,10 +448,13 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
   const visibles = lineas.filter((l) => {
     const v = veredictoEfectivo(l, decisiones);
-    return v !== 'ignorada' && v !== 'mes_cerrado';
+    return v !== 'ignorada' && v !== 'mes_cerrado' && v !== 'mes_anterior';
   });
   const ignoradas = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'ignorada');
   const deMesesCerrados = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'mes_cerrado');
+  const deMesesAnteriores = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'mes_anterior');
+
+  const igualesSinResolver = contarIgualesSinResolver(visibles, decisiones);
 
   return (
     <>
@@ -458,6 +518,12 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 <div className={chasis.ak}>
                   <div className={chasis.akl}>Meses cerrados</div>
                   <div className={chasis.akv}>{resumen.mesesCerrados}</div>
+                </div>
+              )}
+              {resumen.mesesAnteriores > 0 && (
+                <div className={chasis.ak}>
+                  <div className={chasis.akl}>Meses anteriores</div>
+                  <div className={chasis.akv}>{resumen.mesesAnteriores}</div>
                 </div>
               )}
             </div>
@@ -602,119 +668,32 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 </div>
               ))}
 
-              {visibles.map((l) => {
-                const v = veredictoEfectivo(l, decisiones);
-                const asignado = decisiones.asignados.get(l.movementId);
-                const previstoMostrado =
-                  asignado != null
-                    ? previstos.find((p) => p.id === asignado)
-                    : undefined;
-                // Candidatos para asignar · una entrada por serie, por cercanía.
-                const candidatos = candidatosDeLinea(
-                  { fecha: l.fecha, importe: l.importe },
-                  previstos,
-                );
-                return (
-                  <div key={l.movementId} className={styles.linea}>
-                    <div className={styles.lineaTop}>
-                      {/* El texto LITERAL del banco · §4.7. */}
-                      <div className={styles.lineaTexto}>{l.textoBanco}</div>
-                      <div className={styles.lineaImporte}>{importeConSigno(l.importe)}</div>
-                    </div>
-                    <div className={styles.lineaFecha}>{fechaLarga(l.fecha)}</div>
-
-                    {decisiones.aEfectivo.has(l.movementId) ? (
-                      <div className={styles.veredicto}>
-                        <Icons.Check size={13} aria-hidden="true" />
-                        <span>
-                          pasa a {cuentaEfectivo?.alias || 'Efectivo'} · el dinero no se gasta,
-                          cambia de sitio
-                        </span>
-                        <button
-                          type="button"
-                          className={styles.btnLinea}
-                          onClick={() => desmarcarEfectivo(l.movementId)}
-                        >
-                          Deshacer
-                        </button>
-                      </div>
-                    ) : v === 'cuadra' ? (
-                      <div className={styles.veredicto}>
-                        <Icons.Check size={13} aria-hidden="true" />
-                        <span>
-                          cuadra con{' '}
-                          {previstoMostrado
-                            ? nombrarPrevisto(previstoMostrado)
-                            : l.previsto?.descripcion
-                              ?? (l.confirmado ? 'lo que ya tenías anotado' : 'un previsto')}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className={styles.acciones}>
-                        {asignando === l.movementId ? (
-                          <select
-                            className={styles.selectPrevisto}
-                            aria-label={`Previsto para ${l.textoBanco}`}
-                            defaultValue=""
-                            onChange={(e) => {
-                              const id = Number(e.target.value);
-                              if (id) asignar(l.movementId, id);
-                              setAsignando(null);
-                            }}
-                          >
-                            <option value="">Elige un previsto…</option>
-                            {candidatos.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {nombrarPrevistoPorId(c.id, c.descripcion)} · {importeConSigno(c.importe)}
-                                {c.exacto ? '' : ' · no cuadra'}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <>
-                            {/* Asignar solo si hay algún previsto que pueda ser. */}
-                            {candidatos.length > 0 && (
-                              <button
-                                type="button"
-                                className={styles.btnLinea}
-                                onClick={() => setAsignando(l.movementId)}
-                              >
-                                Asignar a un previsto
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className={styles.btnLinea}
-                              onClick={() => setCreando(l)}
-                            >
-                              Crear movimiento
-                            </button>
-                            {/* Retirada de cajero · se PROPONE pasarla a Efectivo
-                                (no es gasto, el dinero cambia de sitio), no se adivina. */}
-                            {cuentaEfectivo?.id != null &&
-                              pareceRetiradaDeCajero(l.textoBanco, l.importe) && (
-                                <button
-                                  type="button"
-                                  className={styles.btnLinea}
-                                  onClick={() => marcarEfectivo(l.movementId)}
-                                >
-                                  Es efectivo
-                                </button>
-                              )}
-                            <button
-                              type="button"
-                              className={styles.btnLinea}
-                              onClick={() => ignorar(l.movementId)}
-                            >
-                              Ignorar
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {visibles.map((l) => (
+                <LineaExtractoItem
+                  key={l.movementId}
+                  linea={l}
+                  decisiones={decisiones}
+                  previstos={previstos}
+                  cuentas={cuentas}
+                  cuentaActivaId={cuentaActiva?.id}
+                  cuentaEfectivo={cuentaEfectivo}
+                  asignando={asignando}
+                  setAsignando={setAsignando}
+                  traspasando={traspasando}
+                  setTraspasando={setTraspasando}
+                  asignar={asignar}
+                  ignorar={ignorar}
+                  marcarEfectivo={marcarEfectivo}
+                  desmarcarEfectivo={desmarcarEfectivo}
+                  marcarTraspaso={marcarTraspaso}
+                  desmarcarTraspaso={desmarcarTraspaso}
+                  igualesSinResolver={igualesSinResolver.get(claveDeLineaIgual(l)) ?? 0}
+                  onMarcarIguales={() => marcarTraspasoLote(l)}
+                  abrirCrear={setCreando}
+                  nombrarPrevisto={nombrarPrevisto}
+                  nombrarPrevistoPorId={nombrarPrevistoPorId}
+                />
+              ))}
 
               {/* Ignoradas · agrupadas y plegadas (D1). */}
               {ignoradas.length > 0 && (
@@ -743,6 +722,27 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                   titulo={`${deMesesCerrados.length} de meses cerrados · no se cargan`}
                   intro="Estos cargos son de meses que ya cerraste. Para cargarlos, reabre el mes en «Cerrar el mes»."
                   lineas={deMesesCerrados}
+                />
+              )}
+
+              {/* Meses anteriores al actual · apartados por defecto (A1) ·
+                  recuperables uno a uno, sin reabrir nada. */}
+              {deMesesAnteriores.length > 0 && (
+                <GrupoPlegableExtracto
+                  plegado={anterioresPlegados}
+                  onToggle={() => setAnterioresPlegados((v) => !v)}
+                  titulo={`${deMesesAnteriores.length} de meses anteriores · no se cargan`}
+                  intro="Son de meses anteriores al actual. Se apartan para no ahogar la sesión; si quieres tratar alguno, recupéralo."
+                  lineas={deMesesAnteriores}
+                  accion={(l) => (
+                    <button
+                      type="button"
+                      className={styles.recuperar}
+                      onClick={() => recuperar(l.movementId)}
+                    >
+                      recuperar
+                    </button>
+                  )}
                 />
               )}
 

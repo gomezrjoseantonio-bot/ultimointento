@@ -359,6 +359,8 @@ export async function confirmDecisions(
       ...movement,
       ...(event.categoryKey != null ? { categoryKey: event.categoryKey } : {}),
       ...(event.subtypeKey != null ? { subtypeKey: event.subtypeKey } : {}),
+      // F2b · el concepto fino de la previsión también se hereda al cuadrar.
+      ...(event.conceptoId != null ? { conceptoId: event.conceptoId } : {}),
       ...(event.ambito != null ? { ambito: event.ambito } : {}),
       ...(event.inmuebleId != null ? { inmuebleId: String(event.inmuebleId) } : {}),
       unifiedStatus: 'conciliado',

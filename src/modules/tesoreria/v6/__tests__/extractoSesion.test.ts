@@ -17,6 +17,10 @@ import {
   lineasPendientes,
   hashesARecuperar,
   movimientosAEfectivo,
+  movimientosATraspaso,
+  contarIgualesSinResolver,
+  idsIgualesAResolver,
+  claveDeLineaIgual,
   decisionesVacias,
   type LineaExtracto,
 } from '../extractoSesion';
@@ -266,6 +270,7 @@ describe('las decisiones del usuario', () => {
       resolver: 1,
       ignoradas: 1,
       mesesCerrados: 0,
+      mesesAnteriores: 0,
     });
   });
 });
@@ -379,6 +384,55 @@ describe('la retirada de efectivo', () => {
   });
 });
 
+// Un traspaso a otra cuenta propia entra en el extracto como un cargo más
+// (P1). Si se apunta como gasto, hunde el saldo y lo cuela en el gráfico. §4.7
+// deja marcarlo como "traspaso a [cuenta]" y al guardar se convierte.
+describe('el traspaso a otra cuenta al importar (P1)', () => {
+  const lineas = (): LineaExtracto[] =>
+    construirLineas(
+      [mov(10, 'TRANSFERENCIA A NOMINA', -1500), mov(11, 'RECIBO LUZ', -74)],
+      sinMatches,
+      [],
+      new Set()
+    );
+
+  // Como efectivo: queda RESUELTA (su movimiento sobrevive) y viaja con su
+  // cuenta destino para convertirse al guardar.
+  it('queda resuelta y lleva su cuenta destino', () => {
+    const d = decisionesVacias();
+    d.aTraspaso.set(10, 7); // traspaso a la cuenta 7
+
+    expect(veredictoEfectivo(lineas()[0], d)).toBe('cuadra');
+    expect(lineasPendientes(lineas(), d).map((l) => l.movementId)).toEqual([11]);
+    expect(movimientosATraspaso(lineas(), d)).toEqual([{ movementId: 10, cuentaDestinoId: 7 }]);
+  });
+
+  // Confirmarle además un previsto lo daría por pagado dos veces.
+  it('marcada como traspaso NO se empareja con ningún previsto', () => {
+    const conMatch = () =>
+      construirLineas(
+        [mov(10, 'TRANSFERENCIA A NOMINA', -1500)],
+        { ...sinMatches, matches: [{ movementId: 10, treasuryEventId: 5, score: 90, reasons: [] }] },
+        [evt(5, 'Un previsto de 1500', -1500)],
+        new Set()
+      );
+    const d = decisionesVacias();
+    d.aTraspaso.set(10, 7);
+
+    expect(payloadDeConfirmacion(conMatch(), d).approvedMatches).toEqual([]);
+  });
+
+  // Ignorar es la última palabra: no se convierte en traspaso.
+  it('ignorar gana · no se convierte', () => {
+    const d = decisionesVacias();
+    d.aTraspaso.set(10, 7);
+    d.ignorados.add(10);
+
+    expect(veredictoEfectivo(lineas()[0], d)).toBe('ignorada');
+    expect(movimientosATraspaso(lineas(), d)).toEqual([]);
+  });
+});
+
 // El extracto trae varios meses · los que ya están cerrados no se cargan.
 describe('meses cerrados · el extracto no reabre lo cerrado', () => {
   it('una línea de un mes cerrado se aparta · no cuenta como a resolver ni cuadra', () => {
@@ -434,5 +488,94 @@ describe('meses cerrados · el extracto no reabre lo cerrado', () => {
     const ls = construirLineas([mov(1, 'X', -10, '2026-08-01')], sinMatches, [], new Set());
     expect(ls[0].veredicto).toBe('resolver');
     expect(resumir(ls, decisionesVacias()).mesesCerrados).toBe(0);
+  });
+});
+
+// A1 · subir un extracto largo no debe ahogar la sesión con meses viejos: las
+// líneas de meses ANTERIORES al actual que no cuadran se apartan por defecto,
+// recuperables una a una.
+describe('meses anteriores · se apartan por defecto (A1)', () => {
+  const movs = () => [
+    mov(1, 'VIEJO MAYO', -30, '2026-05-10'),
+    mov(2, 'VIEJO JULIO', -30, '2026-07-10'),
+    mov(3, 'ACTUAL AGOSTO', -30, '2026-08-10'),
+  ];
+
+  it('lo de meses anteriores se aparta; lo del mes actual queda a resolver', () => {
+    const ls = construirLineas(movs(), sinMatches, [], new Set(), new Set(), new Map(), '2026-08');
+    expect(ls[0].veredicto).toBe('mes_anterior');
+    expect(ls[1].veredicto).toBe('mes_anterior');
+    expect(ls[2].veredicto).toBe('resolver');
+    const r = resumir(ls, decisionesVacias());
+    expect(r.mesesAnteriores).toBe(2);
+    expect(r.resolver).toBe(1);
+  });
+
+  it('un mes anterior NO se materializa al guardar', () => {
+    const ls = construirLineas(movs(), sinMatches, [], new Set(), new Set(), new Map(), '2026-08');
+    expect(lineasPendientes(ls, decisionesVacias()).map((l) => l.movementId).sort()).toEqual([1, 2, 3]);
+  });
+
+  it('recuperar un mes anterior lo devuelve a resolver', () => {
+    const ls = construirLineas(movs(), sinMatches, [], new Set(), new Set(), new Map(), '2026-08');
+    const d = decisionesVacias();
+    d.recuperados.add(1);
+    expect(veredictoEfectivo(ls[0], d)).toBe('resolver');
+  });
+
+  it('un mes anterior que CUADRA con su previsto cuadra igual, no se aparta', () => {
+    const ls = construirLineas(
+      [mov(1, 'RENTA MAYO', -30, '2026-05-10')],
+      { ...sinMatches, matches: [{ movementId: 1, treasuryEventId: 9, score: 90, reasons: [] }] },
+      [evt(9, 'Renta prevista', -30, '2026-05-10')],
+      new Set(),
+      new Set(),
+      new Map(),
+      '2026-08'
+    );
+    expect(ls[0].veredicto).toBe('cuadra');
+  });
+
+  it('sin mesActual, nada se aparta por antigüedad (comportamiento previo)', () => {
+    const ls = construirLineas(movs(), sinMatches, [], new Set());
+    expect(ls.every((l) => l.veredicto === 'resolver')).toBe(true);
+  });
+});
+
+// A2 · marcar traspasos IGUALES en lote (los 28 "Pago en Revolut −30").
+describe('lote de traspasos iguales (A2)', () => {
+  const ls = (): LineaExtracto[] =>
+    construirLineas(
+      [
+        mov(1, 'PAGO EN REVOLUT', -30, '2026-08-02'),
+        mov(2, 'PAGO EN REVOLUT', -30, '2026-08-03'),
+        mov(3, 'PAGO EN REVOLUT', -30, '2026-08-04'),
+        mov(4, 'RECIBO LUZ', -74, '2026-08-05'),
+        mov(5, 'PAGO EN REVOLUT', 30, '2026-08-06'), // signo distinto: NO igual
+      ],
+      sinMatches,
+      [],
+      new Set()
+    );
+
+  it('cuenta los cargos iguales sin resolver, por clave', () => {
+    const m = contarIgualesSinResolver(ls(), decisionesVacias());
+    expect(m.get(claveDeLineaIgual({ textoBanco: 'PAGO EN REVOLUT', importe: -30 }))).toBe(3);
+    // El ingreso de +30 no cuenta con los cargos.
+    expect(m.get(claveDeLineaIgual({ textoBanco: 'RECIBO LUZ', importe: -74 }))).toBe(1);
+  });
+
+  it('las iguales a resolver excluyen la propia, el otro concepto y el otro signo', () => {
+    const lineas = ls();
+    const ids = idsIgualesAResolver(lineas, decisionesVacias(), lineas[0]);
+    expect(ids.sort()).toEqual([2, 3]);
+  });
+
+  it('una igual ya cuadrada NO entra en el lote', () => {
+    const lineas = ls();
+    const d = decisionesVacias();
+    d.asignados.set(2, 99); // la 2 ya la resolvió el usuario
+    const ids = idsIgualesAResolver(lineas, d, lineas[0]);
+    expect(ids).toEqual([3]);
   });
 });

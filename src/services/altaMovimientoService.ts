@@ -42,6 +42,8 @@ export interface AltaMovimiento {
   inmuebleId?: number | null;
   categoryKey?: string | null;
   subtypeKey?: string | null;
+  /** Concepto fino del catálogo unificado · el subtipo concreto (F2). */
+  conceptoId?: string | null;
   /** La derrama que el usuario marcó como mejora (§4.5 · D3). */
   esMejora?: boolean;
   /** Solo en transferencia · `null` = externa. */
@@ -170,6 +172,7 @@ async function altaMovimientoNormal(v: AltaMovimiento): Promise<number> {
     statusConciliacion: 'sin_match',
     ...(v.categoryKey ? { categoryKey: v.categoryKey } : {}),
     ...(v.subtypeKey ? { subtypeKey: v.subtypeKey } : {}),
+    ...(v.conceptoId ? { conceptoId: v.conceptoId } : {}),
     ...(v.inmuebleId != null ? { inmuebleId: String(v.inmuebleId) } : {}),
     ...(v.tarjetaId != null ? { tarjetaId: v.tarjetaId } : {}),
     // Una compra con tarjeta de crédito no mueve la cuenta hasta el recibo · se
@@ -344,6 +347,7 @@ export async function editarMovimiento(movementId: number, v: AltaMovimiento): P
     ambito: v.inmuebleId != null ? 'INMUEBLE' : 'PERSONAL',
     categoryKey: v.categoryKey ?? undefined,
     subtypeKey: v.subtypeKey ?? undefined,
+    conceptoId: v.conceptoId ?? undefined,
     inmuebleId: v.inmuebleId != null ? String(v.inmuebleId) : undefined,
     // `undefined` NO borra: quien edite la ficha sin conocer la tarjeta —una
     // pantalla vieja, un flujo que no la pregunta— dejaría el movimiento sin
