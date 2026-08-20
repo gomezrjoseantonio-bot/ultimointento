@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-20",
-  "generatedAt": "2026-08-20T14:36:17.549Z",
+  "generatedAt": "2026-08-20T11:17:40.590Z",
   "git": {
-    "branch": "claude/mis-bancos-fase2",
-    "head": "bdc3eea"
+    "branch": "claude/bank-notes-model-g78h0t",
+    "head": "3bebcf2"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -274,8 +274,8 @@
         "1439 · scripts/health.mjs",
         "1259 · src/pages/GestionPersonal/wizards/NominaPage.tsx",
         "1246 · src/services/ocr/normalize-docai.ts",
-        "1226 · src/modules/horizon/tesoreria/services/treasurySyncService.ts",
-        "1225 · src/modules/horizon/fiscalidad/historico/ImportarDeclaracionWizard.tsx"
+        "1240 · src/modules/tesoreria/v6/TesoreriaV6Page.tsx",
+        "1226 · src/modules/horizon/tesoreria/services/treasurySyncService.ts"
       ],
       "calibracion": null
     },
