@@ -441,6 +441,46 @@ export function movimientosAEfectivo(
  * devuelve el par (movementId, cuentaDestinoId) porque el movimiento ya existe
  * y lo que hace falta es transformarlo.
  */
+/** A2 · clave para agrupar líneas IGUALES · mismo texto del banco y signo. */
+export function claveDeLineaIgual(l: Pick<LineaExtracto, 'textoBanco' | 'importe'>): string {
+  return `${l.textoBanco} ${l.importe < 0 ? 'S' : 'E'}`;
+}
+
+/**
+ * A2 · cuántos CARGOS iguales (mismo texto y signo) siguen SIN RESOLVER, por
+ * clave · para ofrecer "y las N iguales" al marcar uno como traspaso.
+ */
+export function contarIgualesSinResolver(
+  lineas: LineaExtracto[],
+  decisiones: DecisionesSesion
+): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const l of lineas) {
+    if (l.importe >= 0 || veredictoEfectivo(l, decisiones) !== 'resolver') continue;
+    const k = claveDeLineaIgual(l);
+    m.set(k, (m.get(k) ?? 0) + 1);
+  }
+  return m;
+}
+
+/**
+ * A2 · movementIds de los cargos iguales a `linea` que siguen SIN RESOLVER
+ * (excluida ella) · los que marcaría "y las N iguales". No pisa lo ya cuadrado
+ * ni ignorado, ni los ingresos (un traspaso es un cargo).
+ */
+export function idsIgualesAResolver(
+  lineas: LineaExtracto[],
+  decisiones: DecisionesSesion,
+  linea: LineaExtracto
+): number[] {
+  const clave = claveDeLineaIgual(linea);
+  return lineas
+    .filter((l) => l.movementId !== linea.movementId && l.importe < 0)
+    .filter((l) => claveDeLineaIgual(l) === clave)
+    .filter((l) => veredictoEfectivo(l, decisiones) === 'resolver')
+    .map((l) => l.movementId);
+}
+
 export function movimientosATraspaso(
   lineas: LineaExtracto[],
   decisiones: DecisionesSesion

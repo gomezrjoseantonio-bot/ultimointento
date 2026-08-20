@@ -31,6 +31,7 @@ import {
   lineasAIgnorar,
   movimientosAEfectivo,
   movimientosATraspaso,
+  contarIgualesSinResolver, idsIgualesAResolver, claveDeLineaIgual,
   lineasPendientes,
   hashesARecuperar,
   decisionesVacias,
@@ -366,6 +367,21 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const desmarcarTraspaso = (movementId: number) =>
     conDecisiones((d) => d.aTraspaso.delete(movementId));
 
+  // A2 · las iguales sin resolver como traspaso a la misma cuenta (28 Revolut de un clic).
+  const marcarTraspasoLote = (linea: LineaExtracto) => {
+    const destino = decisiones.aTraspaso.get(linea.movementId);
+    if (destino == null) return;
+    const ids = idsIgualesAResolver(lineas, decisiones, linea);
+    conDecisiones((d) => {
+      for (const id of ids) {
+        d.aTraspaso.set(id, destino);
+        d.ignorados.delete(id);
+        d.asignados.delete(id);
+        d.aEfectivo.delete(id);
+      }
+    });
+  };
+
   /**
    * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto. El
    * `Movement` YA existe (`processFile` lo insertó), así que crear aquí es
@@ -437,6 +453,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const ignoradas = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'ignorada');
   const deMesesCerrados = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'mes_cerrado');
   const deMesesAnteriores = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'mes_anterior');
+
+  const igualesSinResolver = contarIgualesSinResolver(visibles, decisiones);
 
   return (
     <>
@@ -669,6 +687,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                   desmarcarEfectivo={desmarcarEfectivo}
                   marcarTraspaso={marcarTraspaso}
                   desmarcarTraspaso={desmarcarTraspaso}
+                  igualesSinResolver={igualesSinResolver.get(claveDeLineaIgual(l)) ?? 0}
+                  onMarcarIguales={() => marcarTraspasoLote(l)}
                   abrirCrear={setCreando}
                   nombrarPrevisto={nombrarPrevisto}
                   nombrarPrevistoPorId={nombrarPrevistoPorId}

@@ -18,6 +18,9 @@ import {
   hashesARecuperar,
   movimientosAEfectivo,
   movimientosATraspaso,
+  contarIgualesSinResolver,
+  idsIgualesAResolver,
+  claveDeLineaIgual,
   decisionesVacias,
   type LineaExtracto,
 } from '../extractoSesion';
@@ -536,5 +539,43 @@ describe('meses anteriores · se apartan por defecto (A1)', () => {
   it('sin mesActual, nada se aparta por antigüedad (comportamiento previo)', () => {
     const ls = construirLineas(movs(), sinMatches, [], new Set());
     expect(ls.every((l) => l.veredicto === 'resolver')).toBe(true);
+  });
+});
+
+// A2 · marcar traspasos IGUALES en lote (los 28 "Pago en Revolut −30").
+describe('lote de traspasos iguales (A2)', () => {
+  const ls = (): LineaExtracto[] =>
+    construirLineas(
+      [
+        mov(1, 'PAGO EN REVOLUT', -30, '2026-08-02'),
+        mov(2, 'PAGO EN REVOLUT', -30, '2026-08-03'),
+        mov(3, 'PAGO EN REVOLUT', -30, '2026-08-04'),
+        mov(4, 'RECIBO LUZ', -74, '2026-08-05'),
+        mov(5, 'PAGO EN REVOLUT', 30, '2026-08-06'), // signo distinto: NO igual
+      ],
+      sinMatches,
+      [],
+      new Set()
+    );
+
+  it('cuenta los cargos iguales sin resolver, por clave', () => {
+    const m = contarIgualesSinResolver(ls(), decisionesVacias());
+    expect(m.get(claveDeLineaIgual({ textoBanco: 'PAGO EN REVOLUT', importe: -30 }))).toBe(3);
+    // El ingreso de +30 no cuenta con los cargos.
+    expect(m.get(claveDeLineaIgual({ textoBanco: 'RECIBO LUZ', importe: -74 }))).toBe(1);
+  });
+
+  it('las iguales a resolver excluyen la propia, el otro concepto y el otro signo', () => {
+    const lineas = ls();
+    const ids = idsIgualesAResolver(lineas, decisionesVacias(), lineas[0]);
+    expect(ids.sort()).toEqual([2, 3]);
+  });
+
+  it('una igual ya cuadrada NO entra en el lote', () => {
+    const lineas = ls();
+    const d = decisionesVacias();
+    d.asignados.set(2, 99); // la 2 ya la resolvió el usuario
+    const ids = idsIgualesAResolver(lineas, d, lineas[0]);
+    expect(ids).toEqual([3]);
   });
 });

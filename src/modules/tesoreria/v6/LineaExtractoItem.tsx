@@ -33,6 +33,10 @@ export interface LineaExtractoItemProps {
   desmarcarEfectivo: (movementId: number) => void;
   marcarTraspaso: (movementId: number, cuentaDestinoId: number) => void;
   desmarcarTraspaso: (movementId: number) => void;
+  /** A2 · cuántas líneas iguales (mismo texto y signo) quedan sin resolver. */
+  igualesSinResolver?: number;
+  /** A2 · marca todas las iguales como traspaso a la misma cuenta de esta. */
+  onMarcarIguales?: () => void;
   abrirCrear: (linea: LineaExtracto) => void;
   nombrarPrevisto: (ev: TreasuryEvent) => string;
   nombrarPrevistoPorId: (id: number | null | undefined, respaldo: string) => string;
@@ -55,6 +59,8 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
   desmarcarEfectivo,
   marcarTraspaso,
   desmarcarTraspaso,
+  igualesSinResolver = 0,
+  onMarcarIguales,
   abrirCrear,
   nombrarPrevisto,
   nombrarPrevistoPorId,
@@ -102,6 +108,13 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
         <div className={styles.veredicto}>
           <Icons.Check size={13} aria-hidden="true" />
           <span>traspaso a {cuentaTraspaso.alias} · no es gasto, el dinero cambia de sitio</span>
+          {/* A2 · marcar de una vez las líneas IGUALES sin resolver (mismo texto
+              del banco y mismo signo): 28 "Pago en Revolut −30" de golpe. */}
+          {igualesSinResolver > 0 && onMarcarIguales && (
+            <button type="button" className={styles.btnLinea} onClick={onMarcarIguales}>
+              y las {igualesSinResolver} iguales
+            </button>
+          )}
           <button
             type="button"
             className={styles.btnLinea}
