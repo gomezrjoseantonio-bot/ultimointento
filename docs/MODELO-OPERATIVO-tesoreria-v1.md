@@ -387,6 +387,14 @@ muestra (plegar por Tipo, separar recurrentes de puntuales, ver por inmueble, el
 alta de un puntual vs la pantalla de recurrentes) es una capa de encima. Ahí
 nacían los problemas: se dejaba que la pantalla decidiera la naturaleza.
 
+> **P8b (20 ago) · el nivel Tipo es editable.** Además de renombrar/ocultar/añadir
+> conceptos (ya existía), ahora en Ajustes → Conceptos se pueden **crear Tipos
+> propios** y **renombrar** cualquier Tipo (los de fábrica por retoque de nombre,
+> los tuyos del todo). Un concepto colgado de un Tipo propio hereda la
+> clasificación **genérica de «Otros»** (la fiscalidad fina es capa de encima
+> diferida); nunca se teclea una casilla. Hipoteca/préstamo sigue fuera: nace en
+> Financiación.
+
 ### 9 quater · CATÁLOGO DE NATURALEZA acordado (Jose, 19 ago) — **IMPLEMENTADO P8a (20 ago)**
 
 > **P8a (20 ago):** el catálogo unificado (`conceptos/`) se reconcilió con esta

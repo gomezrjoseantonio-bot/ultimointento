@@ -14,19 +14,25 @@ import {
   conceptosDeAmbito,
   conceptosEfectivos,
   donanteDe,
+  familiasEfectivas,
   proyectar,
   registrarConceptosDeUsuario,
 } from '../catalogoConceptos';
 import { CONCEPTOS_BASE } from '../conceptosBase';
 import {
   borrarConceptoPropio,
+  borrarFamiliaPropia,
   crearConceptoPropio,
+  crearFamiliaPropia,
   editarConceptoPropio,
   idDeConceptoPropio,
+  idDeFamiliaPropia,
   leerConceptosUsuario,
   ocultar,
   puedeCrear,
+  puedeCrearFamilia,
   renombrar,
+  renombrarFamilia,
 } from '../conceptosUsuarioService';
 import { initDB } from '../../db';
 
@@ -291,6 +297,88 @@ describe('editar un concepto propio', () => {
 });
 
 // ─── El catálogo de fábrica no se mueve ─────────────────────────────────────
+
+// ─── Tipos (carpetas) propios · P8b ──────────────────────────────────────────
+
+describe('el id de un Tipo propio', () => {
+  it('lleva prefijo usr_fam_ y no arrastra acentos', () => {
+    expect(idDeFamiliaPropia('Náutica')).toBe('usr_fam_nautica');
+    expect(idDeFamiliaPropia('···')).toBe('usr_fam_tipo');
+  });
+  it('no choca con uno de fábrica', () => {
+    expect(puedeCrearFamilia('comunidad')).toEqual({ ok: true, id: 'usr_fam_comunidad' });
+    // Ese id propio no existe aún, pero el de fábrica es 'comunidad' (sin prefijo),
+    // así que no colisiona · el prefijo es la garantía.
+  });
+});
+
+describe('crear un Tipo propio', () => {
+  it('aparece en las familias vigentes, después de las de fábrica', async () => {
+    await crearFamiliaPropia('Náutica');
+    const ids = familiasEfectivas().map((f) => f.id);
+    expect(ids).toContain('usr_fam_nautica');
+    expect(ids.indexOf('usr_fam_nautica')).toBeGreaterThan(ids.indexOf('otros'));
+  });
+
+  it('NO sin nombre ni con un id ocupado', async () => {
+    expect(puedeCrearFamilia('   ')).toEqual({ ok: false, motivo: 'sin_nombre' });
+    await crearFamiliaPropia('Náutica');
+    const datos = await leerConceptosUsuario();
+    expect(puedeCrearFamilia('náutica', datos.familias)).toEqual({
+      ok: false,
+      motivo: 'id_ocupado',
+    });
+  });
+
+  it('un concepto colgado de él hereda la proyección genérica de «Otros»', async () => {
+    await crearFamiliaPropia('Náutica');
+    // Un Tipo propio ofrece los dos ámbitos (el donante genérico existe en ambos).
+    expect(puedeCrear('usr_fam_nautica', 'Amarre', ['personal', 'inmueble']).ok).toBe(true);
+    await crearConceptoPropio('usr_fam_nautica', 'Amarre', ['personal', 'inmueble']);
+    expect(proyectar('usr_amarre', 'personal')).toEqual(proyectar('personalizado', 'personal'));
+    expect(proyectar('usr_amarre', 'inmueble')).toEqual(proyectar('personalizado', 'inmueble'));
+  });
+});
+
+describe('renombrar un Tipo', () => {
+  it('el de fábrica se retoca sin cambiar su id', async () => {
+    await renombrarFamilia('tributos', 'Tasas e impuestos');
+    expect(familiasEfectivas().find((f) => f.id === 'tributos')?.label).toBe('Tasas e impuestos');
+    // El concepto sigue en su familia · el id de la familia no cambió.
+    expect(conceptoPorId('ibi')?.familia).toBe('tributos');
+  });
+
+  it('volver al nombre de fábrica no deja ajuste', async () => {
+    const original = FAMILIAS.find((f) => f.id === 'tributos')!.label;
+    await renombrarFamilia('tributos', 'Tasas');
+    await renombrarFamilia('tributos', original);
+    expect((await leerConceptosUsuario()).ajustesFamilia).toEqual({});
+  });
+
+  it('el propio cambia de nombre', async () => {
+    await crearFamiliaPropia('Náutica');
+    await renombrarFamilia('usr_fam_nautica', 'Barco');
+    expect(familiasEfectivas().find((f) => f.id === 'usr_fam_nautica')?.label).toBe('Barco');
+  });
+});
+
+describe('borrar un Tipo propio', () => {
+  it('se va si no cuelga nada de él', async () => {
+    await crearFamiliaPropia('Náutica');
+    await borrarFamiliaPropia('usr_fam_nautica');
+    expect(familiasEfectivas().map((f) => f.id)).not.toContain('usr_fam_nautica');
+  });
+
+  it('NO se va si tiene un concepto tuyo · quedaría huérfano', async () => {
+    await crearFamiliaPropia('Náutica');
+    await crearConceptoPropio('usr_fam_nautica', 'Amarre', ['personal']);
+    await expect(borrarFamiliaPropia('usr_fam_nautica')).rejects.toThrow(/concepto/);
+  });
+
+  it('un Tipo de fábrica no se borra por esta vía', async () => {
+    await expect(borrarFamiliaPropia('tributos')).rejects.toThrow(/fábrica/i);
+  });
+});
 
 describe('nada de esto toca el catálogo de fábrica', () => {
   it('sigue teniendo sus conceptos de fábrica después de añadir y esconder', async () => {
