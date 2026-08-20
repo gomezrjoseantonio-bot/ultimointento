@@ -202,6 +202,54 @@ export interface Property {
   };
 }
 
+// ─── Explotación de alquiler (R1 · Jose 20 ago 2026) ─────────────────────────
+//
+// «Poner un inmueble en alquiler» NO es un atributo del inmueble. Es una entidad
+// PROPIA del dominio Alquileres que REFERENCIA al inmueble (`inmuebleId`). Marcar
+// un inmueble como alquilable = que exista su `ExplotacionAlquiler`; desmarcarlo =
+// borrarla. El inmueble se queda como el activo puro (dónde está, coste, hipoteca).
+//
+// De aquí se nutre todo: la disponibilidad (cuántas líneas dibuja), el semillado
+// de OPEX (se dispara al pasar a `operativo`) y la validación de contratos. Ver
+// docs/MODELO-OPERATIVO-tesoreria-v1.md §9 quinquies bis.
+//
+// Los campos legacy de `Property` (`modoExplotacion`, `explotacion`, `usoTipo`,
+// `alquilerPorHabitaciones`) quedan de solo-lectura hasta que no queden lectores;
+// la migración v90 los siembra aquí.
+
+/** El modo de explotación de un inmueble alquilable. */
+export type ModoExplotacionAlquiler = 'completo' | 'habitaciones' | 'turistico';
+
+/** Estado operativo de una explotación (o de una habitación suya). */
+export type EstadoExplotacion = 'operativo' | 'vacante' | 'en_reforma';
+
+/**
+ * Una habitación, cuando el modo es `habitaciones`. Lista LIGERA embebida en la
+ * explotación (no store propio, no entidad global): nombre + renta objetivo +
+ * estado, para que la habitación 2 pueda estar operativa mientras la 3 está en
+ * reforma, cada una lleve su renta, y la timeline muestre nombres en vez de `hab-2`.
+ * El `Contract.habitacionId` apunta a este `id`.
+ */
+export interface HabitacionAlquiler {
+  id: string;
+  nombre: string;
+  rentaObjetivo?: number;
+  estado?: EstadoExplotacion;
+}
+
+export interface ExplotacionAlquiler {
+  id?: number;
+  inmuebleId: number; // FK → Property.id · único (una explotación por inmueble)
+  modo: ModoExplotacionAlquiler;
+  estado: EstadoExplotacion;
+  /** Sólo cuando `modo === 'habitaciones'`. */
+  habitaciones?: HabitacionAlquiler[];
+  /** Cuenta de cobro por defecto sugerida a los contratos de este inmueble. */
+  cuentaCobroPorDefectoId?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PropertySale {
   id?: number;
   propertyId: number;

@@ -199,6 +199,75 @@
   color: var(--atlas-v5-ink);
 }
 
+.linkInline:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── Control de explotación (marcar / modo / estado / desmarcar) ──────────── */
+
+.controlExplotacion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.controlCampo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.controlLab {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.selectMini {
+  font: inherit;
+  font-size: 11px;
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-sm, 6px);
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.selectMini:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ponerEnAlquiler {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-card);
+  background: var(--atlas-v5-brand);
+  border: none;
+  border-radius: var(--atlas-v5-radius-sm, 6px);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.ponerEnAlquiler:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.noAlquiler {
+  padding: 8px 0 10px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  font-style: italic;
+}
+
 /* ── Líneas y track ──────────────────────────────────────────────────────── */
 
 .lineasWrap {

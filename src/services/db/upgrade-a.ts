@@ -162,6 +162,15 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
           tarjetasStore.createIndex('activa', 'activa', { unique: false });
         }
 
+        // V90 · R1 · ALQUILERES: `explotacionAlquiler` — «poner en alquiler» como
+        // entidad propia que referencia al inmueble (NO un atributo suyo). Índice
+        // por `inmuebleId` para la lectura de todos los días: "¿está este inmueble
+        // en alquiler y cómo?". Una por inmueble (el servicio lo garantiza).
+        if (!db.objectStoreNames.contains('explotacionAlquiler')) {
+          const explotacionStore = db.createObjectStore('explotacionAlquiler', { keyPath: 'id', autoIncrement: true });
+          explotacionStore.createIndex('inmuebleId', 'inmuebleId', { unique: true });
+        }
+
         // V4.0: mueblesInmueble — mobiliario amortizable por inmueble
         if (!db.objectStoreNames.contains('mueblesInmueble')) {
           const mueblesStore = db.createObjectStore('mueblesInmueble', { keyPath: 'id', autoIncrement: true });
