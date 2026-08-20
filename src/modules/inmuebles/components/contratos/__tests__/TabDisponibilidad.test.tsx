@@ -35,7 +35,16 @@ beforeEach(() => {
   mockService.marcarAlquilable.mockResolvedValue(explotacion(1));
   mockService.actualizarExplotacion.mockResolvedValue(explotacion(1));
   mockService.desmarcarAlquilable.mockResolvedValue(undefined);
+  mockService.anadirHabitacion.mockResolvedValue(explotacion(1));
+  mockService.actualizarHabitacion.mockResolvedValue(explotacion(1));
+  mockService.eliminarHabitacion.mockResolvedValue(explotacion(1));
 });
+
+const marcarHabitaciones = (id: number, habitaciones: ExplotacionAlquiler['habitaciones']) => {
+  explotacionesActuales = new Map([
+    [id, explotacion(id, { modo: 'habitaciones', habitaciones })],
+  ]);
+};
 
 const prop = (
   id: number,
@@ -125,8 +134,11 @@ describe('TabDisponibilidad', () => {
     expect(screen.getByText('Piso')).toBeInTheDocument();
   });
 
-  test('propiedad marcada bedrooms=5 con contratos por habitación · 5 líneas Hab', async () => {
-    marcar(1);
+  test('modo habitaciones con 5 habitaciones · una línea por habitación con su nombre', async () => {
+    marcarHabitaciones(
+      1,
+      Array.from({ length: 5 }, (_, i) => ({ id: `hab-${i + 1}`, nombre: `Habitación ${i + 1}` })),
+    );
     const contratos = [
       c(1, { unidadTipo: 'habitacion', habitacionId: 'hab-1' }),
       c(2, { unidadTipo: 'habitacion', habitacionId: 'hab-2' }),
@@ -141,8 +153,9 @@ describe('TabDisponibilidad', () => {
         />,
       ),
     );
-    expect(await screen.findByText('Hab 1')).toBeInTheDocument();
-    expect(screen.getByText('Hab 5')).toBeInTheDocument();
+    // El nombre sale en la línea de la timeline y en el input del editor.
+    expect((await screen.findAllByText('Habitación 1')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Habitación 5').length).toBeGreaterThan(0);
   });
 
   test('toggle 3m/6m/12m cambia el rango activo', () => {
@@ -204,9 +217,8 @@ describe('TabDisponibilidad', () => {
     expect(onNuevo).toHaveBeenCalledWith(1);
   });
 
-  test('propiedad marcada sin bedrooms · CTA "Configurar inmueble"', async () => {
-    marcar(1);
-    const onIr = jest.fn();
+  test('propiedad marcada completo sin bedrooms · dibuja la línea "Piso" (rooms desde la explotación)', async () => {
+    marcar(1); // modo completo · las habitaciones ya no dependen de bedrooms
     const sinBedrooms = { ...prop(1, 'X', 0), bedrooms: undefined } as unknown as Property;
     render(
       wrap(
@@ -214,13 +226,12 @@ describe('TabDisponibilidad', () => {
           contratos={[]}
           properties={[sinBedrooms]}
           onNuevoContrato={() => {}}
-          onIrAInmuebles={onIr}
+          onIrAInmuebles={() => {}}
         />,
       ),
     );
-    expect(await screen.findByText(/Indica el número de habitaciones/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Configurar inmueble/ }));
-    expect(onIr).toHaveBeenCalled();
+    expect(await screen.findByText('Piso')).toBeInTheDocument();
+    expect(screen.queryByText(/Indica el número de habitaciones/)).not.toBeInTheDocument();
   });
 
   // ── R2 · marcar / editar / desmarcar ──────────────────────────────────────
@@ -323,5 +334,105 @@ describe('TabDisponibilidad', () => {
     const quitar = await screen.findByRole('button', { name: /Quitar del alquiler/ });
     fireEvent.click(quitar);
     await waitFor(() => expect(mockService.desmarcarAlquilable).toHaveBeenCalledWith(1));
+  });
+
+  // ── R3 · editor de habitaciones ───────────────────────────────────────────
+
+  test('modo habitaciones · muestra las habitaciones por nombre en la timeline', async () => {
+    marcarHabitaciones(1, [
+      { id: 'hab-1', nombre: 'Suite', rentaObjetivo: 395 },
+      { id: 'hab-2', nombre: 'Exterior' },
+    ]);
+    render(
+      wrap(
+        <TabDisponibilidad
+          contratos={[]}
+          properties={[prop(1, 'Casa', 3)]}
+          onNuevoContrato={() => {}}
+          onIrAInmuebles={() => {}}
+        />,
+      ),
+    );
+    // El nombre aparece en la línea de la timeline (rowName) y en el input del editor.
+    expect((await screen.findAllByText('Suite')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Exterior').length).toBeGreaterThan(0);
+  });
+
+  test('editar el nombre de una habitación llama actualizarHabitacion', async () => {
+    marcarHabitaciones(1, [{ id: 'hab-1', nombre: 'Suite', rentaObjetivo: 395 }]);
+    render(
+      wrap(
+        <TabDisponibilidad
+          contratos={[]}
+          properties={[prop(1, 'Casa', 3)]}
+          onNuevoContrato={() => {}}
+          onIrAInmuebles={() => {}}
+        />,
+      ),
+    );
+    const input = (await screen.findByLabelText('Nombre de Suite')) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Máster' } });
+    fireEvent.blur(input);
+    await waitFor(() =>
+      expect(mockService.actualizarHabitacion).toHaveBeenCalledWith(1, 'hab-1', {
+        nombre: 'Máster',
+      }),
+    );
+  });
+
+  test('editar la renta objetivo llama actualizarHabitacion', async () => {
+    marcarHabitaciones(1, [{ id: 'hab-1', nombre: 'Suite', rentaObjetivo: 395 }]);
+    render(
+      wrap(
+        <TabDisponibilidad
+          contratos={[]}
+          properties={[prop(1, 'Casa', 3)]}
+          onNuevoContrato={() => {}}
+          onIrAInmuebles={() => {}}
+        />,
+      ),
+    );
+    const renta = (await screen.findByLabelText('Renta objetivo de Suite')) as HTMLInputElement;
+    fireEvent.change(renta, { target: { value: '420' } });
+    fireEvent.blur(renta);
+    await waitFor(() =>
+      expect(mockService.actualizarHabitacion).toHaveBeenCalledWith(1, 'hab-1', {
+        rentaObjetivo: 420,
+      }),
+    );
+  });
+
+  test('"Añadir habitación" llama anadirHabitacion', async () => {
+    marcarHabitaciones(1, [{ id: 'hab-1', nombre: 'Suite' }]);
+    render(
+      wrap(
+        <TabDisponibilidad
+          contratos={[]}
+          properties={[prop(1, 'Casa', 3)]}
+          onNuevoContrato={() => {}}
+          onIrAInmuebles={() => {}}
+        />,
+      ),
+    );
+    const add = await screen.findByRole('button', { name: /Añadir habitación/ });
+    fireEvent.click(add);
+    await waitFor(() => expect(mockService.anadirHabitacion).toHaveBeenCalledWith(1));
+  });
+
+  test('quitar una habitación llama eliminarHabitacion', async () => {
+    marcarHabitaciones(1, [{ id: 'hab-1', nombre: 'Suite' }]);
+    render(
+      wrap(
+        <TabDisponibilidad
+          contratos={[]}
+          properties={[prop(1, 'Casa', 3)]}
+          onNuevoContrato={() => {}}
+          onIrAInmuebles={() => {}}
+        />,
+      ),
+    );
+    const quitar = await screen.findByRole('button', { name: /Quitar Suite/ });
+    fireEvent.click(quitar);
+    await waitFor(() => expect(mockService.eliminarHabitacion).toHaveBeenCalledWith(1, 'hab-1'));
   });
 });

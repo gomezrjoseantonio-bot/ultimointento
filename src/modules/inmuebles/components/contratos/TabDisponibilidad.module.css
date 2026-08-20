@@ -268,6 +268,90 @@
   font-style: italic;
 }
 
+/* ── Editor de habitaciones (R3) ─────────────────────────────────────────── */
+
+.controlColumna {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.editorHabitaciones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  align-items: flex-end;
+  padding-top: 6px;
+  border-top: 1px dashed var(--atlas-v5-line);
+}
+
+.habitacionFila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.habInput {
+  font: inherit;
+  font-size: 11px;
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-sm, 6px);
+  padding: 3px 6px;
+  width: 130px;
+}
+
+.habRenta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.habInputNum {
+  font: inherit;
+  font-size: 11px;
+  font-family: var(--atlas-v5-font-mono-num);
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-sm, 6px);
+  padding: 3px 6px;
+  width: 64px;
+  text-align: right;
+}
+
+.habEuro {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.habQuitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 2px;
+  color: var(--atlas-v5-ink-4);
+  cursor: pointer;
+}
+
+.habQuitar:hover:not(:disabled) {
+  color: var(--atlas-v5-neg);
+}
+
+.habQuitar:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rowReforma {
+  opacity: 0.55;
+}
+
 /* ── Líneas y track ──────────────────────────────────────────────────────── */
 
 .lineasWrap {

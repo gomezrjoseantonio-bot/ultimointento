@@ -16,7 +16,10 @@ import {
   emptyForm,
   toLocalDate,
   contratoAForm,
+  rentaPrefillHabitacion,
 } from './contratoWizardHelpers';
+import { useHabitacionesContrato } from './useHabitacionesContrato';
+import CampoHabitacionContrato from './CampoHabitacionContrato';
 import { CuentaCobroField } from './CuentaCobroField';
 import { useCuentasCobro } from './cuentaCobro';
 import { construirPayloadCompleto, construirPayloadBorrador } from './contratoWizardPayload';
@@ -95,7 +98,17 @@ const NuevoContratoWizard: React.FC = () => {
   };
 
   const inmuebleSeleccionado = properties.find((p) => p.id === form.inmuebleId);
-  const habitacionesTotales = inmuebleSeleccionado?.bedrooms ?? 0;
+  // R3 · habitaciones desde la explotación · pre-rellena la renta objetivo.
+  const opcionesHabitacion = useHabitacionesContrato(
+    form.inmuebleId,
+    inmuebleSeleccionado?.bedrooms ?? 0,
+  );
+  const seleccionarHabitacion = (habitacionId: string) => {
+    update('habitacionId', habitacionId);
+    const hab = opcionesHabitacion.find((h) => h.id === habitacionId);
+    const prefill = rentaPrefillHabitacion(hab?.rentaObjetivo, form.rentaMensual);
+    if (prefill != null) update('rentaMensual', prefill);
+  };
 
   const steps = [
     { key: 'donde' as const, title: 'Dónde', sub: 'Inmueble · habitación' },
@@ -313,23 +326,11 @@ const NuevoContratoWizard: React.FC = () => {
                   value={accesorioId}
                   onChange={setAccesorioId}
                 />
-                {habitacionesTotales > 1 && (
-                  <div className={styles.field}>
-                    <label className={styles.label}>Habitación</label>
-                    <select
-                      className={styles.select}
-                      value={form.habitacionId}
-                      onChange={(e) => update('habitacionId', e.target.value)}
-                    >
-                      <option value="">— inmueble completo —</option>
-                      {Array.from({ length: habitacionesTotales }, (_, i) => (
-                        <option key={i} value={`hab-${i + 1}`}>
-                          Habitación {i + 1}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                <CampoHabitacionContrato
+                  opciones={opcionesHabitacion}
+                  value={form.habitacionId}
+                  onChange={seleccionarHabitacion}
+                />
                 <div className={styles.field}>
                   <label className={styles.label}>Modalidad</label>
                   <select

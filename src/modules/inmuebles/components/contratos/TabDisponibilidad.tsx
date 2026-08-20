@@ -6,12 +6,16 @@ import type {
   ExplotacionAlquiler,
   ModoExplotacionAlquiler,
   EstadoExplotacion,
+  HabitacionAlquiler,
 } from '../../../../services/db';
 import {
   getExplotacionesPorInmueble,
   marcarAlquilable,
   actualizarExplotacion,
   desmarcarAlquilable,
+  anadirHabitacion,
+  actualizarHabitacion,
+  eliminarHabitacion,
 } from '../../../../services/explotacionAlquilerService';
 import {
   type RangoTimeline,
@@ -155,7 +159,6 @@ const TabDisponibilidad: React.FC<TabDisponibilidadProps> = ({
               hoy={hoy}
               onAbrirContrato={setContratoAbierto}
               onNuevoContrato={onNuevoContrato}
-              onIrAInmuebles={onIrAInmuebles}
               onExplotacionCambio={recargarExplotaciones}
             />
           ))}
@@ -252,7 +255,6 @@ interface PropiedadGroupProps {
   hoy: Date;
   onAbrirContrato: (c: Contract & { id: number }) => void;
   onNuevoContrato: (inmuebleId?: number) => void;
-  onIrAInmuebles: () => void;
   onExplotacionCambio: () => void;
 }
 
@@ -264,12 +266,23 @@ const PropiedadGroup: React.FC<PropiedadGroupProps> = ({
   hoy,
   onAbrirContrato,
   onNuevoContrato,
-  onIrAInmuebles,
   onExplotacionCambio,
 }) => {
+  // R3 · las habitaciones vienen de la explotación, no de `bedrooms`. Por
+  // habitaciones → su lista; completo/turístico → `[]` (una sola línea "Piso").
+  const habitacionesTimeline =
+    explotacion?.modo === 'habitaciones' ? explotacion.habitaciones ?? [] : [];
   const { lineas, overlaysCompletos } = useMemo(
-    () => generarPropiedadGroupData(propiedad, contratos, rangoFechas, hoy),
-    [propiedad, contratos, rangoFechas, hoy],
+    () =>
+      generarPropiedadGroupData(
+        propiedad,
+        contratos,
+        rangoFechas,
+        hoy,
+        explotacion ? habitacionesTimeline : undefined,
+      ),
+    // habitacionesTimeline se deriva de explotacion · basta con esta última
+    [propiedad, contratos, rangoFechas, hoy, explotacion, habitacionesTimeline],
   );
 
   // Un inmueble NO marcado como alquilable no está en el mercado: se muestra con
@@ -284,30 +297,6 @@ const PropiedadGroup: React.FC<PropiedadGroupProps> = ({
           onExplotacionCambio={onExplotacionCambio}
         />
         <div className={styles.noAlquiler}>No está en alquiler · uso propio.</div>
-      </div>
-    );
-  }
-
-  // Propiedad sin bedrooms declarado · empty state por propiedad
-  if (propiedad.bedrooms == null) {
-    return (
-      <div className={styles.propGroup}>
-        <PropiedadHeader
-          propiedad={propiedad}
-          explotacion={explotacion}
-          numHab={lineas.length}
-          onExplotacionCambio={onExplotacionCambio}
-        />
-        <div className={styles.propMetaWarn}>
-          Indica el número de habitaciones para ver disponibilidad ·{' '}
-          <button
-            type="button"
-            className={styles.linkInline}
-            onClick={onIrAInmuebles}
-          >
-            Configurar inmueble →
-          </button>
-        </div>
       </div>
     );
   }
@@ -427,39 +416,127 @@ const ControlExplotacion: React.FC<{
   }
 
   return (
-    <div className={styles.controlExplotacion}>
-      <label className={styles.controlCampo}>
-        <span className={styles.controlLab}>Modo</span>
-        <select
-          className={styles.selectMini}
-          value={explotacion.modo}
+    <div className={styles.controlColumna}>
+      <div className={styles.controlExplotacion}>
+        <label className={styles.controlCampo}>
+          <span className={styles.controlLab}>Modo</span>
+          <select
+            className={styles.selectMini}
+            value={explotacion.modo}
+            disabled={guardando}
+            onChange={(e) =>
+              ejecutar(() =>
+                marcarAlquilable(inmuebleId, {
+                  modo: e.target.value as ModoExplotacionAlquiler,
+                  estado: explotacion.estado,
+                  numeroHabitaciones: propiedad.bedrooms ?? 1,
+                }),
+              )
+            }
+          >
+            {(Object.keys(MODO_LABEL) as ModoExplotacionAlquiler[]).map((m) => (
+              <option key={m} value={m}>
+                {MODO_LABEL[m]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.controlCampo}>
+          <span className={styles.controlLab}>Estado</span>
+          <select
+            className={styles.selectMini}
+            value={explotacion.estado}
+            disabled={guardando}
+            onChange={(e) =>
+              ejecutar(() =>
+                actualizarExplotacion(inmuebleId, {
+                  estado: e.target.value as EstadoExplotacion,
+                }),
+              )
+            }
+          >
+            {(Object.keys(ESTADO_LABEL) as EstadoExplotacion[]).map((s) => (
+              <option key={s} value={s}>
+                {ESTADO_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className={styles.linkInline}
           disabled={guardando}
-          onChange={(e) =>
-            ejecutar(() =>
-              marcarAlquilable(inmuebleId, {
-                modo: e.target.value as ModoExplotacionAlquiler,
-                estado: explotacion.estado,
-                numeroHabitaciones: propiedad.bedrooms ?? 1,
-              }),
-            )
-          }
+          onClick={() => ejecutar(() => desmarcarAlquilable(inmuebleId))}
         >
-          {(Object.keys(MODO_LABEL) as ModoExplotacionAlquiler[]).map((m) => (
-            <option key={m} value={m}>
-              {MODO_LABEL[m]}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles.controlCampo}>
-        <span className={styles.controlLab}>Estado</span>
+          Quitar del alquiler
+        </button>
+      </div>
+      {explotacion.modo === 'habitaciones' && (
+        <EditorHabitaciones
+          inmuebleId={inmuebleId}
+          habitaciones={explotacion.habitaciones ?? []}
+          guardando={guardando}
+          ejecutar={ejecutar}
+        />
+      )}
+    </div>
+  );
+};
+
+// ─── Editor de habitaciones · nombre + renta objetivo + estado ───────────────
+
+const EditorHabitaciones: React.FC<{
+  inmuebleId: number;
+  habitaciones: HabitacionAlquiler[];
+  guardando: boolean;
+  ejecutar: (accion: () => Promise<unknown>) => Promise<void>;
+}> = ({ inmuebleId, habitaciones, guardando, ejecutar }) => (
+  <div className={styles.editorHabitaciones}>
+    {habitaciones.map((h) => (
+      <div key={h.id} className={styles.habitacionFila}>
+        <input
+          className={styles.habInput}
+          type="text"
+          defaultValue={h.nombre}
+          disabled={guardando}
+          aria-label={`Nombre de ${h.nombre}`}
+          onBlur={(e) => {
+            const nombre = e.target.value.trim();
+            if (nombre && nombre !== h.nombre) {
+              ejecutar(() => actualizarHabitacion(inmuebleId, h.id, { nombre }));
+            }
+          }}
+        />
+        <div className={styles.habRenta}>
+          <input
+            className={styles.habInputNum}
+            type="number"
+            min={0}
+            step={5}
+            defaultValue={h.rentaObjetivo ?? ''}
+            disabled={guardando}
+            placeholder="renta"
+            aria-label={`Renta objetivo de ${h.nombre}`}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              const rentaObjetivo = v === '' ? undefined : Number(v);
+              if (rentaObjetivo !== h.rentaObjetivo) {
+                ejecutar(() =>
+                  actualizarHabitacion(inmuebleId, h.id, { rentaObjetivo }),
+                );
+              }
+            }}
+          />
+          <span className={styles.habEuro}>€</span>
+        </div>
         <select
           className={styles.selectMini}
-          value={explotacion.estado}
+          value={h.estado ?? 'operativo'}
           disabled={guardando}
+          aria-label={`Estado de ${h.nombre}`}
           onChange={(e) =>
             ejecutar(() =>
-              actualizarExplotacion(inmuebleId, {
+              actualizarHabitacion(inmuebleId, h.id, {
                 estado: e.target.value as EstadoExplotacion,
               }),
             )
@@ -471,18 +548,27 @@ const ControlExplotacion: React.FC<{
             </option>
           ))}
         </select>
-      </label>
-      <button
-        type="button"
-        className={styles.linkInline}
-        disabled={guardando}
-        onClick={() => ejecutar(() => desmarcarAlquilable(inmuebleId))}
-      >
-        Quitar del alquiler
-      </button>
-    </div>
-  );
-};
+        <button
+          type="button"
+          className={styles.habQuitar}
+          disabled={guardando}
+          aria-label={`Quitar ${h.nombre}`}
+          onClick={() => ejecutar(() => eliminarHabitacion(inmuebleId, h.id))}
+        >
+          <Icons.Delete size={13} />
+        </button>
+      </div>
+    ))}
+    <button
+      type="button"
+      className={styles.linkInline}
+      disabled={guardando}
+      onClick={() => ejecutar(() => anadirHabitacion(inmuebleId))}
+    >
+      + Añadir habitación
+    </button>
+  </div>
+);
 
 // ─── Línea (track + segmentos) ──────────────────────────────────────────────
 
@@ -491,18 +577,24 @@ const Linea: React.FC<{
   onClickHueco: (fecha: Date) => void;
   onClickContrato: (c: Contract & { id: number }) => void;
 }> = ({ linea, onClickHueco, onClickContrato }) => {
-  const labelHab = linea.esPiso
-    ? 'Piso'
-    : `Hab ${linea.habitacionNumero}`;
+  // R3 · si la habitación tiene nombre propio (explotación) se usa; si no, «Hab N».
+  const labelHab = linea.nombre?.trim()
+    ? linea.nombre
+    : linea.esPiso
+      ? 'Piso'
+      : `Hab ${linea.habitacionNumero}`;
+  const enReforma = linea.estadoHabitacion === 'en_reforma';
   return (
-    <div className={styles.row}>
+    <div className={`${styles.row} ${enReforma ? styles.rowReforma : ''}`}>
       <div className={styles.rowLab}>
         <span
           className={styles.rowColor}
           style={{ background: CSS_COLOR_HABITACION[linea.color] }}
         />
         <span className={styles.rowName}>{labelHab}</span>
-        <span className={styles.rowSuffix}>{linea.tipoLabel}</span>
+        <span className={styles.rowSuffix}>
+          {enReforma ? 'en reforma' : linea.tipoLabel}
+        </span>
       </div>
       <div className={styles.track}>
         {linea.segmentos.map((s, idx) => (
