@@ -30,9 +30,17 @@ import {
   FAMILIAS,
   conceptoPorId,
   donanteDe,
+  familiasEfectivas,
   registrarConceptosDeUsuario,
 } from './catalogoConceptos';
-import type { AjusteConcepto, Ambito, ConceptoPropio, FamiliaId } from './catalogoConceptos';
+import type {
+  AjusteConcepto,
+  AjusteFamilia,
+  Ambito,
+  ConceptoPropio,
+  FamiliaId,
+  FamiliaPropia,
+} from './catalogoConceptos';
 import { CONCEPTOS_BASE } from './conceptosBase';
 
 const CLAVE = 'conceptosUsuario';
@@ -41,17 +49,26 @@ export interface ConceptosUsuario {
   propios: ConceptoPropio[];
   /** `idConcepto` → retoque. Sólo lleva los que de verdad se han tocado. */
   ajustes: Record<string, AjusteConcepto>;
+  /** Tipos (carpetas) creados por el usuario · P8b. */
+  familias: FamiliaPropia[];
+  /** `idFamilia` de fábrica → retoque (hoy solo el nombre) · P8b. */
+  ajustesFamilia: Record<string, AjusteFamilia>;
 }
 
-const VACIO: ConceptosUsuario = { propios: [], ajustes: {} };
+const VACIO: ConceptosUsuario = { propios: [], ajustes: {}, familias: [], ajustesFamilia: {} };
 
 /** Lo guardado, o el vacío · nunca lanza: sin esto no se puede pintar nada. */
 export async function leerConceptosUsuario(): Promise<ConceptosUsuario> {
   try {
     const db = await initDB();
-    const dato = (await db.get('keyval', CLAVE)) as ConceptosUsuario | undefined;
+    const dato = (await db.get('keyval', CLAVE)) as Partial<ConceptosUsuario> | undefined;
     if (!dato || !Array.isArray(dato.propios)) return VACIO;
-    return { propios: dato.propios, ajustes: dato.ajustes ?? {} };
+    return {
+      propios: dato.propios,
+      ajustes: dato.ajustes ?? {},
+      familias: Array.isArray(dato.familias) ? dato.familias : [],
+      ajustesFamilia: dato.ajustesFamilia ?? {},
+    };
   } catch {
     return VACIO;
   }
@@ -61,13 +78,13 @@ async function guardar(datos: ConceptosUsuario): Promise<void> {
   const db = await initDB();
   // `keyval` lleva la clave FUERA del valor (sin keyPath) · el tercer argumento.
   await db.put('keyval', datos as never, CLAVE);
-  registrarConceptosDeUsuario(datos.propios, datos.ajustes);
+  registrarConceptosDeUsuario(datos.propios, datos.ajustes, datos.familias, datos.ajustesFamilia);
 }
 
 /** Aplica lo guardado al catálogo en memoria · lo llama el arranque. */
 export async function cargarConceptosUsuario(): Promise<ConceptosUsuario> {
   const datos = await leerConceptosUsuario();
-  registrarConceptosDeUsuario(datos.propios, datos.ajustes);
+  registrarConceptosDeUsuario(datos.propios, datos.ajustes, datos.familias, datos.ajustesFamilia);
   return datos;
 }
 
@@ -114,7 +131,10 @@ export function puedeCrear(
 ): { ok: true; id: string } | { ok: false; motivo: MotivoRechazo } {
   if (!label.trim()) return { ok: false, motivo: 'sin_nombre' };
   if (ambitos.length === 0) return { ok: false, motivo: 'sin_ambito' };
-  if (!FAMILIAS.some((f) => f.id === familia)) return { ok: false, motivo: 'familia_desconocida' };
+  // Vale cualquier Tipo vigente · también los propios (P8b), no solo los de fábrica.
+  if (!familiasEfectivas().some((f) => f.id === familia)) {
+    return { ok: false, motivo: 'familia_desconocida' };
+  }
   for (const a of ambitos) {
     if (!donanteDe(familia as FamiliaId, a)) return { ok: false, motivo: 'familia_sin_ambito' };
   }
@@ -227,6 +247,104 @@ function sinVacios(
   );
 }
 
+// ─── Tipos (carpetas) propios · P8b ──────────────────────────────────────────
+
+/** Id estable de un Tipo propio · prefijo `usr_fam_` para distinguirlo. */
+export function idDeFamiliaPropia(label: string): string {
+  const base = (label ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return `usr_fam_${base || 'tipo'}`;
+}
+
+export type MotivoRechazoFamilia = 'sin_nombre' | 'id_ocupado';
+
+export const EXPLICACION_RECHAZO_FAMILIA: Record<MotivoRechazoFamilia, string> = {
+  sin_nombre: 'Ponle un nombre al Tipo',
+  id_ocupado: 'Ya hay un Tipo que se llama así',
+};
+
+/** ¿Se puede crear el Tipo? El id no puede chocar con uno de fábrica ni propio. */
+export function puedeCrearFamilia(
+  label: string,
+  existentes: readonly FamiliaPropia[] = [],
+): { ok: true; id: string } | { ok: false; motivo: MotivoRechazoFamilia } {
+  if (!label.trim()) return { ok: false, motivo: 'sin_nombre' };
+  const id = idDeFamiliaPropia(label);
+  const ocupado =
+    FAMILIAS.some((f) => f.id === id) || existentes.some((f) => f.id === id);
+  if (ocupado) return { ok: false, motivo: 'id_ocupado' };
+  return { ok: true, id };
+}
+
+/** Crea un Tipo propio (vacío) · luego se le cuelgan conceptos. */
+export async function crearFamiliaPropia(label: string): Promise<ConceptosUsuario> {
+  const datos = await leerConceptosUsuario();
+  const v = puedeCrearFamilia(label, datos.familias);
+  if (!v.ok) throw new Error(EXPLICACION_RECHAZO_FAMILIA[v.motivo]);
+  const nuevos: ConceptosUsuario = {
+    ...datos,
+    familias: [...datos.familias, { id: v.id, label: label.trim() }],
+  };
+  await guardar(nuevos);
+  return nuevos;
+}
+
+/** Renombra un Tipo · el propio se edita, el de fábrica se retoca. */
+export async function renombrarFamilia(id: string, label: string): Promise<ConceptosUsuario> {
+  const datos = await leerConceptosUsuario();
+  const limpio = label.trim();
+  const propia = datos.familias.find((f) => f.id === id);
+  if (propia) {
+    if (!limpio) throw new Error(EXPLICACION_RECHAZO_FAMILIA.sin_nombre);
+    const nuevos = {
+      ...datos,
+      familias: datos.familias.map((f) => (f.id === id ? { ...f, label: limpio } : f)),
+    };
+    await guardar(nuevos);
+    return nuevos;
+  }
+  const deFabrica = FAMILIAS.find((f) => f.id === id);
+  if (!deFabrica) throw new Error('Ese Tipo no existe');
+  const ajuste: AjusteFamilia = {};
+  if (limpio && limpio !== deFabrica.label) ajuste.label = limpio;
+  const mapa = { ...datos.ajustesFamilia, [id]: ajuste };
+  const limpiado = Object.fromEntries(
+    Object.entries(mapa).filter(([, a]) => Object.keys(a).length > 0),
+  );
+  const nuevos = { ...datos, ajustesFamilia: limpiado };
+  await guardar(nuevos);
+  return nuevos;
+}
+
+/** Borra un Tipo propio · solo si no cuelga de él ningún concepto tuyo. */
+export async function borrarFamiliaPropia(id: string): Promise<ConceptosUsuario> {
+  const datos = await leerConceptosUsuario();
+  if (!datos.familias.some((f) => f.id === id)) {
+    throw new Error('Un Tipo de fábrica no se puede borrar · solo cambiarle el nombre');
+  }
+  const enUso = datos.propios.filter((p) => p.familia === (id as FamiliaId)).length;
+  if (enUso > 0) {
+    throw new Error(
+      `Ese Tipo tiene ${enUso} concepto${enUso === 1 ? '' : 's'} tuyo${enUso === 1 ? '' : 's'} · muévelos o bórralos antes`,
+    );
+  }
+  const nuevos: ConceptosUsuario = {
+    ...datos,
+    familias: datos.familias.filter((f) => f.id !== id),
+  };
+  await guardar(nuevos);
+  return nuevos;
+}
+
+/** Los Tipos vigentes (de fábrica renombrados + propios) · para la UI. */
+export function tiposVigentes() {
+  return familiasEfectivas();
+}
+
 /**
  * Cambia familia, nombre y ámbitos de un concepto PROPIO.
  *
@@ -248,7 +366,7 @@ export async function editarConceptoPropio(
   }
   if (!cambios.label.trim()) throw new Error(EXPLICACION_RECHAZO.sin_nombre);
   if (cambios.ambitos.length === 0) throw new Error(EXPLICACION_RECHAZO.sin_ambito);
-  if (!FAMILIAS.some((f) => f.id === cambios.familia)) {
+  if (!familiasEfectivas().some((f) => f.id === cambios.familia)) {
     throw new Error(EXPLICACION_RECHAZO.familia_desconocida);
   }
   for (const a of cambios.ambitos) {

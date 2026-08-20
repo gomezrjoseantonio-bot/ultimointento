@@ -4,6 +4,12 @@
   margin-bottom: 22px;
 }
 
+.familiaFila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .familiaHead {
   display: flex;
   align-items: center;
@@ -18,6 +24,19 @@
 }
 
 .familiaHead:hover { border-color: var(--atlas-v5-ink-4); }
+
+.familiaAcciones {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.headAcciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 .chevron,
 .chevronAbierto {

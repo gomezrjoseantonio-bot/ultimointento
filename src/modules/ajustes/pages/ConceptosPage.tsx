@@ -19,19 +19,22 @@ import { Icons, showToastV5 } from '../../../design-system/v5';
 import containerStyles from '../AjustesPage.module.css';
 import styles from './ConceptosPage.module.css';
 import {
-  FAMILIAS,
   ambitosDe,
   conceptosEfectivos,
   donanteDe,
+  familiasEfectivas,
 } from '../../../services/conceptos/catalogoConceptos';
 import type { Ambito, Concepto, FamiliaId } from '../../../services/conceptos/catalogoConceptos';
 import {
   borrarConceptoPropio,
+  borrarFamiliaPropia,
   cargarConceptosUsuario,
   crearConceptoPropio,
+  crearFamiliaPropia,
   editarConceptoPropio,
   ocultar,
   renombrar,
+  renombrarFamilia,
 } from '../../../services/conceptos/conceptosUsuarioService';
 import type { ConceptosUsuario } from '../../../services/conceptos/conceptosUsuarioService';
 import { getCategoryByKey } from '../../../services/categoryCatalog';
@@ -77,7 +80,12 @@ interface Edicion {
 }
 
 const ConceptosPage: React.FC = () => {
-  const [datos, setDatos] = useState<ConceptosUsuario>({ propios: [], ajustes: {} });
+  const [datos, setDatos] = useState<ConceptosUsuario>({
+    propios: [],
+    ajustes: {},
+    familias: [],
+    ajustesFamilia: {},
+  });
   const [cargando, setCargando] = useState(true);
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
   const [edicion, setEdicion] = useState<Edicion | null>(null);
@@ -86,6 +94,10 @@ const ConceptosPage: React.FC = () => {
   const [nuevaFamilia, setNuevaFamilia] = useState<FamiliaId>('otros');
   const [nuevoLabel, setNuevoLabel] = useState('');
   const [nuevosAmbitos, setNuevosAmbitos] = useState<Ambito[]>(['personal']);
+  // Tipos (carpetas) · P8b
+  const [nuevoTipoAbierto, setNuevoTipoAbierto] = useState(false);
+  const [nuevoTipoLabel, setNuevoTipoLabel] = useState('');
+  const [renombrandoTipo, setRenombrandoTipo] = useState<{ id: string; label: string } | null>(null);
 
   const recargar = useCallback(async () => {
     setDatos(await cargarConceptosUsuario());
@@ -100,16 +112,28 @@ const ConceptosPage: React.FC = () => {
   }, [recargar]);
 
   const propios = useMemo(() => new Set(datos.propios.map((p) => p.id)), [datos]);
+  const familiasPropias = useMemo(
+    () => new Set(datos.familias.map((f) => f.id)),
+    [datos],
+  );
   // `cargando` entra en las dependencias a propósito: la lista se recalcula
   // cuando el registro en memoria ya tiene aplicados los conceptos del usuario.
-  const porFamilia = useMemo(
-    () =>
-      FAMILIAS.map((f) => ({
-        familia: f,
-        conceptos: conceptosEfectivos().filter((c) => c.familia === f.id),
-      })).filter((g) => g.conceptos.length > 0),
+  const familias = useMemo(
+    () => familiasEfectivas(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [datos, cargando],
+  );
+  const porFamilia = useMemo(
+    () =>
+      familias
+        .map((f) => ({
+          familia: f,
+          conceptos: conceptosEfectivos().filter((c) => c.familia === f.id),
+        }))
+        // Un Tipo propio recién creado aún no tiene conceptos · se muestra para
+        // poder colgarle uno. Uno de fábrica vacío no se pinta (no los hay).
+        .filter((g) => g.conceptos.length > 0 || familiasPropias.has(g.familia.id)),
+    [familias, familiasPropias],
   );
 
   const conAviso = async (accion: () => Promise<ConceptosUsuario>, exito: string) => {
@@ -184,6 +208,25 @@ const ConceptosPage: React.FC = () => {
     setAltaAbierta(false);
   };
 
+  const onCrearTipo = async () => {
+    const ok = await conAviso(
+      () => crearFamiliaPropia(nuevoTipoLabel),
+      `Tipo «${nuevoTipoLabel.trim()}» creado`,
+    );
+    if (!ok) return;
+    setNuevoTipoLabel('');
+    setNuevoTipoAbierto(false);
+  };
+
+  const guardarRenombreTipo = async () => {
+    if (!renombrandoTipo) return;
+    const ok = await conAviso(
+      () => renombrarFamilia(renombrandoTipo.id, renombrandoTipo.label),
+      `Tipo renombrado a «${renombrandoTipo.label.trim()}»`,
+    );
+    if (ok) setRenombrandoTipo(null);
+  };
+
   /** Los checkboxes de ámbito · los comparten el alta y la edición. */
   const ChecksAmbito: React.FC<{
     familia: FamiliaId;
@@ -213,15 +256,57 @@ const ConceptosPage: React.FC = () => {
             qué puede ser un gasto · abre una familia para ver los suyos · la casilla AEAT es sólo del gasto de un inmueble
           </div>
         </div>
-        <button
-          type="button"
-          className={`${containerStyles.btn} ${containerStyles.btnGhost}`}
-          onClick={() => setAltaAbierta((v) => !v)}
-        >
-          <Icons.Plus size={14} strokeWidth={1.8} />
-          Añadir concepto
-        </button>
+        <div className={styles.headAcciones}>
+          <button
+            type="button"
+            className={`${containerStyles.btn} ${containerStyles.btnGhost}`}
+            onClick={() => setNuevoTipoAbierto((v) => !v)}
+          >
+            <Icons.Plus size={14} strokeWidth={1.8} />
+            Nuevo Tipo
+          </button>
+          <button
+            type="button"
+            className={`${containerStyles.btn} ${containerStyles.btnGhost}`}
+            onClick={() => setAltaAbierta((v) => !v)}
+          >
+            <Icons.Plus size={14} strokeWidth={1.8} />
+            Añadir concepto
+          </button>
+        </div>
       </div>
+
+      {nuevoTipoAbierto && (
+        <div className={styles.alta}>
+          <div className={styles.altaCampos}>
+            <label className={styles.campo}>
+              <span className={styles.lab}>Nombre del Tipo</span>
+              <input
+                className={styles.input}
+                value={nuevoTipoLabel}
+                onChange={(e) => setNuevoTipoLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void onCrearTipo();
+                }}
+                placeholder="Cómo llamas a esta carpeta"
+              />
+            </label>
+          </div>
+          <p className={styles.nota}>
+            Un Tipo es una carpeta para agrupar conceptos. Los que le cuelgues se clasifican como
+            «Otros» hasta que la fiscalidad los afine · el catálogo es para saber de dónde sale el
+            dinero.
+          </p>
+          <button
+            type="button"
+            className={`${containerStyles.btn} ${containerStyles.btnPrimary}`}
+            onClick={onCrearTipo}
+            disabled={!nuevoTipoLabel.trim()}
+          >
+            Crear Tipo
+          </button>
+        </div>
+      )}
 
       {altaAbierta && (
         <div className={styles.alta}>
@@ -233,7 +318,7 @@ const ConceptosPage: React.FC = () => {
                 value={nuevaFamilia}
                 onChange={(e) => setNuevaFamilia(e.target.value as FamiliaId)}
               >
-                {FAMILIAS.map((f) => (
+                {familias.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.label}
                   </option>
@@ -255,7 +340,7 @@ const ConceptosPage: React.FC = () => {
             </div>
           </div>
           <p className={styles.nota}>
-            Se clasificará como el resto de «{FAMILIAS.find((f) => f.id === nuevaFamilia)?.label}»
+            Se clasificará como el resto de «{familias.find((f) => f.id === nuevaFamilia)?.label}»
             {nuevosAmbitos.includes('inmueble') &&
               donanteDe(nuevaFamilia, 'inmueble') &&
               ` · ${fraseCasilla(donanteDe(nuevaFamilia, 'inmueble') as Concepto)}`}
@@ -278,23 +363,90 @@ const ConceptosPage: React.FC = () => {
       ) : (
         porFamilia.map(({ familia, conceptos }) => {
           const abierta = abiertas.has(familia.id);
+          const esPropia = familiasPropias.has(familia.id);
+          const renombrando = renombrandoTipo?.id === familia.id;
           return (
             <section key={familia.id} className={styles.familia}>
-              <button
-                type="button"
-                className={styles.familiaHead}
-                aria-expanded={abierta}
-                onClick={() => alternarFamilia(familia.id)}
-              >
-                <Icons.ChevronRight
-                  size={14}
-                  strokeWidth={2}
-                  className={abierta ? styles.chevronAbierto : styles.chevron}
-                />
-                <span className={styles.familiaLabel}>{familia.label}</span>
-                <span className={styles.familiaSub}>{familia.descripcion}</span>
-                <span className={styles.familiaCuenta}>{conceptos.length}</span>
-              </button>
+              <div className={styles.familiaFila}>
+                <button
+                  type="button"
+                  className={styles.familiaHead}
+                  aria-expanded={abierta}
+                  onClick={() => alternarFamilia(familia.id)}
+                >
+                  <Icons.ChevronRight
+                    size={14}
+                    strokeWidth={2}
+                    className={abierta ? styles.chevronAbierto : styles.chevron}
+                  />
+                  {renombrando ? (
+                    <input
+                      className={styles.input}
+                      value={renombrandoTipo!.label}
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) =>
+                        setRenombrandoTipo({ id: familia.id, label: e.target.value })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void guardarRenombreTipo();
+                        if (e.key === 'Escape') setRenombrandoTipo(null);
+                      }}
+                      aria-label={`Nombre del Tipo ${familia.label}`}
+                    />
+                  ) : (
+                    <>
+                      <span className={styles.familiaLabel}>{familia.label}</span>
+                      <span className={styles.familiaSub}>{familia.descripcion}</span>
+                    </>
+                  )}
+                  <span className={styles.familiaCuenta}>{conceptos.length}</span>
+                </button>
+                <div className={styles.familiaAcciones}>
+                  {renombrando ? (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.accion}
+                        onClick={() => void guardarRenombreTipo()}
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.accion}
+                        onClick={() => setRenombrandoTipo(null)}
+                      >
+                        Cancelar
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.accion}
+                        onClick={() => setRenombrandoTipo({ id: familia.id, label: familia.label })}
+                      >
+                        Renombrar
+                      </button>
+                      {esPropia && (
+                        <button
+                          type="button"
+                          className={styles.accion}
+                          onClick={() =>
+                            void conAviso(
+                              () => borrarFamiliaPropia(familia.id),
+                              `Tipo «${familia.label}» borrado`,
+                            )
+                          }
+                        >
+                          Borrar
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
 
               {abierta && (
                 <div className={styles.tabla}>
@@ -346,7 +498,7 @@ const ConceptosPage: React.FC = () => {
                                       });
                                     }}
                                   >
-                                    {FAMILIAS.map((f) => (
+                                    {familias.map((f) => (
                                       <option key={f.id} value={f.id}>
                                         {f.label}
                                       </option>

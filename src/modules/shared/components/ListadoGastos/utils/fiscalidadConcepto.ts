@@ -154,7 +154,11 @@ export function fiscalidadDeConcepto(
   // familia.
   const familia: FamiliaFiscal | null =
     familiaFiscalManual ??
-    (pregunta || !concepto ? null : FAMILIA_FISCAL_DE[concepto.familia]);
+    (pregunta || !concepto
+      ? null
+      : // Un Tipo propio del usuario (P8b) no está en el mapa · su fiscal es la
+        // genérica de «Otros» (no deducible), igual que su proyección heredada.
+        FAMILIA_FISCAL_DE[concepto.familia] ?? 'no_deducible');
 
   if (familia == null) {
     return {

@@ -194,9 +194,33 @@ export interface ConceptoPropio {
   ambitos: readonly Ambito[];
 }
 
+/**
+ * Un Tipo (carpeta) que ha creado el usuario · P8b.
+ *
+ * Su `id` es un `usr_fam_…` que vive en el mismo campo `FamiliaId` que los de
+ * fábrica (cast): `FamiliaId` se borra en runtime y todas las búsquedas por
+ * familia toleran una clave desconocida. Un Tipo propio no trae casilla: los
+ * conceptos que cuelgues de él heredan la proyección genérica de «Otros»
+ * (`personalizado`), igual que la fiscalidad, que es capa de encima diferida.
+ */
+export interface FamiliaPropia {
+  id: string;
+  label: string;
+}
+
+/** Retoque sobre un Tipo de fábrica · hoy solo el nombre. */
+export interface AjusteFamilia {
+  label?: string;
+}
+
 let EFECTIVOS: readonly Concepto[] = CONCEPTOS_BASE;
 let PORID = new Map(CONCEPTOS_BASE.map((c) => [c.id, c]));
-const FAMPORID = new Map(FAMILIAS.map((f) => [f.id, f]));
+// Los Tipos vigentes = fábrica (con el nombre que el usuario les haya puesto) +
+// los propios · P8b. Mutable, lo reescribe `registrarConceptosDeUsuario`.
+let FAMILIAS_EFECTIVAS: readonly Familia[] = FAMILIAS;
+let FAMPORID = new Map<FamiliaId, Familia>(FAMILIAS.map((f) => [f.id, f]));
+
+const ES_FAMILIA_DE_FABRICA = new Set<string>(FAMILIAS.map((f) => f.id));
 
 /**
  * De quién hereda la proyección un concepto propio de esta familia.
@@ -211,7 +235,17 @@ export function donanteDe(familia: FamiliaId, ambito: Ambito): Concepto | undefi
   const dela = CONCEPTOS_BASE.filter(
     (c) => c.familia === familia && (ambito === 'personal' ? c.personal : c.inmueble),
   );
-  return dela.find((c) => c.id.startsWith('otros_') || c.esPersonalizado) ?? dela[0];
+  const propio = dela.find((c) => c.id.startsWith('otros_') || c.esPersonalizado) ?? dela[0];
+  if (propio) return propio;
+  // Un Tipo propio (P8b) no tiene conceptos de fábrica de los que heredar: sus
+  // conceptos toman la proyección genérica de «Otros» (`personalizado`), que
+  // existe en los dos ámbitos. Así un Tipo nuevo puede alojar conceptos sin
+  // inventar una casilla · la fiscalidad fina es capa de encima diferida.
+  if (!ES_FAMILIA_DE_FABRICA.has(familia)) {
+    const generico = CONCEPTOS_BASE.find((c) => c.esPersonalizado);
+    if (generico && (ambito === 'personal' ? generico.personal : generico.inmueble)) return generico;
+  }
+  return undefined;
 }
 
 /** Monta el concepto propio con la proyección heredada de su familia. */
@@ -244,7 +278,26 @@ function materializar(p: ConceptoPropio): Concepto | null {
 export function registrarConceptosDeUsuario(
   propios: readonly ConceptoPropio[] = [],
   ajustes: Readonly<Record<string, AjusteConcepto>> = {},
+  familias: readonly FamiliaPropia[] = [],
+  ajustesFamilia: Readonly<Record<string, AjusteFamilia>> = {},
 ): void {
+  // Los Tipos vigentes: los de fábrica (con el nombre que el usuario les haya
+  // puesto) seguidos de los propios · P8b.
+  const deFabricaIds = new Set<string>(FAMILIAS.map((f) => f.id));
+  const propiasLimpias = familias.filter((f) => f.id && !deFabricaIds.has(f.id));
+  FAMILIAS_EFECTIVAS = [
+    ...FAMILIAS.map((f) => {
+      const nombre = ajustesFamilia[f.id]?.label?.trim();
+      return nombre ? { ...f, label: nombre } : f;
+    }),
+    ...propiasLimpias.map((f) => ({
+      id: f.id as FamiliaId,
+      label: f.label,
+      descripcion: 'Tipo propio',
+    })),
+  ];
+  FAMPORID = new Map(FAMILIAS_EFECTIVAS.map((f) => [f.id, f]));
+
   const deFabrica = new Set(CONCEPTOS_BASE.map((c) => c.id));
   const añadidos = propios
     .filter((p) => !deFabrica.has(p.id))
@@ -259,8 +312,13 @@ export function registrarConceptosDeUsuario(
 
   // Los propios se ordenan con los suyos · un selector que agrupa por familia
   // no puede tenerlos todos apelotonados al final.
-  EFECTIVOS = FAMILIAS.flatMap((f) => conRetoque.filter((c) => c.familia === f.id));
+  EFECTIVOS = FAMILIAS_EFECTIVAS.flatMap((f) => conRetoque.filter((c) => c.familia === f.id));
   PORID = new Map(EFECTIVOS.map((c) => [c.id, c]));
+}
+
+/** Los Tipos vigentes · de fábrica (renombrados) más los propios (P8b). */
+export function familiasEfectivas(): readonly Familia[] {
+  return FAMILIAS_EFECTIVAS;
 }
 
 /** El catálogo tal y como está hoy · de fábrica más lo del usuario. */
@@ -302,7 +360,7 @@ export function conceptosDeAmbito(ambito: Ambito): Concepto[] {
 /** Las familias con al menos un concepto en ese ámbito, en orden. */
 export function familiasDeAmbito(ambito: Ambito): Familia[] {
   const vivas = new Set(conceptosDeAmbito(ambito).map((c) => c.familia));
-  return FAMILIAS.filter((f) => vivas.has(f.id));
+  return FAMILIAS_EFECTIVAS.filter((f) => vivas.has(f.id));
 }
 
 /** Los conceptos de una familia en un ámbito · lo que pinta un selector. */
