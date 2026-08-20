@@ -324,9 +324,9 @@ export async function generateMonthlyForecasts(
         continue;
       }
 
-      const inquilino =
-        `${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim() ||
-        'Inquilino';
+      const nombreInquilino =
+        `${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim();
+      const inquilino = nombreInquilino || 'Inquilino';
       const day = contract.diaPago ?? 1;
 
       // rentaMensual store eliminado en V62 — usar contract.rentaMensual directamente.
@@ -340,6 +340,10 @@ export async function generateMonthlyForecasts(
         amount,
         predictedDate: buildDate(year, month, day),
         description: `Renta – ${inquilino}`,
+        // P5 · el nombre del inquilino en el campo que MIRA el emparejador
+        // (`counterparty`), no solo en la descripción: es lo que desempata seis
+        // habitaciones de 395 € que solo se distinguen por quién paga.
+        counterparty: nombreInquilino || undefined,
         sourceType: 'contrato' as const,
         sourceId: contract.id,
         accountId: resolveAccountId(cuentaCobro),
