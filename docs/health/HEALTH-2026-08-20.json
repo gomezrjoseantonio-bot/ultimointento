@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-08-20",
-  "generatedAt": "2026-08-20T14:55:03.994Z",
+  "generatedAt": "2026-08-20T15:36:06.673Z",
   "git": {
     "branch": "claude/bank-notes-model-g78h0t",
-    "head": "6ee3460"
+    "head": "ff529db"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -150,7 +150,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 25 raíces estrictas · alive 918 · dead 0 · solo_tests 56 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 25 raíces estrictas · alive 919 · dead 0 · solo_tests 56 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -274,8 +274,8 @@
         "1439 · scripts/health.mjs",
         "1259 · src/pages/GestionPersonal/wizards/NominaPage.tsx",
         "1246 · src/services/ocr/normalize-docai.ts",
-        "1240 · src/modules/tesoreria/v6/TesoreriaV6Page.tsx",
-        "1226 · src/modules/horizon/tesoreria/services/treasurySyncService.ts"
+        "1226 · src/modules/horizon/tesoreria/services/treasurySyncService.ts",
+        "1225 · src/modules/horizon/fiscalidad/historico/ImportarDeclaracionWizard.tsx"
       ],
       "calibracion": null
     },

@@ -30,7 +30,9 @@ import {
   generarPropiedadGroupData,
 } from '../../utils/timelineLineas';
 import { CSS_COLOR_HABITACION } from '../../utils/timelineColores';
+import { inmuebleTieneOpex } from '../../utils/sembrarOpexInmueble';
 import DrawerFichaContrato from './DrawerFichaContrato';
+import SembrarOpexModal from './SembrarOpexModal';
 import styles from './TabDisponibilidad.module.css';
 
 export interface TabDisponibilidadProps {
@@ -375,6 +377,7 @@ const ControlExplotacion: React.FC<{
   onCambio: () => void;
 }> = ({ propiedad, explotacion, onCambio }) => {
   const [guardando, setGuardando] = useState(false);
+  const [semillaAbierta, setSemillaAbierta] = useState(false);
   const inmuebleId = propiedad.id;
 
   const ejecutar = useCallback(
@@ -389,6 +392,19 @@ const ControlExplotacion: React.FC<{
       }
     },
     [inmuebleId, onCambio],
+  );
+
+  // Al pasar a `operativo`, ofrecer sembrar los gastos típicos. Solo se abre solo
+  // la PRIMERA vez (inmueble sin OPEX aún); después, con el botón «Sembrar gastos».
+  const cambiarEstado = useCallback(
+    async (nuevo: EstadoExplotacion) => {
+      if (inmuebleId == null) return;
+      await ejecutar(() => actualizarExplotacion(inmuebleId, { estado: nuevo }));
+      if (nuevo === 'operativo' && !(await inmuebleTieneOpex(inmuebleId))) {
+        setSemillaAbierta(true);
+      }
+    },
+    [inmuebleId, ejecutar],
   );
 
   if (inmuebleId == null) return null;
@@ -444,13 +460,7 @@ const ControlExplotacion: React.FC<{
             className={styles.selectMini}
             value={explotacion.estado}
             disabled={guardando}
-            onChange={(e) =>
-              ejecutar(() =>
-                actualizarExplotacion(inmuebleId, {
-                  estado: e.target.value as EstadoExplotacion,
-                }),
-              )
-            }
+            onChange={(e) => cambiarEstado(e.target.value as EstadoExplotacion)}
           >
             {(Object.keys(ESTADO_LABEL) as EstadoExplotacion[]).map((s) => (
               <option key={s} value={s}>
@@ -459,6 +469,14 @@ const ControlExplotacion: React.FC<{
             ))}
           </select>
         </label>
+        <button
+          type="button"
+          className={styles.linkInline}
+          disabled={guardando}
+          onClick={() => setSemillaAbierta(true)}
+        >
+          Sembrar gastos
+        </button>
         <button
           type="button"
           className={styles.linkInline}
@@ -474,6 +492,15 @@ const ControlExplotacion: React.FC<{
           habitaciones={explotacion.habitaciones ?? []}
           guardando={guardando}
           ejecutar={ejecutar}
+        />
+      )}
+      {semillaAbierta && (
+        <SembrarOpexModal
+          inmuebleId={inmuebleId}
+          inmuebleAlias={propiedad.alias}
+          modo={explotacion.modo}
+          cuentaCobroPorDefectoId={explotacion.cuentaCobroPorDefectoId}
+          onClose={() => setSemillaAbierta(false)}
         />
       )}
     </div>

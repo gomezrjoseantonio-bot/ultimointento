@@ -1,0 +1,153 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--atlas-v5-overlay);
+}
+
+.modal {
+  width: 100%;
+  max-width: 720px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md, 11px);
+  font-family: var(--atlas-v5-font-ui);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.title {
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 14px;
+  color: var(--atlas-v5-ink);
+}
+
+.sub {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  line-height: 1.4;
+}
+
+.iconBtn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--atlas-v5-ink-4);
+  padding: 2px;
+  display: inline-flex;
+}
+
+.iconBtn:hover {
+  color: var(--atlas-v5-ink);
+}
+
+.body {
+  padding: 14px 18px;
+  overflow-y: auto;
+}
+
+.muted {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  padding: 12px 0;
+}
+
+.tabla {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fila {
+  display: grid;
+  grid-template-columns: 20px 1.4fr 0.9fr 1fr 1.4fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.filaHead {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.concepto {
+  font-size: 12px;
+  color: var(--atlas-v5-ink);
+}
+
+.importe,
+.select {
+  font: inherit;
+  font-size: 12px;
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-sm, 6px);
+  padding: 4px 6px;
+  width: 100%;
+}
+
+.importe:disabled,
+.select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--atlas-v5-line);
+}
+
+.btnGhost {
+  font: inherit;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  background: none;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-sm, 6px);
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-card);
+  background: var(--atlas-v5-brand);
+  border: none;
+  border-radius: var(--atlas-v5-radius-sm, 6px);
+  padding: 6px 16px;
+  cursor: pointer;
+}
+
+.btnGhost:disabled,
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
