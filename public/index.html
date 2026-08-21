@@ -2,20 +2,65 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Evita que el navegador traduzca la UI y rompa etiquetas y formatos de importe -->
+    <meta name="google" content="notranslate" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#042C5E" />
+
+    <title>Controla tus inmuebles y tus finanzas | ATLAS</title>
     <meta
       name="description"
-      content="ATLAS — Horizon (Invest) & Pulse (Personal) - Modern fintech app for real estate and personal finance"
+      content="Controla ingresos, gastos, préstamos y rentabilidad real de tus inmuebles, y tus finanzas personales, en un solo lugar."
     />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="canonical" href="https://ultimointento.netlify.app/" />
+
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-192x192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
-    <title>ATLAS — Horizon & Pulse</title>
+    <!-- PWA en iOS: pantalla completa y respeto de las safe areas (notch / Dynamic Island) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ATLAS" />
+
+    <!-- Tarjeta al compartir el enlace (WhatsApp, LinkedIn, Slack, X) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ATLAS" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:url" content="https://ultimointento.netlify.app/" />
+    <meta property="og:title" content="Controla tus inmuebles y tus finanzas | ATLAS" />
+    <meta
+      property="og:description"
+      content="Controla ingresos, gastos, préstamos y rentabilidad real de tus inmuebles, y tus finanzas personales, en un solo lugar."
+    />
+    <meta property="og:image" content="https://ultimointento.netlify.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="ATLAS — controla tus inmuebles y tus finanzas" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Controla tus inmuebles y tus finanzas | ATLAS" />
+    <meta
+      name="twitter:description"
+      content="Controla ingresos, gastos, préstamos y rentabilidad real de tus inmuebles, y tus finanzas personales, en un solo lugar."
+    />
+    <meta name="twitter:image" content="https://ultimointento.netlify.app/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "ATLAS",
+        "url": "https://ultimointento.netlify.app/",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "es-ES",
+        "description": "Controla ingresos, gastos, préstamos y rentabilidad real de tus inmuebles, y tus finanzas personales, en un solo lugar."
+      }
+    </script>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <noscript>Necesitas activar JavaScript para usar ATLAS.</noscript>
     <div id="root"></div>
   </body>
 </html>
