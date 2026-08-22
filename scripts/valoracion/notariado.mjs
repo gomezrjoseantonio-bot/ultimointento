@@ -54,6 +54,28 @@ if (args.includes('--capas')) {
   process.exit(0);
 }
 
+// Qué combinaciones de tipo × clase existen de verdad.
+//
+// El servicio no trae diccionario para `tipo_construccion_id` ni para
+// `clase_finca_urbana_id`, así que sus códigos hay que deducirlos. De las
+// peticiones del portal se sabe que 9 es segunda mano, 7 obra nueva, 14 pisos y
+// 99 «todas». Si las combinaciones existentes son exactamente nueve, la
+// deducción cierra: tres tipos por tres clases, que es el 468 = 52 × 9 de la
+// capa de provincia.
+if (args.includes('--combos')) {
+  process.stdout.write('\n── Combinaciones tipo × clase que existen\n');
+  const datos = await pedir(
+    `${BASE}/2/query?f=json&where=1%3D1&outFields=tipo_construccion_id,clase_finca_urbana_id` +
+      `&returnDistinctValues=true&returnGeometry=false&orderByFields=tipo_construccion_id,clase_finca_urbana_id`,
+  );
+  const filas = (datos?.features ?? []).map((f) => f.attributes);
+  for (const a of filas) {
+    process.stdout.write(`   tipo ${a.tipo_construccion_id}\tclase ${a.clase_finca_urbana_id}\n`);
+  }
+  process.stdout.write(`\n   ${filas.length} combinaciones\n`);
+  process.exit(0);
+}
+
 if (explorarArg) {
   process.stdout.write(`\n── Metadatos de la capa ${capaAExplorar}\n`);
   const meta = await pedir(`${BASE}/${capaAExplorar}?f=json`);
@@ -108,5 +130,5 @@ if (cpArg) {
   process.exit(0);
 }
 
-process.stderr.write('Usa --capas, --explorar o --cp=NNNNN\n');
+process.stderr.write('Usa --capas, --combos, --explorar[=N] o --cp=NNNNN\n');
 process.exit(2);
