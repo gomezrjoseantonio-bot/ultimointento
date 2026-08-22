@@ -68,6 +68,9 @@ const BCE_EURIBOR_12M =
 
 const dosDigitos = (n) => String(n).padStart(2, '0');
 
+/** Identificadores de trimestre en Tempus3 → mes en que cierra ese trimestre. */
+const TRIMESTRE_A_MES_DE_CIERRE = { 19: 3, 20: 6, 21: 9, 22: 12 };
+
 async function pedirJSON(url) {
   const r = await fetch(url, { headers: { accept: 'application/json' } });
   if (!r.ok) throw new Error(`HTTP ${r.status} en ${url}`);
@@ -99,12 +102,16 @@ async function serieINE(codigo, { nult = 240, periodicidad = 'mensual' } = {}) {
 
     let mes;
     if (periodicidad === 'trimestral') {
-      // En una serie trimestral, `FK_Periodo` va de 1 a 4 y significa TRIMESTRE,
-      // no mes. Tomarlo como mes metería el cuarto trimestre en abril y toda la
-      // serie quedaría desplazada nueve meses sin que fallara nada. Se ancla en
-      // el mes de CIERRE de cada trimestre, que es a lo que se refiere el dato.
-      if (!(periodo >= 1 && periodo <= 4)) continue;
-      mes = periodo * 3;
+      // `FK_Periodo` NO es «el número de trimestre»: es un identificador del
+      // catálogo de periodos de Tempus3, y para los trimestres vale 19, 20, 21
+      // y 22. Se comprobó con datos reales de la serie del IPV, cuyo campo
+      // `Fecha` confirma la correspondencia — el 19 cae el 1 de enero y el 20
+      // el 1 de abril.
+      //
+      // Cada trimestre se ancla en su mes de CIERRE, que es el momento al que
+      // el dato se refiere.
+      mes = TRIMESTRE_A_MES_DE_CIERRE[periodo];
+      if (!mes) continue;
     } else {
       if (!(periodo >= 1 && periodo <= 12)) continue;
       mes = periodo;
