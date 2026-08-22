@@ -49,3 +49,64 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* El valor oficial publicado, debajo de la casilla que se teclea a mano. */
+.oficial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.oficialValor {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+}
+
+.oficialMeta {
+  color: var(--atlas-v5-ink-4);
+}
+
+.oficialAviso {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--atlas-v5-warn-wash);
+  color: var(--atlas-v5-ink-2);
+}
+
+.oficialUsar {
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: transparent;
+  color: var(--atlas-v5-ink-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.oficialUsar:hover {
+  background: var(--atlas-v5-card-alt);
+}
+
+.oficialFila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--atlas-v5-line);
+}
+
+.oficialEtiqueta {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.oficialFila .oficial {
+  margin-top: 0;
+}
