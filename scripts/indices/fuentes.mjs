@@ -55,8 +55,13 @@ async function pedirJSON(url) {
  * El periodo se arma con `Anyo` + `FK_Periodo` (el número de mes) y no con
  * `Fecha`, que viene en milisegundos y en zona horaria: convertirla cerca de
  * fin de mes movía el dato de enero a diciembre del año anterior.
+ *
+ * `nult` pide los N últimos. Se piden 240 (veinte años) y no más porque con 600
+ * la serie del IPC devolvió 1976-01 → 2025-12 —exactamente 600— y quedó la duda
+ * de si la serie termina ahí o si el organismo estaba recortando por arriba. Lo
+ * viejo no se pierde: la fusión conserva todo lo ya descargado.
  */
-async function serieINE(codigo, { nult = 600 } = {}) {
+async function serieINE(codigo, { nult = 240 } = {}) {
   const datos = await pedirJSON(`${INE_BASE}/${codigo}?nult=${nult}`);
   const nombre = datos?.Nombre ?? '(sin nombre)';
   const filas = Array.isArray(datos?.Data) ? datos.Data : [];

@@ -138,6 +138,38 @@ EMMI y redistribuirla tiene condiciones.
 rentas de vivienda habitual. Conviene confirmar con asesor cuál aplica a cada
 contrato según su fecha de firma.
 
+### Segunda ejecución · 3/3 correctas, y un hallazgo
+
+[Run 32574318499](https://github.com/gomezrjoseantonio-bot/ultimointento/actions/runs/32574318499),
+con el IPC ya corregido a `porcentaje`:
+
+| Serie | Último dato |
+|---|---|
+| Euríbor 12m | 2026-07 = 2,855087 |
+| IPC | **2025-12 = 2,9** ⚠️ |
+| IRAV | 2026-07 = 2,49 |
+
+El IPC se para en diciembre de 2025 mientras las otras dos llegan a julio de
+2026. Y 1976-01 → 2025-12 son **exactamente 600 meses**, que es justo lo que se
+pedía con `nult=600`. Dos explicaciones posibles: la serie `IPC251856` dejó de
+publicarse (el INE renumera al cambiar de base) o el organismo recortaba por
+arriba.
+
+Se han hecho dos cosas:
+
+1. **`nult` baja a 240.** Si el corte era del organismo, ahora llega lo reciente;
+   lo viejo no se pierde porque la fusión conserva lo ya descargado.
+2. **Guarda de serie descatalogada.** Si el último dato queda más de
+   `cadenciaMeses + 3` meses atrás, la serie se rechaza y el trabajo va en rojo.
+   Esto es lo que ninguna validación de formato ni de rango podía detectar: los
+   valores eran correctos, solo viejos, y sin este corte el fichero se habría
+   quedado congelado con todo en verde mes tras mes.
+
+**Si tras esto el IPC sigue parándose en 2025-12, la serie está descatalogada** y
+hay que buscar el código vigente en el catálogo Tempus3 del INE y cambiarlo en
+`fuentes.mjs`. Mientras tanto el trabajo saldrá en rojo, que es lo correcto: el
+IPC no debe usarse hasta que llegue al mes corriente.
+
 Cómo repetir la comprobación:
 
 1. Actions → «Actualizar índices oficiales» → **Run workflow**.
