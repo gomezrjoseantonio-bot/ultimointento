@@ -4,6 +4,8 @@ import {
   getFinancialValuesSnapshot,
   saveFinancialValuesSnapshot,
 } from '../../../services/financialValuesService';
+import { initDB } from '../../../services/db';
+import type { Property } from '../../../services/db';
 import type {
   FinancialValuationItem,
   FinancialValuesSnapshot,
@@ -14,6 +16,8 @@ import ModalAtlasFooter, {
   ModalAtlasButtonGhost,
   ModalAtlasButtonGold,
 } from '../../inversiones/components/modal/ModalAtlasFooter';
+import EstimacionZonaInmueble from './EstimacionZonaInmueble';
+import type { DatosZonaInmueble } from './EstimacionZonaInmueble';
 import IndicadorOficial from './IndicadorOficial';
 import atlasStyles from '../../inversiones/styles/atlas-inversiones.module.css';
 import styles from './ActualizarValoresModal.module.css';
@@ -78,7 +82,9 @@ const ValuationRows: React.FC<{
   emptyLabel: string;
   inputLabelPrefix: string;
   onChange: (index: number, rawValue: string) => void;
-}> = ({ items, emptyLabel, inputLabelPrefix, onChange }) => {
+  /** Solo los inmuebles lo traen · las inversiones no tienen zona. */
+  zonaPorId?: Record<string, DatosZonaInmueble>;
+}> = ({ items, emptyLabel, inputLabelPrefix, onChange, zonaPorId }) => {
   if (items.length === 0) {
     return <div className={styles.listEmpty}>{emptyLabel}</div>;
   }
@@ -90,6 +96,9 @@ const ValuationRows: React.FC<{
           <div className={styles.name}>
             <div className={styles.title}>{item.name}</div>
           {item.tipo ? <div className={styles.meta}>{item.tipo}</div> : null}
+            {zonaPorId?.[item.id] ? (
+              <EstimacionZonaInmueble datos={zonaPorId[item.id]} />
+            ) : null}
           </div>
           <input
             type="number"
@@ -117,6 +126,42 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   // El IRAV no tiene casilla que rellenar · su valor se pinta tal cual.
   const [iravPercent, setIravPercent] = useState<number | null>(null);
+
+  /**
+   * Código postal, metros y régimen de cada inmueble · para el precio de zona.
+   *
+   * `FinancialValuationItem` solo lleva id, nombre y valor, que es cuanto
+   * necesita para editarse. Lo demás vive en `Property`, y la clave para
+   * cruzarlos es el id, que es el de la propiedad convertido a texto.
+   */
+  const [zonaPorId, setZonaPorId] = useState<Record<string, DatosZonaInmueble>>({});
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const db = await initDB();
+        const propiedades = (await db.getAll('properties')) as Property[];
+        if (cancelado) return;
+        const mapa: Record<string, DatosZonaInmueble> = {};
+        for (const p of propiedades) {
+          // Sin código postal o sin metros no hay estimación posible, así que
+          // ni se apunta: el componente no llega a preguntar por ella.
+          if (p.id == null || !p.postalCode || !p.squareMeters) continue;
+          mapa[String(p.id)] = {
+            codigoPostal: p.postalCode,
+            metrosCuadrados: p.squareMeters,
+            regimen: p.transmissionRegime === 'obra-nueva' ? 'obra-nueva' : 'usada',
+          };
+        }
+        setZonaPorId(mapa);
+      } catch {
+        // Sin inmuebles legibles simplemente no se enseña el precio de zona.
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -322,6 +367,7 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
               <div className={atlasStyles.section}>
                 <div className={atlasStyles.sectionTitle}>Inmuebles</div>
                 <ValuationRows
+                  zonaPorId={zonaPorId}
                   items={form.realEstateValuations}
                   emptyLabel="No hay inmuebles activos para actualizar."
                   inputLabelPrefix="Valoración de inmueble"
