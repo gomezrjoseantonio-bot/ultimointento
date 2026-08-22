@@ -99,3 +99,10 @@
 .oficialFila .oficial {
   margin-top: 0;
 }
+
+/* Las dos estimaciones de un inmueble, apiladas bajo su nombre. */
+.estimacion {
+  display: grid;
+  gap: 2px;
+  margin-top: 6px;
+}
