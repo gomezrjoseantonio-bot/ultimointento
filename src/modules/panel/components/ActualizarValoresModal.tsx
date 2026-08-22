@@ -14,6 +14,7 @@ import ModalAtlasFooter, {
   ModalAtlasButtonGhost,
   ModalAtlasButtonGold,
 } from '../../inversiones/components/modal/ModalAtlasFooter';
+import IndicadorOficial from './IndicadorOficial';
 import atlasStyles from '../../inversiones/styles/atlas-inversiones.module.css';
 import styles from './ActualizarValoresModal.module.css';
 
@@ -235,6 +236,16 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
                         )
                       }
                     />
+                    <IndicadorOficial
+                      serie="ipc"
+                      onUsar={(valor) =>
+                        setForm((current) =>
+                          current
+                            ? { ...current, ipcMonthlyPercent: String(valor) }
+                            : current,
+                        )
+                      }
+                    />
                   </div>
                   <div className={atlasStyles.field}>
                     <label className={atlasStyles.label} htmlFor="financial-values-euribor">
@@ -252,6 +263,15 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
                           current
                             ? { ...current, euriborPercent: event.target.value }
                             : current,
+                        )
+                      }
+                    />
+                    <IndicadorOficial
+                      serie="euribor-12m"
+                      decimales={3}
+                      onUsar={(valor) =>
+                        setForm((current) =>
+                          current ? { ...current, euriborPercent: String(valor) } : current,
                         )
                       }
                     />
@@ -274,6 +294,16 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
                       }
                     />
                   </div>
+                </div>
+                {/* El IRAV no se teclea: no hay campo que rellenar con él. Se
+                    enseña porque desde 2025 es EL índice que actualiza las
+                    rentas de vivienda habitual, y tenerlo delante evita ir a
+                    buscarlo al INE cuando toca subir un alquiler. */}
+                <div className={styles.oficialFila}>
+                  <span className={styles.oficialEtiqueta}>
+                    IRAV · actualización de rentas de vivienda
+                  </span>
+                  <IndicadorOficial serie="irav" />
                 </div>
               </div>
 
