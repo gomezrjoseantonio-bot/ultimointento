@@ -90,6 +90,41 @@ describe('notariadoService', () => {
     expect(decodeURIComponent(fetchMock.mock.calls[1][0])).toContain('tipo_construccion_id = 9');
   });
 
+  // El Notariado publica precios de VIVIENDA · un trastero de 20 m² «valdría»
+  // 37.000 € en un barrio donde el piso va a 1.874 €/m².
+  it('no valora un parking ni un trastero con el precio de la vivienda', async () => {
+    const fetchMock = responder({ 4: fila() });
+    (globalThis as any).fetch = fetchMock;
+    const { precioDeZona } = require('../notariadoService');
+
+    expect(await precioDeZona('33006', 'usada', 'parking')).toBeNull();
+    expect(await precioDeZona('33006', 'usada', 'trastero')).toBeNull();
+    expect(await precioDeZona('33006', 'usada', 'local')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('a un piso le pregunta por pisos, no por todas las fincas', async () => {
+    const fetchMock = responder({ 4: fila() });
+    (globalThis as any).fetch = fetchMock;
+    const { precioDeZona } = require('../notariadoService');
+
+    await precioDeZona('33006', 'usada', 'piso');
+    expect(decodeURIComponent(fetchMock.mock.calls[0][0])).toContain(
+      'clase_finca_urbana_id = 14',
+    );
+  });
+
+  it('sin saber qué es, pregunta por todas las viviendas', async () => {
+    const fetchMock = responder({ 4: fila() });
+    (globalThis as any).fetch = fetchMock;
+    const { precioDeZona } = require('../notariadoService');
+
+    await precioDeZona('33006', 'usada', undefined);
+    expect(decodeURIComponent(fetchMock.mock.calls[0][0])).toContain(
+      'clase_finca_urbana_id = 99',
+    );
+  });
+
   it('sin dato en ningún nivel devuelve null en vez de inventar', async () => {
     (globalThis as any).fetch = responder({});
     const { precioDeZona } = require('../notariadoService');

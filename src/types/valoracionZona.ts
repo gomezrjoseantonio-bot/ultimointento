@@ -15,6 +15,16 @@ export type NivelZona = 'codigo-postal' | 'provincia';
 /** Régimen del inmueble, tal como lo guarda `Property.transmissionRegime`. */
 export type RegimenInmueble = 'usada' | 'obra-nueva';
 
+/**
+ * Qué clase de finca pedirle al Notariado, según lo que sea el activo.
+ *
+ * `null` significa que no hay nada que preguntar: el Notariado publica precios
+ * de VIVIENDA, y una plaza de garaje o un trastero no están en esa estadística.
+ * Aplicarles el precio por m² de los pisos daría un número absurdo con toda la
+ * apariencia de un cálculo.
+ */
+export type ClaseFinca = 'pisos' | 'todas' | null;
+
 export interface PrecioZona {
   /** Euros por metro cuadrado de la zona. */
   precioM2: number;

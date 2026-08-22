@@ -38,8 +38,27 @@ const CAPA_PROVINCIA = 2;
  */
 const TIPO_OBRA_NUEVA = 7;
 const TIPO_SEGUNDA_MANO = 9;
-/** «Todas las clases de finca» · ATLAS no distingue piso de unifamiliar. */
+const CLASE_PISOS = 14;
+/** «Todas las clases de finca» · pisos y unifamiliares juntos. */
 const CLASE_TODAS = 99;
+
+/**
+ * Qué clase de finca corresponde a un activo de ATLAS.
+ *
+ * El Notariado solo publica precios de VIVIENDA. Un parking, un trastero o un
+ * local no aparecen en esa estadística, y aplicarles el precio por m² de los
+ * pisos daría un número absurdo con apariencia de cálculo — un trastero de 20 m²
+ * «valdría» 37.000 € en un barrio donde el piso va a 1.874 €/m².
+ *
+ * Cuando no se sabe qué es —inmuebles anteriores a que existiera el campo— se
+ * pregunta por todas las viviendas, que es lo más prudente que se puede decir
+ * sin inventar.
+ */
+export function claseDeFinca(tipoActivo: string | undefined): number | null {
+  if (tipoActivo === 'piso') return CLASE_PISOS;
+  if (tipoActivo === undefined) return CLASE_TODAS;
+  return null;
+}
 
 /**
  * Por debajo de esto la media no sostiene una valoración.
@@ -132,15 +151,20 @@ async function escribirCache(clave: string, dato: PrecioZona): Promise<void> {
 export async function precioDeZona(
   codigoPostal: string,
   regimen: RegimenInmueble,
+  tipoActivo?: string,
 ): Promise<PrecioZona | null> {
   if (!ES_CP.test(codigoPostal)) return null;
+  const clase = claseDeFinca(tipoActivo);
+  // Un parking o un trastero no están en la estadística de vivienda · no hay
+  // pregunta que hacer, y menos aún respuesta que enseñar.
+  if (clase === null) return null;
   const tipo = regimen === 'obra-nueva' ? TIPO_OBRA_NUEVA : TIPO_SEGUNDA_MANO;
 
-  const cacheado = await leerCache(claveCache(codigoPostal, tipo));
+  const cacheado = await leerCache(claveCache(codigoPostal, tipo * 100 + clase));
   if (cacheado) return cacheado;
 
   const ahora = new Date().toISOString();
-  const filtroTipo = `(tipo_construccion_id = ${tipo}) AND (clase_finca_urbana_id = ${CLASE_TODAS})`;
+  const filtroTipo = `(tipo_construccion_id = ${tipo}) AND (clase_finca_urbana_id = ${clase})`;
 
   let resultado: PrecioZona | null = null;
   try {
@@ -171,7 +195,7 @@ export async function precioDeZona(
     }
   }
 
-  if (resultado) await escribirCache(claveCache(codigoPostal, tipo), resultado);
+  if (resultado) await escribirCache(claveCache(codigoPostal, tipo * 100 + clase), resultado);
   return resultado;
 }
 
@@ -198,9 +222,10 @@ export async function estimarPorZona(
   metrosCuadrados: number,
   codigoPostal: string,
   regimen: RegimenInmueble,
+  tipoActivo?: string,
 ): Promise<EstimacionZona | null> {
   if (!Number.isFinite(metrosCuadrados) || metrosCuadrados <= 0) return null;
-  const precioZona = await precioDeZona(codigoPostal, regimen);
+  const precioZona = await precioDeZona(codigoPostal, regimen, tipoActivo);
   if (!precioZona) return null;
   return {
     valor: Math.round(metrosCuadrados * precioZona.precioM2),

@@ -157,6 +157,8 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
             // que parte de un dato suyo y no de la media de la zona.
             precioCompra: p.acquisitionCosts?.price,
             fechaCompra: p.purchaseDate,
+            // Un parking o un trastero no están en la estadística de vivienda.
+            tipoActivo: p.tipoActivo,
           };
         }
         setZonaPorId(mapa);
