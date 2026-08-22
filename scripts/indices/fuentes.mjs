@@ -111,6 +111,16 @@ async function serieINE(codigo, { nult = 240, periodicidad = 'mensual' } = {}) {
     }
     valores[`${ano}-${dosDigitos(mes)}`] = valor;
   }
+
+  // Cero valores de una serie que SÍ respondió significa que sus periodos no
+  // tienen la forma que se supone. Adivinar otra vez sería perder otra vuelta,
+  // así que el error se lleva consigo las primeras filas tal cual llegan.
+  if (Object.keys(valores).length === 0 && filas.length > 0) {
+    const muestra = filas.slice(0, 3).map((f) => JSON.stringify(f)).join(' | ');
+    throw new Error(
+      `${filas.length} filas y ningún periodo reconocible como ${periodicidad} · ${muestra}`,
+    );
+  }
   return { nombre, valores };
 }
 
