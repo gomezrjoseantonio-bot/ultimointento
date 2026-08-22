@@ -170,6 +170,33 @@ hay que buscar el código vigente en el catálogo Tempus3 del INE y cambiarlo en
 `fuentes.mjs`. Mientras tanto el trabajo saldrá en rojo, que es lo correcto: el
 IPC no debe usarse hasta que llegue al mes corriente.
 
+### Estado del IPC · pendiente de un código
+
+`IPC251856` está confirmada como descatalogada: se para en 2025-12 con `nult=600`
+y también con `nult=240`, mientras euríbor e IRAV llegan a 2026-07. La guarda por
+antigüedad la rechaza, así que **el trabajo saldrá en rojo hasta que se ponga el
+código vigente** en `scripts/indices/fuentes.mjs`. Es lo correcto: mejor rojo y
+visible que verde con un índice de hace ocho meses.
+
+Lo aprendido buscando el sustituto, para quien lo retome:
+
+- El INE nombra sus series **`Territorio. Tasa de variación anual. Concepto`**
+  («Aragón. Tasa de variación anual. Vivienda»). La serie vieja usaba otra
+  fórmula, «Nacional. Índice general. Variación anual», que es la del catálogo
+  antiguo.
+- `SERIES_OPERACION` devuelve **como mucho 10 000 series por página**, y la
+  operación IPC tiene muchísimas más. Ese tope explica por qué buscar
+  «nacional tasa de variacion anual general» daba 13 resultados y todos eran
+  variantes («General sin tabaco», «General sin alquiler de vivienda»…): la
+  serie general limpia estaba fuera de la primera página.
+- Paginar a lo bruto tampoco sirve: con 12 páginas el trabajo pasó de cuatro
+  minutos sin terminar y hubo que cancelarlo. El tope se queda en 3 páginas y,
+  cuando se alcanza, el registro lo dice.
+
+**La vía rápida es el catálogo web del INE**: abrir la tabla del IPC de variación
+anual del índice general nacional y leer ahí el identificador de la serie. Con
+ese código, el cambio en `fuentes.mjs` es una línea.
+
 Cómo repetir la comprobación:
 
 1. Actions → «Actualizar índices oficiales» → **Run workflow**.
