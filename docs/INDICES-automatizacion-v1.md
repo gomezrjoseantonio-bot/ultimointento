@@ -170,32 +170,36 @@ hay que buscar el código vigente en el catálogo Tempus3 del INE y cambiarlo en
 `fuentes.mjs`. Mientras tanto el trabajo saldrá en rojo, que es lo correcto: el
 IPC no debe usarse hasta que llegue al mes corriente.
 
-### Estado del IPC · pendiente de un código
+### El IPC descatalogado · resuelto
 
-`IPC251856` está confirmada como descatalogada: se para en 2025-12 con `nult=600`
-y también con `nult=240`, mientras euríbor e IRAV llegan a 2026-07. La guarda por
-antigüedad la rechaza, así que **el trabajo saldrá en rojo hasta que se ponga el
-código vigente** en `scripts/indices/fuentes.mjs`. Es lo correcto: mejor rojo y
-visible que verde con un índice de hace ocho meses.
+`IPC251856` murió en 2025-12: el INE pasó al **sistema IPC base 2025** y al
+cambiar de base no continúa la serie, abre otra y abandona la vieja. La
+abandonada **sigue respondiendo con total normalidad**, solo que sin meses
+nuevos — por eso ninguna validación de formato ni de rango podía detectarlo, y
+lo cazó la guarda por antigüedad.
 
-Lo aprendido buscando el sustituto, para quien lo retome:
+El sustituto es **`IPC290750` · «Nacional. Índice general. Variación anual»**.
+Verificado el 22 ago 2026: 607 meses, 1976-01 → 2026-07, último **3,6 %**, que
+coincide con la calculadora pública del INE. Los meses nuevos entraron *encima*
+del histórico viejo, así que la serie cruza el cambio de base sin agujeros.
 
-- El INE nombra sus series **`Territorio. Tasa de variación anual. Concepto`**
-  («Aragón. Tasa de variación anual. Vivienda»). La serie vieja usaba otra
-  fórmula, «Nacional. Índice general. Variación anual», que es la del catálogo
-  antiguo.
-- `SERIES_OPERACION` devuelve **como mucho 10 000 series por página**, y la
-  operación IPC tiene muchísimas más. Ese tope explica por qué buscar
-  «nacional tasa de variacion anual general» daba 13 resultados y todos eran
-  variantes («General sin tabaco», «General sin alquiler de vivienda»…): la
-  serie general limpia estaba fuera de la primera página.
-- Paginar a lo bruto tampoco sirve: con 12 páginas el trabajo pasó de cuatro
-  minutos sin terminar y hubo que cancelarlo. El tope se queda en 3 páginas y,
-  cuando se alcanza, el registro lo dice.
+**Cómo se encontró, que es lo reutilizable.** Rastrear las series de la
+operación fracasó tres veces: el IPC tiene cientos de miles y la API sirve
+10 000 por página, así que la general nacional quedaba siempre fuera de alcance.
+El camino por **tablas** acertó a la primera y en tres segundos:
 
-**La vía rápida es el catálogo web del INE**: abrir la tabla del IPC de variación
-anual del índice general nacional y leer ahí el identificador de la serie. Con
-ese código, el cambio en `fuentes.mjs` es una línea.
+```
+--buscar=tablas:IPC:nacional general
+   59 tablas · 7 encajan
+   76134  Tasa de variacion del índice general nacional. Series desde enero de 1961
+
+--buscar=tabla:76134:
+   3 series
+   IPC290750  Nacional. Índice general. Variación anual.   ← esta
+```
+
+Cuando otra serie muera —volverá a pasar en el próximo cambio de base—, ese es
+el procedimiento: la guarda avisa, `tablas:` acota y `tabla:` da el código.
 
 Cómo repetir la comprobación:
 
