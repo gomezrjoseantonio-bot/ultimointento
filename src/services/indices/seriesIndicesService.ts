@@ -135,6 +135,42 @@ export function porcentajeDeActualizacion(serie: SerieIndice, periodo: string): 
 }
 
 /**
+ * Cuánto ha subido el índice entre dos meses, en tanto por uno.
+ *
+ * Es lo que revaloriza una compra: `precio × variacionEntre(compra, hoy)`. No
+ * vale la variación interanual para esto —solo compara con hace doce meses— y
+ * tampoco vale acumular tasas, que arrastra error en cada salto.
+ *
+ * Con series trimestrales el mes exacto de la compra rara vez tiene dato, así
+ * que se busca hacia atrás hasta el último trimestre publicado antes de esa
+ * fecha: el trimestre en que se compró es el que describe aquel mercado. El
+ * límite de doce meses evita que una compra muy antigua se ancle en un dato
+ * que no tiene nada que ver.
+ */
+export function variacionEntre(
+  serie: SerieIndice,
+  desde: string,
+  hasta: string,
+): number | null {
+  if (serie.unidad !== 'indice') return null;
+  const base = valorMasCercanoAntes(serie, desde);
+  const actual = valorMasCercanoAntes(serie, hasta);
+  if (base == null || actual == null || base === 0) return null;
+  return actual / base;
+}
+
+/** El dato de ese mes o, si no lo hay, el del mes publicado más cercano antes. */
+function valorMasCercanoAntes(serie: SerieIndice, periodo: string): number | null {
+  const candidatos = Object.keys(serie.valores)
+    .filter((p) => p <= periodo)
+    .sort();
+  const elegido = candidatos[candidatos.length - 1];
+  if (!elegido) return null;
+  // Más de un año de distancia ya no describe el mismo mercado.
+  return mesesEntre(elegido, periodo) <= 12 ? serie.valores[elegido] : null;
+}
+
+/**
  * Cuántos meses lleva la serie sin dato nuevo, descontando su cadencia normal.
  *
  * `0` es al día. Un número mayor que 0 significa que la fuente publicó algo que

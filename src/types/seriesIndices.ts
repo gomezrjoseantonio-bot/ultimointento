@@ -10,7 +10,7 @@
 // dato correcto de hoy pisaba el dato correcto de ayer y los recálculos
 // históricos dejaban de ser reproducibles.
 
-export type IdSerie = 'euribor-12m' | 'ipc' | 'irav';
+export type IdSerie = 'euribor-12m' | 'ipc' | 'irav' | 'ipv-segunda-mano';
 
 /**
  * Qué significa el número guardado.

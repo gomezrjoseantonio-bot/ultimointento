@@ -46,6 +46,22 @@ const INE_SERIE_IPC = 'IPC290750';
  */
 const INE_SERIE_IRAV = 'IRAV001';
 
+/**
+ * IPV · índice de precios de vivienda de segunda mano, nacional y TRIMESTRAL.
+ *
+ * Se elige el índice y no la tasa de variación porque sirve para comparar dos
+ * trimestres cualesquiera: revalorizar lo que se pagó en 2015 exige el cociente
+ * entre el índice de hoy y el de entonces, y una tasa anual no permite eso.
+ *
+ * Y se elige segunda mano y no vivienda nueva porque un piso comprado hace
+ * años, aunque se comprara a estrenar, hoy se vende en el mercado de segunda
+ * mano: es esa curva la que describe lo que le ha pasado a su precio.
+ *
+ * De la tabla 80270, «Índices por CCAA: general, vivienda nueva y de segunda
+ * mano. Trimestrales».
+ */
+const INE_SERIE_IPV = 'IPV1618';
+
 /** Euríbor 12m · portal de datos del BCE, sin clave. */
 const BCE_EURIBOR_12M =
   'https://data-api.ecb.europa.eu/service/data/FM/M.U2.EUR.RT.MM.EURIBOR1YD_.HSTA';
@@ -70,17 +86,29 @@ async function pedirJSON(url) {
  * de si la serie termina ahí o si el organismo estaba recortando por arriba. Lo
  * viejo no se pierde: la fusión conserva todo lo ya descargado.
  */
-async function serieINE(codigo, { nult = 240 } = {}) {
+async function serieINE(codigo, { nult = 240, periodicidad = 'mensual' } = {}) {
   const datos = await pedirJSON(`${INE_BASE}/${codigo}?nult=${nult}`);
   const nombre = datos?.Nombre ?? '(sin nombre)';
   const filas = Array.isArray(datos?.Data) ? datos.Data : [];
   const valores = {};
   for (const fila of filas) {
     const ano = Number(fila?.Anyo);
-    const mes = Number(fila?.FK_Periodo);
+    const periodo = Number(fila?.FK_Periodo);
     const valor = Number(fila?.Valor);
-    if (!Number.isInteger(ano) || !(mes >= 1 && mes <= 12)) continue;
-    if (!Number.isFinite(valor)) continue;
+    if (!Number.isInteger(ano) || !Number.isFinite(valor)) continue;
+
+    let mes;
+    if (periodicidad === 'trimestral') {
+      // En una serie trimestral, `FK_Periodo` va de 1 a 4 y significa TRIMESTRE,
+      // no mes. Tomarlo como mes metería el cuarto trimestre en abril y toda la
+      // serie quedaría desplazada nueve meses sin que fallara nada. Se ancla en
+      // el mes de CIERRE de cada trimestre, que es a lo que se refiere el dato.
+      if (!(periodo >= 1 && periodo <= 4)) continue;
+      mes = periodo * 3;
+    } else {
+      if (!(periodo >= 1 && periodo <= 12)) continue;
+      mes = periodo;
+    }
     valores[`${ano}-${dosDigitos(mes)}`] = valor;
   }
   return { nombre, valores };
@@ -188,6 +216,22 @@ export const FUENTES = [
       serieOrigen: INE_SERIE_IPC,
     },
     descargar: () => serieINE(INE_SERIE_IPC),
+  },
+  {
+    id: 'ipv-segunda-mano',
+    nombre: 'IPV · índice de vivienda de segunda mano (nacional)',
+    unidad: 'indice',
+    // Trimestral · el dato de un trimestre tarda en publicarse más que un mes.
+    cadenciaMeses: 3,
+    // Un número índice con base 100 en algún año · el rango solo descarta una
+    // respuesta corrupta, no juzga si el mercado subió o bajó.
+    rango: [10, 500],
+    fuente: {
+      nombre: 'INE · API Tempus3',
+      url: `${INE_BASE}/${INE_SERIE_IPV}`,
+      serieOrigen: INE_SERIE_IPV,
+    },
+    descargar: () => serieINE(INE_SERIE_IPV, { periodicidad: 'trimestral' }),
   },
   {
     id: 'irav',
