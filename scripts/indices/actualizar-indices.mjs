@@ -39,12 +39,18 @@ const buscarArg = args.find((a) => a.startsWith('--buscar='));
 if (buscarArg) {
   const [operacion, ...resto] = buscarArg.slice('--buscar='.length).split(':');
   const filtro = resto.join(':');
-  const { total, hallados } = await buscarSeriesINE(operacion, filtro);
+  const { total, hallados, muestra } = await buscarSeriesINE(operacion, filtro);
   process.stdout.write(`\n${total} series en la operación ${operacion} · ${hallados.length} encajan con "${filtro}"\n\n`);
   for (const { cod, nombre } of hallados.slice(0, 40)) {
     process.stdout.write(`   ${cod}\t${nombre}\n`);
   }
   if (hallados.length > 40) process.stdout.write(`\n   … y ${hallados.length - 40} más · afina el filtro\n`);
+  // Cero coincidencias no dice si el filtro es malo o si los nombres no tienen
+  // la forma que se supone · con una muestra real se ve de un vistazo.
+  if (hallados.length === 0) {
+    process.stdout.write('   Muestra de nombres tal como los devuelve el INE:\n');
+    for (const nombre of muestra) process.stdout.write(`     · ${nombre}\n`);
+  }
   process.exit(0);
 }
 
