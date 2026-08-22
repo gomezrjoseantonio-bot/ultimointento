@@ -247,3 +247,52 @@ export async function buscarSeriesINE(operacion, filtro, { paginas = 3 } = {}) {
   }
   return { total, hallados, muestra, topeAlcanzado: paginasLeidas >= paginas };
 }
+
+/** Compara sin distinguir mayúsculas ni acentos · el INE mezcla ambas. */
+const normalizar = (t) =>
+  String(t ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+const encajaCon = (filtro) => {
+  const trozos = normalizar(filtro).split(/\s+/).filter(Boolean);
+  return (texto) => trozos.every((t) => normalizar(texto).includes(t));
+};
+
+/**
+ * Las TABLAS de una operación.
+ *
+ * Es el camino corto que faltaba. Enumerar las series de una operación no vale
+ * —el IPC tiene cientos de miles y la API sirve 10 000 por página—, pero sus
+ * tablas son unas decenas. Se busca la tabla, y de la tabla salen sus series
+ * con nombre y código.
+ */
+export async function buscarTablasINE(operacion, filtro) {
+  const datos = await pedirJSON(
+    `https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/${operacion}`,
+  );
+  const lista = Array.isArray(datos) ? datos : [];
+  const encaja = encajaCon(filtro);
+  return {
+    total: lista.length,
+    hallados: lista
+      .filter((t) => !filtro || encaja(t?.Nombre))
+      .map((t) => ({ id: t?.Id, nombre: t?.Nombre })),
+  };
+}
+
+/** Las series de UNA tabla · con su código, que es lo que hace falta. */
+export async function seriesDeTablaINE(tablaId, filtro) {
+  const datos = await pedirJSON(
+    `https://servicios.ine.es/wstempus/js/ES/SERIES_TABLA/${tablaId}`,
+  );
+  const lista = Array.isArray(datos) ? datos : [];
+  const encaja = encajaCon(filtro);
+  return {
+    total: lista.length,
+    hallados: lista
+      .filter((s) => !filtro || encaja(s?.Nombre))
+      .map((s) => ({ cod: s?.COD, nombre: s?.Nombre })),
+  };
+}

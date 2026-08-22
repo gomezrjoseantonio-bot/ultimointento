@@ -4,8 +4,12 @@
 //   node scripts/indices/actualizar-indices.mjs              descarga y escribe
 //   node scripts/indices/actualizar-indices.mjs --dry-run    enseña, no escribe
 //   node scripts/indices/actualizar-indices.mjs --solo=ipc   una sola serie
+//   node .../actualizar-indices.mjs --buscar=tablas:IPC:general
+//                                     lista las TABLAS de una operación
+//   node .../actualizar-indices.mjs --buscar=tabla:50934:variacion anual
+//                                     lista las series de una tabla, con su código
 //   node .../actualizar-indices.mjs --buscar=IPC:general variacion anual
-//                                                   busca el código de una serie
+//                                     rastrea series de la operación (lento y con tope)
 //
 // Lo corre una tarea programada de GitHub Actions y el resultado se commitea:
 // los ficheros de `public/data/indices/` son datos estáticos que Netlify sirve
@@ -21,7 +25,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FUENTES, buscarSeriesINE } from './fuentes.mjs';
+import { FUENTES, buscarSeriesINE, buscarTablasINE, seriesDeTablaINE } from './fuentes.mjs';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DESTINO = path.join(RAIZ, 'public', 'data', 'indices');
@@ -37,7 +41,35 @@ const ES_PERIODO = /^\d{4}-(0[1-9]|1[0-2])$/;
 // dejó de publicarse, esto encuentra el código que la sustituye.
 const buscarArg = args.find((a) => a.startsWith('--buscar='));
 if (buscarArg) {
-  const [operacion, ...resto] = buscarArg.slice('--buscar='.length).split(':');
+  const consulta = buscarArg.slice('--buscar='.length);
+
+  // Camino corto · las tablas de una operación son decenas, no cientos de miles.
+  if (consulta.startsWith('tablas:')) {
+    const [, operacion, ...resto] = consulta.split(':');
+    const filtro = resto.join(':');
+    const { total, hallados } = await buscarTablasINE(operacion, filtro);
+    process.stdout.write(`\n${total} tablas en ${operacion} · ${hallados.length} encajan con "${filtro}"\n\n`);
+    for (const { id, nombre } of hallados.slice(0, 60)) {
+      process.stdout.write(`   ${id}\t${nombre}\n`);
+    }
+    if (hallados.length > 60) process.stdout.write(`\n   … y ${hallados.length - 60} más\n`);
+    process.exit(0);
+  }
+
+  // Y de la tabla salen sus series, ya con el código que hace falta.
+  if (consulta.startsWith('tabla:')) {
+    const [, tablaId, ...resto] = consulta.split(':');
+    const filtro = resto.join(':');
+    const { total, hallados } = await seriesDeTablaINE(tablaId, filtro);
+    process.stdout.write(`\n${total} series en la tabla ${tablaId} · ${hallados.length} encajan con "${filtro}"\n\n`);
+    for (const { cod, nombre } of hallados.slice(0, 60)) {
+      process.stdout.write(`   ${cod}\t${nombre}\n`);
+    }
+    if (hallados.length > 60) process.stdout.write(`\n   … y ${hallados.length - 60} más\n`);
+    process.exit(0);
+  }
+
+  const [operacion, ...resto] = consulta.split(':');
   const filtro = resto.join(':');
   const { total, hallados, muestra, topeAlcanzado } = await buscarSeriesINE(operacion, filtro);
   process.stdout.write(`\n${total} series en la operación ${operacion} · ${hallados.length} encajan con "${filtro}"\n\n`);
