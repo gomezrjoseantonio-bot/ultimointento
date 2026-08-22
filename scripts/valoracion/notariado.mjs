@@ -19,6 +19,11 @@ const CAPA = 4;
 
 const args = process.argv.slice(2);
 const cpArg = args.find((a) => a.startsWith('--cp='));
+// `--explorar` mira la capa 4 (código postal) · `--explorar=2`, la que se diga.
+const explorarArg = args.find((a) => a === '--explorar' || a.startsWith('--explorar='));
+const capaAExplorar = explorarArg?.includes('=')
+  ? Number(explorarArg.split('=')[1])
+  : CAPA;
 
 // `f=json` en lugar del `f=pbf` que usa el portal · el mismo servicio sirve
 // JSON plano y así no hay que decodificar protobuf para nada.
@@ -49,9 +54,9 @@ if (args.includes('--capas')) {
   process.exit(0);
 }
 
-if (args.includes('--explorar')) {
-  process.stdout.write(`\n── Metadatos de la capa ${CAPA}\n`);
-  const meta = await pedir(`${BASE}/${CAPA}?f=json`);
+if (explorarArg) {
+  process.stdout.write(`\n── Metadatos de la capa ${capaAExplorar}\n`);
+  const meta = await pedir(`${BASE}/${capaAExplorar}?f=json`);
   process.stdout.write(`   nombre · ${meta?.name}\n`);
   process.stdout.write(`   descripción · ${(meta?.description || '(sin descripción)').slice(0, 300)}\n`);
   process.stdout.write(`\n   CAMPOS:\n`);
@@ -70,9 +75,17 @@ if (args.includes('--explorar')) {
   }
   process.stdout.write(`\n── Una fila de muestra (todos los campos)\n`);
   const muestra = await pedir(
-    `${BASE}/${CAPA}/query?f=json&where=1%3D1&outFields=*&returnGeometry=false&resultRecordCount=1`,
+    `${BASE}/${capaAExplorar}/query?f=json&where=1%3D1&outFields=*&returnGeometry=false&resultRecordCount=1`,
   );
   process.stdout.write(`${JSON.stringify(muestra?.features?.[0]?.attributes ?? muestra, null, 2)}\n`);
+
+  // Cuántas filas hay en total. Con una sola foto por zona, el número cuadra
+  // con el número de zonas; si hubiera histórico por año sería un múltiplo, y
+  // eso delataría un periodo aunque no haya un campo que se llame así.
+  const cuenta = await pedir(
+    `${BASE}/${capaAExplorar}/query?f=json&where=1%3D1&returnCountOnly=true`,
+  );
+  process.stdout.write(`\n   filas en la capa · ${cuenta?.count}\n`);
   process.exit(0);
 }
 

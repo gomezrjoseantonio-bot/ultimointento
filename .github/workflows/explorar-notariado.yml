@@ -9,13 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       modo:
-        description: 'Qué mirar'
+        description: 'Qué mirar · capas, explorar (capa 4) o explorar=N para otra capa'
         required: false
         default: 'capas'
-        type: choice
-        options:
-          - capas
-          - explorar
       cp:
         description: 'Código postal concreto. Si se rellena, manda sobre el modo.'
         required: false
