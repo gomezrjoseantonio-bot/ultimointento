@@ -115,16 +115,22 @@ es como se confirma que se está descargando lo que se cree.
 Mientras eso no se compruebe, el dato descargado no debe darse por bueno.
 Detalle completo en `docs/INDICES-automatizacion-v1.md`, apartado 6.
 
-### 2.11 El IPC automático necesita un código de serie
+### 2.11 Índices oficiales · funcionando, con una vigilancia
 
-La tarea de índices funciona y descarga sola el Euríbor y el IRAV. **El IPC no**:
-la serie que se estaba usando dejó de publicarse en diciembre de 2025 y hay que
-sustituirla por la vigente. Hasta entonces la tarea saldrá en rojo cada vez que
-corra, a propósito.
+La tarea programada descarga sola el Euríbor, el IPC y el IRAV, y los tres están
+al día. No hay nada pendiente aquí para publicar.
 
-Se arregla poniendo el código nuevo en `scripts/indices/fuentes.mjs`. El código
-se saca del catálogo del INE, en la tabla del IPC de variación anual del índice
-general nacional. Detalle en `docs/INDICES-automatizacion-v1.md`.
+Lo único que conviene saber: **cuando el INE cambia la base de un índice,
+abandona la serie antigua sin avisar** y hay que poner el código nuevo en
+`scripts/indices/fuentes.mjs`. Ya pasó una vez (agosto 2026). El sistema lo
+detecta solo —la tarea sale en rojo diciendo «¿serie descatalogada?»— y el
+procedimiento para encontrar el sustituto está en
+`docs/INDICES-automatizacion-v1.md`. Si algún mes ves esa tarea en rojo, es esto.
+
+Queda por confirmar un detalle del Euríbor: se toma del portal del BCE, cuya
+serie se llama «Historical close», y para una hipoteca española lo que manda es
+la media mensual del Banco de España. Conviene contrastar un par de meses antes
+de que ese número se use para nada contractual.
 
 ### 2.12 Nota técnica: `react-scripts` está sin mantenimiento
 
