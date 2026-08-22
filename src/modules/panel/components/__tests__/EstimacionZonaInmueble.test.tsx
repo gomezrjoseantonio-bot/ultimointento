@@ -29,6 +29,13 @@ describe('EstimacionZonaInmueble · cuando no hay estimación', () => {
     mockRevalorizarCompra.mockResolvedValue(null);
   });
 
+  // Lo que separa «esta versión no lo trae» de «está tardando».
+  it('dice que está consultando antes de tocar la red', () => {
+    mockEstimarPorZona.mockReturnValue(new Promise(() => {}));
+    render(<EstimacionZonaInmueble datos={completo} />);
+    expect(screen.getByText(/consultando precio de zona/)).toBeTruthy();
+  });
+
   it('dice qué dato del inmueble falta', async () => {
     render(
       <EstimacionZonaInmueble

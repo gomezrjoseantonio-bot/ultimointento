@@ -69,7 +69,15 @@ const EstimacionZonaInmueble: React.FC<{ datos: DatosZonaInmueble }> = ({ datos 
     };
   }, [metrosCuadrados, codigoPostal, regimen, precioCompra, fechaCompra, tipoActivo]);
 
-  if (!listo) return null;
+  // Mientras consulta se DICE que está consultando.
+  //
+  // Devolver `null` aquí era el error: un hueco en blanco no distingue entre
+  // «está pensando», «la petición se quedó colgada» y «esta versión de la app
+  // ni siquiera trae esto». Un texto que aparece antes de tocar la red separa
+  // ese último caso de los otros dos sin necesidad de mirar la consola.
+  if (!listo) {
+    return <p className={styles.oficial}>consultando precio de zona…</p>;
+  }
 
   /**
    * Sin ninguna estimación, se dice POR QUÉ.
