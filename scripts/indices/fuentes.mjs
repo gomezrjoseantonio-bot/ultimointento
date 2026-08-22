@@ -19,12 +19,21 @@ const INE_BASE = 'https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE';
 /**
  * IPC · variación anual del índice general nacional.
  *
- * Verificado en la primera ejecución (22 ago 2026): el INE devuelve esta serie
- * como «Nacional. Índice general. Variación anual», o sea ya en TASA, no como
- * número índice sobre una base. Es justo lo que se aplica a una renta, así que
- * se guarda tal cual y `porcentajeDeActualizacion` la usa sin recalcular nada.
+ * Viene ya en TASA, no como número índice sobre una base: es justo lo que se
+ * aplica a una renta, así que se guarda tal cual y `porcentajeDeActualizacion`
+ * la usa sin recalcular nada.
+ *
+ * El código anterior (`IPC251856`) murió en 2025-12 cuando el INE pasó al
+ * «sistema IPC base 2025»: al cambiar de base no continúan la serie, abren otra
+ * y abandonan la vieja, que sigue respondiendo con normalidad y por eso el fallo
+ * no daba la cara. Lo cazó la guarda por antigüedad.
+ *
+ * El sustituto salió de la TABLA 76134 («Tasa de variación del índice general
+ * nacional. Series desde enero de 1961»), que tiene tres series. Buscarlo
+ * rastreando la operación era imposible: el IPC tiene cientos de miles de series
+ * y la API sirve 10 000 por página.
  */
-const INE_SERIE_IPC = 'IPC251856';
+const INE_SERIE_IPC = 'IPC290750';
 
 /**
  * IRAV · Índice de Referencia para la Actualización anual de los contratos de
