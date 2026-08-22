@@ -85,6 +85,28 @@ function fundir(anterior, nuevos) {
   return { valores: ordenados, revisados, nuevosMeses };
 }
 
+/**
+ * ¿El último dato es tan viejo que la serie huele a descatalogada?
+ *
+ * Una fuente puede seguir respondiendo con normalidad y estar devolviendo una
+ * serie que dejó de publicarse —el INE renumera al cambiar de base—, y eso no
+ * lo detecta ninguna validación de formato ni de rango: los valores son
+ * correctos, solo que viejos. Sin este corte, el fichero se quedaría congelado
+ * y todo seguiría en verde mes tras mes, que es la peor manera de fallar.
+ *
+ * El margen es generoso a propósito (la cadencia más tres meses): un retraso de
+ * publicación es normal, media década de silencio no.
+ */
+function demasiadoVieja(fuente, valores, hoy) {
+  const ultimoPeriodo = Object.keys(valores).sort().pop();
+  if (!ultimoPeriodo) return null;
+  const [a, m] = ultimoPeriodo.split('-').map(Number);
+  const meses = (hoy.getUTCFullYear() - a) * 12 + (hoy.getUTCMonth() + 1 - m);
+  const tope = fuente.cadenciaMeses + 3;
+  if (meses <= tope) return null;
+  return `el último dato es de ${ultimoPeriodo}, hace ${meses} meses (tope ${tope}) · ¿serie descatalogada?`;
+}
+
 const ultimo = (valores) => {
   const claves = Object.keys(valores).sort();
   return claves.length ? claves[claves.length - 1] : null;
@@ -104,7 +126,9 @@ async function procesar(fuente) {
   // código de serie apunta a lo que creemos. Se imprime siempre, a propósito.
   process.stdout.write(`   serie en origen · "${descarga.nombre}"\n`);
 
-  const problema = validar(fuente, descarga.valores);
+  const problema =
+    validar(fuente, descarga.valores) ||
+    demasiadoVieja(fuente, descarga.valores, new Date());
   if (problema) {
     process.stdout.write(`   ✗ validación fallida · ${problema}\n`);
     return { id: fuente.id, ok: false, motivo: problema };
