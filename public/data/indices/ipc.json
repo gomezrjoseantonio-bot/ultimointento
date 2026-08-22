@@ -6,10 +6,10 @@
   "cadenciaMeses": 1,
   "fuente": {
     "nombre": "INE · API Tempus3",
-    "url": "https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/IPC251856",
-    "serieOrigen": "IPC251856"
+    "url": "https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/IPC290750",
+    "serieOrigen": "IPC290750"
   },
-  "actualizadoEn": "2026-08-22T12:55:53.797Z",
+  "actualizadoEn": "2026-08-22T14:56:59.665Z",
   "valores": {
     "1976-01": 13.9,
     "1976-02": 14.1,
@@ -610,6 +610,13 @@
     "2025-09": 3,
     "2025-10": 3.1,
     "2025-11": 3,
-    "2025-12": 2.9
+    "2025-12": 2.9,
+    "2026-01": 2.3,
+    "2026-02": 2.3,
+    "2026-03": 3.4,
+    "2026-04": 3.2,
+    "2026-05": 3.2,
+    "2026-06": 3.2,
+    "2026-07": 3.6
   }
 }
