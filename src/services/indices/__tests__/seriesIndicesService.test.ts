@@ -26,6 +26,7 @@ describe('seriesIndicesService · lectura por mes', () => {
     variacionInteranual,
     porcentajeDeActualizacion,
     ultimoPeriodo,
+    variacionEntre,
     mesesDeRetraso,
     esSerieValida,
     periodoDe,
@@ -84,6 +85,28 @@ describe('seriesIndicesService · lectura por mes', () => {
     expect(mesesDeRetraso(serie, '2026-08-22')).toBe(0);
     expect(mesesDeRetraso(serie, '2026-11-02')).toBe(3);
     expect(mesesDeRetraso(serieEuribor({}), '2026-08-22')).toBeNull();
+  });
+
+  // Lo que revaloriza una compra · IPV trimestral, con la compra en un mes que
+  // no tiene dato propio.
+  it('compara dos momentos aunque el mes exacto no esté publicado', () => {
+    const ipv = serieIPC({ '2015-03': 100, '2015-06': 102, '2026-06': 153 });
+    // Compra en mayo de 2015 · manda el trimestre cerrado en marzo.
+    expect(variacionEntre(ipv, '2015-05', '2026-08')).toBeCloseTo(1.53, 10);
+    // Compra en junio · ya cuenta el trimestre de junio.
+    expect(variacionEntre(ipv, '2015-06', '2026-08')).toBeCloseTo(1.5, 10);
+  });
+
+  it('no ancla una fecha en un dato de hace más de un año', () => {
+    const ipv = serieIPC({ '2015-03': 100, '2026-06': 153 });
+    // Entre 2015-03 y 2020-01 hay casi cinco años de silencio: eso ya no
+    // describe el mismo mercado y es mejor no responder.
+    expect(variacionEntre(ipv, '2020-01', '2026-08')).toBeNull();
+  });
+
+  it('una serie en porcentaje no se puede comparar así', () => {
+    const euribor = serieEuribor({ '2015-03': 0.2, '2026-06': 2.8 });
+    expect(variacionEntre(euribor, '2015-03', '2026-06')).toBeNull();
   });
 
   it('rechaza un fichero que no tenga la forma esperada', () => {

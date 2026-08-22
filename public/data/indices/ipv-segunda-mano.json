@@ -1,0 +1,14 @@
+{
+  "esquema": 1,
+  "id": "ipv-segunda-mano",
+  "nombre": "IPV · índice de vivienda de segunda mano (nacional)",
+  "unidad": "indice",
+  "cadenciaMeses": 3,
+  "fuente": {
+    "nombre": "INE · API Tempus3",
+    "url": "https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/IPV1618",
+    "serieOrigen": "IPV1618"
+  },
+  "actualizadoEn": null,
+  "valores": {}
+}
