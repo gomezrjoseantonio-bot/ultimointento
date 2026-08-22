@@ -17,6 +17,11 @@ on:
   # La PRIMERA ejecución hay que lanzarla desde aquí a mano y leer el registro:
   # es donde se confirma que los códigos de serie apuntan a lo que creemos.
   workflow_dispatch:
+    inputs:
+      buscar:
+        description: 'Mantenimiento · buscar el código de una serie del INE, formato OPERACION:texto (p. ej. IPC:general variacion anual). En blanco = actualizar normal.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -39,7 +44,14 @@ jobs:
       # del proyecto, y así el trabajo tarda segundos en vez de minutos.
       - name: Descargar y validar
         id: descarga
-        run: node scripts/indices/actualizar-indices.mjs
+        env:
+          BUSCAR: ${{ github.event.inputs.buscar }}
+        run: |
+          if [ -n "$BUSCAR" ]; then
+            node scripts/indices/actualizar-indices.mjs "--buscar=$BUSCAR"
+          else
+            node scripts/indices/actualizar-indices.mjs
+          fi
 
       # `always()` porque si una fuente falla y otra no, lo que sí se ha
       # descargado bien tiene que quedar guardado igualmente.
