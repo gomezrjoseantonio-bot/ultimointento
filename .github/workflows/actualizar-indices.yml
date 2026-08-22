@@ -33,7 +33,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       # Sin `npm ci` a propósito · el script solo usa Node, no depende de nada
       # del proyecto, y así el trabajo tarda segundos en vez de minutos.

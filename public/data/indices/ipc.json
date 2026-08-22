@@ -1,8 +1,8 @@
 {
   "esquema": 1,
   "id": "ipc",
-  "nombre": "IPC · índice general nacional",
-  "unidad": "indice",
+  "nombre": "IPC · variación anual del índice general nacional",
+  "unidad": "porcentaje",
   "cadenciaMeses": 1,
   "fuente": {
     "nombre": "INE · API Tempus3",

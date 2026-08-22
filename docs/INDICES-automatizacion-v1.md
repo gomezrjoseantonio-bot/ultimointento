@@ -88,44 +88,61 @@ No se ha creado ningún store nuevo de IndexedDB, así que **no hay bump de
 No controlamos el formato de cada organismo, así que cada serie declara su
 `unidad` y el servicio se encarga:
 
-- **`porcentaje`** — el valor ya es una tasa (Euríbor, IRAV). Se usa tal cual.
-- **`indice`** — es un número índice sobre una base (IPC). Lo que se aplica a una
-  renta es la variación respecto al mismo mes del año anterior, que calcula
+- **`porcentaje`** — el valor ya es una tasa. Se usa tal cual.
+- **`indice`** — es un número índice sobre una base. Lo que se aplica a una renta
+  es la variación respecto al mismo mes del año anterior, que calcula
   `variacionInteranual`.
 
 `porcentajeDeActualizacion` unifica las dos: quien llama no debería tener que
 saber cuál es cuál.
 
-## 6. ⚠️ Lo que falta comprobar antes de fiarse
+Que ese campo existiera salvó la primera ejecución. Se dio por supuesto que el
+IPC del INE vendría como número índice sobre base 2021, y llega ya como
+**variación anual** — una tasa. Con la unidad declarada por serie, corregirlo fue
+cambiar dos líneas en `fuentes.mjs`; sin ella habría habido que tocar el
+servicio, sus tests y los llamadores. **Hoy las tres series son `porcentaje`**, y
+`indice` se conserva porque el próximo organismo publicará de la otra forma.
 
-**Los códigos de serie no están verificados contra las APIs reales.** El entorno
-donde se programó esto no tenía salida a internet, así que ni el código del IPC
-(`IPC251856`), ni el del IRAV (`IRAV001`), ni el CSV del BCE se han podido llamar
-de verdad.
+## 6. Qué se comprobó en la primera ejecución
 
-Cómo se comprueba, y hay que hacerlo antes de dar el dato por bueno:
+Ejecutada a mano el 22 de agosto de 2026
+([run 32574078110](https://github.com/gomezrjoseantonio-bot/ultimointento/actions/runs/32574078110)).
+El circuito completo funcionó: descarga → validación → commit automático en
+`main` → redespliegue.
 
-1. Actions → «Actualizar índices oficiales» → **Run workflow** (a mano).
-2. Leer el registro. Cada adaptador imprime el **nombre de la serie tal como lo
-   devuelve el organismo** — ahí se ve si se está bajando lo que se cree.
-3. Revisar el diff del commit automático: número de meses y último valor.
+| Serie | Nombre según el organismo | Resultado |
+|---|---|---|
+| Euríbor 12m | «Euribor 1-year - Historical close» | 391 meses · 1994-01 → 2026-07 · último **2,855087** |
+| IPC | «Nacional. Índice general. Variación anual» | **rechazado** · venía como tasa, no como índice |
+| IRAV | «Total Nacional. Índice general. Variación anual» | 21 meses · 2024-11 → 2026-07 · último **2,49** |
 
-En local, sin escribir nada: `node scripts/indices/actualizar-indices.mjs --dry-run`
+**El IPC lo paró la validación**, no una persona: el rango 50–250 esperaba un
+número índice y llegó un 13,9 de enero de 1976. Corregido a `porcentaje` con
+rango −10 a 30, que es lo que la serie es de verdad. Que el fichero NO se
+escribiera con la unidad equivocada es exactamente el comportamiento buscado.
 
-Si un código está mal, se cambia en `scripts/indices/fuentes.mjs` y se vuelve a
-lanzar. La validación por rangos ya impide que una respuesta corrupta acabe en el
-fichero, pero **no puede detectar que se ha bajado la serie equivocada**: eso solo
-lo ve una persona leyendo el nombre.
+**El IRAV quedó confirmado** por su fecha de arranque: una serie que empieza en
+noviembre de 2024 solo puede ser el índice nuevo, no el IPC de siempre.
 
-**Sobre el Euríbor:** el valor que aplica a una hipoteca en España es el que
-publica el Banco de España (y el BOE). Aquí se toma del portal de datos del BCE
-porque es una API estable y sin clave, pero conviene contrastar un par de meses
-contra la publicación del BdE antes de que este número toque nada contractual.
-Además, la serie Euríbor la licencia EMMI y redistribuirla tiene condiciones.
+**Del euríbor queda un fleco.** El nombre corto dice «Historical close», y para
+una hipoteca española lo que manda es la **media mensual**, no el cierre del
+último día. El adaptador ahora imprime también `TITLE_COMPL`, que es donde el
+BCE aclara si el valor mensual es la media de las observaciones del periodo. Hay
+que leerlo en la siguiente ejecución y, si resulta ser un cierre, cambiar de
+serie. Hasta entonces, **el euríbor descargado no debe darse por bueno para nada
+contractual**, y conviene contrastar un par de meses contra la publicación del
+Banco de España, que es la oficial en España. Además la serie Euríbor la licencia
+EMMI y redistribuirla tiene condiciones.
 
 **Sobre el IRAV:** desde 2025 es el índice que sustituye al IPC para actualizar
 rentas de vivienda habitual. Conviene confirmar con asesor cuál aplica a cada
 contrato según su fecha de firma.
+
+Cómo repetir la comprobación:
+
+1. Actions → «Actualizar índices oficiales» → **Run workflow**.
+2. Leer las líneas `serie en origen` del paso «Descargar y validar».
+3. En local, sin escribir nada: `node scripts/indices/actualizar-indices.mjs --dry-run`
 
 ## 7. Lo siguiente
 
