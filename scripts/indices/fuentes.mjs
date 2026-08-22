@@ -194,3 +194,35 @@ export const FUENTES = [
     descargar: () => serieINE(INE_SERIE_IRAV),
   },
 ];
+
+/**
+ * Busca series de una operación del INE por texto de su nombre.
+ *
+ * Es la herramienta de mantenimiento que hace falta cuando la guarda por
+ * antigüedad avisa de que una serie dejó de publicarse: el INE la renumera al
+ * cambiar de base, y el código nuevo hay que encontrarlo. Sin esto había que ir
+ * a picar a mano por el catálogo web.
+ *
+ * `operacion` es el código de la operación (p. ej. `IPC`), y `filtro` un texto
+ * que debe aparecer en el nombre de la serie, sin distinguir mayúsculas ni
+ * acentos.
+ */
+export async function buscarSeriesINE(operacion, filtro) {
+  const url = `https://servicios.ine.es/wstempus/js/ES/SERIES_OPERACION/${operacion}`;
+  const datos = await pedirJSON(url);
+  const lista = Array.isArray(datos) ? datos : [];
+  const normal = (t) =>
+    String(t ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  const trozos = normal(filtro).split(/\s+/).filter(Boolean);
+  const encaja = (nombre) => trozos.every((t) => normal(nombre).includes(t));
+  return {
+    total: lista.length,
+    hallados: lista
+      .filter((s) => encaja(s?.Nombre))
+      .map((s) => ({ cod: s?.COD, nombre: s?.Nombre })),
+  };
+}
+

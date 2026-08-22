@@ -4,6 +4,8 @@
 //   node scripts/indices/actualizar-indices.mjs              descarga y escribe
 //   node scripts/indices/actualizar-indices.mjs --dry-run    enseña, no escribe
 //   node scripts/indices/actualizar-indices.mjs --solo=ipc   una sola serie
+//   node .../actualizar-indices.mjs --buscar=IPC:general variacion anual
+//                                                   busca el código de una serie
 //
 // Lo corre una tarea programada de GitHub Actions y el resultado se commitea:
 // los ficheros de `public/data/indices/` son datos estáticos que Netlify sirve
@@ -19,7 +21,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FUENTES } from './fuentes.mjs';
+import { FUENTES, buscarSeriesINE } from './fuentes.mjs';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DESTINO = path.join(RAIZ, 'public', 'data', 'indices');
@@ -30,6 +32,21 @@ const soloArg = args.find((a) => a.startsWith('--solo='));
 const solo = soloArg ? soloArg.slice('--solo='.length) : null;
 
 const ES_PERIODO = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+// Modo mantenimiento · cuando la guarda por antigüedad avisa de que una serie
+// dejó de publicarse, esto encuentra el código que la sustituye.
+const buscarArg = args.find((a) => a.startsWith('--buscar='));
+if (buscarArg) {
+  const [operacion, ...resto] = buscarArg.slice('--buscar='.length).split(':');
+  const filtro = resto.join(':');
+  const { total, hallados } = await buscarSeriesINE(operacion, filtro);
+  process.stdout.write(`\n${total} series en la operación ${operacion} · ${hallados.length} encajan con "${filtro}"\n\n`);
+  for (const { cod, nombre } of hallados.slice(0, 40)) {
+    process.stdout.write(`   ${cod}\t${nombre}\n`);
+  }
+  if (hallados.length > 40) process.stdout.write(`\n   … y ${hallados.length - 40} más · afina el filtro\n`);
+  process.exit(0);
+}
 
 /**
  * Comprueba lo descargado antes de dejarlo entrar.
