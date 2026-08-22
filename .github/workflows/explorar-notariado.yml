@@ -1,0 +1,35 @@
+# Mirar el servicio de precios del Notariado · solo a mano.
+#
+# No tiene horario: es la herramienta para inspeccionar qué publica ese servicio
+# y con qué forma, que es lo que decide cómo se construye la valoración. No
+# escribe nada en el repositorio.
+name: Explorar precios del Notariado
+
+on:
+  workflow_dispatch:
+    inputs:
+      cp:
+        description: 'Código postal a consultar. En blanco = volcar metadatos y dominios de la capa.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  explorar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Consultar
+        env:
+          CP: ${{ github.event.inputs.cp }}
+        run: |
+          if [ -n "$CP" ]; then
+            node scripts/valoracion/notariado.mjs "--cp=$CP"
+          else
+            node scripts/valoracion/notariado.mjs --explorar
+          fi
