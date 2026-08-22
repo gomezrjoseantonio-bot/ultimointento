@@ -32,6 +32,23 @@ async function pedir(url) {
   return dato;
 }
 
+// Qué más hay en el servicio.
+//
+// La capa 4 da el precio por código postal pero NO dice de qué periodo son las
+// operaciones, y sus códigos `tipo_construccion_id` / `clase_finca_urbana_id`
+// vienen sin diccionario. Las dos cosas suelen estar en otras capas o tablas
+// del mismo FeatureServer, así que lo primero es ver qué hay.
+if (args.includes('--capas')) {
+  process.stdout.write('\n── Capas y tablas del servicio\n');
+  const info = await pedir(`${BASE}?f=json`);
+  process.stdout.write(`   descripción · ${(info?.serviceDescription || '(vacía)').slice(0, 500)}\n`);
+  process.stdout.write(`   copyright · ${(info?.copyrightText || '(vacío)').slice(0, 300)}\n\n`);
+  for (const c of [...(info?.layers ?? []), ...(info?.tables ?? [])]) {
+    process.stdout.write(`   ${c.id}\t${c.name}${c.type ? `\t(${c.type})` : ''}\n`);
+  }
+  process.exit(0);
+}
+
 if (args.includes('--explorar')) {
   process.stdout.write(`\n── Metadatos de la capa ${CAPA}\n`);
   const meta = await pedir(`${BASE}/${CAPA}?f=json`);
@@ -78,5 +95,5 @@ if (cpArg) {
   process.exit(0);
 }
 
-process.stderr.write('Usa --explorar o --cp=NNNNN\n');
+process.stderr.write('Usa --capas, --explorar o --cp=NNNNN\n');
 process.exit(2);

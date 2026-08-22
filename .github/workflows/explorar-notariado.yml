@@ -8,8 +8,16 @@ name: Explorar precios del Notariado
 on:
   workflow_dispatch:
     inputs:
+      modo:
+        description: 'Qué mirar'
+        required: false
+        default: 'capas'
+        type: choice
+        options:
+          - capas
+          - explorar
       cp:
-        description: 'Código postal a consultar. En blanco = volcar metadatos y dominios de la capa.'
+        description: 'Código postal concreto. Si se rellena, manda sobre el modo.'
         required: false
         default: ''
 
@@ -27,9 +35,10 @@ jobs:
       - name: Consultar
         env:
           CP: ${{ github.event.inputs.cp }}
+          MODO: ${{ github.event.inputs.modo }}
         run: |
           if [ -n "$CP" ]; then
             node scripts/valoracion/notariado.mjs "--cp=$CP"
           else
-            node scripts/valoracion/notariado.mjs --explorar
+            node scripts/valoracion/notariado.mjs "--${MODO:-capas}"
           fi
