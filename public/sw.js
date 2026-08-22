@@ -1,12 +1,14 @@
 // ATLAS PWA Service Worker
 // Provides basic caching for offline functionality
 
-const CACHE_VERSION = 'atlas-pwa-v3';
+const CACHE_VERSION = 'atlas-pwa-v4';
 const STATIC_CACHE = `atlas-static-${CACHE_VERSION}`;
 const PRECACHE_URLS = [
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
+  '/icon-192x192.png',
+  '/icon-512x512.png',
   '/icon-192x192.svg',
   '/icon-512x512.svg'
 ];

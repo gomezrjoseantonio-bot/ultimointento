@@ -1,0 +1,14 @@
+{
+  "esquema": 1,
+  "id": "irav",
+  "nombre": "IRAV · actualización anual de contratos de arrendamiento de vivienda",
+  "unidad": "porcentaje",
+  "cadenciaMeses": 1,
+  "fuente": {
+    "nombre": "INE · API Tempus3",
+    "url": "https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/IRAV001",
+    "serieOrigen": "IRAV001"
+  },
+  "actualizadoEn": null,
+  "valores": {}
+}

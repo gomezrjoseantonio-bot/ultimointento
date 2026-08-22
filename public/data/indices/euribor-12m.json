@@ -1,0 +1,14 @@
+{
+  "esquema": 1,
+  "id": "euribor-12m",
+  "nombre": "Euríbor a 12 meses · media mensual",
+  "unidad": "porcentaje",
+  "cadenciaMeses": 1,
+  "fuente": {
+    "nombre": "Banco Central Europeo · Data Portal",
+    "url": "https://data-api.ecb.europa.eu/service/data/FM/M.U2.EUR.RT.MM.EURIBOR1YD_.HSTA",
+    "serieOrigen": "FM.M.U2.EUR.RT.MM.EURIBOR1YD_.HSTA"
+  },
+  "actualizadoEn": null,
+  "valores": {}
+}

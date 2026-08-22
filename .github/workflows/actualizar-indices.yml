@@ -1,0 +1,57 @@
+# Actualiza solas las series oficiales · Euríbor, IPC e IRAV.
+#
+# Descarga, valida y commitea `public/data/indices/*.json`. Netlify redespliega
+# al recibir el commit, así que la app se entera sin que nadie toque nada.
+#
+# Los días están elegidos por cuándo publica cada organismo: el euríbor del mes
+# cerrado sale a principios del siguiente, y el INE publica IPC e IRAV hacia
+# mediados. Se pasa tres veces para no depender de que un día concreto salga
+# bien; si no hay dato nuevo, el script no escribe y no hay commit.
+name: Actualizar índices oficiales
+
+on:
+  schedule:
+    - cron: '0 5 3 * *'
+    - cron: '0 5 16 * *'
+    - cron: '0 5 25 * *'
+  # La PRIMERA ejecución hay que lanzarla desde aquí a mano y leer el registro:
+  # es donde se confirma que los códigos de serie apuntan a lo que creemos.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: actualizar-indices
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Sin `npm ci` a propósito · el script solo usa Node, no depende de nada
+      # del proyecto, y así el trabajo tarda segundos en vez de minutos.
+      - name: Descargar y validar
+        id: descarga
+        run: node scripts/indices/actualizar-indices.mjs
+
+      # `always()` porque si una fuente falla y otra no, lo que sí se ha
+      # descargado bien tiene que quedar guardado igualmente.
+      - name: Commitear los cambios
+        if: always()
+        run: |
+          if [ -z "$(git status --porcelain public/data/indices)" ]; then
+            echo "Sin cambios en las series."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/indices
+          git commit -m "chore(indices): actualización automática de series oficiales"
+          git push

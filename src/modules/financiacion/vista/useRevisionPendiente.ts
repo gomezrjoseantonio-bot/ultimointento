@@ -17,6 +17,8 @@ import type { RevisionPendiente } from '../../../services/bonificaciones/revisio
 import { confirmarRevision } from '../../../services/prestamos/confirmarRevision';
 import type { LoQueDecidioElBanco } from '../../../services/prestamos/confirmarRevision';
 import { getFinancialValuesSnapshot } from '../../../services/financialValuesService';
+import { publicacionDelIndice } from '../../../services/prestamos/indicePublicado';
+import { cargarSerie, valorEnMes } from '../../../services/indices/seriesIndicesService';
 import { tramoVigente } from '../../../services/prestamos/tramosDeTipo';
 import { esNumero, fmtNumeroEs, parseNum } from '../wizards/numeros';
 import type { Prestamo } from '../../../types/prestamos';
@@ -32,6 +34,18 @@ export interface RevisionEnCurso {
   setIndiceRaw: (v: string) => void;
   /** De dónde salió el índice que aparece escrito · para poder decirlo. */
   indiceSugerido: number | null;
+  /**
+   * Qué clase de número se ha propuesto.
+   *
+   * `'publicado'` es el euríbor del mes que manda según la escritura, tal como
+   * lo publicó el organismo. `'manual'` es el de «Actualizar valores», que es
+   * el de HOY y solo sirve de orientación. La pantalla tiene que poder decir
+   * cuál de los dos está viendo el usuario, porque uno se acepta y el otro se
+   * comprueba.
+   */
+  origenSugerido: 'publicado' | 'manual' | null;
+  /** El mes del que sale · solo cuando `origenSugerido` es `'publicado'`. */
+  periodoSugerido: string | null;
   /** Si en la fecha de la revisión manda un índice · si no, no se pregunta. */
   pideIndice: boolean;
   confirmar: () => Promise<void>;
@@ -53,6 +67,8 @@ export function useRevisionPendiente(
   const [decision, setDecision] = useState<LoQueDecidioElBanco>({});
   const [indiceRaw, setIndiceRaw] = useState('');
   const [indiceSugerido, setIndiceSugerido] = useState<number | null>(null);
+  const [origenSugerido, setOrigenSugerido] = useState<'publicado' | 'manual' | null>(null);
+  const [periodoSugerido, setPeriodoSugerido] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [atendida, setAtendida] = useState(false);
 
@@ -87,15 +103,25 @@ export function useRevisionPendiente(
     setDecision({});
     setIndiceRaw('');
     setIndiceSugerido(null);
+    setOrigenSugerido(null);
+    setPeriodoSugerido(null);
     setAtendida(false);
   }, [prestamo.id]);
 
   /**
-   * El euríbor que ya tienes apuntado, propuesto de entrada.
+   * El euríbor propuesto de entrada · el del mes que manda, si se sabe cuál es.
    *
-   * Vive en «Actualizar valores» y lo actualizas para todo el patrimonio, así
-   * que tecleárselo otra vez a cada hipoteca era pedir dos veces el mismo dato
-   * — y dos sitios donde escribir el mismo número acaban diciendo dos números.
+   * `publicacionDelIndice` ya sabía a QUÉ MES hay que ir —lo dice la escritura
+   * por su desfase—, pero hasta ahora no había dónde ir a buscarlo: en
+   * «Actualizar valores» solo cabe un euríbor, el de hoy. Para una revisión de
+   * agosto que se confirma en octubre, ese número no tiene por qué parecerse al
+   * que aplicó el banco, y ofrecerlo invita a aceptarlo.
+   *
+   * Con la serie oficial (`public/data/indices`) el mes que manda tiene valor
+   * propio, así que se propone ESE. Cuando la escritura no dice el desfase, o
+   * ese mes todavía no está publicado, se vuelve al de «Actualizar valores» —
+   * pero marcado como lo que es, para que la pantalla no lo presente como si
+   * fuera el bueno.
    *
    * Se **propone**, no se impone: lo que manda es la carta del banco, y si dice
    * otra cosa se escribe encima. Al confirmar, el valor queda guardado como el
@@ -104,12 +130,31 @@ export function useRevisionPendiente(
   useEffect(() => {
     if (!pendiente || !pideIndice) return;
     let cancelado = false;
+    const proponer = (valor: number, origen: 'publicado' | 'manual', periodo: string | null) => {
+      if (cancelado) return;
+      setIndiceSugerido(valor);
+      setOrigenSugerido(origen);
+      setPeriodoSugerido(periodo);
+      setIndiceRaw((actual) => (actual === '' ? fmtNumeroEs(valor, 3) : actual));
+    };
     (async () => {
+      const publicacion = publicacionDelIndice(prestamo, pendiente.aplicaDesde);
+      if (publicacion) {
+        try {
+          const serie = await cargarSerie('euribor-12m');
+          const publicado = serie ? valorEnMes(serie, publicacion) : null;
+          if (publicado) {
+            proponer(publicado.valor, 'publicado', publicado.periodo);
+            return;
+          }
+        } catch {
+          // Serie no disponible · se sigue por el camino de siempre.
+        }
+      }
       try {
         const { euriborPercent } = await getFinancialValuesSnapshot();
-        if (cancelado || euriborPercent == null) return;
-        setIndiceSugerido(euriborPercent);
-        setIndiceRaw((actual) => (actual === '' ? fmtNumeroEs(euriborPercent, 3) : actual));
+        if (euriborPercent == null) return;
+        proponer(euriborPercent, 'manual', null);
       } catch {
         // Sin valoraciones se teclea a mano · no se inventa un índice.
       }
@@ -117,7 +162,7 @@ export function useRevisionPendiente(
     return () => {
       cancelado = true;
     };
-  }, [pendiente, pideIndice, prestamo.id]);
+  }, [pendiente, pideIndice, prestamo]);
 
   const responder = useCallback((bonificacionId: string, valor: 'CUMPLIDA' | 'PERDIDA') => {
     // Volver a pulsar lo mismo lo suelta · sin esto no hay forma de retirar una
@@ -161,6 +206,8 @@ export function useRevisionPendiente(
     indiceRaw,
     setIndiceRaw,
     indiceSugerido,
+    origenSugerido,
+    periodoSugerido,
     pideIndice,
     confirmar,
     // Descartar no confirma nada · la revisión seguirá pendiente mañana. Es
