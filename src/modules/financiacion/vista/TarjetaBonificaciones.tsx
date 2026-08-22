@@ -47,6 +47,8 @@ export interface RevisionPendiente {
   indiceRaw: string;
   setIndiceRaw: (v: string) => void;
   indiceSugerido: number | null;
+  origenSugerido: 'publicado' | 'manual' | null;
+  periodoSugerido: string | null;
   confirmar: () => void;
   descartar: () => void;
   guardando: boolean;
@@ -202,13 +204,20 @@ const TarjetaBonificaciones: React.FC<TarjetaBonificacionesProps> = ({
             </div>
             {/* De QUÉ euríbor se habla · ver `indicePublicado`. Aquí
                 ponía «el que tienes en Actualizar valores», que es el de
-                HOY, y ofrecerlo invita a aceptarlo. */}
+                HOY, y ofrecerlo invita a aceptarlo.
+
+                Cuando el número escrito sale de la serie oficial del mes que
+                manda, se dice: ya no hay que ir a buscarlo, solo comprobar que
+                la carta dice lo mismo. Pedir que lo busque quien ya lo tiene
+                delante es mandarle a hacer un trabajo hecho. */}
             <span className={rev.revPista}>
-              {publicacion
-                ? `el euríbor publicado de ${mesAnio(`${publicacion}-01`)} · lo dice tu carta`
-                : revision.indiceSugerido != null
-                  ? 'el de Actualizar valores es el de HOY · escribe el de tu carta'
-                  : 'sin diferencial · vacío si la carta no lo dice'}
+              {revision.origenSugerido === 'publicado' && revision.periodoSugerido
+                ? `euríbor publicado de ${mesAnio(`${revision.periodoSugerido}-01`)} · comprueba que tu carta dice lo mismo`
+                : publicacion
+                  ? `el euríbor publicado de ${mesAnio(`${publicacion}-01`)} · lo dice tu carta`
+                  : revision.indiceSugerido != null
+                    ? 'el de Actualizar valores es el de HOY · escribe el de tu carta'
+                    : 'sin diferencial · vacío si la carta no lo dice'}
             </span>
           </div>
         )}

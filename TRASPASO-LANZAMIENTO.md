@@ -103,7 +103,19 @@ Sin resolver, y necesarios antes de abrir al público:
 - Al tratarse de datos financieros personales, revisar dónde se almacenan y qué
   se informa al usuario.
 
-### 2.10 Nota técnica: `react-scripts` está sin mantenimiento
+### 2.10 Primera ejecución de la tarea de índices oficiales
+
+Hay una tarea programada que actualiza sola el Euríbor, el IPC y el IRAV
+(`.github/workflows/actualizar-indices.yml`). **Su primera ejecución hay que
+lanzarla a mano** desde la pestaña Actions y leer el registro: los códigos de
+serie del INE y del BCE se escribieron sin poder llamar a las APIs reales, y el
+registro imprime el nombre de la serie tal como lo devuelve cada organismo, que
+es como se confirma que se está descargando lo que se cree.
+
+Mientras eso no se compruebe, el dato descargado no debe darse por bueno.
+Detalle completo en `docs/INDICES-automatizacion-v1.md`, apartado 6.
+
+### 2.11 Nota técnica: `react-scripts` está sin mantenimiento
 
 El proyecto usa Create App (`react-scripts` 5.0.1), un empaquetador que ya no
 recibe mantenimiento activo. **No impide publicar** y no es urgente, pero quien

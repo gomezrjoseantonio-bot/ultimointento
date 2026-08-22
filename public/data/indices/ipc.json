@@ -1,0 +1,14 @@
+{
+  "esquema": 1,
+  "id": "ipc",
+  "nombre": "IPC · índice general nacional",
+  "unidad": "indice",
+  "cadenciaMeses": 1,
+  "fuente": {
+    "nombre": "INE · API Tempus3",
+    "url": "https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/IPC251856",
+    "serieOrigen": "IPC251856"
+  },
+  "actualizadoEn": null,
+  "valores": {}
+}
