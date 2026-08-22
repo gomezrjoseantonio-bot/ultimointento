@@ -207,10 +207,7 @@ export const FUENTES = [
  * que debe aparecer en el nombre de la serie, sin distinguir mayúsculas ni
  * acentos.
  */
-export async function buscarSeriesINE(operacion, filtro) {
-  const url = `https://servicios.ine.es/wstempus/js/ES/SERIES_OPERACION/${operacion}`;
-  const datos = await pedirJSON(url);
-  const lista = Array.isArray(datos) ? datos : [];
+export async function buscarSeriesINE(operacion, filtro, { paginas = 12 } = {}) {
   const normal = (t) =>
     String(t ?? '')
       .normalize('NFD')
@@ -218,14 +215,26 @@ export async function buscarSeriesINE(operacion, filtro) {
       .toLowerCase();
   const trozos = normal(filtro).split(/\s+/).filter(Boolean);
   const encaja = (nombre) => trozos.every((t) => normal(nombre).includes(t));
-  return {
-    total: lista.length,
-    hallados: lista
-      .filter((s) => encaja(s?.Nombre))
-      .map((s) => ({ cod: s?.COD, nombre: s?.Nombre })),
-    // Para poder distinguir «el filtro no acierta» de «los nombres no son como
-    // creía»: sin esto, un cero es indistinguible de un campo mal leído.
-    muestra: lista.slice(0, 8).map((s) => `${s?.COD} · ${s?.Nombre}`),
-  };
-}
 
+  // La API devuelve como mucho 10 000 series por página, y la operación IPC
+  // tiene muchas más: la primera búsqueda daba 13 resultados, todos variantes
+  // «General sin tabaco», «General sin alimentos»… La serie general limpia
+  // estaba fuera de la primera página, y sin paginar era invisible.
+  const hallados = [];
+  const muestra = [];
+  let total = 0;
+  for (let pagina = 1; pagina <= paginas; pagina += 1) {
+    const url = `https://servicios.ine.es/wstempus/js/ES/SERIES_OPERACION/${operacion}?page=${pagina}`;
+    const datos = await pedirJSON(url);
+    const lista = Array.isArray(datos) ? datos : [];
+    if (lista.length === 0) break;
+    total += lista.length;
+    for (const s of lista) {
+      if (encaja(s?.Nombre)) hallados.push({ cod: s?.COD, nombre: s?.Nombre });
+    }
+    if (muestra.length < 8) {
+      for (const s of lista.slice(0, 8 - muestra.length)) muestra.push(`${s?.COD} · ${s?.Nombre}`);
+    }
+  }
+  return { total, hallados, muestra };
+}
