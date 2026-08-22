@@ -1,68 +1,110 @@
-// Lo que se paga en la zona del inmueble, junto a su casilla de valoración.
+// Cuánto puede valer el inmueble, por dos caminos que se equivocan distinto.
 //
-// A diferencia del euríbor o el IPC, esto NO se escribe solo en el campo. Un
-// índice oficial tiene un único valor correcto y discutirlo no tiene sentido;
-// lo que vale un piso concreto, no: la media de su código postal no sabe en qué
-// planta está, si tiene ascensor ni si está reformado. Rellenar la casilla con
-// ella sería convertir una referencia en una afirmación.
+//   por zona   · m² × lo que se paga por m² en su código postal (Notariado)
+//   por compra · lo que costó, actualizado con el IPV del INE
 //
-// Así que se enseña al lado, con de dónde sale y cuántas escrituras la
-// sostienen, y el dueño decide.
+// Se enseñan los dos y la horquilla entre ellos. Ninguno es mejor: el de zona
+// no sabe cómo es este piso en concreto —planta, estado, ascensor—, y el de
+// compra supone que se ha comportado como la media nacional. Cuando convergen,
+// la estimación es sólida; cuando se separan, esa distancia ES la información,
+// y esconderla detrás de un número único sería lo peor que se puede hacer.
+//
+// Nada de esto rellena la casilla, a diferencia del euríbor o el IPC. Un índice
+// oficial tiene un único valor correcto; lo que vale una vivienda, no.
 
 import { useEffect, useState } from 'react';
 import { estimarPorZona } from '../../../services/valoracion/notariadoService';
+import { revalorizarCompra } from '../../../services/valoracion/revalorizacionService';
+import type { Revalorizacion } from '../../../services/valoracion/revalorizacionService';
 import type { EstimacionZona, RegimenInmueble } from '../../../types/valoracionZona';
+import { mesAnio } from '../../financiacion/vista/formato';
 import styles from './ActualizarValoresModal.module.css';
 
 export interface DatosZonaInmueble {
   codigoPostal: string;
   metrosCuadrados: number;
   regimen: RegimenInmueble;
+  /** Lo que costó · sin esto no hay revalorización, solo precio de zona. */
+  precioCompra?: number;
+  fechaCompra?: string;
 }
 
-const eur = (n: number) => n.toLocaleString('es-ES', { maximumFractionDigits: 0 });
+const eur = (n: number) => `${n.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`;
 
 const EstimacionZonaInmueble: React.FC<{ datos: DatosZonaInmueble }> = ({ datos }) => {
-  const [estimacion, setEstimacion] = useState<EstimacionZona | null>(null);
+  const [zona, setZona] = useState<EstimacionZona | null>(null);
+  const [compra, setCompra] = useState<Revalorizacion | null>(null);
+
+  const { codigoPostal, metrosCuadrados, regimen, precioCompra, fechaCompra } = datos;
 
   useEffect(() => {
     let cancelado = false;
-    estimarPorZona(datos.metrosCuadrados, datos.codigoPostal, datos.regimen)
-      .then((e) => {
-        if (!cancelado) setEstimacion(e);
-      })
-      .catch(() => {
-        // Sin dato de zona no se dice nada · el inmueble sigue valiendo lo que
-        // diga su dueño.
-      });
+    Promise.all([
+      estimarPorZona(metrosCuadrados, codigoPostal, regimen).catch(() => null),
+      precioCompra && fechaCompra
+        ? revalorizarCompra(precioCompra, fechaCompra).catch(() => null)
+        : Promise.resolve(null),
+    ]).then(([z, c]) => {
+      if (cancelado) return;
+      setZona(z);
+      setCompra(c);
+    });
     return () => {
       cancelado = true;
     };
-  }, [datos.metrosCuadrados, datos.codigoPostal, datos.regimen]);
+  }, [metrosCuadrados, codigoPostal, regimen, precioCompra, fechaCompra]);
 
-  if (!estimacion) return null;
+  if (!zona && !compra) return null;
 
-  const { valor, precioZona, fiabilidad } = estimacion;
+  const valores = [zona?.valor, compra?.valor].filter((v): v is number => v != null);
+  const minimo = Math.min(...valores);
+  const maximo = Math.max(...valores);
+
   const donde =
-    precioZona.nivel === 'codigo-postal'
-      ? `CP ${precioZona.zona}`
-      : `provincia ${precioZona.zona}`;
+    zona?.precioZona.nivel === 'codigo-postal'
+      ? `CP ${zona.precioZona.zona}`
+      : zona
+        ? `provincia ${zona.precioZona.zona}`
+        : null;
 
   return (
-    <p className={styles.oficial}>
-      <span className={styles.oficialDato}>~{eur(valor)} €</span>
-      <span aria-hidden="true">·</span>
-      <span>{eur(precioZona.precioM2)} €/m² en {donde}</span>
-      <span aria-hidden="true">·</span>
-      {/* El tamaño de la muestra no es un adorno: con cuatro escrituras la media
-          es una anécdota y quien la lea tiene que poder saberlo. */}
-      <span>{precioZona.operaciones} escrituras</span>
-      {fiabilidad !== 'alta' ? (
-        <span className={styles.oficialAviso}>
-          {precioZona.estimado ? 'estimado por el Notariado' : `fiabilidad ${fiabilidad}`}
+    <div className={styles.estimacion}>
+      <p className={styles.oficial}>
+        <span className={styles.oficialDato}>
+          {/* Con un solo método no hay horquilla que enseñar · inventarse un
+              margen para que parezca un rango sería fingir precisión. */}
+          {minimo === maximo ? `~${eur(minimo)}` : `${eur(minimo)} – ${eur(maximo)}`}
         </span>
+        <span aria-hidden="true">·</span>
+        <span>estimación, no tasación</span>
+      </p>
+      {zona ? (
+        <p className={styles.oficial}>
+          <span>zona {eur(zona.valor)}</span>
+          <span aria-hidden="true">·</span>
+          <span>
+            {eur(zona.precioZona.precioM2)}/m² en {donde} · {zona.precioZona.operaciones}{' '}
+            escrituras
+          </span>
+          {zona.fiabilidad !== 'alta' ? (
+            <span className={styles.oficialAviso}>
+              {zona.precioZona.estimado ? 'estimado por el Notariado' : `fiabilidad ${zona.fiabilidad}`}
+            </span>
+          ) : null}
+        </p>
       ) : null}
-    </p>
+      {compra ? (
+        <p className={styles.oficial}>
+          <span>tu compra {eur(compra.valor)}</span>
+          <span aria-hidden="true">·</span>
+          <span>
+            {eur(compra.precioCompra)} de {mesAnio(`${compra.periodoCompra}-01`)} ·{' '}
+            {compra.factor >= 1 ? '+' : ''}
+            {((compra.factor - 1) * 100).toFixed(0)} % según el IPV
+          </span>
+        </p>
+      ) : null}
+    </div>
   );
 };
 

@@ -151,6 +151,10 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
             codigoPostal: p.postalCode,
             metrosCuadrados: p.squareMeters,
             regimen: p.transmissionRegime === 'obra-nueva' ? 'obra-nueva' : 'usada',
+            // Lo que costó y cuándo · con eso sale la segunda estimación, la
+            // que parte de un dato suyo y no de la media de la zona.
+            precioCompra: p.acquisitionCosts?.price,
+            fechaCompra: p.purchaseDate,
           };
         }
         setZonaPorId(mapa);
