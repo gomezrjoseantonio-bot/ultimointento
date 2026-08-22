@@ -34,13 +34,24 @@ const eur = (n: number) => `${n.toLocaleString('es-ES', { maximumFractionDigits:
 const EstimacionZonaInmueble: React.FC<{ datos: DatosZonaInmueble }> = ({ datos }) => {
   const [zona, setZona] = useState<EstimacionZona | null>(null);
   const [compra, setCompra] = useState<Revalorizacion | null>(null);
+  const [listo, setListo] = useState(false);
+  const [fallo, setFallo] = useState<string | null>(null);
 
   const { codigoPostal, metrosCuadrados, regimen, precioCompra, fechaCompra } = datos;
 
   useEffect(() => {
     let cancelado = false;
     Promise.all([
-      estimarPorZona(metrosCuadrados, codigoPostal, regimen).catch(() => null),
+      (codigoPostal && metrosCuadrados
+        ? estimarPorZona(metrosCuadrados, codigoPostal, regimen)
+        : Promise.resolve(null)
+      ).catch((e) => {
+        // El error se guarda en vez de tragarse · quedarse en blanco cuando
+        // falla la red es indistinguible de «aquí no hay dato», y eso deja a
+        // quien mira sin saber si el problema es suyo o nuestro.
+        if (!cancelado) setFallo(e instanceof Error ? e.message : 'error');
+        return null;
+      }),
       precioCompra && fechaCompra
         ? revalorizarCompra(precioCompra, fechaCompra).catch(() => null)
         : Promise.resolve(null),
@@ -48,13 +59,35 @@ const EstimacionZonaInmueble: React.FC<{ datos: DatosZonaInmueble }> = ({ datos 
       if (cancelado) return;
       setZona(z);
       setCompra(c);
+      setListo(true);
     });
     return () => {
       cancelado = true;
     };
   }, [metrosCuadrados, codigoPostal, regimen, precioCompra, fechaCompra]);
 
-  if (!zona && !compra) return null;
+  if (!listo) return null;
+
+  /**
+   * Sin ninguna estimación, se dice POR QUÉ.
+   *
+   * Callarse era lo que había antes y no sirve: un hueco en blanco no distingue
+   * entre «a este inmueble le falta el código postal», «el servicio no
+   * responde» y «esa zona no tiene escrituras». Cada una se arregla de una
+   * manera distinta, y la primera la arregla su dueño en dos minutos.
+   */
+  if (!zona && !compra) {
+    const falta: string[] = [];
+    if (!codigoPostal) falta.push('código postal');
+    if (!metrosCuadrados) falta.push('metros');
+    if (!precioCompra || !fechaCompra) falta.push('precio y fecha de compra');
+    const motivo = fallo
+      ? `no se pudo consultar el precio de zona · ${fallo}`
+      : falta.length
+        ? `faltan datos del inmueble · ${falta.join(', ')}`
+        : `sin datos de escrituras para el CP ${codigoPostal}`;
+    return <p className={styles.oficial}>sin estimación · {motivo}</p>;
+  }
 
   const valores = [zona?.valor, compra?.valor].filter((v): v is number => v != null);
   const minimo = Math.min(...valores);

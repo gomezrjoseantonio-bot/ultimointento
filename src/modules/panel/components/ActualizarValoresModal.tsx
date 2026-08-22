@@ -144,12 +144,14 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
         if (cancelado) return;
         const mapa: Record<string, DatosZonaInmueble> = {};
         for (const p of propiedades) {
-          // Sin código postal o sin metros no hay estimación posible, así que
-          // ni se apunta: el componente no llega a preguntar por ella.
-          if (p.id == null || !p.postalCode || !p.squareMeters) continue;
+          // Entran TODOS los inmuebles, también los que no tienen con qué
+          // estimarse. Filtrarlos aquí era dejar su fila muda, y una fila muda
+          // no distingue entre «falta un dato tuyo» y «esto no funciona»; el
+          // componente lo dice y su dueño sabe qué arreglar.
+          if (p.id == null) continue;
           mapa[String(p.id)] = {
-            codigoPostal: p.postalCode,
-            metrosCuadrados: p.squareMeters,
+            codigoPostal: p.postalCode ?? '',
+            metrosCuadrados: p.squareMeters ?? 0,
             regimen: p.transmissionRegime === 'obra-nueva' ? 'obra-nueva' : 'usada',
             // Lo que costó y cuándo · con eso sale la segunda estimación, la
             // que parte de un dato suyo y no de la media de la zona.
