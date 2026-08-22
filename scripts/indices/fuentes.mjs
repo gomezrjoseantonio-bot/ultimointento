@@ -223,6 +223,9 @@ export async function buscarSeriesINE(operacion, filtro) {
     hallados: lista
       .filter((s) => encaja(s?.Nombre))
       .map((s) => ({ cod: s?.COD, nombre: s?.Nombre })),
+    // Para poder distinguir «el filtro no acierta» de «los nombres no son como
+    // creía»: sin esto, un cero es indistinguible de un campo mal leído.
+    muestra: lista.slice(0, 8).map((s) => `${s?.COD} · ${s?.Nombre}`),
   };
 }
 
