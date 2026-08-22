@@ -1,7 +1,6 @@
-// Lo que ve quien abre «Actualizar valores» al lado de la casilla que teclea.
+// Lo que acompaña a la casilla que ya viene con el dato oficial puesto.
 
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
 const mockCargarSerie = jest.fn();
 jest.mock('../../../../services/indices/seriesIndicesService', () => {
@@ -11,13 +10,17 @@ jest.mock('../../../../services/indices/seriesIndicesService', () => {
 
 const IndicadorOficial = require('../IndicadorOficial').default;
 
-const serie = (valores: Record<string, number>, extra = {}) => ({
+const serie = (valores: Record<string, number>, extra: Record<string, unknown> = {}) => ({
   esquema: 1 as const,
   id: 'euribor-12m' as const,
   nombre: 'Euríbor a 12 meses',
   unidad: 'porcentaje' as const,
   cadenciaMeses: 1,
-  fuente: { nombre: 'Banco Central Europeo', url: 'https://x.test', serieOrigen: 'FM...' },
+  fuente: {
+    nombre: 'Banco Central Europeo · Data Portal',
+    url: 'https://x.test',
+    serieOrigen: 'FM...',
+  },
   actualizadoEn: '2026-08-22T05:00:00.000Z',
   valores,
   ...extra,
@@ -30,33 +33,38 @@ describe('IndicadorOficial', () => {
   });
   afterEach(() => jest.useRealTimers());
 
-  it('enseña el valor publicado, de qué mes es y de dónde sale', async () => {
+  // Lo importante: la casilla se rellena sola, sin que nadie pulse nada.
+  it('entrega el valor publicado para que la casilla venga puesta', async () => {
+    const onDato = jest.fn();
     mockCargarSerie.mockResolvedValue(serie({ '2026-06': 2.7, '2026-07': 2.855087 }));
-    render(<IndicadorOficial serie="euribor-12m" decimales={3} />);
+    render(<IndicadorOficial serie="euribor-12m" decimales={3} onDato={onDato} />);
 
-    expect(await screen.findByText('2,855 %')).toBeTruthy();
-    expect(screen.getByText(/jul 2026 · Banco Central Europeo/)).toBeTruthy();
+    await waitFor(() => expect(onDato).toHaveBeenCalled());
+    // Tres decimales · el BCE publica seis y una escritura española aplica tres.
+    expect(onDato).toHaveBeenCalledWith(2.855);
   });
 
-  it('el botón «usar» entrega el valor a la casilla, no lo guarda solo', async () => {
-    const onUsar = jest.fn();
+  it('lo entrega una sola vez · no pisa lo que se escriba después', async () => {
+    const onDato = jest.fn();
     mockCargarSerie.mockResolvedValue(serie({ '2026-07': 2.855087 }));
-    render(<IndicadorOficial serie="euribor-12m" decimales={3} onUsar={onUsar} />);
+    const { rerender } = render(<IndicadorOficial serie="euribor-12m" onDato={onDato} />);
 
-    userEvent.click(await screen.findByRole('button', { name: 'usar' }));
-    await waitFor(() => expect(onUsar).toHaveBeenCalled());
-    expect(onUsar).toHaveBeenCalledWith(2.855087);
+    await waitFor(() => expect(onDato).toHaveBeenCalledTimes(1));
+    rerender(<IndicadorOficial serie="euribor-12m" onDato={onDato} />);
+    rerender(<IndicadorOficial serie="euribor-12m" onDato={onDato} />);
+    expect(onDato).toHaveBeenCalledTimes(1);
   });
 
-  it('sin onUsar no hay botón · el IRAV solo se consulta', async () => {
-    mockCargarSerie.mockResolvedValue(serie({ '2026-07': 2.49 }));
-    render(<IndicadorOficial serie="irav" />);
+  it('dice mes de referencia, organismo y cuándo se descargó', async () => {
+    mockCargarSerie.mockResolvedValue(serie({ '2026-07': 2.855087 }));
+    render(<IndicadorOficial serie="euribor-12m" />);
 
-    await screen.findByText('2,49 %');
-    expect(screen.queryByRole('button', { name: 'usar' })).toBeNull();
+    expect(await screen.findByText('jul 2026')).toBeTruthy();
+    // Siglas · el nombre largo partía la línea en dos en la columna del formulario.
+    expect(screen.getByText('BCE')).toBeTruthy();
+    expect(screen.getByText('act. 22 ago 2026')).toBeTruthy();
   });
 
-  // Un dato viejo señalado es útil; disfrazado de fresco, no.
   it('avisa cuando la serie va con retraso', async () => {
     mockCargarSerie.mockResolvedValue(serie({ '2025-12': 2.9 }));
     render(<IndicadorOficial serie="ipc" />);
@@ -64,10 +72,12 @@ describe('IndicadorOficial', () => {
     expect(await screen.findByText(/atrasado 7 meses/)).toBeTruthy();
   });
 
-  it('sin dato lo dice, en vez de prometer un oficial que no hay', async () => {
+  it('sin dato no promete nada ni entrega valor', async () => {
+    const onDato = jest.fn();
     mockCargarSerie.mockResolvedValue(serie({}));
-    render(<IndicadorOficial serie="ipc" />);
+    render(<IndicadorOficial serie="ipc" onDato={onDato} />);
 
-    expect(await screen.findByText('Oficial · sin dato disponible')).toBeTruthy();
+    expect(await screen.findByText('sin dato oficial disponible')).toBeTruthy();
+    expect(onDato).not.toHaveBeenCalled();
   });
 });

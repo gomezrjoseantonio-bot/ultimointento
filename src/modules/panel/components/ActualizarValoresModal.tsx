@@ -115,6 +115,8 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // El IRAV no tiene casilla que rellenar · su valor se pinta tal cual.
+  const [iravPercent, setIravPercent] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -225,7 +227,7 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
                       id="financial-values-ipc"
                       type="number"
                       inputMode="decimal"
-                      step="0.01"
+                      step="any"
                       className={`${atlasStyles.input} ${atlasStyles.mono}`}
                       value={form.ipcMonthlyPercent}
                       onChange={(event) =>
@@ -238,7 +240,8 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
                     />
                     <IndicadorOficial
                       serie="ipc"
-                      onUsar={(valor) =>
+                      decimales={1}
+                      onDato={(valor) =>
                         setForm((current) =>
                           current
                             ? { ...current, ipcMonthlyPercent: String(valor) }
@@ -255,7 +258,7 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
                       id="financial-values-euribor"
                       type="number"
                       inputMode="decimal"
-                      step="0.01"
+                      step="any"
                       className={`${atlasStyles.input} ${atlasStyles.mono}`}
                       value={form.euriborPercent}
                       onChange={(event) =>
@@ -269,7 +272,7 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
                     <IndicadorOficial
                       serie="euribor-12m"
                       decimales={3}
-                      onUsar={(valor) =>
+                      onDato={(valor) =>
                         setForm((current) =>
                           current ? { ...current, euriborPercent: String(valor) } : current,
                         )
@@ -303,7 +306,16 @@ const ActualizarValoresModal: React.FC<ActualizarValoresModalProps> = ({
                   <span className={styles.oficialEtiqueta}>
                     IRAV · actualización de rentas de vivienda
                   </span>
-                  <IndicadorOficial serie="irav" />
+                  {iravPercent != null ? (
+                    <span className={styles.oficialValorSuelto}>
+                      {iravPercent.toLocaleString('es-ES', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      %
+                    </span>
+                  ) : null}
+                  <IndicadorOficial serie="irav" onDato={setIravPercent} />
                 </div>
               </div>
 

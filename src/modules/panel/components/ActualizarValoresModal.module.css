@@ -50,25 +50,21 @@
   }
 }
 
-/* El valor oficial publicado, debajo de la casilla que se teclea a mano. */
+/* De dónde sale el número que trae la casilla · una sola línea, discreta. */
 .oficial {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 5px;
+  margin: 6px 0 0;
   font-size: 11px;
+  line-height: 1.35;
   color: var(--atlas-v5-ink-4);
 }
 
-.oficialValor {
-  font-family: var(--atlas-v5-font-mono-num);
+.oficialDato {
   font-weight: var(--atlas-v5-fw-semibold);
-  color: var(--atlas-v5-ink-2);
-}
-
-.oficialMeta {
-  color: var(--atlas-v5-ink-4);
+  color: var(--atlas-v5-ink-3, var(--atlas-v5-ink-2));
 }
 
 .oficialAviso {
@@ -78,33 +74,26 @@
   color: var(--atlas-v5-ink-2);
 }
 
-.oficialUsar {
-  border: 1px solid var(--atlas-v5-line);
-  border-radius: 999px;
-  padding: 1px 8px;
-  background: transparent;
-  color: var(--atlas-v5-ink-2);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.oficialUsar:hover {
-  background: var(--atlas-v5-card-alt);
-}
-
 .oficialFila {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid var(--atlas-v5-line);
 }
 
 .oficialEtiqueta {
   font-size: 11px;
-  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+}
+
+.oficialValorSuelto {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12px;
+  color: var(--atlas-v5-ink-2);
 }
 
 .oficialFila .oficial {
