@@ -91,10 +91,28 @@ interface FilaArcGIS {
  * Se pide `f=json` aunque el portal use `f=pbf`: el mismo servicio sirve JSON
  * plano y así no hay que arrastrar un decodificador de protobuf al navegador.
  */
+/** Una petición que se queda colgada es peor que una que falla · se corta. */
+const TIEMPO_MAXIMO_MS = 8000;
+
 async function consultar(capa: number, where: string): Promise<FilaArcGIS | null> {
   const url =
     `${BASE}/${capa}/query?f=json&returnGeometry=false&outFields=*&where=${encodeURIComponent(where)}`;
-  const respuesta = await fetch(url);
+  // Sin corte, un servicio que no contesta deja la fila en «consultando…» para
+  // siempre y nadie sabe si es lentitud o avería.
+  const corte = new AbortController();
+  const alarma = setTimeout(() => corte.abort(), TIEMPO_MAXIMO_MS);
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(url, { signal: corte.signal });
+  } catch (e) {
+    throw new Error(
+      corte.signal.aborted
+        ? `el servicio no contestó en ${TIEMPO_MAXIMO_MS / 1000} s`
+        : `no se pudo llamar al servicio · ${e instanceof Error ? e.message : 'error'}`,
+    );
+  } finally {
+    clearTimeout(alarma);
+  }
   if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
   const datos = await respuesta.json();
   if (datos?.error) throw new Error(`ArcGIS ${datos.error?.code ?? ''}`);
