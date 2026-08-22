@@ -207,7 +207,7 @@ export const FUENTES = [
  * que debe aparecer en el nombre de la serie, sin distinguir mayúsculas ni
  * acentos.
  */
-export async function buscarSeriesINE(operacion, filtro, { paginas = 12 } = {}) {
+export async function buscarSeriesINE(operacion, filtro, { paginas = 3 } = {}) {
   const normal = (t) =>
     String(t ?? '')
       .normalize('NFD')
@@ -220,14 +220,23 @@ export async function buscarSeriesINE(operacion, filtro, { paginas = 12 } = {}) 
   // tiene muchas más: la primera búsqueda daba 13 resultados, todos variantes
   // «General sin tabaco», «General sin alimentos»… La serie general limpia
   // estaba fuera de la primera página, y sin paginar era invisible.
+  //
+  // Pero recorrerlas todas tampoco vale: con 12 páginas el trabajo pasó de
+  // cuatro minutos sin terminar y hubo que cancelarlo. El tope se queda bajo a
+  // propósito y, cuando se alcanza, SE DICE — un límite silencioso es
+  // indistinguible de «no existe», que es justo el error que trajo hasta aquí.
+  // Para una operación tan grande como el IPC, el catálogo web del INE
+  // encuentra el código antes que esta fuerza bruta.
   const hallados = [];
   const muestra = [];
   let total = 0;
+  let paginasLeidas = 0;
   for (let pagina = 1; pagina <= paginas; pagina += 1) {
     const url = `https://servicios.ine.es/wstempus/js/ES/SERIES_OPERACION/${operacion}?page=${pagina}`;
     const datos = await pedirJSON(url);
     const lista = Array.isArray(datos) ? datos : [];
     if (lista.length === 0) break;
+    paginasLeidas += 1;
     total += lista.length;
     for (const s of lista) {
       if (encaja(s?.Nombre)) hallados.push({ cod: s?.COD, nombre: s?.Nombre });
@@ -236,5 +245,5 @@ export async function buscarSeriesINE(operacion, filtro, { paginas = 12 } = {}) 
       for (const s of lista.slice(0, 8 - muestra.length)) muestra.push(`${s?.COD} · ${s?.Nombre}`);
     }
   }
-  return { total, hallados, muestra };
+  return { total, hallados, muestra, topeAlcanzado: paginasLeidas >= paginas };
 }

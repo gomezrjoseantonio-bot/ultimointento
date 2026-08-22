@@ -115,7 +115,18 @@ es como se confirma que se está descargando lo que se cree.
 Mientras eso no se compruebe, el dato descargado no debe darse por bueno.
 Detalle completo en `docs/INDICES-automatizacion-v1.md`, apartado 6.
 
-### 2.11 Nota técnica: `react-scripts` está sin mantenimiento
+### 2.11 El IPC automático necesita un código de serie
+
+La tarea de índices funciona y descarga sola el Euríbor y el IRAV. **El IPC no**:
+la serie que se estaba usando dejó de publicarse en diciembre de 2025 y hay que
+sustituirla por la vigente. Hasta entonces la tarea saldrá en rojo cada vez que
+corra, a propósito.
+
+Se arregla poniendo el código nuevo en `scripts/indices/fuentes.mjs`. El código
+se saca del catálogo del INE, en la tabla del IPC de variación anual del índice
+general nacional. Detalle en `docs/INDICES-automatizacion-v1.md`.
+
+### 2.12 Nota técnica: `react-scripts` está sin mantenimiento
 
 El proyecto usa Create App (`react-scripts` 5.0.1), un empaquetador que ya no
 recibe mantenimiento activo. **No impide publicar** y no es urgente, pero quien

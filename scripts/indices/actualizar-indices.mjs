@@ -39,7 +39,7 @@ const buscarArg = args.find((a) => a.startsWith('--buscar='));
 if (buscarArg) {
   const [operacion, ...resto] = buscarArg.slice('--buscar='.length).split(':');
   const filtro = resto.join(':');
-  const { total, hallados, muestra } = await buscarSeriesINE(operacion, filtro);
+  const { total, hallados, muestra, topeAlcanzado } = await buscarSeriesINE(operacion, filtro);
   process.stdout.write(`\n${total} series en la operación ${operacion} · ${hallados.length} encajan con "${filtro}"\n\n`);
   for (const { cod, nombre } of hallados.slice(0, 40)) {
     process.stdout.write(`   ${cod}\t${nombre}\n`);
@@ -50,6 +50,13 @@ if (buscarArg) {
   if (hallados.length === 0) {
     process.stdout.write('   Muestra de nombres tal como los devuelve el INE:\n');
     for (const nombre of muestra) process.stdout.write(`     · ${nombre}\n`);
+  }
+  if (topeAlcanzado) {
+    process.stdout.write(
+      `\n   ⚠ Se agotó el tope de páginas · quedan series SIN MIRAR.\n` +
+        `     Para una operación grande, el catálogo web del INE es más rápido:\n` +
+        `     el código de la serie aparece en la propia página de la tabla.\n`,
+    );
   }
   process.exit(0);
 }
