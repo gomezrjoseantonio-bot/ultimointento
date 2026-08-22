@@ -27,6 +27,8 @@ export interface DatosZonaInmueble {
   /** Lo que costó · sin esto no hay revalorización, solo precio de zona. */
   precioCompra?: number;
   fechaCompra?: string;
+  /** piso · parking · trastero · local · otro. */
+  tipoActivo?: string;
 }
 
 const eur = (n: number) => `${n.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`;
@@ -37,13 +39,14 @@ const EstimacionZonaInmueble: React.FC<{ datos: DatosZonaInmueble }> = ({ datos 
   const [listo, setListo] = useState(false);
   const [fallo, setFallo] = useState<string | null>(null);
 
-  const { codigoPostal, metrosCuadrados, regimen, precioCompra, fechaCompra } = datos;
+  const { codigoPostal, metrosCuadrados, regimen, precioCompra, fechaCompra, tipoActivo } =
+    datos;
 
   useEffect(() => {
     let cancelado = false;
     Promise.all([
       (codigoPostal && metrosCuadrados
-        ? estimarPorZona(metrosCuadrados, codigoPostal, regimen)
+        ? estimarPorZona(metrosCuadrados, codigoPostal, regimen, tipoActivo)
         : Promise.resolve(null)
       ).catch((e) => {
         // El error se guarda en vez de tragarse · quedarse en blanco cuando
@@ -64,7 +67,7 @@ const EstimacionZonaInmueble: React.FC<{ datos: DatosZonaInmueble }> = ({ datos 
     return () => {
       cancelado = true;
     };
-  }, [metrosCuadrados, codigoPostal, regimen, precioCompra, fechaCompra]);
+  }, [metrosCuadrados, codigoPostal, regimen, precioCompra, fechaCompra, tipoActivo]);
 
   if (!listo) return null;
 
@@ -81,7 +84,11 @@ const EstimacionZonaInmueble: React.FC<{ datos: DatosZonaInmueble }> = ({ datos 
     if (!codigoPostal) falta.push('código postal');
     if (!metrosCuadrados) falta.push('metros');
     if (!precioCompra || !fechaCompra) falta.push('precio y fecha de compra');
-    const motivo = fallo
+    const noEsVivienda =
+      tipoActivo != null && tipoActivo !== 'piso' && tipoActivo !== 'otro';
+    const motivo = noEsVivienda
+      ? `el Notariado solo publica precios de vivienda · esto es un ${tipoActivo}`
+      : fallo
       ? `no se pudo consultar el precio de zona · ${fallo}`
       : falta.length
         ? `faltan datos del inmueble · ${falta.join(', ')}`
