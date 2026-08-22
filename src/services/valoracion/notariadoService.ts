@@ -86,38 +86,92 @@ interface FilaArcGIS {
 }
 
 /**
- * Una consulta al servicio.
+ * Una consulta al servicio, por los dos caminos que hay.
  *
- * Se pide `f=json` aunque el portal use `f=pbf`: el mismo servicio sirve JSON
- * plano y así no hay que arrastrar un decodificador de protobuf al navegador.
+ * Primero desde el navegador: es gratis, es inmediato y no pasa por nuestro
+ * servidor. Se pide `f=json` aunque el portal use `f=pbf`, porque el mismo
+ * servicio sirve JSON plano y así no hay que arrastrar un decodificador de
+ * protobuf al cliente.
+ *
+ * Si esa llamada falla se repite desde una función de Netlify. Un bloqueador
+ * de anuncios, una red corporativa o un DNS filtrado tumban la petición directa
+ * sin dejar rastro legible, y desde aquí «bloqueada» y «esa zona no tiene
+ * escrituras» son la misma nada. El respaldo separa las dos: si por el servidor
+ * tampoco hay dato, es que no lo hay.
  */
 /** Una petición que se queda colgada es peor que una que falla · se corta. */
 const TIEMPO_MAXIMO_MS = 8000;
 
-async function consultar(capa: number, where: string): Promise<FilaArcGIS | null> {
-  const url =
-    `${BASE}/${capa}/query?f=json&returnGeometry=false&outFields=*&where=${encodeURIComponent(where)}`;
+const RESPALDO = '/.netlify/functions/precio-zona';
+
+interface Consulta {
+  capa: number;
+  /** Uno de los dos · el respaldo arma el `where` a partir de esto. */
+  cp?: string;
+  prov?: string;
+  tipo: number;
+  clase: number;
+}
+
+async function conCorte(url: string): Promise<Response> {
   // Sin corte, un servicio que no contesta deja la fila en «consultando…» para
   // siempre y nadie sabe si es lentitud o avería.
   const corte = new AbortController();
   const alarma = setTimeout(() => corte.abort(), TIEMPO_MAXIMO_MS);
-  let respuesta: Response;
   try {
-    respuesta = await fetch(url, { signal: corte.signal });
+    return await fetch(url, { signal: corte.signal });
   } catch (e) {
     throw new Error(
       corte.signal.aborted
-        ? `el servicio no contestó en ${TIEMPO_MAXIMO_MS / 1000} s`
-        : `no se pudo llamar al servicio · ${e instanceof Error ? e.message : 'error'}`,
+        ? `no contestó en ${TIEMPO_MAXIMO_MS / 1000} s`
+        : `no se pudo llamar · ${e instanceof Error ? e.message : 'error'}`,
     );
   } finally {
     clearTimeout(alarma);
   }
+}
+
+async function directa(c: Consulta): Promise<FilaArcGIS | null> {
+  const donde = c.cp ? `cp='${c.cp}'` : `cod_prov='${c.prov}'`;
+  const where = `${donde} and (tipo_construccion_id = ${c.tipo}) AND (clase_finca_urbana_id = ${c.clase})`;
+  const url =
+    `${BASE}/${c.capa}/query?f=json&returnGeometry=false&outFields=*&where=${encodeURIComponent(where)}`;
+  const respuesta = await conCorte(url);
   if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
   const datos = await respuesta.json();
   if (datos?.error) throw new Error(`ArcGIS ${datos.error?.code ?? ''}`);
   const fila = datos?.features?.[0]?.attributes;
   return fila && typeof fila.precio_m2 === 'number' ? (fila as FilaArcGIS) : null;
+}
+
+async function porElServidor(c: Consulta): Promise<FilaArcGIS | null> {
+  const params = new URLSearchParams({ tipo: String(c.tipo), clase: String(c.clase) });
+  if (c.cp) params.set('cp', c.cp);
+  else params.set('prov', String(c.prov));
+  const respuesta = await conCorte(`${RESPALDO}?${params.toString()}`);
+  const datos = await respuesta.json().catch(() => null);
+  if (!respuesta.ok) {
+    throw new Error(datos?.error ?? `el respaldo respondió HTTP ${respuesta.status}`);
+  }
+  const fila = datos?.fila;
+  return fila && typeof fila.precio_m2 === 'number' ? (fila as FilaArcGIS) : null;
+}
+
+async function consultar(c: Consulta): Promise<FilaArcGIS | null> {
+  try {
+    return await directa(c);
+  } catch (directo) {
+    try {
+      return await porElServidor(c);
+    } catch (servidor) {
+      // Se cuentan los dos fallos · «no me deja tu red» y «el Notariado está
+      // caído» se arreglan de maneras distintas y quien mire tiene que poder
+      // distinguirlos sin abrir la consola.
+      const a = directo instanceof Error ? directo.message : 'error';
+      const b = servidor instanceof Error ? servidor.message : 'error';
+      throw new Error(`directo: ${a} · servidor: ${b}`);
+    }
+  }
 }
 
 const aPrecioZona = (
@@ -182,14 +236,19 @@ export async function precioDeZona(
   if (cacheado) return cacheado;
 
   const ahora = new Date().toISOString();
-  const filtroTipo = `(tipo_construccion_id = ${tipo}) AND (clase_finca_urbana_id = ${clase})`;
 
   let resultado: PrecioZona | null = null;
+  // Por qué falló, si falló. Tragarse el error y devolver `null` era convertir
+  // «el servicio no responde» en «esta zona no tiene escrituras», que es una
+  // mentira: la primera se arregla esperando o mirando la red, y la segunda no
+  // se arregla de ninguna manera. Se guarda para poder decirlo.
+  let motivo: string | null = null;
   try {
-    const fila = await consultar(CAPA_CODIGO_POSTAL, `cp='${codigoPostal}' and ${filtroTipo}`);
+    const fila = await consultar({ capa: CAPA_CODIGO_POSTAL, cp: codigoPostal, tipo, clase });
     if (fila) resultado = aPrecioZona(fila, 'codigo-postal', codigoPostal, ahora);
-  } catch {
+  } catch (e) {
     // Se intenta la provincia igualmente · media zona es mejor que nada.
+    motivo = e instanceof Error ? e.message : 'error';
   }
 
   const flojo =
@@ -199,7 +258,7 @@ export async function precioDeZona(
     // así que el salto no necesita ninguna tabla de conversión.
     const codProv = codigoPostal.slice(0, 2);
     try {
-      const fila = await consultar(CAPA_PROVINCIA, `cod_prov='${codProv}' and ${filtroTipo}`);
+      const fila = await consultar({ capa: CAPA_PROVINCIA, prov: codProv, tipo, clase });
       if (fila) {
         const provincia = aPrecioZona(fila, 'provincia', codProv, ahora);
         // La provincia solo gana si de verdad aporta · si también viene floja,
@@ -207,11 +266,16 @@ export async function precioDeZona(
         if (!resultado || provincia.operaciones > resultado.operaciones) {
           resultado = provincia;
         }
+        motivo = null;
       }
-    } catch {
+    } catch (e) {
       // Nos quedamos con lo que hubiera.
+      motivo = motivo ?? (e instanceof Error ? e.message : 'error');
     }
   }
+
+  // Ni dato ni excusa: el servicio se cayó y hay que decirlo, no callar.
+  if (!resultado && motivo) throw new Error(motivo);
 
   if (resultado) await escribirCache(claveCache(codigoPostal, tipo * 100 + clase), resultado);
   return resultado;

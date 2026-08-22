@@ -153,11 +153,43 @@ describe('notariadoService', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('si el servicio falla no revienta · devuelve null', async () => {
+  // Devolver `null` cuando el servicio se cae era convertir «no he podido
+  // preguntar» en «esta zona no tiene escrituras». La primera se arregla
+  // esperando; la segunda no se arregla nunca. Hay que poder distinguirlas.
+  it('si el servicio falla lo dice · no lo disfraza de zona sin datos', async () => {
     (globalThis as any).fetch = jest.fn().mockRejectedValue(new Error('sin red'));
     const { precioDeZona } = require('../notariadoService');
 
-    expect(await precioDeZona('08272', 'usada')).toBeNull();
+    await expect(precioDeZona('08272', 'usada')).rejects.toThrow(/sin red/);
+  });
+
+  // El navegador es el camino normal · si su red lo bloquea, la misma pregunta
+  // se hace desde el servidor, donde no hay bloqueadores.
+  it('cuando la llamada directa falla, pregunta por la función de Netlify', async () => {
+    const llamadas: string[] = [];
+    (globalThis as any).fetch = jest.fn().mockImplementation((url: string) => {
+      llamadas.push(url);
+      if (url.startsWith('http')) return Promise.reject(new Error('bloqueada'));
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ fila: fila() }),
+      });
+    });
+    const { precioDeZona } = require('../notariadoService');
+
+    const r = await precioDeZona('08272', 'usada');
+    expect(r.precioM2).toBe(2500);
+    expect(llamadas[1]).toContain('/.netlify/functions/precio-zona');
+    expect(llamadas[1]).toContain('cp=08272');
+  });
+
+  // Los dos caminos rotos son dos averías distintas · se nombran las dos.
+  it('si tampoco hay respaldo, el motivo nombra los dos caminos', async () => {
+    (globalThis as any).fetch = jest.fn().mockRejectedValue(new Error('sin red'));
+    const { precioDeZona } = require('../notariadoService');
+
+    await expect(precioDeZona('08272', 'usada')).rejects.toThrow(/directo:.*servidor:/);
   });
 
   it('multiplica por los metros y puntúa la fiabilidad', async () => {
