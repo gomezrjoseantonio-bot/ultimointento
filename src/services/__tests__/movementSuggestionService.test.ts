@@ -14,7 +14,12 @@ jest.mock('../db', () => ({
   initDB: jest.fn(),
 }));
 
+// Sólo `buildLearnKey` se finge (es lo que estos tests controlan). El resto del
+// módulo se usa de verdad: `nombreDeContraparte` es puro —lee la contraparte del
+// movimiento o la saca del texto del Bizum— y la vía C lo necesita para saber a
+// qué contrato apunta un cobro.
 jest.mock('../movementLearningService', () => ({
+  ...jest.requireActual('../movementLearningService'),
   buildLearnKey: jest.fn(),
 }));
 

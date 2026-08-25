@@ -17,7 +17,19 @@ import { parseIsoDateAsUTC } from '../../../utils/recurrenceDateUtils';
 
 const MS_DIA = 1000 * 60 * 60 * 24;
 
-const RENT_SOURCE_TYPES = new Set(['contract', 'contrato']);
+/**
+ * Los dos nombres con los que una renta de alquiler llega a `treasuryEvents`.
+ *
+ * `'contrato'` lo escribe el generador de previsiones (`treasurySyncService`);
+ * `'contract'` lo escribe el extracto al asignar una línea del banco a un
+ * contrato (`bankStatementOrchestrator`). Son el mismo dinero, así que quien
+ * pregunte «¿ya hay renta de este contrato en este mes?» tiene que mirar los
+ * dos: con uno solo, el cobro que entró por el extracto no impedía emitir
+ * además la previsión, y la renta se contaba dos veces.
+ *
+ * Exportado para que el generador use ESTA lista y no un literal suelto.
+ */
+export const RENT_SOURCE_TYPES: ReadonlySet<string> = new Set(['contract', 'contrato']);
 
 const diaUTC = (d: Date): number =>
   Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());

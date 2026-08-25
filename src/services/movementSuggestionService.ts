@@ -29,11 +29,13 @@
 // approved suggestions and is the only writer.
 import {
   initDB,
+  Contract,
   Movement,
   MovementLearningRule,
   TreasuryEvent,
 } from './db';
-import { buildLearnKey } from './movementLearningService';
+import { buildLearnKey, nombreDeContraparte } from './movementLearningService';
+import { nivelDeCoincidencia } from './coincidenciaNombre';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 
 export type SuggestionVia = 'compromiso_recurrente' | 'learning_rule' | 'heuristica';
@@ -81,6 +83,7 @@ export async function suggestForUnmatched(
 
   const compromisos = await loadActiveCompromisos(db);
   const learningRulesByKey = await loadLearningRulesIndex(db, movements);
+  const contratosActivos = await loadActiveContracts(db);
 
   for (const movement of movements) {
     const suggestions: MovementSuggestion[] = [];
@@ -99,7 +102,7 @@ export async function suggestForUnmatched(
       continue;
     }
 
-    const viaC = suggestFromHeuristics(movement);
+    const viaC = suggestFromHeuristics(movement, contratosActivos);
     if (viaC) suggestions.push(viaC);
 
     result.set(movement.id!, suggestions);
@@ -120,6 +123,18 @@ async function loadActiveCompromisos(
     return [];
   }
   return all.filter(c => c.estado === 'activo');
+}
+
+/** Contratos vivos · los únicos a los que tiene sentido asignar un cobro de renta. */
+async function loadActiveContracts(
+  db: Awaited<ReturnType<typeof initDB>>
+): Promise<Contract[]> {
+  try {
+    const all = ((await db.getAll('contracts')) ?? []) as Contract[];
+    return all.filter(c => c.estadoContrato === 'activo');
+  } catch {
+    return [];
+  }
 }
 
 function suggestFromCompromiso(
@@ -284,7 +299,37 @@ function suggestFromLearningRule(
 
 interface HeuristicRule {
   match: (description: string, amount: number) => boolean;
-  build: (movement: Movement) => Omit<MovementSuggestion, 'movementId' | 'via'>;
+  build: (movement: Movement, contratos: Contract[]) => Omit<MovementSuggestion, 'movementId' | 'via'>;
+}
+
+/**
+ * A QUÉ contrato apunta este ingreso, si es que apunta a uno solo.
+ *
+ * Un Bizum llega como "BIZUM DE ADNAN PARWEZ" y en el contrato pone "Adnan
+ * Parwez Khan": comparando por palabras (`nivelDeCoincidencia`) eso es una
+ * coincidencia `fuerte` — nombre y apellido, no un parecido de pila suelto.
+ *
+ * Sólo se devuelve el contrato cuando hay UNO y sólo uno así. Con dos hermanos
+ * en el mismo piso, o sin ninguna coincidencia, se deja sin resolver: proponer
+ * el contrato equivocado es peor que no proponer ninguno, y el evento sigue
+ * naciendo como hasta ahora. Esto NO concilia nada por su cuenta · sigue
+ * decidiendo el usuario al confirmar la sugerencia.
+ */
+function contratoDeLaContraparte(
+  movement: Movement,
+  contratos: Contract[],
+): Contract | undefined {
+  const nombreBanco = nombreDeContraparte(movement);
+  if (!nombreBanco) return undefined;
+
+  const candidatos = contratos.filter((c) => {
+    if (c.id == null) return false;
+    const inquilino = `${c.inquilino?.nombre ?? ''} ${c.inquilino?.apellidos ?? ''}`.trim();
+    if (!inquilino) return false;
+    return nivelDeCoincidencia(nombreBanco, inquilino) === 'fuerte';
+  });
+
+  return candidatos.length === 1 ? candidatos[0] : undefined;
 }
 
 const HEURISTIC_RULES: HeuristicRule[] = [
@@ -355,11 +400,22 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   // BIZUM / transferencia recibida con NIF
   {
     match: (d, _amount) => /(BIZUM|TRANSFERENCIA\s+RECIBIDA)/i.test(d),
-    build: () => ({
-      confidence: 50,
-      description: 'Bizum o transferencia recibida · proponer asignar a un contrato de alquiler activo',
-      action: { kind: 'assign_to_contract' },
-    }),
+    build: (movement, contratos) => {
+      // A qué contrato · sin esto el evento nacía sin `sourceId` ni
+      // `contratoId`, huérfano: ni contaba para el estado de cobro del
+      // inquilino ni lo veía el dedupe de previsiones.
+      const contrato = contratoDeLaContraparte(movement, contratos);
+      const inquilino = contrato
+        ? `${contrato.inquilino?.nombre ?? ''} ${contrato.inquilino?.apellidos ?? ''}`.trim()
+        : '';
+      return {
+        confidence: contrato ? 60 : 50,
+        description: contrato
+          ? `Bizum o transferencia recibida · proponer asignarlo a la renta de ${inquilino}`
+          : 'Bizum o transferencia recibida · proponer asignar a un contrato de alquiler activo',
+        action: { kind: 'assign_to_contract', contractId: contrato?.id },
+      };
+    },
   },
   // Compras Amazon / AliExpress (only when amount is negative ⇒ gasto personal)
   {
@@ -376,12 +432,12 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   },
 ];
 
-function suggestFromHeuristics(movement: Movement): MovementSuggestion {
+function suggestFromHeuristics(movement: Movement, contratos: Contract[]): MovementSuggestion {
   const description = (movement.description ?? '').trim();
 
   for (const rule of HEURISTIC_RULES) {
     if (rule.match(description, movement.amount)) {
-      const partial = rule.build(movement);
+      const partial = rule.build(movement, contratos);
       return {
         movementId: movement.id!,
         via: 'heuristica',

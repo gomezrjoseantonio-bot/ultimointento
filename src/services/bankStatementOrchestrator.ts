@@ -681,6 +681,12 @@ function buildTreasuryEventFromAction(
         type: movement.amount >= 0 ? 'income' : 'expense',
         sourceType: 'contract',
         sourceId: action.contractId,
+        // De QUÉ contrato es este cobro. `sourceId` es el enlace legacy y
+        // `contratoId` el principal (el que mira `esRentaDeContrato`): sin los
+        // dos el evento quedaba huérfano —ningún contrato lo reconocía como su
+        // renta— y encima era invisible para el dedupe de previsiones, así que
+        // el mes acababa con el cobro real y la previsión duplicada.
+        contratoId: action.contractId,
         ambito: 'INMUEBLE',
       };
     case 'mark_personal_expense':
