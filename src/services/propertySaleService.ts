@@ -1,6 +1,7 @@
 import { Contract, Property, TreasuryEvent, initDB, PropertySale } from './db';
 import { PlanPagos, Prestamo } from '../types/prestamos';
 import { comisionDeReembolso } from './prestamos/comisiones';
+import { esContratoDelInmueble } from './inmuebleDelContrato';
 import { cancelarAnticipado, interesesCorridos } from './prestamos/amortizarAnticipado';
 import { triggerTreasuryUpdate } from './treasuryEventsService';
 import { confirmTreasuryEvent } from './treasuryConfirmationService';
@@ -547,7 +548,7 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
   const referenceDate = saleDate ?? new Date().toISOString().slice(0, 10);
   const activeContracts = contracts.filter(
     (contract) =>
-      (contract.inmuebleId === propertyId || contract.propertyId === propertyId) &&
+      esContratoDelInmueble(contract, propertyId) &&
       isActiveContract(contract, referenceDate)
   );
 
@@ -701,7 +702,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   const allContracts = await tx.objectStore('contracts').getAll();
   const activeContracts = allContracts.filter(
     (contract) =>
-      (contract.inmuebleId === input.propertyId || contract.propertyId === input.propertyId) &&
+      esContratoDelInmueble(contract, input.propertyId) &&
       isActiveContract(contract, input.saleDate)
   );
 

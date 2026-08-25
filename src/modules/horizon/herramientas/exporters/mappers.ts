@@ -174,13 +174,15 @@ const getApproximateTAE = (tinPct: number): number => {
   return (Math.pow(1 + tinPct / 100 / 12, 12) - 1) * 100;
 };
 
-const getRegimenFiscal = (inmueble: Inmueble, property?: ExtendedProperty | null): string => {
-  const explicitUse = property?.fiscalData?.contractUse;
-  if (explicitUse === 'vivienda-habitual') return 'Vivienda habitual';
-  if (explicitUse === 'turistico') return 'Turístico';
-  if (explicitUse === 'otros') return 'Otros';
-  return inmueble.fiscalidad.metodo_amortizacion === 'REGLA_GENERAL_3' ? 'Arrendamiento general' : 'Especial';
-};
+// El régimen se deduce del método de amortización del inmueble.
+//
+// Antes miraba primero `property.fiscalData.contractUse`, un campo que sólo
+// escribía el importador de declaraciones y que no consumía ningún cálculo
+// fiscal: el régimen de verdad vive en el CONTRATO (`Contract.modalidad` +
+// `reduccion`, que es lo que lee `calcularPorcentajeReduccionContrato`). El
+// campo se ha retirado y esta era su única lectura.
+const getRegimenFiscal = (inmueble: Inmueble): string =>
+  inmueble.fiscalidad.metodo_amortizacion === 'REGLA_GENERAL_3' ? 'Arrendamiento general' : 'Especial';
 
 export function mapPrestamoToRow({ prestamo, plan = null, currentDate = new Date() }: PrestamoMapperArgs): PrestamoRow {
   const principalVivo = getOutstandingPrincipal(prestamo, plan);
@@ -282,6 +284,6 @@ export function mapInmuebleToRow({
     metodoAmortizacion: inmueble.fiscalidad.metodo_amortizacion,
     amortizacionAnualBase: toNumber(inmueble.fiscalidad.amortizacion_anual_base),
     porcentajeAmortizacion: toNumber(inmueble.fiscalidad.porcentaje_amortizacion_info),
-    regimenFiscal: getRegimenFiscal(inmueble, property),
+    regimenFiscal: getRegimenFiscal(inmueble),
   };
 }

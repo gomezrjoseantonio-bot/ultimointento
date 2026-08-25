@@ -3,6 +3,7 @@
 
 import { initDB, FiscalSummary, Document, AEATCarryForward } from './db';
 import { getExerciseStatus } from './aeatClassificationService';
+import { esContratoDelInmueble } from './inmuebleDelContrato';
 import { getRentalDaysForYear, updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
 import { calcularAmortizacionMobiliarioAnual } from './mobiliarioActivoService';
 import { getTotalMejorasHastaEjercicio } from './mejoraActivoService';
@@ -165,7 +166,7 @@ const computeFiscalSummary = async (
   // Calculate income from contracts
   const allContracts = await db.getAll('contracts');
   const propertyContracts = (allContracts as any[]).filter((c: any) => {
-    const matchesProperty = (c.inmuebleId === propertyId) || (c.propertyId === propertyId);
+    const matchesProperty = esContratoDelInmueble(c, propertyId);
     if (!matchesProperty) return false;
     const inicio = new Date(c.fechaInicio ?? c.startDate);
     const fin = new Date(c.fechaFin ?? c.endDate ?? `${exerciseYear}-12-31`);
@@ -672,7 +673,7 @@ export const calculateFiscalSummaryExtended = async (
 
   const allContracts = (await db.getAll('contracts')) as any[];
   const contractsDelAño = allContracts.filter((c: any) => {
-    const matchesProperty = (c.inmuebleId === propertyId) || (c.propertyId === propertyId);
+    const matchesProperty = esContratoDelInmueble(c, propertyId);
     if (!matchesProperty) return false;
     const inicio = new Date(c.fechaInicio ?? c.startDate ?? `${exerciseYear}-01-01`);
     const fin = new Date(c.fechaFin ?? c.endDate ?? `${exerciseYear}-12-31`);

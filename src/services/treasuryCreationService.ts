@@ -1,6 +1,7 @@
 import { initDB, Contract, Ingreso, Gasto, Document, type GastoCategoria } from './db';
 import { isCapexType, AEAT_CLASSIFICATION_MAP } from './aeatClassificationService';
 import { gastosInmuebleService } from './gastosInmuebleService';
+import { inmuebleDelContrato } from './inmuebleDelContrato';
 import toast from 'react-hot-toast';
 
 function mapFiscalTypeToBox(ft: string): string {
@@ -68,7 +69,7 @@ export const generateIncomeFromContract = async (contract: Contract): Promise<nu
           importe: contract.rentaMensual || contract.monthlyRent || 0,
           moneda: 'EUR',
           destino: 'inmueble_id',
-          destino_id: contract.propertyId,
+          destino_id: inmuebleDelContrato(contract),
           estado: 'previsto',
           from_doc: false,
           createdAt: new Date().toISOString(),

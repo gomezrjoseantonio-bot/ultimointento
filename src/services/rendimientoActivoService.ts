@@ -7,6 +7,7 @@
 
 import { initDB } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
+import { esContratoDelInmueble, type ContratoConInmueble } from './inmuebleDelContrato';
 // V82 · Bloque C · base amortizable por ejercicio (casilla 0130 declarada del año).
 import { baseAmortizableEjercicioService } from './baseAmortizableEjercicioService';
 
@@ -151,7 +152,7 @@ export async function getRendimientoFiscal(
   // Rentas: contratos del inmueble → registros rentaMensual del año
   const allContracts: any[] = await db.getAll('contracts');
   const propContracts = allContracts.filter(
-    (c: any) => (c.inmuebleId ?? c.propertyId) === propertyId,
+    (c: ContratoConInmueble) => esContratoDelInmueble(c, propertyId),
   );
   let rentasDeclaradas = 0;
   for (const c of propContracts) {

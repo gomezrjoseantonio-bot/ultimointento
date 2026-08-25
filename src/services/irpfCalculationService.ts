@@ -13,6 +13,7 @@
 
 import { initDB } from './db';
 import type { Contract } from './db';
+import { esContratoDelInmueble } from './inmuebleDelContrato';
 import {
   getFiscalContextSafe,
   type FiscalContext,
@@ -733,7 +734,7 @@ export async function recopilarDatosInmuebles(
 
     // Find contracts for this property in the exercise year
     const propContracts = contracts.filter((c: any) => {
-      if ((c.inmuebleId ?? c.propertyId) !== prop.id) return false;
+      if (!esContratoDelInmueble(c, prop.id)) return false;
       const inicio = new Date(c.fechaInicio ?? c.startDate);
       const fin = new Date(c.fechaFin ?? c.endDate ?? `${ejercicio}-12-31`);
       return inicio.getFullYear() <= ejercicio && fin.getFullYear() >= ejercicio;
