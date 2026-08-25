@@ -11,11 +11,15 @@
 // RAÍZ = módulo que se ejecuta SIN que nadie del repo lo importe. Política ESTRICTA
 // (Adenda 2 · confirmada por Jose): raíz = EVIDENCIA de ejecución real. Un `.ts`
 // NO es raíz por existir un `.js` homónimo en package.json, ni por shebang, ni por
-// convención. Solo estas tres fuentes cuentan:
+// convención. Solo estas fuentes cuentan:
 //   1. app-entry       · src/index.tsx (entry fijo de react-scripts/CRA)
 //   2. netlify-function· fichero de functions/ (nivel superior) que exporta `handler`
 //                        (netlify.toml [functions] directory = "functions")
 //   3. npm-script      · fichero referenciado en package.json > scripts
+//   4. typecheck-guard · src/services/__typeguards__/* · los chequea tsc y nadie
+//                        los importa POR DISEÑO (son entradas del gate, como un test)
+//   5. workflow-script · fichero que ejecuta un `.github/workflows/*.yml` · misma
+//                        evidencia que 3, con el disparador en CI en vez de en npm
 //
 // Una raíz de MÁS convierte árboles muertos en vivos (el detector deja de servir).
 // Una raíz de MENOS produce falsos muertos (alguien borra código vivo). Por eso la
@@ -218,6 +222,29 @@ export function analyzeReachability(ROOT) {
   for (const n of nodes) {
     if (n.replace(/\\/g, '/').includes('/__typeguards__/')) {
       addRoot(n, 'typecheck-guard', 'candado chequeado por tsc · no importable por diseño');
+    }
+  }
+  // 3e · scripts que ejecuta GitHub Actions (`.github/workflows/*.yml`). Es la
+  // misma evidencia que un script de package.json —alguien corre `node fichero`—
+  // solo que el disparador vive en CI y no en npm, así que entra por la misma
+  // puerta y con el mismo regex que 3c.
+  // Sin esta regla, un script que solo usa un workflow queda sin ningún
+  // importador y sin raíz, y se cuenta muerto siendo load-bearing: es lo que
+  // pasaba con `scripts/indices/actualizar-indices.mjs` (el que mantiene al día
+  // `public/data/indices/*.json`) y `scripts/valoracion/notariado.mjs`.
+  const wfDir = path.join(ROOT, '.github', 'workflows');
+  let workflows = [];
+  try {
+    workflows = fs.readdirSync(wfDir).filter((f) => /\.ya?ml$/i.test(f));
+  } catch {
+    /* sin .github/workflows · nada que añadir */
+  }
+  for (const wf of workflows) {
+    const contenido = read(path.join(wfDir, wf));
+    let m;
+    scriptFileRe.lastIndex = 0;
+    while ((m = scriptFileRe.exec(contenido))) {
+      addRoot(path.join(ROOT, m[1]), 'workflow-script', `.github/workflows/${wf}`);
     }
   }
 
