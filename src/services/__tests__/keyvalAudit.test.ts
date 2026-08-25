@@ -25,6 +25,18 @@ describe('__keyvalAudit · auditKeyval()', () => {
     // misma DB que la utility leerá.
     const { initDB } = await import('../db');
     const db = await initDB();
+
+    // `initDB()` ya NO deja `keyval` vacío: desde V78 cada migración POST-open
+    // deja su propio flag de idempotencia ahí (`migration_v78_*`,
+    // `migration_v82_*`, `migration_v90_explotacion_alquiler_v1`… 17 hoy). Eso
+    // es el producto haciendo lo correcto —sin el flag, la migración volvería a
+    // correr en cada arranque—, pero convierte en falsa la premisa de estos
+    // tests, que miden el informe COMPLETO contra lo que ellos siembran.
+    // Se limpia el store para que el caso bajo prueba sea el que se declara.
+    const limpieza = db.transaction('keyval', 'readwrite');
+    await limpieza.objectStore('keyval').clear();
+    await limpieza.done;
+
     const tx = db.transaction('keyval', 'readwrite');
     for (const [key, value] of entries) {
       await tx.objectStore('keyval').put(value, key);
@@ -160,6 +172,8 @@ describe('__keyvalAudit · auditKeyval()', () => {
   });
 
   test('store keyval vacío · totalKeys=0 · entries vacío', async () => {
+    await seedKeyval([]);
+
     const { auditKeyval } = await import('../__keyvalAudit');
     const report = await auditKeyval();
 

@@ -14,7 +14,7 @@ import {
   requierenPregunta,
   presentacionDe,
 } from '../catalogoPresentacionPersistencia';
-import { TIPOS_GASTO_INMUEBLE_V2 } from '../conceptos/__tests__/fixtures/baselineInmuebleLegacy';
+import { TIPOS_GASTO_INMUEBLE_V2 } from '../conceptos/__fixtures__/baselineInmuebleLegacy';
 import { TIPOS_GASTO_PERSONAL } from '../../modules/personal/wizards/utils/tiposDeGastoPersonal';
 import { getAllCategories, SUMINISTRO_SUBTYPES } from '../categoryCatalog';
 

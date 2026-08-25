@@ -98,12 +98,13 @@ describe('V60 migration · sub-tarea 1 schema extensions', () => {
   });
 
   describe('DB_VERSION', () => {
-    test('está fijado a 61 en src/services/db.ts', async () => {
+    test('la base nueva abre a la DB_VERSION vigente de src/services/db.ts', async () => {
       const dbModule = await import('../db');
-      // No exportamos DB_VERSION directamente · validamos vía la firma
-      // del módulo abriendo una DB nueva.
+      // `db.ts` SÍ exporta `DB_VERSION`: se compara contra él para que el test
+      // no envejezca con cada bump (el número hardcodeado que había aquí llevaba
+      // roto desde v66). Mismo patrón que `db.structure.v79.test.ts:81`.
       const db = await dbModule.initDB();
-      expect(db.version).toBe(65);
+      expect(db.version).toBe(dbModule.DB_VERSION);
       db.close();
     });
   });
@@ -289,7 +290,7 @@ describe('V60 migration · sub-tarea 1 schema extensions', () => {
       // el backfill V60 sigue corriendo en el camino V59 → 61.
       const dbModule = await import('../db');
       const db = await dbModule.initDB();
-      expect(db.version).toBe(65);
+      expect(db.version).toBe(dbModule.DB_VERSION);
 
       const records = await db.getAll('arrastresIRPF');
       expect(records).toHaveLength(1);

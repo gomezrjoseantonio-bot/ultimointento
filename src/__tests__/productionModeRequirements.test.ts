@@ -32,6 +32,14 @@ jest.mock('../services/treasuryApiService', () => {
 describe('Production Mode Requirements', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // `resetMocks: true` (config Jest de CRA · `createJestConfig.js:68`) borra la
+    // implementación de CADA mock antes de cada test — también la que se pasó a
+    // `jest.fn(...)` en la factory de `jest.mock`. Sin re-armarla aquí, `initDB()`
+    // devuelve `undefined` y el test muere en `db.add` sin llegar a probar nada.
+    // El producto no tiene parte en esto: es el arnés del test.
+    (initDB as jest.Mock).mockResolvedValue(mockDB);
+    (validateIBAN as jest.Mock).mockReturnValue(true);
+
     mockDB.add.mockResolvedValue(1);
     mockDB.getAll.mockResolvedValue([]);
   });
@@ -97,13 +105,19 @@ describe('Production Mode Requirements', () => {
         openingBalance: 1000
       })).rejects.toThrow('El banco es obligatorio');
 
-      // Test with missing IBAN
+      // Un IBAN vacío SÍ se rechaza, pero por el guard de formato, no por el de
+      // obligatoriedad: `validateIBAN('')` devuelve false en su primera línea
+      // (`treasuryApiService.ts:23`) y corta en `:93`, antes de llegar al
+      // `if (!accountData.iban)` de `:102`. El comportamiento —no se crea la
+      // cuenta— es el correcto; lo que no existe es ese segundo mensaje.
+      // (El guard de `:102` queda inalcanzable: anotado como deuda aparte, NO se
+      // toca producto para poner verde un test.)
       await expect(TreasuryAccountsAPI.createAccount({
         alias: 'Test',
         bank: 'Test Bank',
         iban: '',
         openingBalance: 1000
-      })).rejects.toThrow('El IBAN es obligatorio');
+      })).rejects.toThrow('Formato de IBAN inválido');
     });
   });
 

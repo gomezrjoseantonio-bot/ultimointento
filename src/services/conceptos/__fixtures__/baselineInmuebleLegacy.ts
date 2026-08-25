@@ -9,11 +9,11 @@
 // para «arreglar» un test —eso taparía justo lo que vigila—.
 
 import { Landmark, Users, Zap, Shield, Briefcase, Wrench, Sparkles, Armchair, CirclePlus } from 'lucide-react';
-import type { TipoGasto, SubtipoGasto } from '../../../../modules/shared/components/TipoGastoSelector';
+import type { TipoGasto, SubtipoGasto } from '../../../modules/shared/components/TipoGastoSelector';
 import type {
   CategoriaGastoCompromiso,
   TipoCompromiso,
-} from '../../../../types/compromisosRecurrentes';
+} from '../../../types/compromisosRecurrentes';
 
 export interface SubtipoGastoInmueble extends SubtipoGasto {
   tipoCompromiso: TipoCompromiso;

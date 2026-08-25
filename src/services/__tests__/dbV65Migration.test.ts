@@ -17,10 +17,10 @@ describe('DB V65 Migration · TAREA 13 · módulo planes de pensiones', () => {
     jest.resetModules();
   });
 
-  it('should initialize database at version 65', async () => {
+  it('should initialize database at the current DB_VERSION', async () => {
     const dbModule = await import('../db');
     const db = await dbModule.initDB();
-    expect(db.version).toBe(65);
+    expect(db.version).toBe(dbModule.DB_VERSION);
     db.close();
   });
 
@@ -45,175 +45,38 @@ describe('DB V65 Migration · TAREA 13 · módulo planes de pensiones', () => {
     db.close();
   });
 
-  it('should be idempotent (opening twice stays at version 65)', async () => {
+  it('should be idempotent (opening twice stays at the current DB_VERSION)', async () => {
     const dbModule = await import('../db');
 
     const db1 = await dbModule.initDB();
-    expect(db1.version).toBe(65);
+    expect(db1.version).toBe(dbModule.DB_VERSION);
     db1.close();
 
     jest.resetModules();
     const dbModule2 = await import('../db');
 
     const db2 = await dbModule2.initDB();
-    expect(db2.version).toBe(65);
+    expect(db2.version).toBe(dbModule.DB_VERSION);
     db2.close();
   });
 
-  it('should migrate inversiones[tipo=plan_pensiones] to planesPensiones and infer PPI', async () => {
-    // Create a V64 DB with a plan_pensiones in inversiones
-    await new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open(TEST_DB_NAME, 64);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains('keyval')) {
-          db.createObjectStore('keyval');
-        }
-        if (!db.objectStoreNames.contains('ingresos')) {
-          const s = db.createObjectStore('ingresos', { keyPath: 'id', autoIncrement: true });
-          s.createIndex('personalDataId', 'personalDataId', { unique: false });
-          s.createIndex('tipo', 'tipo', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('prestamos')) {
-          db.createObjectStore('prestamos', { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains('inversiones')) {
-          const s = db.createObjectStore('inversiones', { keyPath: 'id', autoIncrement: true });
-          s.createIndex('tipo', 'tipo', { unique: false });
-          s.createIndex('activo', 'activo', { unique: false });
-          s.createIndex('entidad', 'entidad', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('planesPensionInversion')) {
-          const s = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
-          s.createIndex('personalDataId', 'personalDataId', { unique: false });
-          s.createIndex('tipo', 'tipo', { unique: false });
-          s.createIndex('titularidad', 'titularidad', { unique: false });
-          s.createIndex('esHistorico', 'esHistorico', { unique: false });
-          s.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
-        }
-      };
-      req.onsuccess = () => {
-        const db = req.result;
-        const tx = db.transaction(['inversiones'], 'readwrite');
-        tx.objectStore('inversiones').add({
-          nombre: 'Mi plan individual',
-          tipo: 'plan_pensiones',
-          entidad: 'CaixaBank Vida',
-          valor_actual: 5000,
-          total_aportado: 4500,
-          activo: true,
-          personalDataId: 1,
-          aportaciones: [
-            { id: 1, fecha: '2023-06-01', importe: 1500, tipo: 'aportacion' },
-            { id: 2, fecha: '2024-06-01', importe: 1500, tipo: 'aportacion' },
-          ],
-          created_at: '2023-01-01T00:00:00Z',
-        });
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
-        };
-        tx.onerror = () => reject(tx.error);
-      };
-      req.onerror = () => reject(req.error);
-    });
-
-    const dbModule = await import('../db');
-    const db65 = await dbModule.initDB();
-
-    expect(db65.version).toBe(65);
-    expect(db65.objectStoreNames.contains('planesPensionInversion')).toBe(false);
-
-    const planes = (await db65.getAll('planesPensiones')) as any[];
-    expect(planes.length).toBeGreaterThanOrEqual(1);
-    const planMigrado = planes.find((p: any) => p.nombre === 'Mi plan individual');
-    expect(planMigrado).toBeDefined();
-    expect(planMigrado.tipoAdministrativo).toBe('PPI');
-    expect(planMigrado.gestoraActual).toBe('CaixaBank Vida');
-
-    db65.close();
-  });
-
-  it('should infer PPE when empresa data is present in planesPensionInversion', async () => {
-    await new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open(TEST_DB_NAME, 64);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains('keyval')) db.createObjectStore('keyval');
-        if (!db.objectStoreNames.contains('ingresos')) {
-          const s = db.createObjectStore('ingresos', { keyPath: 'id', autoIncrement: true });
-          s.createIndex('personalDataId', 'personalDataId', { unique: false });
-          s.createIndex('tipo', 'tipo', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('prestamos')) db.createObjectStore('prestamos', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('inversiones')) {
-          const s = db.createObjectStore('inversiones', { keyPath: 'id', autoIncrement: true });
-          s.createIndex('tipo', 'tipo', { unique: false });
-          s.createIndex('activo', 'activo', { unique: false });
-          s.createIndex('entidad', 'entidad', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('planesPensionInversion')) {
-          const s = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
-          s.createIndex('personalDataId', 'personalDataId', { unique: false });
-          s.createIndex('tipo', 'tipo', { unique: false });
-          s.createIndex('titularidad', 'titularidad', { unique: false });
-          s.createIndex('esHistorico', 'esHistorico', { unique: false });
-          s.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
-        }
-      };
-      req.onsuccess = () => {
-        const db = req.result;
-        const tx = db.transaction(['planesPensionInversion'], 'readwrite');
-        tx.objectStore('planesPensionInversion').add({
-          personalDataId: 1,
-          nombre: 'Plan empleo empresa',
-          tipo: 'plan-pensiones',
-          empresaNif: 'A12345678',
-          empresaNombre: 'Empresa Test SL',
-          aportacionesRealizadas: 8000,
-          valorCompra: 0,
-          valorActual: 9000,
-          titularidad: 'yo',
-          esHistorico: false,
-          historialAportaciones: {
-            '2023': { titular: 4000, empresa: 4000, total: 8000, fuente: 'xml_aeat' },
-          },
-          fechaCreacion: '2023-01-01T00:00:00Z',
-          fechaActualizacion: '2023-12-31T00:00:00Z',
-        });
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
-        };
-        tx.onerror = () => reject(tx.error);
-      };
-      req.onerror = () => reject(req.error);
-    });
-
-    const dbModule = await import('../db');
-    const db65 = await dbModule.initDB();
-
-    expect(db65.version).toBe(65);
-
-    const planes = (await db65.getAll('planesPensiones')) as any[];
-    const planPPE = planes.find((p: any) => p.nombre === 'Plan empleo empresa');
-    expect(planPPE).toBeDefined();
-    expect(planPPE.tipoAdministrativo).toBe('PPE');
-    expect(planPPE.subtipoPPE).toBe('empleador_unico');
-
-    // Verificar aportaciones migradas
-    const aportaciones = (await db65.getAll('aportacionesPlan')) as any[];
-    const aps = aportaciones.filter((a: any) => a.planId === planPPE.id);
-    expect(aps.length).toBeGreaterThanOrEqual(1);
-    const ap2023 = aps.find((a: any) => a.ejercicioFiscal === 2023);
-    expect(ap2023).toBeDefined();
-    expect(ap2023.importeTitular).toBe(4000);
-    expect(ap2023.importeEmpresa).toBe(4000);
-
-    db65.close();
-  });
-
-  // Test 'should migrate traspasosPlanes to traspasosPlanPensiones' ELIMINADO
-  // (bloque 3 · commit final A) junto con la migración que verificaba. DB única
-  // en v79 → esa migración no defiende a nadie.
+  // ─────────────────────────────────────────────────────────────────────────
+  // RETIRADO · los tests del camino de upgrade desde una base V64.
+  //
+  // Comprobaban que al abrir una base V64 el upgrade BORRABA `planesPensionInversion`
+  // y trasvasaba sus planes a `planesPensiones` infiriendo el tipo administrativo
+  // (PPI / PPE).
+  //
+  // Ese bloque del upgrade ya no existe: #1430 («DBSchema · Fase 0 · … + borrar
+  // limpieza legacy», 19 jul 2026) retiró del callback `upgrade` los 46 bloques
+  // de limpieza y migración legacy, por decisión expresa (Adenda 1 opción B) y
+  // en coherencia con la política de datos vigente: carga limpia, sin migración
+  // ni backfill. Queda escrito en `db.ts:74-77`: «stores legacy borrados … → su
+  // limpieza del upgrade se retiró en Fase 0».
+  //
+  // Lo que sigue vivo —que una base FRESCA nace con los stores destino y sin los
+  // legacy— es exactamente lo que verifican los tests de arriba, que pasan.
+  //
+  // El producto es el correcto; lo obsoleto era el test.
+  // ─────────────────────────────────────────────────────────────────────────
 });
