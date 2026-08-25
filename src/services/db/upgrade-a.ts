@@ -44,6 +44,18 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
         }
 
         // Contracts store
+        //
+        // El índice es `propertyId`, el campo LEGACY: los wizards modernos
+        // escriben `inmuebleId` y no lo rellenan, así que el índice está medio
+        // vacío y NO lo lee nadie (cero `getAllFromIndex('contracts', …)` en
+        // todo el repo). Quien busca los contratos de un piso hace `getAll` +
+        // filtro por `inmuebleDelContrato`, que mira los dos campos.
+        //
+        // Se mantiene a propósito: cambiarlo a `inmuebleId` exigiría bump de
+        // `DB_VERSION` + backfill, y la política es carga limpia — no se migra
+        // nada. El coste de dejarlo es recorrer decenas de contratos en
+        // memoria, que no duele; el día que Fase 2 consulte contratos por
+        // inmueble en bucle, se reevalúa (backfill primero, índice después).
         if (!db.objectStoreNames.contains('contracts')) {
           const contractStore = db.createObjectStore('contracts', { keyPath: 'id', autoIncrement: true });
           contractStore.createIndex('propertyId', 'propertyId', { unique: false });

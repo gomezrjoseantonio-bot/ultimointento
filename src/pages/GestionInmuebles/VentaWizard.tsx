@@ -8,6 +8,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Building2 } from 'lucide-react';
+import { esContratoDelInmueble, type ContratoConInmueble } from '../../services/inmuebleDelContrato';
 import toast from 'react-hot-toast';
 import PageHeader from '../../components/shared/PageHeader';
 import { initDB, type Account, type GastoInmueble, type Property } from '../../services/db';
@@ -74,7 +75,7 @@ const VentaWizard: React.FC = () => {
         );
         const allContracts = await db.getAll('contracts');
         const propContracts = allContracts.filter(
-          (c: any) => c.inmuebleId === propertyId || c.propertyId === propertyId,
+          (c: ContratoConInmueble) => esContratoDelInmueble(c, propertyId),
         );
         const sinIdentificar = years.filter((y) => {
           const yStart = new Date(`${y}-01-01`).getTime();

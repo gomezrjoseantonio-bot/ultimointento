@@ -801,7 +801,6 @@ async function crearInmuebleDesdeDeclaracion(
       constructionCadastralValue: datos.valorCatastralConstruccion || undefined,
       constructionPercentage: datos.porcentajeConstruccion || undefined,
       acquisitionDate: datos.fechaAdquisicion || undefined,
-      contractUse: datos.uso === 'arrendamiento' || datos.uso === 'mixto' ? 'vivienda-habitual' : 'otros',
       housingReduction: datos.derechoReduccion || false,
       isAccessory: datos.esAccesorio || false,
       mainPropertyId: principalPropertyId,

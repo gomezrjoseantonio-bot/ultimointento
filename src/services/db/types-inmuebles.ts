@@ -77,7 +77,12 @@ export interface Property {
     constructionPercentage?: number;
     cadastralRevised?: boolean; // catastralRevisado AEAT
     acquisitionDate?: string;
-    contractUse?: 'vivienda-habitual' | 'turistico' | 'otros';
+    // `contractUse` vivía aquí y se ha retirado: el régimen de un alquiler es del
+    // CONTRATO, no del ladrillo — un mismo piso puede tener contratos de régimen
+    // distinto en años distintos. Lo escribía sólo el importador de declaraciones
+    // y lo leía sólo un exportador; ningún cálculo fiscal lo consultaba (la
+    // reducción sale de `Contract.modalidad` + `reduccion` en
+    // `calcularPorcentajeReduccionContrato`). Sin migración: carga limpia.
     housingReduction?: boolean;
     isAccessory?: boolean;
     mainPropertyId?: number;

@@ -1015,6 +1015,11 @@ class DashboardService {
           .filter((id): id is number => id != null)
       );
 
+      // Aquí NO se usa `inmuebleDelContrato`: este bloque lee registros en
+      // crudo y tolera además las variantes snake_case (`inmueble_id`,
+      // `property_id`) que el helper no contempla porque no están en el tipo
+      // `Contract`. Pasarlo por el helper perdería esos respaldos. Si algún día
+      // se confirma que ningún registro llega en snake_case, unificar aquí.
       const roomPropertyIds = new Set(
         contracts
           .filter((c: any) => {

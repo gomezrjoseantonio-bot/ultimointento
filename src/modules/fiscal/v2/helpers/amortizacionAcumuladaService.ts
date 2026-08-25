@@ -18,6 +18,7 @@
 import { initDB } from '../../../../services/db';
 import type { Property, Contract } from '../../../../services/db';
 import { getRentalDaysForYear } from '../../../../services/aeatAmortizationService';
+import { esContratoDelInmueble } from '../../../../services/inmuebleDelContrato';
 import { calcularAmortizacionMobiliarioAnual } from '../../../../services/mobiliarioActivoService';
 import { calcularDiasArrendadoAno } from '../../../../services/gananciaPatrimonialService';
 // V82 · Bloque C · base amortizable por ejercicio (casilla 0130 declarada del año).
@@ -112,7 +113,7 @@ export async function getAmortizacionAcumulada(
   if (modoVenta) {
     const allContracts = (await db.getAll('contracts')) as Contract[];
     contratosDelInmueble = allContracts.filter(
-      (c) => c.inmuebleId === propertyId || c.propertyId === propertyId,
+      (c) => esContratoDelInmueble(c, propertyId),
     );
   }
 

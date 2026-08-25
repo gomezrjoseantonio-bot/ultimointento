@@ -9,6 +9,7 @@
 //   IRPF        = aplicar tramos base ahorro 2025 sobre la ganancia (si > 0)
 
 import { initDB, type Contract, type GastoInmueble, type MejoraInmueble, type Property } from './db';
+import { esContratoDelInmueble } from './inmuebleDelContrato';
 
 export interface AmortizacionAcumuladaResult {
   declarada: number;              // suma de casilla 0131 con origen xml_aeat
@@ -167,7 +168,7 @@ export async function calcularAmortizacionAcumulada(
   if (baseAmortizacion > 0 && anosCalculadosAtlas.length > 0) {
     const allContracts = (await db.getAll('contracts')) as Contract[];
     const contratosDelInmueble = allContracts.filter(
-      (c) => c.inmuebleId === propertyId || c.propertyId === propertyId,
+      (c) => esContratoDelInmueble(c, propertyId),
     );
     for (const anio of anosCalculadosAtlas) {
       const dias = calcularDiasArrendadoAno(contratosDelInmueble, anio, sellDate);

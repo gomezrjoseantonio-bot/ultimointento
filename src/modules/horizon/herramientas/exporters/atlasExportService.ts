@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { calcularDeclaracionIRPF } from '../../../../services/irpfCalculationService';
 import { generarEventosFiscales } from '../../../../services/fiscalPaymentsService';
+import { inmuebleDelContrato } from '../../../../services/inmuebleDelContrato';
 import { initDB, type Account, type Contract, type Movement } from '../../../../services/db';
 import { inmuebleService } from '../../../../services/inmuebleService';
 import { prestamosService } from '../../../../services/prestamosService';
@@ -560,7 +561,7 @@ export async function exportarContratosParaImportacion(): Promise<void> {
         .trim();
 
     // Legacy contracts may store the property reference as `propertyId` instead of `inmuebleId`
-    const inmuebleKey = String(contract.inmuebleId ?? contract.propertyId ?? '');
+    const inmuebleKey = String(inmuebleDelContrato(contract) ?? '');
 
     return {
       ID: String(contract.id ?? ''),

@@ -3,6 +3,7 @@
 
 import { initDB } from './db';
 import { nominaService } from './nominaService';
+import { esContratoDelInmueble } from './inmuebleDelContrato';
 import { getGastosRecurrentesFiscales } from './recurringExpensesFiscalService';
 import { prestamosService } from './prestamosService';
 import { prestamosCalculationService } from './prestamosCalculationService';
@@ -115,7 +116,7 @@ async function conciliarIngresosAlquiler(
   for (const prop of properties) {
     // Contratos activos para este inmueble en el ejercicio
     const propContracts = contracts.filter((c: any) => {
-      if ((c.inmuebleId ?? c.propertyId) !== prop.id) return false;
+      if (!esContratoDelInmueble(c, prop.id)) return false;
       const inicio = new Date(c.fechaInicio ?? c.startDate);
       const fin = new Date(c.fechaFin ?? c.endDate ?? `${ejercicio}-12-31`);
       return inicio.getFullYear() <= ejercicio && fin.getFullYear() >= ejercicio;
