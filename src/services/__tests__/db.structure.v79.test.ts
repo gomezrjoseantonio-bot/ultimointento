@@ -32,6 +32,9 @@ const EXPECTED_STORES: Record<string, string[]> = {
   ejerciciosFiscalesCoord: ['estado'],
   entidadesAtribucion: ['nif', 'tipoRenta'],
   escenarios: [],
+  // V90 · «poner en alquiler» como entidad propia (db.ts:97 · upgrade-a.ts:169-173).
+  // El store existe desde el bump y este mapa se quedó sin actualizar.
+  explotacionAlquiler: ['inmuebleId'],
   fondos_ahorro: ['activo', 'tipo'],
   gastosInmueble: ['casillaAEAT', 'ejercicio', 'estado', 'inmueble-ejercicio', 'inmuebleId', 'movimientoId', 'origen', 'origen-origenId', 'treasuryEventId'],
   importBatches: ['accountId', 'createdAt'],

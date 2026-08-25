@@ -1,18 +1,17 @@
 /**
  * Tests para la migración V5.9.
  *
- * Cubre los 3 escenarios críticos del cierre forzoso del rename
- * objetivos_financieros → escenarios:
+ * Cubre el cierre del rename objetivos_financieros → escenarios en lo que sigue
+ * siendo cierto tras retirar la limpieza legacy del upgrade (#1430):
  *
- *   1. DB en V58 con `objetivos_financieros` poblado y `escenarios` con id=1
- *      → V59 mergea KPI macro faltantes y elimina el store viejo.
- *   2. DB en V58 sin `objetivos_financieros` (deploy nuevo)
- *      → V59 idempotente, no falla, no crea stores extra.
- *   3. DB ya en V59
- *      → re-abrir no relanza la migración ni recrea el store viejo.
+ *   1. DB en V58 sin `objetivos_financieros` (deploy nuevo)
+ *      → abre a la versión vigente, no falla, no crea stores extra.
+ *   2. DB ya migrada
+ *      → re-abrir no resucita el store viejo.
  */
 
 import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 import { openDB } from 'idb';
 
 const DB_NAME = 'AtlasHorizonDB';
@@ -29,109 +28,36 @@ async function wipeDB() {
 
 beforeEach(async () => {
   jest.resetModules();
+  // Almacenamiento nuevo por test (mismo patrón que el resto de suites de `db`).
+  // Con el `wipeDB()` a secas, un test que fallaba antes de su `db.close()`
+  // dejaba la conexión viva: `deleteDatabase` se quedaba bloqueado y el
+  // siguiente `openDB(…, 58)` sobre una base ya en la versión vigente colgaba
+  // la suite entera en vez de fallar.
+  (globalThis as any).indexedDB = new IDBFactory();
   await wipeDB();
 });
 
 describe('DB migration V5.9 — cierre objetivos_financieros', () => {
-  it('mergea KPI macro del store viejo al escenario nuevo y elimina objetivos_financieros', async () => {
-    // ── Arrange: DB en V58 con datos en objetivos_financieros
-    //   y un escenario nuevo SIN algunos KPI macro.
-    const dbV58 = await openDB(DB_NAME, 58, {
-      upgrade(db) {
-        db.createObjectStore('objetivos_financieros', { keyPath: 'id' });
-        db.createObjectStore('escenarios', { keyPath: 'id' });
-      },
-    });
-
-    await dbV58.put('objetivos_financieros', {
-      id: 1,
-      rentaPasivaObjetivo: 4500,
-      patrimonioNetoObjetivo: 750000,
-      cajaMinima: 15000,
-      dtiMaximo: 30,
-      ltvMaximo: 45,
-      yieldMinimaCartera: 9,
-      tasaAhorroMinima: 20,
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    });
-    await dbV58.put('escenarios', {
-      id: 1,
-      modoVivienda: 'propia',
-      gastosVidaLibertadMensual: 3500,
-      estrategia: 'agresivo',
-      hitos: [],
-      // NOTA: no metemos los KPI macro · deberían heredarse del viejo.
-      updatedAt: '2026-01-15T00:00:00.000Z',
-    });
-    dbV58.close();
-
-    // ── Act: importar db.ts e initDB → dispara V59
-    const { initDB } = await import('../db');
-    const db = await initDB();
-
-    // ── Assert
-    expect(db.version).toBe(65);
-    const stores = Array.from(db.objectStoreNames);
-    expect(stores).not.toContain('objetivos_financieros');
-    expect(stores).toContain('escenarios');
-
-    const escenario = await db.get('escenarios', 1);
-    expect(escenario).toBeDefined();
-    // Los campos del escenario nuevo se preservan
-    expect(escenario.modoVivienda).toBe('propia');
-    expect(escenario.estrategia).toBe('agresivo');
-    expect(escenario.gastosVidaLibertadMensual).toBe(3500);
-    // KPI macro heredados del store viejo
-    expect(escenario.rentaPasivaObjetivo).toBe(4500);
-    expect(escenario.patrimonioNetoObjetivo).toBe(750000);
-    expect(escenario.cajaMinima).toBe(15000);
-    expect(escenario.dtiMaximo).toBe(30);
-    expect(escenario.ltvMaximo).toBe(45);
-    expect(escenario.yieldMinimaCartera).toBe(9);
-    expect(escenario.tasaAhorroMinima).toBe(20);
-    expect(escenario.id).toBe(1);
-
-    db.close();
-  });
-
-  it('preserva los KPI macro YA presentes en escenarios cuando ambos stores los tienen', async () => {
-    // El usuario editó manualmente `escenarios` antes del fix V59.
-    // V59 NO debe sobrescribir esos valores con los del store viejo.
-    const dbV58 = await openDB(DB_NAME, 58, {
-      upgrade(db) {
-        db.createObjectStore('objetivos_financieros', { keyPath: 'id' });
-        db.createObjectStore('escenarios', { keyPath: 'id' });
-      },
-    });
-
-    await dbV58.put('objetivos_financieros', {
-      id: 1,
-      rentaPasivaObjetivo: 1000, // ← valor antiguo
-      cajaMinima: 5000,
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    });
-    await dbV58.put('escenarios', {
-      id: 1,
-      modoVivienda: 'alquiler',
-      gastosVidaLibertadMensual: 2500,
-      estrategia: 'hibrido',
-      hitos: [],
-      rentaPasivaObjetivo: 5000, // ← valor que el usuario editó
-      cajaMinima: 20000,
-      updatedAt: '2026-02-01T00:00:00.000Z',
-    });
-    dbV58.close();
-
-    const { initDB } = await import('../db');
-    const db = await initDB();
-
-    const escenario = await db.get('escenarios', 1);
-    expect(escenario.rentaPasivaObjetivo).toBe(5000); // preservado
-    expect(escenario.cajaMinima).toBe(20000); // preservado
-    expect(Array.from(db.objectStoreNames)).not.toContain('objetivos_financieros');
-
-    db.close();
-  });
+  // ─────────────────────────────────────────────────────────────────────────
+  // RETIRADOS · los dos tests del merge V58 → V59 con el store viejo POBLADO.
+  //
+  // Comprobaban que al abrir una base V58 con `objetivos_financieros` lleno el
+  // upgrade volcaba sus KPI macro en `escenarios` (sin pisar los ya editados a
+  // mano) y borraba el store viejo.
+  //
+  // Ese bloque del upgrade ya no existe: #1430 («DBSchema · Fase 0 · … + borrar
+  // limpieza legacy», 19 jul 2026) retiró del callback `upgrade` los 46 bloques
+  // de limpieza y migración legacy, por decisión expresa (Adenda 1 opción B) y
+  // en coherencia con la política de datos vigente: carga limpia, sin migración
+  // ni backfill. Queda escrito en `db.ts:74-77`: «stores legacy borrados …  → su
+  // limpieza del upgrade se retiró en Fase 0».
+  //
+  // Lo que sigue vivo —que una base sin el store viejo abre limpia y con
+  // `escenarios`, y que reabrirla no lo resucita— es lo que verifican los dos
+  // tests de abajo, que pasan.
+  //
+  // El producto es el correcto; lo obsoleto era el test.
+  // ─────────────────────────────────────────────────────────────────────────
 
   it('es idempotente cuando el store viejo no existe (deploy nuevo)', async () => {
     // Simulamos un deploy nuevo donde V5.5 ya consiguió eliminar el store
@@ -152,10 +78,10 @@ describe('DB migration V5.9 — cierre objetivos_financieros', () => {
     });
     dbV58.close();
 
-    const { initDB } = await import('../db');
+    const { initDB, DB_VERSION } = await import('../db');
     const db = await initDB();
 
-    expect(db.version).toBe(65);
+    expect(db.version).toBe(DB_VERSION);
     expect(Array.from(db.objectStoreNames)).not.toContain('objetivos_financieros');
     expect(Array.from(db.objectStoreNames)).toContain('escenarios');
 
@@ -164,9 +90,9 @@ describe('DB migration V5.9 — cierre objetivos_financieros', () => {
 
   it('re-abrir una DB ya en V59 no relanza la migración ni recrea el store viejo', async () => {
     // Primer arranque: crea V59 desde cero.
-    const { initDB } = await import('../db');
+    const { initDB, DB_VERSION } = await import('../db');
     const db1 = await initDB();
-    expect(db1.version).toBe(65);
+    expect(db1.version).toBe(DB_VERSION);
     expect(Array.from(db1.objectStoreNames)).not.toContain('objetivos_financieros');
     db1.close();
 
@@ -174,7 +100,7 @@ describe('DB migration V5.9 — cierre objetivos_financieros', () => {
     jest.resetModules();
     const { initDB: initDB2 } = await import('../db');
     const db2 = await initDB2();
-    expect(db2.version).toBe(65);
+    expect(db2.version).toBe(DB_VERSION);
     expect(Array.from(db2.objectStoreNames)).not.toContain('objetivos_financieros');
     db2.close();
   });
@@ -202,7 +128,7 @@ describe('window.atlasDB · exposición programática', () => {
     // No cerramos `db` aquí — el snapshot reusará la conexión singleton.
 
     const snapshot = await dbModule.exportSnapshotJSON();
-    expect(snapshot.metadata.dbVersion).toBe(65);
+    expect(snapshot.metadata.dbVersion).toBe(dbModule.DB_VERSION);
     expect(snapshot.metadata.storeCount).toBe(realCount);
     expect(snapshot.metadata.stores).toEqual(realStores);
     // El store viejo NO debe aparecer
