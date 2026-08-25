@@ -25,6 +25,7 @@ import { TRAMOS_AHORRO_2026 } from '../../../../types/inversiones-extended';
 import type { ReglaDia } from '../../../../types/personal';
 import { inmuebleDelPrestamo, idDeInmueble } from '../../../../services/inmuebleDelPrestamo';
 import { planificarGestionMes } from './gestionTesoreria';
+import { RENT_SOURCE_TYPES } from '../../../inmuebles/utils/estadoCobroContratoService';
 import {
   cobroPrevistoDelMes,
   cuadroDePosicion,
@@ -180,10 +181,21 @@ export async function generateMonthlyForecasts(
     (e as { executedMovementId?: number | string | null }).executedMovementId != null;
 
   // Helper: check if a forecast already exists for this sourceType + sourceId in this month
-  async function isDuplicate(sourceType: string, sourceId: number | string): Promise<boolean> {
+  //
+  // `sourceType` admite un conjunto porque un mismo concepto puede haber llegado
+  // con más de un nombre: la renta de alquiler es `'contrato'` cuando la emite
+  // este generador y `'contract'` cuando la asigna el extracto contra un
+  // contrato. Preguntando por uno solo, el cobro ya conciliado no contaba como
+  // «ya hay renta este mes» y se emitía otra previsión encima.
+  async function isDuplicate(
+    sourceType: string | ReadonlySet<string>,
+    sourceId: number | string,
+  ): Promise<boolean> {
+    const esDelMismoOrigen = (t: string | undefined): boolean =>
+      typeof sourceType === 'string' ? t === sourceType : t != null && sourceType.has(t);
     const existing = await db.getAllFromIndex('treasuryEvents', 'sourceId', sourceId);
     return existing.some(e =>
-      e.sourceType === sourceType &&
+      esDelMismoOrigen(e.sourceType) &&
       e.predictedDate.startsWith(monthPrefix) &&
       isReconciled(e),
     );
@@ -319,7 +331,9 @@ export async function generateMonthlyForecasts(
       if (contract.id == null) continue;
       if (planGestion.suprimir.has(contract.id)) continue;
 
-      if (await isDuplicate('contrato', contract.id)) {
+      // Los dos nombres de la renta · si el cobro ya entró por el extracto
+      // (`'contract'`), no se emite además la previsión (`'contrato'`).
+      if (await isDuplicate(RENT_SOURCE_TYPES, contract.id)) {
         skipped++;
         continue;
       }
