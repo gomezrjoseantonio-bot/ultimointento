@@ -12,7 +12,14 @@
 //   · GAP 5.6 guard sobre `tributacion` eliminado (gateway garantiza valor)
 
 import { initDB } from './db';
-import { proponerReduccion, type RegimenAlquiler } from './reduccionAlquiler';
+import {
+  desgloseEnCurso,
+  desgloseSinReduccion,
+  tipoDeModalidad,
+  ingresosDelContratoEnEjercicio,
+  type ContratoDelTramo,
+  type DesgloseReduccion,
+} from './desgloseReduccion';
 import type { Contract } from './db';
 import { esContratoDelInmueble } from './inmuebleDelContrato';
 import {
@@ -143,7 +150,15 @@ export interface RendimientoInmueble {
   reduccionHabitual: number; // Reducción por arrendamiento de vivienda aplicada sobre el rendimiento neto positivo
   rendimientoNetoAlquiler: number; // Rendimiento neto del alquiler ANTES de reducción
   rendimientoNetoReducido: number; // Rendimiento neto del alquiler DESPUÉS de reducción
-  porcentajeReduccionHabitual: number;
+  /**
+   * El desglose por tramo · importe y % NOMINAL de cada régimen.
+   *
+   * Sustituye a `porcentajeReduccionHabitual`, que era el porcentaje EFECTIVO
+   * (reducción ÷ rendimiento). Con un tramo al 60 % y otro al 0 % ese cociente
+   * daba «26 %»: un número que no es la reducción de nada y que no aparece en
+   * ninguna ley ni en el Modelo 100.
+   */
+  reduccion: DesgloseReduccion;
   esHabitual: boolean;
   // Imputación por días vacíos (integrada cuando hay ocupación parcial)
   imputacionRenta: number;
@@ -321,61 +336,12 @@ export function calcularReduccionArrendamientoVivienda(
   };
 }
 
-/**
- * La reducción del art. 23.2 LIRPF que corresponde a un contrato.
- *
- * Las REGLAS no viven aquí: viven en `reduccionAlquiler.proponerReduccion`, que
- * es la fuente única. Esta función solo traduce la forma de un `Contract`
- * —campos legacy incluidos— a las condiciones que el motor entiende.
- *
- * Antes tenía su propia copia de la ley, y no era la misma: no conocía «primera
- * vez», así que daba el 90 % a un contrato en zona tensionada con rebaja aunque
- * fuera el primer alquiler de la vivienda, cuando sin contrato anterior no hay
- * renta que rebajar. El mismo contrato daba números distintos según por dónde se
- * preguntara.
- */
-export function calcularPorcentajeReduccionContrato(contract: any): number {
-  // Lo que el arrendador confirmó al dar de alta el contrato MANDA · no se
-  // recalcula por detrás. Ese % es el que se revisó y se firmó; recalcularlo al
-  // leerlo convertiría un cambio de reglas en una declaración distinta de la que
-  // el usuario aprobó.
-  if (contract.reduccion?.activa && contract.reduccion?.porcentaje > 0) {
-    return contract.reduccion.porcentaje;
-  }
-
-  const regimen = regimenDelContrato(contract);
-  // Un contrato del que no sabemos si es de vivienda habitual no puede reclamar
-  // la reducción de la vivienda habitual.
-  if (regimen === null) return 0;
-
-  return proponerReduccion({
-    regimen,
-    // La fecha, en cascada: la de firma del contrato manda sobre la de la firma
-    // digital, y esa sobre la de inicio. Si no hay ninguna, el motor aplica el
-    // régimen VIGENTE — presumir que un contrato sin fecha es anterior a 2023
-    // sería reclamar más reducción de la que consta.
-    fechaFirma:
-      contract.fechaFirmaContrato ??
-      contract.firma?.fechaFirma ??
-      contract.fechaInicio ??
-      contract.startDate,
-    primeraVez: contract.primeraVez,
-    zonaTensionada: contract.zonaTensionada,
-    joven18a35: contract.inquilinoJoven,
-    rebajaMas5: contract.rebajaRenta5pct,
-    rehabilitada2a: contract.rehabilitacion,
-  }).porcentaje;
-}
-
-/** `null` cuando el contrato no dice de qué tipo de alquiler es. */
-function regimenDelContrato(contract: any): RegimenAlquiler | null {
-  const modalidad = contract.modalidad ?? contract.type;
-  if (modalidad === 'habitual') return 'habitual';
-  if (modalidad === 'temporada') return 'temporada';
-  // `vacacional` es como se llamaba el turístico en el modelo viejo.
-  if (modalidad === 'vacacional' || modalidad === 'turistico') return 'turistico';
-  return null;
-}
+// `calcularPorcentajeReduccionContrato` vive en `reduccionAlquiler.ts`, junto a
+// las reglas que traduce. Se reexporta desde aquí porque es donde la conocen sus
+// consumidores, y porque `desgloseReduccion` necesita llamarla sin arrastrar
+// este módulo entero (que importa media app).
+export { calcularPorcentajeReduccionContrato } from './reduccionAlquiler';
+import { calcularPorcentajeReduccionContrato } from './reduccionAlquiler';
 
 function edadDesde(fechaNacimiento: string, ejercicio: number): number {
   const nacimiento = new Date(fechaNacimiento);
@@ -794,7 +760,7 @@ export async function recopilarDatosInmuebles(
       // Per-contract income and reduction (Ley 12/2023 de Vivienda)
       let ingresosIntegros = 0;
       let esHabitual = false;
-      const contractIncomes: { income: number; reductionPct: number }[] = [];
+      const contractIncomes: { income: number; reductionPct: number; tipo: ContratoDelTramo['tipo'] }[] = [];
 
       for (const contract of propContracts) {
         // Gestión delegada · el contrato de gestión (padre) no es un alquiler:
@@ -802,20 +768,21 @@ export async function recopilarDatosInmuebles(
         // (que también cuelgan de este `inmuebleId`). Sumar el padre —renta
         // garantizada o 0 en %/fees— duplicaría/inflaría los íntegros.
         if (esContratoGestion(contract)) continue;
-        const renta = contract.rentaMensual ?? 0;
-        const inicio = new Date(contract.fechaInicio ?? contract.startDate);
-        const fin = new Date(contract.fechaFin ?? contract.endDate ?? `${ejercicio}-12-31`);
-        const mesInicio = inicio.getFullYear() < ejercicio ? 1 : inicio.getMonth() + 1;
-        const mesFin = fin.getFullYear() > ejercicio ? 12 : fin.getMonth() + 1;
-        const meses = Math.max(0, mesFin - mesInicio + 1);
-        const contractIncome = renta * meses;
+        // Renta × meses de solape · el reparto vive en `desgloseReduccion`, que
+        // es quien lo necesita para partir el rendimiento entre tramos. Tenerlo
+        // dos veces sería tener dos formas de contar los mismos meses.
+        const contractIncome = ingresosDelContratoEnEjercicio(contract, ejercicio);
         ingresosIntegros += contractIncome;
 
         if (contract.modalidad === 'habitual') esHabitual = true;
 
         // Determine reduction % for THIS contract using Ley 12/2023 rules
         const pctReduccion = calcularPorcentajeReduccionContrato(contract);
-        contractIncomes.push({ income: contractIncome, reductionPct: pctReduccion });
+        contractIncomes.push({
+          income: contractIncome,
+          reductionPct: pctReduccion,
+          tipo: tipoDeModalidad(contract.modalidad ?? (contract as any).type),
+        });
       }
 
       // Fallback: if no contracts have explicit reduction info, check property-level flag (legacy)
@@ -836,11 +803,6 @@ export async function recopilarDatosInmuebles(
           if (ci.reductionPct <= 0) ci.reductionPct = fallbackPct;
         }
       }
-
-      // Compute weighted-average reduction percentage for display
-      const porcentajeReduccionHabitual = ingresosIntegros > 0
-        ? contractIncomes.reduce((sum, c) => sum + c.reductionPct * (c.income / ingresosIntegros), 0)
-        : 0;
 
 
       // Get fiscal summary and prorate expenses by rental days ratio
@@ -940,24 +902,20 @@ export async function recopilarDatosInmuebles(
 
       const rendimientoNetoAlquiler = round2(ingresosIntegros - gastosDeducibles - amortizacion);
 
-      // Per-contract reduction: distribute net income proportionally, apply each contract's %
-      let reduccionHabitual = 0;
-      let rendimientoNetoReducido = rendimientoNetoAlquiler;
-      const anyReduction = contractIncomes.some((c) => c.reductionPct > 0);
-      if (anyReduction && rendimientoNetoAlquiler > 0 && ingresosIntegros > 0) {
-        for (const ci of contractIncomes) {
-          if (ci.reductionPct <= 0 || ci.income <= 0) continue;
-          const proporcion = ci.income / ingresosIntegros;
-          const netoContrato = rendimientoNetoAlquiler * proporcion;
-          const pctNorm = ci.reductionPct > 1 ? ci.reductionPct / 100 : ci.reductionPct;
-          reduccionHabitual += round2(netoContrato * pctNorm);
-        }
-        reduccionHabitual = round2(reduccionHabitual);
-        rendimientoNetoReducido = round2(rendimientoNetoAlquiler - reduccionHabitual);
-      }
-      const porcentajeNormalizado = porcentajeReduccionHabitual > 1
-        ? round2(porcentajeReduccionHabitual / 100 * 100) / 100
-        : round2(porcentajeReduccionHabitual * 100) / 100;
+      // El reparto del rendimiento entre contratos y la reducción de cada uno
+      // salen de `desgloseReduccion`: el mismo cálculo que rotula la pantalla,
+      // para que el importe que se enseña y el que se declara no puedan
+      // separarse. Antes se calculaba aquí y se rotulaba con el % efectivo.
+      const reduccion = desgloseEnCurso(
+        contractIncomes.map((ci) => ({
+          tipo: ci.tipo,
+          pct: ci.reductionPct > 1 ? ci.reductionPct : ci.reductionPct * 100,
+          ingresos: ci.income,
+        })),
+        rendimientoNetoAlquiler,
+      );
+      const reduccionHabitual = reduccion.importe ?? 0;
+      const rendimientoNetoReducido = round2(rendimientoNetoAlquiler - reduccionHabitual);
 
       // Imputación for vacant days (integrated into this property's rendimiento)
       const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;
@@ -994,7 +952,7 @@ export async function recopilarDatosInmuebles(
         reduccionHabitual,
         rendimientoNetoAlquiler,
         rendimientoNetoReducido,
-        porcentajeReduccionHabitual: porcentajeNormalizado,
+        reduccion,
         esHabitual,
         imputacionRenta,
         rendimientoNeto: round2(rendimientoNetoReducido + imputacionRenta),
@@ -1528,7 +1486,7 @@ async function calcularDeclaracionIRPFSinCompartir(
       reduccionHabitual: 0,
       rendimientoNetoAlquiler: rendimientoCapitalInmobiliarioAtribuido,
       rendimientoNetoReducido: rendimientoCapitalInmobiliarioAtribuido,
-      porcentajeReduccionHabitual: 0,
+      reduccion: desgloseSinReduccion(),
       esHabitual: false,
       imputacionRenta: 0,
       rendimientoNeto: rendimientoCapitalInmobiliarioAtribuido,

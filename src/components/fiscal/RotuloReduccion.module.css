@@ -1,0 +1,57 @@
+/* Rótulo de reducción · opción 3 · % nominal por tramo + importe.
+   Los chips llevan el oro solo cuando hay reducción: el ojo tiene que
+   distinguir de un vistazo el tramo que reduce del que no. */
+
+.rotulo {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-2);
+  flex-wrap: wrap;
+}
+
+.etiqueta {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.tramo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 3px 9px;
+  border-radius: var(--atlas-v5-radius-lg);
+  white-space: nowrap;
+}
+
+/* Reduce: oro. */
+.reduce {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}
+
+/* No reduce, o no consta cuánto: neutro con borde, para que no compita. */
+.neutro {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-4);
+  border: 1px solid var(--atlas-v5-line-2);
+}
+
+.importe {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.ausente {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--atlas-v5-ink-4);
+}

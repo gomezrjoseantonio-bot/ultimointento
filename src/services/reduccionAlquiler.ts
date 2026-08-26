@@ -189,3 +189,60 @@ export function rendimientoTrasReduccion(rendimiento: number, porcentaje: number
   const pct = Number.isFinite(porcentaje) ? Math.min(Math.max(porcentaje, 0), 100) : 0;
   return Math.round(rendimiento * (1 - pct / 100) * 100) / 100;
 }
+
+/**
+ * La reducción del art. 23.2 LIRPF que corresponde a un contrato.
+ *
+ * Vive aquí, junto a las reglas que traduce: solo convierte la forma de un
+ * `Contract` —campos legacy incluidos— en las condiciones que `proponerReduccion`
+ * entiende. Estuvo en `irpfCalculationService` con su PROPIA copia de la ley, y
+ * no era la misma: no conocía «primera vez», así que daba el 90 % a un contrato
+ * en zona tensionada con rebaja aunque fuera el primer alquiler de la vivienda,
+ * cuando sin contrato anterior no hay renta que rebajar. El mismo contrato daba
+ * números distintos según por dónde se preguntara.
+ *
+ * `irpfCalculationService` la reexporta, que es donde la conocen sus
+ * consumidores.
+ */
+export function calcularPorcentajeReduccionContrato(contract: any): number {
+  // Lo que el arrendador confirmó al dar de alta el contrato MANDA · no se
+  // recalcula por detrás. Ese % es el que se revisó y se firmó; recalcularlo al
+  // leerlo convertiría un cambio de reglas en una declaración distinta de la que
+  // el usuario aprobó.
+  if (contract.reduccion?.activa && contract.reduccion?.porcentaje > 0) {
+    return contract.reduccion.porcentaje;
+  }
+
+  const regimen = regimenDelContrato(contract);
+  // Un contrato del que no sabemos si es de vivienda habitual no puede reclamar
+  // la reducción de la vivienda habitual.
+  if (regimen === null) return 0;
+
+  return proponerReduccion({
+    regimen,
+    // La fecha, en cascada: la de firma del contrato manda sobre la de la firma
+    // digital, y esa sobre la de inicio. Si no hay ninguna, el motor aplica el
+    // régimen VIGENTE — presumir que un contrato sin fecha es anterior a 2023
+    // sería reclamar más reducción de la que consta.
+    fechaFirma:
+      contract.fechaFirmaContrato ??
+      contract.firma?.fechaFirma ??
+      contract.fechaInicio ??
+      contract.startDate,
+    primeraVez: contract.primeraVez,
+    zonaTensionada: contract.zonaTensionada,
+    joven18a35: contract.inquilinoJoven,
+    rebajaMas5: contract.rebajaRenta5pct,
+    rehabilitada2a: contract.rehabilitacion,
+  }).porcentaje;
+}
+
+/** `null` cuando el contrato no dice de qué tipo de alquiler es. */
+export function regimenDelContrato(contract: any): RegimenAlquiler | null {
+  const modalidad = contract.modalidad ?? contract.type;
+  if (modalidad === 'habitual') return 'habitual';
+  if (modalidad === 'temporada') return 'temporada';
+  // `vacacional` es como se llamaba el turístico en el modelo viejo.
+  if (modalidad === 'vacacional' || modalidad === 'turistico') return 'turistico';
+  return null;
+}

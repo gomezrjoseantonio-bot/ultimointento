@@ -20,6 +20,14 @@ import {
 } from './carryForwardService';
 import { calcularImputacion } from './imputacionRentaService';
 import { getRendimientoFiscal, normalizeRefCatastral } from './rendimientoActivoService';
+import {
+  desgloseDeclarado,
+  desgloseEnCurso,
+  tipoDeArrendamientoDeclarado,
+  tramosDeContratos,
+  type ArrendamientoDeclaradoTramo,
+  type DesgloseReduccion,
+} from './desgloseReduccion';
 import { memoizeFiscalSummary, clearFiscalSummaryMemo } from './fiscalSummaryMemo';
 
 export { clearFiscalSummaryMemo };
@@ -496,7 +504,13 @@ export interface FiscalSummaryExtended extends FiscalSummary {
   modoDeclaracion: ModoDeclaracionFiscal;
   diasArrendado: number;
   diasDisposicion: number;
-  porcentajeReduccion: number;
+  /**
+   * El desglose de la reducción del art. 23.2 · importe y tramos con su %
+   * NOMINAL. Sustituye a `porcentajeReduccion: number`, que era un 60 fijo
+   * derivado del modo de declaración y no de ningún contrato. La forma vive en
+   * `desgloseReduccion.ts`, que es de donde la leen las cinco pantallas.
+   */
+  reduccion: DesgloseReduccion;
   metodoProrrateo?: MetodoProrrateoFiscal;
 
   /**
@@ -538,6 +552,9 @@ export interface DeclaracionInmuebleSnapshot {
   tieneArrendamientosMixtos: boolean;
   /** Número total de `<Arrendamiento>` declarados (1 por unidad/habitación). */
   numArrendamientos: number;
+  /** Los arrendamientos reducidos a lo que el rótulo necesita: tipo y si
+   *  llevaban reducción. Es lo único que el Modelo 100 dice del desglose. */
+  arrendamientos: ArrendamientoDeclaradoTramo[];
 }
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -583,20 +600,6 @@ function detectarModoDeclaracion(
   return 'I';
 }
 
-function detectarPorcentajeReduccion(
-  modo: ModoDeclaracionFiscal,
-  contractsDelAño: Array<{ modalidad?: string; reduccionLeyVivienda?: number }>,
-): number {
-  if (modo === 'IV') return 0;
-  if (modo === 'V') return 0;
-  const explicit = contractsDelAño
-    .map((c) => c.reduccionLeyVivienda)
-    .filter((v): v is number => typeof v === 'number' && v > 0);
-  if (explicit.length > 0) return Math.max(...explicit);
-  if (modo === 'I' || modo === 'II' || modo === 'III') return 60;
-  return 0;
-}
-
 async function buildDeclaracionInmuebleSnapshot(
   db: Awaited<ReturnType<typeof initDB>>,
   propertyId: number,
@@ -640,6 +643,10 @@ async function buildDeclaracionInmuebleSnapshot(
     usaCasosEspeciales,
     tieneArrendamientosMixtos: tiposArrendamiento.size > 1,
     numArrendamientos: arrends.length,
+    arrendamientos: arrends.map((a) => ({
+      tipo: tipoDeArrendamientoDeclarado(a.tipoArrendamiento),
+      conReduccion: a.tieneReduccion === true,
+    })),
   };
 }
 
@@ -694,7 +701,6 @@ export const calculateFiscalSummaryExtended = async (
     diasTotal,
     declaracionInmueble,
   );
-  const porcentajeReduccion = detectarPorcentajeReduccion(modoDeclaracion, contractsDelAño);
   const metodoProrrateo = detectarMetodoProrrateo(modoDeclaracion, property as any);
 
   // ── 0149 / 0150 / 0154 ────────────────────────────────────────────────
@@ -708,11 +714,21 @@ export const calculateFiscalSummaryExtended = async (
   let box0149: number;
   let box0150: number;
   let box0154: number;
+  let reduccion: DesgloseReduccion;
 
   if (rendimiento.fuente === 'xml_aeat') {
     box0149 = round2(rendimiento.rendimientoNeto);
     box0150 = round2(rendimiento.reduccionVivienda);
     box0154 = round2(rendimiento.rendimientoNetoReducido);
+
+    // Verdad cerrada: el importe es el que se presentó. Los chips salen de los
+    // arrendamientos del propio Modelo 100, y el % nominal solo cuando la
+    // división no puede mezclar tramos (ver `desgloseDeclarado`).
+    reduccion = desgloseDeclarado({
+      arrendamientos: declaracionInmueble?.arrendamientos ?? [],
+      reduccion: box0150,
+      rendimientoAntes: box0149,
+    });
 
     // Cuando el snapshot XML AEAT está disponible, los ingresos íntegros de
     // arrendamiento (0102) reflejan SOLO las rentas declaradas, no la renta
@@ -760,11 +776,13 @@ export const calculateFiscalSummaryExtended = async (
         - amortizacionMejoras,
     );
 
-    if (porcentajeReduccion > 0 && box0149 > 0) {
-      box0150 = round2(box0149 * (porcentajeReduccion / 100));
-    } else {
-      box0150 = 0;
-    }
+    // Aquí vivía el recálculo silencioso: `box0149 × 60 %` para cualquier
+    // inmueble en modo I/II/III, con o sin contratos. Ahora el porcentaje sale
+    // del motor del art. 23.2 aplicado a CADA contrato, y sin contratos no sale
+    // ningún número: el desglose queda ausente y la casilla se queda a cero,
+    // que es lo que corresponde a un dato que no se conoce.
+    reduccion = desgloseEnCurso(tramosDeContratos(contractsDelAño, exerciseYear), box0149);
+    box0150 = reduccion.importe ?? 0;
     box0154 = round2(box0149 - box0150);
   }
 
@@ -782,7 +800,7 @@ export const calculateFiscalSummaryExtended = async (
     modoDeclaracion,
     diasArrendado,
     diasDisposicion,
-    porcentajeReduccion,
+    reduccion,
     metodoProrrateo,
     declaracionInmueble,
   };
