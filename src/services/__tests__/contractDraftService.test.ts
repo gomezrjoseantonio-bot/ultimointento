@@ -56,24 +56,24 @@ describe('MAPEO_TIPO_RENTILA_ATLAS', () => {
   it('mapea correctamente los 5 tipos cortos', () => {
     expect(mapTipoRentilaToAtlas('vivienda')).toBe('larga_estancia');
     expect(mapTipoRentilaToAtlas('habitación')).toBe('larga_estancia');
-    expect(mapTipoRentilaToAtlas('habitación temporada')).toBe('temporada');
-    expect(mapTipoRentilaToAtlas('temporada')).toBe('temporada');
+    expect(mapTipoRentilaToAtlas('habitación temporada')).toBe('media_estancia');
+    expect(mapTipoRentilaToAtlas('temporada')).toBe('media_estancia');
     expect(mapTipoRentilaToAtlas('Otro')).toBe('larga_estancia');
   });
 
   it('tolera las frases largas de Rentila', () => {
     expect(mapTipoRentilaToAtlas('Contrato de arrendamiento de vivienda')).toBe('larga_estancia');
-    expect(mapTipoRentilaToAtlas('Contrato de arrendamiento de temporada')).toBe('temporada');
+    expect(mapTipoRentilaToAtlas('Contrato de arrendamiento de temporada')).toBe('media_estancia');
   });
 
   it('mapea los tipos de la plantilla ATLAS', () => {
     expect(mapTipoAtlasToModalidad('Vivienda LAU')).toBe('larga_estancia');
     expect(mapTipoAtlasToModalidad('Habitación larga')).toBe('larga_estancia');
-    expect(mapTipoAtlasToModalidad('Vivienda temporada')).toBe('temporada');
+    expect(mapTipoAtlasToModalidad('Vivienda temporada')).toBe('media_estancia');
     // `Vacacional` es el nombre viejo del turístico · las plantillas de fuera
     // lo siguen trayendo aunque el código ya no lo escriba.
-    expect(mapTipoAtlasToModalidad('Vacacional')).toBe('turistico');
-    expect(mapTipoAtlasToModalidad('Turístico')).toBe('turistico');
+    expect(mapTipoAtlasToModalidad('Vacacional')).toBe('corta_estancia');
+    expect(mapTipoAtlasToModalidad('Turístico')).toBe('corta_estancia');
   });
 });
 

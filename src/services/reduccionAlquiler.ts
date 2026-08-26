@@ -106,7 +106,7 @@ const soloFecha = (iso: string | undefined | null): string | null => {
  * delante del 70 % cuando se cumplen los dos.
  */
 export function proponerReduccion(cond: CondicionesReduccion): PropuestaReduccion {
-  if (cond.regimen === 'temporada') {
+  if (cond.regimen === 'media_estancia') {
     return {
       porcentaje: 0,
       motivo: 'sin_reduccion',
@@ -117,7 +117,7 @@ export function proponerReduccion(cond: CondicionesReduccion): PropuestaReduccio
     };
   }
 
-  if (cond.regimen === 'turistico') {
+  if (cond.regimen === 'corta_estancia') {
     return {
       porcentaje: 0,
       motivo: 'sin_reduccion',

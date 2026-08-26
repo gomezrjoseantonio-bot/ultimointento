@@ -167,12 +167,12 @@ describe('año en curso · el nominal lo da el motor, no una división', () => {
     const d = desgloseEnCurso(
       [
         { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
-        { tipo: 'temporada', pct: 0, ingresos: 4000 },
+        { tipo: 'media_estancia', pct: 0, ingresos: 4000 },
       ],
       5000,
     );
 
-    expect(tipos(d)).toEqual(['larga_estancia', 'temporada']);
+    expect(tipos(d)).toEqual(['larga_estancia', 'media_estancia']);
     expect(pcts(d)).toEqual([60, 0]);
     expect(d.tramos[0].base).toBe(3000);
     expect(d.tramos[1].base).toBe(2000);
@@ -206,11 +206,11 @@ describe('año en curso · el nominal lo da el motor, no una división', () => {
 
   it('el tipo sale de la modalidad del contrato', () => {
     expect(tipoDeModalidad('habitual')).toBe('larga_estancia');
-    expect(tipoDeModalidad('temporada')).toBe('temporada');
+    expect(tipoDeModalidad('media_estancia')).toBe('media_estancia');
     // El nombre viejo se sigue leyendo: un contrato guardado antes del
     // renombrado no puede cambiar de fiscalidad al abrirlo.
-    expect(tipoDeModalidad('vacacional')).toBe('turistico');
-    expect(tipoDeModalidad('turistico')).toBe('turistico');
+    expect(tipoDeModalidad('vacacional')).toBe('corta_estancia');
+    expect(tipoDeModalidad('corta_estancia')).toBe('corta_estancia');
     // Una modalidad que no reconocemos no reduce, y no sabemos cuál de las dos
     // es: el mismo chip que en importado.
     expect(tipoDeModalidad(undefined)).toBe('temporada_o_turistico');
@@ -219,7 +219,7 @@ describe('año en curso · el nominal lo da el motor, no una división', () => {
   it('los tramos se ordenan de mayor a menor reducción', () => {
     const d = desgloseEnCurso(
       [
-        { tipo: 'temporada', pct: 0, ingresos: 1000 },
+        { tipo: 'media_estancia', pct: 0, ingresos: 1000 },
         { tipo: 'larga_estancia', pct: 90, ingresos: 1000 },
         { tipo: 'larga_estancia', pct: 50, ingresos: 1000 },
       ],
@@ -251,8 +251,8 @@ describe('dato ausente · se dice, no se rellena', () => {
 describe('el rótulo · un solo lenguaje para importado y en curso', () => {
   it('con cifra cuando el nominal se conoce', () => {
     expect(etiquetaTramo({ tipo: 'larga_estancia', pct: 60 })).toBe('60% vivienda habitual');
-    expect(etiquetaTramo({ tipo: 'temporada', pct: 0 })).toBe('0% temporada');
-    expect(etiquetaTramo({ tipo: 'turistico', pct: 0 })).toBe('0% turístico');
+    expect(etiquetaTramo({ tipo: 'media_estancia', pct: 0 })).toBe('0% temporada');
+    expect(etiquetaTramo({ tipo: 'corta_estancia', pct: 0 })).toBe('0% turístico');
   });
 
   it('sin cifra cuando no se conoce · el nombre del tramo, y ya', () => {
@@ -298,14 +298,14 @@ describe('de contratos a tramos · el puente que usan las pantallas', () => {
     const tramos = tramosDeContratos(
       [
         habitual({ fechaFirmaContrato: '2022-01-01' }),
-        { modalidad: 'temporada', fechaInicio: '2025-01-01', fechaFin: '2025-12-31', rentaMensual: 800 },
+        { modalidad: 'media_estancia', fechaInicio: '2025-01-01', fechaFin: '2025-12-31', rentaMensual: 800 },
       ],
       2025,
     );
 
     expect(tramos).toEqual([
       { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
-      { tipo: 'temporada', pct: 0, ingresos: 9600 },
+      { tipo: 'media_estancia', pct: 0, ingresos: 9600 },
     ]);
   });
 
@@ -332,7 +332,7 @@ describe('escalar · el simulador cambia la base, no las condiciones', () => {
   const base = desgloseEnCurso(
     [
       { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
-      { tipo: 'temporada', pct: 0, ingresos: 4000 },
+      { tipo: 'media_estancia', pct: 0, ingresos: 4000 },
     ],
     5000,
   );

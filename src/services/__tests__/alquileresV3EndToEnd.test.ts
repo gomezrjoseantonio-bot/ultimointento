@@ -117,7 +117,7 @@ describe('alquileres v3 · verificación end-to-end (commits 2-5)', () => {
     const contratoHabId = await saveContract({
       inmuebleId: 3,
       unidadTipo: 'habitacion',
-      modalidad: 'temporada',
+      modalidad: 'media_estancia',
       inquilino: { nombre: 'Inq', apellidos: 'Hab', dni: '33333333C', telefono: '', email: '', cotitulares: [] },
       fechaInicio: `${ESTE_AÑO}-01-01`,
       fechaFin: `${ESTE_AÑO}-12-31`,

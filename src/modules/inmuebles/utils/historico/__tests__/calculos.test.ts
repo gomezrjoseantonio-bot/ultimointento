@@ -165,7 +165,7 @@ describe('calcularDuracionPorTipo', () => {
   it('separa larga y corta', () => {
     const rows = calcularDuracionPorTipo([
       c({ id: 1, modalidad: 'larga_estancia' }),
-      c({ id: 2, modalidad: 'temporada', fechaCierre: '2023-04-01' }),
+      c({ id: 2, modalidad: 'media_estancia', fechaCierre: '2023-04-01' }),
     ]);
     const larga = rows.find((r) => r.tipo === 'larga');
     const corta = rows.find((r) => r.tipo === 'corta');

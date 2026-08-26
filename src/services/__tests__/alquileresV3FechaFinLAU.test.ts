@@ -54,7 +54,7 @@ describe('recalcularFechaFinContratosAEAT · alcance y idempotencia', () => {
       // 3) habitual MANUAL indefinido → NO se toca (sin fuente xml_aeat)
       { id: 3, modalidad: 'larga_estancia', fechaInicio: '2024-06-01', fechaFin: FECHA_FIN_INDEFINIDO, ejerciciosFiscales: {} },
       // 4) temporada AEAT → NO se toca
-      { id: 4, modalidad: 'temporada', fechaInicio: '2024-06-01', fechaFin: FECHA_FIN_INDEFINIDO, ejerciciosFiscales: aeat(2024) },
+      { id: 4, modalidad: 'media_estancia', fechaInicio: '2024-06-01', fechaFin: FECHA_FIN_INDEFINIDO, ejerciciosFiscales: aeat(2024) },
       // 5) habitual AEAT con fecha ya concreta → NO se pisa
       { id: 5, modalidad: 'larga_estancia', fechaInicio: '2024-06-01', fechaFin: '2027-12-31', ejerciciosFiscales: aeat(2024) },
     ]);

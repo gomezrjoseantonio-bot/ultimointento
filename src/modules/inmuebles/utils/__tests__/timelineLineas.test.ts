@@ -102,7 +102,7 @@ describe('generarPropiedadGroupData', () => {
   });
 
   test('propiedad bedrooms=5 + 1 contrato piso (turístico de verano) · overlay generado', () => {
-    const contratos = [c(1, { unidadTipo: 'vivienda', modalidad: 'turistico' })];
+    const contratos = [c(1, { unidadTipo: 'vivienda', modalidad: 'corta_estancia' })];
     const { lineas, overlaysCompletos } = generarPropiedadGroupData(
       prop(5),
       contratos,
@@ -175,7 +175,7 @@ describe('generarPropiedadGroupData', () => {
   });
 
   test('contrato corta turístico · clase vigente-c', () => {
-    const corta = c(1, { modalidad: 'turistico' });
+    const corta = c(1, { modalidad: 'corta_estancia' });
     expect(claseBarraContrato(corta, HOY)).toBe('vigente-c');
   });
 
@@ -183,7 +183,7 @@ describe('generarPropiedadGroupData', () => {
     const contratos = [
       c(10, {
         unidadTipo: 'vivienda',
-        modalidad: 'turistico',
+        modalidad: 'corta_estancia',
         fechaInicio: dayOffset(30),
         fechaFin: dayOffset(90),
       }),

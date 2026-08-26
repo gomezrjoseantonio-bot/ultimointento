@@ -24,20 +24,20 @@ const base = (extra?: Partial<CondicionesReduccion>): CondicionesReduccion => ({
 
 describe('qué reducción propone ATLAS', () => {
   it('temporada · no hay reducción, no cubre una necesidad permanente de vivienda', () => {
-    const r = proponerReduccion(base({ regimen: 'temporada' }));
+    const r = proponerReduccion(base({ regimen: 'media_estancia' }));
     expect(r.porcentaje).toBe(0);
     expect(r.motivo).toBe('sin_reduccion');
   });
 
   it('turístico · tampoco', () => {
-    expect(proponerReduccion(base({ regimen: 'turistico' })).porcentaje).toBe(0);
+    expect(proponerReduccion(base({ regimen: 'corta_estancia' })).porcentaje).toBe(0);
   });
 
   it('el régimen manda sobre cualquier condición marcada', () => {
     // Un turístico en zona tensionada con inquilino joven sigue sin reducción:
     // marcar condiciones no convierte en vivienda habitual lo que no lo es.
     const r = proponerReduccion(
-      base({ regimen: 'turistico', zonaTensionada: true, primeraVez: true, joven18a35: true }),
+      base({ regimen: 'corta_estancia', zonaTensionada: true, primeraVez: true, joven18a35: true }),
     );
     expect(r.porcentaje).toBe(0);
   });

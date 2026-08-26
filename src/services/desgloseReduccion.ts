@@ -74,8 +74,8 @@ const TOLERANCIA_PP = 0.5;
 // pantalla se llama por lo que es: la vivienda habitual del inquilino.
 const NOMBRE_TRAMO: Record<TipoTramo, string> = {
   larga_estancia: 'vivienda habitual',
-  temporada: 'temporada',
-  turistico: 'turístico',
+  media_estancia: 'temporada',
+  corta_estancia: 'turístico',
   temporada_o_turistico: 'temporada/turístico',
 };
 

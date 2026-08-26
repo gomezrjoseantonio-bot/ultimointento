@@ -88,7 +88,7 @@ describe('el alta a mano ya llega a los tramos altos', () => {
 
   it('temporada → sin reducción, tributa por todo', () => {
     const pct = reduccionDelAlta({
-      modalidad: 'temporada',
+      modalidad: 'media_estancia',
       datosFiscales: confirmado(0, 'sin_reduccion'),
     });
     expect(pct).toBe(0);

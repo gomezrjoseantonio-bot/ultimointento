@@ -156,7 +156,7 @@ describe('sin declaración importada · el % lo pone el contrato, no un if', () 
 
   it('temporada · 0 % explícito, no un tramo escondido', async () => {
     montarBase({
-      contratos: [contratoHabitual({ modalidad: 'temporada' })],
+      contratos: [contratoHabitual({ modalidad: 'media_estancia' })],
     });
     sinDeclaracion();
 
@@ -169,7 +169,7 @@ describe('sin declaración importada · el % lo pone el contrato, no un if', () 
     montarBase({
       contratos: [
         contratoHabitual({ id: 1, fechaFirmaContrato: '2022-01-01', rentaMensual: 1000 }),
-        contratoHabitual({ id: 2, modalidad: 'temporada', rentaMensual: 1000 }),
+        contratoHabitual({ id: 2, modalidad: 'media_estancia', rentaMensual: 1000 }),
       ],
     });
     sinDeclaracion();

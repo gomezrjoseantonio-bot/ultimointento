@@ -90,7 +90,7 @@ describe('plantilla nueva · espejo del formulario', () => {
     expect(p.tipoActivo).toBe('piso');
     expect(p.squareMeters).toBe(95);
     expect(p.bathrooms).toBe(2);
-    expect(p.usoTipo).toBe('turistico');
+    expect(p.usoTipo).toBe('corta_estancia');
     expect(p.porcentajePropiedad).toBe(50);
     expect(p.anexos.tieneParking).toBe(true);
     expect(p.alquilerPorHabitaciones.activo).toBe(true);

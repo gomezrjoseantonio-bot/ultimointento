@@ -5,6 +5,11 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import {
+  NOMBRE_SUBTIPO,
+  SUBTIPOS_ALQUILER,
+  type SubtipoAlquiler,
+} from '../../../../services/db/types-alquiler';
 import { Lightbulb, X, Check, ChevronDown, Home, Building, LayoutGrid } from 'lucide-react';
 import type { WizardImportState } from '../useWizardImportState';
 import { useInmueblesDetectados, type InmuebleDetectado } from '../useInmueblesDetectados';
@@ -14,7 +19,7 @@ import styles from '../WizardImportarDeclaracion.module.css';
 type Modo = 'piso_completo' | 'por_habitaciones' | 'mixto';
 type Estado = 'operativo' | 'en_reforma' | 'vacante' | 'uso_propio';
 type Subtipo = NonNullable<InmueblePrefill['subtipoVivienda']>;
-type TipoAlquiler = 'larga_estancia' | 'temporada' | 'turistico' | 'mixto';
+type TipoAlquiler = SubtipoAlquiler | 'mixto';
 
 interface FormInm {
   habitaciones: string;
@@ -396,9 +401,9 @@ const PasoInmuebles: React.FC<{ s: WizardImportState }> = ({ s }) => {
                               onChange={(e) => actualizar(rc, det, { tipoAlquiler: (e.target.value || undefined) as TipoAlquiler })}
                             >
                               <option value="">Selecciona…</option>
-                              <option value="larga_estancia">Larga estancia</option>
-                              <option value="temporada">Temporada</option>
-                              <option value="turistico">Turístico</option>
+                              {SUBTIPOS_ALQUILER.map((s) => (
+                                <option key={s} value={s}>{NOMBRE_SUBTIPO[s]}</option>
+                              ))}
                               <option value="mixto">Mixto</option>
                             </select>
                           </div>

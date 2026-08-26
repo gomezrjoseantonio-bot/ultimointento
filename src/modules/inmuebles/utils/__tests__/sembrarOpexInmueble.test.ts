@@ -14,7 +14,7 @@ describe('argsCatalogoDeModo', () => {
   it('mapea el modo de explotación al catálogo correcto', () => {
     expect(argsCatalogoDeModo('completo')).toEqual({ modalidad: 'larga_estancia', unidadTipo: 'vivienda' });
     expect(argsCatalogoDeModo('habitaciones')).toEqual({ modalidad: 'larga_estancia', unidadTipo: 'habitacion' });
-    expect(argsCatalogoDeModo('turistico')).toEqual({ modalidad: 'temporada', unidadTipo: 'vivienda' });
+    expect(argsCatalogoDeModo('turistico')).toEqual({ modalidad: 'media_estancia', unidadTipo: 'vivienda' });
   });
 });
 

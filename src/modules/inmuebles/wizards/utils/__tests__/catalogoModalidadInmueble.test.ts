@@ -15,8 +15,8 @@ const has = (list: ConceptoInmuebleRef[], tipoId: string, subtipoId: string): bo
 
 describe('catalogoKindDeModalidad · precedencia', () => {
   it('temporada/turístico mandan sobre unidadTipo', () => {
-    expect(catalogoKindDeModalidad('temporada', 'vivienda')).toBe('turistico');
-    expect(catalogoKindDeModalidad('turistico', 'habitacion')).toBe('turistico');
+    expect(catalogoKindDeModalidad('media_estancia', 'vivienda')).toBe('turistico');
+    expect(catalogoKindDeModalidad('corta_estancia', 'habitacion')).toBe('turistico');
   });
   it('habitacion → habitaciones · vivienda habitual → vivienda completa', () => {
     expect(catalogoKindDeModalidad('larga_estancia', 'habitacion')).toBe('habitaciones');
@@ -83,11 +83,11 @@ describe('§3.3 · temporada/turístico · precarga 16', () => {
 
 describe('integridad · toda ref del mapa existe en el catálogo', () => {
   it('ninguna sugerencia apunta a un subtipo inexistente', () => {
-    const kinds: Array<['larga_estancia' | 'temporada' | 'turistico', 'vivienda' | 'habitacion']> = [
+    const kinds: Array<['larga_estancia' | 'media_estancia' | 'corta_estancia', 'vivienda' | 'habitacion']> = [
       ['larga_estancia', 'vivienda'],
       ['larga_estancia', 'habitacion'],
-      ['temporada', 'vivienda'],
-      ['turistico', 'habitacion'],
+      ['media_estancia', 'vivienda'],
+      ['corta_estancia', 'habitacion'],
     ];
     for (const [modalidad, unidad] of kinds) {
       const cat = catalogoSugeridoPorModalidad(modalidad, unidad);

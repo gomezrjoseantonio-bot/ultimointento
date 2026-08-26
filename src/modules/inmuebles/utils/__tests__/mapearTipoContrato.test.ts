@@ -14,7 +14,7 @@ describe('mapearTipoContrato', () => {
   });
 
   test('turístico → corta', () => {
-    expect(mapearTipoContrato(make('turistico'))).toBe('corta');
+    expect(mapearTipoContrato(make('corta_estancia'))).toBe('corta');
   });
 
   test('modalidad desconocida fallback a larga', () => {

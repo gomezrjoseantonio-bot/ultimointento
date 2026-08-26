@@ -30,7 +30,7 @@ describe('rótulo de reducción', () => {
     render(<RotuloReduccion desglose={desgloseEnCurso(
       [
         { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
-        { tipo: 'temporada', pct: 0, ingresos: 4000 },
+        { tipo: 'media_estancia', pct: 0, ingresos: 4000 },
       ],
       5000,
     )} />);
@@ -63,7 +63,7 @@ describe('rótulo de reducción', () => {
 
   it('sin reducción · el 0 € sí se enseña, porque es un dato', () => {
     render(<RotuloReduccion desglose={desgloseEnCurso(
-      [{ tipo: 'temporada', pct: 0, ingresos: 4000 }],
+      [{ tipo: 'media_estancia', pct: 0, ingresos: 4000 }],
       5000,
     )} />);
     expect(screen.getByText('0% temporada')).toBeInTheDocument();

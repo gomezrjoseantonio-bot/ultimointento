@@ -500,7 +500,7 @@ export const validateContract = async (contract: Partial<Contract>): Promise<str
     // arrendamiento de temporada del art. 3.2 LAU cubre el curso de un
     // estudiante o un traslado de trabajo, que pasan de los seis meses con toda
     // normalidad. Un tope de 180 días ahí rechazaría el caso más común.
-    if (contract.modalidad === 'turistico') {
+    if (contract.modalidad === 'corta_estancia') {
       const diffTime = end.getTime() - start.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       if (diffDays > 180) {

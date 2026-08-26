@@ -61,7 +61,7 @@ describe('la casilla 0150 rotula por tramo', () => {
     const enCurso = desgloseEnCurso(
       [
         { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
-        { tipo: 'temporada', pct: 0, ingresos: 4000 },
+        { tipo: 'media_estancia', pct: 0, ingresos: 4000 },
       ],
       5334.69,
     );

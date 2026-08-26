@@ -540,8 +540,8 @@ export async function exportarContratosParaImportacion(): Promise<void> {
   );
 
   const modalidadLabel = (modalidad: Contract['modalidad']): string => {
-    if (modalidad === 'temporada') return 'Contrato de temporada';
-    if (modalidad === 'turistico') return 'Contrato turístico';
+    if (modalidad === 'media_estancia') return 'Contrato de temporada';
+    if (modalidad === 'corta_estancia') return 'Contrato turístico';
     return 'Contrato de arrendamiento de vivienda';
   };
 

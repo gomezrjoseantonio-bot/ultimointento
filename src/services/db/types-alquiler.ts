@@ -16,7 +16,13 @@
 // El eje fiscal NO se elige: se deriva de aquí.
 //
 //   · `larga_estancia` → reduce · art. 23.2 LIRPF (50/60/70/90 %)
-//   · `temporada` y `turistico` → 0 % · «otros arrendamientos», art. 3 LAU
+//   · `media_estancia` y `corta_estancia` → 0 % · «otros arrendamientos»,
+//     art. 3 LAU
+//
+// Los tres se nombran por la DURACIÓN, que es lo que el arrendador decide y lo
+// único que los separa de verdad. Los nombres viejos mezclaban criterios —
+// `habitual` describía al inquilino, `turistico` el uso, `temporada` el
+// calendario— y por eso cada capa elegía el suyo.
 //
 // Por qué `larga_estancia` y no `vivienda_habitual`, que sería el término de la
 // LAU: porque `vivienda_habitual` ya está ocupado, y por lo contrario. En
@@ -24,29 +30,32 @@
 // alquila. Los dos conceptos son opuestos y el literal no puede servir para los
 // dos: el subtipo que reduce es `larga_estancia`.
 //
-// `temporada` y `turistico` resuelven al mismo 0 %, pero siguen siendo dos
-// subtipos: el arrendador los distingue, la duración típica no se parece y las
-// obligaciones no fiscales tampoco. Fundirlos porque coinciden en un número
-// sería perder información que el usuario sí tiene.
+// `media_estancia` y `corta_estancia` resuelven al mismo 0 %, pero siguen
+// siendo dos subtipos: el arrendador los distingue, la duración típica no se
+// parece y las obligaciones no fiscales tampoco. Fundirlos porque coinciden en
+// un número sería perder información que el usuario sí tiene.
+//
+// Dónde cae la frontera entre uno y otro por FECHAS no se decide aquí: hoy lo
+// elige quien da de alta el contrato.
 //
 // No hay `actividad_economica`. El inversor de ATLAS alquila como capital
 // inmobiliario; el hospedaje con servicios es otro negocio y no se modela.
 // ============================================================================
 
-export type SubtipoAlquiler = 'larga_estancia' | 'temporada' | 'turistico';
+export type SubtipoAlquiler = 'larga_estancia' | 'media_estancia' | 'corta_estancia';
 
 /** Los tres, en el orden en que se ofrecen. */
 export const SUBTIPOS_ALQUILER: readonly SubtipoAlquiler[] = [
   'larga_estancia',
-  'temporada',
-  'turistico',
+  'media_estancia',
+  'corta_estancia',
 ] as const;
 
 /** Cómo se llama cada uno de cara al usuario. */
 export const NOMBRE_SUBTIPO: Record<SubtipoAlquiler, string> = {
-  larga_estancia: 'Vivienda habitual del inquilino',
-  temporada: 'Temporada',
-  turistico: 'Turístico',
+  larga_estancia: 'Larga estancia',
+  media_estancia: 'Media estancia',
+  corta_estancia: 'Corta estancia',
 };
 
 /**
@@ -66,7 +75,7 @@ export function reduceElSubtipo(subtipo: SubtipoAlquiler | undefined | null): bo
  * enumere uno y se olvide del otro, que es de donde salían las divergencias.
  */
 export function esCortaEstancia(subtipo: string | undefined | null): boolean {
-  return normalizarSubtipo(subtipo) === 'temporada' || normalizarSubtipo(subtipo) === 'turistico';
+  return normalizarSubtipo(subtipo) === 'media_estancia' || normalizarSubtipo(subtipo) === 'corta_estancia';
 }
 
 /**
@@ -89,16 +98,18 @@ export function subtipoDeclarado(
   // Sin dato se presume vivienda: es lo que declara la inmensa mayoría, y es la
   // presunción que ya hacían las dos rutas.
   if (!tipoArrendamiento || tipoArrendamiento === 'vivienda') return 'larga_estancia';
-  return 'temporada';
+  return 'media_estancia';
 }
 
 /** Un valor cualquiera leído de la base, normalizado al vocabulario de hoy. */
 export function normalizarSubtipo(valor: unknown): SubtipoAlquiler | undefined {
-  // `vacacional` y `habitual` son los nombres viejos del turístico y de la
-  // larga estancia. No quedan en el código; se reconocen aquí porque un dato
-  // cargado antes del renombrado los trae, y leerlo mal cambiaría su fiscalidad.
-  if (valor === 'turistico' || valor === 'vacacional') return 'turistico';
-  if (valor === 'temporada') return 'temporada';
+  // Los nombres viejos de los tres. No quedan en el código; se reconocen aquí
+  // porque un dato cargado antes del renombrado los trae, y leerlo mal
+  // cambiaría su fiscalidad.
+  if (valor === 'corta_estancia' || valor === 'turistico' || valor === 'vacacional') {
+    return 'corta_estancia';
+  }
+  if (valor === 'media_estancia' || valor === 'temporada') return 'media_estancia';
   if (valor === 'larga_estancia' || valor === 'habitual') return 'larga_estancia';
   return undefined;
 }

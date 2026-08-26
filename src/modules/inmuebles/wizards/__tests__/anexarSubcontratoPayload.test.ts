@@ -49,8 +49,8 @@ describe('construirPayloadSubcontrato', () => {
   it('modalidad · se refleja en el contrato (fiscalidad: vivienda habitual vs temporada)', () => {
     const habitual = construirPayloadSubcontrato(form({ modalidad: 'larga_estancia' }), padre);
     expect(habitual.ok && habitual.payload.modalidad).toBe('larga_estancia');
-    const temporada = construirPayloadSubcontrato(form({ modalidad: 'temporada' }), padre);
-    expect(temporada.ok && temporada.payload.modalidad).toBe('temporada');
+    const temporada = construirPayloadSubcontrato(form({ modalidad: 'media_estancia' }), padre);
+    expect(temporada.ok && temporada.payload.modalidad).toBe('media_estancia');
   });
 
   it('con habitación · unidadTipo habitacion + habitacionId', () => {

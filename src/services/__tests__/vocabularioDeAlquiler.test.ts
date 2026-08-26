@@ -25,19 +25,19 @@ import { proponerReduccion } from '../reduccionAlquiler';
 // ───────────────────────────────────────────────────────────────────────────
 describe('el vocabulario es uno y está cerrado', () => {
   it('tres subtipos, ni uno más', () => {
-    expect(SUBTIPOS_ALQUILER).toEqual(['larga_estancia', 'temporada', 'turistico']);
+    expect(SUBTIPOS_ALQUILER).toEqual(['larga_estancia', 'media_estancia', 'corta_estancia']);
   });
 
   it('solo la larga estancia reduce · temporada y turístico son «otros arrendamientos»', () => {
     expect(reduceElSubtipo('larga_estancia')).toBe(true);
-    expect(reduceElSubtipo('temporada')).toBe(false);
-    expect(reduceElSubtipo('turistico')).toBe(false);
+    expect(reduceElSubtipo('media_estancia')).toBe(false);
+    expect(reduceElSubtipo('corta_estancia')).toBe(false);
   });
 
   it('temporada y turístico van juntos en lo fiscal, y se pregunta por el concepto', () => {
     // Enumerar los dos literales a mano es donde se olvidaba uno.
-    expect(esCortaEstancia('temporada')).toBe(true);
-    expect(esCortaEstancia('turistico')).toBe(true);
+    expect(esCortaEstancia('media_estancia')).toBe(true);
+    expect(esCortaEstancia('corta_estancia')).toBe(true);
     expect(esCortaEstancia('larga_estancia')).toBe(false);
   });
 
@@ -65,11 +65,17 @@ describe('el vocabulario es uno y está cerrado', () => {
 // ───────────────────────────────────────────────────────────────────────────
 describe('los nombres viejos se leen, pero no se escriben', () => {
   it('un dato con el nombre viejo no cambia de fiscalidad al leerlo', () => {
-    // Sin migración: un contrato guardado antes del renombrado trae `habitual`
-    // o `vacacional`. Leerlo como «no reconocido» le quitaría la reducción.
+    // Sin migración: un contrato guardado antes del renombrado trae los nombres
+    // de entonces. Leerlos como «no reconocido» le quitaría la reducción a la
+    // larga estancia y dejaría a los otros dos sin régimen.
     expect(normalizarSubtipo('habitual')).toBe('larga_estancia');
-    expect(normalizarSubtipo('vacacional')).toBe('turistico');
-    expect(normalizarSubtipo('temporada')).toBe('temporada');
+    expect(normalizarSubtipo('temporada')).toBe('media_estancia');
+    expect(normalizarSubtipo('turistico')).toBe('corta_estancia');
+    expect(normalizarSubtipo('vacacional')).toBe('corta_estancia');
+  });
+
+  it('y los nuevos se leen tal cual', () => {
+    for (const s of SUBTIPOS_ALQUILER) expect(normalizarSubtipo(s)).toBe(s);
   });
 
   it('lo que no es ninguno de los tres no se inventa', () => {
@@ -89,7 +95,7 @@ describe('el TAR del Modelo 100 da UN subtipo, el mismo por las dos rutas', () =
   it('no vivienda → temporada · y no una cosa por cada ruta de importación', () => {
     // Una ruta escribía `temporada` y la otra el turístico para el mismo campo
     // del mismo XML. Ahora las dos preguntan aquí.
-    expect(subtipoDeclarado('no_vivienda')).toBe('temporada');
+    expect(subtipoDeclarado('no_vivienda')).toBe('media_estancia');
   });
 });
 
@@ -98,8 +104,8 @@ describe('renombrar no ha movido un euro', () => {
   it.each([
     ['larga_estancia', '2022-01-01', 60],
     ['larga_estancia', '2026-01-01', 50],
-    ['temporada', '2026-01-01', 0],
-    ['turistico', '2026-01-01', 0],
+    ['media_estancia', '2026-01-01', 0],
+    ['corta_estancia', '2026-01-01', 0],
   ] as Array<[SubtipoAlquiler, string, number]>)(
     '%s firmado el %s → %i %%',
     (regimen, fechaFirma, esperado) => {
@@ -108,8 +114,8 @@ describe('renombrar no ha movido un euro', () => {
   );
 
   it('temporada y turístico siguen dando el mismo 0 % por el mismo motivo', () => {
-    const t = proponerReduccion({ regimen: 'temporada' });
-    const v = proponerReduccion({ regimen: 'turistico' });
+    const t = proponerReduccion({ regimen: 'media_estancia' });
+    const v = proponerReduccion({ regimen: 'corta_estancia' });
     expect(t.porcentaje).toBe(v.porcentaje);
     expect(t.motivo).toBe(v.motivo);
     // Pero cada uno se explica a su manera: son dos subtipos, no uno.
@@ -155,10 +161,25 @@ describe('`vacacional` no vuelve', () => {
     ]);
   });
 
-  it('`habitual` ya no es un subtipo en ningún sitio', () => {
-    // Se busca el literal exacto como valor de `modalidad`, que es donde estaba.
+  it('ninguno de los tres nombres viejos sigue siendo un subtipo', () => {
+    // Se busca el literal exacto como valor de `modalidad` o `usoTipo`, que es
+    // donde estaban. `turistico` y `temporada` siguen existiendo en el repo,
+    // pero en OTROS ejes —`ModoExplotacionAlquiler` y `CatalogoKind`—, y esos
+    // no se tocan: por eso la búsqueda va anclada al campo, no al literal
+    // suelto.
+    const viejos = /(modalidad|usoTipo)(\??:|\s*===)\s*'(habitual|temporada|turistico|vacacional)'/;
     const restos = ficheros(raiz)
-      .filter((f) => /modalidad(:|\s*===)\s*'habitual'/.test(readFileSync(f, 'utf8')))
+      .filter((f) => viejos.test(readFileSync(f, 'utf8')))
+      .map(relativo);
+    // El único que queda comprueba justo eso: que un contrato guardado con el
+    // nombre viejo se sigue leyendo y no pierde su fiscalidad.
+    expect(restos).toEqual(['services/__tests__/reduccionUnaSolaVerdad.test.ts']);
+  });
+
+  it('el motor del art. 23.2 tampoco los reconoce como régimen', () => {
+    const viejos = /regimen(\??:|\s*===)\s*'(habitual|temporada|turistico|vacacional)'/;
+    const restos = ficheros(raiz)
+      .filter((f) => viejos.test(readFileSync(f, 'utf8')))
       .map(relativo);
     expect(restos).toEqual([]);
   });

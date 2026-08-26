@@ -161,8 +161,8 @@ const toUsoTipo = (value: unknown): UsoTipoTemplate | null => {
   const t = toText(value).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   if (!t) return null;
   if (t.includes('larga')) return 'larga_estancia';
-  if (t.includes('temporada')) return 'temporada';
-  if (t.includes('turist')) return 'turistico';
+  if (t.includes('media') || t.includes('temporada')) return 'media_estancia';
+  if (t.includes('corta') || t.includes('turist')) return 'corta_estancia';
   if (t.includes('mixto')) return 'mixto';
   if (t.includes('habitual')) return 'vivienda_habitual';
   if (t.includes('disponible')) return 'disponible';

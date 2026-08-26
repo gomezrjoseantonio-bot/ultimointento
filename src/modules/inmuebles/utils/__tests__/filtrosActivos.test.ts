@@ -89,8 +89,8 @@ describe('filtrarContratos · búsqueda', () => {
 describe('filtrarContratos · tipo y estado', () => {
   const cs = [
     make(1, { modalidad: 'larga_estancia' }),
-    make(2, { modalidad: 'temporada' }),
-    make(3, { modalidad: 'turistico' }),
+    make(2, { modalidad: 'media_estancia' }),
+    make(3, { modalidad: 'corta_estancia' }),
     make(4, { modalidad: 'larga_estancia', fechaFin: dayOffset(15) }),
     make(5, { firma: undefined, fechaFirmaContrato: undefined }),
   ];
@@ -118,7 +118,7 @@ describe('filtrarContratos · tipo y estado', () => {
   test('combinación AND · tipo larga + búsqueda', () => {
     const cs2 = [
       make(1, { modalidad: 'larga_estancia', inquilino: { ...cs[0].inquilino, nombre: 'Juan', apellidos: 'Calvo' } }),
-      make(2, { modalidad: 'temporada', inquilino: { ...cs[0].inquilino, nombre: 'Juan', apellidos: 'Veraneo' } }),
+      make(2, { modalidad: 'media_estancia', inquilino: { ...cs[0].inquilino, nombre: 'Juan', apellidos: 'Veraneo' } }),
     ];
     const r = filtrarContratos(cs2, filtros({ tipo: 'larga', busqueda: 'juan' }), HOY);
     expect(r.map((c) => c.id)).toEqual([1]);

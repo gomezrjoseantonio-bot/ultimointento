@@ -14,7 +14,9 @@ import { proponerReduccion, type CondicionesReduccion } from '../reduccionAlquil
 
 /** Un contrato como el que llega del store, con sus condiciones fiscales. */
 const contrato = (c: CondicionesReduccion & { reduccion?: unknown }): Record<string, unknown> => ({
-  modalidad: c.regimen === 'turistico' ? 'turistico' : c.regimen,
+  // El régimen del art. 23.2 y la modalidad del contrato son el mismo dato:
+  // aquí había un ternario para traducir entre los dos vocabularios de antes.
+  modalidad: c.regimen,
   fechaFirmaContrato: c.fechaFirma,
   primeraVez: c.primeraVez,
   zonaTensionada: c.zonaTensionada,
@@ -25,8 +27,8 @@ const contrato = (c: CondicionesReduccion & { reduccion?: unknown }): Record<str
 });
 
 const RAMAS: Array<[string, CondicionesReduccion]> = [
-  ['temporada', { regimen: 'temporada', fechaFirma: '2026-01-01' }],
-  ['turístico', { regimen: 'turistico', fechaFirma: '2026-01-01' }],
+  ['media_estancia', { regimen: 'media_estancia', fechaFirma: '2026-01-01' }],
+  ['turístico', { regimen: 'corta_estancia', fechaFirma: '2026-01-01' }],
   ['pre-ley', { regimen: 'larga_estancia', fechaFirma: '2022-06-01' }],
   ['frontera · 25 may 2023', { regimen: 'larga_estancia', fechaFirma: '2023-05-25' }],
   ['frontera · 26 may 2023', { regimen: 'larga_estancia', fechaFirma: '2023-05-26' }],

@@ -56,7 +56,7 @@ export function argsCatalogoDeModo(
 ): { modalidad: SubtipoAlquiler; unidadTipo: 'vivienda' | 'habitacion' } {
   switch (modo) {
     case 'turistico':
-      return { modalidad: 'temporada', unidadTipo: 'vivienda' };
+      return { modalidad: 'media_estancia', unidadTipo: 'vivienda' };
     case 'habitaciones':
       return { modalidad: 'larga_estancia', unidadTipo: 'habitacion' };
     case 'completo':

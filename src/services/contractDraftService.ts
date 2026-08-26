@@ -90,8 +90,8 @@ const RC_REGEX_GLOBAL = /\d{7}[A-Z]{2}\d{4}[A-Z]\d{4}[A-Z]{2}/gi;
 export const MAPEO_TIPO_RENTILA_ATLAS: Record<string, SubtipoAlquiler> = {
   vivienda: 'larga_estancia',
   habitacion: 'larga_estancia',
-  'habitacion temporada': 'temporada',
-  temporada: 'temporada',
+  'habitacion temporada': 'media_estancia',
+  temporada: 'media_estancia',
   otro: 'larga_estancia',
 };
 
@@ -127,8 +127,8 @@ const subtipoDeTexto = (
 ): SubtipoAlquiler => {
   const normalized = normalizeBasic(texto || '');
   if (tabla && normalized in tabla) return tabla[normalized];
-  if (normalized.includes('turistico') || normalized.includes('vacacional')) return 'turistico';
-  if (normalized.includes('temporada')) return 'temporada';
+  if (normalized.includes('turistico') || normalized.includes('vacacional')) return 'corta_estancia';
+  if (normalized.includes('temporada')) return 'media_estancia';
   return 'larga_estancia';
 };
 
