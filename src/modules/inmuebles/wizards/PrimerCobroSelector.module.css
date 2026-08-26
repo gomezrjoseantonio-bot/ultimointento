@@ -1,0 +1,208 @@
+/* Bloque «Primer cobro» del paso Económico · mockup atlas-alta-primer-cobro-v1.
+   Tokens Oxford Gold V5 · ni un hex suelto (GUIA-DISENO-V5 §17). */
+
+.bloque {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+
+.titulo {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold, 700);
+  color: var(--atlas-v5-ink);
+  margin: 2px 0 10px;
+}
+
+.tituloSub {
+  font-weight: var(--atlas-v5-fw-medium, 500);
+  color: var(--atlas-v5-ink-4);
+  font-size: 11.5px;
+  margin-left: 6px;
+}
+
+/* ── las cuatro opciones ─────────────────────────────────────────────────── */
+.opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 11px;
+  background: var(--atlas-v5-card);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  text-align: left;
+  width: 100%;
+}
+
+.opcion:hover { border-color: var(--atlas-v5-ink-5); }
+
+.opcion:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+.opcionSel {
+  border-color: var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold-wash);
+}
+
+.radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--atlas-v5-ink-5);
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.12s;
+}
+
+.opcionSel .radio { border-color: var(--atlas-v5-gold); }
+
+.opcionSel .radio::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold);
+}
+
+.texto { flex: 1; min-width: 0; }
+
+.nombre {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold, 600);
+  color: var(--atlas-v5-ink);
+}
+
+.desc {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 1px;
+}
+
+.importe {
+  font-family: var(--atlas-v5-font-mono-tech);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: var(--atlas-v5-fw-bold, 700);
+  color: var(--atlas-v5-ink);
+  flex-shrink: 0;
+}
+
+.opcionSel .importe { color: var(--atlas-v5-gold-ink); }
+
+.importeManual {
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-semibold, 600);
+  color: var(--atlas-v5-ink-4);
+}
+
+/* ── el resultado, sobre navy ────────────────────────────────────────────── */
+.resultado {
+  margin-top: 14px;
+  background: var(--atlas-v5-brand-ink);
+  border-radius: 12px;
+  padding: 15px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.resultadoEtiqueta {
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-bold, 700);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-gold-soft);
+}
+
+.desglose {
+  font-size: 11.5px;
+  color: var(--atlas-v5-on-navy-4);
+  margin-top: 5px;
+}
+
+.desglose strong {
+  color: var(--atlas-v5-on-navy-1);
+  font-weight: var(--atlas-v5-fw-semibold, 600);
+}
+
+.ajuste {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.ajusteCap {
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-semibold, 600);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-on-navy-5);
+}
+
+.ajusteCaja {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--atlas-v5-navy-fill);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-radius: 9px;
+  padding: 6px 10px;
+}
+
+.ajusteCaja:focus-within { border-color: var(--atlas-v5-gold); }
+
+.ajusteInput {
+  width: 104px;
+  background: transparent;
+  border: none;
+  text-align: right;
+  font-family: var(--atlas-v5-font-mono-tech);
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: var(--atlas-v5-fw-bold, 700);
+  color: var(--atlas-v5-on-navy-1);
+}
+
+.ajusteInput:focus { outline: none; }
+
+.ajusteMoneda {
+  color: var(--atlas-v5-gold-soft);
+  font-family: var(--atlas-v5-font-mono-tech);
+  font-size: 16px;
+  font-weight: var(--atlas-v5-fw-bold, 700);
+}
+
+/* ── la nota de pie ──────────────────────────────────────────────────────── */
+.nota {
+  margin-top: 11px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+}
+
+.notaIcono {
+  color: var(--atlas-v5-gold);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.notaMono {
+  font-family: var(--atlas-v5-font-mono-tech);
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-semibold, 600);
+}

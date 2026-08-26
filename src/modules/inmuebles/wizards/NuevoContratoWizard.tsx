@@ -20,7 +20,7 @@ import {
 } from './contratoWizardHelpers';
 import { useHabitacionesContrato } from './useHabitacionesContrato';
 import CampoHabitacionContrato from './CampoHabitacionContrato';
-import { CuentaCobroField } from './CuentaCobroField';
+import PasoEconomico from './PasoEconomico';
 import { useCuentasCobro } from './cuentaCobro';
 import { construirPayloadCompleto, construirPayloadBorrador } from './contratoWizardPayload';
 import { vincularAccesorioDesdeContrato } from '../../../services/vinculoAccesorioService';
@@ -427,71 +427,11 @@ const NuevoContratoWizard: React.FC = () => {
           )}
 
           {step === 'economico' && (
-            <>
-              <div className={styles.stepHeader}>
-                <div className={styles.stepTitle}>3 · Económico</div>
-                <div className={styles.stepSub}>
-                  Renta mensual · día de pago · fianza · indexación.
-                </div>
-              </div>
-              <div className={styles.fields}>
-                <div className={styles.field}>
-                  <label className={styles.label}>Renta mensual (€)</label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="1"
-                    className={`${styles.input} ${styles.mono}`}
-                    value={form.rentaMensual}
-                    onChange={(e) => update('rentaMensual', e.target.value)}
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label}>Día de pago</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    step="1"
-                    className={`${styles.input} ${styles.mono}`}
-                    value={form.diaPago}
-                    onChange={(e) => update('diaPago', e.target.value)}
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label}>Fianza (mensualidades)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="6"
-                    step="1"
-                    className={`${styles.input} ${styles.mono}`}
-                    value={form.fianzaMensualidades}
-                    onChange={(e) => update('fianzaMensualidades', e.target.value)}
-                  />
-                  <span className={styles.help}>LAU · 2 mensualidades para vivienda habitual.</span>
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label}>Indexación</label>
-                  <select
-                    className={styles.select}
-                    value={form.indexacion}
-                    onChange={(e) => update('indexacion', e.target.value as FormState['indexacion'])}
-                  >
-                    <option value="none">Sin indexación</option>
-                    <option value="ipc">IPC anual</option>
-                    <option value="irav">IRAV</option>
-                    <option value="otros">Otros</option>
-                  </select>
-                </div>
-                <CuentaCobroField
-                  cuentas={cuentas}
-                  value={form.cuentaCobroId}
-                  onChange={(v) => update('cuentaCobroId', v)}
-                />
-              </div>
-            </>
+            <PasoEconomico
+              form={form}
+              update={update}
+              cuentas={cuentas}
+            />
           )}
 
           {step === 'documentos' && (

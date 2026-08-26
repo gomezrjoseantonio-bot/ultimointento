@@ -63,6 +63,9 @@ const partesISO = (iso: string | undefined | null): PartesDeFecha | null => {
   return { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) };
 };
 
+/** A céntimos · el dinero no tiene más decimales. */
+const redondeoAcentimos = (n: number): number => Math.round(n * 100) / 100;
+
 /** Cuántos días tiene ese mes (`month` en base 1). */
 const diasDelMes = (year: number, month: number): number => new Date(year, month, 0).getDate();
 
@@ -146,5 +149,51 @@ export function importeDeLaRentaDelMes(
   if (dias >= total) return importeMensual;
   if (dias <= 0) return 0;
 
-  return Math.round(((importeMensual * dias) / total) * 100) / 100;
+  return redondeoAcentimos((importeMensual * dias) / total);
+}
+
+/** Lo que cada modo propondría cobrar, con el desglose para enseñarlo. */
+export interface PropuestasDePrimerCobro {
+  /** Días del mes de entrada que se ocupan · `0` sin fecha legible. */
+  dias: number;
+  diasDelMes: number;
+  /** Mes de entrada y el siguiente, en base 1, para etiquetar el desglose. */
+  mesDeEntrada: number;
+  mesSiguiente: number;
+  prorrateo: number;
+  mesEntero: number;
+  diasMasAdelanto: number;
+}
+
+/**
+ * Las tres cifras que propone el selector del alta · `null` sin fecha legible.
+ *
+ * Vive aquí, y no en el componente, para que lo que el usuario ve al elegir sea
+ * exactamente lo que el motor va a emitir. Calculado dos veces serían dos
+ * respuestas que se separan en cuanto una de las dos se toque.
+ *
+ * El cuarto modo (`manual`) no aparece porque no propone nada: lo fija el
+ * arrendador.
+ */
+export function propuestasDePrimerCobro(
+  fechaInicio: string,
+  importeMensual: number,
+): PropuestasDePrimerCobro | null {
+  const inicio = partesISO(fechaInicio);
+  if (!inicio) return null;
+
+  const mensual = Number.isFinite(importeMensual) ? importeMensual : 0;
+  const total = diasDelMes(inicio.year, inicio.month);
+  const dias = Math.max(0, total - Math.min(Math.max(inicio.day, 1), total) + 1);
+  const prorrateo = redondeoAcentimos((mensual * dias) / total);
+
+  return {
+    dias,
+    diasDelMes: total,
+    mesDeEntrada: inicio.month,
+    mesSiguiente: mesSiguiente(inicio.year, inicio.month).month,
+    prorrateo,
+    mesEntero: mensual,
+    diasMasAdelanto: redondeoAcentimos(prorrateo + mensual),
+  };
 }
