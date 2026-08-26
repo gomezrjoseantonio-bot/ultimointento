@@ -14,11 +14,16 @@
 import type { FiscalSummaryExtended } from '../../../../services/fiscalSummaryService';
 import type { Property } from '../../../../services/db';
 import type { BoxRow, BoxSection } from './ejercicioCasillasService';
+import {
+  desgloseAusente,
+  hayDato,
+  type DesgloseReduccion,
+} from '../../../../services/desgloseReduccion';
 
 export interface InmuebleSeccionesData {
   secciones: BoxSection[];
   modoDeclaracion: FiscalSummaryExtended['modoDeclaracion'];
-  porcentajeReduccion: number;
+  reduccion: DesgloseReduccion;
   metodoProrrateo?: FiscalSummaryExtended['metodoProrrateo'];
   diasArrendado: number;
   diasDisposicion: number;
@@ -201,19 +206,14 @@ export function buildInmuebleSecciones(
       },
       {
         num: '0150',
-        concepto: ext.porcentajeReduccion > 0
-          ? `Reducción Ley Vivienda · ${ext.porcentajeReduccion}%`
-          : 'Reducción Ley Vivienda',
-        // En modo III (mixto / habitaciones) la reducción se aplica SOLO al
-        // rendimiento neto de la parte de larga estancia; las habitaciones
-        // de temporada/turístico no entran. Aclararlo evita la impresión de
-        // que el 60 % se aplicó al total.
-        subtitulo: ext.box0150 > 0
-          ? (ext.modoDeclaracion === 'III'
-            ? 'aplicada sólo a la parte de larga estancia · habitaciones de temporada sin reducción'
-            : 'aplicada sobre la parte reducible')
-          : 'no aplica · sin contrato larga estancia o vivienda no habitual',
-        importe: ext.box0150,
+        // El porcentaje ya no va pegado al concepto: iba un 60 % que salía del
+        // modo de declaración y no de ningún contrato. El subtítulo explicaba a
+        // mano que en modo III la reducción solo tocaba la parte de larga
+        // estancia; ahora eso lo dicen los chips, tramo por tramo.
+        concepto: 'Reducción Ley Vivienda',
+        reduccion: ext.reduccion,
+        // Sin dato no hay importe que enseñar: `null` pinta «—», no «0,00 €».
+        importe: hayDato(ext.reduccion) ? ext.box0150 : null,
         negativeSign: ext.box0150 > 0,
       },
       {
@@ -228,7 +228,7 @@ export function buildInmuebleSecciones(
   return {
     secciones: [seccionIngresos, seccionArrastres, seccionGastos, seccionAmort, seccionRendimiento],
     modoDeclaracion: ext.modoDeclaracion,
-    porcentajeReduccion: ext.porcentajeReduccion,
+    reduccion: ext.reduccion,
     metodoProrrateo: ext.metodoProrrateo,
     diasArrendado: ext.diasArrendado,
     diasDisposicion: ext.diasDisposicion,
@@ -367,15 +367,18 @@ export interface ModoLabel {
 
 export function getModoLabel(
   modo: FiscalSummaryExtended['modoDeclaracion'],
-  porcentajeReduccion: number,
+  reduccion: DesgloseReduccion,
 ): ModoLabel {
   switch (modo) {
     case 'I':
       return {
         tag: 'Larga estancia',
         title: 'Vivienda habitual del inquilino',
-        body: porcentajeReduccion > 0
-          ? `Contrato de larga estancia · LAU. ATLAS aplicó la reducción del ${porcentajeReduccion}% sobre el rendimiento neto positivo (Ley Vivienda).`
+        // El porcentaje no se repite aquí: lo dice el rótulo de la 0150, tramo
+        // por tramo. Este texto decía «la reducción del 60 %» con un 60 que no
+        // salía de ningún contrato.
+        body: (reduccion.importe ?? 0) > 0
+          ? 'Contrato de larga estancia · LAU. ATLAS aplicó la reducción de la Ley de Vivienda sobre el rendimiento neto positivo.'
           : 'Contrato de larga estancia · LAU. Sin reducción aplicada en este ejercicio.',
       };
     case 'II':
@@ -406,14 +409,14 @@ export function getModoLabel(
 }
 
 /**
- * @deprecated Usar `getModoLabel(modo, porcentajeReduccion)` para que el
- * texto refleje el % de reducción real. Mantenido por compatibilidad con
- * pruebas que importan el mapa estático.
+ * @deprecated Usar `getModoLabel(modo, reduccion)` para que el texto refleje si
+ * hubo reducción. Mantenido por compatibilidad con pruebas que importan el mapa
+ * estático.
  */
 export const MODO_LABEL: Record<FiscalSummaryExtended['modoDeclaracion'], ModoLabel> = {
-  I: getModoLabel('I', 60),
-  II: getModoLabel('II', 0),
-  III: getModoLabel('III', 0),
-  IV: getModoLabel('IV', 0),
-  V: getModoLabel('V', 0),
+  I: getModoLabel('I', desgloseAusente()),
+  II: getModoLabel('II', desgloseAusente()),
+  III: getModoLabel('III', desgloseAusente()),
+  IV: getModoLabel('IV', desgloseAusente()),
+  V: getModoLabel('V', desgloseAusente()),
 };

@@ -24,7 +24,12 @@ import {
 import styles from './RotuloReduccion.module.css';
 
 interface Props {
-  desglose: DesgloseReduccion;
+  /**
+   * `undefined` cuando el dato viene de una declaración cacheada de antes de
+   * este cambio. Se trata como ausente: la política es carga limpia, pero una
+   * pantalla en blanco por un campo que falta sería peor que decirlo.
+   */
+  desglose: DesgloseReduccion | undefined;
   /** El importe reducido, en euros. Se oculta donde la línea ya lo lleva al lado. */
   conImporte?: boolean;
   /** Antepone la palabra «Reducción» · para las tarjetas donde no hay contexto. */
@@ -43,7 +48,7 @@ const RotuloReduccion: React.FC<Props> = ({
 }) => {
   // «No se sabe» y «no hubo reducción» son cosas distintas. Enseñar 0 € cuando
   // falta el dato es afirmar que no había derecho a reducción.
-  if (!hayDato(desglose)) {
+  if (!desglose || !hayDato(desglose)) {
     return (
       <span className={[styles.rotulo, className].filter(Boolean).join(' ')}>
         <span className={styles.ausente}>Sin datos de reducción</span>

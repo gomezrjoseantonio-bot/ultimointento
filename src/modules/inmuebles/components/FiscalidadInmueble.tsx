@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MoneyValue } from '../../../design-system/v5';
+import RotuloReduccion from '../../../components/fiscal/RotuloReduccion';
+import type { DesgloseReduccion } from '../../../services/desgloseReduccion';
 import {
   recopilarDatosInmuebles,
   type RendimientoInmueble,
@@ -21,8 +23,11 @@ interface LineaCascada {
   valor: number;
   tipo?: 'sub' | 'tot';
   detalle?: Array<{ texto: string; valor: string }>;
+  /** Solo la línea de reducción · el rótulo por tramo va bajo el nombre. */
+  reduccion?: DesgloseReduccion;
 }
 
+/** Un porcentaje redondeado · lo usa el reparto de días, no la reducción. */
 const pct = (n: number): string => `${Math.round(n)} %`;
 
 /** Construye la cascada del rendimiento a partir del cálculo IRPF real. */
@@ -76,12 +81,15 @@ function construirCascada(r: RendimientoInmueble): LineaCascada[] {
     lineas.push({
       key: 'reduccion',
       op: '−',
-      nombre: `Reducción ${pct(r.porcentajeReduccionHabitual)} · vivienda`,
+      // Decía «Reducción 26 % · vivienda» con el porcentaje EFECTIVO. Ese 26 no
+      // se aplicó a nada: es la media entre el tramo de larga estancia y el que
+      // no reduce. El nominal de cada uno va ahora en los chips.
+      nombre: 'Reducción Ley Vivienda',
       hint: 'tu ahorro fiscal',
       valor: r.reduccionHabitual,
+      reduccion: r.reduccion,
       detalle: [
         { texto: 'Sobre el rendimiento neto positivo', valor: '' },
-        { texto: 'Reducción por alquiler de vivienda', valor: pct(r.porcentajeReduccionHabitual) },
       ],
     });
   }
@@ -262,9 +270,7 @@ const FiscalidadInmueble: React.FC<FiscalidadInmuebleProps> = ({ inmuebleId }) =
                   <MoneyValue value={rend.reduccionHabitual} decimals={0} />
                 </div>
                 <div className={styles.kH}>
-                  {rend.porcentajeReduccionHabitual > 0
-                    ? `reducción ${pct(rend.porcentajeReduccionHabitual)}`
-                    : 'sin reducción'}
+                  <RotuloReduccion desglose={rend.reduccion} conImporte={false} />
                 </div>
               </div>
             </div>
@@ -320,6 +326,7 @@ const FiscalidadInmueble: React.FC<FiscalidadInmuebleProps> = ({ inmuebleId }) =
                     <span className={styles.op}>{l.op}</span>
                     <span className={styles.fxNm}>
                       {l.nombre}
+                      {l.reduccion && <RotuloReduccion desglose={l.reduccion} conImporte={false} />}
                       {l.hint && <span className={styles.fxHint}>{l.hint}</span>}
                     </span>
                     <span className={styles.fxVal}>

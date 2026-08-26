@@ -9,6 +9,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import RotuloReduccion from '../../../../components/fiscal/RotuloReduccion';
+import type { DesgloseReduccion } from '../../../../services/desgloseReduccion';
 import {
   resolverDatosEjercicio,
   type DatosFiscalesEjercicio,
@@ -40,6 +42,8 @@ interface FilaDeclaracion {
   valor: number;
   esNegativo?: boolean;
   esDestacado?: boolean;
+  /** Solo la fila de reducción · lo pinta `RotuloReduccion` bajo la etiqueta. */
+  reduccion?: DesgloseReduccion;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -163,9 +167,11 @@ interface FilaProps {
   valor: number;
   esDestacado?: boolean;
   indent?: number;
+  /** El desglose de la reducción · se pinta bajo la etiqueta, por tramos. */
+  reduccion?: DesgloseReduccion;
 }
 
-const Fila: React.FC<FilaProps> = ({ label, valor, esDestacado = false, indent = 2 }) => (
+const Fila: React.FC<FilaProps> = ({ label, valor, esDestacado = false, indent = 2, reduccion }) => (
   <div style={{
     display: 'flex',
     justifyContent: 'space-between',
@@ -179,6 +185,11 @@ const Fila: React.FC<FilaProps> = ({ label, valor, esDestacado = false, indent =
       fontWeight: esDestacado ? 500 : 400,
     }}>
       {label}
+      {reduccion && (
+        <span style={{ display: 'block', marginTop: 4 }}>
+          <RotuloReduccion desglose={reduccion} conImporte={false} />
+        </span>
+      )}
     </span>
     <span style={{
       color: valor < 0 ? 'var(--teal-600)' : (esDestacado ? 'var(--navy-900)' : 'var(--grey-700)'),
@@ -247,6 +258,7 @@ const SeccionColapsable: React.FC<SeccionColapsableProps> = ({ seccion }) => {
                   label={fila.label}
                   valor={fila.valor}
                   esDestacado={fila.esDestacado}
+                  reduccion={fila.reduccion}
                   indent={3}
                 />
               ))}
@@ -385,10 +397,14 @@ export function buildSecciones(datos: DatosFiscalesEjercicio): SeccionDeclaracio
         filas.push({ label: 'Gastos financieros y reparación', valor: -inm.gastosFinanciacionYReparacion, esNegativo: true });
       }
       if (inm.reduccionHabitual > 0) {
+        // La etiqueta llevaba pegado el % EFECTIVO (reducción ÷ rendimiento):
+        // en este inmueble mixto decía «Reducción 26%», que no es lo que se
+        // aplicó a ningún tramo. El importe era —y sigue siendo— exacto.
         filas.push({
-          label: `Reducción ${Math.round((inm.porcentajeReduccionHabitual || 0) * 100)}%`,
+          label: 'Reducción Ley Vivienda',
           valor: -inm.reduccionHabitual,
           esNegativo: true,
+          reduccion: inm.reduccion,
         });
       }
       filas.push({

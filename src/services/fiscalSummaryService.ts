@@ -21,11 +21,13 @@ import {
 import { calcularImputacion } from './imputacionRentaService';
 import { getRendimientoFiscal, normalizeRefCatastral } from './rendimientoActivoService';
 import {
+  buildDeclaracionInmuebleSnapshot,
+  type DeclaracionInmuebleSnapshot,
+} from './declaracionInmuebleSnapshot';
+import {
   desgloseDeclarado,
   desgloseEnCurso,
-  tipoDeArrendamientoDeclarado,
   tramosDeContratos,
-  type ArrendamientoDeclaradoTramo,
   type DesgloseReduccion,
 } from './desgloseReduccion';
 import { memoizeFiscalSummary, clearFiscalSummaryMemo } from './fiscalSummaryMemo';
@@ -487,6 +489,8 @@ export const getCarryForwardsAppliedThisYear = async (propertyId?: number): Prom
 // las casillas de rendimiento (0149/0150/0154) y metadatos del ejercicio.
 // ═══════════════════════════════════════════════════════════════════════════
 
+export type { DeclaracionInmuebleSnapshot };
+
 export type ModoDeclaracionFiscal = 'I' | 'II' | 'III' | 'IV' | 'V';
 export type MetodoProrrateoFiscal = 'dias_habitacion' | 'superficie' | 'ingresos' | null;
 
@@ -524,37 +528,6 @@ export interface FiscalSummaryExtended extends FiscalSummary {
    * (que contiene datos catastrales generales, no lo declarado).
    */
   declaracionInmueble?: DeclaracionInmuebleSnapshot;
-}
-
-export interface DeclaracionInmuebleSnapshot {
-  /** 0123 — valor catastral total declarado */
-  valorCatastralTotal?: number;
-  /** 0124 — valor catastral construcción */
-  valorCatastralConstruccion?: number;
-  /** 0125 — % construcción */
-  porcentajeConstruccion?: number;
-  /** 0126 — importe adquisición */
-  precioAdquisicion?: number;
-  /** 0127 — gastos inherentes adquisición */
-  gastosAdquisicion?: number;
-  /** 0130 — base de amortización (cuando se declara amortización estándar) */
-  baseAmortizacion?: number;
-  /** 0131 (estándar) o 0132 (casos especiales) según `usaCasosEspeciales` */
-  amortizacionAnualInmueble?: number;
-  /** True cuando el inmueble declara amortización por casos especiales
-   *  (modo III · alquiler de habitaciones o situaciones especiales). En ese
-   *  caso `inmuebleCasillasService` no debe pintar el bloque 0123/0124/
-   *  0125/0126/0130 (que no existe en la declaración) y debe etiquetar la
-   *  amortización como 0132 en lugar de 0131. */
-  usaCasosEspeciales: boolean;
-  /** Múltiples `<Arrendamiento>` con `tipoArrendamiento` distinto · señal
-   *  de inmueble mixto (larga + temporada). */
-  tieneArrendamientosMixtos: boolean;
-  /** Número total de `<Arrendamiento>` declarados (1 por unidad/habitación). */
-  numArrendamientos: number;
-  /** Los arrendamientos reducidos a lo que el rótulo necesita: tipo y si
-   *  llevaban reducción. Es lo único que el Modelo 100 dice del desglose. */
-  arrendamientos: ArrendamientoDeclaradoTramo[];
 }
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -598,56 +571,6 @@ function detectarModoDeclaracion(
   if (property?.usoTipo === 'larga_estancia') return 'I';
   if (diasArrendado > 0 && diasArrendado < diasTotal - 7) return 'II';
   return 'I';
-}
-
-async function buildDeclaracionInmuebleSnapshot(
-  db: Awaited<ReturnType<typeof initDB>>,
-  propertyId: number,
-  exerciseYear: number,
-): Promise<DeclaracionInmuebleSnapshot | undefined> {
-  let ej;
-  try {
-    ej = await getEjercicio(exerciseYear);
-  } catch {
-    return undefined;
-  }
-  const decl = ej?.aeat?.declaracionCompleta;
-  if (!decl?.inmuebles || decl.inmuebles.length === 0) return undefined;
-
-  const property = await db.get('properties', propertyId);
-  const refProperty = normalizeRefCatastral(property?.cadastralReference);
-  if (!refProperty) return undefined;
-  const inm: any = decl.inmuebles.find(
-    (i: any) => normalizeRefCatastral(i.refCatastral) === refProperty,
-  );
-  if (!inm) return undefined;
-
-  const arrends: any[] = inm.arrendamientos ?? [];
-  const tiposArrendamiento = new Set(arrends.map((a) => a.tipoArrendamiento).filter(Boolean));
-  // Casos especiales (0132): la AEAT lo marca cuando hay amortización
-  // declarada SIN bloque catastral (sin base, sin VC construcción) — es la
-  // huella típica del alquiler por habitaciones / situaciones especiales.
-  // FA32 caso real: amortizacionAnualInmueble=816,12 con baseAmortizacion=0.
-  const amortInmueble = inm.amortizacionAnualInmueble ?? 0;
-  const baseAmort = inm.baseAmortizacion ?? 0;
-  const usaCasosEspeciales = amortInmueble > 0 && baseAmort === 0;
-
-  return {
-    valorCatastralTotal: inm.valorCatastralTotal ?? inm.valorCatastral,
-    valorCatastralConstruccion: inm.valorCatastralConstruccion,
-    porcentajeConstruccion: inm.porcentajeConstruccion,
-    precioAdquisicion: inm.precioAdquisicion,
-    gastosAdquisicion: inm.gastosAdquisicion,
-    baseAmortizacion: baseAmort > 0 ? baseAmort : undefined,
-    amortizacionAnualInmueble: amortInmueble > 0 ? amortInmueble : undefined,
-    usaCasosEspeciales,
-    tieneArrendamientosMixtos: tiposArrendamiento.size > 1,
-    numArrendamientos: arrends.length,
-    arrendamientos: arrends.map((a) => ({
-      tipo: tipoDeArrendamientoDeclarado(a.tipoArrendamiento),
-      conReduccion: a.tieneReduccion === true,
-    })),
-  };
 }
 
 function detectarMetodoProrrateo(

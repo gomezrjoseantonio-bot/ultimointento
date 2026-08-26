@@ -1,6 +1,7 @@
 import { DeclaracionIRPF } from '../../services/irpfCalculationService';
 import { TaxState, Inmueble, ActividadEconomica, GananciaPatrimonial, SaldoNegativoBIA } from '../../store/taxSlice';
 import { initDB, Property } from '../../services/db';
+import type { DesgloseReduccion } from '../../services/desgloseReduccion';
 import { calculateFiscalSummary } from '../../services/fiscalSummaryService';
 import { calculateAEATAmortization, getConstructionPercentageFromValues, getUnifiedFiscalData } from '../../services/aeatAmortizationService';
 
@@ -127,6 +128,39 @@ function getVisiblePropertyIds(properties: Property[]): PropertyVisibilityIndex 
   return { activePropertyIds, aliasById };
 }
 
+/**
+ * El porcentaje que necesita el formulario de IRPF · NO es un rótulo.
+ *
+ * `taxSlice` modela la reducción como `rendimiento × pct / 100`, así que el
+ * formulario necesita un número, no un desglose. Ninguna pantalla lo pinta: si
+ * lo hiciera, en un inmueble mixto enseñaría el «26 %».
+ *
+ * De dónde sale, en este orden:
+ *
+ *   1. Si todos los tramos comparten el mismo nominal conocido, ese. Es el caso
+ *      normal y el número es el de la ley.
+ *   2. Si no, el que reproduce el importe exacto sobre el rendimiento. Es un
+ *      cociente, y por eso se queda dentro del formulario: lo que no se puede
+ *      perder son los euros declarados.
+ *
+ * Lo que ya no hace: leer el % efectivo que calculaba el motor C, ni inventarse
+ * un 60 % porque el inmueble fuera «habitual».
+ */
+export function porcentajeParaElFormulario(desglose: DesgloseReduccion | undefined): number {
+  const importe = desglose?.importe ?? 0;
+  if (!desglose || importe <= 0) return 0;
+
+  const nominales = new Set(desglose.tramos.filter((t) => (t.pct ?? 0) > 0).map((t) => t.pct));
+  if (nominales.size === 1) {
+    const unico = [...nominales][0];
+    if (unico !== null && unico !== undefined) return unico;
+  }
+
+  const antes = desglose.rendimientoAntes ?? 0;
+  if (antes <= 0) return 0;
+  return round2((importe / antes) * 100);
+}
+
 export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Promise<TaxHydrationPayload> {
   const trabajo = declaracion.baseGeneral.rendimientosTrabajo;
   const autonomo = declaracion.baseGeneral.rendimientosAutonomo;
@@ -242,12 +276,8 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
       arrastres: i.arrastresAplicados && i.arrastresAplicados > 0
         ? [{ ejercicio: declaracion.ejercicio - 1, pendienteInicio: i.arrastresAplicados, aplicado: i.arrastresAplicados, pendienteFuturo: 0 }]
         : [],
-      tieneReduccion: (i.reduccionHabitual ?? 0) > 0 || i.esHabitual || (i.porcentajeReduccionHabitual ?? 0) > 0,
-      pctReduccion: round2((i.porcentajeReduccionHabitual ?? 0) > 0
-        ? (i.porcentajeReduccionHabitual ?? 0)
-        : ((i.reduccionHabitual ?? 0) > 0 && (i.rendimientoNetoAlquiler ?? 0) > 0
-          ? ((i.reduccionHabitual ?? 0) / (i.rendimientoNetoAlquiler ?? 1)) * 100
-          : (i.esHabitual ? 60 : 0))),
+      tieneReduccion: (i.reduccion?.importe ?? 0) > 0,
+      pctReduccion: porcentajeParaElFormulario(i.reduccion),
       pctConstruccion: amortization?.pctConstruccion ?? 0,
       baseAmortizacion: amortization?.baseAmortizacion ?? 0,
       amortizacionInmueble: amortization?.amortizacionInmueble ?? round2(i.amortizacion),

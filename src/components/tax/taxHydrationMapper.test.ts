@@ -1,5 +1,6 @@
 import { mapDeclaracionToTaxState } from './taxHydrationMapper';
 import { DeclaracionIRPF } from '../../services/irpfCalculationService';
+import { desgloseDeclarado } from '../../services/desgloseReduccion';
 
 jest.mock('../../services/db', () => ({
   initDB: jest.fn(),
@@ -43,7 +44,15 @@ function buildDeclaracion(): DeclaracionIRPF {
           reduccionHabitual: 3200,
           rendimientoNetoAlquiler: 8000,
           rendimientoNetoReducido: 4800,
-          porcentajeReduccionHabitual: 40,
+          // El rendimiento ya no viaja con un porcentaje: viaja con el desglose.
+          // Un único tramo, 3.200 sobre 8.000 · el 40 % no es un nominal del
+          // art. 23.2, así que el chip iría sin cifra y el formulario recibe el
+          // cociente que reproduce el importe.
+          reduccion: desgloseDeclarado({
+            arrendamientos: [{ tipo: 'larga_estancia', conReduccion: true }],
+            reduccion: 3200,
+            rendimientoAntes: 8000,
+          }),
           esHabitual: true,
           imputacionRenta: 0,
           rendimientoNeto: 4800,
@@ -148,6 +157,7 @@ describe('mapDeclaracionToTaxState', () => {
     expect(rented?.mejoras).toBe(1500);
     expect(rented?.gastosTributos).toBe(8750);
     expect(rented?.pctReduccion).toBe(40);
+    expect(rented?.tieneReduccion).toBe(true);
     expect(rented?.rendimientoNeto).toBe(8000);
     expect(rented?.rendimientoNetoReducido).toBe(4800);
   });

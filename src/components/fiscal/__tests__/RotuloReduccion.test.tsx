@@ -75,6 +75,14 @@ describe('rótulo de reducción', () => {
     expect(screen.getByText('larga estancia')).toBeInTheDocument();
   });
 
+  it('un desglose que no llega · se comporta como dato ausente, no revienta', () => {
+    // La política es carga limpia, pero una declaración cacheada de antes de
+    // este cambio no trae el campo. Que la pantalla se caiga por eso sería
+    // peor que decir que no hay dato.
+    render(<RotuloReduccion desglose={undefined as never} />);
+    expect(texto()).toContain('Sin datos de reducción');
+  });
+
   it('lleva la etiqueta «Reducción» cuando se le pide', () => {
     render(<RotuloReduccion desglose={mixtoDeclarado()} etiqueta />);
     expect(screen.getByText('Reducción')).toBeInTheDocument();

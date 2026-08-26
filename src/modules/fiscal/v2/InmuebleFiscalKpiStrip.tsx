@@ -8,13 +8,14 @@
  */
 
 import React from 'react';
+import RotuloReduccion from '../../../components/fiscal/RotuloReduccion';
 import styles from './FiscalEjercicioPage.module.css';
 
 export interface InmuebleFiscalKpiStripProps {
   ingresos: number | null;
   gastosAplicados: number | null;
   rendimientoNetoReducido: number | null;
-  porcentajeReduccion: number;
+  reduccion: import('../../../services/fiscalSummaryService').FiscalSummaryExtended['reduccion'];
   diasArrendado: number;
   numContratos?: number;
 }
@@ -34,7 +35,7 @@ const InmuebleFiscalKpiStrip: React.FC<InmuebleFiscalKpiStripProps> = ({
   ingresos,
   gastosAplicados,
   rendimientoNetoReducido,
-  porcentajeReduccion,
+  reduccion,
   diasArrendado,
   numContratos,
 }) => {
@@ -74,9 +75,9 @@ const InmuebleFiscalKpiStrip: React.FC<InmuebleFiscalKpiStripProps> = ({
           {fmtEuros(rendimientoNetoReducido)}
         </div>
         <div className={styles.kpiHint}>
-          {porcentajeReduccion > 0
-            ? `tras reducción del ${porcentajeReduccion}%`
-            : 'sin reducción aplicada'}
+          {/* Contexto 1 del mockup · el importe reducido y sus tramos debajo
+              del rendimiento, en lugar de «tras reducción del 26 %». */}
+          <RotuloReduccion desglose={reduccion} etiqueta />
         </div>
       </div>
     </div>

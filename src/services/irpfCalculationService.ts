@@ -12,6 +12,7 @@
 //   · GAP 5.6 guard sobre `tributacion` eliminado (gateway garantiza valor)
 
 import { initDB } from './db';
+import { calcularPorcentajeReduccionContrato } from './reduccionAlquiler';
 import {
   desgloseEnCurso,
   desgloseSinReduccion,
@@ -340,8 +341,7 @@ export function calcularReduccionArrendamientoVivienda(
 // las reglas que traduce. Se reexporta desde aquí porque es donde la conocen sus
 // consumidores, y porque `desgloseReduccion` necesita llamarla sin arrastrar
 // este módulo entero (que importa media app).
-export { calcularPorcentajeReduccionContrato } from './reduccionAlquiler';
-import { calcularPorcentajeReduccionContrato } from './reduccionAlquiler';
+export { calcularPorcentajeReduccionContrato };
 
 function edadDesde(fechaNacimiento: string, ejercicio: number): number {
   const nacimiento = new Date(fechaNacimiento);
