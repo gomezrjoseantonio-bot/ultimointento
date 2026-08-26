@@ -18,7 +18,7 @@
 // tope del art. 17.6 LAU, cosas que este cálculo no comprueba y que quien firma
 // tiene que saber.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Check } from 'lucide-react';
 import {
   proponerReduccion,
@@ -26,12 +26,7 @@ import {
   type CondicionesReduccion,
 } from '../../../services/reduccionAlquiler';
 import type { Contract } from '../../../services/db';
-import {
-  NOMBRE_SUBTIPO,
-  SUBTIPOS_ALQUILER,
-  reduceElSubtipo,
-  type SubtipoAlquiler,
-} from '../../../services/db/types-alquiler';
+import { reduceElSubtipo } from '../../../services/db/types-alquiler';
 import styles from './BloqueFiscalContrato.module.css';
 
 const euro = new Intl.NumberFormat('es-ES', {
@@ -70,12 +65,6 @@ const CONDICIONES: Array<{ clave: Condicion; nombre: string; detalle: string }> 
   },
 ];
 
-// Los tres subtipos y su nombre salen del vocabulario único: si mañana se
-// añade uno, aparece aquí solo.
-const REGIMENES: Array<{ clave: SubtipoAlquiler; etiqueta: string }> = SUBTIPOS_ALQUILER.map(
-  (clave) => ({ clave, etiqueta: NOMBRE_SUBTIPO[clave] }),
-);
-
 /** Lo que el bloque devuelve al wizard para que lo persista con el contrato. */
 export interface DatosFiscalesContrato {
   reduccion: NonNullable<Contract['reduccion']>;
@@ -90,7 +79,6 @@ export interface DatosFiscalesContrato {
 interface Props {
   /** Régimen del contrato · lo elige el paso 1, aquí se puede matizar. */
   modalidad: Contract['modalidad'];
-  onModalidadChange: (m: Contract['modalidad']) => void;
   /** Renta mensual tal cual la teclea el usuario · para el impacto en euros. */
   rentaMensual: string;
   fechaInicio: string;
@@ -100,7 +88,6 @@ interface Props {
 
 export default function BloqueFiscalContrato({
   modalidad,
-  onModalidadChange,
   rentaMensual,
   fechaInicio,
   value,
@@ -197,28 +184,20 @@ export default function BloqueFiscalContrato({
 
   const esHabitual = reduceElSubtipo(regimen);
 
+  // El tipo se elige en el paso 1 y llega aquí hecho, así que puede cambiar
+  // mientras este bloque no está en pantalla. Si vuelve como un tipo que NO
+  // reduce con una reducción confirmada encima, ese número reclama algo que el
+  // contrato ya no tiene — y un % puesto a mano tampoco sobrevive a eso, porque
+  // no es una discrepancia de cálculo sino de régimen.
+  useEffect(() => {
+    if (!esHabitual && confirmado && (pctGuardado ?? 0) > 0) {
+      emitir({ reduccion: { activa: false, porcentaje: 0 } });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esHabitual, confirmado, pctGuardado]);
+
   return (
     <div className={styles.bloque}>
-      <div className={styles.etiqueta}>Régimen del alquiler</div>
-      <div className={styles.segmentado} role="radiogroup" aria-label="Régimen del alquiler">
-        {REGIMENES.map((r) => (
-          <button
-            key={r.clave}
-            type="button"
-            role="radio"
-            aria-checked={regimen === r.clave}
-            className={regimen === r.clave ? styles.segActivo : undefined}
-            onClick={() => {
-              setAjustando(false);
-              onModalidadChange(r.clave);
-              emitir({ reduccion: { activa: false, porcentaje: 0 } });
-            }}
-          >
-            {r.etiqueta}
-          </button>
-        ))}
-      </div>
-
       <div className={esHabitual ? undefined : styles.apagado}>
         <div className={styles.filaFecha}>
           <div>

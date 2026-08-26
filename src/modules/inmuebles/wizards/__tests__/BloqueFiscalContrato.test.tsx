@@ -18,11 +18,9 @@ const texto = (s: string): string => s.replace(/\s/g, ' ').replace(/\./g, '');
 
 const pintar = (props?: Partial<React.ComponentProps<typeof BloqueFiscalContrato>>) => {
   const onChange = jest.fn();
-  const onModalidadChange = jest.fn();
   const utils = render(
     <BloqueFiscalContrato
       modalidad="habitual"
-      onModalidadChange={onModalidadChange}
       rentaMensual="500"
       fechaInicio="2026-08-15"
       value={undefined}
@@ -30,7 +28,7 @@ const pintar = (props?: Partial<React.ComponentProps<typeof BloqueFiscalContrato
       {...props}
     />,
   );
-  return { ...utils, onChange, onModalidadChange };
+  return { ...utils, onChange };
 };
 
 const condicion = (nombre: string): HTMLElement =>
@@ -152,16 +150,29 @@ describe('bloque fiscal · confirmar y ajustar', () => {
     );
   });
 
-  it('cambiar de régimen también invalida lo confirmado', () => {
-    const { onChange, onModalidadChange } = pintar({
-      value: yaConfirmado({ reduccion: { activa: true, porcentaje: 50 } }),
+  it('un tipo que no reduce tira lo confirmado, aunque se pusiera a mano', () => {
+    // El tipo ya no se elige aquí: se cambia en el paso 1 y el bloque lo recibe
+    // hecho. Si vuelve como corta estancia con un 60 % confirmado encima —a mano
+    // o no—, ese número reclama una reducción que ese contrato no tiene.
+    const { onChange } = pintar({
+      modalidad: 'corta_estancia',
+      value: yaConfirmado({
+        reduccion: { activa: true, porcentaje: 60, motivo: 'general_post_2023', manual: true },
+      }),
     });
 
-    fireEvent.click(screen.getByRole('radio', { name: /Media estancia/i }));
-
-    expect(onModalidadChange).toHaveBeenCalledWith('media_estancia');
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ reduccion: { activa: false, porcentaje: 0 } }),
     );
+  });
+
+  it('lo confirmado sobre un tipo que SÍ reduce se respeta', () => {
+    const { onChange } = pintar({
+      modalidad: 'larga_estancia',
+      value: yaConfirmado({
+        reduccion: { activa: true, porcentaje: 60, motivo: 'general_post_2023', manual: true },
+      }),
+    });
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NOMBRE_SUBTIPO, SUBTIPOS_ALQUILER } from '../../../services/db/types-alquiler';
+import SelectorTipoAlquiler from './SelectorTipoAlquiler';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   PageHead,
@@ -358,18 +358,6 @@ const NuevoContratoWizard: React.FC = () => {
                   onChange={seleccionarHabitacion}
                 />
                 <div className={styles.field}>
-                  <label className={styles.label}>Modalidad</label>
-                  <select
-                    className={styles.select}
-                    value={form.modalidad}
-                    onChange={(e) => update('modalidad', e.target.value as FormState['modalidad'])}
-                  >
-                    {SUBTIPOS_ALQUILER.map((s) => (
-                      <option key={s} value={s}>{NOMBRE_SUBTIPO[s]}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className={styles.field}>
                   <label className={styles.label}>Fecha inicio</label>
                   <input
                     type="date"
@@ -387,8 +375,18 @@ const NuevoContratoWizard: React.FC = () => {
                     onChange={(e) => update('fechaFin', e.target.value)}
                   />
                   <span className={styles.help}>
-                    Habitual · LAU rellena 5 años · editable.
+                    Larga duración · LAU rellena 5 años · editable.
                   </span>
+                </div>
+                <div className={styles.field}>
+                  {/* El único sitio donde se elige el tipo · debajo de las
+                      fechas, porque de ellas sale su propuesta. */}
+                  <SelectorTipoAlquiler
+                    value={form.modalidad}
+                    onChange={(m) => update('modalidad', m)}
+                    fechaInicio={form.fechaInicio}
+                    fechaFin={form.fechaFin}
+                  />
                 </div>
               </div>
             </>

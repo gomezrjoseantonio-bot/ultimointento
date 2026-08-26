@@ -9,7 +9,7 @@ import { saveContract, updateContract } from './contractService';
 import { boteAnualService } from './boteAnualService';
 import { ContractDraft } from './contractDraftService';
 
-const FECHA_FIN_INDEFINIDO = '2099-12-31';
+import { FECHA_FIN_INDEFINIDO } from './db/types-alquiler';
 const EMAIL_PLACEHOLDER = 'pendiente@importado.local';
 
 export interface ResultadoCreacion {

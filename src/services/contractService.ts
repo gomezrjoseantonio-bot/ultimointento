@@ -1,4 +1,4 @@
-import { SUBTIPOS_ALQUILER, type SubtipoAlquiler } from './db/types-alquiler';
+import { FECHA_FIN_INDEFINIDO, SUBTIPOS_ALQUILER, type SubtipoAlquiler } from './db/types-alquiler';
 import { initDB, Contract, HistoricoRenta } from './db';
 
 type SignatureMetadata = NonNullable<Contract['firma']>;
@@ -32,7 +32,9 @@ export const calculateHabitualEndDate = (fechaInicio: string): string => {
 };
 
 /** Sentinel de fechaFin "indefinido" (ver formatFechaFin.ts · esFechaIndefinida). */
-export const FECHA_FIN_INDEFINIDO = '2099-12-31';
+// Vive en `types-alquiler` · se reexporta porque es donde lo conocen sus
+// consumidores.
+export { FECHA_FIN_INDEFINIDO };
 
 /**
  * V78.1 (Extra 1 · LAU 5 años) · fechaFin para contratos habituales importados de AEAT.

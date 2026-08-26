@@ -122,7 +122,9 @@ describe('el paso Económico monta sus bloques', () => {
     siguiente();
 
     await screen.findByText(/¿Cómo cobras el primer mes\?/);
-    await screen.findByText(/Régimen del alquiler/);
+    // El bloque fiscal ya no trae su selector de régimen —el tipo se elige en el
+    // paso 1—, así que se anclan sus dos partes propias.
+    await screen.findByText(/Fecha de firma del contrato/);
     await screen.findByText(/Reducción que ATLAS propone/);
   });
 });
