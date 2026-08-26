@@ -138,7 +138,7 @@ describe('sin declaración importada · el % lo pone el contrato, no un if', () 
     const ext = await calculateFiscalSummaryExtended(1, 2025);
 
     expect(ext.reduccion.origen).toBe('atlas');
-    expect(ext.reduccion.tramos.map(etiquetaTramo)).toEqual(['50% larga estancia']);
+    expect(ext.reduccion.tramos.map(etiquetaTramo)).toEqual(['50% vivienda habitual']);
     // Y la casilla sigue el mismo número que el rótulo.
     expect(ext.box0150).toBe(ext.reduccion.importe);
     expect(ext.box0150).toBe(Math.round(ext.box0149 * 0.5 * 100) / 100);
@@ -151,7 +151,7 @@ describe('sin declaración importada · el % lo pone el contrato, no un if', () 
     sinDeclaracion();
 
     const ext = await calculateFiscalSummaryExtended(1, 2025);
-    expect(ext.reduccion.tramos.map(etiquetaTramo)).toEqual(['60% larga estancia']);
+    expect(ext.reduccion.tramos.map(etiquetaTramo)).toEqual(['60% vivienda habitual']);
   });
 
   it('temporada · 0 % explícito, no un tramo escondido', async () => {
@@ -176,7 +176,7 @@ describe('sin declaración importada · el % lo pone el contrato, no un if', () 
 
     const ext = await calculateFiscalSummaryExtended(1, 2025);
     expect(ext.reduccion.tramos.map(etiquetaTramo)).toEqual([
-      '60% larga estancia',
+      '60% vivienda habitual',
       '0% temporada',
     ]);
     // Mitad y mitad de ingresos: solo la mitad larga se reduce al 60 %.
@@ -244,7 +244,7 @@ describe('año declarado · se lee, no se recalcula', () => {
     expect(ext.reduccion.importe).toBe(3200.81);
     expect(ext.box0150).toBe(3200.81);
     // Un solo arrendamiento: 3.200,81 ÷ 5.334,69 da el 60 % clavado.
-    expect(ext.reduccion.tramos.map(etiquetaTramo)).toEqual(['60% larga estancia']);
+    expect(ext.reduccion.tramos.map(etiquetaTramo)).toEqual(['60% vivienda habitual']);
   });
 
   it('el caso mixto real · dos tramos, el importe exacto y NINGÚN 26 %', async () => {
@@ -265,8 +265,8 @@ describe('año declarado · se lee, no se recalcula', () => {
 
     expect(ext.reduccion.importe).toBe(1390.94);
     expect(ext.reduccion.tramos.map(etiquetaTramo)).toEqual([
-      'larga estancia',
-      '0% distinto de vivienda',
+      'vivienda habitual',
+      '0% temporada/turístico',
     ]);
     expect(JSON.stringify(ext.reduccion)).not.toContain('26');
   });

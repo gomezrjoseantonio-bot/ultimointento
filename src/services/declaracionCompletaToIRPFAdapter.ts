@@ -39,11 +39,7 @@ import type {
   MinimosPersonales,
 } from './irpfCalculationService';
 import type { Property } from './db';
-import {
-  desgloseDeclarado,
-  desgloseSinReduccion,
-  tipoDeArrendamientoDeclarado,
-} from './desgloseReduccion';
+import { desgloseDeclarado, desgloseSinReduccion } from './desgloseReduccion';
 
 function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
@@ -184,7 +180,6 @@ function buildRendimientoInmueble(
     // nominal solo cuando el XML permite derivarlo sin mezclar tramos.
     reduccion: desgloseDeclarado({
       arrendamientos: (inm.arrendamientos ?? []).map((a) => ({
-        tipo: tipoDeArrendamientoDeclarado(a.tipoArrendamiento),
         conReduccion: a.tieneReduccion === true,
       })),
       reduccion,

@@ -50,8 +50,8 @@ describe('lo declarado se rotula por tramo, no con un cociente', () => {
     expect(inm.reduccion.origen).toBe('declarado');
     expect(inm.reduccion.importe).toBe(1390.94);
     expect(inm.reduccion.tramos.map(etiquetaTramo)).toEqual([
-      'larga estancia',
-      '0% distinto de vivienda',
+      'vivienda habitual',
+      '0% temporada/turístico',
     ]);
     // El importe sigue siendo el mismo que la casilla: lo que se pierde es el
     // porcentaje inventado, no el dato.
@@ -63,7 +63,7 @@ describe('lo declarado se rotula por tramo, no con un cociente', () => {
       declaracion([{ tipoArrendamiento: 'vivienda', tieneReduccion: true }], 3200.81, 2133.88),
     );
     // 3.200,81 sobre 5.334,69 (neto + reducción) es el 60 % exacto.
-    expect(inm.reduccion.tramos.map(etiquetaTramo)).toEqual(['60% larga estancia']);
+    expect(inm.reduccion.tramos.map(etiquetaTramo)).toEqual(['60% vivienda habitual']);
   });
 
   it('sin reducción declarada · 0 % explícito, no un hueco', () => {
@@ -71,7 +71,7 @@ describe('lo declarado se rotula por tramo, no con un cociente', () => {
       declaracion([{ tipoArrendamiento: 'no_vivienda', tieneReduccion: false }], 0, 4000),
     );
     expect(inm.reduccion.importe).toBe(0);
-    expect(inm.reduccion.tramos.map(etiquetaTramo)).toEqual(['0% distinto de vivienda']);
+    expect(inm.reduccion.tramos.map(etiquetaTramo)).toEqual(['0% temporada/turístico']);
   });
 
   it('`porcentajeReduccionHabitual` ya no viaja en el rendimiento', () => {

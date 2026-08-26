@@ -49,7 +49,7 @@ function buildDeclaracion(): DeclaracionIRPF {
           // art. 23.2, así que el chip iría sin cifra y el formulario recibe el
           // cociente que reproduce el importe.
           reduccion: desgloseDeclarado({
-            arrendamientos: [{ tipo: 'larga_estancia', conReduccion: true }],
+            arrendamientos: [{ conReduccion: true }],
             reduccion: 3200,
             rendimientoAntes: 8000,
           }),

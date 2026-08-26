@@ -18,8 +18,8 @@ const texto = (): string => (document.body.textContent ?? '').replace(/\s/g, ' '
 const mixtoDeclarado = () =>
   desgloseDeclarado({
     arrendamientos: [
-      { tipo: 'larga_estancia', conReduccion: true },
-      { tipo: 'otro', conReduccion: false },
+      { conReduccion: true },
+      { conReduccion: false },
     ],
     reduccion: 1390.94,
     rendimientoAntes: 5334.69,
@@ -29,13 +29,13 @@ describe('rótulo de reducción', () => {
   it('un chip por tramo, con su nominal', () => {
     render(<RotuloReduccion desglose={desgloseEnCurso(
       [
-        { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
+        { tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 },
         { tipo: 'temporada', pct: 0, ingresos: 4000 },
       ],
       5000,
     )} />);
 
-    expect(screen.getByText('60% larga estancia')).toBeInTheDocument();
+    expect(screen.getByText('60% vivienda habitual')).toBeInTheDocument();
     expect(screen.getByText('0% temporada')).toBeInTheDocument();
   });
 
@@ -52,7 +52,7 @@ describe('rótulo de reducción', () => {
 
   it('un tramo sin nominal derivable se rotula por su nombre, sin cifra', () => {
     render(<RotuloReduccion desglose={mixtoDeclarado()} />);
-    expect(screen.getByText('larga estancia')).toBeInTheDocument();
+    expect(screen.getByText('vivienda habitual')).toBeInTheDocument();
   });
 
   it('dato ausente · lo dice, no enseña 0 €', () => {
@@ -72,7 +72,7 @@ describe('rótulo de reducción', () => {
   it('se puede pedir sin el importe, para las líneas que ya lo llevan al lado', () => {
     render(<RotuloReduccion desglose={mixtoDeclarado()} conImporte={false} />);
     expect(texto()).not.toContain('1390,94');
-    expect(screen.getByText('larga estancia')).toBeInTheDocument();
+    expect(screen.getByText('vivienda habitual')).toBeInTheDocument();
   });
 
   it('un desglose que no llega · se comporta como dato ausente, no revienta', () => {

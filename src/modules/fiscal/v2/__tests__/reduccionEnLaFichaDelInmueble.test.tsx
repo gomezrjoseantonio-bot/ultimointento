@@ -30,8 +30,8 @@ const filaReduccion = (ext: FiscalSummaryExtended) => {
 const mixto = () =>
   desgloseDeclarado({
     arrendamientos: [
-      { tipo: 'larga_estancia', conReduccion: true },
-      { tipo: 'otro', conReduccion: false },
+      { conReduccion: true },
+      { conReduccion: false },
     ],
     reduccion: 1390.94,
     rendimientoAntes: 5334.69,
@@ -52,21 +52,21 @@ describe('la casilla 0150 rotula por tramo', () => {
 
   it('pintada, enseña los chips del mockup y no el subtítulo escrito a mano', () => {
     render(<BoxRowCasilla row={filaReduccion(resumen(mixto(), 1390.94))} />);
-    expect(screen.getByText('larga estancia')).toBeInTheDocument();
-    expect(screen.getByText('0% distinto de vivienda')).toBeInTheDocument();
+    expect(screen.getByText('vivienda habitual')).toBeInTheDocument();
+    expect(screen.getByText('0% temporada/turístico')).toBeInTheDocument();
     expect(screen.queryByText(/aplicada sólo a la parte de larga estancia/)).toBeNull();
   });
 
   it('el año en curso dice el nominal exacto', () => {
     const enCurso = desgloseEnCurso(
       [
-        { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
+        { tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 },
         { tipo: 'temporada', pct: 0, ingresos: 4000 },
       ],
       5334.69,
     );
     render(<BoxRowCasilla row={filaReduccion(resumen(enCurso, enCurso.importe ?? 0))} />);
-    expect(screen.getByText('60% larga estancia')).toBeInTheDocument();
+    expect(screen.getByText('60% vivienda habitual')).toBeInTheDocument();
     expect(screen.getByText('0% temporada')).toBeInTheDocument();
   });
 
@@ -80,7 +80,7 @@ describe('la casilla 0150 rotula por tramo', () => {
 
 describe('el texto del modo ya no inventa un porcentaje', () => {
   it('modo I · describe el régimen, sin cifra', () => {
-    const label = getModoLabel('I', desgloseEnCurso([{ tipo: 'larga_estancia', pct: 60, ingresos: 6000 }], 5000));
+    const label = getModoLabel('I', desgloseEnCurso([{ tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 }], 5000));
     expect(label.body).not.toMatch(/\d+%/);
     expect(label.tag).toBe('Larga estancia');
   });

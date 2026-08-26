@@ -15,7 +15,6 @@ import {
   desgloseEnCurso,
   desgloseAusente,
   etiquetaTramo,
-  tipoDeArrendamientoDeclarado,
   tipoDeModalidad,
   hayDato,
   escalarDesglose,
@@ -33,24 +32,24 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
     // 3.200,81 sobre 5.334,69 es el 60,0 % clavado: hay un solo tramo, así que
     // la división da el nominal sin mezclar nada.
     const d = desgloseDeclarado({
-      arrendamientos: [{ tipo: 'larga_estancia', conReduccion: true }],
+      arrendamientos: [{ conReduccion: true }],
       reduccion: 3200.81,
       rendimientoAntes: 5334.69,
     });
 
     expect(d.origen).toBe('declarado');
     expect(d.importe).toBe(3200.81);
-    expect(d.tramos).toEqual([{ tipo: 'larga_estancia', pct: 60, base: 5334.69 }]);
+    expect(d.tramos).toEqual([{ tipo: 'vivienda_habitual', pct: 60, base: 5334.69 }]);
   });
 
   it('dos tramos · el reducible va SIN cifra, porque 0150÷0149 los mezcla', () => {
     // El caso del mockup: 1.390,94 sobre 5.334,69 sale 26,07 %. Ese número no
-    // es de nadie —el 60 % se aplicó solo sobre la parte de larga estancia— y
+    // es de nadie —el 60 % se aplicó solo sobre la vivienda habitual— y
     // es justo el que hay que dejar de enseñar.
     const d = desgloseDeclarado({
       arrendamientos: [
-        { tipo: 'larga_estancia', conReduccion: true },
-        { tipo: 'otro', conReduccion: false },
+        { conReduccion: true },
+        { conReduccion: false },
       ],
       reduccion: 1390.94,
       rendimientoAntes: 5334.69,
@@ -58,7 +57,7 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
 
     expect(d.importe).toBe(1390.94);
     expect(pcts(d)).toEqual([null, 0]);
-    expect(tipos(d)).toEqual(['larga_estancia', 'otro']);
+    expect(tipos(d)).toEqual(['vivienda_habitual', 'temporada_o_turistico']);
     // Y el 26 no aparece por ninguna parte de la estructura.
     expect(JSON.stringify(d)).not.toContain('26');
   });
@@ -67,7 +66,7 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
     // Prorrateo por días, un ajuste, lo que sea: si no es 50/60/70/90 no se
     // redondea al más cercano, se calla.
     const d = desgloseDeclarado({
-      arrendamientos: [{ tipo: 'larga_estancia', conReduccion: true }],
+      arrendamientos: [{ conReduccion: true }],
       reduccion: 2000,
       rendimientoAntes: 5334.69,
     });
@@ -78,7 +77,7 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
   it('los cuatro nominales del art. 23.2 se reconocen', () => {
     const derivado = (pct: number): number | null =>
       desgloseDeclarado({
-        arrendamientos: [{ tipo: 'larga_estancia', conReduccion: true }],
+        arrendamientos: [{ conReduccion: true }],
         reduccion: Math.round(1000 * pct) / 100,
         rendimientoAntes: 1000,
       }).tramos[0].pct;
@@ -88,7 +87,7 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
 
   it('declarado sin reducción · 0 % explícito, no ausencia de dato', () => {
     const d = desgloseDeclarado({
-      arrendamientos: [{ tipo: 'otro', conReduccion: false }],
+      arrendamientos: [{ conReduccion: false }],
       reduccion: 0,
       rendimientoAntes: 4000,
     });
@@ -99,7 +98,7 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
 
   it('sin rendimiento base no se divide · el importe sigue siendo verdad', () => {
     const d = desgloseDeclarado({
-      arrendamientos: [{ tipo: 'larga_estancia', conReduccion: true }],
+      arrendamientos: [{ conReduccion: true }],
       reduccion: 3200.81,
       rendimientoAntes: 0,
     });
@@ -116,8 +115,8 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
   it('arrendamientos iguales se agrupan en un solo chip', () => {
     const d = desgloseDeclarado({
       arrendamientos: [
-        { tipo: 'larga_estancia', conReduccion: true },
-        { tipo: 'larga_estancia', conReduccion: true },
+        { conReduccion: true },
+        { conReduccion: true },
       ],
       reduccion: 600,
       rendimientoAntes: 1000,
@@ -128,11 +127,25 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
     expect(pcts(d)).toEqual([null]);
   });
 
-  it('el tipo sale del TAR del XML, sin adivinar', () => {
-    expect(tipoDeArrendamientoDeclarado('vivienda')).toBe('larga_estancia');
-    // TAR2 mete en el mismo saco local, temporada y turístico: no se elige uno.
-    expect(tipoDeArrendamientoDeclarado('no_vivienda')).toBe('otro');
-    expect(tipoDeArrendamientoDeclarado(undefined)).toBe('otro');
+  it('el tramo sale de si reduce, no del TAR del XML', () => {
+    // Solo la vivienda habitual reduce, así que un tramo con reducción es
+    // habitual y punto: no hace falta —ni se puede— leerlo del TAR, que mete
+    // local, temporada y turístico en el mismo saco.
+    const conReduccion = desgloseDeclarado({
+      arrendamientos: [{ conReduccion: true }],
+      reduccion: 600,
+      rendimientoAntes: 1000,
+    });
+    const sinReduccion = desgloseDeclarado({
+      arrendamientos: [{ conReduccion: false }],
+      reduccion: 0,
+      rendimientoAntes: 1000,
+    });
+
+    expect(conReduccion.tramos.map(etiquetaTramo)).toEqual(['60% vivienda habitual']);
+    // Temporada y turístico se comportan igual en importado y el XML no los
+    // separa: el chip los nombra a los dos.
+    expect(sinReduccion.tramos.map(etiquetaTramo)).toEqual(['0% temporada/turístico']);
   });
 });
 
@@ -140,39 +153,39 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
 describe('año en curso · el nominal lo da el motor, no una división', () => {
   it('un habitual al 60 % · importe y tramo', () => {
     const d = desgloseEnCurso(
-      [{ tipo: 'larga_estancia', pct: 60, ingresos: 6000 }],
+      [{ tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 }],
       5000,
     );
     expect(d.origen).toBe('atlas');
     expect(d.importe).toBe(3000);
-    expect(d.tramos).toEqual([{ tipo: 'larga_estancia', pct: 60, base: 5000 }]);
+    expect(d.tramos).toEqual([{ tipo: 'vivienda_habitual', pct: 60, base: 5000 }]);
   });
 
-  it('larga + temporada · el 0 % de temporada es explícito y no diluye el 60', () => {
+  it('habitual + temporada · el 0 % de temporada es explícito y no diluye el 60', () => {
     // Mismo perfil que el mockup: el rendimiento se reparte por ingresos, y el
-    // 60 % se aplica SOLO sobre la parte de larga estancia.
+    // 60 % se aplica SOLO sobre la parte de vivienda habitual.
     const d = desgloseEnCurso(
       [
-        { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
+        { tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 },
         { tipo: 'temporada', pct: 0, ingresos: 4000 },
       ],
       5000,
     );
 
-    expect(tipos(d)).toEqual(['larga_estancia', 'temporada']);
+    expect(tipos(d)).toEqual(['vivienda_habitual', 'temporada']);
     expect(pcts(d)).toEqual([60, 0]);
     expect(d.tramos[0].base).toBe(3000);
     expect(d.tramos[1].base).toBe(2000);
     expect(d.importe).toBe(1800);
   });
 
-  it('dos larga estancia con nominal distinto · dos chips, no una media', () => {
+  it('dos habituales con nominal distinto · dos chips, no una media', () => {
     // Uno firmado antes de la Ley (60 %) y otro después (50 %). El «55 %» que
     // saldría de promediarlos no existe en el art. 23.2.
     const d = desgloseEnCurso(
       [
-        { tipo: 'larga_estancia', pct: 60, ingresos: 5000 },
-        { tipo: 'larga_estancia', pct: 50, ingresos: 5000 },
+        { tipo: 'vivienda_habitual', pct: 60, ingresos: 5000 },
+        { tipo: 'vivienda_habitual', pct: 50, ingresos: 5000 },
       ],
       4000,
     );
@@ -181,30 +194,32 @@ describe('año en curso · el nominal lo da el motor, no una división', () => {
   });
 
   it('rendimiento negativo · no se reduce una pérdida', () => {
-    const d = desgloseEnCurso([{ tipo: 'larga_estancia', pct: 60, ingresos: 6000 }], -800);
+    const d = desgloseEnCurso([{ tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 }], -800);
     expect(d.importe).toBe(0);
     expect(d.tramos[0].pct).toBe(60);
   });
 
   it('sin ingresos no hay reparto posible · importe 0, no un número inventado', () => {
-    const d = desgloseEnCurso([{ tipo: 'larga_estancia', pct: 60, ingresos: 0 }], 5000);
+    const d = desgloseEnCurso([{ tipo: 'vivienda_habitual', pct: 60, ingresos: 0 }], 5000);
     expect(d.importe).toBe(0);
   });
 
   it('el tipo sale de la modalidad del contrato', () => {
-    expect(tipoDeModalidad('habitual')).toBe('larga_estancia');
+    expect(tipoDeModalidad('habitual')).toBe('vivienda_habitual');
     expect(tipoDeModalidad('temporada')).toBe('temporada');
     expect(tipoDeModalidad('vacacional')).toBe('turistico');
     expect(tipoDeModalidad('turistico')).toBe('turistico');
-    expect(tipoDeModalidad(undefined)).toBe('otro');
+    // Una modalidad que no reconocemos no reduce, y no sabemos cuál de las dos
+    // es: el mismo chip que en importado.
+    expect(tipoDeModalidad(undefined)).toBe('temporada_o_turistico');
   });
 
   it('los tramos se ordenan de mayor a menor reducción', () => {
     const d = desgloseEnCurso(
       [
         { tipo: 'temporada', pct: 0, ingresos: 1000 },
-        { tipo: 'larga_estancia', pct: 90, ingresos: 1000 },
-        { tipo: 'larga_estancia', pct: 50, ingresos: 1000 },
+        { tipo: 'vivienda_habitual', pct: 90, ingresos: 1000 },
+        { tipo: 'vivienda_habitual', pct: 50, ingresos: 1000 },
       ],
       3000,
     );
@@ -224,7 +239,7 @@ describe('dato ausente · se dice, no se rellena', () => {
   });
 
   it('en curso sin rendimiento conocido · ausente, no cero', () => {
-    const d = desgloseEnCurso([{ tipo: 'larga_estancia', pct: 60, ingresos: 6000 }], null);
+    const d = desgloseEnCurso([{ tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 }], null);
     expect(hayDato(d)).toBe(false);
     expect(d.importe).toBeNull();
   });
@@ -233,29 +248,29 @@ describe('dato ausente · se dice, no se rellena', () => {
 // ───────────────────────────────────────────────────────────────────────────
 describe('el rótulo · un solo lenguaje para importado y en curso', () => {
   it('con cifra cuando el nominal se conoce', () => {
-    expect(etiquetaTramo({ tipo: 'larga_estancia', pct: 60 })).toBe('60% larga estancia');
+    expect(etiquetaTramo({ tipo: 'vivienda_habitual', pct: 60 })).toBe('60% vivienda habitual');
     expect(etiquetaTramo({ tipo: 'temporada', pct: 0 })).toBe('0% temporada');
     expect(etiquetaTramo({ tipo: 'turistico', pct: 0 })).toBe('0% turístico');
   });
 
   it('sin cifra cuando no se conoce · el nombre del tramo, y ya', () => {
-    expect(etiquetaTramo({ tipo: 'larga_estancia', pct: null })).toBe('larga estancia');
-    expect(etiquetaTramo({ tipo: 'otro', pct: null })).toBe('distinto de vivienda');
+    expect(etiquetaTramo({ tipo: 'vivienda_habitual', pct: null })).toBe('vivienda habitual');
+    expect(etiquetaTramo({ tipo: 'temporada_o_turistico', pct: 0 })).toBe('0% temporada/turístico');
   });
 
   it('el mismo perfil declarado y en curso dice lo mismo', () => {
     // Un único habitual al 60 %: lo que ATLAS calcula y lo que se declaró tienen
     // que rotularse igual, o el usuario ve dos verdades del mismo contrato.
-    const enCurso = desgloseEnCurso([{ tipo: 'larga_estancia', pct: 60, ingresos: 6000 }], 5000);
+    const enCurso = desgloseEnCurso([{ tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 }], 5000);
     const declarado = desgloseDeclarado({
-      arrendamientos: [{ tipo: 'larga_estancia', conReduccion: true }],
+      arrendamientos: [{ conReduccion: true }],
       reduccion: 3000,
       rendimientoAntes: 5000,
     });
 
     expect(declarado.importe).toBe(enCurso.importe);
     expect(declarado.tramos.map(etiquetaTramo)).toEqual(enCurso.tramos.map(etiquetaTramo));
-    expect(enCurso.tramos.map(etiquetaTramo)).toEqual(['60% larga estancia']);
+    expect(enCurso.tramos.map(etiquetaTramo)).toEqual(['60% vivienda habitual']);
   });
 });
 
@@ -287,7 +302,7 @@ describe('de contratos a tramos · el puente que usan las pantallas', () => {
     );
 
     expect(tramos).toEqual([
-      { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
+      { tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 },
       { tipo: 'temporada', pct: 0, ingresos: 9600 },
     ]);
   });
@@ -298,7 +313,7 @@ describe('de contratos a tramos · el puente que usan las pantallas', () => {
       tramosDeContratos([habitual({ fechaFirmaContrato: '2022-01-01' })], 2025),
       5000,
     );
-    expect(d.tramos.map(etiquetaTramo)).toEqual(['60% larga estancia']);
+    expect(d.tramos.map(etiquetaTramo)).toEqual(['60% vivienda habitual']);
     expect(d.importe).toBe(3000);
   });
 
@@ -314,7 +329,7 @@ describe('de contratos a tramos · el puente que usan las pantallas', () => {
 describe('escalar · el simulador cambia la base, no las condiciones', () => {
   const base = desgloseEnCurso(
     [
-      { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
+      { tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 },
       { tipo: 'temporada', pct: 0, ingresos: 4000 },
     ],
     5000,
@@ -324,7 +339,7 @@ describe('escalar · el simulador cambia la base, no las condiciones', () => {
     // Simular «¿y si cobro más?» no cambia lo que dice el art. 23.2 sobre este
     // contrato: cambia sobre cuánto se aplica.
     const d = escalarDesglose(base, 10000);
-    expect(d.tramos.map(etiquetaTramo)).toEqual(['60% larga estancia', '0% temporada']);
+    expect(d.tramos.map(etiquetaTramo)).toEqual(['60% vivienda habitual', '0% temporada']);
     expect(d.importe).toBe(3600);
     expect(d.rendimientoAntes).toBe(10000);
   });
@@ -336,8 +351,8 @@ describe('escalar · el simulador cambia la base, no las condiciones', () => {
   it('sin base previa no se puede escalar · ausente, no un cero falso', () => {
     const sinBase = desgloseDeclarado({
       arrendamientos: [
-        { tipo: 'larga_estancia', conReduccion: true },
-        { tipo: 'otro', conReduccion: false },
+        { conReduccion: true },
+        { conReduccion: false },
       ],
       reduccion: 1390.94,
       rendimientoAntes: 5334.69,

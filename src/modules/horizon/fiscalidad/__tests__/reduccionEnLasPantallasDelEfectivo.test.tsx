@@ -21,8 +21,8 @@ const texto = (): string => (document.body.textContent ?? '').replace(/\s/g, ' '
 const mixto = () =>
   desgloseDeclarado({
     arrendamientos: [
-      { tipo: 'larga_estancia', conReduccion: true },
-      { tipo: 'otro', conReduccion: false },
+      { conReduccion: true },
+      { conReduccion: false },
     ],
     reduccion: 1390.94,
     rendimientoAntes: 5334.69,
@@ -91,8 +91,8 @@ describe('el rótulo compartido · el mismo en las cuatro', () => {
   it('ni «26» ni «26,07» en ninguna de sus formas', () => {
     render(<RotuloReduccion desglose={mixto()} etiqueta />);
     expect(texto()).not.toContain('26');
-    expect(screen.getByText('larga estancia')).toBeInTheDocument();
-    expect(screen.getByText('0% distinto de vivienda')).toBeInTheDocument();
+    expect(screen.getByText('vivienda habitual')).toBeInTheDocument();
+    expect(screen.getByText('0% temporada/turístico')).toBeInTheDocument();
   });
 });
 
@@ -108,7 +108,7 @@ describe('mapper de hidratación · de dónde sale el porcentaje del formulario'
     expect(
       porcentajeParaElFormulario(
         desgloseDeclarado({
-          arrendamientos: [{ tipo: 'larga_estancia', conReduccion: true }],
+          arrendamientos: [{ conReduccion: true }],
           reduccion: 3200.81,
           rendimientoAntes: 5334.69,
         }),
@@ -126,7 +126,7 @@ describe('mapper de hidratación · de dónde sale el porcentaje del formulario'
     expect(
       porcentajeParaElFormulario(
         desgloseDeclarado({
-          arrendamientos: [{ tipo: 'larga_estancia', conReduccion: false }],
+          arrendamientos: [{ conReduccion: false }],
           reduccion: 0,
           rendimientoAntes: 5000,
         }),

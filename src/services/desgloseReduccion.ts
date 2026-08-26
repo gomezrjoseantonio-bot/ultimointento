@@ -30,8 +30,19 @@
 
 import { calcularPorcentajeReduccionContrato } from './reduccionAlquiler';
 
-/** El régimen de un tramo. `otro` es lo que el dato no permite afinar más. */
-export type TipoTramo = 'larga_estancia' | 'temporada' | 'turistico' | 'otro';
+/**
+ * El régimen de un tramo.
+ *
+ * `temporada_o_turistico` no es un cajón de sastre: es el par que NUNCA se puede
+ * separar cuando el tramo no reduce. En un año importado el Modelo 100 no los
+ * distingue, y para el art. 23.2 se comportan igual —ninguno de los dos reduce—,
+ * así que el chip los nombra a los dos en vez de elegir uno.
+ */
+export type TipoTramo =
+  | 'vivienda_habitual'
+  | 'temporada'
+  | 'turistico'
+  | 'temporada_o_turistico';
 
 export interface TramoReduccion {
   tipo: TipoTramo;
@@ -63,10 +74,10 @@ const NOMINALES = [50, 60, 70, 90] as const;
 const TOLERANCIA_PP = 0.5;
 
 const NOMBRE_TRAMO: Record<TipoTramo, string> = {
-  larga_estancia: 'larga estancia',
+  vivienda_habitual: 'vivienda habitual',
   temporada: 'temporada',
   turistico: 'turístico',
-  otro: 'distinto de vivienda',
+  temporada_o_turistico: 'temporada/turístico',
 };
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -104,24 +115,17 @@ export function desgloseSinReduccion(
 }
 
 /**
- * El tipo de tramo de un arrendamiento del Modelo 100.
+ * El tipo de tramo de un contrato de ATLAS, por su modalidad.
  *
- * El XML solo distingue vivienda (TAR1) de «distinto de vivienda» (TAR2), y en
- * el segundo caben el local, la temporada y el turístico. Elegir uno sería
- * inventarse el desglose, así que se queda en `otro`.
+ * Aquí sí se sabe cuál de los dos regímenes cortos es, porque el contrato lo
+ * dice. Una modalidad que no reconocemos no reduce y no se puede afinar: cae en
+ * el mismo par que en importado.
  */
-export function tipoDeArrendamientoDeclarado(
-  tipoArrendamiento: 'vivienda' | 'no_vivienda' | string | undefined,
-): TipoTramo {
-  return tipoArrendamiento === 'vivienda' ? 'larga_estancia' : 'otro';
-}
-
-/** El tipo de tramo de un contrato de ATLAS, por su modalidad. */
 export function tipoDeModalidad(modalidad: string | undefined | null): TipoTramo {
-  if (modalidad === 'habitual') return 'larga_estancia';
+  if (modalidad === 'habitual') return 'vivienda_habitual';
   if (modalidad === 'temporada') return 'temporada';
   if (modalidad === 'vacacional' || modalidad === 'turistico') return 'turistico';
-  return 'otro';
+  return 'temporada_o_turistico';
 }
 
 /** Mayor reducción primero · el tramo que más pesa encabeza el rótulo. */
@@ -129,7 +133,6 @@ const ordenar = (tramos: TramoReduccion[]): TramoReduccion[] =>
   [...tramos].sort((a, b) => (b.pct ?? Number.MAX_SAFE_INTEGER) - (a.pct ?? Number.MAX_SAFE_INTEGER));
 
 export interface ArrendamientoDeclaradoTramo {
-  tipo: TipoTramo;
   /** `PORCF`/`C_REDARR` del XML: si ese arrendamiento llevaba reducción. */
   conReduccion: boolean;
 }
@@ -163,27 +166,27 @@ export function desgloseDeclarado(entrada: EntradaDesgloseDeclarado): DesgloseRe
     return desgloseAusente('declarado');
   }
 
-  // Un chip por (tipo, con o sin reducción): dos arrendamientos de vivienda
-  // reducidos son un solo tramo, no dos chips iguales.
-  const grupos = new Map<string, ArrendamientoDeclaradoTramo & { n: number }>();
+  // Un chip por «reduce o no»: dos arrendamientos reducidos son un solo tramo,
+  // no dos chips iguales. El régimen se deriva de ahí y no del TAR — solo la
+  // vivienda habitual reduce, así que un tramo con reducción ES habitual, y uno
+  // sin reducción es temporada o turístico sin que el XML diga cuál.
+  const grupos = new Map<boolean, { conReduccion: boolean; n: number }>();
   for (const arr of entrada.arrendamientos) {
-    const clave = `${arr.tipo}|${arr.conReduccion}`;
-    const previo = grupos.get(clave);
+    const previo = grupos.get(arr.conReduccion);
     if (previo) previo.n += 1;
-    else grupos.set(clave, { ...arr, n: 1 });
+    else grupos.set(arr.conReduccion, { conReduccion: arr.conReduccion, n: 1 });
   }
 
   const unicoArrendamiento = entrada.arrendamientos.length === 1;
 
   const tramos: TramoReduccion[] = [...grupos.values()].map((g) => {
-    if (!g.conReduccion) return { tipo: g.tipo, pct: 0 };
+    if (!g.conReduccion) return { tipo: 'temporada_o_turistico' as TipoTramo, pct: 0 };
     const pct =
       unicoArrendamiento && importe !== null && importe > 0 && antes !== null && antes > 0
         ? nominalMasCercano((importe / antes) * 100)
         : null;
-    return antes !== null && unicoArrendamiento
-      ? { tipo: g.tipo, pct, base: antes }
-      : { tipo: g.tipo, pct };
+    const tipo: TipoTramo = 'vivienda_habitual';
+    return antes !== null && unicoArrendamiento ? { tipo, pct, base: antes } : { tipo, pct };
   });
 
   return { importe, tramos: ordenar(tramos), origen: 'declarado', rendimientoAntes: antes };

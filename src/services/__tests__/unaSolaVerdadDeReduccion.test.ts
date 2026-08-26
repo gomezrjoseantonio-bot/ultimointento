@@ -24,12 +24,12 @@ describe('el mismo contrato, los dos caminos', () => {
   const IMPORTE = Math.round(RENDIMIENTO * 0.6 * 100) / 100;
 
   const declarado = desgloseDeclarado({
-    arrendamientos: [{ tipo: 'larga_estancia', conReduccion: true }],
+    arrendamientos: [{ conReduccion: true }],
     reduccion: IMPORTE,
     rendimientoAntes: RENDIMIENTO,
   });
   const enCurso = desgloseEnCurso(
-    [{ tipo: 'larga_estancia', pct: 60, ingresos: 19675 }],
+    [{ tipo: 'vivienda_habitual', pct: 60, ingresos: 19675 }],
     RENDIMIENTO,
   );
 
@@ -40,7 +40,7 @@ describe('el mismo contrato, los dos caminos', () => {
 
   it('el mismo lenguaje', () => {
     expect(declarado.tramos.map(etiquetaTramo)).toEqual(enCurso.tramos.map(etiquetaTramo));
-    expect(enCurso.tramos.map(etiquetaTramo)).toEqual(['60% larga estancia']);
+    expect(enCurso.tramos.map(etiquetaTramo)).toEqual(['60% vivienda habitual']);
   });
 
   it('solo se distinguen en de dónde salen, que es lo único que cambia', () => {
@@ -54,15 +54,15 @@ describe('el mixto · los dos caminos coinciden en el importe y en los chips que
   // no reduce. El importe es el mismo por los dos caminos.
   const enCurso = desgloseEnCurso(
     [
-      { tipo: 'larga_estancia', pct: 60, ingresos: 10000 },
+      { tipo: 'vivienda_habitual', pct: 60, ingresos: 10000 },
       { tipo: 'temporada', pct: 0, ingresos: 10000 },
     ],
     RENDIMIENTO,
   );
   const declarado = desgloseDeclarado({
     arrendamientos: [
-      { tipo: 'larga_estancia', conReduccion: true },
-      { tipo: 'otro', conReduccion: false },
+      { conReduccion: true },
+      { conReduccion: false },
     ],
     reduccion: enCurso.importe,
     rendimientoAntes: RENDIMIENTO,
@@ -78,10 +78,10 @@ describe('el mixto · los dos caminos coinciden en el importe y en los chips que
     // cociente, que es de donde salía el 26 %.
     expect(declarado.tramos).toHaveLength(enCurso.tramos.length);
     expect(declarado.tramos.map(etiquetaTramo)).toEqual([
-      'larga estancia',
-      '0% distinto de vivienda',
+      'vivienda habitual',
+      '0% temporada/turístico',
     ]);
-    expect(enCurso.tramos.map(etiquetaTramo)).toEqual(['60% larga estancia', '0% temporada']);
+    expect(enCurso.tramos.map(etiquetaTramo)).toEqual(['60% vivienda habitual', '0% temporada']);
   });
 });
 

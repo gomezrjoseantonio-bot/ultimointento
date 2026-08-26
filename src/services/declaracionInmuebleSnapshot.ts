@@ -15,10 +15,7 @@
 import { initDB } from './db';
 import { getEjercicio } from './ejercicioResolverService';
 import { normalizeRefCatastral } from './rendimientoActivoService';
-import {
-  tipoDeArrendamientoDeclarado,
-  type ArrendamientoDeclaradoTramo,
-} from './desgloseReduccion';
+import type { ArrendamientoDeclaradoTramo } from './desgloseReduccion';
 
 export interface DeclaracionInmuebleSnapshot {
   /** 0123 — valor catastral total declarado */
@@ -46,8 +43,8 @@ export interface DeclaracionInmuebleSnapshot {
   tieneArrendamientosMixtos: boolean;
   /** Número total de `<Arrendamiento>` declarados (1 por unidad/habitación). */
   numArrendamientos: number;
-  /** Los arrendamientos reducidos a lo que el rótulo necesita: tipo y si
-   *  llevaban reducción. Es lo único que el Modelo 100 dice del desglose. */
+  /** Los arrendamientos reducidos a lo único que el rótulo necesita: si
+   *  llevaban reducción. El régimen se deriva de ahí, no del TAR. */
   arrendamientos: ArrendamientoDeclaradoTramo[];
 }
 
@@ -94,9 +91,6 @@ export async function buildDeclaracionInmuebleSnapshot(
     usaCasosEspeciales,
     tieneArrendamientosMixtos: tiposArrendamiento.size > 1,
     numArrendamientos: arrends.length,
-    arrendamientos: arrends.map((a) => ({
-      tipo: tipoDeArrendamientoDeclarado(a.tipoArrendamiento),
-      conReduccion: a.tieneReduccion === true,
-    })),
+    arrendamientos: arrends.map((a) => ({ conReduccion: a.tieneReduccion === true })),
   };
 }
